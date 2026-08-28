@@ -16,8 +16,9 @@ must be readable by someone who has never seen Anytype's internals.
 2. **Readable by a stranger.** A person who has never seen Anytype internals
    can read a document, understand it, and hand-edit it.
 3. **Borrow words, don't coin them.** HTML, CommonMark, SQL, our own public
-   API, the vocabulary block editors share; six Anytype terms; `relation`
-   appears nowhere.
+   API, the vocabulary block editors share; six Anytype terms; no name the
+   format or the bundle mints says `relation` — only recorded stored keys
+   and user-given names still do.
 4. **Nothing to guess.** A valid document needs only what is in the author's
    head and in one example — no offsets, no ids to fetch first, no
    bookkeeping. Small models included.

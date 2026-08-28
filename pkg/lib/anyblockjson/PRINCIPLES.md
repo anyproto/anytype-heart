@@ -1,6 +1,6 @@
 # AnyBlock JSON — design principles
 
-Status: living document · applies to format version 1 (SPEC v0.11) ·
+Status: living document · applies to format version 1 (SPEC draft v0.48) ·
 Package: `pkg/lib/anyblockjson`
 
 `SPEC.md` says what the format *is*. This document says what it is *for*
@@ -24,8 +24,8 @@ It replaces `.pb.json` as the export/import format, it is the document shape
 API v2 serves and accepts, and it is what an agent reads and writes when it
 edits an object. The same bytes serve every door.
 
-A document as an agent might write it — no block ids (minted on import), a
-reference by a label it chose with the legend in the document, formatting
+A document as an agent might write it — no block ids (minted on import),
+select options by name with the id legend riding beside them, formatting
 inline:
 
 ```json
@@ -113,7 +113,15 @@ no decision (§1 *Naming*). So `relation` → `property`, `smartBlockType` →
 `kind`, `header_1` → `heading_1`, `status`/`tag`/`longtext` →
 `select`/`multi_select`/`text`. Property and type KEYS are exempt — they
 name things a user named, and spell the display name verbatim (§3).
-"Relation" appears in the format only where a user put it in a name.
+No name this format or the bundle mints says "relation" any more — eleven
+bundled display names were renamed to keep that true once raw naming made
+names the wire vocabulary ("Relation key" → "Property key", "Featured
+Relations" → "Featured properties", the "Relation option" type →
+"Property option"). The word still reaches a document where a STORED key
+is recorded verbatim for fidelity — the envelope `internal_key`, the
+values of the `property_internal_keys` / `type_internal_keys` legends —
+and where a user put it in a name: addresses and user data are not
+vocabulary, and neither is this rule's to rename.
 
 Borrow only where the meaning matches. `dataview` stayed `dataview` rather
 than becoming `database`, because a dataview references objects it does not
@@ -143,7 +151,7 @@ would have chosen:
 - The schema is closed and exhaustive (`additionalProperties: false`,
   enumerated values, discriminator-first), so there is nothing to invent
   (§12); at the API door every endpoint serves its schema and one worked
-  example (API v2 convention C12).
+  example (an API v2 convention).
 - Errors are repair instructions — path-addressed, naming allowed values,
   one fault → one issue — so generate → validate → feed back converges
   instead of drifting (§12).
@@ -181,10 +189,12 @@ needs a lookup or a reasoning step to mean something.
 **Wherever a human would write a name, the format carries the name.**
 
 Select options are names — in values, filter values and custom orders alike
-(§3, §6.2). Properties are addressed by slug key, types by type slug,
+(§3, §6.2). Properties and types are addressed by their display names,
 layouts and block types by name. Only objects keep ids, because nothing
-else about an object is unique — and even those shorten to labels an agent
-can choose (`"roman": "bafyrei…"`) with the legend in the document (§9a).
+else about an object is unique — and even those may carry an informative
+`#name` suffix (`bafyrei…#roman`) that import trims without ever resolving
+it, so a reader sees what a reference points at while the id stays the
+whole address (§9).
 
 An id is unguessable: a model must fetch before it can write, or it invents
 one — the hallucination surface in its purest form. A name is already in the
@@ -202,9 +212,10 @@ The compaction that survives is the one that needs no inverse: a block label
 is a placeholder inside its own document, never an address outside it, so
 there is no table to carry, keep in sync or read back — which is exactly the
 three obligations the deleted object legend failed. What the envelope carries
-instead is identity, not compaction: `property_internal_keys` and `type_internal_keys` for a
-space's own property and type slugs, `option_ids` for the option each select
-name means (§3, §9a) — a slug that reads back as a *different* property or type
+instead is identity, not compaction: `property_internal_keys` and
+`type_internal_keys` for the stored key behind each custom spelling,
+`option_ids` for the option each select name means (§3, §9a) — a spelling
+that reads back as a *different* property or type
 in a reader that cannot ask the space is the defect a sweep saw as twelve
 objects whose dataview came back pointing at another property. The mechanism behind it was established after
 that sweep, and its guard is demonstrated by unit test, not by a
@@ -372,4 +383,4 @@ no loss is silent.
 | [Portable Text](https://www.portabletext.org/) | JSON blocks as the unit; a legend referenced by key (`markDefs` → `property_internal_keys`, `type_internal_keys`, `option_ids`) | marks as arrays on spans — Markdown in `text` instead (rule 4); a legend for object references, measured a net loss (rule 5) |
 | [JSON Canvas](https://jsoncanvas.org/), [OKF](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md) | a short spec with its purpose stated first; goals and non-goals up front; longevity, readability, interoperability as the brief | — |
 | Anytype public REST API (`core/api`) | format names (`select`, `multi_select`, `text`, `objects`, `files`); snake_case member names | id/key duality; value fields named after formats; the derived slug vocabulary (keys spell display names, §3) |
-| Agent-API evidence 2024–2026 (`docs/AgentApiV2Research.md`; [Ustynov 2026](https://arxiv.org/abs/2604.07502)) | id-addressed edits; constrained decoding as the small-model floor; examples over prose; SQL-shaped filters; the validation loop as product surface; compact but not exotic | tabular/TOON-style output by default; raw JSON Patch; whole-document rewrite as the default edit |
+| Agent-API evidence 2024–2026 ([Ustynov 2026](https://arxiv.org/abs/2604.07502)) | id-addressed edits; constrained decoding as the small-model floor; examples over prose; SQL-shaped filters; the validation loop as product surface; compact but not exotic | tabular/TOON-style output by default; raw JSON Patch; whole-document rewrite as the default edit |

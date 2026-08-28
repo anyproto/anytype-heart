@@ -21,12 +21,13 @@ a human-only format would have made.
   "$schema": "https://schemas.anytype.io/anyblock/1/object.schema.json",
   "version": 1,
   "id": "bafyreieqh63jv…",
-  "type": "page",
+  "type": "Page",
   "icon": { "format": "emoji", "emoji": "🔥" },
   "properties": {
-    "name": "Project Phoenix",
-    "status": ["In progress"]
+    "Name": "Project Phoenix",
+    "Status": ["In progress"]
   },
+  "option_ids": { "Status": { "In progress": "bafyrei…opt1" } },
   "blocks": [
     { "id": "b1", "type": "heading_2", "text": "Goals" },
     { "id": "b2", "type": "paragraph",
@@ -42,7 +43,8 @@ a human-only format would have made.
 
 Four things are load-bearing and worth noticing before the rationale:
 blocks are a **flat array**, formatting lives as **markdown inside
-`text`**, `properties` is a plain **key → value** map, and the handful of
+`text`**, `properties` is a plain **key → value** map whose keys are
+display names, and the handful of
 things that are a CHOICE rather than a value — the icon, the cover — are
 typed objects with a `format` member, so the alternatives appear in the
 error message rather than only in the spec.
@@ -94,14 +96,30 @@ format.
 ### 3. Names, not ids, wherever a human wrote the name
 
 `select` and `multi_select` values are option **names** (`"In progress"`),
-in property values, filter values and custom orders alike. Properties are
-addressed by key; types by type key.
+in property values, filter values and custom orders alike. Properties and
+types are addressed by their **display names, raw** — `"Creation date"`,
+`"type": "Page"` — bundled and custom alike (since v0.48). The derived
+api-slug spelling (`created_date`) is no longer written; documents that
+carry it keep resolving, because a derived slug always lands in its own
+key's fold class.
 
 **Why.** An id is unguessable, so a model must fetch before it can write;
 a name is already in the user's request. Import creates missing options by
 name, matching the existing import semantics. The trade — two options with
 the same name collapse on import — was accepted explicitly, and it is
 recorded as a known anomaly rather than hidden.
+
+Extending the same rule to property and type keys was decided by
+measurement, not symmetry: an A/B eval found that copying a name
+byte-exactly is a solved behavior even at 4B scale, while *deriving* a
+slug from a name is where models improvise — and improvise differently in
+the key slot and the filter value that references it, the divergence that
+silently unbinds a view from its property. `NAME_ADDRESSING.md` is the
+full study; SPEC §3 is the rule, including the per-document collision
+ladder and the `property_internal_keys` / `type_internal_keys` legends
+that keep an exported document invertible with no space to ask
+(`option_ids`, in the example above, is the same idea for select options:
+the id rides beside the name).
 
 ### 4. Presence is meaningful
 
@@ -119,17 +137,36 @@ attribute there genuinely means "default".
 ### 5. Vocabulary chosen for outsiders, not for the codebase
 
 `relation` → **property** everywhere. `smartBlockType` → `kind`.
-`header*` → `heading*`. `bulleted` → `bulleted_list_item` (Notion's name).
-Formats are `select`/`multi_select`/`text`/`files`/`objects` — the REST
-API's names, not the internal `status`/`tag`/`longtext`; the stored
-shorttext/longtext split has one name between them, `text`. And everything
-the format defines is spelled `snake_case`, digits included.
+`header*` → `heading*`. `bulleted` → `bulleted_list_item` (the name common
+block-editor APIs share). Formats are
+`select`/`multi_select`/`text`/`files`/`objects` — the REST API's names,
+not the internal `status`/`tag`/`longtext`; the stored shorttext/longtext
+split has one name between them, `text`. And everything the format defines
+is spelled `snake_case`, digits included — property and type keys are
+exempt, because they name things a user named and spell the display name
+raw (decision 3).
 
 **Why.** The instruction was "rename everything, minimize new terms". The
 format is read by people and models with no exposure to Anytype's
 internals, and the largest single source of confusion was a vocabulary
-that only made sense if you knew the history. "Relation" now appears
-nowhere in the format.
+that only made sense if you knew the history.
+
+How far the rename reaches is worth stating precisely, because an earlier
+draft of this document overclaimed it. The format's own vocabulary —
+member names, kinds, block types, and every bundled display name (eleven
+bundled names were renamed for it: "Relation key" → "Property key",
+"Featured Relations" → "Featured properties", the "Relation option" type →
+"Property option", …) — no longer says "relation" anywhere. The word still
+reaches a document from the two sources no vocabulary rename can touch.
+The app's STORED keys keep their spellings (`relationKey`,
+`featuredRelations`, the `relation` type key, …), and a document records a
+stored key verbatim exactly where fidelity demands an identity rather than
+a name: the envelope `internal_key`, and the values of the
+`property_internal_keys` / `type_internal_keys` legends — measured on the
+pre-rename corpus, each such key appears there on roughly 150 of 28,831
+documents. And user data is user data: a property someone named
+"Relation", an object called "Company relation template" — their words,
+carried verbatim, no rename's business.
 
 ### 6. The compaction that survives is the legend-less one
 
@@ -201,9 +238,14 @@ triage input, not proof.
 Within those limits it earns its keep. The pre-flat sweep (run 3, 35,369
 objects) round-tripped 99.86% byte-identically; the flat-encoding sweep that
 followed (run 4, 35,372 objects) left 21 failures, all in categories already
-known. The most recent one, over a 36,808-object account, is where the last
-round of findings came from — and no pass rate for it is recorded anywhere.
-The fixes made since have unit tests, not a re-measurement.
+known. The most recent round-trip sweep, over a 36,808-object account, is
+where the last round of findings came from — and no pass rate for it is
+recorded anywhere. The fixes made since have unit tests, not a
+re-measurement. Separately, the native bundle exporter is verified against
+the corpus by the same harness in `-native` mode — 28,542 documents
+checked for layout, kind classification, determinism (every space exported
+twice, trees byte-compared) and per-document fidelity against a
+same-process pb export; `EXPORTER_DESIGN.md` records that run.
 
 Every anomaly found along the way is written up in `ANOMALIES.md` rather
 than smoothed over — including two genuine silent-data-loss bugs the sweeps
@@ -233,6 +275,7 @@ reason not to read a pass rate as a proof of it.
 | `PRINCIPLES_SHORT.md` | the same ten rules on one screen |
 | `SPEC.md` | normative, complete, §14 has a full worked example |
 | `ANOMALIES.md` | every real-data oddity found, with evidence |
-| `APIV2_ADDRESSING.md` | the identifier-layer dossier (naming, keys, minting) |
+| `NAME_ADDRESSING.md` | why keys spell display names — the study, its eval and corpus measurements |
+| `EXPORTER_DESIGN.md` | the native bundle exporter: pipeline, layout, corpus verification |
 | `cmd/anyblockroundtrip` | the production sweep harness |
 | `schema/*.json` | the hand-authored JSON Schema (2020-12) |

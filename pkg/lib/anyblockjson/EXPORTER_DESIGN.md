@@ -116,8 +116,10 @@ the document's own declared kind/type (import/pb/converter.go:337 onward),
 and SPEC.md:2319 states outright that "the format defines no folder layout —
 `objects/`, `types/`, `relations/` are one exporter's convention". So the
 layout is chosen for the human opening the bundle, and for consistency with
-the format's own vocabulary — which spells everything snake_case and never
-says "relation" (SPEC §1 Naming, SPEC.md:1668; PRINCIPLES rule 3).
+the format's own vocabulary — which spells everything it defines
+snake_case and never says "relation" (SPEC §1 Naming; PRINCIPLES rule 3 —
+the word survives only in recorded stored keys and user-given names,
+neither of which a directory name is).
 
 Proposed layout, one bundle root per space:
 
@@ -146,8 +148,8 @@ Rationale, against the legacy names (export.go:96-103):
 - **Format vocabulary, not store vocabulary.** `relations` →
   `properties/`, `relationsOptions` → `options/`, matching the kinds the
   documents themselves declare (`kind: "property"`, `"property_option"`).
-  The format promised "`relation` appears nowhere" (PRINCIPLES rule 3); the
-  directory a reader sees first should keep that promise too.
+  The format's own vocabulary never says "relation" (PRINCIPLES rule 3);
+  the directory a reader sees first should keep that rule too.
 - **snake_case / single words.** `filesObjects` and `relationsOptions` are
   camelCase compounds in an archive whose every document member is
   snake_case. All proposed names are single lowercase words, sidestepping
@@ -624,9 +626,9 @@ close-after-write is design, not optimization.
 ## 2. Alternatives considered and rejected
 
 **Layout: keep the legacy directory names.** Rejected: `relations`/
-`relationsOptions` reintroduce the word the format banned (PRINCIPLES rule
-3), the camelCase compounds contradict the format's own naming rule (SPEC
-§1, SPEC.md:1668), and since the importer provably never reads directory
+`relationsOptions` reintroduce the word the format's vocabulary banned
+(PRINCIPLES rule 3), the camelCase compounds contradict the format's own
+naming rule (SPEC §1 Naming), and since the importer provably never reads directory
 names (import/pb/converter.go:338-341 is the only path rule), compatibility
 buys nothing.
 

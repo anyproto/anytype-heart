@@ -258,7 +258,9 @@ Two of the four goldens therefore freeze nothing the other two do not.
 | `rich_omit_ids.json` | 3669 | `ce96eee96aea3d4b` |
 | `rich_compact_omit.json` | 3669 | `ce96eee96aea3d4b` |
 
-Both pairs are byte-identical. While that holds — i.e. while no id in the
+Both pairs are byte-identical — re-verified after the v0.48 raw-name
+regeneration (`cmp`: 4,846 bytes and 3,821 bytes per pair). While that
+holds — i.e. while no id in the
 rich fixture is minted-shaped — a change to the relabel rule *alone* produces
 **zero** golden drift, and zero drift is exactly what reads as "the goldens
 saw it and it was fine". That is the misleading part, not the duplication.
@@ -284,14 +286,19 @@ zero-drift signal from being read as coverage. **Spec**: §9a.
 
 ---
 
-## No golden carries a `property_internal_keys` legend
+## No golden carried a `property_internal_keys` legend
 
-**Status: open.** All four goldens use bundled or verbatim keys, so the §3
-legend never appears in a frozen document and the goldens prove nothing about
-it — including nothing about its canonical position relative to `option_ids`,
-which is keyed by the spellings `property_internal_keys` inverts. That ordering is
-pinned by `TestOptionRefs_TheLegendFollowsPropertyKeys` instead, which builds
-the two-legend document the goldens do not contain. **Spec**: §2, §4.
+**Status: closed by the exhaustive legend.** The four goldens used to hold
+bundled or verbatim keys only, so the §3 legend never appeared in a frozen
+document and the goldens proved nothing about it — including nothing about
+its canonical position relative to `option_ids`, which is keyed by the
+spellings `property_internal_keys` inverts. Since the legend became
+exhaustive — one entry for every spelling the bundled table does not bind
+— the rich fixture's two custom keys earn their entries, all four goldens
+now freeze a two-entry `property_internal_keys`, and the two id-bearing
+goldens freeze its canonical position before `option_ids` (see
+`testdata/rich.json`). `TestOptionRefs_TheLegendFollowsPropertyKeys` still
+pins the ordering independently of the fixtures. **Spec**: §2, §4.
 
 ---
 
@@ -306,8 +313,9 @@ the documented normalizations) and the plain text of text blocks as a
 multiset, and the harness compares the re-exported bytes with the exported
 ones. Marks, block order, table shape, dataview content and file/bookmark
 metadata are not compared, so a systematic loss in any of them is
-byte-stable and invisible to the number (PREFREEZE_REVIEW §1.5). The
-comparator says so itself: its findings are triage input, not proof.
+byte-stable and invisible to the number — a blind spot the pre-freeze
+review first named, and the comparator now says itself: its findings are
+triage input, not proof.
 
 - **Runs 1–3** (2026-07-23, ~35 400 objects across ~48 spaces, pre-flat).
   Run 1 flagged 14 032 issue lines on 5 577 objects, all default-valued

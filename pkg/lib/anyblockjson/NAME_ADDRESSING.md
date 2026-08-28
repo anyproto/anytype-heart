@@ -71,7 +71,7 @@ The machinery around the spelling, all of which survives this change:
   what is still free (`addDerived`, :175); two equal claims on one spelling
   drop it from both directions ("the git rule", `bind`, :194).
 - **Shape guard** (`writableSlug`, export.go:513): a spelling outside the
-  writable-key rule (non-empty, ≤128 bytes, no control characters), or
+  writable-key rule (non-empty, ≤128 characters, no control characters), or
   `id`/`type`, or a denied key's slug, is refused and the stored key
   written instead — the I1 guarantee's front line.
 
@@ -136,7 +136,7 @@ Custom keys actually used by documents (legend ground truth, 28,560 docs):
 Name shape, over the 767 named: 390 contain spaces, 61 ASCII punctuation,
 8 emoji/non-ASCII; 6 carry a leading/trailing space (`'Email 📧 '`); 2
 carry an invisible variation selector; **0** contain quotes, backslashes
-or control characters; **0** exceed the 128-byte key bound; **0** change
+or control characters; **0** exceed the 128-character key bound; **0** change
 bytes under NFC; 11 near-twin groups differ only by case or edge
 whitespace (`Role`/`role`).
 
@@ -165,13 +165,18 @@ type name. Per document: two co-used keys tie on one raw name in 35 of
   `file_source_checksum`). Fold-class collisions across different keys
   (name-vs-name and name-vs-key): **only those same two groups** — the
   uniqueness CI rule is nearly free today.
-- **The property-vocabulary cleanup is 11 names**, not 16 keys: 10
-  relation names contain the word "relation" ("Relation key", "Featured
-  Relations", "Recommended relations", …) plus the type "Relation option".
-  The rest of the v0.38 alias population already carries clean names —
-  `relationFormat` is named "Format", and the `relation` TYPE is already
-  named **"Property"** in the bundle (verified), so a property document
-  spells `type: "Property"` with no rename at all.
+- **The property-vocabulary cleanup measured out at 11 names**, not 16
+  keys: 10 relation names carried the word "relation" ("Relation key",
+  "Featured Relations", "Recommended relations", …) plus the type
+  "Relation option". The rest of the v0.38 alias population already
+  carried clean names — `relationFormat` is named "Format", and the
+  `relation` TYPE is already named **"Property"** in the bundle
+  (verified), so a property document spells `type: "Property"` with no
+  rename at all. All eleven have since been renamed, sentence-cased
+  ("Property key", "Featured properties", "Property option", …): the
+  study's own verdict that no renames were required (§5.2(ii)) did not
+  survive implementation — addendum 5 records the measurement that
+  reversed it.
 - No bundled relation is named `id` or `type` (they are "Anytype ID" and
   "Object type"), so the §2 member refusals collide with nothing.
 - 84 of 194 bundled names say a different word than their key's snake
@@ -305,7 +310,7 @@ for "Creation date" misses) — but that hazard exists under every scheme
 guessing safe, and the fold layer actually forgives the most likely
 guess shape: a guess matching the stored key's fold class
 (`"Created Date"` folds to `createddate` = `createdDate`'s class) still
-resolves. The §5.7(iii) unknown-term warning names the rest.
+resolves. The §5.8(iii) unknown-term warning names the rest.
 
 **Decision: (a).** The determining structure: (b)'s costs are permanent,
 per-writer, and measured; (a)'s costs are one-time, Anytype-controlled,
@@ -336,26 +341,40 @@ surprises, rev 1's normalized machinery remains the measured fallback.
    the nine "Underlying file id" transients never reach the wire (measured:
    0 of 28,560 documents spell any of them) and need nothing.
 
-   (ii) **No property-vocabulary renames are required.** An earlier revision
-   counted ten or more — "Relation key" → "Property key" and its neighbours.
-   Measured, that cost is zero: not one of the eight `relation*` vocabulary
-   keys appears as a property KEY in any of the 28,560 corpus documents.
-   They are lifted into `property_settings` under fixed member names
-   (`object_types`, `include_time`, `max_values`), so their bundled display
-   names never become wire spellings and renaming them buys the format
-   nothing. They may still be renamed for product reasons; that is not this
-   change's business.
+   (ii) **The property-vocabulary renames — "Relation key" → "Property
+   key" and its neighbours — happened after all.** The study ruled them
+   out here on the claim that the eight `relation*` vocabulary keys are
+   lifted into `property_settings` and so never become wire spellings.
+   That was wrong twice over. The lift is three keys, not eight: only the
+   relation-definition trio — `relationFormat`,
+   `relationFormatIncludeTime`, `relationFormatObjectTypes` — is lifted
+   (`propertySettingsLiftedDetailKeys`, relationformat.go), under the
+   member names `format`, `include_time` and `object_types`; and
+   `max_values` is no member name at all — the definition member for a
+   max count is `max_count`, and `relationMaxCount` is not lifted in the
+   first place. The un-lifted keys reach `properties` on definition
+   documents, spelled — once the alias table was cut — by exactly the
+   display names this passage said would never become wire spellings.
+   Addendum 5 has the measurement and the outcome: the eleven names §2
+   counted are renamed in the bundle, and the deleted v0.38 alias
+   spellings resolve again through the fold with no compatibility table.
 
-   **So the prerequisite is two renames**, both Anytype-owned, both
-   mechanical: `audioGenre` "Genre" → "Audio genre" (leaving `genre` as
-   "Genre"), and the `spaceView` type "Space" → "Space view" (leaving
-   `space` as "Space"; both are `hidden: true`, so no user sees the second).
-   The v0.38 wire alias table still dies — its job moves into the names
-   themselves and `alias.go` with it — but it does so without a rename
-   programme behind it.
+   **The pre-respell prerequisite was two renames**, both Anytype-owned,
+   both mechanical: `audioGenre` "Genre" → "Audio genre" (leaving `genre`
+   as "Genre"), and one rename inside the `space`/`spaceView` pair — the
+   study proposed `spaceView` "Space" → "Space view"; the author sent it
+   the other way, `space` "Space" → "Space settings" with `spaceView`
+   keeping "Space" (addendum 1). The v0.38 wire alias table still dies —
+   its job moves into the names themselves and `alias.go` with it — and
+   the rename programme behind it, none at this point, grew to the eleven
+   of addendum 5 once the cut put "Relation …" names on the wire.
 3. **Fallbacks — and the failure class raw naming DELETES.** Only three
-   things still fall back: an empty name, a name over 128 bytes, and a name
-   carrying control characters (the writable-key rule, unchanged). Each
+   things still fall back: an empty name, a name over 128 characters — the
+   bound counts characters, not bytes (`utf8.RuneCountInString`,
+   validate.go) — and a name carrying control characters (the writable-key
+   rule; the implementation added one sibling case the retired
+   normalization used to launder for free — a name that is not valid UTF-8
+   is not a spelling, `isWritablePropertyKey`). Each
    degrades through the collision rule to the stored key verbatim, always
    its own address. `api_object_key` is not a fallback; it leaves the
    ladder entirely (the corpus's 373 nameless keys are corpses, spelled
@@ -394,18 +413,31 @@ surprises, rev 1's normalized machinery remains the measured fallback.
    stored key is refused the same way. Bundled names cannot tie with each
    other by CI rule (2.i).
 
-5. **The map-less reader resolves within the type.** An authored document
-   need carry no legend, so a reader handed a bare name resolves it against
-   **the declared type's properties first**. Unambiguous there — which is
-   the overwhelming case, measured at **1 ambiguous type of 1,753** — and
-   it is resolved. Ambiguous, or absent from the type, and the reader
-   raises a loud actionable error naming the term and asking for the
-   property-keys map. It never guesses and never mints a phantom on a bare
-   name it cannot place.
+5. **The map-less reader resolves space-wide, and the declared type
+   breaks ties.** An authored document need carry no legend, so a reader
+   handed a bare name resolves it against the space's live vocabulary
+   (`propertyKeyIn`, import.go): an exact stored key answers verbatim —
+   always its own address — a name exactly one live property carries is
+   resolved, and a name several live properties share is narrowed by
+   **the declared type's properties**. Unambiguous there — the
+   overwhelming case, measured at **1 ambiguous type of 1,753** — and it
+   is resolved. Still ambiguous, and the reader refuses loudly, naming
+   the term, the claimant count and the `property_internal_keys` entry
+   that would settle it. It never guesses between live claimants — an
+   ambiguity is exactly where a wrong pick captures another property's
+   values.
 
-   This is what makes the plain-name spelling safe without a legend: the
-   type is the disambiguating scope, and the error is the escape hatch when
-   the type is not enough.
+   A term that resolves to *nothing* is not an error: after the fold
+   layer declines it is stored **verbatim, as its own key**, and the
+   §5.8(iii) warning says what that means — a stale or guessed name
+   minting a phantom, or an annotation glued onto a copied name
+   (`warnVerbatimPropertyTerm`, once per term). Verbatim-first is the
+   chain's own rule and the corpus depends on it — 583 co-used custom
+   properties and every corpse key are spelled by their stored keys
+   today, and those spellings must keep importing — so the unknown term
+   is the warned-and-carried §6.3 price of any name-addressed scheme,
+   while the refusal is reserved for ambiguity, where guessing is the
+   harm.
 6. **Legend and ledger unchanged.** Bundled names bind through the shipped
    table (no legend line, as today); every custom spelling still owes its
    `property_internal_keys` / `type_internal_keys` line — same entry count
@@ -427,7 +459,7 @@ surprises, rev 1's normalized machinery remains the measured fallback.
    `_`/`-`/spaces, answering only when exactly one candidate remains
    (bridges `due_date_2` ↔ "Due Date 2" and forgives invisible-character
    near-misses). The sixteen v0.38 alias spellings (`featured_properties`,
-   …) are the one population outside this proof; §9 Q5 decides between an
+   …) are the one population outside this proof; §9 Q1 decides between an
    accept-only legacy table until freeze and a pre-freeze hard cut.
 8. **Validation warnings, new, all cheap.** (i) A key carrying edge
    whitespace or default-ignorable characters (8 corpus names) — warn,
@@ -451,7 +483,7 @@ surprises, rev 1's normalized machinery remains the measured fallback.
 
 ## 6. Round trip
 
-**I1/I2** — unchanged mechanics, §5.5. **Fixed point**: generation 2
+**I1/I2** — unchanged mechanics, §5.6. **Fixed point**: generation 2
 re-derives identical spellings from an unchanged space; renames move
 spellings between generations, correctly, via the legend (custom) or the
 shipped table (bundled — post-freeze bundled renames require the reserved
@@ -467,7 +499,7 @@ alias mechanism, §5.2).
    named "Budget" cannot capture the old document's values.
 3. **Legendless (hand-/agent-authored) documents: not protected.** A stale
    name misses silently and mints a phantom key. Accepted as the price of
-   any name-addressed scheme, with §5.7(iii)'s warning as mitigation and
+   any name-addressed scheme, with §5.8(iii)'s warning as mitigation and
    one measured consolation: the likeliest bundled guesses land through
    the fold (a guessed `"Created Date"` folds onto `createdDate`'s class
    and resolves; a guessed `created_at` misses under every scheme).
@@ -496,13 +528,15 @@ change costs a format version plus a permanent dual-spelling accept layer.
 
 - **Documents already written keep resolving unchanged, in both
   directions**: custom spellings through their exhaustive legends; bundled
-  legacy slugs through the fold-class proof of §5.6 (no compatibility
-  table needed); the sixteen v0.38 alias spellings per §9 Q5.
+  legacy slugs through the fold-class proof of §5.7 (no compatibility
+  table needed); the sixteen v0.38 alias spellings per §9 Q1.
 - **The bundle name cleanup (§5.2) lands first** — two renames plus the CI
   uniqueness guard — since the wire vocabulary becomes those names.
 - External tooling written against current exports sees the re-spell once;
-  the changelog entry must be loud, and the SPEC §3 authority text and
-  `alias.go` are rewritten rather than patched.
+  the changelog entry must be loud, the SPEC §3 authority text is
+  rewritten rather than patched, and `alias.go` is deleted outright — the
+  bundle renames put its job into the names themselves (addendum 5), so
+  nothing replaces it.
 
 ---
 
@@ -521,17 +555,17 @@ change costs a format version plus a permanent dual-spelling accept layer.
 2. **The example-less writer.** Uniform raw removes the classification and
    derivation steps but not the need to know the vocabulary; a guessed
    bundled name that escapes the fold class mints a phantom. Mitigated by
-   §5.7(iii) and by the discovery surfaces (index, dictionary, property
+   §5.8(iii) and by the discovery surfaces (index, dictionary, property
    documents) that already serve names; residual risk accepted under
    every scheme.
 3. **Pathological names.** Edge whitespace, invisible characters, case
    twins (8 + 11 corpus cases) were absent from the eval. Mitigated by
-   §5.7(i) and the §5.6 fold; accepted.
+   §5.8(i) and the §5.7 fold; accepted.
 4. **The copy boundary.** One model glued an annotation onto a name;
    partly confounded, not reproduced by the second model; mitigated by
-   §5.7(ii); re-check in the read-back eval.
+   §5.8(ii); re-check in the read-back eval.
 5. **Bundled rename policy.** After freeze a bundled display rename is a
-   wire-breaking change; the reserved name-alias mechanism (§5.2) must
+   wire-breaking change; the reserved name-alias mechanism (§4) must
    exist before the first such rename, and the CI uniqueness rule guards
    the table meanwhile. This is the one *new* permanent obligation
    uniform raw creates, and it is Anytype-owned.
@@ -566,15 +600,18 @@ Remaining, genuinely the author's:
 
 **Answered since rev 3:**
 
-- **The bundle name cleanup list** — settled, and much smaller than rev 3
-  claimed. It is **two renames**, not thirteen: `audioGenre` "Genre" →
-  "Audio genre" and the `spaceView` type "Space" → "Space view" (both
-  `hidden: true`, so the second is invisible to users). The property
-  vocabulary needs nothing: measured, not one of the eight `relation*`
-  keys appears as a property key in any of the 28,560 corpus documents —
-  they are lifted into `property_settings` under fixed member names, so
-  their display names never reach the wire. The nine "Underlying file id"
-  transients likewise never reach it.
+- **The bundle name cleanup list** — settled twice, and it grew back.
+  The pre-respell prerequisite landed as two renames: `audioGenre`
+  "Genre" → "Audio genre", and — the reverse of this study's proposal —
+  the `space` type "Space" → "Space settings" (it is the Workspace
+  settings object), with `spaceView` keeping "Space" (commit 1ce03409c;
+  addendum 1 records the direction and its fold-class consequence). The
+  property vocabulary then needed renaming after all: the study's "never
+  reach the wire" claim held only for the three lifted keys, the
+  un-lifted ones reach `properties` on definition documents, and the
+  eleven "Relation …" names were renamed once native output showed them
+  on the wire (§5.2(ii), addendum 5). The nine "Underlying file id"
+  transients did hold: they never reach it.
 - **Invisible bytes at mint** — the format spells names verbatim and warns;
   it does not trim. Normalization, if wanted, belongs where a user creates
   or renames a property or type, applied once at authoring time rather
@@ -634,9 +671,10 @@ Remaining, genuinely the author's:
 
 ## Implementation addendum (GO-7383, landed with the v0.48 re-spell)
 
-The decision above is built. Four calls were made where the study was
-silent, under-specified, or overridden by the author; recorded here so the
-study stays an honest account of what shipped.
+The decision above is built. Nine calls were made where the study was
+silent, under-specified, wrong on a measurement, or overridden by the
+author; recorded here so the study stays an honest account of what
+shipped.
 
 1. **The Space rename went the other way.** §5.2 proposed `spaceView`
    "Space" → "Space view"; the author directed `space` "Space" → "Space
@@ -665,3 +703,73 @@ study stays an honest account of what shipped.
    at every key slot, both namespaces, deduplicated per term per document —
    the seam is identical everywhere and the dedup keeps it cheap. §9 Q3's
    suffix shape shipped as proposed (`<name> (<tail6>)`).
+5. **The eleven property-vocabulary renames happened after all.** §5.2(ii)
+   ruled them out on a lift that covers three keys, not eight
+   (`propertySettingsLiftedDetailKeys`: `relationFormat` and its two
+   siblings; the definition member is `max_count`, and `relationMaxCount`
+   is not lifted at all). The un-lifted keys survive to `properties` on
+   definition documents, and deleting the alias table put their display
+   names on the wire — measured on native output over the 77-space
+   corpus: "Relation key" on 4,009 documents, "Relation option color" on
+   2,716, "Relation value is readonly" on 311, "Recommended relations" on
+   165, "Featured Relations" on 117, "Header relations layout" on 92. So
+   the ten "Relation …"-named relations and the `relationOption` type
+   were renamed, sentence-cased ("Property key", "Featured properties",
+   "Property option", …), with a reviser path so existing spaces pick the
+   names up. One consequence worth having: the deleted v0.38 alias
+   spellings resolve again with no compatibility table —
+   `property_option_color` folds onto "Property option color", because
+   the fold strips case and separators.
+
+6. **A dropped key is not a claimant.** §5.4's "every claimant degrades"
+   needed a second carve-out beside the attribution yield of item 2, and
+   for the opposite reason. The properties emit drops a detail key on four
+   kind- and value-scoped predicates the term census did not consult — a
+   type document's install provenance, a participant's load timestamp, an
+   admitted system-stamped key whose value is empty, a name-over-number key
+   holding a string its vocabulary cannot name. Such a key is written
+   NOWHERE, so it neither claims a spelling nor reserves its own stored key
+   as one, and counting it broke the same fixpoint the attribution yield
+   was built for: `isHidden: false` beside a custom property named "Hidden"
+   wrote `Hidden (b90aa1)` on one export and `Hidden` on the next. The two
+   carve-outs are one rule — a claimant that will not be there next time
+   must not decide anybody else's spelling — stated in SPEC §3 and enforced
+   by one predicate both the emit and the census ask (`droppedPropertyKey`).
+
+7. **The last derived identifier was still running.** §5's "one spelling
+   rule" was true of every key SLOT and false of one derivation: a
+   `property_definitions` entry that states only a `name` derived its term
+   through the api-slug sanitizer. It did not merely rename — it
+   transliterated and truncated. "Cooking Time" arrived as `cooking_time`,
+   which no resolver holds; "Тоггл" as `toggl`; "作業内容" as
+   `zuo_ye_nei_rong`; "C++" as `c`; "☕" and "#" as the empty string, which
+   the seam then refused as unwritable. The name IS the spelling, NFC and
+   verbatim, and the length bound belongs to the spelling — the derivation
+   had been bounding at the object-ref length, 255, on a term the schema
+   bounds at 128.
+
+8. **A rename needs a route to existing accounts, and the study did not
+   say so.** §5.2 treated the bundle renames as a bundle edit. They are
+   not: the system-object reviser skips an object whose bundled revision
+   does not exceed the local one, so a rename with no revision bump never
+   leaves the repository, and a NON-system relation was unreachable to the
+   reviser at any revision. Both failures were live — `audioGenre` was
+   measured emitting `{"property": "Audio genre", "internal_key":
+   "audioGenre", "name": "Genre"}` in 76 of 77 spaces, addressed by one
+   string and named by another. The reviser now reaches bundled non-system
+   relations for `revision` and `name` alone, and applies the name only
+   when the local one is still a previous bundled name, so a user's own
+   rename survives. A bundled rename is therefore three steps, not one, and
+   `docs/Flow.md` states them.
+
+9. **A reader does not revise somebody else's space.** Making the renames
+   reachable gave the reviser twelve pending objects in every space, and in
+   a subscribed space this account may only read, all twelve were refused
+   by the ACL — after the change had been applied to the loaded document.
+   Between the refusal and the next eviction the space reported values that
+   would never persist: thirteen documents in one space exported
+   differently twice in a row. One refusal answers for the whole space, so
+   the pass stops at the first and reports a skip rather than a failure.
+   This was never new behaviour, only newly reachable; what remains is one
+   attempted write per read-only space per load, because nothing short of
+   attempting it tells us the answer.
