@@ -1308,7 +1308,7 @@ each half of a qualified key now carries the writable-key rule instead
 
 Changes in v0.17: **the legend answers to the reader that actually reads
 the document, and three things that were said but not done** (§3, §6.2,
-§11.1). (1) A term owes a legend entry when the **vocabulary in force** would
+§11). (1) A term owes a legend entry when the **vocabulary in force** would
 bind it to a stored key other than the one being written, not only when the
 bundled table would. Export asked the bundled table alone, so a conforming
 vocabulary — the one a space grows by deleting a type or a property, which
@@ -1318,7 +1318,7 @@ document its own `Unmarshal` refuses (two spellings addressing one property,
 an I1 break). The entry is authoritative for every reader, which is what a
 legend is for. (2) `KeyVocabulary` gains the third precondition
 `storeresolver` has always implemented and the interface never stated: a live
-stored key outranks the vocabulary's own slug binding (§11.1). (3) §3 promises
+stored key outranks the vocabulary's own slug binding (§11). (3) §3 promises
 every dropped object type is reported; the **positional** drop — a keyed
 entry past the one type the envelope models — was silent, so a user's second
 type left the archive with nothing said. (4) The counting-preset rule reads
@@ -1543,7 +1543,8 @@ warnings (§3, §4a); and **one fault produces one validation issue** rather tha
 the validator's own bookkeeping (§12).
 
 Changes in v0.7 (API v2 scope split): the §6.2.1 compact filter syntax is **split in scope**,
-resolving the contradiction with API v2 (`core/api/APIV2.md`), which made
+resolving the contradiction with the API v2 design record (since retired
+from the tree), which made
 the filter-string parser a launch dependency while this document still
 called the whole feature reserved/post-v1. The grammar and its parser ship
 **now** as a library subpackage (`filterstring/`, §13) consumed by the API
@@ -1613,8 +1614,8 @@ forced from another.
 |---|---|---|---|
 | **1** | **Export and import** — backup, migration, round trip: `Marshal`/`Unmarshal` (§13), an archive or a bundle on disk (§2c) | a live space at both ends, and that the bytes it reads are bytes it wrote | goal 4 (lossless up to §11, canonical output) and goal 1 |
 | **2** | **Authored documents** — an agent, a script or a person writing objects, types and whole bundles for a space that may not exist yet | nothing but the document, the schema, and the bundled key table every reader ships | goal 2, and the offline half of goal 3 |
-| **3** | **The API over the format** — API v2 (`core/api/APIV2.md`): explicit operations against a live space | a space, a store, and the resolvers of §13 | the store-backed half of goal 3 — resolve, refuse or create, and say which |
-| **4** | **Tool wrappers over that API** — the task-shaped tool set models drive instead of the raw surface, delivered as CLI verbs and as an on-device manifest (`APIV2.md` §7) | everything layer 3 guarantees | nothing this format defines: a context budget |
+| **3** | **The API over the format** — API v2 (`core/api/v2`): explicit operations against a live space | a space, a store, and the resolvers of §13 | the store-backed half of goal 3 — resolve, refuse or create, and say which |
+| **4** | **Tool wrappers over that API** — the task-shaped tool set models drive instead of the raw surface, delivered as CLI verbs and as an on-device manifest (the API v2 design record's tool layer; the record itself is retired from the tree) | everything layer 3 guarantees | nothing this format defines: a context budget |
 
 **Layer 1 sets the readability bar, and every other layer inherits it.** Its
 reader is the one that can ask nothing — a file open in an editor, a bundle on
@@ -1680,8 +1681,9 @@ once per reader. Three reasons; the third settles it.
   there, in the direction this argument predicts. The format's own import
   default creates what is missing (§3); API v2 gates that behind an explicit
   request parameter defaulting to off, answering a name it cannot resolve with
-  a did-you-mean error instead, and the tool wrapper is stricter still
-  (`APIV2_REVIEW_SMALLMODEL.md` A2, `APIV2.md` §7.2). Same document, opposite
+  a did-you-mean error instead, and the tool wrapper is stricter still (the
+  small-model review's finding, recorded in the retired API v2 design
+  record). Same document, opposite
   defaults, chosen by the caller. Record APIs that meet this question elsewhere
   put the switch in the same place: on the write request, off by default, never
   in the record being written.
@@ -1699,7 +1701,8 @@ tooling refuses it before install rather than leaving it to be discovered (§2c)
 
 **Layer 4 subtracts — but it has already added.** A tool set hides what a model
 should not spend context on, ids first of all: the wrapper resolves enumerated
-handles server-side so the model never emits a CID (`APIV2.md` §7.1). What it
+handles server-side so the model never emits a CID (the API v2 design
+record's tool layer). What it
 may not do is invent a dialect. It would be false, though, to say the format
 owes it nothing. Block ids relabel to short
 suffixes because a 59-character CID costs more tokens than the sentence around
@@ -2503,7 +2506,7 @@ outputs the wiring produces, and who reads them:
 
 | output | written by | read by |
 |---|---|---|
-| `profile` at the archive root — `pb.Profile`, raw protobuf whatever format the snapshots are in, since `getProfile` reads it with `pb.Profile.Unmarshal` | `cmd/anyblockconvert` (`profile.go`) | `CreateObjectsForExperience` reads **`spaceDashboardId` only** |
+| `profile` at the archive root — `pb.Profile`, raw protobuf whatever format the snapshots are in, since `getProfile` reads it with `pb.Profile.Unmarshal` | `cmd/anyblockconvert` (`profile.go`) | `CreateObjectsForExperience` reads **`name`, `avatar` and `spaceDashboardId`** — on a NEW-space install; installing into an existing space reads none of it (the whole read is gated on `isNewSpace`) |
 | a snapshot with `sbType: Widget` among the objects — one root block plus a wrapper-and-link pair per widget | `cmd/anyblockconvert` (`widgets.go`), built from `index.widgets` by `WidgetsSnapshot` — the same function the round-trip verifier holds against the widget object it omits, so the install artifact and the loss check cannot drift | the pb importer: `shouldImportSnapshot` admits a Widget snapshot precisely when the import type is `EXPERIENCE`, and `objectcreator.updateWidgetObject` merges its widgets into the space's own widget object |
 
 | `index.json` | reaches the space as | effect |
@@ -2511,27 +2514,33 @@ outputs the wiring produces, and who reads them:
 | `homepage`, falling back to `entrypoint` | `profile.spaceDashboardId` | the space's `homepage` detail — what opens on **every** entry, and on this path the only thing that decides what a new user sees |
 | `widgets` | the Widget snapshot's root children, in order | the sidebar |
 | `entrypoint` | `profile.widgets[0].targetObjectId` | the object the install opens **once** — on the `inject` path only. On a bundle's own path it lands only through the `homepage` fallback above |
-| `name` | `profile.name` | nothing, on this path |
-| `icon` (the `file` variant) | `profile.avatar` | nothing, on this path |
+| `name` | `profile.name` | the space's own name, when the install CREATES the space; nothing on an install into an existing space |
+| `icon` (the `file` variant) | `profile.avatar` | the space's icon (the file object's id re-mapped to its imported id), under the same new-space gate |
 
 Five consequences worth stating, because none is obvious from the wire format:
 
-- **`profile.widgets` is inert here.** `CreateObjectsForExperience` never
-  calls `getWidgets` or `createWidgets`; those belong to `inject`. The wiring
-  still fills the field, so an archive it produces is also a valid built-in
-  archive, but nothing on a bundle's own path reads it. **The sidebar comes
-  from the Widget snapshot** — which an app export carries as a stored
+- **`profile.widgets` is inert here.** On a bundle's own (pb) path
+  `CreateObjectsForExperience` never calls `getWidgets` or `createWidgets`;
+  those belong to `inject`. (Its Markdown/AI branch DOES call
+  `createWidgets` — one link widget built from the manifest's dashboard
+  page, not from `profile.widgets`, which stays unread there too.) The
+  wiring still fills the field, so an archive it produces is also a valid
+  built-in archive, but nothing on a bundle's own path reads it. **The
+  sidebar comes from the Widget snapshot** — which an app export carries as a stored
   object, and which this format's wiring rebuilds from `index.widgets`,
   since a bundle carries no widget document (above). The snapshot's
   `autoWidgetTargets` / `autoWidgetDisabled` details are inert the same way:
   `updateWidgetObject` merges only the BLOCKS into the space's own widget
   object, so the ledger reaches the archive truthfully but no importer reads
   it back yet. The index is where the state survives.
-- **`name` and the icon are discarded on this path.**
+- **`name` and the icon land only on a NEW space.**
   `CreateObjectsForExperience` calls `setWorkspaceSettings(profile, spaceId,
-  false)`, and that function applies `profile.Name` and `profile.Avatar` only
-  when `isBundle` is true. The space keeps whatever name the caller of
-  `ObjectImportExperience` gave it.
+  true)` — but only inside its `isNewSpace` gate, so the profile's name and
+  icon become the created space's own identity and can never overwrite a
+  name the user already chose: an install into an existing space skips the
+  profile read entirely. (Both were discarded on every install until the
+  `isBundle` flag this path passes was turned true; the earlier claim that
+  the pair is always discarded described that bug, not the design.)
 - **`entrypoint` is encoded as the first widget.** There is no independent
   field for "open this after import" — `inject` takes
   `widgets[0].targetObjectId` as its starting page, and the deprecated
@@ -2707,7 +2716,7 @@ and a bundled-bound spelling needs no legend entry.
 (`objectcreator.fillRelationFormatObjectTypes`); the document spells type
 keys. The translation is the optional `TypeResolver` capability of
 `Options.ResolveProperties` (storeresolver implements it from the same one
-bounded type listing §7.5a-2 budgets): export inverts id → key, import key →
+bounded type listing the §3 vocabulary budgets): export inverts id → key, import key →
 this space's id, so a resolver-wired round trip is id-exact. A bare key
 legacy imports stored directly (21 production entries) passes through
 **verbatim in both directions**, its own address (§3): a key is vocabulary,
@@ -2778,7 +2787,7 @@ A bundle names every property its objects use in **one file**,
 `properties.json`, at the bundle root beside `index.json` and validated
 against `properties.schema.json`. It is a sibling of the index and not a
 section inside it, deliberately: an index says *where* things are, a
-dictionary says *what they mean* (§7.3 of the design record; the manifest
+dictionary says *what they mean* (the manifest
 belongs in the index because a manifest is what an index is).
 
 ```json
@@ -2829,7 +2838,7 @@ entry, a kept property document's `property_settings`, and a type's
 exotic. The order is:
 
 1. **The bundled table**, for a key it names. It ships with every reader and
-   is the same in every space (§7.5a-1), so no document can redefine a
+   is the same in every space (§3), so no document can redefine a
    bundled property — an entry for one DOCUMENTS it, and the tools warn when
    the two disagree rather than accepting the entry in silence.
 2. **The dictionary entry**, for every other key. It is the bundle-wide
@@ -3638,8 +3647,11 @@ back as the number.
 
 The remaining layout-ish bundled keys stay numbers deliberately:
 `layoutWidth` is a fraction, not an enum, and `widgetLayout` /
-`headerRelationsLayout` hold enums nothing measurable writes — 13 and 0
-occurrences across 28,604 real exported documents.
+`headerRelationsLayout` hold enums too marginal to earn a name vocabulary —
+13 and 51 occurrences across 28,604 real exported documents. (The 51 was
+first miscounted as 0; the corrected count changes the evidence, not the
+verdict — a name table is bought for keys models actually write, and
+neither key is one.)
 
 Format names follow the public REST API (`select`, `multi_select`, …);
 internally they map to `model.RelationFormat` (`status`→`select`,
@@ -3768,7 +3780,8 @@ What remains normalized, and what no longer is: **one object holding two
 same-named options of one property** still collapses — the document spells
 `["books", "books"]`, and two identical strings have no way to say which entry
 means which option. Export keeps the first writing, so the collapse is
-deterministic and a second export reproduces the first byte for byte (§11.3);
+deterministic and a second export reproduces the first byte for byte (§11
+guarantee 3);
 it is no better than name resolution here, and no worse. A rename, and a
 duplicate name an object touches only once, are no longer lossy (§11).
 
@@ -4180,7 +4193,7 @@ mapping:
 | `featured_properties` | FeaturedRelations | — structural, see §7 |
 | `icon` | Icon | `name` (legacy profile objects only) |
 
-Enum values serialize as lowerCamel strings; defaults are omitted.
+Enum values serialize as snake_case strings (§1 Naming); defaults are omitted.
 
 **Leaf types.** `embed` (and its `equation` alias), `bookmark`, `link`,
 `divider`, `table`, `property`, `dataview`, `icon`, `table_of_contents`,
@@ -4204,7 +4217,7 @@ set.
 
 ### 5.2 Embed blocks
 
-`processor` selects the embed kind — full enum, lowerCamel: `latex`
+`processor` selects the embed kind — full enum, snake_case: `latex`
 (default), `mermaid`, `chart`, `youtube`, `vimeo`, `soundcloud`,
 `google_maps`, `miro`, `figma`, `twitter`, `open_street_map`, `reddit`,
 `facebook`, `instagram`, `telegram`, `github_gist`, `codepen`, `bilibili`,
@@ -4308,7 +4321,7 @@ machinery:
 Dataview blocks embed a queryable view over objects — a *set* (live query)
 or a *collection* (curated list, `is_collection: true`) — that they reference
 but do not own (closer to Obsidian's Dataview than to a Notion database).
-Field-for-field from `Content.Dataview`, with cleaned names, lowerCamel
+Field-for-field from `Content.Dataview`, with cleaned names, snake_case
 string enums, and defaults omitted:
 
 ```json
@@ -4569,11 +4582,11 @@ be worse).
 (§13): parse a filter string → the §6.2 structured filter tree
 (`model.BlockContentDataviewFilter` nodes), with **offset-addressed
 errors** naming the offending token and its position. Its consumer is the
-API v2 request surface (`core/api/APIV2.md` Phase 4 — `POST …/search` and
-the `filter` field of `POST …/sets`), where the string is the documented
+API v2 request surface (`POST …/search` and the `filter` field of
+`POST …/sets`), where the string is the documented
 small-model form and both request forms land on one internal tree. The
 grammar is thereby pinned by the parser and served via the API's discovery
-surface (APIV2.md §5).
+surface.
 
 The **document** side is unchanged and stays reserved: v1 documents ship
 the structured `filters` array only. The view field name `filter`
@@ -4973,7 +4986,7 @@ editor semantics; `util/text` helpers).
 inverse of the canonical renderer — a deterministic delimiter stack (close
 the top entry while it matches, open with the remainder, demote what can do
 neither to literal text), *not* CommonMark's delimiter-run algorithm. The
-rule-of-three resolution is not invertible, and §11.2's byte-stability over
+rule-of-three resolution is not invertible, and §11's byte-stability over
 arbitrarily overlapping ranges requires an exact inverse; the grammar stays
 syntax-compatible with CommonMark/anymark for well-formed input. Unmatched
 Markdown delimiters demote to literal text (CommonMark spirit); malformed,
@@ -5230,7 +5243,18 @@ the key vocabulary, a widget link target against the editor's constants —
 a store that was never an id's authority cannot declare it missing, so
 none of those are ever asked about, let alone rewritten. A deleted
 object's tombstone is a row: its id still means something in this space,
-and references to it are untouched.
+and references to it are untouched — with ONE deliberate exception, the
+icon. An icon is optional where a link or mention target is not, so an
+`iconImage` whose target the space DELETED is dropped rather than kept or
+rewritten: export asks the narrower question through the
+`ObjectDeletionResolver` capability (§13, `DroppedDeletedIconRef` — the
+predicate is exported so the comparator applies the same rule), and the
+document falls through to whatever icon channel is left, exactly as an
+image that is not an object id already does (§2b). Measured before the
+rule: 134 corpus bookmark documents shipped an icon pointing at a favicon
+whose file object was a tombstone in their own space's store. A store
+failure (`known == false`) drops nothing, and no other reference slot asks
+about deletion at all.
 
 **With no capability wired, nothing moves — the sentinel included.** A
 package-only export passes every reference through verbatim, exactly as
@@ -5655,6 +5679,16 @@ store's own spelling for the same type. A respelling, not a rebinding — the
 comparator normalizes both sides to keys through the same capability, the
 treatment the recommended lists already get, so only a change of the type
 NAMED reports.
+
+The deleted-icon rule (§9) adds one normalization of its own, armed only
+when the wiring supplies the `ObjectDeletionResolver` capability (§13):
+**an `iconImage` reference whose target is a tombstone in the space's own
+store is dropped**, and the document falls through to the remaining icon
+channel. The predicate is exported (`DroppedDeletedIconRef`) and the
+comparator consults it on the icon/cover comparison, the same-commit
+discipline every owned predicate here follows — without it the comparator
+reads every dropped icon as data loss, the drift class that once produced
+1,344 false failures in a single sweep.
 
 The missing-reference rule (v0.44, §9) adds one normalization, armed only
 when the wiring supplies the `ObjectExistenceResolver` capability (§13) —
@@ -6170,7 +6204,9 @@ type ObjectNameResolver interface {
 // ObjectName deliberately: that seam's ok is name != "", which reads
 // "exists but untitled" as "no" — using it as an existence check rewrites
 // live references. known=false (a store failure) moves nothing; a
-// tombstone row is a row, so a deleted object's references are untouched.
+// tombstone row is a row, so a deleted object's references are untouched
+// everywhere but the icon slot, whose optionality earns it the narrower
+// ObjectDeletionResolver capability (§9).
 // With no implementation wired, export rewrites and drops NOTHING.
 type ObjectExistenceResolver interface {
     ObjectExists(id string) (exists, known bool)
@@ -6202,13 +6238,13 @@ func DetectFormat(data []byte) (version int, schemaURL string, ok bool)
 // exported constants for the wiring's dispatch.
 
 // KeyVocabulary translates between the STORED keys a snapshot carries and
-// the SLUGS a document spells, in both namespaces and both directions (§3).
-// The default is BundledKeyVocabulary — the derived table that ships with
-// every reader, and nothing else. storeresolver supplies the space-backed
-// one. Three preconditions on an implementation, none implied by the one
-// before it: it inverts what it emits; it never binds a spelling the bundled
-// table binds elsewhere; and a live stored key outranks its own slug binding
-// (§3, §11.1).
+// the SPELLINGS a document writes, in both namespaces and both directions
+// (§3). The default is BundledKeyVocabulary — the name table that ships
+// with every reader, and nothing else. storeresolver supplies the
+// space-backed one. Three preconditions on an implementation, none implied
+// by the one before it: it inverts what it emits; it never binds a spelling
+// the bundled table binds elsewhere; and a live stored key outranks its own
+// name binding (§3, §11).
 type KeyVocabulary interface {
     PropertySlug(key string) string
     PropertyKey(slug string) (key string, ok bool)
@@ -6381,15 +6417,21 @@ best-effort import parsing, while staying syntax-compatible with it (§8.1).
 (Goldmark was authorized but turned out unnecessary: the deterministic
 stack parser in §8.3 replaces CommonMark emphasis resolution entirely.)
 
-Wiring (follow-up work, not this package):
-- Export: a `core/converter/anyblockjson` shim implementing
-  `converter.Converter` (extension `.json`), passing objectStore-backed
-  format and option resolvers.
-- Import: an entry that dispatches on the `version`+`$schema` markers so
-  `RpcObjectImportRequest` accepts the format. This must be built on the
-  ImportV2 engine (branch `go-7349-import-refactor`), not the legacy import
-  pipeline, and must supply resolvers equivalent to the export side's (§3),
-  including create-missing-option behavior.
+Wiring status — export landed, import is the follow-up:
+- Export SHIPS: `core/block/export/anyblock` is the production exporter,
+  wired straight into the export service's format switch
+  (`core/block/export/export.go`) rather than through a
+  `converter.Converter` shim — the earlier plan for a
+  `core/converter/anyblockjson` shim was superseded by that wiring and no
+  such package exists. It passes the storeresolver-backed format, option
+  and key resolvers (§13) and shares the `compose` composition with the
+  cmd tools, so the sweep exercises the shipping path.
+- Import (follow-up, not this package): an entry that dispatches on the
+  `version`+`$schema` markers so `RpcObjectImportRequest` accepts the
+  format. This must be built on the ImportV2 engine (branch
+  `go-7349-import-refactor`), not the legacy import pipeline, and must
+  supply resolvers equivalent to the export side's (§3), including
+  create-missing-option behavior.
 
 ## 14. Full example
 
@@ -6525,16 +6567,23 @@ Wiring (follow-up work, not this package):
 5. **Emoji materialization** (§8.1): confirmed lossy-by-design (the mark
    disappears, its rendering is preserved). Acceptable, or does any surface
    still need the mark itself?
-6. **Icon block**: only appears in legacy profile objects — confirm it must
-   round-trip or can be dropped like other structural blocks.
-7. **`type_properties` naming** (§2a): alternatives considered —
-   `definition.properties` (extra nesting) and a `schema` field (collides
-   with `$schema`, and the section is more than a schema). The `section`
-   enum vs three booleans is also open; the enum gets mutual exclusion for
-   free.
-8. **Property documents** (`kind: "property"`?): custom select/multi_select
-   properties own their option lists; a future section may specify them the
-   same way types are specified in §2a (resolved options by name, not id).
+6. **Icon block**: **mooted (v0.39)** — the icon lift settled what the
+   block must do: it round-trips on the legacy profile objects that carry
+   it (§5's table admits it, `name` only) and appears nowhere else, so
+   there is no drop decision left to make.
+7. **`type_properties` naming** (§2a): **settled (v0.32)** — the group is
+   `type_settings` and the array `property_definitions`; the alternatives
+   recorded here (`definition.properties` — extra nesting; a `schema`
+   field — collides with `$schema`, and the section is more than a schema)
+   stay recorded as the shapes not to re-propose. The `section` enum won
+   over three booleans for the same reason it was leaning: mutual
+   exclusion for free.
+8. **Property documents**: **settled — §2d and §2f are that section.**
+   `kind: "property"` documents carry the definition group
+   (`property_settings`), and the dictionary (§2f) is where a bundle
+   declares a property without a document at all, options resolved by name
+   with `internal_key` beside them. Nothing of the original question
+   remains open.
 9. **Should `version` move once before release?** The v0.20 grammar change —
    `refs` out, three legends in — was made under `version: 1`, which is
    correct while the format is unreleased (nothing is stored against the old

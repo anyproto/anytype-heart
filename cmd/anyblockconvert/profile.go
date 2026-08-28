@@ -11,14 +11,16 @@ package main
 //   - inject() — the built-in use-case archives — reads all of it: name,
 //     avatar, spaceDashboardId, and widgets (getWidgets + createWidgets).
 //   - CreateObjectsForExperience — what ObjectImportExperience calls, and so
-//     what every bundle this tool produces goes through — reads
-//     spaceDashboardId and nothing else. It calls setWorkspaceSettings with
-//     isBundle=false, which drops Name and Avatar, and it never calls
-//     getWidgets or createWidgets.
+//     what every bundle this tool produces goes through — reads name, avatar
+//     and spaceDashboardId, on a NEW-space install (setWorkspaceSettings
+//     with isBundle=true, gated on isNewSpace, so a created space takes the
+//     bundle's identity and an existing space keeps its own). It never reads
+//     profile.widgets: getWidgets belongs to inject, and the one
+//     createWidgets call on this path is the Markdown/AI branch's, built
+//     from the manifest's dashboard page rather than from this file.
 //
-// So on a bundle's actual path this file is one field. The sidebar arrives
-// instead as a Widget snapshot in the archive (widgets.go), which is how a
-// real app export carries it.
+// The sidebar arrives as a Widget snapshot in the archive (widgets.go),
+// which is how a real app export carries it.
 
 import (
 	"fmt"
