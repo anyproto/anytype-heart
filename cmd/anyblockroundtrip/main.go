@@ -454,24 +454,45 @@ type artifactSet struct {
 
 // stripAttribution removes the two derived attribution members from a rendered
 // document so two generations can be compared on what the format is actually
-// responsible for. It is deliberately textual and deliberately narrow: it drops
-// only a top-level `"creator"` or `"last_modified_by"` line, so an attribution
-// value appearing anywhere else still counts as a difference.
+// responsible for. It is deliberately textual and deliberately narrow: it
+// drops only a top-level line spelling `creator` or `lastModifiedBy` the way
+// the document does — their display names, asked of the bundled vocabulary
+// rather than restated, because a restated string is how this strip silently
+// stopped stripping when the raw-name re-spell moved the members from
+// `"creator"` to `"Created by"` (every attribution-bearing object in the
+// account reported not_byte_stable at once). An attribution value appearing
+// anywhere else still counts as a difference.
 //
 // When the stripped member was the LAST in its object, the previous line keeps
 // a trailing comma the other generation never had — a blindspot this strip
 // carried silently until v0.32 exposed it: the §2a settings lift moved
-// `plural_name`/`recommended_layout` out of `properties`, which made `creator`
-// the final property on most type documents, and every one of them reported
-// not_byte_stable over a comma. The comma is trimmed only when the strip
-// actually removed the member between it and the closing brace, so a real
-// difference on the neighbouring lines still counts.
+// `plural_name`/`recommended_layout` out of `properties`, which made the
+// attribution line the final property on most type documents, and every one
+// of them reported not_byte_stable over a comma. The comma is trimmed only
+// when the strip actually removed the member between it and the closing
+// brace, so a real difference on the neighbouring lines still counts.
+var attributionMemberPrefixes = []string{
+	`"` + (anyblockjson.BundledKeyVocabulary{}).PropertySlug("creator") + `":`,
+	`"` + (anyblockjson.BundledKeyVocabulary{}).PropertySlug("lastModifiedBy") + `":`,
+	// and the stored keys verbatim: in a space holding a custom name-twin
+	// the attribution claimant yields its plain name and spells its own key
+	`"creator":`,
+	`"lastModifiedBy":`,
+}
+
 func stripAttribution(doc []byte) string {
 	var out []string
 	stripped := false
 	for _, line := range strings.Split(string(doc), "\n") {
 		t := strings.TrimSpace(line)
-		if strings.HasPrefix(t, `"creator":`) || strings.HasPrefix(t, `"last_modified_by":`) {
+		attribution := false
+		for _, prefix := range attributionMemberPrefixes {
+			if strings.HasPrefix(t, prefix) {
+				attribution = true
+				break
+			}
+		}
+		if attribution {
 			stripped = true
 			continue
 		}
@@ -481,7 +502,30 @@ func stripAttribution(doc []byte) string {
 		stripped = false
 		out = append(out, line)
 	}
-	return strings.Join(out, "\n")
+	// In a space holding a custom name-twin of an attribution key, the
+	// attribution SPELLING owes a legend entry (the vocabulary cannot
+	// uniquely invert it there), and that entry starts with the same member
+	// prefix, so the loop above has already removed it — but gen2, whose
+	// import dropped the attribution detail, may then have no legend AT ALL,
+	// while gen1 keeps an emptied wrapper. Collapse a legend the strip
+	// emptied, so the two generations are compared on what the format is
+	// responsible for.
+	collapsed := out[:0]
+	for i := 0; i < len(out); i++ {
+		t := strings.TrimSpace(out[i])
+		if t == `"property_internal_keys": {` && i+1 < len(out) {
+			next := strings.TrimSpace(out[i+1])
+			if next == "}" || next == "}," {
+				if next == "}" && len(collapsed) > 0 {
+					collapsed[len(collapsed)-1] = strings.TrimSuffix(collapsed[len(collapsed)-1], ",")
+				}
+				i++ // skip the closer too
+				continue
+			}
+		}
+		collapsed = append(collapsed, out[i])
+	}
+	return strings.Join(collapsed, "\n")
 }
 
 func roundtripFile(path string, opts anyblockjson.Options) ([]issue, *artifactSet, error) {

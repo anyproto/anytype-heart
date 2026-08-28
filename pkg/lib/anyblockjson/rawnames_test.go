@@ -417,3 +417,50 @@ func TestRawNames_BundledAndCustomShareOneName(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, string(data), string(again))
 }
+
+// An attribution key never contests a spelling: export writes it and import
+// DROPS it, so a generation-2 census will not hold it — a claimant it had
+// suffixed would un-suffix, and the round trip stopped being byte-stable in
+// exactly the spaces holding a custom name-twin of "Created by" (a real
+// production space does). The attribution claimant yields its plain name
+// (its own bundled stored key is readable), and the normal claimant keeps
+// the verdict it will re-derive without it.
+func TestRawNames_AttributionNeverContestsASpelling(t *testing.T) {
+	const custom = "6a7663db61fab21cd4b90077"
+	vocab := nameVocab{names: map[string]string{custom: "Created by"}}
+	snap := &model.SmartBlockSnapshotBase{Details: &types.Struct{Fields: map[string]*types.Value{
+		"id":      pbtypes.String("o1"),
+		"creator": pbtypes.String("_participant_a_b_A5qTLyde3S1q9NRyFeSeN6UWwa6VwwXEJbMACJwMfez3BGVD"),
+		custom:    pbtypes.String("the twin's value"),
+	}}}
+	opts := Options{Keys: vocab, SpaceId: "a.b"}
+
+	data, err := Marshal(model.SmartBlockType_Page, snap, opts)
+	require.NoError(t, err)
+	require.NoError(t, Validate(data), "I1:\n%s", data)
+
+	var doc struct {
+		Properties   map[string]any    `json:"properties"`
+		PropertyKeys map[string]string `json:"property_internal_keys"`
+	}
+	require.NoError(t, json.Unmarshal(data, &doc))
+	assert.Equal(t, "the twin's value", doc.Properties["Created by"],
+		"the normal claimant keeps the plain name — no suffix that generation 2 would drop")
+	assert.Contains(t, doc.Properties, "creator",
+		"the attribution line yields to its own stored key, always its own address")
+	assert.Equal(t, custom, doc.PropertyKeys["Created by"])
+
+	// the fixpoint half: the re-import drops the attribution line, and the
+	// next export still spells the twin identically
+	_, back, err := Unmarshal(data, opts)
+	require.NoError(t, err)
+	assert.Nil(t, back.Details.Fields["creator"], "attribution does not survive a round trip")
+	again, err := Marshal(model.SmartBlockType_Page, back, opts)
+	require.NoError(t, err)
+	var doc2 struct {
+		Properties map[string]any `json:"properties"`
+	}
+	require.NoError(t, json.Unmarshal(again, &doc2))
+	assert.Equal(t, "the twin's value", doc2.Properties["Created by"],
+		"generation 2 re-derives the same spelling — the fixpoint the yield exists for")
+}

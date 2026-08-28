@@ -494,10 +494,19 @@ func (e *exporter) seedTermLedger() {
 		}
 	}
 	// the collision pass runs off the finished census, silently — the plan
-	// is consulted at claim time (propertySlug), where the warnings fire
+	// is consulted at claim time (propertySlug), where the warnings fire.
+	// The attribution keys yield: import drops them, so a generation-2
+	// census will not hold them, and a spelling they contested would
+	// otherwise change between generations (planKeyTerms).
+	yielding := map[string]bool{}
+	for k := range derivedAttributionProperties {
+		if e.namedKeys[k] {
+			yielding[k] = true
+		}
+	}
 	e.termPlan = planKeyTerms(e.namedKeys,
 		func(k string) string { return e.vetSlug(k, quietWarn) },
-		bundledPropertyKeyBySpelling)
+		bundledPropertyKeyBySpelling, yielding)
 }
 
 // propertySlugs is the list form, and it lives here rather than on Options for
@@ -613,8 +622,18 @@ func quietWarn(string, string, ...any) {}
 // keeping the plain name — is what makes the suffix stable across exports
 // and the plain name trustworthy: a plain spelling in a document is never
 // one of two same-named claimants.
+//
+// A YIELDING claimant is the one exception, and it exists for the fixpoint:
+// the attribution keys are written by export and DROPPED by import, so a
+// generation-2 census no longer holds them — a normal claimant they had
+// contested would then un-suffix, and the round trip stopped being
+// byte-stable exactly in the spaces holding a custom name-twin of
+// "Created by". A yielding claimant therefore never contests anyone: alone
+// on a spelling it takes it as usual, contested at all it takes its own
+// stored key (always readable — the attribution keys are bundled camelCase)
+// and the normal claimants keep the verdict they will re-derive without it.
 func planKeyTerms(named map[string]bool, spell func(string) string,
-	bundledBound func(string) (string, bool)) map[string]string {
+	bundledBound func(string) (string, bool), yielding map[string]bool) map[string]string {
 	keys := make([]string, 0, len(named))
 	for k := range named {
 		keys = append(keys, k)
@@ -628,13 +647,28 @@ func planKeyTerms(named map[string]bool, spell func(string) string,
 			continue // verbatim: always its own address, never contested
 		}
 		cand[k] = t
-		claims[t] = append(claims[t], k)
+		if !yielding[k] {
+			claims[t] = append(claims[t], k)
+		}
 	}
 	contested := func(t string) bool { return len(claims[t]) > 1 || named[t] }
 	plan := make(map[string]string, len(cand))
 	granted := make(map[string]bool, len(cand))
 	for _, k := range keys {
-		if t, ok := cand[k]; ok && !contested(t) {
+		t, ok := cand[k]
+		if !ok {
+			continue
+		}
+		if yielding[k] {
+			if len(claims[t]) > 0 || named[t] || granted[t] {
+				plan[k] = k // yield: the stored key, and nobody else moves
+			} else {
+				plan[k] = t
+				granted[t] = true
+			}
+			continue
+		}
+		if !contested(t) {
 			plan[k] = t
 			granted[t] = true
 		}
@@ -644,7 +678,7 @@ func planKeyTerms(named map[string]bool, spell func(string) string,
 	// sorted first to (b)
 	suffixCount := map[string]int{}
 	for _, k := range keys {
-		if t, ok := cand[k]; ok && contested(t) {
+		if t, ok := cand[k]; ok && !yielding[k] && contested(t) {
 			if s := DisambiguatedKeySpelling(t, k); s != "" {
 				suffixCount[s]++
 			}
@@ -652,7 +686,7 @@ func planKeyTerms(named map[string]bool, spell func(string) string,
 	}
 	for _, k := range keys {
 		t, ok := cand[k]
-		if !ok || !contested(t) {
+		if !ok || yielding[k] || !contested(t) {
 			continue
 		}
 		s := DisambiguatedKeySpelling(t, k) // "" = rung (a) or unwritable: the key
@@ -931,10 +965,11 @@ func (e *exporter) seedTypeTermLedger() {
 			}
 		}
 	}
-	// the collision pass, exactly as the property census runs it
+	// the collision pass, exactly as the property census runs it — with no
+	// yielding set: nothing in the type namespace is written-then-dropped
 	e.typeTermPlan = planKeyTerms(e.typeNamedKeys,
 		func(k string) string { return e.vetTypeSlug(k, quietWarn) },
-		bundledTypeKeyBySpelling)
+		bundledTypeKeyBySpelling, nil)
 }
 
 // writableTypeSlug is writableSlug for the type namespace: the vocabulary's
