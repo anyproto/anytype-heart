@@ -43,13 +43,13 @@ type jsonDoc struct {
 	// TypeSettings is a kind:object_type document's definition group (§2a):
 	// the five lifted settings plus property_definitions.
 	TypeSettings *jsonTypeSettings `json:"type_settings"`
-	// PropertyKeys is the §3 slug→stored-key legend: what this document says
+	// PropertyKeys is the §3 spelling→stored-key legend: what this document says
 	// its own key spellings mean, consulted before any vocabulary so a reader
 	// without the space still lands on the right relation. Its values are
 	// AUTHORITATIVE — taken as the stored key, not liveness-checked (§3).
 	PropertyKeys map[string]string `json:"property_internal_keys"`
 	// TypeKeys is the same legend for the TYPE namespace — separate map,
-	// because a space may slug a relation and a type onto one term (§3).
+	// because a space may name a relation and a type one word (§3).
 	TypeKeys map[string]string `json:"type_internal_keys"`
 	// OptionIds is the §9a option legend, nested {property spelling: {option
 	// name: option id}}. Unlike the two above its values are HINTS, honoured
@@ -255,7 +255,7 @@ func (imp *importer) genId() string {
 // propertyKey inverts a key slot: the document's own legend first (§3), then
 // the vocabulary in force. The legend wins because it is the only statement
 // made by the document itself — a vocabulary belongs to the reader, and two
-// readers disagreeing about a slug is exactly how a property ends up pointing
+// readers disagreeing about a spelling is exactly how a property ends up pointing
 // at a different relation than it was exported from.
 //
 // Names are not unique, so a space-backed vocabulary (ScopedKeyVocabulary,
@@ -270,7 +270,7 @@ func (imp *importer) genId() string {
 //     properties bear that exact name.
 //   - **A verbatim resolution is diagnosed.** A term that is no live
 //     entity's stored key is stored verbatim all the same — that is chain
-//     step 4, and the price of any name-addressed scheme — but the importer
+//     step 5, and the price of any name-addressed scheme — but the importer
 //     says so once per term: a stale or guessed name minting a phantom key,
 //     or an annotation glued onto a copied name.
 //
@@ -443,7 +443,7 @@ func (imp *importer) propertyKeyAt(slug, slot string) string {
 	if slug != "" && key == "" {
 		imp.refuse("/blocks", fmt.Sprintf(
 			"the vocabulary resolves the %s spelling %q to the empty key; "+
-				"a key slot has to name something (§3)", slot, slug))
+				"a key slot has to name something", slot, slug))
 	}
 	return key
 }
@@ -684,7 +684,8 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[detailKeyId] = &types.Value{Kind: &types.Value_StringValue{StringValue: objectId}}
 	// Sorted, and a REFUSAL when two spellings canonicalize onto one stored
-	// key — the mirror of the export-side collapse guard (§8.38). Ranging the
+	// key — the mirror of the export-side collapse guard (§3's
+	// duplicate-binding refusal). Ranging the
 	// map made "which of two spellings wins" a per-run coin flip: the same
 	// request stored a different object run to run. The API layer refuses
 	// first, with a better-worded message (canonicalizeDocumentKeys), but the
@@ -701,7 +702,7 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 		// admission runs on the FINAL resolved key, here at the seam where
 		// details are written (§3). Validate already refused everything its
 		// bundled chain could resolve, but a caller-supplied vocabulary can
-		// bind a slug to a stored key the bundled table never knew — including
+		// bind a spelling to a stored key the bundled table never knew — including
 		// the internal keys the deny rule exists for — and Validate takes no
 		// vocabulary, deliberately (§13).
 		if reason, denied := deniedPropertyKey(key); denied {
@@ -822,7 +823,7 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 	// One line for the document, not one per slot: the fault is a reader
 	// wired without a space, and every such reference in the object shares it.
 	if imp.foldedUnrebuilt {
-		imp.warn("", "this document was written with participants folded (§9) and "+
+		imp.warn("", "this document was written with participants folded and "+
 			"Options.SpaceId names no space: their references import as bare "+
 			"identities, which address no object. Set SpaceId to the space this "+
 			"document is being read into.")

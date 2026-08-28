@@ -306,8 +306,9 @@ type exporter struct {
 
 	// optionRefs is the second `refs` population: the option id behind every
 	// name export wrote for a select value (optionrefs.go). Recorded against
-	// the STORED property key and rendered into `<name>#<slug>` keys at
-	// envelope-assembly time, when the term ledger has settled.
+	// the STORED property key and rendered into the nested `option_ids` map
+	// (property spelling → option name → id) at envelope-assembly time, when
+	// the term ledger has settled.
 	optionRefs map[optionRefPair]string
 
 	// idLabels maps a stored block/row/column id to the id written for it, and
@@ -318,8 +319,9 @@ type exporter struct {
 	idLabels map[string]string
 	idsUsed  map[string]struct{}
 
-	// propertyKeys is the §3 legend: the slug→stored-key entries this document
-	// must carry to be invertible by a reader that cannot ask the space.
+	// propertyKeys is the §3 legend: the spelling→stored-key entries this
+	// document must carry to be invertible by a reader that cannot ask the
+	// space.
 	propertyKeys map[string]string
 
 	// termOwner / termByKey / namedKeys are the §3 term ledger — the property
@@ -340,12 +342,12 @@ type exporter struct {
 
 	// typeKeys is the §3 legend for the TYPE namespace, and typeTermOwner /
 	// typeTermByKey / typeNamedKeys its term ledger. One ledger and one
-	// legend PER NAMESPACE, deliberately: a property slug and a type slug may
-	// coincide without conflict (§3 — `object_type` the type key coexists
-	// with `objectType` the layout value, and a space can slug a relation and
-	// a type onto the same term), so a shared claim domain would back a key
-	// off a slug the other namespace owns — a spurious conflict, and one
-	// legend map could not carry both meanings of the shared term at all.
+	// legend PER NAMESPACE, deliberately: a property spelling and a type
+	// spelling may coincide without conflict (§3 — `object_type` the type key
+	// coexists with `objectType` the layout value, and a space can name a
+	// relation and a type one word), so a shared claim domain would back a
+	// key off a spelling the other namespace owns — a spurious conflict, and
+	// one legend map could not carry both meanings of the shared term at all.
 	typeKeys      map[string]string
 	typeTermOwner map[string]string
 	typeTermByKey map[string]string
@@ -399,7 +401,7 @@ func (e *exporter) propertySlug(key string) string {
 
 // seedTermLedger runs the property-key census: every stored key any slot of
 // this document may name. Verbatim-first (§3) makes each of those keys its
-// own address, so no OTHER key's slug may take one as a spelling — the same
+// own address, so no OTHER key's name may take one as a spelling — the same
 // avoid-set discipline seedIdLabels applies to ids. The walk mirrors the emit
 // sites (buildProperties, buildTypeProperties, blockToJSON, dataviewToJSON),
 // and mirroring them EXACTLY is the whole obligation: an over-reservation
@@ -454,7 +456,7 @@ func (e *exporter) seedTermLedger() {
 		// them when their value holds an id, and the census counts what the
 		// document spells (§9a). The condition mirrors buildProperties
 		// exactly: reserve neither more nor less than what is written, or a
-		// custom relation slugged `creator` claims the spelling and the two
+		// custom relation named "Created by" claims the spelling and the two
 		// members collapse onto one.
 		for k := range derivedAttributionProperties {
 			if _, ok := e.attributionRef(k); ok {
@@ -530,10 +532,10 @@ func (e *exporter) seedTermLedger() {
 
 // propertySlugs is the list form, and it lives here rather than on Options for
 // the same reason the singular one does: a key list (a link block's shown
-// properties) is a key slot like any other, and a slug written without the
-// legend entry that inverts it is a slug that reads back as a different
-// relation. Options carries the vocabulary; only the exporter can record what
-// the document owes for using it.
+// properties) is a key slot like any other, and a spelling written without
+// the legend entry that inverts it is a spelling that reads back as a
+// different relation. Options carries the vocabulary; only the exporter can
+// record what the document owes for using it.
 func (e *exporter) propertySlugs(keys []string) []string {
 	if len(keys) == 0 {
 		return keys
@@ -547,23 +549,24 @@ func (e *exporter) propertySlugs(keys []string) []string {
 
 // writableSlug is the vocabulary's spelling for a stored key when that
 // spelling can actually be written, and the stored key itself otherwise. The
-// slug is the string that becomes a JSON property name (buildProperties) or a
-// legend entry's name, and slugs come from apiObjectKey — user-supplied or
-// strcase-derived with no length bound — so nothing upstream guarantees the
+// spelling is the string that becomes a JSON property name (buildProperties)
+// or a legend entry's name, and spellings come from display NAMES — arbitrary
+// user text, with no length bound — so nothing upstream guarantees the
 // shape §3 requires of a spelling. Checking the stored key and then emitting
-// the slug unchecked is how Marshal produced a document its own Validate
+// the spelling unchecked is how Marshal produced a document its own Validate
 // rejects (maxLength 192 vs 128, on /properties and /property_internal_keys at once).
-// The stored-key arm covers the mirror case: a slug for a key that cannot be a
-// legend VALUE has no invertible spelling but its own, so the verbatim key —
-// always its own address (§3 verbatim-first) — is the one honest rendering.
+// The stored-key arm covers the mirror case: a spelling for a key that cannot
+// be a legend VALUE has no invertible spelling but its own, so the verbatim
+// key — always its own address (§3 verbatim-first) — is the one honest
+// rendering.
 //
-// The same fate for a slug validation refuses on other grounds than shape:
-// "id" and "type" are refused as SPELLINGS before any resolution (§2 — the
-// legend cannot re-purpose them, so it cannot rescue them either), and a
-// DENIED key never takes a slug at all, because the slug's legend entry would
-// carry a value the §3 deny rule refuses. Both used to make Marshal emit what
-// its own Validate rejects — or, for the denied key, emit a legend a
-// pre-admission reader would happily resolve.
+// The same fate for a spelling validation refuses on other grounds than
+// shape: "id" and "type" are refused as SPELLINGS before any resolution (§2 —
+// the legend cannot re-purpose them, so it cannot rescue them either), and a
+// DENIED key never takes a spelling at all, because the spelling's legend
+// entry would carry a value the §3 deny rule refuses. Both used to make
+// Marshal emit what its own Validate rejects — or, for the denied key, emit a
+// legend a pre-admission reader would happily resolve.
 func (e *exporter) writableSlug(key string) string {
 	return e.vetSlug(key, e.warn)
 }
@@ -587,7 +590,7 @@ func (e *exporter) vetSlug(key string, warn func(path, format string, args ...an
 	}
 	if slug == detailKeyId || slug == detailKeyType {
 		warn("/"+memberPropertyInternalKeys,
-			"the vocabulary spells %q as %q, a spelling this format refuses before any resolution (§2); the stored key is written instead",
+			"the vocabulary spells %q as %q, a spelling this format refuses before any resolution — `id` and `type` are the envelope's own members; the stored key is written instead",
 			key, slug)
 		return key
 	}
@@ -606,7 +609,7 @@ func (e *exporter) vetSlug(key string, warn func(path, format string, args ...an
 			return slug
 		}
 		warn("/"+memberPropertyInternalKeys,
-			"%q cannot be a legend value (§3 deny rule), so its slug %q is not written; the stored key is its own address",
+			"%q cannot be a legend value (import refuses the internal keys export strips), so its spelling %q is not written; the stored key is its own address",
 			key, slug)
 		return key
 	}
@@ -781,7 +784,7 @@ func (e *exporter) recordPropertyKey(term, key string) {
 // share of I1 ("Marshal never emits what Validate rejects", §11): every other
 // key slot admits before it writes, and the two legends did not — the ONLY
 // admission on the way in was writableSlug/writableTypeSlug, which returns
-// early when the vocabulary has no slug for a key, so the stored key reached
+// early when the vocabulary has no spelling for a key, so the stored key reached
 // the ledger unvetted. Marshal then wrote `{"a\nb": "a\nb"}` and its own
 // Validate rejected the whole document; the object was unexportable and
 // nothing said so. Reproduced first-hand at a dataview FILTER slot (which,
@@ -839,16 +842,16 @@ func legendEntryRefusal(term, key string, deny bool) (string, bool) {
 // writer's own vocabulary then bound to a different stored key:
 //
 //   - the type namespace lost data in silence. A type UI-deleted from the
-//     space vacates the slug namespace (storeresolver's corpse policy), so
+//     space vacates its stored key (storeresolver's corpse policy), so
 //     `initiative` stops being a live stored key while objects still carry
-//     `ot-initiative`; the same listing binds the slug `initiative` to a
-//     live type keyed `69bbfc…`. Export wrote `"type": "initiative"` with no
+//     `ot-initiative`; the same listing binds the freed spelling `initiative`
+//     to a live type keyed `69bbfc…`. Export wrote `"type": "initiative"` with no
 //     entry and import bound it to `69bbfc…` — the object came back typed as
 //     a different type, no error anywhere.
 //   - the property namespace broke I1 out loud. A vocabulary spelling
 //     `alpha` as `beta`, over an object holding both `alpha` and `beta`,
 //     wrote both keys verbatim (the ledger backs `alpha` off its contested
-//     slug, correctly) — and then the reader's own vocabulary bound `beta`
+//     spelling, correctly) — and then the reader's own vocabulary bound `beta`
 //     to `alpha`, so two spellings addressed one property and Unmarshal
 //     refused a document Marshal had just emitted.
 //
@@ -947,7 +950,7 @@ func (e *exporter) typeSlugs(keys []string) []string {
 // slot of this document may name — the snapshot's object types (envelope
 // `type`/`template_for`) and the target types of the resolved type-property
 // definitions (§2a object_types). Verbatim-first (§3) makes each its own
-// address, so no other key's slug may take one as a spelling.
+// address, so no other key's name may take one as a spelling.
 func (e *exporter) seedTypeTermLedger() {
 	e.typeTermOwner = map[string]string{}
 	e.typeTermByKey = map[string]string{}
@@ -976,7 +979,7 @@ func (e *exporter) seedTypeTermLedger() {
 	// a relation document's own target types (§2d) are a type-key slot too,
 	// and the census must know every key the slot will spell for the same
 	// reason it knows the §2a targets: verbatim-first (§3) makes each its
-	// own address, so no other key's slug may take one as a spelling
+	// own address, so no other key's name may take one as a spelling
 	if e.isPropertyDoc() {
 		for _, key := range e.relationTargetKeys() {
 			if key != "" {
@@ -993,8 +996,8 @@ func (e *exporter) seedTypeTermLedger() {
 
 // writableTypeSlug is writableSlug for the type namespace: the vocabulary's
 // spelling when it can actually be written and honored, the stored key
-// itself otherwise. The shape rule is the same — a slug becomes a legend
-// spelling and a stored key a legend value, both bounded by the schema. The
+// itself otherwise. The shape rule is the same — a spelling becomes a legend
+// member name and a stored key a legend value, both bounded by the schema. The
 // reserved spelling differs: the type namespace has none. It used to refuse
 // to move `template` in either direction, because the envelope's template
 // semantics hung off the spelled term — export keyed template_for emission
@@ -1387,11 +1390,11 @@ var typeKeyIdPrefix = domain.TypeKey("").URL()
 //     what buildProperties already owes an unwritable *property* key, and
 //     what the import seam refuses outright and path-addressed.
 //   - **Only the slots actually WRITTEN claim a term.** typeSlug is the term
-//     ledger's claim step, so slugging an entry no slot emits still records
+//     ledger's claim step, so spelling an entry no slot emits still records
 //     the legend entry that spelling owes: a document then carried a
 //     `type_internal_keys` line naming a type it never mentions, publishing a space's
-//     slug→key mapping for nothing. buildProperties cannot do this because it
-//     filters before it slugs; the type side now does the same.
+//     spelling→key mapping for nothing. buildProperties cannot do this because
+//     it filters before it spells; the type side now does the same.
 //
 // The list still truncates to the positions §2 models — one type, plus the
 // target type on a template. That is the format's shape, not a defect, and
@@ -1417,7 +1420,7 @@ func (e *exporter) envelopeTypeTerms() []string {
 // The census has to see exactly this list rather than every object type,
 // which is where it started. Reserving a key no slot spells makes export stop
 // being a fixpoint: a snapshot whose truncated-away second type is the first
-// one's slug backed that slug off, while the same object exported after one
+// one's spelling backed that spelling off, while the same object exported after one
 // round trip — the second type gone, the census one key smaller — spelled it.
 // Two documents, the same object, differing in the term and in a legend line;
 // §9's "re-exports diff cleanly" is the promise that breaks. Nothing was
@@ -1463,7 +1466,7 @@ func (e *exporter) modelledTypeKeys(warn bool) []string {
 	if warn {
 		for j := kept; j < len(keys); j++ {
 			e.warn("/type",
-				"object type %d (%q) is dropped: the envelope carries one type, plus the target type on a template (§2), "+
+				"object type %d (%q) is dropped: the envelope carries one type, plus the target type on a template, "+
 					"and every position is already taken; it is not written anywhere in this document",
 				stood[j], e.snapshot.ObjectTypes[stood[j]])
 		}
@@ -1813,7 +1816,7 @@ func (e *exporter) droppedPropertyKey(k string, warn func(path, format string, a
 	if vocab, named := namedEnumProperty(k); named {
 		if s, isStr := e.snapshot.Details.Fields[k].GetKind().(*types.Value_StringValue); isStr && !vocab.has(s.StringValue) {
 			warn("/properties", "%s %q on %q is not a name its vocabulary can hold and is dropped — "+
-				"there is no way to write it (§3)", vocab.what, s.StringValue, k)
+				"there is no way to write it", vocab.what, s.StringValue, k)
 			return true
 		}
 	}
@@ -2164,7 +2167,7 @@ func (e *exporter) warnLiftedAttributes(b *model.Block) {
 		b.BackgroundColor == "" && len(b.Fields.GetFields()) == 0 {
 		return
 	}
-	e.warn("/blocks", "block %s is a transparent container (§7a): it is lifted, and the attributes on it are dropped", b.Id)
+	e.warn("/blocks", "block %s is a transparent container: it is lifted, and the attributes on it are dropped", b.Id)
 }
 
 func (e *exporter) buildBlocks() ([]any, error) {
@@ -2364,7 +2367,7 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 		// nameless sort and the nameless column (§6).
 		if orEmpty(c.Relation).Key == "" {
 			e.warn("", "a property block names no property and is dropped; "+
-				"a key slot has to name something (§3)")
+				"a key slot has to name something")
 			return nil, false, nil
 		}
 		m.set("type", "property")

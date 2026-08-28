@@ -152,7 +152,7 @@ func (e *exporter) cellToJSON(cell *model.Block) (any, error) {
 	if isTransparentContainer(cell) {
 		e.visited[cell.Id] = true
 		if len(cell.ChildrenIds) > 0 {
-			e.warn("", "cell %s is a transparent container (§7a): a cell cannot be lifted, so it renders empty and its %d children are dropped",
+			e.warn("", "cell %s is a transparent container: a cell cannot be lifted, so it renders empty and its %d children are dropped",
 				cell.Id, len(cell.ChildrenIds))
 		}
 		return nil, nil

@@ -1174,7 +1174,8 @@ this format under any rule.
 (2) **The key legends are exhaustive**: an entry is written for every spelling
 the **bundled table does not BIND to the key being written**, identity entries
 included — where the rule used to ask whether that table *inverts* the term. A
-table that does not know a term answers the term itself (chain step 4), so
+table that does not know a term answers the term itself (chain step 5,
+verbatim), so
 every custom key written verbatim "inverted" trivially and owed nothing, and
 the document said nothing about the one population no reader can resolve
 without it. The key is unambiguous the day it is written; it re-points later,
@@ -3178,7 +3179,7 @@ type, or absent from it, and the reader raises a loud, actionable error
 naming the term and asking for the `property_internal_keys` entry that would
 settle it. It never guesses between live properties and never mints a
 phantom key while two live properties bear that exact name. (A term NO live
-entity answers to still resolves verbatim — chain step 4 below — with a
+entity answers to still resolves verbatim — chain step 5 below — with a
 warning; that is the price of any name-addressed scheme, stated in §11.)
 
 Three consequences worth stating outright:
@@ -5846,11 +5847,12 @@ vocabulary that means three things, none of which follows from the one
 before it (`KeyVocabulary`, §13). One: whatever `…Slug` emits, `…Key` must
 invert. Two: **no answer, in either direction, may bind a spelling that the
 bundled table binds to a different key.** Three: **a live stored key
-outranks the vocabulary's own slug binding** — chain step 2 as an obligation
+outranks the vocabulary's own NAME binding** — chain step 2 as an obligation
 on the implementation, so a term that is some live entity's stored key
-answers "not a slug", and no slug is emitted that a live stored key answers
-to. Without the third, a document naming a relation by its stored key lands
-on whichever other relation minted that string as its api key.
+answers "not a spelling", and no spelling is emitted that a live stored key
+answers to. Without the third, a document naming a property by its stored
+key lands on whichever other property carries that string as its display
+name.
 
 The second is what the legend can only partly rest on. A document owes an
 entry for every spelling a reader's chain would bind elsewhere, and export

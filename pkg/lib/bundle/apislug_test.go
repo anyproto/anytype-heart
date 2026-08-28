@@ -10,9 +10,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 )
 
-// The derived table is the §7.5a-1 authority for bundled keys; its whole
-// claim to authority is collision-freedom. These tests are the loud failure
-// a future bundle addition hits if it ever mints a colliding slug.
+// The derived table is the API surface's one authority for bundled keys; its
+// whole claim to authority is collision-freedom. These tests are the loud
+// failure a future bundle addition hits if it ever mints a colliding slug.
 
 func TestApiSlugTableIsCollisionFree(t *testing.T) {
 	t.Run("every bundled relation key has a distinct slug", func(t *testing.T) {
@@ -66,7 +66,7 @@ func TestApiSlugRoundTrip(t *testing.T) {
 }
 
 func TestApiSlugSpellings(t *testing.T) {
-	// the wire spellings the surface rule promises (§7.5a): a drift in the
+	// the spellings the API surface promises: a drift in the
 	// snake transform respells the API — pin the load-bearing examples
 	assert.Equal(t, "due_date", ApiSlug("dueDate"))
 	assert.Equal(t, "icon_emoji", ApiSlug("iconEmoji"))

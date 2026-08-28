@@ -213,7 +213,7 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 	// emitted one, Marshal's output would fail its own Validate, which is how
 	// this invariant proves the two surfaces are still each other's mirror.
 	// The two custom keys at the end exist to give a vocabulary something to
-	// slug: the hostileVocab variant maps them onto the slug shapes a real
+	// spell: the hostileVocab variant maps them onto the spelling shapes a real
 	// space can mint (over-long, empty, shadowing a bundled spelling).
 	details := map[string]*types.Value{
 		"id":             str("obj1"),
@@ -243,9 +243,9 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 		"6a32d4856761631534b22f85": str("space-slugged"),
 		"artist":                   str("verbatim custom key"),
 		// the two shadow shapes of the verbatim-first family (§3): a custom
-		// stored key spelling an INTERNAL bundled key's slug, and one
-		// spelling a WRITABLE bundled key's slug beside that bundled key
-		// itself ("dueDate" above). Both are slug-shaped stored keys the
+		// stored key shaped like an INTERNAL bundled key's legacy slug, and
+		// one shaped like a WRITABLE bundled key's legacy slug beside that
+		// bundled key itself ("dueDate" above). Both are snake-shaped stored keys the
 		// details carried none of, which is exactly how "export writes it
 		// verbatim, the reader resolves it elsewhere" stayed invisible: the
 		// first made seed 0 fail I1's Validate leg outright, the second made
@@ -265,11 +265,11 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 		"recommendedLayout": str("todo"),
 		// the third shadow shape, and the only one the bundled table cannot
 		// see: a stored key whose spelling the VOCABULARY IN FORCE binds to a
-		// different key (shadowVocab below slugs the BSON key onto it). Real
+		// different key (shadowVocab below spells the BSON key as it). Real
 		// spaces mint it by deleting a property — a UI-deleted entity vacates
-		// the slug namespace, so its stored key stops being reserved while
+		// its stored key, so the key stops being reserved while
 		// objects still carry it, and the freed spelling is another
-		// property's api key. Both keys are written verbatim here, and
+		// property's. Both keys are written verbatim here, and
 		// without the identity entry the reader binds one of them twice.
 		"initiative": str("custom, whose spelling this space now gives away"),
 		// OBJECT REFERENCES, including the shapes that carry the very
@@ -325,8 +325,8 @@ func hostileSnapshot(n int) (model.SmartBlockType, *model.SmartBlockSnapshotBase
 	case 0:
 		// a type document: the recommended lists resolve through
 		// hostileTypePropResolver, whose definitions carry the object_types
-		// shapes (custom key the vocabulary slugs onto `task`, an unwritable
-		// slug, the `template` spelling)
+		// shapes (a custom key the vocabulary spells `task`, an unwritable
+		// spelling, the `template` spelling)
 		sbType = model.SmartBlockType_STType
 		snap.Details.Fields["recommendedFeaturedRelations"] = strList("hp1")
 		snap.Details.Fields["recommendedRelations"] = strList("hp2")
@@ -391,11 +391,12 @@ var hostileOptionValues = []string{
 }
 
 // hostileTypePools are the ObjectTypes shapes that make the type namespace
-// compete with its readers: a custom key a hostile vocabulary slugs onto the
-// bundled `task` key, a stored key spelling the bundled objectType's slug
-// (the §3 shadow shape — it owes an identity entry), template pairs whose
-// second entry only survives if the `template` spelling stays put, keys whose
-// vocabulary slug is unwritable or reserved, a prefix-less entry, and an
+// compete with its readers: a custom key a hostile vocabulary spells as the
+// bundled `task` key, a stored key shaped like the bundled objectType's
+// legacy slug (the §3 shadow shape — it owes an identity entry), template
+// pairs whose second entry only survives if the `template` spelling stays
+// put, keys whose vocabulary spelling is unwritable or reserved, a
+// prefix-less entry, and an
 // entry with no key at all, and — the collateral-damage shapes — a keyless
 // entry STANDING BESIDE a good one. Stored `ot-` has no spelling, so a
 // positional write emitted no `type`, which made `template_for` inexpressible
@@ -434,7 +435,7 @@ var hostileTypePools = [][]string{
 	// the census reserved for them are keys no slot ends up spelling. The
 	// pools above are all templates or single types, so the truncating
 	// branch had no shape at all. The second entry here is deliberately the
-	// FIRST one's slug under hostileVocab, which is what makes the
+	// FIRST one's spelling under hostileVocab, which is what makes the
 	// reservation observable.
 	{"ot-69bbfc78877a91b1d12d1a7c", "ot-task"},
 	{"ot-page", "ot-task", "ot-squatter"},
@@ -565,12 +566,11 @@ func invertedTypes(objectTypes []string, sbType model.SmartBlockType) []string {
 }
 
 // hostileVocab deliberately breaks the KeyVocabulary contract the way a real
-// space can: a slug comes from apiObjectKey, which is user-supplied or
-// strcase-derived from the property NAME (objectcreator/util.go) with no
-// length bound and no charset audit — so nothing upstream guarantees a slug
-// is a writable spelling, and a space may mint a slug that shadows a bundled
-// one. This slot had no invariant coverage, which is exactly how "check the
-// stored key, emit the slug" shipped.
+// space can: a spelling comes from a display NAME — user-typed text, with no
+// length bound and no charset audit — so nothing upstream guarantees a
+// spelling is writable, and a space may name a property so that its spelling
+// shadows a bundled one. This slot had no invariant coverage, which is
+// exactly how "check the stored key, emit the spelling" shipped.
 type hostileVocab struct{ BundledKeyVocabulary }
 
 func (hostileVocab) PropertySlug(key string) string {
@@ -588,8 +588,8 @@ func (hostileVocab) PropertySlug(key string) string {
 		// spelling owes would carry a control character in its VALUE.
 		return "ab"
 	case "6a32d4856761631534b22f85":
-		// a space-minted slug shadowing a bundled internal key's spelling —
-		// which is ALSO a stored key on the hostile details, so the term
+		// a space-minted spelling shadowing a bundled internal key's legacy
+		// slug — which is ALSO a stored key on the hostile details, so the term
 		// ledger must refuse the claim outright (§3: a stored key always
 		// keeps its own term, and this one owes an identity entry). The
 		// corpus's legend-rebind documents cover the honored-entry case.
@@ -599,7 +599,7 @@ func (hostileVocab) PropertySlug(key string) string {
 }
 
 // TypeSlug breaks the contract the same ways the property half does, plus
-// the two shapes only the type namespace has: a slug that collides with a
+// the two shapes only the type namespace has: a spelling that collides with a
 // bundled TYPE key (the confirmed defect — `69bbfc…` spelled `task` read
 // back as the bundled Task type by a package-only reader), and answers that
 // move the reserved `template` spelling in either direction, which silently
@@ -618,10 +618,10 @@ func (hostileVocab) TypeSlug(key string) string {
 		return "tmpl"
 	case overLongTypeKey:
 		// a perfectly good spelling for a stored key that is NOT one. The
-		// slug half of the guard is what an over-long *slug* trips; this is
-		// the mirror, and it was unreachable while the vocabulary had no
-		// answer for this key — `slug == key` short-circuits before the
-		// guard runs. Emitting the slug regardless writes
+		// spelling half of the guard is what an over-long *spelling* trips;
+		// this is the mirror, and it was unreachable while the vocabulary had
+		// no answer for this key — `slug == key` short-circuits before the
+		// guard runs. Emitting the spelling regardless writes
 		// `type_internal_keys: {"diary": "yyy…(140)"}`, a legend value 12 characters
 		// past the 128 the schema bounds it to: Marshal producing a document
 		// its own Validate rejects, which is I1.
@@ -642,8 +642,8 @@ func (hostileVocab) TypeSlug(key string) string {
 // reader in this sweep is package-only, so a stored key whose spelling only
 // the writer's vocabulary knows was never read back through it.
 //
-// The pathological shapes are kept — an over-long slug, a slug for a stored
-// key that is over-long — because export BACKS THOSE OFF, so the document
+// The pathological shapes are kept — an over-long spelling, a spelling for a
+// stored key that is over-long — because export BACKS THOSE OFF, so the document
 // never carries them and the reader inverts the stored key verbatim. That is
 // the conforming half of the same hostility.
 type roundTripVocab struct{}
@@ -697,14 +697,14 @@ func (roundTripVocab) TypeKey(slug string) (string, bool) {
 // pair, and no answer touches a spelling the bundled table binds (`initiative`
 // and `squatter` are not in it, in either namespace) — and it still binds two
 // spellings the corpus carries as STORED keys: the BSON property key is
-// slugged onto `initiative`, which the details hold verbatim, and the BSON
-// type key onto `squatter`, which the type pools and hp1's `object_types`
+// spelled `initiative`, which the details hold verbatim, and the BSON
+// type key `squatter`, which the type pools and hp1's `object_types`
 // hold verbatim.
 //
 // That is the shape a real space grows on its own: deleting a type or a
-// property vacates the slug namespace (storeresolver's corpse policy) while
+// property vacates its stored key (storeresolver's corpse policy) while
 // the objects that used it keep the stored key, and the freed spelling
-// becomes somebody else's api key. Export backs the slug off — the census
+// becomes somebody else's. Export backs the spelling off — the census
 // reserved the stored key — and then wrote the stored key with no legend
 // entry, so this very vocabulary bound it to the other holder on the way
 // back: a re-pointed type in silence, and two spellings of one property
@@ -754,7 +754,7 @@ func (shadowVocab) TypeKey(slug string) (string, bool) {
 // what an archive's consumer is: it checks that the document plus its legend
 // resolve without the vocabulary that wrote them — this leg, gated on
 // Validate alone for a while, is where a valid-but-unimportable document (a
-// shadow twin pair; a backed-off slug a block slot recorded anyway) hid.
+// shadow twin pair; a backed-off spelling a block slot recorded anyway) hid.
 func TestInvariant_MarshalOutputValidates(t *testing.T) {
 	variants := map[string]struct {
 		write Options
@@ -1008,8 +1008,8 @@ var hostileDocs = []string{
 		"filters": [{"property": "p", "condition": "equal", "value": 1e400}]}]}]}`,
 	`{"version": 1, "blocks": [{"type": "table", "columns": [{"id": "c1"}],
 		"rows": [{"id": "r1", "cells": [["nested", {"indent": 1, "type": "paragraph", "text": "y"}]]}]}]}`,
-	// admission runs on the RESOLVED stored key (§3): the canonical slug
-	// spelling of a denied key, a property_internal_keys legend rebinding a harmless
+	// admission runs on the RESOLVED stored key (§3): the legacy slug
+	// spelling of a denied key (the fold still resolves it), a property_internal_keys legend rebinding a harmless
 	// spelling onto one, and the layout-name check behind the same resolution.
 	// These pin WHERE the rule lives as much as that it exists — a "fix" that
 	// moves the deny rule into import alone makes Validate accept what
@@ -1154,7 +1154,7 @@ var i2Vocabularies = map[string]struct {
 	// a symmetric node-backed vocabulary: both directions agree
 	"space": {spaceVocabulary{slugOf: map[string]string{"6a32d4856761631534b22f85": "priority"}}, true},
 	// PropertySlug and PropertyKey are NOT inverses — the accept side answers
-	// for a slug the emit side never writes, the way a stale or hand-rolled
+	// for a spelling the emit side never writes, the way a stale or hand-rolled
 	// vocabulary really breaks; the target is an ordinary custom key, so only
 	// the binding moves, never admission
 	"asymmetric": {asymmetricVocab{}, true},
@@ -1162,10 +1162,10 @@ var i2Vocabularies = map[string]struct {
 	"resolves-denied":     {rebindingVocabulary{}, true},
 	"resolves-unwritable": {blankKeyVocab{}, true},
 	// the TYPE axis of the same matrix: a symmetric node-backed vocabulary,
-	// an asymmetric one whose accept side answers for a slug the emit side
+	// an asymmetric one whose accept side answers for a spelling the emit side
 	// never writes, and the unwritable resolution the type seam refuses
-	// the space-minted slug SHADOWS the bundled `task` spelling, which is
-	// the collision this axis exists for — with a slug no document spells
+	// the space-minted spelling SHADOWS the bundled `task` spelling, which is
+	// the collision this axis exists for — with a spelling no document spells
 	// (`task2`) the axis was inert by construction, and the corpus's
 	// `{"type": "task"}` never met a vocabulary that answers for it
 	"type-space":               {typedSpaceVocabulary{typeSlugOf: map[string]string{customTypeKey: "task"}}, true},

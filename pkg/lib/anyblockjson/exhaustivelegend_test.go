@@ -42,7 +42,7 @@ func TestExport_AVerbatimCustomKeyNamesItself(t *testing.T) {
 	data, err := Marshal(model.SmartBlockType_Page, snap, Options{})
 
 	// then — the entry is there, and only for the term the bundled table
-	// cannot speak for: `dueDate` is spelled `due_date`, which every reader's
+	// cannot speak for: `dueDate` is spelled "Due date", which every reader's
 	// table binds, so it owes nothing
 	require.NoError(t, err)
 	require.NoError(t, Validate(data))

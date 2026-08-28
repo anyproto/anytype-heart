@@ -322,9 +322,10 @@ func TestImport_LegendBindingToACustomShadowKeyIsNotLaundering(t *testing.T) {
 	require.NoError(t, Validate(out), "re-export:\n%s", out)
 }
 
-// deniedKeyVocab slugs an internal key — plausible, because apiObjectKey is
-// strcase(transliterate(Name)) with no reserved-word check, so a property
-// named after an internal one produces exactly this.
+// deniedKeyVocab spells an internal key — plausible, and not only for a
+// hand-rolled table: a denied key has a display name like any other (the
+// bundled table spells `uniqueKey` as "Unique object key"), so the guard has
+// to hold at the claim step rather than inside any vocabulary.
 type deniedKeyVocab struct{ BundledKeyVocabulary }
 
 func (deniedKeyVocab) PropertySlug(key string) string {

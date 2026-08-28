@@ -82,7 +82,7 @@ func propertySettingsLiftedDetailKeys() map[string]bool {
 func propertySettingsLiftedKeyRepair(key string) string {
 	switch key {
 	case detailKeyRelationFormat:
-		return `"format": "<a §3 format name>"`
+		return `"format": "<a format name>"`
 	case detailKeyRelationFormatIncludeTime:
 		return `"include_time": true|false`
 	case detailKeyRelationFormatObjectTypes:
@@ -163,7 +163,7 @@ func (e *exporter) buildPropertySettings(doc *omap) error {
 			detailKeyRelationFormatIncludeTime, detailKeyRelationFormatObjectTypes} {
 			if e.detail(key) != nil {
 				e.warn("/properties", "%q describes a property definition and this is not a property document; "+
-					"the value is dropped — it has no §2d member here and `properties` refuses the key", key)
+					"the value is dropped — only a property document has a property_settings member for it, and `properties` refuses the key", key)
 			}
 		}
 		return nil
@@ -187,7 +187,7 @@ func (e *exporter) buildPropertySettings(doc *omap) error {
 			group.set("include_time", nil)
 		default:
 			e.warn("/property_settings/include_time", "includeTime %v is neither a boolean nor null and is dropped — "+
-				"there is no way to write it (§2d)", protoValueToJSON(v))
+				"there is no way to write it", protoValueToJSON(v))
 		}
 	}
 
@@ -202,7 +202,7 @@ func (e *exporter) buildPropertySettings(doc *omap) error {
 			group.set("object_types", nil)
 		default:
 			e.warn("/property_settings/object_types", "relationFormatObjectTypes %v is not a list and is dropped — "+
-				"there is no way to write it (§2d)", protoValueToJSON(v))
+				"there is no way to write it", protoValueToJSON(v))
 		}
 	}
 	doc.set(memberPropertySettings, group)
@@ -232,11 +232,11 @@ func (e *exporter) relationFormatName() (string, error) {
 		n = k.NumberValue
 	default:
 		return "", fmt.Errorf("relation format %v is not a number: this document cannot state "+
-			"what it defines (§2d)", protoValueToJSON(v))
+			"what it defines", protoValueToJSON(v))
 	}
 	if math.IsNaN(n) || math.IsInf(n, 0) || n < 0 || n > math.MaxInt32 {
 		return "", fmt.Errorf("relation format %v is outside the format enum: this document "+
-			"cannot state what it defines (§2d)", n)
+			"cannot state what it defines", n)
 	}
 	name := formatName(model.RelationFormat(int32(n)))
 	if name == "" {
@@ -420,10 +420,10 @@ func propertyFormatSlotIssue(doc map[string]any, r *keySlotReport) {
 	if hasGroup {
 		path = "/property_settings"
 		msg = fmt.Sprintf("missing property 'format': a property document states "+
-			"the format of the property it defines — one of %s (§2d)", quotedList(names))
+			"the format of the property it defines — one of %s", quotedList(names))
 	} else {
 		msg = fmt.Sprintf("missing property 'property_settings': a property document states "+
-			"the definition of the property it IS — at least `format`, one of %s (§2d)", quotedList(names))
+			"the definition of the property it IS — at least `format`, one of %s", quotedList(names))
 	}
 	// the migration hints, on the same reasoning as `refs` (§10): each older
 	// spelling is exactly one this verdict fires on, and told only that a
@@ -494,13 +494,13 @@ func propertySettingsIssues(doc map[string]any, warn func(path, format string, a
 	if v, has := group["include_time"]; has && format != "date" {
 		if b, isBool := v.(bool); isBool && b {
 			warn("/property_settings/include_time", "include_time is only meaningful on date, not %q — "+
-				"it is carried but nothing reads it (§2d)", format)
+				"it is carried but nothing reads it", format)
 		}
 	}
 	if v, has := group["object_types"]; has && format != "objects" && format != "files" {
 		if list, isList := v.([]any); isList && len(list) > 0 {
 			warn("/property_settings/object_types", "object_types is only meaningful on objects/files, not %q — "+
-				"it is carried but nothing reads it (§2d)", format)
+				"it is carried but nothing reads it", format)
 		}
 	}
 }
@@ -530,7 +530,7 @@ func propertyPhantomIssues(doc map[string]any, warn func(path, format string, ar
 	for _, member := range []string{"format", "include_time", "object_types"} {
 		if _, has := props[member]; has {
 			warn("/properties/"+member, "on a property document %q names a CUSTOM property, "+
-				"not this property's own %s — that lives in property_settings (§2d); "+
+				"not this property's own %s — that lives in property_settings; "+
 				"drop this member unless a property literally named %q is meant",
 				member, member, member)
 		}

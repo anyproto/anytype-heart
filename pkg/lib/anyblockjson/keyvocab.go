@@ -49,21 +49,23 @@ import (
 //     than `key`, and `…Key(slug)` must not answer for a slug the table binds
 //     elsewhere.
 //
-//  3. **A live stored key outranks the vocabulary's own slug binding.** This
+//  3. **A live stored key outranks the vocabulary's own name binding.** This
 //     is §3 chain step 2 (verbatim-first) stated as an obligation on the
 //     implementation: when a term is the stored key of a live entity,
-//     `…Key(term)` must answer "not a slug" (ok == false) even when some
-//     other holder carries that term as its api key, and `…Slug(key)` must
+//     `…Key(term)` must answer "not a spelling" (ok == false) even when some
+//     other live entity is NAMED by that exact string, and `…Slug(key)` must
 //     not emit a spelling that some live stored key answers to.
 //     storeresolver has implemented this from the start and the interface
-//     never said so — `keyMaps.key`'s `if m.storedKey[slug] { return "",
-//     false }` is the accept half, `roundTrips`' first refusal the emit half.
+//     never said so — `keyMaps.key`'s `if m.storedKey[term] { return "",
+//     false }` is the accept half; the emit half is `grant`'s vetting of
+//     every label against the stored-key set plus `PropertySlug`'s
+//     bundled-arm re-check.
 //     Without it, a document naming a relation by its stored key lands on
-//     whichever OTHER relation minted that string as its `apiObjectKey` — the
+//     whichever OTHER relation happens to be named by that string — the
 //     document names one entity and the reader writes another, with no error
 //     — and the emit half labels a value with an address that resolves to
 //     somebody else's row. Two live entities can always be told apart by
-//     their stored keys; if the slug layer is allowed to outrank them,
+//     their stored keys; if the name layer is allowed to outrank them,
 //     nothing can.
 //
 // The second rule is what makes §11's round-trip guarantee true for a reader
@@ -91,7 +93,7 @@ import (
 // is broken.
 //
 // What NO rule here can prevent, and the legend therefore must: the third
-// rule lets a live slug binding win once the stored key stops being live,
+// rule lets a live name binding win once the stored key stops being live,
 // which is what a UI delete does (storeresolver's corpse policy). A fully
 // conforming vocabulary then binds a spelling that objects still carry as a
 // stored key, so export writes the identity entry for it —
@@ -111,9 +113,9 @@ type KeyVocabulary interface {
 	// the input unchanged is always valid ("no slug for this key").
 	PropertySlug(key string) string
 	// PropertyKey inverts PropertySlug. ok is false when the term is not a
-	// known slug — the caller then treats it as a stored key verbatim, which
-	// is the §3 verbatim-first rule (an exact stored key always wins over
-	// the slug layer).
+	// known spelling — the caller then treats it as a stored key verbatim,
+	// which is the §3 verbatim-first rule (an exact stored key always wins
+	// over the name tables).
 	PropertyKey(slug string) (key string, ok bool)
 
 	TypeSlug(key string) string

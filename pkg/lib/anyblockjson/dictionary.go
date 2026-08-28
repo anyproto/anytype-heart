@@ -50,8 +50,9 @@ const PropertiesFileName = "properties.json"
 type PropertyDictionary struct {
 	// Installed lists the BUNDLED properties present in the space —
 	// presence, not definition. This field holds STORED keys; the wire
-	// spells them as api slugs (`due_date`, not `dueDate`), because v0.36
-	// made the dictionary spell a property the way every other slot does.
+	// spells them as display names ("Due date", not `dueDate`): v0.36
+	// aligned the dictionary with every other slot, and the raw-name
+	// re-spell carried that alignment along.
 	// 98% of installed copies
 	// are field-identical to the bundled table, so the key is the whole of
 	// what a restore needs. A key that also appears in Properties is
@@ -166,7 +167,7 @@ func unmarshalPropertyDictionary(data []byte, warn func(Issue)) (*PropertyDictio
 	}
 	d := &PropertyDictionary{Installed: installedKeys(jd.Installed, warn)}
 	for i, tp := range jd.Properties {
-		// an entry's `internal_key` IS the stored key and skips the ladder —
+		// an entry's `internal_key` IS the stored key and skips the chain —
 		// a stored id is its own address (§3) and the fold match below could
 		// rebind it onto a bundled twin.
 		//
@@ -184,7 +185,7 @@ func unmarshalPropertyDictionary(data []byte, warn func(Issue)) (*PropertyDictio
 				warnIssue(warn, fmt.Sprintf("/properties/%d", i),
 					"this entry states property %q and internal_key %q, and they name different "+
 						"properties (%q resolves to %q). The spelling wins, because it is what the "+
-						"document's own values resolve through — state one, or make them agree (§2e)",
+						"document's own values resolve through — state one, or make them agree",
 					tp.Property, tp.InternalKey, tp.Property, resolved)
 			}
 		}
@@ -236,7 +237,7 @@ func dictionaryKeySpelling(storedKey string) string {
 // road: it spells through the exporter's per-document ledger and binds the
 // term in that document's `type_internal_keys` legend. The dictionary has no legend,
 // so its spelling must be a PURE FUNCTION of the key, which is what makes
-// `bundle.ApiSlug` the right instrument and a ledger the wrong one.
+// the bundled name table the right instrument and a ledger the wrong one.
 //
 // Measured before this rule existed: type documents spelled 5,377 of 5,377
 // target types as slugs, while dictionary entries spelled 232 of 803 in
@@ -253,7 +254,7 @@ func dictionaryTypeSpelling(typeKey string) string {
 	return typeKey
 }
 
-// dictionaryStoredTypeKey inverts dictionaryTypeSpelling, by the ladder every
+// dictionaryStoredTypeKey inverts dictionaryTypeSpelling, by the chain every
 // slot in the format follows: an exact stored key names itself, then the
 // bundled name table, then a single fold match, and an ambiguity is never
 // resolved by guess. The stored-key step running FIRST is deliberate and
@@ -273,12 +274,13 @@ func dictionaryStoredTypeKey(spelling string) string {
 }
 
 // dictionaryStoredKey resolves a dictionary spelling back to the stored key
-// it names, following the same ladder every other slot in the format follows:
-// an exact stored key wins, then a single fold match, and an ambiguity is
-// never resolved by guess (bundle.RelationKeysByApiFold).
+// it names, following the same chain every other slot in the format follows:
+// an exact stored key wins, then the bundled name table, then a single fold
+// match, and an ambiguity is never resolved by guess
+// (BundledPropertyKeysByFold).
 //
 // ok is false only when the spelling folds onto more than one bundled
-// property, which cannot happen for a slug this package wrote —
+// property, which cannot happen for a spelling this package wrote —
 // TestDictionaryKeys_TheBundledTableStaysUnambiguous pins that — but can for
 // one an author invents.
 func dictionaryStoredKey(spelling string) (stored string, ambiguous []string) {
@@ -323,13 +325,13 @@ func installedKeys(raw []string, warn func(Issue)) []string {
 		switch {
 		case len(ambiguous) > 0:
 			warnIssue(warn, path, "installed key %q folds onto more than one bundled property (%s), "+
-				"so which is meant cannot be decided here — write one of them (§2f)",
+				"so which is meant cannot be decided here — write one of them",
 				spelling, strings.Join(quoteAll(ambiguous), ", "))
 		case !bundle.HasRelation(domain.RelationKey(stored)):
 			warnIssue(warn, path, "installed key %q is not a bundled property, so a reader "+
 				"restoring this bundle installs NOTHING for it. Give it a full entry in "+
 				"`properties`, where its definition travels with it — or, if it comes from a "+
-				"newer app whose bundled table has it, expect this reader to skip it (§2f)", spelling)
+				"newer app whose bundled table has it, expect this reader to skip it", spelling)
 		}
 		out = append(out, stored)
 	}
@@ -342,7 +344,7 @@ func dictionaryEntryKey(i int, spelling string, warn func(Issue)) string {
 	if len(ambiguous) > 0 {
 		warnIssue(warn, fmt.Sprintf("/properties/%d/"+memberProperty, i),
 			"%q folds onto more than one bundled property (%s), so which is meant cannot be "+
-				"decided here — write one of them (§2f)",
+				"decided here — write one of them",
 			spelling, strings.Join(quoteAll(ambiguous), ", "))
 	}
 	return stored
@@ -435,16 +437,17 @@ func MarshalPropertyDictionary(d *PropertyDictionary) ([]byte, error) {
 	doc.set("$schema", PropertiesSchemaURL)
 	doc.set("version", FormatVersion)
 
-	// stored keys in, SLUGS out (§2f): every key here is a bundled property,
-	// and a bundled property's written spelling is its api slug everywhere
-	// else in the format. The dictionary used to be the one file that spelled
-	// a property `dueDate` while every document beside it said `due_date`.
+	// stored keys in, NAMES out (§2f): every key here is a bundled property,
+	// and a bundled property's written spelling is its display name
+	// everywhere else in the format. The dictionary used to be the one file
+	// that spelled a property one way while every document beside it spelled
+	// it another (`dueDate` against the then-current `due_date`).
 	installed := make([]string, 0, len(d.Installed))
 	for _, key := range d.Installed {
 		if _, err := bundle.GetRelation(domain.RelationKey(key)); err != nil {
 			return nil, fmt.Errorf("installed key %q is not a bundled property: `installed` restores from the "+
 				"bundled table, so a key outside it tells the reader to install nothing — give it a full "+
-				"entry in `properties` instead (§2f)", key)
+				"entry in `properties` instead", key)
 		}
 		// the bundled spelling unconditionally, not dictionaryKeySpelling:
 		// the check above has already established this key is bundled, and
@@ -480,8 +483,7 @@ func MarshalPropertyDictionary(d *PropertyDictionary) ([]byte, error) {
 // dictionaryEntryOmap renders one entry: the propertyDefinition members in
 // the §2e order, its `property` in the dictionary's spelling — the display
 // name for a bundled property, the stored key verbatim for a space-minted
-// one,
-// which is the ladder every other slot in the format follows (§2f) — and its
+// one (§2f) — and its
 // `internal_key` the stored key verbatim, the export-fidelity half an author
 // never has to write. There is still no legend to write: the spelling is a
 // pure function of the key, so a reader inverts it without one. `format` is
@@ -521,7 +523,7 @@ func dictionaryEntryOmap(def PropertyDefinition) (*omap, error) {
 	// back is not an entry.
 	if def.MaxCount < 0 || def.MaxCount > math.MaxInt32 {
 		return nil, fmt.Errorf("property %q: max_count %d is outside the range an entry can "+
-			"state (0..%d) (§2f)", def.Key, def.MaxCount, math.MaxInt32)
+			"state (0..%d)", def.Key, def.MaxCount, math.MaxInt32)
 	}
 	m.setNonEmpty("max_count", def.MaxCount)
 	m.setNonEmpty("readonly", def.Readonly)

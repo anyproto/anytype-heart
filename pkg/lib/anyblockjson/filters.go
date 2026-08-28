@@ -158,7 +158,7 @@ func validateFilterVocabulary(nodes []jsonFilter, path string, addIssue func(str
 // filter tree references — the formats input of checkDateFilters. The term
 // travels through the reader's vocabulary before the format is looked up,
 // exactly as importer.filterFromJSON resolves it (propertyKey, then
-// impDvFormat): a request naming the documented `due_date` slug would
+// impDvFormat): a request naming the documented "Due date" spelling would
 // otherwise resolve no format at all, and the format is what says whether a
 // date preset means anything here.
 func referencedFormats(nodes []jsonFilter, opts Options) map[string]string {

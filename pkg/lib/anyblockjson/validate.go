@@ -382,12 +382,12 @@ func collectSchemaLeaves(e *jsonschema.ValidationError, printer *message.Printer
 				switch prop {
 				case "format", "include_time", "object_types":
 					msg = fmt.Sprintf("property %q moved off the root: a property document "+
-						"states its definition in the \"property_settings\" group (§2d) — "+
+						"states its definition in the \"property_settings\" group — "+
 						"move it (and its two siblings, if present) in there", prop)
 				case "type_properties":
 					msg = `property "type_properties" moved: a type document states its ` +
 						`definitions in "type_settings" and this array is its ` +
-						`"property_definitions" member (§2a) — move it in there`
+						`"property_definitions" member — move it in there`
 				}
 			}
 			out = append(out, schemaLeaf{
@@ -667,11 +667,11 @@ func schemaIssueMessage(e *jsonschema.ValidationError, printer *message.Printer)
 				// deleting the group; the actual repair is the kind.
 				if len(toks) == 1 && prop == memberPropertySettings {
 					return fmt.Sprintf("property %q is only valid on property documents "+
-						`(kind "property", §2d)`, prop)
+						`(kind "property")`, prop)
 				}
 				if len(toks) == 1 && prop == "type_settings" {
 					return fmt.Sprintf("property %q is only valid on type documents "+
-						`(kind "object_type", §2a)`, prop)
+						`(kind "object_type")`, prop)
 				}
 				// inside the group, the refused members each have a home
 				// already (§2d): telling the author only "not allowed" sends
@@ -727,11 +727,11 @@ var propertySettingsMemberHomes = map[string]string{
 func unknownPropertyMessage(prop string) string {
 	switch prop {
 	case "key":
-		return `property "key" is not allowed — the member that names a property is spelled "property" in every structure (§5, §6.2): a dataview's properties[] entry and the property block spelled it "key" before v0.41, twelve lines from view columns, sorts and filters that spelled "property". Rename the member and keep its value`
+		return `property "key" is not allowed — the member that names a property is spelled "property" in every structure: a dataview's properties[] entry and the property block spelled it "key" before v0.41, twelve lines from view columns, sorts and filters that spelled "property". Rename the member and keep its value`
 	case "children":
-		return `property "children" is not allowed — the flat format has no children; nest with indent instead (§4)`
+		return `property "children" is not allowed — the flat format has no children; nest with indent instead`
 	case "refs":
-		return `property "refs" is not allowed — the object-reference legend was removed: every object id is now written in full, on every shape, with no legend (§9a). This document was written by an older exporter; replace each short label it uses with the id "refs" maps that label to, then drop "refs". Dropping it alone leaves labels that address nothing`
+		return `property "refs" is not allowed — the object-reference legend was removed: every object id is now written in full, on every shape, with no legend. This document was written by an older exporter; replace each short label it uses with the id "refs" maps that label to, then drop "refs". Dropping it alone leaves labels that address nothing`
 	}
 	return fmt.Sprintf("property %q is not allowed", prop)
 }
@@ -936,7 +936,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 	if legacyTemplate {
 		addIssue("/kind", `a template must say so: add "kind": "template". `+
 			`Until v0.22 the type "template" carried that meaning on its own, and it no longer does `+
-			`— without the kind this document imports as an ordinary page (§2)`)
+			`— without the kind this document imports as an ordinary page`)
 	}
 	if _, ok := doc["template_for"]; ok && !legacyTemplate {
 		switch {
@@ -955,12 +955,14 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 
 	// Every per-key check below runs on the STORED key a document spelling
 	// resolves to — not on the raw spelling. The canonical document spells the
-	// snake_case api slug (§3), so checks keyed off the raw spelling were dead
+	// display name (§3) — and spelled the derived slug when this rule was
+	// written — so checks keyed off the raw spelling were dead
 	// for exactly the documents this format produces: "unique_key" walked past
 	// the deny rule that "uniqueKey" tripped, and the legend could rebind any
 	// spelling onto any stored key, denied ones included. resolveDocKey is the
 	// §3 chain with the only vocabulary Validate has: the document's own
-	// legend first, then the bundled table, then the spelling verbatim — the
+	// legend first, then the bundled name table and its fold, then the
+	// spelling verbatim — the
 	// same resolution importer.propertyKey performs with default Options. A
 	// caller-supplied vocabulary can resolve further than Validate can see,
 	// which is why importer.build re-runs admission on ITS resolved key.
@@ -980,7 +982,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 	// the entry. Checked only where a /properties member resolved through it,
 	// {"sneaky": "uniqueKey"} sat in the legend unchallenged — a laundering
 	// primitive for any key slot outside /properties, and one export never
-	// writes (a denied key never takes a slug — writableSlug).
+	// writes (a denied key never takes a spelling — writableSlug).
 	for _, term := range sortedMapKeys(legend) {
 		key, isStr := legend[term].(string)
 		if !isStr {
@@ -1017,7 +1019,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 			warnIssue("/option_ids/"+escapeJSONPointer(slug),
 				"no property in this document spells %q — this legend entry can "+
 					"never be consulted, and the option names under it resolve by "+
-					"name (§3, §9a)", slug)
+					"name", slug)
 		}
 	}
 
@@ -1049,7 +1051,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 			// the repair named; on every other kind the same keys are
 			// ordinary properties
 			if isTypeKind(doc) && typeSettingsLiftedDetailKeys()[key] {
-				addIssue(path, "%q is written on a type document as %s in type_settings (§2a), "+
+				addIssue(path, "%q is written on a type document as %s in type_settings, "+
 					"not as a property", key, typeSettingsLiftedKeyRepair(key))
 				continue
 			}
@@ -1123,8 +1125,10 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		// property_definitions replaces the recommended-relation lists (§2a):
 		// a document carrying both is ambiguous. The lists are named by
 		// whatever spelling resolves onto them — recommendedListKeys holds
-		// stored keys, and the canonical document spells
-		// recommended_properties (§3, the v0.38 alias)
+		// stored keys, and a document can reach one through any spelling the
+		// chain resolves: the display name ("Recommended properties"), the
+		// stored key verbatim, or a legend binding — so the check runs on
+		// the resolved key
 		if props, _ := doc["properties"].(map[string]any); props != nil {
 			listKeys := make(map[string]bool, len(recommendedListKeys))
 			for _, l := range recommendedListKeys {
@@ -1197,8 +1201,8 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				}
 				// a bundled property is used as-is: only the wiring's
 				// create path reads these, and it never runs for a key that
-				// already exists (§2a). The key slot spells the api slug like
-				// every other (§3), so the lookup runs on the resolved key
+				// already exists (§2a). The key slot spells the display name
+				// like every other (§3), so the lookup runs on the resolved key
 				if key != "" {
 					if rel, err := bundle.GetRelation(domain.RelationKey(resolvedEntryKey)); err == nil && rel != nil {
 						if name, _ := tp["name"].(string); name != "" && name != rel.Name {
@@ -1369,7 +1373,7 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 // neverWritableProperties are the keys import must refuse even though they are
 // not in bundle.LocalAndDerivedRelationKeys, so the derived half of
 // strippedDetailKeys does not know about them. (They ARE bundled relations —
-// bundle.HasRelation is true for both and each has an api slug — they are just
+// bundle.HasRelation is true for both — they are just
 // not on the local/derived list.) They are the importer's own resolution
 // vectors: existingobject.go picks which existing object in the space a
 // snapshot merges into using oldAnytypeID, uniqueKey and sourceFilePath, so a
@@ -1728,7 +1732,7 @@ func propertyNameIssues(doc map[string]any) keySlotReport {
 				}
 				rejectName(path+"/", name,
 					"option name is empty — an option_ids entry has to name an "+
-						"option the document spells (§9a)")
+						"option the document spells")
 			}
 		}
 	}
@@ -1828,7 +1832,7 @@ func checkFilterProperties(nodes []any, path string, reject func(string, string)
 		}
 		raw, named := node[memberProperty]
 		if !named {
-			reject(nPath, "a filter has to name the property it filters on (§6)")
+			reject(nPath, "a filter has to name the property it filters on")
 			continue
 		}
 		if prop, isString := raw.(string); isString && prop == "" {
@@ -1851,7 +1855,7 @@ func blocksOf(doc map[string]any) []any {
 func unwritableKeyReason(what, key string) string {
 	switch n := utf8.RuneCountInString(key); {
 	case key == "":
-		return what + " is empty — a key slot has to name something (§3)"
+		return what + " is empty — a key slot has to name something"
 	case n > maxPropertyKeyLen:
 		return fmt.Sprintf("%s %q is %d characters; the bound is %d",
 			what, key, n, maxPropertyKeyLen)
@@ -2028,7 +2032,7 @@ func wrongShapeForFormat(key string, v any) (string, bool) {
 		for _, ref := range stringsOf(v) {
 			if strings.HasPrefix(ref, refNameSep) {
 				return fmt.Sprintf("%q is an object property: %q has no id before its %q, "+
-					"so it names no object — a reference is an id, optionally followed by %q (§9)",
+					"so it names no object — a reference is an id, optionally followed by %q",
 					key, ref, refNameSep, refNameSep+"name"), true
 			}
 		}
@@ -2275,7 +2279,7 @@ var groupableFormats = map[string]map[string]struct{}{
 //
 // Before this, `views[].id` was the one id slot in the document with no
 // uniqueness check at all — invalid but unvalidated on every channel,
-// create and import included, not just PATCH (§8.31).
+// create and import included, not just PATCH.
 func checkDataviewViews(block map[string]any, path string, resolveKey func(string) string,
 	addIssue, warnIssue func(string, string, ...any)) {
 	views, _ := block["views"].([]any)

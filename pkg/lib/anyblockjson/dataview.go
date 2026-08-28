@@ -233,7 +233,7 @@ func (e *exporter) filterToJSON(f *model.BlockContentDataviewFilter, dv *model.B
 	// is what the sort loop above already does with the same input.
 	if f.RelationKey == "" {
 		e.warn("", "a filter names no property and is dropped; a filter has to name "+
-			"the property it filters on (§6)")
+			"the property it filters on")
 		return nil
 	}
 	fm.setNonEmpty(memberProperty, e.propertySlug(f.RelationKey))

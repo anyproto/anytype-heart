@@ -200,7 +200,7 @@ func TestMarshal_OnWarningDegradesOverDeep(t *testing.T) {
 func TestValidate_UnknownPropertyMessages(t *testing.T) {
 	err := Validate([]byte(`{"version": 1, "blocks": [{"type": "toggle", "children": [{"type": "paragraph"}]}]}`))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), `/blocks/0/children: property "children" is not allowed — the flat format has no children; nest with indent instead (§4)`)
+	assert.Contains(t, err.Error(), `/blocks/0/children: property "children" is not allowed — the flat format has no children; nest with indent instead`)
 
 	err = Validate([]byte(`{"version": 1, "blocks": [{"type": "paragraph", "banana": 1}]}`))
 	require.Error(t, err)

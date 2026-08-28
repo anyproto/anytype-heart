@@ -488,13 +488,13 @@ func UnmarshalIndex(data []byte) (*Index, error) {
 	}
 	// the manifest's type keys arrive in the format's spelling and are held
 	// as STORED keys, the way the dictionary holds its property keys: the
-	// wire says `chat_derived`, the codec says `chatDerived`, and a caller
+	// wire says "Chat", the codec says `chatDerived`, and a caller
 	// looking a type up by stored key finds it (§2c).
 	if idx.Manifest != nil {
 		idx.Manifest.Types = reKeyed(idx.Manifest.Types, StoredTypeKey)
 	}
 	// a widget's shown properties follow the same rule: spelled on the wire,
-	// held as STORED keys, resolved by the ladder every key slot uses. An
+	// held as STORED keys, resolved by the chain every key slot uses. An
 	// ambiguous spelling stays verbatim — the index is display state, and
 	// which property a fold means is the tooling's cross-document question.
 	for i := range idx.Widgets {

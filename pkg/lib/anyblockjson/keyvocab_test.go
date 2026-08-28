@@ -186,9 +186,9 @@ func TestKeyVocabulary_RoundTripVocabConforms(t *testing.T) {
 func TestKeyVocabulary_CustomKeysPassThrough(t *testing.T) {
 	vocab := BundledKeyVocabulary{}
 
-	// a package-only reader has no space to ask about stored slugs, so a
-	// custom key is spelled — and read back — verbatim (§7.5a-5 chain step 1:
-	// an exact stored key always wins over the slug layer)
+	// a package-only reader has no space to ask about names, so a custom key
+	// is spelled — and read back — verbatim (§3 chain step 5: a term no table
+	// answers for IS the stored key, always its own address)
 	for _, key := range []string{"68b1c0aa4e1f0d0011223344", "myLegacyKey", "customStatus"} {
 		assert.Equal(t, key, vocab.PropertySlug(key))
 		back, ok := vocab.PropertyKey(key)
@@ -197,18 +197,20 @@ func TestKeyVocabulary_CustomKeysPassThrough(t *testing.T) {
 	}
 }
 
-// TestDocumentSpellsSlugs pins the §7.5a surface rule at the format level: a
-// document names properties and types by slug, and reading it back restores
-// the stored keys. Revert any of the boundary sites (export.go, dataview.go,
-// typeproperties.go, import.go) and one of these fails.
-func TestDocumentSpellsSlugs(t *testing.T) {
-	t.Run("properties are spelled as slugs and read back as stored keys", func(t *testing.T) {
+// TestDocumentSpellsNames pins the §3 surface rule at the format level: a
+// document names properties and types by display name, reading it back
+// restores the stored keys, and the legacy derived-slug spellings still
+// resolve through the fold on the way in. Revert any of the boundary sites
+// (export.go, dataview.go, typeproperties.go, import.go) and one of these
+// fails.
+func TestDocumentSpellsNames(t *testing.T) {
+	t.Run("properties are written as display names; legacy slugs read back as stored keys", func(t *testing.T) {
 		// given
 		doc := `{"version": 1, "id": "o1", "properties": {
 			"name": "A page", "plural_name": "Pages", "due_date": "2025-07-06T08:44:05Z",
 			"customDate": "whatever"}}`
 
-		// when — the document's slugs bind to stored keys
+		// when — the document's legacy slug spellings bind to stored keys
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
 
@@ -260,7 +262,7 @@ func TestDocumentSpellsSlugs(t *testing.T) {
 		assert.Equal(t, "dueDate", dv.Views[0].Relations[0].Key)
 	})
 
-	t.Run("the envelope type is a slug too", func(t *testing.T) {
+	t.Run("the envelope type follows the same vocabulary", func(t *testing.T) {
 		doc := `{"version": 1, "kind": "object_type", "id": "t1", "type": "object_type"}`
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
@@ -269,10 +271,11 @@ func TestDocumentSpellsSlugs(t *testing.T) {
 	})
 }
 
-// collapsingVocab spells two stored keys as ONE slug — the shape a space
-// holding a pre-mint-check shadow really has (a UI property that took
-// `due_date` beside the bundled `dueDate`). No bundled fixture can produce
-// it, because the bundled table is injective by construction.
+// collapsingVocab spells two stored keys as ONE spelling — under raw names
+// an ordinary shape, not a pathology: names are not unique, and a conforming
+// space vocabulary grants a shared name to every claimant (collisions are
+// resolved per document, not per space). No bundled fixture can produce it,
+// because the bundled table refuses a shared name outright.
 type collapsingVocab struct{ a, b, slug string }
 
 func (v collapsingVocab) PropertySlug(key string) string {
@@ -365,7 +368,7 @@ func TestBuildPropertiesRefusesASlugAnotherStoredKeyOwns(t *testing.T) {
 // the format; revert the typeSlugs/typeKeys calls in typeproperties.go and
 // this fails in both directions.
 func TestObjectTypesIsAKeySlot(t *testing.T) {
-	t.Run("import inverts the slug to the stored type key", func(t *testing.T) {
+	t.Run("import inverts the spelling to the stored type key", func(t *testing.T) {
 		// given
 		doc := `{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
 			"type_settings": {"property_definitions": [{"property": "owner", "name": "Owner", "format": "objects",
@@ -379,10 +382,10 @@ func TestObjectTypesIsAKeySlot(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, r.defs, 1)
 		assert.Equal(t, []string{"objectType", "wikiPerson"}, r.defs[0].ObjectTypes,
-			"the bundled slug inverts; an unknown term passes through (chain step 1)")
+			"the legacy slug inverts through the fold; an unknown term passes through (chain step 5, verbatim)")
 	})
 
-	t.Run("export spells the slug", func(t *testing.T) {
+	t.Run("export spells the display name", func(t *testing.T) {
 		snapshot := &model.SmartBlockSnapshotBase{
 			Details: &types.Struct{Fields: map[string]*types.Value{
 				"recommendedRelations": pbtypes.StringList([]string{"rel-owner"}),
@@ -478,9 +481,9 @@ func TestImportRefusesTwoSpellingsOfOneStoredKey(t *testing.T) {
 		}
 	})
 
-	t.Run("a stored slug over a BSON key collapses the same way", func(t *testing.T) {
-		// given — the shape every space has after the apiObjectKey backfill:
-		// a BSON stored key addressed by a stored slug. Naming both spellings
+	t.Run("a vocabulary spelling over a BSON key collapses the same way", func(t *testing.T) {
+		// given — the ordinary space shape: a BSON stored key addressed by
+		// the name its vocabulary grants it. Naming both spellings
 		// in one document addresses one property twice.
 		const bsonKey = "68b1c0aa4e1f0d0011223344"
 		vocab := collapsingVocab{a: bsonKey, slug: "severity"}
@@ -509,11 +512,12 @@ func TestImportRefusesTwoSpellingsOfOneStoredKey(t *testing.T) {
 // corpseVocabulary is the vocabulary a space grows by DELETING things, and it
 // is fully conforming: a strict inverse pair in both namespaces, and no
 // answer touches a spelling the bundled table binds. A UI-deleted type or
-// property vacates the slug namespace (storeresolver's corpse policy —
-// loadKeyMaps filters `isUninstalled != true`), so its stored key stops being
-// a live stored key while every object that used it still carries it; the
-// freed spelling is then another live entity's api key. `initiative` is that
-// spelling here, in both namespaces, and it binds to the BSON key.
+// property vacates its stored key (storeresolver's corpse policy —
+// loadKeyMaps filters `isUninstalled != true` out of the name namespace), so
+// the key stops being a live stored key while every object that used it
+// still carries it; the freed spelling is then another live entity's.
+// `initiative` is that spelling here, in both namespaces, and it binds to
+// the BSON key.
 type corpseVocabulary struct{}
 
 // corpsePropKey is a space-minted (bson) relation key, the property
@@ -558,8 +562,8 @@ func (corpseVocabulary) TypeKey(slug string) (string, bool) {
 // read the document: the writer's own space. Both symptoms below come from
 // that one question, and both need a vocabulary that CONFORMS — the
 // preconditions on KeyVocabulary do not forbid this shape, and storeresolver
-// grows it on its own the moment a user deletes a type whose slug someone
-// else has taken.
+// grows it on its own the moment a user deletes a type whose freed spelling
+// another entity's name then takes.
 func TestKeyVocabulary_VocabularyInForceIsAReaderToo(t *testing.T) {
 	require.False(t, typeSlugShadowsBundled(corpseVocabulary{}, customTypeKey),
 		"the fixture must CONFORM, or it proves only that a broken vocabulary breaks")

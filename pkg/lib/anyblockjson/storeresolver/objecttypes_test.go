@@ -24,7 +24,7 @@ import (
 )
 
 // customTypeKey is a space-minted (bson) type key, the shape a real space
-// gives a user-created type. Its slug is what the document must spell.
+// gives a user-created type. Its display name is what the document must spell.
 const customTypeKey = "69bbfc78877a91b1d12d1a7c"
 
 // newTargetsFixture is a space holding one `objects` relation that targets two

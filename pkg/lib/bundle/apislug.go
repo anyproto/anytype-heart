@@ -146,9 +146,9 @@ var (
 // keys can in principle land on one slug (or one fold), and the reverse table
 // is a plain map: the winner would be whichever key Go's map iteration
 // reached last — a different address per process, with no signal anywhere.
-// The bundled table is the ONE authority for bundled keys in every space and
-// offline (§7.5a-1); an authority that disagrees with itself between restarts
-// is worse than no authority. Today the table is injective on both counts
+// The bundled table is the ONE authority for bundled api keys in every space
+// and offline — it ships in code, with no store behind it; an authority that
+// disagrees with itself between restarts is worse than no authority. Today the table is injective on both counts
 // (194 relations → 194 slugs → 194 folds; 29 types → 29 → 29), so this can
 // only fire on a bundled key ADDED later, at the moment it is added, in every
 // test binary — which is exactly when it is cheap to rename.

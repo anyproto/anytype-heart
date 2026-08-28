@@ -124,7 +124,7 @@ func (r *Resolvers) loadRelations() {
 // It is a translation, not a copy: the store holds the target types' OBJECT
 // IDs (objectcreator.fillRelationFormatObjectTypes rewrites bundled urls to
 // derived ids at creation), while PropertyDefinition.ObjectTypes is defined in
-// stored type KEYS, which the codec then slugs at the document boundary. Left
+// stored type KEYS, which the codec then spells at the document boundary. Left
 // empty — as it was — a node export of a type document silently dropped every
 // property's target types: the slot had no node-backed emitter at all, so an
 // `objects` property came back untargeted and would accept any object.
@@ -332,7 +332,7 @@ func (r *Resolvers) PropertyById(id string) (anyblockjson.PropertyDefinition, bo
 }
 
 // SeedProperty registers a definition for an id the index cannot currently
-// answer for. The one caller class is the tombstone window (API v2 §8.41): a
+// answer for. The one caller class is the API v2 wiring's tombstone window: a
 // deleted relation's index row is stripped to {id, isDeleted} until the next
 // space load, so GetRelationById fails on an id the surviving TREE still
 // fully describes — the wiring reads the live object and seeds what the

@@ -30,7 +30,7 @@ package anyblockjson
 //
 // The split at `#` is unconditional and safe from both ends, verified rather
 // than assumed: no id form this format writes can contain `#` (CIDs are
-// base32 `[a-z2-7]`, participant ids base32+base58, `_ot`/`_br` slugs are
+// base32 `[a-z2-7]`, participant ids base32+base58, `_ot`/`_br` ids are
 // `[a-zA-Z0-9_]` across all 223 bundled keys, `_date_…`/`_missing_object`
 // are fixed shapes; measured over 37,429 production documents: zero
 // id-shaped values contain `#`) — and the name half is normalized through a
@@ -431,7 +431,7 @@ func (e *exporter) singularObjectRef(path, slot, id string) string {
 	if missingFromSpace(e.opts, id) {
 		e.warn(path, "%s %q names no object in this space and is written as %q — "+
 			"the slot cannot say \"no target\" without deleting the block, and the sentinel "+
-			"keeps the fact that a reference existed (§9)", slot, id, missingObjectId)
+			"keeps the fact that a reference existed", slot, id, missingObjectId)
 		return e.objectRef(missingObjectId)
 	}
 	return e.objectRef(id)
@@ -453,7 +453,7 @@ func (e *exporter) droppedMissingListEntry(path, id string) bool {
 	}
 	if id != missingObjectId {
 		e.warn(path, "%q names no object in this space and is dropped — "+
-			"a list expresses absence by being shorter (§9)", id)
+			"a list expresses absence by being shorter", id)
 	}
 	return true
 }
@@ -474,7 +474,7 @@ func (e *exporter) exportMarks(path string, marks []*model.BlockContentTextMark)
 			continue
 		}
 		e.warn(path, "mention target %q names no object in this space and is written as %q — "+
-			"the mention's own text stays; only its address is gone (§8, §9)", m.Param, missingObjectId)
+			"the mention's own text stays; only its address is gone", m.Param, missingObjectId)
 		if !copied {
 			out = append([]*model.BlockContentTextMark(nil), marks...)
 			copied = true

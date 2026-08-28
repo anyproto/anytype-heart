@@ -232,7 +232,7 @@ func (imp *importer) optionIdFromLegend(key, slug, name string) (string, bool) {
 // document can spell a property:
 //
 //   - `properties`            — member names (§3)
-//   - `property_internal_keys`         — member names, the slug→stored-key legend (§3)
+//   - `property_internal_keys`         — member names, the spelling→stored-key legend (§3)
 //   - `type_settings.property_definitions[].property` — §2a
 //   - a `property` block's `key` (§5)
 //   - a `link` block's `properties[]`, the shown-property list (§5)

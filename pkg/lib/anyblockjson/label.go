@@ -32,9 +32,9 @@ import (
 // PropertyLabel is the spelling a document writes for one space-minted
 // PROPERTY key: NFC(name), else nothing. An empty answer means the key has
 // no label but itself — the stored key is written verbatim, which is always
-// its own address (§3 chain step 4). A name that merely repeats the stored
-// key is no label either, for the same reason a slug that repeated it was
-// never a slug: the verbatim key already says exactly that.
+// its own address (§3 chain step 5). A name that merely repeats the stored
+// key is no label either, for the same reason a spelling that repeated it
+// never said anything: the verbatim key already says exactly that.
 //
 // `id` and `type` are refused: §2 refuses both SPELLINGS in `properties`
 // before any resolution, so minting one would produce a label the exporter

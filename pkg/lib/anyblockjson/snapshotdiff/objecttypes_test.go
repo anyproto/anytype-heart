@@ -18,8 +18,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// customTypeKey is a space-minted (bson) type key — the stored key a slug
-// binds to when a vocabulary is in play.
+// customTypeKey is a space-minted (bson) type key — the stored key a
+// spelling binds to when a vocabulary is in play.
 const customTypeKey = "69bbfc78877a91b1d12d1a7c"
 
 func typed(objectTypes ...string) *model.SmartBlockSnapshotBase {
@@ -181,7 +181,7 @@ func (divergentVocabulary) TypeKey(spelling string) (string, bool) {
 // codec, so the comparator is pinned against what Marshal/Unmarshal actually
 // do rather than against my model of them.
 func TestCompareObjectTypes_ThroughTheCodec(t *testing.T) {
-	t.Run("a reader that binds the slug elsewhere is caught", func(t *testing.T) {
+	t.Run("a reader that binds the spelling elsewhere is caught", func(t *testing.T) {
 		// given: exported by a package-only reader, read back by one whose
 		// vocabulary binds `task` to a space-minted type
 		orig := typed("ot-task")

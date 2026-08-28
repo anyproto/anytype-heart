@@ -104,7 +104,7 @@ func TestUsedPropertyKeys_ResolvesTheChain(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.True(t, used["6a32d4856761631534b22f85"], "the legend binds the spelling to the stored key")
-	assert.True(t, used["dueDate"], "the bundled table binds the slug")
+	assert.True(t, used["dueDate"], "the bundled table resolves the legacy slug spelling")
 	assert.True(t, used["assignee"], "a property-definition entry is a reference")
 	assert.False(t, used["severity"], "the spelling itself is not a key")
 	assert.False(t, used["id"], "envelope facts are not property references")

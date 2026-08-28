@@ -25,7 +25,8 @@ import (
 )
 
 // customTypeKey is a space-minted (bson) type key, the shape a real space
-// gives a user-created type — the stored key a slug legend binds to.
+// gives a user-created type — the stored key a legend entry binds a spelling
+// to.
 const customTypeKey = "69bbfc78877a91b1d12d1a7c"
 
 // customType is that type's own document, so the bundle can address it.
@@ -185,8 +186,9 @@ func TestCheckTargetTypes_UnknownTargetIsStillReported(t *testing.T) {
 	assert.Equal(t, "wiki_page", bad[0].Target)
 }
 
-// A bundled target still passes, whichever of its two spellings is used —
-// resolution folds the slug arm and the stored-key arm into one lookup.
+// A bundled target still passes, whichever spelling is used — the stored key
+// verbatim, or a term the bundled table (with its fold) resolves — because
+// resolution folds both arms into one lookup.
 func TestCheckTargetTypes_BundledTargetPassesInBothSpellings(t *testing.T) {
 	for _, target := range []string{"object_type", "objectType", "page", "task"} {
 		files := writeDocs(t, map[string]string{
@@ -214,9 +216,9 @@ func TestLintResolvesTypeTermsLikeTheCodec(t *testing.T) {
 		templateFor string
 	}{
 		{"verbatim custom key", ``, "template", "wikiPage"},
-		{"bundled slug", ``, "template", "task"},
-		{"bundled stored key that is nobody's slug", ``, "template", "objectType"},
-		{"legend-backed slug", `"type_internal_keys": {"wiki_page": "` + customTypeKey + `"},`, "template", "wiki_page"},
+		{"bundled stored key spelled verbatim", ``, "template", "task"},
+		{"bundled stored key that is nobody's spelling", ``, "template", "objectType"},
+		{"legend-backed spelling", `"type_internal_keys": {"wiki_page": "` + customTypeKey + `"},`, "template", "wiki_page"},
 		{"legend outranks the bundled table", `"type_internal_keys": {"task": "` + customTypeKey + `"},`, "template", "task"},
 		{"legend on the type slot itself", `"type_internal_keys": {"wiki_page": "template"},`, "wiki_page", "task"},
 	}

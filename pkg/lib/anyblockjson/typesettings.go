@@ -270,7 +270,7 @@ func (e *exporter) typeSettingString(detailKey, path string) string {
 	case *types.Value_NullValue:
 		return "" // a stored null carries nothing a string member could
 	default:
-		e.warn(path, "%s %v is not a string and is dropped — there is no way to write it (§2a)",
+		e.warn(path, "%s %v is not a string and is dropped — there is no way to write it",
 			detailKey, protoValueToJSON(v))
 		return ""
 	}
@@ -299,13 +299,13 @@ func (e *exporter) typeSettingEnumValue(detailKey, path string, known func(strin
 		if known(k.StringValue) {
 			return k.StringValue
 		}
-		e.warn(path, "%s %q is not a name this member can hold and is dropped — there is no way to write it (§2a)",
+		e.warn(path, "%s %q is not a name this member can hold and is dropped — there is no way to write it",
 			detailKey, k.StringValue)
 		return nil
 	case *types.Value_NullValue:
 		return nil
 	default:
-		e.warn(path, "%s %v is neither a name nor a number and is dropped — there is no way to write it (§2a)",
+		e.warn(path, "%s %v is neither a name nor a number and is dropped — there is no way to write it",
 			detailKey, protoValueToJSON(v))
 		return nil
 	}
@@ -328,7 +328,7 @@ func (e *exporter) typeSettingTemplate() string {
 	}
 	if len(entries) > 1 {
 		e.warn("/type_settings/default_template",
-			"%s holds %d entries; the member is the ONE default template, so only the first is written (§2a)",
+			"%s holds %d entries; the member is the ONE default template, so only the first is written",
 			detailKeyDefaultTemplateId, len(entries))
 	}
 	return e.objectRef(entries[0])
@@ -454,5 +454,5 @@ func definitionIdentityIssue(doc map[string]any, warn func(path, format string, 
 	warn("/"+memberInternalKey, "a %s document defines something and names no `internal_key` — the stored "+
 		"identity every other document addresses it by. Without one the definition "+
 		"imports with no identity: nothing can be typed by it, and no property value "+
-		"resolves to it (§2a, §2d)", what)
+		"resolves to it", what)
 }

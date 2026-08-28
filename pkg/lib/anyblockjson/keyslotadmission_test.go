@@ -212,7 +212,7 @@ func TestUnmarshal_EveryKeySlotRefusesAnEmptyResolution(t *testing.T) {
 			require.Error(t, err,
 				"the empty key landed in the model at %s; the slot is lost on the way back out", tc.slot)
 			assert.Nil(t, snap, "a refused document hands back no object")
-			assert.Contains(t, err.Error(), "a key slot has to name something (§3)")
+			assert.Contains(t, err.Error(), "a key slot has to name something")
 			assert.Contains(t, err.Error(), tc.want,
 				"the refusal has to say which slot, or which spelling, it is about")
 		})

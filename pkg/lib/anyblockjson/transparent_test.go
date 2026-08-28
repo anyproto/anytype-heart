@@ -531,7 +531,7 @@ func TestUnmarshal_TransparentContainersAreLifted(t *testing.T) {
 	}
 }
 
-// TestUnmarshal_ContainerLiftRunsBeforeTheStructuralRules pins §4.4's
+// TestUnmarshal_ContainerLiftRunsBeforeTheStructuralRules pins §7a's
 // ordering. The lift is positional, so a lifted title is at indent 0 for
 // every purpose: absorbed into properties.name exactly as a title written at
 // indent 0 is, and the wrapped primary dataview reaches the position §7's pin
@@ -626,8 +626,8 @@ func TestUnmarshalBlock_LoneContainerIsRefused(t *testing.T) {
 	assert.Contains(t, err.Error(), "/blocks/0/type")
 }
 
-// TestValidate_ContainmentIsJudgedOnTheLiftedTree is §4.5: the grammar is
-// checked against the tree import builds, and the message names the effective
+// TestValidate_ContainmentIsJudgedOnTheLiftedTree is §7a's containment rule:
+// the grammar is checked against the tree import builds, and the message names the effective
 // parent — or it reads as wrong to whoever wrote the group.
 func TestValidate_ContainmentIsJudgedOnTheLiftedTree(t *testing.T) {
 	for _, tc := range []struct {

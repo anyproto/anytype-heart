@@ -83,8 +83,8 @@ func (tp typePropRaw) term() string {
 
 // resolvedKey is the stored key the entry's identity names, by the codec's
 // own rule (SPEC.md §2e): an `internal_key` verbatim — a stored id is its
-// own address and never re-enters the slug ladder — and a `property`
-// spelling through the legend-then-bundled-table ladder like every slot.
+// own address and never re-enters the resolution chain — and a `property`
+// spelling through the legend-then-bundled-table chain like every slot.
 func (tp typePropRaw) resolvedKey(legend propertyLegend) string {
 	if tp.Property == "" && tp.InternalKey != "" {
 		return tp.InternalKey
@@ -211,15 +211,17 @@ type Undeclared struct {
 // Nothing downstream reports this — the document validates and converts — so
 // the batch has to catch it.
 //
-// A `properties` key is a translated slot (§3): it spells the api slug, and
-// binds to a stored key through this document's own property_internal_keys legend,
-// then the bundled table, then verbatim (propertyterm.go). Both lookups below
-// take the RESOLVED key — the bundled one because `bundle` is keyed by stored
-// keys and knows nothing of `due_date`, the batch one because the converter
-// reads that table by the resolved key too. Comparing spellings instead was
-// wrong both ways: it reported every canonically-spelled bundled property as
-// undeclared (a hard error in anyblockconvert), and waved through a
-// legend-backed slug whose stored key nothing declares.
+// A `properties` key is a translated slot (§3): it spells the property's
+// display name, and binds to a stored key through this document's own
+// property_internal_keys legend, then the bundled name table, then verbatim
+// (propertyterm.go). Both lookups below take the RESOLVED key — the bundled
+// one because `bundle` is keyed by stored keys and knows nothing of
+// `"Due date"` (or of the legacy `due_date` slug the fold still accepts), the
+// batch one because the converter reads that table by the resolved key too.
+// Comparing spellings instead was wrong both ways: it reported every
+// canonically-spelled bundled property as undeclared (a hard error in
+// anyblockconvert), and waved through a legend-backed spelling whose stored
+// key nothing declares.
 func CheckPropertyFormats(files []string, formats map[string]FormatInfo) ([]Undeclared, error) {
 	var out []Undeclared
 	for _, f := range files {
@@ -654,11 +656,12 @@ func CheckTemplateTargets(files []string, typeIds map[string]string) ([]BadTempl
 // The converter reads that detail off the CONVERTED snapshot, i.e. under the
 // stored key, so the question here is which SPELLING lands on it — a
 // translated property slot, resolved through this document's own
-// property_internal_keys legend, then the bundled table, then verbatim (§3). Probing
-// the map for the stored key alone was wrong both ways: `target_object_type`
-// is the canonical api-slug spelling (§3) and reached the detail while this
-// check missed it, reporting a template the converter wires perfectly (a hard
-// error in anyblockconvert); and a legend rebinding the `targetObjectType`
+// property_internal_keys legend, then the bundled name table and its fold,
+// then verbatim (§3). Probing the map for the stored key alone was wrong both
+// ways: a document spelling the detail by its display name — or by the legacy
+// `target_object_type` slug, which the fold still resolves — reached the
+// detail while this check missed it, reporting a template the converter wires
+// perfectly (a hard error in anyblockconvert); and a legend rebinding the `targetObjectType`
 // spelling onto some other key means the detail is NOT written, which this
 // check took as authored and skipped — the template then imports belonging to
 // no type, unreported, which is the whole point of the check.
@@ -917,7 +920,7 @@ func DictionaryFormats(path string) (map[string]FormatInfo, []anyblockjson.Prope
 func MergeDictionaryFormats(scanned, dict map[string]FormatInfo, warn func(format string, args ...any)) map[string]FormatInfo {
 	for key, d := range dict {
 		// a BUNDLED key's definition is the code table's, in every space and
-		// offline (§7.5a-1) — the dictionary cannot override it, and the
+		// offline — the dictionary cannot override it, and the
 		// tools do not pretend to: the format table below is consulted only
 		// for keys the bundled table does not answer for. Said out loud,
 		// because the entry is otherwise accepted in silence and the author
@@ -927,7 +930,7 @@ func MergeDictionaryFormats(scanned, dict map[string]FormatInfo, warn func(forma
 		if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil && rel != nil {
 			if d.Format != rel.Format {
 				warn("property %q is BUNDLED: the dictionary says %s, the bundled table says %s, "+
-					"and the bundled table wins here and in every reader (§7.5a-1) — "+
+					"and the bundled table wins here and in every reader — "+
 					"the entry documents the property, it cannot redefine it",
 					key, d.FormatName, anyblockjson.FormatName(rel.Format))
 			}
@@ -935,7 +938,8 @@ func MergeDictionaryFormats(scanned, dict map[string]FormatInfo, warn func(forma
 		}
 		existing, seen := scanned[key]
 		if seen && existing.Format != d.Format {
-			warn("property %q: a type declares %s but the dictionary says %s — the dictionary wins (§2f)",
+			warn("property %q: a type declares %s but the dictionary says %s — the dictionary wins, because "+
+				"the dictionary is the file that defines the property",
 				key, existing.FormatName, d.FormatName)
 		}
 		if seen && len(d.Options) == 0 && len(existing.Options) > 0 {

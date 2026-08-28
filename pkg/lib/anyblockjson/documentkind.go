@@ -113,9 +113,9 @@ func misroutedIssues(data []byte, want string) []Issue {
 func articleFor(kind string) string {
 	switch kind {
 	case KindIndex:
-		return "a bundle index (§2c)"
+		return "a bundle index"
 	case KindPropertyDictionary:
-		return "a property dictionary (§2f)"
+		return "a property dictionary"
 	default:
 		return "an object document"
 	}

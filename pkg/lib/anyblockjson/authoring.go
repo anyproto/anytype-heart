@@ -104,7 +104,7 @@ func ValidateAuthoring(data []byte) error {
 		return err
 	}
 	return validateAuthoringSubset(data, compileAuthoringSchema,
-		"valid AnyBlock JSON, but outside the authoring subset (§2g) — the members below are export's, not an author's")
+		"valid AnyBlock JSON, but outside the authoring subset — the members below are export's, not an author's")
 }
 
 // ValidateAuthoringIndex is ValidateAuthoring for a bundle index (§2c, §2g).
@@ -113,7 +113,7 @@ func ValidateAuthoringIndex(data []byte) error {
 		return err
 	}
 	return validateAuthoringSubset(data, compileAuthoringIndexSchema,
-		"a valid bundle index, but outside the authoring subset (§2g)")
+		"a valid bundle index, but outside the authoring subset")
 }
 
 // ValidateAuthoringPropertyDictionary is ValidateAuthoring for a property
@@ -123,7 +123,7 @@ func ValidateAuthoringPropertyDictionary(data []byte) error {
 		return err
 	}
 	return validateAuthoringSubset(data, compileAuthoringPropertiesSchema,
-		"a valid property dictionary, but outside the authoring subset (§2g)")
+		"a valid property dictionary, but outside the authoring subset")
 }
 
 // validateAuthoringSubset runs one authoring schema over a document the full
@@ -239,7 +239,7 @@ func authoringSemantics(data []byte) error {
 	if len(issues) == 0 {
 		return nil
 	}
-	preamble := Issue{Message: "valid AnyBlock JSON, but outside the authoring subset (§2g) — " +
+	preamble := Issue{Message: "valid AnyBlock JSON, but outside the authoring subset — " +
 		"the rules below are stated on the RESOLVED property key, so they hold for every spelling of it"}
 	return &ValidationError{Issues: append([]Issue{preamble}, issues...)}
 }

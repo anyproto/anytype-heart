@@ -8,7 +8,7 @@ package anyblockbatch
 // never translated (SPEC.md §2). Every property SLOT is translated: the
 // `properties` map's own keys, and `type_settings.property_definitions[].property`, carry a term that
 // resolves through the §3 chain — the document's own `property_internal_keys` legend,
-// then the bundled derived table, then verbatim.
+// then the bundled name table (with its forgiving fold), then verbatim.
 //
 // The scans below build and compare tables the CONVERTER then reads by the
 // resolved stored key: anyblockjson hands Options.ResolveFormat the output of
@@ -27,11 +27,11 @@ package anyblockbatch
 //     vocabulary under the raw spelling, so the options land on a relation key
 //     nothing ever asks for, and the values that DO arrive mint a second,
 //     order-less set under the resolved key;
-//   - fail-closed: `properties` spells bundled keys as their api slugs (§3),
-//     and `bundle.GetRelationFormat("due_date")` does not know that spelling —
+//   - fail-closed: `properties` spells bundled keys by display name (§3),
+//     and `bundle.GetRelationFormat("Due date")` does not know that spelling —
 //     only `dueDate`. So a document written the canonical way was reported as
 //     having no declared format, which anyblockconvert turns into a hard error
-//     unless -lenient. Resolving first folds the slug arm and the stored-key
+//     unless -lenient. Resolving first folds the name arm and the stored-key
 //     arm into one lookup;
 //   - and CheckSharedSelects grouped by spelling, so two documents naming one
 //     stored key two ways did not merge — exactly the collision the check
@@ -55,10 +55,11 @@ type propertyLegend map[string]string
 // no anyblockjson.Options.Keys, so anyblockjson resolves every property slot
 // through the document's legend and then BundledKeyVocabulary — which is the
 // same two steps below (importer.propertyKey). The legend lookup is this
-// file's only original line; steps 3 and 4 are one call into the package's own
-// exported vocabulary, which answers the bundled table when it knows the term
-// and hands the term back untouched when it does not (that pass-through IS
-// chain step 4).
+// file's only original line; the rest of the chain is one call into the
+// package's own exported vocabulary, which answers the bundled name table
+// when it knows the term, the forgiving fold when exactly one candidate
+// remains, and hands the term back untouched otherwise (that pass-through IS
+// chain step 5, verbatim).
 //
 // Unlike resolveTypeTerm this carries no reservation: `template` is a TYPE
 // spelling, and the property namespace has no term whose meaning the envelope

@@ -6,13 +6,14 @@ package anyblockbatch
 // never translated (SPEC.md §2). Every other type slot IS translated: the
 // envelope `type` and `template_for`, and `type_settings.property_definitions[].object_types`
 // carry a term that resolves through the §3 chain — the document's own
-// `type_internal_keys` legend, then the bundled derived table, then verbatim.
+// `type_internal_keys` legend, then the bundled name table (with its
+// forgiving fold), then verbatim.
 //
 // The lints below compare those slots against `TypeIds`, a map keyed by the
 // untranslated envelope `key`. Comparing an untranslated map against a
 // translated slot fails both ways:
 //
-//   - fail-closed: a bundle whose `template_for` is a slug its `type_internal_keys`
+//   - fail-closed: a bundle whose `template_for` is a spelling its `type_internal_keys`
 //     legend binds to a stored key is rejected though the converter resolves
 //     it perfectly well — and anyblockconvert turns the lint's finding into a
 //     hard error, so a correct bundle cannot be converted;
@@ -39,9 +40,10 @@ type typeLegend map[string]string
 // no anyblockjson.Options.Keys, so anyblockjson resolves every type slot
 // through the document's legend and then BundledKeyVocabulary — which is the
 // same two steps below. The legend lookup is this file's only original line;
-// steps 3 and 4 are one call into the package's own exported vocabulary,
-// which answers the bundled table when it knows the term and hands the term
-// back untouched when it does not (that pass-through IS chain step 4).
+// the rest of the chain is one call into the package's own exported
+// vocabulary, which answers the bundled name table when it knows the term,
+// the forgiving fold when exactly one candidate remains, and hands the term
+// back untouched otherwise (that pass-through IS chain step 5, verbatim).
 //
 // TestLintResolvesTypeTermsLikeTheCodec pins the composition against what
 // anyblockjson.Unmarshal actually stores, so the two cannot drift apart

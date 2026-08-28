@@ -127,7 +127,7 @@ func TestIndex_ManifestDoesNotLocateOptions(t *testing.T) {
 // How this can fail: drop Files from the Manifest struct or MarshalIndex
 // (the binding vanishes on the way round and every blob is orphaned); stop
 // sorting the map (the byte check goes red); re-key the ids through the
-// type-spelling ladder (an id that happens to fold onto a bundled key gets
+// type-spelling chain (an id that happens to fold onto a bundled key gets
 // rewritten and the entry dangles); or forget empty() (a files-only
 // manifest is dropped as "empty" and ships nothing).
 func TestIndex_ManifestBindsFileBlobs(t *testing.T) {

@@ -48,8 +48,8 @@ type PropertyDefinition struct {
 	Options []OptionDefinition
 	// ObjectTypes restricts which types an objects/files property may point
 	// at, in priority order, given as **type keys** — the STORED spelling on
-	// this struct; the document spells the slug, and the codec translates at
-	// the boundary like every other key slot (§3). Empty means any
+	// this struct; the document spells the display name, and the codec
+	// translates at the boundary like every other key slot (§3). Empty means any
 	// object, which is also what an untargeted property accepts — a task
 	// could be assigned to a random page. Listing the built-in `participant`
 	// alongside a bundle's own people type is what makes the current-user
@@ -286,7 +286,7 @@ func (e *exporter) resolveTypeProperty(id string) (PropertyDefinition, bool) {
 // states them reaches the resolver's create path with the whole definition
 // rather than losing them at the seam.
 type TypeProperty struct {
-	// Property is the entry's document-facing SPELLING (`due_date`) — a key
+	// Property is the entry's document-facing SPELLING ("Due date") — a key
 	// slot like any other, inverted through the legend and the vocabulary
 	// (§3). It is deliberately NOT called a key: the word `key` used to mean
 	// both this spelling and the stored id, and the split gave each its own
@@ -318,10 +318,10 @@ type TypeProperty struct {
 // authoredKey is the identity this entry states, rewired for the
 // key/spelling split: its `property` spelling, else its `internal_key`, else
 // the spelling its NAME derives. The second return says which kind of term
-// came back — a spelling runs through the §3 resolution ladder like any
+// came back — a spelling runs through the §3 resolution chain like any
 // other key slot, while an `internal_key` IS the stored key and resolves
 // verbatim: a stored id is always its own address (§3), and re-entering the
-// slug layer could rebind it (the bundled table folds `due_date` onto
+// name tables could rebind it (the bundled fold takes `due_date` to
 // `dueDate`, which is exactly wrong for a member whose whole meaning is
 // "this exact stored key").
 //
@@ -331,13 +331,13 @@ type TypeProperty struct {
 // (`6a83296f61fab2265263ae34`), because export writes the keys a real space
 // actually holds; an author generating a use case has no space to draw one
 // from, so a required stored key asks them to INVENT an identifier whose only
-// correct forms they cannot produce. What they write instead is the slug —
-// which is right, and which the name already implies.
+// correct forms they cannot produce. What they write instead is the spelling —
+// which is right, and which the name already supplies.
 //
 // So a name is enough, and there is nothing to DERIVE: the name IS the
 // spelling. `{"name": "Cooking Time", "format": "number"}` declares a
 // property spelled `Cooking Time`, and that term runs through the same
-// resolution ladder as a written `property`, so `{"name": "Due Date"}`
+// resolution chain as a written `property`, so `{"name": "Due Date"}`
 // lands on the bundled `dueDate` rather than minting a lookalike beside it.
 //
 // It used to run the api-slug derivation — strcase plus a transliterating
@@ -444,16 +444,16 @@ type RecommendedList struct {
 // The §3 chain runs from step 1, not from the caller's vocabulary: there is no
 // document here, so the legend arrives through **Options.Legend** — the same
 // three maps the enclosing document's envelope carries. A caller that lifted
-// these slugs out of a document hands over that document's legend; a caller
-// that composed them itself leaves the field zero and the chain starts at the
-// vocabulary, which is what this entry point did unconditionally before, and
-// is why a slug lifted from a legend-carrying document used to land on
-// whichever relation the READER'S table gave that spelling to.
+// these spellings out of a document hands over that document's legend; a
+// caller that composed them itself leaves the field zero and the chain starts
+// at the vocabulary, which is what this entry point did unconditionally
+// before, and is why a spelling lifted from a legend-carrying document used
+// to land on whichever relation the READER'S table gave it.
 //
 // It refuses what applyTypeProperties refuses, on the same resolved keys and
 // with the same JSON pointers, because it is the SAME array arriving through
 // the other door — the API's PATCH-type channel. A vocabulary answering "" for
-// a spelling is a vocabulary bug (a stale slug index, a hand-rolled
+// a spelling is a vocabulary bug (a stale name index, a hand-rolled
 // KeyVocabulary), and an unrefused one wrote the empty key straight into a
 // type's recommended lists: `recommendedRelations: [""]` and
 // `ObjectTypes: ["", "page"]`, both of which name nothing, are invisible in
@@ -476,8 +476,8 @@ func BuildRecommendedLists(props []TypeProperty, opts Options) ([]RecommendedLis
 		}
 		// object_types is a TYPE key slot, inverted entry by entry through the
 		// same chain as the key above: Options.Legend's type half first — a
-		// PATCH caller states what its slugs mean the way a document does with
-		// type_internal_keys (§13.1) — then the caller's vocabulary. Resolved (and
+		// PATCH caller states what its spellings mean the way a document does
+		// with type_internal_keys (§13.1) — then the caller's vocabulary. Resolved (and
 		// refused) OUTSIDE the
 		// resolver branch, so the verdict on a given input does not depend on
 		// whether the caller happened to wire a resolver — applyTypeProperties

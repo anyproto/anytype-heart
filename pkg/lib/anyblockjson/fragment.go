@@ -191,11 +191,11 @@ func MarshalBlockSubtree(subtree []*model.Block, opts Options) (json.RawMessage,
 	}
 	if opts.OmitIds {
 		return nil, fmt.Errorf("OmitIds is not available on a block subtree: " +
-			"a fragment is addressed by the ids it carries (§9)")
+			"a fragment is addressed by the ids it carries")
 	}
 	if opts.compactBlockLabels() {
 		return nil, fmt.Errorf("block-label compaction is not available on a block subtree: " +
-			"the short labels are local to the emitted run, not the object's ids (§9a)")
+			"the short labels are local to the emitted run, not the object's ids")
 	}
 	e := &exporter{
 		opts:     opts,

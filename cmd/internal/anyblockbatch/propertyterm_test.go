@@ -26,10 +26,10 @@ import (
 )
 
 // customPropertyKey is a space-minted (bson) property key, the shape a real
-// space gives a user-created relation — the stored key a slug legend binds to.
-// `priority` is deliberately chosen as its slug: it is ALSO a bundled key, so
-// a scan that reads the spelling raw does not merely miss, it confidently
-// resolves to the wrong relation.
+// space gives a user-created relation — the stored key a legend entry binds a
+// spelling to. `priority` is deliberately chosen as its spelling: it is ALSO
+// a bundled key, so a scan that reads the spelling raw does not merely miss,
+// it confidently resolves to the wrong relation.
 const customPropertyKey = "6a32d4856761631534b22f85"
 
 // --- ScanFormats -----------------------------------------------------------
@@ -71,8 +71,8 @@ func TestScanFormats_FallbackNameIsTheSpelling(t *testing.T) {
 	assert.Equal(t, "priority", formats[customPropertyKey].Name)
 }
 
-// A key nobody translates is its own address (chain step 4), so resolution
-// must leave the ordinary case exactly as it was.
+// A key nobody translates is its own address (chain step 5, verbatim), so
+// resolution must leave the ordinary case exactly as it was.
 func TestScanFormats_UntranslatedKeyIsUnchanged(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/task.type.json": `{"version": 1, "kind": "object_type", "internal_key": "task", "id": "type-task",
@@ -83,10 +83,11 @@ func TestScanFormats_UntranslatedKeyIsUnchanged(t *testing.T) {
 	assert.Contains(t, formats, "wikiStage")
 }
 
-// A bundled property declared by its api slug — the canonical spelling (§3) —
-// has to land on the bundled STORED key, or the batch mints a second relation
-// beside the bundled one for the same property.
-func TestScanFormats_BundledSlugResolvesToTheBundledKey(t *testing.T) {
+// A bundled property declared by its legacy derived slug — the pre-v0.48
+// canonical spelling, which the forgiving fold still resolves (§3 chain step
+// 4) — has to land on the bundled STORED key, or the batch mints a second
+// relation beside the bundled one for the same property.
+func TestScanFormats_LegacySlugResolvesToTheBundledKey(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/task.type.json": `{"version": 1, "kind": "object_type", "internal_key": "task", "id": "type-task",
 		  "type_settings": {"property_definitions": [{"property": "due_date", "format": "date"}]}}`,
@@ -167,11 +168,12 @@ func TestCheckPropertyFormats_LegendBackedMissIsReported(t *testing.T) {
 		"the report must name the key a type_properties entry has to end up on")
 }
 
-// Fail-CLOSED: `properties` spells bundled keys as their api slugs (§3), and
-// `bundle` is keyed by stored keys — it has never heard of `due_date`. So the
-// canonical spelling was reported as having no declared format, which
+// Fail-CLOSED: a pre-v0.48 document spells bundled keys as their derived api
+// slugs, which the forgiving fold still resolves (§3 chain step 4) — and
+// `bundle` is keyed by stored keys: it has never heard of `due_date`. So a
+// document spelled that way was reported as having no declared format, which
 // anyblockconvert turns into a hard error unless -lenient.
-func TestCheckPropertyFormats_BundledSlugIsDeclared(t *testing.T) {
+func TestCheckPropertyFormats_LegacySlugIsDeclared(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"objects/one.json": `{"version": 1, "type": "page", "id": "obj-1",
 		  "properties": {"due_date": "2026-01-01T00:00:00Z", "plural_name": "x", "description": "hi"}}`,
@@ -202,7 +204,8 @@ func TestCheckPropertyFormats_UnknownKeyIsStillReported(t *testing.T) {
 
 // The whole point of resolving on both sides: a legend-backed value IS
 // declared once some type declares the same stored key, however either spells
-// it. Here the type spells the bson outright and the object spells the slug.
+// it. Here the type spells the bson outright and the object spells the
+// legend's spelling.
 func TestCheckPropertyFormats_DeclarationAndUseMayDisagreeOnSpelling(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/task.type.json": `{"version": 1, "kind": "object_type", "internal_key": "task", "id": "type-task",
@@ -287,11 +290,12 @@ func TestCheckSharedSelects_PlainSharedKeyIsStillReported(t *testing.T) {
 
 // --- the authored targetObjectType probe -----------------------------------
 
-// Fail-CLOSED: `target_object_type` is the canonical api-slug spelling of the
-// detail (§3) and reaches the snapshot, so patchTemplateTarget keeps it — but
-// the check probed the map for the STORED key alone, missed it, and rejected a
-// bundle the converter wires perfectly.
-func TestCheckTemplateTargets_AuthoredTargetInSlugSpellingPasses(t *testing.T) {
+// Fail-CLOSED: `target_object_type` is the legacy derived-slug spelling of
+// the detail, still resolved by the fold (§3 chain step 4), so it reaches the
+// snapshot and patchTemplateTarget keeps it — but the check probed the map
+// for the STORED key alone, missed it, and rejected a bundle the converter
+// wires perfectly.
+func TestCheckTemplateTargets_AuthoredTargetInLegacySlugSpellingPasses(t *testing.T) {
 	const doc = `{"version": 1, "kind": "template", "type": "template", "template_for": "page",
 	  "properties": {"target_object_type": "type-page"}}`
 	requireCodecStoresTargetObjectType(t, doc, true)
@@ -349,9 +353,9 @@ func TestLintResolvesPropertyTermsLikeTheCodec(t *testing.T) {
 		value  string
 	}{
 		{"verbatim custom key", ``, "wikiStage", `"Draft"`},
-		{"bundled slug", ``, "due_date", `"2026-01-01T00:00:00Z"`},
-		{"bundled stored key that is nobody's slug", ``, "dueDate", `"2026-01-01T00:00:00Z"`},
-		{"legend-backed slug", `"property_internal_keys": {"priority": "` + customPropertyKey + `"},`, "priority", `"High"`},
+		{"legacy bundled slug, resolved by the fold", ``, "due_date", `"2026-01-01T00:00:00Z"`},
+		{"bundled stored key that is nobody's spelling", ``, "dueDate", `"2026-01-01T00:00:00Z"`},
+		{"legend-backed spelling", `"property_internal_keys": {"priority": "` + customPropertyKey + `"},`, "priority", `"High"`},
 		{"legend outranks the bundled table", `"property_internal_keys": {"due_date": "` + customPropertyKey + `"},`, "due_date", `"High"`},
 		{"identity entry for a shadow stored key", `"property_internal_keys": {"due_date": "due_date"},`, "due_date", `"High"`},
 	}
