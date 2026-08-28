@@ -45,7 +45,7 @@ the prerequisite: `audioGenre` "Genre" → "Audio genre", and the `space`
 type "Space" → "Space settings" (hygiene — measured wire-unreachable).
 
 Changes in v0.47: **the manifest binds file blobs** (§2c), and **a
-participant document does not carry `created_date`** (§3 — the stored value
+participant document does not carry `createdDate`** (§3 — the stored value
 is a load timestamp re-stamped on every cold build; the only field that
 drifted across a double-export of 1,164 real documents, on the only kind
 that drifted).
@@ -794,7 +794,7 @@ import rebuilds the composite against `Options.SpaceId` (§9). 135
 characters down to 48, and a document carried into another space re-homes
 the member correctly, because the reader rebuilds against ITS space.
 
-**`creator` and `last_modified_by` return to a RESOLVABLE id**, spelled
+**`creator` and `lastModifiedBy` return to a RESOLVABLE id**, spelled
 `<identity>#<name>` (§3). v0.24's name-only spelling broke API v2 — its
 consumers need an id to resolve a member, and 76 of 2,478 production
 participants share a display name, so the name identified nobody. The v0.24
@@ -1527,7 +1527,8 @@ the same call the flat-blocks change made at v0.6: the format is a draft with
 no external consumers, so a rename now costs a golden regeneration, and after
 the freeze it costs a version.
 
-Changes in v0.7 (pre-freeze review, `PREFREEZE_REVIEW.md` Tier 1). One
+Changes in v0.7 (pre-freeze review, tier 1 — the review artefact is gone;
+its findings live in `prefreeze_review_test.go`, one test per finding). One
 byte-changing rule and five reader rules, all inside format version 1:
 **canonical output escapes every tag-shaped `<`**, reserving the whole
 `</?[A-Za-z]` space for later versions and closing the delimiter set in
@@ -1571,8 +1572,7 @@ external consumers; the format version stays 1 and there is no legacy-input
 mode). The block schema is thereby non-recursive, which makes it usable under
 strict/constrained decoding (Anthropic structured outputs reject recursive
 schemas; FSM-class guided decoders cannot express them) and keeps truncated
-generations parseable — see `docs/AgentApiV2Research.md`, Addendum A, for the
-decision record. Nesting rules are specified in §4: strict monotonicity
+generations parseable. Nesting rules are specified in §4: strict monotonicity
 validation by default, a `NormalizeIndent` lenient import mode with
 CommonMark-style clamping, and the containment rules formerly expressed in
 the schema (leaf types, row→column) re-provided as path-addressed semantic
@@ -2576,7 +2576,7 @@ the importer does not recognise, a set that is empty today (the importer
 knows all eight) and that the batch checker still guards, for the day a
 listing is added to this format before the importer learns it.
 
-Nothing per-object substitutes for this file. In particular **`is_favorite` is
+Nothing per-object substitutes for this file. In particular **`isFavorite` is
 not an entry point**: it adds an object to Favorites and nothing more. It
 does not open anything, create a widget, or set the homepage.
 
@@ -2794,7 +2794,7 @@ belongs in the index because a manifest is what an index is).
 {
   "$schema": "https://schemas.anytype.io/anyblock/1/properties.schema.json",
   "version": 1,
-  "installed": ["created_date", "due_date", "tag"],
+  "installed": ["Creation date", "Due date", "Tag"],
   "properties": [
     { "property": "6a32d4856761631534b22f85",
       "internal_key": "6a32d4856761631534b22f85", "name": "Budget", "format": "number" },
@@ -3001,11 +3001,39 @@ semantic rather than surface: the two counting date presets
 they apply they REQUIRE a day count in `value` (§6.2), and a subset
 admitting them bare would admit documents `Validate` refuses.
 
+**Two subset rules are stated on the RESOLVED property key, not in the
+schema**, and they have to be: JSON Schema matches a member name literally
+while the format resolves a property key case- and separator-insensitively,
+so a literal rule over a key the codec spells many ways is not a narrower
+rule — it is a rule with holes in it. Both had one.
+
+- **A type document names itself.** Written as `required: ["name"]`, it
+  REFUSED the canonical `{"Name": "Habit"}` and accepted only the retired
+  lowercase spelling. Any spelling that resolves to the name property
+  satisfies it now; a type document with no name at all still fails.
+- **The subset refuses the app's own derived keys in `properties`.** The
+  schema's literal list still names the pre-raw-name spellings, and nine
+  keys — `creator`, `createdDate`, `lastModifiedBy`, `lastModifiedDate`,
+  `addedDate`, `revision`, `internalFlags`, `featuredRelations`,
+  `isArchived` — are exactly the ones the FULL format DROPS rather than
+  refuses, so nothing downstream caught them under a display-name spelling:
+  an author's value disappeared without a word where it used to be refused
+  at authoring time. Those nine are enforced on the resolved key. The
+  `layout_align` narrowing (an alignment NAME, not the stored number) had
+  the same defect and takes the same treatment.
+
+The schema keeps its literal list — it is what an agent actually reads, and
+it carries both spellings of each — and a test pins the list against the
+enforced set in both directions, so neither can rot again.
+
 `ValidateAuthoring`, `ValidateAuthoringIndex` and
 `ValidateAuthoringPropertyDictionary` (§13) run the FULL validation first —
-so refusals carry §12's curated wording — and then the subset schema, whose
-verdicts name themselves subset verdicts. A nil return means the document is
-valid AnyBlock JSON, not merely subset-shaped.
+so refusals carry §12's curated wording — then those semantic rules, then
+the subset schema, whose verdicts name themselves subset verdicts. The
+semantic rules run before the schema because they can say which key was
+written and why the app owns it, where a literal `not`/`enum` can only say
+that some member matched. A nil return means the document is valid AnyBlock
+JSON, not merely subset-shaped.
 
 **The worked example** lives at `testdata/authoring/habit_tracker/`: an
 index, one type, a three-property dictionary, a welcome page and two
@@ -3120,6 +3148,26 @@ trustworthy: a plain spelling in a document is never one of two same-named
 claimants. A suffixed spelling never moves while its neighbours live;
 deleting one claimant un-suffixes the other on its next export — cosmetic
 churn, correct via the legend.
+
+**A claimant is a key this document actually writes**, and two populations
+look like claimants without being one. Both are carved out for the same
+reason: a claimant that will not be there next time must not decide anybody
+else's spelling, or a second export of the same object differs from the
+first and the round trip stops being a fixpoint (§11).
+
+- **A key the `properties` emit drops** — a type document's install
+  provenance, a participant's load timestamp, an admitted system-stamped key
+  whose value is empty, a name-over-number key holding a string its
+  vocabulary cannot name — is written nowhere, so it is not counted at all:
+  it claims no spelling and reserves no stored key. `isHidden: false` beside
+  a custom property named "Hidden" used to write `Hidden (b90aa1)` on one
+  export and `Hidden` on the next.
+- **The attribution keys** are the opposite case: export WRITES them and
+  import drops them, so they occupy a member of this document and none of
+  the next one. They **yield** — alone on a spelling they take it as usual;
+  contested at all they take their own stored key, which is always readable,
+  and the normal claimants keep the verdict they will re-derive once the
+  attribution line is gone.
 
 **The map-less reader resolves a shared name within the declared type.** An
 authored document need carry no legend, so a reader handed a bare name that
@@ -3793,21 +3841,24 @@ equivalent resolvers for custom date/select properties to round-trip in
 their pretty form; with no resolver the value still round-trips losslessly,
 just unprettified.
 
-**Well-known properties** (the magic keys every generator needs):
+**Well-known properties** (the magic keys every generator needs). The
+spelling is the display name (§3); the stored key is what it resolves to:
 
-| Key | Format | Meaning |
-|---|---|---|
-| `name` | text | the object's title |
-| `description` | text | subtitle/description line |
-| `done` | checkbox | completion state on task-like types |
-| `due_date` | date | due date on task-like types |
+| Spelling | Stored key | Format | Meaning |
+|---|---|---|---|
+| `Name` | `name` | text | the object's title |
+| `Description` | `description` | text | subtitle/description line |
+| `Done` | `done` | checkbox | completion state on task-like types |
+| `Due date` | `dueDate` | date | due date on task-like types |
 
 The icon and the cover are **not** in this table: they are envelope fields of
 their own (§2b), and the nine stored keys behind them are refused here.
 
 **Canonical key order in `properties`** (implementation decision): the
 well-known keys `name`, `description` first (in that order, when present),
-then all remaining keys alphabetically. The list held `icon_emoji` and
+then all remaining members alphabetically BY SPELLING — the reader sorts
+what it sees, so the order is over the display names, while which two go
+first is decided on the stored keys. The list held `icon_emoji` and
 `icon_image` until v0.25 lifted both above `properties` entirely — a stronger
 version of the same idea, since a reader now meets the icon before the
 property list rather than at the top of it.
@@ -3857,40 +3908,42 @@ properties are the exception and are plain strings — see below.
 
 **Stripping.** Export removes internal/derived properties
 (`bundle.LocalAndDerivedRelationKeys`) **except** those the importer
-meaningfully preserves (mirroring `core/block/import/pb`): `created_date`,
-`last_modified_date`, `is_favorite`, `is_archived`, `resolved_layout`.
+meaningfully preserves (mirroring `core/block/import/pb`): `createdDate`,
+`lastModifiedDate`, `isFavorite`, `isArchived`, `resolvedLayout` — spelled
+"Creation date", "Last modified date", "Favorited", "Archived" and
+"Resolved layout".
 Those five are **output-only** (§4a): export writes them, generators should
-not — with one deliberate exception. **`is_favorite` is authorable**, because
+not — with one deliberate exception. **`isFavorite` is authorable**, because
 the pb importer reads it to choose a space's root objects
 (`core/block/import/pb/space.go`), which is how a generated bundle
 designates the object a user should land on. A bundle with no favourite, no
 `homepage` and no `spaceDashboardId` imports as an undifferentiated list. `id` is lifted to the envelope and `type` to `type`. Everything else
 round-trips.
 
-**A participant document does not carry `created_date`** (v0.47; the
+**A participant document does not carry `createdDate`** (v0.47; the
 transient-key policy scoped by kind, like the type-provenance drop in §2a —
 the verdict lives on `participantProvenanceKeys`). A participant is derived
 from the ACL and has no creation change, so the store stamps `createdDate`
 with `time.Now()` on every cold build — a load timestamp wearing the name
 of a fact. Measured, which is what admitted the drop: two exports of the
 same 7 spaces, 1,164 documents compared field-by-field — the ONLY drifting
-kind is participant (22 of 22) and the ONLY drifting field `created_date`;
+kind is participant (22 of 22) and the ONLY drifting field `createdDate`;
 on a full 155-space run, 2,322 drifts against 2,492 participants, every
 other kind byte-stable. Export omits the key on participants whatever it
 holds; import drops it there (stale, not wrong); the §11 comparator
-consults the same predicate. `creator` and `last_modified_by` STAY on
+consults the same predicate. `creator` and `lastModifiedBy` STAY on
 participants by decision, although both read `_anytype_profile` on 2,492 of
 2,492 corpus participants: that placeholder is upstream's bug to fix — a
 participant's creator should be the real identity — not this format's to
 paper over by omission.
 
-**Attribution: `creator` and `last_modified_by` are the member's RESOLVABLE
+**Attribution: `creator` and `lastModifiedBy` are the member's RESOLVABLE
 id, named by the informative suffix — `<identity>#<name>`, as a plain
 string.**
 
 ```json
-"creator": "A6eK73JmBUM9Aar2BJ4Pd6VkLW7cjhoWL7tJHDM9gk8fhpkc#roma_kha",
-"last_modified_by": "A6eK73JmBUM9Aar2BJ4Pd6VkLW7cjhoWL7tJHDM9gk8fhpkc#roma_kha"
+"Created by": "A6eK73JmBUM9Aar2BJ4Pd6VkLW7cjhoWL7tJHDM9gk8fhpkc#roma_kha",
+"Last modified by": "A6eK73JmBUM9Aar2BJ4Pd6VkLW7cjhoWL7tJHDM9gk8fhpkc#roma_kha"
 ```
 
 Not an array. Both relations are `maxCount: 1` and 0 of 36,966 production
@@ -4047,7 +4100,7 @@ then emitting the slug unchecked made `Marshal` produce a document its own
 
 **A value whose shape its format cannot hold is a warning**, not an error, and
 only for keys the bundle resolves after the resolution chain runs (`Validate`
-takes no resolver, §13): `"due_date": "next Friday"` is stored as written and
+takes no resolver, §13): `"Due date": "next Friday"` is stored as written and
 then read as no date at all, which nothing else would ever report. It stays a
 warning because the same check as an error would make one already-corrupt
 stored value enough to make an object unexportable, and "Marshal never emits
@@ -4150,7 +4203,7 @@ Output-only surfaces: `fields` (any block), `root`, `store`, `source`
 filter `nested_property` (reserved), `cover.source` and the `emoji`
 carry-over on `icon`'s named-icon branch (§2b), the five preserved internal
 properties listed in §3, and the two attribution properties
-`creator`/`last_modified_by`.
+`creator`/`lastModifiedBy`.
 
 The attribution pair is output-only in the strictest sense on the list:
 export writes it and import does not merely ignore a supplied value, it
@@ -4501,8 +4554,15 @@ a group exists only for `or` or nesting):
   nothing in Go resolves them, so a query evaluated server-side compares
   against the literal string and matches nothing. They are not object ids, and nothing in either direction rewrites them —
   object references are never compacted, so there is no legend one could be
-  swallowed into (§9a). Valid only on `objects`/`files` properties, since they
-  resolve to an object id; anywhere else is a validation error. Note the
+  swallowed into (§9a). They are meaningful only on `objects`/`files`
+  properties, since they resolve to an object id; on any other format the
+  placeholder is stored UI state that matches nothing, and the mismatch is a
+  **warning, not a refusal** — the same severity the neighbouring date-preset
+  rule takes, for the same reason. A refusal here was an invariant break:
+  export wrote such a filter with no warning and this package's own Validate
+  then rejected the document, so one stored filter made a whole object
+  unexportable. Both doors warn — the fragment surface too, or one filter
+  would validate on one door and be refused on the other. Note the
   date presets are a *different* mechanism — a first-class `quickOption`
   field with real Go-side semantics (§6.2, `quickoptions.go`) — and the
   template-placeholder feature (`model.Placeholder_PlaceholderCurrentUser`)
@@ -4636,7 +4696,20 @@ in quotes (`due_date < "2026-08-01"`), and date-preset **functions** —
 next_week() · last_month() · current_month() · next_month() · last_year() ·
 current_year() · next_year() · daysAgo(n) · daysFromNow(n)` (the parameterized
 pair maps to `number_of_days_ago`/`number_of_days_now` with the value as `n`;
-parens distinguish presets from string literals). Property keys are bare.
+parens distinguish presets from string literals).
+
+**Property keys are bare identifiers, and they reach a spelling through the
+fold.** The grammar has no quoted-key form, so a key is written with
+identifier characters only — letters (any script), digits, `_`, and the
+combining marks the scripts that need them require — and must not be one of
+the grammar's reserved words. That is narrower than what a property may be
+SPELLED, since a spelling is a display name and names carry spaces: `Due
+date` cannot be written here. It does not have to be, because resolution
+folds away case and separators, so the bare `due_date` addresses it — and
+`Дата_выполнения` addresses "Дата выполнения" the same way. What no
+identifier folds onto — `C++`, `50% done`, a name colliding with `AND` or
+`IS` — has no compact form at all, and the parser says so and names the
+structured `filters` array as the way to express it.
 Select/multi_select values are option **names**, per §3 (the structured form
 agrees since v0.4; only date values differ — RFC 3339 here, unix numbers
 there). The RFC 3339 → unix conversion is **format-driven, not
@@ -6553,7 +6626,7 @@ Wiring status — export landed, import is the follow-up:
    because the id half of a reference provably contains none — the split
    runs id-first, not name-first.)
 3a. **Attribution spelling** (§3): **settled twice, second answer stands.**
-   v0.24 spelled `creator`/`last_modified_by` as the member's display name
+   v0.24 spelled `creator`/`lastModifiedBy` as the member's display name
    alone; v0.27 reverts to a resolvable id with the name as the informative
    `#name` suffix. An earlier working note (`CREATOR_SPEC.md`, outside this
    repo) argued the name-only position and is SUPERSEDED on this point: the

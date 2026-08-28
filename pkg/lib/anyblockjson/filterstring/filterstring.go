@@ -781,13 +781,25 @@ func (p *parser) checkKey(tok token) error {
 // the reserved words the grammar keeps for itself.
 //
 // It is exported because the grammar is where the format's notion of an
-// identifier LIVES (§6.2.1 — this parser is the normative artifact), and
-// what a document may SPELL for a key is decided elsewhere: the label rule in
-// the parent package normalizes through this predicate, so a spelling that
-// package mints is one this package can parse. Asking it here rather than
-// restating the rule there is the point — a second copy of "letters, digits,
-// `_`, not a keyword" is a copy that drifts, and the two packages already
-// shipped one such drift (filterstring_agreement_test.go).
+// identifier LIVES, and the parent package needs to ask rather than restate
+// it — a second copy of "letters, digits, `_`, not a keyword" is a copy that
+// drifts, and the two packages already shipped one such drift
+// (filterstring_agreement_test.go).
+//
+// It used to be a stronger statement than it is. When a document spelled a
+// property with a normalized slug, that slug was minted THROUGH this
+// predicate, so every spelling the format could write was one this grammar
+// could parse. A spelling is a raw display name now, and names carry spaces:
+// "Due date" is a perfectly good spelling and not a bare key.
+//
+// Nothing is unreachable that was reachable before, because resolution folds
+// away case and separators — the bare `due_date` addresses "Due date", and
+// `Дата_выполнения` addresses "Дата выполнения". What has no compact form is
+// a name no identifier folds onto: "C++", "50% done", or a name that
+// collides with a keyword. The parser refuses those by name and points at
+// the structured filters array, which can carry any spelling; adding a
+// quoted-key production to the grammar would be the alternative and is a
+// grammar change, not a bug fix.
 func IsBareKey(key string) bool { return bareWritable(key) }
 
 // bareWritable reports whether a property key can be written as a bare
