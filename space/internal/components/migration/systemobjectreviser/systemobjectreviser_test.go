@@ -2,9 +2,11 @@ package systemobjectreviser
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -56,6 +58,51 @@ func TestMigration_Run(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, 1, migrated)
 		assert.Equal(t, 1, toMigrate)
+	})
+	t.Run("a space this account may only read is skipped after the first refusal", func(t *testing.T) {
+		// given — three revisable relations in a space the ACL will not let
+		// this account write
+		store := objectstore.NewStoreFixture(t)
+		var objects []objectstore.TestObject
+		for i, key := range []domain.RelationKey{
+			bundle.RelationKeyBacklinks, bundle.RelationKeyRelationKey, bundle.RelationKeyRelationOptionColor,
+		} {
+			objects = append(objects, objectstore.TestObject{
+				bundle.RelationKeySpaceId:        domain.String("space1"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyId:             domain.String(fmt.Sprintf("id%d", i)),
+				bundle.RelationKeyIsHidden:       domain.Bool(true),
+				bundle.RelationKeyRevision:       domain.Int64(0),
+				bundle.RelationKeyUniqueKey:      domain.String(key.URL()),
+				bundle.RelationKeySourceObject:   domain.String(key.BundledURL()),
+			})
+		}
+		store.AddObjects(t, "space1", objects)
+
+		fixer := &Migration{}
+		ctx := context.Background()
+		log := logger.NewNamed("test")
+
+		spc := mock_space.NewMockSpace(t)
+		spc.EXPECT().Id().Return("space1").Maybe()
+		spc.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
+			return key.Marshal(), nil
+		}).Maybe()
+		// the ACL refuses every write, and the migration must ask exactly ONCE:
+		// a refusal is the space's answer, not the object's, and each attempt
+		// leaves the loaded document carrying a value that will never persist
+		spc.EXPECT().DoCtx(ctx, mock.Anything, mock.Anything).
+			Return(list.ErrInsufficientPermissions).Times(1)
+
+		// when
+		toMigrate, migrated, err := fixer.Run(ctx, log, store.SpaceIndex("space1"), spc)
+
+		// then — reported as a skip, not a failure: a reader cannot revise
+		// the system objects of a space they do not own
+		assert.NoError(t, err)
+		assert.Equal(t, 0, migrated)
+		assert.Equal(t, 1, toMigrate, "the pass stops at the first refusal")
 	})
 }
 

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
@@ -96,6 +97,25 @@ func (m Migration) Run(ctx context.Context, log logger.CtxLogger, store dependen
 		}
 		toMigrate++
 		if e != nil {
+			// A space this account may only READ answers the same way for
+			// every object in it — the verdict is the ACL's, not the
+			// object's — so one refusal ends the pass. Without this the
+			// migration attempted every pending object on every space load,
+			// logged an error for each, and left each one carrying the new
+			// value in memory until it was evicted: an unwritable change is
+			// applied to the loaded document before the push is refused, so
+			// a reader of a shared space saw a value that would never
+			// persist. Measured on a subscribed space: twelve failed writes
+			// and thirteen documents whose two consecutive exports differed.
+			//
+			// Not an error to report. A reader cannot revise the system
+			// objects of a space they do not own, and saying so once per
+			// load is the whole of what is true.
+			if errors.Is(e, list.ErrInsufficientPermissions) {
+				log.Debug("skipping system object revision: this account may only read the space",
+					zap.String("space", space.Id()))
+				return toMigrate, migrated, nil
+			}
 			err = errors.Join(err, fmt.Errorf("failed to revise object: %w", e))
 		} else {
 			migrated++
