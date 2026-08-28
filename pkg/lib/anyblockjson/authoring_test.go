@@ -732,3 +732,30 @@ func TestAuthoringSchemas_IdentityAndHygiene(t *testing.T) {
 		})
 	}
 }
+
+// The authoring schema reserves the same TEN listing words §1 bans as
+// bundle-local document ids — it held the pre-v0.45 six for a while, so
+// `ValidateAuthoring` accepted ids `chat`, `bin`, `allObjects` and
+// `recentOpen`, and `chat`/`bin` are the two most common listing widgets: an
+// authored bundle really would collide there first.
+//
+// How this can fail: regenerate or hand-edit the object authoring schema's
+// $defs/documentId from the shorter list and the four newer words validate
+// again, while the index authoring schema beside it still refuses them —
+// the same id legal in one file and reserved in the other.
+func TestAuthoring_AllTenReservedIdsAreRefused(t *testing.T) {
+	for _, id := range []string{
+		"favorite", "recent", "recentOpen", "set", "collection",
+		"allObjects", "chat", "bin", "widgets", "graph",
+	} {
+		t.Run(id, func(t *testing.T) {
+			doc := `{"version": 1, "id": "` + id + `", "blocks": [{"type": "paragraph", "text": "x"}]}`
+			require.Error(t, ValidateAuthoring([]byte(doc)),
+				"a reserved listing word must not be a bundle-local id")
+		})
+	}
+	t.Run("an ordinary id stays legal", func(t *testing.T) {
+		doc := `{"version": 1, "id": "chat-notes", "blocks": [{"type": "paragraph", "text": "x"}]}`
+		require.NoError(t, ValidateAuthoring([]byte(doc)))
+	})
+}

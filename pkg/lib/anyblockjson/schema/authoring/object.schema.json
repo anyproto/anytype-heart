@@ -194,13 +194,17 @@
         "enum": [
           "favorite",
           "recent",
+          "recentOpen",
           "set",
           "collection",
+          "allObjects",
+          "chat",
+          "bin",
           "widgets",
           "graph"
         ]
       },
-      "description": "A bundle-local id: letters, digits, `-`, `_`; never starting with `_` (that prefix is the platform's) and never one of the six reserved listing words."
+      "description": "A bundle-local id: letters, digits, `-`, `_`; never starting with `_` (that prefix is the platform's) and never one of the ten reserved listing words — the index authoring schema beside this one reserves the same ten, and `chat` and `bin` are the two most common listing widgets."
     },
     "propertyMap": {
       "type": "object",
