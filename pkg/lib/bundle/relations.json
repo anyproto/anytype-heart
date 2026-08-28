@@ -618,7 +618,7 @@
     "hidden": false,
     "key": "audioGenre",
     "maxCount": 1,
-    "name": "Genre",
+    "name": "Audio genre",
     "readonly": false,
     "source": "details"
   },

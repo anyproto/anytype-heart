@@ -234,7 +234,7 @@
   },
   {
     "id": "space",
-    "name": "Space",
+    "name": "Space settings",
     "pluralName": "Spaces",
     "types": [
       "Workspace"

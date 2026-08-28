@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "e8960524577bd1c93cc4c622b7fd2287eef37db55501400e0c3e00cae7041cf0"
+const TypeChecksum = "42138884c0acccf7c25992dcf7b354945fd46c688292056a122728b226081d90"
 const (
 	TypePrefix = "_ot"
 )
@@ -394,7 +394,7 @@ var (
 			IconColor:              10,
 			IconName:               "folder",
 			Layout:                 model.ObjectType_space,
-			Name:                   "Space",
+			Name:                   "Space settings",
 			PluralName:             "Spaces",
 			Readonly:               true,
 			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},

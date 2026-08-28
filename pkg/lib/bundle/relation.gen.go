@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "cb8c8504438f2846044f86bbc2274d236d682c9f088ac3514d5268dbad219f3b"
+const RelationChecksum = "f9bafe356f37ae8fec3d6fd4023e55856e10a9fc5ab94f8a504c47f3e53a42e5"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -340,7 +340,7 @@ var (
 			Id:               "_braudioGenre",
 			Key:              "audioGenre",
 			MaxCount:         1,
-			Name:             "Genre",
+			Name:             "Audio genre",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
