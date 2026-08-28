@@ -6,6 +6,7 @@ package anyblockjson
 // middleware, and are not object ids.
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -54,24 +55,63 @@ func TestRoundtrip_FilterTemplateSurvives(t *testing.T) {
 	}
 }
 
-// resolving to an object id, it can only match an object/file property
+// Resolving to an object id, a template token can only match an object/file
+// property — and saying so is a WARNING, never a refusal: a stored dataview
+// filter really carries this pair, so the rule as an error was an I1 break —
+// export wrote the document with zero warnings and the package's own
+// Validate refused it, making the object unexportable over one stored
+// filter. The same tension was settled the same way for the date-preset
+// rule beside it.
+//
+// How this can fail: turn the warnIssue back into addIssue and the Marshal
+// arm below fails on its own output; drop the warning entirely and a filter
+// that matches nothing ships with a clean bill of health.
 func TestValidate_FilterTemplateOnWrongFormat(t *testing.T) {
 	for _, f := range []string{"select", "date", "text", "number"} {
 		t.Run(f, func(t *testing.T) {
-			err := Validate([]byte(filterDoc(
+			doc := filterDoc(
 				`{"property": "stage", "format": "`+f+`"}`,
-				`{"property": "stage", "condition": "in", "value": ["_filter_template_2_"]}`)))
-			require.Error(t, err)
-			assert.Contains(t, err.Error(), "resolves to an object id")
+				`{"property": "stage", "condition": "in", "value": ["_filter_template_2_"]}`)
+			var warns []Issue
+			require.NoError(t, ValidateWarn([]byte(doc), func(i Issue) { warns = append(warns, i) }),
+				"a stored filter must not make an object unexportable")
+			found := false
+			for _, w := range warns {
+				if strings.Contains(w.Message, "resolves to an object id") {
+					found = true
+				}
+			}
+			assert.True(t, found, "the mismatch is still named, as a warning")
 		})
 	}
 	for _, f := range []string{"objects", "files"} {
 		t.Run(f+" is fine", func(t *testing.T) {
-			assert.NoError(t, Validate([]byte(filterDoc(
+			var warns []Issue
+			require.NoError(t, ValidateWarn([]byte(filterDoc(
 				`{"property": "assignee", "format": "`+f+`"}`,
-				`{"property": "assignee", "condition": "in", "value": ["_filter_template_2_"]}`))))
+				`{"property": "assignee", "condition": "in", "value": ["_filter_template_2_"]}`)),
+				func(i Issue) { warns = append(warns, i) }))
+			for _, w := range warns {
+				assert.NotContains(t, w.Message, "resolves to an object id")
+			}
 		})
 	}
+
+	t.Run("the I1 arm: the stored pair exports, validates, and warns", func(t *testing.T) {
+		// the exact shape the invariant break was found on: a stored filter
+		// carrying the token on a property the same block declares as text
+		doc := filterDoc(
+			`{"property": "stage", "format": "text"}`,
+			`{"property": "stage", "condition": "in", "value": ["_filter_template_2_"]}`)
+		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.NoError(t, err, "the seam accepts what Validate accepts (I2)")
+
+		data, err := Marshal(model.SmartBlockType_Page, snap, testOptions())
+		require.NoError(t, err)
+		assert.Contains(t, string(data), `"_filter_template_2_"`)
+		require.NoError(t, Validate(data),
+			"Marshal never emits what its own Validate rejects (I1)")
+	})
 }
 
 func TestValidate_FilterTemplateNonTriggers(t *testing.T) {

@@ -2464,12 +2464,20 @@ func checkDateFilters(view map[string]any, formats map[string]string, isDate fun
 			}
 			// a dynamic filter token resolves to an object id, so it can
 			// only match an object/file property; anywhere else it is
-			// compared as a literal string and matches nothing
+			// compared as a literal string and matches nothing. A WARNING
+			// and not an error, for the reason the date-preset gate above
+			// gives: export must stay lossless — stored filters carry this
+			// pair (a template token on a text-declared property is real
+			// stored data), export wrote it with nothing to say, and this
+			// package's own Validate then refused the document it had just
+			// emitted (I1, the one invariant break a sustained attack
+			// found). One stored filter must not make an object
+			// unexportable.
 			if prop, _ := n[memberProperty].(string); prop != "" {
 				if f, declared := formats[prop]; declared && f != "objects" && f != "files" {
 					for _, tok := range filterTemplateValues(n["value"]) {
-						addIssue(nPath+"/value",
-							"%q resolves to an object id and cannot match %q (format %q)", tok, prop, f)
+						warnIssue(nPath+"/value",
+							"%q resolves to an object id and cannot match %q (format %q); the filter matches nothing until the property is object- or file-valued", tok, prop, f)
 					}
 				}
 			}

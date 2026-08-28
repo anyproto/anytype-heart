@@ -157,15 +157,21 @@ func TestUnmarshalFilters(t *testing.T) {
 		assert.Empty(t, warnings)
 	})
 
-	t.Run("placeholder on a non-object property errors", func(t *testing.T) {
+	t.Run("placeholder on a non-object property warns", func(t *testing.T) {
+		// a WARNING here too, matching the document door: the same rule at
+		// two severities would let a stored filter validate on one surface
+		// and refuse on the other, and the stored pair is real data (the
+		// document door's I1 arm pins that side)
 		raw := json.RawMessage(`[{"property":"status","condition":"in","value":["_filter_template_2_"]}]`)
+		opts := fragFilterOpts()
+		var warnings []Issue
+		opts.OnWarning = func(i Issue) { warnings = append(warnings, i) }
 
-		_, err := UnmarshalFilters(raw, fragFilterOpts())
+		_, err := UnmarshalFilters(raw, opts)
 
-		var ve *ValidationError
-		require.True(t, errors.As(err, &ve))
-		require.Len(t, ve.Issues, 1)
-		assert.Contains(t, ve.Issues[0].Message, "resolves to an object id")
+		require.NoError(t, err)
+		require.Len(t, warnings, 1)
+		assert.Contains(t, warnings[0].Message, "resolves to an object id")
 	})
 
 	t.Run("leaf without property errors", func(t *testing.T) {
