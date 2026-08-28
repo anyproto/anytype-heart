@@ -189,7 +189,33 @@ func (m *keyMaps) grant(row entity) {
 		m.addFold(anyblockjson.FoldKeyTerm(label), row.key)
 	}
 	m.labelByKey[row.key] = label
-	m.keysByLabel[label] = append(m.keysByLabel[label], row.key)
+	m.addClaimant(label, row.key)
+}
+
+// addClaimant records one claimant of a spelling, first-wins on a repeat —
+// the same guard addFold carries just below, for a sharper reason. keysByLabel
+// is the ambiguity signal the accept side reads: TWO entries mean two live
+// entities, so keyMaps.key refuses to pick and the importer stops to ask for a
+// legend. One entity listed twice therefore refuses a document the exporter
+// had just written, and nothing about it is recoverable downstream — the
+// reader sees a candidate count, not a row count.
+//
+// Nothing in the listing promises a stored key reaches grant once. The
+// relation namespace reads its key off the `relationKey` DETAIL, not off the
+// row identity, so a legacy row and its derived twin both carrying one key are
+// two rows and one entity; the type namespace has the same shape through
+// uniqueKey. The neighbouring maps have taken first-wins against exactly that
+// for as long as they have existed (keyById, idByKey, propertyIdsByKey, and
+// relKeyToId one file over), and GetRelationByKey answers a duplicated
+// relationKey with records[0] — the guard belongs here rather than in an
+// argument that the duplicate cannot happen.
+func (m *keyMaps) addClaimant(label, key string) {
+	for _, existing := range m.keysByLabel[label] {
+		if existing == key {
+			return
+		}
+	}
+	m.keysByLabel[label] = append(m.keysByLabel[label], key)
 }
 
 func (m *keyMaps) addFold(fold, key string) {
@@ -205,21 +231,35 @@ func (m *keyMaps) addFold(fold, key string) {
 // visible claimant of the spelling, plus the bundled table's binding when
 // it has one — sorted, deduplicated. It deliberately says nothing about
 // stored keys: verbatim-first is the caller's step, asked before this one.
+//
+// This is the method that makes the published contract true — the candidate
+// list is a SET, and its LENGTH is what every caller reads as "how many live
+// entities answer to this spelling". addClaimant keeps keysByLabel a set at
+// build time; the dedup here is the second belt, so that the answer stays a
+// set whatever a future population pass puts in the map. Belt and braces on
+// one number is cheap: the map is allocated only for a term someone actually
+// asks about, and getting the number wrong costs a refused document.
 func (m *keyMaps) candidates(term string) []string {
-	out := append([]string(nil), m.keysByLabel[term]...)
+	claimants := m.keysByLabel[term]
+	out := make([]string, 0, len(claimants)+1)
+	seen := make(map[string]bool, len(claimants)+1)
+	add := func(key string) {
+		if key == "" || seen[key] {
+			return
+		}
+		seen[key] = true
+		out = append(out, key)
+	}
+	for _, key := range claimants {
+		add(key)
+	}
 	if m.bundledKey != nil {
 		if key, ok := m.bundledKey(term); ok {
-			seen := false
-			for _, k := range out {
-				if k == key {
-					seen = true
-					break
-				}
-			}
-			if !seen {
-				out = append(out, key)
-			}
+			add(key)
 		}
+	}
+	if len(out) == 0 {
+		return nil
 	}
 	sort.Strings(out)
 	return out
@@ -510,6 +550,16 @@ func (r *Resolvers) TypeKeyCandidates(spelling string) []string {
 // namespace's id→key map, dropping ids the space cannot name (a dropped id
 // only narrows the scope, which degrades toward the loud error rather than
 // toward a wrong resolution).
+//
+// The answer is a SET, like the candidate lists, and for the same reason: the
+// importer INTERSECTS it with the candidates and counts what survives, so a
+// property the type names twice reads as two claimants and the type stops
+// being able to single out its own property — the exact opposite of what the
+// scope exists for. Nothing declares the four lists disjoint (a featured
+// property sitting in `recommendedRelations` as well is a single misordered
+// write away, and the bundled arm concatenates RelationLinks the same way), so
+// the deduplication is done here, once, rather than assumed at the four
+// sites that read it.
 func (r *Resolvers) TypePropertyKeys(typeKey string) []string {
 	if typeKey == "" {
 		return nil
@@ -517,26 +567,47 @@ func (r *Resolvers) TypePropertyKeys(typeKey string) []string {
 	tm := r.typeKeyMaps()
 	if ids, ok := tm.propertyIdsByKey[typeKey]; ok {
 		rm := r.relationKeyMaps()
-		keys := make([]string, 0, len(ids))
+		keys := newKeySet(len(ids))
 		for _, id := range ids {
 			if key, ok := rm.keyById[id]; ok && key != "" {
-				keys = append(keys, key)
+				keys.add(key)
 			} else if key, err := bundle.RelationKeyFromID(id); err == nil {
-				keys = append(keys, string(key))
+				keys.add(string(key))
 			}
 		}
-		return keys
+		return keys.keys
 	}
 	if t, err := bundle.GetType(domain.TypeKey(typeKey)); err == nil {
-		keys := make([]string, 0, len(t.RelationLinks))
+		keys := newKeySet(len(t.RelationLinks))
 		for _, l := range t.RelationLinks {
-			if l != nil && l.Key != "" {
-				keys = append(keys, l.Key)
+			if l != nil {
+				keys.add(l.Key)
 			}
 		}
-		return keys
+		return keys.keys
 	}
 	return nil
+}
+
+// keySet accumulates stored keys in first-seen order, dropping repeats and
+// the empty key. Order is kept rather than sorted: the recommended lists are
+// the type's own ordering and a caller reading them for anything but the
+// count would lose it.
+type keySet struct {
+	keys []string
+	seen map[string]bool
+}
+
+func newKeySet(size int) *keySet {
+	return &keySet{keys: make([]string, 0, size), seen: make(map[string]bool, size)}
+}
+
+func (s *keySet) add(key string) {
+	if key == "" || s.seen[key] {
+		return
+	}
+	s.seen[key] = true
+	s.keys = append(s.keys, key)
 }
 
 func (r *Resolvers) PropertyTermFacts(term string) anyblockjson.KeyTermFacts {

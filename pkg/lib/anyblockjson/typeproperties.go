@@ -533,13 +533,14 @@ func (imp *importer) applyTypeProperties(details *types.Struct) error {
 		// the empty key in the type's recommended list, where it names nothing
 		// and disappears on re-export. Only the resolved key can be judged,
 		// which is why the schema cannot own this.
+		slot := fmt.Sprintf(typePropertyDefinitionsPath+"/%d/"+memberProperty, i)
 		key, isInternal := tp.authoredKey()
 		if !isInternal {
-			key = imp.propertyKey(key)
+			key = imp.propertyKeyIn(key, slot)
 		}
 		if !isWritablePropertyKey(key) {
 			return &ValidationError{Issues: []Issue{{
-				Path:    fmt.Sprintf(typePropertyDefinitionsPath+"/%d/"+memberProperty, i),
+				Path:    slot,
 				Message: unwritableKeyReason("resolved property key", key),
 			}}}
 		}

@@ -141,16 +141,35 @@ type KeyVocabulary interface {
 //
 // storeresolver implements it; the bundled-only default does not (bundled
 // names are unique by CI guard, so neither question arises offline).
+//
+// **Every list this interface returns is a SET.** No key appears twice in a
+// candidate list or in a type's property list. This is not tidiness: the
+// importer reads these lists as COUNTS — "how many live entities answer to
+// this spelling", "does the declared type single one of them out" — and a
+// count is exactly what a bookkeeping slip in the implementation can falsify
+// while leaving every key in the list correct. One entity listed twice reads
+// as two, and the import REFUSES a document that the matching export had just
+// written, with nothing in the document at fault and nothing in the list a
+// reader could check the count against. A refusal is also the one outcome the
+// reader cannot work around: a wrong resolution can be overridden with a
+// legend entry, a refused import stops. The importer takes the distinct keys
+// defensively (distinctKeys in import.go), because Options.Keys accepts an
+// implementation from anyone, but an implementation still owes the set.
 type ScopedKeyVocabulary interface {
 	// PropertyKeyCandidates returns every live property key whose exact
 	// document spelling is the term — the space's claimants plus the
-	// bundled table's binding — sorted. It says nothing about stored keys:
-	// verbatim-first is the caller's step, asked before this one.
+	// bundled table's binding — as a sorted set, no key twice. It says
+	// nothing about stored keys: verbatim-first is the caller's step, asked
+	// before this one.
 	PropertyKeyCandidates(spelling string) []string
-	// TypeKeyCandidates is the type namespace's half.
+	// TypeKeyCandidates is the type namespace's half, under the same set and
+	// ordering contract.
 	TypeKeyCandidates(spelling string) []string
 	// TypePropertyKeys returns the stored property keys the type declares —
-	// the disambiguating scope for a shared property name.
+	// the disambiguating scope for a shared property name. A set, in the
+	// type's own order: it is intersected with a candidate list and the
+	// survivors are counted, so a property the type names through two of its
+	// lists must still be counted once.
 	TypePropertyKeys(typeKey string) []string
 	// PropertyTermFacts / TypeTermFacts diagnose one term for the
 	// verbatim-resolution warnings.

@@ -273,7 +273,32 @@ func (imp *importer) genId() string {
 //     step 4, and the price of any name-addressed scheme — but the importer
 //     says so once per term: a stale or guessed name minting a phantom key,
 //     or an annotation glued onto a copied name.
+//
+// The bare form resolves for a caller with no pointer to offer, and reports
+// an ambiguity against the `properties` member — the slot the overwhelming
+// majority of property spellings are read from. propertyKeyIn is the form
+// that names its own slot.
 func (imp *importer) propertyKey(slug string) string {
+	return imp.propertyKeyIn(slug, "/properties")
+}
+
+// propertyKeyIn is propertyKey with the JSON pointer of the slot that spelled
+// the term, used for one thing: the ambiguity refusal below.
+//
+// It used to report every ambiguity at `/property_internal_keys`, which reads
+// as a pointer and is not one — that member is ABSENT in precisely the
+// documents that reach the refusal, because a legend entry is what would have
+// settled the spelling and the whole complaint is that none was written. A
+// reader following the pointer arrives at nothing and has no way back to the
+// slot that named the term. The message still asks for the legend entry, which
+// is the repair; the pointer names the fault's location, which is the slot.
+//
+// The pointer a caller passes is only ever as precise as the slot it read
+// from: the detail seam knows the exact member, the block slots do not (they
+// are built without a pointer, and the empty-key refusal beside them reports
+// the coarse `/blocks` for the same reason — a coarse true pointer beats a
+// precise-looking wrong one).
+func (imp *importer) propertyKeyIn(slug, path string) string {
 	if key, ok := imp.doc.PropertyKeys[slug]; ok && key != "" {
 		return key
 	}
@@ -289,7 +314,7 @@ func (imp *importer) propertyKey(slug string) string {
 	if facts.LiveStoredKey {
 		return slug // chain step 2: an exact stored key wins, verbatim
 	}
-	cands := scoped.PropertyKeyCandidates(slug)
+	cands := distinctKeys(scoped.PropertyKeyCandidates(slug))
 	switch len(cands) {
 	case 1:
 		return cands[0]
@@ -302,7 +327,7 @@ func (imp *importer) propertyKey(slug string) string {
 	}
 	if imp.scopeType != "" {
 		var inScope []string
-		for _, key := range scoped.TypePropertyKeys(imp.scopeType) {
+		for _, key := range distinctKeys(scoped.TypePropertyKeys(imp.scopeType)) {
 			for _, c := range cands {
 				if c == key {
 					inScope = append(inScope, c)
@@ -314,11 +339,45 @@ func (imp *importer) propertyKey(slug string) string {
 			return inScope[0]
 		}
 	}
-	imp.refuse("/"+memberPropertyInternalKeys, fmt.Sprintf(
+	imp.refuse(path, fmt.Sprintf(
 		"the spelling %q names %d live properties in this space and the declared "+
 			"type does not single one out; add a %s entry binding the spelling to "+
 			"the intended stored key", slug, len(cands), memberPropertyInternalKeys))
 	return slug
+}
+
+// distinctKeys is what makes a vocabulary's two list answers behave as the
+// SETS ScopedKeyVocabulary says they are.
+//
+// Both lists are read as COUNTS — "how many live entities answer to this
+// spelling", "does the declared type single one of them out" — and a count is
+// the one thing a bookkeeping slip in the producer can falsify while leaving
+// every key in the list correct. One entity listed twice then reads as two,
+// the importer refuses a document its own exporter had just written, and the
+// reader has nothing to compare the list against to notice. The refusal is
+// also the unrecoverable outcome: a resolution can be overridden with a legend
+// entry, a refusal stops the import.
+//
+// storeresolver keeps both lists sets at the source (addClaimant,
+// TypePropertyKeys) and that is where the fix belongs; this is the reader's
+// half of the same guarantee, because ScopedKeyVocabulary is a public
+// interface and Options.Keys accepts an implementation from anyone. Cost is
+// one map per ambiguous term. Order is preserved, so the sorted list a
+// conforming vocabulary returns stays sorted.
+func distinctKeys(keys []string) []string {
+	if len(keys) < 2 {
+		return keys
+	}
+	seen := make(map[string]bool, len(keys))
+	out := make([]string, 0, len(keys))
+	for _, key := range keys {
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, key)
+	}
+	return out
 }
 
 // warnVerbatimPropertyTerm reports, once per term, what a verbatim
@@ -380,7 +439,7 @@ func (imp *importer) warnVerbatimPropertyTerm(term string, facts *KeyTermFacts) 
 // (`/blocks`) because these slots are built without one and inventing a
 // precise-looking pointer that is wrong is worse than a coarse true one.
 func (imp *importer) propertyKeyAt(slug, slot string) string {
-	key := imp.propertyKey(slug)
+	key := imp.propertyKeyIn(slug, "/blocks")
 	if slug != "" && key == "" {
 		imp.refuse("/blocks", fmt.Sprintf(
 			"the vocabulary resolves the %s spelling %q to the empty key; "+
@@ -409,20 +468,6 @@ func (imp *importer) refuse(path, message string) {
 	if imp.refusal == nil {
 		imp.refusal = &Issue{Path: path, Message: message}
 	}
-}
-
-// propertyKeys is the list form (a link block's shown properties). Like the
-// singular one it belongs to the importer, not to Options: Options holds the
-// reader's vocabulary, and the document's own legend outranks it.
-func (imp *importer) propertyKeys(slugs []string) []string {
-	if len(slugs) == 0 {
-		return slugs
-	}
-	out := make([]string, len(slugs))
-	for i, slug := range slugs {
-		out[i] = imp.propertyKey(slug)
-	}
-	return out
 }
 
 // typeKey inverts a TYPE key slot: the document's own legend first (§3),
@@ -460,7 +505,7 @@ func (imp *importer) typeKey(slug, path string) string {
 	if facts.LiveStoredKey {
 		return slug
 	}
-	cands := scoped.TypeKeyCandidates(slug)
+	cands := distinctKeys(scoped.TypeKeyCandidates(slug))
 	switch len(cands) {
 	case 1:
 		return cands[0]
@@ -652,7 +697,7 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 			continue // lifted into the envelope; a stray copy must not leak
 		}
 		// the document spells display names (§3); the store binds stored keys
-		key := imp.propertyKey(slug)
+		key := imp.propertyKeyIn(slug, "/properties/"+escapeJSONPointer(slug))
 		// admission runs on the FINAL resolved key, here at the seam where
 		// details are written (§3). Validate already refused everything its
 		// bundled chain could resolve, but a caller-supplied vocabulary can

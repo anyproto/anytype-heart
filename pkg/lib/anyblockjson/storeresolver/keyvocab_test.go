@@ -759,3 +759,71 @@ func TestKeyVocab_ADeletedTypeIsNamedByIdButOwnsNoName(t *testing.T) {
 		assert.Equal(t, "retired_project", byId, "while still being nameable by id")
 	})
 }
+
+// One entity arriving on TWO rows — the shape the listing does not forbid
+// and the rest of this file already guards against with first-wins (keyById,
+// idByKey, and relKeyToId one file over; GetRelationByKey answers a
+// duplicated relationKey with records[0]). Every SET the vocabulary
+// publishes has to survive it, and the candidate list most of all: that list
+// is the importer's ambiguity signal — two entries mean two live entities
+// and the import stops to ask for a legend — so one entity listed twice
+// would refuse a document this very exporter had just written, from a pure
+// bookkeeping slip rather than from anything the space actually holds.
+func TestOneEntityOnTwoRowsIsStillOneCandidate(t *testing.T) {
+	t.Run("a property key carried by two rows is one candidate", func(t *testing.T) {
+		// given — a legacy row and the derived one, both live, both carrying
+		// the same relationKey and the same name (the relation namespace
+		// reads its key off the `relationKey` detail, not off the id, so
+		// nothing about the row identity keeps the two apart)
+		r := vocabFixture(t,
+			relationRow("legacy-row", bsonPropKey, "Manual property"),
+			relationRow("rel-"+bsonPropKey, bsonPropKey, "Manual property"),
+		)
+		want := []string{bsonPropKey}
+
+		// when
+		got := r.PropertyKeyCandidates("Manual property")
+
+		// then
+		assert.Equal(t, want, got, "one entity, one candidate")
+		key, ok := r.PropertyKey("Manual property")
+		require.True(t, ok, "one entity is not an ambiguity — the name still resolves")
+		assert.Equal(t, bsonPropKey, key)
+	})
+
+	t.Run("a type key carried by two rows is one candidate", func(t *testing.T) {
+		// given
+		r := vocabFixture(t,
+			typeRow("legacy-type-row", bsonTypeKey, "Sprint"),
+			typeRow("ot-"+bsonTypeKey, bsonTypeKey, "Sprint"),
+		)
+		want := []string{bsonTypeKey}
+
+		// when
+		got := r.TypeKeyCandidates("Sprint")
+
+		// then
+		assert.Equal(t, want, got)
+		key, ok := r.TypeKey("Sprint")
+		require.True(t, ok, "the type namespace has no wider scope to recover in — it must not be lost here")
+		assert.Equal(t, bsonTypeKey, key)
+	})
+
+	t.Run("a property named by two of the type's four lists is one scope entry", func(t *testing.T) {
+		// given — nothing declares the four recommended lists disjoint, and
+		// the scope is COUNTED by the importer: a property listed as both
+		// featured and ordinary would make its own type unable to single it
+		// out, which is the opposite of what the scope exists for
+		task := typeRow("type-task", bsonTypeKey, "Task")
+		task[bundle.RelationKeyRecommendedRelations] = domain.StringList([]string{"objidA"})
+		task[bundle.RelationKeyRecommendedFeaturedRelations] = domain.StringList([]string{"objidA"})
+		r := vocabFixture(t, task, relationRow("objidA", bsonPropKey, "Projects"))
+		want := []string{bsonPropKey}
+
+		// when
+		got := r.TypePropertyKeys(bsonTypeKey)
+
+		// then
+		assert.Equal(t, want, got, "the type declares one property, however many of its lists name it")
+	})
+}

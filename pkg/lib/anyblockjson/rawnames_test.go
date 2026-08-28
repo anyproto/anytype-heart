@@ -18,25 +18,39 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-// nameVocab spells every key it is given by its display name — the shape
-// storeresolver produces — and inverts only the unambiguous ones, exposing
-// the rest through the ScopedKeyVocabulary capability exactly as the
-// space-backed vocabulary does.
+// nameVocab is the stand-in for a SPACE-backed vocabulary in this package's
+// own tests, and it is held to the shipped one's contract rather than to a
+// convenient approximation of it. storeresolver is the implementation it
+// mirrors, method for method:
+//
+//   - the emit side runs grant's degradation ladder, so a name that is some
+//     other live entity's stored key degrades to `<name> (<tail6>)` here too,
+//     instead of silently falling back to the plain stored key;
+//   - the candidate lists are SETS, sorted, keyed by the GRANTED LABEL — a
+//     claimant that degraded is listed under the spelling it actually writes;
+//   - an exact live stored key outranks every table (verbatim-first);
+//   - an ambiguous candidate set is REFUSED. Nothing behind it is consulted,
+//     the fold layer included.
+//
+// The last two are what a double gets wrong for free. Falling through to
+// BundledKeyVocabulary after an ambiguous set — which this double used to do
+// — means every test that thought it was pinning "the importer refuses to
+// guess" was really pinning "the double guessed the bundled twin", and no
+// assertion in the file could tell the difference. Duplicate-blind candidate
+// lists are the same shape of blindness one layer down: the importer reads a
+// candidate list as a COUNT, so a double that cannot produce a wrong count
+// cannot test what the importer does with one (keycandidates_test.go supplies
+// a deliberately duplicating vocabulary for exactly that).
 type nameVocab struct {
 	names     map[string]string   // stored key -> display name
 	typeNames map[string]string   // stored type key -> display name
 	typeProps map[string][]string // stored type key -> its property keys
-}
-
-func (v nameVocab) PropertySlug(key string) string {
-	if name := v.names[key]; name != "" && !v.storedKey(name) {
-		return name
-	}
-	return BundledKeyVocabulary{}.PropertySlug(key)
 }
 
 func (v nameVocab) storedKey(term string) bool {
@@ -44,76 +58,197 @@ func (v nameVocab) storedKey(term string) bool {
 	return ok
 }
 
-func (v nameVocab) PropertyKey(spelling string) (string, bool) {
-	if v.storedKey(spelling) {
-		return spelling, false // verbatim-first
+func (v nameVocab) storedTypeKey(term string) bool {
+	_, ok := v.typeNames[term]
+	return ok
+}
+
+// grantedLabel is keyMaps.grant's ladder, the half a double can drop without
+// any assertion noticing: a name that is some OTHER live entity's stored key
+// could never resolve back to its owner, because an exact stored key outranks
+// every table at every reader. Its holder therefore degrades to
+// `<name> (<tail6>)`, and to no label at all when even that string is taken or
+// cannot be built — in which case the stored key is the spelling.
+func grantedLabel(name, key string, storedKey func(string) bool) string {
+	if name == "" || !storedKey(name) {
+		return name
 	}
-	if cands := v.PropertyKeyCandidates(spelling); len(cands) == 1 {
-		return cands[0], true
+	label := DisambiguatedKeySpelling(name, key)
+	if label == "" || storedKey(label) {
+		return ""
 	}
-	return BundledKeyVocabulary{}.PropertyKey(spelling)
+	return label
+}
+
+// propertyLabel / typeLabel are labelByKey: the spelling one live, visible,
+// non-bundled entity is granted. A bundled key takes the code table's word in
+// every space, so the space row never speaks for it.
+func (v nameVocab) propertyLabel(key string) string {
+	if bundle.HasRelation(domain.RelationKey(key)) {
+		return ""
+	}
+	return grantedLabel(PropertyLabel(key, v.names[key]), key, v.storedKey)
+}
+
+func (v nameVocab) typeLabel(key string) string {
+	if bundle.HasObjectTypeByKey(domain.TypeKey(key)) {
+		return ""
+	}
+	return grantedLabel(TypeLabel(key, v.typeNames[key]), key, v.storedTypeKey)
+}
+
+func (v nameVocab) PropertySlug(key string) string {
+	if bundle.HasRelation(domain.RelationKey(key)) {
+		// the bundled table is the authority in every space and offline —
+		// unless a live stored key owns the very string, which outranks it
+		if spelling := (BundledKeyVocabulary{}).PropertySlug(key); spelling != key && !v.storedKey(spelling) {
+			return spelling
+		}
+		return key
+	}
+	if label := v.propertyLabel(key); label != "" {
+		return label
+	}
+	return key
 }
 
 func (v nameVocab) TypeSlug(key string) string {
-	if name := v.typeNames[key]; name != "" {
-		return name
+	if bundle.HasObjectTypeByKey(domain.TypeKey(key)) {
+		if spelling := (BundledKeyVocabulary{}).TypeSlug(key); spelling != key && !v.storedTypeKey(spelling) {
+			return spelling
+		}
+		return key
 	}
-	return BundledKeyVocabulary{}.TypeSlug(key)
+	if label := v.typeLabel(key); label != "" {
+		return label
+	}
+	return key
+}
+
+func (v nameVocab) PropertyKey(spelling string) (string, bool) {
+	if v.storedKey(spelling) {
+		return spelling, false // verbatim-first: an exact stored key wins
+	}
+	switch cands := v.PropertyKeyCandidates(spelling); len(cands) {
+	case 1:
+		return cands[0], true
+	case 0:
+		return BundledKeyVocabulary{}.PropertyKey(spelling) // the forgiving fold
+	default:
+		// several live claimants: refused outright, and the fold layer is not
+		// consulted either. A caller with type context may resolve this; a
+		// caller without one degrades to the verbatim term, never to a guess
+		return spelling, false
+	}
 }
 
 func (v nameVocab) TypeKey(spelling string) (string, bool) {
-	if _, isKey := v.typeNames[spelling]; isKey {
+	if v.storedTypeKey(spelling) {
 		return spelling, false
 	}
-	if cands := v.TypeKeyCandidates(spelling); len(cands) == 1 {
+	switch cands := v.TypeKeyCandidates(spelling); len(cands) {
+	case 1:
 		return cands[0], true
+	case 0:
+		return BundledKeyVocabulary{}.TypeKey(spelling)
+	default:
+		return spelling, false
 	}
-	return BundledKeyVocabulary{}.TypeKey(spelling)
 }
 
+// PropertyKeyCandidates / TypeKeyCandidates are keysByLabel plus the bundled
+// table's binding: every live claimant of the exact spelling, as a sorted SET.
+// They are keyed by the granted LABEL, not by the raw name — a claimant that
+// degraded through the ladder answers to the spelling it actually writes, and
+// no longer to the one it lost.
 func (v nameVocab) PropertyKeyCandidates(spelling string) []string {
-	var out []string
-	for key, name := range v.names {
-		if name == spelling {
-			out = append(out, key)
+	out := newTestKeySet()
+	for key := range v.names {
+		if v.propertyLabel(key) == spelling {
+			out.add(key)
 		}
 	}
 	if key, ok := BundledPropertyKeyByName(spelling); ok {
-		out = append(out, key)
+		out.add(key)
 	}
-	sortStrings(out)
-	return out
+	return out.sorted()
 }
 
 func (v nameVocab) TypeKeyCandidates(spelling string) []string {
-	var out []string
-	for key, name := range v.typeNames {
-		if name == spelling {
-			out = append(out, key)
+	out := newTestKeySet()
+	for key := range v.typeNames {
+		if v.typeLabel(key) == spelling {
+			out.add(key)
 		}
 	}
 	if key, ok := BundledTypeKeyByName(spelling); ok {
-		out = append(out, key)
+		out.add(key)
 	}
-	sortStrings(out)
-	return out
+	return out.sorted()
 }
 
-func (v nameVocab) TypePropertyKeys(typeKey string) []string { return v.typeProps[typeKey] }
+// TypePropertyKeys is a set too: the importer intersects it with the candidate
+// list and counts what survives, so a property the type named twice would stop
+// the type from singling out its own property.
+func (v nameVocab) TypePropertyKeys(typeKey string) []string {
+	out := newTestKeySet()
+	for _, key := range v.typeProps[typeKey] {
+		out.add(key)
+	}
+	return out.keys
+}
 
 func (v nameVocab) PropertyTermFacts(term string) KeyTermFacts {
 	facts := KeyTermFacts{LiveStoredKey: v.storedKey(term)}
-	for _, name := range v.names {
-		if KeyTermExtendsName(term, name) && len(name) > len(facts.ExtendsName) {
-			facts.ExtendsName = name
-		}
-	}
+	facts.ExtendsName = extendedLiveName(term, v.names, PropertyLabel)
 	return facts
 }
 
 func (v nameVocab) TypeTermFacts(term string) KeyTermFacts {
-	_, isKey := v.typeNames[term]
-	return KeyTermFacts{LiveStoredKey: isKey}
+	return KeyTermFacts{
+		LiveStoredKey: v.storedTypeKey(term),
+		ExtendsName:   extendedLiveName(term, v.typeNames, TypeLabel),
+	}
+}
+
+// extendedLiveName is extendsLiveName: the live name the term extends past a
+// word boundary, longest first, ties broken lexicographically so the answer
+// does not depend on Go's map order.
+func extendedLiveName(term string, names map[string]string, label func(key, name string) string) string {
+	var best string
+	for key, name := range names {
+		name = label(key, name)
+		if name == "" || !KeyTermExtendsName(term, name) {
+			continue
+		}
+		if len(name) > len(best) || (len(name) == len(best) && name < best) {
+			best = name
+		}
+	}
+	return best
+}
+
+// testKeySet accumulates stored keys in first-seen order, dropping repeats.
+type testKeySet struct {
+	keys []string
+	seen map[string]bool
+}
+
+func newTestKeySet() *testKeySet {
+	return &testKeySet{seen: map[string]bool{}}
+}
+
+func (s *testKeySet) add(key string) {
+	if key == "" || s.seen[key] {
+		return
+	}
+	s.seen[key] = true
+	s.keys = append(s.keys, key)
+}
+
+func (s *testKeySet) sorted() []string {
+	sortStrings(s.keys)
+	return s.keys
 }
 
 func sortStrings(s []string) {
@@ -223,6 +358,65 @@ func TestRawNames_TwoPropertiesCollideInsideOneDocument(t *testing.T) {
 
 	// fixpoint — the suffix is deterministic off the name and the key's own
 	// tail, so a second generation re-derives the identical spellings
+	again, err := Marshal(model.SmartBlockType_Page, back, Options{Keys: vocab})
+	require.NoError(t, err)
+	assert.Equal(t, string(data), string(again))
+}
+
+// A name that IS some other live property's stored key. Verbatim-first
+// outranks every table at every reader, so that spelling can never resolve to
+// the entity merely NAMED it — and the holder degrades through grant's ladder
+// rather than writing a spelling that lands on somebody else's row. The bson
+// key is unreadable, so the rung taken is the disambiguated name, not the raw
+// key; the entity that OWNS the string keeps its own plain name, because
+// nothing contests it.
+//
+// This is the arm this file's header has always claimed and the test double
+// could not previously produce: the double skipped the ladder's middle rung
+// and answered with the raw 24-hex stored key, which is a spelling the shipped
+// vocabulary never writes for a bson id.
+func TestRawNames_ANameThatIsAnotherLivePropertysStoredKey(t *testing.T) {
+	// given — one relation whose STORED KEY is the string "Projects", and
+	// another whose display NAME is "Projects"
+	const holder = "6a7663db61fab21cd4b90044"
+	vocab := nameVocab{names: map[string]string{
+		"Projects": "Task list",
+		holder:     "Projects",
+	}}
+	snap := &model.SmartBlockSnapshotBase{Details: &types.Struct{Fields: map[string]*types.Value{
+		"id":       pbtypes.String("o1"),
+		"Projects": pbtypes.String("value of the key holder"),
+		holder:     pbtypes.String("value of the named one"),
+	}}}
+	want := map[string]string{
+		"Task list":         "value of the key holder",
+		"Projects (b90044)": "value of the named one",
+	}
+
+	// when
+	data, err := Marshal(model.SmartBlockType_Page, snap, Options{Keys: vocab})
+	require.NoError(t, err)
+
+	// then — I1, and neither claimant wrote the contested string
+	require.NoError(t, Validate(data), "I1:\n%s", data)
+	var doc struct {
+		Properties   map[string]string `json:"properties"`
+		PropertyKeys map[string]string `json:"property_internal_keys"`
+	}
+	require.NoError(t, json.Unmarshal(data, &doc))
+	assert.Equal(t, want, doc.Properties)
+	assert.NotContains(t, doc.Properties, "Projects",
+		"the string is one entity's address and the other's lost name: it is written for neither")
+	assert.Equal(t, holder, doc.PropertyKeys["Projects (b90044)"],
+		"the degraded spelling is nobody's chain, so the legend states it")
+
+	// and back onto both stored keys
+	_, back, err := Unmarshal(data, Options{GenerateId: seqIds("g"), Keys: vocab})
+	require.NoError(t, err)
+	assert.Equal(t, "value of the key holder", back.Details.Fields["Projects"].GetStringValue())
+	assert.Equal(t, "value of the named one", back.Details.Fields[holder].GetStringValue())
+
+	// fixpoint — the tail6 suffix is derived, so generation 2 re-derives it
 	again, err := Marshal(model.SmartBlockType_Page, back, Options{Keys: vocab})
 	require.NoError(t, err)
 	assert.Equal(t, string(data), string(again))
