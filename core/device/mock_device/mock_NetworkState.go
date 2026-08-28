@@ -237,6 +237,51 @@ func (_c *MockNetworkState_IsOffline_Call) RunAndReturn(run func() bool) *MockNe
 	return _c
 }
 
+// NetworkIdentity provides a mock function with no fields
+func (_m *MockNetworkState) NetworkIdentity() string {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for NetworkIdentity")
+	}
+
+	var r0 string
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	return r0
+}
+
+// MockNetworkState_NetworkIdentity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'NetworkIdentity'
+type MockNetworkState_NetworkIdentity_Call struct {
+	*mock.Call
+}
+
+// NetworkIdentity is a helper method to define mock.On call
+func (_e *MockNetworkState_Expecter) NetworkIdentity() *MockNetworkState_NetworkIdentity_Call {
+	return &MockNetworkState_NetworkIdentity_Call{Call: _e.mock.On("NetworkIdentity")}
+}
+
+func (_c *MockNetworkState_NetworkIdentity_Call) Run(run func()) *MockNetworkState_NetworkIdentity_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockNetworkState_NetworkIdentity_Call) Return(_a0 string) *MockNetworkState_NetworkIdentity_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockNetworkState_NetworkIdentity_Call) RunAndReturn(run func() string) *MockNetworkState_NetworkIdentity_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RegisterConnectivityHook provides a mock function with given fields: hook
 func (_m *MockNetworkState) RegisterConnectivityHook(hook func(bool)) {
 	_m.Called(hook)

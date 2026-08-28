@@ -62,6 +62,12 @@ type NetworkState interface {
 	// interface with no real connectivity); callers must treat this as a hint
 	// for backing off, not as a guarantee.
 	IsOffline() bool
+	// NetworkIdentity is an opaque key identifying the current network:
+	// client-reported type and path id (mobile) combined with the net
+	// monitor's interface snapshot (desktop). Equal keys mean the device is
+	// still on the same network; callers use it to scope per-network state
+	// like transport penalties.
+	NetworkIdentity() string
 }
 
 type openedObjectRefresher interface {
@@ -413,6 +419,13 @@ func (n *networkState) fingerprint() string {
 	state, id := n.networkState, n.networkId
 	n.networkMu.Unlock()
 	return fmt.Sprintf("%d|%s|%d", state, id, n.monitorGen.Load())
+}
+
+func (n *networkState) NetworkIdentity() string {
+	n.networkMu.Lock()
+	state, id := n.networkState, n.networkId
+	n.networkMu.Unlock()
+	return fmt.Sprintf("%d|%s|%s", state, id, n.monitorSnapshot.Load())
 }
 
 func (n *networkState) IsOffline() bool {

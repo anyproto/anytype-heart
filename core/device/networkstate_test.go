@@ -419,3 +419,42 @@ func TestNetworkState_ProvideStat(t *testing.T) {
 	assert.Equal(t, int64(1), st.NetworkReportsDuplicate)
 	assert.Equal(t, int64(1), st.Recoveries)
 }
+
+func TestNetworkState_NetworkIdentity(t *testing.T) {
+	t.Run("identity combines type, path id and monitor snapshot", func(t *testing.T) {
+		// given
+		state := &networkState{}
+		state.SetNetworkState(model.DeviceNetworkType_WIFI, "wifi-1")
+		state.onMonitorSnapshot("10.0.0.5", false)
+
+		// when
+		identity := state.NetworkIdentity()
+
+		// then
+		assert.Equal(t, "0|wifi-1|10.0.0.5", identity)
+	})
+	t.Run("identity changes when the network path changes", func(t *testing.T) {
+		// given
+		state := &networkState{}
+		state.SetNetworkState(model.DeviceNetworkType_WIFI, "wifi-1")
+		before := state.NetworkIdentity()
+
+		// when
+		state.SetNetworkState(model.DeviceNetworkType_WIFI, "wifi-2")
+
+		// then
+		assert.NotEqual(t, before, state.NetworkIdentity())
+	})
+	t.Run("identity stable across duplicate reports", func(t *testing.T) {
+		// given
+		state := &networkState{}
+		state.SetNetworkState(model.DeviceNetworkType_WIFI, "wifi-1")
+		before := state.NetworkIdentity()
+
+		// when
+		state.SetNetworkState(model.DeviceNetworkType_WIFI, "wifi-1")
+
+		// then
+		assert.Equal(t, before, state.NetworkIdentity())
+	})
+}
