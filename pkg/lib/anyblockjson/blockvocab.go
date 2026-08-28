@@ -162,7 +162,7 @@ func mustSchemaBlockProperties() map[string]bool {
 // (the PATCH op schemas): those defs are additionalProperties:false, so a name
 // they publish that the format does not know is a field no document can ever
 // carry, and a constrained decoder shown it emits a block the codec rejects.
-// Block attribute names are NOT key slots (ADDRESSING §7.5a-4) — this is the
+// Block attribute names are NOT key slots (§3) — this is the
 // build-enforced form of that exclusion.
 func BlockPropertyNames() []string {
 	out := make([]string, 0, len(blockPropertyNames))

@@ -37,7 +37,7 @@ func TestNamedEnum_LayoutAlign(t *testing.T) {
 		}
 		data, err := Marshal(model.SmartBlockType_Page, snap, Options{})
 		require.NoError(t, err)
-		assert.Contains(t, string(data), `"layout_align": "center"`,
+		assert.Contains(t, string(data), `"Layout align": "center"`,
 			"the same four names blocks and view columns spell — one concept, one spelling (§15 #14)")
 		require.NoError(t, Validate(data), "I1: Marshal never emits what its own Validate rejects")
 	})
@@ -88,7 +88,7 @@ func TestNamedEnum_LayoutAlign(t *testing.T) {
 		}
 		data, err := Marshal(model.SmartBlockType_Page, snap, Options{})
 		require.NoError(t, err)
-		assert.Contains(t, string(data), `"layout_align": 99`,
+		assert.Contains(t, string(data), `"Layout align": 99`,
 			"a stored value outside the vocabulary round-trips as its number rather than being lost")
 		require.NoError(t, Validate(data), "I1: Marshal never emits what its own Validate rejects")
 	})
@@ -113,8 +113,8 @@ func TestNamedEnum_Provenance(t *testing.T) {
 		}
 		data, err := Marshal(model.SmartBlockType_Page, snap, Options{})
 		require.NoError(t, err)
-		assert.Contains(t, string(data), `"origin": "builtin"`)
-		assert.Contains(t, string(data), `"import_type": "markdown"`)
+		assert.Contains(t, string(data), `"Origin": "builtin"`)
+		assert.Contains(t, string(data), `"Import Type": "markdown"`)
 		require.NoError(t, Validate(data), "I1: Marshal never emits what its own Validate rejects")
 	})
 
@@ -222,7 +222,7 @@ func TestNamedEnum_ImageKind(t *testing.T) {
 			}
 			data, err := Marshal(model.SmartBlockType_FileObject, snap, Options{})
 			require.NoError(t, err)
-			assert.Contains(t, string(data), `"image_kind": "`+want+`"`,
+			assert.Contains(t, string(data), `"Image kind": "`+want+`"`,
 				"the kind is spelled, not left as the proto integer")
 			require.NoError(t, Validate(data), "I1: Marshal never emits what its own Validate rejects")
 		}

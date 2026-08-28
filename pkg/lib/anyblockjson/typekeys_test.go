@@ -350,13 +350,15 @@ func TestExportImport_PropertyAndTypeNamespacesShareATerm(t *testing.T) {
 }
 
 // One term, one key — document-wide, per namespace: a stored type key named
-// anywhere in the document always keeps its own term, so no other key's slug
-// may take it, and a contested slug goes to its first claimant.
+// anywhere in the document always keeps its own term, so no other key's
+// spelling may take it, and the contested claimant degrades through the
+// ladder — its key is a minted bson id, so it takes `<name> (<tail6>)`.
 func TestExport_TypeTermLedgerBacksACollidingSlugOff(t *testing.T) {
-	// the envelope names customTypeKey, whose vocabulary slug is `wiki_person`
-	// — but the document ALSO names the stored key `wiki_person` in
-	// object_types, so the slug is taken (verbatim-first) and the envelope
-	// falls back to the stored key, which is always its own address.
+	// the envelope names customTypeKey, whose vocabulary spelling is
+	// `wiki_person` — but the document ALSO names the stored key
+	// `wiki_person` in object_types, so the spelling is taken
+	// (verbatim-first) and the envelope claimant degrades to the suffixed
+	// form, deterministic off the name and the key's own tail.
 	vocab := typedSpaceVocabulary{typeSlugOf: map[string]string{customTypeKey: "wiki_person"}}
 	snap := &model.SmartBlockSnapshotBase{
 		Blocks: []*model.Block{{Id: "t1",
@@ -378,20 +380,19 @@ func TestExport_TypeTermLedgerBacksACollidingSlugOff(t *testing.T) {
 	require.NoError(t, err)
 
 	doc := decodeEnvelope(t, data)
-	assert.Equal(t, customTypeKey, doc.Type,
-		"the slug is not emitted — its spelling belongs to the stored key wiki_person")
+	assert.Equal(t, "wiki_person (2d1a7c)", doc.Type,
+		"the plain spelling belongs to the stored key wiki_person; the claimant takes the suffix")
 	require.Len(t, doc.TypeProps(), 1)
 	assert.Equal(t, []string{"wiki_person"}, doc.TypeProps()[0].ObjectTypes)
 	assert.Equal(t, map[string]string{
-		"wiki_person": "wiki_person",
-		customTypeKey: customTypeKey,
+		"wiki_person":          "wiki_person",
+		"wiki_person (2d1a7c)": customTypeKey,
 	}, doc.TypeKeys,
 		"the bundled table is silent on both keys, but THIS vocabulary binds the "+
 			"spelling `wiki_person` to customTypeKey — so the stored key written verbatim "+
 			"owes the identity entry, or its own space reads the target type back as the "+
-			"type that took its spelling. customTypeKey names itself for the same reason "+
-			"one step later: the bundled table cannot speak for it either, so nothing "+
-			"stops a reader from binding the spelling once this type is deleted")
+			"type that took its spelling; and the suffixed spelling owes its inverse, "+
+			"because no shipped table has ever heard of it")
 
 	// a package-only reader, which has no vocabulary at all
 	_, snap2, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
@@ -481,7 +482,7 @@ func TestExport_ATemplateNotLedByTheTemplateKeyKeepsItsTarget(t *testing.T) {
 
 	doc := decodeEnvelope(t, data)
 	assert.Equal(t, "template", doc.Kind)
-	assert.Equal(t, "task", doc.Type)
+	assert.Equal(t, "Task", doc.Type)
 	assert.Equal(t, customTypeKey, doc.TemplateFor, "the target type used to be dropped here")
 	assert.Empty(t, warned, "and the drop used to be the only thing said about it")
 
@@ -655,7 +656,7 @@ func TestExport_AKeylessObjectTypeIsDroppedAndDoesNotTakeItsSiblings(t *testing.
 	t.Run("a hole in front: the target type moves up into the type slot", func(t *testing.T) {
 		doc, warned, back := marshal(t, model.SmartBlockType_Template, "ot-", "ot-task")
 
-		assert.Equal(t, "task", doc.Type, "the good sibling survives its bad neighbour")
+		assert.Equal(t, "Task", doc.Type, "the good sibling survives its bad neighbour")
 		assert.Equal(t, "template", doc.Kind,
 			"the type term is no longer `template`, so the kind must be spelled out")
 		assert.Equal(t, []string{"ot-task"}, back)
@@ -667,7 +668,7 @@ func TestExport_AKeylessObjectTypeIsDroppedAndDoesNotTakeItsSiblings(t *testing.
 	t.Run("a hole behind: the type survives and the drop is still reported", func(t *testing.T) {
 		doc, warned, back := marshal(t, model.SmartBlockType_Template, "ot-template", "ot-")
 
-		assert.Equal(t, "template", doc.Type)
+		assert.Equal(t, "Template", doc.Type)
 		assert.Empty(t, doc.TemplateFor, "there is no second type to name")
 		assert.Equal(t, []string{"ot-template"}, back)
 		require.Len(t, warned, 1)
@@ -677,7 +678,7 @@ func TestExport_AKeylessObjectTypeIsDroppedAndDoesNotTakeItsSiblings(t *testing.
 	t.Run("a hole between: template_for takes the next real entry", func(t *testing.T) {
 		doc, warned, back := marshal(t, model.SmartBlockType_Template, "ot-template", "ot-", "ot-"+customTypeKey)
 
-		assert.Equal(t, "template", doc.Type)
+		assert.Equal(t, "Template", doc.Type)
 		assert.Equal(t, customTypeKey, doc.TemplateFor)
 		assert.Equal(t, []string{"ot-template", "ot-" + customTypeKey}, back)
 		require.Len(t, warned, 1)
@@ -707,7 +708,7 @@ func TestExport_AKeylessObjectTypeIsDroppedAndDoesNotTakeItsSiblings(t *testing.
 	t.Run("a keyed entry past the modelled positions is reported too", func(t *testing.T) {
 		doc, warned, back := marshal(t, model.SmartBlockType_Page, "ot-page", "ot-task")
 
-		assert.Equal(t, "page", doc.Type)
+		assert.Equal(t, "Page", doc.Type)
 		assert.Equal(t, []string{"ot-page"}, back, "the second type is not in the document")
 		require.Len(t, warned, 1)
 		assert.Equal(t, "/type", warned[0].Path)
@@ -753,7 +754,7 @@ func TestExport_TypeLegendNamesOnlyTypesTheDocumentMentions(t *testing.T) {
 		require.NoError(t, err)
 
 		doc := decodeEnvelope(t, data)
-		assert.Equal(t, "page", doc.Type)
+		assert.Equal(t, "Page", doc.Type)
 		assert.Empty(t, doc.TypeKeys,
 			"the document never spells `task`, so it owes no entry inverting it")
 		assert.NotContains(t, string(data), customTypeKey,
@@ -828,7 +829,7 @@ func TestImport_TheVocabularyMayMoveTheTemplateSpelling(t *testing.T) {
 		// a moved spelling cannot cost the target type any more
 		out, err := Marshal(sbType, snap, Options{})
 		require.NoError(t, err)
-		assert.Equal(t, "task", decodeEnvelope(t, out).TemplateFor)
+		assert.Equal(t, "Task", decodeEnvelope(t, out).TemplateFor)
 	})
 
 	t.Run("a spelling the vocabulary binds onto the template key is just a type", func(t *testing.T) {

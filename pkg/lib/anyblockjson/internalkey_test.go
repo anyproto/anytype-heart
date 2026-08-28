@@ -132,7 +132,7 @@ func TestPropertyDictionary_ExportWritesBothIdentityMembers(t *testing.T) {
 		{Key: "6a83296f61fab2265263ae34", Name: "Budget", Format: model.RelationFormat_number},
 	}})
 	require.NoError(t, err)
-	assert.Contains(t, string(out), `"property": "due_date"`)
+	assert.Contains(t, string(out), `"property": "Due date"`)
 	assert.Contains(t, string(out), `"internal_key": "dueDate"`)
 	assert.Contains(t, string(out), `"property": "6a83296f61fab2265263ae34"`,
 		"a bson id has no slug and must never be given one (§2f)")

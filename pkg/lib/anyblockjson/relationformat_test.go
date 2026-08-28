@@ -239,15 +239,16 @@ func TestRelationEnvelope_NonFiniteFormatFailsExportByTheGuard(t *testing.T) {
 // deniedPropertyKey and both doors accept the raw number again — a phantom
 // property in Validate's case, a silent second spelling in Unmarshal's.
 func TestRelationEnvelope_RefusedInProperties(t *testing.T) {
-	// v0.38: the slug spellings that resolve onto the three lifted stored
-	// keys are the alias spellings (alias.go); the pre-v0.38 `relation_*`
-	// slugs no longer resolve to anything, so they are ordinary custom keys
-	// and cannot trip this refusal — a legacy document is refused earlier,
-	// at the kind enum and the missing property_settings verdict.
+	// The spellings that resolve onto the three lifted stored keys are their
+	// display NAMES (bundledname.go); the old `relation_*` and v0.38
+	// `property_*` slugs no longer resolve to anything — a denied key's fold
+	// class answers nothing, deliberately — so they are ordinary custom keys
+	// and cannot trip this refusal: a legacy document is refused earlier, at
+	// the kind enum and the missing property_settings verdict.
 	for spelling, value := range map[string]string{
-		"property_format":              "100",
-		"property_format_include_time": "true",
-		"property_format_object_types": `["page"]`,
+		"Format":                         "100",
+		"IncludeTime":                    "true",
+		"Relation's target object types": `["Page"]`,
 	} {
 		t.Run(spelling, func(t *testing.T) {
 			doc := `{"version":1,"kind":"property","id":"o1","internal_key":"budget",` +
@@ -376,8 +377,8 @@ func TestRelationEnvelope_TargetTypesTranslateThroughTheResolver(t *testing.T) {
 	require.NoError(t, err)
 
 	// then
-	assert.Equal(t, []string{"page", "bafyreidangling"}, docObjectTypes(t, data),
-		"a resolvable id spells its type key; an unresolvable one passes through verbatim (§3)")
+	assert.Equal(t, []string{"Page", "bafyreidangling"}, docObjectTypes(t, data),
+		"a resolvable id spells its type's name; an unresolvable one passes through verbatim (§3)")
 	assert.Equal(t, strList("typeid-page", "bafyreidangling"),
 		got.Details.Fields["relationFormatObjectTypes"],
 		"the translation must invert: ids in, ids out")
@@ -458,10 +459,10 @@ func TestRelationEnvelope_AResolverAnsweringEmptyIsNoAnswer(t *testing.T) {
 }
 
 // A reference slot that legitimately NAMES a lifted key — a dataview column
-// on the Property type, a type_properties entry — keeps the §3 slug: the
-// deny rule protects the legend, and a bundled-bound slug needs no legend
-// entry, so the rule never sees it. 64 production spaces carry exactly this
-// document.
+// on the Property type, a type_properties entry — keeps the §3 spelling,
+// which is the key's display NAME: the deny rule protects the legend, and a
+// bundled-bound spelling needs no legend entry, so the rule never sees it.
+// 64 production spaces carry exactly this document.
 //
 // How this can fail: restore writableSlug's blanket deny refusal and the
 // column spells "relationFormat" camelCase-verbatim with a warning.
@@ -480,8 +481,8 @@ func TestRelationEnvelope_ReferenceSlotsKeepTheBundledSlug(t *testing.T) {
 	require.NoError(t, err)
 
 	// then
-	assert.Contains(t, string(data), `"property": "property_format"`,
-		"naming the property is not writing its value — the reference keeps its slug (the v0.38 alias spelling)")
+	assert.Contains(t, string(data), `"property": "Format"`,
+		"naming the property is not writing its value — the reference keeps its spelling, the display name")
 	assert.NotContains(t, string(data), `"relationFormat"`,
 		"the verbatim fallback is for keys whose slug would need a legend entry")
 	assert.NotContains(t, string(data), `"property_internal_keys"`,
@@ -536,10 +537,10 @@ func TestRelationEnvelope_ADeniedKeySlugTheBundledTableDoesNotBindBacksOff(t *te
 }
 
 // …and this pins the second question: the vocabulary IN FORCE must invert
-// the slug. The bundled table binds `relation_format` to relationFormat, but
+// the spelling. The bundled table binds "Format" to relationFormat, but
 // the writer's own space is a reader too — its vocabulary answers FIRST on
 // import, ahead of the bundled table — and here a custom relation has
-// claimed the api key `relation_format` for itself (the freed-spelling
+// claimed the spelling "Format" for itself (the freed-spelling
 // hazard recordPropertyKey documents: measured on the property namespace,
 // the same shadowing silently lands dueDate's value on the custom relation
 // that wanted the spelling). Writing the slug would re-point the column to
@@ -550,7 +551,7 @@ func TestRelationEnvelope_ADeniedKeySlugTheBundledTableDoesNotBindBacksOff(t *te
 //
 // How this can fail: drop the termInverts half from writableSlug's
 // denied-key exemption. bundledBinds alone accepts the slug, the column
-// spells "relation_format", and the writer's own vocabulary binds it to the
+// spells "Format", and the writer's own vocabulary binds it to the
 // shadowing custom relation — a repoint with no error anywhere.
 func TestRelationEnvelope_ADeniedKeySlugShadowedByTheVocabularyBacksOff(t *testing.T) {
 	// given the same format column, under a vocabulary where a custom
@@ -561,7 +562,7 @@ func TestRelationEnvelope_ADeniedKeySlugShadowedByTheVocabularyBacksOff(t *testi
 	var warns []Issue
 	opts := testOptions()
 	opts.Keys = typedSpaceVocabulary{
-		propSlugOf: map[string]string{"64af1efbc52a6a5ed6e9dabc": "property_format"}}
+		propSlugOf: map[string]string{"64af1efbc52a6a5ed6e9dabc": "Format"}}
 	opts.OnWarning = func(i Issue) { warns = append(warns, i) }
 
 	// when
@@ -570,8 +571,8 @@ func TestRelationEnvelope_ADeniedKeySlugShadowedByTheVocabularyBacksOff(t *testi
 
 	// then
 	assert.Contains(t, string(data), `"property": "relationFormat"`,
-		"the writer's own space would re-point the slug, so the stored key is the honest spelling")
-	assert.NotContains(t, string(data), "property_format")
+		"the writer's own space would re-point the spelling, so the stored key is the honest one")
+	assert.NotContains(t, string(data), `"Format"`)
 	require.NotEmpty(t, warns, "the backed-off spelling is reported")
 	assert.Contains(t, warns[0].Message, "cannot be a legend value")
 	require.NoError(t, Validate(data), "I1: Marshal never emits what its own Validate rejects")

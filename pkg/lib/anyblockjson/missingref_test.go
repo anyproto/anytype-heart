@@ -422,7 +422,7 @@ func TestMissingReference_PropertySettingsObjectTypes(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.NoError(t, Validate(data), "Marshal never emits what Validate rejects (I1)")
-		assert.Contains(t, compactDoc(data), `"object_types":["page","wine"]`)
+		assert.Contains(t, compactDoc(data), `"object_types":["Page","wine"]`)
 		require.Len(t, warnings, 1)
 		assert.Contains(t, warnings[0].Message, deadCid)
 		assert.Equal(t, "/property_settings/object_types", warnings[0].Path)
@@ -573,7 +573,7 @@ func TestMissingRef_ASelectValueDropsTheSentinel(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotContains(t, string(data), missingObjectId,
 		"an option that is gone leaves nothing to write")
-	assert.Contains(t, compactDoc(data), `"tag":[]`,
+	assert.Contains(t, compactDoc(data), `"Tag":[]`,
 		"the key stays: presence is meaningful (§3), only the dead entry goes")
 	require.NoError(t, Validate(data), "I1: Marshal never emits what its own Validate rejects")
 

@@ -85,7 +85,7 @@
             "type": "string",
             "minLength": 1
           },
-          "description": "STORED type key → the type document's path, relative to this file. Stored keys, not per-document spellings: a document's type_internal_keys legend binds its spelling to the stored key, and the stored key is what the manifest answers for — the same rule the property dictionary applies (§2f). Reader flow: object → `type` spelling → the object's own legend → stored key → this map → the type file, no scanning. The manifest locates types, the dictionary and file blobs: it does not locate options, because the dictionary states each property's whole vocabulary inline (name, colour, position, internal_key), so a reader never has an option lookup to resolve by path."
+          "description": "The type's CANONICAL SPELLING → the type document's path, relative to this file. The canonical spelling, not a per-document term: the display name from the shipped table for a bundled type, the stored key verbatim for a space-minted one — a pure function of the key, the same rule the property dictionary applies to its entry keys (§2f), because this file carries no legend and its keys must resolve through the shipped ladder alone (an exact stored key names itself, then the name table, then the fold). Reader flow: object → `type` spelling → the object's own legend → stored key → this map's key resolved the same way → the type file, no scanning. The manifest locates types, the dictionary and file blobs: it does not locate options, because the dictionary states each property's whole vocabulary inline (name, colour, position, internal_key), so a reader never has an option lookup to resolve by path."
         },
         "properties": {
           "type": "string",

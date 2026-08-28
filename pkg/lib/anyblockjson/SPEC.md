@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.47** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.48** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -15,6 +15,34 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes in v0.48: **every property and type key is spelled by its display
+name** (§3) — NFC-normalized, otherwise verbatim; bundled and space-minted
+keys alike. **Every existing export re-spells on its next generation**, and
+external tooling written against pre-v0.48 documents must expect the
+re-baseline: `created_date` is now `"Creation date"`, `"type": "page"` is
+now `"type": "Page"`, and `creator` — present in every corpus document — is
+now `"Created by"`. This is the largest deliberate re-spell the format will
+ever make, taken pre-freeze precisely because post-freeze the identical
+change would cost a format version plus a permanent dual-spelling accept
+layer.
+
+One uniform rule replaces three mechanisms at once: the derived api-slug
+table (the slug survives on the API surface, whose key convention is a
+separate decision; `apiObjectKey` is never read by this format), the v0.38
+wire-alias table (the display names carry the rename — the relation TYPE is
+named "Property" — so the sixteen alias spellings are cut, not kept), and
+the label-normalization ladder with its escapes and fallbacks (deleted, not
+reimplemented: a name is a legal key exactly as written, so the faults the
+ladder repaired cannot arise). Documents already written keep resolving in
+both directions: custom spellings through their exhaustive legends, bundled
+legacy slugs through the fold-class proof stated in §3 chain step 4 — no
+compatibility table anywhere. Names are not unique, so collisions are
+resolved per DOCUMENT through a deterministic ladder (§3), the map-less
+reader resolves a shared name within the declared type or errors loudly,
+and three new warnings watch the seams (§12). Two bundled renames landed as
+the prerequisite: `audioGenre` "Genre" → "Audio genre", and the `space`
+type "Space" → "Space settings" (hygiene — measured wire-unreachable).
 
 Changes in v0.47: **the manifest binds file blobs** (§2c), and **a
 participant document does not carry `created_date`** (§3 — the stored value
@@ -568,8 +596,9 @@ field-identical to the bundled table, measured over 9,675), and
 `properties` carries one `propertyDefinition` per property actually
 referenced, used-only (a space installs a median 125 bundled properties and
 uses 57), plus a full entry for each of the 174 divergent installed copies.
-Keys are STORED keys — the legend already binds a document's labels to
-them, so the dictionary needs no legend of its own — and every entry
+Keys are CANONICAL SPELLINGS — the bundled name for a bundled key, the
+stored key verbatim for a space-minted one, a pure function of the key, so
+the dictionary needs no legend of its own — and every entry
 carries its `format`, required by the schema, because a third-party reader
 must interpret a backup WITHOUT shipping `bundle/relations.json`: that
 self-sufficiency constraint is what killed the simpler "just stop exporting
@@ -579,8 +608,8 @@ URL; an `installed` key the reader's table cannot name is skipped, never
 refused, so a newer app's backup stays readable one version back — while
 the writer refuses what its own table cannot name.
 
-**`index.json` gains a manifest** (§2c): stored type key → file, option id →
-file, and a pointer to the dictionary — the only two namespaces documents
+**`index.json` gains a manifest** (§2c): canonical type spelling → file,
+option id → file, and a pointer to the dictionary — the only two namespaces documents
 address without a path (types 22/space, options 34/space; 5.1 KB/space,
 0.23%), so a reader resolves a type without scanning and without the folder
 convention the spec has never defined. And **composition omits a bundled
@@ -1717,17 +1746,14 @@ draft, which the reader then had to reject.
 format.** They are not inconsistencies to be tidied away later:
 
 - **Property and type keys** (§3) name relations and types, which live in a
-  space rather than in this format. Their canonical spelling is their
-  **label**, which is snake_case by construction — a bundled key's api slug
-  (`plural_name`, `due_date`, `last_modified_date`), or a space-minted key's
-  stored slug or display name normalized through the identifier grammar of
-  §6.2.1 (`publish_date`, and `тоггл`, which is snake_case in a script that
-  has no case) — so most of the time the exemption does not show. It shows
-  where no label can be derived at all: a legacy `wikiPerson` whose name
-  normalizes back onto its own key, a minted `6a32d4856761631534b22f85`
-  whose relation has no name and no slug. Those are written verbatim,
-  whatever their shape, because an exact stored key is always its own
-  address (§3).
+  space rather than in this format. Their canonical spelling is the entity's
+  **display name**, NFC-normalized and otherwise verbatim — `"Due date"`,
+  `"Plural name"`, `"Publish Date"`, `"Тоггл"` — so the exemption is the
+  ordinary case, visibly: spaces, capitals and any script, exactly as the
+  user named the thing. Where no name can spell the key at all (an empty or
+  unwritable name, a collision the §3 ladder cannot suffix), the stored key
+  is written verbatim, whatever its shape, because an exact stored key is
+  always its own address (§3).
   This section once said the key ↔ key mapping was impossible because
   `Validate` takes no resolver; the answer was to put the mapping in the
   DOCUMENT — the `property_internal_keys` / `type_internal_keys` legends, which a reader with no
@@ -1896,7 +1922,7 @@ involved.
   "kind": "object_type",
   "internal_key": "task",
   "icon": { "format": "icon", "name": "hammer", "color": "orange" },
-  "properties": { "name": "Task", "description": "…" },
+  "properties": { "Name": "Task", "Description": "…" },
   "type_settings": {
     "layout": "todo",
     "api_key": "task",
@@ -1904,9 +1930,9 @@ involved.
     "default_template": "bafyrei…",
     "default_view": "table",
     "property_definitions": [
-      { "property": "due_date",  "name": "Due date", "format": "date",    "section": "featured" },
-      { "property": "assignee", "name": "Assignee", "format": "objects", "section": "featured" },
-      { "property": "status",   "name": "Status",   "format": "select",
+      { "property": "Due date", "name": "Due date", "format": "date",    "section": "featured" },
+      { "property": "Assignee", "name": "Assignee", "format": "objects", "section": "featured" },
+      { "property": "Status",   "name": "Status",   "format": "select",
         "options": ["Backlog", {"name": "In progress", "color": "blue"},
                     {"name": "Done", "color": "lime"}] }
     ]
@@ -1999,7 +2025,7 @@ name. Dropping it reverts a user's rename on restore, silently.
 |---|---|---|---|
 | `property` | string | no* | The property's document-facing SPELLING — a key slot like any other, inverted through `property_internal_keys` (§3). Deliberately not called a key: the word used to name this spelling AND the envelope's stored id at once (§15 #14). |
 | `internal_key` | string | no* | The property's STORED internal key, verbatim — never run through the §3 ladder, because a stored id is its own address and the bundled fold would rebind a slug-shaped one (`due_date` onto `dueDate`). Export writes it beside `property` for fidelity; an author never needs it, and cannot produce a correct one for a custom property (the app mints those — a bson id). *An entry must state an identity: `property`, or `internal_key`, or a `name` the spelling derives from; when both `property` and `internal_key` are present the spelling wins, and export writes an agreeing pair. A custom property whose entry states no `internal_key` gets a FRESH minted internal key from the import wiring's create path, the way the app mints one when a user creates a property — the spelling must not silently become the stored key. |
-| `name` | string | no | Display name. Import uses it only when the property must be **created**; an existing property keeps its own name. Every bundled key already exists, so a name given for one is inert — `{"property": "description", "name": "Summary"}` renders as *Description*. Validation warns. If the label is the point, mint a custom key instead of reusing a bundled one. |
+| `name` | string | no | Display name. Import uses it only when the property must be **created**; an existing property keeps its own name. Every bundled key already exists, so a name given for one is inert — `{"property": "Description", "name": "Summary"}` renders as *Description*. Validation warns. If the label is the point, mint a custom key instead of reusing a bundled one. |
 | `format` | string | no | Property format (§3 names). Same import rule as `name`; a conflict with an existing property's format is an error at the wiring level (the package cannot see the space). |
 | `options` | (string \| object)[] | no | A select/multi_select property's **vocabulary, in display order**. Each entry is a bare option name, or `{"name": …, "color": …}` when the option's color is part of the design — the color belongs to the option rather than to a parallel array, so inserting or reordering an option cannot shift it. `color` is one of `grey`, `yellow`, `orange`, `red`, `pink`, `purple`, `blue`, `ice`, `teal`, `lime` (`util/constant`); anything else is a validation error rather than a silently ignored value. The bare string is **canonical** whenever the option declares no color, the object form otherwise — the same rule cells follow in §6.1. Leaving a color out does not mean *no* color: the wiring assigns one, cycling the palette in declaration order and skipping whatever the vocabulary claims explicitly, so a vocabulary that names no colors still gets distinct ones. (The app assigns one at random on every other creation path; cycling keeps a converted bundle identical run to run.) Options are otherwise discovered only from values that happen to be used, so a vocabulary entry no record carries would never exist — its kanban column simply absent — and a discovered option carries no `orderId`, which makes every select sort alphabetically (options order by `[orderId, name]`, `pkg/lib/database.BuildOrderMap`). Declaring them lets the wiring create each one up front with an order id. Every option needs one: the sort concatenates `orderId + name` before comparing, so an option missing an order id is compared by *name* against the others' order ids and lands arbitrarily — ahead of the whole vocabulary when its name sorts below the id alphabet, behind it otherwise. Names discovered from usage rather than declared are ordered after the declared ones. Only meaningful on `select`/`multi_select`; duplicate names are a validation error, across both forms. |
 | `object_types` | string[] | no | The **type slugs** an `objects`/`files` property may point at, in priority order — a type-key slot like the envelope `type`, so it speaks the one key vocabulary (§3), claims its spellings through the same type term ledger and owes the same `type_internal_keys` legend; import inverts each entry through the legend first, and a term the chain does not know passes through verbatim. Empty means any object — an untargeted property will happily accept a random page as a task's assignee. Listing the built-in `participant` alongside a bundle's own people type is what makes the current-user filter value usable on that property (§6.2) while still allowing the seeded people as values; the client only offers it when the relation's targets include Participant. The wiring resolves each key to an id the way it resolves properties: a type the batch defines by the id its own document carries, a bundled type by its bundled url (`_ot<key>`). Only meaningful on `objects`/`files`. |
@@ -2356,15 +2382,20 @@ document's bytes by guessing at a layout.
 
 ```json
 { "manifest": {
-    "types":      { "task": "types/bafyrei….anyblock.json" },
+    "types":      { "Task": "types/bafyrei….anyblock.json" },
     "properties": "properties.json",
     "files":      { "bafyreigp3him…": "files/bafyreigp3him….png" } } }
 ```
 
-- **`types`** — STORED type key → the type document's path. Stored keys,
-  not per-document spellings, the same rule the dictionary applies (§2f): a
-  document's `type_internal_keys` legend binds its spelling to the stored key, and
-  the stored key is what the manifest answers for.
+- **`types`** — the type's CANONICAL SPELLING → the type document's path.
+  The canonical spelling, not a per-document term: the display name from
+  the shipped table for a bundled type, the stored key verbatim for a
+  space-minted one — a pure function of the key, the same rule the
+  dictionary applies to its own entry keys (§2f), because the index has no
+  legend and its keys must resolve through the shipped ladder alone (an
+  exact stored key names itself, then the name table, then the fold). A
+  reader inverting a document's own spelling still goes through that
+  document's `type_internal_keys` legend first, as everywhere.
   The manifest does NOT locate options (removed in v0.46). A manifest exists
   to answer a lookup a reader would otherwise have to scan for, and no reader
   has that lookup for an option: the dictionary states a property's whole
@@ -2379,9 +2410,9 @@ document's bytes by guessing at a layout.
   survives a rename (§9a), never against the bundle. It never needed a path
   beside it.
 - **`properties`** — the property dictionary's path (§2f). A pointer rather
-  than an inline map, because properties resolve by stored key through each
-  document's own legend and the dictionary is the file that answers for
-  stored keys.
+  than an inline map, because properties resolve through each document's
+  own legend and the dictionary is the file that answers for the keys those
+  legends bind.
 - **`files`** (v0.47) — file object id → the blob's path, one entry per
   file document whose bytes travel. The authoritative binding between a
   `kind: "file_object"` document and its bytes: the document itself carries no
@@ -2642,14 +2673,17 @@ that RESOLVES to one of the stored keys (§3), legend included, on every
 kind, with the repair named:
 
 ```
-/properties/property_format: "relationFormat" is written on a property
-                             document's envelope as "format": "<a §3 format
-                             name>" in property_settings (§2d), not as a
-                             property
+/properties/Format: "relationFormat" is written on a property
+                    document's envelope as "format": "<a §3 format
+                    name>" in property_settings (§2d), not as a
+                    property
 ```
 
-(`property_format` is the stored key's wire spelling — the v0.38 alias, §3;
-the stored key `relationFormat` written verbatim trips the same refusal.)
+(`"Format"` is the stored key's wire spelling — its display name, §3; the
+stored key `relationFormat` written verbatim trips the same refusal. The
+retired slugs — `relation_format`, and v0.38's `property_format` — resolve
+to nothing any more: a denied key's fold class answers nothing, so they are
+ordinary custom keys that cannot trip it.)
 
 The refusal is derived from the export side's own lift list, never restated
 (§2b's rule), and it is unconditional: a non-relation snapshot carrying one
@@ -2661,12 +2695,12 @@ spelling one of the three MEMBER names (`format`, `include_time`,
 relation's own definition — the phantom shape the 9-of-9 eval failures
 wrote, which with the group's member also present would otherwise validate
 in silence. A warning and not a refusal because the spelling is a legitimate
-custom key (a media space really can have a "Format" column) and a relation
+custom key (a media space really can have a `format` column) and a relation
 object carrying one must stay exportable (I1). Refusing a key is not refusing to NAME it: a slot
 that references the relation — the Property type's own property definitions and
 dataview columns, in 64 production spaces — keeps the §3 spelling
-(`property_format`), because the deny rule protects the legend and a
-bundled-bound spelling needs no legend entry.
+(`"Format"`, the display name), because the deny rule protects the legend
+and a bundled-bound spelling needs no legend entry.
 
 **Target types translate at the boundary.** The store keeps
 `relationFormatObjectTypes` as type OBJECT ids
@@ -2757,8 +2791,8 @@ belongs in the index because a manifest is what an index is).
       "internal_key": "6a32d4856761631534b22f85", "name": "Budget", "format": "number" },
     { "property": "693c14f2aa11631534b22f01",
       "internal_key": "693c14f2aa11631534b22f01", "name": "Owner", "format": "objects",
-      "object_types": ["participant"] },
-    { "property": "due_date", "internal_key": "dueDate", "name": "End Date", "format": "date" }
+      "object_types": ["Space member"] },
+    { "property": "Due date", "internal_key": "dueDate", "name": "End Date", "format": "date" }
   ]
 }
 ```
@@ -2823,43 +2857,36 @@ up with two spellings — §15 #14 is the record of that happening.
   `property_definitions` entry.
 
 **The dictionary ANSWERS for stored keys, and its entries carry both
-halves of the identity.** A document spells a property by its label; its
-`property_internal_keys` legend binds the label to the stored key; the
-stored key is what the dictionary answers for. An entry states that key as
-`internal_key`, verbatim, and its `property` in the spelling every other
-slot uses — the bundled spelling for a bundled key (its derived api slug,
-or its v0.38 alias where the stored key spells "relation"), the stored key
-verbatim for a space-minted one (a bson id has no slug and must never be
-given one).
+halves of the identity.** A document spells a property by its display name;
+its `property_internal_keys` legend binds the spelling to the stored key;
+the stored key is what the dictionary answers for. An entry states that key
+as `internal_key`, verbatim, and its `property` in the CANONICAL SPELLING
+every other slot uses — the display name from the shipped table for a
+bundled key (`"Due date"`, and `"Format"` for the key stored as
+`relationFormat`), the stored key verbatim for a space-minted one (nothing
+is ever derived from a bson id, and the dictionary has no legend, so its
+spelling must be a pure function of the key — the only pure spelling a
+space-minted key has is itself).
 Entries need no legend of their own: an `internal_key` never resolves at
 all, and a `property` spelling recovers its stored key through the ladder
 below. An author states any one identity — `property`, `internal_key`, or a
 `name` — and a custom property with no `internal_key` gets a fresh minted
 one from the import wiring, like everywhere else in the format (§2a).
 
-**The reader flow, in full, and the step that is easy to miss.** A label
-resolves in this order — the document's own `property_internal_keys` legend; then a
-verbatim match against a dictionary key; then **the api-slug derivation
-applied FORWARD to the dictionary's own keys**. That third step is not
-optional garnish: measured over a produced 77-space export, of 503,919
-property value slots **5.7% resolve through a legend line, 24.0% match a
-dictionary key verbatim, and 69.4% resolve only through the derivation** —
-because §3's exhaustive rule writes a legend line only for a spelling the
-bundled table does not bind, so a bundled property's label never gets one.
-
-The derivation is `snake_case` of the stored key (`bundle.ApiSlug` is
-exactly `strcase.ToSnake`, a pure function of the key with no table behind
-it): `addedDate` → `added_date`, `mediaArtistURL` → `media_artist_url`,
-acronym and digit runs split — except for the sixteen keys the v0.38 alias
-table respells, whose wire spelling is the ALIAS and whose derived slug
-binds nothing (`featuredRelations` → `featured_properties`, never
-`featured_relations`). A reader applies alias-then-derivation to every key
-in `installed` and every entry's `property`, building its own label→key map
-once.
-**Derive forward, never invert** — four bundled keys do not survive a
-reverse transform (`mediaArtistURL`, `oldAnytypeID`, `_score`,
-`_final_score`), and forward derivation from keys you already hold has no
-such ambiguity.
+**The reader flow, in full, and the step that is easy to miss.** A spelling
+resolves in this order — the document's own `property_internal_keys`
+legend; then a verbatim match against a dictionary key; then **the shipped
+name table over the dictionary's own keys** (the same table every §3 slot
+resolves through), with the forgiving fold behind it for near-misses and
+the pre-v0.48 derived-slug spellings. That third step is not optional
+garnish: §3's exhaustive rule writes a legend line only for a spelling the
+bundled table does not bind, so a bundled property's spelling never gets
+one — measured before the re-spell, over a produced 77-space export of
+503,919 property value slots, 69.4% of slots resolved only through the
+shipped table's step.
+**Look up, never transform** — the name and the key say different words
+("Creation date" / `createdDate`), so no derivation in either direction
+exists; a reader holds the shipped table and asks it.
 
 **Every entry carries its `format`, and the schema requires it.**
 Self-sufficiency is the constraint that shapes the dictionary: a
@@ -2988,117 +3015,158 @@ output-only member anywhere — the test asserts that literally.
 
 ## 3. Properties
 
-`properties` is a JSON object keyed by **property key**, always in its
-snake_case **label** — `due_date`, `plural_name`, `manual_property`,
-`publish_date` — bundled, API-created and UI-created keys alike. One
-vocabulary, no aliases, no duality: a reader never has to know which kind of
-key it holds. (This overturns the earlier "as stored, camelCase" rule, and
-it is the format half of the same decision the API surface makes; a bundled
-key's label is the api slug from `core/api/util/key.go`.)
+`properties` is a JSON object keyed by **property key**, always spelled by
+the property's **display name** — `"Due date"`, `"Plural name"`,
+`"Manual property"`, `"Publish Date"` — NFC-normalized, otherwise verbatim;
+bundled, API-created and UI-created keys alike. One uniform rule, no derived
+identifier anywhere in the format, no table a writer must classify against:
+*a key is the property's name*. A reader never has to know which kind of key
+it holds, and a writer never has to transform anything — the measured hazard
+of key writing is the derivation step (models normalize names improvisationally
+and inconsistently across documents; copying a name byte-exactly is a solved
+behavior), so the format deletes the derivation instead of policing it.
+(This overturns the earlier snake_case-label rule and the "as stored,
+camelCase" rule before it. The api slug lives on as the API surface's own
+addressing convention — a separate decision — and `apiObjectKey` is never
+read by this format.)
 
-The mapping is a **table, both directions, never a case transform**: for
-bundled keys the derived table in `pkg/lib/bundle` (which ships with every
-reader, so documents still resolve offline), and for every other key the
-space's own vocabulary, which a node-backed reader primes from the space —
-and which the document carries the inverse of, entry by entry (`property_internal_keys`,
-below). `mediaArtistURL` → `media_artist_url` → `ToLowerCamel` would yield
-`mediaArtistUrl`, and `_score` does not round-trip at all — string inversion
-cannot be the reverse mechanism, and the package's tests pin both cases.
+The mapping is a **table, both directions, never a string transform**: for
+bundled keys the name table derived from the shipped
+`relations.json`/`types.json` (which travels with every reader, so documents
+still resolve offline), and for every other key the space's own display
+names, which a node-backed reader primes from the space — and which the
+document carries the inverse of, entry by entry (`property_internal_keys`,
+below). "Creation date" says a different word than `createdDate`; no case
+transform in either direction exists, and the package's tests pin that the
+reverse is a lookup, never a derivation.
 
-**The label, and the grammar it is minted through.** A key's label comes from
-its own authority, and there are two:
+**The spelling, and the two authorities it comes from.** A key's spelling is
+its display name, and there are two places a name lives:
 
-1. **A bundled key spells its derived api slug**, from the table that ships
-   with every reader — `dueDate` → `due_date` — except where the v0.38
-   alias table respells it: the sixteen bundled keys whose stored key says
-   "relation" spell their property aliases (`featuredRelations` →
-   `featured_properties`), and the alias outranks the derivation in both
-   directions. All 223 bundled spellings, aliases included, are already
-   legal keys under the grammar below, which a test asserts rather than
-   assumes.
-2. **A space-minted key spells what its space says it is**, through one
-   ladder, first answer wins: its stored `apiObjectKey` when that is already
-   a legal key — **re-spelled by the display name when the two are one fold
-   class** (`bundle.FoldApiKey` drops `_`, so `git_hub_stars` and
-   `github_stars` are already indistinguishable to every reader; the slug
-   decides WHICH WORD, the name decides how to break it, and the slug is
-   reliably the mangled half because it is snake-cased at mint); else that
-   slug **normalized**; else its display **name** normalized; else nothing — and then the stored key is written verbatim,
-   which is always its own address (chain step 4 below). A slug that merely
-   repeats the stored key is not a slug (rows exist that carry the bson id as
-   their own `apiObjectKey`), so it falls to the name; and a key the bundled
-   table speaks for never consults its space's row at all, or a localized
-   name would take a spelling from the table that ships with every reader.
+1. **A bundled key spells the name in the shipped table** — `createdDate`
+   spells `"Creation date"`, `tag` spells `"Tag"`, and the relation TYPE
+   (stored key `relation`) spells `"Property"`, because that is its bundled
+   name. The table ships with every reader, so these spellings resolve
+   offline with no legend entry. Names in the shipped table are unique over
+   the wire-reachable population and never byte-equal another entry's stored
+   key — a CI guard holds that as the condition under which a bundled entry
+   may be added or renamed (the `audioGenre` "Genre" → "Audio genre" rename
+   is exactly that guard firing early). The nine hidden transients sharing
+   the name "Underlying file id" are the tolerated remainder: all nine are
+   stripped internal keys, and a shared name is refused as a spelling
+   outright, so the tolerance can never leak into a document.
+2. **A space-minted key spells what its space names it.** NFC of the stored
+   display name, and nothing else: no case fold, no separator collapse, no
+   transliteration, no grammar escape. Only three inputs still yield no
+   spelling — an empty name, a name over the 128-character writable bound
+   (refused, never truncated: a truncation invents a spelling nobody chose),
+   and a name carrying control characters — plus the two member names §2
+   refuses before any resolution (`id` and `type`, byte-exact). Each of
+   those degrades through the collision rule below to the stored key
+   verbatim, which is always its own address. A name that merely repeats the
+   stored key is no spelling either; the verbatim key already says that.
+
+Nothing else needs machinery, and that is one of the strongest properties of
+the rule. Under the NORMALIZED spelling this replaced, a name could fail to
+produce a key at all — `#`, `☕` and `C++` normalized to the empty string or
+to `c`, so the format carried an empty-normalization fallback, a leading-`_`
+escape for digit-initial and keyword names (`50% done` → `_50_done`, `All` →
+`_all`), and a stored-key fallback for names that spelled to nothing. Raw
+naming has no normalization step, so none of those faults can arise: `"#"`,
+`"☕"`, `"C++"` and `"50% done"` are each a valid property key exactly as
+written, and the escapes are deleted, not reimplemented — a rule that cannot
+fail needs no repair path. (The one normalization surviving in the package,
+`refNameNormalize`, serves the informative `#name` reference suffix (§9),
+which is a different surface with a `#`-free grammar to keep.)
+
+**A name is carried exactly as the space holds it** — edge whitespace and
+invisible characters included (`'Email 📧 '` is a real production name).
+Validation warns about both (§12) and never refuses or trims: one stored
+name must not make an object unexportable, and a cleanup belongs where a
+user creates or renames the property — one normalization, applied once, at
+authoring time — not at the export seam on every write. The forgiving fold
+below bridges the near-misses either way.
+
+**Collisions are resolved per DOCUMENT, not per space.** Names are not
+unique, and the format does not pretend they are: a document carries a map,
+and a map already guarantees its own keys are distinct, so a name that is
+ambiguous space-wide but appears once in this document spells its plain
+name. Measured, genuine in-document collisions are 60 of 28,560 documents
+(0.21%), across five names. Where a document does collide — two properties
+claiming one spelling, or a name equal to a stored key the document names
+(verbatim-first: a stored key always keeps its own term) — **every claimant
+degrades**, deterministically, through one ladder:
+
+- **(a)** the stored key verbatim, when it is itself readable (not a minted
+  24-hex bson id) — the `producer_region` / `wine_region` shape;
+- **(b)** else `<name> (<tail6>)`, tail6 = the stored key's last six hex —
+  deterministic, immutable while the key lives, visibly synthetic;
+- **(c)** a residual tie (two claimants minting one suffix, or a suffix the
+  document already speaks for) falls to the full stored key, which is always
+  its own address.
+
+All claimants degrading — rather than first-claim keeping the plain name —
+is what makes the suffix stable across exports and the plain name
+trustworthy: a plain spelling in a document is never one of two same-named
+claimants. A suffixed spelling never moves while its neighbours live;
+deleting one claimant un-suffixes the other on its next export — cosmetic
+churn, correct via the legend.
+
+**The map-less reader resolves a shared name within the declared type.** An
+authored document need carry no legend, so a reader handed a bare name that
+several live properties answer to resolves it against the declared type's
+own property list first. Unambiguous there — the overwhelming case, measured
+at 1 ambiguous type of 1,753 — and it is resolved. Ambiguous even within the
+type, or absent from it, and the reader raises a loud, actionable error
+naming the term and asking for the `property_internal_keys` entry that would
+settle it. It never guesses between live properties and never mints a
+phantom key while two live properties bear that exact name. (A term NO live
+entity answers to still resolves verbatim — chain step 4 below — with a
+warning; that is the price of any name-addressed scheme, stated in §11.)
+
+Three consequences worth stating outright:
+
+- **Non-Latin scripts are kept, never transliterated.** `Тоггл` is `Тоггл`
+  and `日本語のプロパティ` is itself. The api slug's transliteration exists
+  because a slug is a URL path segment there; it would answer `toggl` and
+  `ri_ben_yu_nopuropatei` here — unguessable and unreadable at once, which
+  is strictly worse than either the name or the key. The measured
+  degradations are not merely lossy but wrong: `作業内容` (Japanese)
+  transliterates through Chinese readings.
+- **The name is the address, so a rename moves the spelling — and the
+  legend keeps every written document resolvable.** A spelling derived from
+  a name changes when the name changes, and the next export writes the new
+  one; the stored key never moves, and the `property_internal_keys` line
+  every non-bundled key carries binds the exported spelling to it, so a
+  document written under "Budget" imports correctly after the property
+  becomes "Cost", and a new property later named "Budget" cannot capture the
+  old document's values. What the legend cannot protect is the legendless
+  (hand- or agent-authored) document, whose stale name misses silently and
+  mints a phantom key — accepted as the price of any name-addressed scheme,
+  mitigated by the unknown-term warning (§12) and by one measured
+  consolation: the likeliest bundled guesses land through the fold
+  (`created_at` misses under every scheme, but a guessed `"Created Date"`
+  folds onto `createdDate`'s class and resolves).
+- **A spelling that is already answered is not up for grabs.** A live stored
+  key outranks any name (verbatim-first, below), so a name byte-equal to
+  another live stored key degrades through the collision ladder; and `id`
+  and `type` are never minted as property spellings because §2 refuses those
+  two member names before any resolution. A custom property MAY share a
+  bundled name — "Description", "Priority" and "Emoji" all have real custom
+  twins in production — because the legend and the per-document ladder keep
+  both addressable; a shared spelling with no legend is exactly what the
+  type-scoped resolution above answers, loudly when it cannot.
 
 An **absent** `format` in either slot that carries one (`property_definitions[]`,
 a dataview's `properties[]`) says the document did not speak, and the §3
 chain answers — the bundled table, then the caller's resolver. It is NOT a
 declaration of `text`: that reading silently overrode the table, so
-`{"property": "due_date"}` in a dataview's list pinned a bundled DATE property to longtext and its
-filters stopped being dates, while omitting the list entirely resolved
-correctly. Naming a property was strictly worse than staying silent about
-it. Canonical export always writes a format, so an absent one only ever
-arrives from a hand-written document — the population that means "I did not
-say".
-
-**Normalization** is NFC, then: letters and digits of **any script** are kept
-and lowercased, combining marks are dropped (a mark belongs to the letter
-before it), every other rune is a separator, runs of separators collapse to
-one `_`, and a trailing run trims. **A LEADING `_` run is kept** — `_` is
-`identStart`, so `__amemory_salience` needs no repair, and 20 production
-relations from two integrations namespace themselves exactly that way in both
-their name and their slug; a leading run is a first character, not a gap
-between words.
-
-Note what is NOT applied: the `strcase.ToSnake` the api slug is minted with.
-It used to be, so the two surfaces would converge — but it splits acronyms
-and digit runs, and a display name is full of both: `P2P Sync` →
-`p_2_p_sync`, `Platform SDKs` → `platform_sd_ks`, `GitHub` → `git_hub`. It
-also bought nothing on the real input, since camelCase is a KEY phenomenon
-(`dueDate`, `iconEmoji` are stored keys) and this rule is fed a display NAME,
-which separates its own words because a person typed it. A name that IS
-camelCase is a key pasted into a name field; the corpus holds two, and
-`iconemoji` is the whole price. A result that starts with a digit, or that *is* one of
-the filter grammar's keywords, takes a leading `_` — `50% done` → `_50_done`,
-`All` → `_all`. A result that is empty, or longer than the 128-character key
-bound, is no label at all.
-
-The grammar is **§6.2.1's**, and it is normative rather than stylistic: a key
-is a Unicode identifier — `identStart identPart*`, letters of any script,
-combining marks (UAX #31 `ID_Continue` admits `Mn`/`Mc`, and in Devanagari,
-Thai, Bengali, Tamil, Khmer and Myanmar the VOWELS are marks — dropping them
-does not shorten a word, it changes it: मिल/मूल/मल/मैल would all become मल),
-digits, `_` — and not one of the filter language's reserved words. A label
-outside it **cannot be written in a compact filter string**, which is a
-surface this format serves to models as an EBNF grammar. That is not a corner
-case: a space-minted stored key is a 24-character bson id, and a bson id
-starts with a digit, so before this rule 39 relations in a 36,966-object
-corpus had no spelling that could be filtered on at all.
-
-Three consequences worth stating outright:
-
-- **Non-Latin scripts are kept, never transliterated.** `Тоггл` is `тоггл`
-  and `日本語のプロパティ` is itself. The api slug's transliteration exists
-  because a slug is a URL path segment there; it would answer `toggl` and
-  `ri_ben_yu_nopuropatei` here — unguessable and unreadable at once, which is
-  strictly worse than either the name or the key.
-- **A minted `apiObjectKey` outranks a display name, and is the
-  rename-stable address.** A label derived from a name changes when the name
-  changes, and the next export writes the new one; the stored key never
-  moves, and the `property_internal_keys` line every non-bundled key already carries
-  keeps every document already written resolvable through chain step 1. Where
-  two entities in one space want one label, the explicit claim keeps it and
-  the derived one goes without; where the two claims are equal — two stored
-  slugs, or two names — neither wins and both are written verbatim, because
-  an ambiguous address must never resolve by store order. `Priority` and
-  `Priority 📌` are a real pair, in a real space.
-- **A label may not take a spelling that is already answered.** The bundled
-  table's spellings are not up for grabs (a space-minted relation named "Due
-  date" does not become `due_date`), a live stored key outranks any label
-  (verbatim-first, below), and `id` and `type` are never minted as property
-  labels because §2 refuses those two spellings before any resolution.
-  Within one document the term ledger applies the same discipline (*one term,
-  one key*, below).
+`{"property": "Due date"}` in a dataview's list pinned a bundled DATE
+property to longtext and its filters stopped being dates, while omitting the
+list entirely resolved correctly. Naming a property was strictly worse than
+staying silent about it. Canonical export always writes a format, so an
+absent one only ever arrives from a hand-written document — the population
+that means "I did not say".
 
 **Resolution — one rule, stated once, covering both namespaces.** The
 format names keys in two namespaces — property keys and TYPE keys — and
@@ -3110,99 +3178,123 @@ the bundled table, its stored-key set.
    `type_internal_keys` for type slots — identity entries included) — the only
    statement the *document* makes about its spellings.
 2. **An exact stored key — verbatim-first.** A term that names a stored key
-   means that key, always; the bundled slug table applies only to terms that
-   are *not* stored keys. A node-backed reader answers this step from its
-   store (`storeresolver`, both namespaces); a package-only reader has no
+   means that key, always; the name tables apply only to terms that are
+   *not* stored keys. A node-backed reader answers this step from its store
+   (`storeresolver`, both namespaces); a package-only reader has no
    stored-key set and knows a term is a stored key only when the legend says
    so — which is why export owes the identity entry below for every term the
    bundled table does not bind to the key being written.
-3. **The bundled derived table**, which ships with every reader.
-4. **Verbatim** — the term *is* the stored key, which is what keeps a
+3. **The name tables**: the bundled name table, which ships with every
+   reader, and — for a node-backed reader — the space's own names, where
+   EXACTLY ONE live entity answers to the term. Several answering is an
+   ambiguity this step refuses: the type-scoped resolution above, or the
+   loud error, is what happens next — never a guess.
+4. **The forgiving fold**, answering only when exactly one candidate
+   remains: NFC, casefold, trim, strip default-ignorable code points, drop
+   `_`, `-` and spaces. This is the near-miss layer, and it is also the
+   whole of legacy continuity: ToSnake only inserts `_` and lowercases, so
+   fold(ToSnake(key)) == fold(key) by construction and every pre-change
+   derived-slug spelling (`created_date`) lands in its stored key's fold
+   class with no compatibility table; `due_date_2` bridges to "Due Date 2"
+   the same way. A DENIED key's fold class answers nothing, deliberately —
+   forgiveness toward a key import refuses would turn the phantom-member
+   warning on `format` and `include_time` into a refusal. (The sixteen
+   v0.38 alias spellings — `featured_properties`, … — are outside this
+   proof and are cut, not kept: pre-freeze, no back-compat is owed, and
+   existing bundles re-export under the names either way.)
+5. **Verbatim** — the term *is* the stored key, which is what keeps a
    package-only reader — with no space to ask — lossless on custom keys.
+   With a space-backed vocabulary in force, a verbatim term that is no live
+   entity's stored key draws a warning (§12): the stale-or-guessed-name
+   phantom, every naming scheme's shared hole, named at the seam.
 
 A conforming document resolves identically in every conforming reader:
-steps 1, 3 and 4 need nothing but the document and the shipped table, and
-wherever step 3 cannot answer for a term the document itself uses, the
-document carries the entry that moves the answer into step 1 — so step 2,
-the one step that needs a store, is never load-bearing for a document's own
-spellings. Every other
-statement of resolution order in this document is shorthand for this chain.
+steps 1, 3(bundled), 4 and 5 need nothing but the document and the shipped
+table, and wherever the shipped table cannot answer for a term the document
+itself uses, the document carries the entry that moves the answer into step
+1 — so step 2 and the space half of step 3, the steps that need a store, are
+never load-bearing for a document's own spellings. Every other statement of
+resolution order in this document is shorthand for this chain.
 
 The namespaces are **disjoint claim domains**: a property and a type may
-share a spelling without conflict (`object_type` the type key coexists with
-`objectType` the layout value below, and a space may slug a relation and a
-type onto one term), which is why the legends are two maps and export runs
-one term ledger per namespace — a shared domain would back a key off a slug
-the other namespace owns, a conflict this format defines away.
+share a spelling without conflict (a space may name a relation and a type
+one word, and `object_type` the stored type key coexists with `objectType`
+the layout value below), which is why the legends are two maps and export
+runs one term ledger per namespace — a shared domain would back a key off a
+spelling the other namespace owns, a conflict this format defines away.
 
-**The document carries its own inverse: `property_internal_keys`.** The slug layer is a
-compaction of key *spelling*, and like every compaction in this format it has
-to be invertible from the document alone — the rule §9a already states for
-object ids. A slug derived from a space's stored `apiObjectKey` is not:
-`6a32d485…` spelled `priority` reads back as the key `priority` in any reader
-that cannot ask that space, which is a different relation, silently. So export
-writes the entry:
+**The document carries its own inverse: `property_internal_keys`.** The name
+layer is a re-spelling of key identity, and like every compaction in this
+format it has to be invertible from the document alone — the rule §9a
+already states for object ids. A name the space minted is not:
+`6a32d485…` spelled `"Priority"` reads back through the bundled table — a
+different relation — in any reader that cannot ask that space, silently. So
+export writes the entry:
 
 ```json
-"property_internal_keys": { "priority": "6a32d4856761631534b22f85" }
+"property_internal_keys": { "Priority": "6a32d4856761631534b22f85" }
 ```
 
 - **Emitted for every spelling the bundled table does not bind to the key
   being written.** One condition, two halves, and they ask different
   questions: the bundled table must **bind** this spelling to this very key
-  (it ships with every reader, so `due_date` → `dueDate` owes nothing), *and*
-  the vocabulary in force must **invert** it (a reader may bind a spelling the
-  bundled table binds correctly, and the writer's own space is the reader most
-  likely to read the document back).
+  (it ships with every reader, so `"Due date"` → `dueDate` owes nothing),
+  *and* the vocabulary in force must **invert** it (a reader may bind a
+  spelling the bundled table binds correctly, and the writer's own space is
+  the reader most likely to read the document back — a space holding a
+  custom twin of a bundled NAME cannot uniquely invert that name, so the
+  bundled key's own usage carries the entry there too, which is what keeps
+  the document self-resolving in the one space that is confused about it).
 
   The asymmetry is what makes the rule exhaustive. A term that is a stored key
   written verbatim trivially *inverts* through any table, because a table that
-  does not know a term answers the term itself (chain step 4) — so asking the
+  does not know a term answers the term itself (chain step 5) — so asking the
   bundled half as an inversion let every custom key pass with no entry at all,
   and the document said nothing about the one population no reader can resolve
   without it. That silence is the **corpse-after-export** hole: the key is
   live and unambiguous the day it is written, and the moment the relation is
-  UI-deleted its stored key stops being live while the freed spelling becomes
-  some other relation's api key. Every document already written re-points,
-  offline, and no writer could have warned about it — the delete happened
-  afterwards. Only the document itself can close that, so a spelling the
-  bundled table does not bind owes an entry, verbatim or not.
+  UI-deleted its stored key stops being live while its freed NAME becomes
+  another live relation's spelling. Every legendless line already written
+  re-points, offline, and no writer could have warned about it — the delete
+  happened afterwards. Only the document itself can close that, so a spelling
+  the bundled table does not bind owes an entry, verbatim or not.
 
   **The identity entry is therefore the ordinary line, not the exception.**
   Every custom key names itself: `{"customStatus": "customStatus"}`. Two
   shapes that used to be called out as special are just instances of the one
   rule now.
 
-  The first is the bundled *shadow*: a space whose relation is keyed
-  `due_date`, beside bundled `dueDate`, exports
-  `"property_internal_keys": {"due_date": "due_date"}` — the document's only way to
-  tell a reader with no store that the term is a stored key (chain step 2).
-  Without it, the value silently moved onto the bundled twin in every
-  package-only reader.
+  The first is the bundled *shadow*: a space whose relation is keyed with
+  the literal string of a bundled key's fold class — `due_date`, beside
+  bundled `dueDate` — exports
+  `"property_internal_keys": {"due_date": "due_date"}`: the document's only
+  way to tell a reader with no store that the term is a stored key (chain
+  step 2). Without it, the fold silently moved the value onto the bundled
+  twin in every package-only reader.
 
   The second is **the vocabulary in force**, which is the half that stays an
   inversion, and it stays for a measured reason: dropping it — "ask one table,
   not two" — loses `{"task": "task"}`, and a template comes back pointing at
-  an unrelated custom type; and loses `{"due_date": "dueDate"}`, and dueDate's
-  value lands on the custom relation that wanted the spelling. Both are silent
-  losses of user data. A vocabulary is consulted *before* the bundled table (chain step
-  2 is a node-backed reader's store), so a term the bundled table inverts
-  correctly can still be bound elsewhere by the reader most likely to read
-  the document back: the writer's own space. This is not a hypothetical about
-  hand-written vocabularies — it is what a **delete** produces. A UI-deleted
-  type or property vacates the slug namespace while every object it ever
-  named keeps its stored key, and the freed spelling becomes another live
-  entity's api key: `initiative` stops being a live stored key and starts
-  being the slug of some other type, so `"type": "initiative"` written with
-  no entry came back as that other type, silently. The property namespace
-  produces the loud half of the same fault — the two spellings then address
-  one property and the document's own Unmarshal refuses it (§11, I1). Export
-  therefore asks both tables, and writes `{"initiative": "initiative"}` when
-  either would answer something other than the key being written. The entry
-  is authoritative for *every* reader, which is the point of a legend; what
-  it cannot cover is a reader whose vocabulary disagrees with the bundled
+  an unrelated custom type; and loses the entry that keeps a bundled name
+  addressable in a space holding its custom twin. A vocabulary is consulted
+  *before* the bundled table (chain steps 2–3 are a node-backed reader's
+  store), so a term the bundled table inverts correctly can still be bound
+  elsewhere by the reader most likely to read the document back: the
+  writer's own space. This is not a hypothetical about hand-written
+  vocabularies — it is what a **delete** produces. A UI-deleted type or
+  property vacates the name namespace while every object it ever named
+  keeps its stored key, and its freed name becomes another live entity's
+  spelling: `initiative` stops being a live stored key while a live type is
+  NAMED "initiative", so `"type": "initiative"` written with no entry came
+  back as that other type, silently. The property namespace produces the
+  same fault one ladder rung later — the live twin takes the suffixed
+  spelling and both terms carry their entries. Export therefore asks both
+  tables, and writes `{"initiative": "initiative"}` when either would
+  answer something other than the key being written. The entry is
+  authoritative for *every* reader, which is the point of a legend; what it
+  cannot cover is a reader whose vocabulary disagrees with the bundled
   table in a way the writer never saw, and that is the `KeyVocabulary`
-  precondition (§11.1), not a legend rule.
+  precondition (§11), not a legend rule.
 
   The legend is therefore empty for a document whose every spelling is
   bundled, and costs one line per non-bundled key otherwise. **Size**: the
@@ -3210,33 +3302,35 @@ writes the entry:
   about 2%. The adversarial corpus, where every document carries five or more
   custom keys, grows up to 15%; that is an upper bound, not an estimate. The
   product's store-backed path pays close to nothing new, because a
-  store-minted relation key is a 24-hex bson while its api slug is derived
-  from the name, so slug ≠ key and the entry already existed.
+  store-minted relation key is a 24-hex bson while its spelling is the
+  display name, so spelling ≠ key and the entry already existed.
 - **Consulted first, before any vocabulary.** The legend is the only statement
   the *document* makes about its own spellings; a vocabulary belongs to the
-  reader, and two readers disagreeing about a slug is exactly how a property
-  ends up naming a different relation than it was exported from.
+  reader, and two readers disagreeing about a spelling is exactly how a
+  property ends up naming a different relation than it was exported from.
 - **It covers every key slot, not just `properties`.** Wherever the format
   names a property — a `property` block's `property`, a link block's
   `properties` list, a dataview's `properties[].property`, a view's
   `group_by`/`cover_property`/`end_property`, a filter's, sort's or
   column's `property`, a property-definition entry's `property` — the
-  slug is written through the same recording step and read back through the
-  legend first. A slot that writes the slug without recording the entry
-  inverts only when some *other* slot in the same document happened to record
-  it, which is luck rather than a guarantee; a slot that reads without the
-  legend never inverts at all, even when the entry is right there.
+  spelling is written through the same recording step and read back through
+  the legend first. A slot that writes the spelling without recording the
+  entry inverts only when some *other* slot in the same document happened to
+  record it, which is luck rather than a guarantee; a slot that reads
+  without the legend never inverts at all, even when the entry is right
+  there.
 - **One term, one key — document-wide.** Export claims every spelling
   through a single term ledger, exactly as ids go through one id domain
   (§4): a stored key the document names *anywhere* always keeps its own term
-  (verbatim-first — no other key's slug may take it), a slug goes to its
-  first claimant, and a later key whose slug is already claimed is spelled
-  with its stored key instead, which is always its own address. The
-  discipline covers every key slot, not just `/properties` — a `property`
-  block whose slug collided with a `/properties` spelling used to record a
-  legend entry that rebound the term, so that property's value landed on a
-  different relation, silently; and two blocks sharing one slug collapsed
-  into naming one key.
+  (verbatim-first — no other key's name may take it), an uncontested
+  spelling goes to its claimant, and a contested one degrades EVERY claimant
+  through the collision ladder above — computed once from the document's own
+  key census, so which spelling a key gets never depends on which slot
+  happened to claim first. The discipline covers every key slot, not just
+  `/properties` — a `property` block whose spelling collided with a
+  `/properties` spelling used to record a legend entry that rebound the
+  term, so that property's value landed on a different relation, silently;
+  and two blocks sharing one spelling collapsed into naming one key.
 - **A legend value is a stored key, and is admitted like one.** It obeys the
   writable-key rule — non-empty, no control characters, at most 128
   characters, the same shape rule property names carry, enforced by the
@@ -3250,9 +3344,9 @@ writes the entry:
 
   **Export admits an entry before it records one**, and drops the entry, with
   a warning, when it cannot. Two guards were supposed to cover this and both
-  had the same hole: a denied key never takes a slug, and an unwritable slug
-  is never spelled — but a key with *no* slug at all skips both checks, and
-  the term that reaches the ledger is then the raw stored key. So a stored
+  had the same hole: a denied key never takes a spelling, and an unwritable
+  spelling is never written — but a key with *no* spelling at all skips both
+  checks, and the term that reaches the ledger is then the raw stored key. So a stored
   key of 140 characters, or one carrying a newline, or an internal one,
   reached the legend as an identity entry the moment the vocabulary in force
   bound its spelling elsewhere; `Marshal` emitted a legend its own `Validate`
@@ -3323,10 +3417,10 @@ writes the entry:
   smuggle a `uniqueKey` write past the §3 deny rule twice over: the entry
   itself is refused (previous bullet), and the *resolved* key is what
   admission judges regardless (see below). Conversely, a legend entry that
-  binds a denied *slug spelling* to a harmless stored key (a space-minted
-  `apiObjectKey` may collide with a bundled spelling, and an identity entry
-  for a shadow stored key is exactly this shape) is honored: nothing lands
-  on the internal key, so nothing is refused.
+  binds a denied SPELLING to a harmless stored key (a custom property may be
+  NAMED "Format", and an identity entry for a shadow stored key is exactly
+  this shape) is honored: nothing lands on the internal key, so nothing is
+  refused.
 
 **The type namespace carries the same inverse: `type_internal_keys`.** Everything
 above holds with `type_internal_keys` for the legend, the type half of the bundled
@@ -3912,28 +4006,28 @@ accepting the same documents (§12).
 **A property key has to be writable.** Non-empty, no control characters, at
 most 128 characters (`propertyNames` in the schema, restated in the reader so
 the issue can name the offending key — §12). This is a *deny* rule and
-not an allowlist on purpose: real keys are bundled lowerCamel names, bson-hex
+not an allowlist on purpose: real stored keys are bundled camelCase keys, bson-hex
 ids, and bare names from old accounts, and an allowlist could only be trusted
 after checking every key in every account — while the shapes ruled out here
 (the empty key, a key with a newline in it) are keys nothing can read. Export
 drops such a stored key with a warning, since there is no way to write it.
 
 The rule binds the **spelling**, and the spelling is whatever the vocabulary
-answers: the shipped one normalizes it (§3's label rule bounds the length and
-the charset), but `Options.Keys` accepts an implementation from anyone, and
-the raw material underneath is an `apiObjectKey` that is user-supplied or
-strcase-derived from the property name with no length bound and no
-reserved-word check — so nothing upstream *guarantees* a spelling this format
-accepts. Export
-therefore checks the slug it is about to write, and one it cannot honor
-falls back to the stored key — always its own address (verbatim-first) —
-with a warning naming the vocabulary's answer. Three answers export cannot
-honor: an **unwritable** slug (over-long, empty, control characters — on
-either side of a legend entry); a slug the deny rule refuses **as a
-spelling** before any resolution (`id`, `type` — the envelope's, which the
-legend cannot re-purpose and therefore cannot rescue; a property named "ID"
-really mints this slug); and any slug for a **denied key**, whose legend
-entry would carry a value admission refuses. Checking the stored key and
+answers: the shipped label rule enforces it (§3 — a name outside the
+writable bound is no label at all), but `Options.Keys` accepts an
+implementation from anyone, and the raw material underneath is a display
+name that is arbitrary user text with no length bound and no reserved-word
+check — so nothing upstream *guarantees* a spelling this format accepts.
+Export therefore checks the spelling it is about to write, and one it
+cannot honor falls back to the stored key — always its own address
+(verbatim-first) — with a warning naming the vocabulary's answer. Three
+answers export cannot honor: an **unwritable** spelling (over-long, empty,
+control characters — on either side of a legend entry); a spelling the deny
+rule refuses before any resolution (`id`, `type` — the envelope's, which
+the legend cannot re-purpose and therefore cannot rescue; a property
+literally named "id" really mints this spelling); and any spelling for a
+**denied key**, whose legend entry would carry a value admission refuses.
+Checking the stored key and
 then emitting the slug unchecked made `Marshal` produce a document its own
 `Validate` rejects, on `/properties` and `/property_internal_keys` at once, which
 §11 rules out.
@@ -4222,27 +4316,27 @@ string enums, and defaults omitted:
   "type": "dataview",
   "object_id": "bafyrei…targetSet",
   "properties": [
-    { "property": "name", "format": "text" },
-    { "property": "status", "format": "select" },
-    { "property": "due_date", "format": "date" }
+    { "property": "Name", "format": "text" },
+    { "property": "Status", "format": "select" },
+    { "property": "Due date", "format": "date" }
   ],
   "views": [
     {
       "id": "v1",
       "type": "kanban",
       "name": "By status",
-      "group_by": "status",
+      "group_by": "Status",
       "sorts": [
-        { "property": "due_date", "direction": "asc", "empty_placement": "end" }
+        { "property": "Due date", "direction": "asc", "empty_placement": "end" }
       ],
       "filters": [
-        { "property": "due_date", "condition": "less", "date_preset": "current_week" },
-        { "property": "done", "condition": "equal", "value": false }
+        { "property": "Due date", "condition": "less", "date_preset": "current_week" },
+        { "property": "Done", "condition": "equal", "value": false }
       ],
       "columns": [
-        { "property": "name" },
-        { "property": "due_date", "width": 120, "align": "right" },
-        { "property": "status", "aggregation": "count_distinct" }
+        { "property": "Name" },
+        { "property": "Due date", "width": 120, "align": "right" },
+        { "property": "Status", "aggregation": "count_distinct" }
       ]
     }
   ]
@@ -4489,7 +4583,12 @@ v1.0 reader encountering it reports "produced by a newer version"; export
 keeps writing the structured array; the `CompactFilters` export option
 stays reserved in `Options`). When that lands, the two forms coexist
 permanently — `filter` and `filters` mutually exclusive per view, import
-accepting both, export choosing via option.
+accepting both, export choosing via option. One consequence of raw-name
+addressing (§3) is already known for that future field: a display name is
+not a bare identifier in this grammar, so the document-side form will need
+a quoted-key production (`"Due date" < current_week()`); the bare-key
+grammar below is the API request surface's, whose key convention is a
+separate decision.
 
 The design, normative for the parser (and unchanged for the future
 document extension): a view carries its filter as a single SQL/JQL-flavored
@@ -5168,11 +5267,13 @@ text, so no character can be reserved to join it to its scope.** The property
 and type namespaces are disjoint claim domains and a space may slug a
 relation and a type onto one term (§3), so a single spelling→key map would
 hold two answers for it. One step down, an option name may contain anything a
-JSON string may, and so may the property spelling that owns it:
-`strcase.ToSnake("C#")` is `c#`, a legal api slug. A flat map keyed
-`<name>#<property>` therefore had no representable entry at all for an option
-of a property named `C#` — the escape hatch was unreachable exactly where it
-was needed — and re-opening that after the freeze costs a version (§10).
+JSON string may, and so may the property spelling that owns it — under raw
+naming a property really is named `C#`, and its spelling is exactly that. A
+flat map keyed
+`<name>#<property>` therefore had no representable entry at all for an
+option of a property named `C#` — the escape hatch was unreachable exactly
+where it was needed — and re-opening that after the freeze costs a version
+(§10).
 Nesting removes the separator, and with it the split rule, the key admission
 rule, the two charsets, and the joined key's length bound.
 
@@ -5402,9 +5503,9 @@ in the document is interpreted.
   changing the decision: a pre-v0.38 relation document spells
   `kind: "relation"`, which the kind enum now refuses by name before any
   member is read, and the vacated `relation_format` spelling resolves to
-  nothing at all any more — the refusal-by-resolution fires on the alias
-  `property_format` and on the verbatim stored key, the two spellings that
-  still name the detail (§3).
+  nothing at all any more. (v0.48 retires the alias spellings in turn: the
+  refusal-by-resolution now fires on the display name `"Format"` and on the
+  verbatim stored key, the two spellings that still name the detail — §3.)
 
 **Syntax inside `text` is versioned too, and the reader is exact about it.**
 A `text` string carries no version marker of its own, so the only thing that
@@ -5816,6 +5917,22 @@ fail neither test belong in authoring guidance and in review.
     admissible shape.
   A reader that reports more than this is not wrong about the document being
   invalid, but its extra issues are not statements about the document.
+- **Three warnings watch the raw-name seams**, all cheap, none a refusal
+  (introduced with the v0.48 re-spell). (i) A key spelling carrying edge
+  whitespace or an invisible (default-ignorable) code point — 8 of 767
+  measured production names do — draws a hygiene warning at Validate: the
+  name is carried exactly as the space holds it, and an exact match must
+  reproduce bytes the eye cannot check; a cleanup belongs where the entity
+  is named, not at this seam. (ii) At import, a term that resolves verbatim
+  and EXTENDS a live or bundled name past a word boundary
+  (`Lists [in work] (text)`) is warned as a probable glued annotation — the
+  one real raw-name failure shape the generation eval produced. (iii) At
+  import under a space-backed vocabulary, a term that resolves verbatim and
+  is no live entity's stored key is warned as the stale-or-guessed-name
+  phantom — every name-addressed scheme's shared hole, named at the seam.
+  Warnings (ii) and (iii) fire once per term per document, at every key
+  slot, both namespaces: the diagnosis is a fact about the term, not about
+  any one slot.
 - **A malformed `option_ids` entry is an error; an unconsulted one is a
   warning.** The two look like degrees of one fault and are not. An outer key
   naming a property the document never spells is **well-formed content the
@@ -5944,9 +6061,11 @@ pkg/lib/anyblockjson/
                                both namespaces, and the bundled default (§3)
   label.go                   — the label rule (§3): what a document spells
                                for a key the bundled table does not speak
-                               for, normalized through §6.2.1's identifier
-                               grammar. A vocabulary calls it; the codec
-                               never does
+                               for — the display name, NFC and verbatim. A
+                               vocabulary calls it; the codec never does
+  bundledname.go             — the bundled name tables (§3): key ↔ display
+                               name, both namespaces, the forgiving fold,
+                               and the collision-ladder helper
   blockvocab.go              — the block-type name tables (§5)
   viewvocab.go               — the dataview enum name tables (§6.2)
   fragment.go                — the FRAGMENT surface: one block, a flat run,
@@ -5956,9 +6075,9 @@ pkg/lib/anyblockjson/
   index.go                   — the bundle index (§2c)
   storeresolver/             — the space-backed implementations of the four
                                resolvers, including KeyVocabulary; the only
-                               place that reads a space's api slugs and
-                               display names, and the one that applies the
-                               §3 label rule to them
+                               place that reads a space's display names, and
+                               the one that applies the §3 label rule to
+                               them
   snapshotdiff/              — snapshot ↔ snapshot diffing for the PATCH path
   compose/                   — the bundle-level composition (§2c, §2f): the
                                path plan, the concurrent-emit composer that
@@ -6279,15 +6398,15 @@ Wiring (follow-up work, not this package):
   "$schema": "https://schemas.anytype.io/anyblock/1/object.schema.json",
   "version": 1,
   "id": "bafyreieqh63jv…",
-  "type": "page",
+  "type": "Page",
   "icon": { "format": "emoji", "emoji": "🔥" },
   "cover": { "format": "gradient", "gradient": "pinkOrange" },
   "properties": {
-    "name": "Project Phoenix",
-    "status": ["In progress"]
+    "Name": "Project Phoenix",
+    "Status": ["In progress"]
   },
   "option_ids": {
-    "status": { "In progress": "bafyrei…opt1" }
+    "Status": { "In progress": "bafyrei…opt1" }
   },
   "blocks": [
     { "id": "b1", "type": "heading_2", "text": "Goals" },
@@ -6309,24 +6428,24 @@ Wiring (follow-up work, not this package):
     { "id": "b9", "type": "dataview",
       "object_id": "bafyrei…tasksSet",
       "properties": [
-        { "property": "name", "format": "text" },
-        { "property": "status", "format": "select" },
-        { "property": "due_date", "format": "date" }
+        { "property": "Name", "format": "text" },
+        { "property": "Status", "format": "select" },
+        { "property": "Due date", "format": "date" }
       ],
       "views": [
         { "id": "v1", "type": "kanban", "name": "By status",
-          "group_by": "status",
+          "group_by": "Status",
           "sorts": [
-            { "property": "due_date", "direction": "asc", "empty_placement": "end" }
+            { "property": "Due date", "direction": "asc", "empty_placement": "end" }
           ],
           "filters": [
-            { "property": "due_date", "condition": "less", "date_preset": "current_week" },
-            { "property": "done", "condition": "equal", "value": false }
+            { "property": "Due date", "condition": "less", "date_preset": "current_week" },
+            { "property": "Done", "condition": "equal", "value": false }
           ],
           "columns": [
-            { "property": "name" },
-            { "property": "due_date", "width": 120, "align": "right" },
-            { "property": "status", "aggregation": "count_distinct" }
+            { "property": "Name" },
+            { "property": "Due date", "width": 120, "align": "right" },
+            { "property": "Status", "aggregation": "count_distinct" }
           ]
         }
       ]

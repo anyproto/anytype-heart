@@ -136,6 +136,6 @@ func TestSystemTrim_AnUnlistedSystemRelationIsUntouched(t *testing.T) {
 	require.NoError(t, err)
 
 	// then
-	assert.Contains(t, string(data), `"origin"`,
+	assert.Contains(t, string(data), `"Origin"`,
 		"admission is by explicit entry, never by category")
 }

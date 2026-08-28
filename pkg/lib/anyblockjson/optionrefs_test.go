@@ -122,8 +122,8 @@ func TestOptionRefs_TwoPropertiesShareAnOptionName(t *testing.T) {
 		"tag":    strList("bafyopt2"),
 	})
 	want := map[string]map[string]string{
-		"status": {"High": "bafyopt1"},
-		"tag":    {"High": "bafyopt2"},
+		"Status": {"High": "bafyopt1"},
+		"Tag":    {"High": "bafyopt2"},
 	}
 
 	// when
@@ -133,8 +133,8 @@ func TestOptionRefs_TwoPropertiesShareAnOptionName(t *testing.T) {
 	// then
 	require.NoError(t, Validate(data))
 	assert.Equal(t, want, docOptionIds(t, data))
-	assert.Equal(t, []any{"High"}, docProperty(t, data, "status"))
-	assert.Equal(t, []any{"High"}, docProperty(t, data, "tag"))
+	assert.Equal(t, []any{"High"}, docProperty(t, data, "Status"))
+	assert.Equal(t, []any{"High"}, docProperty(t, data, "Tag"))
 
 	_, back, err := Unmarshal(data, Options{ResolveOptions: space})
 	require.NoError(t, err)
@@ -161,7 +161,7 @@ func TestOptionRefs_DuplicateNameKeepsTheOptionTheObjectWasOn(t *testing.T) {
 	require.NoError(t, err)
 
 	// then
-	assert.Equal(t, legend("tag", map[string]string{"books": "bafysecond"}), docOptionIds(t, data))
+	assert.Equal(t, legend("Tag", map[string]string{"books": "bafysecond"}), docOptionIds(t, data))
 	assert.Equal(t, []string{"bafysecond"}, storedList(t, back, "tag"))
 	// and the name resolution the legend overrides really does answer the
 	// other option, so this test cannot pass by the fallback agreeing
@@ -193,8 +193,8 @@ func TestOptionRefs_SameNameTwiceInOneValueCollapses(t *testing.T) {
 
 	// then — the value keeps its arity, the identities collapse onto the
 	// first one written, and the legend says so out loud
-	assert.Equal(t, []any{"books", "books"}, docProperty(t, data, "tag"))
-	assert.Equal(t, legend("tag", map[string]string{"books": "bafysecond"}), docOptionIds(t, data))
+	assert.Equal(t, []any{"books", "books"}, docProperty(t, data, "Tag"))
+	assert.Equal(t, legend("Tag", map[string]string{"books": "bafysecond"}), docOptionIds(t, data))
 	assert.Equal(t, []string{"bafysecond", "bafysecond"}, storedList(t, back, "tag"))
 
 	// and the collapse is a FIXPOINT: exporting what came back reproduces the
@@ -225,7 +225,7 @@ func TestOptionRefs_RenamedOptionResolvesById(t *testing.T) {
 	require.NoError(t, err)
 
 	// then
-	assert.Equal(t, legend("tag", map[string]string{"High": "bafyorig"}), docOptionIds(t, data))
+	assert.Equal(t, legend("Tag", map[string]string{"High": "bafyorig"}), docOptionIds(t, data))
 	assert.Equal(t, []string{"bafyorig"}, storedList(t, back, "tag"),
 		"the id names the option the document came from; the name now names another")
 	id, ok := target.OptionId("tag", "High")
@@ -250,7 +250,7 @@ func TestOptionRefs_UnknownIdFallsBackToTheName(t *testing.T) {
 	require.NoError(t, err)
 
 	// then
-	assert.Equal(t, legend("tag", map[string]string{"High": "bafysource"}), docOptionIds(t, data))
+	assert.Equal(t, legend("Tag", map[string]string{"High": "bafysource"}), docOptionIds(t, data))
 	assert.Equal(t, []string{"bafytarget"}, storedList(t, back, "tag"))
 }
 
@@ -318,7 +318,7 @@ func TestOptionRefs_NameCarryingASpace(t *testing.T) {
 
 	// then
 	require.NoError(t, Validate(data), "a name with a space must be a legal legend key:\n%s", data)
-	assert.Equal(t, legend("tag", map[string]string{"import issue": "bafyopt"}), docOptionIds(t, data))
+	assert.Equal(t, legend("Tag", map[string]string{"import issue": "bafyopt"}), docOptionIds(t, data))
 
 	_, back, err := Unmarshal(data, Options{ResolveOptions: space})
 	require.NoError(t, err)
@@ -370,7 +370,7 @@ func TestOptionRefs_WrittenWithoutCompactionAndOnlyForWhatIsWritten(t *testing.T
 
 			// then
 			if tc.wantLegend {
-				assert.Equal(t, legend("tag", map[string]string{"High": "bafyknown"}), docOptionIds(t, data),
+				assert.Equal(t, legend("Tag", map[string]string{"High": "bafyknown"}), docOptionIds(t, data),
 					"the unresolved id is written verbatim and owes no entry")
 			} else {
 				assert.Nil(t, docOptionIds(t, data),
@@ -378,7 +378,7 @@ func TestOptionRefs_WrittenWithoutCompactionAndOnlyForWhatIsWritten(t *testing.T
 				assert.NotContains(t, string(data), "bafyknown",
 					"and the id it would have carried appears nowhere else either")
 			}
-			assert.Equal(t, []any{"High", "bafyunknown"}, docProperty(t, data, "tag"))
+			assert.Equal(t, []any{"High", "bafyunknown"}, docProperty(t, data, "Tag"))
 		})
 	}
 }
@@ -417,7 +417,7 @@ func TestOptionRefs_FilterValuesAndCustomOrders(t *testing.T) {
 		Details: fields(map[string]*types.Value{"name": str("Board")}),
 	}
 	opts := Options{ResolveOptions: space}
-	want := legend("tag", map[string]string{"Filtered": "bafyfilter", "Ordered": "bafyorder"})
+	want := legend("Tag", map[string]string{"Filtered": "bafyfilter", "Ordered": "bafyorder"})
 
 	// when
 	data, err := Marshal(model.SmartBlockType_Page, snap, opts)
@@ -547,7 +547,7 @@ func TestOptionRefs_OverLongNameStillGetsAnEntry(t *testing.T) {
 
 			// then
 			require.NoError(t, Validate(data), "%s", data)
-			assert.Equal(t, legend("tag", map[string]string{optName: "bafyopt"}), docOptionIds(t, data))
+			assert.Equal(t, legend("Tag", map[string]string{optName: "bafyopt"}), docOptionIds(t, data))
 			assert.Equal(t, []string{"bafyopt"}, storedList(t, back, "tag"))
 		})
 	}

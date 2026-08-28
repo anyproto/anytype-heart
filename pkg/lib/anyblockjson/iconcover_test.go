@@ -339,9 +339,14 @@ func TestRoundTrip_IconAndCoverAreAFixpoint(t *testing.T) {
 // every row here accepts the document, storing an icon in a slot export never
 // writes — so the value would be invisible to the next export.
 func TestImport_TheFlatSpellingsAreRefused(t *testing.T) {
+	// The spellings that RESOLVE onto the lifted keys are their display
+	// names and their verbatim stored keys. The pre-change flat slugs
+	// (`icon_emoji`, `cover_id`) resolve nothing at all now — a denied
+	// key's fold class answers nothing — so they are ordinary custom keys
+	// that land on no icon slot, which the last arm pins.
 	for name, tc := range map[string]struct{ doc, repair string }{
-		"the canonical slug": {
-			doc:    `{"version": 1, "properties": {"icon_emoji": "🔥"}}`,
+		"the display name": {
+			doc:    `{"version": 1, "properties": {"Emoji": "🔥"}}`,
 			repair: `"icon": {"format": "emoji", "emoji": "…"}`,
 		},
 		"the stored key spelled verbatim": {
@@ -349,19 +354,19 @@ func TestImport_TheFlatSpellingsAreRefused(t *testing.T) {
 			repair: `"icon": {"format": "file", "file": "<object id>"}`,
 		},
 		"an icon name": {
-			doc:    `{"version": 1, "properties": {"icon_name": "folder"}}`,
+			doc:    `{"version": 1, "properties": {"iconName": "folder"}}`,
 			repair: `"icon": {"format": "icon", "name": "…"}`,
 		},
 		"an icon option": {
-			doc:    `{"version": 1, "properties": {"icon_option": 3}}`,
+			doc:    `{"version": 1, "properties": {"iconOption": 3}}`,
 			repair: `the "color" member of "icon"`,
 		},
 		"a cover id": {
-			doc:    `{"version": 1, "properties": {"cover_id": "blue"}}`,
+			doc:    `{"version": 1, "properties": {"coverId": "blue"}}`,
 			repair: `"cover": {"format": "image"|"color"|"gradient", …}`,
 		},
 		"cover framing": {
-			doc:    `{"version": 1, "properties": {"cover_y": -0.25}}`,
+			doc:    `{"version": 1, "properties": {"coverY": -0.25}}`,
 			repair: `the "scale"/"x"/"y" members of an image "cover"`,
 		},
 		// the laundering case: a legend can bind any spelling to any stored
@@ -381,6 +386,15 @@ func TestImport_TheFlatSpellingsAreRefused(t *testing.T) {
 			require.Error(t, unmErr, "and the seam refuses it whatever vocabulary is wired")
 		})
 	}
+
+	t.Run("the retired flat slug is an ordinary custom key", func(t *testing.T) {
+		doc := `{"version": 1, "properties": {"icon_emoji": "🔥"}}`
+		require.NoError(t, Validate([]byte(doc)))
+		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.NoError(t, err)
+		assert.Nil(t, snap.Details.Fields["iconEmoji"], "it lands on no icon slot")
+		assert.NotNil(t, snap.Details.Fields["icon_emoji"], "it is its own key, verbatim")
+	})
 }
 
 // The refusal runs on the RESOLVED stored key, which is what keeps a

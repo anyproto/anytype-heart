@@ -183,7 +183,7 @@ func TestIndex_ManifestOmitsEmptyPaths(t *testing.T) {
 	require.NoError(t, err, "what Marshal writes, Unmarshal accepts (I1)")
 	assert.NotContains(t, string(data), "ghost")
 	assert.NotContains(t, string(data), "bafyx")
-	assert.Contains(t, string(data), "task")
+	assert.Contains(t, string(data), "Task")
 
 	// a manifest whose every entry is empty collapses to no manifest at all
 	bare, err := MarshalIndex(&Index{Name: "Corpus", Manifest: &Manifest{Files: map[string]string{"bafyx": ""}}})

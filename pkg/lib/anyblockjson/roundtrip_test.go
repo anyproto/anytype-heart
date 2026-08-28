@@ -442,8 +442,8 @@ func TestEnvelope_Variants(t *testing.T) {
 		data, err := Marshal(model.SmartBlockType_Template, snap, Options{})
 		require.NoError(t, err)
 		s := string(data)
-		assert.Contains(t, s, `"type": "template"`)
-		assert.Contains(t, s, `"template_for": "task"`)
+		assert.Contains(t, s, `"type": "Template"`)
+		assert.Contains(t, s, `"template_for": "Task"`)
 		// A template says so, always. `kind` used to be omitted here as
 		// derivable from the type term, which is what made the type term
 		// carry two meanings at once (§2, v0.22): the cost is ~21 bytes on a

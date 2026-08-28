@@ -122,8 +122,8 @@ func TestTypeSettings_ProvenanceIsDroppedOnTypeDocumentsOnly(t *testing.T) {
 		})
 		data, err := Marshal(model.SmartBlockType_Page, snap, testOptions())
 		require.NoError(t, err)
-		assert.Contains(t, string(data), `"origin"`, "on a page, origin is real provenance")
-		assert.Contains(t, string(data), `"set_of"`, "on a set, setOf is the collection's meaning")
+		assert.Contains(t, string(data), `"Origin"`, "on a page, origin is real provenance")
+		assert.Contains(t, string(data), `"Set of"`, "on a set, setOf is the collection's meaning")
 	})
 }
 

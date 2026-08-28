@@ -69,34 +69,34 @@ func TestTypePropertiesExport(t *testing.T) {
 		want := `"type_settings": {
     "property_definitions": [
       {
-        "property": "due_date",
+        "property": "Due date",
         "internal_key": "dueDate",
         "name": "Due date",
         "format": "date",
         "section": "featured"
       },
       {
-        "property": "assignee",
+        "property": "Assignee",
         "internal_key": "assignee",
         "name": "Assignee",
         "format": "objects",
         "section": "featured"
       },
       {
-        "property": "status",
+        "property": "Status",
         "internal_key": "status",
         "name": "Status",
         "format": "select"
       },
       {
-        "property": "file_ext",
+        "property": "File extension",
         "internal_key": "fileExt",
         "name": "File extension",
         "format": "text",
         "section": "file"
       },
       {
-        "property": "origin",
+        "property": "Origin",
         "internal_key": "origin",
         "name": "Origin",
         "format": "text",
@@ -125,7 +125,7 @@ func TestTypePropertiesExport(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Contains(t, string(data), `"property": "status"`)
+		assert.Contains(t, string(data), `"property": "Status"`)
 		assert.NotContains(t, string(data), "relid-gone")
 	})
 
@@ -137,7 +137,7 @@ func TestTypePropertiesExport(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotContains(t, string(data), "type_settings")
 		// v0.38: the raw list keys spell their property aliases (alias.go)
-		assert.Contains(t, string(data), "recommended_featured_properties")
+		assert.Contains(t, string(data), "Recommended featured relations")
 		assert.Contains(t, string(data), "relid-dueDate")
 	})
 
@@ -185,8 +185,8 @@ func TestTypePropertiesExport(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Contains(t, string(data), `"property": "creator"`)
-		assert.Contains(t, string(data), `"property": "created_date"`)
+		assert.Contains(t, string(data), `"property": "Created by"`)
+		assert.Contains(t, string(data), `"property": "Creation date"`)
 	})
 
 	t.Run("a lifted recommended id is spelled out, not labelled", func(t *testing.T) {
@@ -205,7 +205,7 @@ func TestTypePropertiesExport(t *testing.T) {
 		// assertion on a legend that no longer exists would hold no matter
 		// what the export did
 		require.NoError(t, err)
-		assert.Contains(t, string(data), `"property": "status"`,
+		assert.Contains(t, string(data), `"property": "Status"`,
 			"the lifted list resolves to a type_properties entry")
 		assert.NotContains(t, string(data), `"relid-status"`,
 			"the raw id is consumed by the lift, not carried as a label")

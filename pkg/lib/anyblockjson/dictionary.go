@@ -207,21 +207,19 @@ func unmarshalPropertyDictionary(data []byte, warn func(Issue)) (*PropertyDictio
 }
 
 // dictionaryKeySpelling renders an ENTRY's stored key the way the dictionary
-// spells it: the bundled spelling for a bundled property — its derived api
-// slug, or its v0.38 alias where the stored key says "relation" (alias.go) —
-// the stored key verbatim for anything else (§2f).
+// spells it: the bundled spelling for a bundled property — its display name
+// from the shipped table (bundledname.go) — the stored key verbatim for
+// anything else (§2f).
 //
-// Only `properties` needs the condition. `installed` admits bundled keys and
-// nothing else — it names rows to restore from the bundled table — so it
-// slugs unconditionally. An ENTRY, by contrast, is how a bundle declares a
-// property the bundled table does NOT have, so its key population is mixed:
-// of 6,426 entries in a 77-space export, 515 are space-minted bson ids.
-//
-// For those the condition is load-bearing rather than cosmetic.
-// `bundle.ApiSlug` is `strcase.ToSnake`, and
-// `ApiSlug("6a32d4856761631534b22f85")` is
-// `"6_a_32_d_4856761631534_b_22_f_85"` — a key that names nothing. Slugging
-// unconditionally would corrupt one entry key in twelve.
+// Only `properties` needs the condition. `installed` admits bundled keys
+// and nothing else — it names rows to restore from the bundled table — so
+// it names unconditionally. An ENTRY, by contrast, is how a bundle declares
+// a property the bundled table does NOT have, so its key population is
+// mixed: of 6,426 entries in a 77-space export, 515 are space-minted bson
+// ids. For those the condition is load-bearing rather than cosmetic: the
+// dictionary has no legend, so its spelling must be a pure function of the
+// key, and the only pure spelling a space-minted key has is itself —
+// nothing may ever be derived from a bson id.
 func dictionaryKeySpelling(storedKey string) string {
 	if bundle.HasRelation(domain.RelationKey(storedKey)) {
 		return bundledPropertySpelling(storedKey)
@@ -230,13 +228,12 @@ func dictionaryKeySpelling(storedKey string) string {
 }
 
 // dictionaryTypeSpelling renders a TARGET type key the way the dictionary
-// spells it: the bundled spelling for a bundled type (api slug, or v0.38
-// alias — `relation` spells `property`), the stored key verbatim for
-// anything else (§2f) — the same rule the entry's own key follows, for the
-// same reason.
+// spells it: the display name for a bundled type ("Property" for the type
+// stored as `relation`), the stored key verbatim for anything else (§2f) —
+// the same rule the entry's own key follows, for the same reason.
 //
 // A type document's `object_types` reaches the same answer by a different
-// road: it slugs through the exporter's per-document ledger and binds the
+// road: it spells through the exporter's per-document ledger and binds the
 // term in that document's `type_internal_keys` legend. The dictionary has no legend,
 // so its spelling must be a PURE FUNCTION of the key, which is what makes
 // `bundle.ApiSlug` the right instrument and a ledger the wrong one.
@@ -258,15 +255,15 @@ func dictionaryTypeSpelling(typeKey string) string {
 
 // dictionaryStoredTypeKey inverts dictionaryTypeSpelling, by the ladder every
 // slot in the format follows: an exact stored key names itself, then the
-// v0.38 alias table, then a single fold match, and an ambiguity is never
+// bundled name table, then a single fold match, and an ambiguity is never
 // resolved by guess. The stored-key step running FIRST is deliberate and
 // pinned: `relation` is a bundled type's stored key, so it still names that
-// type verbatim even though its wire spelling is now `property`.
+// type verbatim even though its wire spelling is the display name "Property".
 func dictionaryStoredTypeKey(spelling string) string {
 	if _, err := bundle.GetType(domain.TypeKey(spelling)); err == nil {
 		return spelling
 	}
-	if key, ok := typeKeyByAlias[spelling]; ok {
+	if key, ok := bundledTypeKeyBySpelling(spelling); ok {
 		return key
 	}
 	if candidates := BundledTypeKeysByFold(spelling); len(candidates) == 1 {
@@ -288,8 +285,8 @@ func dictionaryStoredKey(spelling string) (stored string, ambiguous []string) {
 	if bundle.HasRelation(domain.RelationKey(spelling)) {
 		return spelling, nil // a stored key names itself
 	}
-	if key, ok := propertyKeyByAlias[spelling]; ok {
-		return key, nil // the v0.38 alias table, before the fold (alias.go)
+	if key, ok := bundledPropertyKeyBySpelling(spelling); ok {
+		return key, nil // the bundled name table, before the fold
 	}
 	candidates := BundledPropertyKeysByFold(spelling)
 	switch len(candidates) {
@@ -481,9 +478,9 @@ func MarshalPropertyDictionary(d *PropertyDictionary) ([]byte, error) {
 }
 
 // dictionaryEntryOmap renders one entry: the propertyDefinition members in
-// the §2e order, its `property` in the dictionary's spelling — the bundled
-// spelling (api slug, or v0.38 alias) for a bundled property, the stored key
-// verbatim for a space-minted one,
+// the §2e order, its `property` in the dictionary's spelling — the display
+// name for a bundled property, the stored key verbatim for a space-minted
+// one,
 // which is the ladder every other slot in the format follows (§2f) — and its
 // `internal_key` the stored key verbatim, the export-fidelity half an author
 // never has to write. There is still no legend to write: the spelling is a

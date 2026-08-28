@@ -40,8 +40,15 @@ func TestTransientProperties_DroppedNotRefused(t *testing.T) {
 
 	t.Run("a merge-resolution vector is still REFUSED, not dropped", func(t *testing.T) {
 		// the control that keeps the exemption honest: neverWritableProperties
-		// aims a document at an object it did not create, and stays an error
-		require.Error(t, Validate([]byte(`{"version": 1, "properties": {"old_anytype_id": "x"}}`)))
+		// aims a document at an object it did not create, and stays an error.
+		// The spelling that RESOLVES onto the vector is its stored key
+		// (verbatim-first); the old derived slug resolves nothing at all —
+		// a denied key's fold class answers nothing — so it is an ordinary
+		// custom key that lands on no vector, which the second line pins.
+		require.Error(t, Validate([]byte(`{"version": 1, "properties": {"oldAnytypeID": "x"}}`)))
+		_, snap, err := Unmarshal([]byte(`{"version": 1, "properties": {"old_anytype_id": "x"}}`), Options{})
+		require.NoError(t, err)
+		assert.NotContains(t, snap.GetDetails().GetFields(), "oldAnytypeID")
 	})
 
 	t.Run("an ordinary property still lands", func(t *testing.T) {
@@ -67,7 +74,7 @@ func TestTransientProperties_NeverExported(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotContains(t, string(data), "internal_flags",
 		"transient state describes the moment, not the object (§3)")
-	assert.Contains(t, string(data), `"name"`, "and the rest of the object is untouched")
+	assert.Contains(t, string(data), `"Name"`, "and the rest of the object is untouched")
 }
 
 // Whether a transient key is a BUNDLED relation is a per-key verdict, and
@@ -222,7 +229,7 @@ func TestTransientProperties_FileStatusDoesNotTravel(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotContains(t, string(data), "file_backup_status")
 		assert.NotContains(t, string(data), "file_indexing_status")
-		assert.Contains(t, string(data), `"name"`, "and the rest of the object is untouched")
+		assert.Contains(t, string(data), `"Name"`, "and the rest of the object is untouched")
 	})
 }
 

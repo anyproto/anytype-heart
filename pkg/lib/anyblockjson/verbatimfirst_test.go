@@ -143,14 +143,14 @@ func blockKeySnapshot(details map[string]*types.Value, blockKeys ...string) *mod
 	return &model.SmartBlockSnapshotBase{Blocks: blocks, Details: fields(details)}
 }
 
-// The ledger, arm one: a block slot's slug may not take a term that IS a
-// stored key the document names. The vocabulary slugs a custom key onto
-// "due_date" while the object holds bundled dueDate: recording that legend
-// entry rebound /properties/due_date to the custom key — dueDate's value
-// moved, and the date degraded to a raw string.
+// The ledger, arm one: a block slot's spelling may not take a term that IS
+// a stored key the document names. The vocabulary spells a custom key as
+// "dueDate" — the literal stored key of a property the object holds — so
+// the claimant degrades through the ladder: its own key is a minted bson
+// id, so it takes `<name> (<tail6>)`, and the legend inverts the suffix.
 func TestExport_BlockSlugMayNotTakeAStoredKeysTerm(t *testing.T) {
 	// given
-	vocab := spaceVocabulary{slugOf: map[string]string{"6a32d4856761631534b22f85": "due_date"}}
+	vocab := spaceVocabulary{slugOf: map[string]string{"6a32d4856761631534b22f85": "dueDate"}}
 	snap := blockKeySnapshot(map[string]*types.Value{
 		"name":    str("x"),
 		"dueDate": str("2026-07-06T08:44:05Z"),
@@ -159,18 +159,15 @@ func TestExport_BlockSlugMayNotTakeAStoredKeysTerm(t *testing.T) {
 	// when
 	data, err := Marshal(model.SmartBlockType_Page, snap, Options{Keys: vocab})
 
-	// then — the block keeps its stored key; the legend does not rebind the term
+	// then — the stored key keeps its own term; the claimant takes the suffix
 	require.NoError(t, err)
 	require.NoError(t, Validate(data))
 	doc := decodeDoc(t, data)
 	require.Len(t, doc.Blocks, 1)
-	assert.Equal(t, "6a32d4856761631534b22f85", doc.Blocks[0].Key,
-		"the slug is taken — dueDate spells due_date, and a stored key always keeps its own term")
-	assert.Equal(t, "dueDate", doc.PropertyKeys["due_date"],
-		"the legend states the term's OWN key: `due_date` is dueDate's spelling in this "+
-			"document, never the custom key that wanted it. (The entry is owed because "+
-			"this vocabulary binds `due_date` to the custom key — the round trip below "+
-			"is what it buys.)")
+	assert.Equal(t, "dueDate (b22f85)", doc.Blocks[0].Key,
+		"the term `dueDate` is taken — a stored key always keeps its own term (verbatim-first)")
+	assert.Equal(t, "6a32d4856761631534b22f85", doc.PropertyKeys["dueDate (b22f85)"],
+		"the suffix owes its inverse: no shipped table has ever heard of it")
 
 	// a package-only reader gets both relations back intact
 	_, back, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
@@ -184,19 +181,18 @@ func TestExport_BlockSlugMayNotTakeAStoredKeysTerm(t *testing.T) {
 		}
 	}
 
-	// and so does the writer's own reader, which resolves `due_date` to the
-	// custom key unless the legend says otherwise
+	// and so does the writer's own reader
 	_, back, err = Unmarshal(data, Options{GenerateId: seqIds("h"), Keys: vocab})
 	require.NoError(t, err)
-	assert.NotNil(t, back.Details.Fields["dueDate"],
-		"without the entry dueDate's value lands on the custom key instead")
+	assert.NotNil(t, back.Details.Fields["dueDate"])
 	assert.Nil(t, back.Details.Fields["6a32d4856761631534b22f85"])
 }
 
-// The ledger, arm two: when buildProperties backs a slug off (the term is
-// another stored key on the object), the block slot naming the same key used
-// to record the slug anyway — one document, two spellings of one key, refused
-// by its own importer.
+// The ledger, arm two: when the plan degrades a claimant (the term is
+// another stored key on the object), EVERY slot naming that key takes the
+// same degraded spelling — one key, one spelling, document-wide. The block
+// slot used to record the plain slug anyway: one document, two spellings of
+// one key, refused by its own importer.
 func TestExport_BackedOffSlugBacksOffEverywhere(t *testing.T) {
 	// given
 	vocab := spaceVocabulary{slugOf: map[string]string{"6a32d4856761631534b22f85": "due_date"}}
@@ -213,8 +209,9 @@ func TestExport_BackedOffSlugBacksOffEverywhere(t *testing.T) {
 	require.NoError(t, Validate(data), "emitted:\n%s", data)
 	doc := decodeDoc(t, data)
 	require.Len(t, doc.Blocks, 1)
-	assert.Equal(t, "6a32d4856761631534b22f85", doc.Blocks[0].Key,
-		"one key, one spelling, document-wide")
+	assert.Equal(t, "due_date (b22f85)", doc.Blocks[0].Key,
+		"one key, one spelling, document-wide — the property slot and the block slot agree")
+	assert.Equal(t, "custom", doc.Properties["due_date (b22f85)"])
 
 	_, back, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
 	require.NoError(t, err, "emitted:\n%s", data)
@@ -222,10 +219,10 @@ func TestExport_BackedOffSlugBacksOffEverywhere(t *testing.T) {
 	assert.Equal(t, "custom", back.Details.Fields["6a32d4856761631534b22f85"].GetStringValue())
 }
 
-// The ledger, arm three: two keys, one slug, in slots outside /properties.
-// The last recordPropertyKey used to win the single legend entry, so after a
-// round trip BOTH property blocks named the second key — two relations
-// collapsed into one.
+// The ledger, arm three: two keys, one spelling, in slots outside
+// /properties. The last recordPropertyKey used to win the single legend
+// entry, so after a round trip BOTH property blocks named the second key —
+// two relations collapsed into one.
 func TestExport_TwoKeysOneSlugKeepDistinctTerms(t *testing.T) {
 	// given
 	vocab := twinSlugVocab{a: "aaa111", b: "bbb222", slug: "priority"}
@@ -234,18 +231,19 @@ func TestExport_TwoKeysOneSlugKeepDistinctTerms(t *testing.T) {
 	// when
 	data, err := Marshal(model.SmartBlockType_Page, snap, Options{Keys: vocab})
 
-	// then — first claimant keeps the slug, the later holder stays verbatim
+	// then — EVERY claimant of the contested spelling degrades: both keys
+	// are readable, so both take their stored keys, and neither depends on
+	// which slot happened to claim first
 	require.NoError(t, err)
 	require.NoError(t, Validate(data))
 	doc := decodeDoc(t, data)
 	require.Len(t, doc.Blocks, 2)
-	assert.Equal(t, "priority", doc.Blocks[0].Key)
+	assert.Equal(t, "aaa111", doc.Blocks[0].Key)
 	assert.Equal(t, "bbb222", doc.Blocks[1].Key)
-	assert.Equal(t, map[string]string{"priority": "aaa111", "bbb222": "bbb222"},
+	assert.Equal(t, map[string]string{"aaa111": "aaa111", "bbb222": "bbb222"},
 		doc.PropertyKeys,
-		"the slug entry names its claimant; the loser, written verbatim, names "+
-			"itself — no bundled table binds `bbb222`, so nothing else in the "+
-			"document says the term is a stored key")
+		"each names itself — no bundled table binds either term, so nothing else "+
+			"in the document says they are stored keys")
 
 	// and the two relations are still two relations after the round trip
 	_, back, err := Unmarshal(data, Options{GenerateId: seqIds("g")})

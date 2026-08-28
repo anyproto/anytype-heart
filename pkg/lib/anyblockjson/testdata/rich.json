@@ -2,18 +2,18 @@
   "$schema": "https://schemas.anytype.io/anyblock/1/object.schema.json",
   "version": 1,
   "id": "bafyreiobject",
-  "type": "page",
+  "type": "Page",
   "icon": {
     "format": "emoji",
     "emoji": "🔥"
   },
   "properties": {
-    "name": "Project Phoenix",
-    "description": "The subtitle",
-    "assignee": [
+    "Name": "Project Phoenix",
+    "Description": "The subtitle",
+    "Assignee": [
       "bafyreiroman"
     ],
-    "created_date": "2025-07-06T08:44:05Z",
+    "Creation date": "2025-07-06T08:44:05Z",
     "customDate": "2025-07-06T08:44:05Z",
     "customStatus": [
       "In progress"
@@ -148,7 +148,7 @@
       "object_id": "bafyreitasks",
       "properties": [
         {
-          "property": "name",
+          "property": "Name",
           "format": "text"
         },
         {
@@ -156,7 +156,7 @@
           "format": "select"
         },
         {
-          "property": "due_date",
+          "property": "Due date",
           "format": "date"
         }
       ],
@@ -168,14 +168,14 @@
           "group_by": "customStatus",
           "sorts": [
             {
-              "property": "due_date",
+              "property": "Due date",
               "empty_placement": "end",
               "id": "s1"
             }
           ],
           "filters": [
             {
-              "property": "due_date",
+              "property": "Due date",
               "condition": "less",
               "date_preset": "current_week",
               "id": "f1"
@@ -193,7 +193,7 @@
                   "id": "f2"
                 },
                 {
-                  "property": "done",
+                  "property": "Done",
                   "condition": "empty",
                   "id": "f3"
                 }
@@ -202,10 +202,10 @@
           ],
           "columns": [
             {
-              "property": "name"
+              "property": "Name"
             },
             {
-              "property": "due_date",
+              "property": "Due date",
               "hidden": true,
               "width": 120,
               "aggregation": "count_distinct",

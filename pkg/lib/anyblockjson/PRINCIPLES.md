@@ -31,14 +31,14 @@ inline:
 ```json
 {
   "version": 1,
-  "type": "task",
+  "type": "Task",
+  "icon": { "format": "emoji", "emoji": "🚢" },
   "properties": {
-    "name": "Ship the export",
-    "icon_emoji": "🚢",
-    "status": ["In progress"],
-    "due_date": "2026-09-30T00:00:00Z"
+    "Name": "Ship the export",
+    "Status": ["In progress"],
+    "Due date": "2026-09-30T00:00:00Z"
   },
-  "option_ids": { "status": { "In progress": "bafyrei…opt1" } },
+  "option_ids": { "Status": { "In progress": "bafyrei…opt1" } },
   "blocks": [
     { "type": "heading_2", "text": "Goals" },
     { "type": "paragraph",
@@ -111,7 +111,9 @@ type, option, set/collection, space (§1) — and everything it defines is
 `snake_case`, digits included, stated as a rule so a name added later needs
 no decision (§1 *Naming*). So `relation` → `property`, `smartBlockType` →
 `kind`, `header_1` → `heading_1`, `status`/`tag`/`longtext` →
-`select`/`multi_select`/`text`. "Relation" appears nowhere in the format.
+`select`/`multi_select`/`text`. Property and type KEYS are exempt — they
+name things a user named, and spell the display name verbatim (§3).
+"Relation" appears in the format only where a user put it in a name.
 
 Borrow only where the meaning matches. `dataview` stayed `dataview` rather
 than becoming `database`, because a dataview references objects it does not
@@ -369,5 +371,5 @@ no loss is silent.
 | Atlassian Document Format | an envelope with a single `version` integer; `type`-discriminated nodes | additive-within-a-version; nested `content` trees (rule 4) |
 | [Portable Text](https://www.portabletext.org/) | JSON blocks as the unit; a legend referenced by key (`markDefs` → `property_internal_keys`, `type_internal_keys`, `option_ids`) | marks as arrays on spans — Markdown in `text` instead (rule 4); a legend for object references, measured a net loss (rule 5) |
 | [JSON Canvas](https://jsoncanvas.org/), [OKF](https://github.com/GoogleCloudPlatform/knowledge-catalog/blob/main/okf/SPEC.md) | a short spec with its purpose stated first; goals and non-goals up front; longevity, readability, interoperability as the brief | — |
-| Anytype public REST API (`core/api`) | format names (`select`, `multi_select`, `text`, `objects`, `files`); snake_case keys; the slug vocabulary | id/key duality; value fields named after formats |
+| Anytype public REST API (`core/api`) | format names (`select`, `multi_select`, `text`, `objects`, `files`); snake_case member names | id/key duality; value fields named after formats; the derived slug vocabulary (keys spell display names, §3) |
 | Agent-API evidence 2024–2026 (`docs/AgentApiV2Research.md`; [Ustynov 2026](https://arxiv.org/abs/2604.07502)) | id-addressed edits; constrained decoding as the small-model floor; examples over prose; SQL-shaped filters; the validation loop as product surface; compact but not exotic | tabular/TOON-style output by default; raw JSON Patch; whole-document rewrite as the default edit |

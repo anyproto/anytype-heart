@@ -73,7 +73,7 @@ func TestExport_PropertyKeysLegendCarriesWhatTheTableCannot(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(data, &doc))
 	assert.Contains(t, doc.Properties, "priority", "the custom key is spelled as its slug")
-	assert.Contains(t, doc.Properties, "due_date", "a bundled key is spelled as its slug")
+	assert.Contains(t, doc.Properties, "Due date", "a bundled key is spelled as its display name")
 	assert.Equal(t, map[string]string{"priority": "6a32d4856761631534b22f85"}, doc.PropertyKeys,
 		"only the entry a package-only reader could not invert")
 }

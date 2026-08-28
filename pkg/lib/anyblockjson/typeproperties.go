@@ -48,7 +48,7 @@ type PropertyDefinition struct {
 	// ObjectTypes restricts which types an objects/files property may point
 	// at, in priority order, given as **type keys** — the STORED spelling on
 	// this struct; the document spells the slug, and the codec translates at
-	// the boundary like every other key slot (§7.5a). Empty means any
+	// the boundary like every other key slot (§3). Empty means any
 	// object, which is also what an untargeted property accepts — a task
 	// could be assigned to a random page. Listing the built-in `participant`
 	// alongside a bundle's own people type is what makes the current-user
@@ -236,7 +236,7 @@ func (e *exporter) buildTypeProperties() []any {
 			m.setNonEmpty("name", def.Name)
 			m.setNonEmpty("format", formatName(def.Format))
 			m.setNonEmpty("options", optionsToAny(def.Options))
-			// object_types is a TYPE key slot (§7.5a) — it names types, so it
+			// object_types is a TYPE key slot (§3) — it names types, so it
 			// speaks the same vocabulary the envelope `type` does, claims its
 			// spellings through the same term ledger, and owes the same
 			// type_internal_keys legend (§3)

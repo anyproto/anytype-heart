@@ -88,7 +88,7 @@ func TestRelationDocumentTranslatesTargetTypes(t *testing.T) {
 	_, got, err := anyblockjson.Unmarshal(data, fx.Options())
 	require.NoError(t, err)
 
-	// then: the resolved key on the wire in its §3 SLUG spelling, with the
+	// then: the resolved key on the wire in its §3 name spelling, with the
 	// legend entry that inverts it — and the unresolvable id verbatim, its
 	// own address, never dropped
 	var doc struct {
@@ -100,9 +100,9 @@ func TestRelationDocumentTranslatesTargetTypes(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(data, &doc))
 	assert.Equal(t, "objects", doc.PropertySettings.Format)
-	assert.Equal(t, []string{"person", "type-vanished"}, doc.PropertySettings.ObjectTypes)
-	assert.Equal(t, customTypeKey, doc.TypeKeys["person"],
-		"the slug owes the legend entry that inverts it (§3)")
+	assert.Equal(t, []string{"Person", "type-vanished"}, doc.PropertySettings.ObjectTypes)
+	assert.Equal(t, customTypeKey, doc.TypeKeys["Person"],
+		"the name owes the legend entry that inverts it (§3)")
 
 	// and ids back in the snapshot
 	gotTargets := got.Details.Fields["relationFormatObjectTypes"].GetListValue()

@@ -328,6 +328,15 @@ type exporter struct {
 	termOwner map[string]string // term -> the stored key it denotes
 	termByKey map[string]string // stored key -> the term written for it
 	namedKeys map[string]bool   // census: every stored key any slot may name
+	// termPlan is the census's collision verdict, computed once per document
+	// (planKeyTerms): the term each censused key will actually take. For
+	// nearly every key that is its plain vocabulary spelling; where two
+	// censused keys claim ONE spelling — names are not unique, and
+	// collisions are resolved per document, not per space — EVERY claimant
+	// degrades through the ladder (stored key when readable, else
+	// `<name> (<tail6>)`, else stored key), so which spelling a key gets
+	// cannot depend on which slot happened to claim first.
+	termPlan map[string]string
 
 	// typeKeys is the §3 legend for the TYPE namespace, and typeTermOwner /
 	// typeTermByKey / typeNamedKeys its term ledger. One ledger and one
@@ -341,15 +350,17 @@ type exporter struct {
 	typeTermOwner map[string]string
 	typeTermByKey map[string]string
 	typeNamedKeys map[string]bool
+	typeTermPlan  map[string]string
 }
 
 // propertySlug renders a stored property key for output and records what the
 // document owes a reader who cannot ask the space (§3). It is the term
 // ledger's claim step, and the ONLY way a key slot may spell a key: a stored
-// key always keeps its own term (§3 verbatim-first — the census reserved it),
-// a slug goes to its first claimant, and a later key whose slug is already
-// claimed — by an earlier holder or by a stored key the document names —
-// falls back to its stored key, which is always its own address. The answer
+// key always keeps its own term (§3 verbatim-first — the census reserved
+// it), an uncontested spelling goes to its claimant, and a CONTESTED one —
+// two censused keys sharing a name, or a name that is a censused stored key
+// — degrades EVERY claimant by the census's plan (planKeyTerms), so which
+// spelling a key gets never depends on which slot claimed first. The answer
 // is remembered, so one key spells the same way in every slot; without the
 // ledger, a block slot's blind recordPropertyKey could rebind a term that
 // /properties already owns, silently moving that property's value onto a
@@ -365,6 +376,16 @@ func (e *exporter) propertySlug(key string) string {
 		return term
 	}
 	term := e.writableSlug(key)
+	// the census's collision plan overrides the plain spelling for every
+	// censused key: names are not unique, so two keys in one document can
+	// claim one spelling, and the plan degrades EVERY claimant through the
+	// ladder rather than letting claim order pick a winner. An uncensused
+	// key (a block the census walk could not see) keeps the old first-claim
+	// discipline below, which can only over-degrade — always correct,
+	// merely less compact.
+	if planned, ok := e.termPlan[key]; ok {
+		term = planned
+	}
 	if term != key {
 		if _, claimed := e.termOwner[term]; claimed || e.namedKeys[term] {
 			term = key
@@ -472,6 +493,11 @@ func (e *exporter) seedTermLedger() {
 			}
 		}
 	}
+	// the collision pass runs off the finished census, silently — the plan
+	// is consulted at claim time (propertySlug), where the warnings fire
+	e.termPlan = planKeyTerms(e.namedKeys,
+		func(k string) string { return e.vetSlug(k, quietWarn) },
+		bundledPropertyKeyBySpelling)
 }
 
 // propertySlugs is the list form, and it lives here rather than on Options for
@@ -511,18 +537,28 @@ func (e *exporter) propertySlugs(keys []string) []string {
 // its own Validate rejects — or, for the denied key, emit a legend a
 // pre-admission reader would happily resolve.
 func (e *exporter) writableSlug(key string) string {
+	return e.vetSlug(key, e.warn)
+}
+
+// vetSlug is writableSlug with the warning sink explicit, so the census's
+// collision planning (planKeyTerms) can ask the same question SILENTLY: the
+// plan evaluates every censused key once before any slot claims, and a
+// warning fired there would double every real warning and add ones for keys
+// the emit later drops. The claim step (propertySlug → writableSlug) fires
+// them at the moment the spelling is actually written, exactly as before.
+func (e *exporter) vetSlug(key string, warn func(path, format string, args ...any)) string {
 	slug := e.opts.propertySlug(key)
 	if slug == key {
 		return slug
 	}
 	if !isWritablePropertyKey(slug) || !isWritablePropertyKey(key) {
-		e.warn("/"+memberPropertyInternalKeys,
+		warn("/"+memberPropertyInternalKeys,
 			"the vocabulary spells %q as %q, which cannot be a property spelling in this format; the stored key is written instead",
 			key, slug)
 		return key
 	}
 	if slug == detailKeyId || slug == detailKeyType {
-		e.warn("/"+memberPropertyInternalKeys,
+		warn("/"+memberPropertyInternalKeys,
 			"the vocabulary spells %q as %q, a spelling this format refuses before any resolution (§2); the stored key is written instead",
 			key, slug)
 		return key
@@ -541,12 +577,95 @@ func (e *exporter) writableSlug(key string) string {
 			termInverts(slug, key, e.opts.keys().PropertyKey) {
 			return slug
 		}
-		e.warn("/"+memberPropertyInternalKeys,
+		warn("/"+memberPropertyInternalKeys,
 			"%q cannot be a legend value (§3 deny rule), so its slug %q is not written; the stored key is its own address",
 			key, slug)
 		return key
 	}
 	return slug
+}
+
+// quietWarn is the silent sink vetSlug/vetTypeSlug take during census
+// planning.
+func quietWarn(string, string, ...any) {}
+
+// planKeyTerms is the census's collision pass, run once per namespace per
+// document: which term each censused key will take, decided from the whole
+// census rather than from claim order. Raw names are not unique — two live
+// properties may bear one name — and a document is a map, so a spelling two
+// keys share cannot be written twice. The rule is per DOCUMENT, not per
+// space: a name ambiguous space-wide but appearing once here spells its
+// plain name (measured, genuine in-document collisions are 60 of 28,560
+// documents, 0.21%, across five names), and where a document does collide
+// EVERY claimant degrades:
+//
+//	(a) the stored key verbatim, when it is itself readable (not a minted
+//	    24-hex bson id) — the `producer_region` / `wine_region` shape;
+//	(b) else `<name> (<tail6>)`, tail6 = the stored key's last six hex —
+//	    deterministic, immutable while the key lives, visibly synthetic;
+//	(c) a residual tie — two claimants minting one suffix, or a suffix the
+//	    census, the plan or the bundled table already answers — falls to
+//	    the full stored key, which is always its own address.
+//
+// A spelling that equals a censused stored key is contested the same way
+// (verbatim-first: the stored key owns its own term at every reader, so no
+// claimant may take it). All claimants degrading — rather than first-claim
+// keeping the plain name — is what makes the suffix stable across exports
+// and the plain name trustworthy: a plain spelling in a document is never
+// one of two same-named claimants.
+func planKeyTerms(named map[string]bool, spell func(string) string,
+	bundledBound func(string) (string, bool)) map[string]string {
+	keys := make([]string, 0, len(named))
+	for k := range named {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	cand := make(map[string]string, len(keys))
+	claims := map[string][]string{}
+	for _, k := range keys {
+		t := spell(k)
+		if t == "" || t == k {
+			continue // verbatim: always its own address, never contested
+		}
+		cand[k] = t
+		claims[t] = append(claims[t], k)
+	}
+	contested := func(t string) bool { return len(claims[t]) > 1 || named[t] }
+	plan := make(map[string]string, len(cand))
+	granted := make(map[string]bool, len(cand))
+	for _, k := range keys {
+		if t, ok := cand[k]; ok && !contested(t) {
+			plan[k] = t
+			granted[t] = true
+		}
+	}
+	// rung (b) candidates are counted first so a residual tie — same name,
+	// same six-hex tail — sends BOTH claimants to rung (c), not whichever
+	// sorted first to (b)
+	suffixCount := map[string]int{}
+	for _, k := range keys {
+		if t, ok := cand[k]; ok && contested(t) {
+			if s := DisambiguatedKeySpelling(t, k); s != "" {
+				suffixCount[s]++
+			}
+		}
+	}
+	for _, k := range keys {
+		t, ok := cand[k]
+		if !ok || !contested(t) {
+			continue
+		}
+		s := DisambiguatedKeySpelling(t, k) // "" = rung (a) or unwritable: the key
+		if s != "" && suffixCount[s] == 1 && !named[s] && !granted[s] && len(claims[s]) == 0 {
+			if _, bound := bundledBound(s); !bound {
+				plan[k] = s
+				granted[s] = true
+				continue
+			}
+		}
+		plan[k] = k
+	}
+	return plan
 }
 
 // recordPropertyKey writes the legend entry a term owes, or nothing when
@@ -729,9 +848,9 @@ func (e *exporter) buildPropertyKeys() *omap {
 // document owes a reader who cannot ask the space (§3) — the type
 // namespace's claim step, propertySlug on a ledger of its own. The same
 // discipline for the same reason: a stored type key named anywhere in the
-// document always keeps its own term (verbatim-first), a slug goes to its
-// first claimant, and a contested slug falls back to the stored key, which
-// is always its own address.
+// document always keeps its own term (verbatim-first), an uncontested
+// spelling goes to its claimant, and a contested one degrades every
+// claimant by the census's plan.
 func (e *exporter) typeSlug(key string) string {
 	if key == "" {
 		return key
@@ -743,6 +862,11 @@ func (e *exporter) typeSlug(key string) string {
 		return term
 	}
 	term := e.writableTypeSlug(key)
+	// the census's collision plan, exactly as propertySlug applies it: every
+	// claimant of a contested spelling degrades by plan, not by claim order
+	if planned, ok := e.typeTermPlan[key]; ok {
+		term = planned
+	}
 	if term != key {
 		if _, claimed := e.typeTermOwner[term]; claimed || e.typeNamedKeys[term] {
 			term = key
@@ -807,6 +931,10 @@ func (e *exporter) seedTypeTermLedger() {
 			}
 		}
 	}
+	// the collision pass, exactly as the property census runs it
+	e.typeTermPlan = planKeyTerms(e.typeNamedKeys,
+		func(k string) string { return e.vetTypeSlug(k, quietWarn) },
+		bundledTypeKeyBySpelling)
 }
 
 // writableTypeSlug is writableSlug for the type namespace: the vocabulary's
@@ -824,12 +952,18 @@ func (e *exporter) seedTypeTermLedger() {
 // it was protecting: a vocabulary may spell the template type `tmpl`, and the
 // legend says so and inverts it.
 func (e *exporter) writableTypeSlug(key string) string {
+	return e.vetTypeSlug(key, e.warn)
+}
+
+// vetTypeSlug is vetSlug for the type namespace — the warning sink explicit
+// for the same census-planning reason.
+func (e *exporter) vetTypeSlug(key string, warn func(path, format string, args ...any)) string {
 	slug := e.opts.typeSlug(key)
 	if slug == key {
 		return slug
 	}
 	if !isWritablePropertyKey(slug) || !isWritablePropertyKey(key) {
-		e.warn("/"+memberTypeInternalKeys,
+		warn("/"+memberTypeInternalKeys,
 			"the vocabulary spells type %q as %q, which cannot be a type spelling in this format; the stored key is written instead",
 			key, slug)
 		return key
@@ -1634,9 +1768,9 @@ func (e *exporter) buildProperties() *omap {
 		}
 		keys = append(keys, k)
 	}
-	// the document spells slugs (§7.5a), so the canonical alphabetical order
-	// is over the SPELLINGS, not the stored keys — the reader sorts what it
-	// sees. Values still resolve through the stored key.
+	// the document spells display names (§3), so the canonical alphabetical
+	// order is over the SPELLINGS, not the stored keys — the reader sorts
+	// what it sees. Values still resolve through the stored key.
 	//
 	// The claims below run over the STORED keys sorted, not over map order:
 	// which holder keeps a contested spelling must not depend on Go's map

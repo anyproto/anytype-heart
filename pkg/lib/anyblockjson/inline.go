@@ -328,7 +328,7 @@ func isWSUnit(u16 []uint16, i int) bool {
 // earlier ends. At equal starts the longer range wins (sort order). A merge
 // that extends an accepted range can create a fresh overlap with a
 // later-accepted range, so each group re-runs until stable — resolution must
-// be idempotent for §11.2 byte-stability.
+// be idempotent for §11 byte-stability.
 func resolveSameTypeOverlaps(spans []span) []span {
 	byType := make(map[model.BlockContentTextMarkType][]span)
 	for _, s := range spans {

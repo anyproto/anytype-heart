@@ -1,7 +1,9 @@
 package anyblockjson
 
 // dictionarywarn_test.go — the property dictionary spells a property the way
-// every other slot in the format does (§2f).
+// every other slot in the format does (§2f): the display name for a bundled
+// key, the stored key verbatim for a space-minted one — and the bundled name
+// table it leans on stays unambiguous.
 
 import (
 	"strings"
@@ -9,8 +11,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/anyproto/anytype-heart/core/domain"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
@@ -25,56 +25,61 @@ func readDict(t *testing.T, doc string) (*PropertyDictionary, []Issue) {
 	return d, warns
 }
 
-// The dictionary was the last place in the format that spelled a property in
-// camelCase: within ONE real exported bundle, an object document said
-// `created_date` while the dictionary beside it said `createdDate`. It now
-// says `created_date` too, so the format has one spelling for one concept.
+// The dictionary spells a bundled property the way every document slot does:
+// by its display name. One spelling for one concept — an object document
+// says "Due date" in its `properties` map and the dictionary beside it says
+// "Due date" in `installed`.
 //
 // How this can fail: emit the stored key here and the dictionary becomes the
-// odd file again; slug it on the way out without inverting it on the way in
-// and `installed` names nothing the bundled table has.
+// odd file out; spell the name on the way out without inverting it on the
+// way in and `installed` names nothing the bundled table has.
 func TestDictionary_SpellsPropertiesTheWayDocumentsDo(t *testing.T) {
-	d, warns := readDict(t, `{`+dictHead+`"installed":["due_date","created_date"]}`)
+	d, warns := readDict(t, `{`+dictHead+`"installed":["Due date","Creation date"]}`)
 
 	assert.Equal(t, []string{"dueDate", "createdDate"}, d.Installed,
-		"read as the stored keys they name — the wire spelling is the slug, the codec keeps stored keys")
+		"read as the stored keys they name — the wire spelling is the name, the codec keeps stored keys")
 	assert.Empty(t, warns, "the canonical spelling must be silent")
 
 	out, err := MarshalPropertyDictionary(d)
 	require.NoError(t, err)
-	assert.Contains(t, string(out), `"due_date"`)
-	assert.NotContains(t, string(out), `"dueDate"`, "camelCase must not survive a round trip")
+	assert.Contains(t, string(out), `"Due date"`)
+	assert.NotContains(t, string(out), `"dueDate"`, "the stored key must not survive a round trip")
 }
 
 // A stored key still names itself — an exact match wins before folding is
-// consulted, which is the ladder every slot in the format follows. A bundle
-// written before the dictionary spoke slugs therefore keeps reading, and
-// re-rendering normalizes it.
-func TestDictionary_TheStoredSpellingStillNamesItsProperty(t *testing.T) {
-	d, warns := readDict(t, `{`+dictHead+`"installed":["dueDate"]}`)
+// consulted, which is the ladder every slot in the format follows. And the
+// pre-change derived slug (`due_date`) still resolves through the fold
+// layer with no compatibility table: ToSnake only inserts `_` and
+// lowercases, so the old slug sits in its stored key's fold class. Both
+// re-render to the canonical name.
+func TestDictionary_LegacySpellingsStillNameTheirProperty(t *testing.T) {
+	for _, legacy := range []string{"dueDate", "due_date"} {
+		t.Run(legacy, func(t *testing.T) {
+			d, warns := readDict(t, `{`+dictHead+`"installed":["`+legacy+`"]}`)
 
-	assert.Equal(t, []string{"dueDate"}, d.Installed)
-	assert.Empty(t, warns)
+			assert.Equal(t, []string{"dueDate"}, d.Installed)
+			assert.Empty(t, warns)
 
-	out, err := MarshalPropertyDictionary(d)
-	require.NoError(t, err)
-	assert.Contains(t, string(out), `"due_date"`, "re-rendering settles on the canonical spelling")
+			out, err := MarshalPropertyDictionary(d)
+			require.NoError(t, err)
+			assert.Contains(t, string(out), `"Due date"`, "re-rendering settles on the canonical spelling")
+		})
+	}
 }
 
 // An entry is how a bundle declares a property, and its key population is
-// MIXED: a bundled key gets the slug, a space-minted one is a bson id and
-// must survive verbatim. `bundle.ApiSlug` is `strcase.ToSnake`, which turns
-// `6a32d4856761631534b22f85` into `6_a_32_d_4856761631534_b_22_f_85` — 515 of
-// 6,426 entry keys in a 77-space export are bson ids, so slugging entry keys
-// unconditionally would corrupt one in twelve.
-func TestDictionary_AnEntryKeyIsSluggedOnlyWhenItIsBundled(t *testing.T) {
-	t.Run("a bundled key travels as its slug", func(t *testing.T) {
+// MIXED: a bundled key gets its display name, a space-minted one is a bson
+// id and must survive verbatim — the dictionary has no legend, so its
+// spelling must be a pure function of the key, and the only pure spelling a
+// space-minted key has is itself.
+func TestDictionary_AnEntryKeyIsNamedOnlyWhenItIsBundled(t *testing.T) {
+	t.Run("a bundled key travels as its name", func(t *testing.T) {
 		d, warns := readDict(t, `{`+dictHead+
-			`"properties":[{"property":"due_date","name":"Due date","format":"date"}]}`)
+			`"properties":[{"property":"Due date","name":"Due date","format":"date"}]}`)
 
 		require.Len(t, d.Properties, 1)
 		assert.EqualValues(t, "dueDate", d.Properties[0].Key,
-			"the slug names the bundled property, so the entry defines THAT property")
+			"the name names the bundled property, so the entry defines THAT property")
 		assert.Empty(t, warns)
 	})
 
@@ -89,8 +94,7 @@ func TestDictionary_AnEntryKeyIsSluggedOnlyWhenItIsBundled(t *testing.T) {
 
 		out, err := MarshalPropertyDictionary(d)
 		require.NoError(t, err)
-		assert.Contains(t, string(out), `"`+bson+`"`)
-		assert.NotContains(t, string(out), "6_a_32", "ToSnake must not reach a bson id")
+		assert.Contains(t, string(out), `"`+bson+`"`, "nothing is ever derived from a bson id")
 	})
 }
 
@@ -118,7 +122,7 @@ func TestDictionary_AKeyFromANewerAppIsToleratedAndReported(t *testing.T) {
 // sink: the same verdicts, the warnings discarded — the relationship Validate
 // and ValidateWarn have.
 func TestDictionary_TheSinklessDoorAgrees(t *testing.T) {
-	doc := `{` + dictHead + `"installed":["due_date"]}`
+	doc := `{` + dictHead + `"installed":["Due date"]}`
 
 	quiet, err := UnmarshalPropertyDictionary([]byte(doc))
 	require.NoError(t, err)
@@ -131,17 +135,15 @@ func TestDictionary_TheSinklessDoorAgrees(t *testing.T) {
 // dictionary spelling either of them would be undecidable, and the format
 // would have to go back to storing camelCase.
 //
-// This is that guard, and since v0.38 the spelling under guard is the
-// ALIAS-AWARE one (alias.go): the sixteen relation-spelled keys write their
-// property aliases, everything else its derived slug. It is not a test of
-// today's table — it is the condition under which a NEW bundled relation OR
-// a new alias may be added: if adding one breaks this, the key (or the
-// alias) needs a different name, not a looser dictionary.
+// The spelling under guard is the NAME-AWARE one (bundledname.go): a key
+// whose display name uniquely inverts spells the name, everything else its
+// stored key. This is not a test of today's table — it is the condition
+// under which a NEW bundled relation may be added: if adding one breaks
+// this, the name needs to change (the audioGenre "Genre" → "Audio genre"
+// rename is exactly that), not the dictionary loosened.
 //
-// How this can fail: add `dueDate` beside an existing `due_date`, or
-// `gitHubStars` beside `githubStars` — both fold to one spelling; or alias a
-// key onto a spelling some other key already derives — and this fails naming
-// the pair.
+// How this can fail: name a new bundled relation "Due date", or "Due-Date"
+// (one fold class with the existing name) — this fails naming the pair.
 func TestDictionaryKeys_TheBundledTableStaysUnambiguous(t *testing.T) {
 	keys := bundledRelationKeys()
 	require.NotEmpty(t, keys)
@@ -152,7 +154,7 @@ func TestDictionaryKeys_TheBundledTableStaysUnambiguous(t *testing.T) {
 			owners, spelling)
 	}
 	for fold, owners := range keysBySpelling(keys, func(k string) string {
-		return bundle.FoldApiKey(dictionaryKeySpelling(k))
+		return FoldKeyTerm(dictionaryKeySpelling(k))
 	}) {
 		assert.Lenf(t, owners, 1,
 			"bundled properties %v all FOLD to %q — a near-miss spelling could not be recovered",
@@ -160,8 +162,8 @@ func TestDictionaryKeys_TheBundledTableStaysUnambiguous(t *testing.T) {
 	}
 
 	// and every spelling names its own key back, through the very lookup the
-	// dictionary reader uses — aliased keys included (StoredX(SpellingX(k))
-	// == k is the round-trip half of the guard)
+	// dictionary reader uses (StoredX(SpellingX(k)) == k is the round-trip
+	// half of the guard)
 	for _, key := range keys {
 		spelling := dictionaryKeySpelling(key)
 		stored, ambiguous := dictionaryStoredKey(spelling)
@@ -170,10 +172,17 @@ func TestDictionaryKeys_TheBundledTableStaysUnambiguous(t *testing.T) {
 	}
 
 	// the same round trip through the vocabulary door the codec uses — the
-	// two readers must agree on every bundled key
+	// two readers must agree on every bundled key. A key that spells ITSELF
+	// (its name is shared, unwritable or absent) resolves verbatim — the
+	// vocabulary answers "not a slug" and the chain treats the term as the
+	// stored key it is.
 	for _, key := range keys {
 		spelling := (BundledKeyVocabulary{}).PropertySlug(key)
 		back, ok := (BundledKeyVocabulary{}).PropertyKey(spelling)
+		if spelling == key {
+			assert.Equalf(t, key, back, "verbatim spelling %q must pass through", spelling)
+			continue
+		}
 		require.Truef(t, ok, "the vocabulary must invert its own spelling %q", spelling)
 		assert.Equalf(t, key, back, "vocabulary spelling %q must name %q back", spelling, key)
 	}
@@ -181,75 +190,17 @@ func TestDictionaryKeys_TheBundledTableStaysUnambiguous(t *testing.T) {
 	// A guard that cannot fail is not a guard: this is the collision the real
 	// table must never contain, and the detector must see it.
 	t.Run("the detector sees a planted collision", func(t *testing.T) {
-		planted := keysBySpelling([]string{"dueDate", "due_date", "tag"}, bundle.ApiSlug)
-		require.Len(t, planted["due_date"], 2,
+		sameName := func(string) string { return "Genre" }
+		planted := keysBySpelling([]string{"genre", "audioGenre"}, sameName)
+		require.Len(t, planted["Genre"], 2,
 			"two keys spelling alike must land in one bucket")
-		assert.Len(t, planted["tag"], 1)
 
 		folded := keysBySpelling([]string{"gitHubStars", "githubStars"}, func(k string) string {
-			return bundle.FoldApiKey(bundle.ApiSlug(k))
+			return FoldKeyTerm(k)
 		})
 		require.Len(t, folded["githubstars"], 2,
 			"two keys folding alike must land in one bucket")
-
-		// and an ALIAS-shaped collision: an alias that lands on a spelling
-		// another key derives must land in that key's bucket, or the alias
-		// loops above are grouping by a function that cannot see one
-		hostileAlias := func(k string) string {
-			if k == "featuredRelations" {
-				return "due_date" // a hypothetical alias squatting a derived slug
-			}
-			return dictionaryKeySpelling(k)
-		}
-		aliased := keysBySpelling([]string{"featuredRelations", "dueDate"}, hostileAlias)
-		require.Len(t, aliased["due_date"], 2,
-			"an alias and the slug it squats must land in one bucket")
 	})
-}
-
-// The alias table itself carries three obligations of its own (alias.go),
-// each with a failure the spelling loops above cannot name:
-//
-//   - an alias must belong to a BUNDLED key — aliasing a key the table does
-//     not hold aliases nothing, and MarshalPropertyDictionary would refuse
-//     the key anyway;
-//   - an alias must not BE a bundled stored key — a stored key resolves
-//     verbatim before any alias (§3 chain step 2), so such an alias could
-//     never name its own key;
-//   - aliases must be pairwise distinct, spelling and fold alike — two keys
-//     behind one alias is the two-answers disease with no derived slug to
-//     blame.
-func TestDictionaryKeys_TheAliasTableStaysUnambiguous(t *testing.T) {
-	type table struct {
-		aliases  map[string]string
-		isStored func(string) bool
-		what     string
-	}
-	for _, tb := range []table{
-		{propertyKeyAliases, func(k string) bool { return bundle.HasRelation(domain.RelationKey(k)) }, "property"},
-		{typeKeyAliases, func(k string) bool { return bundle.HasObjectTypeByKey(domain.TypeKey(k)) }, "type"},
-	} {
-		t.Run(tb.what, func(t *testing.T) {
-			require.NotEmpty(t, tb.aliases)
-			seen := map[string]string{}
-			seenFold := map[string]string{}
-			for key, alias := range tb.aliases {
-				assert.Truef(t, tb.isStored(key),
-					"alias %q is declared for %q, which is not a bundled %s key", alias, key, tb.what)
-				assert.Falsef(t, tb.isStored(alias),
-					"alias %q IS a bundled stored key: verbatim-first would answer before the alias ever could", alias)
-				if first, dup := seen[alias]; dup {
-					t.Errorf("alias %q is declared for both %q and %q", alias, first, key)
-				}
-				seen[alias] = key
-				fold := bundle.FoldApiKey(alias)
-				if first, dup := seenFold[fold]; dup {
-					t.Errorf("aliases of %q and %q fold together (%q)", first, key, fold)
-				}
-				seenFold[fold] = key
-			}
-		})
-	}
 }
 
 // keysBySpelling groups keys by the spelling a reader would see.
@@ -264,12 +215,11 @@ func keysBySpelling(keys []string, spell func(string) string) map[string][]strin
 
 // The same guard for TYPES. A bundled type's spelling is what the manifest
 // keys on and what a dictionary entry's `object_types` names, so an ambiguity
-// here would be undecidable in two places at once. Alias-aware since v0.38,
-// like the property guard above: `relation` spells `property`,
-// `relationOption` spells `property_option` (alias.go).
+// here would be undecidable in two places at once.
 //
-// How this can fail: add a bundled type whose key spells onto an existing
-// one's — this fails naming the pair, and the new type needs a different key.
+// How this can fail: add a bundled type whose NAME spells onto an existing
+// one's — this fails naming the pair, and the new type needs a different
+// name (the space "Space" → "Space settings" rename is exactly that).
 func TestDictionaryKeys_TheBundledTypeTableStaysUnambiguous(t *testing.T) {
 	keys := make([]string, 0, 32)
 	for _, tk := range bundle.ListTypesKeys() {
@@ -282,13 +232,18 @@ func TestDictionaryKeys_TheBundledTypeTableStaysUnambiguous(t *testing.T) {
 			"bundled types %v all spell as %q — a manifest key or an object_types member "+
 				"naming it could mean any of them", owners, spelling)
 	}
+	// the SPELLING folds stay unique. The full fold TABLE holds one known
+	// collision beyond them — the name "Space" (spaceView) folds onto the
+	// stored key `space` — which only degrades the forgiving layer for
+	// near-misses of that one pair, both measured at 0 documents; the
+	// spellings themselves stay exact and unambiguous, which is what this
+	// guard protects.
 	for fold, owners := range keysBySpelling(keys, func(k string) string {
-		return bundle.FoldApiKey(TypeKeySpelling(k))
+		return FoldKeyTerm(TypeKeySpelling(k))
 	}) {
 		assert.Lenf(t, owners, 1, "bundled types %v all FOLD to %q", owners, fold)
 	}
-	// StoredTypeKey(TypeKeySpelling(k)) == k — for every key, the aliased
-	// two included
+	// StoredTypeKey(TypeKeySpelling(k)) == k — for every key
 	for _, key := range keys {
 		assert.Equalf(t, key, StoredTypeKey(TypeKeySpelling(key)),
 			"the spelling of type %q must name it back", key)
@@ -297,6 +252,10 @@ func TestDictionaryKeys_TheBundledTypeTableStaysUnambiguous(t *testing.T) {
 	for _, key := range keys {
 		spelling := (BundledKeyVocabulary{}).TypeSlug(key)
 		back, ok := (BundledKeyVocabulary{}).TypeKey(spelling)
+		if spelling == key {
+			assert.Equalf(t, key, back, "verbatim spelling %q must pass through", spelling)
+			continue
+		}
 		require.Truef(t, ok, "the vocabulary must invert its own spelling %q", spelling)
 		assert.Equalf(t, key, back, "vocabulary spelling %q must name type %q back", spelling, key)
 	}
@@ -305,26 +264,27 @@ func TestDictionaryKeys_TheBundledTypeTableStaysUnambiguous(t *testing.T) {
 // One spelling for one concept, across the two slots that name a type outside
 // a document: a dictionary entry's target types and the bundle manifest.
 //
-// A type DOCUMENT reaches the same answer by a different road — it slugs
+// A type DOCUMENT reaches the same answer by a different road — it spells
 // through the exporter's per-document ledger and binds the term in that
-// document's own `type_internal_keys` legend. The dictionary and the manifest have no
-// legend, so their spelling has to be a pure function of the key.
+// document's own `type_internal_keys` legend. The dictionary and the manifest
+// have no legend, so their spelling has to be a pure function of the key.
 func TestDictionary_TargetTypesSpellLikeEverythingElse(t *testing.T) {
 	d, warns := readDict(t, `{`+dictHead+
-		`"properties":[{"property":"assignee","name":"Assignee","format":"objects",`+
-		`"object_types":["participant","object_type","6a83296f61fab2265263ae34"]}]}`)
+		`"properties":[{"property":"Assignee","name":"Assignee","format":"objects",`+
+		`"object_types":["Space member","object_type","6a83296f61fab2265263ae34"]}]}`)
 	require.Empty(t, warns)
 	require.Len(t, d.Properties, 1)
 
 	assert.Equal(t, []string{"participant", "objectType", "6a83296f61fab2265263ae34"},
 		d.Properties[0].ObjectTypes,
-		"slugs resolve to stored type keys; a space-minted key stays verbatim")
+		"a name resolves to its stored type key, a legacy slug through the fold, a minted key stays verbatim")
 
 	out, err := MarshalPropertyDictionary(d)
 	require.NoError(t, err)
-	assert.Contains(t, string(out), `"object_type"`, "written back in the format's spelling")
+	assert.Contains(t, string(out), `"Space member"`, "written back in the format's spelling")
+	assert.Contains(t, string(out), `"Type"`, "objectType's name")
 	assert.NotContains(t, string(out), `"objectType"`)
-	assert.Contains(t, string(out), `"6a83296f61fab2265263ae34"`, "and a minted key is never slugged")
+	assert.Contains(t, string(out), `"6a83296f61fab2265263ae34"`, "and a minted key is never renamed")
 }
 
 // bundledRelationKeys lists every relation key this build's bundled table
@@ -359,7 +319,7 @@ func bundledRelationKeys() []string {
 func TestDictionary_ADisagreeingIdentityPairIsReported(t *testing.T) {
 	t.Run("they disagree", func(t *testing.T) {
 		d, warns := readDict(t, `{`+dictHead+
-			`"properties":[{"property":"due_date","internal_key":"6a32d4856761631534b22f85",`+
+			`"properties":[{"property":"Due date","internal_key":"6a32d4856761631534b22f85",`+
 			`"name":"Due date","format":"date"}]}`)
 
 		require.Len(t, warns, 1)
@@ -370,14 +330,14 @@ func TestDictionary_ADisagreeingIdentityPairIsReported(t *testing.T) {
 
 	t.Run("they agree — the pair export writes", func(t *testing.T) {
 		_, warns := readDict(t, `{`+dictHead+
-			`"properties":[{"property":"due_date","internal_key":"dueDate",`+
+			`"properties":[{"property":"Due date","internal_key":"dueDate",`+
 			`"name":"Due date","format":"date"}]}`)
 		assert.Empty(t, warns, "the agreeing pair is the normal case and must be silent")
 	})
 
 	t.Run("only one stated", func(t *testing.T) {
 		for _, entry := range []string{
-			`{"property":"due_date","format":"date"}`,
+			`{"property":"Due date","format":"date"}`,
 			`{"internal_key":"6a32d4856761631534b22f85","format":"date"}`,
 		} {
 			_, warns := readDict(t, `{`+dictHead+`"properties":[`+entry+`]}`)
@@ -405,7 +365,7 @@ func TestDictionary_ADisagreeingIdentityPairIsReported(t *testing.T) {
 // object form and a vocabulary can never state identity.
 func TestDictionary_AnOptionCarriesItsStoredKey(t *testing.T) {
 	d, warns := readDict(t, `{`+dictHead+
-		`"properties":[{"property":"status","name":"Status","format":"select","options":[`+
+		`"properties":[{"property":"Status","name":"Status","format":"select","options":[`+
 		`{"name":"To Do","color":"ice","internal_key":"63454ad0c493f68e301890db"},`+
 		`{"name":"Done","color":"lime"},`+
 		`"Someday"]}]}`)

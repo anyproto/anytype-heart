@@ -94,8 +94,8 @@ func TestExport_AVerbatimCustomTypeKeyNamesItself(t *testing.T) {
 		"without the entry the object comes back typed as ot-"+customTypeKey)
 }
 
-// The exact boundary of "exhaustive": a BUNDLED key spelled as its bundled
-// slug still owes nothing, because the table that binds it ships with every
+// The exact boundary of "exhaustive": a BUNDLED key spelled as its display
+// name still owes nothing, because the table that binds it ships with every
 // reader. Without this the rule would be "emit everything", the legend would
 // double the size of an ordinary document, and nothing would be bought.
 func TestExport_ABundledSpellingStillOwesNothing(t *testing.T) {
@@ -108,8 +108,8 @@ func TestExport_ABundledSpellingStillOwesNothing(t *testing.T) {
 	require.NoError(t, err)
 
 	doc := decodeDoc(t, data)
-	assert.Contains(t, doc.Properties, "due_date")
-	assert.Contains(t, doc.Properties, "plural_name")
+	assert.Contains(t, doc.Properties, "Due date")
+	assert.Contains(t, doc.Properties, "Plural name")
 	assert.Empty(t, doc.PropertyKeys,
 		"every spelling here is one the bundled table binds to the key it came from")
 }

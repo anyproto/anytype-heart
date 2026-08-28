@@ -18,44 +18,48 @@ import (
 // TestKeyVocabulary_ReverseIsATableNotACaseTransform is the guard rail on the
 // one decision that looks most "simplifiable" in this whole layer: the
 // reverse direction of the vocabulary is a TABLE built from the bundle, in
-// both directions, and NOT a case transform. Two bundled keys prove no case
-// function can do the job. Replace BundledKeyVocabulary.PropertyKey with any
-// `strcase.ToLowerCamel`-shaped inversion and this test fails.
+// both directions, and NOT a string transform. Under raw names that is even
+// more obviously so — "Creation date" says a different word than
+// `createdDate`, so no derivation in either direction exists — but the two
+// keys below pin the subtler halves: a key and its name can differ by more
+// than case ever could, and a spelling that IS the stored key (a shared
+// name has no wire form) must pass through rather than be "restored".
 func TestKeyVocabulary_ReverseIsATableNotACaseTransform(t *testing.T) {
 	vocab := BundledKeyVocabulary{}
 
-	t.Run("mediaArtistURL: an acronym a case transform cannot restore", func(t *testing.T) {
+	t.Run("createdDate: the name says a different word than the key", func(t *testing.T) {
 		// given
-		const key = "mediaArtistURL"
-		require.True(t, bundle.HasRelation("mediaArtistURL"))
+		const key = "createdDate"
+		require.True(t, bundle.HasRelation(key))
 
 		// when
-		slug := vocab.PropertySlug(key)
-		back, ok := vocab.PropertyKey(slug)
+		spelling := vocab.PropertySlug(key)
+		back, ok := vocab.PropertyKey(spelling)
 
 		// then
-		assert.Equal(t, "media_artist_url", slug)
+		assert.Equal(t, "Creation date", spelling)
 		require.True(t, ok)
-		assert.Equal(t, key, back, "the table must invert what no case transform can")
-		assert.Equal(t, "mediaArtistUrl", strcase.ToLowerCamel(slug),
-			"and this is what a case transform would have produced instead")
+		assert.Equal(t, key, back, "the table must invert what no transform can")
+		assert.Equal(t, "creationDate", strcase.ToLowerCamel(spelling),
+			"and this is what a case transform would have produced instead — a key that does not exist")
 	})
 
-	t.Run("_score: a leading underscore a case transform eats", func(t *testing.T) {
-		// given
-		const key = "_score"
-		require.True(t, bundle.HasRelation("_score"))
+	t.Run("fileId: a shared name has no wire form, so the key spells itself", func(t *testing.T) {
+		// given — nine hidden transients share the name "Underlying file id"
+		const key = "fileId"
+		require.True(t, bundle.HasRelation(key))
 
 		// when
-		slug := vocab.PropertySlug(key)
-		back, ok := vocab.PropertyKey(slug)
+		spelling := vocab.PropertySlug(key)
+		back, ok := vocab.PropertyKey(spelling)
 
 		// then
-		assert.Equal(t, "_score", slug)
-		require.True(t, ok)
-		assert.Equal(t, key, back)
-		assert.Equal(t, "Score", strcase.ToLowerCamel(slug),
-			"a case transform loses the underscore AND capitalizes")
+		assert.Equal(t, "fileId", spelling, "an ambiguous name is not a spelling")
+		require.True(t, ok, "its own fold class still answers — to itself")
+		assert.Equal(t, key, back, "so the verbatim key remains its own address")
+
+		_, ok = vocab.PropertyKey("Underlying file id")
+		assert.False(t, ok, "and the shared name binds nothing")
 	})
 
 	t.Run("every bundled key round-trips through the table", func(t *testing.T) {
@@ -103,7 +107,7 @@ func typeSlugShadowsBundled(v KeyVocabulary, key string) bool {
 // document surviving. What no writer can cover is a READER it never met.
 // The document in the first arm is written by the package default, owes no
 // entry by any rule anyone can compute, and the shadowing reader still binds
-// `task` to `69bbfc…` — a template for the bundled Task type comes back as a
+// "Task" to `69bbfc…` — a template for the bundled Task type comes back as a
 // template for an unrelated custom type, with no error anywhere.
 //
 // This is not a live defect. storeresolver, the only vocabulary the product
@@ -115,14 +119,14 @@ func typeSlugShadowsBundled(v KeyVocabulary, key string) bool {
 // interface and held here, and the conforming twin below shows the same
 // document surviving.
 func TestKeyVocabulary_ShadowingSlugBreaksInversion(t *testing.T) {
-	shadowing := typedSpaceVocabulary{typeSlugOf: map[string]string{customTypeKey: "task"}}
+	shadowing := typedSpaceVocabulary{typeSlugOf: map[string]string{customTypeKey: "Task"}}
 	require.True(t, typeSlugShadowsBundled(shadowing, customTypeKey),
 		"the fixture has to break the precondition, or this test proves nothing")
 
 	snap := typedSnapshot("ot-template", "ot-task")
 
 	t.Run("a shadowing READER re-points a document no writer could have warned it about", func(t *testing.T) {
-		// given — written by the package default: `task` is the bundled
+		// given — written by the package default: "Task" is the bundled
 		// table's own spelling of the bundled key, and no vocabulary this
 		// writer holds says otherwise
 		data, err := Marshal(model.SmartBlockType_Template, snap, Options{})
@@ -144,10 +148,10 @@ func TestKeyVocabulary_ShadowingSlugBreaksInversion(t *testing.T) {
 		data, err := Marshal(model.SmartBlockType_Template, snap, Options{Keys: shadowing})
 		require.NoError(t, err)
 
-		// then — the term `task` is written for the stored key `task`, and
-		// this vocabulary would bind it elsewhere, so the identity entry is
-		// owed (§3) even though the bundled table inverts it
-		assert.Equal(t, map[string]string{"task": "task"}, decodeEnvelope(t, data).TypeKeys)
+		// then — the term "Task" is written for the stored key `task`, and
+		// this vocabulary would bind it elsewhere, so the entry is owed (§3)
+		// even though the bundled table inverts it
+		assert.Equal(t, map[string]string{"Task": "task"}, decodeEnvelope(t, data).TypeKeys)
 
 		_, back, err := Unmarshal(data, Options{GenerateId: seqIds("g"), Keys: shadowing})
 		require.NoError(t, err)
@@ -214,12 +218,15 @@ func TestDocumentSpellsSlugs(t *testing.T) {
 		assert.NotContains(t, snap.Details.Fields, "due_date")
 		assert.Contains(t, snap.Details.Fields, "customDate", "custom keys pass through")
 
-		// and the export spells them back
+		// and the export spells them back — as the display names, which is
+		// the wire vocabulary now; the legacy slugs the input carried keep
+		// resolving through the fold but are never written again
 		data, err := Marshal(model.SmartBlockType_Page, snap, Options{})
 		require.NoError(t, err)
-		assert.Contains(t, string(data), `"plural_name"`)
-		assert.Contains(t, string(data), `"due_date"`)
+		assert.Contains(t, string(data), `"Plural name"`)
+		assert.Contains(t, string(data), `"Due date"`)
 		assert.NotContains(t, string(data), `"pluralName"`)
+		assert.NotContains(t, string(data), `"plural_name"`)
 		assert.Contains(t, string(data), `"customDate"`)
 	})
 
@@ -286,14 +293,15 @@ func (v collapsingVocab) TypeSlug(key string) string      { return key }
 func (v collapsingVocab) TypeKey(s string) (string, bool) { return s, false }
 
 // TestBuildPropertiesKeepsBothValuesWhenSlugsCollapse is the data-loss guard
-// in export.go's buildProperties. Two stored keys spelling one JSON key would
+// behind buildProperties. Two stored keys spelling one JSON key would
 // overwrite each other in the properties map — one value gone, no error, no
-// warning. The later holder keeps its honest stored key instead, and WHICH
-// holder that is may not depend on Go's map iteration order: the collapse
-// pass runs over the sorted stored keys, or the canonical form is a coin flip
-// on exactly the spaces that hold a shadow. Revert either the
-// `spelled[slug]` branch or the `sort.Strings(keys)` and this fails (the
-// second one intermittently, which is the point).
+// warning. The census's collision plan (planKeyTerms) degrades EVERY
+// claimant of a contested spelling instead — here both keys are readable,
+// so both take their stored keys — and the outcome may not depend on Go's
+// map iteration order: the plan runs over the sorted census, or the
+// canonical form is a coin flip on exactly the spaces that hold a shadow.
+// Revert the plan and one value lands under the shared spelling by claim
+// order (intermittently, which is the point).
 func TestBuildPropertiesKeepsBothValuesWhenSlugsCollapse(t *testing.T) {
 	// given
 	snapshot := &model.SmartBlockSnapshotBase{
@@ -315,8 +323,10 @@ func TestBuildPropertiesKeepsBothValuesWhenSlugsCollapse(t *testing.T) {
 		}
 		require.NoError(t, json.Unmarshal(data, &doc))
 		assert.Len(t, doc.Properties, 2, "no value may be lost to a collapsed spelling")
-		assert.Equal(t, "value of A", doc.Properties["shared_slug"], "the first stored key keeps the slug, every run")
-		assert.Equal(t, "value of Z", doc.Properties["zzzKey"], "the later one keeps its honest stored key")
+		assert.Equal(t, "value of A", doc.Properties["aaaKey"],
+			"every claimant of a contested spelling degrades — the shared spelling is written for nobody")
+		assert.Equal(t, "value of Z", doc.Properties["zzzKey"], "each keeps its honest stored key")
+		assert.NotContains(t, doc.Properties, "shared_slug")
 	}
 }
 
@@ -394,7 +404,7 @@ func TestObjectTypesIsAKeySlot(t *testing.T) {
 		}
 		require.NoError(t, json.Unmarshal(data, &doc))
 		require.Len(t, doc.TypeSettings.PropertyDefinitions, 1)
-		assert.Equal(t, []string{"object_type", "wikiPerson"}, doc.TypeSettings.PropertyDefinitions[0].ObjectTypes)
+		assert.Equal(t, []string{"Type", "wikiPerson"}, doc.TypeSettings.PropertyDefinitions[0].ObjectTypes)
 	})
 }
 
@@ -598,18 +608,21 @@ func TestKeyVocabulary_VocabularyInForceIsAReaderToo(t *testing.T) {
 		data, err := Marshal(model.SmartBlockType_Page, snap, Options{Keys: corpseVocabulary{}})
 		require.NoError(t, err)
 
-		// then: the ledger backs the slug off (the census named the stored
-		// key) — and the term it fell back to still owes the entry, because
-		// this reader binds `initiative` elsewhere
+		// then: the census contests the spelling (the stored key
+		// `initiative` owns its own term, verbatim-first), so the bson
+		// claimant degrades through the ladder — its key is unreadable, so
+		// it takes the suffixed form — and every written term owes its
+		// entry, because this reader binds `initiative` elsewhere
 		doc := decodeEnvelope(t, data)
 		assert.Equal(t, "value of the deleted property", doc.Properties["initiative"])
-		assert.Equal(t, "value of the live one", doc.Properties[corpsePropKey])
+		assert.Equal(t, "value of the live one", doc.Properties["initiative (b22f85)"],
+			"an unreadable claimant of a contested spelling takes `<name> (<tail6>)`")
 		assert.Equal(t, map[string]string{
-			"initiative":  "initiative",
-			corpsePropKey: corpsePropKey,
+			"initiative":          "initiative",
+			"initiative (b22f85)": corpsePropKey,
 		}, doc.PropertyKeys,
-			"the bson key names itself too: the bundled table binds neither term, "+
-				"so neither is safe from a reader that later does")
+			"the identity entry for the stored key, and the suffix's inverse — "+
+				"the bundled table binds neither term, so neither is safe from a reader that later does")
 		require.NoError(t, Validate(data))
 
 		// and both values come home, on the stored keys they left on. Without

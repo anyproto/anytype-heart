@@ -164,6 +164,20 @@ type importer struct {
 	// reader's wiring, not any one slot's, and a document can hold thousands
 	// of them.
 	foldedUnrebuilt bool
+	// scopeType is the resolved stored key of the document's declared type —
+	// for a template, the TARGET type, whose instances the template's
+	// properties describe. It is the disambiguating scope for a shared
+	// property name (§3): a legendless document naming a property two live
+	// properties answer to resolves against this type's own property list
+	// first, and errors loudly when the type is not enough. Set by build
+	// right after the type slots resolve, before any property slot is read.
+	scopeType string
+	// warnedPropertyTerms / warnedTypeTerms deduplicate the two
+	// verbatim-resolution warnings (the phantom-key and glued-annotation
+	// diagnoses): one term can be named by a dozen slots, and the diagnosis
+	// is a fact about the term, not about any one slot.
+	warnedPropertyTerms map[string]bool
+	warnedTypeTerms     map[string]bool
 }
 
 // claimAuthoredIds records every id the document names before anything is
@@ -243,11 +257,101 @@ func (imp *importer) genId() string {
 // made by the document itself — a vocabulary belongs to the reader, and two
 // readers disagreeing about a slug is exactly how a property ends up pointing
 // at a different relation than it was exported from.
+//
+// Names are not unique, so a space-backed vocabulary (ScopedKeyVocabulary,
+// discovered by assertion) adds two steps a legendless term needs:
+//
+//   - **A shared name resolves within the declared type.** Two live
+//     properties bearing one name is an ambiguity the plain vocabulary
+//     refuses; the document's type is the disambiguating scope, and a name
+//     unambiguous among the type's own properties resolves there. A name
+//     the type cannot place raises a LOUD error asking for the legend —
+//     never a guess, and never a phantom key minted while two live
+//     properties bear that exact name.
+//   - **A verbatim resolution is diagnosed.** A term that is no live
+//     entity's stored key is stored verbatim all the same — that is chain
+//     step 4, and the price of any name-addressed scheme — but the importer
+//     says so once per term: a stale or guessed name minting a phantom key,
+//     or an annotation glued onto a copied name.
 func (imp *importer) propertyKey(slug string) string {
 	if key, ok := imp.doc.PropertyKeys[slug]; ok && key != "" {
 		return key
 	}
-	return imp.opts.propertyKey(slug)
+	scoped, ok := imp.opts.keys().(ScopedKeyVocabulary)
+	if !ok {
+		key := imp.opts.propertyKey(slug)
+		if key == slug {
+			imp.warnVerbatimPropertyTerm(slug, nil)
+		}
+		return key
+	}
+	facts := scoped.PropertyTermFacts(slug)
+	if facts.LiveStoredKey {
+		return slug // chain step 2: an exact stored key wins, verbatim
+	}
+	cands := scoped.PropertyKeyCandidates(slug)
+	switch len(cands) {
+	case 1:
+		return cands[0]
+	case 0:
+		key := imp.opts.propertyKey(slug) // the fold layer, then verbatim
+		if key == slug {
+			imp.warnVerbatimPropertyTerm(slug, &facts)
+		}
+		return key
+	}
+	if imp.scopeType != "" {
+		var inScope []string
+		for _, key := range scoped.TypePropertyKeys(imp.scopeType) {
+			for _, c := range cands {
+				if c == key {
+					inScope = append(inScope, c)
+					break
+				}
+			}
+		}
+		if len(inScope) == 1 {
+			return inScope[0]
+		}
+	}
+	imp.refuse("/"+memberPropertyInternalKeys, fmt.Sprintf(
+		"the spelling %q names %d live properties in this space and the declared "+
+			"type does not single one out; add a %s entry binding the spelling to "+
+			"the intended stored key", slug, len(cands), memberPropertyInternalKeys))
+	return slug
+}
+
+// warnVerbatimPropertyTerm reports, once per term, what a verbatim
+// resolution means when the term is nobody's stored key. facts == nil means
+// the reader has no liveness knowledge (the bundled-only vocabulary), so
+// only the glued-annotation check — answerable from the shipped table —
+// runs; the phantom diagnosis needs a space to ask.
+func (imp *importer) warnVerbatimPropertyTerm(term string, facts *KeyTermFacts) {
+	if imp.warnedPropertyTerms[term] {
+		return
+	}
+	if imp.warnedPropertyTerms == nil {
+		imp.warnedPropertyTerms = map[string]bool{}
+	}
+	imp.warnedPropertyTerms[term] = true
+	if name, ok := BundledPropertyNameExtendedBy(term); ok {
+		imp.warn("", "the property spelling %q extends the bundled property name %q "+
+			"with trailing text — an annotation glued onto a copied name? It is "+
+			"stored verbatim, as its own key", term, name)
+		return
+	}
+	if facts == nil {
+		return
+	}
+	if facts.ExtendsName != "" {
+		imp.warn("", "the property spelling %q extends the live property name %q "+
+			"with trailing text — an annotation glued onto a copied name? It is "+
+			"stored verbatim, as its own key", term, facts.ExtendsName)
+		return
+	}
+	imp.warn("", "the property spelling %q is not the name or stored key of any "+
+		"live property in this space and is stored verbatim — a stale or guessed "+
+		"name mints a phantom key", term)
 }
 
 // propertyKeyAt is propertyKey at a slot that can REFUSE — every key slot
@@ -344,7 +448,66 @@ func (imp *importer) typeKey(slug, path string) string {
 	if key, ok := imp.doc.TypeKeys[slug]; ok && key != "" {
 		return key
 	}
-	return imp.opts.typeKey(slug)
+	scoped, ok := imp.opts.keys().(ScopedKeyVocabulary)
+	if !ok {
+		key := imp.opts.typeKey(slug)
+		if key == slug {
+			imp.warnVerbatimTypeTerm(slug, nil)
+		}
+		return key
+	}
+	facts := scoped.TypeTermFacts(slug)
+	if facts.LiveStoredKey {
+		return slug
+	}
+	cands := scoped.TypeKeyCandidates(slug)
+	switch len(cands) {
+	case 1:
+		return cands[0]
+	case 0:
+		key := imp.opts.typeKey(slug)
+		if key == slug {
+			imp.warnVerbatimTypeTerm(slug, &facts)
+		}
+		return key
+	}
+	// a shared TYPE name has no wider scope to resolve inside — the type is
+	// the scope — so the ambiguity is refused outright, the same loud error
+	// a shared property name gets when its type cannot place it
+	imp.refuse(path, fmt.Sprintf(
+		"the spelling %q names %d live types in this space; add a %s entry "+
+			"binding the spelling to the intended stored key",
+		slug, len(cands), memberTypeInternalKeys))
+	return slug
+}
+
+// warnVerbatimTypeTerm is warnVerbatimPropertyTerm on the type namespace.
+func (imp *importer) warnVerbatimTypeTerm(term string, facts *KeyTermFacts) {
+	if imp.warnedTypeTerms[term] {
+		return
+	}
+	if imp.warnedTypeTerms == nil {
+		imp.warnedTypeTerms = map[string]bool{}
+	}
+	imp.warnedTypeTerms[term] = true
+	if name, ok := BundledTypeNameExtendedBy(term); ok {
+		imp.warn("", "the type spelling %q extends the bundled type name %q with "+
+			"trailing text — an annotation glued onto a copied name? It is stored "+
+			"verbatim, as its own key", term, name)
+		return
+	}
+	if facts == nil {
+		return
+	}
+	if facts.ExtendsName != "" {
+		imp.warn("", "the type spelling %q extends the live type name %q with "+
+			"trailing text — an annotation glued onto a copied name? It is stored "+
+			"verbatim, as its own key", term, facts.ExtendsName)
+		return
+	}
+	imp.warn("", "the type spelling %q is not the name or stored key of any live "+
+		"type in this space and is stored verbatim — a stale or guessed name "+
+		"mints a phantom key", term)
 }
 
 // warn reports a warning-grade issue through the caller's sink (§13) — the
@@ -455,6 +618,9 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 			}}}
 		}
 		objectTypes = append(objectTypes, domain.TypeKey(typeKey).URL())
+		// the declared type is the disambiguating scope for a shared
+		// property name (propertyKey); set before any property slot reads
+		imp.scopeType = typeKey
 		if sbType == model.SmartBlockType_Template && doc.TemplateFor != "" {
 			target := imp.typeKey(doc.TemplateFor, "/template_for")
 			if target == "" {
@@ -464,6 +630,9 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 				}}}
 			}
 			objectTypes = append(objectTypes, domain.TypeKey(target).URL())
+			// a template's properties describe the TARGET type's instances,
+			// so the target is the scope that can disambiguate them
+			imp.scopeType = target
 		}
 	}
 
@@ -482,7 +651,7 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 		if slug == detailKeyId || slug == detailKeyType {
 			continue // lifted into the envelope; a stray copy must not leak
 		}
-		// the document spells slugs (§7.5a); the store binds stored keys
+		// the document spells display names (§3); the store binds stored keys
 		key := imp.propertyKey(slug)
 		// admission runs on the FINAL resolved key, here at the seam where
 		// details are written (§3). Validate already refused everything its

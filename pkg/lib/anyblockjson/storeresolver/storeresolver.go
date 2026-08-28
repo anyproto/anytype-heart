@@ -44,7 +44,7 @@ type Resolvers struct {
 	relById    map[string]anyblockjson.PropertyDefinition
 	relKeyToId map[string]string
 
-	// the §7.5a key vocabulary, primed lazily — see keyvocab.go
+	// the §3 key vocabulary, primed lazily — see keyvocab.go
 	relVocab  *keyMaps
 	typeVocab *keyMaps
 }
@@ -130,7 +130,7 @@ func (r *Resolvers) loadRelations() {
 // `objects` property came back untargeted and would accept any object.
 //
 // The mapping rides the one bounded type listing the vocabulary already pays
-// for (§7.5a-2 budgets one query per kind per resolver, never one per
+// for (§3 budgets one query per kind per resolver, never one per
 // reference), plus the bundled-url arm for ids that were never rewritten. An
 // id that resolves to nothing is DROPPED, which is the policy export already
 // applies to a recommended-list entry that no longer resolves (§2a) — a

@@ -830,7 +830,7 @@ func TestInvariant_MarshalOutputValidates(t *testing.T) {
 				// name the deleted flat spelling could not carry is asserted
 				// here, and the same-named pair by its first writing
 				// (optionrefs.go).
-				names := docOptionIds(t, data)["tag"]
+				names := docOptionIds(t, data)["Tag"]
 				if o.OmitIds {
 					// an id-less shape ships no legend of ids (§9), so here
 					// the assertion is that it is GONE — which is as much a

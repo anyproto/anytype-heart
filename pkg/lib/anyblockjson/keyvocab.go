@@ -2,26 +2,29 @@ package anyblockjson
 
 // keyvocab.go — the wire vocabulary for type and property keys.
 //
-// The API and the format speak ONE key vocabulary, the
-// snake_case api slug, everywhere a type or property is named — envelope
-// `type`/`templateFor`, `properties` map keys, `property_definitions[].property`,
-// dataview `properties[].property`/`groupBy`/`coverProperty`/`endProperty`/sort
-// and filter `property`/column `property`, the `property` block's `property`, and
-// a link block's `properties`. `dueDate` is `due_date` on the wire; bundled,
-// API-created and UI-created keys are indistinguishable to a reader. This
-// overturns SPEC §3's "camelCase stored keys" rule, deliberately (§7.3).
+// The format speaks ONE key vocabulary, the display NAME — NFC-normalized,
+// otherwise verbatim — everywhere a type or property is named: envelope
+// `type`/`template_for`, `properties` map keys,
+// `property_definitions[].property`, dataview
+// `properties[].property`/`group_by`/`cover_property`/`end_property`/sort
+// and filter `property`/column `property`, the `property` block's
+// `property`, and a link block's `properties`. `dueDate` is "Due date" on
+// the wire; bundled, API-created and UI-created keys are indistinguishable
+// to a reader, and there is no derived identifier anywhere in the format —
+// the api slug stays the API surface's affair.
 //
-// **The reverse is a TABLE, both directions — never a case transform.** That
-// is proven, not cautionary: `mediaArtistURL` → `media_artist_url` →
-// ToLowerCamel yields `mediaArtistUrl`, and `_score` does not round-trip
-// either. TestKeyVocabulary_ReverseIsATableNotACaseTransform pins both, so a
-// later "simplification" to a case function fails loudly.
+// **The reverse is a TABLE, both directions — never a string transform.**
+// That is proven, not cautionary: "Creation date" says a different word
+// than `createdDate`, so no derivation in either direction exists, and a
+// spelling that IS the stored key (a shared bundled name has no wire form)
+// must pass through rather than be "restored".
+// TestKeyVocabulary_ReverseIsATableNotACaseTransform pins both.
 //
-// The DEFAULT vocabulary is the bundled derived table in `pkg/lib/bundle`,
-// which ships with every reader — so a document written by a full node still
-// resolves its bundled keys in a package-only reader, offline, with no store
-// (§7.5a-5 chain step 3). A node-backed caller supplies a wider vocabulary
-// that also knows the space's stored slugs (chain step 2); v2 does, via
+// The DEFAULT vocabulary is the bundled name table (bundledname.go), which
+// ships with every reader — so a document written by a full node still
+// resolves its bundled keys in a package-only reader, offline, with no
+// store (§3 chain step 3). A node-backed caller supplies a wider vocabulary
+// that also knows the space's own names (chain step 2); v2 does, via
 // storeresolver.
 
 import (
@@ -30,8 +33,12 @@ import (
 )
 
 // KeyVocabulary translates between the STORED keys the snapshot carries and
-// the SLUGS the document spells, in both directions. Implementations owe
-// three things, and none of them is implied by the one before it.
+// the SPELLINGS the document writes — display names, under §3's rule — in
+// both directions. The method names still say "slug" from the era when the
+// spelling was a derived identifier; they are kept because the contract
+// they name (spelling ↔ stored key) is unchanged, and every implementor
+// would churn for a word. Implementations owe three things, and none of
+// them is implied by the one before it.
 //
 //  1. **Inversion.** Whatever `…Slug` emits, `…Key` must invert, or a document
 //     does not round-trip.
@@ -75,12 +82,13 @@ import (
 // the same shape: a bundled `description` reads back as whatever custom key
 // claimed the spelling.
 //
-// storeresolver, the vocabulary the product wires, refuses both halves —
-// keyMaps.roundTrips will not SPELL a key with a slug the bundled table binds
-// elsewhere, and the bundledKey check in keyMaps.key will not BIND one — so
-// this is a rule for hand-written implementations, which Options.Keys accepts
-// from anyone. TestKeyVocabulary_ShadowingSlugBreaksInversion pins what
-// happens when it is broken.
+// storeresolver, the vocabulary the product wires, keeps both halves by
+// construction — a name shared with the bundled table is answered as a
+// CANDIDATE set (never bound to one holder), and the emit side yields to
+// live stored keys — so this is a rule for hand-written implementations,
+// which Options.Keys accepts from anyone.
+// TestKeyVocabulary_ShadowingSlugBreaksInversion pins what happens when it
+// is broken.
 //
 // What NO rule here can prevent, and the legend therefore must: the third
 // rule lets a live slug binding win once the stored key stops being live,
@@ -90,16 +98,14 @@ import (
 // TestKeyVocabulary_VocabularyInForceIsAReaderToo and
 // TestCorpseStoredKeyStillNamesItsObjects.
 //
-// **What no rule above requires, and every shipped implementation does.** The
-// three obligations are about correctness — a spelling that inverts, and
-// inverts to the right key. What it LOOKS like is a separate question, and
-// §3 answers it: a key is spelled by its label, a Unicode identifier in the
-// §6.2.1 grammar, which is what makes it writable at the format's narrowest
-// key surface (a property whose spelling starts with a digit cannot be named
-// in a compact filter string at all). PropertyLabel and TypeLabel are that
-// rule, exported so a vocabulary can apply it to whatever its source of truth
-// stores; storeresolver calls them, and an implementation that answers with a
-// raw stored slug is still correct, merely unspellable in one place.
+// **What no rule above requires, and every shipped implementation does.**
+// The three obligations are about correctness — a spelling that inverts,
+// and inverts to the right key. What it LOOKS like is a separate question,
+// and §3 answers it: a key is spelled by its display name, NFC and
+// verbatim. PropertyLabel and TypeLabel are that rule, exported so a
+// vocabulary can apply it to whatever its source of truth stores;
+// storeresolver calls them, and an implementation that answers with a raw
+// stored key is still correct, merely less readable.
 type KeyVocabulary interface {
 	// PropertySlug is the wire spelling of a stored relation key. Returning
 	// the input unchanged is always valid ("no slug for this key").
@@ -114,11 +120,60 @@ type KeyVocabulary interface {
 	TypeKey(slug string) (key string, ok bool)
 }
 
-// BundledKeyVocabulary is the package default: the bundled derived table —
-// through the v0.38 alias layer (alias.go), which respells the sixteen
-// bundled keys whose stored key says "relation" — both directions, and
-// nothing else. Custom keys pass through unchanged: a package-only reader
-// has no space to ask about stored slugs.
+// ScopedKeyVocabulary is the OPTIONAL capability a space-backed vocabulary
+// adds beyond KeyVocabulary, discovered by type assertion (the TypeResolver
+// pattern, §2d). It exists because raw-name addressing admits questions the
+// four-method interface cannot ask:
+//
+//   - **A shared name.** Two live properties may bear one name, and
+//     PropertyKey then refuses to answer (an ambiguous address is never
+//     resolved by guess). The importer, which knows the document's declared
+//     type, asks for the full candidate list and resolves WITHIN THE TYPE:
+//     a name unambiguous among the type's own properties — the overwhelming
+//     case, measured at 1 ambiguous type in 1,753 — is resolved; a name the
+//     type cannot place raises a loud error asking for the legend, never a
+//     phantom key.
+//   - **A term about to be stored verbatim.** The importer warns when a
+//     verbatim term is not any live entity's stored key (the
+//     stale-or-guessed-name phantom) and when it extends a live name with
+//     trailing text (the glued-annotation hazard). Both diagnoses need the
+//     space's stored-key set and name list, which only the vocabulary has.
+//
+// storeresolver implements it; the bundled-only default does not (bundled
+// names are unique by CI guard, so neither question arises offline).
+type ScopedKeyVocabulary interface {
+	// PropertyKeyCandidates returns every live property key whose exact
+	// document spelling is the term — the space's claimants plus the
+	// bundled table's binding — sorted. It says nothing about stored keys:
+	// verbatim-first is the caller's step, asked before this one.
+	PropertyKeyCandidates(spelling string) []string
+	// TypeKeyCandidates is the type namespace's half.
+	TypeKeyCandidates(spelling string) []string
+	// TypePropertyKeys returns the stored property keys the type declares —
+	// the disambiguating scope for a shared property name.
+	TypePropertyKeys(typeKey string) []string
+	// PropertyTermFacts / TypeTermFacts diagnose one term for the
+	// verbatim-resolution warnings.
+	PropertyTermFacts(term string) KeyTermFacts
+	TypeTermFacts(term string) KeyTermFacts
+}
+
+// KeyTermFacts is what a space-backed vocabulary knows about one term that
+// is about to resolve verbatim.
+type KeyTermFacts struct {
+	// LiveStoredKey: the term is a live entity's stored key — verbatim
+	// resolution is then simply chain step 2, nothing to warn about.
+	LiveStoredKey bool
+	// ExtendsName: a live entity's display name the term extends with
+	// trailing text past a word boundary ("" when none) — the eval's one
+	// real raw-name failure shape, an annotation glued onto a copied name.
+	ExtendsName string
+}
+
+// BundledKeyVocabulary is the package default: the bundled name table
+// (bundledname.go), both directions, plus the forgiving fold on the accept
+// side, and nothing else. Custom keys pass through unchanged: a
+// package-only reader has no space to ask about names.
 type BundledKeyVocabulary struct{}
 
 func (BundledKeyVocabulary) PropertySlug(key string) string {
@@ -131,6 +186,13 @@ func (BundledKeyVocabulary) PropertySlug(key string) string {
 func (BundledKeyVocabulary) PropertyKey(slug string) (string, bool) {
 	if key, ok := bundledPropertyKeyBySpelling(slug); ok {
 		return key, true
+	}
+	// the forgiving fold, single candidate only — the layer that keeps every
+	// pre-change derived-slug spelling (`created_date`) resolving in a
+	// package-only reader with no compatibility table: ToSnake only inserts
+	// `_` and lowercases, so the old slug sits in its stored key's fold class
+	if candidates := BundledPropertyKeysByFold(slug); len(candidates) == 1 {
+		return candidates[0], true
 	}
 	return slug, false
 }
@@ -145,6 +207,9 @@ func (BundledKeyVocabulary) TypeSlug(key string) string {
 func (BundledKeyVocabulary) TypeKey(slug string) (string, bool) {
 	if key, ok := bundledTypeKeyBySpelling(slug); ok {
 		return key, true
+	}
+	if candidates := BundledTypeKeysByFold(slug); len(candidates) == 1 {
+		return candidates[0], true
 	}
 	return slug, false
 }

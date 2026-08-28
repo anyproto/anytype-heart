@@ -53,7 +53,7 @@ func TestExport_AResolverThatAnswersBlankWritesABareId(t *testing.T) {
 			data, err := Marshal(model.SmartBlockType_Page, attributedSnapshot(),
 				Options{ResolveParticipants: answeringNamer{name: answer}})
 			require.NoError(t, err)
-			assert.Contains(t, string(data), `"creator": "_participant_a_b_C"`,
+			assert.Contains(t, string(data), `"Created by": "_participant_a_b_C"`,
 				"the bare id: resolvable, and blank-name-proof")
 			assert.NotContains(t, string(data), "#", "a blank name is not a name — no dangling separator")
 			require.NoError(t, Validate(data))
@@ -66,7 +66,7 @@ func TestExport_AResolverThatAnswersBlankWritesABareId(t *testing.T) {
 		data, err := Marshal(model.SmartBlockType_Page, attributedSnapshot(),
 			Options{ResolveParticipants: answeringNamer{name: "Roman"}})
 		require.NoError(t, err)
-		assert.Contains(t, string(data), `"creator": "_participant_a_b_C#roman"`)
+		assert.Contains(t, string(data), `"Created by": "_participant_a_b_C#roman"`)
 	})
 }
 

@@ -24,7 +24,7 @@
         "type": "string",
         "minLength": 1
       },
-      "description": "Built-in properties this bundle wants available, by key: [\"due_date\", \"tag\"]. Presence only — never redefine a built-in here."
+      "description": "Built-in properties this bundle wants available, by name: [\"Due date\", \"Tag\"]. Presence only — never redefine a built-in here."
     },
     "properties": {
       "type": "array",
@@ -37,7 +37,7 @@
   "$defs": {
     "property": {
       "type": "object",
-      "description": "One property. Identify it by `property` (the snake_case key your documents will write: \"streak\") or by `name` (\"Cooking Time\" declares cooking_time); `format` is required. Never invent stored ids — the app mints those on import.",
+      "description": "One property. Identify it by `property` (the spelling your documents will write — the property's name: \"Streak\") or by `name` (\"Cooking Time\" declares a property spelled exactly that); `format` is required. Never invent stored ids — the app mints those on import.",
       "required": [
         "format"
       ],
@@ -110,7 +110,7 @@
           "minLength": 1,
           "maxLength": 128,
           "pattern": "^[^\u0000-\u001f]+$",
-          "description": "The property's key, snake_case: \"streak\", \"last_done\". A fresh word — a built-in key (\"due_date\") names the built-in property instead."
+          "description": "The property's spelling — its display name, written exactly: \"Streak\", \"Last done\". A fresh name — a built-in property's name (\"Due date\") names the built-in property instead."
         },
         "name": {
           "type": "string",

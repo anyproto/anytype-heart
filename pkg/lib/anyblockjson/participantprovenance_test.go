@@ -47,9 +47,9 @@ func TestParticipantProvenance_CreatedDateNeverExported(t *testing.T) {
 	require.NoError(t, err)
 
 	// then
-	assert.NotContains(t, string(doc), "created_date",
+	assert.NotContains(t, string(doc), "Creation date",
 		"a participant's created_date is a load timestamp, not a fact")
-	assert.Contains(t, string(doc), "last_modified_date",
+	assert.Contains(t, string(doc), "Last modified date",
 		"only the measured drifting key is dropped")
 
 	t.Run("on a page the same key stays", func(t *testing.T) {
@@ -60,7 +60,7 @@ func TestParticipantProvenance_CreatedDateNeverExported(t *testing.T) {
 		}
 		doc, err := Marshal(model.SmartBlockType_Page, snap, Options{})
 		require.NoError(t, err)
-		assert.Contains(t, string(doc), "created_date",
+		assert.Contains(t, string(doc), "Creation date",
 			"on every other kind createdDate is real provenance")
 	})
 }

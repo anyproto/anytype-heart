@@ -40,7 +40,7 @@
       "minLength": 1,
       "maxLength": 64,
       "pattern": "^[^\u0000-\u001f]+$",
-      "description": "Type documents only: the type's key, a snake_case slug you mint (\"habit\"). Objects name the type by writing this key in their `type`. Pick a fresh word — a built-in key (\"task\", \"book\") names the built-in type instead."
+      "description": "Type documents only: the type's spelling — its display name, written exactly (\"Habit\"). Objects name the type by writing this spelling in their `type`. Pick a fresh name — a built-in type's name (\"Task\", \"Book\") names the built-in type instead."
     },
     "icon": {
       "$ref": "#/$defs/icon"
@@ -497,7 +497,7 @@
       "minLength": 1,
       "maxLength": 128,
       "pattern": "^[^\u0000-\u001f]+$",
-      "description": "A property key, snake_case: a built-in key (\"name\", \"due_date\", \"done\") or one this bundle declares (\"streak\")."
+      "description": "A property spelling — a display name, written exactly: a built-in property's name (\"Name\", \"Due date\", \"Done\") or one this bundle declares (\"Streak\")."
     },
     "propertyFormat": {
       "enum": [
@@ -542,7 +542,7 @@
     },
     "propertyDefinition": {
       "type": "object",
-      "description": "One property of a type. Identify it by `property` (the snake_case key) or by `name` (the display name — \"Cooking Time\" declares `cooking_time`). Never invent stored ids: the app mints those on import.",
+      "description": "One property of a type. Identify it by `property` (the spelling — the property's name) or by `name` (the display name — \"Cooking Time\" declares a property spelled exactly that). Never invent stored ids: the app mints those on import.",
       "properties": {
         "property": {
           "$ref": "#/$defs/propertyKey"

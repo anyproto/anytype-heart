@@ -265,9 +265,11 @@ type Widget struct {
 	IconSize    string `json:"icon_size"`
 	Description string `json:"description"`
 	// Properties are the property keys shown on the widget's card, held as
-	// STORED keys the way the manifest holds type keys: the index has no
-	// per-document legend, so the spelling must be a pure function of the
-	// key, and the dictionary's own spelling pair is that function (§2f).
+	// STORED keys in this struct and WRITTEN in the canonical spelling the
+	// manifest's type keys use — the bundled display name, or the stored
+	// key verbatim: the index has no per-document legend, so the spelling
+	// must be a pure function of the key, and the dictionary's own spelling
+	// pair is that function (§2f).
 	Properties []string `json:"properties"`
 }
 

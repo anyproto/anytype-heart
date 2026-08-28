@@ -142,12 +142,12 @@ func TestTypeDocumentCarriesObjectTypes(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal(data, &doc))
 	require.Len(t, doc.TypeSettings.PropertyDefinitions, 1)
-	assert.Equal(t, "assignee", doc.TypeSettings.PropertyDefinitions[0].Key)
-	// the slots are spelled as slugs and the legend inverts the one the
-	// bundled table cannot (§3) — the whole point of carrying the targets is
-	// that a reader can bind them back
-	assert.Equal(t, []string{"person", "participant"}, doc.TypeSettings.PropertyDefinitions[0].ObjectTypes)
-	assert.Equal(t, map[string]string{"person": customTypeKey}, doc.TypeKeys)
+	assert.Equal(t, "Assignee", doc.TypeSettings.PropertyDefinitions[0].Key)
+	// the slots are spelled as display names and the legend inverts the one
+	// the bundled table cannot (§3) — the whole point of carrying the
+	// targets is that a reader can bind them back
+	assert.Equal(t, []string{"Person", "Space member"}, doc.TypeSettings.PropertyDefinitions[0].ObjectTypes)
+	assert.Equal(t, map[string]string{"Person": customTypeKey}, doc.TypeKeys)
 
 	// and: the document reads back onto the very same stored keys
 	_, back, err := anyblockjson.Unmarshal(data, anyblockjson.Options{})

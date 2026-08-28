@@ -162,19 +162,19 @@ func TestCompareObjectTypes(t *testing.T) {
 }
 
 // divergentVocabulary is the production defect in miniature: one reader binds
-// the slug `task` to a space-minted type, another to the bundled one. That is
-// the disagreement the `type_internal_keys` legend exists to close (§3), and the only
-// way a real export can come back on a different type — so a sweep that can
-// see it can see the class.
+// the spelling "Task" to a space-minted type, another to the bundled one.
+// That is the disagreement the `type_internal_keys` legend exists to close
+// (§3), and the only way a real export can come back on a different type —
+// so a sweep that can see it can see the class.
 type divergentVocabulary struct {
 	anyblockjson.BundledKeyVocabulary
 }
 
-func (divergentVocabulary) TypeKey(slug string) (string, bool) {
-	if slug == "task" {
+func (divergentVocabulary) TypeKey(spelling string) (string, bool) {
+	if spelling == "Task" {
 		return customTypeKey, true
 	}
-	return anyblockjson.BundledKeyVocabulary{}.TypeKey(slug)
+	return anyblockjson.BundledKeyVocabulary{}.TypeKey(spelling)
 }
 
 // The unit cases above hand-build the two sides. This one drives the real
@@ -188,7 +188,7 @@ func TestCompareObjectTypes_ThroughTheCodec(t *testing.T) {
 		data, err := anyblockjson.Marshal(model.SmartBlockType_Page, orig, anyblockjson.Options{})
 		require.NoError(t, err)
 		require.NotContains(t, string(data), "type_internal_keys",
-			"the fixture only bites while the document carries no legend to invert the slug")
+			"the fixture only bites while the document carries no legend to invert the spelling")
 
 		// when
 		_, back, err := anyblockjson.Unmarshal(data, anyblockjson.Options{Keys: divergentVocabulary{}})

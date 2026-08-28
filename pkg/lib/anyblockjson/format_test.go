@@ -54,7 +54,7 @@ func TestExport_TextFormatsCollapse(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.NotContains(t, string(data), "shortText")
-	assert.Contains(t, string(data), `"property": "name"`)
+	assert.Contains(t, string(data), `"property": "Name"`)
 	assert.Equal(t, 2, strings.Count(string(data), `"format": "text"`))
 }
 

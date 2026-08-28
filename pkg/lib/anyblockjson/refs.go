@@ -9,8 +9,10 @@ package anyblockjson
 //
 //   - **The `#name` suffix.** A reference MAY carry `#<name>` after the id —
 //     `bafyrei…#local_first_ux` — where the name is the referenced object's
-//     display name normalized through the same identifier grammar key labels
-//     use (label.go): letters, digits, `_`, combining marks, nothing else.
+//     display name normalized into an identifier grammar (refNameNormalize:
+//     letters, digits, `_`, combining marks, nothing else). Key spellings
+//     stopped being normalized when raw naming landed; the suffix still is,
+//     because its grammar is what keeps the `#` split safe.
 //     The suffix is INFORMATIVE ONLY: import trims it at the first `#` and
 //     never resolves it, so a stale name costs nothing and two objects
 //     sharing one name collide on nothing. It exists so a human or a model
@@ -36,11 +38,14 @@ package anyblockjson
 
 import (
 	"strings"
+	"unicode"
 
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/text/unicode/norm"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -212,16 +217,93 @@ func trimRefName(ref string) string {
 	return id
 }
 
-// refNameLabel normalizes a display name into the suffix grammar: the same
-// identifier normalization key labels go through (label.go — letters of any
-// script, digits, `_`, combining marks), bounded by maxRefNameLen. An empty
-// answer means no suffix. The grammar admits no `#`, which is the writer's
-// half of the split guarantee: a raw display name here would break the split
-// from both ends.
+// refNameLabel normalizes a display name into the suffix grammar
+// (refNameNormalize below), bounded by maxRefNameLen. An empty answer means
+// no suffix. The grammar admits no `#`, which is the writer's half of the
+// split guarantee: a raw display name here would break the split from both
+// ends.
 func refNameLabel(name string) string {
-	label := normalizeKeyLabel(name)
+	label := refNameNormalize(name)
 	if runes := []rune(label); len(runes) > maxRefNameLen {
 		label = strings.TrimRight(string(runes[:maxRefNameLen]), "_")
+	}
+	return label
+}
+
+// refNameNormalize turns a display name into the `#name` suffix grammar —
+// letters of any script, digits, `_`, combining marks — or "" when nothing
+// is left to name.
+//
+// This is the identifier normalization that used to mint KEY labels
+// (label.go), surviving here for its one remaining surface. Key spellings
+// are raw names now and need no normalization at all; the ref suffix still
+// does, because its grammar is what makes the `#` split safe — a raw
+// display name may contain `#`, and the suffix must not. The rules are
+// unchanged from the key-label era on purpose: the suffix is informative
+// and trimmed unread, so nothing depends on its exact shape, and keeping
+// the bytes stable keeps every already-written reference identical on its
+// next export.
+//
+// Three decisions worth keeping stated, because each has a plausible
+// alternative:
+//
+//   - **NFC, lowercase, separators collapse to `_`.** Two visually
+//     identical names must not suffix differently between exports.
+//   - **Combining marks are kept with their letter.** In Devanagari, Thai,
+//     Bengali, Tamil, Khmer and Myanmar the vowels ARE marks; dropping them
+//     does not shorten a word, it changes it — मिल/मूल/मल/मैल would all
+//     become मल.
+//   - **A leading `_` run is content, not a gap** — integrations namespace
+//     themselves `__amemory_…` in their names — while interior runs
+//     collapse and a trailing run trims; and a result that starts with a
+//     digit or is a filter-grammar keyword takes a leading `_`, the escape
+//     the suffix inherited from the key grammar and keeps for byte
+//     stability.
+func refNameNormalize(s string) string {
+	if s == "" {
+		return ""
+	}
+	lead := 0
+	for _, r := range s {
+		if r != '_' {
+			break
+		}
+		lead++
+	}
+	var b strings.Builder
+	gap := false // a separator run is pending, emitted only before the next letter
+	for _, r := range norm.NFC.String(s) {
+		switch {
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
+			if gap && b.Len() > 0 {
+				b.WriteRune('_')
+			}
+			gap = false
+			b.WriteRune(unicode.ToLower(r))
+		case unicode.Is(unicode.Mn, r) || unicode.Is(unicode.Mc, r):
+			// a mark cannot start a token, and one arriving with a pending
+			// separator is malformed input, not a word
+			if b.Len() > 0 && !gap {
+				b.WriteRune(r)
+			}
+		default:
+			gap = true // `_` included: runs collapse and edges trim
+		}
+	}
+	label := strings.Repeat("_", lead) + b.String()
+	if label == "" || strings.Trim(label, "_") == "" {
+		return ""
+	}
+	if !filterstring.IsBareKey(label) {
+		label = "_" + label
+	}
+	if !filterstring.IsBareKey(label) {
+		// unreachable by construction — every rune is already an identPart,
+		// so the only faults are a leading digit and a keyword, both cured
+		// above. It is a guard rather than a path: IsBareKey is another
+		// package's rule and may grow one, and the honest degradation is no
+		// suffix at all.
+		return ""
 	}
 	return label
 }

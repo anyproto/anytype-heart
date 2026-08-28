@@ -148,20 +148,53 @@ func TestExport_NilInnerContent(t *testing.T) {
 	}
 }
 
-// Finding 6: a Page whose type key is "template" keeps an explicit kind so
-// the round trip does not flip the smartblock type to Template.
+// Finding 6, revisited under raw names: a Page whose type key is `template`
+// once needed an explicit kind, because the type SPELLED itself `template` —
+// the pre-v0.22 byte shape of a template, which Validate refuses kindless.
+// The type spells its display name "Template" now, which is not that byte
+// shape, so the kind is derivable again and stays omitted — and the round
+// trip must still come home a Page. The emission guard survives for the one
+// spelling that still needs it: a writer whose vocabulary yields the raw
+// term `template` (a package-only export of a custom type stored-keyed so,
+// or a vocabulary that answers the key itself), which the second arm pins.
 func TestExport_PageWithTemplateTypeKeepsKind(t *testing.T) {
 	snap := &model.SmartBlockSnapshotBase{
 		Details:     fields(map[string]*types.Value{"id": str("obj1")}),
 		ObjectTypes: []string{"ot-template"},
 	}
-	data, err := Marshal(model.SmartBlockType_Page, snap, Options{})
-	require.NoError(t, err)
-	assert.Contains(t, string(data), `"kind": "page"`)
-	sbType, _, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
-	require.NoError(t, err)
-	assert.Equal(t, model.SmartBlockType_Page, sbType)
+
+	t.Run("the display-name spelling derives its kind", func(t *testing.T) {
+		data, err := Marshal(model.SmartBlockType_Page, snap, Options{})
+		require.NoError(t, err)
+		assert.Contains(t, string(data), `"type": "Template"`)
+		assert.NotContains(t, string(data), `"kind"`, "Page is derivable — the term is not the legacy byte shape")
+		require.NoError(t, Validate(data), "I1")
+		sbType, _, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
+		require.NoError(t, err)
+		assert.Equal(t, model.SmartBlockType_Page, sbType)
+	})
+
+	t.Run("the raw term `template` still forces the kind", func(t *testing.T) {
+		data, err := Marshal(model.SmartBlockType_Page, snap, Options{Keys: verbatimKeys{}})
+		require.NoError(t, err)
+		assert.Contains(t, string(data), `"type": "template"`)
+		assert.Contains(t, string(data), `"kind": "page"`,
+			"a kindless type:template document is the pre-v0.22 template spelling, which Validate refuses")
+		require.NoError(t, Validate(data), "I1")
+		sbType, _, err := Unmarshal(data, Options{GenerateId: seqIds("g"), Keys: verbatimKeys{}})
+		require.NoError(t, err)
+		assert.Equal(t, model.SmartBlockType_Page, sbType)
+	})
 }
+
+// verbatimKeys is the minimum conforming vocabulary: every key spells
+// itself.
+type verbatimKeys struct{}
+
+func (verbatimKeys) PropertySlug(key string) string      { return key }
+func (verbatimKeys) PropertyKey(s string) (string, bool) { return s, false }
+func (verbatimKeys) TypeSlug(key string) string          { return key }
+func (verbatimKeys) TypeKey(s string) (string, bool)     { return s, false }
 
 // Finding 7: a stray properties.id / properties.type in the document must not
 // clobber the envelope-lifted details. It used to be dropped in silence, which

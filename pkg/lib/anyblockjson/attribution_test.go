@@ -208,7 +208,7 @@ func TestAttribution_ExportWritesIdentityAndName(t *testing.T) {
 		props, raw := exportedProperties(t, snap, opts)
 
 		// then
-		assert.Equal(t, testAttribIdentity+"#roma_kha", props["creator"])
+		assert.Equal(t, testAttribIdentity+"#roma_kha", props["Created by"])
 		assert.NotContains(t, raw, testParticipantId,
 			"the 135-character composite folds; the identity stands in (§9)")
 	})
@@ -221,7 +221,7 @@ func TestAttribution_ExportWritesIdentityAndName(t *testing.T) {
 		props, _ := exportedProperties(t, snap, opts)
 
 		// then
-		assert.Equal(t, testAttribIdentity+"#roma_kha", props["creator"])
+		assert.Equal(t, testAttribIdentity+"#roma_kha", props["Created by"])
 	})
 
 	t.Run("lastModifiedBy is spelled last_modified_by and shaped the same", func(t *testing.T) {
@@ -235,8 +235,8 @@ func TestAttribution_ExportWritesIdentityAndName(t *testing.T) {
 		props, raw := exportedProperties(t, snap, opts)
 
 		// then
-		assert.Equal(t, testAttribIdentity+"#roma_kha", props["last_modified_by"])
-		assert.NotContains(t, props, "lastModifiedBy", "the document spells slugs (§3)")
+		assert.Equal(t, testAttribIdentity+"#roma_kha", props["Last modified by"])
+		assert.NotContains(t, props, "lastModifiedBy", "the document spells display names (§3)")
 		assert.NotContains(t, raw, testParticipantId)
 	})
 
@@ -250,7 +250,7 @@ func TestAttribution_ExportWritesIdentityAndName(t *testing.T) {
 		props, _ := exportedProperties(t, snap, bare)
 
 		// then
-		assert.Equal(t, testParticipantId+"#roma_kha", props["creator"])
+		assert.Equal(t, testParticipantId+"#roma_kha", props["Created by"])
 	})
 }
 
@@ -294,8 +294,8 @@ func TestAttribution_BareIdWhenThereIsNoName(t *testing.T) {
 			props, _ := exportedProperties(t, snap, opts)
 
 			// then
-			assert.Equal(t, testAttribIdentity, props["creator"], "the bare folded id, nothing else")
-			assert.Equal(t, testAttribIdentity, props["last_modified_by"])
+			assert.Equal(t, testAttribIdentity, props["Created by"], "the bare folded id, nothing else")
+			assert.Equal(t, testAttribIdentity, props["Last modified by"])
 		})
 	}
 
@@ -316,8 +316,8 @@ func TestAttribution_BareIdWhenThereIsNoName(t *testing.T) {
 		props, raw := exportedProperties(t, snap, opts)
 
 		// then
-		assert.Equal(t, testAttribIdentity, props["creator"], "the control: a real id still lands")
-		assert.NotContains(t, props, "last_modified_by")
+		assert.Equal(t, testAttribIdentity, props["Created by"], "the control: a real id still lands")
+		assert.NotContains(t, props, "Last modified by")
 		assert.NotContains(t, raw, degenerate)
 	})
 
@@ -331,8 +331,8 @@ func TestAttribution_BareIdWhenThereIsNoName(t *testing.T) {
 		props, _ := exportedProperties(t, snap, opts)
 
 		// then
-		assert.NotContains(t, props, "creator")
-		assert.NotContains(t, props, "last_modified_by")
+		assert.NotContains(t, props, "Created by")
+		assert.NotContains(t, props, "Last modified by")
 	})
 }
 
@@ -356,19 +356,22 @@ func TestAttribution_ExportLeavesUserChosenParticipantsAlone(t *testing.T) {
 	props, _ := exportedProperties(t, snap, opts)
 
 	// then
-	assert.Equal(t, testAttribIdentity+"#roma_kha", props["creator"], "a plain string")
-	assert.Equal(t, []any{testAttribIdentity}, props["assignee"],
+	assert.Equal(t, testAttribIdentity+"#roma_kha", props["Created by"], "a plain string")
+	assert.Equal(t, []any{testAttribIdentity}, props["Assignee"],
 		"a user-chosen participant reference keeps its list shape and takes no suffix here")
 }
 
 // The term census reserves what the document SPELLS (§9a). `creator` is on the
 // stripped list now, so the census stopped seeing it through the ordinary
-// details walk — and a custom relation whose api slug is `creator` would then
-// claim the spelling, putting two properties on one JSON member and losing one.
+// details walk — and a custom relation whose vocabulary spelling collides
+// with it would then claim a spelling the attribution line needs, putting
+// two properties on one JSON member and losing one. The colliding string
+// here is the stored key `creator` itself: verbatim-first reserves it, so
+// the custom claimant degrades to its own stored key.
 //
-// How this can fail: drop the attribution arm of seedTermLedger and the custom
-// key takes `creator`, so this finds the identity under a key that means the
-// custom relation, or one of the two values gone.
+// How this can fail: drop the attribution arm of seedTermLedger and the
+// custom key takes `creator` while the attribution line spells it too — one
+// of the two values gone.
 func TestAttribution_CensusReservesTheSpellingItWrites(t *testing.T) {
 	// given a space that slugs a custom relation onto `creator`
 	opts := testOptions()
@@ -386,7 +389,7 @@ func TestAttribution_CensusReservesTheSpellingItWrites(t *testing.T) {
 	props, _ := exportedProperties(t, snap, opts)
 
 	// then
-	assert.Equal(t, testAttribIdentity+"#roma_kha", props["creator"],
+	assert.Equal(t, testAttribIdentity+"#roma_kha", props["Created by"],
 		"the attribution key keeps its own spelling")
 	assert.Equal(t, "mine", props["aCustomKey"],
 		"the custom key falls back to its stored key, which is always its own address (§3)")
@@ -446,7 +449,7 @@ func TestAttribution_DoesNotSurviveARoundTrip(t *testing.T) {
 	require.NoError(t, err)
 
 	// then
-	assert.Contains(t, string(first), `"creator": "`+testAttribIdentity+`#roma_kha"`)
-	assert.NotContains(t, string(second), `"creator"`, "import drops it, so the next export has nothing to write")
+	assert.Contains(t, string(first), `"Created by": "`+testAttribIdentity+`#roma_kha"`)
+	assert.NotContains(t, string(second), `"Created by"`, "import drops it, so the next export has nothing to write")
 	assert.Equal(t, string(second), string(third), "and everything after the first export is byte-stable")
 }

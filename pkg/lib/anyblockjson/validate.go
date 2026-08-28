@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
@@ -882,6 +883,15 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 	// unchecked, Validate accepted 1e400 and Unmarshal then failed with a bare
 	// Go decode error carrying no JSON pointer — the divergence §12 rules out.
 	checkNumbers(doc, "", addIssue)
+
+	// Key spellings are display names, carried exactly as the space holds
+	// them — and a name can hold what nobody can see: edge whitespace or a
+	// default-ignorable code point (8 of 767 measured production names do).
+	// Warned, never refused or trimmed: the value is legal and the document
+	// is honest about the space's own state, but an invisible byte is all it
+	// takes for another writer's exact match to miss, and the place to clean
+	// it up is where the property is named, not at this seam.
+	warnKeySpellingHygiene(doc, warnIssue)
 
 	// The template gate reads `kind`, and nothing else (§2). It used to
 	// resolve the `type` spelling through the document's own chain — legend,
@@ -2496,4 +2506,50 @@ func filterTemplateValues(v any) []string {
 		}
 	}
 	return out
+}
+
+// warnKeySpellingHygiene walks the authored key surfaces — the `properties`
+// member names, both legends' keys, and `option_ids` outer keys — and warns
+// about spellings carrying edge whitespace or invisible (default-ignorable)
+// code points. A warning and only a warning: the format spells names
+// verbatim and does not trim, so the document is valid — but such a key can
+// only be matched by reproducing bytes the eye cannot check, which is worth
+// one line to the caller per spelling.
+func warnKeySpellingHygiene(doc map[string]any, warn func(path, format string, args ...any)) {
+	report := func(member, term string) {
+		reason := keySpellingHygieneIssue(term)
+		if reason == "" {
+			return
+		}
+		warn("/"+member+"/"+escapeJSONPointer(term),
+			"the key spelling %q %s — it is carried exactly as written, and an exact "+
+				"match must reproduce the invisible bytes; the forgiving fold bridges the "+
+				"near-miss, and a cleanup belongs where the property is named", term, reason)
+	}
+	for _, member := range []string{"properties", memberPropertyInternalKeys,
+		memberTypeInternalKeys, "option_ids"} {
+		if m, _ := doc[member].(map[string]any); m != nil {
+			for _, term := range sortedMapKeys(m) {
+				report(member, term)
+			}
+		}
+	}
+}
+
+// keySpellingHygieneIssue names what is invisibly wrong with a key spelling,
+// or "" when nothing is. The two hazard classes are the measured ones: edge
+// whitespace ('Email 📧 ') and default-ignorable code points (two production
+// names carry a variation selector).
+func keySpellingHygieneIssue(term string) string {
+	if strings.TrimSpace(term) != term {
+		return "carries edge whitespace"
+	}
+	for _, r := range term {
+		if unicode.Is(unicode.Variation_Selector, r) ||
+			unicode.Is(unicode.Other_Default_Ignorable_Code_Point, r) ||
+			unicode.Is(unicode.Cf, r) {
+			return fmt.Sprintf("carries the invisible code point U+%04X", r)
+		}
+	}
+	return ""
 }
