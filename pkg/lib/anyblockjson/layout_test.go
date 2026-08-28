@@ -126,7 +126,7 @@ func TestNamedEnumProperties_PerKeyVerdict(t *testing.T) {
 		// what an image was uploaded FOR, on file objects. Named on the
 		// measured standard the bare-integer keys beside it were left on:
 		// 4,079 occurrences against widgetLayout's 13 and
-		// headerRelationsLayout's 0. Its automatically_added member is in
+		// headerRelationsLayout's 51. Its automatically_added member is in
 		// lockstep with is_hidden_discovery (4,053 of 4,053), which is the
 		// key a client actually filters on — so this one is named for the
 		// READER rather than for any behaviour that depends on it.
@@ -141,8 +141,9 @@ func TestNamedEnumProperties_PerKeyVerdict(t *testing.T) {
 	}
 	// the layout-ish bundled keys that stay numbers, each for a stated
 	// reason: layoutWidth is a fraction, not an enum; widgetLayout and
-	// headerRelationsLayout hold enums nothing measurable writes (13 and 0
-	// occurrences across 28,604 real exported documents)
+	// headerRelationsLayout hold enums almost nothing writes (13 and 51
+	// occurrences across 28,831 real exported documents, against
+	// imageKind's 4,079)
 	for _, key := range []string{"layoutWidth", "widgetLayout", "headerRelationsLayout"} {
 		_, named := namedEnumProperty(key)
 		assert.False(t, named, "%s is deliberately not named", key)

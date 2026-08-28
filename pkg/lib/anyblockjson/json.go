@@ -737,10 +737,17 @@ var importTypeVocabulary = vocabularyOf(importTypeNames, "import type")
 //
 // This is the fourth of the five 2026-08 bare-integer enums to be named, and
 // it is named on the same measured ground the others were left as numbers:
-// widgetLayout and headerRelationsLayout stayed bare at 13 and 0 occurrences,
-// while imageKind occurs on 4,079 file objects across the 77-space corpus —
-// 4,053 automatically_added, 23 icon, 3 basic-or-cover. A reader of an
-// export saw a bare 3 and had no way to learn what it meant.
+// imageKind occurs on 4,079 file objects across the 77-space corpus — 4,053
+// automatically_added, 23 icon, 3 basic-or-cover — where widgetLayout is on
+// 13 documents and headerRelationsLayout on 51. A reader of an export saw a
+// bare 3 and had no way to learn what it meant.
+//
+// The two small ones were once recorded as 13 and ZERO, and the zero was
+// wrong: headerRelationsLayout is on 51 documents and holds two distinct
+// values (44 ones, 7 zeros), which is what typesettings.go already says
+// about it. The decision to leave it bare therefore rests on VOLUME alone
+// now, not on "nothing writes it" — 51 documents against imageKind's 4,079
+// — and it is the weakest of the five verdicts on that account.
 //
 // Note the enum's ZERO is `basic`, and the app never STORES it:
 // makeInitialDetails returns early for Basic, so the key is absent rather
@@ -765,8 +772,9 @@ var viewTypeVocabulary = vocabularyOf(viewTypeNames, "view type")
 // names onto its vocabulary (§3). The three layout keys hold an
 // ObjectTypeLayout. The remaining layout-ish bundled keys are left as
 // numbers deliberately: layoutWidth is a fraction, not an enum, and
-// widgetLayout/headerRelationsLayout hold enums nothing measurable writes —
-// 13 and 0 occurrences across 28,604 real exported documents.
+// widgetLayout/headerRelationsLayout hold enums almost nothing writes — 13
+// and 51 occurrences across 28,831 real exported documents, against
+// imageKind's 4,079.
 var namedEnumProperties = map[string]propertyVocabulary{
 	"recommendedLayout": layoutVocabulary,
 	"layout":            layoutVocabulary,

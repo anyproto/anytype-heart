@@ -195,7 +195,7 @@ func TestNamedEnum_VocabulariesTotalOverModelEnums(t *testing.T) {
 // beside a named `origin` and had no way to learn it meant the image was
 // added by a pipeline rather than by a person — on 4,079 documents across
 // the 77-space corpus, which is the measured standard the bare-integer keys
-// beside it (widgetLayout at 13, headerRelationsLayout at 0) were left on.
+// beside it (widgetLayout at 13, headerRelationsLayout at 51) were left on.
 //
 // Naming it changes nothing a client depends on: the filter that hides
 // auto-added images reads `isHiddenDiscovery`, which travels on its own and

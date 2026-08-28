@@ -1616,8 +1616,35 @@ const maxPropertyKeyLen = 128
 // the schema, export directly — because a stored detail key is not guaranteed
 // to be one: an empty key and a key holding a newline both exist in real data,
 // and neither survives as a JSON property name that means anything.
+//
+// It carries ONE rule the schema does not, and cannot: the key must be valid
+// UTF-8. A parsed JSON document always holds valid UTF-8 — the decoder has
+// already replaced anything else — so the rule is unstatable there and only
+// export can break it. Breaking it was worse than a lost byte, because the
+// spelling of a property is now its display NAME, and names come from a store
+// that does not police its bytes:
+//
+//   - the writer maps every invalid byte to U+FFFD, while the collision plan
+//     compares the raw Go strings. Two distinct names differing only in their
+//     invalid bytes therefore look distinct to the plan, get no suffix, and
+//     then render as ONE member name. A JSON object cannot hold a member
+//     twice: one value silently replaces the other, and Validate passes,
+//     because by the time it reads the document the collision has already
+//     happened.
+//   - folding it into the plan instead was considered and does not work. The
+//     plan would have to compare the RENDERED forms, which are equal, so
+//     there is no spelling it could hand either claimant; the honest answer
+//     is that a name whose bytes cannot be written is not a spelling.
+//
+// The retired normalization grammar dropped U+FFFD as a matter of course, so
+// this exposure arrived with raw names. Zero occurrences in the 77-space
+// corpus: this is hardening, and the key falls back to being written under
+// its stored key like every other unwritable spelling.
 func isWritablePropertyKey(key string) bool {
 	if key == "" || utf8.RuneCountInString(key) > maxPropertyKeyLen {
+		return false
+	}
+	if !utf8.ValidString(key) {
 		return false
 	}
 	for _, r := range key {
@@ -1828,6 +1855,10 @@ func unwritableKeyReason(what, key string) string {
 	case n > maxPropertyKeyLen:
 		return fmt.Sprintf("%s %q is %d characters; the bound is %d",
 			what, key, n, maxPropertyKeyLen)
+	case !utf8.ValidString(key):
+		return fmt.Sprintf("%s %q is not valid UTF-8; every byte a document writes "+
+			"has to survive being written, and an invalid one is replaced on the way out — "+
+			"two keys differing only there would collapse onto one member name", what, key)
 	default:
 		return fmt.Sprintf("%s %q carries a control character", what, key)
 	}
