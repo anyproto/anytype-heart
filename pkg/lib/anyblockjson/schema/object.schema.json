@@ -143,7 +143,7 @@
     },
     "property_internal_keys": {
       "type": "object",
-      "description": "Legend: the stored property key each slug in this document names (§3). Present only for keys the bundled table cannot invert; a reader consults it before its own vocabulary. A value is a stored key and obeys the same writable-key rule as a property name (§3).",
+      "description": "Legend: the stored property key each SPELLING in this document names (§3) — a spelling is a display name, so this is the map from \"Cooking time\" to the key the space stores it under. Present only for keys the bundled table cannot invert; a reader consults it before its own vocabulary. A value is a stored key and obeys the same writable-key rule as a property name (§3).",
       "propertyNames": {
         "pattern": "^[^\u0000-\u001f]+$",
         "maxLength": 128
@@ -157,7 +157,7 @@
     },
     "type_internal_keys": {
       "type": "object",
-      "description": "Legend: the stored type key each type slug in this document names (§3). Same rule as property_internal_keys, on a legend of the type namespace's own: present only for spellings the bundled table cannot invert; a reader consults it before its own vocabulary. A value is a stored type key and obeys the writable-key rule (§3).",
+      "description": "Legend: the stored type key each type SPELLING in this document names (§3). Same rule as property_internal_keys, on a legend of the type namespace's own: present only for spellings the bundled table cannot invert; a reader consults it before its own vocabulary. A value is a stored type key and obeys the writable-key rule (§3).",
       "propertyNames": {
         "pattern": "^[^\u0000-\u001f]+$",
         "maxLength": 128

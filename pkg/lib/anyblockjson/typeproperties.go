@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gogo/protobuf/types"
+	"golang.org/x/text/unicode/norm"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -333,10 +334,29 @@ type TypeProperty struct {
 // correct forms they cannot produce. What they write instead is the slug —
 // which is right, and which the name already implies.
 //
-// So a name is enough. `{"name": "Cooking Time", "format": "number"}` declares
-// a property spelled `cooking_time`, and the derivation runs through the same
-// resolution ladder as a written spelling, so `{"name": "Due Date"}` lands on
-// the bundled `dueDate` rather than minting a lookalike beside it.
+// So a name is enough, and there is nothing to DERIVE: the name IS the
+// spelling. `{"name": "Cooking Time", "format": "number"}` declares a
+// property spelled `Cooking Time`, and that term runs through the same
+// resolution ladder as a written `property`, so `{"name": "Due Date"}`
+// lands on the bundled `dueDate` rather than minting a lookalike beside it.
+//
+// It used to run the api-slug derivation — strcase plus a transliterating
+// sanitizer — and that was the one place a derived identifier survived in a
+// format that has none. It did not merely rename: it TRANSLITERATED, and
+// then truncated. "Cooking Time" became `cooking_time`, which no longer
+// matches the name a resolver holds; "Тоггл" became `toggl`; "作業内容"
+// became `zuo_ye_nei_rong`; "C++" became `c`; "☕" and "#" became the empty
+// string, which the callers below then refused as an unwritable key. Every
+// one of those is a legal spelling now, and each is its own address.
+//
+// NFC and otherwise verbatim, the same normalization every other key slot
+// applies. No length bound is imposed here: the bound belongs to the
+// SPELLING, and both callers already refuse a resolved key that is not
+// writable (empty, over the key bound, or carrying a control character) —
+// with the slot's own JSON pointer, which is a better report than a
+// silently truncated term. The old derivation bounded at the object-ref
+// length, 255, while a property spelling is bounded at 128; there is now
+// one bound, asked in one place.
 //
 // `internal_key` ranks below `property` deliberately: export writes both
 // from one stored key, so on its own output the two agree, and the spelling
@@ -354,7 +374,7 @@ func (tp TypeProperty) authoredKey() (term string, isInternalKey bool) {
 	if tp.Name == "" {
 		return "", false
 	}
-	return bundle.SanitizeApiSlug(bundle.ApiSlugFromName(tp.Name), maxObjectRefLen), false
+	return norm.NFC.String(tp.Name), false
 }
 
 // definition assembles the shared PropertyDefinition this entry declares,
