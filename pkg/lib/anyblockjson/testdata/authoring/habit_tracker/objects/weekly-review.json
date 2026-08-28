@@ -5,10 +5,10 @@
   "type": "habit",
   "icon": { "format": "emoji", "emoji": "🗓️" },
   "properties": {
-    "name": "Weekly review",
-    "frequency": [ "Weekly" ],
-    "streak": 3,
-    "last_done": "2026-08-22T18:00:00Z"
+    "Name": "Weekly review",
+    "Frequency": [ "Weekly" ],
+    "Streak": 3,
+    "Last done": "2026-08-22T18:00:00Z"
   },
   "blocks": [
     { "type": "paragraph", "text": "Half an hour on Friday evening: close the week before it closes you." },

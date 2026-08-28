@@ -174,7 +174,12 @@ func TestAuthoringExample_HabitTracker(t *testing.T) {
 				"%s names %q, but no document in the bundle declares that id", where, id)
 		}
 		for term, rel := range objectTypeTerms {
-			if term == "page" { // the built-in type the welcome page uses
+			// a BUILT-IN type is not declared by the bundle — it ships with
+			// every reader. The welcome page names one by its canonical
+			// spelling, "Page"; the stored key `page` resolves to the same
+			// type through the same ladder, so the skip asks the ladder
+			// rather than naming one spelling of one type.
+			if _, bundled := (BundledKeyVocabulary{}).TypeKey(term); bundled {
 				continue
 			}
 			assert.True(t, declaredTypeKeys[term],

@@ -3,7 +3,6 @@
   "version": 1,
   "properties": [
     {
-      "property": "frequency",
       "name": "Frequency",
       "format": "select",
       "options": [
@@ -13,13 +12,11 @@
       "description": "How often the habit repeats."
     },
     {
-      "property": "streak",
       "name": "Streak",
       "format": "number",
       "description": "Days in a row, so far."
     },
     {
-      "property": "last_done",
       "name": "Last done",
       "format": "date",
       "description": "When you last did it."

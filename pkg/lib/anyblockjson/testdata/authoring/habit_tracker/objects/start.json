@@ -2,12 +2,12 @@
   "$schema": "https://schemas.anytype.io/anyblock/1/authoring/object.schema.json",
   "version": 1,
   "id": "page-start",
-  "type": "page",
+  "type": "Page",
   "icon": { "format": "emoji", "emoji": "👋" },
   "properties": {
-    "name": "Start here",
-    "description": "How this tracker works.",
-    "is_favorite": true
+    "Name": "Start here",
+    "Description": "How this tracker works.",
+    "Favorited": true
   },
   "blocks": [
     { "type": "paragraph", "text": "Add a **Habit** for anything you want to do regularly, and bump its *streak* every time you follow through." },

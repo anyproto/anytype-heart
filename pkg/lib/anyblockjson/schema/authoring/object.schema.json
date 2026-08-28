@@ -28,7 +28,7 @@
     "type": {
       "type": "string",
       "minLength": 1,
-      "description": "The object's type, by key: a built-in key (\"page\", \"task\", \"collection\") or the internal_key of a type this bundle declares. On a template, the literal \"template\"."
+      "description": "The object's type, by name: a built-in type's display name (\"Page\", \"Task\", \"Collection\") or the internal_key of a type this bundle declares. Resolution folds away case and separators, so the stored key (\"page\") reaches the same type. On a template, the literal \"template\"."
     },
     "template_for": {
       "type": "string",
@@ -104,7 +104,7 @@
       "items": {
         "$ref": "#/$defs/documentId"
       },
-      "description": "Collections only (type \"collection\"): the member objects, by bundle-local id, in order."
+      "description": "Collections only (type \"Collection\"): the member objects, by bundle-local id, in order."
     }
   },
   "required": [
@@ -201,7 +201,7 @@
     },
     "propertyMap": {
       "type": "object",
-      "description": "The object's property values, keyed by property key: `name` (the title), `description`, and the keys this bundle's types and properties.json declare. Value shape follows the property's format — text/url/email/phone: a string; number: a number; checkbox: a boolean; date: an RFC 3339 UTC string (\"2026-07-06T15:04:05Z\"); select and multi_select: an ARRAY of option names; objects/files: an array of bundle-local ids; `Layout align`: an alignment NAME (see $defs/blockAlign) — the stored value is a number, but an author writes the name, exactly as blocks and views spell alignment. Only write a key to say something — an absent key means \"not set\". Property keys resolve case- and separator-insensitively, so \"Creation date\", `created_date` and `createdDate` are ONE key: the refusals below are stated per KEY, and every spelling of a refused key is refused. `is_favorite: true` pins the object to Favorites. Do NOT write ids, icons, covers, timestamps or attribution here: the icon and cover are envelope fields, and the rest is the app's to derive.",
+      "description": "The object's property values, keyed by property NAME: `Name` (the title), `Description`, and the names this bundle's types and properties.json declare. Value shape follows the property's format — text/url/email/phone: a string; number: a number; checkbox: a boolean; date: an RFC 3339 UTC string (\"2026-07-06T15:04:05Z\"); select and multi_select: an ARRAY of option names; objects/files: an array of bundle-local ids; `Layout align`: an alignment NAME (see $defs/blockAlign) — the stored value is a number, but an author writes the name, exactly as blocks and views spell alignment. Only write a key to say something — an absent key means \"not set\". Property keys resolve case- and separator-insensitively, so \"Creation date\", `created_date` and `createdDate` are ONE key: the refusals below are stated per KEY, and every spelling of a refused key is refused. `Favorited: true` pins the object to Favorites. Do NOT write ids, icons, covers, timestamps or attribution here: the icon and cover are envelope fields, and the rest is the app's to derive.",
       "propertyNames": {
         "pattern": "^[^\u0000-\u001f]+$",
         "maxLength": 128,

@@ -5,10 +5,10 @@
   "type": "habit",
   "icon": { "format": "emoji", "emoji": "🏃" },
   "properties": {
-    "name": "Morning run",
-    "frequency": [ "Daily" ],
-    "streak": 12,
-    "last_done": "2026-08-24T07:30:00Z"
+    "Name": "Morning run",
+    "Frequency": [ "Daily" ],
+    "Streak": 12,
+    "Last done": "2026-08-24T07:30:00Z"
   },
   "blocks": [
     { "type": "paragraph", "text": "Twenty minutes before breakfast. Shoes by the door the night before — the run starts when the alarm goes off, not when it feels right." },
