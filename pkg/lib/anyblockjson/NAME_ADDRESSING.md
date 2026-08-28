@@ -629,3 +629,39 @@ Remaining, genuinely the author's:
   must memorize) whose failure — `"Created Date"` for a bundled key — is
   silent, plausible, and validates as a phantom. (Author's objection,
   rev 2 → 3.)
+
+---
+
+## Implementation addendum (GO-7383, landed with the v0.48 re-spell)
+
+The decision above is built. Four calls were made where the study was
+silent, under-specified, or overridden by the author; recorded here so the
+study stays an honest account of what shipped.
+
+1. **The Space rename went the other way.** §5.2 proposed `spaceView`
+   "Space" → "Space view"; the author directed `space` "Space" → "Space
+   settings" instead (it maps to the Workspace smartblock — the settings
+   object), with `spaceView` keeping "Space". Consequence: spaceView's name
+   sits in `space`'s fold class, so the CI guard pins that one class as the
+   tolerated exception rather than holding "no name in another key's fold
+   class" absolutely — the exact spellings stay unambiguous, only the
+   forgiving layer declines for near-misses of that pair, and both keys are
+   measured at 0 documents.
+2. **Attribution claimants yield in the per-document ladder.** §5.4's
+   "every claimant degrades" missed an asymmetry the corpus sweep caught:
+   the attribution keys (`creator`, `lastModifiedBy`) are written by export
+   and dropped by import, so a claimant they had suffixed un-suffixed in
+   generation 2 and the round trip stopped being byte-stable — measured in
+   the production space holding a custom multi_select named "Created by".
+   An attribution claimant now never contests a spelling: alone it takes
+   its name, contested it takes its own stored key, and the normal
+   claimants keep the verdict they will re-derive without it. The §6
+   fixpoint is what forced the rule.
+3. **§9 Q1 (the sixteen v0.38 alias spellings): hard cut.** Pre-freeze, no
+   back-compat owed, existing bundles re-export either way; an alias
+   accepted "until freeze" would freeze in, the reasoning v0.41 already
+   recorded for input aliases generally.
+4. **§9 Q2 (import warning scope): every verbatim-resolved unknown term**,
+   at every key slot, both namespaces, deduplicated per term per document —
+   the seam is identical everywhere and the dedup keeps it cheap. §9 Q3's
+   suffix shape shipped as proposed (`<name> (<tail6>)`).
