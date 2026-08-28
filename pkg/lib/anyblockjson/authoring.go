@@ -10,11 +10,15 @@ package anyblockjson
 import (
 	"bytes"
 	_ "embed"
+	"encoding/json"
 	"fmt"
+	"sort"
 	"strconv"
 	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
 //go:embed schema/authoring/object.schema.json
@@ -91,6 +95,14 @@ func ValidateAuthoring(data []byte) error {
 	if err := Validate(data); err != nil {
 		return err
 	}
+	// the semantic rules run BEFORE the schema: they are stated on the
+	// resolved property key and say which key was written and why an author
+	// does not write it, where the schema's literal list can only say that
+	// some member matched a `not`. The schema still catches everything the
+	// semantic rules do not.
+	if err := authoringSemantics(data); err != nil {
+		return err
+	}
 	return validateAuthoringSubset(data, compileAuthoringSchema,
 		"valid AnyBlock JSON, but outside the authoring subset (§2g) — the members below are export's, not an author's")
 }
@@ -132,4 +144,124 @@ func validateAuthoringSubset(data []byte, compile func() (*jsonschema.Schema, er
 		return &ValidationError{Issues: issues}
 	}
 	return nil
+}
+
+// authoringSemantics is the authoring subset's rules that cannot be written
+// as a JSON Schema keyword, and the reason is one thing: **the format
+// addresses a property by its display NAME, and resolution is case- and
+// separator-insensitive.** "Name", "name" and "NAME" are one key; so are
+// "Creation date", "created_date" and "createdDate". JSON Schema's
+// `required` and `not/enum` are literal member matches, so a rule written
+// there holds for exactly one spelling of a key the codec accepts in many —
+// which is not a narrower rule, it is a rule with holes in it.
+//
+// Two rules used to live in the schema and were losing:
+//
+//   - a type document must name itself. Written as
+//     `properties: {required: ["name"]}`, it REFUSED the canonical
+//     `{"Name": "Habit"}` and accepted only the retired lowercase spelling.
+//     Swapping the literal would have moved the hole, not closed it.
+//   - the subset refuses the app's own derived keys in `properties`. The
+//     schema's literal list still bans the pre-raw-name spellings, so the
+//     nine keys the FULL format does not also refuse — attribution,
+//     timestamps, revision, internal flags, featured properties, archived —
+//     lost their authoring refusal the moment their canonical spelling
+//     became a display name. They are dropped at import instead, silently.
+//
+// Both are enforced here on the RESOLVED key, through the same chain
+// Validate's own admission loop uses, so every spelling of a key gets one
+// verdict. The schema keeps its literal list as documentation and as a fast
+// front door — an agent reads the schema, not this file — and
+// TestAuthoringDeniedKeysMatchTheSchema pins the two together so the list
+// cannot rot again.
+func authoringSemantics(data []byte) error {
+	var doc map[string]any
+	if err := json.Unmarshal(data, &doc); err != nil {
+		return &ValidationError{Issues: []Issue{{Message: fmt.Sprintf("invalid JSON: %v", err)}}}
+	}
+	var issues []Issue
+	add := func(path, format string, args ...any) {
+		issues = append(issues, Issue{Path: path, Message: fmt.Sprintf(format, args...)})
+	}
+
+	props, _ := doc["properties"].(map[string]any)
+	legend, _ := doc[memberPropertyInternalKeys].(map[string]any)
+	resolve := func(term string) string {
+		if v, ok := legend[term]; ok {
+			if key, isStr := v.(string); isStr && key != "" {
+				return key
+			}
+		}
+		key, _ := BundledKeyVocabulary{}.PropertyKey(term)
+		return key
+	}
+
+	namesItself := false
+	terms := make([]string, 0, len(props))
+	for term := range props {
+		terms = append(terms, term)
+	}
+	sort.Strings(terms)
+	for _, term := range terms {
+		key := resolve(term)
+		path := "/properties/" + escapeJSONPointer(term)
+		if key == bundle.RelationKeyName.String() {
+			namesItself = true
+		}
+		if reason, denied := authoringDeniedPropertyKeys[key]; denied {
+			add(path, "%q is %s — the app derives it, so an author does not write it. "+
+				"Every spelling of that key is refused here, not just this one", key, reason)
+			continue
+		}
+		// the subset narrows a name-over-number key to the NAME. The full
+		// format also accepts the stored number, because export writes what
+		// a space stores; an author has no number to carry over and a bare
+		// integer is unreadable, so the subset takes the name only. Keyed
+		// off the resolved key for the reason everything here is: the
+		// canonical spelling of `layoutAlign` is "Layout align", and a rule
+		// written against the member name `layout_align` stopped covering it.
+		if vocab, named := namedEnumProperty(key); named {
+			if _, isStr := props[term].(string); !isStr {
+				add(path, "%q takes a %s NAME here, one of %v — the raw stored number is "+
+					"the full format's pass-through, which the subset removes", key, vocab.what, vocab.names())
+			}
+		}
+	}
+
+	// a type document must name itself: the type's display name is the one
+	// thing nothing else in the document can supply, and a nameless type
+	// arrives in a space as an untitled row
+	if isTypeKind(doc) && !namesItself {
+		add("/properties", "a type document states its own display name here — "+
+			"any spelling that resolves to the name property (\"Name\") will do")
+	}
+
+	if len(issues) == 0 {
+		return nil
+	}
+	preamble := Issue{Message: "valid AnyBlock JSON, but outside the authoring subset (§2g) — " +
+		"the rules below are stated on the RESOLVED property key, so they hold for every spelling of it"}
+	return &ValidationError{Issues: append([]Issue{preamble}, issues...)}
+}
+
+// authoringDeniedPropertyKeys are the stored keys an author never writes in
+// `properties` and the FULL format does not already refuse. Everything else
+// the authoring schema's literal list names is refused by Validate before
+// this pass runs — the deny rule (import refuses exactly what export
+// strips) covers ids, icons, covers, spaceId, uniqueKey, snippet,
+// backlinks, links, mentions, origin, importType, restrictions and the
+// rest. These nine are the remainder: import DROPS them rather than
+// refusing them, so without a rule here an author's value disappears
+// without a word.
+var authoringDeniedPropertyKeys = map[string]string{
+	"creator":          "attribution the app stamps from the acting identity",
+	"lastModifiedBy":   "attribution the app stamps from the acting identity",
+	"createdDate":      "a timestamp the app stamps",
+	"lastModifiedDate": "a timestamp the app stamps",
+	"addedDate":        "a timestamp the app stamps",
+	"revision":         "the bundled revision the app records",
+	"internalFlags":    "the app's own creation-flow state",
+	"featuredRelations": "a per-object featured list no UI sets: the layout syncer owns it, " +
+		"and a type's featured properties belong in that type's recommended lists",
+	"isArchived": "the app's bin membership, moved by archiving an object rather than by writing a property",
 }

@@ -128,14 +128,7 @@
           "internal_key",
           "type_settings",
           "properties"
-        ],
-        "properties": {
-          "properties": {
-            "required": [
-              "name"
-            ]
-          }
-        }
+        ]
       },
       "else": {
         "properties": {
@@ -208,7 +201,7 @@
     },
     "propertyMap": {
       "type": "object",
-      "description": "The object's property values, keyed by property key: `name` (the title), `description`, and the keys this bundle's types and properties.json declare. Value shape follows the property's format — text/url/email/phone: a string; number: a number; checkbox: a boolean; date: an RFC 3339 UTC string (\"2026-07-06T15:04:05Z\"); select and multi_select: an ARRAY of option names; objects/files: an array of bundle-local ids; `layout_align`: an alignment NAME (see $defs/blockAlign) — the stored value is a number, but an author writes the name, exactly as blocks and views spell alignment. Only write a key to say something — an absent key means \"not set\". `is_favorite: true` pins the object to Favorites. Do NOT write ids, icons, covers, timestamps or attribution here: the icon and cover are envelope fields, and the rest is the app's to derive.",
+      "description": "The object's property values, keyed by property key: `name` (the title), `description`, and the keys this bundle's types and properties.json declare. Value shape follows the property's format — text/url/email/phone: a string; number: a number; checkbox: a boolean; date: an RFC 3339 UTC string (\"2026-07-06T15:04:05Z\"); select and multi_select: an ARRAY of option names; objects/files: an array of bundle-local ids; `Layout align`: an alignment NAME (see $defs/blockAlign) — the stored value is a number, but an author writes the name, exactly as blocks and views spell alignment. Only write a key to say something — an absent key means \"not set\". Property keys resolve case- and separator-insensitively, so \"Creation date\", `created_date` and `createdDate` are ONE key: the refusals below are stated per KEY, and every spelling of a refused key is refused. `is_favorite: true` pins the object to Favorites. Do NOT write ids, icons, covers, timestamps or attribution here: the icon and cover are envelope fields, and the rest is the app's to derive.",
       "propertyNames": {
         "pattern": "^[^\u0000-\u001f]+$",
         "maxLength": 128,
@@ -238,14 +231,19 @@
             "cover_y",
             "coverY",
             "creator",
+            "Created by",
             "created_date",
             "createdDate",
+            "Creation date",
             "last_modified_by",
             "lastModifiedBy",
+            "Last modified by",
             "last_modified_date",
             "lastModifiedDate",
+            "Last modified date",
             "added_date",
             "addedDate",
+            "Added date",
             "space_id",
             "spaceId",
             "unique_key",
@@ -260,15 +258,19 @@
             "old_anytype_id",
             "oldAnytypeID",
             "revision",
+            "Revision",
             "restrictions",
             "source_file_path",
             "sourceFilePath",
             "internal_flags",
             "internalFlags",
+            "Internal flags",
             "featured_properties",
             "featuredRelations",
+            "Featured properties",
             "is_archived",
             "isArchived",
+            "Archived",
             "is_deleted",
             "isDeleted",
             "sync_status",
@@ -277,9 +279,13 @@
         }
       },
       "properties": {
+        "Layout align": {
+          "$ref": "#/$defs/blockAlign",
+          "description": "The object's own page alignment, by NAME. An author writes the name; raw numbers are the full format's stored-value pass-through, which the subset removes. This is the canonical spelling, and property keys resolve case- and separator-insensitively, so `layout_align` and `layoutAlign` reach the same property and are narrowed the same way."
+        },
         "layout_align": {
           "$ref": "#/$defs/blockAlign",
-          "description": "The object's own page alignment, by NAME. An author writes the name; raw numbers are the full format's stored-value pass-through, which the subset removes."
+          "description": "`Layout align` under another spelling the codec resolves; see that member."
         }
       },
       "additionalProperties": {
