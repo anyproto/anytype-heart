@@ -53,7 +53,8 @@ machine in any-sync peerservice, persistence + reset wiring in anytype-heart.
 - `quicMultiConn` records `startTime`.
 - `Dial` (outbound only) spawns a per-conn watcher: on `CloseChan()`, read
   `context.Cause`, classify, and report to an observer registered via
-  `SetConnObserver` (same pattern as `SetAccepter`). Goroutines are bounded by
+  `SetConnObserver` (same pattern as `SetAccepter`; peerservice registers
+  itself when `EnableQuicDemotion` is called). Goroutines are bounded by
   live outbound conn count and exit when the conn closes.
 - Classification (`transport.ConnCloseEvent`):
   - `Degraded`: cause is `*quic.IdleTimeoutError` **and**
@@ -86,12 +87,18 @@ Per-peer state under the existing mutex:
   demoted peers are **nodeconf peers** (known network nodes), all dials go
   yamux-first. LAN p2p peers are excluded from the count — a sleeping phone
   also produces short-lived idle timeouts — but still get per-peer demotion.
+- **Opt-in**: the whole mechanism is off until `EnableQuicDemotion()` is
+  called (heart calls it at config init, where `PreferQuic(true)` already
+  lives). Server nodes never call it, so node dial behavior is unchanged by
+  the any-sync release.
 - New API:
+  - `EnableQuicDemotion()` — turns tracking on and registers the conn
+    observer on the QUIC transport.
   - `TransportPenalties() PenaltySnapshot` — per-peer map for persistence.
   - `SeedTransportPenalties(PenaltySnapshot)` — applied at startup.
   - `ResetTransportPenalties()` — clears all state.
-  - `SetPenaltyObserver(func())` — fires on demote/restore/reset transitions
-    so heart can persist (heart debounces).
+  - `SetPenaltyObserver(func())` — fires on every state mutation so heart
+    can persist (heart debounces).
 
 ### 3. anytype-heart — persistence and reset wiring
 
@@ -103,48 +110,61 @@ costs ~60–90 s of dead QUIC per network):
 
   ```json
   {
-    "networkKey": "<netmonitor connectivity snapshot key>",
+    "networkKey": "<device.NetworkState network identity>",
     "updatedAt": "2026-08-28T10:00:00Z",
-    "peers": {
-      "<peerId>": {
-        "consecutiveDegraded": 2,
-        "demotedUntil": "2026-08-28T11:00:00Z",
-        "backoffLevel": 1
+    "penalties": {
+      "peers": {
+        "<peerId>": {
+          "consecutiveDegraded": 1,
+          "demotedUntil": "2026-08-28T11:00:00Z",
+          "backoffLevel": 1
+        }
       }
     }
   }
   ```
 
+- **Network identity**: `device.NetworkState` gains `NetworkIdentity()` — a
+  composite of the client-reported network type + path id (mobile) and the
+  net monitor's interface snapshot (desktop). Equal keys mean "still the same
+  network".
 - A small heart component (`net/transportpenalty`, registered in bootstrap
-  after peerservice):
-  - `Init`: load the file; if any `demotedUntil` is in the future, seed
-    peerservice (Init runs before any dials).
-  - Subscribes to the penalty observer; debounced (~1 s) rewrite of the file
-    together with the current netmonitor network key.
-  - When netmonitor's first snapshot arrives: if its key differs from the
-    stored `networkKey`, call `ResetTransportPenalties()` and clear the file.
+  after peerservice and device):
+  - `Init`: load the file; if it has any peers, seed peerservice (strike
+    memory is worth keeping even when the demotion TTL has expired). Init
+    runs before any dials.
+  - Subscribes to the penalty observer; debounced (1 s) rewrite of the file
+    together with the current network identity. An emptied state removes the
+    file.
+  - **Identity check**: on the connectivity-recovery hook and once ~3 s after
+    start (a stable network never fires a recovery). First observation is
+    compared against the stored `networkKey`: mismatch → reset + clear file.
     An empty/unknown stored key keeps the seed (fail open — worst case is one
-    yamux-first session on a good network, which still works).
+    yamux-first session on a good network, which still works). A later
+    identity change (device moved networks mid-session) → reset.
 - `demotedUntil` is wall-clock; clock skew is benign (worst case QUIC is
   retried early).
 
-**Reset triggers**: netmonitor's existing connectivity-change events
-(interface addresses lost/regained, wake from sleep) call
-`ResetTransportPenalties()` via the existing recovery pipeline. Wake-based
-reset also prevents sleep-killed conns from counting toward demotion (they
-are usually Healthy-by-lifetime anyway; the 2-strike threshold covers the
-rest).
+**Reset triggers**: the identity check above rides `RegisterConnectivityHook`
+(fired on network switch, interface change, wake, foreground resume — after
+the pool flush). Resets happen only when the identity actually changed, so a
+foreground resume or wake on the same network keeps the learned verdict —
+that is what makes persistence useful on mobile. Sleep-killed conns rarely
+count toward demotion anyway (usually Healthy-by-lifetime; the 2-strike
+threshold covers the rest).
 
 **Config compat**:
 
 - `PeferYamuxTransport=true` (existing knob) still forces yamux-first
-  globally; auto-demotion is then moot but harmless.
-- Auto-demotion is **on by default**. Escape hatch for debugging:
-  `ANYTYPE_QUIC_AUTO_DEMOTION=0` env var skips observer registration and
-  seeding.
+  globally; `EnableQuicDemotion` is then not called (moot).
+- Auto-demotion is **on by default** for clients: config calls
+  `EnableQuicDemotion()` next to `PreferQuic(true)`. Escape hatch for
+  debugging: `ANYTYPE_QUIC_AUTO_DEMOTION=0` skips both the enable call and
+  the persistence component's seeding/saving.
 
-**Observability**: Info-level log on demote / escalate / restore / reset with
-peerId, cause, lifetime, bytes; counters exposed via debugstat.
+**Observability**: Info-level log on degraded deaths (peerId, cause,
+lifetime, bytes, whether it demoted), demotion by handshake timeout, resets,
+and seed/persist events.
 
 ## Constants
 

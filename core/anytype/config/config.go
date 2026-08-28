@@ -29,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config/loadenv"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/net/transportpenalty"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -300,6 +301,7 @@ func DisableFileConfig(disable bool) func(*Config) {
 
 type quicPreferenceSetter interface {
 	PreferQuic(bool)
+	EnableQuicDemotion()
 }
 
 func New(options ...func(*Config)) *Config {
@@ -320,7 +322,13 @@ func (c *Config) Init(a *app.App) (err error) {
 	}
 	if !c.PeferYamuxTransport {
 		// PeferYamuxTransport is false by default and used only in case client has some problems with QUIC
-		app.MustComponent[quicPreferenceSetter](a).PreferQuic(true)
+		setter := app.MustComponent[quicPreferenceSetter](a)
+		setter.PreferQuic(true)
+		if os.Getenv(transportpenalty.DisableEnv) != "0" {
+			// auto-demote peers to yamux-first when their QUIC connections
+			// keep dying under DPI-style degradation (GO-7467)
+			setter.EnableQuicDemotion()
+		}
 	}
 	// check if sqlite db exists
 	if _, err2 := os.Stat(filepath.Join(repoPath, SpaceStoreSqlitePath)); err2 == nil {

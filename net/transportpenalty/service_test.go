@@ -1,0 +1,334 @@
+package transportpenalty
+
+import (
+	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/net/peerservice"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+var ctx = context.Background()
+
+type fakePenaltyManager struct {
+	snapshot peerservice.PenaltySnapshot
+	observer func()
+	seeded   []peerservice.PenaltySnapshot
+	resets   int
+}
+
+func (f *fakePenaltyManager) Init(a *app.App) error { return nil }
+func (f *fakePenaltyManager) Name() string          { return "fakePeerService" }
+
+func (f *fakePenaltyManager) TransportPenalties() peerservice.PenaltySnapshot {
+	peers := make(map[string]peerservice.PeerPenalty, len(f.snapshot.Peers))
+	for id, p := range f.snapshot.Peers {
+		peers[id] = p
+	}
+	return peerservice.PenaltySnapshot{Peers: peers}
+}
+
+func (f *fakePenaltyManager) SeedTransportPenalties(snap peerservice.PenaltySnapshot) {
+	f.seeded = append(f.seeded, snap)
+	f.snapshot = snap
+}
+
+// ResetTransportPenalties mimics the real semantics: the observer fires only
+// when the reset actually mutated state.
+func (f *fakePenaltyManager) ResetTransportPenalties() {
+	f.resets++
+	changed := len(f.snapshot.Peers) > 0
+	f.snapshot = peerservice.PenaltySnapshot{}
+	if changed && f.observer != nil {
+		f.observer()
+	}
+}
+
+func (f *fakePenaltyManager) SetPenaltyObserver(observer func()) {
+	f.observer = observer
+}
+
+// mutate emulates peerservice recording a penalty: state changes, observer fires.
+func (f *fakePenaltyManager) mutate(peerId string, p peerservice.PeerPenalty) {
+	if f.snapshot.Peers == nil {
+		f.snapshot.Peers = map[string]peerservice.PeerPenalty{}
+	}
+	f.snapshot.Peers[peerId] = p
+	if f.observer != nil {
+		f.observer()
+	}
+}
+
+type fakeNetwork struct {
+	identity string
+	hooks    []func(online bool)
+}
+
+func (f *fakeNetwork) Init(a *app.App) error { return nil }
+func (f *fakeNetwork) Name() string          { return "fakeNetworkState" }
+
+func (f *fakeNetwork) NetworkIdentity() string { return f.identity }
+
+func (f *fakeNetwork) RegisterConnectivityHook(hook func(online bool)) {
+	f.hooks = append(f.hooks, hook)
+}
+
+func (f *fakeNetwork) fireRecovery() {
+	for _, h := range f.hooks {
+		h(true)
+	}
+}
+
+type fakeWallet struct {
+	repoPath string
+}
+
+func (f *fakeWallet) Init(a *app.App) error { return nil }
+func (f *fakeWallet) Name() string          { return walletCName }
+func (f *fakeWallet) RepoPath() string      { return f.repoPath }
+
+type fixture struct {
+	*service
+	a       *app.App
+	peers   *fakePenaltyManager
+	network *fakeNetwork
+	repo    string
+}
+
+func newFixture(t *testing.T, identity string) *fixture {
+	fx := &fixture{
+		service: New().(*service),
+		a:       new(app.App),
+		peers:   &fakePenaltyManager{},
+		network: &fakeNetwork{identity: identity},
+		repo:    t.TempDir(),
+	}
+	// short intervals so tests don't wait
+	fx.service.saveDebounce = 10 * time.Millisecond
+	fx.service.startupCheckDelay = 10 * time.Millisecond
+	fx.a.Register(&fakeWallet{repoPath: fx.repo}).
+		Register(fx.peers).
+		Register(fx.network).
+		Register(fx.service)
+	require.NoError(t, fx.a.Start(ctx))
+	t.Cleanup(func() { require.NoError(t, fx.a.Close(ctx)) })
+	return fx
+}
+
+func (fx *fixture) statePath() string {
+	return filepath.Join(fx.repo, fileName)
+}
+
+func (fx *fixture) writeStateFile(t *testing.T, st storedState) {
+	data, err := json.Marshal(st)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(fx.repo, fileName), data, 0o600))
+}
+
+func demotedPeers(peerId string) peerservice.PenaltySnapshot {
+	return peerservice.PenaltySnapshot{Peers: map[string]peerservice.PeerPenalty{
+		peerId: {
+			ConsecutiveDegraded: 1,
+			DemotedUntil:        time.Now().Add(time.Hour).UTC(),
+			BackoffLevel:        1,
+		},
+	}}
+}
+
+func TestService_Seed(t *testing.T) {
+	t.Run("seeds stored penalties on start", func(t *testing.T) {
+		// given
+		repo := t.TempDir()
+		st := storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")}
+		data, err := json.Marshal(st)
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(filepath.Join(repo, fileName), data, 0o600))
+
+		fx := &fixture{
+			service: New().(*service),
+			a:       new(app.App),
+			peers:   &fakePenaltyManager{},
+			network: &fakeNetwork{identity: "net-A"},
+			repo:    repo,
+		}
+		fx.service.saveDebounce = 10 * time.Millisecond
+		fx.service.startupCheckDelay = 10 * time.Millisecond
+		fx.a.Register(&fakeWallet{repoPath: repo}).
+			Register(fx.peers).
+			Register(fx.network).
+			Register(fx.service)
+
+		// when
+		require.NoError(t, fx.a.Start(ctx))
+		defer func() { require.NoError(t, fx.a.Close(ctx)) }()
+
+		// then
+		require.Len(t, fx.peers.seeded, 1)
+		assert.Contains(t, fx.peers.seeded[0].Peers, "p1")
+	})
+	t.Run("no state file means no seed", func(t *testing.T) {
+		fx := newFixture(t, "net-A")
+		assert.Empty(t, fx.peers.seeded)
+	})
+	t.Run("disabled by env: no seed, no observer", func(t *testing.T) {
+		t.Setenv(DisableEnv, "0")
+		fx := newFixture(t, "net-A")
+		fx.writeStateFile(t, storedState{NetworkKey: "net-A", Penalties: demotedPeers("p1")})
+		assert.Empty(t, fx.peers.seeded)
+		assert.Nil(t, fx.peers.observer)
+	})
+}
+
+func TestService_Save(t *testing.T) {
+	t.Run("penalty mutation writes the state file", func(t *testing.T) {
+		// given
+		fx := newFixture(t, "net-A")
+
+		// when
+		fx.peers.mutate("p1", peerservice.PeerPenalty{ConsecutiveDegraded: 1})
+
+		// then
+		require.Eventually(t, func() bool {
+			_, err := os.Stat(fx.statePath())
+			return err == nil
+		}, time.Second, 10*time.Millisecond)
+		data, err := os.ReadFile(fx.statePath())
+		require.NoError(t, err)
+		var st storedState
+		require.NoError(t, json.Unmarshal(data, &st))
+		assert.Equal(t, "net-A", st.NetworkKey)
+		assert.Contains(t, st.Penalties.Peers, "p1")
+	})
+	t.Run("emptied state removes the file", func(t *testing.T) {
+		// given
+		fx := newFixture(t, "net-A")
+		fx.peers.mutate("p1", peerservice.PeerPenalty{ConsecutiveDegraded: 1})
+		require.Eventually(t, func() bool {
+			_, err := os.Stat(fx.statePath())
+			return err == nil
+		}, time.Second, 10*time.Millisecond)
+
+		// when
+		fx.peers.ResetTransportPenalties()
+
+		// then
+		require.Eventually(t, func() bool {
+			_, err := os.Stat(fx.statePath())
+			return os.IsNotExist(err)
+		}, time.Second, 10*time.Millisecond)
+	})
+}
+
+func TestService_NetworkChange(t *testing.T) {
+	t.Run("mid-session identity change resets penalties", func(t *testing.T) {
+		// given
+		fx := newFixture(t, "net-A")
+		fx.network.fireRecovery() // first observation: net-A
+		require.Equal(t, 0, fx.peers.resets)
+
+		// when
+		fx.network.identity = "net-B"
+		fx.network.fireRecovery()
+
+		// then
+		assert.Equal(t, 1, fx.peers.resets)
+	})
+	t.Run("recovery on the same network does not reset", func(t *testing.T) {
+		fx := newFixture(t, "net-A")
+		fx.network.fireRecovery()
+		fx.network.fireRecovery()
+		assert.Equal(t, 0, fx.peers.resets)
+	})
+	t.Run("stored key mismatch on first observation resets seeded penalties", func(t *testing.T) {
+		// given: verdict learned on net-A, device now on net-B
+		repo := t.TempDir()
+		st := storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")}
+		data, err := json.Marshal(st)
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(filepath.Join(repo, fileName), data, 0o600))
+
+		fx := &fixture{
+			service: New().(*service),
+			a:       new(app.App),
+			peers:   &fakePenaltyManager{},
+			network: &fakeNetwork{identity: "net-B"},
+			repo:    repo,
+		}
+		fx.service.saveDebounce = 10 * time.Millisecond
+		fx.service.startupCheckDelay = 10 * time.Millisecond
+		fx.a.Register(&fakeWallet{repoPath: repo}).
+			Register(fx.peers).
+			Register(fx.network).
+			Register(fx.service)
+		require.NoError(t, fx.a.Start(ctx))
+		defer func() { require.NoError(t, fx.a.Close(ctx)) }()
+
+		// then: the startup check notices the mismatch
+		require.Eventually(t, func() bool { return fx.peers.resets == 1 }, time.Second, 10*time.Millisecond)
+		// and the stale file is gone
+		require.Eventually(t, func() bool {
+			_, err := os.Stat(filepath.Join(repo, fileName))
+			return os.IsNotExist(err)
+		}, time.Second, 10*time.Millisecond)
+	})
+	t.Run("stored key match keeps seeded penalties", func(t *testing.T) {
+		// given
+		repo := t.TempDir()
+		st := storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")}
+		data, err := json.Marshal(st)
+		require.NoError(t, err)
+		require.NoError(t, os.WriteFile(filepath.Join(repo, fileName), data, 0o600))
+
+		fx := &fixture{
+			service: New().(*service),
+			a:       new(app.App),
+			peers:   &fakePenaltyManager{},
+			network: &fakeNetwork{identity: "net-A"},
+			repo:    repo,
+		}
+		fx.service.saveDebounce = 10 * time.Millisecond
+		fx.service.startupCheckDelay = 10 * time.Millisecond
+		fx.a.Register(&fakeWallet{repoPath: repo}).
+			Register(fx.peers).
+			Register(fx.network).
+			Register(fx.service)
+		require.NoError(t, fx.a.Start(ctx))
+		defer func() { require.NoError(t, fx.a.Close(ctx)) }()
+
+		// then
+		time.Sleep(50 * time.Millisecond)
+		assert.Equal(t, 0, fx.peers.resets)
+		assert.Len(t, fx.peers.seeded, 1)
+	})
+}
+
+func TestService_CorruptFile(t *testing.T) {
+	t.Run("corrupt state file is ignored", func(t *testing.T) {
+		repo := t.TempDir()
+		require.NoError(t, os.WriteFile(filepath.Join(repo, fileName), []byte("not json"), 0o600))
+
+		fx := &fixture{
+			service: New().(*service),
+			a:       new(app.App),
+			peers:   &fakePenaltyManager{},
+			network: &fakeNetwork{identity: "net-A"},
+			repo:    repo,
+		}
+		fx.service.saveDebounce = 10 * time.Millisecond
+		fx.service.startupCheckDelay = 10 * time.Millisecond
+		fx.a.Register(&fakeWallet{repoPath: repo}).
+			Register(fx.peers).
+			Register(fx.network).
+			Register(fx.service)
+		require.NoError(t, fx.a.Start(ctx))
+		defer func() { require.NoError(t, fx.a.Close(ctx)) }()
+
+		assert.Empty(t, fx.peers.seeded)
+	})
+}

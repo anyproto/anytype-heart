@@ -114,6 +114,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/net/transportpenalty"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
@@ -278,6 +279,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(spacecore.New()).
 		Register(idresolver.New(200*time.Millisecond, 2*time.Second)).
 		Register(device.New()).
+		Register(transportpenalty.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
