@@ -69,8 +69,16 @@ import (
 // Exact match always wins before the fold is consulted, and two keys
 // folding together is an ambiguity the caller must refuse to resolve by
 // guess — the same contract bundle.FoldApiKey states.
+//
+// NFC runs TWICE, and the second pass is not belt and braces. Dropping a
+// separator can put two runes next to each other that were not neighbours
+// before, and a composable pair only composes when it is adjacent:
+// "A_" + a combining acute folded to `a` + U+0301, while the precomposed
+// "Á" folded to U+00E1 — two spellings a reader would call the same word,
+// in different fold classes, and the fold was not even idempotent on its
+// own output. Normalizing after the map puts every result in one form.
 func FoldKeyTerm(s string) string {
-	return strings.Map(func(r rune) rune {
+	return norm.NFC.String(strings.Map(func(r rune) rune {
 		switch {
 		case r == '_' || r == '-':
 			return -1
@@ -82,7 +90,7 @@ func FoldKeyTerm(s string) string {
 			return -1
 		}
 		return r
-	}, strings.ToLower(norm.NFC.String(s)))
+	}, strings.ToLower(norm.NFC.String(s))))
 }
 
 // The bundled name tables, built once. Forward holds only names the reverse

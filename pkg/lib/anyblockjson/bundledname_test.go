@@ -98,15 +98,28 @@ func TestBundledNames_StoredKeyVerbatimAndLegacySlugThroughTheFold(t *testing.T)
 		require.NotNil(t, snap.Details.Fields["createdDate"])
 	})
 
-	t.Run("the v0.38 alias spellings are cut, not kept", func(t *testing.T) {
-		// pre-freeze, no back-compat: `property_option_color` binds nothing
-		// (its fold class is nobody's), so it passes through verbatim —
-		// chain step 4, its own address
+	t.Run("the v0.38 alias spellings come back through the fold", func(t *testing.T) {
+		// the alias TABLE is gone, and its spellings resolve anyway: the
+		// bundled name says "Property option color", and the fold strips
+		// case and `_`, so `property_option_color` lands in that name's
+		// class. Nothing had to be kept for back-compat — renaming the
+		// eleven bundled names that still said "relation" is what restored
+		// them, and it restored the derived-slug form of each new name at
+		// the same time.
 		doc := `{"version":1,"id":"o1","properties":{"property_option_color":"ice"}}`
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
-		assert.Equal(t, str("ice"), snap.Details.Fields["property_option_color"])
-		assert.Nil(t, snap.Details.Fields["relationOptionColor"])
+		assert.Equal(t, str("ice"), snap.Details.Fields["relationOptionColor"])
+		assert.Nil(t, snap.Details.Fields["property_option_color"])
+	})
+
+	t.Run("a spelling no bundled name folds onto passes through verbatim", func(t *testing.T) {
+		// pre-freeze, no back-compat: a term whose fold class is nobody's
+		// is its own address — chain step 4
+		doc := `{"version":1,"id":"o1","properties":{"property_wine_region":"ice"}}`
+		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+		require.NoError(t, err)
+		assert.Equal(t, str("ice"), snap.Details.Fields["property_wine_region"])
 	})
 }
 
@@ -313,4 +326,31 @@ func TestBundledNames_EverySpellingIsAWritableKey(t *testing.T) {
 		assert.Truef(t, isWritablePropertyKey(spelling),
 			"bundled type %q spells %q, which is not a writable key", tk, spelling)
 	}
+}
+
+// The fold is IDEMPOTENT, and it has to be: a caller that folds a term it
+// already folded — the near-miss layer indexing its own keys, a test
+// comparing two classes — must land in the same class, or two spellings a
+// reader calls one word sit in two.
+//
+// The way it failed is worth keeping: dropping a separator makes two runes
+// neighbours that were not, and a composable pair only composes when it is
+// adjacent. NFC ran BEFORE the strip, so `A_` + a combining acute folded to
+// a decomposed `á` while the precomposed `Á` folded to U+00E1.
+func TestFoldKeyTerm_NormalizesAfterTheStrip(t *testing.T) {
+	const (
+		combining   = "A_́" // "A", "_", COMBINING ACUTE ACCENT
+		precomposed = "Á"   // "Á"
+	)
+	t.Run("a separator between a letter and its accent does not split the class", func(t *testing.T) {
+		assert.Equal(t, FoldKeyTerm(precomposed), FoldKeyTerm(combining),
+			"the accent composes onto the letter the strip made it adjacent to")
+	})
+
+	t.Run("folding a folded term changes nothing", func(t *testing.T) {
+		for _, s := range []string{combining, precomposed, "Due Date", "due_date", "Дата выполнения", "作業内容", "C++", "☕"} {
+			once := FoldKeyTerm(s)
+			assert.Equal(t, once, FoldKeyTerm(once), "fold is idempotent on %q", s)
+		}
+	})
 }
