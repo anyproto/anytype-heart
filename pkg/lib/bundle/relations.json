@@ -56,9 +56,10 @@
     "hidden": true,
     "key": "relationFormatObjectTypes",
     "maxCount": 0,
-    "name": "Relation's target object types",
+    "name": "Property's target object types",
     "readonly": true,
-    "source": "details"
+    "source": "details",
+    "revision": 1
   },
   {
     "description": "Relation key",
@@ -66,9 +67,10 @@
     "hidden": true,
     "key": "relationKey",
     "maxCount": 1,
-    "name": "Relation key",
+    "name": "Property key",
     "readonly": true,
-    "source": "details"
+    "source": "details",
+    "revision": 1
   },
   {
     "description": "Relation option color",
@@ -76,9 +78,10 @@
     "hidden": true,
     "key": "relationOptionColor",
     "maxCount": 1,
-    "name": "Relation option color",
+    "name": "Property option color",
     "readonly": true,
-    "source": "details"
+    "source": "details",
+    "revision": 1
   },
   {
     "description": "Latest Acl head id",
@@ -210,9 +213,10 @@
     "hidden": true,
     "key": "relationReadonlyValue",
     "maxCount": 1,
-    "name": "Relation value is readonly",
+    "name": "Property value is readonly",
     "readonly": true,
-    "source": "details"
+    "source": "details",
+    "revision": 1
   },
   {
     "description": "Image icon",
@@ -392,12 +396,13 @@
     "hidden": true,
     "key": "recommendedRelations",
     "maxCount": 0,
-    "name": "Recommended relations",
+    "name": "Recommended properties",
     "objectTypes": [
       "relation"
     ],
     "readonly": false,
-    "source": "details"
+    "source": "details",
+    "revision": 1
   },
   {
     "description": "Human which created this object",
@@ -620,7 +625,8 @@
     "maxCount": 1,
     "name": "Audio genre",
     "readonly": false,
-    "source": "details"
+    "source": "details",
+    "revision": 1
   },
   {
     "description": "Name of the object",
@@ -898,12 +904,13 @@
     "hidden": true,
     "key": "featuredRelations",
     "maxCount": 0,
-    "name": "Featured Relations",
+    "name": "Featured properties",
     "objectTypes": [
       "relation"
     ],
     "readonly": false,
-    "source": "details"
+    "source": "details",
+    "revision": 1
   },
   {
     "format": "phone",
@@ -1645,12 +1652,13 @@
     "hidden": true,
     "key": "recommendedFeaturedRelations",
     "maxCount": 0,
-    "name": "Recommended featured relations",
+    "name": "Recommended featured properties",
     "objectTypes": [
       "relation"
     ],
     "readonly": false,
-    "source": "details"
+    "source": "details",
+    "revision": 1
   },
   {
     "description": "List of recommended relations that are hidden in layout",
@@ -1658,12 +1666,13 @@
     "hidden": true,
     "key": "recommendedHiddenRelations",
     "maxCount": 0,
-    "name": "Recommended hidden relations",
+    "name": "Recommended hidden properties",
     "objectTypes": [
       "relation"
     ],
     "readonly": false,
-    "source": "details"
+    "source": "details",
+    "revision": 1
   },
   {
     "description": "List of recommended file-specific relations",
@@ -1671,12 +1680,13 @@
     "hidden": true,
     "key": "recommendedFileRelations",
     "maxCount": 0,
-    "name": "Recommended file relations",
+    "name": "Recommended file properties",
     "objectTypes": [
       "relation"
     ],
     "readonly": false,
-    "source": "details"
+    "source": "details",
+    "revision": 1
   },
   {
     "description": "Default view type that will be used for new sets/collections",
@@ -1714,9 +1724,10 @@
     "hidden": true,
     "key": "headerRelationsLayout",
     "maxCount": 1,
-    "name": "Header relations layout",
+    "name": "Header properties layout",
     "readonly": false,
-    "source": "details"
+    "source": "details",
+    "revision": 1
   },
   {
     "description": "Identifier to use in intergrations with Anytype API",

@@ -136,8 +136,9 @@ func TestTypePropertiesExport(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.NotContains(t, string(data), "type_settings")
-		// v0.38: the raw list keys spell their property aliases (alias.go)
-		assert.Contains(t, string(data), "Recommended featured relations")
+		// the raw list keys spell their bundled display names, which say
+		// "properties" — the word the format uses everywhere
+		assert.Contains(t, string(data), "Recommended featured properties")
 		assert.Contains(t, string(data), "relid-dueDate")
 	})
 

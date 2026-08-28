@@ -7,9 +7,15 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -211,12 +217,12 @@ func TestReviseSystemObject(t *testing.T) {
 		assert.False(t, toRevise)
 	})
 
-	t.Run("non system relation is not updated", func(t *testing.T) {
-		// given
+	t.Run("non system relation without newer bundle revision is not updated", func(t *testing.T) {
+		// given bundle audioLyrics revision = 0, so the local object is already up to date
 		rel := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyRevision:     domain.Int64(1),
-			bundle.RelationKeySourceObject: domain.String("_brlyrics"),
-			bundle.RelationKeyUniqueKey:    domain.String("rel-lyrics"),
+			bundle.RelationKeySourceObject: domain.String("_braudioLyrics"),
+			bundle.RelationKeyUniqueKey:    domain.String("rel-audioLyrics"),
 		})
 		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
 
@@ -322,7 +328,7 @@ func TestBuildDiffDetails(t *testing.T) {
 			bundle.RelationKeyName:       domain.String("Page"),
 		}), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyName: domain.String("Page"),
-		}), true)
+		}), domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, "page"), true)
 
 		assert.Equal(t, "Pages", diff.GetString(bundle.RelationKeyPluralName))
 	})
@@ -333,7 +339,7 @@ func TestBuildDiffDetails(t *testing.T) {
 			bundle.RelationKeyName:       domain.String("Project"),
 		}), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyName: domain.String("Project"),
-		}), false)
+		}), domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, "project"), false)
 
 		assert.Equal(t, "Projects", diff.GetString(bundle.RelationKeyPluralName))
 	})
@@ -344,9 +350,142 @@ func TestBuildDiffDetails(t *testing.T) {
 			bundle.RelationKeyName:       domain.String("Project"),
 		}), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyName: domain.String("Проект"),
-		}), false)
+		}), domain.MustUniqueKey(coresb.SmartBlockTypeObjectType, "project"), false)
 
 		assert.False(t, diff.Has(bundle.RelationKeyPluralName))
 		assert.False(t, diff.Has(bundle.RelationKeyName))
+	})
+}
+
+func TestReviseNonSystemBundledRelation(t *testing.T) {
+	ctx := context.Background()
+	log := logger.NewNamed("test")
+
+	newSpaceApplyingTo := func(t *testing.T, sb *smarttest.SmartTest) *mock_space.MockSpace {
+		spc := mock_space.NewMockSpace(t)
+		spc.EXPECT().Id().Return("space1").Maybe()
+		spc.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
+			return key.Marshal(), nil
+		}).Maybe()
+		spc.EXPECT().DoCtx(mock.Anything, sb.Id(), mock.Anything).RunAndReturn(
+			func(_ context.Context, _ string, apply func(smartblock.SmartBlock) error) error {
+				return apply(sb)
+			}).Times(1)
+		return spc
+	}
+
+	t.Run("relation still carrying the previous bundled name gets the new bundled name", func(t *testing.T) {
+		// given bundle audioGenre was renamed "Genre" -> "Audio genre" with revision 1
+		rel := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:           domain.String("audioGenreId"),
+			bundle.RelationKeyName:         domain.String("Genre"),
+			bundle.RelationKeySourceObject: domain.String(bundle.RelationKeyAudioGenre.BundledURL()),
+			bundle.RelationKeyUniqueKey:    domain.String(bundle.RelationKeyAudioGenre.URL()),
+		})
+		sb := smarttest.New("audioGenreId")
+		sb.Doc.(*state.State).SetDetail(bundle.RelationKeyName, domain.String("Genre"))
+		space := newSpaceApplyingTo(t, sb)
+		want := map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName:     domain.String("Audio genre"),
+			bundle.RelationKeyRevision: domain.Int64(bundle.MustGetRelation(bundle.RelationKeyAudioGenre).Revision),
+		}
+
+		// when
+		toRevise, err := reviseObject(ctx, log, space, rel)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, toRevise)
+		for key, value := range want {
+			assert.Equal(t, value, sb.Details().Get(key), key)
+		}
+		// nothing beyond name and revision is applied to a non-system relation
+		assert.False(t, sb.Details().Has(bundle.RelationKeyRecommendedFeaturedRelations))
+	})
+
+	t.Run("relation renamed by the user keeps the user's name", func(t *testing.T) {
+		// given the local name matches neither the previous nor the current bundled name
+		rel := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:           domain.String("audioGenreId"),
+			bundle.RelationKeyName:         domain.String("My genre"),
+			bundle.RelationKeySourceObject: domain.String(bundle.RelationKeyAudioGenre.BundledURL()),
+			bundle.RelationKeyUniqueKey:    domain.String(bundle.RelationKeyAudioGenre.URL()),
+		})
+		sb := smarttest.New("audioGenreId")
+		sb.Doc.(*state.State).SetDetail(bundle.RelationKeyName, domain.String("My genre"))
+		space := newSpaceApplyingTo(t, sb)
+		want := map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName:     domain.String("My genre"),
+			bundle.RelationKeyRevision: domain.Int64(bundle.MustGetRelation(bundle.RelationKeyAudioGenre).Revision),
+		}
+
+		// when
+		toRevise, err := reviseObject(ctx, log, space, rel)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, toRevise)
+		for key, value := range want {
+			assert.Equal(t, value, sb.Details().Get(key), key)
+		}
+	})
+
+	t.Run("relation with recorded bundle revision is not revised again", func(t *testing.T) {
+		// given
+		rel := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:           domain.String("audioGenreId"),
+			bundle.RelationKeyName:         domain.String("My genre"),
+			bundle.RelationKeyRevision:     domain.Int64(bundle.MustGetRelation(bundle.RelationKeyAudioGenre).Revision),
+			bundle.RelationKeySourceObject: domain.String(bundle.RelationKeyAudioGenre.BundledURL()),
+			bundle.RelationKeyUniqueKey:    domain.String(bundle.RelationKeyAudioGenre.URL()),
+		})
+		space := mock_space.NewMockSpace(t) // if unexpected space.Do will be called, test will fail
+
+		// when
+		toRevise, err := reviseObject(ctx, log, space, rel)
+
+		// then
+		assert.NoError(t, err)
+		assert.False(t, toRevise)
+	})
+
+	t.Run("bundled name is applied only via the previous-names table", func(t *testing.T) {
+		assert.True(t, canApplyBundledRelationName(bundle.RelationKeyAudioGenre, "Genre"))
+		assert.True(t, canApplyBundledRelationName(bundle.RelationKeyAudioGenre, ""))
+		assert.False(t, canApplyBundledRelationName(bundle.RelationKeyAudioGenre, "Genre 2"))
+		assert.True(t, canApplyBundledRelationName(bundle.RelationKeyHeaderRelationsLayout, "Header relations layout"))
+		// a relation with no recorded rename history never gets its name overwritten
+		assert.False(t, canApplyBundledRelationName(bundle.RelationKeyAudioLyrics, "Lyrics"))
+	})
+
+	t.Run("previous-names table agrees with the bundle", func(t *testing.T) {
+		for key, previousNames := range previousBundledRelationNames {
+			relation, err := bundle.GetRelation(key)
+			require.NoError(t, err, key)
+			// without a revision bump the rename never reaches existing spaces
+			assert.GreaterOrEqual(t, relation.Revision, int64(1), key)
+			// the table is only for non-system relations: the system path applies names unconditionally
+			assert.False(t, bundle.IsSystemRelation(key), key)
+			assert.NotContains(t, previousNames, relation.Name, key)
+		}
+	})
+
+	t.Run("only revision and name are revisable on non-system relations", func(t *testing.T) {
+		// given a local object diverging from the bundle in name, hidden flag and readonly value
+		diff := buildDiffDetails(
+			(&relationutils.Relation{Relation: bundle.MustGetRelation(bundle.RelationKeyAudioGenre)}).ToDetails(),
+			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName:                  domain.String("Genre"),
+				bundle.RelationKeyIsHidden:              domain.Bool(true),
+				bundle.RelationKeyRelationReadonlyValue: domain.Bool(true),
+			}),
+			domain.MustUniqueKey(coresb.SmartBlockTypeRelation, bundle.RelationKeyAudioGenre.String()),
+			false)
+
+		// then only name and revision made it into the diff
+		assert.Equal(t, "Audio genre", diff.GetString(bundle.RelationKeyName))
+		assert.Equal(t, bundle.MustGetRelation(bundle.RelationKeyAudioGenre).Revision, diff.GetInt64(bundle.RelationKeyRevision))
+		assert.False(t, diff.Has(bundle.RelationKeyIsHidden))
+		assert.False(t, diff.Has(bundle.RelationKeyRelationReadonlyValue))
 	})
 }

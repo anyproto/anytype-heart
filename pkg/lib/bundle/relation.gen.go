@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "f9bafe356f37ae8fec3d6fd4023e55856e10a9fc5ab94f8a504c47f3e53a42e5"
+const RelationChecksum = "2ab1c36becd82f326e627ef3616b7eddab7008e1fd1e3afa95e11429f440d3a7"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -343,6 +343,7 @@ var (
 			Name:             "Audio genre",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyAudioLyrics: {
@@ -723,10 +724,11 @@ var (
 			Hidden:           true,
 			Id:               "_brfeaturedRelations",
 			Key:              "featuredRelations",
-			Name:             "Featured Relations",
+			Name:             "Featured properties",
 			ObjectTypes:      []string{TypePrefix + "relation"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyFileAvailableOffline: {
@@ -1007,9 +1009,10 @@ var (
 			Id:               "_brheaderRelationsLayout",
 			Key:              "headerRelationsLayout",
 			MaxCount:         1,
-			Name:             "Header relations layout",
+			Name:             "Header properties layout",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyHeightInPixels: {
@@ -1826,10 +1829,11 @@ var (
 			Hidden:           true,
 			Id:               "_brrecommendedFeaturedRelations",
 			Key:              "recommendedFeaturedRelations",
-			Name:             "Recommended featured relations",
+			Name:             "Recommended featured properties",
 			ObjectTypes:      []string{TypePrefix + "relation"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyRecommendedFileRelations: {
@@ -1840,10 +1844,11 @@ var (
 			Hidden:           true,
 			Id:               "_brrecommendedFileRelations",
 			Key:              "recommendedFileRelations",
-			Name:             "Recommended file relations",
+			Name:             "Recommended file properties",
 			ObjectTypes:      []string{TypePrefix + "relation"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyRecommendedHiddenRelations: {
@@ -1854,10 +1859,11 @@ var (
 			Hidden:           true,
 			Id:               "_brrecommendedHiddenRelations",
 			Key:              "recommendedHiddenRelations",
-			Name:             "Recommended hidden relations",
+			Name:             "Recommended hidden properties",
 			ObjectTypes:      []string{TypePrefix + "relation"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyRecommendedLayout: {
@@ -1882,10 +1888,11 @@ var (
 			Hidden:           true,
 			Id:               "_brrecommendedRelations",
 			Key:              "recommendedRelations",
-			Name:             "Recommended relations",
+			Name:             "Recommended properties",
 			ObjectTypes:      []string{TypePrefix + "relation"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyRelationDefaultValue: {
@@ -1938,9 +1945,10 @@ var (
 			Hidden:           true,
 			Id:               "_brrelationFormatObjectTypes",
 			Key:              "relationFormatObjectTypes",
-			Name:             "Relation's target object types",
+			Name:             "Property's target object types",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyRelationKey: {
@@ -1952,9 +1960,10 @@ var (
 			Id:               "_brrelationKey",
 			Key:              "relationKey",
 			MaxCount:         1,
-			Name:             "Relation key",
+			Name:             "Property key",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyRelationMaxCount: {
@@ -1981,9 +1990,10 @@ var (
 			Id:               "_brrelationOptionColor",
 			Key:              "relationOptionColor",
 			MaxCount:         1,
-			Name:             "Relation option color",
+			Name:             "Property option color",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyRelationReadonlyValue: {
@@ -1995,9 +2005,10 @@ var (
 			Id:               "_brrelationReadonlyValue",
 			Key:              "relationReadonlyValue",
 			MaxCount:         1,
-			Name:             "Relation value is readonly",
+			Name:             "Property value is readonly",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyReleasedYear: {

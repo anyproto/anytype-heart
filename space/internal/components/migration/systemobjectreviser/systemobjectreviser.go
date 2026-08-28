@@ -48,11 +48,34 @@ var (
 		bundle.RelationKeyIconName,
 		bundle.RelationKeyPluralName,
 	}
+
+	// nonSystemRelationFilterKeys lists the only details the reviser is allowed to touch on
+	// bundled NON-system relations. Kept deliberately narrow: non-system relations are fully
+	// user-modifiable, so the reviser only records the bundle revision and — guarded by
+	// previousBundledRelationNames — propagates bundled renames.
+	nonSystemRelationFilterKeys = []domain.RelationKey{
+		bundle.RelationKeyRevision,
+		bundle.RelationKeyName,
+	}
 )
+
+// previousBundledRelationNames maps a bundled NON-system relation key to every display name
+// it had in earlier releases. The reviser applies the current bundled name to an installed
+// relation only if its local name still equals one of these previous bundled names; any other
+// local name is a user's own rename and is kept. Whenever a bundled non-system relation is
+// renamed, append its OLD name here and bump the relation's revision in relations.json —
+// without both, the rename never reaches existing spaces. System relations do not need
+// entries: users cannot rename them, so the system path applies names unconditionally.
+var previousBundledRelationNames = map[domain.RelationKey][]string{
+	bundle.RelationKeyAudioGenre:            {"Genre"},
+	bundle.RelationKeyHeaderRelationsLayout: {"Header relations layout"},
+}
 
 // Migration SystemObjectReviser performs revision of all system object types and relations, so after Migration
 // objects installed in space should correspond to bundled objects from library.
 // To modify relations of system objects relation revision should be incremented in types.json or relations.json
+// Bundled non-system relations are also reachable, but only for revision and name
+// (see nonSystemRelationFilterKeys and previousBundledRelationNames).
 // For more info see 'System Objects Update' section of docs/Flow.md
 type Migration struct{}
 
@@ -122,15 +145,19 @@ func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.
 	if bundleObject == nil {
 		return false, nil
 	}
-	details := buildDiffDetails(bundleObject, localObject, isSystem)
+	details := buildDiffDetails(bundleObject, localObject, uk, isSystem)
 
-	recRelsDetails, err := checkRecommendedRelations(ctx, space, bundleObject, localObject, uk)
-	if err != nil {
-		log.Error("failed to check recommended relations", zap.Error(err))
-	}
+	// non-system relations are user-modifiable, so only the narrow filtered diff
+	// (revision + guarded name) may be applied to them
+	if isSystem || uk.SmartblockType() != coresb.SmartBlockTypeRelation {
+		recRelsDetails, err := checkRecommendedRelations(ctx, space, bundleObject, localObject, uk)
+		if err != nil {
+			log.Error("failed to check recommended relations", zap.Error(err))
+		}
 
-	for _, recRelsDetail := range recRelsDetails {
-		details.Set(recRelsDetail.Key, recRelsDetail.Value)
+		for _, recRelsDetail := range recRelsDetails {
+			details.Set(recRelsDetail.Key, recRelsDetail.Value)
+		}
 	}
 
 	if isSystem {
@@ -161,8 +188,10 @@ func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.
 }
 
 // getBundleObjectRevision returns the revision of the bundled counterpart without building
-// its details. Mirrors getBundleObjectDetails: ok is false for non-bundled types and
-// non-system relations, which are not revisable.
+// its details. Mirrors getBundleObjectDetails: ok is false for non-bundled objects, which
+// are not revisable. Bundled non-system relations answer too, so that a bundled rename with
+// a revision bump reaches them; almost all of them have revision 0, so the caller's
+// revision guard short-circuits before any details are built.
 func getBundleObjectRevision(uk domain.UniqueKey) (revision int64, ok bool) {
 	switch uk.SmartblockType() {
 	case coresb.SmartBlockTypeObjectType:
@@ -172,16 +201,17 @@ func getBundleObjectRevision(uk domain.UniqueKey) (revision int64, ok bool) {
 		}
 		return objectType.Revision, true
 	case coresb.SmartBlockTypeRelation:
-		if !isSystemRelation(uk) {
+		relation, err := bundle.GetRelation(domain.RelationKey(uk.InternalKey()))
+		if err != nil {
 			return 0, false
 		}
-		return bundle.MustGetRelation(domain.RelationKey(uk.InternalKey())).Revision, true
+		return relation.Revision, true
 	default:
 		return 0, false
 	}
 }
 
-// getBundleObjectDetails returns nil if the object with provided unique key is not either system relation or bundled type
+// getBundleObjectDetails returns nil if the object with provided unique key is not a bundled type or relation
 func getBundleObjectDetails(uk domain.UniqueKey) (details *domain.Details, isSystem bool) {
 	switch uk.SmartblockType() {
 	case coresb.SmartBlockTypeObjectType:
@@ -193,32 +223,50 @@ func getBundleObjectDetails(uk domain.UniqueKey) (details *domain.Details, isSys
 		}
 		return (&relationutils.ObjectType{ObjectType: objectType}).BundledTypeDetails(), isSystemType(uk)
 	case coresb.SmartBlockTypeRelation:
-		if !isSystemRelation(uk) {
-			// non system relation, no need to revise
+		relation, err := bundle.GetRelation(domain.RelationKey(uk.InternalKey()))
+		if err != nil {
+			// not bundled relation, no need to revise
 			return nil, false
 		}
-		relationKey := domain.RelationKey(uk.InternalKey())
-		relation := bundle.MustGetRelation(relationKey)
-		return (&relationutils.Relation{Relation: relation}).ToDetails(), true
+		return (&relationutils.Relation{Relation: relation}).ToDetails(), isSystemRelation(uk)
 	default:
 		return nil, false
 	}
 }
 
-func buildDiffDetails(origin, current *domain.Details, isSystem bool) *domain.Details {
-	// non-system bundled types are going to update only icons and plural names for now
-	filterKeys := customObjectFilterKeys
-	if isSystem {
-		filterKeys = systemObjectFilterKeys
+func buildDiffDetails(origin, current *domain.Details, uk domain.UniqueKey, isSystem bool) *domain.Details {
+	isNonSystemRelation := !isSystem && uk.SmartblockType() == coresb.SmartBlockTypeRelation
+
+	filterKeys := systemObjectFilterKeys
+	if isNonSystemRelation {
+		// non-system bundled relations only record the revision and, guardedly, bundled renames
+		filterKeys = nonSystemRelationFilterKeys
+	} else if !isSystem {
+		// non-system bundled types are going to update only icons and plural names for now
+		filterKeys = customObjectFilterKeys
 	}
 	diff, _ := domain.StructDiff(current, origin)
 	diff = diff.CopyOnlyKeys(filterKeys...)
 
-	if cannotApplyPluralName(isSystem, current, origin) {
+	if isNonSystemRelation {
+		if !canApplyBundledRelationName(domain.RelationKey(uk.InternalKey()), current.GetString(bundle.RelationKeyName)) {
+			diff.Delete(bundle.RelationKeyName)
+		}
+	} else if cannotApplyPluralName(isSystem, current, origin) {
 		diff.Delete(bundle.RelationKeyName)
 		diff.Delete(bundle.RelationKeyPluralName)
 	}
 	return diff
+}
+
+// canApplyBundledRelationName reports whether the bundled name may overwrite the local one:
+// only when the local name is still a previous bundled name from previousBundledRelationNames
+// (or is empty). Any other local name is the user's own rename and must be kept.
+func canApplyBundledRelationName(key domain.RelationKey, currentName string) bool {
+	if currentName == "" {
+		return true
+	}
+	return lo.Contains(previousBundledRelationNames[key], currentName)
 }
 
 func cannotApplyPluralName(isSystem bool, current, origin *domain.Details) bool {

@@ -723,12 +723,15 @@ func TestExport_UnwritableSlugFallsBackToTheStoredKey(t *testing.T) {
 // neighbourhood: the property_definitions-vs-recommended-lists ambiguity check
 // indexed properties by the STORED list keys, so the canonical spelling
 // carried both representations without a word. The canonical spelling is the
-// display name "Recommended relations" (bundledname.go); the stored key
-// still resolves verbatim, and the retired slugs — `recommended_relations`
-// and the v0.38 alias `recommended_properties` — resolve to NOTHING any
-// more, so they cannot conflict: they are ordinary custom keys.
+// display name "Recommended properties" (bundledname.go); the stored key
+// still resolves verbatim; and the derived-slug shape of either — the retired
+// `recommended_relations` and the v0.38 alias `recommended_properties` alike
+// — lands in the same fold class, so every spelling of the key is checked.
 func TestValidate_RecommendedListConflictCheckedInCanonicalSpelling(t *testing.T) {
-	for _, spelling := range []string{"recommendedRelations", "Recommended relations"} {
+	for _, spelling := range []string{
+		"recommendedRelations", "Recommended properties",
+		"recommended_relations", "recommended_properties",
+	} {
 		doc := fmt.Sprintf(`{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "page",
 			"type_settings": {"property_definitions": [{"property": "due_date", "format": "date"}]},
 			"properties": {%q: ["a"]}}`, spelling)

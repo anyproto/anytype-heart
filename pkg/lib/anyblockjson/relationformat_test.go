@@ -248,7 +248,7 @@ func TestRelationEnvelope_RefusedInProperties(t *testing.T) {
 	for spelling, value := range map[string]string{
 		"Format":                         "100",
 		"IncludeTime":                    "true",
-		"Relation's target object types": `["Page"]`,
+		"Property's target object types": `["Page"]`,
 	} {
 		t.Run(spelling, func(t *testing.T) {
 			doc := `{"version":1,"kind":"property","id":"o1","internal_key":"budget",` +
