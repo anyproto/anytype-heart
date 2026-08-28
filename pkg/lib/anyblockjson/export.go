@@ -401,15 +401,20 @@ func (e *exporter) propertySlug(key string) string {
 // this document may name. Verbatim-first (§3) makes each of those keys its
 // own address, so no OTHER key's slug may take one as a spelling — the same
 // avoid-set discipline seedIdLabels applies to ids. The walk mirrors the emit
-// sites (buildProperties, buildTypeProperties, blockToJSON, dataviewToJSON);
-// a key from a block the emit later drops only over-reserves, which degrades
-// somebody's slug to their stored key — always correct, merely less compact,
-// and it costs one thing worth naming: an over-reservation that the next
-// generation does not repeat makes export stop being a fixpoint for that
-// object (modelledTypeKeys says the same in the type namespace, where the
-// gap was computable and is now closed). Which blocks survive is decided
-// during buildBlocks, so this walk cannot know; the type-namespace shapes
-// were reachable through ordinary data, this one needs a block export drops.
+// sites (buildProperties, buildTypeProperties, blockToJSON, dataviewToJSON),
+// and mirroring them EXACTLY is the whole obligation: an over-reservation
+// degrades somebody's spelling to their stored key, which is always correct
+// and merely less compact — until the next generation, which does not repeat
+// it. Then a second export of the same object differs from the first and the
+// round trip stops being a fixpoint.
+//
+// Three ways that can happen, and two of them are closed. The detail walk
+// asks droppedPropertyKey, so the four kind- and value-scoped drops
+// buildProperties applies are not censused (the gap that spelled a custom
+// "Hidden" once suffixed and once plain, beside an `isHidden: false` nobody
+// writes). modelledTypeKeys closes the same gap in the type namespace. What
+// remains is a key named ONLY by a block the emit later drops: which blocks
+// survive is decided during buildBlocks, so this walk cannot know.
 func (e *exporter) seedTermLedger() {
 	e.termOwner = map[string]string{}
 	e.termByKey = map[string]string{}
@@ -426,9 +431,23 @@ func (e *exporter) seedTermLedger() {
 		stripped := strippedDetailKeys()
 		lifted := e.envelopeLiftedKeys()
 		for k := range e.snapshot.Details.Fields {
-			if !stripped[k] && !lifted[k] && isWritablePropertyKey(k) {
-				name(k)
+			if stripped[k] || lifted[k] || !isWritablePropertyKey(k) {
+				continue
 			}
+			// a key buildProperties is going to DROP is written nowhere, so
+			// it neither claims a spelling nor reserves its own stored key
+			// as one. Counting it broke the fixpoint: it degraded a rival
+			// in generation 1 that generation 2 — which no longer holds the
+			// key at all — spells plainly. Silent here; the claim site
+			// fires the one warning this predicate has (droppedPropertyKey).
+			//
+			// The census still names the key if a BLOCK names it below: a
+			// dataview filter on a dropped detail key really does spell it,
+			// and the block survives the drop.
+			if e.droppedPropertyKey(k, quietWarn) {
+				continue
+			}
+			name(k)
 		}
 		// the attribution keys are on the stripped list — their STORED value
 		// never reaches a document verbatim — but the document still SPELLS
@@ -1729,6 +1748,78 @@ func (e *exporter) envelopeLiftedKeys() map[string]bool {
 	return lifted
 }
 
+// droppedPropertyKey answers the four kind- and value-scoped drops
+// buildProperties applies to a detail key that has already passed the
+// stripped / envelope-lifted / writable filter. It exists as ONE predicate
+// because two sites have to agree about it, and for a while they did not:
+// the term census (seedTermLedger) reserved a spelling for every surviving
+// detail key, and these four populations are written NOWHERE, so a census
+// that counted them made export stop being a fixpoint. A dropped key that
+// contests a spelling degrades its rival in generation 1; generation 2 has
+// no dropped key to contest with, so the rival un-degrades and a second
+// export of the same object differs from the first. Reproduced on all four:
+// `isHidden: false` beside a custom property named "Hidden" wrote
+// "Hidden (b90aa1)" once and "Hidden" the next time.
+//
+// The warning sink is a parameter for vetSlug's reason: the census asks the
+// question about every candidate key before any slot claims, and the one
+// arm that warns would fire there for keys the emit is about to drop
+// anyway, doubling the real warning. The claim site passes the real sink,
+// so the warning still fires exactly where the value is actually lost.
+//
+// The attribution keys are NOT here. They are the opposite case — written
+// by export and dropped by IMPORT — and the census models them as yielding
+// claimants instead, which is a weaker thing than not counting them at all:
+// a yielding key still takes an uncontested spelling, because it still
+// occupies a member of the document it is written into.
+func (e *exporter) droppedPropertyKey(k string, warn func(path, format string, args ...any)) bool {
+	if e.snapshot == nil || e.snapshot.Details == nil {
+		return false
+	}
+	// a TYPE document does not carry its own install provenance (§2a):
+	// eight keys, each admitted to the drop individually against the
+	// corpus — the verdicts live on typeProvenanceKeys. Silent, like the
+	// transient keys: the value describes the install, not the type, and
+	// the comparator consults the same predicate.
+	if e.isTypeDoc() {
+		if _, dropped := typeProvenanceKeys[k]; dropped {
+			return true
+		}
+	}
+	// a PARTICIPANT document does not carry createdDate (§3): the object
+	// is derived from the ACL and has no creation change, so the stored
+	// value is a load timestamp re-stamped on every cold build — the
+	// only field that drifted across a 1,164-document double-export
+	// comparison (22/22 participants, created_date only). Same silent
+	// drop as the type provenance above, and the comparator consults
+	// the same predicate (participantprovenance.go).
+	if DroppedParticipantProvenanceKey(e.sbType, k) {
+		return true
+	}
+	// a system-stamped key whose empty value says nothing a reader could
+	// act on (§15 #12): omitted, so schema documents stop paying ~20% of
+	// their bytes for it. The whitelist is deliberately short and the
+	// rule lives in systemtrim.go, where the comparator reads it too.
+	if DroppedEmptySystemProperty(k, e.snapshot.Details.Fields[k]) {
+		return true
+	}
+	// a name-over-number key can hold a vocabulary NAME or a number and
+	// nothing else (§3): Validate refuses any other string as an unknown
+	// name, so a stored string the vocabulary does not name has no
+	// written form — emitting it verbatim produced a document this
+	// package's own Validate rejects (I1). Dropped with a warning, the
+	// §2a typeSettingEnumValue policy; a stored string that IS a name
+	// survives and imports back as its number.
+	if vocab, named := namedEnumProperty(k); named {
+		if s, isStr := e.snapshot.Details.Fields[k].GetKind().(*types.Value_StringValue); isStr && !vocab.has(s.StringValue) {
+			warn("/properties", "%s %q on %q is not a name its vocabulary can hold and is dropped — "+
+				"there is no way to write it (§3)", vocab.what, s.StringValue, k)
+			return true
+		}
+	}
+	return false
+}
+
 func (e *exporter) buildProperties() *omap {
 	if e.snapshot.Details == nil {
 		return nil
@@ -1751,46 +1842,10 @@ func (e *exporter) buildProperties() *omap {
 		if stripped[k] || lifted[k] {
 			continue
 		}
-		// a TYPE document does not carry its own install provenance (§2a):
-		// eight keys, each admitted to the drop individually against the
-		// corpus — the verdicts live on typeProvenanceKeys. Silent, like the
-		// transient keys: the value describes the install, not the type, and
-		// the comparator consults the same predicate.
-		if e.isTypeDoc() {
-			if _, dropped := typeProvenanceKeys[k]; dropped {
-				continue
-			}
-		}
-		// a PARTICIPANT document does not carry createdDate (§3): the object
-		// is derived from the ACL and has no creation change, so the stored
-		// value is a load timestamp re-stamped on every cold build — the
-		// only field that drifted across a 1,164-document double-export
-		// comparison (22/22 participants, created_date only). Same silent
-		// drop as the type provenance above, and the comparator consults
-		// the same predicate (participantprovenance.go).
-		if DroppedParticipantProvenanceKey(e.sbType, k) {
+		// the four kind- and value-scoped drops, in one predicate the term
+		// census asks too (droppedPropertyKey)
+		if e.droppedPropertyKey(k, e.warn) {
 			continue
-		}
-		// a system-stamped key whose empty value says nothing a reader could
-		// act on (§15 #12): omitted, so schema documents stop paying ~20% of
-		// their bytes for it. The whitelist is deliberately short and the
-		// rule lives in systemtrim.go, where the comparator reads it too.
-		if DroppedEmptySystemProperty(k, e.snapshot.Details.Fields[k]) {
-			continue
-		}
-		// a name-over-number key can hold a vocabulary NAME or a number and
-		// nothing else (§3): Validate refuses any other string as an unknown
-		// name, so a stored string the vocabulary does not name has no
-		// written form — emitting it verbatim produced a document this
-		// package's own Validate rejects (I1). Dropped with a warning, the
-		// §2a typeSettingEnumValue policy; a stored string that IS a name
-		// survives and imports back as its number.
-		if vocab, named := namedEnumProperty(k); named {
-			if s, isStr := e.snapshot.Details.Fields[k].GetKind().(*types.Value_StringValue); isStr && !vocab.has(s.StringValue) {
-				e.warn("/properties", "%s %q on %q is not a name its vocabulary can hold and is dropped — "+
-					"there is no way to write it (§3)", vocab.what, s.StringValue, k)
-				continue
-			}
 		}
 		// a stored detail key is not necessarily a property name: real data
 		// holds an empty key and keys with control characters in them, and
