@@ -138,8 +138,6 @@ func (r *clientds) Init(a *app.App) (err error) {
 		r.spaceStoreWasMissing = true
 	}
 
-	RemoveExpiredLocks(r.repoPath)
-
 	if r.spaceStorageMode == storage.SpaceStorageModeBadger {
 		opts := r.cfg.Spacestore
 		opts.Dir = r.getRepoPath(SpaceDSDir)

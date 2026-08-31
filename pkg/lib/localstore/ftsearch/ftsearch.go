@@ -72,6 +72,7 @@ const (
 var (
 	log                    = logging.Logger("ftsearch")
 	ErrAppClosingInitiated = errors.New("app closing initiated")
+	ErrIndexInUse          = errors.New("tantivy index is locked by another process")
 )
 
 type FTSearch interface {
@@ -304,9 +305,19 @@ func (f *ftSearch) Run(context.Context) error {
 		}
 	}
 	f.startupReport = &report
+	if report.WriterLockPresent || report.MetaLockPresent {
+		return ErrIndexInUse
+	}
+	var quarantinePath string
+	if len(report.MissingSegments) > 0 || len(report.MissingDelFiles) > 0 {
+		quarantinePath, err = f.quarantineCorruptIndex()
+		if err != nil {
+			return err
+		}
+	}
 	if !report.IsOk() {
 		var gcErr error
-		if len(report.ExtraDelFiles) > 0 || len(report.ExtraSegments) > 0 {
+		if quarantinePath == "" && (len(report.ExtraDelFiles) > 0 || len(report.ExtraSegments) > 0) {
 			gcErr = report.GCExtraFiles()
 		}
 		log.With("missingSegments", len(report.MissingSegments)).
@@ -321,7 +332,7 @@ func (f *ftSearch) Run(context.Context) error {
 			With("newestSegmentModTime", report.NewestSegmentModTime.Unix()).
 			With("metaJsonModTime", report.MetaJsonModTime.Unix()).
 			With("gcErr", gcErr).
-			Warnf("tantivy index is inconsistent state, cleaning extra files")
+			Warnf("tantivy index was inconsistent during startup")
 	}
 
 	builder, err := tantivy.NewSchemaBuilder()
@@ -469,6 +480,13 @@ func (f *ftSearch) Run(context.Context) error {
 	if err != nil {
 		return err
 	}
+	if quarantinePath != "" {
+		go func() {
+			if removeErr := os.RemoveAll(quarantinePath); removeErr != nil {
+				log.Warnf("failed to remove quarantined tantivy index %s: %v", quarantinePath, removeErr)
+			}
+		}()
+	}
 	f.index = index
 	f.parserPool = &fastjson.ParserPool{}
 
@@ -503,16 +521,17 @@ func (f *ftSearch) Run(context.Context) error {
 	return nil
 }
 
-func (f *ftSearch) tryToBuildSchema(schema *tantivy.Schema) (*tantivy.TantivyContext, error) {
-	index, err := tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
-	if err != nil {
-		log.Warnf("recovering from error: %v", err)
-		if strings.HasSuffix(f.rootPath, ftsDir2) {
-			_ = os.RemoveAll(f.rootPath)
-		}
-		return tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
+func (f *ftSearch) quarantineCorruptIndex() (string, error) {
+	quarantinePath := fmt.Sprintf("%s.corrupt-%d", f.rootPath, time.Now().UnixNano())
+	if err := os.Rename(f.rootPath, quarantinePath); err != nil {
+		return "", fmt.Errorf("quarantine corrupt tantivy index: %w", err)
 	}
-	return index, err
+	log.Warnf("quarantined corrupt tantivy index at %s", quarantinePath)
+	return quarantinePath, nil
+}
+
+func (f *ftSearch) tryToBuildSchema(schema *tantivy.Schema) (*tantivy.TantivyContext, error) {
+	return tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
 }
 
 func (f *ftSearch) Index(doc SearchDoc) error {

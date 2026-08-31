@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
@@ -13,6 +14,26 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
 )
+
+func TestQuarantineCorruptIndex(t *testing.T) {
+	parent := t.TempDir()
+	root := filepath.Join(parent, ftsDir2)
+	if err := os.MkdirAll(root, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "marker"), []byte("corrupt"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ft := &ftSearch{rootPath: root}
+	quarantinePath, err := ft.quarantineCorruptIndex()
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(quarantinePath) })
+	_, err = os.Stat(root)
+	require.ErrorIs(t, err, os.ErrNotExist)
+	data, err := os.ReadFile(filepath.Join(quarantinePath, "marker"))
+	require.NoError(t, err)
+	require.Equal(t, "corrupt", string(data))
+}
 
 type fixture struct {
 	ft FTSearch

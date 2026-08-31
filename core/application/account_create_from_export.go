@@ -64,18 +64,13 @@ type RecoverFromLegacyResponse struct {
 	PersonalSpaceId string
 }
 
-func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportRequest) (RecoverFromLegacyResponse, error) {
+func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportRequest) (response RecoverFromLegacyResponse, err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	profile, err := getUserProfile(req)
 	if err != nil {
 		return RecoverFromLegacyResponse{}, anyerror.CleanupError(err)
-	}
-
-	err = s.stop()
-	if err != nil {
-		return RecoverFromLegacyResponse{}, err
 	}
 
 	if s.derivedKeys == nil {
@@ -87,6 +82,15 @@ func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportReq
 	}
 	s.rootPath = req.RootPath
 	s.fulltextPrimaryLanguage = req.FulltextPrimaryLanguage
+	if err = s.switchAccountLease(context.Background(), s.rootPath, address); err != nil {
+		return RecoverFromLegacyResponse{}, err
+	}
+	appStarted := false
+	defer func() {
+		if !appStarted && err != nil {
+			err = errors.Join(err, s.releaseAccountLease())
+		}
+	}()
 	err = os.MkdirAll(s.rootPath, 0700)
 	if err != nil {
 		return RecoverFromLegacyResponse{}, anyerror.CleanupError(err)
@@ -114,6 +118,7 @@ func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportReq
 	if err != nil {
 		return RecoverFromLegacyResponse{}, err
 	}
+	appStarted = true
 
 	err = s.setDetails(profile, req.Icon)
 	if err != nil {
@@ -125,10 +130,11 @@ func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportReq
 		return RecoverFromLegacyResponse{}, errors.Join(ErrBadInput, err)
 	}
 
-	return RecoverFromLegacyResponse{
+	response = RecoverFromLegacyResponse{
 		AccountId:       address,
 		PersonalSpaceId: spaceID,
-	}, nil
+	}
+	return response, nil
 }
 
 func (s *Service) startApp(cfg *config.Config, derivationResult crypto.DerivationResult) error {
@@ -139,10 +145,11 @@ func (s *Service) startApp(cfg *config.Config, derivationResult crypto.Derivatio
 	}
 
 	ctxWithValue := context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "account_create")
-	var err error
-	if s.app, err = anytype.StartNewApp(ctxWithValue, s.clientWithVersion, comps...); err != nil {
+	newApp, err := anytype.StartNewApp(ctxWithValue, s.clientWithVersion, comps...)
+	if err != nil {
 		return err
 	}
+	s.app = newApp
 	return nil
 }
 
