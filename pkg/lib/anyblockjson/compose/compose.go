@@ -278,7 +278,7 @@ func (c *Composer) ObserveWritten(sbType model.SmartBlockType, base *model.Smart
 }
 
 // ObserveFileBlob records one written blob for the manifest `files` map
-// (§2c, v0.47): the file object's id → the blob's bundle-relative path.
+// (§2c): the file object's id → the blob's bundle-relative path.
 // Called only after the bytes are actually written, so the manifest never
 // points at a blob a failed stream left absent.
 func (c *Composer) ObserveFileBlob(objectId, path string) {

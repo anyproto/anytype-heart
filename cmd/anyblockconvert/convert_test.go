@@ -32,7 +32,7 @@ func convertDoc(t *testing.T, b *batch, name, body string) (model.SmartBlockType
 func TestConvert_TemplateTargetTypeBecomesDetail(t *testing.T) {
 	b := newBatch(nil, map[string]string{"wikiPage": "type-wiki-page"})
 	sbType, snap := convertDoc(t, b, "wiki-article.template.json", `{
-	  "version": 1,
+	  "version": 2,
 	  "kind": "template",
 	  "id": "template-wiki-article",
 	  "type": "template",
@@ -54,7 +54,7 @@ func TestConvert_TemplateTargetTypeBecomesDetail(t *testing.T) {
 func TestConvert_AuthoredTargetObjectTypeWinsAndIsScalar(t *testing.T) {
 	b := newBatch(nil, map[string]string{"wikiPage": "type-wiki-page"})
 	_, snap := convertDoc(t, b, "wiki-guide.template.json", `{
-	  "version": 1,
+	  "version": 2,
 	  "kind": "template",
 	  "id": "template-wiki-guide",
 	  "type": "template",
@@ -71,7 +71,7 @@ func TestConvert_AuthoredTargetObjectTypeWinsAndIsScalar(t *testing.T) {
 func TestConvert_NonTemplateGetsNoTargetObjectType(t *testing.T) {
 	b := newBatch(nil, map[string]string{"wikiPage": "type-wiki-page"})
 	_, snap := convertDoc(t, b, "page.json", `{
-	  "version": 1,
+	  "version": 2,
 	  "id": "page-1",
 	  "type": "wikiPage",
 	  "properties": {"name": "A page"}
@@ -90,7 +90,7 @@ func TestConvert_SurfacesDocumentWarnings(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "tasks.json")
 	require.NoError(t, os.WriteFile(path, []byte(`{
-	  "version": 1,
+	  "version": 2,
 	  "id": "set-1",
 	  "properties": {"name": "Tasks"},
 	  "blocks": [{"type": "dataview", "views": [{"name": "All", "group_by": "status"}]}]

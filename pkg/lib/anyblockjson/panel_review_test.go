@@ -230,14 +230,14 @@ func TestInline_ResourceBounds(t *testing.T) {
 
 // Lens 4: the wiring dispatches on the version/$schema markers (§13).
 func TestDetectFormat(t *testing.T) {
-	v, schema, ok := DetectFormat([]byte(`{"$schema": "` + SchemaURL + `", "version": 1}`))
-	require.True(t, ok)
-	assert.Equal(t, 1, v)
-	assert.Equal(t, SchemaURL, schema)
-
-	v, _, ok = DetectFormat([]byte(`{"version": 2}`))
+	v, schema, ok := DetectFormat([]byte(`{"$schema": "` + SchemaURL + `", "version": 2}`))
 	require.True(t, ok)
 	assert.Equal(t, 2, v)
+	assert.Equal(t, SchemaURL, schema)
+
+	v, _, ok = DetectFormat([]byte(`{"version": 3}`))
+	require.True(t, ok)
+	assert.Equal(t, 3, v)
 
 	_, _, ok = DetectFormat([]byte(`{"blocks": []}`))
 	assert.False(t, ok)
@@ -248,7 +248,7 @@ func TestDetectFormat(t *testing.T) {
 // Lens 4: the default id generator (no GenerateId option) mints
 // editor-shaped 24-hex ids.
 func TestImport_DefaultIdGenerator(t *testing.T) {
-	_, snap, err := Unmarshal([]byte(`{"version": 1, "blocks": [{"type": "paragraph", "text": "x"}]}`), Options{})
+	_, snap, err := Unmarshal([]byte(`{"version": 2, "blocks": [{"type": "paragraph", "text": "x"}]}`), Options{})
 	require.NoError(t, err)
 	require.Len(t, snap.Blocks, 2)
 	for _, b := range snap.Blocks {

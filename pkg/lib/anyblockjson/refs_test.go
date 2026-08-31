@@ -180,7 +180,7 @@ func TestRefNames_OffByDefaultAndBareWithoutResolver(t *testing.T) {
 // suffixedRefDoc spells a suffixed reference in every §9 slot; bareRefDoc is
 // the same document with every suffix removed.
 const suffixedRefDoc = `{
-  "version": 1,
+  "version": 2,
   "id": "bafyreirefroot",
   "properties": {
     "assignee": ["bafyreiassigned#roma_kha"],
@@ -256,7 +256,7 @@ func TestRefs_ImportTrimsAndBareImportsIdentically(t *testing.T) {
 func TestRefs_TrimNeverInventsEmptinessAndSkipsOptionNames(t *testing.T) {
 	t.Run("a leading-# value stays whole", func(t *testing.T) {
 		// given
-		doc := `{"version": 1, "properties": {"assignee": ["#notanid"]}}`
+		doc := `{"version": 2, "properties": {"assignee": ["#notanid"]}}`
 
 		// when
 		_, snap, err := Unmarshal([]byte(doc), testOptions())
@@ -269,7 +269,7 @@ func TestRefs_TrimNeverInventsEmptinessAndSkipsOptionNames(t *testing.T) {
 
 	t.Run("a double-# value trims at the FIRST separator", func(t *testing.T) {
 		// given a reference whose informative half itself spells a #
-		doc := `{"version": 1, "properties": {"assignee": ["bafyreiassigned#a#b"]}}`
+		doc := `{"version": 2, "properties": {"assignee": ["bafyreiassigned#a#b"]}}`
 
 		// when
 		_, snap, err := Unmarshal([]byte(doc), testOptions())
@@ -283,7 +283,7 @@ func TestRefs_TrimNeverInventsEmptinessAndSkipsOptionNames(t *testing.T) {
 
 	t.Run("an option name keeps its #", func(t *testing.T) {
 		// given customStatus resolves to the select format (testOptions)
-		doc := `{"version": 1, "properties": {"customStatus": ["C#"]}}`
+		doc := `{"version": 2, "properties": {"customStatus": ["C#"]}}`
 
 		// when
 		_, snap, err := Unmarshal([]byte(doc), testOptions())
@@ -439,7 +439,7 @@ func TestRefNames_AnIdCarryingAHashTakesNoSuffix(t *testing.T) {
 // 2 is `#some_name#roma_kha`, generation 3 one name longer again.
 func TestRefs_ALeadingHashReferenceDoesNotGrow(t *testing.T) {
 	// given the mistake a writer makes copying the readable half of id#name
-	doc := []byte(`{"version": 1, "kind": "page", "id": "bafyreiroot",
+	doc := []byte(`{"version": 2, "kind": "page", "id": "bafyreiroot",
 		"properties": {"assignee": ["#some_name"]}}`)
 	require.NoError(t, Validate(doc))
 
@@ -527,7 +527,7 @@ func TestRefs_AHashInsideAnIdIsNormalizedOnce(t *testing.T) {
 // document validates clean while the value addresses nothing.
 func TestValidate_AReferenceWithNoIdHalfWarns(t *testing.T) {
 	// given assignee is a bundled objects property — no store needed to know it
-	doc := []byte(`{"version": 1, "properties": {"assignee": ["#roma_kha"]}}`)
+	doc := []byte(`{"version": 2, "properties": {"assignee": ["#roma_kha"]}}`)
 
 	// when
 	var warned []Issue

@@ -59,7 +59,7 @@ func TestTypePropertyNameOnlyEntryResolvesThroughTheSeam(t *testing.T) {
 			// given
 			defs, err := json.Marshal([]map[string]any{{"name": name, "format": "text"}})
 			require.NoError(t, err)
-			doc := []byte(fmt.Sprintf(`{"version":1,"kind":"object_type","id":"o1","internal_key":"recipe",`+
+			doc := []byte(fmt.Sprintf(`{"version":2,"kind":"object_type","id":"o1","internal_key":"recipe",`+
 				`"type_settings":{"layout":"basic","property_definitions":%s},`+
 				`"properties":{"Name":"Recipe"}}`, defs))
 			require.NoError(t, Validate(doc), "I1/I2: the document is valid")
@@ -95,7 +95,7 @@ func TestTypePropertyUnwritableNameIsRefusedAtItsSlot(t *testing.T) {
 		t.Run(tc.why, func(t *testing.T) {
 			defs, err := json.Marshal([]map[string]any{{"name": tc.name, "format": "text"}})
 			require.NoError(t, err)
-			doc := []byte(fmt.Sprintf(`{"version":1,"kind":"object_type","id":"o1","internal_key":"recipe",`+
+			doc := []byte(fmt.Sprintf(`{"version":2,"kind":"object_type","id":"o1","internal_key":"recipe",`+
 				`"type_settings":{"layout":"basic","property_definitions":%s},`+
 				`"properties":{"Name":"Recipe"}}`, defs))
 

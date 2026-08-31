@@ -196,13 +196,13 @@ func TestAuthoringExample_HabitTracker(t *testing.T) {
 // the full schema's per-type closing refuses.
 func TestAuthoringSubset_StructuralFixtures(t *testing.T) {
 	fixtures := map[string]string{
-		"minimal document": `{"version": 1}`,
-		"a full page envelope": `{"version": 1, "id": "page-a", "type": "page",
+		"minimal document": `{"version": 2}`,
+		"a full page envelope": `{"version": 2, "id": "page-a", "type": "page",
 			"icon": {"format": "emoji", "emoji": "🌱"},
 			"cover": {"format": "gradient", "gradient": "pinkOrange"},
 			"properties": {"name": "A", "description": "a page", "is_favorite": true,
 				"done": false, "custom_note": null, "tags_of_mine": ["x", "y"]}}`,
-		"nested blocks": `{"version": 1, "blocks": [
+		"nested blocks": `{"version": 2, "blocks": [
 			{"type": "heading_1", "text": "H"},
 			{"type": "toggle", "text": "open me"},
 			{"indent": 1, "type": "bulleted_list_item", "text": "one"},
@@ -210,32 +210,32 @@ func TestAuthoringSubset_StructuralFixtures(t *testing.T) {
 			{"indent": 1, "type": "numbered_list_item", "text": "two"},
 			{"type": "quote", "text": "said"},
 			{"type": "code", "language": "go", "text": "fmt.Println(1)"}]}`,
-		"columns": `{"version": 1, "blocks": [
+		"columns": `{"version": 2, "blocks": [
 			{"type": "row"},
 			{"indent": 1, "type": "column"},
 			{"indent": 2, "type": "paragraph", "text": "left"},
 			{"indent": 1, "type": "column"},
 			{"indent": 2, "type": "paragraph", "text": "right"}]}`,
-		"a table with empty and padded cells": `{"version": 1, "blocks": [
+		"a table with empty and padded cells": `{"version": 2, "blocks": [
 			{"type": "table",
 			 "columns": [{}, {}, {}],
 			 "rows": [
 				{"is_header": true, "cells": ["Name", "Status", "Note"]},
 				{"cells": ["Export", null, "spec"]},
 				{"cells": ["Short row"]}]}]}`,
-		"an inline set on a page": `{"version": 1, "id": "page-b", "blocks": [
+		"an inline set on a page": `{"version": 2, "id": "page-b", "blocks": [
 			{"type": "dataview", "object_id": "coll-shelf", "is_collection": true,
 			 "properties": [{"property": "name", "format": "text"}],
 			 "views": [{"name": "Shelf"}]}]}`,
-		"a collection": `{"version": 1, "id": "coll-shelf", "type": "collection",
+		"a collection": `{"version": 2, "id": "coll-shelf", "type": "collection",
 			"items": ["page-a", "page-b"],
 			"blocks": [{"type": "dataview", "is_collection": true,
 				"views": [{"type": "list", "name": "All"}]}]}`,
-		"a template": `{"version": 1, "kind": "template", "id": "tpl-habit",
+		"a template": `{"version": 2, "kind": "template", "id": "tpl-habit",
 			"type": "template", "template_for": "habit",
 			"properties": {"name": "New habit"},
 			"blocks": [{"type": "paragraph", "text": "Why this habit matters:"}]}`,
-		"a type with the whole settings surface": `{"version": 1, "kind": "object_type",
+		"a type with the whole settings surface": `{"version": 2, "kind": "object_type",
 			"id": "type-r", "internal_key": "review",
 			"icon": {"format": "icon", "name": "book", "color": "teal"},
 			"properties": {"name": "Review", "description": "One review."},
@@ -250,7 +250,7 @@ func TestAuthoringSubset_StructuralFixtures(t *testing.T) {
 					{"name": "Reviewed on", "format": "date", "include_time": true},
 					{"property": "owner", "name": "Owner", "format": "objects",
 					 "object_types": ["participant"], "section": "hidden"}]}}`,
-		"filters, groups and sorts": `{"version": 1, "blocks": [
+		"filters, groups and sorts": `{"version": 2, "blocks": [
 			{"type": "dataview",
 			 "properties": [{"property": "stage", "format": "select"}, {"property": "when", "format": "date"}],
 			 "views": [{
@@ -268,11 +268,11 @@ func TestAuthoringSubset_StructuralFixtures(t *testing.T) {
 					{"property": "when"},
 					{"property": "stage", "hidden": true},
 					{"property": "name", "aggregation": "count"}]}]}]}`,
-		"inline markup": `{"version": 1, "blocks": [
+		"inline markup": `{"version": 2, "blocks": [
 			{"type": "paragraph", "text": "Ship the **new export** by Q3 — see [the plan](https://example.com/plan), or <u>ask</u> in [the space](anytype://object?objectId=page-a). A literal \\*star\\*."},
 			{"type": "callout", "icon": {"format": "emoji", "emoji": "💡"}, "text": "Escaping: \\<sub\\> stays prose."},
 			{"type": "checkbox", "checked": true, "text": "done ~~and dusted~~"}]}`,
-		"embeds and bookmarks": `{"version": 1, "blocks": [
+		"embeds and bookmarks": `{"version": 2, "blocks": [
 			{"type": "embed", "processor": "mermaid", "text": "graph TD; A-->B"},
 			{"type": "embed", "processor": "latex", "text": "e^{i\\pi}+1=0"},
 			{"type": "bookmark", "url": "https://example.com"},
@@ -370,11 +370,11 @@ func TestAuthoringSubset_EveryObjectEnumValueIsFullValid(t *testing.T) {
 	require.NoError(t, json.Unmarshal(authoringSchemaJSON, &schema))
 
 	typeDoc := func(settings string) string {
-		return `{"version": 1, "kind": "object_type", "internal_key": "t1",
+		return `{"version": 2, "kind": "object_type", "internal_key": "t1",
 			"properties": {"name": "T"}, "type_settings": {` + settings + `}}`
 	}
 	dataviewDoc := func(view string) string {
-		return `{"version": 1, "blocks": [{"type": "dataview", "views": [{` + view + `}]}]}`
+		return `{"version": 2, "blocks": [{"type": "dataview", "views": [{` + view + `}]}]}`
 	}
 
 	sweep := func(name string, values []string, build func(v string) string) {
@@ -390,9 +390,9 @@ func TestAuthoringSubset_EveryObjectEnumValueIsFullValid(t *testing.T) {
 		case "object_type":
 			return typeDoc(`"layout": "basic"`)
 		case "template":
-			return `{"version": 1, "kind": "template", "type": "template", "template_for": "t1"}`
+			return `{"version": 2, "kind": "template", "type": "template", "template_for": "t1"}`
 		default:
-			return `{"version": 1, "kind": "` + v + `"}`
+			return `{"version": 2, "kind": "` + v + `"}`
 		}
 	})
 
@@ -415,7 +415,7 @@ func TestAuthoringSubset_EveryObjectEnumValueIsFullValid(t *testing.T) {
 		if !ok {
 			b = `{"type": "` + v + `", "text": "x"}`
 		}
-		return `{"version": 1, "blocks": [` + b + `]}`
+		return `{"version": 2, "blocks": [` + b + `]}`
 	})
 
 	sweep("type_settings.layout", schemaEnum(t, schema, "properties", "type_settings", "properties", "layout", "enum"), func(v string) string {
@@ -431,10 +431,10 @@ func TestAuthoringSubset_EveryObjectEnumValueIsFullValid(t *testing.T) {
 		return typeDoc(`"property_definitions": [{"property": "p1", "section": "` + v + `"}]`)
 	})
 	sweep("layout_align", schemaEnum(t, schema, "$defs", "blockAlign", "enum"), func(v string) string {
-		return `{"version": 1, "properties": {"layout_align": "` + v + `"}}`
+		return `{"version": 2, "properties": {"layout_align": "` + v + `"}}`
 	})
 	sweep("palette colour on icons", schemaEnum(t, schema, "$defs", "paletteColor", "enum"), func(v string) string {
-		return `{"version": 1, "icon": {"format": "icon", "name": "book", "color": "` + v + `"}}`
+		return `{"version": 2, "icon": {"format": "icon", "name": "book", "color": "` + v + `"}}`
 	})
 	sweep("palette colour on options", schemaEnum(t, schema, "$defs", "paletteColor", "enum"), func(v string) string {
 		return typeDoc(`"property_definitions": [{"property": "p1", "format": "select",
@@ -448,7 +448,7 @@ func TestAuthoringSubset_EveryObjectEnumValueIsFullValid(t *testing.T) {
 		}
 		icon, ok := icons[v]
 		require.True(t, ok, "no builder for icon format %q", v)
-		return `{"version": 1, "icon": ` + icon + `}`
+		return `{"version": 2, "icon": ` + icon + `}`
 	})
 	sweep("cover format", schemaEnum(t, schema, "$defs", "cover", "properties", "format", "enum"), func(v string) string {
 		covers := map[string]string{
@@ -457,20 +457,20 @@ func TestAuthoringSubset_EveryObjectEnumValueIsFullValid(t *testing.T) {
 		}
 		cover, ok := covers[v]
 		require.True(t, ok, "no builder for cover format %q", v)
-		return `{"version": 1, "cover": ` + cover + `}`
+		return `{"version": 2, "cover": ` + cover + `}`
 	})
 
 	embed := blockConditional(t, schema, "processor")
 	sweep("embed processor", schemaEnum(t, embed, "processor", "enum"), func(v string) string {
-		return `{"version": 1, "blocks": [{"type": "embed", "processor": "` + v + `", "text": "x"}]}`
+		return `{"version": 2, "blocks": [{"type": "embed", "processor": "` + v + `", "text": "x"}]}`
 	})
 	link := blockConditional(t, schema, "card_style")
 	sweep("link card_style", schemaEnum(t, link, "card_style", "enum"), func(v string) string {
-		return `{"version": 1, "blocks": [{"type": "link", "object_id": "page-two", "card_style": "` + v + `"}]}`
+		return `{"version": 2, "blocks": [{"type": "link", "object_id": "page-two", "card_style": "` + v + `"}]}`
 	})
 	divider := blockConditional(t, schema, "style")
 	sweep("divider style", schemaEnum(t, divider, "style", "enum"), func(v string) string {
-		return `{"version": 1, "blocks": [{"type": "divider", "style": "` + v + `"}]}`
+		return `{"version": 2, "blocks": [{"type": "divider", "style": "` + v + `"}]}`
 	})
 
 	sweep("view type", schemaEnum(t, schema, "$defs", "view", "properties", "type", "enum"), func(v string) string {
@@ -532,7 +532,7 @@ func TestAuthoringSubset_IndexAndDictionaryEnumValues(t *testing.T) {
 
 	t.Run("widget layout", func(t *testing.T) {
 		for _, v := range schemaEnum(t, indexSchema, "$defs", "widget", "properties", "layout", "enum") {
-			requireSubsetIndex(t, `{"version": 1, "name": "X", "entrypoint": "page-a",
+			requireSubsetIndex(t, `{"version": 2, "name": "X", "entrypoint": "page-a",
 				"widgets": [{"target": "page-a", "layout": "`+v+`", "limit": 6}]}`)
 		}
 	})
@@ -549,7 +549,7 @@ func TestAuthoringSubset_IndexAndDictionaryEnumValues(t *testing.T) {
 		}
 		require.NotEmpty(t, reserved, "the target anyOf must state the reserved listings")
 		for _, v := range reserved {
-			requireSubsetIndex(t, `{"version": 1, "name": "X", "entrypoint": "page-a",
+			requireSubsetIndex(t, `{"version": 2, "name": "X", "entrypoint": "page-a",
 				"widgets": [{"target": "`+v+`"}]}`)
 		}
 	})
@@ -558,11 +558,11 @@ func TestAuthoringSubset_IndexAndDictionaryEnumValues(t *testing.T) {
 	require.NoError(t, json.Unmarshal(authoringPropertiesSchemaJSON, &propsSchema))
 	t.Run("dictionary format", func(t *testing.T) {
 		for _, v := range schemaEnum(t, propsSchema, "$defs", "property", "properties", "format", "enum") {
-			requireSubsetDictionary(t, `{"version": 1, "properties": [{"property": "p1", "format": "`+v+`"}]}`)
+			requireSubsetDictionary(t, `{"version": 2, "properties": [{"property": "p1", "format": "`+v+`"}]}`)
 		}
 	})
 	t.Run("installed and a name-identified entry", func(t *testing.T) {
-		requireSubsetDictionary(t, `{"version": 1, "installed": ["due_date", "tag"],
+		requireSubsetDictionary(t, `{"version": 2, "installed": ["due_date", "tag"],
 			"properties": [{"name": "Cooking Time", "format": "number"},
 				{"property": "owner", "format": "objects", "object_types": ["participant"],
 				 "description": "who runs it"},
@@ -579,28 +579,28 @@ func TestAuthoringSubset_IndexAndDictionaryEnumValues(t *testing.T) {
 // state, non-authorable kinds and variants.
 func TestAuthoringSubset_RefusesBackupOnlySurfaces(t *testing.T) {
 	cases := map[string]string{
-		"a block id":                 `{"version": 1, "blocks": [{"id": "b1", "type": "paragraph", "text": "x"}]}`,
-		"the store escape hatch":     `{"version": 1, "store": {"k": 1}}`,
-		"the root escape hatch":      `{"version": 1, "root": {"background_color": "grey"}}`,
-		"the property legend":        `{"version": 1, "property_internal_keys": {"prio": "6a32d4856761631534b22f85"}}`,
-		"the type legend":            `{"version": 1, "type_internal_keys": {"task": "task"}}`,
-		"the option legend":          `{"version": 1, "properties": {"prio": ["High"]}, "option_ids": {"prio": {"High": "bafyreiopt1"}}}`,
-		"attribution in properties":  `{"version": 1, "properties": {"creator": "A6eK73Jm#roma"}}`,
-		"a non-authorable kind":      `{"version": 1, "kind": "participant"}`,
-		"an icon by file":            `{"version": 1, "icon": {"format": "file", "file": "bafyreicfd"}}`,
-		"an image cover":             `{"version": 1, "cover": {"format": "image", "file": "bafyreigejp", "y": -0.25}}`,
-		"internal_key on a page":     `{"version": 1, "internal_key": "x"}`,
-		"a counting date preset":     `{"version": 1, "blocks": [{"type": "dataview", "views": [{"filters": [{"property": "p", "condition": "less", "date_preset": "number_of_days_ago", "value": 7}]}]}]}`,
-		"a view id":                  `{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1", "name": "v"}]}]}`,
-		"block alignment":            `{"version": 1, "blocks": [{"type": "paragraph", "text": "x", "align": "center"}]}`,
-		"the heading_4 input alias":  `{"version": 1, "blocks": [{"type": "heading_4", "text": "x"}]}`,
-		"the equation input alias":   `{"version": 1, "blocks": [{"type": "equation", "text": "E=mc^2"}]}`,
-		"a widget block":             `{"version": 1, "blocks": [{"type": "widget", "layout": "tree"}]}`,
-		"the legacy group container": `{"version": 1, "blocks": [{"type": "group"}]}`,
-		"a file block":               `{"version": 1, "blocks": [{"type": "image", "object_id": "bafyimg"}]}`,
-		"a custom sort order":        `{"version": 1, "blocks": [{"type": "dataview", "views": [{"sorts": [{"property": "p", "direction": "custom", "custom_order": ["b", "a"]}]}]}]}`,
-		"dataview output-only state": `{"version": 1, "blocks": [{"type": "dataview", "source": ["bafysrc"], "views": [{"name": "v"}]}]}`,
-		"include_time off a date property": `{"version": 1, "kind": "object_type", "internal_key": "t1",
+		"a block id":                 `{"version": 2, "blocks": [{"id": "b1", "type": "paragraph", "text": "x"}]}`,
+		"the store escape hatch":     `{"version": 2, "store": {"k": 1}}`,
+		"the root escape hatch":      `{"version": 2, "root": {"background_color": "grey"}}`,
+		"the property legend":        `{"version": 2, "property_internal_keys": {"prio": "6a32d4856761631534b22f85"}}`,
+		"the type legend":            `{"version": 2, "type_internal_keys": {"task": "task"}}`,
+		"the option legend":          `{"version": 2, "properties": {"prio": ["High"]}, "option_ids": {"prio": {"High": "bafyreiopt1"}}}`,
+		"attribution in properties":  `{"version": 2, "properties": {"creator": "A6eK73Jm#roma"}}`,
+		"a non-authorable kind":      `{"version": 2, "kind": "participant"}`,
+		"an icon by file":            `{"version": 2, "icon": {"format": "file", "file": "bafyreicfd"}}`,
+		"an image cover":             `{"version": 2, "cover": {"format": "image", "file": "bafyreigejp", "y": -0.25}}`,
+		"internal_key on a page":     `{"version": 2, "internal_key": "x"}`,
+		"a counting date preset":     `{"version": 2, "blocks": [{"type": "dataview", "views": [{"filters": [{"property": "p", "condition": "less", "date_preset": "number_of_days_ago", "value": 7}]}]}]}`,
+		"a view id":                  `{"version": 2, "blocks": [{"type": "dataview", "views": [{"id": "v1", "name": "v"}]}]}`,
+		"block alignment":            `{"version": 2, "blocks": [{"type": "paragraph", "text": "x", "align": "center"}]}`,
+		"the heading_4 input alias":  `{"version": 2, "blocks": [{"type": "heading_4", "text": "x"}]}`,
+		"the equation input alias":   `{"version": 2, "blocks": [{"type": "equation", "text": "E=mc^2"}]}`,
+		"a widget block":             `{"version": 2, "blocks": [{"type": "widget", "layout": "tree"}]}`,
+		"the legacy group container": `{"version": 2, "blocks": [{"type": "group"}]}`,
+		"a file block":               `{"version": 2, "blocks": [{"type": "image", "object_id": "bafyimg"}]}`,
+		"a custom sort order":        `{"version": 2, "blocks": [{"type": "dataview", "views": [{"sorts": [{"property": "p", "direction": "custom", "custom_order": ["b", "a"]}]}]}]}`,
+		"dataview output-only state": `{"version": 2, "blocks": [{"type": "dataview", "source": ["bafysrc"], "views": [{"name": "v"}]}]}`,
+		"include_time off a date property": `{"version": 2, "kind": "object_type", "internal_key": "t1",
 			"properties": {"name": "T"},
 			"type_settings": {"property_definitions": [{"property": "p1", "format": "text", "include_time": true}]}}`,
 	}
@@ -624,10 +624,10 @@ func TestAuthoringSubset_RefusesBackupOnlySurfaces(t *testing.T) {
 		// coupling is schema-expressible, so the subset now refuses both at
 		// generation time, and this pins that the two sides agree.
 		for name, doc := range map[string]string{
-			"options off select": `{"version": 1, "kind": "object_type", "internal_key": "t1",
+			"options off select": `{"version": 2, "kind": "object_type", "internal_key": "t1",
 				"properties": {"name": "T"},
 				"type_settings": {"property_definitions": [{"property": "p1", "format": "date", "options": ["A"]}]}}`,
-			"object_types off objects/files": `{"version": 1, "kind": "object_type", "internal_key": "t1",
+			"object_types off objects/files": `{"version": 2, "kind": "object_type", "internal_key": "t1",
 				"properties": {"name": "T"},
 				"type_settings": {"property_definitions": [{"property": "p1", "format": "number", "object_types": ["task"]}]}}`,
 		} {
@@ -639,12 +639,19 @@ func TestAuthoringSubset_RefusesBackupOnlySurfaces(t *testing.T) {
 		}
 	})
 
-	t.Run("the pre-v0.22 template spelling is refused at the schema", func(t *testing.T) {
-		// {"type": "template"} with no kind is the one shape both sides
-		// refuse — the full reader by the §10 byte comparison, the authoring
-		// schema by its own conditional — so an authoring-side generator
-		// gets the verdict without ever reaching the format's error.
-		assert.Error(t, authoringOnly([]byte(`{"version": 1, "type": "template"}`)))
+	t.Run("the shape that used to mean a template is refused at the schema", func(t *testing.T) {
+		// {"type": "template"} with no kind meant a template before `kind`
+		// existed. The full reader refused it until the freeze; the version
+		// gate answers for every pre-freeze document now (§15 #9), so at
+		// version 2 the full reader reads it as an ordinary page. The
+		// authoring schema keeps refusing it by its own conditional, which is
+		// a subset's privilege and the right verdict for an AUTHOR: nobody
+		// writing a bundle from nothing means "a page whose type is the
+		// template type", and the mistake is caught before the format ever
+		// has to guess.
+		require.NoError(t, Validate([]byte(`{"version": 2, "type": "template"}`)),
+			"the full reader has no special case here any more")
+		assert.Error(t, authoringOnly([]byte(`{"version": 2, "type": "template"}`)))
 	})
 
 	t.Run("index surfaces", func(t *testing.T) {
@@ -655,11 +662,11 @@ func TestAuthoringSubset_RefusesBackupOnlySurfaces(t *testing.T) {
 		// widget-object lift carries: the auto-widget ledger and the
 		// auto-added flag, which only a live client can write honestly.
 		for name, doc := range map[string]string{
-			"the manifest": `{"version": 1, "name": "X", "entrypoint": "p1",
+			"the manifest": `{"version": 2, "name": "X", "entrypoint": "p1",
 				"manifest": {"properties": "properties.json"}}`,
-			"the auto-widget ledger": `{"version": 1, "name": "X", "entrypoint": "p1",
+			"the auto-widget ledger": `{"version": 2, "name": "X", "entrypoint": "p1",
 				"auto_widget_targets": ["_bin"]}`,
-			"an auto-added widget": `{"version": 1, "name": "X", "entrypoint": "p1",
+			"an auto-added widget": `{"version": 2, "name": "X", "entrypoint": "p1",
 				"widgets": [{"target": "p1", "auto_added": true}]}`,
 		} {
 			t.Run(name, func(t *testing.T) {
@@ -672,7 +679,7 @@ func TestAuthoringSubset_RefusesBackupOnlySurfaces(t *testing.T) {
 	})
 
 	t.Run("a dictionary entry identified only by internal_key", func(t *testing.T) {
-		doc := []byte(`{"version": 1, "properties": [{"internal_key": "6a32d4856761631534b22f85", "format": "number"}]}`)
+		doc := []byte(`{"version": 2, "properties": [{"internal_key": "6a32d4856761631534b22f85", "format": "number"}]}`)
 		_, err := UnmarshalPropertyDictionary(doc)
 		require.NoError(t, err, "must be full-valid")
 		require.Error(t, ValidateAuthoringPropertyDictionary(doc),
@@ -684,9 +691,9 @@ func TestAuthoringSubset_RefusesBackupOnlySurfaces(t *testing.T) {
 		// entry, where §12 refuses them), so on this surface the coupling is
 		// an ordinary subset narrowing: full-valid, subset-refused
 		for name, doc := range map[string]string{
-			"options off select":       `{"version": 1, "properties": [{"property": "p1", "format": "date", "options": ["A"]}]}`,
-			"object_types off objects": `{"version": 1, "properties": [{"property": "p1", "format": "number", "object_types": ["task"]}]}`,
-			"include_time off date":    `{"version": 1, "properties": [{"property": "p1", "format": "text", "include_time": true}]}`,
+			"options off select":       `{"version": 2, "properties": [{"property": "p1", "format": "date", "options": ["A"]}]}`,
+			"object_types off objects": `{"version": 2, "properties": [{"property": "p1", "format": "number", "object_types": ["task"]}]}`,
+			"include_time off date":    `{"version": 2, "properties": [{"property": "p1", "format": "text", "include_time": true}]}`,
 		} {
 			t.Run(name, func(t *testing.T) {
 				data := []byte(doc)
@@ -714,11 +721,21 @@ func TestAuthoringSchemas_IdentityAndHygiene(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			var doc struct {
-				Id      string          `json:"$id"`
-				Version json.RawMessage `json:"properties"`
+				Id         string `json:"$id"`
+				Properties struct {
+					Version struct {
+						Const *int `json:"const"`
+					} `json:"version"`
+				} `json:"properties"`
 			}
 			require.NoError(t, json.Unmarshal(tc.bytes, &doc))
 			assert.Equal(t, tc.url, doc.Id, "$id must be the published URL FormatVersion derives")
+			// the version const is the other copy the compiler cannot keep
+			// honest, and TestVersionIdentity covers only the three full
+			// schemas: an authoring schema left behind at a bump would refuse
+			// every document the format then writes
+			require.NotNil(t, doc.Properties.Version.Const, "schema must pin the version")
+			assert.Equal(t, FormatVersion, *doc.Properties.Version.Const)
 			assert.NotContains(t, string(tc.bytes), "x-output-only",
 				"an authoring schema has no output-only members by construction")
 
@@ -754,13 +771,13 @@ func TestAuthoring_AllTenReservedIdsAreRefused(t *testing.T) {
 		"allObjects", "chat", "bin", "widgets", "graph",
 	} {
 		t.Run(id, func(t *testing.T) {
-			doc := `{"version": 1, "id": "` + id + `", "blocks": [{"type": "paragraph", "text": "x"}]}`
+			doc := `{"version": 2, "id": "` + id + `", "blocks": [{"type": "paragraph", "text": "x"}]}`
 			require.Error(t, ValidateAuthoring([]byte(doc)),
 				"a reserved listing word must not be a bundle-local id")
 		})
 	}
 	t.Run("an ordinary id stays legal", func(t *testing.T) {
-		doc := `{"version": 1, "id": "chat-notes", "blocks": [{"type": "paragraph", "text": "x"}]}`
+		doc := `{"version": 2, "id": "chat-notes", "blocks": [{"type": "paragraph", "text": "x"}]}`
 		require.NoError(t, ValidateAuthoring([]byte(doc)))
 	})
 }

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.anytype.io/anyblock/1/object.schema.json",
+  "$id": "https://schemas.anytype.io/anyblock/2/object.schema.json",
   "title": "AnyBlock object",
-  "description": "A single Anytype object in AnyBlock JSON interchange format, version 1",
+  "description": "A single Anytype object in AnyBlock JSON interchange format, version 2",
   "x-app": "Anytype",
   "type": "object",
   "properties": {
@@ -11,7 +11,7 @@
       "description": "Which of the format's three grammars this document follows — an object document, a bundle index, or a property dictionary. OPTIONAL and DECORATIVE for validity: `version` alone gates the format, so a stale or invented URL here never makes a document invalid (a bundle written against a later schema still reads). What it does do is DISPATCH: a reader handed a file with no filename to go by uses this to pick the grammar, matching on the trailing `object|index|properties.schema.json` and ignoring the version segment. Without it a reader falls back to the document's shape, which can only tell the grammars apart when the document happens to carry a member unique to one. Every document this format writes carries it, and a hand-written one is easier for a reader to place if it does too."
     },
     "version": {
-      "const": 1
+      "const": 2
     },
     "kind": {
       "enum": [
@@ -294,6 +294,12 @@
         "view"
       ],
       "description": "How a sidebar widget renders: `link` is a single row (the default), `tree` expands children, `list` and `compact_list` show contents, `view` renders a type's or set's own view. One definition for the widget block and a bundle index's widgets."
+    },
+    "widgetListingLimit": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "How many entries a sidebar listing widget shows — the product cap for a bundle index's flat widget (the live corpus maximum is 50). One definition, referenced by the index schema, so the cap cannot drift into a second spelling. The widget BLOCK's own `limit` member deliberately takes the whole int32 range instead: the block is the fidelity fallback for exactly the widget the index refuses over this cap (the widget-object lift keeps the whole document), so the cap must not bind there."
     },
     "propertyMap": {
       "type": "object",
@@ -1058,7 +1064,9 @@
                 "type": "array",
                 "items": {
                   "type": "string",
-                  "minLength": 1
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "^[^\u0000-\u001f]+$"
                 }
               }
             }
@@ -1102,6 +1110,8 @@
               "property": {
                 "type": "string",
                 "minLength": 1,
+                "maxLength": 128,
+                "pattern": "^[^\u0000-\u001f]+$",
                 "description": "The property this block renders inline, by its document-facing spelling (`Due date`) — the same member name, and the same spelling, every other slot that names one property uses (a dataview's `properties[]` entry, a view's `columns[]`/`sorts[]`/`filters[]`). Spelled `key` before v0.41."
               }
             },
@@ -1170,7 +1180,8 @@
               "limit": {
                 "type": "integer",
                 "minimum": 0,
-                "maximum": 2147483647
+                "maximum": 2147483647,
+                "description": "How many entries the widget shows. The whole int32 range ON PURPOSE, where the bundle index's flat widget caps the same fact at $defs/widgetListingLimit: a widget above that cap is not lifted into the index and travels as a full document, and this block is that fallback — bounding it here would invalidate the very document the refusal produces."
               },
               "view_id": {
                 "type": "string"
@@ -1454,6 +1465,8 @@
         "property": {
           "type": "string",
           "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\u0000-\u001f]+$",
           "description": "The property this entry declares, by its document-facing spelling (`Due date`) — the same member name, and the same spelling, the view's `columns[]`, `sorts[]` and `filters[]` beside it use to refer to it. Spelled `key` before v0.41, twelve lines from siblings that spelled `property`, and each was a schema error in the other's position."
         },
         "format": {
@@ -1479,15 +1492,21 @@
         },
         "group_by": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\u0000-\u001f]+$"
         },
         "cover_property": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\u0000-\u001f]+$"
         },
         "end_property": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\u0000-\u001f]+$"
         },
         "hide_icon": {
           "type": "boolean"
@@ -1568,7 +1587,9 @@
       "properties": {
         "property": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\u0000-\u001f]+$"
         },
         "direction": {
           "enum": [
@@ -1631,7 +1652,9 @@
           "properties": {
             "property": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "maxLength": 128,
+              "pattern": "^[^\u0000-\u001f]+$"
             },
             "condition": {
               "enum": [
@@ -1699,6 +1722,8 @@
         "property": {
           "type": "string",
           "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[^\u0000-\u001f]+$",
           "description": "The property this column shows, by its document-facing spelling — the same member name, and the same spelling, the sorts, filters and the dataview's `properties[]` entries use."
         },
         "hidden": {

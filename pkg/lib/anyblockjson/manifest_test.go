@@ -60,15 +60,15 @@ func TestIndex_ManifestRoundTrip(t *testing.T) {
 // (second case green on a path nobody can open).
 func TestIndex_ManifestRefusals(t *testing.T) {
 	t.Run("an undeclared manifest member is refused", func(t *testing.T) {
-		_, err := UnmarshalIndex([]byte(`{"version":1,"manifest":{"templates":{}}}`))
+		_, err := UnmarshalIndex([]byte(`{"version":2,"manifest":{"templates":{}}}`))
 		require.Error(t, err)
 	})
 	t.Run("a non-string path is refused", func(t *testing.T) {
-		_, err := UnmarshalIndex([]byte(`{"version":1,"manifest":{"types":{"task":42}}}`))
+		_, err := UnmarshalIndex([]byte(`{"version":2,"manifest":{"types":{"task":42}}}`))
 		require.Error(t, err)
 	})
 	t.Run("an empty path is refused", func(t *testing.T) {
-		_, err := UnmarshalIndex([]byte(`{"version":1,"manifest":{"properties":""}}`))
+		_, err := UnmarshalIndex([]byte(`{"version":2,"manifest":{"properties":""}}`))
 		require.Error(t, err)
 	})
 }
@@ -109,7 +109,7 @@ func TestIndex_ManifestDoesNotLocateOptions(t *testing.T) {
 	// ignoring it would leave an author believing their options are located.
 	// Nothing has shipped on v0.45, so nothing is stranded.
 	t.Run("a bundle that still carries it is refused, not silently misread", func(t *testing.T) {
-		_, err := UnmarshalIndex([]byte(`{"version":1,"manifest":{
+		_, err := UnmarshalIndex([]byte(`{"version":2,"manifest":{
 			"options":{"bafyopt1":"relationsOptions/bafyopt1.anyblock.json"}}}`))
 		require.Error(t, err, "the manifest is closed (additionalProperties: false)")
 		assert.Contains(t, err.Error(), "options")
@@ -159,9 +159,9 @@ func TestIndex_ManifestBindsFileBlobs(t *testing.T) {
 		"the canonical form sorts the map's keys (§4)")
 
 	t.Run("a non-string or empty blob path is refused", func(t *testing.T) {
-		_, err := UnmarshalIndex([]byte(`{"version":1,"manifest":{"files":{"bafyx":42}}}`))
+		_, err := UnmarshalIndex([]byte(`{"version":2,"manifest":{"files":{"bafyx":42}}}`))
 		require.Error(t, err)
-		_, err = UnmarshalIndex([]byte(`{"version":1,"manifest":{"files":{"bafyx":""}}}`))
+		_, err = UnmarshalIndex([]byte(`{"version":2,"manifest":{"files":{"bafyx":""}}}`))
 		require.Error(t, err)
 	})
 }

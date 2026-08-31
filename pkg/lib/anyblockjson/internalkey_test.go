@@ -40,7 +40,7 @@ func TestPropertyDefinitions_InternalKeyAloneIdentifiesVerbatim(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			// given
-			doc := `{"version": 1, "kind": "object_type", "internal_key": "t",
+			doc := `{"version": 2, "kind": "object_type", "internal_key": "t",
 				"type_settings": {"property_definitions": [
 					{"internal_key": "` + tc.internalKey + `", "format": "` + tc.format + `", "section": "featured"}]}}`
 
@@ -65,7 +65,7 @@ func TestPropertyDefinitions_InternalKeyAloneIdentifiesVerbatim(t *testing.T) {
 // for (§3 chain step 1). authoredKey is the one place the order lives.
 func TestPropertyDefinitions_PropertyOutranksInternalKey(t *testing.T) {
 	// given a pair that disagrees on purpose
-	doc := `{"version": 1, "kind": "object_type", "internal_key": "t",
+	doc := `{"version": 2, "kind": "object_type", "internal_key": "t",
 		"property_internal_keys": {"budget": "6a83296f61fab2265263ae34"},
 		"type_settings": {"property_definitions": [
 			{"property": "budget", "internal_key": "somethingElse", "format": "number", "section": "featured"}]}}`
@@ -83,7 +83,7 @@ func TestPropertyDefinitions_PropertyOutranksInternalKey(t *testing.T) {
 // entry with none — in BOTH homes of the shape (§2e).
 func TestPropertyDefinitions_IdentityIsPropertyOrInternalKeyOrName(t *testing.T) {
 	entryDoc := func(entry string) string {
-		return `{"version": 1, "kind": "object_type", "internal_key": "t",
+		return `{"version": 2, "kind": "object_type", "internal_key": "t",
 			"type_settings": {"property_definitions": [` + entry + `]}}`
 	}
 	t.Run("each identity member alone is enough", func(t *testing.T) {
@@ -101,10 +101,10 @@ func TestPropertyDefinitions_IdentityIsPropertyOrInternalKeyOrName(t *testing.T)
 	})
 	t.Run("the dictionary home says the same", func(t *testing.T) {
 		_, err := UnmarshalPropertyDictionary([]byte(
-			`{"version":1,"properties":[{"internal_key":"6a83296f61fab2265263ae34","format":"number"}]}`))
+			`{"version":2,"properties":[{"internal_key":"6a83296f61fab2265263ae34","format":"number"}]}`))
 		assert.NoError(t, err)
 		_, err = UnmarshalPropertyDictionary([]byte(
-			`{"version":1,"properties":[{"format":"number"}]}`))
+			`{"version":2,"properties":[{"format":"number"}]}`))
 		require.Error(t, err)
 	})
 }
@@ -113,7 +113,7 @@ func TestPropertyDefinitions_IdentityIsPropertyOrInternalKeyOrName(t *testing.T)
 // home: the fold ladder that recovers a stored key from a `property`
 // spelling must not touch a member that IS the stored key.
 func TestPropertyDictionary_InternalKeyIsVerbatim(t *testing.T) {
-	d, err := UnmarshalPropertyDictionary([]byte(`{"version":1,"properties":[
+	d, err := UnmarshalPropertyDictionary([]byte(`{"version":2,"properties":[
 		{"internal_key":"due_date","format":"date"},
 		{"internal_key":"6a83296f61fab2265263ae34","name":"Budget","format":"number"}]}`))
 	require.NoError(t, err)
@@ -143,7 +143,7 @@ func TestPropertyDictionary_ExportWritesBothIdentityMembers(t *testing.T) {
 // one identity through the two different members are still two definitions
 // of one property, refused with the first occurrence named (§2e, §2f).
 func TestPropertyDictionary_DuplicateAcrossTheTwoIdentityMembers(t *testing.T) {
-	_, err := UnmarshalPropertyDictionary([]byte(`{"version":1,"properties":[
+	_, err := UnmarshalPropertyDictionary([]byte(`{"version":2,"properties":[
 		{"property":"6a83296f61fab2265263ae34","format":"number"},
 		{"internal_key":"6a83296f61fab2265263ae34","format":"text"}]}`))
 	require.Error(t, err)
@@ -161,7 +161,7 @@ func TestRelationSettings_RefusesTheIdentityPair(t *testing.T) {
 		"internal_key": "envelope",
 	} {
 		t.Run(member, func(t *testing.T) {
-			err := Validate([]byte(`{"version":1,"kind":"property","id":"o1","internal_key":"b",
+			err := Validate([]byte(`{"version":2,"kind":"property","id":"o1","internal_key":"b",
 				"property_settings":{"format":"number","` + member + `":"x"}}`))
 			require.Error(t, err)
 			assert.Contains(t, err.Error(), "/property_settings/"+member)
@@ -175,7 +175,7 @@ func TestRelationSettings_RefusesTheIdentityPair(t *testing.T) {
 // and a readable reason — the same writable-key rule every stored-key slot
 // carries (§3), stated where the fault is instead of as a bare schema bound.
 func TestPropertyDefinitions_UnwritableInternalKeyIsRefusedByName(t *testing.T) {
-	err := Validate([]byte(`{"version": 1, "kind": "object_type", "internal_key": "t",
+	err := Validate([]byte(`{"version": 2, "kind": "object_type", "internal_key": "t",
 		"type_settings": {"property_definitions": [{"internal_key": "a\nb", "format": "text"}]}}`))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "/type_settings/property_definitions/0/internal_key")

@@ -516,7 +516,7 @@ func TestEnvelope_Variants(t *testing.T) {
 }
 
 func TestImport_Aliases(t *testing.T) {
-	doc := `{"version": 1, "blocks": [
+	doc := `{"version": 2, "blocks": [
 		{"type": "heading_4", "text": "deep"},
 		{"type": "header_4", "text": "deeper"},
 		{"type": "equation", "text": "E=mc^2"},
@@ -536,7 +536,7 @@ func TestImport_Aliases(t *testing.T) {
 }
 
 func TestImport_TitleAbsorption(t *testing.T) {
-	doc := `{"version": 1, "blocks": [
+	doc := `{"version": 2, "blocks": [
 		{"type": "title", "text": "My **Title**"},
 		{"type": "description", "text": "Sub"},
 		{"type": "featured_properties"},
@@ -551,7 +551,7 @@ func TestImport_TitleAbsorption(t *testing.T) {
 	assert.Equal(t, "body", snap.Blocks[1].Content.(*model.BlockContentOfText).Text.Text)
 
 	// when the property is already set, the block is simply dropped
-	doc2 := `{"version": 1, "properties": {"name": "Kept"}, "blocks": [
+	doc2 := `{"version": 2, "properties": {"name": "Kept"}, "blocks": [
 		{"type": "title", "text": "Ignored"}
 	]}`
 	_, snap2, err := Unmarshal([]byte(doc2), Options{GenerateId: seqIds("g")})
@@ -562,7 +562,7 @@ func TestImport_TitleAbsorption(t *testing.T) {
 // TestExplicitIndentZero: an explicit "indent": 0 is accepted on input and
 // canonicalized away on re-export (§4 omit-default canon).
 func TestExplicitIndentZero(t *testing.T) {
-	doc := `{"version": 1, "blocks": [{"indent": 0, "id": "a", "type": "paragraph", "text": "x"}]}`
+	doc := `{"version": 2, "blocks": [{"indent": 0, "id": "a", "type": "paragraph", "text": "x"}]}`
 	sbType, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
 	out, err := Marshal(sbType, snap, Options{})
@@ -637,7 +637,7 @@ func TestGeneratedDocs_ByteStable(t *testing.T) {
 		for n := 1 + rnd.Intn(5); n > 0; n-- {
 			blocks = append(blocks, blockGens[rnd.Intn(len(blockGens))](rnd.Intn(1000)))
 		}
-		doc := fmt.Sprintf(`{"version": 1, "properties": {"name": "Doc %d"}, "blocks": [%s]}`,
+		doc := fmt.Sprintf(`{"version": 2, "properties": {"name": "Doc %d"}, "blocks": [%s]}`,
 			i, strings.Join(blocks, ","))
 		require.NoError(t, Validate([]byte(doc)), "case %d: generated doc must be valid: %s", i, doc)
 

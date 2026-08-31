@@ -169,7 +169,7 @@ func TestFold_DisabledWithoutSpaceId(t *testing.T) {
 	assert.NotContains(t, string(data), `"`+foldIdentity+`"`)
 
 	// and a bare identity on import stays bare
-	doc := `{"version": 1, "properties": {"assignee": ["` + foldIdentity + `"]}}`
+	doc := `{"version": 2, "properties": {"assignee": ["` + foldIdentity + `"]}}`
 	_, snap, err := Unmarshal([]byte(doc), opts)
 	require.NoError(t, err)
 	assert.Equal(t, []string{foldIdentity},
@@ -190,7 +190,7 @@ func TestFold_ImportRebuildsTheComposite(t *testing.T) {
 	notAnIdentity := foldIdentity[:len(foldIdentity)-4] + "aaaa"
 
 	// given
-	doc := `{"version": 1, "properties": {
+	doc := `{"version": 2, "properties": {
 		"assignee": ["` + foldIdentity + `#roma_kha", "` + notAnIdentity + `"]}}`
 
 	// when

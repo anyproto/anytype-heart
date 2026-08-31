@@ -88,7 +88,7 @@ func TestComposer_ComposesTheBundleFiles(t *testing.T) {
 	omitted, _ = c.Observe(model.SmartBlockType_STType, typeSnap)
 	require.False(t, omitted)
 	require.NoError(t, c.ObserveWritten(model.SmartBlockType_STType, typeSnap,
-		[]byte(`{"version":1}`), "types/bafytask.anyblock.json"))
+		[]byte(`{"version":2}`), "types/bafytask.anyblock.json"))
 
 	optSnap := &model.SmartBlockSnapshotBase{Details: detFields(map[string]*types.Value{
 		"id": strVal("bafyurgent"), "relationKey": strVal("tag"),
@@ -98,12 +98,12 @@ func TestComposer_ComposesTheBundleFiles(t *testing.T) {
 	omitted, _ = c.Observe(model.SmartBlockType_STRelationOption, optSnap)
 	require.False(t, omitted)
 	require.NoError(t, c.ObserveWritten(model.SmartBlockType_STRelationOption, optSnap,
-		[]byte(`{"version":1}`), "options/bafyurgent.anyblock.json"))
+		[]byte(`{"version":2}`), "options/bafyurgent.anyblock.json"))
 
 	pageSnap := &model.SmartBlockSnapshotBase{Details: detFields(map[string]*types.Value{
 		"id": strVal("bafypage"),
 	})}
-	pageDoc := []byte(`{"version":1,"properties":{"due_date":"2026-01-01","tag":["urgent"]}}`)
+	pageDoc := []byte(`{"version":2,"properties":{"due_date":"2026-01-01","tag":["urgent"]}}`)
 	omitted, _ = c.Observe(model.SmartBlockType_Page, pageSnap)
 	require.False(t, omitted)
 	require.NoError(t, c.ObserveWritten(model.SmartBlockType_Page, pageSnap,
@@ -170,10 +170,10 @@ func TestComposer_ObservationOrderNeverReachesTheBytes(t *testing.T) {
 			{model.SmartBlockType_STRelation, testInstalledCopy(t, "assignee"), nil, ""},
 			{model.SmartBlockType_STType, &model.SmartBlockSnapshotBase{Details: detFields(map[string]*types.Value{
 				"id": strVal("bafytask"), "uniqueKey": strVal("ot-task"),
-			})}, []byte(`{"version":1}`), "types/bafytask.anyblock.json"},
+			})}, []byte(`{"version":2}`), "types/bafytask.anyblock.json"},
 			{model.SmartBlockType_Page, &model.SmartBlockSnapshotBase{Details: detFields(map[string]*types.Value{
 				"id": strVal("bafypage"),
-			})}, []byte(`{"version":1,"properties":{"due_date":"2026-01-01"}}`), "objects/bafypage.anyblock.json"},
+			})}, []byte(`{"version":2,"properties":{"due_date":"2026-01-01"}}`), "objects/bafypage.anyblock.json"},
 		}
 	}
 	run := func(t *testing.T, seq []obs) (string, string) {
@@ -242,11 +242,11 @@ func TestComposer_SameNamedOptionsHaveATotalOrder(t *testing.T) {
 			omitted, _ := c.Observe(model.SmartBlockType_STRelationOption, snap)
 			require.False(t, omitted)
 			require.NoError(t, c.ObserveWritten(model.SmartBlockType_STRelationOption, snap,
-				[]byte(`{"version":1}`), "options/"+snap.Details.Fields["id"].GetStringValue()+".anyblock.json"))
+				[]byte(`{"version":2}`), "options/"+snap.Details.Fields["id"].GetStringValue()+".anyblock.json"))
 		}
 		pageSnap := &model.SmartBlockSnapshotBase{Details: detFields(map[string]*types.Value{"id": strVal("bafypage")})}
 		require.NoError(t, c.ObserveWritten(model.SmartBlockType_Page, pageSnap,
-			[]byte(`{"version":1,"properties":{"tag":["urgent"]}}`), "objects/bafypage.anyblock.json"))
+			[]byte(`{"version":2,"properties":{"tag":["urgent"]}}`), "objects/bafypage.anyblock.json"))
 		_, dict, _, err := c.Finish()
 		require.NoError(t, err)
 		return string(dict)

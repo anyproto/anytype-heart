@@ -39,11 +39,11 @@ func TestValidate_ARestrictedIconSlotNamesOneUnion(t *testing.T) {
 	}
 
 	for name, doc := range map[string]string{
-		"a cover variant on a callout": `{"version": 1, "type": "page", "blocks": [
+		"a cover variant on a callout": `{"version": 2, "type": "page", "blocks": [
 			{"type": "callout", "icon": {"format": "image", "file": "bafy1"}, "text": "x"}]}`,
-		"an invented format on a callout": `{"version": 1, "type": "page", "blocks": [
+		"an invented format on a callout": `{"version": 2, "type": "page", "blocks": [
 			{"type": "callout", "icon": {"format": "url", "url": "http://x"}, "text": "x"}]}`,
-		"an object-only variant on a callout": `{"version": 1, "type": "page", "blocks": [
+		"an object-only variant on a callout": `{"version": 2, "type": "page", "blocks": [
 			{"type": "callout", "icon": {"format": "icon", "name": "rocket"}, "text": "x"}]}`,
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -59,7 +59,7 @@ func TestValidate_ARestrictedIconSlotNamesOneUnion(t *testing.T) {
 	// the control: the OBJECT slot still names all four, so the fix cannot pass
 	// by narrowing every slot to the callout's set
 	t.Run("the object slot still names all four", func(t *testing.T) {
-		issues := firstIssues(t, `{"version": 1, "type": "page", "icon": {"format": "url", "url": "http://x"}}`)
+		issues := firstIssues(t, `{"version": 2, "type": "page", "icon": {"format": "url", "url": "http://x"}}`)
 		require.Len(t, issues, 1)
 		assert.Contains(t, issues[0].Message, "'emoji', 'file', 'icon', 'color'")
 	})
@@ -67,9 +67,9 @@ func TestValidate_ARestrictedIconSlotNamesOneUnion(t *testing.T) {
 	// and both slots still accept what they should
 	t.Run("valid icons still validate", func(t *testing.T) {
 		for _, doc := range []string{
-			`{"version": 1, "type": "page", "icon": {"format": "emoji", "emoji": "📕"}}`,
-			`{"version": 1, "type": "page", "icon": {"format": "icon", "name": "rocket"}}`,
-			`{"version": 1, "type": "page", "blocks": [{"type": "callout", "icon": {"format": "emoji", "emoji": "📕"}, "text": "x"}]}`,
+			`{"version": 2, "type": "page", "icon": {"format": "emoji", "emoji": "📕"}}`,
+			`{"version": 2, "type": "page", "icon": {"format": "icon", "name": "rocket"}}`,
+			`{"version": 2, "type": "page", "blocks": [{"type": "callout", "icon": {"format": "emoji", "emoji": "📕"}, "text": "x"}]}`,
 		} {
 			require.NoError(t, Validate([]byte(doc)), fmt.Sprintf("doc: %s", doc))
 		}

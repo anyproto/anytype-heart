@@ -41,8 +41,20 @@ const (
 	// FormatVersion is the AnyBlock JSON format version this package reads
 	// and writes (§10). It is a single integer with no minor axis: every
 	// format change bumps it, and a reader rejects anything newer than its
-	// own while migrating anything older.
-	FormatVersion = 1
+	// own while migrating anything older — with the one carve-out
+	// preFreezeVersion names.
+	FormatVersion = 2
+
+	// preFreezeVersion is the integer every draft carried while the grammar
+	// was still moving, and the one version this reader refuses outright
+	// (§10, §15 #9). It is NOT "older than FormatVersion": every revision of
+	// the pre-release grammar — the three legends that replaced `refs`, the
+	// relation lift, the `relation`→`property` rename — shipped under this
+	// same integer, so a document declaring it names no single grammar to
+	// migrate from. 2 is the first frozen grammar and the first this reader
+	// will ever migrate FROM, which is why the refusal is spelled as an
+	// equality and never as `v < FormatVersion`.
+	preFreezeVersion = 1
 
 	// schemaBaseURL is where the published schemas live, one directory per
 	// format version.
@@ -192,7 +204,7 @@ func validateToDoc(data []byte, lenient bool, warn func(Issue)) (map[string]any,
 	iconFormatIssues(doc, &spoken)
 	// a relation document's required `format` (§2d), same trade again: the
 	// schema's `required` verdict cannot list the names, and the author most
-	// likely to be missing it — one holding a pre-v0.31 document that spelled
+	// likely to be missing it — one holding a legacy document that spelled
 	// `relation_format` in properties — needs the vocabulary, not the bound
 	propertyFormatSlotIssue(doc, &spoken)
 	if err := sch.Validate(doc); err != nil {
@@ -212,7 +224,10 @@ func validateToDoc(data []byte, lenient bool, warn func(Issue)) (map[string]any,
 
 // checkVersion rejects unsupported versions with a dedicated error naming
 // both versions (§10), before schema validation gets a chance to produce a
-// generic constraint failure.
+// generic constraint failure. Two versions are unsupported for different
+// reasons: anything NEWER than this reader (no forward compatibility, and the
+// caller is told so through NewerFormat), and preFreezeVersion, which is
+// refused as a draft rather than migrated.
 func checkVersion(doc map[string]any) error {
 	raw, ok := doc["version"]
 	if !ok {
@@ -234,6 +249,16 @@ func checkVersion(doc map[string]any) error {
 				Message: fmt.Sprintf("document version %d is newer than the supported version %d", v, FormatVersion),
 			}},
 		}
+	}
+	if v == preFreezeVersion {
+		return &ValidationError{Issues: []Issue{{
+			Path: "/version",
+			Message: fmt.Sprintf(
+				"version %d is the pre-freeze draft format and cannot be read: the grammar changed "+
+					"more than once while %d was current, so there is no single format to migrate from. "+
+					"Re-export the document to get version %d",
+				preFreezeVersion, preFreezeVersion, FormatVersion),
+		}}}
 	}
 	if v < 1 {
 		return &ValidationError{Issues: []Issue{{Path: "/version", Message: fmt.Sprintf("unknown version %d", v)}}}
@@ -373,7 +398,7 @@ func collectSchemaLeaves(e *jsonschema.ValidationError, printer *message.Printer
 		out := make([]schemaLeaf, 0, len(props))
 		for _, prop := range props {
 			msg := unknownPropertyMessage(prop)
-			// the pre-v0.32 relation-definition spellings, at the ROOT only
+			// the legacy relation-definition spellings, at the ROOT only
 			// — anywhere else (a view, a sort) the same names are ordinary
 			// unknown members and the hint would mislead. Same reasoning as
 			// `refs` (§10): told only "not allowed", the obvious wrong
@@ -694,7 +719,7 @@ func schemaIssueMessage(e *jsonschema.ValidationError, printer *message.Printer)
 // reader the wrong way, and the format's purpose is the generate → validate →
 // feed-back loop (§13):
 //
-//   - `key` is the pre-v0.41 spelling of the property-naming slot in a
+//   - `key` is the legacy spelling of the property-naming slot in a
 //     dataview's `properties[]` and the `property` block — 95,842 slots of a
 //     28,599-document export spell it, so an agent prompted on old exports
 //     WILL write it. Told only "not allowed", the obvious wrong repair is to
@@ -707,7 +732,7 @@ func schemaIssueMessage(e *jsonschema.ValidationError, printer *message.Printer)
 //     legend — which leaves behind exactly the short labels the legend was the
 //     only means of inverting, now addressing nothing. The version integer
 //     cannot say this either: the grammar changed under a version this reader
-//     still accepts, so `refs` is the one marker a pre-v0.20 document carries,
+//     still accepts, so `refs` is the one marker a legacy document carries,
 //     and the message is where the reader is told what happened.
 //
 // propertySettingsMemberHomes names, for each propertyDefinition member the
@@ -715,19 +740,19 @@ func schemaIssueMessage(e *jsonschema.ValidationError, printer *message.Printer)
 // bare "not allowed" cannot point at.
 var propertySettingsMemberHomes = map[string]string{
 	"internal_key":  "the envelope `internal_key` is the property's stored key",
-	"property":      "a property document is addressed by its envelope `internal_key`; its spelling is derived, never stated here",
+	"property":      "a property document is addressed by its envelope `internal_key`; its spelling is its display name, which the `name` property already carries",
 	"name":          "the property's name is the `name` property",
 	"description":   "the property's description is the `description` property",
 	"options":       "a property's options are property_option documents of their own",
-	"max_count":     "it still travels in `properties` as `property_max_count`",
-	"readonly":      "it still travels in `properties` as `property_readonly_value`",
-	"default_value": "it still travels in `properties` as `property_default_value`",
+	"max_count":     "it still travels in `properties` as \"Max values\"",
+	"readonly":      "it still travels in `properties` as \"Property value is readonly\"",
+	"default_value": "it still travels in `properties` as \"Default value\"",
 }
 
 func unknownPropertyMessage(prop string) string {
 	switch prop {
 	case "key":
-		return `property "key" is not allowed — the member that names a property is spelled "property" in every structure: a dataview's properties[] entry and the property block spelled it "key" before v0.41, twelve lines from view columns, sorts and filters that spelled "property". Rename the member and keep its value`
+		return `property "key" is not allowed — the member that names a property is spelled "property" in every structure: a dataview's properties[] entry and the property block spelled it "key" earlier, twelve lines from view columns, sorts and filters that spelled "property". Rename the member and keep its value`
 	case "children":
 		return `property "children" is not allowed — the flat format has no children; nest with indent instead`
 	case "refs":
@@ -893,6 +918,15 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 	// it up is where the property is named, not at this seam.
 	warnKeySpellingHygiene(doc, warnIssue)
 
+	// Two member names that are one name in two Unicode normal forms render
+	// identically and resolve — under §3's NFC rule — through one canonical
+	// form. Warned here, refused only at the import seam and only when they
+	// land on ONE stored key (the duplicate-binding refusal): export
+	// legitimately writes both byte forms when the space holds both as
+	// stored keys, each its own verbatim address, so a hard refusal here
+	// would make Marshal emit what Validate rejects (§11, I1).
+	warnNFCTwinSpellings(doc, warnIssue)
+
 	// The template gate reads `kind`, and nothing else (§2). It used to
 	// resolve the `type` spelling through the document's own chain — legend,
 	// bundled table, verbatim — a private copy of §3 written so that Validate,
@@ -901,44 +935,20 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 	// touches, so the copy is gone and so is the class of disagreement it
 	// managed.
 	//
-	// The pre-v0.22 spelling of a template is `{"type": "template"}` with no
-	// `kind`, and it is REFUSED rather than migrated (§10). It has to be
-	// refused loudly, because it is the one shape that would otherwise fail
-	// silently: a template exported yesterday whose target type happened to be
-	// absent carries nothing to trip the template_for gate, so it would import
-	// as an ordinary Page and nothing anywhere would say so. The comparison is
-	// on the RAW spelling — no legend, no bundled table — because it is
-	// identifying a byte sequence a previous version of this format wrote, not
-	// resolving a type.
+	// The special case that lived here refused the legacy spelling of a
+	// template — `{"type": "template"}` with no `kind` — because that one
+	// shape was well-formed under both the old reading and the new, and so
+	// would have imported as an ordinary page with nothing anywhere saying
+	// so. It existed only for that ambiguity, and the freeze ended it: every
+	// document written under the old reading declares version 1, which
+	// checkVersion refuses before this pass runs (§10, §15 #9). So
+	// `template_for` is now gated on `kind` alone, with no exemption — a
+	// document with no `kind` reaches the first case below and is told
+	// template_for needs a template, which for a version-2 document is the
+	// whole truth.
 	kind, _ := doc["kind"].(string)
 	typeTerm, _ := doc["type"].(string)
-	// The refusal reads the document's OWN type_internal_keys legend beside the raw
-	// spelling, because that is what the deleted chain read. Two documents
-	// need it, in opposite directions: `{"type_internal_keys":{"tpl":"template"},
-	// "type":"tpl"}` WAS a template under v0.21 (the legend resolves tpl to
-	// the template key) and would otherwise import as a silent Page, and
-	// `{"type_internal_keys":{"template":"custom1"},"type":"template"}` was NEVER one
-	// (the legend rebinds the spelling away) and would otherwise be told to
-	// add a kind that changes what it is. The clause resolves nothing beyond
-	// the document itself — the same thing the refusal already does with
-	// `type` — and dies with the rest of the refusal at the next version
-	// bump (§15.9). The bundled table needs no equivalent: probing
-	// bundle.ListTypesKeys(), the only bundled spelling that resolves to the
-	// stored key `template` is the literal `template`, which the raw
-	// comparison already covers.
-	templateKey := typeTerm == typeKeyTemplate
-	if legend, ok := doc[memberTypeInternalKeys].(map[string]any); ok {
-		if bound, ok := legend[typeTerm].(string); ok {
-			templateKey = bound == typeKeyTemplate
-		}
-	}
-	legacyTemplate := kind == "" && templateKey
-	if legacyTemplate {
-		addIssue("/kind", `a template must say so: add "kind": "template". `+
-			`Until v0.22 the type "template" carried that meaning on its own, and it no longer does `+
-			`— without the kind this document imports as an ordinary page`)
-	}
-	if _, ok := doc["template_for"]; ok && !legacyTemplate {
+	if _, ok := doc["template_for"]; ok {
 		switch {
 		case kind != kindNames.name(model.SmartBlockType_Template):
 			addIssue("/template_for", `template_for is only valid on templates (kind "template")`)
@@ -1781,22 +1791,15 @@ func propertyNameIssues(doc map[string]any) keySlotReport {
 	// nothing: import stored it with an empty relation key, the view silently
 	// stopped meaning what it said, and export re-emitted the same nameless
 	// node forever.
-	for i, raw := range blocksOf(doc) {
-		block, _ := raw.(map[string]any)
-		if block == nil {
-			continue
-		}
-		views, _ := block["views"].([]any)
-		for j, rawView := range views {
-			view, _ := rawView.(map[string]any)
-			if view == nil {
-				continue
-			}
-			nodes, _ := view["filters"].([]any)
-			checkFilterProperties(nodes,
-				fmt.Sprintf("/blocks/%d/views/%d/filters", i, j), rejectValue)
-		}
-	}
+	//
+	// The sibling block key slots ride the same walk under the same
+	// writable-key rule the schema bounds them with (§3): the schema's
+	// verdicts are path-correct here, but this pass owns the wording
+	// (unwritableKeyReason names which half of the rule broke where the
+	// schema names a bound), and it carries the one clause the pattern
+	// cannot — DEL, which sits above the pattern's control-character class —
+	// so Validate and the import seam cannot disagree about a spelling.
+	checkBlockKeySlots(doc, rejectValue)
 	for _, field := range []string{memberPropertyInternalKeys, memberTypeInternalKeys} {
 		legend, _ := doc[field].(map[string]any)
 		for _, term := range sortedMapKeys(legend) {
@@ -1814,6 +1817,80 @@ func propertyNameIssues(doc map[string]any) keySlotReport {
 		}
 	}
 	return r
+}
+
+// checkBlockKeySlots restates the writable-key rule (§3) at every property
+// key slot a block can carry: the property block's `property`, a link
+// block's `properties[]`, a dataview's `properties[].property`, and a view's
+// `group_by`/`cover_property`/`end_property`/`columns[]`/`sorts[]`/
+// `filters[]`. One predicate — isWritablePropertyKey, the export side's own
+// — at every slot, so the two directions cannot drift into Marshal emitting
+// what Validate rejects (§11, I1).
+func checkBlockKeySlots(doc map[string]any, reject func(string, string)) {
+	rejectKey := func(path, key string) {
+		if !isWritablePropertyKey(key) {
+			reject(path, unwritableKeyReason("property key", key))
+		}
+	}
+	for i, raw := range blocksOf(doc) {
+		block, _ := raw.(map[string]any)
+		if block == nil {
+			continue
+		}
+		base := fmt.Sprintf("/blocks/%d", i)
+		blockType, _ := block["type"].(string)
+		switch blockType {
+		case "property":
+			if key, isString := block[memberProperty].(string); isString {
+				rejectKey(base+"/"+memberProperty, key)
+			}
+		case "link":
+			list, _ := block["properties"].([]any)
+			for j, item := range list {
+				if key, isString := item.(string); isString {
+					rejectKey(fmt.Sprintf("%s/properties/%d", base, j), key)
+				}
+			}
+		case "dataview":
+			list, _ := block["properties"].([]any)
+			for j, item := range list {
+				entry, _ := item.(map[string]any)
+				if entry == nil {
+					continue
+				}
+				if key, isString := entry[memberProperty].(string); isString {
+					rejectKey(fmt.Sprintf("%s/properties/%d/%s", base, j, memberProperty), key)
+				}
+			}
+			views, _ := block["views"].([]any)
+			for j, rawView := range views {
+				view, _ := rawView.(map[string]any)
+				if view == nil {
+					continue
+				}
+				vBase := fmt.Sprintf("%s/views/%d", base, j)
+				for _, member := range []string{"group_by", "cover_property", "end_property"} {
+					if key, isString := view[member].(string); isString {
+						rejectKey(vBase+"/"+member, key)
+					}
+				}
+				for _, list := range []string{"columns", "sorts"} {
+					entries, _ := view[list].([]any)
+					for k, rawEntry := range entries {
+						entry, _ := rawEntry.(map[string]any)
+						if entry == nil {
+							continue
+						}
+						if key, isString := entry[memberProperty].(string); isString {
+							rejectKey(fmt.Sprintf("%s/%s/%d/%s", vBase, list, k, memberProperty), key)
+						}
+					}
+				}
+				nodes, _ := view["filters"].([]any)
+				checkFilterProperties(nodes, vBase+"/filters", reject)
+			}
+		}
+	}
 }
 
 // checkFilterProperties walks a view's filter tree and reports every LEAF
@@ -1835,7 +1912,7 @@ func checkFilterProperties(nodes []any, path string, reject func(string, string)
 			reject(nPath, "a filter has to name the property it filters on")
 			continue
 		}
-		if prop, isString := raw.(string); isString && prop == "" {
+		if prop, isString := raw.(string); isString && !isWritablePropertyKey(prop) {
 			reject(nPath+"/property", unwritableKeyReason("property key", prop))
 		}
 	}
@@ -1900,7 +1977,7 @@ func deniedPropertyKey(key string) (string, bool) {
 	}
 	// the relation-definition lift (§2d), same rule and same derivation. This
 	// arm is also the whole of the legacy-input decision (§10): a document
-	// written before v0.31 spells `relation_format` here, and it is REFUSED
+	// written earlier spells `relation_format` here, and it is REFUSED
 	// with the repair named rather than read with a warning — the format is a
 	// pre-release draft with no external consumers, and a second legal
 	// spelling for a relation's format is exactly the ambiguity the lift
@@ -2575,6 +2652,38 @@ func warnKeySpellingHygiene(doc map[string]any, warn func(path, format string, a
 			for _, term := range sortedMapKeys(m) {
 				report(member, term)
 			}
+		}
+	}
+}
+
+// warnNFCTwinSpellings reports, per key-spelling map, every pair of member
+// names that are one name in two Unicode normal forms (§3: a NAME is spelled
+// NFC on the wire). Byte-distinct, so JSON admits both, and rendered
+// identically, so no reader can tell them apart — which is exactly how a
+// hostile or hand-edited document plants an indistinguishable twin of a real
+// property. %+q spells the code points apart where %q would print the same
+// glyphs twice. A warning, not a refusal — see the semanticIssues call site.
+func warnNFCTwinSpellings(doc map[string]any, warn func(path, format string, args ...any)) {
+	for _, member := range []string{"properties", memberPropertyInternalKeys,
+		memberTypeInternalKeys, "option_ids"} {
+		m, _ := doc[member].(map[string]any)
+		if m == nil {
+			continue
+		}
+		firstSpelling := map[string]string{}
+		for _, term := range sortedMapKeys(m) {
+			canonical := nfcTerm(term)
+			first, seen := firstSpelling[canonical]
+			if !seen {
+				firstSpelling[canonical] = term
+				continue
+			}
+			warn("/"+member+"/"+escapeJSONPointer(term),
+				"%+q and %+q are one name in two Unicode normal forms — byte-distinct, "+
+					"rendered identically; NFC is the canonical spelling (§3), and both "+
+					"resolve through it unless a legend or a live stored key binds the "+
+					"exact bytes",
+				first, term)
 		}
 	}
 }

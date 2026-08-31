@@ -100,14 +100,14 @@ func TestIndent_FloatForms(t *testing.T) {
 	}
 
 	t.Run("V2 fires on float indent under a leaf", func(t *testing.T) {
-		doc := `{"version": 1, "blocks": [{"type": "divider"}, {"indent": 1.0, "type": "paragraph", "text": "x"}]}`
+		doc := `{"version": 2, "blocks": [{"type": "divider"}, {"indent": 1.0, "type": "paragraph", "text": "x"}]}`
 		valErr, _ := agree(t, doc)
 		require.Error(t, valErr)
 		assert.Contains(t, valErr.Error(), "divider blocks cannot have children")
 	})
 
 	t.Run("V1 fires on float jump", func(t *testing.T) {
-		doc := `{"version": 1, "blocks": [{"type": "paragraph", "text": "a"}, {"indent": 5.0, "type": "paragraph", "text": "b"}]}`
+		doc := `{"version": 2, "blocks": [{"type": "paragraph", "text": "a"}, {"indent": 5.0, "type": "paragraph", "text": "b"}]}`
 		valErr, _ := agree(t, doc)
 		require.Error(t, valErr)
 		assert.Contains(t, valErr.Error(), "indent 5 follows indent 0")
@@ -115,7 +115,7 @@ func TestIndent_FloatForms(t *testing.T) {
 
 	t.Run("valid float forms import with the right depth and canonicalize", func(t *testing.T) {
 		for _, form := range []string{"1.0", "1e0"} {
-			doc := fmt.Sprintf(`{"version": 1, "blocks": [
+			doc := fmt.Sprintf(`{"version": 2, "blocks": [
 				{"id": "a", "type": "toggle", "text": "t"},
 				{"indent": %s, "id": "b", "type": "paragraph", "text": "x"}
 			]}`, form)
@@ -198,11 +198,11 @@ func TestMarshal_OnWarningDegradesOverDeep(t *testing.T) {
 // Finding 4: unknown properties are rejected with a message naming the key;
 // `children` additionally gets the flat-migration hint.
 func TestValidate_UnknownPropertyMessages(t *testing.T) {
-	err := Validate([]byte(`{"version": 1, "blocks": [{"type": "toggle", "children": [{"type": "paragraph"}]}]}`))
+	err := Validate([]byte(`{"version": 2, "blocks": [{"type": "toggle", "children": [{"type": "paragraph"}]}]}`))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `/blocks/0/children: property "children" is not allowed — the flat format has no children; nest with indent instead`)
 
-	err = Validate([]byte(`{"version": 1, "blocks": [{"type": "paragraph", "banana": 1}]}`))
+	err = Validate([]byte(`{"version": 2, "blocks": [{"type": "paragraph", "banana": 1}]}`))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `/blocks/0/banana: property "banana" is not allowed`)
 }
@@ -345,14 +345,14 @@ func TestLeafTypes_ExportAgreement(t *testing.T) {
 // clamped indents).
 func TestNormalizeIndent_ContainmentStillErrors(t *testing.T) {
 	t.Run("clamped under a leaf", func(t *testing.T) {
-		doc := `{"version": 1, "blocks": [{"type": "divider"}, {"indent": 5, "type": "paragraph", "text": "x"}]}`
+		doc := `{"version": 2, "blocks": [{"type": "divider"}, {"indent": 5, "type": "paragraph", "text": "x"}]}`
 		_, _, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g"), NormalizeIndent: true})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "divider blocks cannot have children")
 	})
 
 	t.Run("clamped non-column under a row", func(t *testing.T) {
-		doc := `{"version": 1, "blocks": [{"type": "row"}, {"indent": 7, "type": "paragraph", "text": "x"}]}`
+		doc := `{"version": 2, "blocks": [{"type": "row"}, {"indent": 7, "type": "paragraph", "text": "x"}]}`
 		_, _, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g"), NormalizeIndent: true})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "a row block can only contain column blocks")
@@ -368,7 +368,7 @@ func TestValidate_PrefixProperty_Deep(t *testing.T) {
 		parts = append(parts, fmt.Sprintf(`{"indent": %d, "id": "d%d", "type": "toggle", "text": "level %d"}`, d, d, d))
 	}
 	parts = append(parts, `{"id": "top", "type": "paragraph", "text": "back to top"}`)
-	doc := `{"version": 1, "blocks": [` + strings.Join(parts, ",") + `]}`
+	doc := `{"version": 2, "blocks": [` + strings.Join(parts, ",") + `]}`
 
 	sbType, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
@@ -385,7 +385,7 @@ func TestValidate_PrefixProperty_Deep(t *testing.T) {
 		for _, b := range parsed.Blocks[:n] {
 			blockParts = append(blockParts, string(b))
 		}
-		prefix := `{"version": 1, "blocks": [` + strings.Join(blockParts, ",") + `]}`
+		prefix := `{"version": 2, "blocks": [` + strings.Join(blockParts, ",") + `]}`
 		require.NoError(t, Validate([]byte(prefix)), "prefix of %d blocks", n)
 	}
 }

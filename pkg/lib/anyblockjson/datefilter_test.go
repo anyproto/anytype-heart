@@ -20,7 +20,7 @@ import (
 )
 
 func dateFilterDoc(filters string) string {
-	return `{"version": 1, "id": "p1", "blocks": [{"type": "dataview",
+	return `{"version": 2, "id": "p1", "blocks": [{"type": "dataview",
 		"object_id": "someSet",
 		"properties": [{"property": "verifiedUntil", "format": "date"},
 		               {"property": "status", "format": "select"}],
@@ -241,7 +241,7 @@ func TestExport_CountingPresetOnPresenceOnlyLeaf(t *testing.T) {
 // a hand-written dataview actually has, where the only thing that says what
 // `due_date` is, is the bundled table.
 func bareDateFilterDoc(filters string) string {
-	return `{"version": 1, "id": "p1", "blocks": [{"type": "dataview",
+	return `{"version": 2, "id": "p1", "blocks": [{"type": "dataview",
 		"object_id": "someSet",
 		"views": [{"name": "Needs review", "filters": [` + filters + `]}]}]}`
 }
@@ -269,7 +269,7 @@ func TestValidate_CountingPresetOnlyOnADateProperty(t *testing.T) {
 		// the same key the bundle calls a date, declared as text by the
 		// block that owns the filter — impDvFormat reads the properties
 		// list first, so this filter imports as a text filter
-		doc := `{"version": 1, "blocks": [{"type": "dataview",
+		doc := `{"version": 2, "blocks": [{"type": "dataview",
 			"properties": [{"property": "due_date", "format": "text"}],
 			"views": [{"filters": [` + fmt.Sprintf(leaf, "due_date") + `]}]}]}`
 		assert.NoError(t, Validate([]byte(doc)))

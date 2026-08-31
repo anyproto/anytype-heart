@@ -24,8 +24,8 @@ import (
 // the acceptance and the absence to pass.
 func TestTransientProperties_DroppedNotRefused(t *testing.T) {
 	for name, doc := range map[string]string{
-		"empty, the shape 18,647 real objects carry": `{"version": 1, "properties": {"internal_flags": []}}`,
-		"populated": `{"version": 1, "properties": {"internal_flags": ["editor_select_type"]}}`,
+		"empty, the shape 18,647 real objects carry": `{"version": 2, "properties": {"internal_flags": []}}`,
+		"populated": `{"version": 2, "properties": {"internal_flags": ["editor_select_type"]}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, Validate([]byte(doc)),
@@ -45,14 +45,14 @@ func TestTransientProperties_DroppedNotRefused(t *testing.T) {
 		// (verbatim-first); the old derived slug resolves nothing at all —
 		// a denied key's fold class answers nothing — so it is an ordinary
 		// custom key that lands on no vector, which the second line pins.
-		require.Error(t, Validate([]byte(`{"version": 1, "properties": {"oldAnytypeID": "x"}}`)))
-		_, snap, err := Unmarshal([]byte(`{"version": 1, "properties": {"old_anytype_id": "x"}}`), Options{})
+		require.Error(t, Validate([]byte(`{"version": 2, "properties": {"oldAnytypeID": "x"}}`)))
+		_, snap, err := Unmarshal([]byte(`{"version": 2, "properties": {"old_anytype_id": "x"}}`), Options{})
 		require.NoError(t, err)
 		assert.NotContains(t, snap.GetDetails().GetFields(), "oldAnytypeID")
 	})
 
 	t.Run("an ordinary property still lands", func(t *testing.T) {
-		_, snap, err := Unmarshal([]byte(`{"version": 1, "properties": {"name": "keep me"}}`), Options{})
+		_, snap, err := Unmarshal([]byte(`{"version": 2, "properties": {"name": "keep me"}}`), Options{})
 		require.NoError(t, err)
 		assert.Equal(t, "keep me", snap.GetDetails().GetFields()["name"].GetStringValue())
 	})
@@ -166,7 +166,7 @@ func TestTransientProperties_BundledVerdictPerKey(t *testing.T) {
 // value reaches the snapshot.
 func TestTransientProperties_TheAnalyticsTripleIsDropped(t *testing.T) {
 	// given the exact shape those 35 objects carry
-	doc := []byte(`{"version": 1, "kind": "object_type", "internal_key": "use_case",
+	doc := []byte(`{"version": 2, "kind": "object_type", "internal_key": "use_case",
 		"properties": {"name": "Use Case", "data": {"route": "SettingsSpace"},
 		               "isNew": true, "layoutFormat": 0}}`)
 
@@ -199,7 +199,7 @@ func TestTransientProperties_TheAnalyticsTripleIsDropped(t *testing.T) {
 func TestTransientProperties_FileStatusDoesNotTravel(t *testing.T) {
 	t.Run("import drops, not refuses", func(t *testing.T) {
 		// given the exact shape all 10,248 corpus file objects carry
-		doc := []byte(`{"version": 1, "properties": {"name": "photo.png",
+		doc := []byte(`{"version": 2, "properties": {"name": "photo.png",
 			"file_backup_status": 4, "file_indexing_status": 1}}`)
 
 		// when
@@ -265,7 +265,7 @@ func TestTransientProperties_ASpacesSecretsDoNotTravel(t *testing.T) {
 	for spelling, value := range secrets {
 		t.Run(spelling, func(t *testing.T) {
 			// given the space's own document carrying it
-			doc := []byte(`{"version":1,"kind":"space_settings","properties":{"name":"My space","` +
+			doc := []byte(`{"version":2,"kind":"space_settings","properties":{"name":"My space","` +
 				spelling + `":` + value + `}}`)
 
 			// when
@@ -329,7 +329,7 @@ func TestTransientProperties_FileKeysDoNotTravel(t *testing.T) {
 	assert.Contains(t, string(data), "diagram.png", "the file object itself still travels")
 
 	t.Run("and they do not come back either", func(t *testing.T) {
-		doc := `{"version": 1, "id": "f1", "kind": "file_object", "properties": {
+		doc := `{"version": 2, "id": "f1", "kind": "file_object", "properties": {
 			"name": "diagram.png", "file_variant_keys": ["b53rlwqyr64xos4evv5t5vb254qf2dlfcmrap"]}}`
 		require.NoError(t, Validate([]byte(doc)))
 		_, back, err := Unmarshal([]byte(doc), testOptions())
@@ -394,7 +394,7 @@ func TestTransientProperties_RootBlockAnalyticsDoNotTravel(t *testing.T) {
 	// a bundle written before the rule still imports — the keys are accepted
 	// and dropped, never refused (the analytics-details rule, §3).
 	t.Run("a stale bundle imports without them", func(t *testing.T) {
-		doc := []byte(`{"version": 1, "id": "o1", "root": {"fields": {
+		doc := []byte(`{"version": 2, "id": "o1", "root": {"fields": {
 			"analyticsOriginalId": "bafyreied5biwzt4jqshuhmhmknuu37kvsu4kafezcb5b5bcxf2jivdnntq",
 			"analyticsContext": "empty", "isLocked": true}}}`)
 		require.NoError(t, Validate(doc), "a stale export still imports")

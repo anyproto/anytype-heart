@@ -150,13 +150,13 @@ func TestExport_NilInnerContent(t *testing.T) {
 
 // Finding 6, revisited under raw names: a Page whose type key is `template`
 // once needed an explicit kind, because the type SPELLED itself `template` —
-// the pre-v0.22 byte shape of a template, which Validate refuses kindless.
-// The type spells its display name "Template" now, which is not that byte
-// shape, so the kind is derivable again and stays omitted — and the round
-// trip must still come home a Page. The emission guard survives for the one
-// spelling that still needs it: a writer whose vocabulary yields the raw
-// term `template` (a package-only export of a custom type stored-keyed so,
-// or a vocabulary that answers the key itself), which the second arm pins.
+// the byte shape that meant a template before `kind` existed. The type spells
+// its display name "Template" now, which is not that byte shape, so the kind
+// is derivable again and stays omitted — and the round trip must still come
+// home a Page. The emission guard survives for the one spelling that still
+// needs it: a writer whose vocabulary yields the raw term `template` (a
+// package-only export of a custom type stored-keyed so, or a vocabulary that
+// answers the key itself), which the second arm pins.
 func TestExport_PageWithTemplateTypeKeepsKind(t *testing.T) {
 	snap := &model.SmartBlockSnapshotBase{
 		Details:     fields(map[string]*types.Value{"id": str("obj1")}),
@@ -179,7 +179,7 @@ func TestExport_PageWithTemplateTypeKeepsKind(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, string(data), `"type": "template"`)
 		assert.Contains(t, string(data), `"kind": "page"`,
-			"a kindless type:template document is the pre-v0.22 template spelling, which Validate refuses")
+			"a kindless type:template document is the shape that used to mean a template (export.go's emission rule)")
 		require.NoError(t, Validate(data), "I1")
 		sbType, _, err := Unmarshal(data, Options{GenerateId: seqIds("g"), Keys: verbatimKeys{}})
 		require.NoError(t, err)
@@ -202,7 +202,7 @@ func (verbatimKeys) TypeKey(s string) (string, bool)     { return s, false }
 // pre-freeze pass on property-key admission (Tier 1 #5) it is refused by name,
 // and the envelope stays the only place either one is set.
 func TestImport_PropertiesIdDoesNotLeak(t *testing.T) {
-	doc := `{"version": 1, "id": "realid", "properties": {"id": "fakeid", "type": "faketype", "name": "N"}}`
+	doc := `{"version": 2, "id": "realid", "properties": {"id": "fakeid", "type": "faketype", "name": "N"}}`
 	err := Validate([]byte(doc))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), `/properties/id: "id" belongs in the envelope`)
@@ -212,7 +212,7 @@ func TestImport_PropertiesIdDoesNotLeak(t *testing.T) {
 	require.Error(t, err)
 
 	// and the envelope keeps working on its own
-	_, snap, err := Unmarshal([]byte(`{"version": 1, "id": "realid", "properties": {"name": "N"}}`),
+	_, snap, err := Unmarshal([]byte(`{"version": 2, "id": "realid", "properties": {"name": "N"}}`),
 		Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
 	assert.Equal(t, "realid", snap.Details.Fields["id"].GetStringValue())
@@ -227,7 +227,7 @@ func TestImport_PropertiesIdDoesNotLeak(t *testing.T) {
 // schema free of block recursion (§12). Cell arrays get the same treatment,
 // and their inline text still reaches the markup checks.
 func TestValidate_NestedTableInCell(t *testing.T) {
-	nestedTable := `{"version": 1, "blocks": [
+	nestedTable := `{"version": 2, "blocks": [
 		{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": [
 			{"type": "table", "columns": [{"id": "c2"}], "rows": []}
 		]}]}
@@ -236,7 +236,7 @@ func TestValidate_NestedTableInCell(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "/blocks/0/rows/0/cells/0")
 
-	dupIdInCellArray := `{"version": 1, "blocks": [
+	dupIdInCellArray := `{"version": 2, "blocks": [
 		{"id": "x1", "type": "paragraph"},
 		{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": [[
 			{"type": "toggle", "text": "cell"},
@@ -247,7 +247,7 @@ func TestValidate_NestedTableInCell(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "duplicate id")
 
-	badInline := `{"version": 1, "blocks": [
+	badInline := `{"version": 2, "blocks": [
 		{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": [[
 			{"type": "toggle", "text": "cell"},
 			{"indent": 1, "type": "paragraph", "text": "<u>unclosed"}
@@ -278,8 +278,8 @@ func TestExport_NonListObjectsStaysInStore(t *testing.T) {
 // Finding 12: integer-valued float versions are accepted (JSON Schema
 // numeric equality).
 func TestValidate_FloatVersion(t *testing.T) {
-	require.NoError(t, Validate([]byte(`{"version": 1.0}`)))
-	require.Error(t, Validate([]byte(`{"version": 1.5}`)))
+	require.NoError(t, Validate([]byte(`{"version": 2.0}`)))
+	require.Error(t, Validate([]byte(`{"version": 2.5}`)))
 }
 
 // Out-of-range enum values are omitted (or error for the type discriminator)

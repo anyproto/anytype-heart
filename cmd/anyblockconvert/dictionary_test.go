@@ -31,12 +31,12 @@ func TestRun_DictionaryDeclaredPropertyConverts(t *testing.T) {
 	// only declaration the property has
 	inDir := t.TempDir()
 	outDir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(inDir, "properties.json"), []byte(`{"version":1,
+	require.NoError(t, os.WriteFile(filepath.Join(inDir, "properties.json"), []byte(`{"version":2,
 		"properties":[
 			{"property":"6a32d4856761631534b22f85","name":"Budget","format":"number",
 			 "description":"Planned spend","max_count":1,"readonly":true,"default_value":100}]}`), 0o644))
 	require.NoError(t, os.MkdirAll(filepath.Join(inDir, "objects"), 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(inDir, "objects", "a.json"), []byte(`{"version":1,
+	require.NoError(t, os.WriteFile(filepath.Join(inDir, "objects", "a.json"), []byte(`{"version":2,
 		"id":"obj-a",
 		"property_internal_keys":{"budget":"6a32d4856761631534b22f85"},
 		"properties":{"name":"A","budget":250}}`), 0o644))

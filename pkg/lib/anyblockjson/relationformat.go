@@ -2,13 +2,12 @@ package anyblockjson
 
 // relationformat.go implements §2d: the `property_settings` group of a
 // `kind: "property"` document — one propertyDefinition (§2e), whose three
-// travelling members are `format`, `include_time`, `object_types`. v0.31
-// put the three at the document root; v0.32 regrouped them, because the
-// dictionary entry and a type's property-definition entry are groups
-// holding the same shape and two patterns for one idea is §15 #14 one
-// level up; v0.38 renamed the group (and the kinds) off "relation": the
-// product calls these things properties, and the format already did in
-// every neighbouring name.
+// travelling members are `format`, `include_time`, `object_types`. They are
+// grouped rather than sitting at the document root, because the dictionary
+// entry and a type's property-definition entry are groups holding the same
+// shape and two patterns for one idea is §15 #14 one level up. The group
+// (and the kinds) are named off "relation": the product calls these things
+// properties, and the format already did in every neighbouring name.
 //
 // A relation object IS a property definition, and until this lift it was the
 // one document that could not state its own format in the format's own
@@ -150,13 +149,12 @@ func isPropertySmartBlock(sbType model.SmartBlockType) bool {
 // kind that has no such group, reports any stored value the lift leaves
 // nowhere to go. Member presence mirrors stored-key presence exactly, value
 // included (false, `[]`, null): the §4 omit-empty canon stops at these three
-// because they are the property's definition, and §15 #14 scoped the v0.31
-// change to the SPELLING, deliberately leaving present-and-empty alone so
-// the snapshot round-trips unchanged and the comparator needs no new rule.
-// v0.32 regrouped the three off the root — churn on freshly shipped fields,
-// accepted deliberately: the dictionary entry and the type's
-// property-definition entry are groups holding the same shape, and two
-// patterns for one idea is the §15 #14 disease again, one level up.
+// because they are the property's definition, and §15 #14 scoped the lift to
+// the SPELLING, deliberately leaving present-and-empty alone so the
+// snapshot round-trips unchanged and the comparator needs no new rule.
+// The three sit in a group rather than at the root: the dictionary entry
+// and the type's property-definition entry are groups holding the same
+// shape, and two patterns for one idea is the §15 #14 disease again.
 func (e *exporter) buildPropertySettings(doc *omap) error {
 	if !e.isPropertyDoc() {
 		for _, key := range []string{detailKeyRelationFormat,
@@ -256,7 +254,7 @@ func (e *exporter) relationFormatName() (string, error) {
 // the legacy import paths stored directly (21 production entries) passes
 // through verbatim, its own address (§3) — a key is vocabulary, and a
 // vocabulary miss is never evidence of nonexistence. What no longer passes
-// (v0.44) is an entry the SPACE's own store disowns (§9): the
+// is an entry the SPACE's own store disowns (§9): the
 // `_missing_object` sentinel, and an object id the wired existence
 // capability says names no row — 56 production properties carry one, type
 // ids from the account where a shipped use case was AUTHORED, and an object
@@ -396,7 +394,7 @@ func propertySettingsOf(doc map[string]any) (map[string]any, bool) {
 // document — missingFormatIssue's trade (§2b) at the §2d slot: `required`
 // can say a member is missing but not what the choices are, and the author
 // most likely to hit it is holding an older document whose format lives at
-// the root (pre-v0.32) or in `properties` as a raw number (pre-v0.31). The
+// the root (legacy) or in `properties` as a raw number (legacy). The
 // kind is read RAW, exactly as the schema's `if` reads it, so the two
 // verdicts cannot disagree about which documents owe the group —
 // isPropertyKind and the schema's `if` list the same kinds. The names are
@@ -431,19 +429,19 @@ func propertyFormatSlotIssue(doc map[string]any, r *keySlotReport) {
 	// leaving the old spelling where it sits. The hints keep the OLD member
 	// names because they describe what the older document in hand SPELLS.
 	if _, atRoot := doc["format"]; atRoot && !hasGroup {
-		msg += `. This document spells "format" at the root — the pre-v0.32 form: ` +
+		msg += `. This document spells "format" at the root — the legacy root form: ` +
 			`the definition moved into the "property_settings" group, so move ` +
 			`"format" (and "include_time"/"object_types" beside it) in there`
 	}
 	if _, was := doc["relation_settings"]; was && !hasGroup {
-		// the pre-v0.38 group name, before the format stopped calling a
+		// the legacy group name, before the format stopped calling a
 		// property a relation anywhere; the members inside are unchanged
-		msg += `. This document spells the group "relation_settings" — the pre-v0.38 form: ` +
+		msg += `. This document spells the group "relation_settings" — the legacy group name: ` +
 			`rename the group to "property_settings"`
 	}
 	if props, _ := doc["properties"].(map[string]any); props != nil {
 		if _, legacy := props["relation_format"]; legacy {
-			msg += `. This document spells "relation_format" inside properties — the pre-v0.31 ` +
+			msg += `. This document spells "relation_format" inside properties — the legacy ` +
 				`form: replace that raw number with its name in property_settings`
 		}
 		// the OTHER wrong container, and the commoner one: 9 of 9

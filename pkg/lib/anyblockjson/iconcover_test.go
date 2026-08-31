@@ -346,33 +346,33 @@ func TestImport_TheFlatSpellingsAreRefused(t *testing.T) {
 	// that land on no icon slot, which the last arm pins.
 	for name, tc := range map[string]struct{ doc, repair string }{
 		"the display name": {
-			doc:    `{"version": 1, "properties": {"Emoji": "🔥"}}`,
+			doc:    `{"version": 2, "properties": {"Emoji": "🔥"}}`,
 			repair: `"icon": {"format": "emoji", "emoji": "…"}`,
 		},
 		"the stored key spelled verbatim": {
-			doc:    `{"version": 1, "properties": {"iconImage": ["bafy"]}}`,
+			doc:    `{"version": 2, "properties": {"iconImage": ["bafy"]}}`,
 			repair: `"icon": {"format": "file", "file": "<object id>"}`,
 		},
 		"an icon name": {
-			doc:    `{"version": 1, "properties": {"iconName": "folder"}}`,
+			doc:    `{"version": 2, "properties": {"iconName": "folder"}}`,
 			repair: `"icon": {"format": "icon", "name": "…"}`,
 		},
 		"an icon option": {
-			doc:    `{"version": 1, "properties": {"iconOption": 3}}`,
+			doc:    `{"version": 2, "properties": {"iconOption": 3}}`,
 			repair: `the "color" member of "icon"`,
 		},
 		"a cover id": {
-			doc:    `{"version": 1, "properties": {"coverId": "blue"}}`,
+			doc:    `{"version": 2, "properties": {"coverId": "blue"}}`,
 			repair: `"cover": {"format": "image"|"color"|"gradient", …}`,
 		},
 		"cover framing": {
-			doc:    `{"version": 1, "properties": {"coverY": -0.25}}`,
+			doc:    `{"version": 2, "properties": {"coverY": -0.25}}`,
 			repair: `the "scale"/"x"/"y" members of an image "cover"`,
 		},
 		// the laundering case: a legend can bind any spelling to any stored
 		// key, so admission runs on what the spelling RESOLVES to
 		"a spelling the legend binds to a lifted key": {
-			doc: `{"version": 1, "property_internal_keys": {"sneaky": "iconEmoji"},
+			doc: `{"version": 2, "property_internal_keys": {"sneaky": "iconEmoji"},
 				"properties": {"sneaky": "🔥"}}`,
 			repair: `"icon": {"format": "emoji", "emoji": "…"}`,
 		},
@@ -388,7 +388,7 @@ func TestImport_TheFlatSpellingsAreRefused(t *testing.T) {
 	}
 
 	t.Run("the retired flat slug is an ordinary custom key", func(t *testing.T) {
-		doc := `{"version": 1, "properties": {"icon_emoji": "🔥"}}`
+		doc := `{"version": 2, "properties": {"icon_emoji": "🔥"}}`
 		require.NoError(t, Validate([]byte(doc)))
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
@@ -408,7 +408,7 @@ func TestImport_TheFlatSpellingsAreRefused(t *testing.T) {
 // resolved key and this document is refused, taking a legitimate user
 // relation with it.
 func TestImport_ASpaceMintedIconEmojiRelationIsAnOrdinaryProperty(t *testing.T) {
-	doc := `{"version": 1, "id": "o1",
+	doc := `{"version": 2, "id": "o1",
 		"property_internal_keys": {"icon_emoji": "icon_emoji"},
 		"icon": {"format": "emoji", "emoji": "📕"},
 		"properties": {"icon_emoji": "☕"}}`
@@ -434,7 +434,7 @@ func TestImport_ASpaceMintedIconEmojiRelationIsAnOrdinaryProperty(t *testing.T) 
 // `pageCover`, both Notion imports, neither bundled. An envelope field is
 // outside the key namespace the legend can rebind.
 func TestImport_AStoredRelationNamedCoverIsUntouched(t *testing.T) {
-	doc := `{"version": 1, "id": "o1",
+	doc := `{"version": 2, "id": "o1",
 		"property_internal_keys": {"cover": "cover"},
 		"cover": {"format": "gradient", "gradient": "pinkOrange"},
 		"properties": {"cover": "a photograph of the team"}}`
@@ -495,7 +495,7 @@ func TestRoundTrip_CalloutIcon(t *testing.T) {
 	}
 
 	t.Run("the four-variant object icon is not a callout icon", func(t *testing.T) {
-		err := Validate([]byte(`{"version": 1, "blocks": [
+		err := Validate([]byte(`{"version": 2, "blocks": [
 			{"type": "callout", "icon": {"format": "icon", "name": "folder"}, "text": "x"}]}`))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "value must be one of 'emoji', 'file'")
@@ -517,27 +517,27 @@ func TestRoundTrip_CalloutIcon(t *testing.T) {
 // a handful of issues instead of one.
 func TestValidate_AWrongIconGetsExactlyOneIssue(t *testing.T) {
 	for _, tc := range []struct{ doc, path, message string }{
-		{`{"version":1,"icon":{"format":"emoji","emoji":"📕","name":"rocket"}}`,
+		{`{"version":2,"icon":{"format":"emoji","emoji":"📕","name":"rocket"}}`,
 			"/icon/name", `property "name" is not allowed`},
-		{`{"version":1,"icon":{"format":"image","url":"https://x/y.png"}}`,
+		{`{"version":2,"icon":{"format":"image","url":"https://x/y.png"}}`,
 			"/icon/format", "value must be one of 'emoji', 'file', 'icon', 'color'"},
-		{`{"version":1,"icon":{"format":"url","url":"https://x/y.png"}}`,
+		{`{"version":2,"icon":{"format":"url","url":"https://x/y.png"}}`,
 			"/icon/format", "value must be one of 'emoji', 'file', 'icon', 'color'"},
-		{`{"version":1,"icon":{"emoji":"🚀"}}`,
+		{`{"version":2,"icon":{"emoji":"🚀"}}`,
 			"/icon", "an icon is one of 'emoji', 'file', 'icon', 'color'"},
-		{`{"version":1,"icon":{"format":"emoji"}}`,
+		{`{"version":2,"icon":{"format":"emoji"}}`,
 			"/icon", "missing property 'emoji'"},
-		{`{"version":1,"icon":{"format":"icon","name":"rocket","color":"turquoise"}}`,
+		{`{"version":2,"icon":{"format":"icon","name":"rocket","color":"turquoise"}}`,
 			"/icon/color", "value must be one of 'grey', 'yellow'"},
-		{`{"version":1,"icon":{"format":"file","file":"https://images.example/hero.jpg"}}`,
+		{`{"version":2,"icon":{"format":"file","file":"https://images.example/hero.jpg"}}`,
 			"/icon/file", `does not match pattern '^[^/]+$'`},
-		{`{"version":1,"cover":{"format":"image","file":"/var/folders/j0/T/x.png"}}`,
+		{`{"version":2,"cover":{"format":"image","file":"/var/folders/j0/T/x.png"}}`,
 			"/cover/file", `does not match pattern '^[^/]+$'`},
-		{`{"version":1,"cover":{"format":"unsplash","file":"bafy"}}`,
+		{`{"version":2,"cover":{"format":"unsplash","file":"bafy"}}`,
 			"/cover/format", "value must be one of 'image', 'color', 'gradient'"},
-		{`{"version":1,"cover":{"gradient":"pinkOrange"}}`,
+		{`{"version":2,"cover":{"gradient":"pinkOrange"}}`,
 			"/cover", "a cover is one of 'image', 'color', 'gradient'"},
-		{`{"version":1,"blocks":[{"type":"callout","icon":{"emoji":"💡"},"text":"x"}]}`,
+		{`{"version":2,"blocks":[{"type":"callout","icon":{"emoji":"💡"},"text":"x"}]}`,
 			"/blocks/0/icon", "a callout icon is one of 'emoji', 'file'"},
 	} {
 		t.Run(tc.doc, func(t *testing.T) {
@@ -613,7 +613,7 @@ func TestIcon_FileHoldsEitherAnObjectIdOrAContentCid(t *testing.T) {
 		{"a raw content cid, as a participant avatar carries", "bafybeig56mk6qmlv624q3ykecbok5v7wmzeqc5zlci2h6d42w5pg3hx6bu"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			doc := `{"version": 1, "id": "o1", "icon": {"format": "file", "file": "` + tc.id + `"}}`
+			doc := `{"version": 2, "id": "o1", "icon": {"format": "file", "file": "` + tc.id + `"}}`
 			require.NoError(t, Validate([]byte(doc)))
 			_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 			require.NoError(t, err)

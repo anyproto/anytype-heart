@@ -3,6 +3,7 @@ package anyblockjson
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -239,4 +240,121 @@ func TestUnmarshalSorts(t *testing.T) {
 		require.True(t, errors.As(err, &ve))
 		assert.Equal(t, "/sorts/0/property", ve.Issues[0].Path)
 	})
+}
+
+// The fragment door is the API v2 query surface, and it validates against the
+// same $defs/filterNode and $defs/sort fragments the whole-document path holds
+// a view's filters and sorts to (§12). Before it did, an unknown member was
+// silently DECODED AND DROPPED — `jsonUnmarshal` is a plain json.Unmarshal —
+// so a misspelled member ("directions", "datePresets") turned a stated query
+// into a different, quieter one with no error, where the identical shape
+// inside a whole document was a hard, path-addressed refusal.
+func TestUnmarshalFilters_UnknownMemberIsRefused(t *testing.T) {
+	t.Run("a filter leaf carrying an unrecognized member is refused with the member named", func(t *testing.T) {
+		// given
+		raw := json.RawMessage(`[{"property":"done","condition":"equal","frobnicate":true}]`)
+
+		// when
+		_, err := UnmarshalFilters(raw, fragFilterOpts())
+
+		// then
+		require.Error(t, err)
+		var ve *ValidationError
+		require.True(t, errors.As(err, &ve))
+		assert.Contains(t, issuePaths(t, err), "/filters/0/frobnicate",
+			"the refusal has to name the slot it is about (§12): %v", err)
+		assert.Contains(t, err.Error(), `"frobnicate"`)
+	})
+
+	t.Run("a sort carrying an unrecognized member is refused with the member named", func(t *testing.T) {
+		// given
+		raw := json.RawMessage(`[{"property":"name","frobnicate":true}]`)
+
+		// when
+		_, err := UnmarshalSorts(raw, Options{})
+
+		// then
+		require.Error(t, err)
+		var ve *ValidationError
+		require.True(t, errors.As(err, &ve))
+		require.Len(t, ve.Issues, 1)
+		assert.Equal(t, "/sorts/0/frobnicate", ve.Issues[0].Path)
+		assert.Contains(t, ve.Issues[0].Message, `"frobnicate"`)
+	})
+
+	t.Run("a payload that is not an array is a path-addressed refusal, not a bare decode error", func(t *testing.T) {
+		// given
+		raw := json.RawMessage(`{"property":"done"}`)
+
+		// when
+		_, err := UnmarshalFilters(raw, fragFilterOpts())
+
+		// then
+		var ve *ValidationError
+		require.True(t, errors.As(err, &ve), "want *ValidationError, got: %v", err)
+		assert.Contains(t, issuePaths(t, err), "/filters")
+	})
+
+	t.Run("a wrong-typed known member is a path-addressed refusal, not a bare decode error", func(t *testing.T) {
+		// given
+		raw := json.RawMessage(`[{"property":"name","include_time":"yes"}]`)
+
+		// when
+		_, err := UnmarshalSorts(raw, Options{})
+
+		// then
+		var ve *ValidationError
+		require.True(t, errors.As(err, &ve), "want *ValidationError, got: %v", err)
+		assert.Contains(t, issuePaths(t, err), "/sorts/0/include_time")
+	})
+}
+
+// The two doors must agree: the fragment refusal for an unknown member is the
+// document refusal for the identical shape, issue for issue, with only the
+// path prefix differing — the fragment validates through the same schema
+// fragments, so agreement is by construction and this pins it.
+func TestUnmarshalFilters_FragmentAgreesWithDocument(t *testing.T) {
+	cases := map[string]struct {
+		member string // "filters" or "sorts"
+		raw    string
+	}{
+		"filter leaf with unknown member":  {"filters", `[{"property":"done","condition":"equal","frobnicate":true}]`},
+		"filter group with unknown member": {"filters", `[{"operator":"and","filters":[{"property":"done","condition":"equal"}],"frobnicate":true}]`},
+		"sort with unknown member":         {"sorts", `[{"property":"name","frobnicate":true}]`},
+		"valid filters":                    {"filters", `[{"property":"done","condition":"equal","value":false}]`},
+		"valid sorts":                      {"sorts", `[{"property":"name","direction":"desc"}]`},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			// given — the same array once through the fragment door, once
+			// inside a whole document
+			doc := `{"version":2,"type":"page","blocks":[{"type":"dataview","views":[{"` +
+				tc.member + `":` + tc.raw + `}]}]}`
+
+			// when
+			var fragErr error
+			if tc.member == "filters" {
+				_, fragErr = UnmarshalFilters(json.RawMessage(tc.raw), fragFilterOpts())
+			} else {
+				_, fragErr = UnmarshalSorts(json.RawMessage(tc.raw), Options{})
+			}
+			docErr := Validate([]byte(doc))
+
+			// then
+			if docErr == nil {
+				assert.NoError(t, fragErr, "document accepts what the fragment refuses")
+				return
+			}
+			require.Error(t, fragErr, "fragment accepts what the document refuses: %v", docErr)
+			var fragVe, docVe *ValidationError
+			require.True(t, errors.As(fragErr, &fragVe))
+			require.True(t, errors.As(docErr, &docVe))
+			want := make([]Issue, 0, len(docVe.Issues))
+			for _, iss := range docVe.Issues {
+				iss.Path = strings.TrimPrefix(iss.Path, "/blocks/0/views/0")
+				want = append(want, iss)
+			}
+			assert.Equal(t, want, fragVe.Issues)
+		})
+	}
 }

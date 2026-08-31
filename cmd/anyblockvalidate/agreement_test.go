@@ -26,10 +26,10 @@ func TestValidate_AgreesWithConvertOnADictionaryDeclaredBundle(t *testing.T) {
 	write := func(name, body string) {
 		require.NoError(t, os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644))
 	}
-	write("properties.json", `{"version":1,"properties":[
+	write("properties.json", `{"version":2,"properties":[
 		{"property":"episode_number","name":"Episode Number","format":"number"},
 		{"property":"release_date","name":"Release Date","format":"date"}]}`)
-	write("ep1.json", `{"version":1,"kind":"page","id":"bafyreiep1",
+	write("ep1.json", `{"version":2,"kind":"page","id":"bafyreiep1",
 		"properties":{"name":"Ep 1","episode_number":1,"release_date":"2026-01-01T00:00:00Z"}}`)
 
 	files := []string{filepath.Join(dir, "ep1.json")}

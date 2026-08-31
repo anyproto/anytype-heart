@@ -65,7 +65,7 @@ func TestKeyCandidates_ARepeatedCandidateIsNotAnAmbiguity(t *testing.T) {
 	t.Run("a property listed twice still binds its value", func(t *testing.T) {
 		// given
 		vocab := dupVocab{nameVocab{names: map[string]string{keyA: "Projects"}}}
-		doc := `{"version":1,"id":"o1","properties":{"Projects":"kept"}}`
+		doc := `{"version":2,"id":"o1","properties":{"Projects":"kept"}}`
 
 		// when
 		_, back, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g"), Keys: vocab})
@@ -78,7 +78,7 @@ func TestKeyCandidates_ARepeatedCandidateIsNotAnAmbiguity(t *testing.T) {
 	t.Run("a type listed twice still binds the envelope", func(t *testing.T) {
 		// given
 		vocab := dupVocab{nameVocab{typeNames: map[string]string{typeKey: typeName}}}
-		doc := `{"version":1,"id":"o1","type":"` + typeName + `"}`
+		doc := `{"version":2,"id":"o1","type":"` + typeName + `"}`
 		want := []string{domain.TypeKey(typeKey).URL()}
 
 		// when
@@ -99,7 +99,7 @@ func TestKeyCandidates_ARepeatedCandidateIsNotAnAmbiguity(t *testing.T) {
 			typeNames: map[string]string{typeKey: typeName},
 			typeProps: map[string][]string{typeKey: {keyA}},
 		}}
-		doc := `{"version":1,"id":"o1","type":"` + typeName + `","properties":{"Projects":"resolved"}}`
+		doc := `{"version":2,"id":"o1","type":"` + typeName + `","properties":{"Projects":"resolved"}}`
 
 		// when
 		_, back, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g"), Keys: vocab})
@@ -135,7 +135,7 @@ func TestKeyCandidates_TheAmbiguityNamesTheOffendingSlot(t *testing.T) {
 	t.Run("a properties member names its own slot", func(t *testing.T) {
 		// given — no legend, which is what makes the term ambiguous in the
 		// first place, so pointing at the legend points at nothing
-		doc := `{"version":1,"id":"o1","type":"Page","properties":{"Projects":"?"}}`
+		doc := `{"version":2,"id":"o1","type":"Page","properties":{"Projects":"?"}}`
 		want := "/properties/Projects"
 
 		// when
@@ -152,7 +152,7 @@ func TestKeyCandidates_TheAmbiguityNamesTheOffendingSlot(t *testing.T) {
 		// given — these slots are built without a pointer of their own, so
 		// the coarse-but-true section is the honest answer, exactly as the
 		// empty-key refusal beside it already reports
-		doc := `{"version":1,"id":"o1","type":"Page","blocks":[{"id":"dv","type":"dataview",` +
+		doc := `{"version":2,"id":"o1","type":"Page","blocks":[{"id":"dv","type":"dataview",` +
 			`"properties":[{"property":"Projects","format":"text"}]}]}`
 		want := "/blocks"
 
@@ -169,7 +169,7 @@ func TestKeyCandidates_TheAmbiguityNamesTheOffendingSlot(t *testing.T) {
 			"6a7663db61fab21cd4b9c077": "Meeting",
 			"6a7663db61fab21cd4b9c088": "Meeting",
 		}}
-		doc := `{"version":1,"id":"o1","type":"Meeting"}`
+		doc := `{"version":2,"id":"o1","type":"Meeting"}`
 		want := "/type"
 
 		// when

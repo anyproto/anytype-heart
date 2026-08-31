@@ -7,7 +7,7 @@ package anyblockjson
 // sidebar: one widget wrapper block per widget, each with exactly one
 // indented link child naming the target. index.json has a first-class
 // `widgets` array for exactly this, so the document restates the index the
-// way the space document restated it before v0.34 — except the index used to
+// way the space document restated it earlier — except the index used to
 // say less than the blocks. It says everything now, so the document can go.
 //
 // That is not an assumption. Measured over a 77-space export: 218 wrapper
@@ -125,6 +125,16 @@ func widgetObjectConstantDetail(key string, v *types.Value) bool {
 // nothing, and the widget they mean would be dropped on install without an
 // error — so a document holding one KEEPS the document, and the stray
 // travels the way it always has.
+// maxIndexWidgetLimit is the product cap on how many entries a sidebar
+// listing widget shows — the ONE number behind three statements:
+// `$defs/widgetListingLimit` in the object schema (which the index schema
+// references), the authoring index's self-contained copy, and the lift check
+// below. TestWidgetLimit_OneStatementOfTheCap chains all of them to this
+// constant. The widget BLOCK's own `limit` deliberately takes the whole
+// int32 range instead — the block is the fidelity fallback for exactly the
+// widget this cap refuses, so the cap must not bind there.
+const maxIndexWidgetLimit = 100
+
 func liftableWidgetTarget(stored string) bool {
 	format := FormatWidgetTarget(stored)
 	if IsReservedWidgetTarget(format) {
@@ -250,9 +260,12 @@ func widgetPair(wrapper *model.Block, byId map[string]*model.Block) (w Widget, l
 			return w, "", false
 		}
 	}
-	// the index schema bounds a limit where the block schema takes the whole
-	// int32 range; the corpus maximum is 50
-	if wc.Limit < 0 || wc.Limit > 100 {
+	// the index schema bounds a limit ($defs/widgetListingLimit — the
+	// deliberate product cap on sidebar listings; the corpus maximum is 50)
+	// where the block schema takes the whole int32 range on purpose: a
+	// widget this check refuses travels as a full document, and that
+	// document's widget block must stay valid
+	if wc.Limit < 0 || wc.Limit > maxIndexWidgetLimit {
 		return w, "", false
 	}
 	w.Limit = wc.Limit
@@ -277,7 +290,11 @@ func widgetPair(wrapper *model.Block, byId map[string]*model.Block) (w Widget, l
 		}
 	}
 	for _, key := range lc.Relations {
-		if key == "" {
+		// the same writable-key admission every §5 key slot runs (§3): an
+		// empty or unwritable key cannot be spelled in the index, so the
+		// document travels whole — where the link block's own slot rule
+		// drops the entry with a warning
+		if !isWritablePropertyKey(key) {
 			return w, "", false
 		}
 	}

@@ -80,7 +80,7 @@ func TestExport_PropertyKeysLegendCarriesWhatTheTableCannot(t *testing.T) {
 
 // The point of the legend: a reader with no space gets the stored keys back.
 func TestImport_PropertyKeysLegendInvertsWithoutTheSpace(t *testing.T) {
-	doc := `{"version": 1, "id": "o1",
+	doc := `{"version": 2, "id": "o1",
 		"property_internal_keys": {"priority": "6a32d4856761631534b22f85"},
 		"properties": {"priority": 3, "due_date": "2026-07-06T08:44:05Z"}}`
 
@@ -178,7 +178,7 @@ func TestExport_LegendCoversBlockKeySlots(t *testing.T) {
 // read (§3). A link block bypassing it never inverted even when the entry
 // was present.
 func TestImport_LinkPropertiesConsultTheLegend(t *testing.T) {
-	doc := `{"version": 1, "id": "o1",
+	doc := `{"version": 2, "id": "o1",
 		"property_internal_keys": {"priority": "6a32d4856761631534b22f85"},
 		"blocks": [{"type": "link", "id": "lnk", "object_id": "target1",
 			"properties": ["priority", "due_date"]}]}`

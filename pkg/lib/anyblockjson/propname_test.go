@@ -13,7 +13,7 @@ import (
 )
 
 func typeDoc(tp string) string {
-	return `{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
+	return `{"version": 2, "kind": "object_type", "id": "t1", "internal_key": "k",
 		"type_settings": {"property_definitions": [` + tp + `]}}`
 }
 

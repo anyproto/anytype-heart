@@ -18,8 +18,8 @@ a human-only format would have made.
 
 ```json
 {
-  "$schema": "https://schemas.anytype.io/anyblock/1/object.schema.json",
-  "version": 1,
+  "$schema": "https://schemas.anytype.io/anyblock/2/object.schema.json",
+  "version": 2,
   "id": "bafyreieqh63jv…",
   "type": "Page",
   "icon": { "format": "emoji", "emoji": "🔥" },
@@ -98,7 +98,7 @@ format.
 `select` and `multi_select` values are option **names** (`"In progress"`),
 in property values, filter values and custom orders alike. Properties and
 types are addressed by their **display names, raw** — `"Creation date"`,
-`"type": "Page"` — bundled and custom alike (since v0.48). The derived
+`"type": "Page"` — bundled and custom alike. The derived
 api-slug spelling (`created_date`) is no longer written; documents that
 carry it keep resolving, because a derived slug always lands in its own
 key's fold class.
@@ -114,8 +114,7 @@ measurement, not symmetry: an A/B eval found that copying a name
 byte-exactly is a solved behavior even at 4B scale, while *deriving* a
 slug from a name is where models improvise — and improvise differently in
 the key slot and the filter value that references it, the divergence that
-silently unbinds a view from its property. `NAME_ADDRESSING.md` is the
-full study; SPEC §3 is the rule, including the per-document collision
+silently unbinds a view from its property. SPEC §3 is the rule, including the per-document collision
 ladder and the `property_internal_keys` / `type_internal_keys` legends
 that keep an exported document invertible with no space to ask
 (`option_ids`, in the example above, is the same idea for select options:
@@ -275,7 +274,6 @@ reason not to read a pass rate as a proof of it.
 | `PRINCIPLES_SHORT.md` | the same ten rules on one screen |
 | `SPEC.md` | normative, complete, §14 has a full worked example |
 | `ANOMALIES.md` | every real-data oddity found, with evidence |
-| `NAME_ADDRESSING.md` | why keys spell display names — the study, its eval and corpus measurements |
 | `EXPORTER_DESIGN.md` | the native bundle exporter: pipeline, layout, corpus verification |
 | `cmd/anyblockroundtrip` | the production sweep harness |
 | `schema/*.json` | the hand-authored JSON Schema (2020-12) |

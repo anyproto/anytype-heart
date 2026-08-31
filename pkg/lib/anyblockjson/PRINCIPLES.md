@@ -1,6 +1,6 @@
 # AnyBlock JSON — design principles
 
-Status: living document · applies to format version 1 (SPEC draft v0.48) ·
+Status: living document · applies to format version 1 (SPEC draft) ·
 Package: `pkg/lib/anyblockjson`
 
 `SPEC.md` says what the format *is*. This document says what it is *for*
@@ -30,7 +30,7 @@ inline:
 
 ```json
 {
-  "version": 1,
+  "version": 2,
   "type": "Task",
   "icon": { "format": "emoji", "emoji": "🚢" },
   "properties": {
@@ -358,7 +358,7 @@ no loss is silent.
 
 - A change to the format, to this package, or to API v2's document surface
   names the rule it serves — or the rule it bends and the cost it accepts,
-  recorded in `SPEC.md`'s changelog and, when real data drove it, in
+  recorded in the commit that makes it and, when real data drove it, in
   `ANOMALIES.md`.
 - Rules move on evidence — a sweep, a benchmark on the target model tier, a
   falsified assumption — never on taste. Several already have: nested →

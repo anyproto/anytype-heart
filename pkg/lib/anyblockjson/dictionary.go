@@ -50,9 +50,8 @@ const PropertiesFileName = "properties.json"
 type PropertyDictionary struct {
 	// Installed lists the BUNDLED properties present in the space —
 	// presence, not definition. This field holds STORED keys; the wire
-	// spells them as display names ("Due date", not `dueDate`): v0.36
-	// aligned the dictionary with every other slot, and the raw-name
-	// re-spell carried that alignment along.
+	// spells them as display names ("Due date", not `dueDate`) —
+	// the dictionary is aligned with every other slot.
 	// 98% of installed copies
 	// are field-identical to the bundled table, so the key is the whole of
 	// what a restore needs. A key that also appears in Properties is

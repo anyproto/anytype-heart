@@ -4,7 +4,7 @@ Status: IMPLEMENTED (GO-7383, 2026-08-26). §1's pipeline is live:
 collection behind `core/block/export/collect` (Closure replacing
 `isProtobuf`), composition in `pkg/lib/anyblockjson/compose` (Q10 option b;
 the roundtrip harness runs the same code), the exporter wiring in
-`core/block/export/anyblock`, and the manifest `files` map as SPEC v0.47
+`core/block/export/anyblock`, and the manifest `files` map as SPEC §2c
 (Q4 option a). Q5 taken as (a), Q8 settled to `.anyblock.json`, Q9 as (a)
 via the per-bundle `BundleRoot` prefix. Q11 shipped as close-after-write
 with the release gate named at the call site (any-sync PR #769, the
@@ -40,7 +40,7 @@ tooling warning). One upstream observation, not an exporter defect:
 objects whose root change carries no creation date (participants,
 chiefly) get `createdDate` stamped at load (smartblock Apply), so any two
 exports separated by a cache eviction differ on that value — the pb
-exporter shares this. RESOLVED by the human as a format rule (v0.47):
+exporter shares this. RESOLVED by the human as a format rule:
 participant documents omit `created_date` (`participantProvenanceKeys`,
 the type-provenance pattern; snapshotdiff taught in the same change).
 
@@ -358,7 +358,7 @@ member beside `types` and `properties`:
 
 One entry per file object: object id → archive-relative blob path. This is
 the lookup the deleted manifest `options` map never had a reader for
-(SPEC §2c, removed v0.46) — but blobs have exactly that reader: every
+(SPEC §2c, removed) — but blobs have exactly that reader: every
 importer holding a file_object document must find its bytes, and every
 export tool must enumerate them. The paths are free: an authored bundle
 writes `"files": {"logo": "assets/logo.png"}` against its own slug ids and

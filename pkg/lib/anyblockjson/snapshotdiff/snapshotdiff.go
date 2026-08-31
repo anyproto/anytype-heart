@@ -113,7 +113,7 @@ func isEmptyRecommendedList(key string, v *types.Value) bool {
 // no detectable drift.
 //
 // sbType is the snapshot's smartblock type, and it is a parameter rather than
-// something read off the pair because since v0.22 it is the only thing that
+// something read off the pair because it is the only thing that
 // says how many type slots the envelope had: `template_for` exists exactly on
 // a Template (§2). A snapshot cannot answer that question about itself — a
 // template's ObjectTypes need not begin with the template key — so a caller
@@ -178,7 +178,7 @@ func Compare(orig, got *model.SmartBlockSnapshotBase, sbType model.SmartBlockTyp
 				continue
 			}
 			// a TYPE document does not carry its own install provenance
-			// (§2a, v0.32): eight keys export omits there whatever their
+			// (§2a): eight keys export omits there whatever their
 			// value — each admitted against the corpus individually — so the
 			// comparator learns the rule in the same commit that taught
 			// export (the miss that produced 1,344 false failures in one

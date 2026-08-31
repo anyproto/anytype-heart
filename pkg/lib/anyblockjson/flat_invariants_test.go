@@ -967,46 +967,46 @@ func TestInvariant_MarshalOutputValidates_RichFixture(t *testing.T) {
 // and JSON Schema counts 2048.0 and 1e1 as integers. Every one of these is a
 // document a generator can plausibly emit.
 var hostileDocs = []string{
-	`{"version": 1}`,
-	`{"version": 1.0}`,
-	`{"version": 1e0}`,
-	`{"version": 1.5}`,
 	`{"version": 2}`,
+	`{"version": 2.0}`,
+	`{"version": 2e0}`,
+	`{"version": 2.5}`,
+	`{"version": 3}`,
 	`{"version": 0}`,
-	`{"version": 1, "blocks": [{"type": "file", "size": 2048}]}`,
-	`{"version": 1, "blocks": [{"type": "file", "size": 2048.0}]}`,
-	`{"version": 1, "blocks": [{"type": "file", "size": 1e3}]}`,
-	`{"version": 1, "blocks": [{"type": "file", "size": 1e30}]}`,
-	`{"version": 1, "blocks": [{"type": "file", "size": -1}]}`,
-	`{"version": 1, "blocks": [{"type": "file", "size": 2048.5}]}`,
-	`{"version": 1, "blocks": [{"type": "widget", "limit": 10}]}`,
-	`{"version": 1, "blocks": [{"type": "widget", "limit": 1e1}]}`,
-	`{"version": 1, "blocks": [{"type": "widget", "limit": 1e20}]}`,
-	`{"version": 1, "blocks": [{"type": "widget", "limit": -3}]}`,
-	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1", "page_size": 50.0}]}]}`,
-	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1", "page_size": 1e19}]}]}`,
-	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1", "page_size": 0}]}]}`,
-	`{"version": 1, "blocks": [{"type": "table", "columns": [{"id": "c1", "width": 120.7}], "rows": []}]}`,
-	`{"version": 1, "blocks": [{"type": "table", "columns": [{"id": "c1", "width": 1e30}], "rows": []}]}`,
-	`{"version": 1, "blocks": [{"type": "table", "columns": [{"id": "c1", "width": -5}], "rows": []}]}`,
-	`{"version": 1, "blocks": [{"indent": 0.0, "type": "paragraph", "text": "x"}]}`,
-	`{"version": 1, "blocks": [{"indent": 1e1, "type": "paragraph", "text": "x"}]}`,
-	`{"version": 1, "properties": {"name": "x", "size": 9007199254740993}}`,
-	`{"version": 1, "blocks": [{"type": "paragraph", "text": "<sub>x</sub>"}]}`,
+	`{"version": 2, "blocks": [{"type": "file", "size": 2048}]}`,
+	`{"version": 2, "blocks": [{"type": "file", "size": 2048.0}]}`,
+	`{"version": 2, "blocks": [{"type": "file", "size": 1e3}]}`,
+	`{"version": 2, "blocks": [{"type": "file", "size": 1e30}]}`,
+	`{"version": 2, "blocks": [{"type": "file", "size": -1}]}`,
+	`{"version": 2, "blocks": [{"type": "file", "size": 2048.5}]}`,
+	`{"version": 2, "blocks": [{"type": "widget", "limit": 10}]}`,
+	`{"version": 2, "blocks": [{"type": "widget", "limit": 1e1}]}`,
+	`{"version": 2, "blocks": [{"type": "widget", "limit": 1e20}]}`,
+	`{"version": 2, "blocks": [{"type": "widget", "limit": -3}]}`,
+	`{"version": 2, "blocks": [{"type": "dataview", "views": [{"id": "v1", "page_size": 50.0}]}]}`,
+	`{"version": 2, "blocks": [{"type": "dataview", "views": [{"id": "v1", "page_size": 1e19}]}]}`,
+	`{"version": 2, "blocks": [{"type": "dataview", "views": [{"id": "v1", "page_size": 0}]}]}`,
+	`{"version": 2, "blocks": [{"type": "table", "columns": [{"id": "c1", "width": 120.7}], "rows": []}]}`,
+	`{"version": 2, "blocks": [{"type": "table", "columns": [{"id": "c1", "width": 1e30}], "rows": []}]}`,
+	`{"version": 2, "blocks": [{"type": "table", "columns": [{"id": "c1", "width": -5}], "rows": []}]}`,
+	`{"version": 2, "blocks": [{"indent": 0.0, "type": "paragraph", "text": "x"}]}`,
+	`{"version": 2, "blocks": [{"indent": 1e1, "type": "paragraph", "text": "x"}]}`,
+	`{"version": 2, "properties": {"name": "x", "size": 9007199254740993}}`,
+	`{"version": 2, "blocks": [{"type": "paragraph", "text": "<sub>x</sub>"}]}`,
 	// a JSON number larger than float64 can hold. The loose surfaces have no
 	// schema bound to catch it by construction (§3 accepts any number), and the
 	// snapshot they decode into is a proto Struct, whose numbers are float64 —
 	// so there is nowhere to put such a value, and the answer has to be a
 	// path-addressed rejection rather than a decode error
-	`{"version": 1, "properties": {"num": 1e400}}`,
-	`{"version": 1, "properties": {"num": 1e309}}`,
-	`{"version": 1, "properties": {"num": 1e308}}`,
-	`{"version": 1, "store": {"k": 1e400}}`,
-	`{"version": 1, "blocks": [{"type": "paragraph", "text": "x", "fields": {"w": 1e400}}]}`,
-	`{"version": 1, "blocks": [{"type": "table", "columns": [{"id": "c1", "width": 1e400}], "rows": []}]}`,
-	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1",
+	`{"version": 2, "properties": {"num": 1e400}}`,
+	`{"version": 2, "properties": {"num": 1e309}}`,
+	`{"version": 2, "properties": {"num": 1e308}}`,
+	`{"version": 2, "store": {"k": 1e400}}`,
+	`{"version": 2, "blocks": [{"type": "paragraph", "text": "x", "fields": {"w": 1e400}}]}`,
+	`{"version": 2, "blocks": [{"type": "table", "columns": [{"id": "c1", "width": 1e400}], "rows": []}]}`,
+	`{"version": 2, "blocks": [{"type": "dataview", "views": [{"id": "v1",
 		"filters": [{"property": "p", "condition": "equal", "value": 1e400}]}]}]}`,
-	`{"version": 1, "blocks": [{"type": "table", "columns": [{"id": "c1"}],
+	`{"version": 2, "blocks": [{"type": "table", "columns": [{"id": "c1"}],
 		"rows": [{"id": "r1", "cells": [["nested", {"indent": 1, "type": "paragraph", "text": "y"}]]}]}]}`,
 	// admission runs on the RESOLVED stored key (§3): the legacy slug
 	// spelling of a denied key (the fold still resolves it), a property_internal_keys legend rebinding a harmless
@@ -1014,74 +1014,74 @@ var hostileDocs = []string{
 	// These pin WHERE the rule lives as much as that it exists — a "fix" that
 	// moves the deny rule into import alone makes Validate accept what
 	// Unmarshal rejects, and this corpus is what catches that.
-	`{"version": 1, "properties": {"unique_key": "ot-page"}}`,
-	`{"version": 1, "properties": {"space_id": "other"}}`,
-	`{"version": 1, "properties": {"old_anytype_id": "legacy-1"}}`,
-	`{"version": 1, "properties": {"source_file_path": "/x/y"}}`,
-	`{"version": 1, "properties": {"resolved_layout": "nonsense"}}`,
-	`{"version": 1, "properties": {"resolved_layout": "todo"}}`,
-	`{"version": 1, "property_internal_keys": {"prio": "uniqueKey"}, "properties": {"prio": "ot-page"}}`,
-	`{"version": 1, "property_internal_keys": {"myid": "id"}, "properties": {"myid": "boom"}}`,
-	`{"version": 1, "property_internal_keys": {"s": "spaceId"}, "properties": {"s": "other"}}`,
+	`{"version": 2, "properties": {"unique_key": "ot-page"}}`,
+	`{"version": 2, "properties": {"space_id": "other"}}`,
+	`{"version": 2, "properties": {"old_anytype_id": "legacy-1"}}`,
+	`{"version": 2, "properties": {"source_file_path": "/x/y"}}`,
+	`{"version": 2, "properties": {"resolved_layout": "nonsense"}}`,
+	`{"version": 2, "properties": {"resolved_layout": "todo"}}`,
+	`{"version": 2, "property_internal_keys": {"prio": "uniqueKey"}, "properties": {"prio": "ot-page"}}`,
+	`{"version": 2, "property_internal_keys": {"myid": "id"}, "properties": {"myid": "boom"}}`,
+	`{"version": 2, "property_internal_keys": {"s": "spaceId"}, "properties": {"s": "other"}}`,
 	// a benign rebind is the legend working as specified, and flows through
-	`{"version": 1, "property_internal_keys": {"prio": "6a32d4856761631534b22f85"}, "properties": {"prio": "high"}}`,
+	`{"version": 2, "property_internal_keys": {"prio": "6a32d4856761631534b22f85"}, "properties": {"prio": "high"}}`,
 	// a counting date preset with no count: an error where the preset's day
 	// range is applied, and nothing at all where it is inert (§6.2). Both
 	// halves of transformDateFilter's gate make it inert — the condition, and
 	// the property's format, which here comes from the bundled table because
 	// the block declares no properties list at all
-	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1",
+	`{"version": 2, "blocks": [{"type": "dataview", "views": [{"id": "v1",
 		"filters": [{"property": "due_date", "condition": "empty", "date_preset": "number_of_days_ago"}]}]}]}`,
-	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1",
+	`{"version": 2, "blocks": [{"type": "dataview", "views": [{"id": "v1",
 		"filters": [{"property": "due_date", "condition": "greater", "date_preset": "number_of_days_ago"}]}]}]}`,
-	`{"version": 1, "blocks": [{"type": "dataview",
+	`{"version": 2, "blocks": [{"type": "dataview",
 		"properties": [{"property": "due_date", "format": "text"}], "views": [{"id": "v1",
 		"filters": [{"property": "due_date", "condition": "greater", "date_preset": "number_of_days_ago"}]}]}]}`,
-	`{"version": 1, "blocks": [{"type": "dataview", "views": [{"id": "v1",
+	`{"version": 2, "blocks": [{"type": "dataview", "views": [{"id": "v1",
 		"filters": [{"property": "not_a_property", "condition": "greater", "date_preset": "number_of_days_ago"}]}]}]}`,
 	// a legend value is a stored key and obeys the writable-key rule (§3)
-	`{"version": 1, "property_internal_keys": {"p": ""}}`,
+	`{"version": 2, "property_internal_keys": {"p": ""}}`,
 	// a key holding a JSON-pointer metacharacter: legal in a stored key and
 	// in a spelling (§3 bounds length and control characters, nothing else),
 	// so both surfaces have to address it escaped — the accepted member as
 	// much as the refused legend value
-	`{"version": 1, "properties": {"a/b": "x"}}`,
-	`{"version": 1, "properties": {"a~b": "x"}}`,
-	`{"version": 1, "property_internal_keys": {"a/b": ""}}`,
-	`{"version": 1, "property_internal_keys": {"p": "a\nb"}}`,
-	`{"version": 1, "property_internal_keys": {"p": "` + strings.Repeat("k", 129) + `"}}`,
+	`{"version": 2, "properties": {"a/b": "x"}}`,
+	`{"version": 2, "properties": {"a~b": "x"}}`,
+	`{"version": 2, "property_internal_keys": {"a/b": ""}}`,
+	`{"version": 2, "property_internal_keys": {"p": "a\nb"}}`,
+	`{"version": 2, "property_internal_keys": {"p": "` + strings.Repeat("k", 129) + `"}}`,
 	// the verbatim-first family (§3): twin spellings binding one stored key
 	// are refused by BOTH halves with default Options; an identity entry
 	// makes a shadow spelling a stored key in every reader; a legend VALUE is
 	// admitted like the stored key it is, member or no member spelling it
-	`{"version": 1, "properties": {"iconEmoji": "a", "icon_emoji": "b"}}`,
-	`{"version": 1, "properties": {"dueDate": "2025-01-01T00:00:00Z", "due_date": "x"}}`,
-	`{"version": 1, "property_internal_keys": {"unique_key": "unique_key"}, "properties": {"unique_key": "custom"}}`,
-	`{"version": 1, "property_internal_keys": {"unique_key": "6a32d4856761631534b22f85"}, "properties": {"unique_key": "high"}}`,
-	`{"version": 1, "property_internal_keys": {"sneaky": "uniqueKey"}}`,
-	`{"version": 1, "property_internal_keys": {"p": "oldAnytypeID"}}`,
+	`{"version": 2, "properties": {"iconEmoji": "a", "icon_emoji": "b"}}`,
+	`{"version": 2, "properties": {"dueDate": "2025-01-01T00:00:00Z", "due_date": "x"}}`,
+	`{"version": 2, "property_internal_keys": {"unique_key": "unique_key"}, "properties": {"unique_key": "custom"}}`,
+	`{"version": 2, "property_internal_keys": {"unique_key": "6a32d4856761631534b22f85"}, "properties": {"unique_key": "high"}}`,
+	`{"version": 2, "property_internal_keys": {"sneaky": "uniqueKey"}}`,
+	`{"version": 2, "property_internal_keys": {"p": "oldAnytypeID"}}`,
 	// two spellings the document's own chain accepts that a WIDER vocabulary
 	// resolves onto a denied / an unwritable key — the i2Vocabularies entries
 	// that widen resolution exercise the §3 seam through these
-	`{"version": 1, "properties": {"prio": "bare"}}`,
-	`{"version": 1, "properties": {"blank": "x"}}`,
+	`{"version": 2, "properties": {"prio": "bare"}}`,
+	`{"version": 2, "properties": {"blank": "x"}}`,
 	// the TYPE namespace mirrors the legend rules (§3): a benign rebind and
 	// an identity entry flow through, a legend value obeys the writable-key
 	// rule, the template gate runs on the RESOLVED type key, and two
 	// spellings a wider vocabulary resolves further than the document's own
 	// chain (the type-axis i2Vocabularies entries widen through these)
-	`{"version": 1, "type": "task"}`,
-	`{"version": 1, "type": "tsk"}`,
-	`{"version": 1, "type": "blanktype"}`,
-	`{"version": 1, "kind": "template", "type": "template", "template_for": "blanktype"}`,
-	`{"version": 1, "type_internal_keys": {"task": "69bbfc78877a91b1d12d1a7c"}, "type": "task"}`,
-	`{"version": 1, "type_internal_keys": {"object_type": "object_type"}, "type": "object_type"}`,
-	`{"version": 1, "type_internal_keys": {"t": ""}}`,
-	`{"version": 1, "type_internal_keys": {"t": "a\nb"}}`,
-	`{"version": 1, "type_internal_keys": {"t": "` + strings.Repeat("k", 129) + `"}}`,
-	`{"version": 1, "kind": "template", "type_internal_keys": {"template": "custom1"}, "type": "template", "template_for": "page"}`,
-	`{"version": 1, "kind": "template", "type_internal_keys": {"tpl": "template"}, "type": "tpl", "template_for": "page"}`,
-	`{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
+	`{"version": 2, "type": "task"}`,
+	`{"version": 2, "type": "tsk"}`,
+	`{"version": 2, "type": "blanktype"}`,
+	`{"version": 2, "kind": "template", "type": "template", "template_for": "blanktype"}`,
+	`{"version": 2, "type_internal_keys": {"task": "69bbfc78877a91b1d12d1a7c"}, "type": "task"}`,
+	`{"version": 2, "type_internal_keys": {"object_type": "object_type"}, "type": "object_type"}`,
+	`{"version": 2, "type_internal_keys": {"t": ""}}`,
+	`{"version": 2, "type_internal_keys": {"t": "a\nb"}}`,
+	`{"version": 2, "type_internal_keys": {"t": "` + strings.Repeat("k", 129) + `"}}`,
+	`{"version": 2, "kind": "template", "type_internal_keys": {"template": "custom1"}, "type": "template", "template_for": "page"}`,
+	`{"version": 2, "kind": "template", "type_internal_keys": {"tpl": "template"}, "type": "tpl", "template_for": "page"}`,
+	`{"version": 2, "kind": "object_type", "id": "t1", "internal_key": "k",
 		"type_internal_keys": {"task": "69bbfc78877a91b1d12d1a7c"},
 		"type_settings": {"property_definitions": [{"property": "owner", "format": "objects", "object_types": ["task", "blanktype"]}]}}`,
 	// a property definition's `property` is a PROPERTY key slot and admits like one: the
@@ -1089,11 +1089,11 @@ var hostileDocs = []string{
 	// the two shapes the seam refuses with the DEFAULT vocabulary, where no
 	// resolution widens anything and the schema's `minLength: 1` is the only
 	// bound the slot ever had
-	`{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
+	`{"version": 2, "kind": "object_type", "id": "t1", "internal_key": "k",
 		"type_settings": {"property_definitions": [{"property": "blank", "format": "text"}]}}`,
-	`{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
+	`{"version": 2, "kind": "object_type", "id": "t1", "internal_key": "k",
 		"type_settings": {"property_definitions": [{"property": "` + strings.Repeat("k", maxPropertyKeyLen+1) + `"}]}}`,
-	`{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
+	`{"version": 2, "kind": "object_type", "id": "t1", "internal_key": "k",
 		"type_settings": {"property_definitions": [{"property": "a\nb"}]}}`,
 	// the `option_ids` legend (§9a) at both levels: an entry the document
 	// spells, an entry nothing spells (the warning), the shapes the deleted
@@ -1104,38 +1104,38 @@ var hostileDocs = []string{
 	// character — which the schema and the package restatement have to refuse
 	// identically. A former plain compaction label is here too, in an
 	// object-id slot, since nothing resolves one now.
-	`{"version": 1, "option_ids": {"tag": {"High": "bafyreiopt"}}, "properties": {"tag": ["High"]}}`,
-	`{"version": 1, "option_ids": {"tag": {"import issue": "bafyreiopt"}},
+	`{"version": 2, "option_ids": {"tag": {"High": "bafyreiopt"}}, "properties": {"tag": ["High"]}}`,
+	`{"version": 2, "option_ids": {"tag": {"import issue": "bafyreiopt"}},
 		"properties": {"tag": ["import issue"]},
 		"blocks": [{"type": "link", "object_id": "miovm"}]}`,
-	`{"version": 1, "option_ids": {"c#_lang": {"C#": "bafyreiopt"}}}`,
-	`{"version": 1, "option_ids": {"tag": {"#": "bafyreiopt"}}}`,
-	`{"version": 1, "option_ids": {"tag": {"has space": "bafyreiopt"}}}`,
-	`{"version": 1, "option_ids": {"tag": {"a\nb": "bafyreiopt"}}, "properties": {"tag": ["a\nb"]}}`,
-	`{"version": 1, "option_ids": {"tag": {"": "bafyreiopt"}}}`,
-	`{"version": 1, "option_ids": {"": {"High": "bafyreiopt"}}}`,
-	`{"version": 1, "option_ids": {"tag": "bafyreiopt"}}`,
-	`{"version": 1, "option_ids": {"ta\ng": {"High": "bafyreiopt"}}}`,
-	`{"version": 1, "option_ids": {"` + strings.Repeat("p", maxPropertyKeyLen+1) + `": {"High": "bafyreiopt"}}}`,
-	`{"version": 1, "option_ids": {"tag": {"` + strings.Repeat("n", maxPropertyKeyLen+1) + `": "bafyreiopt"}},
+	`{"version": 2, "option_ids": {"c#_lang": {"C#": "bafyreiopt"}}}`,
+	`{"version": 2, "option_ids": {"tag": {"#": "bafyreiopt"}}}`,
+	`{"version": 2, "option_ids": {"tag": {"has space": "bafyreiopt"}}}`,
+	`{"version": 2, "option_ids": {"tag": {"a\nb": "bafyreiopt"}}, "properties": {"tag": ["a\nb"]}}`,
+	`{"version": 2, "option_ids": {"tag": {"": "bafyreiopt"}}}`,
+	`{"version": 2, "option_ids": {"": {"High": "bafyreiopt"}}}`,
+	`{"version": 2, "option_ids": {"tag": "bafyreiopt"}}`,
+	`{"version": 2, "option_ids": {"ta\ng": {"High": "bafyreiopt"}}}`,
+	`{"version": 2, "option_ids": {"` + strings.Repeat("p", maxPropertyKeyLen+1) + `": {"High": "bafyreiopt"}}}`,
+	`{"version": 2, "option_ids": {"tag": {"` + strings.Repeat("n", maxPropertyKeyLen+1) + `": "bafyreiopt"}},
 		"properties": {"tag": ["` + strings.Repeat("n", maxPropertyKeyLen+1) + `"]}}`,
 	// the `template` spelling, straight through the envelope: the
 	// type-moves-template vocabulary answers a different stored key for it,
 	// and the kind must be unmoved by that — it is read off `kind` and the
 	// vocabulary cannot reach `kind`
-	`{"version": 1, "kind": "template", "type": "template", "template_for": "task"}`,
-	`{"version": 1, "kind": "template", "type": "tpl", "template_for": "task"}`,
+	`{"version": 2, "kind": "template", "type": "template", "template_for": "task"}`,
+	`{"version": 2, "kind": "template", "type": "tpl", "template_for": "task"}`,
 	// a PAGE whose object type is the template type: the one shape the
 	// pre-v0.22 rule could not tell apart from a template, and the reason
 	// export spells `kind` out here
-	`{"version": 1, "kind": "page", "type": "template"}`,
+	`{"version": 2, "kind": "page", "type": "template"}`,
 	// and the four refusals that replace the reservation — Validate rejects
 	// each, so I2 asks that Unmarshal reject them too rather than decoding a
 	// page that meant to be a template
-	`{"version": 1, "type": "template", "template_for": "task"}`,
-	`{"version": 1, "type": "template"}`,
-	`{"version": 1, "kind": "page", "type": "template", "template_for": "task"}`,
-	`{"version": 1, "kind": "template", "template_for": "task"}`,
+	`{"version": 2, "type": "template", "template_for": "task"}`,
+	`{"version": 2, "type": "template"}`,
+	`{"version": 2, "kind": "page", "type": "template", "template_for": "task"}`,
+	`{"version": 2, "kind": "template", "template_for": "task"}`,
 }
 
 // i2Vocabularies is the Options axis I2 runs over. A vocabulary can resolve
@@ -1272,7 +1272,7 @@ func TestInvariant_ImportedDocumentReExportsValid(t *testing.T) {
 // would break the "provided ids are preserved so re-exports diff cleanly"
 // promise (§9).
 func TestExport_ValidIdsAreNeverRenamed(t *testing.T) {
-	doc := `{"version": 1, "id": "obj1", "blocks": [
+	doc := `{"version": 2, "id": "obj1", "blocks": [
 		{"type": "paragraph", "id": "a_b", "text": "first"},
 		{"type": "paragraph", "id": "keep-me", "text": "second"},
 		{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": ["x"]}]}]}`

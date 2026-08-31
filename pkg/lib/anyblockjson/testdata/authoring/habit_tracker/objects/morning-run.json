@@ -1,6 +1,6 @@
 {
-  "$schema": "https://schemas.anytype.io/anyblock/1/authoring/object.schema.json",
-  "version": 1,
+  "$schema": "https://schemas.anytype.io/anyblock/2/authoring/object.schema.json",
+  "version": 2,
   "id": "habit-morning-run",
   "type": "habit",
   "icon": { "format": "emoji", "emoji": "🏃" },

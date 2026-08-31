@@ -40,23 +40,23 @@ func TestAttributionProperties_DroppedNotRefused(t *testing.T) {
 		key string
 	}{
 		"creator, as a member name (what export writes)": {
-			doc: `{"version": 1, "properties": {"creator": "Roman"}}`,
+			doc: `{"version": 2, "properties": {"creator": "Roman"}}`,
 			key: "creator",
 		},
 		"creator, as the id array older exports wrote": {
-			doc: fmt.Sprintf(`{"version": 1, "properties": {"creator": [%q]}}`, testParticipantId),
+			doc: fmt.Sprintf(`{"version": 2, "properties": {"creator": [%q]}}`, testParticipantId),
 			key: "creator",
 		},
 		"last_modified_by, the spelling that used to be refused": {
-			doc: `{"version": 1, "properties": {"last_modified_by": "Roman"}}`,
+			doc: `{"version": 2, "properties": {"last_modified_by": "Roman"}}`,
 			key: "lastModifiedBy",
 		},
 		"last_modified_by, as an id array": {
-			doc: fmt.Sprintf(`{"version": 1, "properties": {"last_modified_by": [%q]}}`, testParticipantId),
+			doc: fmt.Sprintf(`{"version": 2, "properties": {"last_modified_by": [%q]}}`, testParticipantId),
 			key: "lastModifiedBy",
 		},
 		"the stored spelling drops too": {
-			doc: `{"version": 1, "properties": {"lastModifiedBy": "Roman"}}`,
+			doc: `{"version": 2, "properties": {"lastModifiedBy": "Roman"}}`,
 			key: "lastModifiedBy",
 		},
 	} {
@@ -87,7 +87,7 @@ func TestAttributionProperties_UserChosenParticipantsAreUntouched(t *testing.T) 
 	for _, key := range []string{"assignee", "author", "stakeholders"} {
 		t.Run(key, func(t *testing.T) {
 			// given
-			doc := fmt.Sprintf(`{"version": 1, "properties": {%q: [%q]}}`, key, testParticipantId)
+			doc := fmt.Sprintf(`{"version": 2, "properties": {%q: [%q]}}`, key, testParticipantId)
 
 			// when
 			_, snap, err := Unmarshal([]byte(doc), Options{})
@@ -108,8 +108,8 @@ func TestAttributionProperties_UserChosenParticipantsAreUntouched(t *testing.T) 
 // not refused.
 func TestAttributionProperties_LegendCannotLandThem(t *testing.T) {
 	for name, tc := range map[string]struct{ doc, key string }{
-		"creator":        {`{"version": 1, "property_internal_keys": {"who": "creator"}, "properties": {"who": "Roman"}}`, "creator"},
-		"lastModifiedBy": {`{"version": 1, "property_internal_keys": {"who": "lastModifiedBy"}, "properties": {"who": "Roman"}}`, "lastModifiedBy"},
+		"creator":        {`{"version": 2, "property_internal_keys": {"who": "creator"}, "properties": {"who": "Roman"}}`, "creator"},
+		"lastModifiedBy": {`{"version": 2, "property_internal_keys": {"who": "lastModifiedBy"}, "properties": {"who": "Roman"}}`, "lastModifiedBy"},
 	} {
 		t.Run(name, func(t *testing.T) {
 			// when

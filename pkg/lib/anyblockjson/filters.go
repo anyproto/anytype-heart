@@ -16,6 +16,7 @@ package anyblockjson
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -46,6 +47,12 @@ var datePresetList = strings.Join([]string{
 func UnmarshalFilters(raw json.RawMessage, opts Options) ([]*model.BlockContentDataviewFilter, error) {
 	var nodes []jsonFilter
 	if err := jsonUnmarshal(raw, &nodes); err != nil {
+		// the schema states the shape with a path where it can — a payload
+		// that is not an array, a member of the wrong type — and the raw
+		// decode error remains only for what never reaches it
+		if fragErr := validateQueryFragment("filters", raw); isValidationError(fragErr) {
+			return nil, fragErr
+		}
 		return nil, fmt.Errorf("decode filters: %w", err)
 	}
 	var generic []any
@@ -77,6 +84,16 @@ func UnmarshalFilters(raw json.RawMessage, opts Options) ([]*model.BlockContentD
 	if len(issues) > 0 {
 		return nil, &ValidationError{Issues: issues}
 	}
+	// §12, the closed shape: the same $defs/filterNode fragment the
+	// whole-document path holds a view's filters to — the pass that refuses
+	// an unknown member, which the tolerant decode above silently drops. It
+	// runs after the vocabulary pass so the enum wording above keeps owning
+	// the faults it can name, and only for what that pass had no rule for.
+	if len(nodes) > 0 {
+		if err := validateQueryFragment("filters", raw); err != nil {
+			return nil, err
+		}
+	}
 
 	imp := &importer{opts: opts, doc: opts.fragmentDoc()}
 	dv := &model.BlockContentDataview{}
@@ -94,6 +111,11 @@ func UnmarshalFilters(raw json.RawMessage, opts Options) ([]*model.BlockContentD
 func UnmarshalSorts(raw json.RawMessage, opts Options) ([]*model.BlockContentDataviewSort, error) {
 	var sorts []jsonSort
 	if err := jsonUnmarshal(raw, &sorts); err != nil {
+		// same split as UnmarshalFilters: the schema's path-addressed
+		// verdict where it has one, the raw decode error otherwise
+		if fragErr := validateQueryFragment("sorts", raw); isValidationError(fragErr) {
+			return nil, fragErr
+		}
 		return nil, fmt.Errorf("decode sorts: %w", err)
 	}
 	var issues []Issue
@@ -119,6 +141,14 @@ func UnmarshalSorts(raw json.RawMessage, opts Options) ([]*model.BlockContentDat
 	}
 	if len(issues) > 0 {
 		return nil, &ValidationError{Issues: issues}
+	}
+	// §12, the closed shape: the same $defs/sort fragment the whole-document
+	// path holds a view's sorts to — after the vocabulary pass, for the same
+	// wording reason as UnmarshalFilters
+	if len(sorts) > 0 {
+		if err := validateQueryFragment("sorts", raw); err != nil {
+			return nil, err
+		}
 	}
 
 	imp := &importer{opts: opts, doc: opts.fragmentDoc()}
@@ -184,4 +214,56 @@ func referencedFormats(nodes []jsonFilter, opts Options) map[string]string {
 	}
 	walk(nodes)
 	return formats
+}
+
+// validateQueryFragment holds a bare §6.2 filters or sorts array to the same
+// schema fragments the whole-document path holds a view to ($defs/filterNode,
+// $defs/sort): the array is wrapped into a minimal synthetic document — the
+// validateFragmentRun pattern (fragment.go) — and the document validation
+// runs, so the two doors cannot disagree about the shape. Issue paths are
+// remapped from the synthetic /blocks/0/views/0/… to the fragment-relative
+// /filters/… and /sorts/… the §6.2 fragment entry points promise. Warnings
+// are discarded here: the fragment entry points run their own semantic pass
+// with the caller's format resolver, which the synthetic document lacks.
+func validateQueryFragment(member string, raw json.RawMessage) error {
+	payload, err := json.Marshal(map[string]any{
+		"version": FormatVersion,
+		"type":    "page",
+		"blocks": []any{map[string]any{
+			"type":  "dataview",
+			"views": []any{map[string]json.RawMessage{member: raw}},
+		}},
+	})
+	if err != nil {
+		return fmt.Errorf("build synthetic %s document: %w", member, err)
+	}
+	if _, err := validateToDoc(payload, false, nil); err != nil {
+		var ve *ValidationError
+		if errors.As(err, &ve) {
+			return &ValidationError{Issues: refragmentIssues(ve.Issues)}
+		}
+		return err
+	}
+	return nil
+}
+
+// refragmentIssues rewrites synthetic-document paths back to the
+// fragment-relative form: /blocks/0/views/0/filters/1/condition names
+// /filters/1/condition of the array the caller handed over.
+func refragmentIssues(issues []Issue) []Issue {
+	const prefix = "/blocks/0/views/0"
+	out := make([]Issue, len(issues))
+	for i, iss := range issues {
+		iss.Path = strings.TrimPrefix(iss.Path, prefix)
+		out[i] = iss
+	}
+	return out
+}
+
+// isValidationError reports whether err wraps a *ValidationError — the
+// path-addressed kind the fragment entry points prefer over a bare decode
+// error.
+func isValidationError(err error) bool {
+	var ve *ValidationError
+	return errors.As(err, &ve)
 }

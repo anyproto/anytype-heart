@@ -35,11 +35,11 @@ import (
 // name an author learned at any sibling slot works at every other.
 func TestValidate_OnePropertySpellingAcrossTheDataview(t *testing.T) {
 	for name, doc := range map[string]string{
-		"properties entry": `{"version":1,"id":"o1","blocks":[{"id":"b1","type":"dataview","object_id":"t1",
+		"properties entry": `{"version":2,"id":"o1","blocks":[{"id":"b1","type":"dataview","object_id":"t1",
 			"properties":[{"property":"name","format":"text"}],"views":[{"id":"v"}]}]}`,
-		"view column": `{"version":1,"id":"o1","blocks":[{"id":"b1","type":"dataview","object_id":"t1",
+		"view column": `{"version":2,"id":"o1","blocks":[{"id":"b1","type":"dataview","object_id":"t1",
 			"views":[{"id":"v","columns":[{"property":"name"}]}]}]}`,
-		"property block": `{"version":1,"id":"o1","blocks":[{"id":"b1","type":"property","property":"name"}]}`,
+		"property block": `{"version":2,"id":"o1","blocks":[{"id":"b1","type":"property","property":"name"}]}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, Validate([]byte(doc)), doc)
@@ -57,14 +57,14 @@ func TestValidate_OnePropertySpellingAcrossTheDataview(t *testing.T) {
 func TestValidate_TheVacatedKeySpellingIsRefusedWithTheRepairNamed(t *testing.T) {
 	for name, tc := range map[string]struct{ doc, path string }{
 		"dataview properties entry": {
-			`{"version":1,"id":"o1","blocks":[{"id":"b1","type":"dataview","object_id":"t1",
+			`{"version":2,"id":"o1","blocks":[{"id":"b1","type":"dataview","object_id":"t1",
 				"properties":[{"key":"name","format":"text"}],"views":[{"id":"v"}]}]}`,
 			"/blocks/0/properties/0/key"},
 		"property block": {
-			`{"version":1,"id":"o1","blocks":[{"id":"b1","type":"property","key":"prio"}]}`,
+			`{"version":2,"id":"o1","blocks":[{"id":"b1","type":"property","key":"prio"}]}`,
 			"/blocks/0/key"},
 		"view column, where key never belonged": {
-			`{"version":1,"id":"o1","blocks":[{"id":"b1","type":"dataview","object_id":"t1",
+			`{"version":2,"id":"o1","blocks":[{"id":"b1","type":"dataview","object_id":"t1",
 				"views":[{"id":"v","columns":[{"key":"name"}]}]}]}`,
 			"/blocks/0/views/0/columns/0/key"},
 	} {

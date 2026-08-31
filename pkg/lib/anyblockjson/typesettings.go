@@ -3,7 +3,7 @@ package anyblockjson
 // typesettings.go implements the §2a `type_settings` group: everything that
 // defines a TYPE, in one gated subtree — the five settings members lifted
 // from `properties`, plus `property_definitions` (the array that lived at
-// the root as `type_properties` until v0.32).
+// the root as `type_properties` in an earlier revision).
 //
 // Nesting is not tidiness. §2d already put one root `allOf` conditional on
 // the schema; five more root fields would be five more, and the eval found
@@ -201,7 +201,7 @@ func typeSettingsOf(doc map[string]any) (map[string]any, bool) {
 
 // typePropertyDefinitionsOf reads the property-definition list off a raw
 // document. One reader for every raw-document pass, so none of them can
-// keep looking at the pre-v0.32 root location.
+// keep looking at the legacy root location.
 func typePropertyDefinitionsOf(doc map[string]any) ([]any, bool) {
 	group, _ := typeSettingsOf(doc)
 	raw, has := group["property_definitions"]

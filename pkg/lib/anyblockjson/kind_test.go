@@ -15,7 +15,7 @@ import (
 )
 
 func TestImport_ChatKind(t *testing.T) {
-	doc := `{"version": 1, "id": "chat-wiki", "kind": "chat", "internal_key": "wikiChat",
+	doc := `{"version": 2, "id": "chat-wiki", "kind": "chat", "internal_key": "wikiChat",
 		"icon": {"format": "emoji", "emoji": "💬"},
 		"properties": {"name": "Wiki"}}`
 	sbType, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
@@ -54,12 +54,12 @@ func TestRoundtrip_ChatKind(t *testing.T) {
 // the old name is gone from the vocabulary, and the deprecated sibling kind
 // stays distinct from it
 func TestValidate_ChatDerivedNameRejected(t *testing.T) {
-	_, _, err := Unmarshal([]byte(`{"version": 1, "kind": "chat_derived", "internal_key": "k"}`),
+	_, _, err := Unmarshal([]byte(`{"version": 2, "kind": "chat_derived", "internal_key": "k"}`),
 		Options{GenerateId: seqIds("g")})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "kind")
 
-	sbType, _, err := Unmarshal([]byte(`{"version": 1, "kind": "chat_object", "internal_key": "k"}`),
+	sbType, _, err := Unmarshal([]byte(`{"version": 2, "kind": "chat_object", "internal_key": "k"}`),
 		Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
 	assert.Equal(t, model.SmartBlockType_ChatObjectDeprecated, sbType)

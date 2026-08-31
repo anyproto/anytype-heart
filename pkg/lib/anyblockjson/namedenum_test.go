@@ -43,7 +43,7 @@ func TestNamedEnum_LayoutAlign(t *testing.T) {
 	})
 
 	t.Run("import maps the name to the stored number", func(t *testing.T) {
-		doc := `{"version": 1, "id": "o1", "properties": {"layout_align": "center"}}`
+		doc := `{"version": 2, "id": "o1", "properties": {"layout_align": "center"}}`
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
 		v := snap.Details.Fields["layoutAlign"]
@@ -59,7 +59,7 @@ func TestNamedEnum_LayoutAlign(t *testing.T) {
 	// document and a silently mis-set object. The key is named now, so an
 	// unknown name is an ERROR that states the vocabulary.
 	t.Run("an unknown name is refused, naming the vocabulary", func(t *testing.T) {
-		doc := `{"version": 1, "id": "o1", "properties": {"layout_align": "centre"}}`
+		doc := `{"version": 2, "id": "o1", "properties": {"layout_align": "centre"}}`
 		err := Validate([]byte(doc))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "/properties/layout_align")
@@ -70,7 +70,7 @@ func TestNamedEnum_LayoutAlign(t *testing.T) {
 	})
 
 	t.Run("a raw number still round-trips", func(t *testing.T) {
-		doc := `{"version": 1, "id": "o1", "properties": {"layout_align": 2}}`
+		doc := `{"version": 2, "id": "o1", "properties": {"layout_align": 2}}`
 		require.NoError(t, Validate([]byte(doc)))
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
@@ -119,7 +119,7 @@ func TestNamedEnum_Provenance(t *testing.T) {
 	})
 
 	t.Run("import maps the names to the stored numbers", func(t *testing.T) {
-		doc := `{"version": 1, "id": "o1", "properties": {"origin": "webclipper", "import_type": "obsidian"}}`
+		doc := `{"version": 2, "id": "o1", "properties": {"origin": "webclipper", "import_type": "obsidian"}}`
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
 		assert.Equal(t, float64(model.ObjectOrigin_webclipper), snap.Details.Fields["origin"].GetNumberValue())
@@ -132,7 +132,7 @@ func TestNamedEnum_Provenance(t *testing.T) {
 	// false claim about where the object came from. The key is named now,
 	// so a name is meaningful and a typo is an error.
 	t.Run("markdown no longer reads as notion", func(t *testing.T) {
-		doc := `{"version": 1, "id": "o1", "properties": {"import_type": "markdown"}}`
+		doc := `{"version": 2, "id": "o1", "properties": {"import_type": "markdown"}}`
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
 		assert.Equal(t, float64(model.Import_Markdown), snap.Details.Fields["importType"].GetNumberValue(),
@@ -140,7 +140,7 @@ func TestNamedEnum_Provenance(t *testing.T) {
 	})
 
 	t.Run("an unknown origin is refused, naming the vocabulary", func(t *testing.T) {
-		doc := `{"version": 1, "id": "o1", "properties": {"origin": "clipbord"}}`
+		doc := `{"version": 2, "id": "o1", "properties": {"origin": "clipbord"}}`
 		err := Validate([]byte(doc))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "/properties/origin")
@@ -151,14 +151,14 @@ func TestNamedEnum_Provenance(t *testing.T) {
 	})
 
 	t.Run("an unknown import type is refused too", func(t *testing.T) {
-		err := Validate([]byte(`{"version": 1, "id": "o1", "properties": {"import_type": "md"}}`))
+		err := Validate([]byte(`{"version": 2, "id": "o1", "properties": {"import_type": "md"}}`))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unknown import type")
 		assert.Contains(t, err.Error(), "'markdown'")
 	})
 
 	t.Run("raw numbers still round-trip", func(t *testing.T) {
-		doc := `{"version": 1, "id": "o1", "properties": {"origin": 7, "import_type": 1}}`
+		doc := `{"version": 2, "id": "o1", "properties": {"origin": 7, "import_type": 1}}`
 		require.NoError(t, Validate([]byte(doc)), "every corpus document carries the pair this way")
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
@@ -229,7 +229,7 @@ func TestNamedEnum_ImageKind(t *testing.T) {
 	})
 
 	t.Run("import maps the name to the stored number", func(t *testing.T) {
-		doc := `{"version": 1, "id": "f1", "properties": {"image_kind": "automatically_added"}}`
+		doc := `{"version": 2, "id": "f1", "properties": {"image_kind": "automatically_added"}}`
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
 		v := snap.Details.Fields["imageKind"]
@@ -243,7 +243,7 @@ func TestNamedEnum_ImageKind(t *testing.T) {
 	// a stray string on a number detail, the accepted-then-zeroed failure
 	// this whole file exists to prevent.
 	t.Run("an unknown name is refused", func(t *testing.T) {
-		doc := `{"version": 1, "id": "f1", "properties": {"image_kind": "Icon"}}`
+		doc := `{"version": 2, "id": "f1", "properties": {"image_kind": "Icon"}}`
 		_, _, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "image_kind")

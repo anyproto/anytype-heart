@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.anytype.io/anyblock/1/properties.schema.json",
+  "$id": "https://schemas.anytype.io/anyblock/2/properties.schema.json",
   "title": "AnyBlock JSON property dictionary",
   "description": "One properties.json at the root of a bundle names every property the bundle's objects use — the dictionary (§2f). It is a sibling of index.json, not a section inside it: an index says where things are, a dictionary says what they mean. It replaces the ~9,500 property documents per account (kind \"property\") that restated the bundled table field for field (98% of installed copies are identical to it), and it is what lets a third-party reader interpret a backup WITHOUT shipping the bundled table: every entry carries its format, so a date is a date and an option name is an option name even to a reader that has never seen Anytype.",
   "type": "object",
@@ -14,7 +14,7 @@
       "description": "Which of the format's three grammars this document follows — an object document, a bundle index, or a property dictionary. OPTIONAL and DECORATIVE for validity: `version` alone gates the format, so a stale or invented URL here never makes a document invalid (a bundle written against a later schema still reads). What it does do is DISPATCH: a reader handed a file with no filename to go by uses this to pick the grammar, matching on the trailing `object|index|properties.schema.json` and ignoring the version segment. Without it a reader falls back to the document's shape, which can only tell the grammars apart when the document happens to carry a member unique to one. Every document this format writes carries it, and a hand-written one is easier for a reader to place if it does too."
     },
     "version": {
-      "const": 1
+      "const": 2
     },
     "installed": {
       "type": "array",
@@ -37,7 +37,7 @@
       "description": "One dictionary entry: a propertyDefinition (§2e), referenced rather than restated. Its `property` is the entry's spelling: the display name for a bundled property (`Due date`), the stored key verbatim for a space-minted one — a bson id like `6a32d4856761631534b22f85`, from which nothing must ever be derived. Its `internal_key` is the stored key itself, written by export for fidelity and never required from an author. This is the third of the shape's three homes, beside a type document's property-definition entry and a property document's property_settings. The layer narrows `object_types` to a real array (only a property document's STORED value can hold a null; a dictionary describes, it does not mirror a store slot) and requires `format`, because self-sufficiency is the constraint that shapes the dictionary: an entry without a format is readable only by a reader shipping bundle/relations.json, which is exactly the dependence the dictionary exists to end. An entry must identify the property it declares: state a `property` (the spelling), or an `internal_key` (the stored id), or a `name` the spelling is derived from. A NAME ALONE IS ENOUGH — `{\"name\": \"Cooking Time\", \"format\": \"number\"}` declares a property spelled `Cooking Time`. Prefer `property` or `name` when authoring: `internal_key` is an id the app mints, an author has no space to draw one from, and inventing one is never right — when a custom property states none, the import wiring mints a fresh internal key exactly as the app does when a user creates one. A derived spelling runs through the same resolution as a written one, so a property named \"Due Date\" folds onto the bundled `dueDate` instead of minting a lookalike beside it.",
       "allOf": [
         {
-          "$ref": "https://schemas.anytype.io/anyblock/1/object.schema.json#/$defs/propertyDefinition"
+          "$ref": "https://schemas.anytype.io/anyblock/2/object.schema.json#/$defs/propertyDefinition"
         }
       ],
       "properties": {

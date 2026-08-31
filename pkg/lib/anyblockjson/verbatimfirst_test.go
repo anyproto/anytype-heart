@@ -287,10 +287,10 @@ func (v twinSlugVocab) TypeKey(slug string) (string, bool) {
 // only for writability.
 func TestValidate_LegendValueObeysTheDenyRule(t *testing.T) {
 	for name, doc := range map[string]string{
-		"resolution vector": `{"version": 1, "property_internal_keys": {"sneaky": "uniqueKey"}}`,
-		"merge selector":    `{"version": 1, "property_internal_keys": {"p": "oldAnytypeID"}}`,
-		"envelope key":      `{"version": 1, "property_internal_keys": {"myid": "id"}}`,
-		"stripped key":      `{"version": 1, "property_internal_keys": {"s": "spaceId"}}`,
+		"resolution vector": `{"version": 2, "property_internal_keys": {"sneaky": "uniqueKey"}}`,
+		"merge selector":    `{"version": 2, "property_internal_keys": {"p": "oldAnytypeID"}}`,
+		"envelope key":      `{"version": 2, "property_internal_keys": {"myid": "id"}}`,
+		"stripped key":      `{"version": 2, "property_internal_keys": {"s": "spaceId"}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			err := Validate([]byte(doc))
@@ -308,7 +308,7 @@ func TestValidate_LegendValueObeysTheDenyRule(t *testing.T) {
 // accepts (it used to emit /properties/unique_key with no legend entry and
 // then reject its own output).
 func TestImport_LegendBindingToACustomShadowKeyIsNotLaundering(t *testing.T) {
-	doc := `{"version": 1, "id": "o1", "property_internal_keys": {"x": "unique_key"}, "properties": {"x": "ot-page"}}`
+	doc := `{"version": 2, "id": "o1", "property_internal_keys": {"x": "unique_key"}, "properties": {"x": "ot-page"}}`
 	require.NoError(t, Validate([]byte(doc)))
 	sbType, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
@@ -465,7 +465,7 @@ func (blankKeyVocab) PropertyKey(slug string) (string, bool) {
 // re-export then dropped the property with only a warning. A property lost
 // in silence.
 func TestImport_SeamRefusesAnUnwritableResolvedKey(t *testing.T) {
-	doc := `{"version": 1, "properties": {"blank": "x"}}`
+	doc := `{"version": 2, "properties": {"blank": "x"}}`
 	require.NoError(t, Validate([]byte(doc)),
 		"the document's own chain resolves blank verbatim — Validate cannot see the vocabulary")
 
@@ -483,9 +483,9 @@ func TestImport_SeamRefusesAnUnwritableResolvedKey(t *testing.T) {
 // …} split Validate from Unmarshal — the exact divergence I2 forbids.
 func TestValidate_MirrorsTheSeamsDuplicateBindingRefusal(t *testing.T) {
 	for name, doc := range map[string]string{
-		"bundled twin":   `{"version": 1, "properties": {"pluralName": "a", "plural_name": "b"}}`,
-		"date twin":      `{"version": 1, "properties": {"dueDate": "x", "due_date": "y"}}`,
-		"legend-induced": `{"version": 1, "property_internal_keys": {"prio": "customKey"}, "properties": {"prio": 1, "customKey": 2}}`,
+		"bundled twin":   `{"version": 2, "properties": {"pluralName": "a", "plural_name": "b"}}`,
+		"date twin":      `{"version": 2, "properties": {"dueDate": "x", "due_date": "y"}}`,
+		"legend-induced": `{"version": 2, "property_internal_keys": {"prio": "customKey"}, "properties": {"prio": 1, "customKey": 2}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			err := Validate([]byte(doc))

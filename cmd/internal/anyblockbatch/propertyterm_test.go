@@ -40,7 +40,7 @@ const customPropertyKey = "6a32d4856761631534b22f85"
 // for the property at all — and nothing anywhere says so.
 func TestScanFormats_LegendBackedKeyIsStoredResolved(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"types/task.type.json": `{"version": 1, "kind": "object_type", "internal_key": "task", "id": "type-task",
+		"types/task.type.json": `{"version": 2, "kind": "object_type", "internal_key": "task", "id": "type-task",
 		  "property_internal_keys": {"priority": "` + customPropertyKey + `"},
 		  "type_settings": {"property_definitions": [{"property": "priority", "name": "Priority", "format": "select",
 		    "options": ["High", "Low"]}]}}`,
@@ -62,7 +62,7 @@ func TestScanFormats_LegendBackedKeyIsStoredResolved(t *testing.T) {
 // mintRelation writes when the entry declares none.
 func TestScanFormats_FallbackNameIsTheSpelling(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"types/task.type.json": `{"version": 1, "kind": "object_type", "internal_key": "task", "id": "type-task",
+		"types/task.type.json": `{"version": 2, "kind": "object_type", "internal_key": "task", "id": "type-task",
 		  "property_internal_keys": {"priority": "` + customPropertyKey + `"},
 		  "type_settings": {"property_definitions": [{"property": "priority", "format": "text"}]}}`,
 	})
@@ -75,7 +75,7 @@ func TestScanFormats_FallbackNameIsTheSpelling(t *testing.T) {
 // resolution must leave the ordinary case exactly as it was.
 func TestScanFormats_UntranslatedKeyIsUnchanged(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"types/task.type.json": `{"version": 1, "kind": "object_type", "internal_key": "task", "id": "type-task",
+		"types/task.type.json": `{"version": 2, "kind": "object_type", "internal_key": "task", "id": "type-task",
 		  "type_settings": {"property_definitions": [{"property": "wikiStage", "format": "select", "options": ["A"]}]}}`,
 	})
 	formats, err := ScanFormats(files)
@@ -89,7 +89,7 @@ func TestScanFormats_UntranslatedKeyIsUnchanged(t *testing.T) {
 // relation beside the bundled one for the same property.
 func TestScanFormats_LegacySlugResolvesToTheBundledKey(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"types/task.type.json": `{"version": 1, "kind": "object_type", "internal_key": "task", "id": "type-task",
+		"types/task.type.json": `{"version": 2, "kind": "object_type", "internal_key": "task", "id": "type-task",
 		  "type_settings": {"property_definitions": [{"property": "due_date", "format": "date"}]}}`,
 	})
 	formats, err := ScanFormats(files)
@@ -104,11 +104,11 @@ func TestScanFormats_LegacySlugResolvesToTheBundledKey(t *testing.T) {
 // Without resolution the codec asks for the bson and the table holds
 // "priority", so the resolver is called and misses.
 func TestScanFormats_AnswersEveryKeyTheCodecAsksFor(t *testing.T) {
-	const object = `{"version": 1, "type": "task", "id": "obj-1",
+	const object = `{"version": 2, "type": "task", "id": "obj-1",
 	  "property_internal_keys": {"priority": "` + customPropertyKey + `"},
 	  "properties": {"priority": "High", "wikiStage": "Draft"}}`
 	files := writeDocs(t, map[string]string{
-		"types/task.type.json": `{"version": 1, "kind": "object_type", "internal_key": "task", "id": "type-task",
+		"types/task.type.json": `{"version": 2, "kind": "object_type", "internal_key": "task", "id": "type-task",
 		  "property_internal_keys": {"priority": "` + customPropertyKey + `"},
 		  "type_settings": {"property_definitions": [{"property": "priority", "format": "select", "options": ["High"]},
 		    {"property": "wikiStage", "format": "select", "options": ["Draft"]}]}}`,
@@ -148,7 +148,7 @@ func TestScanFormats_AnswersEveryKeyTheCodecAsksFor(t *testing.T) {
 // through raw with no Relation minted.
 func TestCheckPropertyFormats_LegendBackedMissIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"objects/one.json": `{"version": 1, "type": "page", "id": "obj-1",
+		"objects/one.json": `{"version": 2, "type": "page", "id": "obj-1",
 		  "property_internal_keys": {"priority": "` + customPropertyKey + `"},
 		  "properties": {"priority": "High"}}`,
 	})
@@ -175,7 +175,7 @@ func TestCheckPropertyFormats_LegendBackedMissIsReported(t *testing.T) {
 // anyblockconvert turns into a hard error unless -lenient.
 func TestCheckPropertyFormats_LegacySlugIsDeclared(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"objects/one.json": `{"version": 1, "type": "page", "id": "obj-1",
+		"objects/one.json": `{"version": 2, "type": "page", "id": "obj-1",
 		  "properties": {"due_date": "2026-01-01T00:00:00Z", "plural_name": "x", "description": "hi"}}`,
 	})
 	formats, err := ScanFormats(files)
@@ -190,7 +190,7 @@ func TestCheckPropertyFormats_LegacySlugIsDeclared(t *testing.T) {
 // for.
 func TestCheckPropertyFormats_UnknownKeyIsStillReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"objects/one.json": `{"version": 1, "type": "page", "id": "obj-1",
+		"objects/one.json": `{"version": 2, "type": "page", "id": "obj-1",
 		  "properties": {"wikiStage": "Draft"}}`,
 	})
 	undeclared, err := CheckPropertyFormats(files, map[string]FormatInfo{})
@@ -208,9 +208,9 @@ func TestCheckPropertyFormats_UnknownKeyIsStillReported(t *testing.T) {
 // legend's spelling.
 func TestCheckPropertyFormats_DeclarationAndUseMayDisagreeOnSpelling(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"types/task.type.json": `{"version": 1, "kind": "object_type", "internal_key": "task", "id": "type-task",
+		"types/task.type.json": `{"version": 2, "kind": "object_type", "internal_key": "task", "id": "type-task",
 		  "type_settings": {"property_definitions": [{"property": "` + customPropertyKey + `", "format": "select", "options": ["High"]}]}}`,
-		"objects/one.json": `{"version": 1, "type": "task", "id": "obj-1",
+		"objects/one.json": `{"version": 2, "type": "task", "id": "obj-1",
 		  "property_internal_keys": {"priority": "` + customPropertyKey + `"},
 		  "properties": {"priority": "High"}}`,
 	})
@@ -226,7 +226,7 @@ func TestCheckPropertyFormats_DeclarationAndUseMayDisagreeOnSpelling(t *testing.
 // says about those terms.
 func TestCheckPropertyFormats_EnvelopeLiftedKeysAreSkipped(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"objects/one.json": `{"version": 1, "id": "obj-1", "properties": {"id": "x", "type": "y"}}`,
+		"objects/one.json": `{"version": 2, "id": "obj-1", "properties": {"id": "x", "type": "y"}}`,
 	})
 	undeclared, err := CheckPropertyFormats(files, map[string]FormatInfo{})
 	require.NoError(t, err)
@@ -242,10 +242,10 @@ func TestCheckPropertyFormats_EnvelopeLiftedKeysAreSkipped(t *testing.T) {
 // which is exactly why the check exists.
 func TestCheckSharedSelects_MergesAcrossSpellings(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"types/a.type.json": `{"version": 1, "kind": "object_type", "internal_key": "typeA", "id": "type-a",
+		"types/a.type.json": `{"version": 2, "kind": "object_type", "internal_key": "typeA", "id": "type-a",
 		  "property_internal_keys": {"stage": "` + customPropertyKey + `"},
 		  "type_settings": {"property_definitions": [{"property": "stage", "format": "select", "options": ["One"]}]}}`,
-		"types/b.type.json": `{"version": 1, "kind": "object_type", "internal_key": "typeB", "id": "type-b",
+		"types/b.type.json": `{"version": 2, "kind": "object_type", "internal_key": "typeB", "id": "type-b",
 		  "type_settings": {"property_definitions": [{"property": "` + customPropertyKey + `", "format": "select", "options": ["Two"]}]}}`,
 	})
 	shared, err := CheckSharedSelects(files)
@@ -262,10 +262,10 @@ func TestCheckSharedSelects_MergesAcrossSpellings(t *testing.T) {
 // false alarm about a merge that does not happen.
 func TestCheckSharedSelects_OneSpellingTwoKeysIsNotShared(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"types/a.type.json": `{"version": 1, "kind": "object_type", "internal_key": "typeA", "id": "type-a",
+		"types/a.type.json": `{"version": 2, "kind": "object_type", "internal_key": "typeA", "id": "type-a",
 		  "property_internal_keys": {"stage": "` + customPropertyKey + `"},
 		  "type_settings": {"property_definitions": [{"property": "stage", "format": "select", "options": ["One"]}]}}`,
-		"types/b.type.json": `{"version": 1, "kind": "object_type", "internal_key": "typeB", "id": "type-b",
+		"types/b.type.json": `{"version": 2, "kind": "object_type", "internal_key": "typeB", "id": "type-b",
 		  "property_internal_keys": {"stage": "69bbfc78877a91b1d12d1a7c"},
 		  "type_settings": {"property_definitions": [{"property": "stage", "format": "select", "options": ["Two"]}]}}`,
 	})
@@ -277,9 +277,9 @@ func TestCheckSharedSelects_OneSpellingTwoKeysIsNotShared(t *testing.T) {
 // The ordinary case still works: one spelling, no legend anywhere.
 func TestCheckSharedSelects_PlainSharedKeyIsStillReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"types/a.type.json": `{"version": 1, "kind": "object_type", "internal_key": "typeA", "id": "type-a",
+		"types/a.type.json": `{"version": 2, "kind": "object_type", "internal_key": "typeA", "id": "type-a",
 		  "type_settings": {"property_definitions": [{"property": "wikiStage", "format": "select", "options": ["One"]}]}}`,
-		"types/b.type.json": `{"version": 1, "kind": "object_type", "internal_key": "typeB", "id": "type-b",
+		"types/b.type.json": `{"version": 2, "kind": "object_type", "internal_key": "typeB", "id": "type-b",
 		  "type_settings": {"property_definitions": [{"property": "wikiStage", "format": "select", "options": ["Two"]}]}}`,
 	})
 	shared, err := CheckSharedSelects(files)
@@ -296,7 +296,7 @@ func TestCheckSharedSelects_PlainSharedKeyIsStillReported(t *testing.T) {
 // for the STORED key alone, missed it, and rejected a bundle the converter
 // wires perfectly.
 func TestCheckTemplateTargets_AuthoredTargetInLegacySlugSpellingPasses(t *testing.T) {
-	const doc = `{"version": 1, "kind": "template", "type": "template", "template_for": "page",
+	const doc = `{"version": 2, "kind": "template", "type": "template", "template_for": "page",
 	  "properties": {"target_object_type": "type-page"}}`
 	requireCodecStoresTargetObjectType(t, doc, true)
 
@@ -312,7 +312,7 @@ func TestCheckTemplateTargets_AuthoredTargetInLegacySlugSpellingPasses(t *testin
 // and skipped the document whole — the template then imports belonging to no
 // type, unreported.
 func TestCheckTemplateTargets_LegendMovesTheAuthoredTargetAway(t *testing.T) {
-	const doc = `{"version": 1, "kind": "template", "type": "template", "template_for": "page",
+	const doc = `{"version": 2, "kind": "template", "type": "template", "template_for": "page",
 	  "property_internal_keys": {"targetObjectType": "` + customPropertyKey + `"},
 	  "properties": {"targetObjectType": "type-page"}}`
 	requireCodecStoresTargetObjectType(t, doc, false)
@@ -361,7 +361,7 @@ func TestLintResolvesPropertyTermsLikeTheCodec(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			doc := `{"version": 1, "id": "obj-1", ` + c.legend +
+			doc := `{"version": 2, "id": "obj-1", ` + c.legend +
 				`"properties": {"` + c.term + `": ` + c.value + `}}`
 			require.NoError(t, anyblockjson.Validate([]byte(doc)))
 

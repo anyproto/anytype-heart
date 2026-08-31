@@ -627,12 +627,34 @@ func dirLine(counts map[string]int) string {
 // exporter re-exported after an eviction shifts the same way — and the
 // classification keeps the determinism check sharp instead of failing the
 // sweep on an app behaviour the exporter cannot control.
+// volatileDateMemberPrefixes are the wire spellings of the two load-stamped
+// date members, derived from the bundled name table rather than written out:
+// the format spells a key by its display name, so hard-coding the retired
+// slug silently stopped matching and the drift it classifies came back as a
+// real difference. The stored keys are listed beside them for the space that
+// holds a custom name-twin and makes the claimant spell its own key (§3).
+var volatileDateMemberPrefixes = []string{
+	`"` + (anyblockjson.BundledKeyVocabulary{}).PropertySlug("createdDate") + `":`,
+	`"` + (anyblockjson.BundledKeyVocabulary{}).PropertySlug("lastModifiedDate") + `":`,
+	`"createdDate":`,
+	`"lastModifiedDate":`,
+}
+
+func hasAnyPrefix(s string, prefixes []string) bool {
+	for _, p := range prefixes {
+		if strings.HasPrefix(s, p) {
+			return true
+		}
+	}
+	return false
+}
+
 func stripVolatileDates(doc []byte) string {
 	var out []string
 	stripped := false
 	for _, line := range strings.Split(string(doc), "\n") {
 		t := strings.TrimSpace(line)
-		if strings.HasPrefix(t, `"created_date":`) || strings.HasPrefix(t, `"last_modified_date":`) {
+		if hasAnyPrefix(t, volatileDateMemberPrefixes) {
 			stripped = true
 			continue
 		}

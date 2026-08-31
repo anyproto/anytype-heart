@@ -261,7 +261,10 @@ func (o Options) propertyKey(slug string) string {
 	if slug == "" {
 		return slug
 	}
-	key, _ := o.keys().PropertyKey(slug)
+	// §3: a spelling resolves under its canonical NFC form (nfcTerm) — the
+	// read half of the rule PropertyLabel writes by. Idempotent, so the
+	// importer door normalizing first costs nothing here.
+	key, _ := o.keys().PropertyKey(nfcTerm(slug))
 	return key
 }
 
@@ -272,7 +275,7 @@ func (o Options) propertyKey(slug string) string {
 // reason — the two doors into a type's property list must not disagree about
 // what a spelling means.
 func (o Options) legendPropertyKey(slug string) string {
-	if key, ok := o.Legend.PropertyKeys[slug]; ok && key != "" {
+	if key, ok := legendLookup(o.Legend.PropertyKeys, slug); ok {
 		return key
 	}
 	return o.propertyKey(slug)
@@ -280,10 +283,67 @@ func (o Options) legendPropertyKey(slug string) string {
 
 // legendTypeKey is legendPropertyKey on the type namespace.
 func (o Options) legendTypeKey(slug string) string {
-	if key, ok := o.Legend.TypeKeys[slug]; ok && key != "" {
+	if key, ok := legendLookup(o.Legend.TypeKeys, slug); ok {
 		return key
 	}
 	return o.typeKey(slug)
+}
+
+// legendLookup answers a legend for one spelling under §3's normalization
+// rule: the exact bytes first (a legend may bind a non-NFC spelling — export
+// writes an identity entry for a stored key it spells verbatim), then the
+// canonical NFC form, against a legend whose own non-NFC entries also answer
+// for their NFC form (nfcExpandLegend). Values are stored keys and pass
+// byte-verbatim.
+func legendLookup(m map[string]string, slug string) (string, bool) {
+	if len(m) == 0 {
+		return "", false
+	}
+	expanded := nfcExpandLegend(m)
+	if key, ok := expanded[slug]; ok && key != "" {
+		return key, true
+	}
+	if n := nfcTerm(slug); n != slug {
+		if key, ok := expanded[n]; ok && key != "" {
+			return key, true
+		}
+	}
+	return "", false
+}
+
+// nfcExpandLegend returns a legend that also answers for the NFC form of any
+// non-NFC-spelled member (§3: a slot may spell one name in either byte
+// form). Exact entries always win — an NFC-form shadow never displaces an
+// entry the legend states at that exact spelling — and two non-NFC entries
+// collapsing onto one unclaimed NFC form leave it unbound: an ambiguous
+// address is never resolved by guess (the twin warning names the pair). The
+// common all-NFC legend comes back untouched, unallocated.
+func nfcExpandLegend[V any](m map[string]V) map[string]V {
+	var nonCanonical []string
+	for k := range m {
+		if nfcTerm(k) != k {
+			nonCanonical = append(nonCanonical, k)
+		}
+	}
+	if len(nonCanonical) == 0 {
+		return m
+	}
+	claims := map[string]int{}
+	for _, k := range nonCanonical {
+		claims[nfcTerm(k)]++
+	}
+	out := make(map[string]V, len(m)+len(nonCanonical))
+	for k, v := range m {
+		out[k] = v
+	}
+	for _, k := range nonCanonical {
+		n := nfcTerm(k)
+		if _, exact := m[n]; exact || claims[n] > 1 {
+			continue
+		}
+		out[n] = m[k]
+	}
+	return out
 }
 
 func (o Options) typeSlug(key string) string {
@@ -297,6 +357,7 @@ func (o Options) typeKey(slug string) string {
 	if slug == "" {
 		return slug
 	}
-	key, _ := o.keys().TypeKey(slug)
+	// §3's canonical form, as in propertyKey above
+	key, _ := o.keys().TypeKey(nfcTerm(slug))
 	return key
 }

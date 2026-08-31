@@ -81,7 +81,7 @@ func TestAuthorableVocabularyDropsTheTransparentContainers(t *testing.T) {
 // does produce no block.
 func TestStructuralTypesAreDroppedOnImport(t *testing.T) {
 	// the baseline: the same document without the structural block
-	_, plain, err := Unmarshal([]byte(`{"version":1,"type":"page","blocks":[{"type":"paragraph","text":"body"}]}`), Options{})
+	_, plain, err := Unmarshal([]byte(`{"version":2,"type":"page","blocks":[{"type":"paragraph","text":"body"}]}`), Options{})
 	require.NoError(t, err)
 
 	for typ := range structuralBlockTypes {
@@ -91,7 +91,7 @@ func TestStructuralTypesAreDroppedOnImport(t *testing.T) {
 			if typ == "featured_properties" {
 				structural = fmt.Sprintf(`{"type":%q}`, typ)
 			}
-			doc := fmt.Sprintf(`{"version":1,"type":"page","blocks":[%s,{"type":"paragraph","text":"body"}]}`, structural)
+			doc := fmt.Sprintf(`{"version":2,"type":"page","blocks":[%s,{"type":"paragraph","text":"body"}]}`, structural)
 
 			// when
 			_, snapshot, err := Unmarshal([]byte(doc), Options{})

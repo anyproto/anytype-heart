@@ -227,7 +227,7 @@ func TestValidate_TheRefsLegendIsRefused(t *testing.T) {
 
 	t.Run("the legend a pre-v0.20 exporter wrote", func(t *testing.T) {
 		// the exact shape: short labels in the body, the legend to invert them
-		got := refused(t, `{"version": 1, "id": "bafyreiselfobjectidxxxxxxx",
+		got := refused(t, `{"version": 2, "id": "bafyreiselfobjectidxxxxxxx",
 			"refs": {"idxxx": "bafyreimentiontargetidxxx"},
 			"blocks": [{"id": "b1", "type": "paragraph",
 				"text": "ping <mention object_id=\"idxxx\">Roman</mention>"}]}`)
@@ -251,13 +251,13 @@ func TestValidate_TheRefsLegendIsRefused(t *testing.T) {
 		// nothing about the refusal may depend on the legend's CONTENTS: a
 		// schema node admitting `refs` and constraining it would still let
 		// this through
-		got := refused(t, `{"version": 1, "refs": {}}`)
+		got := refused(t, `{"version": 2, "refs": {}}`)
 		require.Len(t, got, 1, "got: %v", got)
 		assert.Equal(t, "/refs", got[0].Path)
 	})
 
 	t.Run("import refuses it too, so no reader takes the labels literally", func(t *testing.T) {
-		_, _, err := Unmarshal([]byte(`{"version": 1, "refs": {"idxxx": "bafyreitarget"},
+		_, _, err := Unmarshal([]byte(`{"version": 2, "refs": {"idxxx": "bafyreitarget"},
 			"blocks": [{"type": "paragraph", "text": "x"}]}`), Options{})
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "refs")

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.anytype.io/anyblock/1/authoring/object.schema.json",
+  "$id": "https://schemas.anytype.io/anyblock/2/authoring/object.schema.json",
   "title": "AnyBlock object — authoring subset",
   "description": "One object you are creating from nothing: a page, a type, or a template. This is a strict subset of the full object schema (../object.schema.json) — every document valid here is valid there, same format, same version. What the full schema additionally admits is what only a live space can produce: block ids, attribution, timestamps, minted internal keys, legends, provenance. You never write those; a reader mints or derives them. Write what the object IS and leave the rest out.",
   "x-app": "Anytype",
@@ -8,10 +8,10 @@
   "properties": {
     "$schema": {
       "type": "string",
-      "description": "Write this file's URL: https://schemas.anytype.io/anyblock/1/authoring/object.schema.json"
+      "description": "Write this file's URL: https://schemas.anytype.io/anyblock/2/authoring/object.schema.json"
     },
     "version": {
-      "const": 1
+      "const": 2
     },
     "kind": {
       "enum": [

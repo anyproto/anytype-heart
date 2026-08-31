@@ -27,7 +27,7 @@ run 2); 87 distinct block ids.
 
 **Handling**: the block is dropped either way — it is a transparent
 container (§7a) — and a subtree under one (e.g. the relation's dataview) is
-lifted into its place. Until v0.23 it was written out as a `group` block, and
+lifted into its place. It was once written out as a `group` block, and
 on 160 of these objects that wrapper was what kept §7's primary-dataview pin
 from firing. **Spec**: §7 "Content-less blocks", §7a.
 
@@ -105,7 +105,7 @@ id rides beside the name rather than inside the value.
 ## 7. Default-valued details are semantically present
 
 Details like `is_hidden: false`, `revision: 0`, `property_format_include_time:
-false` (v0.38 spelling) appear *explicitly* on thousands of objects. Presence of a property
+false` (legacy spelling) appear *explicitly* on thousands of objects. Presence of a property
 key — even with a default/empty value — records that the property was set on
 the object; clients rely on it.
 
@@ -186,7 +186,7 @@ The v0.6 flat-blocks change carried assumptions the flat-encoding sweep
 
 The schema's block-id pattern is `^[A-Za-z0-9_-]{1,64}$`, but stored ids
 are not guaranteed to match it (legacy/imported data could carry other
-characters; no live producer found). The pre-v0.6.1 charset relabel rule
+characters; no live producer found). The earlier charset relabel rule
 *accidentally laundered* such an id whenever its 5-char tail was clean —
 the served document carried the clean label and validated. Under the
 minted-shape rule (`isMintedLocalId`, API v2 Wave 0 hardening) a
@@ -243,7 +243,7 @@ reads user data. §2b's lift separates the two visibly.
 ## The compact goldens no longer differ from the plain ones
 
 **Status: open, recorded rather than fixed — and now measured.** With
-object-ref compaction deleted (v0.20), `CompactIds` selects only block-label
+object-ref compaction deleted, `CompactIds` selects only block-label
 relabeling, and the rich fixture's block ids are all short or hand-authored
 (`b1`, `dv1`, `v1`, `table1`), none of them minted-shaped, so none relabels.
 Two of the four goldens therefore freeze nothing the other two do not.
@@ -258,7 +258,7 @@ Two of the four goldens therefore freeze nothing the other two do not.
 | `rich_omit_ids.json` | 3669 | `ce96eee96aea3d4b` |
 | `rich_compact_omit.json` | 3669 | `ce96eee96aea3d4b` |
 
-Both pairs are byte-identical — re-verified after the v0.48 raw-name
+Both pairs are byte-identical — re-verified after the raw-name
 regeneration (`cmp`: 4,846 bytes and 3,821 bytes per pair). While that
 holds — i.e. while no id in the
 rich fixture is minted-shaped — a change to the relabel rule *alone* produces

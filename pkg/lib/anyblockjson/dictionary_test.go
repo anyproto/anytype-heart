@@ -98,7 +98,7 @@ func TestPropertyDictionary_RoundTripBytesStable(t *testing.T) {
 // longtext and the assertion on shorttext goes red.
 func TestPropertyDictionary_TextResolvesPerKey(t *testing.T) {
 	// given: `name` is bundled shorttext; the minted key has no stored format
-	data := []byte(`{"version":1,"properties":[
+	data := []byte(`{"version":2,"properties":[
 		{"property":"name","format":"text"},
 		{"property":"6a32d4856761631534b22f85","format":"text"}]}`)
 
@@ -127,23 +127,23 @@ func TestPropertyDictionary_TextResolvesPerKey(t *testing.T) {
 // wording).
 func TestPropertyDictionary_SchemaRefusals(t *testing.T) {
 	t.Run("an entry without format is refused", func(t *testing.T) {
-		_, err := UnmarshalPropertyDictionary([]byte(`{"version":1,"properties":[{"property":"dueDate","name":"End Date"}]}`))
+		_, err := UnmarshalPropertyDictionary([]byte(`{"version":2,"properties":[{"property":"dueDate","name":"End Date"}]}`))
 		require.Error(t, err, "self-sufficiency: an entry without a format is readable only with the bundled table in hand")
 	})
 	t.Run("section is a type-owned member and is refused", func(t *testing.T) {
-		_, err := UnmarshalPropertyDictionary([]byte(`{"version":1,"properties":[{"property":"tag","format":"multi_select","section":"featured"}]}`))
+		_, err := UnmarshalPropertyDictionary([]byte(`{"version":2,"properties":[{"property":"tag","format":"multi_select","section":"featured"}]}`))
 		require.Error(t, err)
 	})
 	t.Run("an unknown entry member is refused through the layer", func(t *testing.T) {
-		_, err := UnmarshalPropertyDictionary([]byte(`{"version":1,"properties":[{"property":"tag","format":"multi_select","formats":"x"}]}`))
+		_, err := UnmarshalPropertyDictionary([]byte(`{"version":2,"properties":[{"property":"tag","format":"multi_select","formats":"x"}]}`))
 		require.Error(t, err)
 	})
 	t.Run("an undeclared root member is refused", func(t *testing.T) {
-		_, err := UnmarshalPropertyDictionary([]byte(`{"version":1,"props":[]}`))
+		_, err := UnmarshalPropertyDictionary([]byte(`{"version":2,"props":[]}`))
 		require.Error(t, err)
 	})
 	t.Run("a newer version is refused by the gate, both versions named", func(t *testing.T) {
-		_, err := UnmarshalPropertyDictionary([]byte(`{"version":2}`))
+		_, err := UnmarshalPropertyDictionary([]byte(`{"version":3}`))
 		require.Error(t, err)
 		var ve *ValidationError
 		require.ErrorAs(t, err, &ve)
@@ -153,7 +153,7 @@ func TestPropertyDictionary_SchemaRefusals(t *testing.T) {
 		// the shared shape admits null because a relation's STORED value can
 		// hold one (§2d); a dictionary entry describes rather than mirrors a
 		// store slot, so its layer narrows it back to an array
-		_, err := UnmarshalPropertyDictionary([]byte(`{"version":1,"properties":[{"property":"assignee","format":"objects","object_types":null}]}`))
+		_, err := UnmarshalPropertyDictionary([]byte(`{"version":2,"properties":[{"property":"assignee","format":"objects","object_types":null}]}`))
 		require.Error(t, err)
 	})
 }
@@ -168,13 +168,13 @@ func TestPropertyDictionary_SchemaRefusals(t *testing.T) {
 // side emits what the read side refuses).
 func TestPropertyDictionary_OneSlotPerKey(t *testing.T) {
 	t.Run("a duplicated entry key is refused on read", func(t *testing.T) {
-		_, err := UnmarshalPropertyDictionary([]byte(`{"version":1,"properties":[
+		_, err := UnmarshalPropertyDictionary([]byte(`{"version":2,"properties":[
 			{"property":"dueDate","format":"date"},{"property":"dueDate","format":"text"}]}`))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "/properties/1/property")
 	})
 	t.Run("a duplicated installed key is refused on read", func(t *testing.T) {
-		_, err := UnmarshalPropertyDictionary([]byte(`{"version":1,"installed":["tag","tag"]}`))
+		_, err := UnmarshalPropertyDictionary([]byte(`{"version":2,"installed":["tag","tag"]}`))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "/installed/1")
 	})
@@ -210,7 +210,7 @@ func TestPropertyDictionary_InstalledDiscipline(t *testing.T) {
 		assert.Contains(t, err.Error(), "properties", "the error names the repair: a full entry")
 	})
 	t.Run("the reader tolerates one", func(t *testing.T) {
-		got, err := UnmarshalPropertyDictionary([]byte(`{"version":1,"installed":["aKeyFromANewerApp"]}`))
+		got, err := UnmarshalPropertyDictionary([]byte(`{"version":2,"installed":["aKeyFromANewerApp"]}`))
 		require.NoError(t, err)
 		assert.Equal(t, []string{"aKeyFromANewerApp"}, got.Installed)
 	})

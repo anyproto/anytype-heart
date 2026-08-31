@@ -232,7 +232,7 @@ func TestRelationEnvelope_NonFiniteFormatFailsExportByTheGuard(t *testing.T) {
 
 // The flat spellings are refused in `properties`, by Validate AND by
 // Unmarshal (§12 I2), with the envelope repair named. This is also the whole
-// of the legacy story (§10): a pre-v0.31 document spells `relation_format`
+// of the legacy story (§10): a legacy document spells `relation_format`
 // here and is refused loudly instead of read.
 //
 // How this can fail: drop the propertySettingsLiftedDetailKeys arm from
@@ -251,7 +251,7 @@ func TestRelationEnvelope_RefusedInProperties(t *testing.T) {
 		"Property's target object types": `["Page"]`,
 	} {
 		t.Run(spelling, func(t *testing.T) {
-			doc := `{"version":1,"kind":"property","id":"o1","internal_key":"budget",` +
+			doc := `{"version":2,"kind":"property","id":"o1","internal_key":"budget",` +
 				`"property_settings":{"format":"number"},` +
 				`"properties":{"` + spelling + `":` + value + `}}`
 
@@ -673,24 +673,24 @@ func TestRelationEnvelope_WrongFormatWarnsButCarries(t *testing.T) {
 		wantWarn string // "" = no warning expected
 	}{
 		"include_time true on number": {
-			doc:      `{"version":1,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"number","include_time":true}}`,
+			doc:      `{"version":2,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"number","include_time":true}}`,
 			wantWarn: "/property_settings/include_time",
 		},
 		"object_types non-empty on number": {
-			doc:      `{"version":1,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"number","object_types":["page"]}}`,
+			doc:      `{"version":2,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"number","object_types":["page"]}}`,
 			wantWarn: "/property_settings/object_types",
 		},
 		"include_time false on number": {
-			doc: `{"version":1,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"number","include_time":false}}`,
+			doc: `{"version":2,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"number","include_time":false}}`,
 		},
 		"object_types empty on number": {
-			doc: `{"version":1,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"number","object_types":[]}}`,
+			doc: `{"version":2,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"number","object_types":[]}}`,
 		},
 		"include_time true on date": {
-			doc: `{"version":1,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"date","include_time":true}}`,
+			doc: `{"version":2,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"date","include_time":true}}`,
 		},
 		"object_types non-empty on objects": {
-			doc: `{"version":1,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"objects","object_types":["page"]}}`,
+			doc: `{"version":2,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"objects","object_types":["page"]}}`,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -736,7 +736,7 @@ func TestRelationEnvelope_PhantomFieldNameInPropertiesWarns(t *testing.T) {
 	} {
 		t.Run(member, func(t *testing.T) {
 			// given the envelope format AND the phantom twin in properties
-			doc := `{"version":1,"kind":"property","id":"o1","internal_key":"b",` +
+			doc := `{"version":2,"kind":"property","id":"o1","internal_key":"b",` +
 				`"property_settings":{"format":"number"},` +
 				`"properties":{"name":"Budget","` + member + `":` + value + `}}`
 
@@ -752,7 +752,7 @@ func TestRelationEnvelope_PhantomFieldNameInPropertiesWarns(t *testing.T) {
 
 			// and on a PAGE the same member is an ordinary property: no warning
 			warns = nil
-			page := `{"version":1,"id":"o1","properties":{"` + member + `":` + value + `}}`
+			page := `{"version":2,"id":"o1","properties":{"` + member + `":` + value + `}}`
 			require.NoError(t, ValidateWarn([]byte(page), func(i Issue) { warns = append(warns, i) }))
 			assert.Empty(t, warns)
 		})
@@ -771,36 +771,36 @@ func TestRelationEnvelope_PhantomFieldNameInPropertiesWarns(t *testing.T) {
 func TestRelationEnvelope_FieldsAreGatedByKind(t *testing.T) {
 	for name, tc := range map[string]struct{ doc, want string }{
 		"property_settings on a page": {
-			doc:  `{"version":1,"id":"o1","property_settings":{"format":"number"}}`,
+			doc:  `{"version":2,"id":"o1","property_settings":{"format":"number"}}`,
 			want: `/property_settings: property "property_settings" is only valid on property documents`,
 		},
 		"property_settings on a template": {
-			doc:  `{"version":1,"kind":"template","id":"o1","type":"template","property_settings":{"format":"date"}}`,
+			doc:  `{"version":2,"kind":"template","id":"o1","type":"template","property_settings":{"format":"date"}}`,
 			want: `/property_settings: property "property_settings" is only valid on property documents`,
 		},
 		"property_settings on a type": {
-			doc:  `{"version":1,"kind":"object_type","id":"o1","property_settings":{"format":"objects"}}`,
+			doc:  `{"version":2,"kind":"object_type","id":"o1","property_settings":{"format":"objects"}}`,
 			want: `/property_settings: property "property_settings" is only valid on property documents`,
 		},
 		"missing property_settings on a relation": {
-			doc:  `{"version":1,"kind":"property","id":"o1","internal_key":"b"}`,
+			doc:  `{"version":2,"kind":"property","id":"o1","internal_key":"b"}`,
 			want: "missing property 'property_settings': a property document states the definition",
 		},
 		"missing format inside the group": {
-			doc:  `{"version":1,"kind":"property","id":"o1","internal_key":"b","property_settings":{}}`,
+			doc:  `{"version":2,"kind":"property","id":"o1","internal_key":"b","property_settings":{}}`,
 			want: "/property_settings: missing property 'format'",
 		},
 		"the pre-v0.32 root spelling": {
-			doc:  `{"version":1,"kind":"property","id":"o1","internal_key":"b","format":"number"}`,
+			doc:  `{"version":2,"kind":"property","id":"o1","internal_key":"b","format":"number"}`,
 			want: "moved off the root",
 		},
 		"a refused member inside the group names its home": {
-			doc:  `{"version":1,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"number","name":"Budget"}}`,
+			doc:  `{"version":2,"kind":"property","id":"o1","internal_key":"b","property_settings":{"format":"number","name":"Budget"}}`,
 			want: "the property's name is the `name` property",
 		},
 		"legacy relation_format beside a missing definition": {
-			doc:  `{"version":1,"kind":"property","id":"o1","internal_key":"b","properties":{"relation_format":100}}`,
-			want: "the pre-v0.31 form",
+			doc:  `{"version":2,"kind":"property","id":"o1","internal_key":"b","properties":{"relation_format":100}}`,
+			want: "the legacy form",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -1026,7 +1026,7 @@ func TestRelationEnvelope_TheSideDoorKindsAreGuardedToo(t *testing.T) {
 	} {
 		t.Run(kind, func(t *testing.T) {
 			// given the shape 9 of 9 small-model attempts wrote
-			doc := []byte(`{"version":1,"kind":"` + kind + `","internal_key":"eh",` +
+			doc := []byte(`{"version":2,"kind":"` + kind + `","internal_key":"eh",` +
 				`"properties":{"name":"Estimated Hours","format":"number"}}`)
 
 			// when
@@ -1054,7 +1054,7 @@ func TestRelationEnvelope_TheSideDoorKindsAreGuardedToo(t *testing.T) {
 func TestRelationEnvelope_TheMissingFormatVerdictNamesTheWrongContainer(t *testing.T) {
 	t.Run("format written into properties", func(t *testing.T) {
 		// given
-		doc := []byte(`{"version":1,"kind":"property","internal_key":"eh",` +
+		doc := []byte(`{"version":2,"kind":"property","internal_key":"eh",` +
 			`"properties":{"name":"Estimated Hours","format":"number"}}`)
 
 		// when
@@ -1066,9 +1066,9 @@ func TestRelationEnvelope_TheMissingFormatVerdictNamesTheWrongContainer(t *testi
 		assert.Contains(t, err.Error(), "move that member into property_settings")
 	})
 
-	t.Run("the pre-v0.31 spelling still gets its own hint", func(t *testing.T) {
+	t.Run("the legacy spelling still gets its own hint", func(t *testing.T) {
 		// given
-		doc := []byte(`{"version":1,"kind":"property","internal_key":"eh",` +
+		doc := []byte(`{"version":2,"kind":"property","internal_key":"eh",` +
 			`"properties":{"name":"Estimated Hours","relation_format":2}}`)
 
 		// when
@@ -1076,7 +1076,7 @@ func TestRelationEnvelope_TheMissingFormatVerdictNamesTheWrongContainer(t *testi
 
 		// then
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "pre-v0.31")
+		assert.Contains(t, err.Error(), "the legacy form")
 	})
 }
 
@@ -1093,7 +1093,7 @@ func TestRelationEnvelope_ThePhantomWarningReachesTheSideDoorKinds(t *testing.T)
 	for _, kind := range []string{"property", "bundled_property"} {
 		t.Run(kind, func(t *testing.T) {
 			// given a VALID relation document that also carries the member
-			doc := []byte(`{"version":1,"kind":"` + kind + `","internal_key":"eh",` +
+			doc := []byte(`{"version":2,"kind":"` + kind + `","internal_key":"eh",` +
 				`"property_settings":{"format":"number"},` +
 				`"properties":{"name":"Estimated Hours","format":"number"}}`)
 
@@ -1162,20 +1162,20 @@ func TestRelationEnvelope_EveryRelationKindRoundTripsLossless(t *testing.T) {
 // model can declare a property whose values nothing but the client writes.
 func TestPropertyFormat_MapIsNotAuthorable(t *testing.T) {
 	t.Run("a relation document may state it", func(t *testing.T) {
-		doc := []byte(`{"version":1,"kind":"property","internal_key":"templatePlaceholders",
+		doc := []byte(`{"version":2,"kind":"property","internal_key":"templatePlaceholders",
 			"property_settings":{"format":"map"},
 			"properties":{"name":"Template Placeholders"}}`)
 		assert.NoError(t, Validate(doc), "the only carrier of `map` must keep exporting")
 	})
 
 	t.Run("a type may not declare it", func(t *testing.T) {
-		doc := []byte(`{"version":1,"kind":"object_type","internal_key":"task","properties":{"name":"Task"},
+		doc := []byte(`{"version":2,"kind":"object_type","internal_key":"task","properties":{"name":"Task"},
 			"type_settings":{"property_definitions": [{"property":"placeholders","format":"map"}]}}`)
 		require.Error(t, Validate(doc), "an authored property may not invent a map")
 	})
 
 	t.Run("a dataview may not declare it", func(t *testing.T) {
-		doc := []byte(`{"version":1,"blocks":[{"type":"dataview",
+		doc := []byte(`{"version":2,"blocks":[{"type":"dataview",
 			"properties":[{"property":"placeholders","format":"map"}],
 			"views":[{"name":"All"}]}]}`)
 		require.Error(t, Validate(doc), "a view may not invent a map either")
@@ -1183,7 +1183,7 @@ func TestPropertyFormat_MapIsNotAuthorable(t *testing.T) {
 
 	t.Run("the authored slots still take every other format", func(t *testing.T) {
 		for _, f := range []string{"text", "number", "date", "select", "objects", "properties"} {
-			doc := []byte(`{"version":1,"kind":"object_type","internal_key":"task","properties":{"name":"Task"},
+			doc := []byte(`{"version":2,"kind":"object_type","internal_key":"task","properties":{"name":"Task"},
 				"type_settings":{"property_definitions": [{"property":"p","format":"` + f + `"}]}}`)
 			assert.NoErrorf(t, Validate(doc), "%q is authorable", f)
 		}

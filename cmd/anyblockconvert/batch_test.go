@@ -276,7 +276,7 @@ func TestBatch_LegendBackedPropertyMintsItsRelationAndOptions(t *testing.T) {
 
 	dir := t.TempDir()
 	typeDoc := filepath.Join(dir, "task.type.json")
-	require.NoError(t, os.WriteFile(typeDoc, []byte(`{"version": 1, "kind": "object_type",
+	require.NoError(t, os.WriteFile(typeDoc, []byte(`{"version": 2, "kind": "object_type",
 	  "internal_key": "task", "id": "type-task", `+legend+`
 	  "type_settings": {"property_definitions": [{"property": "priority", "name": "Priority", "format": "select",
 	    "options": ["High", "Low"]}]}}`), 0o644))
@@ -290,7 +290,7 @@ func TestBatch_LegendBackedPropertyMintsItsRelationAndOptions(t *testing.T) {
 	_, _, _, err = convertFile(dir, typeDoc, b, false, nil)
 	require.NoError(t, err)
 
-	_, snap := convertDoc(t, b, "one.json", `{"version": 1, "id": "obj-1", "type": "task", `+legend+`
+	_, snap := convertDoc(t, b, "one.json", `{"version": 2, "id": "obj-1", "type": "task", `+legend+`
 	  "properties": {"priority": "High"}}`)
 
 	// the value reached the detail under the stored key, as an option id

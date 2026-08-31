@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.anytype.io/anyblock/1/authoring/properties.schema.json",
+  "$id": "https://schemas.anytype.io/anyblock/2/authoring/properties.schema.json",
   "title": "AnyBlock property dictionary — authoring subset",
   "description": "One properties.json at the bundle root, beside index.json: the bundle's own properties, declared once, in one place. A strict subset of the full dictionary schema (../properties.schema.json) — every dictionary valid here is valid there. Declare a property here, reference it from a type's property_definitions by its key, and write its values in objects under the same key; the app mints the stored identity on import.",
   "x-app": "Anytype",
@@ -13,10 +13,10 @@
   "properties": {
     "$schema": {
       "type": "string",
-      "description": "Write this file's URL: https://schemas.anytype.io/anyblock/1/authoring/properties.schema.json"
+      "description": "Write this file's URL: https://schemas.anytype.io/anyblock/2/authoring/properties.schema.json"
     },
     "version": {
-      "const": 1
+      "const": 2
     },
     "installed": {
       "type": "array",

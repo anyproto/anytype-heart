@@ -71,7 +71,7 @@ func writeJSON(t *testing.T, dir, name, body string) string {
 func TestCheckFileSources_FlagsMissingFile(t *testing.T) {
 	in := t.TempDir()
 	f := writeJSON(t, in, "icon.json", `{
-	  "version": 1,
+	  "version": 2,
 	  "kind": "file_object",
 	  "id": "icon-1",
 	  "properties": {"name": "icon-1", "source": "files/icon.png"}
@@ -88,7 +88,7 @@ func TestCheckFileSources_PassesWhenFileExists(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(in, "files"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(in, "files", "icon.png"), []byte("x"), 0o644))
 	f := writeJSON(t, in, "icon.json", `{
-	  "version": 1,
+	  "version": 2,
 	  "kind": "file_object",
 	  "id": "icon-1",
 	  "properties": {"name": "icon-1", "source": "files/icon.png"}
@@ -104,7 +104,7 @@ func TestCheckFileSources_IgnoresNonFilesSource(t *testing.T) {
 	// a "source" property that isn't a files/ path is someone else's use of
 	// the key (e.g. a bookmark's URL) and is none of this check's business
 	f := writeJSON(t, in, "bookmark.json", `{
-	  "version": 1,
+	  "version": 2,
 	  "id": "bm-1",
 	  "properties": {"name": "Anytype", "source": "https://anytype.io"}
 	}`)
@@ -137,9 +137,9 @@ func TestRun_ManifestBindsBlobsIntoTheArchive(t *testing.T) {
 		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
 		require.NoError(t, os.WriteFile(path, []byte(body), 0o644))
 	}
-	write("files/img.anyblock.json", `{"version":1,"kind":"file_object","id":"img-1","properties":{"name":"Logo"}}`)
+	write("files/img.anyblock.json", `{"version":2,"kind":"file_object","id":"img-1","properties":{"name":"Logo"}}`)
 	write("assets/logo.png", "png bytes")
-	write("index.json", `{"version":1,"manifest":{"files":{"img-1":"assets/logo.png"}}}`)
+	write("index.json", `{"version":2,"manifest":{"files":{"img-1":"assets/logo.png"}}}`)
 
 	// when
 	require.NoError(t, run(inDir, outDir, false, false, formatPb))
@@ -174,9 +174,9 @@ func TestRun_ManifestBindsBlobsIntoTheArchive(t *testing.T) {
 		badIn, badOut := t.TempDir(), t.TempDir()
 		require.NoError(t, os.MkdirAll(filepath.Join(badIn, "files"), 0o755))
 		require.NoError(t, os.WriteFile(filepath.Join(badIn, "files", "img.anyblock.json"),
-			[]byte(`{"version":1,"kind":"file_object","id":"img-1","properties":{"name":"Logo"}}`), 0o644))
+			[]byte(`{"version":2,"kind":"file_object","id":"img-1","properties":{"name":"Logo"}}`), 0o644))
 		require.NoError(t, os.WriteFile(filepath.Join(badIn, "index.json"),
-			[]byte(`{"version":1,"manifest":{"files":{"img-1":"assets/missing.png"}}}`), 0o644))
+			[]byte(`{"version":2,"manifest":{"files":{"img-1":"assets/missing.png"}}}`), 0o644))
 		err := run(badIn, badOut, false, false, formatPb)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "manifest file binding")

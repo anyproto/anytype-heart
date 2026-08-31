@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.anytype.io/anyblock/1/index.schema.json",
+  "$id": "https://schemas.anytype.io/anyblock/2/index.schema.json",
   "title": "AnyBlock JSON bundle index",
   "description": "One index.json at the root of a bundle describes the bundle as a whole: what the space is called, where a user lands after installing it, and what the sidebar shows. Everything else in a bundle describes a single object; this is the only document that describes the set.",
   "type": "object",
@@ -14,7 +14,7 @@
       "description": "Which of the format's three grammars this document follows — an object document, a bundle index, or a property dictionary. OPTIONAL and DECORATIVE for validity: `version` alone gates the format, so a stale or invented URL here never makes a document invalid (a bundle written against a later schema still reads). What it does do is DISPATCH: a reader handed a file with no filename to go by uses this to pick the grammar, matching on the trailing `object|index|properties.schema.json` and ignoring the version segment. Without it a reader falls back to the document's shape, which can only tell the grammars apart when the document happens to carry a member unique to one. Every document this format writes carries it, and a hand-written one is easier for a reader to place if it does too."
     },
     "version": {
-      "const": 1
+      "const": 2
     },
     "name": {
       "type": "string",
@@ -26,7 +26,7 @@
       "description": "One line on what the space is for. Author-facing and applied to the space where the client shows one."
     },
     "icon": {
-      "$ref": "https://schemas.anytype.io/anyblock/1/object.schema.json#/$defs/icon",
+      "$ref": "https://schemas.anytype.io/anyblock/2/object.schema.json#/$defs/icon",
       "description": "The space's icon — exactly the shape `icon` has on any object (§2b), so an author never has to remember a second convention: an emoji, the **object id** of an image in the bundle, a built-in icon name, or a bare colour. Two flat keys used to stand here with no rule for which one wins, and they disagreed with the object surface about whether an image is a scalar or a list. This field was then narrowed to emoji-or-image, which silently dropped the icon of a space whose icon is a bare colour — 20 of 77 real spaces, the letter avatars the client draws when no image was ever set. An image needs the image object AND its file in the archive, which is why a generated bundle uses an emoji. (The installer resolves the space icon by image *name*, not id — the wiring does that lookup, so this field stays consistent with every other id in the format; an emoji or colour icon reaches no installer field at all, and is carried so a round trip does not lose it.)"
     },
     "entrypoint": {
@@ -136,15 +136,13 @@
           "description": "What the widget points at."
         },
         "layout": {
-          "$ref": "https://schemas.anytype.io/anyblock/1/object.schema.json#/$defs/widgetLayout",
+          "$ref": "https://schemas.anytype.io/anyblock/2/object.schema.json#/$defs/widgetLayout",
           "default": "link",
           "description": "How the widget renders — the widget BLOCK's own §5 vocabulary, one $ref rather than a copy. `link` is a single row; `tree` expands children; `list` and `compact_list` show contents; `view` renders a type's or set's own view."
         },
         "limit": {
-          "type": "integer",
-          "minimum": 0,
-          "maximum": 100,
-          "description": "How many entries a listing widget shows. Ignored by `link`."
+          "$ref": "https://schemas.anytype.io/anyblock/2/object.schema.json#/$defs/widgetListingLimit",
+          "description": "How many entries a listing widget shows. Ignored by `link`. The cap is the object schema's $defs/widgetListingLimit — one $ref rather than a copy, like the display members beside it."
         },
         "view_id": {
           "type": "string",
@@ -156,22 +154,24 @@
           "description": "The client added this widget automatically (a new type, the bin) rather than the user placing it. Machine-written on export; carried so a restored sidebar keeps behaving like the original — the client treats auto-added widgets as its own to manage."
         },
         "card_style": {
-          "$ref": "https://schemas.anytype.io/anyblock/1/object.schema.json#/$defs/cardStyle",
+          "$ref": "https://schemas.anytype.io/anyblock/2/object.schema.json#/$defs/cardStyle",
           "description": "How the widget's row renders — the link block's own §5 member, one $ref rather than a copy. Defaults to `text`."
         },
         "icon_size": {
-          "$ref": "https://schemas.anytype.io/anyblock/1/object.schema.json#/$defs/iconSize",
+          "$ref": "https://schemas.anytype.io/anyblock/2/object.schema.json#/$defs/iconSize",
           "description": "The icon size on the widget's card — the link block's own §5 member. Defaults to `none`."
         },
         "description": {
-          "$ref": "https://schemas.anytype.io/anyblock/1/object.schema.json#/$defs/linkDescription",
+          "$ref": "https://schemas.anytype.io/anyblock/2/object.schema.json#/$defs/linkDescription",
           "description": "What the widget's card shows under the title — the link block's own §5 member. Defaults to `none`."
         },
         "properties": {
           "type": "array",
           "items": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^[^\u0000-\u001f]+$"
           },
           "description": "The property SPELLINGS shown on the widget's card — the link block's own §5 member. They resolve through the bundle's property dictionary (properties.json), the file that answers for stored keys; there is no per-document legend here."
         }

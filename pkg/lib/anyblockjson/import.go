@@ -21,7 +21,7 @@ func jsonUnmarshal(data []byte, v any) error {
 type jsonDoc struct {
 	Schema string `json:"$schema"`
 	// json.Number for the same reason as every other schema-integer field
-	// below: 1.0 and 1e0 are integers to JSON Schema, so checkVersion accepts
+	// below: 2.0 and 2e0 are integers to JSON Schema, so checkVersion accepts
 	// them, and a plain int would then fail to decode a document Validate
 	// declared valid.
 	Version     json.Number `json:"version"`
@@ -178,6 +178,44 @@ type importer struct {
 	// is a fact about the term, not about any one slot.
 	warnedPropertyTerms map[string]bool
 	warnedTypeTerms     map[string]bool
+	// propLegend/typeLegend/optLegend are the document's legends expanded to
+	// also answer for the NFC form of any non-NFC-spelled entry (§3,
+	// nfcExpandLegend), built once on first use. legendsBuilt marks them,
+	// because the fast path hands the doc's own maps back and a nil legend
+	// stays nil.
+	propLegendNFC map[string]string
+	typeLegendNFC map[string]string
+	optLegendNFC  map[string]map[string]string
+	legendsBuilt  bool
+}
+
+// propertyLegend / typeLegend / optionLegend are the §3 chain-step-1 tables:
+// the document's own legends, with non-NFC spellings also answering under
+// their canonical form. Values pass byte-verbatim — a legend value is a
+// stored key, and a stored key's bytes are its address.
+func (imp *importer) propertyLegend() map[string]string {
+	imp.buildLegends()
+	return imp.propLegendNFC
+}
+
+func (imp *importer) typeLegend() map[string]string {
+	imp.buildLegends()
+	return imp.typeLegendNFC
+}
+
+func (imp *importer) optionLegend() map[string]map[string]string {
+	imp.buildLegends()
+	return imp.optLegendNFC
+}
+
+func (imp *importer) buildLegends() {
+	if imp.legendsBuilt {
+		return
+	}
+	imp.legendsBuilt = true
+	imp.propLegendNFC = nfcExpandLegend(imp.doc.PropertyKeys)
+	imp.typeLegendNFC = nfcExpandLegend(imp.doc.TypeKeys)
+	imp.optLegendNFC = nfcExpandLegend(imp.doc.OptionIds)
 }
 
 // claimAuthoredIds records every id the document names before anything is
@@ -299,8 +337,24 @@ func (imp *importer) propertyKey(slug string) string {
 // the coarse `/blocks` for the same reason — a coarse true pointer beats a
 // precise-looking wrong one).
 func (imp *importer) propertyKeyIn(slug, path string) string {
-	if key, ok := imp.doc.PropertyKeys[slug]; ok && key != "" {
+	if key, ok := imp.propertyLegend()[slug]; ok && key != "" {
 		return key
+	}
+	// §3: a spelling resolves under its canonical NFC form (nfcTerm) — after
+	// the two steps that legitimately bind exact non-NFC bytes: the legend
+	// above (export writes an identity entry for a stored key it spells
+	// verbatim, and the expanded legend already answered for the NFC form)
+	// and the verbatim-first stored-key rule here (chain step 2 — a stored
+	// key's bytes are its address, whatever their normal form).
+	if n := nfcTerm(slug); n != slug {
+		if scoped, ok := imp.opts.keys().(ScopedKeyVocabulary); ok &&
+			scoped.PropertyTermFacts(slug).LiveStoredKey {
+			return slug
+		}
+		slug = n
+		if key, ok := imp.propertyLegend()[slug]; ok && key != "" {
+			return key
+		}
 	}
 	scoped, ok := imp.opts.keys().(ScopedKeyVocabulary)
 	if !ok {
@@ -444,6 +498,15 @@ func (imp *importer) propertyKeyAt(slug, slot string) string {
 		imp.refuse("/blocks", fmt.Sprintf(
 			"the vocabulary resolves the %s spelling %q to the empty key; "+
 				"a key slot has to name something", slot, slug))
+	} else if slug != "" && !isWritablePropertyKey(key) {
+		// the same seam /properties has always run (§3): a vocabulary can
+		// resolve a legal spelling onto a key no spelling can carry — over
+		// the bound, or holding control bytes — which export can only DROP
+		// on the way back out. Validate cannot see this (it takes no
+		// vocabulary), so the codec is the door that refuses.
+		imp.refuse("/blocks", fmt.Sprintf("the %s spelling %q resolves onto a key "+
+			"this format cannot write back: %s",
+			slot, slug, unwritableKeyReason("resolved property key", key)))
 	}
 	return key
 }
@@ -490,8 +553,20 @@ func (imp *importer) refuse(path, message string) {
 // three of them: the envelope `type`, `template_for`, and every
 // `type_settings.property_definitions[i].object_types[j]` (§2a).
 func (imp *importer) typeKey(slug, path string) string {
-	if key, ok := imp.doc.TypeKeys[slug]; ok && key != "" {
+	if key, ok := imp.typeLegend()[slug]; ok && key != "" {
 		return key
+	}
+	// §3's canonical form, in the same order as propertyKeyIn: exact legend,
+	// exact stored key, then the NFC form
+	if n := nfcTerm(slug); n != slug {
+		if scoped, ok := imp.opts.keys().(ScopedKeyVocabulary); ok &&
+			scoped.TypeTermFacts(slug).LiveStoredKey {
+			return slug
+		}
+		slug = n
+		if key, ok := imp.typeLegend()[slug]; ok && key != "" {
+			return key
+		}
 	}
 	scoped, ok := imp.opts.keys().(ScopedKeyVocabulary)
 	if !ok {
@@ -630,8 +705,11 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 	// two unrelated questions — which type this object has, and what kind of
 	// object it is — and only stayed consistent by forbidding every reader
 	// from spelling that one type key differently. An absent `kind` on a
-	// document whose type is literally `template` is the pre-v0.22 spelling
-	// and Validate refuses it by name, so it never reaches here (§10).
+	// document whose type is literally `template` was the legacy spelling,
+	// and Validate refused it by name until the freeze; the version gate
+	// answers for every pre-freeze document now, so at version 2 that
+	// document arrives here and is a Page, exactly as its kind says
+	// (§10, §15 #9).
 	sbType := model.SmartBlockType_Page
 	if doc.Kind != "" {
 		sbType = kindNames.value(doc.Kind)
@@ -760,9 +838,17 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 			}}}
 		}
 		if first, dup := boundBy[key]; dup {
+			msg := fmt.Sprintf("%q and %q both address property %q — keep one", first, slug, key)
+			if first != slug && nfcTerm(first) == nfcTerm(slug) {
+				// the two spellings render identically, so %q would print
+				// the same glyphs twice; %+q names the code points apart
+				msg = fmt.Sprintf("%+q and %+q are one name in two Unicode normal forms, "+
+					"and both address property %q — keep one; NFC is the canonical spelling (§3)",
+					first, slug, key)
+			}
 			return 0, nil, &ValidationError{Issues: []Issue{{
 				Path:    "/properties/" + escapeJSONPointer(slug),
-				Message: fmt.Sprintf("%q and %q both address property %q — keep one", first, slug, key),
+				Message: msg,
 			}}}
 		}
 		boundBy[key] = slug

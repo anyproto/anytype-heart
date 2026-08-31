@@ -37,7 +37,7 @@ func TestValidate_ACellCannotBeATransparentContainer_BothSpellings(t *testing.T)
 		for form, cell := range cells {
 			t.Run(form+attrs, func(t *testing.T) {
 				doc := []byte(fmt.Sprintf(
-					`{"version": 1, "type": "page", "blocks": [{"type": "table",
+					`{"version": 2, "type": "page", "blocks": [{"type": "table",
 					   "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": [%s]}]}]}`, cell))
 
 				verr := Validate(doc)
@@ -61,7 +61,7 @@ func TestValidate_AnOrdinaryCellStillPasses_BothSpellings(t *testing.T) {
 	} {
 		t.Run(form, func(t *testing.T) {
 			doc := []byte(fmt.Sprintf(
-				`{"version": 1, "type": "page", "blocks": [{"type": "table",
+				`{"version": 2, "type": "page", "blocks": [{"type": "table",
 				   "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": [%s]}]}]}`, cell))
 			require.NoError(t, Validate(doc))
 			_, _, err := Unmarshal(doc, Options{})

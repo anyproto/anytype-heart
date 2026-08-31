@@ -33,7 +33,7 @@ func TestValidate_ErrorsDoNotCascade(t *testing.T) {
 	t.Run("a bad type is one issue, not three", func(t *testing.T) {
 		// the camelCase spelling is now the plausible mistake: it is what the
 		// pre-snake_case draft used, and what a model trained on it emits
-		got := issues(t, `{"version": 1, "blocks": [
+		got := issues(t, `{"version": 2, "blocks": [
 			{"type": "bulletedListItem", "text": "x"}]}`)
 		require.Len(t, got, 1, "got: %v", got)
 		assert.Equal(t, "/blocks/0/type", got[0].Path)
@@ -41,7 +41,7 @@ func TestValidate_ErrorsDoNotCascade(t *testing.T) {
 	})
 
 	t.Run("a bad field type is one issue, not four", func(t *testing.T) {
-		got := issues(t, `{"version": 1, "blocks": [
+		got := issues(t, `{"version": 2, "blocks": [
 			{"type": "checkbox", "checked": "yes", "text": "x"}]}`)
 		require.Len(t, got, 1, "got: %v", got)
 		assert.Equal(t, "/blocks/0/checked", got[0].Path)
@@ -49,7 +49,7 @@ func TestValidate_ErrorsDoNotCascade(t *testing.T) {
 	})
 
 	t.Run("the anyOf branch the author meant is the one reported", func(t *testing.T) {
-		got := issues(t, `{"version": 1, "blocks": [
+		got := issues(t, `{"version": 2, "blocks": [
 			{"type": "table", "columns": [{"id": "c1"}],
 			 "rows": [{"id": "r1", "cells": [{"type": "paragraph", "id": "x1", "text": "a"}]}]}]}`)
 		require.Len(t, got, 1, "got: %v", got)
@@ -57,7 +57,7 @@ func TestValidate_ErrorsDoNotCascade(t *testing.T) {
 	})
 
 	t.Run("a cell of no admissible shape names every shape once", func(t *testing.T) {
-		got := issues(t, `{"version": 1, "blocks": [
+		got := issues(t, `{"version": 2, "blocks": [
 			{"type": "table", "columns": [{"id": "c1"}],
 			 "rows": [{"id": "r1", "cells": [7]}]}]}`)
 		require.Len(t, got, 1, "got: %v", got)
@@ -68,7 +68,7 @@ func TestValidate_ErrorsDoNotCascade(t *testing.T) {
 	})
 
 	t.Run("an unknown key is still reported when it is the only fault", func(t *testing.T) {
-		got := issues(t, `{"version": 1, "blocks": [
+		got := issues(t, `{"version": 2, "blocks": [
 			{"type": "paragraph", "text": "x", "bogus": 1}]}`)
 		require.Len(t, got, 1, "got: %v", got)
 		assert.Equal(t, "/blocks/0/bogus", got[0].Path)
@@ -79,7 +79,7 @@ func TestValidate_ErrorsDoNotCascade(t *testing.T) {
 		// suppression is aimed at names the schema knows and could not
 		// evaluate; a hallucinated key is never admissible, so the verdict
 		// on it stands and the agent gets both facts in one round
-		got := issues(t, `{"version": 1, "blocks": [
+		got := issues(t, `{"version": 2, "blocks": [
 			{"type": "checkbox", "checked": "yes", "bogus": 1}]}`)
 		require.Len(t, got, 2, "got: %v", got)
 		paths := []string{got[0].Path, got[1].Path}
@@ -88,7 +88,7 @@ func TestValidate_ErrorsDoNotCascade(t *testing.T) {
 	})
 
 	t.Run("the children migration hint survives", func(t *testing.T) {
-		got := issues(t, `{"version": 1, "blocks": [
+		got := issues(t, `{"version": 2, "blocks": [
 			{"type": "paragraph", "text": "x", "children": []}]}`)
 		require.Len(t, got, 1, "got: %v", got)
 		assert.Contains(t, got[0].Message, "nest with indent instead")
@@ -97,7 +97,7 @@ func TestValidate_ErrorsDoNotCascade(t *testing.T) {
 	t.Run("a wrong field on the right type is still reported", func(t *testing.T) {
 		// `checked` belongs to checkbox, and nothing else in this block
 		// failed, so the closed-set verdict is trustworthy
-		got := issues(t, `{"version": 1, "blocks": [
+		got := issues(t, `{"version": 2, "blocks": [
 			{"type": "paragraph", "checked": true}]}`)
 		require.Len(t, got, 1, "got: %v", got)
 		assert.Equal(t, "/blocks/0/checked", got[0].Path)
@@ -119,7 +119,7 @@ func TestValidate_UnknownTagStaysLiteralAndWarns(t *testing.T) {
 	}
 
 	t.Run("unrecognized tag warns once and known tags do not", func(t *testing.T) {
-		got := warningsFor(t, `{"version": 1, "blocks": [
+		got := warningsFor(t, `{"version": 2, "blocks": [
 			{"type": "paragraph", "text": "<sub>x</sub> and <u>y</u>"}]}`)
 		require.Len(t, got, 1, "one warning per unrecognized name, not per occurrence")
 		assert.Equal(t, "/blocks/0/text", got[0].Path)
@@ -127,12 +127,12 @@ func TestValidate_UnknownTagStaysLiteralAndWarns(t *testing.T) {
 	})
 
 	t.Run("escaped tag is unambiguous, so no warning", func(t *testing.T) {
-		assert.Empty(t, warningsFor(t, `{"version": 1, "blocks": [
+		assert.Empty(t, warningsFor(t, `{"version": 2, "blocks": [
 			{"type": "paragraph", "text": "\\<sub>x\\</sub>"}]}`))
 	})
 
 	t.Run("a table cell string is warned about too", func(t *testing.T) {
-		got := warningsFor(t, `{"version": 1, "blocks": [
+		got := warningsFor(t, `{"version": 2, "blocks": [
 			{"type": "table", "columns": [{"id": "c1"}],
 			 "rows": [{"id": "r1", "cells": ["<mark>hi</mark>"]}]}]}`)
 		require.Len(t, got, 1)
@@ -145,10 +145,10 @@ func TestValidate_Valid(t *testing.T) {
 		name string
 		doc  string
 	}{
-		{"minimal", `{"version": 1}`},
+		{"minimal", `{"version": 2}`},
 		{"envelope", `{
 			"$schema": "https://schemas.anytype.io/anyblock/1.0/object.schema.json",
-			"version": 1,
+			"version": 2,
 			"id": "bafyrei123",
 			"type": "page",
 			"icon": {"format": "emoji", "emoji": "🔥"},
@@ -168,7 +168,7 @@ func TestValidate_Valid(t *testing.T) {
 				{"indent": 2, "type": "paragraph", "text": "right"}
 			]
 		}`},
-		{"table", `{"version": 1, "blocks": [
+		{"table", `{"version": 2, "blocks": [
 			{"type": "table",
 			 "columns": [{"id": "c1"}, {"id": "c2", "width": 120}],
 			 "rows": [
@@ -177,7 +177,7 @@ func TestValidate_Valid(t *testing.T) {
 				{"id": "r3", "cells": [null]}
 			 ]}
 		]}`},
-		{"dataview", `{"version": 1, "blocks": [
+		{"dataview", `{"version": 2, "blocks": [
 			{"type": "dataview", "object_id": "bafyset",
 			 "properties": [{"property": "name", "format": "text"}, {"property": "status", "format": "select"}],
 			 "views": [
@@ -193,29 +193,29 @@ func TestValidate_Valid(t *testing.T) {
 				 "columns": [{"property": "name"}, {"property": "status", "width": 30, "aggregation": "count_distinct", "align": "right"}]}
 			 ]}
 		]}`},
-		{"template", `{"version": 1, "kind": "template", "type": "template", "template_for": "task"}`},
-		{"collection items", `{"version": 1, "type": "collection", "items": ["obj1", "obj2"]}`},
-		{"widget", `{"version": 1, "kind": "widget", "blocks": [
+		{"template", `{"version": 2, "kind": "template", "type": "template", "template_for": "task"}`},
+		{"collection items", `{"version": 2, "type": "collection", "items": ["obj1", "obj2"]}`},
+		{"widget", `{"version": 2, "kind": "widget", "blocks": [
 			{"type": "widget", "layout": "tree", "limit": 6},
 			{"indent": 1, "type": "link", "object_id": "obj1"}
 		]}`},
-		{"explicit indent 0", `{"version": 1, "blocks": [{"indent": 0, "type": "paragraph", "text": "x"}]}`},
-		{"cell array with descendants", `{"version": 1, "blocks": [
+		{"explicit indent 0", `{"version": 2, "blocks": [{"indent": 0, "type": "paragraph", "text": "x"}]}`},
+		{"cell array with descendants", `{"version": 2, "blocks": [
 			{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": [[
 				{"type": "toggle", "text": "cell"},
 				{"indent": 1, "type": "paragraph", "text": "nested"}
 			]]}]}
 		]}`},
-		{"heading_4 alias", `{"version": 1, "blocks": [{"type": "heading_4", "text": "deep"}]}`},
-		{"equation alias", `{"version": 1, "blocks": [{"type": "equation", "text": "E=mc^2"}]}`},
-		{"option_ids", `{"version": 1, "properties": {"tag": ["High"], "c#_lang": ["C#"]},
+		{"heading_4 alias", `{"version": 2, "blocks": [{"type": "heading_4", "text": "deep"}]}`},
+		{"equation alias", `{"version": 2, "blocks": [{"type": "equation", "text": "E=mc^2"}]}`},
+		{"option_ids", `{"version": 2, "properties": {"tag": ["High"], "c#_lang": ["C#"]},
 			"option_ids": {"tag": {"import issue": "bafyreiabc", "High": "bafyreidef"},
 				"c#_lang": {"C#": "bafyreighi"}}}`},
 		// view-id uniqueness is scoped to the dataview BLOCK (§6.2): the app
 		// mints every set/collection/type default view as "default", and
 		// creating an inline set from one copies its views verbatim, so a
 		// page with two inline collections legitimately holds two "default"s
-		{"one view id in two dataviews", `{"version": 1, "blocks": [
+		{"one view id in two dataviews", `{"version": 2, "blocks": [
 			{"type": "dataview", "object_id": "bafyone", "views": [{"id": "default", "name": "A"}]},
 			{"type": "dataview", "object_id": "bafytwo", "views": [{"id": "default", "name": "B"}]}
 		]}`},
@@ -236,86 +236,88 @@ func TestValidate_Invalid(t *testing.T) {
 		{"not json", `{`, "invalid JSON"},
 		{"not object", `[1]`, "must be a JSON object"},
 		{"version missing", `{"blocks": []}`, "version is required"},
-		{"version newer", `{"version": 2}`, "newer than the supported version 1"},
+		{"version newer", `{"version": 3}`, "newer than the supported version 2"},
 		{"version zero", `{"version": 0}`, "unknown version"},
-		{"unknown envelope field", `{"version": 1, "banana": true}`, "banana"},
-		{"unknown kind", `{"version": 1, "kind": "banana"}`, "/kind"},
-		{"unknown block type", `{"version": 1, "blocks": [{"type": "banana"}]}`, "/blocks/0"},
-		{"block type missing", `{"version": 1, "blocks": [{"text": "x"}]}`, "/blocks/0"},
-		{"unknown block prop", `{"version": 1, "blocks": [{"type": "paragraph", "banana": 1}]}`, "banana"},
-		{"prop from wrong type", `{"version": 1, "blocks": [{"type": "paragraph", "checked": true}]}`, "checked"},
-		{"bad align", `{"version": 1, "blocks": [{"type": "paragraph", "align": "top"}]}`, "align"},
-		{"bad block id charset", `{"version": 1, "blocks": [{"type": "paragraph", "id": "a b"}]}`, "/blocks/0/id"},
-		{"children removed from the format", `{"version": 1, "blocks": [{"type": "toggle", "children": [{"type": "paragraph"}]}]}`, "children"},
-		{"first block indented", `{"version": 1, "blocks": [{"indent": 1, "type": "paragraph", "text": "x"}]}`, "first block must be at indent 0"},
-		{"indent jump", `{"version": 1, "blocks": [
+		{"unknown envelope field", `{"version": 2, "banana": true}`, "banana"},
+		{"unknown kind", `{"version": 2, "kind": "banana"}`, "/kind"},
+		{"unknown block type", `{"version": 2, "blocks": [{"type": "banana"}]}`, "/blocks/0"},
+		{"block type missing", `{"version": 2, "blocks": [{"text": "x"}]}`, "/blocks/0"},
+		{"unknown block prop", `{"version": 2, "blocks": [{"type": "paragraph", "banana": 1}]}`, "banana"},
+		{"prop from wrong type", `{"version": 2, "blocks": [{"type": "paragraph", "checked": true}]}`, "checked"},
+		{"bad align", `{"version": 2, "blocks": [{"type": "paragraph", "align": "top"}]}`, "align"},
+		{"bad block id charset", `{"version": 2, "blocks": [{"type": "paragraph", "id": "a b"}]}`, "/blocks/0/id"},
+		{"children removed from the format", `{"version": 2, "blocks": [{"type": "toggle", "children": [{"type": "paragraph"}]}]}`, "children"},
+		{"first block indented", `{"version": 2, "blocks": [{"indent": 1, "type": "paragraph", "text": "x"}]}`, "first block must be at indent 0"},
+		{"indent jump", `{"version": 2, "blocks": [
 			{"type": "paragraph", "text": "a"},
 			{"indent": 2, "type": "paragraph", "text": "b"}
 		]}`, "indent 2 follows indent 0"},
-		{"nested under leaf block", `{"version": 1, "blocks": [
+		{"nested under leaf block", `{"version": 2, "blocks": [
 			{"type": "divider"},
 			{"indent": 1, "type": "paragraph", "text": "x"}
 		]}`, "divider blocks cannot have children"},
-		{"row child not column", `{"version": 1, "blocks": [
+		{"row child not column", `{"version": 2, "blocks": [
 			{"type": "row"},
 			{"indent": 1, "type": "paragraph", "text": "x"}
 		]}`, "a row block can only contain column blocks"},
-		{"indent above bound", `{"version": 1, "blocks": [{"indent": 33, "type": "paragraph", "text": "x"}]}`, "/blocks/0/indent"},
-		{"negative indent", `{"version": 1, "blocks": [{"indent": -1, "type": "paragraph", "text": "x"}]}`, "/blocks/0/indent"},
-		{"indent on bare cell block", `{"version": 1, "blocks": [
+		{"indent above bound", `{"version": 2, "blocks": [{"indent": 33, "type": "paragraph", "text": "x"}]}`, "/blocks/0/indent"},
+		{"negative indent", `{"version": 2, "blocks": [{"indent": -1, "type": "paragraph", "text": "x"}]}`, "/blocks/0/indent"},
+		{"indent on bare cell block", `{"version": 2, "blocks": [
 			{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": [{"indent": 1, "type": "paragraph", "text": "x"}]}]}
 		]}`, "/blocks/0/rows/0/cells/0"},
-		{"id on cell array first block", `{"version": 1, "blocks": [
+		{"id on cell array first block", `{"version": 2, "blocks": [
 			{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": [[
 				{"id": "x", "type": "toggle", "text": "cell"},
 				{"indent": 1, "type": "paragraph", "text": "nested"}
 			]]}]}
 		]}`, "cell blocks cannot carry an id"},
-		{"duplicate ids", `{"version": 1, "blocks": [{"id": "b1", "type": "paragraph"}, {"id": "b1", "type": "quote"}]}`, "duplicate id"},
-		{"derived cell id collision", `{"version": 1, "blocks": [
+		{"duplicate ids", `{"version": 2, "blocks": [{"id": "b1", "type": "paragraph"}, {"id": "b1", "type": "quote"}]}`, "duplicate id"},
+		{"derived cell id collision", `{"version": 2, "blocks": [
 			{"id": "r1-c1", "type": "paragraph"},
 			{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": ["x"]}]}
 		]}`, "duplicate id"},
-		{"row with too many cells", `{"version": 1, "blocks": [
+		{"row with too many cells", `{"version": 2, "blocks": [
 			{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": ["a", "b"]}]}
 		]}`, "1 columns"},
-		{"cell with id", `{"version": 1, "blocks": [
+		{"cell with id", `{"version": 2, "blocks": [
 			{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": [{"id": "x", "type": "paragraph", "text": "a"}]}]}
 		]}`, "/blocks/0/rows/0/cells/0"},
-		{"table inner id with dash", `{"version": 1, "blocks": [
+		{"table inner id with dash", `{"version": 2, "blocks": [
 			{"type": "table", "columns": [{"id": "c-1"}], "rows": []}
 		]}`, "/blocks/0/columns/0/id"},
-		{"template_for without the template kind", `{"version": 1, "type": "page", "template_for": "task"}`, "template_for"},
-		{"template_for with the template type but no kind", `{"version": 1, "type": "template", "template_for": "task"}`, "kind"},
-		{"template_for with no type at all", `{"version": 1, "kind": "template", "template_for": "task"}`, "template_for"},
-		{"the pre-v0.22 template spelling", `{"version": 1, "type": "template"}`, `add "kind": "template"`},
-		{"language and fields.lang conflict", `{"version": 1, "blocks": [
+		{"template_for without the template kind", `{"version": 2, "type": "page", "template_for": "task"}`, "template_for"},
+		// the type spelling has no say here any more: `kind` is the sole
+		// authority (§2), so a kindless document carrying template_for is
+		// refused at template_for whatever its type spells
+		{"template_for on a kindless document that spells the template type", `{"version": 2, "type": "template", "template_for": "task"}`, "/template_for"},
+		{"template_for with no type at all", `{"version": 2, "kind": "template", "template_for": "task"}`, "template_for"},
+		{"language and fields.lang conflict", `{"version": 2, "blocks": [
 			{"type": "code", "language": "go", "fields": {"lang": "go"}}
 		]}`, "fields.lang"},
-		{"inline markup error", `{"version": 1, "blocks": [{"type": "paragraph", "text": "<u>unclosed"}]}`, "/blocks/0/text"},
-		{"inline markup error in cell", `{"version": 1, "blocks": [
+		{"inline markup error", `{"version": 2, "blocks": [{"type": "paragraph", "text": "<u>unclosed"}]}`, "/blocks/0/text"},
+		{"inline markup error in cell", `{"version": 2, "blocks": [
 			{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": ["<mention>x</mention>"]}]}
 		]}`, "/blocks/0/rows/0/cells/0"},
 		{"an option_ids spelling with a control character",
-			`{"version": 1, "option_ids": {"a\nb": {"High": "bafy1"}}}`,
+			`{"version": 2, "option_ids": {"a\nb": {"High": "bafy1"}}}`,
 			`/option_ids/a` + "\n" + `b: option_ids property spelling "a\nb" carries a control character`},
 		{"an empty option name",
-			`{"version": 1, "properties": {"tag": ["High"]}, "option_ids": {"tag": {"": "bafy1"}}}`,
+			`{"version": 2, "properties": {"tag": ["High"]}, "option_ids": {"tag": {"": "bafy1"}}}`,
 			`/option_ids/tag/: option name is empty`},
-		{"filter mixing group and leaf", `{"version": 1, "blocks": [
+		{"filter mixing group and leaf", `{"version": 2, "blocks": [
 			{"type": "dataview", "views": [{"id": "v", "filters": [{"operator": "and", "property": "x", "filters": []}]}]}
 		]}`, "/blocks/0/views/0/filters/0"},
-		{"reserved compact filter field", `{"version": 1, "blocks": [
+		{"reserved compact filter field", `{"version": 2, "blocks": [
 			{"type": "dataview", "views": [{"id": "v", "filter": "done = false"}]}
 		]}`, "filter"},
 		// §6.2: view ids are unique WITHIN a dataview block. Until this,
 		// views[].id was the one id slot in the document with no uniqueness
 		// check at all — invalid but unvalidated on every channel, create and
 		// import included.
-		{"duplicate view id in one dataview", `{"version": 1, "blocks": [
+		{"duplicate view id in one dataview", `{"version": 2, "blocks": [
 			{"type": "dataview", "views": [{"id": "v1", "name": "A"}, {"id": "v1", "name": "B"}]}
 		]}`, `duplicate view id "v1" in this dataview`},
-		{"duplicate view id path", `{"version": 1, "blocks": [
+		{"duplicate view id path", `{"version": 2, "blocks": [
 			{"type": "dataview", "views": [{"id": "v1", "name": "A"}, {"id": "v1", "name": "B"}]}
 		]}`, "/blocks/0/views/1/id"},
 	}
@@ -334,7 +336,7 @@ func TestValidate_NewerFormatHint(t *testing.T) {
 	// and never reaches schema validation
 	t.Run("newer version is rejected and named", func(t *testing.T) {
 		// given
-		doc := `{"version": 2, "blocks": [{"type": "paragraph", "sparkles": true}]}`
+		doc := `{"version": 3, "blocks": [{"type": "paragraph", "sparkles": true}]}`
 
 		// when
 		err := Validate([]byte(doc))
@@ -345,7 +347,7 @@ func TestValidate_NewerFormatHint(t *testing.T) {
 		require.True(t, errors.As(err, &ve))
 		assert.True(t, ve.NewerFormat)
 		assert.True(t, strings.Contains(err.Error(), "newer version"))
-		assert.True(t, strings.Contains(err.Error(), "2"))
+		assert.True(t, strings.Contains(err.Error(), "3"))
 		// the unknown field never got a chance to produce a constraint failure
 		assert.False(t, strings.Contains(err.Error(), "sparkles"))
 	})
@@ -355,7 +357,7 @@ func TestValidate_NewerFormatHint(t *testing.T) {
 		// given
 		doc := `{
 			"$schema": "https://schemas.anytype.io/anyblock/9/object.schema.json",
-			"version": 1,
+			"version": 2,
 			"blocks": [{"type": "paragraph", "text": "fine"}]
 		}`
 
@@ -364,6 +366,82 @@ func TestValidate_NewerFormatHint(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
+	})
+}
+
+// The version gate is the sole authority on format identity (§10), and it has
+// three verdicts, not two. Version 2 is the frozen grammar; anything newer is
+// refused outright with NewerFormat set; and version 1 — the integer every
+// draft carried while the grammar was still moving — is refused as a
+// pre-freeze draft rather than migrated, because the revisions it spans (the
+// three legends that replaced `refs`, the relation lift, the
+// `relation`→`property` rename) are several grammars under one number, so
+// there is nothing to migrate FROM (§15 #9).
+//
+// How this can fail: spell the pre-freeze refusal as `v < FormatVersion` and
+// it is silently right today and silently wrong at version 3, when it would
+// refuse the first documents this reader is supposed to migrate.
+func TestValidate_VersionGate(t *testing.T) {
+	t.Run("the pre-freeze integer is refused at /version, with the repair named", func(t *testing.T) {
+		// given a document that is otherwise perfectly well-formed: only the
+		// version says it predates the freeze
+		doc := []byte(`{"version": 1, "blocks": [{"type": "paragraph", "text": "fine"}]}`)
+
+		// when
+		err := Validate(doc)
+
+		// then
+		require.Error(t, err)
+		var ve *ValidationError
+		require.ErrorAs(t, err, &ve)
+		assert.False(t, ve.NewerFormat, "a draft is not a newer format, and the caller must not be told to upgrade")
+		require.Len(t, ve.Issues, 1, "the gate runs before the schema, so nothing else gets a verdict")
+		assert.Equal(t, "/version", ve.Issues[0].Path)
+		assert.Contains(t, ve.Issues[0].Message, "pre-freeze")
+		assert.Contains(t, ve.Issues[0].Message, "Re-export", "the message names the repair")
+		assert.Contains(t, ve.Issues[0].Message, strconv.Itoa(FormatVersion))
+
+		_, _, uerr := Unmarshal(doc, Options{})
+		require.Error(t, uerr, "Validate and Unmarshal agree (§11 I2)")
+	})
+
+	t.Run("the frozen integer is accepted", func(t *testing.T) {
+		require.NoError(t, Validate([]byte(`{"version": 2}`)))
+		assert.Equal(t, 2, FormatVersion, "and 2 is what this reader writes")
+	})
+
+	t.Run("a newer integer keeps its own verdict", func(t *testing.T) {
+		err := Validate([]byte(`{"version": 3}`))
+		require.Error(t, err)
+		var ve *ValidationError
+		require.ErrorAs(t, err, &ve)
+		assert.True(t, ve.NewerFormat)
+		assert.Contains(t, err.Error(), "newer than the supported version 2")
+		assert.NotContains(t, err.Error(), "pre-freeze",
+			"the two refusals must not be told through one message")
+	})
+
+	// §10: `index.json` and the property dictionary share the version number
+	// and the same rules, and a bundle is versioned as one artifact
+	t.Run("every grammar shares the gate", func(t *testing.T) {
+		for name, refuse := range map[string]func([]byte) error{
+			"index": func(b []byte) error { _, err := UnmarshalIndex(b); return err },
+			"dictionary": func(b []byte) error {
+				_, err := UnmarshalPropertyDictionary(b)
+				return err
+			},
+		} {
+			t.Run(name, func(t *testing.T) {
+				err := refuse([]byte(`{"version": 1}`))
+				require.Error(t, err)
+				var ve *ValidationError
+				require.ErrorAs(t, err, &ve)
+				assert.False(t, ve.NewerFormat)
+				require.Len(t, ve.Issues, 1)
+				assert.Equal(t, "/version", ve.Issues[0].Path)
+				assert.Contains(t, ve.Issues[0].Message, "pre-freeze")
+			})
+		}
 	})
 }
 
@@ -413,7 +491,7 @@ func TestVersionIdentity(t *testing.T) {
 }
 
 func TestValidate_PathAddressing(t *testing.T) {
-	doc := `{"version": 1, "blocks": [
+	doc := `{"version": 2, "blocks": [
 		{"type": "paragraph", "text": "fine"},
 		{"type": "toggle", "text": "parent"},
 		{"indent": 1, "type": "paragraph", "text": "bad </font> here"}
@@ -447,43 +525,43 @@ func TestValidate_KeySlotIssuesNameTheOffendingMember(t *testing.T) {
 	}{
 		{
 			name:     "an over-long property key",
-			doc:      `{"version": 1, "properties": {"` + long + `": "x"}}`,
+			doc:      `{"version": 2, "properties": {"` + long + `": "x"}}`,
 			wantPath: "/properties/" + long,
 			wantIn:   []string{long, "129", "128"},
 		},
 		{
 			name:     "a property key carrying a control character",
-			doc:      `{"version": 1, "properties": {"a\nb": "x"}}`,
+			doc:      `{"version": 2, "properties": {"a\nb": "x"}}`,
 			wantPath: "/properties/a\nb",
 			wantIn:   []string{`"a\nb"`, "control character"},
 		},
 		{
 			name:     "the empty property key",
-			doc:      `{"version": 1, "properties": {"": "x"}}`,
+			doc:      `{"version": 2, "properties": {"": "x"}}`,
 			wantPath: "/properties/",
 			wantIn:   []string{"empty"},
 		},
 		{
 			name:     "an unwritable legend spelling",
-			doc:      `{"version": 1, "property_internal_keys": {"a\nb": "due_date"}}`,
+			doc:      `{"version": 2, "property_internal_keys": {"a\nb": "due_date"}}`,
 			wantPath: "/property_internal_keys/a\nb",
 			wantIn:   []string{`"a\nb"`, "control character"},
 		},
 		{
 			name:     "an unwritable legend stored key",
-			doc:      `{"version": 1, "property_internal_keys": {"prio": "` + long + `"}}`,
+			doc:      `{"version": 2, "property_internal_keys": {"prio": "` + long + `"}}`,
 			wantPath: "/property_internal_keys/prio",
 			wantIn:   []string{long, "129", "128"},
 		},
 		{
 			name:     "an empty legend stored key",
-			doc:      `{"version": 1, "property_internal_keys": {"prio": ""}}`,
+			doc:      `{"version": 2, "property_internal_keys": {"prio": ""}}`,
 			wantPath: "/property_internal_keys/prio",
 			wantIn:   []string{"empty"},
 		},
 		{
 			name:     "an option_ids spelling past the bound",
-			doc:      `{"version": 1, "option_ids": {"` + long + `": {"High": "bafyreiabc"}}}`,
+			doc:      `{"version": 2, "option_ids": {"` + long + `": {"High": "bafyreiabc"}}}`,
 			wantPath: "/option_ids/" + long,
 			wantIn:   []string{long, "129", "128"},
 		},
@@ -493,7 +571,7 @@ func TestValidate_KeySlotIssuesNameTheOffendingMember(t *testing.T) {
 			// this case (§12), and the pointer has to reach the level too —
 			// `/option_ids/tag/` is the empty member of `tag`'s map.
 			name:     "an empty option name",
-			doc:      `{"version": 1, "option_ids": {"tag": {"": "bafyreiabc"}}}`,
+			doc:      `{"version": 2, "option_ids": {"tag": {"": "bafyreiabc"}}}`,
 			wantPath: "/option_ids/tag/",
 			wantIn:   []string{"empty"},
 		},
@@ -507,13 +585,13 @@ func TestValidate_KeySlotIssuesNameTheOffendingMember(t *testing.T) {
 		// characters, nothing else (§3).
 		{
 			name:     "a legend spelling holding a slash",
-			doc:      `{"version": 1, "property_internal_keys": {"a/b": ""}}`,
+			doc:      `{"version": 2, "property_internal_keys": {"a/b": ""}}`,
 			wantPath: "/property_internal_keys/a~1b",
 			wantIn:   []string{"empty"},
 		},
 		{
 			name:     "a type legend spelling holding a tilde",
-			doc:      `{"version": 1, "type_internal_keys": {"a~b": ""}}`,
+			doc:      `{"version": 2, "type_internal_keys": {"a~b": ""}}`,
 			wantPath: "/type_internal_keys/a~0b",
 			wantIn:   []string{"empty"},
 		},
@@ -610,7 +688,7 @@ func TestPropertyNamesSites_DescendsIntoArrayKeywords(t *testing.T) {
 // TestValidate_IndentErrorMessage: the V1 message is the agent-facing repair
 // loop — it must name both indents (§12).
 func TestValidate_IndentErrorMessage(t *testing.T) {
-	doc := `{"version": 1, "blocks": [
+	doc := `{"version": 2, "blocks": [
 		{"type": "paragraph", "text": "a"},
 		{"indent": 1, "type": "paragraph", "text": "b"},
 		{"indent": 3, "type": "paragraph", "text": "c"}
@@ -628,11 +706,11 @@ func TestValidate_IndentErrorMessage(t *testing.T) {
 // establishable level with a path-addressed warning, and the imported state
 // equals the equivalent valid document's (§4).
 func TestNormalizeIndent(t *testing.T) {
-	invalid := `{"version": 1, "blocks": [
+	invalid := `{"version": 2, "blocks": [
 		{"id": "a", "type": "paragraph", "text": "a"},
 		{"indent": 3, "id": "b", "type": "paragraph", "text": "b"}
 	]}`
-	valid := `{"version": 1, "blocks": [
+	valid := `{"version": 2, "blocks": [
 		{"id": "a", "type": "paragraph", "text": "a"},
 		{"indent": 1, "id": "b", "type": "paragraph", "text": "b"}
 	]}`
@@ -654,7 +732,7 @@ func TestNormalizeIndent(t *testing.T) {
 	assert.Equal(t, want.Blocks, snap.Blocks)
 
 	t.Run("first block clamps to 0", func(t *testing.T) {
-		doc := `{"version": 1, "blocks": [{"indent": 2, "id": "a", "type": "paragraph", "text": "a"}]}`
+		doc := `{"version": 2, "blocks": [{"indent": 2, "id": "a", "type": "paragraph", "text": "a"}]}`
 		var w []Issue
 		o := Options{GenerateId: seqIds("g"), NormalizeIndent: true, OnWarning: func(i Issue) { w = append(w, i) }}
 		_, snap, err := Unmarshal([]byte(doc), o)
@@ -667,7 +745,7 @@ func TestNormalizeIndent(t *testing.T) {
 	})
 
 	t.Run("bounds stay errors in lenient mode", func(t *testing.T) {
-		doc := `{"version": 1, "blocks": [{"indent": 33, "type": "paragraph", "text": "x"}]}`
+		doc := `{"version": 2, "blocks": [{"indent": 33, "type": "paragraph", "text": "x"}]}`
 		o := Options{GenerateId: seqIds("g"), NormalizeIndent: true}
 		_, _, err := Unmarshal([]byte(doc), o)
 		require.Error(t, err)
@@ -690,7 +768,7 @@ func TestValidate_PrefixProperty(t *testing.T) {
 		for _, b := range doc.Blocks[:n] {
 			parts = append(parts, string(b))
 		}
-		prefix := `{"version": 1, "blocks": [` + strings.Join(parts, ",") + `]}`
+		prefix := `{"version": 2, "blocks": [` + strings.Join(parts, ",") + `]}`
 		require.NoError(t, Validate([]byte(prefix)), "prefix of %d blocks", n)
 	}
 }
@@ -715,7 +793,7 @@ func TestValidate_UnknownEnvelopeMembersAreAddressedOneByOne(t *testing.T) {
 	// in sorted order by chance about seven runs in eight, and a `-count=1` CI
 	// run would miss a lost sort almost every time (measured: 23/200). Six
 	// members put a coincidence at roughly 1 in 720.
-	doc := `{"version": 1, "refs": {"idxxx": "bafyreitarget"},
+	doc := `{"version": 2, "refs": {"idxxx": "bafyreitarget"},
 		"zzz_unknown": 1, "aaa_unknown": 2, "mmm_unknown": 3,
 		"bbb_unknown": 4, "qqq_unknown": 5,
 		"blocks": [{"type": "paragraph", "text": "x"}]}`
@@ -765,18 +843,18 @@ func TestWarnings_TheChannelReportsTheDocument(t *testing.T) {
 	}
 
 	t.Run("a mis-declared file-variant key is not the document's fault", func(t *testing.T) {
-		assert.Empty(t, warn(`{"version": 1, "id": "f1", "kind": "file_object",
+		assert.Empty(t, warn(`{"version": 2, "id": "f1", "kind": "file_object",
 			"properties": {"file_variant_paths": ["a", "b"], "file_variant_widths": [100, 200]}}`),
 			"the bundled table declares these text and number; every stored value is a list")
 	})
 
 	t.Run("an ordinary shape mismatch still warns", func(t *testing.T) {
-		assert.NotEmpty(t, warn(`{"version": 1, "id": "o1", "properties": {"description": ["a list"]}}`),
+		assert.NotEmpty(t, warn(`{"version": 2, "id": "o1", "properties": {"description": ["a list"]}}`),
 			"description really is a text property and a list really does read as empty")
 	})
 
 	t.Run("restating the bundle's own targets says nothing", func(t *testing.T) {
-		assert.Empty(t, warn(`{"version": 1, "kind": "object_type", "internal_key": "t",
+		assert.Empty(t, warn(`{"version": 2, "kind": "object_type", "internal_key": "t",
 			"properties": {"name": "T"},
 			"type_settings": {"property_definitions": [
 				{"property": "creator", "format": "objects", "object_types": ["participant"]}]}}`),
@@ -784,7 +862,7 @@ func TestWarnings_TheChannelReportsTheDocument(t *testing.T) {
 	})
 
 	t.Run("but asking for something the bundle will not honour does", func(t *testing.T) {
-		w := warn(`{"version": 1, "kind": "object_type", "internal_key": "t",
+		w := warn(`{"version": 2, "kind": "object_type", "internal_key": "t",
 			"properties": {"name": "T"},
 			"type_settings": {"property_definitions": [
 				{"property": "creator", "format": "objects", "object_types": ["page"]}]}}`)

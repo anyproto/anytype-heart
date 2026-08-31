@@ -16,7 +16,7 @@ package anyblockjson
 //     separate decision, but it is no longer a document spelling — 0 of 194
 //     bundled relation names are byte-equal to their derived slug, and the
 //     name is the surface users and models actually see;
-//   - the v0.38 alias table (alias.go, deleted): its sixteen respellings
+//   - the retired alias table (alias.go, deleted): its sixteen respellings
 //     existed because the stored key said "relation" where the format says
 //     "property", and the display names never did — the relation TYPE is
 //     named "Property" in the bundle, `relationFormat` is named "Format" —

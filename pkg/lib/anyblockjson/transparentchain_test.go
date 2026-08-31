@@ -22,12 +22,12 @@ import (
 // so a walk that gives up after one step accepts it.
 func TestValidate_ContainmentIsJudgedThroughAChainOfContainers(t *testing.T) {
 	for name, doc := range map[string]string{
-		"a row cannot hold a paragraph behind two containers": `{"version": 1, "type": "page", "blocks": [
+		"a row cannot hold a paragraph behind two containers": `{"version": 2, "type": "page", "blocks": [
 			{"type": "row"},
 			{"indent": 1, "type": "group"},
 			{"indent": 2, "type": "group"},
 			{"indent": 3, "type": "paragraph", "text": "x"}]}`,
-		"a divider holds nothing, behind any number of containers": `{"version": 1, "type": "page", "blocks": [
+		"a divider holds nothing, behind any number of containers": `{"version": 2, "type": "page", "blocks": [
 			{"type": "divider"},
 			{"indent": 1, "type": "group"},
 			{"indent": 2, "type": "group"},
@@ -45,7 +45,7 @@ func TestValidate_ContainmentIsJudgedThroughAChainOfContainers(t *testing.T) {
 // the control: what the chain lifts TO must still be accepted, or the test above
 // could pass by refusing every chain.
 func TestValidate_AChainOfContainersOverALegalChildIsFine(t *testing.T) {
-	require.NoError(t, Validate([]byte(`{"version": 1, "type": "page", "blocks": [
+	require.NoError(t, Validate([]byte(`{"version": 2, "type": "page", "blocks": [
 		{"type": "row"},
 		{"indent": 1, "type": "group"},
 		{"indent": 2, "type": "group"},
@@ -66,13 +66,13 @@ func TestValidate_AChainOfContainersOverALegalChildIsFine(t *testing.T) {
 func TestImport_TheLiftsIndentArithmeticSurvivesEveryWrappingShape(t *testing.T) {
 	cases := map[string]struct{ doc, wantName, wantId string }{
 		"title under two NESTED containers is absorbed": {
-			doc: `{"version": 1, "type": "page", "blocks": [
+			doc: `{"version": 2, "type": "page", "blocks": [
 				{"type": "group"}, {"indent": 1, "type": "group"},
 				{"indent": 2, "type": "title", "text": "Absorbed"}]}`,
 			wantName: "Absorbed",
 		},
 		"title under the second of two SIBLING containers is absorbed": {
-			doc: `{"version": 1, "type": "page", "blocks": [
+			doc: `{"version": 2, "type": "page", "blocks": [
 				{"type": "group"}, {"indent": 1, "type": "paragraph", "text": "a"},
 				{"type": "group"}, {"indent": 1, "type": "title", "text": "Absorbed"}]}`,
 			wantName: "Absorbed",

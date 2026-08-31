@@ -210,7 +210,16 @@ func (imp *importer) optionIdFromLegend(key, slug, name string) (string, bool) {
 	if slug == "" || name == "" || imp.opts.ResolveOptions == nil {
 		return "", false
 	}
-	id := imp.doc.OptionIds[slug][name]
+	// the slot's exact spelling first, then its §3 canonical NFC form — the
+	// same two-step every key slot resolves by (propertyKeyIn); option NAMES
+	// (the inner level) stay byte-exact, they are the value strings
+	// themselves
+	id := imp.optionLegend()[slug][name]
+	if id == "" {
+		if n := nfcTerm(slug); n != slug {
+			id = imp.optionLegend()[n][name]
+		}
+	}
 	if id == "" {
 		return "", false
 	}

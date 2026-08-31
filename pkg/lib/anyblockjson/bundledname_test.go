@@ -73,14 +73,14 @@ func TestBundledNames_KeysSpellTheirDisplayNames(t *testing.T) {
 // resolves by luck.
 func TestBundledNames_StoredKeyVerbatimAndLegacySlugThroughTheFold(t *testing.T) {
 	t.Run("the stored key is its own address", func(t *testing.T) {
-		doc := `{"version":1,"id":"o1","properties":{"audioGenre":"jazz"}}`
+		doc := `{"version":2,"id":"o1","properties":{"audioGenre":"jazz"}}`
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
 		assert.Equal(t, str("jazz"), snap.Details.Fields["audioGenre"])
 	})
 
 	t.Run("the legacy derived slug folds onto its key", func(t *testing.T) {
-		doc := `{"version":1,"id":"o1","properties":{"audio_genre":"jazz"}}`
+		doc := `{"version":2,"id":"o1","properties":{"audio_genre":"jazz"}}`
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
 		assert.Equal(t, str("jazz"), snap.Details.Fields["audioGenre"],
@@ -92,7 +92,7 @@ func TestBundledNames_StoredKeyVerbatimAndLegacySlugThroughTheFold(t *testing.T)
 		// the §6.3 consolation: "Creation date" is the canonical spelling,
 		// and `creation_date` — the guess shaped like the name — lands in
 		// the same fold class
-		doc := `{"version":1,"id":"o1","properties":{"creation_date":1700000000}}`
+		doc := `{"version":2,"id":"o1","properties":{"creation_date":1700000000}}`
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
 		require.NotNil(t, snap.Details.Fields["createdDate"])
@@ -106,7 +106,7 @@ func TestBundledNames_StoredKeyVerbatimAndLegacySlugThroughTheFold(t *testing.T)
 		// eleven bundled names that still said "relation" is what restored
 		// them, and it restored the derived-slug form of each new name at
 		// the same time.
-		doc := `{"version":1,"id":"o1","properties":{"property_option_color":"ice"}}`
+		doc := `{"version":2,"id":"o1","properties":{"property_option_color":"ice"}}`
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
 		assert.Equal(t, str("ice"), snap.Details.Fields["relationOptionColor"])
@@ -116,7 +116,7 @@ func TestBundledNames_StoredKeyVerbatimAndLegacySlugThroughTheFold(t *testing.T)
 	t.Run("a spelling no bundled name folds onto passes through verbatim", func(t *testing.T) {
 		// pre-freeze, no back-compat: a term whose fold class is nobody's
 		// is its own address — chain step 4
-		doc := `{"version":1,"id":"o1","properties":{"property_wine_region":"ice"}}`
+		doc := `{"version":2,"id":"o1","properties":{"property_wine_region":"ice"}}`
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
 		assert.Equal(t, str("ice"), snap.Details.Fields["property_wine_region"])
@@ -144,7 +144,7 @@ func TestBundledNames_TypeKeysSpellTheirDisplayNames(t *testing.T) {
 	})
 
 	t.Run("the stored type key still names itself verbatim", func(t *testing.T) {
-		_, snap, err := Unmarshal([]byte(`{"version":1,"id":"o1","type":"relation"}`),
+		_, snap, err := Unmarshal([]byte(`{"version":2,"id":"o1","type":"relation"}`),
 			Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
 		assert.Equal(t, []string{"ot-relation"}, snap.ObjectTypes,
@@ -152,7 +152,7 @@ func TestBundledNames_TypeKeysSpellTheirDisplayNames(t *testing.T) {
 	})
 
 	t.Run("the legacy type slug folds onto its key", func(t *testing.T) {
-		_, snap, err := Unmarshal([]byte(`{"version":1,"id":"o1","type":"object_type"}`),
+		_, snap, err := Unmarshal([]byte(`{"version":2,"id":"o1","type":"object_type"}`),
 			Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
 		assert.Equal(t, []string{"ot-objectType"}, snap.ObjectTypes)
@@ -180,7 +180,7 @@ func TestBundledNames_TypeKeysSpellTheirDisplayNames(t *testing.T) {
 func TestBundledNames_AnAmbiguousFoldClassIsRefused(t *testing.T) {
 	assert.Len(t, BundledTypeKeysByFold("SPACE"), 2,
 		"the class holds both keys — the fixture is real")
-	_, snap, err := Unmarshal([]byte(`{"version":1,"id":"o1","type":"SPACE"}`),
+	_, snap, err := Unmarshal([]byte(`{"version":2,"id":"o1","type":"SPACE"}`),
 		Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
 	assert.Equal(t, []string{"ot-SPACE"}, snap.ObjectTypes,

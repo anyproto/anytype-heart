@@ -30,7 +30,7 @@ import (
 const customTypeKey = "69bbfc78877a91b1d12d1a7c"
 
 // customType is that type's own document, so the bundle can address it.
-const customType = `{"version": 1, "kind": "object_type", "internal_key": "` + customTypeKey + `", "id": "type-custom"}`
+const customType = `{"version": 2, "kind": "object_type", "internal_key": "` + customTypeKey + `", "id": "type-custom"}`
 
 // --- template_for ----------------------------------------------------------
 
@@ -41,7 +41,7 @@ const customType = `{"version": 1, "kind": "object_type", "internal_key": "` + c
 func TestCheckTemplateTargets_LegendBackedTargetPasses(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/custom.type.json": customType,
-		"templates/article.json": `{"version": 1, "kind": "template", "type": "template", "template_for": "wiki_page",
+		"templates/article.json": `{"version": 2, "kind": "template", "type": "template", "template_for": "wiki_page",
 		  "type_internal_keys": {"wiki_page": "` + customTypeKey + `"}}`,
 	})
 	typeIds, err := TypeIds(files)
@@ -61,7 +61,7 @@ func TestCheckTemplateTargets_LegendBackedTargetPasses(t *testing.T) {
 func TestCheckTemplateTargets_TermCollidingWithAnotherTypesKeyIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/wiki-page.type.json": wikiPageType, // key "wikiPage", id "type-wiki-page"
-		"templates/article.json": `{"version": 1, "kind": "template", "type": "template", "template_for": "wikiPage",
+		"templates/article.json": `{"version": 2, "kind": "template", "type": "template", "template_for": "wikiPage",
 		  "type_internal_keys": {"wikiPage": "` + customTypeKey + `"}}`,
 	})
 	typeIds, err := TypeIds(files)
@@ -83,7 +83,7 @@ func TestCheckTemplateTargets_TermCollidingWithAnotherTypesKeyIsReported(t *test
 // decided by resolving the type term through the legend, and a document whose
 // gate the lint got wrong was skipped whole, its missing target unreported.
 func TestCheckTemplateTargets_TheKindMakesADocumentATemplate(t *testing.T) {
-	doc := `{"version": 1, "kind": "template", "type": "wiki_page",
+	doc := `{"version": 2, "kind": "template", "type": "wiki_page",
 		"type_internal_keys": {"wiki_page": "` + customTypeKey + `"}}`
 	requireCodecSeesATemplate(t, doc, true)
 
@@ -101,9 +101,9 @@ func TestCheckTemplateTargets_TheKindMakesADocumentATemplate(t *testing.T) {
 // `/template_for` on it. The lint must not demand a target the format forbids.
 func TestCheckTemplateTargets_TheTypeTermDoesNotMakeATemplate(t *testing.T) {
 	for name, doc := range map[string]string{
-		"the literal spelling":     `{"version": 1, "kind": "page", "type": "template"}`,
-		"a legend onto the key":    `{"version": 1, "kind": "page", "type": "wiki_page", "type_internal_keys": {"wiki_page": "template"}}`,
-		"no kind, ordinary object": `{"version": 1, "type": "wikiPage"}`,
+		"the literal spelling":     `{"version": 2, "kind": "page", "type": "template"}`,
+		"a legend onto the key":    `{"version": 2, "kind": "page", "type": "wiki_page", "type_internal_keys": {"wiki_page": "template"}}`,
+		"no kind, ordinary object": `{"version": 2, "type": "wikiPage"}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			requireCodecSeesATemplate(t, doc, false)
@@ -135,7 +135,7 @@ func requireCodecSeesATemplate(t *testing.T, doc string, want bool) {
 func TestCheckTargetTypes_LegendBackedTargetPasses(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/custom.type.json": customType,
-		"types/person.type.json": `{"version": 1, "kind": "object_type", "internal_key": "person", "id": "type-person",
+		"types/person.type.json": `{"version": 2, "kind": "object_type", "internal_key": "person", "id": "type-person",
 		  "type_internal_keys": {"wiki_page": "` + customTypeKey + `"},
 		  "type_settings": {"property_definitions": [{"property": "assignee", "format": "objects", "object_types": ["wiki_page"]}]}}`,
 	})
@@ -155,7 +155,7 @@ func TestCheckTargetTypes_LegendBackedTargetPasses(t *testing.T) {
 func TestCheckTargetTypes_TermCollidingWithAnotherTypesKeyIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/wiki-page.type.json": wikiPageType, // key "wikiPage", id "type-wiki-page"
-		"types/person.type.json": `{"version": 1, "kind": "object_type", "internal_key": "person", "id": "type-person",
+		"types/person.type.json": `{"version": 2, "kind": "object_type", "internal_key": "person", "id": "type-person",
 		  "type_internal_keys": {"wikiPage": "` + customTypeKey + `"},
 		  "type_settings": {"property_definitions": [{"property": "assignee", "format": "objects", "object_types": ["wikiPage"]}]}}`,
 	})
@@ -177,7 +177,7 @@ func TestCheckTargetTypes_TermCollidingWithAnotherTypesKeyIsReported(t *testing.
 // reported — resolution must not turn every miss into a pass.
 func TestCheckTargetTypes_UnknownTargetIsStillReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"types/person.type.json": `{"version": 1, "kind": "object_type", "internal_key": "person", "id": "type-person",
+		"types/person.type.json": `{"version": 2, "kind": "object_type", "internal_key": "person", "id": "type-person",
 		  "type_settings": {"property_definitions": [{"property": "assignee", "format": "objects", "object_types": ["wiki_page"]}]}}`,
 	})
 	bad, err := CheckTargetTypes(files, map[string]string{})
@@ -192,7 +192,7 @@ func TestCheckTargetTypes_UnknownTargetIsStillReported(t *testing.T) {
 func TestCheckTargetTypes_BundledTargetPassesInBothSpellings(t *testing.T) {
 	for _, target := range []string{"object_type", "objectType", "page", "task"} {
 		files := writeDocs(t, map[string]string{
-			"types/person.type.json": `{"version": 1, "kind": "object_type", "internal_key": "person", "id": "type-person",
+			"types/person.type.json": `{"version": 2, "kind": "object_type", "internal_key": "person", "id": "type-person",
 			  "type_settings": {"property_definitions": [{"property": "assignee", "format": "objects", "object_types": ["` + target + `"]}]}}`,
 		})
 		bad, err := CheckTargetTypes(files, map[string]string{})
@@ -224,7 +224,7 @@ func TestLintResolvesTypeTermsLikeTheCodec(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			doc := `{"version": 1, "kind": "template", ` + c.legend +
+			doc := `{"version": 2, "kind": "template", ` + c.legend +
 				`"type": "` + c.typeTerm + `", "template_for": "` + c.templateFor + `"}`
 			require.NoError(t, anyblockjson.Validate([]byte(doc)))
 

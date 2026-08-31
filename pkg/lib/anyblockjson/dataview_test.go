@@ -111,7 +111,7 @@ func TestDataview_AnAbsentFormatResolvesThroughTheChain(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			// given
-			doc := `{"version":1,"blocks":[{"type":"dataview",` + tc.props + filter + `}]}`
+			doc := `{"version":2,"blocks":[{"type":"dataview",` + tc.props + filter + `}]}`
 
 			// when
 			_, snap, err := Unmarshal([]byte(doc), testOptions())

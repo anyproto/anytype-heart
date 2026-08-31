@@ -517,7 +517,7 @@ func TestUnmarshal_TransparentContainersAreLifted(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			doc := fmt.Sprintf(`{"version":1,"type":"page","blocks":[%s]}`, tc.blocks)
+			doc := fmt.Sprintf(`{"version":2,"type":"page","blocks":[%s]}`, tc.blocks)
 			require.NoError(t, Validate([]byte(doc)))
 
 			_, snapshot, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
@@ -538,7 +538,7 @@ func TestUnmarshal_TransparentContainersAreLifted(t *testing.T) {
 // requires.
 func TestUnmarshal_ContainerLiftRunsBeforeTheStructuralRules(t *testing.T) {
 	t.Run("a wrapped title is absorbed into the name property", func(t *testing.T) {
-		doc := `{"version":1,"type":"page","blocks":[
+		doc := `{"version":2,"type":"page","blocks":[
 			{"type":"group"},
 			{"indent":1,"type":"title","text":"Wrapped title"},
 			{"indent":1,"type":"paragraph","text":"body"}]}`
@@ -548,7 +548,7 @@ func TestUnmarshal_ContainerLiftRunsBeforeTheStructuralRules(t *testing.T) {
 		assert.Equal(t, []string{"0 text:body"}, importedTree(t, snapshot))
 	})
 	t.Run("a wrapped primary dataview is pinned to the editor's fixed id", func(t *testing.T) {
-		doc := `{"version":1,"type":"page","blocks":[
+		doc := `{"version":2,"type":"page","blocks":[
 			{"type":"group"},
 			{"indent":1,"type":"dataview","views":[{"type":"table","name":"All"}]}]}`
 		_, snapshot, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
@@ -568,7 +568,7 @@ func TestUnmarshal_ContainerLiftRunsBeforeTheStructuralRules(t *testing.T) {
 // flatSubtree entry points. An unfixed cell path is worse than shipping
 // nothing: it mints a real Layout_Div inside a table that no read ever shows.
 func TestUnmarshal_ContainerInsideATableCell(t *testing.T) {
-	doc := `{"version":1,"type":"page","blocks":[{"type":"table",
+	doc := `{"version":2,"type":"page","blocks":[{"type":"table",
 		"columns":[{"id":"c1"}],
 		"rows":[{"id":"r1","cells":[[
 			{"type":"paragraph","text":"cell"},
@@ -666,7 +666,7 @@ func TestValidate_ContainmentIsJudgedOnTheLiftedTree(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			doc := fmt.Sprintf(`{"version":1,"type":"page","blocks":[%s]}`, tc.blocks)
+			doc := fmt.Sprintf(`{"version":2,"type":"page","blocks":[%s]}`, tc.blocks)
 			err := Validate([]byte(doc))
 			if tc.want == "" {
 				require.NoError(t, err)
@@ -685,7 +685,7 @@ func TestValidate_ContainmentIsJudgedOnTheLiftedTree(t *testing.T) {
 // so it is the one spelling of a container the format cannot read back —
 // and Validate has to say so, or it would accept what Unmarshal refuses.
 func TestValidate_ContainerCannotBeACellBlock(t *testing.T) {
-	doc := `{"version":1,"type":"page","blocks":[{"type":"table",
+	doc := `{"version":2,"type":"page","blocks":[{"type":"table",
 		"columns":[{"id":"c1"}],
 		"rows":[{"id":"r1","cells":[[{"type":"group"},{"indent":1,"type":"paragraph","text":"x"}]]}]}]}`
 
@@ -702,7 +702,7 @@ func TestValidate_ContainerCannotBeACellBlock(t *testing.T) {
 // export produces, so the canonical form of a document with one is the same
 // document without it.
 func TestUnmarshal_ContainerRoundTripsToNothing(t *testing.T) {
-	doc := []byte(`{"version":1,"type":"page","blocks":[` +
+	doc := []byte(`{"version":2,"type":"page","blocks":[` +
 		`{"type":"group"},{"indent":1,"type":"paragraph","text":"one"},` +
 		`{"type":"paragraph","text":"two"}]}`)
 

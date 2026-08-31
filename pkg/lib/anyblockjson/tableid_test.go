@@ -20,7 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const tableDoc = `{"version": 1, "id": "p1", "blocks": [{"type": "table",
+const tableDoc = `{"version": 2, "id": "p1", "blocks": [{"type": "table",
 	"columns": [{}, {}],
 	"rows": [{"cells": ["a", "b"]}]}]}`
 
@@ -79,7 +79,7 @@ func blockById(snap *model.SmartBlockSnapshotBase, id string) *model.Block {
 func TestImport_SanitizedTableIdsStayUnique(t *testing.T) {
 	ids := []string{"a-b", "a_b", "a.b", "a b"} // all sanitize to "a_b"
 	n := 0
-	_, snap, err := Unmarshal([]byte(`{"version": 1, "id": "p1", "blocks": [{"type": "table",
+	_, snap, err := Unmarshal([]byte(`{"version": 2, "id": "p1", "blocks": [{"type": "table",
 		"columns": [{}, {}], "rows": [{"cells": ["x", "y"]}, {"cells": ["z"]}]}]}`),
 		Options{GenerateId: func() string {
 			id := ids[n%len(ids)]
@@ -251,7 +251,7 @@ func TestExport_StringShorthandCellIsEmittedOnce(t *testing.T) {
 // collision. Hard-coding the generator's answer would make the test pass
 // vacuously the day the number of genId calls changes.
 func TestImport_GeneratedGridIsClaimed(t *testing.T) {
-	tableOnly := `{"version": 1, "id": "p1", "blocks": [
+	tableOnly := `{"version": 2, "id": "p1", "blocks": [
 		{"type": "table", "columns": [{}], "rows": [{"cells": ["cell"]}]},
 		{"type": "paragraph", "text": "trailing"}]}`
 	mints := 0
@@ -283,7 +283,7 @@ func TestImport_GeneratedGridIsClaimed(t *testing.T) {
 	}
 
 	t.Run("an authored block is already sitting on the grid", func(t *testing.T) {
-		doc := fmt.Sprintf(`{"version": 1, "id": "p1", "blocks": [
+		doc := fmt.Sprintf(`{"version": 2, "id": "p1", "blocks": [
 			{"type": "paragraph", "id": %q, "text": "authored"},
 			{"type": "table", "columns": [{}], "rows": [{"cells": ["cell"]}]}]}`, derived)
 		require.NoError(t, Validate([]byte(doc)), "the document itself is legal: %s", doc)
@@ -415,7 +415,7 @@ func TestMarshalBlockSubtree_ReservesFromTheCallersRoot(t *testing.T) {
 // The mirror of the export rule on the import side: a generated id may not
 // land on a cell id the document's table already implies, materialized or not.
 func TestImport_GeneratedIdAvoidsUnwrittenCellId(t *testing.T) {
-	doc := `{"version": 1, "id": "p1", "blocks": [
+	doc := `{"version": 2, "id": "p1", "blocks": [
 		{"type": "table", "id": "tbl", "columns": [{"id": "c1"}], "rows": [{"id": "r1"}]},
 		{"type": "paragraph", "text": "x"}]}`
 	_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: func() string { return "r1-c1" }})
@@ -434,7 +434,7 @@ func TestImport_GeneratedIdAvoidsUnwrittenCellId(t *testing.T) {
 // disambiguation pass, which used to find the id taken by the generator's own
 // claim and hand back `<id>_2` for every row and column ever minted.
 func TestImport_GeneratedTableInnerIdsKeepTheirName(t *testing.T) {
-	doc := `{"version": 1, "blocks": [{"type": "table",
+	doc := `{"version": 2, "blocks": [{"type": "table",
 		"columns": [{}, {}], "rows": [{"cells": ["a", "b"]}, {"cells": ["c", "d"]}]}]}`
 
 	t.Run("legal generated ids are untouched", func(t *testing.T) {

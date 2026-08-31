@@ -85,7 +85,7 @@ func TestBatch_OptionIdsLegendCrossesIntoThePackage(t *testing.T) {
 func stageDoc(t *testing.T, value string, legend map[string]string) string {
 	t.Helper()
 	doc := map[string]any{
-		"version":    1,
+		"version":    2,
 		"id":         "obj-1",
 		"properties": map[string]any{"stage": value},
 	}

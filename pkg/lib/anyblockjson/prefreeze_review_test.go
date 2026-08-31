@@ -276,7 +276,7 @@ func mentionBlock(id, target string) *model.Block {
 func TestValidate_DerivedCellIdIsClaimedEvenWhenTheCellIsAbsent(t *testing.T) {
 	// the trailing cell is absent from the array, so nothing in the document
 	// mentions r1-c2 — an explicit null would already have been claimed
-	doc := `{"version": 1, "blocks": [
+	doc := `{"version": 2, "blocks": [
 		{"type": "paragraph", "id": "r1-c2", "text": "x"},
 		{"type": "table",
 		 "columns": [{"id": "c1"}, {"id": "c2"}],
@@ -286,7 +286,7 @@ func TestValidate_DerivedCellIdIsClaimedEvenWhenTheCellIsAbsent(t *testing.T) {
 	assert.Contains(t, err.Error(), "duplicate id")
 
 	// and the claim is not over-eager: no table, no derived ids
-	require.NoError(t, Validate([]byte(`{"version": 1, "blocks": [
+	require.NoError(t, Validate([]byte(`{"version": 2, "blocks": [
 		{"type": "paragraph", "id": "r1-c2", "text": "x"}]}`)))
 }
 
@@ -295,7 +295,7 @@ func TestValidate_DerivedCellIdIsClaimedEvenWhenTheCellIsAbsent(t *testing.T) {
 // for the dataview block *after* validation had passed. Re-export then lost
 // the whole table body.
 func TestImport_PrimaryDataviewDoesNotCollideWithATableRowId(t *testing.T) {
-	doc := `{"version": 1, "id": "obj1", "blocks": [
+	doc := `{"version": 2, "id": "obj1", "blocks": [
 		{"type": "table",
 		 "columns": [{"id": "c1"}],
 		 "rows": [{"id": "dataview", "cells": ["cell text"]}]},
@@ -315,7 +315,7 @@ func TestImport_PrimaryDataviewDoesNotCollideWithATableRowId(t *testing.T) {
 // from file paths — both halves author-controlled. genId never checked the ids
 // the document itself already used.
 func TestImport_GeneratedIdCannotTakeAnAuthoredId(t *testing.T) {
-	doc := `{"version": 1, "blocks": [
+	doc := `{"version": 2, "blocks": [
 		{"type": "paragraph", "id": "g1", "text": "authored"},
 		{"type": "paragraph", "text": "needs an id"},
 		{"type": "table", "columns": [{"id": "g2"}], "rows": [{"cells": ["c"]}]}]}`
@@ -356,7 +356,7 @@ func TestValidate_ImportRefusesWhatExportStrips(t *testing.T) {
 			continue
 		}
 		refused++
-		doc := fmt.Sprintf(`{"version": 1, "id": "obj1", "properties": {%q: "x"}}`, key)
+		doc := fmt.Sprintf(`{"version": 2, "id": "obj1", "properties": {%q: "x"}}`, key)
 		err := Validate([]byte(doc))
 		require.Error(t, err, "%s is stripped on export, so it must be refused on import", key)
 		assert.Contains(t, err.Error(), "/properties/"+key)
@@ -371,7 +371,7 @@ func TestValidate_ImportRefusesWhatExportStrips(t *testing.T) {
 // the list the deny-rule derives from, does not carry them.
 func TestValidate_ResolutionVectorPropertiesRefused(t *testing.T) {
 	for _, key := range []string{"oldAnytypeID", "uniqueKey", "sourceFilePath"} {
-		doc := fmt.Sprintf(`{"version": 1, "id": "obj1", "properties": {%q: "x"}}`, key)
+		doc := fmt.Sprintf(`{"version": 2, "id": "obj1", "properties": {%q: "x"}}`, key)
 		err := Validate([]byte(doc))
 		require.Error(t, err, key)
 		assert.Contains(t, err.Error(), "/properties/"+key)
@@ -397,7 +397,7 @@ func TestValidate_ResolutionVectorPropertiesRefused(t *testing.T) {
 // The six §3 exemptions are the whole point of the exemption list: they are
 // internal keys the importer meaningfully preserves, so they stay writable.
 func TestValidate_ExemptedInternalPropertiesStillAccepted(t *testing.T) {
-	doc := `{"version": 1, "id": "obj1", "properties": {
+	doc := `{"version": 2, "id": "obj1", "properties": {
 		"createdDate": "2026-07-06T08:44:05Z", "lastModifiedDate": "2026-07-06T08:44:05Z",
 		"creator": "bafyparticipant", "isFavorite": true, "isArchived": false,
 		"resolvedLayout": "basic", "name": "N"}}`
@@ -409,10 +409,10 @@ func TestValidate_ExemptedInternalPropertiesStillAccepted(t *testing.T) {
 func TestValidate_PropertyKeyShape(t *testing.T) {
 	t.Run("refused", func(t *testing.T) {
 		for _, doc := range []string{
-			`{"version": 1, "properties": {"": "empty"}}`,
-			`{"version": 1, "properties": {"a\nb": "newline"}}`,
-			"{\"version\": 1, \"properties\": {\"a\\u0000b\": \"nul\"}}",
-			"{\"version\": 1, \"properties\": {\"a\\u007fb\": \"del\"}}",
+			`{"version": 2, "properties": {"": "empty"}}`,
+			`{"version": 2, "properties": {"a\nb": "newline"}}`,
+			"{\"version\": 2, \"properties\": {\"a\\u0000b\": \"nul\"}}",
+			"{\"version\": 2, \"properties\": {\"a\\u007fb\": \"del\"}}",
 		} {
 			assert.Error(t, Validate([]byte(doc)), doc)
 		}
@@ -423,7 +423,7 @@ func TestValidate_PropertyKeyShape(t *testing.T) {
 		// deliberately a deny rule rather than an allowlist — an allowlist
 		// would have to be verified against every key in every account before
 		// export could depend on it.
-		doc := `{"version": 1, "properties": {
+		doc := `{"version": 2, "properties": {
 			"dueDate": null, "68f0d9c3b3c8a94e0d0b0a12": "x", "artist": "y"}}`
 		require.NoError(t, Validate([]byte(doc)))
 	})
@@ -442,7 +442,7 @@ func TestValidate_PropertyValueShapeWarns(t *testing.T) {
 	}
 
 	t.Run("a date that is not a date", func(t *testing.T) {
-		got := warningsFor(t, `{"version": 1, "id": "o1", "properties": {"due_date": "next Friday"}}`)
+		got := warningsFor(t, `{"version": 2, "id": "o1", "properties": {"due_date": "next Friday"}}`)
 		require.Len(t, got, 1)
 		assert.Equal(t, "/properties/due_date", got[0].Path)
 		assert.Contains(t, got[0].Message, "date")
@@ -451,14 +451,14 @@ func TestValidate_PropertyValueShapeWarns(t *testing.T) {
 	t.Run("the stored spelling is an address too", func(t *testing.T) {
 		// §3 chain step 1: a spelling the table does not know binds verbatim,
 		// so the stored key keeps warning alongside the canonical slug
-		got := warningsFor(t, `{"version": 1, "id": "o1", "properties": {"dueDate": "next Friday"}}`)
+		got := warningsFor(t, `{"version": 2, "id": "o1", "properties": {"dueDate": "next Friday"}}`)
 		require.Len(t, got, 1)
 		assert.Equal(t, "/properties/dueDate", got[0].Path)
 		assert.Contains(t, got[0].Message, "date")
 	})
 
 	t.Run("a spelling the legend binds is checked as what it resolves to", func(t *testing.T) {
-		got := warningsFor(t, `{"version": 1, "id": "o1",
+		got := warningsFor(t, `{"version": 2, "id": "o1",
 			"property_internal_keys": {"prio": "dueDate"}, "properties": {"prio": "next Friday"}}`)
 		require.Len(t, got, 1)
 		assert.Equal(t, "/properties/prio", got[0].Path)
@@ -466,21 +466,21 @@ func TestValidate_PropertyValueShapeWarns(t *testing.T) {
 	})
 
 	t.Run("a checkbox that is not a boolean", func(t *testing.T) {
-		got := warningsFor(t, `{"version": 1, "id": "o1", "properties": {"done": "yes"}}`)
+		got := warningsFor(t, `{"version": 2, "id": "o1", "properties": {"done": "yes"}}`)
 		require.Len(t, got, 1)
 		assert.Equal(t, "/properties/done", got[0].Path)
 	})
 
 	t.Run("shapes the format does hold are quiet", func(t *testing.T) {
 		// including the raw number a date out of RFC 3339 range exports as
-		assert.Empty(t, warningsFor(t, `{"version": 1, "id": "o1", "properties": {
+		assert.Empty(t, warningsFor(t, `{"version": 2, "id": "o1", "properties": {
 			"due_date": "2026-07-06T08:44:05Z", "created_date": 1751791445000,
 			"done": true, "name": "N", "plural_name": "Ns", "tag": ["a", "b"]}}`))
 	})
 
 	t.Run("null is always a value", func(t *testing.T) {
 		// §3: an explicit null records that the property was set and cleared
-		assert.Empty(t, warningsFor(t, `{"version": 1, "id": "o1", "properties": {
+		assert.Empty(t, warningsFor(t, `{"version": 2, "id": "o1", "properties": {
 			"due_date": null, "done": null}}`))
 	})
 }
@@ -523,7 +523,7 @@ func TestValidate_EnvelopeKeyAcceptsRealStoredKeys(t *testing.T) {
 		"69a56205ccba0a47d8d8eb71_тогглы",
 		"69bbfc78877a91b1d12d1a7c_JavaScript/TypeScript",
 	} {
-		doc := fmt.Sprintf(`{"version": 1, "kind": "property_option", "id": "o1", "internal_key": %q}`, key)
+		doc := fmt.Sprintf(`{"version": 2, "kind": "property_option", "id": "o1", "internal_key": %q}`, key)
 		assert.NoError(t, Validate([]byte(doc)), "stored key %q must round-trip", key)
 	}
 }
@@ -534,9 +534,9 @@ func TestValidate_EnvelopeKeyAcceptsRealStoredKeys(t *testing.T) {
 // account, and this one was not.
 func TestValidate_EnvelopeKeyRejectsUnreadable(t *testing.T) {
 	for _, doc := range []string{
-		`{"version": 1, "kind": "object_type", "id": "t1", "internal_key": ""}`,
-		"{\"version\": 1, \"kind\": \"object_type\", \"id\": \"t1\", \"key\": \"a\\u0000b\"}",
-		"{\"version\": 1, \"kind\": \"object_type\", \"id\": \"t1\", \"key\": \"a\\nb\"}",
+		`{"version": 2, "kind": "object_type", "id": "t1", "internal_key": ""}`,
+		"{\"version\": 2, \"kind\": \"object_type\", \"id\": \"t1\", \"key\": \"a\\u0000b\"}",
+		"{\"version\": 2, \"kind\": \"object_type\", \"id\": \"t1\", \"key\": \"a\\nb\"}",
 	} {
 		assert.Error(t, Validate([]byte(doc)), doc)
 	}
@@ -568,7 +568,7 @@ func TestValidate_DeniedKeysRefusedInCanonicalSpelling(t *testing.T) {
 			continue // one spelling; TestValidate_ImportRefusesWhatExportStrips covers it
 		}
 		covered++
-		doc := fmt.Sprintf(`{"version": 1, "id": "obj1", "properties": {%q: "x"}}`, slug)
+		doc := fmt.Sprintf(`{"version": 2, "id": "obj1", "properties": {%q: "x"}}`, slug)
 		err := Validate([]byte(doc))
 		require.Error(t, err, "%q is the canonical spelling of stripped key %q, so it must be refused", slug, key)
 		assert.Contains(t, err.Error(), "/properties/"+slug)
@@ -584,9 +584,9 @@ func TestValidate_DeniedKeysRefusedInCanonicalSpelling(t *testing.T) {
 // part of resolving.
 func TestValidate_LegendCannotRebindOntoInternalKeys(t *testing.T) {
 	for name, doc := range map[string]string{
-		"resolution vector": `{"version": 1, "id": "o1", "property_internal_keys": {"prio": "uniqueKey"}, "properties": {"prio": "ot-page"}}`,
-		"envelope id":       `{"version": 1, "id": "o1", "property_internal_keys": {"myid": "id"}, "properties": {"myid": "boom"}}`,
-		"stripped key":      `{"version": 1, "id": "o1", "property_internal_keys": {"s": "spaceId"}, "properties": {"s": "other"}}`,
+		"resolution vector": `{"version": 2, "id": "o1", "property_internal_keys": {"prio": "uniqueKey"}, "properties": {"prio": "ot-page"}}`,
+		"envelope id":       `{"version": 2, "id": "o1", "property_internal_keys": {"myid": "id"}, "properties": {"myid": "boom"}}`,
+		"stripped key":      `{"version": 2, "id": "o1", "property_internal_keys": {"s": "spaceId"}, "properties": {"s": "other"}}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			err := Validate([]byte(doc))
@@ -598,7 +598,7 @@ func TestValidate_LegendCannotRebindOntoInternalKeys(t *testing.T) {
 
 	// a legend entry that rebinds a spelling onto a HARMLESS key is the
 	// feature working as specified: nothing lands on an internal key
-	ok := `{"version": 1, "id": "o1", "property_internal_keys": {"prio": "6a32d4856761631534b22f85"}, "properties": {"prio": "high"}}`
+	ok := `{"version": 2, "id": "o1", "property_internal_keys": {"prio": "6a32d4856761631534b22f85"}, "properties": {"prio": "high"}}`
 	require.NoError(t, Validate([]byte(ok)))
 	_, snap, err := Unmarshal([]byte(ok), Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
@@ -610,14 +610,14 @@ func TestValidate_LegendCannotRebindOntoInternalKeys(t *testing.T) {
 // getter and silently sees "basic" — the exact silence the layout-name check
 // exists to catch, dead for every canonically-spelled document.
 func TestValidate_LayoutNameCheckedInCanonicalSpelling(t *testing.T) {
-	err := Validate([]byte(`{"version": 1, "id": "o1", "properties": {"resolved_layout": "nonsense"}}`))
+	err := Validate([]byte(`{"version": 2, "id": "o1", "properties": {"resolved_layout": "nonsense"}}`))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "/properties/resolved_layout")
 	assert.Contains(t, err.Error(), "unknown layout")
 
 	// a real name is accepted and lands as the stored number — the import
 	// half always resolved the slug; only validation did not
-	doc := `{"version": 1, "id": "o1", "properties": {"resolved_layout": "todo"}}`
+	doc := `{"version": 2, "id": "o1", "properties": {"resolved_layout": "todo"}}`
 	require.NoError(t, Validate([]byte(doc)))
 	_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 	require.NoError(t, err)
@@ -633,9 +633,9 @@ func TestValidate_LayoutNameCheckedInCanonicalSpelling(t *testing.T) {
 func TestValidate_LegendValueMustBeAWritableKey(t *testing.T) {
 	t.Run("refused", func(t *testing.T) {
 		for name, doc := range map[string]string{
-			"empty":        `{"version": 1, "property_internal_keys": {"p": ""}}`,
-			"over-long":    fmt.Sprintf(`{"version": 1, "property_internal_keys": {"p": %q}}`, strings.Repeat("k", maxPropertyKeyLen+1)),
-			"control char": `{"version": 1, "property_internal_keys": {"p": "a\nb"}}`,
+			"empty":        `{"version": 2, "property_internal_keys": {"p": ""}}`,
+			"over-long":    fmt.Sprintf(`{"version": 2, "property_internal_keys": {"p": %q}}`, strings.Repeat("k", maxPropertyKeyLen+1)),
+			"control char": `{"version": 2, "property_internal_keys": {"p": "a\nb"}}`,
 		} {
 			assert.Error(t, Validate([]byte(doc)), name)
 		}
@@ -643,7 +643,7 @@ func TestValidate_LegendValueMustBeAWritableKey(t *testing.T) {
 	t.Run("accepted", func(t *testing.T) {
 		// the shapes real stored keys have: bson-hex, and option keys carrying
 		// the option's own name, spaces and non-ASCII included (ANOMALIES §7)
-		doc := `{"version": 1, "property_internal_keys": {
+		doc := `{"version": 2, "property_internal_keys": {
 			"prio": "6a32d4856761631534b22f85",
 			"toggles": "69a56205ccba0a47d8d8eb71_тогглы"}}`
 		require.NoError(t, Validate([]byte(doc)))
@@ -664,7 +664,7 @@ func (rebindingVocabulary) PropertyKey(slug string) (string, bool) {
 }
 
 func TestImport_AdmissionRunsOnTheResolvedKey(t *testing.T) {
-	doc := `{"version": 1, "id": "o1", "properties": {"prio": "ot-page"}}`
+	doc := `{"version": 2, "id": "o1", "properties": {"prio": "ot-page"}}`
 	require.NoError(t, Validate([]byte(doc)),
 		"the bundled chain resolves prio verbatim, a legal custom key — Validate cannot know better")
 	_, _, err := Unmarshal([]byte(doc), Options{Keys: rebindingVocabulary{}, GenerateId: seqIds("g")})
@@ -732,7 +732,7 @@ func TestValidate_RecommendedListConflictCheckedInCanonicalSpelling(t *testing.T
 		"recommendedRelations", "Recommended properties",
 		"recommended_relations", "recommended_properties",
 	} {
-		doc := fmt.Sprintf(`{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "page",
+		doc := fmt.Sprintf(`{"version": 2, "kind": "object_type", "id": "t1", "internal_key": "page",
 			"type_settings": {"property_definitions": [{"property": "due_date", "format": "date"}]},
 			"properties": {%q: ["a"]}}`, spelling)
 		err := Validate([]byte(doc))

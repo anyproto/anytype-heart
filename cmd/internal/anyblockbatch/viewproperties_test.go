@@ -33,7 +33,7 @@ func writeDoc(t *testing.T, dir, name, body string) string {
 // refused.
 func TestCheckViewProperties(t *testing.T) {
 	dir := t.TempDir()
-	f := writeDoc(t, dir, "board.anyblock.json", `{"version":1,"type":"page",
+	f := writeDoc(t, dir, "board.anyblock.json", `{"version":2,"type":"page",
 	  "property_internal_keys":{"assignee":"6a32d4856761631534b22f85"},
 	  "blocks":[{"type":"dataview","object_id":"b1",
 	    "properties":[{"property":"local_only","format":"checkbox"}],
@@ -90,7 +90,7 @@ func TestCheckViewProperties(t *testing.T) {
 	t.Run("a verbatim custom key the bundle declares is not a typo", func(t *testing.T) {
 		// the case the codec cannot tell apart: no legend entry, because the
 		// spelling is the stored key
-		f := writeDoc(t, dir, "note.anyblock.json", `{"version":1,"type":"page",
+		f := writeDoc(t, dir, "note.anyblock.json", `{"version":2,"type":"page",
 		  "blocks":[{"type":"dataview","object_id":"b2","views":[{"id":"v",
 		    "filters":[{"property":"aroma_notes","condition":"not_empty"}]}]}]}`)
 		bad, err := CheckViewProperties([]string{f}, map[string]bool{"aroma_notes": true})

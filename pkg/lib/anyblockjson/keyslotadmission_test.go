@@ -41,39 +41,39 @@ type keySlotCase struct {
 
 func keySlotCases() []keySlotCase {
 	dv := func(inner string) string {
-		return `{"version":1,"id":"o1","blocks":[{"id":"b1","type":"dataview",` + inner + `}]}`
+		return `{"version":2,"id":"o1","blocks":[{"id":"b1","type":"dataview",` + inner + `}]}`
 	}
 	view := func(inner string) string {
 		return dv(`"views":[{"id":"v1","type":"table",` + inner + `}]`)
 	}
 	return []keySlotCase{
-		{"envelope type", `{"version":1,"id":"o1","type":"page"}`,
-			`{"version":1,"id":"o1","type":""}`, "/type"},
+		{"envelope type", `{"version":2,"id":"o1","type":"page"}`,
+			`{"version":2,"id":"o1","type":""}`, "/type"},
 		{"template_for",
-			`{"version":1,"kind":"template","id":"o1","type":"template","template_for":"page"}`,
-			`{"version":1,"kind":"template","id":"o1","type":"template","template_for":""}`,
+			`{"version":2,"kind":"template","id":"o1","type":"template","template_for":"page"}`,
+			`{"version":2,"kind":"template","id":"o1","type":"template","template_for":""}`,
 			"/template_for"},
 		{"type_properties key",
-			`{"version":1,"kind":"object_type","id":"o1","type":"object_type","type_settings":{"property_definitions": [{"property":"prio","format":"text"}]}}`,
-			`{"version":1,"kind":"object_type","id":"o1","type":"object_type","type_settings":{"property_definitions": [{"property":"","format":"text"}]}}`,
+			`{"version":2,"kind":"object_type","id":"o1","type":"object_type","type_settings":{"property_definitions": [{"property":"prio","format":"text"}]}}`,
+			`{"version":2,"kind":"object_type","id":"o1","type":"object_type","type_settings":{"property_definitions": [{"property":"","format":"text"}]}}`,
 			"/type_settings/property_definitions/0/property"},
 		{"type_properties object_types",
-			`{"version":1,"kind":"object_type","id":"o1","type":"object_type","type_settings":{"property_definitions": [{"property":"who","format":"objects","object_types":["page"]}]}}`,
-			`{"version":1,"kind":"object_type","id":"o1","type":"object_type","type_settings":{"property_definitions": [{"property":"who","format":"objects","object_types":[""]}]}}`,
+			`{"version":2,"kind":"object_type","id":"o1","type":"object_type","type_settings":{"property_definitions": [{"property":"who","format":"objects","object_types":["page"]}]}}`,
+			`{"version":2,"kind":"object_type","id":"o1","type":"object_type","type_settings":{"property_definitions": [{"property":"who","format":"objects","object_types":[""]}]}}`,
 			"/type_settings/property_definitions/0/object_types/0"},
 		{"relation object_types",
-			`{"version":1,"kind":"property","id":"o1","internal_key":"who","property_settings":{"format":"objects","object_types":["page"]}}`,
-			`{"version":1,"kind":"property","id":"o1","internal_key":"who","property_settings":{"format":"objects","object_types":[""]}}`,
+			`{"version":2,"kind":"property","id":"o1","internal_key":"who","property_settings":{"format":"objects","object_types":["page"]}}`,
+			`{"version":2,"kind":"property","id":"o1","internal_key":"who","property_settings":{"format":"objects","object_types":[""]}}`,
 			"/property_settings/object_types/0"},
-		{"properties member", `{"version":1,"id":"o1","properties":{"prio":"x"}}`,
-			`{"version":1,"id":"o1","properties":{"":"x"}}`, "/properties/"},
+		{"properties member", `{"version":2,"id":"o1","properties":{"prio":"x"}}`,
+			`{"version":2,"id":"o1","properties":{"":"x"}}`, "/properties/"},
 		{"property block key",
-			`{"version":1,"id":"o1","blocks":[{"id":"b1","type":"property","property":"prio"}]}`,
-			`{"version":1,"id":"o1","blocks":[{"id":"b1","type":"property","property":""}]}`,
+			`{"version":2,"id":"o1","blocks":[{"id":"b1","type":"property","property":"prio"}]}`,
+			`{"version":2,"id":"o1","blocks":[{"id":"b1","type":"property","property":""}]}`,
 			"/blocks/0/property"},
 		{"link block properties",
-			`{"version":1,"id":"o1","blocks":[{"id":"b1","type":"link","object_id":"t1","properties":["prio"]}]}`,
-			`{"version":1,"id":"o1","blocks":[{"id":"b1","type":"link","object_id":"t1","properties":[""]}]}`,
+			`{"version":2,"id":"o1","blocks":[{"id":"b1","type":"link","object_id":"t1","properties":["prio"]}]}`,
+			`{"version":2,"id":"o1","blocks":[{"id":"b1","type":"link","object_id":"t1","properties":[""]}]}`,
 			"/blocks/0/properties/0"},
 		{"dataview properties key",
 			dv(`"properties":[{"property":"prio","format":"text"}],"views":[{"id":"v1","type":"table"}]`),
@@ -132,7 +132,7 @@ func TestValidate_EveryKeySlotRefusesTheEmptySpelling(t *testing.T) {
 // for a view whose relation was deleted. It carried the same meaning as the
 // empty spelling and had the same silence.
 func TestValidate_AFilterHasToNameItsProperty(t *testing.T) {
-	doc := `{"version":1,"id":"o1","blocks":[{"id":"b1","type":"dataview","views":[` +
+	doc := `{"version":2,"id":"o1","blocks":[{"id":"b1","type":"dataview","views":[` +
 		`{"id":"v1","type":"table","filters":[{"condition":"equal","value":"x"}]}]}]}`
 
 	err := Validate([]byte(doc))
@@ -158,48 +158,48 @@ func TestUnmarshal_EveryKeySlotRefusesAnEmptyResolution(t *testing.T) {
 	// are here to state the uniformity, not because they are load-bearing —
 	// reverting the change leaves them green and fails the other ten.
 	for _, tc := range []struct{ slot, doc, want string }{
-		{"envelope type", `{"version":1,"id":"o1","type":"prio"}`,
+		{"envelope type", `{"version":2,"id":"o1","type":"prio"}`,
 			"/type: resolved type key is empty"},
 		{"template_for",
-			`{"version":1,"kind":"template","id":"o1","type":"template","template_for":"prio"}`,
+			`{"version":2,"kind":"template","id":"o1","type":"template","template_for":"prio"}`,
 			"/template_for: resolved type key is empty"},
 		{"type_properties key",
-			`{"version":1,"kind":"object_type","id":"o1","type":"object_type","type_settings":{"property_definitions": [{"property":"prio","format":"text"}]}}`,
+			`{"version":2,"kind":"object_type","id":"o1","type":"object_type","type_settings":{"property_definitions": [{"property":"prio","format":"text"}]}}`,
 			"/type_settings/property_definitions/0/property: resolved property key is empty"},
 		{"type_properties object_types",
-			`{"version":1,"kind":"object_type","id":"o1","type":"object_type","type_settings":{"property_definitions": [{"property":"who","format":"objects","object_types":["prio"]}]}}`,
+			`{"version":2,"kind":"object_type","id":"o1","type":"object_type","type_settings":{"property_definitions": [{"property":"who","format":"objects","object_types":["prio"]}]}}`,
 			"/type_settings/property_definitions/0/object_types/0: resolved type key is empty"},
 		{"relation object_types",
-			`{"version":1,"kind":"property","id":"o1","internal_key":"who","property_settings":{"format":"objects","object_types":["prio"]}}`,
+			`{"version":2,"kind":"property","id":"o1","internal_key":"who","property_settings":{"format":"objects","object_types":["prio"]}}`,
 			"/property_settings/object_types/0: resolved type key is empty"},
-		{"properties member", `{"version":1,"id":"o1","properties":{"prio":"x"}}`,
+		{"properties member", `{"version":2,"id":"o1","properties":{"prio":"x"}}`,
 			"/properties/prio: resolved property key is empty"},
 		{"property block key",
-			`{"version":1,"id":"o1","blocks":[{"id":"b1","type":"property","property":"prio"}]}`,
+			`{"version":2,"id":"o1","blocks":[{"id":"b1","type":"property","property":"prio"}]}`,
 			"the property block `property` spelling \"prio\""},
 		{"link block properties",
-			`{"version":1,"id":"o1","blocks":[{"id":"b1","type":"link","object_id":"t1","properties":["prio"]}]}`,
+			`{"version":2,"id":"o1","blocks":[{"id":"b1","type":"link","object_id":"t1","properties":["prio"]}]}`,
 			"the link block `properties` spelling \"prio\""},
 		{"dataview properties key",
-			`{"version":1,"id":"o1","blocks":[{"id":"b1","type":"dataview","properties":[{"property":"prio","format":"text"}],"views":[{"id":"v1","type":"table"}]}]}`,
+			`{"version":2,"id":"o1","blocks":[{"id":"b1","type":"dataview","properties":[{"property":"prio","format":"text"}],"views":[{"id":"v1","type":"table"}]}]}`,
 			"the dataview `properties` spelling \"prio\""},
 		{"view group_by",
-			`{"version":1,"id":"o1","blocks":[{"id":"b1","type":"dataview","views":[{"id":"v1","type":"kanban","group_by":"prio"}]}]}`,
+			`{"version":2,"id":"o1","blocks":[{"id":"b1","type":"dataview","views":[{"id":"v1","type":"kanban","group_by":"prio"}]}]}`,
 			"the view `group_by` spelling \"prio\""},
 		{"view cover_property",
-			`{"version":1,"id":"o1","blocks":[{"id":"b1","type":"dataview","views":[{"id":"v1","type":"gallery","cover_property":"prio"}]}]}`,
+			`{"version":2,"id":"o1","blocks":[{"id":"b1","type":"dataview","views":[{"id":"v1","type":"gallery","cover_property":"prio"}]}]}`,
 			"the view `cover_property` spelling \"prio\""},
 		{"view end_property",
-			`{"version":1,"id":"o1","blocks":[{"id":"b1","type":"dataview","views":[{"id":"v1","type":"calendar","end_property":"prio"}]}]}`,
+			`{"version":2,"id":"o1","blocks":[{"id":"b1","type":"dataview","views":[{"id":"v1","type":"calendar","end_property":"prio"}]}]}`,
 			"the view `end_property` spelling \"prio\""},
 		{"view column property",
-			`{"version":1,"id":"o1","blocks":[{"id":"b1","type":"dataview","views":[{"id":"v1","type":"table","columns":[{"property":"prio"}]}]}]}`,
+			`{"version":2,"id":"o1","blocks":[{"id":"b1","type":"dataview","views":[{"id":"v1","type":"table","columns":[{"property":"prio"}]}]}]}`,
 			"the view column `property` spelling \"prio\""},
 		{"sort property",
-			`{"version":1,"id":"o1","blocks":[{"id":"b1","type":"dataview","views":[{"id":"v1","type":"table","sorts":[{"property":"prio","direction":"asc"}]}]}]}`,
+			`{"version":2,"id":"o1","blocks":[{"id":"b1","type":"dataview","views":[{"id":"v1","type":"table","sorts":[{"property":"prio","direction":"asc"}]}]}]}`,
 			"the sort `property` spelling \"prio\""},
 		{"filter property",
-			`{"version":1,"id":"o1","blocks":[{"id":"b1","type":"dataview","views":[{"id":"v1","type":"table","filters":[{"property":"prio","condition":"equal","value":"x"}]}]}]}`,
+			`{"version":2,"id":"o1","blocks":[{"id":"b1","type":"dataview","views":[{"id":"v1","type":"table","filters":[{"property":"prio","condition":"equal","value":"x"}]}]}]}`,
 			"the filter `property` spelling \"prio\""},
 	} {
 		t.Run(tc.slot, func(t *testing.T) {

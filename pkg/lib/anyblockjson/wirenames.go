@@ -31,7 +31,7 @@ const (
 	// memberProperty is THE property-naming slot: the member that names one
 	// property by its document-facing spelling, wherever a structure names
 	// exactly one — a property definition (§2e), a dataview's `properties[]`
-	// entry and the `property` block (both spelled `key` until v0.41), and a
+	// entry and the `property` block (both spelled `key` in an earlier revision), and a
 	// view's column/sort/filter, which spelled `property` from birth. One
 	// concept, one spelling (§15 #14): measured over 28,599 real exports the
 	// two spellings sat twelve lines apart inside single dataview blocks,
@@ -44,7 +44,7 @@ const (
 	// memberTypeInternalKeys is the same legend on the type namespace (§3).
 	memberTypeInternalKeys = "type_internal_keys"
 	// memberPropertySettings is a property document's definition group (§2d)
-	// — the group that was born `relation_settings`. The v0.38 rename is the
+	// — the group that was born `relation_settings`. The `relation`→`property` rename is the
 	// same disease cured one word later: the product calls these things
 	// properties, the format called the definition kind `relation`, and one
 	// document said both (`featured_properties` the block type beside

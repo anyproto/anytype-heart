@@ -499,7 +499,7 @@ func TestCorpseNameLifecycle(t *testing.T) {
 		// drops it to show the legendless degradation.)
 		index := spaceindex.NewStoreFixture(t)
 		index.AddObjects(t, []spaceindex.TestObject{corpse(true)})
-		doc := []byte(`{"version":1,"id":"obj1","type":"Page","properties":{"Name":"Doc","Warranty until":"2027-01-01"}}`)
+		doc := []byte(`{"version":2,"id":"obj1","type":"Page","properties":{"Name":"Doc","Warranty until":"2027-01-01"}}`)
 
 		// when
 		_, snapshot, err := anyblockjson.Unmarshal(doc, New(index).Options())

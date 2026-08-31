@@ -38,8 +38,14 @@ func (e *exporter) dataviewToJSON(m *omap, dv *model.BlockContentDataview) error
 		if rl == nil || rl.Key == "" {
 			continue
 		}
+		// an unwritable stored key has no spelling at any slot (§3);
+		// slotPropertySlug warned and the entry is dropped like a nameless one
+		slug := e.slotPropertySlug(rl.Key, "a dataview `properties` entry")
+		if slug == "" {
+			continue
+		}
 		pm := &omap{}
-		pm.set(memberProperty, e.propertySlug(rl.Key))
+		pm.set(memberProperty, slug)
 		pm.setNonEmpty("format", formatName(rl.Format))
 		props = append(props, pm)
 	}
@@ -77,9 +83,11 @@ func (e *exporter) viewToJSON(v *model.BlockContentDataviewView, dv *model.Block
 		vm.setNonEmpty("type", viewTypeNames.name(v.Type))
 	}
 	vm.setNonEmpty("name", v.Name)
-	vm.setNonEmpty("group_by", e.propertySlug(v.GroupRelationKey))
-	vm.setNonEmpty("cover_property", e.propertySlug(v.CoverRelationKey))
-	vm.setNonEmpty("end_property", e.propertySlug(v.EndRelationKey))
+	// the three singular key slots share the reference-slot drop rule: an
+	// unwritable stored key is omitted with a warning (slotPropertySlug)
+	vm.setNonEmpty("group_by", e.slotPropertySlug(v.GroupRelationKey, "a view's `group_by`"))
+	vm.setNonEmpty("cover_property", e.slotPropertySlug(v.CoverRelationKey, "a view's `cover_property`"))
+	vm.setNonEmpty("end_property", e.slotPropertySlug(v.EndRelationKey, "a view's `end_property`"))
 	vm.setNonEmpty("hide_icon", v.HideIcon)
 	if v.CardSize != model.BlockContentDataviewView_Small {
 		vm.setNonEmpty("card_size", cardSizeNames.name(v.CardSize))
@@ -98,8 +106,11 @@ func (e *exporter) viewToJSON(v *model.BlockContentDataviewView, dv *model.Block
 	var sorts []any
 	for _, s := range v.Sorts {
 		// a sort without a property key is junk and would fail the schema
-		if s != nil && s.RelationKey != "" {
-			sorts = append(sorts, e.sortToJSON(s, dv))
+		if s == nil || s.RelationKey == "" {
+			continue
+		}
+		if sm := e.sortToJSON(s, dv); sm != nil {
+			sorts = append(sorts, sm)
 		}
 	}
 	vm.setNonEmpty("sorts", sorts)
@@ -117,8 +128,11 @@ func (e *exporter) viewToJSON(v *model.BlockContentDataviewView, dv *model.Block
 
 	var columns []any
 	for _, r := range v.Relations {
-		if r != nil && r.Key != "" {
-			columns = append(columns, e.viewColumnToJSON(r))
+		if r == nil || r.Key == "" {
+			continue
+		}
+		if cm := e.viewColumnToJSON(r); cm != nil {
+			columns = append(columns, cm)
 		}
 	}
 	vm.setNonEmpty("columns", columns)
@@ -177,8 +191,14 @@ func (e *exporter) objectOrdersToJSON(viewId string, dv *model.BlockContentDatav
 }
 
 func (e *exporter) sortToJSON(s *model.BlockContentDataviewSort, dv *model.BlockContentDataview) *omap {
+	// an unwritable stored key drops the sort, warned, like the nameless one
+	// the caller already skips (§3)
+	slug := e.slotPropertySlug(s.RelationKey, "a sort")
+	if slug == "" {
+		return nil
+	}
 	sm := &omap{}
-	sm.setNonEmpty(memberProperty, e.propertySlug(s.RelationKey))
+	sm.setNonEmpty(memberProperty, slug)
 	if s.Type != model.BlockContentDataviewSort_Asc {
 		sm.setNonEmpty("direction", sortDirectionNames.name(s.Type))
 	}
@@ -236,7 +256,13 @@ func (e *exporter) filterToJSON(f *model.BlockContentDataviewFilter, dv *model.B
 			"the property it filters on")
 		return nil
 	}
-	fm.setNonEmpty(memberProperty, e.propertySlug(f.RelationKey))
+	// an unwritable stored key drops the filter the same way — warned by
+	// slotPropertySlug — instead of being emitted verbatim (§3)
+	slug := e.slotPropertySlug(f.RelationKey, "a filter")
+	if slug == "" {
+		return nil
+	}
+	fm.setNonEmpty(memberProperty, slug)
 	if f.Condition != model.BlockContentDataviewFilter_None {
 		fm.setNonEmpty("condition", conditionNames.name(f.Condition))
 	}
@@ -617,8 +643,14 @@ func mapJSONStrings(v any, fn func(string) string) *types.Value {
 }
 
 func (e *exporter) viewColumnToJSON(r *model.BlockContentDataviewRelation) *omap {
+	// an unwritable stored key drops the column, warned, like the nameless
+	// one the caller already skips (§3)
+	slug := e.slotPropertySlug(r.Key, "a view column")
+	if slug == "" {
+		return nil
+	}
 	cm := &omap{}
-	cm.set(memberProperty, e.propertySlug(r.Key))
+	cm.set(memberProperty, slug)
 	// hidden is the inverse of proto isVisible; omitted means visible (§6.2)
 	cm.setNonEmpty("hidden", !r.IsVisible)
 	cm.setNonEmpty("width", r.Width)

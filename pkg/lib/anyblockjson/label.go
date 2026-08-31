@@ -50,6 +50,18 @@ func PropertyLabel(key, name string) string {
 	return label
 }
 
+// nfcTerm is §3's canonical form of one key spelling — NFC, otherwise
+// verbatim. PropertyLabel/TypeLabel are the write half of the rule (a label
+// is minted NFC); this is the read half's step: a slot's term resolves under
+// its canonical form, so the precomposed and the decomposed bytes of one
+// name land on one key instead of splitting into two visually
+// indistinguishable properties. Stored keys — legend VALUES, the argument of
+// every `…Slug` call — are never passed through it: a stored key's bytes are
+// its address, whatever their normal form.
+func nfcTerm(s string) string {
+	return norm.NFC.String(s)
+}
+
 // TypeLabel is PropertyLabel for the type namespace.
 func TypeLabel(key, name string) string {
 	label := norm.NFC.String(name)

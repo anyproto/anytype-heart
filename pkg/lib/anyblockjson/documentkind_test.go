@@ -20,9 +20,9 @@ import (
 func TestDocumentKind_PlacesTheThreeGrammars(t *testing.T) {
 	t.Run("the declaration is believed", func(t *testing.T) {
 		for _, tc := range []struct{ doc, want string }{
-			{`{"$schema": "` + SchemaURL + `", "version": 1}`, KindObject},
-			{`{"$schema": "` + IndexSchemaURL + `", "version": 1}`, KindIndex},
-			{`{"$schema": "` + PropertiesSchemaURL + `", "version": 1}`, KindPropertyDictionary},
+			{`{"$schema": "` + SchemaURL + `", "version": 2}`, KindObject},
+			{`{"$schema": "` + IndexSchemaURL + `", "version": 2}`, KindIndex},
+			{`{"$schema": "` + PropertiesSchemaURL + `", "version": 2}`, KindPropertyDictionary},
 		} {
 			assert.Equal(t, tc.want, DocumentKind([]byte(tc.doc)), tc.doc)
 		}
@@ -33,24 +33,24 @@ func TestDocumentKind_PlacesTheThreeGrammars(t *testing.T) {
 	// still be placeable. Matching the whole URL would break that.
 	t.Run("the version segment is ignored", func(t *testing.T) {
 		assert.Equal(t, KindIndex, DocumentKind([]byte(
-			`{"$schema": "https://schemas.anytype.io/anyblock/9/index.schema.json", "version": 1}`)))
+			`{"$schema": "https://schemas.anytype.io/anyblock/9/index.schema.json", "version": 2}`)))
 	})
 
 	t.Run("a schema nobody publishes decides nothing", func(t *testing.T) {
 		// an author reached for `.../relation.schema.json`, which does not
 		// exist; it must fall through to shape rather than be believed
 		assert.Equal(t, KindObject, DocumentKind([]byte(
-			`{"$schema": "https://schemas.anytype.io/anyblock/1/relation.schema.json",
-			  "version": 1, "kind": "property", "internal_key": "estimate"}`)))
+			`{"$schema": "https://schemas.anytype.io/anyblock/2/relation.schema.json",
+			  "version": 2, "kind": "property", "internal_key": "estimate"}`)))
 	})
 
 	t.Run("shape places a document that declares nothing", func(t *testing.T) {
 		for _, tc := range []struct{ name, doc, want string }{
-			{"installed is a dictionary's alone", `{"version": 1, "installed": ["done"]}`, KindPropertyDictionary},
-			{"and so is a properties ARRAY", `{"version": 1, "properties": [{"property": "k", "format": "text"}]}`, KindPropertyDictionary},
-			{"a properties MAP is an object's", `{"version": 1, "properties": {"name": "Note"}}`, KindObject},
-			{"a manifest is an index's", `{"version": 1, "manifest": {"properties": "properties.json"}}`, KindIndex},
-			{"so are widgets", `{"version": 1, "widgets": [{"target": "page-home"}]}`, KindIndex},
+			{"installed is a dictionary's alone", `{"version": 2, "installed": ["done"]}`, KindPropertyDictionary},
+			{"and so is a properties ARRAY", `{"version": 2, "properties": [{"property": "k", "format": "text"}]}`, KindPropertyDictionary},
+			{"a properties MAP is an object's", `{"version": 2, "properties": {"name": "Note"}}`, KindObject},
+			{"a manifest is an index's", `{"version": 2, "manifest": {"properties": "properties.json"}}`, KindIndex},
+			{"so are widgets", `{"version": 2, "widgets": [{"target": "page-home"}]}`, KindIndex},
 		} {
 			assert.Equal(t, tc.want, DocumentKind([]byte(tc.doc)), tc.name)
 		}
@@ -64,12 +64,12 @@ func TestDocumentKind_PlacesTheThreeGrammars(t *testing.T) {
 // Both send an author to repair a file that is already right.
 //
 // How this can fail: report the misroute on a document that carries no
-// evidence at all, and `{"version": 2}` stops getting the newer-format
+// evidence at all, and `{"version": 3}` stops getting the newer-format
 // verdict it needs.
 func TestDocumentKind_TheWrongReaderSaysSo(t *testing.T) {
-	index := `{"$schema": "` + IndexSchemaURL + `", "version": 1, "name": "Company Wiki"}`
-	dict := `{"$schema": "` + PropertiesSchemaURL + `", "version": 1, "installed": ["done"]}`
-	object := `{"$schema": "` + SchemaURL + `", "version": 1, "properties": {"name": "Note"}}`
+	index := `{"$schema": "` + IndexSchemaURL + `", "version": 2, "name": "Company Wiki"}`
+	dict := `{"$schema": "` + PropertiesSchemaURL + `", "version": 2, "installed": ["done"]}`
+	object := `{"$schema": "` + SchemaURL + `", "version": 2, "properties": {"name": "Note"}}`
 
 	t.Run("an index read as an object", func(t *testing.T) {
 		err := Validate([]byte(index))
@@ -105,15 +105,15 @@ func TestDocumentKind_TheWrongReaderSaysSo(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	// `{"version": 1}` is a legal start to all three grammars. A reader that
+	// `{"version": 2}` is a legal start to all three grammars. A reader that
 	// guessed here would override its caller on no evidence.
 	t.Run("a document with no evidence is left to its caller", func(t *testing.T) {
-		_, err := UnmarshalPropertyDictionary([]byte(`{"version": 2}`))
+		_, err := UnmarshalPropertyDictionary([]byte(`{"version": 3}`))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "newer version",
 			"the version gate must still be what answers")
 
-		require.NoError(t, Validate([]byte(`{"version": 1}`)))
+		require.NoError(t, Validate([]byte(`{"version": 2}`)))
 	})
 
 	// The identity a reader dispatches on must not become the thing that
@@ -121,6 +121,6 @@ func TestDocumentKind_TheWrongReaderSaysSo(t *testing.T) {
 	t.Run("a stale schema url is still valid", func(t *testing.T) {
 		require.NoError(t, Validate([]byte(
 			`{"$schema": "https://schemas.anytype.io/anyblock/9/object.schema.json",
-			  "version": 1, "blocks": [{"type": "paragraph", "text": "fine"}]}`)))
+			  "version": 2, "blocks": [{"type": "paragraph", "text": "fine"}]}`)))
 	})
 }

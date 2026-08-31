@@ -281,7 +281,7 @@ type Widget struct {
 // dictionary (§2f), which answers for stored property keys the same way.
 // Paths are relative to the index file.
 //
-// It does NOT locate options, and that is deliberate (v0.46). A manifest
+// It does NOT locate options, and that is deliberate. A manifest
 // exists to answer a lookup a reader would otherwise have to scan for, and
 // no reader has that lookup for an option: the dictionary states a
 // property's whole vocabulary inline — each option's name, colour, position
@@ -295,7 +295,7 @@ type Widget struct {
 // space's live store to survive a rename (§9a), never against the bundle, so
 // they never needed a path beside them.
 //
-// It DOES locate file blobs (v0.47). Files is the map every importer holding
+// It DOES locate file blobs. Files is the map every importer holding
 // a file_object document needs — object id → the blob's archive-relative
 // path — and it is the format's replacement for the legacy exporter's
 // `source`-clobber, which stuffed the blob path into a real, user-facing,

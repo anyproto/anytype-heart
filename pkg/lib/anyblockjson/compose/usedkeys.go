@@ -18,7 +18,7 @@ import (
 
 // usedKeysDoc is the slice of a document the census reads: the legend, the
 // properties object, and the §2a property definitions (which moved off the
-// document root into `type_settings.property_definitions` in v0.32 — a
+// document root into `type_settings.property_definitions` — a
 // scanner still reading the root would silently see no declarations).
 type usedKeysDoc struct {
 	PropertyKeys map[string]string          `json:"property_internal_keys"`

@@ -449,7 +449,7 @@ func TestRawNames_EdgeWhitespaceIsCarriedAndWarned(t *testing.T) {
 	assert.Contains(t, hygiene[0], `"Email 📧 "`)
 
 	// and the invisible-code-point arm: a variation selector in a legend key
-	doc := `{"version":1,"id":"o1","property_internal_keys":{"Star️":"` + key + `"},` +
+	doc := `{"version":2,"id":"o1","property_internal_keys":{"Star️":"` + key + `"},` +
 		`"properties":{"Star️":1}}`
 	warns = nil
 	require.NoError(t, ValidateWarn([]byte(doc), func(i Issue) { warns = append(warns, i) }))
@@ -479,7 +479,7 @@ func TestRawNames_TypeScopedResolution(t *testing.T) {
 	}
 
 	t.Run("the declared type singles the claimant out", func(t *testing.T) {
-		doc := `{"version":1,"id":"o1","type":"Sprint","properties":{"Projects":"resolved"}}`
+		doc := `{"version":2,"id":"o1","type":"Sprint","properties":{"Projects":"resolved"}}`
 		_, back, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g"), Keys: vocab})
 		require.NoError(t, err)
 		assert.Equal(t, "resolved", back.Details.Fields[keyA].GetStringValue(),
@@ -488,7 +488,7 @@ func TestRawNames_TypeScopedResolution(t *testing.T) {
 	})
 
 	t.Run("a type that cannot place the name errors loudly", func(t *testing.T) {
-		doc := `{"version":1,"id":"o1","type":"Page","properties":{"Projects":"?"}}`
+		doc := `{"version":2,"id":"o1","type":"Page","properties":{"Projects":"?"}}`
 		_, _, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g"), Keys: vocab})
 		require.Error(t, err, "never a guess, never a phantom while two live properties bear the name")
 		assert.Contains(t, err.Error(), `"Projects"`)
@@ -497,7 +497,7 @@ func TestRawNames_TypeScopedResolution(t *testing.T) {
 	})
 
 	t.Run("the legend outranks the whole question", func(t *testing.T) {
-		doc := `{"version":1,"id":"o1","type":"Page",` +
+		doc := `{"version":2,"id":"o1","type":"Page",` +
 			`"property_internal_keys":{"Projects":"` + keyB + `"},` +
 			`"properties":{"Projects":"stated"}}`
 		_, back, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g"), Keys: vocab})
@@ -510,7 +510,7 @@ func TestRawNames_TypeScopedResolution(t *testing.T) {
 			"6a7663db61fab21cd4b90777": "Meeting",
 			"6a7663db61fab21cd4b90888": "Meeting",
 		}}
-		doc := `{"version":1,"id":"o1","type":"Meeting"}`
+		doc := `{"version":2,"id":"o1","type":"Meeting"}`
 		_, _, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g"), Keys: shared})
 		require.Error(t, err, "the type is the scope — there is nothing wider to resolve inside")
 		assert.Contains(t, err.Error(), memberTypeInternalKeys)
@@ -534,7 +534,7 @@ func TestRawNames_VerbatimTermWarnings(t *testing.T) {
 	}
 
 	t.Run("a stale or guessed name mints a phantom, and says so", func(t *testing.T) {
-		msgs := collect(`{"version":1,"id":"o1","properties":{"Budget":"1", "b1": {"x": 1}}}`,
+		msgs := collect(`{"version":2,"id":"o1","properties":{"Budget":"1", "b1": {"x": 1}}}`,
 			Options{Keys: vocab})
 		joined := strings.Join(msgs, "\n")
 		assert.Contains(t, joined, `"Budget"`)
@@ -542,7 +542,7 @@ func TestRawNames_VerbatimTermWarnings(t *testing.T) {
 	})
 
 	t.Run("the glued annotation names the live name it extends", func(t *testing.T) {
-		msgs := collect(`{"version":1,"id":"o1","properties":{"Lists [in work] (text)":"x"}}`,
+		msgs := collect(`{"version":2,"id":"o1","properties":{"Lists [in work] (text)":"x"}}`,
 			Options{Keys: vocab})
 		joined := strings.Join(msgs, "\n")
 		assert.Contains(t, joined, `"Lists [in work] (text)"`)
@@ -551,7 +551,7 @@ func TestRawNames_VerbatimTermWarnings(t *testing.T) {
 	})
 
 	t.Run("a bundled name's glue is caught with no vocabulary at all", func(t *testing.T) {
-		msgs := collect(`{"version":1,"id":"o1","properties":{"Creation date (text)":"x"}}`,
+		msgs := collect(`{"version":2,"id":"o1","properties":{"Creation date (text)":"x"}}`,
 			Options{})
 		joined := strings.Join(msgs, "\n")
 		assert.Contains(t, joined, `"Creation date"`)
@@ -559,7 +559,7 @@ func TestRawNames_VerbatimTermWarnings(t *testing.T) {
 	})
 
 	t.Run("one term, one warning, however many slots name it", func(t *testing.T) {
-		doc := `{"version":1,"id":"o1","properties":{"Budget":"1"},"blocks":[
+		doc := `{"version":2,"id":"o1","properties":{"Budget":"1"},"blocks":[
 			{"id":"dv","type":"dataview","properties":[{"property":"Budget","format":"number"}],
 			 "views":[{"id":"v1","sorts":[{"property":"Budget"}]}]}]}`
 		msgs := collect(doc, Options{Keys: vocab})

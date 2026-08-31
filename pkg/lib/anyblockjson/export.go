@@ -57,7 +57,7 @@ type OptionResolver interface {
 // informative `#name` suffix: `<identity>#<name>` (§3, §9).
 //
 // The id is the primary content and the name is a caption, which is the
-// general §9 reference shape and a deliberate reversal of the v0.24
+// general §9 reference shape and a deliberate reversal of the earlier
 // name-only spelling. Name-only broke the API v2 contract — a consumer that
 // wants the author's avatar or profile needs an id to resolve, and two
 // members sharing a display name are indistinguishable by it (76 of 2,478
@@ -182,11 +182,11 @@ const (
 	// document is a template (§2), so the spelling `template` is an ordinary
 	// type term that a legend or a vocabulary may bind wherever it likes.
 	//
-	// Two raw string comparisons survive, and neither consults a vocabulary:
+	// ONE raw string comparison survives, and it consults no vocabulary:
 	// buildDoc keeps `kind` explicit when the term it is about to write is
-	// literally `template` (so a Page never emits a document that trips the
-	// legacy refusal), and validate.go refuses a document with no `kind`
-	// whose `type` is literally `template` (the pre-v0.22 spelling, §10).
+	// literally `template`, so a Page never emits the shape that used to mean
+	// a template. validate.go's matching refusal died at the freeze — the
+	// version gate answers for every pre-freeze document now (§15 #9).
 	typeKeyTemplate = "template"
 	storeKeyItems   = "objects"
 	// codeLangField is the internal fields key holding a code block's
@@ -543,6 +543,41 @@ func (e *exporter) propertySlugs(keys []string) []string {
 	out := make([]string, len(keys))
 	for i, key := range keys {
 		out[i] = e.propertySlug(key)
+	}
+	return out
+}
+
+// slotPropertySlug is propertySlug for a reference slot that can DROP: a
+// stored key no spelling can carry — over the 128-character bound, or
+// holding control bytes (§3) — has no writable form at ANY slot, because
+// vetSlug backs every vocabulary spelling off to the stored key when the key
+// itself is unwritable, and the legend cannot rescue it either (its values
+// are bounded the same way). Emitting it verbatim produced a document
+// Marshal's own Validate rejects, now that the block key slots carry the
+// schema bound /properties always had (§11, I1). So the slot is dropped,
+// with a warning, exactly as an EMPTY stored key already is at the same
+// slots. Returns "" for the caller to skip the slot; the buildProperties
+// door keeps its own copy of this rule (it drops the whole property).
+func (e *exporter) slotPropertySlug(key, slot string) string {
+	if key != "" && !isWritablePropertyKey(key) {
+		e.warn("", "%s names a property key that cannot be written in this format "+
+			"(%s) and is dropped", slot, unwritableKeyReason("stored key", key))
+		return ""
+	}
+	return e.propertySlug(key)
+}
+
+// slotPropertySlugs is slotPropertySlug over a key list (a link block's
+// shown properties). A dropped entry comes back as "" — the emit sites feed
+// stringsToAny, which elides empties, so the drop and the empty-key elision
+// share one door.
+func (e *exporter) slotPropertySlugs(keys []string, slot string) []string {
+	if len(keys) == 0 {
+		return keys
+	}
+	out := make([]string, len(keys))
+	for i, key := range keys {
+		out[i] = e.slotPropertySlug(key, slot)
 	}
 	return out
 }
@@ -1066,10 +1101,11 @@ func (e *exporter) recordTypeKey(term, key string) {
 // document needs none — which is every document that names only bundled and
 // verbatim, unshadowed type keys.
 // legendTypeTerm answers what this document's own type_internal_keys legend binds a
-// term to, falling back to the term itself. It is the emission-side twin of
-// Validate's legacy-template gate: both read the document alone, resolve
-// nothing beyond it, and must agree about which spellings mean the template
-// type (§2, §10).
+// term to, falling back to the term itself. It is what buildDoc's emission
+// rule reads: like the Validate gate it used to answer to — deleted at the
+// freeze (§15 #9) — it reads the document alone and resolves nothing beyond
+// it, so a term and the key its own legend binds it to are one spelling of
+// one document (§2, §10).
 func (e *exporter) legendTypeTerm(term string) string {
 	if key, ok := e.typeKeys[term]; ok && key != "" {
 		return key
@@ -1428,7 +1464,7 @@ func (e *exporter) envelopeTypeTerms() []string {
 // cannot be taken as another key's spelling by a reader that never sees it.
 //
 // The second slot exists exactly when the SMARTBLOCK TYPE is Template, which
-// is the whole of §2's template rule since v0.22. It used to be "when the
+// is the whole of §2's template rule. It used to be "when the
 // first surviving key is the template key", and that was the bug: a template
 // whose object types are ["ot-task", "ot-extra"] — a real shape, since
 // nothing in the model requires a template to carry the template key first —
@@ -1485,30 +1521,27 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 		typeTerm = typeTerms[0]
 	}
 
-	// kind is omitted whenever derivable (§2), and since v0.22 only Page is
+	// kind is omitted whenever derivable (§2), and only Page is
 	// derivable: `kind` is the sole authority on template-ness, so a Template
 	// always spells it. The term test that survives is an EMISSION rule and
-	// resolves nothing — a Page whose type term is literally `template` keeps
-	// its explicit kind, because `{"type": "template"}` with no kind is the
-	// pre-v0.22 spelling of a template and this format's own Validate now
-	// refuses it (§10). Emitting it would be Marshal writing what Validate
-	// rejects, which is I1.
-	// The term test reads what the document's own type_internal_keys legend binds the
-	// term to, not the raw spelling — Validate's legacy-template refusal reads
-	// the same legend, and the two have to agree or Marshal writes what
-	// Validate rejects. A page whose type term RESOLVES to the template key
-	// (`{"type_internal_keys": {"tmpl": "template"}, "type": "tmpl"}`) is the same
-	// shape as one spelling it literally, and needs its kind just as much.
-	// EITHER spelling forces the kind: the raw term (`{"type": "template"}` is
-	// the pre-v0.22 spelling of a template, which Validate refuses) or the key
-	// the document's own type_internal_keys legend binds it to (`{"type_internal_keys":
-	// {"tmpl": "template"}, "type": "tmpl"}` is the same document said
-	// differently, and Validate's legacy gate reads that legend too). Testing
-	// only the raw term let a page whose term RESOLVES to the template key
-	// export with no kind, which Validate then refused — Marshal writing what
-	// Validate rejects (I1). Testing only the resolved key lets a page whose
-	// legend rebinds `template` ELSEWHERE drop its kind, and the raw spelling
-	// trips the same refusal.
+	// resolves nothing — a Page whose type term is literally `template`, or
+	// whose own type_internal_keys legend binds its term to `template`, keeps
+	// its explicit kind.
+	//
+	// It was an I1 rule until the freeze: Validate refused
+	// `{"type": "template"}` with no kind as the pre-`kind` spelling of a
+	// template, so emitting one would have been Marshal writing what Validate
+	// rejects. That refusal is gone — every document written under the old
+	// reading declares version 1, which the version gate refuses for the
+	// whole grammar (§15 #9) — and the rule stays for the reason that
+	// outlived it: the shape is ambiguous to a reader who remembers the old
+	// meaning, the authoring subset refuses it outright (§2g), and a
+	// spelled-out kind costs ~16 bytes on the rare document that has to
+	// carry it. Both spellings force it, because they are the same document
+	// said differently: testing only the raw term lets a page whose term
+	// RESOLVES to the template key through its own legend drop the kind, and
+	// testing only the resolved key lets a page whose legend rebinds
+	// `template` ELSEWHERE drop it.
 	derivable := sbType == model.SmartBlockType_Page &&
 		typeTerm != typeKeyTemplate && e.legendTypeTerm(typeTerm) != typeKeyTemplate
 	if !derivable {
@@ -1953,7 +1986,7 @@ func isAttributionProperty(key string) bool {
 // blank or vanishing name yields a bare id rather than a dangling `#`. The
 // suffix does NOT ride Options.RefNames: these two properties are dropped on
 // import (no round-trip byte-stability is at stake), and the name is the
-// reason the line is worth writing at all — v0.24 measured that.
+// reason the line is worth writing at all — that was measured.
 //
 // The value is read as a LIST and the first id answers, because a stored
 // detail may hold either shape; the relation is `maxCount: 1` and 36,966 real
@@ -2322,7 +2355,8 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 		if l.Description != model.BlockContentLink_None {
 			m.setNonEmpty("description", linkDescriptionNames.name(l.Description))
 		}
-		m.setNonEmpty("properties", stringsToAny(e.propertySlugs(l.Relations)))
+		m.setNonEmpty("properties", stringsToAny(
+			e.slotPropertySlugs(l.Relations, "a link block's `properties` entry")))
 		withChildren = false
 	case *model.BlockContentOfDiv:
 		m.set("type", "divider")
@@ -2370,8 +2404,14 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 				"a key slot has to name something")
 			return nil, false, nil
 		}
+		// an unwritable stored key drops the block the same way — warned by
+		// slotPropertySlug — instead of being emitted verbatim (§3)
+		relSlug := e.slotPropertySlug(orEmpty(c.Relation).Key, "a property block")
+		if relSlug == "" {
+			return nil, false, nil
+		}
 		m.set("type", "property")
-		m.setNonEmpty(memberProperty, e.propertySlug(orEmpty(c.Relation).Key))
+		m.setNonEmpty(memberProperty, relSlug)
 		withChildren = false
 	case *model.BlockContentOfDataview:
 		if err := e.dataviewToJSON(m, orEmpty(c.Dataview)); err != nil {

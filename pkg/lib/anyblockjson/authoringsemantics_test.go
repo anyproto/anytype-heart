@@ -27,7 +27,7 @@ import (
 // refused the canonical one.
 func TestAuthoringTypeDocumentNamesItself(t *testing.T) {
 	typeDoc := func(props string) []byte {
-		return []byte(`{"version":1,"kind":"object_type","id":"habit","internal_key":"habit",` +
+		return []byte(`{"version":2,"kind":"object_type","id":"habit","internal_key":"habit",` +
 			`"type_settings":{"layout":"basic"},"properties":{` + props + `}}`)
 	}
 
@@ -51,7 +51,7 @@ func TestAuthoringTypeDocumentNamesItself(t *testing.T) {
 	})
 
 	t.Run("the rule is a type document's alone", func(t *testing.T) {
-		doc := []byte(`{"version":1,"id":"page1","properties":{"Description":"no title"}}`)
+		doc := []byte(`{"version":2,"id":"page1","properties":{"Description":"no title"}}`)
 		assert.NoError(t, ValidateAuthoring(doc),
 			"an ordinary object may be untitled; only a type must name itself")
 	})
@@ -68,7 +68,7 @@ func TestAuthoringDeniedKeysAreRefusedUnderEverySpelling(t *testing.T) {
 		for _, spelling := range []string{key, name, strings.ToLower(name)} {
 			t.Run(key+" as "+spelling, func(t *testing.T) {
 				b, err := json.Marshal(map[string]any{
-					"version": 1, "id": "o1",
+					"version": 2, "id": "o1",
 					"properties": map[string]any{spelling: "whatever"},
 				})
 				require.NoError(t, err)
@@ -135,7 +135,7 @@ func TestAuthoringDeniedKeysMatchTheSchema(t *testing.T) {
 			if _, denied := authoringDeniedPropertyKeys[key]; denied {
 				continue
 			}
-			doc := []byte(fmt.Sprintf(`{"version":1,"id":"o1","properties":{%q:"x"}}`, key))
+			doc := []byte(fmt.Sprintf(`{"version":2,"id":"o1","properties":{%q:"x"}}`, key))
 			assert.Error(t, Validate(doc),
 				"the schema bans %q, which resolves to %q — but nothing refuses that key "+
 					"under its own spelling, so the ban covers one spelling of many", spelling, key)
@@ -148,10 +148,10 @@ func TestAuthoringDeniedKeysMatchTheSchema(t *testing.T) {
 func TestAuthoringNamedEnumTakesTheNameUnderItsCanonicalSpelling(t *testing.T) {
 	for _, spelling := range []string{"Layout align", "layout_align", "layoutAlign"} {
 		t.Run(spelling, func(t *testing.T) {
-			named := []byte(fmt.Sprintf(`{"version":1,"id":"o1","properties":{%q:"center"}}`, spelling))
+			named := []byte(fmt.Sprintf(`{"version":2,"id":"o1","properties":{%q:"center"}}`, spelling))
 			assert.NoError(t, ValidateAuthoring(named), "the name is what an author writes")
 
-			bare := []byte(fmt.Sprintf(`{"version":1,"id":"o1","properties":{%q:1}}`, spelling))
+			bare := []byte(fmt.Sprintf(`{"version":2,"id":"o1","properties":{%q:1}}`, spelling))
 			require.NoError(t, Validate(bare), "the full format passes the stored number through")
 			err := ValidateAuthoring(bare)
 			require.Error(t, err, "the subset removes the stored-value pass-through")

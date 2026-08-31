@@ -206,7 +206,7 @@ func TestKeyVocabulary_CustomKeysPassThrough(t *testing.T) {
 func TestDocumentSpellsNames(t *testing.T) {
 	t.Run("properties are written as display names; legacy slugs read back as stored keys", func(t *testing.T) {
 		// given
-		doc := `{"version": 1, "id": "o1", "properties": {
+		doc := `{"version": 2, "id": "o1", "properties": {
 			"name": "A page", "plural_name": "Pages", "due_date": "2025-07-06T08:44:05Z",
 			"customDate": "whatever"}}`
 
@@ -233,7 +233,7 @@ func TestDocumentSpellsNames(t *testing.T) {
 	})
 
 	t.Run("a dataview's key slots follow the same vocabulary", func(t *testing.T) {
-		doc := `{"version": 1, "id": "o1", "blocks": [{"id": "dv", "type": "dataview",
+		doc := `{"version": 2, "id": "o1", "blocks": [{"id": "dv", "type": "dataview",
 			"properties": [{"property": "due_date", "format": "date"}],
 			"views": [{"id": "v1", "type": "table", "group_by": "due_date",
 				"sorts": [{"property": "due_date"}],
@@ -263,7 +263,7 @@ func TestDocumentSpellsNames(t *testing.T) {
 	})
 
 	t.Run("the envelope type follows the same vocabulary", func(t *testing.T) {
-		doc := `{"version": 1, "kind": "object_type", "id": "t1", "type": "object_type"}`
+		doc := `{"version": 2, "kind": "object_type", "id": "t1", "type": "object_type"}`
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
 		require.Len(t, snap.ObjectTypes, 1)
@@ -370,7 +370,7 @@ func TestBuildPropertiesRefusesASlugAnotherStoredKeyOwns(t *testing.T) {
 func TestObjectTypesIsAKeySlot(t *testing.T) {
 	t.Run("import inverts the spelling to the stored type key", func(t *testing.T) {
 		// given
-		doc := `{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
+		doc := `{"version": 2, "kind": "object_type", "id": "t1", "internal_key": "k",
 			"type_settings": {"property_definitions": [{"property": "owner", "name": "Owner", "format": "objects",
 			 "object_types": ["object_type", "wikiPerson"]}]}}`
 		r := &recordingPropertyResolver{}
@@ -464,7 +464,7 @@ func TestImportRefusesTwoSpellingsOfOneStoredKey(t *testing.T) {
 		// given — a stored key the bundled table resolves elsewhere:
 		// `plural_name` inverts to `pluralName`, which is also a literal
 		// stored key, so both spellings land on one detail
-		doc := `{"version": 1, "id": "t1", "internal_key": "k",
+		doc := `{"version": 2, "id": "t1", "internal_key": "k",
 			"properties": {"name": "T", "plural_name": "A", "pluralName": "B"}}`
 
 		for i := 0; i < 32; i++ {
@@ -487,7 +487,7 @@ func TestImportRefusesTwoSpellingsOfOneStoredKey(t *testing.T) {
 		// in one document addresses one property twice.
 		const bsonKey = "68b1c0aa4e1f0d0011223344"
 		vocab := collapsingVocab{a: bsonKey, slug: "severity"}
-		doc := `{"version": 1, "id": "o1", "properties": {"severity": "high", "` + bsonKey + `": "low"}}`
+		doc := `{"version": 2, "id": "o1", "properties": {"severity": "high", "` + bsonKey + `": "low"}}`
 
 		// when
 		_, _, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g"), Keys: vocab})
@@ -501,7 +501,7 @@ func TestImportRefusesTwoSpellingsOfOneStoredKey(t *testing.T) {
 	})
 
 	t.Run("distinct keys are untouched", func(t *testing.T) {
-		doc := `{"version": 1, "id": "o1", "properties": {"name": "T", "plural_name": "A", "due_date": "2025-07-06T08:44:05Z"}}`
+		doc := `{"version": 2, "id": "o1", "properties": {"name": "T", "plural_name": "A", "due_date": "2025-07-06T08:44:05Z"}}`
 		_, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
 		require.NoError(t, err)
 		assert.Contains(t, snap.Details.Fields, "pluralName")

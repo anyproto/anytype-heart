@@ -15,7 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
-const dictHead = `"$schema":"https://schemas.anytype.io/anyblock/1/properties.schema.json","version":1,`
+const dictHead = `"$schema":"https://schemas.anytype.io/anyblock/2/properties.schema.json","version":2,`
 
 func readDict(t *testing.T, doc string) (*PropertyDictionary, []Issue) {
 	t.Helper()

@@ -215,7 +215,7 @@ func TestTypePropertiesExport(t *testing.T) {
 
 func TestTypePropertiesImport(t *testing.T) {
 	docJSON := `{
-  "version": 1,
+  "version": 2,
   "kind": "object_type",
   "internal_key": "task",
   "properties": { "name": "Task" },
@@ -259,7 +259,7 @@ func TestTypePropertiesImport(t *testing.T) {
 
 	t.Run("empty array rebuilds all four lists as empty", func(t *testing.T) {
 		// given
-		doc := `{"version": 1, "kind": "object_type", "internal_key": "task", "type_settings": {"property_definitions": []}}`
+		doc := `{"version": 2, "kind": "object_type", "internal_key": "task", "type_settings": {"property_definitions": []}}`
 
 		// when
 		_, snapshot, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("id")})
@@ -274,7 +274,7 @@ func TestTypePropertiesImport(t *testing.T) {
 
 	t.Run("absent type_properties leaves the lists absent", func(t *testing.T) {
 		// given
-		doc := `{"version": 1, "kind": "object_type", "internal_key": "task"}`
+		doc := `{"version": 2, "kind": "object_type", "internal_key": "task"}`
 
 		// when
 		_, snapshot, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("id")})
@@ -338,7 +338,7 @@ func TestTypePropertiesRoundTrip(t *testing.T) {
 func TestTypePropertiesValidation(t *testing.T) {
 	t.Run("rejected outside type documents", func(t *testing.T) {
 		// given
-		doc := `{"version": 1, "type_settings": {"property_definitions": [{"property": "due_date"}]}}`
+		doc := `{"version": 2, "type_settings": {"property_definitions": [{"property": "due_date"}]}}`
 
 		// when
 		err := Validate([]byte(doc))
@@ -351,7 +351,7 @@ func TestTypePropertiesValidation(t *testing.T) {
 	t.Run("rejected alongside raw recommended lists", func(t *testing.T) {
 		// given
 		doc := `{
-  "version": 1,
+  "version": 2,
   "kind": "object_type",
   "properties": { "recommendedRelations": ["relid-status"] },
   "type_settings": {"property_definitions": [{"property": "due_date"}]}
@@ -367,9 +367,9 @@ func TestTypePropertiesValidation(t *testing.T) {
 
 	t.Run("unknown section and no identity at all rejected by schema", func(t *testing.T) {
 		for _, doc := range []string{
-			`{"version": 1, "kind": "object_type", "type_settings": {"property_definitions": [{"property": "a", "section": "sidebar"}]}}`,
-			`{"version": 1, "kind": "object_type", "type_settings": {"property_definitions": [{"format": "number"}]}}`,
-			`{"version": 1, "kind": "object_type", "type_settings": {"property_definitions": [{"property": "a", "format": "status"}]}}`,
+			`{"version": 2, "kind": "object_type", "type_settings": {"property_definitions": [{"property": "a", "section": "sidebar"}]}}`,
+			`{"version": 2, "kind": "object_type", "type_settings": {"property_definitions": [{"format": "number"}]}}`,
+			`{"version": 2, "kind": "object_type", "type_settings": {"property_definitions": [{"property": "a", "format": "status"}]}}`,
 		} {
 			assert.Error(t, Validate([]byte(doc)), strings.ReplaceAll(doc, "\n", " "))
 		}
@@ -379,13 +379,13 @@ func TestTypePropertiesValidation(t *testing.T) {
 	// space would, so requiring one asked for an invented identifier.
 	t.Run("a name alone declares a property", func(t *testing.T) {
 		require.NoError(t, Validate([]byte(
-			`{"version": 1, "kind": "object_type", "internal_key": "recipe", "type_settings": {`+
+			`{"version": 2, "kind": "object_type", "internal_key": "recipe", "type_settings": {`+
 				`"property_definitions": [{"name": "Cooking Time", "format": "number"}]}}`)))
 	})
 
 	t.Run("valid type document passes", func(t *testing.T) {
 		doc := `{
-  "version": 1,
+  "version": 2,
   "kind": "object_type",
   "internal_key": "task",
   "type_settings": {"property_definitions": [
@@ -471,7 +471,7 @@ func TestBuildRecommendedListsRefusesUnwritableResolvedKeys(t *testing.T) {
 // The type half of this entry has been refused since the seam was written
 // (TestImport_SeamRefusesAnEmptyResolvedTypeKey), three lines below.
 func TestImport_TypePropertyKeyRefusesAnUnwritableResolvedKey(t *testing.T) {
-	doc := `{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
+	doc := `{"version": 2, "kind": "object_type", "id": "t1", "internal_key": "k",
 		"type_settings": {"property_definitions": [{"property": "blank", "format": "text"}]}}`
 	require.NoError(t, Validate([]byte(doc)),
 		"the document's own chain resolves blank verbatim — Validate cannot see the vocabulary")
@@ -506,7 +506,7 @@ func TestTypePropertyFormatIsTheSameThroughBothDoors(t *testing.T) {
 		entry.setNonEmpty("section", tp.Section)
 		raw, err := json.Marshal(entry)
 		require.NoError(t, err)
-		doc := `{"version": 1, "kind": "object_type", "id": "t1", "internal_key": "k",
+		doc := `{"version": 2, "kind": "object_type", "id": "t1", "internal_key": "k",
 			"type_settings": {"property_definitions": [` + string(raw) + `]}}`
 		_, _, err = Unmarshal([]byte(doc), opts)
 		require.NoError(t, err)

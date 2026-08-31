@@ -52,7 +52,7 @@ func DocumentKind(data []byte) string {
 // deciding whether to OVERRIDE its caller: decided reports whether the
 // document carried evidence at all. A document that declares no `$schema`
 // and holds no member unique to one grammar is not evidence of anything —
-// `{"version": 1}` is a legal start to all three — so a reader must take the
+// `{"version": 2}` is a legal start to all three — so a reader must take the
 // caller's word for it rather than infer.
 func documentKindOf(data []byte) (kind string, decided bool) {
 	var probe struct {

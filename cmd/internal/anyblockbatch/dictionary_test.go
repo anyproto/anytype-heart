@@ -29,7 +29,7 @@ func TestDictionaryFormats_ReadsEntries(t *testing.T) {
 	// given
 	dir := t.TempDir()
 	path := filepath.Join(dir, "properties.json")
-	require.NoError(t, os.WriteFile(path, []byte(`{"version":1,
+	require.NoError(t, os.WriteFile(path, []byte(`{"version":2,
 		"installed":["tag"],
 		"properties":[
 			{"property":"6a32d4856761631534b22f85","name":"Stage","format":"select",
@@ -93,10 +93,10 @@ func TestMergeDictionaryFormats_DictionaryWins(t *testing.T) {
 // misses the real key), or start counting envelope members.
 func TestUsedPropertyKeys_ResolvesTheChain(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"objects/a.json": `{"version":1,
+		"objects/a.json": `{"version":2,
 			"property_internal_keys": {"severity": "6a32d4856761631534b22f85"},
 			"properties": {"severity": "high", "due_date": "2026-01-01", "id": "a1", "type": "task"}}`,
-		"types/t.json": `{"version":1,"kind":"object_type","internal_key":"task",
+		"types/t.json": `{"version":2,"kind":"object_type","internal_key":"task",
 			"type_settings":{"property_definitions":[{"property":"assignee","format":"objects"}]}}`,
 	})
 

@@ -22,7 +22,7 @@ import (
 // key gets rewritten).
 func TestUsedPropertyKeysFromBytes(t *testing.T) {
 	doc := []byte(`{
-		"version": 1,
+		"version": 2,
 		"id": "bafyx",
 		"type": "task",
 		"property_internal_keys": {"aroma": "6a32d4856761631534b22f85"},

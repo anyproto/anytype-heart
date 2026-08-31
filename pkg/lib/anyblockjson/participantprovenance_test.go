@@ -73,7 +73,7 @@ func TestParticipantProvenance_CreatedDateNeverExported(t *testing.T) {
 // participants stop importing); or let the value through (the destination's
 // derived detail is shadowed by the source's load timestamp).
 func TestParticipantProvenance_DroppedNotRefusedOnImport(t *testing.T) {
-	doc := `{"version": 1, "kind": "participant",
+	doc := `{"version": 2, "kind": "participant",
 		"id": "AASdKiEGfcyhxX3ufr4auHRviACUXxkF68uZwtSb2AnyRoMA",
 		"properties": {"name": "Roman", "created_date": "2026-08-26T21:42:26Z"}}`
 
@@ -86,7 +86,7 @@ func TestParticipantProvenance_DroppedNotRefusedOnImport(t *testing.T) {
 	assert.Equal(t, "Roman", snap.GetDetails().GetFields()["name"].GetStringValue())
 
 	t.Run("on a page the same property still lands", func(t *testing.T) {
-		doc := `{"version": 1, "properties": {"name": "A page", "created_date": "2026-08-26T21:42:26Z"}}`
+		doc := `{"version": 2, "properties": {"name": "A page", "created_date": "2026-08-26T21:42:26Z"}}`
 		_, snap, err := Unmarshal([]byte(doc), Options{})
 		require.NoError(t, err)
 		assert.Contains(t, snap.GetDetails().GetFields(), "createdDate")

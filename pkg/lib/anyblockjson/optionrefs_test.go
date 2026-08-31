@@ -330,7 +330,7 @@ func TestOptionRefs_NameCarryingASpace(t *testing.T) {
 func TestOptionRefs_UnknownValuePassesThrough(t *testing.T) {
 	// given
 	space := spaceOptions{"tag": {{id: "bafyopt", name: "High"}}}
-	doc := `{"version": 1, "id": "obj1", "properties": {"tag": ["Brand new"]},
+	doc := `{"version": 2, "id": "obj1", "properties": {"tag": ["Brand new"]},
 		"option_ids": {"tag": {"High": "bafyopt"}}}`
 
 	// when
@@ -559,7 +559,7 @@ func TestOptionRefs_OverLongNameStillGetsAnEntry(t *testing.T) {
 // does today. This is what keeps a package-only read unchanged by the legend.
 func TestOptionRefs_ReaderWithoutAResolverIgnoresTheLegend(t *testing.T) {
 	// given
-	doc := `{"version": 1, "id": "obj1", "properties": {"tag": ["High"]},
+	doc := `{"version": 2, "id": "obj1", "properties": {"tag": ["High"]},
 		"option_ids": {"tag": {"High": "bafyopt"}}}`
 
 	// when
@@ -606,7 +606,7 @@ func TestOptionRefs_LegendKeyRulesAreTheSameInBothValidators(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// given
 			raw, err := json.Marshal(map[string]any{
-				"version":    1,
+				"version":    2,
 				"option_ids": map[string]any{tc.slug: map[string]string{tc.optId: "bafyreiopt"}},
 			})
 			require.NoError(t, err)
@@ -729,7 +729,7 @@ func TestOptionRefs_ALegendEntryForAPropertyTheDocumentDoesNotUse(t *testing.T) 
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// given
-			doc := fmt.Sprintf(`{"version": 1, "id": "obj1", "properties": {"tag": ["High"]},
+			doc := fmt.Sprintf(`{"version": 2, "id": "obj1", "properties": {"tag": ["High"]},
 				"option_ids": {%q: {"High": "bafylegend"}}}`, tc.slug)
 
 			// when
@@ -784,7 +784,7 @@ func TestOptionRefs_PropertySpelledOnlyInsideADataview(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// given
-			doc := fmt.Sprintf(`{"version": 1, "id": "obj1",
+			doc := fmt.Sprintf(`{"version": 2, "id": "obj1",
 				"option_ids": {"tag": {"High": "bafylegend"}},
 				"blocks": [{"id": "dv1", "type": "dataview", "views": [%s]}]}`, tc.view)
 
@@ -889,7 +889,7 @@ func TestOptionRefs_ThePropertyCensusCoversEveryPosition(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// given
-			data := []byte(`{"version": 1, "id": "obj1",` + strings.TrimPrefix(tc.doc, "{"))
+			data := []byte(`{"version": 2, "id": "obj1",` + strings.TrimPrefix(tc.doc, "{"))
 
 			// when
 			var raw map[string]any

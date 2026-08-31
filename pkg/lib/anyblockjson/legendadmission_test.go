@@ -52,8 +52,11 @@ func (v bindingVocabulary) TypeKey(slug string) (string, bool) {
 var overLongKey = strings.Repeat("k", 140)
 
 // filterKeySnapshot names a stored key at a dataview FILTER slot. That slot
-// matters: unlike /properties (which drops unwritable keys before it slugs
-// them), a filter hands whatever the view holds straight to propertySlug.
+// matters: it used to hand whatever the view holds straight to propertySlug
+// — where /properties dropped unwritable keys first — which is how an
+// unwritable key reached the legend ledger at all. The slot now runs the
+// same drop (slotPropertySlug), and this fixture pins that the legend stays
+// clean either way.
 func filterKeySnapshot(keys ...string) *model.SmartBlockSnapshotBase {
 	dv := &model.BlockContentDataview{}
 	view := &model.BlockContentDataviewView{Id: "v1", Name: "All"}
@@ -108,17 +111,21 @@ func TestExport_PropertyLegendRefusesAnEntryItCannotHold(t *testing.T) {
 			_, back, err := Unmarshal(data, Options{GenerateId: seqIds("g")})
 			require.NoError(t, err, "emitted:\n%s", data)
 
-			// the entry is refused, out loud, at the legend's own path
+			// an unwritable stored key no longer reaches the legend at all:
+			// the block key slots carry the schema bound /properties always
+			// had, so the SLOT drops it first, warned (slotPropertySlug) —
+			// which is what keeps this legend clean. The shadowed writable
+			// key still owes — and gets — its identity entry, so a change
+			// that simply stopped writing legend entries cannot pass.
 			assert.Equal(t, map[string]string{"shadowed": "shadowed"},
 				decodeDoc(t, data).PropertyKeys,
 				"only the entry the legend can hold; the shadowed key still owes one")
-			require.NotEmpty(t, warnings, "a refused entry is reported")
-			assert.Contains(t, warningsAt(warnings, "/property_internal_keys"), tc.wantWarn)
+			require.NotEmpty(t, warnings, "a dropped slot is reported")
+			assert.Contains(t, warningsAt(warnings, ""), tc.wantWarn)
 
-			// and nothing the document was carrying is lost: the term is
-			// still spelled verbatim, so it survives chain step 4
-			assert.Equal(t, tc.key, backFilterKey(t, back, 0))
-			assert.Equal(t, "shadowed", backFilterKey(t, back, 1))
+			// the unwritable key's filter is gone — dropped like the
+			// nameless one, never spelled — and the writable one survives
+			assert.Equal(t, "shadowed", backFilterKey(t, back, 0))
 		})
 	}
 }

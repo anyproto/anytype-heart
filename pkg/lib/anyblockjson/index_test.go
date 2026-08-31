@@ -15,7 +15,7 @@ import (
 func TestIndex_Roundtrip(t *testing.T) {
 	doc := `{
 		"$schema": "https://schemas.anytype.io/anyblock/1.0/index.schema.json",
-		"version": 1,
+		"version": 2,
 		"name": "Company Wiki",
 		"description": "Everything we know, with an owner.",
 		"icon": { "format": "emoji", "emoji": "📚" },
@@ -64,7 +64,7 @@ func TestIndex_Roundtrip(t *testing.T) {
 
 func TestIndex_EntryPoint(t *testing.T) {
 	t.Run("the declared entrypoint wins over widget order", func(t *testing.T) {
-		idx, err := UnmarshalIndex([]byte(`{"version": 1,
+		idx, err := UnmarshalIndex([]byte(`{"version": 2,
 			"entrypoint": "page-home",
 			"widgets": [{"target": "type-task", "layout": "view"}]}`))
 		require.NoError(t, err)
@@ -73,14 +73,14 @@ func TestIndex_EntryPoint(t *testing.T) {
 	})
 
 	t.Run("nothing declared means no entry point", func(t *testing.T) {
-		idx, err := UnmarshalIndex([]byte(`{"version": 1, "name": "X"}`))
+		idx, err := UnmarshalIndex([]byte(`{"version": 2, "name": "X"}`))
 		require.NoError(t, err)
 		assert.Empty(t, idx.EntryPoint())
 	})
 
 	// bundles written before entrypoint existed carried it as widgets[0]
 	t.Run("falls back to the first widget naming an object", func(t *testing.T) {
-		idx, err := UnmarshalIndex([]byte(`{"version": 1,
+		idx, err := UnmarshalIndex([]byte(`{"version": 2,
 			"widgets": [{"target": "_recent"}, {"target": "page-home"}]}`))
 		require.NoError(t, err)
 		assert.Equal(t, "page-home", idx.EntryPoint(), "reserved listings are skipped")
@@ -104,14 +104,14 @@ func TestIndex_EntryPoint(t *testing.T) {
 
 	t.Run("a reserved listing cannot be an entrypoint", func(t *testing.T) {
 		for _, bad := range []string{"_widgets", "_graph", "_favorite", "_recent", "_all_objects"} {
-			_, err := UnmarshalIndex([]byte(`{"version": 1, "entrypoint": "` + bad + `"}`))
+			_, err := UnmarshalIndex([]byte(`{"version": 2, "entrypoint": "` + bad + `"}`))
 			require.Error(t, err, bad)
 		}
 	})
 
 	// the reason the entrypoint ban is a prefix and not a word list
 	t.Run("no entrypoint may enter the platform namespace", func(t *testing.T) {
-		_, err := UnmarshalIndex([]byte(`{"version": 1, "entrypoint": "_otpage"}`))
+		_, err := UnmarshalIndex([]byte(`{"version": 2, "entrypoint": "_otpage"}`))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "/entrypoint")
 		assert.Contains(t, err.Error(), "platform")
@@ -122,18 +122,18 @@ func TestIndex_EntryPoint(t *testing.T) {
 // page you landed on", never the widgets screen
 func TestIndex_SpaceHomepage(t *testing.T) {
 	t.Run("defaults to the entrypoint", func(t *testing.T) {
-		idx, err := UnmarshalIndex([]byte(`{"version": 1, "entrypoint": "page-home"}`))
+		idx, err := UnmarshalIndex([]byte(`{"version": 2, "entrypoint": "page-home"}`))
 		require.NoError(t, err)
 		assert.Equal(t, "page-home", idx.SpaceHomepage())
 	})
 	t.Run("an explicit value wins", func(t *testing.T) {
-		idx, err := UnmarshalIndex([]byte(`{"version": 1,
+		idx, err := UnmarshalIndex([]byte(`{"version": 2,
 			"entrypoint": "page-welcome", "homepage": "page-dashboard"}`))
 		require.NoError(t, err)
 		assert.Equal(t, "page-dashboard", idx.SpaceHomepage())
 	})
 	t.Run("a reserved homepage is still allowed, deliberately", func(t *testing.T) {
-		idx, err := UnmarshalIndex([]byte(`{"version": 1,
+		idx, err := UnmarshalIndex([]byte(`{"version": 2,
 			"entrypoint": "page-home", "homepage": "_graph"}`))
 		require.NoError(t, err)
 		assert.Equal(t, "_graph", idx.SpaceHomepage())
@@ -145,7 +145,7 @@ func TestIndex_SpaceHomepage(t *testing.T) {
 	// the format spelled it `graph` too, an object with that id could never be
 	// a homepage. Here it is an ordinary id and nothing reserved is involved.
 	t.Run("the wire spelling of a reserved screen is an ordinary id", func(t *testing.T) {
-		idx, err := UnmarshalIndex([]byte(`{"version": 1, "homepage": "graph"}`))
+		idx, err := UnmarshalIndex([]byte(`{"version": 2, "homepage": "graph"}`))
 		require.NoError(t, err)
 		assert.False(t, IsReservedHomepage("graph"))
 		assert.Equal(t, "graph", idx.SpaceHomepage())
@@ -162,10 +162,10 @@ func TestIndex_SpaceHomepage(t *testing.T) {
 func TestIndex_Validation(t *testing.T) {
 	for _, tc := range []struct{ name, doc, want string }{
 		{"version required", `{"name": "X"}`, "version"},
-		{"unknown layout", `{"version": 1, "widgets": [{"target": "a", "layout": "grid"}]}`, "layout"},
-		{"widget needs a target", `{"version": 1, "widgets": [{"layout": "link"}]}`, "target"},
-		{"unknown property", `{"version": 1, "startingPage": "a"}`, "startingPage"},
-		{"limit must be an integer", `{"version": 1, "widgets": [{"target": "a", "limit": 1.5}]}`, "limit"},
+		{"unknown layout", `{"version": 2, "widgets": [{"target": "a", "layout": "grid"}]}`, "layout"},
+		{"widget needs a target", `{"version": 2, "widgets": [{"layout": "link"}]}`, "target"},
+		{"unknown property", `{"version": 2, "startingPage": "a"}`, "startingPage"},
+		{"limit must be an integer", `{"version": 2, "widgets": [{"target": "a", "limit": 1.5}]}`, "limit"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := UnmarshalIndex([]byte(tc.doc))
@@ -176,7 +176,7 @@ func TestIndex_Validation(t *testing.T) {
 
 	t.Run("reserved homepage names are accepted", func(t *testing.T) {
 		for _, h := range []string{"_widgets", "_graph"} {
-			_, err := UnmarshalIndex([]byte(`{"version": 1, "homepage": "` + h + `"}`))
+			_, err := UnmarshalIndex([]byte(`{"version": 2, "homepage": "` + h + `"}`))
 			assert.NoError(t, err, h)
 			assert.True(t, IsReservedHomepage(h))
 		}
@@ -195,7 +195,7 @@ func TestIndex_Validation(t *testing.T) {
 	t.Run("the bare listing name reserves nothing", func(t *testing.T) {
 		for _, bare := range []string{"favorite", "recent", "set", "collection"} {
 			assert.False(t, IsReservedWidgetTarget(bare), bare)
-			_, err := UnmarshalIndex([]byte(`{"version": 1, "entrypoint": "` + bare + `"}`))
+			_, err := UnmarshalIndex([]byte(`{"version": 2, "entrypoint": "` + bare + `"}`))
 			assert.NoError(t, err, "an ordinary id: %s", bare)
 		}
 	})
@@ -209,7 +209,7 @@ func TestIndex_Validation(t *testing.T) {
 	// message: an anonymous `does not match pattern '^[^_]'` names neither the
 	// namespace nor the repair, and the failure it precedes is invisible.
 	t.Run("an unknown reserved listing is refused, and named", func(t *testing.T) {
-		_, err := UnmarshalIndex([]byte(`{"version": 1, "widgets": [
+		_, err := UnmarshalIndex([]byte(`{"version": 2, "widgets": [
 			{"target": "page-home"}, {"target": "_favourite"}]}`))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "/widgets/1/target")
@@ -221,7 +221,7 @@ func TestIndex_Validation(t *testing.T) {
 	})
 
 	t.Run("an unknown reserved homepage is refused", func(t *testing.T) {
-		_, err := UnmarshalIndex([]byte(`{"version": 1, "homepage": "_last_opened"}`))
+		_, err := UnmarshalIndex([]byte(`{"version": 2, "homepage": "_last_opened"}`))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "/homepage")
 		assert.Contains(t, err.Error(), "the only reserved homepages are")
@@ -233,7 +233,7 @@ func TestIndex_Validation(t *testing.T) {
 	t.Run("a newer version is rejected, naming both versions", func(t *testing.T) {
 		// given a bundle index from a future format version, carrying a key
 		// this reader has never heard of
-		data := []byte(`{"version": 2, "name": "Wiki", "futureKey": true}`)
+		data := []byte(`{"version": 3, "name": "Wiki", "futureKey": true}`)
 
 		// when
 		_, err := UnmarshalIndex(data)
@@ -244,7 +244,7 @@ func TestIndex_Validation(t *testing.T) {
 		require.True(t, errors.As(err, &ve))
 		assert.True(t, ve.NewerFormat, "must be flagged as a newer format, not a constraint failure")
 		assert.Contains(t, err.Error(), "newer version")
-		assert.Contains(t, err.Error(), "2")
+		assert.Contains(t, err.Error(), "3")
 		assert.Contains(t, err.Error(), strconv.Itoa(FormatVersion))
 		// the version gate ran before the schema, so the unknown key never
 		// produced an issue of its own
@@ -328,7 +328,7 @@ func TestIndexSchema_RefsThePublishedObjectSchema(t *testing.T) {
 // used to say "the installer prefers the image", which was a rule written
 // nowhere in the schema.
 func TestIndex_Icon(t *testing.T) {
-	idx, err := UnmarshalIndex([]byte(`{"version": 1, "name": "Wiki",
+	idx, err := UnmarshalIndex([]byte(`{"version": 2, "name": "Wiki",
 		"icon": {"format": "file", "file": "acme-logo"}}`))
 	require.NoError(t, err)
 	assert.Equal(t, "acme-logo", idx.IconImageId())
@@ -339,21 +339,21 @@ func TestIndex_Icon(t *testing.T) {
 	assert.Contains(t, string(out), `"file": "acme-logo"`)
 
 	t.Run("an emoji index icon has no image id", func(t *testing.T) {
-		idx, err := UnmarshalIndex([]byte(`{"version": 1, "icon": {"format": "emoji", "emoji": "📚"}}`))
+		idx, err := UnmarshalIndex([]byte(`{"version": 2, "icon": {"format": "emoji", "emoji": "📚"}}`))
 		require.NoError(t, err)
 		assert.Equal(t, "📚", idx.Icon.Emoji)
 		assert.Empty(t, idx.IconImageId())
 	})
 
 	t.Run("an emoji and an image are no longer both writable", func(t *testing.T) {
-		_, err := UnmarshalIndex([]byte(`{"version": 1,
+		_, err := UnmarshalIndex([]byte(`{"version": 2,
 			"icon": {"format": "emoji", "emoji": "📚", "file": "logo"}}`))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), `property "file" is not allowed`)
 	})
 
 	t.Run("the discriminator names the alternatives when it is missing", func(t *testing.T) {
-		_, err := UnmarshalIndex([]byte(`{"version": 1, "icon": {"emoji": "📚"}}`))
+		_, err := UnmarshalIndex([]byte(`{"version": 2, "icon": {"emoji": "📚"}}`))
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "/icon: missing property 'format'")
 		assert.Contains(t, err.Error(), "'emoji', 'file'")
@@ -365,7 +365,7 @@ func TestIndex_Icon(t *testing.T) {
 	// else — is the icon of 20 of 77 real spaces, and the narrow shape had
 	// no way to spell one, so omitting the document would have deleted it.
 	t.Run("a letter avatar is a colour and nothing else", func(t *testing.T) {
-		idx, err := UnmarshalIndex([]byte(`{"version": 1, "icon": {"format": "color", "color": "red"}}`))
+		idx, err := UnmarshalIndex([]byte(`{"version": 2, "icon": {"format": "color", "color": "red"}}`))
 		require.NoError(t, err)
 		assert.Equal(t, "red", idx.Icon.Color)
 		assert.Empty(t, idx.IconImageId(), "a colour names no image")
@@ -377,7 +377,7 @@ func TestIndex_Icon(t *testing.T) {
 	})
 
 	t.Run("a colour rides along with the icon it tints", func(t *testing.T) {
-		idx, err := UnmarshalIndex([]byte(`{"version": 1,
+		idx, err := UnmarshalIndex([]byte(`{"version": 2,
 			"icon": {"format": "file", "file": "acme-logo", "color": "red"}}`))
 		require.NoError(t, err)
 		out, err := MarshalIndex(idx)

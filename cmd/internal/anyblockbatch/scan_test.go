@@ -26,12 +26,12 @@ func writeDocs(t *testing.T, docs map[string]string) []string {
 	return files
 }
 
-const wikiPageType = `{"version": 1, "kind": "object_type", "internal_key": "wikiPage", "id": "type-wiki-page"}`
+const wikiPageType = `{"version": 2, "kind": "object_type", "internal_key": "wikiPage", "id": "type-wiki-page"}`
 
 func TestCheckTemplateTargets_ResolvableTargetPasses(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/wiki-page.type.json": wikiPageType,
-		"templates/article.json":    `{"version": 1, "kind": "template", "type": "template", "template_for": "wikiPage"}`,
+		"templates/article.json":    `{"version": 2, "kind": "template", "type": "template", "template_for": "wikiPage"}`,
 	})
 	typeIds, err := TypeIds(files)
 	require.NoError(t, err)
@@ -46,7 +46,7 @@ func TestCheckTemplateTargets_ResolvableTargetPasses(t *testing.T) {
 // no type in the space
 func TestCheckTemplateTargets_BundledTargetIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"templates/note.json": `{"version": 1, "kind": "template", "type": "template", "template_for": "page"}`,
+		"templates/note.json": `{"version": 2, "kind": "template", "type": "template", "template_for": "page"}`,
 	})
 	bad, err := CheckTemplateTargets(files, map[string]string{})
 	require.NoError(t, err)
@@ -57,7 +57,7 @@ func TestCheckTemplateTargets_BundledTargetIsReported(t *testing.T) {
 
 func TestCheckTemplateTargets_UndefinedTargetIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"templates/article.json": `{"version": 1, "kind": "template", "type": "template", "template_for": "wikiPage"}`,
+		"templates/article.json": `{"version": 2, "kind": "template", "type": "template", "template_for": "wikiPage"}`,
 	})
 	bad, err := CheckTemplateTargets(files, map[string]string{})
 	require.NoError(t, err)
@@ -68,8 +68,8 @@ func TestCheckTemplateTargets_UndefinedTargetIsReported(t *testing.T) {
 // a type document with no id has nothing for the detail to point at
 func TestCheckTemplateTargets_IdlessTargetIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"types/wiki-page.type.json": `{"version": 1, "kind": "object_type", "internal_key": "wikiPage"}`,
-		"templates/article.json":    `{"version": 1, "kind": "template", "type": "template", "template_for": "wikiPage"}`,
+		"types/wiki-page.type.json": `{"version": 2, "kind": "object_type", "internal_key": "wikiPage"}`,
+		"templates/article.json":    `{"version": 2, "kind": "template", "type": "template", "template_for": "wikiPage"}`,
 	})
 	typeIds, err := TypeIds(files)
 	require.NoError(t, err)
@@ -84,7 +84,7 @@ func TestCheckTemplateTargets_IdlessTargetIsReported(t *testing.T) {
 // to create one (objectcreator.createTemplate), and import does not
 func TestCheckTemplateTargets_MissingTemplateForIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"templates/orphan.json": `{"version": 1, "kind": "template", "type": "template"}`,
+		"templates/orphan.json": `{"version": 2, "kind": "template", "type": "template"}`,
 	})
 	bad, err := CheckTemplateTargets(files, map[string]string{})
 	require.NoError(t, err)
@@ -96,7 +96,7 @@ func TestCheckTemplateTargets_MissingTemplateForIsReported(t *testing.T) {
 // document is wired whatever templateFor resolves to
 func TestCheckTemplateTargets_AuthoredTargetObjectTypePasses(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"templates/article.json": `{"version": 1, "kind": "template", "type": "template", "template_for": "page",
+		"templates/article.json": `{"version": 2, "kind": "template", "type": "template", "template_for": "page",
 		  "properties": {"targetObjectType": "type-page"}}`,
 	})
 	bad, err := CheckTemplateTargets(files, map[string]string{})
@@ -107,7 +107,7 @@ func TestCheckTemplateTargets_AuthoredTargetObjectTypePasses(t *testing.T) {
 func TestCheckTemplateTargets_NonTemplatesAreIgnored(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/wiki-page.type.json": wikiPageType,
-		"objects/page.json":         `{"version": 1, "type": "wikiPage"}`,
+		"objects/page.json":         `{"version": 2, "type": "wikiPage"}`,
 	})
 	bad, err := CheckTemplateTargets(files, map[string]string{})
 	require.NoError(t, err)
@@ -121,7 +121,7 @@ func TestCheckTemplateTargets_NonTemplatesAreIgnored(t *testing.T) {
 func TestCheckIndexTargets_Widgets(t *testing.T) {
 	files := writeDocs(t, map[string]string{
 		"types/wiki-page.type.json": wikiPageType,
-		"objects/home.json":         `{"version": 1, "type": "wikiPage", "id": "page-home"}`,
+		"objects/home.json":         `{"version": 2, "type": "wikiPage", "id": "page-home"}`,
 	})
 
 	index := func(targets ...string) *anyblockjson.Index {
@@ -151,7 +151,7 @@ func TestCheckIndexTargets_Widgets(t *testing.T) {
 	t.Run("a bundle object can no longer shadow a listing", func(t *testing.T) {
 		shadow := writeDocs(t, map[string]string{
 			"types/wiki-page.type.json": wikiPageType,
-			"objects/sets.json":         `{"version": 1, "type": "wikiPage", "id": "set"}`,
+			"objects/sets.json":         `{"version": 2, "type": "wikiPage", "id": "set"}`,
 		})
 		assert.Empty(t, CheckIndexTargets(index("_set"), shadow),
 			"the listing resolves as a listing, whatever ids the bundle ships")
@@ -202,8 +202,8 @@ func TestCheckBundleIds(t *testing.T) {
 	t.Run("an ordinary bundle passes", func(t *testing.T) {
 		files := writeDocs(t, map[string]string{
 			"types/wiki-page.type.json": wikiPageType,
-			"objects/home.json":         `{"version": 1, "type": "wikiPage", "id": "page-home"}`,
-			"objects/under.json":        `{"version": 1, "type": "wikiPage", "id": "my_page_2"}`,
+			"objects/home.json":         `{"version": 2, "type": "wikiPage", "id": "page-home"}`,
+			"objects/under.json":        `{"version": 2, "type": "wikiPage", "id": "my_page_2"}`,
 		})
 		bad, err := CheckBundleIds(files)
 		require.NoError(t, err)
@@ -236,7 +236,7 @@ func TestCheckBundleIds(t *testing.T) {
 		for _, id := range reserved {
 			files := writeDocs(t, map[string]string{
 				"types/wiki-page.type.json": wikiPageType,
-				"objects/shadow.json":       `{"version": 1, "type": "wikiPage", "id": "` + id + `"}`,
+				"objects/shadow.json":       `{"version": 2, "type": "wikiPage", "id": "` + id + `"}`,
 			})
 			bad, err := CheckBundleIds(files)
 			require.NoError(t, err, id)
@@ -251,7 +251,7 @@ func TestCheckBundleIds(t *testing.T) {
 	t.Run("a bundled platform address cannot be a bundle id", func(t *testing.T) {
 		files := writeDocs(t, map[string]string{
 			"types/wiki-page.type.json": wikiPageType,
-			"objects/page.json":         `{"version": 1, "type": "wikiPage", "id": "_otpage"}`,
+			"objects/page.json":         `{"version": 2, "type": "wikiPage", "id": "_otpage"}`,
 		})
 		bad, err := CheckBundleIds(files)
 		require.NoError(t, err)
@@ -274,8 +274,8 @@ func TestCheckBundleIds(t *testing.T) {
 // converter half of this.)
 func TestCheckTargetTypes_BundledKeyDefinedLocallyWithoutIdIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"types/page.type.json": `{"version": 1, "kind": "object_type", "internal_key": "page"}`,
-		"types/person.type.json": `{"version": 1, "kind": "object_type", "internal_key": "person", "id": "type-person",
+		"types/page.type.json": `{"version": 2, "kind": "object_type", "internal_key": "page"}`,
+		"types/person.type.json": `{"version": 2, "kind": "object_type", "internal_key": "person", "id": "type-person",
 		  "type_settings": {"property_definitions": [{"property": "assignee", "format": "objects", "object_types": ["page"]}]}}`,
 	})
 	typeIds, err := TypeIds(files)
@@ -296,8 +296,8 @@ func TestCheckTargetTypes_BundledKeyDefinedLocallyWithoutIdIsReported(t *testing
 // so it has something real to point at.
 func TestCheckTargetTypes_BundledKeyDefinedLocallyWithIdPasses(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"types/page.type.json": `{"version": 1, "kind": "object_type", "internal_key": "page", "id": "type-page"}`,
-		"types/person.type.json": `{"version": 1, "kind": "object_type", "internal_key": "person", "id": "type-person",
+		"types/page.type.json": `{"version": 2, "kind": "object_type", "internal_key": "page", "id": "type-page"}`,
+		"types/person.type.json": `{"version": 2, "kind": "object_type", "internal_key": "person", "id": "type-person",
 		  "type_settings": {"property_definitions": [{"property": "assignee", "format": "objects", "object_types": ["page"]}]}}`,
 	})
 	typeIds, err := TypeIds(files)
@@ -311,8 +311,8 @@ func TestCheckTargetTypes_BundledKeyDefinedLocallyWithIdPasses(t *testing.T) {
 // — the reorder must not lose the arm that already worked.
 func TestCheckTargetTypes_IdlessLocalTypeIsReported(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"types/wiki-page.type.json": `{"version": 1, "kind": "object_type", "internal_key": "wikiPage"}`,
-		"types/person.type.json": `{"version": 1, "kind": "object_type", "internal_key": "person", "id": "type-person",
+		"types/wiki-page.type.json": `{"version": 2, "kind": "object_type", "internal_key": "wikiPage"}`,
+		"types/person.type.json": `{"version": 2, "kind": "object_type", "internal_key": "person", "id": "type-person",
 		  "type_settings": {"property_definitions": [{"property": "assignee", "format": "objects", "object_types": ["wikiPage"]}]}}`,
 	})
 	typeIds, err := TypeIds(files)
@@ -342,7 +342,7 @@ func TestCheckManifestFiles(t *testing.T) {
 	dir := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(dir, "files"), 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "files", "file-1.anyblock.json"),
-		[]byte(`{"version": 1, "kind": "file_object", "id": "file-1"}`), 0o644))
+		[]byte(`{"version": 2, "kind": "file_object", "id": "file-1"}`), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(dir, "files", "file-1.png"), []byte("bytes"), 0o644))
 	files, err := DiscoverJSONFiles(dir)
 	require.NoError(t, err)
@@ -395,10 +395,10 @@ func TestDiscoverJSONFiles_SkipsManifestBoundBlobs(t *testing.T) {
 		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
 		require.NoError(t, os.WriteFile(path, []byte(body), 0o644))
 	}
-	write("objects/home.json", `{"version": 1, "id": "home"}`)
-	write("files/data.anyblock.json", `{"version": 1, "kind": "file_object", "id": "data"}`)
+	write("objects/home.json", `{"version": 2, "id": "home"}`)
+	write("files/data.anyblock.json", `{"version": 2, "kind": "file_object", "id": "data"}`)
 	write("files/data.json", `{"whatever": "a JSON blob that is file CONTENT"}`)
-	write("index.json", `{"version": 1, "manifest": {"files": {"data": "files/data.json"}}}`)
+	write("index.json", `{"version": 2, "manifest": {"files": {"data": "files/data.json"}}}`)
 
 	files, err := DiscoverJSONFiles(dir)
 	require.NoError(t, err)
@@ -418,9 +418,9 @@ func TestDiscoverJSONFiles_SkipsManifestBoundBlobs(t *testing.T) {
 // train readers to ignore the warning.
 func TestUnboundFileDocuments(t *testing.T) {
 	files := writeDocs(t, map[string]string{
-		"files/bound.anyblock.json":   `{"version": 1, "kind": "file_object", "id": "bound"}`,
-		"files/unbound.anyblock.json": `{"version": 1, "kind": "file_object", "id": "unbound"}`,
-		"objects/page.json":           `{"version": 1, "id": "page"}`,
+		"files/bound.anyblock.json":   `{"version": 2, "kind": "file_object", "id": "bound"}`,
+		"files/unbound.anyblock.json": `{"version": 2, "kind": "file_object", "id": "unbound"}`,
+		"objects/page.json":           `{"version": 2, "id": "page"}`,
 	})
 
 	withMap := &anyblockjson.Index{Manifest: &anyblockjson.Manifest{
