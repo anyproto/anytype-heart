@@ -18,6 +18,7 @@ service ClientCommands {
     rpc AccountLocalLinkNewChallenge (anytype.Rpc.Account.LocalLink.NewChallenge.Request) returns (anytype.Rpc.Account.LocalLink.NewChallenge.Response);
     rpc AccountLocalLinkSolveChallenge (anytype.Rpc.Account.LocalLink.SolveChallenge.Request) returns (anytype.Rpc.Account.LocalLink.SolveChallenge.Response);
     rpc AccountLocalLinkCreateApp (anytype.Rpc.Account.LocalLink.CreateApp.Request) returns (anytype.Rpc.Account.LocalLink.CreateApp.Response);
+    rpc AccountLocalLinkUpdateApp (anytype.Rpc.Account.LocalLink.UpdateApp.Request) returns (anytype.Rpc.Account.LocalLink.UpdateApp.Response);
     rpc AccountLocalLinkListApps (anytype.Rpc.Account.LocalLink.ListApps.Request) returns (anytype.Rpc.Account.LocalLink.ListApps.Response);
     rpc AccountLocalLinkRevokeApp (anytype.Rpc.Account.LocalLink.RevokeApp.Request) returns (anytype.Rpc.Account.LocalLink.RevokeApp.Response);
 

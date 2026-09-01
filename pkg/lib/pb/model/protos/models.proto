@@ -732,14 +732,27 @@ message Account {
             string appName = 2; // either from process or specified manually when creating
             string appKey = 4;
             int64 createdAt = 5;
-            int64 expireAt = 6;
+            int64 expireAt = 6; // unix timestamp in seconds after which the key stops authenticating; 0 means the key never expires
             LocalApiScope scope = 7;
             bool isActive = 8;
+            AppGrant grant = 9; // unset means an unscoped (legacy) key; only JsonAPI-scope keys may carry one
         }
         enum LocalApiScope {
             Limited = 0; // Used in WebClipper; AccountSelect(to be deprecated), ObjectSearch, ObjectShow, ObjectCreate, ObjectCreateFromURL, BlockPreview, BlockPaste, BroadcastPayloadEvent
             JsonAPI = 1; // JSON API only, no direct grpc api calls allowed
             Full = 2; // Full access, not available via LocalLink
+        }
+        message AppGrant {
+            repeated string spaceIds = 1; // spaces the key may touch; must be non-empty
+            Perm perm = 2;
+            // Perm is nested so its Go constants (AccountAuthAppGrant_Read) can
+            // never be misread as the key scopes (AccountAuth_JsonAPI et al.) —
+            // grant verbs and key scopes are unrelated enums about different
+            // authorization layers.
+            enum Perm {
+                Read = 0; // the zero value is the narrowest permission, so an unset perm never widens
+                ReadWrite = 1;
+            }
         }
     }
 

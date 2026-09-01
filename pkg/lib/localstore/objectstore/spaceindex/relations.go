@@ -210,7 +210,15 @@ func (s *dsObjectStore) GetRelationFormatByKey(key domain.RelationKey) (model.Re
 	return model.RelationFormat(details.GetInt64(bundle.RelationKeyRelationFormat)), nil
 }
 
-// ListRelationOptions returns options for specific relation
+// ListRelationOptions returns options for specific relation.
+//
+// The explicit isUninstalled exclusion pins the corpse policy for options
+// the way livePropertyFilters does for relations (API v2 §8.41): a UI-deleted
+// option persists as {isUninstalled, isDeleted} plus full details, and until
+// this filter the injected `isDeleted != true` default was the SOLE thing
+// hiding it — any snapshot-shaped row carrying only isUninstalled (exports;
+// isDeleted is a local relation re-derived on load), or any future caller
+// suppressing the defaults, would have served deleted options as live.
 func (s *dsObjectStore) ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error) {
 	filters := []database.FilterRequest{
 		{
@@ -222,6 +230,11 @@ func (s *dsObjectStore) ListRelationOptions(relationKey domain.RelationKey) (opt
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			RelationKey: bundle.RelationKeyResolvedLayout,
 			Value:       domain.Int64(model.ObjectType_relationOption),
+		},
+		{
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			RelationKey: bundle.RelationKeyIsUninstalled,
+			Value:       domain.Bool(true),
 		},
 	}
 	records, err := s.Query(database.Query{

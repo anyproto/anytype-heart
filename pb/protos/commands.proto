@@ -790,6 +790,12 @@ message Rpc {
                 string token = 2;
                 string appToken = 3; // in case of mnemonic auth, need to be persisted by client
                 string accountId = 4; // temp, should be replaced with AccountInfo message
+                model.Account.Auth.LocalApiScope accountScope = 5; // scope of the session; for appKey auth it is the app link's scope
+                string appName = 6; // for appKey auth, the app name recorded when the app link was created
+                int64 appExpireAt = 7; // for appKey auth, the app link's expiration unix timestamp; 0 means the key never expires
+                model.Account.Auth.AppGrant grant = 8; // for appKey auth, the app link's grant; unset means an unscoped key
+                string appHash = 9; // for appKey auth, the app link's identity (the hash ListApps and RevokeApp use)
+                int64 appCreatedAt = 10; // for appKey auth, the app link's creation unix timestamp; 0 means unknown (pre-hash-era link)
 
                 message Error {
                     Code code = 1;
@@ -801,6 +807,7 @@ message Rpc {
                         BAD_INPUT = 2;
 
                         APP_TOKEN_NOT_FOUND_IN_THE_CURRENT_ACCOUNT = 101; // means the client logged into another account or the account directory has been cleaned
+                        APP_TOKEN_EXPIRED = 102; // the app link's expireAt has passed; the key must be re-issued
                     }
                 }
             }
@@ -1325,6 +1332,7 @@ message Rpc {
                 message Request {
                     string appName = 1; // just for info, not secure to rely on
                     model.Account.Auth.LocalApiScope scope = 2;
+                    model.Account.Auth.AppGrant requestedGrant = 3; // optional self-requested restriction, persisted on solve; grants only narrow, so requesting one is always fail-safe
                 }
 
                 message Response {
@@ -1412,6 +1420,30 @@ message Rpc {
                             NULL = 0;
                             UNKNOWN_ERROR = 1;
                             BAD_INPUT = 2;
+
+                            ACCOUNT_IS_NOT_RUNNING = 101;
+                        }
+                    }
+                }
+            }
+            message UpdateApp {
+                message Request {
+                    string appHash = 1;
+                    model.Account.Auth.AppGrant grant = 2; // the new grant; unset clears the scoping (widen-requires-re-consent is the caller's contract)
+                }
+
+                message Response {
+                    Error error = 1;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            NOT_FOUND = 3;
 
                             ACCOUNT_IS_NOT_RUNNING = 101;
                         }
@@ -9275,6 +9307,7 @@ message Rpc {
                 repeated model.ChatMessage messages = 2;
                 model.ChatState chatState = 3;
                 int32 messageCount = 4;  // Total number of non-deleted messages in the chat
+                int32 lifetimeMessageCount = 5;  // Total number of messages added since the chat was created, including deleted messages
                 message Error {
                     Code code = 1;
                     string description = 2;

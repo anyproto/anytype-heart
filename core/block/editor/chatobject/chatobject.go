@@ -472,9 +472,10 @@ func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string)
 }
 
 type GetMessagesResponse struct {
-	Messages     []*chatmodel.Message
-	ChatState    *model.ChatState
-	MessageCount int32
+	Messages             []*chatmodel.Message
+	ChatState            *model.ChatState
+	MessageCount         int32
+	LifetimeMessageCount int32
 }
 
 func (s *storeObject) GetMessages(ctx context.Context, req chatrepository.GetMessagesRequest) (*GetMessagesResponse, error) {
@@ -486,10 +487,15 @@ func (s *storeObject) GetMessages(ctx context.Context, req chatrepository.GetMes
 	state := s.subscription.GetChatState()
 	count := s.subscription.GetMessageCount()
 	s.subscription.Unlock()
+	lifetimeCount, err := s.repository.CountMessagesLifetime(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("count lifetime messages: %w", err)
+	}
 	return &GetMessagesResponse{
-		Messages:     msgs,
-		ChatState:    state,
-		MessageCount: count,
+		Messages:             msgs,
+		ChatState:            state,
+		MessageCount:         count,
+		LifetimeMessageCount: int32(lifetimeCount),
 	}, nil
 }
 

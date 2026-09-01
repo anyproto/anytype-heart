@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // TODO Decide what to do with it
@@ -85,4 +86,56 @@ func TestGetRelationById(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, relationutils.RelationFromDetails(relObject).Relation, got)
 	})
+}
+
+// TestListRelationOptionsExcludesRemovedOptions pins the corpse policy for
+// relation OPTIONS (API v2 §8.41-7): a UI-deleted option persists as
+// {isUninstalled, isDeleted} plus full details, and before the explicit
+// isUninstalled filter the injected `isDeleted != true` default was the SOLE
+// thing hiding it. The three store shapes of a deleted derived object all
+// run:
+//   - flag-only ({isUninstalled} alone — the shape a snapshot/export carries,
+//     isDeleted being local and re-derived on load) is the discriminating
+//     leg: it FAILS if the explicit filter is dropped, because nothing else
+//     excludes it;
+//   - prod ({isUninstalled, isDeleted}) is hidden by the injected default
+//     with or without the fix;
+//   - tombstone ({id, isDeleted}) has no relationKey and can never match the
+//     query at all.
+func TestListRelationOptionsExcludesRemovedOptions(t *testing.T) {
+	newOption := func(id string, extra ...domain.RelationKey) TestObject {
+		obj := TestObject{
+			bundle.RelationKeyId:             domain.String(id),
+			bundle.RelationKeyRelationKey:    domain.String("tag"),
+			bundle.RelationKeyName:           domain.String("option " + id),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+			bundle.RelationKeySpaceId:        domain.String("space1"),
+		}
+		for _, key := range extra {
+			obj[key] = domain.Bool(true)
+		}
+		return obj
+	}
+
+	s := NewStoreFixture(t)
+	s.AddObjects(t, []TestObject{
+		newOption("opt-live"),
+		newOption("opt-flag-only", bundle.RelationKeyIsUninstalled),
+		newOption("opt-prod", bundle.RelationKeyIsUninstalled, bundle.RelationKeyIsDeleted),
+		{
+			// the tombstone: id and isDeleted only — no relationKey, no layout
+			bundle.RelationKeyId:        domain.String("opt-tombstone"),
+			bundle.RelationKeySpaceId:   domain.String("space1"),
+			bundle.RelationKeyIsDeleted: domain.Bool(true),
+		},
+	})
+
+	options, err := s.ListRelationOptions(domain.RelationKey("tag"))
+	require.NoError(t, err)
+	ids := make([]string, 0, len(options))
+	for _, option := range options {
+		ids = append(ids, option.Id)
+	}
+	assert.Equal(t, []string{"opt-live"}, ids,
+		"only the live option serves — every removed shape is excluded")
 }
