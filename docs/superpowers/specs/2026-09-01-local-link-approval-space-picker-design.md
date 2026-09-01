@@ -328,15 +328,16 @@ one. It gets an explicit test (§9), not just a comment.
 
 ## 8. `whoami` and `ListApps`
 
-Under `allSpaces`, `whoami` returns `allSpaces: true` **and** enumerates the
-current spaces in `spaces[]`:
+Under `allSpaces`, `whoami` returns `all_spaces: true` **and** enumerates the
+current spaces in `spaces[]` (snake_case on the REST body — C2 is one
+vocabulary, and the conformance test enforces it):
 
 ```json
-"grant": { "scoped": true, "allSpaces": true, "permission": "readwrite",
+"grant": { "scoped": true, "all_spaces": true, "permission": "readwrite",
            "spaces": [ {"id": "…", "name": "Work", "permission": "readwrite"} ] }
 ```
 
-`allSpaces` is the boundary field; `spaces[]` is informational and is what lets
+`all_spaces` is the boundary field; `spaces[]` is informational and is what lets
 an agent map "put this in Work" to an id. Enumerating is not new disclosure — it
 is the same grant-intersected path `GET /v2/spaces` uses, and under `allSpaces`
 that is every space. The scoping spec's warning applies unchanged: no consumer

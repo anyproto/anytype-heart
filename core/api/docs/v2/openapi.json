@@ -1036,6 +1036,10 @@
       },
       "WhoamiGrant": {
         "properties": {
+          "all_spaces": {
+            "description": "the boundary field of an all-spaces grant: the key covers every space in the account, including spaces created later (the tech space excepted). When true, spaces enumerates the current live spaces and is informational only. Never infer the boundary from it",
+            "type": "boolean"
+          },
           "permission": {
             "description": "the compact form agents string-match on",
             "type": "string"
@@ -1238,7 +1242,7 @@
   "paths": {
     "/v2/auth/whoami": {
       "get": {
-        "description": "This describes the key, not a person; there is one account behind this API. Branch on `grant.scoped`. False is a legacy key with no space restriction, and its `spaces` list is empty rather than absent. True means the key reaches exactly the spaces listed, with the permission listed beside each one.",
+        "description": "This describes the key, not a person; there is one account behind this API. Branch on `grant.scoped`. False is a legacy key with no space restriction, and its `spaces` list is empty rather than absent. True means the key reaches exactly the spaces listed. When `grant.all_spaces` is true the key covers every space, including ones created later, and `spaces` is informational only.",
         "operationId": "auth_whoami",
         "parameters": [
           {

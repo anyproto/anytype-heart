@@ -60,14 +60,46 @@ func (s *Service) Whoami(ctx context.Context) (v2model.WhoamiResponse, error) {
 		return resp, nil
 	}
 
+	perms := grant.Perms
+	resp.Grant.Scoped = true
+	resp.Grant.AllSpaces = grant.AllSpaces
+	resp.Grant.Permission = &perms
+
+	if grant.AllSpaces {
+		// An all-spaces grant holds no space list, so spaces[] is the
+		// informational enumeration of the CURRENT live spaces — the same
+		// grant-intersected path GET /v2/spaces serves (liveSpaceRows, which
+		// under allSpaces is every live user space and never the tech
+		// space). allSpaces stays the boundary field: the enumeration lets
+		// an agent map "put this in Work" to an id, nothing more.
+		rows, err := s.liveSpaceRows(ctx)
+		if err != nil {
+			return v2model.WhoamiResponse{}, fmt.Errorf("enumerate spaces for the all-spaces grant echo: %w", err)
+		}
+		ids := make([]string, len(rows))
+		for i, row := range rows {
+			ids[i] = row.Id
+		}
+		refs := s.servedSpaceRefs(ctx, ids)
+		for _, row := range rows {
+			id := row.Id
+			if short, ok := refs[row.Id]; ok {
+				id = short
+			}
+			resp.Grant.Spaces = append(resp.Grant.Spaces, v2model.WhoamiGrantSpace{
+				Id:         id,
+				Name:       row.Name,
+				Permission: perms,
+			})
+		}
+		return resp, nil
+	}
+
 	names, refs, err := s.resolveGrantedSpaceNames(ctx, grant)
 	if err != nil {
 		return v2model.WhoamiResponse{}, fmt.Errorf("resolve granted space names: %w", err)
 	}
 
-	perms := grant.Perms
-	resp.Grant.Scoped = true
-	resp.Grant.Permission = &perms
 	for _, spaceId := range grant.Spaces {
 		// the id is served in the form GET /v2/spaces serves it to this
 		// request (§8.35, and §8.36's `?ids=full`). A granted space the

@@ -277,7 +277,14 @@ type WhoamiKey struct {
 // agent concludes it may touch every space). When Scoped is false, Spaces
 // is [] and Permission is null.
 type WhoamiGrant struct {
-	Scoped     bool               `json:"scoped"`
+	Scoped bool `json:"scoped"`
+	// AllSpaces is the boundary field of an all-spaces grant: the key covers
+	// every space in the account, including spaces created after the grant
+	// was made (the tech space excepted — it is never covered). When true,
+	// Spaces enumerates the CURRENT live spaces and is informational only —
+	// no consumer may infer the boundary from spaces[], its emptiness
+	// included.
+	AllSpaces  bool               `json:"all_spaces"`
 	Permission *string            `json:"permission"` // the compact form agents string-match on
 	Spaces     []WhoamiGrantSpace `json:"spaces"`
 }

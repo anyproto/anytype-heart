@@ -56,7 +56,7 @@ func TestWhoami(t *testing.T) {
 		want := fmt.Sprintf(`{
 			"key": {"id":"hash1","name":"Claude Desktop","created_at":"2023-11-14T22:13:20Z","expires_at":null},
 			"scope": "jsonApi",
-			"grant": {"scoped":true,"permission":"readwrite",
+			"grant": {"scoped":true,"all_spaces":false,"permission":"readwrite",
 			          "spaces":[{"id":"spaceA","name":"Work","permission":"readwrite"}]},
 			"api": {"version":%q},
 			"key_status": "scoped"
@@ -76,6 +76,43 @@ func TestWhoami(t *testing.T) {
 		assertNoRfc9745Headers(t, w)
 	})
 
+	t.Run("allSpaces key: the boundary flag plus the informational enumeration", func(t *testing.T) {
+		// given: two live spaces and an all-spaces grant — spaces[] lists
+		// them all (that is what lets an agent map a name to an id), and
+		// allSpaces carries the boundary
+		fx := newV2ServerFixture(t)
+		registerGrantTestSpace(t, fx, "spaceA", "Work")
+		registerGrantTestSpace(t, fx, "spaceB", "Personal")
+		fx.KeyToToken = map[string]ApiSessionEntry{
+			"allKey": {
+				Token: "tok", AppName: "Claude Desktop", Scope: model.AccountAuth_JsonAPI,
+				Grant: &util.ApiGrant{AllSpaces: true, Perms: util.GrantPermsReadWrite},
+				KeyId: "hash3",
+			},
+		}
+		fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
+
+		// when
+		w := serveWithKey(fx, "GET", "/v2/auth/whoami", "allKey")
+
+		// then
+		require.Equal(t, http.StatusOK, w.Code)
+		var got v2model.WhoamiResponse
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+		require.True(t, got.Grant.Scoped)
+		require.True(t, got.Grant.AllSpaces)
+		require.NotNil(t, got.Grant.Permission)
+		require.Equal(t, util.GrantPermsReadWrite, *got.Grant.Permission)
+		names := map[string]bool{}
+		for _, space := range got.Grant.Spaces {
+			names[space.Name] = true
+			require.Equal(t, util.GrantPermsReadWrite, space.Permission)
+		}
+		require.True(t, names["Work"] && names["Personal"],
+			"spaces[] must enumerate the current live spaces")
+		require.Equal(t, util.KeyStatusScoped, w.Header().Get(util.KeyStatusHeader))
+	})
+
 	t.Run("legacy key: scoped false, spaces [], permission null, the signal in the body", func(t *testing.T) {
 		// given: a nil-grant key. spaces MUST be [] and scoped an explicit
 		// false — spaces:null would eventually be misread fail-open.
@@ -91,7 +128,7 @@ func TestWhoami(t *testing.T) {
 		want := fmt.Sprintf(`{
 			"key": {"id":"hash2","name":"old-script","created_at":null,"expires_at":"2030-03-17T17:46:40Z"},
 			"scope": "jsonApi",
-			"grant": {"scoped":false,"permission":null,"spaces":[]},
+			"grant": {"scoped":false,"all_spaces":false,"permission":null,"spaces":[]},
 			"api": {"version":%q},
 			"key_status": "legacy",
 			"notice": %q
@@ -201,6 +238,7 @@ func TestWhoamiAgreesWithTheGate(t *testing.T) {
 	}{
 		{"read-only grant", &util.ApiGrant{Spaces: []string{"spaceA"}, Perms: util.GrantPermsRead}},
 		{"readwrite grant", &util.ApiGrant{Spaces: []string{"spaceA"}, Perms: util.GrantPermsReadWrite}},
+		{"allSpaces readwrite grant", &util.ApiGrant{AllSpaces: true, Perms: util.GrantPermsReadWrite}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// given
@@ -218,6 +256,9 @@ func TestWhoamiAgreesWithTheGate(t *testing.T) {
 			require.True(t, mirror.Grant.Scoped)
 			require.NotNil(t, mirror.Grant.Permission)
 
+			require.Equal(t, tc.grant.AllSpaces, mirror.Grant.AllSpaces,
+				"the mirror's boundary field must match the enforced grant")
+
 			claimed := map[string]bool{}
 			for _, space := range mirror.Grant.Spaces {
 				claimed[space.Id] = true
@@ -234,6 +275,16 @@ func TestWhoamiAgreesWithTheGate(t *testing.T) {
 						"whoami omits %s — the gate must refuse it", spaceId)
 					require.Contains(t, w.Body.String(), `"space_not_granted"`)
 				}
+			}
+
+			// under allSpaces the tech space stays outside the mirror AND
+			// outside the gate — the exclusion may never drift apart either
+			if mirror.Grant.AllSpaces {
+				require.False(t, claimed[mockedTechSpaceId],
+					"whoami must not enumerate the tech space")
+				techProbe := serveWithKey(fx, "GET", "/v2/spaces/"+mockedTechSpaceId+"/types", "scopedKey")
+				require.Equal(t, http.StatusForbidden, techProbe.Code,
+					"the gate must refuse the tech space under allSpaces")
 			}
 
 			// and the verb: a write probe on a granted space must be refused

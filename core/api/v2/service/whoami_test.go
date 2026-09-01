@@ -95,6 +95,34 @@ func TestWhoamiService(t *testing.T) {
 		}
 	})
 
+	t.Run("allSpaces key: boundary flag true, spaces enumerated from the live list", func(t *testing.T) {
+		// given: two live spaces, no space list in the grant — the
+		// enumeration is the same grant-intersected path GET /v2/spaces
+		// serves, which under allSpaces is every live user space
+		fx := newV2FixtureBare(t)
+		fx.registerNamedSpace(t, "spaceA", "Work")
+		fx.registerNamedSpace(t, "spaceB", "Personal")
+		grant := &util.ApiGrant{AllSpaces: true, Perms: util.GrantPermsReadWrite}
+		perms := util.GrantPermsReadWrite
+		want := v2model.WhoamiGrant{
+			Scoped:     true,
+			AllSpaces:  true,
+			Permission: &perms,
+			Spaces: []v2model.WhoamiGrantSpace{
+				{Id: "spaceA", Name: "Work", Permission: util.GrantPermsReadWrite},
+				{Id: "spaceB", Name: "Personal", Permission: util.GrantPermsReadWrite},
+			},
+		}
+
+		// when
+		got, err := fx.Whoami(whoamiCtx(keyInfo, grant))
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, got.Grant)
+		assert.Equal(t, util.KeyStatusScoped, got.KeyStatus)
+	})
+
 	t.Run("zero timestamps render null, set ones RFC 3339 UTC", func(t *testing.T) {
 		// given
 		fx := newV2FixtureBare(t)
