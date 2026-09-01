@@ -287,7 +287,7 @@ func accountLocalLinkNewChallengeErrorCode(err error) pb.RpcAccountLocalLinkNewC
 func (mw *Middleware) AccountLocalLinkNewChallenge(ctx context.Context, request *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse {
 	info := getClientInfo(ctx)
 	info.Name = request.AppName
-	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(request.Scope, &info, request.RequestedGrant)
+	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(request.Scope, &info, request.RequestedPerm)
 	code := accountLocalLinkNewChallengeErrorCode(err)
 
 	return &pb.RpcAccountLocalLinkNewChallengeResponse{
@@ -312,7 +312,7 @@ func (mw *Middleware) AccountLocalLinkApproveChallenge(ctx context.Context, req 
 	err := mw.rejectBrowserCaller(ctx)
 	if err == nil {
 		var challenge string
-		challenge, _, err = mw.applicationService.LinkLocalApproveChallenge(req.ProcessPath, req.Origin, req.Allow)
+		challenge, _, err = mw.applicationService.LinkLocalApproveChallenge(req.ProcessPath, req.Origin, req.Allow, req.Grant)
 		if err == nil {
 			return &pb.RpcAccountLocalLinkApproveChallengeResponse{
 				Challenge: challenge,
@@ -322,17 +322,29 @@ func (mw *Middleware) AccountLocalLinkApproveChallenge(ctx context.Context, req 
 			}
 		}
 	}
-	code := mapErrorCode(err,
-		errToCode(session.ErrNoPendingChallenge, pb.RpcAccountLocalLinkApproveChallengeResponseError_NO_PENDING_CHALLENGE),
-		errToCode(errBrowserCallerNotAllowed, pb.RpcAccountLocalLinkApproveChallengeResponseError_BAD_INPUT),
-		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkApproveChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),
-	)
+	code := accountLocalLinkApproveChallengeErrorCode(err)
 	return &pb.RpcAccountLocalLinkApproveChallengeResponse{
 		Error: &pb.RpcAccountLocalLinkApproveChallengeResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},
 	}
+}
+
+// accountLocalLinkApproveChallengeErrorCode maps the approval flow's errors,
+// its sibling of accountLocalLinkNewChallengeErrorCode. The grant rows are
+// load-bearing: every grant refusal from the approve path wraps
+// wallet.ErrInvalidGrant (a missing grant on a JsonAPI approval included), so
+// a desktop sending a malformed picker result gets BAD_INPUT — a permanent
+// input mistake — rather than code 1 UNKNOWN_ERROR.
+func accountLocalLinkApproveChallengeErrorCode(err error) pb.RpcAccountLocalLinkApproveChallengeResponseErrorCode {
+	return mapErrorCode(err,
+		errToCode(session.ErrNoPendingChallenge, pb.RpcAccountLocalLinkApproveChallengeResponseError_NO_PENDING_CHALLENGE),
+		errToCode(errBrowserCallerNotAllowed, pb.RpcAccountLocalLinkApproveChallengeResponseError_BAD_INPUT),
+		errToCode(walletComp.ErrInvalidGrant, pb.RpcAccountLocalLinkApproveChallengeResponseError_BAD_INPUT),
+		errToCode(application.ErrBadInput, pb.RpcAccountLocalLinkApproveChallengeResponseError_BAD_INPUT),
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkApproveChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
 }
 
 // errBrowserCallerNotAllowed rejects a request that came from a browser context.

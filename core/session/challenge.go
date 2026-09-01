@@ -9,6 +9,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"go.uber.org/atomic"
 
+	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -34,9 +35,12 @@ const (
 	// Since codes are only minted after approval, reaching this at all now
 	// requires the user to have approved the caller doing the guessing.
 	maxFailedChallengeSolves = 20
-	// pendingChallengeTTL is how long an unanswered prompt stays live. Short:
-	// the user is looking at it right now, or never will.
-	pendingChallengeTTL = time.Minute
+	// pendingChallengeTTL is how long an unanswered prompt stays live.
+	// Approval is a real interaction — read the caller, open a space list,
+	// select, confirm — so the window fits a user who has to think. The
+	// pending state holds no secret, so a longer window costs nothing but a
+	// stale prompt.
+	pendingChallengeTTL = 3 * time.Minute
 	// approvedChallengeTTL is how long a minted code stays usable, counted
 	// from approval. Long enough to read four digits off a screen and type
 	// them into another app.
@@ -92,16 +96,18 @@ type challenge struct {
 	// stateSince is when the challenge entered its current state, and is what
 	// the TTL is measured from.
 	stateSince time.Time
-	// requestedGrant is the restriction the pairing client asked for; it is
-	// persisted verbatim on solve. Grants only narrow, so honoring a
-	// self-requested restriction is fail-safe by monotonicity.
-	requestedGrant *model.AccountAuthAppGrant
+	// approvedGrant is the grant the USER chose in the approval prompt. It is
+	// set only by ApproveChallenge — nothing the pairing client sends can
+	// reach it — and it is persisted verbatim into the app link on solve,
+	// exactly like the code: minted at approve, never influenced by the
+	// solver.
+	approvedGrant *model.AccountAuthAppGrant
 }
 
 // StartNewChallenge registers a pairing request and returns its id. No code is
 // generated here: the request is pending until the user approves it through
 // ApproveChallenge, which is the only place a code is minted.
-func (s *service) StartNewChallenge(scope model.AccountAuthLocalApiScope, info *pb.EventAccountLinkApprovalRequestClientInfo, requestedGrant *model.AccountAuthAppGrant) (challengeId string, err error) {
+func (s *service) StartNewChallenge(scope model.AccountAuthLocalApiScope, info *pb.EventAccountLinkApprovalRequestClientInfo) (challengeId string, err error) {
 	switch scope {
 	case model.AccountAuth_Limited, model.AccountAuth_JsonAPI:
 		// full scope is not allowed via challenge
@@ -142,11 +148,10 @@ func (s *service) StartNewChallenge(scope model.AccountAuthLocalApiScope, info *
 
 	id := bson.NewObjectId().Hex()
 	s.challenges[id] = challenge{
-		clientInfo:     info,
-		scope:          scope,
-		state:          challengePending,
-		stateSince:     s.now(),
-		requestedGrant: requestedGrant,
+		clientInfo: info,
+		scope:      scope,
+		state:      challengePending,
+		stateSince: s.now(),
 	}
 	s.pendingByCaller[caller] = id
 
@@ -158,11 +163,12 @@ func (s *service) StartNewChallenge(scope model.AccountAuthLocalApiScope, info *
 // ApproveChallenge records the user's decision on the challenge pending for a
 // caller and, when allowed, mints the code and returns it. The code is only
 // ever returned here, never broadcast, so it reaches nothing but the session
-// that approved it.
+// that approved it. An allowed JsonAPI approval carries the user's grant,
+// which is stored beside the code and persisted verbatim on solve.
 //
 // The caller is addressed by the process path and origin the prompt displayed.
 // Only one challenge can be pending per caller, so the pair is unambiguous.
-func (s *service) ApproveChallenge(processPath, origin string, allow bool) (value string, clientInfo *pb.EventAccountLinkApprovalRequestClientInfo, err error) {
+func (s *service) ApproveChallenge(processPath, origin string, allow bool, grant *model.AccountAuthAppGrant) (value string, clientInfo *pb.EventAccountLinkApprovalRequestClientInfo, err error) {
 	caller := callerKey(&pb.EventAccountLinkApprovalRequestClientInfo{ProcessPath: processPath, Origin: origin})
 
 	s.lock.Lock()
@@ -178,9 +184,22 @@ func (s *service) ApproveChallenge(processPath, origin string, allow bool) (valu
 		delete(s.pendingByCaller, caller)
 		return "", nil, ErrNoPendingChallenge
 	}
+
+	if allow {
+		// The grant rules run BEFORE any state change, so a rejected grant
+		// leaves the challenge pending and the prompt answerable — the
+		// approving client fixes its input and calls again. They run here,
+		// not in the application layer, because only this record knows which
+		// scope the challenge carries.
+		if err = validateApprovalGrant(ch.scope, grant); err != nil {
+			return "", nil, fmt.Errorf("validate approval grant: %w", err)
+		}
+	}
+
 	delete(s.pendingByCaller, caller)
 
 	if !allow {
+		// A denial needs no scope: the grant is ignored entirely.
 		delete(s.challenges, id)
 		if isAttributable(caller) {
 			// Remember the refusal so this caller cannot make the user press
@@ -195,13 +214,34 @@ func (s *service) ApproveChallenge(processPath, origin string, allow bool) (valu
 	ch.value = fmt.Sprintf("%0*d", challengeDigits, rand.Intn(int(math.Pow10(challengeDigits))))
 	ch.state = challengeApproved
 	ch.stateSince = s.now()
+	ch.approvedGrant = grant
 	s.challenges[id] = ch
 	return ch.value, ch.clientInfo, nil
 }
 
+// validateApprovalGrant holds the scope-dependent grant rules of an allow
+// decision: a JsonAPI approval must carry a grant (a key with access to
+// nothing is a dead key that would read to its holder as a heart bug), a
+// Limited approval must not (grants are JsonAPI-only), and the grant's shape
+// is the wallet's single validation — exactly one of allSpaces and a
+// non-empty space list, known perms. Every refusal wraps
+// wallet.ErrInvalidGrant so the RPC layer maps them all to BAD_INPUT.
+func validateApprovalGrant(scope model.AccountAuthLocalApiScope, grant *model.AccountAuthAppGrant) error {
+	if scope == model.AccountAuth_JsonAPI && grant == nil {
+		return fmt.Errorf("%w: a JsonAPI approval requires a grant", wallet.ErrInvalidGrant)
+	}
+	if err := wallet.ValidateAppLinkGrant(wallet.AppLinkGrantFromProto(grant), scope); err != nil {
+		return fmt.Errorf("validate grant: %w", err)
+	}
+	return nil
+}
+
 // SolveChallenge verifies the 4-digit answer and, on success, mints a session
-// carrying the scope — and hands back the requested grant — the challenge was
-// created with. Unnamed results on purpose: a named `scope` return once
+// carrying the scope the challenge was created with — and hands back the
+// grant the USER approved. The solver has no vector to supply or widen a
+// grant: the request carries only the id and the answer, and the grant read
+// out here is the one ApproveChallenge stored. Unnamed results on purpose: a
+// named `scope` return once
 // shadowed `challenge.scope` here and the pairing session was silently minted
 // with the zero value (Limited) — see P0.1 in
 // docs/superpowers/specs/2026-08-06-api-key-scoping-design.md.
@@ -256,7 +296,7 @@ func (s *service) SolveChallenge(challengeId string, challengeSolution string, s
 	// user who mistyped earlier or pairs another device keeps working.
 	failedChallengeSolves.Store(0)
 	currentChallengesRequests.Store(0)
-	return challenge.clientInfo, sessionToken, challenge.scope, challenge.requestedGrant, nil
+	return challenge.clientInfo, sessionToken, challenge.scope, challenge.approvedGrant, nil
 }
 
 // SweepExpired drops challenges that outlived their TTL and returns the client

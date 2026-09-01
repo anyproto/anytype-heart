@@ -880,33 +880,34 @@ func TestChallengeFlowGrant(t *testing.T) {
 		return s, w, sender
 	}
 
-	t.Run("solve challenge persists the requested grant", func(t *testing.T) {
+	t.Run("solve persists the approved grant and forwards the requested perm", func(t *testing.T) {
 		// given: the full pairing flow against the real wallet and the real
-		// session service — this is how a CLI user gets a scoped key before
-		// any consent picker exists
+		// session service
 		s, w, sender := newChallengeService(t)
-		requested := testProtoGrant()
 
-		var broadcastGrant *model.AccountAuthAppGrant
+		var broadcastPerm model.AccountAuthAppGrantPerm
 		var broadcastInfo *pb.EventAccountLinkApprovalRequestClientInfo
 		sender.EXPECT().Broadcast(mock.Anything).Run(func(ev *pb.Event) {
 			for _, msg := range ev.Messages {
 				if ch := msg.GetAccountLinkApprovalRequest(); ch != nil {
-					broadcastGrant = ch.RequestedGrant
+					broadcastPerm = ch.RequestedPerm
 					broadcastInfo = ch.ClientInfo
 				}
 			}
 		}).Return()
 
 		clientInfo := &pb.EventAccountLinkApprovalRequestClientInfo{Name: "cli-grant", ProcessPath: "/usr/bin/cli-grant"}
-		challengeId, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, clientInfo, requested)
+		challengeId, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, clientInfo, model.AccountAuthAppGrant_ReadWrite)
 		require.NoError(t, err)
-		// the consent picker sees exactly what was requested, and no code
-		require.Equal(t, requested, broadcastGrant)
+		// the prompt sees the app's claimed need — a pre-fill, never a
+		// ceiling — and no code
+		require.Equal(t, model.AccountAuthAppGrant_ReadWrite, broadcastPerm)
 		require.NotNil(t, broadcastInfo)
 
-		// the code exists only once the user approves
-		challengeValue, _, err := s.LinkLocalApproveChallenge(clientInfo.ProcessPath, "", true)
+		// the code exists only once the user approves, and the approval
+		// carries the USER's grant
+		approvedGrant := testProtoGrant()
+		challengeValue, _, err := s.LinkLocalApproveChallenge(clientInfo.ProcessPath, "", true, approvedGrant)
 		require.NoError(t, err)
 		require.NotEmpty(t, challengeValue)
 
@@ -916,7 +917,8 @@ func TestChallengeFlowGrant(t *testing.T) {
 			Answer:      challengeValue,
 		})
 
-		// then: the persisted key carries the grant and the new key format
+		// then: the persisted key carries the approved grant and the new key
+		// format
 		require.NoError(t, err)
 		require.True(t, strings.HasPrefix(appKey, "anytype_"), "challenge-issued JsonAPI keys must mint the new format, got %q", appKey)
 		link, err := w.ReadAppLink(appKey)
@@ -926,17 +928,79 @@ func TestChallengeFlowGrant(t *testing.T) {
 		apps, err := s.LinkLocalListApps()
 		require.NoError(t, err)
 		require.Len(t, apps, 1)
-		assert.Equal(t, requested, apps[0].Grant)
+		assert.Equal(t, approvedGrant, apps[0].Grant)
 	})
 
-	t.Run("challenge without grant persists an unscoped key", func(t *testing.T) {
+	t.Run("an allSpaces approval persists the flag, and the requested perm is no ceiling", func(t *testing.T) {
+		// given: the app asked for read only
+		s, w, sender := newChallengeService(t)
+		sender.EXPECT().Broadcast(mock.Anything).Return()
+		clientInfo := &pb.EventAccountLinkApprovalRequestClientInfo{Name: "cli-all", ProcessPath: "/usr/bin/cli-all"}
+		challengeId, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, clientInfo, model.AccountAuthAppGrant_Read)
+		require.NoError(t, err)
+
+		// when: the user approves readwrite over all spaces anyway — the
+		// human minting the credential is the authority
+		want := &model.AccountAuthAppGrant{AllSpaces: true, Perm: model.AccountAuthAppGrant_ReadWrite}
+		challengeValue, _, err := s.LinkLocalApproveChallenge(clientInfo.ProcessPath, "", true, want)
+		require.NoError(t, err)
+		_, appKey, err := s.LinkLocalSolveChallenge(&pb.RpcAccountLocalLinkSolveChallengeRequest{
+			ChallengeId: challengeId,
+			Answer:      challengeValue,
+		})
+
+		// then
+		require.NoError(t, err)
+		link, err := w.ReadAppLink(appKey)
+		require.NoError(t, err)
+		require.NotNil(t, link.Grant)
+		assert.True(t, link.Grant.AllSpaces)
+		assert.Empty(t, link.Grant.Spaces)
+		assert.Equal(t, walletComp.AppLinkPermsReadWrite, link.Grant.Perms)
+	})
+
+	t.Run("a JsonAPI approval without a grant is refused and stays answerable", func(t *testing.T) {
 		// given
 		s, w, sender := newChallengeService(t)
 		sender.EXPECT().Broadcast(mock.Anything).Return()
-		clientInfo := &pb.EventAccountLinkApprovalRequestClientInfo{Name: "cli-plain", ProcessPath: "/usr/bin/cli-plain"}
-		challengeId, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, clientInfo, nil)
+		clientInfo := &pb.EventAccountLinkApprovalRequestClientInfo{Name: "cli-empty", ProcessPath: "/usr/bin/cli-empty"}
+		challengeId, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, clientInfo, model.AccountAuthAppGrant_Read)
 		require.NoError(t, err)
-		challengeValue, _, err := s.LinkLocalApproveChallenge(clientInfo.ProcessPath, "", true)
+
+		// when: allow arrives with no grant — a key with access to nothing
+		// would be a dead key
+		_, _, err = s.LinkLocalApproveChallenge(clientInfo.ProcessPath, "", true, nil)
+
+		// then: refused as invalid input...
+		require.ErrorIs(t, err, walletComp.ErrInvalidGrant)
+
+		// ...the prompt stays answerable, and the corrected approval mints
+		challengeValue, _, err := s.LinkLocalApproveChallenge(clientInfo.ProcessPath, "", true, testProtoGrant())
+		require.NoError(t, err)
+		_, appKey, err := s.LinkLocalSolveChallenge(&pb.RpcAccountLocalLinkSolveChallengeRequest{
+			ChallengeId: challengeId,
+			Answer:      challengeValue,
+		})
+		require.NoError(t, err)
+		link, err := w.ReadAppLink(appKey)
+		require.NoError(t, err)
+		assert.Equal(t, testWalletGrant(), link.Grant)
+	})
+
+	t.Run("a Limited approval carries no grant and mints an unscoped key", func(t *testing.T) {
+		// given: the webclipper prompt is a plain Allow/Deny
+		s, w, sender := newChallengeService(t)
+		sender.EXPECT().Broadcast(mock.Anything).Return()
+		clientInfo := &pb.EventAccountLinkApprovalRequestClientInfo{Name: "clipper", ProcessPath: "/usr/bin/clipper"}
+		challengeId, err := s.LinkLocalStartNewChallenge(model.AccountAuth_Limited, clientInfo, model.AccountAuthAppGrant_Read)
+		require.NoError(t, err)
+
+		// a grant on a Limited challenge is refused...
+		_, _, err = s.LinkLocalApproveChallenge(clientInfo.ProcessPath, "", true, testProtoGrant())
+		require.ErrorIs(t, err, walletComp.ErrInvalidGrant)
+
+		// ...while the plain approval passes
+		challengeValue, _, err := s.LinkLocalApproveChallenge(clientInfo.ProcessPath, "", true, nil)
 		require.NoError(t, err)
 
 		// when
@@ -950,29 +1014,6 @@ func TestChallengeFlowGrant(t *testing.T) {
 		link, err := w.ReadAppLink(appKey)
 		require.NoError(t, err)
 		assert.Nil(t, link.Grant)
-	})
-
-	t.Run("invalid requested grant is refused before the challenge exists", func(t *testing.T) {
-		// given: no Broadcast expectation — an invalid grant must fail before
-		// the user is shown a code
-		s, _, _ := newChallengeService(t)
-
-		// when: a grant with no spaces
-		_, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, &pb.EventAccountLinkApprovalRequestClientInfo{Name: "cli-bad"}, &model.AccountAuthAppGrant{Perm: model.AccountAuthAppGrant_Read})
-
-		// then
-		require.ErrorIs(t, err, walletComp.ErrInvalidGrant)
-	})
-
-	t.Run("requested grant on a Limited challenge is refused", func(t *testing.T) {
-		// given
-		s, _, _ := newChallengeService(t)
-
-		// when
-		_, err := s.LinkLocalStartNewChallenge(model.AccountAuth_Limited, &pb.EventAccountLinkApprovalRequestClientInfo{Name: "clipper"}, testProtoGrant())
-
-		// then
-		require.ErrorIs(t, err, walletComp.ErrInvalidGrant)
 	})
 
 	t.Run("a nameless challenge is refused before the code is shown", func(t *testing.T) {
@@ -991,7 +1032,7 @@ func TestChallengeFlowGrant(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				s, _, _ := newChallengeService(t)
 
-				_, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, tc.info, nil)
+				_, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, tc.info, model.AccountAuthAppGrant_Read)
 
 				require.ErrorIs(t, err, ErrBadInput)
 				require.ErrorContains(t, err, "app name is required")
@@ -1008,7 +1049,7 @@ func TestChallengeFlowGrant(t *testing.T) {
 		sender.EXPECT().Broadcast(mock.Anything).Return()
 
 		challengeId, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI,
-			&pb.EventAccountLinkApprovalRequestClientInfo{ProcessName: "SomeApp.exe"}, nil)
+			&pb.EventAccountLinkApprovalRequestClientInfo{ProcessName: "SomeApp.exe"}, model.AccountAuthAppGrant_Read)
 
 		require.NoError(t, err)
 		require.NotEmpty(t, challengeId)
@@ -1031,7 +1072,7 @@ func TestChallengeFlowGrant(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				s, _, _ := newChallengeService(t)
 
-				_, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, tc.info, nil)
+				_, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, tc.info, model.AccountAuthAppGrant_Read)
 
 				require.ErrorIs(t, err, ErrBadInput)
 				require.ErrorContains(t, err, "app name exceeds")
@@ -1046,7 +1087,7 @@ func TestChallengeFlowGrant(t *testing.T) {
 			sender.EXPECT().Broadcast(mock.Anything).Return()
 
 			challengeId, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI,
-				&pb.EventAccountLinkApprovalRequestClientInfo{Name: "Fine", ProcessName: tooLong}, nil)
+				&pb.EventAccountLinkApprovalRequestClientInfo{Name: "Fine", ProcessName: tooLong}, model.AccountAuthAppGrant_Read)
 
 			require.NoError(t, err)
 			require.NotEmpty(t, challengeId)

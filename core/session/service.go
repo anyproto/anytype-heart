@@ -52,9 +52,9 @@ const CName = "session"
 type Service interface {
 	StartSession(privKey []byte, scope model.AccountAuthLocalApiScope) (string, error)
 	ValidateToken(privKey []byte, token string) (model.AccountAuthLocalApiScope, error)
-	StartNewChallenge(scope model.AccountAuthLocalApiScope, info *pb.EventAccountLinkApprovalRequestClientInfo, requestedGrant *model.AccountAuthAppGrant) (id string, err error)
-	ApproveChallenge(processPath string, origin string, allow bool) (value string, clientInfo *pb.EventAccountLinkApprovalRequestClientInfo, err error)
-	SolveChallenge(challengeId string, challengeSolution string, signingKey []byte) (clientInfo *pb.EventAccountLinkApprovalRequestClientInfo, token string, scope model.AccountAuthLocalApiScope, requestedGrant *model.AccountAuthAppGrant, err error)
+	StartNewChallenge(scope model.AccountAuthLocalApiScope, info *pb.EventAccountLinkApprovalRequestClientInfo) (id string, err error)
+	ApproveChallenge(processPath string, origin string, allow bool, grant *model.AccountAuthAppGrant) (value string, clientInfo *pb.EventAccountLinkApprovalRequestClientInfo, err error)
+	SolveChallenge(challengeId string, challengeSolution string, signingKey []byte) (clientInfo *pb.EventAccountLinkApprovalRequestClientInfo, token string, scope model.AccountAuthLocalApiScope, approvedGrant *model.AccountAuthAppGrant, err error)
 	SweepExpired() []*pb.EventAccountLinkApprovalRequestClientInfo
 
 	CloseSession(token string) error

@@ -1332,7 +1332,20 @@ message Rpc {
                 message Request {
                     string appName = 1; // just for info, not secure to rely on
                     model.Account.Auth.LocalApiScope scope = 2;
-                    model.Account.Auth.AppGrant requestedGrant = 3; // optional self-requested restriction, persisted on solve; grants only narrow, so requesting one is always fail-safe
+                    // requestedGrant (3) is gone: an app cannot know space ids
+                    // before pairing, so a space-listed request was
+                    // unimplementable by the clients the field existed for.
+                    // The grant is the USER's decision now, collected by the
+                    // approval prompt — see ApproveChallenge.grant.
+                    reserved 3;
+                    reserved "requestedGrant";
+                    // the permission the app declares it needs. It pre-fills
+                    // the approval prompt's permission control and is never a
+                    // ceiling — the human approving decides. Read is the zero
+                    // value, so "asked for read" and "asked for nothing" are
+                    // indistinguishable by design (both render the safe
+                    // default).
+                    model.Account.Auth.AppGrant.Perm requestedPerm = 4;
                 }
 
                 message Response {
@@ -1403,6 +1416,12 @@ message Rpc {
                     string processPath = 1;
                     string origin = 2;
                     bool allow = 3;
+                    // the user's grant decision, persisted verbatim into the
+                    // app link on solve. Required when allow is true and the
+                    // challenge scope is JsonAPI, forbidden otherwise —
+                    // BAD_INPUT either way around. Ignored when allow is
+                    // false.
+                    model.Account.Auth.AppGrant grant = 4;
                 }
 
                 message Response {

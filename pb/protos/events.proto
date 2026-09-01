@@ -254,7 +254,15 @@ message Event {
       }
       ClientInfo clientInfo = 2;
       model.Account.Auth.LocalApiScope scope = 3;
-      model.Account.Auth.AppGrant requestedGrant = 4; // the restriction the client asked for; the consent picker displays it and may narrow it further
+      // requestedGrant (4) is gone — the grant is the user's decision now,
+      // collected by the approval prompt (ApproveChallenge.grant).
+      reserved 4;
+      reserved "requestedGrant";
+      // the permission the app claims to need; pre-fills the prompt's
+      // permission control. Untrusted like `name`, and never a ceiling — the
+      // human approving decides. Read is the zero value, so a read claim is
+      // indistinguishable from no claim (both render the safe default).
+      model.Account.Auth.AppGrant.Perm requestedPerm = 5;
     }
 
     // LinkApprovalHide takes a pending prompt off screen once it is answered,

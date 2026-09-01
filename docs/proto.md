@@ -4115,6 +4115,7 @@ limitedScopeMethods, so authorization admits full scope alone.
 | processPath | [string](#string) |  | both taken verbatim from the ClientInfo of the LinkApprovalRequest event being answered; either may be empty |
 | origin | [string](#string) |  |  |
 | allow | [bool](#bool) |  |  |
+| grant | [model.Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant) |  | the user&#39;s grant decision, persisted verbatim into the app link on solve. Required when allow is true and the challenge scope is JsonAPI, forbidden otherwise — BAD_INPUT either way around. Ignored when allow is false. |
 
 
 
@@ -4282,7 +4283,7 @@ limitedScopeMethods, so authorization admits full scope alone.
 | ----- | ---- | ----- | ----------- |
 | appName | [string](#string) |  | just for info, not secure to rely on |
 | scope | [model.Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  |  |
-| requestedGrant | [model.Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant) |  | optional self-requested restriction, persisted on solve; grants only narrow, so requesting one is always fail-safe |
+| requestedPerm | [model.Account.Auth.AppGrant.Perm](#anytype-model-Account-Auth-AppGrant-Perm) |  | the permission the app declares it needs. It pre-fills the approval prompt&#39;s permission control and is never a ceiling — the human approving decides. Read is the zero value, so &#34;asked for read&#34; and &#34;asked for nothing&#34; are indistinguishable by design (both render the safe default). |
 
 
 
@@ -30464,7 +30465,7 @@ the code to every session.
 | ----- | ---- | ----- | ----------- |
 | clientInfo | [Event.Account.LinkApprovalRequest.ClientInfo](#anytype-Event-Account-LinkApprovalRequest-ClientInfo) |  |  |
 | scope | [model.Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  |  |
-| requestedGrant | [model.Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant) |  | the restriction the client asked for; the consent picker displays it and may narrow it further |
+| requestedPerm | [model.Account.Auth.AppGrant.Perm](#anytype-model-Account-Auth-AppGrant-Perm) |  | the permission the app claims to need; pre-fills the prompt&#39;s permission control. Untrusted like `name`, and never a ceiling — the human approving decides. Read is the zero value, so a read claim is indistinguishable from no claim (both render the safe default). |
 
 
 

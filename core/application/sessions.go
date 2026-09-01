@@ -214,17 +214,13 @@ func (s *Service) ValidateSessionToken(token string) (model.AccountAuthLocalApiS
 	return s.sessions.ValidateToken(s.sessionSigningKey, token)
 }
 
-func (s *Service) LinkLocalStartNewChallenge(scope model.AccountAuthLocalApiScope, clientInfo *pb.EventAccountLinkApprovalRequestClientInfo, requestedGrant *model.AccountAuthAppGrant) (id string, err error) {
+func (s *Service) LinkLocalStartNewChallenge(scope model.AccountAuthLocalApiScope, clientInfo *pb.EventAccountLinkApprovalRequestClientInfo, requestedPerm model.AccountAuthAppGrantPerm) (id string, err error) {
 	if s.app == nil {
 		return "", ErrApplicationIsNotRunning
 	}
-	// Validate the requested grant before the challenge exists: an invalid one
-	// would otherwise surface only at persist time, after the user already
-	// typed the code. The same validation runs again inside the wallet when
-	// the solved challenge persists.
-	if err = walletComp.ValidateAppLinkGrant(walletComp.AppLinkGrantFromProto(requestedGrant), scope); err != nil {
-		return "", fmt.Errorf("validate requested grant: %w", err)
-	}
+	// requestedPerm needs no validation: it is an enum the prompt merely
+	// renders as a pre-fill, never a ceiling — the grant itself is the
+	// user's decision, collected and validated at ApproveChallenge.
 	// A key needs a name (APIV2_OBJECT_DELETE.md §5/§11.7): the app name IS
 	// creation provenance (stamped raw, compared exactly), and a nameless
 	// key would create objects it can never delete. Refused before the
@@ -247,7 +243,7 @@ func (s *Service) LinkLocalStartNewChallenge(scope model.AccountAuthLocalApiScop
 	}
 	s.hideExpiredChallenges()
 
-	id, err = s.sessions.StartNewChallenge(scope, clientInfo, requestedGrant)
+	id, err = s.sessions.StartNewChallenge(scope, clientInfo)
 	if err != nil {
 		return "", fmt.Errorf("start new challenge: %w", err)
 	}
@@ -258,23 +254,26 @@ func (s *Service) LinkLocalStartNewChallenge(scope model.AccountAuthLocalApiScop
 	// through LinkLocalCreateApp instead of pairing.
 	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfAccountLinkApprovalRequest{
 		AccountLinkApprovalRequest: &pb.EventAccountLinkApprovalRequest{
-			ClientInfo:     clientInfo,
-			Scope:          scope,
-			RequestedGrant: requestedGrant,
+			ClientInfo:    clientInfo,
+			Scope:         scope,
+			RequestedPerm: requestedPerm,
 		},
 	}))
 	return id, nil
 }
 
 // LinkLocalApproveChallenge records the user's decision and, when allowed,
-// returns the freshly minted code to this caller alone. On refusal the prompt is
-// hidden and the caller is remembered as denied for the rest of the run.
-func (s *Service) LinkLocalApproveChallenge(processPath string, origin string, allow bool) (challenge string, clientInfo *pb.EventAccountLinkApprovalRequestClientInfo, err error) {
+// returns the freshly minted code to this caller alone. An allowed JsonAPI
+// approval carries the user's grant (validated against the challenge's scope
+// inside the session service, which is the layer that knows it). On refusal
+// the prompt is hidden and the caller is remembered as denied for the rest of
+// the run.
+func (s *Service) LinkLocalApproveChallenge(processPath string, origin string, allow bool, grant *model.AccountAuthAppGrant) (challenge string, clientInfo *pb.EventAccountLinkApprovalRequestClientInfo, err error) {
 	if s.app == nil {
 		return "", nil, ErrApplicationIsNotRunning
 	}
 
-	challenge, clientInfo, err = s.sessions.ApproveChallenge(processPath, origin, allow)
+	challenge, clientInfo, err = s.sessions.ApproveChallenge(processPath, origin, allow, grant)
 	if err != nil {
 		return "", nil, err
 	}
@@ -305,7 +304,7 @@ func (s *Service) LinkLocalSolveChallenge(req *pb.RpcAccountLocalLinkSolveChalle
 		return "", "", ErrApplicationIsNotRunning
 	}
 	s.hideExpiredChallenges()
-	clientInfo, token, scope, requestedGrant, err := s.sessions.SolveChallenge(req.ChallengeId, req.Answer, s.sessionSigningKey)
+	clientInfo, token, scope, approvedGrant, err := s.sessions.SolveChallenge(req.ChallengeId, req.Answer, s.sessionSigningKey)
 	if err != nil {
 		return "", "", fmt.Errorf("solve challenge: %w", err)
 	}
@@ -315,12 +314,12 @@ func (s *Service) LinkLocalSolveChallenge(req *pb.RpcAccountLocalLinkSolveChalle
 	if name == "" {
 		name = clientInfo.ProcessName
 	}
-	// The challenge path never sets an expiry (expireAt=0): a default lifetime
-	// is a product decision deferred until the consent picker exists. The
-	// requested grant is persisted as-is: grants only narrow, so a
-	// self-requested restriction is fail-safe by monotonicity — this is how
-	// CLI users get scoped keys before any consent picker exists.
-	appInfo, err := wallet.PersistAppLink(name, scope, 0, walletComp.AppLinkGrantFromProto(requestedGrant))
+	// The challenge path never sets an expiry (expireAt=0): a default
+	// lifetime remains a product decision for the desktop. The grant is the
+	// one the USER approved, read from the challenge record — the solver has
+	// no vector to supply or widen it (its request carries only the id and
+	// the answer), which is the property that makes the picker meaningful.
+	appInfo, err := wallet.PersistAppLink(name, scope, 0, walletComp.AppLinkGrantFromProto(approvedGrant))
 	if err != nil {
 		return token, appKey, fmt.Errorf("persist app link: %w", err)
 	}

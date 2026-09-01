@@ -82,7 +82,7 @@ func TestLinkLocalStartNewChallenge_EventCarriesNoCode(t *testing.T) {
 	}
 
 	// when
-	_, err := fx.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, clientInfo, nil)
+	_, err := fx.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, clientInfo, model.AccountAuthAppGrant_Read)
 
 	// then the client is told who is asking. The event exists only to request
 	// approval, so its arrival is the signal — there is no needApprove flag and
@@ -114,12 +114,12 @@ func TestLinkLocalApproveChallenge(t *testing.T) {
 		// given
 		fx := newLinkFixture(t)
 		info := clientInfo()
-		id, err := fx.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, info, nil)
+		id, err := fx.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, info, model.AccountAuthAppGrant_Read)
 		require.NoError(t, err)
 		before := len(fx.events)
 
 		// when
-		code, hidden, err := fx.LinkLocalApproveChallenge(info.ProcessPath, info.Origin, true)
+		code, hidden, err := fx.LinkLocalApproveChallenge(info.ProcessPath, info.Origin, true, testProtoGrant())
 
 		// then the code comes back in the response...
 		require.NoError(t, err)
@@ -147,11 +147,11 @@ func TestLinkLocalApproveChallenge(t *testing.T) {
 		// given
 		fx := newLinkFixture(t)
 		info := clientInfo()
-		_, err := fx.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, info, nil)
+		_, err := fx.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, info, model.AccountAuthAppGrant_Read)
 		require.NoError(t, err)
 
 		// when
-		code, _, err := fx.LinkLocalApproveChallenge(info.ProcessPath, info.Origin, false)
+		code, _, err := fx.LinkLocalApproveChallenge(info.ProcessPath, info.Origin, false, nil)
 
 		// then
 		require.NoError(t, err)
@@ -161,14 +161,14 @@ func TestLinkLocalApproveChallenge(t *testing.T) {
 		assert.Equal(t, info, hides[0].ClientInfo)
 
 		// ...and the caller cannot make the user press Deny again
-		_, err = fx.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, info, nil)
+		_, err = fx.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, info, model.AccountAuthAppGrant_Read)
 		assert.ErrorIs(t, err, session.ErrChallengeDenied)
 	})
 
 	t.Run("nothing pending", func(t *testing.T) {
 		fx := newLinkFixture(t)
 
-		_, _, err := fx.LinkLocalApproveChallenge("", "chrome-extension://stranger", true)
+		_, _, err := fx.LinkLocalApproveChallenge("", "chrome-extension://stranger", true, testProtoGrant())
 
 		assert.ErrorIs(t, err, session.ErrNoPendingChallenge)
 	})
@@ -176,7 +176,7 @@ func TestLinkLocalApproveChallenge(t *testing.T) {
 	t.Run("app not running", func(t *testing.T) {
 		s := New()
 
-		_, _, err := s.LinkLocalApproveChallenge("", "chrome-extension://abc", true)
+		_, _, err := s.LinkLocalApproveChallenge("", "chrome-extension://abc", true, testProtoGrant())
 
 		assert.ErrorIs(t, err, ErrApplicationIsNotRunning)
 	})
