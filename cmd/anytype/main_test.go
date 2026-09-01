@@ -104,7 +104,7 @@ func TestVerbFlagsFromToolTable(t *testing.T) {
 		tool, _ := wrapper.ToolByVerb("set-properties")
 		_, _, err := parseVerbFlags(tool, []string{"--object", "1", "--set", "status=Done"}, io.Discard)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), `expected a JSON object, e.g. '{"status":"Done"}'`)
+		assert.Contains(t, err.Error(), `expected a JSON object, e.g. '{"Status":"Done"}'`)
 	})
 
 	t.Run("positional arguments are rejected with steering", func(t *testing.T) {

@@ -117,6 +117,10 @@
     - [Rpc.Account.LocalLink.SolveChallenge.Request](#anytype-Rpc-Account-LocalLink-SolveChallenge-Request)
     - [Rpc.Account.LocalLink.SolveChallenge.Response](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response)
     - [Rpc.Account.LocalLink.SolveChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error)
+    - [Rpc.Account.LocalLink.UpdateApp](#anytype-Rpc-Account-LocalLink-UpdateApp)
+    - [Rpc.Account.LocalLink.UpdateApp.Request](#anytype-Rpc-Account-LocalLink-UpdateApp-Request)
+    - [Rpc.Account.LocalLink.UpdateApp.Response](#anytype-Rpc-Account-LocalLink-UpdateApp-Response)
+    - [Rpc.Account.LocalLink.UpdateApp.Response.Error](#anytype-Rpc-Account-LocalLink-UpdateApp-Response-Error)
     - [Rpc.Account.Migrate](#anytype-Rpc-Account-Migrate)
     - [Rpc.Account.Migrate.Request](#anytype-Rpc-Account-Migrate-Request)
     - [Rpc.Account.Migrate.Response](#anytype-Rpc-Account-Migrate-Response)
@@ -1552,6 +1556,7 @@
     - [Rpc.Account.LocalLink.NewChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error-Code)
     - [Rpc.Account.LocalLink.RevokeApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-RevokeApp-Response-Error-Code)
     - [Rpc.Account.LocalLink.SolveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error-Code)
+    - [Rpc.Account.LocalLink.UpdateApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-UpdateApp-Response-Error-Code)
     - [Rpc.Account.Migrate.Response.Error.Code](#anytype-Rpc-Account-Migrate-Response-Error-Code)
     - [Rpc.Account.MigrateCancel.Response.Error.Code](#anytype-Rpc-Account-MigrateCancel-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
@@ -2159,6 +2164,7 @@
 - [pkg/lib/pb/model/protos/models.proto](#pkg_lib_pb_model_protos_models-proto)
     - [Account](#anytype-model-Account)
     - [Account.Auth](#anytype-model-Account-Auth)
+    - [Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant)
     - [Account.Auth.AppInfo](#anytype-model-Account-Auth-AppInfo)
     - [Account.Config](#anytype-model-Account-Config)
     - [Account.Info](#anytype-model-Account-Info)
@@ -2284,6 +2290,7 @@
     - [SmartBlockSnapshotBase](#anytype-model-SmartBlockSnapshotBase)
     - [SpaceObjectHeader](#anytype-model-SpaceObjectHeader)
   
+    - [Account.Auth.AppGrant.Perm](#anytype-model-Account-Auth-AppGrant-Perm)
     - [Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope)
     - [Account.StatusType](#anytype-model-Account-StatusType)
     - [Block.Align](#anytype-model-Block-Align)
@@ -2392,6 +2399,7 @@
 | AccountLocalLinkNewChallenge | [Rpc.Account.LocalLink.NewChallenge.Request](#anytype-Rpc-Account-LocalLink-NewChallenge-Request) | [Rpc.Account.LocalLink.NewChallenge.Response](#anytype-Rpc-Account-LocalLink-NewChallenge-Response) |  |
 | AccountLocalLinkSolveChallenge | [Rpc.Account.LocalLink.SolveChallenge.Request](#anytype-Rpc-Account-LocalLink-SolveChallenge-Request) | [Rpc.Account.LocalLink.SolveChallenge.Response](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response) |  |
 | AccountLocalLinkCreateApp | [Rpc.Account.LocalLink.CreateApp.Request](#anytype-Rpc-Account-LocalLink-CreateApp-Request) | [Rpc.Account.LocalLink.CreateApp.Response](#anytype-Rpc-Account-LocalLink-CreateApp-Response) |  |
+| AccountLocalLinkUpdateApp | [Rpc.Account.LocalLink.UpdateApp.Request](#anytype-Rpc-Account-LocalLink-UpdateApp-Request) | [Rpc.Account.LocalLink.UpdateApp.Response](#anytype-Rpc-Account-LocalLink-UpdateApp-Response) |  |
 | AccountLocalLinkListApps | [Rpc.Account.LocalLink.ListApps.Request](#anytype-Rpc-Account-LocalLink-ListApps-Request) | [Rpc.Account.LocalLink.ListApps.Response](#anytype-Rpc-Account-LocalLink-ListApps-Response) |  |
 | AccountLocalLinkRevokeApp | [Rpc.Account.LocalLink.RevokeApp.Request](#anytype-Rpc-Account-LocalLink-RevokeApp-Request) | [Rpc.Account.LocalLink.RevokeApp.Response](#anytype-Rpc-Account-LocalLink-RevokeApp-Response) |  |
 | WalletCreateSession | [Rpc.Wallet.CreateSession.Request](#anytype-Rpc-Wallet-CreateSession-Request) | [Rpc.Wallet.CreateSession.Response](#anytype-Rpc-Wallet-CreateSession-Response) |  |
@@ -2747,6 +2755,7 @@ the element of change tree used to store and internal apply smartBlock history
 | timestamp | [int64](#int64) |  | creation timestamp |
 | version | [uint32](#uint32) |  | version of business logic |
 | changeType | [uint32](#uint32) |  | business-level type of change applied to object |
+| integrationName | [string](#string) |  | integrationName is the RAW app name of the paired API key that authored this change — exactly as the app link recorded it, never normalized (normalization is many-to-one and lossy; the DELETE ownership rule compares this value exactly). Stamped by heart from the authenticated session — never accepted from a request. Bounded at key issuance (domain.MaxIntegrationNameLen). Empty for changes not authored through an API key. |
 
 
 
@@ -3227,6 +3236,7 @@ the element of change tree used to store and internal apply smartBlock history
 | timestamp | [int64](#int64) |  | creation timestamp |
 | version | [uint32](#uint32) |  | version of business logic |
 | changeType | [uint32](#uint32) |  | business-level type of change applied to object |
+| integrationName | [string](#string) |  | integrationName mirrors Change.integrationName (the two messages share wire numbers by design; 1/2/5 are historical — do not reuse). |
 
 
 
@@ -4196,6 +4206,7 @@ TODO: Remove this request if we do not need it, GO-1926
 | ----- | ---- | ----- | ----------- |
 | appName | [string](#string) |  | just for info, not secure to rely on |
 | scope | [model.Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  |  |
+| requestedGrant | [model.Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant) |  | optional self-requested restriction, persisted on solve; grants only narrow, so requesting one is always fail-safe |
 
 
 
@@ -4342,6 +4353,63 @@ TODO: Remove this request if we do not need it, GO-1926
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.LocalLink.SolveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-UpdateApp"></a>
+
+### Rpc.Account.LocalLink.UpdateApp
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-UpdateApp-Request"></a>
+
+### Rpc.Account.LocalLink.UpdateApp.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| appHash | [string](#string) |  |  |
+| grant | [model.Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant) |  | the new grant; unset clears the scoping (widen-requires-re-consent is the caller&#39;s contract) |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-UpdateApp-Response"></a>
+
+### Rpc.Account.LocalLink.UpdateApp.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.LocalLink.UpdateApp.Response.Error](#anytype-Rpc-Account-LocalLink-UpdateApp-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-UpdateApp-Response-Error"></a>
+
+### Rpc.Account.LocalLink.UpdateApp.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.LocalLink.UpdateApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-UpdateApp-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11380,6 +11448,7 @@ Get marks list in the selected range in text block.
 | messages | [model.ChatMessage](#anytype-model-ChatMessage) | repeated |  |
 | chatState | [model.ChatState](#anytype-model-ChatState) |  |  |
 | messageCount | [int32](#int32) |  | Total number of non-deleted messages in the chat |
+| lifetimeMessageCount | [int32](#int32) |  | Total number of messages added since the chat was created, including deleted messages |
 
 
 
@@ -24194,6 +24263,12 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 | token | [string](#string) |  |  |
 | appToken | [string](#string) |  | in case of mnemonic auth, need to be persisted by client |
 | accountId | [string](#string) |  | temp, should be replaced with AccountInfo message |
+| accountScope | [model.Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  | scope of the session; for appKey auth it is the app link&#39;s scope |
+| appName | [string](#string) |  | for appKey auth, the app name recorded when the app link was created |
+| appExpireAt | [int64](#int64) |  | for appKey auth, the app link&#39;s expiration unix timestamp; 0 means the key never expires |
+| grant | [model.Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant) |  | for appKey auth, the app link&#39;s grant; unset means an unscoped key |
+| appHash | [string](#string) |  | for appKey auth, the app link&#39;s identity (the hash ListApps and RevokeApp use) |
+| appCreatedAt | [int64](#int64) |  | for appKey auth, the app link&#39;s creation unix timestamp; 0 means unknown (pre-hash-era link) |
 
 
 
@@ -25285,6 +25360,21 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | INVALID_CHALLENGE_ID | 102 |  |
 | CHALLENGE_ATTEMPTS_EXCEEDED | 103 |  |
 | INCORRECT_ANSWER | 104 |  |
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-UpdateApp-Response-Error-Code"></a>
+
+### Rpc.Account.LocalLink.UpdateApp.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_FOUND | 3 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
 
 
 
@@ -30003,6 +30093,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | APP_TOKEN_NOT_FOUND_IN_THE_CURRENT_ACCOUNT | 101 | means the client logged into another account or the account directory has been cleaned |
+| APP_TOKEN_EXPIRED | 102 | the app link&#39;s expireAt has passed; the key must be re-issued |
 
 
 
@@ -30260,6 +30351,7 @@ corresponding front-end.
 | challenge | [string](#string) |  |  |
 | clientInfo | [Event.Account.LinkChallenge.ClientInfo](#anytype-Event-Account-LinkChallenge-ClientInfo) |  |  |
 | scope | [model.Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  |  |
+| requestedGrant | [model.Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant) |  | the restriction the client asked for; the consent picker displays it and may narrow it further |
 
 
 
@@ -34164,6 +34256,22 @@ Contains basic information about a user account
 
 
 
+<a name="anytype-model-Account-Auth-AppGrant"></a>
+
+### Account.Auth.AppGrant
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceIds | [string](#string) | repeated | spaces the key may touch; must be non-empty |
+| perm | [Account.Auth.AppGrant.Perm](#anytype-model-Account-Auth-AppGrant-Perm) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Account-Auth-AppInfo"></a>
 
 ### Account.Auth.AppInfo
@@ -34176,9 +34284,10 @@ Contains basic information about a user account
 | appName | [string](#string) |  | either from process or specified manually when creating |
 | appKey | [string](#string) |  |  |
 | createdAt | [int64](#int64) |  |  |
-| expireAt | [int64](#int64) |  |  |
+| expireAt | [int64](#int64) |  | unix timestamp in seconds after which the key stops authenticating; 0 means the key never expires |
 | scope | [Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  |  |
 | isActive | [bool](#bool) |  |  |
+| grant | [Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant) |  | unset means an unscoped (legacy) key; only JsonAPI-scope keys may carry one |
 
 
 
@@ -36382,6 +36491,21 @@ stored |
  
 
 
+<a name="anytype-model-Account-Auth-AppGrant-Perm"></a>
+
+### Account.Auth.AppGrant.Perm
+Perm is nested so its Go constants (AccountAuthAppGrant_Read) can
+never be misread as the key scopes (AccountAuth_JsonAPI et al.) —
+grant verbs and key scopes are unrelated enums about different
+authorization layers.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Read | 0 | the zero value is the narrowest permission, so an unset perm never widens |
+| ReadWrite | 1 |  |
+
+
+
 <a name="anytype-model-Account-Auth-LocalApiScope"></a>
 
 ### Account.Auth.LocalApiScope
@@ -36927,6 +37051,7 @@ stored |
 | DOT | 3 |  |
 | SVG | 4 |  |
 | GRAPH_JSON | 5 |  |
+| AnyBlockV2 | 6 | AnyBlockV2 is the native AnyBlock v2 bundle (pkg/lib/anyblockjson format/v2/SPEC.md): a directory of `&lt;id&gt;.anyblock.json` documents beside an index.json and properties.json. Additive — existing values keep their numbers, so a client that does not know it is unaffected. |
 
 
 
@@ -37610,4 +37735,3 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | <a name="bool" /> bool |  | bool | boolean | boolean | bool | bool | boolean | TrueClass/FalseClass |
 | <a name="string" /> string | A string must always contain UTF-8 encoded or 7-bit ASCII text. | string | String | str/unicode | string | string | string | String (UTF-8) |
 | <a name="bytes" /> bytes | May contain any arbitrary sequence of bytes. | string | ByteString | str | []byte | ByteString | string | String (ASCII-8BIT) |
-

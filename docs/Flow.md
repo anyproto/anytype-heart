@@ -70,6 +70,23 @@ Anytype will update system objects only if `Revision` of object from marketplace
 1. Update description of system object, that is stored in `pkg/lib/bundle`
 2. Increase `revision` field of system type/relation or put `"revision":1` if it was empty
 3. Generate go-level variables for new version of types and relations using `pkg/lib/bundle/generator`
-4. Make sure that new fields are taken into account in [System Object Reviser](../core/block/object/objectcreator/systemobjectreviser.go).
-   (Right now only these fields are checked: **Revision**, **Name**, **Description**, **IsHidden**, **IsReadonly**)
+4. Make sure that new fields are taken into account in [System Object Reviser](../space/internal/components/migration/systemobjectreviser/systemobjectreviser.go).
+   (Only the fields listed in `systemObjectFilterKeys` are checked, e.g. **Revision**, **Name**, **IsHidden**, **IsReadonly**, **PluralName**)
 5. Build and run Anytype. All system objects with lower `Revision` should be updated according your changes in all spaces
+
+### How to rename bundled non-system relations
+
+Bundled relations that are NOT system ones (e.g. **AudioGenre**) can be renamed in `relations.json` too,
+but users are allowed to rename such relations in their spaces, so the reviser must not overwrite a user's own name.
+The reviser therefore applies a bundled rename only if the installed relation still carries a previous bundled name.
+
+1. Change the `name` of the relation in `pkg/lib/bundle/relations.json`
+2. Increase its `revision` field or put `"revision":1` if it was empty — without this the rename never reaches existing spaces
+3. Append the OLD name to `previousBundledRelationNames` in the
+   [System Object Reviser](../space/internal/components/migration/systemobjectreviser/systemobjectreviser.go) package
+4. Regenerate go-level variables using `pkg/lib/bundle/generator`
+
+Only **Revision** and **Name** are revised on non-system relations, and the name is applied only when the local name
+still equals one of the previous bundled names; any other local name is treated as the user's rename and kept.
+Renamed system types and relations do not need `previousBundledRelationNames` entries: users cannot rename them,
+so the system path applies the bundled name unconditionally (a `revision` bump is still required).

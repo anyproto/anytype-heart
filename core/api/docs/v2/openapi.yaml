@@ -1,0 +1,3319 @@
+components:
+  responses:
+    BadRequest:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: Invalid path, query or request input
+    Unauthorized:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/UnauthorizedError'
+      description: Missing, unknown, revoked or expired key; shared authentication envelope
+    Forbidden:
+      content:
+        application/json:
+          schema:
+            anyOf:
+            - $ref: '#/components/schemas/ForbiddenError'
+            - $ref: '#/components/schemas/Error'
+      description: The shared key-scope gate uses the legacy envelope; an operation-specific refusal may use the v2 error envelope
+    Conflict:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: Idempotency-Key conflict, or an operation-specific concurrency conflict
+    RequestTooLarge:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: Request body exceeds this operation's documented cap
+    RateLimited:
+      content:
+        application/json:
+          schema:
+            properties:
+              code:
+                example: rate_limit_exceeded
+                type: string
+              message:
+                example: Rate limit exceeded
+                type: string
+              object:
+                example: error
+                type: string
+              status:
+                example: 429
+                type: integer
+            type: object
+      description: Shared write rate limit; legacy error envelope
+  schemas:
+    ForbiddenError:
+      properties:
+        code:
+          example: forbidden
+          type: string
+        message:
+          example: Forbidden
+          type: string
+        object:
+          example: error
+          type: string
+        status:
+          example: 403
+          type: integer
+      type: object
+    UnauthorizedError:
+      properties:
+        code:
+          example: unauthorized
+          type: string
+        message:
+          example: Unauthorized
+          type: string
+        object:
+          example: error
+          type: string
+        status:
+          example: 401
+          type: integer
+      type: object
+    AddChatMessageRequest:
+      properties:
+        attachments:
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+        reply_to:
+          type: string
+        text:
+          type: string
+      type: object
+    ChatAttachment:
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+      type: object
+    ChatMessage:
+      properties:
+        at:
+          type: string
+        attachments:
+          items:
+            $ref: '#/components/schemas/ChatAttachment'
+          type: array
+          uniqueItems: false
+        author:
+          type: string
+        author_id:
+          type: string
+        blocks_text:
+          type: string
+        edited_at:
+          type: string
+        id:
+          type: string
+        order:
+          type: string
+        pinned:
+          type: boolean
+        reacted_by:
+          additionalProperties:
+            items:
+              type: string
+            type: array
+          type: object
+        reactions:
+          additionalProperties:
+            type: integer
+          type: object
+        reply_to:
+          type: string
+        text:
+          type: string
+      type: object
+    ChatMessageResult:
+      properties:
+        dry_run:
+          type: boolean
+        id:
+          type: string
+        warnings:
+          items:
+            $ref: '#/components/schemas/Issue'
+          type: array
+          uniqueItems: false
+      type: object
+    ChatMessagesResponse:
+      properties:
+        has_more:
+          description: more messages inside the requested bounds, not in the chat
+            as a whole
+          type: boolean
+        message_count:
+          type: integer
+        messages:
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+          type: array
+          uniqueItems: false
+        next_after:
+          type: string
+        next_before:
+          type: string
+        state:
+          $ref: '#/components/schemas/ChatState'
+      type: object
+    ChatReactionRequest:
+      properties:
+        emoji:
+          type: string
+      type: object
+    ChatReactionResult:
+      properties:
+        added:
+          type: boolean
+        dry_run:
+          type: boolean
+        warnings:
+          items:
+            $ref: '#/components/schemas/Issue'
+          type: array
+          uniqueItems: false
+      type: object
+    ChatReadRequest:
+      properties:
+        last_state_id:
+          type: string
+        scope:
+          type: string
+        up_to:
+          type: string
+      type: object
+    ChatReadResult:
+      properties:
+        dry_run:
+          type: boolean
+      type: object
+    ChatResult:
+      properties:
+        dry_run:
+          type: boolean
+        id:
+          type: string
+        name:
+          type: string
+      type: object
+    ChatRow:
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+      type: object
+    ChatState:
+      properties:
+        last_state_id:
+          type: string
+        oldest_unread_mention_order:
+          type: string
+        oldest_unread_order:
+          type: string
+        unread_mentions:
+          type: integer
+        unread_messages:
+          type: integer
+        unread_reaction_order:
+          type: string
+      type: object
+    CreateChatRequest:
+      properties:
+        name:
+          type: string
+      type: object
+    CreateResult:
+      properties:
+        created:
+          $ref: '#/components/schemas/SideEffects'
+        dry_run:
+          type: boolean
+        etag:
+          description: etag of the created object
+          type: string
+        id:
+          type: string
+        issues:
+          items:
+            $ref: '#/components/schemas/Issue'
+          type: array
+          uniqueItems: false
+        key:
+          description: identity key (types, properties)
+          type: string
+        type:
+          description: type key of the created object
+          type: string
+        warnings:
+          items:
+            $ref: '#/components/schemas/Issue'
+          type: array
+          uniqueItems: false
+      type: object
+    CreateSpaceRequest:
+      properties:
+        description:
+          type: string
+        name:
+          type: string
+      type: object
+    CreatedOption:
+      properties:
+        name:
+          type: string
+        property:
+          description: property key
+          type: string
+      type: object
+    DiffStats:
+      properties:
+        blocks_added:
+          type: integer
+        blocks_changed:
+          type: integer
+        blocks_moved:
+          type: integer
+        blocks_removed:
+          type: integer
+        properties_changed:
+          type: integer
+      type: object
+    EditChatMessageRequest:
+      properties:
+        text:
+          type: string
+      type: object
+    EditResult:
+      properties:
+        created:
+          $ref: '#/components/schemas/SideEffects'
+        created_blocks:
+          additionalProperties:
+            type: string
+          description: |-
+            CreatedBlocks maps each payload position that created a block to the
+            id the server minted for it: the top-level run positions
+            ("ops[3].blocks[0]") and the nested slots alike, such as a table's
+            rows and columns ("ops[3].blocks[0].rows[1]") and the blocks inside a
+            cell run ("ops[3].value[1]"). A position that carried an id is
+            absent, because the block it names already existed.
+          type: object
+        created_views:
+          additionalProperties:
+            type: string
+          description: |-
+            CreatedViews maps each payload position that created a dataview view
+            to the view id the server minted: an insert_view op ("ops[i]"), or a
+            view slot of an update_block set channel ("ops[i].set.views[2]").
+            View ids are always server-minted, and a view is not a block, so they
+            are reported here rather than in CreatedBlocks.
+          type: object
+        diff_stats:
+          $ref: '#/components/schemas/DiffStats'
+        dry_run:
+          type: boolean
+        etag:
+          type: string
+        warnings:
+          items:
+            $ref: '#/components/schemas/Issue'
+          type: array
+          uniqueItems: false
+      type: object
+    Error:
+      properties:
+        code:
+          type: string
+        issues:
+          items:
+            $ref: '#/components/schemas/Issue'
+          type: array
+          uniqueItems: false
+        message:
+          type: string
+        status:
+          type: integer
+      type: object
+    FileUploadResult:
+      properties:
+        dry_run:
+          type: boolean
+        id:
+          type: string
+        mime_type:
+          type: string
+        name:
+          type: string
+        size:
+          type: integer
+      type: object
+    Issue:
+      properties:
+        hint:
+          type: string
+        message:
+          type: string
+        path:
+          type: string
+      type: object
+    ListResponse-ChatRow:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/ChatRow'
+          type: array
+          uniqueItems: false
+        has_more:
+          type: boolean
+        limit:
+          type: integer
+        message:
+          type: string
+        offset:
+          type: integer
+        total:
+          type: integer
+        warnings:
+          items:
+            $ref: '#/components/schemas/Issue'
+          type: array
+          uniqueItems: false
+      type: object
+    ListResponse-MemberRow:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/MemberRow'
+          type: array
+          uniqueItems: false
+        has_more:
+          type: boolean
+        limit:
+          type: integer
+        message:
+          type: string
+        offset:
+          type: integer
+        total:
+          type: integer
+        warnings:
+          items:
+            $ref: '#/components/schemas/Issue'
+          type: array
+          uniqueItems: false
+      type: object
+    ListResponse-ObjectRow:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/ObjectRow'
+          type: array
+          uniqueItems: false
+        has_more:
+          type: boolean
+        limit:
+          type: integer
+        message:
+          type: string
+        offset:
+          type: integer
+        total:
+          type: integer
+        warnings:
+          items:
+            $ref: '#/components/schemas/Issue'
+          type: array
+          uniqueItems: false
+      type: object
+    ListResponse-OptionRow:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/OptionRow'
+          type: array
+          uniqueItems: false
+        has_more:
+          type: boolean
+        limit:
+          type: integer
+        message:
+          type: string
+        offset:
+          type: integer
+        total:
+          type: integer
+        warnings:
+          items:
+            $ref: '#/components/schemas/Issue'
+          type: array
+          uniqueItems: false
+      type: object
+    ListResponse-PropertyRow:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/PropertyRow'
+          type: array
+          uniqueItems: false
+        has_more:
+          type: boolean
+        limit:
+          type: integer
+        message:
+          type: string
+        offset:
+          type: integer
+        total:
+          type: integer
+        warnings:
+          items:
+            $ref: '#/components/schemas/Issue'
+          type: array
+          uniqueItems: false
+      type: object
+    ListResponse-SpaceRow:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/SpaceRow'
+          type: array
+          uniqueItems: false
+        has_more:
+          type: boolean
+        limit:
+          type: integer
+        message:
+          type: string
+        offset:
+          type: integer
+        total:
+          type: integer
+        warnings:
+          items:
+            $ref: '#/components/schemas/Issue'
+          type: array
+          uniqueItems: false
+      type: object
+    ListResponse-TypeRow:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/TypeRow'
+          type: array
+          uniqueItems: false
+        has_more:
+          type: boolean
+        limit:
+          type: integer
+        message:
+          type: string
+        offset:
+          type: integer
+        total:
+          type: integer
+        warnings:
+          items:
+            $ref: '#/components/schemas/Issue'
+          type: array
+          uniqueItems: false
+      type: object
+    ListResponse-ViewObject:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/ViewObject'
+          type: array
+          uniqueItems: false
+        has_more:
+          type: boolean
+        limit:
+          type: integer
+        message:
+          type: string
+        offset:
+          type: integer
+        total:
+          type: integer
+        warnings:
+          items:
+            $ref: '#/components/schemas/Issue'
+          type: array
+          uniqueItems: false
+      type: object
+    MemberRow:
+      properties:
+        id:
+          type: string
+        identity:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+      type: object
+    ObjectRow:
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        properties:
+          additionalProperties: {}
+          type: object
+        space_id:
+          type: string
+        type:
+          type: string
+      type: object
+    OptionRow:
+      properties:
+        color:
+          type: string
+        name:
+          type: string
+      type: object
+    PropertyRow:
+      properties:
+        format:
+          type: string
+        key:
+          type: string
+        name:
+          type: string
+      type: object
+    SchemaEntry:
+      properties:
+        endpoint:
+          type: string
+        example:
+          type: object
+        grammar:
+          type: string
+        grammar_examples:
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+        kind:
+          type: string
+        schema:
+          type: object
+      type: object
+    SchemaIndex:
+      properties:
+        kinds:
+          items:
+            $ref: '#/components/schemas/SchemaIndexEntry'
+          type: array
+          uniqueItems: false
+        ops:
+          items:
+            $ref: '#/components/schemas/SchemaIndexEntry'
+          type: array
+          uniqueItems: false
+      type: object
+    SchemaIndexEntry:
+      properties:
+        endpoint:
+          type: string
+        kind:
+          type: string
+        url:
+          type: string
+      type: object
+    SearchRequestDoc:
+      properties:
+        fields:
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+        filter:
+          type: string
+        filters:
+          items:
+            additionalProperties: {}
+            type: object
+          type: array
+          uniqueItems: false
+        query:
+          type: string
+        sorts:
+          items:
+            additionalProperties: {}
+            type: object
+          type: array
+          uniqueItems: false
+        type:
+          type: string
+      type: object
+    SideEffects:
+      properties:
+        options:
+          items:
+            $ref: '#/components/schemas/CreatedOption'
+          type: array
+          uniqueItems: false
+        properties:
+          items:
+            $ref: '#/components/schemas/PropertyRow'
+          type: array
+          uniqueItems: false
+      type: object
+    Space:
+      properties:
+        description:
+          type: string
+        dry_run:
+          type: boolean
+        id:
+          type: string
+        name:
+          type: string
+      type: object
+    SpaceRow:
+      properties:
+        description:
+          type: string
+        id:
+          description: |-
+            Id is the space's short reference: the last six characters of the
+            first half of its id. It is the full id instead when that tail is
+            shared with another visible space, or when the request asked for
+            `?ids=full`. Either spelling is accepted back on every route that
+            takes a space.
+          type: string
+        name:
+          type: string
+      type: object
+    TypeRow:
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+      type: object
+    UpdateSpaceRequest:
+      properties:
+        description:
+          type: string
+        name:
+          type: string
+      type: object
+    ValidateResponse:
+      properties:
+        issues:
+          items:
+            $ref: '#/components/schemas/Issue'
+          type: array
+          uniqueItems: false
+        warnings:
+          items:
+            $ref: '#/components/schemas/Issue'
+          type: array
+          uniqueItems: false
+      type: object
+    ViewObject:
+      additionalProperties: {}
+      type: object
+    WhoamiApi:
+      properties:
+        version:
+          type: string
+      type: object
+    WhoamiGrant:
+      properties:
+        permission:
+          description: the compact form agents string-match on
+          type: string
+        scoped:
+          type: boolean
+        spaces:
+          items:
+            $ref: '#/components/schemas/WhoamiGrantSpace'
+          type: array
+          uniqueItems: false
+      type: object
+    WhoamiGrantSpace:
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        permission:
+          type: string
+      type: object
+    WhoamiKey:
+      properties:
+        created_at:
+          type: string
+        expires_at:
+          type: string
+        id:
+          description: the app link's hash, which is the id the key list shows
+          type: string
+        name:
+          type: string
+      type: object
+    WhoamiResponse:
+      properties:
+        api:
+          $ref: '#/components/schemas/WhoamiApi'
+        grant:
+          $ref: '#/components/schemas/WhoamiGrant'
+        key:
+          $ref: '#/components/schemas/WhoamiKey'
+        key_status:
+          description: '"legacy" | "scoped", always present'
+          type: string
+        notice:
+          description: the legacy sentence, verbatim printable
+          type: string
+        scope:
+          description: '"jsonApi" | "full" | "limited"'
+          type: string
+      type: object
+  securitySchemes:
+    bearerauth:
+      scheme: bearer
+      type: http
+externalDocs:
+  description: OpenAPI
+  url: https://swagger.io/resources/open-api/
+info:
+  contact:
+    email: support@anytype.io
+    name: Anytype Support
+    url: https://anytype.io/contact
+  description: |-
+    The agent-oriented Anytype local API. An object is one AnyBlock JSON document rather than a tree of blocks, so a single GET returns a whole editable document and a single PATCH edits it.
+    Everything this API names for itself is snake_case: path and query parameters, request and response fields, and the names of the PATCH ops. Things are addressed by name rather than by id: property keys, option names, and `type` as a type key. Object ids remain ids.
+    Property and type keys have two spellings, and a served body picks one. The default is the key: a snake_case slug minted when the property was created and frozen from then on, so it survives every rename. Store that spelling in a config, a script, an integration. `?keys=name` on a read serves the display-name vocabulary instead, "Due date" rather than due_date, which is the spelling to show a user their own words. Input needs no such choice: every channel accepts both, plus the forgiving fold between them, so dueDate, due-date, "Due date" and Дата выполнения all address the property they name. A spelling matching two properties is a 400 listing both, and an unknown one never creates anything.
+    Responses are compact. A list or search row carries id, name, type and the properties you asked for, and never embeds a type object. Object references are always full and inline. An object read relabels machine-minted block ids to short document-local suffixes; `?ids=full` returns the export shape, with full ids everywhere, which is the shape to store and the shape to clone from.
+    Wherever a block or a view is addressed by id, a full id or a unique suffix of one is accepted. That is what lets a document read back in the compact shape be edited exactly as it came back. A suffix that matches several elements is refused, and the refusal lists the candidates.
+    A read never fails on content it cannot represent. Whatever a representation cannot express is reported in `warnings` beside the result.
+    Every error has one shape: {status, code, message, issues:[{path, message, hint}]}. Each issue is addressed by path and names the values that would have been accepted, so a failed call tells you how to repair it.
+    Authentication uses an opaque Anytype API key as a bearer credential in the Authorization header; the key is not a JWT. It is never read from a query or body parameter. An unknown, revoked or expired key is a 401.
+    An object read returns an `etag` in the body and an ETag header. A mutation takes that etag back in `If-Match`, where it is advisory: without the header the last write wins, and a stale one is a 409 carrying the current etag. Chats are the exception. They have no etag, because their order ids and `last_state_id` do that job.
+    Every mutation and the data-free `POST /validate` read accept an `Idempotency-Key` header. The same key with the same request replays the stored response instead of repeating the operation. Search is a read carried by POST and takes no key.
+    Every mutation accepts `?dry_run=true`. It validates the request, reports what would have happened and writes nothing, answering 200 where the real call would answer 201. Where a dry run cannot tell the whole truth, the operation says so.
+    Every list is paginated with `?offset=` and `?limit=`, 25 rows by default. The response carries `total`, `has_more` and, when it truncated, a hint for narrowing the request. Chat messages page by order-id cursor instead.
+    Request bodies bind strictly: an unknown field is a 400 naming the field, never a value silently dropped. A document body is capped at 10 MiB, a structured body at 1 MiB.
+    Deleting an object, a type or a property archives it: it moves to Bin, and the Anytype app can restore it. Deleting a chat message is not an archive, and neither is the attachment cleanup that can follow it.
+    Schemas are discoverable at runtime, and strict enough to decode against: GET /v2/schemas lists the kinds, GET /v2/schemas/{kind} returns one, and GET /v2/schemas/ops/{op} returns the schema of a single edit op.
+    A space is served by a short reference: the last six characters of the first half of its id. Every route that takes a space accepts either that short reference or the full `<cid>.<replicationKey>` id. Resolution tries an exact id first, then a unique suffix, among the spaces the key can see. An ambiguous reference is a 400 listing the candidates, and two spaces whose tails collide are both served in full.
+    A short reference is an addressing convenience, not a stable identifier. It is unique only against the spaces the key can currently see, so joining a space whose tail collides retires it. `?ids=full` spells every space id in the response out in full. Use it whenever a reference will be stored outside this API: a config file, a script, a log line, another system.
+  license:
+    name: Any Source Available License 1.0
+    url: https://github.com/anyproto/anytype-api/blob/main/LICENSE.md
+  termsOfService: https://anytype.io/terms_of_use
+  title: Anytype API v2
+  version: "2025-11-08"
+openapi: 3.1.0
+paths:
+  /v2/auth/whoami:
+    get:
+      description: This describes the key, not a person; there is one account behind
+        this API. Branch on `grant.scoped`. False is a legacy key with no space restriction,
+        and its `spaces` list is empty rather than absent. True means the key reaches
+        exactly the spaces listed, with the permission listed beside each one.
+      operationId: auth_whoami
+      parameters:
+      - description: 'How grant.spaces[].id is spelled: compact (default) is the short
+          space reference; full is the whole <cid>.<replicationKey> id, and the spelling
+          to store outside this API'
+        in: query
+        name: ids
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WhoamiResponse'
+          description: The key's grant, as it is enforced
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+      security:
+      - bearerauth: []
+      summary: Describe the calling key
+      tags:
+      - Auth
+  /v2/schemas:
+    get:
+      operationId: list_schemas
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaIndex'
+          description: Schema index
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+      security:
+      - bearerauth: []
+      summary: List the available schemas
+      tags:
+      - Schemas
+  /v2/schemas/{kind}:
+    get:
+      operationId: get_schema
+      parameters:
+      - description: Schema kind, as listed by GET /v2/schemas
+        in: path
+        name: kind
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaEntry'
+          description: Schema + example
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Unknown kind
+      security:
+      - bearerauth: []
+      summary: Get the schema for one kind
+      tags:
+      - Schemas
+  /v2/schemas/ops/{op}:
+    get:
+      description: The example is a single op object, ready to drop into an edit request's
+        `ops` array, not a whole request body.
+      operationId: get_op_schema
+      parameters:
+      - description: 'Op name: set_properties, update_block, replace_subtree, insert_blocks,
+          move_block, delete_block, replace_text, set_cell, update_view, insert_view,
+          move_view, delete_view, add_items, remove_items'
+        in: path
+        name: op
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchemaEntry'
+          description: Schema + example
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Unknown op
+      security:
+      - bearerauth: []
+      summary: Get the schema for one edit op
+      tags:
+      - Schemas
+  /v2/search:
+    post:
+      description: Type keys and option names are resolved per space. A name that
+        resolves in only some spaces searches those and warns about the rest. `total`
+        is the sum of the per-space counts, and each row carries its `space_id`.
+      operationId: search_global
+      parameters:
+      - description: Items to skip
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: Items to return
+        in: query
+        name: limit
+        schema:
+          default: 25
+          type: integer
+      - description: 'How each row''s space_id is spelled: compact (default) is the
+          short space reference; full is the whole <cid>.<replicationKey> id, and
+          the spelling to store outside this API'
+        in: query
+        name: ids
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequestDoc'
+        description: Search request
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse-ObjectRow'
+          description: Minimal object rows with space_id
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Invalid request
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+      security:
+      - bearerauth: []
+      summary: Search every space
+      tags:
+      - Search
+  /v2/spaces:
+    get:
+      description: Only live spaces are listed. A space that is deleted, left, or
+        still joining does not appear.
+      operationId: list_spaces
+      parameters:
+      - description: compact (default) is the short space reference; full is the whole
+          <cid>.<replicationKey> id, and the spelling to store outside this API
+        in: query
+        name: ids
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse-SpaceRow'
+          description: Minimal space rows
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+      security:
+      - bearerauth: []
+      summary: List the account's spaces
+      tags:
+      - Spaces
+    post:
+      description: A retry the server already handled makes a second space unless
+        it carries the same idempotency key. A dry run validates the body and stops
+        there; creating a space cannot be simulated.
+      operationId: create_space
+      parameters:
+      - description: Validate the body without creating
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      - description: compact (default) is the short space reference; full is the whole
+          <cid>.<replicationKey> id of the new space, and the spelling to store outside
+          this API
+        in: query
+        name: ids
+        schema:
+          type: string
+      - description: 'Replay guard: the same key with the same body replays the stored
+          response'
+        in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSpaceRequest'
+        description: The space to create
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Space'
+          description: Dry run; validation result without committing
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Space'
+          description: Created space
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation failure
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "413":
+          $ref: '#/components/responses/RequestTooLarge'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Create a space
+      tags:
+      - Spaces
+  /v2/spaces/{space_id}:
+    get:
+      description: Only live spaces are served. A space that is deleted, left, or
+        still joining is a 404.
+      operationId: get_space
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: compact (default) is the short space reference; full is the whole
+          <cid>.<replicationKey> id, and the spelling to store outside this API
+        in: query
+        name: ids
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Space'
+          description: The space row
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Space not found
+      security:
+      - bearerauth: []
+      summary: Get one space
+      tags:
+      - Spaces
+    patch:
+      description: At least one of the two fields must be present; a field left out
+        keeps its current value.
+      operationId: update_space
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Validate and report without committing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      - description: compact (default) is the short space reference; full is the whole
+          <cid>.<replicationKey> id, and the spelling to store outside this API
+        in: query
+        name: ids
+        schema:
+          type: string
+      - description: 'Replay guard: the same key with the same body replays the stored
+          response'
+        in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSpaceRequest'
+        description: The fields to change
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Space'
+          description: The updated space row
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation failure
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Space not found or not live
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "413":
+          $ref: '#/components/responses/RequestTooLarge'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Update a space
+      tags:
+      - Spaces
+  /v2/spaces/{space_id}/chats:
+    get:
+      description: A row carries no unread counters. Per-chat unread state comes back
+        with the messages read instead.
+      operationId: list_chats
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Rows to skip
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: Rows to return
+        in: query
+        name: limit
+        schema:
+          default: 25
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse-ChatRow'
+          description: Chat rows
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Space not found
+      security:
+      - bearerauth: []
+      summary: List the chats in a space
+      tags:
+      - Chat
+    post:
+      description: Messages are not blocks. Add them through the messages route; a
+        document edit cannot reach them.
+      operationId: create_chat
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Validate and report without committing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      - description: 'Replay guard: the same key with the same body replays the stored
+          response'
+        in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChatRequest'
+        description: The chat to create
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResult'
+          description: Dry run; validation result without committing
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResult'
+          description: Created chat row
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation failure
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "413":
+          $ref: '#/components/responses/RequestTooLarge'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Create a chat
+      tags:
+      - Chat
+  /v2/spaces/{space_id}/chats/{chat_id}/messages:
+    get:
+      description: '`after` on its own walks forward, oldest first, continuing from
+        `next_after`. Every other query, including `after` together with `before`,
+        is anchored at the newest end of the range and walks backward from `next_before`.
+        Both bounds are exclusive. `message_count` is the chat''s total since it began,
+        not the size of the range. Offset paging does not apply here, and `offset`
+        is refused.'
+      operationId: get_chat_messages
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Chat object id
+        in: path
+        name: chat_id
+        required: true
+        schema:
+          type: string
+      - description: Return messages after this order id (exclusive)
+        in: query
+        name: after
+        schema:
+          type: string
+      - description: Return messages before this order id (exclusive)
+        in: query
+        name: before
+        schema:
+          type: string
+      - description: Messages to return
+        in: query
+        name: limit
+        schema:
+          default: 25
+          type: integer
+      - description: counts (default) returns the emoji counts; full adds the participant
+          ids behind each count
+        in: query
+        name: reactions
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessagesResponse'
+          description: Messages + state + message_count
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Not a chat, or invalid params
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Chat not found
+      security:
+      - bearerauth: []
+      summary: List chat messages
+      tags:
+      - Chat
+    post:
+      description: The text is markup source, so `*`, `[` and a mention tag mint real
+        marks; escape a literal one with a backslash. The cap is 8000 UTF-16 code
+        units, where one emoji can cost two or more. Attachments are object ids, at
+        most 32, and each one's kind is taken from the target's layout.
+      operationId: add_chat_message
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Chat object id
+        in: path
+        name: chat_id
+        required: true
+        schema:
+          type: string
+      - description: Validate and report without committing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      - description: 'Replay guard: the same key with the same body replays the stored
+          response'
+        in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddChatMessageRequest'
+        description: The message to send
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessageResult'
+          description: Dry run; validation result without committing
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessageResult'
+          description: Created message id
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation failure
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Chat not found
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "413":
+          $ref: '#/components/responses/RequestTooLarge'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Send a chat message
+      tags:
+      - Chat
+  /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}:
+    delete:
+      description: An attachment whose only reference was this message is erased for
+        good afterwards, not moved to Bin. The response names those ids in `warnings`,
+        and a dry run reports the same list without deleting anything. A message that
+        does not exist is a 404 on the dry run too.
+      operationId: delete_chat_message
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Chat object id
+        in: path
+        name: chat_id
+        required: true
+        schema:
+          type: string
+      - description: Message id
+        in: path
+        name: message_id
+        required: true
+        schema:
+          type: string
+      - description: Report what would be deleted, attachments included, without committing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      - description: 'Replay guard: the same key with the same body replays the stored
+          response'
+        in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessageResult'
+          description: Deleted message id
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Chat or message not found
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Delete a chat message
+      tags:
+      - Chat
+    patch:
+      description: Every mark is re-derived from the text you send, so a mark the
+        old text carried and the new text does not spell out is lost. Attachments,
+        the reply target and the style survive. Editing another member's message is
+        a 403.
+      operationId: edit_chat_message
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Chat object id
+        in: path
+        name: chat_id
+        required: true
+        schema:
+          type: string
+      - description: Message id
+        in: path
+        name: message_id
+        required: true
+        schema:
+          type: string
+      - description: Validate and report without committing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      - description: 'Replay guard: the same key with the same body replays the stored
+          response'
+        in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EditChatMessageRequest'
+        description: The replacement text
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessageResult'
+          description: Edited message id
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation failure
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Chat or message not found
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "413":
+          $ref: '#/components/responses/RequestTooLarge'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Replace a chat message's text
+      tags:
+      - Chat
+  /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}/reactions:
+    post:
+      description: '`added` says which way the toggle went. A dry run predicts it,
+        but when there is no account identity to predict with it omits the field and
+        says so in `warnings`.'
+      operationId: toggle_chat_reaction
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Chat object id
+        in: path
+        name: chat_id
+        required: true
+        schema:
+          type: string
+      - description: Message id
+        in: path
+        name: message_id
+        required: true
+        schema:
+          type: string
+      - description: Report the would-be outcome without committing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      - description: 'Replay guard: the same key with the same body replays the stored
+          response'
+        in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatReactionRequest'
+        description: The emoji to toggle
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatReactionResult'
+          description: Toggle outcome
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation failure
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Chat or message not found
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "413":
+          $ref: '#/components/responses/RequestTooLarge'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Toggle a reaction on a chat message
+      tags:
+      - Chat
+  /v2/spaces/{space_id}/chats/{chat_id}/read:
+    post:
+      description: '`up_to` is inclusive, and it and `last_state_id` both come from
+        one messages read: the newest message''s order, and the state''s own id. An
+        empty value for either would silently mark nothing, so it is refused. Messages
+        that arrived after that state stay unread. The reactions scope marks every
+        unread reaction and takes neither field.'
+      operationId: read_chat
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Chat object id
+        in: path
+        name: chat_id
+        required: true
+        schema:
+          type: string
+      - description: Validate and report without committing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      - description: 'Replay guard: the same key with the same body replays the stored
+          response'
+        in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatReadRequest'
+        description: The watermark move
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatReadResult'
+          description: Watermark moved
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation failure
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Chat not found
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "413":
+          $ref: '#/components/responses/RequestTooLarge'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Move a chat's read watermark
+      tags:
+      - Chat
+  /v2/spaces/{space_id}/collections:
+    post:
+      description: Item ids are checked against the space; an id that does not resolve
+        there is refused rather than dropped.
+      operationId: create_collection
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Validate and report without committing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      - description: 'Create select options for names the property does not hold yet
+          (default false: an unmatched name is refused)'
+        in: query
+        name: create_missing_options
+        schema:
+          type: boolean
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResult'
+          description: Dry run; validation result without committing
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResult'
+          description: Created collection id
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation or reference failure
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "413":
+          $ref: '#/components/responses/RequestTooLarge'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Create a collection
+      tags:
+      - Lists
+  /v2/spaces/{space_id}/collections/{collection_id}/objects:
+    get:
+      description: Members come back in the order the collection stores them, not
+        sorted, unless a view is applied.
+      operationId: get_collection_objects
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Collection object id
+        in: path
+        name: collection_id
+        required: true
+        schema:
+          type: string
+      - description: Stored view id (exact or unique suffix)
+        in: query
+        name: view
+        schema:
+          type: string
+      - description: Comma-separated property keys to include per row
+        in: query
+        name: fields
+        schema:
+          type: string
+      - description: Items to skip
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: Items to return
+        in: query
+        name: limit
+        schema:
+          default: 25
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse-ObjectRow'
+          description: Minimal object rows
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Wrong-layout target or invalid params
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Space, collection or view not found
+      security:
+      - bearerauth: []
+      summary: List a collection's objects
+      tags:
+      - Lists
+  /v2/spaces/{space_id}/collections/{collection_id}/views:
+    get:
+      operationId: get_collection_views
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Collection object id
+        in: path
+        name: collection_id
+        required: true
+        schema:
+          type: string
+      - description: Items to skip
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: Items to return
+        in: query
+        name: limit
+        schema:
+          default: 25
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse-ViewObject'
+          description: The stored views, with their sorts, filters and columns
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Wrong-layout target
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Space or collection not found
+      security:
+      - bearerauth: []
+      summary: List a collection's views
+      tags:
+      - Lists
+  /v2/spaces/{space_id}/files:
+    post:
+      description: 'Send multipart/form-data with a `file` field, or JSON {"url":
+        …}. A source that refuses the fetch, or a URL that cannot be fetched, is a
+        400 naming /url; only a genuine server fault answers 500. The id that comes
+        back is the one file blocks, image blocks and icon_image values reference.'
+      operationId: upload_file
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Validate and report without committing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: false
+              properties:
+                name:
+                  type: string
+                url:
+                  type: string
+              required:
+              - url
+              type: object
+          multipart/form-data:
+            schema:
+              additionalProperties: false
+              properties:
+                file:
+                  format: binary
+                  type: string
+              required:
+              - file
+              type: object
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileUploadResult'
+          description: Dry run; validation result without committing
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileUploadResult'
+          description: Created file object id
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation failure, or a source URL that did not yield the
+            file
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "413":
+          $ref: '#/components/responses/RequestTooLarge'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Upload a file
+      tags:
+      - Files
+  /v2/spaces/{space_id}/members:
+    get:
+      operationId: list_members
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse-MemberRow'
+          description: Minimal member rows
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Space not found or unavailable
+      security:
+      - bearerauth: []
+      summary: List the members of a space
+      tags:
+      - Members
+  /v2/spaces/{space_id}/members/me:
+    get:
+      description: The identity is taken from the account this API runs against; there
+        is no member id to send.
+      operationId: get_member_me
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberRow'
+          description: The caller's member row
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Space not found, or no account identity
+      security:
+      - bearerauth: []
+      summary: Get the calling member
+      tags:
+      - Members
+  /v2/spaces/{space_id}/objects:
+    get:
+      operationId: list_objects
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Comma-separated property keys to include per row
+        in: query
+        name: fields
+        schema:
+          type: string
+      - description: Items to skip
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: Items to return
+        in: query
+        name: limit
+        schema:
+          default: 25
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse-ObjectRow'
+          description: Minimal object rows
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Invalid fields query
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Space not found or unavailable
+      security:
+      - bearerauth: []
+      summary: List the objects in a space
+      tags:
+      - Objects
+    post:
+      description: A select value naming an option the property does not hold is refused
+        unless `create_missing_options=true` is set. An unknown type or property key
+        is rejected either way, with the closest matches named. The body is either
+        a full AnyBlock document or the shortcut {type, name, properties, markdown};
+        `version` or `blocks` picks the document form.
+      operationId: create_object
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Validate and report without committing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      - description: 'Create select options for names the property does not hold yet
+          (default false: an unmatched name is refused)'
+        in: query
+        name: create_missing_options
+        schema:
+          type: boolean
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResult'
+          description: Dry run; validation result without committing
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResult'
+          description: Created object id + etag
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation or reference failure
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Create an object
+      tags:
+      - Objects
+  /v2/spaces/{space_id}/objects/{object_id}:
+    delete:
+      description: Only objects this key created can be deleted. The creator is recorded
+        at creation time and never added later, so objects made in the app, imported,
+        made by another member, or made before this route shipped are refused for
+        good. System objects are a 403 as well. A dry run reports the verdict without
+        the checks that run at archive time, so a deletable verdict can still meet
+        a 403.
+      operationId: delete_object
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Object id
+        in: path
+        name: object_id
+        required: true
+        schema:
+          type: string
+      - description: Probe deletability without writing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResult'
+          description: Archived object, or the dry-run verdict. Deleting again is
+            a 200 carrying a warning.
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: 'A type or a property: use their own delete routes'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Object or space not found
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Delete an object this key created
+      tags:
+      - Objects
+    get:
+      description: A `block` subtree comes back flagged as a subtree, and no write
+        path accepts that partial body. `format=md` is read-only; markdown cannot
+        be sent back.
+      operationId: get_object
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Object id
+        in: path
+        name: object_id
+        required: true
+        schema:
+          type: string
+      - description: Subset of properties,blocks (default both)
+        in: query
+        name: include
+        schema:
+          type: string
+      - description: 'Return the outline instead of full blocks: every block''s indent/id/type
+          plus its text truncated to 80 runes'
+        in: query
+        name: outline
+        schema:
+          type: boolean
+      - description: Return only this block's subtree
+        in: query
+        name: block
+        schema:
+          type: string
+      - description: compact (default) is the edit shape, where minted block ids relabel
+          to short suffixes; full is the export shape, with full ids everywhere, and
+          the shape to send back. Object references are full and inline in both.
+        in: query
+        name: ids
+        schema:
+          type: string
+      - description: anyblock (default) or md
+        in: query
+        name: format
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                additionalProperties: {}
+                type: object
+          description: The flat AnyBlock document + etag
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Illegal parameter combination (ambiguous_input)
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Object or space not found
+      security:
+      - bearerauth: []
+      summary: Read an object as an AnyBlock document
+      tags:
+      - Objects
+    patch:
+      description: Ops apply in order as one change set. If one fails, or the result
+        breaks the format's rules, none of them land. `update_block`, `delete_block`
+        and `replace_text` can address a block by its exact text instead of an id;
+        text matching zero or several blocks is refused, not guessed at. A later op
+        sees the earlier ones' edits. Ops that only create take no id; the new ids
+        come back in `created_blocks`.
+      operationId: patch_object
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Object id
+        in: path
+        name: object_id
+        required: true
+        schema:
+          type: string
+      - description: The etag the object must still carry
+        in: header
+        name: If-Match
+        schema:
+          type: string
+      - description: Validate and report without committing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EditResult'
+          description: New etag + created block ids + diff_stats
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Invalid ops or post-op document
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Object, space, or referenced block not found
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Existing content cannot be represented losslessly for this edit
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Edit an object with a batch of ops
+      tags:
+      - Objects
+  /v2/spaces/{space_id}/properties:
+    get:
+      operationId: list_properties
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse-PropertyRow'
+          description: Property rows
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Space not found or unavailable
+      security:
+      - bearerauth: []
+      summary: List the properties in a space
+      tags:
+      - Properties
+    post:
+      operationId: create_property
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Validate and report without committing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResult'
+          description: Dry run; validation result without committing
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResult'
+          description: Created property id + key
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation failure
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "413":
+          $ref: '#/components/responses/RequestTooLarge'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Create a property
+      tags:
+      - Properties
+  /v2/spaces/{space_id}/properties/{key}:
+    delete:
+      operationId: delete_property
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Property key
+        in: path
+        name: key
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResult'
+          description: Archived property
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: No live property with this key. A property that is already
+            deleted is a 404 too, not a second delete.
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Delete a property
+      tags:
+      - Properties
+    patch:
+      description: Only the display name can change. The key is the property's identity,
+        and its format is fixed once it exists.
+      operationId: update_property
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Property key
+        in: path
+        name: key
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResult'
+          description: Updated property
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation failure
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Property not found
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "413":
+          $ref: '#/components/responses/RequestTooLarge'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Update a property
+      tags:
+      - Properties
+  /v2/spaces/{space_id}/properties/{key}/options:
+    get:
+      operationId: list_property_options
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Property key
+        in: path
+        name: key
+        required: true
+        schema:
+          type: string
+      - description: Case-insensitive name prefix filter
+        in: query
+        name: prefix
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse-OptionRow'
+          description: Option rows
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Property not found
+      security:
+      - bearerauth: []
+      summary: List a property's options
+      tags:
+      - Properties
+  /v2/spaces/{space_id}/search:
+    post:
+      description: '`filter` and `filters` are two spellings of the same thing, the
+        compact string and the structured array; sending both is refused. This is
+        a read carried by POST because the query needs a body, so pagination stays
+        in the query string and a `limit` or `offset` in the body is refused.'
+      operationId: search_space
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Items to skip
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: Items to return
+        in: query
+        name: limit
+        schema:
+          default: 25
+          type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SearchRequestDoc'
+        description: Search request
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse-ObjectRow'
+          description: Minimal object rows
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Invalid request (validation_failed / ambiguous_input)
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Space not found
+      security:
+      - bearerauth: []
+      summary: Search one space
+      tags:
+      - Search
+  /v2/spaces/{space_id}/sets:
+    post:
+      description: Filter and sort property keys are checked against the type the
+        set queries; a key that type does not carry is refused.
+      operationId: create_set
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Validate and report without committing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      - description: 'Create select options for names the property does not hold yet
+          (default false: an unmatched name is refused)'
+        in: query
+        name: create_missing_options
+        schema:
+          type: boolean
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResult'
+          description: Dry run; validation result without committing
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResult'
+          description: Created set id
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation or reference failure
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "413":
+          $ref: '#/components/responses/RequestTooLarge'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Create a set
+      tags:
+      - Lists
+  /v2/spaces/{space_id}/sets/{set_id}/objects:
+    get:
+      description: A stored view's dynamic placeholders, such as the current date
+        or the calling member, are resolved here. One that cannot be resolved becomes
+        a warning rather than a silently empty result.
+      operationId: get_set_objects
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Set object id
+        in: path
+        name: set_id
+        required: true
+        schema:
+          type: string
+      - description: Stored view id (exact or unique suffix)
+        in: query
+        name: view
+        schema:
+          type: string
+      - description: Comma-separated property keys to include per row
+        in: query
+        name: fields
+        schema:
+          type: string
+      - description: Items to skip
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: Items to return
+        in: query
+        name: limit
+        schema:
+          default: 25
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse-ObjectRow'
+          description: Minimal object rows
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Wrong-layout target or invalid params
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Space, set or view not found
+      security:
+      - bearerauth: []
+      summary: Run a set's query and list what it matches
+      tags:
+      - Lists
+  /v2/spaces/{space_id}/sets/{set_id}/views:
+    get:
+      operationId: get_set_views
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Set object id
+        in: path
+        name: set_id
+        required: true
+        schema:
+          type: string
+      - description: Items to skip
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: Items to return
+        in: query
+        name: limit
+        schema:
+          default: 25
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse-ViewObject'
+          description: The stored views, with their sorts, filters and columns
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Wrong-layout target
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Space or set not found
+      security:
+      - bearerauth: []
+      summary: List a set's views
+      tags:
+      - Lists
+  /v2/spaces/{space_id}/templates:
+    post:
+      description: '`template_for` names the type key this template starts an object
+        of.'
+      operationId: create_template
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Validate and report without committing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      - description: 'Create select options for names the property does not hold yet
+          (default false: an unmatched name is refused)'
+        in: query
+        name: create_missing_options
+        schema:
+          type: boolean
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResult'
+          description: Dry run; validation result without committing
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResult'
+          description: Created template id
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation or reference failure
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Create a template
+      tags:
+      - Templates
+  /v2/spaces/{space_id}/types:
+    get:
+      operationId: list_types
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse-TypeRow'
+          description: Type rows
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Space not found or unavailable
+      security:
+      - bearerauth: []
+      summary: List the types in a space
+      tags:
+      - Types
+    post:
+      description: A `type_settings.property_definitions` entry naming a property
+        that does not exist creates it alongside the type. The body is an AnyBlock
+        document with kind "object_type"; the type's api key, layout and plural name
+        live in `type_settings`.
+      operationId: create_type
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Validate and report without committing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      - description: 'Create select options for names the property does not hold yet
+          (default false: an unmatched name is refused)'
+        in: query
+        name: create_missing_options
+        schema:
+          type: boolean
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResult'
+          description: Dry run; validation result without committing
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResult'
+          description: Created type id + key
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Validation failure
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Create a type
+      tags:
+      - Types
+  /v2/spaces/{space_id}/types/{type}:
+    delete:
+      operationId: delete_type
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Type key
+        in: path
+        name: type
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResult'
+          description: Archived type
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: No live type with this key. A type that is already deleted
+            is a 404 too, not a second delete.
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Delete a type
+      tags:
+      - Types
+    get:
+      operationId: get_type
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Type key
+        in: path
+        name: type
+        required: true
+        schema:
+          type: string
+      - description: compact (default) is the edit shape, with short labels for minted
+          view and block ids; full is the export shape, with full ids
+        in: query
+        name: ids
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                additionalProperties: {}
+                type: object
+          description: The kind:objectType AnyBlock document + etag
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Type not found
+      security:
+      - bearerauth: []
+      summary: Read a type as an AnyBlock document
+      tags:
+      - Types
+    patch:
+      description: '`type_settings.property_definitions`, when present, replaces the
+        recommended property lists rather than adding to them, and creates any property
+        that does not exist yet. `properties` takes name and description; the layout
+        is `type_settings.layout` and the icon is the typed envelope `icon`. Any other
+        key is refused.'
+      operationId: update_type
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Type key
+        in: path
+        name: type
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResult'
+          description: Updated type
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Type not found
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "413":
+          $ref: '#/components/responses/RequestTooLarge'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Update a type
+      tags:
+      - Types
+  /v2/spaces/{space_id}/types/{type}/schema:
+    get:
+      description: Not implemented. Every request answers 501.
+      operationId: get_type_schema
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Type key
+        in: path
+        name: type
+        required: true
+        schema:
+          type: string
+      responses:
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "501":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Not implemented yet
+      security:
+      - bearerauth: []
+      summary: Get a JSON Schema for a type
+      tags:
+      - Types
+  /v2/validate:
+    post:
+      description: 'Structure and format rules only. Nothing is resolved against a
+        space, so option names and a type''s property keys are not checked here. Findings
+        come back as data: an invalid document is still a 200, carrying the issues,
+        and a valid one carries empty lists.'
+      operationId: validate
+      parameters:
+      - description: Retry key; identical requests replay, different requests conflict
+        in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateResponse'
+          description: Issue and warning lists, empty when the document is valid
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "409":
+          $ref: '#/components/responses/Conflict'
+      security:
+      - bearerauth: []
+      summary: Validate an AnyBlock document
+      tags:
+      - Schemas
+servers:
+- url: http://127.0.0.1:31009
+tags:
+- description: What the calling key may do. Ask this before discovering the limits
+    through 403s.
+  name: Auth
+- description: The containers everything else lives in. Nearly every other route is
+    scoped to one.
+  name: Spaces
+- description: 'Read and write whole AnyBlock documents: one GET returns an editable
+    document, one PATCH edits it.'
+  name: Objects
+- description: Find objects by query, filter and sort, within one space or across
+    all of them.
+  name: Search
+- description: 'An object''s shape: the properties it recommends and the views it
+    opens with.'
+  name: Types
+- description: The typed key-value fields objects carry, and the option vocabularies
+    select fields draw from.
+  name: Properties
+- description: Sets (a live query over a type) and collections (a hand-curated list),
+    with their views.
+  name: Lists
+- description: Messages, reactions and read state. Chats store messages outside blocks,
+    paged by order-id cursors.
+  name: Chat
+- description: Who is in a space, and which of them you are.
+  name: Members
+- description: Upload bytes and get the id that file blocks and chat attachments reference.
+  name: Files
+- description: Starting documents for a type.
+  name: Templates
+- description: 'The format itself: what a valid document looks like, what each PATCH
+    op accepts, and a validator to check one against them. Read these before writing.'
+  name: Schemas

@@ -146,7 +146,7 @@ func parseVerbFlags(tool wrapper.Tool, argv []string, errW io.Writer) (map[strin
 			// object args are passed as JSON strings on the CLI
 			desc := a.Description
 			if a.Type == wrapper.ArgObject {
-				desc += ` (JSON, e.g. '{"status":"Done"}')`
+				desc += ` (JSON, e.g. '{"Status":"Done"}')`
 			}
 			strFlags[a.Name] = fs.String(a.Name, "", desc)
 		}
