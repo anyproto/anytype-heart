@@ -8,11 +8,14 @@ client-facing contract.
 
 Before, when an app requested a pairing code, heart minted a 4-digit code and
 broadcast it to every session; the client just displayed it. Now **no code is
-minted until the user approves**. The client has to show an approve/deny prompt
-first, then ask heart for the code.
+minted until the user approves**, and for API keys (`JsonAPI` scope) the
+approval is a **space picker**, not a yes/no: the user chooses which spaces
+the key may touch — specific spaces, or all of them — and whether it may
+write. Heart persists exactly what the approval sends.
 
 If the client does nothing, **pairing cannot complete** — there is no fallback
-that hands out a code without approval.
+that hands out a code without approval, and no pairing path that mints a key
+without an explicit grant decision.
 
 ## The flow
 
@@ -22,7 +25,8 @@ external app          heart                         desktop client
      ├─ POST /v1/auth/challenges ─▶ (broadcast) ─────────▶│  Event.Account.LinkApprovalRequest
      │  or AccountLocalLinkNewChallenge                    │  → show "X wants to connect" [Allow][Deny]
      │                                                     │
-     │                            ◀── AccountLocalLinkApproveChallenge ──┤  user pressed Allow
+     │                            ◀── AccountLocalLinkApproveChallenge ──┤  user picked spaces +
+     │                              (request: allow, grant)│  permission, pressed Allow
      │                              (response: challenge)  │  → show the 4-digit code
      │                                                     │
      │◀ user types the code into the external app          │
@@ -41,7 +45,8 @@ external app          heart                         desktop client
 | `clientInfo.origin` | browser origin, e.g. `chrome-extension://<id>`. Empty for native callers. Set by the browser, not forgeable by a page. |
 | `clientInfo.processName` / `processPath` | resolved OS process for native callers. Empty for browsers and on mobile. |
 | `clientInfo.signatureVerified` | **always false today** — not implemented. Do not show a "verified" badge from it. |
-| `scope` | the access level being requested (`JsonAPI` or `Limited`). |
+| `scope` | the access level being requested (`JsonAPI` or `Limited`). `JsonAPI` prompts are the space picker; `Limited` (webclipper) prompts stay a plain Allow/Deny. |
+| `requestedPerm` | the permission the app claims to need (`Read`/`ReadWrite`). Pre-fill the permission control with it, nothing more — it is app-supplied and never a ceiling. `Read` is the wire default, so "asked for read" and "asked for nothing" look identical; treat both as the read default. |
 
 Show `origin` and/or `processPath` as the identity — those are attributable.
 Treat `name` as a hint, not a fact; render it clearly as caller-supplied.
@@ -58,6 +63,7 @@ AccountLocalLinkApproveChallenge(
     processPath: <clientInfo.processPath, verbatim>,
     origin:      <clientInfo.origin, verbatim>,
     allow:       true | false,
+    grant:       { spaceIds: [...] | allSpaces: true, perm: Read | ReadWrite },
 )
 ```
 
@@ -65,13 +71,36 @@ Pass `processPath` and `origin` back **exactly** as they arrived in the event �
 together they identify which pending request you are answering. Do not
 normalize, lowercase, or trim them.
 
+The grant is the picker's result and is **required when `allow=true` on a
+`JsonAPI` challenge**, forbidden on a `Limited` one, ignored on Deny. Picker
+rules, all enforced by heart with `BAD_INPUT`:
+
+- exactly one of a non-empty `spaceIds` and `allSpaces: true`;
+- **nothing is pre-selected** — no space checked by default, "all spaces" not
+  the default; keep Allow disabled until a selection exists;
+- the permission control defaults to read when the app sent no
+  `requestedPerm`;
+- the all-spaces option must say the dynamic part out loud: **"all spaces,
+  including ones you create later"** — a label that says only "All spaces"
+  understates the grant;
+- the tech space is never offered: it is not a user space, `allSpaces` never
+  covers it, and only Full-scope `CreateApp`/`UpdateApp` can grant it.
+
+**Warn on narrow grants.** A key granted specific spaces, or read-only, works
+on `/v2` only — every `/v1` route refuses it with
+`v1_not_available_for_scoped_keys`. Only the maximal choice (all spaces +
+read & write) is also served on `/v1`, where it behaves exactly like a legacy
+unscoped key. Say this at pick time: a user pairing an app that speaks `/v1`
+and narrowing the grant gets a key that appears broken.
+
 Response:
 
 | outcome | response |
 | --- | --- |
 | `allow=true`, success | `challenge` = the 4-digit code. Display it for the user to type into the external app. |
 | `allow=false` | `challenge` empty. The request is dropped. |
-| `error.code = NO_PENDING_CHALLENGE` | nothing was pending for that caller: it expired (60s), was already answered, or never existed. Dismiss the prompt. |
+| `error.code = BAD_INPUT` | the grant violated a rule above. The challenge is **still pending** — fix the picker result and call again; the prompt stays answerable. |
+| `error.code = NO_PENDING_CHALLENGE` | nothing was pending for that caller: it expired (180s), was already answered, or never existed. Dismiss the prompt. |
 | `error.code = ACCOUNT_IS_NOT_RUNNING` | no account loaded. |
 
 This RPC requires a **full-scope** session — the desktop client's own. It is
@@ -91,9 +120,11 @@ raises no new prompt until restart. You do not need to track this yourself.
 
 ## Edge cases
 
-- **Timeouts.** An unanswered prompt expires after 60s; a displayed code expires
-  5 minutes after approval. In both cases a `LinkApprovalHide` arrives — drive
-  dismissal off that, not off your own timer.
+- **Timeouts.** An unanswered prompt expires after 180s — enough to read the
+  caller, open the space list, and think; a displayed code expires 5 minutes
+  after approval, however long the picking took. In both cases a
+  `LinkApprovalHide` arrives — drive dismissal off that, not off your own
+  timer.
 - **One prompt per caller.** A caller with a prompt already open cannot open a
   second; repeat requests are refused by heart. No client-side dedup needed, but
   don't assume one request per app lifetime.
@@ -104,9 +135,15 @@ raises no new prompt until restart. You do not need to track this yourself.
   the caller must re-request. Don't try to reconstruct pending prompts from
   history.
 
-## What has NOT changed
+## What has NOT changed — and what has
 
-The external app's side is identical to before — `POST /v1/auth/challenges`
-then `POST /v1/auth/api_keys` (or the gRPC equivalents), same requests, same
-responses. Only the desktop client gains the approval step. No SDK or extension
-needs updating.
+The external app's pairing calls are byte-identical to before —
+`POST /v1/auth/challenges` then `POST /v1/auth/api_keys` (or the gRPC
+equivalents), same requests, same responses.
+
+What HAS changed is the key that comes out: it carries the grant the user
+picked. An app whose key was granted all spaces with read & write works
+everywhere, `/v1` included, exactly as an unscoped key did. Any narrower key
+works on `/v2` only and is refused on every `/v1` route. An SDK or extension
+that speaks `/v1` therefore keeps working only when the user grants
+everything — which is why the picker must warn on narrow grants (see above).

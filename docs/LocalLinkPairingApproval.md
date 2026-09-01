@@ -2,8 +2,11 @@
 
 Spec for GO-7395. Supersedes the pairing-hardening items of GO-7394.
 
-Status: implemented in heart. The desktop client still has to build the prompt
-and call the new RPC — until it does, nothing can pair (§8.2).
+Status: implemented in heart, including the space-grant approval of GO-7383
+(design record:
+`docs/superpowers/specs/2026-09-01-local-link-approval-space-picker-design.md`).
+The desktop client still has to build the prompt — now a space picker — and
+call the new RPC; until it does, nothing can pair (§8.2).
 
 ## 1. Goal
 
@@ -62,8 +65,9 @@ client                  heart                          desktop UI
   │                       │                                          wants to connect"
   │                       │                                          [Allow] [Deny]
   │                       │
-  │                       ◀── ApproveChallenge(processPath, origin, allow: true) ──┤
-  │                       └─ state=approved, mints code
+  │                       ◀── ApproveChallenge(processPath, origin, ────────────────┤
+  │                       │      allow: true, grant: {spaceIds|allSpaces, perm})
+  │                       └─ state=approved, stores grant, mints code
   │                       ├── challenge: "4821" ─────────────────▶ shows "4821"
   │
   │  (user types 4821 into the client)
@@ -97,7 +101,10 @@ difference is that the code appears later.
 - Both terminal states delete the entry and broadcast `LinkChallengeHide`.
 
 Invariant: **a challenge value is never generated in the `pending` state, and
-never leaves the process except as the `ApproveChallenge` response.**
+never leaves the process except as the `ApproveChallenge` response.** The
+grant has the same shape: it is set only by `ApproveChallenge`, stored beside
+the code, and read out at solve — nothing the solving client sends can reach
+or widen it (`SolveChallenge.Request` carries only the id and the answer).
 
 ## 5. Proto changes
 
@@ -113,6 +120,12 @@ message LinkApprovalRequest {
   message ClientInfo { ... }              // unchanged; `origin` already added
   ClientInfo clientInfo = 2;
   model.Account.Auth.LocalApiScope scope = 3;
+  // the permission the app claims to need; pre-fills the prompt's permission
+  // control, untrusted like `name`, never a ceiling. Read is the zero value,
+  // so a read claim is indistinguishable from no claim (both render the safe
+  // default). Replaces the former requestedGrant (4, reserved): an app cannot
+  // know space ids before pairing.
+  model.Account.Auth.AppGrant.Perm requestedPerm = 5;
 }
 
 // take the prompt off screen once answered, denied or expired
@@ -137,6 +150,11 @@ message ApproveChallenge {
         string processPath = 1;   // both verbatim from the event's ClientInfo
         string origin = 2;
         bool allow = 3;
+        // the user's grant decision, persisted verbatim into the app link on
+        // solve. Required when allow is true and the challenge scope is
+        // JsonAPI, forbidden otherwise (BAD_INPUT either way around); ignored
+        // when allow is false.
+        model.Account.Auth.AppGrant grant = 4;
     }
     message Response {
         Error error = 1;
@@ -155,6 +173,28 @@ message ApproveChallenge {
     }
 }
 ```
+
+Grant rules on an allowed JsonAPI approval, validated BEFORE any state change
+so a rejected grant leaves the challenge pending and the prompt answerable:
+
+- the grant is **required** — a key with access to nothing is a dead key that
+  would read to its holder as a heart bug; the client keeps Allow disabled
+  until a selection exists;
+- exactly one of `spaceIds` (non-empty) and `allSpaces` is set;
+- `allSpaces` is **dynamic**: it covers every space in the account, including
+  spaces created after the approval — and never the tech space, which the /v2
+  enforcement excludes (reaching it requires a Full-scope caller listing it
+  explicitly);
+- `perm` is what the user chose; the app's `requestedPerm` only pre-filled the
+  control and is never a ceiling;
+- a `Limited` (webclipper) approval carries **no** grant — its prompt stays a
+  plain Allow/Deny;
+- every violation answers `BAD_INPUT`.
+
+On /v1, a key whose grant is `allSpaces` + read&write is served exactly like
+an unscoped key (it grants no less); every narrower grant is refused there
+with `v1_not_available_for_scoped_keys` — /v1 cannot enforce it. /v2 enforces
+all grants.
 
 The pending challenge is addressed by the caller the prompt displayed, not by a
 challenge id. Only one challenge can be pending per caller (§7.1), so the pair
@@ -226,7 +266,10 @@ when the key is an origin or a process path.
 
 ### 7.3 TTL
 
-`pending` entries expire after **60s**; `approved` entries after **5 min**. On
+`pending` entries expire after **180s** — approval is a real interaction now
+(read the caller, open the space list, select, confirm), and the pending state
+holds no secret, so the longer window costs nothing but a stale prompt.
+`approved` entries expire after **5 min**, measured from approval. On
 expiry: delete, broadcast `LinkChallengeHide{challengeId}`. A sweep on each
 `StartNewChallenge`/`SolveChallenge` call is sufficient — no timer goroutine.
 Today entries are removed only on a successful solve and otherwise live for the
@@ -320,7 +363,9 @@ Behaviour:
   return the first challenge's id.
 - A caller asking again supersedes its own approved-but-unsolved challenge, so
   the old code dies rather than lingering as a second way in.
-- Pending expires after 60s; approved after 5 min (inject a clock).
+- Pending expires after 180s; approved after 5 min (inject a clock).
+- The grant round-trip and its refusal matrix — see §9 of the picker design
+  (`docs/superpowers/specs/2026-09-01-local-link-approval-space-picker-design.md`).
 - A denial survives an unrelated successful pairing: it is the user's decision,
   not a rate limit that a success resets.
 
