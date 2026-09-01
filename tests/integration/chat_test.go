@@ -103,7 +103,9 @@ func newChatFixture(t *testing.T) *chatFixture {
 	chatSub := &chatSubAdapter{svc: app.MustComponent[chatsubscription.Service](a)}
 	fileObjSvc := app.MustComponent[apicore.FileObjectService](a)
 
-	srv := apiserver.NewServer(mw, acctSvc, evtSvc, crossSub, chatSub, fileObjSvc, "127.0.0.1:0", nil, nil)
+	// zero V2Deps: this suite exercises the v1 chat endpoints, so v2 stays
+	// unregistered (NewServer skips it when Reader/Store are nil).
+	srv := apiserver.NewServer(mw, acctSvc, evtSvc, crossSub, chatSub, fileObjSvc, apiserver.V2Deps{}, "127.0.0.1:0", apiserver.OpenApiDocs{})
 	ts := httptest.NewServer(srv.Engine())
 
 	// Create a workspace-level chatDerived object. block.Service.ObjectAddChat

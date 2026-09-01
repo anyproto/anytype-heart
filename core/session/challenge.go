@@ -38,7 +38,7 @@ var (
 	failedChallengeSolves = atomic.NewInt32(0)
 )
 
-func (s *service) StartNewChallenge(scope model.AccountAuthLocalApiScope, info *pb.EventAccountLinkChallengeClientInfo) (challengeId string, challengeValue string, err error) {
+func (s *service) StartNewChallenge(scope model.AccountAuthLocalApiScope, info *pb.EventAccountLinkChallengeClientInfo, requestedGrant *model.AccountAuthAppGrant) (challengeId string, challengeValue string, err error) {
 	if failedChallengeSolves.Load() >= maxFailedChallengeSolves {
 		// Locked after too many wrong guesses: refuse to hand out fresh codes.
 		return "", "", ErrChallengeAttemptsExceeded
@@ -60,19 +60,26 @@ func (s *service) StartNewChallenge(scope model.AccountAuthLocalApiScope, info *
 	value := fmt.Sprintf("%0*d", challengeDigits, rand.Intn(int(math.Pow10(challengeDigits))))
 
 	s.challenges[id] = challenge{
-		tries:      0,
-		value:      value,
-		clientInfo: info,
-		scope:      scope,
+		tries:          0,
+		value:          value,
+		clientInfo:     info,
+		scope:          scope,
+		requestedGrant: requestedGrant,
 	}
 
 	currentChallengesRequests.Inc()
 	return id, value, nil
 }
 
-func (s *service) SolveChallenge(challengeId string, challengeSolution string, signingKey []byte) (clientInfo *pb.EventAccountLinkChallengeClientInfo, token string, scope model.AccountAuthLocalApiScope, err error) {
+// SolveChallenge verifies the 4-digit answer and, on success, mints a session
+// carrying the scope — and hands back the requested grant — the challenge was
+// created with. Unnamed results on purpose: a named `scope` return once
+// shadowed `challenge.scope` here and the pairing session was silently minted
+// with the zero value (Limited) — see P0.1 in
+// docs/superpowers/specs/2026-08-06-api-key-scoping-design.md.
+func (s *service) SolveChallenge(challengeId string, challengeSolution string, signingKey []byte) (*pb.EventAccountLinkChallengeClientInfo, string, model.AccountAuthLocalApiScope, *model.AccountAuthAppGrant, error) {
 	if failedChallengeSolves.Load() >= maxFailedChallengeSolves {
-		return nil, "", 0, ErrChallengeAttemptsExceeded
+		return nil, "", 0, nil, ErrChallengeAttemptsExceeded
 	}
 
 	s.lock.Lock()
@@ -80,12 +87,12 @@ func (s *service) SolveChallenge(challengeId string, challengeSolution string, s
 	if !ok {
 		s.lock.Unlock()
 
-		return nil, "", 0, ErrChallengeIdNotFound
+		return nil, "", 0, nil, ErrChallengeIdNotFound
 	}
 	if challenge.tries >= challengeMaxTries {
 		s.lock.Unlock()
 
-		return clientInfo, "", 0, ErrChallengeTriesExceeded
+		return nil, "", 0, nil, ErrChallengeTriesExceeded
 	}
 
 	if challenge.value != challengeSolution {
@@ -96,21 +103,21 @@ func (s *service) SolveChallenge(challengeId string, challengeSolution string, s
 		// Count the wrong guess against the whole-run budget, not just this
 		// challenge, so cycling through fresh codes cannot widen the window.
 		failedChallengeSolves.Inc()
-		return clientInfo, "", 0, ErrChallengeSolutionWrong
+		return nil, "", 0, nil, ErrChallengeSolutionWrong
 	}
 
 	delete(s.challenges, challengeId)
 	s.lock.Unlock()
 
-	sessionToken, err := s.StartSession(signingKey, scope)
+	sessionToken, err := s.StartSession(signingKey, challenge.scope)
 	if err != nil {
-		return nil, "", 0, err
+		return nil, "", 0, nil, fmt.Errorf("start session for solved challenge: %w", err)
 	}
 	// A correct verification clears the run's failure and request budgets, so a
 	// user who mistyped earlier or pairs another device keeps working.
 	failedChallengeSolves.Store(0)
 	currentChallengesRequests.Store(0)
-	return challenge.clientInfo, sessionToken, challenge.scope, nil
+	return challenge.clientInfo, sessionToken, challenge.scope, challenge.requestedGrant, nil
 }
 
 type challenge struct {
@@ -118,4 +125,8 @@ type challenge struct {
 	value      string
 	clientInfo *pb.EventAccountLinkChallengeClientInfo
 	scope      model.AccountAuthLocalApiScope
+	// requestedGrant is the restriction the pairing client asked for; it is
+	// persisted verbatim on solve. Grants only narrow, so honoring a
+	// self-requested restriction is fail-safe by monotonicity.
+	requestedGrant *model.AccountAuthAppGrant
 }

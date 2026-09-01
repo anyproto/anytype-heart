@@ -1,15 +1,19 @@
 package server
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // localApiHost is what a real client sends; httptest defaults to example.com,
@@ -50,11 +54,77 @@ func TestRouter_AuthRoute(t *testing.T) {
 	})
 }
 
+func TestRouter_V1KeyScopes(t *testing.T) {
+	t.Run("every key scope is accepted on /v1", func(t *testing.T) {
+		// The JSON-API scope gate is /v2-only. Keys minted without a scope
+		// carry Limited (anytype-cli's CreateApp historically sent none) and
+		// must keep working on /v1 — installing the gate on this group would
+		// 403 every such key with no repair path but re-issuing.
+		for _, scope := range []model.AccountAuthLocalApiScope{
+			model.AccountAuth_Limited,
+			model.AccountAuth_JsonAPI,
+			model.AccountAuth_Full,
+		} {
+			t.Run(scope.String(), func(t *testing.T) {
+				// given
+				fx := newFixture(t)
+				engine := fx.NewRouter(fx.mwMock, fx.eventMock, []byte{}, []byte{})
+				fx.KeyToToken = map[string]ApiSessionEntry{
+					"validKey": {Token: "dummyToken", AppName: "legacy-cli", Scope: scope},
+				}
+				fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).
+					Return(&pb.RpcObjectSearchResponse{
+						Records: []*types.Struct{},
+						Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+					}, nil).Once()
+				fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
+
+				w := httptest.NewRecorder()
+				req := httptest.NewRequest("GET", "/v1/spaces", nil)
+				req.Host = localApiHost
+				req.Header.Set("Authorization", "Bearer validKey")
+
+				// when
+				engine.ServeHTTP(w, req)
+
+				// then
+				require.Equal(t, http.StatusOK, w.Code)
+			})
+		}
+	})
+
+	t.Run("expired key gets the distinct 401 on /v1", func(t *testing.T) {
+		// given: expiry is enforced in ensureAuthenticated for BOTH groups —
+		// only the scope refusal is /v2-only (H5 did not move)
+		fx := newFixture(t)
+		engine := fx.NewRouter(fx.mwMock, fx.eventMock, []byte{}, []byte{})
+		fx.KeyToToken = map[string]ApiSessionEntry{
+			"expiredKey": {Token: "dummyToken", Scope: model.AccountAuth_JsonAPI, ExpireAt: time.Now().Unix() - 60},
+		}
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/v1/spaces", nil)
+		req.Host = localApiHost
+		req.Header.Set("Authorization", "Bearer expiredKey")
+
+		// when
+		engine.ServeHTTP(w, req)
+
+		// then
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+		expectedJSON, err := json.Marshal(util.CodeToApiError(http.StatusUnauthorized, ErrApiKeyExpired.Error()))
+		require.NoError(t, err)
+		require.JSONEq(t, string(expectedJSON), w.Body.String())
+	})
+}
+
 func TestRouter_MetadataHeader(t *testing.T) {
 	t.Run("Response includes Anytype-Version header", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		engine := fx.NewRouter(fx.mwMock, fx.eventMock, []byte{}, []byte{})
+		// no Scope on the entry: /v1 carries no scope gate, so a /v1 test
+		// setting one would imply a requirement that does not exist
 		fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "dummyToken", AppName: "dummyApp"}}
 		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).
 			Return(&pb.RpcObjectSearchResponse{

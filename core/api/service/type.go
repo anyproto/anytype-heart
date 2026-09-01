@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/iancoleman/strcase"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
@@ -222,7 +221,10 @@ func (s *Service) buildTypeDetails(ctx context.Context, spaceId string, request 
 	}
 
 	if request.Key != "" {
-		apiKey := strcase.ToSnake(s.sanitizedString(request.Key))
+		apiKey, ok := util.MintApiObjectKey(request.Key)
+		if !ok {
+			return nil, util.ErrInvalidApiObjectKey("type", request.Key)
+		}
 		if _, exists := s.cache.getTypes(spaceId)[apiKey]; exists {
 			return nil, util.ErrBadInput(fmt.Sprintf("type key %q already exists", apiKey))
 		}
@@ -286,13 +288,19 @@ func (s *Service) buildUpdatedTypeDetails(ctx context.Context, spaceId string, t
 		fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(s.typeLayoutToObjectTypeLayout(*request.Layout)))
 	}
 	if request.Key != nil {
-		apiKey := strcase.ToSnake(s.sanitizedString(*request.Key))
+		apiKey, ok := util.MintApiObjectKey(*request.Key)
+		if !ok {
+			return nil, util.ErrInvalidApiObjectKey("type", *request.Key)
+		}
 		if apiKey != t.Key {
 			if existing, exists := s.cache.getTypes(spaceId)[apiKey]; exists && existing.Id != t.Id {
 				return nil, util.ErrBadInput(fmt.Sprintf("type key %q already exists", apiKey))
 			}
 			if bundle.HasObjectTypeByKey(domain.TypeKey(util.ToTypeApiKey(t.UniqueKey))) {
 				return nil, util.ErrBadInput("type key of bundled types cannot be changed")
+			}
+			if shadowsBundledTypeKey(apiKey, util.ToTypeApiKey(t.UniqueKey)) {
+				return nil, util.ErrBadInput(fmt.Sprintf("type key %q is reserved by a bundled type", apiKey))
 			}
 			fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(apiKey)
 		}

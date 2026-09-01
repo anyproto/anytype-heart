@@ -32,6 +32,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -45,6 +46,8 @@ const (
 	descOrder   = "-_o.id"
 	ascOrder    = "_o.id"
 	descStateId = "-stateId"
+
+	messageHistorySchemaVersionId = "$message-history-v1"
 )
 
 type Service interface {
@@ -137,6 +140,17 @@ func (s *service) getOrInitRepository(spaceId, chatObjectId string) (Repository,
 	if err != nil {
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
+	historyCollectionName := chatObjectId + "chatMessageHistory"
+	historyCollection, err := crdtDb.OpenCollection(s.componentCtx, historyCollectionName)
+	if errors.Is(err, anystore.ErrCollectionNotFound) {
+		historyCollection, err = crdtDb.CreateCollection(s.componentCtx, historyCollectionName)
+		if err != nil {
+			return nil, fmt.Errorf("create message history collection: %w", err)
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get message history collection: %w", err)
+	}
 
 	if err = anystorehelper.AddIndexes(s.componentCtx, collection, []anystore.IndexInfo{
 		{Fields: []string{"_o.id"}},
@@ -150,8 +164,12 @@ func (s *service) getOrInitRepository(spaceId, chatObjectId string) (Repository,
 	}
 
 	repo := &repository{
-		collection: collection,
-		arenaPool:  s.arenaPool,
+		collection:        collection,
+		historyCollection: historyCollection,
+		arenaPool:         s.arenaPool,
+	}
+	if err = repo.ensureMessageHistory(s.componentCtx, crdtDb, chatObjectId); err != nil {
+		return nil, fmt.Errorf("initialize message history: %w", err)
 	}
 
 	s.cache[chatObjectId] = repo
@@ -173,6 +191,8 @@ type Repository interface {
 	GetPrevOrderId(ctx context.Context, orderId string) (string, error)
 	LoadChatState(ctx context.Context) (*model.ChatState, error)
 	CountMessages(ctx context.Context) (int, error)
+	CountMessagesLifetime(ctx context.Context) (int, error)
+	RecordMessage(ctx context.Context, messageId string) (bool, error)
 	GetOldestOrderId(ctx context.Context, counterType chatmodel.CounterType) (string, error)
 	GetReadMessagesAfter(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) ([]string, error)
 	GetUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) ([]string, error)
@@ -202,8 +222,9 @@ type Repository interface {
 }
 
 type repository struct {
-	collection anystore.Collection
-	arenaPool  *anyenc.ArenaPool
+	collection        anystore.Collection
+	historyCollection anystore.Collection
+	arenaPool         *anyenc.ArenaPool
 }
 
 func (s *repository) AddTestMessage(ctx context.Context, msg *chatmodel.Message) error {
@@ -217,6 +238,9 @@ func (s *repository) AddTestMessage(ctx context.Context, msg *chatmodel.Message)
 	orderObj.Set("id", arena.NewString(msg.OrderId))
 	val.Set(chatmodel.OrderKey, orderObj)
 
+	if _, err := s.RecordMessage(ctx, msg.Id); err != nil {
+		return err
+	}
 	return s.collection.Insert(ctx, val)
 }
 
@@ -309,6 +333,81 @@ func (s *repository) LoadChatState(ctx context.Context) (*model.ChatState, error
 
 func (s *repository) CountMessages(ctx context.Context) (int, error) {
 	return s.collection.Find(nil).Count(ctx)
+}
+
+// CountMessagesLifetime returns the number of distinct messages ever added to
+// the chat. Deletion removes the live message document but deliberately keeps
+// its history record, so API message_count does not move backwards.
+func (s *repository) CountMessagesLifetime(ctx context.Context) (int, error) {
+	return s.historyCollection.Find(query.Key{
+		Path:   []string{"id"},
+		Filter: query.NewComp(query.CompOpNe, messageHistorySchemaVersionId),
+	}).Count(ctx)
+}
+
+// RecordMessage records one message identity in the append-only local history
+// index. The index is rebuilt deterministically when chat changes are replayed;
+// using the message id makes replays idempotent.
+func (s *repository) RecordMessage(ctx context.Context, messageId string) (bool, error) {
+	return s.recordMessageHistoryId(ctx, messageId)
+}
+
+func (s *repository) recordMessageHistoryId(ctx context.Context, messageId string) (bool, error) {
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+	doc := arena.NewObject()
+	doc.Set("id", arena.NewString(messageId))
+	if err := s.historyCollection.Insert(ctx, doc); err != nil {
+		if errors.Is(err, anystore.ErrDocExists) {
+			return false, nil
+		}
+		return false, fmt.Errorf("record message history: %w", err)
+	}
+	return true, nil
+}
+
+// ensureMessageHistory seeds live messages, invalidates the incremental replay
+// watermark exactly once, then writes its version marker. The next object open
+// consequently replays the complete tree and recovers pre-migration messages
+// that were already deleted. If initialization crashes before the marker, the
+// whole idempotent migration runs again.
+func (s *repository) ensureMessageHistory(ctx context.Context, db anystore.DB, chatObjectId string) error {
+	if _, err := s.historyCollection.FindId(ctx, messageHistorySchemaVersionId); err == nil {
+		return nil
+	} else if !errors.Is(err, anystore.ErrDocNotFound) {
+		return fmt.Errorf("read schema marker: %w", err)
+	}
+	if err := storestate.ResetReplayState(ctx, db, chatObjectId); err != nil {
+		return fmt.Errorf("reset full replay marker: %w", err)
+	}
+	if err := s.seedMessageHistory(ctx); err != nil {
+		return err
+	}
+	if _, err := s.recordMessageHistoryId(ctx, messageHistorySchemaVersionId); err != nil {
+		return fmt.Errorf("write schema marker: %w", err)
+	}
+	return nil
+}
+
+func (s *repository) seedMessageHistory(ctx context.Context) error {
+	iter, err := s.collection.Find(nil).Iter(ctx)
+	if err != nil {
+		return fmt.Errorf("iterate live messages: %w", err)
+	}
+	defer iter.Close()
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return fmt.Errorf("read live message: %w", err)
+		}
+		if _, err = s.RecordMessage(ctx, doc.Value().GetString("id")); err != nil {
+			return err
+		}
+	}
+	return iter.Err()
 }
 
 func (s *repository) loadChatStateByType(ctx context.Context, counterType chatmodel.CounterType) (*model.ChatStateUnreadState, error) {

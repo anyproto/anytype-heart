@@ -848,7 +848,8 @@ func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space
 	mockSender := mock_event.NewMockSender(t)
 	a.Register(storeFixture)
 	a.Register(testutil.PrepareMock(context.Background(), a, mockSender))
-	a.Register(testutil.PrepareMock(context.Background(), a, objectGetter))
+	testutil.PrepareMock(context.Background(), a, objectGetter)
+	a.Register(cachedObjectGetter{objectGetter})
 	a.Register(process.New())
 	a.Register(testutil.PrepareMock(context.Background(), a, spaceService))
 	a.Register(testutil.PrepareMock(context.Background(), a, mock_typeprovider.NewMockSmartBlockTypeProvider(t)))
@@ -861,6 +862,19 @@ func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space
 	err = exp.Init(a)
 	assert.Nil(t, err)
 	return exp
+}
+
+// cachedObjectGetter is what these fixtures register as the app's picker.
+// The export service resolves cache.CachedObjectGetter now — its native
+// AnyBlock JSON path closes every object it loads out of the cache — and
+// the component mock alone does not answer that interface. Publishing
+// never takes that path, so the close is a stub that closes nothing.
+type cachedObjectGetter struct {
+	*mock_cache.MockObjectGetterComponent
+}
+
+func (cachedObjectGetter) TryRemoveFromCache(_ context.Context, _ string) (bool, error) {
+	return false, nil
 }
 
 type fileObjectWrapper struct {
@@ -999,7 +1013,8 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	ctx := context.Background()
 	a.Register(storeFixture)
 	a.Register(testutil.PrepareMock(ctx, a, mockSender))
-	a.Register(testutil.PrepareMock(ctx, a, objectGetter))
+	testutil.PrepareMock(ctx, a, objectGetter)
+	a.Register(cachedObjectGetter{objectGetter})
 	a.Register(process.New())
 	a.Register(testutil.PrepareMock(ctx, a, spaceService))
 	a.Register(testutil.PrepareMock(ctx, a, mock_typeprovider.NewMockSmartBlockTypeProvider(t)))

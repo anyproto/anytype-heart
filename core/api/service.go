@@ -15,11 +15,15 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/server"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/space"
 )
 
 const (
@@ -33,11 +37,21 @@ var (
 
 	mwSrv apicore.ClientCommands
 
-	//go:embed docs/openapi.yaml
-	openapiYAML []byte
+	// The generated documents, one per API version. They are data only:
+	// `make openapi` writes just openapi.{json,yaml} (--outputTypes json,yaml),
+	// no docs.go — nothing in this binary ever read swag's global registry, and
+	// the bytes below are what the /docs routes actually serve.
+	//go:embed docs/v1/openapi.yaml
+	openapiV1YAML []byte
 
-	//go:embed docs/openapi.json
-	openapiJSON []byte
+	//go:embed docs/v1/openapi.json
+	openapiV1JSON []byte
+
+	//go:embed docs/v2/openapi.yaml
+	openapiV2YAML []byte
+
+	//go:embed docs/v2/openapi.json
+	openapiV2JSON []byte
 )
 
 type Service interface {
@@ -53,6 +67,11 @@ type apiService struct {
 	crossSpaceSubService apicore.CrossSpaceSubscriptionService
 	chatSubService       apicore.ChatSubscriptionService
 	fileObjectService    apicore.FileObjectService
+	objectReader         apicore.ObjectReader
+	objectCreator        apicore.ObjectCreator
+	objectMutator        apicore.ObjectMutator
+	objectProvenance     apicore.ObjectProvenance
+	objectStore          objectstore.ObjectStore
 
 	listenAddr string
 
@@ -90,8 +109,23 @@ func (s *apiService) Init(a *app.App) error {
 	s.accountService = a.MustComponent(account.CName).(account.Service)
 	s.eventService = a.MustComponent(event.CName).(apicore.EventService)
 	s.crossSpaceSubService = a.MustComponent(crossspacesub.CName).(apicore.CrossSpaceSubscriptionService)
+	// The adapters below (chatSubAdapter, objectRead/Create/Mutate) stay in
+	// package api on purpose, even though the object adapters serve /v2 only:
+	// package api is this tree's composition root — the only package that
+	// touches *app.App and the heart-internal services (block/cache,
+	// objectcreator, space, chatsubscription, fileobject). What they produce
+	// are implementations of the apicore ports, and apicore is shared by both
+	// API versions, so an adapter is a shared-side artifact by construction.
+	// Keeping them here is also what keeps core/api/v2 free of heart-internal
+	// imports: v2 is HTTP plus logic over ports, which is what makes it
+	// testable against mock_apicore.
 	s.chatSubService = &chatSubAdapter{svc: a.MustComponent(chatsubscription.CName).(chatsubscription.Service)}
 	s.fileObjectService = a.MustComponent(fileobject.CName).(apicore.FileObjectService)
+	s.objectReader = newObjectReadAdapter(app.MustComponent[cache.ObjectGetterComponent](a))
+	s.objectCreator = newObjectCreateAdapter(app.MustComponent[objectcreator.Service](a), app.MustComponent[space.Service](a))
+	s.objectMutator = newObjectMutateAdapter(app.MustComponent[cache.ObjectGetterComponent](a))
+	s.objectProvenance = newObjectProvenanceAdapter(app.MustComponent[space.Service](a), a.MustComponent(account.CName).(account.Service))
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return nil
 }
 
@@ -100,6 +134,24 @@ func (s *apiService) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to start server: %w", err)
 	}
 	return nil
+}
+
+// The accountId probe below is structural — if account.Service ever renamed
+// AccountID, the probe would still compile, silently return "" and degrade
+// every current-user placeholder to a warning. This assertion turns that
+// rename into a compile error instead.
+var _ interface{ AccountID() string } = (account.Service)(nil)
+
+// accountId returns the caller's account identity for API v2's stored-view
+// placeholder substitution (`_filter_template_2_` → participant id). The
+// apicore.AccountService port only exposes GetInfo, so the richer concrete
+// account component is probed for its AccountID; a foreign implementation
+// degrades to "" (the placeholder then warns instead of resolving).
+func (s *apiService) accountId() string {
+	if withId, ok := s.accountService.(interface{ AccountID() string }); ok {
+		return withId.AccountID()
+	}
+	return ""
 }
 
 func (s *apiService) Close(ctx context.Context) error {
@@ -126,9 +178,14 @@ func (s *apiService) startServer() error {
 		s.crossSpaceSubService,
 		s.chatSubService,
 		s.fileObjectService,
+		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, Store: s.objectStore, AccountId: s.accountId()},
 		s.listenAddr,
-		openapiYAML,
-		openapiJSON,
+		server.OpenApiDocs{
+			V1YAML: openapiV1YAML,
+			V1JSON: openapiV1JSON,
+			V2YAML: openapiV2YAML,
+			V2JSON: openapiV2JSON,
+		},
 	)
 
 	s.httpSrv = &http.Server{

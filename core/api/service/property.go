@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/iancoleman/strcase"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
@@ -215,7 +214,10 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 	}
 
 	if request.Key != "" {
-		apiKey := strcase.ToSnake(s.sanitizedString(request.Key))
+		apiKey, ok := util.MintApiObjectKey(request.Key)
+		if !ok {
+			return nil, util.ErrInvalidApiObjectKey("property", request.Key)
+		}
 		if s.cache.getProperties(spaceId)[apiKey] != nil {
 			return nil, util.ErrBadInput(fmt.Sprintf("property key %q already exists", apiKey))
 		}
@@ -270,13 +272,19 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 		})
 	}
 	if request.Key != nil {
-		apiKey := strcase.ToSnake(s.sanitizedString(*request.Key))
+		apiKey, ok := util.MintApiObjectKey(*request.Key)
+		if !ok {
+			return nil, util.ErrInvalidApiObjectKey("property", *request.Key)
+		}
 		if apiKey != prop.Key {
 			if existing, exists := s.cache.getProperties(spaceId)[apiKey]; exists && existing.Id != propertyId {
 				return nil, util.ErrBadInput(fmt.Sprintf("property key %q already exists", apiKey))
 			}
 			if bundle.HasRelation(domain.RelationKey(prop.RelationKey)) {
 				return nil, util.ErrBadInput("property key of bundled properties cannot be changed")
+			}
+			if shadowsBundledRelationKey(apiKey, prop.RelationKey) {
+				return nil, util.ErrBadInput(fmt.Sprintf("property key %q is reserved by a bundled property", apiKey))
 			}
 			detailsToUpdate = append(detailsToUpdate, &model.Detail{
 				Key:   bundle.RelationKeyApiObjectKey.String(),
@@ -319,6 +327,35 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId string, propertyId
 
 func (s *Service) sanitizedString(str string) string {
 	return strings.TrimSpace(str)
+}
+
+// shadowsBundledRelationKey / shadowsBundledTypeKey are the BUNDLED arm of the
+// §7.5a-6 union check, applied to v1's rename channel.
+//
+// The mint (objectcreator/apikey.go) runs the full union — live stored slugs,
+// live stored keys, and the bundled derived table — but a RENAME never enters
+// objectcreator: it stamps `apiObjectKey` straight through ObjectSetDetails.
+// Its only guard was v1's per-space cache, which has no row for a bundled
+// relation that is not INSTALLED in the space, so renaming a custom property's
+// key to `dueDate` minted a fresh `due_date` shadow — the exact failure the
+// mint hardening exists to make unreachable, through a door beside it.
+//
+// The predicate is the same one apiKeyNamespace.taken applies, both arms: the
+// bundled table's derived slug, and a spelling that IS a bundled internal key.
+// A caller renaming to the slug its own bundled key derives is not shadowing
+// anything (bundled properties are refused a rename anyway, one check up).
+func shadowsBundledRelationKey(apiKey, ownStoredKey string) bool {
+	if key, ok := bundle.RelationKeyByApiSlug(apiKey); ok && string(key) != ownStoredKey {
+		return true
+	}
+	return apiKey != ownStoredKey && bundle.HasRelation(domain.RelationKey(apiKey))
+}
+
+func shadowsBundledTypeKey(apiKey, ownStoredKey string) bool {
+	if key, ok := bundle.TypeKeyByApiSlug(apiKey); ok && string(key) != ownStoredKey {
+		return true
+	}
+	return apiKey != ownStoredKey && bundle.HasObjectTypeByKey(domain.TypeKey(apiKey))
 }
 
 // createTagsForProperty creates tags for a newly created property
