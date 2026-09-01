@@ -46,7 +46,12 @@ const spaceId = "space1"
 
 type fixture struct {
 	*export
-	picker        *mock_cache.MockObjectGetter
+	// the picker mock is the CACHED getter because the service field is:
+	// the native AnyBlock JSON format closes every object it loads, so the
+	// narrower ObjectGetter no longer satisfies it. Strictly richer — the
+	// legacy formats never call
+	// TryRemoveFromCache, and the mock would fail the test if they did.
+	picker        *mock_cache.MockCachedObjectGetter
 	store         *objectstore.StoreFixture
 	sbtProvider   *mock_typeprovider.MockSmartBlockTypeProvider
 	notifications *mock_notifications.MockNotifications
@@ -56,7 +61,7 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T) *fixture {
-	objectGetter := mock_cache.NewMockObjectGetter(t)
+	objectGetter := mock_cache.NewMockCachedObjectGetter(t)
 	storeFixture := objectstore.NewStoreFixture(t)
 	provider := mock_typeprovider.NewMockSmartBlockTypeProvider(t)
 	notifications := mock_notifications.NewMockNotifications(t)

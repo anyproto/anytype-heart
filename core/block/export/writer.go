@@ -89,6 +89,19 @@ func (d *dirWriter) WriteFile(filename string, r io.Reader, lastModifiedDate int
 	return
 }
 
+// RemoveFile deletes one file below the export root. Nothing in the legacy
+// formats calls it: it exists for the native AnyBlock JSON exporter's
+// un-write hook, which reaches it through an optional interface assertion
+// — a blob whose stream fails half way is worse left truncated than
+// missing (core/block/export/anyblock, emitDoc). A zip export cannot offer
+// the same, since its entries are already streamed.
+func (d *dirWriter) RemoveFile(filename string) error {
+	if err := os.Remove(filepath.Join(d.path, filepath.FromSlash(filename))); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("remove file: %w", err)
+	}
+	return nil
+}
+
 func (d *dirWriter) Close() (err error) {
 	return nil
 }
