@@ -25,7 +25,7 @@ func newGrantEngine(grant *util.ApiGrant) *gin.Engine {
 		c.Request = c.Request.WithContext(util.CtxWithApiGrant(c.Request.Context(), grant))
 		c.Next()
 	})
-	group.Use(ensureSpaceGrant())
+	group.Use(ensureSpaceGrant("techSpaceTest"))
 	// registered probes (each present in v2RouteAuthz)
 	group.GET("/spaces/:space_id", ok)
 	group.GET("/spaces/:space_id/objects", ok)
@@ -190,7 +190,7 @@ func TestEnsureSpaceGrant(t *testing.T) {
 			c.Request = c.Request.WithContext(util.CtxWithApiGrant(c.Request.Context(), readGrant("space1")))
 			c.Next()
 		})
-		group.Use(ensureSpaceGrant())
+		group.Use(ensureSpaceGrant("techSpaceTest"))
 		group.POST("/global-write", func(c *gin.Context) { c.String(http.StatusOK, "OK") })
 
 		w := httptest.NewRecorder()

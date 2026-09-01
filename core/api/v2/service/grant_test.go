@@ -29,6 +29,15 @@ func grantCtx(perms string, spaces ...string) context.Context {
 	return util.CtxWithApiGrant(context.Background(), &util.ApiGrant{Spaces: spaces, Perms: perms})
 }
 
+func requireTechSpaceExcluded(t *testing.T, err error) {
+	t.Helper()
+	var v2Err *v2model.Error
+	require.ErrorAs(t, err, &v2Err)
+	assert.Equal(t, http.StatusForbidden, v2Err.Status)
+	assert.Equal(t, v2model.CodeSpaceNotGranted, v2Err.Code)
+	assert.Contains(t, v2Err.Message, "never covered by an all-spaces grant")
+}
+
 func requireSpaceNotGranted(t *testing.T, err error) {
 	t.Helper()
 	var v2Err *v2model.Error
@@ -68,6 +77,26 @@ func TestEnsureSpaceGrantBackstop(t *testing.T) {
 
 		_, _, _, err = fx.ListTypes(grantCtx(util.GrantPermsReadWrite, objectstore.TestTechSpaceId), objectstore.TestTechSpaceId, 0, 25)
 		require.NoError(t, err)
+	})
+
+	t.Run("an allSpaces grant admits any user space, and the tech space never", func(t *testing.T) {
+		// the backstop consults the SAME shared check as the route gate
+		// (util.SpaceGrantRefusal with the service's techSpaceId), so
+		// allSpaces admits every ordinary space and still excludes the tech
+		// space — even on the entry points that bypass ensureSpace
+		fx := newV2Fixture(t)
+		ctx := util.CtxWithApiGrant(context.Background(),
+			&util.ApiGrant{AllSpaces: true, Perms: util.GrantPermsReadWrite})
+
+		_, _, _, err := fx.ListTypes(ctx, testSpaceId, 0, 25)
+		require.NoError(t, err)
+
+		_, _, _, err = fx.ListTypes(ctx, objectstore.TestTechSpaceId, 0, 25)
+		requireTechSpaceExcluded(t, err)
+
+		// GetSpace bypasses ensureSpace — the exclusion must hold there too
+		_, err = fx.GetSpace(ctx, objectstore.TestTechSpaceId)
+		requireTechSpaceExcluded(t, err)
 	})
 
 	t.Run("an empty granted-space list denies every space", func(t *testing.T) {

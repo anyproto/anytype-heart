@@ -26,8 +26,13 @@ const (
 // *ApiGrant means an unscoped/legacy key — enforcement passes it through
 // unchanged. A non-nil grant constrains every request to Spaces × Perms.
 type ApiGrant struct {
-	Spaces []string `json:"spaces"`
-	Perms  string   `json:"perms"` // GrantPermsRead | GrantPermsReadWrite
+	// AllSpaces grants every space in the account, including spaces created
+	// after the grant was made (dynamic semantics). It never covers the
+	// tech space — SpaceGrantRefusal owns that exclusion — and "all" is
+	// never spelled as an empty Spaces list, which keeps denying everything.
+	AllSpaces bool     `json:"allSpaces,omitempty"`
+	Spaces    []string `json:"spaces"`
+	Perms     string   `json:"perms"` // GrantPermsRead | GrantPermsReadWrite
 }
 
 // ApiGrantFromProto converts the WalletCreateSession grant. An unrecognized
@@ -42,8 +47,9 @@ func ApiGrantFromProto(grant *model.AccountAuthAppGrant) *ApiGrant {
 		perms = GrantPermsReadWrite
 	}
 	return &ApiGrant{
-		Spaces: append([]string(nil), grant.SpaceIds...),
-		Perms:  perms,
+		AllSpaces: grant.AllSpaces,
+		Spaces:    append([]string(nil), grant.SpaceIds...),
+		Perms:     perms,
 	}
 }
 
@@ -53,10 +59,19 @@ func ApiGrantFromProto(grant *model.AccountAuthAppGrant) *ApiGrant {
 // closed instead of open. An EMPTY Spaces list also denies every space:
 // empty must be impossible (persist-time validation rejects it) and, if
 // ever encountered, must NEVER be read as "all spaces" — the loop's
-// vacuous false is load-bearing.
+// vacuous false is load-bearing; "all" is spelled only by the explicit
+// AllSpaces flag.
+//
+// AllowsSpace stays a PURE function of the grant: under AllSpaces it
+// answers true for every space id, the tech space included. The tech-space
+// exclusion is SpaceGrantRefusal's, which the two enforcement points
+// consult — a caller that needs the admission decision goes there.
 func (g *ApiGrant) AllowsSpace(spaceId string) bool {
 	if g == nil || spaceId == "" {
 		return false
+	}
+	if g.AllSpaces {
+		return true
 	}
 	for _, granted := range g.Spaces {
 		if granted == spaceId {
@@ -64,6 +79,42 @@ func (g *ApiGrant) AllowsSpace(spaceId string) bool {
 		}
 	}
 	return false
+}
+
+// IsUnrestricted reports whether the grant grants no LESS than an unscoped
+// key: allSpaces with readwrite. /v1's granted-key gate admits exactly this
+// combination — the one grant /v1 can honor by doing nothing — and keeps
+// refusing every narrower one, in the CanWrite fail-closed style: only the
+// exact values pass. The recorded asymmetry (picker design §5): on /v1 such
+// a key behaves exactly as an unscoped key does today, tech-space access
+// included, while the same grant on /v2 excludes the tech space.
+func (g *ApiGrant) IsUnrestricted() bool {
+	return g != nil && g.AllSpaces && g.Perms == GrantPermsReadWrite
+}
+
+// SpaceGrantRefusal is the ONE space-admission check both enforcement
+// points consult — the /v2 route gate (apiv2.ensureSpaceGrant) and the v2
+// service backstop (Service.ensureSpaceGranted) — so a future caller cannot
+// get the pair of rules half-right. It returns "" when the grant admits
+// spaceId, else the refusal message for the 403.
+//
+// The tech-space rule lives here rather than in AllowsSpace, which stays a
+// pure function of the grant: an all-spaces grant NEVER covers the tech
+// space (account machinery — space views, profile — not user content, and
+// writes to it can break the account). Reaching it requires listing it
+// explicitly, which only a Full-scope CreateApp/UpdateApp caller can do. A
+// nil grant is an unscoped/legacy key and is admitted unchanged.
+func SpaceGrantRefusal(g *ApiGrant, spaceId, techSpaceId string) string {
+	if g == nil {
+		return ""
+	}
+	if g.AllSpaces && techSpaceId != "" && spaceId == techSpaceId {
+		return "the tech space holds account machinery and is never covered by an all-spaces grant; it must be granted explicitly"
+	}
+	if !g.AllowsSpace(spaceId) {
+		return fmt.Sprintf("key not granted space %q; granted: %s", spaceId, g.Describe())
+	}
+	return ""
 }
 
 // CanWrite reports whether the grant permits write-classified routes. Only
@@ -79,6 +130,9 @@ func (g *ApiGrant) CanWrite() bool {
 func (g *ApiGrant) Describe() string {
 	if g == nil {
 		return "unscoped"
+	}
+	if g.AllSpaces {
+		return fmt.Sprintf("all spaces with %s access", g.Perms)
 	}
 	return fmt.Sprintf("spaces [%s] with %s access", strings.Join(g.Spaces, ", "), g.Perms)
 }

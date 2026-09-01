@@ -246,7 +246,7 @@ func TestResolveSpaceRef(t *testing.T) {
 		assert.Equal(t, "bugaxa", notGranted, "a non-granted tail must not resolve")
 
 		// and the grant backstop still refuses the unresolved value
-		require.Error(t, ensureSpaceGranted(ctx, notGranted))
+		require.Error(t, fx.ensureSpaceGranted(ctx, notGranted))
 	})
 
 	t.Run("the full id of a non-granted space is still refused by the grant, not hidden", func(t *testing.T) {
@@ -262,7 +262,7 @@ func TestResolveSpaceRef(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, realSpaceTracker, got)
-		require.Error(t, ensureSpaceGranted(ctx, got))
+		require.Error(t, fx.ensureSpaceGranted(ctx, got))
 	})
 }
 

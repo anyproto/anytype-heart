@@ -55,6 +55,11 @@ type RouteDeps struct {
 	KeyScope gin.HandlerFunc
 	// CacheInit is the shared lazy cache-initialization middleware.
 	CacheInit gin.HandlerFunc
+	// TechSpaceId is the account's tech space id, captured by the
+	// space-grant gate so the tech space stays excluded under allSpaces
+	// grants (the same id the v2 service holds for its ensureSpaceGranted
+	// backstop — both sides consult util.SpaceGrantRefusal).
+	TechSpaceId string
 	// WriteRateLimit is the shared write-rate limiter.
 	WriteRateLimit gin.HandlerFunc
 	// AnalyticsEvent builds the analytics middleware for one event code.
@@ -117,7 +122,7 @@ func RegisterRoutes(router *gin.Engine, deps RouteDeps) {
 	// which verbs the key's grant covers (authz.go). It must run before any
 	// handler resolves a space — the service's ensureSpace admits the tech
 	// space, this gate denies it unless explicitly granted.
-	v2.Use(ensureSpaceGrant())
+	v2.Use(ensureSpaceGrant(deps.TechSpaceId))
 	v2.Use(ensureDryRun())
 	v2.Use(ensureCreateMissingOptions())
 	idempotencyMW := ensureIdempotency(newIdempotencyStore(idempotencyMaxEntries))

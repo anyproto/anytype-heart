@@ -72,6 +72,7 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 		Auth:           srv.ensureAuthenticated(mw),
 		KeyScope:       ensureJsonApiScope(),
 		CacheInit:      srv.ensureCacheInitialized(),
+		TechSpaceId:    srv.techSpaceId,
 		WriteRateLimit: writeRateLimitMW,
 		AnalyticsEvent: func(code string) gin.HandlerFunc {
 			return ensureAnalyticsEvent(code, eventService)

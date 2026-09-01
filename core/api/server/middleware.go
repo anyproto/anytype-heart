@@ -330,13 +330,20 @@ func ensureJsonApiScope() gin.HandlerFunc {
 	}
 }
 
-// ensureUngrantedKey refuses GRANTED keys on the /v1 group: a space grant
-// can only be honored by /v2's gate, so serving the key on /v1 would give
-// it unrestricted account-wide access the user explicitly narrowed away.
-// The asymmetry is intended: a granted key is refused here while a legacy
-// (nil-grant) key is served on /v1 exactly as today — grant PRESENCE
-// decides, never key format (a legacy-format key can be granted in place
-// and a new-format key can be unscoped).
+// ensureUngrantedKey refuses NARROWED keys on the /v1 group: a space grant
+// can only be enforced by /v2's gate, so serving a narrowed key on /v1
+// would give it account-wide access the user explicitly declined. One
+// granted shape is admitted: an UNRESTRICTED grant (allSpaces with
+// readwrite, ApiGrant.IsUnrestricted) grants no less than an unscoped key,
+// so /v1 honors it by doing nothing — this is what keeps keys minted by the
+// consent picker's maximal choice working on /v1, where every shipped
+// client lives. (Recorded asymmetry: on /v1 such a key behaves exactly as
+// an unscoped key does today, tech-space access included, while /v2
+// excludes the tech space.) Extending real grant enforcement to /v1 is a
+// separate change. The remaining asymmetry is intended: a narrowed key is
+// refused here while a legacy (nil-grant) key is served on /v1 exactly as
+// today — grant SHAPE decides, never key format (a legacy-format key can
+// be granted in place and a new-format key can be unscoped).
 //
 // The 403 uses the v2 C6 envelope: the response's whole job is to steer the
 // caller to /v2, so it speaks /v2's error language.
@@ -346,7 +353,7 @@ func ensureUngrantedKey() gin.HandlerFunc {
 		if !ok {
 			return
 		}
-		if apiSession.Grant == nil {
+		if apiSession.Grant == nil || apiSession.Grant.IsUnrestricted() {
 			c.Next()
 			return
 		}

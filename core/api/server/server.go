@@ -60,6 +60,10 @@ type Server struct {
 	// subscription dependency was provided.
 	v2StreamDisabled bool
 	chatSubSvc       apicore.ChatSubscriptionService
+	// techSpaceId feeds the /v2 space-grant gate (RouteDeps.TechSpaceId) so
+	// the tech space stays excluded under allSpaces grants — the same id the
+	// v2 service holds for its ensureSpaceGranted backstop.
+	techSpaceId string
 	// docs holds both generated OpenAPI documents. NewRouter still takes v1's
 	// bytes as parameters (its signature is what the route-conformance tests
 	// call), so only the v2 pair is read from here.
@@ -129,9 +133,10 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 
 	apiBaseUrl := buildApiBaseUrl(apiListenAddr)
 	s := &Server{
-		service:    service.NewService(mw, fileObjectService, apiBaseUrl, techSpaceId, crossSpaceSubService),
-		chatSubSvc: chatSubSvc,
-		docs:       docs,
+		service:     service.NewService(mw, fileObjectService, apiBaseUrl, techSpaceId, crossSpaceSubService),
+		chatSubSvc:  chatSubSvc,
+		techSpaceId: techSpaceId,
+		docs:        docs,
 	}
 	if v2Deps.Reader != nil && v2Deps.Store != nil {
 		s.v2Service = v2service.NewService(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Provenance, v2Deps.ChatSub, v2Deps.Store, techSpaceId, v2Deps.AccountId)

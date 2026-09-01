@@ -77,7 +77,7 @@ func (s *Service) GetSpace(ctx context.Context, spaceId string) (v2model.Space, 
 	}
 	// GetSpace deliberately bypasses ensureSpace (the read IS the space-view
 	// lookup), so the grant backstop is consulted directly here.
-	if err := ensureSpaceGranted(ctx, spaceId); err != nil {
+	if err := s.ensureSpaceGranted(ctx, spaceId); err != nil {
 		return v2model.Space{}, err
 	}
 	details, err := s.store.GetSpaceViewDetails(spaceId)
@@ -215,7 +215,7 @@ func (s *Service) UpdateSpace(ctx context.Context, spaceId string, req v2model.U
 	// UpdateSpace bypasses ensureSpace (GetSpace's read IS the space-view
 	// lookup), so both backstop halves are consulted directly, in the route
 	// gate's precedence: space grant first, then the write verb.
-	if err := ensureSpaceGranted(ctx, spaceId); err != nil {
+	if err := s.ensureSpaceGranted(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	if err := ensureWriteGranted(ctx); err != nil {

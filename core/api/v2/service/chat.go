@@ -498,7 +498,7 @@ func (s *Service) ensureChat(ctx context.Context, spaceId, chatId string) error 
 // the write-verb check, then the chat lookup — a read-only key is refused
 // before anything resolves.
 func (s *Service) ensureChatWrite(ctx context.Context, spaceId, chatId string) error {
-	if err := ensureSpaceGranted(ctx, spaceId); err != nil {
+	if err := s.ensureSpaceGranted(ctx, spaceId); err != nil {
 		return err
 	}
 	if err := ensureWriteGranted(ctx); err != nil {

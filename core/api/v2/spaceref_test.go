@@ -64,7 +64,7 @@ func newSpaceRefEngine(t *testing.T, grant *util.ApiGrant, spaceIds ...string) *
 	})
 	group.Use(ensureIdsShape())
 	group.Use(resolveSpaceRef(svc))
-	group.Use(ensureSpaceGrant())
+	group.Use(ensureSpaceGrant("techSpaceTest"))
 	group.GET("/spaces/:space_id", v2handler.GetSpaceHandler(svc))
 	group.GET("/spaces/:space_id/objects", func(c *gin.Context) {
 		c.String(http.StatusOK, c.Param(SpaceParam))

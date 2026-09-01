@@ -69,17 +69,19 @@ func NewService(mw apicore.ClientCommands, reader apicore.ObjectReader, creator 
 // fails closed, so a future route that forgets the middleware — or resolves
 // space ids in some unusual way — still cannot reach a non-granted space.
 // A nil grant is an unscoped/legacy key and passes; an empty granted-space
-// list denies everything (util.ApiGrant.AllowsSpace — empty is never "all
-// spaces"). The verb half is ensureWriteGranted, called by the write entry
-// points via ensureSpaceWrite / ensureChatWrite.
-func ensureSpaceGranted(ctx context.Context, spaceId string) error {
+// list denies everything ("all" is only the explicit allSpaces flag, which
+// in turn never covers the tech space). The admission decision is the SAME
+// shared check the route gate runs (util.SpaceGrantRefusal, with
+// s.techSpaceId — which is why this is a method), so the two enforcement
+// points cannot drift. It is the right backstop spot: every space-touching
+// entry point runs it — ensureSpace, ensureSpaceWrite, ensureChatWrite, and
+// GetSpace/UpdateSpace, which bypass ensureSpace. The verb half is
+// ensureWriteGranted, called by the write entry points via
+// ensureSpaceWrite / ensureChatWrite.
+func (s *Service) ensureSpaceGranted(ctx context.Context, spaceId string) error {
 	grant := util.ApiGrantFromCtx(ctx)
-	if grant == nil {
-		return nil
-	}
-	if !grant.AllowsSpace(spaceId) {
-		return v2model.SpaceNotGranted(fmt.Sprintf(
-			"key not granted space %q; granted: %s", spaceId, grant.Describe()))
+	if refusal := util.SpaceGrantRefusal(grant, spaceId, s.techSpaceId); refusal != "" {
+		return v2model.SpaceNotGranted(refusal)
 	}
 	return nil
 }
@@ -113,7 +115,7 @@ func (s *Service) ensureSpace(ctx context.Context, spaceId string) error {
 	if spaceId == "" {
 		return v2model.NotFound("space id is required")
 	}
-	if err := ensureSpaceGranted(ctx, spaceId); err != nil {
+	if err := s.ensureSpaceGranted(ctx, spaceId); err != nil {
 		return err
 	}
 	if spaceId == s.techSpaceId {
@@ -139,7 +141,7 @@ func (s *Service) ensureSpace(ctx context.Context, spaceId string) error {
 // resolves. (ensureSpace re-runs the space check; the duplication is the
 // price of keeping each helper self-sufficiently fail-closed.)
 func (s *Service) ensureSpaceWrite(ctx context.Context, spaceId string) error {
-	if err := ensureSpaceGranted(ctx, spaceId); err != nil {
+	if err := s.ensureSpaceGranted(ctx, spaceId); err != nil {
 		return err
 	}
 	if err := ensureWriteGranted(ctx); err != nil {

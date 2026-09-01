@@ -183,9 +183,11 @@ func neededPerms(verb RouteVerb) string {
 //
 //   - Grant == nil → pass through: an unscoped/legacy key keeps today's
 //     behavior. (An EMPTY grant space list is not "all spaces": AllowsSpace
-//     denies everything then — see util.ApiGrant.)
-//   - :space_id present → it must be in the grant's space list, else 403
-//     space_not_granted naming the grant.
+//     denies everything then — "all" is only the explicit allSpaces flag —
+//     see util.ApiGrant.)
+//   - :space_id present → the grant must admit it (util.SpaceGrantRefusal:
+//     listed, or covered by allSpaces — which never covers the tech space),
+//     else 403 space_not_granted naming the grant.
 //   - no :space_id → the route must appear in v2RouteAuthz with an explicit
 //     global class; an UNREGISTERED route is refused, not allowed (fail
 //     closed — the conformance test makes that a CI failure before it can
@@ -193,10 +195,13 @@ func neededPerms(verb RouteVerb) string {
 //   - Perms == read on a write-classified route → 403 write_not_granted.
 //     A route missing a verb classification counts as write (fail closed).
 //
-// The route middleware gives the clean 403; Service.ensureSpace consults
-// the ctx grant again as the backstop for a future route that forgets this
-// middleware or resolves ids unusually.
-func ensureSpaceGrant() gin.HandlerFunc {
+// The route middleware gives the clean 403; the service's
+// ensureSpaceGranted consults the same shared check again as the backstop
+// for a future route that forgets this middleware or resolves ids
+// unusually. techSpaceId arrives at construction (RouteDeps) so the
+// tech-space exclusion under allSpaces runs here, before anything admits
+// the tech space as an ordinary id.
+func ensureSpaceGrant(techSpaceId string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		grant := util.ApiGrantFromCtx(c.Request.Context())
 		if grant == nil {
@@ -212,12 +217,11 @@ func ensureSpaceGrant() gin.HandlerFunc {
 				respondV2Error(c, v2model.SpaceNotGranted(globalRouteRefusal(c, classified, authz)))
 				return
 			}
-		} else if !grant.AllowsSpace(spaceId) {
+		} else if refusal := util.SpaceGrantRefusal(grant, spaceId, techSpaceId); refusal != "" {
 			needed := neededPerms(effectiveVerb(authz, classified))
 			c.Header(util.WwwAuthenticateHeader,
 				util.BearerChallengeInsufficientScope(util.SpaceScope(spaceId, needed)))
-			respondV2Error(c, v2model.SpaceNotGranted(fmt.Sprintf(
-				"key not granted space %q; granted: %s", spaceId, grant.Describe())))
+			respondV2Error(c, v2model.SpaceNotGranted(refusal))
 			return
 		}
 

@@ -220,6 +220,53 @@ func TestV2SpaceGrantGate(t *testing.T) {
 		require.Equal(t, http.StatusOK, granted.Code)
 	})
 
+	t.Run("an allSpaces grant covers every user space, including one created later", func(t *testing.T) {
+		// given
+		fx := newV2ServerFixture(t)
+		registerGrantTestSpace(t, fx, "spaceA", "Work")
+		grantedSession(fx, "allKey", &util.ApiGrant{AllSpaces: true, Perms: util.GrantPermsReadWrite})
+		fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
+
+		// when/then: a space that existed at grant time passes
+		granted := serveWithKey(fx, "GET", "/v2/spaces/spaceA", "allKey")
+		require.Equal(t, http.StatusOK, granted.Code)
+
+		// ...and so does one created AFTER the grant was made — the dynamic
+		// semantics as behavior, not a comment
+		registerGrantTestSpace(t, fx, "spaceLater", "Created Later")
+		later := serveWithKey(fx, "GET", "/v2/spaces/spaceLater", "allKey")
+		require.Equal(t, http.StatusOK, later.Code)
+	})
+
+	t.Run("the tech space is denied under allSpaces at the gate", func(t *testing.T) {
+		// allSpaces must not quietly undo the tech-space rule: the refusal
+		// names the exclusion instead of reading as a heart bug to a user
+		// who just granted "all spaces"
+		fx := newV2ServerFixture(t)
+		grantedSession(fx, "allKey", &util.ApiGrant{AllSpaces: true, Perms: util.GrantPermsReadWrite})
+
+		denied := serveWithKey(fx, "GET", "/v2/spaces/"+mockedTechSpaceId+"/types", "allKey")
+
+		require.Equal(t, http.StatusForbidden, denied.Code)
+		body := denied.Body.String()
+		require.Contains(t, body, `"space_not_granted"`)
+		require.Contains(t, body, "never covered by an all-spaces grant")
+	})
+
+	t.Run("an allSpaces read-only grant is still refused on writes", func(t *testing.T) {
+		// allSpaces widens the space axis only — the verb gate is untouched
+		fx := newV2ServerFixture(t)
+		registerGrantTestSpace(t, fx, "spaceA", "Work")
+		grantedSession(fx, "allReadKey", &util.ApiGrant{AllSpaces: true, Perms: util.GrantPermsRead})
+
+		w := serveWithKeyBody(fx, "POST", "/v2/spaces/spaceA/objects", "allReadKey", `{}`)
+
+		require.Equal(t, http.StatusForbidden, w.Code)
+		body := w.Body.String()
+		require.Contains(t, body, `"write_not_granted"`)
+		require.Contains(t, body, "all spaces with read access")
+	})
+
 	t.Run("a read-only grant is refused on EVERY write-classified route", func(t *testing.T) {
 		// the walk is driven by the same classification table the gate
 		// enforces, and the conformance test pins that table against the
@@ -411,6 +458,43 @@ func TestV1RejectsGrantedKeys(t *testing.T) {
 		require.Contains(t, body, "/v2")
 		require.Contains(t, body, "spaces [spaceA] with readwrite access")
 		require.Equal(t, `Bearer error="insufficient_scope"`, w.Header().Get("WWW-Authenticate"))
+	})
+
+	t.Run("an unrestricted grant (allSpaces readwrite) is served on /v1", func(t *testing.T) {
+		// the one granted shape /v1 can honor by doing nothing: it grants
+		// no LESS than an unscoped key — this keeps picker-minted maximal
+		// keys working where every shipped client lives
+		fx := newFixture(t)
+		fx.KeyToToken = map[string]ApiSessionEntry{
+			"allKey": {Token: "tok", AppName: "agent", Scope: model.AccountAuth_JsonAPI,
+				Grant: &util.ApiGrant{AllSpaces: true, Perms: util.GrantPermsReadWrite}},
+		}
+		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).
+			Return(&pb.RpcObjectSearchResponse{
+				Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			}, nil).Once()
+		fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
+
+		w := serveWithKey(fx, "GET", "/v1/spaces", "allKey")
+
+		require.Equal(t, http.StatusOK, w.Code)
+	})
+
+	t.Run("an allSpaces read-only grant keeps the /v1 refusal", func(t *testing.T) {
+		// read-only is a narrowing /v1 cannot enforce; only the exact
+		// unrestricted combination passes (IsUnrestricted, fail closed)
+		fx := newFixture(t)
+		fx.KeyToToken = map[string]ApiSessionEntry{
+			"allReadKey": {Token: "tok", AppName: "agent", Scope: model.AccountAuth_JsonAPI,
+				Grant: &util.ApiGrant{AllSpaces: true, Perms: util.GrantPermsRead}},
+		}
+
+		w := serveWithKey(fx, "GET", "/v1/spaces", "allReadKey")
+
+		require.Equal(t, http.StatusForbidden, w.Code)
+		body := w.Body.String()
+		require.Contains(t, body, `"v1_not_available_for_scoped_keys"`)
+		require.Contains(t, body, "all spaces with read access")
 	})
 
 	t.Run("a legacy nil-grant key keeps working on /v1", func(t *testing.T) {
