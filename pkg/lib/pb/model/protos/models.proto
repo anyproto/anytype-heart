@@ -1232,6 +1232,11 @@ message Export {
         DOT = 3;
         SVG = 4;
         GRAPH_JSON = 5;
+        // AnyBlockV2 is the native AnyBlock v2 bundle (pkg/lib/anyblockjson
+        // format/v2/SPEC.md): a directory of `<id>.anyblock.json` documents beside an
+        // index.json and properties.json. Additive — existing values keep
+        // their numbers, so a client that does not know it is unaffected.
+        AnyBlockV2 = 6;
     }
 }
 

@@ -6,6 +6,7 @@ require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
 	github.com/PuerkitoBio/goquery v1.10.2
 	github.com/ahmetb/govvv v0.3.0
+	github.com/anyproto/any-block v0.0.0-20260901161526-413af55ae06d
 	github.com/anyproto/any-store v0.4.7
 	github.com/anyproto/any-sync v0.13.1
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb
@@ -253,6 +254,7 @@ require (
 	github.com/rs/cors v1.11.0 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
