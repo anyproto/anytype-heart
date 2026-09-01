@@ -743,8 +743,15 @@ message Account {
             Full = 2; // Full access, not available via LocalLink
         }
         message AppGrant {
-            repeated string spaceIds = 1; // spaces the key may touch; must be non-empty
+            // spaceIds are the spaces the key may touch; empty only when
+            // allSpaces is set — exactly one of the two must be present
+            repeated string spaceIds = 1;
             Perm perm = 2;
+            // allSpaces grants every space in the account, including spaces
+            // created after the grant was made (dynamic — GitHub's "All
+            // repositories" semantics). The JSON API still excludes the tech
+            // space; reaching it requires listing it explicitly in spaceIds.
+            bool allSpaces = 3;
             // Perm is nested so its Go constants (AccountAuthAppGrant_Read) can
             // never be misread as the key scopes (AccountAuth_JsonAPI et al.) —
             // grant verbs and key scopes are unrelated enums about different

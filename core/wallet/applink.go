@@ -47,7 +47,15 @@ const (
 	// prevent (ValidateAppLinkGrant hard-rejects unknown versions, fail
 	// closed). Only fields that cannot widen the effective permission may
 	// ride the same version.
-	appLinkGrantVersion = 1
+	//
+	// Version 2 added AllSpaces. It widens rather than narrows, so the bump
+	// is for diagnosability, not safety: a version-1 binary reading an
+	// allSpaces grant would fail closed either way, but "unknown grant
+	// version 2" names the actual problem where "spaces must be non-empty"
+	// would read as a corrupt key. Version-1 grants exist only in local
+	// builds of an unpushed branch, so exactly one accepted version stays
+	// affordable.
+	appLinkGrantVersion = 2
 )
 
 // New-format app key: <prefix>_<body>_<checksum>, following the GitHub 2021
@@ -119,9 +127,17 @@ type AppLinkGrant struct {
 	// file-format version (fileV1.Version, the `ver` a granted key writes as
 	// 2). appLinkGrantVersion is the only value this binary writes or
 	// accepts; bumping it makes older binaries refuse the key.
-	Version int      `json:"v"`
-	Spaces  []string `json:"spaces"` // space ids; must be non-empty
-	Perms   string   `json:"perms"`  // AppLinkPermsRead | AppLinkPermsReadWrite
+	Version int `json:"v"`
+	// AllSpaces grants every space in the account, including spaces created
+	// after the grant was made (dynamic — GitHub's "All repositories"
+	// semantics). Exactly one of AllSpaces and a non-empty Spaces must be
+	// set: "all" must never be spellable as "empty", because an empty space
+	// list denies everything (the JSON API's fail-closed invariant). The
+	// JSON API still excludes the tech space under AllSpaces; reaching it
+	// requires listing it explicitly, which only a Full-scope caller can do.
+	AllSpaces bool     `json:"allSpaces,omitempty"`
+	Spaces    []string `json:"spaces"` // space ids; empty only when AllSpaces is set
+	Perms     string   `json:"perms"`  // AppLinkPermsRead | AppLinkPermsReadWrite
 	// P2 reserves: Types map[string][]string — spaceId → ot-… uniqueKeys
 	// (a narrowing dimension: adding it must bump the version, see
 	// appLinkGrantVersion)
@@ -142,7 +158,10 @@ func ValidateAppLinkGrant(grant *AppLinkGrant, scope model.AccountAuthLocalApiSc
 	if grant.Version != appLinkGrantVersion {
 		return fmt.Errorf("%w: unknown grant version %d", ErrInvalidGrant, grant.Version)
 	}
-	if len(grant.Spaces) == 0 {
+	if grant.AllSpaces && len(grant.Spaces) > 0 {
+		return fmt.Errorf("%w: allSpaces and an explicit space list are mutually exclusive", ErrInvalidGrant)
+	}
+	if !grant.AllSpaces && len(grant.Spaces) == 0 {
 		return fmt.Errorf("%w: spaces must be non-empty", ErrInvalidGrant)
 	}
 	for _, spaceId := range grant.Spaces {
@@ -168,8 +187,9 @@ func (g *AppLinkGrant) Proto() *model.AccountAuthAppGrant {
 		perm = model.AccountAuthAppGrant_ReadWrite
 	}
 	return &model.AccountAuthAppGrant{
-		SpaceIds: g.Spaces,
-		Perm:     perm,
+		SpaceIds:  g.Spaces,
+		AllSpaces: g.AllSpaces,
+		Perm:      perm,
 	}
 }
 
@@ -188,9 +208,10 @@ func AppLinkGrantFromProto(grant *model.AccountAuthAppGrant) *AppLinkGrant {
 		perms = AppLinkPermsReadWrite
 	}
 	return &AppLinkGrant{
-		Version: appLinkGrantVersion,
-		Spaces:  grant.SpaceIds,
-		Perms:   perms,
+		Version:   appLinkGrantVersion,
+		AllSpaces: grant.AllSpaces,
+		Spaces:    grant.SpaceIds,
+		Perms:     perms,
 	}
 }
 

@@ -468,6 +468,14 @@ func testGrant() *AppLinkGrant {
 	}
 }
 
+func testAllSpacesGrant() *AppLinkGrant {
+	return &AppLinkGrant{
+		Version:   appLinkGrantVersion,
+		AllSpaces: true,
+		Perms:     AppLinkPermsReadWrite,
+	}
+}
+
 func envelopeVersionOnDisk(t *testing.T, dir, appHash string) int {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join(dir, appHash+".json"))
@@ -652,6 +660,57 @@ func TestGrantRoundTrip(t *testing.T) {
 		require.Equal(t, want, got.Grant)
 	})
 
+	t.Run("allSpaces grant survives the sealed envelope", func(t *testing.T) {
+		// given
+		tmp := t.TempDir()
+		dir := filepath.Join(tmp, appLinkKeysDirectory)
+		pk, _, err := crypto.GenerateRandomEd25519KeyPair()
+		require.NoError(t, err)
+		want := testAllSpacesGrant()
+
+		// when
+		info, err := generate(dir, pk, "granted-all", model.AccountAuth_JsonAPI, 0, want)
+		require.NoError(t, err)
+		got, err := load(dir, info.AppKey, pk)
+
+		// then: the flag survives, riding the same ver-2 envelope a
+		// space-listed grant does
+		require.NoError(t, err)
+		require.Equal(t, want, got.Grant)
+		require.Equal(t, ver2, envelopeVersionOnDisk(t, dir, info.AppHash))
+	})
+
+	t.Run("a stored schema-v1 grant is refused at read time", func(t *testing.T) {
+		// given: a grant written by the pre-allSpaces schema. generate()
+		// refuses to mint one, so the envelope is built directly — the
+		// defense-in-depth read gate is the thing under test.
+		tmp := t.TempDir()
+		dir := filepath.Join(tmp, appLinkKeysDirectory)
+		require.NoError(t, os.MkdirAll(dir, 0o700))
+		pk, _, err := crypto.GenerateRandomEd25519KeyPair()
+		require.NoError(t, err)
+		key, err := crypto.NewRandomAES()
+		require.NoError(t, err)
+		info := &AppLinkInfo{
+			AppKey: formatAppKey(key.Bytes()),
+			Scope:  int(model.AccountAuth_JsonAPI),
+			Grant:  &AppLinkGrant{Version: 1, Spaces: []string{"s1"}, Perms: AppLinkPermsRead},
+		}
+		file, err := buildEnvelope(ver2, key.Bytes(), pk, info)
+		require.NoError(t, err)
+		raw, err := json.Marshal(&file)
+		require.NoError(t, err)
+		hash := fmt.Sprintf("%x", sha256.Sum256(key.Bytes()))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, hash+".json"), raw, 0o600))
+
+		// when
+		_, err = load(dir, info.AppKey, pk)
+
+		// then: diagnosable and fail-closed — the superseded schema names
+		// itself instead of masquerading as a corrupt key
+		require.ErrorContains(t, err, "unknown grant version 1")
+	})
+
 	t.Run("granted key writes envelope ver 2, unscoped keeps ver 1", func(t *testing.T) {
 		// given
 		tmp := t.TempDir()
@@ -777,61 +836,84 @@ func TestValidateAppLinkGrant(t *testing.T) {
 		},
 		{
 			name:  "valid read grant",
-			grant: &AppLinkGrant{Version: 1, Spaces: []string{"s1"}, Perms: AppLinkPermsRead},
+			grant: &AppLinkGrant{Version: appLinkGrantVersion, Spaces: []string{"s1"}, Perms: AppLinkPermsRead},
 			scope: model.AccountAuth_JsonAPI,
 		},
 		{
 			name:  "valid readwrite grant",
-			grant: &AppLinkGrant{Version: 1, Spaces: []string{"s1", "s2"}, Perms: AppLinkPermsReadWrite},
+			grant: &AppLinkGrant{Version: appLinkGrantVersion, Spaces: []string{"s1", "s2"}, Perms: AppLinkPermsReadWrite},
 			scope: model.AccountAuth_JsonAPI,
 		},
 		{
+			name:  "valid allSpaces grant",
+			grant: &AppLinkGrant{Version: appLinkGrantVersion, AllSpaces: true, Perms: AppLinkPermsRead},
+			scope: model.AccountAuth_JsonAPI,
+		},
+		{
+			name:    "allSpaces with an explicit space list",
+			grant:   &AppLinkGrant{Version: appLinkGrantVersion, AllSpaces: true, Spaces: []string{"s1"}, Perms: AppLinkPermsRead},
+			scope:   model.AccountAuth_JsonAPI,
+			wantErr: "allSpaces and an explicit space list are mutually exclusive",
+		},
+		{
+			name:    "allSpaces on Limited scope",
+			grant:   &AppLinkGrant{Version: appLinkGrantVersion, AllSpaces: true, Perms: AppLinkPermsRead},
+			scope:   model.AccountAuth_Limited,
+			wantErr: "grant requires JsonAPI scope",
+		},
+		{
 			name:    "grant on Limited scope",
-			grant:   &AppLinkGrant{Version: 1, Spaces: []string{"s1"}, Perms: AppLinkPermsRead},
+			grant:   &AppLinkGrant{Version: appLinkGrantVersion, Spaces: []string{"s1"}, Perms: AppLinkPermsRead},
 			scope:   model.AccountAuth_Limited,
 			wantErr: "grant requires JsonAPI scope",
 		},
 		{
 			name:    "grant on Full scope",
-			grant:   &AppLinkGrant{Version: 1, Spaces: []string{"s1"}, Perms: AppLinkPermsRead},
+			grant:   &AppLinkGrant{Version: appLinkGrantVersion, Spaces: []string{"s1"}, Perms: AppLinkPermsRead},
 			scope:   model.AccountAuth_Full,
 			wantErr: "grant requires JsonAPI scope",
 		},
 		{
 			name:    "nil spaces",
-			grant:   &AppLinkGrant{Version: 1, Perms: AppLinkPermsRead},
+			grant:   &AppLinkGrant{Version: appLinkGrantVersion, Perms: AppLinkPermsRead},
 			scope:   model.AccountAuth_JsonAPI,
 			wantErr: "spaces must be non-empty",
 		},
 		{
 			name:    "empty spaces",
-			grant:   &AppLinkGrant{Version: 1, Spaces: []string{}, Perms: AppLinkPermsRead},
+			grant:   &AppLinkGrant{Version: appLinkGrantVersion, Spaces: []string{}, Perms: AppLinkPermsRead},
 			scope:   model.AccountAuth_JsonAPI,
 			wantErr: "spaces must be non-empty",
 		},
 		{
 			name:    "empty space id",
-			grant:   &AppLinkGrant{Version: 1, Spaces: []string{"s1", ""}, Perms: AppLinkPermsRead},
+			grant:   &AppLinkGrant{Version: appLinkGrantVersion, Spaces: []string{"s1", ""}, Perms: AppLinkPermsRead},
 			scope:   model.AccountAuth_JsonAPI,
 			wantErr: "empty space id",
 		},
 		{
 			name:    "unknown perms",
-			grant:   &AppLinkGrant{Version: 1, Spaces: []string{"s1"}, Perms: "admin"},
+			grant:   &AppLinkGrant{Version: appLinkGrantVersion, Spaces: []string{"s1"}, Perms: "admin"},
 			scope:   model.AccountAuth_JsonAPI,
 			wantErr: `unknown perms "admin"`,
 		},
 		{
 			name:    "empty perms",
-			grant:   &AppLinkGrant{Version: 1, Spaces: []string{"s1"}, Perms: ""},
+			grant:   &AppLinkGrant{Version: appLinkGrantVersion, Spaces: []string{"s1"}, Perms: ""},
 			scope:   model.AccountAuth_JsonAPI,
 			wantErr: "unknown perms",
 		},
 		{
-			name:    "unknown version",
-			grant:   &AppLinkGrant{Version: 2, Spaces: []string{"s1"}, Perms: AppLinkPermsRead},
+			name:    "superseded version 1 is refused",
+			grant:   &AppLinkGrant{Version: 1, Spaces: []string{"s1"}, Perms: AppLinkPermsRead},
 			scope:   model.AccountAuth_JsonAPI,
-			wantErr: "unknown grant version 2",
+			wantErr: "unknown grant version 1",
+		},
+		{
+			name:    "unknown future version",
+			grant:   &AppLinkGrant{Version: 3, Spaces: []string{"s1"}, Perms: AppLinkPermsRead},
+			scope:   model.AccountAuth_JsonAPI,
+			wantErr: "unknown grant version 3",
 		},
 		{
 			name:    "zero version",
@@ -864,7 +946,7 @@ func TestValidateAppLinkGrant(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		_, err = generate(dir, pk, "no-spaces", model.AccountAuth_JsonAPI, 0, &AppLinkGrant{Version: 1, Perms: AppLinkPermsRead})
+		_, err = generate(dir, pk, "no-spaces", model.AccountAuth_JsonAPI, 0, &AppLinkGrant{Version: appLinkGrantVersion, Perms: AppLinkPermsRead})
 
 		// then
 		require.ErrorIs(t, err, ErrInvalidGrant)
@@ -914,10 +996,10 @@ func TestUpdateAppLinkGrant(t *testing.T) {
 	t.Run("replacing a grant", func(t *testing.T) {
 		// given
 		w, _ := newTestWallet(t)
-		first := &AppLinkGrant{Version: 1, Spaces: []string{"space1"}, Perms: AppLinkPermsRead}
+		first := &AppLinkGrant{Version: appLinkGrantVersion, Spaces: []string{"space1"}, Perms: AppLinkPermsRead}
 		info, err := w.PersistAppLink("edited", model.AccountAuth_JsonAPI, 0, first)
 		require.NoError(t, err)
-		want := &AppLinkGrant{Version: 1, Spaces: []string{"space2", "space3"}, Perms: AppLinkPermsReadWrite}
+		want := &AppLinkGrant{Version: appLinkGrantVersion, Spaces: []string{"space2", "space3"}, Perms: AppLinkPermsReadWrite}
 
 		// when
 		err = w.UpdateAppLinkGrant(info.AppHash, want)
@@ -984,7 +1066,7 @@ func TestUpdateAppLinkGrant(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		err = w.UpdateAppLinkGrant(info.AppHash, &AppLinkGrant{Version: 1, Spaces: []string{"s"}, Perms: "admin"})
+		err = w.UpdateAppLinkGrant(info.AppHash, &AppLinkGrant{Version: appLinkGrantVersion, Spaces: []string{"s"}, Perms: "admin"})
 
 		// then
 		require.ErrorIs(t, err, ErrInvalidGrant)
@@ -1152,6 +1234,18 @@ func TestListVerification(t *testing.T) {
 		require.Empty(t, byHash[otherHash].AppName)
 		require.Equal(t, "copied", byHash[info.AppHash].AppName)
 	})
+}
+
+func TestAppLinkGrantProtoCarriesAllSpaces(t *testing.T) {
+	// given
+	want := testAllSpacesGrant()
+
+	// when
+	got := AppLinkGrantFromProto(want.Proto())
+
+	// then: a dropped flag would narrow the grant to nothing — fail closed,
+	// but still a lie about what the user granted
+	require.Equal(t, want, got)
 }
 
 func TestAppLinkGrantFromProto_UnknownPerm(t *testing.T) {

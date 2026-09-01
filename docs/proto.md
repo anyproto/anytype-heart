@@ -34363,8 +34363,9 @@ Contains basic information about a user account
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| spaceIds | [string](#string) | repeated | spaces the key may touch; must be non-empty |
+| spaceIds | [string](#string) | repeated | spaceIds are the spaces the key may touch; empty only when allSpaces is set — exactly one of the two must be present |
 | perm | [Account.Auth.AppGrant.Perm](#anytype-model-Account-Auth-AppGrant-Perm) |  |  |
+| allSpaces | [bool](#bool) |  | allSpaces grants every space in the account, including spaces created after the grant was made (dynamic — GitHub&#39;s &#34;All repositories&#34; semantics). The JSON API still excludes the tech space; reaching it requires listing it explicitly in spaceIds. |
 
 
 
