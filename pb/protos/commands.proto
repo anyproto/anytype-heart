@@ -986,6 +986,32 @@ message Rpc {
             }
         }
 
+        // RecoveryState serves the folded account start-up status
+        // (Event.Account.Recovery.Snapshot) from the same state the
+        // Event.Account.Recovery.Update stream is emitted from. Lock-free with
+        // respect to AccountSelect, so it can be called while that RPC blocks.
+        message RecoveryState {
+            message Request {
+            }
+
+            message Response {
+                Error error = 1;
+                anytype.Event.Account.Recovery.Snapshot snapshot = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0; // No error
+                        UNKNOWN_ERROR = 1; // Any other errors
+                        BAD_INPUT = 2;
+                        ACCOUNT_IS_NOT_RUNNING = 101;
+                    }
+                }
+            }
+        }
+
         message Migrate {
             message Request {
                 string id = 1; // Id of a selected account

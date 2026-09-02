@@ -141,6 +141,10 @@
     - [Rpc.Account.RecoverFromLegacyExport.Request](#anytype-Rpc-Account-RecoverFromLegacyExport-Request)
     - [Rpc.Account.RecoverFromLegacyExport.Response](#anytype-Rpc-Account-RecoverFromLegacyExport-Response)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error)
+    - [Rpc.Account.RecoveryState](#anytype-Rpc-Account-RecoveryState)
+    - [Rpc.Account.RecoveryState.Request](#anytype-Rpc-Account-RecoveryState-Request)
+    - [Rpc.Account.RecoveryState.Response](#anytype-Rpc-Account-RecoveryState-Response)
+    - [Rpc.Account.RecoveryState.Response.Error](#anytype-Rpc-Account-RecoveryState-Response-Error)
     - [Rpc.Account.RevertDeletion](#anytype-Rpc-Account-RevertDeletion)
     - [Rpc.Account.RevertDeletion.Request](#anytype-Rpc-Account-RevertDeletion-Request)
     - [Rpc.Account.RevertDeletion.Response](#anytype-Rpc-Account-RevertDeletion-Response)
@@ -1559,6 +1563,7 @@
     - [Rpc.Account.PreloadRemainingSpaces.Response.Error.Code](#anytype-Rpc-Account-PreloadRemainingSpaces-Response-Error-Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype-Rpc-Account-Recover-Response-Error-Code)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code)
+    - [Rpc.Account.RecoveryState.Response.Error.Code](#anytype-Rpc-Account-RecoveryState-Response-Error-Code)
     - [Rpc.Account.RevertDeletion.Response.Error.Code](#anytype-Rpc-Account-RevertDeletion-Response-Error-Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype-Rpc-Account-Select-Response-Error-Code)
     - [Rpc.Account.Stop.Response.Error.Code](#anytype-Rpc-Account-Stop-Response-Error-Code)
@@ -1913,6 +1918,26 @@
     - [Event.Account.LinkChallenge](#anytype-Event-Account-LinkChallenge)
     - [Event.Account.LinkChallenge.ClientInfo](#anytype-Event-Account-LinkChallenge-ClientInfo)
     - [Event.Account.LinkChallengeHide](#anytype-Event-Account-LinkChallengeHide)
+    - [Event.Account.Recovery](#anytype-Event-Account-Recovery)
+    - [Event.Account.Recovery.AccountFetchError](#anytype-Event-Account-Recovery-AccountFetchError)
+    - [Event.Account.Recovery.AccountFetchStarted](#anytype-Event-Account-Recovery-AccountFetchStarted)
+    - [Event.Account.Recovery.AccountReady](#anytype-Event-Account-Recovery-AccountReady)
+    - [Event.Account.Recovery.DialFailed](#anytype-Event-Account-Recovery-DialFailed)
+    - [Event.Account.Recovery.DialStarted](#anytype-Event-Account-Recovery-DialStarted)
+    - [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo)
+    - [Event.Account.Recovery.Finished](#anytype-Event-Account-Recovery-Finished)
+    - [Event.Account.Recovery.LocalDiscoveryState](#anytype-Event-Account-Recovery-LocalDiscoveryState)
+    - [Event.Account.Recovery.PeerConnected](#anytype-Event-Account-Recovery-PeerConnected)
+    - [Event.Account.Recovery.PeerDisconnected](#anytype-Event-Account-Recovery-PeerDisconnected)
+    - [Event.Account.Recovery.PeerDiscovered](#anytype-Event-Account-Recovery-PeerDiscovered)
+    - [Event.Account.Recovery.PhaseChanged](#anytype-Event-Account-Recovery-PhaseChanged)
+    - [Event.Account.Recovery.Snapshot](#anytype-Event-Account-Recovery-Snapshot)
+    - [Event.Account.Recovery.Snapshot.Peer](#anytype-Event-Account-Recovery-Snapshot-Peer)
+    - [Event.Account.Recovery.Snapshot.Space](#anytype-Event-Account-Recovery-Snapshot-Space)
+    - [Event.Account.Recovery.SpaceDiscovered](#anytype-Event-Account-Recovery-SpaceDiscovered)
+    - [Event.Account.Recovery.SpaceStateChanged](#anytype-Event-Account-Recovery-SpaceStateChanged)
+    - [Event.Account.Recovery.Started](#anytype-Event-Account-Recovery-Started)
+    - [Event.Account.Recovery.Update](#anytype-Event-Account-Recovery-Update)
     - [Event.Account.Show](#anytype-Event-Account-Show)
     - [Event.Account.Update](#anytype-Event-Account-Update)
     - [Event.Block](#anytype-Event-Block)
@@ -2132,6 +2157,14 @@
     - [Model.Process.SaveFile](#anytype-Model-Process-SaveFile)
     - [ResponseEvent](#anytype-ResponseEvent)
   
+    - [Event.Account.Recovery.Direction](#anytype-Event-Account-Recovery-Direction)
+    - [Event.Account.Recovery.DiscoveryState](#anytype-Event-Account-Recovery-DiscoveryState)
+    - [Event.Account.Recovery.ErrorClass](#anytype-Event-Account-Recovery-ErrorClass)
+    - [Event.Account.Recovery.Mode](#anytype-Event-Account-Recovery-Mode)
+    - [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind)
+    - [Event.Account.Recovery.Phase](#anytype-Event-Account-Recovery-Phase)
+    - [Event.Account.Recovery.SpaceKind](#anytype-Event-Account-Recovery-SpaceKind)
+    - [Event.Account.Recovery.SpaceState](#anytype-Event-Account-Recovery-SpaceState)
     - [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation)
     - [Event.Object.CleanupSuggestion.Trigger](#anytype-Event-Object-CleanupSuggestion-Trigger)
     - [Event.P2PStatus.Status](#anytype-Event-P2PStatus-Status)
@@ -2413,6 +2446,7 @@
 | AccountCreate | [Rpc.Account.Create.Request](#anytype-Rpc-Account-Create-Request) | [Rpc.Account.Create.Response](#anytype-Rpc-Account-Create-Response) |  |
 | AccountDelete | [Rpc.Account.Delete.Request](#anytype-Rpc-Account-Delete-Request) | [Rpc.Account.Delete.Response](#anytype-Rpc-Account-Delete-Response) |  |
 | AccountPreloadRemainingSpaces | [Rpc.Account.PreloadRemainingSpaces.Request](#anytype-Rpc-Account-PreloadRemainingSpaces-Request) | [Rpc.Account.PreloadRemainingSpaces.Response](#anytype-Rpc-Account-PreloadRemainingSpaces-Response) |  |
+| AccountRecoveryState | [Rpc.Account.RecoveryState.Request](#anytype-Rpc-Account-RecoveryState-Request) | [Rpc.Account.RecoveryState.Response](#anytype-Rpc-Account-RecoveryState-Response) |  |
 | AccountRevertDeletion | [Rpc.Account.RevertDeletion.Request](#anytype-Rpc-Account-RevertDeletion-Request) | [Rpc.Account.RevertDeletion.Response](#anytype-Rpc-Account-RevertDeletion-Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype-Rpc-Account-Select-Request) | [Rpc.Account.Select.Response](#anytype-Rpc-Account-Select-Response) |  |
 | AccountEnableLocalNetworkSync | [Rpc.Account.EnableLocalNetworkSync.Request](#anytype-Rpc-Account-EnableLocalNetworkSync-Request) | [Rpc.Account.EnableLocalNetworkSync.Response](#anytype-Rpc-Account-EnableLocalNetworkSync-Response) |  |
@@ -4677,6 +4711,61 @@ Middleware-to-front-end response to an account recover request, that can contain
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RecoveryState"></a>
+
+### Rpc.Account.RecoveryState
+RecoveryState serves the folded account start-up status
+(Event.Account.Recovery.Snapshot) from the same state the
+Event.Account.Recovery.Update stream is emitted from. Lock-free with
+respect to AccountSelect, so it can be called while that RPC blocks.
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RecoveryState-Request"></a>
+
+### Rpc.Account.RecoveryState.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RecoveryState-Response"></a>
+
+### Rpc.Account.RecoveryState.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.RecoveryState.Response.Error](#anytype-Rpc-Account-RecoveryState-Response-Error) |  |  |
+| snapshot | [Event.Account.Recovery.Snapshot](#anytype-Event-Account-Recovery-Snapshot) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RecoveryState-Response-Error"></a>
+
+### Rpc.Account.RecoveryState.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.RecoveryState.Response.Error.Code](#anytype-Rpc-Account-RecoveryState-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -25391,6 +25480,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Account-RecoveryState-Response-Error-Code"></a>
+
+### Rpc.Account.RecoveryState.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 | No error |
+| UNKNOWN_ERROR | 1 | Any other errors |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
+
+
+
 <a name="anytype-Rpc-Account-RevertDeletion-Response-Error-Code"></a>
 
 ### Rpc.Account.RevertDeletion.Response.Error.Code
@@ -30299,6 +30402,394 @@ corresponding front-end.
 
 
 
+<a name="anytype-Event-Account-Recovery"></a>
+
+### Event.Account.Recovery
+Recovery is the account start-up status stream (GO-7471): a
+recovery-scoped, monotonic event log covering every app open, from the
+first millisecond of AccountSelect until every space has published its
+load result. Rpc.Account.RecoveryState serves the folded Snapshot from
+the same state, so push and pull cannot drift. Clients apply Updates
+with the same runId and id == last&#43;1; on a gap or a new runId they
+re-pull the snapshot. Every payload is a level, never a delta.
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-AccountFetchError"></a>
+
+### Event.Account.Recovery.AccountFetchError
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| error | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  |  |
+| attempt | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-AccountFetchStarted"></a>
+
+### Event.Account.Recovery.AccountFetchStarted
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| peerId | [string](#string) |  | empty = waiting for a peer |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-AccountReady"></a>
+
+### Event.Account.Recovery.AccountReady
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| durationMs | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-DialFailed"></a>
+
+### Event.Account.Recovery.DialFailed
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind) |  |  |
+| nodeTypes | [string](#string) | repeated |  |
+| error | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  |  |
+| attempt | [int32](#int32) |  | dials observed since the last Connected |
+| durationMs | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-DialStarted"></a>
+
+### Event.Account.Recovery.DialStarted
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind) |  |  |
+| nodeTypes | [string](#string) | repeated | nodeconf node types, e.g. coordinator, tree, file |
+| addrsCount | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-ErrorInfo"></a>
+
+### Event.Account.Recovery.ErrorInfo
+ErrorInfo (not &#34;Error&#34;: enum values and nested messages share the
+enclosing scope, and SpaceState.Error already takes that name)
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| class | [Event.Account.Recovery.ErrorClass](#anytype-Event-Account-Recovery-ErrorClass) |  |  |
+| retryable | [bool](#bool) |  |  |
+| debugMessage | [string](#string) |  | raw error text for logs/diagnostics; clients may log it, must never headline it |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-Finished"></a>
+
+### Event.Account.Recovery.Finished
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spacesTotal | [int32](#int32) |  |  |
+| spacesLoaded | [int32](#int32) |  |  |
+| spacesFailed | [int32](#int32) |  |  |
+| totalDurationMs | [int64](#int64) |  |  |
+| viewsConfirmed | [bool](#bool) |  | true: the SpaceView set was confirmed against the network (&#34;no more spaces to download&#34;); false: the completeness gate opened on its stall bound and no completeness claim may be made — keep relying on the SpaceView subscription for spaces that appear later |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-LocalDiscoveryState"></a>
+
+### Event.Account.Recovery.LocalDiscoveryState
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| state | [Event.Account.Recovery.DiscoveryState](#anytype-Event-Account-Recovery-DiscoveryState) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-PeerConnected"></a>
+
+### Event.Account.Recovery.PeerConnected
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind) |  |  |
+| nodeTypes | [string](#string) | repeated |  |
+| direction | [Event.Account.Recovery.Direction](#anytype-Event-Account-Recovery-Direction) |  |  |
+| addr | [string](#string) |  | display only; never compare across directions |
+| transport | [string](#string) |  | scheme as any-sync reports it: quic, yamux, ... |
+| protoVersion | [uint32](#uint32) |  |  |
+| durationMs | [int64](#int64) |  | 0 = unknown (inbound) |
+| openConnections | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-PeerDisconnected"></a>
+
+### Event.Account.Recovery.PeerDisconnected
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind) |  |  |
+| openConnections | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-PeerDiscovered"></a>
+
+### Event.Account.Recovery.PeerDiscovered
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| addrs | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-PhaseChanged"></a>
+
+### Event.Account.Recovery.PhaseChanged
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| phase | [Event.Account.Recovery.Phase](#anytype-Event-Account-Recovery-Phase) |  |  |
+| fromPhase | [Event.Account.Recovery.Phase](#anytype-Event-Account-Recovery-Phase) |  |  |
+| previousPhaseDurationMs | [int64](#int64) |  |  |
+| error | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  | set for WaitingForNetwork and Failed |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-Snapshot"></a>
+
+### Event.Account.Recovery.Snapshot
+Folded state. Served by Rpc.Account.RecoveryState and pushed once to
+each new session.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| runId | [string](#string) |  |  |
+| lastEventId | [int64](#int64) |  |  |
+| mode | [Event.Account.Recovery.Mode](#anytype-Event-Account-Recovery-Mode) |  |  |
+| networkId | [string](#string) |  |  |
+| startedAtMs | [int64](#int64) |  |  |
+| phase | [Event.Account.Recovery.Phase](#anytype-Event-Account-Recovery-Phase) |  |  |
+| phaseStartedAtMs | [int64](#int64) |  |  |
+| done | [bool](#bool) |  |  |
+| error | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  | account-level only |
+| discovery | [Event.Account.Recovery.DiscoveryState](#anytype-Event-Account-Recovery-DiscoveryState) |  |  |
+| accountFetchStarted | [bool](#bool) |  |  |
+| accountReady | [bool](#bool) |  |  |
+| peers | [Event.Account.Recovery.Snapshot.Peer](#anytype-Event-Account-Recovery-Snapshot-Peer) | repeated |  |
+| spaces | [Event.Account.Recovery.Snapshot.Space](#anytype-Event-Account-Recovery-Snapshot-Space) | repeated |  |
+| spacesTotal | [int32](#int32) |  |  |
+| spacesLoaded | [int32](#int32) |  |  |
+| spacesFailed | [int32](#int32) |  |  |
+| viewsConfirmed | [bool](#bool) |  | meaningful once done; see Finished |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-Snapshot-Peer"></a>
+
+### Event.Account.Recovery.Snapshot.Peer
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind) |  |  |
+| nodeTypes | [string](#string) | repeated |  |
+| openConnections | [int32](#int32) |  |  |
+| transport | [string](#string) |  |  |
+| protoVersion | [uint32](#uint32) |  |  |
+| dialAttempts | [int32](#int32) |  |  |
+| lastError | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  |  |
+| discoveredLocally | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-Snapshot-Space"></a>
+
+### Event.Account.Recovery.Snapshot.Space
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| spaceViewId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.SpaceKind](#anytype-Event-Account-Recovery-SpaceKind) |  |  |
+| state | [Event.Account.Recovery.SpaceState](#anytype-Event-Account-Recovery-SpaceState) |  |  |
+| error | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  |  |
+| attempt | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-SpaceDiscovered"></a>
+
+### Event.Account.Recovery.SpaceDiscovered
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| spaceViewId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.SpaceKind](#anytype-Event-Account-Recovery-SpaceKind) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-SpaceStateChanged"></a>
+
+### Event.Account.Recovery.SpaceStateChanged
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| state | [Event.Account.Recovery.SpaceState](#anytype-Event-Account-Recovery-SpaceState) |  |  |
+| fromState | [Event.Account.Recovery.SpaceState](#anytype-Event-Account-Recovery-SpaceState) |  |  |
+| error | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  |  |
+| attempt | [int32](#int32) |  | pull attempts, a level |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-Started"></a>
+
+### Event.Account.Recovery.Started
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| mode | [Event.Account.Recovery.Mode](#anytype-Event-Account-Recovery-Mode) |  |  |
+| networkId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-Update"></a>
+
+### Event.Account.Recovery.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| runId | [string](#string) |  | random per run; a change means &#34;new run, reset&#34; |
+| id | [int64](#int64) |  | monotonic within runId, starts at 1; gap =&gt; re-pull |
+| timestampMs | [int64](#int64) |  | unix ms |
+| started | [Event.Account.Recovery.Started](#anytype-Event-Account-Recovery-Started) |  |  |
+| phaseChanged | [Event.Account.Recovery.PhaseChanged](#anytype-Event-Account-Recovery-PhaseChanged) |  |  |
+| localDiscoveryState | [Event.Account.Recovery.LocalDiscoveryState](#anytype-Event-Account-Recovery-LocalDiscoveryState) |  |  |
+| peerDiscovered | [Event.Account.Recovery.PeerDiscovered](#anytype-Event-Account-Recovery-PeerDiscovered) |  |  |
+| dialStarted | [Event.Account.Recovery.DialStarted](#anytype-Event-Account-Recovery-DialStarted) |  |  |
+| peerConnected | [Event.Account.Recovery.PeerConnected](#anytype-Event-Account-Recovery-PeerConnected) |  |  |
+| dialFailed | [Event.Account.Recovery.DialFailed](#anytype-Event-Account-Recovery-DialFailed) |  |  |
+| peerDisconnected | [Event.Account.Recovery.PeerDisconnected](#anytype-Event-Account-Recovery-PeerDisconnected) |  |  |
+| accountFetchStarted | [Event.Account.Recovery.AccountFetchStarted](#anytype-Event-Account-Recovery-AccountFetchStarted) |  |  |
+| accountFetchError | [Event.Account.Recovery.AccountFetchError](#anytype-Event-Account-Recovery-AccountFetchError) |  |  |
+| accountReady | [Event.Account.Recovery.AccountReady](#anytype-Event-Account-Recovery-AccountReady) |  |  |
+| spaceDiscovered | [Event.Account.Recovery.SpaceDiscovered](#anytype-Event-Account-Recovery-SpaceDiscovered) |  |  |
+| spaceStateChanged | [Event.Account.Recovery.SpaceStateChanged](#anytype-Event-Account-Recovery-SpaceStateChanged) |  |  |
+| finished | [Event.Account.Recovery.Finished](#anytype-Event-Account-Recovery-Finished) |  |  |
+| snapshot | [Event.Account.Recovery.Snapshot](#anytype-Event-Account-Recovery-Snapshot) |  | sent only to a newly attached session: snapshot-on-subscribe |
+
+
+
+
+
+
 <a name="anytype-Event-Account-Show"></a>
 
 ### Event.Account.Show
@@ -32801,6 +33292,7 @@ response already carries the path.
 | accountUpdate | [Event.Account.Update](#anytype-Event-Account-Update) |  |  |
 | accountLinkChallenge | [Event.Account.LinkChallenge](#anytype-Event-Account-LinkChallenge) |  |  |
 | accountLinkChallengeHide | [Event.Account.LinkChallengeHide](#anytype-Event-Account-LinkChallengeHide) |  |  |
+| accountRecoveryUpdate | [Event.Account.Recovery.Update](#anytype-Event-Account-Recovery-Update) |  |  |
 | objectDetailsSet | [Event.Object.Details.Set](#anytype-Event-Object-Details-Set) |  |  |
 | objectDetailsAmend | [Event.Object.Details.Amend](#anytype-Event-Object-Details-Amend) |  |  |
 | objectDetailsUnset | [Event.Object.Details.Unset](#anytype-Event-Object-Details-Unset) |  |  |
@@ -33764,6 +34256,125 @@ scenario: Precondition: user A and user B opened the same block
 
 
  
+
+
+<a name="anytype-Event-Account-Recovery-Direction"></a>
+
+### Event.Account.Recovery.Direction
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Outbound | 0 |  |
+| Inbound | 1 |  |
+
+
+
+<a name="anytype-Event-Account-Recovery-DiscoveryState"></a>
+
+### Event.Account.Recovery.DiscoveryState
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Possible | 0 |  |
+| NoInterfaces | 1 |  |
+| Restricted | 2 |  |
+
+
+
+<a name="anytype-Event-Account-Recovery-ErrorClass"></a>
+
+### Event.Account.Recovery.ErrorClass
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| None | 0 |  |
+| NoNetwork | 1 |  |
+| PeerUnreachable | 2 |  |
+| IncompatibleVersion | 3 |  |
+| NotAuthorized | 4 |  |
+| SpaceDeleted | 5 |  |
+| AccountDeleted | 6 |  |
+| AccountNotFound | 7 |  |
+| RateLimited | 8 |  |
+| StorageLimit | 9 | reserved, no producer yet |
+| Unexpected | 10 |  |
+
+
+
+<a name="anytype-Event-Account-Recovery-Mode"></a>
+
+### Event.Account.Recovery.Mode
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| ColdRecovery | 0 | fresh device: the account repo did not exist |
+| WarmStart | 1 | the repo existed |
+| NewAccount | 2 | account creation paths |
+
+
+
+<a name="anytype-Event-Account-Recovery-PeerKind"></a>
+
+### Event.Account.Recovery.PeerKind
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| LocalPeer | 0 |  |
+| NetworkNode | 1 |  |
+
+
+
+<a name="anytype-Event-Account-Recovery-Phase"></a>
+
+### Event.Account.Recovery.Phase
+Monotone except WaitingForNetwork (an overlay) and the two terminals.
+Phases may be skipped (a warm start never enters FetchingAccount);
+clients must accept any forward jump.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| LookingForPeers | 0 |  |
+| Connecting | 1 |  |
+| FetchingAccount | 2 |  |
+| LoadingSpaces | 3 |  |
+| Done | 4 |  |
+| WaitingForNetwork | 5 | calm, auto-retrying resting state; not an error screen |
+| Failed | 6 | account-level fatal; AccountSelect itself failed |
+
+
+
+<a name="anytype-Event-Account-Recovery-SpaceKind"></a>
+
+### Event.Account.Recovery.SpaceKind
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Regular | 0 |  |
+| Tech | 1 |  |
+
+
+
+<a name="anytype-Event-Account-Recovery-SpaceState"></a>
+
+### Event.Account.Recovery.SpaceState
+Loaded = the space controller published LocalStatusOk: mandatory
+objects fetched, tree sync started. Object-level progress after that
+is on Event.Space.SyncStatus.Update.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Queued | 0 |  |
+| Pulling | 1 |  |
+| Loading | 2 |  |
+| Loaded | 3 |  |
+| Error | 4 |  |
+
 
 
 <a name="anytype-Event-Block-Dataview-SliceOperation"></a>
