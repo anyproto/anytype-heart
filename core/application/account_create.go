@@ -79,7 +79,7 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 	s.appAccountStartInProcessCancelMutex.Lock()
 	ctx, s.appAccountStartInProcessCancel = context.WithCancel(ctx)
 	s.appAccountStartInProcessCancelMutex.Unlock()
-	s.app, err = anytype.StartNewApp(ctx, s.clientWithVersion, comps...)
+	s.app, err = s.startNewApp(ctx, pb.EventAccountRecovery_NewAccount, comps...)
 	s.appAccountStartInProcessCancelMutex.Lock()
 	s.appAccountStartInProcessCancel = nil
 	s.appAccountStartInProcessCancelMutex.Unlock()

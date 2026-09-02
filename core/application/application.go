@@ -12,6 +12,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/recovery"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/vcs"
@@ -35,9 +36,13 @@ type Service struct {
 	fulltextPrimaryLanguage string
 	clientWithVersion       string
 	eventSender             event.Sender
-	sessions                session.Service
-	traceRecorder           *traceRecorder
-	migrationManager        *migrationManager
+	// recovery is the account start-up status tracker; process-lifetime, one
+	// run per start (see startNewApp). Read without s.lock by
+	// AccountRecoveryState.
+	recovery         *recovery.Tracker
+	sessions         session.Service
+	traceRecorder    *traceRecorder
+	migrationManager *migrationManager
 
 	appAccountStartInProcessCancel      context.CancelFunc
 	appAccountStartInProcessCancelMutex sync.Mutex
@@ -48,6 +53,7 @@ func New() *Service {
 		sessions:          session.New(),
 		traceRecorder:     &traceRecorder{},
 		sessionsByAppHash: make(map[string]string),
+		recovery:          recovery.New(),
 	}
 	m := newMigrationManager(s)
 	s.migrationManager = m

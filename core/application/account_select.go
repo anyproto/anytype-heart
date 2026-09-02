@@ -163,11 +163,11 @@ func (s *Service) start(
 	s.appAccountStartInProcessCancelMutex.Lock()
 	s.appAccountStartInProcessCancel = cancel
 	s.appAccountStartInProcessCancelMutex.Unlock()
-	s.app, err = anytype.StartNewApp(
-		ctx,
-		s.clientWithVersion,
-		comps...,
-	)
+	mode := pb.EventAccountRecovery_WarmStart
+	if repoWasMissing {
+		mode = pb.EventAccountRecovery_ColdRecovery
+	}
+	s.app, err = s.startNewApp(ctx, mode, comps...)
 	s.appAccountStartInProcessCancelMutex.Lock()
 	s.appAccountStartInProcessCancel = nil
 	s.appAccountStartInProcessCancelMutex.Unlock()

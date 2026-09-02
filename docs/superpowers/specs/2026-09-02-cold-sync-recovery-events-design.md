@@ -288,8 +288,18 @@ on `core/block/importv2/adapter/statistic.go` (branch `go-7349-import-llm`).
   for `IsOffline()` + `RegisterConnectivityHook`. All are registered before `Start`, so lookup
   order is irrelevant; because the tracker is registered first its `Init` runs first and no dial
   can precede its mux registration.
-- `Close`: stops the coalescing timer, marks the run `closed`. A run closed before terminal emits
-  nothing further; the snapshot keeps its last non-terminal phase. The next `Begin` resets.
+- `Close`: stops the coalescing timer, flushes the pending window, marks the run `closed`. A run
+  closed before terminal emits nothing further — except `Fail`: a failed `app.Start` closes the
+  components it already initialised *before* returning the error, so the account-level verdict
+  arrives after `Close` and must still publish. The snapshot keeps its last non-terminal phase.
+  The next `Begin` resets.
+- **Execution notes (phase 2).** `Started` is published from `Init`, not `Begin`: the network id
+  is only known once `config.Init` has run, so the tracker is appended to `comps` after
+  `cfg, wallet, eventSender` (still ahead of every bootstrap component; those three Inits do no
+  network work). `Fail` publishes `Started` first when `Init` never ran (an earlier component's
+  Init failed). `Mode`'s zero value is `ColdRecovery` (approved enum order); the implicit
+  Init-without-Begin path passes `WarmStart` explicitly. A `context.Canceled` start ends the run
+  with no terminal.
 - `Begin` on a tracker whose previous run is not terminal is legal (an `AccountStop` +
   `AccountSelect` cycle) and simply starts a new `runId`.
 
@@ -580,7 +590,11 @@ in the order below (a version mismatch on one address outranks a timeout on anot
 | anything else | `Unexpected` | true |
 | *(reserved)* `StorageLimit` | no producer in this version; kept for the file surface | — |
 
-`debugMessage = err.Error()` truncated to 256 bytes. Per-space `Error` state uses the same table;
+`debugMessage = err.Error()` truncated to 256 bytes. Phase 2 implements the any-sync and stdlib
+rows; the heart-side sentinels (`spacecore.*`, `spaceloader.ErrSpaceDeleted`,
+`spacedomain.ErrUnexpectedSpaceType`, `peermanager.ErrPeerFindDeadlineExceeded`,
+`space.ErrSpaceNotExists`) are added by the producer phases that surface them, to keep
+`core/recovery` off those import trees until a producer needs them. Per-space `Error` state uses the same table;
 a space in `Error` with `retryable=true` is still counted as `spacesFailed` at `Finished` — the
 loader gave up, so the run's verdict is honest.
 
