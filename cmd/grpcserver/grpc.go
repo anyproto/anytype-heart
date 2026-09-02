@@ -4,7 +4,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -14,7 +13,6 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"runtime"
 	"strconv"
 	"syscall"
 	"time"
@@ -50,6 +48,26 @@ const grpcWebStartedMessagePrefix = "gRPC Web proxy started at: "
 var commonOSSignals = []os.Signal{os.Interrupt, syscall.SIGTERM, syscall.SIGINT}
 
 func main() {
+	// Establish parent ownership before any middleware initialization. If the
+	// owner is already gone, the monitor starts the hard-exit deadline even if
+	// startup later blocks before reaching the shutdown event loop.
+	lifelineEnabled := parentLifelineEnabled()
+	if lifelineEnabled {
+		ignoreBrokenPipeSignal()
+	}
+
+	var parentLifeline *parentLifelineMonitor
+	var parentLifelineChan <-chan parentLifelineEvent
+	if lifelineEnabled || shouldMonitorParentStdin() {
+		parentLifeline = startParentLifelineMonitor(
+			os.Stdin,
+			lifelineEnabled,
+			gracefulShutdownTimeout,
+			os.Exit,
+		)
+		parentLifelineChan = parentLifeline.events
+	}
+
 	var addr string
 	var webaddr string
 	app.StartWarningAfter = time.Second * 5
@@ -225,30 +243,29 @@ func main() {
 	}
 	// do not change this, js client relies on this msg to ensure that server is up and parse address
 	fmt.Println(grpcWebStartedMessagePrefix + webaddr)
-	if runtime.GOOS == "windows" {
-		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-			message := scanner.Text()
-			if message == "shutdown" {
-				fmt.Println("[anytype-heart] Shutdown: received shutdown msg, closing components...")
-				// Perform cleanup or exit
-				shutdown()
-				return
-			}
-		}
-	}
 
 	for {
-		sig := <-signalChan
-		if shouldSaveStack(sig) {
-			if err = mw.SaveGoroutinesStack(""); err != nil {
-				log.Errorf("failed to save stack of goroutines: %s", err)
+		select {
+		case <-parentLifelineChan:
+			// Do not write to stdout/stderr here. The event may be EOF because the
+			// owner disappeared and closed those pipes. The monitor independently
+			// enforces the hard deadline while cleanup runs.
+			shutdown()
+			parentLifeline.markShutdownComplete()
+			return
+		case sig := <-signalChan:
+			if shouldSaveStack(sig) {
+				if err = mw.SaveGoroutinesStack(""); err != nil {
+					log.Errorf("failed to save stack of goroutines: %s", err)
+				}
+				continue
 			}
-			continue
+			fmt.Printf("[anytype-heart] Shutdown: received OS signal (%s), closing components...\n", sig.String())
+			// Preserve the historical standalone-server contract: OS-signal
+			// shutdown is not subject to the desktop parent's lifeline deadline.
+			shutdown()
+			return
 		}
-		fmt.Printf("[anytype-heart] Shutdown: received OS signal (%s), closing components...\n", sig.String())
-		shutdown()
-		return
 	}
 }
 

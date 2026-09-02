@@ -17,7 +17,7 @@ RUN go mod download
 COPY . .
 
 # Install the binary
-RUN go build -o server ./cmd/grpcserver/grpc.go
+RUN go build -o server ./cmd/grpcserver
 
 FROM ubuntu
 
