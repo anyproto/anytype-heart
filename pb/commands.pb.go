@@ -17073,7 +17073,6 @@ var xxx_messageInfo_RpcWalletCreateSession proto.InternalMessageInfo
 
 type RpcWalletCreateSessionRequest struct {
 	// Types that are valid to be assigned to Auth:
-	//
 	//	*RpcWalletCreateSessionRequestAuthOfMnemonic
 	//	*RpcWalletCreateSessionRequestAuthOfAppKey
 	//	*RpcWalletCreateSessionRequestAuthOfToken

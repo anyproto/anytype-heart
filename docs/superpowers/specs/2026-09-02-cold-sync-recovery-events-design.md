@@ -117,7 +117,11 @@ use, verified).
 message Account {
   // ... existing Show/Details/Config/Update/LinkChallenge ...
   message Recovery {
-    enum Mode  { ColdRecovery = 0; WarmStart = 1; NewAccount = 2; }
+    // ModeUnknown is never emitted: an unset field must not read as a cold recovery (the worse
+    // failure direction). The other enums keep their zero values on purpose: ErrorClass has an
+    // explicit None = 0; Phase, Direction, SpaceKind, SpaceState and DiscoveryState zero values
+    // are benign, always set explicitly, and self-correct on the next event — do not "fix" them.
+    enum Mode  { ModeUnknown = 0; ColdRecovery = 1; WarmStart = 2; NewAccount = 3; }
     // Monotone except WaitingForNetwork (an overlay, see PhaseChanged) and the two terminals.
     // Phases may be skipped (a warm start never enters FetchingAccount); clients must accept
     // any forward jump.
@@ -171,7 +175,8 @@ message Account {
     message PhaseChanged { Phase phase = 1; Phase fromPhase = 2; int64 previousPhaseDurationMs = 3;
                            ErrorInfo error = 4; /* set for WaitingForNetwork and Failed */ }
     message LocalDiscoveryState { DiscoveryState state = 1; }
-    message PeerDiscovered { string peerId = 1; repeated string addrs = 2; }
+    message PeerDiscovered { string peerId = 1; repeated string addrs = 2; PeerKind kind = 3;
+                             repeated string nodeTypes = 4; /* so a replayed log matches the snapshot */ }
     message DialStarted    { string peerId = 1; PeerKind kind = 2; repeated string nodeTypes = 3;
                              int32 addrsCount = 4; }
     message PeerConnected  { string peerId = 1; PeerKind kind = 2; repeated string nodeTypes = 3;
@@ -181,7 +186,8 @@ message Account {
     message DialFailed     { string peerId = 1; PeerKind kind = 2; repeated string nodeTypes = 3;
                              ErrorInfo error = 4; int32 attempt = 5; /* dials observed since last Connected */
                              int64 durationMs = 6; }
-    message PeerDisconnected { string peerId = 1; PeerKind kind = 2; int32 openConnections = 3; }
+    message PeerDisconnected { string peerId = 1; PeerKind kind = 2; int32 openConnections = 3;
+                               repeated string nodeTypes = 4; }
     message AccountFetchStarted { string spaceId = 1; string peerId = 2; /* empty = waiting for a peer */ }
     message AccountFetchError   { string peerId = 1; ErrorInfo error = 2; int32 attempt = 3; }
     message AccountReady        { int64 durationMs = 1; /* since Started */ }
@@ -297,7 +303,7 @@ on `core/block/importv2/adapter/statistic.go` (branch `go-7349-import-llm`).
   is only known once `config.Init` has run, so the tracker is appended to `comps` after
   `cfg, wallet, eventSender` (still ahead of every bootstrap component; those three Inits do no
   network work). `Fail` publishes `Started` first when `Init` never ran (an earlier component's
-  Init failed). `Mode`'s zero value is `ColdRecovery` (approved enum order); the implicit
+  Init failed). `Mode` has an explicit never-emitted `ModeUnknown = 0`; the implicit
   Init-without-Begin path passes `WarmStart` explicitly. A `context.Canceled` start ends the run
   with no terminal.
 - `Begin` on a tracker whose previous run is not terminal is legal (an `AccountStop` +
@@ -397,7 +403,10 @@ from the same mutated state the snapshot is built from.
 | `SpaceDiscovered` | immediate |
 | `SpaceStateChanged` | immediate when `state != fromState` or `error` changes; coalesced per space when only `attempt` changed (repeated pull failures) |
 
-Window 250 ms, trailing-edge timer, same constants as importv2 (`statWindow`).
+Window 250 ms, trailing-edge timer, same constants as importv2 (`statWindow`). "Immediate" for a
+keyed event means *when the window is idle*: inside a window opened by a prior edge (`Started`,
+`PhaseChanged`, ...) even the first keyed event of a burst coalesces to the trailing edge; only
+un-keyed edges always publish at once.
 
 ### Phase derivation
 
@@ -457,6 +466,16 @@ the mapping table; `Finished` is never emitted after `Failed`.
   inferred (an idle-TTL close looks identical to a failure by design).
 - `attempt` on `DialFailed` is *dials observed* (correction 1); there is no `nextRetryMs`.
 - `PeerDiscovered` (LAN): `discoveredLocally = true`, kind `LocalPeer` if not yet a node.
+- **Execution notes (phase 3).** Every peer event carries `kind` + `nodeTypes` (added to
+  `PeerDiscovered` and `PeerDisconnected`) so a peer first seen through any of them replays to
+  the snapshot exactly — the pool can report `Closed` for a peer it never reported `Connected`
+  for. `LocalDiscoveryState` is not emitted on a normal network: `localdiscovery` calls its hooks
+  only on a *change* from its initial `Possible`, which is also the snapshot default. A
+  `PeerConnected` also clears `deviceOffline` (a real connection proves the device is online),
+  so a stale client-reported NOT_CONNECTED cannot re-enter the overlay on the next failure. A
+  `DialFailed` carrying `context.Canceled` (the caller gave up) counts as an attempt but not as an
+  outage signal and carries no `error`. The outage timer is a second timer next to the
+  coalescing one; both are stopped by `Begin`, `Close` and (the outage one) `Connected`.
 
 ### Account folding
 

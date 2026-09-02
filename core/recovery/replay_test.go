@@ -5,11 +5,15 @@ import (
 	"errors"
 	"testing"
 
+	"time"
+
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
+	"github.com/anyproto/any-sync/net"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 )
 
 // clientModel is what a client folds the event log into. The replay property
@@ -25,6 +29,21 @@ type clientModel struct {
 	phase       pb.EventAccountRecoveryPhase
 	done        bool
 	err         *pb.EventAccountRecoveryErrorInfo
+	discovery   pb.EventAccountRecoveryDiscoveryState
+	peers       map[string]*pb.EventAccountRecoverySnapshotPeer
+}
+
+func (m *clientModel) peer(id string, kind pb.EventAccountRecoveryPeerKind, nodeTypes []string) *pb.EventAccountRecoverySnapshotPeer {
+	if m.peers == nil {
+		m.peers = map[string]*pb.EventAccountRecoverySnapshotPeer{}
+	}
+	p, ok := m.peers[id]
+	if !ok {
+		p = &pb.EventAccountRecoverySnapshotPeer{PeerId: id}
+		m.peers[id] = p
+	}
+	p.Kind, p.NodeTypes = kind, nodeTypes
+	return p
 }
 
 func (m *clientModel) apply(t *testing.T, u *pb.EventAccountRecoveryUpdate) {
@@ -49,6 +68,27 @@ func (m *clientModel) apply(t *testing.T, u *pb.EventAccountRecoveryUpdate) {
 		case pb.EventAccountRecovery_Done:
 			m.done = true
 		}
+	case *pb.EventAccountRecoveryUpdatePayloadOfLocalDiscoveryState:
+		m.discovery = p.LocalDiscoveryState.State
+	case *pb.EventAccountRecoveryUpdatePayloadOfPeerDiscovered:
+		e := p.PeerDiscovered
+		m.peer(e.PeerId, e.Kind, e.NodeTypes).DiscoveredLocally = true
+	case *pb.EventAccountRecoveryUpdatePayloadOfDialStarted:
+		e := p.DialStarted
+		m.peer(e.PeerId, e.Kind, e.NodeTypes)
+	case *pb.EventAccountRecoveryUpdatePayloadOfPeerConnected:
+		e := p.PeerConnected
+		peer := m.peer(e.PeerId, e.Kind, e.NodeTypes)
+		peer.OpenConnections = e.OpenConnections
+		peer.Transport, peer.ProtoVersion = e.Transport, e.ProtoVersion
+		peer.DialAttempts, peer.LastError = 0, nil
+	case *pb.EventAccountRecoveryUpdatePayloadOfDialFailed:
+		e := p.DialFailed
+		peer := m.peer(e.PeerId, e.Kind, e.NodeTypes)
+		peer.DialAttempts, peer.LastError = e.Attempt, e.Error
+	case *pb.EventAccountRecoveryUpdatePayloadOfPeerDisconnected:
+		e := p.PeerDisconnected
+		m.peer(e.PeerId, e.Kind, e.NodeTypes).OpenConnections = e.OpenConnections
 	default:
 		t.Fatalf("replay model does not handle %T", u.Payload)
 	}
@@ -64,6 +104,13 @@ func (m *clientModel) assertMatches(t *testing.T, snap *pb.EventAccountRecoveryS
 		phase:       snap.Phase,
 		done:        snap.Done,
 		err:         snap.Error,
+		discovery:   snap.Discovery,
+	}
+	if len(snap.Peers) > 0 {
+		want.peers = map[string]*pb.EventAccountRecoverySnapshotPeer{}
+		for _, p := range snap.Peers {
+			want.peers[p.PeerId] = p
+		}
 	}
 	assert.Equal(t, want, m)
 }
@@ -94,6 +141,45 @@ func TestReplayProperty(t *testing.T) {
 		// a new run resets the model through the runId change
 		fx.Begin(Run{Mode: pb.EventAccountRecovery_WarmStart, Sender: fx.sender})
 		fx.init(t)
+		check()
+	})
+
+	t.Run("the peer layer replays through coalescing, outage and recovery", func(t *testing.T) {
+		// given
+		fx := newFixture(t, pb.EventAccountRecovery_ColdRecovery)
+		model := &clientModel{}
+		applied := 0
+		check := func() {
+			t.Helper()
+			fx.flush()
+			for _, u := range fx.sender.updates()[applied:] {
+				model.apply(t, u)
+				applied++
+			}
+			model.assertMatches(t, fx.Snapshot())
+		}
+
+		// when / then
+		fx.init(t)
+		check()
+		fx.discovery.set(localdiscovery.DiscoveryNoInterfaces)
+		fx.OnLocalPeerDiscovered("lan1", []string{"192.168.1.2:4242"})
+		check()
+		fx.dialStarted("node1", 2)
+		fx.dialFailed("node1", net.ErrUnableToConnect, 900*time.Millisecond)
+		fx.dialStarted("node1", 2)
+		fx.dialFailed("node1", context.DeadlineExceeded, 5*time.Second)
+		check()
+		fx.clock.Advance(waitingForNetworkAfter) // the outage timer fires: WaitingForNetwork
+		check()
+		fx.connected("node1", "quic", false, 300*time.Millisecond)
+		fx.connected("node1", "yamux", false, 200*time.Millisecond) // replacement
+		fx.closed("node1", false)                                   // the superseded one
+		check()
+		fx.closed("lan1", true) // never connected: clamps at zero
+		fx.connected("lan1", "yamux", true, 0)
+		check()
+		require.NoError(t, fx.Close(context.Background()))
 		check()
 	})
 }

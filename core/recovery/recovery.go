@@ -22,12 +22,15 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/net/peerobserver"
+	"github.com/anyproto/any-sync/nodeconf"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 )
 
 const CName = "core.recovery"
@@ -50,6 +53,8 @@ type Tracker struct {
 	window time.Duration
 	sender event.Sender
 	begun  bool
+	// nodeTypes classifies peers (NetworkNode vs LocalPeer); nil until Init
+	nodeTypes nodeTypesResolver
 
 	nextId  int64
 	run     runState
@@ -63,6 +68,8 @@ type Tracker struct {
 	pendingOrder []coalesceKey
 	nextAt       time.Time
 	timer        timer
+	// outageTimer fires waitingForNetworkAfter into an outage
+	outageTimer timer
 }
 
 func New() *Tracker {
@@ -102,6 +109,7 @@ func (t *Tracker) resetLocked() {
 		t.timer.Stop()
 		t.timer = nil
 	}
+	t.stopOutageTimerLocked()
 	t.run = runState{}
 	t.phase = phaseState{current: pb.EventAccountRecovery_LookingForPeers}
 	t.net = netState{peers: map[string]*peerState{}}
@@ -153,7 +161,24 @@ func (t *Tracker) Init(a *app.App) error {
 	if hooks, err := app.GetComponent[session.HookRunner](a); err == nil {
 		hooks.RegisterHook(t.sendSnapshotToSession)
 	}
+	// peer layer: every lookup is optional so the tracker degrades to a
+	// phase-only stream when a producer is absent (tests, future hosts)
+	if resolver, ok := a.Component(nodeconf.CName).(nodeTypesResolver); ok {
+		t.nodeTypes = resolver
+	}
+	if mux, ok := a.Component(peerobserver.CName).(observerRegistry); ok {
+		mux.Add(t)
+	}
+	if discovery, ok := a.Component(localdiscovery.CName).(discoveryHookRegistrar); ok {
+		discovery.RegisterDiscoveryPossibilityHook(t.onDiscoveryPossibility)
+	}
+	if network, ok := a.Component(deviceNetworkStateCName).(networkConnectivity); ok {
+		t.net.deviceOffline = network.IsOffline()
+		network.RegisterConnectivityHook(t.onConnectivity)
+	}
 	t.publishStartedLocked()
+	t.evaluateWaitingLocked()
+	t.refreshPhaseLocked(false)
 	return nil
 }
 
@@ -172,6 +197,7 @@ func (t *Tracker) Close(_ context.Context) error {
 		t.timer.Stop()
 		t.timer = nil
 	}
+	t.stopOutageTimerLocked()
 	if t.run.started && !t.run.closed {
 		t.publishLocked(nil)
 	}

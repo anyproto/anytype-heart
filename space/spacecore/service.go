@@ -94,6 +94,8 @@ type service struct {
 	peerService          peerservice.PeerService
 	poolManager          PoolManager
 	discoveryKeys        *discoveryKeySource
+	// peerDiscoveryObserver is the recovery status tracker, when registered
+	peerDiscoveryObserver PeerDiscoveryObserver
 
 	dbsAreFlushing     atomic.Bool
 	componentCtx       context.Context
@@ -117,6 +119,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.peerService = a.MustComponent(peerservice.CName).(peerservice.PeerService)
 	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
 	localDiscovery.SetNotifier(s)
+	s.peerDiscoveryObserver = lookupPeerDiscoveryObserver(a)
 	s.spaceCache = ocache.New(
 		s.loadSpace,
 		ocache.WithLogger(log.Sugar()),

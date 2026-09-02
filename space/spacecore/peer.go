@@ -7,6 +7,7 @@ import (
 	"go.uber.org/zap"
 	"storj.io/drpc"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/clientspaceproto"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/transport"
@@ -14,7 +15,31 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 )
 
+// PeerDiscoveryObserver receives every LAN discovery, before the peer is
+// dialed. The recovery status tracker (core.recovery) implements it; this
+// package owns the single localdiscovery.SetNotifier slot, so the forward
+// lives here rather than competing for it — Android's SetNotifierProvider
+// path lands here too. Looked up by name because the tracker lives above this
+// package; a drift test keeps the constant equal to recovery.CName.
+type PeerDiscoveryObserver interface {
+	OnLocalPeerDiscovered(peerId string, addrs []string)
+}
+
+const recoveryCName = "core.recovery"
+
+func lookupPeerDiscoveryObserver(a *app.App) PeerDiscoveryObserver {
+	c := a.Component(recoveryCName)
+	if c == nil {
+		return nil
+	}
+	observer, _ := c.(PeerDiscoveryObserver)
+	return observer
+}
+
 func (s *service) PeerDiscovered(ctx context.Context, discovered localdiscovery.DiscoveredPeer, own localdiscovery.OwnAddresses) {
+	if s.peerDiscoveryObserver != nil {
+		s.peerDiscoveryObserver.OnLocalPeerDiscovered(discovered.PeerId, discovered.Addrs)
+	}
 	s.peerService.SetPeerAddrs(discovered.PeerId, s.addSchema(discovered.Addrs))
 	unaryPeer, err := s.poolManager.UnaryPeerPool().Get(ctx, discovered.PeerId)
 	if err != nil {

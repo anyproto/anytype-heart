@@ -6,10 +6,13 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/net/peerobserver"
+	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 )
 
 // recordingSender captures everything the tracker sends, in order.
@@ -134,11 +137,79 @@ func (c *fakeClock) pendingTimers() int {
 	return n
 }
 
+// fakeNodeConf answers NodeTypes from a map, under nodeconf's component name.
+type fakeNodeConf struct {
+	types map[string][]nodeconf.NodeType
+}
+
+func (f *fakeNodeConf) Init(*app.App) error { return nil }
+
+func (f *fakeNodeConf) Name() string { return nodeconf.CName }
+
+func (f *fakeNodeConf) NodeTypes(id string) []nodeconf.NodeType { return f.types[id] }
+
+// fakeMux stands in for net/peerobservermux under the peerobserver slot.
+type fakeMux struct {
+	observers []peerobserver.Observer
+}
+
+func (f *fakeMux) Init(*app.App) error { return nil }
+
+func (f *fakeMux) Name() string { return peerobserver.CName }
+
+func (f *fakeMux) Add(o peerobserver.Observer) { f.observers = append(f.observers, o) }
+
+// fakeDiscovery captures the possibility hook under localdiscovery's name.
+type fakeDiscovery struct {
+	hooks []func(localdiscovery.DiscoveryPossibility)
+}
+
+func (f *fakeDiscovery) Init(*app.App) error { return nil }
+
+func (f *fakeDiscovery) Name() string { return localdiscovery.CName }
+
+func (f *fakeDiscovery) RegisterDiscoveryPossibilityHook(hook func(localdiscovery.DiscoveryPossibility)) {
+	f.hooks = append(f.hooks, hook)
+}
+
+func (f *fakeDiscovery) set(state localdiscovery.DiscoveryPossibility) {
+	for _, hook := range f.hooks {
+		hook(state)
+	}
+}
+
+// fakeNetwork captures the connectivity hook under core/device's name.
+type fakeNetwork struct {
+	offline bool
+	hooks   []func(online bool)
+}
+
+func (f *fakeNetwork) Init(*app.App) error { return nil }
+
+func (f *fakeNetwork) Name() string { return deviceNetworkStateCName }
+
+func (f *fakeNetwork) IsOffline() bool { return f.offline }
+
+func (f *fakeNetwork) RegisterConnectivityHook(hook func(online bool)) {
+	f.hooks = append(f.hooks, hook)
+}
+
+func (f *fakeNetwork) set(online bool) {
+	f.offline = !online
+	for _, hook := range f.hooks {
+		hook(online)
+	}
+}
+
 type fixture struct {
 	*Tracker
-	sender *recordingSender
-	clock  *fakeClock
-	hooks  session.HookRunner
+	sender    *recordingSender
+	clock     *fakeClock
+	hooks     session.HookRunner
+	nodes     *fakeNodeConf
+	mux       *fakeMux
+	discovery *fakeDiscovery
+	network   *fakeNetwork
 }
 
 var fixtureEpoch = time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
@@ -151,6 +222,13 @@ func newFixture(t *testing.T, mode pb.EventAccountRecoveryMode) *fixture {
 		sender: &recordingSender{},
 		clock:  &fakeClock{now: fixtureEpoch},
 		hooks:  session.NewHookRunner(),
+		nodes: &fakeNodeConf{types: map[string][]nodeconf.NodeType{
+			"node1": {nodeconf.NodeTypeTree},
+			"coord": {nodeconf.NodeTypeCoordinator},
+		}},
+		mux:       &fakeMux{},
+		discovery: &fakeDiscovery{},
+		network:   &fakeNetwork{},
 	}
 	fx.Tracker = newTracker(fx.clock, coalesceWindow)
 	fx.Begin(Run{Mode: mode, Sender: fx.sender})
@@ -158,12 +236,58 @@ func newFixture(t *testing.T, mode pb.EventAccountRecoveryMode) *fixture {
 }
 
 // init runs the component Init against a minimal app carrying the session
-// hook runner (no config: networkId stays empty, no sender: Begin's is kept).
+// hook runner and the peer-layer fakes (no config: networkId stays empty, no
+// sender: Begin's is kept).
 func (fx *fixture) init(t *testing.T) {
 	t.Helper()
 	a := new(app.App)
-	a.Register(fx.hooks)
+	a.Register(fx.hooks).Register(fx.nodes).Register(fx.mux).Register(fx.discovery).Register(fx.network)
 	require.NoError(t, fx.Init(a))
+}
+
+func (fx *fixture) dialStarted(peerId string, addrs int) {
+	fx.ObservePeerEvent(peerobserver.Event{Kind: peerobserver.KindDialStarted, PeerId: peerId, AddrCount: addrs})
+}
+
+func (fx *fixture) connected(peerId, scheme string, inbound bool, dur time.Duration) {
+	fx.ObservePeerEvent(peerobserver.Event{
+		Kind: peerobserver.KindConnected, PeerId: peerId, Scheme: scheme, Inbound: inbound,
+		Addr: "addr:" + peerId, ProtoVersion: 7, Dur: dur,
+	})
+}
+
+func (fx *fixture) dialFailed(peerId string, err error, dur time.Duration) {
+	fx.ObservePeerEvent(peerobserver.Event{Kind: peerobserver.KindDialFailed, PeerId: peerId, Err: err, Dur: dur})
+}
+
+func (fx *fixture) closed(peerId string, inbound bool) {
+	fx.ObservePeerEvent(peerobserver.Event{Kind: peerobserver.KindClosed, PeerId: peerId, Inbound: inbound})
+}
+
+// flush advances past the coalescing window so pending levels publish.
+func (fx *fixture) flush() {
+	fx.clock.Advance(coalesceWindow)
+}
+
+func (fx *fixture) phaseChanges() []*pb.EventAccountRecoveryPhaseChanged {
+	var out []*pb.EventAccountRecoveryPhaseChanged
+	for _, u := range fx.sender.updates() {
+		if p, ok := u.Payload.(*pb.EventAccountRecoveryUpdatePayloadOfPhaseChanged); ok {
+			out = append(out, p.PhaseChanged)
+		}
+	}
+	return out
+}
+
+func (fx *fixture) peer(t *testing.T, peerId string) *pb.EventAccountRecoverySnapshotPeer {
+	t.Helper()
+	for _, p := range fx.Snapshot().Peers {
+		if p.PeerId == peerId {
+			return p
+		}
+	}
+	t.Fatalf("peer %s not in snapshot", peerId)
+	return nil
 }
 
 func (fx *fixture) lastUpdate(t *testing.T) *pb.EventAccountRecoveryUpdate {

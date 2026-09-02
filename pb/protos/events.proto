@@ -258,10 +258,13 @@ message Event {
     // with the same runId and id == last+1; on a gap or a new runId they
     // re-pull the snapshot. Every payload is a level, never a delta.
     message Recovery {
+      // ModeUnknown is the zero value and is never emitted: an unset field
+      // must not read as a cold recovery, the worse failure direction.
       enum Mode {
-        ColdRecovery = 0; // fresh device: the account repo did not exist
-        WarmStart = 1;    // the repo existed
-        NewAccount = 2;   // account creation paths
+        ModeUnknown = 0;
+        ColdRecovery = 1; // fresh device: the account repo did not exist
+        WarmStart = 2;    // the repo existed
+        NewAccount = 3;   // account creation paths
       }
       // Monotone except WaitingForNetwork (an overlay) and the two terminals.
       // Phases may be skipped (a warm start never enters FetchingAccount);
@@ -363,7 +366,9 @@ message Event {
       message LocalDiscoveryState { DiscoveryState state = 1; }
       message PeerDiscovered {
         string peerId = 1;
-        repeated string addrs = 2;
+        repeated string addrs = 2; // display only
+        PeerKind kind = 3;
+        repeated string nodeTypes = 4;
       }
       message DialStarted {
         string peerId = 1;
@@ -394,6 +399,7 @@ message Event {
         string peerId = 1;
         PeerKind kind = 2;
         int32 openConnections = 3;
+        repeated string nodeTypes = 4;
       }
       message AccountFetchStarted {
         string spaceId = 1;

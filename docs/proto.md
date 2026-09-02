@@ -30590,6 +30590,7 @@ enclosing scope, and SpaceState.Error already takes that name)
 | peerId | [string](#string) |  |  |
 | kind | [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind) |  |  |
 | openConnections | [int32](#int32) |  |  |
+| nodeTypes | [string](#string) | repeated |  |
 
 
 
@@ -30605,7 +30606,9 @@ enclosing scope, and SpaceState.Error already takes that name)
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | peerId | [string](#string) |  |  |
-| addrs | [string](#string) | repeated |  |
+| addrs | [string](#string) | repeated | display only |
+| kind | [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind) |  |  |
+| nodeTypes | [string](#string) | repeated |  |
 
 
 
@@ -34307,13 +34310,15 @@ scenario: Precondition: user A and user B opened the same block
 <a name="anytype-Event-Account-Recovery-Mode"></a>
 
 ### Event.Account.Recovery.Mode
-
+ModeUnknown is the zero value and is never emitted: an unset field
+must not read as a cold recovery, the worse failure direction.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| ColdRecovery | 0 | fresh device: the account repo did not exist |
-| WarmStart | 1 | the repo existed |
-| NewAccount | 2 | account creation paths |
+| ModeUnknown | 0 |  |
+| ColdRecovery | 1 | fresh device: the account repo did not exist |
+| WarmStart | 2 | the repo existed |
+| NewAccount | 3 | account creation paths |
 
 
 
