@@ -31,13 +31,13 @@ func TestPropertyNotFoundInventoryDoesNotOverpromisePublicList(t *testing.T) {
 	}
 	fx.objectStore.AddObjects(t, testSpaceId, properties)
 
-	apiErr := v2Err(t, fx.propertyNotFoundError(testSpaceId, "!!!!!!!!"))
+	apiErr := v2Err(t, fx.propertyNotFoundError(testSpaceId, "!!!!!!!!", errKeys{}))
 	assert.Contains(t, apiErr.Message, "known property keys:")
 	assert.Contains(t, apiErr.Message, "total above")
 	assert.Contains(t, apiErr.Message, "hidden addressable properties are excluded")
 	assert.NotContains(t, apiErr.Message, "list all")
 
-	closeMatch := v2Err(t, fx.propertyNotFoundError(testSpaceId, "repair_property_0x"))
+	closeMatch := v2Err(t, fx.propertyNotFoundError(testSpaceId, "repair_property_0x", errKeys{}))
 	assert.Contains(t, closeMatch.Message, "did you mean repair_property_")
 	assert.NotContains(t, closeMatch.Message, "hidden addressable properties", "a concrete suggestion wins over the fallback")
 }

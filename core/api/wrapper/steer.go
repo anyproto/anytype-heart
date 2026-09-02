@@ -236,7 +236,7 @@ var restVocab = []struct {
 }{
 	{regexp.MustCompile(`list spaces with GET /v2/spaces\b`), spacesListRepair},
 	{regexp.MustCompile(`list (?:all|keys) with GET /v2/spaces/[^/\s]+/types\b`),
-		"check the type key (find results show each object's type)"},
+		"check the type name (find results show each object's type)"},
 	{regexp.MustCompile(`list all with GET /v2/spaces/[^/\s]+/properties, or create it with POST /v2/spaces/[^/\s]+/properties\b`),
 		"run describe on the type to list the property names it takes"},
 	{regexp.MustCompile(`check the names against GET /v2/spaces/[^/\s]+/properties/[^/\s]+/options\b`),

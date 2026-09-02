@@ -19,7 +19,7 @@ assertion on `sb.Apply` — stands.)*
 ## Verdict
 
 The assembled surface is strong precisely where the phase reviews concentrated: one row
-builder feeds objects/search/sets/collections; one filter codec backs both filter forms; the
+builder feeds objects/search/queries/collections; one filter codec backs both filter forms; the
 scoped-key enforcement could not be defeated by a dedicated adversarial lens (route/registry
 bijection exact, fail-closed branches all held under probing, JsonAPI scope denied on all
 gRPC methods, no token echo, grant-narrowing eviction wired); the marks bridge round-tripped
@@ -28,7 +28,7 @@ wiring are genuinely there on every mutation route.
 
 The defects worth fixing cluster in four seams no phase review could see:
 
-1. **The edit surface meets the restriction system**: sets and collections are entirely
+1. **The edit surface meets the restriction system**: queries and collections are entirely
    un-editable through v2 — `addItems`/`removeItems`, the only membership write, is dead —
    and every refusal in that family surfaces as a retryable 500 instead of the documented 403.
 2. **Refusal classification is string-matching on unpinned middleware English**: the chat
@@ -126,7 +126,7 @@ non-`*v2model.Error` into 500 `internal_error`. Three independent producers hit 
 - **Fix**: harden `validateStructuredFilters` (the v2 gate, not the shared codec — stored
   dataviews legitimately carry `None`): reject a node carrying both operator/filters and
   property as ambiguous; reject a leaf with `value` but no `condition`. Share the gate with
-  POST /sets (same field). Separately, `UnmarshalFilters` should refuse a group whose
+  POST /queries (same field). Separately, `UnmarshalFilters` should refuse a group whose
   `filters` array is empty rather than emitting a match-everything AND.
 
 ### M4. Sending the Idempotency-Key that C8 mandates caps file uploads at 10 MiB with a misleading 413 **[R, independent ×2]**

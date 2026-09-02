@@ -377,17 +377,19 @@ func requestHash(method, path string, query url.Values, body any) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// mutationQuery renders the shared mutation query params.
+// mutationQuery renders the shared mutation query params. Every mutation
+// asks for the name vocabulary (?keys=name — D5): the wrapper teaches
+// display names, and the server's referential refusals spell their key
+// lists and did-you-mean suggestions in the vocabulary the request chose
+// (APIV2_VOCABULARY.md §4.3) — so a create or PATCH that misses must be
+// refused in the spelling the model can actually resend.
 func (r *Runner) mutationQuery() url.Values {
-	q := url.Values{}
+	q := url.Values{"keys": []string{"name"}}
 	if r.DryRun {
 		q.Set("dry_run", "true")
 	}
 	if r.AllowNewOptions {
 		q.Set("create_missing_options", "true")
-	}
-	if len(q) == 0 {
-		return nil
 	}
 	return q
 }

@@ -306,6 +306,31 @@ func TestFind(t *testing.T) {
 		assert.Equal(t, "bafyobj2", session.Handles[0].Id)
 	})
 
+	t.Run("the text channel spells each result's type by display name", func(t *testing.T) {
+		// the product example: users call the `set` type "Query" — the key
+		// is an internal identifier find must not teach, because whatever
+		// find prints is what the model hands back to describe and create
+		fx := newFixture(t)
+		fx.stub("POST /v2/spaces/space1/search", 200, searchResponse(2, false,
+			v2model.ObjectRow{Id: "bafyobj1", Name: "Open tasks", Type: "set"},
+			v2model.ObjectRow{Id: "bafyobj2", Name: "Q3 report", Type: "task"},
+		))
+		fx.stub("GET /v2/spaces/space1/types", 200,
+			`{"data":[{"key":"set","name":"Query"},{"key":"task","name":"Task"}],"total":2,"offset":0,"limit":500,"has_more":false}`)
+
+		result, err := fx.Run(ctx, "find", map[string]any{"space": "space1", "query": "q"})
+
+		require.NoError(t, err)
+		assert.Contains(t, result.Text, "1. Open tasks (Query)")
+		assert.Contains(t, result.Text, "2. Q3 report (Task)")
+		assert.NotContains(t, result.Text, "(set)", "the internal key stays off the prompt")
+
+		js, ok := result.JSON.(findResult)
+		require.True(t, ok)
+		assert.Equal(t, "set", js.Handles[0].Type,
+			"the machine channel keeps the key — it is the type's identity, and programmatic callers speak it")
+	})
+
 	t.Run("truncation steers", func(t *testing.T) {
 		fx := newFixture(t)
 		fx.stub("POST /v2/spaces/space1/search", 200, searchResponse(312, true,
@@ -407,15 +432,22 @@ func TestFind(t *testing.T) {
 		}
 	})
 
-	t.Run("server error text passes through with issues", func(t *testing.T) {
+	t.Run("server error text passes through with issues — verbatim, in the name vocabulary", func(t *testing.T) {
+		// find sends ?keys=name, so the server's refusal arrives already
+		// spelled in names (§4.3) — the wrapper serves it untouched (zero
+		// translation, APIV2_VOCABULARY.md layer 3)
 		fx := newFixture(t)
-		fx.stub("POST /v2/spaces/space1/search", 400, `{"status":400,"code":"validation_failed","message":"parse error at offset 17","issues":[{"path":"/filter","message":"unknown property key \"due_dat\"","hint":"did you mean due_date?"}]}`)
+		fx.stub("POST /v2/spaces/space1/search", 400, `{"status":400,"code":"validation_failed","message":"parse error at offset 17","issues":[{"path":"/filter","message":"unknown property \"due_dat\"","hint":"did you mean Due date?"}]}`)
 
 		_, err := fx.Run(ctx, "find", map[string]any{"space": "space1", "filter": "dueDat < today()"})
 
 		require.Error(t, err)
+		sent := fx.sent("POST /v2/spaces/space1/search")
+		require.Len(t, sent, 1)
+		assert.Equal(t, "name", sent[0].Query.Get("keys"),
+			"search asks for the name vocabulary — the server then refuses in names")
 		assert.Contains(t, err.Error(), "parse error at offset 17")
-		assert.Contains(t, err.Error(), `/filter: unknown property key "due_dat" (did you mean due_date?)`)
+		assert.Contains(t, err.Error(), `/filter: unknown property "due_dat" (did you mean Due date?)`)
 	})
 }
 
@@ -506,7 +538,8 @@ func TestDescribe(t *testing.T) {
 	sent := fx.sent("GET /v2/spaces/space1/types/task")
 	require.Len(t, sent, 1)
 	assert.Equal(t, "name", sent[0].Query.Get("keys"), "describe reads the name vocabulary (D5)")
-	assert.Contains(t, result.Text, "type task — Task")
+	assert.Contains(t, result.Text, "type Task")
+	assert.NotContains(t, result.Text, "type task", "the internal key stays off the prompt — the name IS the vocabulary")
 	assert.Contains(t, result.Text, "Due date  date")
 	assert.Contains(t, result.Text, "Status  select  options: Backlog, In progress, Done")
 	assert.Contains(t, result.Text, "use these exact property names and option names")
@@ -525,6 +558,33 @@ func TestDescribe(t *testing.T) {
 	assert.Equal(t, "Due date", js.Properties[0].Key, "the served spelling is the document's — the name")
 	assert.Equal(t, []string{"Description", "Name"}, []string{js.Properties[2].Key, js.Properties[3].Key})
 	assert.False(t, js.Properties[2].OnType)
+}
+
+// TestDescribeSpeaksNamesOverSlugDocument pins the name vocabulary against
+// an older server whose type document still states slugs in
+// property_definitions (`property: "due_date"`): the definition's `name`
+// field carries the display name, and THAT is what describe must render —
+// a slug shown under a footer saying "use these exact property names" is
+// the contradiction this surface existed to avoid.
+func TestDescribeSpeaksNamesOverSlugDocument(t *testing.T) {
+	fx := newFixture(t)
+	fx.stub("GET /v2/spaces/space1/types/task", 200,
+		`{"formatVersion":"2.0","kind":"object_type","properties":{"name":"Task"},"type_settings":{"api_key":"task","property_definitions":[{"property":"due_date","internal_key":"dueDate","name":"Due date","format":"date"}]}}`)
+	fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse(
+		v2model.PropertyRow{Key: "due_date", Name: "Due date", Format: "date"},
+	))
+
+	result, err := fx.Run(context.Background(), "describe", map[string]any{"space": "space1", "type": "task"})
+
+	require.NoError(t, err)
+	assert.Contains(t, result.Text, "type Task")
+	assert.Contains(t, result.Text, "\n  Due date  date",
+		"the definition stated the slug, the name field names it — the name is served")
+	assert.NotContains(t, result.Text, "due_date", "the slug never reaches the prompt")
+
+	js, ok := result.JSON.(describeResult)
+	require.True(t, ok)
+	assert.Equal(t, "Due date", js.Properties[0].Key, "the machine row's served spelling is the name too")
 }
 
 // TestDescribeReportsWhatIsSettable pins §8.33's defect 3: describe read the

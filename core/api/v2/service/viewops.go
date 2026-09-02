@@ -499,9 +499,9 @@ func (a *v2StateApplier) applyViewSorts(raw json.RawMessage, view map[string]any
 			Message: "sorts takes the SPEC §6.2 array of sort objects: " + err.Error()})
 		return nil
 	}
-	if len(probes) > maxV2SetSorts {
+	if len(probes) > maxV2QuerySorts {
 		*issues = append(*issues, v2model.Issue{Path: path,
-			Message: fmt.Sprintf("%d sorts — the cap is %d (the advertised maxItems)", len(probes), maxV2SetSorts)})
+			Message: fmt.Sprintf("%d sorts — the cap is %d (the advertised maxItems)", len(probes), maxV2QuerySorts)})
 		return nil
 	}
 	// the advertised custom_order bound, enforced (M6: advertised = enforced)
@@ -601,7 +601,7 @@ func stripValuelessConditionValues(nodes []any) {
 
 // applyViewFilterString parses the compact filter string (SPEC §6.2.1) into
 // the structured array and stores it as the view's filters — the same split
-// POST /sets makes. The parser's reference set is the WHOLE dataview's keys
+// POST /queries makes. The parser's reference set is the WHOLE dataview's keys
 // (properties list plus every view's columns — the same membership the
 // structured channel validates against, so the two forms accept the same
 // keys) plus the space's, so an existing column is always addressable even
@@ -617,7 +617,7 @@ func (a *v2StateApplier) applyViewFilterString(raw json.RawMessage, edited, view
 			Message: fmt.Sprintf("%d characters — the cap is %d (the advertised maxLength)", length, maxV2FilterLength)})
 		return nil
 	}
-	refKeys := appendMissing(a.s.knownPropertyKeys(a.spaceId), "name")
+	refKeys := appendMissing(a.s.knownPropertyKeys(a.spaceId, a.v), "name")
 	refKeys = appendMissing(refKeys, v2SystemQueryKeys...)
 	for key := range dataviewMembership(edited) {
 		refKeys = appendMissing(refKeys, key)
@@ -813,7 +813,7 @@ func dataviewMembership(edited map[string]any) map[string]bool {
 // dataview's pre-merge membership and the space (did-you-mean otherwise),
 // and appends resolvable keys missing from the dataview's properties list so
 // formats rehydrate on import. Deliberately NOT tightened to the queried
-// type's recommended keys (the POST /sets R9 rule): generated views already
+// type's recommended keys (the POST /queries R9 rule): generated views already
 // carry columns outside that set (backlinks, lastModifiedBy, …), and an edit
 // of an existing surface must not reject what the surface already shows
 // (§8.17).
@@ -852,7 +852,7 @@ func (a *v2StateApplier) validateViewKeys(edited map[string]any, preKnown map[st
 					continue
 				}
 				if refused {
-					*issues = append(*issues, removedPropertyIssue(a.spaceId, use.key, use.key, use.path))
+					*issues = append(*issues, removedPropertyIssue(a.spaceId, use.key, use.key, use.path, a.v))
 					continue
 				}
 			}
@@ -868,15 +868,15 @@ func (a *v2StateApplier) validateViewKeys(edited map[string]any, preKnown map[st
 		if stored, ok := bundle.RelationKeyByApiSlug(use.key); ok {
 			refused, err := a.refusesRemovedBundled(entries, string(stored))
 			if err == nil && refused {
-				*issues = append(*issues, removedPropertyIssue(a.spaceId, string(stored), use.key, use.path))
+				*issues = append(*issues, removedPropertyIssue(a.spaceId, string(stored), use.key, use.path, a.v))
 				continue
 			}
 		}
 		if known == nil {
-			known = knownPropertyKeysIn(entries)
+			known = knownPropertyKeysIn(entries, a.v)
 		}
 		*issues = append(*issues, unknownPropertyIssue(use.key, use.path, known,
-			fmt.Sprintf("list all with GET /v2/spaces/%s/properties, or create it with POST /v2/spaces/%s/properties", a.spaceId, a.spaceId)))
+			fmt.Sprintf("list all with GET /v2/spaces/%s/properties, or create it with POST /v2/spaces/%s/properties", a.spaceId, a.spaceId), a.v))
 	}
 	edited["properties"] = props
 }

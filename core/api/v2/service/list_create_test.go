@@ -18,7 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-func TestV2CreateSet(t *testing.T) {
+func TestV2CreateQuery(t *testing.T) {
 	setup := func(t *testing.T) *v2Fixture {
 		fx := newV2Fixture(t)
 		fx.addSelectProperty(t)
@@ -26,14 +26,14 @@ func TestV2CreateSet(t *testing.T) {
 		return fx
 	}
 
-	t.Run("set lands with a fully-formed dataview block in one change set", func(t *testing.T) {
+	t.Run("query lands with a fully-formed dataview block in one change set", func(t *testing.T) {
 		// given
 		fx := setup(t)
 		captured := fx.expectCreate("newSet")
 		fx.expectEtagRead("newSet")
 
 		// when
-		result, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
+		result, err := fx.CreateQuery(context.Background(), testSpaceId, v2model.CreateQueryRequest{
 			Name:    "Open chores",
 			Type:    "chore",
 			Filters: json.RawMessage(`[{"property":"severity","condition":"in","value":["High"]}]`),
@@ -70,7 +70,7 @@ func TestV2CreateSet(t *testing.T) {
 		fx := setup(t)
 
 		// when
-		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
+		_, err := fx.CreateQuery(context.Background(), testSpaceId, v2model.CreateQueryRequest{
 			Name:    "Broken",
 			Type:    "chore",
 			Filters: json.RawMessage(`[{"property":"sevirity","condition":"equal","value":true}]`),
@@ -90,8 +90,8 @@ func TestV2CreateSet(t *testing.T) {
 		fx := setup(t)
 
 		// when
-		_, err := fx.CreateSet(context.Background(), testSpaceId,
-			v2model.CreateSetRequest{Name: "X", Type: "chores"}, false, true)
+		_, err := fx.CreateQuery(context.Background(), testSpaceId,
+			v2model.CreateQueryRequest{Name: "X", Type: "chores"}, false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -102,12 +102,12 @@ func TestV2CreateSet(t *testing.T) {
 
 	t.Run("a type filter gets a targeted message, not unknown-property (string form)", func(t *testing.T) {
 		// given: the discovery-served grammar example uses `type IN (…)`,
-		// which search accepts — a set is already type-scoped, and the error
+		// which search accepts — a query is already type-scoped, and the error
 		// must say that instead of "unknown property key"
 		fx := setup(t)
 
 		// when
-		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
+		_, err := fx.CreateQuery(context.Background(), testSpaceId, v2model.CreateQueryRequest{
 			Name:   "Open work",
 			Type:   "chore",
 			Filter: `type IN ("chore") AND severity IS EMPTY`,
@@ -116,7 +116,7 @@ func TestV2CreateSet(t *testing.T) {
 		// then
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
-		assert.Contains(t, apiErr.Issues[0].Message, `a set is already scoped to type "chore" — drop the type filter`)
+		assert.Contains(t, apiErr.Issues[0].Message, `a query is already scoped to type "chore" — drop the type filter`)
 		assert.Contains(t, apiErr.Issues[0].Hint, "POST /v2/spaces/{space_id}/search")
 	})
 
@@ -125,7 +125,7 @@ func TestV2CreateSet(t *testing.T) {
 		fx := setup(t)
 
 		// when
-		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
+		_, err := fx.CreateQuery(context.Background(), testSpaceId, v2model.CreateQueryRequest{
 			Name:    "Open work",
 			Type:    "chore",
 			Filters: json.RawMessage(`[{"property":"type","condition":"in","value":["chore"]}]`),
@@ -135,13 +135,13 @@ func TestV2CreateSet(t *testing.T) {
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/filters/0/property", apiErr.Issues[0].Path)
-		assert.Contains(t, apiErr.Issues[0].Message, `a set is already scoped to type "chore"`)
+		assert.Contains(t, apiErr.Issues[0].Message, `a query is already scoped to type "chore"`)
 	})
 
-	// M3 (surface review): the same match-everything shapes the query path
-	// rejects. Here the stakes are higher — a set PERSISTS its filter, so a
-	// malformed one is not a bad query but a set that quietly contains the
-	// whole space, permanently.
+	// M3 (surface review): the same match-everything shapes the search path
+	// rejects. Here the stakes are higher — a query PERSISTS its filter, so a
+	// malformed one is not a bad request but a query that quietly contains
+	// the whole space, permanently.
 	t.Run("M3: a match-everything filter shape is refused, not persisted", func(t *testing.T) {
 		fx := setup(t)
 
@@ -156,7 +156,7 @@ func TestV2CreateSet(t *testing.T) {
 		} {
 			t.Run(tc.name, func(t *testing.T) {
 				// no creator expectation: reaching the create path fails the test
-				_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
+				_, err := fx.CreateQuery(context.Background(), testSpaceId, v2model.CreateQueryRequest{
 					Name:    "Open work",
 					Type:    "chore",
 					Filters: json.RawMessage(tc.filters),
@@ -175,7 +175,7 @@ func TestV2CreateSet(t *testing.T) {
 		fx := setup(t)
 
 		// when
-		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
+		_, err := fx.CreateQuery(context.Background(), testSpaceId, v2model.CreateQueryRequest{
 			Name: "X", Type: "chore",
 			Filter:  `done = false`,
 			Filters: json.RawMessage(`[]`),
@@ -194,13 +194,13 @@ func TestV2CreateSet(t *testing.T) {
 		fx.expectEtagRead("newSet")
 
 		// when
-		result, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
+		result, err := fx.CreateQuery(context.Background(), testSpaceId, v2model.CreateQueryRequest{
 			Name:   "High chores",
 			Type:   "chore",
 			Filter: `severity IN ("High") AND name CONTAINS "fix"`,
 		}, false, true)
 
-		// then — the set document stores the structured array (SPEC §6.2.1:
+		// then — the query document stores the structured array (SPEC §6.2.1:
 		// the document field `filter` stays reserved; export writes filters)
 		require.NoError(t, err)
 		assert.Equal(t, "newSet", result.Id)
@@ -224,7 +224,7 @@ func TestV2CreateSet(t *testing.T) {
 		fx := setup(t)
 
 		// when — "sevirity" is a typo of the type's "severity"
-		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
+		_, err := fx.CreateQuery(context.Background(), testSpaceId, v2model.CreateQueryRequest{
 			Name: "X", Type: "chore", Filter: `sevirity IN ("High")`,
 		}, false, true)
 
@@ -239,14 +239,14 @@ func TestV2CreateSet(t *testing.T) {
 		assert.Equal(t, "did you mean severity?", apiErr.Issues[0].Hint)
 	})
 
-	t.Run("system keys pass the sets reference set (rule 2)", func(t *testing.T) {
+	t.Run("system keys pass the queries reference set (rule 2)", func(t *testing.T) {
 		// given
 		fx := setup(t)
 		captured := fx.expectCreate("newSet")
 		fx.expectEtagRead("newSet")
 
 		// when — lastModifiedDate is in no type's recommended lists
-		result, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
+		result, err := fx.CreateQuery(context.Background(), testSpaceId, v2model.CreateQueryRequest{
 			Name: "Fresh chores", Type: "chore",
 			Filter: `lastModifiedDate > daysAgo(7)`,
 		}, false, true)
@@ -265,7 +265,7 @@ func TestV2CreateSet(t *testing.T) {
 		fx := setup(t)
 
 		// when
-		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
+		_, err := fx.CreateQuery(context.Background(), testSpaceId, v2model.CreateQueryRequest{
 			Name: "X", Type: "chore",
 			Views:   json.RawMessage(`[{"name":"V"}]`),
 			Filters: json.RawMessage(`[{"property":"severity","condition":"not_empty"}]`),
@@ -278,15 +278,15 @@ func TestV2CreateSet(t *testing.T) {
 
 	t.Run("M6: the advertised sorts cap is enforced", func(t *testing.T) {
 		fx := setup(t)
-		sorts := make([]map[string]string, maxV2SetSorts+1)
+		sorts := make([]map[string]string, maxV2QuerySorts+1)
 		for i := range sorts {
 			sorts[i] = map[string]string{"property": "severity"}
 		}
 		raw, err := json.Marshal(sorts)
 		require.NoError(t, err)
 
-		_, err = fx.CreateSet(context.Background(), testSpaceId,
-			v2model.CreateSetRequest{Name: "Sorted", Type: "chore", Sorts: raw}, false, true)
+		_, err = fx.CreateQuery(context.Background(), testSpaceId,
+			v2model.CreateQueryRequest{Name: "Sorted", Type: "chore", Sorts: raw}, false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
@@ -299,7 +299,7 @@ func TestV2CreateSet(t *testing.T) {
 		fx := setup(t)
 
 		// when
-		result, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
+		result, err := fx.CreateQuery(context.Background(), testSpaceId, v2model.CreateQueryRequest{
 			Name: "Open chores", Type: "chore",
 			Filters: json.RawMessage(`[{"property":"severity","condition":"not_empty"}]`),
 		}, true, true)

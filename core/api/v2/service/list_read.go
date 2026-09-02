@@ -1,16 +1,16 @@
 package v2service
 
-// list_read.go implements the sets/collections read path:
+// list_read.go implements the queries/collections read path:
 //
-//	GET /v2/spaces/{space_id}/sets/{set_id}/objects?view=&fields=
-//	GET /v2/spaces/{space_id}/sets/{set_id}/views
+//	GET /v2/spaces/{space_id}/queries/{query_id}/objects?view=&fields=
+//	GET /v2/spaces/{space_id}/queries/{query_id}/views
 //	GET /v2/spaces/{space_id}/collections/{collection_id}/objects?view=&fields=
 //	GET /v2/spaces/{space_id}/collections/{collection_id}/views
 //
 // One implementation branches on layout exactly as v1's GetObjectsInList
-// does — but a set addressed through the collections route (or vice versa)
+// does — but a query addressed through the collections route (or vice versa)
 // is a 400 naming the other route. Execution is the direct store-query path
-// (database.Query over the set's source / the collection's store slice) —
+// (database.Query over the query's source / the collection's store slice) —
 // explicitly NOT v1's shared-subId ObjectSearchSubscribe hack, whose
 // constant subId is racy under concurrent requests. Stored-view execution
 // substitutes the SPEC §6.2 dynamic placeholders server-side; any
@@ -42,7 +42,7 @@ import (
 type listKind int
 
 const (
-	listKindSet listKind = iota
+	listKindQuery listKind = iota
 	listKindCollection
 )
 
@@ -57,15 +57,15 @@ const (
 	filterTemplateUser = "_filter_template_2_"
 )
 
-// listTarget is one resolved set/collection read target.
+// listTarget is one resolved query/collection read target.
 type listTarget struct {
 	read     apicore.ObjectRead
 	dataview *model.BlockContentDataview // nil when the object has none
 }
 
-// GetSetViews implements GET /v2/spaces/{space_id}/sets/{set_id}/views.
-func (s *Service) GetSetViews(ctx context.Context, spaceId, setId string, offset, limit int) ([]json.RawMessage, int, bool, error) {
-	return s.listViews(ctx, spaceId, setId, listKindSet, offset, limit)
+// GetQueryViews implements GET /v2/spaces/{space_id}/queries/{query_id}/views.
+func (s *Service) GetQueryViews(ctx context.Context, spaceId, queryId string, offset, limit int) ([]json.RawMessage, int, bool, error) {
+	return s.listViews(ctx, spaceId, queryId, listKindQuery, offset, limit)
 }
 
 // GetCollectionViews implements GET /v2/spaces/{space_id}/collections/{collection_id}/views.
@@ -73,9 +73,9 @@ func (s *Service) GetCollectionViews(ctx context.Context, spaceId, collectionId 
 	return s.listViews(ctx, spaceId, collectionId, listKindCollection, offset, limit)
 }
 
-// GetSetObjects implements GET /v2/spaces/{space_id}/sets/{set_id}/objects.
-func (s *Service) GetSetObjects(ctx context.Context, spaceId, setId, viewRef string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
-	return s.listObjects(ctx, spaceId, setId, listKindSet, viewRef, fields, offset, limit)
+// GetQueryObjects implements GET /v2/spaces/{space_id}/queries/{query_id}/objects.
+func (s *Service) GetQueryObjects(ctx context.Context, spaceId, queryId, viewRef string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
+	return s.listObjects(ctx, spaceId, queryId, listKindQuery, viewRef, fields, offset, limit)
 }
 
 // GetCollectionObjects implements GET /v2/spaces/{space_id}/collections/{collection_id}/objects.
@@ -84,7 +84,7 @@ func (s *Service) GetCollectionObjects(ctx context.Context, spaceId, collectionI
 }
 
 // readListTarget reads the addressed object live and enforces the layout ↔
-// route contract: the sets route requires a set, the collections route a
+// route contract: the queries route requires a query, the collections route a
 // collection, and a wrong-layout target is a 400 naming the other route.
 func (s *Service) readListTarget(ctx context.Context, spaceId, listId string, want listKind) (listTarget, error) {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
@@ -101,18 +101,20 @@ func (s *Service) readListTarget(ctx context.Context, spaceId, listId string, wa
 			layout = model.ObjectTypeLayout(v.GetNumberValue())
 		}
 	}
-	isSet := layout == model.ObjectType_set
+	// the REST noun is Query, but the stored layout keeps its original
+	// internal name (ObjectType_set) — only the surface was renamed
+	isQuery := layout == model.ObjectType_set
 	isCollection := layout == model.ObjectType_collection
 	switch {
-	case want == listKindSet && isCollection:
+	case want == listKindQuery && isCollection:
 		return listTarget{}, v2model.ValidationFailed(
-			fmt.Sprintf("object %q is a collection, not a set — use GET /v2/spaces/%s/collections/%s/objects", listId, spaceId, listId))
-	case want == listKindCollection && isSet:
+			fmt.Sprintf("object %q is a collection, not a query — use GET /v2/spaces/%s/collections/%s/objects", listId, spaceId, listId))
+	case want == listKindCollection && isQuery:
 		return listTarget{}, v2model.ValidationFailed(
-			fmt.Sprintf("object %q is a set, not a collection — use GET /v2/spaces/%s/sets/%s/objects", listId, spaceId, listId))
-	case !isSet && !isCollection:
+			fmt.Sprintf("object %q is a query, not a collection — use GET /v2/spaces/%s/queries/%s/objects", listId, spaceId, listId))
+	case !isQuery && !isCollection:
 		return listTarget{}, v2model.ValidationFailed(
-			fmt.Sprintf("object %q is neither a set nor a collection — sets read via /v2/spaces/{space_id}/sets/{set_id}/objects, collections via /v2/spaces/{space_id}/collections/{collection_id}/objects", listId))
+			fmt.Sprintf("object %q is neither a query nor a collection — queries read via /v2/spaces/{space_id}/queries/{query_id}/objects, collections via /v2/spaces/{space_id}/collections/{collection_id}/objects", listId))
 	}
 
 	target := listTarget{read: read}
@@ -186,14 +188,14 @@ func (s *Service) listViews(ctx context.Context, spaceId, listId string, want li
 	return page, total, hasMore, nil
 }
 
-// listObjects executes the set query / collection membership, optionally
+// listObjects executes the query / collection membership, optionally
 // through one stored view's filters and sorts.
 func (s *Service) listObjects(ctx context.Context, spaceId, listId string, want listKind, viewRef string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
 	target, err := s.readListTarget(ctx, spaceId, listId, want)
 	if err != nil {
 		return nil, 0, false, nil, err
 	}
-	if err := s.validateListFields(spaceId, fields); err != nil {
+	if err := s.validateListFields(spaceId, fields, errKeysFor(ctx)); err != nil {
 		return nil, 0, false, nil, err
 	}
 
@@ -215,8 +217,8 @@ func (s *Service) listObjects(ctx context.Context, spaceId, listId string, want 
 
 	var members []string // collection membership, in store-slice order
 	switch want {
-	case listKindSet:
-		sourceFilters, err := s.setSourceFilters(spaceId, listId, target.read)
+	case listKindQuery:
+		sourceFilters, err := s.querySourceFilters(spaceId, listId, target.read)
 		if err != nil {
 			return nil, 0, false, nil, err
 		}
@@ -283,8 +285,8 @@ func (s *Service) listObjects(ctx context.Context, spaceId, listId string, want 
 // POST search's /fields/i does — a 200 whose rows silently carry no
 // properties is indistinguishable from "no object has a value". The
 // reference set is the space's property keys plus the system allowlist (a
-// set/collection read has no top-level type to narrow by).
-func (s *Service) validateListFields(spaceId string, fields []string) error {
+// query/collection read has no top-level type to narrow by).
+func (s *Service) validateListFields(spaceId string, fields []string, v errKeys) error {
 	if len(fields) == 0 {
 		return nil
 	}
@@ -301,7 +303,7 @@ func (s *Service) validateListFields(spaceId string, fields []string) error {
 	}
 	acceptKeys := appendMissing(kc.withServedSpellings(sortedDistinct(stored)), "id", "name", "type")
 	acceptKeys = appendMissing(acceptKeys, v2SystemQueryKeys...)
-	refKeys := appendMissing(kc.servedSpellings(sortedDistinct(stored)), "id", "name", "type")
+	refKeys := appendMissing(kc.referenceSpellings(sortedDistinct(stored), v), "id", "name", "type")
 	refKeys = appendMissing(refKeys, v2SystemQueryKeys...)
 	// the file aliases are valid ?fields= keys when active (per space — a
 	// real property claiming the spelling wins instead)
@@ -318,13 +320,13 @@ func (s *Service) validateListFields(spaceId string, fields []string) error {
 	var issues []v2model.Issue
 	for _, field := range fields {
 		if canonical, ambiguous := kc.canon(field); len(ambiguous) > 0 {
-			issues = append(issues, ambiguousInputIssue("property key", field, "fields", ambiguous))
+			issues = append(issues, ambiguousInputIssue(v.propertyWord(), field, "fields", ambiguous))
 		} else if !allowed[field] && !allowed[canonical] {
-			issues = append(issues, unknownPropertyIssue(field, "fields", refKeys, listUrl))
+			issues = append(issues, unknownPropertyIssue(field, "fields", refKeys, listUrl, v))
 		}
 	}
 	if len(issues) > 0 {
-		return v2model.ValidationFailed("unknown property keys", issues...)
+		return v2model.ValidationFailed(fmt.Sprintf("unknown %s", v.propertiesWord()), issues...)
 	}
 	return nil
 }
@@ -353,11 +355,12 @@ func resolveViewRef(dv *model.BlockContentDataview, viewRef, listId string) (*mo
 	}
 }
 
-// setSourceFilters resolves the set's source (setOf) into store filters:
-// object-type sources become `type In […]`, relation sources become
-// `key NotEmpty`, OR-combined — the dataview resolution order, without v1's
-// silent degradation to an unscoped query.
-func (s *Service) setSourceFilters(spaceId, setId string, read apicore.ObjectRead) ([]database.FilterRequest, error) {
+// querySourceFilters resolves the query's source (setOf — the stored
+// property keeps its internal name) into store filters: object-type sources
+// become `type In […]`, relation sources become `key NotEmpty`, OR-combined —
+// the dataview resolution order, without v1's silent degradation to an
+// unscoped query.
+func (s *Service) querySourceFilters(spaceId, queryId string, read apicore.ObjectRead) ([]database.FilterRequest, error) {
 	var sources []string
 	if read.Snapshot != nil && read.Snapshot.Details != nil {
 		if v, ok := read.Snapshot.Details.Fields[bundle.RelationKeySetOf.String()]; ok {
@@ -370,7 +373,7 @@ func (s *Service) setSourceFilters(spaceId, setId string, read apicore.ObjectRea
 	}
 	if len(sources) == 0 {
 		return nil, v2model.ValidationFailed(
-			fmt.Sprintf("set %q queries nothing — its source (setOf) is empty", setId))
+			fmt.Sprintf("query %q matches nothing — its source (setOf) is empty", queryId))
 	}
 
 	index := s.store.SpaceIndex(spaceId)
@@ -398,7 +401,7 @@ func (s *Service) setSourceFilters(spaceId, setId string, read apicore.ObjectRea
 			continue
 		}
 		return nil, v2model.ValidationFailed(
-			fmt.Sprintf("set %q has an unresolvable source %q — setOf entries are type or property object ids", setId, entry))
+			fmt.Sprintf("query %q has an unresolvable source %q — setOf entries are type or property object ids", queryId, entry))
 	}
 
 	var alternatives []database.FilterRequest

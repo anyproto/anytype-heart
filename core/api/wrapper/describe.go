@@ -200,6 +200,20 @@ func (r *Runner) runDescribe(ctx context.Context, session *Session, args map[str
 		if !serve(spellings...) {
 			continue
 		}
+		// the SERVED spelling is the display name, never the document slug:
+		// a current server states the name in `property` already, but an
+		// older one states `due_date` there — and whatever the server
+		// spells, the row this surface prints is the vocabulary create and
+		// set_properties are documented to take, so it must be the name
+		// wherever one exists (the authored key only when nothing names the
+		// property at all)
+		served := tp.Name
+		if served == "" && matched {
+			served = row.Name
+		}
+		if served == "" {
+			served = key
+		}
 		// the api key behind the served spelling: the matched row's, or the
 		// stated internal_key — a stored key resolves at chain step 1 on any
 		// server, where the display name in Key may not
@@ -212,7 +226,7 @@ func (r *Runner) runDescribe(ctx context.Context, session *Session, args map[str
 			restKey = row.Key
 		}
 		prop := describeProperty{
-			Key: key, Name: tp.Name, Format: tp.Format,
+			Key: served, Name: tp.Name, Format: tp.Format,
 			OnType: true,
 			// the predicate understands stored keys and api slugs, never
 			// display names — ask it about the resolved key (§4a)
@@ -311,7 +325,7 @@ func (r *Runner) fillOptions(ctx context.Context, space string, prop *describePr
 	if err := r.client.decode(ctx, apiRequest{
 		method: "GET",
 		path:   "/v2/spaces/" + seg(space) + "/properties/" + seg(key) + "/options",
-		query:  url.Values{"limit": []string{fmt.Sprintf("%d", describeOptionsLimit)}},
+		query:  url.Values{"limit": []string{fmt.Sprintf("%d", describeOptionsLimit)}, "keys": []string{"name"}},
 	}, &resp); err != nil {
 		prop.OptionsUnavailable = true
 		return
@@ -341,10 +355,16 @@ func describeText(result describeResult) string {
 	}
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "type %s", result.Type)
-	if result.Name != "" && result.Name != result.Type {
-		fmt.Fprintf(&b, " — %s", result.Name)
+	// the type is titled by its display NAME — "Query", not the `set` a
+	// user never sees. The internal key stays off the prompt surface: the
+	// type arguments accept the name (values.go foldTypeArg), so the name is
+	// the one spelling the model both reads here and hands back. The key
+	// remains in the machine shape (result.Type) for programmatic callers.
+	title := result.Name
+	if title == "" {
+		title = result.Type
 	}
+	fmt.Fprintf(&b, "type %s", title)
 	writeRow := func(p describeProperty) {
 		fmt.Fprintf(&b, "\n  %s  %s", p.Key, p.Format)
 		if len(p.Options) > 0 {

@@ -47,6 +47,9 @@ type optionRef struct {
 // would-be creation). Instances are per-request and not safe for concurrent
 // use — same contract as storeresolver.
 type creatingResolvers struct {
+	// v is the request's error vocabulary (?keys — §4.3), captured at
+	// construction because the resolver callbacks run without a ctx.
+	v errKeys
 	ctx     context.Context
 	mw      apicore.ClientCommands
 	svc     *Service
@@ -115,6 +118,7 @@ func (r *creatingResolvers) removedBundledKeys() (map[string]bool, error) {
 func (s *Service) newCreatingResolvers(ctx context.Context, spaceId string, dryRun, createMissingOptions bool) *creatingResolvers {
 	return &creatingResolvers{
 		ctx:                  ctx,
+		v:                    errKeysFor(ctx),
 		mw:                   s.mw,
 		svc:                  s,
 		spaceId:              spaceId,
@@ -595,8 +599,8 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 			}
 			// spelledAs is the served slug: typeProperties documents spell
 			// slugs, so that is the spelling the caller can actually remove
-			r.errs = append(r.errs, v2model.ValidationFailed("removed property key",
-				removedPropertyIssue(r.spaceId, entry.Key, bundle.ApiSlug(entry.Key), "/type_settings/property_definitions")))
+			r.errs = append(r.errs, v2model.ValidationFailed(fmt.Sprintf("removed %s", r.v.propertyWord()),
+				removedPropertyIssue(r.spaceId, entry.Key, bundle.ApiSlug(entry.Key), "/type_settings/property_definitions", r.v)))
 			return "", false
 		}
 		// storeresolver still resolves system relations by their bundled

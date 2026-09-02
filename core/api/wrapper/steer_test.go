@@ -263,12 +263,12 @@ func TestRestVocabulary(t *testing.T) {
 			{
 				name: "type keys (R9 create/search)",
 				from: `unknown type key "tsak" (list all with GET /v2/spaces/space1/types)`,
-				want: "check the type key (find results show each object's type)",
+				want: "check the type name (find results show each object's type)",
 			},
 			{
 				name: "type keys (shortcut create, literal placeholder)",
 				from: `the shortcut needs a type key (list keys with GET /v2/spaces/{space_id}/types)`,
-				want: "check the type key (find results show each object's type)",
+				want: "check the type name (find results show each object's type)",
 			},
 			{
 				name: "property keys",
@@ -364,6 +364,39 @@ func TestRestVocabularyReplacementsAreToolShaped(t *testing.T) {
 		assert.False(t, strings.Contains(sub.to, "/v2/"),
 			"a replacement must not reintroduce a route: %q", sub.to)
 	}
+}
+
+// TestWrapperAsksForNameVocabulary: the wrapper does ZERO translation of
+// server errors' key vocabulary (APIV2_VOCABULARY.md layer 3) — instead it
+// asks every mutation and search for ?keys=name, and the SERVER spells its
+// referential refusals (known lists, did-you-mean) in names natively
+// (§4.3). What this layer owes is the parameter on the wire and the text
+// served verbatim.
+func TestWrapperAsksForNameVocabulary(t *testing.T) {
+	fx := newFixture(t)
+	fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
+	fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse(
+		v2model.PropertyRow{Key: "due_date", Name: "Due date", Format: "date"},
+		v2model.PropertyRow{Key: "status", Name: "Status", Format: "select"},
+	))
+	// the server's own name-mode refusal (?keys=name — v2service refs.go):
+	// names in the phrase, the known list and the suggestion
+	fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 400,
+		`{"status":400,"code":"validation_failed","message":"unknown properties","issues":[{"path":"/properties/prio","message":"unknown property \"prio\" — known properties: Due date, Status","hint":"did you mean Status?"}]}`)
+
+	_, err := fx.Run(context.Background(), "set_properties", map[string]any{
+		"object": "1", "set": map[string]any{"prio": "high"},
+	})
+
+	require.Error(t, err)
+	sent := fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")
+	require.Len(t, sent, 1)
+	assert.Equal(t, "name", sent[0].Query.Get("keys"),
+		"every mutation asks for the name vocabulary — that request is what buys name-mode errors")
+	assert.Contains(t, err.Error(), `unknown property "prio" — known properties: Due date, Status`,
+		"the server's name-mode text is served verbatim — no wrapper-side re-spelling")
+	assert.Contains(t, err.Error(), "did you mean Status?")
+	assert.NotContains(t, err.Error(), "property key")
 }
 
 func mustJSON(v any) string {

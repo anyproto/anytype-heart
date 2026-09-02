@@ -92,7 +92,7 @@ func (s *Service) SearchObjects(ctx context.Context, spaceId string, req v2model
 	if err := validateSearchShape(req); err != nil {
 		return nil, 0, false, nil, err
 	}
-	plan, err := s.buildSearchPlan(spaceId, req, true)
+	plan, err := s.buildSearchPlan(spaceId, req, true, errKeysFor(ctx))
 	if err != nil {
 		return nil, 0, false, nil, err
 	}
@@ -176,7 +176,7 @@ func pageRecords(records []database.Record, offset, limit int) []database.Record
 // fan-out a hard error would silently drop the whole space from results
 // and total — a column request must never narrow the search — so the
 // global caller passes lenient and the key degrades to a per-space warning.
-func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, strictFields bool) (*searchPlan, error) {
+func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, strictFields bool, v errKeys) (*searchPlan, error) {
 	plan := &searchPlan{textQuery: req.Query}
 	index := s.store.SpaceIndex(spaceId)
 	reads := storeresolver.New(index)
@@ -205,10 +205,10 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 		}
 		entry, ok, ambiguous := s.resolveTypeInput(req.Type, typeEntries)
 		if len(ambiguous) > 0 {
-			return nil, ambiguousKeyError("type key", req.Type, "/type", ambiguous)
+			return nil, ambiguousKeyError(v.typeWord(), req.Type, "/type", ambiguous)
 		}
 		if !ok || entry.Id == "" {
-			return nil, s.unknownTypeKeyError(spaceId, req.Type, "/type")
+			return nil, s.unknownTypeKeyError(spaceId, req.Type, "/type", v)
 		}
 		typeId := entry.Id
 		refKeys = append(s.typePropertyKeys(spaceId, typeId), "name")
@@ -245,7 +245,9 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	// documents still emit them); candidate lists speak the served spelling
 	// only (never advertise what a channel rejects)
 	acceptKeys := kc.withServedSpellings(refKeys)
-	refKeys = kc.servedSpellings(refKeys)
+	// the reference list a refusal shows speaks the request's vocabulary
+	// (?keys — §4.3); acceptance stays vocabulary-wide (D3) either way
+	refKeys = kc.referenceSpellings(refKeys, v)
 	for _, extra := range [][]string{v2SystemQueryKeys, {"type"}} {
 		refKeys = appendMissing(refKeys, extra...)
 		acceptKeys = appendMissing(acceptKeys, extra...)
@@ -274,13 +276,13 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	var issues []v2model.Issue
 	for i, field := range req.Fields {
 		if canonical, ambiguous := kc.canon(field); len(ambiguous) > 0 {
-			issues = append(issues, ambiguousInputIssue("property key", field, fmt.Sprintf("/fields/%d", i), ambiguous))
+			issues = append(issues, ambiguousInputIssue(v.propertyWord(), field, fmt.Sprintf("/fields/%d", i), ambiguous))
 			continue
 		} else if allowed[field] || allowed[canonical] {
 			continue
 		}
 		if strictFields {
-			issues = append(issues, unknownPropertyIssue(field, fmt.Sprintf("/fields/%d", i), refKeys, listUrl))
+			issues = append(issues, unknownPropertyIssue(field, fmt.Sprintf("/fields/%d", i), refKeys, listUrl, v))
 		} else {
 			plan.warnings = append(plan.warnings, v2model.Issue{
 				Path:    fmt.Sprintf("/fields/%d", i),
@@ -289,7 +291,7 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 		}
 	}
 	if len(issues) > 0 {
-		return nil, v2model.ValidationFailed("unknown property keys", issues...)
+		return nil, v2model.ValidationFailed(fmt.Sprintf("unknown %s", v.propertiesWord()), issues...)
 	}
 
 	// both filter forms → one structured tree
@@ -325,7 +327,7 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	if !fromString && len(filtersJSON) > 0 {
 		// the parser validated the string form with offsets; the structured
 		// form gets the same checks path-addressed (rules 1 + 3)
-		if err := s.validateStructuredFilters(spaceId, filtersJSON, allowed, refKeys, formatName, listUrl); err != nil {
+		if err := s.validateStructuredFilters(spaceId, filtersJSON, allowed, refKeys, formatName, listUrl, v); err != nil {
 			return nil, err
 		}
 	}
@@ -344,7 +346,7 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 		if err != nil {
 			return nil, mapFilterCodecError(err, fromString)
 		}
-		namedFileType, err := s.resolveTypeLeaves(spaceId, modelFilters, filterFieldPath(fromString))
+		namedFileType, err := s.resolveTypeLeaves(spaceId, modelFilters, filterFieldPath(fromString), v)
 		if err != nil {
 			return nil, err
 		}
@@ -367,13 +369,13 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 				continue
 			}
 			if canonical, ambiguous := kc.canon(probe.Property); len(ambiguous) > 0 {
-				issues = append(issues, ambiguousInputIssue("property key", probe.Property, fmt.Sprintf("/sorts/%d/property", i), ambiguous))
+				issues = append(issues, ambiguousInputIssue(v.propertyWord(), probe.Property, fmt.Sprintf("/sorts/%d/property", i), ambiguous))
 			} else if !allowed[probe.Property] && !allowed[canonical] {
-				issues = append(issues, unknownPropertyIssue(probe.Property, fmt.Sprintf("/sorts/%d/property", i), refKeys, listUrl))
+				issues = append(issues, unknownPropertyIssue(probe.Property, fmt.Sprintf("/sorts/%d/property", i), refKeys, listUrl, v))
 			}
 		}
 		if len(issues) > 0 {
-			return nil, v2model.ValidationFailed("unknown property keys", issues...)
+			return nil, v2model.ValidationFailed(fmt.Sprintf("unknown %s", v.propertiesWord()), issues...)
 		}
 		sortOpts := reads.Options()
 		sortOpts.Keys = readKeys
@@ -645,8 +647,8 @@ func (n searchFilterNode) hasLeafFields() bool {
 // This is the ONE input channel with no GBNF grammar (a documented C13
 // exception, the tree being recursive), so it is exactly where a small model
 // is most likely to emit these shapes. It runs on the query path AND on
-// POST /sets, where a malformed filter would otherwise be persisted into the
-// set's dataview and match everything for good.
+// POST /queries, where a malformed filter would otherwise be persisted into
+// the query's dataview and match everything for good.
 func validateFilterStructure(nodes []searchFilterNode, path string) []v2model.Issue {
 	var issues []v2model.Issue
 	for i, node := range nodes {
@@ -701,7 +703,7 @@ func decodeFilterNodes(raw json.RawMessage, path string) ([]searchFilterNode, er
 // option names) to the structured filters array, path-addressed with
 // did-you-mean — the same checks the string form gets offset-addressed from
 // the parser.
-func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage, allowed map[string]bool, refKeys []string, formatName func(string) (string, bool), listUrl string) error {
+func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage, allowed map[string]bool, refKeys []string, formatName func(string) (string, bool), listUrl string, v errKeys) error {
 	nodes, err := decodeFilterNodes(raw, "/filters")
 	if err != nil {
 		return err
@@ -721,7 +723,7 @@ func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage,
 				continue // the codec reports the missing key
 			}
 			if !allowed[node.Property] {
-				issues = append(issues, unknownPropertyIssue(node.Property, nodePath+"/property", refKeys, listUrl))
+				issues = append(issues, unknownPropertyIssue(node.Property, nodePath+"/property", refKeys, listUrl, v))
 				continue
 			}
 			format, formatKnown := formatName(node.Property)
@@ -807,7 +809,7 @@ func containsString(list []string, s string) bool {
 // caught `allIn` (the compact string's HAS ALL) silently returning zero
 // file rows under the earlier =/IN allowlist. Negated leaves exclude a
 // type, so they never widen the scope.
-func (s *Service) resolveTypeLeaves(spaceId string, filters []*model.BlockContentDataviewFilter, path string) (namedFileType bool, err error) {
+func (s *Service) resolveTypeLeaves(spaceId string, filters []*model.BlockContentDataviewFilter, path string, v errKeys) (namedFileType bool, err error) {
 	// one live snapshot for every leaf of this tree — chain-resolved and
 	// corpse-aware like the top-level type scope (review cause 2: the same
 	// spelling worked at top level and 400'd one level down, and a
@@ -816,16 +818,16 @@ func (s *Service) resolveTypeLeaves(spaceId string, filters []*model.BlockConten
 	if err != nil {
 		return false, err
 	}
-	return s.resolveTypeLeavesIn(spaceId, filters, path, typeEntries)
+	return s.resolveTypeLeavesIn(spaceId, filters, path, typeEntries, v)
 }
 
-func (s *Service) resolveTypeLeavesIn(spaceId string, filters []*model.BlockContentDataviewFilter, path string, typeEntries []typeEntry) (namedFileType bool, err error) {
+func (s *Service) resolveTypeLeavesIn(spaceId string, filters []*model.BlockContentDataviewFilter, path string, typeEntries []typeEntry, v errKeys) (namedFileType bool, err error) {
 	for _, f := range filters {
 		if f == nil {
 			continue
 		}
 		if len(f.NestedFilters) > 0 {
-			nested, err := s.resolveTypeLeavesIn(spaceId, f.NestedFilters, path, typeEntries)
+			nested, err := s.resolveTypeLeavesIn(spaceId, f.NestedFilters, path, typeEntries, v)
 			if err != nil {
 				return false, err
 			}
@@ -839,10 +841,10 @@ func (s *Service) resolveTypeLeavesIn(spaceId string, filters []*model.BlockCont
 		resolve := func(key string) (string, error) {
 			entry, ok, ambiguous := s.resolveTypeInput(key, typeEntries)
 			if len(ambiguous) > 0 {
-				return "", ambiguousKeyError("type key", key, path, ambiguous)
+				return "", ambiguousKeyError(v.typeWord(), key, path, ambiguous)
 			}
 			if !ok || entry.Id == "" {
-				return "", s.unknownTypeKeyError(spaceId, key, path)
+				return "", s.unknownTypeKeyError(spaceId, key, path, v)
 			}
 			if positive && util.IsFileTypeKey(entry.Key) {
 				namedFileType = true
@@ -974,7 +976,7 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 		// iteration; a reference that resolves in only some spaces queries
 		// those and warns about the rest. Fields are lenient here — a display
 		// column a space lacks must not remove that space from scope/total.
-		plan, err := s.buildSearchPlan(space.id, req, false)
+		plan, err := s.buildSearchPlan(space.id, req, false, errKeysFor(ctx))
 		if err != nil {
 			var v2Err *v2model.Error
 			if errors.As(err, &v2Err) {

@@ -1,6 +1,6 @@
 package v2handler
 
-// list_read.go holds the sets/collections read handlers. One service
+// list_read.go holds the queries/collections read handlers. One service
 // implementation branches on layout; a wrong-layout
 // target is a 400 naming the other route.
 
@@ -28,30 +28,30 @@ func listFieldsParam(c *gin.Context) []string {
 	return fields
 }
 
-// GetSetObjectsHandler lists the objects a set's query matches
+// GetQueryObjectsHandler lists the objects a query matches
 //
-//	@Summary		Run a set's query and list what it matches
+//	@Summary		Run a query and list what it matches
 //	@Description	A stored view's dynamic placeholders, such as the current date or the calling member, are resolved here. One that cannot be resolved becomes a warning rather than a silently empty result.
-//	@Id				get_set_objects
+//	@Id				get_query_objects
 //	@Tags			Lists
 //	@Produce		json
 //	@Param			space_id	path		string									true	"Space id"
-//	@Param			set_id		path		string									true	"Set object id"
+//	@Param			query_id	path		string									true	"Query object id"
 //	@Param			view		query		string									false	"Stored view id (exact or unique suffix)"
 //	@Param			fields		query		string									false	"Comma-separated property keys to include per row"
 //	@Param			offset		query		int										false	"Items to skip"		default(0)
 //	@Param			limit		query		int										false	"Items to return"	default(25)
 //	@Success		200			{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows"
 //	@Failure		400			{object}	v2model.Error							"Wrong-layout target or invalid params"
-//	@Failure		404			{object}	v2model.Error							"Space, set or view not found"
+//	@Failure		404			{object}	v2model.Error							"Space, query or view not found"
 //	@Security		bearerauth
-//	@Router			/v2/spaces/{space_id}/sets/{set_id}/objects [get]
-func GetSetObjectsHandler(s *v2service.Service) gin.HandlerFunc {
+//	@Router			/v2/spaces/{space_id}/queries/{query_id}/objects [get]
+func GetQueryObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		offset := c.GetInt(pagination.QueryParamOffset)
 		limit := c.GetInt(pagination.QueryParamLimit)
-		rows, total, hasMore, warnings, err := s.GetSetObjects(c.Request.Context(),
-			c.Param("space_id"), c.Param("set_id"), c.Query("view"), listFieldsParam(c), offset, limit)
+		rows, total, hasMore, warnings, err := s.GetQueryObjects(c.Request.Context(),
+			c.Param("space_id"), c.Param("query_id"), c.Query("view"), listFieldsParam(c), offset, limit)
 		if err != nil {
 			RespondError(c, err)
 			return
@@ -62,27 +62,27 @@ func GetSetObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 	}
 }
 
-// GetSetViewsHandler lists a set's stored views
+// GetQueryViewsHandler lists a query's stored views
 //
-//	@Summary	List a set's views
-//	@Id			get_set_views
+//	@Summary	List a query's views
+//	@Id			get_query_views
 //	@Tags		Lists
 //	@Produce	json
 //	@Param		space_id	path		string										true	"Space id"
-//	@Param		set_id		path		string										true	"Set object id"
+//	@Param		query_id	path		string										true	"Query object id"
 //	@Param		offset		query		int											false	"Items to skip"		default(0)
 //	@Param		limit		query		int											false	"Items to return"	default(25)
 //	@Success	200			{object}	v2model.ListResponse[v2model.ViewObject]	"The stored views, with their sorts, filters and columns"
 //	@Failure	400			{object}	v2model.Error								"Wrong-layout target"
-//	@Failure	404			{object}	v2model.Error								"Space or set not found"
+//	@Failure	404			{object}	v2model.Error								"Space or query not found"
 //	@Security	bearerauth
-//	@Router		/v2/spaces/{space_id}/sets/{set_id}/views [get]
-func GetSetViewsHandler(s *v2service.Service) gin.HandlerFunc {
+//	@Router		/v2/spaces/{space_id}/queries/{query_id}/views [get]
+func GetQueryViewsHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		offset := c.GetInt(pagination.QueryParamOffset)
 		limit := c.GetInt(pagination.QueryParamLimit)
-		views, total, hasMore, err := s.GetSetViews(c.Request.Context(),
-			c.Param("space_id"), c.Param("set_id"), offset, limit)
+		views, total, hasMore, err := s.GetQueryViews(c.Request.Context(),
+			c.Param("space_id"), c.Param("query_id"), offset, limit)
 		if err != nil {
 			RespondError(c, err)
 			return

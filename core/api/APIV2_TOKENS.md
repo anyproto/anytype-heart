@@ -122,7 +122,7 @@ package — no API surface reaches it.
 | `?block={id\|suffix}` | object GET | — | one subtree | right; keep as the orthogonal target param |
 | `?ids=compact\|full` | object GET | compact | **compact is 0.5–10.4 % more expensive** (§1.2) | **wrong — flip to full** |
 | `?format=anyblock\|md` | object GET | anyblock | md 11–84 % of default (§1.3) | right as opt-in; fix the mention links |
-| `?fields=` | lists, sets/collections, search body | rows = `{id,name,type}` (~50 tok/row, ~30 of them the id) | +2 fields ≈ +28 tok/row | right (C5); nothing to change |
+| `?fields=` | lists, queries/collections, search body | rows = `{id,name,type}` (~50 tok/row, ~30 of them the id) | +2 fields ≈ +28 tok/row | right (C5); nothing to change |
 | `?offset=/&limit=` | every list | 25 / max 1000 (`v2/router.go:23`) | 15 pages ≈ 758 tok | right |
 | `?view=` | set/collection reads | object's default view | — | right |
 | `?reactions=counts\|full` | chat messages | counts | — | right |

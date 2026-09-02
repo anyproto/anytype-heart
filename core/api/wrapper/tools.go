@@ -148,8 +148,11 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 		return r.client.decode(ctx, apiRequest{
 			method: "POST",
 			path:   "/v2/spaces/" + seg(space) + "/search",
-			query:  url.Values{"limit": []string{strconv.Itoa(limit)}},
-			body:   body,
+			// keys=name: a refused filter or type is refused in the name
+			// vocabulary this surface teaches (§4.3) — the rows themselves
+			// are unaffected (their `type` stays the key)
+			query: url.Values{"limit": []string{strconv.Itoa(limit)}, "keys": []string{"name"}},
+			body:  body,
 		}, &resp)
 	}
 	if err := search(); err != nil {
@@ -171,6 +174,16 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 	for i, row := range resp.Data {
 		handles = append(handles, Handle{N: i + 1, Id: row.Id, Name: row.Name, Type: row.Type})
 	}
+	// the TEXT channel spells each row's type by display NAME — find is
+	// where the model learns the type vocabulary it hands back to describe
+	// and create, and the search row carries the internal key ("set" for
+	// the type users call "Query"). Best-effort and text-only: the session
+	// handle and the JSON channel keep the key (the machine identity), and
+	// a failed listing degrades to the key rather than failing the find.
+	var typeNames map[string]string
+	if len(resp.Data) > 0 {
+		typeNames = r.typeNameIndex(ctx, space)
+	}
 	// each find renumbers (§7.4) — and a listing numbers nothing, which
 	// clears whatever the previous find left behind: stale handles surviving
 	// a call that matched nothing would be the same mis-address one document
@@ -185,7 +198,7 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 			rows = append(rows, Handle{Id: h.Id, Name: h.Name, Type: h.Type})
 		}
 		return &Result{
-			Text: listingText(rows, resp.Total, resp.HasMore, resp.Warnings),
+			Text: listingText(rows, typeNames, resp.Total, resp.HasMore, resp.Warnings),
 			JSON: findResult{Total: resp.Total, HasMore: resp.HasMore, Listing: true, Rows: rows},
 		}, nil
 	}
@@ -193,7 +206,7 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 
 	var b strings.Builder
 	for _, h := range handles {
-		fmt.Fprintf(&b, "%d. %s (%s)\n", h.N, displayName(h), h.Type)
+		fmt.Fprintf(&b, "%d. %s (%s)\n", h.N, displayName(h), typeLabel(typeNames, h.Type))
 	}
 	switch {
 	case resp.Total == 0:
@@ -226,11 +239,11 @@ func displayName(h Handle) string {
 // it before the names do, or the names read as results. Nothing is
 // numbered, and the closing line names the one repair that produces
 // handles.
-func listingText(rows []Handle, total int, hasMore bool, warnings []v2model.Issue) string {
+func listingText(rows []Handle, typeNames map[string]string, total int, hasMore bool, warnings []v2model.Issue) string {
 	var b strings.Builder
 	b.WriteString("nothing was searched for: find with only a space has no criterion to match on, so this is a listing of what the space holds — not results, and not numbered.\n")
 	for _, h := range rows {
-		fmt.Fprintf(&b, "  %s (%s)\n", displayName(h), h.Type)
+		fmt.Fprintf(&b, "  %s (%s)\n", displayName(h), typeLabel(typeNames, h.Type))
 	}
 	switch {
 	case total == 0:
@@ -325,7 +338,11 @@ func (r *Runner) runCreate(ctx context.Context, session *Session, args map[strin
 			return nil, err
 		}
 	}
-	text := fmt.Sprintf("created %s (%s)", result.Id, result.Type)
+	// the receipt spells the type by display NAME (find's rule: the text
+	// channel teaches names, the machine channels keep the key) — best
+	// effort, so a failed type listing serves the resolved key instead
+	label := typeLabel(r.typeNameIndex(ctx, space), result.Type)
+	text := fmt.Sprintf("created %s (%s)", result.Id, label)
 	if !result.DryRun {
 		// create used to dead-end: it returned a full id, registered no
 		// handle and left the working space unset (only find set it), so a
@@ -334,10 +351,10 @@ func (r *Runner) runCreate(ctx context.Context, session *Session, args map[strin
 		// that loop, and is named in the text because a number the caller
 		// cannot see is a number it cannot pass.
 		n := session.registerHandle(space, Handle{Id: result.Id, Name: strArg(args, "name"), Type: result.Type})
-		text = fmt.Sprintf("created %s (%s) — handle %d", result.Id, result.Type, n)
+		text = fmt.Sprintf("created %s (%s) — handle %d", result.Id, label, n)
 	}
 	if result.DryRun {
-		text = fmt.Sprintf("dry run — a %s object would be created", result.Type)
+		text = fmt.Sprintf("dry run — a %s object would be created", label)
 	}
 	for _, w := range result.Warnings {
 		text += "\nwarning: " + w.Message

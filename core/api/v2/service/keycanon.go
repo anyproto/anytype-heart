@@ -100,6 +100,31 @@ func (k *keyCanon) servedSpellings(stored []string) []string {
 	return sortedDistinct(out)
 }
 
+// referenceSpellings is servedSpellings in the request's error vocabulary
+// (?keys — §4.3): the served key by default, the entry's display name in
+// name mode (the served key standing in for an unnamed entry). It feeds the
+// known-key lists and did-you-mean suggestions a refusal shows — never the
+// acceptance set, which stays vocabulary-wide (D3).
+func (k *keyCanon) referenceSpellings(stored []string, v errKeys) []string {
+	if !v.names {
+		return k.servedSpellings(stored)
+	}
+	keyTaken, slugHolders := servedPropertyKeySets(k.entries)
+	byKey := map[string]string{}
+	for _, entry := range k.entries {
+		byKey[entry.Key] = v.spell(servedKey(entry.Key, entry.Slug, keyTaken, slugHolders), entry.Name)
+	}
+	out := make([]string, 0, len(stored))
+	for _, key := range stored {
+		if spelled, ok := byKey[key]; ok {
+			out = append(out, spelled)
+			continue
+		}
+		out = append(out, key)
+	}
+	return sortedDistinct(out)
+}
+
 // ---- generic JSON rewriters for the §6.2 channels ----
 //
 // The set-create request carries filters/sorts/views as raw JSON that lands

@@ -360,7 +360,7 @@ func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, o
 	if err := checkEditPreconditions(edit.SbType, edit.Heads, ifMatch); err != nil {
 		return nil, err
 	}
-	applier := newV2StateApplier(s, spaceId, objectId, edit.SbType, edit.State, resolvers)
+	applier := newV2StateApplier(s, spaceId, objectId, edit.SbType, edit.State, resolvers, errKeysFor(ctx))
 	beforeDoc, err := applier.begin()
 	if err != nil {
 		return nil, err

@@ -181,7 +181,7 @@ func opSchema(op string, required []string, props ...string) string {
 
 // v2ViewBlockPropDef is the shared dataview-block targeting property of the
 // view-family ops.
-const v2ViewBlockPropDef = `"block":{"$ref":"#/$defs/blockRef","description":"a dataview block — optional when the object has exactly one (types, sets and collections do)"}`
+const v2ViewBlockPropDef = `"block":{"$ref":"#/$defs/blockRef","description":"a dataview block — optional when the object has exactly one (types, queries and collections do)"}`
 
 // v2ViewSetPropDef is the shared `set` channel of update_view and insert_view:
 // the authorable §6.2 view-level fields, merge semantics.

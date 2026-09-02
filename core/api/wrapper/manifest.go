@@ -152,7 +152,7 @@ func Tools() []Tool {
 			Args: []Arg{
 				{Name: "space", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: "space id"},
 				{Name: "query", Type: ArgString, MaxLen: maxNameLen, Description: "full-text words to match"},
-				{Name: "type", Type: ArgString, MaxLen: maxKeyLen, Description: "a type key, e.g. task"},
+				{Name: "type", Type: ArgString, MaxLen: maxKeyLen, Description: "a type name, e.g. Task"},
 				// the filter grammar's keys are identifiers (no spaces) — the
 				// underscore-join teaching below is what keeps multi-word
 				// property NAMES reachable from the compact string (the
@@ -160,7 +160,7 @@ func Tools() []Tool {
 				{Name: "filter", Type: ArgString, MaxLen: maxFilterLen, Description: `compact filter string, e.g. Done = false AND Due_date < currentWeek() — string values in double quotes; write multi-word property names with underscores (Due_date); a name no identifier can spell (C++, 50% done) cannot be filtered here`},
 				{Name: "limit", Type: ArgInteger, Min: 1, Max: 50, Description: "max results (default 10)"},
 			},
-			Example:  map[string]any{"space": "space1", "type": "task", "filter": `Done = false`},
+			Example:  map[string]any{"space": "space1", "type": "Task", "filter": `Done = false`},
 			Tier:     TierSmall,
 			ReadOnly: true,
 		},
@@ -181,9 +181,9 @@ func Tools() []Tool {
 			Description: "Describe a type before creating or editing objects of it: its property names, formats, and live select option names. Call this first — property names and option names must match exactly.",
 			Args: []Arg{
 				{Name: "space", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: "space id"},
-				{Name: "type", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: "a type key, e.g. task"},
+				{Name: "type", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: "a type name, e.g. Task"},
 			},
-			Example:  map[string]any{"space": "space1", "type": "task"},
+			Example:  map[string]any{"space": "space1", "type": "Task"},
 			Tier:     TierSmall,
 			ReadOnly: true,
 		},
@@ -192,12 +192,12 @@ func Tools() []Tool {
 			Description: "Create an object. properties uses the type's property names (describe first); markdown becomes the body. Date values accept today, tomorrow, +Nd, weekday names; @me means the calling user.",
 			Args: []Arg{
 				{Name: "space", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: "space id"},
-				{Name: "type", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: "a type key, e.g. task"},
+				{Name: "type", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: "a type name, e.g. Task"},
 				{Name: "name", Type: ArgString, Required: true, MaxLen: maxNameLen, Description: "object name"},
 				{Name: "properties", Type: ArgObject, Description: "property name → value; select values are option NAMES"},
 				{Name: "markdown", Type: ArgString, MaxLen: maxMarkdownLen, Description: "markdown body: headings, lists, - [ ] checkboxes, ``` fences, quotes, tables"},
 			},
-			Example: map[string]any{"space": "space1", "type": "task", "name": "Prepare the Q3 report", "properties": map[string]any{"Due date": "friday"}},
+			Example: map[string]any{"space": "space1", "type": "Task", "name": "Prepare the Q3 report", "properties": map[string]any{"Due date": "friday"}},
 			Tier:    TierSmall,
 		},
 		{

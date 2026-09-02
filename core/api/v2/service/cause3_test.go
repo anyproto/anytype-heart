@@ -138,9 +138,9 @@ func TestV2SearchSpeaksServedSpellings(t *testing.T) {
 
 func TestV2ListFieldsSpeakServedSpellings(t *testing.T) {
 	fx := slugQueryFixture(t)
-	assert.NoError(t, fx.validateListFields(testSpaceId, []string{"manual_property"}))
-	assert.NoError(t, fx.validateListFields(testSpaceId, []string{slugPropKey}), "the stored spelling stays valid")
-	err := fx.validateListFields(testSpaceId, []string{"not_a_key"})
+	assert.NoError(t, fx.validateListFields(testSpaceId, []string{"manual_property"}, errKeys{}))
+	assert.NoError(t, fx.validateListFields(testSpaceId, []string{slugPropKey}, errKeys{}), "the stored spelling stays valid")
+	err := fx.validateListFields(testSpaceId, []string{"not_a_key"}, errKeys{})
 	require.Error(t, err)
 }
 
@@ -300,8 +300,8 @@ func TestV2FieldAliasSurvivesACorpseClaimant(t *testing.T) {
 	assert.False(t, active, "a live property claiming the spelling deactivates the alias")
 }
 
-func TestV2CreateSetCanonicalizesViewKeys(t *testing.T) {
-	// the set DOCUMENT persists filter keys — a served slug landing there
+func TestV2CreateQueryCanonicalizesViewKeys(t *testing.T) {
+	// the query DOCUMENT persists filter keys — a served slug landing there
 	// would bind a dataview filter the store never matches, silently
 	fx := slugSpaceFixture(t)
 	// the type recommends the slug-keyed property, so it is in the R9 set
@@ -316,8 +316,8 @@ func TestV2CreateSetCanonicalizesViewKeys(t *testing.T) {
 	captured := fx.expectCreate("set1")
 	fx.expectEtagRead("set1")
 
-	result, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
-		Name: "My set", Type: "meeting_note",
+	result, err := fx.CreateQuery(context.Background(), testSpaceId, v2model.CreateQueryRequest{
+		Name: "My query", Type: "meeting_note",
 		Filters: json.RawMessage(`[{"property":"manual_property","condition":"equal","value":"hello"}]`),
 	}, false, true)
 

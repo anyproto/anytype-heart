@@ -471,6 +471,8 @@ func mapUnmarshalError(body []byte, err error) error {
 // own spelling (canonicalizeDocumentKeys), so refusals address the request
 // that was actually sent.
 func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, envelope *docEnvelope, opts docCreateOptions, spellings map[string]string) error {
+	// the refusals below speak the request's key vocabulary (?keys — §4.3)
+	v := errKeysFor(ctx)
 	switch envelope.Kind {
 	case "", "page", "template":
 	case "object_type":
@@ -503,7 +505,7 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 
 	if envelope.Type != "" && envelope.Type != string(bundle.TypeKeyTemplate) {
 		if !s.typeKeyExists(spaceId, envelope.Type) {
-			return s.unknownTypeKeyError(spaceId, envelope.Type, "/type")
+			return s.unknownTypeKeyError(spaceId, envelope.Type, "/type", v)
 		}
 		if err := rejectRestrictedType(envelope.Type); err != nil {
 			return err
@@ -519,7 +521,7 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 	}
 	if envelope.TemplateFor != "" {
 		if !s.typeKeyExists(spaceId, envelope.TemplateFor) {
-			return s.unknownTypeKeyError(spaceId, envelope.TemplateFor, "/template_for")
+			return s.unknownTypeKeyError(spaceId, envelope.TemplateFor, "/template_for", v)
 		}
 		if err := s.refuseRemovedType(ctx, spaceId, envelope.TemplateFor, "/template_for"); err != nil {
 			return err
@@ -553,7 +555,8 @@ func (s *Service) refuseRemovedType(ctx context.Context, spaceId, typeKey, path 
 		return err
 	}
 	if isRemoved {
-		return v2model.ValidationFailed("removed type key", removedTypeIssue(spaceId, typeKey, path))
+		v := errKeysFor(ctx)
+		return v2model.ValidationFailed(fmt.Sprintf("removed %s", v.typeWord()), removedTypeIssue(spaceId, typeKey, path, v))
 	}
 	return nil
 }
@@ -607,6 +610,7 @@ func (s *Service) validatePropertyKeys(ctx context.Context, spaceId string, prop
 		}
 		return key
 	}
+	v := errKeysFor(ctx)
 	var issues []v2model.Issue
 	var removedCount int
 	var known []string
@@ -626,7 +630,7 @@ func (s *Service) validatePropertyKeys(ctx context.Context, spaceId string, prop
 					return err
 				}
 				if isRemoved {
-					issues = append(issues, removedPropertyIssue(spaceId, key, spelledAs(key), "/properties/"+spelledAs(key)))
+					issues = append(issues, removedPropertyIssue(spaceId, key, spelledAs(key), "/properties/"+spelledAs(key), v))
 					removedCount++
 				}
 			}
@@ -636,21 +640,21 @@ func (s *Service) validatePropertyKeys(ctx context.Context, spaceId string, prop
 			continue
 		}
 		if known == nil {
-			known = knownPropertyKeysIn(entries)
+			known = knownPropertyKeysIn(entries, v)
 		}
 		issues = append(issues, unknownPropertyIssue(key, "/properties/"+spelledAs(key), known,
-			fmt.Sprintf("list all with GET /v2/spaces/%s/properties, or create it with POST /v2/spaces/%s/properties", spaceId, spaceId)))
+			fmt.Sprintf("list all with GET /v2/spaces/%s/properties, or create it with POST /v2/spaces/%s/properties", spaceId, spaceId), v))
 	}
 	if len(issues) > 0 {
 		// the envelope names what actually happened: "unknown" on a key the
 		// space knows and removed is a lie the issue text then contradicts
 		switch {
 		case removedCount == len(issues):
-			return v2model.ValidationFailed("removed property keys", issues...)
+			return v2model.ValidationFailed(fmt.Sprintf("removed %s", v.propertiesWord()), issues...)
 		case removedCount > 0:
-			return v2model.ValidationFailed("unknown and removed property keys", issues...)
+			return v2model.ValidationFailed(fmt.Sprintf("unknown and removed %s", v.propertiesWord()), issues...)
 		}
-		return v2model.ValidationFailed("unknown property keys", issues...)
+		return v2model.ValidationFailed(fmt.Sprintf("unknown %s", v.propertiesWord()), issues...)
 	}
 	return nil
 }

@@ -187,13 +187,13 @@ func RegisterRoutes(router *gin.Engine, deps RouteDeps) {
 		deps.AnalyticsEvent("V2Search"),
 		v2handler.SearchObjectsHandler(deps.Service),
 	)
-	v2.GET("/spaces/:space_id/sets/:set_id/objects",
-		deps.AnalyticsEvent("V2GetSetObjects"),
-		v2handler.GetSetObjectsHandler(deps.Service),
+	v2.GET("/spaces/:space_id/queries/:query_id/objects",
+		deps.AnalyticsEvent("V2GetQueryObjects"),
+		v2handler.GetQueryObjectsHandler(deps.Service),
 	)
-	v2.GET("/spaces/:space_id/sets/:set_id/views",
-		deps.AnalyticsEvent("V2GetSetViews"),
-		v2handler.GetSetViewsHandler(deps.Service),
+	v2.GET("/spaces/:space_id/queries/:query_id/views",
+		deps.AnalyticsEvent("V2GetQueryViews"),
+		v2handler.GetQueryViewsHandler(deps.Service),
 	)
 	v2.GET("/spaces/:space_id/collections/:collection_id/objects",
 		deps.AnalyticsEvent("V2GetCollectionObjects"),
@@ -359,11 +359,11 @@ func registerCreateRoutes(v2 *gin.RouterGroup, deps RouteDeps, idempotencyMW gin
 		deps.AnalyticsEvent("V2DeleteProperty"),
 		v2handler.DeletePropertyHandler(deps.Service),
 	)
-	v2.POST("/spaces/:space_id/sets",
+	v2.POST("/spaces/:space_id/queries",
 		deps.WriteRateLimit,
 		idempotencyMW,
-		deps.AnalyticsEvent("V2CreateSet"),
-		v2handler.CreateSetHandler(deps.Service),
+		deps.AnalyticsEvent("V2CreateQuery"),
+		v2handler.CreateQueryHandler(deps.Service),
 	)
 	v2.POST("/spaces/:space_id/collections",
 		deps.WriteRateLimit,

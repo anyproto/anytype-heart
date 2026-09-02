@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -104,16 +105,16 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 
 	dryRunCreates := stringSet(
 		"add_chat_message", "create_chat", "create_collection", "create_object", "create_property",
-		"create_set", "create_space", "create_template", "create_type", "upload_file",
+		"create_query", "create_space", "create_template", "create_type", "upload_file",
 	)
 	idempotent := stringSet(
 		"validate", "create_space", "update_space", "create_object", "create_template", "create_type",
-		"update_type", "delete_type", "create_property", "update_property", "delete_property", "create_set",
+		"update_type", "delete_type", "create_property", "update_property", "delete_property", "create_query",
 		"create_collection", "upload_file", "patch_object", "delete_object", "create_chat", "add_chat_message",
 		"edit_chat_message", "delete_chat_message", "toggle_chat_reaction", "read_chat",
 	)
 	requestBodyLimited := stringSet(
-		"add_chat_message", "create_chat", "create_collection", "create_property", "create_set", "create_space",
+		"add_chat_message", "create_chat", "create_collection", "create_property", "create_query", "create_space",
 		"edit_chat_message", "read_chat", "toggle_chat_reaction", "update_property", "update_space", "update_type", "upload_file",
 	)
 
@@ -148,6 +149,49 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 			assert.Equal(t, "#/components/responses/RequestTooLarge", operation.Responses["413"].Ref, "%s body cap", operationId)
 		} else {
 			assert.NotContains(t, operation.Responses, "413", "%s has no assertion-linked body cap", operationId)
+		}
+	}
+}
+
+// TestV2OpenAPIQueryPaths pins the Query resource's PATHS and operation ids
+// in the generated document. The object's product name is Query while its
+// internal uniqueKey is still "set", and that split is what makes a rename
+// easy to half-apply: the annotations could say query while the checked-in
+// document — the artifact consumers actually read — still says sets, simply
+// because `make openapi` was not re-run. Pinning both the wanted paths and
+// the absence of the old spelling makes that a red test, not a stale doc.
+func TestV2OpenAPIQueryPaths(t *testing.T) {
+	for _, name := range []string{"../docs/v2/openapi.json", "../docs/v2/openapi.yaml"} {
+		body, err := os.ReadFile(name)
+		require.NoError(t, err)
+		var doc responseContractDocument
+		if strings.HasSuffix(name, ".json") {
+			require.NoError(t, json.Unmarshal(body, &doc))
+		} else {
+			require.NoError(t, yaml.Unmarshal(body, &doc))
+		}
+
+		for path, wantOperations := range map[string]map[string]string{
+			"/v2/spaces/{space_id}/queries":                             {"post": "create_query"},
+			"/v2/spaces/{space_id}/queries/{query_id}/objects":          {"get": "get_query_objects"},
+			"/v2/spaces/{space_id}/queries/{query_id}/views":            {"get": "get_query_views"},
+			"/v2/spaces/{space_id}/collections":                         {"post": "create_collection"},
+			"/v2/spaces/{space_id}/collections/{collection_id}/objects": {"get": "get_collection_objects"},
+			"/v2/spaces/{space_id}/collections/{collection_id}/views":   {"get": "get_collection_views"},
+		} {
+			pathItem, ok := doc.Paths[path]
+			require.True(t, ok, "%s must document %s", name, path)
+			for method, operationId := range wantOperations {
+				require.Contains(t, pathItem, method, "%s %s %s", name, method, path)
+				assert.Equal(t, operationId, pathItem[method].OperationId, "%s %s %s", name, method, path)
+			}
+		}
+
+		for path := range doc.Paths {
+			assert.NotContains(t, path, "/sets",
+				"%s still documents the pre-rename noun in %s — the REST resource is queries (the type key stays \"set\")", name, path)
+			assert.NotContains(t, path, "{set_id}",
+				"%s still documents the pre-rename path param in %s", name, path)
 		}
 	}
 }

@@ -307,31 +307,31 @@ func DeletePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 	}
 }
 
-// CreateSetHandler creates a set with its views in one change set
+// CreateQueryHandler creates a query with its views in one change set
 //
-//	@Summary		Create a set
-//	@Description	Filter and sort property keys are checked against the type the set queries; a key that type does not carry is refused.
-//	@Id				create_set
+//	@Summary		Create a query
+//	@Description	Filter and sort property keys are checked against the type the query runs over; a key that type does not carry is refused.
+//	@Id				create_query
 //	@Tags			Lists
 //	@Accept			json
 //	@Produce		json
 //	@Param			space_id				path		string					true	"Space id"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
-//	@Success		201						{object}	v2model.CreateResult	"Created set id"
+//	@Success		201						{object}	v2model.CreateResult	"Created query id"
 //	@Failure		400						{object}	v2model.Error			"Validation or reference failure"
 //	@Failure		413						{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
 //	@Security		bearerauth
-//	@Router			/v2/spaces/{space_id}/sets [post]
-func CreateSetHandler(s *v2service.Service) gin.HandlerFunc {
+//	@Router			/v2/spaces/{space_id}/queries [post]
+func CreateQueryHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req v2model.CreateSetRequest
+		var req v2model.CreateQueryRequest
 		if !decodeStrictJSONBody(c, &req,
-			"the set body is {name, type, filter?/filters?, sorts?, views?} — GET /v2/schemas/set for the schema",
-			maxV2StructuredBodySize, "set") {
+			"the query body is {name, type, filter?/filters?, sorts?, views?} — GET /v2/schemas/query for the schema",
+			maxV2StructuredBodySize, "query") {
 			return
 		}
-		result, err := s.CreateSet(c.Request.Context(), c.Param("space_id"), req, isV2DryRun(c), mayCreateMissingOptions(c))
+		result, err := s.CreateQuery(c.Request.Context(), c.Param("space_id"), req, isV2DryRun(c), mayCreateMissingOptions(c))
 		if err != nil {
 			RespondError(c, err)
 			return

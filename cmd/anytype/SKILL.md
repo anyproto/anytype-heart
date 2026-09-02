@@ -18,9 +18,9 @@ API key from the app's settings (`ANYTYPE_API_URL` defaults to
 ```sh
 anytype spaces                             # space ids, when none is known
 # Work — bafyspace1
-anytype find --space bafyspace1 --type task --filter 'done = false'
-# 1. Prepare the Q3 report (task)
-# 2. Ship the beta (task)
+anytype find --space bafyspace1 --type Task --filter 'done = false'
+# 1. Prepare the Q3 report (Task)
+# 2. Ship the beta (Task)
 anytype edit-text --object 1 --find "Q3" --replace "Q4"
 # --block is optional: the snippet locates the block when it matches
 # exactly one; an ambiguous snippet refuses and lists the candidates
@@ -60,7 +60,7 @@ anytype read --object 1 --mode outline     # block ids + structure
 `Status IN ("In progress", "Blocked")` · `Name CONTAINS "report"` ·
 `Last_modified_date > daysAgo(7)`. String values take double quotes; date
 presets are functions (`today()`, `currentWeek()`, `daysAgo(n)`).
-Property keys here are identifiers — write a multi-word name with
+Property names here are written as identifiers — a multi-word name takes
 underscores (`Due_date` for "Due date"); a name no identifier can spell
 (`C++`, `50% done`) cannot ride a filter string.
 
@@ -72,7 +72,7 @@ underscores (`Due_date` for "Due date"); a name no identifier can spell
 - **Select options are never created by these verbs.** An unknown option
   name is an error listing the existing names — fix the spelling (option
   names are case-sensitive). `--create-missing` is the deliberate escape.
-  Type and property KEYS are more forgiving: case, `_`/`-` and spaces
+  Type and property NAMES are more forgiving: case, `_`/`-` and spaces
   fold away, so `due_date`, `dueDate` and `Due date` all address one
   property; if two properties answer to one spelling the error names
   both — it never guesses.

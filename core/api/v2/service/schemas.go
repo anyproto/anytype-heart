@@ -64,8 +64,8 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"name":{"type":"string","maxLength":4096},"color":{"type":"string","maxLength":64}}}}}}`,
 		example: `{"key":"priority","name":"Priority","format":"select","options":[{"name":"High","color":"red"},{"name":"Low"}]}`,
 	},
-	"set": {
-		endpoint: "POST /v2/spaces/{space_id}/sets",
+	"query": {
+		endpoint: "POST /v2/spaces/{space_id}/queries",
 		schema: `{"type":"object","additionalProperties":false,"required":["name","type"],"properties":{` +
 			`"name":{"type":"string","maxLength":4096},` +
 			`"type":{"type":"string","maxLength":256,"description":"the queried type's key"},` +
@@ -145,7 +145,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		example: `{"up_to":"00a1b2c3d4e5f6","last_state_id":"66f2a1b0c9d8e7f6a5b4c3d2","scope":"messages"}`,
 	},
 	"filters": {
-		endpoint: "POST /v2/spaces/{space_id}/search (filters field) · POST /v2/spaces/{space_id}/sets (filters field)",
+		endpoint: "POST /v2/spaces/{space_id}/search (filters field) · POST /v2/spaces/{space_id}/queries (filters field)",
 		// documented C13 exception: the structured filter tree is recursive
 		// (SPEC §12 filterNode) and therefore not constrained-decodable
 		schema: `{"$defs":{"filterNode":{"oneOf":[` +

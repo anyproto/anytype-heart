@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-// listReadRead builds one live ObjectRead for a set/collection target.
+// listReadRead builds one live ObjectRead for a query/collection target.
 func listReadRead(layout model.ObjectTypeLayout, details map[string]*types.Value, dv *model.BlockContentDataview, members []string) apicore.ObjectRead {
 	fields := map[string]*types.Value{
 		bundle.RelationKeyResolvedLayout.String(): pbtypes.Int64(int64(layout)),
@@ -42,7 +42,9 @@ func listReadRead(layout model.ObjectTypeLayout, details map[string]*types.Value
 	return apicore.ObjectRead{Snapshot: snapshot, Heads: []string{"headL"}}
 }
 
-func setRead(dv *model.BlockContentDataview) apicore.ObjectRead {
+// queryRead builds a live Query object read. The stored layout keeps its
+// internal name (ObjectType_set) — only the REST noun is Query.
+func queryRead(dv *model.BlockContentDataview) apicore.ObjectRead {
 	return listReadRead(model.ObjectType_set, map[string]*types.Value{
 		bundle.RelationKeySetOf.String(): pbtypes.StringList([]string{"type-chore"}),
 	}, dv, nil)
@@ -56,14 +58,14 @@ func (fx *v2Fixture) expectListRead(objectId string, read apicore.ObjectRead) {
 	fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, objectId).Return(read, nil)
 }
 
-func TestV2GetSetObjects(t *testing.T) {
-	t.Run("a set executes its stored query directly against the store", func(t *testing.T) {
+func TestV2GetQueryObjects(t *testing.T) {
+	t.Run("a query executes its stored filters directly against the store", func(t *testing.T) {
 		// given
 		fx := searchSetup(t)
-		fx.expectListRead("set1", setRead(nil))
+		fx.expectListRead("query1", queryRead(nil))
 
 		// when
-		rows, total, hasMore, warnings, err := fx.GetSetObjects(context.Background(), testSpaceId, "set1", "", nil, 0, 25)
+		rows, total, hasMore, warnings, err := fx.GetQueryObjects(context.Background(), testSpaceId, "query1", "", nil, 0, 25)
 
 		// then: the two chores, newest-modified first; never the page
 		require.NoError(t, err)
@@ -84,10 +86,10 @@ func TestV2GetSetObjects(t *testing.T) {
 				Value:       pbtypes.StringList([]string{"opt-high"}),
 			}},
 		}}}
-		fx.expectListRead("set1", setRead(dv))
+		fx.expectListRead("query1", queryRead(dv))
 
 		// when: the view resolves by unique suffix (C4 leniency)
-		rows, total, _, _, err := fx.GetSetObjects(context.Background(), testSpaceId, "set1", "1abc", nil, 0, 25)
+		rows, total, _, _, err := fx.GetQueryObjects(context.Background(), testSpaceId, "query1", "1abc", nil, 0, 25)
 
 		// then
 		require.NoError(t, err)
@@ -108,10 +110,10 @@ func TestV2GetSetObjects(t *testing.T) {
 				Value:       pbtypes.String(filterTemplateUser),
 			}},
 		}}}
-		fx.expectListRead("set1", setRead(dv))
+		fx.expectListRead("query1", queryRead(dv))
 
 		// when
-		rows, _, _, warnings, err := fx.GetSetObjects(context.Background(), testSpaceId, "set1", "v1", nil, 0, 25)
+		rows, _, _, warnings, err := fx.GetQueryObjects(context.Background(), testSpaceId, "query1", "v1", nil, 0, 25)
 
 		// then: the literal placeholder would match nothing — substitution
 		// resolves it to the caller's participant id
@@ -131,10 +133,10 @@ func TestV2GetSetObjects(t *testing.T) {
 				Value:       pbtypes.String("_filter_template_9_"),
 			}},
 		}}}
-		fx.expectListRead("set1", setRead(dv))
+		fx.expectListRead("query1", queryRead(dv))
 
 		// when
-		rows, _, _, warnings, err := fx.GetSetObjects(context.Background(), testSpaceId, "set1", "v1", nil, 0, 25)
+		rows, _, _, warnings, err := fx.GetQueryObjects(context.Background(), testSpaceId, "query1", "v1", nil, 0, 25)
 
 		// then: the filter is dropped (both chores return) and the response warns
 		require.NoError(t, err)
@@ -148,10 +150,10 @@ func TestV2GetSetObjects(t *testing.T) {
 		// given
 		fx := searchSetup(t)
 		dv := &model.BlockContentDataview{Views: []*model.BlockContentDataviewView{{Id: "v1"}, {Id: "v2"}}}
-		fx.expectListRead("set1", setRead(dv))
+		fx.expectListRead("query1", queryRead(dv))
 
 		// when
-		_, _, _, _, err := fx.GetSetObjects(context.Background(), testSpaceId, "set1", "ghost", nil, 0, 25)
+		_, _, _, _, err := fx.GetQueryObjects(context.Background(), testSpaceId, "query1", "ghost", nil, 0, 25)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -160,34 +162,34 @@ func TestV2GetSetObjects(t *testing.T) {
 		assert.Contains(t, apiErr.Message, "v1, v2")
 	})
 
-	t.Run("a collection addressed through the sets route names the other route", func(t *testing.T) {
+	t.Run("a collection addressed through the queries route names the other route", func(t *testing.T) {
 		// given
 		fx := searchSetup(t)
 		fx.expectListRead("col1", collectionRead(nil, []string{"chore1"}))
 
 		// when
-		_, _, _, _, err := fx.GetSetObjects(context.Background(), testSpaceId, "col1", "", nil, 0, 25)
+		_, _, _, _, err := fx.GetQueryObjects(context.Background(), testSpaceId, "col1", "", nil, 0, 25)
 
 		// then
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
-		assert.Contains(t, apiErr.Message, `object "col1" is a collection, not a set`)
+		assert.Contains(t, apiErr.Message, `object "col1" is a collection, not a query`)
 		assert.Contains(t, apiErr.Message, "GET /v2/spaces/space1/collections/col1/objects")
 	})
 
-	t.Run("a set over a file type returns its rows and renders the file fields", func(t *testing.T) {
-		// given: §8.8 claims the sets read never had the layout scope (so a
-		// file set already worked) — previously verified only by reading
+	t.Run("a query over a file type returns its rows and renders the file fields", func(t *testing.T) {
+		// given: §8.8 claims the queries read never had the layout scope (so a
+		// file query already worked) — previously verified only by reading
 		// listObjects; this pins it, together with the mimeType/size alias
 		// rendering on the ?fields= channel
 		fx := searchSetup(t)
 		fx.addImageObjects(t)
-		fx.expectListRead("set1", listReadRead(model.ObjectType_set, map[string]*types.Value{
+		fx.expectListRead("query1", listReadRead(model.ObjectType_set, map[string]*types.Value{
 			bundle.RelationKeySetOf.String(): pbtypes.StringList([]string{"type-image"}),
 		}, nil, nil))
 
 		// when
-		rows, total, _, _, err := fx.GetSetObjects(context.Background(), testSpaceId, "set1", "",
+		rows, total, _, _, err := fx.GetQueryObjects(context.Background(), testSpaceId, "query1", "",
 			[]string{"mimeType", "size"}, 0, 25)
 
 		// then
@@ -203,24 +205,24 @@ func TestV2GetSetObjects(t *testing.T) {
 	t.Run("an empty setOf is an explicit error, not an unscoped query", func(t *testing.T) {
 		// given
 		fx := searchSetup(t)
-		fx.expectListRead("set1", listReadRead(model.ObjectType_set, nil, nil, nil))
+		fx.expectListRead("query1", listReadRead(model.ObjectType_set, nil, nil, nil))
 
 		// when
-		_, _, _, _, err := fx.GetSetObjects(context.Background(), testSpaceId, "set1", "", nil, 0, 25)
+		_, _, _, _, err := fx.GetQueryObjects(context.Background(), testSpaceId, "query1", "", nil, 0, 25)
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Contains(t, apiErr.Message, "queries nothing")
+		assert.Contains(t, apiErr.Message, "matches nothing")
 	})
 
 	t.Run("a typoed fields key 400s with did-you-mean, like search does", func(t *testing.T) {
 		// given: without the check the response is a 200 whose rows silently
 		// carry no properties — indistinguishable from "no object has a value"
 		fx := searchSetup(t)
-		fx.expectListRead("set1", setRead(nil))
+		fx.expectListRead("query1", queryRead(nil))
 
 		// when
-		_, _, _, _, err := fx.GetSetObjects(context.Background(), testSpaceId, "set1", "", []string{"sevirity"}, 0, 25)
+		_, _, _, _, err := fx.GetQueryObjects(context.Background(), testSpaceId, "query1", "", []string{"sevirity"}, 0, 25)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -262,18 +264,18 @@ func TestV2GetCollectionObjects(t *testing.T) {
 		assert.False(t, hasMore)
 	})
 
-	t.Run("a set addressed through the collections route names the other route", func(t *testing.T) {
+	t.Run("a query addressed through the collections route names the other route", func(t *testing.T) {
 		// given
 		fx := searchSetup(t)
-		fx.expectListRead("set1", setRead(nil))
+		fx.expectListRead("query1", queryRead(nil))
 
 		// when
-		_, _, _, _, err := fx.GetCollectionObjects(context.Background(), testSpaceId, "set1", "", nil, 0, 25)
+		_, _, _, _, err := fx.GetCollectionObjects(context.Background(), testSpaceId, "query1", "", nil, 0, 25)
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Contains(t, apiErr.Message, `object "set1" is a set, not a collection`)
-		assert.Contains(t, apiErr.Message, "GET /v2/spaces/space1/sets/set1/objects")
+		assert.Contains(t, apiErr.Message, `object "query1" is a query, not a collection`)
+		assert.Contains(t, apiErr.Message, "GET /v2/spaces/space1/queries/query1/objects")
 	})
 
 	t.Run("a plain object is neither — the error names both routes", func(t *testing.T) {
@@ -286,8 +288,8 @@ func TestV2GetCollectionObjects(t *testing.T) {
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Contains(t, apiErr.Message, "neither a set nor a collection")
-		assert.Contains(t, apiErr.Message, "/sets/{set_id}/objects")
+		assert.Contains(t, apiErr.Message, "neither a query nor a collection")
+		assert.Contains(t, apiErr.Message, "/queries/{query_id}/objects")
 		assert.Contains(t, apiErr.Message, "/collections/{collection_id}/objects")
 	})
 
@@ -349,10 +351,10 @@ func TestV2ListViews(t *testing.T) {
 				}},
 			}},
 		}
-		fx.expectListRead("set1", setRead(dv))
+		fx.expectListRead("query1", queryRead(dv))
 
 		// when
-		views, total, hasMore, err := fx.GetSetViews(context.Background(), testSpaceId, "set1", 0, 25)
+		views, total, hasMore, err := fx.GetQueryViews(context.Background(), testSpaceId, "query1", 0, 25)
 
 		// then
 		require.NoError(t, err)
@@ -402,12 +404,12 @@ func TestV2SubstitutePlaceholders(t *testing.T) {
 		fx := newV2Fixture(t)
 
 		// when
-		out, warnings := fx.substitutePlaceholders(testSpaceId, "set1", placeholderFilter(filterTemplateHost))
+		out, warnings := fx.substitutePlaceholders(testSpaceId, "query1", placeholderFilter(filterTemplateHost))
 
 		// then: resolved, not dropped-with-warning (the default placeholder arm)
 		require.Empty(t, warnings)
 		require.Len(t, out, 1)
-		assert.Equal(t, "set1", out[0].Value.GetStringValue())
+		assert.Equal(t, "query1", out[0].Value.GetStringValue())
 	})
 
 	t.Run("an empty account identity degrades the user placeholder to a warning", func(t *testing.T) {
@@ -416,7 +418,7 @@ func TestV2SubstitutePlaceholders(t *testing.T) {
 		fx.Service.accountId = ""
 
 		// when
-		out, warnings := fx.substitutePlaceholders(testSpaceId, "set1", placeholderFilter(filterTemplateUser))
+		out, warnings := fx.substitutePlaceholders(testSpaceId, "query1", placeholderFilter(filterTemplateUser))
 
 		// then: the leaf drops (evaluated literally it would match nothing)
 		assert.Empty(t, out)

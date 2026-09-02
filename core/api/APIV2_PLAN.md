@@ -125,7 +125,7 @@ is cheaper to specify after them.
 
 ## Tickets outside API v2
 
-- **`POST /sets` still runs a whole-document creating-resolver import** — the same dangling-name minting the view ops fixed, on a path that predates them. Needs its own change: the caller authored the whole document, so "did they mean this?" cannot be answered the way it was for view ops. *(PUT was the other half of this item and left with §8.27.)*
+- **`POST /queries` still runs a whole-document creating-resolver import** — the same dangling-name minting the view ops fixed, on a path that predates them. Needs its own change: the caller authored the whole document, so "did they mean this?" cannot be answered the way it was for view ops. *(PUT was the other half of this item and left with §8.27.)*
 - **Date objects** — a view op on one dies inside `sb.Apply` with `state.ErrRestricted` (a different sentinel from `restriction.ErrRestricted`), likely surfacing as a 500. Pre-existing and shared with every block op.
 - **GO-5969** — the type default-view visibility regression, cherry-picked to `develop` as PR #3235. Independent of this branch; every type created since Nov 2025 has an all-columns-hidden "All" view until it merges.
 - Two eval documents remain in the throwaway test account. 3.3 shipped but

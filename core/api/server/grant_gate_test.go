@@ -74,7 +74,7 @@ var knownRouteParams = map[string]bool{
 	"key":            true,
 	"kind":           true,
 	"op":             true,
-	"set_id":         true,
+	"query_id":       true,
 	"collection_id":  true,
 	"chat_id":        true,
 	"message_id":     true,

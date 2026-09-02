@@ -390,7 +390,7 @@ func TestV2Routes(t *testing.T) {
 			{"POST", "/v2/spaces/space1/properties"},
 			{"PATCH", "/v2/spaces/space1/properties/status"},
 			{"DELETE", "/v2/spaces/space1/properties/status"},
-			{"POST", "/v2/spaces/space1/sets"},
+			{"POST", "/v2/spaces/space1/queries"},
 			{"POST", "/v2/spaces/space1/collections"},
 			{"POST", "/v2/spaces/space1/templates"},
 			{"POST", "/v2/spaces/space1/files"},
@@ -400,8 +400,8 @@ func TestV2Routes(t *testing.T) {
 			{"PATCH", "/v2/spaces/space1/objects/obj1"},
 			{"POST", "/v2/search"},
 			{"POST", "/v2/spaces/space1/search"},
-			{"GET", "/v2/spaces/space1/sets/set1/objects"},
-			{"GET", "/v2/spaces/space1/sets/set1/views"},
+			{"GET", "/v2/spaces/space1/queries/query1/objects"},
+			{"GET", "/v2/spaces/space1/queries/query1/views"},
 			{"GET", "/v2/spaces/space1/collections/col1/objects"},
 			{"GET", "/v2/spaces/space1/collections/col1/views"},
 			{"GET", "/v2/spaces/space1/chats"},
@@ -423,4 +423,41 @@ func TestV2Routes(t *testing.T) {
 			require.Equal(t, http.StatusUnauthorized, w.Code, "%s %s", route.method, route.path)
 		}
 	})
+}
+
+// TestV2QueryRouteNames pins the Query resource's REST paths by name on the
+// engine itself. The product name of this object is Query while its internal
+// uniqueKey is still "set" — request bodies, type resolution and stored data
+// all keep spelling it "set" — so a rename of the REST noun is easy to apply
+// to half the surface and leave the router serving the other. The engine's
+// route table is where both halves are visible at once: it fails if the
+// paths regress, and it fails if any /v2 route reintroduces the old noun.
+func TestV2QueryRouteNames(t *testing.T) {
+	// given
+	fx := newV2ServerFixture(t)
+	registered := map[string]bool{}
+	for _, route := range fx.Engine().Routes() {
+		registered[route.Method+" "+route.Path] = true
+	}
+
+	// then: the three routes that carry the Query noun
+	for _, want := range []string{
+		"POST /v2/spaces/:space_id/queries",
+		"GET /v2/spaces/:space_id/queries/:query_id/objects",
+		"GET /v2/spaces/:space_id/queries/:query_id/views",
+	} {
+		require.True(t, registered[want], "the Query surface must serve %s", want)
+	}
+
+	// and: no /v2 route spells the resource "set" any more — not the paths,
+	// not the path params (the gate's knownRouteParams pins the param names
+	// only as a closed list, so a :set_id reintroduced here would pass there
+	// the moment someone added it back to that list)
+	for _, route := range fx.Engine().Routes() {
+		if !strings.HasPrefix(route.Path, "/v2/") {
+			continue
+		}
+		require.NotContains(t, route.Path, "/sets", "%s %s uses the pre-rename REST noun", route.Method, route.Path)
+		require.NotContains(t, route.Path, ":set_id", "%s %s uses the pre-rename path param", route.Method, route.Path)
+	}
 }

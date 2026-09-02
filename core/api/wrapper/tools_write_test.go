@@ -75,7 +75,8 @@ func TestCreate(t *testing.T) {
 		})
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), `property "status" has no option named "done" — this tool never creates options`)
+		assert.Contains(t, err.Error(), `property "Status" has no option named "done" — this tool never creates options`,
+			"the guard names the property by its display name — the vocabulary describe teaches")
 		assert.Contains(t, err.Error(), "existing: Backlog, Done")
 		assert.Contains(t, err.Error(), `did you mean "Done"?`)
 		assert.Empty(t, fx.sent("POST /v2/spaces/space1/objects"), "nothing reaches the create endpoint")

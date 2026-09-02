@@ -94,7 +94,7 @@ require (
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef
 	github.com/stretchr/testify v1.11.1
-	github.com/swaggo/swag/v2 v2.0.0-rc4
+	github.com/swaggo/swag/v2 v2.0.0-rc4 // openapi generation: rc5 emits BearerAuth (not bearerauth) and an empty externalDocs.description, so make openapi must build THIS version
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/valyala/fastjson v1.6.10
 	github.com/vektra/mockery/v2 v2.53.6

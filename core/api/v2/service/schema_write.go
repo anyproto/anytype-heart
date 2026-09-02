@@ -43,8 +43,8 @@ const (
 	maxV2PropertyOptions   = 100  // property options (maxItems)
 	maxV2OptionColorLength = 64   // option color (maxLength)
 	maxV2FilterLength      = 4096 // the compact filter string (maxLength)
-	maxV2SetSorts          = 10   // set sorts (maxItems)
-	maxV2SetViews          = 10   // set views (maxItems)
+	maxV2QuerySorts        = 10   // query sorts (maxItems)
+	maxV2QueryViews        = 10   // query views (maxItems)
 	maxV2CollectionItems   = 1000 // collection items (maxItems)
 	maxV2UrlLength         = 4096 // file source url (maxLength)
 )
@@ -498,7 +498,7 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey string, body 
 	}
 	// live lookup, slug-aware — a UI-deleted type must 404, never steer the
 	// caller into patching a corpse (§2.3-6)
-	entry, err := s.requireLiveType(spaceId, typeKey, "/key")
+	entry, err := s.requireLiveType(spaceId, typeKey, "/key", errKeysFor(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -713,7 +713,7 @@ func (s *Service) DeleteType(ctx context.Context, spaceId, typeKey string, dryRu
 		return nil, err
 	}
 	// live lookup, slug-aware — deleting a corpse is a 404, not a re-archive
-	entry, err := s.requireLiveType(spaceId, typeKey, "/key")
+	entry, err := s.requireLiveType(spaceId, typeKey, "/key", errKeysFor(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -887,7 +887,7 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId, propertyKey strin
 	}
 	// live lookup, slug-aware (§7.5a-5) — a UI-deleted property must 404,
 	// never steer the caller into patching a corpse (§2.3-6)
-	entry, err := s.requireLiveProperty(spaceId, propertyKey)
+	entry, err := s.requireLiveProperty(spaceId, propertyKey, errKeysFor(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -926,7 +926,7 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId, propertyKey strin
 	}
 	// live lookup, slug-aware — deleting an already-archived or uninstalled
 	// property is a 404, not a second archive of a corpse (§7.5-2)
-	entry, err := s.requireLiveProperty(spaceId, propertyKey)
+	entry, err := s.requireLiveProperty(spaceId, propertyKey, errKeysFor(ctx))
 	if err != nil {
 		return nil, err
 	}

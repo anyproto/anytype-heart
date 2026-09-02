@@ -21,7 +21,7 @@ const maxValidateBodySize = 10 << 20 // 10 MiB
 //	@Tags			Schemas
 //	@Accept			json
 //	@Produce		json
-//	@Param			Idempotency-Key	header		string					false	"Retry key; identical requests replay, different requests conflict"
+//	@Param			Idempotency-Key	header		string						false	"Retry key; identical requests replay, different requests conflict"
 //	@Success		200				{object}	v2model.ValidateResponse	"Issue and warning lists, empty when the document is valid"
 //	@Failure		401				{object}	util.UnauthorizedError		"Missing or invalid key. This is the shared auth envelope, not this API's error shape."
 //	@Failure		409				{object}	v2model.Error				"Idempotency-Key was already used with a different request"

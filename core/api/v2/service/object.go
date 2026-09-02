@@ -650,7 +650,7 @@ func (s *Service) ListObjects(ctx context.Context, spaceId string, fields []stri
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, err
 	}
-	if err := s.validateListFields(spaceId, fields); err != nil {
+	if err := s.validateListFields(spaceId, fields, errKeysFor(ctx)); err != nil {
 		return nil, 0, false, err
 	}
 	index := s.store.SpaceIndex(spaceId)

@@ -1,6 +1,6 @@
 package v2handler
 
-// The sets/collections read handlers' WIRING is what these tests pin: the
+// The queries/collections read handlers' WIRING is what these tests pin: the
 // ?view= and ?fields= query params must actually reach the service, and the
 // service's warning-grade issues must actually reach the JSON response —
 // replacing listFieldsParam(c)/c.Query("view") with nil/"" or dropping
@@ -35,15 +35,16 @@ func listReadRouter(fx *v2HandlerFixture) {
 		MinPageSize:     1,
 		MaxPageSize:     1000,
 	}))
-	fx.router.GET("/v2/spaces/:space_id/sets/:set_id/objects", GetSetObjectsHandler(fx.svc))
-	fx.router.GET("/v2/spaces/:space_id/sets/:set_id/views", GetSetViewsHandler(fx.svc))
+	fx.router.GET("/v2/spaces/:space_id/queries/:query_id/objects", GetQueryObjectsHandler(fx.svc))
+	fx.router.GET("/v2/spaces/:space_id/queries/:query_id/views", GetQueryViewsHandler(fx.svc))
 	fx.router.GET("/v2/spaces/:space_id/collections/:collection_id/objects", GetCollectionObjectsHandler(fx.svc))
 	fx.router.GET("/v2/spaces/:space_id/collections/:collection_id/views", GetCollectionViewsHandler(fx.svc))
 }
 
-// handlerSetRead builds a live set read: layout set, setOf type-chore, and
-// an optional dataview block under the canonical "dataview" id.
-func handlerSetRead(dv *model.BlockContentDataview) apicore.ObjectRead {
+// handlerQueryRead builds a live query read: layout set (the internal name
+// the Query type keeps), setOf type-chore, and an optional dataview block
+// under the canonical "dataview" id.
+func handlerQueryRead(dv *model.BlockContentDataview) apicore.ObjectRead {
 	snapshot := &model.SmartBlockSnapshotBase{
 		Details: &types.Struct{Fields: map[string]*types.Value{
 			bundle.RelationKeyResolvedLayout.String(): pbtypes.Int64(int64(model.ObjectType_set)),
@@ -59,7 +60,7 @@ func handlerSetRead(dv *model.BlockContentDataview) apicore.ObjectRead {
 	return apicore.ObjectRead{Snapshot: snapshot, Heads: []string{"headL"}}
 }
 
-// addChoreType registers the type the set's setOf resolves to.
+// addChoreType registers the type the query's setOf resolves to.
 func (fx *v2HandlerFixture) addChoreType(t *testing.T) {
 	fx.store.AddObjects(t, "space1", []objectstore.TestObject{{
 		bundle.RelationKeyId:             domain.String("type-chore"),
@@ -69,15 +70,15 @@ func (fx *v2HandlerFixture) addChoreType(t *testing.T) {
 	}})
 }
 
-func TestGetSetObjectsHandler(t *testing.T) {
+func TestGetQueryObjectsHandler(t *testing.T) {
 	t.Run("?view= reaches the service (an unknown view 404s)", func(t *testing.T) {
 		// given
 		fx := newV2HandlerFixture(t)
 		listReadRouter(fx)
-		fx.readerMock.EXPECT().ReadObject(mock.Anything, "space1", "set1").Return(handlerSetRead(nil), nil)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, "space1", "query1").Return(handlerQueryRead(nil), nil)
 
 		// when
-		req := httptest.NewRequest(http.MethodGet, "/v2/spaces/space1/sets/set1/objects?view=ghost", nil)
+		req := httptest.NewRequest(http.MethodGet, "/v2/spaces/space1/queries/query1/objects?view=ghost", nil)
 		w := httptest.NewRecorder()
 		fx.router.ServeHTTP(w, req)
 
@@ -90,10 +91,10 @@ func TestGetSetObjectsHandler(t *testing.T) {
 		// given
 		fx := newV2HandlerFixture(t)
 		listReadRouter(fx)
-		fx.readerMock.EXPECT().ReadObject(mock.Anything, "space1", "set1").Return(handlerSetRead(nil), nil)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, "space1", "query1").Return(handlerQueryRead(nil), nil)
 
 		// when
-		req := httptest.NewRequest(http.MethodGet, "/v2/spaces/space1/sets/set1/objects?fields=bogus", nil)
+		req := httptest.NewRequest(http.MethodGet, "/v2/spaces/space1/queries/query1/objects?fields=bogus", nil)
 		w := httptest.NewRecorder()
 		fx.router.ServeHTTP(w, req)
 
@@ -121,10 +122,10 @@ func TestGetSetObjectsHandler(t *testing.T) {
 				Value:       pbtypes.String("_filter_template_9_"),
 			}},
 		}}}
-		fx.readerMock.EXPECT().ReadObject(mock.Anything, "space1", "set1").Return(handlerSetRead(dv), nil)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, "space1", "query1").Return(handlerQueryRead(dv), nil)
 
 		// when
-		req := httptest.NewRequest(http.MethodGet, "/v2/spaces/space1/sets/set1/objects?view=v1", nil)
+		req := httptest.NewRequest(http.MethodGet, "/v2/spaces/space1/queries/query1/objects?view=v1", nil)
 		w := httptest.NewRecorder()
 		fx.router.ServeHTTP(w, req)
 

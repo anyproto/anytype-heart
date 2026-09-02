@@ -346,7 +346,7 @@ func TestPrepareValuesIsOrderDeterministic(t *testing.T) {
 	for i := 0; i < 32; i++ {
 		_, err := fx.Runner.prepareValues(context.Background(), &Session{}, "space1", idx, values, false)
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), `property key "DueDate"`,
+		assert.Contains(t, err.Error(), `property "DueDate"`,
 			"the alphabetically first offending key, every run")
 	}
 }

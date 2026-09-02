@@ -123,7 +123,7 @@ POST /v2/spaces/{space_id}/objects       # body: AnyBlock document (ids optional
                                         # or shortcut {type, name, properties, markdown}
 POST /v2/spaces/{space_id}/types         # kind:"objectType" doc — typeProperties creates missing properties
 POST /v2/spaces/{space_id}/properties    # {key?, name, format, options?:[{name,color?}]}
-POST /v2/spaces/{space_id}/sets          # {name, type, filters|filter, sorts?, views?}
+POST /v2/spaces/{space_id}/queries       # {name, type, filters|filter, sorts?, views?}
 POST /v2/spaces/{space_id}/collections   # {name, items?}
 POST /v2/spaces/{space_id}/templates     # AnyBlock doc with templateFor → generic object-create path
 POST /v2/spaces/{space_id}/files         # upload (multipart or URL) → file object id
@@ -323,8 +323,8 @@ preconditions (C7 note).
 
 ```
 POST /v2/spaces/{space_id}/search        (+ POST /v2/search global)
-GET  /v2/spaces/{space_id}/sets/{set_id}/objects?view={viewId}&fields=…
-GET  /v2/spaces/{space_id}/sets/{set_id}/views
+GET  /v2/spaces/{space_id}/queries/{query_id}/objects?view={viewId}&fields=…
+GET  /v2/spaces/{space_id}/queries/{query_id}/views
 GET  /v2/spaces/{space_id}/collections/{collection_id}/objects?fields=…
 GET  /v2/spaces/{space_id}/collections/{collection_id}/views
 ```
@@ -353,7 +353,7 @@ illustration):
   or `filters`, not both") (R15). Both forms land on **one internal tree**
   (the SPEC §6.2 filter node).
 - **Request-shape conventions** (fixes v0.3.x drift): the sort field is
-  **`sorts`** — the SPEC §6.2 view name and the shipped POST /sets name
+  **`sorts`** — the SPEC §6.2 view name and the shipped POST /queries name
   (research §4.5 introduced the singular; one concept two names is exactly
   the duality C2 bans). Pagination is the **C10 query params**
   (`offset`/`limit`, default 25, `has_more`) like every shipped v2 list —
@@ -370,7 +370,7 @@ illustration):
   reserved post-v1). Parse → the §6.2 structured tree; offset-addressed
   parse errors naming the offending token and position, with did-you-mean.
   The string uses RFC 3339 dates / preset functions; the structured form
-  uses unix numbers — the §6.2.1 mapping applies. The `POST /sets`
+  uses unix numbers — the §6.2.1 mapping applies. The `POST /queries`
   wiring (replacing the §8.1 501), through the same R9 referential layer,
   shipped with it.
 - **Validation & resolution rules** (previously a one-line "design deltas"
@@ -426,7 +426,7 @@ illustration):
   with no read/query endpoint — a collection's members were readable only
   as the raw `items` id array on GET object (unpaginated bare ids), a
   regression vs v1's `/lists/{listId}`. The GET routes above cover both:
-  `sets/{id}/*` requires a set (its dataview source drives the query),
+  `queries/{id}/*` requires a query (its dataview source drives it),
   `collections/{id}/*` requires a collection (membership rows = the store
   slice, in its order); one handler branches on layout exactly as v1's
   GetObjectsInList does, and a wrong-layout target is a 400 naming the
@@ -498,7 +498,7 @@ reads / **short handles on wrapper reads** · one vocabulary incl. `type`
 (C12/C13) · path-addressed errors + /validate + dry_run + idempotency ·
 etag advisory by default · filter string as the small-model filter form
 (parser home: `pkg/lib/anyblockjson/filterstring` — it backs `find` in the
-wrapper, Phase-4 search, and the POST /sets `filter` field; SPEC §6.2.1
+wrapper, Phase-4 search, and the POST /queries `filter` field; SPEC §6.2.1
 scope split, v0.7) · atomic composite creates (sets via initial-state
 dataview) · **search is a read** — exempt from Idempotency-Key and
 dry_run (Phase 4) · **`type` as a filter pseudo-key**; top-level `type`
@@ -551,7 +551,7 @@ scalar→array coercion for list-shaped formats
 **view-execution resolver** (direct store query over setOf / the
 collection store slice, with placeholder substitution — Phase 4, §8.4) ·
 **global-search per-space loop + merge** with honest totals (Phase 4,
-§8.4) · **POST /sets `filter` wiring** (the §8.1 501 is gone) · the
+§8.4) · **POST /queries `filter` wiring** (the §8.1 501 is gone) · the
 Phase-4 discovery additions (`search` kind; the grammar on the `filters`
 kind) and the R9 sets-rule system-key widening · **markdown→flat-blocks
 parser** (`anyblockjson.ParseMarkdownBlocks` + the `insert_blocks`
@@ -755,7 +755,7 @@ constrained-decodable — string only), relative-indent authoring (markdown
 channel replaces it), block-field updates beyond `checked` (deliberate
 curation, recorded so the gap is not read as an artifact of the
 replaceBlock-era table), object archive (the REST route exists but is not a
-wrapper tool), set building (`POST /sets` is the REST path; the "build a set
+wrapper tool), query building (`POST /queries` is the REST path; the "build a set
 with filter" eval task runs on the REST surface, not the wrapper).
 
 **Create-with-markdown caveats — DISSOLVED (Phase 5 as built).** The
@@ -1447,7 +1447,7 @@ compensation only fired on single-entry sort lists). An explicit
 
 **Sets/collections.** `?fields=` is validated (see §8.4). The collection
 membership reorder is O(n log n) with one details read per record (the
-insertion sort was O(n²) over the whole membership). POST /sets answers
+insertion sort was O(n²) over the whole membership). POST /queries answers
 a `type` filter leaf — which discovery's shared grammar example invites —
 with a targeted 400 (`a set is already scoped to type "chore" — drop the
 type filter`) instead of "unknown property key". Issue-path convention,
@@ -1823,7 +1823,7 @@ now it replays.
   degrades to an empty name exactly like a v1 cache miss.
 - **`ensureChat` guard.** Every chat-scoped route first resolves the id
   in the store: unknown → 404 steering to GET /chats; a non-chat layout
-  → targeted 400 (the sets/collections wrong-layout precedent) — the
+  → targeted 400 (the queries/collections wrong-layout precedent) — the
   chat RPCs' own failure for a bad target is opaque.
 - **Message DTO shape**: `{id, order, author?, author_id?, at, edited_at?,
   text, blocks_text?, reply_to?, reactions?, reacted_by?, attachments?,
@@ -1936,7 +1936,7 @@ upload a file (POST /files) and never find it again. As built:
 - **Scope: the search surface only** (space-scoped and global — one plan
   builder). ListObjects has NO type channel and deliberately gains none
   (§4's "the v1 opt-in reproduced *without a new parameter*"); file
-  discovery is search's job. The sets/collections reads never had the
+  discovery is search's job. The queries/collections reads never had the
   layout scope at all (their filters are the setOf/membership
   translation — verified `listObjects` in `v2_list_read.go`), so a set
   over a file type already returned its rows; nothing to widen there.
@@ -2486,7 +2486,7 @@ direction available:
 `validateFilterStructure` (`search.go`) enforces the SHAPE the served
 `filters` schema already described but nothing checked, and
 `decodeFilterNodes` is the single entry both v2 callers use. **The gate runs
-on POST /sets as well as the query path**, because a set PERSISTS its filter:
+on POST /queries as well as the query path**, because a set PERSISTS its filter:
 there the same shape is not a bad query but a set that quietly contains the
 whole space, for good.
 
@@ -2621,7 +2621,7 @@ never minutes.
 ### 8.17 The view write path: update_view (2026-08-07 — decisions as built)
 
 **The gap, as reported by an agent using the API.** Dataview views were
-readable three ways (the object document, `GET …/sets/{id}/views`,
+readable three ways (the object document, `GET …/queries/{id}/views`,
 `…/collections/{id}/views`) and writable zero ways after creation: the
 then-existing PUT refused type documents by kind, the types PATCH accepts
 only properties/typeProperties, and no view route accepts a write. The reporter's
@@ -2657,7 +2657,7 @@ ambiguity/not-found error lists `id ("name")` pairs so the repair needs no
 second read). `set` merges §6.2 view-level fields with update_block
 semantics (named fields change, explicit null clears one); `sorts` and
 `filters` replace whole when named — small ordered lists; `filter` is the
-compact-string alternative to `filters` (parsed exactly as POST /sets
+compact-string alternative to `filters` (parsed exactly as POST /queries
 parses it, ambiguous together). `columns` merges PER COLUMN, keyed by
 property key: a patch object merges `{hidden, width, align, aggregation}`
 into that property's column, appends a column for a key that has none, and
@@ -2680,7 +2680,7 @@ silent-degradation an op surface must not inherit. Sorts and filters
 validate through the exported fragment codec (`UnmarshalSorts`,
 `UnmarshalFilters` — read-only resolvers, issues rebased onto
 `ops[i].set.…` paths), the M3 structural gate runs on `set.filters` for the
-same reason it runs on POST /sets (a persisted match-everything filter is a
+same reason it runs on POST /queries (a persisted match-everything filter is a
 view that quietly shows the whole space, for good), and the §6.2
 unguarded-date-comparison finding rides the C11 warnings channel — PATCH
 responses now carry `warnings` for the first time.
@@ -2697,7 +2697,7 @@ uploads all check it) while the native view surface — `sdataview.
 UpdateView`/`CreateView`/`DeleteView`, i.e. v1's ungated
 `BlockDataviewView*` RPCs — checks NO object-level restriction, which is
 how the app edits views on a set at all. Proved three ways:
-`objectmutateadapter_test.go` pins sets/collections AND a custom type
+`objectmutateadapter_test.go` pins queries/collections AND a custom type
 object against the LIVE restriction table (Blocks refused, Details not);
 `viewops_test.go` drives a PatchObject with production-shaped
 `BlocksRefused`+`DetailsRefused` on the read and asserts the op succeeds
@@ -2724,7 +2724,7 @@ known to the dataview (pre-merge membership: properties list ∪ any view's
 columns) or to the space — rejected with the did-you-mean otherwise;
 resolvable keys are appended to the dataview's `properties` list so formats
 rehydrate (§6.2 sorts/filters carry no cached format). This is deliberately
-LOOSER than POST /sets' R9 rule (type-recommended keys only): generated
+LOOSER than POST /queries' R9 rule (type-recommended keys only): generated
 views already carry columns outside that set (`backlinks`,
 `lastModifiedBy`, `lastOpenedDate`), and an edit surface must not reject
 what the surface already shows. The divergence means a two-step
@@ -2753,7 +2753,7 @@ enum tables; and removing the op registration trivially fails the whole
 
 **Deliberately NOT built** *(superseded by §8.18 — the view family shipped
 the same day)*. View create/delete/reorder (`addView`/
-`delete_view` — POST /sets seeds multiple views at creation; editing was the
+`delete_view` — POST /queries seeds multiple views at creation; editing was the
 reported gap; creation-after-the-fact is a separate, smaller decision and
 the native RPC precedent has its own last-view invariant). Name-based view
 addressing (see above). A dataview-properties op (the `properties` list
@@ -3847,8 +3847,8 @@ construction.
 
 **What this retires from the plan.** Wave 2.1's "teach PUT the
 unique-suffix resolution C4 already permits" disappears with its subject,
-as does the review-debt item "PUT and `POST /sets` still run whole-document
-creating-resolver imports" for the PUT half (`POST /sets` still does).
+as does the review-debt item "PUT and `POST /queries` still run whole-document
+creating-resolver imports" for the PUT half (`POST /queries` still does).
 
 **The one capability it nominally served — "clear the document and write
 new content" — is owed a replacement.** Today that costs a `delete_block`
@@ -5295,7 +5295,7 @@ and is why this change moved no existing test.
 | `POST /v2/search` (global) | rows' `space_id` | **honoured** — the one place an agent learns a space id it did not name |
 | `GET /v2/auth/whoami` | `grant.spaces[].id` | **honoured**. It has no space in its path, but it does have a space id in its body, and it is the surface a holder reads to learn which spaces it holds — the answer a scoped integration writes into its own config |
 | ambiguity refusals (`ResolveSpaceRef` candidates) | the candidates | **honoured** — a refusal's repair value is part of the response |
-| `POST /v2/spaces/{id}/search`, `GET …/objects`, members, types, properties, chats, sets/collections | **no space id in the body** | parsed and ignored: there is nothing to spell |
+| `POST /v2/spaces/{id}/search`, `GET …/objects`, members, types, properties, chats, queries/collections | **no space id in the body** | parsed and ignored: there is nothing to spell |
 | `GET …/objects/{id}`, `GET …/types/{key}` | no space id in the document | see below |
 
 Two surfaces deliberately did **not** change:
@@ -6368,7 +6368,7 @@ differs from the property one because a create cannot drop its type.
 
 #### 6. Sets, options, archived
 
-- **`POST /sets`** validated filter/sort keys against the type's
+- **`POST /queries`** validated filter/sort keys against the type's
   recommended lists — resolved by id, never stripped of deleted relations,
   i.e. the DEFAULT state after any UI delete. The removal gate now runs
   after the membership pass. (Tombstone window: the recommended-list

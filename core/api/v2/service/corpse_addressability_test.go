@@ -221,7 +221,7 @@ func TestV2CorpseNeverListsNorResolves(t *testing.T) {
 
 		// and: no spelling addresses it on routes
 		for _, input := range []string{corpseBsonKey, corpseSlug, "Warranty until"} {
-			_, err := fx.requireLiveProperty(testSpaceId, input)
+			_, err := fx.requireLiveProperty(testSpaceId, input, errKeys{})
 			requireNotFoundError(t, err)
 		}
 		for _, input := range []string{corpseTypeBsonKey, corpseTypeSlug} {
@@ -598,7 +598,7 @@ func TestV2UninstalledBundledPropertyRefusesWrites(t *testing.T) {
 	t.Run("the route side is corpse-aware: 404", func(t *testing.T) {
 		corpseShapes(t, func(t *testing.T, shape corpseShape) {
 			fx := newFx(t, shape)
-			_, err := fx.requireLiveProperty(testSpaceId, "due_date")
+			_, err := fx.requireLiveProperty(testSpaceId, "due_date", errKeys{})
 			requireNotFoundError(t, err)
 		})
 	})
@@ -1168,16 +1168,16 @@ func TestV2RemovedBundledTypeRefusesWrites(t *testing.T) {
 		})
 	})
 
-	t.Run("POST sets names the removal instead of unknown", func(t *testing.T) {
-		// a set over a bundled-but-uninstalled type was ALREADY refused (a
-		// set needs an installed type object), but as "unknown type key" with
+	t.Run("POST queries names the removal instead of unknown", func(t *testing.T) {
+		// a query over a bundled-but-uninstalled type was ALREADY refused (a
+		// query needs an installed type object), but as "unknown type key" with
 		// a did-you-mean — a lie about a key the space knows and removed
 		// (§8.41-10)
 		corpseShapes(t, func(t *testing.T, shape corpseShape) {
 			fx := newV2Fixture(t)
 			addRemovedType(t, fx, "task", shape)
 
-			_, err := fx.CreateSet(ctx, testSpaceId, v2model.CreateSetRequest{Name: "Tasks", Type: "task"}, false, true)
+			_, err := fx.CreateQuery(ctx, testSpaceId, v2model.CreateQueryRequest{Name: "Tasks", Type: "task"}, false, true)
 
 			requireRemovedType(t, err, "task")
 		})
@@ -1327,18 +1327,18 @@ func TestV2TypePropertiesRefusesRemovedBundledKey(t *testing.T) {
 	})
 }
 
-// TestV2SetsRefuseRemovedBundledProperty: POST /sets validated filter/sort
-// keys against the queried type's recommended lists — resolved BY ID and
-// never stripped of deleted relations, which is the DEFAULT state after any
-// UI delete — so a new set could persist a query against a removed property
+// TestV2QueriesRefuseRemovedBundledProperty: POST /queries validated
+// filter/sort keys against the queried type's recommended lists — resolved BY
+// ID and never stripped of deleted relations, which is the DEFAULT state
+// after any UI delete — so a new query could persist a filter on a removed property
 // (§8.41-6). Both bundled key classes; three shapes. On the tombstone leg
 // the recommended-list resolution itself cannot spell the key (the row has
 // none), so the key falls out of the type's reference set and the refusal
 // comes from the has-no-property branch — a 400 either way, pinned as such.
 // Revert check (executed): dropping the removal gate in list_create's
 // validateViewKeys turns the flag-only and prod legs green-through (the
-// set is created) and both fail.
-func TestV2SetsRefuseRemovedBundledProperty(t *testing.T) {
+// query is created) and both fail.
+func TestV2QueriesRefuseRemovedBundledProperty(t *testing.T) {
 	ctx := context.Background()
 	newFx := func(t *testing.T, key string, format model.RelationFormat, shape corpseShape) *v2Fixture {
 		fx := newV2Fixture(t)
@@ -1370,7 +1370,7 @@ func TestV2SetsRefuseRemovedBundledProperty(t *testing.T) {
 		corpseShapes(t, func(t *testing.T, shape corpseShape) {
 			fx := newFx(t, "dueDate", model.RelationFormat_date, shape)
 
-			_, err := fx.CreateSet(ctx, testSpaceId, v2model.CreateSetRequest{
+			_, err := fx.CreateQuery(ctx, testSpaceId, v2model.CreateQueryRequest{
 				Name: "Late bugs", Type: "bug",
 				Filters: json.RawMessage(`[{"property":"due_date","condition":"empty"}]`),
 			}, false, true)
@@ -1388,7 +1388,7 @@ func TestV2SetsRefuseRemovedBundledProperty(t *testing.T) {
 		corpseShapes(t, func(t *testing.T, shape corpseShape) {
 			fx := newFx(t, "tag", model.RelationFormat_tag, shape)
 
-			_, err := fx.CreateSet(ctx, testSpaceId, v2model.CreateSetRequest{
+			_, err := fx.CreateQuery(ctx, testSpaceId, v2model.CreateQueryRequest{
 				Name: "By tag", Type: "bug",
 				Sorts: json.RawMessage(`[{"property":"tag","direction":"asc"}]`),
 			}, false, true)

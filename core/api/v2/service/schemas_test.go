@@ -32,7 +32,7 @@ func TestV2Schemas(t *testing.T) {
 			assert.NotEmpty(t, entry.Endpoint, entry.Kind)
 			assert.Equal(t, "/v2/schemas/"+entry.Kind, entry.Url)
 		}
-		for _, want := range []string{"object", "shortcut", "type", "template", "property", "set", "collection", "file", "filters", "search", "space", "chat", "chatMessage", "chatMessageEdit", "chatReaction", "chatRead"} {
+		for _, want := range []string{"object", "shortcut", "type", "template", "property", "query", "collection", "file", "filters", "search", "space", "chat", "chatMessage", "chatMessageEdit", "chatReaction", "chatRead"} {
 			assert.True(t, kinds[want], "missing kind %s", want)
 		}
 	})
@@ -117,7 +117,7 @@ func TestV2Schemas(t *testing.T) {
 	})
 
 	t.Run("Phase-2 schema bounds match the enforced constants (M6)", func(t *testing.T) {
-		// the property/set/collection/file kinds advertise
+		// the property/query/collection/file kinds advertise
 		// additionalProperties:false plus bounds; the endpoints now bind
 		// strict and enforce those bounds (schema_write.go constants) — this
 		// drift test pins the served JSON to the enforced values so neither
@@ -165,12 +165,12 @@ func TestV2Schemas(t *testing.T) {
 		assert.Equal(t, maxV2NameLength, propertySchema.Properties.Options.Items.Properties["name"].MaxLength)
 		assert.Equal(t, maxV2OptionColorLength, propertySchema.Properties.Options.Items.Properties["color"].MaxLength)
 
-		set := bounds("set")
-		assert.Equal(t, maxV2NameLength, set["name"].MaxLength)
-		assert.Equal(t, maxV2KeyLength, set["type"].MaxLength)
-		assert.Equal(t, maxV2FilterLength, set["filter"].MaxLength)
-		assert.Equal(t, maxV2SetSorts, set["sorts"].MaxItems)
-		assert.Equal(t, maxV2SetViews, set["views"].MaxItems)
+		query := bounds("query")
+		assert.Equal(t, maxV2NameLength, query["name"].MaxLength)
+		assert.Equal(t, maxV2KeyLength, query["type"].MaxLength)
+		assert.Equal(t, maxV2FilterLength, query["filter"].MaxLength)
+		assert.Equal(t, maxV2QuerySorts, query["sorts"].MaxItems)
+		assert.Equal(t, maxV2QueryViews, query["views"].MaxItems)
 
 		collection := bounds("collection")
 		assert.Equal(t, maxV2NameLength, collection["name"].MaxLength)
@@ -253,7 +253,7 @@ func TestV2Schemas(t *testing.T) {
 		// generation-facing search schema: constrained decoders (OpenAI
 		// strict, GBNF) reject an array without items, which would poison
 		// the whole kind — the one the Phase-5 find tool constrains against
-		for _, kind := range []string{"search", "set"} {
+		for _, kind := range []string{"search", "query"} {
 			entry, err := fx.SchemaKind(kind)
 			require.NoError(t, err)
 			var schema struct {

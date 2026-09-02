@@ -299,7 +299,9 @@ func (r *Runner) viewColumnPatches(ctx context.Context, spaceId, objectId, block
 			for _, i := range folded {
 				candidates = append(candidates, view.Columns[i].Property)
 			}
-			return nil, fmt.Errorf("columns key %q matches several columns (%s) — use the exact spelling; nothing was changed",
+			// the candidates are the DOCUMENT's own spellings — display
+			// names under D5 reads — so "column", never "key"
+			return nil, fmt.Errorf("column %q matches several columns (%s) — use the exact spelling; nothing was changed",
 				key, strings.Join(candidates, ", "))
 		}
 		// a key matching no current column passes through verbatim: the op

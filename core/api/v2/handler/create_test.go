@@ -179,11 +179,11 @@ func TestPhase2StrictBinding(t *testing.T) {
 		assert.Equal(t, "/nmae", got.Issues[0].Path)
 	})
 
-	t.Run("an unknown field on POST sets is a 400", func(t *testing.T) {
+	t.Run("an unknown field on POST queries is a 400", func(t *testing.T) {
 		fx := newV2HandlerFixture(t)
-		fx.router.POST("/v2/spaces/:space_id/sets", withDryRunFlag(), CreateSetHandler(fx.svc))
+		fx.router.POST("/v2/spaces/:space_id/queries", withDryRunFlag(), CreateQueryHandler(fx.svc))
 
-		w := post(t, fx, "/v2/spaces/space1/sets", `{"name":"Open","type":"task","filtre":"done = false"}`)
+		w := post(t, fx, "/v2/spaces/space1/queries", `{"name":"Open","type":"task","filtre":"done = false"}`)
 
 		require.Equal(t, http.StatusBadRequest, w.Code)
 		got := decode(t, w)

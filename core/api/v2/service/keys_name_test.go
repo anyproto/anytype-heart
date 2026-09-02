@@ -9,6 +9,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -289,6 +292,103 @@ func TestV2NameAddressedChannels(t *testing.T) {
 
 	t.Run("list fields validate a display name", func(t *testing.T) {
 		fx := slugQueryFixture(t)
-		assert.NoError(t, fx.validateListFields(testSpaceId, []string{"Manual property"}))
+		assert.NoError(t, fx.validateListFields(testSpaceId, []string{"Manual property"}, errKeys{}))
+	})
+}
+
+// TestErrorVocabularyFollowsKeysMode pins §4.3's error half: a referential
+// refusal spells its known-key lists and did-you-mean suggestions in the
+// vocabulary the request chose with ?keys — display names for a name-mode
+// caller (the tool wrapper), the served slug for everyone else. The slug
+// default is the zero errKeys value, so the control cases here double as
+// the byte-compatibility pin for existing clients.
+func TestErrorVocabularyFollowsKeysMode(t *testing.T) {
+	ctx := context.Background()
+	seed := func(t *testing.T) *v2Fixture {
+		fx := newV2Fixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("rel-due"),
+			bundle.RelationKeyRelationKey:    domain.String("due_date"),
+			bundle.RelationKeyName:           domain.String("Due date"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_date)),
+		})
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:        domain.String("type-task"),
+			bundle.RelationKeyUniqueKey: domain.String("ot-task"),
+			bundle.RelationKeyName:      domain.String("Task"),
+		})
+		return fx
+	}
+
+	t.Run("create: unknown property, name mode", func(t *testing.T) {
+		// given
+		fx := seed(t)
+
+		// when
+		_, err := fx.CreateObject(CtxWithNameKeys(ctx), testSpaceId,
+			[]byte(`{"formatVersion":"2.0","type":"page","properties":{"name":"ok","madeUpProp":"x"}}`), false, true)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, "unknown properties", apiErr.Message)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Message, `unknown property "madeUpProp"`)
+		assert.Contains(t, apiErr.Issues[0].Message, "known properties:")
+		assert.Contains(t, apiErr.Issues[0].Message, "Due date",
+			"the known list spells display names — the vocabulary the caller reads under ?keys=name")
+		assert.NotContains(t, apiErr.Issues[0].Message, "due_date",
+			"no slug where a name exists")
+	})
+
+	t.Run("create: unknown property, slug default is untouched", func(t *testing.T) {
+		fx := seed(t)
+
+		_, err := fx.CreateObject(ctx, testSpaceId,
+			[]byte(`{"formatVersion":"2.0","type":"page","properties":{"name":"ok","madeUpProp":"x"}}`), false, true)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, "unknown property keys", apiErr.Message)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Message, `unknown property key "madeUpProp"`)
+		assert.Contains(t, apiErr.Issues[0].Message, "known property keys:")
+		assert.Contains(t, apiErr.Issues[0].Message, "due_date")
+	})
+
+	t.Run("type not found: name mode lists names and suggests one", func(t *testing.T) {
+		fx := seed(t)
+
+		_, _, err := fx.GetType(CtxWithNameKeys(ctx), testSpaceId, "tsak", ObjectQuery{})
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, 404, apiErr.Status)
+		assert.Contains(t, apiErr.Message, "known types:")
+		assert.Contains(t, apiErr.Message, "Task")
+		assert.Contains(t, apiErr.Message, "did you mean Task?",
+			"the suggestion is a spelling a name-mode caller can resend — the type argument resolves names")
+		assert.NotContains(t, apiErr.Message, "type keys")
+	})
+
+	t.Run("type not found: slug default is untouched", func(t *testing.T) {
+		fx := seed(t)
+
+		_, _, err := fx.GetType(ctx, testSpaceId, "tsak", ObjectQuery{})
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, 404, apiErr.Status)
+		assert.Contains(t, apiErr.Message, "known type keys:")
+		assert.Contains(t, apiErr.Message, "did you mean task?")
+	})
+
+	t.Run("search fields: the reference list follows the mode", func(t *testing.T) {
+		fx := seed(t)
+
+		_, err := fx.buildSearchPlan(testSpaceId, v2model.SearchRequest{Fields: []string{"nope"}}, true, errKeys{names: true})
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, "unknown properties", apiErr.Message)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Message, `unknown property "nope"`)
+		assert.Contains(t, apiErr.Issues[0].Message, "Due date",
+			"referenceSpellings serves the display name in name mode")
 	})
 }

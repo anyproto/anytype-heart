@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -302,46 +301,52 @@ func joinStrings(parts []string, sep string) string {
 func TestPatchObject(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("loose integers beyond the safe range keep their exact token in every block channel", func(t *testing.T) {
+	t.Run("an integer beyond the float64 safe range is refused in every write channel", func(t *testing.T) {
+		// The exact-integer SIDECAR was retired when the codec moved to
+		// github.com/anyproto/any-block: that repo now treats the former
+		// metadata spelling as ordinary user data
+		// (TestFormerNumericSidecarKeyIsOrdinaryUserData), so nothing
+		// carries an exact token beside the lossy value any more. What
+		// ships instead is a refusal — v1's value model is a 64-bit float,
+		// and a number that cannot survive it corrupts silently, which is
+		// the one outcome a write must not have. Every channel refuses
+		// alike, and no op is applied.
 		const exact = "9007199254740993"
-		fx := newV2Fixture(t)
-		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
-			bundle.RelationKeyId:             domain.String("rel-precision-number"),
-			bundle.RelationKeyRelationKey:    domain.String("precision_number"),
-			bundle.RelationKeyName:           domain.String("Precision number"),
-			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_number)),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
-		}})
-		read := editRead(t, `{"formatVersion":"2.0","id":"obj1","type":"page","blocks":[`+
-			`{"id":"update1","type":"paragraph","text":"update"},`+
-			`{"id":"replace1","type":"paragraph","text":"replace"},`+
-			`{"id":"table1","type":"table","columns":[{"id":"col1"}],"rows":[{"id":"row1","cells":["before"]}]}]}`)
-		captured := fx.expectMutate(read, "headB")
-
-		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", []byte(`{"ops":[`+
-			`{"op":"set_properties","set":{"precision_number":`+exact+`}},`+
-			`{"op":"update_block","id":"update1","set":{"fields":{"precision_update":`+exact+`}}},`+
-			`{"op":"replace_subtree","id":"replace1","blocks":[{"id":"replace1","type":"paragraph","text":"replaced","fields":{"precision_replace":`+exact+`}}]},`+
-			`{"op":"insert_blocks","blocks":[{"type":"paragraph","text":"inserted","fields":{"precision_insert":`+exact+`}}]},`+
-			`{"op":"set_cell","table_id":"table1","row":"row1","col":"col1","value":{"type":"paragraph","text":"cell","fields":{"precision_cell":`+exact+`}}}`+
-			`]}`), "", false, true)
-		require.NoError(t, err)
-		require.NotNil(t, *captured)
-		storedNumber := (*captured).CombinedDetails().Get(domain.RelationKey("precision_number"))
-		assert.True(t, storedNumber.IsFloat64(), "a number property must stay numeric for native consumers")
-		metadataKey, _, _ := anyblockjson.ExactJSONIntegerMetadata("precision_number", json.Number(exact))
-		assert.Equal(t, exact, (*captured).CombinedDetails().GetString(domain.RelationKey(metadataKey)))
-		updateFields := (*captured).Pick("update1").Model().Fields
-		require.NotNil(t, updateFields)
-		require.IsType(t, &types.Value_NumberValue{}, updateFields.Fields["precision_update"].GetKind(),
-			"block consumers must continue to see a number")
-		body, err := anyblockjson.Marshal(model.SmartBlockType_Page, snapshotFromState(*captured),
-			anyblockjson.Options{Keys: bundledSlugKeys{}})
-		require.NoError(t, err)
-		for _, key := range []string{"precision_number", "precision_update", "precision_replace", "precision_insert", "precision_cell"} {
-			assert.Equal(t, 1, strings.Count(string(body), `"`+key+`": `+exact), "%s: %s", key, body)
+		channels := map[string]string{
+			"set_properties":  `{"op":"set_properties","set":{"precision_number":` + exact + `}}`,
+			"update_block":    `{"op":"update_block","id":"update1","set":{"fields":{"precision_update":` + exact + `}}}`,
+			"replace_subtree": `{"op":"replace_subtree","id":"replace1","blocks":[{"id":"replace1","type":"paragraph","text":"replaced","fields":{"precision_replace":` + exact + `}}]}`,
+			"insert_blocks":   `{"op":"insert_blocks","blocks":[{"type":"paragraph","text":"inserted","fields":{"precision_insert":` + exact + `}}]}`,
+			"set_cell":        `{"op":"set_cell","table_id":"table1","row":"row1","col":"col1","value":{"type":"paragraph","text":"cell","fields":{"precision_cell":` + exact + `}}}`,
 		}
-		assert.NotContains(t, string(body), "9007199254740992")
+		for name, op := range channels {
+			t.Run(name, func(t *testing.T) {
+				// given
+				fx := newV2Fixture(t)
+				fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+					bundle.RelationKeyId:             domain.String("rel-precision-number"),
+					bundle.RelationKeyRelationKey:    domain.String("precision_number"),
+					bundle.RelationKeyName:           domain.String("Precision number"),
+					bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_number)),
+					bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+				}})
+				read := editRead(t, `{"formatVersion":"2.0","id":"obj1","type":"page","blocks":[`+
+					`{"id":"update1","type":"paragraph","text":"update"},`+
+					`{"id":"replace1","type":"paragraph","text":"replace"},`+
+					`{"id":"table1","type":"table","columns":[{"id":"col1"}],"rows":[{"id":"row1","cells":["before"]}]}]}`)
+				fx.expectMutate(read)
+
+				// when
+				_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(op), "", false, true)
+
+				// then
+				apiErr := v2Err(t, err)
+				assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+				assert.Equal(t, v2InvalidDocMessage, apiErr.Message,
+					"the refusal says no op was applied, so a caller knows the document is untouched")
+				require.NotEmpty(t, apiErr.Issues, "the refusal names what it refused")
+			})
+		}
 	})
 
 	t.Run("update_block merges fields, suffix-addressed", func(t *testing.T) {
@@ -2848,7 +2853,7 @@ func TestApplierRenderCounts(t *testing.T) {
 		edit, err := editFromRead("obj1", editRead(t, doc))
 		require.NoError(t, err)
 		resolvers := fx.newCreatingResolvers(ctx, testSpaceId, false, true)
-		return newV2StateApplier(fx.Service, testSpaceId, "obj1", edit.SbType, edit.State, resolvers)
+		return newV2StateApplier(fx.Service, testSpaceId, "obj1", edit.SbType, edit.State, resolvers, errKeys{})
 	}
 
 	t.Run("a replace_text batch renders the document exactly twice", func(t *testing.T) {

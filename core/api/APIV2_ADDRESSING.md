@@ -882,7 +882,7 @@ Consequences, stated honestly:
 - **Import and POST keep one-shot semantics.** The discovery examples
   (`schemas.go`) — `"status": ["In progress"]` on a fresh space — still
   work first try; cross-account import still rebuilds vocabulary. The
-  sets-create path (POST /sets) keeps R9's ahead-of-data option creation.
+  queries-create path (POST /queries) keeps R9's ahead-of-data option creation.
 - **This supersedes R9's blanket default for ops** — an APIV2.md
   decisions-ledger edit. It is possible precisely because nothing has
   shipped; after GA it would be a breaking behavior change.

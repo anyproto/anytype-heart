@@ -60,8 +60,8 @@ func GetObjectHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param		offset		query		int										false	"Items to skip"		default(0)
 //	@Param		limit		query		int										false	"Items to return"	default(25)
 //	@Success	200			{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows"
-//	@Failure	400			{object}	v2model.Error						"Invalid fields query"
-//	@Failure	404			{object}	v2model.Error						"Space not found or unavailable"
+//	@Failure	400			{object}	v2model.Error							"Invalid fields query"
+//	@Failure	404			{object}	v2model.Error							"Space not found or unavailable"
 //	@Security	bearerauth
 //	@Router		/v2/spaces/{space_id}/objects [get]
 func ListObjectsHandler(s *v2service.Service) gin.HandlerFunc {

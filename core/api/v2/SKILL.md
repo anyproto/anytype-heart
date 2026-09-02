@@ -1,6 +1,6 @@
 ---
 name: anytype-api
-description: Call Anytype's local HTTP API v2 directly — search, read, create and edit objects, sets, collections and chats over REST. Use when writing scripts, SDK code or curl against the API. For interactive note/task work prefer the `anytype` CLI and its skill (cmd/anytype/SKILL.md); this guide is the raw-HTTP layer beneath it.
+description: Call Anytype's local HTTP API v2 directly — search, read, create and edit objects, queries, collections and chats over REST. Use when writing scripts, SDK code or curl against the API. For interactive note/task work prefer the `anytype` CLI and its skill (cmd/anytype/SKILL.md); this guide is the raw-HTTP layer beneath it.
 ---
 
 # Anytype API v2 — HTTP guide for agents
@@ -51,7 +51,8 @@ whether you may write. Ask this instead of discovering limits through 403s
   `text`. Use block ids exactly as a read served them.
 - Title and description are **not blocks** — they live in `properties`
   (`name`, `description`). A fresh object has zero blocks.
-- A **set** is a live query over a type; a **collection** is a hand-curated
+- A **query** is a live query over a type (its type key is still `set`, the
+  name it carries internally); a **collection** is a hand-curated
   list (edited via `add_items`/`remove_items`). **Chats** store messages
   outside blocks, paged by order-id cursors.
 
@@ -68,12 +69,12 @@ whether you may write. Ask this instead of discovering limits through 403s
 | add content | op `insert_blocks` with a `markdown` payload — write markdown, the server parses it |
 | restructure | ops `move_block` / `replace_subtree` / `delete_block` (`delete_block` takes `match` too) |
 | one table cell | op `set_cell` — never rewrite the table |
-| show/hide a view column, edit a view | op `update_view` — works on sets, collections and a type's default view (PATCH the type OBJECT id from `GET …/types/{key}`) |
+| show/hide a view column, edit a view | op `update_view` — works on queries, collections and a type's default view (PATCH the type OBJECT id from `GET …/types/{key}`) |
 | add / reorder / remove a view | ops `insert_view` (`copy_from` duplicates one) · `move_view` (`position:"first"` = default tab) · `delete_view` |
 | create an object | `POST …/objects` — shortcut `{type, name, properties, markdown}` covers most cases |
 | delete an object you created | `DELETE …/objects/{id}` — archives (Bin, reversible in the app). Only works on objects THIS key created after provenance shipped; anything else → 403 `not_created_by_this_key`, permanently — don't retry, archive in the app instead. Ownership is matched on the app name EXACTLY (byte-for-byte — re-pair under the identical name to keep delete rights). User content only: system objects 403. Probe first with `?dry_run=true` |
 | curate a collection | PATCH ops `add_items` / `remove_items` on the collection object |
-| read a set / collection | `GET …/sets/{id}/objects` · `…/collections/{id}/objects` (`?view=`, `?fields=`) |
+| read a query / collection | `GET …/queries/{id}/objects` · `…/collections/{id}/objects` (`?view=`, `?fields=`) |
 | new type / property | `POST …/types` · `POST …/properties`; select options ride the property, or `?create_missing_options=true` mints them from values |
 | upload a file | `POST …/files` (multipart or `{"url":…}`) → the id file blocks and chat attachments need |
 | chat | `GET/POST …/chats/{id}/messages`, `POST …/read` — see Chats |
@@ -160,7 +161,7 @@ whether you may write. Ask this instead of discovering limits through 403s
   have to re-read to learn an id you just created.
 - **`update_view`** edits ONE dataview view — never resend the views array.
   `block`/`view` are optional when the object has one dataview and it one
-  view (types, sets, collections usually do). `set` merges view fields
+  view (types, queries, collections usually do). `set` merges view fields
   (`name`, `type`, `groupBy`, `sorts`, `filters` — arrays replace whole;
   `filter` takes the compact string; null clears a field); `columns` merges
   per property key: `{"hidden": false}` shows a column, `null` removes it,
@@ -267,7 +268,7 @@ read: no `Idempotency-Key`, `dry_run` ignored.
 
 - `GET /v2/schemas` — index. `GET /v2/schemas/{kind}` — strict JSON Schema
   + worked example per request kind (`object`, `shortcut`, `type`,
-  `template`, `property`, `set`, `collection`, `file`, `search`, `space`,
+  `template`, `property`, `query`, `collection`, `file`, `search`, `space`,
   `filters`, `chat`, `chatMessage`, `chatMessageEdit`, `chatReaction`,
   `chatRead`). The `filters` kind also serves the filter-string grammar
   (EBNF + examples). `GET /v2/schemas/ops/{op}` — per-op schema + example.

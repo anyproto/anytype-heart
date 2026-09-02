@@ -1,7 +1,7 @@
 package v2service
 
-// list_create.go implements POST sets and POST collections. Sets follow
-// §8/R10: ObjectCreateSet takes no filters, so the set
+// list_create.go implements POST queries and POST collections. Queries follow
+// §8/R10: ObjectCreateSet takes no filters, so the query
 // is built as one AnyBlock document whose initial state carries a fully-
 // formed dataview block — one change set, honestly atomic — reusing the
 // generic create path. Collections use the AnyBlock items import path.
@@ -20,25 +20,25 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// dataviewBlockId is the block id the set/collection editors expect their
+// dataviewBlockId is the block id the query/collection editors expect their
 // dataview under (template.DataviewBlockId) — a fresh id would make the
 // editor add a second, default dataview at first open.
 const dataviewBlockId = "dataview"
 
-// CreateSet implements POST /v2/spaces/{space_id}/sets.
-func (s *Service) CreateSet(ctx context.Context, spaceId string, req v2model.CreateSetRequest, dryRun, createMissingOptions bool) (*v2model.CreateResult, error) {
+// CreateQuery implements POST /v2/spaces/{space_id}/queries.
+func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.CreateQueryRequest, dryRun, createMissingOptions bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	if req.Name == "" {
 		return nil, v2model.ValidationFailed("name is required",
-			v2model.Issue{Path: "/name", Message: "a set needs a name"})
+			v2model.Issue{Path: "/name", Message: "a query needs a name"})
 	}
 	if req.Type == "" {
 		return nil, v2model.ValidationFailed("type is required",
-			v2model.Issue{Path: "/type", Message: "a set queries one type — name its key", Hint: fmt.Sprintf("list keys with GET /v2/spaces/%s/types", spaceId)})
+			v2model.Issue{Path: "/type", Message: "a query runs over one type — name its key", Hint: fmt.Sprintf("list keys with GET /v2/spaces/%s/types", spaceId)})
 	}
-	// the bounds the set kind advertises (M6): field lengths and the
+	// the bounds the query kind advertises (M6): field lengths and the
 	// sorts/views item caps
 	if err := validateV2FieldLength("/name", req.Name, maxV2NameLength); err != nil {
 		return nil, err
@@ -49,10 +49,10 @@ func (s *Service) CreateSet(ctx context.Context, spaceId string, req v2model.Cre
 	if err := validateV2FieldLength("/filter", req.Filter, maxV2FilterLength); err != nil {
 		return nil, err
 	}
-	if err := validateV2ArrayCount("/sorts", req.Sorts, maxV2SetSorts); err != nil {
+	if err := validateV2ArrayCount("/sorts", req.Sorts, maxV2QuerySorts); err != nil {
 		return nil, err
 	}
-	if err := validateV2ArrayCount("/views", req.Views, maxV2SetViews); err != nil {
+	if err := validateV2ArrayCount("/views", req.Views, maxV2QueryViews); err != nil {
 		return nil, err
 	}
 	// C6: filter and filters are mutually exclusive; both → ambiguous_input
@@ -67,8 +67,8 @@ func (s *Service) CreateSet(ctx context.Context, spaceId string, req v2model.Cre
 	}
 
 	// the queried type must exist in the space — its property keys are the
-	// R9 reference set for the filters. Live lookup, slug-aware: a set over
-	// a UI-deleted type would be a set over a corpse (§7.5-2 corpse policy).
+	// R9 reference set for the filters. Live lookup, slug-aware: a query over
+	// a UI-deleted type would be a query over a corpse (§7.5-2 corpse policy).
 	typeEntries, err := s.liveTypes(spaceId)
 	if err != nil {
 		return nil, err
@@ -80,14 +80,14 @@ func (s *Service) CreateSet(ctx context.Context, spaceId string, req v2model.Cre
 	if !ok || entry.Id == "" {
 		// a bundled key resolving with no live install may be one this space
 		// REMOVED — say that, not "unknown" with a did-you-mean (§8.41-10);
-		// the refusal itself predates §8.41 (a set requires an installed
+		// the refusal itself predates §8.41 (a query requires an installed
 		// type either way)
 		if ok && entry.Id == "" {
 			if err := s.refuseRemovedType(ctx, spaceId, entry.Key, "/type"); err != nil {
 				return nil, err
 			}
 		}
-		return nil, s.unknownTypeKeyError(spaceId, req.Type, "/type")
+		return nil, s.unknownTypeKeyError(spaceId, req.Type, "/type", errKeysFor(ctx))
 	}
 	typeId := entry.Id
 	// downstream builders derive `ot-` URLs from the type term — hand them
@@ -96,13 +96,13 @@ func (s *Service) CreateSet(ctx context.Context, spaceId string, req v2model.Cre
 
 	// the compact filter string (SPEC §6.2.1) parses to the structured array
 	// through the same reference set the structured form is validated
-	// against; the set document stores the structured array (export keeps
+	// against; the query document stores the structured array (export keeps
 	// writing it — the document field `filter` stays reserved post-v1).
-	// Option names are deliberately NOT parse-validated here: a set create is
-	// a WRITE, where select option names create-missing (R9/§8.1) — unlike
-	// the read-only query path.
+	// Option names are deliberately NOT parse-validated here: a query create
+	// is a WRITE, where select option names create-missing (R9/§8.1) — unlike
+	// the read-only search path.
 	// kc canonicalizes the request's property spellings (served slugs →
-	// stored keys) — the set DOCUMENT persists these keys, and a served
+	// stored keys) — the query DOCUMENT persists these keys, and a served
 	// spelling landing in a dataview filter would bind a RelationKey the
 	// store never matches, silently (review cause 3)
 	kc, err := s.newKeyCanon(spaceId)
@@ -134,9 +134,9 @@ func (s *Service) CreateSet(ctx context.Context, spaceId string, req v2model.Cre
 	if req.Views, err = kc.canonicalizeRawChannel(req.Views, "views", "/views"); err != nil {
 		return nil, err
 	}
-	// M3: the same structural gate the query path runs. A set persists its
+	// M3: the same structural gate the search path runs. A query persists its
 	// filter, so a match-everything shape here is not a bad query — it is a
-	// set that quietly contains the whole space, for good. (The string form
+	// query that quietly contains the whole space, for good. (The string form
 	// above cannot produce these shapes; the parser emits a condition on
 	// every leaf and never a childless group.)
 	if len(req.Filters) > 0 {
@@ -155,7 +155,7 @@ func (s *Service) CreateSet(ctx context.Context, spaceId string, req v2model.Cre
 		return nil, err
 	}
 
-	doc, err := s.buildSetDocument(spaceId, typeId, req, referenced)
+	doc, err := s.buildQueryDocument(spaceId, typeId, req, referenced)
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +260,7 @@ type viewProbe struct {
 
 // collectViewPropertyKeys gathers every property key the request's filters,
 // sorts and views address, each with its JSON path.
-func collectViewPropertyKeys(req v2model.CreateSetRequest) ([]viewKeyRef, error) {
+func collectViewPropertyKeys(req v2model.CreateQueryRequest) ([]viewKeyRef, error) {
 	var refs []viewKeyRef
 	if len(req.Filters) > 0 {
 		var nodes []filterNodeProbe
@@ -324,15 +324,16 @@ func collectFilterKeys(nodes []filterNodeProbe, path string, refs *[]viewKeyRef)
 // allowlist (createdDate, lastModifiedDate, creator, lastOpenedDate) is
 // always part of the reference set: those keys appear in no type's
 // recommended lists yet back bread-and-butter queries (rule 2 — the
-// widening of the shipped R9 sets rule).
+// widening of the shipped R9 queries rule).
 //
 // Membership in the type's recommended lists is NOT enough on its own: the
 // lists are resolved by id and nothing strips a deleted relation from them,
 // so after any UI delete the default state is a type still recommending the
-// corpse — and a NEW set filtering or sorting on it would persist a query
+// corpse — and a NEW query filtering or sorting on it would persist a query
 // against a property the user removed (§8.41). The removal gate runs after
 // the membership pass for exactly that row.
 func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey string, refs []viewKeyRef) error {
+	v := errKeysFor(ctx)
 	if len(refs) == 0 {
 		return nil
 	}
@@ -344,7 +345,7 @@ func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey
 	for _, key := range typeKeys {
 		allowed[key] = true
 	}
-	// inputs arrive canonicalized (CreateSet's kc rewrite); the candidate
+	// inputs arrive canonicalized (CreateQuery's kc rewrite); the candidate
 	// list must speak the SERVED spelling — never advertise what the
 	// channel rejects (review cause 3)
 	entries, entriesErr := s.liveProperties(spaceId)
@@ -370,26 +371,26 @@ func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey
 					return err
 				}
 				if isRemoved {
-					issues = append(issues, removedPropertyIssue(spaceId, ref.key, ref.key, ref.path))
+					issues = append(issues, removedPropertyIssue(spaceId, ref.key, ref.key, ref.path, v))
 					continue
 				}
 			}
 			continue
 		}
 		if ref.key == "type" {
-			// the search surface takes `type` as a pseudo-key; a set carries
+			// the search surface takes `type` as a pseudo-key; a query carries
 			// its scope in setOf already, so the leaf is redundant here — say
 			// that instead of "unknown property"
 			issues = append(issues, v2model.Issue{
 				Path:    ref.path,
-				Message: fmt.Sprintf("a set is already scoped to type %q — drop the type filter", typeKey),
+				Message: fmt.Sprintf("a query is already scoped to type %q — drop the type filter", typeKey),
 				Hint:    "to query across types use POST /v2/spaces/{space_id}/search, where type is a filterable pseudo-key",
 			})
 			continue
 		}
 		issues = append(issues, v2model.Issue{
 			Path:    ref.path,
-			Message: fmt.Sprintf("type %q has no property %q — %s", typeKey, ref.key, listKnown("property keys of the type", typeKeys)),
+			Message: fmt.Sprintf("type %q has no property %q — %s", typeKey, ref.key, listKnown(v.propertiesWord()+" of the type", typeKeys)),
 			Hint:    didYouMean(ref.key, typeKeys, fmt.Sprintf("inspect the type with GET /v2/spaces/%s/types/%s", spaceId, typeKey)),
 		})
 	}
@@ -399,10 +400,12 @@ func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey
 	return nil
 }
 
-// buildSetDocument synthesizes the set's AnyBlock document: name + setOf in
-// properties, and one dataview block (id "dataview") carrying the views —
-// the §8/R10 initial-state construction.
-func (s *Service) buildSetDocument(spaceId, typeId string, req v2model.CreateSetRequest, referenced []viewKeyRef) ([]byte, error) {
+// buildQueryDocument synthesizes the query's AnyBlock document: name + setOf
+// in properties, and one dataview block (id "dataview") carrying the views —
+// the §8/R10 initial-state construction. The document's type key and its
+// setOf property keep their internal "set" spelling: only the REST noun is
+// Query.
+func (s *Service) buildQueryDocument(spaceId, typeId string, req v2model.CreateQueryRequest, referenced []viewKeyRef) ([]byte, error) {
 	fields := map[string]json.RawMessage{}
 	var err error
 	if fields["formatVersion"], err = rawJSON(anyblockjson.FormatVersion); err != nil {

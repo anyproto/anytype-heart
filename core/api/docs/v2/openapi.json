@@ -968,6 +968,20 @@
         },
         "type": "object"
       },
+      "UploadFileRequest": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      },
       "ValidateResponse": {
         "properties": {
           "issues": {
@@ -3232,7 +3246,7 @@
         ]
       },
       "post": {
-        "description": "A select value naming an option the property does not hold is refused unless `create_missing_options=true` is set. An unknown type or property key is rejected either way, with the closest matches named. The body is either a full AnyBlock document or the shortcut {type, name, properties, markdown}; `version` or `blocks` picks the document form.",
+        "description": "A select value naming an option the property does not hold is refused unless `create_missing_options=true` is set. An unknown type or property key is rejected either way, with the closest matches named. The body is either a full AnyBlock document or the shortcut {type, name, properties, markdown}; `formatVersion` or `blocks` picks the document form.",
         "operationId": "create_object",
         "parameters": [
           {
@@ -4012,6 +4026,301 @@
         ]
       }
     },
+    "/v2/spaces/{space_id}/queries": {
+      "post": {
+        "description": "Filter and sort property keys are checked against the type the query runs over; a key that type does not carry is refused.",
+        "operationId": "create_query",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Create select options for names the property does not hold yet (default false: an unmatched name is refused)",
+            "in": "query",
+            "name": "create_missing_options",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResult"
+                }
+              }
+            },
+            "description": "Created query id"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Validation or reference failure"
+          },
+          "413": {
+            "$ref": "#/components/responses/RequestTooLarge"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResult"
+                }
+              }
+            },
+            "description": "Dry run; validation result without committing"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Create a query",
+        "tags": [
+          "Lists"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/queries/{query_id}/objects": {
+      "get": {
+        "description": "A stored view's dynamic placeholders, such as the current date or the calling member, are resolved here. One that cannot be resolved becomes a warning rather than a silently empty result.",
+        "operationId": "get_query_objects",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Query object id",
+            "in": "path",
+            "name": "query_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Stored view id (exact or unique suffix)",
+            "in": "query",
+            "name": "view",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Comma-separated property keys to include per row",
+            "in": "query",
+            "name": "fields",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Items to skip",
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Items to return",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 25,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse-ObjectRow"
+                }
+              }
+            },
+            "description": "Minimal object rows"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Wrong-layout target or invalid params"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Space, query or view not found"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Run a query and list what it matches",
+        "tags": [
+          "Lists"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/queries/{query_id}/views": {
+      "get": {
+        "operationId": "get_query_views",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Query object id",
+            "in": "path",
+            "name": "query_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Items to skip",
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Items to return",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 25,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse-ViewObject"
+                }
+              }
+            },
+            "description": "The stored views, with their sorts, filters and columns"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Wrong-layout target"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Space or query not found"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "List a query's views",
+        "tags": [
+          "Lists"
+        ]
+      }
+    },
     "/v2/spaces/{space_id}/search": {
       "post": {
         "description": "`filter` and `filters` are two spellings of the same thing, the compact string and the structured array; sending both is refused. This is a read carried by POST because the query needs a body, so pagination stays in the query string and a `limit` or `offset` in the body is refused.",
@@ -4102,301 +4411,6 @@
         "summary": "Search one space",
         "tags": [
           "Search"
-        ]
-      }
-    },
-    "/v2/spaces/{space_id}/sets": {
-      "post": {
-        "description": "Filter and sort property keys are checked against the type the set queries; a key that type does not carry is refused.",
-        "operationId": "create_set",
-        "parameters": [
-          {
-            "description": "Space id",
-            "in": "path",
-            "name": "space_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Validate and report without committing",
-            "in": "query",
-            "name": "dry_run",
-            "schema": {
-              "type": "boolean"
-            }
-          },
-          {
-            "description": "Create select options for names the property does not hold yet (default false: an unmatched name is refused)",
-            "in": "query",
-            "name": "create_missing_options",
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateResult"
-                }
-              }
-            },
-            "description": "Created set id"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "Validation or reference failure"
-          },
-          "413": {
-            "$ref": "#/components/responses/RequestTooLarge"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "429": {
-            "$ref": "#/components/responses/RateLimited"
-          },
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateResult"
-                }
-              }
-            },
-            "description": "Dry run; validation result without committing"
-          }
-        },
-        "security": [
-          {
-            "bearerauth": []
-          }
-        ],
-        "summary": "Create a set",
-        "tags": [
-          "Lists"
-        ]
-      }
-    },
-    "/v2/spaces/{space_id}/sets/{set_id}/objects": {
-      "get": {
-        "description": "A stored view's dynamic placeholders, such as the current date or the calling member, are resolved here. One that cannot be resolved becomes a warning rather than a silently empty result.",
-        "operationId": "get_set_objects",
-        "parameters": [
-          {
-            "description": "Space id",
-            "in": "path",
-            "name": "space_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Set object id",
-            "in": "path",
-            "name": "set_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Stored view id (exact or unique suffix)",
-            "in": "query",
-            "name": "view",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Comma-separated property keys to include per row",
-            "in": "query",
-            "name": "fields",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Items to skip",
-            "in": "query",
-            "name": "offset",
-            "schema": {
-              "default": 0,
-              "type": "integer"
-            }
-          },
-          {
-            "description": "Items to return",
-            "in": "query",
-            "name": "limit",
-            "schema": {
-              "default": 25,
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ListResponse-ObjectRow"
-                }
-              }
-            },
-            "description": "Minimal object rows"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "Wrong-layout target or invalid params"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "Space, set or view not found"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
-        },
-        "security": [
-          {
-            "bearerauth": []
-          }
-        ],
-        "summary": "Run a set's query and list what it matches",
-        "tags": [
-          "Lists"
-        ]
-      }
-    },
-    "/v2/spaces/{space_id}/sets/{set_id}/views": {
-      "get": {
-        "operationId": "get_set_views",
-        "parameters": [
-          {
-            "description": "Space id",
-            "in": "path",
-            "name": "space_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Set object id",
-            "in": "path",
-            "name": "set_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Items to skip",
-            "in": "query",
-            "name": "offset",
-            "schema": {
-              "default": 0,
-              "type": "integer"
-            }
-          },
-          {
-            "description": "Items to return",
-            "in": "query",
-            "name": "limit",
-            "schema": {
-              "default": 25,
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ListResponse-ViewObject"
-                }
-              }
-            },
-            "description": "The stored views, with their sorts, filters and columns"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "Wrong-layout target"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "Space or set not found"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
-        },
-        "security": [
-          {
-            "bearerauth": []
-          }
-        ],
-        "summary": "List a set's views",
-        "tags": [
-          "Lists"
         ]
       }
     },

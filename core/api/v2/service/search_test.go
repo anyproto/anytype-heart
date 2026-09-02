@@ -583,9 +583,9 @@ func TestV2SearchPlanConvergence(t *testing.T) {
 			fx.addCheckboxProperty(t)
 
 			// when
-			planFromString, err := fx.buildSearchPlan(testSpaceId, v2model.SearchRequest{Filter: pair.filter}, true)
+			planFromString, err := fx.buildSearchPlan(testSpaceId, v2model.SearchRequest{Filter: pair.filter}, true, errKeys{})
 			require.NoError(t, err)
-			planFromStructured, err := fx.buildSearchPlan(testSpaceId, v2model.SearchRequest{Filters: json.RawMessage(pair.structured)}, true)
+			planFromStructured, err := fx.buildSearchPlan(testSpaceId, v2model.SearchRequest{Filters: json.RawMessage(pair.structured)}, true, errKeys{})
 			require.NoError(t, err)
 
 			// then
@@ -626,7 +626,7 @@ func TestV2SearchEffectiveSorts(t *testing.T) {
 		plan, err := fx.buildSearchPlan(testSpaceId, v2model.SearchRequest{
 			Query: "report",
 			Sorts: json.RawMessage(`[{"property":"lastModifiedDate","direction":"asc"}]`),
-		}, true)
+		}, true, errKeys{})
 		require.NoError(t, err)
 		require.NotEmpty(t, plan.sorts)
 		assert.True(t, plan.sorts[0].IncludeTime)
@@ -636,7 +636,7 @@ func TestV2SearchEffectiveSorts(t *testing.T) {
 		fx := searchSetup(t)
 		plan, err := fx.buildSearchPlan(testSpaceId, v2model.SearchRequest{
 			Sorts: json.RawMessage(`[{"property":"lastModifiedDate","direction":"asc","include_time":false}]`),
-		}, true)
+		}, true, errKeys{})
 		require.NoError(t, err)
 		require.NotEmpty(t, plan.sorts)
 		assert.False(t, plan.sorts[0].IncludeTime)
@@ -759,11 +759,11 @@ func TestV2Phase4EnsureSpaceGuard(t *testing.T) {
 			return err
 		}},
 		{"GetSetObjects", func() error {
-			_, _, _, _, err := fx.GetSetObjects(ctx, ghost, "set1", "", nil, 0, 25)
+			_, _, _, _, err := fx.GetQueryObjects(ctx, ghost, "set1", "", nil, 0, 25)
 			return err
 		}},
 		{"GetSetViews", func() error {
-			_, _, _, err := fx.GetSetViews(ctx, ghost, "set1", 0, 25)
+			_, _, _, err := fx.GetQueryViews(ctx, ghost, "set1", 0, 25)
 			return err
 		}},
 		{"GetCollectionObjects", func() error {
@@ -1178,13 +1178,13 @@ func TestV2SearchFileLayoutOptIn(t *testing.T) {
 		assert.Equal(t, []string{"img2", "img1"}, rowIds(rows))
 	})
 
-	t.Run("the sets/collections fields validation accepts the aliases", func(t *testing.T) {
+	t.Run("the queries/collections fields validation accepts the aliases", func(t *testing.T) {
 		// given
 		fx := setup(t)
 
 		// then
-		assert.NoError(t, fx.validateListFields(testSpaceId, []string{"mimeType", "size", "name"}))
-		assert.Error(t, fx.validateListFields(testSpaceId, []string{"mimetype"}), "the alias is case-exact")
+		assert.NoError(t, fx.validateListFields(testSpaceId, []string{"mimeType", "size", "name"}, errKeys{}))
+		assert.Error(t, fx.validateListFields(testSpaceId, []string{"mimetype"}, errKeys{}), "the alias is case-exact")
 	})
 }
 

@@ -364,12 +364,12 @@ type UpdatePropertyRequest struct {
 	Name *string `json:"name,omitempty"`
 }
 
-// CreateSetRequest is the POST sets body. filter (compact string) is
+// CreateQueryRequest is the POST queries body. filter (compact string) is
 // reserved for the search parser; filters/sorts follow the AnyBlock §6.2
-// shapes and are passed into the set's initial dataview verbatim. views, when
-// given, replaces the default single view and is mutually exclusive with
+// shapes and are passed into the query's initial dataview verbatim. views,
+// when given, replaces the default single view and is mutually exclusive with
 // top-level filters/sorts (ambiguous_input otherwise).
-type CreateSetRequest struct {
+type CreateQueryRequest struct {
 	Name string `json:"name"`
 	Type string `json:"type"`
 	// The RawMessage fields carry pre-serialized §6.2 arrays. No OpenAPI

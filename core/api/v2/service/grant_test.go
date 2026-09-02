@@ -114,7 +114,7 @@ func TestEnsureSpaceGrantBackstop(t *testing.T) {
 			{"CreateType", func() error { _, err := fx.CreateType(ctx, testSpaceId, []byte(`{}`), false, true); return err }},
 			{"DeleteProperty", func() error { _, err := fx.DeleteProperty(ctx, testSpaceId, "status", false); return err }},
 			{"CreateSet", func() error {
-				_, err := fx.CreateSet(ctx, testSpaceId, v2model.CreateSetRequest{}, false, true)
+				_, err := fx.CreateQuery(ctx, testSpaceId, v2model.CreateQueryRequest{}, false, true)
 				return err
 			}},
 			{"UploadFile", func() error { _, err := fx.UploadFile(ctx, testSpaceId, "", "", false); return err }},

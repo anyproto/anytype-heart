@@ -158,8 +158,10 @@ const typeListBody = `{"data":[{"key":"page","name":"Page"},{"key":"task","name"
 
 func TestTypeKeyCaseFold(t *testing.T) {
 	ctx := context.Background()
+	// the server's name-mode not-found (the wrapper asks ?keys=name, so the
+	// known list and suggestion arrive as display names — §4.3)
 	typeNotFound := func(key string) string {
-		return `{"status":404,"code":"not_found","message":"type \"` + key + `\" not found in space \"space1\" — known type keys: page, task; did you mean page?"}`
+		return `{"status":404,"code":"not_found","message":"type \"` + key + `\" not found in space \"space1\" — known types: Page, Task; did you mean Page?"}`
 	}
 
 	t.Run("describe retries once with the unique case variant", func(t *testing.T) {
@@ -176,14 +178,14 @@ func TestTypeKeyCaseFold(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Contains(t, result.Text, "type page", "the resolved key is what the receipt names")
+		assert.Contains(t, result.Text, "type Page", "the receipt names the type by its display name — the key never reaches the prompt")
 		require.Len(t, fx.sent("GET /v2/spaces/space1/types/page"), 1)
 	})
 
 	t.Run("find retries once with the folded type", func(t *testing.T) {
 		fx := newFixture(t)
 		fx.stub("POST /v2/spaces/space1/search", 400,
-			`{"status":400,"code":"validation_failed","message":"type \"Page\" not found in space \"space1\"","issues":[{"path":"/type","message":"unknown type key \"Page\" — known type keys: page, task","hint":"did you mean page?"}]}`)
+			`{"status":400,"code":"validation_failed","message":"type \"Page\" not found in space \"space1\"","issues":[{"path":"/type","message":"unknown type \"Page\" — known types: Page, Task","hint":"did you mean Page?"}]}`)
 		fx.stub("GET /v2/spaces/space1/types", 200, typeListBody)
 		fx.stub("POST /v2/spaces/space1/search", 200, searchResponse(0, false))
 
@@ -205,7 +207,7 @@ func TestTypeKeyCaseFold(t *testing.T) {
 		result, err := fx.Run(ctx, "create", map[string]any{"space": "space1", "type": "Page", "name": "X"})
 
 		require.NoError(t, err)
-		assert.Contains(t, result.Text, "created bafynew (page)", "the receipt shows the resolved type")
+		assert.Contains(t, result.Text, "created bafynew (Page)", "the receipt spells the resolved type by its display name")
 		posts := fx.sent("POST /v2/spaces/space1/objects")
 		require.Len(t, posts, 2)
 		assert.Equal(t, "page", bodyJSON(t, posts[1])["type"])
@@ -232,6 +234,45 @@ func TestTypeKeyCaseFold(t *testing.T) {
 			"the fold spans the display name — the retry carries the row's key")
 	})
 
+	t.Run("a product name resolves to a key it shares no spelling with", func(t *testing.T) {
+		// the type users call "Query" is keyed `set` — no case fold bridges
+		// those, only the row's own name; this is the resolution the tool
+		// descriptions now teach ("a type name, e.g. Task")
+		fx := newFixture(t)
+		fx.stub("GET /v2/spaces/space1/types/Query", 404,
+			`{"status":404,"code":"not_found","message":"type \"Query\" not found in space \"space1\""}`)
+		fx.stub("GET /v2/spaces/space1/types", 200,
+			`{"data":[{"key":"set","name":"Query"},{"key":"task","name":"Task"}],"total":2,"offset":0,"limit":500,"has_more":false}`)
+		fx.stub("GET /v2/spaces/space1/types/set", 200,
+			`{"formatVersion":"2.0","kind":"object_type","properties":{"name":"Query"},"type_settings":{"api_key":"set","property_definitions":[]}}`)
+		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
+
+		result, err := fx.Run(ctx, "describe", map[string]any{"space": "space1", "type": "Query"})
+
+		require.NoError(t, err)
+		require.Len(t, fx.sent("GET /v2/spaces/space1/types/set"), 1, "the name resolved to the key")
+		assert.Contains(t, result.Text, "type Query", "and the receipt answers in the name the caller spoke")
+	})
+
+	t.Run("two types SHARING a display name refuse, naming both keys", func(t *testing.T) {
+		// names are user-supplied and CAN collide — here the name addresses
+		// nothing, so the refusal lists the one spelling per candidate that
+		// still resolves (its key), rather than guessing or listing "Task,
+		// Task"
+		fx := newFixture(t)
+		fx.stub("POST /v2/spaces/space1/search", 400,
+			`{"status":400,"code":"validation_failed","message":"type \"Task\" not found in space \"space1\""}`)
+		fx.stub("GET /v2/spaces/space1/types", 200,
+			`{"data":[{"key":"task","name":"Task"},{"key":"task2","name":"Task"}],"total":2,"offset":0,"limit":500,"has_more":false}`)
+
+		_, err := fx.Run(ctx, "find", map[string]any{"space": "space1", "type": "Task"})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(),
+			`type "Task" matches several types ("Task" (key task), "Task" (key task2)) — use the exact name, or the key in parentheses`)
+		assert.Len(t, fx.sent("POST /v2/spaces/space1/search"), 1, "no retry on a collision — never a guess")
+	})
+
 	t.Run("two type keys sharing a fold class refuse naming both — never a guess", func(t *testing.T) {
 		fx := newFixture(t)
 		fx.stub("POST /v2/spaces/space1/search", 400,
@@ -242,7 +283,7 @@ func TestTypeKeyCaseFold(t *testing.T) {
 		_, err := fx.Run(ctx, "find", map[string]any{"space": "space1", "type": "PAGE"})
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), `type key "PAGE" matches several types (Page, page)`)
+		assert.Contains(t, err.Error(), `type "PAGE" matches several types (Page, page) — use the exact name`)
 		assert.Len(t, fx.sent("POST /v2/spaces/space1/search"), 1, "no retry on a collision")
 	})
 
@@ -274,8 +315,11 @@ func TestTypeKeyCaseFold(t *testing.T) {
 		_, err := fx.Run(ctx, "describe", map[string]any{"space": "space1", "type": "page type"})
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "known type keys: page, task")
-		assert.Contains(t, err.Error(), "did you mean page?")
+		// describe asked ?keys=name, so the server's candidate list and
+		// suggestion arrive already spelled as names — served verbatim
+		assert.Contains(t, err.Error(), "known types: Page, Task")
+		assert.Contains(t, err.Error(), "did you mean Page?")
+		assert.NotContains(t, err.Error(), "type keys", "no key vocabulary reaches the model")
 	})
 }
 
@@ -371,7 +415,7 @@ func TestPropertyKeyCaseFold(t *testing.T) {
 		})
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), `property key "STATUS" matches several properties (Status, status)`)
+		assert.Contains(t, err.Error(), `property "STATUS" matches several properties (Status, status) — use the exact name`)
 		assert.Empty(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1"), "never a guess")
 	})
 
@@ -404,7 +448,8 @@ func TestPropertyKeyCaseFold(t *testing.T) {
 		})
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), `property "tags" is given more than once`)
+		assert.Contains(t, err.Error(), `property "Tags" is given more than once`,
+			"the refusal names the property by its display name, not the resolved key")
 		assert.Empty(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1"))
 	})
 

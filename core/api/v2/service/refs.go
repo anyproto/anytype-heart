@@ -8,6 +8,7 @@ package v2service
 // the full policy table.
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -21,6 +22,66 @@ import (
 
 // maxListedKeys bounds how many actual keys an error message names.
 const maxListedKeys = 15
+
+//
+// ---- the error vocabulary (?keys — APIV2_VOCABULARY.md §4.3) ----
+//
+// A referential refusal speaks the requesting surface's vocabulary: the
+// known-key lists and did-you-mean suggestions a caller is told to retry
+// with must be spellings that caller was taught. The slug default is the
+// zero value, so every existing caller, client and test reads the exact
+// bytes it always has; name mode exists only for a request that asked
+// `?keys=name` — the same switch that already selects the served body
+// vocabulary, extended to the errors because a repair hint in a vocabulary
+// the caller never sees is unactionable (the tool wrapper is that caller).
+
+// errKeys carries the vocabulary referential errors spell keys in.
+type errKeys struct{ names bool }
+
+// errKeysFor reads the request's ?keys choice (keyshape.go).
+func errKeysFor(ctx context.Context) errKeys {
+	return errKeys{names: nameKeysRequested(ctx)}
+}
+
+// propertiesWord / typesWord label a key LIST ("known <word>: ...").
+func (v errKeys) propertiesWord() string {
+	if v.names {
+		return "properties"
+	}
+	return "property keys"
+}
+
+func (v errKeys) typesWord() string {
+	if v.names {
+		return "types"
+	}
+	return "type keys"
+}
+
+// propertyWord / typeWord label a single reference ("unknown <word> %q").
+func (v errKeys) propertyWord() string {
+	if v.names {
+		return "property"
+	}
+	return "property key"
+}
+
+func (v errKeys) typeWord() string {
+	if v.names {
+		return "type"
+	}
+	return "type key"
+}
+
+// spell picks one entry's spelling: the display name in name mode (the
+// served key standing in for an unnamed entry — an unnamed entry has no
+// other spelling), the served key otherwise.
+func (v errKeys) spell(served, name string) string {
+	if v.names && name != "" {
+		return name
+	}
+	return served
+}
 
 // typeIdInSpace resolves a type key to its object id when the type object
 // exists in the space; ok is false otherwise.
@@ -56,7 +117,7 @@ func (s *Service) typeKeyExists(spaceId, typeKey string) bool {
 // be suggested as a remedy (§7.5-2), and a candidate list must never
 // advertise a spelling the routes reject (review cause 3). Hint-only, so a
 // load error degrades to an empty list rather than failing the request.
-func (s *Service) knownTypeKeys(spaceId string) []string {
+func (s *Service) knownTypeKeys(spaceId string, v errKeys) []string {
 	entries, err := s.liveTypes(spaceId)
 	if err != nil {
 		return nil
@@ -64,19 +125,19 @@ func (s *Service) knownTypeKeys(spaceId string) []string {
 	keyTaken, slugHolders := servedTypeKeySets(entries)
 	keys := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		keys = append(keys, servedTypeKeyOf(entry.Key, entry.Slug, keyTaken, slugHolders))
+		keys = append(keys, v.spell(servedTypeKeyOf(entry.Key, entry.Slug, keyTaken, slugHolders), entry.Name))
 	}
 	return sortedDistinct(keys)
 }
 
 // unknownTypeKeyError is the R9 did-you-mean 400 for a type reference.
-func (s *Service) unknownTypeKeyError(spaceId, typeKey, path string) error {
-	known := s.knownTypeKeys(spaceId)
+func (s *Service) unknownTypeKeyError(spaceId, typeKey, path string, v errKeys) error {
+	known := s.knownTypeKeys(spaceId, v)
 	return v2model.ValidationFailed(
 		fmt.Sprintf("type %q not found in space %q", typeKey, spaceId),
 		v2model.Issue{
 			Path:    path,
-			Message: fmt.Sprintf("unknown type key %q — %s", typeKey, listKnown("type keys", known)),
+			Message: fmt.Sprintf("unknown %s %q — %s", v.typeWord(), typeKey, listKnown(v.typesWord(), known)),
 			Hint:    didYouMean(typeKey, known, fmt.Sprintf("list all with GET /v2/spaces/%s/types", spaceId)),
 		})
 }
@@ -88,19 +149,19 @@ func (s *Service) unknownTypeKeyError(spaceId, typeKey, path string) error {
 // end for a small model (§8.21 — given the bare "not found" text, a
 // benchmarked 4B did not retry at all, while the key-listing property tip
 // repaired on the first retry in the same run).
-func (s *Service) typeNotFoundError(spaceId, typeKey string) error {
+func (s *Service) typeNotFoundError(spaceId, typeKey string, v errKeys) error {
 	return v2model.NotFound(notFoundWithKeys(
 		fmt.Sprintf("type %q not found in space %q", typeKey, spaceId),
-		typeKey, "type keys", s.knownTypeKeys(spaceId),
+		typeKey, v.typesWord(), s.knownTypeKeys(spaceId, v),
 		fmt.Sprintf("list all with GET /v2/spaces/%s/types", spaceId)))
 }
 
 // propertyNotFoundError is typeNotFoundError's sibling for property-KEY
 // routes (options listing, PATCH/DELETE properties/{key}).
-func (s *Service) propertyNotFoundError(spaceId, propertyKey string) error {
+func (s *Service) propertyNotFoundError(spaceId, propertyKey string, v errKeys) error {
 	return v2model.NotFound(notFoundWithKeys(
 		fmt.Sprintf("property %q not found in space %q", propertyKey, spaceId),
-		propertyKey, "property keys", s.knownPropertyKeys(spaceId),
+		propertyKey, v.propertiesWord(), s.knownPropertyKeys(spaceId, v),
 		fmt.Sprintf("GET /v2/spaces/%s/properties lists user-visible properties only; hidden addressable properties are excluded and contribute to the total above", spaceId)))
 }
 
@@ -166,11 +227,19 @@ func propertyKeyRemovedIn(entries []propertyEntry, removed map[string]bool, key 
 // before validation on these channels, and a hint naming a spelling the
 // request never contained is unactionable; the message keeps the served
 // slug, the one spelling every listing agrees on.
-func removedPropertyIssue(spaceId, key, spelledAs, path string) v2model.Issue {
+func removedPropertyIssue(spaceId, key, spelledAs, path string, v errKeys) v2model.Issue {
 	slug := bundle.ApiSlug(key)
+	spelling := slug
+	if v.names {
+		// a removed bundled property still has its bundled display name —
+		// the spelling a name-mode caller was taught
+		if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil && rel.Name != "" {
+			spelling = rel.Name
+		}
+	}
 	return v2model.Issue{
 		Path:    path,
-		Message: fmt.Sprintf("property %q was removed from this space — nothing new lands on a removed property", slug),
+		Message: fmt.Sprintf("property %q was removed from this space — nothing new lands on a removed property", spelling),
 		Hint: fmt.Sprintf("remove %q from the request — values objects already hold stay readable, and reappear if the property is restored; for a different property, list them with GET /v2/spaces/%s/properties",
 			spelledAs, spaceId),
 	}
@@ -183,11 +252,17 @@ func removedPropertyIssue(spaceId, key, spelledAs, path string) v2model.Issue {
 // reinstall lit the type back up with the new object already in it. The
 // repair differs from the property one: a create cannot simply drop its
 // type, so the hint steers to the live type list.
-func removedTypeIssue(spaceId, key, path string) v2model.Issue {
+func removedTypeIssue(spaceId, key, path string, v errKeys) v2model.Issue {
 	slug := bundle.ApiSlug(key)
+	spelling := slug
+	if v.names {
+		if t, err := bundle.GetType(domain.TypeKey(key)); err == nil && t.Name != "" {
+			spelling = t.Name
+		}
+	}
 	return v2model.Issue{
 		Path:    path,
-		Message: fmt.Sprintf("type %q was removed from this space — nothing new is created in a removed type", slug),
+		Message: fmt.Sprintf("type %q was removed from this space — nothing new is created in a removed type", spelling),
 		Hint:    fmt.Sprintf("use a live type instead — list them with GET /v2/spaces/%s/types", spaceId),
 	}
 }
@@ -205,30 +280,30 @@ func (s *Service) propertyKeyExists(spaceId, key string) bool {
 // knownPropertyKeys lists the space's LIVE property keys in their SERVED
 // spelling (see knownTypeKeys) — corpse-free, load-error-tolerant
 // (hint-only).
-func (s *Service) knownPropertyKeys(spaceId string) []string {
+func (s *Service) knownPropertyKeys(spaceId string, v errKeys) []string {
 	entries, err := s.liveProperties(spaceId)
 	if err != nil {
 		return nil
 	}
-	return knownPropertyKeysIn(entries)
+	return knownPropertyKeysIn(entries, v)
 }
 
 // knownPropertyKeysIn is knownPropertyKeys over a primed set.
-func knownPropertyKeysIn(entries []propertyEntry) []string {
+func knownPropertyKeysIn(entries []propertyEntry, v errKeys) []string {
 	keyTaken, slugHolders := servedPropertyKeySets(entries)
 	keys := make([]string, 0, len(entries))
 	for _, entry := range entries {
-		keys = append(keys, servedKey(entry.Key, entry.Slug, keyTaken, slugHolders))
+		keys = append(keys, v.spell(servedKey(entry.Key, entry.Slug, keyTaken, slugHolders), entry.Name))
 	}
 	return sortedDistinct(keys)
 }
 
 // unknownPropertyIssue builds one path-addressed did-you-mean issue for an
 // unknown property key.
-func unknownPropertyIssue(key, path string, known []string, listUrl string) v2model.Issue {
+func unknownPropertyIssue(key, path string, known []string, listUrl string, v errKeys) v2model.Issue {
 	return v2model.Issue{
 		Path:    path,
-		Message: fmt.Sprintf("unknown property key %q — %s", key, listKnown("property keys", known)),
+		Message: fmt.Sprintf("unknown %s %q — %s", v.propertyWord(), key, listKnown(v.propertiesWord(), known)),
 		Hint:    didYouMean(key, known, listUrl),
 	}
 }

@@ -534,33 +534,33 @@ func ambiguousKeyError(what, input, path string, candidates []string) error {
 // requireLiveProperty resolves a property-addressing route param: ambiguity
 // is a 400, anything not installed live in the space is the keyed 404, and
 // a store failure propagates (fail closed).
-func (s *Service) requireLiveProperty(spaceId, input string) (propertyEntry, error) {
+func (s *Service) requireLiveProperty(spaceId, input string, v errKeys) (propertyEntry, error) {
 	entries, err := s.liveProperties(spaceId)
 	if err != nil {
 		return propertyEntry{}, err
 	}
 	entry, ok, ambiguous := s.resolvePropertyInput(input, entries)
 	if len(ambiguous) > 0 {
-		return propertyEntry{}, ambiguousKeyError("property key", input, "/key", ambiguous)
+		return propertyEntry{}, ambiguousKeyError(v.propertyWord(), input, "/key", ambiguous)
 	}
 	if !ok || entry.Id == "" {
-		return propertyEntry{}, s.propertyNotFoundError(spaceId, input)
+		return propertyEntry{}, s.propertyNotFoundError(spaceId, input, v)
 	}
 	return entry, nil
 }
 
 // requireLiveType is requireLiveProperty for type routes.
-func (s *Service) requireLiveType(spaceId, input, path string) (typeEntry, error) {
+func (s *Service) requireLiveType(spaceId, input, path string, v errKeys) (typeEntry, error) {
 	entries, err := s.liveTypes(spaceId)
 	if err != nil {
 		return typeEntry{}, err
 	}
 	entry, ok, ambiguous := s.resolveTypeInput(input, entries)
 	if len(ambiguous) > 0 {
-		return typeEntry{}, ambiguousKeyError("type key", input, path, ambiguous)
+		return typeEntry{}, ambiguousKeyError(v.typeWord(), input, path, ambiguous)
 	}
 	if !ok || entry.Id == "" {
-		return typeEntry{}, s.typeNotFoundError(spaceId, input)
+		return typeEntry{}, s.typeNotFoundError(spaceId, input, v)
 	}
 	return entry, nil
 }

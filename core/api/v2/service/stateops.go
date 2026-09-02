@@ -58,6 +58,9 @@ type v2StateApplier struct {
 	s        *Service
 	spaceId  string
 	objectId string
+	// v is the request's error vocabulary (?keys — §4.3), captured at
+	// construction: the op appliers run without a ctx of their own.
+	v errKeys
 	sbType   model.SmartBlockType
 	st       *state.State
 
@@ -118,9 +121,10 @@ type v2StateApplier struct {
 	createdViews map[string]string
 }
 
-func newV2StateApplier(s *Service, spaceId, objectId string, sbType model.SmartBlockType, st *state.State, resolvers *creatingResolvers) *v2StateApplier {
+func newV2StateApplier(s *Service, spaceId, objectId string, sbType model.SmartBlockType, st *state.State, resolvers *creatingResolvers, v errKeys) *v2StateApplier {
 	return &v2StateApplier{
 		s:               s,
+		v:               v,
 		spaceId:         spaceId,
 		objectId:        objectId,
 		sbType:          sbType,
@@ -936,10 +940,10 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 			if _, inDoc := doc.properties[key]; !inDoc {
 				if !propertyKeyExistsIn(entries, key) {
 					if known == nil {
-						known = knownPropertyKeysIn(entries)
+						known = knownPropertyKeysIn(entries, a.v)
 					}
 					issues = append(issues, unknownPropertyIssue(key, path, known,
-						fmt.Sprintf("list all with GET /v2/spaces/%s/properties, or create it with POST /v2/spaces/%s/properties", a.spaceId, a.spaceId)))
+						fmt.Sprintf("list all with GET /v2/spaces/%s/properties, or create it with POST /v2/spaces/%s/properties", a.spaceId, a.spaceId), a.v))
 					return false
 				}
 				// the key exists only through the bundled table and this space
@@ -951,7 +955,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 					return false
 				}
 				if refused {
-					issues = append(issues, removedPropertyIssue(a.spaceId, key, spelledAs(key), path))
+					issues = append(issues, removedPropertyIssue(a.spaceId, key, spelledAs(key), path, a.v))
 					return false
 				}
 			}

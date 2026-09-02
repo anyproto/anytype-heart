@@ -255,7 +255,7 @@ func (s *Service) GetType(ctx context.Context, spaceId, typeKey string, q Object
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, "", err
 	}
-	entry, err := s.requireLiveType(spaceId, typeKey, "/key")
+	entry, err := s.requireLiveType(spaceId, typeKey, "/key", errKeysFor(ctx))
 	if err != nil {
 		return nil, "", err
 	}
@@ -334,7 +334,7 @@ func (s *Service) ListPropertyOptions(ctx context.Context, spaceId, propertyKey,
 	}
 	// live lookup, slug-aware — a corpse property's options are not an API
 	// surface; options bind to the STORED key, so list by entry.Key
-	entry, err := s.requireLiveProperty(spaceId, propertyKey)
+	entry, err := s.requireLiveProperty(spaceId, propertyKey, errKeysFor(ctx))
 	if err != nil {
 		return nil, 0, false, err
 	}

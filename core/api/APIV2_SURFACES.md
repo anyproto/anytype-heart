@@ -46,7 +46,7 @@ snake_case auth bodies (§10.1). "A v2 home for every capability" is the goal;
 | Members | (c) | **(c)** unchanged | List shipped; the real gap is `GET /members/me`; member admin is disabled even in v1 — nothing to port. |
 | Files | (c), download stays v1 | **(c) incl. download** | Upload shipped; download gets `/v2` bytes (HTTP conventions still apply *around* the stream); the search file-layout blindness is the live bug. |
 | Chats | (c) | **(c)** unchanged, incl. SSE | v1 drops chatState/message_count the RPC already returns; rows/marks are token-hostile — passthrough + compact shapes, and the stream comes too. |
-| Lists (v1 `/lists`) | — | — | Superseded by Phase-4 sets/collections; nothing to do. |
+| Lists (v1 `/lists`) | — | — | Superseded by Phase-4 queries/collections; nothing to do. |
 | Tags admin | (a) | **(c)**, Phase 8 | Rename semantics under names-as-identity must be resolved (Q5), not dodged. |
 | Templates read | (a) | **(b/c)**, Phase 8 | Trivial to port; ports for completeness rather than demonstrated demand. |
 
@@ -202,7 +202,7 @@ for a capability the middleware does not have (Q7).
   reproduced without a new parameter. **ListObjects keeps the narrow
   `ObjectLayouts` scope by design** (`v2/service/object.go` — it has no
   type channel and deliberately gains none; file discovery is search's
-  job), and the sets/collections reads never had the layout scope at all,
+  job), and the queries/collections reads never had the layout scope at all,
   so a set over a file type already returned its rows. Rows come back
   C5-minimal with `mimeType`/`size` available via `fields=` (and, post
   review, as filter/sort keys — APIV2.md §8.8).
@@ -321,7 +321,7 @@ from startup; see Q3.
 ## 6. Residual v1 surfaces — nothing to build
 
 - **Lists** (`/v1/spaces/{id}/lists/*`, `router.go:426-446`): superseded by
-  the shipped Phase-4 sets/collections reads and the Phase-3
+  the shipped Phase-4 queries/collections reads and the Phase-3
   `add_items`/`remove_items` ops. v1 keeps serving legacy clients until
   deprecation. Done.
 - **Tags** (`/v1/…/properties/{id}/tags/*`, `router.go:559-584`): v2 reads
@@ -409,9 +409,9 @@ token cost than the v1 flow, and a double-send retry is absorbed by C8.
    leaf widens the row scope to `ObjectAndFileLayouts`, both request
    forms; negated leaves do not. `mimeType`/`size` joined the `fields=`
    vocabulary as display-only aliases of fileMimeType/sizeInBytes
-   (search AND the sets/collections `?fields=`). Scoped to search:
+   (search AND the queries/collections `?fields=`). Scoped to search:
    ListObjects has no type channel (§4's "without a new parameter"),
-   and the sets/collections reads never had the layout scope, so sets
+   and the queries/collections reads never had the layout scope, so queries
    over file types already worked.
 4. Restated, not re-budgeted (already §3 build items): `DELETE /v2/objects`
    archive (covers file delete), `GenerateSchema`.

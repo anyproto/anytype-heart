@@ -105,6 +105,19 @@ func (r *Runner) propertyRows(ctx context.Context, spaceId string) ([]v2model.Pr
 type propertyIndex struct {
 	formats map[string]string
 	byFold  map[string][]v2model.PropertyRow
+	// names maps api key → display name, because every message this layer
+	// publishes speaks names (D5): a refusal about `status` must say
+	// "Status", the spelling the surface taught.
+	names map[string]string
+}
+
+// displayName spells a resolved api key in the published vocabulary — the
+// row's display name, or the key itself when the space names it no better.
+func (idx *propertyIndex) displayName(key string) string {
+	if name := idx.names[key]; name != "" {
+		return name
+	}
+	return key
 }
 
 // foldClasses returns the distinct non-empty FoldKeyTerm classes of the
@@ -126,9 +139,11 @@ func newPropertyIndex(rows []v2model.PropertyRow) *propertyIndex {
 	idx := &propertyIndex{
 		formats: make(map[string]string, len(rows)),
 		byFold:  map[string][]v2model.PropertyRow{},
+		names:   make(map[string]string, len(rows)),
 	}
 	for _, row := range rows {
 		idx.formats[row.Key] = row.Format
+		idx.names[row.Key] = row.Name
 		for _, class := range foldClasses(row.Key, row.Name) {
 			held := false
 			for _, existing := range idx.byFold[class] {
@@ -182,7 +197,9 @@ func (r *Runner) prepareValues(ctx context.Context, session *Session, spaceId st
 			return nil, err
 		}
 		if _, dup := out[foldedKey]; dup {
-			return nil, fmt.Errorf("property %q is given more than once (several spellings resolve to one property) — pass it once", foldedKey)
+			// the refusal names the property as the surface spells it — its
+			// display name — not the resolved api key the caller never sent
+			return nil, fmt.Errorf("property %q is given more than once (several spellings resolve to one property) — pass it once", idx.displayName(foldedKey))
 		}
 		format := idx.formats[foldedKey]
 		resolved, err := r.resolveValue(ctx, session, spaceId, format, value)
@@ -190,7 +207,7 @@ func (r *Runner) prepareValues(ctx context.Context, session *Session, spaceId st
 			return nil, fmt.Errorf("value of %q: %w", key, err)
 		}
 		if guard && selectFormats[format] && !r.AllowNewOptions {
-			if err := r.checkOptionNames(ctx, spaceId, foldedKey, stringEntries(resolved)); err != nil {
+			if err := r.checkOptionNames(ctx, spaceId, foldedKey, idx.displayName(foldedKey), stringEntries(resolved)); err != nil {
 				return nil, err
 			}
 		}
@@ -252,25 +269,56 @@ func (idx *propertyIndex) resolveKey(key string) (string, error) {
 	if exact != "" {
 		return exact, nil
 	}
-	return "", fmt.Errorf("property key %q matches several properties (%s) — use the exact spelling",
-		key, strings.Join(describeRowSpellings(rows), ", "))
+	spellings, keyed := describeRowSpellings(rows)
+	return "", fmt.Errorf("property %q matches several properties (%s) — %s",
+		key, strings.Join(spellings, ", "), ambiguityRepair(keyed))
 }
 
-// describeRowSpellings renders ambiguity candidates: the display name with
-// the api key beside it where the two differ — the name is the vocabulary
-// this surface teaches, the key is the address that always resolves.
-func describeRowSpellings(rows []v2model.PropertyRow) []string {
-	out := make([]string, 0, len(rows))
+// ambiguityRepair is the tail of every several-match refusal: names are the
+// vocabulary this surface teaches, so the repair speaks names — and only
+// when a candidate had to fall back to its key (keyed) is the key offered,
+// because a shared or missing name leaves nothing else to address by.
+func ambiguityRepair(keyed bool) string {
+	if keyed {
+		return "use the exact name, or the key in parentheses"
+	}
+	return "use the exact name"
+}
+
+// candidateSpelling renders one ambiguity candidate in the NAME vocabulary:
+// the quoted display name when it is unique among the candidates; the key
+// alone when the row has no name (or its name IS its key); name plus key
+// when several candidates share one name — the name then addresses nothing,
+// and the key is the one spelling that still resolves (values.go step 1),
+// so withholding it would make the refusal unactionable. keyed reports that
+// fallback so the caller's repair sentence can name it.
+func candidateSpelling(name, key string, nameCount map[string]int) (string, bool) {
+	switch {
+	case name == "" || name == key:
+		return key, false
+	case nameCount[name] > 1:
+		return fmt.Sprintf("%q (key %s)", name, key), true
+	default:
+		return fmt.Sprintf("%q", name), false
+	}
+}
+
+// describeRowSpellings renders ambiguity candidates name-first (see
+// candidateSpelling).
+func describeRowSpellings(rows []v2model.PropertyRow) ([]string, bool) {
+	nameCount := map[string]int{}
 	for _, row := range rows {
-		switch {
-		case row.Name == "" || row.Name == row.Key:
-			out = append(out, row.Key)
-		default:
-			out = append(out, fmt.Sprintf("%q (key %s)", row.Name, row.Key))
-		}
+		nameCount[row.Name]++
+	}
+	out := make([]string, 0, len(rows))
+	keyed := false
+	for _, row := range rows {
+		spelling, k := candidateSpelling(row.Name, row.Key, nameCount)
+		out = append(out, spelling)
+		keyed = keyed || k
 	}
 	sort.Strings(out)
-	return out
+	return out, keyed
 }
 
 // maxTypePages bounds the type-index pagination loop.
@@ -364,26 +412,58 @@ func (r *Runner) foldTypeArg(ctx context.Context, spaceId, typeKey string, err e
 		if exact != "" && exact != typeKey {
 			return exact, true, nil
 		}
-		return "", false, fmt.Errorf("type key %q matches several types (%s) — use the exact key",
-			typeKey, strings.Join(describeTypeRowSpellings(matches), ", "))
+		spellings, keyed := describeTypeRowSpellings(matches)
+		return "", false, fmt.Errorf("type %q matches several types (%s) — %s",
+			typeKey, strings.Join(spellings, ", "), ambiguityRepair(keyed))
 	default:
 		return "", false, nil
 	}
 }
 
 // describeTypeRowSpellings is describeRowSpellings for type rows.
-func describeTypeRowSpellings(rows []v2model.TypeRow) []string {
-	out := make([]string, 0, len(rows))
+func describeTypeRowSpellings(rows []v2model.TypeRow) ([]string, bool) {
+	nameCount := map[string]int{}
 	for _, row := range rows {
-		switch {
-		case row.Name == "" || row.Name == row.Key:
-			out = append(out, row.Key)
-		default:
-			out = append(out, fmt.Sprintf("%q (key %s)", row.Name, row.Key))
-		}
+		nameCount[row.Name]++
+	}
+	out := make([]string, 0, len(rows))
+	keyed := false
+	for _, row := range rows {
+		spelling, k := candidateSpelling(row.Name, row.Key, nameCount)
+		out = append(out, spelling)
+		keyed = keyed || k
 	}
 	sort.Strings(out)
-	return out
+	return out, keyed
+}
+
+// typeNameIndex loads the space's type display names (key → name),
+// best-effort: the text channel spells types by NAME (the wrapper's
+// vocabulary — a user calls the `set` type "Query"), but prettier text is
+// never worth failing a call that already succeeded, so a listing failure
+// degrades to nil and the caller falls back to the key.
+func (r *Runner) typeNameIndex(ctx context.Context, spaceId string) map[string]string {
+	rows, err := r.typeRows(ctx, spaceId)
+	if err != nil {
+		return nil
+	}
+	names := make(map[string]string, len(rows))
+	for _, row := range rows {
+		if row.Name != "" {
+			names[row.Key] = row.Name
+		}
+	}
+	return names
+}
+
+// typeLabel spells a type key in the published vocabulary: the display name
+// when the index knows one, the key itself otherwise (an unnamed type has no
+// other spelling — its key is its name in every practical sense).
+func typeLabel(names map[string]string, key string) string {
+	if name := names[key]; name != "" {
+		return name
+	}
+	return key
 }
 
 // meFormats are the property formats whose values can hold a participant id
@@ -444,22 +524,24 @@ func stringEntries(value any) []string {
 
 // checkOptionNames verifies each name exists as an option of the property —
 // this tool never creates options; the REST surface's create-missing (R9)
-// stays available behind AllowNewOptions.
-func (r *Runner) checkOptionNames(ctx context.Context, spaceId, key string, names []string) error {
+// stays available behind AllowNewOptions. key is the resolved api key the
+// option route takes; label is the property's display name, because that is
+// how every message here spells the property (D5).
+func (r *Runner) checkOptionNames(ctx context.Context, spaceId, key, label string, names []string) error {
 	for _, name := range names {
 		var resp v2model.ListResponse[v2model.OptionRow]
 		err := r.client.decode(ctx, apiRequest{
 			method: "GET",
 			path:   "/v2/spaces/" + seg(spaceId) + "/properties/" + seg(key) + "/options",
-			query:  url.Values{"prefix": []string{name}, "limit": []string{"50"}},
+			query:  url.Values{"prefix": []string{name}, "limit": []string{"50"}, "keys": []string{"name"}},
 		}, &resp)
 		if err != nil {
-			return fmt.Errorf("list options of %q: %w", key, err)
+			return fmt.Errorf("list options of %q: %w", label, err)
 		}
 		if optionExists(resp.Data, name) {
 			continue
 		}
-		return r.unknownOptionError(ctx, spaceId, key, name)
+		return r.unknownOptionError(ctx, spaceId, key, label, name)
 	}
 	return nil
 }
@@ -474,15 +556,16 @@ func optionExists(options []v2model.OptionRow, name string) bool {
 }
 
 // unknownOptionError builds the guard's steering error: the existing names
-// and a case-insensitive did-you-mean.
-func (r *Runner) unknownOptionError(ctx context.Context, spaceId, key, name string) error {
+// and a case-insensitive did-you-mean. The property is named by label (its
+// display name), while key still drives the option route.
+func (r *Runner) unknownOptionError(ctx context.Context, spaceId, key, label, name string) error {
 	var resp v2model.ListResponse[v2model.OptionRow]
 	listErr := r.client.decode(ctx, apiRequest{
 		method: "GET",
 		path:   "/v2/spaces/" + seg(spaceId) + "/properties/" + seg(key) + "/options",
-		query:  url.Values{"limit": []string{"15"}},
+		query:  url.Values{"limit": []string{"15"}, "keys": []string{"name"}},
 	}, &resp)
-	msg := fmt.Sprintf("property %q has no option named %q — this tool never creates options", key, name)
+	msg := fmt.Sprintf("property %q has no option named %q — this tool never creates options", label, name)
 	if listErr == nil && len(resp.Data) > 0 {
 		names := make([]string, 0, len(resp.Data))
 		var suggestion string
