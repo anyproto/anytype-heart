@@ -1,7 +1,9 @@
 # Cold-sync recovery events (GO-7471)
 
 Date: 2026-09-02
-Status: Draft for review — revision 2 (per-space settle rule overruled, see below)
+Status: Implemented (phases 1–6 on `go-7471-cold-sync-events`) — revision 2 spec plus the per-phase
+"Execution notes" recorded where the implementation corrected it
+Client guide: [docs/RecoveryEventsClientIntegration.md](../../RecoveryEventsClientIntegration.md)
 Branch: `go-7471-cold-sync-events` (based on `go-7467-quic-degradation-fallback`)
 Depends on: any-sync v0.13.2 (`net/peerobserver`, `commonspace.PullObserver`) — already pinned in `go.mod`
 
@@ -378,7 +380,7 @@ type viewGate struct {
 - The `localdiscovery` possibility hook runs under `localDiscovery.hookMu`
   (`space/spacecore/localdiscovery/common.go:131-143`): the tracker's handler is lock-mutate-
   mark-unlock only, same as the dial path.
-- The tracker owns **no goroutine** besides the coalescing timer callback.
+- The tracker owns **no goroutine** besides its two timer callbacks (coalescing window, outage).
 
 ### Event ids and emission
 
@@ -745,10 +747,12 @@ the first created space loads; `Finished`.
 
 ## Testing
 
-Conventions: fixture pattern, `// given / when / then`, `want` structs, testify, mockery mocks
-regenerated with `make test-deps` (`.mockery.yaml` gains `core/recovery` interfaces:
-`HeadSyncObserver`, `LoadObserver`, `PeerDiscoveryObserver`, `recoveryObserver`, plus the
-existing `core/event` `Sender` mock).
+Conventions: fixture pattern, `// given / when / then`, `want` structs, testify. The producer
+seams are one- or two-method interfaces, so the tests use hand-written fakes registered under the
+producers' component names rather than mockery entries (`recordingSender`, `fakeNodeConf`,
+`fakeMux`, `fakeDiscovery`, `fakeNetwork` in `core/recovery`; `fakeRecoveryObserver` in `space`;
+`fakeLoadObserver` in `spaceloader`; `fakeHeadSync` in `treesyncer`). The existing
+`mock_event.MockSender` is used where the application's own tests already do.
 
 ### `core/recovery` (unit, no app)
 
@@ -812,8 +816,9 @@ type fixture struct {
 ### Manual / integration checkpoint
 
 Cold recovery of a real multi-space account on the dev network with `ANYTYPE_LOG_LEVEL=core.
-recovery=debug` (the tracker logs each published id and kind — ids and codes only, never
-content). Expected: `Started` before any other log line of `app start`, `AccountReady` within
+recovery=debug` (the tracker logs each published update as `id:Kind` — ids and kinds only, never
+content). Not yet performed: no such account/network was available while implementing; this is
+the first thing QA should do with the branch. Expected: `Started` before any other log line of `app start`, `AccountReady` within
 the same second as `techSpaceReady`, `Finished` after the last space's `Loaded` and no earlier
 than the last SpaceView's arrival. Repeat with Wi-Fi off after `Started`: `WaitingForNetwork` at
 +10 s, no `Finished`, no error-level logs.
@@ -839,9 +844,14 @@ touched packages, and is a reviewable commit (`GO-7471 ...`).
    forward for the tech-space gate, finalization, `Finished`. Checkpoint: `Finished` counters
    match the SpaceView set; on a fresh device `Finished` never precedes the last SpaceView's
    arrival.
-6. **Hardening + docs.** Coalescing tuning from a real event log, `docs/Flow.md` cross-link,
-   Linear follow-ups: analytics-id poll (R3), `accountObjectExists` create-if-missing after a
-   15 s timeout (observed, out of scope), `debugMessage` sizing.
+6. **Hardening + docs.** Done: the gate's local half (must-fix of the `NewAccount` race, above),
+   `docs/Flow.md` cross-link, the client guide `docs/RecoveryEventsClientIntegration.md`, a
+   debug-level log of every published update (`id:Kind` only; `ANYTYPE_LOG_LEVEL=core.recovery=
+   debug`), and the follow-ups filed as GO-7487 (analytics-id poll, R3), GO-7488
+   (`accountObjectExists` create-if-missing after a 15 s timeout) and GO-7489 (`debugMessage`
+   sizing). **Coalescing was not tuned**: no real cold-recovery event log was available in this
+   environment; the debug log exists so QA can capture one, and the 250 ms window / per-key
+   rules are the importv2 defaults until a log says otherwise.
 
 ## Risks and open issues
 

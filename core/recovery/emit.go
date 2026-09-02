@@ -1,6 +1,8 @@
 package recovery
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/anyproto/anytype-heart/core/event"
@@ -82,7 +84,25 @@ func (t *Tracker) publishLocked(extra pb.IsEventAccountRecoveryUpdatePayload) {
 	if len(msgs) == 0 || t.sender == nil {
 		return
 	}
+	log.Debugw("recovery updates published", "updates", updateSummary(msgs))
 	t.sender.Broadcast(&pb.Event{Messages: msgs})
+}
+
+// updateSummary renders ids and payload kinds only — never content — and
+// only when the debug level is enabled (it is a lazy Stringer).
+type updateSummary []*pb.EventMessage
+
+func (u updateSummary) String() string {
+	var b strings.Builder
+	for i, msg := range u {
+		if i > 0 {
+			b.WriteByte(' ')
+		}
+		if v, ok := msg.Value.(*pb.EventMessageValueOfAccountRecoveryUpdate); ok {
+			fmt.Fprintf(&b, "%d:%s", v.AccountRecoveryUpdate.Id, strings.TrimPrefix(fmt.Sprintf("%T", v.AccountRecoveryUpdate.Payload), "*pb.EventAccountRecoveryUpdatePayloadOf"))
+		}
+	}
+	return b.String()
 }
 
 func (t *Tracker) wrapLocked(now time.Time, payload pb.IsEventAccountRecoveryUpdatePayload) *pb.EventMessage {
