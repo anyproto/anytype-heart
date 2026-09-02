@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/net/peerservice"
+	"github.com/anyproto/any-sync/net/quicdemotion"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,47 +17,47 @@ import (
 var ctx = context.Background()
 
 type fakePenaltyManager struct {
-	snapshot peerservice.PenaltySnapshot
+	snapshot quicdemotion.PenaltySnapshot
 	observer func()
-	seeded   []peerservice.PenaltySnapshot
+	seeded   []quicdemotion.PenaltySnapshot
 	resets   int
 }
 
 func (f *fakePenaltyManager) Init(a *app.App) error { return nil }
 func (f *fakePenaltyManager) Name() string          { return "fakePeerService" }
 
-func (f *fakePenaltyManager) TransportPenalties() peerservice.PenaltySnapshot {
-	peers := make(map[string]peerservice.PeerPenalty, len(f.snapshot.Peers))
+func (f *fakePenaltyManager) Snapshot() quicdemotion.PenaltySnapshot {
+	peers := make(map[string]quicdemotion.PeerPenalty, len(f.snapshot.Peers))
 	for id, p := range f.snapshot.Peers {
 		peers[id] = p
 	}
-	return peerservice.PenaltySnapshot{Peers: peers}
+	return quicdemotion.PenaltySnapshot{Peers: peers}
 }
 
-func (f *fakePenaltyManager) SeedTransportPenalties(snap peerservice.PenaltySnapshot) {
+func (f *fakePenaltyManager) Seed(snap quicdemotion.PenaltySnapshot) {
 	f.seeded = append(f.seeded, snap)
 	f.snapshot = snap
 }
 
-// ResetTransportPenalties mimics the real semantics: the observer fires only
-// when the reset actually mutated state.
-func (f *fakePenaltyManager) ResetTransportPenalties() {
+// Reset mimics the real semantics: the observer fires only when the reset
+// actually mutated state.
+func (f *fakePenaltyManager) Reset() {
 	f.resets++
 	changed := len(f.snapshot.Peers) > 0
-	f.snapshot = peerservice.PenaltySnapshot{}
+	f.snapshot = quicdemotion.PenaltySnapshot{}
 	if changed && f.observer != nil {
 		f.observer()
 	}
 }
 
-func (f *fakePenaltyManager) SetPenaltyObserver(observer func()) {
+func (f *fakePenaltyManager) SetObserver(observer func()) {
 	f.observer = observer
 }
 
 // mutate emulates peerservice recording a penalty: state changes, observer fires.
-func (f *fakePenaltyManager) mutate(peerId string, p peerservice.PeerPenalty) {
+func (f *fakePenaltyManager) mutate(peerId string, p quicdemotion.PeerPenalty) {
 	if f.snapshot.Peers == nil {
-		f.snapshot.Peers = map[string]peerservice.PeerPenalty{}
+		f.snapshot.Peers = map[string]quicdemotion.PeerPenalty{}
 	}
 	f.snapshot.Peers[peerId] = p
 	if f.observer != nil {
@@ -131,8 +131,8 @@ func (fx *fixture) writeStateFile(t *testing.T, st storedState) {
 	require.NoError(t, os.WriteFile(filepath.Join(fx.repo, fileName), data, 0o600))
 }
 
-func demotedPeers(peerId string) peerservice.PenaltySnapshot {
-	return peerservice.PenaltySnapshot{Peers: map[string]peerservice.PeerPenalty{
+func demotedPeers(peerId string) quicdemotion.PenaltySnapshot {
+	return quicdemotion.PenaltySnapshot{Peers: map[string]quicdemotion.PeerPenalty{
 		peerId: {
 			ConsecutiveDegraded: 1,
 			DemotedUntil:        time.Now().Add(time.Hour).UTC(),
@@ -191,7 +191,7 @@ func TestService_Save(t *testing.T) {
 		fx := newFixture(t, "net-A")
 
 		// when
-		fx.peers.mutate("p1", peerservice.PeerPenalty{ConsecutiveDegraded: 1})
+		fx.peers.mutate("p1", quicdemotion.PeerPenalty{ConsecutiveDegraded: 1})
 
 		// then
 		require.Eventually(t, func() bool {
@@ -208,14 +208,14 @@ func TestService_Save(t *testing.T) {
 	t.Run("emptied state removes the file", func(t *testing.T) {
 		// given
 		fx := newFixture(t, "net-A")
-		fx.peers.mutate("p1", peerservice.PeerPenalty{ConsecutiveDegraded: 1})
+		fx.peers.mutate("p1", quicdemotion.PeerPenalty{ConsecutiveDegraded: 1})
 		require.Eventually(t, func() bool {
 			_, err := os.Stat(fx.statePath())
 			return err == nil
 		}, time.Second, 10*time.Millisecond)
 
 		// when
-		fx.peers.ResetTransportPenalties()
+		fx.peers.Reset()
 
 		// then
 		require.Eventually(t, func() bool {

@@ -8,11 +8,11 @@ Scope: global
 
 ## Responsibility
 - Persists the QUIC penalty state (peers demoted to yamux-first after
-  DPI-degraded connection deaths, see any-sync net/peerservice) across
+  DPI-degraded connection deaths, see any-sync net/quicdemotion) across
   restarts, keyed by the current network identity — a freshly opened app on a
   QUIC-hostile network must not re-learn the demotion (mobile apps are
   evicted constantly)
-- Seeds the stored penalties into peerservice at startup, then drops them if
+- Seeds the stored penalties into quicdemotion at startup, then drops them if
   the network identity turns out to differ from the one the verdict was
   learned on (checked once shortly after start and on every connectivity
   recovery)
@@ -35,7 +35,7 @@ import (
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/net/peerservice"
+	"github.com/anyproto/any-sync/net/quicdemotion"
 	"go.uber.org/zap"
 )
 
@@ -43,8 +43,8 @@ const (
 	CName    = "net.transportpenalty"
 	fileName = "transport_penalties.json"
 	// DisableEnv set to "0" turns QUIC auto-demotion off entirely (debugging
-	// escape hatch): config skips EnableQuicDemotion and this component skips
-	// seeding and persistence.
+	// escape hatch): bootstrap skips registering quicdemotion and this
+	// component skips seeding and persistence.
 	DisableEnv = "ANYTYPE_QUIC_AUTO_DEMOTION"
 
 	walletCName = accountservice.CName
@@ -66,12 +66,12 @@ type Service interface {
 	app.ComponentRunnable
 }
 
-// penaltyManager is the peerservice surface this component drives.
+// penaltyManager is the quicdemotion surface this component drives.
 type penaltyManager interface {
-	TransportPenalties() peerservice.PenaltySnapshot
-	SeedTransportPenalties(snap peerservice.PenaltySnapshot)
-	ResetTransportPenalties()
-	SetPenaltyObserver(observer func())
+	Snapshot() quicdemotion.PenaltySnapshot
+	Seed(snap quicdemotion.PenaltySnapshot)
+	Reset()
+	SetObserver(observer func())
 }
 
 // networkIdentity is the device.NetworkState surface this component needs.
@@ -88,9 +88,9 @@ type repoPathProvider interface {
 type storedState struct {
 	// NetworkKey is the network identity the penalties were learned on;
 	// empty when it was never observed (fail open: the verdict is kept).
-	NetworkKey string                      `json:"networkKey"`
-	UpdatedAt  time.Time                   `json:"updatedAt"`
-	Penalties  peerservice.PenaltySnapshot `json:"penalties"`
+	NetworkKey string                       `json:"networkKey"`
+	UpdatedAt  time.Time                    `json:"updatedAt"`
+	Penalties  quicdemotion.PenaltySnapshot `json:"penalties"`
 }
 
 type service struct {
@@ -115,8 +115,6 @@ func (s *service) Name() string { return CName }
 
 func (s *service) Init(a *app.App) error {
 	s.closeCh = make(chan struct{})
-	s.peers = app.MustComponent[penaltyManager](a)
-	s.network = app.MustComponent[networkIdentity](a)
 	repoPath := a.MustComponent(walletCName).(repoPathProvider).RepoPath()
 	s.filePath = filepath.Join(repoPath, fileName)
 	if os.Getenv(DisableEnv) == "0" {
@@ -124,8 +122,13 @@ func (s *service) Init(a *app.App) error {
 		log.Info("quic auto-demotion persistence disabled by env")
 		return nil
 	}
+	// quicdemotion is only registered as an app component when the feature is
+	// enabled (see bootstrap), so its lookup must not happen above the
+	// disabled check.
+	s.peers = app.MustComponent[penaltyManager](a)
+	s.network = app.MustComponent[networkIdentity](a)
 	s.load()
-	s.peers.SetPenaltyObserver(s.scheduleSave)
+	s.peers.SetObserver(s.scheduleSave)
 	s.network.RegisterConnectivityHook(s.onConnectivityRecovery)
 	return nil
 }
@@ -169,7 +172,7 @@ func (s *service) Close(ctx context.Context) error {
 	return nil
 }
 
-// load reads the stored penalties and seeds them into peerservice. A snapshot
+// load reads the stored penalties and seeds them into quicdemotion. A snapshot
 // from an unknown network is seeded anyway (fail open): worst case is one
 // yamux-first session on a good network, which still works — and the startup
 // identity check drops it as soon as the mismatch is visible.
@@ -193,7 +196,7 @@ func (s *service) load() {
 	s.mu.Lock()
 	s.storedKey = st.NetworkKey
 	s.mu.Unlock()
-	s.peers.SeedTransportPenalties(st.Penalties)
+	s.peers.Seed(st.Penalties)
 	log.Info("seeded stored transport penalties",
 		zap.Int("peers", len(st.Penalties.Peers)),
 		zap.String("networkKey", st.NetworkKey),
@@ -224,14 +227,14 @@ func (s *service) checkIdentity(identity string) {
 		if storedKey != "" && storedKey != identity {
 			log.Info("stored transport penalties are from another network, resetting",
 				zap.String("storedKey", storedKey), zap.String("identity", identity))
-			s.peers.ResetTransportPenalties()
+			s.peers.Reset()
 			s.removeFile()
 		}
 		return
 	}
 	log.Info("network changed, resetting transport penalties",
 		zap.String("from", prev), zap.String("to", identity))
-	s.peers.ResetTransportPenalties()
+	s.peers.Reset()
 }
 
 // scheduleSave debounces persistence: penalty mutations arrive in bursts
@@ -255,7 +258,7 @@ func (s *service) scheduleSave() {
 }
 
 func (s *service) save() {
-	snap := s.peers.TransportPenalties()
+	snap := s.peers.Snapshot()
 	if len(snap.Peers) == 0 {
 		s.removeFile()
 		return

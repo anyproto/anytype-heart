@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/any-sync/metric"
 	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/anyproto/any-sync/net/pool"
+	"github.com/anyproto/any-sync/net/quicdemotion"
 	"github.com/anyproto/any-sync/net/rpc/debugserver"
 	"github.com/anyproto/any-sync/net/rpc/server"
 	"github.com/anyproto/any-sync/net/secureservice"
@@ -263,7 +264,18 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(metric.New()).
 		Register(server.New()).
 		Register(debugserver.New()).
-		Register(pool.New()).
+		Register(pool.New())
+
+	if os.Getenv(transportpenalty.DisableEnv) != "0" {
+		// quicdemotion is a standalone app component (any-sync net/quicdemotion):
+		// registering it is what enables auto-demoting peers to yamux-first
+		// when their QUIC connections keep dying under DPI-style degradation
+		// (GO-7467). peerservice picks it up itself in its own Init, so it
+		// must be registered before peerservice's Init runs.
+		a.Register(quicdemotion.New())
+	}
+
+	a.
 		Register(peerservice.New()).
 		Register(yamux.New()).
 		Register(quic.New()).
