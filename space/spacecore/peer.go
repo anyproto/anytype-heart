@@ -8,6 +8,7 @@ import (
 	"storj.io/drpc"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/clientspaceproto"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/transport"
@@ -33,6 +34,18 @@ func lookupPeerDiscoveryObserver(a *app.App) PeerDiscoveryObserver {
 		return nil
 	}
 	observer, _ := c.(PeerDiscoveryObserver)
+	return observer
+}
+
+// lookupPullObserver resolves the same tracker as a commonspace.PullObserver;
+// loadSpace injects it into every space's Deps (tech, personal, shareable,
+// streamable, one-to-one all route through it).
+func lookupPullObserver(a *app.App) commonspace.PullObserver {
+	c := a.Component(recoveryCName)
+	if c == nil {
+		return nil
+	}
+	observer, _ := c.(commonspace.PullObserver)
 	return observer
 }
 

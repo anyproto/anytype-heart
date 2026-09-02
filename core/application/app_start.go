@@ -2,12 +2,14 @@ package application
 
 import (
 	"context"
+	"errors"
 
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/recovery"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/space"
 )
 
 // startNewApp is the single place an account app is started. It brackets
@@ -25,9 +27,22 @@ func (s *Service) startNewApp(ctx context.Context, mode pb.EventAccountRecoveryM
 	a, err := anytype.StartNewApp(ctx, s.clientWithVersion, comps...)
 	if err != nil {
 		if s.recovery != nil {
-			s.recovery.Fail(err)
+			s.recovery.Fail(startFailure(err))
 		}
 		return nil, err
 	}
 	return a, nil
+}
+
+// startFailure prepares a start error for the tracker's classification:
+// sentinels defined above core/recovery that replace the any-sync error chain
+// are joined with the tracker's own, so it can name the failure without
+// importing the space tree. space.ErrSpaceNotExists is what createAccount
+// reports when the network has no space for this account — the
+// wrong-mnemonic / wrong-network case, which must not read as Unexpected.
+func startFailure(err error) error {
+	if errors.Is(err, space.ErrSpaceNotExists) {
+		return errors.Join(recovery.ErrAccountNotFound, err)
+	}
+	return err
 }

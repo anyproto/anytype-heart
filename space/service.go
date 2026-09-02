@@ -170,6 +170,7 @@ type service struct {
 	repKey                 uint64
 	spaceLoaderListener    aclobjectmanager.SpaceLoaderListener
 	watcher                *spaceWatcher
+	recovery               recoveryObserver // optional; nil when the tracker is not registered
 
 	mu        sync.Mutex
 	ctx       context.Context // use ctx for the long operations within the lifecycle of the service, excluding Run
@@ -193,6 +194,19 @@ const BlockServiceCName = "block-service"
 // needs to know which spaces the user is currently looking at.
 type openedObjectsProvider interface {
 	GetOpenedObjects() []lo.Entry[string, string]
+}
+
+// recoveryCName mirrors core/recovery.CName: the account start-up status
+// tracker lives above this package, so it is looked up by name. A drift test
+// keeps the two equal.
+const recoveryCName = "core.recovery"
+
+// recoveryObserver is the part of the recovery status tracker this package
+// feeds: which space is the account's (before the pull starts) and when the
+// tech space is ready (the "UI may start" milestone).
+type recoveryObserver interface {
+	OnTechSpaceId(id string)
+	OnAccountReady()
 }
 
 func (s *service) Delete(ctx context.Context, id string) (err error) {
@@ -239,6 +253,14 @@ func (s *service) Init(a *app.App) (err error) {
 	s.techSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacedomain.SpaceTypeTech)
 	if err != nil {
 		return
+	}
+	// optional (absent in tests): the recovery status tracker must know the
+	// tech space id before Run pulls it
+	if c := a.Component(recoveryCName); c != nil {
+		s.recovery, _ = c.(recoveryObserver)
+	}
+	if s.recovery != nil {
+		s.recovery.OnTechSpaceId(s.techSpaceId)
 	}
 	accountMetadata, metadataSymKey, err := domain.DeriveAccountMetadata(s.accountService.Account().SignKey)
 	if err != nil {

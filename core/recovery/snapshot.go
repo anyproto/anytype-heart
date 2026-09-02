@@ -21,6 +21,8 @@ func (t *Tracker) buildSnapshotLocked() *pb.EventAccountRecoverySnapshot {
 		Error:               t.phase.failed.toPb(),
 		Discovery:           t.net.discovery,
 		AccountFetchStarted: t.account.fetchStarted,
+		AccountFetchAttempt: int32(t.account.attempt),
+		AccountFetchError:   t.account.lastError.toPb(),
 		AccountReady:        t.account.ready,
 		ViewsConfirmed:      t.phase.viewsConfirmed,
 	}

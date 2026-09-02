@@ -29,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/inbox/inboxservice/mock_inboxservice"
 	"github.com/anyproto/anytype-heart/core/kanban/mock_kanban"
 	"github.com/anyproto/anytype-heart/core/notifications/mock_notifications"
+	"github.com/anyproto/anytype-heart/core/recovery"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
@@ -208,6 +209,7 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 	ctrl := gomock.NewController(t)
 	fx := &fixture{
 		spaceId:            "bafyreifhyhdwrhwc23yi52w42osr4erqhiu2domqd3vwnngdee23kulpre.3aop5yrnf383q",
+		recovery:           &fakeRecoveryObserver{},
 		service:            New().(*service),
 		a:                  new(app.App),
 		ctrl:               ctrl,
@@ -262,6 +264,7 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 		Register(identityService).
 		Register(inboxSenderService).
 		Register(&testSpaceLoaderListener{}).
+		Register(fx.recovery).
 		Register(fx.service)
 	fx.expectRun(t, expectOldAccount)
 
@@ -274,6 +277,7 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 
 type fixture struct {
 	*service
+	recovery           *fakeRecoveryObserver
 	spaceId            string
 	a                  *app.App
 	config             *config.Config
@@ -716,5 +720,77 @@ func TestOrderSpacesOpenedFirst(t *testing.T) {
 	t.Run("no opened spaces: unchanged", func(t *testing.T) {
 		ids := []string{"a", "b"}
 		assert.Equal(t, ids, orderSpacesOpenedFirst(ids, nil))
+	})
+}
+
+// fakeRecoveryObserver stands in for the recovery status tracker under its
+// component name.
+type fakeRecoveryObserver struct {
+	techSpaceId string
+	ready       int
+}
+
+func (f *fakeRecoveryObserver) Init(*app.App) error { return nil }
+
+func (f *fakeRecoveryObserver) Name() string { return recoveryCName }
+
+func (f *fakeRecoveryObserver) OnTechSpaceId(id string) { f.techSpaceId = id }
+
+func (f *fakeRecoveryObserver) OnAccountReady() { f.ready++ }
+
+func TestService_RecoveryObserver(t *testing.T) {
+	t.Run("constant mirrors recovery.CName", func(t *testing.T) {
+		assert.Equal(t, recovery.CName, recoveryCName)
+	})
+
+	t.Run("new account: tech space id before run, account ready once on create", func(t *testing.T) {
+		// given / when
+		fx := newFixture(t, nil)
+
+		// then
+		assert.Equal(t, fx.techSpaceId, fx.recovery.techSpaceId)
+		assert.Equal(t, 1, fx.recovery.ready)
+	})
+
+	t.Run("existing account: account ready once on load", func(t *testing.T) {
+		// given / when
+		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			fx.techSpace.EXPECT().StartSync()
+		})
+
+		// then
+		assert.Equal(t, fx.techSpaceId, fx.recovery.techSpaceId)
+		assert.Equal(t, 1, fx.recovery.ready)
+	})
+
+	t.Run("existing account: the bounded load times out, the unbounded retry succeeds", func(t *testing.T) {
+		// given / when
+		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(nil, context.DeadlineExceeded).Times(1)
+			fx.spaceCore.EXPECT().StorageExistsLocally(mock.Anything, fx.spaceId).Return(false, nil)
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			fx.techSpace.EXPECT().StartSync()
+		})
+
+		// then
+		assert.Equal(t, 1, fx.recovery.ready, "the failed bounded load fires nothing; the retry fires once")
+	})
+
+	t.Run("existing account: create-for-old-accounts fallback fires once", func(t *testing.T) {
+		// given / when
+		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(nil, context.DeadlineExceeded).Times(1)
+			fx.spaceCore.EXPECT().StorageExistsLocally(mock.Anything, fx.spaceId).Return(true, nil)
+			fx.spaceCore.EXPECT().Get(mock.Anything, fx.spaceId).Return(nil, nil)
+			fx.factory.EXPECT().CreateAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			prCtrl := mock_spacecontroller.NewMockSpaceController(t)
+			fx.factory.EXPECT().NewPersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
+			prCtrl.EXPECT().Close(mock.Anything).Return(nil)
+			fx.techSpace.EXPECT().StartSync()
+		})
+
+		// then
+		assert.Equal(t, 1, fx.recovery.ready)
 	})
 }

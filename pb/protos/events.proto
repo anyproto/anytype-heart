@@ -404,6 +404,7 @@ message Event {
       message AccountFetchStarted {
         string spaceId = 1;
         string peerId = 2; // empty = waiting for a peer
+        int32 attempt = 3; // pull rounds started; a new round means "still trying"
       }
       message AccountFetchError {
         string peerId = 1;
@@ -456,6 +457,8 @@ message Event {
         int32 spacesLoaded = 16;
         int32 spacesFailed = 17;
         bool viewsConfirmed = 18; // meaningful once done; see Finished
+        int32 accountFetchAttempt = 19;
+        ErrorInfo accountFetchError = 20; // last failed pull; cleared at AccountReady
         message Peer {
           string peerId = 1;
           PeerKind kind = 2;

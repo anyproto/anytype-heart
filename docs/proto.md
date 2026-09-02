@@ -30445,6 +30445,7 @@ re-pull the snapshot. Every payload is a level, never a delta.
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
 | peerId | [string](#string) |  | empty = waiting for a peer |
+| attempt | [int32](#int32) |  | pull rounds started; a new round means &#34;still trying&#34; |
 
 
 
@@ -30660,6 +30661,8 @@ each new session.
 | spacesLoaded | [int32](#int32) |  |  |
 | spacesFailed | [int32](#int32) |  |  |
 | viewsConfirmed | [bool](#bool) |  | meaningful once done; see Finished |
+| accountFetchAttempt | [int32](#int32) |  |  |
+| accountFetchError | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  | last failed pull; cleared at AccountReady |
 
 
 

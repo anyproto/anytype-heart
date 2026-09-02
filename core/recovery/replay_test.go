@@ -7,6 +7,7 @@ import (
 
 	"time"
 
+	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net"
 	"github.com/stretchr/testify/assert"
@@ -31,6 +32,24 @@ type clientModel struct {
 	err         *pb.EventAccountRecoveryErrorInfo
 	discovery   pb.EventAccountRecoveryDiscoveryState
 	peers       map[string]*pb.EventAccountRecoverySnapshotPeer
+
+	accountFetchStarted bool
+	accountFetchAttempt int32
+	accountFetchError   *pb.EventAccountRecoveryErrorInfo
+	accountReady        bool
+	spaces              map[string]*pb.EventAccountRecoverySnapshotSpace
+}
+
+func (m *clientModel) space(id string) *pb.EventAccountRecoverySnapshotSpace {
+	if m.spaces == nil {
+		m.spaces = map[string]*pb.EventAccountRecoverySnapshotSpace{}
+	}
+	s, ok := m.spaces[id]
+	if !ok {
+		s = &pb.EventAccountRecoverySnapshotSpace{SpaceId: id}
+		m.spaces[id] = s
+	}
+	return s
 }
 
 func (m *clientModel) peer(id string, kind pb.EventAccountRecoveryPeerKind, nodeTypes []string) *pb.EventAccountRecoverySnapshotPeer {
@@ -89,6 +108,24 @@ func (m *clientModel) apply(t *testing.T, u *pb.EventAccountRecoveryUpdate) {
 	case *pb.EventAccountRecoveryUpdatePayloadOfPeerDisconnected:
 		e := p.PeerDisconnected
 		m.peer(e.PeerId, e.Kind, e.NodeTypes).OpenConnections = e.OpenConnections
+	case *pb.EventAccountRecoveryUpdatePayloadOfAccountFetchStarted:
+		m.accountFetchStarted = true
+		m.accountFetchAttempt = p.AccountFetchStarted.Attempt
+	case *pb.EventAccountRecoveryUpdatePayloadOfAccountFetchError:
+		m.accountFetchAttempt = p.AccountFetchError.Attempt
+		m.accountFetchError = p.AccountFetchError.Error
+	case *pb.EventAccountRecoveryUpdatePayloadOfAccountReady:
+		m.accountReady = true
+		m.accountFetchError = nil
+	case *pb.EventAccountRecoveryUpdatePayloadOfSpaceDiscovered:
+		e := p.SpaceDiscovered
+		s := m.space(e.SpaceId)
+		s.SpaceViewId, s.Kind, s.State = e.SpaceViewId, e.Kind, pb.EventAccountRecovery_Queued
+	case *pb.EventAccountRecoveryUpdatePayloadOfSpaceStateChanged:
+		e := p.SpaceStateChanged
+		s := m.space(e.SpaceId)
+		require.Equal(t, s.State, e.FromState)
+		s.State, s.Error, s.Attempt = e.State, e.Error, e.Attempt
 	default:
 		t.Fatalf("replay model does not handle %T", u.Payload)
 	}
@@ -112,7 +149,27 @@ func (m *clientModel) assertMatches(t *testing.T, snap *pb.EventAccountRecoveryS
 			want.peers[p.PeerId] = p
 		}
 	}
+	want.accountFetchStarted = snap.AccountFetchStarted
+	want.accountFetchAttempt = snap.AccountFetchAttempt
+	want.accountFetchError = snap.AccountFetchError
+	want.accountReady = snap.AccountReady
+	var loaded, failed int32
+	if len(snap.Spaces) > 0 {
+		want.spaces = map[string]*pb.EventAccountRecoverySnapshotSpace{}
+		for _, s := range snap.Spaces {
+			want.spaces[s.SpaceId] = s
+			switch s.State {
+			case pb.EventAccountRecovery_Loaded:
+				loaded++
+			case pb.EventAccountRecovery_Error:
+				failed++
+			}
+		}
+	}
 	assert.Equal(t, want, m)
+	assert.Equal(t, int32(len(snap.Spaces)), snap.SpacesTotal)
+	assert.Equal(t, loaded, snap.SpacesLoaded)
+	assert.Equal(t, failed, snap.SpacesFailed)
 }
 
 func TestReplayProperty(t *testing.T) {
@@ -180,6 +237,39 @@ func TestReplayProperty(t *testing.T) {
 		fx.connected("lan1", "yamux", true, 0)
 		check()
 		require.NoError(t, fx.Close(context.Background()))
+		check()
+	})
+
+	t.Run("the account fetch replays through a bounded wait, a failed round and readiness", func(t *testing.T) {
+		// given
+		fx := newFixture(t, pb.EventAccountRecovery_ColdRecovery)
+		model := &clientModel{}
+		applied := 0
+		check := func() {
+			t.Helper()
+			fx.flush()
+			for _, u := range fx.sender.updates()[applied:] {
+				model.apply(t, u)
+				applied++
+			}
+			model.assertMatches(t, fx.Snapshot())
+		}
+
+		// when / then
+		fx.init(t)
+		fx.OnTechSpaceId(techSpaceId)
+		fx.pull(commonspace.PullEventWaiting, techSpaceId, "", nil) // the 15s bounded try
+		fx.dialStarted("node1", 2)
+		fx.dialFailed("node1", net.ErrUnableToConnect, time.Second)
+		check()
+		fx.pull(commonspace.PullEventWaiting, techSpaceId, "", nil) // the unbounded retry
+		fx.connected("node1", "quic", false, 200*time.Millisecond)  // FetchingAccount
+		fx.pull(commonspace.PullEventAttempt, techSpaceId, "node1", nil)
+		fx.pull(commonspace.PullEventResult, techSpaceId, "node1", spacesyncproto.ErrPeerIsNotResponsible)
+		check()
+		fx.pull(commonspace.PullEventAttempt, techSpaceId, "node2", nil)
+		fx.pull(commonspace.PullEventResult, techSpaceId, "node2", nil)
+		fx.OnAccountReady()
 		check()
 	})
 }

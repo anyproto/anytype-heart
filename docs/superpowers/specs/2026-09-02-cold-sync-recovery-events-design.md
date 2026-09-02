@@ -188,7 +188,8 @@ message Account {
                              int64 durationMs = 6; }
     message PeerDisconnected { string peerId = 1; PeerKind kind = 2; int32 openConnections = 3;
                                repeated string nodeTypes = 4; }
-    message AccountFetchStarted { string spaceId = 1; string peerId = 2; /* empty = waiting for a peer */ }
+    message AccountFetchStarted { string spaceId = 1; string peerId = 2; /* empty = waiting for a peer */
+                                  int32 attempt = 3; /* pull rounds started: a new round = still trying */ }
     message AccountFetchError   { string peerId = 1; ErrorInfo error = 2; int32 attempt = 3; }
     message AccountReady        { int64 durationMs = 1; /* since Started */ }
     message SpaceDiscovered     { string spaceId = 1; string spaceViewId = 2; SpaceKind kind = 3; }
@@ -211,6 +212,8 @@ message Account {
       repeated Peer peers = 13; repeated Space spaces = 14;
       int32 spacesTotal = 15; int32 spacesLoaded = 16; int32 spacesFailed = 17;
       bool viewsConfirmed = 18; // meaningful once done; see Finished
+      int32 accountFetchAttempt = 19;
+      ErrorInfo accountFetchError = 20; // last failed pull; cleared at AccountReady
       message Peer  { string peerId = 1; PeerKind kind = 2; repeated string nodeTypes = 3;
                       int32 openConnections = 4; string transport = 5; uint32 protoVersion = 6;
                       int32 dialAttempts = 7; ErrorInfo lastError = 8; bool discoveredLocally = 9; }
@@ -479,17 +482,31 @@ the mapping table; `Finished` is never emitted after `Failed`.
 
 ### Account folding
 
-- `PullEventWaiting{techSpaceId}` -> `account.fetchStarted`, `AccountFetchStarted{peerId:""}`.
-- `PullEventAttempt{techSpaceId, peer}` -> `AccountFetchStarted{peerId}`.
-- `PullEventResult{techSpaceId, err != nil}` -> `attempt++`, `AccountFetchError{classify(err)}`.
-- `OnAccountReady(techSpaceId)` (from `space/init.go`, both `loadTechSpace` and
-  `createTechSpace`) -> `account.ready`, `AccountReady{durationMs: now - startedAt}`, the tech
-  space entry is created (or promoted) as `kind: Tech, state: Loaded`, phase -> `LoadingSpaces`.
-- Pull events for other space ids drive that space's `Pulling` state instead (below). The tech
-  space id is derived in `space.Init`; the tracker learns it from the first producer call that
-  carries it (`OnAccountReady`, `OnSpaceViewStatus`). Until then a `PullEvent` for an unknown id
-  is folded as a regular space and re-labelled `Tech` at `OnAccountReady` (harmless: the tech
-  space is in `spaces[]` anyway, R9).
+- `OnTechSpaceId(id)` from `space.Init` (right after `DeriveID`), **before any pull**: the
+  tracker must know which pull is the account's while it happens, not after (execution note
+  below).
+- `PullEventWaiting{techSpaceId}` -> `account.fetchStarted`, `attempt++` (a pull *round*),
+  `AccountFetchStarted{peerId:"", attempt}`. A second `Waiting` is a new round: this is how the
+  15 s bounded `loadTechSpace` giving way to the unbounded retry shows up — the bounded wait dies
+  inside the responsible-peer lookup and emits no terminal, so the next `Waiting` is the only
+  "still trying" signal.
+- `PullEventAttempt{techSpaceId, peer}` -> `AccountFetchStarted{peerId, attempt}`.
+- `PullEventResult{techSpaceId, err != nil}` -> `lastError = classifyAccount(err)`,
+  `AccountFetchError{peerId, error, attempt}`; a cancelled result is ignored. A nil result emits
+  nothing: `AccountReady` follows.
+- `OnAccountReady()` (from `space/init.go`, both `loadTechSpace` and `createTechSpace`, hence
+  also the `createTechSpaceForOldAccounts` fallback; idempotent) -> `account.ready`,
+  `lastError = nil`, `AccountReady{durationMs: now - startedAt}`, then the tech space enters
+  `spaces[]` through the normal log: `SpaceDiscovered{techSpaceId, kind: Tech}` +
+  `SpaceStateChanged{Loaded, from Queued}`; phase -> `LoadingSpaces`.
+- Pull events for other space ids drive that space's `Pulling` state instead (below; wired in
+  phase 5). Pull events before `OnTechSpaceId` or for an unknown id are ignored.
+- **Execution note (phase 4).** The draft had the tracker learn the tech space id from
+  `OnAccountReady`, i.e. *after* the pull — which would have left the account fetch, the most
+  important window of a cold recovery, unlabelled. `space.Init` derives the id before `Run`, so
+  it is pushed first. `AccountNotFound` for the create path: `space.ErrSpaceNotExists` replaces
+  the any-sync chain, so `core/application` joins the exported `recovery.ErrAccountNotFound`
+  into the start error (`startFailure`) rather than `core/recovery` importing the space tree.
 
 ### Space state machine (corrections 3, 5; override of decision 1)
 
@@ -635,7 +652,8 @@ that attach before `AccountSelect` (the normal client flow) see `Started` as id 
 | LAN discovery possibility | `localdiscovery.RegisterDiscoveryPossibilityHook` (`common.go:145`) | tracker `Init`, same interface `peerstatus` uses | `OnDiscoveryPossibility` -> `LocalDiscoveryState` |
 | LAN peer found | `space/spacecore/peer.go` `PeerDiscovered` — first line, before the pool `Get` (correction 6; Android's `SetNotifierProvider` is upstream of this point, so one seam covers all backends) | `spacecore.Init`: `a.Component("core.recovery")` type-asserted to a `PeerDiscoveryObserver` interface declared in `spacecore`; nil-safe | `OnLocalPeerDiscovered` -> `PeerDiscovered` |
 | Remote pull | `space/spacecore/service.go` `loadSpace`: `deps.PullObserver = s.recovery` (the single `commonspace.Deps` literal; covers tech/personal/shareable/streamable/one-to-one; correction 13) | same optional lookup, asserted to `commonspace.PullObserver` | `ObservePullEvent` -> `AccountFetchStarted/Error` or `SpaceStateChanged{Pulling}` |
-| Tech space ready | `space/init.go` `loadTechSpace` and `createTechSpace`, immediately after `close(s.techSpaceReady)` | `space.Init`: optional lookup by name (precedent `BlockServiceCName`), narrow `recoveryObserver` interface declared in `space` | `OnAccountReady(techSpaceId)` -> `AccountReady`, tech space `Loaded` |
+| Tech space id | `space/service.go` `Init`, right after `DeriveID(SpaceTypeTech)` | `space.Init`: optional lookup by name (precedent `BlockServiceCName`), narrow `recoveryObserver` interface declared in `space` | `OnTechSpaceId` (no event) |
+| Tech space ready | `space/init.go` `loadTechSpace` and `createTechSpace`, immediately after `close(s.techSpaceReady)` | same interface | `OnAccountReady()` -> `AccountReady`, tech space `Loaded` |
 | Space discovery | `space/service.go` `onSpaceStatusUpdated`, first statement inside the goroutine (before the deleted/deferred branching) | same interface | `OnSpaceViewStatus(spaceId, spaceViewId, local, account, remote)` -> `SpaceDiscovered`; resolves the view gate |
 | Space load lifecycle | `space/internal/components/spaceloader/spaceloader.go` `startLoad` (after the `onDiskAndOk` decision) and `onLoad` (after the switch, passing the raw `loadErr`) | `app.GetComponent[LoadObserver]` optional in `Init` (child app -> parent chain, `app.Component` walks `parent`) | `OnSpaceLoadStarted(id, optimistic)`, `OnSpaceLoaded(id, err)` -> `SpaceStateChanged{Loading/Loaded/Error}` |
 | Tech-space completeness gate | `core/block/object/treesyncer/treesyncer.go` `SyncAll`, after `sendSyncEvents`, outside `t.Lock` | `app.GetComponent[HeadSyncObserver]` optional in `Init` (same as `PriorityProvider`); called for every space, fold filters on the tech space | `OnHeadSync(spaceId, peerId, missing, responsible)` -> gate only, no event |

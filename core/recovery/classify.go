@@ -92,10 +92,11 @@ func classifyAccount(err error) *errInfo {
 		return nil
 	}
 	switch {
+	case errors.Is(err, ErrAccountNotFound),
+		info.class == pb.EventAccountRecovery_Unexpected && errors.Is(err, spacesyncproto.ErrSpaceMissing):
+		info.class, info.retryable = pb.EventAccountRecovery_AccountNotFound, false
 	case info.class == pb.EventAccountRecovery_SpaceDeleted:
 		info.class = pb.EventAccountRecovery_AccountDeleted
-	case info.class == pb.EventAccountRecovery_Unexpected && errors.Is(err, spacesyncproto.ErrSpaceMissing):
-		info.class, info.retryable = pb.EventAccountRecovery_AccountNotFound, false
 	}
 	return info
 }

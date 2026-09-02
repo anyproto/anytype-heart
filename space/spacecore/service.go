@@ -96,6 +96,8 @@ type service struct {
 	discoveryKeys        *discoveryKeySource
 	// peerDiscoveryObserver is the recovery status tracker, when registered
 	peerDiscoveryObserver PeerDiscoveryObserver
+	// pullObserver is the same tracker, fed with SpacePull progress
+	pullObserver commonspace.PullObserver
 
 	dbsAreFlushing     atomic.Bool
 	componentCtx       context.Context
@@ -120,6 +122,7 @@ func (s *service) Init(a *app.App) (err error) {
 	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
 	localDiscovery.SetNotifier(s)
 	s.peerDiscoveryObserver = lookupPeerDiscoveryObserver(a)
+	s.pullObserver = lookupPullObserver(a)
 	s.spaceCache = ocache.New(
 		s.loadSpace,
 		ocache.WithLogger(log.Sugar()),
@@ -280,9 +283,10 @@ func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object
 	kvObserver := keyvalueobserver.New()
 	statusService := objectsyncstatus.NewSyncStatusService()
 	deps := commonspace.Deps{
-		TreeSyncer: treesyncer.NewTreeSyncer(id),
-		SyncStatus: statusService,
-		Indexer:    kvObserver,
+		TreeSyncer:   treesyncer.NewTreeSyncer(id),
+		SyncStatus:   statusService,
+		Indexer:      kvObserver,
+		PullObserver: s.pullObserver,
 	}
 	if res, ok := ctx.Value(OptsKey).(Opts); ok && res.SignKey != nil {
 		// TODO: [stream] replace with real peer id
