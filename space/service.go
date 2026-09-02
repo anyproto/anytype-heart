@@ -211,6 +211,10 @@ type recoveryObserver interface {
 	// delivers; deleted covers accountStatus Deleted/Removing and remote
 	// Deleted, computed here so the tracker needs no spaceinfo import
 	OnSpaceView(spaceId, spaceViewId string, deleted bool)
+	// OnSpaceViewsInitial is the watcher's first pass over the local
+	// SpaceViews; the tracker's completeness gate cannot open before every
+	// one of them has been delivered through OnSpaceView
+	OnSpaceViewsInitial(spaceViewIds []string)
 }
 
 func (s *service) Delete(ctx context.Context, id string) (err error) {
@@ -511,6 +515,15 @@ func (s *service) notifySpaceView(status spaceViewStatus) {
 		status.accountStatus == spaceinfo.AccountStatusRemoving ||
 		status.remoteStatus == spaceinfo.RemoteStatusDeleted
 	s.recovery.OnSpaceView(status.spaceId, status.spaceViewId, deleted)
+}
+
+// onInitialSpaceViews forwards the watcher's first pass. It runs inside
+// watcher.Run, i.e. before StartSync and therefore before any tech-space diff
+// can reach the tracker.
+func (s *service) onInitialSpaceViews(spaceViewIds []string) {
+	if s.recovery != nil {
+		s.recovery.OnSpaceViewsInitial(spaceViewIds)
+	}
 }
 
 // maybeReleaseOnPreferredBroken implements the B3-accepted dynamic fallback:

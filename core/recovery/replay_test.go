@@ -319,6 +319,7 @@ func TestReplayProperty(t *testing.T) {
 		fx.pull(commonspace.PullEventAttempt, techSpaceId, "node1", nil)
 		fx.pull(commonspace.PullEventResult, techSpaceId, "node1", nil)
 		fx.OnAccountReady()
+		fx.OnSpaceViewsInitial(nil) // a fresh device: the local store holds no view
 		check()
 		require.Equal(t, pb.EventAccountRecovery_LoadingSpaces, model.phase)
 

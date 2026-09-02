@@ -22,6 +22,7 @@ func (fx *fixture) ready(t *testing.T) {
 	fx.init(t)
 	fx.OnTechSpaceId(techSpaceId)
 	fx.OnAccountReady()
+	fx.OnSpaceViewsInitial(nil)
 	require.Equal(t, pb.EventAccountRecovery_LoadingSpaces, fx.Snapshot().Phase)
 }
 
@@ -419,6 +420,45 @@ func TestTracker_ViewGate(t *testing.T) {
 		assert.Nil(t, fx.finished(t))
 	})
 
+	t.Run("the gate waits for the watcher's first pass, then for every view it listed", func(t *testing.T) {
+		// given: the tech space is ready and the network's diff has already
+		// landed — before the local SpaceViews were delivered
+		fx := newFixture(t, pb.EventAccountRecovery_NewAccount)
+		fx.init(t)
+		fx.OnTechSpaceId(techSpaceId)
+		fx.OnAccountReady()
+		fx.OnHeadSync(techSpaceId, "node1", nil, true)
+		require.Nil(t, fx.finished(t), "no first pass yet: the tech space alone must not finish the run")
+
+		// when
+		fx.OnSpaceViewsInitial([]string{"v1"})
+		require.Nil(t, fx.finished(t), "v1 is listed locally but not delivered yet")
+		loadedSpace(fx, "s1", "v1")
+
+		// then
+		fin := fx.finished(t)
+		require.NotNil(t, fin)
+		assert.True(t, fin.ViewsConfirmed)
+		assert.Equal(t, int32(2), fin.SpacesTotal)
+	})
+
+	t.Run("an initial view that turns out deleted still counts as delivered", func(t *testing.T) {
+		// given
+		fx := newFixture(t, pb.EventAccountRecovery_WarmStart)
+		fx.init(t)
+		fx.OnTechSpaceId(techSpaceId)
+		fx.OnAccountReady()
+		fx.OnSpaceViewsInitial([]string{"v1"})
+		fx.OnHeadSync(techSpaceId, "node1", nil, true)
+		require.Nil(t, fx.finished(t))
+
+		// when
+		fx.OnSpaceView("s1", "v1", true)
+
+		// then
+		require.NotNil(t, fx.finished(t))
+	})
+
 	t.Run("the stall bound opens the gate after two diffs that resolve nothing, unconfirmed", func(t *testing.T) {
 		// given
 		fx := newFixture(t, pb.EventAccountRecovery_ColdRecovery)
@@ -482,6 +522,7 @@ func TestTracker_Finished(t *testing.T) {
 		fx := newFixture(t, pb.EventAccountRecovery_ColdRecovery)
 		fx.init(t)
 		fx.OnTechSpaceId(techSpaceId)
+		fx.OnSpaceViewsInitial(nil)
 		fx.OnSpaceView("s1", "v1", false)
 		fx.OnSpaceView("s2", "v2", false)
 		fx.OnHeadSync(techSpaceId, "node1", []string{"v1", "v2"}, true)
@@ -541,17 +582,17 @@ func TestTracker_Finished(t *testing.T) {
 		assert.Equal(t, int32(2), fin.SpacesLoaded)
 	})
 
-	t.Run("a new account with no spaces yet does not finish on the tech space alone", func(t *testing.T) {
-		// given
-		fx := newFixture(t, pb.EventAccountRecovery_NewAccount)
+	t.Run("an empty first pass and an empty diff finish on the tech space alone", func(t *testing.T) {
+		// given: the store genuinely holds no SpaceView
+		fx := newFixture(t, pb.EventAccountRecovery_WarmStart)
 		fx.ready(t)
 
-		// when: the tech space is loaded, the gate is trivially open
+		// when
 		fx.OnHeadSync(techSpaceId, "node1", nil, true)
 
-		// then: with only the tech space tracked the run finishes — a new
-		// account's first space is created after AccountReady, so this is the
-		// degenerate case the spec calls out (see execution notes)
-		require.NotNil(t, fx.finished(t))
+		// then
+		fin := fx.finished(t)
+		require.NotNil(t, fin)
+		assert.Equal(t, int32(1), fin.SpacesTotal)
 	})
 }

@@ -567,6 +567,17 @@ works from the space child app), called after `sendSyncEvents` outside `t.Lock`,
   the counter cannot advance, and the spaces themselves block `Finished` anyway. It fires only
   in the target case — diffs flowing, everything else healthy, one id permanently stuck.
 - `gateOpen := viewsConfirmed || viewsStalled`; `Finished.viewsConfirmed` reports which.
+- **Local half (phase 6, must-fix of the NewAccount race).** The gate also requires the SpaceView
+  watcher's first pass to have run *and every view it listed to have been delivered*:
+  `OnSpaceViewsInitial(spaceViewIds)` is called from `spacewatcher`'s `afterRun` (inside
+  `watcher.Run`, i.e. before `StartSync` and any diff) with the ids the subscription's initial
+  iteration enqueued; each id resolves on its `OnSpaceView` (deleted or not). Delivery is
+  asynchronous (dedup queue + goroutine per status), so "the first pass ran" alone is not enough
+  — a diff landing between enqueue and delivery would otherwise open the gate on the tech space
+  alone with `viewsConfirmed=true`, the confident lie the gate exists to prevent. General to
+  every mode; on `NewAccount` it is the only protection. The signal chosen over alternatives:
+  the watcher's iteration is the one place that knows the initial set exactly, and it already
+  runs synchronously inside `initAccount`/`createAccount` before `StartSync`.
 - In `RpcAccount_LocalOnly` mode (R10) `responsible` is not required: there are no responsible
   nodes, LAN peers are the only source.
 
@@ -613,12 +624,10 @@ that sees a space before the SpaceView subscription did creates it (`SpaceDiscov
 empty view id, re-announced when the id arrives) — on-demand promotion races the watcher and a
 `Queued` entry that never transitions would hold `Finished` forever. (5) After a terminal every
 producer is a no-op, so the snapshot is frozen at `Done` and cannot drift from the silent log.
-(6) The head-sync observer is invoked before `treesyncer`'s own lock. (7) Known race, not
-fixed: on `NewAccount` the tech space is `Loaded` at `AccountReady` and the first space is
-created right after; if the tech space's first responsible diff landed before that space's view
-was delivered, `Finished` would fire on the tech space alone. In practice the watcher's initial
-iteration (local) precedes `StartSync` and the diff needs a node connection; if it ever bites,
-gate `Finished` on the watcher having delivered its initial set.
+(6) The head-sync observer is invoked before `treesyncer`'s own lock. (7) The `NewAccount`
+race — a diff before the created space's view was delivered would have finished the run on the
+tech space alone — is closed in phase 6 by the gate's local half (`OnSpaceViewsInitial`, above);
+`TestTracker_ViewGate/the_gate_waits_for_the_watcher's_first_pass` fails without it.
 
 There is deliberately **no stall cap**: the only per-space input is the loader's own result, and
 the loader retries forever through a real outage by design. The run staying open under
@@ -676,6 +685,7 @@ that attach before `AccountSelect` (the normal client flow) see `Started` as id 
 | Remote pull | `space/spacecore/service.go` `loadSpace`: `deps.PullObserver = s.recovery` (the single `commonspace.Deps` literal; covers tech/personal/shareable/streamable/one-to-one; correction 13) | same optional lookup, asserted to `commonspace.PullObserver` | `ObservePullEvent` -> `AccountFetchStarted/Error` or `SpaceStateChanged{Pulling}` |
 | Tech space id | `space/service.go` `Init`, right after `DeriveID(SpaceTypeTech)` | `space.Init`: optional lookup by name (precedent `BlockServiceCName`), narrow `recoveryObserver` interface declared in `space` | `OnTechSpaceId` (no event) |
 | Tech space ready | `space/init.go` `loadTechSpace` and `createTechSpace`, immediately after `close(s.techSpaceReady)` | same interface | `OnAccountReady()` -> `AccountReady`, tech space `Loaded` |
+| Initial SpaceView batch | `space/spacewatcher.go` `afterRun` (inside `watcher.Run`, before `StartSync`) via `service.onInitialSpaceViews` | same interface | `OnSpaceViewsInitial(spaceViewIds)` -> local half of the gate, no event |
 | Space discovery | `space/service.go` `onSpaceStatusUpdated`, first statement inside the goroutine (before the deleted/deferred branching) | same interface | `OnSpaceView(spaceId, spaceViewId, deleted)` -> `SpaceDiscovered` / `Removed`; resolves the view gate. `deleted` is computed in `space` so the tracker needs no `spaceinfo` import |
 | Space load lifecycle | `space/internal/components/spaceloader/spaceloader.go` `startLoad` (after the `onDiskAndOk` decision) and `onLoad` (deferred, so every branch including the cancelled one forwards; `deleted` = the loader's deletion branches) | `app.GetComponent[LoadObserver]` optional in `Init` (child app -> parent chain, `app.GetComponent` walks `parent`) | `OnSpaceLoadStarted(id, optimistic)`, `OnSpaceLoaded(id, err, deleted)` -> `SpaceStateChanged{Loading/Loaded/Error}` |
 | Tech-space completeness gate | `core/block/object/treesyncer/treesyncer.go` `SyncAll`, before `t.Lock` (`isResponsible` needs no lock) | `app.GetComponent[HeadSyncObserver]` optional in `Init` (same as `PriorityProvider`); called for every space, the fold consumes it **only for the tech space** — deliberately, do not generalise | `OnHeadSync(spaceId, peerId, missing, responsible)` -> gate only, no event |

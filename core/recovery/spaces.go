@@ -44,6 +44,30 @@ func (t *Tracker) OnSpaceView(spaceId, spaceViewId string, deleted bool) {
 	t.refreshPhaseLocked(false)
 }
 
+// OnSpaceViewsInitial is the SpaceView watcher's first pass over the local
+// store (space.spacewatcher, inside watcher.Run). The completeness gate cannot
+// open until it has run AND every view it listed has been delivered through
+// OnSpaceView: the batch is enqueued asynchronously, and a tech-space diff
+// landing in between must not let Finished claim "no more spaces" while a
+// local one is still on its way. This protects every mode; on NewAccount it
+// is the only thing that does.
+func (t *Tracker) OnSpaceViewsInitial(spaceViewIds []string) {
+	defer containTelemetry("initial space views")
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if !t.begun || t.terminalLocked() {
+		return
+	}
+	t.views.initialDelivered = true
+	for _, id := range spaceViewIds {
+		if _, seen := t.views.seen[id]; id != "" && !seen {
+			t.views.expected[id] = struct{}{}
+		}
+	}
+	t.checkFinishedLocked()
+	t.refreshPhaseLocked(false)
+}
+
 // OnSpaceLoadStarted is the spaceloader's startLoad seam. optimistic is the
 // on-disk fast path: the loader never publishes Loading for it, so "no
 // transition seen" is already loaded here too.
@@ -226,6 +250,7 @@ func (t *Tracker) resolveViewLocked(spaceViewId string) {
 		return
 	}
 	t.views.seen[spaceViewId] = struct{}{}
+	delete(t.views.expected, spaceViewId)
 	if _, pending := t.views.unresolved[spaceViewId]; pending {
 		delete(t.views.unresolved, spaceViewId)
 		t.views.resolvedSinceDiff = true
@@ -235,9 +260,10 @@ func (t *Tracker) resolveViewLocked(spaceViewId string) {
 
 // gateLocked answers whether the SpaceView set may be considered complete,
 // and whether that was earned (confirmed against the network) or granted by
-// the stall bound.
+// the stall bound. Both halves are required: the local views (the watcher's
+// first pass, fully delivered) and the network's (a responsible diff).
 func (t *Tracker) gateLocked() (open, confirmed bool) {
-	if !t.views.diffSeen {
+	if !t.views.diffSeen || !t.views.initialDelivered || len(t.views.expected) > 0 {
 		return false, false
 	}
 	confirmed = len(t.views.unresolved) == 0

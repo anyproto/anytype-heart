@@ -77,6 +77,13 @@ type viewGate struct {
 	seen              map[string]struct{} // every SpaceView id the subscription delivered
 	stalledDiffs      int                 // consecutive diffs that resolved nothing
 	resolvedSinceDiff bool
+	// initialDelivered and expected are the local half of the gate: the
+	// watcher's first pass has run, and every view it listed has arrived.
+	// Without it a diff landing before the local views are delivered would
+	// open the gate on the tech space alone — a confident "no more spaces"
+	// that the next delivery contradicts.
+	initialDelivered bool
+	expected         map[string]struct{}
 }
 
 // wirePhaseLocked derives the coarse phase: a monotone max over milestones,

@@ -726,10 +726,12 @@ func TestOrderSpacesOpenedFirst(t *testing.T) {
 // fakeRecoveryObserver stands in for the recovery status tracker under its
 // component name.
 type fakeRecoveryObserver struct {
-	mu          sync.Mutex
-	techSpaceId string
-	ready       int
-	views       []fakeSpaceView
+	mu               sync.Mutex
+	techSpaceId      string
+	ready            int
+	views            []fakeSpaceView
+	initial          []string
+	initialDelivered bool
 }
 
 type fakeSpaceView struct {
@@ -744,6 +746,13 @@ func (f *fakeRecoveryObserver) Name() string { return recoveryCName }
 func (f *fakeRecoveryObserver) OnTechSpaceId(id string) { f.techSpaceId = id }
 
 func (f *fakeRecoveryObserver) OnAccountReady() { f.ready++ }
+
+func (f *fakeRecoveryObserver) OnSpaceViewsInitial(spaceViewIds []string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.initial = spaceViewIds
+	f.initialDelivered = true
+}
 
 func (f *fakeRecoveryObserver) OnSpaceView(spaceId, spaceViewId string, deleted bool) {
 	f.mu.Lock()
@@ -806,6 +815,25 @@ func TestService_RecoveryObserver(t *testing.T) {
 		// then
 		assert.Equal(t, fx.techSpaceId, fx.recovery.techSpaceId)
 		assert.Equal(t, 1, fx.recovery.ready)
+		assert.True(t, fx.recovery.initialDelivered, "the watcher's first pass is reported even when empty")
+	})
+
+	t.Run("the watcher's first pass lists the views already in the store", func(t *testing.T) {
+		// given / when
+		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			fx.techSpace.EXPECT().StartSync()
+			fx.service.applySpaceStatusHook = func(spaceViewStatus) {} // no controller build
+			fx.objectStore.AddObjects(t, "techSpaceId", []objectstore.TestObject{
+				givenSpaceViewObject("spaceView9", "some.space", "creator", spaceinfo.AccountStatusActive, spaceinfo.RemoteStatusOk, spaceinfo.LocalStatusOk, ""),
+			})
+		})
+
+		// then
+		assert.True(t, fx.recovery.initialDelivered)
+		assert.Equal(t, []string{"spaceView9"}, fx.recovery.initial)
+		require.Eventually(t, func() bool { return len(fx.recovery.seenViews()) == 1 }, time.Second, 5*time.Millisecond)
+		assert.Equal(t, fakeSpaceView{"some.space", "spaceView9", false}, fx.recovery.seenViews()[0])
 	})
 
 	t.Run("existing account: account ready once on load", func(t *testing.T) {

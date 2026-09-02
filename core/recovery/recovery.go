@@ -115,7 +115,7 @@ func (t *Tracker) resetLocked() {
 	t.net = netState{peers: map[string]*peerState{}}
 	t.account = accountState{}
 	t.spaces = map[string]*spaceState{}
-	t.views = viewGate{unresolved: map[string]struct{}{}, seen: map[string]struct{}{}}
+	t.views = viewGate{unresolved: map[string]struct{}{}, seen: map[string]struct{}{}, expected: map[string]struct{}{}}
 	t.pending = map[coalesceKey]pb.IsEventAccountRecoveryUpdatePayload{}
 	t.pendingOrder = nil
 	t.nextId = 1
