@@ -34382,6 +34382,7 @@ is on Event.Space.SyncStatus.Update.
 | Loading | 2 |  |
 | Loaded | 3 |  |
 | Error | 4 |  |
+| Removed | 5 | Removed: the space left this run (deleted or removed while recovering); drop it from the list, it is excluded from counters |
 
 
 

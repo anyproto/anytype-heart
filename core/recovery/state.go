@@ -10,6 +10,7 @@ type runState struct {
 	runId     string
 	mode      pb.EventAccountRecoveryMode
 	networkId string
+	localOnly bool // RpcAccount_LocalOnly: no responsible nodes exist
 	startedAt time.Time
 	started   bool // Started has been published
 	closed    bool
@@ -66,11 +67,16 @@ type spaceState struct {
 	lastError   *errInfo
 }
 
-// viewGate is the tech-space SpaceView-completeness gate on Finished.
+// viewGate is the tech-space SpaceView-completeness gate on Finished: the
+// latest responsible diff's missing tree ids that no SpaceView has arrived
+// for, plus the stall bound that keeps one permanently stuck id from holding
+// the run open forever.
 type viewGate struct {
-	diffSeen     bool
-	unresolved   map[string]struct{}
-	stalledDiffs int
+	diffSeen          bool
+	unresolved        map[string]struct{} // missing per the latest diff, not yet arrived
+	seen              map[string]struct{} // every SpaceView id the subscription delivered
+	stalledDiffs      int                 // consecutive diffs that resolved nothing
+	resolvedSinceDiff bool
 }
 
 // wirePhaseLocked derives the coarse phase: a monotone max over milestones,

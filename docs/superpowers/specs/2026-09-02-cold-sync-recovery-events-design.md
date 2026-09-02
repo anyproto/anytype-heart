@@ -135,7 +135,8 @@ message Account {
     enum SpaceKind      { Regular = 0; Tech = 1; }
     // Loaded = the space controller published LocalStatusOk: mandatory objects fetched, tree
     // sync started. Object-level progress after that is on EventSpaceSyncStatusUpdate.
-    enum SpaceState     { Queued = 0; Pulling = 1; Loading = 2; Loaded = 3; Error = 4; }
+    enum SpaceState     { Queued = 0; Pulling = 1; Loading = 2; Loaded = 3; Error = 4;
+                          Removed = 5; /* left the run (deleted while recovering): drop it */ }
     enum DiscoveryState { Possible = 0; NoInterfaces = 1; Restricted = 2; }
 
     // ErrorInfo, not Error: enum values and nested messages share the enclosing scope in
@@ -514,16 +515,19 @@ the mapping table; `Finished` is never emitted after `Failed`.
 
 | Input | From | To / effect |
 |---|---|---|
-| `OnSpaceViewStatus` first seen, accountStatus not Deleted/Removing, remote not Deleted | — | create as `Queued`; emit `SpaceDiscovered`; resolve the view id in the tech-space gate (below) |
-| `OnSpaceViewStatus` with Deleted/Removing/RemoteDeleted | any | not tracked (emit `SpaceStateChanged{Error, SpaceDeleted}` if it was, then drop; counters exclude it); still resolves the gate |
-| `PullEventWaiting/Attempt` | `Queued` | `Pulling` |
+| `OnSpaceView(spaceId, viewId, deleted=false)` first seen | — | create as `Queued`; emit `SpaceDiscovered`; resolve the view id in the tech-space gate (below) |
+| `OnSpaceView(..., deleted=true)` (accountStatus Deleted/Removing or remote Deleted) | any | if tracked: emit `SpaceStateChanged{Removed, error: SpaceDeleted}` and drop it — `Removed` (not `Error`) so the client's list and the replay model drop it too; counters exclude it. Still resolves the gate |
+| any load/pull producer for a space the subscription has not announced yet (on-demand promotion races the watcher) | — | create as `Queued` and emit `SpaceDiscovered` with an empty `spaceViewId`; a later `OnSpaceView` re-emits `SpaceDiscovered` with the id (idempotent for the client) |
+| `PullEventWaiting/Attempt` | `Queued`, `Loading` | `Pulling` — note the real order: `startLoad` publishes `Loading` synchronously, then the build goroutine pulls, so a fresh space goes `Loading -> Pulling -> Loading -> Loaded` |
 | `PullEventResult{err}` | `Pulling` | stay, `attempt++`, `error = classify(err)` (the retry is `loadingSpace.loadRetry`'s, `loadingspace.go:74-104`: 1 s × 1.5 backoff capped at `retryTimeout`, exits only on success, a non-retryable error or ctx cancel) |
-| `PullEventResult{nil}` | `Pulling` | `Loading` |
+| `PullEventResult{nil}` | `Pulling` | `Loading` (storage present, the build continues) |
 | `OnSpaceLoadStarted(optimistic=false)` | `Queued`/`Pulling` | `Loading` |
 | `OnSpaceLoadStarted(optimistic=true)` | `Queued` | `Loaded` directly — the optimistic fast path in `spaceloader.startLoad` never publishes `Loading`; "no transition seen" means already loaded (correction 5) |
-| `OnSpaceLoaded(nil)` | `Loading`/`Loaded` | `Loaded` (idempotent for the optimistic path); `error = nil` |
+| `OnSpaceLoaded(nil, deleted=false)` | `Loading`/`Loaded` | `Loaded` (idempotent for the optimistic path); `error = nil` |
+| `OnSpaceLoaded(err, deleted=true)` — the loader's own deletion verdict (`ErrSpaceIsDeleted`/`ErrSpaceDeletionPending`), passed as a bool so `core/recovery` never imports `spacecore` (its tests import the tracker) | any | `Error{SpaceDeleted, retryable=false}` |
 | `OnSpaceLoaded(err)`, `err` is `context.Canceled`/`DeadlineExceeded` | any | **no transition** — `onLoad` deliberately leaves the persisted status untouched on shutdown (`spaceloader.go:145-150`); the fold mirrors that |
-| `OnSpaceLoaded(err)`, any other error | any | `Error` with `classify(err)`; terminal for the space |
+| `OnSpaceLoaded(err)`, any other error | any | `Error` with `classify(err)` (`spacedomain.ErrUnexpectedSpaceType` non-retryable); terminal for the space |
+| any producer after `Finished`/`Failed` | — | ignored: the snapshot is frozen at the terminal, nothing is emitted after `Done` |
 
 `Loaded` is exactly `LocalStatusOk` from `spaceloader.onLoad`; `Error` is exactly
 `LocalStatusMissing`. There is no state after `Loaded` on this surface. During a genuine outage
@@ -598,6 +602,24 @@ the run is terminal. With `viewsConfirmed=true` that is normal operation covered
 surfaces; with `viewsConfirmed=false` the client must not treat the run's space list as
 complete and keeps relying on its own SpaceView subscription for spaces that appear later.
 
+**Execution notes (phase 5).** (1) `Removed` is a new `SpaceState` (see the state table): a
+deleted-while-recovering space needs an event a client and the replay model can act on, and
+`Error` cannot say "drop this". (2) Both space seams pass a `deleted bool` instead of
+`spaceinfo`/`spacecore` sentinels — `spacecore`'s tests import the tracker, so the tracker
+importing `spacecore` (directly or via `spaceloader`) is a test-time import cycle. (3) The real
+order for a fresh space is `Loading -> Pulling -> Loading -> Loaded`: `startLoad` publishes
+`Loading` synchronously and the build goroutine pulls afterwards. (4) Any load or pull producer
+that sees a space before the SpaceView subscription did creates it (`SpaceDiscovered` with an
+empty view id, re-announced when the id arrives) — on-demand promotion races the watcher and a
+`Queued` entry that never transitions would hold `Finished` forever. (5) After a terminal every
+producer is a no-op, so the snapshot is frozen at `Done` and cannot drift from the silent log.
+(6) The head-sync observer is invoked before `treesyncer`'s own lock. (7) Known race, not
+fixed: on `NewAccount` the tech space is `Loaded` at `AccountReady` and the first space is
+created right after; if the tech space's first responsible diff landed before that space's view
+was delivered, `Finished` would fire on the tech space alone. In practice the watcher's initial
+iteration (local) precedes `StartSync` and the diff needs a node connection; if it ever bites,
+gate `Finished` on the watcher having delivered its initial set.
+
 There is deliberately **no stall cap**: the only per-space input is the loader's own result, and
 the loader retries forever through a real outage by design. The run staying open under
 `WaitingForNetwork` is the correct rendering of that; a cap would manufacture a `Done` the
@@ -654,9 +676,9 @@ that attach before `AccountSelect` (the normal client flow) see `Started` as id 
 | Remote pull | `space/spacecore/service.go` `loadSpace`: `deps.PullObserver = s.recovery` (the single `commonspace.Deps` literal; covers tech/personal/shareable/streamable/one-to-one; correction 13) | same optional lookup, asserted to `commonspace.PullObserver` | `ObservePullEvent` -> `AccountFetchStarted/Error` or `SpaceStateChanged{Pulling}` |
 | Tech space id | `space/service.go` `Init`, right after `DeriveID(SpaceTypeTech)` | `space.Init`: optional lookup by name (precedent `BlockServiceCName`), narrow `recoveryObserver` interface declared in `space` | `OnTechSpaceId` (no event) |
 | Tech space ready | `space/init.go` `loadTechSpace` and `createTechSpace`, immediately after `close(s.techSpaceReady)` | same interface | `OnAccountReady()` -> `AccountReady`, tech space `Loaded` |
-| Space discovery | `space/service.go` `onSpaceStatusUpdated`, first statement inside the goroutine (before the deleted/deferred branching) | same interface | `OnSpaceViewStatus(spaceId, spaceViewId, local, account, remote)` -> `SpaceDiscovered`; resolves the view gate |
-| Space load lifecycle | `space/internal/components/spaceloader/spaceloader.go` `startLoad` (after the `onDiskAndOk` decision) and `onLoad` (after the switch, passing the raw `loadErr`) | `app.GetComponent[LoadObserver]` optional in `Init` (child app -> parent chain, `app.Component` walks `parent`) | `OnSpaceLoadStarted(id, optimistic)`, `OnSpaceLoaded(id, err)` -> `SpaceStateChanged{Loading/Loaded/Error}` |
-| Tech-space completeness gate | `core/block/object/treesyncer/treesyncer.go` `SyncAll`, after `sendSyncEvents`, outside `t.Lock` | `app.GetComponent[HeadSyncObserver]` optional in `Init` (same as `PriorityProvider`); called for every space, fold filters on the tech space | `OnHeadSync(spaceId, peerId, missing, responsible)` -> gate only, no event |
+| Space discovery | `space/service.go` `onSpaceStatusUpdated`, first statement inside the goroutine (before the deleted/deferred branching) | same interface | `OnSpaceView(spaceId, spaceViewId, deleted)` -> `SpaceDiscovered` / `Removed`; resolves the view gate. `deleted` is computed in `space` so the tracker needs no `spaceinfo` import |
+| Space load lifecycle | `space/internal/components/spaceloader/spaceloader.go` `startLoad` (after the `onDiskAndOk` decision) and `onLoad` (deferred, so every branch including the cancelled one forwards; `deleted` = the loader's deletion branches) | `app.GetComponent[LoadObserver]` optional in `Init` (child app -> parent chain, `app.GetComponent` walks `parent`) | `OnSpaceLoadStarted(id, optimistic)`, `OnSpaceLoaded(id, err, deleted)` -> `SpaceStateChanged{Loading/Loaded/Error}` |
+| Tech-space completeness gate | `core/block/object/treesyncer/treesyncer.go` `SyncAll`, before `t.Lock` (`isResponsible` needs no lock) | `app.GetComponent[HeadSyncObserver]` optional in `Init` (same as `PriorityProvider`); called for every space, the fold consumes it **only for the tech space** — deliberately, do not generalise | `OnHeadSync(spaceId, peerId, missing, responsible)` -> gate only, no event |
 | Device connectivity | `core/device` `NetworkState.IsOffline()` at `Begin`/`Init`, `RegisterConnectivityHook(func(online bool))` | optional lookup by name `"networkState"` (peermanager precedent) | `OnNetworkOnline` -> `WaitingForNetwork{NoNetwork}` overlay |
 | New session | `session.HookRunner.RegisterHook` | tracker `Init` | `SendToSession(Snapshot)` |
 
@@ -831,8 +853,10 @@ touched packages, and is a reviewable commit (`GO-7471 ...`).
   client is told the completeness claim was not earned. The bound cannot fire while the network
   is down (no diffs), so it never converts an outage into a fake `Done`.
 - **Deleted-while-recovering** (`RemoteStatusDeleted` after `SpaceDiscovered`): the space is
-  dropped from tracking; a `SpaceStateChanged{Error, SpaceDeleted}` is emitted first so the
-  client's list can reconcile. Counters exclude it.
+  dropped from tracking; a `SpaceStateChanged{Removed, error: SpaceDeleted}` is emitted first so
+  the client's list can reconcile — `Removed` rather than `Error` because a client (and the
+  replay model) must be able to tell "drop this entry" from "this space failed and counts".
+  Counters exclude it.
 - **`accountObjectExists` fallback** (`space/techspace/techspace.go:159-170`): after a 15 s
   `GetObject` timeout the tech space *creates* a new account object; `AccountReady` fires after
   that regardless, so a slow network can produce a misleading "ready". Pre-existing behavior;

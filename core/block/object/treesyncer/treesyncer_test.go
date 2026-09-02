@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/rpc/rpctest"
 	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -336,5 +337,63 @@ func TestPrioritizeFront(t *testing.T) {
 
 		// then
 		require.Empty(t, got)
+	})
+}
+
+type headSyncCall struct {
+	spaceId, peerId string
+	missing         []string
+	responsible     bool
+}
+
+type fakeHeadSync struct {
+	calls []headSyncCall
+}
+
+func (f *fakeHeadSync) OnHeadSync(spaceId, peerId string, missing []string, responsible bool) {
+	f.calls = append(f.calls, headSyncCall{spaceId: spaceId, peerId: peerId, missing: missing, responsible: responsible})
+}
+
+func TestTreeSyncer_HeadSyncObserver(t *testing.T) {
+	spaceId := "spaceId"
+	existingId := "existing"
+	missingId := "missing"
+	pr := rpctest.MockPeer{}
+
+	t.Run("a responsible node's diff is forwarded with the missing ids", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t, spaceId)
+		fake := &fakeHeadSync{}
+		fx.headSync = fake
+		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{pr.Id()})
+		fx.syncDetailsUpdater.EXPECT().UpdateSpaceDetails([]string{existingId}, []string{missingId}, spaceId)
+		fx.syncStatus.EXPECT().RemoveAllExcept(pr.Id(), []string{existingId}).Return()
+
+		// when
+		require.NoError(t, fx.SyncAll(ctx, pr, []string{existingId}, []string{missingId}))
+
+		// then
+		want := []headSyncCall{{spaceId: spaceId, peerId: pr.Id(), missing: []string{missingId}, responsible: true}}
+		assert.Equal(t, want, fake.calls)
+		fx.Close(ctx)
+	})
+
+	t.Run("a LAN peer's diff is forwarded as not responsible", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t, spaceId)
+		fake := &fakeHeadSync{}
+		fx.headSync = fake
+		fx.nodeConf.EXPECT().NodeIds(spaceId).Return([]string{})
+		fx.syncStatus.EXPECT().RemoveAllExcept(pr.Id(), []string{existingId}).Return()
+
+		// when
+		require.NoError(t, fx.SyncAll(ctx, pr, []string{existingId}, []string{missingId}))
+
+		// then
+		require.Len(t, fake.calls, 1)
+		assert.False(t, fake.calls[0].responsible)
+		fx.Close(ctx)
 	})
 }

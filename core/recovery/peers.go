@@ -55,7 +55,7 @@ func (t *Tracker) ObservePeerEvent(ev peerobserver.Event) {
 	defer containTelemetry("peer event")
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if !t.begun {
+	if !t.begun || t.terminalLocked() {
 		return
 	}
 	switch ev.Kind {
@@ -80,7 +80,7 @@ func (t *Tracker) OnLocalPeerDiscovered(peerId string, addrs []string) {
 	defer containTelemetry("peer discovered")
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if !t.begun {
+	if !t.begun || t.terminalLocked() {
 		return
 	}
 	p := t.peerLocked(peerId)
@@ -102,7 +102,7 @@ func (t *Tracker) onDiscoveryPossibility(state localdiscovery.DiscoveryPossibili
 	defer containTelemetry("discovery possibility")
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if !t.begun {
+	if !t.begun || t.terminalLocked() {
 		return
 	}
 	next := discoveryToPb(state)
@@ -124,7 +124,7 @@ func (t *Tracker) onConnectivity(online bool) {
 	defer containTelemetry("connectivity")
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if !t.begun {
+	if !t.begun || t.terminalLocked() {
 		return
 	}
 	t.net.deviceOffline = !online

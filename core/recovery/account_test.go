@@ -135,20 +135,30 @@ func TestTracker_AccountFetch(t *testing.T) {
 		assert.Nil(t, fx.Snapshot().AccountFetchError)
 	})
 
-	t.Run("pull events for other spaces, unknown kinds, or before the id is known are ignored", func(t *testing.T) {
+	t.Run("pull events for other spaces are space pulls, not the account fetch; unknown kinds are ignored", func(t *testing.T) {
 		// given
 		fx := newFixture(t, pb.EventAccountRecovery_ColdRecovery)
 		fx.init(t)
 
-		// when
-		fx.pull(commonspace.PullEventWaiting, techSpaceId, "", nil) // id not known yet
+		// when: a pull before the tech space id is known can only be filed
+		// as a regular space (production always pushes the id first)
+		fx.pull(commonspace.PullEventWaiting, techSpaceId, "", nil)
 		fx.OnTechSpaceId(techSpaceId)
 		fx.pull(commonspace.PullEventWaiting, "regular.space", "", nil)
 		fx.pull(commonspace.PullEventKind(99), techSpaceId, "", nil)
 
 		// then
-		assert.Len(t, fx.sender.updates(), 1)
-		assert.False(t, fx.Snapshot().AccountFetchStarted)
+		snap := fx.Snapshot()
+		assert.False(t, snap.AccountFetchStarted)
+		require.Len(t, snap.Spaces, 2)
+		assert.Equal(t, pb.EventAccountRecovery_Pulling, snap.Spaces[0].State)
+		assert.Equal(t, pb.EventAccountRecovery_Pulling, snap.Spaces[1].State)
+
+		// and the misfiled tech entry self-corrects at AccountReady
+		fx.OnAccountReady()
+		tech := fx.space(t, techSpaceId)
+		assert.Equal(t, pb.EventAccountRecovery_Tech, tech.Kind)
+		assert.Equal(t, pb.EventAccountRecovery_Loaded, tech.State)
 	})
 }
 

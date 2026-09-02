@@ -207,6 +207,10 @@ const recoveryCName = "core.recovery"
 type recoveryObserver interface {
 	OnTechSpaceId(id string)
 	OnAccountReady()
+	// OnSpaceView is every SpaceView status the tech-space subscription
+	// delivers; deleted covers accountStatus Deleted/Removing and remote
+	// Deleted, computed here so the tracker needs no spaceinfo import
+	OnSpaceView(spaceId, spaceViewId string, deleted bool)
 }
 
 func (s *service) Delete(ctx context.Context, id string) (err error) {
@@ -476,6 +480,7 @@ func (s *service) onSpaceStatusUpdated(spaceStatus spaceViewStatus) {
 		// we want the updates for each space view to be synchronous
 		spaceStatus.mx.Lock()
 		defer spaceStatus.mx.Unlock()
+		s.notifySpaceView(spaceStatus)
 		if spaceStatus.remoteStatus == spaceinfo.RemoteStatusDeleted && spaceStatus.accountStatus != spaceinfo.AccountStatusDeleted {
 			if spaceStatus.localStatus == spaceinfo.LocalStatusOk {
 				s.sendNotification(spaceStatus.spaceId)
@@ -493,6 +498,19 @@ func (s *service) onSpaceStatusUpdated(spaceStatus spaceViewStatus) {
 		s.maybeReleaseOnPreferredBroken(spaceStatus)
 		s.decideAndApplySpaceStatus(spaceStatus)
 	}()
+}
+
+// notifySpaceView is the SpaceDiscovered producer: the SpaceView subscription
+// is the only source of discovery (a space pushed by a LAN peer produces no
+// pull events), so it runs before any branching in onSpaceStatusUpdated.
+func (s *service) notifySpaceView(status spaceViewStatus) {
+	if s.recovery == nil {
+		return
+	}
+	deleted := status.accountStatus == spaceinfo.AccountStatusDeleted ||
+		status.accountStatus == spaceinfo.AccountStatusRemoving ||
+		status.remoteStatus == spaceinfo.RemoteStatusDeleted
+	s.recovery.OnSpaceView(status.spaceId, status.spaceViewId, deleted)
 }
 
 // maybeReleaseOnPreferredBroken implements the B3-accepted dynamic fallback:

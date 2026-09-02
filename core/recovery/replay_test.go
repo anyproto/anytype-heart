@@ -7,6 +7,7 @@ import (
 
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net"
@@ -38,6 +39,7 @@ type clientModel struct {
 	accountFetchError   *pb.EventAccountRecoveryErrorInfo
 	accountReady        bool
 	spaces              map[string]*pb.EventAccountRecoverySnapshotSpace
+	viewsConfirmed      bool
 }
 
 func (m *clientModel) space(id string) *pb.EventAccountRecoverySnapshotSpace {
@@ -119,13 +121,27 @@ func (m *clientModel) apply(t *testing.T, u *pb.EventAccountRecoveryUpdate) {
 		m.accountFetchError = nil
 	case *pb.EventAccountRecoveryUpdatePayloadOfSpaceDiscovered:
 		e := p.SpaceDiscovered
+		_, known := m.spaces[e.SpaceId]
 		s := m.space(e.SpaceId)
-		s.SpaceViewId, s.Kind, s.State = e.SpaceViewId, e.Kind, pb.EventAccountRecovery_Queued
+		s.SpaceViewId, s.Kind = e.SpaceViewId, e.Kind
+		if !known {
+			s.State = pb.EventAccountRecovery_Queued
+		}
 	case *pb.EventAccountRecoveryUpdatePayloadOfSpaceStateChanged:
 		e := p.SpaceStateChanged
 		s := m.space(e.SpaceId)
 		require.Equal(t, s.State, e.FromState)
+		if e.State == pb.EventAccountRecovery_Removed {
+			delete(m.spaces, e.SpaceId)
+			if len(m.spaces) == 0 {
+				m.spaces = nil
+			}
+			break
+		}
 		s.State, s.Error, s.Attempt = e.State, e.Error, e.Attempt
+	case *pb.EventAccountRecoveryUpdatePayloadOfFinished:
+		m.done = true
+		m.viewsConfirmed = p.Finished.ViewsConfirmed
 	default:
 		t.Fatalf("replay model does not handle %T", u.Payload)
 	}
@@ -153,6 +169,7 @@ func (m *clientModel) assertMatches(t *testing.T, snap *pb.EventAccountRecoveryS
 	want.accountFetchAttempt = snap.AccountFetchAttempt
 	want.accountFetchError = snap.AccountFetchError
 	want.accountReady = snap.AccountReady
+	want.viewsConfirmed = snap.ViewsConfirmed
 	var loaded, failed int32
 	if len(snap.Spaces) > 0 {
 		want.spaces = map[string]*pb.EventAccountRecoverySnapshotSpace{}
@@ -270,6 +287,76 @@ func TestReplayProperty(t *testing.T) {
 		fx.pull(commonspace.PullEventAttempt, techSpaceId, "node2", nil)
 		fx.pull(commonspace.PullEventResult, techSpaceId, "node2", nil)
 		fx.OnAccountReady()
+		check()
+	})
+
+	t.Run("a full cold recovery replays end to end", func(t *testing.T) {
+		// given
+		fx := newFixture(t, pb.EventAccountRecovery_ColdRecovery)
+		model := &clientModel{}
+		applied := 0
+		check := func() {
+			t.Helper()
+			fx.flush()
+			for _, u := range fx.sender.updates()[applied:] {
+				model.apply(t, u)
+				applied++
+			}
+			model.assertMatches(t, fx.Snapshot())
+		}
+
+		// when / then: peers and the account
+		fx.init(t)
+		fx.OnTechSpaceId(techSpaceId)
+		fx.OnLocalPeerDiscovered("lan1", []string{"192.168.1.9:4242"})
+		fx.dialStarted("coord", 2)
+		fx.connected("coord", "quic", false, 120*time.Millisecond)
+		fx.pull(commonspace.PullEventWaiting, techSpaceId, "", nil)
+		fx.dialStarted("node1", 2)
+		fx.dialFailed("node1", net.ErrUnableToConnect, time.Second)
+		fx.dialStarted("node1", 2)
+		fx.connected("node1", "yamux", false, 400*time.Millisecond)
+		fx.pull(commonspace.PullEventAttempt, techSpaceId, "node1", nil)
+		fx.pull(commonspace.PullEventResult, techSpaceId, "node1", nil)
+		fx.OnAccountReady()
+		check()
+		require.Equal(t, pb.EventAccountRecovery_LoadingSpaces, model.phase)
+
+		// spaces: one pulled, one optimistic, one failing, one deleted meanwhile
+		fx.OnSpaceView("s1", "v1", false)
+		fx.OnSpaceView("s2", "v2", false)
+		fx.OnSpaceView("s3", "v3", false)
+		fx.OnSpaceLoadStarted("s1", false)
+		fx.pull(commonspace.PullEventWaiting, "s1", "", nil)
+		fx.pull(commonspace.PullEventAttempt, "s1", "node1", nil)
+		fx.pull(commonspace.PullEventResult, "s1", "node1", net.ErrUnableToConnect)
+		fx.pull(commonspace.PullEventResult, "s1", "node1", net.ErrUnableToConnect)
+		check()
+		fx.pull(commonspace.PullEventResult, "s1", "node2", nil)
+		fx.OnSpaceLoaded("s1", nil, false)
+		fx.OnSpaceLoadStarted("s2", true)
+		fx.OnSpaceLoadStarted("s3", false)
+		fx.OnSpaceLoaded("s3", anystore.ErrCollectionNotFound, false)
+		check()
+		require.False(t, model.done)
+
+		// the tech space's diff knows one more view than we have
+		fx.OnHeadSync(techSpaceId, "node1", []string{"v1", "v2", "v3", "v4"}, true)
+		check()
+		require.False(t, model.done)
+		fx.OnSpaceView("s4", "v4", false)
+		fx.OnSpaceLoadStarted("s4", false)
+		fx.OnSpaceView("s4", "v4", true) // deleted while loading
+		check()
+		require.True(t, model.done)
+		require.True(t, model.viewsConfirmed)
+		require.Equal(t, pb.EventAccountRecovery_Done, model.phase)
+
+		// silence after Done, and Close changes nothing
+		fx.OnSpaceView("s5", "v5", false)
+		fx.closed("node1", false)
+		check()
+		require.NoError(t, fx.Close(context.Background()))
 		check()
 	})
 }

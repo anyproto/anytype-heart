@@ -43,7 +43,8 @@ func (t *Tracker) markLocked(payload pb.IsEventAccountRecoveryUpdatePayload, key
 }
 
 func (t *Tracker) emitLocked(payload pb.IsEventAccountRecoveryUpdatePayload, key *coalesceKey, force bool) {
-	if !t.run.started || (t.run.closed && !force) {
+	if !t.run.started || ((t.run.closed || t.phase.finished) && !force) {
+		// nothing after Close, nothing after Done — except a terminal
 		return
 	}
 	now := t.clock.Now()

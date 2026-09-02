@@ -726,8 +726,15 @@ func TestOrderSpacesOpenedFirst(t *testing.T) {
 // fakeRecoveryObserver stands in for the recovery status tracker under its
 // component name.
 type fakeRecoveryObserver struct {
+	mu          sync.Mutex
 	techSpaceId string
 	ready       int
+	views       []fakeSpaceView
+}
+
+type fakeSpaceView struct {
+	spaceId, spaceViewId string
+	deleted              bool
 }
 
 func (f *fakeRecoveryObserver) Init(*app.App) error { return nil }
@@ -737,6 +744,55 @@ func (f *fakeRecoveryObserver) Name() string { return recoveryCName }
 func (f *fakeRecoveryObserver) OnTechSpaceId(id string) { f.techSpaceId = id }
 
 func (f *fakeRecoveryObserver) OnAccountReady() { f.ready++ }
+
+func (f *fakeRecoveryObserver) OnSpaceView(spaceId, spaceViewId string, deleted bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.views = append(f.views, fakeSpaceView{spaceId: spaceId, spaceViewId: spaceViewId, deleted: deleted})
+}
+
+func (f *fakeRecoveryObserver) seenViews() []fakeSpaceView {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]fakeSpaceView(nil), f.views...)
+}
+
+func TestService_notifySpaceView(t *testing.T) {
+	newService := func(fake *fakeRecoveryObserver) *service {
+		s := New().(*service)
+		s.recovery = fake
+		s.applySpaceStatusHook = func(spaceViewStatus) {} // test seam: no controller build
+		return s
+	}
+	tests := []struct {
+		name   string
+		status spaceViewStatus
+		want   fakeSpaceView
+	}{
+		{"active view", spaceViewStatus{spaceId: "s1", spaceViewId: "v1", accountStatus: spaceinfo.AccountStatusActive, mx: &sync.Mutex{}}, fakeSpaceView{"s1", "v1", false}},
+		{"deleted account status", spaceViewStatus{spaceId: "s2", spaceViewId: "v2", accountStatus: spaceinfo.AccountStatusDeleted, mx: &sync.Mutex{}}, fakeSpaceView{"s2", "v2", true}},
+		{"removing account status", spaceViewStatus{spaceId: "s3", spaceViewId: "v3", accountStatus: spaceinfo.AccountStatusRemoving, mx: &sync.Mutex{}}, fakeSpaceView{"s3", "v3", true}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			fake := &fakeRecoveryObserver{}
+			s := newService(fake)
+
+			// when
+			s.onSpaceStatusUpdated(tc.status)
+
+			// then
+			require.Eventually(t, func() bool { return len(fake.seenViews()) == 1 }, time.Second, 5*time.Millisecond)
+			assert.Equal(t, []fakeSpaceView{tc.want}, fake.seenViews())
+		})
+	}
+
+	t.Run("no tracker registered is a no-op", func(t *testing.T) {
+		s := New().(*service)
+		assert.NotPanics(t, func() { s.notifySpaceView(spaceViewStatus{spaceId: "s1"}) })
+	})
+}
 
 func TestService_RecoveryObserver(t *testing.T) {
 	t.Run("constant mirrors recovery.CName", func(t *testing.T) {

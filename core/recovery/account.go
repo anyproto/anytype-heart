@@ -34,7 +34,11 @@ func (t *Tracker) ObservePullEvent(ev commonspace.PullEvent) {
 	defer containTelemetry("pull event")
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if !t.begun || ev.SpaceId == "" || ev.SpaceId != t.account.techSpaceId {
+	if !t.begun || t.terminalLocked() || ev.SpaceId == "" {
+		return
+	}
+	if ev.SpaceId != t.account.techSpaceId {
+		t.spacePullLocked(ev)
 		return
 	}
 	switch ev.Kind {
@@ -86,7 +90,7 @@ func (t *Tracker) OnAccountReady() {
 	defer containTelemetry("account ready")
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if !t.begun || t.account.ready {
+	if !t.begun || t.terminalLocked() || t.account.ready {
 		return
 	}
 	now := t.clock.Now()
@@ -97,20 +101,9 @@ func (t *Tracker) OnAccountReady() {
 		DurationMs: now.Sub(t.run.startedAt).Milliseconds(),
 	}}, nil)
 	if id := t.account.techSpaceId; id != "" {
-		t.spaces[id] = &spaceState{
-			kind:  pb.EventAccountRecovery_Tech,
-			state: pb.EventAccountRecovery_Loaded,
-			from:  pb.EventAccountRecovery_Queued,
-		}
-		t.markLocked(&pb.EventAccountRecoveryUpdatePayloadOfSpaceDiscovered{SpaceDiscovered: &pb.EventAccountRecoverySpaceDiscovered{
-			SpaceId: id,
-			Kind:    pb.EventAccountRecovery_Tech,
-		}}, nil)
-		t.markLocked(&pb.EventAccountRecoveryUpdatePayloadOfSpaceStateChanged{SpaceStateChanged: &pb.EventAccountRecoverySpaceStateChanged{
-			SpaceId:   id,
-			State:     pb.EventAccountRecovery_Loaded,
-			FromState: pb.EventAccountRecovery_Queued,
-		}}, nil)
+		s := t.spaceLocked(id, "", pb.EventAccountRecovery_Tech)
+		t.transitionLocked(id, s, pb.EventAccountRecovery_Loaded, nil)
 	}
+	t.checkFinishedLocked()
 	t.refreshPhaseLocked(false)
 }
