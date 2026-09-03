@@ -25,13 +25,9 @@ import (
 	"github.com/anyproto/anytype-heart/util/namegenerator"
 )
 
-func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateRequest) (*model.Account, error) {
+func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateRequest) (newAcc *model.Account, err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-
-	if err := s.stop(); err != nil {
-		return nil, errors.Join(ErrFailedToStopApplication, err)
-	}
 
 	s.requireClientWithVersion()
 
@@ -39,10 +35,18 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 		return nil, ErrWalletNotInitialized
 	}
 
-	var err error
 	accountID := s.derivedKeys.Identity.GetPublic().Account()
+	if err = s.switchAccountLease(ctx, s.rootPath, accountID); err != nil {
+		return nil, err
+	}
+	appStarted := false
+	defer func() {
+		if !appStarted && err != nil {
+			err = errors.Join(err, s.releaseAccountLease())
+		}
+	}()
 
-	if err := core.WalletInitRepo(s.rootPath, s.derivedKeys.Identity); err != nil {
+	if err = core.WalletInitRepo(s.rootPath, s.derivedKeys.Identity); err != nil {
 		return nil, err
 	}
 
@@ -73,22 +77,24 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 		s.eventSender,
 	}
 
-	newAcc := &model.Account{Id: accountID}
+	newAcc = &model.Account{Id: accountID}
 
 	// in case accountCreate got canceled by other request we loose nothing
 	s.appAccountStartInProcessCancelMutex.Lock()
 	ctx, s.appAccountStartInProcessCancel = context.WithCancel(ctx)
 	s.appAccountStartInProcessCancelMutex.Unlock()
-	s.app, err = anytype.StartNewApp(ctx, s.clientWithVersion, comps...)
+	newApp, startErr := anytype.StartNewApp(ctx, s.clientWithVersion, comps...)
 	s.appAccountStartInProcessCancelMutex.Lock()
 	s.appAccountStartInProcessCancel = nil
 	s.appAccountStartInProcessCancelMutex.Unlock()
 	if errors.Is(ctx.Err(), context.Canceled) {
 		// todo: remove local data in case of account create cancelation
 	}
-	if err != nil {
-		return newAcc, errors.Join(ErrFailedToStartApplication, err)
+	if startErr != nil {
+		return newAcc, errors.Join(ErrFailedToStartApplication, startErr)
 	}
+	s.app = newApp
+	appStarted = true
 
 	err = s.setProfileDetails(ctx, req, newAcc)
 	if err != nil {

@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/util/crypto"
 
+	"github.com/anyproto/anytype-heart/core/application/accountdirlock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -22,7 +23,8 @@ var log = logging.Logger("anytype-core-account")
 type Service struct {
 	lock sync.RWMutex
 
-	app *app.App
+	app          *app.App
+	accountLease *accountdirlock.Lease
 
 	// pre-derived keys (populated during wallet.create or wallet.recover)
 	derivedKeys *crypto.DerivationResult
@@ -73,6 +75,13 @@ func (s *Service) Stop() error {
 }
 
 func (s *Service) stop() error {
+	return errors.Join(s.closeApp(), s.releaseAccountLease())
+}
+
+// closeApp closes all account components but deliberately retains the account
+// lease. Operations such as restart, move, and deletion must remain protected
+// until they have finished touching account data.
+func (s *Service) closeApp() error {
 	ctx, task := trace.NewTask(context.Background(), "application.stop")
 	defer task.End()
 
@@ -81,9 +90,9 @@ func (s *Service) stop() error {
 		log.Infow("closing app: initiated", "mwVersion", mwVersion)
 		s.app.SetDeviceState(int(domain.CompStateAppClosingInitiated))
 		start := time.Now()
-		err := s.app.Close(ctx)
-		if err != nil {
-			log.Warnf("error while stop anytype: %v", err)
+		closeErr := s.app.Close(ctx)
+		if closeErr != nil {
+			log.Warnf("error while stop anytype: %v", closeErr)
 		}
 		log.Infow("closing app: finished", "mwVersion", mwVersion, "tookMs", time.Since(start).Milliseconds())
 		// Drain zap's buffered sink (the "closing app: finished" line above
@@ -95,6 +104,7 @@ func (s *Service) stop() error {
 		_ = logging.CloseSink(3 * time.Second)
 
 		s.app = nil
+		return closeErr
 	}
 	return nil
 }

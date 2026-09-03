@@ -111,9 +111,9 @@ func (s *Service) AccountChangeNetworkConfigAndRestart(ctx context.Context, req 
 		}
 	}
 
-	err := s.stop()
+	err := s.closeApp()
 	if err != nil {
-		return ErrFailedToStopApplication
+		return errors.Join(ErrFailedToStopApplication, s.releaseAccountLease())
 	}
 
 	_, err = s.start(ctx, accountId, rootPath, conf.DontStartLocalNetworkSyncAutomatically, conf.JsonApiListenAddr,
@@ -121,13 +121,16 @@ func (s *Service) AccountChangeNetworkConfigAndRestart(ctx context.Context, req 
 	return err
 }
 
-func (s *Service) accountRemoveLocalData() error {
+func (s *Service) accountRemoveLocalData() (err error) {
 	conf := s.app.MustComponent(config.CName).(*config.Config)
 	address := s.app.MustComponent(walletComp.CName).(walletComp.Wallet).GetAccountPrivkey().GetPublic().Account()
 
 	customFileStorePath := conf.CustomFileStorePath()
 
-	err := s.stop()
+	defer func() {
+		err = errors.Join(err, s.releaseAccountLease())
+	}()
+	err = s.closeApp()
 	if err != nil {
 		return err
 	}
