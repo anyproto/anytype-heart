@@ -13,9 +13,15 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/gogo/protobuf/types"
+
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // withDryRunFlag mimics the server's ensureDryRun middleware for handler
@@ -253,6 +259,55 @@ func TestUploadFileHandler(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("the body's name reaches the service", func(t *testing.T) {
+		// APIV2-027 lived on ONE line here: the handler decoded `name` and
+		// then passed only req.Url on. Every other test for this route sits
+		// below that boundary, so re-introducing the bug leaves them green.
+		fx := newV2HandlerFixture(t)
+		fx.router.POST("/v2/spaces/:space_id/files", withDryRunFlag(), UploadFileHandler(fx.svc))
+		fx.mwMock.EXPECT().FileUpload(mock.Anything, mock.MatchedBy(func(req *pb.RpcFileUploadRequest) bool {
+			return req.Url == "https://example.org/a.pdf" &&
+				domain.NewDetailsFromProto(req.Details).GetString(bundle.RelationKeyName) == "Q3 report"
+		})).Return(&pb.RpcFileUploadResponse{
+			ObjectId: "file1",
+			Details: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyName.String(): pbtypes.String("Q3 report"),
+			}},
+			Error: &pb.RpcFileUploadResponseError{Code: pb.RpcFileUploadResponseError_NULL},
+		})
+
+		// when
+		req := httptest.NewRequest(http.MethodPost, "/v2/spaces/space1/files",
+			strings.NewReader(`{"url":"https://example.org/a.pdf","name":"Q3 report"}`))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		fx.router.ServeHTTP(w, req)
+
+		// then
+		require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+		var got v2model.FileUploadResult
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+		assert.Equal(t, "Q3 report", got.Name)
+	})
+
+	t.Run("a name past the advertised bound is a 400 naming the field", func(t *testing.T) {
+		// no FileUpload expectation — reaching the RPC fails the test
+		fx := newV2HandlerFixture(t)
+		fx.router.POST("/v2/spaces/:space_id/files", withDryRunFlag(), UploadFileHandler(fx.svc))
+
+		req := httptest.NewRequest(http.MethodPost, "/v2/spaces/space1/files",
+			strings.NewReader(`{"url":"https://example.org/a.pdf","name":"`+strings.Repeat("x", 4097)+`"}`))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+		fx.router.ServeHTTP(w, req)
+
+		require.Equal(t, http.StatusBadRequest, w.Code)
+		var got v2model.Error
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+		require.NotEmpty(t, got.Issues)
+		assert.Equal(t, "/name", got.Issues[0].Path)
 	})
 }
 

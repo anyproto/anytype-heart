@@ -178,6 +178,7 @@ func TestV2Schemas(t *testing.T) {
 
 		file := bounds("file")
 		assert.Equal(t, maxV2UrlLength, file["url"].MaxLength)
+		assert.Equal(t, maxV2NameLength, file["name"].MaxLength)
 	})
 
 	t.Run("every kind serves parseable schema and example (C12/C13)", func(t *testing.T) {

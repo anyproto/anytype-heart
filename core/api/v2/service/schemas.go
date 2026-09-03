@@ -86,8 +86,8 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		endpoint: "POST /v2/spaces/{space_id}/files",
 		schema: `{"type":"object","additionalProperties":false,"required":["url"],"properties":{` +
 			`"url":{"type":"string","maxLength":4096,"description":"source URL; alternatively upload bytes as multipart/form-data with a file field"},` +
-			`"name":{"type":"string","maxLength":4096}}}`,
-		example: `{"url":"https://example.org/report.pdf"}`,
+			`"name":{"type":"string","maxLength":4096,"description":"names the stored object; omit to keep the name the source gives"}}}`,
+		example: `{"url":"https://example.org/report.pdf","name":"Q3 report"}`,
 	},
 	"search": {
 		endpoint: "POST /v2/spaces/{space_id}/search (and POST /v2/search global)",

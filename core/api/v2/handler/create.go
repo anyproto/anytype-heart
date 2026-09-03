@@ -6,6 +6,7 @@ package v2handler
 // sets.
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -49,6 +50,12 @@ const maxV2CreateBodySize = 10 << 20 // 10 MiB
 // bodies whenever no Idempotency-Key engaged the middleware cap (surface
 // review M6).
 const maxV2StructuredBodySize = 1 << 20 // 1 MiB
+
+// maxV2UploadFilenameBytes bounds the multipart part's filename, which is
+// staged as a real file on disk. 255 is the single-component limit on every
+// filesystem heart ships against, so anything longer cannot be created and
+// used to surface as a 500.
+const maxV2UploadFilenameBytes = 255
 
 // readV2Body reads a bounded request body; a nil return means the error
 // response was already written.
@@ -401,7 +408,9 @@ func UploadFileHandler(s *v2service.Service) gin.HandlerFunc {
 				return
 			}
 			defer cleanup()
-			result, err := s.UploadFile(c.Request.Context(), spaceId, localPath, "", dryRun)
+			// the multipart form carries the name in the part's filename,
+			// which stageV2Upload already put on the staged path
+			result, err := s.UploadFile(c.Request.Context(), spaceId, localPath, "", "", dryRun)
 			if err != nil {
 				RespondError(c, err)
 				return
@@ -416,7 +425,7 @@ func UploadFileHandler(s *v2service.Service) gin.HandlerFunc {
 			maxV2StructuredBodySize, "file") {
 			return
 		}
-		result, err := s.UploadFile(c.Request.Context(), spaceId, "", req.Url, dryRun)
+		result, err := s.UploadFile(c.Request.Context(), spaceId, "", req.Url, req.Name, dryRun)
 		if err != nil {
 			RespondError(c, err)
 			return
@@ -459,6 +468,21 @@ func stageV2Upload(c *gin.Context) (localPath string, cleanup func(), ok bool) {
 	name := filepath.Base(fileHeader.Filename)
 	if name == "." || name == ".." || name == "" || strings.ContainsRune(name, 0) {
 		name = "upload"
+	}
+	// a filename past what the filesystem takes made os.Create fail, and
+	// RespondError turned that into a 500 carrying an os error string — a
+	// caller-controlled input answered as a server fault. The JSON form
+	// refuses an over-long name with a 400 naming the field; this is the
+	// same refusal for the channel that carries the name as a filename.
+	if len(name) > maxV2UploadFilenameBytes {
+		RespondError(c, v2model.ValidationFailed("the file's name is too long",
+			v2model.Issue{
+				Path:    "file",
+				Message: fmt.Sprintf("the multipart filename is %d bytes; at most %d are accepted", len(name), maxV2UploadFilenameBytes),
+				Hint:    "send a shorter filename, or upload by URL with a JSON name",
+			}))
+		cleanup()
+		return "", nil, false
 	}
 	tempPath := filepath.Join(tempDir, name)
 	tempFile, err := os.Create(tempPath)

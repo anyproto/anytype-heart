@@ -219,8 +219,15 @@ def upload_request_body():
                 "schema": {
                     "additionalProperties": False,
                     "properties": {
-                        "name": {"type": "string"},
-                        "url": {"type": "string"},
+                        # the service enforces both bounds (M6); a published
+                        # schema that omits them describes a laxer contract
+                        # than the one the route actually has
+                        "name": {
+                            "type": "string",
+                            "maxLength": 4096,
+                            "description": "names the stored object; omit to keep the name the source gives",
+                        },
+                        "url": {"type": "string", "maxLength": 4096},
                     },
                     "required": ["url"],
                     "type": "object",

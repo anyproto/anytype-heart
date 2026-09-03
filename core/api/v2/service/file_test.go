@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -38,11 +39,70 @@ func TestV2UploadFile(t *testing.T) {
 		want := &v2model.FileUploadResult{Id: "file1", Name: "a.pdf", MimeType: "application/pdf", Size: 123}
 
 		// when
-		got, err := fx.UploadFile(context.Background(), testSpaceId, "", "https://example.org/a.pdf", false)
+		got, err := fx.UploadFile(context.Background(), testSpaceId, "", "https://example.org/a.pdf", "", false)
 
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
+	})
+
+	t.Run("the caller's name reaches the upload and the result", func(t *testing.T) {
+		// A strict body that ACCEPTS a field must let it do something. The
+		// schema advertises `name` under additionalProperties:false, so every
+		// generated client and every model reading GET /v2/schemas/file emits
+		// it; answering 201 with the url-derived name instead is the exact
+		// failure mode strict decoding was introduced to remove.
+		fx := newV2Fixture(t)
+		fx.mwMock.EXPECT().FileUpload(mock.Anything, mock.MatchedBy(func(req *pb.RpcFileUploadRequest) bool {
+			return req.Url == "https://example.org/v2-url-upload" &&
+				domain.NewDetailsFromProto(req.Details).GetString(bundle.RelationKeyName) == "Quarterly report"
+		})).Return(&pb.RpcFileUploadResponse{
+			ObjectId: "file2",
+			Details: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyName.String():         pbtypes.String("Quarterly report"),
+				bundle.RelationKeyFileMimeType.String(): pbtypes.String("application/pdf"),
+			}},
+			Error: &pb.RpcFileUploadResponseError{Code: pb.RpcFileUploadResponseError_NULL},
+		})
+
+		got, err := fx.UploadFile(context.Background(), testSpaceId, "",
+			"https://example.org/v2-url-upload", "Quarterly report", false)
+
+		require.NoError(t, err)
+		assert.Equal(t, "Quarterly report", got.Name)
+	})
+
+	t.Run("an absent name leaves the source-derived one", func(t *testing.T) {
+		// the field is optional, so omitting it must send no details at all
+		// rather than an empty name that would blank the derived one
+		fx := newV2Fixture(t)
+		fx.mwMock.EXPECT().FileUpload(mock.Anything, mock.MatchedBy(func(req *pb.RpcFileUploadRequest) bool {
+			return req.Details == nil
+		})).Return(&pb.RpcFileUploadResponse{
+			ObjectId: "file3",
+			Details: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyName.String(): pbtypes.String("a.pdf"),
+			}},
+			Error: &pb.RpcFileUploadResponseError{Code: pb.RpcFileUploadResponseError_NULL},
+		})
+
+		got, err := fx.UploadFile(context.Background(), testSpaceId, "", "https://example.org/a.pdf", "", false)
+
+		require.NoError(t, err)
+		assert.Equal(t, "a.pdf", got.Name)
+	})
+
+	t.Run("M6: the advertised name bound is enforced", func(t *testing.T) {
+		// given: no FileUpload expectation — reaching the RPC fails the test
+		fx := newV2Fixture(t)
+
+		_, err := fx.UploadFile(context.Background(), testSpaceId, "", "https://example.org/a.pdf",
+			strings.Repeat("x", maxV2NameLength+1), false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "/name", apiErr.Issues[0].Path)
 	})
 
 	t.Run("neither path nor url is a 400", func(t *testing.T) {
@@ -50,7 +110,7 @@ func TestV2UploadFile(t *testing.T) {
 		fx := newV2Fixture(t)
 
 		// when
-		_, err := fx.UploadFile(context.Background(), testSpaceId, "", "", false)
+		_, err := fx.UploadFile(context.Background(), testSpaceId, "", "", "", false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -63,7 +123,7 @@ func TestV2UploadFile(t *testing.T) {
 
 		// when
 		_, err := fx.UploadFile(context.Background(), testSpaceId, "",
-			"https://example.org/"+strings.Repeat("x", maxV2UrlLength), false)
+			"https://example.org/"+strings.Repeat("x", maxV2UrlLength), "", false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -77,7 +137,7 @@ func TestV2UploadFile(t *testing.T) {
 		fx := newV2Fixture(t)
 
 		// when
-		got, err := fx.UploadFile(context.Background(), testSpaceId, "", "https://example.org/a.pdf", true)
+		got, err := fx.UploadFile(context.Background(), testSpaceId, "", "https://example.org/a.pdf", "", true)
 
 		// then
 		require.NoError(t, err)
@@ -93,7 +153,7 @@ func TestV2UploadFile(t *testing.T) {
 		})
 
 		// when
-		_, err := fx.UploadFile(context.Background(), testSpaceId, "", "https://example.org/a.pdf", false)
+		_, err := fx.UploadFile(context.Background(), testSpaceId, "", "https://example.org/a.pdf", "", false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -116,7 +176,7 @@ func TestV2UploadFile(t *testing.T) {
 		})
 
 		// when
-		_, err := fx.UploadFile(context.Background(), testSpaceId, "", "https://example.org/gone.pdf", false)
+		_, err := fx.UploadFile(context.Background(), testSpaceId, "", "https://example.org/gone.pdf", "", false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -141,7 +201,7 @@ func TestV2UploadFile(t *testing.T) {
 		})
 
 		// when
-		_, err := fx.UploadFile(context.Background(), testSpaceId, "", "https://nope.invalid/a.pdf", false)
+		_, err := fx.UploadFile(context.Background(), testSpaceId, "", "https://nope.invalid/a.pdf", "", false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -163,7 +223,7 @@ func TestV2UploadFile(t *testing.T) {
 		})
 
 		// when
-		_, err := fx.UploadFile(context.Background(), testSpaceId, "/tmp/staged/upload.bin", "", false)
+		_, err := fx.UploadFile(context.Background(), testSpaceId, "/tmp/staged/upload.bin", "", "", false)
 
 		// then
 		apiErr := v2Err(t, err)

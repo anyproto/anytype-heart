@@ -11,17 +11,22 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gogo/protobuf/types"
+
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // UploadFile uploads one file into the space, from a staged local path
-// (multipart upload) or a URL — exactly one must be set.
-func (s *Service) UploadFile(ctx context.Context, spaceId, localPath, url string, dryRun bool) (*v2model.FileUploadResult, error) {
+// (multipart upload) or a URL — exactly one must be set. name is optional
+// and names the stored object; empty leaves the name the pipeline derives
+// from the source (Content-Disposition, else the URL's last segment).
+func (s *Service) UploadFile(ctx context.Context, spaceId, localPath, url, name string, dryRun bool) (*v2model.FileUploadResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
@@ -29,20 +34,40 @@ func (s *Service) UploadFile(ctx context.Context, spaceId, localPath, url string
 		return nil, v2model.ValidationFailed("provide a file or a url",
 			v2model.Issue{Message: "upload multipart/form-data with a file field, or JSON {\"url\": …}"})
 	}
-	// the advertised url bound (M6, the file kind's maxLength)
+	// the advertised url and name bounds (M6, the file kind's maxLength)
 	if err := validateV2FieldLength("/url", url, maxV2UrlLength); err != nil {
 		return nil, err
 	}
+	if err := validateV2FieldLength("/name", name, maxV2NameLength); err != nil {
+		return nil, err
+	}
+	// trimmed like every other name on this surface (space.go): a
+	// whitespace-only name is not a name, and sending it as a detail would
+	// blank the one the source gave — the write this guard exists to prevent
+	name = strings.TrimSpace(name)
 	if dryRun {
 		return &v2model.FileUploadResult{DryRun: true}, nil
 	}
 
+	// The caller's name rides the RPC's additional details. On this route
+	// fileobject injects the file-derived metadata and then applies those
+	// details over it, so the caller's name wins — that ordering belongs to
+	// the SYNCHRONOUS create path this upload takes, not to the import path,
+	// which indexes later and would overwrite it. Left nil when absent: an
+	// empty name would blank the derived one.
+	var additional *types.Struct
+	if name != "" {
+		additional = &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyName.String(): pbtypes.String(name),
+		}}
+	}
 	resp := s.mw.FileUpload(ctx, &pb.RpcFileUploadRequest{
 		SpaceId:   spaceId,
 		LocalPath: localPath,
 		Url:       url,
 		Type:      model.BlockContentFile_None,
 		Origin:    model.ObjectOrigin_api,
+		Details:   additional,
 	})
 	if resp.Error != nil && resp.Error.Code != pb.RpcFileUploadResponseError_NULL {
 		return nil, v2FileRpcError(fmt.Sprintf("upload file to space %s", spaceId), url,

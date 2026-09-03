@@ -2413,8 +2413,8 @@ suggested (generating the schema strings from the constants) was
 REJECTED as not worth it: the schemas are hand-written JSON with prose
 descriptions, and the existing chat/space precedent — constants + drift
 test — already makes divergence a test failure. `UploadFileRequest.name`
-remains accepted-but-unused by the service (pre-existing; the schema
-advertises it — recorded, not fixed here).
+was accepted-but-unused by the service when this was written; it now names
+the stored object (§8.54).
 
 ### 8.13 Surface-review fixes M1 + M5 (2026-08-07 — decisions as built)
 
@@ -7219,3 +7219,90 @@ parse. That one is fixed here: the shared pagination middleware takes an
 `required` on `Error` would otherwise have made the `BadRequest` component
 false on all 45 operations. The remaining six are the older shared envelope
 by design; the census belongs in §8.9, which still under-records it.
+
+### 8.54 The URL upload's name does something (2026-09-03 — as built)
+
+APIV2-027. `POST /v2/spaces/{space_id}/files` advertised an optional
+`name` on its JSON form, decoded it strictly, and threw it away: the
+handler passed only `req.Url` to the service, whose signature had no name
+at all. All three name surfaces (the create result, the stored object,
+the search row) answered with the source-derived name instead.
+
+This is the failure mode strict decoding exists to remove. The body binds
+under `additionalProperties: false`, so `name` is not tolerated but
+WHITELISTED, and `GET /v2/schemas/file` serves it with a bound — which is
+the endpoint a model reads to learn what it may send. Every generated
+client and every schema-guided caller therefore emits it and gets a 201
+that quietly disagrees.
+
+Removing the field was the alternative. It was rejected: the plumbing
+already existed (`RpcFileUploadRequest.Details` → `SetAdditionalDetails`
+→ applied after the file-derived metadata, so a caller's name wins), the
+change is additive, and the multipart form can already name its object
+through the part's filename. Removing it would have frozen that asymmetry
+and turned a currently-accepted body into a 400 for anyone who copied the
+schema.
+
+One behaviour the tests pin, because it is not obvious: an absent name
+sends no details at all rather than an empty one, or the write would blank
+the name the pipeline derived. A whitespace-only name is trimmed to absent
+for the same reason.
+
+Two behaviours are NOT pinned here, and both are the uploader's rules
+rather than this route's. On content dedup the existing object wins —
+`getOrCreateFileObject` returns it with its existing details and skips
+`additionalDetails` entirely, so uploading bytes the space already holds
+keeps the old name; `FileUploadResult.name` is how a caller detects that.
+And the embedded file BLOCK's own `name` still shows the source-derived
+filename, because the block is built inside the metadata injection that
+runs before the caller's details are applied. One read can therefore
+answer `properties.name` with the caller's name and `blocks[0].name` with
+the filename. That is arguably right — the block should show the real file
+— but it is a disagreement inside one response, and it is not recorded
+anywhere else.
+
+### 8.55 A refusal cited the document that contradicts it (2026-09-03 — as built)
+
+APIV2-028. `insert_blocks`/`move_block` refused an `inside` target in the
+file family with the issue "the target is a leaf block type (SPEC §5)".
+The refusal is right and stays: clients treat file blocks as leaves, so an
+API that lets an agent hide a paragraph under an image creates content no
+editor will render and no user can reach.
+
+The citation was wrong, though, and wrong in the worst direction: §5's leaf
+inventory does not contain `image`, `file`, `video`, `audio` or `pdf`, and
+it closes with "Every other type may be a parent." §5 also says file blocks
+MAY carry legacy descendants, because the format has to read documents that
+already do. The stricter rule belongs to the API's edit policy (§2, Phase 3)
+and `apiEditLeafBlockType` implements it as the union of the format's leaves
+and the file family. So a caller who followed the citation reached a
+document that contradicted the refusal, with no hint to redirect them.
+
+The message now states the API's rule and adds the repair, which is the
+call this repo already made once: commit 33c5d49f6 removed 59 section
+citations from the format package's messages, on the grounds that the reader
+of a refusal does not have the repo and a section number costs them the
+words that would have helped. That sweep stopped at the `core/api`
+boundary.
+
+The predicate has two halves and they do not share a reason, so neither
+does the message. A format leaf can never be a parent anywhere — the
+format refuses it, so does an import, so does the app — while the file
+family can, and only a NEW API edit is refused. Saying "in an API edit"
+for a `divider` would invent a scope, and a caller who reads a scope tests
+its edge: they would try the same nesting through a whole-document write
+and be refused again, having been told it was this surface's rule. The
+first draft of this fix did exactly that, for all twelve format leaves.
+
+The same misattribution was standing, uncited, one function away:
+`update_block`'s type-change refusal called `image` a "leaf type", which is
+the format's own term of art for the list `image` is absent from. Dropping
+those two words costs nothing — the refusal already says the block has
+descendants and that the target takes no children — and it removes the
+claim a caller could have checked. It was not extended here beyond the misattributed message: the
+remaining citations are ACCURATE, and the difference between accurate-but-
+unresolvable and actively contradictory is the difference between a style
+debt and a defect. The accurate ones are worth the same treatment, and
+`core/api/openapiprose_test.go` already bans `§` from the published
+document, but the runtime-served discovery schemas are not yet guarded and
+that sweep is its own change.

@@ -117,7 +117,7 @@ func TestEnsureSpaceGrantBackstop(t *testing.T) {
 				_, err := fx.CreateQuery(ctx, testSpaceId, v2model.CreateQueryRequest{}, false, true)
 				return err
 			}},
-			{"UploadFile", func() error { _, err := fx.UploadFile(ctx, testSpaceId, "", "", false); return err }},
+			{"UploadFile", func() error { _, err := fx.UploadFile(ctx, testSpaceId, "", "", "", false); return err }},
 			{"CreateChat", func() error {
 				_, err := fx.CreateChat(ctx, testSpaceId, v2model.CreateChatRequest{Name: "c"}, false)
 				return err
