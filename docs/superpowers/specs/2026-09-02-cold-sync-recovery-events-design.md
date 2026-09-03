@@ -158,6 +158,9 @@ message Account {
         Started             started             = 10;
         PhaseChanged        phaseChanged        = 11;
         LocalDiscoveryState localDiscoveryState = 12;
+        // phase 7: what the LAN space exchange said, and the fold's LAN headline
+        // (PeerSpaceExchange = 25, LocalPeersStateChanged = 26; LocalPeersState enum;
+        // Snapshot.localPeers = 21; Snapshot.Peer.exchanged/hasAccountSpace/sharedSpaceCount = 10-12)
         PeerDiscovered      peerDiscovered      = 13;
         DialStarted         dialStarted         = 14;
         PeerConnected       peerConnected       = 15;
@@ -472,6 +475,18 @@ the mapping table; `Finished` is never emitted after `Failed`.
   inferred (an idle-TTL close looks identical to a failure by design).
 - `attempt` on `DialFailed` is *dials observed* (correction 1); there is no `nextRetryMs`.
 - `PeerDiscovered` (LAN): `discoveredLocally = true`, kind `LocalPeer` if not yet a node.
+- **Space exchange (phase 7).** `peerstore.AddObserver` fires after the exchange on both paths
+  (`spacecore.PeerDiscovered` outbound, `rpchandler` inbound), with the store's lock released.
+  The fold records the *fact* per peer — `exchanged`, `hasAccountSpace` (`spaceIdsAfter`
+  contains the tech space id), `sharedSpaceCount` — and emits `PeerSpaceExchange`;
+  `peerRemoved` clears it. The LAN headline `LocalPeersState` is derived over every `LocalPeer`:
+  one `exchanged && hasAccountSpace` -> `AccountOnLocalPeer`; else any peer connected-but-
+  unanswered, or discovered/dialing -> `LocalPeersConnecting`; else any `exchanged` ->
+  `AccountNotOnLocalPeers` (the negative verdict only once **every** connected peer answered);
+  else any failed dial -> `LocalPeersUnreachable`; else `NoLocalPeers`. Named as a fact on the
+  wire because until GO-7492 a cold device exchanges zero tokens and every LAN peer answers
+  "nothing shared" — a field called "account not found" would be reliably wrong exactly there;
+  the re-exchange after GO-7492 flips the state with no further plumbing.
 - **Execution notes (phase 3).** Every peer event carries `kind` + `nodeTypes` (added to
   `PeerDiscovered` and `PeerDisconnected`) so a peer first seen through any of them replays to
   the snapshot exactly — the pool can report `Closed` for a peer it never reported `Connected`
@@ -631,6 +646,14 @@ race — a diff before the created space's view was delivered would have finishe
 tech space alone — is closed in phase 6 by the gate's local half (`OnSpaceViewsInitial`, above);
 `TestTracker_ViewGate/the_gate_waits_for_the_watcher's_first_pass` fails without it.
 
+**Execution notes (phase 7).** Found by running a desktop + iOS pair on one LAN: the stream
+showed `PeerConnected` for a LAN peer while `P2PStatusUpdate` said `devicesCounter: 0` — both
+true of different layers (dial/pool vs. `peerStore.LocalPeerIds`, populated only after the
+exchange confirms shared spaces). The exchange seam above closes the gap. The aggregate is a
+derived level with its own `fromState`, so the replay model folds it like the phase. GO-7492
+(cold devices exchange zero tokens because `AllSpaceIds()` reads an empty disk) is out of scope
+and is why the wire reports the exchange's answer rather than a verdict.
+
 There is deliberately **no stall cap**: the only per-space input is the loader's own result, and
 the loader retries forever through a real outage by design. The run staying open under
 `WaitingForNetwork` is the correct rendering of that; a cap would manufacture a `Done` the
@@ -684,6 +707,7 @@ that attach before `AccountSelect` (the normal client flow) see `Started` as id 
 | Peer lifecycle | `net/peerobservermux` (new) registered in `core/anytype/bootstrap.go` right after `peerstore.New()`, before `pool.New()`/`peerservice.New()`; `Name()` returns `peerobserver.CName` (correction 7) | tracker `Init` -> `mux.Add(t)`; mux fans out synchronously with per-observer panic containment | `ObservePeerEvent` -> `DialStarted`, `PeerConnected`, `DialFailed`, `PeerDisconnected` |
 | LAN discovery possibility | `localdiscovery.RegisterDiscoveryPossibilityHook` (`common.go:145`) | tracker `Init`, same interface `peerstatus` uses | `OnDiscoveryPossibility` -> `LocalDiscoveryState` |
 | LAN peer found | `space/spacecore/peer.go` `PeerDiscovered` — first line, before the pool `Get` (correction 6; Android's `SetNotifierProvider` is upstream of this point, so one seam covers all backends) | `spacecore.Init`: `a.Component("core.recovery")` type-asserted to a `PeerDiscoveryObserver` interface declared in `spacecore`; nil-safe | `OnLocalPeerDiscovered` -> `PeerDiscovered` |
+| LAN space exchange | `peerstore.UpdateLocalPeer`, the line after the exchange on both paths (`spacecore/peer.go`, `spacecore/rpchandler.go`); observers run with the store unlocked (precedent `core/peerstatus`) | tracker `Init`: `peerstore.AddObserver` by name | `onLocalPeerSpaces` -> `PeerSpaceExchange`, `LocalPeersStateChanged` |
 | Remote pull | `space/spacecore/service.go` `loadSpace`: `deps.PullObserver = s.recovery` (the single `commonspace.Deps` literal; covers tech/personal/shareable/streamable/one-to-one; correction 13) | same optional lookup, asserted to `commonspace.PullObserver` | `ObservePullEvent` -> `AccountFetchStarted/Error` or `SpaceStateChanged{Pulling}` |
 | Tech space id | `space/service.go` `Init`, right after `DeriveID(SpaceTypeTech)` | `space.Init`: optional lookup by name (precedent `BlockServiceCName`), narrow `recoveryObserver` interface declared in `space` | `OnTechSpaceId` (no event) |
 | Tech space ready | `space/init.go` `loadTechSpace` and `createTechSpace`, immediately after `close(s.techSpaceReady)` | same interface | `OnAccountReady()` -> `AccountReady`, tech space `Loaded` |

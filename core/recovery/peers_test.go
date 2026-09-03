@@ -33,7 +33,7 @@ func TestTracker_PeerFolding(t *testing.T) {
 
 		// then
 		ups := fx.sender.updates()
-		require.Len(t, ups, 4) // Started, DialStarted, PhaseChanged(Connecting), DialStarted
+		require.Len(t, ups, 5) // Started, DialStarted, PhaseChanged(Connecting), DialStarted, LocalPeersStateChanged
 		want := &pb.EventAccountRecoveryDialStarted{
 			PeerId: "coord", Kind: pb.EventAccountRecovery_NetworkNode, NodeTypes: []string{"coordinator"}, AddrsCount: 3,
 		}
@@ -117,7 +117,9 @@ func TestTracker_PeerFolding(t *testing.T) {
 		fx.connected("lan1", "yamux", true, 5*time.Second)
 
 		// then
-		got := fx.lastUpdate(t).Payload.(*pb.EventAccountRecoveryUpdatePayloadOfPeerConnected).PeerConnected
+		ups := fx.sender.updates()
+		require.Len(t, ups, 3) // Started, PeerConnected, LocalPeersStateChanged
+		got := ups[1].Payload.(*pb.EventAccountRecoveryUpdatePayloadOfPeerConnected).PeerConnected
 		want := &pb.EventAccountRecoveryPeerConnected{
 			PeerId: "lan1", Kind: pb.EventAccountRecovery_LocalPeer, Direction: pb.EventAccountRecovery_Inbound,
 			Addr: "addr:lan1", Transport: "yamux", ProtoVersion: 7, DurationMs: 0, OpenConnections: 1,
@@ -381,7 +383,7 @@ func TestTracker_LocalDiscovery(t *testing.T) {
 
 		// then
 		ups := fx.sender.updates()
-		require.Len(t, ups, 2)
+		require.Len(t, ups, 3) // Started, PeerDiscovered, LocalPeersStateChanged
 		want := &pb.EventAccountRecoveryPeerDiscovered{
 			PeerId: "lan1", Addrs: []string{"192.168.1.2:4242"}, Kind: pb.EventAccountRecovery_LocalPeer,
 		}

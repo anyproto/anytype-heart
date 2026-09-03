@@ -321,6 +321,17 @@ message Event {
         NoInterfaces = 1;
         Restricted = 2;
       }
+      // LocalPeersState is the fold's headline for the LAN layer, derived from
+      // every LocalPeer's dial state and space-exchange answer. The negative
+      // verdict surfaces only once every connected LAN peer has answered and
+      // none holds the account; one positive answer flips it at once.
+      enum LocalPeersState {
+        NoLocalPeers = 0;
+        LocalPeersConnecting = 1;   // discovered, dialing, or connected and awaiting the exchange
+        LocalPeersUnreachable = 2;  // every discovered peer failed to connect
+        AccountNotOnLocalPeers = 3; // every connected peer answered: it does not hold the account
+        AccountOnLocalPeer = 4;     // at least one peer holds the account's tech space
+      }
 
       // ErrorInfo (not "Error": enum values and nested messages share the
       // enclosing scope, and SpaceState.Error already takes that name)
@@ -353,6 +364,8 @@ message Event {
           Finished finished = 23;
           // sent only to a newly attached session: snapshot-on-subscribe
           Snapshot snapshot = 24;
+          PeerSpaceExchange peerSpaceExchange = 25;
+          LocalPeersStateChanged localPeersStateChanged = 26;
         }
       }
 
@@ -403,6 +416,20 @@ message Event {
         PeerKind kind = 2;
         int32 openConnections = 3;
         repeated string nodeTypes = 4;
+      }
+      // PeerSpaceExchange reports what the space exchange with a LAN peer
+      // said — a fact, not a verdict: whether the peer holds this account's
+      // tech space and how many spaces it shares. exchanged=false means no
+      // answer is known (the peer was dropped from the peer store).
+      message PeerSpaceExchange {
+        string peerId = 1;
+        bool exchanged = 2;
+        bool hasAccountSpace = 3;
+        int32 sharedSpaceCount = 4;
+      }
+      message LocalPeersStateChanged {
+        LocalPeersState state = 1;
+        LocalPeersState fromState = 2;
       }
       message AccountFetchStarted {
         string spaceId = 1;
@@ -462,6 +489,7 @@ message Event {
         bool viewsConfirmed = 18; // meaningful once done; see Finished
         int32 accountFetchAttempt = 19;
         ErrorInfo accountFetchError = 20; // last failed pull; cleared at AccountReady
+        LocalPeersState localPeers = 21;
         message Peer {
           string peerId = 1;
           PeerKind kind = 2;
@@ -472,6 +500,9 @@ message Event {
           int32 dialAttempts = 7;
           ErrorInfo lastError = 8;
           bool discoveredLocally = 9;
+          bool exchanged = 10; // a space exchange answered; the two fields below apply
+          bool hasAccountSpace = 11;
+          int32 sharedSpaceCount = 12;
         }
         message Space {
           string spaceId = 1;

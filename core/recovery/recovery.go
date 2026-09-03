@@ -31,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
+	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
 const CName = "core.recovery"
@@ -176,6 +177,9 @@ func (t *Tracker) Init(a *app.App) error {
 	if network, ok := a.Component(deviceNetworkStateCName).(networkConnectivity); ok {
 		t.net.deviceOffline = network.IsOffline()
 		network.RegisterConnectivityHook(t.onConnectivity)
+	}
+	if store, ok := a.Component(peerstore.CName).(peerStoreObservable); ok {
+		store.AddObserver(t.onLocalPeerSpaces)
 	}
 	t.publishStartedLocked()
 	t.evaluateWaitingLocked()

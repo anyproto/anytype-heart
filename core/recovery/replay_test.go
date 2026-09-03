@@ -33,6 +33,7 @@ type clientModel struct {
 	err         *pb.EventAccountRecoveryErrorInfo
 	discovery   pb.EventAccountRecoveryDiscoveryState
 	peers       map[string]*pb.EventAccountRecoverySnapshotPeer
+	localPeers  pb.EventAccountRecoveryLocalPeersState
 
 	accountFetchStarted bool
 	accountFetchAttempt int32
@@ -110,6 +111,14 @@ func (m *clientModel) apply(t *testing.T, u *pb.EventAccountRecoveryUpdate) {
 	case *pb.EventAccountRecoveryUpdatePayloadOfPeerDisconnected:
 		e := p.PeerDisconnected
 		m.peer(e.PeerId, e.Kind, e.NodeTypes).OpenConnections = e.OpenConnections
+	case *pb.EventAccountRecoveryUpdatePayloadOfPeerSpaceExchange:
+		e := p.PeerSpaceExchange
+		peer, known := m.peers[e.PeerId]
+		require.True(t, known, "an exchange answer names a peer the log already announced")
+		peer.Exchanged, peer.HasAccountSpace, peer.SharedSpaceCount = e.Exchanged, e.HasAccountSpace, e.SharedSpaceCount
+	case *pb.EventAccountRecoveryUpdatePayloadOfLocalPeersStateChanged:
+		require.Equal(t, m.localPeers, p.LocalPeersStateChanged.FromState)
+		m.localPeers = p.LocalPeersStateChanged.State
 	case *pb.EventAccountRecoveryUpdatePayloadOfAccountFetchStarted:
 		m.accountFetchStarted = true
 		m.accountFetchAttempt = p.AccountFetchStarted.Attempt
@@ -165,6 +174,7 @@ func (m *clientModel) assertMatches(t *testing.T, snap *pb.EventAccountRecoveryS
 			want.peers[p.PeerId] = p
 		}
 	}
+	want.localPeers = snap.LocalPeers
 	want.accountFetchStarted = snap.AccountFetchStarted
 	want.accountFetchAttempt = snap.AccountFetchAttempt
 	want.accountFetchError = snap.AccountFetchError
@@ -309,6 +319,9 @@ func TestReplayProperty(t *testing.T) {
 		fx.init(t)
 		fx.OnTechSpaceId(techSpaceId)
 		fx.OnLocalPeerDiscovered("lan1", []string{"192.168.1.9:4242"})
+		fx.dialStarted("lan1", 1)
+		fx.connected("lan1", "yamux", false, 30*time.Millisecond)
+		fx.peers.exchange("lan1", nil, []string{}, false) // a cold device asks with no tokens (GO-7492)
 		fx.dialStarted("coord", 2)
 		fx.connected("coord", "quic", false, 120*time.Millisecond)
 		fx.pull(commonspace.PullEventWaiting, techSpaceId, "", nil)
@@ -340,6 +353,11 @@ func TestReplayProperty(t *testing.T) {
 		fx.OnSpaceLoaded("s3", anystore.ErrCollectionNotFound, false)
 		check()
 		require.False(t, model.done)
+
+		// the LAN peer re-exchanges once the account is known locally
+		fx.peers.exchange("lan1", []string{}, []string{techSpaceId, "s1"}, false)
+		check()
+		require.Equal(t, pb.EventAccountRecovery_AccountOnLocalPeer, model.localPeers)
 
 		// the tech space's diff knows one more view than we have
 		fx.OnHeadSync(techSpaceId, "node1", []string{"v1", "v2", "v3", "v4"}, true)

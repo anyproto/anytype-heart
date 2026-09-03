@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
+	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
 // recordingSender captures everything the tracker sends, in order.
@@ -201,6 +202,24 @@ func (f *fakeNetwork) set(online bool) {
 	}
 }
 
+// fakePeerStore captures the exchange observer under peerstore's name.
+type fakePeerStore struct {
+	observers []peerstore.Observer
+}
+
+func (f *fakePeerStore) Init(*app.App) error { return nil }
+
+func (f *fakePeerStore) Name() string { return peerstore.CName }
+
+func (f *fakePeerStore) AddObserver(o peerstore.Observer) { f.observers = append(f.observers, o) }
+
+// exchange simulates UpdateLocalPeer's notification after a space exchange.
+func (f *fakePeerStore) exchange(peerId string, before, after []string, removed bool) {
+	for _, o := range f.observers {
+		o(peerId, before, after, removed)
+	}
+}
+
 type fixture struct {
 	*Tracker
 	sender    *recordingSender
@@ -210,6 +229,7 @@ type fixture struct {
 	mux       *fakeMux
 	discovery *fakeDiscovery
 	network   *fakeNetwork
+	peers     *fakePeerStore
 }
 
 var fixtureEpoch = time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
@@ -229,6 +249,7 @@ func newFixture(t *testing.T, mode pb.EventAccountRecoveryMode) *fixture {
 		mux:       &fakeMux{},
 		discovery: &fakeDiscovery{},
 		network:   &fakeNetwork{},
+		peers:     &fakePeerStore{},
 	}
 	fx.Tracker = newTracker(fx.clock, coalesceWindow)
 	fx.Begin(Run{Mode: mode, Sender: fx.sender})
@@ -241,7 +262,7 @@ func newFixture(t *testing.T, mode pb.EventAccountRecoveryMode) *fixture {
 func (fx *fixture) init(t *testing.T) {
 	t.Helper()
 	a := new(app.App)
-	a.Register(fx.hooks).Register(fx.nodes).Register(fx.mux).Register(fx.discovery).Register(fx.network)
+	a.Register(fx.hooks).Register(fx.nodes).Register(fx.mux).Register(fx.discovery).Register(fx.network).Register(fx.peers)
 	require.NoError(t, fx.Init(a))
 }
 

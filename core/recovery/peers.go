@@ -71,6 +71,7 @@ func (t *Tracker) ObservePeerEvent(ev peerobserver.Event) {
 		// new kinds are not a breaking change
 		return
 	}
+	t.refreshLocalPeersLocked()
 	t.refreshPhaseLocked(false)
 }
 
@@ -94,6 +95,7 @@ func (t *Tracker) OnLocalPeerDiscovered(peerId string, addrs []string) {
 		Kind:      p.kind,
 		NodeTypes: p.nodeTypes,
 	}}, nil)
+	t.refreshLocalPeersLocked()
 }
 
 // onDiscoveryPossibility runs under localdiscovery's own hook lock: fold and

@@ -1927,9 +1927,11 @@
     - [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo)
     - [Event.Account.Recovery.Finished](#anytype-Event-Account-Recovery-Finished)
     - [Event.Account.Recovery.LocalDiscoveryState](#anytype-Event-Account-Recovery-LocalDiscoveryState)
+    - [Event.Account.Recovery.LocalPeersStateChanged](#anytype-Event-Account-Recovery-LocalPeersStateChanged)
     - [Event.Account.Recovery.PeerConnected](#anytype-Event-Account-Recovery-PeerConnected)
     - [Event.Account.Recovery.PeerDisconnected](#anytype-Event-Account-Recovery-PeerDisconnected)
     - [Event.Account.Recovery.PeerDiscovered](#anytype-Event-Account-Recovery-PeerDiscovered)
+    - [Event.Account.Recovery.PeerSpaceExchange](#anytype-Event-Account-Recovery-PeerSpaceExchange)
     - [Event.Account.Recovery.PhaseChanged](#anytype-Event-Account-Recovery-PhaseChanged)
     - [Event.Account.Recovery.Snapshot](#anytype-Event-Account-Recovery-Snapshot)
     - [Event.Account.Recovery.Snapshot.Peer](#anytype-Event-Account-Recovery-Snapshot-Peer)
@@ -2160,6 +2162,7 @@
     - [Event.Account.Recovery.Direction](#anytype-Event-Account-Recovery-Direction)
     - [Event.Account.Recovery.DiscoveryState](#anytype-Event-Account-Recovery-DiscoveryState)
     - [Event.Account.Recovery.ErrorClass](#anytype-Event-Account-Recovery-ErrorClass)
+    - [Event.Account.Recovery.LocalPeersState](#anytype-Event-Account-Recovery-LocalPeersState)
     - [Event.Account.Recovery.Mode](#anytype-Event-Account-Recovery-Mode)
     - [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind)
     - [Event.Account.Recovery.Phase](#anytype-Event-Account-Recovery-Phase)
@@ -30557,6 +30560,22 @@ enclosing scope, and SpaceState.Error already takes that name)
 
 
 
+<a name="anytype-Event-Account-Recovery-LocalPeersStateChanged"></a>
+
+### Event.Account.Recovery.LocalPeersStateChanged
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| state | [Event.Account.Recovery.LocalPeersState](#anytype-Event-Account-Recovery-LocalPeersState) |  |  |
+| fromState | [Event.Account.Recovery.LocalPeersState](#anytype-Event-Account-Recovery-LocalPeersState) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Account-Recovery-PeerConnected"></a>
 
 ### Event.Account.Recovery.PeerConnected
@@ -30616,6 +30635,27 @@ enclosing scope, and SpaceState.Error already takes that name)
 
 
 
+<a name="anytype-Event-Account-Recovery-PeerSpaceExchange"></a>
+
+### Event.Account.Recovery.PeerSpaceExchange
+PeerSpaceExchange reports what the space exchange with a LAN peer
+said — a fact, not a verdict: whether the peer holds this account&#39;s
+tech space and how many spaces it shares. exchanged=false means no
+answer is known (the peer was dropped from the peer store).
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| exchanged | [bool](#bool) |  |  |
+| hasAccountSpace | [bool](#bool) |  |  |
+| sharedSpaceCount | [int32](#int32) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Account-Recovery-PhaseChanged"></a>
 
 ### Event.Account.Recovery.PhaseChanged
@@ -30663,6 +30703,7 @@ each new session.
 | viewsConfirmed | [bool](#bool) |  | meaningful once done; see Finished |
 | accountFetchAttempt | [int32](#int32) |  |  |
 | accountFetchError | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  | last failed pull; cleared at AccountReady |
+| localPeers | [Event.Account.Recovery.LocalPeersState](#anytype-Event-Account-Recovery-LocalPeersState) |  |  |
 
 
 
@@ -30686,6 +30727,9 @@ each new session.
 | dialAttempts | [int32](#int32) |  |  |
 | lastError | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  |  |
 | discoveredLocally | [bool](#bool) |  |  |
+| exchanged | [bool](#bool) |  | a space exchange answered; the two fields below apply |
+| hasAccountSpace | [bool](#bool) |  |  |
+| sharedSpaceCount | [int32](#int32) |  |  |
 
 
 
@@ -30790,6 +30834,8 @@ each new session.
 | spaceStateChanged | [Event.Account.Recovery.SpaceStateChanged](#anytype-Event-Account-Recovery-SpaceStateChanged) |  |  |
 | finished | [Event.Account.Recovery.Finished](#anytype-Event-Account-Recovery-Finished) |  |  |
 | snapshot | [Event.Account.Recovery.Snapshot](#anytype-Event-Account-Recovery-Snapshot) |  | sent only to a newly attached session: snapshot-on-subscribe |
+| peerSpaceExchange | [Event.Account.Recovery.PeerSpaceExchange](#anytype-Event-Account-Recovery-PeerSpaceExchange) |  |  |
+| localPeersStateChanged | [Event.Account.Recovery.LocalPeersStateChanged](#anytype-Event-Account-Recovery-LocalPeersStateChanged) |  |  |
 
 
 
@@ -34307,6 +34353,24 @@ scenario: Precondition: user A and user B opened the same block
 | RateLimited | 8 |  |
 | StorageLimit | 9 | reserved, no producer yet |
 | Unexpected | 10 |  |
+
+
+
+<a name="anytype-Event-Account-Recovery-LocalPeersState"></a>
+
+### Event.Account.Recovery.LocalPeersState
+LocalPeersState is the fold&#39;s headline for the LAN layer, derived from
+every LocalPeer&#39;s dial state and space-exchange answer. The negative
+verdict surfaces only once every connected LAN peer has answered and
+none holds the account; one positive answer flips it at once.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NoLocalPeers | 0 |  |
+| LocalPeersConnecting | 1 | discovered, dialing, or connected and awaiting the exchange |
+| LocalPeersUnreachable | 2 | every discovered peer failed to connect |
+| AccountNotOnLocalPeers | 3 | every connected peer answered: it does not hold the account |
+| AccountOnLocalPeer | 4 | at least one peer holds the account&#39;s tech space |
 
 
 

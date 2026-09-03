@@ -165,6 +165,34 @@ any    -> Removed                                      (deleted while recovering
 - `WaitingForNetwork` is derived server-side (no open connection, a dial failed, ~10 s elapsed —
   or the device reported offline). Bind to the phase; do not derive your own from peer events.
 
+### 8.1 LAN peers and the account
+
+Connecting to a LAN peer says nothing about whether it holds *your* account: that is answered by
+the space exchange right after the connection. `PeerSpaceExchange { peerId, exchanged,
+hasAccountSpace, sharedSpaceCount }` reports that answer as a fact, and the middleware folds every
+LAN peer's dial state and answer into one headline, `LocalPeersStateChanged { state, fromState }`
+(also `Snapshot.localPeers`):
+
+| `LocalPeersState` | Meaning |
+|---|---|
+| `NoLocalPeers` | nothing discovered on the LAN |
+| `LocalPeersConnecting` | found a peer; dialing, or connected and waiting for its answer |
+| `LocalPeersUnreachable` | every discovered peer failed to connect |
+| `AccountNotOnLocalPeers` | **every** connected peer has answered and none holds the account — "looking for others" |
+| `AccountOnLocalPeer` | at least one peer holds your account's tech space — "connected to a device with your account" |
+
+The negative state never appears while a connected peer has not answered yet, and one positive
+answer flips it immediately, whatever the other peers said. Bind copy to this enum, not to the
+raw `PeerSpaceExchange` events.
+
+**Caveat until GO-7492 ships:** on a cold device the exchange is sent with zero tokens (the local
+store has no spaces yet), so every LAN peer answers "nothing shared" even when it holds the
+account. `AccountNotOnLocalPeers` is therefore reliably reached on a fresh device today and does
+**not** mean the peer lacks your data — do not surface "your account data was not found on this
+device" copy yet; render `AccountNotOnLocalPeers` as neutral ("looking for peers…"). Once
+GO-7492 lands, the re-exchange produces a second `PeerSpaceExchange` for the same peer
+(`hasAccountSpace = true`) and the state flips to `AccountOnLocalPeer` with no client change.
+
 ---
 
 ## 9. Errors

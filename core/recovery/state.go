@@ -33,6 +33,11 @@ type peerState struct {
 	lastTransport     string
 	lastProto         uint32
 	discoveredLocally bool
+	// the space exchange's answer (LAN peers): a fact, folded into the
+	// LocalPeersState aggregate
+	exchanged        bool
+	hasAccountSpace  bool
+	sharedSpaceCount int
 }
 
 type netState struct {
@@ -46,6 +51,7 @@ type netState struct {
 	waitingError        *errInfo
 	discovery           pb.EventAccountRecoveryDiscoveryState
 	deviceOffline       bool
+	localPeers          pb.EventAccountRecoveryLocalPeersState
 }
 
 type accountState struct {

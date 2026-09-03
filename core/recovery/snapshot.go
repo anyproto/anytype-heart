@@ -25,6 +25,7 @@ func (t *Tracker) buildSnapshotLocked() *pb.EventAccountRecoverySnapshot {
 		AccountFetchError:   t.account.lastError.toPb(),
 		AccountReady:        t.account.ready,
 		ViewsConfirmed:      t.phase.viewsConfirmed,
+		LocalPeers:          t.net.localPeers,
 	}
 	peerIds := make([]string, 0, len(t.net.peers))
 	for id := range t.net.peers {
@@ -43,6 +44,9 @@ func (t *Tracker) buildSnapshotLocked() *pb.EventAccountRecoverySnapshot {
 			DialAttempts:      int32(p.dialAttempts),
 			LastError:         p.lastError.toPb(),
 			DiscoveredLocally: p.discoveredLocally,
+			Exchanged:         p.exchanged,
+			HasAccountSpace:   p.hasAccountSpace,
+			SharedSpaceCount:  int32(p.sharedSpaceCount),
 		})
 	}
 	spaceIds := make([]string, 0, len(t.spaces))
