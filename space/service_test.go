@@ -718,3 +718,7 @@ func TestOrderSpacesOpenedFirst(t *testing.T) {
 		assert.Equal(t, ids, orderSpacesOpenedFirst(ids, nil))
 	})
 }
+
+func TestSpaceCoreCNameDrift(t *testing.T) {
+	assert.Equal(t, CName, spacecore.SpaceServiceCName)
+}

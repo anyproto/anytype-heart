@@ -114,13 +114,13 @@ func (s *service) exchangeWithKnownPeers() {
 			return
 		}
 		ctx, cancel := context.WithTimeout(s.componentCtx, reexchangePeerTimeout)
-		shared, err := s.exchangeFn(ctx, peerId, own)
+		shared, proof, err := s.exchangeFn(ctx, peerId, own)
 		cancel()
 		if err != nil {
 			log.Debug("re-exchange with local peer failed", zap.String("peerId", peerId), zap.Error(err))
 			continue
 		}
-		s.peerStore.UpdateLocalPeer(peerId, shared)
+		s.publishLocalPeer(peerId, shared, proof)
 	}
 }
 

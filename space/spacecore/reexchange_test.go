@@ -13,6 +13,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage/mock_storage"
 )
 
 func TestReexchanger(t *testing.T) {
@@ -96,7 +97,7 @@ func TestExchangeWithKnownPeers(t *testing.T) {
 		before, after []string
 		removed       bool
 	}
-	newService := func(t *testing.T, fn func(ctx context.Context, peerId string, own *localdiscovery.OwnAddresses) ([]string, error)) (*service, *[]change) {
+	newService := func(t *testing.T, fn func(ctx context.Context, peerId string, own *localdiscovery.OwnAddresses) ([]string, bool, error)) (*service, *[]change) {
 		t.Helper()
 		var (
 			mu      sync.Mutex
@@ -110,18 +111,22 @@ func TestExchangeWithKnownPeers(t *testing.T) {
 		})
 		ctx, cancel := context.WithCancel(context.Background())
 		t.Cleanup(cancel)
-		return &service{peerStore: store, componentCtx: ctx, exchangeFn: fn}, &changes
+		disk := mock_storage.NewMockClientStorage(t)
+		disk.EXPECT().AllSpaceIds().Return(nil, nil).Maybe()
+		s := newKeyedService(t, 1, disk) // publishLocalPeer needs the keys for the proof check
+		s.peerStore, s.componentCtx, s.exchangeFn, s.accountPeers = store, ctx, fn, newAccountPeers()
+		return s, &changes
 	}
 
 	t.Run("a peer that shared nothing flips to sharing on the re-exchange; a failing one is left alone", func(t *testing.T) {
 		// given: two peers registered from the cold exchange with nothing shared
 		var calls []exchangeCall
-		s, changes := newService(t, func(_ context.Context, peerId string, own *localdiscovery.OwnAddresses) ([]string, error) {
+		s, changes := newService(t, func(_ context.Context, peerId string, own *localdiscovery.OwnAddresses) ([]string, bool, error) {
 			calls = append(calls, exchangeCall{peerId, own})
 			if peerId == "p2" {
-				return nil, errors.New("unreachable")
+				return nil, false, errors.New("unreachable")
 			}
-			return []string{"tech.space", "spaceA"}, nil
+			return []string{"tech.space", "spaceA"}, false, nil // v1-shaped: no proof, so no candidacy expansion
 		})
 		s.peerStore.UpdateLocalPeer("p1", []string{})
 		s.peerStore.UpdateLocalPeer("p2", []string{})
@@ -147,9 +152,9 @@ func TestExchangeWithKnownPeers(t *testing.T) {
 	t.Run("without known addresses the exchange goes as a probe", func(t *testing.T) {
 		// given
 		var calls []exchangeCall
-		s, _ := newService(t, func(_ context.Context, peerId string, own *localdiscovery.OwnAddresses) ([]string, error) {
+		s, _ := newService(t, func(_ context.Context, peerId string, own *localdiscovery.OwnAddresses) ([]string, bool, error) {
 			calls = append(calls, exchangeCall{peerId, own})
-			return nil, nil
+			return nil, false, nil
 		})
 		s.peerStore.UpdateLocalPeer("p1", nil)
 
@@ -163,9 +168,9 @@ func TestExchangeWithKnownPeers(t *testing.T) {
 
 	t.Run("no known peers is a no-op", func(t *testing.T) {
 		called := false
-		s, _ := newService(t, func(context.Context, string, *localdiscovery.OwnAddresses) ([]string, error) {
+		s, _ := newService(t, func(context.Context, string, *localdiscovery.OwnAddresses) ([]string, bool, error) {
 			called = true
-			return nil, nil
+			return nil, false, nil
 		})
 		s.exchangeWithKnownPeers()
 		assert.False(t, called)

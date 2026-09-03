@@ -17,11 +17,11 @@ import (
 func (s *service) PeerDiscovered(ctx context.Context, discovered localdiscovery.DiscoveredPeer, own localdiscovery.OwnAddresses) {
 	s.peerService.SetPeerAddrs(discovered.PeerId, s.addSchema(discovered.Addrs))
 	s.rememberOwn(own)
-	shared, err := s.exchangeOutbound(ctx, discovered.PeerId, &own)
+	shared, proof, err := s.exchangeOutbound(ctx, discovered.PeerId, &own)
 	if err != nil {
 		return
 	}
-	s.peerStore.UpdateLocalPeer(discovered.PeerId, shared)
+	s.publishLocalPeer(discovered.PeerId, shared, proof)
 }
 
 // exchangeOutbound is the outbound handshake with one LAN peer: the v2 token
@@ -29,30 +29,32 @@ func (s *service) PeerDiscovered(ctx context.Context, discovered localdiscovery.
 // v1 fallback for peers that predate v2. own may be nil (re-exchange before
 // local discovery reported our addresses): the peer then answers without
 // recording us. The same function serves discovery and re-exchange, so the
-// two cannot drift.
-func (s *service) exchangeOutbound(ctx context.Context, peerId string, own *localdiscovery.OwnAddresses) ([]string, error) {
+// two cannot drift. proof is true for a v2 result: its tokens are keyed
+// proofs, while v1 is a plaintext list that proves nothing.
+func (s *service) exchangeOutbound(ctx context.Context, peerId string, own *localdiscovery.OwnAddresses) (shared []string, proof bool, err error) {
 	unaryPeer, err := s.poolManager.UnaryPeerPool().Get(ctx, peerId)
 	if err != nil {
-		return nil, fmt.Errorf("get peer: %w", err)
+		return nil, false, fmt.Errorf("get peer: %w", err)
 	}
 	allIds, err := s.exchangeRequestIds()
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	var localServer *clientspaceproto.LocalServer
 	if own != nil {
 		localServer = localServerOf(*own)
 	}
-	shared, err := s.spaceExchangeV2(ctx, unaryPeer, peerId, allIds, localServer)
+	shared, err = s.spaceExchangeV2(ctx, unaryPeer, peerId, allIds, localServer)
 	if err != nil {
 		// a peer that predates v2 fails the call; fall back so LAN discovery
 		// keeps working across a mixed-version rollout
 		log.Debug("space exchange v2, falling back to v1", zap.String("peerId", peerId), zap.Error(err))
 		if shared, err = s.spaceExchangeV1(ctx, unaryPeer, allIds, localServer); err != nil {
-			return nil, err
+			return nil, false, err
 		}
+		return shared, false, nil
 	}
-	return shared, nil
+	return shared, true, nil
 }
 
 // spaceExchangeV2 runs the token handshake: send one membership token per
