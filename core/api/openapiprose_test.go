@@ -29,7 +29,7 @@ import (
 // API-level one. A description carries only what is specific to its endpoint;
 // anything longer is boilerplate that belongs in the API description, which
 // states the shared behaviour (auth, idempotency keys, dry runs, preconditions,
-// pagination, the error shape, warnings) once for all 45 operations.
+// pagination, the error shape, warnings) once for all 46 operations.
 const maxProseDescription = 400
 
 // apiDescription is the one description exempt from maxProseDescription: it is

@@ -82,7 +82,7 @@ func TestChatEventFromProto(t *testing.T) {
 		assert.Equal(t, ChatEventReactionsUpdated, ev.Type)
 		assert.Equal(t, "m1", ev.MessageId)
 		assert.Equal(t, map[string]int{"👍": 2}, ev.Reactions)
-		assert.Empty(t, ev.ReactedBy, "identities stay behind the same opt-in a message read uses")
+		assert.Empty(t, ev.ReactedBy, "identities are not served unless asked for")
 	})
 
 	t.Run("full reactions name the participants", func(t *testing.T) {
@@ -102,6 +102,61 @@ func TestChatEventFromProto(t *testing.T) {
 		require.NotNil(t, ev)
 		require.Len(t, ev.ReactedBy["👍"], 1)
 		assert.NotEqual(t, "idA", ev.ReactedBy["👍"][0], "raw identities never cross the API")
+	})
+
+	t.Run("an edit carries no id, because an edit does not restamp state", func(t *testing.T) {
+		// StateId is stamped once, in BeforeCreate. Emitting it on an edit
+		// would set the client's Last-Event-ID to the message's CREATION
+		// point, so editing one old message rewinds every connected client.
+		ev := ChatEventFromProto(&pb.EventMessage{
+			Value: &pb.EventMessageValueOfChatUpdate{ChatUpdate: &pb.EventChatUpdate{
+				Id:      "m1",
+				Message: &model.ChatMessage{Id: "m1", StateId: "s1"},
+			}},
+		}, opts)
+
+		require.NotNil(t, ev)
+		assert.Empty(t, ev.Id)
+	})
+
+	t.Run("a chat state update is forwarded", func(t *testing.T) {
+		// §8.7 requires it: v2 publishes ChatState on the paginated read and
+		// POST .../read requires last_state_id, so a stream that never
+		// reported state would force a client to poll the read it replaced
+		ev := ChatEventFromProto(&pb.EventMessage{
+			Value: &pb.EventMessageValueOfChatStateUpdate{
+				ChatStateUpdate: &pb.EventChatUpdateState{
+					State: &model.ChatState{LastStateId: "s9"},
+				},
+			},
+		}, opts)
+
+		require.NotNil(t, ev)
+		assert.Equal(t, ChatEventStateUpdated, ev.Type)
+		require.NotNil(t, ev.State)
+		assert.Equal(t, "s9", ev.State.LastStateId)
+	})
+
+	t.Run("a pin change is forwarded, including unpinning", func(t *testing.T) {
+		// `pinned` is on the streamed ChatMessage, so without this event the
+		// flag goes stale with no way to learn otherwise. False is the
+		// meaningful half of a toggle, so it must survive omitempty.
+		ev := ChatEventFromProto(&pb.EventMessage{
+			Value: &pb.EventMessageValueOfChatUpdatePinnedStatus{
+				ChatUpdatePinnedStatus: &pb.EventChatUpdatePinnedStatus{
+					Message: &model.ChatMessage{Id: "m1", StateId: "s1"},
+				},
+			},
+		}, opts)
+
+		require.NotNil(t, ev)
+		assert.Equal(t, ChatEventPinnedUpdated, ev.Type)
+		assert.Equal(t, "m1", ev.MessageId)
+		require.NotNil(t, ev.Pinned)
+		assert.False(t, *ev.Pinned)
+		data, err := json.Marshal(ev)
+		require.NoError(t, err)
+		assert.Contains(t, string(data), `"pinned":false`)
 	})
 
 	t.Run("an unrelated event is not a chat event", func(t *testing.T) {

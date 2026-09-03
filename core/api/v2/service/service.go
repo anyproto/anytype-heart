@@ -46,10 +46,12 @@ type Service struct {
 	// stored-view execution. Empty = the placeholder degrades to a
 	// warning instead of resolving.
 	accountId string
-	// chatSub backs the chat message stream. Installed by the composition
-	// root through SetChatSubscription rather than the constructor; nil
-	// means the stream route is not registered at all.
+	// chatSub backs the chat message stream. Nil means the stream route is
+	// not registered, so OpenChatStream is never reached without it.
 	chatSub apicore.ChatSubscriptionService
+	// chatStreams caps how many streams are open at once; see
+	// maxConcurrentChatStreams.
+	chatStreams chatStreamSlots
 }
 
 // NewService creates the API v2 service. creator may be nil when only the
@@ -57,8 +59,8 @@ type Service struct {
 // may be nil when the edit surface is not served; provenance may be nil
 // (object DELETE then refuses everything — fail closed). accountId may be
 // empty (degraded placeholder substitution only).
-func NewService(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, provenance apicore.ObjectProvenance, store objectstore.ObjectStore, techSpaceId, accountId string) *Service {
-	return &Service{mw: mw, reader: reader, creator: creator, mutator: mutator, provenance: provenance, store: store, techSpaceId: techSpaceId, accountId: accountId}
+func NewService(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, provenance apicore.ObjectProvenance, chatSub apicore.ChatSubscriptionService, store objectstore.ObjectStore, techSpaceId, accountId string) *Service {
+	return &Service{mw: mw, reader: reader, creator: creator, mutator: mutator, provenance: provenance, chatSub: chatSub, store: store, techSpaceId: techSpaceId, accountId: accountId}
 }
 
 // ensureSpaceGranted is the space half of the service-level backstop of the

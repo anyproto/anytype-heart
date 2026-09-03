@@ -7,9 +7,11 @@ package v2service
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sync"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
@@ -24,6 +26,17 @@ const (
 	defaultChatStreamLimit = 50
 	maxChatStreamLimit     = 1000
 	chatStreamSinkBuffer   = 256
+	// maxConcurrentChatStreams caps open streams process-wide. Each one
+	// pins a per-subscription clone of its opening window (up to
+	// maxChatStreamLimit messages), a sink of chatStreamSinkBuffer events,
+	// and goroutines in both this process and net/http — roughly a megabyte
+	// at the top of the range, shared with nobody, since two subscriptions
+	// on one chat clone the window twice.
+	//
+	// Nothing else bounds them: the shared write limiter is attached to
+	// mutations only, and it is keyed on RemoteAddr, which is always
+	// loopback here. Without a cap one key holds as many as it likes.
+	maxConcurrentChatStreams = 64
 )
 
 // ChatStreamQuery is the stream's request surface: the opening window size
@@ -44,31 +57,41 @@ type ChatStream struct {
 	// client's gap; it rides the first event so the client reconciles
 	// instead of assuming continuity.
 	Resync bool
+	// Cursor is the HIGHEST state id in the opening window. The window is
+	// ordered by order id and the cursor is a state id, and those are not
+	// the same order: a message that arrived late over sync carries a fresh
+	// state id at an old order-id position, so the last row emitted is not
+	// necessarily the newest state. Emitting the maximum keeps the client's
+	// Last-Event-ID from going backwards on the very first reconnect.
+	Cursor string
 	Events <-chan *pb.Event
 
 	sub       apicore.ChatSubscriptionService
 	chatId    string
 	subId     string
+	release   func()
 	closeOnce sync.Once
 }
 
-// Close releases the subscription. A leaked one keeps a sliding window alive
-// for a client that is already gone.
+// Close releases the subscription and the stream slot. A leaked subscription
+// keeps a sliding window alive for a client that is already gone.
+//
+// The error is logged, not discarded: Unsubscribe resolves the space first
+// and returns EARLY without removing the subscription when that fails, so a
+// dropped error is precisely the leak signal. Nothing useful remains to do
+// about it here, but it must not be silent.
 func (s *ChatStream) Close() {
 	s.closeOnce.Do(func() {
 		if s.sub != nil {
-			_ = s.sub.Unsubscribe(s.chatId, s.subId)
+			if err := s.sub.Unsubscribe(s.chatId, s.subId); err != nil {
+				log.Warn("v2 chat stream: unsubscribe failed, subscription may be retained",
+					zap.String("chatId", s.chatId), zap.String("subId", s.subId), zap.Error(err))
+			}
+		}
+		if s.release != nil {
+			s.release()
 		}
 	})
-}
-
-// SetChatSubscription installs the chat subscription dependency. It is a
-// setter rather than a ninth constructor parameter: the eight positional
-// arguments NewService already takes are exactly the hazard a reviewer
-// flagged on UploadFile, and the stream route is skipped entirely when the
-// dependency is absent, the way RouteDeps already gates create and edit.
-func (s *Service) SetChatSubscription(sub apicore.ChatSubscriptionService) {
-	s.chatSub = sub
 }
 
 // ChatStreamMessageOptions is the render vocabulary for LIVE events, which
@@ -90,10 +113,6 @@ func (s *Service) OpenChatStream(ctx context.Context, spaceId, chatId string, q 
 	if err := s.ensureChat(ctx, spaceId, chatId); err != nil {
 		return nil, err
 	}
-	if s.chatSub == nil {
-		return nil, v2model.NewError(501, v2model.CodeNotImplemented,
-			"chat streaming is unavailable in this build")
-	}
 	limit := q.Limit
 	if limit <= 0 {
 		limit = defaultChatStreamLimit
@@ -101,15 +120,23 @@ func (s *Service) OpenChatStream(ctx context.Context, spaceId, chatId string, q 
 	if limit > maxChatStreamLimit {
 		limit = maxChatStreamLimit
 	}
+	// the slot is taken BEFORE subscribing, so a refusal costs nothing, and
+	// released through Close's sync.Once, so it cannot be double-returned
+	release, ok := s.chatStreams.acquire()
+	if !ok {
+		return nil, v2model.NewError(http.StatusTooManyRequests, v2model.CodeRateLimitExceeded,
+			fmt.Sprintf("too many open chat streams (%d); close one before opening another", maxConcurrentChatStreams))
+	}
 
 	sink := make(chan *pb.Event, chatStreamSinkBuffer)
 	subId := "v2-sse-" + uuid.New().String()
 	window, err := s.chatSub.SubscribeLastMessages(ctx, chatId, limit, subId, sink)
 	if err != nil {
+		release()
 		return nil, fmt.Errorf("subscribe last messages: %w", err)
 	}
 
-	replay, resync := replayFromState(window, q.LastEventId)
+	replay, resync := replayFromState(window, q.LastEventId, limit)
 	opts := s.ChatStreamMessageOptions(ctx, spaceId)
 	initial := make([]v2model.ChatEvent, 0, len(replay))
 	for _, msg := range replay {
@@ -122,12 +149,26 @@ func (s *Service) OpenChatStream(ctx context.Context, spaceId, chatId string, q 
 	}
 	return &ChatStream{
 		Initial: initial,
+		Cursor:  maxStateId(window),
 		Resync:  resync,
 		Events:  sink,
 		sub:     s.chatSub,
 		chatId:  chatId,
 		subId:   subId,
+		release: release,
 	}, nil
+}
+
+// maxStateId is the highest state id in a window. See ChatStream.Cursor for
+// why the last row is not it.
+func maxStateId(window []*model.ChatMessage) string {
+	var max string
+	for _, msg := range window {
+		if msg.StateId > max {
+			max = msg.StateId
+		}
+	}
+	return max
 }
 
 // replayFromState decides what a reconnecting stream replays. The
@@ -144,7 +185,7 @@ func (s *Service) OpenChatStream(ctx context.Context, spaceId, chatId string, q 
 // Deletions are never replayable at all: a delete removes the row, so nothing
 // survives to carry a state id. That gap is documented on the route rather
 // than papered over here.
-func replayFromState(window []*model.ChatMessage, lastEventId string) (replay []*model.ChatMessage, resync bool) {
+func replayFromState(window []*model.ChatMessage, lastEventId string, limit int) (replay []*model.ChatMessage, resync bool) {
 	if lastEventId == "" {
 		return window, false // a fresh connection has no history to reconcile
 	}
@@ -169,9 +210,40 @@ func replayFromState(window []*model.ChatMessage, lastEventId string) (replay []
 	if resync {
 		return window, true
 	}
-	// the cursor predates everything still held: the gap is unrecoverable
-	if len(replay) == len(window) {
+	// Every row is newer than the cursor, so the cursor names nothing still
+	// held. That is only a GAP when the window is a truncated tail: a short
+	// window (fewer rows than asked for) is the whole chat, so there is
+	// nothing between the cursor and the oldest row for the client to have
+	// missed, and answering resync there would fire on every reconnect to a
+	// small chat.
+	if len(replay) == len(window) && len(window) >= limit {
 		return window, true
 	}
 	return replay, false
+}
+
+// chatStreamSlots is the process-wide open-stream cap. A counting semaphore
+// rather than a rate limiter: what has to be bounded is how many streams are
+// held AT ONCE, not how fast they are opened.
+type chatStreamSlots struct {
+	mu   sync.Mutex
+	open int
+}
+
+// acquire takes a slot, returning the release func and whether one was free.
+func (c *chatStreamSlots) acquire() (func(), bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.open >= maxConcurrentChatStreams {
+		return nil, false
+	}
+	c.open++
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			c.mu.Lock()
+			defer c.mu.Unlock()
+			c.open--
+		})
+	}, true
 }

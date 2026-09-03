@@ -24,6 +24,11 @@ const (
 	CodeNotImplemented      = "not_implemented"
 	CodeInternalError       = "internal_error"
 	CodeRequestTooLarge     = "request_too_large"
+	// CodeRateLimitExceeded is the 429 v2 issues ITSELF, for a resource it
+	// caps rather than a rate it throttles. The shared write limiter answers
+	// in the older envelope with the same code (util.CodeToApiError); this
+	// one is C6-shaped because it comes from a handler, not a gate.
+	CodeRateLimitExceeded = "rate_limit_exceeded"
 	// The space-grant codes. Messages NAME the actual grant: error-guided
 	// self-correction is the v2 design language, and enumeration resistance
 	// is a non-goal for a localhost single-user API.

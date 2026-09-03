@@ -249,7 +249,7 @@ func TestV2GetMemberMe(t *testing.T) {
 	t.Run("no account identity is a 404 steering to the members list", func(t *testing.T) {
 		// given: a service constructed without an account id (degraded mode)
 		fx := newV2Fixture(t)
-		svc := NewService(fx.mwMock, fx.readerMock, fx.creatorMock, fx.mutatorMock, nil, fx.objectStore, objectstore.TestTechSpaceId, "")
+		svc := NewService(fx.mwMock, fx.readerMock, fx.creatorMock, fx.mutatorMock, nil, nil, fx.objectStore, objectstore.TestTechSpaceId, "")
 
 		// when
 		_, err := svc.GetMemberMe(context.Background(), testSpaceId)

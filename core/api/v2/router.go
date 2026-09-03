@@ -79,7 +79,7 @@ func RegisterRoutes(router *gin.Engine, deps RouteDeps) {
 		MaxPageSize:     maxPageSize,
 		// C6 is "error shape everywhere", and the published document
 		// declares the C6 body for the shared query-validation 400 on all
-		// 45 operations. This refusal is the first thing on the group, so
+		// 46 operations. This refusal is the first thing on the group, so
 		// without its own envelope it was the one v2 400 the schema did not
 		// describe — and the only refusal an agent could not parse.
 		OnInvalidLimit: func(c *gin.Context, minPageSize, maxPageSize int) {

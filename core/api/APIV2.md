@@ -7217,7 +7217,7 @@ runs first on the group, ahead of authentication, so it was both the only v2
 parse. That one is fixed here: the shared pagination middleware takes an
 `OnInvalidLimit` hook and v2 answers C6 through it, because declaring
 `required` on `Error` would otherwise have made the `BadRequest` component
-false on all 45 operations. The remaining six are the older shared envelope
+false on every operation. The remaining six are the older shared envelope
 by design; the census belongs in §8.9, which still under-records it.
 
 ### 8.54 The URL upload's name does something (2026-09-03 — as built)
@@ -7306,3 +7306,65 @@ debt and a defect. The accurate ones are worth the same treatment, and
 `core/api/openapiprose_test.go` already bans `§` from the published
 document, but the runtime-served discovery schemas are not yet guarded and
 that sweep is its own change.
+
+### 8.56 The chat stream, and what a resume can honestly promise (2026-09-03 — as built)
+
+§8.7 deferred the SSE stream to this phase and named the condition: it must
+also forward `ChatStateUpdate`, closing the converter gap that phase
+documented. It does, plus `ChatUpdatePinnedStatus`, because `pinned` is on
+the streamed message and would otherwise go stale with no way to learn
+better.
+
+**What v1 did not check.** v1's handler took `space_id` from the path and
+used it only to enrich author names; it never checked that `chat_id` lived
+in that space, and never consulted the key's grant. `limit` was a bare
+`Atoi` passed through, so `?limit=999999` reached the subscription while the
+document promised 1..1000. v2 opens with `ensureChat`, the route is
+classified `read` in `v2RouteAuthz` (an unclassified route is refused for
+every scoped key — the conformance test catches it), and `limit` comes from
+the group's pagination middleware, which already bounds it.
+
+**Resume, and the two things it cannot do.** Each ADDITION carries its chat
+state id as the SSE event id; `Last-Event-ID` replays what is newer.
+`stateId` is a BSON ObjectId hex — fixed-width, big-endian time first — so
+plain string comparison is byte-correct, and the same comparison is already
+load-bearing in the read watermark.
+
+The first limit is that a state id is stamped once, in `BeforeCreate`. An
+edit, a pin or a reaction re-marshals the original, so those events carry NO
+id: emitting one would set a client's cursor to the message's creation
+point, and editing a single old message would rewind every connected client.
+It also means only additions replay. A message edited, deleted or reacted to
+during a disconnect keeps its old form until the client reads again. The
+route says so first, because a stream implying a completeness it cannot
+deliver is worse than v1's honest amnesia.
+
+The second is that the window is ordered by ORDER id while the cursor is a
+STATE id, and those are different orders: a message backfilled from an
+offline peer carries a fresh state id at an old order position. The opening
+window therefore ends with one trailing `id:` comment carrying the HIGHEST
+state id in it, not the last row's, so a client's cursor cannot go backwards
+on its first reconnect.
+
+`resync_required` says the window could not be proven to cover the gap. The
+test is "the window is full AND every row postdates the cursor" — a SHORT
+window is the whole chat, so nothing was evicted and continuity is provable.
+Without the fullness half this fired on every reconnect to a small chat.
+
+**A cursor is node-local.** State ids are minted when a device applies a
+change, not carried in the change, so they do not converge across devices —
+the same class of problem as the chat `addSeq` counter. The comparison is
+only meaningful against the node that issued the id, and the published
+description says so.
+
+**Backpressure is a pre-existing hazard this doubles.** When a subscriber's
+sink fills, the producer blocks up to a second and then drops it, and that
+loop runs holding the per-chat subscription lock inside the chat's object
+tree lock — so one slow reader stalls that chat's sends, edits and sync
+ingestion. v1 has the same exposure; this route adds a second door onto it
+behind a scoped key. Two things follow. Streams are capped process-wide
+(`maxConcurrentChatStreams`), because nothing else bounds them: the shared
+limiter is writes-only and keyed on a loopback address. And a subscriber
+the producer drops is told `resync_required` rather than seeing a silent
+close, since reconnecting is the recovery. Making the producer drop instead
+of blocking is the real fix and belongs in the chat subsystem, not here.

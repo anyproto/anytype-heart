@@ -178,7 +178,7 @@ func (s *apiService) startServer() error {
 		s.crossSpaceSubService,
 		s.chatSubService,
 		s.fileObjectService,
-		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, Store: s.objectStore, AccountId: s.accountId()},
+		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, ChatSub: s.chatSubService, Store: s.objectStore, AccountId: s.accountId()},
 		s.listenAddr,
 		server.OpenApiDocs{
 			V1YAML: openapiV1YAML,

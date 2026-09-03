@@ -14,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/anyproto/anytype-heart/core/api/pagination"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	v2service "github.com/anyproto/anytype-heart/core/api/v2/service"
 )
@@ -45,7 +46,7 @@ func parseHeartbeatSeconds(c *gin.Context) time.Duration {
 // ChatStreamHandler streams chat events over Server-Sent Events
 //
 //	@Summary		Stream a chat's messages
-//	@Description	A resumed stream never replays deletions, so a message deleted while you were disconnected still appears in your copy until you read the messages again. Deleting removes the row, and nothing survives it to carry a state id.
+//	@Description	Only additions are replayed on resume. A message deleted, edited, or reacted to while you were disconnected keeps its old form in your copy until you read the messages again, because none of those restamp the state id a resume is measured against.
 //	@Id				stream_chat_messages
 //	@Tags			Chat
 //	@Produce		text/event-stream
@@ -60,16 +61,15 @@ func parseHeartbeatSeconds(c *gin.Context) time.Duration {
 //	@Router			/v2/spaces/{space_id}/chats/{chat_id}/messages/stream [get]
 func ChatStreamHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		limit := 0
-		if raw := c.Query("limit"); raw != "" {
-			if v, err := strconv.Atoi(raw); err == nil {
-				limit = v // the service owns the bound; this only parses
-			}
-		}
+		// the group's pagination middleware already parsed and BOUNDED limit
+		// (it 400s anything outside 1..1000 before this runs), so reading its
+		// result is what keeps one query parameter meaning one thing across
+		// /v2 — a second Atoi here gave this route its own default
+		limit := c.GetInt(pagination.QueryParamLimit)
 
-		// everything that can refuse happens BEFORE the first byte: once the
-		// stream is open the status is committed and a failure can only be a
-		// disconnect
+		// every refusal this handler can make happens before the first byte.
+		// Once the stream opens the status is committed, so a later failure
+		// can only be a disconnect.
 		stream, err := s.OpenChatStream(c.Request.Context(), c.Param("space_id"), c.Param("chat_id"),
 			v2service.ChatStreamQuery{Limit: limit, LastEventId: c.GetHeader("Last-Event-ID")})
 		if err != nil {
@@ -87,10 +87,21 @@ func ChatStreamHandler(s *v2service.Service) gin.HandlerFunc {
 		if stream.Resync {
 			// first, so the client knows the window that follows is a fresh
 			// read rather than a continuation of what it already held
-			writeSSE(c, &v2model.ChatEvent{Type: v2model.ChatEventResyncRequired})
+			if err := writeSSE(c, &v2model.ChatEvent{Type: v2model.ChatEventResyncRequired}); err != nil {
+				return
+			}
 		}
 		for i := range stream.Initial {
-			writeSSE(c, &stream.Initial[i])
+			if err := writeSSE(c, &stream.Initial[i]); err != nil {
+				return
+			}
+		}
+		// The window is emitted in order-id order, so the last id written is
+		// not necessarily the highest state id in it. One trailing comment
+		// carrying the maximum leaves the client's cursor at the true high
+		// water mark without inventing an event for it to process.
+		if stream.Cursor != "" {
+			fmt.Fprintf(c.Writer, "id: %s\n\n", stream.Cursor)
 		}
 		c.Writer.Flush()
 
@@ -104,16 +115,29 @@ func ChatStreamHandler(s *v2service.Service) gin.HandlerFunc {
 				return
 			case event, ok := <-stream.Events:
 				if !ok {
+					// the producer dropped this subscription for reading too
+					// slowly. Returning silently would look exactly like a
+					// clean shutdown, so say what happened: reconnecting with
+					// Last-Event-ID is the recovery, and resync_required is
+					// already the word for "your copy is unverified".
+					_ = writeSSE(c, &v2model.ChatEvent{Type: v2model.ChatEventResyncRequired})
+					c.Writer.Flush()
 					return
 				}
 				for _, msg := range event.Messages {
-					if chatEvent := v2model.ChatEventFromProto(msg, opts); chatEvent != nil {
-						writeSSE(c, chatEvent)
+					chatEvent := v2model.ChatEventFromProto(msg, opts)
+					if chatEvent == nil {
+						continue
+					}
+					if err := writeSSE(c, chatEvent); err != nil {
+						return
 					}
 				}
 				c.Writer.Flush()
 			case <-heartbeat.C:
-				fmt.Fprint(c.Writer, ": keepalive\n\n")
+				if _, err := fmt.Fprint(c.Writer, ": keepalive\n\n"); err != nil {
+					return
+				}
 				c.Writer.Flush()
 			}
 		}
@@ -121,15 +145,26 @@ func ChatStreamHandler(s *v2service.Service) gin.HandlerFunc {
 }
 
 // writeSSE frames one event. The `id:` line is what a client sends back as
-// Last-Event-ID, so it is omitted for events that carry no resumable state
-// (a deletion has no surviving row to name one).
-func writeSSE(c *gin.Context, event *v2model.ChatEvent) {
+// Last-Event-ID, so it is omitted for events that carry no resumable state:
+// a deletion has no surviving row to name one, and an edit or a pin does not
+// restamp the message's state id.
+//
+// The write error is RETURNED, not swallowed. Without it the loop keeps
+// framing events into a half-closed socket until the request context happens
+// to notice, and a marshal failure silently emits nothing, leaving the client
+// a gap it has no way to detect.
+func writeSSE(c *gin.Context, event *v2model.ChatEvent) error {
 	data, err := json.Marshal(event)
 	if err != nil {
-		return
+		return fmt.Errorf("marshal %s event: %w", event.Type, err)
 	}
 	if event.Id != "" {
-		fmt.Fprintf(c.Writer, "id: %s\n", event.Id)
+		if _, err := fmt.Fprintf(c.Writer, "id: %s\n", event.Id); err != nil {
+			return fmt.Errorf("write event id: %w", err)
+		}
 	}
-	fmt.Fprintf(c.Writer, "event: %s\ndata: %s\n\n", event.Type, data)
+	if _, err := fmt.Fprintf(c.Writer, "event: %s\ndata: %s\n\n", event.Type, data); err != nil {
+		return fmt.Errorf("write %s event: %w", event.Type, err)
+	}
+	return nil
 }

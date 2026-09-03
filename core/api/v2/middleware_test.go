@@ -617,7 +617,7 @@ func TestV2InvalidLimitAnswersInTheC6Envelope(t *testing.T) {
 	// refusal was a third dialect, `{"error": "..."}`: the one v2 400 the
 	// published schema did not describe, and the only refusal an agent could
 	// not parse. Declaring `required` on the Error schema made saying nothing
-	// about it untenable, since BadRequest is declared on all 45 operations.
+	// about it untenable, since BadRequest is declared on all 46 operations.
 	//
 	// This goes through RegisterRoutes rather than a hand-built group, or the
 	// test passes with the production hook deleted: the whole change is one

@@ -36,6 +36,13 @@ type v2HandlerFixture struct {
 }
 
 func newV2HandlerFixture(t *testing.T) *v2HandlerFixture {
+	return newV2HandlerFixtureWithChatSub(t, nil)
+}
+
+// newV2HandlerFixtureWithChatSub is newV2HandlerFixture for the one route
+// that needs the chat subscription. Production passes it through V2Deps; the
+// fixture takes it the same way rather than mutating a built service.
+func newV2HandlerFixtureWithChatSub(t *testing.T, chatSub apicore.ChatSubscriptionService) *v2HandlerFixture {
 	gin.SetMode(gin.TestMode)
 	mwMock := mock_apicore.NewMockClientCommands(t)
 	readerMock := mock_apicore.NewMockObjectReader(t)
@@ -59,7 +66,7 @@ func newV2HandlerFixture(t *testing.T) *v2HandlerFixture {
 		func(_ context.Context, _ string, key domain.TypeKey) (string, error) {
 			return "drv-ot-" + string(key), nil
 		}).Maybe()
-	svc := v2service.NewService(mwMock, readerMock, creatorMock, mock_apicore.NewMockObjectMutator(t), nil, store, objectstore.TestTechSpaceId, testAccountId)
+	svc := v2service.NewService(mwMock, readerMock, creatorMock, mock_apicore.NewMockObjectMutator(t), nil, chatSub, store, objectstore.TestTechSpaceId, testAccountId)
 	return &v2HandlerFixture{svc: svc, mwMock: mwMock, readerMock: readerMock, creatorMock: creatorMock, store: store, router: gin.New()}
 }
 

@@ -105,6 +105,7 @@ func TestV2RouteAuthzConformance(t *testing.T) {
 	// must add its enablement (and a flag assertion) to this fixture.
 	require.False(t, fx.v2CreateDisabled, "the conformance fixture must register the create routes")
 	require.False(t, fx.v2EditDisabled, "the conformance fixture must register the edit routes")
+	require.False(t, fx.v2StreamDisabled, "the conformance fixture must register the chat stream route")
 	authz := apiv2.RouteAuthzTable()
 
 	registered := map[string]bool{}

@@ -99,7 +99,11 @@ type V2Deps struct {
 	// validated change storage). With it nil the object DELETE route still
 	// registers but refuses every delete — fail closed, not fail open.
 	Provenance apicore.ObjectProvenance
-	Store      objectstore.ObjectStore
+	// ChatSub backs the chat message stream. With it nil the stream route
+	// is not registered at all — there is no useful degraded form of a
+	// subscription, unlike Provenance's fail-closed refusal.
+	ChatSub apicore.ChatSubscriptionService
+	Store   objectstore.ObjectStore
 	// AccountId is the caller's account identity, used by Phase 4's
 	// stored-view placeholder substitution (`_filter_template_2_` → the
 	// caller's participant id). Empty degrades the placeholder to a warning.
@@ -130,11 +134,10 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 		docs:       docs,
 	}
 	if v2Deps.Reader != nil && v2Deps.Store != nil {
-		s.v2Service = v2service.NewService(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Provenance, v2Deps.Store, techSpaceId, v2Deps.AccountId)
-		s.v2Service.SetChatSubscription(chatSubSvc)
+		s.v2Service = v2service.NewService(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Provenance, v2Deps.ChatSub, v2Deps.Store, techSpaceId, v2Deps.AccountId)
 		s.v2CreateDisabled = v2Deps.Creator == nil
 		s.v2EditDisabled = v2Deps.Mutator == nil
-		s.v2StreamDisabled = chatSubSvc == nil
+		s.v2StreamDisabled = v2Deps.ChatSub == nil
 	}
 	s.engine = s.NewRouter(mw, eventService, docs.V1YAML, docs.V1JSON)
 	s.KeyToToken = make(map[string]ApiSessionEntry)
