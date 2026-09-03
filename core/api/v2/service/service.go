@@ -46,6 +46,10 @@ type Service struct {
 	// stored-view execution. Empty = the placeholder degrades to a
 	// warning instead of resolving.
 	accountId string
+	// chatSub backs the chat message stream. Installed by the composition
+	// root through SetChatSubscription rather than the constructor; nil
+	// means the stream route is not registered at all.
+	chatSub apicore.ChatSubscriptionService
 }
 
 // NewService creates the API v2 service. creator may be nil when only the

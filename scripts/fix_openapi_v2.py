@@ -182,6 +182,27 @@ SCHEMA_REQUIRED = {
 }
 
 
+# swag emits application/json alongside the declared @Produce for a plain
+# string success, so the stream's 200 advertised a JSON body it never sends.
+# The route answers text/event-stream and nothing else.
+STREAM_OPERATION = "stream_chat_messages"
+
+
+def apply_stream_content_type(doc: dict) -> None:
+    for _, operation in operations(doc):
+        if operation["operationId"] != STREAM_OPERATION:
+            continue
+        ok = operation.get("responses", {}).get("200")
+        if ok is None or "content" not in ok:
+            raise ValueError(f"{STREAM_OPERATION} has no 200 content to narrow")
+        stream = ok["content"].get("text/event-stream")
+        if stream is None:
+            raise ValueError(f"{STREAM_OPERATION} does not declare text/event-stream")
+        ok["content"] = {"text/event-stream": stream}
+        return
+    raise ValueError(f"response policy names a missing operation: {STREAM_OPERATION}")
+
+
 def apply_schema_required(doc: dict) -> None:
     for name, required in SCHEMA_REQUIRED.items():
         schema = doc["components"]["schemas"][name]
@@ -192,6 +213,22 @@ def apply_schema_required(doc: dict) -> None:
         if unknown:
             raise ValueError(f"{name}.required names absent properties: {unknown}")
         schema["required"] = list(required)
+
+
+def apply_yaml_stream_content_type(lines: list[str]) -> list[str]:
+    """The YAML twin of apply_stream_content_type."""
+    for i, line in enumerate(lines):
+        if line.strip() != f"operationId: {STREAM_OPERATION}":
+            continue
+        ok = next(j for j in range(i, len(lines)) if lines[j] == '        "200":\n')
+        content = next(j for j in range(ok, len(lines)) if lines[j] == "          content:\n")
+        json_at = next(j for j in range(content, len(lines)) if lines[j] == "            application/json:\n")
+        stream_at = next(j for j in range(content, len(lines)) if lines[j] == "            text/event-stream:\n")
+        if json_at > stream_at:
+            raise ValueError("unexpected media-type order under the stream 200")
+        del lines[json_at:stream_at]
+        return lines
+    raise ValueError(f"response policy names a missing YAML operation: {STREAM_OPERATION}")
 
 
 def apply_yaml_schema_required(lines: list[str]) -> list[str]:
@@ -280,6 +317,7 @@ def fix_json(path: pathlib.Path) -> None:
     doc["components"]["securitySchemes"]["bearerauth"].pop("bearerFormat", None)
     doc["paths"]["/v2/spaces/{space_id}/files"]["post"]["requestBody"] = upload_request_body()
     apply_response_policies(doc)
+    apply_stream_content_type(doc)
     apply_schema_required(doc)
     path.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n")
 
@@ -434,6 +472,7 @@ def fix_yaml(path: pathlib.Path) -> None:
     else:
         lines[schemas:schemas] = RESPONSES_YAML.splitlines(keepends=True)
     lines = apply_yaml_response_policies(lines)
+    lines = apply_yaml_stream_content_type(lines)
     lines = apply_yaml_schema_required(lines)
     path.write_text("".join(lines))
 

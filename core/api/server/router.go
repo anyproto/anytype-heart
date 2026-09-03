@@ -68,6 +68,7 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 		Service:        srv.v2Service,
 		CreateDisabled: srv.v2CreateDisabled,
 		EditDisabled:   srv.v2EditDisabled,
+		StreamDisabled: srv.v2StreamDisabled,
 		Auth:           srv.ensureAuthenticated(mw),
 		KeyScope:       ensureJsonApiScope(),
 		CacheInit:      srv.ensureCacheInitialized(),

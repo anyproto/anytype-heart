@@ -41,6 +41,9 @@ type RouteDeps struct {
 	// EditDisabled skips edit routes when no mutator dependency
 	// was provided.
 	EditDisabled bool
+	// StreamDisabled skips the chat message stream when no chat
+	// subscription dependency was provided.
+	StreamDisabled bool
 
 	// Auth is the shared bearer-token middleware (the same one /v1 uses).
 	Auth gin.HandlerFunc
@@ -258,6 +261,12 @@ func registerChatRoutes(v2 *gin.RouterGroup, deps RouteDeps, idempotencyMW gin.H
 		deps.AnalyticsEvent("V2GetChatMessages"),
 		v2handler.GetChatMessagesHandler(deps.Service),
 	)
+	if !deps.StreamDisabled {
+		v2.GET("/spaces/:space_id/chats/:chat_id/messages/stream",
+			deps.AnalyticsEvent("V2StreamChatMessages"),
+			v2handler.ChatStreamHandler(deps.Service),
+		)
+	}
 	v2.POST("/spaces/:space_id/chats/:chat_id/messages",
 		deps.WriteRateLimit,
 		idempotencyMW,

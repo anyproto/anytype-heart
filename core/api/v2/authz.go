@@ -143,6 +143,7 @@ var v2RouteAuthz = map[string]RouteAuthz{
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/chats"):                                          {Verb: RouteVerbRead},
 	routeKey(http.MethodPost, "/v2/spaces/:space_id/chats"):                                         {Verb: RouteVerbWrite},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/chats/:chat_id/messages"):                        {Verb: RouteVerbRead},
+	routeKey(http.MethodGet, "/v2/spaces/:space_id/chats/:chat_id/messages/stream"):                 {Verb: RouteVerbRead},
 	routeKey(http.MethodPost, "/v2/spaces/:space_id/chats/:chat_id/messages"):                       {Verb: RouteVerbWrite},
 	routeKey(http.MethodPatch, "/v2/spaces/:space_id/chats/:chat_id/messages/:message_id"):          {Verb: RouteVerbWrite},
 	routeKey(http.MethodDelete, "/v2/spaces/:space_id/chats/:chat_id/messages/:message_id"):         {Verb: RouteVerbWrite},

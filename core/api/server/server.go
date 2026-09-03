@@ -56,7 +56,10 @@ type Server struct {
 	// v2EditDisabled skips the Phase-3 edit routes when no mutator
 	// dependency was provided.
 	v2EditDisabled bool
-	chatSubSvc     apicore.ChatSubscriptionService
+	// v2StreamDisabled skips the chat message stream when no chat
+	// subscription dependency was provided.
+	v2StreamDisabled bool
+	chatSubSvc       apicore.ChatSubscriptionService
 	// docs holds both generated OpenAPI documents. NewRouter still takes v1's
 	// bytes as parameters (its signature is what the route-conformance tests
 	// call), so only the v2 pair is read from here.
@@ -128,8 +131,10 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 	}
 	if v2Deps.Reader != nil && v2Deps.Store != nil {
 		s.v2Service = v2service.NewService(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Provenance, v2Deps.Store, techSpaceId, v2Deps.AccountId)
+		s.v2Service.SetChatSubscription(chatSubSvc)
 		s.v2CreateDisabled = v2Deps.Creator == nil
 		s.v2EditDisabled = v2Deps.Mutator == nil
+		s.v2StreamDisabled = chatSubSvc == nil
 	}
 	s.engine = s.NewRouter(mw, eventService, docs.V1YAML, docs.V1JSON)
 	s.KeyToToken = make(map[string]ApiSessionEntry)
