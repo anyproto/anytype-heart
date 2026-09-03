@@ -137,14 +137,16 @@ func TestChatEventFromProto(t *testing.T) {
 		assert.Equal(t, "s9", ev.State.LastStateId)
 	})
 
-	t.Run("a pin change is forwarded, including unpinning", func(t *testing.T) {
-		// `pinned` is on the streamed ChatMessage, so without this event the
-		// flag goes stale with no way to learn otherwise. False is the
-		// meaningful half of a toggle, so it must survive omitempty.
+	t.Run("a pin carries the flag and no message body", func(t *testing.T) {
+		// The manager synthesises a stub message — id only — whenever the
+		// pinned message is outside a subscription's window, which is the
+		// ordinary case for pinning something old. Forwarding that body
+		// would hand a client {"text":""} to merge over the real message.
 		ev := ChatEventFromProto(&pb.EventMessage{
 			Value: &pb.EventMessageValueOfChatUpdatePinnedStatus{
 				ChatUpdatePinnedStatus: &pb.EventChatUpdatePinnedStatus{
-					Message: &model.ChatMessage{Id: "m1", StateId: "s1"},
+					Message:  &model.ChatMessage{Id: "m1", StateId: "s1"}, // the stub
+					IsPinned: true,
 				},
 			},
 		}, opts)
@@ -153,7 +155,21 @@ func TestChatEventFromProto(t *testing.T) {
 		assert.Equal(t, ChatEventPinnedUpdated, ev.Type)
 		assert.Equal(t, "m1", ev.MessageId)
 		require.NotNil(t, ev.Pinned)
-		assert.False(t, *ev.Pinned)
+		assert.True(t, *ev.Pinned)
+		assert.Nil(t, ev.Message, "a husk body is worse than no body")
+		assert.Empty(t, ev.Id, "pinning does not restamp the state id")
+	})
+
+	t.Run("an unpin survives omitempty", func(t *testing.T) {
+		// false is the meaningful half of a toggle
+		ev := ChatEventFromProto(&pb.EventMessage{
+			Value: &pb.EventMessageValueOfChatUpdatePinnedStatus{
+				ChatUpdatePinnedStatus: &pb.EventChatUpdatePinnedStatus{
+					Message: &model.ChatMessage{Id: "m1"}, IsPinned: false,
+				},
+			},
+		}, opts)
+
 		data, err := json.Marshal(ev)
 		require.NoError(t, err)
 		assert.Contains(t, string(data), `"pinned":false`)

@@ -24,11 +24,12 @@ const (
 	CodeNotImplemented      = "not_implemented"
 	CodeInternalError       = "internal_error"
 	CodeRequestTooLarge     = "request_too_large"
-	// CodeRateLimitExceeded is the 429 v2 issues ITSELF, for a resource it
-	// caps rather than a rate it throttles. The shared write limiter answers
-	// in the older envelope with the same code (util.CodeToApiError); this
-	// one is C6-shaped because it comes from a handler, not a gate.
-	CodeRateLimitExceeded = "rate_limit_exceeded"
+	// CodeTooManyStreams is the 429 for a CONCURRENCY cap: too many
+	// long-lived connections held at once. Deliberately not the shared
+	// limiter's "rate_limit_exceeded" — that one means "back off and retry
+	// the same request", this one means "retrying can never succeed, close
+	// something" — and a client that cannot tell them apart retries forever.
+	CodeTooManyStreams = "too_many_streams"
 	// The space-grant codes. Messages NAME the actual grant: error-guided
 	// self-correction is the v2 design language, and enumeration resistance
 	// is a non-goal for a localhost single-user API.

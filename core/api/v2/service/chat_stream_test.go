@@ -193,6 +193,55 @@ func TestOpenChatStream(t *testing.T) {
 		assert.Equal(t, defaultChatStreamLimit, gotLimit)
 	})
 
+	t.Run("the resync rule uses the clamped limit, not the raw request", func(t *testing.T) {
+		// a direct caller (or a future route without the pagination gate) can
+		// pass 0, and the short-window rule compares against the number the
+		// repository actually used — so it has to be the clamped one
+		fx := newV2Fixture(t)
+		fx.addChat(t, "chat1", "General", 1)
+		window := make([]*model.ChatMessage, maxChatStreamLimit)
+		for i := range window {
+			window[i] = &model.ChatMessage{Id: "m", StateId: "s9"}
+		}
+		subMock := mock_apicore.NewMockChatSubscriptionService(t)
+		subMock.EXPECT().SubscribeLastMessages(mock.Anything, "chat1", mock.Anything, mock.Anything, mock.Anything).
+			Return(window, nil)
+		subMock.EXPECT().Unsubscribe("chat1", mock.Anything).Return(nil)
+		fx.withChatSub(subMock)
+
+		// the request asks for far more than the cap allows; the window comes
+		// back exactly full at the CLAMPED size, so an all-newer window
+		// cannot prove continuity. Compared against the raw request instead,
+		// the window would look short and continuity would be claimed.
+		stream, err := fx.OpenChatStream(ctx, testSpaceId, "chat1",
+			ChatStreamQuery{Limit: 999999, LastEventId: "s0"})
+
+		require.NoError(t, err)
+		defer stream.Close()
+		assert.True(t, stream.Resync,
+			"the rule must compare against the number the repository actually used")
+	})
+
+	t.Run("the cursor is withheld when it would move the client backwards", func(t *testing.T) {
+		// the highest-state message was deleted during the disconnect, so the
+		// window's maximum now sits BELOW what the client already holds
+		fx := newV2Fixture(t)
+		fx.addChat(t, "chat1", "General", 1)
+		subMock := mock_apicore.NewMockChatSubscriptionService(t)
+		subMock.EXPECT().SubscribeLastMessages(mock.Anything, "chat1", mock.Anything, mock.Anything, mock.Anything).
+			Return([]*model.ChatMessage{{Id: "m1", StateId: "s2"}}, nil)
+		subMock.EXPECT().Unsubscribe("chat1", mock.Anything).Return(nil)
+		fx.withChatSub(subMock)
+
+		stream, err := fx.OpenChatStream(ctx, testSpaceId, "chat1",
+			ChatStreamQuery{LastEventId: "s7"})
+
+		require.NoError(t, err)
+		defer stream.Close()
+		assert.Empty(t, stream.Cursor,
+			"rewinding the cursor is the bug the cursor exists to prevent")
+	})
+
 	t.Run("the opening window resolves author names", func(t *testing.T) {
 		// the streamed message is the same shape a paginated read returns,
 		// and that includes the display name behind the raw creator identity
@@ -236,7 +285,7 @@ func TestOpenChatStream(t *testing.T) {
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusTooManyRequests, apiErr.Status)
-		assert.Equal(t, v2model.CodeRateLimitExceeded, apiErr.Code)
+		assert.Equal(t, v2model.CodeTooManyStreams, apiErr.Code)
 
 		// and a closed stream returns its slot
 		open[0].Close()

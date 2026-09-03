@@ -52,7 +52,7 @@ type ChatEvent struct {
 	// Message is set on message_added and message_updated.
 	Message *ChatMessage `json:"message,omitempty"`
 	// MessageId names the subject of an event that carries no body:
-	// message_deleted and reactions_updated.
+	// message_deleted, reactions_updated and pinned_updated.
 	MessageId string `json:"message_id,omitempty"`
 	// Reactions is set on reactions_updated, as counts. ReactedBy carries
 	// participant ids and is populated only when the caller asked for them;
@@ -88,17 +88,27 @@ func ChatEventFromProto(msg *pb.EventMessage, opts ChatMessageOptions) *ChatEven
 		return &ChatEvent{Type: ChatEventMessageDeleted, MessageId: ev.Id}
 	}
 	if ev := msg.GetChatStateUpdate(); ev != nil {
-		return &ChatEvent{Type: ChatEventStateUpdated, State: ChatStateFromProto(ev.State)}
+		state := ChatStateFromProto(ev.State)
+		if state == nil {
+			return nil // an event whose only payload is absent is not an event
+		}
+		return &ChatEvent{Type: ChatEventStateUpdated, State: state}
 	}
 	if ev := msg.GetChatUpdatePinnedStatus(); ev != nil && ev.Message != nil {
-		// no id, for the same reason message_updated carries none: pinning
-		// does not restamp the message's state id
-		message := ChatMessageFromProto(ev.Message, opts)
+		// Deliberately NO message body. When the pinned message sits outside
+		// a subscription's window the manager synthesises a stub carrying
+		// only an id, and rendering that through the full DTO puts
+		// {"id":…,"order":"","text":""} on the wire — which a client merging
+		// by id writes over the real message, erasing its text, author and
+		// timestamp. Pinning an OLD message is the ordinary case, so this is
+		// the common path, not a race. The id and the flag are the event.
+		//
+		// No `id:` either, for the same reason message_updated carries none:
+		// pinning does not restamp the message's state id.
 		pinned := ev.IsPinned
 		return &ChatEvent{
 			Type:      ChatEventPinnedUpdated,
 			MessageId: ev.Message.Id,
-			Message:   &message,
 			Pinned:    &pinned,
 		}
 	}

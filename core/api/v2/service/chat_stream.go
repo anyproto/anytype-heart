@@ -23,7 +23,11 @@ import (
 // chat read uses. v1 parsed this with a bare Atoi and passed it through, so
 // the document's 1..1000 was decoration.
 const (
-	defaultChatStreamLimit = 50
+	// defaultChatStreamLimit is the fallback for a DIRECT caller. Over HTTP
+	// the group's pagination middleware always supplies a limit (25 when the
+	// caller omits one), so this is unreachable there — the published
+	// default is the middleware's, and the document says 25.
+	defaultChatStreamLimit = 25
 	maxChatStreamLimit     = 1000
 	chatStreamSinkBuffer   = 256
 	// maxConcurrentChatStreams caps open streams process-wide. Each one
@@ -124,15 +128,27 @@ func (s *Service) OpenChatStream(ctx context.Context, spaceId, chatId string, q 
 	// released through Close's sync.Once, so it cannot be double-returned
 	release, ok := s.chatStreams.acquire()
 	if !ok {
-		return nil, v2model.NewError(http.StatusTooManyRequests, v2model.CodeRateLimitExceeded,
-			fmt.Sprintf("too many open chat streams (%d); close one before opening another", maxConcurrentChatStreams))
+		return nil, v2model.NewError(http.StatusTooManyRequests, v2model.CodeTooManyStreams,
+			fmt.Sprintf("this process already holds %d open chat streams", maxConcurrentChatStreams),
+			v2model.Issue{
+				Message: "the cap is on streams held AT ONCE, not on how fast they are opened, so retrying the same request cannot succeed",
+				Hint:    "close a stream you no longer read before opening another",
+			})
 	}
+	// DEFERRED, with a handoff: released explicitly, a panic anywhere below
+	// burned the slot for the life of the process, and gin.Recovery cannot
+	// help because the handler's defer Close() does not exist yet.
+	handedOff := false
+	defer func() {
+		if !handedOff {
+			release()
+		}
+	}()
 
 	sink := make(chan *pb.Event, chatStreamSinkBuffer)
 	subId := "v2-sse-" + uuid.New().String()
 	window, err := s.chatSub.SubscribeLastMessages(ctx, chatId, limit, subId, sink)
 	if err != nil {
-		release()
 		return nil, fmt.Errorf("subscribe last messages: %w", err)
 	}
 
@@ -147,16 +163,29 @@ func (s *Service) OpenChatStream(ctx context.Context, spaceId, chatId string, q 
 			Message: &message,
 		})
 	}
-	return &ChatStream{
+	stream := &ChatStream{
 		Initial: initial,
-		Cursor:  maxStateId(window),
+		Cursor:  advancedCursor(maxStateId(window), q.LastEventId),
 		Resync:  resync,
 		Events:  sink,
 		sub:     s.chatSub,
 		chatId:  chatId,
 		subId:   subId,
 		release: release,
-	}, nil
+	}
+	handedOff = true // the stream owns the slot now; Close returns it
+	return stream, nil
+}
+
+// advancedCursor withholds a cursor that would move the client BACKWARDS.
+// If the highest-state message was deleted during the disconnect, the
+// window's maximum can sit below what the client already holds, and emitting
+// it would rewind exactly what this cursor exists to protect.
+func advancedCursor(windowMax, clientCursor string) string {
+	if windowMax <= clientCursor {
+		return ""
+	}
+	return windowMax
 }
 
 // maxStateId is the highest state id in a window. See ChatStream.Cursor for

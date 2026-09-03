@@ -151,7 +151,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	for _, operation := range jsonOperations {
 		pairCount += len(operation.Responses)
 	}
-	assert.Equal(t, 291, pairCount, "the checked-in response inventory changes only deliberately")
+	assert.Equal(t, 292, pairCount, "the checked-in response inventory changes only deliberately")
 
 	dryRunCreates := stringSet(
 		"add_chat_message", "create_chat", "create_collection", "create_object", "create_property",
@@ -167,6 +167,11 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 		"add_chat_message", "create_chat", "create_collection", "create_property", "create_query", "create_space",
 		"edit_chat_message", "read_chat", "toggle_chat_reaction", "update_property", "update_space", "update_type", "upload_file",
 	)
+
+	// A concurrency cap is not a rate limit: the chat stream refuses when too
+	// many are held AT ONCE, in v2's own envelope, so it declares its own 429
+	// rather than the shared limiter's legacy one.
+	resourceLimited := stringSet("stream_chat_messages")
 
 	for operationId, operation := range jsonOperations {
 		for status, component := range map[string]string{
@@ -192,8 +197,12 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 		}
 		if idempotent[operationId] && operationId != "validate" {
 			assert.Equal(t, "#/components/responses/RateLimited", operation.Responses["429"].Ref, "%s write limiter", operationId)
+		} else if resourceLimited[operationId] {
+			assert.Contains(t, operation.Responses, "429",
+				"%s caps a resource, so it declares its own 429", operationId)
 		} else {
-			assert.NotContains(t, operation.Responses, "429", "%s is not write-limited", operationId)
+			assert.NotContains(t, operation.Responses, "429",
+				"%s neither write-limits nor caps a resource", operationId)
 		}
 		if requestBodyLimited[operationId] {
 			assert.Equal(t, "#/components/responses/RequestTooLarge", operation.Responses["413"].Ref, "%s body cap", operationId)

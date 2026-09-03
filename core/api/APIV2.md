@@ -7327,8 +7327,11 @@ the group's pagination middleware, which already bounds it.
 **Resume, and the two things it cannot do.** Each ADDITION carries its chat
 state id as the SSE event id; `Last-Event-ID` replays what is newer.
 `stateId` is a BSON ObjectId hex — fixed-width, big-endian time first — so
-plain string comparison is byte-correct, and the same comparison is already
-load-bearing in the read watermark.
+plain string comparison orders correctly within one process, and the same
+comparison is already load-bearing in the read watermark. Two caveats: the
+bytes after the timestamp are machine, pid and a randomly seeded counter, so
+ids minted either side of a restart within the same second can invert; and
+the timestamp is wall-clock, so a clock step inverts whole seconds.
 
 The first limit is that a state id is stamped once, in `BeforeCreate`. An
 edit, a pin or a reaction re-marshals the original, so those events carry NO
@@ -7342,14 +7345,29 @@ deliver is worse than v1's honest amnesia.
 The second is that the window is ordered by ORDER id while the cursor is a
 STATE id, and those are different orders: a message backfilled from an
 offline peer carries a fresh state id at an old order position. The opening
-window therefore ends with one trailing `id:` comment carrying the HIGHEST
-state id in it, not the last row's, so a client's cursor cannot go backwards
-on its first reconnect.
+window therefore ends with one trailing id-only FRAME carrying the HIGHEST
+state id in it, not the last row's. It is a field, not a comment: per the SSE
+processing model the last-event-ID buffer is set when `id` is parsed, and a
+frame whose data buffer is empty dispatches no event, so the cursor moves
+without inventing anything for the client to handle. The frame is withheld
+when it would move the client BACKWARDS, which happens when the
+highest-state message was deleted during the disconnect.
 
 `resync_required` says the window could not be proven to cover the gap. The
 test is "the window is full AND every row postdates the cursor" — a SHORT
 window is the whole chat, so nothing was evicted and continuity is provable.
 Without the fullness half this fired on every reconnect to a small chat.
+
+It is a warning, NOT the converse guarantee, and the published description
+says so. The window is selected by ORDER id while the cursor is a STATE id:
+a message that reached this node out of order carries a fresh state id at an
+old order position, so it can fall outside the window entirely and be missed
+without tripping the test. Detecting that needs a "is anything older newer
+than this cursor" probe the repository does not offer today. A chat REINDEX
+is the other blind spot — it wipes the collection and re-mints every state
+id, so every stored cursor goes stale at once, and on a chat shorter than
+the window the short-window rule then reports continuity while re-delivering
+everything.
 
 **A cursor is node-local.** State ids are minted when a device applies a
 change, not carried in the change, so they do not converge across devices —
@@ -7362,9 +7380,32 @@ sink fills, the producer blocks up to a second and then drops it, and that
 loop runs holding the per-chat subscription lock inside the chat's object
 tree lock — so one slow reader stalls that chat's sends, edits and sync
 ingestion. v1 has the same exposure; this route adds a second door onto it
-behind a scoped key. Two things follow. Streams are capped process-wide
+behind a scoped key. Two things follow. Streams are capped
 (`maxConcurrentChatStreams`), because nothing else bounds them: the shared
 limiter is writes-only and keyed on a loopback address. And a subscriber
 the producer drops is told `resync_required` rather than seeing a silent
-close, since reconnecting is the recovery. Making the producer drop instead
-of blocking is the real fix and belongs in the chat subsystem, not here.
+close, since reconnecting is the recovery.
+
+Two things the cap does NOT do, both recorded rather than fixed here. It is
+a v2 ceiling over a hazard v1 shares: v1's stream uses the same sink
+mechanism with no cap at all, so the process is not protected, only this
+route's share of it. And it counts zombies — there is no write deadline, so
+a client that vanishes without a FIN holds its slot until TCP gives up,
+which is minutes. A per-write deadline and capping v1 with the same counter
+are the two follow-ups. Making the producer drop instead of blocking is the
+real fix for the hazard itself, and it belongs in the chat subsystem.
+
+The refusal is 429 `too_many_streams`, deliberately not the shared limiter's
+`rate_limit_exceeded`: that one means "back off and retry", this one means
+"retrying can never succeed, close something", and a client that cannot tell
+them apart retries forever. It is the first v2 READ with its own 429, which
+is why the response-policy generator grew a resource-limited set and the
+conformance rule a third branch — until now "declares 429" and "goes through
+the write limiter" were the same set.
+
+`pinned_updated` carries the message id and the flag, never a message body.
+When the pinned message sits outside a subscription's window the manager
+synthesises a stub with only an id, and rendering that through the full DTO
+would put an empty text and author on the wire for a client to merge over
+the real message. Pinning something OLD is the ordinary case, so that is the
+common path.

@@ -155,6 +155,11 @@ def apply_response_policies(doc: dict) -> None:
             responses["413"] = response_ref("RequestTooLarge")
         if operation_id in WRITE_LIMITED_OPERATIONS:
             responses["429"] = response_ref("RateLimited")
+        if operation_id in RESOURCE_LIMITED_OPERATIONS:
+            responses["429"] = {
+                "description": "Too many streams held at once; close one, retrying cannot succeed",
+                "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}},
+            }
         if operation_id in DRY_RUN_CREATES:
             if "201" not in responses:
                 raise ValueError(f"dry-run create {operation_id} has no 201 response to mirror")
@@ -186,6 +191,13 @@ SCHEMA_REQUIRED = {
 # string success, so the stream's 200 advertised a JSON body it never sends.
 # The route answers text/event-stream and nothing else.
 STREAM_OPERATION = "stream_chat_messages"
+
+# Operations that answer 429 for a RESOURCE they cap rather than a rate they
+# throttle. Until the chat stream there was no such thing, so "declares 429"
+# and "goes through the shared write limiter" were the same set — and the
+# conformance test asserted it. A concurrency refusal is v2's own, so it
+# carries the C6 envelope, not the legacy shape the shared limiter uses.
+RESOURCE_LIMITED_OPERATIONS = {STREAM_OPERATION}
 
 
 def apply_stream_content_type(doc: dict) -> None:
@@ -440,6 +452,15 @@ def apply_yaml_response_policies(lines: list[str]) -> list[str]:
             blocks["413"] = yaml_response_ref("413", "RequestTooLarge")
         if operation_id in WRITE_LIMITED_OPERATIONS:
             blocks["429"] = yaml_response_ref("429", "RateLimited")
+        if operation_id in RESOURCE_LIMITED_OPERATIONS:
+            blocks["429"] = [
+                '        "429":\n',
+                "          content:\n",
+                "            application/json:\n",
+                "              schema:\n",
+                "                $ref: '#/components/schemas/Error'\n",
+                "          description: Too many streams held at once; close one, retrying cannot succeed\n",
+            ]
         if operation_id in DRY_RUN_CREATES:
             if "201" not in blocks:
                 raise ValueError(f"dry-run create {operation_id} has no YAML 201 response to mirror")

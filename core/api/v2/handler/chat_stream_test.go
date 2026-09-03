@@ -2,12 +2,14 @@ package v2handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -107,6 +109,27 @@ func runStream(t *testing.T, fx *v2HandlerFixture, req *http.Request,
 	}
 	return w
 }
+
+// failingWriter is a gin.ResponseWriter whose writes fail after n bytes.
+// httptest.ResponseRecorder buffers to memory and can never fail, so without
+// this the handler's whole "a write error ends the stream" contract has no
+// test — and a mutation that discards the error survives every assertion.
+type failingWriter struct {
+	gin.ResponseWriter
+	remaining int
+	writes    int
+}
+
+func (w *failingWriter) Write(p []byte) (int, error) {
+	w.writes++
+	if w.remaining <= 0 {
+		return 0, errors.New("connection reset by peer")
+	}
+	w.remaining -= len(p)
+	return len(p), nil
+}
+
+func (w *failingWriter) WriteString(s string) (int, error) { return w.Write([]byte(s)) }
 
 func streamRequest(target string) *http.Request {
 	return httptest.NewRequest(http.MethodGet, target, nil)
@@ -281,6 +304,37 @@ func TestChatStreamHandler(t *testing.T) {
 		assert.Equal(t, "s9", last["id"],
 			"the client's cursor must not go backwards on the first reconnect")
 		assert.Len(t, last, 1, "the cursor is a frame of its own: %v", last)
+	})
+
+	t.Run("a failing write ends the stream instead of writing into a dead socket", func(t *testing.T) {
+		// the peer is gone but never sent a FIN, so the context is still
+		// live: only the write error can end this, and discarding it left
+		// the handler framing events into nothing until TCP gave up
+		fx, sinkCh := newStreamFixture(t, []*model.ChatMessage{{Id: "m1", StateId: "s1"}})
+		var failing *failingWriter
+		fx.router.Use(func(c *gin.Context) {
+			failing = &failingWriter{ResponseWriter: c.Writer, remaining: 0}
+			c.Writer = failing
+			c.Next()
+		})
+		// re-register so the middleware above is in the chain for this route
+		fx.router.GET("/v2/spaces/:space_id/chats/:chat_id/messages/stream2", ChatStreamHandler(fx.svc))
+
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			fx.router.ServeHTTP(httptest.NewRecorder(),
+				streamRequest("/v2/spaces/space1/chats/chat1/messages/stream2"))
+		}()
+		<-sinkCh // it subscribed
+
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			t.Fatal("the handler kept going after its writes started failing")
+		}
+		assert.Equal(t, 1, failing.writes,
+			"the stream stops at the FIRST failed write; continuing to the next one is the bug")
 	})
 
 	t.Run("a Last-Event-ID inside the window replays nothing already seen", func(t *testing.T) {

@@ -8,6 +8,7 @@ package v2handler
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -52,11 +53,12 @@ func parseHeartbeatSeconds(c *gin.Context) time.Duration {
 //	@Produce		text/event-stream
 //	@Param			space_id		path		string			true	"Space id"
 //	@Param			chat_id			path		string			true	"Chat id"
-//	@Param			limit			query		int				false	"Messages in the opening window"	default(50)	minimum(1)	maximum(1000)
+//	@Param			limit			query		int				false	"Messages in the opening window"	default(25)	minimum(1)	maximum(1000)
 //	@Param			heartbeat		query		int				false	"Keepalive cadence in seconds"		default(30)	minimum(1)	maximum(60)
 //	@Param			Last-Event-ID	header		string			false	"Resume from this chat state id"
 //	@Success		200				{string}	string			"Server-Sent Events stream"
 //	@Failure		404				{object}	v2model.Error	"Space or chat not found"
+//	@Failure		429				{object}	v2model.Error	"Too many streams held at once"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/chats/{chat_id}/messages/stream [get]
 func ChatStreamHandler(s *v2service.Service) gin.HandlerFunc {
@@ -97,11 +99,16 @@ func ChatStreamHandler(s *v2service.Service) gin.HandlerFunc {
 			}
 		}
 		// The window is emitted in order-id order, so the last id written is
-		// not necessarily the highest state id in it. One trailing comment
-		// carrying the maximum leaves the client's cursor at the true high
-		// water mark without inventing an event for it to process.
+		// not necessarily the highest state id in it. One trailing id-only
+		// frame carrying the maximum leaves the client's cursor at the true
+		// high-water mark. Per the SSE processing model the last-event-ID
+		// buffer is set when the `id` field is parsed, and a frame with an
+		// empty data buffer dispatches no event — so this moves the cursor
+		// without inventing anything for the client to handle.
 		if stream.Cursor != "" {
-			fmt.Fprintf(c.Writer, "id: %s\n\n", stream.Cursor)
+			if err := writeCursor(c, stream.Cursor); err != nil {
+				return
+			}
 		}
 		c.Writer.Flush()
 
@@ -158,13 +165,25 @@ func writeSSE(c *gin.Context, event *v2model.ChatEvent) error {
 	if err != nil {
 		return fmt.Errorf("marshal %s event: %w", event.Type, err)
 	}
+	// ONE write per frame: split across two, a failure in between leaves an
+	// unterminated `id:` line as the tail of the stream. Type is a package
+	// constant and Id is a locally minted state id, so neither can carry a
+	// newline that would split the frame.
+	frame := fmt.Sprintf("event: %s\ndata: %s\n\n", event.Type, data)
 	if event.Id != "" {
-		if _, err := fmt.Fprintf(c.Writer, "id: %s\n", event.Id); err != nil {
-			return fmt.Errorf("write event id: %w", err)
-		}
+		frame = fmt.Sprintf("id: %s\n", event.Id) + frame
 	}
-	if _, err := fmt.Fprintf(c.Writer, "event: %s\ndata: %s\n\n", event.Type, data); err != nil {
+	if _, err := io.WriteString(c.Writer, frame); err != nil {
 		return fmt.Errorf("write %s event: %w", event.Type, err)
+	}
+	return nil
+}
+
+// writeCursor emits a field-only frame that moves the client's resume point
+// without dispatching an event. See the trailing-cursor note above.
+func writeCursor(c *gin.Context, cursor string) error {
+	if _, err := fmt.Fprintf(c.Writer, "id: %s\n\n", cursor); err != nil {
+		return fmt.Errorf("write cursor: %w", err)
 	}
 	return nil
 }
