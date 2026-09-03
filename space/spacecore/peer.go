@@ -21,7 +21,7 @@ func (s *service) PeerDiscovered(ctx context.Context, discovered localdiscovery.
 	if err != nil {
 		return
 	}
-	s.publishLocalPeer(discovered.PeerId, shared, proof)
+	s.publishLocalPeer(discovered.PeerId, shared, proof, directionOutbound)
 }
 
 // exchangeOutbound is the outbound handshake with one LAN peer: the v2 token

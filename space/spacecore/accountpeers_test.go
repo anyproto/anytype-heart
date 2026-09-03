@@ -56,7 +56,7 @@ func TestPublishLocalPeer(t *testing.T) {
 		tech := s.techSpaceExchangeInfo().id
 
 		// when: the exchange confirmed only the tech space
-		s.publishLocalPeer("dev", []string{tech}, true)
+		s.publishLocalPeer("dev", []string{tech}, true, directionOutbound)
 
 		// then
 		assert.ElementsMatch(t, []string{tech, "s1", "s2"}, lists.of("dev"))
@@ -68,7 +68,7 @@ func TestPublishLocalPeer(t *testing.T) {
 		s, _, lists := newAccountPeersService(t, []string{"s1", "s2"}, nil)
 
 		// when: it shares an unrelated space
-		s.publishLocalPeer("stranger", []string{"s1"}, true)
+		s.publishLocalPeer("stranger", []string{"s1"}, true, directionOutbound)
 
 		// then
 		assert.Equal(t, []string{"s1"}, lists.of("stranger"))
@@ -81,7 +81,7 @@ func TestPublishLocalPeer(t *testing.T) {
 		tech := s.techSpaceExchangeInfo().id
 
 		// when: a plaintext list claims the tech space
-		s.publishLocalPeer("legacy", []string{tech}, false)
+		s.publishLocalPeer("legacy", []string{tech}, false, directionOutbound)
 
 		// then
 		assert.Equal(t, []string{tech}, lists.of("legacy"))
@@ -94,14 +94,14 @@ func TestPublishLocalPeer(t *testing.T) {
 		tech := s.techSpaceExchangeInfo().id
 
 		// when: the proven peer did not confirm s1
-		s.publishLocalPeer("dev", []string{tech}, true)
+		s.publishLocalPeer("dev", []string{tech}, true, directionOutbound)
 
 		// then
 		assert.Empty(t, s.peerStore.LocalPeerIds("s1"), "held here, not confirmed there: no head-sync against it")
 		assert.Equal(t, []string{"dev"}, s.peerStore.LocalPeerIds("s2"))
 
 		// and a later exchange that confirms s1 keeps it
-		s.publishLocalPeer("dev", []string{tech, "s1"}, true)
+		s.publishLocalPeer("dev", []string{tech, "s1"}, true, directionOutbound)
 		assert.Equal(t, []string{"dev"}, s.peerStore.LocalPeerIds("s1"))
 	})
 }
@@ -111,7 +111,7 @@ func TestRefreshProvenPeers(t *testing.T) {
 		// given
 		s, views, lists := newAccountPeersService(t, nil, nil)
 		tech := s.techSpaceExchangeInfo().id
-		s.publishLocalPeer("dev", []string{tech}, true)
+		s.publishLocalPeer("dev", []string{tech}, true, directionOutbound)
 		require.Empty(t, s.peerStore.LocalPeerIds("s9"))
 
 		// when: loadSpace is about to pull s9 (the view list may not have it yet)
@@ -136,11 +136,11 @@ func TestRefreshProvenPeers(t *testing.T) {
 		// given
 		s, _, _ := newAccountPeersService(t, []string{"s9"}, nil)
 		tech := s.techSpaceExchangeInfo().id
-		s.publishLocalPeer("dev", []string{}, true) // first, cold answer: nothing shared
+		s.publishLocalPeer("dev", []string{}, true, directionOutbound) // first, cold answer: nothing shared
 		require.Empty(t, s.peerStore.LocalPeerIds("s9"))
 
 		// when: the re-exchange proves the account
-		s.publishLocalPeer("dev", []string{tech}, true)
+		s.publishLocalPeer("dev", []string{tech}, true, directionOutbound)
 
 		// then
 		assert.Equal(t, []string{"dev"}, s.peerStore.LocalPeerIds("s9"))
@@ -150,7 +150,7 @@ func TestRefreshProvenPeers(t *testing.T) {
 		// given
 		s, _, _ := newAccountPeersService(t, []string{"s9"}, nil)
 		tech := s.techSpaceExchangeInfo().id
-		s.publishLocalPeer("dev", []string{tech}, true)
+		s.publishLocalPeer("dev", []string{tech}, true, directionOutbound)
 		require.Equal(t, []string{"dev"}, s.peerStore.LocalPeerIds("s9"))
 
 		// when: the peer manager drops it after a failed dial
@@ -166,6 +166,101 @@ func TestRefreshProvenPeers(t *testing.T) {
 		s, _, _ := newAccountPeersService(t, []string{"s9"}, nil)
 		s.spaceStorageProvider = mock_storage.NewMockClientStorage(t) // AllSpaceIds would fail the test
 		s.refreshProvenPeers("s9")
+		assert.Empty(t, s.peerStore.AllLocalPeers())
+	})
+}
+
+func TestColdDevicePath(t *testing.T) {
+	t.Run("offline cold device: the peer proves, dials back with nothing, and the tech space stays pullable", func(t *testing.T) {
+		// given: empty spacestore, no views yet, no node — the user's run
+		s, views, lists := newAccountPeersService(t, nil, nil)
+		tech := s.techSpaceExchangeInfo().id
+
+		// when: our outbound exchange proves the peer holds the account
+		s.publishLocalPeer("dev", []string{tech}, true, directionOutbound)
+		require.Equal(t, []string{"dev"}, s.peerStore.LocalPeerIds(tech))
+
+		// and 122 ms later the peer dials us back; the responder-side answer
+		// is bounded by OUR empty disk
+		s.publishLocalPeer("dev", []string{}, true, directionInbound)
+
+		// then: the outbound proof is intact and the tech space has a source
+		assert.Equal(t, []string{"dev"}, s.peerStore.LocalPeerIds(tech), "the inbound answer must not reduce the outbound one")
+		assert.Equal(t, []string{tech}, lists.of("dev"))
+
+		// the pull begins: loadSpace names the tech space, it is still a candidate
+		s.refreshProvenPeers(tech)
+		assert.Equal(t, []string{"dev"}, s.peerStore.LocalPeerIds(tech))
+
+		// the tech space lands on disk; the peer proved it, so it stays
+		disk := []string{tech}
+		s.spaceStorageProvider = func() *mock_storage.MockClientStorage {
+			st := mock_storage.NewMockClientStorage(t)
+			st.EXPECT().AllSpaceIds().RunAndReturn(func() ([]string, error) { return disk, nil }).Maybe()
+			return st
+		}()
+		s.refreshProvenPeers()
+		assert.Equal(t, []string{"dev"}, s.peerStore.LocalPeerIds(tech))
+
+		// views arrive from the tech space and s1 starts loading: a candidate
+		views.ids = []string{"s1"}
+		s.refreshProvenPeers("s1")
+		assert.Equal(t, []string{"dev"}, s.peerStore.LocalPeerIds("s1"))
+		assert.ElementsMatch(t, []string{tech, "s1"}, lists.of("dev"))
+
+		// s1 lands; candidacy ends until the re-exchange confirms it
+		disk = []string{tech, "s1"}
+		s.refreshProvenPeers()
+		assert.Empty(t, s.peerStore.LocalPeerIds("s1"))
+		assert.Equal(t, []string{"dev"}, s.peerStore.LocalPeerIds(tech))
+
+		// the re-exchange asks about disk + tech and the peer confirms both
+		s.publishLocalPeer("dev", []string{tech, "s1"}, true, directionOutbound)
+		assert.Equal(t, []string{"dev"}, s.peerStore.LocalPeerIds("s1"))
+	})
+
+	t.Run("an inbound answer never reduces an outbound one, proven or not", func(t *testing.T) {
+		// given
+		s, _, lists := newAccountPeersService(t, nil, nil)
+		s.publishLocalPeer("friend", []string{"s1"}, true, directionOutbound)
+
+		// when
+		s.publishLocalPeer("friend", []string{}, true, directionInbound)
+		require.Equal(t, []string{"s1"}, lists.of("friend"))
+		s.publishLocalPeer("friend", []string{"s2"}, true, directionInbound)
+		require.ElementsMatch(t, []string{"s1", "s2"}, lists.of("friend"))
+
+		// then: a fresh outbound answer replaces only the outbound half
+		s.publishLocalPeer("friend", []string{"s2"}, true, directionOutbound)
+		assert.Equal(t, []string{"s2"}, lists.of("friend"), "s1 is gone: the peer no longer holds it")
+	})
+
+	t.Run("a proven peer's list always carries the tech space", func(t *testing.T) {
+		// given
+		s, _, lists := newAccountPeersService(t, nil, nil)
+		tech := s.techSpaceExchangeInfo().id
+		s.publishLocalPeer("dev", []string{tech}, true, directionOutbound)
+
+		// when: a later outbound answer somehow lacks it
+		s.publishLocalPeer("dev", []string{"s1"}, true, directionOutbound)
+
+		// then
+		assert.ElementsMatch(t, []string{"s1", tech}, lists.of("dev"))
+	})
+
+	t.Run("forgetting a peer drops both directions and the proof", func(t *testing.T) {
+		// given
+		s, _, lists := newAccountPeersService(t, []string{"s9"}, nil)
+		tech := s.techSpaceExchangeInfo().id
+		s.publishLocalPeer("dev", []string{tech}, true, directionOutbound)
+		s.publishLocalPeer("dev", []string{"s2"}, true, directionInbound)
+
+		// when
+		s.peerStore.RemoveLocalPeer("dev")
+		s.refreshProvenPeers("s9")
+
+		// then
+		assert.Nil(t, lists.of("dev"))
 		assert.Empty(t, s.peerStore.AllLocalPeers())
 	})
 }

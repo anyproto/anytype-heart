@@ -84,7 +84,7 @@ func (s *service) recordLocalPeer(ctx context.Context, peerId string, localServe
 	// addSchema pins the transport for local peers (yamux); see its comment
 	addrsWithSchema := s.addSchema(portAddrs)
 	s.peerService.SetPeerAddrs(peerId, addrsWithSchema)
-	s.publishLocalPeer(peerId, spaceIds, proof)
+	s.publishLocalPeer(peerId, spaceIds, proof, directionInbound)
 	log.Info("updated local peer", zap.Strings("ips", addrsWithSchema), zap.String("peerId", peerId), zap.Strings("spaceIds", spaceIds))
 }
 

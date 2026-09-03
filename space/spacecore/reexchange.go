@@ -120,7 +120,7 @@ func (s *service) exchangeWithKnownPeers() {
 			log.Debug("re-exchange with local peer failed", zap.String("peerId", peerId), zap.Error(err))
 			continue
 		}
-		s.publishLocalPeer(peerId, shared, proof)
+		s.publishLocalPeer(peerId, shared, proof, directionOutbound)
 	}
 }
 
