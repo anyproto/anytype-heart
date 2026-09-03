@@ -2,6 +2,7 @@ package apiv2
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -15,7 +16,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	v2handler "github.com/anyproto/anytype-heart/core/api/v2/handler"
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 )
 
 func TestIdempotencyReservation(t *testing.T) {
@@ -606,4 +610,55 @@ func TestIdempotencyStreamedUpload(t *testing.T) {
 		assert.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
 		assert.Equal(t, 0, calls)
 	})
+}
+
+func TestV2InvalidLimitAnswersInTheC6Envelope(t *testing.T) {
+	// The pagination middleware is shared with v1 and runs FIRST on the /v2
+	// group — ahead of authentication — so before the OnInvalidLimit hook this
+	// refusal was a third dialect, `{"error": "..."}`: the one v2 400 the
+	// published schema did not describe, and the only refusal an agent could
+	// not parse. Declaring `required` on the Error schema made saying nothing
+	// about it untenable, since BadRequest is declared on all 45 operations.
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	group := router.Group("/v2")
+	group.Use(pagination.New(pagination.Config{
+		DefaultPage:     defaultPage,
+		DefaultPageSize: defaultPageSize,
+		MinPageSize:     minPageSize,
+		MaxPageSize:     maxPageSize,
+		OnInvalidLimit: func(c *gin.Context, minPageSize, maxPageSize int) {
+			v2handler.RespondError(c, v2model.ValidationFailed(
+				fmt.Sprintf("limit must be between %d and %d", minPageSize, maxPageSize),
+				v2model.Issue{
+					Path:    "limit",
+					Message: fmt.Sprintf("%q is outside the accepted range", c.Query(pagination.QueryParamLimit)),
+					Hint:    fmt.Sprintf("omit it for the default of %d, or send a value in %d..%d", defaultPageSize, minPageSize, maxPageSize),
+				}))
+		},
+	}))
+	group.GET("/probe", func(c *gin.Context) { c.Status(http.StatusOK) })
+
+	for _, limit := range []string{"0", "1001", "-4"} {
+		t.Run("limit="+limit, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v2/probe?limit="+limit, nil))
+
+			// a negative limit is not out of range — getIntQueryParam falls
+			// back to the default for anything unparseable or below zero
+			if limit == "-4" {
+				assert.Equal(t, http.StatusOK, rec.Code, "a negative limit falls back to the default")
+				return
+			}
+			assert.Equal(t, http.StatusBadRequest, rec.Code)
+			var got v2model.Error
+			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+			assert.Equal(t, v2model.CodeValidationFailed, got.Code)
+			assert.Equal(t, "limit must be between 1 and 1000", got.Message)
+			require.Len(t, got.Issues, 1)
+			assert.Equal(t, "limit", got.Issues[0].Path)
+			assert.NotEmpty(t, got.Issues[0].Hint, "the refusal names the repair")
+			assert.NotContains(t, rec.Body.String(), `"error"`, "the bare v1-style shape is gone")
+		})
+	}
 }

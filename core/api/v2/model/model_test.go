@@ -75,10 +75,29 @@ func TestErrorShape(t *testing.T) {
 		assert.JSONEq(t, want, string(data))
 	})
 
-	t.Run("issues are omitted when empty", func(t *testing.T) {
-		data, err := json.Marshal(NotFound("object gone"))
-		require.NoError(t, err)
-		assert.NotContains(t, string(data), "issues")
+	t.Run("issues is present and empty when there is no path to address", func(t *testing.T) {
+		// C6 promises ONE error shape and the published description promises
+		// it unconditionally, so the documented `err.issues.map(...)` must
+		// work on every v2 error. `null` would satisfy presence and still
+		// throw, so the empty ARRAY is the assertion.
+		for _, err := range []*Error{
+			NotFound("object gone"),
+			EtagMismatch("abcd1234"),
+			VersionUnsupported("2.1", "2.0"),
+			SpaceNotGranted("space1"),
+			RequestTooLarge("body"),
+		} {
+			data, marshalErr := json.Marshal(err)
+			require.NoError(t, marshalErr)
+			assert.Contains(t, string(data), `"issues":[]`, err.Code)
+
+			var round struct {
+				Issues []Issue `json:"issues"`
+			}
+			require.NoError(t, json.Unmarshal(data, &round))
+			assert.NotNil(t, round.Issues, "%s: an absent or null array is the crash the shape exists to prevent", err.Code)
+			assert.Empty(t, round.Issues, err.Code)
+		}
 	})
 
 	t.Run("etag mismatch carries the current etag", func(t *testing.T) {

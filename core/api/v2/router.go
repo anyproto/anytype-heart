@@ -10,10 +10,13 @@ package apiv2
 // installed only on this group: it is a /v2-only refusal by design.
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	v2handler "github.com/anyproto/anytype-heart/core/api/v2/handler"
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	v2service "github.com/anyproto/anytype-heart/core/api/v2/service"
 )
 
@@ -71,6 +74,20 @@ func RegisterRoutes(router *gin.Engine, deps RouteDeps) {
 		DefaultPageSize: defaultPageSize,
 		MinPageSize:     minPageSize,
 		MaxPageSize:     maxPageSize,
+		// C6 is "error shape everywhere", and the published document
+		// declares the C6 body for the shared query-validation 400 on all
+		// 45 operations. This refusal is the first thing on the group, so
+		// without its own envelope it was the one v2 400 the schema did not
+		// describe — and the only refusal an agent could not parse.
+		OnInvalidLimit: func(c *gin.Context, minPageSize, maxPageSize int) {
+			v2handler.RespondError(c, v2model.ValidationFailed(
+				fmt.Sprintf("limit must be between %d and %d", minPageSize, maxPageSize),
+				v2model.Issue{
+					Path:    "limit",
+					Message: fmt.Sprintf("%q is outside the accepted range", c.Query(pagination.QueryParamLimit)),
+					Hint:    fmt.Sprintf("omit it for the default of %d, or send a value in %d..%d", defaultPageSize, minPageSize, maxPageSize),
+				}))
+		},
 	}))
 	v2.Use(deps.CacheInit)
 	v2.Use(deps.Auth)

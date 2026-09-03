@@ -14,6 +14,13 @@ type Config struct {
 	DefaultPageSize int
 	MinPageSize     int
 	MaxPageSize     int
+	// OnInvalidLimit answers an out-of-range `limit`. It exists because the
+	// two API versions refuse in different envelopes and this middleware is
+	// shared: v1 keeps the bare {"error": …} below, while v2 answers in its
+	// own C6 shape, which its published document declares for every 400 on
+	// every route. Without the hook the one refusal that runs BEFORE v2's
+	// own middleware would be the only v2 body its schema does not describe.
+	OnInvalidLimit func(c *gin.Context, minPageSize, maxPageSize int)
 }
 
 // New creates Gin middleware for pagination with the provided Config.
@@ -23,6 +30,10 @@ func New(cfg Config) gin.HandlerFunc {
 		size := getIntQueryParam(c, QueryParamLimit, cfg.DefaultPageSize)
 
 		if size < cfg.MinPageSize || size > cfg.MaxPageSize {
+			if cfg.OnInvalidLimit != nil {
+				cfg.OnInvalidLimit(c, cfg.MinPageSize, cfg.MaxPageSize)
+				return
+			}
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 				"error": fmt.Sprintf("limit must be between %d and %d", cfg.MinPageSize, cfg.MaxPageSize),
 			})

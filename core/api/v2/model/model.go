@@ -45,19 +45,46 @@ type Issue struct {
 }
 
 // Error is the C6 error envelope, returned by every v2 endpoint.
+//
+// Issues carries no omitempty and NewError never leaves it nil, so `issues`
+// is present on every v2 error — empty when the refusal has no path to
+// address. A field whose PRESENCE is conditional is a branch, and the
+// documented consumer form, err.issues.map(...), is the one that throws on
+// the absent case (§8.53). The shared authentication, key-scope and
+// rate-limit refusals are a different envelope entirely (§8.9) and are
+// unaffected.
 type Error struct {
 	Status  int     `json:"status"`
 	Code    string  `json:"code"`
 	Message string  `json:"message"`
-	Issues  []Issue `json:"issues,omitempty"`
+	Issues  []Issue `json:"issues"`
 }
 
 func (e *Error) Error() string {
 	return fmt.Sprintf("%s: %s", e.Code, e.Message)
 }
 
-// NewError builds a C6 error.
+// MarshalJSON keeps `issues` an ARRAY even on a value this package did not
+// build. NewError materializes the empty slice, but Issues is exported and
+// Error is a plain struct, so one `&Error{Status: …}` literal in a future
+// handler would emit `issues: null` — the same crash as the absence this
+// replaced, wearing a different hat. The invariant belongs to the type, the
+// way ListResponse.Data already does it (pagination.PaginatedResponse).
+func (e Error) MarshalJSON() ([]byte, error) {
+	type alias Error
+	if e.Issues == nil {
+		e.Issues = []Issue{}
+	}
+	return json.Marshal(alias(e))
+}
+
+// NewError builds a C6 error. It materializes the empty slice so a value
+// read back in Go is never nil either; MarshalJSON is what guarantees the
+// wire shape.
 func NewError(status int, code, message string, issues ...Issue) *Error {
+	if issues == nil {
+		issues = []Issue{}
+	}
 	return &Error{Status: status, Code: code, Message: message, Issues: issues}
 }
 
@@ -72,9 +99,10 @@ func ValidationFailed(message string, issues ...Issue) *Error {
 	return NewError(http.StatusBadRequest, CodeValidationFailed, message, issues...)
 }
 
-// NotFound is the 404 for missing resources. Issues are optional — a 404
-// that has a repair loop to describe (which read actually lists the thing
-// the caller could not find) carries it C6-shaped rather than in prose.
+// NotFound is the 404 for missing resources. The issues ARGUMENT is optional
+// (the array itself is always on the wire, §8.53) — a 404 that has a repair
+// loop to describe (which read actually lists the thing the caller could not
+// find) carries it C6-shaped rather than in prose.
 func NotFound(message string, issues ...Issue) *Error {
 	return NewError(http.StatusNotFound, CodeNotFound, message, issues...)
 }
