@@ -7124,3 +7124,30 @@ tokens**, against 8 turns and 43k while failing.
 type without showing the shape will be retried verbatim, and a description
 that is true of one aspect will be read as true of the tool. Neither cost a
 tool slot to fix.
+
+### 8.52 Removing a view's filter (2026-09-03 — measured)
+
+`update_view` could set a filter and never remove it. An empty `filter`
+argument is indistinguishable from an absent one — the tool treats both as
+"not given" — so "show everything again", an ordinary request, had no path.
+`filter: "none"` (also `all`, `clear`, `any`, case-insensitive) now clears
+it. A compact filter is an expression, so a bare word cannot collide with a
+filter someone meant literally.
+
+**The payload is measured, and the op comment is wrong about it.** That
+comment says "explicit null clears one". Against a live heart:
+
+| `set` payload | result |
+|---|---|
+| `{"filter": null}` | **400 validation_failed** |
+| `{"filter": ""}` | **400 validation_failed** |
+| `{"filters": null}` | clears |
+| `{"filters": []}` | clears |
+
+Only the **plural** key clears; the singular compact-string channel refuses
+both spellings of empty. The wrapper sends `{"filters": []}`.
+
+The empty-argument refusal now names the clearing spelling, because
+`filter: ""` is exactly what a model reaching for "remove the filter" tries
+first, and an empty string is the one value that cannot be distinguished
+from silence.

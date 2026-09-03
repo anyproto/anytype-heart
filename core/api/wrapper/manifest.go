@@ -361,7 +361,7 @@ func Tools() []Tool {
 				// view slot) — one resolution rule, one spelling of it
 				{Name: "block", Type: ArgString, MaxLen: maxRefLen, Description: "a dataview block — optional when the object has exactly one (types, sets and collections do)"},
 				{Name: "view", Type: ArgString, MaxLen: maxRefLen, Description: "view id, full or unique suffix — optional when the dataview has exactly one view"},
-				{Name: "filter", Type: ArgString, MaxLen: maxFilterLen, Description: `compact filter string, e.g. Done = false AND Due_date < currentWeek() — string values in double quotes, multi-word property names written with underscores (Due_date); replaces the view's filters`},
+				{Name: "filter", Type: ArgString, MaxLen: maxFilterLen, Description: `compact filter string, e.g. Done = false AND Due_date < currentWeek() — string values in double quotes, multi-word property names written with underscores (Due_date); replaces the view's filters. Write "none" to REMOVE the filter and show everything again`},
 				{Name: "sort", Type: ArgString, MaxLen: maxSortLen, Description: `the sort order: a property name with optional asc or desc ("Due date desc" — asc is the default), several separated by commas; replaces the view's sorts`},
 				{Name: "columns", Type: ArgString, MaxLen: maxColumnListLen, Description: `the property columns to show, comma-separated ("Name,Status,Due date") — these become visible and every other visible column is hidden`},
 			},

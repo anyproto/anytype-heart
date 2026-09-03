@@ -52,7 +52,10 @@ func (r *Runner) runUpdateView(ctx context.Context, session *Session, args map[s
 	sortStr := strArg(args, "sort")
 	columns := strArg(args, "columns")
 	if filter == "" && sortStr == "" && columns == "" {
-		return nil, fmt.Errorf(`update_view needs filter, sort or columns — e.g. filter: "Done = false", sort: "Due date desc", columns: "Name,Status"`)
+		// naming the clearing spelling here is the point: a model that meant
+		// "remove the filter" reaches for filter:"" first, and an empty
+		// string is exactly what cannot be told from an absent argument
+		return nil, fmt.Errorf(`update_view needs filter, sort or columns — e.g. filter: "Done = false", sort: "Due date desc", columns: "Name,Status"; to REMOVE a view's filter write filter: "none"`)
 	}
 	op := map[string]any{"op": "update_view"}
 	blockRef := strArg(args, "block")
@@ -68,14 +71,25 @@ func (r *Runner) runUpdateView(ctx context.Context, session *Session, args map[s
 	// line names exactly what the atomic op changed
 	var parts []string
 	if filter != "" {
-		// the same "@me" convenience find's filter has — one filter syntax,
-		// one set of conveniences, on every surface that takes it
-		resolved, err := r.resolveFilterMe(ctx, session, space, filter)
-		if err != nil {
-			return nil, err
+		if isClearFilterArg(filter) {
+			// Clearing is a real request — "show everything again" — and it
+			// had no path: an empty `filter` is indistinguishable from an
+			// absent one, so the tool could set a filter and never remove
+			// it. The payload is MEASURED, not read off the op comment's
+			// word "null": `{"filter": null}` and `{"filter": ""}` are both
+			// refused 400, and only the plural `filters` clears.
+			set["filters"] = []any{}
+			parts = append(parts, "filter cleared — every object of that type is shown again")
+		} else {
+			// the same "@me" convenience find's filter has — one filter syntax,
+			// one set of conveniences, on every surface that takes it
+			resolved, err := r.resolveFilterMe(ctx, session, space, filter)
+			if err != nil {
+				return nil, err
+			}
+			set["filter"] = resolved
+			parts = append(parts, "filter set")
 		}
-		set["filter"] = resolved
-		parts = append(parts, "filter set")
 	}
 	if sortStr != "" {
 		sorts, echo, err := parseSortArg(sortStr)
@@ -466,4 +480,14 @@ func refNamesServedId(id, ref string) bool {
 	// requiring it keeps a degenerate one-char id from tail-matching every
 	// minted ref
 	return len(ref) > len(id) && len(id) >= 5 && mintedRefShapeRe.MatchString(ref) && strings.HasSuffix(ref, id)
+}
+
+// clearFilterArgs are the spellings that MEAN "no filter". A compact filter
+// is an expression — a bare word is not one — so none of these can collide
+// with a filter someone meant literally.
+var clearFilterArgs = map[string]bool{"none": true, "all": true, "clear": true, "any": true}
+
+// isClearFilterArg reports whether the filter argument asks for removal.
+func isClearFilterArg(filter string) bool {
+	return clearFilterArgs[strings.ToLower(strings.TrimSpace(filter))]
 }

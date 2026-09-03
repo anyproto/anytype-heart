@@ -396,3 +396,72 @@ func TestSortGrammar(t *testing.T) {
 		}
 	})
 }
+
+// TestUpdateViewClearsAFilter covers "show everything again", which had no
+// path at all: an empty `filter` cannot be told from an absent one, so the
+// tool could set a filter and never remove it. The payload is measured —
+// {"filter": null} and {"filter": ""} are both refused 400 by the op, and
+// only the plural `filters` clears.
+func TestUpdateViewClearsAFilter(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("none clears the filter through the plural key", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.stub("PATCH /v2/spaces/space1/objects/obj1", 200, `{"ok":true,"id":"obj1"}`)
+
+		// when
+		result, err := fx.Run(ctx, "update_view", map[string]any{
+			"space": "space1", "object": "obj1", "filter": "none"})
+
+		// then
+		require.NoError(t, err)
+		body := string(fx.sent("PATCH /v2/spaces/space1/objects/obj1")[0].Body)
+		assert.Contains(t, body, `"filters":[]`, "the plural key is the one that clears")
+		assert.NotContains(t, body, `"filter":`, "the singular key is refused 400 by the op")
+		assert.Contains(t, result.Text, "filter cleared")
+	})
+
+	t.Run("the synonyms a model reaches for all clear", func(t *testing.T) {
+		for _, spelling := range []string{"none", "None", " all ", "clear", "any"} {
+			fx := newFixture(t)
+			fx.stub("PATCH /v2/spaces/space1/objects/obj1", 200, `{"ok":true,"id":"obj1"}`)
+
+			_, err := fx.Run(ctx, "update_view", map[string]any{
+				"space": "space1", "object": "obj1", "filter": spelling})
+
+			require.NoErrorf(t, err, "filter %q", spelling)
+			assert.Containsf(t, string(fx.sent("PATCH /v2/spaces/space1/objects/obj1")[0].Body),
+				`"filters":[]`, "filter %q should clear", spelling)
+		}
+	})
+
+	t.Run("a real filter is still a filter", func(t *testing.T) {
+		// given — the sentinels must not swallow an expression
+		fx := newFixture(t)
+		fx.stub("PATCH /v2/spaces/space1/objects/obj1", 200, `{"ok":true,"id":"obj1"}`)
+
+		// when
+		_, err := fx.Run(ctx, "update_view", map[string]any{
+			"space": "space1", "object": "obj1", "filter": `Name != ""`})
+
+		// then
+		require.NoError(t, err)
+		body := string(fx.sent("PATCH /v2/spaces/space1/objects/obj1")[0].Body)
+		assert.Contains(t, body, `"filter"`)
+		assert.NotContains(t, body, `"filters":[]`)
+	})
+
+	t.Run("the empty-argument refusal names the clearing spelling", func(t *testing.T) {
+		// given — a model that means "remove the filter" reaches for "" first
+		fx := newFixture(t)
+
+		// when
+		_, err := fx.Run(ctx, "update_view", map[string]any{
+			"space": "space1", "object": "obj1", "filter": ""})
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), `to REMOVE a view's filter write filter: "none"`)
+	})
+}
