@@ -540,9 +540,18 @@ func TestDescribe(t *testing.T) {
 	assert.Equal(t, "name", sent[0].Query.Get("keys"), "describe reads the name vocabulary (D5)")
 	assert.Contains(t, result.Text, "type Task")
 	assert.NotContains(t, result.Text, "type task", "the internal key stays off the prompt — the name IS the vocabulary")
-	assert.Contains(t, result.Text, "Due date  date")
-	assert.Contains(t, result.Text, "Status  select  options: Backlog, In progress, Done")
+	// the rows are written in create_type's own `Name: format(options)` form:
+	// what describe PRINTS has to be what create_type TAKES, or the surface
+	// teaches a spelling it then refuses
+	assert.Contains(t, result.Text, "Due date: date")
+	assert.Contains(t, result.Text, "Status: select(Backlog, In progress, Done)")
 	assert.Contains(t, result.Text, "use these exact property names and option names")
+	// and the rows really do parse as that argument — the round trip, asserted
+	// rather than asserted about
+	decls, err := parseTypeProperties("Due date: date, Status: select(Backlog, In progress, Done)")
+	require.NoError(t, err)
+	require.Len(t, decls, 2)
+	assert.Equal(t, []string{"Backlog", "In progress", "Done"}, decls[1].Options)
 	// the option route takes the api key, never the display name
 	assert.Len(t, fx.sent("GET /v2/spaces/space1/properties/status/options"), 1)
 
@@ -578,7 +587,7 @@ func TestDescribeSpeaksNamesOverSlugDocument(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Contains(t, result.Text, "type Task")
-	assert.Contains(t, result.Text, "\n  Due date  date",
+	assert.Contains(t, result.Text, "\n  Due date: date",
 		"the definition stated the slug, the name field names it — the name is served")
 	assert.NotContains(t, result.Text, "due_date", "the slug never reaches the prompt")
 
@@ -615,11 +624,11 @@ func TestDescribeReportsWhatIsSettable(t *testing.T) {
 	result, err := fx.Run(context.Background(), "describe", map[string]any{"space": "space1", "type": "page"})
 
 	require.NoError(t, err)
-	assert.Contains(t, result.Text, "\n  Description  text",
+	assert.Contains(t, result.Text, "\n  Description: text",
 		"a bundled settable property the type does not recommend must still be shown")
-	assert.Contains(t, result.Text, "\n  Name  text",
+	assert.Contains(t, result.Text, "\n  Name: text",
 		"name is hidden from GET /properties and recommended by no type — describe is the only place it can come from")
-	assert.Contains(t, result.Text, "\n  Due date  date",
+	assert.Contains(t, result.Text, "\n  Due date: date",
 		"any of the space's properties is settable on any object")
 	assert.Contains(t, result.Text, "read-only — read serves these, set_properties refuses them: Creation date, Created by",
 		"output-only keys are named as such, not offered as settable and not silently dropped — the "+

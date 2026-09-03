@@ -20,7 +20,7 @@ func TestTierSets(t *testing.T) {
 	assert.Equal(t, []string{
 		"spaces", "find", "read", "describe", "create", "set_properties",
 		"check_item", "add_blocks", "edit_text", "set_cell", "move_block",
-		"delete_block", "update_view",
+		"delete_block", "update_view", "create_type",
 	}, ToolNamesForTier(TierLarge), "the large tier serves the whole table")
 }
 

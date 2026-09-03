@@ -18,6 +18,14 @@
 // and OLLAMA_BASE_URL (the OpenAI-compatible model endpoint). The API must
 // be running; the harness refuses to start otherwise, naming which of the
 // two failures it hit — server down, or key rejected.
+//
+// -fresh-account replaces the first two: the harness starts its own headless
+// heart on a throwaway account (see cmd/apiv2eval/heartboot) and tears it
+// down afterwards. Prefer it for anything whose numbers get compared. A
+// shared desktop account accumulates the spaces every past run created, and
+// a model asked to find "the" space starts naming the wrong one — that alone
+// accounted for every failure in one 42-attempt baseline, and it makes runs
+// incomparable rather than merely worse.
 package main
 
 import (
@@ -39,6 +47,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/anyproto/anytype-heart/cmd/apiv2eval/heartboot"
 	"github.com/anyproto/anytype-heart/core/api/wrapper"
 )
 
@@ -71,6 +80,9 @@ type options struct {
 	spaceId         string
 	spaceName       string
 	outDir          string
+	freshAccount    bool
+	keepAccount     bool
+	heartBinary     string
 	list            bool
 	probe           bool
 	// constAsEnum is the probe's one diagnostic deviation from a served
@@ -106,6 +118,12 @@ func run() error {
 		"read back tool calls the host failed to parse — measured: LM Studio's MLX path drops well-formed calls emitted inside the thinking channel")
 	flag.BoolVar(&opt.replayReasoning, "replay-reasoning", false,
 		"feed each turn's reasoning back into the next turn — the A/B for whether a model's own thinking helps or breaks the loop")
+	flag.BoolVar(&opt.freshAccount, "fresh-account", false,
+		"start a headless heart on a throwaway account instead of using ANYTYPE_API_URL/ANYTYPE_API_KEY — the only way one run's spaces cannot confuse the next one's model")
+	flag.BoolVar(&opt.keepAccount, "keep-account", false,
+		"-fresh-account only: leave the temp data dir (and the heart log) behind — a failed run is unreadable without the account it failed against")
+	flag.StringVar(&opt.heartBinary, "heart-binary", "",
+		"-fresh-account only: a prebuilt cmd/grpcserver to run (default: build one from this tree, so the run measures the tree it is in)")
 	flag.BoolVar(&opt.list, "list", false, "print the run matrix and exit")
 	flag.BoolVar(&opt.probe, "probe", false, "run the one-turn schema-emission probe instead of the loop (needs no live API)")
 	flag.BoolVar(&opt.constAsEnum, "probe-const-as-enum", false,
@@ -165,6 +183,19 @@ func run() error {
 		return runProbe(ctx, chat, models, opt)
 	}
 
+	if opt.freshAccount {
+		heart, err := startFreshAccount(ctx, opt)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			if err := heart.Stop(); err != nil {
+				fmt.Fprintln(os.Stderr, "warning: tearing down the eval heart:", err)
+			}
+		}()
+		apiURL, apiKey = heart.APIURL, heart.APIKey
+	}
+
 	rec := &recorder{}
 	transport := &recordingTransport{base: http.DefaultTransport, rec: rec}
 	api := newAPIClient(apiURL, apiKey, transport)
@@ -177,11 +208,16 @@ func run() error {
 		return fmt.Errorf("no ANYTYPE_API_KEY in %s or the environment — the API refuses every call without one", opt.envFile)
 	}
 	if err := api.whoami(ctx); err != nil {
+		if opt.freshAccount {
+			// heartboot already proved this URL and key work, so a failure
+			// here means the heart died between bootstrap and now.
+			return fmt.Errorf("the freshly bootstrapped API at %s stopped answering before the run started: %w", apiURL, err)
+		}
 		var ae *apiError
 		if errors.As(err, &ae) && ae.Status == http.StatusUnauthorized {
-			return fmt.Errorf("the Anytype API at %s rejected the key — create a fresh one in the app (Settings → API keys) and update %s: %w", apiURL, opt.envFile, err)
+			return fmt.Errorf("the Anytype API at %s rejected the key — create a fresh one in the app (Settings → API keys) and update %s, or run with -fresh-account: %w", apiURL, opt.envFile, err)
 		}
-		return fmt.Errorf("the Anytype API at %s is not answering — start the app (or the build under test) and retry; nothing was run: %w", apiURL, err)
+		return fmt.Errorf("the Anytype API at %s is not answering — start the app (or the build under test), or run with -fresh-account; nothing was run: %w", apiURL, err)
 	}
 	if err := checkModels(ctx, chat, modelURL, models); err != nil {
 		return err
@@ -347,6 +383,10 @@ func planCells(models []string, arms []armSpec, selected []task) (map[cellKey]bo
 				}
 				missing := ""
 				for _, c := range t.Requires {
+					if surfaceCannotExpress(c, arm.surface) {
+						missing = fmt.Sprintf("the %s surface cannot %s at all", arm.surface, c)
+						break
+					}
 					tool, err := capabilityTool(c, arm.surface)
 					if err != nil {
 						return nil, nil, fmt.Errorf("gate %s on %s: %w", t.Id, arm.name, err)
@@ -544,7 +584,15 @@ func runAttempt(ctx context.Context, deps attemptDeps, model string, arm armSpec
 		att.Outcome, att.EnvError = outcomeEnv, err.Error()
 		return finishRecord()
 	}
-	verdict := t.Check(doc, fx)
+	// A task whose product is not the fixture document (a created type, a
+	// space's schema) reads its result back from the live API instead, and
+	// has no Check at all — calling both would deref a nil one.
+	var verdict checkResult
+	if t.CheckAPI != nil {
+		verdict = t.CheckAPI(ctx, deps.api, deps.spaceId, fx)
+	} else {
+		verdict = t.Check(doc, fx)
+	}
 	if verdict.OK {
 		att.Outcome = outcomeSuccess
 	} else {
@@ -688,6 +736,38 @@ func selectTasks(filter string) ([]task, error) {
 		}
 	}
 	return out, nil
+}
+
+// startFreshAccount boots a private heart with an empty account and returns
+// it ready to use. This is the answer to a measured problem: the shared
+// desktop account had eleven spaces, eight of them named like eval spaces,
+// and the model under test then picked the wrong one on a third of its
+// lookups — every failure in one 42-attempt baseline. A run that cannot see
+// another run's spaces is a run whose numbers mean something.
+func startFreshAccount(ctx context.Context, opt options) (*heartboot.Heart, error) {
+	if opt.spaceId != "" {
+		// A space id from another account cannot exist in an account that was
+		// created seconds ago; refuse instead of failing later as a 404 that
+		// reads like an API bug.
+		return nil, fmt.Errorf("-space %s cannot be used with -fresh-account: the account is created empty and has no such space", opt.spaceId)
+	}
+	fmt.Println("bootstrapping a throwaway account (building the heart if needed)…")
+	started := time.Now()
+	heart, err := heartboot.Start(ctx, heartboot.Options{
+		BinaryPath:  opt.heartBinary,
+		KeepDataDir: opt.keepAccount,
+		AccountName: "apiv2eval",
+		AppName:     "apiv2eval",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("bootstrap a fresh account: %w", err)
+	}
+	fmt.Printf("fresh account %s ready in %s — api %s\n",
+		heart.AccountId, time.Since(started).Round(time.Second), heart.APIURL)
+	if opt.keepAccount {
+		fmt.Printf("keeping account data at %s (log: %s)\n", heart.DataDir, heart.LogPath)
+	}
+	return heart, nil
 }
 
 // resolveSpace picks the space fixtures are created in: the flag, else an

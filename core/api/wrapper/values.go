@@ -466,19 +466,25 @@ func typeLabel(names map[string]string, key string) string {
 	return key
 }
 
-// meFormats are the property formats whose values can hold a participant id
-// — the only place the @me sentinel substitutes. On any other format the
-// token is DATA (a description or name literally containing "@me" must not
-// silently become a participant id).
-var meFormats = map[string]bool{"objects": true}
+// objectRefFormats are the property formats whose values are OBJECT
+// REFERENCES — where an id is expected, so @me substitutes and a handle or
+// a name resolves. On any other format those spellings are DATA (a
+// description literally containing "@me", a text property whose value is
+// "2", a name that happens to match another object's name must all stay
+// exactly what the caller wrote).
+var objectRefFormats = map[string]bool{"objects": true}
 
-// resolveValue rewrites one value: @me on object-format keys, relative
-// dates on date-format keys.
+// resolveValue rewrites one value: object references on object-format keys
+// (@me, a handle number, an exact object name — see resolveObjectRefValue),
+// relative dates on date-format keys.
 func (r *Runner) resolveValue(ctx context.Context, session *Session, spaceId, format string, value any) (any, error) {
 	switch v := value.(type) {
 	case string:
-		if v == meSentinel && meFormats[format] {
-			return r.meFor(ctx, session, spaceId)
+		if objectRefFormats[format] {
+			if v == meSentinel {
+				return r.meFor(ctx, session, spaceId)
+			}
+			return r.resolveObjectRefValue(ctx, session, spaceId, v)
 		}
 		if format == "date" {
 			if abs, ok := resolveRelativeDate(v, r.now()); ok {
@@ -499,6 +505,142 @@ func (r *Runner) resolveValue(ctx context.Context, session *Session, spaceId, fo
 	default:
 		return value, nil
 	}
+}
+
+//
+// ---- object-reference values ----
+//
+// Measured: on cross-object work (read from A, write to B) small models
+// fail at ADDRESSING the second object, not at reasoning about it —
+// gemma-4-e4b scored 1/4 where bonsai-27b scored 4/4, and the step that
+// broke was copying a full object id out of one call's output into the next
+// call's argument. Every other reference channel on this surface already
+// takes something a model can retype: `object` takes a handle number,
+// `block` takes a 5-char label, `space` takes the row `spaces` printed. An
+// objects-format PROPERTY value was the last slot that took nothing but the
+// id, so this is the same repair where it was still missing.
+
+// maxObjectNameCandidates bounds the name lookup's page — and with it the
+// candidate list an ambiguity refusal prints.
+const maxObjectNameCandidates = 10
+
+// resolveObjectRefValue resolves one objects-format value, in order:
+//
+//  1. an id the session has already handed out (a find result, a create, a
+//     list read) wins over every other reading — an id IS the address, and
+//     this resolution must never re-point a caller who already got it right.
+//  2. a handle number from the last find — the same numbers `object` takes,
+//     so one number means one thing on every slot.
+//  3. an exact object name in the space: ONE match resolves; several REFUSE,
+//     listing what to pass instead (the rule matchSpaceRef, resolveKey and
+//     resolveTablePart already share — ambiguity is never guessed); none
+//     passes the caller's value through untouched, which leaves the server's
+//     own not-found refusal exactly as it was.
+//
+// Step 3 is EXACT, deliberately unlike the fold the key and type resolvers
+// apply (§8.21). Those fold against a listing they already hold; an object
+// name has no listing — it is a store query — and the only case-insensitive
+// query available is a substring match, whose PAGE can crowd the exact match
+// out behind ten near-misses and silently resolve nothing. The equality
+// lookup used here cannot miss, and it costs one request that a value which
+// is already an id skips entirely.
+func (r *Runner) resolveObjectRefValue(ctx context.Context, session *Session, spaceId, ref string) (string, error) {
+	// the lookup ignores surrounding whitespace, as spaceArg does with the
+	// row it accepts back; what survives an UNRESOLVED lookup is the
+	// original string, because an id has to reach the server byte for byte
+	name := strings.TrimSpace(ref)
+	if name == "" || spaceId == "" {
+		return ref, nil
+	}
+	if _, known := session.handleFor(spaceId, name); known {
+		return name, nil // rule 1: an id this session itself served
+	}
+	if handleRe.MatchString(name) {
+		space, id, err := r.resolveObject(session, name, "")
+		if err != nil {
+			return "", err
+		}
+		// a handle is the last find's numbering and resolves through the
+		// session's space; using it in ANOTHER space would store a reference
+		// to whatever that number means somewhere it was never assigned —
+		// resolveObject's own rule, restated at the value slot
+		if space != spaceId {
+			return "", fmt.Errorf("handle %s is from the last find in space %q, but this object lives in %q — pass the object's id, or run find in %q first",
+				name, space, spaceId, spaceId)
+		}
+		return id, nil
+	}
+	rows, err := r.objectsNamedExactly(ctx, spaceId, name)
+	if err != nil {
+		// best-effort, like every other convenience in this file: a lookup
+		// that could not run must not fail a write the server would have
+		// accepted — an id needs no lookup at all
+		return ref, nil
+	}
+	switch len(rows) {
+	case 1:
+		return rows[0].Id, nil
+	case 0:
+		return ref, nil
+	default:
+		return "", r.ambiguousObjectValueError(ctx, session, spaceId, name, rows)
+	}
+}
+
+// objectsNamedExactly lists the space's objects whose name is exactly name.
+// The lookup is a search with an EQUALITY filter, not a full-text query:
+// full text ranks and stems, and what this resolution promises is an exact
+// name. Each row's name is re-tested here because the promise is the
+// wrapper's to keep, not the store's.
+func (r *Runner) objectsNamedExactly(ctx context.Context, spaceId, name string) ([]v2model.ObjectRow, error) {
+	var resp v2model.ListResponse[v2model.ObjectRow]
+	err := r.client.decode(ctx, apiRequest{
+		method: "POST",
+		path:   "/v2/spaces/" + seg(spaceId) + "/search",
+		query:  url.Values{"limit": []string{strconv.Itoa(maxObjectNameCandidates)}, "keys": []string{"name"}},
+		body:   map[string]any{"filter": "name = " + quoteFilterValue(name)},
+	}, &resp)
+	if err != nil {
+		return nil, fmt.Errorf("look up objects named %q: %w", name, err)
+	}
+	out := make([]v2model.ObjectRow, 0, len(resp.Data))
+	for _, row := range resp.Data {
+		if row.Name == name {
+			out = append(out, row)
+		}
+	}
+	return out, nil
+}
+
+// filterValueEscaper renders the four escapes the compact filter grammar
+// defines (\" \\ \n \t) and no others — strconv.Quote would additionally
+// emit \xNN and \uNNNN forms the filter lexer does not accept, turning a
+// name with an unusual character into a parse error instead of a lookup.
+var filterValueEscaper = strings.NewReplacer(`\`, `\\`, `"`, `\"`, "\n", `\n`, "\t", `\t`)
+
+// quoteFilterValue renders a string as a quoted filter-grammar value.
+func quoteFilterValue(s string) string { return `"` + filterValueEscaper.Replace(s) + `"` }
+
+// ambiguousObjectValueError refuses a name several objects answer to. The
+// candidates are spelled in what the caller can actually retype: the handle
+// number when the last find numbered the object (the cheapest address on
+// this surface), the id otherwise, each with its type name so the choice is
+// makeable without a second read.
+func (r *Runner) ambiguousObjectValueError(ctx context.Context, session *Session, spaceId, name string, rows []v2model.ObjectRow) error {
+	// best-effort, text-only (find's rule): a failed type listing spells
+	// each candidate's type by key rather than failing the refusal
+	typeNames := r.typeNameIndex(ctx, spaceId)
+	candidates := make([]string, 0, len(rows))
+	for _, row := range rows {
+		label := typeLabel(typeNames, row.Type)
+		if n, ok := session.handleFor(spaceId, row.Id); ok {
+			candidates = append(candidates, fmt.Sprintf("handle %d (%s)", n, label))
+			continue
+		}
+		candidates = append(candidates, fmt.Sprintf("%s (%s)", row.Id, label))
+	}
+	return fmt.Errorf("%q names %d objects in this space (%s) — pass one of those instead: a handle number addresses what the last find numbered, an id addresses the object outright",
+		name, len(rows), strings.Join(candidates, ", "))
 }
 
 // stringEntries flattens a value into its option-name strings.

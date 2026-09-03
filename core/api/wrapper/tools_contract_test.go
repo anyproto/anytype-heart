@@ -243,7 +243,8 @@ func TestDescribeResilience(t *testing.T) {
 		result, err := fx.Run(ctx, "describe", map[string]any{"space": "space1", "type": "task"})
 
 		require.NoError(t, err)
-		assert.Contains(t, result.Text, "options: (could not be listed — run describe again before using this property)")
+		assert.Contains(t, result.Text, "Status: select  — options could not be listed; run describe again before using this property")
+		assert.NotContains(t, result.Text, "select(", "the annotation must not sit where the option list goes — it would read as one")
 		js, ok := result.JSON.(describeResult)
 		require.True(t, ok)
 		require.NotEmpty(t, js.Properties)

@@ -281,6 +281,19 @@ func (r *Runner) runRead(ctx context.Context, session *Session, args map[string]
 	if err != nil {
 		return nil, err
 	}
+	// a Query or a Collection is answered by its DEFINITION and its ROWS
+	// (tools_list.go): the document carries neither in a form the writing
+	// tools accept — the rows are computed and absent from it entirely, and
+	// the filter is a structured tree no argument on this surface takes.
+	// Only on the full read: mode=outline is the deliberately cheap survey,
+	// and its envelope replaces the blocks the definition is read from.
+	if mode != "outline" {
+		if found, isList := r.detectListKind(ctx, space, doc); isList {
+			if result, rendered := r.readList(ctx, session, space, objectId, found); rendered {
+				return result, nil
+			}
+		}
+	}
 	// the served document already carries the reference vocabulary: the
 	// server labels minted ids itself and resolves either
 	// spelling on every write channel (C4), so the wrapper serves the body
@@ -362,10 +375,92 @@ func (r *Runner) runCreate(ctx context.Context, session *Session, args map[strin
 	return &Result{Text: text, JSON: result}, nil
 }
 
+// maxSetPropertiesObjects bounds one set_properties call's object list.
+// Lower than delete_block's 64 because the shapes differ in kind: those 64
+// deletes travel in ONE PATCH, while these are N separate requests against a
+// server whose sustained write budget is about 1/s — a long list would turn
+// one tool call into a minute-long stall the caller cannot see progress
+// through, and would widen the blast radius of a mid-list failure past what
+// one refusal can readably report. 16 covers "mark these three done" and
+// every batch a human would dictate.
+const maxSetPropertiesObjects = 16
+
+// splitObjectRefs parses set_properties' comma-separated object list under
+// splitRefList's shared rule, refusing in the object vocabulary.
+func splitObjectRefs(list string) ([]string, error) {
+	refs, duplicate := splitRefList(list)
+	if duplicate != "" {
+		return nil, fmt.Errorf("object %q is listed more than once — name each object once; nothing was written", duplicate)
+	}
+	if len(refs) == 0 {
+		// validateArgs already refused an empty required string; this catches
+		// a list of only separators (",,")
+		return nil, fmt.Errorf("object names no object — give %s, or several separated by commas", objectArgDescription)
+	}
+	if len(refs) > maxSetPropertiesObjects {
+		return nil, fmt.Errorf("set_properties takes at most %d objects in one call (got %d) — split the list; nothing was written", maxSetPropertiesObjects, len(refs))
+	}
+	return refs, nil
+}
+
+// setTarget is one resolved object of a set_properties call.
+type setTarget struct {
+	ref   string // as the caller wrote it
+	id    string
+	label string // the receipt spelling (targetLabel)
+}
+
+// runSetProperties writes the same property change to ONE or SEVERAL
+// objects. The batch exists for the measured chain-length cliff (the same
+// one delete_block's list answers): a 4-call dependent chain scored 0/6
+// across every model until a batch primitive collapsed it to 2 calls, which
+// then scored 5/5 — "mark these three done" must not be three calls the
+// model can drop the last of.
+//
+// ATOMICITY — deliberately NOT delete_block's all-or-nothing, because the
+// situation is different and pretending otherwise would be the dangerous
+// half-truth. delete_block's references all live in ONE document, so its
+// ops ride one PATCH the server commits with a single Apply and "all or
+// none" is a fact the wrapper can state. Several objects have no such
+// transaction anywhere in this API: N PATCHes are N commits, and a batch
+// that reported success after a mid-list failure — or claimed rollback it
+// cannot perform — would leave the caller believing a state that never
+// existed. So the call splits in two:
+//
+//   - RESOLVE everything first — every reference, the property index, every
+//     value (option-name guard, @me, dates, object references) — and refuse
+//     the whole call before the first write when anything there fails. That
+//     is where nearly every failure actually lives, and nothing has been
+//     written when it fires.
+//   - APPLY one object at a time, stopping at the first failure, and report
+//     exactly which objects were written and which were not. Stopping (over
+//     pressing on) keeps the outcome a PREFIX of the list, which is the one
+//     shape a caller can repair by re-sending the tail — and a failure is
+//     usually systemic, so continuing would mostly buy N-1 identical errors.
 func (r *Runner) runSetProperties(ctx context.Context, session *Session, args map[string]any) (*Result, error) {
-	space, objectId, err := r.resolveObject(session, strArg(args, "object"), spaceArg(args))
+	refs, err := splitObjectRefs(strArg(args, "object"))
 	if err != nil {
 		return nil, err
+	}
+	space := ""
+	targets := make([]setTarget, 0, len(refs))
+	for _, ref := range refs {
+		refSpace, objectId, err := r.resolveObject(session, ref, spaceArg(args))
+		if err != nil {
+			return nil, resolveBatchError(err, ref, refs)
+		}
+		// every reference in one call resolves into one space by
+		// construction (a handle resolves through the session's space, and a
+		// raw id through the session's or the given one — resolveObject
+		// refuses the mix), so a disagreement here would be a bug in that
+		// rule rather than a caller mistake; it is checked because a silent
+		// cross-space write is not a failure mode worth trusting to a proof
+		if space == "" {
+			space = refSpace
+		} else if refSpace != space {
+			return nil, fmt.Errorf("the objects are in different spaces (%q and %q) — one call writes in one space; nothing was written", space, refSpace)
+		}
+		targets = append(targets, setTarget{ref: ref, id: objectId, label: targetLabel(session, ref)})
 	}
 	setM, addM, removeM := objArg(args, "set"), objArg(args, "add"), objArg(args, "remove")
 	if len(setM)+len(addM)+len(removeM) == 0 {
@@ -399,11 +494,96 @@ func (r *Runner) runSetProperties(ctx context.Context, session *Session, args ma
 		}
 		op["remove"] = resolved
 	}
-	result, err := r.patchOps(ctx, session, space, objectId, op, nil)
-	if err != nil {
-		return nil, err
+	// one object keeps the receipt and the machine shape every other
+	// mutation tool serves — the batch form must not change what a
+	// single-object call has always returned
+	if len(targets) == 1 {
+		result, err := r.patchOps(ctx, session, space, targets[0].id, op, nil)
+		if err != nil {
+			return nil, err
+		}
+		return &Result{Text: editSummary(targets[0].label, result), JSON: result}, nil
 	}
-	return &Result{Text: editSummary(targetLabel(session, strArg(args, "object")), result), JSON: result}, nil
+
+	batch := setBatchResult{Objects: make([]setObjectResult, 0, len(targets))}
+	var lines []string
+	for i, t := range targets {
+		// each object's PATCH mints its own Idempotency-Key (the hash covers
+		// the path), and Session.LastWrite only remembers the most recent —
+		// so a re-run of the whole call replays the last object's write and
+		// RE-APPLIES the others. Harmless for this op in particular, which is
+		// why the batch is allowed to be several requests at all: set
+		// replaces, add appends without duplicating an existing entry, and
+		// remove is a no-op when the entry is absent (v2service stateops.go),
+		// so applying the same resolved body twice lands on the same state
+		// and the second receipt reports 0 properties changed
+		result, err := r.patchOps(ctx, session, space, t.id, op, nil)
+		if err != nil {
+			return nil, setBatchError(err, targets, i)
+		}
+		batch.Objects = append(batch.Objects, setObjectResult{Object: t.ref, Id: t.id, Result: result})
+		lines = append(lines, editSummary(t.label, result))
+	}
+	batch.Written = len(batch.Objects)
+	lines = append(lines, fmt.Sprintf("%d objects written", batch.Written))
+	return &Result{Text: strings.Join(lines, "\n"), JSON: batch}, nil
+}
+
+// setBatchResult / setObjectResult are the multi-object machine shape: one
+// entry per object, in the order the caller listed them.
+type setBatchResult struct {
+	Objects []setObjectResult `json:"objects"`
+	Written int               `json:"written"`
+}
+
+type setObjectResult struct {
+	Object string              `json:"object"`
+	Id     string              `json:"id"`
+	Result *v2model.EditResult `json:"result"`
+}
+
+// resolveBatchError re-frames a reference that did not resolve. Resolution
+// happens before the first write, so the fact to lead with is that nothing
+// was written — a caller reading "not found" mid-list would otherwise have
+// to guess how far the call got.
+func resolveBatchError(err error, ref string, refs []string) error {
+	if len(refs) < 2 {
+		return err
+	}
+	return fmt.Errorf("nothing was written — every object is resolved before the first write, and %q did not resolve: %w", ref, err)
+}
+
+// setBatchError re-frames a failure part-way through a multi-object write.
+// Two facts, in this order: what WAS written (the honest state — there is no
+// cross-object transaction to roll back), and which object failed with the
+// server's own words. The *ToolError is mutated in place rather than
+// wrapped, exactly as deleteBatchError does, because Run's steer path
+// returns the ToolError it finds and would drop a wrapper's text.
+func setBatchError(err error, targets []setTarget, failed int) error {
+	var written []string
+	for _, t := range targets[:failed] {
+		written = append(written, t.label)
+	}
+	var pending []string
+	for _, t := range targets[failed+1:] {
+		pending = append(pending, t.label)
+	}
+	prefix := fmt.Sprintf("wrote %d of %d", len(written), len(targets))
+	if len(written) > 0 {
+		prefix += " (" + strings.Join(written, ", ") + ")"
+	}
+	// the sentence that must never be omitted: these writes are separate
+	// commits, so what is reported above IS the state on disk
+	tail := "; the objects are written one at a time and nothing rolls back"
+	if len(pending) > 0 {
+		tail += ", so " + strings.Join(pending, ", ") + " were not attempted"
+	}
+	var te *ToolError
+	if !errors.As(err, &te) {
+		return fmt.Errorf("%s — %s was not written%s: %w", prefix, targets[failed].label, tail, err)
+	}
+	te.Text = fmt.Sprintf("%s — %s was not written%s: %s", prefix, targets[failed].label, tail, te.Text)
+	return te
 }
 
 func (r *Runner) runCheckItem(ctx context.Context, session *Session, args map[string]any) (*Result, error) {
@@ -579,16 +759,16 @@ func (r *Runner) runDeleteBlock(ctx context.Context, session *Session, args map[
 	return &Result{Text: editSummary(targetLabel(session, strArg(args, "object")), result), JSON: result}, nil
 }
 
-// splitBlockRefs parses delete_block's comma-separated reference list.
-// Whitespace around a ref and empty segments (a trailing comma, a doubled
-// one) are tolerated — the intent is unambiguous — but a reference listed
-// twice is refused, not deduplicated: the second op would fail as not-found
-// after the first delete and refuse the whole batch with a message about a
-// block the caller DID name correctly, which is the confusing shape; and
-// silently deleting once could mask a model that believed it named two
-// different blocks.
-func splitBlockRefs(list string) ([]string, error) {
-	var refs []string
+// splitRefList is THE comma-separated reference-list rule, shared by every
+// argument that takes several references (delete_block's `block`,
+// set_properties' `object`). Whitespace around a ref and empty segments (a
+// trailing comma, a doubled one) are tolerated — the intent is unambiguous
+// — and a reference listed twice is reported as a duplicate rather than
+// deduplicated: silently collapsing it could mask a caller that believed it
+// named two different things. The refusal TEXTS stay with the callers,
+// because a delete and a property write have to say different things about
+// what did not happen; the parsing does not fork.
+func splitRefList(list string) (refs []string, duplicate string) {
 	seen := map[string]bool{}
 	for _, part := range strings.Split(list, ",") {
 		ref := strings.TrimSpace(part)
@@ -596,10 +776,23 @@ func splitBlockRefs(list string) ([]string, error) {
 			continue
 		}
 		if seen[ref] {
-			return nil, fmt.Errorf("block %q is listed more than once — name each block once; nothing was deleted", ref)
+			return nil, ref
 		}
 		seen[ref] = true
 		refs = append(refs, ref)
+	}
+	return refs, ""
+}
+
+// splitBlockRefs parses delete_block's comma-separated reference list. A
+// reference listed twice is refused, not deduplicated: the second op would
+// fail as not-found after the first delete and refuse the whole batch with a
+// message about a block the caller DID name correctly, which is the
+// confusing shape.
+func splitBlockRefs(list string) ([]string, error) {
+	refs, duplicate := splitRefList(list)
+	if duplicate != "" {
+		return nil, fmt.Errorf("block %q is listed more than once — name each block once; nothing was deleted", duplicate)
 	}
 	if len(refs) == 0 {
 		// validateArgs already refused an empty required string; this catches

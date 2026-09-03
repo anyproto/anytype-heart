@@ -177,3 +177,32 @@ func TestIsOutputOnlyProperty(t *testing.T) {
 		}
 	})
 }
+
+func TestUnwritablePropertyCoversDerivedRelations(t *testing.T) {
+	t.Run("a derived relation cannot be written", func(t *testing.T) {
+		// given: describe listed Links among a type's settable properties,
+		// a model set it, and the API answered "no changes" — a silent
+		// no-op. These are computed, so no write can ever land.
+		for _, key := range []string{"links", "backlinks", "mentions", "snippet"} {
+			assert.True(t, IsUnwritableProperty(key), "%s is derived", key)
+			assert.False(t, IsOutputOnlyProperty(key),
+				"%s is NOT SPEC §4a output-only — it is unwritable for the other reason, "+
+					"which is why the union predicate exists", key)
+		}
+	})
+
+	t.Run("SPEC 4a output-only keys stay unwritable", func(t *testing.T) {
+		for _, key := range []string{"created_date", "creator", "resolved_layout"} {
+			assert.True(t, IsUnwritableProperty(key), key)
+		}
+	})
+
+	t.Run("an authorable property is still writable", func(t *testing.T) {
+		// is_favorite is deliberately absent from §4a (SPEC §3 marks it
+		// authorable) and is not bundle-readonly — the union must not
+		// swallow it, nor the ordinary user-facing properties
+		for _, key := range []string{"description", "name", "tag", "due_date", "is_favorite"} {
+			assert.False(t, IsUnwritableProperty(key), key)
+		}
+	})
+}

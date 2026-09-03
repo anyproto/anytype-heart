@@ -77,6 +77,7 @@ var executors = map[string]func(*Runner, context.Context, *Session, map[string]a
 	"move_block":     (*Runner).runMoveBlock,
 	"delete_block":   (*Runner).runDeleteBlock,
 	"update_view":    (*Runner).runUpdateView,
+	"create_type":    (*Runner).runCreateType,
 }
 
 // Run executes one tool call. Arguments are validated strictly against the

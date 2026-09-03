@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
@@ -537,6 +538,36 @@ var outputOnlyPropertyKeys = map[string]bool{
 	"coverId": true, "coverType": true, "createdDate": true,
 	"lastModifiedDate": true, "creator": true, "isArchived": true,
 	"resolvedLayout": true,
+}
+
+// IsUnwritableProperty reports whether set_properties can never change a
+// property — the question describe must answer and the write path must
+// enforce. It is the union of TWO sources that mean different things:
+//
+//   - SPEC §4a output-only (the hand list above): an export writes them, a
+//     write must not. coverId/coverType/isArchived live only here — the
+//     bundle does not mark them readonly.
+//   - the bundle's own ReadOnly flag: 106 relations, including the DERIVED
+//     ones (links, backlinks, mentions, snippet…). These are computed, so a
+//     write to them is accepted and then does nothing.
+//
+// The second source is why this predicate exists. describe listed `Links`
+// among a type's settable properties, gemma-4-e4b duly set it to point at
+// another object, and the API answered "no changes" — a silent no-op, the
+// worst outcome a write can have. Deriving the answer from the bundle
+// instead of a second hand list is the same rule the §4a comment already
+// states; that list simply never covered the derived relations.
+func IsUnwritableProperty(key string) bool {
+	if IsOutputOnlyProperty(key) {
+		return true
+	}
+	stored, ok := bundle.RelationKeyByApiSlug(key)
+	if !ok {
+		// not a slug: the caller may already hold the stored spelling
+		stored = domain.RelationKey(key)
+	}
+	rel, err := bundle.GetRelation(stored)
+	return err == nil && rel != nil && rel.ReadOnly
 }
 
 // IsOutputOnlyProperty reports whether a property key is output-only. The

@@ -83,6 +83,26 @@ func (s *Session) registerHandle(space string, h Handle) int {
 	return h.N
 }
 
+// handleFor reports the number an object already carries in the working
+// space, if any. It is the inverse of handle(): the id-taking side asks
+// "what does 2 mean", this side asks "what is this object called here".
+// Two callers need it and both need the SPACE test — a number resolves
+// through Space, so a match in another space is not a match: the list read
+// keeps a list object's own handle instead of minting a second one, and an
+// ambiguous object-value refusal offers the number the caller can retype
+// instead of a 59-character id.
+func (s *Session) handleFor(space, id string) (int, bool) {
+	if space == "" || s.Space != space || id == "" {
+		return 0, false
+	}
+	for _, h := range s.Handles {
+		if h.Id == id {
+			return h.N, true
+		}
+	}
+	return 0, false
+}
+
 // handleById resolves a handle number.
 func (s *Session) handle(n int) (Handle, bool) {
 	for _, h := range s.Handles {

@@ -113,6 +113,10 @@ const (
 	// room for a screenful of max-length property keys (the per-call column
 	// cap is enforced by count, not bytes).
 	maxColumnListLen = 4096
+	// maxTypePropertiesLen bounds create_type's property DDL: 32 properties
+	// (maxTypeProperties) with names, formats and option lists fit
+	// comfortably, while the string stays C13-bounded.
+	maxTypePropertiesLen = 4096
 )
 
 // objectArgDescription is the shared reference-channel contract text.
@@ -125,10 +129,18 @@ const objectArgDescription = "the object: a handle number from the last find (1,
 // every one of them was on a tool that offered no space argument.
 const spaceArgDescription = "the space the object is in — optional: needed only when no find has run yet, and ignored for a handle number, which the last find already places"
 
+// spaceIdArgDescription is the space slot on the tools that address a SPACE
+// and no object (find, describe, create, create_type). There is no handle to
+// place them, so the space is REQUIRED — spaceArgDescription above describes
+// the optional companion slot on object-addressing tools and is false here.
+// Stated once so four tools cannot drift into four spellings of one
+// argument.
+const spaceIdArgDescription = "space id"
+
 // blockArgDescription is the shared block-reference contract text.
 const blockArgDescription = "a block label from read (5 chars) or a full block id"
 
-// Tools returns the task-tool set — 13 tools, deliberately under the
+// Tools returns the task-tool set — 14 tools, deliberately under the
 // >15-tool small-model cliff. Order is the documentation order.
 func Tools() []Tool {
 	return []Tool{
@@ -150,7 +162,7 @@ func Tools() []Tool {
 			// not); the behaviour change is what carries the fix
 			Description: "Search objects in a space by query, type or filter. Returns numbered handles (1, 2, …) the other tools accept as `object`. Each find renumbers the handles. Given none of the three it matches nothing and lists the space instead — unnumbered, and not addressable.",
 			Args: []Arg{
-				{Name: "space", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: "space id"},
+				{Name: "space", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: spaceIdArgDescription},
 				{Name: "query", Type: ArgString, MaxLen: maxNameLen, Description: "full-text words to match"},
 				{Name: "type", Type: ArgString, MaxLen: maxKeyLen, Description: "a type name, e.g. Task"},
 				// the filter grammar's keys are identifiers (no spaces) — the
@@ -165,8 +177,12 @@ func Tools() []Tool {
 			ReadOnly: true,
 		},
 		{
-			Name:        "read",
-			Description: "Read an object. mode=full (the default) returns every block with its TEXT and the short label the editing tools take as `block` — this is the read an edit needs. mode=outline returns the same blocks with text truncated to 80 runes — a cheaper survey; copy exact text from mode=full.",
+			Name: "read",
+			// the last sentence states the list read (tools_list.go), because
+			// the answer is a different SHAPE, not a longer document: a model
+			// told only "read an object" has no reason to expect addressable
+			// rows back
+			Description: "Read an object. mode=full (the default) returns every block with its TEXT and the short label the editing tools take as `block` — this is the read an edit needs. mode=outline returns the same blocks with text truncated to 80 runes — a cheaper survey; copy exact text from mode=full. Reading a Query or Collection returns its definition (source type, filter, sort) and numbers its rows like find does, so they can be passed as `object`.",
 			Args: []Arg{
 				{Name: "object", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: objectArgDescription},
 				{Name: "space", Type: ArgString, MaxLen: maxKeyLen, Description: spaceArgDescription},
@@ -178,10 +194,12 @@ func Tools() []Tool {
 		},
 		{
 			Name:        "describe",
-			Description: "Describe a type before creating or editing objects of it: its property names, formats, and live select option names. Call this first — property names and option names must match exactly.",
+			Description: "Describe a type before creating or editing objects of it: its property names, formats, and live select option names. Call this first — property names and option names must match exactly. When a property shows more options than fit, ask again with options set to that property name.",
 			Args: []Arg{
-				{Name: "space", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: "space id"},
+				{Name: "space", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: spaceIdArgDescription},
 				{Name: "type", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: "a type name, e.g. Task"},
+				{Name: "options", Type: ArgString, MaxLen: maxNameLen, Description: "list ONE property's select options in full instead of describing the type, e.g. Status"},
+				{Name: "starting_with", Type: ArgString, MaxLen: maxNameLen, Description: "with options: only options starting with this text"},
 			},
 			Example:  map[string]any{"space": "space1", "type": "Task"},
 			Tier:     TierSmall,
@@ -189,9 +207,9 @@ func Tools() []Tool {
 		},
 		{
 			Name:        "create",
-			Description: "Create an object. properties uses the type's property names (describe first); markdown becomes the body. Date values accept today, tomorrow, +Nd, weekday names; @me means the calling user.",
+			Description: "Create an object. properties uses the type's property names (describe first); markdown becomes the body. Date values accept today, tomorrow, +Nd, weekday names; @me means the calling user; object properties (assignee, related objects) accept a handle number from the last find or the object's exact name.",
 			Args: []Arg{
-				{Name: "space", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: "space id"},
+				{Name: "space", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: spaceIdArgDescription},
 				{Name: "type", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: "a type name, e.g. Task"},
 				{Name: "name", Type: ArgString, Required: true, MaxLen: maxNameLen, Description: "object name"},
 				{Name: "properties", Type: ArgObject, Description: "property name → value; select values are option NAMES"},
@@ -201,16 +219,29 @@ func Tools() []Tool {
 			Tier:    TierSmall,
 		},
 		{
-			Name:        "set_properties",
-			Description: "Change an object's property values. set replaces a value; add/remove edit list values (tags, assignees) without rewriting the whole list. Option names must exist (describe shows them).",
+			Name: "set_properties",
+			// One call takes SEVERAL objects as a comma-separated list, under
+			// delete_block's separator rule and for the same measured reason:
+			// a 4-call dependent chain scored 0/6 across every model until a
+			// batch primitive collapsed it to 2 calls, which then scored 5/5.
+			// "Mark these three done" must not be three calls a model can
+			// drop the last of. Unlike delete_block's blocks, these are N
+			// separate PATCHes — no cross-object transaction exists — so the
+			// description promises per-object honesty rather than atomicity
+			// (runSetProperties states the whole rule).
+			Description: "Change property values on an object — or on several at once, passed as a comma-separated list. set replaces a value; add/remove edit list values (tags, assignees) without rewriting the whole list. Option names must exist (describe shows them). Values of object properties (assignee, related objects) take a handle number or the object's exact name as well as an id.",
 			Args: []Arg{
-				{Name: "object", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: objectArgDescription},
+				{Name: "object", Type: ArgString, Required: true, MaxLen: maxRefListLen, Description: objectArgDescription + "; several objects separate with commas (\"1,2,3\") — the same change is written to each, one at a time"},
 				{Name: "space", Type: ArgString, MaxLen: maxKeyLen, Description: spaceArgDescription},
 				{Name: "set", Type: ArgObject, Description: "property name → new value"},
 				{Name: "add", Type: ArgObject, Description: "list property name → entries to append"},
 				{Name: "remove", Type: ArgObject, Description: "list property name → entries to delete"},
 			},
-			Example: map[string]any{"object": "1", "set": map[string]any{"Status": "Done"}},
+			// the example shows the LIST form deliberately: the measured
+			// failure is models splitting N property writes into N dependent
+			// calls and dropping one, and delete_block's batch form went
+			// unused until its own example showed it
+			Example: map[string]any{"object": "1,2,3", "set": map[string]any{"Status": "Done"}},
 			Tier:    TierSmall,
 		},
 		{
@@ -335,6 +366,35 @@ func Tools() []Tool {
 				{Name: "columns", Type: ArgString, MaxLen: maxColumnListLen, Description: `the property columns to show, comma-separated ("Name,Status,Due date") — these become visible and every other visible column is hidden`},
 			},
 			Example: map[string]any{"object": "1", "filter": `Done = false`, "sort": "Due date desc"},
+			Tier:    TierLarge,
+		},
+		{
+			Name: "create_type",
+			// THE FIRST SPEND of the >15-tool headroom (13 → 14). The set
+			// stays under the cliff and the remaining room is now one tool
+			// (measurements put 15-16 as comfortable, 20+ as risky), so the
+			// next candidate has to be at least this good: the wrapper could
+			// USE types and not make one, which left "set up a Recipe type
+			// with ingredients, cook time and rating" unanswerable on this
+			// surface — not harder, unanswerable.
+			//
+			// Listed LAST rather than beside `create`: the two are one word
+			// apart and do entirely different things, so the description
+			// opens by saying which is which and the table keeps them apart.
+			Description: `Create a new object TYPE — the schema objects are then made from. This does not create an object: create does that. properties is a comma-separated list of "Name: format" pairs, a select or multi_select naming its options in parentheses — the same form describe prints, so a describe output can be handed straight back. Formats: text, number, select, multi_select, date, files, checkbox, url, email, phone, objects. A type cannot be renamed or deleted from this surface, so run describe or find first: the name and the properties are permanent.`,
+			Args: []Arg{
+				{Name: "space", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: spaceIdArgDescription},
+				{Name: "name", Type: ArgString, Required: true, MaxLen: maxNameLen, Description: "the type's name, e.g. Cookbook entry"},
+				{Name: "properties", Type: ArgString, MaxLen: maxTypePropertiesLen, Description: `the type's properties: comma-separated "Name: format" pairs, with a select's options in parentheses — "Cook time: number, Rating: select(Low, Medium, High), Source: url". A property name containing a comma, a colon or a parenthesis cannot be written here`},
+			},
+			// the example shows a SELECT WITH OPTIONS deliberately: C12's one
+			// worked example is where a model learns a form exists at all —
+			// delete_block's batch list went unused until its example showed
+			// it. The type name is not "Recipe" for a measured reason: a dozen
+			// everyday names (Recipe, Book, Movie, Project, Contact) are
+			// reserved by bundled types and refused, and an example the server
+			// rejects verbatim teaches the wrong thing.
+			Example: map[string]any{"space": "space1", "name": "Cookbook entry", "properties": "Cook time: number, Rating: select(Low, Medium, High), Source: url"},
 			Tier:    TierLarge,
 		},
 	}

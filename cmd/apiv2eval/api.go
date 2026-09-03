@@ -264,6 +264,124 @@ func (c *apiClient) createObject(ctx context.Context, spaceId, typeKey, name, ma
 	return resp.Id, nil
 }
 
+// typeRow is a type as GET /v2/spaces/{s}/types/{type} serves it, reduced to
+// what a schema-authoring check needs: each property's display NAME, its
+// format, and a select's option names.
+type typeRow struct {
+	Key        string
+	Name       string
+	Properties []typePropertyRow
+}
+
+type typePropertyRow struct {
+	Name    string
+	Format  string
+	Options []string
+}
+
+// findTypeByName reads back a type the model was asked to create. It matches
+// on the display NAME because that is what the prompt names and what the
+// wrapper now publishes — the key is minted from it and is not predictable.
+func (c *apiClient) findTypeByName(ctx context.Context, spaceId, name string) (*typeRow, error) {
+	var list struct {
+		Data []struct {
+			Key  string `json:"key"`
+			Name string `json:"name"`
+		} `json:"data"`
+	}
+	path := "/v2/spaces/" + url.PathEscape(spaceId) + "/types?limit=200"
+	if _, err := c.call(ctx, http.MethodGet, path, nil, nil, &list); err != nil {
+		return nil, fmt.Errorf("list types: %w", err)
+	}
+	key := ""
+	for _, row := range list.Data {
+		if strings.EqualFold(strings.TrimSpace(row.Name), strings.TrimSpace(name)) {
+			key = row.Key
+			break
+		}
+	}
+	if key == "" {
+		return nil, nil
+	}
+	var doc struct {
+		Properties   map[string]any `json:"properties"`
+		TypeSettings struct {
+			PropertyDefinitions []struct {
+				Name    string `json:"name"`
+				Format  string `json:"format"`
+				Options []struct {
+					Name string `json:"name"`
+				} `json:"options"`
+			} `json:"property_definitions"`
+		} `json:"type_settings"`
+	}
+	typePath := "/v2/spaces/" + url.PathEscape(spaceId) + "/types/" + url.PathEscape(key)
+	if _, err := c.call(ctx, http.MethodGet, typePath, nil, nil, &doc); err != nil {
+		return nil, fmt.Errorf("read type %q: %w", key, err)
+	}
+	// The type document's property_definitions carry name and format but
+	// NEVER options — measured live: a select created with three options
+	// reads back with `"options": null` here, while
+	// /properties/{key}/options serves all three. Grading options off the
+	// type document would fail a correct tool on every run, so a select's
+	// options are read from the endpoint that actually holds them.
+	out := &typeRow{Key: key, Name: name}
+	for _, d := range doc.TypeSettings.PropertyDefinitions {
+		row := typePropertyRow{Name: d.Name, Format: d.Format}
+		for _, o := range d.Options {
+			row.Options = append(row.Options, o.Name)
+		}
+		if len(row.Options) == 0 && (d.Format == "select" || d.Format == "multi_select") {
+			opts, err := c.propertyOptions(ctx, spaceId, d.Name)
+			if err != nil {
+				return nil, fmt.Errorf("read options of property %q: %w", d.Name, err)
+			}
+			row.Options = opts
+		}
+		out.Properties = append(out.Properties, row)
+	}
+	return out, nil
+}
+
+// propertyOptions lists the option names of a space property, addressed by
+// its display name. Returns nil when the space has no such property.
+func (c *apiClient) propertyOptions(ctx context.Context, spaceId, propertyName string) ([]string, error) {
+	var props struct {
+		Data []struct {
+			Key  string `json:"key"`
+			Name string `json:"name"`
+		} `json:"data"`
+	}
+	listPath := "/v2/spaces/" + url.PathEscape(spaceId) + "/properties?limit=200"
+	if _, err := c.call(ctx, http.MethodGet, listPath, nil, nil, &props); err != nil {
+		return nil, fmt.Errorf("list properties: %w", err)
+	}
+	key := ""
+	for _, p := range props.Data {
+		if strings.EqualFold(strings.TrimSpace(p.Name), strings.TrimSpace(propertyName)) {
+			key = p.Key
+			break
+		}
+	}
+	if key == "" {
+		return nil, nil
+	}
+	var opts struct {
+		Data []struct {
+			Name string `json:"name"`
+		} `json:"data"`
+	}
+	optPath := "/v2/spaces/" + url.PathEscape(spaceId) + "/properties/" + url.PathEscape(key) + "/options?limit=200"
+	if _, err := c.call(ctx, http.MethodGet, optPath, nil, nil, &opts); err != nil {
+		return nil, fmt.Errorf("list options of %q: %w", key, err)
+	}
+	names := make([]string, 0, len(opts.Data))
+	for _, o := range opts.Data {
+		names = append(names, o.Name)
+	}
+	return names, nil
+}
+
 // searchPollInterval is how often waitSearchable re-asks.
 const searchPollInterval = 500 * time.Millisecond
 

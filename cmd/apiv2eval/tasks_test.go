@@ -218,18 +218,30 @@ func TestTaskTableIsWellFormed(t *testing.T) {
 			}
 			assert.NotEmpty(t, task.Requires, "a task with no declared capability is gated by nothing")
 			require.NotNil(t, task.Prompt)
-			require.NotNil(t, task.Check)
+			// exactly one result channel: the fixture document, or the live
+			// API for a task whose product is not in that document
+			if task.CheckAPI != nil {
+				assert.Nil(t, task.Check, "a task reads its result back one way, not two")
+			} else {
+				require.NotNil(t, task.Check)
+			}
 
-			fx := &fixture{Title: fixtureTitle(), ObjectId: "obj1"}
+			fx := newFixtureFor(fixtureTitle())
+			fx.ObjectId = "obj1"
 			prompt := task.Prompt(fx)
 			assert.Contains(t, prompt, fx.Title, "the prompt must name the object the model has to find")
 			assert.NotContains(t, prompt, "insert_blocks", "a prompt must not name the tool to use")
 			assert.NotContains(t, prompt, "edit_text", "a prompt must not name the tool to use")
 
 			// the fixture body must not already satisfy the check, or the task
-			// would pass without the model doing anything
-			doc := docFromMarkdownApproximation(task.Markdown)
-			assert.False(t, task.Check(doc, fx).OK, "the fixture already satisfies the check")
+			// would pass without the model doing anything. A CheckAPI task
+			// reads the live API, so there is no offline document to test it
+			// against — its "already satisfied" guard is that the thing it
+			// looks for (a minted, per-attempt type name) cannot pre-exist.
+			if task.Check != nil {
+				doc := docFromMarkdownApproximation(task.Markdown)
+				assert.False(t, task.Check(doc, fx).OK, "the fixture already satisfies the check")
+			}
 		})
 	}
 }
@@ -320,6 +332,13 @@ func TestEveryArmPublishesEveryToolItsCapabilitiesName(t *testing.T) {
 	} {
 		published := arm.publishedTools()
 		for c := range capabilityTools {
+			if surfaceCannotExpress(c, arm.surface) {
+				// a genuine gap, not an unmapped capability: the ops arm
+				// serves PATCH ops, and type creation is a route
+				_, err := capabilityTool(c, arm.surface)
+				assert.Error(t, err, "%s: an inexpressible capability must not be mapped anyway", c)
+				continue
+			}
 			tool, err := capabilityTool(c, arm.surface)
 			require.NoError(t, err)
 			assert.Contains(t, published, tool, "%s should publish %s", arm.name, tool)
@@ -360,4 +379,19 @@ func TestArmParsing(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "wrapper/small")
 	assert.Contains(t, err.Error(), "wrapper/large")
+}
+
+// TestEveryTaskHasExactlyOneCheck guards the split between Check (grades the
+// fixture document) and CheckAPI (grades something the API holds instead).
+// A task with neither panicked the whole run on its first live attempt —
+// after the model had done the work — because runAttempt called Check
+// unconditionally. A task with both would silently grade twice and keep only
+// the second verdict.
+func TestEveryTaskHasExactlyOneCheck(t *testing.T) {
+	for _, task := range tasks() {
+		hasDoc, hasAPI := task.Check != nil, task.CheckAPI != nil
+		assert.Truef(t, hasDoc != hasAPI,
+			"task %s must set exactly one of Check / CheckAPI (Check=%v CheckAPI=%v)",
+			task.Id, hasDoc, hasAPI)
+	}
 }

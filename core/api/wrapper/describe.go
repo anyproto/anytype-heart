@@ -48,7 +48,13 @@ type describeProperty struct {
 	// OnType marks a property the TYPE names (its recommended/featured
 	// lists) — a subset of the settable set, not a bound on it.
 	OnType bool `json:"onType,omitempty"`
-	// ReadOnly marks an output-only property (v2model, SPEC §4a): a read
+	// ReadOnly marks a property set_properties can never change (v2model
+	// IsUnwritableProperty): SPEC §4a output-only, PLUS the bundle's derived
+	// relations (links, backlinks, mentions…). Listing a derived property as
+	// settable is what sent gemma-4-e4b to write `Links`, which the API
+	// accepted and silently ignored.
+	//
+	// Historically this was only the §4a set: a read
 	// serves it, set_properties refuses it.
 	ReadOnly bool `json:"readOnly,omitempty"`
 	// restKey is the REST api key backing Key (the row's Key, or a
@@ -90,6 +96,14 @@ var alwaysSettableProperties = []describeProperty{
 func (r *Runner) runDescribe(ctx context.Context, session *Session, args map[string]any) (*Result, error) {
 	space := spaceArg(args)
 	typeKey := strArg(args, "type")
+	// The option-listing mode (describeOptions): the only way to see the
+	// options of a select the type does not name, and the way past the
+	// inline preview's ellipsis. The route already supports a prefix
+	// search; this exposes it rather than spending a tool slot on a
+	// list_options.
+	if prop := strArg(args, "options"); prop != "" {
+		return r.describeOptions(ctx, space, typeKey, prop, strArg(args, "starting_with"))
+	}
 	getType := func() ([]byte, error) {
 		return r.client.raw(ctx, apiRequest{
 			method: "GET",
@@ -230,7 +244,7 @@ func (r *Runner) runDescribe(ctx context.Context, session *Session, args map[str
 			OnType: true,
 			// the predicate understands stored keys and api slugs, never
 			// display names — ask it about the resolved key (§4a)
-			ReadOnly: v2model.IsOutputOnlyProperty(restKey),
+			ReadOnly: v2model.IsUnwritableProperty(restKey),
 			restKey:  restKey,
 		}
 		if !prop.ReadOnly {
@@ -260,7 +274,7 @@ func (r *Runner) runDescribe(ctx context.Context, session *Session, args map[str
 		}
 		others = append(others, describeProperty{
 			Key: spelling, Name: row.Name, Format: row.Format,
-			ReadOnly: v2model.IsOutputOnlyProperty(row.Key),
+			ReadOnly: v2model.IsUnwritableProperty(row.Key),
 			restKey:  row.Key,
 		})
 	}
@@ -365,16 +379,29 @@ func describeText(result describeResult) string {
 		title = result.Type
 	}
 	fmt.Fprintf(&b, "type %s", title)
+	// one row = one `Name: format(options)` line, which is exactly the form
+	// create_type's `properties` argument takes (tools_type.go). The rule
+	// this serves is the surface's oldest: what a tool PRINTS must be
+	// accepted as what a tool TAKES. The rows used to read
+	// "Status  select  options: Backlog, Done" — true, readable, and not
+	// transcribable: a model handing a describe row back to create_type had
+	// to invent the punctuation, and inventing punctuation is where small
+	// models spend their turns. Joining these lines with commas is now a
+	// valid property list.
 	writeRow := func(p describeProperty) {
-		fmt.Fprintf(&b, "\n  %s  %s", p.Key, p.Format)
+		fmt.Fprintf(&b, "\n  %s: %s", p.Key, p.Format)
 		if len(p.Options) > 0 {
-			fmt.Fprintf(&b, "  options: %s", strings.Join(p.Options, ", "))
+			fmt.Fprintf(&b, "(%s", strings.Join(p.Options, ", "))
 			if p.MoreOptions {
 				b.WriteString(", …")
 			}
+			b.WriteString(")")
 		}
 		if p.OptionsUnavailable {
-			b.WriteString("  options: (could not be listed — run describe again before using this property)")
+			// deliberately OUTSIDE the parentheses: inside them this sentence
+			// would read as the option list itself, which is the one thing
+			// this annotation exists to say is unknown
+			b.WriteString("  — options could not be listed; run describe again before using this property")
 		}
 	}
 
@@ -405,6 +432,117 @@ func describeText(result describeResult) string {
 		}
 		fmt.Fprintf(&b, "\nread-only — read serves these, set_properties refuses them: %s", strings.Join(keys, ", "))
 	}
-	b.WriteString("\nboth lists are settable: use these exact property names and option names in create and set_properties")
+	b.WriteString("\nboth lists are settable: use these exact property names and option names in create and set_properties" +
+		"\neach row is written the way create_type takes a property — Name: format, a select's options in parentheses")
 	return b.String()
+}
+
+//
+// ---- describe's option-listing mode ----
+//
+
+// listOptionsLimit bounds one option listing. It is deliberately larger than
+// describeOptionsLimit: the inline rows are a preview beside every other
+// property, while this mode was asked for one property by name and its whole
+// answer is the list.
+const listOptionsLimit = 200
+
+// describeOptionsResult is the option listing's machine shape.
+type describeOptionsResult struct {
+	Property     string   `json:"property"`
+	Format       string   `json:"format"`
+	StartingWith string   `json:"startingWith,omitempty"`
+	Options      []string `json:"options"`
+	More         bool     `json:"more,omitempty"`
+}
+
+// describeOptions lists one select property's option names in full.
+//
+// Two gaps close here, and the second is the larger one. A type's own select
+// rows carry an inline preview that stops at describeOptionsLimit and marks
+// the remainder with an ellipsis a model cannot act on. But the "also
+// settable" rows — every other select the space holds — carry NO options at
+// all, because loading them would cost one request per property on every
+// describe; measured on a fresh account that list already holds Status,
+// Tag and Region, printed as a bare `Status: select`. Since set_properties
+// refuses an option name it cannot find, a model asked to set one of those
+// had no path from "which options exist?" to a successful write.
+//
+// startingWith narrows the listing through the route's own prefix search,
+// which is what makes a several-hundred-option property usable without
+// paging state the model would have to carry.
+func (r *Runner) describeOptions(ctx context.Context, space, typeKey, property, startingWith string) (*Result, error) {
+	if space == "" {
+		return nil, &ToolError{Text: "space is required"}
+	}
+	idx, err := r.propertyIndexFor(ctx, space)
+	if err != nil {
+		return nil, fmt.Errorf("read the space's properties: %w", err)
+	}
+	row, ok := matchDefinitionRow(idx, property)
+	if !ok {
+		return nil, &ToolError{Text: fmt.Sprintf(
+			"this space has no property named %q — describe %q lists the property names it does have",
+			property, typeKey)}
+	}
+	label := idx.displayName(row.Key)
+	if !selectFormats[row.Format] {
+		return nil, &ToolError{Text: fmt.Sprintf(
+			"property %q holds %s, not a select — only select and multi_select properties have options",
+			label, row.Format)}
+	}
+
+	query := url.Values{
+		"limit": []string{fmt.Sprintf("%d", listOptionsLimit)},
+		"keys":  []string{"name"},
+	}
+	if startingWith != "" {
+		query.Set("prefix", startingWith)
+	}
+	var resp v2model.ListResponse[v2model.OptionRow]
+	if err := r.client.decode(ctx, apiRequest{
+		method: "GET",
+		path:   "/v2/spaces/" + seg(space) + "/properties/" + seg(row.Key) + "/options",
+		query:  query,
+	}, &resp); err != nil {
+		return nil, fmt.Errorf("list options of %q: %w", label, err)
+	}
+
+	out := describeOptionsResult{
+		Property: label, Format: row.Format, StartingWith: startingWith,
+		More: resp.HasMore,
+	}
+	for _, o := range resp.Data {
+		out.Options = append(out.Options, o.Name)
+	}
+
+	var b strings.Builder
+	switch {
+	case len(out.Options) == 0 && startingWith != "":
+		fmt.Fprintf(&b, "property %q has no option starting with %q", label, startingWith)
+	case len(out.Options) == 0:
+		fmt.Fprintf(&b, "property %q has no options yet", label)
+	default:
+		fmt.Fprintf(&b, "%s: %s(%s)", label, row.Format, strings.Join(out.Options, ", "))
+	}
+	if out.More {
+		// the ellipsis this mode exists to resolve must not reappear as a
+		// dead end here: say the move that narrows it
+		fmt.Fprintf(&b, "\n(more exist — narrow with starting_with, e.g. starting_with %q)",
+			firstLetter(out.Options))
+	}
+	return &Result{Text: b.String(), JSON: out}, nil
+}
+
+// firstLetter returns a one-character prefix worth suggesting: the initial
+// of the last option listed, which is where a truncated listing stopped.
+func firstLetter(options []string) string {
+	if len(options) == 0 {
+		return "a"
+	}
+	last := options[len(options)-1]
+	for _, r := range last {
+		return string(r)
+	}
+	return "a"
 }

@@ -729,14 +729,14 @@ than the REST body:
   retries one stale block reference after a re-read as described in §7.4.
   The model never sees or emits a 24-hex id. [closes S3]
 
-### 7.2 Tool set (12 as built; flat, grammar-constrainable args)
+### 7.2 Tool set (14 as built; flat, grammar-constrainable args)
 
 | Tool | Args (flat) | Backing primitive | Channel notes |
 |---|---|---|---|
 | `spaces` | `limit?` | Phase 4 `GET /v2/spaces` | the bootstrap tool (added post-review): every trace needs a space id and nothing else in the set could produce one — `name — id` rows, no handles |
 | `find` | `space, query?, type?, filter?, limit?` | Phase 4 search | filter = string form; results are enumerated handles + minimal fields. *Since §8.33: with none of `query`/`type`/`filter` the call matched nothing, so it LISTS the space instead — unnumbered, assigning no handles, because handle 1 of a listing is not the object anyone asked for* |
 | `read` | `object, mode=full\|outline` | Phase 1 read | both modes use server-issued short block labels; `full` returns complete block text, while `outline` caps each block's text at 80 runes |
-| `describe` | `space, type` | Phase 1 `types/{type}/schema?flavor=table` **[build — 501 stub today]** | the accuracy lever, **called before create/set** (folds A1 into the flow); interim degraded form assembled wrapper-side (§2 Phase 5); every backing GET is space-scoped, so the tool takes `space` too. *Since §8.33 it reports what is SETTABLE — the type's recommended lists were neither a superset nor a subset of that, and hid `name` and `description`* |
+| `describe` | `space, type, options?, starting_with?` | Phase 1 `types/{type}/schema?flavor=table` **[build — 501 stub today]** | the accuracy lever, **called before create/set** (folds A1 into the flow); interim degraded form assembled wrapper-side (§2 Phase 5); every backing GET is space-scoped, so the tool takes `space` too. *Since §8.33 it reports what is SETTABLE — the type's recommended lists were neither a superset nor a subset of that, and hid `name` and `description`.* Its `options` argument lists ONE select property's options in full (§8.49) — the only route to the options of a select the type does not name, since the *also settable* rows carry none; `starting_with` narrows through the route's own prefix search. |
 | `create` | `space, type, name, properties?, markdown?` | Phase 2 create | type and property keys validated with did-you-mean; **select option names create-missing by default (R9/§8.1)** — the small-tier pre-validation guard is wrapper-side (§7.4); markdown is parsed and folded into the single create snapshot |
 | `set_properties` | `object, set?{key: value}, add?{key: […]}, remove?{key: […]}` | `set_properties` op incl. per-key `add`/`remove` (§8.3) | mirrors the op so a one-tag append never rewrites the whole array (the op's entire rationale — reintroducing the read→rewrite→write trap at the wrapper layer would defeat it); `add` on a non-empty select errors, steering to `set`; scalar→array coercion is server-side |
 | `check_item` | `object, block, checked` | `update_block` op | the one block-field tool: checkbox **blocks** are a common note shape and `update_block` is THE block-update op post-§8.3; other block-field updates (color/align/language/retype) stay excluded — SKILL.md steers task completion to properties (the E4 recipe) |
@@ -744,6 +744,7 @@ than the REST body:
 | `edit_text` | `object, block, find, replace` | `replace_text` op | **anchor channel**; deterministic server replace; `find` copies the served inline source and `replace` is literal prose; an EMPTY `replace` deletes the found text (Required means present, not non-empty — §8.6) |
 | `set_cell` | `object, table, row, col, value` | `set_cell` op | flat cell write (as built the tool takes `object` too — the REST op addresses a table within one object, and a table-only reference would need a hidden cross-object table registry; §8.6); row/col take the labels full read mints (rows and columns relabel like blocks); an EMPTY `value` clears the cell (null on the wire) |
 | `move_block` / `delete_block` | `object, block, after?\|under?` / `object, block(s), recursive?` | `move_block`/`delete_block` ops | handle-addressed; delete_block's `block` takes ONE reference or a comma-separated list — the list rides one atomic PATCH (all deleted or none), added for the measured chain-length cliff (models chaining delete×3 dropped the third call) |
+| `create_type` | `space, name, properties?` | `POST /types` (+ `POST /properties` for option-bearing selects) | the schema-authoring tool (§8.48): `properties` is a flat paren-aware DDL, `Name: format(options)` — the same form `describe` prints per row, so a describe output transcribes back. Refuses before writing anything: unknown formats, options on a non-select, a format that conflicts with an existing property, and (through a `dry_run=true` pre-flight) a taken or bundled-reserved type name |
 
 Excluded from the wrapper: whole-document replace (since §8.27 excluded
 from the REST surface too, so this line records a gap that closed from the
@@ -6907,3 +6908,125 @@ narrower still (ASCII). The resolution is recorded where it was made —
 APIV2_VOCABULARY.md §4.4/§4.5: multi-word names ride the filter string
 underscore-joined and the fold resolves them; `gbnf_accept_test` stays the
 tripwire that everything the grammar can emit, the parser accepts.)
+
+### 8.47 Open question: does `snippet` earn its place on the agent surfaces? (2026-09-03 — to measure)
+
+`snippet` is derived from an object's first blocks. Wherever a surface
+serves it BESIDE those blocks it is duplication, and duplication on a
+read is context a small model pays for twice — the ops arm already ships
+3.5x the wrapper's prompt for the same tasks, so a redundant field is not
+free.
+
+The counter-case is the one that makes this a question rather than a
+deletion. An object with no name has nothing else to identify it: a
+`find` row reading `(untitled)` is unusable, where the same row carrying
+"Drafted during the offsite…" is not. So the honest shape is probably
+conditional rather than absent, and the condition is what needs
+measuring.
+
+Three candidate rules, in the order they should be tried:
+
+1. Omit `snippet` when the same response already carries the blocks it
+   was derived from; keep it where blocks are absent (list rows, search
+   results).
+2. Omit it whenever the object has a name; serve it only as the fallback
+   identity for the unnamed.
+3. Serve it always (today's behaviour) — the control.
+
+What would settle it: measure prompt tokens per attempt and pass rate
+across the three rules on the existing task set, then add a task whose
+target object is deliberately UNNAMED and must be found and edited. Rule
+1 or 2 winning on tokens while the unnamed task still passes is the
+result that justifies the change; the unnamed task regressing under rule
+2 says identity beats economy and the answer is rule 1.
+
+Note `snippet` is bundle-`readonly`, so IsUnwritableProperty already
+refuses a write to it (8.47's sibling finding) — this question is only
+about whether READS should carry it.
+
+### 8.48 create_type: authoring a schema (2026-09-03 — as built)
+
+The first deliberate spend of the >15-tool headroom, 13 → 14. The wrapper
+could USE types and not make one, so "set up a Recipe type with
+ingredients, cook time and rating" was not awkward on this surface, it was
+unanswerable. Headroom left is about one tool; the next candidate has to
+clear the same bar.
+
+**The argument is a DDL, not an object.** `properties` is one flat string:
+`"Cook time: number, Rating: select(Low, Medium, High), Source: url"`.
+Both levels are comma-separated, so the split is parenthesis-aware. The
+form is not invented for this tool — it is what `describe` now prints per
+property row (`Name: format(options)`), changed here from
+`Name  format  options: …` for the oldest rule on this surface: what a tool
+PRINTS must be accepted as what a tool TAKES. Joining describe's rows with
+commas is now a valid `properties` argument, asserted by test.
+
+**Options do not survive a type document — measured, not assumed.** The
+format carries them (`property_definitions[].options`, and the document
+schema even refuses options on a non-select), but the write path ignores
+them: `creatingResolvers.PropertyId` mints the relation from name+format
+and never reads `def.Options`. A live heart confirmed it: a type created
+with `Spice: select(Mild, Hot)` came back with the property and
+`GET /properties/spice/options` returned `{"data":[],"total":0}`, with and
+without `?create_missing_options=true`. A select that claims options it
+does not have is worse than no options, so the tool states no options in
+the document and creates each option-bearing property through
+`POST /properties`, which does create them in the same request.
+
+**The ordering is the safety contract.** The call is
+`GET /properties` → `POST /types?dry_run=true` → N × `POST /properties` →
+`POST /types`. A type is created by exactly ONE request, last, so no
+failure anywhere can leave a half-made type; a mid-sequence failure leaves
+properties, which a re-run reuses rather than duplicates. The pre-flight
+dry run exists because the type namespace is the SERVER's: its union check
+spans bundled keys, bundled-derived slugs, live keys and live slugs, and
+only it can answer whether a name is free.
+
+**Duplicate names: refused, and the API already refuses them** — the
+name-derived slug is union-checked before anything is created. The wrapper
+appends the repair the server cannot know: it holds tools, not routes.
+Worth recording separately: a dozen everyday type names (Recipe, Book,
+Movie, Project, Contact) are RESERVED by bundled types that appear in no
+listing until something uses them, and `create` with that type name
+installs the built-in on first use. So the refusal for a reserved name is
+the only place a caller can discover the type exists, and it says so.
+
+**Still missing, recorded rather than solved:** there is no `delete_type`
+and the type PATCH replaces the property list rather than appending, so
+this surface can create a type and can never fix one. Every refusal above
+is sized to that fact.
+
+### 8.49 describe's option-listing mode (2026-09-03 — as built)
+
+`describe` gained two optional arguments, `options` and `starting_with`,
+rather than the surface gaining a `list_options` tool. The budget argued for
+an argument (§7.2 sits at 14 of a comfortable 15–16), and the capability is
+a narrowing of what `describe` already does.
+
+**What was actually broken.** The inline preview stops at 25 options and
+marks the rest with an ellipsis a model cannot act on — that was the known
+gap. The larger one was measured on a fresh account: describe's *also
+settable* rows carry **no options at all**, because loading them would cost
+one request per property on every call, so `Status`, `Tag` and `Region`
+print as a bare `Status: select`. Since `set_properties` refuses an option
+name it cannot find, a model asked to set one of those had no path from
+"which options exist?" to a successful write. The option-listing mode is the
+only route to those names.
+
+**Why it scales.** The existence check in `checkOptionNames` already queries
+the route by `prefix`, so *validation* never depended on the full list; only
+*discovery* was capped. `starting_with` exposes that same prefix search, which
+is what makes a several-hundred-option property usable without paging state
+the model would have to carry. A truncated listing names that move instead of
+printing another ellipsis.
+
+**Refusals.** A non-select is refused saying what it does hold; an unknown
+property name points back at `describe` for the names the space has.
+
+**A related read-path gap, recorded not fixed:** `GET /types/{key}` serves
+`type_settings.property_definitions[]` with name and format but **never
+options** — a select created with three options reads back `"options": null`
+there, while `/properties/{key}/options` serves all three. Measured live on
+2026-09-03. Any client reading a type to learn its schema needs one extra
+request per select, which is why `create_type` writes options through
+`POST /properties` and why the eval's grader reads them from the option route.

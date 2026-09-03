@@ -84,6 +84,11 @@ type task struct {
 	Siblings []sibling
 	Prompt   func(fx *fixture) string
 	Check    func(doc *document, fx *fixture) checkResult
+	// CheckAPI replaces Check for tasks whose result is not IN the fixture
+	// document — a created type, a space's property list. It gets the live
+	// client, so it can read back whatever the intent actually produced.
+	// Exactly one of Check/CheckAPI must be set.
+	CheckAPI func(ctx context.Context, client *apiClient, spaceId string, fx *fixture) checkResult
 }
 
 func (t task) runsOnArm(arm string) bool {
@@ -122,6 +127,7 @@ const (
 	capDeleteBlock   capability = "delete a block"
 	capSetProperties capability = "set a property"
 	capUpdateView    capability = "change a dataview's view"
+	capCreateType    capability = "create an object type"
 )
 
 // capabilityTools names the tool each surface would use for each capability
@@ -138,6 +144,11 @@ var capabilityTools = map[capability]map[string]string{
 	capDeleteBlock:   {surfaceWrapper: "delete_block", surfaceOps: "delete_block"},
 	capSetProperties: {surfaceWrapper: "set_properties", surfaceOps: "set_properties"},
 	capUpdateView:    {surfaceWrapper: "update_view", surfaceOps: "update_view"},
+	// the ops arm has no type-creation op — POST /types is a route, not a
+	// PATCH op — so this capability exists only on the wrapper, and
+	// checkTaskGating skips the ops cells rather than scoring a surface for
+	// something it cannot express
+	capCreateType: {surfaceWrapper: "create_type"},
 }
 
 // capabilityTool returns the surface's tool for a capability.
@@ -153,6 +164,17 @@ func capabilityTool(c capability, surface string) (string, error) {
 	return tool, nil
 }
 
+// surfaceCannotExpress reports a capability a surface genuinely has no way
+// to express — distinct from one that is merely unmapped. Type creation is
+// the first: POST /v2/spaces/{s}/types is a ROUTE, and the ops arm serves
+// PATCH ops only, so there is no op to name. The distinction matters
+// because checkTaskGating exists to catch the unmapped case loudly, and
+// folding a real gap into that check would either fail every run or force
+// a fake mapping that scores a surface for something it cannot do.
+func surfaceCannotExpress(c capability, surface string) bool {
+	return c == capCreateType && surface == surfaceOps
+}
+
 // checkTaskGating verifies every declared capability resolves on every
 // surface, at startup rather than an hour into a run: an unmapped capability
 // would otherwise skip a cell silently, which reads in the report exactly
@@ -161,6 +183,9 @@ func checkTaskGating() error {
 	for _, t := range tasks() {
 		for _, c := range t.Requires {
 			for _, surface := range []string{surfaceWrapper, surfaceOps} {
+				if surfaceCannotExpress(c, surface) {
+					continue
+				}
 				if _, err := capabilityTool(c, surface); err != nil {
 					return fmt.Errorf("task %s: %w", t.Id, err)
 				}
@@ -658,6 +683,144 @@ func tasks() []task {
 				return checkResult{OK: true}
 			},
 		},
+		{
+			// STEP 1 / rank 1 — CROSS-OBJECT ADDRESSING, the axis that
+			// separates models: gemma-4-e4b scored 1/4 on copy-between-objects
+			// where bonsai-27b scored 4/4. Here the second object is named by
+			// an objects-format PROPERTY rather than copied as an id, which is
+			// the step that fails. Two calls if addressing works: find, then
+			// set_properties naming the project.
+			Id:       "file-under-project",
+			Intent:   "point an objects-format property at another object, by name",
+			Requires: []capability{capSetProperties},
+			Markdown: "## Notes\nDrafted during the offsite.\n",
+			Siblings: []sibling{
+				{Key: "project", TitleSuffix: " project", Markdown: "## Project\nThe umbrella for this work.\n"},
+			},
+			// the prompt names no property: a fresh account's Page type has
+			// its own bundled set (there is no "Related"), and naming one
+			// that does not exist measures the model's recovery rather than
+			// its addressing. It must find a property that holds objects —
+			// describe is how — and point it at the sibling.
+			Prompt: func(fx *fixture) string {
+				return fmt.Sprintf("On the page titled %q, record that it belongs to the page titled %q: "+
+					"set whichever property of it holds links to other objects.", fx.Title, fx.Extra["project"])
+			},
+			// ANY property may carry it — which one the model picks is its
+			// choice to make, and constraining the grader to one key made a
+			// passing run read as a failure
+			Check: func(doc *document, fx *fixture) checkResult {
+				want := fx.Extra["projectId"]
+				for key, raw := range doc.Properties {
+					if strings.Contains(fmt.Sprint(raw), want) {
+						_ = key
+						return checkResult{OK: true}
+					}
+				}
+				return checkResult{Detail: fmt.Sprintf("no property points at %s (%s); properties: %v",
+					fx.Extra["project"], want, propertyKeys(doc))}
+			},
+		},
+		{
+			// STEP 1 / rank 3 — CHAIN LENGTH. Three objects, one intent. A
+			// model that issues one call per object is doing the thing that
+			// went 0/6 before batch delete_block existed; one call is the fix
+			// this task measures. The siblings are the other two targets.
+			Id:       "bulk-set-property",
+			Intent:   "set the same property on several objects at once",
+			Requires: []capability{capSetProperties},
+			Markdown: "## Task\nFirst of three.\n",
+			Siblings: []sibling{
+				{Key: "second", TitleSuffix: " second", Markdown: "## Task\nSecond of three.\n"},
+				{Key: "third", TitleSuffix: " third", Markdown: "## Task\nThird of three.\n"},
+			},
+			Prompt: func(fx *fixture) string {
+				// the target literal deliberately ends in a WORD, not a period:
+				// a required value ending in punctuation makes the sentence's
+				// own full stop ambiguous, and that alone failed three
+				// otherwise-perfect runs of restructure-section before it was
+				// quoted — and failed this task even when quoted
+				return fmt.Sprintf("Set the description of all three pages named after %q — %q, %q and %q — to exactly \"reviewed by ops\"",
+					fx.Title, fx.Title, fx.Extra["second"], fx.Extra["third"])
+			},
+			Check: func(doc *document, fx *fixture) checkResult {
+				got, ok := doc.stringProperty("description")
+				if !ok || strings.TrimSpace(got) != "reviewed by ops" {
+					return checkResult{Detail: fmt.Sprintf("the named page's description is %q", got)}
+				}
+				for key, sib := range fx.Siblings {
+					if sib == nil {
+						return checkResult{Detail: "sibling " + key + " was not read back"}
+					}
+					sibGot, sibOK := sib.stringProperty("description")
+					if !sibOK || strings.TrimSpace(sibGot) != "reviewed by ops" {
+						return checkResult{Detail: fmt.Sprintf("%s page's description is %q, want \"reviewed by ops\"", key, sibGot)}
+					}
+				}
+				return checkResult{OK: true}
+			},
+		},
+		{
+			// SCHEMA AUTHORING. Published research rates this the worst agent
+			// category on record (best model 42% on MCPMark), and a wrong
+			// type is PERMANENT here — no delete_type, and the type PATCH
+			// replaces rather than appends. So the grader checks the whole
+			// shape, not just that something was created: the wrong type is
+			// as bad as no type.
+			Id:       "create-a-type",
+			Intent:   "define a new object type with typed properties",
+			Requires: []capability{capCreateType},
+			Markdown: "## Scope\nThe cookbook needs a type.\n",
+			Prompt: func(fx *fixture) string {
+				return fmt.Sprintf("In this space, create an object type called %q with three properties: "+
+					"\"Cook time\" holding a number, \"Source\" holding a URL, and \"Rating\" a select "+
+					"offering Low, Medium and High.", fx.Extra["typeName"])
+			},
+			CheckAPI: func(ctx context.Context, client *apiClient, spaceId string, fx *fixture) checkResult {
+				want := fx.Extra["typeName"]
+				t, err := client.findTypeByName(ctx, spaceId, want)
+				if err != nil {
+					return checkResult{Detail: fmt.Sprintf("read types: %v", err)}
+				}
+				if t == nil {
+					return checkResult{Detail: fmt.Sprintf("no type named %q exists", want)}
+				}
+				got := map[string]string{}
+				opts := map[string][]string{}
+				for _, p := range t.Properties {
+					got[strings.ToLower(strings.TrimSpace(p.Name))] = p.Format
+					opts[strings.ToLower(strings.TrimSpace(p.Name))] = p.Options
+				}
+				for name, format := range map[string]string{"cook time": "number", "source": "url", "rating": "select"} {
+					if got[name] != format {
+						return checkResult{Detail: fmt.Sprintf("property %q has format %q, want %q (type has: %v)",
+							name, got[name], format, got)}
+					}
+				}
+				have := map[string]bool{}
+				for _, o := range opts["rating"] {
+					have[strings.ToLower(strings.TrimSpace(o))] = true
+				}
+				for _, want := range []string{"low", "medium", "high"} {
+					if !have[want] {
+						return checkResult{Detail: fmt.Sprintf("Rating is missing the %q option; it offers %v", want, opts["rating"])}
+					}
+				}
+				return checkResult{OK: true}
+			},
+		},
+	}
+}
+
+// newFixtureFor mints the derived names an attempt needs from one stem, so
+// the runner and the well-formedness test agree about what a fixture holds.
+// The type name is derived rather than fixed: a type cannot be deleted
+// through this surface, so a shared name would accumulate forever.
+func newFixtureFor(title string) *fixture {
+	return &fixture{
+		Title:    title,
+		Extra:    map[string]string{"typeName": title + " Recipe"},
+		Siblings: map[string]*document{},
 	}
 }
 
@@ -674,7 +837,8 @@ func setupFixture(ctx context.Context, client *apiClient, spaceId string, t task
 	if err != nil {
 		return nil, fmt.Errorf("create fixture for %s: %w", t.Id, err)
 	}
-	fx := &fixture{ObjectId: id, Title: title, Extra: map[string]string{}, Siblings: map[string]*document{}}
+	fx := newFixtureFor(title)
+	fx.ObjectId = id
 	for _, sib := range t.Siblings {
 		sibTitle := title + sib.TitleSuffix
 		sibId, err := client.createObject(ctx, spaceId, "page", sibTitle, sib.Markdown)

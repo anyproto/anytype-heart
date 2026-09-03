@@ -11,12 +11,27 @@ import (
 
 // TestToolCount pins the design constraint: the tool set stays under the
 // >15-tool small-model cliff (§7 — the count is part of the contract).
-// 13 = the original 11 + spaces (the bootstrap tool: nothing else could
+// 14 = the original 11 + spaces (the bootstrap tool: nothing else could
 // produce a space id) + update_view (the one dataview tool — one tool for
-// filter/sort/columns, not three, to spend the remaining headroom slowly).
+// filter/sort/columns, not three, to spend the remaining headroom slowly)
+// + create_type.
+//
+// create_type is the FIRST deliberate spend of that headroom (13 → 14), and
+// this line is the record of what it bought: the wrapper could USE types —
+// describe them, create objects of them, filter by them — and could not make
+// one, so "set up a Recipe type with ingredients, cook time and rating" was
+// not merely awkward on this surface, it was unanswerable. No existing tool
+// could be widened into it either: a type is a schema, not an object, and
+// folding schema authoring into `create` would have made the tool a model
+// most often reaches for ambiguous.
+//
+// Headroom left: measurements put 15-16 as comfortable and 20+ as risky, so
+// there is room for about one more tool. The next candidate has to clear the
+// same bar — a whole capability the set cannot reach at all, not a
+// convenience over one it can.
 func TestToolCount(t *testing.T) {
 	tools := Tools()
-	assert.Len(t, tools, 13)
+	assert.Len(t, tools, 14)
 	assert.Less(t, len(tools), 15, "the tool count is a design constraint — small models degrade past ~15 tools")
 }
 
@@ -31,7 +46,7 @@ func TestVerbSet(t *testing.T) {
 	assert.Equal(t, []string{
 		"spaces", "find", "read", "describe", "create", "set-properties",
 		"check-item", "add-blocks", "edit-text", "set-cell", "move-block",
-		"delete-block", "update-view",
+		"delete-block", "update-view", "create-type",
 	}, got)
 }
 

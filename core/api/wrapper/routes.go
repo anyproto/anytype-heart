@@ -21,7 +21,10 @@ func RouteTemplates() []RouteTemplate {
 		{"PATCH", "/v2/spaces/:space_id/objects/:object_id"},    // every editing tool
 		{"POST", "/v2/spaces/:space_id/objects"},                // create
 		{"GET", "/v2/spaces/:space_id/types/:type"},             // describe
+		{"GET", "/v2/spaces/:space_id/types"},                   // the type-name fold, create's receipt label
+		{"POST", "/v2/spaces/:space_id/types"},                  // create_type
 		{"GET", "/v2/spaces/:space_id/properties"},              // the format index
+		{"POST", "/v2/spaces/:space_id/properties"},             // create_type's option-bearing properties
 		{"GET", "/v2/spaces/:space_id/properties/:key/options"}, // the A2 guard, describe
 		{"GET", "/v2/spaces/:space_id/members/me"},              // @me resolution
 	}
