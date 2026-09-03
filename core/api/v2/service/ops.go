@@ -510,7 +510,7 @@ func countBlocks(n int) string {
 // would turn a parent into a leaf (R5).
 func leafWithDescendantsError(id, newType string, descendants int, path string) error {
 	return v2model.ValidationFailed(
-		fmt.Sprintf("cannot change block %q to leaf type %q — it has %s; %q blocks cannot have children", id, newType, countBlocks(descendants), newType),
+		fmt.Sprintf("cannot change block %q to %q — it has %s; %q blocks cannot have children", id, newType, countBlocks(descendants), newType),
 		v2model.Issue{Path: path, Message: "move or delete the descendants first, or use replace_subtree"})
 }
 

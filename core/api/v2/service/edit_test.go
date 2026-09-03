@@ -833,6 +833,26 @@ func TestPatchObject(t *testing.T) {
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, `"table" blocks cannot have children`)
+		// a FORMAT leaf, and the reason has to say so: a table can never be a
+		// parent anywhere, so scoping the refusal to "an API edit" would
+		// invent a rule this surface does not own
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, `"table" can never be a parent`, apiErr.Issues[0].Message)
+		assert.Contains(t, apiErr.Issues[0].Hint, "after or before")
+	})
+
+	t.Run("the repair the leaf refusal names actually works", func(t *testing.T) {
+		// the hint sends the caller to after/before, so that has to resolve
+		// past a leaf anchor — otherwise the refusal costs a turn and then
+		// costs another (§8.51)
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editTableDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insert_blocks","after":"tblOne1","blocks":[{"type":"paragraph","text":"sibling"}]}`), "", false, true)
+
+		require.NoError(t, err)
+		assert.Contains(t, blockTexts(docBlocks(stateDoc(t, *captured))), "sibling")
 	})
 
 	t.Run("image containment is rejected consistently for insert move and update", func(t *testing.T) {
@@ -848,19 +868,19 @@ func TestPatchObject(t *testing.T) {
 				op:          `{"op":"insert_blocks","inside":"leaf-image","blocks":[{"type":"paragraph","text":"x"}]}`,
 				wantMessage: `cannot target inside block "leaf-image" — "image" blocks cannot have children`,
 				wantPath:    "ops[0].inside",
-				wantIssue:   "the target is a leaf block type (SPEC §5)",
+				wantIssue:   `"image" is a leaf in the editor, so a new API edit will not nest content under one`,
 			},
 			{
 				name:        "move inside image",
 				op:          `{"op":"move_block","id":"leaf-movable","inside":"leaf-image","position":"last"}`,
 				wantMessage: `cannot target inside block "leaf-image" — "image" blocks cannot have children`,
 				wantPath:    "ops[0].inside",
-				wantIssue:   "the target is a leaf block type (SPEC §5)",
+				wantIssue:   `"image" is a leaf in the editor, so a new API edit will not nest content under one`,
 			},
 			{
 				name:        "change parent to image",
 				op:          `{"op":"update_block","id":"leaf-parent","set":{"type":"image"}}`,
-				wantMessage: `cannot change block "leaf-parent" to leaf type "image" — it has 1 descendant block; "image" blocks cannot have children`,
+				wantMessage: `cannot change block "leaf-parent" to "image" — it has 1 descendant block; "image" blocks cannot have children`,
 				wantPath:    "ops[0].set.type",
 				wantIssue:   "move or delete the descendants first, or use replace_subtree",
 			},
@@ -905,7 +925,7 @@ func TestPatchObject(t *testing.T) {
 				patchBody(`{"op":"update_block","id":"legacy-image","set":{"type":"table"}}`), "", false, true)
 
 			apiErr := v2Err(t, err)
-			assert.Contains(t, apiErr.Message, `cannot change block "legacy-image" to leaf type "table"`)
+			assert.Contains(t, apiErr.Message, `cannot change block "legacy-image" to "table"`)
 			require.Len(t, apiErr.Issues, 1)
 			assert.Equal(t, "ops[0].set.type", apiErr.Issues[0].Path)
 		})
@@ -1026,7 +1046,7 @@ func TestPatchObject(t *testing.T) {
 			patchBody(`{"op":"update_block","id":"blockParent1","set":{"type":"divider"}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
-		assert.Contains(t, apiErr.Message, `cannot change block "blockParent1" to leaf type "divider"`)
+		assert.Contains(t, apiErr.Message, `cannot change block "blockParent1" to "divider"`)
 		assert.Contains(t, apiErr.Message, "1 descendant block")
 	})
 

@@ -1544,7 +1544,11 @@ func (a *v2StateApplier) resolveTarget(doc *v2EditDoc, after, before, inside, po
 		if typ := blockType(doc.blocks[anchor]); apiEditLeafBlockType(typ) {
 			return 0, "", "", v2model.ValidationFailed(
 				fmt.Sprintf("cannot target inside block %q — %q blocks cannot have children", ref, typ),
-				v2model.Issue{Path: opPath + ".inside", Message: "the target is a leaf block type (SPEC §5)"})
+				v2model.Issue{
+					Path:    opPath + ".inside",
+					Message: apiEditLeafReason(typ),
+					Hint:    "place it as a sibling with after or before, or use update_block to change the block itself",
+				})
 		}
 	}
 	return anchor, mode, pos, nil
@@ -1555,11 +1559,34 @@ func (a *v2StateApplier) resolveTarget(doc *v2EditDoc, after, before, inside, po
 // can losslessly read and write legacy documents, but the editor treats the
 // whole file family as leaves. API edits must not create more of that legacy
 // shape, whether the caller inserts, moves, or changes a parent's type.
+//
+// This predicate is therefore WIDER than the format's leaf inventory, and no
+// refusal it drives may borrow that inventory's words: the format says in as
+// many words that every type outside its own list may be a parent, so
+// calling an `image` a leaf type sends a caller to a document that
+// contradicts the refusal. The refusals name the API's rule and, through
+// apiEditLeafReason, which half of the predicate they came from
+// (APIV2.md §2 Phase 3; §8.55).
 func apiEditLeafBlockType(typ string) bool {
 	if anyblockjson.LeafBlockType(typ) {
 		return true
 	}
 	return apiFileFamilyBlockType(typ)
+}
+
+// apiEditLeafReason says WHY the target takes no children, and the two
+// halves of apiEditLeafBlockType have different reasons. A format leaf can
+// never be a parent anywhere: the format refuses it, so does an import, so
+// does the app. The file family can — legacy documents nest under it and
+// round-trip — and only a NEW API edit is refused. Saying "in an API edit"
+// for a divider would invent a scope, and a caller who reads a scope tests
+// its edge: they would try the same nesting through a whole-document write
+// and be refused again, having been told it was this surface's rule.
+func apiEditLeafReason(typ string) string {
+	if apiFileFamilyBlockType(typ) {
+		return fmt.Sprintf("%q is a leaf in the editor, so a new API edit will not nest content under one", typ)
+	}
+	return fmt.Sprintf("%q can never be a parent", typ)
 }
 
 func apiFileFamilyBlockType(typ string) bool {
