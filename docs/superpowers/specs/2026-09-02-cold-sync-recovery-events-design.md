@@ -652,8 +652,11 @@ tech space alone — is closed in phase 6 by the gate's local half (`OnSpaceView
 **Execution notes (phase 8).** User-reported API flaw: the RPC returned
 `ACCOUNT_IS_NOT_RUNNING` before `AccountSelect` and in the race between the RPC and
 `startNewApp` reaching `Begin` — an ordering a client cannot express. `Tracker.Snapshot()` is now
-total (`IdleSnapshot()` before the first `Begin`; a closed or terminal run still reports itself,
-so `Fail`-after-`Close` is untouched), `Phase.NotStarted = 7` marks the idle answer, and the
+total (`IdleSnapshot()` before the first `Begin`; a terminal run still reports itself after
+`Close`, so `Fail`-after-`Close` is untouched, while a run closed *without* a verdict — a
+cancelled start, or the account stopped before `Done` — is abandoned and reads idle again, so a
+client attaching later never takes a dead run for a live one; the session hook is silent for it
+too), `Phase.NotStarted = 7` marks the idle answer, and the
 handler never errors — the `ACCOUNT_IS_NOT_RUNNING` code stays in the proto for compatibility
 and is unreachable.
 

@@ -263,8 +263,13 @@ func TestReplayProperty(t *testing.T) {
 		fx.closed("lan1", true) // never connected: clamps at zero
 		fx.connected("lan1", "yamux", true, 0)
 		check()
+
+		// closing the run before a verdict ends it: nothing more is emitted —
+		// the client that stopped it resets on its own — and the pull side
+		// reads idle, so a client attaching later never takes it for a live run
 		require.NoError(t, fx.Close(context.Background()))
-		check()
+		assert.Len(t, fx.sender.updates(), applied, "Close emits nothing for a run without a verdict")
+		assert.Equal(t, IdleSnapshot(), fx.Snapshot())
 	})
 
 	t.Run("the account fetch replays through a bounded wait, a failed round and readiness", func(t *testing.T) {

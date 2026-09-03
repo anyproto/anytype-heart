@@ -53,9 +53,12 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		s.traceRecorder.start()
 		defer s.traceRecorder.stop()
 	}
-	s.cancelStartIfInProcess()
+	// published before the lock wait, so a stop can reach this start at any
+	// point of it; retracted under the lock, last (see app_start.go)
+	ctx, end := s.beginStart(ctx)
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	defer end()
 
 	s.requireClientWithVersion()
 
@@ -158,20 +161,12 @@ func (s *Service) start(
 		request = request + "_recover"
 	}
 
-	ctx, cancel := context.WithCancel(context.WithValue(ctx, metrics.CtxKeyEntrypoint, request))
-	// save the cancel function to be able to stop the app in case of account stop or other select/create operation is called
-	s.appAccountStartInProcessCancelMutex.Lock()
-	s.appAccountStartInProcessCancel = cancel
-	s.appAccountStartInProcessCancelMutex.Unlock()
+	ctx = context.WithValue(ctx, metrics.CtxKeyEntrypoint, request)
 	mode := pb.EventAccountRecovery_WarmStart
 	if repoWasMissing {
 		mode = pb.EventAccountRecovery_ColdRecovery
 	}
 	s.app, err = s.startNewApp(ctx, mode, comps...)
-	s.appAccountStartInProcessCancelMutex.Lock()
-	s.appAccountStartInProcessCancel = nil
-	s.appAccountStartInProcessCancelMutex.Unlock()
-
 	if err != nil {
 		if errors.Is(err, spacesyncproto.ErrSpaceIsDeleted) {
 			return nil, errors.Join(ErrAccountIsDeleted, err)

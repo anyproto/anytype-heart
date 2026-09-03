@@ -153,19 +153,38 @@ func TestTracker_Fail(t *testing.T) {
 		assert.Equal(t, pb.EventAccountRecovery_Failed, changed.Phase)
 		assert.Equal(t, pb.EventAccountRecovery_Unexpected, changed.Error.Class)
 		assert.True(t, changed.Error.Retryable)
+		snap := fx.Snapshot()
+		assert.True(t, snap.Done, "the verdict revives the closed run in the snapshot")
+		assert.Equal(t, pb.EventAccountRecovery_Failed, snap.Phase)
 	})
 
-	t.Run("a cancelled start is not a failure", func(t *testing.T) {
-		// given
+	t.Run("a cancelled start is not a failure: no verdict, and the run reads idle", func(t *testing.T) {
+		// given: the app's unwind closed the tracker before Fail, as it does
+		// when the cancel struck a component past the tracker's Init
 		fx := newFixture(t, pb.EventAccountRecovery_WarmStart)
 		fx.init(t)
+		require.NoError(t, fx.Close(context.Background()))
+
+		// when
+		fx.Fail(errors.Join(errors.New("can't run service 'client.space'"), context.Canceled))
+
+		// then
+		assert.Len(t, fx.sender.updates(), 1, "only Started; no terminal for a cancel")
+		assert.Equal(t, IdleSnapshot(), fx.Snapshot())
+	})
+
+	t.Run("a cancel that struck before the tracker was closed still ends the run", func(t *testing.T) {
+		// given: a start that failed before app.Start's unwind reached the
+		// tracker, so nothing called Close
+		fx := newFixture(t, pb.EventAccountRecovery_WarmStart)
 
 		// when
 		fx.Fail(context.Canceled)
 
 		// then
-		assert.Len(t, fx.sender.updates(), 1)
-		assert.False(t, fx.Snapshot().Done)
+		assert.Empty(t, fx.sender.updates(), "Started is not published for a start that never began")
+		assert.Equal(t, IdleSnapshot(), fx.Snapshot())
+		assert.Equal(t, 0, fx.clock.pendingTimers())
 	})
 
 	t.Run("fail is idempotent", func(t *testing.T) {
@@ -269,10 +288,30 @@ func TestTracker_Snapshot(t *testing.T) {
 		assert.False(t, got.Done)
 		assert.Equal(t, pb.EventAccountRecovery_LookingForPeers, got.Phase)
 	})
+
+	t.Run("a run closed before its verdict is over: it reads idle, not as a live run", func(t *testing.T) {
+		// given: the account was stopped mid-recovery
+		fx := newFixture(t, pb.EventAccountRecovery_ColdRecovery)
+		fx.init(t)
+		fx.dialStarted("node1", 1)
+		require.False(t, fx.Snapshot().Done)
+
+		// when
+		require.NoError(t, fx.Close(context.Background()))
+
+		// then
+		assert.Equal(t, IdleSnapshot(), fx.Snapshot())
+
+		// and the next Begin is a fresh run again
+		fx.Begin(Run{Mode: pb.EventAccountRecovery_WarmStart, Sender: fx.sender})
+		got := fx.Snapshot()
+		assert.NotEmpty(t, got.RunId)
+		assert.Equal(t, pb.EventAccountRecovery_WarmStart, got.Mode)
+	})
 }
 
 func TestTracker_Close(t *testing.T) {
-	t.Run("close flushes the pending window and silences the run", func(t *testing.T) {
+	t.Run("close drops the pending window and silences a run without a verdict", func(t *testing.T) {
 		// given
 		fx := newFixture(t, pb.EventAccountRecovery_WarmStart)
 		fx.init(t)
@@ -285,22 +324,36 @@ func TestTracker_Close(t *testing.T) {
 		// when
 		require.NoError(t, fx.Close(context.Background()))
 
-		// then: both marks fell inside the window Started opened, so they
-		// collapsed to one level, and Close flushed it rather than losing it
-		ups := fx.sender.updates()
-		require.Len(t, ups, 2)
-		assert.Equal(t, int32(2), ups[1].Payload.(*pb.EventAccountRecoveryUpdatePayloadOfDialFailed).DialFailed.Attempt)
+		// then: the run is over without a verdict, so the level the window
+		// held is not sent — the snapshot no longer reports the run it
+		// belongs to — and nothing publishes after
+		assert.Len(t, fx.sender.updates(), 1, "only Started")
 		assert.Equal(t, 0, fx.clock.pendingTimers())
-		snap := fx.Snapshot()
-		assert.Equal(t, pb.EventAccountRecovery_LookingForPeers, snap.Phase)
-		assert.False(t, snap.Done)
-		assert.Equal(t, int64(2), snap.LastEventId)
-
-		// and nothing publishes after close
+		assert.Equal(t, IdleSnapshot(), fx.Snapshot(), "closed without a verdict: the run is over")
 		fx.mu.Lock()
 		fx.markLocked(dialFailedPayload("p1", 3), nil)
 		fx.mu.Unlock()
-		assert.Len(t, fx.sender.updates(), 2)
+		assert.Len(t, fx.sender.updates(), 1)
+	})
+
+	t.Run("a verdict after close carries the window it held", func(t *testing.T) {
+		// given: a failed app.Start closes the tracker before Fail reports
+		fx := newFixture(t, pb.EventAccountRecovery_WarmStart)
+		fx.init(t)
+		fx.mu.Lock()
+		fx.markLocked(dialFailedPayload("p1", 1), &coalesceKey{kind: "dialFailed", id: "p1"})
+		fx.mu.Unlock()
+		require.NoError(t, fx.Close(context.Background()))
+
+		// when
+		fx.Fail(errors.New("can't run service"))
+
+		// then
+		ups := fx.sender.updates()
+		require.Len(t, ups, 3)
+		assert.Equal(t, int32(1), ups[1].Payload.(*pb.EventAccountRecoveryUpdatePayloadOfDialFailed).DialFailed.Attempt)
+		assert.Equal(t, pb.EventAccountRecovery_Failed, ups[2].Payload.(*pb.EventAccountRecoveryUpdatePayloadOfPhaseChanged).PhaseChanged.Phase)
+		assert.True(t, fx.Snapshot().Done)
 	})
 }
 
@@ -332,6 +385,20 @@ func TestTracker_SessionHook(t *testing.T) {
 		require.NoError(t, fx.sendSnapshotToSession(session.NewContext(session.WithSession("token"))))
 
 		// then
+		assert.Empty(t, fx.sender.sessions["token"])
+	})
+
+	t.Run("no snapshot for a run that ended without a verdict", func(t *testing.T) {
+		// given: a cancelled start, closed by the app's unwind
+		fx := newFixture(t, pb.EventAccountRecovery_ColdRecovery)
+		fx.init(t)
+		require.NoError(t, fx.Close(context.Background()))
+		fx.Fail(context.Canceled)
+
+		// when: a session attaches later
+		fx.hooks.RunHooks(session.NewContext(session.WithSession("token")))
+
+		// then: it is not told about a run that is over
 		assert.Empty(t, fx.sender.sessions["token"])
 	})
 }

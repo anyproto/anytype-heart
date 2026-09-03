@@ -44,8 +44,13 @@ type Service struct {
 	traceRecorder    *traceRecorder
 	migrationManager *migrationManager
 
-	appAccountStartInProcessCancel      context.CancelFunc
-	appAccountStartInProcessCancelMutex sync.Mutex
+	// starting is the in-flight account start, nil when there is none. It is
+	// published before the start waits for s.lock, so AccountStop can cancel
+	// it without the lock, and guarded by startMu — which is only ever taken
+	// alone or under s.lock (by a start retracting itself), never the other
+	// way round. See app_start.go.
+	startMu  sync.Mutex
+	starting *startRun
 }
 
 func New() *Service {
@@ -72,7 +77,10 @@ func (s *Service) requireClientWithVersion() {
 	}
 }
 
+// Stop is process shutdown: a start in flight is cancelled rather than waited
+// for, and the lock is then taken behind its unwind.
 func (s *Service) Stop() error {
+	s.cancelStart()
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	return s.stop()

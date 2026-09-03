@@ -36,11 +36,17 @@ Rpc.Account.RecoveryState.Request {}  ->  Response { snapshot: Event.Account.Rec
 **`AccountRecoveryState` is total.** Call it whenever you like — before `AccountSelect`, racing
 it, during it, or long after — and you always get a snapshot and never an error:
 
-- **`snapshot.runId == ""`**: no recovery run has begun in this process. `phase` is
-  `NotStarted`. Ignore the rest of the payload and render nothing.
+- **`snapshot.runId == ""`**: no recovery run is in progress and none has left a verdict —
+  either none has begun in this process, or the last one ended without a verdict (its
+  `AccountSelect` was cancelled by `AccountStop`, or the account was stopped before `Done`).
+  `phase` is `NotStarted`. Ignore the rest of the payload and render nothing.
 - **otherwise**: this is the state of the current (or last) run. Apply subsequent events with the
   same `runId` and `id > snapshot.lastEventId`. A finished run keeps reporting itself
   (`done = true`) until the next `AccountSelect` starts a new one.
+
+A run that ends without a verdict emits nothing to say so: the client that stopped it learns it
+from its own `AccountStop` / `AccountSelect` responses, and a client attaching later sees the idle
+snapshot. Reset your state on an empty `runId` and you are covered in both cases.
 
 The RPC is lock-free with respect to `AccountSelect`, so it answers immediately while that RPC
 blocks. `ACCOUNT_IS_NOT_RUNNING` exists in the response enum for wire compatibility only; it is
@@ -54,9 +60,11 @@ hook's snapshot arrives late, see §2.1), and recovering from an `id` gap (§3).
 ### 2.1 Snapshot on attach
 
 Every new `ListenSessionEvents` session receives one `Update` whose payload is `snapshot` and whose
-`id` equals `snapshot.lastEventId`. Treat it exactly like the RPC result. It is an optimization:
-never wait for it. If the session attaches while `AccountSelect` is still running, the hook fires
-only once `AccountSelect` returns (it runs behind the same lock) — call the RPC instead.
+`id` equals `snapshot.lastEventId` — unless the last run ended without a verdict (see §2), in
+which case nothing is sent: there is no run to report. Treat it exactly like the RPC result. It is
+an optimization: never wait for it. If the session attaches while `AccountSelect` is still
+running, the hook fires only once `AccountSelect` returns (it runs behind the same lock) — call
+the RPC instead.
 
 ---
 

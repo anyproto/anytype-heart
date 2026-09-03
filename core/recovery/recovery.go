@@ -18,6 +18,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"sync"
 	"time"
 
@@ -127,13 +128,19 @@ func (t *Tracker) resetLocked() {
 // failed. It is the run's terminal, so it publishes even after Close — a
 // failed app.Start closes the components it initialised before returning the
 // error — and publishes Started first when Init never ran. A cancelled start
-// (context.Canceled) is a deliberate stop, not a failure, and ends the run
-// without a terminal.
+// (context.Canceled) is a deliberate stop, not a failure: it has no verdict
+// to publish, so the run is closed instead and reads idle from here on.
 func (t *Tracker) Fail(err error) {
 	defer containTelemetry("fail")
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if !t.begun || t.terminalLocked() {
+		return
+	}
+	if errors.Is(err, context.Canceled) {
+		// app.Start's unwind closes the tracker itself when the failure came
+		// after its Init; this covers a cancel that struck before it
+		t.closeLocked()
 		return
 	}
 	info := classifyAccount(err)
@@ -191,43 +198,48 @@ func (t *Tracker) Name() string { return CName }
 
 func (t *Tracker) Run(_ context.Context) error { return nil }
 
-// Close flushes whatever the coalescing window still holds and silences the
-// run. A run closed before its terminal keeps its last phase in the snapshot;
-// only Fail may still publish after this.
+// Close silences the run. Only Fail may still publish after it — a failed
+// app.Start closes the components it initialised before returning the error —
+// and its verdict carries whatever the coalescing window still holds. A run
+// closed without a verdict is over and reads idle; the levels its window held
+// are dropped with it, so the stream says nothing more about a run the
+// snapshot no longer reports.
 func (t *Tracker) Close(_ context.Context) error {
 	defer containTelemetry("close")
 	t.mu.Lock()
 	defer t.mu.Unlock()
+	t.closeLocked()
+	return nil
+}
+
+func (t *Tracker) closeLocked() {
 	if t.timer != nil {
 		t.timer.Stop()
 		t.timer = nil
 	}
 	t.stopOutageTimerLocked()
-	if t.run.started && !t.run.closed {
-		t.publishLocked(nil)
-	}
 	t.run.closed = true
-	return nil
 }
 
 // Snapshot is the pull half: the same builder the push side uses over the same
-// state. It is total: before the first Begin it is the idle snapshot, and a
-// closed or terminal run keeps reporting itself until the next Begin — so a
-// client can call the RPC at any moment, in any order relative to
-// AccountSelect, and always get an answer.
+// state. It is total: before the first Begin it is the idle snapshot, a run in
+// progress or ended with a verdict reports itself until the next Begin, and a
+// run that ended without one reads idle again — so a client can call the RPC
+// at any moment, in any order relative to AccountSelect, always gets an
+// answer, and never takes a dead run for a live one.
 func (t *Tracker) Snapshot() *pb.EventAccountRecoverySnapshot {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if !t.begun {
+	if !t.begun || t.abandonedLocked() {
 		return IdleSnapshot()
 	}
 	return t.buildSnapshotLocked()
 }
 
-// IdleSnapshot is the answer when no recovery run has begun in this process:
-// an empty runId is the discriminator clients check, and the phase is the
-// explicit NotStarted rather than the zero value, which would read as
-// LookingForPeers before anything is happening.
+// IdleSnapshot is the answer when no recovery run is in progress and none has
+// left a verdict: an empty runId is the discriminator clients check, and the
+// phase is the explicit NotStarted rather than the zero value, which would
+// read as LookingForPeers before anything is happening.
 func IdleSnapshot() *pb.EventAccountRecoverySnapshot {
 	return &pb.EventAccountRecoverySnapshot{
 		Phase:      pb.EventAccountRecovery_NotStarted,
@@ -243,7 +255,7 @@ func (t *Tracker) sendSnapshotToSession(ctx session.Context) error {
 	defer containTelemetry("session hook")
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if !t.begun || !t.run.started || t.sender == nil {
+	if !t.begun || !t.run.started || t.abandonedLocked() || t.sender == nil {
 		return nil
 	}
 	update := &pb.EventAccountRecoveryUpdate{
@@ -271,6 +283,14 @@ func (t *Tracker) publishStartedLocked() {
 
 func (t *Tracker) terminalLocked() bool {
 	return t.phase.finished || t.phase.failed != nil
+}
+
+// abandonedLocked reports a run that ended without a verdict: its start was
+// cancelled, or the app was closed before Done. There is nothing left to say
+// about it, and presenting it as live would make a client that attaches
+// later — and pulls the snapshot — arm a Cancel for a start that is over.
+func (t *Tracker) abandonedLocked() bool {
+	return t.run.closed && !t.terminalLocked()
 }
 
 func newRunId() string {
