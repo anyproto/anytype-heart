@@ -18601,7 +18601,10 @@ func (m *RpcAccountPreloadRemainingSpacesResponseError) GetDescription() string 
 // RecoveryState serves the folded account start-up status
 // (Event.Account.Recovery.Snapshot) from the same state the
 // Event.Account.Recovery.Update stream is emitted from. Lock-free with
-// respect to AccountSelect, so it can be called while that RPC blocks.
+// respect to AccountSelect, so it can be called while that RPC blocks,
+// and total: call it whenever you like. Before any run it returns the
+// idle snapshot (runId empty, phase NotStarted); ACCOUNT_IS_NOT_RUNNING
+// is kept for wire compatibility and is never returned.
 type RpcAccountRecoveryState struct {
 }
 

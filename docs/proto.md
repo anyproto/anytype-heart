@@ -4727,7 +4727,10 @@ Middleware-to-front-end response to an account recover request, that can contain
 RecoveryState serves the folded account start-up status
 (Event.Account.Recovery.Snapshot) from the same state the
 Event.Account.Recovery.Update stream is emitted from. Lock-free with
-respect to AccountSelect, so it can be called while that RPC blocks.
+respect to AccountSelect, so it can be called while that RPC blocks,
+and total: call it whenever you like. Before any run it returns the
+idle snapshot (runId empty, phase NotStarted); ACCOUNT_IS_NOT_RUNNING
+is kept for wire compatibility and is never returned.
 
 
 
@@ -30678,12 +30681,13 @@ answer is known (the peer was dropped from the peer store).
 
 ### Event.Account.Recovery.Snapshot
 Folded state. Served by Rpc.Account.RecoveryState and pushed once to
-each new session.
+each new session. The RPC is total: before any run it returns the
+idle snapshot (runId empty, phase NotStarted) rather than an error.
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| runId | [string](#string) |  |  |
+| runId | [string](#string) |  | empty: no run has begun, ignore the rest |
 | lastEventId | [int64](#int64) |  |  |
 | mode | [Event.Account.Recovery.Mode](#anytype-Event-Account-Recovery-Mode) |  |  |
 | networkId | [string](#string) |  |  |
@@ -34417,6 +34421,7 @@ clients must accept any forward jump.
 | Done | 4 |  |
 | WaitingForNetwork | 5 | calm, auto-retrying resting state; not an error screen |
 | Failed | 6 | account-level fatal; AccountSelect itself failed |
+| NotStarted | 7 | NotStarted is the idle snapshot&#39;s phase: no recovery run has begun in this process (Snapshot.runId is empty). A new number on purpose: the zero value would read as LookingForPeers before anything happens. |
 
 
 

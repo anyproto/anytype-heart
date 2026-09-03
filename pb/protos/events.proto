@@ -277,6 +277,10 @@ message Event {
         Done = 4;
         WaitingForNetwork = 5; // calm, auto-retrying resting state; not an error screen
         Failed = 6;            // account-level fatal; AccountSelect itself failed
+        // NotStarted is the idle snapshot's phase: no recovery run has begun
+        // in this process (Snapshot.runId is empty). A new number on purpose:
+        // the zero value would read as LookingForPeers before anything happens.
+        NotStarted = 7;
       }
       enum ErrorClass {
         None = 0;
@@ -467,9 +471,10 @@ message Event {
       }
 
       // Folded state. Served by Rpc.Account.RecoveryState and pushed once to
-      // each new session.
+      // each new session. The RPC is total: before any run it returns the
+      // idle snapshot (runId empty, phase NotStarted) rather than an error.
       message Snapshot {
-        string runId = 1;
+        string runId = 1; // empty: no run has begun, ignore the rest
         int64 lastEventId = 2;
         Mode mode = 3;
         string networkId = 4;

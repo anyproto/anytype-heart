@@ -15,12 +15,12 @@ import (
 )
 
 func TestTracker_Begin(t *testing.T) {
-	t.Run("snapshot is nil before the first begin", func(t *testing.T) {
+	t.Run("snapshot is idle before the first begin", func(t *testing.T) {
 		// given
 		tr := newTracker(&fakeClock{now: fixtureEpoch}, coalesceWindow)
 
 		// then
-		assert.Nil(t, tr.Snapshot())
+		assert.Equal(t, IdleSnapshot(), tr.Snapshot())
 	})
 
 	t.Run("started is id 1 and carries the mode", func(t *testing.T) {
@@ -191,7 +191,83 @@ func TestTracker_Fail(t *testing.T) {
 		tr.Fail(errors.New("boom"))
 
 		// then
-		assert.Nil(t, tr.Snapshot())
+		assert.Equal(t, IdleSnapshot(), tr.Snapshot())
+	})
+}
+
+func TestTracker_Snapshot(t *testing.T) {
+	t.Run("idle before any run: empty runId, NotStarted, nothing else, no error path", func(t *testing.T) {
+		// given
+		tr := newTracker(&fakeClock{now: fixtureEpoch}, coalesceWindow)
+
+		// when
+		got := tr.Snapshot()
+
+		// then
+		want := &pb.EventAccountRecoverySnapshot{
+			RunId:      "",
+			Phase:      pb.EventAccountRecovery_NotStarted,
+			Mode:       pb.EventAccountRecovery_ModeUnknown,
+			LocalPeers: pb.EventAccountRecovery_NoLocalPeers,
+		}
+		assert.Equal(t, want, got)
+		assert.Equal(t, int64(0), got.LastEventId)
+		assert.False(t, got.Done)
+		assert.Empty(t, got.Peers)
+		assert.Empty(t, got.Spaces)
+		assert.Equal(t, int64(0), got.StartedAtMs, "no fake epoch leaks into the idle answer")
+	})
+
+	t.Run("becomes a real snapshot at Begin, before Init", func(t *testing.T) {
+		// given
+		fx := newFixture(t, pb.EventAccountRecovery_ColdRecovery)
+
+		// when
+		got := fx.Snapshot()
+
+		// then
+		assert.NotEmpty(t, got.RunId)
+		assert.Equal(t, pb.EventAccountRecovery_LookingForPeers, got.Phase)
+		assert.Equal(t, pb.EventAccountRecovery_ColdRecovery, got.Mode)
+		assert.Equal(t, int64(0), got.LastEventId, "Started is published from Init")
+		assert.Equal(t, fixtureEpoch.UnixMilli(), got.StartedAtMs)
+	})
+
+	t.Run("a terminal, closed run keeps reporting itself rather than idle", func(t *testing.T) {
+		// given
+		fx := newFixture(t, pb.EventAccountRecovery_WarmStart)
+		fx.init(t)
+		fx.Fail(errors.New("boom"))
+		require.NoError(t, fx.Close(context.Background()))
+		runId := fx.Snapshot().RunId
+
+		// when
+		got := fx.Snapshot()
+
+		// then
+		assert.Equal(t, runId, got.RunId)
+		assert.True(t, got.Done)
+		assert.Equal(t, pb.EventAccountRecovery_Failed, got.Phase)
+		assert.Equal(t, int64(2), got.LastEventId)
+		assert.NotEqual(t, IdleSnapshot(), got)
+	})
+
+	t.Run("the next Begin starts a new run, never idle in between", func(t *testing.T) {
+		// given
+		fx := newFixture(t, pb.EventAccountRecovery_WarmStart)
+		fx.init(t)
+		fx.Fail(errors.New("boom"))
+		first := fx.Snapshot().RunId
+
+		// when
+		fx.Begin(Run{Mode: pb.EventAccountRecovery_ColdRecovery, Sender: fx.sender})
+
+		// then
+		got := fx.Snapshot()
+		assert.NotEqual(t, first, got.RunId)
+		assert.NotEmpty(t, got.RunId)
+		assert.False(t, got.Done)
+		assert.Equal(t, pb.EventAccountRecovery_LookingForPeers, got.Phase)
 	})
 }
 

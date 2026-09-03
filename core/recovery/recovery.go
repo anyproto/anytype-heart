@@ -211,14 +211,29 @@ func (t *Tracker) Close(_ context.Context) error {
 }
 
 // Snapshot is the pull half: the same builder the push side uses over the same
-// state. Nil until the first Begin.
+// state. It is total: before the first Begin it is the idle snapshot, and a
+// closed or terminal run keeps reporting itself until the next Begin — so a
+// client can call the RPC at any moment, in any order relative to
+// AccountSelect, and always get an answer.
 func (t *Tracker) Snapshot() *pb.EventAccountRecoverySnapshot {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if !t.begun {
-		return nil
+		return IdleSnapshot()
 	}
 	return t.buildSnapshotLocked()
+}
+
+// IdleSnapshot is the answer when no recovery run has begun in this process:
+// an empty runId is the discriminator clients check, and the phase is the
+// explicit NotStarted rather than the zero value, which would read as
+// LookingForPeers before anything is happening.
+func IdleSnapshot() *pb.EventAccountRecoverySnapshot {
+	return &pb.EventAccountRecoverySnapshot{
+		Phase:      pb.EventAccountRecovery_NotStarted,
+		Mode:       pb.EventAccountRecovery_ModeUnknown,
+		LocalPeers: pb.EventAccountRecovery_NoLocalPeers,
+	}
 }
 
 // sendSnapshotToSession is the session hook: snapshot-on-subscribe, so a UI

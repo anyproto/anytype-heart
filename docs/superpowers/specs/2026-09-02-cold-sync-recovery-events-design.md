@@ -266,9 +266,12 @@ anyproto `protoc`, `make setup-protoc`). Regenerates `pb/*.pb.go`, `pb/service/*
 `AccountRecoveryState` following the `AccountPreloadRemainingSpaces` shape (`mapErrorCode` +
 `errToCode(application.ErrApplicationIsNotRunning, ..._ACCOUNT_IS_NOT_RUNNING)`).
 
-Client contract, stated once: on attach call `AccountRecoveryState` (or wait for the session-hook
-`Snapshot`), then apply every `Update` with the same `runId` and `id == lastApplied+1`; on a gap
-or a new `runId`, re-pull. Every payload is a **level**, never a delta (`attempt`,
+Client contract, stated once: `AccountRecoveryState` is **total** — callable at any moment, in any
+order relative to `AccountSelect`, never an error. Before any run it returns the idle snapshot
+(`runId == ""`, `phase == NotStarted`, a phase value added in phase 8 so the zero value cannot
+read as `LookingForPeers`); a finished run keeps reporting itself until the next `Begin`. On
+attach call it (or wait for the session-hook `Snapshot`), then apply every `Update` with the same
+`runId` and `id == lastApplied+1`; on a gap or a new `runId`, re-pull. Every payload is a **level**, never a delta (`attempt`,
 `openConnections` are absolute), so re-applying after a re-pull is idempotent.
 
 `Finished` is the app telling the user "we checked, and there are no more spaces to download —
@@ -645,6 +648,14 @@ producer is a no-op, so the snapshot is frozen at `Done` and cannot drift from t
 race — a diff before the created space's view was delivered would have finished the run on the
 tech space alone — is closed in phase 6 by the gate's local half (`OnSpaceViewsInitial`, above);
 `TestTracker_ViewGate/the_gate_waits_for_the_watcher's_first_pass` fails without it.
+
+**Execution notes (phase 8).** User-reported API flaw: the RPC returned
+`ACCOUNT_IS_NOT_RUNNING` before `AccountSelect` and in the race between the RPC and
+`startNewApp` reaching `Begin` — an ordering a client cannot express. `Tracker.Snapshot()` is now
+total (`IdleSnapshot()` before the first `Begin`; a closed or terminal run still reports itself,
+so `Fail`-after-`Close` is untouched), `Phase.NotStarted = 7` marks the idle answer, and the
+handler never errors — the `ACCOUNT_IS_NOT_RUNNING` code stays in the proto for compatibility
+and is unreachable.
 
 **Execution notes (phase 7).** Found by running a desktop + iOS pair on one LAN: the stream
 showed `PeerConnected` for a LAN peer while `P2PStatusUpdate` said `devicesCounter: 0` — both

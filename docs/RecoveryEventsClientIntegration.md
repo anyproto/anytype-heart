@@ -26,28 +26,37 @@ Engineering reference: [the design spec](superpowers/specs/2026-09-02-cold-sync-
 
 ---
 
-## 2. The two surfaces and when each is needed
+## 2. The two surfaces — there is no ordering to get right
 
 ```
 Event.Account.Recovery.Update { runId, id, timestampMs, oneof payload { ... } }
 Rpc.Account.RecoveryState.Request {}  ->  Response { snapshot: Event.Account.Recovery.Snapshot }
 ```
 
-| Situation | What to do |
-|---|---|
-| Session already listening when `AccountSelect` is called (the normal flow) | Just apply events. `Started` arrives as `id = 1`. |
-| Session attaches while `AccountSelect` is still running | Call `AccountRecoveryState` once. The session-hook snapshot (§2.1) arrives only after `AccountSelect` returns, because the hook runs behind the same lock. |
-| Session attaches after the run finished | Call `AccountRecoveryState`; `snapshot.done = true`. |
-| An `id` gap, or an unexpected `runId` (§3) | Call `AccountRecoveryState`, replace local state, continue from `snapshot.lastEventId`. |
+**`AccountRecoveryState` is total.** Call it whenever you like — before `AccountSelect`, racing
+it, during it, or long after — and you always get a snapshot and never an error:
 
-`AccountRecoveryState` is lock-free with respect to `AccountSelect`: it answers immediately while
-that RPC blocks. It returns `ACCOUNT_IS_NOT_RUNNING` only before the first start of the process.
+- **`snapshot.runId == ""`**: no recovery run has begun in this process. `phase` is
+  `NotStarted`. Ignore the rest of the payload and render nothing.
+- **otherwise**: this is the state of the current (or last) run. Apply subsequent events with the
+  same `runId` and `id > snapshot.lastEventId`. A finished run keeps reporting itself
+  (`done = true`) until the next `AccountSelect` starts a new one.
+
+The RPC is lock-free with respect to `AccountSelect`, so it answers immediately while that RPC
+blocks. `ACCOUNT_IS_NOT_RUNNING` exists in the response enum for wire compatibility only; it is
+never returned.
+
+**A client that simply subscribes never needs the RPC** in the normal flow: it sees `Started` as
+`id = 1` and, on every new `ListenSessionEvents` session, receives a snapshot from the session
+hook (§2.1). The RPC is for two cases only: attaching while a run is already in progress (the
+hook's snapshot arrives late, see §2.1), and recovering from an `id` gap (§3).
 
 ### 2.1 Snapshot on attach
 
 Every new `ListenSessionEvents` session receives one `Update` whose payload is `snapshot` and whose
 `id` equals `snapshot.lastEventId`. Treat it exactly like the RPC result. It is an optimization:
-never wait for it.
+never wait for it. If the session attaches while `AccountSelect` is still running, the hook fires
+only once `AccountSelect` returns (it runs behind the same lock) — call the RPC instead.
 
 ---
 
@@ -98,7 +107,8 @@ Rules:
 ## 5. Forward compatibility
 
 - **Ignore unknown enum values** in every enum (`Phase`, `ErrorClass`, `SpaceState`, `PeerKind`, …).
-  Render an unknown phase as the last known one.
+  Render an unknown phase as the last known one. `Phase.NotStarted` appears only in the idle
+  snapshot (`runId == ""`), never on the event stream.
 - **Ignore unknown payload kinds** in `Update.payload`. New kinds are not a breaking change.
 - `Mode.ModeUnknown` is never emitted; treat it as "unknown", never as a cold recovery.
 - `transport` and `nodeTypes` are strings on purpose (`quic`, `yamux`, …; `tree`, `coordinator`,

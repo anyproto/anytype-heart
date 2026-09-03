@@ -176,7 +176,7 @@ func TestTracker_PeerFolding(t *testing.T) {
 		// then
 		assert.Len(t, fx.sender.updates(), 1)
 		assert.Empty(t, fx.Snapshot().Peers)
-		assert.Nil(t, fresh.Snapshot())
+		assert.Equal(t, IdleSnapshot(), fresh.Snapshot())
 	})
 
 	t.Run("hooks are registered at init", func(t *testing.T) {

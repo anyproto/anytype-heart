@@ -1,20 +1,21 @@
 package application
 
 import (
+	"github.com/anyproto/anytype-heart/core/recovery"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
 // AccountRecoveryState serves the folded account start-up status
-// (Event.Account.Recovery.Snapshot). It must stay lock-free with respect to
-// AccountSelect, which holds s.lock for its whole duration: the snapshot is
-// most valuable exactly while that RPC blocks.
+// (Event.Account.Recovery.Snapshot). It is total and lock-free with respect
+// to AccountSelect, which holds s.lock for its whole duration: a client may
+// call it at any moment — before AccountSelect, racing it, or long after — and
+// always gets an answer. Before any run it is the idle snapshot (empty runId,
+// phase NotStarted); there is no ordering a client has to get right, and no
+// error a correctly behaving client can provoke.
 func (s *Service) AccountRecoveryState() (*pb.EventAccountRecoverySnapshot, error) {
 	if s.recovery == nil {
-		return nil, ErrApplicationIsNotRunning
+		// only a zero-value Service (tests); New() always sets the tracker
+		return recovery.IdleSnapshot(), nil
 	}
-	snapshot := s.recovery.Snapshot()
-	if snapshot == nil {
-		return nil, ErrApplicationIsNotRunning
-	}
-	return snapshot, nil
+	return s.recovery.Snapshot(), nil
 }
