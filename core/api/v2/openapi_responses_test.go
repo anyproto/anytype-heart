@@ -15,6 +15,10 @@ import (
 type responseContractDocument struct {
 	Components struct {
 		Responses map[string]responseContractResponse `json:"responses" yaml:"responses"`
+		Schemas   map[string]struct {
+			Required   []string       `json:"required" yaml:"required"`
+			Properties map[string]any `json:"properties" yaml:"properties"`
+		} `json:"schemas" yaml:"schemas"`
 	} `json:"components" yaml:"components"`
 	Paths map[string]map[string]responseContractOperation `json:"paths" yaml:"paths"`
 }
@@ -29,6 +33,7 @@ type responseContractResponse struct {
 	Description string `json:"description" yaml:"description"`
 	Content     map[string]struct {
 		Schema struct {
+			Ref   string `json:"$ref" yaml:"$ref"`
 			AnyOf []struct {
 				Ref string `json:"$ref" yaml:"$ref"`
 			} `json:"anyOf" yaml:"anyOf"`
@@ -88,10 +93,55 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	assert.Equal(t, responseStatusInventory(jsonOperations), responseStatusInventory(yamlOperations),
 		"the two checked-in OpenAPI forms must declare the same operation/status pairs")
 
-	for _, component := range []string{"BadRequest", "Unauthorized", "Forbidden", "Conflict", "RequestTooLarge", "RateLimited"} {
+	// Every space-scoped operation resolves the space FIRST, so a well-shaped
+	// id for a space that does not exist is a 404 on all of them. Asserting
+	// the RULE rather than a list is what keeps a route added later honest:
+	// the earlier sweep declared the router-level policies and left 404 to
+	// per-handler annotations, so it reached only 30 of 37 and nobody noticed
+	// that create_object could answer an undeclared status.
+	for path, pathItem := range jsonDoc.Paths {
+		if !strings.Contains(path, "{space_id}") {
+			continue
+		}
+		for method, operation := range pathItem {
+			if operation.OperationId == "" {
+				continue
+			}
+			assert.Contains(t, operation.Responses, "404",
+				"%s %s resolves a space, so it can answer 404", strings.ToUpper(method), path)
+		}
+	}
+
+	for _, component := range []string{"BadRequest", "Unauthorized", "Forbidden", "Conflict", "NotFound", "RequestTooLarge", "RateLimited"} {
 		assert.Contains(t, jsonDoc.Components.Responses, component)
 		assert.Contains(t, yamlDoc.Components.Responses, component)
 	}
+	assert.Equal(t, "#/components/schemas/Error",
+		jsonDoc.Components.Responses["NotFound"].Content["application/json"].Schema.Ref,
+		"the derived 404 answers in the C6 envelope")
+
+	// swag emits no schema-level `required`, so the whole envelope read as
+	// optional — including the members that are always on the wire. A
+	// generated client then types them optional and a consumer branches on a
+	// field that cannot be absent (§8.53). These are injected by
+	// scripts/fix_openapi_v2.py and nothing else would notice if they stopped.
+	for name, want := range map[string][]string{
+		"Error":             {"status", "code", "message", "issues"},
+		"Issue":             {"message"},
+		"UnauthorizedError": {"object", "status", "code", "message"},
+		"ForbiddenError":    {"object", "status", "code", "message"},
+	} {
+		for form, doc := range map[string]responseContractDocument{"json": jsonDoc, "yaml": yamlDoc} {
+			schema, ok := doc.Components.Schemas[name]
+			require.True(t, ok, "%s: %s schema is missing", form, name)
+			assert.ElementsMatch(t, want, schema.Required, "%s: %s.required", form, name)
+			for _, field := range schema.Required {
+				assert.Contains(t, schema.Properties, field,
+					"%s: %s.required names a property the schema does not have", form, name)
+			}
+		}
+	}
+
 	forbiddenAlternatives := jsonDoc.Components.Responses["Forbidden"].Content["application/json"].Schema.AnyOf
 	require.Len(t, forbiddenAlternatives, 2, "403 accepts either real envelope; oneOf is invalid because the schemas overlap")
 	assert.Equal(t, "#/components/schemas/ForbiddenError", forbiddenAlternatives[0].Ref)
@@ -101,7 +151,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	for _, operation := range jsonOperations {
 		pairCount += len(operation.Responses)
 	}
-	assert.Equal(t, 277, pairCount, "the checked-in response inventory changes only deliberately")
+	assert.Equal(t, 286, pairCount, "the checked-in response inventory changes only deliberately")
 
 	dryRunCreates := stringSet(
 		"add_chat_message", "create_chat", "create_collection", "create_object", "create_property",

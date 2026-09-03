@@ -98,6 +98,10 @@ def response_components() -> dict:
             "description": "Idempotency-Key conflict, or an operation-specific concurrency conflict",
             "content": {"application/json": {"schema": v2_error}},
         },
+        "NotFound": {
+            "description": "The space does not exist, or is not available (deleted, left, or still joining)",
+            "content": {"application/json": {"schema": v2_error}},
+        },
         "RequestTooLarge": {
             "description": "Request body exceeds this operation's documented cap",
             "content": {"application/json": {"schema": v2_error}},
@@ -118,22 +122,33 @@ def response_components() -> dict:
 
 
 def operations(doc: dict):
-    for path_item in doc["paths"].values():
+    for path, path_item in doc["paths"].items():
         for operation in path_item.values():
             if isinstance(operation, dict) and "operationId" in operation:
-                yield operation
+                yield path, operation
 
 
 def apply_response_policies(doc: dict) -> None:
     doc["components"]["responses"] = response_components()
     seen = set()
-    for operation in operations(doc):
+    for path, operation in operations(doc):
         operation_id = operation["operationId"]
         seen.add(operation_id)
         responses = operation.setdefault("responses", {})
         responses.setdefault("400", response_ref("BadRequest"))
         responses["401"] = response_ref("Unauthorized")
         responses["403"] = response_ref("Forbidden")
+        # Every space-scoped operation resolves the space before any success
+        # path — usually ensureSpace/ensureSpaceWrite as the opening
+        # statement, sometimes a lookup that answers the same 404 (get_space,
+        # update_space) — so a well-shaped id for a space that does not exist
+        # is a 404 on all of them. Deriving that from the path rather than a
+        # hand list is what keeps a route added later correct by
+        # construction: the earlier sweep declared the router-level policies
+        # and left 404 to per-handler annotations, which is why it reached
+        # only 28 of 37.
+        if "{space_id}" in path:
+            responses.setdefault("404", response_ref("NotFound"))
         if operation_id in IDEMPOTENT_OPERATIONS:
             responses["409"] = response_ref("Conflict")
         if operation_id in REQUEST_BODY_LIMITED_OPERATIONS:
@@ -150,6 +165,51 @@ def apply_response_policies(doc: dict) -> None:
     missing = governed - seen
     if missing:
         raise ValueError(f"response policy names missing operations: {sorted(missing)}")
+
+
+# swag emits no schema-level `required` for response models, so every member
+# of the error envelope reads as optional — including the three that are
+# always present. A generated client then types the whole envelope optional
+# and a consumer branches on fields that cannot be absent. C6 promises ONE
+# error shape; the machine-readable document has to say the same thing.
+SCHEMA_REQUIRED = {
+    "Error": ["status", "code", "message", "issues"],
+    "Issue": ["message"],
+    # the shared v1 envelope the pre-handler refusals answer in (§8.9) sets
+    # all four members too, so the same argument applies to it
+    "UnauthorizedError": ["object", "status", "code", "message"],
+    "ForbiddenError": ["object", "status", "code", "message"],
+}
+
+
+def apply_schema_required(doc: dict) -> None:
+    for name, required in SCHEMA_REQUIRED.items():
+        schema = doc["components"]["schemas"][name]
+        # a renamed json tag would otherwise leave a required name with no
+        # matching property — the same silent drift the three operation-name
+        # sets above are checked against
+        unknown = [field for field in required if field not in schema.get("properties", {})]
+        if unknown:
+            raise ValueError(f"{name}.required names absent properties: {unknown}")
+        schema["required"] = list(required)
+
+
+def apply_yaml_schema_required(lines: list[str]) -> list[str]:
+    # bound the search to components.schemas: response components are indented
+    # the same, so an unbounded index would let a reusable response named
+    # Error capture the splice
+    schemas = lines.index("  schemas:\n", lines.index("components:\n") + 1)
+    for name, required in SCHEMA_REQUIRED.items():
+        start = lines.index(f"    {name}:\n", schemas)
+        end = next((i for i in range(start + 1, len(lines))
+                    if lines[i].strip() and not lines[i].startswith("     ")), len(lines))
+        if "      required:\n" in lines[start:end]:
+            continue  # already applied; every other step here re-runs cleanly
+        # keys are emitted alphabetically, so `required` sits between
+        # `properties` and the schema's own closing `type: object`
+        close = next(i for i in range(start + 1, end) if lines[i] == "      type: object\n")
+        lines[close:close] = ["      required:\n"] + [f"      - {field}\n" for field in required]
+    return lines
 
 
 def upload_request_body():
@@ -213,6 +273,7 @@ def fix_json(path: pathlib.Path) -> None:
     doc["components"]["securitySchemes"]["bearerauth"].pop("bearerFormat", None)
     doc["paths"]["/v2/spaces/{space_id}/files"]["post"]["requestBody"] = upload_request_body()
     apply_response_policies(doc)
+    apply_schema_required(doc)
     path.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n")
 
 
@@ -243,6 +304,12 @@ RESPONSES_YAML = """  responses:
           schema:
             $ref: '#/components/schemas/Error'
       description: Idempotency-Key conflict, or an operation-specific concurrency conflict
+    NotFound:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: The space does not exist, or is not available (deleted, left, or still joining)
     RequestTooLarge:
       content:
         application/json:
@@ -300,6 +367,13 @@ def apply_yaml_response_policies(lines: list[str]) -> list[str]:
     if missing:
         raise ValueError(f"response policy names missing YAML operations: {sorted(missing)}")
 
+    def path_of(operation_line: int) -> str:
+        for i in range(operation_line, -1, -1):
+            match = re.match(r"^  (/\S*):\s*$", lines[i].rstrip("\n"))
+            if match:
+                return match.group(1)
+        raise ValueError("operation outside any path item")
+
     # Work bottom-up so replacing one response section cannot invalidate the
     # indexes of operations that remain to be processed.
     for operation_id in reversed(operation_ids):
@@ -313,6 +387,8 @@ def apply_yaml_response_policies(lines: list[str]) -> list[str]:
         blocks.setdefault("400", yaml_response_ref("400", "BadRequest"))
         blocks["401"] = yaml_response_ref("401", "Unauthorized")
         blocks["403"] = yaml_response_ref("403", "Forbidden")
+        if "{space_id}" in path_of(operation_line):
+            blocks.setdefault("404", yaml_response_ref("404", "NotFound"))
         if operation_id in IDEMPOTENT_OPERATIONS:
             blocks["409"] = yaml_response_ref("409", "Conflict")
         if operation_id in REQUEST_BODY_LIMITED_OPERATIONS:
@@ -351,6 +427,7 @@ def fix_yaml(path: pathlib.Path) -> None:
     else:
         lines[schemas:schemas] = RESPONSES_YAML.splitlines(keepends=True)
     lines = apply_yaml_response_policies(lines)
+    lines = apply_yaml_schema_required(lines)
     path.write_text("".join(lines))
 
 

@@ -137,12 +137,13 @@ func GetTypeHandler(s *v2service.Service) gin.HandlerFunc {
 // GetTypeSchemaHandler is the [build] GenerateSchema endpoint stub
 //
 //	@Summary		Get a JSON Schema for a type
-//	@Description	Not implemented. Every request answers 501.
+//	@Description	Not implemented. Every request that resolves a space answers 501.
 //	@Id				get_type_schema
 //	@Tags			Types
 //	@Produce		json
 //	@Param			space_id	path		string			true	"Space id"
 //	@Param			type		path		string			true	"Type key"
+//	@Failure		404			{object}	v2model.Error	"Space not found or unavailable"
 //	@Failure		501			{object}	v2model.Error	"Not implemented yet"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/types/{type}/schema [get]

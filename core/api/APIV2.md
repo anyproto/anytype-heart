@@ -24,7 +24,7 @@ repair loop with path-addressed errors.
 | C3 | **Compact JSON always** (no pretty-printing) — **all the way down, not just the envelope**. `anyblockjson.Marshal` returns the format's canonical byte form, which is two-space **indented** (SPEC §4), and the v2 envelope re-embeds those bytes verbatim; until Wave 0.1 every object read was therefore compact on top and pretty-printed underneath, costing a measured 16–26 %. *(Built: `encodeEnvelope` compacts each embedded value — the serving layer, so the format's canonical form and its `Export ∘ Import` byte-stability are untouched; §8.24.)* | free 38–46% (§3.6); 16–26% (TOKENS §1.1) |
 | C4 | **Two document shapes, one id axis** (revised Wave 0.2, hardened §8.26; TOKENS §1.2/§10). `?ids=compact` (**the default — the *edit* shape**): **machine-minted** block/row/column/view ids — 24-hex bson and view UUIDs, `isMintedLocalId` — relabel to their 5-char suffixes (legend-less, **lossy**); every id that could carry meaning (`dataview`, `title`, readable imported ids) keeps its full spelling and is **reserved**, so no label can alias a served id. `?ids=full` (**the *export* shape**): full ids everywhere — the **backup/export** read (§3(b)), and the read to clone from when a POST should reuse the source's real ids. Object refs are **full inline on every shape**: the `refs` legend was a measured net loss **on the measured corpus** (85–90 % of refs used once; §1.2's own model has it winning only at ≥2× reuse) and its indirection trapped write-back, so no shape serves one — but legend **resolution on input stays total** (SPEC §9a), so a document arriving with a legend still resolves. Every write channel resolves a block/view/row/column id by exact id **or unique suffix** (`matchBlockRef`), which is what makes the lossy edit shape addressable — **in payload slots as well as reference slots since §8.29**, so no channel takes an id **literally**, which is what made the compact shape a trap (§8.26). *(§8.27 claimed this was already true once PUT was gone. It was not: PATCH resolved `update_block.id`, `replace_subtree.id`, the targeting refs and the table/view refs, but handed `replace_subtree.blocks[].id`, `update_block.set.{rows,columns,views}[].id` and `set_cell.value[].id` to the format importer verbatim — reproduced as permanent id corruption on the documented read-then-echo loop.)* A payload id resolving to nothing is refused, not minted over; omitting it is how new content is authored. Never require echoing a full CID. *(Built: `Options.CompactBlockLabels` composed by `objectReadPlan`; `Options.CompactObjectRefs` remains a format-package option no API shape sets. Wave 2 renames the two values to `?mode=edit\|full` with no change of bytes.)* **Outline exception (T7)**: the outline fixes the axis — short labels — and ignores `?ids=`. | ~24×/id, −89% id errors (§3.6); block labels −19…−22% on minted-id documents, the legend a net **loss** of 0.9–11.5% on the measured corpus (TOKENS §1.2, live-measured); id round-trip contract (R1) |
 | C5 | Minimal rows: list/search responses carry `id, name, type` + requested property values. **Never embed type objects.** `fields=` expands. | v1's N× multiplier (§2.1) |
-| C6 | Error shape everywhere: `{status, code, message, issues:[{path, message, hint}]}` — path-addressed, naming allowed values. Required codes include: `validation_failed`, `version_unsupported` (surfaces SPEC §10's "produced by a newer version" verbatim, naming both versions), `idempotency_conflict` (same key, different body), `etag_mismatch`, `ambiguous_input` (e.g. both `filter` and `filters` supplied), `forbidden` (403 — an operation the caller's identity may not perform, e.g. editing another member's chat message; added by the Phase-6 review; also the `/v2` key-scope gate's refusal of a non-JsonAPI key, which answers in the shared v1 envelope — §8.9). Error text is API surface; test it. | repair loop (§3.2, §4.6); R15 |
+| C6 | Error shape everywhere: `{status, code, message, issues:[{path, message, hint}]}` — all four ENVELOPE members are always present, `issues` empty when the refusal has no path to address, so a caller never branches on a field's absence (an issue's own `path`/`hint` stay optional); path-addressed, naming allowed values. Required codes include: `validation_failed`, `version_unsupported` (surfaces SPEC §10's "produced by a newer version" verbatim, naming both versions), `idempotency_conflict` (same key, different body), `etag_mismatch`, `ambiguous_input` (e.g. both `filter` and `filters` supplied), `forbidden` (403 — an operation the caller's identity may not perform, e.g. editing another member's chat message; added by the Phase-6 review; also the `/v2` key-scope gate's refusal of a non-JsonAPI key, which answers in the shared v1 envelope — §8.9). Error text is API surface; test it. | repair loop (§3.2, §4.6); R15 |
 | C7 | Every object read returns **`etag`** (short opaque token, ≤8 chars, derived from tree heads — NOT the object's `revision` property, which stays in `properties`) plus an `ETag` header. Mutations accept **`If-Match` header only** (the AnyBlock body has no envelope slot for it). **Advisory by default**: without `If-Match`, ops apply last-write-wins and `diff_stats` reports the outcome; with it, mismatch → 409 `etag_mismatch` carrying the current etag. Note: the etag advances on background sync, not only on agent edits — strict If-Match will 409 on sync noise; block-scoped preconditions (ops apply iff the *addressed* blocks are unchanged) are the deferred v2.x refinement. | R2; optimistic concurrency (§3.2) |
 | C8 | `Idempotency-Key` honored on all mutations (POST, PATCH, DELETE — v0.3.5/Phase 6; was POST-only) and on the data-free `POST /validate` read; replay with the same key returns the stored result; same key with a different request → 409 `idempotency_conflict`. Response always returns created ids where the operation creates them. | agent auto-retry (§3.7); R15 |
 | C9 | `?dry_run=true` on every mutation → would-be diff summary + issues, nothing committed. The response's `dry_run` echo is spelled exactly like the query parameter it answers. *(This was recorded as a C2 carve-out while C2 said camelCase; since §8.46 it is simply the rule, and the carve-out is gone.)* | highest-leverage affordance (§3.7) |
@@ -7160,3 +7160,62 @@ The empty-argument refusal now names the clearing spelling, because
 `filter: ""` is exactly what a model reaching for "remove the filter" tries
 first, and an empty string is the one value that cannot be distinguished
 from silence.
+
+### 8.53 `issues` is an array on every error, and 404 is derived from the path (2026-09-03 — as built)
+
+Two contract defects with one shape: the published document said something
+the runtime did not do.
+
+**`issues` was conditionally present.** C6 promises one error shape and the
+API description promised it unconditionally, but `Error.Issues` carried
+`omitempty`, so `not_found`, `etag_mismatch`, `idempotency_conflict`,
+`version_unsupported`, `not_implemented` and the three grant refusals came
+back as `{status, code, message}`. The documented consumer form,
+`err.issues.map(...)`, threw on exactly the codes a retry loop lives on. The
+array is now always present, empty when the refusal has no path to name.
+
+The alternative was to relax the prose instead — three lines here against
+~110 assertions in the conformance suite. It was rejected because a field
+whose PRESENCE is conditional is the worst affordance an agent-facing API
+has: a small model that sees `issues` on one refusal and not the next writes
+the unguarded access, and an error path is where it has the least budget to
+recover. `/v2/validate` had already made the identical call for the identical
+array (`ValidateResponse.issues`/`warnings` are always `[]`), so relaxing
+would have left the same array required in one response and optional in the
+envelope — worse than either uniform answer. v2 is unreleased, so the wire
+was free to move exactly once, and this was the moment.
+
+The guarantee lives in `Error.MarshalJSON`, not in the constructor. A
+constructor-only invariant is one `&Error{…}` literal away from `null`, which
+is the same crash wearing a different hat.
+
+**The document declared 404 on 28 of 37 space-scoped operations.**
+`ensureSpace`/`ensureSpaceWrite` opens every space-scoped service method
+(`get_space` and `update_space` reach the same 404 through their own
+lookup), so a well-shaped id for a space that does not exist is a 404 on all
+of them — including `create_object` and `upload_file`, which an agent calls
+constantly and where a stale space id is a likely runtime event, not a
+hypothetical. The earlier response-policy sweep (§8.11) covered the
+router-level statuses and left 404 to per-handler annotations, which is why
+it was 78% complete rather than 0 or 100.
+
+The rule is now DERIVED in `scripts/fix_openapi_v2.py`: every operation whose
+path contains `{space_id}` declares 404. A hand list would have the same gap
+again at the next route; the path already carries the fact. The 30 operations
+that had their own annotated 404 keep it — `setdefault`, not assignment — so
+per-route wording survives and only the 9 gaps take the shared component.
+`openapi_responses_test.go` asserts the rule rather than the list.
+
+**What this exposed and did not fix.** C6 says "error shape everywhere", and
+six refusals answer before v2's handlers do: authentication 401, key-scope
+403, untrusted-origin 403, the shared write rate-limit 429, an unmatched
+route (Gin's `text/plain` 404), and `gin.Recovery`'s bodyless 500. §8.9
+recorded one of them. The out-of-range page limit was a SEVENTH shape —
+`{"error": "limit must be between 1 and 1000"}`, neither envelope — and it
+runs first on the group, ahead of authentication, so it was both the only v2
+400 the schema did not describe and the only refusal an agent could not
+parse. That one is fixed here: the shared pagination middleware takes an
+`OnInvalidLimit` hook and v2 answers C6 through it, because declaring
+`required` on `Error` would otherwise have made the `BadRequest` component
+false on all 45 operations. The remaining six are the older shared envelope
+by design; the census belongs in §8.9, which still under-records it.

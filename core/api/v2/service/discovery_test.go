@@ -397,17 +397,35 @@ func TestV2GetType(t *testing.T) {
 }
 
 func TestV2GetTypeSchema(t *testing.T) {
-	// given
-	fx := newV2Fixture(t)
+	t.Run("an accessible space gets the designed 501", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
 
-	// when
-	err := fx.GetTypeSchema(context.Background(), testSpaceId, "task")
+		// when
+		err := fx.GetTypeSchema(context.Background(), testSpaceId, "task")
 
-	// then
-	var v2Err *v2model.Error
-	require.ErrorAs(t, err, &v2Err)
-	assert.Equal(t, 501, v2Err.Status)
-	assert.Equal(t, v2model.CodeNotImplemented, v2Err.Code)
+		// then
+		var v2Err *v2model.Error
+		require.ErrorAs(t, err, &v2Err)
+		assert.Equal(t, 501, v2Err.Status)
+		assert.Equal(t, v2model.CodeNotImplemented, v2Err.Code)
+	})
+
+	t.Run("an unknown space is a 404 before the 501", func(t *testing.T) {
+		// The stub resolves the space first, like every space-scoped route —
+		// ensureSpace is a resource guard, not a formality, and the 404 is the
+		// one refusal here a caller can act on. The published document said
+		// "every request answers 501" and declared no 404, which is the drift
+		// this pins: the ordering is deliberate, so the contract states it.
+		fx := newV2Fixture(t)
+
+		err := fx.GetTypeSchema(context.Background(), "bafybeimissingspaceforv2typeschema", "task")
+
+		var v2Err *v2model.Error
+		require.ErrorAs(t, err, &v2Err)
+		assert.Equal(t, 404, v2Err.Status)
+		assert.Equal(t, v2model.CodeNotFound, v2Err.Code)
+	})
 }
 
 func TestV2ListProperties(t *testing.T) {
