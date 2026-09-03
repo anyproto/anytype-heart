@@ -311,15 +311,33 @@ func TestPatchObject(t *testing.T) {
 		// and a number that cannot survive it corrupts silently, which is
 		// the one outcome a write must not have. Every channel refuses
 		// alike, and no op is applied.
+		//
+		// The issue PATH is the other half of the contract: C6 addresses a
+		// refusal at the field the caller can edit, so every channel names its
+		// own payload location. A synthesized document pointer ("/blocks/0/…")
+		// or an invented subscript ("set[0]") is unrepairable — the caller
+		// cannot find it in the request it sent.
 		const exact = "9007199254740993"
-		channels := map[string]string{
-			"set_properties":  `{"op":"set_properties","set":{"precision_number":` + exact + `}}`,
-			"update_block":    `{"op":"update_block","id":"update1","set":{"fields":{"precision_update":` + exact + `}}}`,
-			"replace_subtree": `{"op":"replace_subtree","id":"replace1","blocks":[{"id":"replace1","type":"paragraph","text":"replaced","fields":{"precision_replace":` + exact + `}}]}`,
-			"insert_blocks":   `{"op":"insert_blocks","blocks":[{"type":"paragraph","text":"inserted","fields":{"precision_insert":` + exact + `}}]}`,
-			"set_cell":        `{"op":"set_cell","table_id":"table1","row":"row1","col":"col1","value":{"type":"paragraph","text":"cell","fields":{"precision_cell":` + exact + `}}}`,
+		const unsafeNumberMessage = "number 9007199254740993 would change to " +
+			"9.007199254740992e+15 in the v1 64-bit float value model"
+		channels := map[string]struct{ op, wantPath string }{
+			"set_properties": {
+				`{"op":"set_properties","set":{"precision_number":` + exact + `}}`,
+				"ops[0].set.precision_number"},
+			"update_block": {
+				`{"op":"update_block","id":"update1","set":{"fields":{"precision_update":` + exact + `}}}`,
+				"ops[0].set.fields.precision_update"},
+			"replace_subtree": {
+				`{"op":"replace_subtree","id":"replace1","blocks":[{"id":"replace1","type":"paragraph","text":"replaced","fields":{"precision_replace":` + exact + `}}]}`,
+				"ops[0].blocks[0].fields.precision_replace"},
+			"insert_blocks": {
+				`{"op":"insert_blocks","blocks":[{"type":"paragraph","text":"inserted","fields":{"precision_insert":` + exact + `}}]}`,
+				"ops[0].blocks[0].fields.precision_insert"},
+			"set_cell": {
+				`{"op":"set_cell","table_id":"table1","row":"row1","col":"col1","value":{"type":"paragraph","text":"cell","fields":{"precision_cell":` + exact + `}}}`,
+				"ops[0].value.fields.precision_cell"},
 		}
-		for name, op := range channels {
+		for name, channel := range channels {
 			t.Run(name, func(t *testing.T) {
 				// given
 				fx := newV2Fixture(t)
@@ -337,16 +355,86 @@ func TestPatchObject(t *testing.T) {
 				fx.expectMutate(read)
 
 				// when
-				_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(op), "", false, true)
+				_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(channel.op), "", false, true)
 
 				// then
 				apiErr := v2Err(t, err)
 				assert.Equal(t, http.StatusBadRequest, apiErr.Status)
 				assert.Equal(t, v2InvalidDocMessage, apiErr.Message,
 					"the refusal says no op was applied, so a caller knows the document is untouched")
-				require.NotEmpty(t, apiErr.Issues, "the refusal names what it refused")
+				assert.Equal(t, []v2model.Issue{{Path: channel.wantPath, Message: unsafeNumberMessage}},
+					apiErr.Issues, "the refusal addresses the caller's own field")
 			})
 		}
+	})
+
+	t.Run("a derived property is refused, not written as null", func(t *testing.T) {
+		// featuredRelations is bundled, so the key check waves it through, but
+		// the format DROPS it on import: the checked door returns no value and
+		// no error. Storing that nil writes null over what the app maintains,
+		// under a 200 — the silent write this door exists to stop.
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","set":{"featuredRelations":["name"]}}`), "", false, true)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "ops[0].set.featuredRelations", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "is derived")
+	})
+
+	t.Run("add refuses an unrepresentable entry instead of dropping it", func(t *testing.T) {
+		// the unchecked door returned the list minus the entries it could not
+		// represent, so one bad member turned the whole add into a 200 that
+		// added nothing — losing the GOOD entries with it
+		fx := newV2Fixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("rel-labels"),
+			bundle.RelationKeyRelationKey:    domain.String("labels"),
+			bundle.RelationKeyName:           domain.String("Labels"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_tag)),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+		}})
+		// the refusal lands in the pre-lock create-missing probe, so no
+		// mutation is even attempted — and no option is minted for "keep"
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
+			Return(editRead(t, editBaseDoc), nil).Maybe()
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","add":{"labels":["keep",9007199254740993]}}`), "", false, true)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "ops[0].add.labels[1]", apiErr.Issues[0].Path)
+	})
+
+	t.Run("set_cell addresses the edited cell of a wide table", func(t *testing.T) {
+		// a 1x1 table cannot tell a correct scaffold from a swapped or
+		// off-by-one one, and cells/1 must not swallow cells/12
+		fx := newV2Fixture(t)
+		cols, cells := "", ""
+		for i := 1; i <= 13; i++ {
+			cols += fmt.Sprintf(`,{"id":"col%d"}`, i)
+			cells += fmt.Sprintf(`,"cell%d"`, i)
+		}
+		row := `{"id":"row%s","cells":[` + cells[1:] + `]}`
+		fx.expectMutate(editRead(t, `{"formatVersion":"2.0","id":"obj1","type":"page","blocks":[`+
+			`{"id":"table1","type":"table","columns":[`+cols[1:]+`],"rows":[`+
+			fmt.Sprintf(row, "1")+`,`+fmt.Sprintf(row, "2")+`]}]}`))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_cell","table_id":"table1","row":"row2","col":"col2",`+
+				`"value":{"type":"paragraph","text":"cell","fields":{"precision_cell":9007199254740993}}}`),
+			"", false, true)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "ops[0].value.fields.precision_cell", apiErr.Issues[0].Path)
 	})
 
 	t.Run("update_block merges fields, suffix-addressed", func(t *testing.T) {
@@ -2969,6 +3057,61 @@ func TestPatchExcludesSystemManagedObjects(t *testing.T) {
 			assert.Equal(t, http.StatusBadRequest, apiErr.Status)
 			assert.Contains(t, apiErr.Message, "system-managed")
 			assert.Contains(t, apiErr.Message, sbType.String())
+		})
+	}
+}
+
+func TestInvalidPayloadErrorAddressesTheCallersField(t *testing.T) {
+	// The three payload doors validate inside a synthetic scaffold, so the
+	// codec's pointer is never the caller's path. These are the branches that
+	// decide whether a refusal is repairable — each one has produced a real
+	// defect: the invented subscript (APIV2-032), the document pointer handed
+	// back verbatim, and the byte-prefix match that turns cells/12 into a "2".
+	codecErr := func(path string) error {
+		return &anyblockjson.ValidationError{Issues: []anyblockjson.Issue{{Path: path, Message: "bad"}}}
+	}
+	sentText := func(member string) bool { return member == "text" }
+
+	for _, tt := range []struct {
+		name     string
+		base     string
+		scaffold string
+		sent     func(string) bool
+		path     string
+		wantPath string
+		wantHint bool
+	}{
+		{"block member the caller set", "ops[0].set", "/blocks/0", nil,
+			"/blocks/0/fields/precision_update", "ops[0].set.fields.precision_update", false},
+		{"whole block", "ops[0].set", "/blocks/0", nil, "/blocks/0", "ops[0].set", false},
+		{"scalar property value", "ops[0].set.due_date", "", nil, "", "ops[0].set.due_date", false},
+		{"list member", "ops[0].set.tags", "", nil, "/0", "ops[0].set.tags[0]", false},
+		{"edited cell", "ops[0].value", "/blocks/0/rows/1/cells/1", nil,
+			"/blocks/0/rows/1/cells/1/fields/x", "ops[0].value.fields.x", false},
+		// cells/1 must not swallow cells/12: a byte prefix would leave "2"
+		// and render it as ops[0].value[2] — a subscript nobody sent
+		{"sibling cell sharing an index prefix", "ops[0].value", "/blocks/0/rows/1/cells/1", nil,
+			"/blocks/0/rows/1/cells/12/type", "ops[0].value", true},
+		{"untouched row", "ops[0].value", "/blocks/0/rows/1/cells/1", nil,
+			"/blocks/0/rows/3/cells/0/id", "ops[0].value", true},
+		{"merged member the caller did not send", "ops[0].set", "/blocks/0", sentText,
+			"/blocks/0/fields/legacy", "ops[0].set", true},
+		{"merged member the caller did send", "ops[0].set", "/blocks/0", sentText,
+			"/blocks/0/text", "ops[0].set.text", false},
+		{"merged block as a whole is always the caller's", "ops[0].set", "/blocks/0", sentText,
+			"/blocks/0", "ops[0].set", false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			apiErr := v2Err(t, invalidPayloadError(tt.base, tt.scaffold, tt.sent, codecErr(tt.path)))
+
+			require.Len(t, apiErr.Issues, 1)
+			assert.Equal(t, tt.wantPath, apiErr.Issues[0].Path)
+			if tt.wantHint {
+				assert.Contains(t, apiErr.Issues[0].Hint, tt.path,
+					"an unattributable fault still has to say where the document is broken")
+			} else {
+				assert.Empty(t, apiErr.Issues[0].Hint)
+			}
 		})
 	}
 }

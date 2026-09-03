@@ -389,6 +389,73 @@ func rebaseFragmentPath(base, path string) string {
 	return base + strings.ReplaceAll(path, "/", ".")
 }
 
+// invalidPayloadError is invalidFragmentError for a payload that is NOT a
+// block run: one block (update_block, set_cell) or one property value
+// (set_properties). Each door validates its argument inside a synthetic
+// scaffold — UnmarshalBlock wraps the block in a one-block document, so issues
+// arrive under "/blocks/0"; the checked property door addresses the value
+// itself, so they arrive as "" or "/<i>". Those leading segments are positions
+// in the scaffold, not subscripts the caller sent: re-attaching the "0" as
+// "base[0]" names an array the payload does not have, and passing the path
+// through unchanged hands back a pointer into a document the caller never saw.
+// scaffold names the segments to drop; the rest is rebased onto the op field
+// that carried the value.
+//
+// A path OUTSIDE the scaffold came from live content this op merely re-imported
+// — the rest of a table around one edited cell. There is no caller field to
+// name, so the issue is addressed at base and keeps its original pointer in the
+// hint: C6 wants a path the request contains, and a reader still needs to know
+// where the document is actually broken.
+//
+// sent draws the same line one level in, for a payload MERGED with live content
+// rather than scaffolded around it: update_block re-imports the caller's fields
+// on top of the block's own, so a fault in an untouched member would otherwise
+// be reported at "ops[i].set.<member>" — a field the request does not contain.
+// When non-nil it reports whether the caller supplied that member; when nil
+// every in-scaffold path is the caller's.
+func invalidPayloadError(base, scaffold string, sent func(member string) bool, err error) error {
+	rebased := invalidDocError(err)
+	var v2Err *v2model.Error
+	if !errors.As(rebased, &v2Err) {
+		return rebased
+	}
+	for i := range v2Err.Issues {
+		path := v2Err.Issues[i].Path
+		tail, inScaffold := cutPathPrefix(path, scaffold)
+		// tail == "" is the payload as a whole, which is always the caller's;
+		// only a NAMED member can belong to the live content merged under it
+		if inScaffold && sent != nil && tail != "" {
+			member, _, _ := strings.Cut(strings.TrimPrefix(tail, "/"), "/")
+			inScaffold = sent(member)
+		}
+		if !inScaffold {
+			v2Err.Issues[i].Path = base
+			if v2Err.Issues[i].Hint == "" && path != "" {
+				v2Err.Issues[i].Hint = "the document is invalid at " + path +
+					", which this op did not write — it was read from the object"
+			}
+			continue
+		}
+		v2Err.Issues[i].Path = rebaseSlashPath(base, tail)
+	}
+	return v2Err
+}
+
+// cutPathPrefix is strings.CutPrefix on whole "/"-separated segments. A raw
+// byte prefix would let "/rows/1/cells/1" swallow "/rows/1/cells/12", handing
+// back "2" as if it were a subscript the caller sent — the invented-index bug
+// this file exists to fix, one level down.
+func cutPathPrefix(path, prefix string) (string, bool) {
+	if prefix == "" {
+		return path, true
+	}
+	tail, ok := strings.CutPrefix(path, prefix)
+	if !ok || (tail != "" && tail[0] != '/') {
+		return "", false
+	}
+	return tail, true
+}
+
 // validateEditedDoc is the R5 whole-document net, restored (review B′3):
 // fragment validation only sees a payload run in isolation, so invariants
 // that span the spliced result — V3 row→column containment, the
@@ -892,6 +959,30 @@ func pinTableWrappers(st *state.State, blocks []*model.Block) {
 // ---- set_properties ----
 //
 
+// checkedPropertyValue is the one value door set_properties writes through.
+// It exists because the codec's checked door has TWO ways to refuse and only
+// one of them is an error: a key the format DROPS on import short-circuits
+// before the value is even looked at and returns (nil, nil). Storing that nil
+// writes null over whatever the app maintains for the key — silently, under a
+// 200 — and it also skips the number check, so the very refusal this door was
+// adopted for never runs. Both refusals therefore land here, addressed at the
+// caller's own field: field is the op's payload prefix ("ops[0].set.") and
+// spelling is the key as the caller spelled it.
+func (a *v2StateApplier) checkedPropertyValue(key, spelling, field string, raw any, opts anyblockjson.Options) (domain.Value, error) {
+	value, err := anyblockjson.UnmarshalPropertyValueChecked(key, raw, opts)
+	if err != nil {
+		return domain.Invalid(), invalidPayloadError(field+spelling, "", nil, err)
+	}
+	if value == nil {
+		return domain.Invalid(), v2model.ValidationFailed("set_properties rejected", v2model.Issue{
+			Path:    field + spelling,
+			Message: fmt.Sprintf("%q is derived — the app maintains it, and a write to it is dropped", spelling),
+			Hint:    "drop it from the op; read it back after the write instead",
+		})
+	}
+	return domain.ValueFromProto(value), nil
+}
+
 func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) error {
 	if len(op.Set) == 0 && len(op.Unset) == 0 && len(op.Add) == 0 && len(op.Remove) == 0 {
 		return v2model.ValidationFailed("set_properties needs at least one of set, unset, add, remove",
@@ -1030,23 +1121,29 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		var raw any
 		if err := decodeJSONUseNumber(op.Set[key], &raw); err != nil {
 			return v2model.ValidationFailed("invalid set value",
-				v2model.Issue{Path: opPath + ".set." + key, Message: err.Error()})
+				v2model.Issue{Path: opPath + ".set." + spelledAs(key), Message: err.Error()})
 		}
-		value := anyblockjson.UnmarshalPropertyValue(key, raw, a.resolvers.Options())
-		a.st.SetDetail(domain.RelationKey(key), domain.ValueFromProto(value))
-		metadataKey, lexeme, exact := anyblockjson.ExactJSONIntegerMetadata(key, raw)
-		a.st.RemoveDetail(domain.RelationKey(metadataKey))
-		if exact {
-			a.st.SetDetail(domain.RelationKey(metadataKey), domain.String(lexeme))
+		// the CHECKED door: a value that cannot survive v1's 64-bit float
+		// model is refused here, at the caller's own field. The unchecked
+		// door reports the same thing by returning a nil value, which
+		// SetDetail stores as null — a silent write of the wrong value, the
+		// one outcome a write must not have. SetDetail also clears the
+		// retired exact-integer sidecar a legacy object may still carry
+		// (State.removeExactJSONIntegerMetadata), so nothing mints or
+		// sweeps it here.
+		value, err := a.checkedPropertyValue(key, spelledAs(key), opPath+".set.", raw, a.resolvers.Options())
+		if err != nil {
+			return err
 		}
+		a.st.SetDetail(domain.RelationKey(key), value)
 		// a key new to the object needs its relation link, or the detail value
 		// is wiped on replay (review A1 in miniature; AddRelationLinks dedupes)
 		a.st.AddRelationLinks(&model.RelationLink{Key: key, Format: a.propertyFormat(key)})
 	}
 	for key := range unset {
-		a.st.RemoveDetail(domain.RelationKey(key)) // unsetting an absent key is a no-op
-		metadataKey, _, _ := anyblockjson.ExactJSONIntegerMetadata(key, nil)
-		a.st.RemoveDetail(domain.RelationKey(metadataKey))
+		// unsetting an absent key is a no-op; RemoveDetail takes the retired
+		// exact-integer sidecar with the key it belongs to
+		a.st.RemoveDetail(domain.RelationKey(key))
 	}
 	// add appends without duplicating an existing entry; entry resolution is
 	// the same create-missing path as set (option names → ids, §3)
@@ -1058,13 +1155,20 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 			len(a.st.CombinedDetails().Get(domain.RelationKey(key)).WrapToStringList()) > 0 {
 			return v2model.ValidationFailed("add on a select property that already has a value",
 				v2model.Issue{
-					Path:    opPath + ".add." + key,
+					Path:    opPath + ".add." + spelledAs(key),
 					Message: fmt.Sprintf("%q has format \"select\" and holds a single value", key),
 					Hint:    "use set to replace it, or unset to clear it first",
 				})
 		}
-		value := anyblockjson.UnmarshalPropertyValue(key, addEntries[key], a.resolvers.Options())
-		toAdd := domain.ValueFromProto(value).WrapToStringList()
+		// same checked door as set: the unchecked one drops an entry it
+		// cannot represent and returns the rest, so a list carrying one bad
+		// member landed as a 200 that added nothing — losing the good
+		// entries with it
+		value, err := a.checkedPropertyValue(key, spelledAs(key), opPath+".add.", addEntries[key], a.resolvers.Options())
+		if err != nil {
+			return err
+		}
+		toAdd := value.WrapToStringList()
 		current := a.st.CombinedDetails().Get(domain.RelationKey(key)).WrapToStringList()
 		present := make(map[string]bool, len(current)+len(toAdd))
 		merged := make([]string, 0, len(current)+len(toAdd))
@@ -1087,7 +1191,10 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	for _, key := range sortedKeys(removeEntries) {
 		opts := a.marshalOptions()
 		opts.ResolveOptions = ambiguityAwareReadOnlyOptionResolver{r: a.resolvers}
-		value := anyblockjson.UnmarshalPropertyValue(key, removeEntries[key], opts)
+		value, err := a.checkedPropertyValue(key, spelledAs(key), opPath+".remove.", removeEntries[key], opts)
+		if err != nil {
+			return err
+		}
 		if err := a.resolvers.err(); err != nil {
 			return err
 		}
@@ -1095,7 +1202,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 			continue // an absent key stays absent — remove never creates presence
 		}
 		drop := map[string]bool{}
-		for _, id := range domain.ValueFromProto(value).WrapToStringList() {
+		for _, id := range value.WrapToStringList() {
 			drop[id] = true
 		}
 		current := a.st.CombinedDetails().Get(domain.RelationKey(key)).WrapToStringList()
@@ -1327,7 +1434,10 @@ func (a *v2StateApplier) applyUpdateBlock(op opUpdateBlock, opPath string) error
 	}
 	blocks, err := anyblockjson.UnmarshalBlock(raw, fullId, a.importOptions())
 	if err != nil {
-		return invalidFragmentError(opPath+".set", err)
+		// merged carries the block's live members too, so only a member the
+		// caller actually set is theirs to repair
+		return invalidPayloadError(opPath+".set", "/blocks/0",
+			func(member string) bool { _, ok := op.Set[member]; return ok }, err)
 	}
 	if err := a.claimPayloadIds(blocks, collectSubtreeIds(a.st, fullId), func(string) string { return opPath + ".set" }); err != nil {
 		return err
@@ -2193,7 +2303,11 @@ func (a *v2StateApplier) applySetCell(op opSetCell, opPath string) error {
 	}
 	blocks, err := anyblockjson.UnmarshalBlock(raw, fullId, a.importOptions())
 	if err != nil {
-		return invalidDocError(err)
+		// the whole table is re-imported, so the scaffold reaches down to the
+		// one cell this op wrote — everything else in the table came from the
+		// live document and is not the caller's to repair
+		return invalidPayloadError(opPath+".value",
+			fmt.Sprintf("/blocks/0/rows/%d/cells/%d", ri, ci), nil, err)
 	}
 	if err := a.claimPayloadIds(blocks, collectSubtreeIds(a.st, fullId), func(string) string { return opPath + ".value" }); err != nil {
 		return err

@@ -222,7 +222,11 @@ func (a *v2StateApplier) commitDataviewBlock(edited map[string]any, fullId, opPa
 	}
 	blocks, err := anyblockjson.UnmarshalBlock(raw, fullId, a.commitImportOptions())
 	if err != nil {
-		return invalidDocError(err)
+		// the op replaces the dataview block whole (see claimPayloadIds
+		// below), so every member of the re-imported block is addressable
+		// under the op — but the path has to be the request's dialect, not
+		// the one-block scaffold UnmarshalBlock validates inside
+		return invalidPayloadError(opPath, "/blocks/0", nil, err)
 	}
 	if len(blocks) > 0 {
 		if dv := blocks[0].GetDataview(); dv != nil {

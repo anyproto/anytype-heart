@@ -421,7 +421,7 @@ func TestPatchPayloadIdSeam(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Equal(t, "ops[0].set[0].views.1.id", apiErr.Issues[0].Path)
+		assert.Equal(t, "ops[0].set.views[1].id", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, `duplicate view id "viewAll1"`)
 	})
 

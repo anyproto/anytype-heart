@@ -1051,7 +1051,10 @@ on a private `state.NewDocFromSnapshot` of a plain read.
 **Ops → state, exact.** set_properties → `st.SetDetail`/`RemoveDetail` +
 `st.AddRelationLinks` for the key (mandatory — a value without its link
 is wiped on replay, the A1 class); values decode via
-`UnmarshalPropertyValue` (dates, option names, ref lists — §3 rules).
+`UnmarshalPropertyValueChecked` (dates, option names, ref lists — §3
+rules), whose two refusals — a value v1's 64-bit float model cannot carry,
+and a key the format drops on import — are reported at `ops[i].set.<key>`
+rather than written as null.
 update_block → merge on the block's exported JSON form → `UnmarshalBlock`
 with the forced id → set in place, live ChildrenIds kept (non-table).
 replace_subtree → fragment run →
@@ -1078,8 +1081,12 @@ monotonicity pre-check. Fragment payloads are validated by wrapping the
 run in a minimal synthetic page document and running the format's
 document validation (so the §5 shape checks apply verbatim); a failure
 rejects the whole PATCH under the unchanged message "the ops would
-produce an invalid document — no op was applied", with fragment-relative
-block paths. Structural block types
+produce an invalid document — no op was applied", with request-relative
+paths: the synthetic scaffold is stripped and what remains is rebased onto
+the op field that carried it, so a fault is addressed where the caller can
+repair it. A fault in live content the op only re-imported has no such
+field, and is addressed at the op's payload with the document pointer in
+the hint. Structural block types
 (`title`/`description`/`featuredProperties`) are rejected explicitly in
 payloads (the whole-document import would have absorbed them silently),
 and no primary-dataview pinning happens on fragments. Id uniqueness —
@@ -1167,13 +1174,15 @@ text-bearing type and a non-empty `find`; error texts are the Anthropic
 shapes ("no match found…", "found N matches — provide more context…").
 `set_cell` resolves row/col ids with the same unique-suffix leniency as block
 refs and accepts all §6.1 cell forms (string, null, block object, array);
-invalid inner shapes fall to the R5 net. `add_items`/`remove_items` require a
+invalid inner shapes are refused at `ops[i].value`. `add_items`/`remove_items` require a
 collection (type `collection` or a collection-layout type), dedupe/no-op
 respectively, and do not existence-check member ids (v1 parity).
 `set_properties`: §4a output-only keys rejected (`isFavorite` stays
 authorable per SPEC §3), unknown keys rejected with did-you-mean (Phase-2
 policy), select option names create-missing and ride `created`, `unset` of
-an absent key is a no-op, a key in both `set` and `unset` is an error.
+an absent key is a no-op, a key in both `set` and `unset` is an error, and
+a value the v1 float model cannot carry is refused at its own `set`/`add`/
+`remove` entry rather than silently rounded or dropped.
 
 **PUT — REMOVED (§8.27).** As built it stripped the envelope
 `etag`/`warnings` a GET body carried, rejected a non-matching envelope
