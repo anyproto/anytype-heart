@@ -27,6 +27,10 @@ import (
 // the probe idiom and where provenance is visible.
 var deleteProbeIssue = v2model.Issue{
 	Path: "object_id",
+	// message is the one required member of an issue, and this one shipped
+	// empty on four production 403s: the whole reason lived in the OPTIONAL
+	// hint, so a reader that renders only the required field got nothing
+	Message: "this key may delete only objects it created",
 	Hint: "probe deletability without writing via DELETE …?dry_run=true; " +
 		"the created_date/creator properties on GET show who created the object",
 }

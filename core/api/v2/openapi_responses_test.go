@@ -97,7 +97,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	// id for a space that does not exist is a 404 on all of them. Asserting
 	// the RULE rather than a list is what keeps a route added later honest:
 	// the earlier sweep declared the router-level policies and left 404 to
-	// per-handler annotations, so it reached only 30 of 37 and nobody noticed
+	// per-handler annotations, so it reached only 28 of 37 and nobody noticed
 	// that create_object could answer an undeclared status.
 	for path, pathItem := range jsonDoc.Paths {
 		if !strings.Contains(path, "{space_id}") {

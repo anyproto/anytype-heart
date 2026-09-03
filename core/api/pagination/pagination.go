@@ -32,6 +32,10 @@ func New(cfg Config) gin.HandlerFunc {
 		if size < cfg.MinPageSize || size > cfg.MaxPageSize {
 			if cfg.OnInvalidLimit != nil {
 				cfg.OnInvalidLimit(c, cfg.MinPageSize, cfg.MaxPageSize)
+				// the refusal is the hook's to write, but stopping the chain
+				// is not its to forget: a hook that only wrote a body would
+				// let the request reach the handler, on write routes
+				c.Abort()
 				return
 			}
 			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{

@@ -16,10 +16,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
-	v2handler "github.com/anyproto/anytype-heart/core/api/v2/handler"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	v2service "github.com/anyproto/anytype-heart/core/api/v2/service"
 )
 
 func TestIdempotencyReservation(t *testing.T) {
@@ -619,37 +618,34 @@ func TestV2InvalidLimitAnswersInTheC6Envelope(t *testing.T) {
 	// published schema did not describe, and the only refusal an agent could
 	// not parse. Declaring `required` on the Error schema made saying nothing
 	// about it untenable, since BadRequest is declared on all 45 operations.
+	//
+	// This goes through RegisterRoutes rather than a hand-built group, or the
+	// test passes with the production hook deleted: the whole change is one
+	// closure literal in router.go, and a copy of it here guards nothing.
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
-	group := router.Group("/v2")
-	group.Use(pagination.New(pagination.Config{
-		DefaultPage:     defaultPage,
-		DefaultPageSize: defaultPageSize,
-		MinPageSize:     minPageSize,
-		MaxPageSize:     maxPageSize,
-		OnInvalidLimit: func(c *gin.Context, minPageSize, maxPageSize int) {
-			v2handler.RespondError(c, v2model.ValidationFailed(
-				fmt.Sprintf("limit must be between %d and %d", minPageSize, maxPageSize),
-				v2model.Issue{
-					Path:    "limit",
-					Message: fmt.Sprintf("%q is outside the accepted range", c.Query(pagination.QueryParamLimit)),
-					Hint:    fmt.Sprintf("omit it for the default of %d, or send a value in %d..%d", defaultPageSize, minPageSize, maxPageSize),
-				}))
-		},
-	}))
-	group.GET("/probe", func(c *gin.Context) { c.Status(http.StatusOK) })
+	RegisterRoutes(router, RouteDeps{
+		Service:        &v2service.Service{},
+		CreateDisabled: true,
+		EditDisabled:   true,
+		Auth:           func(c *gin.Context) { c.Next() },
+		KeyScope:       func(c *gin.Context) { c.Next() },
+		CacheInit:      func(c *gin.Context) { c.Next() },
+		WriteRateLimit: func(c *gin.Context) { c.Next() },
+		AnalyticsEvent: func(string) gin.HandlerFunc { return func(c *gin.Context) { c.Next() } },
+	})
 
-	for _, limit := range []string{"0", "1001", "-4"} {
+	// only the values that REFUSE go through the real router: a lenient one
+	// falls through to the handler, and the point here is the middleware.
+	// getIntQueryParam coerces anything unparseable or below zero to the
+	// default, so the C6 refusal covers 0 and >max only.
+	for _, limit := range []string{"0", "1001"} {
 		t.Run("limit="+limit, func(t *testing.T) {
 			rec := httptest.NewRecorder()
-			router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v2/probe?limit="+limit, nil))
+			// any real paginated /v2 route: the refusal is the group's, and
+			// it lands before auth, so no credential is needed to reach it
+			router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v2/spaces?limit="+limit, nil))
 
-			// a negative limit is not out of range — getIntQueryParam falls
-			// back to the default for anything unparseable or below zero
-			if limit == "-4" {
-				assert.Equal(t, http.StatusOK, rec.Code, "a negative limit falls back to the default")
-				return
-			}
 			assert.Equal(t, http.StatusBadRequest, rec.Code)
 			var got v2model.Error
 			require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
