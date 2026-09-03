@@ -161,11 +161,61 @@ func validateArgs(def Tool, args map[string]any) error {
 			}
 		case ArgObject:
 			if _, ok := v.(map[string]any); !ok {
-				return fmt.Errorf("%s: %q must be an object of key → value", def.Name, a.Name)
+				return fmt.Errorf("%s: %s", def.Name, objectArgRepair(def, a, v))
 			}
 		}
 	}
 	return nil
+}
+
+// objectArgRepair explains an object-shaped argument by SHOWING it, and
+// converts what the caller actually sent when it can.
+//
+// The bare form ("set" must be an object of key → value) names a type and
+// shows no shape. Measured: a model that had already found both objects and
+// picked the right property sent `set: "Linked Projects: 2"`, was told only
+// the type, and spent six more turns and 43k tokens permuting the STRING —
+// quoting the value, underscoring the key, dropping the quotes — because
+// nothing told it the difference was JSON shape rather than spelling. The
+// pull toward that string is the surface's own doing: describe prints
+// `Name: format` rows and create_type takes them back, so `Key: value` is a
+// form this surface teaches.
+func objectArgRepair(def Tool, a Arg, v any) string {
+	msg := fmt.Sprintf("%q must be an object of property name → value, not %s", a.Name, jsonTypeName(v))
+	if s, ok := v.(string); ok {
+		if key, value, found := strings.Cut(s, ":"); found {
+			key, value = strings.TrimSpace(key), strings.TrimSpace(strings.Trim(strings.TrimSpace(value), `"`))
+			if key != "" && value != "" {
+				if encoded, err := json.Marshal(map[string]string{key: value}); err == nil {
+					return msg + fmt.Sprintf(" — send %s, not %q", encoded, s)
+				}
+			}
+		}
+	}
+	if example, ok := def.Example[a.Name]; ok {
+		if encoded, err := json.Marshal(example); err == nil {
+			return msg + fmt.Sprintf(" — e.g. %q: %s", a.Name, encoded)
+		}
+	}
+	return msg
+}
+
+// jsonTypeName names what the caller sent, in the vocabulary of the schema
+// they were given.
+func jsonTypeName(v any) string {
+	switch v.(type) {
+	case string:
+		return "a string"
+	case bool:
+		return "a boolean"
+	case float64, int, int64:
+		return "a number"
+	case []any:
+		return "an array"
+	case nil:
+		return "null"
+	}
+	return "that"
 }
 
 // argHint renders " — <description>" or nothing — never a dangling dash.

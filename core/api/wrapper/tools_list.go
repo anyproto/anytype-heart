@@ -429,7 +429,26 @@ func listText(def listDefinition, selfHandle int, rows []Handle, typeNames map[s
 			b.WriteString("filter: (none — every object of that type)\n")
 		}
 	} else {
-		fmt.Fprintf(&b, "%s (handle %d) — a Collection: a manual list, so its rows were put there by hand; no filter decides them.\n", name, selfHandle)
+		// The membership sentence must not read as "this cannot be
+		// filtered". It used to end at "no filter decides them", and a
+		// model asked to show only some of a collection's rows read that
+		// plus a closing line naming only sort and columns, concluded the
+		// surface could not do it, and said so instead of acting — twice,
+		// identically. Collection MEMBERSHIP is manual; a collection's view
+		// still filters, exactly as a query's does, and update_view sets it.
+		fmt.Fprintf(&b, "%s (handle %d) — a Collection: a manual list, so which objects belong to it was decided by hand, not by a filter.\n", name, selfHandle)
+		// A filter is printed only when the view HAS one: an absent filter
+		// hides nothing, and the closing line already says update_view can
+		// set one, so a "(none)" line here would cost a line on every
+		// collection read to say nothing. A filter that IS set must be
+		// named — without it the model cannot tell that rows are being
+		// withheld from what it is reading.
+		switch {
+		case def.FilterUnspellable:
+			b.WriteString("filter: (this view's filter cannot be written in the compact filter syntax — update_view would replace it, not reproduce it)\n")
+		case def.Filter != "":
+			fmt.Fprintf(&b, "filter: %s — this narrows which of its rows are shown, not which belong\n", def.Filter)
+		}
 	}
 	if def.Sort != "" {
 		fmt.Fprintf(&b, "sort: %s\n", def.Sort)
@@ -460,7 +479,7 @@ func listText(def listDefinition, selfHandle int, rows []Handle, typeNames map[s
 	if def.Kind == listKindQuery {
 		b.WriteString("\n" + addressing + "find takes that type and filter to search the same objects, and update_view changes what this query shows")
 	} else {
-		b.WriteString("\n" + addressing + "update_view changes this collection's sort or columns")
+		b.WriteString("\n" + addressing + "update_view changes this collection's filter, sort or columns — its filter narrows which rows are SHOWN; to change which objects belong, add or remove them")
 	}
 	for _, w := range warnings {
 		b.WriteString("\nwarning: " + w.Message)

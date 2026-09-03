@@ -244,3 +244,54 @@ func TestCreateTypeRefusesAnUnaddressableMintedProperty(t *testing.T) {
 	assert.Contains(t, err.Error(), "these properties WERE created and remain in the space: ★")
 	assert.Len(t, fx.sent("POST /v2/spaces/space1/types"), 1, "the dry run only")
 }
+
+// TestObjectArgRefusalShowsTheShape covers the message that cost a model
+// eight turns and 43k tokens. It had found both objects and picked the right
+// property, then sent `set: "Linked Projects: 2"` — a string. The refusal
+// named the required TYPE and showed no shape, so the model permuted the
+// string six times (quoting the value, underscoring the key, dropping the
+// quotes) and never tried JSON. A refusal that cannot be acted on is a
+// refusal that will be retried verbatim.
+func TestObjectArgRefusalShowsTheShape(t *testing.T) {
+	t.Run("a Key: value string is converted, not just rejected", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+
+		// when
+		_, err := fx.Run(context.Background(), "set_properties", map[string]any{
+			"space": "space1", "object": "1", "set": "Linked Projects: Fijezogo project"})
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), `{"Linked Projects":"Fijezogo project"}`,
+			"the repair must show the caller's OWN content in the right shape")
+		assert.Contains(t, err.Error(), "not a string", "and name what was wrong with what they sent")
+	})
+
+	t.Run("a quoted value survives the conversion", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+
+		// when
+		_, err := fx.Run(context.Background(), "set_properties", map[string]any{
+			"space": "space1", "object": "1", "set": `Status: "In Progress"`})
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), `{"Status":"In Progress"}`)
+	})
+
+	t.Run("a shapeless value falls back to the tool's own example", func(t *testing.T) {
+		// given — nothing to convert, so show what right looks like
+		fx := newFixture(t)
+
+		// when
+		_, err := fx.Run(context.Background(), "set_properties", map[string]any{
+			"space": "space1", "object": "1", "set": 42})
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not a number")
+		assert.Regexp(t, `e\.g\. "set": \{.+\}`, err.Error(), "the published example must be shown")
+	})
+}

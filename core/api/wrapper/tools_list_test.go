@@ -155,7 +155,17 @@ func TestReadCollection(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, result.Text, "Reading list (handle 2) — a Collection")
 		assert.Contains(t, result.Text, "a manual list")
-		assert.NotContains(t, result.Text, "filter:", "a collection's membership is not a filter")
+		assert.NotContains(t, result.Text, "filter:",
+			"a collection with no view filter spends no line saying so")
+		// …but the read must not imply a collection CANNOT be filtered. It
+		// used to end "update_view changes this collection's sort or
+		// columns", and a model asked to show only some rows read that,
+		// concluded the surface could not do it, and declined instead of
+		// acting — 0/2, the same trajectory both times, while update_view
+		// accepts a filter on a collection perfectly well.
+		assert.Contains(t, result.Text, "update_view changes this collection's filter, sort or columns")
+		assert.Contains(t, result.Text, "which rows are SHOWN",
+			"the read must separate what a filter does from what membership does")
 		assert.Equal(t, "Name asc", lineAfter(t, result.Text, "sort: "))
 		assert.Contains(t, result.Text, "3. Dune (Book)")
 		assert.Contains(t, result.Text, "4. Solaris (Book)")

@@ -7085,3 +7085,42 @@ name-sorted and capped, so a property holding 150 options answered for the
 alphabetically-first 100 and `create_type` refused an option that exists —
 `checkOptionNames` had already learned this (§8.49); `checkDeclaredOptions`
 had to learn it again.
+### 8.51 Two refusals that cost a model the task (2026-09-03 — measured)
+
+A 34-attempt sweep of `wrapper/large` on bonsai-27b scored 30/34. Both
+failing tasks failed **deterministically** — `filter-a-view` burned an
+identical 14,683 tokens on both attempts, i.e. the same trajectory twice —
+which is the signature of a surface defect rather than sampling noise. Both
+were fixed by changing text, not capability, and both then went 0/2 → 3/3.
+
+**`filter-a-view`: the surface told the model to decline.** Reading a
+collection printed *"a manual list, so its rows were put there by hand; no
+filter decides them"* and closed with *"update_view changes this
+collection's sort or columns"*. The model found the collection, read it,
+correctly concluded from that text that the surface could not filter a
+collection, and said so instead of acting. It was wrong, and the surface
+taught it: `update_view` sets a filter on a collection perfectly well. The
+sentence conflated two different things — a collection's MEMBERSHIP is
+manual, and its view still filters what it SHOWS. Both now say which they
+mean, and the closing line names the filter. A collection with no filter
+still spends no line saying so.
+
+**`file-under-project`: a refusal with a type and no shape.** The model
+found both objects, picked the right property, and sent
+`set: "Linked Projects: 2"` — a string. The refusal said only *"set" must be
+an object of key → value*, so the model permuted the STRING six more times
+(quoting the value, underscoring the key, dropping the quotes), never
+reaching for JSON, and spent 43k tokens failing. The pull toward that string
+is this surface's own doing: `describe` prints `Name: format` rows and
+`create_type` takes them back, so `Key: value` is a form we teach.
+
+The refusal now converts what the caller actually sent —
+*send `{"Linked Projects":"Fijezogo project"}`, not `"Linked Projects:
+Fijezogo project"`* — and falls back to the tool's own published example when
+there is nothing to convert. The task went to 3/3 at **5 turns and 27k
+tokens**, against 8 turns and 43k while failing.
+
+**The general rule this pair argues for:** a refusal that names a required
+type without showing the shape will be retried verbatim, and a description
+that is true of one aspect will be read as true of the tool. Neither cost a
+tool slot to fix.
