@@ -9,11 +9,17 @@ package wrapper
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 )
 
@@ -469,6 +475,67 @@ func TestCreateType(t *testing.T) {
 		assert.Len(t, fx.sent("POST /v2/spaces/space1/types"), 1, "the dry run only")
 	})
 
+	t.Run("a mint that fails midway names the properties it already created", func(t *testing.T) {
+		// given — TWO option-bearing properties, the second one failing:
+		// the N-of-M residue the ordering argument exists for. With one
+		// declaration this path cannot be told from an all-or-nothing one.
+		fx := newFixture(t)
+		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
+		fx.stub("POST /v2/spaces/space1/types", 200, `{"key":"t","dry_run":true}`)
+		fx.stub("POST /v2/spaces/space1/properties", 201, `{"key":"rating","name":"Rating"}`)
+		fx.stub("POST /v2/spaces/space1/properties", 500,
+			`{"status":500,"code":"internal","message":"boom"}`)
+
+		// when
+		_, err := fx.Run(ctx, "create_type", map[string]any{
+			"space": "space1", "name": "Thing",
+			"properties": "Rating: select(Low), Course: select(Main)",
+		})
+
+		// then — the residue is named, and so is what a re-run does with it
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), `create property "Course"`)
+		assert.Contains(t, err.Error(), "these properties WERE created and remain in the space: Rating")
+		assert.Contains(t, err.Error(), "reuses them rather than duplicating them")
+		assert.Len(t, fx.sent("POST /v2/spaces/space1/types"), 1, "the dry run only — no type was created")
+	})
+
+	t.Run("the type create failing after mints is not the pre-flight failing", func(t *testing.T) {
+		// given — the ONLY sequence that leaves orphans. Both failures used
+		// to render identically, so a model could not tell "nothing
+		// happened, retry freely" from "a property is now orphaned".
+		fx := newFixture(t)
+		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
+		fx.stub("POST /v2/spaces/space1/types", 200, `{"key":"t","dry_run":true}`)
+		fx.stub("POST /v2/spaces/space1/types", 500,
+			`{"status":500,"code":"internal","message":"boom"}`)
+		fx.stub("POST /v2/spaces/space1/properties", 201, `{"key":"rating","name":"Rating"}`)
+
+		// when
+		_, err := fx.Run(ctx, "create_type", map[string]any{
+			"space": "space1", "name": "Thing", "properties": "Rating: select(Low)",
+		})
+
+		// then
+		require.Error(t, err)
+		afterMints := err.Error()
+		assert.Contains(t, afterMints, "these properties WERE created and remain in the space: Rating")
+
+		// and — the same 500 on the PRE-FLIGHT leaves nothing, and says so
+		fx2 := newFixture(t)
+		fx2.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
+		fx2.stub("POST /v2/spaces/space1/types", 500,
+			`{"status":500,"code":"internal","message":"boom"}`)
+		_, err2 := fx2.Run(ctx, "create_type", map[string]any{
+			"space": "space1", "name": "Thing", "properties": "Rating: select(Low)",
+		})
+		require.Error(t, err2)
+		assert.Contains(t, err2.Error(), "nothing was created")
+		assert.Empty(t, fx2.sent("POST /v2/spaces/space1/properties"), "the pre-flight failed before any mint")
+		assert.NotEqual(t, afterMints, err2.Error(),
+			"the two failures leave different state and must not read identically")
+	})
+
 	t.Run("an ambiguous property spelling is refused with the candidates", func(t *testing.T) {
 		// given — the package rule: ambiguity is refused, never guessed
 		fx := newFixture(t)
@@ -495,6 +562,10 @@ func TestCreateType(t *testing.T) {
 // here would be unreachable from create_type; one added here and not
 // published would be refused by the server after this tool accepted it.
 func TestTypePropertyFormatsGolden(t *testing.T) {
+	// The literal is kept as the readable statement of intent, but a list
+	// compared only against itself proves nothing — both sides used to live
+	// in this package, so the drift the comment above describes could not
+	// have been caught. The two checks that follow reach the other side.
 	assert.Equal(t, []string{
 		"text", "number", "select", "multi_select", "date", "files",
 		"checkbox", "url", "email", "phone", "objects",
@@ -502,6 +573,29 @@ func TestTypePropertyFormatsGolden(t *testing.T) {
 	for format := range selectFormats {
 		assert.Contains(t, typePropertyFormats, format, "every option-bearing format must be declarable")
 	}
+
+	// 1. every format this tool accepts must survive the API's own decoder,
+	// or create_type accepts a spelling the server then refuses
+	for _, format := range typePropertyFormats {
+		var decoded apimodel.PropertyFormat
+		err := json.Unmarshal([]byte(strconv.Quote(format)), &decoded)
+		assert.NoErrorf(t, err, "create_type accepts %q, which the API's PropertyFormat rejects", format)
+	}
+
+	// 2. and nothing the API publishes may be missing here, or that format
+	// is unreachable through create_type. The enum lives in an unexported
+	// map of JSON-schema strings (v2service schemas.go, the `property`
+	// discovery kind), so it is read from the source rather than imported.
+	src, err := os.ReadFile(filepath.Join("..", "v2", "service", "schemas.go"))
+	require.NoError(t, err)
+	m := regexp.MustCompile(`"format":\{"type":"string","enum":\[([^\]]*)\]\}`).FindSubmatch(src)
+	require.NotNil(t, m, "the property format enum moved in v2service/schemas.go — this check is now blind, fix the pattern")
+	var published []string
+	for _, raw := range strings.Split(string(m[1]), ",") {
+		published = append(published, strings.Trim(strings.TrimSpace(raw), `"`))
+	}
+	assert.ElementsMatch(t, published, typePropertyFormats,
+		"the published property-format enum and create_type's list have drifted")
 }
 
 // optionsResponse renders a stub option listing.

@@ -243,7 +243,13 @@ func TestDescribeResilience(t *testing.T) {
 		result, err := fx.Run(ctx, "describe", map[string]any{"space": "space1", "type": "task"})
 
 		require.NoError(t, err)
-		assert.Contains(t, result.Text, "Status: select  — options could not be listed; run describe again before using this property")
+		// the ROW stays exactly what create_type parses, and the caveat is a
+		// note after the rows: inside the row it came back from a transcribing
+		// model as a format literally named
+		// `select  — options could not be listed…`
+		assert.Contains(t, result.Text, "\n  Status: select\n")
+		assert.Contains(t, result.Text, `note: Status: its options could not be listed`)
+		assert.Contains(t, result.Text, `describe with options "Status"`, "the note must name the move that fixes it")
 		assert.NotContains(t, result.Text, "select(", "the annotation must not sit where the option list goes — it would read as one")
 		js, ok := result.JSON.(describeResult)
 		require.True(t, ok)

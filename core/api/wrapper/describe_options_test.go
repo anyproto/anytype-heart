@@ -13,6 +13,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 )
 
 // stubSpaceProperties queues the space's property listing.
@@ -160,4 +162,85 @@ func TestDescribeOptions(t *testing.T) {
 		require.Error(t, err)
 		assert.NotEmpty(t, fx.sent("GET /v2/spaces/space1/types/Task"))
 	})
+}
+
+// TestDescribeRowsTranscribeIntoCreateType is the assertion §8.48 claimed
+// and did not have. The surface tells the model "each row is written the way
+// create_type takes a property", so every row describe prints must parse as
+// a create_type property spec. It did not: a truncated option list printed
+// `Status: select(Backlog, Done, …)`, which parsed as an option literally
+// named "…", and a failed option listing printed the caveat inside the row,
+// which parsed as a format named `select  — options could not be listed…`.
+func TestDescribeRowsTranscribeIntoCreateType(t *testing.T) {
+	// given — one plain select, one truncated, one whose options failed
+	fx := newFixture(t)
+	fx.stub("GET /v2/spaces/space1/types/task", 200,
+		`{"formatVersion":"2.0","kind":"object_type","properties":{"name":"Task"},"type_settings":{"api_key":"task","property_definitions":[`+
+			`{"property":"stage","name":"Stage","format":"select"},`+
+			`{"property":"tag","name":"Tag","format":"multi_select"},`+
+			`{"property":"status","name":"Status","format":"select"},`+
+			`{"property":"cook_time","name":"Cook time","format":"number"}]}}`)
+	fx.stub("GET /v2/spaces/space1/properties/stage/options", 200, optionsBody(false, "Draft", "Live"))
+	fx.stub("GET /v2/spaces/space1/properties/tag/options", 200, optionsBody(true, "Alpha", "Beta"))
+	fx.stub("GET /v2/spaces/space1/properties/status/options", 503, `oops`)
+	fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse(
+		v2model.PropertyRow{Key: "stage", Name: "Stage", Format: "select"},
+		v2model.PropertyRow{Key: "tag", Name: "Tag", Format: "multi_select"},
+		v2model.PropertyRow{Key: "status", Name: "Status", Format: "select"},
+		v2model.PropertyRow{Key: "cook_time", Name: "Cook time", Format: "number"},
+	))
+
+	// when
+	result, err := fx.Run(context.Background(), "describe", map[string]any{"space": "space1", "type": "task"})
+	require.NoError(t, err)
+
+	// then — every indented row parses, and says back what it said
+	var rows []string
+	for _, line := range strings.Split(result.Text, "\n") {
+		if !strings.HasPrefix(line, "  ") {
+			continue
+		}
+		row := strings.TrimSpace(line)
+		rows = append(rows, row)
+
+		parsed, err := parseTypeProperties(row)
+		require.NoErrorf(t, err, "describe printed a row create_type cannot parse: %q", row)
+		require.Lenf(t, parsed, 1, "row %q parsed as %d properties", row, len(parsed))
+		assert.Equalf(t, strings.SplitN(row, ":", 2)[0], parsed[0].Name, "row %q lost its name", row)
+		for _, opt := range parsed[0].Options {
+			assert.NotContainsf(t, opt, "…", "row %q yielded an ellipsis as an option name", row)
+			assert.NotContainsf(t, opt, "could not be listed", "row %q yielded prose as an option name", row)
+		}
+	}
+	require.NotEmpty(t, rows)
+
+	// and the whole property block transcribes as ONE create_type argument
+	joined := strings.Join(rows, ", ")
+	all, err := parseTypeProperties(joined)
+	require.NoErrorf(t, err, "joining describe's rows is not a valid properties argument: %q", joined)
+	assert.Len(t, all, len(rows))
+}
+
+// TestCreateTypeRefusesAnUnaddressableMintedProperty covers the one outcome
+// where the server succeeds and the tool still must stop: POST /properties
+// returns an empty key. That is authoritative (storedApiKeyOf — the internal
+// key is then the only address), not a glitch, and typeDocument would fall
+// back to spelling the property by NAME, which can bind a different relation
+// than the one just minted.
+func TestCreateTypeRefusesAnUnaddressableMintedProperty(t *testing.T) {
+	// given
+	fx := newFixture(t)
+	fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
+	fx.stub("POST /v2/spaces/space1/types", 200, `{"key":"t","dry_run":true}`)
+	fx.stub("POST /v2/spaces/space1/properties", 201, `{"key":"","name":"★"}`)
+
+	// when
+	_, err := fx.Run(context.Background(), "create_type", map[string]any{
+		"space": "space1", "name": "Thing", "properties": "★: select(A, B)"})
+
+	// then — refused, the residue named, and no type created
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no key for it")
+	assert.Contains(t, err.Error(), "these properties WERE created and remain in the space: ★")
+	assert.Len(t, fx.sent("POST /v2/spaces/space1/types"), 1, "the dry run only")
 }

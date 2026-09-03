@@ -102,4 +102,27 @@ func TestLiveCreateType(t *testing.T) {
 	notSelect := ts.call(ctx, "describe", map[string]any{"space": spaceId, "type": typeName, "options": "Cook time"})
 	t.Logf("describe options=Cook time (a number) -> isError=%v %s", notSelect.IsError, notSelect.Text)
 	require.True(t, notSelect.IsError, "listing options of a number must be refused")
+
+	// The bundled-optionless case: on a fresh account Status exists as a
+	// select holding nothing, so this is what a model writes and what it
+	// gets back. The refusal must lead with the repair that delivers the
+	// options asked for.
+	bundled := ts.call(ctx, "create_type", map[string]any{
+		"space": spaceId, "name": "Field note",
+		"properties": "Status: select(Todo, Doing, Done)"})
+	t.Logf("create_type with a bundled optionless select -> isError=%v\n%s", bundled.IsError, bundled.Text)
+	require.True(t, bundled.IsError, "Status holds its own options; declaring different ones must be refused")
+	require.Contains(t, bundled.Text, "nothing was created")
+	// "Todo" vs the bundled "To Do" differs by a space — the near-miss the
+	// refusal must name, since it is the repair that costs one word
+	require.Contains(t, bundled.Text, "Spell the option exactly as it exists",
+		"a separator-only near-miss must be named, not reported as simply absent")
+
+	// and the case-only mismatch names the spelling instead of a structural move
+	caseOnly := ts.call(ctx, "create_type", map[string]any{
+		"space": spaceId, "name": "Bake log", "properties": "Rating: select(low)"})
+	t.Logf("create_type with a case-only option mismatch -> isError=%v\n%s", caseOnly.IsError, caseOnly.Text)
+	require.True(t, caseOnly.IsError, "an option differing only in case must be refused")
+	require.Contains(t, caseOnly.Text, "Spell the option exactly as it exists",
+		"the cheapest repair must be named first")
 }

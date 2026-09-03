@@ -152,6 +152,11 @@ func parseTypeProperties(ddl string) ([]typePropertyDecl, error) {
 	if strings.TrimSpace(ddl) == "" {
 		return nil, nil
 	}
+	// the parser's refusals are returned unwrapped ON PURPOSE, here and
+	// below: each already names the offending text and the repair
+	// (`properties has an unclosed "(" — close the option list: …`), and
+	// this text is the product — a prefix chain would put noise in front of
+	// the one sentence a small model has to act on
 	entries, err := splitTopLevel(ddl, ',')
 	if err != nil {
 		return nil, err
@@ -242,19 +247,34 @@ func parseTypePropertyOptions(name, text string) ([]string, error) {
 		return nil, err
 	}
 	var options []string
-	seen := map[string]bool{}
+	seen := map[string]string{}
+	empties := 0
 	for _, part := range parts {
 		option := strings.TrimSpace(part)
 		if option == "" {
+			empties++
 			continue
 		}
-		if seen[option] {
+		// folded, not exact: "select(Low, low)" used to mint two options
+		// that every later comparison then treats as one, and the space
+		// keeps both permanently
+		fold := strings.ToLower(option)
+		if prior, ok := seen[fold]; ok {
 			// deduplicating silently would create ONE option where the caller
 			// named two, and the caller would never learn which
-			return nil, fmt.Errorf("property %q lists option %q twice — name each option once", name, option)
+			if prior == option {
+				return nil, fmt.Errorf("property %q lists option %q twice — name each option once", name, option)
+			}
+			return nil, fmt.Errorf("property %q lists %q and %q, which differ only in case — options are matched without case, so name each option once",
+				name, prior, option)
 		}
-		seen[option] = true
+		seen[fold] = option
 		options = append(options, option)
+	}
+	if len(options) == 0 && empties > 0 {
+		// the caller wrote parentheses and named nothing in them; creating an
+		// optionless select silently would answer a question they did not ask
+		return nil, fmt.Errorf("property %q has empty parentheses — name the options inside them, or drop the parentheses to create a select with no options yet", name)
 	}
 	if len(options) > maxTypePropertyOptions {
 		return nil, fmt.Errorf("property %q lists %d options — the cap is %d; nothing was created", name, len(options), maxTypePropertyOptions)
@@ -290,7 +310,10 @@ func (r *Runner) planTypeProperties(ctx context.Context, spaceId string, decls [
 	}
 	idx, err := r.propertyIndexFor(ctx, spaceId)
 	if err != nil {
-		return nil, err
+		// an infrastructure failure, unlike the parser refusals above: it
+		// carries no steering of its own, so it needs the operation named
+		// (describeOptions wraps the identical call the same way)
+		return nil, fmt.Errorf("read the space's properties: %w", err)
 	}
 	plans := make([]typePropertyPlan, 0, len(decls))
 	claimed := map[string]string{} // resolved key → the spelling that claimed it
@@ -323,27 +346,47 @@ func (r *Runner) planTypeProperties(ctx context.Context, spaceId string, decls [
 	return plans, nil
 }
 
+// optionsProbeLimit caps the option names a refusal quotes back. The list
+// is steering, not data: unknownOptionError settled on 15 for the same
+// message shape, and an uncapped list ran past 600 characters against a
+// property holding 100 options.
+const optionsProbeLimit = 15
+
 // checkDeclaredOptions refuses a declaration whose options the EXISTING
 // property does not already hold. The type reuses that property as it is —
-// this tool cannot add options to a property it did not create — so
-// accepting the declaration would leave the caller believing in options
+// this tool cannot add options to a property it did not create, and no route
+// can: POST /properties creates a property WITH its options, PATCH
+// /properties/{key} takes only a name, and there is no options route (§8.50).
+// So accepting the declaration would leave the caller believing in options
 // that are not there, which is the one failure mode worth an extra round
 // trip to prevent. A declaration the property already satisfies passes
 // silently: transcribing a describe row back must not be an error.
+//
+// Absence is established per name through the route's PREFIX search, never
+// by reading a page and calling everything past it missing. That page is
+// sorted and capped, so a property holding 150 options answered for the
+// alphabetically-first 100 and the refusal said an option that exists does
+// not — the same trap checkOptionNames avoids for exactly this reason
+// (§8.49). Only once something is genuinely missing is a listing fetched,
+// and only to name what the property does hold.
 func (r *Runner) checkDeclaredOptions(ctx context.Context, spaceId, key, label string, want []string) error {
 	if len(want) == 0 {
 		return nil
 	}
-	var resp v2model.ListResponse[v2model.OptionRow]
-	if err := r.client.decode(ctx, apiRequest{
-		method: "GET",
-		path:   "/v2/spaces/" + seg(spaceId) + "/properties/" + seg(key) + "/options",
-		query:  url.Values{"limit": []string{"100"}, "keys": []string{"name"}},
-	}, &resp); err != nil {
-		return prefixToolError(err, "list options of %q", label)
-	}
 	var missing []string
 	for _, name := range want {
+		var resp v2model.ListResponse[v2model.OptionRow]
+		if err := r.client.decode(ctx, apiRequest{
+			method: "GET",
+			path:   "/v2/spaces/" + seg(spaceId) + "/properties/" + seg(key) + "/options",
+			query: url.Values{
+				"prefix": []string{name},
+				"limit":  []string{"50"},
+				"keys":   []string{"name"},
+			},
+		}, &resp); err != nil {
+			return prefixToolError(err, "list options of %q", label)
+		}
 		if !optionExists(resp.Data, name) {
 			missing = append(missing, fmt.Sprintf("%q", name))
 		}
@@ -351,16 +394,74 @@ func (r *Runner) checkDeclaredOptions(ctx context.Context, spaceId, key, label s
 	if len(missing) == 0 {
 		return nil
 	}
+
+	var resp v2model.ListResponse[v2model.OptionRow]
+	if err := r.client.decode(ctx, apiRequest{
+		method: "GET",
+		path:   "/v2/spaces/" + seg(spaceId) + "/properties/" + seg(key) + "/options",
+		query: url.Values{
+			"limit": []string{fmt.Sprintf("%d", optionsProbeLimit)},
+			"keys":  []string{"name"},
+		},
+	}, &resp); err != nil {
+		return prefixToolError(err, "list options of %q", label)
+	}
+	// The near-miss is the case worth catching, and it is the COMMON one:
+	// a fresh account's Status holds "To Do, In Progress, Done", and the
+	// three words a model writes unprompted are "Todo, Doing, Done". So the
+	// match folds separators as well as case (FoldKeyTerm — the same fold
+	// the property index uses), because "Todo" vs "To Do" differs by a
+	// space and EqualFold alone reports it as simply absent.
 	have := make([]string, 0, len(resp.Data))
+	var nearMiss []string
 	for _, o := range resp.Data {
 		have = append(have, o.Name)
+		for _, w := range want {
+			if o.Name != w && anyblockjson.FoldKeyTerm(o.Name) == anyblockjson.FoldKeyTerm(w) {
+				nearMiss = append(nearMiss, fmt.Sprintf("%q for %q", o.Name, w))
+			}
+		}
 	}
-	holds := "it holds no options at all"
-	if len(have) > 0 {
-		holds = "it holds: " + strings.Join(have, ", ")
+
+	// The repair that DELIVERS what was asked comes first. On a fresh
+	// account the bundled selects — Status, Tag, Priority, Source — are
+	// installed with no options at all, so "Status: select(Todo, Doing,
+	// Done)", the most natural thing a model writes, lands here every time;
+	// telling it first to drop the parentheses would answer a question it
+	// did not ask, and leave the user with an optionless Status.
+	var b strings.Builder
+	fmt.Fprintf(&b, "property %q already exists in this space and has no option %s",
+		label, strings.Join(missing, ", "))
+	if len(have) == 0 {
+		b.WriteString(" — it holds no options at all")
+	} else {
+		fmt.Fprintf(&b, " — it holds: %s", strings.Join(have, ", "))
+		if resp.HasMore {
+			b.WriteString(", …")
+		}
 	}
-	return fmt.Errorf("property %q already exists in this space and has no option %s — %s. Drop the parentheses to use it as it is, or give the new property a different name; nothing was created",
-		label, strings.Join(missing, ", "), holds)
+	b.WriteString(". This surface cannot add options to a property that already exists")
+	switch {
+	case len(nearMiss) > 0:
+		// the cheapest repair of all, and one the model can read straight
+		// off the list above — name it before either structural move
+		fmt.Fprintf(&b, ". Spell the option exactly as it exists — write %s", strings.Join(nearMiss, ", "))
+	case len(have) == 0:
+		fmt.Fprintf(&b, ". To get the options you asked for, give this property a name the space does not use yet (e.g. %q), which creates it with them; or drop the parentheses to reuse %q as it is",
+			distinctPropertyName(label), label)
+	default:
+		fmt.Fprintf(&b, ". Use one of the options it holds, or drop the parentheses to reuse %q as it is; a name the space does not use yet (e.g. %q) would be created with the options you asked for",
+			label, distinctPropertyName(label))
+	}
+	b.WriteString("; nothing was created")
+	return errors.New(b.String())
+}
+
+// distinctPropertyName suggests a spelling the space is unlikely to hold —
+// a refusal that says "pick another name" without offering one asks the
+// model to invent, and inventing is where small models spend their turns.
+func distinctPropertyName(label string) string {
+	return label + " (custom)"
 }
 
 //
@@ -450,7 +551,10 @@ func (r *Runner) runCreateType(ctx context.Context, session *Session, args map[s
 	// nothing is created until the name and every format have been accepted.
 	preflight, err := r.createTypeRequest(ctx, session, space, typeDocument(name, plans), true)
 	if err != nil {
-		return nil, createTypeNameRepair(name, err)
+		// mintResidueNote with nothing minted says "nothing was created" —
+		// which is the whole point of pre-flighting, and the fact that
+		// separates this failure from the identical-looking one below
+		return nil, suffixToolError(createTypeNameRepair(name, err), mintResidueNote(nil))
 	}
 	if r.DryRun {
 		// the caller asked for a dry run, and the pre-flight IS one — running
@@ -463,20 +567,44 @@ func (r *Runner) runCreateType(ctx context.Context, session *Session, args map[s
 	// a failure here leaves properties (which a re-run reuses) and never a
 	// type. The plan is updated in place with the minted key, so the document
 	// the type create sends addresses each one exactly.
+	var minted []string
 	for i := range plans {
 		if !plans[i].mint {
 			continue
 		}
 		key, err := r.mintTypeProperty(ctx, session, space, plans[i].decl)
 		if err != nil {
-			return nil, err
+			// the residue has to be NAMED, not merely implied: the loop can
+			// stop with properties already created and permanent, and a
+			// model told only "the type was NOT created" has no way to know
+			// whether re-running duplicates them (it does not — a re-run
+			// reuses what is there)
+			return nil, suffixToolError(err, mintResidueNote(minted))
+		}
+		if key == "" {
+			// An empty stored slug is an authoritative server outcome, not a
+			// transport glitch (storedApiKeyOf: the internal key is then the
+			// only address) — reachable whenever the name yields no slug, as
+			// a name of only punctuation does. Left unchecked, typeDocument
+			// falls back to spelling the property by NAME, which can bind a
+			// different relation than the one just minted. Refuse instead,
+			// and name the residue: the property itself was created.
+			minted = append(minted, plans[i].decl.Name)
+			return nil, suffixToolError(&ToolError{Text: fmt.Sprintf(
+				"property %q was created but the server returned no key for it, so the type cannot address it — "+
+					"give the property a name with letters or digits in it and run create_type again",
+				plans[i].decl.Name)}, mintResidueNote(minted))
 		}
 		plans[i].key = key
+		minted = append(minted, plans[i].decl.Name)
 	}
 
 	result, err := r.createTypeRequest(ctx, session, space, typeDocument(name, plans), false)
 	if err != nil {
-		return nil, createTypeNameRepair(name, err)
+		// distinct from the pre-flight's failure, which leaves NOTHING: by
+		// here the mints above are permanent, and the two used to read
+		// identically
+		return nil, suffixToolError(createTypeNameRepair(name, err), mintResidueNote(minted))
 	}
 	return createTypeReceipt(name, plans, result, false), nil
 }
@@ -499,9 +627,27 @@ func (r *Runner) createTypeRequest(ctx context.Context, session *Session, spaceI
 		body:           doc,
 		idempotencyKey: key,
 	}, &result); err != nil {
+		if dry {
+			// says which of the two POST /types failed; the pre-flight's
+			// failure means nothing was written, the real one does not
+			return nil, prefixToolError(err, "check the type name and formats")
+		}
 		return nil, err
 	}
 	return &result, nil
+}
+
+// mintResidueNote names the properties this call created before it failed.
+// They are permanent — there is no property delete on this surface — so a
+// refusal that does not name them leaves the model guessing whether a
+// re-run duplicates them.
+func mintResidueNote(minted []string) string {
+	if len(minted) == 0 {
+		return " (nothing was created)"
+	}
+	return fmt.Sprintf(" — these properties WERE created and remain in the space: %s;"+
+		" running create_type again reuses them rather than duplicating them",
+		strings.Join(minted, ", "))
 }
 
 // mintTypeProperty creates one select/multi_select property together with
@@ -541,6 +687,23 @@ func (r *Runner) mintTypeProperty(ctx context.Context, session *Session, spaceId
 // the executor and the agent reading the message. It goes into the
 // ToolError's own text instead, the channel every refusal on this surface
 // speaks through; a non-ToolError still wraps normally, chain intact.
+// suffixToolError appends to a refusal the model will actually see. It is
+// the mirror of prefixToolError and exists for the same reason: steerError
+// unwraps to the *ToolError and returns THAT, so a plain fmt.Errorf("%w…")
+// around one is dropped before it reaches the agent — the note is written
+// and never delivered.
+func suffixToolError(err error, suffix string) error {
+	if suffix == "" {
+		return err
+	}
+	var te *ToolError
+	if !errors.As(err, &te) {
+		return fmt.Errorf("%w%s", err, suffix)
+	}
+	te.Text += suffix
+	return te
+}
+
 func prefixToolError(err error, format string, a ...any) error {
 	prefix := fmt.Sprintf(format, a...)
 	var te *ToolError
@@ -577,6 +740,13 @@ func createTypeNameRepair(name string, err error) error {
 	if !named {
 		return err
 	}
+	// The server's own repair offers a route ("update it with the HTTP
+	// API", once deRest has generalised the PATCH away) that no tool on this
+	// surface backs — and the sentence appended below then denies it one
+	// clause later. Drop the contradicting offer rather than ship both.
+	te.Text = strings.ReplaceAll(te.Text, " (update it with the HTTP API, or pick a different key)", "")
+	te.Text = strings.ReplaceAll(te.Text, "update it with the HTTP API, or pick a different key", "pick a different name")
+
 	// the bundled wording is the server's; the fallback below is correct for
 	// either case, so a reworded server message degrades rather than breaks
 	if strings.Contains(te.Text, "bundled type") {

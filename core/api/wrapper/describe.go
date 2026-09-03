@@ -388,20 +388,29 @@ func describeText(result describeResult) string {
 	// to invent the punctuation, and inventing punctuation is where small
 	// models spend their turns. Joining these lines with commas is now a
 	// valid property list.
+	// Anything that is NOT an option name stays out of the parentheses, and
+	// anything that is not part of the property spec stays out of the row.
+	// The rows are advertised as create_type input, and create_type parses
+	// what is inside the parentheses as option names — so a `…` written
+	// there came back as a literal option named "…", and the
+	// options-unavailable sentence came back as a format named
+	// "select  — options could not be listed…". A row must be transcribable
+	// whole or it should not claim to be.
+	var notes []string
 	writeRow := func(p describeProperty) {
 		fmt.Fprintf(&b, "\n  %s: %s", p.Key, p.Format)
 		if len(p.Options) > 0 {
-			fmt.Fprintf(&b, "(%s", strings.Join(p.Options, ", "))
-			if p.MoreOptions {
-				b.WriteString(", …")
-			}
-			b.WriteString(")")
+			fmt.Fprintf(&b, "(%s)", strings.Join(p.Options, ", "))
 		}
-		if p.OptionsUnavailable {
-			// deliberately OUTSIDE the parentheses: inside them this sentence
-			// would read as the option list itself, which is the one thing
-			// this annotation exists to say is unknown
-			b.WriteString("  — options could not be listed; run describe again before using this property")
+		switch {
+		case p.MoreOptions:
+			notes = append(notes, fmt.Sprintf(
+				"%s has more options than listed — describe with options %q to see them all",
+				p.Key, p.Key))
+		case p.OptionsUnavailable:
+			notes = append(notes, fmt.Sprintf(
+				"%s: its options could not be listed — describe with options %q before using it",
+				p.Key, p.Key))
 		}
 	}
 
@@ -434,6 +443,11 @@ func describeText(result describeResult) string {
 	}
 	b.WriteString("\nboth lists are settable: use these exact property names and option names in create and set_properties" +
 		"\neach row is written the way create_type takes a property — Name: format, a select's options in parentheses")
+	// the notes follow the rows rather than interrupting them, so a row
+	// stays transcribable as a create_type property (see writeRow)
+	for _, n := range notes {
+		fmt.Fprintf(&b, "\nnote: %s", n)
+	}
 	return b.String()
 }
 
@@ -479,12 +493,22 @@ func (r *Runner) describeOptions(ctx context.Context, space, typeKey, property, 
 	if err != nil {
 		return nil, fmt.Errorf("read the space's properties: %w", err)
 	}
-	row, ok := matchDefinitionRow(idx, property)
-	if !ok {
+	// resolveKey, not matchDefinitionRow: the latter answers "not found" for
+	// an AMBIGUOUS name too, which turned two properties folding to one class
+	// into "this space has no property named …" — false, and unactionable,
+	// since describe goes on listing both. resolveKey refuses ambiguity by
+	// naming the candidates.
+	resolved, err := idx.resolveKey(property)
+	if err != nil {
+		return nil, &ToolError{Text: err.Error()}
+	}
+	format, known := idx.formats[resolved]
+	if !known {
 		return nil, &ToolError{Text: fmt.Sprintf(
 			"this space has no property named %q — describe %q lists the property names it does have",
 			property, typeKey)}
 	}
+	row := v2model.PropertyRow{Key: resolved, Format: format}
 	label := idx.displayName(row.Key)
 	if !selectFormats[row.Format] {
 		return nil, &ToolError{Text: fmt.Sprintf(
@@ -527,22 +551,28 @@ func (r *Runner) describeOptions(ctx context.Context, space, typeKey, property, 
 	}
 	if out.More {
 		// the ellipsis this mode exists to resolve must not reappear as a
-		// dead end here: say the move that narrows it
-		fmt.Fprintf(&b, "\n(more exist — narrow with starting_with, e.g. starting_with %q)",
-			firstLetter(out.Options))
+		// dead end here: say the move that narrows it, and say it in terms
+		// the model can advance. Suggesting the initial of the LAST option
+		// listed re-lists that same letter and can never reach the letters
+		// after it, so the suggestion names where the page STOPPED and what
+		// to ask for to continue past it.
+		fmt.Fprintf(&b, "\n(listing stopped at %q — there are more after it; "+
+			"ask again with starting_with set to a first letter or word to narrow, e.g. starting_with %q)",
+			out.Options[len(out.Options)-1], nextPrefixAfter(out.Options[len(out.Options)-1]))
 	}
 	return &Result{Text: b.String(), JSON: out}, nil
 }
 
-// firstLetter returns a one-character prefix worth suggesting: the initial
-// of the last option listed, which is where a truncated listing stopped.
-func firstLetter(options []string) string {
-	if len(options) == 0 {
-		return "a"
-	}
-	last := options[len(options)-1]
+// nextPrefixAfter suggests a prefix that reaches PAST where a truncated,
+// name-sorted listing stopped — the letter after the last option's initial.
+// Suggesting the last option's own initial (the first version of this) asks
+// for the page just returned and can never reveal what follows it.
+func nextPrefixAfter(last string) string {
 	for _, r := range last {
-		return string(r)
+		if r >= 'a' && r < 'z' || r >= 'A' && r < 'Z' {
+			return string(r + 1)
+		}
+		break
 	}
-	return "a"
+	return "z"
 }

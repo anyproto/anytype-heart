@@ -6959,7 +6959,15 @@ form is not invented for this tool — it is what `describe` now prints per
 property row (`Name: format(options)`), changed here from
 `Name  format  options: …` for the oldest rule on this surface: what a tool
 PRINTS must be accepted as what a tool TAKES. Joining describe's rows with
-commas is now a valid `properties` argument, asserted by test.
+commas is now a valid `properties` argument, asserted by
+`TestDescribeRowsTranscribeIntoCreateType`. That assertion was claimed here
+before it existed, and when it was written it failed: a truncated option list
+printed `Status: select(Backlog, Done, …)`, which parsed as an option
+literally named `…`, and a failed option listing printed its caveat inside
+the row, which parsed as a format named `select  — options could not be
+listed…`. Both now sit in `note:` lines AFTER the rows — nothing that is not
+part of a property spec goes in a row, and nothing that is not an option name
+goes in the parentheses.
 
 **Options do not survive a type document — measured, not assumed.** The
 format carries them (`property_definitions[].options`, and the document
@@ -7030,3 +7038,50 @@ there, while `/properties/{key}/options` serves all three. Measured live on
 2026-09-03. Any client reading a type to learn its schema needs one extra
 request per select, which is why `create_type` writes options through
 `POST /properties` and why the eval's grader reads them from the option route.
+
+
+### 8.50 There is no route that adds an option to an existing property (2026-09-03)
+
+`POST /properties` creates a property *with* its options; `PATCH
+/properties/{key}` takes **only** `name`; there is no options route. So
+options can be created exactly twice in a property's life — at creation, or
+implicitly through `?create_missing_options=true` while writing a value to an
+object — and never by a caller holding only the property.
+
+**Why this bites, and a correction.** An earlier draft of this section said
+a fresh account's bundled selects are installed with **no options at all**.
+That was wrong, and the error is worth recording because it is easy to
+repeat: `describe`'s *also settable* rows print `Status: select` with no
+options because describe does not FETCH options for those rows (§8.49), not
+because the property has none. Measured directly on a fresh account,
+`Status` holds `To Do, In Progress, Done`.
+
+The real collision is a near-miss, and it is the common one. A model asked
+for a status field writes `Status: select(Todo, Doing, Done)`; the space
+holds `To Do, In Progress, Done`. Two of the three differ from what exists
+by a **space**, so a refusal matching only on case reports them as simply
+absent and sends the model to rename the property — a permanent act — when
+the repair costs one word.
+
+`checkDeclaredOptions` therefore matches near-misses with `FoldKeyTerm`, the
+same fold the property index uses (casefold plus separator strip), and names
+them first: *Spell the option exactly as it exists — write "To Do" for
+"Todo"*. Only when nothing is close does the refusal reach for the
+structural moves, and even then it leads with the one that delivers the
+options asked for (a property name the space does not hold yet) rather than
+with "drop the parentheses", which answers a different question.
+
+A genuinely optionless select does still exist — a custom one, or a bundled
+one nothing has populated — and that branch is what the "no options at all"
+wording covers.
+
+**If the API ever gains `POST /properties/{key}/options`**, this refusal
+becomes an extra request instead, and the bundled selects stop being a dead
+end. That is the fix worth having; the wording above is the mitigation.
+
+**Related, same section:** option *validation* must always go through the
+route's `prefix` search, never through a page of the listing. The listing is
+name-sorted and capped, so a property holding 150 options answered for the
+alphabetically-first 100 and `create_type` refused an option that exists —
+`checkOptionNames` had already learned this (§8.49); `checkDeclaredOptions`
+had to learn it again.
