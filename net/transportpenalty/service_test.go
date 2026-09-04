@@ -102,6 +102,14 @@ type fixture struct {
 }
 
 func newFixture(t *testing.T, identity string) *fixture {
+	fx := newStoppedFixture(t, identity)
+	fx.start(t)
+	return fx
+}
+
+// newStoppedFixture wires the app without starting it, so a test can tune the
+// service and seed the state file before Init runs.
+func newStoppedFixture(t *testing.T, identity string) *fixture {
 	fx := &fixture{
 		service: New().(*service),
 		a:       new(app.App),
@@ -116,9 +124,12 @@ func newFixture(t *testing.T, identity string) *fixture {
 		Register(fx.peers).
 		Register(fx.network).
 		Register(fx.service)
+	return fx
+}
+
+func (fx *fixture) start(t *testing.T) {
 	require.NoError(t, fx.a.Start(ctx))
 	t.Cleanup(func() { require.NoError(t, fx.a.Close(ctx)) })
-	return fx
 }
 
 func (fx *fixture) statePath() string {
@@ -129,6 +140,17 @@ func (fx *fixture) writeStateFile(t *testing.T, st storedState) {
 	data, err := json.Marshal(st)
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(fx.repo, fileName), data, 0o600))
+}
+
+// readStateFile parses the state file; a missing or torn file yields the zero
+// value so Eventually callers can keep polling.
+func (fx *fixture) readStateFile(t *testing.T) (st storedState) {
+	data, err := os.ReadFile(fx.statePath())
+	if err != nil {
+		return
+	}
+	_ = json.Unmarshal(data, &st)
+	return
 }
 
 func demotedPeers(peerId string) quicdemotion.PenaltySnapshot {
@@ -274,6 +296,32 @@ func TestService_NetworkChange(t *testing.T) {
 		// and the stale file is gone
 		require.Eventually(t, func() bool {
 			_, err := os.Stat(filepath.Join(repo, fileName))
+			return os.IsNotExist(err)
+		}, time.Second, 10*time.Millisecond)
+	})
+	t.Run("penalty save before the first observation does not launder the stored key", func(t *testing.T) {
+		// given: verdict learned on net-A, device now on net-B, and the
+		// startup check kept out of the way
+		fx := newStoppedFixture(t, "net-B")
+		fx.writeStateFile(t, storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
+		fx.service.startupCheckDelay = time.Hour
+		fx.start(t)
+		require.Len(t, fx.peers.seeded, 1)
+
+		// a strike lands and is persisted before any identity observation
+		fx.peers.mutate("p2", quicdemotion.PeerPenalty{ConsecutiveDegraded: 1})
+		require.Eventually(t, func() bool {
+			_, ok := fx.readStateFile(t).Penalties.Peers["p2"]
+			return ok
+		}, time.Second, 10*time.Millisecond)
+
+		// when: the first observation arrives
+		fx.network.fireRecovery()
+
+		// then: the net-A verdict must still be recognized as foreign
+		assert.Equal(t, 1, fx.peers.resets)
+		require.Eventually(t, func() bool {
+			_, err := os.Stat(fx.statePath())
 			return os.IsNotExist(err)
 		}, time.Second, 10*time.Millisecond)
 	})

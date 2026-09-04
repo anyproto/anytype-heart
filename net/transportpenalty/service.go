@@ -104,11 +104,17 @@ type service struct {
 
 	mu           sync.Mutex
 	lastIdentity string // last observed network identity; "" until first observation
-	storedKey    string // network key the seeded penalties were learned on
-	saveTimer    *time.Timer
-	savePending  bool
-	closed       bool
-	closeCh      chan struct{}
+	// loadedKey is the network key of the state file as it was loaded, i.e.
+	// the network the seeded penalties were learned on. Only load sets it:
+	// if a save could rewrite it with the current identity, a penalty
+	// mutation landing before the first observation would relabel a verdict
+	// from network A as learned on B and the stale-verdict check would
+	// never fire.
+	loadedKey   string
+	saveTimer   *time.Timer
+	savePending bool
+	closed      bool
+	closeCh     chan struct{}
 }
 
 func (s *service) Name() string { return CName }
@@ -194,7 +200,7 @@ func (s *service) load() {
 		return
 	}
 	s.mu.Lock()
-	s.storedKey = st.NetworkKey
+	s.loadedKey = st.NetworkKey
 	s.mu.Unlock()
 	s.peers.Seed(st.Penalties)
 	log.Info("seeded stored transport penalties",
@@ -218,15 +224,15 @@ func (s *service) checkIdentity(identity string) {
 	s.mu.Lock()
 	prev := s.lastIdentity
 	s.lastIdentity = identity
-	storedKey := s.storedKey
+	loadedKey := s.loadedKey
 	s.mu.Unlock()
 	if prev == identity {
 		return
 	}
 	if prev == "" {
-		if storedKey != "" && storedKey != identity {
+		if loadedKey != "" && loadedKey != identity {
 			log.Info("stored transport penalties are from another network, resetting",
-				zap.String("storedKey", storedKey), zap.String("identity", identity))
+				zap.String("storedKey", loadedKey), zap.String("identity", identity))
 			s.peers.Reset()
 			s.removeFile()
 		}
@@ -263,12 +269,8 @@ func (s *service) save() {
 		s.removeFile()
 		return
 	}
-	identity := s.network.NetworkIdentity()
-	s.mu.Lock()
-	s.storedKey = identity
-	s.mu.Unlock()
 	st := storedState{
-		NetworkKey: identity,
+		NetworkKey: s.network.NetworkIdentity(),
 		UpdatedAt:  time.Now().UTC(),
 		Penalties:  snap,
 	}
