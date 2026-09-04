@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -29,6 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/inbox/inboxservice/mock_inboxservice"
 	"github.com/anyproto/anytype-heart/core/kanban/mock_kanban"
 	"github.com/anyproto/anytype-heart/core/notifications/mock_notifications"
+	"github.com/anyproto/anytype-heart/core/recovery"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
@@ -208,6 +210,7 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 	ctrl := gomock.NewController(t)
 	fx := &fixture{
 		spaceId:            "bafyreifhyhdwrhwc23yi52w42osr4erqhiu2domqd3vwnngdee23kulpre.3aop5yrnf383q",
+		recovery:           &fakeRecoveryObserver{},
 		service:            New().(*service),
 		a:                  new(app.App),
 		ctrl:               ctrl,
@@ -262,6 +265,7 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 		Register(identityService).
 		Register(inboxSenderService).
 		Register(&testSpaceLoaderListener{}).
+		Register(fx.recovery).
 		Register(fx.service)
 	fx.expectRun(t, expectOldAccount)
 
@@ -274,6 +278,7 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 
 type fixture struct {
 	*service
+	recovery           *fakeRecoveryObserver
 	spaceId            string
 	a                  *app.App
 	config             *config.Config
@@ -716,5 +721,235 @@ func TestOrderSpacesOpenedFirst(t *testing.T) {
 	t.Run("no opened spaces: unchanged", func(t *testing.T) {
 		ids := []string{"a", "b"}
 		assert.Equal(t, ids, orderSpacesOpenedFirst(ids, nil))
+	})
+}
+
+// fakeRecoveryObserver stands in for the recovery status tracker under its
+// component name.
+type fakeRecoveryObserver struct {
+	mu               sync.Mutex
+	techSpaceId      string
+	ready            int
+	views            []fakeSpaceView
+	initial          []string
+	initialDelivered bool
+	inactive         []fakeSpaceView
+}
+
+type fakeSpaceView struct {
+	spaceId, spaceViewId string
+	deleted              bool
+}
+
+func (f *fakeRecoveryObserver) Init(*app.App) error { return nil }
+
+func (f *fakeRecoveryObserver) Name() string { return recoveryCName }
+
+func (f *fakeRecoveryObserver) OnTechSpaceId(id string) { f.techSpaceId = id }
+
+func (f *fakeRecoveryObserver) OnAccountReady() { f.ready++ }
+
+func (f *fakeRecoveryObserver) OnSpaceViewsInitial(spaceViewIds []string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.initial = spaceViewIds
+	f.initialDelivered = true
+}
+
+func (f *fakeRecoveryObserver) OnSpaceViewInactive(spaceId, spaceViewId string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.inactive = append(f.inactive, fakeSpaceView{spaceId: spaceId, spaceViewId: spaceViewId})
+}
+
+func (f *fakeRecoveryObserver) seenInactive() []fakeSpaceView {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.inactive)
+}
+
+func (f *fakeRecoveryObserver) OnSpaceView(spaceId, spaceViewId string, deleted bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.views = append(f.views, fakeSpaceView{spaceId: spaceId, spaceViewId: spaceViewId, deleted: deleted})
+}
+
+func (f *fakeRecoveryObserver) seenViews() []fakeSpaceView {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]fakeSpaceView(nil), f.views...)
+}
+
+func TestService_notifySpaceView(t *testing.T) {
+	newService := func(fake *fakeRecoveryObserver) *service {
+		s := New().(*service)
+		s.recovery = fake
+		s.applySpaceStatusHook = func(spaceViewStatus) {} // test seam: no controller build
+		return s
+	}
+	tests := []struct {
+		name   string
+		status spaceViewStatus
+		want   fakeSpaceView
+	}{
+		{"active view", spaceViewStatus{spaceId: "s1", spaceViewId: "v1", accountStatus: spaceinfo.AccountStatusActive, mx: &sync.Mutex{}}, fakeSpaceView{"s1", "v1", false}},
+		{"deleted account status", spaceViewStatus{spaceId: "s2", spaceViewId: "v2", accountStatus: spaceinfo.AccountStatusDeleted, mx: &sync.Mutex{}}, fakeSpaceView{"s2", "v2", true}},
+		{"removing account status", spaceViewStatus{spaceId: "s3", spaceViewId: "v3", accountStatus: spaceinfo.AccountStatusRemoving, mx: &sync.Mutex{}}, fakeSpaceView{"s3", "v3", true}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			fake := &fakeRecoveryObserver{}
+			s := newService(fake)
+
+			// when
+			s.onSpaceStatusUpdated(tc.status)
+
+			// then
+			require.Eventually(t, func() bool { return len(fake.seenViews()) == 1 }, time.Second, 5*time.Millisecond)
+			assert.Equal(t, []fakeSpaceView{tc.want}, fake.seenViews())
+		})
+	}
+
+	t.Run("no tracker registered is a no-op", func(t *testing.T) {
+		s := New().(*service)
+		assert.NotPanics(t, func() { s.notifySpaceView(spaceViewStatus{spaceId: "s1"}) })
+	})
+}
+
+func TestService_RecoveryObserver(t *testing.T) {
+	t.Run("constant mirrors recovery.CName", func(t *testing.T) {
+		assert.Equal(t, recovery.CName, recoveryCName)
+	})
+
+	t.Run("new account: tech space id before run, account ready once on create", func(t *testing.T) {
+		// given / when
+		fx := newFixture(t, nil)
+
+		// then
+		assert.Equal(t, fx.techSpaceId, fx.recovery.techSpaceId)
+		assert.Equal(t, 1, fx.recovery.ready)
+		assert.True(t, fx.recovery.initialDelivered, "the watcher's first pass is reported even when empty")
+	})
+
+	t.Run("the watcher's first pass lists the views already in the store", func(t *testing.T) {
+		// given / when
+		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			fx.techSpace.EXPECT().StartSync()
+			fx.service.applySpaceStatusHook = func(spaceViewStatus) {} // no controller build
+			fx.objectStore.AddObjects(t, "techSpaceId", []objectstore.TestObject{
+				givenSpaceViewObject("spaceView9", "some.space", "creator", spaceinfo.AccountStatusActive, spaceinfo.RemoteStatusOk, spaceinfo.LocalStatusOk, ""),
+			})
+		})
+
+		// then
+		assert.True(t, fx.recovery.initialDelivered)
+		assert.Equal(t, []string{"spaceView9"}, fx.recovery.initial)
+		require.Eventually(t, func() bool { return len(fx.recovery.seenViews()) == 1 }, time.Second, 5*time.Millisecond)
+		assert.Equal(t, fakeSpaceView{"some.space", "spaceView9", false}, fx.recovery.seenViews()[0])
+	})
+
+	t.Run("existing account: account ready once on load", func(t *testing.T) {
+		// given / when
+		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			fx.techSpace.EXPECT().StartSync()
+		})
+
+		// then
+		assert.Equal(t, fx.techSpaceId, fx.recovery.techSpaceId)
+		assert.Equal(t, 1, fx.recovery.ready)
+	})
+
+	t.Run("existing account: the bounded load times out, the unbounded retry succeeds", func(t *testing.T) {
+		// given / when
+		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(nil, context.DeadlineExceeded).Times(1)
+			fx.spaceCore.EXPECT().StorageExistsLocally(mock.Anything, fx.spaceId).Return(false, nil)
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			fx.techSpace.EXPECT().StartSync()
+		})
+
+		// then
+		assert.Equal(t, 1, fx.recovery.ready, "the failed bounded load fires nothing; the retry fires once")
+	})
+
+	t.Run("existing account: create-for-old-accounts fallback fires once", func(t *testing.T) {
+		// given / when
+		fx := newFixture(t, func(t *testing.T, fx *fixture) {
+			fx.factory.EXPECT().LoadAndSetTechSpace(mock.Anything).Return(nil, context.DeadlineExceeded).Times(1)
+			fx.spaceCore.EXPECT().StorageExistsLocally(mock.Anything, fx.spaceId).Return(true, nil)
+			fx.spaceCore.EXPECT().Get(mock.Anything, fx.spaceId).Return(nil, nil)
+			fx.factory.EXPECT().CreateAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+			prCtrl := mock_spacecontroller.NewMockSpaceController(t)
+			fx.factory.EXPECT().NewPersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
+			prCtrl.EXPECT().Close(mock.Anything).Return(nil)
+			fx.techSpace.EXPECT().StartSync()
+		})
+
+		// then
+		assert.Equal(t, 1, fx.recovery.ready)
+	})
+}
+
+// TestNotifySpaceViewJoining pins that a pending join is routed to the seam
+// that never waits for a load result. AccountStatusJoining dispatches to
+// mode.ModeJoining, which builds a joiner and not a spaceloader, so a space
+// left on the ordinary path holds Finished open for the whole run — on every
+// app open, for as long as the invite sits unaccepted.
+func TestNotifySpaceViewJoining(t *testing.T) {
+	newFx := func(t *testing.T) (*service, *fakeRecoveryObserver) {
+		fake := &fakeRecoveryObserver{}
+		return &service{recovery: fake}, fake
+	}
+
+	t.Run("a joining space goes to the inactive seam, not the tracked one", func(t *testing.T) {
+		// given
+		s, fake := newFx(t)
+
+		// when
+		s.notifySpaceView(spaceViewStatus{
+			spaceId:       "s1",
+			spaceViewId:   "v1",
+			accountStatus: spaceinfo.AccountStatusJoining,
+		})
+
+		// then
+		assert.Equal(t, []fakeSpaceView{{spaceId: "s1", spaceViewId: "v1"}}, fake.seenInactive())
+		assert.Empty(t, fake.seenViews(), "a joining space must not be tracked as awaiting a load")
+	})
+
+	t.Run("an active space still goes to the tracked seam", func(t *testing.T) {
+		// given
+		s, fake := newFx(t)
+
+		// when
+		s.notifySpaceView(spaceViewStatus{
+			spaceId:       "s2",
+			spaceViewId:   "v2",
+			accountStatus: spaceinfo.AccountStatusActive,
+		})
+
+		// then
+		assert.Equal(t, []fakeSpaceView{{spaceId: "s2", spaceViewId: "v2"}}, fake.seenViews())
+		assert.Empty(t, fake.seenInactive())
+	})
+
+	t.Run("deletion wins over joining", func(t *testing.T) {
+		// given: a joining space that the remote has since deleted
+		s, fake := newFx(t)
+
+		// when
+		s.notifySpaceView(spaceViewStatus{
+			spaceId:       "s3",
+			spaceViewId:   "v3",
+			accountStatus: spaceinfo.AccountStatusJoining,
+			remoteStatus:  spaceinfo.RemoteStatusDeleted,
+		})
+
+		// then: it is reported deleted, so the tracker can retire it properly
+		assert.Equal(t, []fakeSpaceView{{spaceId: "s3", spaceViewId: "v3", deleted: true}}, fake.seenViews())
+		assert.Empty(t, fake.seenInactive())
 	})
 }

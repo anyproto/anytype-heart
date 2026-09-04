@@ -45,11 +45,22 @@ type SpaceLoader interface {
 	WaitLoad(ctx context.Context) (sp clientspace.Space, err error)
 }
 
+// LoadObserver receives this loader's lifecycle: the recovery status tracker
+// (core.recovery) implements it and finalizes a space on the load result.
+// Optional, resolved through the space app's parent chain. optimistic is the
+// on-disk fast path that never publishes Loading; deleted is this loader's own
+// deletion verdict, passed as a bool so the observer needs no spacecore import.
+type LoadObserver interface {
+	OnSpaceLoadStarted(spaceId string, optimistic bool)
+	OnSpaceLoaded(spaceId string, err error, deleted bool)
+}
+
 type spaceLoader struct {
 	status              spacestatus.SpaceStatus
 	builder             builder.SpaceBuilder
 	storageService      storage.ClientStorage
 	loading             *loadingSpace
+	observer            LoadObserver // optional
 	stopIfMandatoryFail bool
 	disableRemoteLoad   bool
 
@@ -71,6 +82,9 @@ func (s *spaceLoader) Init(a *app.App) (err error) {
 	s.status = app.MustComponent[spacestatus.SpaceStatus](a)
 	s.builder = app.MustComponent[builder.SpaceBuilder](a)
 	s.storageService = app.MustComponent[storage.ClientStorage](a)
+	if observer, err := app.GetComponent[LoadObserver](a); err == nil {
+		s.observer = observer
+	}
 	return nil
 }
 
@@ -122,6 +136,9 @@ func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
 			return
 		}
 	}
+	if s.observer != nil {
+		s.observer.OnSpaceLoadStarted(s.status.SpaceId(), onDiskAndOk)
+	}
 	s.loading = s.newLoadingSpace(s.ctx, s.stopIfMandatoryFail, s.disableRemoteLoad, s.status.GetLatestAclHeadId())
 	return
 }
@@ -129,6 +146,9 @@ func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
 func (s *spaceLoader) onLoad(sp clientspace.Space, loadErr error) (err error) {
 	s.mx.Lock()
 	defer s.mx.Unlock()
+	// deferred so every branch forwards, the cancelled one included: the
+	// observer mirrors this switch and must see the same verdict
+	defer s.notifyLoaded(loadErr)
 	info := spaceinfo.NewSpaceLocalInfo(s.status.SpaceId())
 	switch {
 	case loadErr == nil:
@@ -151,6 +171,15 @@ func (s *spaceLoader) onLoad(sp clientspace.Space, loadErr error) (err error) {
 	}
 
 	return s.status.SetLocalInfo(info)
+}
+
+func (s *spaceLoader) notifyLoaded(loadErr error) {
+	if s.observer == nil {
+		return
+	}
+	deleted := errors.Is(loadErr, spaceservice.ErrSpaceDeletionPending) ||
+		errors.Is(loadErr, spaceservice.ErrSpaceIsDeleted)
+	s.observer.OnSpaceLoaded(s.status.SpaceId(), loadErr, deleted)
 }
 
 func (s *spaceLoader) open(ctx context.Context) (clientspace.Space, error) {

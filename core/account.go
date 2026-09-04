@@ -351,3 +351,17 @@ func getClientInfo(ctx context.Context) pb.EventAccountLinkChallengeClientInfo {
 		ProcessPath: info.Path,
 	}
 }
+
+func (mw *Middleware) AccountRecoveryState(_ context.Context, _ *pb.RpcAccountRecoveryStateRequest) *pb.RpcAccountRecoveryStateResponse {
+	snapshot, err := mw.applicationService.AccountRecoveryState()
+	code := mapErrorCode(err,
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountRecoveryStateResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+	return &pb.RpcAccountRecoveryStateResponse{
+		Snapshot: snapshot,
+		Error: &pb.RpcAccountRecoveryStateResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}

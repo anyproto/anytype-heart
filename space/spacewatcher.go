@@ -8,6 +8,10 @@ import (
 
 type spaceViewUpdater interface {
 	onSpaceStatusUpdated(spaceViewStatus)
+	// onInitialSpaceViews receives the ids of every SpaceView the
+	// subscription's first pass found in the local store, after they have
+	// been enqueued for onSpaceStatusUpdated (delivery is asynchronous)
+	onInitialSpaceViews(spaceViewIds []string)
 }
 
 type spaceWatcher struct {
@@ -21,12 +25,15 @@ func newSpaceWatcher(techSpaceId string, service subscription.Service, updater s
 		service,
 		techSpaceId,
 		func(sub *spaceViewObjectSubscription) {
+			var initial []string
 			sub.Iterate(func(id string, status spaceViewStatus) bool {
+				initial = append(initial, id)
 				dedupQueue.Replace(id, func() {
 					updater.onSpaceStatusUpdated(status)
 				})
 				return true
 			})
+			updater.onInitialSpaceViews(initial)
 		},
 		func(status spaceViewStatus) {
 			dedupQueue.Replace(status.spaceId, func() {

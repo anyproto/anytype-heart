@@ -31,6 +31,7 @@ func (s *service) createTechSpace(ctx context.Context) (err error) {
 		return err
 	}
 	close(s.techSpaceReady)
+	s.notifyAccountReady()
 	return
 }
 
@@ -39,5 +40,15 @@ func (s *service) loadTechSpace(ctx context.Context) (err error) {
 		return err
 	}
 	close(s.techSpaceReady)
+	s.notifyAccountReady()
 	return
+}
+
+// notifyAccountReady is the AccountReady producer: it follows every
+// close(techSpaceReady) — load, create, and the create-for-old-accounts
+// fallback — so the milestone fires exactly once whichever path ran.
+func (s *service) notifyAccountReady() {
+	if s.recovery != nil {
+		s.recovery.OnAccountReady()
+	}
 }
