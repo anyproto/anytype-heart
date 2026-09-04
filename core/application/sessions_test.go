@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/api"
+	"github.com/anyproto/anytype-heart/core/api/wrapper"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -402,6 +403,7 @@ func (m *mockApiService) Run(_ context.Context) error                       { re
 func (m *mockApiService) Close(_ context.Context) error                     { return nil }
 func (m *mockApiService) ReassignAddress(_ context.Context, _ string) error { return nil }
 func (m *mockApiService) RevokeToken(token string)                          { m.revokedTokens = append(m.revokedTokens, token) }
+func (m *mockApiService) ToolsHost() (*wrapper.Host, error)                 { return nil, nil }
 
 func TestLinkLocalRevokeApp(t *testing.T) {
 	signingKey := []byte("test-signing-key-1234")

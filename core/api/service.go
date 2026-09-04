@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/server"
+	"github.com/anyproto/anytype-heart/core/api/wrapper"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
@@ -30,6 +31,9 @@ const (
 	CName           = "api"
 	readTimeout     = 5 * time.Second
 	shutdownTimeout = time.Millisecond
+	// inProcessCallTimeout bounds one in-process tool call end to end —
+	// the same 60s the wrapper's client uses against a listener.
+	inProcessCallTimeout = 60 * time.Second
 )
 
 var (
@@ -58,6 +62,11 @@ type Service interface {
 	app.ComponentRunnable
 	ReassignAddress(ctx context.Context, listenAddr string) error
 	RevokeToken(token string)
+	// ToolsHost returns the in-process delivery of the API v2 task tools
+	// (core/api/wrapper.Host), building the engine on first use — without
+	// a listener. The mobile tool bridge (clientlibrary/service tools.go)
+	// is its consumer.
+	ToolsHost() (*wrapper.Host, error)
 }
 
 type apiService struct {
@@ -77,6 +86,10 @@ type apiService struct {
 
 	srv     *server.Server
 	httpSrv *http.Server
+	// toolsHost is the in-process delivery, built lazily by ToolsHost and
+	// kept for the component's life; its transport resolves the engine per
+	// request (currentEngine), so a rebuilt server never strands it.
+	toolsHost *wrapper.Host
 
 	lock sync.Mutex
 }
@@ -171,22 +184,9 @@ func (s *apiService) startServer() error {
 		return nil
 	}
 
-	s.srv = server.NewServer(
-		s.mw,
-		s.accountService,
-		s.eventService,
-		s.crossSpaceSubService,
-		s.chatSubService,
-		s.fileObjectService,
-		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, ChatSub: s.chatSubService, Store: s.objectStore, AccountId: s.accountId()},
-		s.listenAddr,
-		server.OpenApiDocs{
-			V1YAML: openapiV1YAML,
-			V1JSON: openapiV1JSON,
-			V2YAML: openapiV2YAML,
-			V2JSON: openapiV2JSON,
-		},
-	)
+	if err := s.ensureServerLocked(); err != nil {
+		return err
+	}
 
 	s.httpSrv = &http.Server{
 		Addr:              s.listenAddr,
@@ -203,6 +203,71 @@ func (s *apiService) startServer() error {
 	}()
 
 	return nil
+}
+
+// ensureServerLocked builds the server (engine, v1 and v2 services) if
+// none exists. It never listens: listening is startServer's job and is
+// gated on the listen address. Must be called with s.lock held.
+func (s *apiService) ensureServerLocked() error {
+	if s.srv != nil {
+		return nil
+	}
+	// NewServer panics when the account info is unavailable (the tech
+	// space id comes from it); asking first turns a bridge call during
+	// shutdown into an error instead.
+	if _, err := s.accountService.GetInfo(context.Background()); err != nil {
+		return fmt.Errorf("account info: %w", err)
+	}
+	s.srv = server.NewServer(
+		s.mw,
+		s.accountService,
+		s.eventService,
+		s.crossSpaceSubService,
+		s.chatSubService,
+		s.fileObjectService,
+		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, ChatSub: s.chatSubService, Store: s.objectStore, AccountId: s.accountId()},
+		s.listenAddr,
+		server.OpenApiDocs{
+			V1YAML: openapiV1YAML,
+			V1JSON: openapiV1JSON,
+			V2YAML: openapiV2YAML,
+			V2JSON: openapiV2JSON,
+		},
+	)
+	return nil
+}
+
+// ToolsHost implements Service: the in-process delivery over an engine
+// that was built for it if the listener never built one (mobile). The
+// engine is ensured on EVERY call — ReassignAddress drops it, and the
+// cached host must find a new one on the next tool call.
+func (s *apiService) ToolsHost() (*wrapper.Host, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if err := s.ensureServerLocked(); err != nil {
+		return nil, fmt.Errorf("build api engine for tools host: %w", err)
+	}
+	if s.toolsHost != nil {
+		return s.toolsHost, nil
+	}
+	client := wrapper.NewClient(server.InProcessBaseURL, "")
+	client.HTTP = &http.Client{
+		Transport: server.NewInProcessTransport(s.currentEngine),
+		Timeout:   inProcessCallTimeout,
+	}
+	s.toolsHost = wrapper.NewHost(client)
+	return s.toolsHost, nil
+}
+
+// currentEngine resolves the engine and the internal key for the
+// in-process transport, per request, so a rebuilt server is picked up.
+func (s *apiService) currentEngine() (http.Handler, string, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if s.srv == nil {
+		return nil, "", errors.New("api engine is not built")
+	}
+	return s.srv.Engine(), s.srv.InternalKey(), nil
 }
 
 func (s *apiService) shutdownHTTP(ctx context.Context) error {
@@ -224,7 +289,18 @@ func (s *apiService) ReassignAddress(ctx context.Context, listenAddr string) err
 		return fmt.Errorf("failed to shutdown server: %w", err)
 	}
 
+	// The base URL v1 serves in file links derives from the listen
+	// address, so the server is rebuilt for the new one (as before, when
+	// this method built a fresh one unconditionally). The tools host, if
+	// any, follows through currentEngine on its next call.
+	s.lock.Lock()
+	if s.srv != nil {
+		s.srv.Stop()
+		s.srv = nil
+	}
 	s.listenAddr = listenAddr
+	s.lock.Unlock()
+
 	return s.startServer()
 }
 
