@@ -42,6 +42,10 @@ import (
 const (
 	CName    = "net.transportpenalty"
 	fileName = "transport_penalties.json"
+	// tempSuffixGlob is appended to the state file name for temp files: the
+	// "*" is the random part os.CreateTemp fills in, and the same pattern
+	// finds leftovers on load.
+	tempSuffixGlob = ".*.tmp"
 	// DisableEnv set to "0" turns QUIC auto-demotion off entirely (debugging
 	// escape hatch): bootstrap skips registering quicdemotion and this
 	// component skips seeding and persistence.
@@ -101,6 +105,14 @@ type service struct {
 
 	saveDebounce      time.Duration
 	startupCheckDelay time.Duration
+
+	// saveMu serializes the writers of the state file. The debounce timer
+	// clears savePending before it calls save, so a mutation arriving
+	// mid-write arms a new timer and a second save would otherwise run
+	// alongside the first: two writers on one temp file truncate each
+	// other's output and one rename fails, dropping an update or leaving a
+	// torn file.
+	saveMu sync.Mutex
 
 	mu           sync.Mutex
 	lastIdentity string // last observed network identity; "" until first observation
@@ -183,6 +195,7 @@ func (s *service) Close(ctx context.Context) error {
 // yamux-first session on a good network, which still works — and the startup
 // identity check drops it as soon as the mismatch is visible.
 func (s *service) load() {
+	s.removeStaleTemps()
 	data, err := os.ReadFile(s.filePath)
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
@@ -264,9 +277,11 @@ func (s *service) scheduleSave() {
 }
 
 func (s *service) save() {
+	s.saveMu.Lock()
+	defer s.saveMu.Unlock()
 	snap := s.peers.Snapshot()
 	if len(snap.Peers) == 0 {
-		s.removeFile()
+		s.removeFileLocked()
 		return
 	}
 	st := storedState{
@@ -280,8 +295,29 @@ func (s *service) save() {
 }
 
 func (s *service) removeFile() {
+	s.saveMu.Lock()
+	defer s.saveMu.Unlock()
+	s.removeFileLocked()
+}
+
+func (s *service) removeFileLocked() {
 	if err := os.Remove(s.filePath); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		log.Warn("remove transport penalties file", zap.Error(err))
+	}
+}
+
+// removeStaleTemps drops temp files of writes the process died in the middle
+// of (between CreateTemp and the rename). They are never read - only the
+// renamed file is - so this is housekeeping, not recovery.
+func (s *service) removeStaleTemps() {
+	stale, err := filepath.Glob(s.filePath + tempSuffixGlob)
+	if err != nil {
+		return
+	}
+	for _, path := range stale {
+		if err = os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			log.Warn("remove stale temp state file", zap.String("path", path), zap.Error(err))
+		}
 	}
 }
 
@@ -290,12 +326,24 @@ func writeFileAtomic(path string, st storedState) error {
 	if err != nil {
 		return fmt.Errorf("marshal state: %w", err)
 	}
-	tmp := path + ".tmp"
-	if err = os.WriteFile(tmp, data, 0o600); err != nil {
+	// A unique temp name per writer (0600, like the file itself): with a
+	// shared fixed name a second writer truncates the first's output and one
+	// of the renames fails with ENOENT.
+	tmp, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+tempSuffixGlob)
+	if err != nil {
+		return fmt.Errorf("create temp state file: %w", err)
+	}
+	if _, err = tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmp.Name())
 		return fmt.Errorf("write temp state file: %w", err)
 	}
-	if err = os.Rename(tmp, path); err != nil {
-		_ = os.Remove(tmp)
+	if err = tmp.Close(); err != nil {
+		_ = os.Remove(tmp.Name())
+		return fmt.Errorf("close temp state file: %w", err)
+	}
+	if err = os.Rename(tmp.Name(), path); err != nil {
+		_ = os.Remove(tmp.Name())
 		return fmt.Errorf("rename state file: %w", err)
 	}
 	return nil

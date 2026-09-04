@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -21,12 +22,20 @@ type fakePenaltyManager struct {
 	observer func()
 	seeded   []quicdemotion.PenaltySnapshot
 	resets   int
+	// snapshots counts Snapshot calls; snapshotGate, when set, holds every
+	// Snapshot call until it is closed - a save is then stuck mid-flight.
+	snapshots    int
+	snapshotGate chan struct{}
 }
 
 func (f *fakePenaltyManager) Init(a *app.App) error { return nil }
 func (f *fakePenaltyManager) Name() string          { return "fakePeerService" }
 
 func (f *fakePenaltyManager) Snapshot() quicdemotion.PenaltySnapshot {
+	f.snapshots++
+	if f.snapshotGate != nil {
+		<-f.snapshotGate
+	}
 	peers := make(map[string]quicdemotion.PeerPenalty, len(f.snapshot.Peers))
 	for id, p := range f.snapshot.Peers {
 		peers[id] = p
@@ -244,6 +253,89 @@ func TestService_Save(t *testing.T) {
 			_, err := os.Stat(fx.statePath())
 			return os.IsNotExist(err)
 		}, time.Second, 10*time.Millisecond)
+	})
+}
+
+func TestService_ConcurrentSave(t *testing.T) {
+	t.Run("a mutation during a save waits for it instead of writing alongside", func(t *testing.T) {
+		// given: the first save is stuck inside Snapshot
+		fx := newFixture(t, "net-A")
+		gate := make(chan struct{})
+		fx.peers.snapshotGate = gate
+		t.Cleanup(func() {
+			select {
+			case <-gate:
+			default:
+				close(gate)
+			}
+		})
+		fx.peers.mutate("p1", quicdemotion.PeerPenalty{ConsecutiveDegraded: 1})
+		require.Eventually(t, func() bool { return fx.peers.snapshots == 1 }, time.Second, time.Millisecond)
+
+		// when: another mutation arms a second save while the first is in flight
+		fx.peers.mutate("p2", quicdemotion.PeerPenalty{ConsecutiveDegraded: 1})
+		time.Sleep(10 * fx.service.saveDebounce)
+
+		// then: the second save has not started
+		assert.Equal(t, 1, fx.peers.snapshots)
+
+		// and once the first completes, the second runs and the file holds both
+		close(gate)
+		require.Eventually(t, func() bool { return fx.peers.snapshots == 2 }, time.Second, time.Millisecond)
+		require.Eventually(t, func() bool {
+			st := fx.readStateFile(t)
+			_, p1 := st.Penalties.Peers["p1"]
+			_, p2 := st.Penalties.Peers["p2"]
+			return p1 && p2
+		}, time.Second, time.Millisecond)
+	})
+	t.Run("concurrent writers never collide on the temp file", func(t *testing.T) {
+		// given
+		path := filepath.Join(t.TempDir(), fileName)
+		const writers, rounds = 8, 20
+		errs := make(chan error, writers*rounds)
+
+		// when
+		var wg sync.WaitGroup
+		for w := 0; w < writers; w++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for i := 0; i < rounds; i++ {
+					errs <- writeFileAtomic(path, storedState{NetworkKey: "net-A", Penalties: demotedPeers("p1")})
+				}
+			}()
+		}
+		wg.Wait()
+		close(errs)
+
+		// then: every write landed and the file is whole
+		for err := range errs {
+			require.NoError(t, err)
+		}
+		data, err := os.ReadFile(path)
+		require.NoError(t, err)
+		var st storedState
+		require.NoError(t, json.Unmarshal(data, &st))
+		assert.Contains(t, st.Penalties.Peers, "p1")
+		leftovers, err := filepath.Glob(path + ".*.tmp")
+		require.NoError(t, err)
+		assert.Empty(t, leftovers)
+	})
+	t.Run("temp files of a killed write are removed on load", func(t *testing.T) {
+		// given
+		fx := newStoppedFixture(t, "net-A")
+		stale := fx.statePath() + ".123456.tmp"
+		require.NoError(t, os.WriteFile(stale, []byte("{"), 0o600))
+		fx.writeStateFile(t, storedState{NetworkKey: "net-A", Penalties: demotedPeers("p1")})
+
+		// when
+		fx.start(t)
+
+		// then: the leftover is gone and the real file was still seeded
+		_, err := os.Stat(stale)
+		assert.True(t, os.IsNotExist(err))
+		assert.Len(t, fx.peers.seeded, 1)
 	})
 }
 
