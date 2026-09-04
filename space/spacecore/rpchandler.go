@@ -51,7 +51,7 @@ func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceprot
 		if err != nil {
 			return nil, err
 		}
-		r.s.recordLocalPeer(ctx, peerId, request.LocalServer, request.SpaceIds)
+		r.s.recordLocalPeer(ctx, peerId, request.LocalServer, request.SpaceIds, false)
 	}
 	log.Debug("returning list with ids", zap.Strings("spaceIds", allIds))
 	resp = &clientspaceproto.SpaceExchangeResponse{SpaceIds: allIds}
@@ -59,8 +59,9 @@ func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceprot
 }
 
 // recordLocalPeer registers the addresses a LAN peer advertised and the spaces
-// it shares with us, so subsequent syncing dials it directly.
-func (s *service) recordLocalPeer(ctx context.Context, peerId string, localServer *clientspaceproto.LocalServer, spaceIds []string) {
+// it shares with us, so subsequent syncing dials it directly. proof says
+// whether spaceIds came out of a v2 token exchange (a v1 list is plaintext).
+func (s *service) recordLocalPeer(ctx context.Context, peerId string, localServer *clientspaceproto.LocalServer, spaceIds []string, proof bool) {
 	var portAddrs []string
 	peerAddr := peer.CtxPeerAddr(ctx)
 
@@ -83,7 +84,7 @@ func (s *service) recordLocalPeer(ctx context.Context, peerId string, localServe
 	// addSchema pins the transport for local peers (yamux); see its comment
 	addrsWithSchema := s.addSchema(portAddrs)
 	s.peerService.SetPeerAddrs(peerId, addrsWithSchema)
-	s.peerStore.UpdateLocalPeer(peerId, spaceIds)
+	s.publishLocalPeer(peerId, spaceIds, proof, directionInbound)
 	log.Info("updated local peer", zap.Strings("ips", addrsWithSchema), zap.String("peerId", peerId), zap.Strings("spaceIds", spaceIds))
 }
 
@@ -114,13 +115,20 @@ func (r *rpcHandler) SpaceExchangeV2(ctx context.Context, request *clientspacepr
 	// a request without LocalServer is a plain probe: answer the proofs but
 	// record nothing
 	if request.LocalServer != nil {
-		r.s.recordLocalPeer(ctx, callerPeerId, request.LocalServer, shared)
+		r.s.recordLocalPeer(ctx, callerPeerId, request.LocalServer, shared, true)
 	}
 	log.Debug("space exchange v2 received", zap.String("peerId", callerPeerId), zap.Int("shared", len(shared)))
 	return &clientspaceproto.SpaceExchangeV2Response{SpaceTokens: respTokens}, nil
 }
 
 func (r *rpcHandler) SpacePull(ctx context.Context, request *spacesyncproto.SpacePullRequest) (resp *spacesyncproto.SpacePullResponse, err error) {
+	// GO-7492: an account peer may ask for any space we might hold. Answer
+	// from disk: Get would load the space and, if absent, pull it on the
+	// caller's behalf — which recurses back to a caller whose own load of
+	// that space is what is waiting on us.
+	if !r.s.spaceStorageProvider.SpaceExists(request.Id) {
+		return nil, spacesyncproto.ErrSpaceMissing
+	}
 	sp, err := r.s.Get(ctx, request.Id)
 	if err != nil {
 		if err != spacesyncproto.ErrSpaceMissing {

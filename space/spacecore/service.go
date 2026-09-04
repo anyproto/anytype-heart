@@ -95,6 +95,21 @@ type service struct {
 	poolManager          PoolManager
 	discoveryKeys        *discoveryKeySource
 
+	// GO-7492: the derived tech space in every outbound exchange request, and
+	// a re-exchange with known LAN peers once our own space list changes
+	techSpaceOnce sync.Once
+	techSpace     techSpaceExchange
+	reexchange    *reexchanger
+	ownMu         sync.Mutex
+	lastOwn       *localdiscovery.OwnAddresses
+	// exchangeFn is the outbound handshake with one peer (shared spaces, and
+	// whether the result is a v2 proof); a seam for tests
+	exchangeFn func(ctx context.Context, peerId string, own *localdiscovery.OwnAddresses) (shared []string, proof bool, err error)
+	// accountPeers and knownSpaces make a proven account peer a pull
+	// candidate for every space we know of but do not hold yet
+	accountPeers *accountPeers
+	knownSpaces  knownSpaceIdsProvider
+
 	dbsAreFlushing     atomic.Bool
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
@@ -117,6 +132,15 @@ func (s *service) Init(a *app.App) (err error) {
 	s.peerService = a.MustComponent(peerservice.CName).(peerservice.PeerService)
 	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
 	localDiscovery.SetNotifier(s)
+	s.exchangeFn = s.exchangeOutbound
+	s.reexchange = newReexchanger(reexchangeWindow, s.exchangeWithKnownPeers)
+	s.accountPeers = newAccountPeers()
+	s.knownSpaces = lookupKnownSpaces(a)
+	s.peerStore.AddObserver(func(peerId string, _, _ []string, removed bool) {
+		if removed {
+			s.forgetLocalPeer(peerId)
+		}
+	})
 	s.spaceCache = ocache.New(
 		s.loadSpace,
 		ocache.WithLogger(log.Sugar()),
@@ -274,6 +298,10 @@ func (s *service) Delete(ctx context.Context, spaceId string) (err error) {
 }
 
 func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object, err error) {
+	// about to pull: every proven account peer is a candidate for this space
+	if s.accountPeers != nil {
+		s.refreshProvenPeers(id)
+	}
 	kvObserver := keyvalueobserver.New()
 	statusService := objectsyncstatus.NewSyncStatusService()
 	deps := commonspace.Deps{
@@ -299,6 +327,15 @@ func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object
 	if err != nil {
 		return
 	}
+	// the space is on disk now: candidacy for it ends until the exchange
+	// confirms it, and AllSpaceIds grew, so known LAN peers get a re-exchange
+	// (coalesced; never inline, we are inside the cache load)
+	if s.accountPeers != nil {
+		s.refreshProvenPeers()
+	}
+	if s.reexchange != nil {
+		s.reexchange.trigger()
+	}
 	ns, err := newAnySpace(cc, kvObserver)
 	if err != nil {
 		return
@@ -319,6 +356,9 @@ func (s *service) getOpenedSpaceIds() (ids []string) {
 
 func (s *service) Close(ctx context.Context) (err error) {
 	s.componentCtxCancel()
+	if s.reexchange != nil {
+		s.reexchange.close()
+	}
 	return s.spaceCache.Close()
 }
 

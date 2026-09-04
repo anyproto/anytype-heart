@@ -133,7 +133,9 @@ func (p *peerStore) updatePeer(peerId string, oldIds, newIds []string) {
 func (p *peerStore) AllLocalPeers() []string {
 	p.Lock()
 	defer p.Unlock()
-	return p.localPeerIds
+	// Clone under the lock: the caller reads the result after we return, and
+	// a concurrent UpdateLocalPeer/RemoveLocalPeer appends to the same slice.
+	return slices.Clone(p.localPeerIds)
 }
 
 func (p *peerStore) LocalPeerIds(spaceId string) []string {
