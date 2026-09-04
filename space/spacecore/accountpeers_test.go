@@ -279,3 +279,74 @@ func TestSpacePullAnswersMissingFromDisk(t *testing.T) {
 	assert.Nil(t, resp)
 	assert.ErrorIs(t, err, spacesyncproto.ErrSpaceMissing)
 }
+
+// TestPublishLocalPeerDirection pins the asymmetry between the two answers.
+// An inbound intersection is bounded by OUR disk, so on a warm device it
+// names the tech space no matter how empty the asking peer is; treating it
+// as the peer's holding makes a cold device a pull candidate for the one
+// space every cold start needs first.
+func TestPublishLocalPeerDirection(t *testing.T) {
+	t.Run("an inbound answer never proves the peer", func(t *testing.T) {
+		// given: a warm device that holds the tech space and s1
+		s, _, lists := newAccountPeersService(t, []string{"s1"}, []string{"s1"})
+		tech := s.techSpaceExchangeInfo().id
+		require.NotEmpty(t, tech)
+
+		// when: a cold peer asks about the tech space id it derived, and we
+		// answer it because WE hold it
+		s.publishLocalPeer("cold", []string{tech}, true, directionInbound)
+
+		// then: the peer is not proven and claims no space at all
+		s.accountPeers.mu.Lock()
+		_, proven := s.accountPeers.proven["cold"]
+		s.accountPeers.mu.Unlock()
+		assert.False(t, proven, "an inbound answer reports our holdings, not the peer's")
+		assert.NotContains(t, lists.of("cold"), tech)
+		assert.Empty(t, lists.of("cold"))
+	})
+
+	t.Run("an inbound answer still records genuinely shared spaces", func(t *testing.T) {
+		// given: a warm device
+		s, _, lists := newAccountPeersService(t, []string{"s1"}, []string{"s1"})
+		tech := s.techSpaceExchangeInfo().id
+
+		// when: a warm peer asks about its own disk list and we hold s1 too
+		s.publishLocalPeer("warm", []string{tech, "s1"}, true, directionInbound)
+
+		// then: s1 survives, the speculative tech space does not
+		assert.Equal(t, []string{"s1"}, lists.of("warm"))
+	})
+
+	t.Run("an outbound answer proves the peer", func(t *testing.T) {
+		// given: the same warm device
+		s, _, lists := newAccountPeersService(t, []string{"s1"}, nil)
+		tech := s.techSpaceExchangeInfo().id
+
+		// when: we asked, and the peer reported it holds the tech space
+		s.publishLocalPeer("warm", []string{tech}, true, directionOutbound)
+
+		// then: proven, and a candidate for every space we lack
+		s.accountPeers.mu.Lock()
+		_, proven := s.accountPeers.proven["warm"]
+		s.accountPeers.mu.Unlock()
+		assert.True(t, proven)
+		assert.Contains(t, lists.of("warm"), tech)
+		assert.Contains(t, lists.of("warm"), "s1")
+	})
+
+	t.Run("a v1 exchange proves nothing in either direction", func(t *testing.T) {
+		// given: a warm device
+		s, _, lists := newAccountPeersService(t, []string{"s1"}, nil)
+		tech := s.techSpaceExchangeInfo().id
+
+		// when: the peer names the tech space over plaintext v1
+		s.publishLocalPeer("v1peer", []string{tech}, false, directionOutbound)
+
+		// then: named spaces are recorded, but nothing is inferred from them
+		s.accountPeers.mu.Lock()
+		_, proven := s.accountPeers.proven["v1peer"]
+		s.accountPeers.mu.Unlock()
+		assert.False(t, proven, "v1 is plaintext and proves no account membership")
+		assert.NotContains(t, lists.of("v1peer"), "s1", "an unproven peer is no candidate for spaces we lack")
+	})
+}

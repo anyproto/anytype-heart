@@ -77,11 +77,21 @@ func (s *service) publishLocalPeer(peerId string, shared []string, proof bool, d
 	s.accountPeers.mu.Lock()
 	switch direction {
 	case directionInbound:
-		s.accountPeers.inbound[peerId] = slices.Clone(shared)
+		// An inbound answer is what WE hold of the list the peer asked
+		// about, so the tech space in it is our own holding, not the
+		// peer's: a cold device asks about the tech space id it derived
+		// but does not have, and we answer it precisely because we do.
+		// Recording that would make a device with no data a pull
+		// candidate for the one space every cold start needs first.
+		s.accountPeers.inbound[peerId] = withoutSpace(shared, tech.id)
 	default:
 		s.accountPeers.outbound[peerId] = slices.Clone(shared)
 	}
-	if proof && tech.id != "" && slices.Contains(shared, tech.id) {
+	// Only an outbound answer can prove the peer holds the tech space: there
+	// the peer reports its own holdings against the list we asked about. The
+	// inbound intersection is bounded by our disk, so on a warm device it
+	// contains the tech space no matter how empty the peer is.
+	if proof && direction == directionOutbound && tech.id != "" && slices.Contains(shared, tech.id) {
 		if _, known := s.accountPeers.proven[peerId]; !known {
 			log.Info("local peer proved the account", zap.String("peerId", peerId))
 		}
@@ -191,4 +201,13 @@ func lookupKnownSpaces(a *app.App) knownSpaceIdsProvider {
 	}
 	provider, _ := c.(knownSpaceIdsProvider)
 	return provider
+}
+
+// withoutSpace is shared minus spaceId, leaving the input untouched.
+func withoutSpace(shared []string, spaceId string) []string {
+	out := slices.Clone(shared)
+	if spaceId == "" {
+		return out
+	}
+	return slices.DeleteFunc(out, func(id string) bool { return id == spaceId })
 }
