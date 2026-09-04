@@ -17,7 +17,13 @@ import (
 
 var ctx = context.Background()
 
+// fakePenaltyManager stands in for quicdemotion. The service drives it from
+// the debounce timer, the startup goroutine and the connectivity hook while
+// the test goroutine inspects it, so every field lives under mu - the real
+// component is locked the same way, and an unlocked double made the suite
+// fail under -race rather than the service.
 type fakePenaltyManager struct {
+	mu       sync.Mutex
 	snapshot quicdemotion.PenaltySnapshot
 	observer func()
 	seeded   []quicdemotion.PenaltySnapshot
@@ -32,10 +38,16 @@ func (f *fakePenaltyManager) Init(a *app.App) error { return nil }
 func (f *fakePenaltyManager) Name() string          { return "fakePeerService" }
 
 func (f *fakePenaltyManager) Snapshot() quicdemotion.PenaltySnapshot {
+	f.mu.Lock()
 	f.snapshots++
-	if f.snapshotGate != nil {
-		<-f.snapshotGate
+	gate := f.snapshotGate
+	f.mu.Unlock()
+	if gate != nil {
+		// outside the lock: a gated Snapshot must not block mutate
+		<-gate
 	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	peers := make(map[string]quicdemotion.PeerPenalty, len(f.snapshot.Peers))
 	for id, p := range f.snapshot.Peers {
 		peers[id] = p
@@ -44,37 +56,85 @@ func (f *fakePenaltyManager) Snapshot() quicdemotion.PenaltySnapshot {
 }
 
 func (f *fakePenaltyManager) Seed(snap quicdemotion.PenaltySnapshot) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.seeded = append(f.seeded, snap)
 	f.snapshot = snap
 }
 
 // Reset mimics the real semantics: the observer fires only when the reset
-// actually mutated state.
+// actually mutated state, and outside the lock.
 func (f *fakePenaltyManager) Reset() {
+	f.mu.Lock()
 	f.resets++
 	changed := len(f.snapshot.Peers) > 0
 	f.snapshot = quicdemotion.PenaltySnapshot{}
-	if changed && f.observer != nil {
-		f.observer()
+	observer := f.observer
+	f.mu.Unlock()
+	if changed && observer != nil {
+		observer()
 	}
 }
 
 func (f *fakePenaltyManager) SetObserver(observer func()) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.observer = observer
 }
 
 // mutate emulates peerservice recording a penalty: state changes, observer fires.
 func (f *fakePenaltyManager) mutate(peerId string, p quicdemotion.PeerPenalty) {
+	f.mu.Lock()
 	if f.snapshot.Peers == nil {
 		f.snapshot.Peers = map[string]quicdemotion.PeerPenalty{}
 	}
 	f.snapshot.Peers[peerId] = p
-	if f.observer != nil {
-		f.observer()
+	observer := f.observer
+	f.mu.Unlock()
+	if observer != nil {
+		observer()
 	}
 }
 
+func (f *fakePenaltyManager) gateSnapshots(gate chan struct{}) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.snapshotGate = gate
+}
+
+func (f *fakePenaltyManager) resetCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.resets
+}
+
+func (f *fakePenaltyManager) snapshotCalls() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.snapshots
+}
+
+func (f *fakePenaltyManager) seededSnapshots() []quicdemotion.PenaltySnapshot {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]quicdemotion.PenaltySnapshot(nil), f.seeded...)
+}
+
+func (f *fakePenaltyManager) getObserver() func() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.observer
+}
+
+// peers returns a copy of the current penalty map.
+func (f *fakePenaltyManager) peers() map[string]quicdemotion.PeerPenalty {
+	return f.Snapshot().Peers
+}
+
+// fakeNetwork stands in for device.NetworkState. identity is read by the
+// startup goroutine and the save path while tests reassign it, hence the lock.
 type fakeNetwork struct {
+	mu       sync.Mutex
 	identity string
 	hooks    []func(online bool)
 }
@@ -83,26 +143,40 @@ func (f *fakeNetwork) Init(a *app.App) error { return nil }
 func (f *fakeNetwork) Name() string          { return "fakeNetworkState" }
 
 // NetworkIdentity models the unknown state as an empty identity.
-func (f *fakeNetwork) NetworkIdentity() (string, bool) { return f.identity, f.identity != "" }
+func (f *fakeNetwork) NetworkIdentity() (string, bool) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.identity, f.identity != ""
+}
+
+func (f *fakeNetwork) setIdentity(identity string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.identity = identity
+}
 
 func (f *fakeNetwork) RegisterConnectivityHook(hook func(online bool)) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.hooks = append(f.hooks, hook)
 }
 
-func (f *fakeNetwork) fireRecovery() {
-	for _, h := range f.hooks {
-		h(true)
+func (f *fakeNetwork) fire(online bool) {
+	f.mu.Lock()
+	hooks := make([]func(online bool), len(f.hooks))
+	copy(hooks, f.hooks)
+	f.mu.Unlock()
+	for _, h := range hooks {
+		h(online)
 	}
 }
+
+func (f *fakeNetwork) fireRecovery() { f.fire(true) }
 
 // fireOffline is a recovery run while the device is known to be offline (the
 // real identity then embeds NOT_CONNECTED / an empty interface set, so a test
 // sets a different identity string first to mirror that).
-func (f *fakeNetwork) fireOffline() {
-	for _, h := range f.hooks {
-		h(false)
-	}
-}
+func (f *fakeNetwork) fireOffline() { f.fire(false) }
 
 type fakeWallet struct {
 	repoPath string
@@ -210,19 +284,19 @@ func TestService_Seed(t *testing.T) {
 		defer func() { require.NoError(t, fx.a.Close(ctx)) }()
 
 		// then
-		require.Len(t, fx.peers.seeded, 1)
-		assert.Contains(t, fx.peers.seeded[0].Peers, "p1")
+		require.Len(t, fx.peers.seededSnapshots(), 1)
+		assert.Contains(t, fx.peers.seededSnapshots()[0].Peers, "p1")
 	})
 	t.Run("no state file means no seed", func(t *testing.T) {
 		fx := newFixture(t, "net-A")
-		assert.Empty(t, fx.peers.seeded)
+		assert.Empty(t, fx.peers.seededSnapshots())
 	})
 	t.Run("disabled by env: no seed, no observer", func(t *testing.T) {
 		t.Setenv(DisableEnv, "0")
 		fx := newFixture(t, "net-A")
 		fx.writeStateFile(t, storedState{NetworkKey: "net-A", Penalties: demotedPeers("p1")})
-		assert.Empty(t, fx.peers.seeded)
-		assert.Nil(t, fx.peers.observer)
+		assert.Empty(t, fx.peers.seededSnapshots())
+		assert.Nil(t, fx.peers.getObserver())
 	})
 }
 
@@ -271,7 +345,7 @@ func TestService_ConcurrentSave(t *testing.T) {
 		// given: the first save is stuck inside Snapshot
 		fx := newFixture(t, "net-A")
 		gate := make(chan struct{})
-		fx.peers.snapshotGate = gate
+		fx.peers.gateSnapshots(gate)
 		t.Cleanup(func() {
 			select {
 			case <-gate:
@@ -280,18 +354,18 @@ func TestService_ConcurrentSave(t *testing.T) {
 			}
 		})
 		fx.peers.mutate("p1", quicdemotion.PeerPenalty{ConsecutiveDegraded: 1})
-		require.Eventually(t, func() bool { return fx.peers.snapshots == 1 }, time.Second, time.Millisecond)
+		require.Eventually(t, func() bool { return fx.peers.snapshotCalls() == 1 }, time.Second, time.Millisecond)
 
 		// when: another mutation arms a second save while the first is in flight
 		fx.peers.mutate("p2", quicdemotion.PeerPenalty{ConsecutiveDegraded: 1})
 		time.Sleep(10 * fx.service.saveDebounce)
 
 		// then: the second save has not started
-		assert.Equal(t, 1, fx.peers.snapshots)
+		assert.Equal(t, 1, fx.peers.snapshotCalls())
 
 		// and once the first completes, the second runs and the file holds both
 		close(gate)
-		require.Eventually(t, func() bool { return fx.peers.snapshots == 2 }, time.Second, time.Millisecond)
+		require.Eventually(t, func() bool { return fx.peers.snapshotCalls() == 2 }, time.Second, time.Millisecond)
 		require.Eventually(t, func() bool {
 			st := fx.readStateFile(t)
 			_, p1 := st.Penalties.Peers["p1"]
@@ -345,7 +419,7 @@ func TestService_ConcurrentSave(t *testing.T) {
 		// then: the leftover is gone and the real file was still seeded
 		_, err := os.Stat(stale)
 		assert.True(t, os.IsNotExist(err))
-		assert.Len(t, fx.peers.seeded, 1)
+		assert.Len(t, fx.peers.seededSnapshots(), 1)
 	})
 }
 
@@ -354,20 +428,20 @@ func TestService_NetworkChange(t *testing.T) {
 		// given
 		fx := newFixture(t, "net-A")
 		fx.network.fireRecovery() // first observation: net-A
-		require.Equal(t, 0, fx.peers.resets)
+		require.Equal(t, 0, fx.peers.resetCount())
 
 		// when
-		fx.network.identity = "net-B"
+		fx.network.setIdentity("net-B")
 		fx.network.fireRecovery()
 
 		// then
-		assert.Equal(t, 1, fx.peers.resets)
+		assert.Equal(t, 1, fx.peers.resetCount())
 	})
 	t.Run("recovery on the same network does not reset", func(t *testing.T) {
 		fx := newFixture(t, "net-A")
 		fx.network.fireRecovery()
 		fx.network.fireRecovery()
-		assert.Equal(t, 0, fx.peers.resets)
+		assert.Equal(t, 0, fx.peers.resetCount())
 	})
 	t.Run("offline blip on the same network does not reset", func(t *testing.T) {
 		// given: verdict observed on net-A
@@ -377,14 +451,14 @@ func TestService_NetworkChange(t *testing.T) {
 
 		// when: the link drops (identity now reflects the offline state) and
 		// comes back on the same network
-		fx.network.identity = "offline"
+		fx.network.setIdentity("offline")
 		fx.network.fireOffline()
-		fx.network.identity = "net-A"
+		fx.network.setIdentity("net-A")
 		fx.network.fireRecovery()
 
 		// then
-		assert.Equal(t, 0, fx.peers.resets)
-		assert.Contains(t, fx.peers.snapshot.Peers, "p1")
+		assert.Equal(t, 0, fx.peers.resetCount())
+		assert.Contains(t, fx.peers.peers(), "p1")
 	})
 	t.Run("offline before the first observation keeps the seeded verdict", func(t *testing.T) {
 		// given: stored net-A verdict, device starts offline, startup check
@@ -393,20 +467,20 @@ func TestService_NetworkChange(t *testing.T) {
 		fx.writeStateFile(t, storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
 		fx.service.startupCheckInterval = time.Hour
 		fx.start(t)
-		require.Len(t, fx.peers.seeded, 1)
+		require.Len(t, fx.peers.seededSnapshots(), 1)
 
 		// when
 		fx.network.fireOffline()
 
 		// then: nothing was learned about the network, nothing is dropped
-		assert.Equal(t, 0, fx.peers.resets)
+		assert.Equal(t, 0, fx.peers.resetCount())
 		_, err := os.Stat(fx.statePath())
 		assert.NoError(t, err)
 
 		// and the reconnect on net-A is the first real observation: a match
-		fx.network.identity = "net-A"
+		fx.network.setIdentity("net-A")
 		fx.network.fireRecovery()
-		assert.Equal(t, 0, fx.peers.resets)
+		assert.Equal(t, 0, fx.peers.resetCount())
 	})
 	t.Run("stored key mismatch on first observation resets seeded penalties", func(t *testing.T) {
 		// given: verdict learned on net-A, device now on net-B
@@ -433,7 +507,7 @@ func TestService_NetworkChange(t *testing.T) {
 		defer func() { require.NoError(t, fx.a.Close(ctx)) }()
 
 		// then: the startup check notices the mismatch
-		require.Eventually(t, func() bool { return fx.peers.resets == 1 }, time.Second, 10*time.Millisecond)
+		require.Eventually(t, func() bool { return fx.peers.resetCount() == 1 }, time.Second, 10*time.Millisecond)
 		// and the stale file is gone
 		require.Eventually(t, func() bool {
 			_, err := os.Stat(filepath.Join(repo, fileName))
@@ -447,7 +521,7 @@ func TestService_NetworkChange(t *testing.T) {
 		fx.writeStateFile(t, storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
 		fx.service.startupCheckInterval = time.Hour
 		fx.start(t)
-		require.Len(t, fx.peers.seeded, 1)
+		require.Len(t, fx.peers.seededSnapshots(), 1)
 
 		// a strike lands and is persisted before any identity observation
 		fx.peers.mutate("p2", quicdemotion.PeerPenalty{ConsecutiveDegraded: 1})
@@ -460,7 +534,7 @@ func TestService_NetworkChange(t *testing.T) {
 		fx.network.fireRecovery()
 
 		// then: the net-A verdict must still be recognized as foreign
-		assert.Equal(t, 1, fx.peers.resets)
+		assert.Equal(t, 1, fx.peers.resetCount())
 		require.Eventually(t, func() bool {
 			_, err := os.Stat(fx.statePath())
 			return os.IsNotExist(err)
@@ -492,8 +566,8 @@ func TestService_NetworkChange(t *testing.T) {
 
 		// then
 		time.Sleep(50 * time.Millisecond)
-		assert.Equal(t, 0, fx.peers.resets)
-		assert.Len(t, fx.peers.seeded, 1)
+		assert.Equal(t, 0, fx.peers.resetCount())
+		assert.Len(t, fx.peers.seededSnapshots(), 1)
 	})
 }
 
@@ -504,19 +578,19 @@ func TestService_UnknownIdentity(t *testing.T) {
 		fx := newStoppedFixture(t, "")
 		fx.writeStateFile(t, storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
 		fx.start(t)
-		require.Len(t, fx.peers.seeded, 1)
+		require.Len(t, fx.peers.seededSnapshots(), 1)
 
 		// then: the seed survives while the identity is unknown
 		time.Sleep(10 * fx.service.startupCheckInterval)
-		assert.Equal(t, 0, fx.peers.resets)
+		assert.Equal(t, 0, fx.peers.resetCount())
 		_, err := os.Stat(fx.statePath())
 		assert.NoError(t, err)
 
 		// when: the identity becomes known and differs
-		fx.network.identity = "net-B"
+		fx.network.setIdentity("net-B")
 
 		// then: the poll picks it up
-		require.Eventually(t, func() bool { return fx.peers.resets == 1 }, time.Second, time.Millisecond)
+		require.Eventually(t, func() bool { return fx.peers.resetCount() == 1 }, time.Second, time.Millisecond)
 		require.Eventually(t, func() bool {
 			_, err := os.Stat(fx.statePath())
 			return os.IsNotExist(err)
@@ -531,13 +605,13 @@ func TestService_UnknownIdentity(t *testing.T) {
 		time.Sleep(3 * fx.service.startupCheckTimeout)
 
 		// when: the identity becomes known after the poll gave up
-		fx.network.identity = "net-B"
+		fx.network.setIdentity("net-B")
 		time.Sleep(10 * fx.service.startupCheckInterval)
 
 		// then: no check ran; the next recovery is the first observation
-		assert.Equal(t, 0, fx.peers.resets)
+		assert.Equal(t, 0, fx.peers.resetCount())
 		fx.network.fireRecovery()
-		assert.Equal(t, 1, fx.peers.resets)
+		assert.Equal(t, 1, fx.peers.resetCount())
 	})
 	t.Run("unknown identity is never persisted", func(t *testing.T) {
 		// given
@@ -552,7 +626,7 @@ func TestService_UnknownIdentity(t *testing.T) {
 		assert.True(t, os.IsNotExist(err))
 
 		// and once the network is known the next mutation persists under it
-		fx.network.identity = "net-A"
+		fx.network.setIdentity("net-A")
 		fx.peers.mutate("p2", quicdemotion.PeerPenalty{ConsecutiveDegraded: 1})
 		require.Eventually(t, func() bool { return fx.readStateFile(t).NetworkKey == "net-A" }, time.Second, time.Millisecond)
 	})
@@ -567,14 +641,14 @@ func TestService_UnknownIdentity(t *testing.T) {
 		fx.network.fireRecovery()
 
 		// then
-		assert.Equal(t, 0, fx.peers.resets)
+		assert.Equal(t, 0, fx.peers.resetCount())
 		_, err := os.Stat(fx.statePath())
 		assert.NoError(t, err)
 
 		// and the first known observation is still compared to the stored key
-		fx.network.identity = "net-B"
+		fx.network.setIdentity("net-B")
 		fx.network.fireRecovery()
-		assert.Equal(t, 1, fx.peers.resets)
+		assert.Equal(t, 1, fx.peers.resetCount())
 	})
 }
 
@@ -599,6 +673,6 @@ func TestService_CorruptFile(t *testing.T) {
 		require.NoError(t, fx.a.Start(ctx))
 		defer func() { require.NoError(t, fx.a.Close(ctx)) }()
 
-		assert.Empty(t, fx.peers.seeded)
+		assert.Empty(t, fx.peers.seededSnapshots())
 	})
 }
