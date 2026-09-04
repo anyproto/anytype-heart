@@ -664,3 +664,93 @@ func TestTracker_PendingJoinDoesNotWedgeFinished(t *testing.T) {
 		require.NotNil(t, fx.finished(t))
 	})
 }
+
+// TestTracker_SettleBound pins the terminal rule for a run that goes quiet
+// without being able to claim completeness. The two outcomes are deliberately
+// different: an account whose spaces all settled is ready (we just cannot
+// promise there is nothing else to fetch), while one with a space that never
+// reported is NOT ready and must not say so.
+func TestTracker_SettleBound(t *testing.T) {
+	loadedSpace := func(fx *fixture, id, viewId string) {
+		fx.OnSpaceView(id, viewId, false)
+		fx.OnSpaceLoadStarted(id, true)
+	}
+
+	t.Run("all spaces settled with no diff finishes, unconfirmed", func(t *testing.T) {
+		// given: a warm start with no connectivity — everything loads from disk
+		// but no responsible diff ever arrives
+		fx := newFixture(t, pb.EventAccountRecovery_WarmStart)
+		fx.ready(t)
+		loadedSpace(fx, "s1", "v1")
+		require.Nil(t, fx.finished(t), "the gate has seen no diff")
+
+		// when
+		fx.clock.Advance(settleBound)
+
+		// then
+		fin := fx.finished(t)
+		require.NotNil(t, fin, "a working offline app must not show progress forever")
+		assert.False(t, fin.ViewsConfirmed, "no diff arrived, so completeness cannot be claimed")
+		assert.Equal(t, int32(2), fin.SpacesLoaded)
+		assert.True(t, fx.Snapshot().Done)
+	})
+
+	t.Run("a space that never reports goes Stalled and the run stays open", func(t *testing.T) {
+		// given: the diff is in and every other space is loaded, but s2 never
+		// publishes a load result
+		fx := newFixture(t, pb.EventAccountRecovery_ColdRecovery)
+		fx.ready(t)
+		fx.OnHeadSync(techSpaceId, "node1", []string{"v1", "v2"}, true)
+		loadedSpace(fx, "s1", "v1")
+		fx.OnSpaceView("s2", "v2", false)
+		fx.OnSpaceLoadStarted("s2", false)
+
+		// when
+		fx.clock.Advance(settleBound)
+
+		// then
+		assert.Equal(t, pb.EventAccountRecovery_Stalled, fx.space(t, "s2").State)
+		assert.Nil(t, fx.finished(t), "the account is not recovered, so it must not say it is")
+		assert.False(t, fx.Snapshot().Done)
+	})
+
+	t.Run("a stalled space that finally loads still finishes the run", func(t *testing.T) {
+		// given: s2 has already gone Stalled
+		fx := newFixture(t, pb.EventAccountRecovery_ColdRecovery)
+		fx.ready(t)
+		fx.OnHeadSync(techSpaceId, "node1", []string{"v1", "v2"}, true)
+		loadedSpace(fx, "s1", "v1")
+		fx.OnSpaceView("s2", "v2", false)
+		fx.OnSpaceLoadStarted("s2", false)
+		fx.clock.Advance(settleBound)
+		require.Equal(t, pb.EventAccountRecovery_Stalled, fx.space(t, "s2").State)
+
+		// when: the load finally lands
+		fx.OnSpaceLoaded("s2", nil, false)
+
+		// then
+		fin := fx.finished(t)
+		require.NotNil(t, fin)
+		assert.True(t, fin.ViewsConfirmed)
+		assert.Equal(t, int32(3), fin.SpacesLoaded)
+	})
+
+	t.Run("progress postpones the verdict", func(t *testing.T) {
+		// given: a run that keeps making progress just under the bound
+		fx := newFixture(t, pb.EventAccountRecovery_WarmStart)
+		fx.ready(t)
+		loadedSpace(fx, "s1", "v1")
+
+		// when
+		fx.clock.Advance(settleBound - time.Second)
+		loadedSpace(fx, "s2", "v2")
+		fx.clock.Advance(settleBound - time.Second)
+
+		// then: the bound restarted, so nothing has been decided yet
+		assert.Nil(t, fx.finished(t))
+
+		// and when the run finally goes quiet
+		fx.clock.Advance(settleBound)
+		assert.NotNil(t, fx.finished(t))
+	})
+}

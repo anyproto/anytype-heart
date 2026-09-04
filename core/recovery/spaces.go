@@ -3,6 +3,8 @@ package recovery
 import (
 	"context"
 	"errors"
+	"slices"
+	"time"
 
 	"github.com/anyproto/any-sync/commonspace"
 
@@ -41,6 +43,7 @@ func (t *Tracker) OnSpaceView(spaceId, spaceViewId string, deleted bool) {
 		t.spaceLocked(spaceId, spaceViewId, pb.EventAccountRecovery_Regular)
 	}
 	t.checkFinishedLocked()
+	t.armSettleLocked()
 	t.refreshPhaseLocked(false)
 }
 
@@ -73,6 +76,7 @@ func (t *Tracker) OnSpaceViewInactive(spaceId, spaceViewId string) {
 		delete(t.spaces, spaceId)
 	}
 	t.checkFinishedLocked()
+	t.armSettleLocked()
 	t.refreshPhaseLocked(false)
 }
 
@@ -97,6 +101,7 @@ func (t *Tracker) OnSpaceViewsInitial(spaceViewIds []string) {
 		}
 	}
 	t.checkFinishedLocked()
+	t.armSettleLocked()
 	t.refreshPhaseLocked(false)
 }
 
@@ -117,6 +122,7 @@ func (t *Tracker) OnSpaceLoadStarted(spaceId string, optimistic bool) {
 	}
 	t.transitionLocked(spaceId, s, next, nil)
 	t.checkFinishedLocked()
+	t.armSettleLocked()
 	t.refreshPhaseLocked(false)
 }
 
@@ -155,6 +161,7 @@ func (t *Tracker) OnSpaceLoaded(spaceId string, err error, deleted bool) {
 		t.transitionLocked(spaceId, s, pb.EventAccountRecovery_Error, info)
 	}
 	t.checkFinishedLocked()
+	t.armSettleLocked()
 	t.refreshPhaseLocked(false)
 }
 
@@ -199,6 +206,7 @@ func (t *Tracker) OnHeadSync(spaceId, peerId string, missing []string, responsib
 	t.views.unresolved = next
 	t.views.resolvedSinceDiff = false
 	t.checkFinishedLocked()
+	t.armSettleLocked()
 	t.refreshPhaseLocked(false)
 }
 
@@ -325,6 +333,12 @@ func (t *Tracker) checkFinishedLocked() {
 			return
 		}
 	}
+	t.finishLocked(loaded, failed, confirmed)
+}
+
+// finishLocked emits the terminal Finished and takes the run silent.
+func (t *Tracker) finishLocked(loaded, failed int32, confirmed bool) {
+	t.stopSettleTimerLocked()
 	t.markLocked(&pb.EventAccountRecoveryUpdatePayloadOfFinished{Finished: &pb.EventAccountRecoveryFinished{
 		SpacesTotal:     int32(len(t.spaces)),
 		SpacesLoaded:    loaded,
@@ -336,4 +350,81 @@ func (t *Tracker) checkFinishedLocked() {
 	t.phase.viewsConfirmed = confirmed
 	t.stopOutageTimerLocked()
 	t.refreshPhaseLocked(true)
+}
+
+// settleBound is how long the run may sit with the local SpaceView set complete
+// and nothing at all changing before it stops waiting. The two outcomes are
+// deliberately different:
+//
+//   - Every space reached a terminal state and only the network's confirmation
+//     is missing — a warm start with no connectivity loads everything from disk
+//     but never sees a tech-space diff. Finished fires with viewsConfirmed
+//     false: "ready, but we could not check whether there are spaces you do not
+//     have yet."
+//   - Some space never published a load result. It becomes Stalled and the run
+//     stays OPEN. "79 of 80, one stalled" is a determinate answer a client can
+//     offer a retry for, and an open run still reports the space if its load
+//     completes later. Claiming Finished here would claim the account is
+//     recovered when it demonstrably is not.
+//
+// Any fold that changes something resets it, so a slow but progressing sync
+// never trips it.
+const settleBound = 20 * time.Second
+
+// otherwiseSettledLocked: the run has everything it needs to finish except the
+// spaces themselves and the network's completeness confirmation.
+func (t *Tracker) otherwiseSettledLocked() bool {
+	return t.begun && !t.terminalLocked() && t.account.ready &&
+		t.views.initialDelivered && len(t.views.expected) == 0 && len(t.spaces) > 0
+}
+
+// armSettleLocked restarts the settle bound. Called from every fold that
+// changed something: progress is exactly what must postpone the verdict.
+func (t *Tracker) armSettleLocked() {
+	t.stopSettleTimerLocked()
+	if !t.otherwiseSettledLocked() {
+		return
+	}
+	t.settleTimer = t.clock.AfterFunc(settleBound, t.onSettleTimer)
+}
+
+func (t *Tracker) stopSettleTimerLocked() {
+	if t.settleTimer != nil {
+		t.settleTimer.Stop()
+		t.settleTimer = nil
+	}
+}
+
+func (t *Tracker) onSettleTimer() {
+	defer containTelemetry("settle timer")
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.settleTimer = nil
+	if !t.otherwiseSettledLocked() {
+		return
+	}
+	var loaded, failed int32
+	stragglers := make([]string, 0, len(t.spaces))
+	for id, s := range t.spaces {
+		switch s.state {
+		case pb.EventAccountRecovery_Loaded:
+			loaded++
+		case pb.EventAccountRecovery_Error:
+			failed++
+		default:
+			stragglers = append(stragglers, id)
+		}
+	}
+	if len(stragglers) == 0 {
+		// Every space settled; the gate stayed shut only because no responsible
+		// diff ever arrived, so completeness cannot be claimed.
+		t.finishLocked(loaded, failed, false)
+		return
+	}
+	// Deterministic order so the event stream is reproducible under replay.
+	slices.Sort(stragglers)
+	for _, id := range stragglers {
+		t.transitionLocked(id, t.spaces[id], pb.EventAccountRecovery_Stalled, nil)
+	}
+	t.refreshPhaseLocked(false)
 }

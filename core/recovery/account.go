@@ -105,5 +105,6 @@ func (t *Tracker) OnAccountReady() {
 		t.transitionLocked(id, s, pb.EventAccountRecovery_Loaded, nil)
 	}
 	t.checkFinishedLocked()
+	t.armSettleLocked()
 	t.refreshPhaseLocked(false)
 }

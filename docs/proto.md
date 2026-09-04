@@ -34452,6 +34452,7 @@ is on Event.Space.SyncStatus.Update.
 | Loaded | 3 |  |
 | Error | 4 |  |
 | Removed | 5 | Removed: the space left this run (deleted or removed while recovering); drop it from the list, it is excluded from counters |
+| Stalled | 6 | Stalled: the run settled around this space but it never published a load result. Not terminal — the load may still complete, and the state will change again if it does — so Finished does not fire while a space is stalled. Render it as a determinate stall with a retry (&#34;79 of 80 loaded, 1 stalled&#34;), never as ongoing progress. |
 
 
 

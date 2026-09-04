@@ -319,6 +319,12 @@ message Event {
         // Removed: the space left this run (deleted or removed while
         // recovering); drop it from the list, it is excluded from counters
         Removed = 5;
+        // Stalled: the run settled around this space but it never published a
+        // load result. Not terminal — the load may still complete, and the
+        // state will change again if it does — so Finished does not fire while
+        // a space is stalled. Render it as a determinate stall with a retry
+        // ("79 of 80 loaded, 1 stalled"), never as ongoing progress.
+        Stalled = 6;
       }
       enum DiscoveryState {
         Possible = 0;

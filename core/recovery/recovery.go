@@ -72,6 +72,9 @@ type Tracker struct {
 	timer        timer
 	// outageTimer fires waitingForNetworkAfter into an outage
 	outageTimer timer
+	// settleTimer bounds how long the run waits for the last spaces and for a
+	// completeness confirmation that may never come
+	settleTimer timer
 }
 
 func New() *Tracker {
@@ -148,6 +151,7 @@ func (t *Tracker) Fail(err error) {
 		return
 	}
 	t.phase.failed = info
+	t.stopSettleTimerLocked()
 	t.publishStartedLocked()
 	t.refreshPhaseLocked(true)
 }
@@ -218,6 +222,7 @@ func (t *Tracker) closeLocked() {
 		t.timer = nil
 	}
 	t.stopOutageTimerLocked()
+	t.stopSettleTimerLocked()
 	t.run.closed = true
 }
 
