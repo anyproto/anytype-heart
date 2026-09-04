@@ -292,11 +292,30 @@ func TestService_Seed(t *testing.T) {
 		assert.Empty(t, fx.peers.seededSnapshots())
 	})
 	t.Run("disabled by env: no seed, no observer", func(t *testing.T) {
+		// given
 		t.Setenv(DisableEnv, "0")
-		fx := newFixture(t, "net-A")
+		fx := newStoppedFixture(t, "net-A")
 		fx.writeStateFile(t, storedState{NetworkKey: "net-A", Penalties: demotedPeers("p1")})
+
+		// when
+		fx.start(t)
+
+		// then
 		assert.Empty(t, fx.peers.seededSnapshots())
 		assert.Nil(t, fx.peers.getObserver())
+	})
+	t.Run("enabled by env=1: seeds and observes", func(t *testing.T) {
+		// given: the switch is "0" means off, anything else means on
+		t.Setenv(DisableEnv, "1")
+		fx := newStoppedFixture(t, "net-A")
+		fx.writeStateFile(t, storedState{NetworkKey: "net-A", Penalties: demotedPeers("p1")})
+
+		// when
+		fx.start(t)
+
+		// then
+		assert.Len(t, fx.peers.seededSnapshots(), 1)
+		assert.NotNil(t, fx.peers.getObserver())
 	})
 }
 
