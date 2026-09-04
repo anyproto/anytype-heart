@@ -12,6 +12,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core"
+	"github.com/anyproto/anytype-heart/core/api"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -44,6 +45,11 @@ func init() {
 				metrics.SharedLongMethodsInterceptor,
 			},
 		})
+	// The API component reads its middleware handle at construction
+	// (api.New); the desktop gRPC binary sets it and mobile never did,
+	// because mobile never listened. The tool bridge runs the same
+	// component in-process, so mobile sets it too.
+	api.SetMiddlewareParams(mw)
 	if addr, ok := os.LookupEnv("ANYPROF"); ok && addr != "" {
 		RunDebugServer(addr)
 	}
