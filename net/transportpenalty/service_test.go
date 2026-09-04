@@ -82,7 +82,8 @@ type fakeNetwork struct {
 func (f *fakeNetwork) Init(a *app.App) error { return nil }
 func (f *fakeNetwork) Name() string          { return "fakeNetworkState" }
 
-func (f *fakeNetwork) NetworkIdentity() string { return f.identity }
+// NetworkIdentity models the unknown state as an empty identity.
+func (f *fakeNetwork) NetworkIdentity() (string, bool) { return f.identity, f.identity != "" }
 
 func (f *fakeNetwork) RegisterConnectivityHook(hook func(online bool)) {
 	f.hooks = append(f.hooks, hook)
@@ -137,7 +138,7 @@ func newStoppedFixture(t *testing.T, identity string) *fixture {
 	}
 	// short intervals so tests don't wait
 	fx.service.saveDebounce = 10 * time.Millisecond
-	fx.service.startupCheckDelay = 10 * time.Millisecond
+	fx.service.startupCheckInterval = 10 * time.Millisecond
 	fx.a.Register(&fakeWallet{repoPath: fx.repo}).
 		Register(fx.peers).
 		Register(fx.network).
@@ -198,7 +199,7 @@ func TestService_Seed(t *testing.T) {
 			repo:    repo,
 		}
 		fx.service.saveDebounce = 10 * time.Millisecond
-		fx.service.startupCheckDelay = 10 * time.Millisecond
+		fx.service.startupCheckInterval = 10 * time.Millisecond
 		fx.a.Register(&fakeWallet{repoPath: repo}).
 			Register(fx.peers).
 			Register(fx.network).
@@ -390,7 +391,7 @@ func TestService_NetworkChange(t *testing.T) {
 		// kept out of the way
 		fx := newStoppedFixture(t, "offline")
 		fx.writeStateFile(t, storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
-		fx.service.startupCheckDelay = time.Hour
+		fx.service.startupCheckInterval = time.Hour
 		fx.start(t)
 		require.Len(t, fx.peers.seeded, 1)
 
@@ -423,7 +424,7 @@ func TestService_NetworkChange(t *testing.T) {
 			repo:    repo,
 		}
 		fx.service.saveDebounce = 10 * time.Millisecond
-		fx.service.startupCheckDelay = 10 * time.Millisecond
+		fx.service.startupCheckInterval = 10 * time.Millisecond
 		fx.a.Register(&fakeWallet{repoPath: repo}).
 			Register(fx.peers).
 			Register(fx.network).
@@ -444,7 +445,7 @@ func TestService_NetworkChange(t *testing.T) {
 		// startup check kept out of the way
 		fx := newStoppedFixture(t, "net-B")
 		fx.writeStateFile(t, storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
-		fx.service.startupCheckDelay = time.Hour
+		fx.service.startupCheckInterval = time.Hour
 		fx.start(t)
 		require.Len(t, fx.peers.seeded, 1)
 
@@ -481,7 +482,7 @@ func TestService_NetworkChange(t *testing.T) {
 			repo:    repo,
 		}
 		fx.service.saveDebounce = 10 * time.Millisecond
-		fx.service.startupCheckDelay = 10 * time.Millisecond
+		fx.service.startupCheckInterval = 10 * time.Millisecond
 		fx.a.Register(&fakeWallet{repoPath: repo}).
 			Register(fx.peers).
 			Register(fx.network).
@@ -493,6 +494,87 @@ func TestService_NetworkChange(t *testing.T) {
 		time.Sleep(50 * time.Millisecond)
 		assert.Equal(t, 0, fx.peers.resets)
 		assert.Len(t, fx.peers.seeded, 1)
+	})
+}
+
+func TestService_UnknownIdentity(t *testing.T) {
+	t.Run("startup check waits for the identity to become known", func(t *testing.T) {
+		// given: stored net-A verdict, nothing identifies the network yet
+		// (mobile cold start before the client's first report)
+		fx := newStoppedFixture(t, "")
+		fx.writeStateFile(t, storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
+		fx.start(t)
+		require.Len(t, fx.peers.seeded, 1)
+
+		// then: the seed survives while the identity is unknown
+		time.Sleep(10 * fx.service.startupCheckInterval)
+		assert.Equal(t, 0, fx.peers.resets)
+		_, err := os.Stat(fx.statePath())
+		assert.NoError(t, err)
+
+		// when: the identity becomes known and differs
+		fx.network.identity = "net-B"
+
+		// then: the poll picks it up
+		require.Eventually(t, func() bool { return fx.peers.resets == 1 }, time.Second, time.Millisecond)
+		require.Eventually(t, func() bool {
+			_, err := os.Stat(fx.statePath())
+			return os.IsNotExist(err)
+		}, time.Second, time.Millisecond)
+	})
+	t.Run("startup poll is bounded; a later recovery observes instead", func(t *testing.T) {
+		// given
+		fx := newStoppedFixture(t, "")
+		fx.writeStateFile(t, storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
+		fx.service.startupCheckTimeout = 30 * time.Millisecond
+		fx.start(t)
+		time.Sleep(3 * fx.service.startupCheckTimeout)
+
+		// when: the identity becomes known after the poll gave up
+		fx.network.identity = "net-B"
+		time.Sleep(10 * fx.service.startupCheckInterval)
+
+		// then: no check ran; the next recovery is the first observation
+		assert.Equal(t, 0, fx.peers.resets)
+		fx.network.fireRecovery()
+		assert.Equal(t, 1, fx.peers.resets)
+	})
+	t.Run("unknown identity is never persisted", func(t *testing.T) {
+		// given
+		fx := newFixture(t, "")
+
+		// when
+		fx.peers.mutate("p1", quicdemotion.PeerPenalty{ConsecutiveDegraded: 1})
+		time.Sleep(10 * fx.service.saveDebounce)
+
+		// then: no file, rather than a file keyed by nothing
+		_, err := os.Stat(fx.statePath())
+		assert.True(t, os.IsNotExist(err))
+
+		// and once the network is known the next mutation persists under it
+		fx.network.identity = "net-A"
+		fx.peers.mutate("p2", quicdemotion.PeerPenalty{ConsecutiveDegraded: 1})
+		require.Eventually(t, func() bool { return fx.readStateFile(t).NetworkKey == "net-A" }, time.Second, time.Millisecond)
+	})
+	t.Run("recovery with an unknown identity is not an observation", func(t *testing.T) {
+		// given
+		fx := newStoppedFixture(t, "")
+		fx.writeStateFile(t, storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
+		fx.service.startupCheckInterval = time.Hour
+		fx.start(t)
+
+		// when
+		fx.network.fireRecovery()
+
+		// then
+		assert.Equal(t, 0, fx.peers.resets)
+		_, err := os.Stat(fx.statePath())
+		assert.NoError(t, err)
+
+		// and the first known observation is still compared to the stored key
+		fx.network.identity = "net-B"
+		fx.network.fireRecovery()
+		assert.Equal(t, 1, fx.peers.resets)
 	})
 }
 
@@ -509,7 +591,7 @@ func TestService_CorruptFile(t *testing.T) {
 			repo:    repo,
 		}
 		fx.service.saveDebounce = 10 * time.Millisecond
-		fx.service.startupCheckDelay = 10 * time.Millisecond
+		fx.service.startupCheckInterval = 10 * time.Millisecond
 		fx.a.Register(&fakeWallet{repoPath: repo}).
 			Register(fx.peers).
 			Register(fx.network).

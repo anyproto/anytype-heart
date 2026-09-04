@@ -14,8 +14,11 @@ Scope: global
   evicted constantly)
 - Seeds the stored penalties into quicdemotion at startup, then drops them if
   the network identity turns out to differ from the one the verdict was
-  learned on (checked once shortly after start and on every connectivity
-  recovery)
+  learned on (checked as soon as the identity is known after start, and on
+  every online connectivity recovery)
+- Persists only under a known network identity: while nothing identifies the
+  network the state stays in memory rather than on disk under a key that
+  would match anywhere
 - Resets the penalties on a mid-session network change: a new network
   deserves a clean verdict
 - Disabled entirely via ANYTYPE_QUIC_AUTO_DEMOTION=0
@@ -53,16 +56,26 @@ const (
 
 	walletCName = accountservice.CName
 
-	defaultSaveDebounce      = time.Second
-	defaultStartupCheckDelay = 3 * time.Second
+	defaultSaveDebounce = time.Second
+	// The startup identity check polls until the identity is known rather
+	// than sampling once: the monitor's first snapshot and the client's
+	// first report both land some time after Run, and the client's needs
+	// the account app up first. A single sample at a fixed delay compared
+	// the stored key against an unknown identity on mobile cold starts and
+	// deleted the verdict the file exists to keep. The poll is bounded: an
+	// identity that never becomes known leaves the seed in place, and the
+	// next online recovery observes instead.
+	defaultStartupCheckInterval = time.Second
+	defaultStartupCheckTimeout  = 30 * time.Second
 )
 
 var log = logger.NewNamed(CName)
 
 func New() Service {
 	return &service{
-		saveDebounce:      defaultSaveDebounce,
-		startupCheckDelay: defaultStartupCheckDelay,
+		saveDebounce:         defaultSaveDebounce,
+		startupCheckInterval: defaultStartupCheckInterval,
+		startupCheckTimeout:  defaultStartupCheckTimeout,
 	}
 }
 
@@ -80,7 +93,9 @@ type penaltyManager interface {
 
 // networkIdentity is the device.NetworkState surface this component needs.
 type networkIdentity interface {
-	NetworkIdentity() string
+	// NetworkIdentity reports ok=false while nothing identifies the network;
+	// such a key is never compared, persisted or remembered here.
+	NetworkIdentity() (identity string, ok bool)
 	RegisterConnectivityHook(hook func(online bool))
 }
 
@@ -90,8 +105,9 @@ type repoPathProvider interface {
 
 // storedState is the on-disk format of <repo>/transport_penalties.json.
 type storedState struct {
-	// NetworkKey is the network identity the penalties were learned on;
-	// empty when it was never observed (fail open: the verdict is kept).
+	// NetworkKey is the network identity the penalties were learned on. A
+	// file this version writes always carries one (saves wait for a known
+	// identity); an empty key keeps the verdict (fail open).
 	NetworkKey string                       `json:"networkKey"`
 	UpdatedAt  time.Time                    `json:"updatedAt"`
 	Penalties  quicdemotion.PenaltySnapshot `json:"penalties"`
@@ -103,8 +119,9 @@ type service struct {
 	filePath string
 	disabled bool
 
-	saveDebounce      time.Duration
-	startupCheckDelay time.Duration
+	saveDebounce         time.Duration
+	startupCheckInterval time.Duration
+	startupCheckTimeout  time.Duration
 
 	// saveMu serializes the writers of the state file. The debounce timer
 	// clears savePending before it calls save, so a mutation arriving
@@ -115,7 +132,7 @@ type service struct {
 	saveMu sync.Mutex
 
 	mu           sync.Mutex
-	lastIdentity string // last observed network identity; "" until first observation
+	lastIdentity string // last known network identity; "" until the first known observation
 	// loadedKey is the network key of the state file as it was loaded, i.e.
 	// the network the seeded penalties were learned on. Only load sets it:
 	// if a save could rewrite it with the current identity, a penalty
@@ -155,19 +172,32 @@ func (s *service) Run(ctx context.Context) error {
 	if s.disabled {
 		return nil
 	}
-	// The stored-key check needs the current network identity, which isn't
-	// known at Init: the net monitor's first interface snapshot and the
-	// client's first network report both arrive shortly after start. On a
-	// stable network no connectivity recovery ever fires, so check once here.
-	go func() {
+	go s.startupCheck()
+	return nil
+}
+
+// startupCheck runs the stored-key check as soon as the network identity is
+// known. On a stable network no connectivity recovery ever fires, so without
+// it a stale verdict would never be dropped.
+func (s *service) startupCheck() {
+	ticker := time.NewTicker(s.startupCheckInterval)
+	defer ticker.Stop()
+	deadline := time.NewTimer(s.startupCheckTimeout)
+	defer deadline.Stop()
+	for {
 		select {
-		case <-time.After(s.startupCheckDelay):
+		case <-ticker.C:
+			if identity, ok := s.network.NetworkIdentity(); ok {
+				s.checkIdentity(identity)
+				return
+			}
+		case <-deadline.C:
+			log.Info("network identity still unknown, keeping stored transport penalties as seeded")
+			return
 		case <-s.closeCh:
 			return
 		}
-		s.checkIdentity(s.network.NetworkIdentity())
-	}()
-	return nil
+	}
 }
 
 func (s *service) Close(ctx context.Context) error {
@@ -235,7 +265,11 @@ func (s *service) onConnectivityRecovery(online bool) {
 	if !online {
 		return
 	}
-	s.checkIdentity(s.network.NetworkIdentity())
+	identity, ok := s.network.NetworkIdentity()
+	if !ok {
+		return
+	}
+	s.checkIdentity(identity)
 }
 
 // checkIdentity compares the current network identity against the last known
@@ -293,8 +327,16 @@ func (s *service) save() {
 		s.removeFileLocked()
 		return
 	}
+	identity, ok := s.network.NetworkIdentity()
+	if !ok {
+		// Nothing to attribute the verdict to. Persisted under an unknown
+		// key it would match on the next start wherever the device is, so
+		// it stays in memory; the next mutation on a known network persists.
+		log.Debug("network identity unknown, not persisting transport penalties")
+		return
+	}
 	st := storedState{
-		NetworkKey: s.network.NetworkIdentity(),
+		NetworkKey: identity,
 		UpdatedAt:  time.Now().UTC(),
 		Penalties:  snap,
 	}
