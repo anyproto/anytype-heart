@@ -144,6 +144,13 @@ type service struct {
 	savePending bool
 	closed      bool
 	closeCh     chan struct{}
+	// wg covers the startup check, the debounce timer's callback and a
+	// hook run inside checkIdentity: Close waits for them so nothing writes
+	// or removes the file after it returns. networkState is registered
+	// before this component, so it closes after it and its monitor and
+	// pending recovery timer can still deliver hooks meanwhile; the hook
+	// cannot be unregistered.
+	wg sync.WaitGroup
 }
 
 func (s *service) Name() string { return CName }
@@ -172,7 +179,11 @@ func (s *service) Run(ctx context.Context) error {
 	if s.disabled {
 		return nil
 	}
-	go s.startupCheck()
+	s.wg.Add(1)
+	go func() {
+		defer s.wg.Done()
+		s.startupCheck()
+	}()
 	return nil
 }
 
@@ -208,12 +219,17 @@ func (s *service) Close(ctx context.Context) error {
 	}
 	s.closed = true
 	close(s.closeCh)
-	if s.saveTimer != nil {
-		s.saveTimer.Stop()
-	}
 	pending := s.savePending
+	if pending && s.saveTimer.Stop() {
+		// the callback will never run: release the slot it holds in wg
+		s.wg.Done()
+	}
 	s.savePending = false
 	s.mu.Unlock()
+	// Nothing may touch the file after Close returns: wait for the startup
+	// check, a debounce callback already past its closed check, and a
+	// recovery hook still inside checkIdentity.
+	s.wg.Wait()
 	if pending {
 		s.save()
 	}
@@ -288,6 +304,14 @@ func (s *service) onConnectivityRecovery(online bool) {
 // learned on a different network must not apply here.
 func (s *service) checkIdentity(identity string) {
 	s.mu.Lock()
+	if s.closed {
+		// a recovery delivered after Close (see wg): acting on it reset the
+		// penalties and removed the file on logout during a network change
+		s.mu.Unlock()
+		return
+	}
+	s.wg.Add(1)
+	defer s.wg.Done()
 	prev := s.lastIdentity
 	s.lastIdentity = identity
 	loadedKey := s.loadedKey
@@ -318,7 +342,9 @@ func (s *service) scheduleSave() {
 		return
 	}
 	s.savePending = true
+	s.wg.Add(1)
 	s.saveTimer = time.AfterFunc(s.saveDebounce, func() {
+		defer s.wg.Done()
 		s.mu.Lock()
 		s.savePending = false
 		closed := s.closed

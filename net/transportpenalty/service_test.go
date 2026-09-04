@@ -684,6 +684,64 @@ func TestService_UnknownIdentity(t *testing.T) {
 	})
 }
 
+func TestService_Close(t *testing.T) {
+	t.Run("recovery after Close neither resets nor touches the file", func(t *testing.T) {
+		// given: stored net-A verdict, device on net-B, no observation yet;
+		// networkState closes after this component (reverse registration
+		// order) so its last recoveries can still call the hook
+		fx := newStoppedFixture(t, "net-B")
+		fx.writeStateFile(t, storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
+		fx.service.startupCheckInterval = time.Hour
+		fx.start(t)
+		require.NoError(t, fx.service.Close(ctx))
+
+		// when
+		fx.network.fireRecovery()
+
+		// then
+		assert.Equal(t, 0, fx.peers.resetCount())
+		_, err := os.Stat(fx.statePath())
+		assert.NoError(t, err, "a closed component must not delete the verdict")
+	})
+	t.Run("Close waits for a save in flight", func(t *testing.T) {
+		// given: a save stuck inside Snapshot
+		fx := newFixture(t, "net-A")
+		gate := make(chan struct{})
+		fx.peers.gateSnapshots(gate)
+		t.Cleanup(func() {
+			select {
+			case <-gate:
+			default:
+				close(gate)
+			}
+		})
+		fx.peers.mutate("p1", quicdemotion.PeerPenalty{ConsecutiveDegraded: 1})
+		require.Eventually(t, func() bool { return fx.peers.snapshotCalls() == 1 }, time.Second, time.Millisecond)
+
+		// when
+		closed := make(chan struct{})
+		go func() {
+			defer close(closed)
+			_ = fx.service.Close(ctx)
+		}()
+
+		// then: Close is blocked on the write, not returning with it pending
+		select {
+		case <-closed:
+			t.Fatal("Close returned while a save was in flight")
+		case <-time.After(10 * fx.service.saveDebounce):
+		}
+		close(gate)
+		select {
+		case <-closed:
+		case <-time.After(time.Second):
+			t.Fatal("Close did not return after the save completed")
+		}
+		// and the write landed before Close returned
+		assert.Contains(t, fx.readStateFile(t).Penalties.Peers, "p1")
+	})
+}
+
 func TestService_SchemaVersion(t *testing.T) {
 	t.Run("file from another schema version is dropped", func(t *testing.T) {
 		// given: quicdemotion ignores such a snapshot, so without a check
