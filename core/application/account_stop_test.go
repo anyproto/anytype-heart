@@ -264,3 +264,56 @@ func TestService_AccountStop(t *testing.T) {
 		fx.lock.Unlock()
 	})
 }
+
+// TestService_AccountStopRemoveData pins that a removal request is never
+// answered with a success it did not earn. Cancelling a start returns early
+// without touching the lock, which is right for a plain stop but would tell a
+// client its account had been erased while every byte was still on disk.
+func TestService_AccountStopRemoveData(t *testing.T) {
+	stopWith := func(t *testing.T, fx *startFixture, removeData bool) error {
+		t.Helper()
+		stopped := make(chan error, 1)
+		go func() {
+			stopped <- fx.AccountStop(&pb.RpcAccountStopRequest{RemoveData: removeData})
+		}()
+		select {
+		case err := <-stopped:
+			return err
+		case <-time.After(5 * time.Second):
+			t.Fatal("AccountStop did not return")
+			return nil
+		}
+	}
+
+	t.Run("a plain stop of a start in flight still succeeds without the lock", func(t *testing.T) {
+		// given: a start in flight
+		fx := newStartFixture(t)
+		fx.startMu.Lock()
+		fx.starting = &startRun{cancel: func() {}}
+		fx.startMu.Unlock()
+
+		// when
+		err := stopWith(t, fx, false)
+
+		// then
+		assert.NoError(t, err)
+		assert.Nil(t, fx.inFlight())
+	})
+
+	t.Run("a removal request on a cancelled start reports that it did not happen", func(t *testing.T) {
+		// given: a start in flight and no app to remove data through
+		fx := newStartFixture(t)
+		fx.startMu.Lock()
+		fx.starting = &startRun{cancel: func() {}}
+		fx.startMu.Unlock()
+		require.Nil(t, fx.app)
+
+		// when
+		err := stopWith(t, fx, true)
+
+		// then: the start was still cancelled, but the caller is told the
+		// truth rather than a success it can never verify
+		assert.ErrorIs(t, err, ErrFailedToRemoveAccountData)
+		assert.Nil(t, fx.inFlight())
+	})
+}

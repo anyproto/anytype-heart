@@ -26,17 +26,28 @@ var (
 // published on its way out (see the protocol in app_start.go). Cancelling a
 // pending start is a successful stop even though it leaves no app to close —
 // the client needs to tell that apart from "nothing was running" to know its
-// select is coming back. RemoveData is not honoured for a cancelled start: no
-// client sends it while an account is starting, and honouring it would mean
-// waiting for the lock.
+// select is coming back.
+//
+// RemoveData never takes that shortcut. Cancelling costs no lock wait, but a
+// client that asked for the account to be erased must not be told the erase
+// succeeded while the data is still on disk — that is a lie it has no way to
+// detect. So a removal request cancels the start and then waits for the lock
+// like any other, and if the start unwound first, leaving no wallet to
+// resolve the account directory from, it reports the failure rather than
+// reporting success.
 func (s *Service) AccountStop(req *pb.RpcAccountStopRequest) error {
-	if s.cancelStart() {
+	cancelled := s.cancelStart()
+	if cancelled && !req.RemoveData {
 		return nil
 	}
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	if s.app == nil {
+		if cancelled {
+			// The stop happened; the removal did not.
+			return ErrFailedToRemoveAccountData
+		}
 		return ErrApplicationIsNotRunning
 	}
 
