@@ -30,10 +30,7 @@ func newNodeConf(t *testing.T) app.Component {
 // the double. The double cannot catch a mismatch between what this component
 // writes and what quicdemotion accepts, nor the Init-order requirement.
 func TestService_RealQuicDemotion(t *testing.T) {
-	stored := storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: quicdemotion.PenaltySnapshot{
-		Version: quicdemotion.PenaltySnapshotVersion,
-		Peers:   demotedPeers("p1").Peers,
-	}}
+	stored := storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")}
 	t.Run("registered after quicdemotion: the stored verdict is seeded", func(t *testing.T) {
 		// given
 		repo := t.TempDir()

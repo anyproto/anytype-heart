@@ -239,6 +239,16 @@ func (s *service) load() {
 		_ = os.Remove(s.filePath)
 		return
 	}
+	// quicdemotion's Seed silently ignores a snapshot from another schema
+	// version; without this check the file would sit on disk indefinitely,
+	// the key would be recorded for a seed that never happened, and the log
+	// below would claim one.
+	if st.Penalties.Version != quicdemotion.PenaltySnapshotVersion {
+		log.Warn("transport penalties from another schema version, dropping the file",
+			zap.Int("version", st.Penalties.Version), zap.Int("expected", quicdemotion.PenaltySnapshotVersion))
+		_ = os.Remove(s.filePath)
+		return
+	}
 	if len(st.Penalties.Peers) == 0 {
 		return
 	}

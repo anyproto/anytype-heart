@@ -52,10 +52,17 @@ func (f *fakePenaltyManager) Snapshot() quicdemotion.PenaltySnapshot {
 	for id, p := range f.snapshot.Peers {
 		peers[id] = p
 	}
-	return quicdemotion.PenaltySnapshot{Peers: peers}
+	// stamped like the real snapshot: a double returning Version 0 hid that
+	// the service never checked it
+	return quicdemotion.PenaltySnapshot{Version: quicdemotion.PenaltySnapshotVersion, Peers: peers}
 }
 
+// Seed mirrors the real component: a snapshot from another schema version is
+// silently ignored.
 func (f *fakePenaltyManager) Seed(snap quicdemotion.PenaltySnapshot) {
+	if snap.Version != quicdemotion.PenaltySnapshotVersion {
+		return
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.seeded = append(f.seeded, snap)
@@ -247,13 +254,16 @@ func (fx *fixture) readStateFile(t *testing.T) (st storedState) {
 }
 
 func demotedPeers(peerId string) quicdemotion.PenaltySnapshot {
-	return quicdemotion.PenaltySnapshot{Peers: map[string]quicdemotion.PeerPenalty{
-		peerId: {
-			ConsecutiveDegraded: 1,
-			DemotedUntil:        time.Now().Add(time.Hour).UTC(),
-			BackoffLevel:        1,
+	return quicdemotion.PenaltySnapshot{
+		Version: quicdemotion.PenaltySnapshotVersion,
+		Peers: map[string]quicdemotion.PeerPenalty{
+			peerId: {
+				ConsecutiveDegraded: 1,
+				DemotedUntil:        time.Now().Add(time.Hour).UTC(),
+				BackoffLevel:        1,
+			},
 		},
-	}}
+	}
 }
 
 func TestService_Seed(t *testing.T) {
@@ -338,6 +348,9 @@ func TestService_Save(t *testing.T) {
 		require.NoError(t, json.Unmarshal(data, &st))
 		assert.Equal(t, "net-A", st.NetworkKey)
 		assert.Contains(t, st.Penalties.Peers, "p1")
+		// the schema version travels with the data; without it the real
+		// component ignores the file on the next start
+		assert.Equal(t, quicdemotion.PenaltySnapshotVersion, st.Penalties.Version)
 	})
 	t.Run("emptied state removes the file", func(t *testing.T) {
 		// given
@@ -668,6 +681,26 @@ func TestService_UnknownIdentity(t *testing.T) {
 		fx.network.setIdentity("net-B")
 		fx.network.fireRecovery()
 		assert.Equal(t, 1, fx.peers.resetCount())
+	})
+}
+
+func TestService_SchemaVersion(t *testing.T) {
+	t.Run("file from another schema version is dropped", func(t *testing.T) {
+		// given: quicdemotion ignores such a snapshot, so without a check
+		// here the file would stay on disk forever and the stored key would
+		// be recorded for a seed that never happened
+		fx := newStoppedFixture(t, "net-A")
+		st := storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")}
+		st.Penalties.Version = 99
+		fx.writeStateFile(t, st)
+
+		// when
+		fx.start(t)
+
+		// then
+		assert.Empty(t, fx.peers.seededSnapshots())
+		_, err := os.Stat(fx.statePath())
+		assert.True(t, os.IsNotExist(err), "unusable file must not be kept")
 	})
 }
 
