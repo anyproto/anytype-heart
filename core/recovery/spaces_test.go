@@ -309,9 +309,12 @@ func TestTracker_SpacePull(t *testing.T) {
 }
 
 func TestTracker_ViewGate(t *testing.T) {
+	// loadedSpace is the on-disk fast path as it really runs: the loader shows
+	// Loaded immediately, and the background build it still runs reports after.
 	loadedSpace := func(fx *fixture, id, viewId string) {
 		fx.OnSpaceView(id, viewId, false)
 		fx.OnSpaceLoadStarted(id, true)
+		fx.OnSpaceLoaded(id, nil, false)
 	}
 
 	t.Run("without a diff nothing finishes", func(t *testing.T) {
@@ -571,6 +574,7 @@ func TestTracker_Finished(t *testing.T) {
 		fx.ready(t)
 		fx.OnSpaceView("s1", "v1", false)
 		fx.OnSpaceLoadStarted("s1", true)
+		fx.OnSpaceLoaded("s1", nil, false)
 
 		// when
 		fx.OnHeadSync(techSpaceId, "node1", nil, true)
@@ -602,9 +606,12 @@ func TestTracker_Finished(t *testing.T) {
 // publish a load result, so tracking it as one awaiting a result holds
 // Finished open for the entire run, on every app open.
 func TestTracker_PendingJoinDoesNotWedgeFinished(t *testing.T) {
+	// loadedSpace is the on-disk fast path as it really runs: the loader shows
+	// Loaded immediately, and the background build it still runs reports after.
 	loadedSpace := func(fx *fixture, id, viewId string) {
 		fx.OnSpaceView(id, viewId, false)
 		fx.OnSpaceLoadStarted(id, true)
+		fx.OnSpaceLoaded(id, nil, false)
 	}
 
 	t.Run("the old routing wedges the run", func(t *testing.T) {
@@ -671,9 +678,12 @@ func TestTracker_PendingJoinDoesNotWedgeFinished(t *testing.T) {
 // promise there is nothing else to fetch), while one with a space that never
 // reported is NOT ready and must not say so.
 func TestTracker_SettleBound(t *testing.T) {
+	// loadedSpace is the on-disk fast path as it really runs: the loader shows
+	// Loaded immediately, and the background build it still runs reports after.
 	loadedSpace := func(fx *fixture, id, viewId string) {
 		fx.OnSpaceView(id, viewId, false)
 		fx.OnSpaceLoadStarted(id, true)
+		fx.OnSpaceLoaded(id, nil, false)
 	}
 
 	t.Run("all spaces settled with no diff finishes, unconfirmed", func(t *testing.T) {
@@ -752,5 +762,67 @@ func TestTracker_SettleBound(t *testing.T) {
 		// and when the run finally goes quiet
 		fx.clock.Advance(settleBound)
 		assert.NotNil(t, fx.finished(t))
+	})
+}
+
+// TestTracker_OptimisticIsNotAVerdict pins that the on-disk fast path may show
+// a space as Loaded without the run claiming the account is recovered. The
+// loader shows Loaded before it has a result — the space is on disk and was Ok
+// last session, so hiding it would be wrong — but it still runs the build, and
+// on a warm start EVERY space takes that path. Finishing on it meant Finished
+// fired before a single build had reported, and because the run goes silent at
+// Finished, a build that then failed could never be reported at all.
+func TestTracker_OptimisticIsNotAVerdict(t *testing.T) {
+	t.Run("an optimistic space alone does not finish the run", func(t *testing.T) {
+		// given
+		fx := newFixture(t, pb.EventAccountRecovery_WarmStart)
+		fx.ready(t)
+		fx.OnHeadSync(techSpaceId, "node1", []string{"v1"}, true)
+		fx.OnSpaceView("s1", "v1", false)
+
+		// when: shown Loaded off the disk, no build result yet
+		fx.OnSpaceLoadStarted("s1", true)
+
+		// then
+		assert.Equal(t, pb.EventAccountRecovery_Loaded, fx.space(t, "s1").State, "the client must still see it")
+		assert.Nil(t, fx.finished(t), "no build has reported, so nothing may be claimed")
+	})
+
+	t.Run("a failing build after the optimistic show is still reported", func(t *testing.T) {
+		// given
+		fx := newFixture(t, pb.EventAccountRecovery_WarmStart)
+		fx.ready(t)
+		fx.OnHeadSync(techSpaceId, "node1", []string{"v1"}, true)
+		fx.OnSpaceView("s1", "v1", false)
+		fx.OnSpaceLoadStarted("s1", true)
+
+		// when: the build the loader still ran fails for real
+		fx.OnSpaceLoaded("s1", errors.New("boom"), false)
+
+		// then: the space regresses and the verdict counts it as failed
+		assert.Equal(t, pb.EventAccountRecovery_Error, fx.space(t, "s1").State)
+		fin := fx.finished(t)
+		require.NotNil(t, fin)
+		assert.Equal(t, int32(1), fin.SpacesFailed)
+		assert.Equal(t, int32(1), fin.SpacesLoaded, "the tech space")
+	})
+
+	t.Run("a build that never reports still lets the run finish", func(t *testing.T) {
+		// given: the space is usable off disk, but its build has gone quiet
+		fx := newFixture(t, pb.EventAccountRecovery_WarmStart)
+		fx.ready(t)
+		fx.OnHeadSync(techSpaceId, "node1", []string{"v1"}, true)
+		fx.OnSpaceView("s1", "v1", false)
+		fx.OnSpaceLoadStarted("s1", true)
+
+		// when
+		fx.clock.Advance(settleBound)
+
+		// then: it works, so there is nothing to stall about
+		fin := fx.finished(t)
+		require.NotNil(t, fin)
+		assert.True(t, fin.ViewsConfirmed)
+		assert.Equal(t, int32(2), fin.SpacesLoaded)
+		assert.Equal(t, pb.EventAccountRecovery_Loaded, fx.space(t, "s1").State)
 	})
 }

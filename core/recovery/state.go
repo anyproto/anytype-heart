@@ -71,6 +71,11 @@ type spaceState struct {
 	from        pb.EventAccountRecoverySpaceState
 	attempt     int
 	lastError   *errInfo
+	// settled: the space controller published its own load result. The
+	// optimistic fast path shows Loaded before that (the space is on disk and
+	// was Ok last session, so hiding it would be wrong), but the run must not
+	// claim the account is recovered on a verdict nobody has given yet.
+	settled bool
 }
 
 // viewGate is the tech-space SpaceView-completeness gate on Finished: the

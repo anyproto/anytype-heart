@@ -143,11 +143,13 @@ func (t *Tracker) OnSpaceLoaded(spaceId string, err error, deleted bool) {
 	switch {
 	case err == nil:
 		t.transitionLocked(spaceId, s, pb.EventAccountRecovery_Loaded, nil)
+		s.settled = true
 	case deleted:
 		t.transitionLocked(spaceId, s, pb.EventAccountRecovery_Error, &errInfo{
 			class: pb.EventAccountRecovery_SpaceDeleted,
 			debug: truncate(err.Error(), debugMessageMax),
 		})
+		s.settled = true
 	case errors.Is(err, context.Canceled), errors.Is(err, context.DeadlineExceeded):
 		return
 	default:
@@ -159,6 +161,7 @@ func (t *Tracker) OnSpaceLoaded(spaceId string, err error, deleted bool) {
 			info.class, info.retryable = pb.EventAccountRecovery_Unexpected, false
 		}
 		t.transitionLocked(spaceId, s, pb.EventAccountRecovery_Error, info)
+		s.settled = true
 	}
 	t.checkFinishedLocked()
 	t.armSettleLocked()
@@ -324,6 +327,9 @@ func (t *Tracker) checkFinishedLocked() {
 	}
 	var loaded, failed int32
 	for _, s := range t.spaces {
+		if !s.settled {
+			return
+		}
 		switch s.state {
 		case pb.EventAccountRecovery_Loaded:
 			loaded++
@@ -405,20 +411,33 @@ func (t *Tracker) onSettleTimer() {
 	}
 	var loaded, failed int32
 	stragglers := make([]string, 0, len(t.spaces))
+	// usable: shown Loaded on the optimistic fast path, but the background
+	// build never reported. The space is on disk and was Ok last session, so it
+	// works — there is nothing to stall about, and waiting longer for a build
+	// that has gone quiet would hold the run open over a space the user can
+	// already open.
+	usable := make([]string, 0, len(t.spaces))
 	for id, s := range t.spaces {
-		switch s.state {
-		case pb.EventAccountRecovery_Loaded:
+		switch {
+		case s.state == pb.EventAccountRecovery_Loaded && s.settled:
 			loaded++
-		case pb.EventAccountRecovery_Error:
+		case s.state == pb.EventAccountRecovery_Loaded:
+			usable = append(usable, id)
+		case s.state == pb.EventAccountRecovery_Error && s.settled:
 			failed++
 		default:
 			stragglers = append(stragglers, id)
 		}
 	}
 	if len(stragglers) == 0 {
-		// Every space settled; the gate stayed shut only because no responsible
-		// diff ever arrived, so completeness cannot be claimed.
-		t.finishLocked(loaded, failed, false)
+		for _, id := range usable {
+			t.spaces[id].settled = true
+			loaded++
+		}
+		// The gate may well be open here: the run was only ever held by a
+		// verdict that never came, not by the view set.
+		open, confirmed := t.gateLocked()
+		t.finishLocked(loaded, failed, open && confirmed)
 		return
 	}
 	// Deterministic order so the event stream is reproducible under replay.

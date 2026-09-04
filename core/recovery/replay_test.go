@@ -354,6 +354,7 @@ func TestReplayProperty(t *testing.T) {
 		fx.pull(commonspace.PullEventResult, "s1", "node2", nil)
 		fx.OnSpaceLoaded("s1", nil, false)
 		fx.OnSpaceLoadStarted("s2", true)
+		fx.OnSpaceLoaded("s2", nil, false) // the fast path still runs a build
 		fx.OnSpaceLoadStarted("s3", false)
 		fx.OnSpaceLoaded("s3", anystore.ErrCollectionNotFound, false)
 		check()
