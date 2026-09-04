@@ -293,27 +293,50 @@ func (s *MCPServer) handleToolsCall(ctx context.Context, params json.RawMessage)
 	return mcpCallResult{Content: []mcpContent{{Type: "text", Text: result.Text}}}, nil
 }
 
-// errorText renders an error as the repair tip the model reads. Wrapper and
+// deliveryTips are the two repair tips only a delivery can know — the
+// conditions whose fix is outside the model's reach. Both must say "ask
+// the user", or a small model burns its retries re-sending variants of a
+// call that can never succeed.
+type deliveryTips struct {
+	// unauthorized renders a server 401.
+	unauthorized func(te *ToolError) string
+	// unreachable renders a transport failure (the request never got an
+	// HTTP response).
+	unreachable func(err error) string
+}
+
+// repairTip renders an error as the tip the model reads. Wrapper and
 // server errors already carry their own steering (validateArgs, C6 hints,
-// the ops→tool translation); this layer adds the two conditions whose fix
-// is outside the model's reach — both must say "ask the user", or a small
-// model burns its retries re-sending variants of a call that can never
-// succeed.
-func (s *MCPServer) errorText(err error) string {
+// the ops→tool translation); this layer adds only the delivery's two.
+func repairTip(err error, tips deliveryTips) string {
 	var te *ToolError
 	if errors.As(err, &te) {
 		if te.Status == 401 {
-			return te.Text + "\nfix: the API key was rejected — ask the user to check ANYTYPE_API_KEY (Anytype app → Settings → API keys); no change to the call will help"
+			return tips.unauthorized(te)
 		}
 		return te.Text
 	}
 	// not a ToolError: the request never reached the API server (transport)
-	// or failed wrapper-side; transport failures name the base URL so the
-	// user knows what to start
+	// or failed wrapper-side
 	if isTransportError(err) {
-		return fmt.Sprintf("cannot reach the local Anytype API at %s — ask the user to start the Anytype app; no change to the call will help (%v)", s.runner.client.BaseURL, err)
+		return tips.unreachable(err)
 	}
 	return err.Error()
+}
+
+// errorText renders an error as the repair tip the MCP host shows the
+// model: the shared tip chain plus the two conditions a process boundary
+// knows — the API server is unreachable (named by base URL, so the user
+// knows what to start), the key was rejected.
+func (s *MCPServer) errorText(err error) string {
+	return repairTip(err, deliveryTips{
+		unauthorized: func(te *ToolError) string {
+			return te.Text + "\nfix: the API key was rejected — ask the user to check ANYTYPE_API_KEY (Anytype app → Settings → API keys); no change to the call will help"
+		},
+		unreachable: func(err error) string {
+			return fmt.Sprintf("cannot reach the local Anytype API at %s — ask the user to start the Anytype app; no change to the call will help (%v)", s.runner.client.BaseURL, err)
+		},
+	})
 }
 
 // isTransportError reports whether the request never got an HTTP response:
