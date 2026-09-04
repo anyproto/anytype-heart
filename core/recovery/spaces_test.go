@@ -596,3 +596,71 @@ func TestTracker_Finished(t *testing.T) {
 		assert.Equal(t, int32(1), fin.SpacesTotal)
 	})
 }
+
+// TestTracker_PendingJoinDoesNotWedgeFinished pins the terminal-class bug: a
+// space whose controller runs a joiner rather than a spaceloader can never
+// publish a load result, so tracking it as one awaiting a result holds
+// Finished open for the entire run, on every app open.
+func TestTracker_PendingJoinDoesNotWedgeFinished(t *testing.T) {
+	loadedSpace := func(fx *fixture, id, viewId string) {
+		fx.OnSpaceView(id, viewId, false)
+		fx.OnSpaceLoadStarted(id, true)
+	}
+
+	t.Run("the old routing wedges the run", func(t *testing.T) {
+		// given: the diff names two views, and v2's space is a pending join
+		fx := newFixture(t, pb.EventAccountRecovery_ColdRecovery)
+		fx.ready(t)
+		fx.OnHeadSync(techSpaceId, "node1", []string{"v1", "v2"}, true)
+		loadedSpace(fx, "s1", "v1")
+
+		// when: it arrives on the ordinary seam, as it used to
+		fx.OnSpaceView("s2", "v2", false)
+
+		// then: nothing can ever finish the run — no load result is coming
+		assert.Nil(t, fx.finished(t))
+		assert.False(t, fx.Snapshot().Done)
+		assert.Equal(t, pb.EventAccountRecovery_Queued, fx.space(t, "s2").State)
+	})
+
+	t.Run("the inactive seam resolves the gate without being awaited", func(t *testing.T) {
+		// given
+		fx := newFixture(t, pb.EventAccountRecovery_ColdRecovery)
+		fx.ready(t)
+		fx.OnHeadSync(techSpaceId, "node1", []string{"v1", "v2"}, true)
+		loadedSpace(fx, "s1", "v1")
+		require.Nil(t, fx.finished(t), "v2 still missing")
+
+		// when
+		fx.OnSpaceViewInactive("s2", "v2")
+
+		// then
+		fin := fx.finished(t)
+		require.NotNil(t, fin, "a space that can never load must not hold the run open")
+		assert.True(t, fin.ViewsConfirmed, "the view was accounted for, so completeness is still earned")
+		assert.Equal(t, int32(2), fin.SpacesTotal, "tech + s1; a pending join is not being recovered")
+		assert.False(t, fx.hasSpace("s2"))
+	})
+
+	t.Run("a tracked space that becomes a pending join leaves the set", func(t *testing.T) {
+		// given: s2 was active and loading
+		fx := newFixture(t, pb.EventAccountRecovery_ColdRecovery)
+		fx.ready(t)
+		fx.OnHeadSync(techSpaceId, "node1", []string{"v1", "v2"}, true)
+		loadedSpace(fx, "s1", "v1")
+		fx.OnSpaceView("s2", "v2", false)
+		fx.OnSpaceLoadStarted("s2", false)
+		require.Nil(t, fx.finished(t))
+
+		// when
+		fx.OnSpaceViewInactive("s2", "v2")
+
+		// then: it is retired as Removed, and the run can finish
+		changes := fx.stateChanges("s2")
+		require.NotEmpty(t, changes)
+		last := changes[len(changes)-1]
+		assert.Equal(t, pb.EventAccountRecovery_Removed, last.State)
+		assert.Equal(t, pb.EventAccountRecovery_None, last.Error.GetClass(), "nothing failed and nothing was deleted")
+		require.NotNil(t, fx.finished(t))
+	})
+}

@@ -44,6 +44,38 @@ func (t *Tracker) OnSpaceView(spaceId, spaceViewId string, deleted bool) {
 	t.refreshPhaseLocked(false)
 }
 
+// OnSpaceViewInactive is a SpaceView whose space the space controller will
+// never run a spaceloader for. Today that is a pending join:
+// AccountStatusJoining dispatches to mode.ModeJoining, which builds a joiner,
+// so the space can never publish a load result. Tracking it as one awaiting a
+// result wedges Finished for the entire run — and does so on every app open
+// for as long as the invite sits unaccepted.
+//
+// It still resolves the completeness gate: the view exists locally and the
+// watcher listed it, so the gate must not wait for it either. A space that
+// later becomes active arrives again through OnSpaceView and is tracked then.
+func (t *Tracker) OnSpaceViewInactive(spaceId, spaceViewId string) {
+	defer containTelemetry("space view inactive")
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if !t.begun || t.terminalLocked() || spaceId == "" || spaceId == t.account.techSpaceId {
+		return
+	}
+	t.resolveViewLocked(spaceViewId)
+	// Tracked from an earlier active status: it has left the recovery set, so
+	// stop awaiting a result that is no longer coming. Removed says exactly
+	// that, and the class stays None because nothing failed and nothing was
+	// deleted.
+	if s, tracked := t.spaces[spaceId]; tracked {
+		t.transitionLocked(spaceId, s, pb.EventAccountRecovery_Removed, &errInfo{
+			debug: "no loader will run for this space (pending join)",
+		})
+		delete(t.spaces, spaceId)
+	}
+	t.checkFinishedLocked()
+	t.refreshPhaseLocked(false)
+}
+
 // OnSpaceViewsInitial is the SpaceView watcher's first pass over the local
 // store (space.spacewatcher, inside watcher.Run). The completeness gate cannot
 // open until it has run AND every view it listed has been delivered through

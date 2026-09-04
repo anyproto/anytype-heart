@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -732,6 +733,7 @@ type fakeRecoveryObserver struct {
 	views            []fakeSpaceView
 	initial          []string
 	initialDelivered bool
+	inactive         []fakeSpaceView
 }
 
 type fakeSpaceView struct {
@@ -752,6 +754,18 @@ func (f *fakeRecoveryObserver) OnSpaceViewsInitial(spaceViewIds []string) {
 	defer f.mu.Unlock()
 	f.initial = spaceViewIds
 	f.initialDelivered = true
+}
+
+func (f *fakeRecoveryObserver) OnSpaceViewInactive(spaceId, spaceViewId string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.inactive = append(f.inactive, fakeSpaceView{spaceId: spaceId, spaceViewId: spaceViewId})
+}
+
+func (f *fakeRecoveryObserver) seenInactive() []fakeSpaceView {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.inactive)
 }
 
 func (f *fakeRecoveryObserver) OnSpaceView(spaceId, spaceViewId string, deleted bool) {
@@ -876,5 +890,66 @@ func TestService_RecoveryObserver(t *testing.T) {
 
 		// then
 		assert.Equal(t, 1, fx.recovery.ready)
+	})
+}
+
+// TestNotifySpaceViewJoining pins that a pending join is routed to the seam
+// that never waits for a load result. AccountStatusJoining dispatches to
+// mode.ModeJoining, which builds a joiner and not a spaceloader, so a space
+// left on the ordinary path holds Finished open for the whole run — on every
+// app open, for as long as the invite sits unaccepted.
+func TestNotifySpaceViewJoining(t *testing.T) {
+	newFx := func(t *testing.T) (*service, *fakeRecoveryObserver) {
+		fake := &fakeRecoveryObserver{}
+		return &service{recovery: fake}, fake
+	}
+
+	t.Run("a joining space goes to the inactive seam, not the tracked one", func(t *testing.T) {
+		// given
+		s, fake := newFx(t)
+
+		// when
+		s.notifySpaceView(spaceViewStatus{
+			spaceId:       "s1",
+			spaceViewId:   "v1",
+			accountStatus: spaceinfo.AccountStatusJoining,
+		})
+
+		// then
+		assert.Equal(t, []fakeSpaceView{{spaceId: "s1", spaceViewId: "v1"}}, fake.seenInactive())
+		assert.Empty(t, fake.seenViews(), "a joining space must not be tracked as awaiting a load")
+	})
+
+	t.Run("an active space still goes to the tracked seam", func(t *testing.T) {
+		// given
+		s, fake := newFx(t)
+
+		// when
+		s.notifySpaceView(spaceViewStatus{
+			spaceId:       "s2",
+			spaceViewId:   "v2",
+			accountStatus: spaceinfo.AccountStatusActive,
+		})
+
+		// then
+		assert.Equal(t, []fakeSpaceView{{spaceId: "s2", spaceViewId: "v2"}}, fake.seenViews())
+		assert.Empty(t, fake.seenInactive())
+	})
+
+	t.Run("deletion wins over joining", func(t *testing.T) {
+		// given: a joining space that the remote has since deleted
+		s, fake := newFx(t)
+
+		// when
+		s.notifySpaceView(spaceViewStatus{
+			spaceId:       "s3",
+			spaceViewId:   "v3",
+			accountStatus: spaceinfo.AccountStatusJoining,
+			remoteStatus:  spaceinfo.RemoteStatusDeleted,
+		})
+
+		// then: it is reported deleted, so the tracker can retire it properly
+		assert.Equal(t, []fakeSpaceView{{spaceId: "s3", spaceViewId: "v3", deleted: true}}, fake.seenViews())
+		assert.Empty(t, fake.seenInactive())
 	})
 }

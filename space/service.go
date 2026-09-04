@@ -211,6 +211,9 @@ type recoveryObserver interface {
 	// delivers; deleted covers accountStatus Deleted/Removing and remote
 	// Deleted, computed here so the tracker needs no spaceinfo import
 	OnSpaceView(spaceId, spaceViewId string, deleted bool)
+	// OnSpaceViewInactive is a SpaceView whose space this service will never
+	// run a spaceloader for, so no load result is ever coming for it
+	OnSpaceViewInactive(spaceId, spaceViewId string)
 	// OnSpaceViewsInitial is the watcher's first pass over the local
 	// SpaceViews; the tracker's completeness gate cannot open before every
 	// one of them has been delivered through OnSpaceView
@@ -514,6 +517,13 @@ func (s *service) notifySpaceView(status spaceViewStatus) {
 	deleted := status.accountStatus == spaceinfo.AccountStatusDeleted ||
 		status.accountStatus == spaceinfo.AccountStatusRemoving ||
 		status.remoteStatus == spaceinfo.RemoteStatusDeleted
+	// A joining space dispatches to mode.ModeJoining (see shareablespace's
+	// updateStatus), which builds a joiner and never a spaceloader: no load
+	// result will ever arrive, so the tracker must not wait for one.
+	if !deleted && status.accountStatus == spaceinfo.AccountStatusJoining {
+		s.recovery.OnSpaceViewInactive(status.spaceId, status.spaceViewId)
+		return
+	}
 	s.recovery.OnSpaceView(status.spaceId, status.spaceViewId, deleted)
 }
 
