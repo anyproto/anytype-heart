@@ -39,7 +39,10 @@ func (t *Tracker) OnSpaceView(spaceId, spaceViewId string, deleted bool) {
 			})
 			delete(t.spaces, spaceId)
 		}
+		t.forgetSpaceLocked(spaceId)
 	} else {
+		// Discovery is authoritative: a space it names is present again.
+		delete(t.spacesRemoved, spaceId)
 		t.spaceLocked(spaceId, spaceViewId, pb.EventAccountRecovery_Regular)
 	}
 	t.checkFinishedLocked()
@@ -74,6 +77,7 @@ func (t *Tracker) OnSpaceViewInactive(spaceId, spaceViewId string) {
 			debug: "no loader will run for this space (pending join)",
 		})
 		delete(t.spaces, spaceId)
+		t.forgetSpaceLocked(spaceId)
 	}
 	t.checkFinishedLocked()
 	t.armSettleLocked()
@@ -116,6 +120,9 @@ func (t *Tracker) OnSpaceLoadStarted(spaceId string, optimistic bool) {
 		return
 	}
 	s := t.spaceLocked(spaceId, "", pb.EventAccountRecovery_Regular)
+	if s == nil {
+		return
+	}
 	next := pb.EventAccountRecovery_Loading
 	if optimistic {
 		next = pb.EventAccountRecovery_Loaded
@@ -140,6 +147,9 @@ func (t *Tracker) OnSpaceLoaded(spaceId string, err error, deleted bool) {
 		return
 	}
 	s := t.spaceLocked(spaceId, "", pb.EventAccountRecovery_Regular)
+	if s == nil {
+		return
+	}
 	switch {
 	case err == nil:
 		t.transitionLocked(spaceId, s, pb.EventAccountRecovery_Loaded, nil)
@@ -217,6 +227,9 @@ func (t *Tracker) OnHeadSync(spaceId, peerId string, missing []string, responsib
 // is the account fetch, see account.go).
 func (t *Tracker) spacePullLocked(ev commonspace.PullEvent) {
 	s := t.spaceLocked(ev.SpaceId, "", pb.EventAccountRecovery_Regular)
+	if s == nil {
+		return
+	}
 	switch ev.Kind {
 	case commonspace.PullEventWaiting, commonspace.PullEventAttempt:
 		if s.state == pb.EventAccountRecovery_Queued || s.state == pb.EventAccountRecovery_Loading {
@@ -241,6 +254,14 @@ func (t *Tracker) spacePullLocked(ev commonspace.PullEvent) {
 // promotion races the watcher). A later view id — or kind — re-announces;
 // SpaceDiscovered is idempotent for clients.
 func (t *Tracker) spaceLocked(spaceId, spaceViewId string, kind pb.EventAccountRecoverySpaceKind) *spaceState {
+	if _, gone := t.spacesRemoved[spaceId]; gone {
+		// The space left this run and the client was told to drop it. A load
+		// or pull already in flight still reports afterwards, and recreating
+		// the entry on that would resurrect a space the client no longer has,
+		// inflate spacesTotal, and — for anything short of a verdict — hold
+		// Finished open again. Only the SpaceView seam brings a space back.
+		return nil
+	}
 	s, tracked := t.spaces[spaceId]
 	if !tracked {
 		s = &spaceState{kind: kind, state: pb.EventAccountRecovery_Queued, from: pb.EventAccountRecovery_Queued}
@@ -446,4 +467,13 @@ func (t *Tracker) onSettleTimer() {
 		t.transitionLocked(id, t.spaces[id], pb.EventAccountRecovery_Stalled, nil)
 	}
 	t.refreshPhaseLocked(false)
+}
+
+// forgetSpaceLocked tombstones a space that left the run, so a producer event
+// still in flight for it cannot bring it back.
+func (t *Tracker) forgetSpaceLocked(spaceId string) {
+	if t.spacesRemoved == nil {
+		t.spacesRemoved = map[string]struct{}{}
+	}
+	t.spacesRemoved[spaceId] = struct{}{}
 }

@@ -101,9 +101,10 @@ func (t *Tracker) OnAccountReady() {
 		DurationMs: now.Sub(t.run.startedAt).Milliseconds(),
 	}}, nil)
 	if id := t.account.techSpaceId; id != "" {
-		s := t.spaceLocked(id, "", pb.EventAccountRecovery_Tech)
-		t.transitionLocked(id, s, pb.EventAccountRecovery_Loaded, nil)
-		s.settled = true
+		if s := t.spaceLocked(id, "", pb.EventAccountRecovery_Tech); s != nil {
+			t.transitionLocked(id, s, pb.EventAccountRecovery_Loaded, nil)
+			s.settled = true
+		}
 	}
 	t.checkFinishedLocked()
 	t.armSettleLocked()

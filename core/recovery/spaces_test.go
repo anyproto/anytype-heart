@@ -826,3 +826,65 @@ func TestTracker_OptimisticIsNotAVerdict(t *testing.T) {
 		assert.Equal(t, pb.EventAccountRecovery_Loaded, fx.space(t, "s1").State)
 	})
 }
+
+// TestTracker_RemovedStaysRemoved pins that a space the client was told to drop
+// cannot come back through a producer event that was already in flight. Every
+// producer creates its space entry on demand, so a load or pull result landing
+// after the deletion resurrected it: the client saw a space it had dropped,
+// spacesTotal grew, and anything short of a verdict held Finished open again.
+func TestTracker_RemovedStaysRemoved(t *testing.T) {
+	t.Run("a late load result does not resurrect a deleted space", func(t *testing.T) {
+		// given: s1 is deleted while loading, with s2 keeping the run open
+		fx := newFixture(t, pb.EventAccountRecovery_ColdRecovery)
+		fx.ready(t)
+		fx.OnHeadSync(techSpaceId, "node1", []string{"v1", "v2"}, true)
+		fx.OnSpaceView("s1", "v1", false)
+		fx.OnSpaceLoadStarted("s1", false)
+		fx.OnSpaceView("s2", "v2", false)
+		fx.OnSpaceLoadStarted("s2", false)
+		fx.OnSpaceView("s1", "v1", true)
+		require.False(t, fx.hasSpace("s1"))
+		total := fx.Snapshot().SpacesTotal
+
+		// when: the build already in flight reports
+		fx.OnSpaceLoaded("s1", nil, false)
+
+		// then
+		assert.False(t, fx.hasSpace("s1"), "the client was told to drop it")
+		assert.Equal(t, total, fx.Snapshot().SpacesTotal)
+	})
+
+	t.Run("a late pull event does not resurrect it either", func(t *testing.T) {
+		// given
+		fx := newFixture(t, pb.EventAccountRecovery_ColdRecovery)
+		fx.ready(t)
+		fx.OnHeadSync(techSpaceId, "node1", []string{"v1", "v2"}, true)
+		fx.OnSpaceView("s1", "v1", false)
+		fx.OnSpaceView("s2", "v2", false)
+		fx.OnSpaceLoadStarted("s2", false)
+		fx.OnSpaceView("s1", "v1", true)
+		total := fx.Snapshot().SpacesTotal
+
+		// when
+		fx.ObservePullEvent(commonspace.PullEvent{SpaceId: "s1", Kind: commonspace.PullEventWaiting})
+
+		// then
+		assert.False(t, fx.hasSpace("s1"))
+		assert.Equal(t, total, fx.Snapshot().SpacesTotal)
+	})
+
+	t.Run("discovery brings a space back", func(t *testing.T) {
+		// given: deleted, then the SpaceView subscription reports it present
+		fx := newFixture(t, pb.EventAccountRecovery_ColdRecovery)
+		fx.ready(t)
+		fx.OnSpaceView("s1", "v1", false)
+		fx.OnSpaceView("s1", "v1", true)
+		require.False(t, fx.hasSpace("s1"))
+
+		// when: discovery is authoritative
+		fx.OnSpaceView("s1", "v1", false)
+
+		// then
+		assert.True(t, fx.hasSpace("s1"))
+	})
+}

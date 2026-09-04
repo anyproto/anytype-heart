@@ -64,7 +64,9 @@ type Tracker struct {
 	net     netState
 	account accountState
 	spaces  map[string]*spaceState
-	views   viewGate
+	// spacesRemoved tombstones spaces that left the run; see forgetSpaceLocked
+	spacesRemoved map[string]struct{}
+	views         viewGate
 
 	pending      map[coalesceKey]pb.IsEventAccountRecoveryUpdatePayload
 	pendingOrder []coalesceKey
