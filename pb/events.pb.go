@@ -57,7 +57,12 @@ func (EventAccountRecoveryMode) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 6, 0}
 }
 
-// Monotone except WaitingForNetwork (an overlay) and the two terminals.
+// NOT monotone: the phase is derived from the run's current condition
+// and moves back when that condition regresses (losing the last node
+// connection mid-fetch goes FetchingAccount -> Connecting; the
+// WaitingForNetwork overlay returns to the phase it interrupted).
+// Clients must render the phase last received rather than dropping
+// backward transitions. Only Done and Failed are terminal.
 // Phases may be skipped (a warm start never enters FetchingAccount);
 // clients must accept any forward jump.
 type EventAccountRecoveryPhase int32

@@ -102,8 +102,12 @@ WaitingForNetwork (overlay: calm, auto-retrying — NOT an error screen)
 
 Rules:
 
-- Phases are **monotone except** the `WaitingForNetwork` overlay (which returns to the phase it
-  interrupted, `fromPhase = WaitingForNetwork`) and the two terminals.
+- **Phases are not monotone. Always render the phase you were last told.** The phase is derived
+  from the run's current condition, so it moves back when that condition regresses: losing the
+  last node connection during the account fetch goes `FetchingAccount -> Connecting`, and the
+  `WaitingForNetwork` overlay returns to the phase it interrupted (`fromPhase =
+  WaitingForNetwork`). A client that drops "backward" transitions will stick on a phase the run
+  has already left. Only `Done` and `Failed` are terminal.
 - **Phases may be skipped.** A warm start goes `Connecting -> LoadingSpaces` without ever entering
   `FetchingAccount`. Accept any forward jump.
 - `PhaseChanged.previousPhaseDurationMs` is how long the previous phase lasted, for telemetry.
@@ -132,10 +136,12 @@ run's verdict. The run is terminal after it: no more updates, and the snapshot i
 - **`viewsConfirmed = true`**: the middleware checked the list of spaces against the network and
   every one of them is present locally. You may say **"all your spaces are here — objects inside
   them may still be syncing"**.
-- **`viewsConfirmed = false`**: the completeness check could not be completed (one entry never
-  arrived; the middleware gave up on it after two consecutive sync rounds). Render a **softer
-  "ready"** with **no completeness claim**, and keep relying on your own SpaceView subscription
-  for spaces that appear later — the run will not report them.
+- **`viewsConfirmed = false`**: the completeness check could not be completed — one entry never
+  arrived and the middleware gave up on it after two consecutive sync rounds, or no responsible
+  sync round ever happened at all (an app opened with no connectivity loads every space from disk
+  and never gets to ask the network). Render a **softer "ready"** with **no completeness claim**,
+  and keep relying on your own SpaceView subscription for spaces that appear later — the run will
+  not report them.
 
 In both cases a `SpaceDiscovered` after `Finished` never happens; new spaces reach you through the
 SpaceView subscription as they always did.
@@ -151,12 +157,18 @@ error, attempt }`.
 Queued -> Loading -> Pulling -> Loading -> Loaded      (a space fetched from the network)
 Queued -> Loaded                                       (a space already on disk from last time)
 any    -> Error                                        (the loader gave up; error.class says why)
+any    -> Stalled                                      (settled around it; no load result ever arrived)
 any    -> Removed                                      (deleted while recovering: drop it, it is not counted)
 ```
 
 - `Loaded` means the space controller finished loading it: mandatory objects fetched, sync
   started. **How many objects are still syncing inside it is on `Event.Space.SyncStatus.Update`,
   not here.**
+- `Stalled` means the rest of the run settled around this space and it still never reported.
+  It is **not terminal**: the load may yet complete, and you will get another `SpaceStateChanged`
+  if it does. Render it as a **determinate stall with a retry** — "79 of 80 loaded, 1 stalled" —
+  never as ongoing progress. `Finished` does not fire while any space is stalled, because the
+  account is demonstrably not recovered.
 - `kind = Tech` is the account's tech space; filter it out of user-facing lists.
 - **Names are not on this stream** (no user content). Resolve them from your SpaceView
   subscription via `spaceViewId` — the SpaceView exists by the time `SpaceDiscovered` fires.
@@ -243,8 +255,14 @@ onEvent(u: Update):
 
 render:
     headline = label(state.phase) // unknown phase: keep the previous label
+    if state.phase == Failed:     show error(state.error); stop   // done is also true here
     if state.done:                dismiss; if !state.viewsConfirmed: no "all spaces are here" claim
+    stalled = count(state.spaces, s -> s.state == Stalled)
+    if stalled > 0:               show "N of M loaded, K stalled" + retry, not a spinner
 ```
+
+`done` is true for **both** terminals, so test `Failed` first — dismissing on it would hide the
+one message the user needs (`AccountDeleted`, `IncompatibleVersion`, …).
 
 ## 11. Debugging
 
