@@ -2,6 +2,10 @@ package server
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/subtle"
+	"encoding/hex"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -45,6 +49,16 @@ type ApiSessionEntry struct {
 	CreatedAt int64  `json:"created_at,omitempty"`
 }
 
+// InternalAppName is the app name of the in-process session (the mobile
+// tool bridge spec, §2): it rides as the integration name on objects the
+// bridge creates, so provenance can tell assistant-made objects from
+// user-made ones. One constant; leaving them unstamped is a one-line change.
+const InternalAppName = "Anytype Assistant"
+
+// internalKeyId is the KeyId the internal session reports (whoami's
+// key.id). It is never a wallet app-link hash.
+const internalKeyId = "internal"
+
 // Server wraps the HTTP server and service logic.
 type Server struct {
 	engine    *gin.Engine
@@ -86,6 +100,15 @@ type Server struct {
 	// nothing left to evict it, ever (cached entries are re-validated only
 	// against ExpireAt).
 	evictGen uint64
+	// internalKey authenticates the in-process delivery (core/api/wrapper's
+	// Host over the in-process transport) as the account holder with Full
+	// scope. Minted once per Server from crypto/rand, held in memory only,
+	// never persisted, logged or listed; readable through InternalKey() by
+	// the API component that wires the transport. internalSession is the
+	// fixed entry it resolves to — never written to KeyToToken, so no
+	// eviction or RevokeToken sweep can touch it.
+	internalKey     string
+	internalSession ApiSessionEntry
 
 	initOnce sync.Once
 }
@@ -147,6 +170,19 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 	s.engine = s.NewRouter(mw, eventService, docs.V1YAML, docs.V1JSON)
 	s.KeyToToken = make(map[string]ApiSessionEntry)
 	s.legacyKeyLogSeen = make(map[string]time.Time)
+
+	key, token, err := mintInternalCredential()
+	if err != nil {
+		panic(err)
+	}
+	s.internalKey = key
+	s.internalSession = ApiSessionEntry{
+		Token:     token,
+		AppName:   InternalAppName,
+		Scope:     model.AccountAuth_Full,
+		KeyId:     internalKeyId,
+		CreatedAt: time.Now().Unix(),
+	}
 
 	return s
 }
@@ -217,4 +253,27 @@ func (srv *Server) RevokeToken(token string) {
 // Engine returns the underlying gin.Engine.
 func (srv *Server) Engine() *gin.Engine {
 	return srv.engine
+}
+
+// mintInternalCredential returns the internal bearer key (32 random bytes,
+// hex) and the synthetic session token behind it ("internal:" plus 16
+// random bytes, hex — non-empty and unique, so a RevokeToken sweep for a
+// real token never matches it).
+func mintInternalCredential() (key string, token string, err error) {
+	var buf [48]byte
+	if _, err := rand.Read(buf[:]); err != nil {
+		return "", "", fmt.Errorf("mint internal api credential: %w", err)
+	}
+	return hex.EncodeToString(buf[:32]), "internal:" + hex.EncodeToString(buf[32:]), nil
+}
+
+// InternalKey returns the per-process bearer key that authenticates the
+// in-process delivery as the account holder (Full scope, no grant, no
+// expiry). Only the API component reads it, to feed the in-process
+// transport; it must never be serialized or logged.
+func (srv *Server) InternalKey() string { return srv.internalKey }
+
+// isInternalKey reports whether key is the internal key, in constant time.
+func (srv *Server) isInternalKey(key string) bool {
+	return srv.internalKey != "" && subtle.ConstantTimeCompare([]byte(key), []byte(srv.internalKey)) == 1
 }

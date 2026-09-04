@@ -145,53 +145,9 @@ func (srv *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFun
 			return
 		}
 
-		// Validate the key - if the key exists in the KeyToToken map, it is considered valid.
-		// Otherwise, attempt to create a new session using the key and add it to the map upon successful validation.
-		// The eviction generation is snapshotted in the SAME critical section
-		// as the cache read: the cache write below is conditional on it.
-		srv.mu.Lock()
-		apiSession, exists := srv.KeyToToken[key]
-		mintGen := srv.evictGen
-		srv.mu.Unlock()
-
-		if !exists {
-			response := mw.WalletCreateSession(context.Background(), &pb.RpcWalletCreateSessionRequest{Auth: &pb.RpcWalletCreateSessionRequestAuthOfAppKey{AppKey: key}})
-			if response.Error.Code != pb.RpcWalletCreateSessionResponseError_NULL {
-				// An expired key gets a distinct 401 so the client knows to
-				// re-issue it instead of retrying the same key (H5: ExpireAt
-				// must actually be enforced).
-				message := ErrInvalidApiKey.Error()
-				if response.Error.Code == pb.RpcWalletCreateSessionResponseError_APP_TOKEN_EXPIRED {
-					message = ErrApiKeyExpired.Error()
-				}
-				c.Header(util.WwwAuthenticateHeader, util.BearerChallengeInvalidToken())
-				apiErr := util.CodeToApiError(http.StatusUnauthorized, message)
-				c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
-				return
-			}
-			apiSession = ApiSessionEntry{
-				Token:     response.Token,
-				AppName:   response.AppName,
-				Scope:     response.AccountScope,
-				ExpireAt:  response.AppExpireAt,
-				Grant:     util.ApiGrantFromProto(response.Grant),
-				KeyId:     response.AppHash,
-				CreatedAt: response.AppCreatedAt,
-			}
-
-			// Cache only if no eviction swept while the mint was in flight. A
-			// RevokeToken in that window (LinkLocalUpdateApp persists the new
-			// grant FIRST, then sweeps) found no entry for this key, so the
-			// entry just minted may carry the pre-edit grant. Serving THIS
-			// request from it is equivalent to the request having completed
-			// before the edit; CACHING it would make the stale grant permanent
-			// — so on a generation mismatch the entry is dropped and the next
-			// request re-mints against what the wallet holds then.
-			srv.mu.Lock()
-			if srv.evictGen == mintGen {
-				srv.KeyToToken[key] = apiSession
-			}
-			srv.mu.Unlock()
+		apiSession, ok := srv.resolveApiSession(c, mw, key)
+		if !ok {
+			return
 		}
 
 		// Expiry is enforced on every request, not only at session mint, so a
@@ -247,6 +203,68 @@ func (srv *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFun
 		srv.emitKeyStatusSignals(c, apiSession)
 		c.Next()
 	}
+}
+
+// resolveApiSession turns a presented key into its session entry: the
+// internal key (the in-process delivery — the mobile tool bridge spec §2)
+// resolves to the fixed internal session, never minted and never cached;
+// every other key goes through the cache and, on a miss, the wallet mint.
+// On a rejected key it writes the 401 and reports false.
+func (srv *Server) resolveApiSession(c *gin.Context, mw apicore.ClientCommands, key string) (ApiSessionEntry, bool) {
+	if srv.isInternalKey(key) {
+		return srv.internalSession, true
+	}
+
+	// Validate the key - if the key exists in the KeyToToken map, it is considered valid.
+	// Otherwise, attempt to create a new session using the key and add it to the map upon successful validation.
+	// The eviction generation is snapshotted in the SAME critical section
+	// as the cache read: the cache write below is conditional on it.
+	srv.mu.Lock()
+	apiSession, exists := srv.KeyToToken[key]
+	mintGen := srv.evictGen
+	srv.mu.Unlock()
+	if exists {
+		return apiSession, true
+	}
+
+	response := mw.WalletCreateSession(context.Background(), &pb.RpcWalletCreateSessionRequest{Auth: &pb.RpcWalletCreateSessionRequestAuthOfAppKey{AppKey: key}})
+	if response.Error.Code != pb.RpcWalletCreateSessionResponseError_NULL {
+		// An expired key gets a distinct 401 so the client knows to
+		// re-issue it instead of retrying the same key (H5: ExpireAt
+		// must actually be enforced).
+		message := ErrInvalidApiKey.Error()
+		if response.Error.Code == pb.RpcWalletCreateSessionResponseError_APP_TOKEN_EXPIRED {
+			message = ErrApiKeyExpired.Error()
+		}
+		c.Header(util.WwwAuthenticateHeader, util.BearerChallengeInvalidToken())
+		apiErr := util.CodeToApiError(http.StatusUnauthorized, message)
+		c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
+		return ApiSessionEntry{}, false
+	}
+	apiSession = ApiSessionEntry{
+		Token:     response.Token,
+		AppName:   response.AppName,
+		Scope:     response.AccountScope,
+		ExpireAt:  response.AppExpireAt,
+		Grant:     util.ApiGrantFromProto(response.Grant),
+		KeyId:     response.AppHash,
+		CreatedAt: response.AppCreatedAt,
+	}
+
+	// Cache only if no eviction swept while the mint was in flight. A
+	// RevokeToken in that window (LinkLocalUpdateApp persists the new
+	// grant FIRST, then sweeps) found no entry for this key, so the
+	// entry just minted may carry the pre-edit grant. Serving THIS
+	// request from it is equivalent to the request having completed
+	// before the edit; CACHING it would make the stale grant permanent
+	// — so on a generation mismatch the entry is dropped and the next
+	// request re-mints against what the wallet holds then.
+	srv.mu.Lock()
+	if srv.evictGen == mintGen {
+		srv.KeyToToken[key] = apiSession
+	}
+	srv.mu.Unlock()
+	return apiSession, true
 }
 
 // emitKeyStatusSignals stamps the credential-status signal on every
