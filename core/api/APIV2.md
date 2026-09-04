@@ -7418,3 +7418,60 @@ synthesises a stub with only an id, and rendering that through the full DTO
 would put an empty text and author on the wire for a client to merge over
 the real message. Pinning something OLD is the ordinary case, so that is the
 common path.
+
+### 8.57 The in-process delivery: the mobile tool bridge (2026-09-04 — as built)
+
+The tool table reaches the gomobile clients (anytype-swift, anytype-kotlin)
+for on-device models. Spec:
+`docs/superpowers/specs/2026-09-04-mobile-tool-bridge-design.md`.
+
+**No listener on mobile, ever.** The wrapper stays a client of `/v2`
+(§8.6: one enforcement point), but its transport is an in-memory call
+into the gin engine — `server.NewInProcessTransport` serves each request
+by calling `ServeHTTP` with a buffered writer. No socket, no port; every
+middleware runs unchanged (origin, auth, scope gate, space grant, the C8
+idempotency store, C9 dry-run, the shared write rate limit, analytics).
+Responses are buffered whole; the chat SSE stream is not served this way
+and no tool calls it. A direct backend over `v2service.Service` was
+measured and declined: 23 wrapper call sites, 38 HTTP-coupled spots, and
+roughly 1.5–2k lines of handler logic (space refs, id and key shaping,
+idempotency, dry-run, If-Match, error envelopes) to duplicate — the third
+surface this document forbids.
+
+**The credential is the process.** `server.Server` mints one internal key
+per process (32 random bytes, in memory only, never persisted, logged or
+listed). `ensureAuthenticated` resolves it, in constant time, to a fixed
+session: Full scope, nil grant, no expiry, app name `Anytype Assistant`,
+key id `internal`. It is never written to `KeyToToken`, so no eviction or
+`RevokeToken` sweep touches it, and no wallet app link exists for it. The
+app name rides as the integration name on created objects, so provenance
+can tell assistant-made objects from user-made ones; the table has no
+object DELETE tool, so the provenance-based delete rule is not reachable
+from here.
+
+**The engine is built lazily.** `api.Service.ToolsHost()` builds the
+server (engine, v1 and v2 services) on first tool use when the listener
+never did, and hands the wrapper a client over the in-process transport;
+the transport resolves the engine and the key per request, so a rebuilt
+server (`ReassignAddress`, which now drops the old one explicitly) never
+strands the host. Mobile sets the API component's middleware handle in the
+library init, which only the desktop binary did.
+
+**The fourth delivery.** `wrapper.Host` is one long-lived Runner over a
+`MemoryStore`; `Call` answers every failure IN-BAND (the §8.20 repair
+loop), through the same tip function the MCP delivery uses, with the two
+delivery-specific tips replaced: a 401 is "a bug in the app, report it",
+unreachable is "the account is not running". `ResetSession` is the
+conversation boundary.
+
+**The exports.** `ServiceToolsManifest(tier)` (pure, works before login),
+`ServiceToolsCall(name, argsJSON, callback)` (returns immediately, runs on
+a goroutine, delivers exactly one envelope), `ServiceToolsResetSession()`.
+One envelope shape everywhere: `{text, json, is_error, code}`; codes
+`tool_error`, `account_not_running`, `bad_request`, `internal`. Tiering is
+a manifest concern, not a call concern: the model can only call what its
+manifest gave it.
+
+**Not built, stated.** No cancellation of an in-flight call; no streaming;
+no tier check on `Call`; no desktop use of the host (desktop clients keep
+the listener, the CLI and MCP).

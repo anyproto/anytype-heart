@@ -1,8 +1,9 @@
 // Package wrapper is the task-tool layer over the /v2 REST surface: one
-// curated tool table, exposed
-// as CLI verbs (cmd/anytype), as a machine-readable function-calling
-// manifest, and as an MCP stdio server for local models (mcp.go,
-// tier-filtered per tier.go/§8.20) — ONE definition, three deliveries.
+// curated tool table, exposed as CLI verbs (cmd/anytype), as a
+// machine-readable function-calling manifest, as an MCP stdio server for
+// local models (mcp.go, tier-filtered per tier.go/§8.20), and as an
+// in-process host for embedding clients (host.go, the mobile bridge) —
+// ONE definition, four deliveries.
 //
 // The wrapper is deliberately NOT a 1:1 re-export of the REST endpoints
 // (the documented anti-pattern). Each tool picks the channel a small model
