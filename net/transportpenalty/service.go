@@ -226,6 +226,15 @@ func (s *service) load() {
 // interface change, wake, foreground resume), after the connection pool has
 // been flushed.
 func (s *service) onConnectivityRecovery(online bool) {
+	// Offline says nothing about which network the device is on, and the
+	// identity embeds the connection state: comparing it here would read a
+	// tunnel, a lid close, an AP roam or Android's onLost (which fires on
+	// every transition) as a move to another network, drop a verdict for a
+	// network the device never left, and fire again on the way back. The
+	// recovery that follows the reconnect carries the observation.
+	if !online {
+		return
+	}
 	s.checkIdentity(s.network.NetworkIdentity())
 }
 

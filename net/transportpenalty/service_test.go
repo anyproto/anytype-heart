@@ -94,6 +94,15 @@ func (f *fakeNetwork) fireRecovery() {
 	}
 }
 
+// fireOffline is a recovery run while the device is known to be offline (the
+// real identity then embeds NOT_CONNECTED / an empty interface set, so a test
+// sets a different identity string first to mirror that).
+func (f *fakeNetwork) fireOffline() {
+	for _, h := range f.hooks {
+		h(false)
+	}
+}
+
 type fakeWallet struct {
 	repoPath string
 }
@@ -356,6 +365,45 @@ func TestService_NetworkChange(t *testing.T) {
 	t.Run("recovery on the same network does not reset", func(t *testing.T) {
 		fx := newFixture(t, "net-A")
 		fx.network.fireRecovery()
+		fx.network.fireRecovery()
+		assert.Equal(t, 0, fx.peers.resets)
+	})
+	t.Run("offline blip on the same network does not reset", func(t *testing.T) {
+		// given: verdict observed on net-A
+		fx := newFixture(t, "net-A")
+		fx.network.fireRecovery()
+		fx.peers.mutate("p1", quicdemotion.PeerPenalty{ConsecutiveDegraded: 1})
+
+		// when: the link drops (identity now reflects the offline state) and
+		// comes back on the same network
+		fx.network.identity = "offline"
+		fx.network.fireOffline()
+		fx.network.identity = "net-A"
+		fx.network.fireRecovery()
+
+		// then
+		assert.Equal(t, 0, fx.peers.resets)
+		assert.Contains(t, fx.peers.snapshot.Peers, "p1")
+	})
+	t.Run("offline before the first observation keeps the seeded verdict", func(t *testing.T) {
+		// given: stored net-A verdict, device starts offline, startup check
+		// kept out of the way
+		fx := newStoppedFixture(t, "offline")
+		fx.writeStateFile(t, storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
+		fx.service.startupCheckDelay = time.Hour
+		fx.start(t)
+		require.Len(t, fx.peers.seeded, 1)
+
+		// when
+		fx.network.fireOffline()
+
+		// then: nothing was learned about the network, nothing is dropped
+		assert.Equal(t, 0, fx.peers.resets)
+		_, err := os.Stat(fx.statePath())
+		assert.NoError(t, err)
+
+		// and the reconnect on net-A is the first real observation: a match
+		fx.network.identity = "net-A"
 		fx.network.fireRecovery()
 		assert.Equal(t, 0, fx.peers.resets)
 	})
