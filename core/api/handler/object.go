@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -66,11 +67,12 @@ func ListObjectsHandler(s *service.Service) gin.HandlerFunc {
 //	@Param			space_id		path		string					true	"The ID of the space in which the object exists; must be retrieved from ListSpaces endpoint"
 //	@Param			object_id		path		string					true	"The ID of the object to retrieve; must be retrieved from ListObjects, SearchSpace or GlobalSearch endpoints or obtained from response context"
 //	@Param			format			query		apimodel.BodyFormat		false	"The format to return the object body in" default(md)
-//	@Success		200				{object}	apimodel.ObjectResponse	"The retrieved object"
-//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure		404				{object}	util.NotFoundError		"Resource not found"
-//	@Failure		410				{object}	util.GoneError			"Resource deleted"
-//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Param			block_link_candidates	query		string					false	"If `1` or `true`, includes block_link_candidates (block ids for POST …/blocks/{id}/link)"	Enums(1,true)
+//	@Success		200						{object}	apimodel.ObjectResponse	"The retrieved object"
+//	@Failure		401						{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		404						{object}	util.NotFoundError		"Resource not found"
+//	@Failure		410						{object}	util.GoneError			"Resource deleted"
+//	@Failure		500						{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/v1/spaces/{space_id}/objects/{object_id} [get]
 func GetObjectHandler(s *service.Service) gin.HandlerFunc {
@@ -79,7 +81,9 @@ func GetObjectHandler(s *service.Service) gin.HandlerFunc {
 		objectId := c.Param("object_id")
 		// format := c.Query("format") // TODO: implement multiple formats
 
-		object, err := s.GetObject(c.Request.Context(), spaceId, objectId)
+		q := strings.TrimSpace(c.Query("block_link_candidates"))
+		withCandidates := q == "1" || strings.EqualFold(q, "true")
+		object, err := s.GetObject(c.Request.Context(), spaceId, objectId, withCandidates)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrObjectNotFound, http.StatusNotFound),
 			util.ErrToCode(service.ErrObjectDeleted, http.StatusGone),
