@@ -39,6 +39,8 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/net/quicdemotion"
+
+	"github.com/anyproto/anytype-heart/core/device"
 	"go.uber.org/zap"
 )
 
@@ -94,8 +96,10 @@ type penaltyManager interface {
 // networkIdentity is the device.NetworkState surface this component needs.
 type networkIdentity interface {
 	// NetworkIdentity reports ok=false while nothing identifies the network;
-	// such a key is never compared, persisted or remembered here.
-	NetworkIdentity() (identity string, ok bool)
+	// such a key is never compared, persisted or remembered here. Keys are
+	// compared with SameNetwork, never by equality: the parts arrive at
+	// different times, so one network yields different keys over a session.
+	NetworkIdentity() (key device.NetworkKey, ok bool)
 	RegisterConnectivityHook(hook func(online bool))
 }
 
@@ -105,10 +109,11 @@ type repoPathProvider interface {
 
 // storedState is the on-disk format of <repo>/transport_penalties.json.
 type storedState struct {
-	// NetworkKey is the network identity the penalties were learned on. A
-	// file this version writes always carries one (saves wait for a known
-	// identity); an empty key keeps the verdict (fail open).
-	NetworkKey string                       `json:"networkKey"`
+	// NetworkKey is the network identity the penalties were learned on: the
+	// one this component had already observed and acted on, never merely the
+	// one current at write time. A key with nothing known keeps the verdict
+	// (fail open).
+	NetworkKey device.NetworkKey            `json:"networkKey"`
 	UpdatedAt  time.Time                    `json:"updatedAt"`
 	Penalties  quicdemotion.PenaltySnapshot `json:"penalties"`
 }
@@ -132,14 +137,15 @@ type service struct {
 	saveMu sync.Mutex
 
 	mu           sync.Mutex
-	lastIdentity string // last known network identity; "" until the first known observation
+	lastIdentity device.NetworkKey
+	identitySeen bool // last known network identity; "" until the first known observation
 	// loadedKey is the network key of the state file as it was loaded, i.e.
 	// the network the seeded penalties were learned on. Only load sets it:
 	// if a save could rewrite it with the current identity, a penalty
 	// mutation landing before the first observation would relabel a verdict
 	// from network A as learned on B and the stale-verdict check would
 	// never fire.
-	loadedKey   string
+	loadedKey   device.NetworkKey
 	saveTimer   *time.Timer
 	savePending bool
 	closed      bool
@@ -274,7 +280,7 @@ func (s *service) load() {
 	s.peers.Seed(st.Penalties)
 	log.Info("seeded stored transport penalties",
 		zap.Int("peers", len(st.Penalties.Peers)),
-		zap.String("networkKey", st.NetworkKey),
+		zap.Any("networkKey", st.NetworkKey),
 		zap.Time("updatedAt", st.UpdatedAt))
 }
 
@@ -302,7 +308,7 @@ func (s *service) onConnectivityRecovery(online bool) {
 // one and resets the penalties when the device moved to another network. The
 // first observation is compared against the persisted key instead: penalties
 // learned on a different network must not apply here.
-func (s *service) checkIdentity(identity string) {
+func (s *service) checkIdentity(identity device.NetworkKey) {
 	s.mu.Lock()
 	if s.closed {
 		// a recovery delivered after Close (see wg): acting on it reset the
@@ -312,24 +318,34 @@ func (s *service) checkIdentity(identity string) {
 	}
 	s.wg.Add(1)
 	defer s.wg.Done()
-	prev := s.lastIdentity
-	s.lastIdentity = identity
+	prev, seen := s.lastIdentity, s.identitySeen
+	s.lastIdentity, s.identitySeen = identity, true
 	loadedKey := s.loadedKey
 	s.mu.Unlock()
-	if prev == identity {
-		return
-	}
-	if prev == "" {
-		if loadedKey != "" && loadedKey != identity {
+	if !seen {
+		// First observation. The verdict on disk was learned elsewhere only
+		// if the two keys actively disagree; a part the stored key has and
+		// this one does not is the client's report not having landed yet,
+		// not a different network.
+		if loadedKey.Known() && !loadedKey.SameNetwork(identity) {
 			log.Info("stored transport penalties are from another network, resetting",
-				zap.String("storedKey", loadedKey), zap.String("identity", identity))
+				zap.Any("storedKey", loadedKey), zap.Any("identity", identity))
 			s.peers.Reset()
 			s.removeFile()
+			return
 		}
+		// A verdict learned before any identity was known is still only in
+		// memory: nothing else will prompt it onto disk, because a demoted
+		// peer is dialed yamux-first and stops producing the degraded deaths
+		// that mutate the state.
+		s.scheduleSave()
+		return
+	}
+	if prev.SameNetwork(identity) {
 		return
 	}
 	log.Info("network changed, resetting transport penalties",
-		zap.String("from", prev), zap.String("to", identity))
+		zap.Any("from", prev), zap.Any("to", identity))
 	s.peers.Reset()
 }
 
@@ -363,16 +379,31 @@ func (s *service) save() {
 		s.removeFileLocked()
 		return
 	}
-	identity, ok := s.network.NetworkIdentity()
-	if !ok {
-		// Nothing to attribute the verdict to. Persisted under an unknown
-		// key it would match on the next start wherever the device is, so
-		// it stays in memory; the next mutation on a known network persists.
-		log.Debug("network identity unknown, not persisting transport penalties")
+	// Label the snapshot with the identity this component has already
+	// observed and acted on, not with wherever the device happens to be now.
+	// The two are not the same: NetworkIdentity() switches the instant the
+	// client reports, while the hook that resets the penalties runs seconds
+	// later, behind recovery coalescing and a pool flush. Reading them
+	// independently wrote network A's verdict under network B's key, and
+	// once the file says B the stale-verdict check agrees with it forever.
+	s.mu.Lock()
+	observed, seen := s.lastIdentity, s.identitySeen
+	s.mu.Unlock()
+	if !seen {
+		// Nothing observed yet, so there is nothing to attribute the verdict
+		// to. It stays in memory; the first observation persists it.
+		log.Debug("network identity not yet observed, not persisting transport penalties")
+		return
+	}
+	current, ok := s.network.NetworkIdentity()
+	if !ok || !observed.SameNetwork(current) {
+		// Already elsewhere, but the reset has not run yet. Either key would
+		// be a lie; the reset's own save writes the clean state after it.
+		log.Debug("network moved ahead of the reset, not persisting transport penalties")
 		return
 	}
 	st := storedState{
-		NetworkKey: identity,
+		NetworkKey: observed,
 		UpdatedAt:  time.Now().UTC(),
 		Penalties:  snap,
 	}

@@ -11,6 +11,8 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/net/quicdemotion"
+
+	"github.com/anyproto/anytype-heart/core/device"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -142,21 +144,30 @@ func (f *fakePenaltyManager) peers() map[string]quicdemotion.PeerPenalty {
 // startup goroutine and the save path while tests reassign it, hence the lock.
 type fakeNetwork struct {
 	mu       sync.Mutex
-	identity string
+	identity device.NetworkKey
 	hooks    []func(online bool)
 }
 
 func (f *fakeNetwork) Init(a *app.App) error { return nil }
 func (f *fakeNetwork) Name() string          { return "fakeNetworkState" }
 
-// NetworkIdentity models the unknown state as an empty identity.
-func (f *fakeNetwork) NetworkIdentity() (string, bool) {
+// NetworkIdentity models the unknown state as a key with nothing known.
+func (f *fakeNetwork) NetworkIdentity() (device.NetworkKey, bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	return f.identity, f.identity != ""
+	return f.identity, f.identity.Known()
 }
 
-func (f *fakeNetwork) setIdentity(identity string) {
+// netKey names a network the way the interface monitor observes one, which is
+// what the desktop path supplies and the shape most of these tests care about.
+func netKey(name string) device.NetworkKey {
+	if name == "" {
+		return device.NetworkKey{}
+	}
+	return device.NetworkKey{Snapshot: name}
+}
+
+func (f *fakeNetwork) setIdentity(identity device.NetworkKey) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.identity = identity
@@ -214,7 +225,7 @@ func newStoppedFixture(t *testing.T, identity string) *fixture {
 		service: New().(*service),
 		a:       new(app.App),
 		peers:   &fakePenaltyManager{},
-		network: &fakeNetwork{identity: identity},
+		network: &fakeNetwork{identity: netKey(identity)},
 		repo:    t.TempDir(),
 	}
 	// short intervals so tests don't wait
@@ -270,7 +281,7 @@ func TestService_Seed(t *testing.T) {
 	t.Run("seeds stored penalties on start", func(t *testing.T) {
 		// given
 		repo := t.TempDir()
-		st := storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")}
+		st := storedState{NetworkKey: netKey("net-A"), UpdatedAt: time.Now(), Penalties: demotedPeers("p1")}
 		data, err := json.Marshal(st)
 		require.NoError(t, err)
 		require.NoError(t, os.WriteFile(filepath.Join(repo, fileName), data, 0o600))
@@ -279,7 +290,7 @@ func TestService_Seed(t *testing.T) {
 			service: New().(*service),
 			a:       new(app.App),
 			peers:   &fakePenaltyManager{},
-			network: &fakeNetwork{identity: "net-A"},
+			network: &fakeNetwork{identity: netKey("net-A")},
 			repo:    repo,
 		}
 		fx.service.saveDebounce = 10 * time.Millisecond
@@ -305,7 +316,7 @@ func TestService_Seed(t *testing.T) {
 		// given
 		t.Setenv(DisableEnv, "0")
 		fx := newStoppedFixture(t, "net-A")
-		fx.writeStateFile(t, storedState{NetworkKey: "net-A", Penalties: demotedPeers("p1")})
+		fx.writeStateFile(t, storedState{NetworkKey: netKey("net-A"), Penalties: demotedPeers("p1")})
 
 		// when
 		fx.start(t)
@@ -318,7 +329,7 @@ func TestService_Seed(t *testing.T) {
 		// given: the switch is "0" means off, anything else means on
 		t.Setenv(DisableEnv, "1")
 		fx := newStoppedFixture(t, "net-A")
-		fx.writeStateFile(t, storedState{NetworkKey: "net-A", Penalties: demotedPeers("p1")})
+		fx.writeStateFile(t, storedState{NetworkKey: netKey("net-A"), Penalties: demotedPeers("p1")})
 
 		// when
 		fx.start(t)
@@ -346,7 +357,7 @@ func TestService_Save(t *testing.T) {
 		require.NoError(t, err)
 		var st storedState
 		require.NoError(t, json.Unmarshal(data, &st))
-		assert.Equal(t, "net-A", st.NetworkKey)
+		assert.Equal(t, netKey("net-A"), st.NetworkKey)
 		assert.Contains(t, st.Penalties.Peers, "p1")
 		// the schema version travels with the data; without it the real
 		// component ignores the file on the next start
@@ -418,7 +429,7 @@ func TestService_ConcurrentSave(t *testing.T) {
 			go func() {
 				defer wg.Done()
 				for i := 0; i < rounds; i++ {
-					errs <- writeFileAtomic(path, storedState{NetworkKey: "net-A", Penalties: demotedPeers("p1")})
+					errs <- writeFileAtomic(path, storedState{NetworkKey: netKey("net-A"), Penalties: demotedPeers("p1")})
 				}
 			}()
 		}
@@ -443,7 +454,7 @@ func TestService_ConcurrentSave(t *testing.T) {
 		fx := newStoppedFixture(t, "net-A")
 		stale := fx.statePath() + ".123456.tmp"
 		require.NoError(t, os.WriteFile(stale, []byte("{"), 0o600))
-		fx.writeStateFile(t, storedState{NetworkKey: "net-A", Penalties: demotedPeers("p1")})
+		fx.writeStateFile(t, storedState{NetworkKey: netKey("net-A"), Penalties: demotedPeers("p1")})
 
 		// when
 		fx.start(t)
@@ -463,7 +474,7 @@ func TestService_NetworkChange(t *testing.T) {
 		require.Equal(t, 0, fx.peers.resetCount())
 
 		// when
-		fx.network.setIdentity("net-B")
+		fx.network.setIdentity(netKey("net-B"))
 		fx.network.fireRecovery()
 
 		// then
@@ -483,9 +494,9 @@ func TestService_NetworkChange(t *testing.T) {
 
 		// when: the link drops (identity now reflects the offline state) and
 		// comes back on the same network
-		fx.network.setIdentity("offline")
+		fx.network.setIdentity(netKey("offline"))
 		fx.network.fireOffline()
-		fx.network.setIdentity("net-A")
+		fx.network.setIdentity(netKey("net-A"))
 		fx.network.fireRecovery()
 
 		// then
@@ -496,7 +507,7 @@ func TestService_NetworkChange(t *testing.T) {
 		// given: stored net-A verdict, device starts offline, startup check
 		// kept out of the way
 		fx := newStoppedFixture(t, "offline")
-		fx.writeStateFile(t, storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
+		fx.writeStateFile(t, storedState{NetworkKey: netKey("net-A"), UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
 		fx.service.startupCheckInterval = time.Hour
 		fx.start(t)
 		require.Len(t, fx.peers.seededSnapshots(), 1)
@@ -510,14 +521,14 @@ func TestService_NetworkChange(t *testing.T) {
 		assert.NoError(t, err)
 
 		// and the reconnect on net-A is the first real observation: a match
-		fx.network.setIdentity("net-A")
+		fx.network.setIdentity(netKey("net-A"))
 		fx.network.fireRecovery()
 		assert.Equal(t, 0, fx.peers.resetCount())
 	})
 	t.Run("stored key mismatch on first observation resets seeded penalties", func(t *testing.T) {
 		// given: verdict learned on net-A, device now on net-B
 		repo := t.TempDir()
-		st := storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")}
+		st := storedState{NetworkKey: netKey("net-A"), UpdatedAt: time.Now(), Penalties: demotedPeers("p1")}
 		data, err := json.Marshal(st)
 		require.NoError(t, err)
 		require.NoError(t, os.WriteFile(filepath.Join(repo, fileName), data, 0o600))
@@ -526,7 +537,7 @@ func TestService_NetworkChange(t *testing.T) {
 			service: New().(*service),
 			a:       new(app.App),
 			peers:   &fakePenaltyManager{},
-			network: &fakeNetwork{identity: "net-B"},
+			network: &fakeNetwork{identity: netKey("net-B")},
 			repo:    repo,
 		}
 		fx.service.saveDebounce = 10 * time.Millisecond
@@ -550,17 +561,20 @@ func TestService_NetworkChange(t *testing.T) {
 		// given: verdict learned on net-A, device now on net-B, and the
 		// startup check kept out of the way
 		fx := newStoppedFixture(t, "net-B")
-		fx.writeStateFile(t, storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
+		fx.writeStateFile(t, storedState{NetworkKey: netKey("net-A"), UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
 		fx.service.startupCheckInterval = time.Hour
 		fx.start(t)
 		require.Len(t, fx.peers.seededSnapshots(), 1)
 
-		// a strike lands and is persisted before any identity observation
+		// a strike lands before any identity observation: there is nothing to
+		// attribute it to, so it stays in memory and the file is untouched.
+		// Persisting it would have to pick a key, and either choice is wrong
+		// — the current one relabels net-A's verdict as net-B's, and the
+		// stored one claims a network we have no evidence we are on.
 		fx.peers.mutate("p2", quicdemotion.PeerPenalty{ConsecutiveDegraded: 1})
-		require.Eventually(t, func() bool {
-			_, ok := fx.readStateFile(t).Penalties.Peers["p2"]
-			return ok
-		}, time.Second, 10*time.Millisecond)
+		time.Sleep(20 * fx.service.saveDebounce)
+		assert.NotContains(t, fx.readStateFile(t).Penalties.Peers, "p2")
+		assert.Equal(t, netKey("net-A"), fx.readStateFile(t).NetworkKey)
 
 		// when: the first observation arrives
 		fx.network.fireRecovery()
@@ -575,7 +589,7 @@ func TestService_NetworkChange(t *testing.T) {
 	t.Run("stored key match keeps seeded penalties", func(t *testing.T) {
 		// given
 		repo := t.TempDir()
-		st := storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")}
+		st := storedState{NetworkKey: netKey("net-A"), UpdatedAt: time.Now(), Penalties: demotedPeers("p1")}
 		data, err := json.Marshal(st)
 		require.NoError(t, err)
 		require.NoError(t, os.WriteFile(filepath.Join(repo, fileName), data, 0o600))
@@ -584,7 +598,7 @@ func TestService_NetworkChange(t *testing.T) {
 			service: New().(*service),
 			a:       new(app.App),
 			peers:   &fakePenaltyManager{},
-			network: &fakeNetwork{identity: "net-A"},
+			network: &fakeNetwork{identity: netKey("net-A")},
 			repo:    repo,
 		}
 		fx.service.saveDebounce = 10 * time.Millisecond
@@ -608,7 +622,7 @@ func TestService_UnknownIdentity(t *testing.T) {
 		// given: stored net-A verdict, nothing identifies the network yet
 		// (mobile cold start before the client's first report)
 		fx := newStoppedFixture(t, "")
-		fx.writeStateFile(t, storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
+		fx.writeStateFile(t, storedState{NetworkKey: netKey("net-A"), UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
 		fx.start(t)
 		require.Len(t, fx.peers.seededSnapshots(), 1)
 
@@ -619,7 +633,7 @@ func TestService_UnknownIdentity(t *testing.T) {
 		assert.NoError(t, err)
 
 		// when: the identity becomes known and differs
-		fx.network.setIdentity("net-B")
+		fx.network.setIdentity(netKey("net-B"))
 
 		// then: the poll picks it up
 		require.Eventually(t, func() bool { return fx.peers.resetCount() == 1 }, time.Second, time.Millisecond)
@@ -631,13 +645,13 @@ func TestService_UnknownIdentity(t *testing.T) {
 	t.Run("startup poll is bounded; a later recovery observes instead", func(t *testing.T) {
 		// given
 		fx := newStoppedFixture(t, "")
-		fx.writeStateFile(t, storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
+		fx.writeStateFile(t, storedState{NetworkKey: netKey("net-A"), UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
 		fx.service.startupCheckTimeout = 30 * time.Millisecond
 		fx.start(t)
 		time.Sleep(3 * fx.service.startupCheckTimeout)
 
 		// when: the identity becomes known after the poll gave up
-		fx.network.setIdentity("net-B")
+		fx.network.setIdentity(netKey("net-B"))
 		time.Sleep(10 * fx.service.startupCheckInterval)
 
 		// then: no check ran; the next recovery is the first observation
@@ -658,14 +672,14 @@ func TestService_UnknownIdentity(t *testing.T) {
 		assert.True(t, os.IsNotExist(err))
 
 		// and once the network is known the next mutation persists under it
-		fx.network.setIdentity("net-A")
+		fx.network.setIdentity(netKey("net-A"))
 		fx.peers.mutate("p2", quicdemotion.PeerPenalty{ConsecutiveDegraded: 1})
-		require.Eventually(t, func() bool { return fx.readStateFile(t).NetworkKey == "net-A" }, time.Second, time.Millisecond)
+		require.Eventually(t, func() bool { return fx.readStateFile(t).NetworkKey == netKey("net-A") }, time.Second, time.Millisecond)
 	})
 	t.Run("recovery with an unknown identity is not an observation", func(t *testing.T) {
 		// given
 		fx := newStoppedFixture(t, "")
-		fx.writeStateFile(t, storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
+		fx.writeStateFile(t, storedState{NetworkKey: netKey("net-A"), UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
 		fx.service.startupCheckInterval = time.Hour
 		fx.start(t)
 
@@ -678,7 +692,7 @@ func TestService_UnknownIdentity(t *testing.T) {
 		assert.NoError(t, err)
 
 		// and the first known observation is still compared to the stored key
-		fx.network.setIdentity("net-B")
+		fx.network.setIdentity(netKey("net-B"))
 		fx.network.fireRecovery()
 		assert.Equal(t, 1, fx.peers.resetCount())
 	})
@@ -690,7 +704,7 @@ func TestService_Close(t *testing.T) {
 		// networkState closes after this component (reverse registration
 		// order) so its last recoveries can still call the hook
 		fx := newStoppedFixture(t, "net-B")
-		fx.writeStateFile(t, storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
+		fx.writeStateFile(t, storedState{NetworkKey: netKey("net-A"), UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
 		fx.service.startupCheckInterval = time.Hour
 		fx.start(t)
 		require.NoError(t, fx.service.Close(ctx))
@@ -748,7 +762,7 @@ func TestService_SchemaVersion(t *testing.T) {
 		// here the file would stay on disk forever and the stored key would
 		// be recorded for a seed that never happened
 		fx := newStoppedFixture(t, "net-A")
-		st := storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")}
+		st := storedState{NetworkKey: netKey("net-A"), UpdatedAt: time.Now(), Penalties: demotedPeers("p1")}
 		st.Penalties.Version = 99
 		fx.writeStateFile(t, st)
 
@@ -771,7 +785,7 @@ func TestService_CorruptFile(t *testing.T) {
 			service: New().(*service),
 			a:       new(app.App),
 			peers:   &fakePenaltyManager{},
-			network: &fakeNetwork{identity: "net-A"},
+			network: &fakeNetwork{identity: netKey("net-A")},
 			repo:    repo,
 		}
 		fx.service.saveDebounce = 10 * time.Millisecond
@@ -784,5 +798,72 @@ func TestService_CorruptFile(t *testing.T) {
 		defer func() { require.NoError(t, fx.a.Close(ctx)) }()
 
 		assert.Empty(t, fx.peers.seededSnapshots())
+	})
+}
+
+// TestService_IdentityArrivesInParts covers the two ways a time-varying
+// identity used to be misread. Both were silent, and both are the failure
+// this component exists to prevent: re-learning the demotion on a network the
+// device never left, and applying one network's verdict on another.
+func TestService_IdentityArrivesInParts(t *testing.T) {
+	t.Run("a cold start keeps a verdict the client has not confirmed yet", func(t *testing.T) {
+		// given: last session filed the verdict with the client's report in
+		// the key; this session's startup check runs before the client can
+		// report, so it sees the interface snapshot alone
+		fx := newStoppedFixture(t, "")
+		stored := device.NetworkKey{Reported: true, Type: 0, PathId: "en0", Snapshot: "192.168.1.218"}
+		fx.writeStateFile(t, storedState{NetworkKey: stored, UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
+		fx.network.setIdentity(device.NetworkKey{Snapshot: "192.168.1.218"})
+
+		// when
+		fx.start(t)
+		fx.network.fireRecovery()
+
+		// then: the verdict survives and the file is still there
+		assert.Equal(t, 0, fx.peers.resetCount(), "the same network must not read as a move")
+		_, err := os.Stat(fx.statePath())
+		assert.NoError(t, err)
+	})
+
+	t.Run("a genuinely different network is still rejected", func(t *testing.T) {
+		// given
+		fx := newStoppedFixture(t, "")
+		stored := device.NetworkKey{Reported: true, PathId: "en0", Snapshot: "192.168.1.218"}
+		fx.writeStateFile(t, storedState{NetworkKey: stored, UpdatedAt: time.Now(), Penalties: demotedPeers("p1")})
+		fx.network.setIdentity(device.NetworkKey{Snapshot: "10.0.0.5"})
+
+		// when
+		fx.start(t)
+		fx.network.fireRecovery()
+
+		// then
+		assert.Equal(t, 1, fx.peers.resetCount())
+		require.Eventually(t, func() bool {
+			_, err := os.Stat(fx.statePath())
+			return os.IsNotExist(err)
+		}, time.Second, 10*time.Millisecond)
+	})
+
+	t.Run("a verdict is never filed under a network we have only just moved to", func(t *testing.T) {
+		// given: settled on net-A
+		fx := newFixture(t, "net-A")
+		fx.peers.mutate("p1", quicdemotion.PeerPenalty{ConsecutiveDegraded: 1})
+		require.Eventually(t, func() bool {
+			return fx.readStateFile(t).NetworkKey == netKey("net-A")
+		}, time.Second, 10*time.Millisecond)
+
+		// when: the device moves and a strike lands in the window before the
+		// reset hook runs — NetworkIdentity() already says net-B, but nothing
+		// has observed it yet
+		fx.network.setIdentity(netKey("net-B"))
+		fx.peers.mutate("p2", quicdemotion.PeerPenalty{ConsecutiveDegraded: 1})
+		time.Sleep(20 * fx.service.saveDebounce)
+
+		// then: net-A's verdict was not relabelled as net-B's. Had it been,
+		// the stored key would match on the next start and the stale-verdict
+		// check could never fire again on this install.
+		st := fx.readStateFile(t)
+		assert.Equal(t, netKey("net-A"), st.NetworkKey)
+		assert.NotContains(t, st.Penalties.Peers, "p2")
 	})
 }

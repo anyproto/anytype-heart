@@ -5,6 +5,8 @@ package mock_device
 import (
 	app "github.com/anyproto/any-sync/app"
 
+	networkkey "github.com/anyproto/anytype-heart/core/device/networkkey"
+
 	mock "github.com/stretchr/testify/mock"
 
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -238,22 +240,22 @@ func (_c *MockNetworkState_IsOffline_Call) RunAndReturn(run func() bool) *MockNe
 }
 
 // NetworkIdentity provides a mock function with no fields
-func (_m *MockNetworkState) NetworkIdentity() (string, bool) {
+func (_m *MockNetworkState) NetworkIdentity() (networkkey.Key, bool) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for NetworkIdentity")
 	}
 
-	var r0 string
+	var r0 networkkey.Key
 	var r1 bool
-	if rf, ok := ret.Get(0).(func() (string, bool)); ok {
+	if rf, ok := ret.Get(0).(func() (networkkey.Key, bool)); ok {
 		return rf()
 	}
-	if rf, ok := ret.Get(0).(func() string); ok {
+	if rf, ok := ret.Get(0).(func() networkkey.Key); ok {
 		r0 = rf()
 	} else {
-		r0 = ret.Get(0).(string)
+		r0 = ret.Get(0).(networkkey.Key)
 	}
 
 	if rf, ok := ret.Get(1).(func() bool); ok {
@@ -282,12 +284,12 @@ func (_c *MockNetworkState_NetworkIdentity_Call) Run(run func()) *MockNetworkSta
 	return _c
 }
 
-func (_c *MockNetworkState_NetworkIdentity_Call) Return(_a0 string, _a1 bool) *MockNetworkState_NetworkIdentity_Call {
+func (_c *MockNetworkState_NetworkIdentity_Call) Return(_a0 networkkey.Key, _a1 bool) *MockNetworkState_NetworkIdentity_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockNetworkState_NetworkIdentity_Call) RunAndReturn(run func() (string, bool)) *MockNetworkState_NetworkIdentity_Call {
+func (_c *MockNetworkState_NetworkIdentity_Call) RunAndReturn(run func() (networkkey.Key, bool)) *MockNetworkState_NetworkIdentity_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -32,6 +32,7 @@ import (
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/device/networkkey"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/net/addrs"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -62,14 +63,15 @@ type NetworkState interface {
 	// interface with no real connectivity); callers must treat this as a hint
 	// for backing off, not as a guarantee.
 	IsOffline() bool
-	// NetworkIdentity is an opaque key identifying the current network:
-	// client-reported type and path id (mobile) combined with the net
-	// monitor's interface snapshot (desktop). Equal keys mean the device is
-	// still on the same network; callers use it to scope per-network state
-	// like transport penalties. ok is false while nothing identifies the
-	// network - no path id reported, no interface snapshot, or the device is
-	// offline - and such a key must be neither compared nor persisted.
-	NetworkIdentity() (identity string, ok bool)
+	// NetworkIdentity identifies the current network as the separately
+	// observed parts it is made of. Callers use it to scope per-network
+	// state like transport penalties, and must compare with
+	// NetworkKey.SameNetwork rather than by equality: the parts arrive at
+	// different times, so two observations of one network routinely differ.
+	// ok is false while nothing identifies the network - nothing reported,
+	// no interface snapshot, or the device is offline - and such a key must
+	// be neither compared nor persisted.
+	NetworkIdentity() (key NetworkKey, ok bool)
 }
 
 type openedObjectRefresher interface {
@@ -423,28 +425,27 @@ func (n *networkState) fingerprint() string {
 	return fmt.Sprintf("%d|%s|%d", state, id, n.monitorGen.Load())
 }
 
-func (n *networkState) NetworkIdentity() (string, bool) {
+// NetworkKey is the network identity; see networkkey.Key.
+type NetworkKey = networkkey.Key
+
+func (n *networkState) NetworkIdentity() (NetworkKey, bool) {
 	n.networkMu.Lock()
-	state, id := n.networkState, n.networkId
+	state, id, reported := n.networkState, n.networkId, n.networkStateReported
 	n.networkMu.Unlock()
-	snapshot := n.monitorSnapshot.Load()
-	// Unknown until something actually identifies the network. Before the
-	// client's first report and the monitor's first snapshot the fields are
-	// zero, and formatting them yields "0||" - a key that looks real, so a
-	// stored verdict compared against it on a mobile cold start was dropped,
-	// and a verdict persisted under it matched on every later network. The
-	// type alone is no better ("some Wi-Fi" matches every Wi-Fi), and
-	// offline says nothing about where the device is. Callers degrade to
-	// not persisting rather than persisting under a key that fits anywhere.
-	// The client's path id is only as stable as the client makes it (Android
-	// sends the network handle, which changes on every reconnect - see
-	// docs/mobile-network-integration.md); without interface enumeration a
-	// genuinely stable per-network key from the client is what would make
-	// persistence reliable there.
-	if state == model.DeviceNetworkType_NOT_CONNECTED || (id == "" && snapshot == "") {
-		return "", false
+	// Offline says nothing about which network the device is on.
+	if state == model.DeviceNetworkType_NOT_CONNECTED {
+		return NetworkKey{}, false
 	}
-	return fmt.Sprintf("%d|%s|%s", state, id, snapshot), true
+	key := NetworkKey{
+		Reported: reported,
+		Type:     int32(state),
+		PathId:   id,
+		Snapshot: n.monitorSnapshot.Load(),
+	}
+	if !key.Known() {
+		return NetworkKey{}, false
+	}
+	return key, true
 }
 
 func (n *networkState) IsOffline() bool {
