@@ -145,11 +145,10 @@ func (s *Service) startApp(cfg *config.Config, derivationResult crypto.Derivatio
 	}
 
 	ctxWithValue := context.WithValue(context.Background(), metrics.CtxKeyEntrypoint, "account_create")
-	newApp, err := anytype.StartNewApp(ctxWithValue, s.clientWithVersion, comps...)
-	if err != nil {
+	var err error
+	if s.app, err = s.startNewApp(ctxWithValue, pb.EventAccountRecovery_NewAccount, comps...); err != nil {
 		return err
 	}
-	s.app = newApp
 	return nil
 }
 

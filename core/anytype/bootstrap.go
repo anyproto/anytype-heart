@@ -115,6 +115,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/net/peerobservermux"
 	"github.com/anyproto/anytype-heart/net/transportpenalty"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
@@ -258,7 +259,10 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
 		Register(syncqueues.New()).
+		// the single peerobserver slot, as a fan-out: the recovery status
+		// tracker registers with it at Init, diagnostics can later
 		Register(peerstore.New()).
+		Register(peerobservermux.New()).
 		Register(storage.New()).
 		Register(secureservice.New()).
 		Register(metric.New()).

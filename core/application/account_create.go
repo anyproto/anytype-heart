@@ -26,8 +26,12 @@ import (
 )
 
 func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateRequest) (newAcc *model.Account, err error) {
+	// published before the lock wait, so a stop can reach this start at any
+	// point of it; retracted under the lock, last (see app_start.go)
+	ctx, end := s.beginStart(ctx)
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	defer end()
 
 	s.requireClientWithVersion()
 
@@ -79,21 +83,11 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 
 	newAcc = &model.Account{Id: accountID}
 
-	// in case accountCreate got canceled by other request we loose nothing
-	s.appAccountStartInProcessCancelMutex.Lock()
-	ctx, s.appAccountStartInProcessCancel = context.WithCancel(ctx)
-	s.appAccountStartInProcessCancelMutex.Unlock()
-	newApp, startErr := anytype.StartNewApp(ctx, s.clientWithVersion, comps...)
-	s.appAccountStartInProcessCancelMutex.Lock()
-	s.appAccountStartInProcessCancel = nil
-	s.appAccountStartInProcessCancelMutex.Unlock()
-	if errors.Is(ctx.Err(), context.Canceled) {
-		// todo: remove local data in case of account create cancelation
+	// todo: remove the local data of a cancelled account create
+	s.app, err = s.startNewApp(ctx, pb.EventAccountRecovery_NewAccount, comps...)
+	if err != nil {
+		return newAcc, errors.Join(ErrFailedToStartApplication, err)
 	}
-	if startErr != nil {
-		return newAcc, errors.Join(ErrFailedToStartApplication, startErr)
-	}
-	s.app = newApp
 	appStarted = true
 
 	err = s.setProfileDetails(ctx, req, newAcc)

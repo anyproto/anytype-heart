@@ -15,6 +15,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus/mock_spacestatus"
+	spaceservice "github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/mock_storage"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
@@ -298,5 +299,96 @@ func TestOnLoad_AfterFastPath(t *testing.T) {
 		// optimistic-Ok fast path on the next cold start.
 		require.Empty(t, fx.recordedStatuses(), "shutdown cancellation must leave persisted status untouched")
 		assert.Nil(t, fx.loader.space)
+	})
+}
+
+type loadStarted struct {
+	spaceId    string
+	optimistic bool
+}
+
+type loadResult struct {
+	spaceId string
+	err     error
+	deleted bool
+}
+
+type fakeLoadObserver struct {
+	started []loadStarted
+	loaded  []loadResult
+}
+
+func (f *fakeLoadObserver) OnSpaceLoadStarted(spaceId string, optimistic bool) {
+	f.started = append(f.started, loadStarted{spaceId, optimistic})
+}
+
+func (f *fakeLoadObserver) OnSpaceLoaded(spaceId string, err error, deleted bool) {
+	f.loaded = append(f.loaded, loadResult{spaceId, err, deleted})
+}
+
+func TestLoadObserver(t *testing.T) {
+	t.Run("the fast path reports optimistic", func(t *testing.T) {
+		// given
+		fx := newLoaderForTest(t, spaceinfo.LocalStatusOk, true)
+		fake := &fakeLoadObserver{}
+		fx.loader.observer = fake
+
+		// when
+		require.NoError(t, fx.loader.startLoad(context.Background()))
+
+		// then
+		want := []loadStarted{{spaceId: "spaceId", optimistic: true}}
+		assert.Equal(t, want, fake.started)
+	})
+
+	t.Run("the cold path reports a real load", func(t *testing.T) {
+		// given
+		fx := newLoaderForTest(t, spaceinfo.LocalStatusUnknown, false)
+		fake := &fakeLoadObserver{}
+		fx.loader.observer = fake
+
+		// when
+		require.NoError(t, fx.loader.startLoad(context.Background()))
+
+		// then
+		want := []loadStarted{{spaceId: "spaceId", optimistic: false}}
+		assert.Equal(t, want, fake.started)
+	})
+
+	t.Run("onLoad forwards every branch with the loader's own deletion verdict", func(t *testing.T) {
+		deleted := errors.New("deleted")
+		tests := []struct {
+			name    string
+			loadErr error
+			want    loadResult
+		}{
+			{"success", nil, loadResult{spaceId: "spaceId"}},
+			{"deleted", spaceservice.ErrSpaceIsDeleted, loadResult{spaceId: "spaceId", err: spaceservice.ErrSpaceIsDeleted, deleted: true}},
+			{"deletion pending", spaceservice.ErrSpaceDeletionPending, loadResult{spaceId: "spaceId", err: spaceservice.ErrSpaceDeletionPending, deleted: true}},
+			{"cancelled", context.Canceled, loadResult{spaceId: "spaceId", err: context.Canceled}},
+			{"other", deleted, loadResult{spaceId: "spaceId", err: deleted}},
+		}
+		for _, tc := range tests {
+			t.Run(tc.name, func(t *testing.T) {
+				// given
+				fx := newLoaderForTest(t, spaceinfo.LocalStatusUnknown, false)
+				fake := &fakeLoadObserver{}
+				fx.loader.observer = fake
+
+				// when
+				_ = fx.loader.onLoad(nil, tc.loadErr)
+
+				// then
+				assert.Equal(t, []loadResult{tc.want}, fake.loaded)
+				if errors.Is(tc.loadErr, context.Canceled) {
+					assert.Empty(t, fx.recordedStatuses(), "a cancelled build persists nothing")
+				}
+			})
+		}
+	})
+
+	t.Run("no observer is a no-op", func(t *testing.T) {
+		fx := newLoaderForTest(t, spaceinfo.LocalStatusUnknown, false)
+		assert.NotPanics(t, func() { _ = fx.loader.onLoad(nil, nil) })
 	})
 }

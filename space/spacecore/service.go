@@ -94,6 +94,10 @@ type service struct {
 	peerService          peerservice.PeerService
 	poolManager          PoolManager
 	discoveryKeys        *discoveryKeySource
+	// peerDiscoveryObserver is the recovery status tracker, when registered
+	peerDiscoveryObserver PeerDiscoveryObserver
+	// pullObserver is the same tracker, fed with SpacePull progress
+	pullObserver commonspace.PullObserver
 
 	// GO-7492: the derived tech space in every outbound exchange request, and
 	// a re-exchange with known LAN peers once our own space list changes
@@ -132,6 +136,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.peerService = a.MustComponent(peerservice.CName).(peerservice.PeerService)
 	localDiscovery := a.MustComponent(localdiscovery.CName).(localdiscovery.LocalDiscovery)
 	localDiscovery.SetNotifier(s)
+	s.peerDiscoveryObserver = lookupPeerDiscoveryObserver(a)
+	s.pullObserver = lookupPullObserver(a)
 	s.exchangeFn = s.exchangeOutbound
 	s.reexchange = newReexchanger(reexchangeWindow, s.exchangeWithKnownPeers)
 	s.accountPeers = newAccountPeers()
@@ -305,9 +311,10 @@ func (s *service) loadSpace(ctx context.Context, id string) (value ocache.Object
 	kvObserver := keyvalueobserver.New()
 	statusService := objectsyncstatus.NewSyncStatusService()
 	deps := commonspace.Deps{
-		TreeSyncer: treesyncer.NewTreeSyncer(id),
-		SyncStatus: statusService,
-		Indexer:    kvObserver,
+		TreeSyncer:   treesyncer.NewTreeSyncer(id),
+		SyncStatus:   statusService,
+		Indexer:      kvObserver,
+		PullObserver: s.pullObserver,
 	}
 	if res, ok := ctx.Value(OptsKey).(Opts); ok && res.SignKey != nil {
 		// TODO: [stream] replace with real peer id

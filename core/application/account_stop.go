@@ -6,11 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"time"
 
-	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/nodeconf"
-	"github.com/anyproto/any-sync/util/debug"
 	"gopkg.in/yaml.v3"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -24,35 +21,33 @@ var (
 	ErrFailedToRemoveAccountData = errors.New("failed to remove account data")
 )
 
-// cancelStartIfInProcess cancels the start process if it is in progress, otherwise does nothing
-func (s *Service) cancelStartIfInProcess() {
-	s.appAccountStartInProcessCancelMutex.Lock()
-	defer s.appAccountStartInProcessCancelMutex.Unlock()
-	if s.appAccountStartInProcessCancel != nil {
-		log.Warn("canceling in-process account start")
-		s.appAccountStartInProcessCancel()
-		s.appAccountStartInProcessCancel = nil
-	}
-}
-
+// AccountStop stops the running app or, when a start is in flight, cancels it
+// and returns at once without taking s.lock: the start closes whatever it
+// published on its way out (see the protocol in app_start.go). Cancelling a
+// pending start is a successful stop even though it leaves no app to close —
+// the client needs to tell that apart from "nothing was running" to know its
+// select is coming back.
+//
+// RemoveData never takes that shortcut. Cancelling costs no lock wait, but a
+// client that asked for the account to be erased must not be told the erase
+// succeeded while the data is still on disk — that is a lie it has no way to
+// detect. So a removal request cancels the start and then waits for the lock
+// like any other, and if the start unwound first, leaving no wallet to
+// resolve the account directory from, it reports the failure rather than
+// reporting success.
 func (s *Service) AccountStop(req *pb.RpcAccountStopRequest) error {
-	s.cancelStartIfInProcess()
-	stopped := make(chan struct{})
-	defer close(stopped)
-	go func() {
-		select {
-		case <-stopped:
-		case <-time.After(app.StopDeadline + time.Second*5):
-			// this is extra protection in case we stuck at s.lock
-			_, _ = os.Stderr.Write([]byte("AccountStop timeout\n"))
-			_, _ = os.Stderr.Write(debug.Stack(true))
-			panic("app.Close AccountStop timeout")
-		}
-	}()
+	cancelled := s.cancelStart()
+	if cancelled && !req.RemoveData {
+		return nil
+	}
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	if s.app == nil {
+		if cancelled {
+			// The stop happened; the removal did not.
+			return ErrFailedToRemoveAccountData
+		}
 		return ErrApplicationIsNotRunning
 	}
 
@@ -85,6 +80,10 @@ func (s *Service) AccountChangeNetworkConfigAndRestart(ctx context.Context, req 
 	if s.app == nil {
 		return ErrApplicationIsNotRunning
 	}
+	// published only now, under the lock: a restart that superseded the
+	// select it was queued behind would find no app left to restart
+	ctx, end := s.beginStart(ctx)
+	defer end()
 
 	rootPath := s.app.MustComponent(walletComp.CName).(walletComp.Wallet).RootPath()
 	lang := s.app.MustComponent(walletComp.CName).(walletComp.Wallet).FtsPrimaryLang()
