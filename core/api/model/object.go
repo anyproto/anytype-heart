@@ -54,10 +54,14 @@ type CreateObjectRequest struct {
 
 type UpdateObjectRequest struct {
 	Name       *string                  `json:"name" example:"My object"`                                                                                                                                                                                                                                                                 // The name of the object
-	Icon       *Icon                    `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon"`                                                                                                                                                                                                                                                // The icon to set for the object
+	Icon       *Icon                    `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon"`                                                                                                                                                                                // The icon to set for the object
 	TypeKey    *string                  `json:"type_key" example:"page"`                                                                                                                                                                                                                                                                  // The key of the type of object to set
 	Properties *[]PropertyLinkWithValue `json:"properties" oneOf:"TextPropertyLinkValue,NumberPropertyLinkValue,SelectPropertyLinkValue,MultiSelectPropertyLinkValue,DatePropertyLinkValue,FilesPropertyLinkValue,CheckboxPropertyLinkValue,UrlPropertyLinkValue,EmailPropertyLinkValue,PhonePropertyLinkValue,ObjectsPropertyLinkValue"` // The properties to set for the object; see ListTypes or GetType endpoints for linked properties
-	Markdown   *string                  `json:"markdown" example:"This is the updated body of the object. Markdown syntax is supported here."`                                                                                                                                                                                            // The updated body of the object
+	Markdown   *string                  `json:"markdown" example:"This is the updated body of the object. Markdown syntax is supported here."`                                                             // The updated body of the object
+}
+
+type BatchGetObjectsRequest struct {
+	Ids []string `json:"ids" binding:"required,min=1,max=100" example:"[\"bafyrei...\",\"bafyrej...\"]"` // The IDs of the objects to fetch; must be retrieved from ListObjects, SearchSpace or GlobalSearch endpoints or obtained from response context
 }
 
 type ObjectResponse struct {

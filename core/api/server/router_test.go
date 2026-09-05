@@ -1,15 +1,21 @@
 package server
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // localApiHost is what a real client sends; httptest defaults to example.com,
@@ -135,4 +141,123 @@ func TestRouter_TrustedOrigin(t *testing.T) {
 			require.Equal(t, tt.want, w.Code)
 		})
 	}
+}
+
+func TestRouter_BatchGetObjects(t *testing.T) {
+	mockObjectShow := func(objectId, name string) *model.ObjectView {
+		createdDate := 888888.0
+		return &model.ObjectView{
+			RootId: objectId,
+			Details: []*model.ObjectViewDetailsSet{
+				{
+					Id: objectId,
+					Details: &types.Struct{
+						Fields: map[string]*types.Value{
+							bundle.RelationKeyId.String():             pbtypes.String(objectId),
+							bundle.RelationKeyName.String():           pbtypes.String(name),
+							bundle.RelationKeyResolvedLayout.String(): pbtypes.Float64(float64(model.ObjectType_basic)),
+							bundle.RelationKeyType.String():           pbtypes.String("mocked-type-id"),
+							bundle.RelationKeySpaceId.String():        pbtypes.String("mocked-space-id"),
+							bundle.RelationKeyLastModifiedDate.String(): pbtypes.Float64(999999),
+							bundle.RelationKeyCreatedDate.String():      pbtypes.Float64(createdDate),
+						},
+					},
+				},
+			},
+		}
+	}
+
+	t.Run("POST /v1/spaces/:space_id/objects/batch without auth returns 401", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		engine := fx.NewRouter(fx.mwMock, fx.eventMock, []byte{}, []byte{})
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", "/v1/spaces/mocked-space-id/objects/batch", nil)
+		req.Host = localApiHost
+
+		// when
+		engine.ServeHTTP(w, req)
+
+		// then
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+	})
+
+	t.Run("POST /v1/spaces/:space_id/objects/batch returns batch results", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "dummyToken", AppName: "dummyApp"}}
+		fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
+
+		ids := []string{"obj-1", "missing", "obj-2"}
+		for _, objId := range ids {
+			if objId == "missing" {
+				fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+					SpaceId:  "mocked-space-id",
+					ObjectId: objId,
+				}).Return(&pb.RpcObjectShowResponse{
+					Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NOT_FOUND},
+				}, nil).Once()
+				continue
+			}
+			fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+				SpaceId:  "mocked-space-id",
+				ObjectId: objId,
+			}).Return(&pb.RpcObjectShowResponse{
+				Error:      &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+				ObjectView: mockObjectShow(objId, objId),
+			}, nil).Once()
+			fx.mwMock.On("ObjectExport", mock.Anything, &pb.RpcObjectExportRequest{
+				SpaceId:  "mocked-space-id",
+				ObjectId: objId,
+				Format:   model.Export_Markdown,
+			}).Return(&pb.RpcObjectExportResponse{
+				Result: "body",
+				Error:  &pb.RpcObjectExportResponseError{Code: pb.RpcObjectExportResponseError_NULL},
+			}, nil).Once()
+		}
+
+		engine := fx.NewRouter(fx.mwMock, fx.eventMock, []byte{}, []byte{})
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", "/v1/spaces/mocked-space-id/objects/batch", strings.NewReader(`{"ids":["obj-1","missing","obj-2"]}`))
+		req.Host = localApiHost
+		req.Header.Set("Authorization", "Bearer validKey")
+		req.Header.Set("Content-Type", "application/json")
+
+		// when
+		engine.ServeHTTP(w, req)
+
+		// then
+		require.Equal(t, http.StatusOK, w.Code)
+		var responses []*apimodel.ObjectResponse
+		err := json.Unmarshal(w.Body.Bytes(), &responses)
+		require.NoError(t, err)
+		require.Len(t, responses, 3)
+		require.NotNil(t, responses[0])
+		require.Equal(t, "obj-1", responses[0].Object.Id)
+		require.Equal(t, "obj-1", responses[0].Object.Name)
+		require.Nil(t, responses[1])
+		require.NotNil(t, responses[2])
+		require.Equal(t, "obj-2", responses[2].Object.Id)
+		require.Equal(t, "obj-2", responses[2].Object.Name)
+	})
+
+	t.Run("POST /v1/spaces/:space_id/objects/batch with invalid body returns 400", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "dummyToken", AppName: "dummyApp"}}
+		fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
+
+		engine := fx.NewRouter(fx.mwMock, fx.eventMock, []byte{}, []byte{})
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("POST", "/v1/spaces/mocked-space-id/objects/batch", strings.NewReader(`not json`))
+		req.Host = localApiHost
+		req.Header.Set("Authorization", "Bearer validKey")
+		req.Header.Set("Content-Type", "application/json")
+
+		// when
+		engine.ServeHTTP(w, req)
+
+		// then
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	})
 }
