@@ -15,6 +15,7 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/device/mock_device"
+	"github.com/anyproto/anytype-heart/core/device/networkkey"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/net/addrs"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -432,7 +433,7 @@ func TestNetworkState_NetworkIdentity(t *testing.T) {
 
 		// then
 		assert.True(t, ok)
-		assert.Equal(t, "0|wifi-1|10.0.0.5", identity)
+		assert.Equal(t, networkkey.Key{Reported: true, Type: int32(model.DeviceNetworkType_WIFI), PathId: "wifi-1", Snapshot: "10.0.0.5"}, identity)
 	})
 	t.Run("identity changes when the network path changes", func(t *testing.T) {
 		// given
@@ -493,7 +494,7 @@ func TestNetworkState_NetworkIdentity(t *testing.T) {
 
 		// then
 		assert.True(t, ok)
-		assert.Equal(t, "1|cell-1|", identity)
+		assert.Equal(t, networkkey.Key{Reported: true, Type: int32(model.DeviceNetworkType_CELLULAR), PathId: "cell-1"}, identity)
 	})
 	t.Run("monitor snapshot alone is an identity", func(t *testing.T) {
 		// given
@@ -505,7 +506,7 @@ func TestNetworkState_NetworkIdentity(t *testing.T) {
 
 		// then
 		assert.True(t, ok)
-		assert.Equal(t, "0||10.0.0.5", identity)
+		assert.Equal(t, networkkey.Key{Snapshot: "10.0.0.5"}, identity)
 	})
 	t.Run("offline is not an identity", func(t *testing.T) {
 		// given: a known network, then the client reports the link gone

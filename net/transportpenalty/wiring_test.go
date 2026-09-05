@@ -30,7 +30,7 @@ func newNodeConf(t *testing.T) app.Component {
 // the double. The double cannot catch a mismatch between what this component
 // writes and what quicdemotion accepts, nor the Init-order requirement.
 func TestService_RealQuicDemotion(t *testing.T) {
-	stored := storedState{NetworkKey: "net-A", UpdatedAt: time.Now(), Penalties: demotedPeers("p1")}
+	stored := storedState{NetworkKey: netKey("net-A"), UpdatedAt: time.Now(), Penalties: demotedPeers("p1")}
 	t.Run("registered after quicdemotion: the stored verdict is seeded", func(t *testing.T) {
 		// given
 		repo := t.TempDir()
@@ -41,7 +41,7 @@ func TestService_RealQuicDemotion(t *testing.T) {
 		a.Register(&fakeWallet{repoPath: repo}).
 			Register(newNodeConf(t)).
 			Register(demotion).
-			Register(&fakeNetwork{identity: "net-A"}).
+			Register(&fakeNetwork{identity: netKey("net-A")}).
 			Register(svc)
 		(&fixture{service: svc, a: a, repo: repo}).writeStateFile(t, stored)
 
@@ -62,7 +62,7 @@ func TestService_RealQuicDemotion(t *testing.T) {
 		a := new(app.App)
 		a.Register(&fakeWallet{repoPath: repo}).
 			Register(newNodeConf(t)).
-			Register(&fakeNetwork{identity: "net-A"}).
+			Register(&fakeNetwork{identity: netKey("net-A")}).
 			Register(svc).
 			Register(quicdemotion.New())
 		(&fixture{service: svc, a: a, repo: repo}).writeStateFile(t, stored)
