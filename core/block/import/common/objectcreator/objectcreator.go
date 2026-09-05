@@ -175,8 +175,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 }
 
 func canUpdateObject(sbType coresb.SmartBlockType) bool {
-	return sbType != coresb.SmartBlockTypeRelation &&
-		sbType != coresb.SmartBlockTypeRelationOption &&
+	return sbType != coresb.SmartBlockTypeRelationOption &&
 		sbType != coresb.SmartBlockTypeFileObject &&
 		sbType != coresb.SmartBlockTypeParticipant
 }

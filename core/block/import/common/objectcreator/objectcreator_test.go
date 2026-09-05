@@ -167,6 +167,26 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 	})
 }
 
+func TestCanUpdateObject(t *testing.T) {
+	tests := []struct {
+		name   string
+		sbType coresb.SmartBlockType
+		want   bool
+	}{
+		{"page is updatable", coresb.SmartBlockTypePage, true},
+		{"relation is updatable", coresb.SmartBlockTypeRelation, true},
+		{"object type is updatable", coresb.SmartBlockTypeObjectType, true},
+		{"relation option is not updatable", coresb.SmartBlockTypeRelationOption, false},
+		{"file object is not updatable", coresb.SmartBlockTypeFileObject, false},
+		{"participant is not updatable", coresb.SmartBlockTypeParticipant, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, canUpdateObject(tt.sbType))
+		})
+	}
+}
+
 type dumbObjectGetter struct {
 	objects map[string]smartblock.SmartBlock
 }
