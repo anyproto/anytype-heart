@@ -152,6 +152,13 @@ func setupObject(id, typeId string, sbType smartblock.SmartBlockType, details ma
 	details[bundle.RelationKeyType] = domain.String(typeId)
 	doc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(details))
 	doc.AddBundledRelationLinks(maps.Keys(details)...)
+	// production derives the uniqueKey DETAIL from the state's internal key
+	// (smartblock/detailsinject.go), so a fixture that sets only the detail
+	// leaves snapshot.Key empty and makes the two disagree — which the path
+	// plan and the envelope id both read
+	if uk, ukErr := domain.UnmarshalUniqueKey(details[bundle.RelationKeyUniqueKey].String()); ukErr == nil {
+		doc.SetUniqueKeyInternal(uk.InternalKey())
+	}
 	smartBlockTest.Doc = doc
 	smartBlockTest.SetType(sbType)
 	return smartBlockTest
@@ -259,7 +266,7 @@ func TestExporter_WritesABundle(t *testing.T) {
 
 	tree := readTree(t, dir)
 	require.Contains(t, tree, "objects/objectId.anyblock.json")
-	require.Contains(t, tree, "types/customObjectType.anyblock.json")
+	require.Contains(t, tree, "types/type-customObjectType.anyblock.json")
 	require.Contains(t, tree, anyblockjson.IndexFileName)
 	require.Contains(t, tree, anyblockjson.PropertiesFileName)
 
@@ -267,7 +274,9 @@ func TestExporter_WritesABundle(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "Fixture space", idx.Name, "no space document in this fixture, so the request name is the fallback")
 	require.NotNil(t, idx.Manifest)
-	assert.Equal(t, map[string]string{"customObjectType": "types/customObjectType.anyblock.json"}, idx.Manifest.Types)
+	// the manifest no longer locates types: the type namespace lost its
+	// dictionary upstream, and the tree assertion above is what pins where
+	// a type document lands
 	assert.Equal(t, anyblockjson.PropertiesFileName, idx.Manifest.Properties)
 
 	_, err = anyblockjson.UnmarshalPropertyDictionary([]byte(tree[anyblockjson.PropertiesFileName]))

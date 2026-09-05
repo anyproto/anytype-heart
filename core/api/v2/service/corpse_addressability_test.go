@@ -814,7 +814,7 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addCorpseProperty(t, shape)
 		fx.addType(t, testSpaceId, objectstore.TestObject{
-			bundle.RelationKeyId:                   domain.String("type-live"),
+			bundle.RelationKeyId:                   domain.String("bafyreilivetype"),
 			bundle.RelationKeyUniqueKey:            domain.String("ot-livetype"),
 			bundle.RelationKeyName:                 domain.String("Live type"),
 			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{corpsePropertyId}),
@@ -845,7 +845,7 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 			SbType: model.SmartBlockType_STType,
 			Snapshot: &model.SmartBlockSnapshotBase{
 				Details: &types.Struct{Fields: map[string]*types.Value{
-					"id":                   pbtypes.String("type-live"),
+					"id":                   pbtypes.String("bafyreilivetype"),
 					"uniqueKey":            pbtypes.String("ot-livetype"),
 					"name":                 pbtypes.String("Live type"),
 					"recommendedRelations": pbtypes.StringList([]string{corpsePropertyId}),
@@ -863,7 +863,7 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 		corpseShapes(t, func(t *testing.T, shape corpseShape) {
 			// given
 			fx := newFx(t, shape)
-			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "type-live").Return(liveTypeRead(), nil)
+			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "bafyreilivetype").Return(liveTypeRead(), nil)
 
 			// when
 			body, _, err := fx.GetType(context.Background(), testSpaceId, "livetype", ObjectQuery{})
@@ -894,7 +894,7 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 		corpseShapes(t, func(t *testing.T, shape corpseShape) {
 			// given
 			fx := newFx(t, shape)
-			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "type-live").Return(liveTypeRead(), nil).Maybe()
+			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "bafyreilivetype").Return(liveTypeRead(), nil).Maybe()
 			var minted []*pb.RpcObjectCreateRelationRequest
 			fx.mwMock.EXPECT().ObjectCreateRelation(mock.Anything, mock.Anything).RunAndReturn(
 				func(ctx context.Context, req *pb.RpcObjectCreateRelationRequest) *pb.RpcObjectCreateRelationResponse {
@@ -936,7 +936,7 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 		// (§8-OQ2), so naming it declares a NEW property, never the corpse
 		corpseShapes(t, func(t *testing.T, shape corpseShape) {
 			fx := newFx(t, shape)
-			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "type-live").Return(liveTypeRead(), nil).Maybe()
+			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "bafyreilivetype").Return(liveTypeRead(), nil).Maybe()
 			var minted []*pb.RpcObjectCreateRelationRequest
 			fx.mwMock.EXPECT().ObjectCreateRelation(mock.Anything, mock.Anything).RunAndReturn(
 				func(ctx context.Context, req *pb.RpcObjectCreateRelationRequest) *pb.RpcObjectCreateRelationResponse {
@@ -1273,7 +1273,7 @@ func TestV2TypePropertiesRefusesRemovedBundledKey(t *testing.T) {
 			}
 			// the PATCHed type does NOT reference the tag corpse — no echo
 			fx.addType(t, testSpaceId, objectstore.TestObject{
-				bundle.RelationKeyId:        domain.String("type-live"),
+				bundle.RelationKeyId:        domain.String("bafyreilivetype"),
 				bundle.RelationKeyUniqueKey: domain.String("ot-livetype"),
 				bundle.RelationKeyName:      domain.String("Live type"),
 			})
@@ -1295,7 +1295,7 @@ func TestV2TypePropertiesRefusesRemovedBundledKey(t *testing.T) {
 			fx := newV2Fixture(t)
 			fx.addRemovedBundledProperty(t, shape)
 			fx.addType(t, testSpaceId, objectstore.TestObject{
-				bundle.RelationKeyId:                   domain.String("type-live"),
+				bundle.RelationKeyId:                   domain.String("bafyreilivetype"),
 				bundle.RelationKeyUniqueKey:            domain.String("ot-livetype"),
 				bundle.RelationKeyName:                 domain.String("Live type"),
 				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{removedBundledPropertyId}),
@@ -1307,7 +1307,7 @@ func TestV2TypePropertiesRefusesRemovedBundledKey(t *testing.T) {
 					return &pb.RpcObjectSetDetailsResponse{
 						Error: &pb.RpcObjectSetDetailsResponseError{Code: pb.RpcObjectSetDetailsResponseError_NULL}}
 				})
-			fx.expectEtagRead("type-live")
+			fx.expectEtagRead("bafyreilivetype")
 
 			// when — the spelling the GET serves
 			result, err := fx.UpdateType(ctx, testSpaceId, "livetype",
@@ -1358,7 +1358,7 @@ func TestV2QueriesRefuseRemovedBundledProperty(t *testing.T) {
 			fx.addRelation(t, testSpaceId, obj)
 		}
 		fx.addType(t, testSpaceId, objectstore.TestObject{
-			bundle.RelationKeyId:                   domain.String("type-bug"),
+			bundle.RelationKeyId:                   domain.String("bafyreibugtype"),
 			bundle.RelationKeyUniqueKey:            domain.String("ot-bug"),
 			bundle.RelationKeyName:                 domain.String("Bug"),
 			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"drv-rel-" + key}),

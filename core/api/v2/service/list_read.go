@@ -159,7 +159,7 @@ func (s *Service) listViews(ctx context.Context, spaceId, listId string, want li
 		Id:      dataviewBlockId,
 		Content: &model.BlockContentOfDataview{Dataview: target.dataview},
 	}
-	fragOpts := storeresolver.New(s.store.SpaceIndex(spaceId)).Options()
+	fragOpts := apiRefSpelling(storeresolver.New(s.store.SpaceIndex(spaceId)).Options())
 	if !nameKeysRequested(ctx) {
 		fragOpts.Keys = s.apiKeys(spaceId, fragOpts.Keys)
 	}

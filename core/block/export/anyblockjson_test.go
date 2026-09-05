@@ -110,12 +110,16 @@ func anyblockSpace(t *testing.T, fx *fixture) map[string]string {
 	}
 
 	return map[string]string{
-		"objects":    pageId,
-		"types":      typeId,
-		"templates":  templateId,
-		"properties": propertyKey.String(),
-		"options":    optionId,
-		"files":      fileId,
+		"objects":   pageId,
+		// the FOLDED stem: a type document's envelope id is `type-<key>`
+		// (SPEC §9) and the path plan names the file after the envelope
+		"types":     "type-" + typeId,
+		"templates": templateId,
+		// no `properties/` or `options/` entry: a bundle writes no property
+		// or option DOCUMENT any more — a property is a dictionary entry
+		// when something references it and nothing when nothing does, and an
+		// option rides its property's entry
+		"files": fileId,
 		// the STORE id, not the bare identity: the participant fold needs a
 		// real space id (`<cid>.<key>`) to parse, and a fixture's "space1"
 		// does not — so the envelope keeps the composite, and the filename
@@ -124,6 +128,12 @@ func anyblockSpace(t *testing.T, fx *fixture) map[string]string {
 		"participants": participantId,
 	}
 }
+
+// anyblockExportedObjects is how many objects anyblockSpace seeds. It is
+// deliberately NOT len(byDirectory): the export counts objects it processed,
+// and two of the seeded kinds — a property and an option — now write no
+// document of their own, so files written is the smaller number.
+const anyblockExportedObjects = 7
 
 // readExportTree reads every file under root into path -> content, paths
 // slash-separated and relative to the export root.
@@ -177,7 +187,7 @@ func TestExport_AnyBlockV2WritesABundle(t *testing.T) {
 
 	// then
 	require.NoError(t, err)
-	assert.Equal(t, len(byDirectory), succeed)
+	assert.Equal(t, anyblockExportedObjects, succeed)
 
 	tree := readExportTree(t, exportPath)
 	for dir, id := range byDirectory {
@@ -195,7 +205,6 @@ func TestExport_AnyBlockV2WritesABundle(t *testing.T) {
 	index, err := anyblockjson.UnmarshalIndex([]byte(tree[anyblockjson.IndexFileName]))
 	require.NoError(t, err)
 	require.NotNil(t, index.Manifest)
-	assert.Equal(t, "types/customObjectType.anyblock.json", index.Manifest.Types["customObjectType"])
 	_, err = anyblockjson.UnmarshalPropertyDictionary([]byte(tree[anyblockjson.PropertiesFileName]))
 	require.NoError(t, err)
 }
@@ -225,7 +234,7 @@ func TestExport_AnyBlockV2WritesAZipBundle(t *testing.T) {
 
 	// then
 	require.NoError(t, err)
-	assert.Equal(t, len(byDirectory), succeed)
+	assert.Equal(t, anyblockExportedObjects, succeed)
 
 	reader, err := zip.OpenReader(archivePath)
 	require.NoError(t, err)
@@ -253,7 +262,7 @@ func TestExport_AnyBlockV2WritesAZipBundle(t *testing.T) {
 func TestExport_AnyBlockV2ReportsQueueProgress(t *testing.T) {
 	// given
 	fx := newFixture(t)
-	byDirectory := anyblockSpace(t, fx)
+	anyblockSpace(t, fx)
 	fx.picker.EXPECT().TryRemoveFromCache(mock.Anything, mock.Anything).Return(true, nil)
 
 	queue := fx.processService.NewQueue(pb.ModelProcess{
@@ -278,11 +287,13 @@ func TestExport_AnyBlockV2ReportsQueueProgress(t *testing.T) {
 
 	// then
 	require.NoError(t, err)
-	assert.Equal(t, len(byDirectory), succeed)
+	assert.Equal(t, anyblockExportedObjects, succeed)
 	require.NoError(t, queue.Finalize()) // waits for the workers, so Done is settled
 	progress := queue.Info().Progress
-	assert.Equal(t, int64(len(byDirectory)), progress.Total)
-	assert.Equal(t, int64(len(byDirectory)), progress.Done)
+	// the queue runs one task per OBJECT, including the two whose kinds
+	// write no document
+	assert.Equal(t, int64(anyblockExportedObjects), progress.Total)
+	assert.Equal(t, int64(anyblockExportedObjects), progress.Done)
 }
 
 // A cancelled export stops loading objects. The picker mock is the

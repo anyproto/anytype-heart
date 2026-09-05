@@ -163,7 +163,7 @@ func (a *v2StateApplier) marshalOptions() anyblockjson.Options {
 		// view op compares against is what the read served
 		a.marshalKeys = a.s.apiKeys(a.spaceId, a.marshalResolver)
 	}
-	opts := a.marshalResolver.Options()
+	opts := apiRefSpelling(a.marshalResolver.Options())
 	opts.Keys = a.marshalKeys
 	return opts
 }

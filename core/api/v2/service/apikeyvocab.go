@@ -71,6 +71,39 @@ func (s *Service) apiKeys(spaceId string, inner anyblockjson.KeyVocabulary) *api
 	return v
 }
 
+// apiRefSpelling settles how a served document names a TYPE, which it must
+// do twice, because a type is two things at once.
+//
+// As a KIND it is named by a key that means the same thing in every space —
+// the envelope `type`, `template_for`, every `object_types` — and this
+// surface spells those with the api slug, which is the word its own /types
+// routes accept. As an OBJECT it is named by an id that exists in one space
+// — `set_of`, `default_type_id`, a mention or link target, a type document's
+// own envelope id — and this surface spells those with the store id, which
+// is the string GET /objects/{id} resolves.
+//
+// The format's derived id, `type-<stored_key>`, is neither: for a custom
+// type the remainder is the bson stored key, so `type-68f1a9c…` names a type
+// no /types route can address and no /objects route can open. Leaving it on
+// put THREE spellings of one type in a single envelope — `"type": "bug"`
+// beside `"template_for": "type-68f1a9c…"` beside a `set_of` wearing the
+// prefix again.
+//
+// It rides EXPORT only, so a body arriving with `type-<key>` still resolves:
+// declining to write a spelling is not declining to read one. Callers that
+// unmarshal need nothing from here.
+//
+// Every v2 surface whose bytes reach a caller goes through this — the object
+// read, list and search rows, the views fragment, and the applier's own
+// marshal (whose after-documents are COMPARED against what the read served,
+// so a disagreement here would make a view op diff against a shape no read
+// ever emitted). The file exporter deliberately does not: portable documents
+// want the derived id, which is why this cannot live in storeresolver.
+func apiRefSpelling(opts anyblockjson.Options) anyblockjson.Options {
+	opts.NoDerivedTypeIds = true
+	return opts
+}
+
 func (v *apiKeyVocab) ensure() bool {
 	if v.loaded {
 		return !v.degraded

@@ -227,7 +227,7 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 		// same bytes.
 		s.seedTombstonedTypeProperties(ctx, spaceId, reads, read.Snapshot)
 	}
-	opts := reads.Options()
+	opts := apiRefSpelling(reads.Options())
 	// A served body spells keys as the API slug. The vocabulary decision is
 	// made HERE, in Options, never by re-spelling
 	// a marshaled document. `?keys=name` (§4.2) keeps the resolver's own
@@ -771,7 +771,7 @@ func (s *Service) newObjectRowBuilder(spaceId string, fields []string) (*objectR
 	index := s.store.SpaceIndex(spaceId)
 	b := &objectRowBuilder{index: index, typeKeys: typeKeys, fields: fields, spaceId: spaceId, spaceRef: spaceId}
 	if len(fields) > 0 {
-		b.opts = storeresolver.New(index).Options()
+		b.opts = apiRefSpelling(storeresolver.New(index).Options())
 		b.opts.Keys = s.apiKeys(spaceId, b.opts.Keys)
 		// requested fields canonicalize through the one chain (file aliases
 		// + §7.5a-5): the value is read from the STORED key and emitted

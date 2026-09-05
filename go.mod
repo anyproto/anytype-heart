@@ -6,7 +6,7 @@ require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
 	github.com/PuerkitoBio/goquery v1.10.2
 	github.com/ahmetb/govvv v0.3.0
-	github.com/anyproto/any-block v0.0.0-20260901161526-413af55ae06d
+	github.com/anyproto/any-block v0.0.0-20260902132339-f88a468fe108
 	github.com/anyproto/any-store v0.4.7
 	github.com/anyproto/any-sync v0.13.1
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb
@@ -322,3 +322,8 @@ replace google.golang.org/genproto/googleapis/rpc => google.golang.org/genproto/
 replace github.com/btcsuite/btcutil => github.com/btcsuite/btcd/btcutil v1.1.5
 
 replace github.com/dsoprea/go-jpeg-image-structure/v2 => github.com/dchesterton/go-jpeg-image-structure/v2 v2.0.0-20240318203529-c3eea088bd38
+
+// TEMPORARY, do not merge: the type-fold switch and the query_source envelope
+// field live on any-block's go-7383-query-source branch, which is local-only.
+// Swap for a pseudo-version once that branch is pushed.
+replace github.com/anyproto/any-block => /Users/roman/anytype/any-block_querysource

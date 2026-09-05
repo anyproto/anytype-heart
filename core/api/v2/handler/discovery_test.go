@@ -34,12 +34,12 @@ func typeReadWithMintedIds() apicore.ObjectRead {
 		SbType: model.SmartBlockType_Page,
 		Snapshot: &model.SmartBlockSnapshotBase{
 			Details: &types.Struct{Fields: map[string]*types.Value{
-				"id":   pbtypes.String("type-task"),
+				"id":   pbtypes.String("bafyreitasktype"),
 				"name": pbtypes.String("Task"),
 			}},
 			ObjectTypes: []string{"ot-objectType"},
 			Blocks: []*model.Block{
-				{Id: "type-task", ChildrenIds: []string{testTypeMintedBlockId},
+				{Id: "bafyreitasktype", ChildrenIds: []string{testTypeMintedBlockId},
 					Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
 				{Id: testTypeMintedBlockId,
 					Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "about", Style: model.BlockContentText_Paragraph}}},
@@ -55,7 +55,7 @@ func TestGetTypeHandler(t *testing.T) {
 		fx.router.GET("/v2/spaces/:space_id/types/:type", GetTypeHandler(fx.svc))
 		fx.store.AddObjects(t, "space1", []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:             domain.String("type-task"),
+				bundle.RelationKeyId:             domain.String("bafyreitasktype"),
 				bundle.RelationKeyName:           domain.String("Task"),
 				bundle.RelationKeyUniqueKey:      domain.String("ot-task"),
 				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
@@ -72,7 +72,7 @@ func TestGetTypeHandler(t *testing.T) {
 	t.Run("?ids=full reaches the service — the export shape is one query parameter away", func(t *testing.T) {
 		// given
 		fx := newTypeFixture(t)
-		fx.readerMock.EXPECT().ReadObject(mock.Anything, "space1", "type-task").Return(typeReadWithMintedIds(), nil).Times(2)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, "space1", "bafyreitasktype").Return(typeReadWithMintedIds(), nil).Times(2)
 
 		// when / then: default = the edit shape (labels), full = the stored ids
 		w := get(fx, "/v2/spaces/space1/types/task")

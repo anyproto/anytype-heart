@@ -16,23 +16,35 @@ type (
 )
 
 type DocMeta struct {
-	Id       string
-	SbType   model.SmartBlockType
+	Id     string
+	SbType model.SmartBlockType
+	// Key is the document's own internal key, for the kinds that have one
+	// (types, properties). The path plan names a file by the document's
+	// ENVELOPE id, and a type document's envelope id is derived from its own
+	// key rather than from a resolver (SPEC §9) — so a plan built without it
+	// would name files that the documents written into them disagree with.
+	Key      string
 	FileExt  string
 	FileMime string
 }
 
-func BuildPlan(spaceId string, documents []DocMeta) (*Plan, error) {
+// BuildPlan names every document's file. opts must be the SAME options the
+// documents are marshaled with: the plan and the envelope both go through
+// FoldDocumentId, and options that disagree (a fold on one side, off on the
+// other) put a document whose envelope says one id into a file named for
+// another.
+func BuildPlan(opts anyblockjson.Options, documents []DocMeta) (*Plan, error) {
 	externalDocuments := make([]external.DocMeta, len(documents))
 	for i, document := range documents {
 		externalDocuments[i] = external.DocMeta{
 			Id:       document.Id,
 			SbType:   externalmodel.SmartBlockType(document.SbType),
+			Key:      document.Key,
 			FileExt:  document.FileExt,
 			FileMime: document.FileMime,
 		}
 	}
-	return external.BuildPlan(spaceId, externalDocuments)
+	return external.BuildPlan(anyblockjson.ExternalOptions(opts), externalDocuments)
 }
 
 type Composer struct {
@@ -51,12 +63,12 @@ func (c *Composer) Observe(sbType model.SmartBlockType, snapshot *model.SmartBlo
 	return c.inner.Observe(externalmodel.SmartBlockType(sbType), externalSnapshot)
 }
 
-func (c *Composer) ObserveWritten(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase, document []byte, path string) error {
+func (c *Composer) ObserveWritten(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase, document []byte) error {
 	externalSnapshot, err := anyblockjson.ToExternalSnapshot(snapshot)
 	if err != nil {
 		return err
 	}
-	return c.inner.ObserveWritten(externalmodel.SmartBlockType(sbType), externalSnapshot, document, path)
+	return c.inner.ObserveWritten(externalmodel.SmartBlockType(sbType), externalSnapshot, document)
 }
 
 func (c *Composer) ObserveFileBlob(objectId, path string) {

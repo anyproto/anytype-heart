@@ -568,14 +568,19 @@ func TestCorpseStoredKeyStillNamesItsObjects(t *testing.T) {
 		// then
 		require.NoError(t, anyblockjson.Validate(data))
 		var doc struct {
-			Type     string            `json:"type"`
-			TypeKeys map[string]string `json:"type_internal_keys"`
+			Type        string `json:"type"`
+			InternalKey string `json:"type_internal_key"`
 		}
 		require.NoError(t, json.Unmarshal(data, &doc))
 		assert.Equal(t, "initiative", doc.Type)
-		assert.Equal(t, map[string]string{"initiative": "initiative"}, doc.TypeKeys,
-			"the document says the term is a stored key, or a reader whose space "+
-				"binds the name takes it for the live holder")
+		// the type namespace lost its legend (§15 #28): `type` is the one
+		// slot that SPELLS a type and the stored key stands beside it in the
+		// singular `type_internal_key`, which carries the same fact the
+		// legend entry used to — a reader whose space binds the name to
+		// something else still learns which stored key this document means
+		assert.Equal(t, "initiative", doc.InternalKey,
+			"the document says which stored key the term is, or a reader whose "+
+				"space binds the name takes it for the live holder")
 
 		_, back, err := anyblockjson.Unmarshal(data, r.Options())
 		require.NoError(t, err)

@@ -115,6 +115,11 @@ type Options struct {
 	ResolveObjectNames  ObjectNameResolver
 	SpaceId             string
 	RefNames            bool
+	// NoDerivedTypeIds turns off the codec's TYPE fold on export, so type
+	// KEY slots fall back to the vocabulary spelling and reference slots
+	// keep the store id. Export-only; import resolves `type-<key>` either
+	// way. API v2 sets it (apiRefSpelling); the file exporter does not.
+	NoDerivedTypeIds bool
 	// TableColumnHeaders enables the external codec's API-read annotation.
 	TableColumnHeaders bool
 	Keys               KeyVocabulary
@@ -209,6 +214,7 @@ func ExternalOptions(opts Options) codec.Options {
 		ResolveObjectNames:  opts.ResolveObjectNames,
 		SpaceId:             opts.SpaceId,
 		RefNames:            opts.RefNames,
+		NoDerivedTypeIds:    opts.NoDerivedTypeIds,
 		TableColumnHeaders:  opts.TableColumnHeaders,
 		Keys:                opts.Keys,
 		Legend:              opts.Legend,

@@ -293,15 +293,26 @@ func (e *Exporter) ExportCollected(ctx context.Context, req Request, docs collec
 			log.With("objectId", id).Errorf("failed to get smartblock type: %v", sbtErr)
 			continue
 		}
+		// the document's own internal key, for the kinds that have one: a
+		// type document's envelope id derives from it (SPEC §9), so the path
+		// plan needs it to name the file the same thing the document will
+		// say it is
+		internalKey := ""
+		if uk, ukErr := domain.UnmarshalUniqueKey(doc.Details.GetString(bundle.RelationKeyUniqueKey)); ukErr == nil {
+			internalKey = uk.InternalKey()
+		}
 		metas = append(metas, compose.DocMeta{
 			Id:       id,
 			SbType:   sbType.ToProto(),
+			Key:      internalKey,
 			FileExt:  doc.Details.GetString(bundle.RelationKeyFileExt),
 			FileMime: doc.Details.GetString(bundle.RelationKeyFileMimeType),
 		})
 		emitIds = append(emitIds, id)
 	}
-	plan, err := compose.BuildPlan(req.SpaceId, metas)
+	// the SAME options the documents are marshaled with (below), so the
+	// planned file name and the envelope id inside it cannot disagree
+	plan, err := compose.BuildPlan(storeresolver.New(e.ObjectStore.SpaceIndex(req.SpaceId)).Options(), metas)
 	if err != nil {
 		return res, fmt.Errorf("build path plan: %w", err)
 	}
@@ -435,7 +446,7 @@ func (e *Exporter) emitDoc(ctx context.Context, req Request, docs collect.Docs, 
 		if err := wr.WriteFile(path.Join(req.BundleRoot, docPath), bytes.NewReader(data), lastModifiedDate); err != nil {
 			return fmt.Errorf("write document: %w", err)
 		}
-		if err := composer.ObserveWritten(sbType, base, data, docPath); err != nil {
+		if err := composer.ObserveWritten(sbType, base, data); err != nil {
 			return fmt.Errorf("observe written document: %w", err)
 		}
 
