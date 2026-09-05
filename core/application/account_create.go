@@ -25,7 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/namegenerator"
 )
 
-func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateRequest) (*model.Account, error) {
+func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateRequest) (newAcc *model.Account, err error) {
 	// published before the lock wait, so a stop can reach this start at any
 	// point of it; retracted under the lock, last (see app_start.go)
 	ctx, end := s.beginStart(ctx)
@@ -33,20 +33,24 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 	defer s.lock.Unlock()
 	defer end()
 
-	if err := s.stop(); err != nil {
-		return nil, errors.Join(ErrFailedToStopApplication, err)
-	}
-
 	s.requireClientWithVersion()
 
 	if s.derivedKeys == nil {
 		return nil, ErrWalletNotInitialized
 	}
 
-	var err error
 	accountID := s.derivedKeys.Identity.GetPublic().Account()
+	if err = s.switchAccountLease(ctx, s.rootPath, accountID); err != nil {
+		return nil, err
+	}
+	appStarted := false
+	defer func() {
+		if !appStarted && err != nil {
+			err = errors.Join(err, s.releaseAccountLease())
+		}
+	}()
 
-	if err := core.WalletInitRepo(s.rootPath, s.derivedKeys.Identity); err != nil {
+	if err = core.WalletInitRepo(s.rootPath, s.derivedKeys.Identity); err != nil {
 		return nil, err
 	}
 
@@ -77,13 +81,14 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 		s.eventSender,
 	}
 
-	newAcc := &model.Account{Id: accountID}
+	newAcc = &model.Account{Id: accountID}
 
 	// todo: remove the local data of a cancelled account create
 	s.app, err = s.startNewApp(ctx, pb.EventAccountRecovery_NewAccount, comps...)
 	if err != nil {
 		return newAcc, errors.Join(ErrFailedToStartApplication, err)
 	}
+	appStarted = true
 
 	err = s.setProfileDetails(ctx, req, newAcc)
 	if err != nil {

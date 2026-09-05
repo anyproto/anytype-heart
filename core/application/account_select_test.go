@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/application/accountdirlock"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -56,6 +57,9 @@ func TestService_AccountSelect(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, snapshot.Done)
 		assert.Equal(t, int64(2), snapshot.LastEventId)
+		lease, err := accountdirlock.Acquire(ctx, dir, account.Identity.GetPublic().Account(), "test")
+		assert.NoError(t, err)
+		assert.NoError(t, lease.Release())
 	})
 }
 

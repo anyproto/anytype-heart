@@ -26,6 +26,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		errToCode(application.ErrFailedToWriteConfig, pb.RpcAccountCreateResponseError_FAILED_TO_WRITE_CONFIG),
 		errToCode(application.ErrSetDetails, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME),
 		errToCode(context.Canceled, pb.RpcAccountCreateResponseError_ACCOUNT_CREATION_IS_CANCELED),
+		errToCode(application.ErrAnotherProcessIsRunning, pb.RpcAccountCreateResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING),
 	)
 	return &pb.RpcAccountCreateResponse{
 		Config:  nil,
@@ -60,6 +61,7 @@ func (mw *Middleware) AccountMigrate(cctx context.Context, req *pb.RpcAccountMig
 		errToCode(application.ErrAccountNotFound, pb.RpcAccountMigrateResponseError_ACCOUNT_NOT_FOUND),
 		errToCode(context.Canceled, pb.RpcAccountMigrateResponseError_CANCELED),
 		errTypeToCode(&freeSpaceErr, pb.RpcAccountMigrateResponseError_NOT_ENOUGH_FREE_SPACE),
+		errToCode(application.ErrAnotherProcessIsRunning, pb.RpcAccountMigrateResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING),
 	)
 
 	return &pb.RpcAccountMigrateResponse{
@@ -91,6 +93,7 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		errToCode(config.ErrNetworkFileNotFound, pb.RpcAccountSelectResponseError_CONFIG_FILE_NOT_FOUND),
 		errToCode(config.ErrNetworkIdMismatch, pb.RpcAccountSelectResponseError_CONFIG_FILE_NETWORK_ID_MISMATCH),
 		errToCode(application.ErrEmptyAccountID, pb.RpcAccountSelectResponseError_BAD_INPUT),
+		errToCode(application.ErrBadInput, pb.RpcAccountSelectResponseError_BAD_INPUT),
 		errToCode(application.ErrFailedToStopApplication, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE),
 		errToCode(application.ErrNoMnemonicProvided, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET),
 		errToCode(application.ErrFailedToCreateLocalRepo, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO),
@@ -223,6 +226,7 @@ func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context, req *
 	code := mapErrorCode(err,
 		errToCode(application.ErrAccountMismatch, pb.RpcAccountRecoverFromLegacyExportResponseError_DIFFERENT_ACCOUNT),
 		errToCode(application.ErrBadInput, pb.RpcAccountRecoverFromLegacyExportResponseError_BAD_INPUT),
+		errToCode(application.ErrAnotherProcessIsRunning, pb.RpcAccountRecoverFromLegacyExportResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING),
 	)
 	return &pb.RpcAccountRecoverFromLegacyExportResponse{
 		AccountId:       resp.AccountId,

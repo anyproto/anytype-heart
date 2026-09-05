@@ -19,7 +19,7 @@ var (
 	ErrFailedToIdentifyAccountDir = errors.New("failed to identify account dir")
 )
 
-func (s *Service) AccountMove(req *pb.RpcAccountMoveRequest) error {
+func (s *Service) AccountMove(req *pb.RpcAccountMoveRequest) (err error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -49,12 +49,15 @@ func (s *Service) AccountMove(req *pb.RpcAccountMoveRequest) error {
 		}
 	}
 
-	err := os.MkdirAll(destination, 0700)
+	err = os.MkdirAll(destination, 0700)
 	if err != nil {
 		return errors.Join(ErrFailedToCreateLocalRepo, anyerror.CleanupError(err))
 	}
 
-	err = s.stop()
+	defer func() {
+		err = errors.Join(err, s.releaseAccountLease())
+	}()
+	err = s.closeApp()
 	if err != nil {
 		return errors.Join(ErrFailedToStopApplication, err)
 	}

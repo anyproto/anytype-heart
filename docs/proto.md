@@ -25273,6 +25273,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_WRITE_CONFIG | 105 |  |
 | FAILED_TO_CREATE_LOCAL_REPO | 106 |  |
 | ACCOUNT_CREATION_IS_CANCELED | 107 |  |
+| ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
 | CONFIG_FILE_NOT_FOUND | 200 |  |
 | CONFIG_FILE_INVALID | 201 |  |
 | CONFIG_FILE_NETWORK_ID_MISMATCH | 202 |  |
@@ -25396,6 +25397,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ACCOUNT_NOT_FOUND | 101 |  |
 | CANCELED | 102 |  |
 | NOT_ENOUGH_FREE_SPACE | 103 | TODO: [storage] Add specific error codes for migration problems |
+| ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
 
 
 
@@ -25483,6 +25485,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | DIFFERENT_ACCOUNT | 3 |  |
+| ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
 
 
 

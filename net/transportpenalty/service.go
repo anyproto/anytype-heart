@@ -14,8 +14,11 @@ Scope: global
   evicted constantly)
 - Seeds the stored penalties into quicdemotion at startup, then drops them if
   the network identity turns out to differ from the one the verdict was
-  learned on (checked once shortly after start and on every connectivity
-  recovery)
+  learned on (checked as soon as the identity is known after start, and on
+  every online connectivity recovery)
+- Persists only under a known network identity: while nothing identifies the
+  network the state stays in memory rather than on disk under a key that
+  would match anywhere
 - Resets the penalties on a mid-session network change: a new network
   deserves a clean verdict
 - Disabled entirely via ANYTYPE_QUIC_AUTO_DEMOTION=0
@@ -42,6 +45,10 @@ import (
 const (
 	CName    = "net.transportpenalty"
 	fileName = "transport_penalties.json"
+	// tempSuffixGlob is appended to the state file name for temp files: the
+	// "*" is the random part os.CreateTemp fills in, and the same pattern
+	// finds leftovers on load.
+	tempSuffixGlob = ".*.tmp"
 	// DisableEnv set to "0" turns QUIC auto-demotion off entirely (debugging
 	// escape hatch): bootstrap skips registering quicdemotion and this
 	// component skips seeding and persistence.
@@ -49,16 +56,26 @@ const (
 
 	walletCName = accountservice.CName
 
-	defaultSaveDebounce      = time.Second
-	defaultStartupCheckDelay = 3 * time.Second
+	defaultSaveDebounce = time.Second
+	// The startup identity check polls until the identity is known rather
+	// than sampling once: the monitor's first snapshot and the client's
+	// first report both land some time after Run, and the client's needs
+	// the account app up first. A single sample at a fixed delay compared
+	// the stored key against an unknown identity on mobile cold starts and
+	// deleted the verdict the file exists to keep. The poll is bounded: an
+	// identity that never becomes known leaves the seed in place, and the
+	// next online recovery observes instead.
+	defaultStartupCheckInterval = time.Second
+	defaultStartupCheckTimeout  = 30 * time.Second
 )
 
 var log = logger.NewNamed(CName)
 
 func New() Service {
 	return &service{
-		saveDebounce:      defaultSaveDebounce,
-		startupCheckDelay: defaultStartupCheckDelay,
+		saveDebounce:         defaultSaveDebounce,
+		startupCheckInterval: defaultStartupCheckInterval,
+		startupCheckTimeout:  defaultStartupCheckTimeout,
 	}
 }
 
@@ -76,7 +93,9 @@ type penaltyManager interface {
 
 // networkIdentity is the device.NetworkState surface this component needs.
 type networkIdentity interface {
-	NetworkIdentity() string
+	// NetworkIdentity reports ok=false while nothing identifies the network;
+	// such a key is never compared, persisted or remembered here.
+	NetworkIdentity() (identity string, ok bool)
 	RegisterConnectivityHook(hook func(online bool))
 }
 
@@ -86,8 +105,9 @@ type repoPathProvider interface {
 
 // storedState is the on-disk format of <repo>/transport_penalties.json.
 type storedState struct {
-	// NetworkKey is the network identity the penalties were learned on;
-	// empty when it was never observed (fail open: the verdict is kept).
+	// NetworkKey is the network identity the penalties were learned on. A
+	// file this version writes always carries one (saves wait for a known
+	// identity); an empty key keeps the verdict (fail open).
 	NetworkKey string                       `json:"networkKey"`
 	UpdatedAt  time.Time                    `json:"updatedAt"`
 	Penalties  quicdemotion.PenaltySnapshot `json:"penalties"`
@@ -99,16 +119,38 @@ type service struct {
 	filePath string
 	disabled bool
 
-	saveDebounce      time.Duration
-	startupCheckDelay time.Duration
+	saveDebounce         time.Duration
+	startupCheckInterval time.Duration
+	startupCheckTimeout  time.Duration
+
+	// saveMu serializes the writers of the state file. The debounce timer
+	// clears savePending before it calls save, so a mutation arriving
+	// mid-write arms a new timer and a second save would otherwise run
+	// alongside the first: two writers on one temp file truncate each
+	// other's output and one rename fails, dropping an update or leaving a
+	// torn file.
+	saveMu sync.Mutex
 
 	mu           sync.Mutex
-	lastIdentity string // last observed network identity; "" until first observation
-	storedKey    string // network key the seeded penalties were learned on
-	saveTimer    *time.Timer
-	savePending  bool
-	closed       bool
-	closeCh      chan struct{}
+	lastIdentity string // last known network identity; "" until the first known observation
+	// loadedKey is the network key of the state file as it was loaded, i.e.
+	// the network the seeded penalties were learned on. Only load sets it:
+	// if a save could rewrite it with the current identity, a penalty
+	// mutation landing before the first observation would relabel a verdict
+	// from network A as learned on B and the stale-verdict check would
+	// never fire.
+	loadedKey   string
+	saveTimer   *time.Timer
+	savePending bool
+	closed      bool
+	closeCh     chan struct{}
+	// wg covers the startup check, the debounce timer's callback and a
+	// hook run inside checkIdentity: Close waits for them so nothing writes
+	// or removes the file after it returns. networkState is registered
+	// before this component, so it closes after it and its monitor and
+	// pending recovery timer can still deliver hooks meanwhile; the hook
+	// cannot be unregistered.
+	wg sync.WaitGroup
 }
 
 func (s *service) Name() string { return CName }
@@ -137,19 +179,36 @@ func (s *service) Run(ctx context.Context) error {
 	if s.disabled {
 		return nil
 	}
-	// The stored-key check needs the current network identity, which isn't
-	// known at Init: the net monitor's first interface snapshot and the
-	// client's first network report both arrive shortly after start. On a
-	// stable network no connectivity recovery ever fires, so check once here.
+	s.wg.Add(1)
 	go func() {
+		defer s.wg.Done()
+		s.startupCheck()
+	}()
+	return nil
+}
+
+// startupCheck runs the stored-key check as soon as the network identity is
+// known. On a stable network no connectivity recovery ever fires, so without
+// it a stale verdict would never be dropped.
+func (s *service) startupCheck() {
+	ticker := time.NewTicker(s.startupCheckInterval)
+	defer ticker.Stop()
+	deadline := time.NewTimer(s.startupCheckTimeout)
+	defer deadline.Stop()
+	for {
 		select {
-		case <-time.After(s.startupCheckDelay):
+		case <-ticker.C:
+			if identity, ok := s.network.NetworkIdentity(); ok {
+				s.checkIdentity(identity)
+				return
+			}
+		case <-deadline.C:
+			log.Info("network identity still unknown, keeping stored transport penalties as seeded")
+			return
 		case <-s.closeCh:
 			return
 		}
-		s.checkIdentity(s.network.NetworkIdentity())
-	}()
-	return nil
+	}
 }
 
 func (s *service) Close(ctx context.Context) error {
@@ -160,12 +219,17 @@ func (s *service) Close(ctx context.Context) error {
 	}
 	s.closed = true
 	close(s.closeCh)
-	if s.saveTimer != nil {
-		s.saveTimer.Stop()
-	}
 	pending := s.savePending
+	if pending && s.saveTimer.Stop() {
+		// the callback will never run: release the slot it holds in wg
+		s.wg.Done()
+	}
 	s.savePending = false
 	s.mu.Unlock()
+	// Nothing may touch the file after Close returns: wait for the startup
+	// check, a debounce callback already past its closed check, and a
+	// recovery hook still inside checkIdentity.
+	s.wg.Wait()
 	if pending {
 		s.save()
 	}
@@ -177,6 +241,7 @@ func (s *service) Close(ctx context.Context) error {
 // yamux-first session on a good network, which still works — and the startup
 // identity check drops it as soon as the mismatch is visible.
 func (s *service) load() {
+	s.removeStaleTemps()
 	data, err := os.ReadFile(s.filePath)
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
@@ -190,11 +255,21 @@ func (s *service) load() {
 		_ = os.Remove(s.filePath)
 		return
 	}
+	// quicdemotion's Seed silently ignores a snapshot from another schema
+	// version; without this check the file would sit on disk indefinitely,
+	// the key would be recorded for a seed that never happened, and the log
+	// below would claim one.
+	if st.Penalties.Version != quicdemotion.PenaltySnapshotVersion {
+		log.Warn("transport penalties from another schema version, dropping the file",
+			zap.Int("version", st.Penalties.Version), zap.Int("expected", quicdemotion.PenaltySnapshotVersion))
+		_ = os.Remove(s.filePath)
+		return
+	}
 	if len(st.Penalties.Peers) == 0 {
 		return
 	}
 	s.mu.Lock()
-	s.storedKey = st.NetworkKey
+	s.loadedKey = st.NetworkKey
 	s.mu.Unlock()
 	s.peers.Seed(st.Penalties)
 	log.Info("seeded stored transport penalties",
@@ -207,7 +282,20 @@ func (s *service) load() {
 // interface change, wake, foreground resume), after the connection pool has
 // been flushed.
 func (s *service) onConnectivityRecovery(online bool) {
-	s.checkIdentity(s.network.NetworkIdentity())
+	// Offline says nothing about which network the device is on, and the
+	// identity embeds the connection state: comparing it here would read a
+	// tunnel, a lid close, an AP roam or Android's onLost (which fires on
+	// every transition) as a move to another network, drop a verdict for a
+	// network the device never left, and fire again on the way back. The
+	// recovery that follows the reconnect carries the observation.
+	if !online {
+		return
+	}
+	identity, ok := s.network.NetworkIdentity()
+	if !ok {
+		return
+	}
+	s.checkIdentity(identity)
 }
 
 // checkIdentity compares the current network identity against the last known
@@ -216,17 +304,25 @@ func (s *service) onConnectivityRecovery(online bool) {
 // learned on a different network must not apply here.
 func (s *service) checkIdentity(identity string) {
 	s.mu.Lock()
+	if s.closed {
+		// a recovery delivered after Close (see wg): acting on it reset the
+		// penalties and removed the file on logout during a network change
+		s.mu.Unlock()
+		return
+	}
+	s.wg.Add(1)
+	defer s.wg.Done()
 	prev := s.lastIdentity
 	s.lastIdentity = identity
-	storedKey := s.storedKey
+	loadedKey := s.loadedKey
 	s.mu.Unlock()
 	if prev == identity {
 		return
 	}
 	if prev == "" {
-		if storedKey != "" && storedKey != identity {
+		if loadedKey != "" && loadedKey != identity {
 			log.Info("stored transport penalties are from another network, resetting",
-				zap.String("storedKey", storedKey), zap.String("identity", identity))
+				zap.String("storedKey", loadedKey), zap.String("identity", identity))
 			s.peers.Reset()
 			s.removeFile()
 		}
@@ -246,7 +342,9 @@ func (s *service) scheduleSave() {
 		return
 	}
 	s.savePending = true
+	s.wg.Add(1)
 	s.saveTimer = time.AfterFunc(s.saveDebounce, func() {
+		defer s.wg.Done()
 		s.mu.Lock()
 		s.savePending = false
 		closed := s.closed
@@ -258,15 +356,21 @@ func (s *service) scheduleSave() {
 }
 
 func (s *service) save() {
+	s.saveMu.Lock()
+	defer s.saveMu.Unlock()
 	snap := s.peers.Snapshot()
 	if len(snap.Peers) == 0 {
-		s.removeFile()
+		s.removeFileLocked()
 		return
 	}
-	identity := s.network.NetworkIdentity()
-	s.mu.Lock()
-	s.storedKey = identity
-	s.mu.Unlock()
+	identity, ok := s.network.NetworkIdentity()
+	if !ok {
+		// Nothing to attribute the verdict to. Persisted under an unknown
+		// key it would match on the next start wherever the device is, so
+		// it stays in memory; the next mutation on a known network persists.
+		log.Debug("network identity unknown, not persisting transport penalties")
+		return
+	}
 	st := storedState{
 		NetworkKey: identity,
 		UpdatedAt:  time.Now().UTC(),
@@ -278,8 +382,29 @@ func (s *service) save() {
 }
 
 func (s *service) removeFile() {
+	s.saveMu.Lock()
+	defer s.saveMu.Unlock()
+	s.removeFileLocked()
+}
+
+func (s *service) removeFileLocked() {
 	if err := os.Remove(s.filePath); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		log.Warn("remove transport penalties file", zap.Error(err))
+	}
+}
+
+// removeStaleTemps drops temp files of writes the process died in the middle
+// of (between CreateTemp and the rename). They are never read - only the
+// renamed file is - so this is housekeeping, not recovery.
+func (s *service) removeStaleTemps() {
+	stale, err := filepath.Glob(s.filePath + tempSuffixGlob)
+	if err != nil {
+		return
+	}
+	for _, path := range stale {
+		if err = os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			log.Warn("remove stale temp state file", zap.String("path", path), zap.Error(err))
+		}
 	}
 }
 
@@ -288,12 +413,24 @@ func writeFileAtomic(path string, st storedState) error {
 	if err != nil {
 		return fmt.Errorf("marshal state: %w", err)
 	}
-	tmp := path + ".tmp"
-	if err = os.WriteFile(tmp, data, 0o600); err != nil {
+	// A unique temp name per writer (0600, like the file itself): with a
+	// shared fixed name a second writer truncates the first's output and one
+	// of the renames fails with ENOENT.
+	tmp, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+tempSuffixGlob)
+	if err != nil {
+		return fmt.Errorf("create temp state file: %w", err)
+	}
+	if _, err = tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmp.Name())
 		return fmt.Errorf("write temp state file: %w", err)
 	}
-	if err = os.Rename(tmp, path); err != nil {
-		_ = os.Remove(tmp)
+	if err = tmp.Close(); err != nil {
+		_ = os.Remove(tmp.Name())
+		return fmt.Errorf("close temp state file: %w", err)
+	}
+	if err = os.Rename(tmp.Name(), path); err != nil {
+		_ = os.Remove(tmp.Name())
 		return fmt.Errorf("rename state file: %w", err)
 	}
 	return nil

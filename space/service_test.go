@@ -953,3 +953,7 @@ func TestNotifySpaceViewJoining(t *testing.T) {
 		assert.Empty(t, fake.seenInactive())
 	})
 }
+
+func TestSpaceCoreCNameDrift(t *testing.T) {
+	assert.Equal(t, CName, spacecore.SpaceServiceCName)
+}
