@@ -48,6 +48,9 @@ func (q *quicPreferenceSetterStub) Name() (name string) {
 func (q *quicPreferenceSetterStub) PreferQuic(b bool) {
 }
 
+func (q *quicPreferenceSetterStub) EnableQuicDemotion() {
+}
+
 func newFixture(t *testing.T, mode storage.SpaceStorageMode) *fixture {
 	return newFixtureWithPath(mode, t.TempDir())
 }

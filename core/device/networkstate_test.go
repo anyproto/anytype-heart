@@ -419,3 +419,111 @@ func TestNetworkState_ProvideStat(t *testing.T) {
 	assert.Equal(t, int64(1), st.NetworkReportsDuplicate)
 	assert.Equal(t, int64(1), st.Recoveries)
 }
+
+func TestNetworkState_NetworkIdentity(t *testing.T) {
+	t.Run("identity combines type, path id and monitor snapshot", func(t *testing.T) {
+		// given
+		state := &networkState{}
+		state.SetNetworkState(model.DeviceNetworkType_WIFI, "wifi-1")
+		state.onMonitorSnapshot("10.0.0.5", false)
+
+		// when
+		identity, ok := state.NetworkIdentity()
+
+		// then
+		assert.True(t, ok)
+		assert.Equal(t, "0|wifi-1|10.0.0.5", identity)
+	})
+	t.Run("identity changes when the network path changes", func(t *testing.T) {
+		// given
+		state := &networkState{}
+		state.SetNetworkState(model.DeviceNetworkType_WIFI, "wifi-1")
+		before, _ := state.NetworkIdentity()
+
+		// when
+		state.SetNetworkState(model.DeviceNetworkType_WIFI, "wifi-2")
+
+		// then
+		after, _ := state.NetworkIdentity()
+		assert.NotEqual(t, before, after)
+	})
+	t.Run("identity stable across duplicate reports", func(t *testing.T) {
+		// given
+		state := &networkState{}
+		state.SetNetworkState(model.DeviceNetworkType_WIFI, "wifi-1")
+		before, _ := state.NetworkIdentity()
+
+		// when
+		state.SetNetworkState(model.DeviceNetworkType_WIFI, "wifi-1")
+
+		// then
+		after, _ := state.NetworkIdentity()
+		assert.Equal(t, before, after)
+	})
+	t.Run("unknown before any report or snapshot", func(t *testing.T) {
+		// given: the zero state, which formats as the real-looking "0||"
+		state := &networkState{}
+
+		// when
+		identity, ok := state.NetworkIdentity()
+
+		// then
+		assert.False(t, ok)
+		assert.Empty(t, identity)
+	})
+	t.Run("type alone is not an identity", func(t *testing.T) {
+		// given: a client reporting without a path id and no interface
+		// enumeration (Android without the getter)
+		state := &networkState{}
+		state.SetNetworkState(model.DeviceNetworkType_WIFI, "")
+
+		// when
+		_, ok := state.NetworkIdentity()
+
+		// then
+		assert.False(t, ok)
+	})
+	t.Run("client path id alone is an identity", func(t *testing.T) {
+		// given
+		state := &networkState{}
+		state.SetNetworkState(model.DeviceNetworkType_CELLULAR, "cell-1")
+
+		// when
+		identity, ok := state.NetworkIdentity()
+
+		// then
+		assert.True(t, ok)
+		assert.Equal(t, "1|cell-1|", identity)
+	})
+	t.Run("monitor snapshot alone is an identity", func(t *testing.T) {
+		// given
+		state := &networkState{}
+		state.onMonitorSnapshot("10.0.0.5", false)
+
+		// when
+		identity, ok := state.NetworkIdentity()
+
+		// then
+		assert.True(t, ok)
+		assert.Equal(t, "0||10.0.0.5", identity)
+	})
+	t.Run("offline is not an identity", func(t *testing.T) {
+		// given: a known network, then the client reports the link gone
+		state := &networkState{}
+		state.SetNetworkState(model.DeviceNetworkType_WIFI, "wifi-1")
+		state.onMonitorSnapshot("10.0.0.5", false)
+		state.SetNetworkState(model.DeviceNetworkType_NOT_CONNECTED, "")
+
+		// when
+		_, ok := state.NetworkIdentity()
+
+		// then
+		assert.False(t, ok)
+
+		// and the desktop shape of offline: no client report, no address
+		state = &networkState{}
+		state.onMonitorSnapshot("", true)
+		_, ok = state.NetworkIdentity()
+		assert.False(t, ok)
+	})
+}
