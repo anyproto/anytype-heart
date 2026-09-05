@@ -249,7 +249,15 @@ func handleTextBlock(oldIDtoNew map[string]string, block simple.Block, st *state
 		}
 		newTarget := oldIDtoNew[mark.Param]
 		if newTarget == "" {
-			newTarget = addr.MissingObject
+			// If the param looks like a valid CID, preserve it as-is.
+			// This allows mentions to reference existing objects in the space
+			// that may not be in the import package (e.g., incremental imports).
+			_, err := cid.Decode(mark.Param)
+			if err == nil {
+				newTarget = mark.Param
+			} else {
+				newTarget = addr.MissingObject
+			}
 		}
 
 		marks[i].Param = newTarget
