@@ -1,9 +1,15 @@
-# API v2 key vocabulary: slugs on the wire, names at the edge
+# API v2 vocabulary: slugs on the wire, names at the edge, ids in reference slots
 
 GO-7383. Design and adoption plan for merging the format branch's raw-name
 re-spell (`go-7383-anyblockjson`, 19 commits after `1ccf34e7c`, handoff:
 `pkg/lib/anyblockjson/HANDOFF_API.md`) into the API v2 branch, and the
 vocabulary decision the handoff left to this layer.
+
+Sections 1-5 settle the KEY axis — how a type or a property is spelled.
+Section 6 settles the REFERENCE axis — how a slot that points AT an object
+is spelled — which became a live question only when the any-block bump
+brought derived ids (`type-<key>`, `participant-<identity>`). Read §6 for
+the map of what is stored where; §1-5 for why keys are slugs.
 
 ---
 
@@ -324,3 +330,142 @@ Phase 6 — eval graders (§4.6); run the eval to confirm no silent
 pass/fail drift.
 
 Phase 7 — docs + openapi (§4.7).
+
+---
+
+## 6. The reference axis: what is stored where
+
+Added 2026-09-05, when the any-block bump (`37ca00d`) brought derived ids.
+Status markers: **✅** served today (heart `9d9052985`, any-block
+`c7644bd`) · **⏳** decided, not yet built.
+
+### 6.1 Three namespaces, three questions
+
+| namespace | answers | minted by |
+|---|---|---|
+| **key** | "what *kind* is this?" | `bundle.ApiSlug` for a bundled key, `MintApiSlugFromName` at create for a custom one — then **persisted** as the `apiObjectKey` detail (D4) |
+| **reference** | "*which object* is this?" | the store, at object creation |
+| **name** | "what does a human call it?" | the user |
+
+### 6.2 The rule
+
+> A slot that names a **kind** carries a key. A slot that points at an
+> **object** carries an id. A name is a caption — never resolved, never an
+> address.
+
+The one deliberate exception is the participant, and it is the exception
+that explains the rule. A type and a participant are both space-invariant,
+but their invariant HANDLES differ: a type's is its key, a participant's is
+its identity. So a type goes to a key where it names a kind and to an id
+where it names an object, while a participant folds to
+`participant-<identity>` everywhere — one string for one human across every
+space, which a per-space composite could never be.
+
+Rejected: spelling type references `type-<internal_key>` as the format
+does. For a custom type the remainder is the bson stored key, so
+`type-68f1a9c…` names a type that no `/types` route can address and no
+`/objects` route can open — a third spelling beside the api key and the
+store id. See `apiRefSpelling` (apikeyvocab.go) for the enforcement point.
+
+### 6.3 The forms one type has
+
+A custom type displayed as "Bug":
+
+| form | value | lives in |
+|---|---|---|
+| store object id | `bafyrei…t8c` | the object's `id` |
+| uniqueKey | `ot-68f1a9c…` | `uniqueKey` detail |
+| stored internal key | `68f1a9c…` | `state.UniqueKeyInternal`; the uniqueKey's tail |
+| **api key** | `bug` | `apiObjectKey` detail — persisted, minted from the name |
+| display name | `Bug` | `name` detail |
+| derived id | `type-68f1a9c…` | the FORMAT only, never the store |
+
+A bundled type has the same shape with a readable stored key (`task`) whose
+api key derives by `strcase.ToSnake`.
+
+### 6.4 Where each form is served
+
+| slot | store holds | API v2 serves | file bundle writes |
+|---|---|---|---|
+| envelope `type` | type key | ✅ api key `bug` | display name |
+| envelope `type_internal_key` | — | ✅ stored key (every typed doc) | same |
+| `template_for` | `ObjectTypes[1]` | ✅ api key | `type-<key>` |
+| `object_types` (property doc) | type ids | ✅ api key | `type-<key>` |
+| type doc envelope `id` | store id | ✅ store id | `type-<key>` |
+| `set_of` | type/property **ids** | ✅ store id | `type-<key>` |
+| `default_type_id`, `default_template_id` | store id | ✅ store id | `type-<key>` |
+| mention / link target | store id | ✅ store id | `type-<key>` if a type |
+| property KEYS in `properties` | stored key | ✅ api slug | display name |
+| property values, object format | store ids | ✅ store ids | store ids |
+| property values, select / multiSelect | option ids | ✅ option **names** | option names |
+| participant, anywhere | `_participant_<space>_<identity>` | ✅ `participant-<identity>` | same |
+| `created_by` / `last_modified_by` | composite | ✅ `participant-<identity>#Alice` | same |
+| file / image refs | store id | ✅ store id | store id |
+| space refs | `<cid>.<key>` | ✅ short ref, full on `?ids=full` | n/a |
+
+`set_of` is the slot that settles the argument on its own: it holds a type
+id **or a property id** (`list_read.go`'s refusal says so), so a `type-`
+spelling covers half its domain and an object id covers all of it.
+
+### 6.5 Endpoints
+
+| endpoint | takes |
+|---|---|
+| `/spaces/{space_id}` | full space id or short ref |
+| `/objects/{object_id}` | **store id** |
+| `/types/{type}` | **api key** (also accepts stored key and display name) |
+| `/properties/{key}` | **api slug** |
+| `POST /search` — `type`, and a `type` filter leaf | **api key**, resolved to type ids server-side |
+| filter `property` | api slug |
+| filter value naming a participant | identity **or** composite; both accepted |
+| `POST /queries` — `type` | api key ⏳ becomes `query_source` |
+
+### 6.6 The switches
+
+| switch | moves | leaves alone |
+|---|---|---|
+| `?keys=name` | property + type keys → display names | every reference |
+| `?ids=full` | block labels, space refs | object refs; participants ⏳ |
+| `NoDerivedTypeIds` (server-side, always on for v2) | type references → store ids; type KEY slots → api key | participants |
+
+`NoDerivedTypeIds` is set by `apiRefSpelling` at the four surfaces whose
+bytes reach a caller: the object read, list and search rows, the views
+fragment, and the applier's own marshal — that last one because its
+after-documents are COMPARED against what the read served, so a
+disagreement would diff a view op against a shape no read emits. The file
+exporter deliberately does not set it: portable documents want the derived
+id, which is why it cannot live in `storeresolver`.
+
+### 6.7 Not yet built
+
+- **P0, live corruption**: `creatingResolvers.Options()` sets neither
+  `SpaceId` nor a `TypeResolver`, so both unfolds are dead on write.
+  `set`/`add` store a folded reference verbatim while `remove` (which uses
+  `marshalOptions`, where `SpaceId` IS set) unfolds and matches nothing —
+  a silent no-op, and a silent unbind on the documented read-modify-write
+  loop. Invisible to round-tripping: `participant-<identity>` is not
+  CID-shaped, so `missingFromSpace` never flags it and the next read serves
+  it back looking correct.
+- `set` → `query` api key: an override map in `apislug.go` (bundled slugs
+  are purely derived today, with an injectivity guard that panics) plus a
+  per-space migration, because `object_type.go` persists an `apiObjectKey`
+  on every type object including bundled installs.
+- `query_source` envelope field, promoted out of the `setOf` detail the way
+  `template_for` is promoted out of `ObjectTypes[1]`. List-shaped so a
+  document already holding several round-trips; create accepts exactly one
+  (the app surfaces one, and every path that builds a dataview from a
+  source reads `sources[0]`).
+- Member-by-id route (v1 has one that already accepts both spellings);
+  `?ids=full` honouring participants, or dropping the claim that it spells
+  everything in full.
+- `querySourceFilters` uses `NotEmpty` where the authoritative
+  `resolveSources` uses `Exists` — the GO-7404 regression, re-derived five
+  weeks after its fix. Export `resolveSources` so v2 stops owning a copy.
+
+### 6.8 Upstream behaviour worth questioning
+
+In `object_types`, a target the space cannot resolve is written
+`type-<the stored id>` — a derived id asserting a type key that never
+existed, where verbatim passthrough would say "an address I could not
+translate". It reaches the file exporter only; under `NoDerivedTypeIds`
+the slot falls back to the vocabulary spelling, which leaves the id alone.
