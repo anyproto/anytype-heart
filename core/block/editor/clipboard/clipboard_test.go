@@ -2393,6 +2393,61 @@ func TestProcessFileBlock(t *testing.T) {
 	})
 }
 
+func TestClipboard_PasteHtmlWithAngleBrackets(t *testing.T) {
+	t.Run("HTML-only paste into code block preserves angle brackets", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+		s := sb.NewState()
+		codeBlock := simple.New(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Style: model.BlockContentText_Code,
+					Text:  "",
+				},
+			},
+		})
+		s.Add(codeBlock)
+		s.InsertTo("", model.Block_Inner, codeBlock.Model().Id)
+		require.NoError(t, sb.Apply(s))
+
+		// when
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    codeBlock.Model().Id,
+			SelectedTextRange: &model.Range{From: 0, To: 0},
+			HtmlSlot:          `<pre><code>fmt.Println(&lt;T&gt;)</code></pre>`,
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "fmt.Println(<T>)\n", sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Text)
+		assert.Equal(t, model.BlockContentText_Code, sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Style)
+	})
+
+	t.Run("HTML paste with angle brackets into paragraph", func(t *testing.T) {
+		// given
+		sb := createPage(t, createBlocks([]string{}, []string{}, emptyMarks))
+
+		// when
+		pasteHtml(t, sb, "", model.Range{From: 0, To: 0}, []string{}, `<p>const fn = (x) =&gt; x + 1</p>`)
+
+		// then
+		checkBlockText(t, sb, []string{"const fn = (x) => x + 1"})
+	})
+
+	t.Run("HTML paste with generics preserves angle brackets", func(t *testing.T) {
+		// given
+		sb := createPage(t, createBlocks([]string{}, []string{}, emptyMarks))
+
+		// when
+		pasteHtml(t, sb, "", model.Range{From: 0, To: 0}, []string{}, `<p>List&lt;String&gt; items</p>`)
+
+		// then
+		checkBlockText(t, sb, []string{"List<String> items"})
+	})
+}
+
 func TestPasteEmptyFileBlock(t *testing.T) {
 	t.Run("empty file placeholder pastes without error", func(t *testing.T) {
 		// given
