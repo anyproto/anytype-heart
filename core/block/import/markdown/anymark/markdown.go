@@ -69,6 +69,75 @@ func escapeAll(n *html.Node) {
 	}
 }
 
+// collapseTextWhitespace replaces interior runs of whitespace inside a text
+// node with a single space, mirroring HTML's inline whitespace collapsing.
+// Only interior runs (whitespace with content on both sides of it) are
+// collapsed: leading and trailing whitespace is preserved so newlines that
+// separate sibling inline elements still break them into distinct items (e.g.
+// pasted "1. One\n2. Two" list-like spans). A whitespace-only node is left as
+// a single space so adjacent inline elements don't get glued together.
+func collapseTextWhitespace(s string) string {
+	isSpace := func(r rune) bool {
+		return r == ' ' || r == '\t' || r == '\n' || r == '\r' || r == '\f' || r == '\v'
+	}
+	if !strings.ContainsFunc(s, isSpace) {
+		return s
+	}
+	buf := []rune(s)
+	var b strings.Builder
+	b.Grow(len(s))
+	i := 0
+	for i < len(buf) {
+		j := i
+		for j < len(buf) && !isSpace(buf[j]) {
+			j++
+		}
+		b.WriteString(string(buf[i:j]))
+		i = j
+		j = i
+		for j < len(buf) && isSpace(buf[j]) {
+			j++
+		}
+		if j > i {
+			if i == 0 || j == len(buf) {
+				b.WriteString(string(buf[i:j]))
+			} else {
+				b.WriteByte(' ')
+			}
+			i = j
+		}
+	}
+	out := b.String()
+	if strings.Trim(out, " \t\n\r\f\v") == "" {
+		return " "
+	}
+	return out
+}
+
+// collapseInlineTextWhitespace walks the DOM and collapses whitespace in text
+// nodes, except inside elements where whitespace is significant (pre, textarea,
+// script, style). This fixes imports where source newlines inside inline
+// elements were turning into unwanted line breaks in the content.
+func collapseInlineTextWhitespace(n *html.Node) {
+	switch n.Type {
+	case html.TextNode:
+		n.Data = collapseTextWhitespace(n.Data)
+		return
+	case html.ElementNode:
+		switch n.Data {
+		case "pre", "textarea", "script", "style":
+			return
+		}
+	case html.DocumentNode:
+	case html.DoctypeNode:
+	case html.CommentNode:
+		return
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		collapseInlineTextWhitespace(c)
+	}
+}
+
 // escapeRecursively mutates every text-node under sel (including sel itself)
 func escapeRecursively(sel *goquery.Selection) {
 	// operate on the direct text children of this element
@@ -109,6 +178,7 @@ func HTMLToBlocks(source []byte, url string) (blocks []*model.Block, rootBlockID
 	})
 	converter.Before(func(selec *goquery.Selection) {
 		for _, n := range selec.Nodes { // the hook can hand you several roots
+			collapseInlineTextWhitespace(n)
 			escapeAll(n)
 		}
 	})
