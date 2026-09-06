@@ -43,9 +43,12 @@ func TestV2CreateQuery(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, "newSet", result.Id)
+		assert.Equal(t, "query", result.Type,
+			"the receipt answers in the api vocabulary, where this type is `query` — the same word the route says")
 		snapshot := *captured
 		require.NotNil(t, snapshot)
-		assert.Equal(t, []string{"ot-set"}, snapshot.ObjectTypes)
+		assert.Equal(t, []string{"ot-set"}, snapshot.ObjectTypes,
+			"and the STORE is untouched: below the API it is still keyed `set`")
 		assert.Equal(t, []string{"type-chore"}, pbtypes.GetStringList(snapshot.Details, bundle.RelationKeySetOf.String()))
 
 		require.Len(t, snapshot.Blocks, 2, "root + dataview")
