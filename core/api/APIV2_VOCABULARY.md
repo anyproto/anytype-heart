@@ -336,8 +336,8 @@ Phase 7 — docs + openapi (§4.7).
 ## 6. The reference axis: what is stored where
 
 Added 2026-09-05, when the any-block bump (`37ca00d`) brought derived ids.
-Status markers: **✅** served today (heart `9d9052985`, any-block
-`c7644bd`) · **⏳** decided, not yet built.
+Status markers: **✅** served today (heart `acf339579`, any-block
+`57f4add`) · **⏳** decided, not yet built.
 
 ### 6.1 Three namespaces, three questions
 
@@ -392,7 +392,8 @@ api key derives by `strcase.ToSnake`.
 | `template_for` | `ObjectTypes[1]` | ✅ api key | `type-<key>` |
 | `object_types` (property doc) | type ids | ✅ api key | `type-<key>` |
 | type doc envelope `id` | store id | ✅ store id | `type-<key>` |
-| `set_of` | type/property **ids** | ✅ store id | `type-<key>` |
+| `query_source.types` | type **ids** in `setOf` | ✅ api key `bug` | `type-<key>` |
+| `query_source.properties` | property **ids** in `setOf` | ✅ **bare stored key** | same |
 | `default_type_id`, `default_template_id` | store id | ✅ store id | `type-<key>` |
 | mention / link target | store id | ✅ store id | `type-<key>` if a type |
 | property KEYS in `properties` | stored key | ✅ api slug | display name |
@@ -403,9 +404,28 @@ api key derives by `strcase.ToSnake`.
 | file / image refs | store id | ✅ store id | store id |
 | space refs | `<cid>.<key>` | ✅ short ref, full on `?ids=full` | n/a |
 
-`set_of` is the slot that settles the argument on its own: it holds a type
-id **or a property id** (`list_read.go`'s refusal says so), so a `type-`
-spelling covers half its domain and an object id covers all of it.
+`setOf` is the slot that settled the argument, and the format has since acted
+on it. It held a type id **or a property id** under one grammar — heart's own
+refusal said so in its error text — so no schema could describe it and no
+reader could tell an entry's kind. It is now promoted out of `properties`
+onto the root as `query_source`, two typed lists, and the flat spelling is
+refused. The list a value sits in is the marker; the entries need none.
+
+The two lists take different spellings, and that is not an oversight. `types`
+is a type-KEY slot, so it follows every other one (`template_for`,
+`object_types`) — the derived id normally, the api key under our mode.
+`properties` is the bare stored key, because a property has no address to
+derive one from: a bundle carries no property documents, so there is nothing
+for a `property-<key>` to be the address OF.
+
+**That leaves one asymmetry a consumer will notice**: for a v2-minted
+property the stored key is a bson id, so `query_source.properties` can show
+`6a83296f…` where every other property slot in the same document shows
+`due_date`. Neither vocabulary reaches it — not the api-slug default, not
+`?keys=name`. There is no heart-side seam; the fix, if we want one, is
+upstream in `queryPropertyKey`, and it has a real cost there: the dictionary's
+used-key census counts this entry as the one place a property key appears
+with no spelling anywhere in the document.
 
 ### 6.5 Endpoints
 
@@ -418,7 +438,7 @@ spelling covers half its domain and an object id covers all of it.
 | `POST /search` — `type`, and a `type` filter leaf | **api key**, resolved to type ids server-side |
 | filter `property` | api slug |
 | filter value naming a participant | identity **or** composite; both accepted |
-| `POST /queries` — `type` | api key ⏳ becomes `query_source` |
+| `POST /queries` — `type` | api key, exactly one; the stored document states it as `query_source` |
 
 ### 6.6 The switches
 
@@ -438,29 +458,53 @@ id, which is why it cannot live in `storeresolver`.
 
 ### 6.7 Not yet built
 
-- **P0, live corruption**: `creatingResolvers.Options()` sets neither
-  `SpaceId` nor a `TypeResolver`, so both unfolds are dead on write.
-  `set`/`add` store a folded reference verbatim while `remove` (which uses
-  `marshalOptions`, where `SpaceId` IS set) unfolds and matches nothing —
-  a silent no-op, and a silent unbind on the documented read-modify-write
-  loop. Invisible to round-tripping: `participant-<identity>` is not
-  CID-shaped, so `missingFromSpace` never flags it and the next read serves
-  it back looking correct.
-- `set` → `query` api key: an override map in `apislug.go` (bundled slugs
-  are purely derived today, with an injectivity guard that panics) plus a
-  per-space migration, because `object_type.go` persists an `apiObjectKey`
-  on every type object including bundled installs.
-- `query_source` envelope field, promoted out of the `setOf` detail the way
-  `template_for` is promoted out of `ObjectTypes[1]`. List-shaped so a
-  document already holding several round-trips; create accepts exactly one
-  (the app surfaces one, and every path that builds a dataview from a
-  source reads `sources[0]`).
+Shipped since this section was written: the write-path P0, `query_source`,
+the `set` → `query` rename, and the `NotEmpty` → `Exists` fix. What the
+rename actually needed is recorded in §6.9, because the plan here was wrong
+about the migration.
+
 - Member-by-id route (v1 has one that already accepts both spellings);
   `?ids=full` honouring participants, or dropping the claim that it spells
   everything in full.
-- `querySourceFilters` uses `NotEmpty` where the authoritative
-  `resolveSources` uses `Exists` — the GO-7404 regression, re-derived five
-  weeks after its fix. Export `resolveSources` so v2 stops owning a copy.
+- Export `resolveSources` from package `subscription` so `querySourceFilters`
+  stops owning a second copy. The copy is what let the GO-7404 regression be
+  re-derived five weeks after its fix; the fix is in, the duplication is not.
+- `query_source.properties` spells the bare stored key (§6.4). Decide whether
+  to raise it upstream.
+
+### 6.9 The `set` → `query` rename, and why it needs no migration
+
+This section is here because §6.7 predicted a per-space migration and that
+was wrong — and wrong in the dangerous direction, since running one is what
+would have changed API v1.
+
+Three facts settle it, and each was verified rather than assumed:
+
+1. **v1 never calls `bundle.ApiSlug` on its serve path.** It derives its own
+   spelling in `util.ToTypeApiKey` (`TrimPrefix("ot-")` then
+   `strcase.ToSnake`). So the derived table can be repointed without v1
+   observing anything.
+2. **v2 discards the stored `apiObjectKey` for a bundled key** and derives in
+   code (`servedKeyOf`). So old and new spaces answer alike from the first
+   read, with nothing to migrate.
+3. **v1 DOES serve the stored `apiObjectKey`** when one is present. Which is
+   why repointing the detail — the migration §6.7 wanted — is precisely the
+   action that would have renamed the type in v1 too.
+
+So the override lives in `bundle.TypeApiSlug`, which the type table and its
+injectivity guard read, and `ApiSlug`/`MintApiSlug` do not. The mint still
+derives `set`, every space still STORES `set`, and only a v2 read says
+`query`. Accept takes both spellings.
+
+Two consequences worth stating rather than discovering:
+
+- `type_settings.api_key` on the set type's own document still reads `set`.
+  The codec emits that member verbatim from the stored detail, bypassing the
+  vocabulary — so the one place a v2 document still says the old word is the
+  slot whose whole job is to report what is stored. Arguably correct.
+- One v1 delta is unavoidable: `PATCH /v1/…/types/{id}` renaming a custom
+  type's key to `query` flips from allowed to refused, because such a type
+  would now shadow the bundled one on v2. The refusal is the right answer.
 
 ### 6.8 Upstream behaviour worth questioning
 
