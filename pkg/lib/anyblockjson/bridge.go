@@ -468,3 +468,69 @@ func ExactJSONIntegerMetadata(key string, value any) (metadataKey, lexeme string
 func ExactJSONIntegerMetadataKey(key string) string {
 	return exactJSONIntegerDetailPrefix + key
 }
+
+// FromExternalPropertyDefinitions is the plural of the conversion above, for
+// callers that read a whole dictionary out of a bundle (the batch scanner).
+func FromExternalPropertyDefinitions(defs []codec.PropertyDefinition) []PropertyDefinition {
+	out := make([]PropertyDefinition, len(defs))
+	for i, def := range defs {
+		out[i] = fromExternalPropertyDefinition(def)
+	}
+	return out
+}
+
+// The reserved-id predicates are re-exported rather than reimplemented: the
+// codec owns what `_`-prefixed spellings mean (SPEC §13), and a second copy
+// here is one fact with two sources.
+func IsPlatformId(id string) bool                 { return codec.IsPlatformId(id) }
+func IsReservedBundleId(id string) bool           { return codec.IsReservedBundleId(id) }
+func IsReservedHomepage(homepage string) bool     { return codec.IsReservedHomepage(homepage) }
+func IsReservedWidgetTarget(target string) bool   { return codec.IsReservedWidgetTarget(target) }
+func IsImportableWidgetTarget(target string) bool { return codec.IsImportableWidgetTarget(target) }
+func ReservedWidgetTargets() []string             { return codec.ReservedWidgetTargets() }
+
+// The omission predicates are re-exported so a diagnostic asks the codec which
+// documents a bundle is RIGHT not to carry, instead of keeping a second list
+// that drifts as the omission rules move (SPEC §15 #21, #23).
+func OmittedProfilePage(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase) bool {
+	return omitted(sbType, snapshot, codec.OmittedProfilePage)
+}
+
+func OmittedSpaceSettings(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase) bool {
+	return omitted(sbType, snapshot, codec.OmittedSpaceSettings)
+}
+
+func OmittedWidgetObject(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase) bool {
+	return omitted(sbType, snapshot, codec.OmittedWidgetObject)
+}
+
+func OmittedRelationOption(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase) bool {
+	return omitted(sbType, snapshot, codec.OmittedRelationOption)
+}
+
+func OmittedRelation(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase) bool {
+	return omitted(sbType, snapshot, codec.OmittedRelation)
+}
+
+// OmittedBundledRelation also reports WHICH bundled key the copy matched, so a
+// caller can say what it omitted rather than only that it did.
+func OmittedBundledRelation(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase, opts Options) (string, bool) {
+	external, err := ToExternalSnapshot(snapshot)
+	if err != nil {
+		return "", false
+	}
+	return codec.OmittedBundledRelation(externalmodel.SmartBlockType(sbType), external, ExternalOptions(opts))
+}
+
+// omitted converts once for the five predicates that differ only in which one
+// they call. A snapshot that cannot cross the bridge is not claimed by any
+// omission: saying "this was omitted on purpose" about a document we failed to
+// read would turn a conversion bug into a silent drop.
+func omitted(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase,
+	predicate func(externalmodel.SmartBlockType, *externalmodel.SmartBlockSnapshotBase) bool) bool {
+	external, err := ToExternalSnapshot(snapshot)
+	if err != nil {
+		return false
+	}
+	return predicate(externalmodel.SmartBlockType(sbType), external)
+}

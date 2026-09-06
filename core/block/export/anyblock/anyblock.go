@@ -244,6 +244,22 @@ type Result struct {
 // through wr: every collected document at its planned path, blobs beside
 // their file documents, then properties.json and index.json at the bundle
 // root.
+// internalKeyOf turns a stored `uniqueKey` detail (`ot-page`, `rel-assignee`)
+// into the bare internal key the derived-id fold is built from. A value that
+// does not parse yields the empty string, which makes the fold decline and the
+// document keep its store id — the same answer as a missing key, and better
+// than feeding a prefixed key into a file name.
+func internalKeyOf(rawUniqueKey string) string {
+	if rawUniqueKey == "" {
+		return ""
+	}
+	uk, err := domain.UnmarshalUniqueKey(rawUniqueKey)
+	if err != nil {
+		return ""
+	}
+	return uk.InternalKey()
+}
+
 func (e *Exporter) Export(ctx context.Context, req Request, wr Writer) (res Result, err error) {
 	docs, err := e.Collector.Collect(ctx, CollectRequest(req))
 	if err != nil {
@@ -294,14 +310,22 @@ func (e *Exporter) ExportCollected(ctx context.Context, req Request, docs collec
 			continue
 		}
 		metas = append(metas, compose.DocMeta{
-			Id:       id,
-			SbType:   sbType.ToProto(),
+			Id:     id,
+			SbType: sbType.ToProto(),
+			// the type's INTERNAL key, which its envelope id `type-<Key>` and
+			// therefore its file name are derived from (any-block SPEC §9).
+			// Left empty, every type document reverts to its raw store id.
+			// The stored detail is the PREFIXED unique key (`ot-page`), so it
+			// is unmarshalled here the way st.UniqueKeyInternal() does it for
+			// the snapshot below — plan reads details rather than loading the
+			// object (design §1.1), so it cannot reach for the state.
+			Key:      internalKeyOf(doc.Details.GetString(bundle.RelationKeyUniqueKey)),
 			FileExt:  doc.Details.GetString(bundle.RelationKeyFileExt),
 			FileMime: doc.Details.GetString(bundle.RelationKeyFileMimeType),
 		})
 		emitIds = append(emitIds, id)
 	}
-	plan, err := compose.BuildPlan(req.SpaceId, metas)
+	plan, err := compose.BuildPlan(storeresolver.New(e.ObjectStore.SpaceIndex(req.SpaceId)).Options(), metas)
 	if err != nil {
 		return res, fmt.Errorf("build path plan: %w", err)
 	}
@@ -310,7 +334,10 @@ func (e *Exporter) ExportCollected(ctx context.Context, req Request, docs collec
 	// is not safe for concurrent use, and the composer consults its options
 	// only under its own mutex — sharing an instance with a worker would
 	// race (compose.NewComposer's contract).
-	composer := compose.NewComposer(storeresolver.New(e.ObjectStore.SpaceIndex(req.SpaceId)).Options(), req.SpaceName)
+	composer, err := compose.NewComposer(storeresolver.New(e.ObjectStore.SpaceIndex(req.SpaceId)).Options(), req.SpaceName)
+	if err != nil {
+		return res, fmt.Errorf("new bundle composer: %w", err)
+	}
 
 	// emit: width-bounded tasks, each holding one resolver set for its
 	// duration. The output cannot depend on scheduling: every path was fixed
@@ -376,9 +403,9 @@ func (e *Exporter) ExportCollected(ctx context.Context, req Request, docs collec
 	// leaves nothing behind to compare, so a dropped select vocabulary is
 	// invisible everywhere else. Discarding Stats here made "reported, not
 	// silent" true of the composer and false of the export.
-	if len(stats.UnusedOptionKeys) > 0 {
+	if len(stats.UnusedPropertyKeys) > 0 {
 		log.Warnf("export %s: %d option(s) dropped with propert(ies) no document references or defines: %s",
-			req.SpaceId, stats.OptionsDropped, strings.Join(stats.UnusedOptionKeys, ", "))
+			req.SpaceId, stats.OptionsDropped, strings.Join(stats.UnusedPropertyKeys, ", "))
 	}
 	if len(stats.OrphanUsedKeys) > 0 {
 		log.Warnf("export %s: %d referenced propert(ies) nothing can define, so the dictionary states no format for them: %s",
@@ -452,7 +479,7 @@ func (e *Exporter) emitDoc(ctx context.Context, req Request, docs collect.Docs, 
 		if err := wr.WriteFile(path.Join(req.BundleRoot, docPath), bytes.NewReader(data), lastModifiedDate); err != nil {
 			return fmt.Errorf("write document: %w", err)
 		}
-		if err := composer.ObserveWritten(sbType, base, data, docPath); err != nil {
+		if err := composer.ObserveWritten(sbType, base, data); err != nil {
 			return fmt.Errorf("observe written document: %w", err)
 		}
 
