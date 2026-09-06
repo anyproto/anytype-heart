@@ -236,6 +236,17 @@ func isPatchLossWarning(iss anyblockjson.Issue) bool {
 	if iss.Path == "/property_internal_keys" || iss.Path == "/type_internal_keys" {
 		return false
 	}
+	// The query source's classification warnings are placement diagnostics,
+	// not loss. An entry no resolver can classify — a tombstoned type, 11 of
+	// the corpus's 174 values — keeps the stored spelling it came with and
+	// goes in `types`, which is where the slot's declared targets are and
+	// where every path that builds a view from a source looks first; the
+	// warning says the placement was a fallback rather than a finding. The
+	// value round-trips byte-identically, so calling it C11 loss would make
+	// every query with a dead source permanently un-PATCHable.
+	if iss.Path == "/"+querySourceMember {
+		return false
+	}
 	// The date exporter deliberately falls back to the original raw number
 	// when no RFC 3339 spelling exists; the importer accepts that same number.
 	// It is suspicious input worth surfacing on reads, but it is lossless and

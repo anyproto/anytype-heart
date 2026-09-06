@@ -168,7 +168,35 @@ func (r *creatingResolvers) Options() anyblockjson.Options {
 		ResolveOptions:    r,
 		ResolveProperties: r,
 		Keys:              r.keys,
+		// the space this write lands in, which is what the codec's import
+		// half needs to rebuild a folded participant reference into the
+		// composite the store holds. Without it unfoldParticipantRef
+		// returns the folded form untouched and the detail keeps a string
+		// that addresses nobody -- and silently, because a folded reference
+		// is not CID-shaped, so the missing-reference rule never looks at it
+		// and the next read serves it back looking exactly like a correct
+		// fold.
+		SpaceId: r.spaceId,
 	}
+}
+
+// TypeKeyById and TypeIdByKey implement anyblockjson.TypeResolver, the
+// optional capability the codec discovers on ResolveProperties by type
+// assertion (SPEC 2d). They delegate to the read half, which already answers
+// both against this space's index.
+//
+// Without them the write half is not a TypeResolver, and two things go wrong
+// on every v2 import, both silently. A `type-<key>` reference stays written
+// as the derived id where the store holds an object id. And `query_source`'s
+// types list -- a type-KEY slot -- lands its bare KEY in the setOf detail
+// instead of the type object's id, which is what querySourceFilters then
+// fails to resolve when the query is run.
+func (r *creatingResolvers) TypeKeyById(id string) (string, bool) {
+	return r.reads.TypeKeyById(id)
+}
+
+func (r *creatingResolvers) TypeIdByKey(key string) (string, bool) {
+	return r.reads.TypeIdByKey(key)
 }
 
 // err aggregates create failures hit during resolution; the resolver

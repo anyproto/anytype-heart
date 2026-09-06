@@ -28,7 +28,7 @@ import (
 // slugDataviewDoc is a set whose dataview names the BSON-keyed property by its
 // STORED key — the shape a real space holds. editRead imports with the bundled
 // vocabulary, so the stored spelling survives into the snapshot verbatim.
-const slugDataviewDoc = `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+const slugDataviewDoc = `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs"},"query_source":{"types":["ot-bug"]},"blocks":[` +
 	`{"id":"dataview","type":"dataview",` +
 	`"properties":[{"property":"name","format":"text"},{"property":"` + slugPropKey + `","format":"text"}],` +
 	`"views":[{"id":"viewAll1","name":"All",` +

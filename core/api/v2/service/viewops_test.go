@@ -26,7 +26,7 @@ import (
 // editSetDoc is a set with the one dataview block sets carry (fixed id
 // "dataview"): one "All" view whose custom columns are hidden — the exact
 // shape the gap report described on a freshly generated type/set view.
-const editSetDoc = `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+const editSetDoc = `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs"},"query_source":{"types":["ot-bug"]},"blocks":[` +
 	`{"id":"dataview","type":"dataview",` +
 	`"properties":[{"property":"name","format":"text"},{"property":"severity","format":"select"},{"property":"dueDate","format":"date"}],` +
 	`"views":[{"id":"viewAll1","name":"All",` +
@@ -34,7 +34,7 @@ const editSetDoc = `{"formatVersion":"2.0","id":"obj1","type":"set","properties"
 	`"columns":[{"property":"name"},{"property":"severity","hidden":true,"width":100},{"property":"dueDate","hidden":true,"width":120}]}]}]}`
 
 // editTwoViewsDoc carries two views, so view targeting is required.
-const editTwoViewsDoc = `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+const editTwoViewsDoc = `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs"},"query_source":{"types":["ot-bug"]},"blocks":[` +
 	`{"id":"dataview","type":"dataview",` +
 	`"properties":[{"property":"name","format":"text"},{"property":"severity","format":"select"}],` +
 	`"views":[` +
@@ -626,7 +626,7 @@ func TestUpdateViewOp(t *testing.T) {
 	t.Run("groups and objectOrders round-trip untouched", func(t *testing.T) {
 		// kanban editor state is output-only (§4a) but must SURVIVE a view
 		// edit — the whole-block reimport keeps it
-		doc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+		doc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs"},"query_source":{"types":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview",` +
 			`"properties":[{"property":"name","format":"text"},{"property":"severity","format":"select"}],` +
 			`"views":[{"id":"viewBoard1","name":"Board","type":"kanban","group_by":"severity",` +
@@ -848,7 +848,7 @@ func TestViewFamilyOps(t *testing.T) {
 	})
 
 	t.Run("delete_view removes the view and its editor state", func(t *testing.T) {
-		doc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+		doc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs"},"query_source":{"types":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview",` +
 			`"properties":[{"property":"name","format":"text"},{"property":"severity","format":"select"}],` +
 			`"views":[` +
@@ -960,7 +960,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 
 	// editDanglingDoc: view B's filter holds a value that resolves to no
 	// option — the state a deleted tag leaves behind.
-	const editDanglingDoc = `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+	const editDanglingDoc = `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs"},"query_source":{"types":["ot-bug"]},"blocks":[` +
 		`{"id":"dataview","type":"dataview",` +
 		`"properties":[{"property":"name","format":"text"},{"property":"severity","format":"select"}],` +
 		`"views":[` +
@@ -1018,7 +1018,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
 			},
 		})
-		doc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+		doc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs"},"query_source":{"types":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview",` +
 			`"properties":[{"property":"name","format":"text"},{"property":"severity","format":"select"}],` +
 			`"views":[` +
@@ -1053,7 +1053,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
 			},
 		})
-		doc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+		doc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs"},"query_source":{"types":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview",` +
 			`"properties":[{"property":"name","format":"text"},{"property":"legacy","format":"select"}],` +
 			`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"},{"property":"legacy"}]}]}]}`
@@ -1073,7 +1073,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 	t.Run("A: copy_from preserves the source's exact option ids", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addSelectProperty(t) // opt-high exists
-		doc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+		doc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs"},"query_source":{"types":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview",` +
 			`"properties":[{"property":"name","format":"text"},{"property":"severity","format":"select"}],` +
 			`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"}],` +
@@ -1114,7 +1114,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 			}
 			fmt.Fprintf(&views, `{"id":"view%02d","name":"V%d","columns":[%s]}`, v, v, cols.String())
 		}
-		doc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Wide","setOf":["ot-bug"]},"blocks":[` +
+		doc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Wide"},"query_source":{"types":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview","properties":[` + props.String() + `],"views":[` + views.String() + `]}]}`
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
 			Return(editRead(t, doc), nil)
@@ -1210,7 +1210,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 
 	t.Run("minor: removing a column from a column-less view is a clean no-op", func(t *testing.T) {
 		fx := newV2Fixture(t)
-		doc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+		doc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs"},"query_source":{"types":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview","properties":[{"property":"name","format":"text"}],` +
 			`"views":[{"id":"viewA1","name":"A"}]}]}`
 		fx.expectMutate(editRead(t, doc), "headB")
@@ -1292,7 +1292,7 @@ func TestViewOpReviewFixes(t *testing.T) {
 
 	t.Run("minor: copy_from carries the source's kanban editor state", func(t *testing.T) {
 		fx := newV2Fixture(t)
-		doc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+		doc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs"},"query_source":{"types":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview",` +
 			`"properties":[{"property":"name","format":"text"},{"property":"severity","format":"select"}],` +
 			`"views":[{"id":"viewBoard1","name":"Board","type":"kanban","group_by":"severity",` +

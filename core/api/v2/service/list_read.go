@@ -413,9 +413,18 @@ func (s *Service) querySourceFilters(spaceId, queryId string, read apicore.Objec
 		})
 	}
 	for _, key := range relationKeys {
+		// Exists, not NotEmpty: a property source matches every object that
+		// CARRIES the property, whatever its value — the format states it
+		// ("presence, not a non-empty value, so an object holding it empty
+		// belongs to the set", §6.2), and the subscription service, which is
+		// what v1 and the desktop client both run, says the same in code.
+		// NotEmpty here also starves a view whose own filter is
+		// `Property → is empty`: the source has already excluded every row
+		// such a view could show. That is GO-7404, re-derived here five
+		// weeks after it was fixed there.
 		alternatives = append(alternatives, database.FilterRequest{
 			RelationKey: domain.RelationKey(key),
-			Condition:   model.BlockContentDataviewFilter_NotEmpty,
+			Condition:   model.BlockContentDataviewFilter_Exists,
 		})
 	}
 	if len(alternatives) == 1 {

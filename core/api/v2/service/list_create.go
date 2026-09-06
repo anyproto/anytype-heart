@@ -400,11 +400,30 @@ func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey
 	return nil
 }
 
-// buildQueryDocument synthesizes the query's AnyBlock document: name + setOf
-// in properties, and one dataview block (id "dataview") carrying the views —
-// the §8/R10 initial-state construction. The document's type key and its
-// setOf property keep their internal "set" spelling: only the REST noun is
-// Query.
+// querySourceMember is the root member a query states its source in (§6.2).
+// Named once because three places need it to agree: the document this file
+// builds, the applier's C11 loss guard (a classification warning arrives on
+// "/"+querySourceMember), and the wrapper's list-source reader.
+const querySourceMember = "query_source"
+
+// buildQueryDocument synthesizes the query's AnyBlock document: the name in
+// properties, the source in the root `query_source` group, and one dataview
+// block (id "dataview") carrying the views — the §8/R10 initial-state
+// construction.
+//
+// The source is a ROOT member, not a property. The format promoted it out of
+// the stored `setOf` detail and now refuses the flat spelling
+// unconditionally (§6.2), because inside `properties` a query source is a
+// value in the generic bag and the published schema can say nothing about
+// it — not its shape, not what an element means — while the slot really does
+// hold two different kinds of thing, type ids AND property ids, under one
+// grammar. Two lists say which is which.
+//
+// The entry is the type's KEY, not its object id: `query_source.types` is a
+// type-KEY slot, spelled the way `template_for` and every `object_types` is.
+// Handing it a store id would not be a harmless alias — a store id shaped
+// like `type-<something>` parses as a derived id and inverts to the wrong
+// key.
 func (s *Service) buildQueryDocument(spaceId, typeId string, req v2model.CreateQueryRequest, referenced []viewKeyRef) ([]byte, error) {
 	fields := map[string]json.RawMessage{}
 	var err error
@@ -414,7 +433,12 @@ func (s *Service) buildQueryDocument(spaceId, typeId string, req v2model.CreateQ
 	if fields["type"], err = rawJSON(string(bundle.TypeKeySet)); err != nil {
 		return nil, err
 	}
-	if fields["properties"], err = rawJSON(map[string]any{"name": req.Name, "setOf": []string{typeId}}); err != nil {
+	if fields["properties"], err = rawJSON(map[string]any{"name": req.Name}); err != nil {
+		return nil, err
+	}
+	// req.Type is the canonical stored key by here (CreateQuery rewrites it
+	// to entry.Key), which is what a type-KEY slot takes
+	if fields[querySourceMember], err = rawJSON(map[string]any{"types": []string{req.Type}}); err != nil {
 		return nil, err
 	}
 

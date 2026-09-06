@@ -430,13 +430,13 @@ func TestV2PatchCorpseKeyChannels(t *testing.T) {
 // in-view subtests.
 func TestV2ViewOpsCorpseKeys(t *testing.T) {
 	ctx := context.Background()
-	corpseViewDocBody := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+	corpseViewDocBody := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs"},"query_source":{"types":["ot-bug"]},"blocks":[` +
 		`{"id":"dataview","type":"dataview",` +
 		`"properties":[{"property":"name","format":"text"},{"property":"` + corpseBsonKey + `","format":"date"}],` +
 		`"views":[{"id":"viewAll1","name":"All",` +
 		`"filters":[{"property":"` + corpseBsonKey + `","condition":"equal","value":"x"}],` +
 		`"columns":[{"property":"name"},{"property":"` + corpseBsonKey + `","width":100}]}]}]}`
-	plainViewDocBody := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+	plainViewDocBody := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs"},"query_source":{"types":["ot-bug"]},"blocks":[` +
 		`{"id":"dataview","type":"dataview",` +
 		`"properties":[{"property":"name","format":"text"}],` +
 		`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"}]}]}]}`
@@ -661,7 +661,7 @@ func TestV2UninstalledBundledPropertyRefusesWrites(t *testing.T) {
 		// with the repair, not "unknown key" with a did-you-mean.
 		corpseShapes(t, func(t *testing.T, shape corpseShape) {
 			fx := newFx(t, shape)
-			plainViewDoc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+			plainViewDoc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs"},"query_source":{"types":["ot-bug"]},"blocks":[` +
 				`{"id":"dataview","type":"dataview","properties":[{"property":"name","format":"text"}],` +
 				`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"}]}]}]}`
 			fx.expectMutate(editRead(t, plainViewDoc), "headB")
@@ -1031,7 +1031,7 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 	t.Run("update_view refuses it on every channel", func(t *testing.T) {
 		// the executed §8.41-2 matrix: columns, groupBy, filters, sorts —
 		// the four channels that accepted a removed `tag` 40 times out of 40
-		plainViewDoc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+		plainViewDoc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs"},"query_source":{"types":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview","properties":[{"property":"name","format":"text"}],` +
 			`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"}]}]}]}`
 		ops := map[string]string{
@@ -1058,7 +1058,7 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 	t.Run("insert_view runs the same gate", func(t *testing.T) {
 		// insert_view shares validateViewKeys with update_view — pinned so a
 		// future split of the two paths cannot reopen one of them
-		plainViewDoc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+		plainViewDoc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs"},"query_source":{"types":["ot-bug"]},"blocks":[` +
 			`{"id":"dataview","type":"dataview","properties":[{"property":"name","format":"text"}],` +
 			`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"}]}]}]}`
 		corpseShapes(t, func(t *testing.T, shape corpseShape) {
@@ -1079,7 +1079,7 @@ func TestV2RemovedBundledSlugEqualsKeyClass(t *testing.T) {
 		corpseShapes(t, func(t *testing.T, shape corpseShape) {
 			fx := newV2Fixture(t)
 			addRemoved(t, fx, "tag", shape)
-			holdingViewDoc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs","setOf":["ot-bug"]},"blocks":[` +
+			holdingViewDoc := `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"name":"Bugs"},"query_source":{"types":["ot-bug"]},"blocks":[` +
 				`{"id":"dataview","type":"dataview","properties":[{"property":"name","format":"text"},{"property":"tag","format":"multi_select"}],` +
 				`"views":[{"id":"viewAll1","name":"All","columns":[{"property":"name"},{"property":"tag"}]}]}]}`
 			fx.expectMutate(editRead(t, holdingViewDoc), "headB")
