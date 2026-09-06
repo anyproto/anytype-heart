@@ -43,16 +43,23 @@ const (
 	listKindCollection listKind = "collection"
 )
 
-// queryTypeKey / collectionTypeKey are the STORED type keys of the two list
-// kinds. The product renamed the surface noun only: a "Query" is still keyed
-// `set` everywhere below the API (v2service list_read.go says the same about
-// the layout), so the detection has to know both spellings — the key, and
-// whatever the space's own type listing names it, because the wrapper reads
-// documents in the name vocabulary (D5) and a served `type` is therefore the
-// display name.
+// queryTypeKey / collectionTypeKey are the api spellings of the two list
+// kinds, and legacyQueryTypeKey the one a query used to answer.
+//
+// A query is keyed `set` everywhere below the API and always will be — the
+// rename is the api TYPE table's alone (bundle.TypeApiSlug), so the store,
+// the mint and API v1 all still say `set`. What changed is what a v2 read
+// puts in a served `type`, which is what this detection reads. Both are kept
+// because a document read before the rename, or served by an older heart,
+// says the old word and must still be detected as a query.
+//
+// A third spelling reaches the same slot: the wrapper reads documents in the
+// name vocabulary (D5), so a served `type` is often the space's own DISPLAY
+// name — hence the typeNames pass below.
 const (
-	queryTypeKey      = "set"
-	collectionTypeKey = "collection"
+	queryTypeKey       = "query"
+	legacyQueryTypeKey = "set"
+	collectionTypeKey  = "collection"
 )
 
 // listRoutes maps a kind onto its REST collection segment. Spelled out
@@ -79,11 +86,27 @@ const maxListSources = 3
 
 // servedListDoc is the slice of a served document this file reads.
 type servedListDoc struct {
-	Id         string            `json:"id"`
-	Kind       string            `json:"kind"`
-	Type       string            `json:"type"`
-	Properties map[string]any    `json:"properties"`
-	Blocks     []servedListBlock `json:"blocks"`
+	Id   string `json:"id"`
+	Kind string `json:"kind"`
+	Type string `json:"type"`
+	// QuerySource is where a query says what it ranges over. A ROOT member,
+	// not a property: the format promoted it out of the stored `setOf`
+	// detail and refuses the flat spelling, so a reader that still looks in
+	// the properties map finds nothing and silently reports a query with no
+	// source.
+	QuerySource *servedQuerySource `json:"query_source"`
+	Properties  map[string]any     `json:"properties"`
+	Blocks      []servedListBlock  `json:"blocks"`
+}
+
+// servedQuerySource is the two typed lists. The entries are KEYS, never
+// object ids: `types` holds a type spelled in whatever vocabulary the read
+// asked for — the display name here, since the wrapper reads with
+// `?keys=name` (D5) — and `properties` holds the property's stored key, which
+// carries no vocabulary at all.
+type servedQuerySource struct {
+	Types      []string `json:"types"`
+	Properties []string `json:"properties"`
 }
 
 type servedListBlock struct {
@@ -198,7 +221,7 @@ func (r *Runner) detectListKind(ctx context.Context, spaceId string, doc []byte)
 		return detectedList{}, false
 	}
 	switch found.envelope.Type {
-	case queryTypeKey:
+	case queryTypeKey, legacyQueryTypeKey:
 		found.kind = listKindQuery
 		return found, true
 	case collectionTypeKey:
@@ -207,6 +230,9 @@ func (r *Runner) detectListKind(ctx context.Context, spaceId string, doc []byte)
 	}
 	found.typeNames = r.typeNameIndex(ctx, spaceId)
 	switch found.envelope.Type {
+	// only the current spelling here: typeNames is keyed by the SERVED api
+	// key, so it never holds the legacy one — and a miss returns "", which
+	// in a switch would match any document whose type is empty
 	case found.typeNames[queryTypeKey]:
 		found.kind = listKindQuery
 		return found, true
@@ -321,7 +347,7 @@ func (r *Runner) listRows(ctx context.Context, spaceId, objectId string, kind li
 func (r *Runner) listDefinitionOf(ctx context.Context, spaceId string, found detectedList) listDefinition {
 	def := listDefinition{Kind: found.kind, Name: docPropertyString(found.envelope.Properties, "name")}
 	if found.kind == listKindQuery {
-		def.Sources, def.SourceIsType = r.listSourceLabels(ctx, spaceId, found.envelope.Properties)
+		def.Sources, def.SourceIsType = r.listSourceLabels(ctx, spaceId, found.envelope.QuerySource)
 	}
 	dv := found.dataview
 	for _, v := range dv.Views {
@@ -348,32 +374,48 @@ func (r *Runner) listDefinitionOf(ctx context.Context, spaceId string, found det
 	return def
 }
 
-// listSourceLabels names a query's sources — the `setOf` property, whose
-// entries are the ids of the TYPES the query runs over (or, rarely, of
-// properties: a query over "everything that has this property"). Each id is
-// resolved to its name by reading it, because the type listing serves keys
-// and names but no ids. Best-effort in both halves: an unresolvable source is
-// spelled by its id rather than dropped, since a definition that silently
-// omits what a query runs over is worse than one that is ugly about it.
-func (r *Runner) listSourceLabels(ctx context.Context, spaceId string, props map[string]any) ([]string, bool) {
-	entries := docPropertyStrings(props, "setof")
-	if len(entries) > maxListSources {
-		entries = entries[:maxListSources]
+// listSourceLabels names a query's sources from the root `query_source`
+// group: the TYPES it ranges over, and the properties whose mere presence
+// puts an object in the set.
+//
+// No object reads any more, and none are possible: the group holds keys, not
+// ids. A type entry is already the label — the wrapper reads with
+// `?keys=name` (D5), so the vocabulary has spelled it the display name — and
+// a property entry is a stored key the property listing names. Both halves
+// stay best-effort: an unnamed source is spelled by its key rather than
+// dropped, because a definition that silently omits what a query runs over is
+// worse than one that is ugly about it.
+//
+// isType reports whether every source is a type, which is what decides
+// whether the definition can offer to create one.
+func (r *Runner) listSourceLabels(ctx context.Context, spaceId string, src *servedQuerySource) ([]string, bool) {
+	if src == nil {
+		return nil, true
 	}
-	labels := make([]string, 0, len(entries))
-	isType := true
-	for _, id := range entries {
-		name, kind, ok := r.objectNameAndKind(ctx, spaceId, id)
-		if !ok || name == "" {
-			labels = append(labels, id)
-			continue
-		}
-		if kind != "object_type" {
-			isType = false
-		}
-		labels = append(labels, name)
+	labels := make([]string, 0, len(src.Types)+len(src.Properties))
+	labels = append(labels, src.Types...)
+	for _, key := range src.Properties {
+		labels = append(labels, r.propertyLabel(ctx, spaceId, key))
 	}
-	return labels, isType
+	if len(labels) > maxListSources {
+		labels = labels[:maxListSources]
+	}
+	return labels, len(src.Properties) == 0
+}
+
+// propertyLabel names one stored property key, or returns the key when the
+// space's listing does not carry it.
+func (r *Runner) propertyLabel(ctx context.Context, spaceId, key string) string {
+	rows, err := r.propertyRows(ctx, spaceId)
+	if err != nil {
+		return key
+	}
+	for _, row := range rows {
+		if row.Key == key && row.Name != "" {
+			return row.Name
+		}
+	}
+	return key
 }
 
 // objectNameAndKind reads one object's name and document kind.

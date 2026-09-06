@@ -49,11 +49,31 @@ func TestApiSlugRoundTrip(t *testing.T) {
 	})
 
 	t.Run("every type slug resolves back to its key", func(t *testing.T) {
+		// TypeApiSlug, not ApiSlug: the type namespace may rename a bundled
+		// key on the api surface, and the reverse table is built from the
+		// same function — asking ApiSlug here would test a spelling the
+		// table does not carry
 		for key := range types {
-			got, ok := TypeKeyByApiSlug(ApiSlug(key.String()))
+			got, ok := TypeKeyByApiSlug(TypeApiSlug(key.String()))
 			require.True(t, ok, "slug of %q does not resolve", key)
 			assert.Equal(t, key, got)
 		}
+	})
+
+	t.Run("the set type is addressed as query, and only on the api surface", func(t *testing.T) {
+		assert.Equal(t, "query", TypeApiSlug("set"), "the v2 routes say /queries; the type says query too")
+		got, ok := TypeKeyByApiSlug("query")
+		require.True(t, ok)
+		assert.Equal(t, domain.TypeKey("set"), got, "the stored key is unchanged")
+
+		// the mint is deliberately NOT renamed: API v1 serves the stored
+		// apiObjectKey, and MintApiSlug is what writes it
+		assert.Equal(t, "set", ApiSlug("set"), "the ordinary derivation is untouched")
+		assert.Equal(t, "set", MintApiSlug("set"), "so a new space still STORES set, and v1 still serves it")
+
+		// the override is one exact key, not a prefix or a family
+		assert.Equal(t, "set_something_else", TypeApiSlug("setSomethingElse"))
+		assert.Equal(t, "settings", TypeApiSlug("settings"))
 	})
 
 	t.Run("string inversion is not the reverse mechanism", func(t *testing.T) {
@@ -170,26 +190,26 @@ func TestApiSlugTablesAreInjective(t *testing.T) {
 		}
 	})
 
-	assert.NoError(t, checkApiSlugInjectivity("relation", relationKeys))
-	assert.NoError(t, checkApiSlugInjectivity("type", typeKeys))
+	assert.NoError(t, checkApiSlugInjectivity("relation", relationKeys, ApiSlug))
+	assert.NoError(t, checkApiSlugInjectivity("type", typeKeys, TypeApiSlug))
 	assert.Equal(t, len(relationKeys), len(relationKeyByApiSlug), "one slug per bundled relation")
 	assert.Equal(t, len(typeKeys), len(typeKeyByApiSlug), "one slug per bundled type")
 }
 
 func TestApiSlugInjectivityGuardFires(t *testing.T) {
 	t.Run("two keys deriving one slug", func(t *testing.T) {
-		err := checkApiSlugInjectivity("relation", []string{"dueDate", "due_date"})
+		err := checkApiSlugInjectivity("relation", []string{"dueDate", "due_date"}, ApiSlug)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), `both derive the api slug "due_date"`)
 	})
 
 	t.Run("two slugs folding together", func(t *testing.T) {
-		err := checkApiSlugInjectivity("type", []string{"moodlevel", "moodLevel"})
+		err := checkApiSlugInjectivity("type", []string{"moodlevel", "moodLevel"}, TypeApiSlug)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "fold together")
 	})
 
 	t.Run("a clean table passes", func(t *testing.T) {
-		assert.NoError(t, checkApiSlugInjectivity("relation", []string{"dueDate", "name", "_score"}))
+		assert.NoError(t, checkApiSlugInjectivity("relation", []string{"dueDate", "name", "_score"}, ApiSlug))
 	})
 }

@@ -605,7 +605,7 @@ func (s *Service) typeSlugConflict(slug string, entries []typeEntry) (slugHolder
 		return slugHolder{}, false
 	}
 	if entry.Id == "" {
-		return slugHolder{Kind: "bundled type", Key: bundle.ApiSlug(entry.Key), Name: entry.Name}, true
+		return slugHolder{Kind: "bundled type", Key: bundle.TypeApiSlug(entry.Key), Name: entry.Name}, true
 	}
 	return slugHolder{Kind: "type", Key: entry.Key, Name: entry.Name}, true
 }
@@ -695,20 +695,24 @@ func servedTypeKeySets(entries []typeEntry) (keys map[string]bool, slugHolders m
 // the very next request to /properties/due_date 400'd.
 func servedKey(storedKey, slug string, keyTaken map[string]bool, slugHolders map[string][]string) string {
 	return servedKeyOf(storedKey, slug, keyTaken, slugHolders,
-		bundle.HasRelation(domain.RelationKey(storedKey)), shadowedBundledProperty)
+		bundle.HasRelation(domain.RelationKey(storedKey)), shadowedBundledProperty, bundle.ApiSlug)
 }
 
 // servedTypeKeyOf is servedKey for the type namespace (its bundled tests are
 // the type tables, not the relation ones).
 func servedTypeKeyOf(storedKey, slug string, keyTaken map[string]bool, slugHolders map[string][]string) string {
 	return servedKeyOf(storedKey, slug, keyTaken, slugHolders,
-		bundle.HasObjectTypeByKey(domain.TypeKey(storedKey)), shadowedBundledType)
+		bundle.HasObjectTypeByKey(domain.TypeKey(storedKey)), shadowedBundledType, bundle.TypeApiSlug)
 }
 
-func servedKeyOf(storedKey, slug string, keyTaken map[string]bool, slugHolders map[string][]string, bundled bool, shadowed func(input, matchedKey string) (string, bool)) string {
+// slugOf is the namespace's own derivation, and the two namespaces do not
+// share one: the TYPE table may rename a bundled key on the api surface
+// (bundle.TypeApiSlug), and a served spelling derived from the other
+// function would advertise an address the routes then refuse.
+func servedKeyOf(storedKey, slug string, keyTaken map[string]bool, slugHolders map[string][]string, bundled bool, shadowed func(input, matchedKey string) (string, bool), slugOf func(string) string) string {
 	candidate := slug
 	if bundled {
-		candidate = bundle.ApiSlug(storedKey)
+		candidate = slugOf(storedKey)
 	}
 	if candidate == "" || candidate == storedKey {
 		return storedKey

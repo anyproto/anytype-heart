@@ -15,7 +15,7 @@ import (
 // testDataviewDoc is a set as the server serves it to the wrapper — under
 // ?keys=name (D5), so column keys are display names: one dataview block,
 // one view, three visible columns and one hidden.
-const testDataviewDoc = `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"Name":"Tasks","setOf":["ot-task"]},"blocks":[` +
+const testDataviewDoc = `{"formatVersion":"2.0","id":"obj1","type":"query","query_source":{"types":["ot-task"]},"properties":{"Name":"Tasks"},"blocks":[` +
 	`{"id":"dataview","type":"dataview",` +
 	`"properties":[{"property":"Name","format":"text"},{"property":"Status","format":"select"},{"property":"Due date","format":"date"},{"property":"Priority","format":"select"}],` +
 	`"views":[{"id":"viewAll1","name":"All",` +
@@ -23,7 +23,7 @@ const testDataviewDoc = `{"formatVersion":"2.0","id":"obj1","type":"set","proper
 
 // testTwoViewsDoc carries two views whose ids share a suffix, so a short
 // view reference is ambiguous.
-const testTwoViewsDoc = `{"formatVersion":"2.0","id":"obj1","type":"set","properties":{"Name":"Tasks","setOf":["ot-task"]},"blocks":[` +
+const testTwoViewsDoc = `{"formatVersion":"2.0","id":"obj1","type":"query","query_source":{"types":["ot-task"]},"properties":{"Name":"Tasks"},"blocks":[` +
 	`{"id":"dataview","type":"dataview",` +
 	`"properties":[{"property":"Name","format":"text"},{"property":"Status","format":"select"}],` +
 	`"views":[` +

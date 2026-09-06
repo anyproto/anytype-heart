@@ -36,6 +36,43 @@ func ApiSlug(key string) string {
 	return strcase.ToSnake(key)
 }
 
+// bundledTypeApiSlugOverrides renames a bundled TYPE on the api surface
+// without touching what the platform stores it as. The one entry: the type
+// whose internal key is `set` is addressed as `query`, because that is the
+// product noun the v2 routes already use (`/v2/spaces/{id}/queries`) and a
+// surface that takes `query` in the path while answering `set` in the body
+// is one vocabulary too many.
+//
+// A rename here is api-surface-only BY CONSTRUCTION, and the construction is
+// what keeps API v1 out of it. This table is read by TypeApiSlug and by
+// nothing else — ApiSlug, ApiSlugFromName, MintApiSlug and MintApiSlugFromName
+// never consult it. That matters because MintApiSlug is what
+// objectcreator.injectApiObjectKey persists as `apiObjectKey` on every type
+// object including bundled installs, and API v1 serves that stored value: an
+// override reaching the mint would rename the type in v1 too, in every space
+// created after it landed. So the mint keeps deriving `set`, the store keeps
+// holding `set`, and only the derived table a v2 read consults says `query`.
+var bundledTypeApiSlugOverrides = map[string]string{
+	"set": "query",
+}
+
+// TypeApiSlug is ApiSlug for the TYPE namespace: the override where one
+// exists for a BUNDLED key, the ordinary derivation otherwise.
+//
+// The HasObjectTypeByKey gate keeps the table honest rather than guarding a
+// live case: it says the override may only rename a key this build actually
+// ships, so an entry left behind by a bundled type's removal stops applying
+// instead of quietly renaming whatever else arrives under that key. It
+// cannot distinguish two objects holding the same key — the function sees a
+// string — but nothing can hold `set` besides the bundled type, since every
+// custom type mints a bson stored key.
+func TypeApiSlug(key string) string {
+	if slug, ok := bundledTypeApiSlugOverrides[key]; ok && HasObjectTypeByKey(domain.TypeKey(key)) {
+		return slug
+	}
+	return ApiSlug(key)
+}
+
 // ApiSlugFromName derives a slug from a display name (transliterate, then
 // snake) — the transform objectcreator applies when no key is supplied.
 func ApiSlugFromName(name string) string {
@@ -163,7 +200,7 @@ func init() {
 			yield(key.String())
 		}
 	})
-	if err := checkApiSlugInjectivity("relation", relationKeys); err != nil {
+	if err := checkApiSlugInjectivity("relation", relationKeys, ApiSlug); err != nil {
 		panic(err)
 	}
 	relationKeyByApiSlug = make(map[string]domain.RelationKey, len(relationKeys))
@@ -180,13 +217,13 @@ func init() {
 			yield(key.String())
 		}
 	})
-	if err := checkApiSlugInjectivity("type", typeKeys); err != nil {
+	if err := checkApiSlugInjectivity("type", typeKeys, TypeApiSlug); err != nil {
 		panic(err)
 	}
 	typeKeyByApiSlug = make(map[string]domain.TypeKey, len(typeKeys))
 	typeKeysByFold = make(map[string][]domain.TypeKey, len(typeKeys))
 	for _, raw := range typeKeys {
-		slug := ApiSlug(raw)
+		slug := TypeApiSlug(raw)
 		typeKeyByApiSlug[slug] = domain.TypeKey(raw)
 		fold := FoldApiKey(slug)
 		typeKeysByFold[fold] = append(typeKeysByFold[fold], domain.TypeKey(raw))
@@ -204,11 +241,11 @@ func sortedApiSlugKeys(size int, each func(yield func(string))) []string {
 // slug make the reverse table a coin flip; two keys sharing a fold make that
 // whole fold class permanently ambiguous for the forgiving layer. Both are
 // defects in the TABLE, to be fixed by renaming a key, never served.
-func checkApiSlugInjectivity(kind string, keys []string) error {
+func checkApiSlugInjectivity(kind string, keys []string, slugOf func(string) string) error {
 	bySlug := make(map[string]string, len(keys))
 	byFold := make(map[string]string, len(keys))
 	for _, key := range keys {
-		slug := ApiSlug(key)
+		slug := slugOf(key)
 		if first, taken := bySlug[slug]; taken {
 			return fmt.Errorf("bundled %s keys %q and %q both derive the api slug %q — the reverse table would resolve it to whichever key the map reached last; rename one", kind, first, key, slug)
 		}

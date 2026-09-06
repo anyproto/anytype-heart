@@ -253,7 +253,7 @@ func removedPropertyIssue(spaceId, key, spelledAs, path string, v errKeys) v2mod
 // repair differs from the property one: a create cannot simply drop its
 // type, so the hint steers to the live type list.
 func removedTypeIssue(spaceId, key, path string, v errKeys) v2model.Issue {
-	slug := bundle.ApiSlug(key)
+	slug := bundle.TypeApiSlug(key)
 	spelling := slug
 	if v.names {
 		if t, err := bundle.GetType(domain.TypeKey(key)); err == nil && t.Name != "" {

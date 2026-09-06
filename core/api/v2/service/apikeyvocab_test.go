@@ -69,6 +69,26 @@ func TestApiKeyVocab(t *testing.T) {
 		assert.Equal(t, "page", v.TypeSlug("page"))
 	})
 
+	t.Run("the bundled set type is served as query, and still accepts set", func(t *testing.T) {
+		// The REST noun has always been Query (/v2/spaces/{id}/queries) while
+		// the type answered `set`, which is one vocabulary too many on one
+		// surface. The rename lives in the derived TYPE table alone
+		// (bundle.TypeApiSlug), so it never reaches the mint and never
+		// reaches API v1, which serves the stored apiObjectKey.
+		_, v := vocabFixture(t)
+		assert.Equal(t, "query", v.TypeSlug("set"), "the served spelling matches the route")
+
+		key, ok := v.TypeKey("query")
+		require.True(t, ok, "what the surface emits, it must accept back")
+		assert.Equal(t, "set", key, "and it inverts to the STORED key, which is unchanged")
+
+		// the old spelling stays addressable: bodies and paths written
+		// against the previous surface must not start 404-ing
+		key, ok = v.TypeKey("set")
+		require.True(t, ok, "the previous spelling still resolves")
+		assert.Equal(t, "set", key)
+	})
+
 	t.Run("everything emitted inverts (obligation 1)", func(t *testing.T) {
 		_, v := vocabFixture(t)
 		for _, stored := range []string{"bsonAwareKey", "bsonBareKey", "createdDate", "dueDate", "name"} {

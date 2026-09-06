@@ -312,23 +312,24 @@ func TestFind(t *testing.T) {
 		// find prints is what the model hands back to describe and create
 		fx := newFixture(t)
 		fx.stub("POST /v2/spaces/space1/search", 200, searchResponse(2, false,
-			v2model.ObjectRow{Id: "bafyobj1", Name: "Open tasks", Type: "set"},
+			v2model.ObjectRow{Id: "bafyobj1", Name: "Open tasks", Type: "query"},
 			v2model.ObjectRow{Id: "bafyobj2", Name: "Q3 report", Type: "task"},
 		))
 		fx.stub("GET /v2/spaces/space1/types", 200,
-			`{"data":[{"key":"set","name":"Query"},{"key":"task","name":"Task"}],"total":2,"offset":0,"limit":500,"has_more":false}`)
+			`{"data":[{"key":"query","name":"Query"},{"key":"task","name":"Task"}],"total":2,"offset":0,"limit":500,"has_more":false}`)
 
 		result, err := fx.Run(ctx, "find", map[string]any{"space": "space1", "query": "q"})
 
 		require.NoError(t, err)
 		assert.Contains(t, result.Text, "1. Open tasks (Query)")
 		assert.Contains(t, result.Text, "2. Q3 report (Task)")
-		assert.NotContains(t, result.Text, "(set)", "the internal key stays off the prompt")
+		assert.NotContains(t, result.Text, "(query)", "the key stays off the prompt; the prose says the NAME")
 
 		js, ok := result.JSON.(findResult)
 		require.True(t, ok)
-		assert.Equal(t, "set", js.Handles[0].Type,
-			"the machine channel keeps the key — it is the type's identity, and programmatic callers speak it")
+		assert.Equal(t, "query", js.Handles[0].Type,
+			"the machine channel keeps the api key — it is how a programmatic caller addresses the type, "+
+				"and for the query type that key is `query`, not the `set` the store holds below the API")
 	})
 
 	t.Run("truncation steers", func(t *testing.T) {

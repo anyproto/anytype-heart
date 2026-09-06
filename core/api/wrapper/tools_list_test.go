@@ -20,10 +20,14 @@ import (
 )
 
 // testQueryDoc is a Query as the wrapper reads one: ?keys=name, so the type
-// term and every property key are DISPLAY names ("Query", "Set of", "Due
-// date"), and the view's filter is the structured §6.2 tree.
+// term and every property key are DISPLAY names ("Query", "Due date"), and
+// the view's filter is the structured §6.2 tree. The source is the ROOT
+// `query_source` group, whose `types` entry the name vocabulary has already
+// spelled as the type's display name — not an object id, which is what the
+// retired flat `Set of` property held.
 const testQueryDoc = `{"formatVersion":"2.0","etag":"e1","id":"bafyquery","type":"Query",` +
-	`"properties":{"Name":"Open tasks","Set of":["bafytype"]},` +
+	`"query_source":{"types":["Task"]},` +
+	`"properties":{"Name":"Open tasks"},` +
 	`"blocks":[{"id":"dataview","type":"dataview","properties":[` +
 	`{"property":"Name","format":"text"},{"property":"Done","format":"checkbox"},{"property":"Due date","format":"date"}],` +
 	`"views":[{"id":"view1","name":"All",` +
@@ -41,7 +45,7 @@ const testCollectionDoc = `{"formatVersion":"2.0","etag":"e1","id":"bafycoll","t
 // testListTypesBody is the space's type listing: the two list kinds are
 // keyed `set` and `collection` and NAMED Query and Collection — the whole
 // reason detection cannot match on one spelling.
-const testListTypesBody = `{"data":[{"key":"set","name":"Query"},{"key":"collection","name":"Collection"},` +
+const testListTypesBody = `{"data":[{"key":"query","name":"Query"},{"key":"collection","name":"Collection"},` +
 	`{"key":"task","name":"Task"},{"key":"book","name":"Book"}],"total":4,"offset":0,"limit":500,"has_more":false}`
 
 // testTypeObjectDoc is the source type read the query's definition resolves

@@ -242,15 +242,15 @@ func TestTypeKeyCaseFold(t *testing.T) {
 		fx.stub("GET /v2/spaces/space1/types/Query", 404,
 			`{"status":404,"code":"not_found","message":"type \"Query\" not found in space \"space1\""}`)
 		fx.stub("GET /v2/spaces/space1/types", 200,
-			`{"data":[{"key":"set","name":"Query"},{"key":"task","name":"Task"}],"total":2,"offset":0,"limit":500,"has_more":false}`)
-		fx.stub("GET /v2/spaces/space1/types/set", 200,
+			`{"data":[{"key":"query","name":"Query"},{"key":"task","name":"Task"}],"total":2,"offset":0,"limit":500,"has_more":false}`)
+		fx.stub("GET /v2/spaces/space1/types/query", 200,
 			`{"formatVersion":"2.0","kind":"object_type","properties":{"name":"Query"},"type_settings":{"api_key":"set","property_definitions":[]}}`)
 		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
 
 		result, err := fx.Run(ctx, "describe", map[string]any{"space": "space1", "type": "Query"})
 
 		require.NoError(t, err)
-		require.Len(t, fx.sent("GET /v2/spaces/space1/types/set"), 1, "the name resolved to the key")
+		require.Len(t, fx.sent("GET /v2/spaces/space1/types/query"), 1, "the name resolved to the key")
 		assert.Contains(t, result.Text, "type Query", "and the receipt answers in the name the caller spoke")
 	})
 
