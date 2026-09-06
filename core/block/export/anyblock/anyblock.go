@@ -321,7 +321,10 @@ func (e *Exporter) ExportCollected(ctx context.Context, req Request, docs collec
 	// is not safe for concurrent use, and the composer consults its options
 	// only under its own mutex — sharing an instance with a worker would
 	// race (compose.NewComposer's contract).
-	composer := compose.NewComposer(storeresolver.New(e.ObjectStore.SpaceIndex(req.SpaceId)).Options(), req.SpaceName)
+	composer, err := compose.NewComposer(storeresolver.New(e.ObjectStore.SpaceIndex(req.SpaceId)).Options(), req.SpaceName)
+	if err != nil {
+		return res, fmt.Errorf("new composer: %w", err)
+	}
 
 	// emit: width-bounded tasks, each holding one resolver set for its
 	// duration. The output cannot depend on scheduling: every path was fixed

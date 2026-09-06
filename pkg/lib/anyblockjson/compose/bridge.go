@@ -3,6 +3,7 @@
 package compose
 
 import (
+	"fmt"
 	external "github.com/anyproto/any-block/bundle"
 	externalmodel "github.com/anyproto/any-block/format/v1/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
@@ -51,8 +52,17 @@ type Composer struct {
 	inner *external.Composer
 }
 
-func NewComposer(options anyblockjson.Options, spaceName string) *Composer {
-	return &Composer{inner: external.NewComposer(anyblockjson.ExternalOptions(options), spaceName)}
+// NewComposer refuses Options a bundle cannot be composed from — today, the
+// document-only NoDerivedTypeIds mode, which changes what a type document is
+// ADDRESSED by and so removes a bundle's only road to a type. It refuses at
+// construction rather than at Finish, when every document has already been
+// emitted and the news is useless.
+func NewComposer(options anyblockjson.Options, spaceName string) (*Composer, error) {
+	inner, err := external.NewComposer(anyblockjson.ExternalOptions(options), spaceName)
+	if err != nil {
+		return nil, fmt.Errorf("new composer: %w", err)
+	}
+	return &Composer{inner: inner}, nil
 }
 
 func (c *Composer) Observe(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase) (bool, []Issue) {

@@ -324,7 +324,7 @@ replace github.com/btcsuite/btcutil => github.com/btcsuite/btcd/btcutil v1.1.5
 replace github.com/dsoprea/go-jpeg-image-structure/v2 => github.com/dchesterton/go-jpeg-image-structure/v2 v2.0.0-20240318203529-c3eea088bd38
 
 // TEMPORARY, do not merge: pinned to any-block's go-7383-options-into-dictionary
-// at ecf4dd8 (which carries NoDerivedTypeIds), checked out detached in the
+// at 57f4add (which carries NoDerivedTypeIds and query_source), detached in the
 // worktree below so an unrelated tree cannot move under a build. Swap for a
 // pseudo-version once that branch is pushed.
 replace github.com/anyproto/any-block => /Users/roman/anytype/any-block_querysource
