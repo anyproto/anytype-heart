@@ -418,28 +418,6 @@ func (r *Runner) propertyLabel(ctx context.Context, spaceId, key string) string 
 	return key
 }
 
-// objectNameAndKind reads one object's name and document kind.
-func (r *Runner) objectNameAndKind(ctx context.Context, spaceId, objectId string) (string, string, bool) {
-	doc, err := r.client.raw(ctx, apiRequest{
-		method: "GET",
-		path:   "/v2/spaces/" + seg(spaceId) + "/objects/" + seg(objectId),
-		// include=properties is the cheapest shape that answers this
-		// question: the name lives in the properties map, and a source type's
-		// whole block tree would be serialized for nothing. (?outline=true
-		// would be cheaper still and is WRONG here — the outline shape drops
-		// the properties map unless include=properties accompanies it.)
-		query: url.Values{"keys": []string{"name"}, "include": []string{"properties"}},
-	})
-	if err != nil {
-		return "", "", false
-	}
-	var envelope servedListDoc
-	if err := json.Unmarshal(doc, &envelope); err != nil {
-		return "", "", false
-	}
-	return docPropertyString(envelope.Properties, "name"), envelope.Kind, true
-}
-
 //
 // ---- the definition's text ----
 //
@@ -795,30 +773,4 @@ func docPropertyString(props map[string]any, foldClass string) string {
 	}
 	s, _ := value.(string)
 	return s
-}
-
-// docPropertyStrings reads a property as its list of strings, tolerating the
-// single-value shape the store also stores.
-func docPropertyStrings(props map[string]any, foldClass string) []string {
-	value, ok := docPropertyValue(props, foldClass)
-	if !ok {
-		return nil
-	}
-	switch v := value.(type) {
-	case string:
-		if v == "" {
-			return nil
-		}
-		return []string{v}
-	case []any:
-		out := make([]string, 0, len(v))
-		for _, entry := range v {
-			if s, ok := entry.(string); ok && s != "" {
-				out = append(out, s)
-			}
-		}
-		return out
-	default:
-		return nil
-	}
 }
