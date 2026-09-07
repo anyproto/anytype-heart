@@ -61,6 +61,11 @@ func readWriteGrant(spaces ...string) *util.ApiGrant {
 	return &util.ApiGrant{Spaces: spaces, Perms: util.GrantPermsReadWrite}
 }
 
+// allSpacesGrant builds the shape the picker's "all spaces" option produces.
+func allSpacesGrant(perms string) *util.ApiGrant {
+	return &util.ApiGrant{AllSpaces: true, Perms: perms}
+}
+
 func TestEnsureSpaceGrant(t *testing.T) {
 	t.Run("a nil grant passes everywhere: legacy keys keep today's behavior", func(t *testing.T) {
 		for _, probe := range []struct{ method, path string }{
@@ -147,14 +152,35 @@ func TestEnsureSpaceGrant(t *testing.T) {
 		}
 	})
 
-	t.Run("POST /v2/spaces is refused for every granted key, readwrite included", func(t *testing.T) {
-		// a key that can mint spaces it then owns is not meaningfully scoped
+	t.Run("POST /v2/spaces is refused for a narrowed key", func(t *testing.T) {
+		// granted space1 only, it would mint and then own space2 — the
+		// boundary the user drew is escaped
 		w := serveGrant(t, readWriteGrant("space1"), "POST", "/v2/spaces")
 		require.Equal(t, http.StatusForbidden, w.Code)
 		body := w.Body.String()
 		assert.Contains(t, body, `"space_not_granted"`)
-		assert.Contains(t, body, "not available to space-scoped keys")
+		assert.Contains(t, body, "granted only some spaces")
+		// the refusal names the actual grant rather than calling an
+		// all-spaces key "space-scoped"
+		assert.Contains(t, body, "spaces [space1] with readwrite access")
 		assert.Equal(t, `Bearer error="insufficient_scope"`, w.Header().Get("WWW-Authenticate"))
+	})
+
+	t.Run("POST /v2/spaces admits an unrestricted grant, matching /v1", func(t *testing.T) {
+		// allSpaces is dynamic, so a space this key mints is already covered
+		// and nothing is escaped. /v1 honors the same grant on the same route
+		// (server.ensureUngrantedKey); refusing here would make the two APIs
+		// disagree about a byte-identical key.
+		w := serveGrant(t, allSpacesGrant(util.GrantPermsReadWrite), "POST", "/v2/spaces")
+		assert.Equal(t, http.StatusOK, w.Code, "body: %s", w.Body.String())
+	})
+
+	t.Run("POST /v2/spaces still refuses allSpaces read-only", func(t *testing.T) {
+		// not IsUnrestricted: a read grant may not write anything, and the
+		// verb gate is what says so
+		w := serveGrant(t, allSpacesGrant(util.GrantPermsRead), "POST", "/v2/spaces")
+		require.Equal(t, http.StatusForbidden, w.Code)
+		assert.Contains(t, w.Body.String(), `"write_not_granted"`)
 	})
 
 	t.Run("an unregistered no-space route is refused, not allowed", func(t *testing.T) {

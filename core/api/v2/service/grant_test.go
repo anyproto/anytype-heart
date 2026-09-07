@@ -29,6 +29,11 @@ func grantCtx(perms string, spaces ...string) context.Context {
 	return util.CtxWithApiGrant(context.Background(), &util.ApiGrant{Spaces: spaces, Perms: perms})
 }
 
+// allSpacesGrantCtx carries the shape the picker's "all spaces" option mints.
+func allSpacesGrantCtx(perms string) context.Context {
+	return util.CtxWithApiGrant(context.Background(), &util.ApiGrant{AllSpaces: true, Perms: perms})
+}
+
 func requireTechSpaceExcluded(t *testing.T, err error) {
 	t.Helper()
 	var v2Err *v2model.Error
@@ -198,10 +203,10 @@ func TestEnsureSpaceGrantBackstop(t *testing.T) {
 		assert.Equal(t, v2model.CodeValidationFailed, v2Err.Code)
 	})
 
-	t.Run("CreateSpace refuses every granted key at the service layer too", func(t *testing.T) {
-		// a key that can mint spaces it then owns is not meaningfully
-		// scoped — the route gate denies POST /v2/spaces, and this is the
-		// backstop for a path that skips it
+	t.Run("CreateSpace refuses a narrowed key at the service layer too", func(t *testing.T) {
+		// granted one space, it would mint and then own another — the route
+		// gate denies POST /v2/spaces, and this is the backstop for a path
+		// that skips it
 		fx := newV2Fixture(t)
 
 		_, err := fx.CreateSpace(grantCtx(util.GrantPermsReadWrite, testSpaceId),
@@ -211,6 +216,20 @@ func TestEnsureSpaceGrantBackstop(t *testing.T) {
 		require.True(t, errors.As(err, &v2Err))
 		assert.Equal(t, v2model.CodeSpaceNotGranted, v2Err.Code)
 		assert.Contains(t, v2Err.Message, "cannot create spaces")
+	})
+
+	t.Run("CreateSpace refuses an allSpaces key that cannot write", func(t *testing.T) {
+		// the backstop stands alone — no verb gate runs behind it — so it
+		// tests BOTH axes (IsUnrestricted), unlike the route gate's
+		// space-only branch
+		fx := newV2Fixture(t)
+
+		_, err := fx.CreateSpace(allSpacesGrantCtx(util.GrantPermsRead),
+			v2model.CreateSpaceRequest{Name: "New"}, false)
+
+		var v2Err *v2model.Error
+		require.True(t, errors.As(err, &v2Err))
+		assert.Equal(t, v2model.CodeSpaceNotGranted, v2Err.Code)
 	})
 }
 

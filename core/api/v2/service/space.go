@@ -146,13 +146,17 @@ func validateSpaceField(path, value string) error {
 // (CreateWorkspace applies every detail to the workspace object), where v1
 // spent a second WorkspaceSetInfo RPC on it.
 func (s *Service) CreateSpace(ctx context.Context, req v2model.CreateSpaceRequest, dryRun bool) (*v2model.Space, error) {
-	// The route gate already refuses granted keys on POST /v2/spaces
-	// (GlobalScopedDenied); this is the service-level backstop, because a
-	// key that can mint spaces it then owns is not meaningfully scoped and
+	// The route gate already refuses a narrowed key on POST /v2/spaces
+	// (GlobalScopedDenied); this is the service-level backstop, because
 	// this method calls no ensureSpace that could catch it.
-	if grant := util.ApiGrantFromCtx(ctx); grant != nil {
+	//
+	// An unrestricted grant (allSpaces with readwrite) passes: allSpaces is
+	// dynamic, so a space this key mints is already covered and nothing is
+	// escaped — and /v1 honors the same grant on the same route. A NARROWED
+	// key is refused: granted spaces A and B, it would mint and then own C.
+	if grant := util.ApiGrantFromCtx(ctx); grant != nil && !grant.IsUnrestricted() {
 		return nil, v2model.SpaceNotGranted(fmt.Sprintf(
-			"space-scoped keys cannot create spaces; granted: %s", grant.Describe()))
+			"a key granted only some spaces cannot create spaces; granted: %s", grant.Describe()))
 	}
 	name := strings.TrimSpace(req.Name)
 	description := strings.TrimSpace(req.Description)

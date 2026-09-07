@@ -58,9 +58,20 @@ const (
 	// them through; the service intersects its space set with the ctx
 	// grant (Service.ListSpaces, spaceRefs).
 	GlobalServiceFiltered GlobalRouteClass = "service-filtered"
-	// GlobalScopedDenied marks routes deliberately refused for every
-	// granted key: POST /v2/spaces — a key that can mint spaces it then
-	// owns is not meaningfully scoped.
+	// GlobalScopedDenied marks routes refused for a NARROWED key: POST
+	// /v2/spaces — a key granted spaces A and B that can mint space C,
+	// which it then owns, has escaped the boundary the user drew.
+	//
+	// An allSpaces grant is admitted, because that reasoning does not reach
+	// it: allSpaces is dynamic by design — a space created later is already
+	// covered — so minting one escapes nothing, and /v1 already honors the
+	// same grant on the same route (server.ensureUngrantedKey). Refusing it
+	// here would make the two APIs disagree about a byte-identical key.
+	//
+	// This branch answers the SPACE question only. A read-only allSpaces key
+	// is still refused, by the verb gate below, which says write_not_granted
+	// — the accurate reason. Testing IsUnrestricted here instead would refuse
+	// it as "granted only some spaces", which is false.
 	GlobalScopedDenied GlobalRouteClass = "scoped-denied"
 )
 
@@ -212,9 +223,9 @@ func ensureSpaceGrant(techSpaceId string) gin.HandlerFunc {
 		authz, classified := v2RouteAuthz[routeKey(c.Request.Method, c.FullPath())]
 		spaceId := c.Param(SpaceParam)
 		if spaceId == "" {
-			if !classified || authz.Global == "" || authz.Global == GlobalScopedDenied {
+			if !classified || authz.Global == "" || (authz.Global == GlobalScopedDenied && !grant.AllSpaces) {
 				c.Header(util.WwwAuthenticateHeader, util.BearerChallengeInsufficientScope(""))
-				respondV2Error(c, v2model.SpaceNotGranted(globalRouteRefusal(c, classified, authz)))
+				respondV2Error(c, v2model.SpaceNotGranted(globalRouteRefusal(c, classified, authz, grant)))
 				return
 			}
 		} else if refusal := util.SpaceGrantRefusal(grant, spaceId, techSpaceId); refusal != "" {
@@ -256,10 +267,12 @@ func effectiveVerb(authz RouteAuthz, classified bool) RouteVerb {
 // globalRouteRefusal words the 403 for a no-space route a scoped key cannot
 // use — the deliberate deny (POST /v2/spaces) and the fail-closed default
 // for a route the registry does not know.
-func globalRouteRefusal(c *gin.Context, classified bool, authz RouteAuthz) string {
+func globalRouteRefusal(c *gin.Context, classified bool, authz RouteAuthz, grant *util.ApiGrant) string {
 	route := c.Request.Method + " " + c.FullPath()
 	if classified && authz.Global == GlobalScopedDenied {
-		return fmt.Sprintf("%s is not available to space-scoped keys: a key that can create spaces it then owns is not meaningfully scoped", route)
+		return fmt.Sprintf(
+			"%s is not available to a key granted only some spaces: a key that can create spaces it then owns has escaped its grant; granted: %s",
+			route, grant.Describe())
 	}
 	return fmt.Sprintf("%s addresses no single space and is not classified for space-scoped keys — refused fail-closed", route)
 }
