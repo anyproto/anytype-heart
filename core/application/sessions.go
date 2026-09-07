@@ -54,7 +54,17 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 			return "", "", err
 		}
 		token, err = s.sessions.StartSession(s.sessionSigningKey, scope) // nolint:gosec
-		return token, "", err
+		if err != nil {
+			return "", "", err
+		}
+		return token, s.walletAccountId(), nil
+	}
+
+	// Both paths below compare against the recovered wallet; the accountKey one
+	// used to dereference it unchecked.
+	walletAccountId := s.walletAccountId()
+	if walletAccountId == "" {
+		return "", "", ErrWalletNotInitialized
 	}
 
 	var derived crypto.DerivationResult
@@ -65,10 +75,6 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 			return "", "", errors.Join(ErrBadInput, fmt.Errorf("invalid account key: %w", err))
 		}
 	} else {
-		if s.derivedKeys == nil {
-			return "", "", ErrWalletNotInitialized
-		}
-
 		// Derive keys from provided mnemonic to verify it's correct
 		derived, err = core.WalletAccountAt(mnemonic, 0)
 		if err != nil {
@@ -77,15 +83,32 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (token st
 	}
 
 	// Compare account IDs to verify we are at the same account
-	if derived.Identity.GetPublic().Account() != s.derivedKeys.Identity.GetPublic().Account() {
+	accountId = derived.Identity.GetPublic().Account()
+	if accountId != walletAccountId {
 		return "", "", errors.Join(ErrBadInput, fmt.Errorf("incorrect mnemonic"))
 	}
 	token, err = s.sessions.StartSession(s.sessionSigningKey, model.AccountAuth_Full)
 	if err != nil {
 		return "", "", err
 	}
-	// todo: account is empty, to be implemented with GO-1854
-	return token, "", nil
+	// Answering with the account is what keeps login synchronous: the client
+	// learns its own id from the response it is already awaiting, instead of
+	// having to be subscribed to an accountShow broadcast at the right
+	// microsecond (GO-7494). Retires the GO-1854 todo.
+	return token, accountId, nil
+}
+
+// walletAccountId is the recovered wallet's account id, or "" when no wallet is
+// initialized. derivedKeys is written under s.lock by WalletRecover and
+// WalletCreate, so it must not be read through.
+func (s *Service) walletAccountId() string {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+
+	if s.derivedKeys == nil {
+		return ""
+	}
+	return s.derivedKeys.Identity.GetPublic().Account()
 }
 
 func (s *Service) CloseSession(req *pb.RpcWalletCloseSessionRequest) error {
