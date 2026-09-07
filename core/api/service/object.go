@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/gogo/protobuf/types"
 
@@ -11,6 +13,7 @@ import (
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -84,7 +87,8 @@ func (s *Service) ListObjects(ctx context.Context, spaceId string, additionalFil
 }
 
 // GetObject retrieves a single object by its ID in a specific space.
-func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string) (*apimodel.ObjectWithBody, error) {
+// When includeBlockLinkCandidates is true, BlockLinkCandidates lists text and link blocks (for POST …/blocks/{id}/link).
+func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string, includeBlockLinkCandidates bool) (*apimodel.ObjectWithBody, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: objectId,
@@ -110,7 +114,12 @@ func (s *Service) GetObject(ctx context.Context, spaceId string, objectId string
 		return nil, err
 	}
 
-	return s.getObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown), nil
+	obj := s.getObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown)
+	if includeBlockLinkCandidates {
+		c := buildBlockLinkCandidates(resp.ObjectView)
+		obj.BlockLinkCandidates = &c
+	}
+	return obj, nil
 }
 
 // CreateObject creates a new object in a specific space.
@@ -156,7 +165,7 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 		})
 
 		if relAddFeatResp.Error.Code != pb.RpcObjectRelationAddFeaturedResponseError_NULL {
-			object, _ := s.GetObject(ctx, spaceId, objectId) // nolint:errcheck
+			object, _ := s.GetObject(ctx, spaceId, objectId, false) // nolint:errcheck
 			return object, ErrFailedSetPropertyFeatured
 		}
 	}
@@ -164,17 +173,21 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 	// First call BlockCreate at top, then BlockPaste to paste the body
 	if request.Body != "" {
 		if err := s.createAndPasteBody(ctx, spaceId, objectId, request.Body); err != nil {
-			object, _ := s.GetObject(ctx, spaceId, objectId) // nolint:errcheck
+			object, _ := s.GetObject(ctx, spaceId, objectId, false) // nolint:errcheck
 			return object, err
 		}
 	}
 
-	return s.GetObject(ctx, spaceId, objectId)
+	return s.GetObject(ctx, spaceId, objectId, false)
 }
 
 // UpdateObject updates an existing object in a specific space.
 func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId string, request apimodel.UpdateObjectRequest) (*apimodel.ObjectWithBody, error) {
-	_, err := s.GetObject(ctx, spaceId, objectId)
+	if request.Markdown != nil && request.MarkdownAppend != nil {
+		return nil, util.ErrBadInput("cannot set both markdown and markdown_append")
+	}
+
+	_, err := s.GetObject(ctx, spaceId, objectId, false)
 	if err != nil {
 		return nil, err
 	}
@@ -206,17 +219,27 @@ func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId str
 
 	if request.Markdown != nil {
 		if err := s.replaceObjectMarkdown(ctx, spaceId, objectId, *request.Markdown); err != nil {
-			object, _ := s.GetObject(ctx, spaceId, objectId) // nolint:errcheck
+			object, _ := s.GetObject(ctx, spaceId, objectId, false) // nolint:errcheck
 			return object, err
 		}
 	}
 
-	return s.GetObject(ctx, spaceId, objectId)
+	if request.MarkdownAppend != nil {
+		frag := strings.TrimSpace(*request.MarkdownAppend)
+		if frag != "" {
+			if err := s.createAndPasteBody(ctx, spaceId, objectId, frag); err != nil {
+				object, _ := s.GetObject(ctx, spaceId, objectId, false) // nolint:errcheck
+				return object, err
+			}
+		}
+	}
+
+	return s.GetObject(ctx, spaceId, objectId, false)
 }
 
 // DeleteObject deletes an existing object in a specific space.
 func (s *Service) DeleteObject(ctx context.Context, spaceId string, objectId string) (*apimodel.ObjectWithBody, error) {
-	object, err := s.GetObject(ctx, spaceId, objectId)
+	object, err := s.GetObject(ctx, spaceId, objectId, false)
 	if err != nil {
 		return nil, err
 	}
@@ -524,4 +547,74 @@ func (s *Service) createAndPasteBody(ctx context.Context, spaceId string, object
 	}
 
 	return nil
+}
+
+const blockLinkPreviewMaxRunes = 160
+
+func blockLinkTextPreview(s string) string {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return ""
+	}
+	runes := []rune(s)
+	if len(runes) <= blockLinkPreviewMaxRunes {
+		return s
+	}
+	return string(runes[:blockLinkPreviewMaxRunes]) + "…"
+}
+
+// buildBlockLinkCandidates returns text and link blocks in document tree order (for POST …/blocks/{id}/link).
+func buildBlockLinkCandidates(ov *model.ObjectView) []apimodel.BlockLinkCandidate {
+	if ov == nil || len(ov.Blocks) == 0 {
+		return []apimodel.BlockLinkCandidate{}
+	}
+	byID := make(map[string]*model.Block, len(ov.Blocks))
+	for _, b := range ov.Blocks {
+		if b != nil {
+			byID[b.Id] = b
+		}
+	}
+	root := ov.Blocks[0]
+	var out []apimodel.BlockLinkCandidate
+	var walk func(*model.Block)
+	walk = func(b *model.Block) {
+		if b == nil {
+			return
+		}
+		if b.Id != root.Id && !state.IsRequiredBlockId(b.Id) {
+			switch c := b.Content.(type) {
+			case *model.BlockContentOfText:
+				preview := ""
+				if c.Text != nil {
+					preview = blockLinkTextPreview(c.Text.Text)
+				}
+				out = append(out, apimodel.BlockLinkCandidate{
+					Object:      "block_link_candidate",
+					Id:          b.Id,
+					Kind:        "text",
+					TextPreview: preview,
+				})
+			case *model.BlockContentOfLink:
+				if c.Link != nil {
+					out = append(out, apimodel.BlockLinkCandidate{
+						Object:            "block_link_candidate",
+						Id:                b.Id,
+						Kind:              "link",
+						TargetObjectId:    c.Link.TargetBlockId,
+						LinkStyle:         linkStyleToAPIString(c.Link.Style),
+						CardStyle:         cardStyleToAPIString(c.Link.CardStyle),
+						IconSize:          iconSizeToAPIString(c.Link.IconSize),
+						LinkDescription:   linkDescriptionToAPIString(c.Link.Description),
+						Relations:         slices.Clone(c.Link.Relations),
+						BackgroundColor:   b.BackgroundColor,
+					})
+				}
+			}
+		}
+		for _, cid := range b.ChildrenIds {
+			walk(byID[cid])
+		}
+	}
+	walk(root)
+	return out
 }
