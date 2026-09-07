@@ -4,9 +4,11 @@
 package event
 
 import (
+	"context"
 	"slices"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 
@@ -140,6 +142,38 @@ func (es *GrpcSender) SetSessionServer(token string, server service.ClientComman
 		old.sender.close()
 	}
 	return srv
+}
+
+// waitForSessionPollInterval bounds how stale WaitForSession's answer can be.
+// WaitForSession runs at most once per login, so polling costs nothing measurable
+// and buys the absence of a waiter registry: no channels to close exactly once,
+// no lifecycle coupling to session teardown/supersede, and SetSessionServer — the
+// hot path — stays untouched.
+const waitForSessionPollInterval = 50 * time.Millisecond
+
+// WaitForSession blocks until token's event stream is registered and reports
+// whether it is. A client opens ListenSessionEvents and issues the RPC it
+// expects an event from as two independent requests, so the stream is routinely
+// not registered yet when the handler runs — and an event broadcast in that
+// window is dropped, with nothing to redeliver it. Handlers whose only output is
+// a fire-and-forget event call this first. Bounded by timeout and by ctx, so a
+// client that never opens a stream just falls through.
+func (es *GrpcSender) WaitForSession(ctx context.Context, token string, timeout time.Duration) bool {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	ticker := time.NewTicker(waitForSessionPollInterval)
+	defer ticker.Stop()
+	for {
+		if es.IsActive(token) {
+			return true
+		}
+		select {
+		case <-ctx.Done():
+			return es.IsActive(token) // it may have attached as we gave up
+		case <-ticker.C:
+		}
+	}
 }
 
 // scheduleClose tears a session down exactly once. It must not block the caller:

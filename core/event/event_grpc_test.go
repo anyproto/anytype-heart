@@ -127,3 +127,66 @@ func TestSendVariants_routing(t *testing.T) {
 	require.Eventually(t, func() bool { return countFor(a) == 2 && countFor(b) == 1 },
 		2*time.Second, time.Millisecond, "SendToSession+except hit a; BroadcastToOthers hit b")
 }
+
+// A handler that must not lose an event needs to wait for the caller's stream:
+// the client opens ListenSessionEvents and calls the RPC as two independent
+// requests, so the stream is often not registered yet when the handler runs.
+// WaitForSession runs on this goroutine and the attach is delayed, so it must
+// observe the absent session first — no scheduling hole that could let this pass
+// via the already-attached fast path.
+func TestWaitForSession_returnsWhenStreamAttachesLater(t *testing.T) {
+	es := NewGrpcSender()
+	const attachAfter = 150 * time.Millisecond
+	go func() {
+		time.Sleep(attachAfter)
+		es.SetSessionServer("tok", &fakeStream{})
+	}()
+
+	start := time.Now()
+	require.True(t, es.WaitForSession(context.Background(), "tok", 10*time.Second))
+	require.GreaterOrEqual(t, time.Since(start), attachAfter, "must have waited for the attach, not fast-pathed")
+}
+
+// An already-attached session returns at once.
+func TestWaitForSession_alreadyAttached(t *testing.T) {
+	es := NewGrpcSender()
+	es.SetSessionServer("tok", &fakeStream{})
+
+	start := time.Now()
+	require.True(t, es.WaitForSession(context.Background(), "tok", time.Minute))
+	require.Less(t, time.Since(start), waitForSessionPollInterval, "must not sleep on the fast path")
+}
+
+// A client that never opens a stream falls through, bounded by the timeout.
+func TestWaitForSession_timesOut(t *testing.T) {
+	es := NewGrpcSender()
+	const timeout = 150 * time.Millisecond
+
+	start := time.Now()
+	require.False(t, es.WaitForSession(context.Background(), "tok", timeout))
+	elapsed := time.Since(start)
+	require.GreaterOrEqual(t, elapsed, timeout)
+	require.Less(t, elapsed, 5*time.Second, "must not outlive its own timeout")
+}
+
+// A caller that goes away (client disconnect) unblocks immediately.
+func TestWaitForSession_canceledCaller(t *testing.T) {
+	es := NewGrpcSender()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	start := time.Now()
+	require.False(t, es.WaitForSession(ctx, "tok", time.Minute))
+	require.Less(t, time.Since(start), 5*time.Second, "a canceled caller must not wait out the timeout")
+}
+
+// Another session attaching is not this session's stream.
+func TestWaitForSession_perToken(t *testing.T) {
+	es := NewGrpcSender()
+	go func() {
+		time.Sleep(20 * time.Millisecond)
+		es.SetSessionServer("other", &fakeStream{})
+	}()
+	require.False(t, es.WaitForSession(context.Background(), "tok", 150*time.Millisecond),
+		"attaching another token must not satisfy this one")
+}

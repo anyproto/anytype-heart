@@ -15,6 +15,9 @@ Scope: global
 */
 
 import (
+	"context"
+	"time"
+
 	"github.com/anyproto/any-sync/app"
 
 	"github.com/anyproto/anytype-heart/pb"
@@ -30,6 +33,15 @@ type Sender interface {
 	BroadcastExceptSessions(event *pb.Event, exceptTokens []string)
 
 	app.Component
+}
+
+// SessionWaiter is the optional half of Sender implemented by senders that route
+// to client-owned streams (GrpcSender). Deliberately not part of Sender:
+// CallbackSender hands events straight to the mobile library's callback, with no
+// stream that could be late, so it must keep working untouched. Callers
+// type-assert and skip the wait when it is not implemented.
+type SessionWaiter interface {
+	WaitForSession(ctx context.Context, token string, timeout time.Duration) bool
 }
 
 type CallbackSender struct {

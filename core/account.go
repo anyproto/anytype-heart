@@ -39,7 +39,8 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 }
 
 func (mw *Middleware) AccountRecover(cctx context.Context, _ *pb.RpcAccountRecoverRequest) *pb.RpcAccountRecoverResponse {
-	err := mw.applicationService.AccountRecover()
+	token, _ := getSessionToken(cctx)
+	err := mw.applicationService.AccountRecover(cctx, token)
 	code := mapErrorCode(err,
 		errToCode(application.ErrNoMnemonicProvided, pb.RpcAccountRecoverResponseError_NEED_TO_RECOVER_WALLET_FIRST),
 		errToCode(application.ErrBadInput, pb.RpcAccountRecoverResponseError_BAD_INPUT),
