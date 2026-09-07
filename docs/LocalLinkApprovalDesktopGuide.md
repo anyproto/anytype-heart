@@ -101,6 +101,7 @@ Response:
 | `allow=false` | `challenge` empty. The request is dropped. |
 | `error.code = BAD_INPUT` | the grant violated a rule above. The challenge is **still pending** — fix the picker result and call again; the prompt stays answerable. |
 | `error.code = NO_PENDING_CHALLENGE` | nothing was pending for that caller: it expired (180s), was already answered, or never existed. Dismiss the prompt. |
+| `error.code = BAD_INPUT` | the grant is unusable: absent on a JsonAPI approval, present on a `Limited` one, or neither `spaceIds` nor `allSpaces` set. Keep Allow disabled until the user has chosen. |
 | `error.code = ACCOUNT_IS_NOT_RUNNING` | no account loaded. |
 
 This RPC requires a **full-scope** session — the desktop client's own. It is
@@ -117,6 +118,36 @@ both the pending prompt and a displayed code.
 
 Deny is remembered for the app run: a denied caller is refused silently and
 raises no new prompt until restart. You do not need to track this yourself.
+
+**Approving does NOT broadcast a hide**, and that is deliberate: this event
+means "take down the prompt and any code shown for it", and at the moment of
+approval the approving session is displaying the code it just received in the
+response. It dismisses its own prompt locally and keeps showing the code.
+
+The consequence, if you run more than one window: a second window keeps a live
+Allow/Deny for a request that has already been answered, and pressing Deny
+there returns `NO_PENDING_CHALLENGE` rather than revoking anything. Closing
+that needs either an "answered" event distinct from this one, or a broadcast
+that skips the approving session — raise it if multi-window matters to you and
+we will add the event rather than have you work around it.
+
+A repeat request from the same caller DOES broadcast a hide before the new
+`LinkApprovalRequest` arrives: asking again destroys that caller's previous
+prompt, including a code it had already been granted, which stops working at
+that moment. Dismiss on the hide, then render the new request.
+
+## What the requesting app sees
+
+Relevant if you also maintain a pairing client, and to know what is NOT a bug:
+
+| outcome | code on `SolveChallenge` / `NewChallenge` |
+| --- | --- |
+| the user has not answered the prompt yet | `CHALLENGE_NOT_APPROVED` — wait and retry; it is not a wrong code |
+| this caller already has a prompt on screen | `TOO_MANY_REQUESTS` — answer the open one, do not ask again |
+| the user denied this caller earlier this run | `TOO_MANY_REQUESTS` — it will not prompt again until heart restarts |
+
+All three answered `UNKNOWN_ERROR` before, so a client could only retry blindly
+— which burned the request budget and re-prompted the user.
 
 ## Edge cases
 
