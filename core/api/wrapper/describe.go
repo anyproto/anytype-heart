@@ -369,8 +369,9 @@ func describeText(result describeResult) string {
 	}
 
 	var b strings.Builder
-	// the type is titled by its display NAME — "Query", not the `set` a
-	// user never sees. The internal key stays off the prompt surface: the
+	// the type is titled by its display NAME — "Query", not a key. The api
+	// key is `query` too now, but the STORED key is still `set`, and that is
+	// the one a user never sees. The internal key stays off the prompt surface: the
 	// type arguments accept the name (values.go foldTypeArg), so the name is
 	// the one spelling the model both reads here and hands back. The key
 	// remains in the machine shape (result.Type) for programmatic callers.

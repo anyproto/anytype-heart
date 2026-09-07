@@ -404,14 +404,28 @@ func (r *Runner) listSourceLabels(ctx context.Context, spaceId string, src *serv
 }
 
 // propertyLabel names one stored property key, or returns the key when the
-// space's listing does not carry it.
+// space's listing cannot name it.
+//
+// Matched by FOLD CLASS, not by equality, because the two sides spell the
+// same property differently and neither can change: `query_source.properties`
+// carries the STORED key (`lastModifiedDate`) — the group takes no vocabulary
+// at all, since a property has no derived id to be addressed by — while the
+// property listing serves the minted api slug (`last_modified_date`). The
+// fold is what makes them one key, the same tool docPropertyValue uses.
+//
+// A custom property still falls through to its key, and that key is a bson
+// id: its api slug is minted from the display NAME, so no transform relates
+// the two and no client-side lookup can. Every property source measured on
+// the corpus is bundled (lastModifiedDate, addedDate, isArchived, type, tag,
+// createdDate), so the fall-through is the rare case, not the common one.
 func (r *Runner) propertyLabel(ctx context.Context, spaceId, key string) string {
 	rows, err := r.propertyRows(ctx, spaceId)
 	if err != nil {
 		return key
 	}
+	fold := anyblockjson.FoldKeyTerm(key)
 	for _, row := range rows {
-		if row.Key == key && row.Name != "" {
+		if row.Name != "" && anyblockjson.FoldKeyTerm(row.Key) == fold {
 			return row.Name
 		}
 	}
@@ -446,7 +460,13 @@ func listText(def listDefinition, selfHandle int, rows []Handle, typeNames map[s
 		case def.Filter != "":
 			fmt.Fprintf(&b, "filter: %s\n", def.Filter)
 		default:
-			b.WriteString("filter: (none — every object of that type)\n")
+			// "that type" only when the source IS a type — a query can range
+			// over a property instead, where membership is carrying it at all
+			if def.SourceIsType {
+				b.WriteString("filter: (none — every object of that type)\n")
+			} else {
+				b.WriteString("filter: (none — every object that carries it)\n")
+			}
 		}
 	} else {
 		// The membership sentence must not read as "this cannot be
@@ -752,10 +772,14 @@ func renderSortString(sorts []servedSort) string {
 //
 
 // docPropertyValue finds a served property by its FOLD class rather than by
-// one spelling: a document read in the name vocabulary spells `setOf` as
-// "Set of" and `name` as "Name", the api vocabulary spells them set_of and
-// name, and the fold (the format's own FoldKeyTerm) is what makes all of
-// them one key — the same tool values.go's property index is built on.
+// one spelling: a document read in the name vocabulary spells `dueDate` as
+// "Due date", the api vocabulary spells it due_date, and the fold (the
+// format's own FoldKeyTerm) is what makes both one key — the same tool
+// values.go's property index is built on.
+//
+// The example used to be `setOf`, which is no longer one: a query's source
+// left the properties bag for the root `query_source` group, so no fold
+// class finds it and listSourceLabels reads the group directly.
 func docPropertyValue(props map[string]any, foldClass string) (any, bool) {
 	for key, value := range props {
 		if anyblockjson.FoldKeyTerm(key) == foldClass {

@@ -64,6 +64,45 @@ func lineAfter(t *testing.T, text, prefix string) string {
 	return ""
 }
 
+// A query can range over a PROPERTY instead of a type — every object that
+// carries it belongs, whatever its value. That list is the one slot in a
+// served document with no vocabulary applied at all: it holds the STORED key
+// (`lastModifiedDate`), while the property listing serves the minted api slug
+// (`last_modified_date`). Matching them by fold class is what lets the
+// definition print a name a caller can act on instead of a stored spelling
+// they never chose.
+func TestReadQueryWithAPropertySource(t *testing.T) {
+	ctx := context.Background()
+
+	// given
+	fx := newFixture(t)
+	fx.seedSession("space1", Handle{N: 1, Id: "bafyquery", Name: "Touched", Type: "query"})
+	fx.stub("GET /v2/spaces/space1/objects/bafyquery", 200,
+		`{"formatVersion":"2.0","etag":"e1","id":"bafyquery","type":"Query",`+
+			`"query_source":{"properties":["lastModifiedDate"]},`+
+			`"properties":{"Name":"Touched"},`+
+			`"blocks":[{"id":"dataview","type":"dataview","views":[{"id":"view1","name":"All"}]}]}`)
+	fx.stub("GET /v2/spaces/space1/types", 200, testListTypesBody)
+	// the listing serves the api SLUG; the query source carries the stored key
+	fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse(
+		v2model.PropertyRow{Key: "last_modified_date", Name: "Last modified date", Format: "date"}))
+	fx.stub("GET /v2/spaces/space1/queries/bafyquery/objects", 200, searchResponse(0, false))
+
+	// when
+	result, err := fx.Run(ctx, "read", map[string]any{"object": "1"})
+
+	// then
+	require.NoError(t, err)
+	assert.Equal(t, "Last modified date", lineAfter(t, result.Text, "source: "),
+		"the property source is named, not spelled as the stored key the group carries")
+	assert.NotContains(t, result.Text, "type: ",
+		"a property source is not a type, and the definition must not offer to create one")
+	assert.Contains(t, result.Text, "every object that carries it",
+		"membership is carrying the property, not being of a type")
+	assert.NotContains(t, result.Text, "lastModifiedDate",
+		"and the stored spelling stays off the prompt")
+}
+
 func TestReadQuery(t *testing.T) {
 	ctx := context.Background()
 
