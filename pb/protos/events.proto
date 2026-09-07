@@ -252,6 +252,15 @@ message Event {
         // only attributable part of a pairing request.
         string origin = 5;
       }
+      // 1 was `string challenge`, the 4-digit code this event used to
+      // broadcast. Reserved, not merely deleted: oneof number 204 is reused,
+      // so a desktop that predates the rename decodes this message with the
+      // old LinkChallenge descriptor. Today it reads an empty code; a future
+      // field 1 of any string type would be rendered to the user AS the code
+      // to type. The rename exists precisely so no client can read a code off
+      // this event — leaving 1 reusable would undo it.
+      reserved 1;
+      reserved "challenge";
       ClientInfo clientInfo = 2;
       model.Account.Auth.LocalApiScope scope = 3;
       // requestedGrant (4) is gone — the grant is the user's decision now,
@@ -269,6 +278,10 @@ message Event {
     // denied or expired. Identified by the caller, since a request that was
     // never approved never had a code.
     message LinkApprovalHide {
+      // 1 was `string challenge`; see LinkApprovalRequest. Same reuse of the
+      // oneof number (205), same trap.
+      reserved 1;
+      reserved "challenge";
       LinkApprovalRequest.ClientInfo clientInfo = 2;
     }
   }
