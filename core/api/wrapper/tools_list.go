@@ -199,13 +199,14 @@ type detectedList struct {
 // Collection.
 //
 // A dataview block is necessary but NOT sufficient — an ordinary page can
-// embed one — so the type term decides. The term is tested against the
-// stored key first, so a document that is already spelled `set` costs
-// nothing; only a document that carries a dataview AND names its type
-// otherwise pays for the type listing that maps `set` and `collection` onto
-// the names this space gives them. That listing is unavoidable: the wrapper
-// reads in the name vocabulary (D5), so a served `type` is the display name,
-// and "Query" is a name the space owns and can change.
+// embed one — so the type term decides. The term is tested against the api
+// keys first (and the legacy `set` a document may still carry), so a
+// document already spelled that way costs nothing; only a document that
+// carries a dataview AND names its type otherwise pays for the type listing
+// that maps those keys onto the names this space gives them. That listing is
+// unavoidable: the wrapper reads in the name vocabulary (D5), so a served
+// `type` is usually the display name, and "Query" is a name the space owns
+// and can change.
 func (r *Runner) detectListKind(ctx context.Context, spaceId string, doc []byte) (detectedList, bool) {
 	found := detectedList{raw: doc}
 	if err := json.Unmarshal(doc, &found.envelope); err != nil {
