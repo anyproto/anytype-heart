@@ -52,7 +52,7 @@ const CName = "session"
 type Service interface {
 	StartSession(privKey []byte, scope model.AccountAuthLocalApiScope) (string, error)
 	ValidateToken(privKey []byte, token string) (model.AccountAuthLocalApiScope, error)
-	StartNewChallenge(scope model.AccountAuthLocalApiScope, info *pb.EventAccountLinkApprovalRequestClientInfo) (id string, err error)
+	StartNewChallenge(scope model.AccountAuthLocalApiScope, info *pb.EventAccountLinkApprovalRequestClientInfo) (id string, superseded []*pb.EventAccountLinkApprovalRequestClientInfo, err error)
 	ApproveChallenge(processPath string, origin string, allow bool, grant *model.AccountAuthAppGrant) (value string, clientInfo *pb.EventAccountLinkApprovalRequestClientInfo, err error)
 	SolveChallenge(challengeId string, challengeSolution string, signingKey []byte) (clientInfo *pb.EventAccountLinkApprovalRequestClientInfo, token string, scope model.AccountAuthLocalApiScope, approvedGrant *model.AccountAuthAppGrant, err error)
 	SweepExpired() []*pb.EventAccountLinkApprovalRequestClientInfo

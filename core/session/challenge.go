@@ -108,19 +108,19 @@ type challenge struct {
 // StartNewChallenge registers a pairing request and returns its id. No code is
 // generated here: the request is pending until the user approves it through
 // ApproveChallenge, which is the only place a code is minted.
-func (s *service) StartNewChallenge(scope model.AccountAuthLocalApiScope, info *pb.EventAccountLinkApprovalRequestClientInfo) (challengeId string, err error) {
+func (s *service) StartNewChallenge(scope model.AccountAuthLocalApiScope, info *pb.EventAccountLinkApprovalRequestClientInfo) (challengeId string, superseded []*pb.EventAccountLinkApprovalRequestClientInfo, err error) {
 	switch scope {
 	case model.AccountAuth_Limited, model.AccountAuth_JsonAPI:
 		// full scope is not allowed via challenge
 	default:
-		return "", ErrInvalidScope
+		return "", nil, ErrInvalidScope
 	}
 	if failedChallengeSolves.Load() >= maxFailedChallengeSolves {
 		// Locked after too many wrong guesses: refuse to hand out fresh codes.
-		return "", ErrChallengeAttemptsExceeded
+		return "", nil, ErrChallengeAttemptsExceeded
 	}
 	if currentChallengesRequests.Load() >= maxChallengesRequests {
-		return "", ErrTooManyChallengeRequests
+		return "", nil, ErrTooManyChallengeRequests
 	}
 
 	s.lock.Lock()
@@ -130,22 +130,24 @@ func (s *service) StartNewChallenge(scope model.AccountAuthLocalApiScope, info *
 	if isAttributable(caller) {
 		if _, denied := s.deniedCallers[caller]; denied {
 			// The user already said no. Refuse without prompting again.
-			return "", ErrChallengeDenied
+			return "", nil, ErrChallengeDenied
 		}
 	}
 	if s.challengeRequestsByCaller[caller] >= maxChallengesRequestsPerCaller {
-		return "", ErrTooManyCallerChallengeRequests
+		return "", nil, ErrTooManyCallerChallengeRequests
 	}
 	if _, pending := s.pendingByCaller[caller]; pending {
 		// One prompt per caller. Deliberately not returning the pending id:
 		// callers sharing a key — everything with neither an origin nor a
 		// resolvable process shares the unattributable one — would then be
 		// able to solve a challenge the user approved for someone else.
-		return "", ErrChallengePendingApproval
+		return "", nil, ErrChallengePendingApproval
 	}
 	// A caller asking again supersedes its own approved-but-unsolved
-	// challenge; the new request needs its own approval.
-	s.dropCallerChallengesLocked(caller)
+	// challenge; the new request needs its own approval. The dropped ones
+	// are reported so their prompts — and any code already on display for
+	// them, which can never be solved now — come off screen.
+	superseded = s.dropCallerChallengesLocked(caller)
 
 	id := bson.NewObjectId().Hex()
 	s.challenges[id] = challenge{
@@ -158,7 +160,7 @@ func (s *service) StartNewChallenge(scope model.AccountAuthLocalApiScope, info *
 
 	s.challengeRequestsByCaller[caller]++
 	currentChallengesRequests.Inc()
-	return id, nil
+	return id, superseded, nil
 }
 
 // ApproveChallenge records the user's decision on the challenge pending for a
@@ -266,9 +268,13 @@ func (s *service) SolveChallenge(challengeId string, challengeSolution string, s
 		return nil, "", 0, nil, ErrChallengeNotApproved
 	}
 	if challenge.tries >= challengeMaxTries {
+		// Terminal: the code is spent. Drop it and hand back the client info
+		// so the prompt comes off screen now rather than lingering, with a
+		// dead code on display, until the approved TTL sweeps it.
+		delete(s.challenges, challengeId)
 		s.lock.Unlock()
 
-		return nil, "", 0, nil, ErrChallengeTriesExceeded
+		return challenge.clientInfo, "", 0, nil, ErrChallengeTriesExceeded
 	}
 
 	if challenge.value != challengeSolution {
@@ -283,10 +289,12 @@ func (s *service) SolveChallenge(challengeId string, challengeSolution string, s
 	}
 
 	delete(s.challenges, challengeId)
-	// A correct verification clears the per-caller budgets too, so a client
-	// that pairs successfully starts fresh next time. Denials are a user
-	// decision and are deliberately kept.
-	clear(s.challengeRequestsByCaller)
+	// A correct verification clears THIS caller's budget, so a client that
+	// pairs successfully starts fresh next time. Not every caller's: a
+	// throttled client must not get a fresh allowance of ten because some
+	// unrelated app happened to pair. Denials are a user decision and are
+	// deliberately kept.
+	delete(s.challengeRequestsByCaller, callerKey(challenge.clientInfo))
 	s.lock.Unlock()
 
 	sessionToken, err := s.StartSession(signingKey, challenge.scope)
@@ -327,15 +335,29 @@ func (s *service) SweepExpired() []*pb.EventAccountLinkApprovalRequestClientInfo
 	return expired
 }
 
-// dropCallerChallengesLocked removes any challenge this caller still holds.
-// Callers must hold s.lock.
-func (s *service) dropCallerChallengesLocked(caller string) {
+// dropCallerChallengesLocked removes any challenge this caller still holds and
+// returns the client info of each, so the caller can hide the prompts they
+// left on screen — a superseded approved challenge has a code on display that
+// will never be solvable again. Callers must hold s.lock.
+func (s *service) dropCallerChallengesLocked(caller string) []*pb.EventAccountLinkApprovalRequestClientInfo {
+	var dropped []*pb.EventAccountLinkApprovalRequestClientInfo
 	for id, ch := range s.challenges {
 		if callerKey(ch.clientInfo) == caller {
 			delete(s.challenges, id)
+			dropped = append(dropped, ch.clientInfo)
 		}
 	}
 	delete(s.pendingByCaller, caller)
+	return dropped
+}
+
+// SetClock replaces the clock the TTLs are measured against. It is a test
+// seam and is deliberately NOT on the Service interface: only a test that
+// holds the concrete service can reach it, via a one-method type assertion.
+func (s *service) SetClock(clock func() time.Time) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.clock = clock
 }
 
 func (s *service) now() time.Time {

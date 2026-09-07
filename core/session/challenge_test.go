@@ -43,7 +43,7 @@ func protoGrant() *model.AccountAuthAppGrant {
 // challenge id with the code the user would read off the screen.
 func approved(t *testing.T, s *service, info *pb.EventAccountLinkApprovalRequestClientInfo) (id, code string) {
 	t.Helper()
-	id, err := s.StartNewChallenge(model.AccountAuth_Limited, info)
+	id, _, err := s.StartNewChallenge(model.AccountAuth_Limited, info)
 	require.NoError(t, err)
 	code, _, err = s.ApproveChallenge(info.GetProcessPath(), info.GetOrigin(), true, nil)
 	require.NoError(t, err)
@@ -62,7 +62,7 @@ func TestStartNewChallenge_MintsNothingBeforeApproval(t *testing.T) {
 	// given a challenge nobody has approved
 	s := newService(t)
 	info := browser("chrome-extension://pending")
-	id, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, info)
+	id, _, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, info)
 	require.NoError(t, err)
 
 	// then it holds no code at all
@@ -123,7 +123,7 @@ func TestApproveChallenge_NothingPending(t *testing.T) {
 
 	t.Run("a different caller cannot answer this prompt", func(t *testing.T) {
 		s := newService(t)
-		_, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, browser("chrome-extension://asked"))
+		_, _, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, browser("chrome-extension://asked"))
 		require.NoError(t, err)
 
 		_, _, err = s.ApproveChallenge("", "chrome-extension://someone-else", true, nil)
@@ -137,7 +137,7 @@ func TestApproveChallenge_DenyIsRemembered(t *testing.T) {
 		// given a caller the user refused
 		s := newService(t)
 		info := browser("chrome-extension://denied")
-		id, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, info)
+		id, _, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, info)
 		require.NoError(t, err)
 
 		// when
@@ -151,11 +151,11 @@ func TestApproveChallenge_DenyIsRemembered(t *testing.T) {
 		assert.ErrorIs(t, err, ErrChallengeIdNotFound)
 
 		// ...and it cannot make the user press Deny a second time
-		_, err = s.StartNewChallenge(model.AccountAuth_JsonAPI, info)
+		_, _, err = s.StartNewChallenge(model.AccountAuth_JsonAPI, info)
 		assert.ErrorIs(t, err, ErrChallengeDenied)
 
 		// ...while everyone else is unaffected
-		_, err = s.StartNewChallenge(model.AccountAuth_JsonAPI, browser("chrome-extension://innocent"))
+		_, _, err = s.StartNewChallenge(model.AccountAuth_JsonAPI, browser("chrome-extension://innocent"))
 		assert.NoError(t, err)
 	})
 
@@ -164,12 +164,12 @@ func TestApproveChallenge_DenyIsRemembered(t *testing.T) {
 		// key, so remembering a denial there would silence all of them.
 		s := newService(t)
 		anonymous := &pb.EventAccountLinkApprovalRequestClientInfo{}
-		_, err := s.StartNewChallenge(model.AccountAuth_Limited, anonymous)
+		_, _, err := s.StartNewChallenge(model.AccountAuth_Limited, anonymous)
 		require.NoError(t, err)
 		_, _, err = s.ApproveChallenge("", "", false, nil)
 		require.NoError(t, err)
 
-		_, err = s.StartNewChallenge(model.AccountAuth_Limited, anonymous)
+		_, _, err = s.StartNewChallenge(model.AccountAuth_Limited, anonymous)
 
 		assert.NoError(t, err)
 	})
@@ -179,11 +179,11 @@ func TestStartNewChallenge_OnePromptPerCaller(t *testing.T) {
 	// given a caller with a prompt already on screen
 	s := newService(t)
 	info := browser("chrome-extension://noisy")
-	first, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, info)
+	first, _, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, info)
 	require.NoError(t, err)
 
 	// when it asks again
-	second, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, info)
+	second, _, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, info)
 
 	// then it is refused, and crucially is not handed the pending id: callers
 	// sharing a key would otherwise solve a challenge approved for someone else
@@ -199,7 +199,7 @@ func TestStartNewChallenge_SupersedesOwnApprovedChallenge(t *testing.T) {
 	stale, staleCode := approved(t, s, info)
 
 	// when it asks again, it gets a fresh request needing its own approval
-	fresh, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, info)
+	fresh, _, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, info)
 	require.NoError(t, err)
 	assert.NotEqual(t, stale, fresh)
 
@@ -215,7 +215,7 @@ func TestSweepExpired(t *testing.T) {
 		s := newService(t)
 		s.clock = func() time.Time { return now }
 		info := browser("chrome-extension://ignored")
-		id, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, info)
+		id, _, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, info)
 		require.NoError(t, err)
 
 		// when the user never answers
@@ -229,7 +229,7 @@ func TestSweepExpired(t *testing.T) {
 		assert.ErrorIs(t, err, ErrChallengeIdNotFound)
 
 		// ...and the caller is free to ask again rather than stuck pending
-		_, err = s.StartNewChallenge(model.AccountAuth_JsonAPI, info)
+		_, _, err = s.StartNewChallenge(model.AccountAuth_JsonAPI, info)
 		assert.NoError(t, err)
 	})
 
@@ -265,7 +265,7 @@ func TestStartNewChallenge_PerCallerBudgetProtectsOtherClients(t *testing.T) {
 	}
 
 	// when it asks once more
-	id, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, noisy)
+	id, _, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, noisy)
 
 	// then it is throttled...
 	assert.ErrorIs(t, err, ErrTooManyCallerChallengeRequests)
@@ -278,7 +278,7 @@ func TestStartNewChallenge_PerCallerBudgetProtectsOtherClients(t *testing.T) {
 		{ProcessPath: "/usr/local/bin/some-cli"},
 		{}, // native client we cannot tell apart
 	} {
-		id, err = s.StartNewChallenge(model.AccountAuth_JsonAPI, other)
+		id, _, err = s.StartNewChallenge(model.AccountAuth_JsonAPI, other)
 		require.NoError(t, err)
 		assert.NotEmpty(t, id)
 	}
@@ -298,7 +298,7 @@ func TestStartNewChallenge_RunBudgetStillCapsAllCallers(t *testing.T) {
 	}
 
 	// when
-	_, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, browser("chrome-extension://latecomer"))
+	_, _, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, browser("chrome-extension://latecomer"))
 
 	// then
 	assert.ErrorIs(t, err, ErrTooManyChallengeRequests)
@@ -326,7 +326,7 @@ func TestSolveChallenge_LocksAfterTooManyFailures(t *testing.T) {
 	_, _, _, _, err := s.SolveChallenge("anything", "0000", signingKey)
 	assert.ErrorIs(t, err, ErrChallengeAttemptsExceeded)
 
-	lockedId, err := s.StartNewChallenge(model.AccountAuth_Limited, browser("chrome-extension://after"))
+	lockedId, _, err := s.StartNewChallenge(model.AccountAuth_Limited, browser("chrome-extension://after"))
 	assert.ErrorIs(t, err, ErrChallengeAttemptsExceeded)
 	assert.Empty(t, lockedId)
 }
@@ -368,7 +368,7 @@ func TestSolveChallenge_SuccessKeepsDenials(t *testing.T) {
 	// else must not quietly re-admit a refused caller.
 	s := newService(t)
 	denied := browser("chrome-extension://denied")
-	_, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, denied)
+	_, _, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, denied)
 	require.NoError(t, err)
 	_, _, err = s.ApproveChallenge("", denied.Origin, false, nil)
 	require.NoError(t, err)
@@ -377,7 +377,7 @@ func TestSolveChallenge_SuccessKeepsDenials(t *testing.T) {
 	_, _, _, _, err = s.SolveChallenge(id, code, signingKey)
 	require.NoError(t, err)
 
-	_, err = s.StartNewChallenge(model.AccountAuth_JsonAPI, denied)
+	_, _, err = s.StartNewChallenge(model.AccountAuth_JsonAPI, denied)
 	assert.ErrorIs(t, err, ErrChallengeDenied)
 }
 
@@ -399,7 +399,7 @@ func TestSolveChallenge_PerChallengeTriesStillCapped(t *testing.T) {
 func TestStartNewChallenge_RejectsFullScope(t *testing.T) {
 	s := newService(t)
 
-	_, err := s.StartNewChallenge(model.AccountAuth_Full, browser("chrome-extension://greedy"))
+	_, _, err := s.StartNewChallenge(model.AccountAuth_Full, browser("chrome-extension://greedy"))
 
 	assert.ErrorIs(t, err, ErrInvalidScope)
 }
@@ -424,7 +424,7 @@ func TestSolveChallenge_MintsSessionWithChallengeScope(t *testing.T) {
 			// given
 			s := newService(t)
 			info := browser("chrome-extension://scoped")
-			id, err := s.StartNewChallenge(tt.want, info)
+			id, _, err := s.StartNewChallenge(tt.want, info)
 			require.NoError(t, err)
 			code, _, err := s.ApproveChallenge("", info.Origin, true, tt.grant)
 			require.NoError(t, err)
@@ -492,7 +492,7 @@ func TestApproveChallenge_GrantRules(t *testing.T) {
 			// given
 			s := newService(t)
 			info := browser("chrome-extension://granting")
-			_, err := s.StartNewChallenge(tt.scope, info)
+			_, _, err := s.StartNewChallenge(tt.scope, info)
 			require.NoError(t, err)
 
 			// when
@@ -543,7 +543,7 @@ func TestSolveChallenge_ReturnsApprovedGrant(t *testing.T) {
 			// given
 			s := newService(t)
 			info := browser("chrome-extension://granted")
-			id, err := s.StartNewChallenge(tt.scope, info)
+			id, _, err := s.StartNewChallenge(tt.scope, info)
 			require.NoError(t, err)
 			code, _, err := s.ApproveChallenge("", info.Origin, true, tt.want)
 			require.NoError(t, err)
@@ -584,7 +584,7 @@ func TestDenyMemory_SurvivesOriginRespelling(t *testing.T) {
 	// given a denied caller
 	s := newService(t)
 	denied := browser("chrome-extension://jbnammhjiplhpjfncnlejjjejghimdkf")
-	_, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, denied)
+	_, _, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, denied)
 	require.NoError(t, err)
 	_, _, err = s.ApproveChallenge("", denied.Origin, false, nil)
 	require.NoError(t, err)
@@ -596,7 +596,85 @@ func TestDenyMemory_SurvivesOriginRespelling(t *testing.T) {
 		"chrome-extension://jbnammhjiplhpjfncnlejjjejghimdkf/",
 		"Chrome-Extension://JBNAMMHJIPLHPJFNCNLEJJJEJGHIMDKF",
 	} {
-		_, err = s.StartNewChallenge(model.AccountAuth_JsonAPI, browser(respelling))
+		_, _, err = s.StartNewChallenge(model.AccountAuth_JsonAPI, browser(respelling))
 		assert.ErrorIs(t, err, ErrChallengeDenied, "respelling %q evaded the denial", respelling)
 	}
+}
+
+// TestSolveChallenge_ClearsOnlyTheSolversBudget closes P2 from the 4-lens
+// review: a successful solve used to clear the whole per-caller map, so a
+// caller throttled at its limit regained a full allowance the moment any
+// unrelated app paired. The caps were really per-inter-success-interval.
+func TestSolveChallenge_ClearsOnlyTheSolversBudget(t *testing.T) {
+	// given a caller that has spent its per-caller budget
+	s := newService(t)
+	noisy := browser("chrome-extension://noisy")
+	for i := 0; i < maxChallengesRequestsPerCaller; i++ {
+		approved(t, s, noisy)
+	}
+	_, _, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, noisy)
+	require.ErrorIs(t, err, ErrTooManyCallerChallengeRequests)
+
+	// when an unrelated caller pairs successfully
+	id, code := approved(t, s, browser("chrome-extension://unrelated"))
+	_, _, _, _, err = s.SolveChallenge(id, code, signingKey)
+	require.NoError(t, err)
+
+	// then the throttled caller is still throttled
+	_, _, err = s.StartNewChallenge(model.AccountAuth_JsonAPI, noisy)
+	assert.ErrorIs(t, err, ErrTooManyCallerChallengeRequests,
+		"an unrelated success must not refill this caller's budget")
+}
+
+// TestSolveChallenge_TriesExhaustedDropsTheChallenge closes P8c: burning the
+// tries is terminal, so the entry must go and the prompt must be reportable —
+// it used to linger with a dead code on display until the approved TTL swept
+// it minutes later.
+func TestSolveChallenge_TriesExhaustedDropsTheChallenge(t *testing.T) {
+	// given an approved challenge whose tries are spent
+	s := newService(t)
+	info := browser("chrome-extension://spent")
+	id, code := approved(t, s, info)
+	for i := 0; i < challengeMaxTries; i++ {
+		_, _, _, _, err := s.SolveChallenge(id, wrongAnswer(code), signingKey)
+		require.ErrorIs(t, err, ErrChallengeSolutionWrong)
+	}
+
+	// when the next attempt lands
+	clientInfo, _, _, _, err := s.SolveChallenge(id, wrongAnswer(code), signingKey)
+
+	// then it is terminal, and it names the prompt to take off screen
+	require.ErrorIs(t, err, ErrChallengeTriesExceeded)
+	assert.Equal(t, info, clientInfo)
+
+	// ...and the entry is gone rather than waiting for the sweep
+	s.lock.RLock()
+	_, still := s.challenges[id]
+	s.lock.RUnlock()
+	assert.False(t, still, "a spent challenge must not linger until the TTL")
+}
+
+// TestStartNewChallenge_SupersedingReportsTheStalePrompt closes P8b: a caller
+// asking again destroys its own approved-but-unsolved challenge, and the code
+// the user already approved silently stopped working with nothing taken off
+// screen.
+func TestStartNewChallenge_SupersedingReportsTheStalePrompt(t *testing.T) {
+	// given a caller with an approved, unsolved code on display
+	s := newService(t)
+	info := browser("chrome-extension://again")
+	staleId, _ := approved(t, s, info)
+
+	// when it asks again
+	_, superseded, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, info)
+
+	// then the killed prompt is reported so it can be dismissed
+	require.NoError(t, err)
+	require.Len(t, superseded, 1)
+	assert.Equal(t, info, superseded[0])
+
+	// ...and the old code is genuinely dead
+	s.lock.RLock()
+	_, still := s.challenges[staleId]
+	s.lock.RUnlock()
+	assert.False(t, still)
 }

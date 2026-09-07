@@ -218,9 +218,10 @@ func (s *Service) LinkLocalStartNewChallenge(scope model.AccountAuthLocalApiScop
 	if s.app == nil {
 		return "", ErrApplicationIsNotRunning
 	}
-	// requestedPerm needs no validation: it is an enum the prompt merely
-	// renders as a pre-fill, never a ceiling — the grant itself is the
-	// user's decision, collected and validated at ApproveChallenge.
+	// requestedPerm is a pre-fill for the prompt, never a ceiling — the
+	// grant itself is the user's decision, collected and validated at
+	// ApproveChallenge. It is clamped below rather than validated here,
+	// since an unusable value should still raise a prompt.
 	// A key needs a name (APIV2_OBJECT_DELETE.md §5/§11.7): the app name IS
 	// creation provenance (stamped raw, compared exactly), and a nameless
 	// key would create objects it can never delete. Refused before the
@@ -243,9 +244,23 @@ func (s *Service) LinkLocalStartNewChallenge(scope model.AccountAuthLocalApiScop
 	}
 	s.hideExpiredChallenges()
 
-	id, err = s.sessions.StartNewChallenge(scope, clientInfo)
+	// An unknown enum value is not a permission this binary understands, and
+	// gogo passes unknown ints through verbatim. Clamp to Read rather than
+	// showing the user a number the prompt has no words for.
+	if requestedPerm != model.AccountAuthAppGrant_Read && requestedPerm != model.AccountAuthAppGrant_ReadWrite {
+		requestedPerm = model.AccountAuthAppGrant_Read
+	}
+
+	id, superseded, err := s.sessions.StartNewChallenge(scope, clientInfo)
 	if err != nil {
 		return "", fmt.Errorf("start new challenge: %w", err)
+	}
+
+	// A repeat request from this caller kills its own earlier prompt — and
+	// any code already displayed for it, now unsolvable. Take those down
+	// before raising the new one.
+	for _, stale := range superseded {
+		s.hideChallenge(stale)
 	}
 
 	// No code in this event: it does not exist yet. The client shows who is
@@ -273,10 +288,28 @@ func (s *Service) LinkLocalApproveChallenge(processPath string, origin string, a
 		return "", nil, ErrApplicationIsNotRunning
 	}
 
+	// Approve is an entry point like the other two, so it sweeps too:
+	// nothing else runs on a timer, and without this an hours-stale prompt
+	// still mints a code and stamps itself a fresh five minutes.
+	s.hideExpiredChallenges()
+
 	challenge, clientInfo, err = s.sessions.ApproveChallenge(processPath, origin, allow, grant)
 	if err != nil {
 		return "", nil, err
 	}
+	// Only a denial hides here. Approving deliberately does NOT broadcast:
+	// LinkApprovalHide means "this pairing is over, take down the prompt AND
+	// any code shown for it", and the approving session is at that moment
+	// displaying the code it just received. Hiding on approve would order it
+	// to dismiss the very thing the user has to read.
+	//
+	// The cost is known and deferred (4-lens review, P8a): a SECOND desktop
+	// window keeps a live [Allow][Deny] for an already-answered request, and
+	// pressing Deny there answers nothing (ErrNoPendingChallenge). Fixing it
+	// needs either an "answered" event distinct from the hide, or a
+	// broadcast that skips the approving session — both are client-contract
+	// changes, and the client does not exist yet. Raise it with the desktop
+	// work rather than guessing here.
 	if !allow {
 		s.hideChallenge(clientInfo)
 	}

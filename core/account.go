@@ -274,6 +274,13 @@ func accountLocalLinkNewChallengeErrorCode(err error) pb.RpcAccountLocalLinkNewC
 	return mapErrorCode(err,
 		errToCode(session.ErrTooManyChallengeRequests, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
 		errToCode(session.ErrTooManyCallerChallengeRequests, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
+		// This caller already has a prompt on screen, or the user denied it
+		// during this app run. Both are refusals to raise a second prompt,
+		// which is what TOO_MANY_REQUESTS means here; without these rows the
+		// two most common post-launch outcomes answered UNKNOWN_ERROR and a
+		// client could only retry, burning budget and re-prompting.
+		errToCode(session.ErrChallengePendingApproval, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
+		errToCode(session.ErrChallengeDenied, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
 		errToCode(session.ErrChallengeAttemptsExceeded, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
 		// same rejected-scope error, same code as CreateApp — the two guards
 		// are a deliberate pair
@@ -361,15 +368,28 @@ func (mw *Middleware) rejectBrowserCaller(ctx context.Context) error {
 	return nil
 }
 
-func (mw *Middleware) AccountLocalLinkSolveChallenge(_ context.Context, req *pb.RpcAccountLocalLinkSolveChallengeRequest) *pb.RpcAccountLocalLinkSolveChallengeResponse {
-	token, appKey, err := mw.applicationService.LinkLocalSolveChallenge(req)
-	code := mapErrorCode(err,
+// accountLocalLinkSolveChallengeErrorCode is AccountLocalLinkSolveChallenge's
+// error mapping, extracted so the mapping itself is pinned by test — the
+// sibling of accountLocalLinkNewChallengeErrorCode, and extracted for the same
+// reason: a code that exists in the proto but has no row here is unreachable,
+// which is how CHALLENGE_NOT_APPROVED shipped documented and dead.
+func accountLocalLinkSolveChallengeErrorCode(err error) pb.RpcAccountLocalLinkSolveChallengeResponseErrorCode {
+	return mapErrorCode(err,
 		errToCode(session.ErrChallengeTriesExceeded, pb.RpcAccountLocalLinkSolveChallengeResponseError_CHALLENGE_ATTEMPTS_EXCEEDED),
 		errToCode(session.ErrChallengeAttemptsExceeded, pb.RpcAccountLocalLinkSolveChallengeResponseError_CHALLENGE_ATTEMPTS_EXCEEDED),
 		errToCode(session.ErrChallengeSolutionWrong, pb.RpcAccountLocalLinkSolveChallengeResponseError_INCORRECT_ANSWER),
 		errToCode(session.ErrChallengeIdNotFound, pb.RpcAccountLocalLinkSolveChallengeResponseError_INVALID_CHALLENGE_ID),
+		// The human has not answered the prompt yet. Distinct from a wrong
+		// answer and from a bad id: pairing is mid-flight and the client
+		// should wait, not retry with another guess or report a failure.
+		errToCode(session.ErrChallengeNotApproved, pb.RpcAccountLocalLinkSolveChallengeResponseError_CHALLENGE_NOT_APPROVED),
 		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkSolveChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),
 	)
+}
+
+func (mw *Middleware) AccountLocalLinkSolveChallenge(_ context.Context, req *pb.RpcAccountLocalLinkSolveChallengeRequest) *pb.RpcAccountLocalLinkSolveChallengeResponse {
+	token, appKey, err := mw.applicationService.LinkLocalSolveChallenge(req)
+	code := accountLocalLinkSolveChallengeErrorCode(err)
 	return &pb.RpcAccountLocalLinkSolveChallengeResponse{
 		SessionToken: token,
 		AppKey:       appKey,

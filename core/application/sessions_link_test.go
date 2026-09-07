@@ -2,6 +2,7 @@ package application
 
 import (
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/assert"
@@ -126,7 +127,11 @@ func TestLinkLocalApproveChallenge(t *testing.T) {
 		require.Len(t, code, 4)
 		assert.Equal(t, info, hidden)
 
-		// ...and nothing at all was broadcast, so no other session saw it
+		// ...and nothing at all was broadcast, so no other session saw it —
+		// and, deliberately, no hide either: the approving session is now
+		// displaying this code, and LinkApprovalHide would tell it to
+		// dismiss that. See LinkLocalApproveChallenge for the second-window
+		// cost this defers.
 		assert.Len(t, fx.events, before, "approval must not broadcast")
 
 		// ...and it is the code that pairs
@@ -180,4 +185,36 @@ func TestLinkLocalApproveChallenge(t *testing.T) {
 
 		assert.ErrorIs(t, err, ErrApplicationIsNotRunning)
 	})
+}
+
+// TestLinkLocalApproveChallenge_ExpiredPromptIsNotApprovable closes P1 from
+// the 4-lens review. ApproveChallenge neither swept nor checked stateSince,
+// and it is the one entry point that did not, so an hours-stale prompt still
+// minted a code — and stamped itself a fresh five minutes to spend it in.
+// Nothing runs on a timer, so the TTL is only ever enforced by these sweeps.
+func TestLinkLocalApproveChallenge_ExpiredPromptIsNotApprovable(t *testing.T) {
+	// given a prompt raised long ago
+	fx := newLinkFixture(t)
+	now := time.Now()
+	fx.sessions.(interface{ SetClock(func() time.Time) }).SetClock(func() time.Time { return now })
+	info := &pb.EventAccountLinkApprovalRequestClientInfo{
+		Name:        "Clipper",
+		ProcessPath: "/Applications/Google Chrome.app",
+		Origin:      "chrome-extension://abc",
+	}
+	_, err := fx.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, info, model.AccountAuthAppGrant_Read)
+	require.NoError(t, err)
+
+	// when the user answers it a day later
+	now = now.Add(24 * time.Hour)
+	code, _, err := fx.LinkLocalApproveChallenge(info.ProcessPath, info.Origin, true, testProtoGrant())
+
+	// then nothing is minted
+	require.ErrorIs(t, err, session.ErrNoPendingChallenge)
+	assert.Empty(t, code)
+
+	// ...and the stale prompt was taken off screen by the sweep
+	hides := fx.hides()
+	require.Len(t, hides, 1)
+	assert.Equal(t, info, hides[0].ClientInfo)
 }
