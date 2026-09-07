@@ -59,8 +59,8 @@ client                  heart                          desktop UI
   │
   ├─ NewChallenge ──────▶ StartNewChallenge
   │                       └─ state=pending, NO code
-  │                       └─ Broadcast(LinkChallenge{
-  ◀── challengeId ───────┤      clientInfo, needApprove: true })  ──▶ "Google Chrome
+  │                       └─ Broadcast(LinkApprovalRequest{
+  ◀── challengeId ───────┤      clientInfo, scope, requestedPerm })  ──▶ "Google Chrome
   │                       │                                          chrome-extension://abc…
   │                       │                                          wants to connect"
   │                       │                                          [Allow] [Deny]
@@ -74,7 +74,7 @@ client                  heart                          desktop UI
   │
   ├─ SolveChallenge ────▶ requires state=approved
   ◀── appKey ────────────┤
-                          └─ Broadcast(LinkChallengeHide{clientInfo})
+                          └─ Broadcast(LinkApprovalHide{clientInfo})
 ```
 
 The client's two calls are byte-identical to today. The only observable
@@ -98,7 +98,7 @@ difference is that the code appears later.
 
 - `pending` — no code exists. `SolveChallenge` fails regardless of the answer.
 - `approved` — code exists, `challengeMaxTries` applies as today.
-- Both terminal states delete the entry and broadcast `LinkChallengeHide`.
+- Both terminal states delete the entry and broadcast `LinkApprovalHide`.
 
 Invariant: **a challenge value is never generated in the `pending` state, and
 never leaves the process except as the `ApproveChallenge` response.** The
@@ -270,7 +270,8 @@ when the key is an origin or a process path.
 (read the caller, open the space list, select, confirm), and the pending state
 holds no secret, so the longer window costs nothing but a stale prompt.
 `approved` entries expire after **5 min**, measured from approval. On
-expiry: delete, broadcast `LinkChallengeHide{challengeId}`. A sweep on each
+expiry: delete, broadcast `LinkApprovalHide{clientInfo}` — keyed on the
+caller, since a request that was never approved never had a code. A sweep on each
 `StartNewChallenge`/`SolveChallenge` call is sufficient — no timer goroutine.
 Today entries are removed only on a successful solve and otherwise live for the
 process lifetime.
@@ -327,16 +328,21 @@ the new prompt without implementing it first.
 
 | # | Change | Files |
 | --- | --- | --- |
-| 1 | Proto: drop `challenge` from both events, `needApprove`, `LinkChallengeHide.clientInfo`, `ApproveChallenge`, `CHALLENGE_NOT_APPROVED` | `pb/protos/events.proto`, `pb/protos/commands.proto`, `pb/protos/service/service.proto` |
+| 1 | Proto: rename the events to `LinkApprovalRequest`/`LinkApprovalHide` (no `challenge` on either, hide keyed on `clientInfo`), `requestedPerm`, `ApproveChallenge`, `CHALLENGE_NOT_APPROVED` | `pb/protos/events.proto`, `pb/protos/commands.proto`, `pb/protos/service/service.proto` |
 | 2 | `challenge` gains `state`/`stateSince`; `StartNewChallenge` stops minting and returns only an id; new `ApproveChallenge`; `SolveChallenge` gates on state; `SweepExpired`; pending/deny bookkeeping; injectable clock | `core/session/challenge.go`, `core/session/service.go` |
-| 3 | `LinkLocalApproveChallenge`; broadcast `needApprove`; hide on deny/expiry/solve | `core/application/sessions.go` |
+| 3 | `LinkLocalApproveChallenge`; broadcast `LinkApprovalRequest`; hide on approve/deny/supersede/expiry/solve | `core/application/sessions.go` |
 | 4 | RPC handler, error mapping, browser-origin rejection | `core/account.go` |
 | 5 | Leave both auth maps untouched; add the regression test | `core/auth.go`, `core/auth_test.go` |
 | 6 | Regenerate `pb/*.pb.go`, `pb/service`, `clientlibrary/service`, `docs/proto.md` | `make protos` |
 
-No changes to `core/api/*`: the JSON API keeps calling
-`AccountLocalLinkNewChallenge` and `AccountLocalLinkSolveChallenge` exactly as
-it does today.
+The JSON API keeps calling `AccountLocalLinkNewChallenge` and
+`AccountLocalLinkSolveChallenge` exactly as it does today — the requesting
+client's surface is unchanged.
+
+`core/api/*` itself does change, once the space picker joins this flow: the
+grant reaches the HTTP layer (`middleware.go`, `server.go`), the /v2 gate
+enforces it (`authz.go`), and `whoami` reports it. See
+`docs/superpowers/specs/2026-09-01-local-link-approval-space-picker-design.md`.
 
 ## 10. Test plan
 
@@ -354,9 +360,8 @@ Behaviour:
   `CHALLENGE_NOT_APPROVED` for every one of the 10^4 possible answers —
   the concrete form of "there is nothing to brute-force".
 - A pending solve does not increment `failedChallengeSolves`.
-- The `LinkChallenge` event carries no `challenge` value while
-  `needApprove` is true — assert on the broadcast payload, not just the API
-  response.
+- The `LinkApprovalRequest` event carries no code at all — assert on the
+  broadcast payload, not just the API response.
 - `allow=false` deletes the challenge, broadcasts hide, and suppresses the next
   request from that caller; the unattributable bucket is *not* suppressed.
 - A second request from a caller with one pending is refused and does **not**

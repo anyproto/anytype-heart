@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/localorigin"
 )
 
 const (
@@ -354,8 +355,15 @@ func callerKey(info *pb.EventAccountLinkApprovalRequestClientInfo) string {
 	if info == nil {
 		return ""
 	}
-	if info.Origin != "" {
-		return "origin:" + info.Origin
+	if normalized := localorigin.Normalize(info.Origin); normalized != "" {
+		// Normalized, because the origin POLICY normalizes before admitting:
+		// "http://localhost:3000", "HTTP://LocalHost:3000" and the same with
+		// a trailing slash are ONE admitted origin, and keying on the raw
+		// header would give one caller three buckets — enough to walk around
+		// the deny memory, the one-prompt-per-caller rule and the per-caller
+		// budget by respelling. ClientInfo.Origin stays verbatim: the prompt
+		// shows the caller what it actually sent.
+		return "origin:" + normalized
 	}
 	if info.ProcessPath != "" {
 		return "process:" + info.ProcessPath

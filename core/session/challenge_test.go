@@ -558,3 +558,45 @@ func TestSolveChallenge_ReturnsApprovedGrant(t *testing.T) {
 		})
 	}
 }
+
+// TestCallerKey_NormalizesOriginSpelling closes the bypass the 4-lens review
+// found: Policy.AllowOrigin normalizes (lowercase, trailing slash) BEFORE
+// admitting an origin, so several spellings are one admitted caller — but
+// callerKey used the raw header, giving that caller a fresh bucket per
+// spelling. Deny memory, the one-prompt-per-caller rule and the per-caller
+// budget all key off this, so each was walked around by re-spelling.
+func TestCallerKey_NormalizesOriginSpelling(t *testing.T) {
+	canonical := callerKey(browser("chrome-extension://jbnammhjiplhpjfncnlejjjejghimdkf"))
+
+	for _, respelling := range []string{
+		"chrome-extension://jbnammhjiplhpjfncnlejjjejghimdkf/",
+		"Chrome-Extension://JBNAMMHJIPLHPJFNCNLEJJJEJGHIMDKF",
+		"  chrome-extension://jbnammhjiplhpjfncnlejjjejghimdkf  ",
+	} {
+		assert.Equal(t, canonical, callerKey(browser(respelling)),
+			"respelling %q must not buy a second bucket", respelling)
+	}
+}
+
+// TestDenyMemory_SurvivesOriginRespelling is the behavioral half: the user
+// said no once, and saying it again must not be required per spelling.
+func TestDenyMemory_SurvivesOriginRespelling(t *testing.T) {
+	// given a denied caller
+	s := newService(t)
+	denied := browser("chrome-extension://jbnammhjiplhpjfncnlejjjejghimdkf")
+	_, err := s.StartNewChallenge(model.AccountAuth_JsonAPI, denied)
+	require.NoError(t, err)
+	_, _, err = s.ApproveChallenge("", denied.Origin, false, nil)
+	require.NoError(t, err)
+
+	// when it asks again under every spelling the policy admits as the same
+	// origin, then it is still refused and raises no second prompt
+	for _, respelling := range []string{
+		"chrome-extension://jbnammhjiplhpjfncnlejjjejghimdkf",
+		"chrome-extension://jbnammhjiplhpjfncnlejjjejghimdkf/",
+		"Chrome-Extension://JBNAMMHJIPLHPJFNCNLEJJJEJGHIMDKF",
+	} {
+		_, err = s.StartNewChallenge(model.AccountAuth_JsonAPI, browser(respelling))
+		assert.ErrorIs(t, err, ErrChallengeDenied, "respelling %q evaded the denial", respelling)
+	}
+}

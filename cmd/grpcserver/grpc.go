@@ -28,6 +28,7 @@ import (
 	"github.com/uber/jaeger-client-go"
 	jaegercfg "github.com/uber/jaeger-client-go/config"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/anyproto/anytype-heart/core"
 	"github.com/anyproto/anytype-heart/core/api"
@@ -38,6 +39,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/conc"
 	"github.com/anyproto/anytype-heart/util/grpcprocess"
+	"github.com/anyproto/anytype-heart/util/localorigin"
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
@@ -182,6 +184,12 @@ func main() {
 	unaryInterceptors = append(unaryInterceptors, grpcprocess.ProcessInfoInterceptor(
 		"/anytype.ClientCommands/AccountLocalLinkNewChallenge",
 	))
+	// The Origin header rides gRPC metadata on this transport, not the
+	// request context the HTTP middleware fills. Without this, every origin
+	// check on a gRPC method reads "" and silently passes — including the
+	// one guarding AccountLocalLinkApproveChallenge, which exists precisely
+	// because the gRPC-Web proxy trusts the Webclipper's origins.
+	unaryInterceptors = append(unaryInterceptors, originInterceptor())
 
 	server := grpc.NewServer(grpc.MaxRecvMsgSize(20*1024*1024),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(unaryInterceptors...)),
@@ -249,6 +257,25 @@ func main() {
 		fmt.Printf("[anytype-heart] Shutdown: received OS signal (%s), closing components...\n", sig.String())
 		shutdown()
 		return
+	}
+}
+
+// originInterceptor carries the Origin the gRPC-Web proxy forwarded into the
+// request context, so localorigin.OriginFromContext answers on this transport
+// the way it does behind the JSON API's middleware. It also gives the pairing
+// prompt an origin to display for browser callers, which have no process to
+// resolve.
+func originInterceptor() grpc.UnaryServerInterceptor {
+	return func(
+		ctx context.Context,
+		req interface{},
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (interface{}, error) {
+		if md, ok := metadata.FromIncomingContext(ctx); ok {
+			ctx = localorigin.WithOrigin(ctx, localorigin.OriginFromMetadata(md))
+		}
+		return handler(ctx, req)
 	}
 }
 

@@ -306,6 +306,28 @@ never covered by an all-spaces grant and must be granted explicitly — rather
 than the generic not-granted text, which would read as a heart bug to a user
 who just granted "all spaces".
 
+### 6a. Correction: the enumeration path is safe by DATA, not by structure
+
+An earlier draft of this section argued that the third `AllowsSpace` caller —
+`liveSpaceRows` (`core/api/v2/service/discovery.go`), which feeds `ListSpaces`,
+whoami's name resolution and the search fan-out — needs no exclusion "because
+the tech space has no space view of itself".
+
+That argument is true today and is the wrong KIND of argument. It rests on a
+property of the stored data, not on anything the code enforces: the review
+falsified it by registering a tech-space space view in the fixture, after which
+whoami enumerates the tech space while the gate keeps refusing it — precisely
+the mirror/gate divergence the anti-drift test exists to catch, and it would
+not have been caught.
+
+Two reviewers accepted the reasoning as written before a third tested it. That
+is the failure mode this correction records: an argument from "the data happens
+not to contain X" reads like a structural guarantee and is not one.
+
+`liveSpaceRows` therefore applies the same shared exclusion, so the enumeration
+mirror and the gate cannot disagree whatever the tech space's space view ever
+becomes.
+
 The third and last `AllowsSpace` caller is `liveSpaceRows`
 (`core/api/v2/service/discovery.go`) — the one enumeration feeding
 `GET /v2/spaces`, whoami's names, the global-search fan-out and the §8.35
@@ -314,6 +336,34 @@ space views, and the tech space has no space view of itself (which is why
 `ensureSpace` special-cases it before `GetSpaceViewDetails`). Under
 `allSpaces` the filter admits every enumerated row — every live user space,
 never the tech space.
+
+## 6b. Caller identity is weaker than the anti-spam rules assume
+
+The per-caller rules inherited from GO-7395 — one pending prompt per caller,
+deny-remembered-for-the-run, the 10-per-caller budget — all key on `callerKey`,
+which is the origin when there is one. The review found two things about that
+key.
+
+**Fixed: spelling.** `Policy.AllowOrigin` normalizes (lowercase, drop a
+trailing slash) *before* admitting an origin, so several spellings are one
+admitted caller — but `callerKey` used the raw header, so the same caller got a
+fresh bucket per spelling and walked around all three rules. `callerKey` now
+normalizes with the same function the policy decides by (`localorigin.Normalize`),
+while `ClientInfo.Origin` stays verbatim for display.
+
+**Not fixed, and stated plainly: an unauthenticated caller can still claim a
+fresh identity.** `POST /v1/auth/challenges` needs no credential and the policy
+admits any loopback `http(s)` origin, so `http://127.0.0.1:1`,
+`http://127.0.0.1:2` … are unlimited distinct legitimate buckets. Normalizing
+collapses respellings of ONE origin; it cannot make an unauthenticated caller
+prove which caller it is.
+
+What actually bounds the damage is therefore not the per-caller rules but the
+run-wide budget (`maxChallengesRequests`) plus the fact that a prompt needs a
+human to dismiss. The per-caller rules should be read as protecting honest
+clients from each other, not as a boundary against a hostile local process.
+Closing that properly needs caller attribution the HTTP surface does not have
+today, and is out of scope here.
 
 ## 7. The grant is never an input on the solve path
 
