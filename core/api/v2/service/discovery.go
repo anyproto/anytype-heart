@@ -94,7 +94,16 @@ func (s *Service) liveSpaceRows(ctx context.Context) ([]v2model.SpaceRow, error)
 		if !isLiveSpaceView(record.Details) {
 			continue
 		}
-		if grant != nil && !grant.AllowsSpace(id) {
+		// The same shared check the route gate and the ensureSpaceGranted
+		// backstop run, so this enumeration mirror cannot disagree with
+		// them. AllowsSpace alone would be vacuously true for every id
+		// under an allSpaces grant, including the tech space: safe only for
+		// as long as the tech space owns no space view of itself, which is
+		// a property of the stored data and not of this code. If it ever
+		// did, ListSpaces and whoami would advertise a space the gate
+		// refuses — the mirror/gate divergence the anti-drift test exists
+		// to catch.
+		if grant != nil && util.SpaceGrantRefusal(grant, id, s.techSpaceId) != "" {
 			continue
 		}
 		seen[id] = true

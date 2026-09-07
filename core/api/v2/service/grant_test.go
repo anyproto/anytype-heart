@@ -259,6 +259,35 @@ func TestListSpacesGrantIntersection(t *testing.T) {
 		assert.Equal(t, 1, total)
 		assert.False(t, hasMore)
 	})
+
+	t.Run("an allSpaces grant never enumerates the tech space", func(t *testing.T) {
+		// The enumeration mirror must agree with the gate STRUCTURALLY, not
+		// because the tech space happens to own no space view of itself.
+		// This fixture gives it one — the case the 4-lens review used to
+		// falsify that argument — so a filter using AllowsSpace alone (which
+		// is vacuously true for every id under allSpaces) would list a space
+		// the gate refuses, and ListSpaces/whoami would advertise it.
+		fx := newV2FixtureBare(t)
+		for _, space := range []struct{ id, name string }{
+			{"spaceA", "Work"}, {objectstore.TestTechSpaceId, "Tech"},
+		} {
+			fx.objectStore.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{{
+				bundle.RelationKeyId:             domain.String("spaceView_" + space.id),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeyTargetSpaceId:  domain.String(space.id),
+				bundle.RelationKeyName:           domain.String(space.name),
+			}})
+		}
+		want := []v2model.SpaceRow{{Id: "spaceA", Name: "Work"}}
+
+		// when
+		rows, total, _, err := fx.ListSpaces(allSpacesGrantCtx(util.GrantPermsReadWrite), 0, 25)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, rows)
+		assert.Equal(t, 1, total)
+	})
 }
 
 func TestGlobalSearchGrantIntersection(t *testing.T) {
