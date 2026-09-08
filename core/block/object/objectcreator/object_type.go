@@ -31,7 +31,9 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 	if !wasGenerated {
 		objectKey = uniqueKey.InternalKey()
 	}
-	injectApiObjectKey(object, objectKey)
+	if err := s.injectAndEnsureUniqueApiObjectKey(space.Id(), object, objectKey, coresb.SmartBlockTypeObjectType); err != nil {
+		return "", nil, fmt.Errorf("inject and ensure unique apiObjectKey: %w", err)
+	}
 
 	if !object.Has(bundle.RelationKeyRecommendedLayout) {
 		object.SetInt64(bundle.RelationKeyRecommendedLayout, int64(model.ObjectType_basic))
