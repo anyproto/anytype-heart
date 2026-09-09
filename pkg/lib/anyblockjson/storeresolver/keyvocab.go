@@ -383,7 +383,7 @@ var recommendedListDetailKeys = []domain.RelationKey{
 // map, which would resolve a write against the wrong property.
 func (r *Resolvers) loadKeyMaps(ns namespace) *keyMaps {
 	maps := newKeyMaps(ns)
-	// ONE listing, TWO populations. The uninstalled entity is excluded from
+	// ONE listing, TWO populations. An uninstalled or archived type is excluded from
 	// the NAME namespace and included in the id→key naming, and the two
 	// questions are genuinely different:
 	//
@@ -398,27 +398,36 @@ func (r *Resolvers) loadKeyMaps(ns namespace) *keyMaps {
 	//     `object_types`, where the slot's vocabulary is type KEYS.
 	//
 	// The filter therefore lives on the name half, not on the query.
-	records, err := r.index.Query(database.Query{Filters: []database.FilterRequest{
-		{
-			RelationKey: bundle.RelationKeyResolvedLayout,
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       domain.Int64(int64(ns.layout)),
-		},
-	}})
+	filters := []database.FilterRequest{{
+		RelationKey: bundle.RelationKeyResolvedLayout,
+		Condition:   model.BlockContentDataviewFilter_Equal,
+		Value:       domain.Int64(int64(ns.layout)),
+	}}
+	if ns.layout == model.ObjectType_objectType {
+		// Exports may include archived types. Query otherwise silently
+		// excludes them, leaving their document ids without the matching
+		// reference mapping. Keep the normal deleted-object filter.
+		filters = append(filters, database.FilterRequest{
+			RelationKey: bundle.RelationKeyIsArchived,
+			Condition:   model.BlockContentDataviewFilter_None,
+		})
+	}
+	records, err := r.index.Query(database.Query{Filters: filters})
 	if err != nil {
 		return maps
 	}
 	rows := make([]entity, 0, len(records))
-	// live entities first, so that where a freed spelling HAS been retaken
+	// Active entities first, so that where a freed spelling HAS been retaken
 	// the living owner claims id↔key before any corpse sharing its key
 	for _, pass := range []bool{false, true} {
 		for _, record := range records {
-			uninstalled := record.Details.GetBool(bundle.RelationKeyIsUninstalled)
-			if uninstalled != pass {
+			inactive := record.Details.GetBool(bundle.RelationKeyIsUninstalled) ||
+				record.Details.GetBool(bundle.RelationKeyIsArchived)
+			if inactive != pass {
 				continue
 			}
 			key := ns.keyOf(record.Details)
-			if !uninstalled {
+			if !inactive {
 				rows = append(rows, entity{
 					key:    key,
 					name:   record.Details.GetString(bundle.RelationKeyName),
