@@ -44,6 +44,16 @@ func newDiscoveryKeySource(store storage.ClientStorage, keys *accountdata.Accoun
 	}
 }
 
+// seed records a key derived without storage (the derived tech space, whose
+// ACL root follows from the account keys). It wins over any later read from
+// disk, which yields the identical key.
+func (d *discoveryKeySource) seed(spaceId string, key []byte) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.derived[spaceId] = key
+	delete(d.failedAt, spaceId)
+}
+
 // DiscoveryKeys returns the discovery keys for the given spaces, keyed by
 // spaceId. Spaces without a derivable key are absent from the result.
 func (d *discoveryKeySource) DiscoveryKeys(ctx context.Context, spaceIds []string) map[string][]byte {

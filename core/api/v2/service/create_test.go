@@ -461,12 +461,12 @@ func TestV2CreateObjectDocument(t *testing.T) {
 
 		// when
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"formatVersion":"2.0","type":"page","items":["obj1"]}`), false, true)
+			[]byte(`{"formatVersion":"2.0","type":"page","collection_items":["obj1"]}`), false, true)
 
 		// then
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
-		assert.Equal(t, "/items", apiErr.Issues[0].Path)
+		assert.Equal(t, "/collection_items", apiErr.Issues[0].Path)
 	})
 
 	t.Run("unknown select option names are created (SPEC §3)", func(t *testing.T) {

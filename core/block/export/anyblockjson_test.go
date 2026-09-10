@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/export/collect"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -38,24 +39,36 @@ import (
 // directory each must land in. Seven kinds, seven directories: the layout
 // is the format's own vocabulary (design §1.2), and a format value that
 // collected the wrong closure would lose most of them.
+// anyblockCollectedObjects is what the derived collection gathers for this
+// space. It is one MORE than the number of kind directories: the relation
+// option is collected and exported successfully, but a bundle writes no
+// document for it — its vocabulary travels on the property's dictionary
+// entry instead (§2f, §15 #21).
+const anyblockCollectedObjects = 7
+
+const (
+	pageId          = "pageId"
+	typeId          = "customObjectType"
+	templateId      = "templateId"
+	fileId          = "fileObjectId"
+	optionId        = "optionId"
+	propertyKeyName = "customProperty"
+)
+
+const propertyKey = domain.RelationKey(propertyKeyName)
+
 func anyblockSpace(t *testing.T, fx *fixture) map[string]string {
-	const (
-		pageId     = "pageId"
-		typeId     = "customObjectType"
-		templateId = "templateId"
-		fileId     = "fileObjectId"
-		optionId   = "optionId"
-	)
-	const propertyKey = domain.RelationKey("customProperty")
 
 	_, pub, err := crypto.GenerateRandomEd25519KeyPair()
 	require.NoError(t, err)
 	identity := pub.Account()
 	participantId := domain.NewParticipantId(spaceId, identity)
 
+	typeObject := prepareTestObjectTypeForStore(t, typeId, nil)
+	typeObject[bundle.RelationKeyResolvedLayout] = domain.Int64(int64(model.ObjectType_objectType))
 	fx.store.AddObjects(t, spaceId, []spaceindex.TestObject{
 		prepareTestObjectForStore(pageId, typeId),
-		prepareTestObjectTypeForStore(t, typeId, nil),
+		typeObject,
 		{
 			bundle.RelationKeyId:               domain.String(templateId),
 			bundle.RelationKeyName:             domain.String("Template"),
@@ -92,34 +105,61 @@ func anyblockSpace(t *testing.T, fx *fixture) map[string]string {
 		details map[domain.RelationKey]domain.Value
 	}{
 		{id: pageId, sbType: smartblock.SmartBlockTypePage},
-		// the unique key is what the manifest's type table is keyed by, so
-		// the type document carries its own
+		// The unique key determines the type document's derived id.
 		{id: typeId, sbType: smartblock.SmartBlockTypeObjectType, details: map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyUniqueKey: domain.String(typeUniqueKey.Marshal()),
 		}},
 		{id: templateId, sbType: smartblock.SmartBlockTypeTemplate},
 		{id: propertyKey.String(), sbType: smartblock.SmartBlockTypeRelation},
-		{id: optionId, sbType: smartblock.SmartBlockTypeRelationOption},
+		// a real option snapshot states what its dictionary entry is made
+		// of: the property that owns it, its name and its colour. A fixture
+		// that states none of them exercises the composer's refusal path
+		// instead of its ordinary one.
+		{id: optionId, sbType: smartblock.SmartBlockTypeRelationOption, details: map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyRelationKey:         domain.String(propertyKey),
+			bundle.RelationKeyName:                domain.String("Urgent"),
+			bundle.RelationKeyRelationOptionColor: domain.String("red"),
+			bundle.RelationKeyUniqueKey:           domain.String("opt-" + optionId),
+		}},
 		{id: fileId, sbType: smartblock.SmartBlockTypeFileObject},
 		{id: participantId, sbType: smartblock.SmartBlockTypeParticipant},
 	}
 	for _, object := range objects {
 		loaded := setupObject(object.id, typeId, object.sbType, object.details)
+		if object.sbType == smartblock.SmartBlockTypeFileObject {
+			fileState := loaded.NewState()
+			fileState.SetFileInfo(state.FileInfo{
+				FileId:         "bafybeiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				EncryptionKeys: map[string]string{"/0/": "synthetic-test-key"},
+			})
+			loaded.Doc = fileState
+		}
+		if object.id == typeId {
+			state := loaded.NewState()
+			state.SetUniqueKeyInternal(typeId)
+			loaded.Doc = state
+		}
+		if object.id == pageId {
+			// The page carries the tag, so the used-only rule (§2f) keeps
+			// the property entry that the vocabulary travels on. Set here
+			// rather than through setupObject, which links every detail key
+			// as a BUNDLED relation and panics on a space-minted one.
+			state := loaded.NewState()
+			state.SetDetail(propertyKey, domain.StringList([]string{optionId}))
+			state.AddRelationLinks(&model.RelationLink{
+				Key: propertyKey.String(), Format: model.RelationFormat_tag,
+			})
+			loaded.Doc = state
+		}
 		fx.picker.EXPECT().GetObject(mock.Anything, object.id).Return(loaded, nil).Maybe()
 		fx.sbtProvider.EXPECT().Type(spaceId, object.id).Return(object.sbType, nil).Maybe()
 	}
 
 	return map[string]string{
 		"objects":   pageId,
-		// the FOLDED stem: a type document's envelope id is `type-<key>`
-		// (SPEC §9) and the path plan names the file after the envelope
 		"types":     "type-" + typeId,
 		"templates": templateId,
-		// no `properties/` or `options/` entry: a bundle writes no property
-		// or option DOCUMENT any more — a property is a dictionary entry
-		// when something references it and nothing when nothing does, and an
-		// option rides its property's entry
-		"files": fileId,
+		"files":     fileId,
 		// the STORE id, not the bare identity: the participant fold needs a
 		// real space id (`<cid>.<key>`) to parse, and a fixture's "space1"
 		// does not — so the envelope keeps the composite, and the filename
@@ -128,12 +168,6 @@ func anyblockSpace(t *testing.T, fx *fixture) map[string]string {
 		"participants": participantId,
 	}
 }
-
-// anyblockExportedObjects is how many objects anyblockSpace seeds. It is
-// deliberately NOT len(byDirectory): the export counts objects it processed,
-// and two of the seeded kinds — a property and an option — now write no
-// document of their own, so files written is the smaller number.
-const anyblockExportedObjects = 7
 
 // readExportTree reads every file under root into path -> content, paths
 // slash-separated and relative to the export root.
@@ -165,11 +199,22 @@ func readExportTree(t *testing.T, root string) map[string]string {
 // its own id, and the two bundle files read back through the package that
 // wrote them.
 //
-// How this can fail: route the format to ClosureContent and five of the
-// seven directories vanish (only pages and file objects survive that
-// closure); send it down the legacy writeDoc path and the extension
-// becomes .pb.json in relations/ and relationsOptions/; forget the bundle
-// files and a reader has no property dictionary to resolve keys against.
+// A relation option and the property that owns it are collected like the
+// rest and written NOWHERE. Since §15 #21 a bundle carries no option
+// documents, and since §15 #23 no property documents either: a property is
+// not an object a person opens, so everything it means — format, name,
+// vocabulary, and whether it is hidden or removed — travels on its
+// dictionary entry, and a property nothing references is not carried at
+// all. So the bundle has FIVE kind directories, and properties.json is
+// where both have to show up.
+//
+// How this can fail: route the format to ClosureContent and three of the
+// five directories vanish (only pages and file objects survive that
+// closure); send it down the legacy writeDoc path and the extension becomes
+// .pb.json in relations/ and relationsOptions/; forget the bundle files and
+// a reader has no property dictionary to resolve keys against; write an
+// options/ or properties/ directory again and the dictionary stops being
+// the only home of a vocabulary and a definition.
 func TestExport_AnyBlockV2WritesABundle(t *testing.T) {
 	// given
 	fx := newFixture(t)
@@ -177,7 +222,7 @@ func TestExport_AnyBlockV2WritesABundle(t *testing.T) {
 	fx.picker.EXPECT().TryRemoveFromCache(mock.Anything, mock.Anything).Return(true, nil)
 
 	// when
-	exportPath, succeed, err := fx.Export(context.Background(), pb.RpcObjectListExportRequest{
+	exportPath, diagnostics, err := fx.Export(context.Background(), pb.RpcObjectListExportRequest{
 		SpaceId:         spaceId,
 		Path:            t.TempDir(),
 		Format:          model.Export_AnyBlockV2,
@@ -187,7 +232,7 @@ func TestExport_AnyBlockV2WritesABundle(t *testing.T) {
 
 	// then
 	require.NoError(t, err)
-	assert.Equal(t, anyblockExportedObjects, succeed)
+	assert.Equal(t, anyblockCollectedObjects, int(diagnostics.Succeed))
 
 	tree := readExportTree(t, exportPath)
 	for dir, id := range byDirectory {
@@ -204,9 +249,31 @@ func TestExport_AnyBlockV2WritesABundle(t *testing.T) {
 
 	index, err := anyblockjson.UnmarshalIndex([]byte(tree[anyblockjson.IndexFileName]))
 	require.NoError(t, err)
+	assert.Equal(t, "test-network", index.NetworkId)
 	require.NotNil(t, index.Manifest)
-	_, err = anyblockjson.UnmarshalPropertyDictionary([]byte(tree[anyblockjson.PropertiesFileName]))
+	assert.Contains(t, tree, "types/type-customObjectType.anyblock.json")
+	assert.NotContains(t, tree, "options/"+optionId+".anyblock.json", "a bundle carries no option documents")
+	assert.NotContains(t, tree, "properties/"+propertyKeyName+".anyblock.json", "nor any property document")
+	_, restored, err := anyblockjson.Unmarshal([]byte(tree["files/"+fileId+".anyblock.json"]), anyblockjson.Options{})
 	require.NoError(t, err)
+	require.NotNil(t, restored.FileInfo, "remote metadata is included when file bytes are omitted")
+	assert.Equal(t, "bafybeiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", restored.FileInfo.FileId)
+	assert.Equal(t, []*model.FileEncryptionKey{{Path: "/0/", Key: "synthetic-test-key"}}, restored.FileInfo.EncryptionKeys)
+
+	dictionary, err := anyblockjson.UnmarshalPropertyDictionary([]byte(tree[anyblockjson.PropertiesFileName]))
+	require.NoError(t, err)
+	vocabulary := map[string][]anyblockjson.OptionDefinition{}
+	formatOf := map[string]int32{}
+	for _, definition := range dictionary.Properties {
+		vocabulary[string(definition.Key)] = definition.Options
+		formatOf[string(definition.Key)] = int32(definition.Format)
+	}
+	require.Contains(t, vocabulary, propertyKeyName, "the property the page tags with earns an entry")
+	assert.Equal(t, int32(model.RelationFormat_tag), formatOf[propertyKeyName],
+		"and the entry states the format, which is the whole reason a reader needs it")
+	require.Len(t, vocabulary[propertyKeyName], 1, "and its vocabulary rides on that entry")
+	assert.Equal(t, "Urgent", vocabulary[propertyKeyName][0].Name)
+	assert.Equal(t, "red", vocabulary[propertyKeyName][0].Color)
 }
 
 // The same bundle into a zip archive, which is what a real backup takes:
@@ -223,7 +290,7 @@ func TestExport_AnyBlockV2WritesAZipBundle(t *testing.T) {
 	fx.picker.EXPECT().TryRemoveFromCache(mock.Anything, mock.Anything).Return(true, nil)
 
 	// when
-	archivePath, succeed, err := fx.Export(context.Background(), pb.RpcObjectListExportRequest{
+	archivePath, diagnostics, err := fx.Export(context.Background(), pb.RpcObjectListExportRequest{
 		SpaceId:         spaceId,
 		Path:            t.TempDir(),
 		Format:          model.Export_AnyBlockV2,
@@ -234,7 +301,7 @@ func TestExport_AnyBlockV2WritesAZipBundle(t *testing.T) {
 
 	// then
 	require.NoError(t, err)
-	assert.Equal(t, anyblockExportedObjects, succeed)
+	assert.Equal(t, anyblockCollectedObjects, int(diagnostics.Succeed))
 
 	reader, err := zip.OpenReader(archivePath)
 	require.NoError(t, err)
@@ -243,7 +310,7 @@ func TestExport_AnyBlockV2WritesAZipBundle(t *testing.T) {
 	for _, file := range reader.File {
 		entries[file.Name] = true
 	}
-	assert.Len(t, entries, len(byDirectory)+2) // the documents, index.json, properties.json
+	assert.Len(t, entries, len(byDirectory)+2) // the documents, index.json, properties.json — the option is collected but written nowhere
 	for dir, id := range byDirectory {
 		assert.True(t, entries[dir+"/"+id+".anyblock.json"], "%s belongs in %s/", id, dir)
 	}
@@ -279,7 +346,7 @@ func TestExport_AnyBlockV2ReportsQueueProgress(t *testing.T) {
 		NoProgress:      true,
 	})
 	require.NoError(t, exportCtx.docsForExport(context.Background()))
-	wr, err := newDirWriter(exportCtx.path, false)
+	wr, err := newDirWriter(exportCtx.path, "export", false)
 	require.NoError(t, err)
 
 	// when
@@ -287,13 +354,11 @@ func TestExport_AnyBlockV2ReportsQueueProgress(t *testing.T) {
 
 	// then
 	require.NoError(t, err)
-	assert.Equal(t, anyblockExportedObjects, succeed)
+	assert.Equal(t, anyblockCollectedObjects, succeed)
 	require.NoError(t, queue.Finalize()) // waits for the workers, so Done is settled
 	progress := queue.Info().Progress
-	// the queue runs one task per OBJECT, including the two whose kinds
-	// write no document
-	assert.Equal(t, int64(anyblockExportedObjects), progress.Total)
-	assert.Equal(t, int64(anyblockExportedObjects), progress.Done)
+	assert.Equal(t, int64(anyblockCollectedObjects), progress.Total)
+	assert.Equal(t, int64(anyblockCollectedObjects), progress.Done)
 }
 
 // A cancelled export stops loading objects. The picker mock is the
@@ -312,7 +377,7 @@ func TestExport_AnyBlockV2StopsWhenCancelled(t *testing.T) {
 	cancel()
 
 	// when
-	exportPath, succeed, err := fx.Export(ctx, pb.RpcObjectListExportRequest{
+	exportPath, diagnostics, err := fx.Export(ctx, pb.RpcObjectListExportRequest{
 		SpaceId:         spaceId,
 		Path:            t.TempDir(),
 		Format:          model.Export_AnyBlockV2,
@@ -322,7 +387,8 @@ func TestExport_AnyBlockV2StopsWhenCancelled(t *testing.T) {
 
 	// then
 	require.NoError(t, err) // the cancel is the user's own request, not a failure
-	assert.Equal(t, 0, succeed)
+	assert.Equal(t, 0, int(diagnostics.Succeed))
+	assert.Equal(t, model.ExportReport_CANCELED, diagnostics.Status)
 	assert.NoDirExists(t, exportPath, "a cancelled export leaves nothing behind")
 }
 
@@ -338,10 +404,11 @@ func TestExport_AnyBlockV2SingleInMemory(t *testing.T) {
 	byDirectory := anyblockSpace(t, fx)
 
 	// when
-	result, err := fx.ExportSingleInMemory(context.Background(), spaceId, byDirectory["objects"], model.Export_AnyBlockV2)
+	result, diagnostics, err := fx.ExportSingleInMemory(context.Background(), spaceId, byDirectory["objects"], model.Export_AnyBlockV2)
 
 	// then
 	require.NoError(t, err)
+	require.NotNil(t, diagnostics)
 	sbType, snapshot, err := anyblockjson.Unmarshal([]byte(result), anyblockjson.Options{SpaceId: spaceId})
 	require.NoError(t, err)
 	assert.Equal(t, model.SmartBlockType_Page, sbType)

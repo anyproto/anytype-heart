@@ -320,7 +320,13 @@ func (c *Config) Init(a *app.App) (err error) {
 	}
 	if !c.PeferYamuxTransport {
 		// PeferYamuxTransport is false by default and used only in case client has some problems with QUIC
-		app.MustComponent[quicPreferenceSetter](a).PreferQuic(true)
+		setter := app.MustComponent[quicPreferenceSetter](a)
+		setter.PreferQuic(true)
+		// Auto-demoting peers to yamux-first when their QUIC connections keep
+		// dying under DPI-style degradation (GO-7467) is driven by whether the
+		// net.quicdemotion app component was registered at bootstrap — see
+		// transportpenalty.DisableEnv there. There is nothing left to enable
+		// here: peerservice picks the component up itself.
 	}
 	// check if sqlite db exists
 	if _, err2 := os.Stat(filepath.Join(repoPath, SpaceStoreSqlitePath)); err2 == nil {

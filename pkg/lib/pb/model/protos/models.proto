@@ -3,6 +3,7 @@ package anytype.model;
 option go_package = "pkg/lib/pb/model";
 
 import "google/protobuf/struct.proto";
+import "pkg/lib/pb/model/protos/export_report.proto";
 
 message SmartBlockSnapshotBase {
     repeated Block blocks = 1;
@@ -1174,6 +1175,9 @@ message Notification {
     message Export {
         Code errorCode = 2;
         model.Export.Format exportType = 3;
+        ExportReport report = 4;
+        // Selected destination directory for this local export.
+        string path = 5;
         enum Code {
             NULL = 0;
             UNKNOWN_ERROR = 1;

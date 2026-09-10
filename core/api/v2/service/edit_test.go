@@ -107,7 +107,7 @@ const editMintedDoc = `{"formatVersion":"2.0","id":"obj1","type":"page","blocks"
 	`{"id":"0000000000000000000bbbb1","type":"paragraph","text":"parent"}]}`
 
 // editCollectionDoc is a collection with one member.
-const editCollectionDoc = `{"formatVersion":"2.0","id":"obj1","type":"collection","properties":{"name":"List"},"items":["memberA"]}`
+const editCollectionDoc = `{"formatVersion":"2.0","id":"obj1","type":"collection","properties":{"name":"List"},"collection_items":["memberA"]}`
 
 // editLayoutDoc holds a row/column layout — the V3 containment case a payload
 // fragment cannot see on its own (review B′1).
@@ -2765,7 +2765,7 @@ func TestPatchObject(t *testing.T) {
 
 		require.NoError(t, err)
 		doc := stateDoc(t, *captured)
-		assert.Equal(t, []any{"memberB"}, doc["items"])
+		assert.Equal(t, []any{"memberB"}, doc["collection_items"])
 	})
 
 	t.Run("add_items on a non-collection is rejected", func(t *testing.T) {

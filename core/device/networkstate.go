@@ -32,6 +32,7 @@ import (
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/device/networkkey"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/net/addrs"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -62,6 +63,15 @@ type NetworkState interface {
 	// interface with no real connectivity); callers must treat this as a hint
 	// for backing off, not as a guarantee.
 	IsOffline() bool
+	// NetworkIdentity identifies the current network as the separately
+	// observed parts it is made of. Callers use it to scope per-network
+	// state like transport penalties, and must compare with
+	// NetworkKey.SameNetwork rather than by equality: the parts arrive at
+	// different times, so two observations of one network routinely differ.
+	// ok is false while nothing identifies the network - nothing reported,
+	// no interface snapshot, or the device is offline - and such a key must
+	// be neither compared nor persisted.
+	NetworkIdentity() (key NetworkKey, ok bool)
 }
 
 type openedObjectRefresher interface {
@@ -413,6 +423,29 @@ func (n *networkState) fingerprint() string {
 	state, id := n.networkState, n.networkId
 	n.networkMu.Unlock()
 	return fmt.Sprintf("%d|%s|%d", state, id, n.monitorGen.Load())
+}
+
+// NetworkKey is the network identity; see networkkey.Key.
+type NetworkKey = networkkey.Key
+
+func (n *networkState) NetworkIdentity() (NetworkKey, bool) {
+	n.networkMu.Lock()
+	state, id, reported := n.networkState, n.networkId, n.networkStateReported
+	n.networkMu.Unlock()
+	// Offline says nothing about which network the device is on.
+	if state == model.DeviceNetworkType_NOT_CONNECTED {
+		return NetworkKey{}, false
+	}
+	key := NetworkKey{
+		Reported: reported,
+		Type:     int32(state),
+		PathId:   id,
+		Snapshot: n.monitorSnapshot.Load(),
+	}
+	if !key.Known() {
+		return NetworkKey{}, false
+	}
+	return key, true
 }
 
 func (n *networkState) IsOffline() bool {

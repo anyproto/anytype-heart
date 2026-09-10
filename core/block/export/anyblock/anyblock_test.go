@@ -14,6 +14,8 @@ package anyblock_test
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -21,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -31,8 +34,10 @@ import (
 	editorsb "github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/core/block/export/anyblock"
+	"github.com/anyproto/anytype-heart/core/block/export/collect"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
@@ -120,6 +125,7 @@ func newFixture(t *testing.T) *fixture {
 	testutil.PrepareMock(context.Background(), a, objectGetter)
 	a.Register(picker)
 	a.Register(process.New())
+	a.Register(nodeconf.New())
 	a.Register(testutil.PrepareMock(context.Background(), a, mock_space.NewMockService(t)))
 	a.Register(testutil.PrepareMock(context.Background(), a, provider))
 	a.Register(testutil.PrepareMock(context.Background(), a, mock_files.NewMockService(t)))
@@ -151,14 +157,13 @@ func setupObject(id, typeId string, sbType smartblock.SmartBlockType, details ma
 	details[bundle.RelationKeyId] = domain.String(id)
 	details[bundle.RelationKeyType] = domain.String(typeId)
 	doc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(details))
-	doc.AddBundledRelationLinks(maps.Keys(details)...)
-	// production derives the uniqueKey DETAIL from the state's internal key
-	// (smartblock/detailsinject.go), so a fixture that sets only the detail
-	// leaves snapshot.Key empty and makes the two disagree — which the path
-	// plan and the envelope id both read
-	if uk, ukErr := domain.UnmarshalUniqueKey(details[bundle.RelationKeyUniqueKey].String()); ukErr == nil {
-		doc.SetUniqueKeyInternal(uk.InternalKey())
+	if sbType == smartblock.SmartBlockTypeFileObject {
+		doc.SetFileInfo(state.FileInfo{
+			FileId:         "bafybeiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+			EncryptionKeys: map[string]string{"/0/": "synthetic-test-key"},
+		})
 	}
+	doc.AddBundledRelationLinks(maps.Keys(details)...)
 	smartBlockTest.Doc = doc
 	smartBlockTest.SetType(sbType)
 	return smartBlockTest
@@ -183,12 +188,13 @@ func setupSpace(t *testing.T, fx *fixture) anyblock.Request {
 			bundle.RelationKeySpaceId: domain.String(spaceId),
 		},
 		{
-			bundle.RelationKeyId:        domain.String(typeId),
-			bundle.RelationKeyUniqueKey: domain.String(uk.Marshal()),
-			bundle.RelationKeyName:      domain.String("Custom type"),
-			bundle.RelationKeyLayout:    domain.Int64(int64(model.ObjectType_objectType)),
-			bundle.RelationKeySpaceId:   domain.String(spaceId),
-			bundle.RelationKeyType:      domain.String(typeId),
+			bundle.RelationKeyId:             domain.String(typeId),
+			bundle.RelationKeyUniqueKey:      domain.String(uk.Marshal()),
+			bundle.RelationKeyName:           domain.String("Custom type"),
+			bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_objectType)),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+			bundle.RelationKeySpaceId:        domain.String(spaceId),
+			bundle.RelationKeyType:           domain.String(typeId),
 		},
 	})
 
@@ -199,13 +205,16 @@ func setupSpace(t *testing.T, fx *fixture) anyblock.Request {
 		bundle.RelationKeyName:      domain.String("Custom type"),
 		bundle.RelationKeyUniqueKey: domain.String(uk.Marshal()),
 	})
+	typeState := objectType.NewState()
+	typeState.SetUniqueKeyInternal(typeId)
+	objectType.Doc = typeState
 	fx.picker.EXPECT().GetObject(mock.Anything, objectId).Return(page, nil)
 	fx.picker.EXPECT().GetObject(mock.Anything, typeId).Return(objectType, nil)
 
 	fx.provider.EXPECT().Type(spaceId, objectId).Return(smartblock.SmartBlockTypePage, nil)
 	fx.provider.EXPECT().Type(spaceId, typeId).Return(smartblock.SmartBlockTypeObjectType, nil)
 
-	return anyblock.Request{SpaceId: spaceId, SpaceName: "Fixture space", IncludeArchived: true}
+	return anyblock.Request{SpaceId: spaceId, SpaceName: "Fixture space", NetworkId: "test-network", IncludeArchived: true}
 }
 
 // readTree reads every file below root into path → content bytes.
@@ -256,7 +265,7 @@ func TestExporter_WritesABundle(t *testing.T) {
 
 	// then
 	require.NoError(t, err)
-	assert.Equal(t, anyblock.Result{Succeed: 2}, result)
+	assert.Equal(t, anyblock.Result{Succeed: 2, Report: result.Report}, result)
 
 	// close-after-write ran for every emitted object — the memory model is
 	// this call being made (design §1.5), proved rather than assumed
@@ -272,11 +281,9 @@ func TestExporter_WritesABundle(t *testing.T) {
 
 	idx, err := anyblockjson.UnmarshalIndex([]byte(tree[anyblockjson.IndexFileName]))
 	require.NoError(t, err)
+	assert.Equal(t, "test-network", idx.NetworkId)
 	assert.Equal(t, "Fixture space", idx.Name, "no space document in this fixture, so the request name is the fallback")
 	require.NotNil(t, idx.Manifest)
-	// the manifest no longer locates types: the type namespace lost its
-	// dictionary upstream, and the tree assertion above is what pins where
-	// a type document lands
 	assert.Equal(t, anyblockjson.PropertiesFileName, idx.Manifest.Properties)
 
 	_, err = anyblockjson.UnmarshalPropertyDictionary([]byte(tree[anyblockjson.PropertiesFileName]))
@@ -313,7 +320,7 @@ func TestExporter_SameSpaceTwiceIsByteIdentical(t *testing.T) {
 		require.NoError(t, err)
 		result, err := fx.exporter.Export(context.Background(), req, wr)
 		require.NoError(t, err)
-		require.Equal(t, anyblock.Result{Succeed: 2}, result)
+		require.Equal(t, anyblock.Result{Succeed: 2, Report: result.Report}, result)
 		return readTree(t, dir)
 	}
 
@@ -409,12 +416,16 @@ func TestExporter_StreamsBlobsAndBindsThemInTheManifest(t *testing.T) {
 
 	// then
 	require.NoError(t, err)
-	assert.Equal(t, anyblock.Result{Succeed: 1}, result)
+	assert.Equal(t, anyblock.Result{Succeed: 1, Report: result.Report}, result)
 
 	tree := readTree(t, dir)
 	require.Contains(t, tree, "files/fileObjectId.anyblock.json", "the document half")
 	require.Contains(t, tree, "files/fileObjectId.txt", "the bytes, same stem, mime-derived extension")
 	assert.Equal(t, "file bytes travel", tree["files/fileObjectId.txt"])
+	_, restored, err := anyblockjson.Unmarshal([]byte(tree["files/fileObjectId.anyblock.json"]), anyblockjson.Options{})
+	require.NoError(t, err)
+	require.NotNil(t, restored.FileInfo, "remote metadata is included even when the bundle carries file bytes")
+	assert.Equal(t, fileSb.NewState().GetFileInfo().ToModel(), restored.FileInfo)
 	assert.NotContains(t, tree["files/fileObjectId.anyblock.json"], "files/fileObjectId.txt",
 		"a document member is not a slot for archive bookkeeping (§1.4)")
 
@@ -467,7 +478,21 @@ func TestExporter_ABlobFailureIsCountedNotFatal(t *testing.T) {
 
 	// then — the document travels, the failure is counted, nothing binds
 	require.NoError(t, err)
-	assert.Equal(t, anyblock.Result{Succeed: 1, BlobErrors: 1}, result)
+	assert.Equal(t, anyblock.Result{Succeed: 1, BlobErrors: 1, Report: result.Report}, result)
+	require.NotNil(t, result.Report)
+	assert.Equal(t, model.ExportReport_PARTIAL, result.Report.Status)
+	assert.EqualValues(t, 1, result.Report.FileErrors)
+	found := false
+	for _, issue := range result.Report.Issues {
+		if issue.Code == "file_export_failed" {
+			assert.Equal(t, fileId, issue.ObjectId)
+			assert.Equal(t, model.ExportReportIssue_ERROR, issue.Severity)
+			assert.NotEmpty(t, issue.Path)
+			assert.NotEmpty(t, issue.Message)
+			found = true
+		}
+	}
+	assert.True(t, found, "file failure must be present in the report")
 	tree := readTree(t, dir)
 	require.Contains(t, tree, "files/brokenFileId.anyblock.json", "the document half still travels")
 	idx, err := anyblockjson.UnmarshalIndex([]byte(tree[anyblockjson.IndexFileName]))
@@ -533,8 +558,94 @@ func TestExporter_AMidStreamFailureLeavesNoPartialBlob(t *testing.T) {
 		anyblock.Request{SpaceId: spaceId, SpaceName: "Fixture space", IncludeArchived: true, IncludeFiles: true}, wr)
 
 	require.NoError(t, err)
-	assert.Equal(t, anyblock.Result{Succeed: 1, BlobErrors: 1}, result)
+	assert.Equal(t, anyblock.Result{Succeed: 1, BlobErrors: 1, Report: result.Report}, result)
+	require.NotNil(t, result.Report)
+	assert.Equal(t, model.ExportReport_PARTIAL, result.Report.Status)
+	assert.EqualValues(t, 1, result.Report.FileErrors)
+	found := false
+	for _, issue := range result.Report.Issues {
+		if issue.Code == "file_export_failed" {
+			assert.Equal(t, fileId, issue.ObjectId)
+			assert.Equal(t, model.ExportReportIssue_ERROR, issue.Severity)
+			assert.NotEmpty(t, issue.Path)
+			assert.NotEmpty(t, issue.Message)
+			found = true
+		}
+	}
+	assert.True(t, found, "file failure must be present in the report")
 	tree := readTree(t, dir)
 	require.Contains(t, tree, "files/truncatedFileId.anyblock.json")
 	assert.NotContains(t, tree, "files/truncatedFileId.bin", "the partial blob must be cleaned up")
+}
+
+func TestExporter_ReportsObjectFailures(t *testing.T) {
+	for _, stage := range []string{"type", "load", "write"} {
+		t.Run(stage, func(t *testing.T) {
+			fx := newFixture(t)
+			const id = "broken-object"
+			details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId: domain.String(id), bundle.RelationKeyName: domain.String("Broken"),
+			})
+			docs := collect.Docs{id: {Details: details}}
+			failure := fmt.Errorf("%s failed", stage)
+			if stage == "type" {
+				fx.provider.EXPECT().Type(spaceId, id).Return(smartblock.SmartBlockTypePage, failure)
+			} else {
+				fx.provider.EXPECT().Type(spaceId, id).Return(smartblock.SmartBlockTypePage, nil)
+				if stage == "load" {
+					fx.picker.EXPECT().GetObject(mock.Anything, id).Return(nil, failure)
+				} else {
+					fx.picker.EXPECT().GetObject(mock.Anything, id).Return(setupObject(id, "", smartblock.SmartBlockTypePage, nil), nil)
+				}
+			}
+			result, err := fx.exporter.ExportCollected(context.Background(), anyblock.Request{SpaceId: spaceId}, docs, failAtWriter{fail: "objects/" + id + ".anyblock.json"})
+			require.NoError(t, err)
+			require.NotNil(t, result.Report)
+			assert.Equal(t, model.ExportReport_PARTIAL, result.Report.Status)
+			assert.EqualValues(t, 1, result.Report.ObjectErrors)
+			assert.Zero(t, result.Succeed)
+			require.NotEmpty(t, result.Report.Issues)
+			found := false
+			for _, issue := range result.Report.Issues {
+				if issue.ObjectId == id && issue.Severity == model.ExportReportIssue_ERROR {
+					assert.NotEmpty(t, issue.Code)
+					assert.NotEmpty(t, issue.Message)
+					if stage == "write" {
+						assert.Equal(t, "objects/"+id+".anyblock.json", issue.Path)
+					}
+					found = true
+				}
+			}
+			assert.True(t, found)
+		})
+	}
+}
+
+func TestExporter_ReportsFatalBundleWriteFailure(t *testing.T) {
+	fx := newFixture(t)
+	req := setupSpace(t, fx)
+	result, err := fx.exporter.Export(context.Background(), req, failAtWriter{fail: anyblockjson.IndexFileName})
+	require.Error(t, err)
+	require.NotNil(t, result.Report)
+	assert.Equal(t, model.ExportReport_FAILED, result.Report.Status)
+	assert.EqualValues(t, 2, result.Report.Succeed)
+	found := false
+	for _, issue := range result.Report.Issues {
+		if issue.Code == "bundle_write_failed" {
+			assert.Equal(t, anyblockjson.IndexFileName, issue.Path)
+			assert.Equal(t, model.ExportReportIssue_ERROR, issue.Severity)
+			found = true
+		}
+	}
+	assert.True(t, found)
+}
+
+type failAtWriter struct{ fail string }
+
+func (w failAtWriter) WriteFile(name string, r io.Reader, _ int64) error {
+	if name == w.fail {
+		return fmt.Errorf("write failed")
+	}
+	_, err := io.Copy(io.Discard, r)
+	return err
 }

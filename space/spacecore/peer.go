@@ -7,6 +7,8 @@ import (
 	"go.uber.org/zap"
 	"storj.io/drpc"
 
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/clientspaceproto"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/transport"
@@ -14,33 +16,90 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 )
 
+// PeerDiscoveryObserver receives every LAN discovery, before the peer is
+// dialed. The recovery status tracker (core.recovery) implements it; this
+// package owns the single localdiscovery.SetNotifier slot, so the forward
+// lives here rather than competing for it — Android's SetNotifierProvider
+// path lands here too. Looked up by name because the tracker lives above this
+// package; a drift test keeps the constant equal to recovery.CName.
+type PeerDiscoveryObserver interface {
+	OnLocalPeerDiscovered(peerId string, addrs []string)
+}
+
+const recoveryCName = "core.recovery"
+
+func lookupPeerDiscoveryObserver(a *app.App) PeerDiscoveryObserver {
+	c := a.Component(recoveryCName)
+	if c == nil {
+		return nil
+	}
+	observer, _ := c.(PeerDiscoveryObserver)
+	return observer
+}
+
+// lookupPullObserver resolves the same tracker as a commonspace.PullObserver;
+// loadSpace injects it into every space's Deps (tech, personal, shareable,
+// streamable, one-to-one all route through it).
+func lookupPullObserver(a *app.App) commonspace.PullObserver {
+	c := a.Component(recoveryCName)
+	if c == nil {
+		return nil
+	}
+	observer, _ := c.(commonspace.PullObserver)
+	return observer
+}
+
 func (s *service) PeerDiscovered(ctx context.Context, discovered localdiscovery.DiscoveredPeer, own localdiscovery.OwnAddresses) {
+	if s.peerDiscoveryObserver != nil {
+		s.peerDiscoveryObserver.OnLocalPeerDiscovered(discovered.PeerId, discovered.Addrs)
+	}
 	s.peerService.SetPeerAddrs(discovered.PeerId, s.addSchema(discovered.Addrs))
-	unaryPeer, err := s.poolManager.UnaryPeerPool().Get(ctx, discovered.PeerId)
+	s.rememberOwn(own)
+	shared, proof, err := s.exchangeOutbound(ctx, discovered.PeerId, &own)
 	if err != nil {
 		return
 	}
-	allIds, err := s.spaceStorageProvider.AllSpaceIds()
+	s.publishLocalPeer(discovered.PeerId, shared, proof, directionOutbound)
+}
+
+// exchangeOutbound is the outbound handshake with one LAN peer: the v2 token
+// exchange over the request list (disk plus the derived tech space), with the
+// v1 fallback for peers that predate v2. own may be nil (re-exchange before
+// local discovery reported our addresses): the peer then answers without
+// recording us. The same function serves discovery and re-exchange, so the
+// two cannot drift. proof is true for a v2 result: its tokens are keyed
+// proofs, while v1 is a plaintext list that proves nothing.
+func (s *service) exchangeOutbound(ctx context.Context, peerId string, own *localdiscovery.OwnAddresses) (shared []string, proof bool, err error) {
+	unaryPeer, err := s.poolManager.UnaryPeerPool().Get(ctx, peerId)
 	if err != nil {
-		return
+		return nil, false, fmt.Errorf("get peer: %w", err)
 	}
-	shared, err := s.spaceExchangeV2(ctx, unaryPeer, discovered.PeerId, allIds, own)
+	allIds, err := s.exchangeRequestIds()
+	if err != nil {
+		return nil, false, err
+	}
+	var localServer *clientspaceproto.LocalServer
+	if own != nil {
+		localServer = localServerOf(*own)
+	}
+	shared, err = s.spaceExchangeV2(ctx, unaryPeer, peerId, allIds, localServer)
 	if err != nil {
 		// a peer that predates v2 fails the call; fall back so LAN discovery
 		// keeps working across a mixed-version rollout
-		log.Debug("space exchange v2, falling back to v1", zap.String("peerId", discovered.PeerId), zap.Error(err))
-		if shared, err = s.spaceExchangeV1(ctx, unaryPeer, allIds, own); err != nil {
-			return
+		log.Debug("space exchange v2, falling back to v1", zap.String("peerId", peerId), zap.Error(err))
+		if shared, err = s.spaceExchangeV1(ctx, unaryPeer, allIds, localServer); err != nil {
+			return nil, false, err
 		}
+		return shared, false, nil
 	}
-	s.peerStore.UpdateLocalPeer(discovered.PeerId, shared)
+	return shared, true, nil
 }
 
 // spaceExchangeV2 runs the token handshake: send one membership token per
 // space we can derive a discovery key for, padded and sorted so the true space
 // count stays hidden, then match the peer's proof tokens back to our own
 // spaces. Neither side ever transmits a space id.
-func (s *service) spaceExchangeV2(ctx context.Context, unaryPeer peer.Peer, peerId string, allIds []string, own localdiscovery.OwnAddresses) ([]string, error) {
+func (s *service) spaceExchangeV2(ctx context.Context, unaryPeer peer.Peer, peerId string, allIds []string, localServer *clientspaceproto.LocalServer) ([]string, error) {
 	nonce, err := clientspaceproto.NewNonceV2()
 	if err != nil {
 		return nil, fmt.Errorf("nonce: %w", err)
@@ -58,7 +117,7 @@ func (s *service) spaceExchangeV2(ctx context.Context, unaryPeer peer.Peer, peer
 		resp, dErr = clientspaceproto.NewDRPCClientSpaceClient(conn).SpaceExchangeV2(ctx, &clientspaceproto.SpaceExchangeV2Request{
 			Nonce:       nonce,
 			SpaceTokens: tokens,
-			LocalServer: localServerOf(own),
+			LocalServer: localServer,
 		})
 		return dErr
 	})
@@ -71,13 +130,13 @@ func (s *service) spaceExchangeV2(ctx context.Context, unaryPeer peer.Peer, peer
 // spaceExchangeV1 is the legacy plaintext handshake, kept only to reach peers
 // that predate SpaceExchangeV2. It hands our full space id list to whoever
 // asks, so it is never attempted before v2.
-func (s *service) spaceExchangeV1(ctx context.Context, unaryPeer peer.Peer, allIds []string, own localdiscovery.OwnAddresses) ([]string, error) {
+func (s *service) spaceExchangeV1(ctx context.Context, unaryPeer peer.Peer, allIds []string, localServer *clientspaceproto.LocalServer) ([]string, error) {
 	var resp *clientspaceproto.SpaceExchangeResponse
 	err := unaryPeer.DoDrpc(ctx, func(conn drpc.Conn) error {
 		var dErr error
 		resp, dErr = clientspaceproto.NewDRPCClientSpaceClient(conn).SpaceExchange(ctx, &clientspaceproto.SpaceExchangeRequest{
 			SpaceIds:    allIds,
-			LocalServer: localServerOf(own),
+			LocalServer: localServer,
 		})
 		return dErr
 	})

@@ -10,6 +10,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+const IssueOptionDescriptionOmitted = external.IssueOptionDescriptionOmitted
+const IssueOptionContentOmitted = external.IssueOptionContentOmitted
+
 type (
 	Issue = external.Issue
 	Stats = external.Stats
@@ -87,4 +90,11 @@ func (c *Composer) ObserveFileBlob(objectId, path string) {
 
 func (c *Composer) Finish() (index, properties []byte, stats Stats, err error) {
 	return c.inner.Finish()
+}
+
+// UsedPropertyKeysFromBytes re-exports the composer's own used-key census, so
+// a tool that scans a written bundle asks the same question the composer asked
+// while writing it rather than re-deriving which slots name a property.
+func UsedPropertyKeysFromBytes(document []byte) (map[string]bool, error) {
+	return external.UsedPropertyKeysFromBytes(document)
 }

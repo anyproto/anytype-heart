@@ -11,10 +11,13 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/nodeconf"
+	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	"golang.org/x/exp/maps"
 
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
@@ -68,6 +71,8 @@ func newFixture(t *testing.T) *fixture {
 	processSvc := process.New()
 	fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
 	mockSender := mock_event.NewMockSender(t)
+	nodeConf := mock_nodeconf.NewMockService(gomock.NewController(t))
+	nodeConf.EXPECT().Configuration().Return(nodeconf.Configuration{NetworkId: "test-network"}).AnyTimes()
 
 	a := &app.App{}
 	a.Register(testutil.PrepareMock(context.Background(), a, mockSender))
@@ -89,6 +94,7 @@ func newFixture(t *testing.T) *fixture {
 		notificationService: notifications,
 		processService:      processSvc,
 		formatFetcher:       fetcher,
+		nodeConf:            nodeConf,
 	}
 
 	return &fixture{
@@ -163,7 +169,7 @@ func TestExport_Export(t *testing.T) {
 		// then
 		<-notificationSend
 		assert.NoError(t, err)
-		assert.Equal(t, 2, success)
+		assert.Equal(t, 2, int(success.Succeed))
 
 		reader, err := zip.OpenReader(path)
 		assert.Nil(t, err)
@@ -208,7 +214,7 @@ func TestExport_Export(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, 2, success)
+		assert.Equal(t, 2, int(success.Succeed))
 		fx.notifications.AssertNotCalled(t, "CreateAndSend")
 	})
 	t.Run("empty import", func(t *testing.T) {
@@ -233,7 +239,7 @@ func TestExport_Export(t *testing.T) {
 		// then
 		<-notificationSend
 		assert.NoError(t, err)
-		assert.Equal(t, 0, success)
+		assert.Equal(t, 0, int(success.Succeed))
 
 		reader, err := zip.OpenReader(path)
 		assert.NoError(t, err)
@@ -265,7 +271,7 @@ func TestExport_Export(t *testing.T) {
 		// then
 		<-notificationSend
 		assert.NotNil(t, err)
-		assert.Equal(t, 0, success)
+		assert.Equal(t, 0, int(success.Succeed))
 	})
 	t.Run("export with filters success", func(t *testing.T) {
 		// given
@@ -332,7 +338,7 @@ func TestExport_Export(t *testing.T) {
 		// then
 		<-notificationSend
 		assert.NoError(t, err)
-		assert.Equal(t, 3, success)
+		assert.Equal(t, 3, int(success.Succeed))
 
 		reader, err := zip.OpenReader(path)
 		assert.NoError(t, err)
@@ -406,7 +412,7 @@ func TestExport_Export(t *testing.T) {
 		// then
 		<-notificationSend
 		assert.NoError(t, err)
-		assert.Equal(t, 3, success)
+		assert.Equal(t, 3, int(success.Succeed))
 
 		reader, err := zip.OpenReader(path)
 		assert.NoError(t, err)
@@ -461,7 +467,7 @@ func TestExport_Export(t *testing.T) {
 		// then
 		<-notificationSend
 		assert.NoError(t, err)
-		assert.Equal(t, 2, success)
+		assert.Equal(t, 2, int(success.Succeed))
 
 		reader, err := zip.OpenReader(path)
 		assert.NoError(t, err)
@@ -521,7 +527,7 @@ func TestExport_Export(t *testing.T) {
 		// then
 		<-notificationSend
 		assert.NoError(t, err)
-		assert.Equal(t, 3, success)
+		assert.Equal(t, 3, int(success.Succeed))
 
 		reader, err := zip.OpenReader(path)
 		assert.NoError(t, err)
@@ -1915,7 +1921,7 @@ func TestExport_ExportCollectionWithNonExistingObjects(t *testing.T) {
 		<-notificationSend
 		assert.NoError(t, err)
 		assert.NotEmpty(t, path)
-		assert.Equal(t, 3, int(succeed))
+		assert.Equal(t, 3, int(succeed.Succeed))
 
 		reader, err := zip.OpenReader(path)
 		require.NoError(t, err)

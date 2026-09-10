@@ -8,7 +8,6 @@ package export
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/block/export/anyblock"
@@ -36,6 +35,7 @@ func (e *exportContext) exportAnyBlockJSON(ctx context.Context, wr writer, queue
 	}
 	res, err := exporter.ExportCollected(ctx, anyblock.Request{
 		SpaceId:          e.spaceId,
+		NetworkId:        e.nodeConf.Configuration().NetworkId,
 		Ids:              e.reqIds,
 		IncludeNested:    e.includeNested,
 		IncludeFiles:     e.includeFiles,
@@ -49,15 +49,9 @@ func (e *exportContext) exportAnyBlockJSON(ctx context.Context, wr writer, queue
 		// holds the better answer.
 		Runner: queueRunner{queue: queue},
 	}, e.docs, wr)
+	e.report.Merge(res.Report)
 	if err != nil {
-		if errors.Is(err, process.ErrQueueCanceled) || errors.Is(err, context.Canceled) {
-			// the cancel shape the legacy branch of exportByFormat uses:
-			// nothing succeeded, the half-written output goes away, and the
-			// RPC reports no error for the stop the user asked for
-			cleanupFile(wr)
-			return 0, nil
-		}
-		return 0, fmt.Errorf("export anyblock json bundle: %w", err)
+		return res.Succeed, fmt.Errorf("export anyblock json bundle: %w", err)
 	}
 	return res.Succeed, nil
 }
@@ -71,19 +65,13 @@ type queueRunner struct {
 	queue process.Queue
 }
 
-// Run hands every task to the queue and blocks until they are all done, or
-// until the queue is cancelled. The queue's own worker count bounds how
-// many run at once (exportWorkers), and the tasks themselves watch ctx —
-// so this does not, and takes ctx only to satisfy anyblock.EmitRunner.
+// Run uses the shared export queue, including draining active workers on cancel.
 func (r queueRunner) Run(_ context.Context, tasks []func()) error {
-	queued := make([]process.Task, 0, len(tasks))
-	for _, task := range tasks {
-		queued = append(queued, task)
+	queued := make([]process.Task, len(tasks))
+	for i, task := range tasks {
+		queued[i] = task
 	}
-	if err := r.queue.Wait(queued...); err != nil {
-		return fmt.Errorf("run emit tasks on export queue: %w", err)
-	}
-	return nil
+	return waitExportTasks(r.queue, queued...)
 }
 
 // exportSingleAnyBlockDocument serves ExportSingleInMemory for the native
@@ -105,7 +93,8 @@ func (e *exportContext) exportSingleAnyBlockDocument(ctx context.Context, object
 		ObjectStore: e.objectStore,
 		SbtProvider: e.sbtProvider,
 	}
-	data, err := exporter.ExportDocument(ctx, e.spaceId, objectId)
+	data, diagnostics, err := exporter.ExportDocument(ctx, e.spaceId, objectId)
+	e.report.Merge(diagnostics)
 	if err != nil {
 		return "", fmt.Errorf("export anyblock json document: %w", err)
 	}

@@ -35,12 +35,12 @@ func TestTypeResolver_TranslatesIdsAndKeys(t *testing.T) {
 	fx := newTargetsFixture(t)
 
 	// then: the space row, both directions
-	key, ok := fx.TypeKeyById("personTypeId")
+	key, ok := fx.TypeKeyById("type-person")
 	require.True(t, ok)
 	assert.Equal(t, customTypeKey, key)
 	id, ok := fx.TypeIdByKey(customTypeKey)
 	require.True(t, ok)
-	assert.Equal(t, "personTypeId", id)
+	assert.Equal(t, "type-person", id)
 
 	// the legacy bundled-url form, no store row needed
 	key, ok = fx.TypeKeyById(bundle.TypeKeyTask.BundledURL())
@@ -48,7 +48,7 @@ func TestTypeResolver_TranslatesIdsAndKeys(t *testing.T) {
 	assert.Equal(t, "task", key)
 
 	// and honest misses
-	_, ok = fx.TypeKeyById("vanishedTypeId")
+	_, ok = fx.TypeKeyById("missing-type-id")
 	assert.False(t, ok, "an id nothing serves must miss, not invent")
 	_, ok = fx.TypeIdByKey("vanishedKey")
 	assert.False(t, ok)
@@ -75,8 +75,8 @@ func TestRelationDocumentTranslatesTargetTypes(t *testing.T) {
 				NumberValue: float64(model.RelationFormat_object)}},
 			"relationFormatObjectTypes": {Kind: &types.Value_ListValue{ListValue: &types.ListValue{
 				Values: []*types.Value{
-					{Kind: &types.Value_StringValue{StringValue: "personTypeId"}},
-					{Kind: &types.Value_StringValue{StringValue: "vanishedTypeId"}},
+					{Kind: &types.Value_StringValue{StringValue: "type-person"}},
+					{Kind: &types.Value_StringValue{StringValue: "missing-type-id"}},
 				},
 			}}},
 		}},
@@ -88,27 +88,17 @@ func TestRelationDocumentTranslatesTargetTypes(t *testing.T) {
 	_, got, err := anyblockjson.Unmarshal(data, fx.Options())
 	require.NoError(t, err)
 
-	// then: the resolved key on the wire as its derived id (§9), which
-	// needs no legend to invert — and the unresolvable id verbatim, its own
-	// address, never dropped
+	// The resolved type uses its derived id; an unresolvable object id
+	// passes through unchanged.
 	var doc struct {
 		PropertySettings struct {
 			Format      string   `json:"format"`
 			ObjectTypes []string `json:"object_types"`
 		} `json:"property_settings"`
-		TypeKeys map[string]string `json:"type_internal_keys"`
 	}
 	require.NoError(t, json.Unmarshal(data, &doc))
 	assert.Equal(t, "objects", doc.PropertySettings.Format)
-	// NOTE, upstream behaviour worth questioning: a target the space cannot
-	// resolve is written `type-<the stored id>` — a derived id asserting a
-	// type key that never existed, where verbatim passthrough would say
-	// "this is an address I could not translate". It reaches the exporter
-	// only: with NoDerivedTypeIds (every API read) the slot falls back to
-	// the vocabulary spelling, which leaves the id alone.
-	assert.Equal(t, []string{"type-" + customTypeKey, "type-vanishedTypeId"}, doc.PropertySettings.ObjectTypes)
-	assert.Empty(t, doc.TypeKeys,
-		"a derived id inverts itself, so the type namespace carries no legend (§9)")
+	assert.Equal(t, []string{"type-" + customTypeKey, "missing-type-id"}, doc.PropertySettings.ObjectTypes)
 
 	// and ids back in the snapshot
 	gotTargets := got.Details.Fields["relationFormatObjectTypes"].GetListValue()
@@ -117,7 +107,7 @@ func TestRelationDocumentTranslatesTargetTypes(t *testing.T) {
 	for _, v := range gotTargets.Values {
 		values = append(values, v.GetStringValue())
 	}
-	assert.Equal(t, []string{"personTypeId", "vanishedTypeId"}, values)
+	assert.Equal(t, []string{"type-person", "missing-type-id"}, values)
 }
 
 // A relation document from a space whose type listing is empty still

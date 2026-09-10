@@ -85,7 +85,12 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (*CreateS
 		// app-level scope/expiry/grant decisions; the HTTP gate only
 		// authenticates with AuthOfAppKey, which goes through the branch
 		// above.
-		return &CreateSessionResult{Token: token, AccountScope: scope}, nil
+		return &CreateSessionResult{Token: token, AccountId: s.walletAccountId(), AccountScope: scope}, nil
+	}
+
+	walletAccountId := s.walletAccountId()
+	if walletAccountId == "" {
+		return nil, ErrWalletNotInitialized
 	}
 
 	var derived crypto.DerivationResult
@@ -97,10 +102,6 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (*CreateS
 			return nil, errors.Join(ErrBadInput, fmt.Errorf("invalid account key: %w", err))
 		}
 	} else {
-		if s.derivedKeys == nil {
-			return nil, ErrWalletNotInitialized
-		}
-
 		// Derive keys from provided mnemonic to verify it's correct
 		derived, err = core.WalletAccountAt(mnemonic, 0)
 		if err != nil {
@@ -109,15 +110,26 @@ func (s *Service) CreateSession(req *pb.RpcWalletCreateSessionRequest) (*CreateS
 	}
 
 	// Compare account IDs to verify we are at the same account
-	if derived.Identity.GetPublic().Account() != s.derivedKeys.Identity.GetPublic().Account() {
+	accountId := derived.Identity.GetPublic().Account()
+	if accountId != walletAccountId {
 		return nil, errors.Join(ErrBadInput, fmt.Errorf("incorrect mnemonic"))
 	}
 	token, err := s.sessions.StartSession(s.sessionSigningKey, model.AccountAuth_Full)
 	if err != nil {
 		return nil, fmt.Errorf("start session: %w", err)
 	}
-	// todo: account is empty, to be implemented with GO-1854
-	return &CreateSessionResult{Token: token, AccountScope: model.AccountAuth_Full}, nil
+	return &CreateSessionResult{Token: token, AccountId: accountId, AccountScope: model.AccountAuth_Full}, nil
+}
+
+// walletAccountId reads the recovered wallet's account id under the same lock
+// used by WalletRecover and WalletCreate. An uninitialized wallet has no id.
+func (s *Service) walletAccountId() string {
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	if s.derivedKeys == nil {
+		return ""
+	}
+	return s.derivedKeys.Identity.GetPublic().Account()
 }
 
 // mintAppKeySession reads the app link and mints a session tracked against

@@ -55,6 +55,17 @@ func seedWholeSpace(t *testing.T, fx *fixture) map[string]smartblock.SmartBlockT
 		"customRelation": smartblock.SmartBlockTypeRelation,
 		"collectionId":   smartblock.SmartBlockTypePage,
 		"archivedId":     smartblock.SmartBlockTypePage,
+		"chatId":         smartblock.SmartBlockTypeChatDerivedObject,
+		"legacyChatId":   smartblock.SmartBlockTypeChatObjectDeprecated,
+		"archivedChatId": smartblock.SmartBlockTypeChatDerivedObject,
+	}
+	for _, id := range []string{"chatId", "legacyChatId", "archivedChatId"} {
+		fx.store.AddObjects(t, spaceId, []spaceindex.TestObject{{
+			bundle.RelationKeyId:         domain.String(id),
+			bundle.RelationKeyName:       domain.String("Synthetic chat"),
+			bundle.RelationKeySpaceId:    domain.String(spaceId),
+			bundle.RelationKeyIsArchived: domain.Bool(id == "archivedChatId"),
+		}})
 	}
 	fx.sbtProvider.EXPECT().Type(spaceId, mock.Anything).RunAndReturn(
 		func(_ string, id string) (smartblock.SmartBlockType, error) {
@@ -118,6 +129,9 @@ func Test_docsForExport_WholeSpaceClosureRules(t *testing.T) {
 		assert.Contains(t, expCtx.docs, "customRelation")
 		assert.Contains(t, expCtx.docs, "collectionId")
 		assert.Contains(t, expCtx.docs, "archivedId")
+		assert.Contains(t, expCtx.docs, "chatId")
+		assert.Contains(t, expCtx.docs, "legacyChatId")
+		assert.Contains(t, expCtx.docs, "archivedChatId")
 	})
 
 	t.Run("derived closure without the flag drops the archived page", func(t *testing.T) {
@@ -139,6 +153,9 @@ func Test_docsForExport_WholeSpaceClosureRules(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.NotContains(t, expCtx.docs, "archivedId")
+		assert.NotContains(t, expCtx.docs, "archivedChatId")
+		assert.Contains(t, expCtx.docs, "chatId")
+		assert.Contains(t, expCtx.docs, "legacyChatId")
 		assert.Contains(t, expCtx.docs, "pageId")
 	})
 }

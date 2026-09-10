@@ -20,6 +20,7 @@ import (
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -327,6 +328,66 @@ func TestLinkLocalCreateApp(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, "k", appKey)
+	})
+
+}
+
+func TestCreateSessionMnemonic(t *testing.T) {
+	t.Run("with mnemonic", func(t *testing.T) {
+		t.Run("answers with the account id", func(t *testing.T) {
+			// given a recovered wallet — this is what login does, and the account it
+			// gets back here is what spares it waiting on an accountShow broadcast
+			s := New()
+			mnemonic, err := core.WalletGenerateMnemonic(wordCount)
+			require.NoError(t, err)
+			require.NoError(t, s.WalletRecover(&pb.RpcWalletRecoverRequest{RootPath: t.TempDir(), Mnemonic: mnemonic}))
+			want, err := core.WalletAccountAt(mnemonic, 0)
+			require.NoError(t, err)
+
+			// when
+			result, err := s.CreateSession(&pb.RpcWalletCreateSessionRequest{
+				Auth: &pb.RpcWalletCreateSessionRequestAuthOfMnemonic{Mnemonic: mnemonic},
+			})
+
+			// then
+			require.NoError(t, err)
+			assert.NotEmpty(t, result.Token)
+			assert.Equal(t, want.Identity.GetPublic().Account(), result.AccountId)
+		})
+
+		t.Run("wrong mnemonic is still refused", func(t *testing.T) {
+			// given
+			s := New()
+			mnemonic, err := core.WalletGenerateMnemonic(wordCount)
+			require.NoError(t, err)
+			require.NoError(t, s.WalletRecover(&pb.RpcWalletRecoverRequest{RootPath: t.TempDir(), Mnemonic: mnemonic}))
+			other, err := core.WalletGenerateMnemonic(wordCount)
+			require.NoError(t, err)
+
+			// when
+			result, err := s.CreateSession(&pb.RpcWalletCreateSessionRequest{
+				Auth: &pb.RpcWalletCreateSessionRequestAuthOfMnemonic{Mnemonic: other},
+			})
+
+			// then
+			require.ErrorIs(t, err, ErrBadInput)
+			assert.Nil(t, result)
+		})
+
+		t.Run("no wallet recovered yet", func(t *testing.T) {
+			// given
+			s := New()
+			mnemonic, err := core.WalletGenerateMnemonic(wordCount)
+			require.NoError(t, err)
+
+			// when
+			_, err = s.CreateSession(&pb.RpcWalletCreateSessionRequest{
+				Auth: &pb.RpcWalletCreateSessionRequestAuthOfMnemonic{Mnemonic: mnemonic},
+			})
+
+			// then
+			require.ErrorIs(t, err, ErrWalletNotInitialized)
+		})
 	})
 }
 

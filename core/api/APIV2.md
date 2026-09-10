@@ -139,7 +139,7 @@ PATCH/DELETE /v2/spaces/{space_id}/properties/{key}    # update / archive
 - **Sets** (R10): `ObjectCreateSet` accepts no filters/sorts/views. Build
   the set by constructing its **initial state with a fully-formed dataview
   block** (filters/sorts/views included) via the AnyBlock create path —
-  one change set, honestly atomic. Collections are clean (the `items`
+  one change set, honestly atomic. Collections are clean (the `collection_items`
   import path exists).
 - **Templates**: no create-from-body RPC exists; `POST /templates` targets
   the generic AnyBlock create path (Template kind + `templateFor`), which
@@ -424,7 +424,7 @@ illustration):
 - **Sets AND collections both get a read path.** Phases 2–3 shipped a full
   collection write surface (POST /collections, `add_items`/`remove_items`)
   with no read/query endpoint — a collection's members were readable only
-  as the raw `items` id array on GET object (unpaginated bare ids), a
+  as the raw `collection_items` id array on GET object (unpaginated bare ids), a
   regression vs v1's `/lists/{listId}`. The GET routes above cover both:
   `queries/{id}/*` requires a query (its dataview source drives it),
   `collections/{id}/*` requires a collection (membership rows = the store

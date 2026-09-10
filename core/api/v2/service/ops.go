@@ -215,7 +215,7 @@ func parseEditDoc(body []byte) (*v2EditDoc, error) {
 			return nil, fmt.Errorf("decode properties: %w", err)
 		}
 	}
-	if raw, ok := fields["items"]; ok {
+	if raw, ok := fields["collection_items"]; ok {
 		if err := json.Unmarshal(raw, &doc.items); err != nil {
 			return nil, fmt.Errorf("decode items: %w", err)
 		}

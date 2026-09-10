@@ -90,3 +90,18 @@ Only **Revision** and **Name** are revised on non-system relations, and the name
 still equals one of the previous bundled names; any other local name is treated as the user's rename and kept.
 Renamed system types and relations do not need `previousBundledRelationNames` entries: users cannot rename them,
 so the system path applies the bundled name unconditionally (a `revision` bump is still required).
+
+## Account start-up status (recovery events)
+
+From the first millisecond of `AccountSelect` until every space has published its load result,
+the middleware emits `Event.Account.Recovery.Update` (a recovery-scoped, monotonic event log) and
+serves the folded `Snapshot` through `AccountRecoveryState`, both from one fold in
+`core/recovery`. It covers every app open: a cold recovery on a fresh device, a warm start, and
+a new account. The coarse phase (`LookingForPeers -> Connecting -> FetchingAccount ->
+LoadingSpaces -> Done`, with a calm `WaitingForNetwork` overlay and a terminal `Failed`) is the
+headline; peers, the account fetch and per-space load states are the detail underneath.
+Producers are advisory seams (peer observer, pull observer, space loader, tech-space head-sync)
+that never affect control flow.
+
+- Design: [docs/superpowers/specs/2026-09-02-cold-sync-recovery-events-design.md](superpowers/specs/2026-09-02-cold-sync-recovery-events-design.md)
+- Client integration: [docs/RecoveryEventsClientIntegration.md](RecoveryEventsClientIntegration.md)

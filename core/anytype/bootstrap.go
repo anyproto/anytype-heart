@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/any-sync/metric"
 	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/anyproto/any-sync/net/pool"
+	"github.com/anyproto/any-sync/net/quicdemotion"
 	"github.com/anyproto/any-sync/net/rpc/debugserver"
 	"github.com/anyproto/any-sync/net/rpc/server"
 	"github.com/anyproto/any-sync/net/secureservice"
@@ -114,6 +115,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/net/peerobservermux"
+	"github.com/anyproto/anytype-heart/net/transportpenalty"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
@@ -256,13 +259,27 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
 		Register(syncqueues.New()).
+		// the single peerobserver slot, as a fan-out: the recovery status
+		// tracker registers with it at Init, diagnostics can later
 		Register(peerstore.New()).
+		Register(peerobservermux.New()).
 		Register(storage.New()).
 		Register(secureservice.New()).
 		Register(metric.New()).
 		Register(server.New()).
 		Register(debugserver.New()).
-		Register(pool.New()).
+		Register(pool.New())
+
+	if os.Getenv(transportpenalty.DisableEnv) != "0" {
+		// quicdemotion is a standalone app component (any-sync net/quicdemotion):
+		// registering it is what enables auto-demoting peers to yamux-first
+		// when their QUIC connections keep dying under DPI-style degradation
+		// (GO-7467). peerservice picks it up itself in its own Init, so it
+		// must be registered before peerservice's Init runs.
+		a.Register(quicdemotion.New())
+	}
+
+	a.
 		Register(peerservice.New()).
 		Register(yamux.New()).
 		Register(quic.New()).
@@ -278,6 +295,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(spacecore.New()).
 		Register(idresolver.New(200*time.Millisecond, 2*time.Second)).
 		Register(device.New()).
+		Register(transportpenalty.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
 		Register(typeprovider.New()).

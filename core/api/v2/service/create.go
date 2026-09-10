@@ -40,7 +40,7 @@ type docEnvelope struct {
 	// logic reads are modelled: the rest reach the store through
 	// anyblockjson.Unmarshal and the snapshot, never through this struct.
 	TypeSettings *typeSettingsEnvelope `json:"type_settings"`
-	Items        []string              `json:"items"`
+	Items        []string              `json:"collection_items"`
 }
 
 // typeSettingsEnvelope is the slice of §2a's type_settings the API's own
@@ -528,10 +528,10 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 		}
 	}
 
-	// SPEC §2: items on a non-collection document is a wiring-enforced error
+	// SPEC §2: collection_items requires a collection document.
 	if len(envelope.Items) > 0 && envelope.Type != string(bundle.TypeKeyCollection) {
 		return v2model.ValidationFailed("items on a non-collection document",
-			v2model.Issue{Path: "/items", Message: fmt.Sprintf("items requires type \"collection\", got %q", envelope.Type), Hint: fmt.Sprintf("POST /v2/spaces/%s/collections", spaceId)})
+			v2model.Issue{Path: "/collection_items", Message: fmt.Sprintf("collection_items requires type \"collection\", got %q", envelope.Type), Hint: fmt.Sprintf("POST /v2/spaces/%s/collections", spaceId)})
 	}
 
 	// property keys must exist — did-you-mean, never silent create (R9)

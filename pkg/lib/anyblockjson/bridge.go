@@ -21,29 +21,30 @@ import (
 )
 
 const (
-	FormatVersion      = codec.FormatVersion
-	IndexFileName      = codec.IndexFileName
-	PropertiesFileName = codec.PropertiesFileName
+	IssueCodeTypeIdentityMismatch = codec.IssueCodeTypeIdentityMismatch
+	FormatVersion                 = codec.FormatVersion
+	IndexFileName                 = codec.IndexFileName
+	PropertiesFileName            = codec.PropertiesFileName
 )
 
 type (
-	Issue                   = codec.Issue
-	ValidationError         = codec.ValidationError
-	Legend                  = codec.Legend
-	KeyVocabulary           = codec.KeyVocabulary
-	ScopedKeyVocabulary     = codec.ScopedKeyVocabulary
-	KeyTermFacts            = codec.KeyTermFacts
-	BundledKeyVocabulary    = codec.BundledKeyVocabulary
-	ObjectNameResolver      = codec.ObjectNameResolver
-	ObjectExistenceResolver = codec.ObjectExistenceResolver
-	ObjectDeletionResolver  = codec.ObjectDeletionResolver
-	ParticipantResolver     = codec.ParticipantResolver
-	TypeResolver            = codec.TypeResolver
-	OptionDefinition        = codec.OptionDefinition
-	TypeProperty            = codec.TypeProperty
-	RecommendedList         = codec.RecommendedList
-	Index                   = codec.Index
-	PropertyDictionary      = codec.PropertyDictionary
+	TypeIdentityMismatchError = codec.TypeIdentityMismatchError
+	Issue                     = codec.Issue
+	ValidationError           = codec.ValidationError
+	Legend                    = codec.Legend
+	KeyVocabulary             = codec.KeyVocabulary
+	ScopedKeyVocabulary       = codec.ScopedKeyVocabulary
+	KeyTermFacts              = codec.KeyTermFacts
+	BundledKeyVocabulary      = codec.BundledKeyVocabulary
+	ObjectNameResolver        = codec.ObjectNameResolver
+	ObjectExistenceResolver   = codec.ObjectExistenceResolver
+	ObjectDeletionResolver    = codec.ObjectDeletionResolver
+	TypeResolver              = codec.TypeResolver
+	OptionDefinition          = codec.OptionDefinition
+	TypeProperty              = codec.TypeProperty
+	RecommendedList           = codec.RecommendedList
+	Index                     = codec.Index
+	PropertyDictionary        = codec.PropertyDictionary
 )
 
 var (
@@ -108,17 +109,14 @@ type PropertyResolver interface {
 // Options preserves the existing Heart call surface while ExternalOptions
 // translates it to the repository-owned codec types.
 type Options struct {
-	ResolveFormat       FormatResolver
-	ResolveOptions      OptionResolver
-	ResolveProperties   PropertyResolver
-	ResolveParticipants ParticipantResolver
-	ResolveObjectNames  ObjectNameResolver
-	SpaceId             string
-	RefNames            bool
-	// NoDerivedTypeIds turns off the codec's TYPE fold on export, so type
-	// KEY slots fall back to the vocabulary spelling and reference slots
-	// keep the store id. Export-only; import resolves `type-<key>` either
-	// way. API v2 sets it (apiRefSpelling); the file exporter does not.
+	ResolveFormat      FormatResolver
+	ResolveOptions     OptionResolver
+	ResolveProperties  PropertyResolver
+	ResolveObjectNames ObjectNameResolver
+	SpaceId            string
+	NetworkId          string
+	// NoDerivedTypeIds keeps API type references in the request vocabulary.
+	// Portable file exports retain the codec's derived type identifiers.
 	NoDerivedTypeIds bool
 	// TableColumnHeaders enables the external codec's API-read annotation.
 	TableColumnHeaders bool
@@ -210,19 +208,20 @@ func fromExternalPropertyDefinition(def codec.PropertyDefinition) PropertyDefini
 // ExternalOptions is used by Heart-only adapters such as bundle composition.
 func ExternalOptions(opts Options) codec.Options {
 	out := codec.Options{
-		ResolveParticipants: opts.ResolveParticipants,
-		ResolveObjectNames:  opts.ResolveObjectNames,
-		SpaceId:             opts.SpaceId,
-		RefNames:            opts.RefNames,
-		NoDerivedTypeIds:    opts.NoDerivedTypeIds,
-		TableColumnHeaders:  opts.TableColumnHeaders,
-		Keys:                opts.Keys,
-		Legend:              opts.Legend,
-		OmitIds:             opts.OmitIds,
-		CompactBlockLabels:  opts.CompactBlockLabels || opts.CompactIds,
-		GenerateId:          opts.GenerateId,
-		NormalizeIndent:     opts.NormalizeIndent,
-		OnWarning:           opts.OnWarning,
+		// Heart exports always carry the metadata needed to recover remote files.
+		IncludeFileRemote:  true,
+		ResolveObjectNames: opts.ResolveObjectNames,
+		SpaceId:            opts.SpaceId,
+		NetworkId:          opts.NetworkId,
+		NoDerivedTypeIds:   opts.NoDerivedTypeIds,
+		TableColumnHeaders: opts.TableColumnHeaders,
+		Keys:               opts.Keys,
+		Legend:             opts.Legend,
+		OmitIds:            opts.OmitIds,
+		CompactBlockLabels: opts.CompactBlockLabels || opts.CompactIds,
+		GenerateId:         opts.GenerateId,
+		NormalizeIndent:    opts.NormalizeIndent,
+		OnWarning:          opts.OnWarning,
 	}
 	if opts.ResolveFormat != nil {
 		out.ResolveFormat = func(key externaldomain.RelationKey) (externalmodel.RelationFormat, bool) {
@@ -493,4 +492,70 @@ func ExactJSONIntegerMetadata(key string, value any) (metadataKey, lexeme string
 
 func ExactJSONIntegerMetadataKey(key string) string {
 	return exactJSONIntegerDetailPrefix + key
+}
+
+// FromExternalPropertyDefinitions is the plural of the conversion above, for
+// callers that read a whole dictionary out of a bundle (the batch scanner).
+func FromExternalPropertyDefinitions(defs []codec.PropertyDefinition) []PropertyDefinition {
+	out := make([]PropertyDefinition, len(defs))
+	for i, def := range defs {
+		out[i] = fromExternalPropertyDefinition(def)
+	}
+	return out
+}
+
+// The reserved-id predicates are re-exported rather than reimplemented: the
+// codec owns what `_`-prefixed spellings mean (SPEC §13), and a second copy
+// here is one fact with two sources.
+func IsPlatformId(id string) bool                 { return codec.IsPlatformId(id) }
+func IsReservedBundleId(id string) bool           { return codec.IsReservedBundleId(id) }
+func IsReservedHomepage(homepage string) bool     { return codec.IsReservedHomepage(homepage) }
+func IsReservedWidgetTarget(target string) bool   { return codec.IsReservedWidgetTarget(target) }
+func IsImportableWidgetTarget(target string) bool { return codec.IsImportableWidgetTarget(target) }
+func ReservedWidgetTargets() []string             { return codec.ReservedWidgetTargets() }
+
+// The omission predicates are re-exported so a diagnostic asks the codec which
+// documents a bundle is RIGHT not to carry, instead of keeping a second list
+// that drifts as the omission rules move (SPEC §15 #21, #23).
+func OmittedProfilePage(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase) bool {
+	return omitted(sbType, snapshot, codec.OmittedProfilePage)
+}
+
+func OmittedSpaceSettings(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase) bool {
+	return omitted(sbType, snapshot, codec.OmittedSpaceSettings)
+}
+
+func OmittedWidgetObject(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase) bool {
+	return omitted(sbType, snapshot, codec.OmittedWidgetObject)
+}
+
+func OmittedRelationOption(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase) bool {
+	return omitted(sbType, snapshot, codec.OmittedRelationOption)
+}
+
+func OmittedRelation(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase) bool {
+	return omitted(sbType, snapshot, codec.OmittedRelation)
+}
+
+// OmittedBundledRelation also reports WHICH bundled key the copy matched, so a
+// caller can say what it omitted rather than only that it did.
+func OmittedBundledRelation(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase, opts Options) (string, bool) {
+	external, err := ToExternalSnapshot(snapshot)
+	if err != nil {
+		return "", false
+	}
+	return codec.OmittedBundledRelation(externalmodel.SmartBlockType(sbType), external, ExternalOptions(opts))
+}
+
+// omitted converts once for the five predicates that differ only in which one
+// they call. A snapshot that cannot cross the bridge is not claimed by any
+// omission: saying "this was omitted on purpose" about a document we failed to
+// read would turn a conversion bug into a silent drop.
+func omitted(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase,
+	predicate func(externalmodel.SmartBlockType, *externalmodel.SmartBlockSnapshotBase) bool) bool {
+	external, err := ToExternalSnapshot(snapshot)
+	if err != nil {
+		return false
+	}
+	return predicate(externalmodel.SmartBlockType(sbType), external)
 }

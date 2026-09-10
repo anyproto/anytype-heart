@@ -30,14 +30,7 @@ func objectNameFixture(t *testing.T) *Resolvers {
 	return New(index)
 }
 
-// ObjectName is the object-namespace seam the `#name` reference suffix reads
-// from (§9). The two negative answers matter as much as the positive one:
-// export writes a suffix only when this says yes, so a "yes, empty string"
-// would put a dangling `#` on every reference to an unnamed object.
-//
-// How these can fail: a lookup keyed on anything but the object id misses
-// the named row and the first case fails; reading any field but `name` fails
-// it too; returning true for an empty name fails the second and third.
+// ObjectName distinguishes named objects, unnamed objects, and missing rows.
 func TestObjectName(t *testing.T) {
 	t.Run("a named object resolves to its display name", func(t *testing.T) {
 		// given
@@ -59,7 +52,7 @@ func TestObjectName(t *testing.T) {
 		name, ok := r.ObjectName("bafyreinameless")
 
 		// then
-		assert.False(t, ok, "no name is an answer of no, never a blank suffix")
+		assert.False(t, ok, "an unnamed object has no display name")
 		assert.Empty(t, name)
 	})
 
@@ -76,14 +69,8 @@ func TestObjectName(t *testing.T) {
 	})
 }
 
-// Options() is the one line every wiring copies, so what it pre-wires is
-// what every export/import actually runs with. The object-name seam and the
-// space id ride it like the four resolvers before them: forget either and
-// the suffix never fires (silently) or the participant fold never fires
-// (silently), with nothing else failing.
-//
-// How this can fail: drop `ResolveObjectNames: r` or `SpaceId:
-// r.index.SpaceId()` from Options() and the matching assertion fails.
+// The object resolver exposes existence/deletion checks, while SpaceId enables
+// participant id folding. Both must reach the codec through Options.
 func TestOptions_WiresObjectNamesAndSpaceId(t *testing.T) {
 	// given
 	r := objectNameFixture(t)
@@ -92,7 +79,7 @@ func TestOptions_WiresObjectNamesAndSpaceId(t *testing.T) {
 	opts := r.Options()
 
 	// then
-	require.NotNil(t, opts.ResolveObjectNames, "the suffix seam is pre-wired")
+	require.NotNil(t, opts.ResolveObjectNames, "the object resolver is pre-wired")
 	name, ok := opts.ResolveObjectNames.ObjectName("bafyreinamedpage")
 	require.True(t, ok)
 	assert.Equal(t, "Local-first UX", name)

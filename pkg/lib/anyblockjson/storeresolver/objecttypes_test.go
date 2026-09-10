@@ -40,10 +40,10 @@ func newTargetsFixture(t *testing.T) *fixture {
 			bundle.RelationKeyName:                      domain.String("Assignee"),
 			bundle.RelationKeyRelationFormat:            domain.Int64(int64(model.RelationFormat_object)),
 			bundle.RelationKeyResolvedLayout:            domain.Int64(int64(model.ObjectType_relation)),
-			bundle.RelationKeyRelationFormatObjectTypes: domain.StringList([]string{"personTypeId", "participantTypeId", "vanishedTypeId"}),
+			bundle.RelationKeyRelationFormatObjectTypes: domain.StringList([]string{"type-person", "type-participant", "type-vanished"}),
 		},
 		{
-			bundle.RelationKeyId:             domain.String("personTypeId"),
+			bundle.RelationKeyId:             domain.String("type-person"),
 			bundle.RelationKeyUniqueKey:      domain.String(domain.TypeKey(customTypeKey).URL()),
 			bundle.RelationKeyApiObjectKey:   domain.String("person"),
 			bundle.RelationKeyName:           domain.String("Person"),
@@ -52,7 +52,7 @@ func newTargetsFixture(t *testing.T) *fixture {
 		{
 			// a bundled type installed into the space: the store row carries
 			// the same shape, and hidden entities still have an identity
-			bundle.RelationKeyId:             domain.String("participantTypeId"),
+			bundle.RelationKeyId:             domain.String("type-participant"),
 			bundle.RelationKeyUniqueKey:      domain.String(bundle.TypeKeyParticipant.URL()),
 			bundle.RelationKeyName:           domain.String("Participant"),
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
@@ -132,7 +132,6 @@ func TestTypeDocumentCarriesObjectTypes(t *testing.T) {
 
 	// then
 	var doc struct {
-		TypeKeys     map[string]string `json:"type_internal_keys"`
 		TypeSettings struct {
 			PropertyDefinitions []struct {
 				Key         string   `json:"property"`
@@ -143,13 +142,8 @@ func TestTypeDocumentCarriesObjectTypes(t *testing.T) {
 	require.NoError(t, json.Unmarshal(data, &doc))
 	require.Len(t, doc.TypeSettings.PropertyDefinitions, 1)
 	assert.Equal(t, "Assignee", doc.TypeSettings.PropertyDefinitions[0].Key)
-	// the slots are spelled as DERIVED IDS (SPEC §9), which is what replaced
-	// the display-name-plus-legend pair: the point of carrying the targets
-	// is that a reader can bind them back, and `type-<key>` binds without a
-	// legend to invert, so the type namespace no longer carries one
-	assert.Equal(t, []string{"type-" + customTypeKey, "type-participant"},
-		doc.TypeSettings.PropertyDefinitions[0].ObjectTypes)
-	assert.Empty(t, doc.TypeKeys, "the type namespace has no legend: the derived id is self-inverting")
+	// Target types use derived ids that carry their stored keys.
+	assert.Equal(t, []string{"type-" + customTypeKey, "type-participant"}, doc.TypeSettings.PropertyDefinitions[0].ObjectTypes)
 
 	// and: the document reads back onto the very same stored keys
 	_, back, err := anyblockjson.Unmarshal(data, anyblockjson.Options{})

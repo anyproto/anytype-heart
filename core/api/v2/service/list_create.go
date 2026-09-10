@@ -163,7 +163,7 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 }
 
 // CreateCollection implements POST /v2/spaces/{space_id}/collections: the
-// AnyBlock items import path builds the collection store.
+// AnyBlock collection_items import path builds the collection store.
 func (s *Service) CreateCollection(ctx context.Context, spaceId string, req v2model.CreateCollectionRequest, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
@@ -213,7 +213,7 @@ func (s *Service) CreateCollection(ctx context.Context, spaceId string, req v2mo
 		return nil, err
 	}
 	if len(req.Items) > 0 {
-		if fields["items"], err = rawJSON(req.Items); err != nil {
+		if fields["collection_items"], err = rawJSON(req.Items); err != nil {
 			return nil, err
 		}
 	}
