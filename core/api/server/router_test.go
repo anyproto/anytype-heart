@@ -43,20 +43,89 @@ func TestRouter_Unauthenticated(t *testing.T) {
 }
 
 func TestRouter_AuthRoute(t *testing.T) {
-	t.Run("POST /v1/auth/token is accessible without auth", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		engine := fx.NewRouter(fx.mwMock, fx.eventMock, []byte{}, []byte{})
-		w := httptest.NewRecorder()
-		req := httptest.NewRequest("POST", "/v1/auth/token", nil)
-		req.Host = localApiHost
+	for _, version := range []string{"/v1", "/v2"} {
+		t.Run(version, func(t *testing.T) {
+			fx := newV2ServerFixture(t)
+			fx.mwMock.On("AccountLocalLinkNewChallenge", mock.Anything, &pb.RpcAccountLocalLinkNewChallengeRequest{
+				AppName: "pairing-client", Scope: model.AccountAuth_JsonAPI,
+			}).Run(func(args mock.Arguments) {
+				require.Equal(t, "http://localhost:3000", localorigin.OriginFromContext(args.Get(0).(context.Context)))
+			}).Return(&pb.RpcAccountLocalLinkNewChallengeResponse{ChallengeId: "challenge-id"}).Once()
+			fx.mwMock.On("AccountLocalLinkSolveChallenge", mock.Anything, &pb.RpcAccountLocalLinkSolveChallengeRequest{
+				ChallengeId: "challenge-id", Answer: "1234",
+			}).Return(&pb.RpcAccountLocalLinkSolveChallengeResponse{AppKey: "issued-key", SessionToken: "private-session"}).Once()
 
-		// when
-		engine.ServeHTTP(w, req)
+			post := func(path, body string) *httptest.ResponseRecorder {
+				w := httptest.NewRecorder()
+				req := httptest.NewRequest(http.MethodPost, version+path, strings.NewReader(body))
+				req.Host = localApiHost
+				req.Header.Set("Content-Type", "application/json")
+				req.Header.Set("Origin", "http://localhost:3000")
+				fx.Engine().ServeHTTP(w, req)
+				return w
+			}
 
-		// then
-		require.NotEqual(t, http.StatusUnauthorized, w.Code)
-	})
+			challenge := post("/auth/challenges", `{"app_name":"pairing-client"}`)
+			require.Equal(t, http.StatusCreated, challenge.Code)
+			require.JSONEq(t, `{"challenge_id":"challenge-id"}`, challenge.Body.String())
+			key := post("/auth/api_keys", `{"challenge_id":"challenge-id","code":"1234"}`)
+			require.Equal(t, http.StatusCreated, key.Code)
+			require.JSONEq(t, `{"api_key":"issued-key"}`, key.Body.String())
+
+			// A key obtained through either prefix authenticates on v2 with
+			// the grant returned by the account, without another pairing step.
+			fx.mwMock.On("WalletCreateSession", mock.Anything, &pb.RpcWalletCreateSessionRequest{
+				Auth: &pb.RpcWalletCreateSessionRequestAuthOfAppKey{AppKey: "issued-key"},
+			}).Return(&pb.RpcWalletCreateSessionResponse{
+				Token: "session", AppName: "pairing-client", AccountScope: model.AccountAuth_JsonAPI,
+				Grant: &model.AccountAuthAppGrant{SpaceIds: []string{"spaceA"}, Perm: model.AccountAuthAppGrant_Read},
+				Error: &pb.RpcWalletCreateSessionResponseError{Code: pb.RpcWalletCreateSessionResponseError_NULL},
+			}).Once()
+			fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
+			whoami := serveWithKey(fx, http.MethodGet, "/v2/auth/whoami", "issued-key")
+			require.Equal(t, http.StatusOK, whoami.Code)
+			require.Contains(t, whoami.Body.String(), `"permission":"read"`)
+			require.Contains(t, whoami.Body.String(), `"scoped":true`)
+		})
+	}
+}
+
+func TestRouter_AuthErrors(t *testing.T) {
+	for _, version := range []string{"/v1", "/v2"} {
+		for _, endpoint := range []string{"/auth/challenges", "/auth/api_keys"} {
+			t.Run(version+endpoint, func(t *testing.T) {
+				fx := newFixture(t)
+				for _, body := range []string{`{`, `{}`} {
+					req := httptest.NewRequest(http.MethodPost, version+endpoint, strings.NewReader(body))
+					req.Host = localApiHost
+					w := httptest.NewRecorder()
+					fx.Engine().ServeHTTP(w, req)
+					require.Equal(t, http.StatusBadRequest, w.Code)
+					require.Contains(t, w.Body.String(), `"code":"bad_request"`)
+				}
+				if endpoint == "/auth/api_keys" {
+					fx.mwMock.On("AccountLocalLinkSolveChallenge", mock.Anything, mock.Anything).
+						Return(&pb.RpcAccountLocalLinkSolveChallengeResponse{
+							Error: &pb.RpcAccountLocalLinkSolveChallengeResponseError{Code: pb.RpcAccountLocalLinkSolveChallengeResponseError_CHALLENGE_NOT_APPROVED},
+						}).Once()
+					req := httptest.NewRequest(http.MethodPost, version+endpoint, strings.NewReader(`{"challenge_id":"pending","code":"1234"}`))
+					req.Host = localApiHost
+					w := httptest.NewRecorder()
+					fx.Engine().ServeHTTP(w, req)
+					require.Equal(t, http.StatusInternalServerError, w.Code)
+					require.NotContains(t, w.Body.String(), `"api_key"`)
+				}
+
+				// Neither alias may reach a pairing RPC from an untrusted origin.
+				req := httptest.NewRequest(http.MethodPost, version+endpoint, strings.NewReader(`{}`))
+				req.Host = localApiHost
+				req.Header.Set("Origin", "https://untrusted.example")
+				w := httptest.NewRecorder()
+				fx.Engine().ServeHTTP(w, req)
+				require.Equal(t, http.StatusForbidden, w.Code)
+			})
+		}
+	}
 }
 
 func TestRouter_V1KeyScopes(t *testing.T) {

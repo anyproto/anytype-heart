@@ -26,6 +26,10 @@ OpenAPI documents; the strategy-(a) identity layer (BSON mint + `apiObjectKey`
 slug, corpse policy, resolution chain). Each carries an `APIV2.md` §8.x
 as-built section and has been through an opus review round.
 
+2026-09-08: pairing is available under `/v2/auth/*`; file and icon download
+is available under `/v2/spaces/{space_id}/files/{file_id}/content` with space
+grant checks. Space/member reads expose the `icon_image` reference.
+
 ---
 
 ## Wave 0 — cheap, measured, no design risk
@@ -89,7 +93,7 @@ is cheaper to specify after them.
 
 | # | item | notes | where |
 |---|---|---|---|
-| 3.1 | **Phase 8** — file byte-download; the chat SSE stream on `/v2` carrying Phase-6 DTOs; tag/option admin; template reads; **the v1↔v2 conformance test** | auth issuance is deliberately excluded (keys are minted in the app); the conformance test is the exit criterion that makes "complete" checkable. Tag admin is blocked on decision D1 below | SURFACES §10.1 |
+| 3.1 | **Phase 8 remaining** — tag/option admin; template reads; **the v1↔v2 conformance test** | Pairing, file downloads and the chat stream are built under `/v2`. The conformance test is the exit criterion that makes "complete" checkable. Tag admin is blocked on decision D1 below | SURFACES §10.1 |
 | 3.2 | ~~**Phase 9** — space-optional object routes~~ **RETIRED 2026-08-11** — superseded by the short space reference (APIV2.md §8.35), which removes the measured failure without a new route class. Phase 9's *unique* remaining value was a cold-pasted object id with no prior `find`; **no eval has ever produced that case**. Two defects found while scoping it are recorded rather than fixed: `ResolveSpaceIdWithRetry` is `retry.Attempts(0)` — infinite, bounded only by the context, so an unresolvable id spins instead of 404ing; and `set_properties` needs a space regardless, because `propertyFormats`, the option-name guard, `@me` and relative dates are all space-scoped | **D2 is moot**, not decided | SURFACES §10.3 |
 | 3.3 | ~~`DELETE /v2/spaces/{space_id}/objects/{object_id}` (archive)~~ **BUILT 2026-08-14** — registered with creator provenance: own-output-only, recorded immutably on the creating change (`pb.Change.integrationName` — raw app name since the §8.44 revision), enforced from validated storage, fail-closed | the cleanup motivation is served **going forward only**: DELETE does not clean up objects created before it shipped (settled — no backfill), so the existing eval fixtures still need one manual archive | APIV2.md §8.42, APIV2_OBJECT_DELETE.md |
 | 3.4 | `GenerateSchema` + store-backed option join — un-501 `types/{type}/schema` | the wrapper's `describe` runs degraded until this lands | APIV2.md §3, `discovery.go:235` |

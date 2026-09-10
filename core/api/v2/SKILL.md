@@ -77,6 +77,7 @@ whether you may write. Ask this instead of discovering limits through 403s
 | read a query / collection | `GET …/queries/{id}/objects` · `…/collections/{id}/objects` (`?view=`, `?fields=`) |
 | new type / property | `POST …/types` · `POST …/properties`; select options ride the property, or `?create_missing_options=true` mints them from values |
 | upload a file | `POST …/files` (multipart or `{"url":…}`) → the id file blocks and chat attachments need |
+| download a file or icon | `GET …/files/{file_id}/content`; use a file id or a space/member's `icon_image`. Optional `?width=` selects an image size. Supports ranges, conditional reads, and `HEAD`. |
 | chat | `GET/POST …/chats/{id}/messages`, `POST …/read` — see Chats |
 
 ## Read cheaply
@@ -303,10 +304,8 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   are permanently 403 for every key — there is no "delete arbitrary
   objects" capability. `?dry_run=true` is the cheap deletability probe;
   types/properties still use their own DELETE routes.
-- **No file byte download** under /v2 (Phase 8; bytes live on v1's
-  `GET /v1/spaces/{id}/files/{fileId}` — unreachable for space-scoped
-  keys, which /v1 refuses). No file content extraction ("read this PDF")
-  anywhere in the API.
+- No file content extraction ("read this PDF") in the API. Download its
+  bytes with `GET …/files/{file_id}/content` and process them in the client.
 - **No chat SSE stream** under /v2 and no per-chat message full-text
   search (both v1 for now); poll `GET messages?limit=1` instead.
 - `GET …/types/{key}/schema` is a 501 stub — compose from

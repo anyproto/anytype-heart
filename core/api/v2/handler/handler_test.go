@@ -31,6 +31,7 @@ type v2HandlerFixture struct {
 	mwMock      *mock_apicore.MockClientCommands
 	readerMock  *mock_apicore.MockObjectReader
 	creatorMock *mock_apicore.MockObjectCreator
+	fileMock    *mock_apicore.MockFileObjectService
 	store       *objectstore.StoreFixture
 	router      *gin.Engine
 }
@@ -66,8 +67,9 @@ func newV2HandlerFixtureWithChatSub(t *testing.T, chatSub apicore.ChatSubscripti
 		func(_ context.Context, _ string, key domain.TypeKey) (string, error) {
 			return "drv-ot-" + string(key), nil
 		}).Maybe()
-	svc := v2service.NewService(mwMock, readerMock, creatorMock, mock_apicore.NewMockObjectMutator(t), nil, chatSub, store, objectstore.TestTechSpaceId, testAccountId)
-	return &v2HandlerFixture{svc: svc, mwMock: mwMock, readerMock: readerMock, creatorMock: creatorMock, store: store, router: gin.New()}
+	fileMock := mock_apicore.NewMockFileObjectService(t)
+	svc := v2service.NewService(mwMock, readerMock, creatorMock, mock_apicore.NewMockObjectMutator(t), nil, chatSub, fileMock, store, objectstore.TestTechSpaceId, testAccountId)
+	return &v2HandlerFixture{svc: svc, mwMock: mwMock, readerMock: readerMock, creatorMock: creatorMock, fileMock: fileMock, store: store, router: gin.New()}
 }
 
 func TestValidateHandler(t *testing.T) {

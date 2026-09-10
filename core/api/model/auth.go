@@ -24,10 +24,8 @@ type CreateApiKeyRequest struct {
 }
 
 type CreateApiKeyResponse struct {
-	// ApiKey is minted in the prefixed+checksummed format
-	// `anytype_<body>_<checksum>`; match it with the published pattern
-	// `\banytype_[0-9A-Za-z]{40,60}_[0-9a-f]{8}\b` (a length RANGE — never
-	// assume a fixed length). Keys issued before the format flip are plain
-	// base64 and keep authenticating unchanged.
+	// ApiKey is an opaque bearer key in the format `anytype_<body>_<checksum>`.
+	// New keys match `\banytype_[0-9A-Za-z]{40,60}_[0-9a-f]{8}\b`; the body
+	// length varies. Previously issued unprefixed base64 keys remain valid.
 	ApiKey string `json:"api_key" example:"anytype_amfbcga7eywtio2cjfifoxtfnrzxvamir6lj3jflwk44br6o2xoa_3fe1d4b7"` // The api key used to authenticate requests
 }

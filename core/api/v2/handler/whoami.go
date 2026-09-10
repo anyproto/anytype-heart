@@ -24,7 +24,7 @@ import (
 // gets the auth middleware's plain 401.
 //
 //	@Summary		Describe the calling key
-//	@Description	This describes the key, not a person; there is one account behind this API. Branch on `grant.scoped`. False is a legacy key with no space restriction, and its `spaces` list is empty rather than absent. True means the key reaches exactly the spaces listed, with the permission listed beside each one.
+//	@Description	This describes the key, not a person; there is one account behind this API. Branch on `grant.scoped`. False is a legacy key with no space restriction, and its `spaces` list is empty rather than absent. True means the key reaches exactly the spaces listed. When `grant.all_spaces` is true the key covers every space, including ones created later, and `spaces` is informational only.
 //	@Id				auth_whoami
 //	@Tags			Auth
 //	@Produce		json

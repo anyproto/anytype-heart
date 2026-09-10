@@ -19,6 +19,11 @@ without an explicit grant decision.
 
 ## The flow
 
+API v2 clients use `POST /v2/auth/challenges` and `POST /v2/auth/api_keys`.
+The `/v1/auth/*` paths shown below remain aliases of the same handlers, with
+the same request and response bodies. Neither version requires an existing key
+for pairing; Desktop approval is required before the code can be exchanged.
+
 ```
 external app          heart                         desktop client
      │                                                    │
@@ -170,7 +175,8 @@ All three answered `UNKNOWN_ERROR` before, so a client could only retry blindly
 
 The external app's pairing calls are byte-identical to before —
 `POST /v1/auth/challenges` then `POST /v1/auth/api_keys` (or the gRPC
-equivalents), same requests, same responses.
+equivalents), same requests, same responses. The same endpoints are also
+available under `/v2/auth/*`, so v2 clients can complete pairing within `/v2`.
 
 What HAS changed is the key that comes out: it carries the grant the user
 picked. An app whose key was granted all spaces with read & write works

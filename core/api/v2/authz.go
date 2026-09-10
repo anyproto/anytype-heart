@@ -43,7 +43,7 @@ type GlobalRouteClass string
 
 const (
 	// GlobalAuthExempt marks routes served OUTSIDE the authenticated /v2
-	// group (public documents); the gate never runs on them. Listed so the
+	// group (public documents and pairing); the gate never runs on them. Listed so the
 	// conformance walk stays a closed inventory — and the walk verifies the
 	// precondition behaviorally: a route with this class must answer a
 	// credential-less request, every other /v2 route must 401. A route
@@ -121,6 +121,8 @@ var v2RouteAuthz = map[string]RouteAuthz{
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/objects/:object_id"):                 {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/members"):                            {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/members/me"):                         {Verb: RouteVerbRead},
+	routeKey(http.MethodGet, "/v2/spaces/:space_id/files/:file_id/content"):             {Verb: RouteVerbRead},
+	routeKey(http.MethodHead, "/v2/spaces/:space_id/files/:file_id/content"):            {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/types"):                              {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/types/:type"):                        {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/types/:type/schema"):                 {Verb: RouteVerbRead},
@@ -160,6 +162,9 @@ var v2RouteAuthz = map[string]RouteAuthz{
 	routeKey(http.MethodDelete, "/v2/spaces/:space_id/chats/:chat_id/messages/:message_id"):         {Verb: RouteVerbWrite},
 	routeKey(http.MethodPost, "/v2/spaces/:space_id/chats/:chat_id/messages/:message_id/reactions"): {Verb: RouteVerbWrite},
 	routeKey(http.MethodPost, "/v2/spaces/:space_id/chats/:chat_id/read"):                           {Verb: RouteVerbWrite},
+	// pairing, registered outside the authenticated group by server.registerAuthRoutes
+	routeKey(http.MethodPost, "/v2/auth/challenges"): {Verb: RouteVerbWrite, Global: GlobalAuthExempt},
+	routeKey(http.MethodPost, "/v2/auth/api_keys"):   {Verb: RouteVerbWrite, Global: GlobalAuthExempt},
 	// public documents, registered on the engine root (server
 	// registerDocumentationRoutes) — the gate never sees them
 	routeKey(http.MethodGet, "/v2/docs/openapi.yaml"): {Verb: RouteVerbRead, Global: GlobalAuthExempt},

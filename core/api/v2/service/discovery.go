@@ -111,6 +111,7 @@ func (s *Service) liveSpaceRows(ctx context.Context) ([]v2model.SpaceRow, error)
 			Id:          id,
 			Name:        record.Details.GetString(bundle.RelationKeyName),
 			Description: record.Details.GetString(bundle.RelationKeyDescription),
+			IconImage:   record.Details.GetString(bundle.RelationKeyIconImage),
 		})
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].Id < rows[j].Id })
@@ -154,10 +155,11 @@ func (s *Service) ListMembers(ctx context.Context, spaceId string, offset, limit
 	rows := make([]v2model.MemberRow, 0, len(records))
 	for _, record := range records {
 		rows = append(rows, v2model.MemberRow{
-			Id:       record.Details.GetString(bundle.RelationKeyId),
-			Name:     record.Details.GetString(bundle.RelationKeyName),
-			Role:     memberRole(model.ParticipantPermissions(record.Details.GetInt64(bundle.RelationKeyParticipantPermissions))),
-			Identity: record.Details.GetString(bundle.RelationKeyIdentity),
+			Id:        record.Details.GetString(bundle.RelationKeyId),
+			Name:      record.Details.GetString(bundle.RelationKeyName),
+			Role:      memberRole(model.ParticipantPermissions(record.Details.GetInt64(bundle.RelationKeyParticipantPermissions))),
+			Identity:  record.Details.GetString(bundle.RelationKeyIdentity),
+			IconImage: record.Details.GetString(bundle.RelationKeyIconImage),
 		})
 	}
 	return rows, total, hasMore, nil
@@ -185,6 +187,7 @@ func (s *Service) GetMemberMe(ctx context.Context, spaceId string) (v2model.Memb
 	// trust the row's name/role once the participant object actually exists
 	if details, err := s.store.SpaceIndex(spaceId).GetDetails(row.Id); err == nil && details.GetString(bundle.RelationKeyId) == row.Id {
 		row.Name = details.GetString(bundle.RelationKeyName)
+		row.IconImage = details.GetString(bundle.RelationKeyIconImage)
 		row.Role = memberRole(model.ParticipantPermissions(details.GetInt64(bundle.RelationKeyParticipantPermissions)))
 	}
 	return row, nil

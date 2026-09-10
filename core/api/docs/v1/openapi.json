@@ -303,7 +303,7 @@
       "CreateApiKeyResponse": {
         "properties": {
           "api_key": {
-            "description": "ApiKey is minted in the prefixed+checksummed format\n`anytype_<body>_<checksum>`; match it with the published pattern\n`\\banytype_[0-9A-Za-z]{40,60}_[0-9a-f]{8}\\b` (a length RANGE — never\nassume a fixed length). Keys issued before the format flip are plain\nbase64 and keep authenticating unchanged.",
+            "description": "ApiKey is an opaque bearer key in the format `anytype_<body>_<checksum>`.\nNew keys match `\\banytype_[0-9A-Za-z]{40,60}_[0-9a-f]{8}\\b`; the body\nlength varies. Previously issued unprefixed base64 keys remain valid.",
             "example": "anytype_amfbcga7eywtio2cjfifoxtfnrzxvamir6lj3jflwk44br6o2xoa_3fe1d4b7",
             "type": "string"
           }
@@ -3520,7 +3520,7 @@
   "paths": {
     "/v1/auth/api_keys": {
       "post": {
-        "description": "After receiving a `challenge_id` from the `/v1/auth/challenges` endpoint, the client calls this endpoint to provide the corresponding 4-digit code along with the challenge ID. The endpoint verifies that the challenge solution is correct and, if it is, returns an `api_key`. This endpoint is central to the authentication process, as it validates the user's identity and issues a key that can be used for further interactions with the API.",
+        "description": "Exchanges a challenge_id from /v1/auth/challenges and the code revealed after Desktop approval for an api_key. Use the key as a bearer credential in the Authorization header. It carries the spaces and permissions approved by the user. No existing API key is required.",
         "operationId": "create_api_key",
         "parameters": [
           {
@@ -3566,6 +3566,16 @@
             },
             "description": "Bad request"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            },
+            "description": "Untrusted request origin or host"
+          },
           "500": {
             "content": {
               "application/json": {
@@ -3585,7 +3595,7 @@
     },
     "/v1/auth/challenges": {
       "post": {
-        "description": "Generates a one-time authentication challenge for granting API access to the user's vault. Upon providing a valid `app_name`, the server issues a unique `challenge_id` and displays a 4-digit code within the Anytype Desktop. The `challenge_id` must then be used with the `/v1/auth/api_keys` endpoint to solve the challenge and retrieve an authentication token. This mechanism ensures that only trusted applications and authorized users gain access.",
+        "description": "Starts pairing for the named app and returns a challenge_id. The user chooses spaces and permissions in Anytype Desktop, then approves to reveal a 4-digit code. Submit the challenge_id and code to /v1/auth/api_keys. No existing API key is required.",
         "operationId": "create_auth_challenge",
         "parameters": [
           {
@@ -3630,6 +3640,16 @@
               }
             },
             "description": "Bad request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            },
+            "description": "Untrusted request origin or host"
           },
           "500": {
             "content": {

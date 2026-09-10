@@ -176,7 +176,7 @@ func TestV2Routes(t *testing.T) {
 				exempt[key] = true
 			}
 		}
-		require.Len(t, exempt, 2, "the auth-exempt class is the two public documents — growing it is an API decision")
+		require.Len(t, exempt, 4, "only the two public documents and two pairing endpoints are auth-exempt")
 
 		v2Routes := 0
 		for _, route := range fx.Engine().Routes() {
@@ -202,7 +202,7 @@ func TestV2Routes(t *testing.T) {
 
 			if exempt[route.Method+" "+route.Path] {
 				require.NotEqual(t, http.StatusForbidden, w.Code,
-					"%s %s is exempt: a public document must not sit behind the gate", route.Method, route.Path)
+					"%s %s is exempt: public documents and pairing must not sit behind the gate", route.Method, route.Path)
 				continue
 			}
 			require.Equal(t, http.StatusForbidden, w.Code,

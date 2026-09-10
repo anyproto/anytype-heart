@@ -39,7 +39,8 @@ openapi: setup-swag
 	$(call strip-openapi-prefixes,$(OPENAPI_DOCS_DIR)/v1,v1,apimodel)
 	$(call strip-openapi-prefixes,$(OPENAPI_DOCS_DIR)/v2,v2,v2model)
 	# swag v2 hardcodes bearerFormat: JWT and cannot assign different schemas
-	# to two request media types. Keep those v2-only corrections deterministic.
+	# to two request media types. The post-processor also copies the shared
+	# pairing operations from v1 with /v2 paths and no bearer requirement.
 	@python3 scripts/fix_openapi_v2.py "$(OPENAPI_DOCS_DIR)/v2"
 	@echo 'Formatting openapi docs...'
 	@deps/swag fmt -d core/api

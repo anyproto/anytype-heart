@@ -31,10 +31,11 @@ var log = logging.Logger("api-v2-service")
 // APIV2.md §8, not via ObjectShow and not via lagging store snapshots for
 // object content.
 type Service struct {
-	mw      apicore.ClientCommands
-	reader  apicore.ObjectReader
-	creator apicore.ObjectCreator
-	mutator apicore.ObjectMutator
+	fileService apicore.FileObjectService
+	mw          apicore.ClientCommands
+	reader      apicore.ObjectReader
+	creator     apicore.ObjectCreator
+	mutator     apicore.ObjectMutator
 	// provenance is the DELETE enforcement read: creator provenance from
 	// validated change storage, never from details.
 	// nil refuses every object DELETE — fail closed.
@@ -59,8 +60,8 @@ type Service struct {
 // may be nil when the edit surface is not served; provenance may be nil
 // (object DELETE then refuses everything — fail closed). accountId may be
 // empty (degraded placeholder substitution only).
-func NewService(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, provenance apicore.ObjectProvenance, chatSub apicore.ChatSubscriptionService, store objectstore.ObjectStore, techSpaceId, accountId string) *Service {
-	return &Service{mw: mw, reader: reader, creator: creator, mutator: mutator, provenance: provenance, chatSub: chatSub, store: store, techSpaceId: techSpaceId, accountId: accountId}
+func NewService(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, provenance apicore.ObjectProvenance, chatSub apicore.ChatSubscriptionService, fileService apicore.FileObjectService, store objectstore.ObjectStore, techSpaceId, accountId string) *Service {
+	return &Service{fileService: fileService, mw: mw, reader: reader, creator: creator, mutator: mutator, provenance: provenance, chatSub: chatSub, store: store, techSpaceId: techSpaceId, accountId: accountId}
 }
 
 // ensureSpaceGranted is the space half of the service-level backstop of the

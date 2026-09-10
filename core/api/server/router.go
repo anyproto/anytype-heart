@@ -92,7 +92,7 @@ func (srv *Server) setupMiddleware() *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(ensureMetadataHeader())
-	// Before every route, including the unauthenticated /v1/auth ones.
+	// Before every route, including the unauthenticated pairing endpoints.
 	// Only native clients talk to this API, so file:// is not trusted here.
 	router.Use(ensureTrustedOrigin(localorigin.New(
 		os.Getenv(envApiAllowedOrigins),
@@ -146,10 +146,11 @@ func (srv *Server) registerDocumentationRoutes(router *gin.Engine, openapiYAML [
 	serveDoc("/v2/docs/openapi.json", "application/json", srv.docs.V2JSON)
 }
 
-// registerAuthRoutes registers authentication routes (no auth required)
+// registerAuthRoutes exposes the same pairing flow in both API versions.
+// These groups require no existing key and stay outside the resource gates.
 func (srv *Server) registerAuthRoutes(router *gin.Engine) {
-	authGroup := router.Group("/v1")
-	{
+	for _, version := range []string{"/v1", "/v2"} {
+		authGroup := router.Group(version)
 		// Only this route asks a human to trust the caller, so it is the only
 		// one that pays for resolving the caller's process.
 		authGroup.POST("/auth/challenges", ensureClientProcess(), handler.CreateChallengeHandler(srv.service))

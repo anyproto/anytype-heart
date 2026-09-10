@@ -758,6 +758,10 @@
       },
       "MemberRow": {
         "properties": {
+          "icon_image": {
+            "description": "Icon id; download with GET /v2/spaces/{space_id}/files/{file_id}/content.",
+            "type": "string"
+          },
           "id": {
             "type": "string"
           },
@@ -943,6 +947,10 @@
           "dry_run": {
             "type": "boolean"
           },
+          "icon_image": {
+            "description": "Icon id; download with GET /v2/spaces/{space_id}/files/{file_id}/content.",
+            "type": "string"
+          },
           "id": {
             "type": "string"
           },
@@ -955,6 +963,10 @@
       "SpaceRow": {
         "properties": {
           "description": {
+            "type": "string"
+          },
+          "icon_image": {
+            "description": "Icon id; download with GET /v2/spaces/{space_id}/files/{file_id}/content.",
             "type": "string"
           },
           "id": {
@@ -1114,6 +1126,93 @@
           }
         },
         "type": "object"
+      },
+      "CreateChallengeRequest": {
+        "properties": {
+          "app_name": {
+            "description": "The name of the app that is requesting the challenge",
+            "example": "anytype_mcp",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CreateChallengeResponse": {
+        "properties": {
+          "challenge_id": {
+            "description": "The challenge id associated with the displayed code and needed to solve the challenge for api_key",
+            "example": "67647f5ecda913e9a2e11b26",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "code": {
+            "example": "bad_request",
+            "type": "string"
+          },
+          "message": {
+            "example": "Bad request",
+            "type": "string"
+          },
+          "object": {
+            "example": "error",
+            "type": "string"
+          },
+          "status": {
+            "example": 400,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "ServerError": {
+        "properties": {
+          "code": {
+            "example": "internal_server_error",
+            "type": "string"
+          },
+          "message": {
+            "example": "Internal server error",
+            "type": "string"
+          },
+          "object": {
+            "example": "error",
+            "type": "string"
+          },
+          "status": {
+            "example": 500,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "CreateApiKeyRequest": {
+        "properties": {
+          "challenge_id": {
+            "description": "The challenge id associated with the previously displayed code",
+            "example": "67647f5ecda913e9a2e11b26",
+            "type": "string"
+          },
+          "code": {
+            "description": "The 4-digit code retrieved from Anytype Desktop app",
+            "example": "1234",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CreateApiKeyResponse": {
+        "properties": {
+          "api_key": {
+            "description": "ApiKey is an opaque bearer key in the format `anytype_<body>_<checksum>`.\nNew keys match `\\banytype_[0-9A-Za-z]{40,60}_[0-9a-f]{8}\\b`; the body\nlength varies. Previously issued unprefixed base64 keys remain valid.",
+            "example": "anytype_amfbcga7eywtio2cjfifoxtfnrzxvamir6lj3jflwk44br6o2xoa_3fe1d4b7",
+            "type": "string"
+          }
+        },
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -1226,7 +1325,7 @@
       "name": "Anytype Support",
       "url": "https://anytype.io/contact"
     },
-    "description": "The agent-oriented Anytype local API. An object is one AnyBlock JSON document rather than a tree of blocks, so a single GET returns a whole editable document and a single PATCH edits it.\nEverything this API names for itself is snake_case: path and query parameters, request and response fields, and the names of the PATCH ops. Things are addressed by name rather than by id: property keys, option names, and `type` as a type key. Object ids remain ids.\nProperty and type keys have two spellings, and a served body picks one. The default is the key: a snake_case slug minted when the property was created and frozen from then on, so it survives every rename. Store that spelling in a config, a script, an integration. `?keys=name` on a read serves the display-name vocabulary instead, \"Due date\" rather than due_date, which is the spelling to show a user their own words. Input needs no such choice: every channel accepts both, plus the forgiving fold between them, so dueDate, due-date, \"Due date\" and Дата выполнения all address the property they name. A spelling matching two properties is a 400 listing both, and an unknown one never creates anything.\nResponses are compact. A list or search row carries id, name, type and the properties you asked for, and never embeds a type object. Object references are always full and inline. An object read relabels machine-minted block ids to short document-local suffixes; `?ids=full` returns the export shape, with full ids everywhere, which is the shape to store and the shape to clone from.\nWherever a block or a view is addressed by id, a full id or a unique suffix of one is accepted. That is what lets a document read back in the compact shape be edited exactly as it came back. A suffix that matches several elements is refused, and the refusal lists the candidates.\nA read never fails on content it cannot represent. Whatever a representation cannot express is reported in `warnings` beside the result.\nEvery error has one shape: {status, code, message, issues:[{path, message, hint}]}. All four members are always present, and `issues` is an empty array when the refusal has no path to name, so reading it never has to test for absence. Each issue is addressed by path and names the values that would have been accepted, so a failed call tells you how to repair it. Some refusals answer before this API's own handlers and use a different shape instead: authentication, key scope, request origin, and the shared write rate limit answer in the older shared envelope; an unmatched route and an unhandled panic answer with no envelope at all.\nAuthentication uses an opaque Anytype API key as a bearer credential in the Authorization header; the key is not a JWT. It is never read from a query or body parameter. An unknown, revoked or expired key is a 401.\nAn object read returns an `etag` in the body and an ETag header. A mutation takes that etag back in `If-Match`, where it is advisory: without the header the last write wins, and a stale one is a 409 carrying the current etag. Chats are the exception. They have no etag, because their order ids and `last_state_id` do that job.\nEvery mutation and the data-free `POST /validate` read accept an `Idempotency-Key` header. The same key with the same request replays the stored response instead of repeating the operation. Search is a read carried by POST and takes no key.\nEvery mutation accepts `?dry_run=true`. It validates the request, reports what would have happened and writes nothing, answering 200 where the real call would answer 201. Where a dry run cannot tell the whole truth, the operation says so.\nA chat's messages can also be streamed: GET /v2/spaces/{space_id}/chats/{chat_id}/messages/stream opens a Server-Sent Events connection that begins with the last `limit` messages as `message_added` events and then delivers `message_added`, `message_updated`, `message_deleted`, `reactions_updated`, `state_updated` and `pinned_updated` as they happen. Idle connections are held open with comment lines, which clients ignore.\nEach streamed addition carries the chat state id as its event id, and the opening window is followed by one id-only frame carrying the highest such id. Send the last id back as `Last-Event-ID` to resume a dropped connection. Only additions replay: an edit, a deletion, a pin or a reaction does not restamp the state id, so your copy of that message stays as it was until you read the messages again.\n`resync_required` says the messages still held could not be shown to cover the gap since your `Last-Event-ID`, and whatever you hold outside the window that follows is unverified. It is a warning, not a guarantee of the converse: a message that reached the chat out of order, or a chat that was reindexed, can leave a gap the stream cannot detect. Re-read the messages when you need certainty. The event id is meaningful only against the node that issued it.\nEvery list is paginated with `?offset=` and `?limit=`, 25 rows by default. The response carries `total`, `has_more` and, when it truncated, a hint for narrowing the request. Chat messages page by order-id cursor instead.\nRequest bodies bind strictly: an unknown field is a 400 naming the field, never a value silently dropped. A document body is capped at 10 MiB, a structured body at 1 MiB.\nDeleting an object, a type or a property archives it: it moves to Bin, and the Anytype app can restore it. Deleting a chat message is not an archive, and neither is the attachment cleanup that can follow it.\nSchemas are discoverable at runtime, and strict enough to decode against: GET /v2/schemas lists the kinds, GET /v2/schemas/{kind} returns one, and GET /v2/schemas/ops/{op} returns the schema of a single edit op.\nA space is served by a short reference: the last six characters of the first half of its id. Every route that takes a space accepts either that short reference or the full `<cid>.<replicationKey>` id. Resolution tries an exact id first, then a unique suffix, among the spaces the key can see. An ambiguous reference is a 400 listing the candidates, and two spaces whose tails collide are both served in full.\nA short reference is an addressing convenience, not a stable identifier. It is unique only against the spaces the key can currently see, so joining a space whose tail collides retires it. `?ids=full` spells every space id in the response out in full. Use it whenever a reference will be stored outside this API: a config file, a script, a log line, another system.",
+    "description": "The agent-oriented Anytype local API. An object is one AnyBlock JSON document rather than a tree of blocks, so a single GET returns a whole editable document and a single PATCH edits it.\nEverything this API names for itself is snake_case: path and query parameters, request and response fields, and the names of the PATCH ops. Things are addressed by name rather than by id: property keys, option names, and `type` as a type key. Object ids remain ids.\nProperty and type keys have two spellings, and a served body picks one. The default is the key: a snake_case slug minted when the property was created and frozen from then on, so it survives every rename. Store that spelling in a config, a script, an integration. `?keys=name` on a read serves the display-name vocabulary instead, \"Due date\" rather than due_date, which is the spelling to show a user their own words. Input needs no such choice: every channel accepts both, plus the forgiving fold between them, so dueDate, due-date, \"Due date\" and Дата выполнения all address the property they name. A spelling matching two properties is a 400 listing both, and an unknown one never creates anything.\nResponses are compact. A list or search row carries id, name, type and the properties you asked for, and never embeds a type object. Object references are always full and inline. An object read relabels machine-minted block ids to short document-local suffixes; `?ids=full` returns the export shape, with full ids everywhere, which is the shape to store and the shape to clone from.\nWherever a block or a view is addressed by id, a full id or a unique suffix of one is accepted. That is what lets a document read back in the compact shape be edited exactly as it came back. A suffix that matches several elements is refused, and the refusal lists the candidates.\nA read never fails on content it cannot represent. Whatever a representation cannot express is reported in `warnings` beside the result.\nEvery error has one shape: {status, code, message, issues:[{path, message, hint}]}. All four members are always present, and `issues` is an empty array when the refusal has no path to name, so reading it never has to test for absence. Each issue is addressed by path and names the values that would have been accepted, so a failed call tells you how to repair it. Some refusals answer before this API's own handlers and use a different shape instead: authentication, key scope, request origin, and the shared write rate limit answer in the older shared envelope; an unmatched route and an unhandled panic answer with no envelope at all.\nAuthentication uses an opaque Anytype API key as a bearer credential in the Authorization header; the key is not a JWT. It is never read from a query or body parameter. An unknown, revoked or expired key is a 401.\nTo obtain a key, POST /v2/auth/challenges with app_name. The user approves spaces and permissions in Anytype Desktop and receives a 4-digit code. POST /v2/auth/api_keys with challenge_id and code to receive api_key. These two endpoints require no existing key and use the shared authentication error envelope.\nDownload files and icons with GET /v2/spaces/{space_id}/files/{file_id}/content. Use a file id or the icon_image value from a space or member. The response contains bytes with the matching Content-Type, and supports Range and conditional requests using ETag or Last-Modified. File preconditions use standard status codes, including 304 and 412. Access is checked on every request.\nAn object read returns an `etag` in the body and an ETag header. A mutation takes that etag back in `If-Match`, where it is advisory: without the header the last write wins, and a stale one is a 409 carrying the current etag. Chats are the exception. They have no etag, because their order ids and `last_state_id` do that job.\nResource mutations and the data-free `POST /validate` read accept an `Idempotency-Key` header. The same key with the same request replays the stored response instead of repeating the operation. Search is a read carried by POST and takes no key.\nEvery resource mutation accepts `?dry_run=true`. It validates the request, reports what would have happened and writes nothing, answering 200 where the real call would answer 201. Where a dry run cannot tell the whole truth, the operation says so.\nA chat's messages can also be streamed: GET /v2/spaces/{space_id}/chats/{chat_id}/messages/stream opens a Server-Sent Events connection that begins with the last `limit` messages as `message_added` events and then delivers `message_added`, `message_updated`, `message_deleted`, `reactions_updated`, `state_updated` and `pinned_updated` as they happen. Idle connections are held open with comment lines, which clients ignore.\nEach streamed addition carries the chat state id as its event id, and the opening window is followed by one id-only frame carrying the highest such id. Send the last id back as `Last-Event-ID` to resume a dropped connection. Only additions replay: an edit, a deletion, a pin or a reaction does not restamp the state id, so your copy of that message stays as it was until you read the messages again.\n`resync_required` says the messages still held could not be shown to cover the gap since your `Last-Event-ID`, and whatever you hold outside the window that follows is unverified. It is a warning, not a guarantee of the converse: a message that reached the chat out of order, or a chat that was reindexed, can leave a gap the stream cannot detect. Re-read the messages when you need certainty. The event id is meaningful only against the node that issued it.\nEvery list is paginated with `?offset=` and `?limit=`, 25 rows by default. The response carries `total`, `has_more` and, when it truncated, a hint for narrowing the request. Chat messages page by order-id cursor instead.\nResource request bodies bind strictly: an unknown field is a 400 naming the field, never a value silently dropped. A document body is capped at 10 MiB, a structured body at 1 MiB.\nDeleting an object, a type or a property archives it: it moves to Bin, and the Anytype app can restore it. Deleting a chat message is not an archive, and neither is the attachment cleanup that can follow it.\nSchemas are discoverable at runtime, and strict enough to decode against: GET /v2/schemas lists the kinds, GET /v2/schemas/{kind} returns one, and GET /v2/schemas/ops/{op} returns the schema of a single edit op.\nA space is served by a short reference: the last six characters of the first half of its id. Every route that takes a space accepts either that short reference or the full `<cid>.<replicationKey>` id. Resolution tries an exact id first, then a unique suffix, among the spaces the key can see. An ambiguous reference is a 400 listing the candidates, and two spaces whose tails collide are both served in full.\nA short reference is an addressing convenience, not a stable identifier. It is unique only against the spaces the key can currently see, so joining a space whose tail collides retires it. `?ids=full` spells every space id in the response out in full. Use it whenever a reference will be stored outside this API: a config file, a script, a log line, another system.",
     "license": {
       "name": "Any Source Available License 1.0",
       "url": "https://github.com/anyproto/anytype-api/blob/main/LICENSE.md"
@@ -3192,6 +3291,389 @@
           }
         ],
         "summary": "Upload a file",
+        "tags": [
+          "Files"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/files/{file_id}/content": {
+      "get": {
+        "description": "Returns a file or icon from this space. Pass a file id or the icon_image value from a space or member. Images support width variants. Range and conditional requests are supported.",
+        "operationId": "download_file",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "File or icon id",
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Image variant width; zero selects the original",
+            "in": "query",
+            "name": "width",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Byte range",
+            "in": "header",
+            "name": "Range",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Previously received ETag",
+            "in": "header",
+            "name": "If-None-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "ETag or modification date for a range request",
+            "in": "header",
+            "name": "If-Range",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "description": "File contents; Content-Type matches the stored media type",
+            "headers": {
+              "ETag": {
+                "description": "File representation validator",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Private cache; revalidate before reuse",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "File modification date, when available",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "Response length in bytes",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Accept-Ranges": {
+                "description": "Supported range unit",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "206": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            },
+            "description": "Requested byte range",
+            "headers": {
+              "ETag": {
+                "description": "File representation validator",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Private cache; revalidate before reuse",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "File modification date, when available",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "Response length in bytes",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Accept-Ranges": {
+                "description": "Supported range unit",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "description": "Returned byte range or total file length",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified; no response body",
+            "headers": {
+              "ETag": {
+                "description": "File representation validator",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Private cache; revalidate before reuse",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "File modification date, when available",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "File or icon not found in this space"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Request precondition failed"
+          },
+          "416": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Invalid or unsatisfiable byte range",
+            "headers": {
+              "Content-Range": {
+                "description": "Returned byte range or total file length",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "File content could not be read"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Download file content",
+        "tags": [
+          "Files"
+        ]
+      },
+      "head": {
+        "description": "Returns the file or icon headers without a response body. Accepts the same ids as file download.",
+        "operationId": "head_file",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "File or icon id",
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Image variant width; zero selects the original",
+            "in": "query",
+            "name": "width",
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File headers; no response body",
+            "headers": {
+              "ETag": {
+                "description": "File representation validator",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Private cache; revalidate before reuse",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "File modification date, when available",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Length": {
+                "description": "Response length in bytes",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Accept-Ranges": {
+                "description": "Supported range unit",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified; no response body",
+            "headers": {
+              "ETag": {
+                "description": "File representation validator",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Cache-Control": {
+                "description": "Private cache; revalidate before reuse",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Last-Modified": {
+                "description": "File modification date, when available",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "File or icon not found in this space"
+          },
+          "412": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Request precondition failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "File content could not be read"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Read file content headers",
         "tags": [
           "Files"
         ]
@@ -5174,12 +5656,164 @@
           "Schemas"
         ]
       }
+    },
+    "/v2/auth/challenges": {
+      "post": {
+        "description": "Starts pairing for the named app and returns a challenge_id. The user chooses spaces and permissions in Anytype Desktop, then approves to reveal a 4-digit code. Submit the challenge_id and code to /v2/auth/api_keys. No existing API key is required.",
+        "operationId": "create_auth_challenge",
+        "parameters": [
+          {
+            "description": "The version of the API to use",
+            "in": "header",
+            "name": "Anytype-Version",
+            "required": true,
+            "schema": {
+              "default": "2025-11-08",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateChallengeRequest"
+              }
+            }
+          },
+          "description": "The request body containing the app name",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateChallengeResponse"
+                }
+              }
+            },
+            "description": "The challenge ID associated with the started challenge"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            },
+            "description": "Untrusted request origin or host"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "summary": "Create Challenge",
+        "tags": [
+          "Auth"
+        ],
+        "security": []
+      }
+    },
+    "/v2/auth/api_keys": {
+      "post": {
+        "description": "Exchanges a challenge_id from /v2/auth/challenges and the code revealed after Desktop approval for an api_key. Use the key as a bearer credential in the Authorization header. It carries the spaces and permissions approved by the user. No existing API key is required.",
+        "operationId": "create_api_key",
+        "parameters": [
+          {
+            "description": "The version of the API to use",
+            "in": "header",
+            "name": "Anytype-Version",
+            "required": true,
+            "schema": {
+              "default": "2025-11-08",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApiKeyRequest"
+              }
+            }
+          },
+          "description": "The request body containing the challenge ID and code",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateApiKeyResponse"
+                }
+              }
+            },
+            "description": "The API key that can be used in the Authorization header for subsequent requests"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            },
+            "description": "Untrusted request origin or host"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "summary": "Create API Key",
+        "tags": [
+          "Auth"
+        ],
+        "security": []
+      }
     }
   },
   "openapi": "3.1.0",
   "tags": [
     {
-      "description": "What the calling key may do. Ask this before discovering the limits through 403s.",
+      "description": "Obtain an API key with Desktop approval, then inspect which spaces and permissions it grants.",
       "name": "Auth"
     },
     {
@@ -5215,7 +5849,7 @@
       "name": "Members"
     },
     {
-      "description": "Upload bytes and get the id that file blocks and chat attachments reference.",
+      "description": "Upload files and download file or icon content.",
       "name": "Files"
     },
     {

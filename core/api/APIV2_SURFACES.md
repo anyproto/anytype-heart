@@ -5,6 +5,23 @@ Scope: everything `/v1` serves that `/v2` does not yet. Evidence is the shipped
 route table (`core/api/server/router.go`) and the v1/v2 handler+service source;
 every claim below carries a file:line ref.
 
+**Auth update, 2026-09-08:** `POST /v2/auth/challenges` and
+`POST /v2/auth/api_keys` now share the v1 pairing handlers. A v2 client can
+request a challenge and exchange the Desktop-approved code entirely under
+`/v2`. The bodies stay snake_case, matching the current v2 convention. This
+supersedes the earlier recommendation to keep pairing on v1 and the
+2026-08-07 decision to omit v2 key issuance.
+
+**File download update, 2026-09-08:** The `GET` and `HEAD` methods on
+`/v2/spaces/{space_id}/files/{file_id}/content` now serve files and space/member
+icons with per-space read-grant enforcement, image width variants, ranges,
+ETag and Last-Modified validators. Space and member reads expose `icon_image`;
+clients pass that value as `file_id`. Internally, file object IDs must resolve
+to the requested space. Raw CIDs are admitted only through an exact current
+`iconImage` reference on that space's view or one of its participant objects.
+Other objects and other spaces cannot authorize that exception. This
+supersedes the earlier recommendation to use v1 for downloads.
+
 > **v0.2 — the completeness decision (human, 2026-08-06).** The mixed-client
 > rule proposed in v0.1 (§7, Q8) is **rejected**. v2 is to be a *complete,
 > self-contained API*: auth, file download, chats, streaming and the admin
@@ -41,10 +58,10 @@ snake_case auth bodies (§10.1). "A v2 home for every capability" is the goal;
 
 | Surface | v0.1 Rec. | v0.2 (decided) | One line |
 |---|---|---|---|
-| Auth | (a) reuse | **issuance dropped (2026-08-07); v2 owns consumption** | No v2 minting endpoint by design — keys are issued in the app over gRPC. v2 owns the scope gate, the per-space grant and `GET /v2/auth/whoami`. |
+| Auth | (a) reuse | **built (2026-09-08)** | Shared pairing at `/v2/auth/challenges` and `/v2/auth/api_keys`, with Desktop approval. `GET /v2/auth/whoami` describes the issued key's grant. |
 | Spaces | (c) | **(c)** unchanged | List shipped; add GET-one/POST/PATCH — v1's list does N+1 RPCs and misses every v2 convention. |
 | Members | (c) | **(c)** unchanged | List shipped; the real gap is `GET /members/me`; member admin is disabled even in v1 — nothing to port. |
-| Files | (c), download stays v1 | **(c) incl. download** | Upload shipped; download gets `/v2` bytes (HTTP conventions still apply *around* the stream); the search file-layout blindness is the live bug. |
+| Files | (c), download stays v1 | **(c) incl. download, built** | Upload and file/icon downloads shipped under `/v2`; downloads enforce the space's read grant. |
 | Chats | (c) | **(c)** unchanged, incl. SSE | v1 drops chatState/message_count the RPC already returns; rows/marks are token-hostile — passthrough + compact shapes, and the stream comes too. |
 | Lists (v1 `/lists`) | — | — | Superseded by Phase-4 queries/collections; nothing to do. |
 | Tags admin | (a) | **(c)**, Phase 8 | Rename semantics under names-as-identity must be resolved (Q5), not dodged. |
@@ -499,12 +516,12 @@ content; Phase 8 is new and exists only because of the v0.2 decision.
    call, v1 or v2. The docs must say this plainly: **v2 has no minting
    endpoint by design; obtain a key in the app.** Revisit only if headless
    issuance ever becomes a real requirement.
-2. **[build] `GET /v2/spaces/{space_id}/files/{fileId}/content`** — the byte
+2. **[built, 2026-09-08] `GET /v2/spaces/{space_id}/files/{file_id}/content`** — the byte
    stream. HTTP is the convention *inside* the response (Content-Type,
    Content-Length, Range, ETag as a real validator), but everything around it
    is v2: path shape, C6 errors on the failure paths, and the 404/403
-   vocabulary. Pairs with the shipped upload and with `GET .../files/{id}`
-   metadata.
+   vocabulary. Also supports `HEAD`; pairs with the shipped upload and the
+   `icon_image` references on space/member reads.
 3. **[build] the chat SSE stream under `/v2`** — carried by Phase 6's DTOs
    rather than v1's, so the stream and the polling read agree field for field.
    This is the one item where a straddling client would have been genuinely

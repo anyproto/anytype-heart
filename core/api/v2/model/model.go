@@ -216,6 +216,7 @@ type SpaceRow struct {
 	Id          string `json:"id"`
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
+	IconImage   string `json:"icon_image,omitempty"` // Icon id; download with GET /v2/spaces/{space_id}/files/{file_id}/content.
 }
 
 // Space is the space shape shared by GET-one and the space mutations
@@ -227,6 +228,7 @@ type Space struct {
 	Id          string `json:"id,omitempty"`
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
+	IconImage   string `json:"icon_image,omitempty"` // Icon id; download with GET /v2/spaces/{space_id}/files/{file_id}/content.
 	DryRun      bool   `json:"dry_run,omitempty"`
 }
 
@@ -277,14 +279,8 @@ type WhoamiKey struct {
 // agent concludes it may touch every space). When Scoped is false, Spaces
 // is [] and Permission is null.
 type WhoamiGrant struct {
-	Scoped bool `json:"scoped"`
-	// AllSpaces is the boundary field of an all-spaces grant: the key covers
-	// every space in the account, including spaces created after the grant
-	// was made (the tech space excepted — it is never covered). When true,
-	// Spaces enumerates the CURRENT live spaces and is informational only —
-	// no consumer may infer the boundary from spaces[], its emptiness
-	// included.
-	AllSpaces  bool               `json:"all_spaces"`
+	Scoped     bool               `json:"scoped"`
+	AllSpaces  bool               `json:"all_spaces"` // the boundary field of an all-spaces grant: the key covers every space in the account, including spaces created later (the tech space excepted). When true, spaces enumerates the current live spaces and is informational only. Never infer the boundary from it
 	Permission *string            `json:"permission"` // the compact form agents string-match on
 	Spaces     []WhoamiGrantSpace `json:"spaces"`
 }
@@ -310,10 +306,11 @@ type WhoamiApi struct {
 // MemberRow is a minimal member list row; agents need member ids for
 // assignee/creator property values.
 type MemberRow struct {
-	Id       string `json:"id"`
-	Name     string `json:"name"`
-	Role     string `json:"role"`
-	Identity string `json:"identity,omitempty"`
+	Id        string `json:"id"`
+	Name      string `json:"name"`
+	Role      string `json:"role"`
+	Identity  string `json:"identity,omitempty"`
+	IconImage string `json:"icon_image,omitempty"` // Icon id; download with GET /v2/spaces/{space_id}/files/{file_id}/content.
 }
 
 // TypeRow is a minimal type list row: keys + names.

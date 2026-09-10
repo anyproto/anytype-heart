@@ -70,6 +70,7 @@ func serveWithKeyBody(fx *fixture, method, path, key, body string) *httptest.Res
 var knownRouteParams = map[string]bool{
 	apiv2.SpaceParam: true,
 	"object_id":      true,
+	"file_id":        true,
 	"type":           true,
 	"key":            true,
 	"kind":           true,

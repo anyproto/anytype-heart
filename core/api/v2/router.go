@@ -181,6 +181,13 @@ func RegisterRoutes(router *gin.Engine, deps RouteDeps) {
 		deps.AnalyticsEvent("V2GetMemberMe"),
 		v2handler.GetMemberMeHandler(deps.Service),
 	)
+	v2.GET("/spaces/:space_id/files/:file_id/content",
+		deps.AnalyticsEvent("V2DownloadFile"),
+		v2handler.DownloadFileHandler(deps.Service),
+	)
+	v2.HEAD("/spaces/:space_id/files/:file_id/content",
+		v2handler.HeadFileHandler(deps.Service),
+	)
 	v2.GET("/spaces/:space_id/types",
 		deps.AnalyticsEvent("V2ListTypes"),
 		v2handler.ListTypesHandler(deps.Service),

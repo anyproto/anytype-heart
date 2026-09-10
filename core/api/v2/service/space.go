@@ -94,6 +94,7 @@ func (s *Service) GetSpace(ctx context.Context, spaceId string) (v2model.Space, 
 		Id:          s.servedSpaceRef(ctx, spaceId),
 		Name:        details.GetString(bundle.RelationKeyName),
 		Description: details.GetString(bundle.RelationKeyDescription),
+		IconImage:   details.GetString(bundle.RelationKeyIconImage),
 	}, nil
 }
 

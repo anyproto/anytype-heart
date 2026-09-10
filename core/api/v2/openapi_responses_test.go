@@ -26,6 +26,7 @@ type responseContractDocument struct {
 type responseContractOperation struct {
 	OperationId string                              `json:"operationId" yaml:"operationId"`
 	Responses   map[string]responseContractResponse `json:"responses" yaml:"responses"`
+	Security    []map[string][]string               `json:"security" yaml:"security"`
 }
 
 type responseContractResponse struct {
@@ -33,8 +34,10 @@ type responseContractResponse struct {
 	Description string `json:"description" yaml:"description"`
 	Content     map[string]struct {
 		Schema struct {
-			Ref   string `json:"$ref" yaml:"$ref"`
-			AnyOf []struct {
+			Ref    string `json:"$ref" yaml:"$ref"`
+			Type   string `json:"type" yaml:"type"`
+			Format string `json:"format" yaml:"format"`
+			AnyOf  []struct {
 				Ref string `json:"$ref" yaml:"$ref"`
 			} `json:"anyOf" yaml:"anyOf"`
 		} `json:"schema" yaml:"schema"`
@@ -83,7 +86,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	var jsonDoc responseContractDocument
 	require.NoError(t, json.Unmarshal(jsonBody, &jsonDoc))
 	jsonOperations := responseContractOperations(t, jsonDoc)
-	require.Len(t, jsonOperations, 46)
+	require.Len(t, jsonOperations, 50)
 
 	yamlBody, err := os.ReadFile("../docs/v2/openapi.yaml")
 	require.NoError(t, err)
@@ -92,6 +95,32 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	yamlOperations := responseContractOperations(t, yamlDoc)
 	assert.Equal(t, responseStatusInventory(jsonOperations), responseStatusInventory(yamlOperations),
 		"the two checked-in OpenAPI forms must declare the same operation/status pairs")
+	for form, doc := range map[string]responseContractDocument{"json": jsonDoc, "yaml": yamlDoc} {
+		for path, operationId := range map[string]string{
+			"/v2/auth/challenges": "create_auth_challenge",
+			"/v2/auth/api_keys":   "create_api_key",
+		} {
+			operation := doc.Paths[path]["post"]
+			require.Equal(t, operationId, operation.OperationId, "%s must document %s", form, path)
+			require.NotNil(t, operation.Security)
+			require.Empty(t, operation.Security, "%s needs no existing key", path)
+		}
+		file := doc.Paths["/v2/spaces/{space_id}/files/{file_id}/content"]
+		require.Equal(t, "download_file", file["get"].OperationId, form)
+		require.Equal(t, "head_file", file["head"].OperationId, form)
+		for _, status := range []string{"200", "206"} {
+			content := file["get"].Responses[status].Content
+			require.Len(t, content, 1, "%s file %s must describe bytes only", form, status)
+			assert.Equal(t, "string", content["application/octet-stream"].Schema.Type)
+			assert.Equal(t, "binary", content["application/octet-stream"].Schema.Format)
+		}
+		assert.Empty(t, file["get"].Responses["304"].Content)
+		assert.Empty(t, file["head"].Responses["200"].Content)
+		assert.Empty(t, file["head"].Responses["304"].Content)
+		for _, schema := range []string{"Space", "SpaceRow", "MemberRow"} {
+			assert.Contains(t, doc.Components.Schemas[schema].Properties, "icon_image", "%s %s", form, schema)
+		}
+	}
 
 	// Every space-scoped operation resolves the space FIRST, so a well-shaped
 	// id for a space that does not exist is a 404 on all of them. Asserting
@@ -151,7 +180,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	for _, operation := range jsonOperations {
 		pairCount += len(operation.Responses)
 	}
-	assert.Equal(t, 292, pairCount, "the checked-in response inventory changes only deliberately")
+	assert.Equal(t, 318, pairCount, "the checked-in response inventory changes only deliberately")
 
 	dryRunCreates := stringSet(
 		"add_chat_message", "create_chat", "create_collection", "create_object", "create_property",
@@ -174,6 +203,15 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	resourceLimited := stringSet("stream_chat_messages")
 
 	for operationId, operation := range jsonOperations {
+		if operationId == "create_auth_challenge" || operationId == "create_api_key" {
+			// Shared pairing handlers run outside all authenticated v2 gates.
+			assert.Len(t, operation.Responses, 4)
+			assert.Contains(t, operation.Responses, "201")
+			assert.Equal(t, "#/components/schemas/ValidationError", operation.Responses["400"].Content["application/json"].Schema.Ref)
+			assert.Equal(t, "#/components/schemas/ForbiddenError", operation.Responses["403"].Content["application/json"].Schema.Ref)
+			assert.Equal(t, "#/components/schemas/ServerError", operation.Responses["500"].Content["application/json"].Schema.Ref)
+			continue
+		}
 		for status, component := range map[string]string{
 			"401": "Unauthorized",
 			"403": "Forbidden",

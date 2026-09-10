@@ -8,6 +8,73 @@ import sys
 from copy import deepcopy
 
 
+# The server registers these shared handlers under both prefixes. Their
+# annotations belong to v1; copy the operations and referenced schemas so the
+# v2 document describes the same wire contract without exposing any v1 paths.
+SHARED_AUTH_PATHS = ("/auth/challenges", "/auth/api_keys")
+SHARED_AUTH_OPERATIONS = {"create_auth_challenge", "create_api_key"}
+
+
+def shared_auth_document(directory: pathlib.Path) -> tuple[dict, dict]:
+    source = json.loads((directory.parent / "v1" / "openapi.json").read_text())
+    paths = {}
+    for suffix in SHARED_AUTH_PATHS:
+        item = json.loads(json.dumps(source["paths"]["/v1" + suffix]).replace("/v1/auth/", "/v2/auth/"))
+        item["post"]["security"] = []
+        paths["/v2" + suffix] = item
+
+    schemas = {}
+
+    def collect(node):
+        if isinstance(node, dict):
+            ref = node.get("$ref", "")
+            if ref.startswith("#/components/schemas/"):
+                name = ref.removeprefix("#/components/schemas/")
+                if name not in schemas:
+                    schemas[name] = source["components"]["schemas"][name]
+                    collect(schemas[name])
+            for value in node.values():
+                collect(value)
+        elif isinstance(node, list):
+            for value in node:
+                collect(value)
+
+    collect(paths)
+    return paths, schemas
+
+
+def yaml_mapping_block(lines: list[str], header: str) -> tuple[int, int]:
+    start = lines.index(header)
+    indent = len(header) - len(header.lstrip())
+    end = next((i for i in range(start + 1, len(lines))
+                if lines[i].strip() and len(lines[i]) - len(lines[i].lstrip()) <= indent), len(lines))
+    return start, end
+
+
+def copy_yaml_auth(lines: list[str], directory: pathlib.Path) -> list[str]:
+    source = (directory.parent / "v1" / "openapi.yaml").read_text().splitlines(keepends=True)
+    _, schemas = shared_auth_document(directory)
+    for suffix in SHARED_AUTH_PATHS:
+        header = f"  /v2{suffix}:\n"
+        if header in lines:
+            start, end = yaml_mapping_block(lines, header)
+            del lines[start:end]
+        start, end = yaml_mapping_block(source, f"  /v1{suffix}:\n")
+        block = [line.replace("/v1/auth/", "/v2/auth/") for line in source[start:end]]
+        block.insert(block.index("    post:\n") + 1, "      security: []\n")
+        insert = lines.index("paths:\n") + 1
+        lines[insert:insert] = block
+    for name in sorted(schemas):
+        header = f"    {name}:\n"
+        if header in lines:
+            start, end = yaml_mapping_block(lines, header)
+            del lines[start:end]
+        start, end = yaml_mapping_block(source, header)
+        insert = lines.index("  schemas:\n") + 1
+        lines[insert:insert] = source[start:end]
+    return lines
+
+
 # These policies live at the router/middleware layer, outside any one handler
 # comment, so swag cannot infer them. Keep the route sets beside the
 # post-processor that makes those cross-cutting responses part of the public
@@ -134,6 +201,9 @@ def apply_response_policies(doc: dict) -> None:
     for path, operation in operations(doc):
         operation_id = operation["operationId"]
         seen.add(operation_id)
+        if operation_id in SHARED_AUTH_OPERATIONS:
+            # Pairing runs outside the bearer, pagination and mutation gates.
+            continue
         responses = operation.setdefault("responses", {})
         responses.setdefault("400", response_ref("BadRequest"))
         responses["401"] = response_ref("Unauthorized")
@@ -198,6 +268,65 @@ STREAM_OPERATION = "stream_chat_messages"
 # conformance test asserted it. A concurrency refusal is v2's own, so it
 # carries the C6 envelope, not the legacy shape the shared limiter uses.
 RESOURCE_LIMITED_OPERATIONS = {STREAM_OPERATION}
+
+FILE_OPERATIONS = {"download_file", "head_file"}
+
+
+def file_response_headers(status: str) -> dict:
+    descriptions = {}
+    if status in {"200", "206", "304"}:
+        descriptions.update({
+            "ETag": "File representation validator",
+            "Cache-Control": "Private cache; revalidate before reuse",
+            "Last-Modified": "File modification date, when available",
+        })
+    if status in {"200", "206"}:
+        descriptions.update({"Content-Length": "Response length in bytes", "Accept-Ranges": "Supported range unit"})
+    if status in {"206", "416"}:
+        descriptions["Content-Range"] = "Returned byte range or total file length"
+    return {name: {"description": description, "schema": {"type": "string"}}
+            for name, description in descriptions.items()}
+
+
+def apply_file_responses(doc: dict) -> None:
+    # swag adds JSON to binary successes and bodies to header-only successes.
+    for _, operation in operations(doc):
+        operation_id = operation["operationId"]
+        if operation_id not in FILE_OPERATIONS:
+            continue
+        for status, response in operation["responses"].items():
+            if status == "304" or (operation_id == "head_file" and status == "200"):
+                response.pop("content", None)
+            elif status in {"200", "206"}:
+                response["content"] = {"application/octet-stream": {"schema": {"type": "string", "format": "binary"}}}
+            headers = file_response_headers(status)
+            if headers:
+                response["headers"] = headers
+
+
+def apply_yaml_file_responses(lines: list[str]) -> list[str]:
+    for operation_id in sorted(FILE_OPERATIONS):
+        operation_line = lines.index(f"      operationId: {operation_id}\n")
+        start = next(i for i in range(operation_line + 1, len(lines)) if lines[i] == "      responses:\n")
+        end = next(i for i in range(start + 1, len(lines))
+                   if lines[i].strip() and len(lines[i]) - len(lines[i].lstrip()) <= 6)
+        blocks = yaml_response_blocks(lines, start, end)
+        for status, block in blocks.items():
+            if status in {"200", "206", "304"}:
+                if "          content:\n" in block:
+                    content_start, content_end = yaml_mapping_block(block, "          content:\n")
+                    del block[content_start:content_end]
+                if operation_id == "download_file" and status != "304":
+                    block[1:1] = ["          content:\n", "            application/octet-stream:\n",
+                                  "              schema:\n", "                format: binary\n", "                type: string\n"]
+            headers = file_response_headers(status)
+            if headers:
+                block.append("          headers:\n")
+                for name, header in headers.items():
+                    block.extend([f"            {name}:\n", f"              description: {header['description']}\n",
+                                  "              schema:\n", "                type: string\n"])
+        lines[start:end] = ["      responses:\n"] + [line for block in blocks.values() for line in block]
+    return lines
 
 
 def apply_stream_content_type(doc: dict) -> None:
@@ -326,10 +455,14 @@ UPLOAD_YAML = """      requestBody:
 
 def fix_json(path: pathlib.Path) -> None:
     doc = json.loads(path.read_text())
+    auth_paths, auth_schemas = shared_auth_document(path.parent)
+    doc["paths"].update(auth_paths)
+    doc["components"]["schemas"].update(auth_schemas)
     doc["components"]["securitySchemes"]["bearerauth"].pop("bearerFormat", None)
     doc["paths"]["/v2/spaces/{space_id}/files"]["post"]["requestBody"] = upload_request_body()
     apply_response_policies(doc)
     apply_stream_content_type(doc)
+    apply_file_responses(doc)
     apply_schema_required(doc)
     path.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n")
 
@@ -434,6 +567,8 @@ def apply_yaml_response_policies(lines: list[str]) -> list[str]:
     # Work bottom-up so replacing one response section cannot invalidate the
     # indexes of operations that remain to be processed.
     for operation_id in reversed(operation_ids):
+        if operation_id in SHARED_AUTH_OPERATIONS:
+            continue
         operation_line = next(i for i, line in enumerate(lines)
                               if line.strip() == f"operationId: {operation_id}")
         response_start = next(i for i in range(operation_line + 1, len(lines))
@@ -479,6 +614,7 @@ def apply_yaml_response_policies(lines: list[str]) -> list[str]:
 def fix_yaml(path: pathlib.Path) -> None:
     lines = [line for line in path.read_text().splitlines(keepends=True)
              if line.strip() != "bearerFormat: JWT"]
+    lines = copy_yaml_auth(lines, path.parent)
     start = lines.index("  /v2/spaces/{space_id}/files:\n")
     end = next(i for i in range(start + 1, len(lines))
                if lines[i].startswith("  /v2/") and not lines[i].startswith("  /v2/spaces/{space_id}/files:"))
@@ -494,6 +630,7 @@ def fix_yaml(path: pathlib.Path) -> None:
         lines[schemas:schemas] = RESPONSES_YAML.splitlines(keepends=True)
     lines = apply_yaml_response_policies(lines)
     lines = apply_yaml_stream_content_type(lines)
+    lines = apply_yaml_file_responses(lines)
     lines = apply_yaml_schema_required(lines)
     path.write_text("".join(lines))
 

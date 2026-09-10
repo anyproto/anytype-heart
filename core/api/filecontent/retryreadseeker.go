@@ -1,4 +1,4 @@
-package service
+package filecontent
 
 import (
 	"context"

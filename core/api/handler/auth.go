@@ -13,7 +13,7 @@ import (
 // CreateChallengeHandler creates a new challenge for API key generation
 //
 //	@Summary		Create Challenge
-//	@Description	Generates a one-time authentication challenge for granting API access to the user's vault. Upon providing a valid `app_name`, the server issues a unique `challenge_id` and displays a 4-digit code within the Anytype Desktop. The `challenge_id` must then be used with the `/v1/auth/api_keys` endpoint to solve the challenge and retrieve an authentication token. This mechanism ensures that only trusted applications and authorized users gain access.
+//	@Description	Starts pairing for the named app and returns a challenge_id. The user chooses spaces and permissions in Anytype Desktop, then approves to reveal a 4-digit code. Submit the challenge_id and code to /v1/auth/api_keys. No existing API key is required.
 //	@ID				create_auth_challenge
 //	@Tags			Auth
 //	@Accept			json
@@ -22,6 +22,7 @@ import (
 //	@Param			request			body		apimodel.CreateChallengeRequest		true	"The request body containing the app name"
 //	@Success		201				{object}	apimodel.CreateChallengeResponse	"The challenge ID associated with the started challenge"
 //	@Failure		400				{object}	util.ValidationError				"Bad request"
+//	@Failure		403				{object}	util.ForbiddenError				"Untrusted request origin or host"
 //	@Failure		500				{object}	util.ServerError					"Internal server error"
 //	@Router			/v1/auth/challenges [post]
 func CreateChallengeHandler(s *service.Service) gin.HandlerFunc {
@@ -52,7 +53,7 @@ func CreateChallengeHandler(s *service.Service) gin.HandlerFunc {
 // CreateApiKeyHandler creates a new api key using a code and challenge ID
 //
 //	@Summary		Create API Key
-//	@Description	After receiving a `challenge_id` from the `/v1/auth/challenges` endpoint, the client calls this endpoint to provide the corresponding 4-digit code along with the challenge ID. The endpoint verifies that the challenge solution is correct and, if it is, returns an `api_key`. This endpoint is central to the authentication process, as it validates the user's identity and issues a key that can be used for further interactions with the API.
+//	@Description	Exchanges a challenge_id from /v1/auth/challenges and the code revealed after Desktop approval for an api_key. Use the key as a bearer credential in the Authorization header. It carries the spaces and permissions approved by the user. No existing API key is required.
 //	@ID				create_api_key
 //	@Tags			Auth
 //	@Accept			json
@@ -61,6 +62,7 @@ func CreateChallengeHandler(s *service.Service) gin.HandlerFunc {
 //	@Param			request			body		apimodel.CreateApiKeyRequest	true	"The request body containing the challenge ID and code"
 //	@Success		201				{object}	apimodel.CreateApiKeyResponse	"The API key that can be used in the Authorization header for subsequent requests"
 //	@Failure		400				{object}	util.ValidationError			"Bad request"
+//	@Failure		403				{object}	util.ForbiddenError			"Untrusted request origin or host"
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Router			/v1/auth/api_keys [post]
 func CreateApiKeyHandler(s *service.Service) gin.HandlerFunc {
