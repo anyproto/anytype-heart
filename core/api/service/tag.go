@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/gogo/protobuf/types"
-	"github.com/iancoleman/strcase"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
@@ -116,7 +115,10 @@ func (s *Service) CreateTag(ctx context.Context, spaceId string, propertyId stri
 	}
 
 	if request.Key != "" {
-		apiKey := strcase.ToSnake(s.sanitizedString(request.Key))
+		apiKey, ok := util.MintApiObjectKey(request.Key)
+		if !ok {
+			return nil, util.ErrInvalidApiObjectKey("tag", request.Key)
+		}
 		if s.cache.getTags(spaceId)[apiKey] != nil {
 			return nil, util.ErrBadInput(fmt.Sprintf("tag key %q already exists", apiKey))
 		}
@@ -165,7 +167,10 @@ func (s *Service) UpdateTag(ctx context.Context, spaceId string, propertyId stri
 		})
 	}
 	if request.Key != nil {
-		apiKey := strcase.ToSnake(s.sanitizedString(*request.Key))
+		apiKey, ok := util.MintApiObjectKey(*request.Key)
+		if !ok {
+			return nil, util.ErrInvalidApiObjectKey("tag", *request.Key)
+		}
 		if apiKey != tag.Key {
 			if existing, exists := s.cache.getTags(spaceId)[apiKey]; exists && existing.Id != tagId {
 				return nil, util.ErrBadInput(fmt.Sprintf("tag key %q already exists", apiKey))

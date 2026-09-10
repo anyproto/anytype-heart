@@ -258,3 +258,15 @@ func RelationKeyFromID(id string) (domain.RelationKey, error) {
 
 	return "", fmt.Errorf("invalid type url: no prefix found")
 }
+
+// ListRelationsKeys returns every bundled relation key, in map order — the
+// relation half of ListTypesKeys, for callers that build their own tables
+// over the whole bundled population (sort before deriving anything
+// order-sensitive).
+func ListRelationsKeys() []domain.RelationKey {
+	keys := make([]domain.RelationKey, 0, len(relations))
+	for k := range relations {
+		keys = append(keys, k)
+	}
+	return keys
+}

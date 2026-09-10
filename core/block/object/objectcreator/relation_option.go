@@ -48,8 +48,16 @@ func (s *service) createRelationOption(ctx context.Context, space clientspace.Sp
 	}
 	injectApiObjectKey(object, objectKey)
 
+	// injectApiObjectKey minted from the unique key on the arm above; an
+	// option created WITH a unique key whose slug is empty still has a name to
+	// derive one from, and a name is what an option is addressed by anyway.
+	// Minted, not merely transliterated: this used to store the raw
+	// transliteration, spaces and brackets and all, which is not the
+	// snake_case spelling the api promises a key is.
 	if strings.TrimSpace(object.GetString(bundle.RelationKeyApiObjectKey)) == "" {
-		object.SetString(bundle.RelationKeyApiObjectKey, transliterate(object.GetString(bundle.RelationKeyName)))
+		if slug := bundle.MintApiSlugFromName(object.GetString(bundle.RelationKeyName)); slug != "" {
+			object.SetString(bundle.RelationKeyApiObjectKey, slug)
+		}
 	}
 
 	createState := state.NewDocWithUniqueKey("", nil, uniqueKey).(*state.State)

@@ -17,7 +17,9 @@ service ClientCommands {
     rpc WalletConvert (anytype.Rpc.Wallet.Convert.Request) returns (anytype.Rpc.Wallet.Convert.Response);
     rpc AccountLocalLinkNewChallenge (anytype.Rpc.Account.LocalLink.NewChallenge.Request) returns (anytype.Rpc.Account.LocalLink.NewChallenge.Response);
     rpc AccountLocalLinkSolveChallenge (anytype.Rpc.Account.LocalLink.SolveChallenge.Request) returns (anytype.Rpc.Account.LocalLink.SolveChallenge.Response);
+    rpc AccountLocalLinkApproveChallenge (anytype.Rpc.Account.LocalLink.ApproveChallenge.Request) returns (anytype.Rpc.Account.LocalLink.ApproveChallenge.Response);
     rpc AccountLocalLinkCreateApp (anytype.Rpc.Account.LocalLink.CreateApp.Request) returns (anytype.Rpc.Account.LocalLink.CreateApp.Response);
+    rpc AccountLocalLinkUpdateApp (anytype.Rpc.Account.LocalLink.UpdateApp.Request) returns (anytype.Rpc.Account.LocalLink.UpdateApp.Response);
     rpc AccountLocalLinkListApps (anytype.Rpc.Account.LocalLink.ListApps.Request) returns (anytype.Rpc.Account.LocalLink.ListApps.Response);
     rpc AccountLocalLinkRevokeApp (anytype.Rpc.Account.LocalLink.RevokeApp.Request) returns (anytype.Rpc.Account.LocalLink.RevokeApp.Response);
 
@@ -47,6 +49,7 @@ service ClientCommands {
     rpc AccountCreate (anytype.Rpc.Account.Create.Request) returns (anytype.Rpc.Account.Create.Response);
     rpc AccountDelete (anytype.Rpc.Account.Delete.Request) returns (anytype.Rpc.Account.Delete.Response);
     rpc AccountPreloadRemainingSpaces (anytype.Rpc.Account.PreloadRemainingSpaces.Request) returns (anytype.Rpc.Account.PreloadRemainingSpaces.Response);
+    rpc AccountRecoveryState (anytype.Rpc.Account.RecoveryState.Request) returns (anytype.Rpc.Account.RecoveryState.Response);
     rpc AccountRevertDeletion (anytype.Rpc.Account.RevertDeletion.Request) returns (anytype.Rpc.Account.RevertDeletion.Response);
     rpc AccountSelect (anytype.Rpc.Account.Select.Request) returns (anytype.Rpc.Account.Select.Response);
     rpc AccountEnableLocalNetworkSync (anytype.Rpc.Account.EnableLocalNetworkSync.Request) returns (anytype.Rpc.Account.EnableLocalNetworkSync.Response);

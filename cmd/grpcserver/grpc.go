@@ -4,7 +4,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -14,7 +13,6 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
-	"runtime"
 	"strconv"
 	"syscall"
 	"time"
@@ -28,6 +26,7 @@ import (
 	"github.com/uber/jaeger-client-go"
 	jaegercfg "github.com/uber/jaeger-client-go/config"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 
 	"github.com/anyproto/anytype-heart/core"
 	"github.com/anyproto/anytype-heart/core/api"
@@ -38,6 +37,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/conc"
 	"github.com/anyproto/anytype-heart/util/grpcprocess"
+	"github.com/anyproto/anytype-heart/util/localorigin"
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
@@ -50,6 +50,26 @@ const grpcWebStartedMessagePrefix = "gRPC Web proxy started at: "
 var commonOSSignals = []os.Signal{os.Interrupt, syscall.SIGTERM, syscall.SIGINT}
 
 func main() {
+	// Establish parent ownership before any middleware initialization. If the
+	// owner is already gone, the monitor starts the hard-exit deadline even if
+	// startup later blocks before reaching the shutdown event loop.
+	lifelineEnabled := parentLifelineEnabled()
+	if lifelineEnabled {
+		ignoreBrokenPipeSignal()
+	}
+
+	var parentLifeline *parentLifelineMonitor
+	var parentLifelineChan <-chan parentLifelineEvent
+	if lifelineEnabled || shouldMonitorParentStdin() {
+		parentLifeline = startParentLifelineMonitor(
+			os.Stdin,
+			lifelineEnabled,
+			gracefulShutdownTimeout,
+			os.Exit,
+		)
+		parentLifelineChan = parentLifeline.events
+	}
+
 	var addr string
 	var webaddr string
 	app.StartWarningAfter = time.Second * 5
@@ -182,6 +202,12 @@ func main() {
 	unaryInterceptors = append(unaryInterceptors, grpcprocess.ProcessInfoInterceptor(
 		"/anytype.ClientCommands/AccountLocalLinkNewChallenge",
 	))
+	// The Origin header rides gRPC metadata on this transport, not the
+	// request context the HTTP middleware fills. Without this, every origin
+	// check on a gRPC method reads "" and silently passes — including the
+	// one guarding AccountLocalLinkApproveChallenge, which exists precisely
+	// because the gRPC-Web proxy trusts the Webclipper's origins.
+	unaryInterceptors = append(unaryInterceptors, originInterceptor())
 
 	server := grpc.NewServer(grpc.MaxRecvMsgSize(20*1024*1024),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(unaryInterceptors...)),
@@ -225,30 +251,48 @@ func main() {
 	}
 	// do not change this, js client relies on this msg to ensure that server is up and parse address
 	fmt.Println(grpcWebStartedMessagePrefix + webaddr)
-	if runtime.GOOS == "windows" {
-		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-			message := scanner.Text()
-			if message == "shutdown" {
-				fmt.Println("[anytype-heart] Shutdown: received shutdown msg, closing components...")
-				// Perform cleanup or exit
-				shutdown()
-				return
-			}
-		}
-	}
 
 	for {
-		sig := <-signalChan
-		if shouldSaveStack(sig) {
-			if err = mw.SaveGoroutinesStack(""); err != nil {
-				log.Errorf("failed to save stack of goroutines: %s", err)
+		select {
+		case <-parentLifelineChan:
+			// Do not write to stdout/stderr here. The event may be EOF because the
+			// owner disappeared and closed those pipes. The monitor independently
+			// enforces the hard deadline while cleanup runs.
+			shutdown()
+			parentLifeline.markShutdownComplete()
+			return
+		case sig := <-signalChan:
+			if shouldSaveStack(sig) {
+				if err = mw.SaveGoroutinesStack(""); err != nil {
+					log.Errorf("failed to save stack of goroutines: %s", err)
+				}
+				continue
 			}
-			continue
+			fmt.Printf("[anytype-heart] Shutdown: received OS signal (%s), closing components...\n", sig.String())
+			// Preserve the historical standalone-server contract: OS-signal
+			// shutdown is not subject to the desktop parent's lifeline deadline.
+			shutdown()
+			return
 		}
-		fmt.Printf("[anytype-heart] Shutdown: received OS signal (%s), closing components...\n", sig.String())
-		shutdown()
-		return
+	}
+}
+
+// originInterceptor carries the Origin the gRPC-Web proxy forwarded into the
+// request context, so localorigin.OriginFromContext answers on this transport
+// the way it does behind the JSON API's middleware. It also gives the pairing
+// prompt an origin to display for browser callers, which have no process to
+// resolve.
+func originInterceptor() grpc.UnaryServerInterceptor {
+	return func(
+		ctx context.Context,
+		req interface{},
+		info *grpc.UnaryServerInfo,
+		handler grpc.UnaryHandler,
+	) (interface{}, error) {
+		if md, ok := metadata.FromIncomingContext(ctx); ok {
+			ctx = localorigin.WithOrigin(ctx, localorigin.OriginFromMetadata(md))
+		}
+		return handler(ctx, req)
 	}
 }
 

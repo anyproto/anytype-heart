@@ -170,6 +170,7 @@ type service struct {
 	repKey                 uint64
 	spaceLoaderListener    aclobjectmanager.SpaceLoaderListener
 	watcher                *spaceWatcher
+	recovery               recoveryObserver // optional; nil when the tracker is not registered
 
 	mu        sync.Mutex
 	ctx       context.Context // use ctx for the long operations within the lifecycle of the service, excluding Run
@@ -193,6 +194,30 @@ const BlockServiceCName = "block-service"
 // needs to know which spaces the user is currently looking at.
 type openedObjectsProvider interface {
 	GetOpenedObjects() []lo.Entry[string, string]
+}
+
+// recoveryCName mirrors core/recovery.CName: the account start-up status
+// tracker lives above this package, so it is looked up by name. A drift test
+// keeps the two equal.
+const recoveryCName = "core.recovery"
+
+// recoveryObserver is the part of the recovery status tracker this package
+// feeds: which space is the account's (before the pull starts) and when the
+// tech space is ready (the "UI may start" milestone).
+type recoveryObserver interface {
+	OnTechSpaceId(id string)
+	OnAccountReady()
+	// OnSpaceView is every SpaceView status the tech-space subscription
+	// delivers; deleted covers accountStatus Deleted/Removing and remote
+	// Deleted, computed here so the tracker needs no spaceinfo import
+	OnSpaceView(spaceId, spaceViewId string, deleted bool)
+	// OnSpaceViewInactive is a SpaceView whose space this service will never
+	// run a spaceloader for, so no load result is ever coming for it
+	OnSpaceViewInactive(spaceId, spaceViewId string)
+	// OnSpaceViewsInitial is the watcher's first pass over the local
+	// SpaceViews; the tracker's completeness gate cannot open before every
+	// one of them has been delivered through OnSpaceView
+	OnSpaceViewsInitial(spaceViewIds []string)
 }
 
 func (s *service) Delete(ctx context.Context, id string) (err error) {
@@ -239,6 +264,14 @@ func (s *service) Init(a *app.App) (err error) {
 	s.techSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacedomain.SpaceTypeTech)
 	if err != nil {
 		return
+	}
+	// optional (absent in tests): the recovery status tracker must know the
+	// tech space id before Run pulls it
+	if c := a.Component(recoveryCName); c != nil {
+		s.recovery, _ = c.(recoveryObserver)
+	}
+	if s.recovery != nil {
+		s.recovery.OnTechSpaceId(s.techSpaceId)
 	}
 	accountMetadata, metadataSymKey, err := domain.DeriveAccountMetadata(s.accountService.Account().SignKey)
 	if err != nil {
@@ -454,6 +487,7 @@ func (s *service) onSpaceStatusUpdated(spaceStatus spaceViewStatus) {
 		// we want the updates for each space view to be synchronous
 		spaceStatus.mx.Lock()
 		defer spaceStatus.mx.Unlock()
+		s.notifySpaceView(spaceStatus)
 		if spaceStatus.remoteStatus == spaceinfo.RemoteStatusDeleted && spaceStatus.accountStatus != spaceinfo.AccountStatusDeleted {
 			if spaceStatus.localStatus == spaceinfo.LocalStatusOk {
 				s.sendNotification(spaceStatus.spaceId)
@@ -471,6 +505,35 @@ func (s *service) onSpaceStatusUpdated(spaceStatus spaceViewStatus) {
 		s.maybeReleaseOnPreferredBroken(spaceStatus)
 		s.decideAndApplySpaceStatus(spaceStatus)
 	}()
+}
+
+// notifySpaceView is the SpaceDiscovered producer: the SpaceView subscription
+// is the only source of discovery (a space pushed by a LAN peer produces no
+// pull events), so it runs before any branching in onSpaceStatusUpdated.
+func (s *service) notifySpaceView(status spaceViewStatus) {
+	if s.recovery == nil {
+		return
+	}
+	deleted := status.accountStatus == spaceinfo.AccountStatusDeleted ||
+		status.accountStatus == spaceinfo.AccountStatusRemoving ||
+		status.remoteStatus == spaceinfo.RemoteStatusDeleted
+	// A joining space dispatches to mode.ModeJoining (see shareablespace's
+	// updateStatus), which builds a joiner and never a spaceloader: no load
+	// result will ever arrive, so the tracker must not wait for one.
+	if !deleted && status.accountStatus == spaceinfo.AccountStatusJoining {
+		s.recovery.OnSpaceViewInactive(status.spaceId, status.spaceViewId)
+		return
+	}
+	s.recovery.OnSpaceView(status.spaceId, status.spaceViewId, deleted)
+}
+
+// onInitialSpaceViews forwards the watcher's first pass. It runs inside
+// watcher.Run, i.e. before StartSync and therefore before any tech-space diff
+// can reach the tracker.
+func (s *service) onInitialSpaceViews(spaceViewIds []string) {
+	if s.recovery != nil {
+		s.recovery.OnSpaceViewsInitial(spaceViewIds)
+	}
 }
 
 // maybeReleaseOnPreferredBroken implements the B3-accepted dynamic fallback:

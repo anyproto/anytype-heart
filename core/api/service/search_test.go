@@ -60,54 +60,17 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
 
-		// Mock objects in space
-		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
-			SpaceId: mockedSpaceId,
-			Filters: []*model.BlockContentDataviewFilter{
-				{
-					Operator: model.BlockContentDataviewFilter_And,
-					NestedFilters: []*model.BlockContentDataviewFilter{
-						{
-							RelationKey: bundle.RelationKeyResolvedLayout.String(),
-							Condition:   model.BlockContentDataviewFilter_In,
-							Value:       pbtypes.IntList(util.LayoutsToIntArgs(util.ObjectLayouts)...),
-						},
-						{
-							RelationKey: bundle.RelationKeyIsHidden.String(),
-							Condition:   model.BlockContentDataviewFilter_NotEqual,
-							Value:       pbtypes.Bool(true),
-						},
-						{
-							RelationKey: "type.uniqueKey",
-							Condition:   model.BlockContentDataviewFilter_NotEqual,
-							Value:       pbtypes.String("ot-template"),
-						},
-						{
-							Operator: model.BlockContentDataviewFilter_Or,
-							NestedFilters: []*model.BlockContentDataviewFilter{
-								{
-									RelationKey: bundle.RelationKeyName.String(),
-									Condition:   model.BlockContentDataviewFilter_Like,
-									Value:       pbtypes.String(mockedSearchTerm),
-								},
-								{
-									RelationKey: bundle.RelationKeySnippet.String(),
-									Condition:   model.BlockContentDataviewFilter_Like,
-									Value:       pbtypes.String(mockedSearchTerm),
-								},
-							},
-						},
-					},
-				},
-			},
-			Sorts: []*model.BlockContentDataviewSort{{
-				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
-				Type:        model.BlockContentDataviewSort_Desc,
-				Format:      model.RelationFormat_date,
-				IncludeTime: true,
-			}},
-			Limit: int32(offset + limit),
-		}).Return(&pb.RpcObjectSearchResponse{
+		// One cross-space call carries the full-text query and a lookahead row.
+		fx.mwMock.On("ObjectCrossSpaceSearch", mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectCrossSpaceSearchRequest) bool {
+			require.Equal(t, mockedSearchTerm, req.FullText)
+			require.Equal(t, []string{mockedSpaceId}, req.SpaceIds)
+			require.Equal(t, int32(offset+limit+1), req.Limit)
+			require.NotContains(t, req.String(), `relationKey:"snippet"`)
+			require.Len(t, req.Filters, 1)
+			require.Equal(t, model.BlockContentDataviewFilter_Or, req.Filters[0].Operator)
+			return true
+		})).Return(&pb.RpcObjectCrossSpaceSearchResponse{
+			AllStoresLoaded: true,
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
@@ -126,11 +89,11 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 					},
 				},
 			},
-			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+			Error: &pb.RpcObjectCrossSpaceSearchResponseError{Code: pb.RpcObjectCrossSpaceSearchResponseError_NULL},
 		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.service.GlobalSearch(ctx, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{PropertyKey: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
+		objects, total, hasMore, allStoresLoaded, err := fx.service.GlobalSearch(ctx, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{PropertyKey: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -187,6 +150,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 
 		require.Equal(t, 1, total)
 		require.False(t, hasMore)
+		require.True(t, allStoresLoaded)
 	})
 
 	t.Run("no objects found globally", func(t *testing.T) {
@@ -199,7 +163,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.service.GlobalSearch(ctx, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{PropertyKey: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
+		objects, total, hasMore, _, err := fx.service.GlobalSearch(ctx, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{PropertyKey: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
 
 		// then
 		require.NoError(t, err)
@@ -218,7 +182,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		}).Once()
 
 		// when
-		objects, total, hasMore, err := fx.service.GlobalSearch(ctx, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{PropertyKey: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
+		objects, total, hasMore, _, err := fx.service.GlobalSearch(ctx, apimodel.SearchRequest{Query: mockedSearchTerm, Types: []string{}, Sort: apimodel.SortOptions{PropertyKey: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
 
 		// then
 		require.Error(t, err)
@@ -226,6 +190,50 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 		require.Equal(t, 0, total)
 		require.False(t, hasMore)
 	})
+}
+
+func TestSearchService_GlobalSearchPagingAndPartialResults(t *testing.T) {
+	for _, tc := range []struct {
+		offset, wantRows, wantTotal int
+		more                        bool
+	}{
+		{0, 1, 2, true}, {2, 1, 3, false}, {9, 0, 3, false},
+	} {
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{{Fields: map[string]*types.Value{bundle.RelationKeyTargetSpaceId.String(): pbtypes.String(mockedSpaceId)}}},
+		}).Once()
+		var records []*types.Struct
+		for _, id := range []string{"first", "second", "third"} {
+			records = append(records, &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyId.String(): pbtypes.String(id), bundle.RelationKeyName.String(): pbtypes.String(id),
+				bundle.RelationKeyType.String(): pbtypes.String(mockedTypeId), bundle.RelationKeySpaceId.String(): pbtypes.String(mockedSpaceId),
+			}})
+		}
+		fx.mwMock.On("ObjectCrossSpaceSearch", mock.Anything, mock.Anything).Return(
+			func(_ context.Context, req *pb.RpcObjectCrossSpaceSearchRequest) *pb.RpcObjectCrossSpaceSearchResponse {
+				return &pb.RpcObjectCrossSpaceSearchResponse{Records: records[:min(len(records), int(req.Limit))], AllStoresLoaded: false}
+			}).Once()
+		objects, total, more, allLoaded, err := fx.service.GlobalSearch(context.Background(), apimodel.SearchRequest{}, tc.offset, 1)
+		require.NoError(t, err)
+		require.Len(t, objects, tc.wantRows)
+		require.Equal(t, tc.wantTotal, total)
+		require.Equal(t, tc.more, more)
+		require.False(t, allLoaded, "partial-store state is separate from pagination")
+	}
+}
+
+func TestSearchService_GlobalSearchBackendError(t *testing.T) {
+	fx := newFixture(t)
+	fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
+		Records: []*types.Struct{{Fields: map[string]*types.Value{bundle.RelationKeyTargetSpaceId.String(): pbtypes.String(mockedSpaceId)}}},
+	}).Once()
+	fx.mwMock.On("ObjectCrossSpaceSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectCrossSpaceSearchResponse{
+		Error: &pb.RpcObjectCrossSpaceSearchResponseError{Code: pb.RpcObjectCrossSpaceSearchResponseError_UNKNOWN_ERROR},
+	}).Once()
+	_, _, _, _, err := fx.service.GlobalSearch(context.Background(), apimodel.SearchRequest{}, 0, 25)
+	require.ErrorIs(t, err, ErrFailedSearchObjects)
 }
 
 func TestSearchService_Search(t *testing.T) {

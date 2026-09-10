@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "e8960524577bd1c93cc4c622b7fd2287eef37db55501400e0c3e00cae7041cf0"
+const TypeChecksum = "71f6229d94c4bdf847dcab52efd4f85affaff2648d2a9b671cab46141b5c2902"
 const (
 	TypePrefix = "_ot"
 )
@@ -368,8 +368,9 @@ var (
 			Hidden:      true,
 			IconColor:   0,
 			Layout:      model.ObjectType_relationOption,
-			Name:        "Relation option",
+			Name:        "Property option",
 			Readonly:    true,
+			Revision:    1,
 			Types:       []model.SmartBlockType{model.SmartBlockType_SubObject},
 			Url:         TypePrefix + "relationOption",
 		},
@@ -394,12 +395,12 @@ var (
 			IconColor:              10,
 			IconName:               "folder",
 			Layout:                 model.ObjectType_space,
-			Name:                   "Space",
+			Name:                   "Space settings",
 			PluralName:             "Spaces",
 			Readonly:               true,
 			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
 			RestrictObjectCreation: true,
-			Revision:               3,
+			Revision:               4,
 			Types:                  []model.SmartBlockType{model.SmartBlockType_Workspace},
 			Url:                    TypePrefix + "space",
 		},

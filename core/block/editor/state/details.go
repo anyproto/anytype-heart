@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -125,6 +126,7 @@ func (s *State) SetDetail(key domain.RelationKey, value domain.Value) {
 		s.SetLocalDetail(key, value)
 		return
 	}
+	s.removeExactJSONIntegerMetadata(key)
 
 	if s.details == nil && s.parent != nil {
 		d := s.parent.Details()
@@ -140,6 +142,22 @@ func (s *State) SetDetail(key domain.RelationKey, value domain.Value) {
 		s.details = domain.NewDetails()
 	}
 	s.details.Set(key, value)
+}
+
+func (s *State) removeExactJSONIntegerMetadata(key domain.RelationKey) {
+	metadataKey := domain.RelationKey(anyblockjson.ExactJSONIntegerMetadataKey(string(key)))
+	if s.details != nil {
+		s.details.Delete(metadataKey)
+		return
+	}
+	if s.parent == nil {
+		return
+	}
+	parentDetails := s.parent.Details()
+	if parentDetails != nil && parentDetails.Has(metadataKey) {
+		s.details = parentDetails.Copy()
+		s.details.Delete(metadataKey)
+	}
 }
 
 func (s *State) SetLocalDetail(key domain.RelationKey, value domain.Value) {
@@ -193,6 +211,12 @@ func (s *State) RemoveRelation(keys ...domain.RelationKey) {
 }
 
 func (s *State) RemoveDetail(keys ...domain.RelationKey) (ok bool) {
+	withMetadata := make([]domain.RelationKey, 0, len(keys)*2)
+	for _, key := range keys {
+		withMetadata = append(withMetadata, key,
+			domain.RelationKey(anyblockjson.ExactJSONIntegerMetadataKey(string(key))))
+	}
+	keys = withMetadata
 	// TODO It could be lazily copied only if actual deletion is happened
 	det := s.Details().Copy()
 	if det != nil {

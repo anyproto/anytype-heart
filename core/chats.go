@@ -137,9 +137,10 @@ func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMe
 	}
 
 	return &pb.RpcChatGetMessagesResponse{
-		Messages:     messagesToProto(resp.Messages),
-		ChatState:    resp.ChatState,
-		MessageCount: resp.MessageCount,
+		Messages:             messagesToProto(resp.Messages),
+		ChatState:            resp.ChatState,
+		MessageCount:         resp.MessageCount,
+		LifetimeMessageCount: resp.LifetimeMessageCount,
 	}
 }
 

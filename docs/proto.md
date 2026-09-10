@@ -102,6 +102,10 @@
     - [Rpc.Account.GetConfig.Get](#anytype-Rpc-Account-GetConfig-Get)
     - [Rpc.Account.GetConfig.Get.Request](#anytype-Rpc-Account-GetConfig-Get-Request)
     - [Rpc.Account.LocalLink](#anytype-Rpc-Account-LocalLink)
+    - [Rpc.Account.LocalLink.ApproveChallenge](#anytype-Rpc-Account-LocalLink-ApproveChallenge)
+    - [Rpc.Account.LocalLink.ApproveChallenge.Request](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Request)
+    - [Rpc.Account.LocalLink.ApproveChallenge.Response](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Response)
+    - [Rpc.Account.LocalLink.ApproveChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Response-Error)
     - [Rpc.Account.LocalLink.CreateApp](#anytype-Rpc-Account-LocalLink-CreateApp)
     - [Rpc.Account.LocalLink.CreateApp.Request](#anytype-Rpc-Account-LocalLink-CreateApp-Request)
     - [Rpc.Account.LocalLink.CreateApp.Response](#anytype-Rpc-Account-LocalLink-CreateApp-Response)
@@ -122,6 +126,10 @@
     - [Rpc.Account.LocalLink.SolveChallenge.Request](#anytype-Rpc-Account-LocalLink-SolveChallenge-Request)
     - [Rpc.Account.LocalLink.SolveChallenge.Response](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response)
     - [Rpc.Account.LocalLink.SolveChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error)
+    - [Rpc.Account.LocalLink.UpdateApp](#anytype-Rpc-Account-LocalLink-UpdateApp)
+    - [Rpc.Account.LocalLink.UpdateApp.Request](#anytype-Rpc-Account-LocalLink-UpdateApp-Request)
+    - [Rpc.Account.LocalLink.UpdateApp.Response](#anytype-Rpc-Account-LocalLink-UpdateApp-Response)
+    - [Rpc.Account.LocalLink.UpdateApp.Response.Error](#anytype-Rpc-Account-LocalLink-UpdateApp-Response-Error)
     - [Rpc.Account.Migrate](#anytype-Rpc-Account-Migrate)
     - [Rpc.Account.Migrate.Request](#anytype-Rpc-Account-Migrate-Request)
     - [Rpc.Account.Migrate.Response](#anytype-Rpc-Account-Migrate-Response)
@@ -146,6 +154,10 @@
     - [Rpc.Account.RecoverFromLegacyExport.Request](#anytype-Rpc-Account-RecoverFromLegacyExport-Request)
     - [Rpc.Account.RecoverFromLegacyExport.Response](#anytype-Rpc-Account-RecoverFromLegacyExport-Response)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error)
+    - [Rpc.Account.RecoveryState](#anytype-Rpc-Account-RecoveryState)
+    - [Rpc.Account.RecoveryState.Request](#anytype-Rpc-Account-RecoveryState-Request)
+    - [Rpc.Account.RecoveryState.Response](#anytype-Rpc-Account-RecoveryState-Response)
+    - [Rpc.Account.RecoveryState.Response.Error](#anytype-Rpc-Account-RecoveryState-Response-Error)
     - [Rpc.Account.RevertDeletion](#anytype-Rpc-Account-RevertDeletion)
     - [Rpc.Account.RevertDeletion.Request](#anytype-Rpc-Account-RevertDeletion-Request)
     - [Rpc.Account.RevertDeletion.Response](#anytype-Rpc-Account-RevertDeletion-Response)
@@ -1563,11 +1575,13 @@
     - [Rpc.Account.Create.Response.Error.Code](#anytype-Rpc-Account-Create-Response-Error-Code)
     - [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code)
     - [Rpc.Account.EnableLocalNetworkSync.Response.Error.Code](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code)
+    - [Rpc.Account.LocalLink.ApproveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Response-Error-Code)
     - [Rpc.Account.LocalLink.CreateApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-CreateApp-Response-Error-Code)
     - [Rpc.Account.LocalLink.ListApps.Response.Error.Code](#anytype-Rpc-Account-LocalLink-ListApps-Response-Error-Code)
     - [Rpc.Account.LocalLink.NewChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error-Code)
     - [Rpc.Account.LocalLink.RevokeApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-RevokeApp-Response-Error-Code)
     - [Rpc.Account.LocalLink.SolveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error-Code)
+    - [Rpc.Account.LocalLink.UpdateApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-UpdateApp-Response-Error-Code)
     - [Rpc.Account.Migrate.Response.Error.Code](#anytype-Rpc-Account-Migrate-Response-Error-Code)
     - [Rpc.Account.MigrateCancel.Response.Error.Code](#anytype-Rpc-Account-MigrateCancel-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
@@ -1575,6 +1589,7 @@
     - [Rpc.Account.PreloadRemainingSpaces.Response.Error.Code](#anytype-Rpc-Account-PreloadRemainingSpaces-Response-Error-Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype-Rpc-Account-Recover-Response-Error-Code)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code)
+    - [Rpc.Account.RecoveryState.Response.Error.Code](#anytype-Rpc-Account-RecoveryState-Response-Error-Code)
     - [Rpc.Account.RevertDeletion.Response.Error.Code](#anytype-Rpc-Account-RevertDeletion-Response-Error-Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype-Rpc-Account-Select-Response-Error-Code)
     - [Rpc.Account.Stop.Response.Error.Code](#anytype-Rpc-Account-Stop-Response-Error-Code)
@@ -1928,9 +1943,31 @@
     - [Event.Account.Config](#anytype-Event-Account-Config)
     - [Event.Account.Config.Update](#anytype-Event-Account-Config-Update)
     - [Event.Account.Details](#anytype-Event-Account-Details)
-    - [Event.Account.LinkChallenge](#anytype-Event-Account-LinkChallenge)
-    - [Event.Account.LinkChallenge.ClientInfo](#anytype-Event-Account-LinkChallenge-ClientInfo)
-    - [Event.Account.LinkChallengeHide](#anytype-Event-Account-LinkChallengeHide)
+    - [Event.Account.LinkApprovalHide](#anytype-Event-Account-LinkApprovalHide)
+    - [Event.Account.LinkApprovalRequest](#anytype-Event-Account-LinkApprovalRequest)
+    - [Event.Account.LinkApprovalRequest.ClientInfo](#anytype-Event-Account-LinkApprovalRequest-ClientInfo)
+    - [Event.Account.Recovery](#anytype-Event-Account-Recovery)
+    - [Event.Account.Recovery.AccountFetchError](#anytype-Event-Account-Recovery-AccountFetchError)
+    - [Event.Account.Recovery.AccountFetchStarted](#anytype-Event-Account-Recovery-AccountFetchStarted)
+    - [Event.Account.Recovery.AccountReady](#anytype-Event-Account-Recovery-AccountReady)
+    - [Event.Account.Recovery.DialFailed](#anytype-Event-Account-Recovery-DialFailed)
+    - [Event.Account.Recovery.DialStarted](#anytype-Event-Account-Recovery-DialStarted)
+    - [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo)
+    - [Event.Account.Recovery.Finished](#anytype-Event-Account-Recovery-Finished)
+    - [Event.Account.Recovery.LocalDiscoveryState](#anytype-Event-Account-Recovery-LocalDiscoveryState)
+    - [Event.Account.Recovery.LocalPeersStateChanged](#anytype-Event-Account-Recovery-LocalPeersStateChanged)
+    - [Event.Account.Recovery.PeerConnected](#anytype-Event-Account-Recovery-PeerConnected)
+    - [Event.Account.Recovery.PeerDisconnected](#anytype-Event-Account-Recovery-PeerDisconnected)
+    - [Event.Account.Recovery.PeerDiscovered](#anytype-Event-Account-Recovery-PeerDiscovered)
+    - [Event.Account.Recovery.PeerSpaceExchange](#anytype-Event-Account-Recovery-PeerSpaceExchange)
+    - [Event.Account.Recovery.PhaseChanged](#anytype-Event-Account-Recovery-PhaseChanged)
+    - [Event.Account.Recovery.Snapshot](#anytype-Event-Account-Recovery-Snapshot)
+    - [Event.Account.Recovery.Snapshot.Peer](#anytype-Event-Account-Recovery-Snapshot-Peer)
+    - [Event.Account.Recovery.Snapshot.Space](#anytype-Event-Account-Recovery-Snapshot-Space)
+    - [Event.Account.Recovery.SpaceDiscovered](#anytype-Event-Account-Recovery-SpaceDiscovered)
+    - [Event.Account.Recovery.SpaceStateChanged](#anytype-Event-Account-Recovery-SpaceStateChanged)
+    - [Event.Account.Recovery.Started](#anytype-Event-Account-Recovery-Started)
+    - [Event.Account.Recovery.Update](#anytype-Event-Account-Recovery-Update)
     - [Event.Account.Show](#anytype-Event-Account-Show)
     - [Event.Account.Update](#anytype-Event-Account-Update)
     - [Event.Block](#anytype-Event-Block)
@@ -2151,6 +2188,15 @@
     - [Model.Process.SaveFile](#anytype-Model-Process-SaveFile)
     - [ResponseEvent](#anytype-ResponseEvent)
   
+    - [Event.Account.Recovery.Direction](#anytype-Event-Account-Recovery-Direction)
+    - [Event.Account.Recovery.DiscoveryState](#anytype-Event-Account-Recovery-DiscoveryState)
+    - [Event.Account.Recovery.ErrorClass](#anytype-Event-Account-Recovery-ErrorClass)
+    - [Event.Account.Recovery.LocalPeersState](#anytype-Event-Account-Recovery-LocalPeersState)
+    - [Event.Account.Recovery.Mode](#anytype-Event-Account-Recovery-Mode)
+    - [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind)
+    - [Event.Account.Recovery.Phase](#anytype-Event-Account-Recovery-Phase)
+    - [Event.Account.Recovery.SpaceKind](#anytype-Event-Account-Recovery-SpaceKind)
+    - [Event.Account.Recovery.SpaceState](#anytype-Event-Account-Recovery-SpaceState)
     - [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation)
     - [Event.Import.Statistic.CancelEffect](#anytype-Event-Import-Statistic-CancelEffect)
     - [Event.Import.Statistic.Phase](#anytype-Event-Import-Statistic-Phase)
@@ -2168,6 +2214,13 @@
     - [SnapshotWithType](#anytype-SnapshotWithType)
     - [WidgetBlock](#anytype-WidgetBlock)
   
+- [pkg/lib/pb/model/protos/export_report.proto](#pkg_lib_pb_model_protos_export_report-proto)
+    - [ExportReport](#anytype-model-ExportReport)
+    - [ExportReport.Issue](#anytype-model-ExportReport-Issue)
+
+    - [ExportReport.Issue.Severity](#anytype-model-ExportReport-Issue-Severity)
+    - [ExportReport.Status](#anytype-model-ExportReport-Status)
+
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg_lib_pb_model_protos_localstore-proto)
     - [ObjectDetails](#anytype-model-ObjectDetails)
     - [ObjectInfo](#anytype-model-ObjectInfo)
@@ -2181,6 +2234,7 @@
 - [pkg/lib/pb/model/protos/models.proto](#pkg_lib_pb_model_protos_models-proto)
     - [Account](#anytype-model-Account)
     - [Account.Auth](#anytype-model-Account-Auth)
+    - [Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant)
     - [Account.Auth.AppInfo](#anytype-model-Account-Auth-AppInfo)
     - [Account.Config](#anytype-model-Account-Config)
     - [Account.Info](#anytype-model-Account-Info)
@@ -2306,6 +2360,7 @@
     - [SmartBlockSnapshotBase](#anytype-model-SmartBlockSnapshotBase)
     - [SpaceObjectHeader](#anytype-model-SpaceObjectHeader)
   
+    - [Account.Auth.AppGrant.Perm](#anytype-model-Account-Auth-AppGrant-Perm)
     - [Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope)
     - [Account.StatusType](#anytype-model-Account-StatusType)
     - [Block.Align](#anytype-model-Block-Align)
@@ -2413,7 +2468,9 @@
 | WalletConvert | [Rpc.Wallet.Convert.Request](#anytype-Rpc-Wallet-Convert-Request) | [Rpc.Wallet.Convert.Response](#anytype-Rpc-Wallet-Convert-Response) |  |
 | AccountLocalLinkNewChallenge | [Rpc.Account.LocalLink.NewChallenge.Request](#anytype-Rpc-Account-LocalLink-NewChallenge-Request) | [Rpc.Account.LocalLink.NewChallenge.Response](#anytype-Rpc-Account-LocalLink-NewChallenge-Response) |  |
 | AccountLocalLinkSolveChallenge | [Rpc.Account.LocalLink.SolveChallenge.Request](#anytype-Rpc-Account-LocalLink-SolveChallenge-Request) | [Rpc.Account.LocalLink.SolveChallenge.Response](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response) |  |
+| AccountLocalLinkApproveChallenge | [Rpc.Account.LocalLink.ApproveChallenge.Request](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Request) | [Rpc.Account.LocalLink.ApproveChallenge.Response](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Response) |  |
 | AccountLocalLinkCreateApp | [Rpc.Account.LocalLink.CreateApp.Request](#anytype-Rpc-Account-LocalLink-CreateApp-Request) | [Rpc.Account.LocalLink.CreateApp.Response](#anytype-Rpc-Account-LocalLink-CreateApp-Response) |  |
+| AccountLocalLinkUpdateApp | [Rpc.Account.LocalLink.UpdateApp.Request](#anytype-Rpc-Account-LocalLink-UpdateApp-Request) | [Rpc.Account.LocalLink.UpdateApp.Response](#anytype-Rpc-Account-LocalLink-UpdateApp-Response) |  |
 | AccountLocalLinkListApps | [Rpc.Account.LocalLink.ListApps.Request](#anytype-Rpc-Account-LocalLink-ListApps-Request) | [Rpc.Account.LocalLink.ListApps.Response](#anytype-Rpc-Account-LocalLink-ListApps-Response) |  |
 | AccountLocalLinkRevokeApp | [Rpc.Account.LocalLink.RevokeApp.Request](#anytype-Rpc-Account-LocalLink-RevokeApp-Request) | [Rpc.Account.LocalLink.RevokeApp.Response](#anytype-Rpc-Account-LocalLink-RevokeApp-Response) |  |
 | WalletCreateSession | [Rpc.Wallet.CreateSession.Request](#anytype-Rpc-Wallet-CreateSession-Request) | [Rpc.Wallet.CreateSession.Response](#anytype-Rpc-Wallet-CreateSession-Response) |  |
@@ -2435,6 +2492,7 @@
 | AccountCreate | [Rpc.Account.Create.Request](#anytype-Rpc-Account-Create-Request) | [Rpc.Account.Create.Response](#anytype-Rpc-Account-Create-Response) |  |
 | AccountDelete | [Rpc.Account.Delete.Request](#anytype-Rpc-Account-Delete-Request) | [Rpc.Account.Delete.Response](#anytype-Rpc-Account-Delete-Response) |  |
 | AccountPreloadRemainingSpaces | [Rpc.Account.PreloadRemainingSpaces.Request](#anytype-Rpc-Account-PreloadRemainingSpaces-Request) | [Rpc.Account.PreloadRemainingSpaces.Response](#anytype-Rpc-Account-PreloadRemainingSpaces-Response) |  |
+| AccountRecoveryState | [Rpc.Account.RecoveryState.Request](#anytype-Rpc-Account-RecoveryState-Request) | [Rpc.Account.RecoveryState.Response](#anytype-Rpc-Account-RecoveryState-Response) |  |
 | AccountRevertDeletion | [Rpc.Account.RevertDeletion.Request](#anytype-Rpc-Account-RevertDeletion-Request) | [Rpc.Account.RevertDeletion.Response](#anytype-Rpc-Account-RevertDeletion-Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype-Rpc-Account-Select-Request) | [Rpc.Account.Select.Response](#anytype-Rpc-Account-Select-Response) |  |
 | AccountEnableLocalNetworkSync | [Rpc.Account.EnableLocalNetworkSync.Request](#anytype-Rpc-Account-EnableLocalNetworkSync-Request) | [Rpc.Account.EnableLocalNetworkSync.Response](#anytype-Rpc-Account-EnableLocalNetworkSync-Response) |  |
@@ -2772,6 +2830,7 @@ the element of change tree used to store and internal apply smartBlock history
 | timestamp | [int64](#int64) |  | creation timestamp |
 | version | [uint32](#uint32) |  | version of business logic |
 | changeType | [uint32](#uint32) |  | business-level type of change applied to object |
+| integrationName | [string](#string) |  | integrationName is the RAW app name of the paired API key that authored this change — exactly as the app link recorded it, never normalized (normalization is many-to-one and lossy; the DELETE ownership rule compares this value exactly). Stamped by heart from the authenticated session — never accepted from a request. Bounded at key issuance (domain.MaxIntegrationNameLen). Empty for changes not authored through an API key. |
 
 
 
@@ -3252,6 +3311,7 @@ the element of change tree used to store and internal apply smartBlock history
 | timestamp | [int64](#int64) |  | creation timestamp |
 | version | [uint32](#uint32) |  | version of business logic |
 | changeType | [uint32](#uint32) |  | business-level type of change applied to object |
+| integrationName | [string](#string) |  | integrationName mirrors Change.integrationName (the two messages share wire numbers by design; 1/2/5 are historical — do not reuse). |
 
 
 
@@ -4183,6 +4243,77 @@ TODO: Remove this request if we do not need it, GO-1926
 
 
 
+<a name="anytype-Rpc-Account-LocalLink-ApproveChallenge"></a>
+
+### Rpc.Account.LocalLink.ApproveChallenge
+ApproveChallenge is the user&#39;s decision on a pending challenge.
+It is the only call that mints the code, and it answers the
+caller rather than broadcasting, so the code never reaches
+sessions other than the one that approved.
+
+The pending challenge is addressed by the caller it came from,
+which is what the prompt showed the user. Only one challenge can
+be pending per caller, so the pair is unambiguous, and it is the
+durable identity a future &#34;always allow&#34; would key on.
+
+Desktop UI only: it must never be listed in noAuthMethods or
+limitedScopeMethods, so authorization admits full scope alone.
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ApproveChallenge-Request"></a>
+
+### Rpc.Account.LocalLink.ApproveChallenge.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| processPath | [string](#string) |  | both taken verbatim from the ClientInfo of the LinkApprovalRequest event being answered; either may be empty |
+| origin | [string](#string) |  |  |
+| allow | [bool](#bool) |  |  |
+| grant | [model.Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant) |  | the user&#39;s grant decision, persisted verbatim into the app link on solve. Required when allow is true and the challenge scope is JsonAPI, forbidden otherwise — BAD_INPUT either way around. Ignored when allow is false. |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ApproveChallenge-Response"></a>
+
+### Rpc.Account.LocalLink.ApproveChallenge.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.LocalLink.ApproveChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Response-Error) |  |  |
+| challenge | [string](#string) |  | the 4-digit code; empty when allow is false |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ApproveChallenge-Response-Error"></a>
+
+### Rpc.Account.LocalLink.ApproveChallenge.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.LocalLink.ApproveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Account-LocalLink-CreateApp"></a>
 
 ### Rpc.Account.LocalLink.CreateApp
@@ -4312,6 +4443,7 @@ TODO: Remove this request if we do not need it, GO-1926
 | ----- | ---- | ----- | ----------- |
 | appName | [string](#string) |  | just for info, not secure to rely on |
 | scope | [model.Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  |  |
+| requestedPerm | [model.Account.Auth.AppGrant.Perm](#anytype-model-Account-Auth-AppGrant-Perm) |  | the permission the app declares it needs. It pre-fills the approval prompt&#39;s permission control and is never a ceiling — the human approving decides. Read is the zero value, so &#34;asked for read&#34; and &#34;asked for nothing&#34; are indistinguishable by design (both render the safe default). |
 
 
 
@@ -4443,6 +4575,7 @@ TODO: Remove this request if we do not need it, GO-1926
 | error | [Rpc.Account.LocalLink.SolveChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error) |  |  |
 | sessionToken | [string](#string) |  | ephemeral token for the session |
 | appKey | [string](#string) |  | persistent key, that can be used to restore session via CreateSession |
+| grant | [model.Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant) |  | the user&#39;s approved grant persisted with the app key; unset for an unscoped key |
 
 
 
@@ -4458,6 +4591,63 @@ TODO: Remove this request if we do not need it, GO-1926
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.LocalLink.SolveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-UpdateApp"></a>
+
+### Rpc.Account.LocalLink.UpdateApp
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-UpdateApp-Request"></a>
+
+### Rpc.Account.LocalLink.UpdateApp.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| appHash | [string](#string) |  |  |
+| grant | [model.Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant) |  | the new grant; unset clears the scoping (widen-requires-re-consent is the caller&#39;s contract) |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-UpdateApp-Response"></a>
+
+### Rpc.Account.LocalLink.UpdateApp.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.LocalLink.UpdateApp.Response.Error](#anytype-Rpc-Account-LocalLink-UpdateApp-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-UpdateApp-Response-Error"></a>
+
+### Rpc.Account.LocalLink.UpdateApp.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.LocalLink.UpdateApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-UpdateApp-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -4793,6 +4983,64 @@ Middleware-to-front-end response to an account recover request, that can contain
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RecoveryState"></a>
+
+### Rpc.Account.RecoveryState
+RecoveryState serves the folded account start-up status
+(Event.Account.Recovery.Snapshot) from the same state the
+Event.Account.Recovery.Update stream is emitted from. Lock-free with
+respect to AccountSelect, so it can be called while that RPC blocks,
+and total: call it whenever you like. Before any run it returns the
+idle snapshot (runId empty, phase NotStarted); ACCOUNT_IS_NOT_RUNNING
+is kept for wire compatibility and is never returned.
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RecoveryState-Request"></a>
+
+### Rpc.Account.RecoveryState.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RecoveryState-Response"></a>
+
+### Rpc.Account.RecoveryState.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.RecoveryState.Response.Error](#anytype-Rpc-Account-RecoveryState-Response-Error) |  |  |
+| snapshot | [Event.Account.Recovery.Snapshot](#anytype-Event-Account-Recovery-Snapshot) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RecoveryState-Response-Error"></a>
+
+### Rpc.Account.RecoveryState.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.RecoveryState.Response.Error.Code](#anytype-Rpc-Account-RecoveryState-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11496,6 +11744,7 @@ Get marks list in the selected range in text block.
 | messages | [model.ChatMessage](#anytype-model-ChatMessage) | repeated |  |
 | chatState | [model.ChatState](#anytype-model-ChatState) |  |  |
 | messageCount | [int32](#int32) |  | Total number of non-deleted messages in the chat |
+| lifetimeMessageCount | [int32](#int32) |  | Total number of messages added since the chat was created, including deleted messages |
 
 
 
@@ -17510,6 +17759,7 @@ ObjectSearchWithMeta (not ObjectSearch&#39;s name-prefix mode).
 | offset | [int32](#int32) |  | offset and limit apply to the merged cross-space result. Always set a limit: an unlimited request materializes every space in full |
 | limit | [int32](#int32) |  |  |
 | keys | [string](#string) | repeated | keys to return in records; empty = all |
+| spaceIds | [string](#string) | repeated | Optional allowlist applied before querying stores. Empty means all user spaces; callers with no access must not query. |
 
 
 
@@ -17949,6 +18199,7 @@ Records come in two kinds, told apart by isUninstalled:
 | error | [Rpc.Object.Export.Response.Error](#anytype-Rpc-Object-Export-Response-Error) |  |  |
 | result | [string](#string) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| report | [model.ExportReport](#anytype-model-ExportReport) |  |  |
 
 
 
@@ -18912,6 +19163,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | path | [string](#string) |  |  |
 | succeed | [int32](#int32) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| report | [model.ExportReport](#anytype-model-ExportReport) |  |  |
 
 
 
@@ -24463,6 +24715,12 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 | token | [string](#string) |  |  |
 | appToken | [string](#string) |  | in case of mnemonic auth, need to be persisted by client |
 | accountId | [string](#string) |  | temp, should be replaced with AccountInfo message |
+| accountScope | [model.Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  | scope of the session; for appKey auth it is the app link&#39;s scope |
+| appName | [string](#string) |  | for appKey auth, the app name recorded when the app link was created |
+| appExpireAt | [int64](#int64) |  | for appKey auth, the app link&#39;s expiration unix timestamp; 0 means the key never expires |
+| grant | [model.Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant) |  | for appKey auth, the app link&#39;s grant; unset means an unscoped key |
+| appHash | [string](#string) |  | for appKey auth, the app link&#39;s identity (the hash ListApps and RevokeApp use) |
+| appCreatedAt | [int64](#int64) |  | for appKey auth, the app link&#39;s creation unix timestamp; 0 means unknown (pre-hash-era link) |
 
 
 
@@ -25464,6 +25722,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_WRITE_CONFIG | 105 |  |
 | FAILED_TO_CREATE_LOCAL_REPO | 106 |  |
 | ACCOUNT_CREATION_IS_CANCELED | 107 |  |
+| ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
 | CONFIG_FILE_NOT_FOUND | 200 |  |
 | CONFIG_FILE_INVALID | 201 |  |
 | CONFIG_FILE_NETWORK_ID_MISMATCH | 202 |  |
@@ -25496,6 +25755,21 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | ACCOUNT_IS_NOT_RUNNING | 4 |  |
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ApproveChallenge-Response-Error-Code"></a>
+
+### Rpc.Account.LocalLink.ApproveChallenge.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
+| NO_PENDING_CHALLENGE | 102 | nothing pending for this caller: never requested, already decided, or expired |
 
 
 
@@ -25571,6 +25845,22 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | INVALID_CHALLENGE_ID | 102 |  |
 | CHALLENGE_ATTEMPTS_EXCEEDED | 103 |  |
 | INCORRECT_ANSWER | 104 |  |
+| CHALLENGE_NOT_APPROVED | 105 | the user has not approved this challenge yet, so no code exists to compare against |
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-UpdateApp-Response-Error-Code"></a>
+
+### Rpc.Account.LocalLink.UpdateApp.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_FOUND | 3 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
 
 
 
@@ -25587,6 +25877,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ACCOUNT_NOT_FOUND | 101 |  |
 | CANCELED | 102 |  |
 | NOT_ENOUGH_FREE_SPACE | 103 | TODO: [storage] Add specific error codes for migration problems |
+| ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
 
 
 
@@ -25674,6 +25965,21 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | DIFFERENT_ACCOUNT | 3 |  |
+| ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
+
+
+
+<a name="anytype-Rpc-Account-RecoveryState-Response-Error-Code"></a>
+
+### Rpc.Account.RecoveryState.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 | No error |
+| UNKNOWN_ERROR | 1 | Any other errors |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
 
 
 
@@ -30316,6 +30622,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | APP_TOKEN_NOT_FOUND_IN_THE_CURRENT_ACCOUNT | 101 | means the client logged into another account or the account directory has been cleaned |
+| APP_TOKEN_EXPIRED | 102 | the app link&#39;s expireAt has passed; the key must be re-issued |
 
 
 
@@ -30562,26 +30869,48 @@ corresponding front-end.
 
 
 
-<a name="anytype-Event-Account-LinkChallenge"></a>
+<a name="anytype-Event-Account-LinkApprovalHide"></a>
 
-### Event.Account.LinkChallenge
-
+### Event.Account.LinkApprovalHide
+LinkApprovalHide takes a pending prompt off screen once it is answered,
+denied or expired. Identified by the caller, since a request that was
+never approved never had a code.
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| challenge | [string](#string) |  |  |
-| clientInfo | [Event.Account.LinkChallenge.ClientInfo](#anytype-Event-Account-LinkChallenge-ClientInfo) |  |  |
+| clientInfo | [Event.Account.LinkApprovalRequest.ClientInfo](#anytype-Event-Account-LinkApprovalRequest-ClientInfo) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-LinkApprovalRequest"></a>
+
+### Event.Account.LinkApprovalRequest
+LinkApprovalRequest asks the user to approve a local-link pairing. It
+names who is asking and nothing else: the 4-digit code does not exist
+yet and is never broadcast. The user&#39;s answer goes back through
+AccountLocalLinkApproveChallenge, which mints the code and returns it to
+that one caller. Replaces the former LinkChallenge event, which carried
+the code to every session.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| clientInfo | [Event.Account.LinkApprovalRequest.ClientInfo](#anytype-Event-Account-LinkApprovalRequest-ClientInfo) |  |  |
 | scope | [model.Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  |  |
+| requestedPerm | [model.Account.Auth.AppGrant.Perm](#anytype-model-Account-Auth-AppGrant-Perm) |  | the permission the app claims to need; pre-fills the prompt&#39;s permission control. Untrusted like `name`, and never a ceiling — the human approving decides. Read is the zero value, so a read claim is indistinguishable from no claim (both render the safe default). |
 
 
 
 
 
 
-<a name="anytype-Event-Account-LinkChallenge-ClientInfo"></a>
+<a name="anytype-Event-Account-LinkApprovalRequest-ClientInfo"></a>
 
-### Event.Account.LinkChallenge.ClientInfo
+### Event.Account.LinkApprovalRequest.ClientInfo
 
 
 
@@ -30591,21 +30920,445 @@ corresponding front-end.
 | processPath | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 | signatureVerified | [bool](#bool) |  |  |
+| origin | [string](#string) |  | origin of the browser caller that asked for the challenge, e.g. &#34;chrome-extension://&lt;id&gt;&#34; or &#34;http://localhost:3000&#34;. Empty for native clients, which send no Origin header. Taken from the header the browser sets, never from the request body, so it names the caller even when `name` is arbitrary. Show it to the user: it is the only attributable part of a pairing request. |
 
 
 
 
 
 
-<a name="anytype-Event-Account-LinkChallengeHide"></a>
+<a name="anytype-Event-Account-Recovery"></a>
 
-### Event.Account.LinkChallengeHide
+### Event.Account.Recovery
+Recovery is the account start-up status stream (GO-7471): a
+recovery-scoped, monotonic event log covering every app open, from the
+first millisecond of AccountSelect until every space has published its
+load result. Rpc.Account.RecoveryState serves the folded Snapshot from
+the same state, so push and pull cannot drift. Clients apply Updates
+with the same runId and id == last&#43;1; on a gap or a new runId they
+re-pull the snapshot. Every payload is a level, never a delta.
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-AccountFetchError"></a>
+
+### Event.Account.Recovery.AccountFetchError
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| challenge | [string](#string) |  | verify code before hiding to protect from MITM attacks |
+| peerId | [string](#string) |  |  |
+| error | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  |  |
+| attempt | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-AccountFetchStarted"></a>
+
+### Event.Account.Recovery.AccountFetchStarted
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| peerId | [string](#string) |  | empty = waiting for a peer |
+| attempt | [int32](#int32) |  | pull rounds started; a new round means &#34;still trying&#34; |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-AccountReady"></a>
+
+### Event.Account.Recovery.AccountReady
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| durationMs | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-DialFailed"></a>
+
+### Event.Account.Recovery.DialFailed
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind) |  |  |
+| nodeTypes | [string](#string) | repeated |  |
+| error | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  |  |
+| attempt | [int32](#int32) |  | dials observed since the last Connected |
+| durationMs | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-DialStarted"></a>
+
+### Event.Account.Recovery.DialStarted
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind) |  |  |
+| nodeTypes | [string](#string) | repeated | nodeconf node types, e.g. coordinator, tree, file |
+| addrsCount | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-ErrorInfo"></a>
+
+### Event.Account.Recovery.ErrorInfo
+ErrorInfo (not &#34;Error&#34;: enum values and nested messages share the
+enclosing scope, and SpaceState.Error already takes that name)
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| class | [Event.Account.Recovery.ErrorClass](#anytype-Event-Account-Recovery-ErrorClass) |  |  |
+| retryable | [bool](#bool) |  |  |
+| debugMessage | [string](#string) |  | raw error text for logs/diagnostics; clients may log it, must never headline it |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-Finished"></a>
+
+### Event.Account.Recovery.Finished
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spacesTotal | [int32](#int32) |  |  |
+| spacesLoaded | [int32](#int32) |  |  |
+| spacesFailed | [int32](#int32) |  |  |
+| totalDurationMs | [int64](#int64) |  |  |
+| viewsConfirmed | [bool](#bool) |  | true: the SpaceView set was confirmed against the network (&#34;no more spaces to download&#34;); false: the completeness gate opened on its stall bound and no completeness claim may be made — keep relying on the SpaceView subscription for spaces that appear later |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-LocalDiscoveryState"></a>
+
+### Event.Account.Recovery.LocalDiscoveryState
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| state | [Event.Account.Recovery.DiscoveryState](#anytype-Event-Account-Recovery-DiscoveryState) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-LocalPeersStateChanged"></a>
+
+### Event.Account.Recovery.LocalPeersStateChanged
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| state | [Event.Account.Recovery.LocalPeersState](#anytype-Event-Account-Recovery-LocalPeersState) |  |  |
+| fromState | [Event.Account.Recovery.LocalPeersState](#anytype-Event-Account-Recovery-LocalPeersState) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-PeerConnected"></a>
+
+### Event.Account.Recovery.PeerConnected
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind) |  |  |
+| nodeTypes | [string](#string) | repeated |  |
+| direction | [Event.Account.Recovery.Direction](#anytype-Event-Account-Recovery-Direction) |  |  |
+| addr | [string](#string) |  | display only; never compare across directions |
+| transport | [string](#string) |  | scheme as any-sync reports it: quic, yamux, ... |
+| protoVersion | [uint32](#uint32) |  |  |
+| durationMs | [int64](#int64) |  | 0 = unknown (inbound) |
+| openConnections | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-PeerDisconnected"></a>
+
+### Event.Account.Recovery.PeerDisconnected
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind) |  |  |
+| openConnections | [int32](#int32) |  |  |
+| nodeTypes | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-PeerDiscovered"></a>
+
+### Event.Account.Recovery.PeerDiscovered
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| addrs | [string](#string) | repeated | display only |
+| kind | [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind) |  |  |
+| nodeTypes | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-PeerSpaceExchange"></a>
+
+### Event.Account.Recovery.PeerSpaceExchange
+PeerSpaceExchange reports what the space exchange with a LAN peer
+said — a fact, not a verdict: whether the peer holds this account&#39;s
+tech space and how many spaces it shares. exchanged=false means no
+answer is known (the peer was dropped from the peer store).
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| exchanged | [bool](#bool) |  |  |
+| hasAccountSpace | [bool](#bool) |  |  |
+| sharedSpaceCount | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-PhaseChanged"></a>
+
+### Event.Account.Recovery.PhaseChanged
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| phase | [Event.Account.Recovery.Phase](#anytype-Event-Account-Recovery-Phase) |  |  |
+| fromPhase | [Event.Account.Recovery.Phase](#anytype-Event-Account-Recovery-Phase) |  |  |
+| previousPhaseDurationMs | [int64](#int64) |  |  |
+| error | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  | set for WaitingForNetwork and Failed |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-Snapshot"></a>
+
+### Event.Account.Recovery.Snapshot
+Folded state. Served by Rpc.Account.RecoveryState and pushed once to
+each new session. The RPC is total: before any run it returns the
+idle snapshot (runId empty, phase NotStarted) rather than an error.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| runId | [string](#string) |  | empty: no run has begun, ignore the rest |
+| lastEventId | [int64](#int64) |  |  |
+| mode | [Event.Account.Recovery.Mode](#anytype-Event-Account-Recovery-Mode) |  |  |
+| networkId | [string](#string) |  |  |
+| startedAtMs | [int64](#int64) |  |  |
+| phase | [Event.Account.Recovery.Phase](#anytype-Event-Account-Recovery-Phase) |  |  |
+| phaseStartedAtMs | [int64](#int64) |  |  |
+| done | [bool](#bool) |  |  |
+| error | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  | account-level only |
+| discovery | [Event.Account.Recovery.DiscoveryState](#anytype-Event-Account-Recovery-DiscoveryState) |  |  |
+| accountFetchStarted | [bool](#bool) |  |  |
+| accountReady | [bool](#bool) |  |  |
+| peers | [Event.Account.Recovery.Snapshot.Peer](#anytype-Event-Account-Recovery-Snapshot-Peer) | repeated |  |
+| spaces | [Event.Account.Recovery.Snapshot.Space](#anytype-Event-Account-Recovery-Snapshot-Space) | repeated |  |
+| spacesTotal | [int32](#int32) |  |  |
+| spacesLoaded | [int32](#int32) |  |  |
+| spacesFailed | [int32](#int32) |  |  |
+| viewsConfirmed | [bool](#bool) |  | meaningful once done; see Finished |
+| accountFetchAttempt | [int32](#int32) |  |  |
+| accountFetchError | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  | last failed pull; cleared at AccountReady |
+| localPeers | [Event.Account.Recovery.LocalPeersState](#anytype-Event-Account-Recovery-LocalPeersState) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-Snapshot-Peer"></a>
+
+### Event.Account.Recovery.Snapshot.Peer
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind) |  |  |
+| nodeTypes | [string](#string) | repeated |  |
+| openConnections | [int32](#int32) |  |  |
+| transport | [string](#string) |  |  |
+| protoVersion | [uint32](#uint32) |  |  |
+| dialAttempts | [int32](#int32) |  |  |
+| lastError | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  |  |
+| discoveredLocally | [bool](#bool) |  |  |
+| exchanged | [bool](#bool) |  | a space exchange answered; the two fields below apply |
+| hasAccountSpace | [bool](#bool) |  |  |
+| sharedSpaceCount | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-Snapshot-Space"></a>
+
+### Event.Account.Recovery.Snapshot.Space
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| spaceViewId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.SpaceKind](#anytype-Event-Account-Recovery-SpaceKind) |  |  |
+| state | [Event.Account.Recovery.SpaceState](#anytype-Event-Account-Recovery-SpaceState) |  |  |
+| error | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  |  |
+| attempt | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-SpaceDiscovered"></a>
+
+### Event.Account.Recovery.SpaceDiscovered
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| spaceViewId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.SpaceKind](#anytype-Event-Account-Recovery-SpaceKind) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-SpaceStateChanged"></a>
+
+### Event.Account.Recovery.SpaceStateChanged
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| state | [Event.Account.Recovery.SpaceState](#anytype-Event-Account-Recovery-SpaceState) |  |  |
+| fromState | [Event.Account.Recovery.SpaceState](#anytype-Event-Account-Recovery-SpaceState) |  |  |
+| error | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  |  |
+| attempt | [int32](#int32) |  | pull attempts, a level |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-Started"></a>
+
+### Event.Account.Recovery.Started
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| mode | [Event.Account.Recovery.Mode](#anytype-Event-Account-Recovery-Mode) |  |  |
+| networkId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-Update"></a>
+
+### Event.Account.Recovery.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| runId | [string](#string) |  | random per run; a change means &#34;new run, reset&#34; |
+| id | [int64](#int64) |  | monotonic within runId, starts at 1; gap =&gt; re-pull |
+| timestampMs | [int64](#int64) |  | unix ms |
+| started | [Event.Account.Recovery.Started](#anytype-Event-Account-Recovery-Started) |  |  |
+| phaseChanged | [Event.Account.Recovery.PhaseChanged](#anytype-Event-Account-Recovery-PhaseChanged) |  |  |
+| localDiscoveryState | [Event.Account.Recovery.LocalDiscoveryState](#anytype-Event-Account-Recovery-LocalDiscoveryState) |  |  |
+| peerDiscovered | [Event.Account.Recovery.PeerDiscovered](#anytype-Event-Account-Recovery-PeerDiscovered) |  |  |
+| dialStarted | [Event.Account.Recovery.DialStarted](#anytype-Event-Account-Recovery-DialStarted) |  |  |
+| peerConnected | [Event.Account.Recovery.PeerConnected](#anytype-Event-Account-Recovery-PeerConnected) |  |  |
+| dialFailed | [Event.Account.Recovery.DialFailed](#anytype-Event-Account-Recovery-DialFailed) |  |  |
+| peerDisconnected | [Event.Account.Recovery.PeerDisconnected](#anytype-Event-Account-Recovery-PeerDisconnected) |  |  |
+| accountFetchStarted | [Event.Account.Recovery.AccountFetchStarted](#anytype-Event-Account-Recovery-AccountFetchStarted) |  |  |
+| accountFetchError | [Event.Account.Recovery.AccountFetchError](#anytype-Event-Account-Recovery-AccountFetchError) |  |  |
+| accountReady | [Event.Account.Recovery.AccountReady](#anytype-Event-Account-Recovery-AccountReady) |  |  |
+| spaceDiscovered | [Event.Account.Recovery.SpaceDiscovered](#anytype-Event-Account-Recovery-SpaceDiscovered) |  |  |
+| spaceStateChanged | [Event.Account.Recovery.SpaceStateChanged](#anytype-Event-Account-Recovery-SpaceStateChanged) |  |  |
+| finished | [Event.Account.Recovery.Finished](#anytype-Event-Account-Recovery-Finished) |  |  |
+| snapshot | [Event.Account.Recovery.Snapshot](#anytype-Event-Account-Recovery-Snapshot) |  | sent only to a newly attached session: snapshot-on-subscribe |
+| peerSpaceExchange | [Event.Account.Recovery.PeerSpaceExchange](#anytype-Event-Account-Recovery-PeerSpaceExchange) |  |  |
+| localPeersStateChanged | [Event.Account.Recovery.LocalPeersStateChanged](#anytype-Event-Account-Recovery-LocalPeersStateChanged) |  |  |
 
 
 
@@ -33160,8 +33913,9 @@ engine.
 | accountDetails | [Event.Account.Details](#anytype-Event-Account-Details) |  |  |
 | accountConfigUpdate | [Event.Account.Config.Update](#anytype-Event-Account-Config-Update) |  |  |
 | accountUpdate | [Event.Account.Update](#anytype-Event-Account-Update) |  |  |
-| accountLinkChallenge | [Event.Account.LinkChallenge](#anytype-Event-Account-LinkChallenge) |  |  |
-| accountLinkChallengeHide | [Event.Account.LinkChallengeHide](#anytype-Event-Account-LinkChallengeHide) |  |  |
+| accountLinkApprovalRequest | [Event.Account.LinkApprovalRequest](#anytype-Event-Account-LinkApprovalRequest) |  |  |
+| accountLinkApprovalHide | [Event.Account.LinkApprovalHide](#anytype-Event-Account-LinkApprovalHide) |  |  |
+| accountRecoveryUpdate | [Event.Account.Recovery.Update](#anytype-Event-Account-Recovery-Update) |  |  |
 | objectDetailsSet | [Event.Object.Details.Set](#anytype-Event-Object-Details-Set) |  |  |
 | objectDetailsAmend | [Event.Object.Details.Amend](#anytype-Event-Object-Details-Amend) |  |  |
 | objectDetailsUnset | [Event.Object.Details.Unset](#anytype-Event-Object-Details-Unset) |  |  |
@@ -34128,6 +34882,153 @@ scenario: Precondition: user A and user B opened the same block
  
 
 
+<a name="anytype-Event-Account-Recovery-Direction"></a>
+
+### Event.Account.Recovery.Direction
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Outbound | 0 |  |
+| Inbound | 1 |  |
+
+
+
+<a name="anytype-Event-Account-Recovery-DiscoveryState"></a>
+
+### Event.Account.Recovery.DiscoveryState
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Possible | 0 |  |
+| NoInterfaces | 1 |  |
+| Restricted | 2 |  |
+
+
+
+<a name="anytype-Event-Account-Recovery-ErrorClass"></a>
+
+### Event.Account.Recovery.ErrorClass
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| None | 0 |  |
+| NoNetwork | 1 |  |
+| PeerUnreachable | 2 |  |
+| IncompatibleVersion | 3 |  |
+| NotAuthorized | 4 |  |
+| SpaceDeleted | 5 |  |
+| AccountDeleted | 6 |  |
+| AccountNotFound | 7 |  |
+| RateLimited | 8 |  |
+| StorageLimit | 9 | reserved, no producer yet |
+| Unexpected | 10 |  |
+
+
+
+<a name="anytype-Event-Account-Recovery-LocalPeersState"></a>
+
+### Event.Account.Recovery.LocalPeersState
+LocalPeersState is the fold&#39;s headline for the LAN layer, derived from
+every LocalPeer&#39;s dial state and space-exchange answer. The negative
+verdict surfaces only once every connected LAN peer has answered and
+none holds the account; one positive answer flips it at once.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NoLocalPeers | 0 |  |
+| LocalPeersConnecting | 1 | discovered, dialing, or connected and awaiting the exchange |
+| LocalPeersUnreachable | 2 | every discovered peer failed to connect |
+| AccountNotOnLocalPeers | 3 | every connected peer answered: it does not hold the account |
+| AccountOnLocalPeer | 4 | at least one peer holds the account&#39;s tech space |
+
+
+
+<a name="anytype-Event-Account-Recovery-Mode"></a>
+
+### Event.Account.Recovery.Mode
+ModeUnknown is the zero value and is never emitted: an unset field
+must not read as a cold recovery, the worse failure direction.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| ModeUnknown | 0 |  |
+| ColdRecovery | 1 | fresh device: the account repo did not exist |
+| WarmStart | 2 | the repo existed |
+| NewAccount | 3 | account creation paths |
+
+
+
+<a name="anytype-Event-Account-Recovery-PeerKind"></a>
+
+### Event.Account.Recovery.PeerKind
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| LocalPeer | 0 |  |
+| NetworkNode | 1 |  |
+
+
+
+<a name="anytype-Event-Account-Recovery-Phase"></a>
+
+### Event.Account.Recovery.Phase
+NOT monotone: the phase is derived from the run&#39;s current condition
+and moves back when that condition regresses (losing the last node
+connection mid-fetch goes FetchingAccount -&gt; Connecting; the
+WaitingForNetwork overlay returns to the phase it interrupted).
+Clients must render the phase last received rather than dropping
+backward transitions. Only Done and Failed are terminal.
+Phases may be skipped (a warm start never enters FetchingAccount);
+clients must accept any forward jump.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| LookingForPeers | 0 |  |
+| Connecting | 1 |  |
+| FetchingAccount | 2 |  |
+| LoadingSpaces | 3 |  |
+| Done | 4 |  |
+| WaitingForNetwork | 5 | calm, auto-retrying resting state; not an error screen |
+| Failed | 6 | account-level fatal; AccountSelect itself failed |
+| NotStarted | 7 | NotStarted is the idle snapshot&#39;s phase: no recovery run has begun in this process (Snapshot.runId is empty). A new number on purpose: the zero value would read as LookingForPeers before anything happens. |
+
+
+
+<a name="anytype-Event-Account-Recovery-SpaceKind"></a>
+
+### Event.Account.Recovery.SpaceKind
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Regular | 0 |  |
+| Tech | 1 |  |
+
+
+
+<a name="anytype-Event-Account-Recovery-SpaceState"></a>
+
+### Event.Account.Recovery.SpaceState
+Loaded = the space controller published LocalStatusOk: mandatory
+objects fetched, tree sync started. Object-level progress after that
+is on Event.Space.SyncStatus.Update.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Queued | 0 |  |
+| Pulling | 1 |  |
+| Loading | 2 |  |
+| Loaded | 3 |  |
+| Error | 4 |  |
+| Removed | 5 | Removed: the space left this run (deleted or removed while recovering); drop it from the list, it is excluded from counters |
+| Stalled | 6 | Stalled: the run settled around this space but it never published a load result. Not terminal — the load may still complete, and the state will change again if it does — so Finished does not fire while a space is stalled. Render it as a determinate stall with a retry (&#34;79 of 80 loaded, 1 stalled&#34;), never as ongoing progress. |
+
+
+
 <a name="anytype-Event-Block-Dataview-SliceOperation"></a>
 
 ### Event.Block.Dataview.SliceOperation
@@ -34363,6 +35264,88 @@ scenario: Precondition: user A and user B opened the same block
 
 
 
+<a name="pkg_lib_pb_model_protos_export_report-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## pkg/lib/pb/model/protos/export_report.proto
+
+
+
+<a name="anytype-model-ExportReport"></a>
+
+### ExportReport
+Diagnostics shared by all export formats. A completed export can contain
+issues without failing the RPC; clients should inspect status and issues.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [ExportReport.Status](#anytype-model-ExportReport-Status) |  |  |
+| succeed | [int32](#int32) |  | Objects accounted for, including objects represented in bundle metadata. |
+| objectErrors | [int32](#int32) |  |  |
+| fileErrors | [int32](#int32) |  | File contents that could not be exported; their objects may still succeed. |
+| issues | [ExportReport.Issue](#anytype-model-ExportReport-Issue) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-ExportReport-Issue"></a>
+
+### ExportReport.Issue
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  | Empty for an issue affecting the export as a whole. |
+| severity | [ExportReport.Issue.Severity](#anytype-model-ExportReport-Issue-Severity) |  |  |
+| code | [string](#string) |  | Stable diagnostic code, supplied by the exporter when available. |
+| path | [string](#string) |  | Field path for validation issues, or relative path of an export file. |
+| message | [string](#string) |  |  |
+
+
+
+
+
+
+
+
+<a name="anytype-model-ExportReport-Issue-Severity"></a>
+
+### ExportReport.Issue.Severity
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| WARNING | 0 |  |
+| ERROR | 1 |  |
+| INFO | 2 | Non-blocking format notes; do not make the export partial. |
+
+
+
+<a name="anytype-model-ExportReport-Status"></a>
+
+### ExportReport.Status
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SUCCESS | 0 |  |
+| PARTIAL | 1 | Output was produced, but errors were reported. Warnings alone remain successful. |
+| FAILED | 2 |  |
+| CANCELED | 3 |  |
+
+
+
+
+
+
+
+
+
+
 <a name="pkg_lib_pb_model_protos_localstore-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
@@ -34567,6 +35550,23 @@ Contains basic information about a user account
 
 
 
+<a name="anytype-model-Account-Auth-AppGrant"></a>
+
+### Account.Auth.AppGrant
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceIds | [string](#string) | repeated | spaceIds are the spaces the key may touch; empty only when allSpaces is set — exactly one of the two must be present |
+| perm | [Account.Auth.AppGrant.Perm](#anytype-model-Account-Auth-AppGrant-Perm) |  |  |
+| allSpaces | [bool](#bool) |  | allSpaces grants every space in the account, including spaces created after the grant was made (dynamic — GitHub&#39;s &#34;All repositories&#34; semantics). The JSON API still excludes the tech space; reaching it requires listing it explicitly in spaceIds. |
+
+
+
+
+
+
 <a name="anytype-model-Account-Auth-AppInfo"></a>
 
 ### Account.Auth.AppInfo
@@ -34579,9 +35579,10 @@ Contains basic information about a user account
 | appName | [string](#string) |  | either from process or specified manually when creating |
 | appKey | [string](#string) |  |  |
 | createdAt | [int64](#int64) |  |  |
-| expireAt | [int64](#int64) |  |  |
+| expireAt | [int64](#int64) |  | unix timestamp in seconds after which the key stops authenticating; 0 means the key never expires |
 | scope | [Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  |  |
 | isActive | [bool](#bool) |  |  |
+| grant | [Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant) |  | unset means an unscoped (legacy) key; only JsonAPI-scope keys may carry one |
 
 
 
@@ -36126,6 +37127,8 @@ if current user&#39;s top level product has isUpgradeable flag -&gt; show incent
 | ----- | ---- | ----- | ----------- |
 | errorCode | [Notification.Export.Code](#anytype-model-Notification-Export-Code) |  |  |
 | exportType | [Export.Format](#anytype-model-Export-Format) |  |  |
+| report | [ExportReport](#anytype-model-ExportReport) |  |  |
+| path | [string](#string) |  | Selected destination directory for this local export. |
 
 
 
@@ -36787,6 +37790,21 @@ stored |
  
 
 
+<a name="anytype-model-Account-Auth-AppGrant-Perm"></a>
+
+### Account.Auth.AppGrant.Perm
+Perm is nested so its Go constants (AccountAuthAppGrant_Read) can
+never be misread as the key scopes (AccountAuth_JsonAPI et al.) —
+grant verbs and key scopes are unrelated enums about different
+authorization layers.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Read | 0 | the zero value is the narrowest permission, so an unset perm never widens |
+| ReadWrite | 1 |  |
+
+
+
 <a name="anytype-model-Account-Auth-LocalApiScope"></a>
 
 ### Account.Auth.LocalApiScope
@@ -37332,6 +38350,7 @@ stored |
 | DOT | 3 |  |
 | SVG | 4 |  |
 | GRAPH_JSON | 5 |  |
+| AnyBlockV2 | 6 | AnyBlockV2 is the native AnyBlock v2 bundle (pkg/lib/anyblockjson format/v2/SPEC.md): a directory of `&lt;id&gt;.anyblock.json` documents beside an index.json and properties.json. Additive — existing values keep their numbers, so a client that does not know it is unaffected. |
 
 
 
@@ -38015,4 +39034,3 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | <a name="bool" /> bool |  | bool | boolean | boolean | bool | bool | boolean | TrueClass/FalseClass |
 | <a name="string" /> string | A string must always contain UTF-8 encoded or 7-bit ASCII text. | string | String | str/unicode | string | string | string | String (UTF-8) |
 | <a name="bytes" /> bytes | May contain any arbitrary sequence of bytes. | string | ByteString | str | []byte | ByteString | string | String (ASCII-8BIT) |
-

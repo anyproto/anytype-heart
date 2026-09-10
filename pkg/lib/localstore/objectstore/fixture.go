@@ -140,6 +140,13 @@ func newStoreFixture(t testing.TB, extra ...app.Component) *StoreFixture {
 			t.Fatal("FOTAL:", err)
 		}
 		_ = ds.Close(context.Background())
+		// dsObjectStore.Close only cancels its component context — the
+		// sqlite handles belong to the PROVIDER, which nothing closed. Every
+		// fixture therefore held its databases open until the test binary
+		// exited, and a package with a fixture per subtest died on "too many
+		// open files" under `-count=N` — which takes repetition away as an
+		// instrument exactly where map-order defects need it.
+		_ = provider.Close(context.Background())
 	})
 
 	err = ds.Init(testApp)

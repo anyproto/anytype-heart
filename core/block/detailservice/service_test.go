@@ -102,6 +102,47 @@ func TestSetIsArchived_SkipCascade_NoGC(t *testing.T) {
 	assert.False(t, gc.checkCalled, "GC must not run when skipCascade=true")
 }
 
+func TestSetIsArchived_RefusedTargetIsNotRescuedByCascade(t *testing.T) {
+	// F5: setIsArchivedForObjects merged explicit ids and GC-collected files
+	// into ONE modifyArchiveLinks call and returned nil if ANY id succeeded —
+	// so a restricted target whose orphan file archived produced a success
+	// return (and a 200 API receipt) while the object was still there. A
+	// single-id fixture with no cascade cannot express this: the failure
+	// NEEDS a refused explicit target beside a succeeding cascaded file.
+	binId := "bin"
+	fx := newFixture(t)
+	fx.Service.(*service).objectGC = &recordingGCStub{} // cascades file "f1"
+	sb := smarttest.New(binId)
+	sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
+	fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+		{bundle.RelationKeyId: domain.String("obj1"), bundle.RelationKeySpaceId: domain.String(spaceId)},
+		{bundle.RelationKeyId: domain.String("f1"), bundle.RelationKeySpaceId: domain.String(spaceId)},
+	})
+	fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
+	fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		switch objectId {
+		case binId:
+			return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil
+		case "obj1":
+			obj := smarttest.New(objectId)
+			obj.SetType(coresb.SmartBlockTypeProfilePage) // archive-restricted
+			return obj, nil
+		default:
+			return smarttest.New(objectId), nil
+		}
+	})
+
+	// when: archive the restricted obj1 with the cascade enabled
+	err := fx.SetIsArchived(nil, context.Background(), "obj1", true, false)
+
+	// then: the refusal SURFACES — success is judged over the explicit id,
+	// not the cascade — while the cascade itself stays best-effort (f1 is
+	// archived: bin + f1 = 2 blocks)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, restriction.ErrRestricted)
+	assert.Len(t, sb.Blocks(), 2, "the cascaded file still archives best-effort")
+}
+
 func TestSetIsArchived_EmitsCleanupSuggestion(t *testing.T) {
 	binId := "bin"
 	fx := newFixture(t)

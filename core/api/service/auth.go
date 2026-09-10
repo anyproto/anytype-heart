@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -33,10 +34,10 @@ func (s *Service) CreateChallenge(ctx context.Context, appName string) (string, 
 	return resp.ChallengeId, nil
 }
 
-// CreateApiKey calls AccountLocalLinkSolveChallenge and returns the session token + app key
-func (s *Service) CreateApiKey(ctx context.Context, challengeId string, code string) (appKey string, err error) {
+// CreateApiKey returns the issued key and the user's persisted grant.
+func (s *Service) CreateApiKey(ctx context.Context, challengeId string, code string) (apimodel.CreateApiKeyResponse, error) {
 	if challengeId == "" || code == "" {
-		return "", util.ErrBadInput("challenge_id or code is empty")
+		return apimodel.CreateApiKeyResponse{}, util.ErrBadInput("challenge_id or code is empty")
 	}
 
 	resp := s.mw.AccountLocalLinkSolveChallenge(ctx, &pb.RpcAccountLocalLinkSolveChallengeRequest{
@@ -45,8 +46,16 @@ func (s *Service) CreateApiKey(ctx context.Context, challengeId string, code str
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcAccountLocalLinkSolveChallengeResponseError_NULL {
-		return "", ErrFailedAuthenticate
+		return apimodel.CreateApiKeyResponse{}, ErrFailedAuthenticate
 	}
 
-	return resp.AppKey, nil
+	result := apimodel.CreateApiKeyResponse{ApiKey: resp.AppKey}
+	if grant := util.ApiGrantFromProto(resp.Grant); grant != nil {
+		result.Grant = &apimodel.ApiKeyGrant{
+			AllSpaces:  grant.AllSpaces,
+			SpaceIds:   append([]string{}, grant.Spaces...),
+			Permission: grant.Perms,
+		}
+	}
+	return result, nil
 }

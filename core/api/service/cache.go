@@ -37,15 +37,18 @@ func (s *Service) InitializeAllCaches() error {
 	return nil
 }
 
-// subscribeToCrossSpaceProperties subscribes to property changes across all active spaces
-func (s *Service) subscribeToCrossSpaceProperties() error {
-	if s.subscriptions.properties.queue != nil {
-		return nil // Already subscribed
-	}
-
-	s.subscriptions.properties.queue = mb.New[*pb.EventMessage](0)
-
-	filters := []database.FilterRequest{
+// crossSpacePropertyFilters bounds v1's property cache — which IS v1's key
+// namespace: it answers ResolveProperty, it backs GET /properties, and it is
+// what a same-key create is checked against.
+//
+// isUninstalled — the UI-delete flag — used to be missing here while v2
+// excludes it everywhere (§7.5-requirement-2). One slug then got opposite
+// verdicts from the two versions: v2 had vacated it and would mint onto it,
+// v1 still listed the corpse, still resolved it as an address and still
+// refused a same-key create against it. The namespace a key lives in cannot
+// depend on which version asks.
+func crossSpacePropertyFilters() []database.FilterRequest {
+	return []database.FilterRequest{
 		{
 			RelationKey: bundle.RelationKeyResolvedLayout,
 			Condition:   model.BlockContentDataviewFilter_Equal,
@@ -56,11 +59,25 @@ func (s *Service) subscribeToCrossSpaceProperties() error {
 			Condition:   model.BlockContentDataviewFilter_NotEqual,
 			Value:       domain.Bool(true),
 		},
+		{
+			RelationKey: bundle.RelationKeyIsUninstalled,
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       domain.Bool(true),
+		},
 	}
+}
+
+// subscribeToCrossSpaceProperties subscribes to property changes across all active spaces
+func (s *Service) subscribeToCrossSpaceProperties() error {
+	if s.subscriptions.properties.queue != nil {
+		return nil // Already subscribed
+	}
+
+	s.subscriptions.properties.queue = mb.New[*pb.EventMessage](0)
 
 	resp, err := s.crossSpaceSubService.Subscribe(subscription.SubscribeRequest{
 		SubId:   "api.properties.crossspace",
-		Filters: filters,
+		Filters: crossSpacePropertyFilters(),
 		Keys: []string{
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyRelationKey.String(),

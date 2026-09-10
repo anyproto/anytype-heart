@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/anyproto/any-sync/net"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migrator"
 	"github.com/anyproto/anytype-heart/util/grpcprocess"
+	"github.com/anyproto/anytype-heart/util/localorigin"
 )
 
 func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
@@ -26,6 +29,7 @@ func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCrea
 		errToCode(application.ErrFailedToWriteConfig, pb.RpcAccountCreateResponseError_FAILED_TO_WRITE_CONFIG),
 		errToCode(application.ErrSetDetails, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME),
 		errToCode(context.Canceled, pb.RpcAccountCreateResponseError_ACCOUNT_CREATION_IS_CANCELED),
+		errToCode(application.ErrAnotherProcessIsRunning, pb.RpcAccountCreateResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING),
 	)
 	return &pb.RpcAccountCreateResponse{
 		Config:  nil,
@@ -60,6 +64,7 @@ func (mw *Middleware) AccountMigrate(cctx context.Context, req *pb.RpcAccountMig
 		errToCode(application.ErrAccountNotFound, pb.RpcAccountMigrateResponseError_ACCOUNT_NOT_FOUND),
 		errToCode(context.Canceled, pb.RpcAccountMigrateResponseError_CANCELED),
 		errTypeToCode(&freeSpaceErr, pb.RpcAccountMigrateResponseError_NOT_ENOUGH_FREE_SPACE),
+		errToCode(application.ErrAnotherProcessIsRunning, pb.RpcAccountMigrateResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING),
 	)
 
 	return &pb.RpcAccountMigrateResponse{
@@ -91,6 +96,7 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		errToCode(config.ErrNetworkFileNotFound, pb.RpcAccountSelectResponseError_CONFIG_FILE_NOT_FOUND),
 		errToCode(config.ErrNetworkIdMismatch, pb.RpcAccountSelectResponseError_CONFIG_FILE_NETWORK_ID_MISMATCH),
 		errToCode(application.ErrEmptyAccountID, pb.RpcAccountSelectResponseError_BAD_INPUT),
+		errToCode(application.ErrBadInput, pb.RpcAccountSelectResponseError_BAD_INPUT),
 		errToCode(application.ErrFailedToStopApplication, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE),
 		errToCode(application.ErrNoMnemonicProvided, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET),
 		errToCode(application.ErrFailedToCreateLocalRepo, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO),
@@ -223,6 +229,7 @@ func (mw *Middleware) AccountRecoverFromLegacyExport(cctx context.Context, req *
 	code := mapErrorCode(err,
 		errToCode(application.ErrAccountMismatch, pb.RpcAccountRecoverFromLegacyExportResponseError_DIFFERENT_ACCOUNT),
 		errToCode(application.ErrBadInput, pb.RpcAccountRecoverFromLegacyExportResponseError_BAD_INPUT),
+		errToCode(application.ErrAnotherProcessIsRunning, pb.RpcAccountRecoverFromLegacyExportResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING),
 	)
 	return &pb.RpcAccountRecoverFromLegacyExportResponse{
 		AccountId:       resp.AccountId,
@@ -260,15 +267,39 @@ func (mw *Middleware) AccountChangeJsonApiAddr(ctx context.Context, req *pb.RpcA
 	}
 }
 
+// accountLocalLinkNewChallengeErrorCode is AccountLocalLinkNewChallenge's
+// error mapping, extracted so the mapping itself is pinned by test: the
+// challenge flow's §11.7 issuance guards (empty / over-long app name) join
+// with application.ErrBadInput, and without the ErrBadInput row — which its
+// sibling CreateApp always had — a pairing client saw code 1 UNKNOWN_ERROR
+// ("something went wrong") instead of BAD_INPUT ("app name is required")
+// for a permanent input mistake (review H2).
+func accountLocalLinkNewChallengeErrorCode(err error) pb.RpcAccountLocalLinkNewChallengeResponseErrorCode {
+	return mapErrorCode(err,
+		errToCode(session.ErrTooManyChallengeRequests, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
+		errToCode(session.ErrTooManyCallerChallengeRequests, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
+		// This caller already has a prompt on screen, or the user denied it
+		// during this app run. Both are refusals to raise a second prompt,
+		// which is what TOO_MANY_REQUESTS means here; without these rows the
+		// two most common post-launch outcomes answered UNKNOWN_ERROR and a
+		// client could only retry, burning budget and re-prompting.
+		errToCode(session.ErrChallengePendingApproval, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
+		errToCode(session.ErrChallengeDenied, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
+		errToCode(session.ErrChallengeAttemptsExceeded, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
+		// same rejected-scope error, same code as CreateApp — the two guards
+		// are a deliberate pair
+		errToCode(session.ErrInvalidScope, pb.RpcAccountLocalLinkNewChallengeResponseError_BAD_INPUT),
+		errToCode(walletComp.ErrInvalidGrant, pb.RpcAccountLocalLinkNewChallengeResponseError_BAD_INPUT),
+		errToCode(application.ErrBadInput, pb.RpcAccountLocalLinkNewChallengeResponseError_BAD_INPUT),
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkNewChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+}
+
 func (mw *Middleware) AccountLocalLinkNewChallenge(ctx context.Context, request *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse {
 	info := getClientInfo(ctx)
 	info.Name = request.AppName
-	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(request.Scope, &info)
-	code := mapErrorCode(err,
-		errToCode(session.ErrTooManyChallengeRequests, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
-		errToCode(session.ErrChallengeAttemptsExceeded, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
-		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkNewChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),
-	)
+	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(request.Scope, &info, request.RequestedPerm)
+	code := accountLocalLinkNewChallengeErrorCode(err)
 
 	return &pb.RpcAccountLocalLinkNewChallengeResponse{
 		ChallengeId: challengeId,
@@ -279,18 +310,94 @@ func (mw *Middleware) AccountLocalLinkNewChallenge(ctx context.Context, request 
 	}
 }
 
-func (mw *Middleware) AccountLocalLinkSolveChallenge(_ context.Context, req *pb.RpcAccountLocalLinkSolveChallengeRequest) *pb.RpcAccountLocalLinkSolveChallengeResponse {
-	token, appKey, err := mw.applicationService.LinkLocalSolveChallenge(req)
-	code := mapErrorCode(err,
+// AccountLocalLinkApproveChallenge carries the user's answer to a pairing
+// prompt. It is the only place a challenge code is minted, and the code is
+// returned here rather than broadcast, so it reaches only the session that
+// approved.
+//
+// This method must stay out of both noAuthMethods and limitedScopeMethods in
+// core/auth.go: falling through both is what restricts it to AccountAuth_Full,
+// i.e. the desktop UI. Listing it in noAuthMethods would let any local process
+// approve its own pairing.
+func (mw *Middleware) AccountLocalLinkApproveChallenge(ctx context.Context, req *pb.RpcAccountLocalLinkApproveChallengeRequest) *pb.RpcAccountLocalLinkApproveChallengeResponse {
+	err := mw.rejectBrowserCaller(ctx)
+	if err == nil {
+		var challenge string
+		challenge, _, err = mw.applicationService.LinkLocalApproveChallenge(req.ProcessPath, req.Origin, req.Allow, req.Grant)
+		if err == nil {
+			return &pb.RpcAccountLocalLinkApproveChallengeResponse{
+				Challenge: challenge,
+				Error: &pb.RpcAccountLocalLinkApproveChallengeResponseError{
+					Code: pb.RpcAccountLocalLinkApproveChallengeResponseError_NULL,
+				},
+			}
+		}
+	}
+	code := accountLocalLinkApproveChallengeErrorCode(err)
+	return &pb.RpcAccountLocalLinkApproveChallengeResponse{
+		Error: &pb.RpcAccountLocalLinkApproveChallengeResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+// accountLocalLinkApproveChallengeErrorCode maps the approval flow's errors,
+// its sibling of accountLocalLinkNewChallengeErrorCode. The grant rows are
+// load-bearing: every grant refusal from the approve path wraps
+// wallet.ErrInvalidGrant (a missing grant on a JsonAPI approval included), so
+// a desktop sending a malformed picker result gets BAD_INPUT — a permanent
+// input mistake — rather than code 1 UNKNOWN_ERROR.
+func accountLocalLinkApproveChallengeErrorCode(err error) pb.RpcAccountLocalLinkApproveChallengeResponseErrorCode {
+	return mapErrorCode(err,
+		errToCode(session.ErrNoPendingChallenge, pb.RpcAccountLocalLinkApproveChallengeResponseError_NO_PENDING_CHALLENGE),
+		errToCode(errBrowserCallerNotAllowed, pb.RpcAccountLocalLinkApproveChallengeResponseError_BAD_INPUT),
+		errToCode(walletComp.ErrInvalidGrant, pb.RpcAccountLocalLinkApproveChallengeResponseError_BAD_INPUT),
+		errToCode(application.ErrBadInput, pb.RpcAccountLocalLinkApproveChallengeResponseError_BAD_INPUT),
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkApproveChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+}
+
+// errBrowserCallerNotAllowed rejects a request that came from a browser context.
+var errBrowserCallerNotAllowed = errors.New("this method cannot be called from a browser")
+
+// rejectBrowserCaller refuses callers that carry an Origin header. Approving a
+// pairing is a desktop-UI action; the gRPC-Web proxy trusts the Webclipper
+// extension's origins, so a browser context can reach the RPC surface and must
+// be turned away here even when it holds a valid token.
+func (mw *Middleware) rejectBrowserCaller(ctx context.Context) error {
+	if origin := localorigin.OriginFromContext(ctx); origin != "" {
+		return fmt.Errorf("%w: origin %q", errBrowserCallerNotAllowed, origin)
+	}
+	return nil
+}
+
+// accountLocalLinkSolveChallengeErrorCode is AccountLocalLinkSolveChallenge's
+// error mapping, extracted so the mapping itself is pinned by test — the
+// sibling of accountLocalLinkNewChallengeErrorCode, and extracted for the same
+// reason: a code that exists in the proto but has no row here is unreachable,
+// which is how CHALLENGE_NOT_APPROVED shipped documented and dead.
+func accountLocalLinkSolveChallengeErrorCode(err error) pb.RpcAccountLocalLinkSolveChallengeResponseErrorCode {
+	return mapErrorCode(err,
 		errToCode(session.ErrChallengeTriesExceeded, pb.RpcAccountLocalLinkSolveChallengeResponseError_CHALLENGE_ATTEMPTS_EXCEEDED),
 		errToCode(session.ErrChallengeAttemptsExceeded, pb.RpcAccountLocalLinkSolveChallengeResponseError_CHALLENGE_ATTEMPTS_EXCEEDED),
 		errToCode(session.ErrChallengeSolutionWrong, pb.RpcAccountLocalLinkSolveChallengeResponseError_INCORRECT_ANSWER),
 		errToCode(session.ErrChallengeIdNotFound, pb.RpcAccountLocalLinkSolveChallengeResponseError_INVALID_CHALLENGE_ID),
+		// The human has not answered the prompt yet. Distinct from a wrong
+		// answer and from a bad id: pairing is mid-flight and the client
+		// should wait, not retry with another guess or report a failure.
+		errToCode(session.ErrChallengeNotApproved, pb.RpcAccountLocalLinkSolveChallengeResponseError_CHALLENGE_NOT_APPROVED),
 		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkSolveChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),
 	)
+}
+
+func (mw *Middleware) AccountLocalLinkSolveChallenge(_ context.Context, req *pb.RpcAccountLocalLinkSolveChallengeRequest) *pb.RpcAccountLocalLinkSolveChallengeResponse {
+	token, appKey, grant, err := mw.applicationService.LinkLocalSolveChallenge(req)
+	code := accountLocalLinkSolveChallengeErrorCode(err)
 	return &pb.RpcAccountLocalLinkSolveChallengeResponse{
 		SessionToken: token,
 		AppKey:       appKey,
+		Grant:        grant,
 		Error: &pb.RpcAccountLocalLinkSolveChallengeResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
@@ -301,11 +408,30 @@ func (mw *Middleware) AccountLocalLinkSolveChallenge(_ context.Context, req *pb.
 func (mw *Middleware) AccountLocalLinkCreateApp(_ context.Context, req *pb.RpcAccountLocalLinkCreateAppRequest) *pb.RpcAccountLocalLinkCreateAppResponse {
 	appKey, err := mw.applicationService.LinkLocalCreateApp(req)
 	code := mapErrorCode(err,
+		errToCode(session.ErrInvalidScope, pb.RpcAccountLocalLinkCreateAppResponseError_BAD_INPUT),
+		errToCode(walletComp.ErrInvalidGrant, pb.RpcAccountLocalLinkCreateAppResponseError_BAD_INPUT),
+		errToCode(application.ErrBadInput, pb.RpcAccountLocalLinkCreateAppResponseError_BAD_INPUT),
 		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkCreateAppResponseError_ACCOUNT_IS_NOT_RUNNING),
 	)
 	return &pb.RpcAccountLocalLinkCreateAppResponse{
 		AppKey: appKey,
 		Error: &pb.RpcAccountLocalLinkCreateAppResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) AccountLocalLinkUpdateApp(_ context.Context, req *pb.RpcAccountLocalLinkUpdateAppRequest) *pb.RpcAccountLocalLinkUpdateAppResponse {
+	err := mw.applicationService.LinkLocalUpdateApp(req)
+	code := mapErrorCode(err,
+		errToCode(walletComp.ErrAppLinkNotFound, pb.RpcAccountLocalLinkUpdateAppResponseError_NOT_FOUND),
+		errToCode(walletComp.ErrInvalidGrant, pb.RpcAccountLocalLinkUpdateAppResponseError_BAD_INPUT),
+		errToCode(application.ErrBadInput, pb.RpcAccountLocalLinkUpdateAppResponseError_BAD_INPUT),
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkUpdateAppResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+	return &pb.RpcAccountLocalLinkUpdateAppResponse{
+		Error: &pb.RpcAccountLocalLinkUpdateAppResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},
@@ -341,13 +467,31 @@ func (mw *Middleware) AccountLocalLinkRevokeApp(_ context.Context, req *pb.RpcAc
 	}
 }
 
-func getClientInfo(ctx context.Context) pb.EventAccountLinkChallengeClientInfo {
+func getClientInfo(ctx context.Context) pb.EventAccountLinkApprovalRequestClientInfo {
+	// Browser callers reach the JSON API over HTTP and have no process to
+	// inspect; the Origin header is what names them instead.
+	origin := localorigin.OriginFromContext(ctx)
 	info, ok := grpcprocess.FromContext(ctx)
 	if !ok {
-		return pb.EventAccountLinkChallengeClientInfo{}
+		return pb.EventAccountLinkApprovalRequestClientInfo{Origin: origin}
 	}
-	return pb.EventAccountLinkChallengeClientInfo{
+	return pb.EventAccountLinkApprovalRequestClientInfo{
 		ProcessName: info.Name,
 		ProcessPath: info.Path,
+		Origin:      origin,
+	}
+}
+
+func (mw *Middleware) AccountRecoveryState(_ context.Context, _ *pb.RpcAccountRecoveryStateRequest) *pb.RpcAccountRecoveryStateResponse {
+	snapshot, err := mw.applicationService.AccountRecoveryState()
+	code := mapErrorCode(err,
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountRecoveryStateResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+	return &pb.RpcAccountRecoveryStateResponse{
+		Snapshot: snapshot,
+		Error: &pb.RpcAccountRecoveryStateResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
 	}
 }
