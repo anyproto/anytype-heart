@@ -40,7 +40,7 @@ func TestV2ListSpaces(t *testing.T) {
 		}
 
 		// when
-		rows, total, hasMore, err := fx.ListSpaces(context.Background(), 0, 25)
+		rows, total, hasMore, _, err := fx.ListSpaces(context.Background(), 0, 25)
 
 		// then
 		require.NoError(t, err)
@@ -56,7 +56,7 @@ func TestV2ListSpaces(t *testing.T) {
 		fx.registerSpaceView(t, "spaceS", "Work", "The local-first wiki")
 
 		// when
-		rows, _, _, err := fx.ListSpaces(context.Background(), 0, 25)
+		rows, _, _, _, err := fx.ListSpaces(context.Background(), 0, 25)
 
 		// then
 		require.NoError(t, err)
@@ -80,7 +80,7 @@ func TestV2ListSpaces(t *testing.T) {
 		}})
 
 		// when
-		rows, total, _, err := fx.ListSpaces(context.Background(), 0, 25)
+		rows, total, _, _, err := fx.ListSpaces(context.Background(), 0, 25)
 
 		// then
 		require.NoError(t, err)
@@ -94,7 +94,7 @@ func TestV2ListSpaces(t *testing.T) {
 		fx := newV2FixtureBare(t)
 
 		// when
-		rows, total, _, err := fx.ListSpaces(context.Background(), 0, 25)
+		rows, total, _, _, err := fx.ListSpaces(context.Background(), 0, 25)
 
 		// then
 		require.NoError(t, err)

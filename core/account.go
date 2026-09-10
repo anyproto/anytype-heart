@@ -392,11 +392,12 @@ func accountLocalLinkSolveChallengeErrorCode(err error) pb.RpcAccountLocalLinkSo
 }
 
 func (mw *Middleware) AccountLocalLinkSolveChallenge(_ context.Context, req *pb.RpcAccountLocalLinkSolveChallengeRequest) *pb.RpcAccountLocalLinkSolveChallengeResponse {
-	token, appKey, err := mw.applicationService.LinkLocalSolveChallenge(req)
+	token, appKey, grant, err := mw.applicationService.LinkLocalSolveChallenge(req)
 	code := accountLocalLinkSolveChallengeErrorCode(err)
 	return &pb.RpcAccountLocalLinkSolveChallengeResponse{
 		SessionToken: token,
 		AppKey:       appKey,
+		Grant:        grant,
 		Error: &pb.RpcAccountLocalLinkSolveChallengeResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),

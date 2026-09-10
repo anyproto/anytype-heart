@@ -331,6 +331,44 @@ func TestV2GetCollectionObjects(t *testing.T) {
 }
 
 func TestV2ListViews(t *testing.T) {
+	t.Run("view labels use the whole object's collision plan", func(t *testing.T) {
+		const storedViewId = "32726bf3-cd8b-4099-aafb-688e9525ed67"
+		for _, collision := range []bool{false, true} {
+			fx := searchSetup(t)
+			read := queryRead(&model.BlockContentDataview{
+				Views: []*model.BlockContentDataviewView{{Id: storedViewId, Name: "All", Type: model.BlockContentDataviewView_Table}},
+			})
+			read.SbType = model.SmartBlockType_Page
+			read.Snapshot.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String("query1")
+			root := &model.Block{Id: "query1", ChildrenIds: []string{dataviewBlockId},
+				Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}
+			read.Snapshot.Blocks = append([]*model.Block{root}, read.Snapshot.Blocks...)
+			compactId := "5ed67"
+			if collision {
+				const blockId = "0123456789abcdef0125ed67"
+				root.ChildrenIds = append(root.ChildrenIds, blockId)
+				read.Snapshot.Blocks = append(read.Snapshot.Blocks, &model.Block{Id: blockId,
+					Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "Collision"}}})
+				compactId = storedViewId
+			}
+			fx.expectListRead("query1", read)
+			for _, tc := range []struct {
+				ctx  context.Context
+				want string
+			}{
+				{context.Background(), compactId},
+				{CtxWithFullIds(context.Background()), storedViewId},
+			} {
+				views, _, _, err := fx.GetQueryViews(tc.ctx, testSpaceId, "query1", 0, 25)
+				require.NoError(t, err)
+				require.Len(t, views, 1)
+				var view map[string]any
+				require.NoError(t, json.Unmarshal(views[0], &view))
+				assert.Equal(t, tc.want, view["id"], "collision=%t", collision)
+			}
+		}
+	})
+
 	t.Run("views render as §6.2 view objects with option names", func(t *testing.T) {
 		// given
 		fx := searchSetup(t)

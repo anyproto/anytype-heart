@@ -30,6 +30,14 @@ make openapi
 # Served at /v1/docs/openapi.*, /v2/docs/openapi.*, and /docs/openapi.* (= v1)
 ```
 
+The v2 Introduction is authored in `core/api/v2/markdown/api.md`. Keep the
+shared API behavior there; `core/api/v2/doc.go` holds metadata and references
+it with `@description.markdown`. `make openapi` passes the Markdown directory
+to swag. The OpenAPI 3 parser in swag v2.0.0-rc4 drops this value, so
+`scripts/fix_openapi_v2.py` injects the same source into both generated formats,
+preserving headings, tables, and code blocks in `info.description`.
+Do not edit the generated OpenAPI description directly.
+
 ## Architecture Overview
 
 ### Layer Structure

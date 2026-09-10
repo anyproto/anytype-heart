@@ -41,6 +41,30 @@ components:
           type: array
           uniqueItems: false
       type: object
+    ApiKeyGrant:
+      required: [all_spaces, space_ids, permission]
+      description: The grant approved by the user and persisted with this key; null
+        for an unscoped key.
+      properties:
+        all_spaces:
+          description: Covers all current and future user spaces when true; space_ids
+            is then empty.
+          type: boolean
+        permission:
+          description: The access approved by the user, which may differ from what
+            the app requested.
+          enum:
+          - read
+          - readwrite
+          type: string
+        space_ids:
+          description: Full IDs of the granted spaces. An empty list alone never means
+            all spaces.
+          items:
+            type: string
+          type: array
+          uniqueItems: false
+      type: [object, 'null']
     ChatAttachment:
       properties:
         target:
@@ -218,6 +242,7 @@ components:
           type: string
       type: object
     CreateApiKeyResponse:
+      required: [api_key, grant]
       properties:
         api_key:
           description: |-
@@ -226,6 +251,8 @@ components:
             length varies. Previously issued unprefixed base64 keys remain valid.
           example: anytype_amfbcga7eywtio2cjfifoxtfnrzxvamir6lj3jflwk44br6o2xoa_3fe1d4b7
           type: string
+        grant:
+          $ref: '#/components/schemas/ApiKeyGrant'
       type: object
     CreateChallengeRequest:
       properties:
@@ -2797,9 +2824,10 @@ paths:
   /v1/auth/api_keys:
     post:
       description: Exchanges a challenge_id from /v1/auth/challenges and the code
-        revealed after Desktop approval for an api_key. Use the key as a bearer credential
-        in the Authorization header. It carries the spaces and permissions approved
-        by the user. No existing API key is required.
+        revealed after Desktop approval for an api_key and the grant approved by the
+        user. The grant states the permission, full space_ids, and whether all current
+        and future user spaces are covered. Use the key as a bearer credential in
+        the Authorization header. No existing API key is required.
       operationId: create_api_key
       parameters:
       - description: The version of the API to use
@@ -2822,8 +2850,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CreateApiKeyResponse'
-          description: The API key that can be used in the Authorization header for
-            subsequent requests
+          description: The API key and its approved grant
         "400":
           content:
             application/json:

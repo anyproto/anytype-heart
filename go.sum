@@ -52,6 +52,8 @@ github.com/anyproto/any-block v0.0.0-20260909161644-e60db5e34fd7 h1:suOFEhBch5hx
 github.com/anyproto/any-block v0.0.0-20260909161644-e60db5e34fd7/go.mod h1:ctWUBba2Nm+mHwkh4bBej57avQHaW2HDzDZDSlbVchs=
 github.com/anyproto/any-block v0.0.0-20260910063323-12807aa201e3 h1:NiQjpXp5JXNRjZXq1KVPgEM5P7krlXviZBg6QWMhmIM=
 github.com/anyproto/any-block v0.0.0-20260910063323-12807aa201e3/go.mod h1:ctWUBba2Nm+mHwkh4bBej57avQHaW2HDzDZDSlbVchs=
+github.com/anyproto/any-block v0.0.0-20260910091746-acc50c1a38ec h1:BIq2ChqB2zTWo9llzzJ1iOd0BHyFK2SIZSoq1hxpB4M=
+github.com/anyproto/any-block v0.0.0-20260910091746-acc50c1a38ec/go.mod h1:ctWUBba2Nm+mHwkh4bBej57avQHaW2HDzDZDSlbVchs=
 github.com/anyproto/any-store v0.4.7 h1:329NWY/xUzGdwKSqFgjAFaPAVkTJbR+WdJirPrvTm/w=
 github.com/anyproto/any-store v0.4.7/go.mod h1:8cqb52gjZSaYnlybugqpSqSG1RQygY96D2vWMbSJsLo=
 github.com/anyproto/any-store v1.0.1 h1:Pe8Krpllr3qLT0WLHvmgQqRS+Zo2WVisddEdn6FkTVU=

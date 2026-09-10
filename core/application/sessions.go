@@ -344,14 +344,14 @@ func (s *Service) hideChallenge(clientInfo *pb.EventAccountLinkApprovalRequestCl
 	}))
 }
 
-func (s *Service) LinkLocalSolveChallenge(req *pb.RpcAccountLocalLinkSolveChallengeRequest) (token string, appKey string, err error) {
+func (s *Service) LinkLocalSolveChallenge(req *pb.RpcAccountLocalLinkSolveChallengeRequest) (token string, appKey string, grant *model.AccountAuthAppGrant, err error) {
 	if s.app == nil {
-		return "", "", ErrApplicationIsNotRunning
+		return "", "", nil, ErrApplicationIsNotRunning
 	}
 	s.hideExpiredChallenges()
 	clientInfo, token, scope, approvedGrant, err := s.sessions.SolveChallenge(req.ChallengeId, req.Answer, s.sessionSigningKey)
 	if err != nil {
-		return "", "", fmt.Errorf("solve challenge: %w", err)
+		return "", "", nil, fmt.Errorf("solve challenge: %w", err)
 	}
 
 	wallet := s.app.Component(walletComp.CName).(walletComp.Wallet)
@@ -366,13 +366,14 @@ func (s *Service) LinkLocalSolveChallenge(req *pb.RpcAccountLocalLinkSolveChalle
 	// the answer), which is the property that makes the picker meaningful.
 	appInfo, err := wallet.PersistAppLink(name, scope, 0, walletComp.AppLinkGrantFromProto(approvedGrant))
 	if err != nil {
-		return token, appKey, fmt.Errorf("persist app link: %w", err)
+		return token, appKey, nil, fmt.Errorf("persist app link: %w", err)
 	}
 
 	s.appSessionsLock.Lock()
 	s.trackAppSessionLocked(appInfo.AppHash, token)
 	s.appSessionsLock.Unlock()
 	appKey = appInfo.AppKey
+	grant = appInfo.Grant.Proto()
 	s.hideChallenge(clientInfo)
 	return
 }

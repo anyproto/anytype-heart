@@ -219,6 +219,12 @@ type SpaceRow struct {
 	IconImage   string `json:"icon_image,omitempty"` // Icon id; download with GET /v2/spaces/{space_id}/files/{file_id}/content.
 }
 
+// ListSpacesResponse lists the live spaces accessible to the API key.
+type ListSpacesResponse struct {
+	ListResponse[SpaceRow]
+	HasNotGrantedSpaces bool `json:"has_not_granted_spaces"` // True when other live user spaces are excluded by this key's grant, independently of the requested page. Ask the user to grant access if a requested space is missing.
+}
+
 // Space is the space shape shared by GET-one and the space mutations
 // ({id, name, description}). gatewayUrl and
 // networkId are client-infrastructure fields, deliberately absent from v2

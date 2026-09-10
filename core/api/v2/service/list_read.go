@@ -153,8 +153,8 @@ func (s *Service) listViews(ctx context.Context, spaceId, listId string, want li
 		return page, 0, hasMore, nil
 	}
 
-	// render the dataview block through the format's own §6.2 serialization
-	// (no compaction: a fragment has no refs legend to resolve labels)
+	// Render through the format's own §6.2 serialization. View IDs use
+	// document-local labels by default; object references remain full.
 	dvBlock := &model.Block{
 		Id:      dataviewBlockId,
 		Content: &model.BlockContentOfDataview{Dataview: target.dataview},
@@ -182,6 +182,39 @@ func (s *Service) listViews(ctx context.Context, spaceId, listId string, want li
 	var views []json.RawMessage
 	if len(fragment.Blocks) > 0 {
 		views = fragment.Blocks[0].Views
+	}
+	if !fullIdsRequested(ctx) {
+		// Fragments preserve full IDs. Ask AnyBlock for the entire object's
+		// label plan so collisions outside this dataview are respected too.
+		labelOpts := fragOpts
+		labelOpts.CompactBlockLabels = true
+		labels, err := anyblockjson.WidgetViewIDs(target.read.SbType, target.read.Snapshot, labelOpts)
+		if err != nil {
+			return nil, 0, false, fmt.Errorf("resolve view labels of %s: %w", listId, err)
+		}
+		for i, view := range views {
+			if len(labels) == 0 {
+				break
+			}
+			var fields map[string]json.RawMessage
+			if err := json.Unmarshal(view, &fields); err != nil {
+				return nil, 0, false, fmt.Errorf("decode view of %s: %w", listId, err)
+			}
+			var id string
+			if _, ok := fields["id"]; !ok {
+				continue
+			}
+			if err := json.Unmarshal(fields["id"], &id); err != nil {
+				return nil, 0, false, fmt.Errorf("decode view id of %s: %w", listId, err)
+			}
+			if label, ok := labels[id]; ok && label != id {
+				fields["id"], _ = json.Marshal(label)
+				views[i], err = json.Marshal(fields)
+				if err != nil {
+					return nil, 0, false, fmt.Errorf("encode view of %s: %w", listId, err)
+				}
+			}
+		}
 	}
 	total := len(views)
 	page, hasMore := pagination.Paginate(views, offset, limit)

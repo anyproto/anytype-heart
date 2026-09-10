@@ -6,22 +6,80 @@ package v2handler
 // handler that stops threading the query keeps every service test green.
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
+	"github.com/anyproto/anytype-heart/core/api/pagination"
+	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+func TestListSpacesHandlerGrantVisibility(t *testing.T) {
+	for _, tc := range []struct {
+		name                     string
+		grant                    *util.ApiGrant
+		secondStatus             model.SpaceStatus
+		offset                   int
+		wantTotal, wantRows      int
+		wantMore, wantNotGranted bool
+	}{
+		{name: "narrow grant", grant: &util.ApiGrant{Spaces: []string{"space1"}, Perms: util.GrantPermsRead}, wantTotal: 1, wantRows: 1, wantNotGranted: true},
+		{name: "empty page still reports withheld spaces", grant: &util.ApiGrant{Spaces: []string{"space1"}, Perms: util.GrantPermsRead}, offset: 10, wantTotal: 1, wantNotGranted: true},
+		{name: "no granted live spaces", grant: &util.ApiGrant{Spaces: []string{"missing"}, Perms: util.GrantPermsRead}, wantNotGranted: true},
+		{name: "explicit grant covers every live space", grant: &util.ApiGrant{Spaces: []string{"space1", "space2"}, Perms: util.GrantPermsRead}, wantTotal: 2, wantRows: 1, wantMore: true},
+		{name: "all spaces", grant: &util.ApiGrant{AllSpaces: true, Perms: util.GrantPermsRead}, wantTotal: 2, wantRows: 1, wantMore: true},
+		{name: "legacy key", wantTotal: 2, wantRows: 1, wantMore: true},
+		{name: "deleted space does not count", grant: &util.ApiGrant{Spaces: []string{"space1"}, Perms: util.GrantPermsRead}, secondStatus: model.SpaceStatus_SpaceDeleted, wantTotal: 1, wantRows: 1},
+		{name: "joining space does not count", grant: &util.ApiGrant{Spaces: []string{"space1"}, Perms: util.GrantPermsRead}, secondStatus: model.SpaceStatus_SpaceJoining, wantTotal: 1, wantRows: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fx := newV2HandlerFixture(t)
+			fx.store.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{{
+				bundle.RelationKeyId:                 domain.String("spaceView_space2"),
+				bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeyTargetSpaceId:      domain.String("space2"),
+				bundle.RelationKeyName:               domain.String("Other space"),
+				bundle.RelationKeySpaceAccountStatus: domain.Int64(int64(tc.secondStatus)),
+			}})
+			fx.router.GET("/v2/spaces", func(c *gin.Context) {
+				c.Set(pagination.QueryParamOffset, tc.offset)
+				c.Set(pagination.QueryParamLimit, 1)
+			}, ListSpacesHandler(fx.svc))
+			req := httptest.NewRequest(http.MethodGet, "/v2/spaces", nil)
+			req = req.WithContext(util.CtxWithApiGrant(req.Context(), tc.grant))
+			w := httptest.NewRecorder()
+			fx.router.ServeHTTP(w, req)
+			require.Equal(t, http.StatusOK, w.Code)
+			var response struct {
+				Data                []map[string]any `json:"data"`
+				Total               int              `json:"total"`
+				HasMore             bool             `json:"has_more"`
+				HasNotGrantedSpaces *bool            `json:"has_not_granted_spaces"`
+			}
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &response))
+			require.NotNil(t, response.HasNotGrantedSpaces, "the flag is present even when false")
+			assert.Equal(t, tc.wantNotGranted, *response.HasNotGrantedSpaces)
+			assert.Equal(t, tc.wantTotal, response.Total)
+			assert.Equal(t, tc.wantMore, response.HasMore)
+			assert.Len(t, response.Data, tc.wantRows)
+			assert.NotContains(t, w.Body.String(), "space2", "an ungranted space or a later page is not disclosed")
+			assert.NotContains(t, w.Body.String(), "Other space")
+		})
+	}
+}
 
 // testTypeMintedBlockId relabels to "bbbb1" on the default (edit) shape.
 const testTypeMintedBlockId = "0000000000000000000bbbb1"

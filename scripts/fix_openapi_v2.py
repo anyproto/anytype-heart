@@ -15,6 +15,35 @@ SHARED_AUTH_PATHS = ("/auth/challenges", "/auth/api_keys")
 SHARED_AUTH_OPERATIONS = {"create_auth_challenge", "create_api_key"}
 
 
+def fix_shared_auth_grant(directory: pathlib.Path) -> None:
+    """Describe the always-present, nullable approval echo before copying it to v2."""
+    required = {
+        "CreateApiKeyResponse": ["api_key", "grant"],
+        "ApiKeyGrant": ["all_spaces", "space_ids", "permission"],
+    }
+    path = directory.parent / "v1" / "openapi.json"
+    doc = json.loads(path.read_text())
+    for name, fields in required.items():
+        schema = doc["components"]["schemas"][name]
+        if not set(fields).issubset(schema["properties"]):
+            raise ValueError(f"{name} is missing required grant response fields")
+        schema["required"] = fields
+    doc["components"]["schemas"]["ApiKeyGrant"]["type"] = ["object", "null"]
+    path.write_text(json.dumps(doc, indent=2) + "\n")
+
+    path = directory.parent / "v1" / "openapi.yaml"
+    lines = path.read_text().splitlines(keepends=True)
+    for name, fields in required.items():
+        start, end = yaml_mapping_block(lines, f"    {name}:\n")
+        block = lines[start:end]
+        if name == "ApiKeyGrant":
+            block = ["      type: [object, 'null']\n" if line.startswith("      type:") else line for line in block]
+        if not any(line.startswith("      required:") for line in block):
+            block.insert(1, f"      required: [{', '.join(fields)}]\n")
+        lines[start:end] = block
+    path.write_text("".join(lines))
+
+
 def shared_auth_document(directory: pathlib.Path) -> tuple[dict, dict]:
     source = json.loads((directory.parent / "v1" / "openapi.json").read_text())
     paths = {}
@@ -254,6 +283,7 @@ SCHEMA_REQUIRED = {
     # all four members too, so the same argument applies to it
     "UnauthorizedError": ["object", "status", "code", "message"],
     "ForbiddenError": ["object", "status", "code", "message"],
+    "ListSpacesResponse": ["data", "total", "offset", "limit", "has_more", "has_not_granted_spaces"],
 }
 
 
@@ -635,12 +665,50 @@ def fix_yaml(path: pathlib.Path) -> None:
     path.write_text("".join(lines))
 
 
+
+def fix_introduction(directory: pathlib.Path) -> None:
+    """Keep authored Markdown intact despite swag v2.0.0-rc4's info bug.
+
+    Its OpenAPI 3 parser reads @description.markdown but passes that attribute
+    to setspecInfo, which only handles @description and drops the value.
+    Keep the annotation for source discovery and inject the same file here.
+    """
+    source = pathlib.Path(__file__).resolve().parent.parent / "core/api/v2/markdown/api.md"
+    description = source.read_text()
+    if not description.strip():
+        raise ValueError(f"the v2 Introduction is empty: {source}")
+
+    path = directory / "openapi.json"
+    doc = json.loads(path.read_text())
+    doc["info"]["description"] = description
+    path.write_text(json.dumps(doc, indent=2) + "\n")
+
+    path = directory / "openapi.yaml"
+    lines = path.read_text().splitlines(keepends=True)
+    start, end = yaml_mapping_block(lines, "info:\n")
+    description_start = next((i for i in range(start + 1, end)
+                              if lines[i].startswith("  description:")), None)
+    if description_start is not None:
+        _, description_end = yaml_mapping_block(lines, lines[description_start])
+        del lines[description_start:description_end]
+    # A literal block keeps the generated YAML readable too. Preserve trailing
+    # newlines exactly so JSON, YAML, and the authored source all agree.
+    chomping = "+" if description.endswith("\n") else "-"
+    block = [f"  description: |{chomping}\n"]
+    block.extend("    " + line + "\n" if line else "\n"
+                 for line in description.splitlines())
+    lines[start + 1:start + 1] = block
+    path.write_text("".join(lines))
+
+
 def main() -> None:
     if len(sys.argv) != 2:
         raise SystemExit("usage: fix_openapi_v2.py <v2-openapi-directory>")
     directory = pathlib.Path(sys.argv[1])
+    fix_shared_auth_grant(directory)
     fix_json(directory / "openapi.json")
     fix_yaml(directory / "openapi.yaml")
+    fix_introduction(directory)
 
 
 if __name__ == "__main__":

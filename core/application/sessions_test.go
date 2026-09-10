@@ -973,7 +973,7 @@ func TestChallengeFlowGrant(t *testing.T) {
 		require.NotEmpty(t, challengeValue)
 
 		// when
-		_, appKey, err := s.LinkLocalSolveChallenge(&pb.RpcAccountLocalLinkSolveChallengeRequest{
+		_, appKey, returnedGrant, err := s.LinkLocalSolveChallenge(&pb.RpcAccountLocalLinkSolveChallengeRequest{
 			ChallengeId: challengeId,
 			Answer:      challengeValue,
 		})
@@ -985,6 +985,8 @@ func TestChallengeFlowGrant(t *testing.T) {
 		link, err := w.ReadAppLink(appKey)
 		require.NoError(t, err)
 		assert.Equal(t, testWalletGrant(), link.Grant)
+		assert.Equal(t, approvedGrant, returnedGrant)
+		assert.Equal(t, link.Grant.Proto(), returnedGrant)
 
 		apps, err := s.LinkLocalListApps()
 		require.NoError(t, err)
@@ -1005,7 +1007,7 @@ func TestChallengeFlowGrant(t *testing.T) {
 		want := &model.AccountAuthAppGrant{AllSpaces: true, Perm: model.AccountAuthAppGrant_ReadWrite}
 		challengeValue, _, err := s.LinkLocalApproveChallenge(clientInfo.ProcessPath, "", true, want)
 		require.NoError(t, err)
-		_, appKey, err := s.LinkLocalSolveChallenge(&pb.RpcAccountLocalLinkSolveChallengeRequest{
+		_, appKey, returnedGrant, err := s.LinkLocalSolveChallenge(&pb.RpcAccountLocalLinkSolveChallengeRequest{
 			ChallengeId: challengeId,
 			Answer:      challengeValue,
 		})
@@ -1016,6 +1018,8 @@ func TestChallengeFlowGrant(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, link.Grant)
 		assert.True(t, link.Grant.AllSpaces)
+		assert.Equal(t, want, returnedGrant)
+		assert.Equal(t, link.Grant.Proto(), returnedGrant)
 		assert.Empty(t, link.Grant.Spaces)
 		assert.Equal(t, walletComp.AppLinkPermsReadWrite, link.Grant.Perms)
 	})
@@ -1038,7 +1042,7 @@ func TestChallengeFlowGrant(t *testing.T) {
 		// ...the prompt stays answerable, and the corrected approval mints
 		challengeValue, _, err := s.LinkLocalApproveChallenge(clientInfo.ProcessPath, "", true, testProtoGrant())
 		require.NoError(t, err)
-		_, appKey, err := s.LinkLocalSolveChallenge(&pb.RpcAccountLocalLinkSolveChallengeRequest{
+		_, appKey, _, err := s.LinkLocalSolveChallenge(&pb.RpcAccountLocalLinkSolveChallengeRequest{
 			ChallengeId: challengeId,
 			Answer:      challengeValue,
 		})
@@ -1065,7 +1069,7 @@ func TestChallengeFlowGrant(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		_, appKey, err := s.LinkLocalSolveChallenge(&pb.RpcAccountLocalLinkSolveChallengeRequest{
+		_, appKey, _, err := s.LinkLocalSolveChallenge(&pb.RpcAccountLocalLinkSolveChallengeRequest{
 			ChallengeId: challengeId,
 			Answer:      challengeValue,
 		})

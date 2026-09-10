@@ -15,6 +15,7 @@ package api
 
 import (
 	"encoding/json"
+	"os"
 	"regexp"
 	"sort"
 	"strconv"
@@ -136,6 +137,19 @@ func TestV2DocumentProse(t *testing.T) {
 	// given: the generated v2 document, exactly as it is served
 	entries := collectProse(t, openapiV2JSON)
 
+	t.Run("introduction preserves the authored markdown", func(t *testing.T) {
+		want, err := os.ReadFile("v2/markdown/api.md")
+		require.NoError(t, err)
+		var doc struct {
+			Info struct {
+				Description string `json:"description"`
+			} `json:"info"`
+		}
+		require.NoError(t, json.Unmarshal(openapiV2JSON, &doc))
+		assert.Equal(t, string(want), doc.Info.Description,
+			"run make openapi after changing core/api/v2/markdown/api.md")
+	})
+
 	t.Run("no reference a reader outside this repository cannot follow", func(t *testing.T) {
 		for _, entry := range entries {
 			for _, rule := range proseRules {
@@ -164,7 +178,7 @@ func TestV2DocumentProse(t *testing.T) {
 			}
 			// then
 			assert.LessOrEqual(t, len(entry.text), maxProseDescription,
-				"%s is %d characters: shared behaviour belongs in the API description in core/api/v2/doc.go, and an empty description is a correct outcome",
+				"%s is %d characters: shared behaviour belongs in the API description in core/api/v2/markdown/api.md, and an empty description is a correct outcome",
 				entry.pointer, len(entry.text))
 		}
 	})

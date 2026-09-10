@@ -654,40 +654,6 @@
         },
         "type": "object"
       },
-      "ListResponse-SpaceRow": {
-        "properties": {
-          "data": {
-            "items": {
-              "$ref": "#/components/schemas/SpaceRow"
-            },
-            "type": "array",
-            "uniqueItems": false
-          },
-          "has_more": {
-            "type": "boolean"
-          },
-          "limit": {
-            "type": "integer"
-          },
-          "message": {
-            "type": "string"
-          },
-          "offset": {
-            "type": "integer"
-          },
-          "total": {
-            "type": "integer"
-          },
-          "warnings": {
-            "items": {
-              "$ref": "#/components/schemas/Issue"
-            },
-            "type": "array",
-            "uniqueItems": false
-          }
-        },
-        "type": "object"
-      },
       "ListResponse-TypeRow": {
         "properties": {
           "data": {
@@ -755,6 +721,52 @@
           }
         },
         "type": "object"
+      },
+      "ListSpacesResponse": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/SpaceRow"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "has_not_granted_spaces": {
+            "description": "True when other live user spaces are excluded by this key's grant, independently of the requested page. Ask the user to grant access if a requested space is missing.",
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "data",
+          "total",
+          "offset",
+          "limit",
+          "has_more",
+          "has_not_granted_spaces"
+        ]
       },
       "MemberRow": {
         "properties": {
@@ -1210,9 +1222,50 @@
             "description": "ApiKey is an opaque bearer key in the format `anytype_<body>_<checksum>`.\nNew keys match `\\banytype_[0-9A-Za-z]{40,60}_[0-9a-f]{8}\\b`; the body\nlength varies. Previously issued unprefixed base64 keys remain valid.",
             "example": "anytype_amfbcga7eywtio2cjfifoxtfnrzxvamir6lj3jflwk44br6o2xoa_3fe1d4b7",
             "type": "string"
+          },
+          "grant": {
+            "$ref": "#/components/schemas/ApiKeyGrant"
           }
         },
-        "type": "object"
+        "type": "object",
+        "required": [
+          "api_key",
+          "grant"
+        ]
+      },
+      "ApiKeyGrant": {
+        "description": "The grant approved by the user and persisted with this key; null for an unscoped key.",
+        "properties": {
+          "all_spaces": {
+            "description": "Covers all current and future user spaces when true; space_ids is then empty.",
+            "type": "boolean"
+          },
+          "permission": {
+            "description": "The access approved by the user, which may differ from what the app requested.",
+            "enum": [
+              "read",
+              "readwrite"
+            ],
+            "type": "string"
+          },
+          "space_ids": {
+            "description": "Full IDs of the granted spaces. An empty list alone never means all spaces.",
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": [
+          "object",
+          "null"
+        ],
+        "required": [
+          "all_spaces",
+          "space_ids",
+          "permission"
+        ]
       }
     },
     "securitySchemes": {
@@ -1325,14 +1378,14 @@
       "name": "Anytype Support",
       "url": "https://anytype.io/contact"
     },
-    "description": "The agent-oriented Anytype local API. An object is one AnyBlock JSON document rather than a tree of blocks, so a single GET returns a whole editable document and a single PATCH edits it.\nEverything this API names for itself is snake_case: path and query parameters, request and response fields, and the names of the PATCH ops. Things are addressed by name rather than by id: property keys, option names, and `type` as a type key. Object ids remain ids.\nProperty and type keys have two spellings, and a served body picks one. The default is the key: a snake_case slug minted when the property was created and frozen from then on, so it survives every rename. Store that spelling in a config, a script, an integration. `?keys=name` on a read serves the display-name vocabulary instead, \"Due date\" rather than due_date, which is the spelling to show a user their own words. Input needs no such choice: every channel accepts both, plus the forgiving fold between them, so dueDate, due-date, \"Due date\" and Дата выполнения all address the property they name. A spelling matching two properties is a 400 listing both, and an unknown one never creates anything.\nResponses are compact. A list or search row carries id, name, type and the properties you asked for, and never embeds a type object. Object references are always full and inline. An object read relabels machine-minted block ids to short document-local suffixes; `?ids=full` returns the export shape, with full ids everywhere, which is the shape to store and the shape to clone from.\nWherever a block or a view is addressed by id, a full id or a unique suffix of one is accepted. That is what lets a document read back in the compact shape be edited exactly as it came back. A suffix that matches several elements is refused, and the refusal lists the candidates.\nA read never fails on content it cannot represent. Whatever a representation cannot express is reported in `warnings` beside the result.\nEvery error has one shape: {status, code, message, issues:[{path, message, hint}]}. All four members are always present, and `issues` is an empty array when the refusal has no path to name, so reading it never has to test for absence. Each issue is addressed by path and names the values that would have been accepted, so a failed call tells you how to repair it. Some refusals answer before this API's own handlers and use a different shape instead: authentication, key scope, request origin, and the shared write rate limit answer in the older shared envelope; an unmatched route and an unhandled panic answer with no envelope at all.\nAuthentication uses an opaque Anytype API key as a bearer credential in the Authorization header; the key is not a JWT. It is never read from a query or body parameter. An unknown, revoked or expired key is a 401.\nTo obtain a key, POST /v2/auth/challenges with app_name. The user approves spaces and permissions in Anytype Desktop and receives a 4-digit code. POST /v2/auth/api_keys with challenge_id and code to receive api_key. These two endpoints require no existing key and use the shared authentication error envelope.\nDownload files and icons with GET /v2/spaces/{space_id}/files/{file_id}/content. Use a file id or the icon_image value from a space or member. The response contains bytes with the matching Content-Type, and supports Range and conditional requests using ETag or Last-Modified. File preconditions use standard status codes, including 304 and 412. Access is checked on every request.\nAn object read returns an `etag` in the body and an ETag header. A mutation takes that etag back in `If-Match`, where it is advisory: without the header the last write wins, and a stale one is a 409 carrying the current etag. Chats are the exception. They have no etag, because their order ids and `last_state_id` do that job.\nResource mutations and the data-free `POST /validate` read accept an `Idempotency-Key` header. The same key with the same request replays the stored response instead of repeating the operation. Search is a read carried by POST and takes no key.\nEvery resource mutation accepts `?dry_run=true`. It validates the request, reports what would have happened and writes nothing, answering 200 where the real call would answer 201. Where a dry run cannot tell the whole truth, the operation says so.\nA chat's messages can also be streamed: GET /v2/spaces/{space_id}/chats/{chat_id}/messages/stream opens a Server-Sent Events connection that begins with the last `limit` messages as `message_added` events and then delivers `message_added`, `message_updated`, `message_deleted`, `reactions_updated`, `state_updated` and `pinned_updated` as they happen. Idle connections are held open with comment lines, which clients ignore.\nEach streamed addition carries the chat state id as its event id, and the opening window is followed by one id-only frame carrying the highest such id. Send the last id back as `Last-Event-ID` to resume a dropped connection. Only additions replay: an edit, a deletion, a pin or a reaction does not restamp the state id, so your copy of that message stays as it was until you read the messages again.\n`resync_required` says the messages still held could not be shown to cover the gap since your `Last-Event-ID`, and whatever you hold outside the window that follows is unverified. It is a warning, not a guarantee of the converse: a message that reached the chat out of order, or a chat that was reindexed, can leave a gap the stream cannot detect. Re-read the messages when you need certainty. The event id is meaningful only against the node that issued it.\nEvery list is paginated with `?offset=` and `?limit=`, 25 rows by default. The response carries `total`, `has_more` and, when it truncated, a hint for narrowing the request. Chat messages page by order-id cursor instead.\nResource request bodies bind strictly: an unknown field is a 400 naming the field, never a value silently dropped. A document body is capped at 10 MiB, a structured body at 1 MiB.\nDeleting an object, a type or a property archives it: it moves to Bin, and the Anytype app can restore it. Deleting a chat message is not an archive, and neither is the attachment cleanup that can follow it.\nSchemas are discoverable at runtime, and strict enough to decode against: GET /v2/schemas lists the kinds, GET /v2/schemas/{kind} returns one, and GET /v2/schemas/ops/{op} returns the schema of a single edit op.\nA space is served by a short reference: the last six characters of the first half of its id. Every route that takes a space accepts either that short reference or the full `<cid>.<replicationKey>` id. Resolution tries an exact id first, then a unique suffix, among the spaces the key can see. An ambiguous reference is a 400 listing the candidates, and two spaces whose tails collide are both served in full.\nA short reference is an addressing convenience, not a stable identifier. It is unique only against the spaces the key can currently see, so joining a space whose tail collides retires it. `?ids=full` spells every space id in the response out in full. Use it whenever a reference will be stored outside this API: a config file, a script, a log line, another system.",
     "license": {
       "name": "Any Source Available License 1.0",
       "url": "https://github.com/anyproto/anytype-api/blob/main/LICENSE.md"
     },
     "termsOfService": "https://anytype.io/terms_of_use",
     "title": "Anytype API v2",
-    "version": "2025-11-08"
+    "version": "2025-11-08",
+    "description": "Anytype API v2 exposes an object as one editable **AnyBlock JSON document**.\nA single `GET` reads its properties and content; a single `PATCH` applies a\nbatch of edits. It is designed for agents, scripts, and integrations that\nneed to work with whole documents.\n\n> **Pre-release:** API v2 can change without a new API version. Use\n> [API v1](https://developers.anytype.io/docs/reference) for production\n> integrations that need a stable contract.\n\n## Connect and authenticate\n\nThe API runs locally with Anytype, at `http://127.0.0.1:31009` by default.\nBoth API majors share the same process, port, and API keys. v2 routes start\nwith `/v2/` and do not require the `Anytype-Version` request header.\n\nTo obtain a key through Desktop pairing:\n\n1. Send `POST /v2/auth/challenges` with an `app_name`.\n2. The user approves spaces and permissions in Anytype Desktop, then receives\n   a four-digit code.\n3. Send `POST /v2/auth/api_keys` with the `challenge_id` and `code`. The\n   response contains an `api_key` and the approved grant.\n\nThese two pairing endpoints require no existing key. For authenticated\nrequests, send the key in the `Authorization` header:\n\n```bash\ncurl http://127.0.0.1:31009/v2/auth/whoami \\\n  -H \"Authorization: Bearer $api_key\"\n```\n\nSet `api_key` to your key before running the example. The `whoami` response\ndescribes which spaces and permissions it grants.\n\nThe bearer credential is an opaque Anytype API key. It is not a JWT, and it\nis never read from a query or body parameter. An unknown, revoked, or expired\nkey returns `401`.\n\n## Objects, properties, and blocks\n\n- **Spaces** contain objects. Most routes are scoped to one space.\n- **Objects** combine typed `properties` with document content in `blocks`.\n- **Types** describe an object's shape and are addressed by a type key, such\n  as `page` or `task`.\n- **Queries** show a live selection of objects. **Collections** hold a\n  hand-curated list.\n- **Chats** store messages separately from document blocks.\n\nBlocks form a flat array in document order, with `indent` describing the\nhierarchy. Inline text formatting uses Markdown. The title and description\nlive in the `name` and `description` properties.\n\n| Task | Request |\n| --- | --- |\n| Find available spaces | `GET /v2/spaces` |\n| Search within a space | `POST /v2/spaces/{space_id}/search` |\n| Search across spaces | `POST /v2/search` |\n| Read a document | `GET /v2/spaces/{space_id}/objects/{object_id}` |\n| Create an object | `POST /v2/spaces/{space_id}/objects` |\n| Edit a document | `PATCH /v2/spaces/{space_id}/objects/{object_id}` |\n\n## Names and identifiers\n\nNames owned by v2 use `snake_case`: path and query parameters, request and\nresponse fields, and `PATCH` operation names. Content inside an AnyBlock\ndocument retains the format's own field vocabulary.\n\n### Property and type keys\n\nReads use stable keys such as `due_date` by default. A key is minted when\nthe property or type is created and stays the same after a rename. Use keys\nin scripts, configuration, and integrations.\n\nUse `?keys=name` to read display names such as `Due date` instead. This is\nuseful when showing users their own vocabulary.\n\nInputs accept keys, display names, and forgiving spelling variants. For\nexample, `due_date`, `dueDate`, `due-date`, and `Due date` can address the same\nproperty. An ambiguous spelling returns `400` with the candidates. An\nunknown spelling never creates a property implicitly.\n\nSelect options are addressed by their names. Object references remain full\nobject ids and are included inline.\n\n### Block and view ids\n\nDefault object reads shorten machine-minted block ids to document-local\nsuffixes. Use ids exactly as the read returns them when editing. Routes and\noperations that address a block or view accept a full id or a unique suffix;\nan ambiguous suffix is refused with a list of candidates.\n\nUse `?ids=full` for the export shape, with full ids throughout. This is the\nshape to store for a backup or use when cloning a document.\n\n### Space references\n\nA space is normally served with a short reference: the last six characters\nof the first half of its full `<cid>.<replicationKey>` id. Space-scoped routes\naccept either spelling. Resolution tries an exact id first, then a unique\nsuffix among the spaces the key can access.\n\nAn ambiguous reference returns `400` with the candidates. Spaces whose\nsuffixes collide are served with full ids.\n\nA short reference is only unique among the spaces currently visible to the\nkey. Joining another space can make it ambiguous. Use `?ids=full` whenever a\nspace reference will be stored outside the API.\n\n## Read and search efficiently\n\nObject reads return the editable document by default. For a smaller read:\n\n- `?outline=true` returns the block structure with shortened text.\n- `?include=properties` or `?include=blocks` selects part of the object.\n- `?block={block_id}` returns one subtree, marked as a partial document.\n- `?format=md` returns a read-only Markdown rendering.\n\nPartial documents and Markdown renderings cannot be sent back as whole\ndocument writes. Use `PATCH` operations to edit the object.\n\nList and search rows are compact: `id`, `name`, `type`, and the properties\nyou request. They do not embed a type object. Request the fields you need\ninstead of reading every object separately.\n\nLists use `offset` and `limit`, with 25 rows by default. Responses include\n`total` and `has_more`, plus a narrowing hint when truncated. Chat messages\nuse an order-id cursor instead.\n\n## Edit with a batch of operations\n\nSend an `ops` array to the object's `PATCH` endpoint. For example, this body\nchanges the title and appends a paragraph:\n\n```json\n{\n  \"ops\": [\n    {\n      \"op\": \"set_properties\",\n      \"set\": { \"name\": \"Meeting notes\" }\n    },\n    {\n      \"op\": \"insert_blocks\",\n      \"markdown\": \"Next step: review the proposal.\"\n    }\n  ]\n}\n```\n\nThe batch is atomic: an invalid operation rejects the whole request.\nDiscover the accepted fields for each operation at\n`GET /v2/schemas/ops/{op}`.\n\n### Concurrency, retries, and dry runs\n\n| Control | Behavior |\n| --- | --- |\n| `ETag` / `If-Match` | Object reads return an `etag` in the body and an `ETag` header. Send it back in `If-Match` to check for concurrent changes. A stale value returns `409` with the current etag. Without the header, the last write wins. |\n| `Idempotency-Key` | Resource mutations replay the stored response when retried with the same key and request. `POST /v2/validate` also accepts a key. Search requests do not. |\n| `?dry_run=true` | Resource mutations validate the request and report the outcome without committing. A dry run returns `200` where the committed create would return `201`. Each operation documents any limits to its dry-run result. |\n\nChats use order ids and `last_state_id` for concurrency, and have no etag.\n\nResource bodies reject unknown fields with `400` and name the offending\nfield. Document bodies are capped at 10 MiB; structured bodies at 1 MiB.\n\nDeleting an object, type, or property archives it in Bin, where the Anytype\napp can restore it. Object deletion is limited by creator provenance; see\nthe [delete operation](https://developers.anytype.io/docs/reference/v2/delete-object)\nfor its requirements. Deleting a chat message, including any attachment\ncleanup that follows, is not an archive.\n\n## Errors and warnings\n\nErrors from v2 handlers have this structure:\n\n```json\n{\n  \"status\": 400,\n  \"code\": \"...\",\n  \"message\": \"...\",\n  \"issues\": [\n    { \"path\": \"...\", \"message\": \"...\", \"hint\": \"...\" }\n  ]\n}\n```\n\nAll four top-level fields are always present. `issues` is an empty array\nwhen there is no path to name. Issues identify the failing input and can\ndescribe the allowed values or how to repair the request.\n\nSome refusals occur before v2 handlers run:\n\n- Pairing, authentication, key-scope checks, request-origin checks, and the\n  shared write rate limit use the older shared error envelope.\n- An unmatched route or an unhandled panic returns no error envelope.\n\nA read does not fail because it encounters content its representation\ncannot express. Such content is reported in `warnings` beside the result.\n\n## Stream chat messages\n\n`GET /v2/spaces/{space_id}/chats/{chat_id}/messages/stream` opens a\nServer-Sent Events connection. It starts with the last `limit` messages as\n`message_added` events, then delivers live changes:\n\n- `message_added`, `message_updated`, and `message_deleted`\n- `reactions_updated`, `state_updated`, and `pinned_updated`\n\nIdle connections stay open with comment lines that clients ignore.\n\nEach addition carries the chat state id as its event id. An id-only frame\nafter the opening window carries the highest such id. Send the last id back\nas `Last-Event-ID` to resume a dropped connection against the same node.\n\n**Only additions replay.** Edits, deletions, pins, and reactions do not\nchange that state id. Re-read messages to refresh changes made while the\nconnection was down.\n\nA `resync_required` event means the retained messages could not establish\ncoverage of the gap since your last event id. Content outside the following\nwindow is unverified. The absence of this event does not guarantee a\ncomplete history: out-of-order additions or reindexing can create gaps the\nstream cannot detect. Re-read messages when you need certainty.\n\n## Download files and icons\n\nUse `GET /v2/spaces/{space_id}/files/{file_id}/content` with a file id or the\n`icon_image` value from a space or member. The response contains bytes with\nthe matching `Content-Type`.\n\nDownloads support byte ranges and conditional requests with `ETag` or\n`Last-Modified`. File preconditions use standard status codes, including\n`304` and `412`. Access is checked on every request.\n\n## Discover schemas at runtime\n\n| Request | Result |\n| --- | --- |\n| `GET /v2/schemas` | Available schema kinds |\n| `GET /v2/schemas/{kind}` | The schema for one kind |\n| `GET /v2/schemas/ops/{op}` | The schema for one edit operation |\n\nThe schemas support strict constrained decoding. Read them before writing\nrequests, and use `POST /v2/validate` to check an AnyBlock document.\n"
   },
   "externalDocs": {
     "description": "OpenAPI",
@@ -1617,7 +1670,7 @@
     },
     "/v2/spaces": {
       "get": {
-        "description": "Only live spaces are listed. A space that is deleted, left, or still joining does not appear.",
+        "description": "Returns only live spaces accessible to this API key. A space that is deleted, left, or still joining does not appear. has_not_granted_spaces is true when other live user spaces are excluded by the key's grant; if a requested space is missing, ask the user to grant access. This flag is independent of pagination: total and has_more describe only accessible spaces.",
         "operationId": "list_spaces",
         "parameters": [
           {
@@ -1634,11 +1687,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ListResponse-SpaceRow"
+                  "$ref": "#/components/schemas/ListSpacesResponse"
                 }
               }
             },
-            "description": "Minimal space rows"
+            "description": "Granted space rows and whether other live spaces require access"
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
@@ -1655,7 +1708,7 @@
             "bearerauth": []
           }
         ],
-        "summary": "List the account's spaces",
+        "summary": "List spaces accessible to the API key",
         "tags": [
           "Spaces"
         ]
@@ -3174,7 +3227,7 @@
     },
     "/v2/spaces/{space_id}/files": {
       "post": {
-        "description": "Send multipart/form-data with a `file` field, or JSON {\"url\": …}. A source that refuses the fetch, or a URL that cannot be fetched, is a 400 naming /url; only a genuine server fault answers 500. The id that comes back is the one file blocks, image blocks and icon_image values reference.",
+        "description": "Send multipart/form-data with a `file` field, or JSON {\"url\": \u2026}. A source that refuses the fetch, or a URL that cannot be fetched, is a 400 naming /url; only a genuine server fault answers 500. The id that comes back is the one file blocks, image blocks and icon_image values reference.",
         "operationId": "upload_file",
         "parameters": [
           {
@@ -5735,7 +5788,7 @@
     },
     "/v2/auth/api_keys": {
       "post": {
-        "description": "Exchanges a challenge_id from /v2/auth/challenges and the code revealed after Desktop approval for an api_key. Use the key as a bearer credential in the Authorization header. It carries the spaces and permissions approved by the user. No existing API key is required.",
+        "description": "Exchanges a challenge_id from /v2/auth/challenges and the code revealed after Desktop approval for an api_key and the grant approved by the user. The grant states the permission, full space_ids, and whether all current and future user spaces are covered. Use the key as a bearer credential in the Authorization header. No existing API key is required.",
         "operationId": "create_api_key",
         "parameters": [
           {
@@ -5769,7 +5822,7 @@
                 }
               }
             },
-            "description": "The API key that can be used in the Authorization header for subsequent requests"
+            "description": "The API key and its approved grant"
           },
           "400": {
             "content": {

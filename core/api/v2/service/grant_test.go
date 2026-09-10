@@ -250,7 +250,7 @@ func TestListSpacesGrantIntersection(t *testing.T) {
 		want := []v2model.SpaceRow{{Id: "spaceA", Name: "Work"}}
 
 		// when
-		rows, total, hasMore, err := fx.ListSpaces(grantCtx(util.GrantPermsRead, "spaceA"), 0, 25)
+		rows, total, hasMore, hasNotGrantedSpaces, err := fx.ListSpaces(grantCtx(util.GrantPermsRead, "spaceA"), 0, 25)
 
 		// then: the grant intersects the space set — total counts only
 		// granted spaces, so even the COUNT of others is not disclosed
@@ -258,6 +258,7 @@ func TestListSpacesGrantIntersection(t *testing.T) {
 		assert.Equal(t, want, rows)
 		assert.Equal(t, 1, total)
 		assert.False(t, hasMore)
+		assert.True(t, hasNotGrantedSpaces)
 	})
 
 	t.Run("an allSpaces grant never enumerates the tech space", func(t *testing.T) {
@@ -281,12 +282,13 @@ func TestListSpacesGrantIntersection(t *testing.T) {
 		want := []v2model.SpaceRow{{Id: "spaceA", Name: "Work"}}
 
 		// when
-		rows, total, _, err := fx.ListSpaces(allSpacesGrantCtx(util.GrantPermsReadWrite), 0, 25)
+		rows, total, _, hasNotGrantedSpaces, err := fx.ListSpaces(allSpacesGrantCtx(util.GrantPermsReadWrite), 0, 25)
 
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, want, rows)
 		assert.Equal(t, 1, total)
+		assert.False(t, hasNotGrantedSpaces, "the tech space is not a missing user-space grant")
 	})
 }
 

@@ -321,6 +321,16 @@ func MarshalBlockSubtree(blocks []*model.Block, opts Options) (json.RawMessage, 
 	return codec.MarshalBlockSubtree(external, ExternalOptions(opts))
 }
 
+// WidgetViewIDs returns the primary dataview's labels from the object's
+// complete label plan, so selectors and view listings match its export.
+func WidgetViewIDs(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase, opts Options) (map[string]string, error) {
+	external, err := ToExternalSnapshot(snapshot)
+	if err != nil {
+		return nil, err
+	}
+	return codec.WidgetViewIDs(externalmodel.SmartBlockType(sbType), external, ExternalOptions(opts)), nil
+}
+
 func UnmarshalBlock(raw json.RawMessage, forcedId string, opts Options) ([]*model.Block, error) {
 	blocks, err := codec.UnmarshalBlock(raw, forcedId, ExternalOptions(opts))
 	if err != nil {

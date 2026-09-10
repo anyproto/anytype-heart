@@ -2194,8 +2194,13 @@ Design: `docs/superpowers/specs/2026-08-06-api-key-scoping-design.md`.
   any other name must fail CI rather than slide into a global class.
 - **Fan-out + backstop**: the two service-filtered surfaces intersect
   their space set with the ctx grant at the INPUT (`spaceRefs`,
-  `ListSpaces`) — not the output rows, so a per-space warning cannot
-  disclose a non-granted space's existence. The service layer carries
+  `ListSpaces`). The space-list envelope includes `has_not_granted_spaces`:
+  true when at least one other live user space is excluded by the grant.
+  It reveals no excluded IDs, names, or count, and is independent of
+  pagination; `total` and `has_more` count only accessible spaces. Deleted,
+  left, still-joining, and internal tech spaces do not set this flag.
+  An agent missing a requested space can use it to ask for access.
+  The service layer carries
   BOTH backstop halves, in the gate's precedence (space first, then
   verb): `ensureSpace` consults the grant before its tech-space
   admission, and the write entry points go through

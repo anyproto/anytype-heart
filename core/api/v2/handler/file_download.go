@@ -81,9 +81,9 @@ func DownloadFileHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Description	Returns the file or icon headers without a response body. Accepts the same ids as file download.
 //	@Id				head_file
 //	@Tags			Files
-//	@Param			space_id	path	string	true	"Space id"
-//	@Param			file_id		path	string	true	"File or icon id"
-//	@Param			width		query	int		false	"Image variant width; zero selects the original"	minimum(0)
+//	@Param			space_id	path		string			true	"Space id"
+//	@Param			file_id		path		string			true	"File or icon id"
+//	@Param			width		query		int				false	"Image variant width; zero selects the original"	minimum(0)
 //	@Success		200			{string}	string			"File headers; no response body"
 //	@Success		304			{string}	string			"Not modified; no response body"
 //	@Failure		404			{object}	v2model.Error	"File or icon not found in this space"

@@ -38,7 +38,9 @@ func newLinkFixture(t *testing.T) *linkFixture {
 	walletMock.EXPECT().Name().Return(walletComp.CName).Maybe()
 	walletMock.EXPECT().Init(nil).Return(nil).Maybe()
 	walletMock.EXPECT().PersistAppLink(mock.Anything, mock.Anything, mock.Anything, mock.Anything).
-		Return(&walletComp.AppLinkInfo{AppHash: "hash", AppKey: "appKey"}, nil).Maybe()
+		RunAndReturn(func(_ string, _ model.AccountAuthLocalApiScope, _ int64, grant *walletComp.AppLinkGrant) (*walletComp.AppLinkInfo, error) {
+			return &walletComp.AppLinkInfo{AppHash: "hash", AppKey: "appKey", Grant: grant}, nil
+		}).Maybe()
 
 	a := new(app.App)
 	a.Register(walletMock)
@@ -135,12 +137,13 @@ func TestLinkLocalApproveChallenge(t *testing.T) {
 		assert.Len(t, fx.events, before, "approval must not broadcast")
 
 		// ...and it is the code that pairs
-		_, appKey, err := fx.LinkLocalSolveChallenge(&pb.RpcAccountLocalLinkSolveChallengeRequest{
+		_, appKey, grant, err := fx.LinkLocalSolveChallenge(&pb.RpcAccountLocalLinkSolveChallengeRequest{
 			ChallengeId: id,
 			Answer:      code,
 		})
 		require.NoError(t, err)
 		assert.Equal(t, "appKey", appKey)
+		assert.Equal(t, testProtoGrant(), grant, "the solver echoes the persisted approval")
 
 		// ...and the prompt is dismissed by naming the caller, not the code
 		hides := fx.hides()

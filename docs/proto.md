@@ -4459,6 +4459,7 @@ limitedScopeMethods, so authorization admits full scope alone.
 | error | [Rpc.Account.LocalLink.SolveChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error) |  |  |
 | sessionToken | [string](#string) |  | ephemeral token for the session |
 | appKey | [string](#string) |  | persistent key, that can be used to restore session via CreateSession |
+| grant | [model.Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant) |  | the user&#39;s approved grant persisted with the app key; unset for an unscoped key |
 
 
 

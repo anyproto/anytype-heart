@@ -22,7 +22,7 @@ import (
 //	@Param			request			body		apimodel.CreateChallengeRequest		true	"The request body containing the app name"
 //	@Success		201				{object}	apimodel.CreateChallengeResponse	"The challenge ID associated with the started challenge"
 //	@Failure		400				{object}	util.ValidationError				"Bad request"
-//	@Failure		403				{object}	util.ForbiddenError				"Untrusted request origin or host"
+//	@Failure		403				{object}	util.ForbiddenError					"Untrusted request origin or host"
 //	@Failure		500				{object}	util.ServerError					"Internal server error"
 //	@Router			/v1/auth/challenges [post]
 func CreateChallengeHandler(s *service.Service) gin.HandlerFunc {
@@ -53,16 +53,16 @@ func CreateChallengeHandler(s *service.Service) gin.HandlerFunc {
 // CreateApiKeyHandler creates a new api key using a code and challenge ID
 //
 //	@Summary		Create API Key
-//	@Description	Exchanges a challenge_id from /v1/auth/challenges and the code revealed after Desktop approval for an api_key. Use the key as a bearer credential in the Authorization header. It carries the spaces and permissions approved by the user. No existing API key is required.
+//	@Description	Exchanges a challenge_id from /v1/auth/challenges and the code revealed after Desktop approval for an api_key and the grant approved by the user. The grant states the permission, full space_ids, and whether all current and future user spaces are covered. Use the key as a bearer credential in the Authorization header. No existing API key is required.
 //	@ID				create_api_key
 //	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
 //	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-11-08)
 //	@Param			request			body		apimodel.CreateApiKeyRequest	true	"The request body containing the challenge ID and code"
-//	@Success		201				{object}	apimodel.CreateApiKeyResponse	"The API key that can be used in the Authorization header for subsequent requests"
+//	@Success		201				{object}	apimodel.CreateApiKeyResponse	"The API key and its approved grant"
 //	@Failure		400				{object}	util.ValidationError			"Bad request"
-//	@Failure		403				{object}	util.ForbiddenError			"Untrusted request origin or host"
+//	@Failure		403				{object}	util.ForbiddenError				"Untrusted request origin or host"
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Router			/v1/auth/api_keys [post]
 func CreateApiKeyHandler(s *service.Service) gin.HandlerFunc {
@@ -74,7 +74,7 @@ func CreateApiKeyHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		apiKey, err := s.CreateApiKey(c.Request.Context(), req.ChallengeId, req.Code)
+		result, err := s.CreateApiKey(c.Request.Context(), req.ChallengeId, req.Code)
 		errCode := util.MapErrorCode(err,
 			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
 			util.ErrToCode(service.ErrFailedAuthenticate, http.StatusInternalServerError),
@@ -86,6 +86,6 @@ func CreateApiKeyHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusCreated, apimodel.CreateApiKeyResponse{ApiKey: apiKey})
+		c.JSON(http.StatusCreated, result)
 	}
 }

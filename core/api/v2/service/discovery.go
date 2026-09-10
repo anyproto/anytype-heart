@@ -34,10 +34,10 @@ import (
 // so the gate lets it through as service-filtered and the intersection with
 // the ctx grant happens here — a non-granted space's row (id, name,
 // description alike) must never leave this method.
-func (s *Service) ListSpaces(ctx context.Context, offset, limit int) ([]v2model.SpaceRow, int, bool, error) {
-	rows, err := s.liveSpaceRows(ctx)
+func (s *Service) ListSpaces(ctx context.Context, offset, limit int) (rows []v2model.SpaceRow, total int, hasMore, hasNotGrantedSpaces bool, err error) {
+	rows, hasNotGrantedSpaces, err = s.liveSpaceRowsWithGrantInfo(ctx)
 	if err != nil {
-		return nil, 0, false, err
+		return nil, 0, false, false, err
 	}
 	// §8.35: the census runs over the WHOLE visible set, before pagination —
 	// a page must not hand out a tail a space on another page also claims.
@@ -54,9 +54,9 @@ func (s *Service) ListSpaces(ctx context.Context, offset, limit int) ([]v2model.
 		}
 	}
 
-	total := len(rows)
+	total = len(rows)
 	page, hasMore := pagination.Paginate(rows, offset, limit)
-	return page, total, hasMore, nil
+	return page, total, hasMore, hasNotGrantedSpaces, nil
 }
 
 // liveSpaceRows is the ONE enumeration of the spaces a caller can SEE: the
@@ -72,6 +72,13 @@ func (s *Service) ListSpaces(ctx context.Context, offset, limit int) ([]v2model.
 // Rows carry the FULL id: shortening is a serving decision, made by each
 // caller of this method.
 func (s *Service) liveSpaceRows(ctx context.Context) ([]v2model.SpaceRow, error) {
+	rows, _, err := s.liveSpaceRowsWithGrantInfo(ctx)
+	return rows, err
+}
+
+// liveSpaceRowsWithGrantInfo also reports whether the grant hid any live
+// user spaces. Their identities and count remain outside the response.
+func (s *Service) liveSpaceRowsWithGrantInfo(ctx context.Context) ([]v2model.SpaceRow, bool, error) {
 	grant := util.ApiGrantFromCtx(ctx)
 	records, err := s.store.SpaceIndex(s.techSpaceId).Query(database.Query{
 		Filters: []database.FilterRequest{{
@@ -81,11 +88,12 @@ func (s *Service) liveSpaceRows(ctx context.Context) ([]v2model.SpaceRow, error)
 		}},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("query space views: %w", err)
+		return nil, false, fmt.Errorf("query space views: %w", err)
 	}
 
 	rows := make([]v2model.SpaceRow, 0, len(records))
 	seen := map[string]bool{}
+	hasNotGrantedSpaces := false
 	for _, record := range records {
 		id := record.Details.GetString(bundle.RelationKeyTargetSpaceId)
 		if id == "" || seen[id] {
@@ -104,6 +112,9 @@ func (s *Service) liveSpaceRows(ctx context.Context) ([]v2model.SpaceRow, error)
 		// refuses — the mirror/gate divergence the anti-drift test exists
 		// to catch.
 		if grant != nil && util.SpaceGrantRefusal(grant, id, s.techSpaceId) != "" {
+			if id != s.techSpaceId {
+				hasNotGrantedSpaces = true
+			}
 			continue
 		}
 		seen[id] = true
@@ -115,7 +126,7 @@ func (s *Service) liveSpaceRows(ctx context.Context) ([]v2model.SpaceRow, error)
 		})
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].Id < rows[j].Id })
-	return rows, nil
+	return rows, hasNotGrantedSpaces, nil
 }
 
 // ListMembers returns minimal member rows (active participants) — agents

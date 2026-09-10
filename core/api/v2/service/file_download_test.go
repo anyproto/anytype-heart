@@ -92,7 +92,7 @@ func TestFileDownloadRawIcons(t *testing.T) {
 				space, err := fx.GetSpace(ctx, testSpaceId)
 				require.NoError(t, err)
 				assert.Equal(t, testRawIconId, space.IconImage)
-				spaces, _, _, err := fx.ListSpaces(ctx, 0, 25)
+				spaces, _, _, _, err := fx.ListSpaces(ctx, 0, 25)
 				require.NoError(t, err)
 				require.Len(t, spaces, 1)
 				assert.Equal(t, testRawIconId, spaces[0].IconImage)

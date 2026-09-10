@@ -278,7 +278,7 @@ func TestSpacesSurfaceServesShortRefs(t *testing.T) {
 		}
 
 		// when
-		rows, total, _, err := fx.ListSpaces(context.Background(), 0, 25)
+		rows, total, _, _, err := fx.ListSpaces(context.Background(), 0, 25)
 
 		// then
 		require.NoError(t, err)
@@ -293,7 +293,7 @@ func TestSpacesSurfaceServesShortRefs(t *testing.T) {
 		fx.registerSpaceView(t, twinPersonal, "Personal twin", "")
 
 		// when
-		rows, _, _, err := fx.ListSpaces(context.Background(), 0, 25)
+		rows, _, _, _, err := fx.ListSpaces(context.Background(), 0, 25)
 
 		// then
 		require.NoError(t, err)
@@ -310,7 +310,7 @@ func TestSpacesSurfaceServesShortRefs(t *testing.T) {
 		fx.registerSpaceView(t, twinPersonal, "Personal twin", "")
 
 		// when
-		first, _, hasMore, err := fx.ListSpaces(context.Background(), 0, 1)
+		first, _, hasMore, _, err := fx.ListSpaces(context.Background(), 0, 1)
 
 		// then
 		require.NoError(t, err)
@@ -358,8 +358,8 @@ func TestSpacesSurfaceServesFullRefsOnRequest(t *testing.T) {
 		}
 
 		// when
-		full, _, _, err := fx.ListSpaces(fullIds(), 0, 25)
-		short, _, _, err2 := fx.ListSpaces(context.Background(), 0, 25)
+		full, _, _, _, err := fx.ListSpaces(fullIds(), 0, 25)
+		short, _, _, _, err2 := fx.ListSpaces(context.Background(), 0, 25)
 
 		// then
 		require.NoError(t, err)

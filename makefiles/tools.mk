@@ -34,7 +34,7 @@ endef
 openapi: setup-swag
 	@echo 'Generating openapi docs...'
 	@deps/swag init --v3.1 -q --outputTypes json,yaml --instanceName v1 --exclude core/api/v2 -d core/api -g service.go -o $(OPENAPI_DOCS_DIR)/v1
-	@deps/swag init --v3.1 -q --outputTypes json,yaml --instanceName v2 -d core/api/v2,core/api/util,core/api/pagination -g doc.go -o $(OPENAPI_DOCS_DIR)/v2
+	@deps/swag init --v3.1 -q --outputTypes json,yaml --instanceName v2 -d core/api/v2,core/api/util,core/api/pagination -g doc.go --markdownFiles core/api/v2/markdown -o $(OPENAPI_DOCS_DIR)/v2
 	@echo 'Removing package prefixes from definitions...'
 	$(call strip-openapi-prefixes,$(OPENAPI_DOCS_DIR)/v1,v1,apimodel)
 	$(call strip-openapi-prefixes,$(OPENAPI_DOCS_DIR)/v2,v2,v2model)

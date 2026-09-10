@@ -24,6 +24,16 @@ The `/v1/auth/*` paths shown below remain aliases of the same handlers, with
 the same request and response bodies. Neither version requires an existing key
 for pairing; Desktop approval is required before the code can be exchanged.
 
+The key response includes the persisted approval as
+`{"api_key":"…","grant":{"all_spaces":false,"space_ids":["<full-space-id>"],"permission":"read"}}`.
+An all-spaces approval returns `all_spaces: true` and an empty `space_ids` array;
+the flag covers current and future user spaces. A legacy unscoped approval is
+represented as `grant: null`. `GET /v2/spaces` lists only live spaces accessible
+to that key. Its `has_not_granted_spaces` flag reports whether other live user
+spaces are excluded by the grant, independently of pagination. If an agent
+cannot find a requested space and the flag is true, it should ask the user to
+grant access.
+
 ```
 external app          heart                         desktop client
      │                                                    │

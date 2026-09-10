@@ -80,6 +80,26 @@ func stringSet(values ...string) map[string]bool {
 	return out
 }
 
+func TestOpenAPIGrantDiscoveryResponses(t *testing.T) {
+	for _, name := range []string{"../docs/v2/openapi.json", "../docs/v2/openapi.yaml"} {
+		body, err := os.ReadFile(name)
+		require.NoError(t, err)
+		var doc responseContractDocument
+		if strings.HasSuffix(name, ".json") {
+			require.NoError(t, json.Unmarshal(body, &doc))
+		} else {
+			require.NoError(t, yaml.Unmarshal(body, &doc))
+		}
+		spaces := doc.Components.Schemas["ListSpacesResponse"]
+		assert.Contains(t, spaces.Properties, "has_not_granted_spaces", name)
+		assert.Contains(t, spaces.Required, "has_not_granted_spaces", name)
+		assert.Contains(t, doc.Components.Schemas["CreateApiKeyResponse"].Required, "grant", name)
+		assert.ElementsMatch(t, []string{"all_spaces", "space_ids", "permission"}, doc.Components.Schemas["ApiKeyGrant"].Required, name)
+		response := doc.Paths["/v2/spaces"]["get"].Responses["200"]
+		assert.Equal(t, "#/components/schemas/ListSpacesResponse", response.Content["application/json"].Schema.Ref, name)
+	}
+}
+
 func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	jsonBody, err := os.ReadFile("../docs/v2/openapi.json")
 	require.NoError(t, err)

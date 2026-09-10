@@ -10,28 +10,30 @@ import (
 	v2service "github.com/anyproto/anytype-heart/core/api/v2/service"
 )
 
-// ListSpacesHandler lists spaces as minimal rows
+// ListSpacesHandler lists the live spaces granted to the API key.
 //
-//	@Summary		List the account's spaces
-//	@Description	Only live spaces are listed. A space that is deleted, left, or still joining does not appear.
+//	@Summary		List spaces accessible to the API key
+//	@Description	Returns only live spaces accessible to this API key. A space that is deleted, left, or still joining does not appear. has_not_granted_spaces is true when other live user spaces are excluded by the key's grant; if a requested space is missing, ask the user to grant access. This flag is independent of pagination: total and has_more describe only accessible spaces.
 //	@Id				list_spaces
 //	@Tags			Spaces
 //	@Produce		json
-//	@Param			ids	query		string									false	"compact (default) is the short space reference; full is the whole <cid>.<replicationKey> id, and the spelling to store outside this API"
-//	@Success		200	{object}	v2model.ListResponse[v2model.SpaceRow]	"Minimal space rows"
+//	@Param			ids	query		string						false	"compact (default) is the short space reference; full is the whole <cid>.<replicationKey> id, and the spelling to store outside this API"
+//	@Success		200	{object}	v2model.ListSpacesResponse	"Granted space rows and whether other live spaces require access"
 //	@Security		bearerauth
 //	@Router			/v2/spaces [get]
 func ListSpacesHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		offset := c.GetInt(pagination.QueryParamOffset)
 		limit := c.GetInt(pagination.QueryParamLimit)
-		rows, total, hasMore, err := s.ListSpaces(c.Request.Context(), offset, limit)
+		rows, total, hasMore, hasNotGrantedSpaces, err := s.ListSpaces(c.Request.Context(), offset, limit)
 		if err != nil {
 			RespondError(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, v2model.NewListResponse(rows, total, offset, limit, hasMore,
-			"request the next offset"))
+		c.JSON(http.StatusOK, v2model.ListSpacesResponse{
+			ListResponse:        v2model.NewListResponse(rows, total, offset, limit, hasMore, "request the next offset"),
+			HasNotGrantedSpaces: hasNotGrantedSpaces,
+		})
 	}
 }
 

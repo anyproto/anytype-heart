@@ -70,7 +70,7 @@ func TestRouter_AuthRoute(t *testing.T) {
 			require.JSONEq(t, `{"challenge_id":"challenge-id"}`, challenge.Body.String())
 			key := post("/auth/api_keys", `{"challenge_id":"challenge-id","code":"1234"}`)
 			require.Equal(t, http.StatusCreated, key.Code)
-			require.JSONEq(t, `{"api_key":"issued-key"}`, key.Body.String())
+			require.JSONEq(t, `{"api_key":"issued-key","grant":null}`, key.Body.String())
 
 			// A key obtained through either prefix authenticates on v2 with
 			// the grant returned by the account, without another pairing step.
@@ -87,6 +87,37 @@ func TestRouter_AuthRoute(t *testing.T) {
 			require.Contains(t, whoami.Body.String(), `"permission":"read"`)
 			require.Contains(t, whoami.Body.String(), `"scoped":true`)
 		})
+	}
+}
+
+func TestRouter_ApiKeyApprovedGrant(t *testing.T) {
+	for _, version := range []string{"/v1", "/v2"} {
+		for _, tc := range []struct {
+			name  string
+			grant *model.AccountAuthAppGrant
+			want  string
+		}{
+			{"selected spaces", &model.AccountAuthAppGrant{SpaceIds: []string{"spaceA", "spaceB"}, Perm: model.AccountAuthAppGrant_Read},
+				`{"all_spaces":false,"space_ids":["spaceA","spaceB"],"permission":"read"}`},
+			{"all spaces", &model.AccountAuthAppGrant{AllSpaces: true, Perm: model.AccountAuthAppGrant_ReadWrite},
+				`{"all_spaces":true,"space_ids":[],"permission":"readwrite"}`},
+		} {
+			t.Run(version+"/"+tc.name, func(t *testing.T) {
+				fx := newV2ServerFixture(t)
+				fx.mwMock.On("AccountLocalLinkSolveChallenge", mock.Anything, &pb.RpcAccountLocalLinkSolveChallengeRequest{
+					ChallengeId: "challenge-id", Answer: "1234",
+				}).Return(&pb.RpcAccountLocalLinkSolveChallengeResponse{
+					AppKey: "issued-key", Grant: tc.grant, SessionToken: "private-session",
+				}).Once()
+				req := httptest.NewRequest(http.MethodPost, version+"/auth/api_keys", strings.NewReader(`{"challenge_id":"challenge-id","code":"1234"}`))
+				req.Host = localApiHost
+				req.Header.Set("Content-Type", "application/json")
+				w := httptest.NewRecorder()
+				fx.Engine().ServeHTTP(w, req)
+				require.Equal(t, http.StatusCreated, w.Code)
+				require.JSONEq(t, `{"api_key":"issued-key","grant":`+tc.want+`}`, w.Body.String())
+			})
+		}
 	}
 }
 
