@@ -3,6 +3,7 @@ package anytype.model;
 option go_package = "pkg/lib/pb/model";
 
 import "google/protobuf/struct.proto";
+import "pkg/lib/pb/model/protos/export_report.proto";
 
 message SmartBlockSnapshotBase {
     repeated Block blocks = 1;
@@ -1154,6 +1155,9 @@ message Notification {
     message Export {
         Code errorCode = 2;
         model.Export.Format exportType = 3;
+        ExportReport report = 4;
+        // Selected destination directory for this local export.
+        string path = 5;
         enum Code {
             NULL = 0;
             UNKNOWN_ERROR = 1;
@@ -1232,6 +1236,11 @@ message Export {
         DOT = 3;
         SVG = 4;
         GRAPH_JSON = 5;
+        // AnyBlockV2 is the native AnyBlock v2 bundle (pkg/lib/anyblockjson
+        // format/v2/SPEC.md): a directory of `<id>.anyblock.json` documents beside an
+        // index.json and properties.json. Additive — existing values keep
+        // their numbers, so a client that does not know it is unaffected.
+        AnyBlockV2 = 6;
     }
 }
 
