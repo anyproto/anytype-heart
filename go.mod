@@ -6,7 +6,7 @@ require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
 	github.com/PuerkitoBio/goquery v1.10.2
 	github.com/ahmetb/govvv v0.3.0
-	github.com/anyproto/any-block v0.0.0-20260903213505-8086a5d0c58a
+	github.com/anyproto/any-block v0.0.0-20260910063323-12807aa201e3
 	github.com/anyproto/any-store v0.4.7
 	github.com/anyproto/any-sync v0.13.1
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb

@@ -21,29 +21,30 @@ import (
 )
 
 const (
-	FormatVersion      = codec.FormatVersion
-	IndexFileName      = codec.IndexFileName
-	PropertiesFileName = codec.PropertiesFileName
+	IssueCodeTypeIdentityMismatch = codec.IssueCodeTypeIdentityMismatch
+	FormatVersion                 = codec.FormatVersion
+	IndexFileName                 = codec.IndexFileName
+	PropertiesFileName            = codec.PropertiesFileName
 )
 
 type (
-	Issue                   = codec.Issue
-	ValidationError         = codec.ValidationError
-	Legend                  = codec.Legend
-	KeyVocabulary           = codec.KeyVocabulary
-	ScopedKeyVocabulary     = codec.ScopedKeyVocabulary
-	KeyTermFacts            = codec.KeyTermFacts
-	BundledKeyVocabulary    = codec.BundledKeyVocabulary
-	ObjectNameResolver      = codec.ObjectNameResolver
-	ObjectExistenceResolver = codec.ObjectExistenceResolver
-	ObjectDeletionResolver  = codec.ObjectDeletionResolver
-	ParticipantResolver     = codec.ParticipantResolver
-	TypeResolver            = codec.TypeResolver
-	OptionDefinition        = codec.OptionDefinition
-	TypeProperty            = codec.TypeProperty
-	RecommendedList         = codec.RecommendedList
-	Index                   = codec.Index
-	PropertyDictionary      = codec.PropertyDictionary
+	TypeIdentityMismatchError = codec.TypeIdentityMismatchError
+	Issue                     = codec.Issue
+	ValidationError           = codec.ValidationError
+	Legend                    = codec.Legend
+	KeyVocabulary             = codec.KeyVocabulary
+	ScopedKeyVocabulary       = codec.ScopedKeyVocabulary
+	KeyTermFacts              = codec.KeyTermFacts
+	BundledKeyVocabulary      = codec.BundledKeyVocabulary
+	ObjectNameResolver        = codec.ObjectNameResolver
+	ObjectExistenceResolver   = codec.ObjectExistenceResolver
+	ObjectDeletionResolver    = codec.ObjectDeletionResolver
+	TypeResolver              = codec.TypeResolver
+	OptionDefinition          = codec.OptionDefinition
+	TypeProperty              = codec.TypeProperty
+	RecommendedList           = codec.RecommendedList
+	Index                     = codec.Index
+	PropertyDictionary        = codec.PropertyDictionary
 )
 
 var (
@@ -108,13 +109,12 @@ type PropertyResolver interface {
 // Options preserves the existing Heart call surface while ExternalOptions
 // translates it to the repository-owned codec types.
 type Options struct {
-	ResolveFormat       FormatResolver
-	ResolveOptions      OptionResolver
-	ResolveProperties   PropertyResolver
-	ResolveParticipants ParticipantResolver
-	ResolveObjectNames  ObjectNameResolver
-	SpaceId             string
-	RefNames            bool
+	ResolveFormat      FormatResolver
+	ResolveOptions     OptionResolver
+	ResolveProperties  PropertyResolver
+	ResolveObjectNames ObjectNameResolver
+	SpaceId            string
+	NetworkId          string
 	// TableColumnHeaders enables the external codec's API-read annotation.
 	TableColumnHeaders bool
 	Keys               KeyVocabulary
@@ -205,18 +205,19 @@ func fromExternalPropertyDefinition(def codec.PropertyDefinition) PropertyDefini
 // ExternalOptions is used by Heart-only adapters such as bundle composition.
 func ExternalOptions(opts Options) codec.Options {
 	out := codec.Options{
-		ResolveParticipants: opts.ResolveParticipants,
-		ResolveObjectNames:  opts.ResolveObjectNames,
-		SpaceId:             opts.SpaceId,
-		RefNames:            opts.RefNames,
-		TableColumnHeaders:  opts.TableColumnHeaders,
-		Keys:                opts.Keys,
-		Legend:              opts.Legend,
-		OmitIds:             opts.OmitIds,
-		CompactBlockLabels:  opts.CompactBlockLabels || opts.CompactIds,
-		GenerateId:          opts.GenerateId,
-		NormalizeIndent:     opts.NormalizeIndent,
-		OnWarning:           opts.OnWarning,
+		// Heart exports always carry the metadata needed to recover remote files.
+		IncludeFileRemote:  true,
+		ResolveObjectNames: opts.ResolveObjectNames,
+		SpaceId:            opts.SpaceId,
+		NetworkId:          opts.NetworkId,
+		TableColumnHeaders: opts.TableColumnHeaders,
+		Keys:               opts.Keys,
+		Legend:             opts.Legend,
+		OmitIds:            opts.OmitIds,
+		CompactBlockLabels: opts.CompactBlockLabels || opts.CompactIds,
+		GenerateId:         opts.GenerateId,
+		NormalizeIndent:    opts.NormalizeIndent,
+		OnWarning:          opts.OnWarning,
 	}
 	if opts.ResolveFormat != nil {
 		out.ResolveFormat = func(key externaldomain.RelationKey) (externalmodel.RelationFormat, bool) {

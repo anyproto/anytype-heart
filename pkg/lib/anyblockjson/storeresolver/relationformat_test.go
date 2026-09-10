@@ -48,7 +48,7 @@ func TestTypeResolver_TranslatesIdsAndKeys(t *testing.T) {
 	assert.Equal(t, "task", key)
 
 	// and honest misses
-	_, ok = fx.TypeKeyById("type-vanished")
+	_, ok = fx.TypeKeyById("missing-type-id")
 	assert.False(t, ok, "an id nothing serves must miss, not invent")
 	_, ok = fx.TypeIdByKey("vanishedKey")
 	assert.False(t, ok)
@@ -76,7 +76,7 @@ func TestRelationDocumentTranslatesTargetTypes(t *testing.T) {
 			"relationFormatObjectTypes": {Kind: &types.Value_ListValue{ListValue: &types.ListValue{
 				Values: []*types.Value{
 					{Kind: &types.Value_StringValue{StringValue: "type-person"}},
-					{Kind: &types.Value_StringValue{StringValue: "type-vanished"}},
+					{Kind: &types.Value_StringValue{StringValue: "missing-type-id"}},
 				},
 			}}},
 		}},
@@ -88,21 +88,17 @@ func TestRelationDocumentTranslatesTargetTypes(t *testing.T) {
 	_, got, err := anyblockjson.Unmarshal(data, fx.Options())
 	require.NoError(t, err)
 
-	// then: the resolved key on the wire in its §3 name spelling, with the
-	// legend entry that inverts it — and the unresolvable id verbatim, its
-	// own address, never dropped
+	// The resolved type uses its derived id; an unresolvable object id
+	// passes through unchanged.
 	var doc struct {
 		PropertySettings struct {
 			Format      string   `json:"format"`
 			ObjectTypes []string `json:"object_types"`
 		} `json:"property_settings"`
-		TypeKeys map[string]string `json:"type_internal_keys"`
 	}
 	require.NoError(t, json.Unmarshal(data, &doc))
 	assert.Equal(t, "objects", doc.PropertySettings.Format)
-	assert.Equal(t, []string{"Person", "type-vanished"}, doc.PropertySettings.ObjectTypes)
-	assert.Equal(t, customTypeKey, doc.TypeKeys["Person"],
-		"the name owes the legend entry that inverts it (§3)")
+	assert.Equal(t, []string{"type-" + customTypeKey, "missing-type-id"}, doc.PropertySettings.ObjectTypes)
 
 	// and ids back in the snapshot
 	gotTargets := got.Details.Fields["relationFormatObjectTypes"].GetListValue()
@@ -111,7 +107,7 @@ func TestRelationDocumentTranslatesTargetTypes(t *testing.T) {
 	for _, v := range gotTargets.Values {
 		values = append(values, v.GetStringValue())
 	}
-	assert.Equal(t, []string{"type-person", "type-vanished"}, values)
+	assert.Equal(t, []string{"type-person", "missing-type-id"}, values)
 }
 
 // A relation document from a space whose type listing is empty still

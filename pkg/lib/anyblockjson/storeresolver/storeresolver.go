@@ -21,11 +21,6 @@ type Resolvers struct {
 	index      spaceindex.Store
 	optionsFor map[domain.RelationKey][]*model.RelationOption
 
-	// participantNames caches ParticipantName's answers, misses included —
-	// an empty value IS the miss, so an unnamed or unknown participant is
-	// asked about once per export rather than once per object.
-	participantNames map[string]string
-
 	// objectRows caches one point lookup per referenced object id, answering
 	// BOTH object-namespace questions from it: ObjectName's (the display
 	// name; miss = "") and ObjectExists's (whether the index holds a row at
@@ -63,26 +58,24 @@ type objectRow struct {
 // New creates resolvers over one space's index.
 func New(index spaceindex.Store) *Resolvers {
 	return &Resolvers{
-		index:            index,
-		optionsFor:       map[domain.RelationKey][]*model.RelationOption{},
-		participantNames: map[string]string{},
-		objectRows:       map[string]objectRow{},
+		index:      index,
+		optionsFor: map[domain.RelationKey][]*model.RelationOption{},
+		objectRows: map[string]objectRow{},
 	}
 }
 
 // Options returns anyblockjson.Options pre-wired with the resolvers and the
 // index's own space id (which enables the participant fold, §9); callers set
-// the remaining fields (compaction flags, RefNames, etc.) on the returned
+// the remaining fields (compaction flags, etc.) on the returned
 // value.
 func (r *Resolvers) Options() anyblockjson.Options {
 	return anyblockjson.Options{
-		ResolveFormat:       r.ResolveFormat,
-		ResolveOptions:      r,
-		ResolveProperties:   r,
-		ResolveParticipants: r,
-		ResolveObjectNames:  r,
-		SpaceId:             r.index.SpaceId(),
-		Keys:                r,
+		ResolveFormat:      r.ResolveFormat,
+		ResolveOptions:     r,
+		ResolveProperties:  r,
+		ResolveObjectNames: r,
+		SpaceId:            r.index.SpaceId(),
+		Keys:               r,
 	}
 }
 
@@ -208,44 +201,6 @@ func (r *Resolvers) OptionsNamed(key domain.RelationKey, name string) []*model.R
 	return matches
 }
 
-// ParticipantName implements anyblockjson.ParticipantResolver: the display
-// name of the space member a participant id names (§3).
-//
-// A participant is an ordinary indexed object whose id is
-// `_participant_<space>_<account>`, so one point lookup answers it — there is
-// no listing to load and no vocabulary to prime. The answer is the `name` the
-// space last saw on that member's profile.
-//
-// The lookup is by id and asks nothing about layout, which is what makes it
-// answer for the one attribution value that is NOT a participant:
-// `_anytype_profile`, the app itself, stands in `creator` on 7.9% of a
-// 36,966-object corpus (bundled types and relations copied into a space) and
-// is indexed per space by `reindexIDs`. It resolves to "Anytype", which is
-// the true answer to who wrote those objects.
-//
-// **No name is an answer of "no", not an empty string.** A member who never
-// set a profile name has none here, and so does an id this space has no
-// participant row for (a member of a space this export is not running in, an
-// account whose participant object was never indexed). Both make export omit
-// the property, which is the same thing it does with no resolver at all —
-// the format's rule is that `creator` is a name or is absent, never a blank.
-//
-// **Only `name`, deliberately.** A member may also carry `globalName` (their
-// any-name) and `identity`; neither is substituted for a missing `name`,
-// because a document that falls back to an address has re-introduced the
-// address this spelling exists to remove.
-func (r *Resolvers) ParticipantName(id string) (string, bool) {
-	if name, cached := r.participantNames[id]; cached {
-		return name, name != ""
-	}
-	name := ""
-	if details, err := r.index.GetDetails(id); err == nil && details != nil {
-		name = details.GetString(bundle.RelationKeyName)
-	}
-	r.participantNames[id] = name
-	return name, name != ""
-}
-
 // objectRow answers one referenced id's row from the cache or one GetDetails.
 // ok is false only when the store errored: nothing is cached then and the
 // caller answers as if it had not been asked.
@@ -275,16 +230,9 @@ func (r *Resolvers) objectRow(id string) (objectRow, bool) {
 	return row, true
 }
 
-// ObjectName implements anyblockjson.ObjectNameResolver: the display name of
-// the object a reference points at, for the informative `#name` suffix (§9).
-//
-// The same one-point-lookup shape as ParticipantName, deliberately kept
-// separate from it: this one answers for EVERY indexed object — pages,
-// files, types, participants alike — because the suffix rides any object
-// reference, while the participant seam serves exactly two derived
-// properties. No name is an answer of "no", never an empty string: the
-// format's rule for the suffix is a name or nothing (a bare reference),
-// never a dangling `#`.
+// ObjectName implements anyblockjson.ObjectNameResolver. The codec uses this
+// interface to discover ObjectExists and ObjectDeleted; references carry only
+// ids, so it no longer asks for display names.
 func (r *Resolvers) ObjectName(id string) (string, bool) {
 	row, ok := r.objectRow(id)
 	return row.name, ok && row.name != ""

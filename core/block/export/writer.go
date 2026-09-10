@@ -8,8 +8,11 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/gosimple/slug"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/util/anyerror"
@@ -26,12 +29,36 @@ type Namer interface {
 	Get(path, hash, title, ext string) (name string)
 }
 
-func uniqName() string {
-	return time.Now().Format("Anytype.20060102.150405.99")
+// exportNamesMaxLength includes the separator between the space and object.
+const exportNamesMaxLength = 100
+
+func makeExportName(spaceName, objectName string, date time.Time) string {
+	names := normalizeExportName(spaceName)
+	if objectName != "" {
+		objectName = normalizeExportName(objectName)
+		budget := exportNamesMaxLength - 1
+		// Share the budget when both names are long, and give unused space
+		// from a short name to the other one.
+		spaceLimit := min(len(names), max(budget/2, budget-len(objectName)))
+		objectLimit := min(len(objectName), budget-spaceLimit)
+		names = strings.TrimRight(names[:spaceLimit], "-") + "-" +
+			strings.TrimRight(objectName[:objectLimit], "-")
+	} else if len(names) > exportNamesMaxLength {
+		names = strings.TrimRight(names[:exportNamesMaxLength], "-")
+	}
+	return "anytype-" + names + "-" + date.Format("2006-01-02-150405.000")
 }
 
-func newDirWriter(path string, includeFiles bool) (writer, error) {
-	path = filepath.Join(path, uniqName())
+func normalizeExportName(name string) string {
+	name = slug.Make(name)
+	if name == "" {
+		return defaultFileName
+	}
+	return name
+}
+
+func newDirWriter(path, name string, includeFiles bool) (writer, error) {
+	path = filepath.Join(path, name)
 	fullPath := path
 	if includeFiles {
 		fullPath = filepath.Join(path, "files")
@@ -168,10 +195,6 @@ func (d *zipWriter) Close() (err error) {
 		return fmt.Errorf("close zip file: %w", err)
 	}
 	return nil
-}
-
-func getZipName(path string) string {
-	return filepath.Join(path, uniqName()+".zip")
 }
 
 type InMemoryWriter struct {

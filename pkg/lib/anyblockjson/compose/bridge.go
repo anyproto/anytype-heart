@@ -9,6 +9,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+const IssueOptionDescriptionOmitted = external.IssueOptionDescriptionOmitted
+const IssueOptionContentOmitted = external.IssueOptionContentOmitted
+
 type (
 	Issue = external.Issue
 	Stats = external.Stats

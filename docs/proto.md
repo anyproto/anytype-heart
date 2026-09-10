@@ -2145,6 +2145,13 @@
     - [Profile](#anytype-Profile)
     - [SnapshotWithType](#anytype-SnapshotWithType)
     - [WidgetBlock](#anytype-WidgetBlock)
+
+- [pkg/lib/pb/model/protos/export_report.proto](#pkg_lib_pb_model_protos_export_report-proto)
+    - [ExportReport](#anytype-model-ExportReport)
+    - [ExportReport.Issue](#anytype-model-ExportReport-Issue)
+
+    - [ExportReport.Issue.Severity](#anytype-model-ExportReport-Issue-Severity)
+    - [ExportReport.Status](#anytype-model-ExportReport-Status)
   
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg_lib_pb_model_protos_localstore-proto)
     - [ObjectDetails](#anytype-model-ObjectDetails)
@@ -17833,6 +17840,7 @@ Records come in two kinds, told apart by isUninstalled:
 | error | [Rpc.Object.Export.Response.Error](#anytype-Rpc-Object-Export-Response-Error) |  |  |
 | result | [string](#string) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| report | [model.ExportReport](#anytype-model-ExportReport) |  |  |
 
 
 
@@ -18643,6 +18651,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | path | [string](#string) |  |  |
 | succeed | [int32](#int32) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| report | [model.ExportReport](#anytype-model-ExportReport) |  |  |
 
 
 
@@ -33960,6 +33969,88 @@ scenario: Precondition: user A and user B opened the same block
 
 
 
+<a name="pkg_lib_pb_model_protos_export_report-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## pkg/lib/pb/model/protos/export_report.proto
+
+
+
+<a name="anytype-model-ExportReport"></a>
+
+### ExportReport
+Diagnostics shared by all export formats. A completed export can contain
+issues without failing the RPC; clients should inspect status and issues.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [ExportReport.Status](#anytype-model-ExportReport-Status) |  |  |
+| succeed | [int32](#int32) |  | Objects accounted for, including objects represented in bundle metadata. |
+| objectErrors | [int32](#int32) |  |  |
+| fileErrors | [int32](#int32) |  | File contents that could not be exported; their objects may still succeed. |
+| issues | [ExportReport.Issue](#anytype-model-ExportReport-Issue) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-ExportReport-Issue"></a>
+
+### ExportReport.Issue
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  | Empty for an issue affecting the export as a whole. |
+| severity | [ExportReport.Issue.Severity](#anytype-model-ExportReport-Issue-Severity) |  |  |
+| code | [string](#string) |  | Stable diagnostic code, supplied by the exporter when available. |
+| path | [string](#string) |  | Field path for validation issues, or relative path of an export file. |
+| message | [string](#string) |  |  |
+
+
+
+
+
+
+
+
+<a name="anytype-model-ExportReport-Issue-Severity"></a>
+
+### ExportReport.Issue.Severity
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| WARNING | 0 |  |
+| ERROR | 1 |  |
+| INFO | 2 | Non-blocking format notes; do not make the export partial. |
+
+
+
+<a name="anytype-model-ExportReport-Status"></a>
+
+### ExportReport.Status
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SUCCESS | 0 |  |
+| PARTIAL | 1 | Output was produced, but errors were reported. Warnings alone remain successful. |
+| FAILED | 2 |  |
+| CANCELED | 3 |  |
+
+
+
+
+
+
+
+
+
+
 <a name="pkg_lib_pb_model_protos_localstore-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
@@ -35723,6 +35814,8 @@ if current user&#39;s top level product has isUpgradeable flag -&gt; show incent
 | ----- | ---- | ----- | ----------- |
 | errorCode | [Notification.Export.Code](#anytype-model-Notification-Export-Code) |  |  |
 | exportType | [Export.Format](#anytype-model-Export-Format) |  |  |
+| report | [ExportReport](#anytype-model-ExportReport) |  |  |
+| path | [string](#string) |  | Selected destination directory for this local export. |
 
 
 
@@ -36927,6 +37020,7 @@ stored |
 | DOT | 3 |  |
 | SVG | 4 |  |
 | GRAPH_JSON | 5 |  |
+| AnyBlockV2 | 6 | AnyBlockV2 is the native AnyBlock v2 bundle (pkg/lib/anyblockjson format/v2/SPEC.md): a directory of `&lt;id&gt;.anyblock.json` documents beside an index.json and properties.json. Additive — existing values keep their numbers, so a client that does not know it is unaffected. |
 
 
 

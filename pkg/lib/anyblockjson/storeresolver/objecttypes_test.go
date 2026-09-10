@@ -132,7 +132,6 @@ func TestTypeDocumentCarriesObjectTypes(t *testing.T) {
 
 	// then
 	var doc struct {
-		TypeKeys     map[string]string `json:"type_internal_keys"`
 		TypeSettings struct {
 			PropertyDefinitions []struct {
 				Key         string   `json:"property"`
@@ -143,11 +142,8 @@ func TestTypeDocumentCarriesObjectTypes(t *testing.T) {
 	require.NoError(t, json.Unmarshal(data, &doc))
 	require.Len(t, doc.TypeSettings.PropertyDefinitions, 1)
 	assert.Equal(t, "Assignee", doc.TypeSettings.PropertyDefinitions[0].Key)
-	// the slots are spelled as display names and the legend inverts the one
-	// the bundled table cannot (§3) — the whole point of carrying the
-	// targets is that a reader can bind them back
-	assert.Equal(t, []string{"Person", "Space member"}, doc.TypeSettings.PropertyDefinitions[0].ObjectTypes)
-	assert.Equal(t, map[string]string{"Person": customTypeKey}, doc.TypeKeys)
+	// Target types use derived ids that carry their stored keys.
+	assert.Equal(t, []string{"type-" + customTypeKey, "type-participant"}, doc.TypeSettings.PropertyDefinitions[0].ObjectTypes)
 
 	// and: the document reads back onto the very same stored keys
 	_, back, err := anyblockjson.Unmarshal(data, anyblockjson.Options{})

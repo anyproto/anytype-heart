@@ -24,13 +24,13 @@ package anyblock
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"path"
 	"runtime"
 	"strings"
 	"sync"
-	"sync/atomic"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
@@ -38,6 +38,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/export/collect"
+	"github.com/anyproto/anytype-heart/core/block/export/report"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/compose"
@@ -68,6 +69,8 @@ type Writer interface {
 // Request describes one space's bundle export.
 type Request struct {
 	SpaceId string
+	// NetworkId identifies the source network for remote file recovery.
+	NetworkId string
 	// Ids are the requested roots; empty = the whole space.
 	Ids []string
 
@@ -221,6 +224,7 @@ func (p *resolverPool) put(opts anyblockjson.Options) {
 // Result is what one export can say about itself — nothing a caller might
 // act on is dropped into a log line alone.
 type Result struct {
+	Report *model.ExportReport
 	// Succeed counts the documents accounted for: written, or omitted into
 	// the bundle files.
 	Succeed int
@@ -263,7 +267,9 @@ func internalKeyOf(rawUniqueKey string) string {
 func (e *Exporter) Export(ctx context.Context, req Request, wr Writer) (res Result, err error) {
 	docs, err := e.Collector.Collect(ctx, CollectRequest(req))
 	if err != nil {
-		return res, fmt.Errorf("collect docs for export: %w", err)
+		err = fmt.Errorf("collect docs for export: %w", err)
+		res.Report = new(report.Collector).Snapshot(err)
+		return res, err
 	}
 	return e.ExportCollected(ctx, req, docs, wr)
 }
@@ -295,6 +301,19 @@ func CollectRequest(req Request) collect.Request {
 // before the writer exists (closureForFormat, export.go), and re-collecting
 // here would query the whole space a second time.
 func (e *Exporter) ExportCollected(ctx context.Context, req Request, docs collect.Docs, wr Writer) (res Result, err error) {
+	diagnostics := new(report.Collector)
+	defer func() {
+		if err != nil {
+			var validation *anyblockjson.ValidationError
+			if errors.As(err, &validation) {
+				recordError(diagnostics, "", "validation_failed", "", err)
+			}
+		}
+		res.Report = diagnostics.Snapshot(err)
+		res.Succeed = int(res.Report.Succeed)
+		res.DocErrors = int(res.Report.ObjectErrors)
+		res.BlobErrors = int(res.Report.FileErrors)
+	}()
 	// plan: details only, single-threaded, before the first emit task
 	// (design §1.1). Excluded rows are dropped here by the same rule every
 	// emitter applies.
@@ -306,7 +325,9 @@ func (e *Exporter) ExportCollected(ctx context.Context, req Request, docs collec
 		}
 		sbType, sbtErr := e.SbtProvider.Type(req.SpaceId, id)
 		if sbtErr != nil {
-			log.With("objectId", id).Errorf("failed to get smartblock type: %v", sbtErr)
+			log.With("objectId", id).Errorf("failed to get object type: %v", sbtErr)
+			diagnostics.ObjectFailed()
+			recordError(diagnostics, id, "object_type_failed", "", sbtErr)
 			continue
 		}
 		metas = append(metas, compose.DocMeta{
@@ -325,7 +346,13 @@ func (e *Exporter) ExportCollected(ctx context.Context, req Request, docs collec
 		})
 		emitIds = append(emitIds, id)
 	}
-	plan, err := compose.BuildPlan(storeresolver.New(e.ObjectStore.SpaceIndex(req.SpaceId)).Options(), metas)
+	newOptions := func() anyblockjson.Options {
+		opts := storeresolver.New(e.ObjectStore.SpaceIndex(req.SpaceId)).Options()
+		opts.NetworkId = req.NetworkId
+		opts.OnWarning = warningSink(diagnostics, "")
+		return opts
+	}
+	plan, err := compose.BuildPlan(newOptions(), metas)
 	if err != nil {
 		return res, fmt.Errorf("build path plan: %w", err)
 	}
@@ -334,7 +361,7 @@ func (e *Exporter) ExportCollected(ctx context.Context, req Request, docs collec
 	// is not safe for concurrent use, and the composer consults its options
 	// only under its own mutex — sharing an instance with a worker would
 	// race (compose.NewComposer's contract).
-	composer, err := compose.NewComposer(storeresolver.New(e.ObjectStore.SpaceIndex(req.SpaceId)).Options(), req.SpaceName)
+	composer, err := compose.NewComposer(newOptions(), req.SpaceName)
 	if err != nil {
 		return res, fmt.Errorf("new bundle composer: %w", err)
 	}
@@ -343,10 +370,7 @@ func (e *Exporter) ExportCollected(ctx context.Context, req Request, docs collec
 	// duration. The output cannot depend on scheduling: every path was fixed
 	// by the plan, the composer's aggregates are commutative, and finish
 	// sorts (§1.5).
-	var succeedAsync, docErrs, blobErrs int64
-	pool := &resolverPool{mint: func() anyblockjson.Options {
-		return storeresolver.New(e.ObjectStore.SpaceIndex(req.SpaceId)).Options()
-	}}
+	pool := &resolverPool{mint: newOptions}
 	tasks := make([]func(), 0, len(emitIds))
 	for _, id := range emitIds {
 		tasks = append(tasks, func() {
@@ -360,15 +384,17 @@ func (e *Exporter) ExportCollected(ctx context.Context, req Request, docs collec
 			}
 			opts := pool.get()
 			defer pool.put(opts)
-			blobFailed, werr := e.emitDoc(ctx, req, docs, plan, composer, opts, wr, id)
+			blobFailed, werr := e.emitDoc(ctx, req, docs, plan, composer, opts, wr, id, diagnostics)
 			if blobFailed {
-				atomic.AddInt64(&blobErrs, 1)
+				diagnostics.FileFailed()
 			}
 			if werr != nil {
 				log.With("objectID", id).Warnf("can't export doc: %v", werr)
-				atomic.AddInt64(&docErrs, 1)
+				diagnostics.ObjectFailed()
+				docPath, _ := plan.DocPath(id)
+				recordError(diagnostics, id, "object_export_failed", docPath, werr)
 			} else {
-				atomic.AddInt64(&succeedAsync, 1)
+				diagnostics.Succeeded()
 			}
 		})
 	}
@@ -382,14 +408,10 @@ func (e *Exporter) ExportCollected(ctx context.Context, req Request, docs collec
 		// queue-backed one does not watch ctx, its tasks simply skip
 		runErr = ctx.Err()
 	}
-	res = Result{Succeed: int(succeedAsync), DocErrors: int(docErrs), BlobErrors: int(blobErrs)}
 	if runErr != nil {
 		// no bundle files: index.json states what the bundle holds, and half
 		// an emit holds something nobody measured
 		return res, fmt.Errorf("emit documents: %w", runErr)
-	}
-	if res.BlobErrors > 0 {
-		log.Errorf("export %s: %d file blob(s) could not be streamed; their documents travel without bytes and the manifest omits the bindings", req.SpaceId, res.BlobErrors)
 	}
 
 	// finish: the two bundle files, re-read-verified by the composer (I1
@@ -398,6 +420,7 @@ func (e *Exporter) ExportCollected(ctx context.Context, req Request, docs collec
 	if err != nil {
 		return res, fmt.Errorf("compose bundle files: %w", err)
 	}
+	recordStats(diagnostics, stats)
 	// The composer states what a bundle could not carry rather than hiding
 	// it (§11), and Stats is the only channel it has: an omitted document
 	// leaves nothing behind to compare, so a dropped select vocabulary is
@@ -417,11 +440,13 @@ func (e *Exporter) ExportCollected(ctx context.Context, req Request, docs collec
 	}
 	if properties != nil {
 		if err := wr.WriteFile(path.Join(req.BundleRoot, anyblockjson.PropertiesFileName), bytes.NewReader(properties), 0); err != nil {
+			recordError(diagnostics, "", "bundle_write_failed", path.Join(req.BundleRoot, anyblockjson.PropertiesFileName), err)
 			return res, fmt.Errorf("write property dictionary: %w", err)
 		}
 	}
 	if index != nil {
 		if err := wr.WriteFile(path.Join(req.BundleRoot, anyblockjson.IndexFileName), bytes.NewReader(index), 0); err != nil {
+			recordError(diagnostics, "", "bundle_write_failed", path.Join(req.BundleRoot, anyblockjson.IndexFileName), err)
 			return res, fmt.Errorf("write index: %w", err)
 		}
 	}
@@ -435,7 +460,8 @@ func (e *Exporter) ExportCollected(ctx context.Context, req Request, docs collec
 // so the failure is reported through blobFailed (and the manifest omits
 // the binding) rather than by undoing the doc.
 func (e *Exporter) emitDoc(ctx context.Context, req Request, docs collect.Docs, plan *compose.Plan,
-	composer *compose.Composer, opts anyblockjson.Options, wr Writer, id string) (blobFailed bool, _ error) {
+	composer *compose.Composer, opts anyblockjson.Options, wr Writer, id string, diagnostics *report.Collector) (blobFailed bool, _ error) {
+	opts.OnWarning = warningSink(diagnostics, id)
 
 	err := cache.Do(e.Picker, id, func(b sb.SmartBlock) error {
 		st := b.NewState()
@@ -461,7 +487,14 @@ func (e *Exporter) emitDoc(ctx context.Context, req Request, docs collect.Docs, 
 		// braces).
 		omitted, issues := composer.Observe(sbType, base)
 		for _, is := range issues {
-			log.With("objectID", id).Errorf("bundle composition %s: %s", is.Category, is.Detail)
+			if is.Category == compose.IssueOptionDescriptionOmitted {
+				log.With("objectID", id).Debugf("bundle composition %s: %s", is.Category, is.Detail)
+			} else if is.Category == compose.IssueOptionContentOmitted {
+				log.With("objectID", id).Warnf("bundle composition %s: %s", is.Category, is.Detail)
+			} else {
+				log.With("objectID", id).Errorf("bundle composition %s: %s", is.Category, is.Detail)
+			}
+			recordCompositionIssue(diagnostics, id, is)
 		}
 		if omitted {
 			return nil
@@ -495,6 +528,7 @@ func (e *Exporter) emitDoc(ctx context.Context, req Request, docs collect.Docs, 
 			fullBlobPath := path.Join(req.BundleRoot, blobPath)
 			if err := e.saveBlob(ctx, wr, b, fullBlobPath); err != nil {
 				blobFailed = true
+				recordError(diagnostics, id, "file_export_failed", fullBlobPath, err)
 				log.With("objectID", id).Warnf("file blob not streamed, document travels without bytes: %v", err)
 				// a PARTIAL blob is worse than none — truncated bytes a
 				// reader may trust — so a writer that can un-write gets the
@@ -504,6 +538,7 @@ func (e *Exporter) emitDoc(ctx context.Context, req Request, docs collect.Docs, 
 				if remover, ok := wr.(interface{ RemoveFile(string) error }); ok {
 					if rerr := remover.RemoveFile(fullBlobPath); rerr != nil {
 						log.With("objectID", id).Warnf("partial blob not removed: %v", rerr)
+						recordError(diagnostics, id, "file_cleanup_failed", fullBlobPath, rerr)
 					}
 				}
 				return nil
@@ -566,8 +601,10 @@ func snapshotBase(st *state.State) *model.SmartBlockSnapshotBase {
 // close-after-write pays for itself across thousands of documents (§1.6),
 // while a single-document caller is typically exporting the object the user
 // is looking at, where an eviction only buys the next reader a cold load.
-func (e *Exporter) ExportDocument(ctx context.Context, spaceId, objectId string) ([]byte, error) {
+func (e *Exporter) ExportDocument(ctx context.Context, spaceId, objectId string) ([]byte, *model.ExportReport, error) {
+	diagnostics := new(report.Collector)
 	opts := storeresolver.New(e.ObjectStore.SpaceIndex(spaceId)).Options()
+	opts.OnWarning = warningSink(diagnostics, objectId)
 	var data []byte
 	err := cache.Do(e.Picker, objectId, func(b sb.SmartBlock) error {
 		st := b.NewState()
@@ -582,9 +619,13 @@ func (e *Exporter) ExportDocument(ctx context.Context, spaceId, objectId string)
 		return nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("render document %s: %w", objectId, err)
+		err = fmt.Errorf("render document %s: %w", objectId, err)
+		diagnostics.ObjectFailed()
+		recordError(diagnostics, objectId, "object_export_failed", "", err)
+		return nil, diagnostics.Snapshot(err), err
 	}
-	return data, nil
+	diagnostics.Succeeded()
+	return data, diagnostics.Snapshot(nil), nil
 }
 
 // saveBlob streams one file object's bytes to the writer — the legacy

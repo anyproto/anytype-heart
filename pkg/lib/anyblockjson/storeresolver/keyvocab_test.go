@@ -540,7 +540,7 @@ func TestCorpseNameLifecycle(t *testing.T) {
 // user frees a name and reuses it. The vocabulary emits the corpse's stored
 // key verbatim (nothing else is an address) and grants the live holder its
 // name only where no live stored key owns the string; the DOCUMENT is what
-// says which of the two it means, and the identity entry is that statement.
+// says which of the two it means through its stored-key fields.
 //
 // Both arms run the real exporter over the real resolver.
 func TestCorpseStoredKeyStillNamesItsObjects(t *testing.T) {
@@ -568,12 +568,12 @@ func TestCorpseStoredKeyStillNamesItsObjects(t *testing.T) {
 		// then
 		require.NoError(t, anyblockjson.Validate(data))
 		var doc struct {
-			Type     string            `json:"type"`
-			TypeKeys map[string]string `json:"type_internal_keys"`
+			Type    string `json:"type"`
+			TypeKey string `json:"type_internal_key"`
 		}
 		require.NoError(t, json.Unmarshal(data, &doc))
 		assert.Equal(t, "initiative", doc.Type)
-		assert.Equal(t, map[string]string{"initiative": "initiative"}, doc.TypeKeys,
+		assert.Equal(t, "initiative", doc.TypeKey,
 			"the document says the term is a stored key, or a reader whose space "+
 				"binds the name takes it for the live holder")
 

@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/export/collect"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -63,9 +64,11 @@ func anyblockSpace(t *testing.T, fx *fixture) map[string]string {
 	identity := pub.Account()
 	participantId := domain.NewParticipantId(spaceId, identity)
 
+	typeObject := prepareTestObjectTypeForStore(t, typeId, nil)
+	typeObject[bundle.RelationKeyResolvedLayout] = domain.Int64(int64(model.ObjectType_objectType))
 	fx.store.AddObjects(t, spaceId, []spaceindex.TestObject{
 		prepareTestObjectForStore(pageId, typeId),
-		prepareTestObjectTypeForStore(t, typeId, nil),
+		typeObject,
 		{
 			bundle.RelationKeyId:               domain.String(templateId),
 			bundle.RelationKeyName:             domain.String("Template"),
@@ -102,8 +105,7 @@ func anyblockSpace(t *testing.T, fx *fixture) map[string]string {
 		details map[domain.RelationKey]domain.Value
 	}{
 		{id: pageId, sbType: smartblock.SmartBlockTypePage},
-		// the unique key is what the manifest's type table is keyed by, so
-		// the type document carries its own
+		// The unique key determines the type document's derived id.
 		{id: typeId, sbType: smartblock.SmartBlockTypeObjectType, details: map[domain.RelationKey]domain.Value{
 			bundle.RelationKeyUniqueKey: domain.String(typeUniqueKey.Marshal()),
 		}},
@@ -124,6 +126,19 @@ func anyblockSpace(t *testing.T, fx *fixture) map[string]string {
 	}
 	for _, object := range objects {
 		loaded := setupObject(object.id, typeId, object.sbType, object.details)
+		if object.sbType == smartblock.SmartBlockTypeFileObject {
+			fileState := loaded.NewState()
+			fileState.SetFileInfo(state.FileInfo{
+				FileId:         "bafybeiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+				EncryptionKeys: map[string]string{"/0/": "synthetic-test-key"},
+			})
+			loaded.Doc = fileState
+		}
+		if object.id == typeId {
+			state := loaded.NewState()
+			state.SetUniqueKeyInternal(typeId)
+			loaded.Doc = state
+		}
 		if object.id == pageId {
 			// The page carries the tag, so the used-only rule (§2f) keeps
 			// the property entry that the vocabulary travels on. Set here
@@ -142,7 +157,7 @@ func anyblockSpace(t *testing.T, fx *fixture) map[string]string {
 
 	return map[string]string{
 		"objects":   pageId,
-		"types":     typeId,
+		"types":     "type-" + typeId,
 		"templates": templateId,
 		"files":     fileId,
 		// the STORE id, not the bare identity: the participant fold needs a
@@ -207,7 +222,7 @@ func TestExport_AnyBlockV2WritesABundle(t *testing.T) {
 	fx.picker.EXPECT().TryRemoveFromCache(mock.Anything, mock.Anything).Return(true, nil)
 
 	// when
-	exportPath, succeed, err := fx.Export(context.Background(), pb.RpcObjectListExportRequest{
+	exportPath, diagnostics, err := fx.Export(context.Background(), pb.RpcObjectListExportRequest{
 		SpaceId:         spaceId,
 		Path:            t.TempDir(),
 		Format:          model.Export_AnyBlockV2,
@@ -217,7 +232,7 @@ func TestExport_AnyBlockV2WritesABundle(t *testing.T) {
 
 	// then
 	require.NoError(t, err)
-	assert.Equal(t, anyblockCollectedObjects, succeed)
+	assert.Equal(t, anyblockCollectedObjects, int(diagnostics.Succeed))
 
 	tree := readExportTree(t, exportPath)
 	for dir, id := range byDirectory {
@@ -234,10 +249,16 @@ func TestExport_AnyBlockV2WritesABundle(t *testing.T) {
 
 	index, err := anyblockjson.UnmarshalIndex([]byte(tree[anyblockjson.IndexFileName]))
 	require.NoError(t, err)
+	assert.Equal(t, "test-network", index.NetworkId)
 	require.NotNil(t, index.Manifest)
-	assert.Equal(t, "types/customObjectType.anyblock.json", index.Manifest.Types["customObjectType"])
+	assert.Contains(t, tree, "types/type-customObjectType.anyblock.json")
 	assert.NotContains(t, tree, "options/"+optionId+".anyblock.json", "a bundle carries no option documents")
 	assert.NotContains(t, tree, "properties/"+propertyKeyName+".anyblock.json", "nor any property document")
+	_, restored, err := anyblockjson.Unmarshal([]byte(tree["files/"+fileId+".anyblock.json"]), anyblockjson.Options{})
+	require.NoError(t, err)
+	require.NotNil(t, restored.FileInfo, "remote metadata is included when file bytes are omitted")
+	assert.Equal(t, "bafybeiaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", restored.FileInfo.FileId)
+	assert.Equal(t, []*model.FileEncryptionKey{{Path: "/0/", Key: "synthetic-test-key"}}, restored.FileInfo.EncryptionKeys)
 
 	dictionary, err := anyblockjson.UnmarshalPropertyDictionary([]byte(tree[anyblockjson.PropertiesFileName]))
 	require.NoError(t, err)
@@ -269,7 +290,7 @@ func TestExport_AnyBlockV2WritesAZipBundle(t *testing.T) {
 	fx.picker.EXPECT().TryRemoveFromCache(mock.Anything, mock.Anything).Return(true, nil)
 
 	// when
-	archivePath, succeed, err := fx.Export(context.Background(), pb.RpcObjectListExportRequest{
+	archivePath, diagnostics, err := fx.Export(context.Background(), pb.RpcObjectListExportRequest{
 		SpaceId:         spaceId,
 		Path:            t.TempDir(),
 		Format:          model.Export_AnyBlockV2,
@@ -280,7 +301,7 @@ func TestExport_AnyBlockV2WritesAZipBundle(t *testing.T) {
 
 	// then
 	require.NoError(t, err)
-	assert.Equal(t, anyblockCollectedObjects, succeed)
+	assert.Equal(t, anyblockCollectedObjects, int(diagnostics.Succeed))
 
 	reader, err := zip.OpenReader(archivePath)
 	require.NoError(t, err)
@@ -325,7 +346,7 @@ func TestExport_AnyBlockV2ReportsQueueProgress(t *testing.T) {
 		NoProgress:      true,
 	})
 	require.NoError(t, exportCtx.docsForExport(context.Background()))
-	wr, err := newDirWriter(exportCtx.path, false)
+	wr, err := newDirWriter(exportCtx.path, "export", false)
 	require.NoError(t, err)
 
 	// when
@@ -356,7 +377,7 @@ func TestExport_AnyBlockV2StopsWhenCancelled(t *testing.T) {
 	cancel()
 
 	// when
-	exportPath, succeed, err := fx.Export(ctx, pb.RpcObjectListExportRequest{
+	exportPath, diagnostics, err := fx.Export(ctx, pb.RpcObjectListExportRequest{
 		SpaceId:         spaceId,
 		Path:            t.TempDir(),
 		Format:          model.Export_AnyBlockV2,
@@ -366,7 +387,8 @@ func TestExport_AnyBlockV2StopsWhenCancelled(t *testing.T) {
 
 	// then
 	require.NoError(t, err) // the cancel is the user's own request, not a failure
-	assert.Equal(t, 0, succeed)
+	assert.Equal(t, 0, int(diagnostics.Succeed))
+	assert.Equal(t, model.ExportReport_CANCELED, diagnostics.Status)
 	assert.NoDirExists(t, exportPath, "a cancelled export leaves nothing behind")
 }
 
@@ -382,10 +404,11 @@ func TestExport_AnyBlockV2SingleInMemory(t *testing.T) {
 	byDirectory := anyblockSpace(t, fx)
 
 	// when
-	result, err := fx.ExportSingleInMemory(context.Background(), spaceId, byDirectory["objects"], model.Export_AnyBlockV2)
+	result, diagnostics, err := fx.ExportSingleInMemory(context.Background(), spaceId, byDirectory["objects"], model.Export_AnyBlockV2)
 
 	// then
 	require.NoError(t, err)
+	require.NotNil(t, diagnostics)
 	sbType, snapshot, err := anyblockjson.Unmarshal([]byte(result), anyblockjson.Options{SpaceId: spaceId})
 	require.NoError(t, err)
 	assert.Equal(t, model.SmartBlockType_Page, sbType)

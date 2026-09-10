@@ -774,7 +774,9 @@ func validType(sbType smartblock.SmartBlockType) bool {
 		sbType == smartblock.SmartBlockTypeRelation ||
 		sbType == smartblock.SmartBlockTypeRelationOption ||
 		sbType == smartblock.SmartBlockTypeFileObject ||
-		sbType == smartblock.SmartBlockTypeParticipant
+		sbType == smartblock.SmartBlockTypeParticipant ||
+		sbType == smartblock.SmartBlockTypeChatDerivedObject ||
+		sbType == smartblock.SmartBlockTypeChatObjectDeprecated
 }
 
 func validTypeForContentClosure(sbType smartblock.SmartBlockType) bool {

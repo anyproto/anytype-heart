@@ -48,6 +48,11 @@ func TestV1ProtosMatchAnyBlockCanonicalSources(t *testing.T) {
 				t.Fatalf("normalize AnyBlock proto %s: %v", file.anyBlock, err)
 			}
 
+			if filepath.Base(file.heart) == "models.proto" {
+				heartNormalized = withoutExportReportAPI(heartNormalized)
+				canonicalNormalized = withoutExportReportAPI(canonicalNormalized)
+			}
+
 			if heartNormalized != canonicalNormalized {
 				t.Fatalf(
 					"Heart proto %s has drifted from %s/%s (normalized SHA-256 %x != %x); synchronize the canonical AnyBlock v1 source and Heart mirror together",
@@ -60,6 +65,15 @@ func TestV1ProtosMatchAnyBlockCanonicalSources(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Export diagnostics are Heart RPC/notification metadata, never part of a v1
+// snapshot. Allow only these additive API fields and their separate proto import;
+// every other definition (including the notification's existing fields) must
+// still match the pinned canonical source.
+func withoutExportReportAPI(normalized string) string {
+	normalized = strings.ReplaceAll(normalized, `import"pkg/lib/pb/model/protos/export_report.proto";`, "")
+	return strings.ReplaceAll(normalized, `model.Export.FormatexportType=3;ExportReportreport=4;stringpath=5;`, `model.Export.FormatexportType=3;`)
 }
 
 func repositoryRoot(t *testing.T) string {
