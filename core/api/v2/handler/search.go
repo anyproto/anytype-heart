@@ -112,6 +112,10 @@ func SearchObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 			return
 		}
 		resp := v2model.NewListResponse(rows, total, offset, limit, hasMore, v2service.SearchNarrowHint)
+		// Full-text search counts the fetched candidates, including lookahead.
+		if hasMore && req.Query != "" {
+			resp.Message = "at least " + resp.Message
+		}
 		resp.Warnings = warnings
 		c.JSON(http.StatusOK, resp)
 	}
@@ -147,6 +151,10 @@ func GlobalSearchObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 			return
 		}
 		resp := v2model.NewListResponse(rows, total, offset, limit, hasMore, v2service.SearchNarrowHint)
+		// Cross-space search does not compute an exact total when clipped.
+		if hasMore {
+			resp.Message = "at least " + resp.Message
+		}
 		resp.Warnings = warnings
 		c.JSON(http.StatusOK, resp)
 	}

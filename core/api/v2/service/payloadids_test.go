@@ -527,7 +527,7 @@ func TestPatchPayloadIdSeam(t *testing.T) {
 // went unreported and the caller had to re-read to learn an id it had just
 // created.
 func TestPatchReportsMintedNestedIds(t *testing.T) {
-	ctx := context.Background()
+	ctx := CtxWithFullIds(context.Background())
 
 	t.Run("a table created through insert_blocks reports its row and column ids", func(t *testing.T) {
 		fx := newV2Fixture(t)

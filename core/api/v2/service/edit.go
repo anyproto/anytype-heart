@@ -419,6 +419,12 @@ func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, o
 	if len(applier.createdViews) > 0 {
 		result.CreatedViews = applier.createdViews
 	}
+	if !fullIdsRequested(ctx) && (len(result.CreatedBlocks) > 0 || len(result.CreatedViews) > 0) {
+		result.CreatedBlocks, result.CreatedViews, err = applier.compactReceiptIDs()
+		if err != nil {
+			return nil, err
+		}
+	}
 	result.Warnings = applier.warnings
 	return result, nil
 }

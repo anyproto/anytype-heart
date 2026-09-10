@@ -92,6 +92,12 @@ an ambiguous suffix is refused with a list of candidates.
 Use `?ids=full` for the export shape, with full ids throughout. This is the
 shape to store for a backup or use when cloning a document.
 
+PATCH receipts follow the same choice: `created_blocks` and `created_views`
+use the labels from the resulting document by default, and full ids with
+`?ids=full`. This also applies to dry runs. Collision handling can leave an
+id full. An id removed by a later operation or omitted from the resulting
+document retains its minted spelling in the receipt.
+
 ### Space references
 
 A space is normally served with a short reference: the last six characters

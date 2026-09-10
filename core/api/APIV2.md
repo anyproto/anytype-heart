@@ -1169,7 +1169,10 @@ the addressed id and indent survive a retype. `replace_subtree`
 mints fresh ids for id-less payload blocks (old subtree ids not reused in the
 replacement payload die with it). Every server-minted block, row, and column
 id appears in `created_blocks` under its exact nested payload path; minted
-view ids use `created_views`. A client-supplied id resolves an existing block
+view ids use `created_views`. Both receipts follow `?ids=`: default compact
+labels come from AnyBlock's export of the final document, including collision
+fallback; `ids=full` returns the minted ids. Dry runs use their final private
+state. An id absent from that document keeps its minted spelling. A client-supplied id resolves an existing block
 and is absent from those receipts. `replace_text` requires a
 text-bearing type and a non-empty `find`; error texts are the Anthropic
 shapes ("no match found…", "found N matches — provide more context…").

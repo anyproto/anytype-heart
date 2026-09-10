@@ -25,7 +25,7 @@ func respondV2Edit(c *gin.Context, result *v2model.EditResult) {
 // PatchObjectHandler applies a batch of edit ops atomically
 //
 //	@Summary		Update an object
-//	@Description	Ops apply in order as one change set. If one fails, or the result breaks the format's rules, none of them land. `update_block`, `delete_block` and `replace_text` can address a block by its exact text instead of an id; text matching zero or several blocks is refused, not guessed at. A later op sees the earlier ones' edits. Ops that only create take no id; the new ids come back in `created_blocks`.
+//	@Description	Applies ops in order as one atomic edit. A failed op or invalid result leaves the object unchanged. Text locators must match exactly one block. New block and view IDs are returned by payload position in `created_blocks` and `created_views`, compact by default or full with `ids=full`.
 //	@Id				patch_object
 //	@Tags			Objects
 //	@Accept			json
@@ -34,6 +34,7 @@ func respondV2Edit(c *gin.Context, result *v2model.EditResult) {
 //	@Param			object_id	path		string				true	"Object id"
 //	@Param			If-Match	header		string				false	"The etag the object must still carry"
 //	@Param			dry_run		query		bool				false	"Validate and report without committing"
+//	@Param			ids			query		string				false	"ID spelling in created_blocks and created_views"	Enums(compact,full)	default(compact)
 //	@Success		200			{object}	v2model.EditResult	"New etag + created block ids + diff_stats"
 //	@Failure		400			{object}	v2model.Error		"Invalid ops or post-op document"
 //	@Failure		404			{object}	v2model.Error		"Object, space, or referenced block not found"

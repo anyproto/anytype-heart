@@ -520,18 +520,16 @@ type DiffStats struct {
 type EditResult struct {
 	Etag   string `json:"etag,omitempty"`
 	DryRun bool   `json:"dry_run,omitempty"`
-	// CreatedBlocks maps each payload position that created a block to the
-	// id the server minted for it: the top-level run positions
-	// ("ops[3].blocks[0]") and the nested slots alike, such as a table's
-	// rows and columns ("ops[3].blocks[0].rows[1]") and the blocks inside a
-	// cell run ("ops[3].value[1]"). A position that carried an id is
-	// absent, because the block it names already existed.
+	// Maps payload positions to new block IDs, including nested table rows,
+	// columns, and cell descendants (e.g. "ops[3].blocks[0].rows[1]").
+	// Existing IDs are omitted. Values match the resulting document:
+	// compact by default, full with ?ids=full. IDs absent from that document
+	// retain their minted spelling.
 	CreatedBlocks map[string]string `json:"created_blocks,omitempty"`
-	// CreatedViews maps each payload position that created a dataview view
-	// to the view id the server minted: an insert_view op ("ops[i]"), or a
-	// view slot of an update_block set channel ("ops[i].set.views[2]").
-	// View ids are always server-minted, and a view is not a block, so they
-	// are reported here rather than in CreatedBlocks.
+	// Maps payload positions to new view IDs: "ops[i]" for insert_view or
+	// "ops[i].set.views[j]" for update_block. Values match the resulting
+	// document and view listing: compact by default, full with ?ids=full.
+	// IDs absent from the document retain their minted spelling.
 	CreatedViews map[string]string `json:"created_views,omitempty"`
 	Created      *SideEffects      `json:"created,omitempty"`
 	DiffStats    DiffStats         `json:"diff_stats"`

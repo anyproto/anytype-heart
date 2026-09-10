@@ -12,6 +12,11 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // searchRouter mounts the space-search route with the C10 pagination
@@ -194,4 +199,53 @@ func TestGlobalSearchObjectsHandler(t *testing.T) {
 		require.Len(t, got.Warnings, 1)
 		assert.Contains(t, got.Warnings[0].Message, "also matches objects with no lastModifiedDate")
 	})
+}
+
+func TestSearchPaginationMessage(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		path    string
+		body    string
+		total   int
+		message string
+	}{
+		{"global browse", "/v2/search?offset=1&limit=1", `{}`, 3, "at least 3 matches — showing 1 from offset 1"},
+		{"global full text", "/v2/search?offset=1&limit=1", `{"query":"needle"}`, 3, "at least 3 matches — showing 1 from offset 1"},
+		{"space browse", "/v2/spaces/space1/search?offset=1&limit=1", `{}`, 4, "4 matches — showing 1 from offset 1"},
+		{"space full text", "/v2/spaces/space1/search?offset=1&limit=1", `{"query":"needle"}`, 3, "at least 3 matches — showing 1 from offset 1"},
+		{"complete global", "/v2/search", `{}`, 4, ""},
+		{"complete space full text", "/v2/spaces/space1/search", `{"query":"needle"}`, 4, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fx := newV2HandlerFixture(t)
+			searchRouter(fx)
+			fx.router.POST("/v2/search", GlobalSearchObjectsHandler(fx.svc))
+			for _, id := range []string{"one", "two", "three", "four"} {
+				fx.store.AddObjects(t, "space1", []objectstore.TestObject{{
+					bundle.RelationKeyId:             domain.String(id),
+					bundle.RelationKeyName:           domain.String("needle"),
+					bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+				}})
+				require.NoError(t, fx.store.FullText.Index(ftsearch.SearchDoc{
+					Id: id + "/r/name", SpaceId: "space1", Title: "needle",
+				}))
+			}
+
+			w := httptest.NewRecorder()
+			fx.router.ServeHTTP(w, httptest.NewRequest(http.MethodPost, tc.path, strings.NewReader(tc.body)))
+			require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+			var got v2model.ListResponse[v2model.ObjectRow]
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+			assert.Equal(t, tc.total, got.Total)
+			if tc.message == "" {
+				assert.False(t, got.HasMore)
+				assert.Empty(t, got.Message)
+				require.Len(t, got.Data, 4)
+			} else {
+				assert.True(t, got.HasMore)
+				require.Len(t, got.Data, 1)
+				assert.Equal(t, tc.message+"; narrow with filter or query, or request the next offset", got.Message)
+			}
+		})
+	}
 }

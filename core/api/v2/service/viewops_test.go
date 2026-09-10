@@ -666,7 +666,7 @@ func TestUpdateViewSchema(t *testing.T) {
 
 // TestViewFamilyOps covers insert_view / move_view / delete_view (§8.18).
 func TestViewFamilyOps(t *testing.T) {
-	ctx := context.Background()
+	ctx := CtxWithFullIds(context.Background())
 
 	t.Run("bare insert_view appends a usable view: every property visible, latest first", func(t *testing.T) {
 		// given: the create-defaults decision — NOT the native CreateView
