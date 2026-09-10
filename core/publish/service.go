@@ -23,6 +23,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -83,6 +84,27 @@ type PublishingUberSnapshot struct {
 
 	// A map of "dir/filename.pb -> jsonpb snapshot"
 	PbFiles map[string]string `json:"pbFiles,omitempty"`
+}
+
+type PublishFormat int
+
+const (
+	PublishFormatDefault PublishFormat = iota
+	PublishFormatHtmlSPA
+)
+
+func parseUriFormat(uri string) (cleanUri string, format PublishFormat) {
+	cleanUri = uri
+	format = PublishFormatDefault
+	if strings.Contains(uri, "?") {
+		parts := strings.SplitN(uri, "?", 2)
+		cleanUri = parts[0]
+		query := strings.ToLower(parts[1])
+		if strings.Contains(query, "format=html_spa") || strings.Contains(query, "format=html") || strings.Contains(query, "export_format=html_spa") {
+			format = PublishFormatHtmlSPA
+		}
+	}
+	return cleanUri, format
 }
 
 type Service interface {
@@ -167,7 +189,7 @@ func (s *service) exportToDir(ctx context.Context, spaceId, pageId string, inclu
 	return
 }
 
-func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, uri, globalName string, joinSpace bool) (err error) {
+func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, uri, globalName string, joinSpace bool, format PublishFormat) (err error) {
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return err
@@ -191,17 +213,56 @@ func (s *service) publishToPublishServer(ctx context.Context, spaceId, pageId, u
 		return err
 	}
 
-	uberSnapshot, totalSize, err := s.processExportedData(dirEntries, exportPath, tempPublishDir, limit, spaceId, pageId)
-	if err != nil {
-		return err
-	}
+	if format == PublishFormatHtmlSPA {
+		var totalSize int64
+		for _, entry := range dirEntries {
+			if entry.IsDir() && entry.Name() == export.Files {
+				if size, err := s.processFilesDirectory(exportPath, tempPublishDir, limit); err != nil {
+					return err
+				} else {
+					totalSize += size
+				}
+			}
+		}
 
-	err = s.applyInviteLink(ctx, spaceId, &uberSnapshot, includeInviteLinkAndSpaceInfo)
-	if err != nil {
-		return err
-	}
-	if err := s.createIndexFile(tempPublishDir, uberSnapshot, totalSize, limit); err != nil {
-		return err
+		uberSnapshot := PublishingUberSnapshot{
+			Meta: PublishingUberSnapshotMeta{
+				SpaceId:    spaceId,
+				RootPageId: pageId,
+			},
+		}
+		if err := s.applyInviteLink(ctx, spaceId, &uberSnapshot, includeInviteLinkAndSpaceInfo); err != nil {
+			return err
+		}
+
+		htmlBuilder := NewSingleFileHtmlBuilder()
+		htmlData, err := htmlBuilder.BuildSPA(exportPath, pageId, uberSnapshot.Meta.InviteLink)
+		if err != nil {
+			return fmt.Errorf("build HTML SPA: %w", err)
+		}
+
+		totalSize += int64(len(htmlData))
+		if totalSize > limit {
+			return ErrLimitExceeded
+		}
+
+		indexPath := filepath.Join(tempPublishDir, "index.html")
+		if err := os.WriteFile(indexPath, htmlData, 0644); err != nil {
+			return fmt.Errorf("write index.html: %w", err)
+		}
+	} else {
+		uberSnapshot, totalSize, err := s.processExportedData(dirEntries, exportPath, tempPublishDir, limit, spaceId, pageId)
+		if err != nil {
+			return err
+		}
+
+		err = s.applyInviteLink(ctx, spaceId, &uberSnapshot, includeInviteLinkAndSpaceInfo)
+		if err != nil {
+			return err
+		}
+		if err := s.createIndexFile(tempPublishDir, uberSnapshot, totalSize, limit); err != nil {
+			return err
+		}
 	}
 
 	version, err := s.evaluateDocumentVersion(ctx, spc, pageId, joinSpace)
@@ -429,13 +490,15 @@ func (s *service) Publish(ctx context.Context, spaceId, pageId, uri string, join
 	identity, _, details := s.identityService.GetMyProfileDetails(ctx)
 	globalName := details.GetString(bundle.RelationKeyGlobalName)
 
-	err = s.publishToPublishServer(ctx, spaceId, pageId, uri, globalName, joinSpace)
+	cleanUri, format := parseUriFormat(uri)
+
+	err = s.publishToPublishServer(ctx, spaceId, pageId, cleanUri, globalName, joinSpace, format)
 
 	if err != nil {
 		log.Error("Failed to publish", zap.Error(err))
 		return
 	}
-	url := s.makeUrl(uri, identity, globalName)
+	url := s.makeUrl(cleanUri, identity, globalName)
 
 	return PublishResult{Url: url}, nil
 }
