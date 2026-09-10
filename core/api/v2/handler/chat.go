@@ -43,7 +43,7 @@ func respondChatMutation(c *gin.Context, dryRun bool, createdStatus int, payload
 
 // ListChatsHandler lists the space's chats as C5 rows
 //
-//	@Summary		List the chats in a space
+//	@Summary		List chats
 //	@Description	A row carries no unread counters. Per-chat unread state comes back with the messages read instead.
 //	@Id				list_chats
 //	@Tags			Chat
@@ -184,7 +184,7 @@ func AddChatMessageHandler(s *v2service.Service) gin.HandlerFunc {
 
 // EditChatMessageHandler edits a message's text
 //
-//	@Summary		Replace a chat message's text
+//	@Summary		Update chat message text
 //	@Description	Every mark is re-derived from the text you send, so a mark the old text carried and the new text does not spell out is lost. Attachments, the reply target and the style survive. Editing another member's message is a 403.
 //	@Id				edit_chat_message
 //	@Tags			Chat
@@ -245,7 +245,7 @@ func DeleteChatMessageHandler(s *v2service.Service) gin.HandlerFunc {
 
 // ToggleChatReactionHandler toggles a reaction
 //
-//	@Summary		Toggle a reaction on a chat message
+//	@Summary		Toggle a chat reaction
 //	@Description	`added` says which way the toggle went. A dry run predicts it, but when there is no account identity to predict with it omits the field and says so in `warnings`.
 //	@Id				toggle_chat_reaction
 //	@Tags			Chat
@@ -279,7 +279,7 @@ func ToggleChatReactionHandler(s *v2service.Service) gin.HandlerFunc {
 
 // ReadChatHandler moves the read watermark
 //
-//	@Summary		Move a chat's read watermark
+//	@Summary		Mark chat activity as read
 //	@Description	`up_to` is inclusive, and it and `last_state_id` both come from one messages read: the newest message's order, and the state's own id. An empty value for either would silently mark nothing, so it is refused. Messages that arrived after that state stay unread. The reactions scope marks every unread reaction and takes neither field.
 //	@Id				read_chat
 //	@Tags			Chat

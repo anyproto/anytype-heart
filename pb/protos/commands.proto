@@ -2627,6 +2627,9 @@ message Rpc {
                 int32 limit = 5;
                 // keys to return in records; empty = all
                 repeated string keys = 6;
+                // Optional allowlist applied before querying stores. Empty
+                // means all user spaces; callers with no access must not query.
+                repeated string spaceIds = 7;
             }
 
             message Response {

@@ -396,10 +396,11 @@ illustration):
      type keys and option names resolve inside each space's loop
      iteration; a name that resolves in only some spaces queries those
      spaces and carries a C6 warning naming the spaces where it did not
-     resolve. **Honest totals**: results merge per-space queries by the
-     requested sort; `has_more` is true when any space reported more;
-     `total` is the sum of per-space store counts — do NOT copy v1's
-     `total = len(fetched)` approximation.
+     resolve. Queries use the one-shot `ObjectCrossSpaceSearch` method over
+     loaded, granted spaces, grouping identical resolved filters and sorts.
+     The result includes one lookahead row: `total` is a lower bound when
+     clipped, and `has_more` reports whether another page is available.
+     Loading or unavailable stores produce a warning; callers can retry.
   5. **Empty-date hazard surfaces.** SPEC §6.2: an unguarded `less`/
      `lessOrEqual` date comparison matches undated objects (`dueDate <
      currentWeek()` matches objects with no dueDate). Document import
@@ -550,8 +551,8 @@ scalar→array coercion for list-shaped formats
 (`anyblockjson.UnmarshalFilters`/`UnmarshalSorts`, Phase 4) ·
 **view-execution resolver** (direct store query over setOf / the
 collection store slice, with placeholder substitution — Phase 4, §8.4) ·
-**global-search per-space loop + merge** with honest totals (Phase 4,
-§8.4) · **POST /queries `filter` wiring** (the §8.1 501 is gone) · the
+**one-shot cross-space search** with per-space reference resolution,
+partial-result warnings and bounded pagination (§8.4) · **POST /queries `filter` wiring** (the §8.1 501 is gone) · the
 Phase-4 discovery additions (`search` kind; the grammar on the `filters`
 kind) and the R9 sets-rule system-key widening · **markdown→flat-blocks
 parser** (`anyblockjson.ParseMarkdownBlocks` + the `insert_blocks`

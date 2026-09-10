@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -52,6 +53,25 @@ func newV2FixtureBare(t *testing.T) *v2Fixture {
 	mutatorMock := mock_apicore.NewMockObjectMutator(t)
 	provenanceMock := mock_apicore.NewMockObjectProvenance(t)
 	objectStore := objectstore.NewStoreFixture(t)
+	require.NoError(t, objectStore.WaitStoresLoaded(context.Background()))
+	mwMock.EXPECT().ObjectCrossSpaceSearch(mock.Anything, mock.Anything).RunAndReturn(
+		func(ctx context.Context, req *pb.RpcObjectCrossSpaceSearchRequest) *pb.RpcObjectCrossSpaceSearchResponse {
+			records, allLoaded, err := objectStore.QueryCrossSpaceNoWait(ctx, database.Query{
+				SpaceIds: req.SpaceIds, TextQuery: req.FullText,
+				Filters: database.FiltersFromProto(req.Filters), Sorts: database.SortsFromProto(req.Sorts),
+				Offset: int(req.Offset), Limit: int(req.Limit),
+			})
+			response := &pb.RpcObjectCrossSpaceSearchResponse{AllStoresLoaded: allLoaded}
+			if err != nil {
+				response.Error = &pb.RpcObjectCrossSpaceSearchResponseError{
+					Code: pb.RpcObjectCrossSpaceSearchResponseError_UNKNOWN_ERROR, Description: err.Error(),
+				}
+			}
+			for _, record := range records {
+				response.Records = append(response.Records, record.Details.ToProto())
+			}
+			return response
+		}).Maybe()
 	// Deterministic derived-id stubs (ADDRESSING §2.4: a derived object's id
 	// is a pure function of space and key; the mock's function is `drv-rel-`
 	// / `drv-ot-` + key). The §8.41 tombstone probes derive an id and

@@ -24,7 +24,7 @@ func respondV2Edit(c *gin.Context, result *v2model.EditResult) {
 
 // PatchObjectHandler applies a batch of edit ops atomically
 //
-//	@Summary		Edit an object with a batch of ops
+//	@Summary		Update an object
 //	@Description	Ops apply in order as one change set. If one fails, or the result breaks the format's rules, none of them land. `update_block`, `delete_block` and `replace_text` can address a block by its exact text instead of an id; text matching zero or several blocks is refused, not guessed at. A later op sees the earlier ones' edits. Ops that only create take no id; the new ids come back in `created_blocks`.
 //	@Id				patch_object
 //	@Tags			Objects
@@ -58,7 +58,7 @@ func PatchObjectHandler(s *v2service.Service) gin.HandlerFunc {
 
 // DeleteObjectHandler archives an object the calling key created
 //
-//	@Summary		Delete an object this key created
+//	@Summary		Delete an object
 //	@Description	Only objects this key created can be deleted. The creator is recorded at creation time and never added later, so objects made in the app, imported, made by another member, or made before this route shipped are refused for good. System objects are a 403 as well. A dry run reports the verdict without the checks that run at archive time, so a deletable verdict can still meet a 403.
 //	@Id				delete_object
 //	@Tags			Objects

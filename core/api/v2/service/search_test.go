@@ -808,6 +808,52 @@ func TestV2GlobalSearchObjects(t *testing.T) {
 		return fx
 	}
 
+	t.Run("full-text finds block content across spaces in one search", func(t *testing.T) {
+		fx := setup(t)
+		for spaceId, id := range map[string]string{testSpaceId: "chore1", otherSpaceId: "note1"} {
+			require.NoError(t, fx.objectStore.FullText.Index(ftsearch.SearchDoc{
+				Id: id + "/b/body", SpaceId: spaceId, Text: "distinctivebodyword meeting notes",
+			}))
+		}
+		rows, total, more, warnings, err := fx.GlobalSearchObjects(context.Background(),
+			v2model.SearchRequest{Query: "distinctivebodyword"}, 0, 25)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"chore1", "note1"}, rowIds(rows))
+		assert.Equal(t, 2, total)
+		assert.False(t, more)
+		assert.Empty(t, warnings)
+		fx.mwMock.AssertNumberOfCalls(t, "ObjectCrossSpaceSearch", 1)
+	})
+
+	t.Run("different per-space type IDs keep their own filters", func(t *testing.T) {
+		fx := setup(t)
+		fx.objectStore.AddObjects(t, otherSpaceId, []objectstore.TestObject{
+			{bundle.RelationKeyId: domain.String("other-chore-type"), bundle.RelationKeyName: domain.String("Chore"),
+				bundle.RelationKeyUniqueKey: domain.String("ot-chore"), bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType))},
+			{bundle.RelationKeyId: domain.String("other-chore"), bundle.RelationKeyName: domain.String("A chore elsewhere"),
+				bundle.RelationKeyType: domain.String("other-chore-type"), bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyLastModifiedDate: domain.Int64(1500)},
+		})
+		rows, total, more, warnings, err := fx.GlobalSearchObjects(context.Background(), v2model.SearchRequest{Type: "chore"}, 0, 25)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"chore2", "other-chore", "chore1"}, rowIds(rows))
+		assert.Equal(t, 3, total)
+		assert.False(t, more)
+		assert.Empty(t, warnings)
+		fx.mwMock.AssertNumberOfCalls(t, "ObjectCrossSpaceSearch", 2)
+	})
+
+	t.Run("an unloaded space is skipped before resolving its properties", func(t *testing.T) {
+		fx := setup(t)
+		fx.registerSpace(t, "unloaded")
+		opened := fx.objectStore.OpenedSpaceIds()
+		rows, _, _, warnings, err := fx.GlobalSearchObjects(context.Background(), v2model.SearchRequest{Type: "chore"}, 0, 25)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"chore1", "chore2"}, rowIds(rows))
+		assert.ElementsMatch(t, opened, fx.objectStore.OpenedSpaceIds())
+		assert.Contains(t, warnings, incompleteSearchIssue())
+	})
+
 	t.Run("merges spaces by the requested sort with honest totals (rule 4)", func(t *testing.T) {
 		// given
 		fx := setup(t)
@@ -858,7 +904,7 @@ func TestV2GlobalSearchObjects(t *testing.T) {
 		assert.Equal(t, "/type", apiErr.Issues[0].Path)
 	})
 
-	t.Run("has_more compares the requested page against the honest total", func(t *testing.T) {
+	t.Run("a clipped one-shot result reports a lower bound and has_more", func(t *testing.T) {
 		// given
 		fx := setup(t)
 
@@ -868,7 +914,7 @@ func TestV2GlobalSearchObjects(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, 4, total)
+		assert.Equal(t, 3, total, "the page plus one lookahead row is a lower bound")
 		assert.True(t, hasMore)
 		assert.Equal(t, []string{"page1", "chore2"}, rowIds(rows))
 	})

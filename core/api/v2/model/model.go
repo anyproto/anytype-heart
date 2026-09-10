@@ -466,7 +466,7 @@ type FileUploadResult struct {
 // limit is rejected by the strict request schema. Search is a read: exempt
 // from Idempotency-Key, and a supplied dry_run is ignored.
 type SearchRequest struct {
-	Query   string          `json:"query,omitempty"`
+	Query   string          `json:"query,omitempty"` // Full-text query over object names and indexed content.
 	Type    string          `json:"type,omitempty"`
 	Filter  string          `json:"filter,omitempty"`
 	Filters json.RawMessage `json:"filters,omitempty"`
@@ -481,7 +481,7 @@ type SearchRequest struct {
 // test pins the twin's JSON field set to SearchRequest's so the two cannot
 // drift.
 type SearchRequestDoc struct {
-	Query   string           `json:"query,omitempty"`
+	Query   string           `json:"query,omitempty"` // Full-text query over object names and indexed content.
 	Type    string           `json:"type,omitempty"`
 	Filter  string           `json:"filter,omitempty"`
 	Filters []map[string]any `json:"filters,omitempty"`

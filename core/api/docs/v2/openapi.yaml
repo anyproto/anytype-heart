@@ -784,6 +784,7 @@ components:
           type: array
           uniqueItems: false
         query:
+          description: Full-text query over object names and indexed content.
           type: string
         sorts:
           items:
@@ -1078,6 +1079,12 @@ info:
     `total` and `has_more`, plus a narrowing hint when truncated. Chat messages
     use an order-id cursor instead.
 
+    Search accepts full text in the JSON body's `query` field, for example
+    `{"query":"meeting notes"}`. Cross-space search uses the currently loaded
+    spaces. Its `total` is a lower bound when results are clipped; use `has_more`
+    to continue paging. Warnings indicate when stores are still loading or
+    unavailable, so retry later for a complete view.
+
     ## Edit with a batch of operations
 
     Send an `ops` array to the object's `PATCH` endpoint. For example, this body
@@ -1255,7 +1262,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ServerError'
           description: Internal server error
-      summary: Create API Key
+      summary: Create an API key
       tags:
       - Auth
   /v2/auth/challenges:
@@ -1306,7 +1313,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ServerError'
           description: Internal server error
-      summary: Create Challenge
+      summary: Create a challenge
       tags:
       - Auth
   /v2/auth/whoami:
@@ -1340,7 +1347,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
       security:
       - bearerauth: []
-      summary: Describe the calling key
+      summary: Get API key details
       tags:
       - Auth
   /v2/schemas:
@@ -1361,7 +1368,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
       security:
       - bearerauth: []
-      summary: List the available schemas
+      summary: List schemas
       tags:
       - Schemas
   /v2/schemas/{kind}:
@@ -1395,7 +1402,7 @@ paths:
           description: Unknown kind
       security:
       - bearerauth: []
-      summary: Get the schema for one kind
+      summary: Get a schema
       tags:
       - Schemas
   /v2/schemas/ops/{op}:
@@ -1433,14 +1440,16 @@ paths:
           description: Unknown op
       security:
       - bearerauth: []
-      summary: Get the schema for one edit op
+      summary: Get an edit operation schema
       tags:
       - Schemas
   /v2/search:
     post:
-      description: Type keys and option names are resolved per space. A name that
-        resolves in only some spaces searches those and warns about the rest. `total`
-        is the sum of the per-space counts, and each row carries its `space_id`.
+      description: Type keys and option names resolve per space; unresolved spaces
+        produce warnings. Searches loaded spaces using query as full text over names
+        and indexed content. total is a lower bound when clipped; use has_more to
+        request further pages. Warnings report loading or unavailable stores. Each
+        row carries space_id.
       operationId: search_global
       parameters:
       - description: Items to skip
@@ -1488,7 +1497,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
       security:
       - bearerauth: []
-      summary: Search every space
+      summary: Search objects across spaces
       tags:
       - Search
   /v2/spaces:
@@ -1521,7 +1530,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
       security:
       - bearerauth: []
-      summary: List spaces accessible to the API key
+      summary: List spaces
       tags:
       - Spaces
     post:
@@ -1628,7 +1637,7 @@ paths:
           description: Space not found
       security:
       - bearerauth: []
-      summary: Get one space
+      summary: Get a space
       tags:
       - Spaces
     patch:
@@ -1745,7 +1754,7 @@ paths:
           description: Space not found
       security:
       - bearerauth: []
-      summary: List the chats in a space
+      summary: List chats
       tags:
       - Chat
     post:
@@ -2101,7 +2110,7 @@ paths:
           $ref: '#/components/responses/RateLimited'
       security:
       - bearerauth: []
-      summary: Replace a chat message's text
+      summary: Update chat message text
       tags:
       - Chat
   /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}/reactions:
@@ -2178,7 +2187,7 @@ paths:
           $ref: '#/components/responses/RateLimited'
       security:
       - bearerauth: []
-      summary: Toggle a reaction on a chat message
+      summary: Toggle a chat reaction
       tags:
       - Chat
   /v2/spaces/{space_id}/chats/{chat_id}/messages/stream:
@@ -2249,7 +2258,7 @@ paths:
           description: Too many streams held at once; close one, retrying cannot succeed
       security:
       - bearerauth: []
-      summary: Stream a chat's messages
+      summary: Stream chat messages
       tags:
       - Chat
   /v2/spaces/{space_id}/chats/{chat_id}/read:
@@ -2322,7 +2331,7 @@ paths:
           $ref: '#/components/responses/RateLimited'
       security:
       - bearerauth: []
-      summary: Move a chat's read watermark
+      summary: Mark chat activity as read
       tags:
       - Chat
   /v2/spaces/{space_id}/collections:
@@ -2454,7 +2463,7 @@ paths:
           description: Space, collection or view not found
       security:
       - bearerauth: []
-      summary: List a collection's objects
+      summary: List collection objects
       tags:
       - Lists
   /v2/spaces/{space_id}/collections/{collection_id}/views:
@@ -2510,7 +2519,7 @@ paths:
           description: Space or collection not found
       security:
       - bearerauth: []
-      summary: List a collection's views
+      summary: List collection views
       tags:
       - Lists
   /v2/spaces/{space_id}/files:
@@ -2746,7 +2755,7 @@ paths:
           description: File content could not be read
       security:
       - bearerauth: []
-      summary: Download file content
+      summary: Get file content
       tags:
       - Files
     head:
@@ -2837,7 +2846,7 @@ paths:
           description: File content could not be read
       security:
       - bearerauth: []
-      summary: Read file content headers
+      summary: Get file headers
       tags:
       - Files
   /v2/spaces/{space_id}/members:
@@ -2871,7 +2880,7 @@ paths:
           description: Space not found or unavailable
       security:
       - bearerauth: []
-      summary: List the members of a space
+      summary: List members
       tags:
       - Members
   /v2/spaces/{space_id}/members/me:
@@ -2907,7 +2916,7 @@ paths:
           description: Space not found, or no account identity
       security:
       - bearerauth: []
-      summary: Get the calling member
+      summary: Get the current member
       tags:
       - Members
   /v2/spaces/{space_id}/objects:
@@ -2962,7 +2971,7 @@ paths:
           description: Space not found or unavailable
       security:
       - bearerauth: []
-      summary: List the objects in a space
+      summary: List objects
       tags:
       - Objects
     post:
@@ -3086,7 +3095,7 @@ paths:
           $ref: '#/components/responses/RateLimited'
       security:
       - bearerauth: []
-      summary: Delete an object this key created
+      summary: Delete an object
       tags:
       - Objects
     get:
@@ -3161,7 +3170,7 @@ paths:
           description: Object or space not found
       security:
       - bearerauth: []
-      summary: Read an object as an AnyBlock document
+      summary: Get an object
       tags:
       - Objects
     patch:
@@ -3236,7 +3245,7 @@ paths:
           $ref: '#/components/responses/RateLimited'
       security:
       - bearerauth: []
-      summary: Edit an object with a batch of ops
+      summary: Update an object
       tags:
       - Objects
   /v2/spaces/{space_id}/properties:
@@ -3270,7 +3279,7 @@ paths:
           description: Space not found or unavailable
       security:
       - bearerauth: []
-      summary: List the properties in a space
+      summary: List properties
       tags:
       - Properties
     post:
@@ -3471,7 +3480,7 @@ paths:
           description: Property not found
       security:
       - bearerauth: []
-      summary: List a property's options
+      summary: List property options
       tags:
       - Properties
   /v2/spaces/{space_id}/queries:
@@ -3604,7 +3613,7 @@ paths:
           description: Space, query or view not found
       security:
       - bearerauth: []
-      summary: Run a query and list what it matches
+      summary: List query results
       tags:
       - Lists
   /v2/spaces/{space_id}/queries/{query_id}/views:
@@ -3660,7 +3669,7 @@ paths:
           description: Space or query not found
       security:
       - bearerauth: []
-      summary: List a query's views
+      summary: List query views
       tags:
       - Lists
   /v2/spaces/{space_id}/search:
@@ -3721,7 +3730,7 @@ paths:
           description: Space not found
       security:
       - bearerauth: []
-      summary: Search one space
+      summary: Search objects in a space
       tags:
       - Search
   /v2/spaces/{space_id}/templates:
@@ -3817,7 +3826,7 @@ paths:
           description: Space not found or unavailable
       security:
       - bearerauth: []
-      summary: List the types in a space
+      summary: List types
       tags:
       - Types
     post:
@@ -3971,7 +3980,7 @@ paths:
           description: Type not found
       security:
       - bearerauth: []
-      summary: Read a type as an AnyBlock document
+      summary: Get a type
       tags:
       - Types
     patch:
@@ -4067,7 +4076,7 @@ paths:
           description: Not implemented yet
       security:
       - bearerauth: []
-      summary: Get a JSON Schema for a type
+      summary: Get a type schema
       tags:
       - Types
   /v2/validate:

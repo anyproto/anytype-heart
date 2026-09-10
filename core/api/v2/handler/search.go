@@ -83,7 +83,7 @@ func unknownFieldName(err error) (string, bool) {
 
 // SearchObjectsHandler searches one space
 //
-//	@Summary		Search one space
+//	@Summary		Search objects in a space
 //	@Description	`filter` and `filters` are two spellings of the same thing, the compact string and the structured array; sending both is refused. This is a read carried by POST because the query needs a body, so pagination stays in the query string and a `limit` or `offset` in the body is refused.
 //	@Id				search_space
 //	@Tags			Search
@@ -119,8 +119,8 @@ func SearchObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 
 // GlobalSearchObjectsHandler searches every space
 //
-//	@Summary		Search every space
-//	@Description	Type keys and option names are resolved per space. A name that resolves in only some spaces searches those and warns about the rest. `total` is the sum of the per-space counts, and each row carries its `space_id`.
+//	@Summary		Search objects across spaces
+//	@Description	Type keys and option names resolve per space; unresolved spaces produce warnings. Searches loaded spaces using query as full text over names and indexed content. total is a lower bound when clipped; use has_more to request further pages. Warnings report loading or unavailable stores. Each row carries space_id.
 //	@Id				search_global
 //	@Tags			Search
 //	@Accept			json

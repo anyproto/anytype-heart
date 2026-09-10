@@ -30,7 +30,7 @@ func listFieldsParam(c *gin.Context) []string {
 
 // GetQueryObjectsHandler lists the objects a query matches
 //
-//	@Summary		Run a query and list what it matches
+//	@Summary		List query results
 //	@Description	A stored view's dynamic placeholders, such as the current date or the calling member, are resolved here. One that cannot be resolved becomes a warning rather than a silently empty result.
 //	@Id				get_query_objects
 //	@Tags			Lists
@@ -64,7 +64,7 @@ func GetQueryObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 
 // GetQueryViewsHandler lists a query's stored views
 //
-//	@Summary	List a query's views
+//	@Summary	List query views
 //	@Id			get_query_views
 //	@Tags		Lists
 //	@Produce	json
@@ -94,7 +94,7 @@ func GetQueryViewsHandler(s *v2service.Service) gin.HandlerFunc {
 
 // GetCollectionObjectsHandler lists a collection's members
 //
-//	@Summary		List a collection's objects
+//	@Summary		List collection objects
 //	@Description	Members come back in the order the collection stores them, not sorted, unless a view is applied.
 //	@Id				get_collection_objects
 //	@Tags			Lists
@@ -128,7 +128,7 @@ func GetCollectionObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 
 // GetCollectionViewsHandler lists a collection's stored views
 //
-//	@Summary	List a collection's views
+//	@Summary	List collection views
 //	@Id			get_collection_views
 //	@Tags		Lists
 //	@Produce	json

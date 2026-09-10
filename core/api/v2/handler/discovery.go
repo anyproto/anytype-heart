@@ -12,7 +12,7 @@ import (
 
 // ListSpacesHandler lists the live spaces granted to the API key.
 //
-//	@Summary		List spaces accessible to the API key
+//	@Summary		List spaces
 //	@Description	Returns only live spaces accessible to this API key. A space that is deleted, left, or still joining does not appear. has_not_granted_spaces is true when other live user spaces are excluded by the key's grant; if a requested space is missing, ask the user to grant access. This flag is independent of pagination: total and has_more describe only accessible spaces.
 //	@Id				list_spaces
 //	@Tags			Spaces
@@ -39,7 +39,7 @@ func ListSpacesHandler(s *v2service.Service) gin.HandlerFunc {
 
 // ListMembersHandler lists space members as minimal rows
 //
-//	@Summary	List the members of a space
+//	@Summary	List members
 //	@Id			list_members
 //	@Tags		Members
 //	@Produce	json
@@ -64,7 +64,7 @@ func ListMembersHandler(s *v2service.Service) gin.HandlerFunc {
 
 // GetMemberMeHandler returns the caller's own member row
 //
-//	@Summary		Get the calling member
+//	@Summary		Get the current member
 //	@Description	The identity is taken from the account this API runs against; there is no member id to send.
 //	@Id				get_member_me
 //	@Tags			Members
@@ -87,7 +87,7 @@ func GetMemberMeHandler(s *v2service.Service) gin.HandlerFunc {
 
 // ListTypesHandler lists type keys and names
 //
-//	@Summary	List the types in a space
+//	@Summary	List types
 //	@Id			list_types
 //	@Tags		Types
 //	@Produce	json
@@ -112,7 +112,7 @@ func ListTypesHandler(s *v2service.Service) gin.HandlerFunc {
 
 // GetTypeHandler reads one type as its AnyBlock document
 //
-//	@Summary	Read a type as an AnyBlock document
+//	@Summary	Get a type
 //	@Id			get_type
 //	@Tags		Types
 //	@Produce	json
@@ -138,7 +138,7 @@ func GetTypeHandler(s *v2service.Service) gin.HandlerFunc {
 
 // GetTypeSchemaHandler is the [build] GenerateSchema endpoint stub
 //
-//	@Summary		Get a JSON Schema for a type
+//	@Summary		Get a type schema
 //	@Description	Not implemented. Every request that resolves a space answers 501.
 //	@Id				get_type_schema
 //	@Tags			Types
@@ -157,7 +157,7 @@ func GetTypeSchemaHandler(s *v2service.Service) gin.HandlerFunc {
 
 // ListPropertiesHandler lists properties as key/name/format rows
 //
-//	@Summary	List the properties in a space
+//	@Summary	List properties
 //	@Id			list_properties
 //	@Tags		Properties
 //	@Produce	json
@@ -182,7 +182,7 @@ func ListPropertiesHandler(s *v2service.Service) gin.HandlerFunc {
 
 // ListPropertyOptionsHandler lists option names of one property
 //
-//	@Summary	List a property's options
+//	@Summary	List property options
 //	@Id			list_property_options
 //	@Tags		Properties
 //	@Produce	json

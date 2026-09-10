@@ -13,7 +13,7 @@ import (
 
 // GetObjectHandler reads one object as a flat AnyBlock document
 //
-//	@Summary		Read an object as an AnyBlock document
+//	@Summary		Get an object
 //	@Description	A `block` subtree comes back flagged as a subtree, and no write path accepts that partial body. `format=md` is read-only; markdown cannot be sent back.
 //	@Id				get_object
 //	@Tags			Objects
@@ -51,7 +51,7 @@ func GetObjectHandler(s *v2service.Service) gin.HandlerFunc {
 
 // ListObjectsHandler lists objects as minimal rows
 //
-//	@Summary	List the objects in a space
+//	@Summary	List objects
 //	@Id			list_objects
 //	@Tags		Objects
 //	@Produce	json

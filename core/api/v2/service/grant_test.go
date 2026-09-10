@@ -321,6 +321,20 @@ func TestGlobalSearchGrantIntersection(t *testing.T) {
 		assert.Empty(t, warnings)
 	})
 
+	t.Run("an empty grant never issues an unrestricted search", func(t *testing.T) {
+		fx := setup(t)
+
+		rows, total, hasMore, warnings, err := fx.GlobalSearchObjects(
+			grantCtx(util.GrantPermsRead), v2model.SearchRequest{Query: "Doc"}, 0, 25)
+
+		require.NoError(t, err)
+		assert.Empty(t, rows)
+		assert.Zero(t, total)
+		assert.False(t, hasMore)
+		assert.Empty(t, warnings)
+		fx.mwMock.AssertNumberOfCalls(t, "ObjectCrossSpaceSearch", 0)
+	})
+
 	t.Run("a non-granted space never appears in warnings", func(t *testing.T) {
 		// the intersection happens on the INPUT set (spaceRefs), not on the
 		// output rows: the probe is a type that resolves ONLY in the granted

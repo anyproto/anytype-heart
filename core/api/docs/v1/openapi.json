@@ -994,6 +994,26 @@
           "FilterOperatorOr"
         ]
       },
+      "GlobalSearchResponse": {
+        "properties": {
+          "all_stores_loaded": {
+            "description": "False when spaces are still loading or a store was unavailable. Retry later for a complete view.",
+            "type": "boolean"
+          },
+          "data": {
+            "description": "The list of items in the current result set",
+            "items": {
+              "$ref": "#/components/schemas/Object"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        },
+        "type": "object"
+      },
       "Icon": {
         "description": "The icon of the object, or null if the object has no icon",
         "nullable": true,
@@ -2542,7 +2562,7 @@
             "$ref": "#/components/schemas/FilterExpression"
           },
           "query": {
-            "description": "The text to search within object names and content; use types field for type filtering",
+            "description": "Full-text query for cross-space search; within a single space, matches names and snippets. Use types for type filtering.",
             "example": "test",
             "type": "string"
           },
@@ -3628,7 +3648,7 @@
             "description": "Internal server error"
           }
         },
-        "summary": "Create API Key",
+        "summary": "Create an API key",
         "tags": [
           "Auth"
         ]
@@ -3703,7 +3723,7 @@
             "description": "Internal server error"
           }
         },
-        "summary": "Create Challenge",
+        "summary": "Create a challenge",
         "tags": [
           "Auth"
         ]
@@ -3711,7 +3731,7 @@
     },
     "/v1/search": {
       "post": {
-        "description": "Executes a global search over all spaces accessible to the authenticated user. The request body must specify the `query` text (currently matching only name and snippet of an object), optional filters on types (e.g., \"page\", \"task\"), and sort directives (default: descending by last modified date). File-layout objects (file, image, video, audio, pdf) are excluded from results by default; to include them, list one of the file type keys (\"file\", \"image\", \"video\", \"audio\") in the `types` field. Pagination is controlled via `offset` and `limit` query parameters to facilitate lazy loading in client UIs. The response returns a unified list of matched objects with their metadata and properties.",
+        "description": "Searches loaded user spaces. query performs full-text search over object names and indexed content. Filters and type keys resolve per space. File types must be requested explicitly in types. total is a lower bound when clipped; use has_more to request further pages. all_stores_loaded is false if spaces are still loading or a store was unavailable; retry later for a complete view.",
         "operationId": "search_global",
         "parameters": [
           {
@@ -3760,11 +3780,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaginatedResponse-Object"
+                  "$ref": "#/components/schemas/GlobalSearchResponse"
                 }
               }
             },
-            "description": "The list of objects matching the search criteria"
+            "description": "A page of matching objects and store readiness"
           },
           "401": {
             "content": {

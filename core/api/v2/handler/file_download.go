@@ -13,7 +13,7 @@ import (
 
 // DownloadFileHandler streams an authorized file or icon.
 //
-//	@Summary		Download file content
+//	@Summary		Get file content
 //	@Description	Returns a file or icon from this space. Pass a file id or the icon_image value from a space or member. Images support width variants. Range and conditional requests are supported.
 //	@Id				download_file
 //	@Tags			Files
@@ -77,7 +77,7 @@ func DownloadFileHandler(s *v2service.Service) gin.HandlerFunc {
 
 // HeadFileHandler returns the same headers and performs the same access checks.
 //
-//	@Summary		Read file content headers
+//	@Summary		Get file headers
 //	@Description	Returns the file or icon headers without a response body. Accepts the same ids as file download.
 //	@Id				head_file
 //	@Tags			Files

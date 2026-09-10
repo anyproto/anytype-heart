@@ -17643,6 +17643,7 @@ ObjectSearchWithMeta (not ObjectSearch&#39;s name-prefix mode).
 | offset | [int32](#int32) |  | offset and limit apply to the merged cross-space result. Always set a limit: an unlimited request materializes every space in full |
 | limit | [int32](#int32) |  |  |
 | keys | [string](#string) | repeated | keys to return in records; empty = all |
+| spaceIds | [string](#string) | repeated | Optional allowlist applied before querying stores. Empty means all user spaces; callers with no access must not query. |
 
 
 

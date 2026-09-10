@@ -4,9 +4,9 @@ package v2service
 // POST /v2/spaces/{space_id}/search and POST /v2/search (global). Both filter
 // forms — the compact string (SPEC §6.2.1, parsed by anyblockjson/
 // filterstring) and the structured array — land on ONE internal tree via
-// anyblockjson.UnmarshalFilters, then translate to a direct store query
-// (database.Query): full-text via TextQuery, any-key filters with date
-// presets, any-key sorts. Search is a read: no idempotency, dry_run ignored.
+// anyblockjson.UnmarshalFilters. Space search queries the store directly;
+// global search uses ObjectCrossSpaceSearch with full-text, resolved property
+// filters, and sorts. Search is a read: no idempotency, dry_run ignored.
 //
 // The validation and resolution rules are:
 //  1. key scope — a top-level type narrows keys to the type's recommended
@@ -15,8 +15,8 @@ package v2service
 //     lastOpenedDate) always joins the reference set
 //  3. option names resolve READ-ONLY — a query never creates the option it
 //     names; unresolved → did-you-mean, never a silent no-match
-//  4. global search resolves per space, merges by the requested sort, and
-//     reports honest totals (sum of per-space store counts)
+//  4. global search groups spaces with the same resolved query, merges by
+//     the requested sort, and reports lower-bound totals from lookahead
 //  5. the unguarded-date-comparison hazard rides the C6 warnings channel
 //  6. `type` is a filterable pseudo-key; the top-level `type` composes by AND
 
@@ -25,6 +25,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
+	"slices"
 	"sort"
 
 	"github.com/gogo/protobuf/types"
@@ -32,6 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/util"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/storeresolver"
@@ -49,8 +52,8 @@ var v2SystemQueryKeys = []string{"createdDate", "lastModifiedDate", "creator", "
 // SearchNarrowHint is the C10 truncation steering for search results.
 const SearchNarrowHint = "narrow with filter or query, or request the next offset"
 
-// maxGlobalSearchOffset bounds how deep the global merge pages: the k-way
-// merge materializes up to offset+limit records PER SPACE, so an unbounded
+// maxGlobalSearchOffset bounds how deep the global merge pages: each resolved
+// query group materializes up to offset+limit+1 records, so an unbounded
 // offset lets one request decode the whole account into memory. Deeper
 // enumeration belongs on the space-scoped search, which pushes offset/limit
 // into the store.
@@ -902,9 +905,8 @@ type spaceRef struct {
 
 // spaceRefs enumerates the account's spaces from the tech space's views,
 // filtered to the live ones (isLiveSpaceView — the predicate shared with
-// the v2 spaces list and GET-one): global search calls SpaceIndex on every
-// ref, which MINTS an index for the id, so a removed or never-loaded space
-// must not get one materialized as a search side effect.
+// the v2 spaces list and GET-one). Global search further restricts these
+// refs to opened stores before resolving properties.
 //
 // The ctx grant intersects the INPUT set here, before any per-space work —
 // not the output rows: a non-granted space must never enter the fan-out
@@ -938,12 +940,12 @@ func (s *Service) spaceRefs(ctx context.Context) ([]spaceRef, error) {
 type globalRecord struct {
 	spaceId string
 	record  database.Record
+	sorts   []database.SortRequest
 }
 
-// GlobalSearchObjects implements POST /v2/search: the per-space loop with
-// per-space name resolution, a merge by the requested sort, and honest
-// totals — total is the sum of per-space store counts, has_more compares it
-// against the requested page (never v1's total = len(fetched)).
+// GlobalSearchObjects resolves names per space, then uses one-shot cross-space
+// search. Spaces with the same resolved filters and sorts share a query, so full-text
+// normally runs once across the account. total is a lower bound when clipped.
 func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchRequest, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
 	if err := validateSearchShape(req); err != nil {
 		return nil, 0, false, nil, err
@@ -953,7 +955,7 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 			fmt.Sprintf("global search pages at most %d rows deep", maxGlobalSearchOffset),
 			v2model.Issue{
 				Path:    "offset",
-				Message: fmt.Sprintf("offset %d exceeds the global-search maximum of %d — the cross-space merge materializes offset+limit rows per space", offset, maxGlobalSearchOffset),
+				Message: fmt.Sprintf("offset %d exceeds the global-search maximum of %d", offset, maxGlobalSearchOffset),
 				Hint:    "narrow with filter, type or query, or page one space with POST /v2/spaces/{space_id}/search",
 			})
 	}
@@ -963,15 +965,28 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 	}
 
 	var (
-		merged     []globalRecord
-		total      int
-		warnings   []v2model.Issue
-		mergeSorts []database.SortRequest
-		firstErr   error
-		resolved   int
+		merged   []globalRecord
+		total    int
+		warnings []v2model.Issue
+		firstErr error
+		resolved int
 	)
+	type queryGroup struct {
+		spaceIds []string
+		filters  []database.FilterRequest
+		sorts    []database.SortRequest
+	}
+	var groups []*queryGroup
 	need := offset + limit
+	opened := s.store.OpenedSpaceIds()
+	hasUnloadedSpaces := false
 	for _, space := range spaces {
+		if !slices.Contains(opened, space.id) {
+			hasUnloadedSpaces = true
+			warnings = append(warnings, incompleteSearchIssue())
+			continue
+		}
+
 		// rule 4: type keys and option names resolve inside each space's loop
 		// iteration; a reference that resolves in only some spaces queries
 		// those and warns about the rest. Fields are lenient here — a display
@@ -991,27 +1006,49 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 			return nil, 0, false, nil, err
 		}
 		resolved++
-		if mergeSorts == nil {
-			mergeSorts = plan.sorts
+		var group *queryGroup
+		for _, existing := range groups {
+			if reflect.DeepEqual(existing.sorts, plan.sorts) && reflect.DeepEqual(existing.filters, plan.filters) {
+				group = existing
+				break
+			}
 		}
-		records, spaceTotal, err := s.runSearchQuery(space.id, plan, 0, need)
-		if err != nil {
-			return nil, 0, false, nil, err
+		if group == nil {
+			group = &queryGroup{sorts: plan.sorts, filters: plan.filters}
+			groups = append(groups, group)
 		}
-		total += spaceTotal
-		for _, record := range records {
-			merged = append(merged, globalRecord{spaceId: space.id, record: record})
-		}
+		group.spaceIds = append(group.spaceIds, space.id)
 		warnings = append(warnings, plan.warnings...)
 	}
-	if resolved == 0 && firstErr != nil {
+	if resolved == 0 && firstErr != nil && !hasUnloadedSpaces {
 		// the request resolved nowhere — the per-space error is the answer,
 		// not an empty result
 		return nil, 0, false, nil, firstErr
 	}
+	for _, group := range groups {
+		resp := s.mw.ObjectCrossSpaceSearch(ctx, &pb.RpcObjectCrossSpaceSearchRequest{
+			SpaceIds: group.spaceIds,
+			FullText: req.Query,
+			Filters:  database.FiltersToProto(group.filters),
+			Sorts:    database.SortsToProto(group.sorts),
+			Limit:    int32(need + 1), // nolint: gosec
+		})
+		if resp.Error != nil && resp.Error.Code != pb.RpcObjectCrossSpaceSearchResponseError_NULL {
+			return nil, 0, false, nil, fmt.Errorf("cross-space search: %s", resp.Error.Description)
+		}
+		if !resp.AllStoresLoaded {
+			warnings = append(warnings, incompleteSearchIssue())
+		}
+		total += len(resp.Records)
+		for _, record := range resp.Records {
+			details := domain.NewDetailsFromProto(record)
+			merged = append(merged, globalRecord{spaceId: details.GetString(bundle.RelationKeySpaceId), record: database.Record{Details: details}, sorts: group.sorts})
+		}
+	}
 	warnings = dedupeIssues(warnings)
-
-	sortGlobalRecords(merged, mergeSorts)
+	if len(groups) > 1 {
+		sortGlobalRecords(merged)
+	}
 	page := merged[minInt(offset, len(merged)):minInt(need, len(merged))]
 
 	// the row's space_id field is served in the §8.35 short form, minted over
@@ -1038,6 +1075,10 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 		rows = append(rows, builder.row(entry.record))
 	}
 	return rows, total, need < total, warnings, nil
+}
+
+func incompleteSearchIssue() v2model.Issue {
+	return v2model.Issue{Message: "Search results are incomplete because some space stores are still loading or unavailable.", Hint: "Retry later for a complete view."}
 }
 
 // firstIssueMessage picks the most specific message of a C6 error for the
@@ -1068,12 +1109,12 @@ func dedupeIssues(issues []v2model.Issue) []v2model.Issue {
 // sortGlobalRecords merges per-space results by the effective sort list.
 // The comparator approximates the store's ordering (no locale collation);
 // ties break by space id then object id for determinism.
-func sortGlobalRecords(records []globalRecord, sorts []database.SortRequest) {
+func sortGlobalRecords(records []globalRecord) {
 	sort.SliceStable(records, func(i, j int) bool {
 		a, b := records[i], records[j]
-		for _, srt := range sorts {
+		for pos, srt := range a.sorts {
 			av := a.record.Details.Get(srt.RelationKey)
-			bv := b.record.Details.Get(srt.RelationKey)
+			bv := b.record.Details.Get(b.sorts[pos].RelationKey)
 			comp := av.Compare(bv)
 			if comp == 0 {
 				continue

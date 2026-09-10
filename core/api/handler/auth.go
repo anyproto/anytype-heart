@@ -12,7 +12,7 @@ import (
 
 // CreateChallengeHandler creates a new challenge for API key generation
 //
-//	@Summary		Create Challenge
+//	@Summary		Create a challenge
 //	@Description	Starts pairing for the named app and returns a challenge_id. The user chooses spaces and permissions in Anytype Desktop, then approves to reveal a 4-digit code. Submit the challenge_id and code to /v1/auth/api_keys. No existing API key is required.
 //	@ID				create_auth_challenge
 //	@Tags			Auth
@@ -52,7 +52,7 @@ func CreateChallengeHandler(s *service.Service) gin.HandlerFunc {
 
 // CreateApiKeyHandler creates a new api key using a code and challenge ID
 //
-//	@Summary		Create API Key
+//	@Summary		Create an API key
 //	@Description	Exchanges a challenge_id from /v1/auth/challenges and the code revealed after Desktop approval for an api_key and the grant approved by the user. The grant states the permission, full space_ids, and whether all current and future user spaces are covered. Use the key as a bearer credential in the Authorization header. No existing API key is required.
 //	@ID				create_api_key
 //	@Tags			Auth

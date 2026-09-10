@@ -18,7 +18,9 @@ import (
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	v2service "github.com/anyproto/anytype-heart/core/api/v2/service"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -48,6 +50,26 @@ func newV2HandlerFixtureWithChatSub(t *testing.T, chatSub apicore.ChatSubscripti
 	mwMock := mock_apicore.NewMockClientCommands(t)
 	readerMock := mock_apicore.NewMockObjectReader(t)
 	store := objectstore.NewStoreFixture(t)
+	require.NoError(t, store.WaitStoresLoaded(context.Background()))
+	store.SpaceIndex("space1")
+	mwMock.EXPECT().ObjectCrossSpaceSearch(mock.Anything, mock.Anything).RunAndReturn(
+		func(ctx context.Context, req *pb.RpcObjectCrossSpaceSearchRequest) *pb.RpcObjectCrossSpaceSearchResponse {
+			records, allLoaded, err := store.QueryCrossSpaceNoWait(ctx, database.Query{
+				SpaceIds: req.SpaceIds, TextQuery: req.FullText,
+				Filters: database.FiltersFromProto(req.Filters), Sorts: database.SortsFromProto(req.Sorts),
+				Offset: int(req.Offset), Limit: int(req.Limit),
+			})
+			response := &pb.RpcObjectCrossSpaceSearchResponse{AllStoresLoaded: allLoaded}
+			if err != nil {
+				response.Error = &pb.RpcObjectCrossSpaceSearchResponseError{
+					Code: pb.RpcObjectCrossSpaceSearchResponseError_UNKNOWN_ERROR, Description: err.Error(),
+				}
+			}
+			for _, record := range records {
+				response.Records = append(response.Records, record.Details.ToProto())
+			}
+			return response
+		}).Maybe()
 	// register space1 so the C2 ensureSpace guard resolves the test space
 	store.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{
 		{

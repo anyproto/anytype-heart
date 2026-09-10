@@ -503,7 +503,7 @@ func stageV2Upload(c *gin.Context) (localPath string, cleanup func(), ok bool) {
 
 // SchemaIndexHandler lists the discoverable schemas
 //
-//	@Summary	List the available schemas
+//	@Summary	List schemas
 //	@Id			list_schemas
 //	@Tags		Schemas
 //	@Produce	json
@@ -518,7 +518,7 @@ func SchemaIndexHandler(s *v2service.Service) gin.HandlerFunc {
 
 // SchemaKindHandler serves one kind's schema + worked example
 //
-//	@Summary	Get the schema for one kind
+//	@Summary	Get a schema
 //	@Id			get_schema
 //	@Tags		Schemas
 //	@Produce	json
@@ -540,7 +540,7 @@ func SchemaKindHandler(s *v2service.Service) gin.HandlerFunc {
 
 // SchemaOpHandler serves one PATCH op's schema + minimal example
 //
-//	@Summary		Get the schema for one edit op
+//	@Summary		Get an edit operation schema
 //	@Description	The example is a single op object, ready to drop into an edit request's `ops` array, not a whole request body.
 //	@Id				get_op_schema
 //	@Tags			Schemas

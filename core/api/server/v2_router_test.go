@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -33,6 +35,25 @@ func newV2ServerFixture(t *testing.T) *fixture {
 	fileObjectMock := mock_apicore.NewMockFileObjectService(t)
 	readerMock := mock_apicore.NewMockObjectReader(t)
 	store := objectstore.NewStoreFixture(t)
+	require.NoError(t, store.WaitStoresLoaded(context.Background()))
+	mwMock.EXPECT().ObjectCrossSpaceSearch(mock.Anything, mock.Anything).RunAndReturn(
+		func(ctx context.Context, req *pb.RpcObjectCrossSpaceSearchRequest) *pb.RpcObjectCrossSpaceSearchResponse {
+			records, allLoaded, err := store.QueryCrossSpaceNoWait(ctx, database.Query{
+				SpaceIds: req.SpaceIds, TextQuery: req.FullText,
+				Filters: database.FiltersFromProto(req.Filters), Sorts: database.SortsFromProto(req.Sorts),
+				Offset: int(req.Offset), Limit: int(req.Limit),
+			})
+			response := &pb.RpcObjectCrossSpaceSearchResponse{AllStoresLoaded: allLoaded}
+			if err != nil {
+				response.Error = &pb.RpcObjectCrossSpaceSearchResponseError{
+					Code: pb.RpcObjectCrossSpaceSearchResponseError_UNKNOWN_ERROR, Description: err.Error(),
+				}
+			}
+			for _, record := range records {
+				response.Records = append(response.Records, record.Details.ToProto())
+			}
+			return response
+		}).Maybe()
 
 	creatorMock := mock_apicore.NewMockObjectCreator(t)
 	mutatorMock := mock_apicore.NewMockObjectMutator(t)

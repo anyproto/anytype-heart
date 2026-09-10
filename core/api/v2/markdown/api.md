@@ -126,6 +126,12 @@ Lists use `offset` and `limit`, with 25 rows by default. Responses include
 `total` and `has_more`, plus a narrowing hint when truncated. Chat messages
 use an order-id cursor instead.
 
+Search accepts full text in the JSON body's `query` field, for example
+`{"query":"meeting notes"}`. Cross-space search uses the currently loaded
+spaces. Its `total` is a lower bound when results are clipped; use `has_more`
+to continue paging. Warnings indicate when stores are still loading or
+unavailable, so retry later for a complete view.
+
 ## Edit with a batch of operations
 
 Send an `ops` array to the object's `PATCH` endpoint. For example, this body

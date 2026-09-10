@@ -46,7 +46,7 @@ func parseHeartbeatSeconds(c *gin.Context) time.Duration {
 
 // ChatStreamHandler streams chat events over Server-Sent Events
 //
-//	@Summary		Stream a chat's messages
+//	@Summary		Stream chat messages
 //	@Description	Only additions are replayed on resume. A message deleted, edited, or reacted to while you were disconnected keeps its old form in your copy until you read the messages again, because none of those restamp the state id a resume is measured against.
 //	@Id				stream_chat_messages
 //	@Tags			Chat
