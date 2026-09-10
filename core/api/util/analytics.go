@@ -42,10 +42,24 @@ func NewAnalyticsEvent(code, route, apiAppName string, status int) *AnalyticsBro
 	}
 }
 
+// apiAppNameCtxKey is the private carrier type for the authenticated key's
+// app name; a typed key cannot collide with other context values.
+type apiAppNameCtxKey struct{}
+
+// CtxWithApiAppName stores the authenticated key's app name on the context.
+// The auth middleware calls it on the REQUEST context (not only the gin
+// context): NewAnalyticsEventForApi only ever sees a context.Context, and
+// gin's c.Set values are not reachable through c.Request.Context().
+func CtxWithApiAppName(ctx context.Context, appName string) context.Context {
+	return context.WithValue(ctx, apiAppNameCtxKey{}, appName)
+}
+
 // NewAnalyticsEventForApi creates a new analytics event for api with the app name from the context
 func NewAnalyticsEventForApi(ctx context.Context, code string, status int) (string, error) {
-	// TODO: enable when apiAppName is available in context
-	// apiAppName := ctx.Value("apiAppName").(string)
-	apiAppName := "api-app"
+	apiAppName, ok := ctx.Value(apiAppNameCtxKey{}).(string)
+	if !ok || apiAppName == "" {
+		// unauthenticated routes (e.g. the auth flow itself) have no app name
+		apiAppName = "api-app"
+	}
 	return NewAnalyticsEvent(code, "api", apiAppName, status).ToJSON()
 }

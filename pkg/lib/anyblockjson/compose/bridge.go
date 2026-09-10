@@ -3,6 +3,7 @@
 package compose
 
 import (
+	"fmt"
 	external "github.com/anyproto/any-block/bundle"
 	externalmodel "github.com/anyproto/any-block/format/v1/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
@@ -21,15 +22,22 @@ type (
 type DocMeta struct {
 	Id     string
 	SbType model.SmartBlockType
-	// Key is the snapshot's own Key — for a type document the internal key
-	// its envelope id `type-<Key>` is derived from (any-block SPEC §9). Left
-	// empty, every type document reverts to its raw store id.
+	// Key is the document's own internal key, for the kinds that have one
+	// (types, properties). The path plan names a file by the document's
+	// ENVELOPE id, and a type document's envelope id is derived from its own
+	// key rather than from a resolver (SPEC §9) — so a plan built without it
+	// would name files that the documents written into them disagree with.
 	Key      string
 	FileExt  string
 	FileMime string
 }
 
-func BuildPlan(options anyblockjson.Options, documents []DocMeta) (*Plan, error) {
+// BuildPlan names every document's file. opts must be the SAME options the
+// documents are marshaled with: the plan and the envelope both go through
+// FoldDocumentId, and options that disagree (a fold on one side, off on the
+// other) put a document whose envelope says one id into a file named for
+// another.
+func BuildPlan(opts anyblockjson.Options, documents []DocMeta) (*Plan, error) {
 	externalDocuments := make([]external.DocMeta, len(documents))
 	for i, document := range documents {
 		externalDocuments[i] = external.DocMeta{
@@ -40,21 +48,22 @@ func BuildPlan(options anyblockjson.Options, documents []DocMeta) (*Plan, error)
 			FileMime: document.FileMime,
 		}
 	}
-	return external.BuildPlan(anyblockjson.ExternalOptions(options), externalDocuments)
+	return external.BuildPlan(anyblockjson.ExternalOptions(opts), externalDocuments)
 }
 
 type Composer struct {
 	inner *external.Composer
 }
 
-// NewComposer returns an error for Options a bundle refuses — currently
-// NoDerivedTypeIds, which is a single document's export mode (any-block SPEC
-// §9): declining the type fold files a type document under its store id, and a
-// bundle reaches a type document only by its derived id.
+// NewComposer refuses Options a bundle cannot be composed from — today, the
+// document-only NoDerivedTypeIds mode, which changes what a type document is
+// ADDRESSED by and so removes a bundle's only road to a type. It refuses at
+// construction rather than at Finish, when every document has already been
+// emitted and the news is useless.
 func NewComposer(options anyblockjson.Options, spaceName string) (*Composer, error) {
 	inner, err := external.NewComposer(anyblockjson.ExternalOptions(options), spaceName)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new composer: %w", err)
 	}
 	return &Composer{inner: inner}, nil
 }

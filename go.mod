@@ -6,7 +6,7 @@ require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
 	github.com/PuerkitoBio/goquery v1.10.2
 	github.com/ahmetb/govvv v0.3.0
-	github.com/anyproto/any-block v0.0.0-20260910063323-12807aa201e3
+	github.com/anyproto/any-block v0.0.0-20260910130708-024662defcee // v2.0.0-rc2; upstream module path has no /v2 suffix
 	github.com/anyproto/any-store v1.0.1
 	github.com/anyproto/any-sync v0.13.2
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb
@@ -94,7 +94,7 @@ require (
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef
 	github.com/stretchr/testify v1.12.1
-	github.com/swaggo/swag/v2 v2.0.0-rc4
+	github.com/swaggo/swag/v2 v2.0.0-rc4 // openapi generation: rc5 emits BearerAuth (not bearerauth) and an empty externalDocs.description, so make openapi must build THIS version
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/valyala/fastjson v1.6.10
 	github.com/vektra/mockery/v2 v2.53.6

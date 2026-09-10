@@ -1,6 +1,7 @@
 package localorigin
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -102,6 +103,19 @@ func TestPolicy_ExtraAllowedOrigins(t *testing.T) {
 	t.Run("null can never be allowlisted", func(t *testing.T) {
 		policy := New("null")
 		assert.False(t, policy.AllowOrigin("null"))
+	})
+}
+
+func TestOriginContext(t *testing.T) {
+	t.Run("origin survives the round trip verbatim", func(t *testing.T) {
+		ctx := WithOrigin(context.Background(), "chrome-extension://jbnammhjiplhpjfncnlejjjejghimdkf")
+
+		assert.Equal(t, "chrome-extension://jbnammhjiplhpjfncnlejjjejghimdkf", OriginFromContext(ctx))
+	})
+
+	t.Run("a native client carries no origin", func(t *testing.T) {
+		assert.Equal(t, "", OriginFromContext(context.Background()))
+		assert.Equal(t, "", OriginFromContext(WithOrigin(context.Background(), "")))
 	})
 }
 

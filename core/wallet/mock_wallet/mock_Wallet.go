@@ -507,9 +507,9 @@ func (_c *MockWallet_Name_Call) RunAndReturn(run func() string) *MockWallet_Name
 	return _c
 }
 
-// PersistAppLink provides a mock function with given fields: name, scope
-func (_m *MockWallet) PersistAppLink(name string, scope model.AccountAuthLocalApiScope) (*wallet.AppLinkInfo, error) {
-	ret := _m.Called(name, scope)
+// PersistAppLink provides a mock function with given fields: name, scope, expireAt, grant
+func (_m *MockWallet) PersistAppLink(name string, scope model.AccountAuthLocalApiScope, expireAt int64, grant *wallet.AppLinkGrant) (*wallet.AppLinkInfo, error) {
+	ret := _m.Called(name, scope, expireAt, grant)
 
 	if len(ret) == 0 {
 		panic("no return value specified for PersistAppLink")
@@ -517,19 +517,19 @@ func (_m *MockWallet) PersistAppLink(name string, scope model.AccountAuthLocalAp
 
 	var r0 *wallet.AppLinkInfo
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, model.AccountAuthLocalApiScope) (*wallet.AppLinkInfo, error)); ok {
-		return rf(name, scope)
+	if rf, ok := ret.Get(0).(func(string, model.AccountAuthLocalApiScope, int64, *wallet.AppLinkGrant) (*wallet.AppLinkInfo, error)); ok {
+		return rf(name, scope, expireAt, grant)
 	}
-	if rf, ok := ret.Get(0).(func(string, model.AccountAuthLocalApiScope) *wallet.AppLinkInfo); ok {
-		r0 = rf(name, scope)
+	if rf, ok := ret.Get(0).(func(string, model.AccountAuthLocalApiScope, int64, *wallet.AppLinkGrant) *wallet.AppLinkInfo); ok {
+		r0 = rf(name, scope, expireAt, grant)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*wallet.AppLinkInfo)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string, model.AccountAuthLocalApiScope) error); ok {
-		r1 = rf(name, scope)
+	if rf, ok := ret.Get(1).(func(string, model.AccountAuthLocalApiScope, int64, *wallet.AppLinkGrant) error); ok {
+		r1 = rf(name, scope, expireAt, grant)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -545,13 +545,15 @@ type MockWallet_PersistAppLink_Call struct {
 // PersistAppLink is a helper method to define mock.On call
 //   - name string
 //   - scope model.AccountAuthLocalApiScope
-func (_e *MockWallet_Expecter) PersistAppLink(name interface{}, scope interface{}) *MockWallet_PersistAppLink_Call {
-	return &MockWallet_PersistAppLink_Call{Call: _e.mock.On("PersistAppLink", name, scope)}
+//   - expireAt int64
+//   - grant *wallet.AppLinkGrant
+func (_e *MockWallet_Expecter) PersistAppLink(name interface{}, scope interface{}, expireAt interface{}, grant interface{}) *MockWallet_PersistAppLink_Call {
+	return &MockWallet_PersistAppLink_Call{Call: _e.mock.On("PersistAppLink", name, scope, expireAt, grant)}
 }
 
-func (_c *MockWallet_PersistAppLink_Call) Run(run func(name string, scope model.AccountAuthLocalApiScope)) *MockWallet_PersistAppLink_Call {
+func (_c *MockWallet_PersistAppLink_Call) Run(run func(name string, scope model.AccountAuthLocalApiScope, expireAt int64, grant *wallet.AppLinkGrant)) *MockWallet_PersistAppLink_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(model.AccountAuthLocalApiScope))
+		run(args[0].(string), args[1].(model.AccountAuthLocalApiScope), args[2].(int64), args[3].(*wallet.AppLinkGrant))
 	})
 	return _c
 }
@@ -561,7 +563,7 @@ func (_c *MockWallet_PersistAppLink_Call) Return(appInfo *wallet.AppLinkInfo, er
 	return _c
 }
 
-func (_c *MockWallet_PersistAppLink_Call) RunAndReturn(run func(string, model.AccountAuthLocalApiScope) (*wallet.AppLinkInfo, error)) *MockWallet_PersistAppLink_Call {
+func (_c *MockWallet_PersistAppLink_Call) RunAndReturn(run func(string, model.AccountAuthLocalApiScope, int64, *wallet.AppLinkGrant) (*wallet.AppLinkInfo, error)) *MockWallet_PersistAppLink_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -756,6 +758,53 @@ func (_c *MockWallet_RootPath_Call) Return(_a0 string) *MockWallet_RootPath_Call
 }
 
 func (_c *MockWallet_RootPath_Call) RunAndReturn(run func() string) *MockWallet_RootPath_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateAppLinkGrant provides a mock function with given fields: appHash, grant
+func (_m *MockWallet) UpdateAppLinkGrant(appHash string, grant *wallet.AppLinkGrant) error {
+	ret := _m.Called(appHash, grant)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateAppLinkGrant")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, *wallet.AppLinkGrant) error); ok {
+		r0 = rf(appHash, grant)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockWallet_UpdateAppLinkGrant_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateAppLinkGrant'
+type MockWallet_UpdateAppLinkGrant_Call struct {
+	*mock.Call
+}
+
+// UpdateAppLinkGrant is a helper method to define mock.On call
+//   - appHash string
+//   - grant *wallet.AppLinkGrant
+func (_e *MockWallet_Expecter) UpdateAppLinkGrant(appHash interface{}, grant interface{}) *MockWallet_UpdateAppLinkGrant_Call {
+	return &MockWallet_UpdateAppLinkGrant_Call{Call: _e.mock.On("UpdateAppLinkGrant", appHash, grant)}
+}
+
+func (_c *MockWallet_UpdateAppLinkGrant_Call) Run(run func(appHash string, grant *wallet.AppLinkGrant)) *MockWallet_UpdateAppLinkGrant_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(*wallet.AppLinkGrant))
+	})
+	return _c
+}
+
+func (_c *MockWallet_UpdateAppLinkGrant_Call) Return(_a0 error) *MockWallet_UpdateAppLinkGrant_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockWallet_UpdateAppLinkGrant_Call) RunAndReturn(run func(string, *wallet.AppLinkGrant) error) *MockWallet_UpdateAppLinkGrant_Call {
 	_c.Call.Return(run)
 	return _c
 }

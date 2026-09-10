@@ -1,0 +1,22 @@
+# TruffleHog custom detector for Anytype JSON-API keys (detection only —
+# see README.md). No `verify` block, deliberately: TruffleHog verifiers call
+# the issuing service, and this credential's issuer is anytype-heart on the
+# key owner's own 127.0.0.1 — unreachable from wherever the scan runs. The
+# key format's CRC32 tail is the offline plausibility filter that stands in
+# for live verification.
+#
+# The regex matches the FULL three-part format with a published length
+# RANGE, never the bare `anytype_` prefix (it occurs in ordinary
+# identifiers) and never a fixed body length (a future body encoding must
+# not silently defeat the rule).
+#
+# Usage:
+#   trufflehog filesystem --config docs/secret-scanning/trufflehog.yaml <path>
+#   trufflehog git --config docs/secret-scanning/trufflehog.yaml file://<repo>
+
+detectors:
+  - name: anytype-api-key
+    keywords:
+      - anytype_
+    regex:
+      api_key: '\banytype_[0-9A-Za-z]{40,60}_[0-9a-f]{8}\b'

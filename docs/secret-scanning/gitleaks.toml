@@ -1,0 +1,39 @@
+# Gitleaks rule for Anytype JSON-API keys (detection only — see README.md).
+#
+# The rule matches the FULL three-part format
+#   anytype_<body>_<crc32 as 8 lowercase hex>
+# and never the bare `anytype_` prefix: that literal appears in ordinary
+# identifiers and prose (anytype_mcp, anytype_profile_, anytype_backup, …),
+# and a prefix-only rule would be permanent allowlist maintenance.
+#
+# The body length is a published RANGE ({40,60}), never a fixed length: the
+# current lowercase-base32 body is 52 chars, but a future body encoding must
+# not silently defeat this rule (GitHub's ghs_ length change broke exactly
+# such third-party regexes). The body alphabet is [0-9A-Za-z] by design —
+# no +, / or = — so the \b anchors hold mid-file.
+#
+# Usage, standalone over any tree:
+#   gitleaks dir --config docs/secret-scanning/gitleaks.toml <path>
+# or merge the [[rules]] block into an existing gitleaks config.
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "anytype-api-key"
+description = "Anytype JSON-API key"
+regex = '''\banytype_[0-9A-Za-z]{40,60}_[0-9a-f]{8}\b'''
+keywords = ["anytype_"]
+
+[rules.allowlist]
+# The one full-shape literal this repo carries is the swagger example key —
+# intentionally well-formed (valid CRC32) so agents copy the right shape —
+# and it lives in the annotation source AND in every OpenAPI document
+# generated from it. The docs pattern covers both versions and future
+# regenerations; core/wallet/applink_scanner_rules_test.go walks the tracked
+# tree and fails if a full-shape match ever appears outside these paths.
+description = "this repo's own full-shape EXAMPLE key: the swagger example tag and the OpenAPI documents generated from it (not a live credential)"
+paths = [
+  '''core/api/model/auth\.go''',
+  '''core/api/docs/v[12]/openapi\.(json|yaml)''',
+]

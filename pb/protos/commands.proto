@@ -791,6 +791,12 @@ message Rpc {
                 string token = 2;
                 string appToken = 3; // in case of mnemonic auth, need to be persisted by client
                 string accountId = 4; // temp, should be replaced with AccountInfo message
+                model.Account.Auth.LocalApiScope accountScope = 5; // scope of the session; for appKey auth it is the app link's scope
+                string appName = 6; // for appKey auth, the app name recorded when the app link was created
+                int64 appExpireAt = 7; // for appKey auth, the app link's expiration unix timestamp; 0 means the key never expires
+                model.Account.Auth.AppGrant grant = 8; // for appKey auth, the app link's grant; unset means an unscoped key
+                string appHash = 9; // for appKey auth, the app link's identity (the hash ListApps and RevokeApp use)
+                int64 appCreatedAt = 10; // for appKey auth, the app link's creation unix timestamp; 0 means unknown (pre-hash-era link)
 
                 message Error {
                     Code code = 1;
@@ -802,6 +808,7 @@ message Rpc {
                         BAD_INPUT = 2;
 
                         APP_TOKEN_NOT_FOUND_IN_THE_CURRENT_ACCOUNT = 101; // means the client logged into another account or the account directory has been cleaned
+                        APP_TOKEN_EXPIRED = 102; // the app link's expireAt has passed; the key must be re-issued
                     }
                 }
             }
@@ -1357,6 +1364,20 @@ message Rpc {
                 message Request {
                     string appName = 1; // just for info, not secure to rely on
                     model.Account.Auth.LocalApiScope scope = 2;
+                    // requestedGrant (3) is gone: an app cannot know space ids
+                    // before pairing, so a space-listed request was
+                    // unimplementable by the clients the field existed for.
+                    // The grant is the USER's decision now, collected by the
+                    // approval prompt — see ApproveChallenge.grant.
+                    reserved 3;
+                    reserved "requestedGrant";
+                    // the permission the app declares it needs. It pre-fills
+                    // the approval prompt's permission control and is never a
+                    // ceiling — the human approving decides. Read is the zero
+                    // value, so "asked for read" and "asked for nothing" are
+                    // indistinguishable by design (both render the safe
+                    // default).
+                    model.Account.Auth.AppGrant.Perm requestedPerm = 4;
                 }
 
                 message Response {
@@ -1387,6 +1408,7 @@ message Rpc {
                     Error error = 1;
                     string sessionToken = 2; // ephemeral token for the session
                     string appKey = 3;  // persistent key, that can be used to restore session via CreateSession
+                    model.Account.Auth.AppGrant grant = 4; // the user's approved grant persisted with the app key; unset for an unscoped key
 
                     message Error {
                         Code code = 1;
@@ -1401,6 +1423,57 @@ message Rpc {
                             INVALID_CHALLENGE_ID = 102;
                             CHALLENGE_ATTEMPTS_EXCEEDED = 103;
                             INCORRECT_ANSWER = 104;
+                            // the user has not approved this challenge yet, so
+                            // no code exists to compare against
+                            CHALLENGE_NOT_APPROVED = 105;
+                        }
+                    }
+                }
+            }
+            // ApproveChallenge is the user's decision on a pending challenge.
+            // It is the only call that mints the code, and it answers the
+            // caller rather than broadcasting, so the code never reaches
+            // sessions other than the one that approved.
+            //
+            // The pending challenge is addressed by the caller it came from,
+            // which is what the prompt showed the user. Only one challenge can
+            // be pending per caller, so the pair is unambiguous, and it is the
+            // durable identity a future "always allow" would key on.
+            //
+            // Desktop UI only: it must never be listed in noAuthMethods or
+            // limitedScopeMethods, so authorization admits full scope alone.
+            message ApproveChallenge {
+                message Request {
+                    // both taken verbatim from the ClientInfo of the
+                    // LinkApprovalRequest event being answered; either may be empty
+                    string processPath = 1;
+                    string origin = 2;
+                    bool allow = 3;
+                    // the user's grant decision, persisted verbatim into the
+                    // app link on solve. Required when allow is true and the
+                    // challenge scope is JsonAPI, forbidden otherwise —
+                    // BAD_INPUT either way around. Ignored when allow is
+                    // false.
+                    model.Account.Auth.AppGrant grant = 4;
+                }
+
+                message Response {
+                    Error error = 1;
+                    string challenge = 2; // the 4-digit code; empty when allow is false
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+
+                            ACCOUNT_IS_NOT_RUNNING = 101;
+                            // nothing pending for this caller: never requested,
+                            // already decided, or expired
+                            NO_PENDING_CHALLENGE = 102;
                         }
                     }
                 }
@@ -1444,6 +1517,30 @@ message Rpc {
                             NULL = 0;
                             UNKNOWN_ERROR = 1;
                             BAD_INPUT = 2;
+
+                            ACCOUNT_IS_NOT_RUNNING = 101;
+                        }
+                    }
+                }
+            }
+            message UpdateApp {
+                message Request {
+                    string appHash = 1;
+                    model.Account.Auth.AppGrant grant = 2; // the new grant; unset clears the scoping (widen-requires-re-consent is the caller's contract)
+                }
+
+                message Response {
+                    Error error = 1;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            NOT_FOUND = 3;
 
                             ACCOUNT_IS_NOT_RUNNING = 101;
                         }
@@ -2530,6 +2627,9 @@ message Rpc {
                 int32 limit = 5;
                 // keys to return in records; empty = all
                 repeated string keys = 6;
+                // Optional allowlist applied before querying stores. Empty
+                // means all user spaces; callers with no access must not query.
+                repeated string spaceIds = 7;
             }
 
             message Response {
@@ -9309,6 +9409,7 @@ message Rpc {
                 repeated model.ChatMessage messages = 2;
                 model.ChatState chatState = 3;
                 int32 messageCount = 4;  // Total number of non-deleted messages in the chat
+                int32 lifetimeMessageCount = 5;  // Total number of messages added since the chat was created, including deleted messages
                 message Error {
                     Code code = 1;
                     string description = 2;

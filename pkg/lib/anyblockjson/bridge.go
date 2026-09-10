@@ -115,6 +115,9 @@ type Options struct {
 	ResolveObjectNames ObjectNameResolver
 	SpaceId            string
 	NetworkId          string
+	// NoDerivedTypeIds keeps API type references in the request vocabulary.
+	// Portable file exports retain the codec's derived type identifiers.
+	NoDerivedTypeIds bool
 	// TableColumnHeaders enables the external codec's API-read annotation.
 	TableColumnHeaders bool
 	Keys               KeyVocabulary
@@ -210,6 +213,7 @@ func ExternalOptions(opts Options) codec.Options {
 		ResolveObjectNames: opts.ResolveObjectNames,
 		SpaceId:            opts.SpaceId,
 		NetworkId:          opts.NetworkId,
+		NoDerivedTypeIds:   opts.NoDerivedTypeIds,
 		TableColumnHeaders: opts.TableColumnHeaders,
 		Keys:               opts.Keys,
 		Legend:             opts.Legend,
@@ -295,6 +299,16 @@ func UnmarshalPropertyValue(key string, value any, opts Options) *types.Value {
 	return codec.UnmarshalPropertyValue(key, value, ExternalOptions(opts))
 }
 
+// UnmarshalPropertyValueChecked is UnmarshalPropertyValue with the codec's
+// diagnostic kept. The unchecked door reports a value it cannot represent —
+// an integer past the float64 safe range, a non-finite float — by returning
+// nil, which a caller that stores the result writes as null: the wrong value,
+// silently. A write path wants this form, and gets a path-addressed issue
+// relative to the value ("" for a scalar, "/<i>" for a list member).
+func UnmarshalPropertyValueChecked(key string, value any, opts Options) (*types.Value, error) {
+	return codec.UnmarshalPropertyValueChecked(key, value, ExternalOptions(opts))
+}
+
 func BuildRecommendedLists(properties []TypeProperty, opts Options) ([]RecommendedList, error) {
 	return codec.BuildRecommendedLists(properties, ExternalOptions(opts))
 }
@@ -305,6 +319,16 @@ func MarshalBlockSubtree(blocks []*model.Block, opts Options) (json.RawMessage, 
 		return nil, err
 	}
 	return codec.MarshalBlockSubtree(external, ExternalOptions(opts))
+}
+
+// WidgetViewIDs returns the primary dataview's labels from the object's
+// complete label plan, so selectors and view listings match its export.
+func WidgetViewIDs(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase, opts Options) (map[string]string, error) {
+	external, err := ToExternalSnapshot(snapshot)
+	if err != nil {
+		return nil, err
+	}
+	return codec.WidgetViewIDs(externalmodel.SmartBlockType(sbType), external, ExternalOptions(opts)), nil
 }
 
 func UnmarshalBlock(raw json.RawMessage, forcedId string, opts Options) ([]*model.Block, error) {
@@ -451,8 +475,18 @@ const exactJSONIntegerDetailPrefix = "\x00anyblockjson:exact-integers:"
 
 var maxSafeJSONInteger = big.NewInt(9007199254740991)
 
-// ExactJSONIntegerMetadata remains Heart-side because it records precision
-// metadata in Heart Details; it is not part of the AnyBlock document format.
+// ExactJSONIntegerMetadata describes the RETIRED exact-integer sidecar: a
+// Heart-side Details key that once stored the original decimal spelling beside
+// a value v1's 64-bit float model had rounded. Nothing mints one any more —
+// a write that cannot survive that model is refused at the caller's field
+// instead (UnmarshalPropertyValueChecked), and the mint never reached a
+// release, so no stored object should carry one.
+//
+// It survives as the definition of that key's shape, for the tests that pin
+// State's clearing of a legacy sidecar. The clearing itself uses
+// ExactJSONIntegerMetadataKey; this half has no production caller. The key was
+// never part of the AnyBlock document format, so an export drops it with a
+// lossy-write warning rather than writing it.
 func ExactJSONIntegerMetadata(key string, value any) (metadataKey, lexeme string, ok bool) {
 	metadataKey = ExactJSONIntegerMetadataKey(key)
 	number, ok := value.(json.Number)

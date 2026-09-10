@@ -1990,6 +1990,13 @@ func setupObject(id, typeId string, sbType smartblock.SmartBlockType, details ma
 	}
 	doc := smartBlockTest.NewState().SetDetails(domain.NewDetailsFromMap(details))
 	doc.AddBundledRelationLinks(maps.Keys(details)...)
+	// production derives the uniqueKey DETAIL from the state's internal key
+	// (smartblock/detailsinject.go), so a fixture setting only the detail
+	// leaves snapshot.Key empty — and the bundle's path plan and the
+	// envelope id, which both read it, then disagree
+	if uk, ukErr := domain.UnmarshalUniqueKey(details[bundle.RelationKeyUniqueKey].String()); ukErr == nil {
+		doc.SetUniqueKeyInternal(uk.InternalKey())
+	}
 	smartBlockTest.Doc = doc
 	smartBlockTest.SetType(sbType)
 	return smartBlockTest

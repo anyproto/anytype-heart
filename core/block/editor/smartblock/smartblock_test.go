@@ -254,6 +254,10 @@ type sourceStub struct {
 	err         error
 	doc         state.Doc
 	id          string
+	// pushed records every PushChangeParams this source received, so tests
+	// can assert on what an Apply actually pushes (change-set assertions,
+	// not just green Applies).
+	pushed []source.PushChangeParams
 }
 
 func (s *sourceStub) GetCreationInfo() (creator string, createdDate int64, err error) {
@@ -270,7 +274,8 @@ func (s *sourceStub) Close() (err error)                        { return nil }
 func (s *sourceStub) ReadDoc(_ context.Context, _ source.ChangeReceiver, _ bool) (doc state.Doc, err error) {
 	return s.doc, nil
 }
-func (s *sourceStub) PushChange(_ source.PushChangeParams) (id string, err error) {
+func (s *sourceStub) PushChange(params source.PushChangeParams) (id string, err error) {
+	s.pushed = append(s.pushed, params)
 	return "", nil
 }
 

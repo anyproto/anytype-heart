@@ -68,6 +68,13 @@ func NewIDProvider(
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeProfilePage] = derivedObject
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeTemplate] = treeObject
 	p.idProviderBySmartBlockType[sb.SmartBlockTypeParticipant] = newParticipant()
+	// a chat is identified by its unique key like a type is, and is created
+	// with the same DeriveTreeObject the derived path already models — so an
+	// imported chat lands on the id its key derives, and a second import of
+	// the same archive resolves to that object instead of a duplicate. Its
+	// messages live in the any-store CRDT rather than in the snapshot, so what
+	// imports is the chat itself: name, icon, description, and no history.
+	p.idProviderBySmartBlockType[sb.SmartBlockTypeChatDerivedObject] = derivedObject
 	return p
 }
 

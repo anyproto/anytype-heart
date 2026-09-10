@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -27,6 +28,10 @@ func newFixture(t *testing.T) *fixture {
 
 	coll, err := db.CreateCollection(ctx, "testchats")
 	require.NoError(t, err)
+	historyColl, err := db.CreateCollection(ctx, "testchatMessageHistory")
+	require.NoError(t, err)
+	_, err = db.CreateCollection(ctx, storestate.CollMeta)
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		require.NoError(t, db.Close())
@@ -34,8 +39,9 @@ func newFixture(t *testing.T) *fixture {
 
 	return &fixture{
 		repo: &repository{
-			collection: coll,
-			arenaPool:  &anyenc.ArenaPool{},
+			collection:        coll,
+			historyCollection: historyColl,
+			arenaPool:         &anyenc.ArenaPool{},
 		},
 		db: db,
 	}
@@ -231,6 +237,59 @@ func TestCountMessages(t *testing.T) {
 		// sanity: pre-existing unread counter still reflects only unread
 		assert.Equal(t, int32(1), state.Messages.Counter)
 	})
+}
+
+func TestCountMessagesLifetime(t *testing.T) {
+	fx := newFixture(t)
+	fx.addMessage(t, "msg1", "order1", true, false, false)
+	fx.addMessage(t, "msg2", "order2", true, false, false)
+
+	recorded, err := fx.repo.RecordMessage(context.Background(), "msg2")
+	require.NoError(t, err)
+	assert.False(t, recorded, "replaying a create is idempotent")
+	require.NoError(t, fx.repo.collection.DeleteId(context.Background(), "msg1"))
+
+	live, err := fx.repo.CountMessages(context.Background())
+	require.NoError(t, err)
+	lifetime, err := fx.repo.CountMessagesLifetime(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, 1, live)
+	assert.Equal(t, 2, lifetime, "deleting a live document must not decrement the lifetime total")
+}
+
+func TestEnsureMessageHistoryForcesOneFullReplay(t *testing.T) {
+	ctx := context.Background()
+	fx := newFixture(t)
+	fx.addMessage(t, "msg1", "order1", true, false, false)
+	require.NoError(t, fx.repo.historyCollection.DeleteId(ctx, "msg1"), "simulate a pre-history-index message")
+
+	meta, err := fx.db.Collection(ctx, storestate.CollMeta)
+	require.NoError(t, err)
+	arena := &anyenc.Arena{}
+	metaDoc := arena.NewObject()
+	metaDoc.Set("id", arena.NewString("chat1"))
+	metaDoc.Set("q", arena.NewNumberInt(42))
+	metaDoc.Set("r", arena.NewTrue())
+	require.NoError(t, meta.Insert(ctx, metaDoc))
+
+	require.NoError(t, fx.repo.ensureMessageHistory(ctx, fx.db, "chat1"))
+	_, err = meta.FindId(ctx, "chat1")
+	assert.ErrorIs(t, err, anystore.ErrDocNotFound, "the next open must replay the full tree, not the incremental tail")
+	lifetime, err := fx.repo.CountMessagesLifetime(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, lifetime, "the schema marker is not counted as a message")
+
+	// Once versioned, initialization is idempotent and does not keep forcing
+	// expensive full replays on every repository open.
+	arena.Reset()
+	metaDoc = arena.NewObject()
+	metaDoc.Set("id", arena.NewString("chat1"))
+	metaDoc.Set("q", arena.NewNumberInt(43))
+	metaDoc.Set("r", arena.NewTrue())
+	require.NoError(t, meta.Insert(ctx, metaDoc))
+	require.NoError(t, fx.repo.ensureMessageHistory(ctx, fx.db, "chat1"))
+	_, err = meta.FindId(ctx, "chat1")
+	require.NoError(t, err, "the version marker prevents a second replay reset")
 }
 
 func TestSetReadFlag(t *testing.T) {

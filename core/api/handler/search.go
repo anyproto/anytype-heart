@@ -14,18 +14,18 @@ import (
 // GlobalSearchHandler searches and retrieves objects across all spaces
 //
 //	@Summary		Search objects across all spaces
-//	@Description	Executes a global search over all spaces accessible to the authenticated user. The request body must specify the `query` text (currently matching only name and snippet of an object), optional filters on types (e.g., "page", "task"), and sort directives (default: descending by last modified date). File-layout objects (file, image, video, audio, pdf) are excluded from results by default; to include them, list one of the file type keys ("file", "image", "video", "audio") in the `types` field. Pagination is controlled via `offset` and `limit` query parameters to facilitate lazy loading in client UIs. The response returns a unified list of matched objects with their metadata and properties.
+//	@Description	Searches loaded user spaces. query performs full-text search over object names and indexed content. Filters and type keys resolve per space. File types must be requested explicitly in types. total is a lower bound when clipped; use has_more to request further pages. all_stores_loaded is false if spaces are still loading or a store was unavailable; retry later for a complete view.
 //	@Id				search_global
 //	@Tags			Search
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string											true	"The version of the API to use"											default(2025-11-08)
-//	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
-//	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
-//	@Param			request			body		apimodel.SearchRequest							true	"The search parameters used to filter and sort the results"
-//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Object]	"The list of objects matching the search criteria"
-//	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
-//	@Failure		500				{object}	util.ServerError								"Internal server error"
+//	@Param			Anytype-Version	header		string							true	"The version of the API to use"											default(2025-11-08)
+//	@Param			offset			query		int								false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param			limit			query		int								false	"The number of items to return"											default(100)	maximum(1000)
+//	@Param			request			body		apimodel.SearchRequest			true	"The search parameters used to filter and sort the results"
+//	@Success		200				{object}	apimodel.GlobalSearchResponse	"A page of matching objects and store readiness"
+//	@Failure		401				{object}	util.UnauthorizedError			"Unauthorized"
+//	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Security		bearerauth
 //	@Router			/v1/search [post]
 func GlobalSearchHandler(s *service.Service) gin.HandlerFunc {
@@ -40,7 +40,7 @@ func GlobalSearchHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		objects, total, hasMore, err := s.GlobalSearch(c, request, offset, limit)
+		objects, total, hasMore, allStoresLoaded, err := s.GlobalSearch(c.Request.Context(), request, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedSearchObjects, http.StatusInternalServerError),
 			util.ErrToCode(service.ErrFailedGetAllSpaceIds, http.StatusInternalServerError),
@@ -53,7 +53,13 @@ func GlobalSearchHandler(s *service.Service) gin.HandlerFunc {
 			return
 		}
 
-		pagination.RespondWithPagination(c, http.StatusOK, objects, total, offset, limit, hasMore)
+		c.JSON(http.StatusOK, apimodel.GlobalSearchResponse{
+			PaginatedResponse: pagination.PaginatedResponse[apimodel.Object]{
+				Data:       objects,
+				Pagination: pagination.PaginationMeta{Total: total, Offset: offset, Limit: limit, HasMore: hasMore},
+			},
+			AllStoresLoaded: allStoresLoaded,
+		})
 	}
 }
 

@@ -71,6 +71,13 @@ import (
 
 var log = logging.Logger("file-uploader")
 
+// ErrFailedToDownload marks a source URL that answered outside 2xx.
+// Exported because the API layer (core/api/v2) classifies the upload
+// failure by matching this text in the RPC error description — a
+// permanent refusal of the supplied URL, not a retryable server fault —
+// so the text must live in exactly one place.
+var ErrFailedToDownload = errors.New("failed to download url")
+
 // objectStoreProvider provides space-scoped object stores.
 type objectStoreProvider interface {
 	SpaceIndex(spaceId string) spaceindex.Store
@@ -523,7 +530,7 @@ func (u *uploader) SetUrl(url string) Uploader {
 		}
 
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return nil, fmt.Errorf("failed to download url, status: %d", resp.StatusCode)
+			return nil, fmt.Errorf("%w, status: %d", ErrFailedToDownload, resp.StatusCode)
 		}
 
 		var fileName string

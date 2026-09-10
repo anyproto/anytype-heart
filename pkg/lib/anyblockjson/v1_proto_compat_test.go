@@ -57,6 +57,8 @@ func TestV1ProtosMatchAnyBlockCanonicalSources(t *testing.T) {
 				heartNormalized = withoutAccountRecoveryAPI(heartNormalized)
 				canonicalNormalized = withoutAccountRecoveryAPI(canonicalNormalized)
 			}
+			heartNormalized = withoutIntegrationMetadata(filepath.Base(file.heart), heartNormalized)
+			canonicalNormalized = withoutIntegrationMetadata(filepath.Base(file.heart), canonicalNormalized)
 
 			if heartNormalized != canonicalNormalized {
 				t.Fatalf(
@@ -67,6 +69,68 @@ func TestV1ProtosMatchAnyBlockCanonicalSources(t *testing.T) {
 					sha256.Sum256([]byte(heartNormalized)),
 					sha256.Sum256([]byte(canonicalNormalized)),
 				)
+			}
+		})
+	}
+}
+
+// Grants and pairing prompts belong to Heart's live authentication API. Change
+// provenance is stored by Heart but is not consumed by the snapshot codec. Keep
+// these deliberate differences explicit: exact declarations are removed or
+// translated, so an unexpected field type, number, or snapshot change still fails
+// the canonical-source comparison.
+func withoutIntegrationMetadata(file, normalized string) string {
+	switch file {
+	case "models.proto":
+		normalized = strings.ReplaceAll(normalized, `AppGrantgrant=9;`, "")
+		normalized = strings.ReplaceAll(normalized, `messageAppGrant{repeatedstringspaceIds=1;Permperm=2;boolallSpaces=3;enumPerm{Read=0;ReadWrite=1;}}`, "")
+	case "events.proto":
+		normalized = strings.NewReplacer(
+			`Account.LinkApprovalRequestaccountLinkApprovalRequest=204;`, `Account.LinkChallengeaccountLinkChallenge=204;`,
+			`Account.LinkApprovalHideaccountLinkApprovalHide=205;`, `Account.LinkChallengeHideaccountLinkChallengeHide=205;`,
+			`messageLinkApprovalRequest{messageClientInfo{stringprocessName=1;stringprocessPath=2;stringname=4;boolsignatureVerified=3;stringorigin=5;}reserved1;reserved"challenge";ClientInfoclientInfo=2;model.Account.Auth.LocalApiScopescope=3;reserved4;reserved"requestedGrant";model.Account.Auth.AppGrant.PermrequestedPerm=5;}`,
+			`messageLinkChallenge{messageClientInfo{stringprocessName=1;stringprocessPath=2;stringname=4;boolsignatureVerified=3;}stringchallenge=1;ClientInfoclientInfo=2;model.Account.Auth.LocalApiScopescope=3;}`,
+			`messageLinkApprovalHide{reserved1;reserved"challenge";LinkApprovalRequest.ClientInfoclientInfo=2;}`,
+			`messageLinkChallengeHide{stringchallenge=1;}`,
+		).Replace(normalized)
+	case "changes.proto":
+		normalized = strings.ReplaceAll(normalized, `uint32changeType=9;stringintegrationName=10;`, `uint32changeType=9;`)
+	}
+	return normalized
+}
+
+func TestIntegrationMetadataExclusionPreservesSchemaChecks(t *testing.T) {
+	for _, tc := range []struct {
+		file, canonical, extended, unexpected string
+	}{
+		{
+			"models.proto",
+			`messageAppInfo{boolisActive=8;}`,
+			`messageAppInfo{boolisActive=8;AppGrantgrant=9;}`,
+			`messageAppInfo{boolisActive=7;AppGrantgrant=9;}`,
+		},
+		{
+			"events.proto",
+			`messageLinkChallengeHide{stringchallenge=1;}`,
+			`messageLinkApprovalHide{reserved1;reserved"challenge";LinkApprovalRequest.ClientInfoclientInfo=2;}`,
+			`messageLinkApprovalHide{reserved1;reserved"challenge";LinkApprovalRequest.ClientInfoclientInfo=3;}`,
+		},
+		{
+			"changes.proto",
+			`messageChange{uint32changeType=9;}`,
+			`messageChange{uint32changeType=9;stringintegrationName=10;}`,
+			`messageChange{uint32changeType=9;stringintegrationName=11;}`,
+		},
+	} {
+		t.Run(tc.file, func(t *testing.T) {
+			if got := withoutIntegrationMetadata(tc.file, tc.extended); got != tc.canonical {
+				t.Fatalf("expected the explicit Heart extension to normalize: %s", got)
+			}
+			if withoutIntegrationMetadata(tc.file, tc.unexpected) == tc.canonical {
+				t.Fatal("normalization hid an unexpected field number")
+			}
+			if withoutIntegrationMetadata(tc.file, tc.canonical) != tc.canonical {
+				t.Fatal("normalization changed the canonical schema")
 			}
 		})
 	}
