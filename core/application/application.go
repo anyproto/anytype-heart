@@ -10,8 +10,10 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/util/crypto"
 
+	"github.com/anyproto/anytype-heart/core/application/accountdirlock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/recovery"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/vcs"
@@ -22,7 +24,8 @@ var log = logging.Logger("anytype-core-account")
 type Service struct {
 	lock sync.RWMutex
 
-	app *app.App
+	app          *app.App
+	accountLease *accountdirlock.Lease
 
 	// pre-derived keys (populated during wallet.create or wallet.recover)
 	derivedKeys *crypto.DerivationResult
@@ -35,12 +38,21 @@ type Service struct {
 	fulltextPrimaryLanguage string
 	clientWithVersion       string
 	eventSender             event.Sender
-	sessions                session.Service
-	traceRecorder           *traceRecorder
-	migrationManager        *migrationManager
+	// recovery is the account start-up status tracker; process-lifetime, one
+	// run per start (see startNewApp). Read without s.lock by
+	// AccountRecoveryState.
+	recovery         *recovery.Tracker
+	sessions         session.Service
+	traceRecorder    *traceRecorder
+	migrationManager *migrationManager
 
-	appAccountStartInProcessCancel      context.CancelFunc
-	appAccountStartInProcessCancelMutex sync.Mutex
+	// starting is the in-flight account start, nil when there is none. It is
+	// published before the start waits for s.lock, so AccountStop can cancel
+	// it without the lock, and guarded by startMu — which is only ever taken
+	// alone or under s.lock (by a start retracting itself), never the other
+	// way round. See app_start.go.
+	startMu  sync.Mutex
+	starting *startRun
 }
 
 func New() *Service {
@@ -48,6 +60,7 @@ func New() *Service {
 		sessions:          session.New(),
 		traceRecorder:     &traceRecorder{},
 		sessionsByAppHash: make(map[string]string),
+		recovery:          recovery.New(),
 	}
 	m := newMigrationManager(s)
 	s.migrationManager = m
@@ -66,13 +79,23 @@ func (s *Service) requireClientWithVersion() {
 	}
 }
 
+// Stop is process shutdown: a start in flight is cancelled rather than waited
+// for, and the lock is then taken behind its unwind.
 func (s *Service) Stop() error {
+	s.cancelStart()
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	return s.stop()
 }
 
 func (s *Service) stop() error {
+	return errors.Join(s.closeApp(), s.releaseAccountLease())
+}
+
+// closeApp closes all account components but deliberately retains the account
+// lease. Operations such as restart, move, and deletion must remain protected
+// until they have finished touching account data.
+func (s *Service) closeApp() error {
 	ctx, task := trace.NewTask(context.Background(), "application.stop")
 	defer task.End()
 
@@ -81,9 +104,9 @@ func (s *Service) stop() error {
 		log.Infow("closing app: initiated", "mwVersion", mwVersion)
 		s.app.SetDeviceState(int(domain.CompStateAppClosingInitiated))
 		start := time.Now()
-		err := s.app.Close(ctx)
-		if err != nil {
-			log.Warnf("error while stop anytype: %v", err)
+		closeErr := s.app.Close(ctx)
+		if closeErr != nil {
+			log.Warnf("error while stop anytype: %v", closeErr)
 		}
 		log.Infow("closing app: finished", "mwVersion", mwVersion, "tookMs", time.Since(start).Milliseconds())
 		// Drain zap's buffered sink (the "closing app: finished" line above
@@ -95,6 +118,7 @@ func (s *Service) stop() error {
 		_ = logging.CloseSink(3 * time.Second)
 
 		s.app = nil
+		return closeErr
 	}
 	return nil
 }

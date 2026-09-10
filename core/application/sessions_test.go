@@ -14,6 +14,7 @@ import (
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -31,6 +32,63 @@ func TestCreateSession(t *testing.T) {
 			require.Error(t, err)
 		})
 	})
+
+	t.Run("with mnemonic", func(t *testing.T) {
+		t.Run("answers with the account id", func(t *testing.T) {
+			// given a recovered wallet — this is what login does, and the account it
+			// gets back here is what spares it waiting on an accountShow broadcast
+			s := New()
+			mnemonic, err := core.WalletGenerateMnemonic(wordCount)
+			require.NoError(t, err)
+			require.NoError(t, s.WalletRecover(&pb.RpcWalletRecoverRequest{RootPath: t.TempDir(), Mnemonic: mnemonic}))
+			want, err := core.WalletAccountAt(mnemonic, 0)
+			require.NoError(t, err)
+
+			// when
+			token, accountId, err := s.CreateSession(&pb.RpcWalletCreateSessionRequest{
+				Auth: &pb.RpcWalletCreateSessionRequestAuthOfMnemonic{Mnemonic: mnemonic},
+			})
+
+			// then
+			require.NoError(t, err)
+			assert.NotEmpty(t, token)
+			assert.Equal(t, want.Identity.GetPublic().Account(), accountId)
+		})
+
+		t.Run("wrong mnemonic is still refused", func(t *testing.T) {
+			// given
+			s := New()
+			mnemonic, err := core.WalletGenerateMnemonic(wordCount)
+			require.NoError(t, err)
+			require.NoError(t, s.WalletRecover(&pb.RpcWalletRecoverRequest{RootPath: t.TempDir(), Mnemonic: mnemonic}))
+			other, err := core.WalletGenerateMnemonic(wordCount)
+			require.NoError(t, err)
+
+			// when
+			_, accountId, err := s.CreateSession(&pb.RpcWalletCreateSessionRequest{
+				Auth: &pb.RpcWalletCreateSessionRequestAuthOfMnemonic{Mnemonic: other},
+			})
+
+			// then
+			require.ErrorIs(t, err, ErrBadInput)
+			assert.Empty(t, accountId)
+		})
+
+		t.Run("no wallet recovered yet", func(t *testing.T) {
+			// given
+			s := New()
+			mnemonic, err := core.WalletGenerateMnemonic(wordCount)
+			require.NoError(t, err)
+
+			// when
+			_, _, err = s.CreateSession(&pb.RpcWalletCreateSessionRequest{
+				Auth: &pb.RpcWalletCreateSessionRequestAuthOfMnemonic{Mnemonic: mnemonic},
+			})
+
+			// then
+			require.ErrorIs(t, err, ErrWalletNotInitialized)
+		})
+	})
 }
 
 // mockApiService is a stub for api.Service used in LinkLocalRevokeApp tests.
@@ -38,12 +96,12 @@ type mockApiService struct {
 	revokedTokens []string
 }
 
-func (m *mockApiService) Name() string                                        { return api.CName }
-func (m *mockApiService) Init(_ *app.App) error                               { return nil }
-func (m *mockApiService) Run(_ context.Context) error                         { return nil }
-func (m *mockApiService) Close(_ context.Context) error                       { return nil }
-func (m *mockApiService) ReassignAddress(_ context.Context, _ string) error   { return nil }
-func (m *mockApiService) RevokeToken(token string)                            { m.revokedTokens = append(m.revokedTokens, token) }
+func (m *mockApiService) Name() string                                      { return api.CName }
+func (m *mockApiService) Init(_ *app.App) error                             { return nil }
+func (m *mockApiService) Run(_ context.Context) error                       { return nil }
+func (m *mockApiService) Close(_ context.Context) error                     { return nil }
+func (m *mockApiService) ReassignAddress(_ context.Context, _ string) error { return nil }
+func (m *mockApiService) RevokeToken(token string)                          { m.revokedTokens = append(m.revokedTokens, token) }
 
 func TestLinkLocalRevokeApp(t *testing.T) {
 	signingKey := []byte("test-signing-key-1234")

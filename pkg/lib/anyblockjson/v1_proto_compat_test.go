@@ -53,6 +53,11 @@ func TestV1ProtosMatchAnyBlockCanonicalSources(t *testing.T) {
 				canonicalNormalized = withoutExportReportAPI(canonicalNormalized)
 			}
 
+			if filepath.Base(file.heart) == "events.proto" {
+				heartNormalized = withoutAccountRecoveryAPI(heartNormalized)
+				canonicalNormalized = withoutAccountRecoveryAPI(canonicalNormalized)
+			}
+
 			if heartNormalized != canonicalNormalized {
 				t.Fatalf(
 					"Heart proto %s has drifted from %s/%s (normalized SHA-256 %x != %x); synchronize the canonical AnyBlock v1 source and Heart mirror together",
@@ -74,6 +79,79 @@ func TestV1ProtosMatchAnyBlockCanonicalSources(t *testing.T) {
 func withoutExportReportAPI(normalized string) string {
 	normalized = strings.ReplaceAll(normalized, `import"pkg/lib/pb/model/protos/export_report.proto";`, "")
 	return strings.ReplaceAll(normalized, `model.Export.FormatexportType=3;ExportReportreport=4;stringpath=5;`, `model.Export.FormatexportType=3;`)
+}
+
+// Account recovery progress is a live API stream added on develop, not a v1
+// snapshot event. Exclude only its new payload and Account.Recovery namespace;
+// existing account events and all persisted block/object definitions still match.
+func withoutAccountRecoveryAPI(normalized string) string {
+	normalized = strings.ReplaceAll(normalized, `Account.Recovery.UpdateaccountRecoveryUpdate=206;`, "")
+	account := strings.Index(normalized, "messageAccount{")
+	if account < 0 {
+		return normalized
+	}
+	accountEnd := normalizedMessageEnd(normalized, account)
+	if accountEnd < 0 {
+		return normalized
+	}
+	recovery := strings.Index(normalized[account:accountEnd], "messageRecovery{")
+	if recovery < 0 {
+		return normalized
+	}
+	recovery += account
+	end := normalizedMessageEnd(normalized, recovery)
+	if end < 0 || end > accountEnd {
+		return normalized
+	}
+	return normalized[:recovery] + normalized[end:]
+}
+
+// Return the offset after a normalized message's closing brace. Quoted defaults
+// can contain braces, so only structural braces change the nesting depth.
+func normalizedMessageEnd(source string, start int) int {
+	depth := 0
+	quoted, escaped := false, false
+	for n := start; n < len(source); n++ {
+		c := source[n]
+		if quoted {
+			if escaped {
+				escaped = false
+			} else if c == '\\' {
+				escaped = true
+			} else if c == '"' {
+				quoted = false
+			}
+			continue
+		}
+		switch c {
+		case '"':
+			quoted = true
+		case '{':
+			depth++
+		case '}':
+			depth--
+			if depth == 0 {
+				return n + 1
+			}
+		}
+	}
+	return -1
+}
+
+func TestAccountRecoveryExclusionPreservesExistingSchemaChecks(t *testing.T) {
+	canonical := `messageEvent{messageMessage{Account.UpdateaccountUpdate=203;}messageAccount{messageUpdate{stringname=1;}}messageObject{messageRecovery{stringid=1;}}}`
+	withRecovery := strings.Replace(canonical, `Account.UpdateaccountUpdate=203;`, `Account.UpdateaccountUpdate=203;Account.Recovery.UpdateaccountRecoveryUpdate=206;`, 1)
+	withRecovery = strings.Replace(withRecovery, `messageAccount{`, `messageAccount{messageRecovery{messageUpdate{stringphase=1[default="}"];}}`, 1)
+	if got := withoutAccountRecoveryAPI(withRecovery); got != canonical {
+		t.Fatalf("recovery exclusion changed an existing definition: %s", got)
+	}
+	changed := strings.Replace(withRecovery, "stringname=1;", "stringname=2;", 1)
+	if withoutAccountRecoveryAPI(changed) == canonical {
+		t.Fatal("recovery exclusion hid a changed existing field number")
+	}
+	if withoutAccountRecoveryAPI(canonical) != canonical {
+		t.Fatal("recovery exclusion changed the canonical schema")
+	}
 }
 
 func repositoryRoot(t *testing.T) string {
