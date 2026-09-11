@@ -5,9 +5,9 @@ description: Read, search, create and edit Anytype objects through the anytype C
 
 # Anytype task tools
 
-Twelve verbs over the local Anytype API. Everything composes through a
-session: `find` numbers its results (1, 2, …) and sets the working space;
-every other verb takes `--object <number>`.
+Fourteen verbs over the local Anytype API. Everything composes through a
+session: `find` numbers its results (1, 2, …) and, when given a space, sets
+the working space; every other verb takes `--object <number>`.
 
 Setup: the local Anytype app must be running; `ANYTYPE_API_KEY` holds an
 API key from the app's settings (`ANYTYPE_API_URL` defaults to
@@ -16,24 +16,29 @@ API key from the app's settings (`ANYTYPE_API_URL` defaults to
 ## The loop
 
 ```sh
-anytype spaces                             # space ids, when none is known
-# Work — bafyspace1
-anytype find --space bafyspace1 --type Task --filter 'done = false'
-# 1. Prepare the Q3 report (Task)
-# 2. Ship the beta (Task)
+anytype find --query "prague trip"         # no --space: every space at once
+# 1. Prague trip (Page, in Weekend Trips)
+anytype find --space hpujze --type type     # the space's types, as objects
+# 1. Page (Type)
+# 2. Trip (Type)
+anytype find --space hpujze --type Trip --filter 'done = false'
+# 1. Prague trip (Trip)
 anytype edit-text --object 1 --find "Q3" --replace "Q4"
 # --block is optional: the snippet locates the block when it matches
 # exactly one; an ambiguous snippet refuses and lists the candidates
 anytype read --object 1 --mode outline     # block ids + structure
 ```
 
-1. **spaces** when no space id is known — it lists `name — id`.
-2. **find** next — it creates the handles and the working space.
-3. **describe** before you create or set properties — it lists the live
+1. **find** first — with no `--space` it searches every space and each
+   handle remembers its own; with a space it also sets the working space,
+   which `describe`, `create` and `create-type` then use when given none.
+   `--type type` lists the types themselves. **spaces** lists `name — id`
+   when you need to name one.
+2. **describe** before you create or set properties — it lists the live
    property names and each one's format and options. Address properties by
    the names describe shows (`"Due date"`); select option names must match
    exactly.
-4. **read** before you edit blocks — block ids come from read
+3. **read** before you edit blocks — block ids come from read
    (`--mode outline` for structure, full mode for text; table row and
    column ids come from full mode too).
 

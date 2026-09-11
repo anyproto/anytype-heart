@@ -16,7 +16,8 @@ type RouteTemplate struct {
 func RouteTemplates() []RouteTemplate {
 	return []RouteTemplate{
 		{"GET", "/v2/spaces"},                                   // spaces
-		{"POST", "/v2/spaces/:space_id/search"},                 // find
+		{"POST", "/v2/spaces/:space_id/search"},                 // find in one space
+		{"POST", "/v2/search"},                                  // find across spaces (no space given)
 		{"GET", "/v2/spaces/:space_id/objects/:object_id"},      // read, the ambiguity re-read
 		{"PATCH", "/v2/spaces/:space_id/objects/:object_id"},    // every editing tool
 		{"POST", "/v2/spaces/:space_id/objects"},                // create

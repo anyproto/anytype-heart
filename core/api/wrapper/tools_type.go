@@ -528,7 +528,10 @@ type createTypeProperty struct {
 }
 
 func (r *Runner) runCreateType(ctx context.Context, session *Session, args map[string]any) (*Result, error) {
-	space := spaceArg(args)
+	space, err := r.spaceFor(ctx, session, args, "create_type")
+	if err != nil {
+		return nil, err
+	}
 	name := strings.TrimSpace(strArg(args, "name"))
 	if name == "" {
 		return nil, fmt.Errorf("create_type: %q must not be empty — the type's name, e.g. Cookbook entry", "name")

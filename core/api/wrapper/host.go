@@ -10,12 +10,21 @@ package wrapper
 
 import (
 	"context"
+	"errors"
 	"fmt"
 )
 
 // CallCodeToolError marks an in-band tool failure on a CallResult: the
 // text is the repair tip the model reads.
 const CallCodeToolError = "tool_error"
+
+// CallCodeInvalidArguments marks a pre-flight refusal (runner.ArgumentError):
+// the call's SHAPE was wrong — unknown tool, unknown or missing argument,
+// wrong type, a value outside an enum — and nothing reached the workspace.
+// Distinct from CallCodeToolError so a client budgeting repairs can leave
+// a self-correctable shape mistake out of the count: a measured run spent
+// its whole repair budget on one such refusal and a genuine error.
+const CallCodeInvalidArguments = "invalid_arguments"
 
 // Host is the in-process delivery: one Runner, one session, for the life
 // of the embedding process.
@@ -52,7 +61,12 @@ func (h *Host) Call(ctx context.Context, name string, args map[string]any) CallR
 	}
 	result, err := h.runner.Run(ctx, name, args)
 	if err != nil {
-		return CallResult{Text: h.errorText(err), IsError: true, Code: CallCodeToolError}
+		code := CallCodeToolError
+		var argErr *ArgumentError
+		if errors.As(err, &argErr) {
+			code = CallCodeInvalidArguments
+		}
+		return CallResult{Text: h.errorText(err), IsError: true, Code: code}
 	}
 	return CallResult{Text: result.Text, JSON: result.JSON}
 }

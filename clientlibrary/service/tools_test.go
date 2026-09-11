@@ -155,19 +155,35 @@ func TestToolsCall(t *testing.T) {
 	})
 
 	t.Run("a tool error is in-band", func(t *testing.T) {
-		// given: find without its space
+		// given: a search the stub server refuses
 		host := stubHost(t)
 		withToolsHost(t, func() (*wrapper.Host, error) { return host, nil })
 		h := newRecordingHandler()
 
 		// when
-		ToolsCall("find", []byte(`{"query":"x"}`), h)
+		ToolsCall("find", []byte(`{"space":"space1","query":"x"}`), h)
 
 		// then
 		env := h.await(t)
 		assert.True(t, env.IsError)
 		assert.Equal(t, wrapper.CallCodeToolError, env.Code)
-		assert.Contains(t, env.Text, `find needs "space"`)
+		assert.Contains(t, env.Text, "no such route")
+	})
+
+	t.Run("a shape mistake is invalid_arguments, not a tool error", func(t *testing.T) {
+		// given: read without its object
+		host := stubHost(t)
+		withToolsHost(t, func() (*wrapper.Host, error) { return host, nil })
+		h := newRecordingHandler()
+
+		// when
+		ToolsCall("read", []byte(`{"mode":"outline"}`), h)
+
+		// then
+		env := h.await(t)
+		assert.True(t, env.IsError)
+		assert.Equal(t, wrapper.CallCodeInvalidArguments, env.Code)
+		assert.Contains(t, env.Text, `read needs "object"`)
 	})
 
 	t.Run("a panic delivers internal and reaches PanicHandler", func(t *testing.T) {

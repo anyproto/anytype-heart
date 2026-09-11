@@ -94,7 +94,10 @@ var alwaysSettableProperties = []describeProperty{
 }
 
 func (r *Runner) runDescribe(ctx context.Context, session *Session, args map[string]any) (*Result, error) {
-	space := spaceArg(args)
+	space, err := r.spaceFor(ctx, session, args, "describe")
+	if err != nil {
+		return nil, err
+	}
 	typeKey := strArg(args, "type")
 	// The option-listing mode (describeOptions): the only way to see the
 	// options of a select the type does not name, and the way past the

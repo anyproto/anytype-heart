@@ -435,7 +435,7 @@ func TestMatcherIsHonest(t *testing.T) {
 func TestFilterGrammarTracksParser(t *testing.T) {
 	g := mustParseGBNF(t, filterStringGBNF)
 
-	for _, ex := range filterstring.Examples {
+	for _, ex := range append(append([]string{}, filterstring.Examples...), smallFilterExamples...) {
 		t.Run("example "+ex, func(t *testing.T) {
 			assert.True(t, g.accepts(ex), "served example must be in the served grammar")
 			_, err := filterstring.Parse(ex, filterstring.Options{})

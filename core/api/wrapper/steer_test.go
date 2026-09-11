@@ -279,12 +279,12 @@ func TestRestVocabulary(t *testing.T) {
 			{
 				name:  "type keys (R9 create/search)",
 				issue: v2model.Issue{}.Hintf("list all with %s", v2model.RefListTypes("space1")),
-				want:  "list all with a type listing (not in this tool set; `find` results show each object's type)",
+				want:  "list all with `find type=type`",
 			},
 			{
 				name:  "type keys, parameter unbound (placeholder route)",
 				issue: v2model.Issue{}.Hintf("list keys with %s", v2model.NewRef(v2model.OpListTypes)),
-				want:  "list keys with a type listing (not in this tool set; `find` results show each object's type)",
+				want:  "list keys with `find type=type`",
 			},
 			{
 				name: "property keys — the create half is not on this surface, and says so by name",
@@ -312,6 +312,13 @@ func TestRestVocabulary(t *testing.T) {
 				issue: v2model.Issue{}.Hintf("read the object with %s and copy the text; %s truncates text to a snippet",
 					v2model.RefGetObject("space1", "obj1"), v2model.RefGetObject("space1", "obj1").With("outline", "true")),
 				want: "read the object with `read` and copy the text; `read` with mode=outline truncates text to a snippet",
+			},
+			{
+				// the removed-type refusal: the tool set lists types itself
+				// now, so the repair names that listing rather than denying one
+				name:  "removed type",
+				issue: v2model.Issue{}.Hintf("use a live type instead — list them with %s", v2model.RefListTypes("space1")),
+				want:  "use a live type instead — list them with `find type=type`",
 			},
 			{
 				name:  "resend with a parameter",
@@ -419,9 +426,9 @@ func TestRestVocabulary(t *testing.T) {
 		issues := []v2model.Issue{v2model.Issue{Path: "/type", Message: `unknown type "` + hint + `"`}.Hintf("list all with %s", v2model.RefListTypes("s"))}
 		te := &ToolError{Status: 400, Message: `type "` + hint + `" not found`, Issues: issues, Text: renderErrorText(`type "`+hint+`" not found`, issues)}
 		deRest(te)
-		assert.NotContains(t, te.Message, "a type listing", "the quoted input is the caller's value, redacted by the catch-all only")
+		assert.NotContains(t, te.Message, "`find type=type`", "the quoted input is the caller's value, redacted by the catch-all only")
 		assert.Contains(t, te.Message, `type "list all with the HTTP API`)
-		assert.Equal(t, 1, strings.Count(te.Text, "a type listing (not in this tool set"), "only the rendered hint span is re-spelled")
+		assert.Equal(t, 1, strings.Count(te.Text, "`find type=type`"), "only the rendered hint span is re-spelled")
 	})
 
 	t.Run("an executor's edit to the text survives the hint substitution", func(t *testing.T) {

@@ -33,18 +33,31 @@ func TestHostCall(t *testing.T) {
 		assert.Equal(t, 1, got.JSON.(spacesResult).Total)
 	})
 
-	t.Run("a wrapper-side validation error is in-band", func(t *testing.T) {
-		// given: find without its required space
+	t.Run("a wrapper-side validation error is in-band, under its own code", func(t *testing.T) {
+		// given: read without its required object
 		fx, host := newHostFixture(t)
 
 		// when
-		got := host.Call(context.Background(), "find", map[string]any{"query": "x"})
+		got := host.Call(context.Background(), "read", map[string]any{"mode": "outline"})
+
+		// then
+		assert.True(t, got.IsError)
+		assert.Equal(t, CallCodeInvalidArguments, got.Code, "a shape mistake is not a workspace refusal — a client can budget it apart")
+		assert.Contains(t, got.Text, `read needs "object"`)
+		assert.Empty(t, fx.requests, "nothing reached the server")
+	})
+
+	t.Run("an executor refusal after a workspace read is a tool error", func(t *testing.T) {
+		// given: a handle with no session behind it
+		_, host := newHostFixture(t)
+
+		// when
+		got := host.Call(context.Background(), "read", map[string]any{"object": "1"})
 
 		// then
 		assert.True(t, got.IsError)
 		assert.Equal(t, CallCodeToolError, got.Code)
-		assert.Contains(t, got.Text, `find needs "space"`)
-		assert.Empty(t, fx.requests, "nothing reached the server")
+		assert.Contains(t, got.Text, "run find first")
 	})
 
 	t.Run("an unknown tool lists the tools", func(t *testing.T) {

@@ -131,12 +131,25 @@ const objectArgDescription = "the object: a handle number from the last find (1,
 const spaceArgDescription = "the space the object is in — optional: needed only when no find has run yet, and ignored for a handle number, which the last find already places"
 
 // spaceIdArgDescription is the space slot on the tools that address a SPACE
-// and no object (find, describe, create, create_type). There is no handle to
-// place them, so the space is REQUIRED — spaceArgDescription above describes
-// the optional companion slot on object-addressing tools and is false here.
-// Stated once so four tools cannot drift into four spellings of one
-// argument.
-const spaceIdArgDescription = "space id"
+// and no object (describe, create, create_type). There is no handle to place
+// them, so the slot used to be REQUIRED — which made the first call of a
+// conversation impossible to get right: nothing had told the model a space
+// id yet. It is optional now: the working space the last find set stands
+// in, and a call with neither is refused with the space list IN the
+// refusal (runner.spaceFor). Stated once so three tools cannot drift into
+// three spellings of one argument; find's slot (findSpaceArgDescription)
+// means something else when omitted.
+const spaceIdArgDescription = "space id — optional after a find, which sets the working space"
+
+// findSpaceArgDescription is find's space slot: omitting it is not a
+// default, it is a different search — every loaded space at once.
+const findSpaceArgDescription = "space id — omit to search every space"
+
+// typeArgDescription is the type slot on find, describe and create. It
+// names where a type name comes from and never shows one: a 3B model read
+// "e.g. Task" as the vocabulary, emitted TASK against a space with no such
+// type, and was refused twice.
+const typeArgDescription = "a type name — find type=type lists the types"
 
 // blockArgDescription is the shared block-reference contract text.
 const blockArgDescription = "a block label from read (5 chars) or a full block id"
@@ -147,7 +160,7 @@ func Tools() []Tool {
 	return []Tool{
 		{
 			Name:        "spaces",
-			Description: "List the spaces (name and id). Run this first when no space id is known — find, describe and create take a space id from here.",
+			Description: "List the spaces (name and id). find needs none — it searches every space unless one is given; describe and create take a space id from here when no find has set one.",
 			Args: []Arg{
 				{Name: "limit", Type: ArgInteger, Min: 1, Max: 100, Description: "max spaces (default 25)"},
 			},
@@ -161,11 +174,11 @@ func Tools() []Tool {
 			// description must not claim a bare space returns matches — not
 			// because prose is expected to steer (arm B2 measured that it does
 			// not); the behaviour change is what carries the fix
-			Description: "Search objects in a space by query, type or filter. Returns numbered handles (1, 2, …) the other tools accept as `object`. Each find renumbers the handles. Given none of the three it matches nothing and lists the space instead — unnumbered, and not addressable.",
+			Description: "Search objects by query, type or filter — across every space, or in one when space is given. Returns numbered handles (1, 2, …) the other tools accept as `object`; each find renumbers them. type=type lists the types themselves. Given none of the three it matches nothing and lists what is there instead — unnumbered, and not addressable.",
 			Args: []Arg{
-				{Name: "space", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: spaceIdArgDescription},
+				{Name: "space", Type: ArgString, MaxLen: maxKeyLen, Description: findSpaceArgDescription},
 				{Name: "query", Type: ArgString, MaxLen: maxNameLen, Description: "full-text words to match"},
-				{Name: "type", Type: ArgString, MaxLen: maxKeyLen, Description: "a type name, e.g. Task"},
+				{Name: "type", Type: ArgString, MaxLen: maxKeyLen, Description: "a type name; the word type lists the types"},
 				// the filter grammar's keys are identifiers (no spaces) — the
 				// underscore-join teaching below is what keeps multi-word
 				// property NAMES reachable from the compact string (the
@@ -173,7 +186,11 @@ func Tools() []Tool {
 				{Name: "filter", Type: ArgString, MaxLen: maxFilterLen, Description: `compact filter string, e.g. Done = false AND Due_date < currentWeek() — string values in double quotes; write multi-word property names with underscores (Due_date); a name no identifier can spell (C++, 50% done) cannot be filtered here`},
 				{Name: "limit", Type: ArgInteger, Min: 1, Max: 50, Description: "max results (default 10)"},
 			},
-			Example:  map[string]any{"space": "space1", "type": "Task", "filter": `Done = false`},
+			// the example is the call a user's first sentence maps to — a
+			// query, no space, no type: the one worked example is what a
+			// small model imitates (C12), and one that named a type taught
+			// that type as the vocabulary
+			Example:  map[string]any{"query": "prague trip"},
 			Tier:     TierSmall,
 			ReadOnly: true,
 		},
@@ -197,12 +214,12 @@ func Tools() []Tool {
 			Name:        "describe",
 			Description: "Describe a type before creating or editing objects of it: its property names, formats, and live select option names. Call this first — property names and option names must match exactly. When a property shows more options than fit, ask again with options set to that property name.",
 			Args: []Arg{
-				{Name: "space", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: spaceIdArgDescription},
-				{Name: "type", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: "a type name, e.g. Task"},
+				{Name: "space", Type: ArgString, MaxLen: maxKeyLen, Description: spaceIdArgDescription},
+				{Name: "type", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: typeArgDescription},
 				{Name: "options", Type: ArgString, MaxLen: maxNameLen, Description: "list ONE property's select options in full instead of describing the type, e.g. Status"},
 				{Name: "starting_with", Type: ArgString, MaxLen: maxNameLen, Description: "with options: only options starting with this text"},
 			},
-			Example:  map[string]any{"space": "space1", "type": "Task"},
+			Example:  map[string]any{"type": "Page"},
 			Tier:     TierSmall,
 			ReadOnly: true,
 		},
@@ -210,13 +227,15 @@ func Tools() []Tool {
 			Name:        "create",
 			Description: "Create an object. properties uses the type's property names (describe first); markdown becomes the body. Date values accept today, tomorrow, +Nd, weekday names; @me means the calling user; object properties (assignee, related objects) accept a handle number from the last find or the object's exact name.",
 			Args: []Arg{
-				{Name: "space", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: spaceIdArgDescription},
-				{Name: "type", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: "a type name, e.g. Task"},
+				{Name: "space", Type: ArgString, MaxLen: maxKeyLen, Description: spaceIdArgDescription},
+				{Name: "type", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: typeArgDescription},
 				{Name: "name", Type: ArgString, Required: true, MaxLen: maxNameLen, Description: "object name"},
 				{Name: "properties", Type: ArgObject, Description: "property name → value; select values are option NAMES"},
 				{Name: "markdown", Type: ArgString, MaxLen: maxMarkdownLen, Description: "markdown body: headings, lists, - [ ] checkboxes, ``` fences, quotes, tables"},
 			},
-			Example: map[string]any{"space": "space1", "type": "Task", "name": "Prepare the Q3 report", "properties": map[string]any{"Due date": "friday"}},
+			// Page, not Task: the bundled type every space installs, so the
+			// example never names a type the space lacks
+			Example: map[string]any{"type": "Page", "name": "Prepare the Q3 report", "properties": map[string]any{"Due date": "friday"}},
 			Tier:    TierSmall,
 		},
 		{
@@ -384,7 +403,7 @@ func Tools() []Tool {
 			// opens by saying which is which and the table keeps them apart.
 			Description: `Create a new object TYPE — the schema objects are then made from. This does not create an object: create does that. properties is a comma-separated list of "Name: format" pairs, a select or multi_select naming its options in parentheses — the same form describe prints, so a describe output can be handed straight back. Formats: text, number, select, multi_select, date, files, checkbox, url, email, phone, objects. A type cannot be renamed or deleted from this surface, so run describe or find first: the name and the properties are permanent.`,
 			Args: []Arg{
-				{Name: "space", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: spaceIdArgDescription},
+				{Name: "space", Type: ArgString, MaxLen: maxKeyLen, Description: spaceIdArgDescription},
 				{Name: "name", Type: ArgString, Required: true, MaxLen: maxNameLen, Description: "the type's name, e.g. Cookbook entry"},
 				{Name: "properties", Type: ArgString, MaxLen: maxTypePropertiesLen, Description: `the type's properties: comma-separated "Name: format" pairs, with a select's options in parentheses — "Cook time: number, Rating: select(Low, Medium, High), Source: url". A property name containing a comma, a colon or a parenthesis cannot be written here`},
 			},
@@ -395,7 +414,7 @@ func Tools() []Tool {
 			// everyday names (Recipe, Book, Movie, Project, Contact) are
 			// reserved by bundled types and refused, and an example the server
 			// rejects verbatim teaches the wrong thing.
-			Example: map[string]any{"space": "space1", "name": "Cookbook entry", "properties": "Cook time: number, Rating: select(Low, Medium, High), Source: url"},
+			Example: map[string]any{"name": "Cookbook entry", "properties": "Cook time: number, Rating: select(Low, Medium, High), Source: url"},
 			Tier:    TierLarge,
 		},
 	}
@@ -461,11 +480,35 @@ type FilterGrammar struct {
 }
 
 // Manifest is the machine-readable delivery: the same tool table the CLI
-// verbs are generated from.
+// verbs are generated from. Instructions is the tier's workflow steering —
+// the text the MCP delivery serves on initialize — so an embedding host
+// puts the ONE definition's own words in front of the model instead of
+// authoring its own (the iOS host did, and put the whole filter EBNF into
+// a 4k-token window with them).
 type Manifest struct {
 	Version       int            `json:"version"`
+	Instructions  string         `json:"instructions"`
 	Tools         []ManifestTool `json:"tools"`
 	FilterGrammar FilterGrammar  `json:"filterGrammar"`
+}
+
+// smallFilterExamples are the filter strings the small tier is shown: three,
+// over bundled property names only. The parser's own example list
+// (filterstring.Examples) names `type IN ("task", "bug")` and `status` —
+// on a 3B model those read as the vocabulary, and TASK came back as a type
+// name. The full list stays on the REST discovery surface.
+var smallFilterExamples = []string{
+	`Done = false AND Due_date < currentWeek()`,
+	`Name CONTAINS "report"`,
+	`Last_modified_date > daysAgo(7)`,
+}
+
+// filterExamplesForTier picks the tier's example list.
+func filterExamplesForTier(tier Tier) []string {
+	if tier == TierSmall {
+		return smallFilterExamples
+	}
+	return filterstring.Examples
 }
 
 // BuildManifest assembles the full (large-tier) manifest from the tool
@@ -497,12 +540,13 @@ func BuildManifestForTier(tier Tier) (Manifest, error) {
 		})
 	}
 	return Manifest{
-		Version: 1,
-		Tools:   entries,
+		Version:      1,
+		Instructions: tierInstructions(tier),
+		Tools:        entries,
 		FilterGrammar: FilterGrammar{
 			EBNF:     filterstring.EBNF,
 			GBNF:     filterStringGBNF,
-			Examples: filterstring.Examples,
+			Examples: filterExamplesForTier(tier),
 		},
 	}, nil
 }

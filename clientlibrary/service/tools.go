@@ -19,7 +19,8 @@ import (
 )
 
 // Envelope codes. Success carries no code; an in-band tool failure carries
-// wrapper.CallCodeToolError.
+// wrapper.CallCodeToolError, and a pre-flight shape mistake (unknown tool,
+// unknown or missing argument, wrong type) wrapper.CallCodeInvalidArguments.
 const (
 	// ToolsCodeAccountNotRunning: no account app is running.
 	ToolsCodeAccountNotRunning = "account_not_running"

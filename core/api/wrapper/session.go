@@ -15,12 +15,17 @@ import (
 	"time"
 )
 
-// Handle is one enumerated find result.
+// Handle is one enumerated find result. Space is set when the find that
+// numbered it ran across spaces (a find with no `space`): the handle then
+// resolves through its own space rather than the session's working space,
+// which such a find leaves empty. A single-space find leaves it empty too —
+// the working space is the one truth for those, as it always was.
 type Handle struct {
-	N    int    `json:"n"`
-	Id   string `json:"id"`
-	Name string `json:"name"`
-	Type string `json:"type"`
+	N     int    `json:"n"`
+	Id    string `json:"id"`
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	Space string `json:"space,omitempty"`
 }
 
 // LastWrite remembers the Idempotency-Key of the most recent mutation, so
@@ -72,15 +77,29 @@ type Session struct {
 //
 // Numbering continues within the working space and restarts when the space
 // changes, because a handle resolves through Space — a number carried
-// across spaces would address the wrong object.
+// across spaces would address the wrong object. In a cross-space session
+// (Space empty, handles carrying their own) numbering simply continues:
+// every handle there names its space itself, so nothing is re-pointed.
 func (s *Session) registerHandle(space string, h Handle) int {
-	if s.Space != space {
+	switch {
+	case s.Space == "" && len(s.Handles) > 0:
+		h.Space = space
+	case s.Space != space:
 		s.Space = space
 		s.Handles = nil
 	}
 	h.N = len(s.Handles) + 1
 	s.Handles = append(s.Handles, h)
 	return h.N
+}
+
+// spaceOf is the space a handle resolves through: its own when the find
+// that numbered it ran across spaces, the working space otherwise.
+func (s *Session) spaceOf(h Handle) string {
+	if h.Space != "" {
+		return h.Space
+	}
+	return s.Space
 }
 
 // handleFor reports the number an object already carries in the working
@@ -92,11 +111,11 @@ func (s *Session) registerHandle(space string, h Handle) int {
 // ambiguous object-value refusal offers the number the caller can retype
 // instead of a 59-character id.
 func (s *Session) handleFor(space, id string) (int, bool) {
-	if space == "" || s.Space != space || id == "" {
+	if space == "" || id == "" {
 		return 0, false
 	}
 	for _, h := range s.Handles {
-		if h.Id == id {
+		if h.Id == id && s.spaceOf(h) == space {
 			return h.N, true
 		}
 	}

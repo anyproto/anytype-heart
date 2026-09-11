@@ -50,20 +50,23 @@ func toolGBNF(t Tool) string {
 	var b strings.Builder
 	b.WriteString("root ::= \"{\" ws ")
 	if len(required) == 0 {
-		// optional-only tool: a nested chain (p1 ("," p2 …)?)? — no leading
-		// comma to dangle when everything is omitted, and {} stays in the
-		// language
-		chain := ""
-		for i := len(optional) - 1; i >= 0; i-- {
-			p := pairRule(optional[i].Name)
-			if chain == "" {
-				chain = p
-			} else {
-				chain = p + " (\",\" ws " + chain + ")?"
+		// optional-only tool: ANY subset of the pairs, in declared order —
+		// one alternative per "first pair present", each followed by the
+		// later pairs as independently omittable groups. No leading comma
+		// can dangle when everything is omitted, and {} stays in the
+		// language. (A nested chain p1 ("," p2)? was equivalent while the
+		// only such tool had one pair; with find's five it would have
+		// forced `space` in front of every `query`.)
+		var alts []string
+		for i := range optional {
+			alt := pairRule(optional[i].Name)
+			for _, later := range optional[i+1:] {
+				alt += " (\",\" ws " + pairRule(later.Name) + ")?"
 			}
+			alts = append(alts, alt)
 		}
-		if chain != "" {
-			b.WriteString("(" + chain + ")?")
+		if len(alts) > 0 {
+			b.WriteString("(" + strings.Join(alts, " | ") + ")?")
 		}
 	} else {
 		for i, a := range required {

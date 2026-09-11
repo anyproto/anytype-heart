@@ -208,27 +208,29 @@ func (s *MCPServer) handleInitialize(params json.RawMessage) any {
 		"protocolVersion": version,
 		"capabilities":    map[string]any{"tools": struct{}{}},
 		"serverInfo":      map[string]any{"name": "anytype", "version": "1"},
-		"instructions":    mcpInstructions(s.tier),
+		"instructions":    tierInstructions(s.tier),
 	}
 }
 
-// mcpInstructions renders the tier's workflow steering (the SKILL.md loop,
-// compressed to what fits an initialize response).
-func mcpInstructions(tier Tier) string {
+// tierInstructions renders the tier's workflow steering — the SKILL.md loop
+// compressed to what a 4k-token window can carry beside the tools. Served
+// on MCP initialize and in the manifest (Manifest.Instructions), so every
+// delivery puts the same words in front of the model. The filter syntax is
+// ONE line naming what it resembles: the grammar itself stays out of the
+// session (a parse error carries its own repair hint, and the manifest
+// keeps the EBNF for hosts that render help).
+func tierInstructions(tier Tier) string {
 	var b strings.Builder
-	b.WriteString("Anytype task tools over the local API. The loop: " +
-		"spaces lists space ids when none is known; " +
-		"find (space + query/type/filter) numbers matching objects 1, 2, … — pass that number as `object` to the other tools, and re-run find to renumber; " +
-		"find with a space and none of the three matches nothing, so it lists the space unnumbered and no number exists to pass on; " +
-		"describe a type BEFORE create or set_properties — property names and select option names must match exactly; " +
-		"read lists every block with its text and the short label the editing tools take as `block` — " +
-		"edit_text alone can skip it: omit block and the find snippet locates the block when it matches exactly one.")
+	b.WriteString("Anytype tools. " +
+		"find (query, type or filter; add space to search one space) numbers its matches 1, 2, … — pass the number as `object` to the other tools; each find renumbers; find type=type lists the types. " +
+		"describe a type BEFORE create or set_properties: property names and option names must match exactly. " +
+		"read lists blocks with the label the editing tools take as `block`; edit_text alone can skip it — omit block and the find snippet locates the block.")
 	if hasToolInTier(tier, "set_cell") {
-		b.WriteString(" set_cell's row and col take the text read mode=full shows: a column's header (each column carries it), a row's first cell — or a row/column id.")
+		b.WriteString(" set_cell's row and col take the text read mode=full shows: a column's header, a row's first cell — or a row/column id.")
 	}
-	b.WriteString(" Dates accept today, tomorrow, +3d, weekday names; @me means the calling user." +
-		" In filter strings, write multi-word property names with underscores (Due_date)." +
-		" To complete a task-like object, set its done/status property with set_properties." +
+	b.WriteString(" filter is a SQL WHERE clause over property names: Done = false AND Due_date < currentWeek() — strings in double quotes, multi-word names with underscores." +
+		" Dates: today, tomorrow, +3d, weekday names; @me is the calling user." +
+		" To complete a task-like object, set its done/status property." +
 		" Every error says how to fix the call — follow it and retry once; do not loop.")
 	return b.String()
 }

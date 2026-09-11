@@ -463,8 +463,21 @@ func typeLabel(names map[string]string, key string) string {
 	if name := names[key]; name != "" {
 		return name
 	}
+	// the type of types is hidden, so no type listing names it — and it is
+	// exactly what every row of `find type=type` carries
+	if key == typeOfTypesKey || key == typeOfTypesSlug {
+		return typeOfTypesName
+	}
 	return key
 }
+
+// The type of types, as the search rows spell it (the bundled key's api
+// slug) and as a user knows it.
+const (
+	typeOfTypesKey  = "objectType"
+	typeOfTypesSlug = "object_type"
+	typeOfTypesName = "Type"
+)
 
 // objectRefFormats are the property formats whose values are OBJECT
 // REFERENCES — where an id is expected, so @me substitutes and a handle or

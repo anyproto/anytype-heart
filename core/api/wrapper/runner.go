@@ -80,17 +80,32 @@ var executors = map[string]func(*Runner, context.Context, *Session, map[string]a
 	"create_type":    (*Runner).runCreateType,
 }
 
+// ArgumentError is a pre-flight refusal: the call never left the wrapper
+// because its SHAPE was wrong — an unknown tool, an unknown or missing
+// argument, a wrong type, a value outside an enum. It is its own type so a
+// delivery can tell it from a refusal the server (or an executor) issued
+// after reading the workspace: the host reports it under its own code
+// (host.go CallCodeInvalidArguments), and a client budgeting repairs can
+// leave a shape mistake out of the count.
+type ArgumentError struct{ msg string }
+
+func (e *ArgumentError) Error() string { return e.msg }
+
+func argErrorf(format string, a ...any) error {
+	return &ArgumentError{msg: fmt.Sprintf(format, a...)}
+}
+
 // Run executes one tool call. Arguments are validated strictly against the
 // tool's Arg table (unknown args, missing required args and wrong types are
 // wrapper-side errors with the same steering style the server uses).
 func (r *Runner) Run(ctx context.Context, tool string, args map[string]any) (*Result, error) {
 	def, ok := ToolByName(tool)
 	if !ok {
-		return nil, fmt.Errorf("unknown tool %q — tools: %s", tool, strings.Join(ToolNames(), ", "))
+		return nil, argErrorf("unknown tool %q — tools: %s", tool, strings.Join(ToolNames(), ", "))
 	}
 	exec := executors[tool]
 	if exec == nil {
-		return nil, fmt.Errorf("tool %q has no executor", tool)
+		return nil, argErrorf("tool %q has no executor", tool)
 	}
 	if err := validateArgs(def, args); err != nil {
 		return nil, err
@@ -125,14 +140,14 @@ func validateArgs(def Tool, args map[string]any) error {
 			for _, a := range def.Args {
 				known = append(known, a.Name)
 			}
-			return fmt.Errorf("%s does not take %q — arguments: %s", def.Name, name, strings.Join(known, ", "))
+			return argErrorf("%s does not take %q — arguments: %s", def.Name, name, strings.Join(known, ", "))
 		}
 	}
 	for _, a := range def.Args {
 		v, present := args[a.Name]
 		if !present {
 			if a.Required {
-				return fmt.Errorf("%s needs %q%s", def.Name, a.Name, argHint(a))
+				return argErrorf("%s needs %q%s", def.Name, a.Name, argHint(a))
 			}
 			continue
 		}
@@ -140,28 +155,28 @@ func validateArgs(def Tool, args map[string]any) error {
 		case ArgString:
 			s, ok := v.(string)
 			if !ok {
-				return fmt.Errorf("%s: %q must be a string", def.Name, a.Name)
+				return argErrorf("%s: %q must be a string", def.Name, a.Name)
 			}
 			// empty is distinct from missing: the argument WAS supplied, so
 			// the error must not claim otherwise (that shape produces a
 			// re-send-the-same-call repair loop)
 			if a.Required && s == "" && !a.AllowEmpty {
-				return fmt.Errorf("%s: %q must not be empty%s", def.Name, a.Name, argHint(a))
+				return argErrorf("%s: %q must not be empty%s", def.Name, a.Name, argHint(a))
 			}
 			if len(a.Enum) > 0 && s != "" && !containsStr(a.Enum, s) {
-				return fmt.Errorf("%s: %q must be one of %s", def.Name, a.Name, strings.Join(a.Enum, ", "))
+				return argErrorf("%s: %q must be one of %s", def.Name, a.Name, strings.Join(a.Enum, ", "))
 			}
 		case ArgBoolean:
 			if _, ok := v.(bool); !ok {
-				return fmt.Errorf("%s: %q must be true or false", def.Name, a.Name)
+				return argErrorf("%s: %q must be true or false", def.Name, a.Name)
 			}
 		case ArgInteger:
 			if _, err := intArg(v); err != nil {
-				return fmt.Errorf("%s: %q must be an integer", def.Name, a.Name)
+				return argErrorf("%s: %q must be an integer", def.Name, a.Name)
 			}
 		case ArgObject:
 			if _, ok := v.(map[string]any); !ok {
-				return fmt.Errorf("%s: %s", def.Name, objectArgRepair(def, a, v))
+				return argErrorf("%s: %s", def.Name, objectArgRepair(def, a, v))
 			}
 		}
 	}
@@ -283,19 +298,25 @@ func errNoSession(what string) error {
 // the session's working space.
 func (r *Runner) resolveObject(session *Session, ref, space string) (string, string, error) {
 	if handleRe.MatchString(ref) {
-		// a handle is the LAST find's numbering, so it resolves through the
-		// session and an explicit space cannot redirect it. A space naming a
-		// DIFFERENT one is refused rather than ignored: silently preferring
-		// the session would write the handle's object into a space the
-		// caller did not name, and preferring the argument would address
-		// whatever that number means somewhere it was never assigned
-		if space != "" && session.Space != "" && space != session.Space {
-			return "", "", fmt.Errorf("handle %s belongs to the last find in space %q, not %q — drop `space` to use the handle, or pass a full object id with the space you mean",
-				ref, session.Space, space)
-		}
 		n, _ := strconv.Atoi(ref)
 		h, ok := session.handle(n)
-		if !ok {
+		if ok {
+			// a handle is the LAST find's numbering, so it resolves through
+			// the session (or, after a cross-space find, through the space
+			// the row came from) and an explicit space cannot redirect it.
+			// A space naming a DIFFERENT one is refused rather than
+			// ignored: silently preferring the session would write the
+			// handle's object into a space the caller did not name, and
+			// preferring the argument would address whatever that number
+			// means somewhere it was never assigned
+			handleSpace := session.spaceOf(h)
+			if space != "" && handleSpace != "" && space != handleSpace {
+				return "", "", fmt.Errorf("handle %s belongs to the last find in space %q, not %q — drop `space` to use the handle, or pass a full object id with the space you mean",
+					ref, handleSpace, space)
+			}
+			return handleSpace, h.Id, nil
+		}
+		{
 			switch {
 			case len(session.Handles) > 0:
 				return "", "", fmt.Errorf("no handle %d — the last find returned %d results; run find again to renumber", n, len(session.Handles))
@@ -310,7 +331,6 @@ func (r *Runner) resolveObject(session *Session, ref, space string) (string, str
 				return "", "", errNoSession(fmt.Sprintf("handle %d", n))
 			}
 		}
-		return session.Space, h.Id, nil
 	}
 	// an explicit space makes a full object id addressable with no find at
 	// all — the session's working space is a convenience, not the only way

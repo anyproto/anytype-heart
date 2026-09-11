@@ -87,7 +87,7 @@ func (r *Runner) runSpaces(ctx context.Context, session *Session, args map[strin
 	default:
 		fmt.Fprintf(&b, "%d spaces", resp.Total)
 	}
-	b.WriteString("\npass the id after the dash as space to find, describe and create")
+	b.WriteString("\npass the id after the dash as space to find, describe and create — find with no space searches every space, and find type=type lists a space's types")
 	return &Result{
 		Text: b.String(),
 		JSON: spacesResult{Spaces: resp.Data, Total: resp.Total, HasMore: resp.HasMore},
@@ -96,27 +96,69 @@ func (r *Runner) runSpaces(ctx context.Context, session *Session, args map[strin
 
 // findResult is find's machine shape. Listing marks the no-criteria call
 // (§8.33): its Rows carry no handle numbers, because nothing was matched.
+// Global marks a find that ran across spaces: each handle then carries its
+// space.
 type findResult struct {
 	Handles []Handle `json:"handles"`
 	Total   int      `json:"total"`
 	HasMore bool     `json:"has_more"`
 	Listing bool     `json:"listing,omitempty"`
+	Global  bool     `json:"global,omitempty"`
 	Rows    []Handle `json:"rows,omitempty"`
 }
 
-// runFind searches a space — or, when the call names no criterion at all,
-// LISTS it (§8.33). The two are different acts and the difference is the
-// whole point: a search ranks matches, so handle 1 is the object the caller
-// asked for; a bare space matches nothing, so handle 1 is whichever object
-// the index happened to return first. Both used to render as "N matches"
-// with the same numbered handles, and a small model that dropped its
-// `query` read that as a match, addressed handle 1 and wrote three blocks
-// into an unrelated object. The listing therefore assigns NO handles: the
-// intent is still served (you can see what a space holds), but nothing it
-// returns can be passed as `object`, so that write is unreachable rather
-// than discouraged.
+// maxGlobalTypeIndexSpaces bounds how many spaces a cross-space find asks
+// for type names: one listing per distinct space in the page, so the text
+// can spell types by name. Past the bound the remaining rows show the key.
+const maxGlobalTypeIndexSpaces = 6
+
+// spaceNameIndex maps the served space refs to names, best-effort — the
+// text channel of a cross-space find names each row's space, and a name is
+// what a model (and a user) recognises where a short ref means nothing.
+func (r *Runner) spaceNameIndex(ctx context.Context) map[string]string {
+	var resp v2model.ListResponse[v2model.SpaceRow]
+	err := r.client.decode(ctx, apiRequest{
+		method: "GET",
+		path:   "/v2/spaces",
+		query:  url.Values{"limit": []string{strconv.Itoa(maxSpacesListed)}},
+	}, &resp)
+	if err != nil {
+		return nil
+	}
+	names := make(map[string]string, len(resp.Data))
+	for _, row := range resp.Data {
+		if row.Name != "" {
+			names[row.Id] = row.Name
+		}
+	}
+	return names
+}
+
+// maxSpacesListed is the spaces page a cross-space find or a no-space
+// refusal reads: every space the API serves, up to its page cap.
+const maxSpacesListed = 100
+
+// runFind searches a space — or, with no space named, every loaded space
+// through the global route — or, when the call names no criterion at all,
+// LISTS instead (§8.33). Searching and listing are different acts and the
+// difference is the whole point: a search ranks matches, so handle 1 is the
+// object the caller asked for; a bare space matches nothing, so handle 1 is
+// whichever object the index happened to return first. Both used to render
+// as "N matches" with the same numbered handles, and a small model that
+// dropped its `query` read that as a match, addressed handle 1 and wrote
+// three blocks into an unrelated object. The listing therefore assigns NO
+// handles: the intent is still served (you can see what a space holds), but
+// nothing it returns can be passed as `object`, so that write is
+// unreachable rather than discouraged.
+//
+// The cross-space form exists because "find it" names no space: a model
+// with six spaces either fans out six finds or guesses one, and a wrong
+// guess is indistinguishable from "not found". Its rows carry their space,
+// so do its handles, and the working space is left EMPTY — a handle from
+// such a find resolves through its own space (Session.spaceOf).
 func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]any) (*Result, error) {
 	space := spaceArg(args)
+	global := space == ""
 	limit := defaultFindLimit
 	if v, ok := args["limit"]; ok {
 		limit, _ = intArg(v)
@@ -134,6 +176,10 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 		}
 	}
 	if filter := strArg(args, "filter"); filter != "" {
+		if global && strings.Contains(filter, `"`+meSentinel+`"`) {
+			// @me is a participant id, and a participant is per space
+			return nil, fmt.Errorf("a filter naming @me needs a space — add space (spaces lists them)")
+		}
 		resolved, err := r.resolveFilterMe(ctx, session, space, filter)
 		if err != nil {
 			return nil, err
@@ -143,11 +189,15 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 	// no query, no type, no filter: nothing was matched, so this is a
 	// listing and not a search (see the doc comment)
 	listing := len(body) == 0
+	path := "/v2/search"
+	if !global {
+		path = "/v2/spaces/" + seg(space) + "/search"
+	}
 	var resp v2model.ListResponse[v2model.ObjectRow]
 	search := func() error {
 		return r.client.decode(ctx, apiRequest{
 			method: "POST",
-			path:   "/v2/spaces/" + seg(space) + "/search",
+			path:   path,
 			// keys=name: a refused filter or type is refused in the name
 			// vocabulary this surface teaches (§4.3) — the rows themselves
 			// are unaffected (their `type` stays the key)
@@ -156,6 +206,11 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 		}, &resp)
 	}
 	if err := search(); err != nil {
+		if global {
+			// the §8.21 fold reads ONE space's type listing; across spaces
+			// the server's own candidate-bearing refusal stands
+			return nil, err
+		}
 		// the §8.21 case fold: retry once with the unique case variant
 		folded, ok, foldErr := r.foldTypeArg(ctx, space, strArg(args, "type"), err)
 		if foldErr != nil {
@@ -172,7 +227,11 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 
 	handles := make([]Handle, 0, len(resp.Data))
 	for i, row := range resp.Data {
-		handles = append(handles, Handle{N: i + 1, Id: row.Id, Name: row.Name, Type: row.Type})
+		h := Handle{N: i + 1, Id: row.Id, Name: row.Name, Type: row.Type}
+		if global {
+			h.Space = row.SpaceId
+		}
+		handles = append(handles, h)
 	}
 	// the TEXT channel spells each row's type by display NAME — find is
 	// where the model learns the type vocabulary it hands back to describe
@@ -180,14 +239,43 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 	// the type users call "Query"). Best-effort and text-only: the session
 	// handle and the JSON channel keep the key (the machine identity), and
 	// a failed listing degrades to the key rather than failing the find.
-	var typeNames map[string]string
+	// A cross-space page names each row's space too, and reads one type
+	// listing per distinct space (bounded).
+	typeNames := map[string]map[string]string{}
+	var spaceNames map[string]string
 	if len(resp.Data) > 0 {
-		typeNames = r.typeNameIndex(ctx, space)
+		if global {
+			spaceNames = r.spaceNameIndex(ctx)
+			for _, h := range handles {
+				if _, done := typeNames[h.Space]; done || len(typeNames) >= maxGlobalTypeIndexSpaces {
+					continue
+				}
+				typeNames[h.Space] = r.typeNameIndex(ctx, h.Space)
+			}
+		} else {
+			typeNames[space] = r.typeNameIndex(ctx, space)
+		}
+	}
+	label := func(h Handle) string {
+		names := typeNames[space]
+		if global {
+			names = typeNames[h.Space]
+		}
+		text := fmt.Sprintf("%s (%s", displayName(h), typeLabel(names, h.Type))
+		if global {
+			spaceName := spaceNames[h.Space]
+			if spaceName == "" {
+				spaceName = h.Space
+			}
+			text += ", in " + spaceName
+		}
+		return text + ")"
 	}
 	// each find renumbers (§7.4) — and a listing numbers nothing, which
 	// clears whatever the previous find left behind: stale handles surviving
 	// a call that matched nothing would be the same mis-address one document
-	// further away
+	// further away. A cross-space find leaves the working space empty: its
+	// handles carry their own.
 	session.Space = space
 	if listing {
 		session.Handles = nil
@@ -195,18 +283,18 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 		// addressable-looking handle the text deliberately withheld
 		rows := make([]Handle, 0, len(handles))
 		for _, h := range handles {
-			rows = append(rows, Handle{Id: h.Id, Name: h.Name, Type: h.Type})
+			rows = append(rows, Handle{Id: h.Id, Name: h.Name, Type: h.Type, Space: h.Space})
 		}
 		return &Result{
-			Text: listingText(rows, typeNames, resp.Total, resp.HasMore, resp.Warnings),
-			JSON: findResult{Total: resp.Total, HasMore: resp.HasMore, Listing: true, Rows: rows},
+			Text: listingText(rows, label, global, resp.Total, resp.HasMore, resp.Warnings),
+			JSON: findResult{Total: resp.Total, HasMore: resp.HasMore, Listing: true, Global: global, Rows: rows},
 		}, nil
 	}
 	session.Handles = handles
 
 	var b strings.Builder
 	for _, h := range handles {
-		fmt.Fprintf(&b, "%d. %s (%s)\n", h.N, displayName(h), typeLabel(typeNames, h.Type))
+		fmt.Fprintf(&b, "%d. %s\n", h.N, label(h))
 	}
 	switch {
 	case resp.Total == 0:
@@ -216,10 +304,13 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 	default:
 		fmt.Fprintf(&b, "%d matches", resp.Total)
 	}
+	if global {
+		b.WriteString(" across all spaces — add space to search one")
+	}
 	b.WriteString(warningsText(resp.Warnings))
 	return &Result{
 		Text: b.String(),
-		JSON: findResult{Handles: handles, Total: resp.Total, HasMore: resp.HasMore},
+		JSON: findResult{Handles: handles, Total: resp.Total, HasMore: resp.HasMore, Global: global},
 	}, nil
 }
 
@@ -237,13 +328,19 @@ func displayName(h Handle) string {
 // it before the names do, or the names read as results. Nothing is
 // numbered, and the closing line names the one repair that produces
 // handles.
-func listingText(rows []Handle, typeNames map[string]string, total int, hasMore bool, warnings []v2model.Issue) string {
+func listingText(rows []Handle, label func(Handle) string, global bool, total int, hasMore bool, warnings []v2model.Issue) string {
 	var b strings.Builder
-	b.WriteString("nothing was searched for: find with only a space has no criterion to match on, so this is a listing of what the space holds — not results, and not numbered.\n")
+	if global {
+		b.WriteString("nothing was searched for: find with no criterion has nothing to match on, so this is a listing of recent objects across your spaces — not results, and not numbered.\n")
+	} else {
+		b.WriteString("nothing was searched for: find with only a space has no criterion to match on, so this is a listing of what the space holds — not results, and not numbered.\n")
+	}
 	for _, h := range rows {
-		fmt.Fprintf(&b, "  %s (%s)\n", displayName(h), typeLabel(typeNames, h.Type))
+		fmt.Fprintf(&b, "  %s\n", label(h))
 	}
 	switch {
+	case total == 0 && global:
+		b.WriteString("no objects")
 	case total == 0:
 		b.WriteString("the space is empty")
 	case hasMore:
@@ -254,6 +351,46 @@ func listingText(rows []Handle, typeNames map[string]string, total int, hasMore 
 	b.WriteString("\nto address one, run find again with query (words from its name), type or filter — a search numbers its results 1, 2, …, and those numbers are what `object` takes.")
 	b.WriteString(warningsText(warnings))
 	return b.String()
+}
+
+// spaceFor resolves the space a space-addressed tool (describe, create,
+// create_type) works in: the argument, else the working space the last
+// single-space find or create set, else a refusal that LISTS the spaces.
+// The refusal carries the repair because a first call has no way to hold a
+// space id, and "run spaces first" is one more round trip than a small
+// model reliably makes (§8.34: a refusal that is correct and unactionable
+// is a defect).
+func (r *Runner) spaceFor(ctx context.Context, session *Session, args map[string]any, tool string) (string, error) {
+	if space := spaceArg(args); space != "" {
+		return space, nil
+	}
+	if session.Space != "" {
+		return session.Space, nil
+	}
+	return "", r.noSpaceRefusal(ctx, tool)
+}
+
+// noSpaceRefusal names the spaces the caller can pick from, in the row
+// shape spaceArg accepts back.
+func (r *Runner) noSpaceRefusal(ctx context.Context, tool string) error {
+	var resp v2model.ListResponse[v2model.SpaceRow]
+	err := r.client.decode(ctx, apiRequest{
+		method: "GET",
+		path:   "/v2/spaces",
+		query:  url.Values{"limit": []string{strconv.Itoa(maxSpacesListed)}},
+	}, &resp)
+	if err != nil || len(resp.Data) == 0 {
+		return fmt.Errorf("%s needs a space and none is known yet — run spaces to list them, or find in a space (which sets the working space)", tool)
+	}
+	rows := make([]string, 0, len(resp.Data))
+	for _, row := range resp.Data {
+		name := row.Name
+		if name == "" {
+			name = "(unnamed)"
+		}
+		rows = append(rows, name+spaceRowSeparator+row.Id)
+	}
+	return fmt.Errorf("%s needs a space and none is known yet — pass one of these as space: %s", tool, strings.Join(rows, "; "))
 }
 
 func (r *Runner) runRead(ctx context.Context, session *Session, args map[string]any) (*Result, error) {
@@ -298,7 +435,10 @@ func (r *Runner) runRead(ctx context.Context, session *Session, args map[string]
 }
 
 func (r *Runner) runCreate(ctx context.Context, session *Session, args map[string]any) (*Result, error) {
-	space := spaceArg(args)
+	space, err := r.spaceFor(ctx, session, args, "create")
+	if err != nil {
+		return nil, err
+	}
 	body := map[string]any{
 		"type": strArg(args, "type"),
 		"name": strArg(args, "name"),

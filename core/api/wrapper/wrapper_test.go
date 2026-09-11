@@ -241,9 +241,12 @@ func TestRunValidation(t *testing.T) {
 
 	t.Run("missing required argument carries its description", func(t *testing.T) {
 		fx := newFixture(t)
-		_, err := fx.Run(context.Background(), "find", map[string]any{})
+		_, err := fx.Run(context.Background(), "read", map[string]any{"mode": "outline"})
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), `find needs "space"`)
+		assert.Contains(t, err.Error(), `read needs "object" — the object: a handle number from the last find`)
+		var argErr *ArgumentError
+		assert.ErrorAs(t, err, &argErr, "a pre-flight refusal carries its own type")
+		assert.Empty(t, fx.requests, "nothing reached the server")
 	})
 
 	t.Run("enum violation lists the values", func(t *testing.T) {

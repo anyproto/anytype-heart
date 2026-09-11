@@ -268,9 +268,7 @@ const spacesToolSpelling = "the `spaces` tool"
 // are visible rather than pretending `find` lists them.
 var toolVocab = map[string]func(ref v2model.Ref) string{
 	v2model.OpListSpaces: func(v2model.Ref) string { return spacesToolSpelling },
-	v2model.OpListTypes: func(v2model.Ref) string {
-		return "a type listing (not in this tool set; `find` results show each object's type)"
-	},
+	v2model.OpListTypes:  func(v2model.Ref) string { return "`find type=type`" },
 	v2model.OpGetType:    func(v2model.Ref) string { return "`describe`" },
 	v2model.OpCreateType: func(v2model.Ref) string { return "`create_type`" },
 	v2model.OpListProperties: func(v2model.Ref) string {
