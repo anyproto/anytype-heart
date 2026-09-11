@@ -3,6 +3,10 @@ package pb
 import (
 	"archive/zip"
 	"context"
+	"encoding/json"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/ipfs/go-cid"
+	mh "github.com/multiformats/go-multihash"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -353,4 +357,65 @@ func TestAnyBlockURLOnlyBookmark(t *testing.T) {
 		}
 	}
 	require.True(t, found)
+}
+
+func anyBlockTestCid(seed string) string {
+	sum, err := mh.Sum([]byte(seed), mh.SHA2_256, -1)
+	if err != nil {
+		panic(err)
+	}
+	return cid.NewCidV1(cid.DagCBOR, sum).String()
+}
+
+// A bundle declares WHY an index target dangles (SPEC §2c). A target the
+// space DELETED is by-design state: the importer keeps the id, so the widget
+// survives and the id can be tombstoned at creation. A target the space had
+// no row for stays what it always was on import — the sentinel.
+func TestAnyBlockDeclaredDeletedTargetsAreKept(t *testing.T) {
+	deleted, absent := anyBlockTestCid("deleted"), anyBlockTestCid("absent")
+	fixture := fstest.MapFS{}
+	require.NoError(t, fs.WalkDir(os.DirFS("testdata/anyblock_full"), ".", func(name string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		data, err := os.ReadFile(filepath.Join("testdata/anyblock_full", name))
+		if err != nil {
+			return err
+		}
+		fixture[name] = &fstest.MapFile{Data: data}
+		return nil
+	}))
+	var idx map[string]any
+	require.NoError(t, json.Unmarshal(fixture["index.json"].Data, &idx))
+	idx["widgets"] = append(idx["widgets"].([]any), map[string]any{"target": deleted}, map[string]any{"target": absent})
+	unresolved := idx["unresolved"].(map[string]any)
+	unresolved["targets"] = []string{absent, deleted}
+	unresolved["deleted"] = []string{deleted}
+	indexData, err := json.Marshal(idx)
+	require.NoError(t, err)
+	fixture["index.json"] = &fstest.MapFile{Data: indexData}
+
+	importer := &Pb{tempDirProvider: fixtureTempDir(t.TempDir())}
+	result, errs := importer.GetSnapshots(context.Background(), &pb.RpcObjectImportRequest{
+		SpaceId: "root.suffix", Type: model.Import_Pb, Mode: pb.RpcObjectImportRequest_ALL_OR_NOTHING, IsNewSpace: true,
+		Params: &pb.RpcObjectImportRequestParamsOfPbParams{PbParams: &pb.RpcObjectImportRequestPbParams{Path: []string{writeAnyBlockFixture(t, fixture, "directory")}, NoCollection: true}},
+	}, process.NewNoOp())
+	require.Nil(t, errs)
+	require.NotNil(t, result)
+
+	assert.Equal(t, []string{deleted}, result.KeptIDs, "the creation stage must keep the same ids and tombstone them")
+	var widgetTargets []string
+	for _, snapshot := range result.Snapshots {
+		if snapshot.Snapshot.SbType != smartblock.SmartBlockTypeWidget {
+			continue
+		}
+		for _, block := range snapshot.Snapshot.Data.Blocks {
+			if link := block.GetLink(); link != nil {
+				widgetTargets = append(widgetTargets, link.TargetBlockId)
+			}
+		}
+	}
+	assert.Contains(t, widgetTargets, deleted, "a deleted target keeps its id")
+	assert.NotContains(t, widgetTargets, absent, "an absent target takes the sentinel as before")
+	assert.Contains(t, widgetTargets, addr.MissingObject)
 }

@@ -81,7 +81,7 @@ func (p *Pb) anyBlockBundle(ctx context.Context, input string) (source.Source, b
 		return nil, true, fmt.Errorf("convert AnyBlock v2 bundle: %w", err)
 	}
 	keepSource = true
-	return &snapshotSource{entries: result.Entries, files: result.Files, fsys: fsys, close: closeSource}, true, nil
+	return &snapshotSource{entries: result.Entries, files: result.Files, fsys: fsys, close: closeSource, unresolved: result.Unresolved}, true, nil
 }
 
 // Archives created by file managers often wrap the bundle in one directory.
@@ -166,6 +166,9 @@ type snapshotSource struct {
 	files   map[string]string
 	fsys    fs.FS
 	close   func() error
+	// unresolved is what the bundle's index declared it could not carry, by
+	// class (SPEC §2c). Deleted ids are kept verbatim through import.
+	unresolved bundleconvert.UnresolvedTargets
 }
 
 func (s snapshotSource) Initialize(string) error { return nil }

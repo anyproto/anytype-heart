@@ -8,6 +8,7 @@ import (
 	"io"
 	"math/rand"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
@@ -52,6 +53,11 @@ type Pb struct {
 	spaceID   string
 
 	isMigration, isNewSpace, importWidgets bool
+	// keptIds are the ids an AnyBlock bundle declared its source space
+	// DELETED (SPEC §2c): kept verbatim in every reference slot instead of
+	// becoming the missing-object sentinel, and handed to the creation stage
+	// to tombstone (common.Response.KeptIDs).
+	keptIds []string
 }
 
 func New(service *collection.Service, accountService account.Service, tempDirProvider core.TempDirProvider) common.Converter {
@@ -93,7 +99,7 @@ func (p *Pb) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, p
 		rootCollectionID = rootCollections[0].Id
 	}
 	progress.SetTotalPreservingRatio(int64(snapshots.Len()))
-	return &common.Response{Snapshots: snapshots.List(), RootObjectID: rootCollectionID, RootObjectWidgetType: model.BlockContentWidget_CompactList}, p.errors.ErrorOrNil()
+	return &common.Response{Snapshots: snapshots.List(), RootObjectID: rootCollectionID, RootObjectWidgetType: model.BlockContentWidget_CompactList, KeptIDs: slices.Clone(p.keptIds)}, p.errors.ErrorOrNil()
 }
 
 func (p *Pb) Name() string {
@@ -149,6 +155,9 @@ func (p *Pb) handleImportPath(ctx context.Context, path string) *common.Snapshot
 	if recognized {
 		defer converted.Close()
 		p.importWidgets = p.isNewSpace
+		if bundleSource, ok := converted.(*snapshotSource); ok {
+			p.keptIds = append(p.keptIds, bundleSource.unresolved.Deleted...)
+		}
 		return p.getSnapshotsFromProvidedFiles(converted, path, "")
 	}
 	importSource := source.GetSource(path)
@@ -478,7 +487,12 @@ func (p *Pb) shouldImportSnapshot(snapshot *common.Snapshot) bool {
 }
 
 func (p *Pb) updateLinksToObjects(snapshots []*common.Snapshot) map[string]string {
-	oldToNewID := make(map[string]string, len(snapshots))
+	oldToNewID := make(map[string]string, len(snapshots)+len(p.keptIds))
+	// a deleted target keeps its id: mapped to itself, it survives every
+	// rewrite site that would otherwise write the sentinel
+	for _, id := range p.keptIds {
+		oldToNewID[id] = id
+	}
 	relationKeysToFormat := make(map[domain.RelationKey]int32, len(snapshots))
 	for _, snapshot := range snapshots {
 		id := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyId)
