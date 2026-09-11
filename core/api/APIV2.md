@@ -7475,3 +7475,154 @@ manifest gave it.
 **Not built, stated.** No cancellation of an in-flight call; no streaming;
 no tier check on `Call`; no desktop use of the host (desktop clients keep
 the listener, the CLI and MCP).
+
+### 8.58 The first on-device run: cross-space find, honest empty lists, and a manifest that teaches no type (2026-09-11 — decisions as built)
+
+The iOS app ran Apple Foundation Models (the ~3B system model, 4,096-token
+window) over the in-process delivery (§8.57), tier `small`, on a real
+six-space account. Two turns, every axis failed: *"Hey, tell me about
+prague trip"* got a refusal to answer general questions; *"Find it"* got
+`find {"space":"", "type":"TASK", …}` (refused pre-flight), then `spaces`,
+then `find {"space":"hpujze","type":"TASK","filter":"\"prague trip\" IN TASK"}`
+→ *type "TASK" not found — the space has no types yet*, then the same from
+`describe`, and a final answer that reported a completed search with no
+results. No search ever succeeded. The plan that produced this section is
+`docs/superpowers/specs/2026-09-11-afm-small-model-inference-plan.md`.
+
+**What the code proved about the run.** Traced on HEAD and on the build
+the phone actually ran (`05d1bb75e` — a rewritten predecessor of this
+branch, 95 commits behind; the type path is identical in both):
+
+- the short space ref WAS resolved (the route middleware rewrites the
+  param; an unresolved one 404s in `ensureSpace`), and the message spells
+  `hpujze` only because `echoSpaceRef` substitutes the caller's spelling;
+- the type query RAN and returned zero rows — a store error on that path
+  is a 500, the run got a 400 — so `knownTypeKeys` rendered an empty list
+  and `listKnown` rendered that as a fact about the space;
+- every loaded space installs `bundle.SystemTypes`, so zero type rows
+  means the phone's index held nothing for that space at that moment
+  (loaded and indexed are decoupled: the optimistic-Ok fast path reports
+  Ok before the background build and the indexer fill the index). Why the
+  index was empty is not decidable from the code; nothing below depends on
+  it.
+
+**`find` searches every space when none is named, and lists types.**
+`space` is optional on `find`; omitted, the wrapper calls `POST /v2/search`
+(loaded spaces, the §8.x fan-out) and carries the response's `warnings`
+(the incomplete-results issue, per-space skips) into the text, so the model
+knows when an answer is partial. Rows carry their space, so do the handles
+(`Handle.Space`), and the working space is left EMPTY: a handle from such a
+find resolves through its own space (`Session.spaceOf`), an explicit
+`space` naming a different one is refused as before, and numbering simply
+continues when a create or a list read registers a handle into a
+cross-space session. The text names each row's space by NAME
+(`3. Prague trip (Page, in Weekend Trips)`) and reads one type listing per
+distinct space in the page (bounded at 6). A no-criteria global call is a
+listing, unnumbered, like the per-space one (§8.33). `@me` in a filter
+needs a space (a participant is per space) and says so. The §8.21 case
+fold does not run across spaces — it reads one space's type listing — so
+the server's candidate-bearing refusal stands there.
+
+`type=type` (also `Type`, `types`, `object_type`) lists the types
+themselves: server-side, `buildSearchPlan` resolves the spelling to the
+INSTALLED type-of-types entry (`typeOfTypesEntry` — the ordinary chain
+never reaches it, since the type is hidden and hidden entries answer to
+their stored key alone) and widens the base row scope to the `objectType`
+layout (`searchPlan.includeTypeLayout`, the same opt-in file types have).
+Hidden types stay out — the listing teaches the names a user sees. A live
+type literally named "Type" is refused as ambiguous by the existing shadow
+rule, never guessed. The wrapper labels the rows `(Type)`: the type of
+types is hidden, so no listing names it, and its api slug is exactly what
+every such row carries. This is the type listing the report asked for, at
+no tool slot: `find space=X type=type` for one space, `find type=type` for
+the account.
+
+**An empty list is not a fact about the space.** `knownTypeKeys` and
+`knownPropertyKeys` return their load error instead of swallowing it, and
+the live listings render through `listKnownLive`: a load failure is its
+own sentence (*could not be read (…) — retry shortly*), an empty result
+says what was looked up (*no types are indexed in this space on this
+device yet — the space may still be syncing; retry shortly, or search
+another space*), and only a list with entries reads as before. `listKnown`
+keeps its old sentence for the primed sets whose emptiness IS a fact (a
+type that recommends no properties). The wrapper's `restVocab` re-spells
+the server's type-listing hints as *list the types with find type=type*.
+
+**A read does not mint store state.** `ensureSpace` now admits a space only
+when its store is open on this device (`storeOpened`: `OpenedSpaceIds`,
+polled for up to 3 s to cover the startup warm-up and a space created
+moments ago). A live space view with no store — a space joined elsewhere
+and not yet synced here — is refused with `spaceNotIndexedError` (*not
+loaded on this device yet — it exists in the account but its store has not
+synced here*), a 404 that is neither the unknown-id refusal nor an empty
+result. Before this, `objectstore.SpaceIndex` minted an empty index for the
+id, marked it opened, and every later per-space read answered "empty"
+while global search counted the space as searched — a read that created
+state and then lied about it (the report's problem 4, second consequence).
+The test fixtures open the stores they register (`registerSpace`); the
+never-loaded case is `registerSpaceUnopened`. On-demand loading in the API
+(rev 1 of the plan) was withdrawn with the root cause.
+
+**The manifest teaches no type, and the grammar leaves the session.** Every
+`type` slot says *a type name — find type=type lists the types* (was
+*"a type name, e.g. Task"* — on a 3B model the one type noun in context IS
+the vocabulary; it emitted `TASK`). The examples are `find
+{"query":"prague trip"}` (the call a first sentence maps to), `describe
+{"type":"Page"}` and a `Page` create — never `Task`, and no `space`. The
+small tier is served three filter examples over bundled property names
+(`smallFilterExamples`) instead of the parser's list, which names `type IN
+("task", "bug")`; the large tier keeps the parser's. The manifest carries
+`instructions` per tier — `tierInstructions`, the same text MCP serves on
+initialize — and the filter syntax in it is ONE line naming what it
+resembles (*a SQL WHERE clause over property names*) plus one example; the
+EBNF stays in `filterGrammar.ebnf` for hosts that render help and is not
+meant for the session (the iOS host put all 1.8 KB of it in a 4k-token
+window). A parse error already carries its own repair hint
+(`filterstring.Error.Hint`). Rider: `toolGBNF` for an optional-only tool
+used to nest the pairs (`p1 ("," p2 …)?`), which forced `space` in front of
+every `query` once `find` had five optional args; it now emits one
+alternative per first-present pair, so any subset in declared order is in
+the language — pinned by the example/grammar acceptance test.
+
+**A first call that can succeed, and an error a client can budget.**
+`space` is optional on `describe`, `create` and `create_type`: the
+argument, else the working space the last single-space find or create set
+(`spaceFor`), else a refusal that LISTS the spaces in the row shape
+`spaceArg` accepts back (*create needs a space and none is known yet — pass
+one of these as space: Soft motion — xjwg44; Weekend Trips — hpujze*) — the
+repair is in the refusal, not one more round trip away (§8.34). Pre-flight
+refusals (unknown tool, unknown or missing argument, wrong type, bad enum)
+are typed (`ArgumentError`) and the host reports them under
+`invalid_arguments` instead of `tool_error`, so a client counting repairs
+can leave a self-correctable shape mistake out of the budget; an executor's
+refusal after a workspace read stays `tool_error`.
+
+**Measured.** The served small tier before this section: 7,994 B of tool
+text, plus 1,800 B of EBNF and 284 B of examples the client put into the
+instructions, plus ~600 B of client prose — ~2.7k tokens of a 4,096-token
+window before the user's first word. After: 8,190 B of tool text (two
+descriptions grew by the cross-space sentence), 829 B of served
+instructions, 94 B of examples, no EBNF — once the client switches to the
+served instructions (§8.57's contract, to update), ~9.1 KB. The tool text
+itself is untouched by design: whether it is shortened for every tier or
+tiered is the pending decision D6, and the byte-budget test pins the
+current size as a ceiling until then.
+
+**Eval.** Four `cmd/apiv2eval` tasks reproduce the run: `find-non-task-type`
+(a `Trip` fixture the model has never seen named — `task.SeedType` creates
+the type), `list-types` (graded on the calls — `CheckCalls`, the third
+verdict channel — since its product is an answer), `first-call-no-space`
+(`task.NoSpaceContext` drops the space from the preamble, the condition a
+real host is in) and `find-anywhere` (`task.InOtherSpace` puts the fixture
+in a second space the run creates while the preamble names the first). The
+harness judges a fresh space ready through the search route
+(`spaceReady`), since the tech-space read passes before the store is open.
+
+**Not built, stated.** Result caps, the heart-rendered workspace preamble,
+the session-scoped manifest with live type names as an enum, and tiered
+descriptions — each is a decision in the plan's §6, to be taken after the
+eval runs on the real model (an AFM bridge for the harness is client-side
+work). `describe` does not yet take a handle from a `find type=type` row
+(the row's name resolves through the existing fold, so `describe
+type=Trip` composes today). The filter channel's `type IN ("type")` does
+not widen the layout scope; only the top-level `type` does.

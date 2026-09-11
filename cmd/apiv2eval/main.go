@@ -39,7 +39,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -222,9 +221,19 @@ func run() error {
 	if err := checkModels(ctx, chat, modelURL, models); err != nil {
 		return err
 	}
-	spaceId, err := resolveSpace(ctx, api, opt)
+	spaceId, err := resolveNamedSpace(ctx, api, opt.spaceId, opt.spaceName)
 	if err != nil {
 		return err
+	}
+	otherSpaceId := ""
+	for _, t := range selected {
+		if t.InOtherSpace {
+			otherSpaceId, err = resolveNamedSpace(ctx, api, "", opt.spaceName+" other")
+			if err != nil {
+				return err
+			}
+			break
+		}
 	}
 	rec.take() // preflight exchanges belong to no attempt
 
@@ -261,7 +270,7 @@ func run() error {
 					rec.take()
 					att := runAttempt(ctx, attemptDeps{
 						api: api, chat: chat, rec: rec, opt: opt,
-						runId: runId, spaceId: spaceId,
+						runId: runId, spaceId: spaceId, otherSpaceId: otherSpaceId,
 					}, model, arm, t, seq)
 					attempts = append(attempts, att)
 					line, err := json.Marshal(att)
@@ -473,6 +482,9 @@ type attemptDeps struct {
 	runId string
 
 	spaceId string
+	// otherSpaceId is the run's second space, created only when a selected
+	// task puts its fixture there (task.InOtherSpace).
+	otherSpaceId string
 }
 
 func runAttempt(ctx context.Context, deps attemptDeps, model string, arm armSpec, t task, seq int) attemptRecord {
@@ -487,7 +499,11 @@ func runAttempt(ctx context.Context, deps attemptDeps, model string, arm armSpec
 		return att
 	}
 
-	fx, err := setupFixture(ctx, deps.api, deps.spaceId, t)
+	fixtureSpace := deps.spaceId
+	if t.InOtherSpace {
+		fixtureSpace = deps.otherSpaceId
+	}
+	fx, err := setupFixture(ctx, deps.api, fixtureSpace, t)
 	if err != nil {
 		att.Outcome, att.EnvError = outcomeEnv, err.Error()
 		return finishRecord()
@@ -508,7 +524,7 @@ func runAttempt(ctx context.Context, deps attemptDeps, model string, arm armSpec
 			if sibId == "" {
 				continue
 			}
-			sibOK, _, sibErr := deps.api.waitSearchable(ctx, deps.spaceId, sibTitle, sibId, fixtureIndexTimeout)
+			sibOK, _, sibErr := deps.api.waitSearchable(ctx, fx.SpaceId, sibTitle, sibId, fixtureIndexTimeout)
 			if sibErr != nil {
 				att.Outcome, att.EnvError = outcomeEnv, fmt.Errorf("wait for sibling %q: %w", sib.Key, sibErr).Error()
 				return finishRecord()
@@ -519,7 +535,7 @@ func runAttempt(ctx context.Context, deps attemptDeps, model string, arm armSpec
 				return finishRecord()
 			}
 		}
-		ok, took, err := deps.api.waitSearchable(ctx, deps.spaceId, fx.Title, fx.ObjectId, fixtureIndexTimeout)
+		ok, took, err := deps.api.waitSearchable(ctx, fx.SpaceId, fx.Title, fx.ObjectId, fixtureIndexTimeout)
 		att.FixtureIndexMs = took.Milliseconds()
 		switch {
 		case err != nil:
@@ -539,7 +555,11 @@ func runAttempt(ctx context.Context, deps attemptDeps, model string, arm armSpec
 	}
 	defer ts.close()
 
-	att.System = ts.instructions() + "\n\n" + armPreamble(arm, deps.spaceId)
+	preamble := armPreamble(arm, deps.spaceId)
+	if t.NoSpaceContext {
+		preamble = armPreambleNoSpace(arm)
+	}
+	att.System = ts.instructions() + "\n\n" + preamble
 	if deps.opt.systemSuffix != "" {
 		// the suffix is recorded IN att.System, so a run's own record shows
 		// exactly what the model was told — a steer that is not in the
@@ -575,22 +595,26 @@ func runAttempt(ctx context.Context, deps attemptDeps, model string, arm armSpec
 		return finishRecord()
 	}
 
-	doc, _, err := deps.api.getDocument(ctx, deps.spaceId, fx.ObjectId)
+	doc, _, err := deps.api.getDocument(ctx, fx.SpaceId, fx.ObjectId)
 	if err != nil {
 		att.Outcome, att.EnvError = outcomeEnv, fmt.Errorf("check read: %w", err).Error()
 		return finishRecord()
 	}
-	if err := readSiblings(ctx, deps.api, deps.spaceId, fx, t); err != nil {
+	if err := readSiblings(ctx, deps.api, fx.SpaceId, fx, t); err != nil {
 		att.Outcome, att.EnvError = outcomeEnv, err.Error()
 		return finishRecord()
 	}
 	// A task whose product is not the fixture document (a created type, a
-	// space's schema) reads its result back from the live API instead, and
-	// has no Check at all — calling both would deref a nil one.
+	// space's schema) reads its result back from the live API instead; one
+	// whose product is an answer grades the calls. Each task has exactly one
+	// channel — calling another would deref a nil one.
 	var verdict checkResult
-	if t.CheckAPI != nil {
-		verdict = t.CheckAPI(ctx, deps.api, deps.spaceId, fx)
-	} else {
+	switch {
+	case t.CheckAPI != nil:
+		verdict = t.CheckAPI(ctx, deps.api, fx.SpaceId, fx)
+	case t.CheckCalls != nil:
+		verdict = t.CheckCalls(tr.Calls, fx)
+	default:
 		verdict = t.Check(doc, fx)
 	}
 	if verdict.OK {
@@ -669,6 +693,16 @@ func armPreamble(arm armSpec, spaceId string) string {
 	}
 	return "Work in the Anytype space " + spaceId + " — pass that id as space to find, describe and create. " +
 		"When the work is done, reply with one short sentence and no tool call."
+}
+
+// armPreambleNoSpace is the preamble of a task that measures the first
+// turn of a real conversation: no space has ever been named. Only the
+// closing instruction survives — it says nothing about the workspace.
+func armPreambleNoSpace(arm armSpec) string {
+	if arm.surface == surfaceOps {
+		return armPreamble(arm, "")
+	}
+	return "When the work is done, reply with one short sentence and no tool call."
 }
 
 //
@@ -774,20 +808,22 @@ func startFreshAccount(ctx context.Context, opt options) (*heartboot.Heart, erro
 // existing space with the eval name, else a fresh one. A dedicated space
 // keeps every run's fixtures out of the user's real notes. The harness does
 // not delete its fixtures, so they accumulate somewhere harmless.
-func resolveSpace(ctx context.Context, api *apiClient, opt options) (string, error) {
-	if opt.spaceId != "" {
-		return opt.spaceId, nil
+// resolveNamedSpace returns spaceId when given, else the id of the live
+// space named spaceName, creating it when none exists.
+func resolveNamedSpace(ctx context.Context, api *apiClient, spaceId, spaceName string) (string, error) {
+	if spaceId != "" {
+		return spaceId, nil
 	}
 	spaces, err := api.listSpaces(ctx)
 	if err != nil {
 		return "", err
 	}
 	for _, s := range spaces {
-		if s.Name == opt.spaceName {
+		if s.Name == spaceName {
 			return s.Id, nil
 		}
 	}
-	id, err := api.createSpace(ctx, opt.spaceName)
+	id, err := api.createSpace(ctx, spaceName)
 	if err != nil {
 		return "", fmt.Errorf("create the eval space (pass -space to use an existing one): %w", err)
 	}
@@ -796,7 +832,7 @@ func resolveSpace(ctx context.Context, api *apiClient, opt options) (string, err
 	// environment failure, which is true but useless
 	deadline := time.Now().Add(spaceReadyTimeout)
 	for {
-		if _, err := api.call(ctx, http.MethodGet, "/v2/spaces/"+url.PathEscape(id), nil, nil, nil); err == nil {
+		if api.spaceReady(ctx, id) {
 			break
 		}
 		if time.Now().After(deadline) {
@@ -808,7 +844,7 @@ func resolveSpace(ctx context.Context, api *apiClient, opt options) (string, err
 			return "", ctx.Err()
 		}
 	}
-	fmt.Printf("created eval space %q (%s)\n", opt.spaceName, id)
+	fmt.Printf("created eval space %q (%s)\n", spaceName, id)
 	return id, nil
 }
 

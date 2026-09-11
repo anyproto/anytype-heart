@@ -20,6 +20,7 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -28,8 +29,11 @@ import (
 // fixture is one attempt's freshly created object.
 type fixture struct {
 	ObjectId string
-	Title    string
-	Extra    map[string]string
+	// SpaceId is where the fixture lives: the run's eval space, or its
+	// second space for a task that measures a find with no space named.
+	SpaceId string
+	Title   string
+	Extra   map[string]string
 	// Siblings are the extra objects a task was seeded with, read back
 	// FRESH at check time and keyed the way the task named them. A check
 	// that only ever sees its own object cannot tell "edited the right
@@ -87,8 +91,25 @@ type task struct {
 	// CheckAPI replaces Check for tasks whose result is not IN the fixture
 	// document — a created type, a space's property list. It gets the live
 	// client, so it can read back whatever the intent actually produced.
-	// Exactly one of Check/CheckAPI must be set.
+	// Exactly one of Check/CheckAPI/CheckCalls must be set.
 	CheckAPI func(ctx context.Context, client *apiClient, spaceId string, fx *fixture) checkResult
+	// CheckCalls grades the CALLS for a task whose product is an answer,
+	// not a document — "what types are here" has nothing to read back, and
+	// the surface exists to make one specific call possible. It gets the
+	// transcript's calls exactly as the model emitted them.
+	CheckCalls func(calls []callRecord, fx *fixture) checkResult
+	// SeedType names a type the fixture object is created AS (made in the
+	// space first when missing) — a type the model has to learn from the
+	// workspace rather than guess from an example.
+	SeedType string
+	// NoSpaceContext drops the space id from the system preamble: the
+	// condition a real host is in on the first turn, where the model has
+	// never been told a space.
+	NoSpaceContext bool
+	// InOtherSpace puts the fixture in the run's SECOND space while the
+	// preamble still names the first: the object is findable only by a find
+	// that names no space.
+	InOtherSpace bool
 }
 
 func (t task) runsOnArm(arm string) bool {
@@ -120,6 +141,7 @@ func (t task) runsOnArm(arm string) bool {
 type capability string
 
 const (
+	capFind          capability = "find objects by search"
 	capRead          capability = "read the document"
 	capEditText      capability = "replace text in a block"
 	capAddBlocks     capability = "add blocks"
@@ -137,6 +159,9 @@ const (
 // guaranteed losses into the headline rate (§8.31's drift class, one level
 // up from the schema).
 var capabilityTools = map[capability]map[string]string{
+	// the ops arm is bound to one object and searches nothing: find is a
+	// wrapper capability only (surfaceCannotExpress)
+	capFind:          {surfaceWrapper: "find"},
 	capRead:          {surfaceWrapper: "read", surfaceOps: "read_object"},
 	capEditText:      {surfaceWrapper: "edit_text", surfaceOps: "replace_text"},
 	capAddBlocks:     {surfaceWrapper: "add_blocks", surfaceOps: "insert_blocks"},
@@ -172,7 +197,7 @@ func capabilityTool(c capability, surface string) (string, error) {
 // folding a real gap into that check would either fail every run or force
 // a fake mapping that scores a surface for something it cannot do.
 func surfaceCannotExpress(c capability, surface string) bool {
-	return c == capCreateType && surface == surfaceOps
+	return (c == capCreateType || c == capFind) && surface == surfaceOps
 }
 
 // checkTaskGating verifies every declared capability resolves on every
@@ -809,7 +834,95 @@ func tasks() []task {
 				return checkResult{OK: true}
 			},
 		},
+		// The four tasks below reproduce a live on-device run (APIV2.md
+		// §8.58): the model was told no space, guessed the type name
+		// `Task` from the manifest's own examples, and had no call that
+		// could list a space's types or search across spaces.
+		{
+			Id:       "find-non-task-type",
+			Intent:   "edit an object whose type the model has never seen named",
+			Requires: []capability{capFind, capEditText},
+			SeedType: "Trip",
+			Markdown: "## Plan\n" +
+				"Three days in Prague, leaving Q3.\n",
+			Prompt: func(fx *fixture) string {
+				return fmt.Sprintf("In my trip notes titled %q, change Q3 to Q4. Change nothing else.", fx.Title)
+			},
+			Check: func(doc *document, fx *fixture) checkResult {
+				return checkOneWordChanged(doc, "Three days in Prague, leaving Q4.", "Q3")
+			},
+		},
+		{
+			Id:       "list-types",
+			Intent:   "say what kinds of objects a space holds",
+			Requires: []capability{capFind},
+			Markdown: "## Note\nA page that exists.\n",
+			Prompt: func(fx *fixture) string {
+				return fmt.Sprintf("What kinds of objects does the space holding %q contain? List the type names.", fx.Title)
+			},
+			CheckCalls: func(calls []callRecord, fx *fixture) checkResult {
+				for _, c := range calls {
+					if c.Tool != "find" || c.IsError {
+						continue
+					}
+					var args struct {
+						Type string `json:"type"`
+					}
+					if err := json.Unmarshal(c.Args, &args); err != nil {
+						continue
+					}
+					if typeOfTypesSpellings[strings.ToLower(strings.ReplaceAll(args.Type, "_", ""))] {
+						return checkResult{OK: true}
+					}
+				}
+				return checkResult{Detail: "no successful find named the type of types (type=type); calls:\n" + summarizeCalls(calls)}
+			},
+		},
+		{
+			Id:             "first-call-no-space",
+			Intent:         "edit one word when no space was ever named",
+			Requires:       []capability{capFind, capEditText},
+			NoSpaceContext: true,
+			Markdown: "## Summary\n" +
+				"Revenue target for Q3 is 1.2M.\n",
+			Prompt: func(fx *fixture) string {
+				return fmt.Sprintf("In the page titled %q, change Q3 to Q4. Change nothing else.", fx.Title)
+			},
+			Check: func(doc *document, fx *fixture) checkResult {
+				return checkOneWordChanged(doc, "Revenue target for Q4 is 1.2M.", "Q3")
+			},
+		},
+		{
+			Id:           "find-anywhere",
+			Intent:       "edit an object that lives in a space other than the working one",
+			Requires:     []capability{capFind, capEditText},
+			InOtherSpace: true,
+			Markdown: "## Summary\n" +
+				"Revenue target for Q3 is 1.2M.\n",
+			Prompt: func(fx *fixture) string {
+				return fmt.Sprintf("In the page titled %q, change Q3 to Q4. Change nothing else.", fx.Title)
+			},
+			Check: func(doc *document, fx *fixture) checkResult {
+				return checkOneWordChanged(doc, "Revenue target for Q4 is 1.2M.", "Q3")
+			},
+		},
 	}
+}
+
+// typeOfTypesSpellings are the words a find's `type` may carry to list the
+// types themselves (the server resolves them; the wrapper passes them on).
+var typeOfTypesSpellings = map[string]bool{"type": true, "types": true, "objecttype": true, "objecttypes": true}
+
+// checkOneWordChanged grades the edit-one-word shape: one block now reads
+// want, and the old word is gone everywhere.
+func checkOneWordChanged(doc *document, want, gone string) checkResult {
+	if _, ok := doc.findBlock(func(b docBlock) bool { return strings.TrimSpace(b.Text) == want }); !ok {
+		return checkResult{Detail: fmt.Sprintf("no block reads %q; blocks: %q", want, doc.blockTexts())}
+	}
+	if strings.Contains(doc.allText(), gone) {
+		return checkResult{Detail: gone + " still present: " + strings.Join(doc.blockTexts(), " | ")}
+	}
+	return checkResult{OK: true}
 }
 
 // newFixtureFor mints the derived names an attempt needs from one stem, so
@@ -833,12 +946,20 @@ func setupFixture(ctx context.Context, client *apiClient, spaceId string, t task
 	if typeKey == "" {
 		typeKey = "page"
 	}
+	if t.SeedType != "" {
+		key, err := client.ensureType(ctx, spaceId, t.SeedType)
+		if err != nil {
+			return nil, fmt.Errorf("seed type %q for %s: %w", t.SeedType, t.Id, err)
+		}
+		typeKey = key
+	}
 	id, err := client.createObject(ctx, spaceId, typeKey, title, t.Markdown)
 	if err != nil {
 		return nil, fmt.Errorf("create fixture for %s: %w", t.Id, err)
 	}
 	fx := newFixtureFor(title)
 	fx.ObjectId = id
+	fx.SpaceId = spaceId
 	for _, sib := range t.Siblings {
 		sibTitle := title + sib.TitleSuffix
 		sibId, err := client.createObject(ctx, spaceId, "page", sibTitle, sib.Markdown)

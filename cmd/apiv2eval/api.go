@@ -242,6 +242,16 @@ func (c *apiClient) listSpaces(ctx context.Context) ([]spaceRow, error) {
 	return resp.Data, nil
 }
 
+// spaceReady reports whether a space answers a per-space read — the check
+// that passes only once the space's store is open on this heart. Reading
+// the space row alone is not it: the row comes from the tech space and is
+// there before the store is.
+func (c *apiClient) spaceReady(ctx context.Context, spaceId string) bool {
+	path := "/v2/spaces/" + url.PathEscape(spaceId) + "/search"
+	_, err := c.call(ctx, http.MethodPost, path, url.Values{"limit": {"1"}}, map[string]any{}, nil)
+	return err == nil
+}
+
 func (c *apiClient) createSpace(ctx context.Context, name string) (string, error) {
 	var resp v2model.CreateResult
 	if _, err := c.call(ctx, http.MethodPost, "/v2/spaces", nil, map[string]any{"name": name}, &resp); err != nil {
@@ -262,6 +272,30 @@ func (c *apiClient) createObject(ctx context.Context, spaceId, typeKey, name, ma
 		return "", fmt.Errorf("create object %q: %w", name, err)
 	}
 	return resp.Id, nil
+}
+
+// ensureType returns the key of the type named name, creating it (with no
+// properties) when the space has none. A fixture object of a type that is
+// not `Task` is how the non-task-type task exists: the type name a model
+// has to LEARN from the workspace, not one it has seen in an example.
+func (c *apiClient) ensureType(ctx context.Context, spaceId, name string) (string, error) {
+	existing, err := c.findTypeByName(ctx, spaceId, name)
+	if err != nil {
+		return "", err
+	}
+	if existing != nil {
+		return existing.Key, nil
+	}
+	var resp v2model.CreateResult
+	path := "/v2/spaces/" + url.PathEscape(spaceId) + "/types"
+	body := map[string]any{"properties": map[string]any{"name": name}}
+	if _, err := c.call(ctx, http.MethodPost, path, nil, body, &resp); err != nil {
+		return "", fmt.Errorf("create type %q: %w", name, err)
+	}
+	if resp.Key == "" {
+		return "", fmt.Errorf("create type %q: the receipt carries no key", name)
+	}
+	return resp.Key, nil
 }
 
 // typeRow is a type as GET /v2/spaces/{s}/types/{type} serves it, reduced to

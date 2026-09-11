@@ -218,13 +218,16 @@ func TestTaskTableIsWellFormed(t *testing.T) {
 			}
 			assert.NotEmpty(t, task.Requires, "a task with no declared capability is gated by nothing")
 			require.NotNil(t, task.Prompt)
-			// exactly one result channel: the fixture document, or the live
-			// API for a task whose product is not in that document
-			if task.CheckAPI != nil {
-				assert.Nil(t, task.Check, "a task reads its result back one way, not two")
-			} else {
-				require.NotNil(t, task.Check)
+			// exactly one result channel: the fixture document, the live API
+			// for a task whose product is not in that document, or the calls
+			// for a task whose product is an answer
+			channels := 0
+			for _, has := range []bool{task.Check != nil, task.CheckAPI != nil, task.CheckCalls != nil} {
+				if has {
+					channels++
+				}
 			}
+			require.Equal(t, 1, channels, "a task reads its result back one way, not two")
 
 			fx := newFixtureFor(fixtureTitle())
 			fx.ObjectId = "obj1"
@@ -389,9 +392,15 @@ func TestArmParsing(t *testing.T) {
 // the second verdict.
 func TestEveryTaskHasExactlyOneCheck(t *testing.T) {
 	for _, task := range tasks() {
-		hasDoc, hasAPI := task.Check != nil, task.CheckAPI != nil
-		assert.Truef(t, hasDoc != hasAPI,
-			"task %s must set exactly one of Check / CheckAPI (Check=%v CheckAPI=%v)",
-			task.Id, hasDoc, hasAPI)
+		hasDoc, hasAPI, hasCalls := task.Check != nil, task.CheckAPI != nil, task.CheckCalls != nil
+		count := 0
+		for _, has := range []bool{hasDoc, hasAPI, hasCalls} {
+			if has {
+				count++
+			}
+		}
+		assert.Equalf(t, 1, count,
+			"task %s must set exactly one of Check / CheckAPI / CheckCalls (Check=%v CheckAPI=%v CheckCalls=%v)",
+			task.Id, hasDoc, hasAPI, hasCalls)
 	}
 }

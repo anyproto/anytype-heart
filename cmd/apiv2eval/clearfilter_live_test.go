@@ -29,7 +29,7 @@ func TestLiveClearFilter(t *testing.T) {
 	require.NoError(t, err)
 	deadline := time.Now().Add(spaceReadyTimeout)
 	for {
-		if _, err := api.call(ctx, http.MethodGet, "/v2/spaces/"+spaceId, nil, nil, nil); err == nil {
+		if api.spaceReady(ctx, spaceId) {
 			break
 		}
 		require.False(t, time.Now().After(deadline))
