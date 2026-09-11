@@ -133,6 +133,12 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 	}
 
 	st.ModifyLinkedFilesInDetails(oc.formatFetcher, func(fileId string) string {
+		// File objects skip the general remap because their context references were
+		// already mapped before upload. Their own icon can still name the source ID.
+		if mapped, ok := oldIDtoNew[fileId]; ok {
+			fileId = mapped
+		}
+
 		newFileId := oc.relationSyncer.Sync(spaceID, fileId, dataObject.newIdsSet, origin, newID)
 		if newFileId != fileId {
 			filesToDelete = append(filesToDelete, fileId)
@@ -358,6 +364,12 @@ func (oc *ObjectCreator) setWorkspaceDetails(spaceID string, st *state.State) {
 		})
 	}
 
+	// Restore descriptive space metadata carried by full exports.
+	for _, key := range []domain.RelationKey{bundle.RelationKeyDescription, bundle.RelationKeyIconEmoji, bundle.RelationKeyIconImage, bundle.RelationKeyIconName} {
+		if combinedDetails.Has(key) {
+			details = append(details, domain.Detail{Key: key, Value: combinedDetails.Get(key)})
+		}
+	}
 	iconOption := combinedDetails.GetInt64(bundle.RelationKeyIconOption)
 	if iconOption != 0 {
 		details = append(details, domain.Detail{

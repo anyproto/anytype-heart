@@ -165,9 +165,15 @@ func updateObjectIDsInFilter(filter *model.BlockContentDataviewFilter, oldIDtoNe
 }
 
 func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, st *state.State) {
-	newTarget := oldIDtoNew[block.Model().GetBookmark().TargetObjectId]
+	target := block.Model().GetBookmark().TargetObjectId
+	// A URL-only bookmark has no object reference to remap. The bookmark
+	// syncer handles fetching it later in the import pipeline.
+	if target == "" {
+		return
+	}
+	newTarget := oldIDtoNew[target]
 	if newTarget == "" {
-		log.Errorf("failed to find bookmark object")
+		log.Errorf("failed to find bookmark object %s", target)
 		return
 	}
 

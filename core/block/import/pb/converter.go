@@ -49,6 +49,7 @@ type Pb struct {
 	errors    *common.ConvertError
 	params    *pb.RpcObjectImportRequestPbParams
 	pathCount int
+	spaceID   string
 
 	isMigration, isNewSpace, importWidgets bool
 }
@@ -61,11 +62,12 @@ func New(service *collection.Service, accountService account.Service, tempDirPro
 	}
 }
 
-func (p *Pb) GetSnapshots(_ context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
+func (p *Pb) GetSnapshots(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) (*common.Response, *common.ConvertError) {
 	if err := p.init(req, progress); err != nil {
 		return nil, common.NewFromError(err, req.Mode)
 	}
-	snapshots := p.getSnapshots()
+	p.spaceID = req.SpaceId
+	snapshots := p.getSnapshots(ctx)
 	if snapshots == nil {
 		if p.errors.IsEmpty() {
 			p.errors.Add(fmt.Errorf("PB: no snapshots are gathered"))
@@ -118,14 +120,14 @@ func (p *Pb) getParams(params pb.IsRpcObjectImportRequestParams) (*pb.RpcObjectI
 	return nil, fmt.Errorf("PB: getParams wrong parameters format")
 }
 
-func (p *Pb) getSnapshots() (allSnapshots *common.SnapshotContext) {
+func (p *Pb) getSnapshots(ctx context.Context) (allSnapshots *common.SnapshotContext) {
 	allSnapshots = common.NewSnapshotContext()
 	for _, path := range p.params.GetPath() {
 		if err := p.progress.TryStep(1); err != nil {
 			p.errors.Add(common.ErrCancel)
 			return nil
 		}
-		snapshots := p.handleImportPath(path)
+		snapshots := p.handleImportPath(ctx, path)
 		if p.errors.ShouldAbortImport(len(p.params.GetPath()), model.Import_Pb) {
 			return nil
 		}
@@ -134,10 +136,24 @@ func (p *Pb) getSnapshots() (allSnapshots *common.SnapshotContext) {
 	return allSnapshots
 }
 
-func (p *Pb) handleImportPath(path string) *common.SnapshotContext {
+func (p *Pb) handleImportPath(ctx context.Context, path string) *common.SnapshotContext {
+	converted, recognized, err := p.anyBlockBundle(ctx, path)
+	if err != nil {
+		if errors.Is(err, common.ErrCancel) {
+			p.errors.Add(err)
+		} else {
+			p.errors.Add(fmt.Errorf("%w: %s", common.ErrPbNotAnyBlockFormat, err))
+		}
+		return nil
+	}
+	if recognized {
+		defer converted.Close()
+		p.importWidgets = p.isNewSpace
+		return p.getSnapshotsFromProvidedFiles(converted, path, "")
+	}
 	importSource := source.GetSource(path)
 	defer importSource.Close()
-	err := p.extractFiles(path, importSource)
+	err = p.extractFiles(path, importSource)
 	if err != nil {
 		p.errors.Add(err)
 		if p.errors.ShouldAbortImport(p.pathCount, model.Import_Pb) {
@@ -283,9 +299,16 @@ func (p *Pb) makeSnapshot(
 func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*common.SnapshotModel, error) {
 	defer rd.Close()
 	if filepath.Ext(name) == ".json" {
+		data, err := io.ReadAll(rd)
+		if err != nil {
+			return nil, err
+		}
+		if converted, recognized, err := p.anyBlockDocument(data); recognized {
+			return converted, err
+		}
 		snapshot := &pb.SnapshotWithType{}
 		um := jsonpb.Unmarshaler{AllowUnknownFields: true}
-		if uErr := um.Unmarshal(rd, snapshot); uErr != nil {
+		if uErr := um.Unmarshal(bytes.NewReader(data), snapshot); uErr != nil {
 			return nil, fmt.Errorf("PB:GetSnapshot %w", uErr)
 		}
 		return common.NewSnapshotModelFromProto(snapshot)
@@ -375,6 +398,9 @@ func (p *Pb) normalizeSnapshot(
 
 func (p *Pb) normalizeFilePath(snapshot *common.SnapshotModel, pbFiles source.Source, path string) error {
 	filePath := snapshot.Data.Details.GetString(bundle.RelationKeySource)
+	if filePath == "" {
+		return nil
+	}
 	fileName, _, err := common.ProvideFileName(filePath, pbFiles, path, p.tempDirProvider)
 	if err != nil {
 		return err

@@ -1,0 +1,56 @@
+{
+  "$schema": "https://schemas.anytype.io/anyblock/2.0/object.schema.json",
+  "formatVersion": "2.0",
+  "id": "bafyreiridgenote",
+  "type": "Field note",
+  "type_internal_key": "fieldnote",
+  "icon": { "format": "emoji", "emoji": "⛰️" },
+  "properties": {
+    "Name": "Ridge, first thaw",
+    "Created by": "participant-A11111111111111111111111111111111111111111111111",
+    "Creation date": "2026-03-14T07:12:00Z",
+    "Origin": "usecase",
+    "Resolved layout": "basic",
+    "Weather": ["Rain"],
+    "Related notes": ["bafyreinotebook", "bafyreiwalkerwhoismissing"],
+    "deadbeefdeadbeefdeadbeef": 1755471600
+  },
+  "property_internal_keys": {
+    "Related notes": "1a2b3c4d5e6f708192a3b4c5",
+    "Weather": "0f1e2d3c4b5a69788796a5b4",
+    "deadbeefdeadbeefdeadbeef": "deadbeefdeadbeefdeadbeef"
+  },
+  "option_ids": {
+    "Weather": { "Rain": "0f1e2d3c4b5a69788796a5b6" }
+  },
+  "blocks": [
+    { "id": "b1", "type": "property", "property": "Weather" },
+    { "id": "b2", "type": "heading_2", "text": "What happened" },
+    {
+      "id": "b3",
+      "type": "paragraph",
+      "text": "A **long** walk to the ridge, written up in <mention object_id=\"bafyreinotebook\">Notebook</mention>. Turned back at the <font color=\"red\">red</font> marker, which the map calls <u>Ridge End</u>."
+    },
+    {
+      "id": "b4",
+      "type": "paragraph",
+      "text": "Route notes live in [the notebook](anytype://object?objectId=bafyreinotebook). A literal bracket is written \\[like this], and a literal tag is written \\<font>, because canonical output escapes a < whenever a letter follows it."
+    },
+    { "id": "b5", "type": "toggle", "text": "Times" },
+    { "indent": 1, "id": "b6", "type": "bulleted_list_item", "text": "Left 07:12, back 11:40" },
+    { "indent": 1, "id": "b7", "type": "bulleted_list_item", "text": "Inside a code span `<font color=\"red\">` is literal text, not a mark.\nThis second line is a soft break inside the same block." },
+    { "id": "b8", "type": "checkbox", "checked": true, "text": "Photos copied off the camera" },
+    {
+      "id": "b9",
+      "type": "image",
+      "object_id": "bafyreiridgephoto",
+      "name": "ridge.png"
+    },
+    {
+      "id": "b10",
+      "type": "code",
+      "language": "go",
+      "text": "// **not bold**, <u>not underlined</u>: a code block is never parsed.\nfmt.Println(\"ridge\")"
+    }
+  ]
+}

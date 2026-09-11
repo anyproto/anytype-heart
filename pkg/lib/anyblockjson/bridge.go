@@ -21,10 +21,12 @@ import (
 )
 
 const (
-	IssueCodeTypeIdentityMismatch = codec.IssueCodeTypeIdentityMismatch
-	FormatVersion                 = codec.FormatVersion
-	IndexFileName                 = codec.IndexFileName
-	PropertiesFileName            = codec.PropertiesFileName
+	IssueCodeFoldedParticipantsWithoutSpace = codec.IssueCodeFoldedParticipantsWithoutSpace
+	IssueCodeFoldedTypesWithoutResolver     = codec.IssueCodeFoldedTypesWithoutResolver
+	IssueCodeTypeIdentityMismatch           = codec.IssueCodeTypeIdentityMismatch
+	FormatVersion                           = codec.FormatVersion
+	IndexFileName                           = codec.IndexFileName
+	PropertiesFileName                      = codec.PropertiesFileName
 )
 
 type (
