@@ -107,7 +107,9 @@ func TestV2CorpsePolicyProperties(t *testing.T) {
 
 	t.Run("known property keys never suggest a corpse", func(t *testing.T) {
 		fx := corpsePolicyFixture(t)
-		assert.Equal(t, []string{"liveKey"}, fx.knownPropertyKeys(testSpaceId, errKeys{}))
+		known, err := fx.knownPropertyKeys(testSpaceId, errKeys{})
+		require.NoError(t, err)
+		assert.Equal(t, []string{"liveKey"}, known)
 	})
 
 	t.Run("PATCH of a UI-deleted property is 404, not a corpse edit", func(t *testing.T) {

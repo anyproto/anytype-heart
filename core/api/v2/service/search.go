@@ -74,6 +74,13 @@ type searchPlan struct {
 	// a new parameter. Without it a pure-v2 agent could upload a file and
 	// never find it again (file layouts are excluded from ObjectLayouts).
 	includeFileLayouts bool
+	// includeTypeLayout widens the base row scope to the objectType layout.
+	// It is set when the type channel names the type of types (`type`,
+	// `Type`, `object_type`): the rows are then the space's visible TYPE
+	// objects — the one search that lists what kinds of things a space
+	// holds, which the small-model surface has no other route to (its
+	// tools take a type name and nothing in the set listed them).
+	includeTypeLayout bool
 }
 
 // validateSearchShape applies the request-shape rules that do not depend on
@@ -193,7 +200,7 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	needRefs := req.Type != "" || len(req.Fields) > 0 || req.Filter != "" || len(req.Filters) > 0 || len(req.Sorts) > 0
 	if !needRefs {
 		plan.sorts = defaultSearchSorts(plan.textQuery, nil)
-		plan.filters = appendBaseRowScope(plan.filters, false)
+		plan.filters = appendBaseRowScope(plan.filters, false, false)
 		return plan, nil
 	}
 
@@ -211,7 +218,19 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 			return nil, ambiguousKeyError(v.typeWord(), req.Type, "/type", ambiguous)
 		}
 		if !ok || entry.Id == "" {
+			// the type of types is HIDDEN, so the chain's slug, fold and
+			// name steps never reach it; the spellings a caller has for it
+			// ("type", "Type") are resolved here, after a live type named
+			// Type has had its chance
+			if tt, found := typeOfTypesEntry(req.Type, typeEntries); found {
+				entry, ok = tt, true
+			}
+		}
+		if !ok || entry.Id == "" {
 			return nil, s.unknownTypeKeyError(spaceId, req.Type, "/type", v)
+		}
+		if entry.Key == bundle.TypeKeyObjectType.String() {
+			plan.includeTypeLayout = true
 		}
 		typeId := entry.Id
 		refKeys = append(s.typePropertyKeys(spaceId, typeId), "name")
@@ -410,8 +429,29 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	}
 
 	plan.sorts = defaultSearchSorts(plan.textQuery, plan.sorts)
-	plan.filters = appendBaseRowScope(plan.filters, plan.includeFileLayouts)
+	plan.filters = appendBaseRowScope(plan.filters, plan.includeFileLayouts, plan.includeTypeLayout)
 	return plan, nil
+}
+
+// typeOfTypesSpellings are the spellings a caller has for the type of
+// types besides its stored key and api slug (which the ordinary chain
+// resolves): the display name and its plural, case-folded.
+var typeOfTypesSpellings = map[string]bool{"type": true, "types": true, "objecttype": true, "objecttypes": true}
+
+// typeOfTypesEntry resolves a spelling of the type of types to its INSTALLED
+// entry. Only an installed entry serves — the scope needs the type object's
+// id — so a space whose index holds no type objects at all answers not
+// found, the same as any other type miss.
+func typeOfTypesEntry(input string, entries []typeEntry) (typeEntry, bool) {
+	if !typeOfTypesSpellings[bundle.FoldApiKey(input)] {
+		return typeEntry{}, false
+	}
+	for _, entry := range entries {
+		if entry.Key == bundle.TypeKeyObjectType.String() && entry.Id != "" {
+			return entry, true
+		}
+	}
+	return typeEntry{}, false
 }
 
 // defaultSearchSorts builds the effective sort list — shared with the global
@@ -443,11 +483,17 @@ func defaultSearchSorts(textQuery string, sorts []database.SortRequest) []databa
 // layouts, no templates, no hidden objects; archived/deleted are excluded by
 // the store's defaults. includeFileLayouts is the file-query opt-in (a file
 // type named in the type channel): it widens the layout list to
-// ObjectAndFileLayouts, mirroring v1's prepareBaseFilters.
-func appendBaseRowScope(filters []database.FilterRequest, includeFileLayouts bool) []database.FilterRequest {
+// ObjectAndFileLayouts, mirroring v1's prepareBaseFilters. includeTypeLayout
+// is the type-of-types opt-in (searchPlan.includeTypeLayout): the rows are
+// the space's type objects, still minus the hidden ones — the system types
+// a user never sees stay out of a listing meant to teach type names.
+func appendBaseRowScope(filters []database.FilterRequest, includeFileLayouts, includeTypeLayout bool) []database.FilterRequest {
 	layouts := util.ObjectLayouts
 	if includeFileLayouts {
 		layouts = util.ObjectAndFileLayouts
+	}
+	if includeTypeLayout {
+		layouts = append(append([]model.ObjectTypeLayout{}, layouts...), model.ObjectType_objectType)
 	}
 	return append(filters,
 		database.FilterRequest{

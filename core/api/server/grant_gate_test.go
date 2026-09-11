@@ -37,6 +37,9 @@ func registerGrantTestSpace(t *testing.T, fx *fixture, spaceId, name string) {
 			bundle.RelationKeyName:           domain.String(name),
 		}})
 	}
+	// and open its store: ensureSpace admits only spaces whose store this
+	// device holds (a registered view alone is the never-loaded case)
+	fx.objectStore.SpaceIndex(spaceId)
 }
 
 // grantedSession caches a JsonAPI session entry carrying the given grant.

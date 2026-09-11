@@ -845,7 +845,7 @@ func TestV2GlobalSearchObjects(t *testing.T) {
 
 	t.Run("an unloaded space is skipped before resolving its properties", func(t *testing.T) {
 		fx := setup(t)
-		fx.registerSpace(t, "unloaded")
+		fx.registerSpaceUnopened(t, "unloaded")
 		opened := fx.objectStore.OpenedSpaceIds()
 		rows, _, _, warnings, err := fx.GlobalSearchObjects(context.Background(), v2model.SearchRequest{Type: "chore"}, 0, 25)
 		require.NoError(t, err)
@@ -1308,4 +1308,159 @@ func TestV2FieldAliasShadowing(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, rowIds(rows))
 	})
+}
+
+// TestV2SearchTypeOfTypes pins the one search that lists what KINDS of
+// things a space holds: `type` naming the type of types widens the row
+// scope to the objectType layout, and the rows are the space's visible type
+// objects. The small-model surface has no other route to a type name.
+func TestV2SearchTypeOfTypes(t *testing.T) {
+	seedTypes := func(t *testing.T) *v2Fixture {
+		fx := newV2Fixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				// the type of types itself: installed, hidden
+				bundle.RelationKeyId:             domain.String("type-objectType"),
+				bundle.RelationKeyName:           domain.String("Type"),
+				bundle.RelationKeyUniqueKey:      domain.String("ot-objectType"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyIsHidden:       domain.Bool(true),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("type-page"),
+				bundle.RelationKeyName:           domain.String("Page"),
+				bundle.RelationKeyUniqueKey:      domain.String("ot-page"),
+				bundle.RelationKeyType:           domain.String("type-objectType"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("type-trip"),
+				bundle.RelationKeyName:           domain.String("Trip"),
+				bundle.RelationKeyUniqueKey:      domain.String("ot-trip"),
+				bundle.RelationKeyType:           domain.String("type-objectType"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				// a hidden type stays out: the listing teaches the names a
+				// user sees
+				bundle.RelationKeyId:             domain.String("type-template"),
+				bundle.RelationKeyName:           domain.String("Template"),
+				bundle.RelationKeyUniqueKey:      domain.String("ot-template"),
+				bundle.RelationKeyType:           domain.String("type-objectType"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyIsHidden:       domain.Bool(true),
+			},
+			{
+				// an ordinary object is NOT a type
+				bundle.RelationKeyId:             domain.String("page1"),
+				bundle.RelationKeyName:           domain.String("Prague trip"),
+				bundle.RelationKeyType:           domain.String("type-trip"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+		})
+		return fx
+	}
+
+	for _, spelling := range []string{"type", "Type", "types", "object_type", "objectType"} {
+		t.Run("type="+spelling+" lists the visible type objects", func(t *testing.T) {
+			// given
+			fx := seedTypes(t)
+			want := []string{"type-page", "type-trip"}
+
+			// when
+			rows, total, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, v2model.SearchRequest{Type: spelling}, 0, 25)
+
+			// then
+			require.NoError(t, err)
+			assert.Equal(t, 2, total)
+			assert.ElementsMatch(t, want, rowIds(rows))
+			for _, row := range rows {
+				assert.Equal(t, "object_type", row.Type, "a type row's type is the type of types, in its served spelling")
+			}
+		})
+	}
+
+	t.Run("an ordinary search still excludes type objects", func(t *testing.T) {
+		// given
+		fx := seedTypes(t)
+
+		// when
+		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, v2model.SearchRequest{}, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"page1"}, rowIds(rows))
+	})
+
+	t.Run("a live type named Type is refused as ambiguous, never guessed", func(t *testing.T) {
+		// given: the user's own type called "Type" — the name the bundled
+		// type of types also carries, so the chain's shadow rule applies
+		fx := seedTypes(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("type-usertype"),
+				bundle.RelationKeyName:           domain.String("Type"),
+				bundle.RelationKeyUniqueKey:      domain.String("ot-usertype"),
+				bundle.RelationKeyType:           domain.String("type-objectType"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("obj-of-usertype"),
+				bundle.RelationKeyName:           domain.String("An instance"),
+				bundle.RelationKeyType:           domain.String("type-usertype"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+		})
+
+		// when
+		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, v2model.SearchRequest{Type: "Type"}, 0, 25)
+
+		// then
+		var v2Err *v2model.Error
+		require.ErrorAs(t, err, &v2Err)
+		assert.Equal(t, v2model.CodeAmbiguousInput, v2Err.Code, "two types answer to the name — the refusal names both")
+	})
+
+	t.Run("an empty index says so — not that the space has no types", func(t *testing.T) {
+		// given: a registered space whose index holds no type objects at all
+		fx := newV2Fixture(t)
+
+		// when
+		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, v2model.SearchRequest{Type: "type"}, 0, 25)
+
+		// then
+		var v2Err *v2model.Error
+		require.ErrorAs(t, err, &v2Err)
+		assert.Equal(t, 400, v2Err.Status)
+		require.Len(t, v2Err.Issues, 1)
+		assert.Contains(t, v2Err.Issues[0].Message, "no type keys are indexed in this space on this device yet")
+		assert.NotContains(t, v2Err.Issues[0].Message, "has no type keys yet")
+	})
+}
+
+// TestV2UnloadedSpaceIsRefusedNotMinted pins the admission rule a per-space
+// read runs under: a space the account holds but this device has never
+// loaded is refused with a sentence that says so, and the read creates no
+// store state — before this, objectstore.SpaceIndex minted an empty index
+// for the id, marked it opened, and every later read (global search
+// included) answered "empty" for a space that was merely elsewhere.
+func TestV2UnloadedSpaceIsRefusedNotMinted(t *testing.T) {
+	// given
+	fx := newV2Fixture(t)
+	fx.registerSpaceUnopened(t, "unloaded")
+	opened := fx.objectStore.OpenedSpaceIds()
+
+	// when
+	_, _, _, _, err := fx.SearchObjects(context.Background(), "unloaded", v2model.SearchRequest{Query: "x"}, 0, 25)
+	_, _, _, errTypes := fx.ListTypes(context.Background(), "unloaded", 0, 25)
+
+	// then
+	for _, err := range []error{err, errTypes} {
+		var v2Err *v2model.Error
+		require.ErrorAs(t, err, &v2Err)
+		assert.Equal(t, 404, v2Err.Status)
+		assert.Contains(t, v2Err.Message, `space "unloaded" is not loaded on this device yet`)
+		assert.NotContains(t, v2Err.Message, "not found —", "the space exists; this is not the unknown-id refusal")
+	}
+	assert.ElementsMatch(t, opened, fx.objectStore.OpenedSpaceIds(), "a refused read minted no index")
 }

@@ -210,6 +210,11 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   `{"operator":"and|or","filters":[…]}` (non-empty). Date values there are
   **unix seconds**, not RFC 3339 (the string form converts for you).
   `filter` and `filters` together → 400 `ambiguous_input`.
+- `type` naming the type of types — `"type": "type"` (also `Type`,
+  `object_type`) — lists the space's visible **type objects** as rows
+  (their `type` is `object_type`): the one search that says what kinds of
+  things a space holds. `POST /v2/search` with it lists types across
+  spaces.
 - `type` is also a filter pseudo-key for multi-type: `type IN ("task",
   "bug")`. **File rows appear only when a file type is named** in the type
   channel (`type = "image"`, `type IN (… "file")`) — `size > 5` alone

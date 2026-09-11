@@ -84,7 +84,7 @@ func unknownFieldName(err error) (string, bool) {
 // SearchObjectsHandler searches one space
 //
 //	@Summary		Search objects in a space
-//	@Description	`filter` and `filters` are two spellings of the same thing, the compact string and the structured array; sending both is refused. This is a read carried by POST because the query needs a body, so pagination stays in the query string and a `limit` or `offset` in the body is refused.
+//	@Description	`filter` and `filters` are two spellings of the same thing, the compact string and the structured array; sending both is refused. This is a read carried by POST because the query needs a body, so pagination stays in the query string and a `limit` or `offset` in the body is refused. `type` naming the type of types (`type`, `Type`, `object_type`) lists the space's visible type objects instead of ordinary objects — the search that says what kinds of things a space holds.
 //	@Id				search_space
 //	@Tags			Search
 //	@Accept			json

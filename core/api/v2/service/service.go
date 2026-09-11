@@ -10,8 +10,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
+	"time"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/util"
@@ -129,7 +131,57 @@ func (s *Service) ensureSpace(ctx context.Context, spaceId string) error {
 	if !isLiveSpaceView(details) {
 		return spaceUnavailableError(spaceId)
 	}
+	if !s.storeOpened(ctx, spaceId) {
+		return spaceNotIndexedError(spaceId)
+	}
 	return nil
+}
+
+// storeOpenWait bounds how long a request waits for a space's store to be
+// opened before judging it absent. Two races live inside the bound: the
+// background warm-up at startup, which opens every store on disk within
+// seconds, and a space created or joined moments ago, whose live view
+// exists before the indexer has touched its store. A request that arrives
+// inside either window must not be refused for it.
+const storeOpenWait = 3 * time.Second
+
+// storeOpenPoll is how often storeOpened re-reads the opened set.
+const storeOpenPoll = 100 * time.Millisecond
+
+// storeOpened reports whether the space's objectstore is open on this
+// device — which the warm-up guarantees for every space that has storage
+// here. A live space view with NO store is a space this device has never
+// loaded (joined elsewhere, not yet synced): reading it would make
+// objectstore.SpaceIndex MINT an empty index, mark it opened, and from then
+// on every per-space read would answer "empty" and global search would
+// count it as searched — a read that creates state and then lies about it.
+func (s *Service) storeOpened(ctx context.Context, spaceId string) bool {
+	deadline := time.Now().Add(storeOpenWait)
+	for {
+		if slices.Contains(s.store.OpenedSpaceIds(), spaceId) {
+			return true
+		}
+		if time.Now().After(deadline) {
+			return false
+		}
+		select {
+		case <-ctx.Done():
+			return false
+		case <-time.After(storeOpenPoll):
+		}
+	}
+}
+
+// spaceNotIndexedError is the refusal for a space that exists in the
+// account but has no store on this device yet. It is deliberately NOT the
+// "space not found" 404 (the space exists) and NOT an empty result (nothing
+// was read): a caller — a small model in particular — must be able to tell
+// "not here yet" from "not there".
+func spaceNotIndexedError(spaceId string) error {
+	return v2model.NotFound(
+		fmt.Sprintf("space %q is not loaded on this device yet — it exists in the account but its store has not synced here", spaceId),
+		v2model.Issue{Path: "space_id", Message: "the space is in the account, but nothing of it has been read on this device yet"}.
+			Hintf("retry shortly, or query another space — list them with %s", v2model.RefListSpaces()))
 }
 
 // ensureSpaceWrite is ensureSpace for the service's WRITE entry points,

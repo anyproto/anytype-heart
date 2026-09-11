@@ -386,7 +386,7 @@ func TestV2GetType(t *testing.T) {
 		assert.Contains(t, v2Err.Message, "did you mean page?")
 	})
 
-	t.Run("unknown key in an empty space says so", func(t *testing.T) {
+	t.Run("unknown key in an empty index says the index is empty, not the space", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
 
@@ -397,7 +397,8 @@ func TestV2GetType(t *testing.T) {
 		var v2Err *v2model.Error
 		require.ErrorAs(t, err, &v2Err)
 		assert.Equal(t, 404, v2Err.Status)
-		assert.Contains(t, v2Err.Message, "the space has no type keys yet")
+		assert.Contains(t, v2Err.Message, "no type keys are indexed in this space on this device yet")
+		assert.NotContains(t, v2Err.Message, "has no type keys yet", "an empty index must not read as a fact about the space")
 	})
 }
 

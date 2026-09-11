@@ -621,7 +621,10 @@ func (a *v2StateApplier) applyViewFilterString(raw json.RawMessage, edited, view
 			Message: fmt.Sprintf("%d characters — the cap is %d (the advertised maxLength)", length, maxV2FilterLength)})
 		return nil
 	}
-	refKeys := appendMissing(a.s.knownPropertyKeys(a.spaceId, a.v), "name")
+	// hint-only: a listing that could not be read leaves the reference set
+	// to the system keys and the dataview's own membership below
+	knownKeys, _ := a.s.knownPropertyKeys(a.spaceId, a.v)
+	refKeys := appendMissing(knownKeys, "name")
 	refKeys = appendMissing(refKeys, v2SystemQueryKeys...)
 	for key := range dataviewMembership(edited) {
 		refKeys = appendMissing(refKeys, key)

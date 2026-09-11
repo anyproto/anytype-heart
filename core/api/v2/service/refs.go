@@ -115,29 +115,33 @@ func (s *Service) typeKeyExists(spaceId, typeKey string) bool {
 // knownTypeKeys lists the space's LIVE type keys in their SERVED spelling
 // (the address the input chain resolves right back) — a corpse must never
 // be suggested as a remedy (§7.5-2), and a candidate list must never
-// advertise a spelling the routes reject (review cause 3). Hint-only, so a
-// load error degrades to an empty list rather than failing the request.
-func (s *Service) knownTypeKeys(spaceId string, v errKeys) []string {
+// advertise a spelling the routes reject (review cause 3). Hint-only: a
+// load error never fails the request, but it is RETURNED rather than
+// swallowed into an empty list, because the two render differently
+// (listKnownLive) — a store that could not be read and a store that holds
+// nothing are not the same fact, and a small model acts on whichever
+// sentence it is handed.
+func (s *Service) knownTypeKeys(spaceId string, v errKeys) ([]string, error) {
 	entries, err := s.liveTypes(spaceId)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	keyTaken, slugHolders := servedTypeKeySets(entries)
 	keys := make([]string, 0, len(entries))
 	for _, entry := range entries {
 		keys = append(keys, v.spell(servedTypeKeyOf(entry.Key, entry.Slug, keyTaken, slugHolders), entry.Name))
 	}
-	return sortedDistinct(keys)
+	return sortedDistinct(keys), nil
 }
 
 // unknownTypeKeyError is the R9 did-you-mean 400 for a type reference.
 func (s *Service) unknownTypeKeyError(spaceId, typeKey, path string, v errKeys) error {
-	known := s.knownTypeKeys(spaceId, v)
+	known, loadErr := s.knownTypeKeys(spaceId, v)
 	return v2model.ValidationFailed(
 		fmt.Sprintf("type %q not found in space %q", typeKey, spaceId),
 		v2model.Issue{
 			Path:    path,
-			Message: fmt.Sprintf("unknown %s %q — %s", v.typeWord(), typeKey, listKnown(v.typesWord(), known)),
+			Message: fmt.Sprintf("unknown %s %q — %s", v.typeWord(), typeKey, listKnownLive(v.typesWord(), known, loadErr)),
 		}.WithHint(didYouMean(typeKey, known, v2model.Hintf("list all with %s", v2model.RefListTypes(spaceId)))))
 }
 
@@ -149,18 +153,20 @@ func (s *Service) unknownTypeKeyError(spaceId, typeKey, path string, v errKeys) 
 // benchmarked 4B did not retry at all, while the key-listing property tip
 // repaired on the first retry in the same run).
 func (s *Service) typeNotFoundError(spaceId, typeKey string, v errKeys) error {
+	known, loadErr := s.knownTypeKeys(spaceId, v)
 	return notFoundWithKeys(
 		fmt.Sprintf("type %q not found in space %q", typeKey, spaceId),
-		"type", typeKey, v.typesWord(), s.knownTypeKeys(spaceId, v),
+		"type", typeKey, v.typesWord(), known, loadErr,
 		v2model.Hintf("list all with %s", v2model.RefListTypes(spaceId)))
 }
 
 // propertyNotFoundError is typeNotFoundError's sibling for property-KEY
 // routes (options listing, PATCH/DELETE properties/{key}).
 func (s *Service) propertyNotFoundError(spaceId, propertyKey string, v errKeys) error {
+	known, loadErr := s.knownPropertyKeys(spaceId, v)
 	return notFoundWithKeys(
 		fmt.Sprintf("property %q not found in space %q", propertyKey, spaceId),
-		"key", propertyKey, v.propertiesWord(), s.knownPropertyKeys(spaceId, v),
+		"key", propertyKey, v.propertiesWord(), known, loadErr,
 		v2model.Hintf("%s lists user-visible properties only; hidden addressable properties are excluded and contribute to the total above", v2model.RefListProperties(spaceId)))
 }
 
@@ -168,9 +174,11 @@ func (s *Service) propertyNotFoundError(spaceId, propertyKey string, v errKeys) 
 // subject, the known keys (capped), and a did-you-mean when a close key
 // exists. The list operation rides along, as an issue on the path parameter
 // `param`, only when the key list was truncated and no suggestion fired —
-// the one case where the message alone cannot show every candidate.
-func notFoundWithKeys(subject, param, input, what string, known []string, list v2model.Hint) error {
-	msg := subject + " — " + listKnown(what, known)
+// the one case where the message alone cannot show every candidate. loadErr
+// is the live listing's failure, if any: a store that could not be read and
+// a store that holds nothing are not the same fact (listKnownLive).
+func notFoundWithKeys(subject, param, input, what string, known []string, loadErr error, list v2model.Hint) error {
+	msg := subject + " — " + listKnownLive(what, known, loadErr)
 	if hint := didYouMean(input, known, v2model.Hint{}); hint.Text != "" {
 		return v2model.NotFound(msg + "; " + hint.Text)
 	}
@@ -303,14 +311,14 @@ func (s *Service) propertyKeyExists(spaceId, key string) bool {
 }
 
 // knownPropertyKeys lists the space's LIVE property keys in their SERVED
-// spelling (see knownTypeKeys) — corpse-free, load-error-tolerant
-// (hint-only).
-func (s *Service) knownPropertyKeys(spaceId string, v errKeys) []string {
+// spelling (see knownTypeKeys) — corpse-free; a load error is returned, not
+// rendered as an empty space (hint-only either way).
+func (s *Service) knownPropertyKeys(spaceId string, v errKeys) ([]string, error) {
 	entries, err := s.liveProperties(spaceId)
 	if err != nil {
-		return nil
+		return nil, err
 	}
-	return knownPropertyKeysIn(entries, v)
+	return knownPropertyKeysIn(entries, v), nil
 }
 
 // knownPropertyKeysIn is knownPropertyKeys over a primed set.
@@ -339,7 +347,28 @@ func propertyListHint(spaceId string) v2model.Hint {
 		v2model.RefListProperties(spaceId), v2model.RefCreateProperty(spaceId))
 }
 
-// listKnown renders "known <what>: a, b, c…" capped at maxListedKeys.
+// listKnownLive is listKnown for a list that came from a LIVE space-wide
+// query (knownTypeKeys, knownPropertyKeys), where an empty result is a
+// statement about this device's index, not about the space: a space that
+// is still syncing, or whose index is still being built, answers empty
+// here while the space itself is full. The sentence says what was looked
+// up and what to do — a measured run on a 3B model took "the space has no
+// types yet" as a fact, stopped retrying, and told the user the object did
+// not exist. A load error is its own sentence, never the empty one.
+func listKnownLive(what string, known []string, loadErr error) string {
+	if loadErr != nil {
+		return "the space's " + what + " could not be read (" + loadErr.Error() + ") — retry shortly"
+	}
+	if len(known) == 0 {
+		return "no " + what + " are indexed in this space on this device yet — the space may still be syncing; retry shortly, or search another space"
+	}
+	return listKnown(what, known)
+}
+
+// listKnown renders "known <what>: a, b, c…" capped at maxListedKeys. An
+// empty list here is a fact about its subject (a type that recommends no
+// properties, a primed set with nothing in it) — the live space-wide
+// listings go through listKnownLive, where empty means something else.
 func listKnown(what string, known []string) string {
 	if len(known) == 0 {
 		return "the space has no " + what + " yet"

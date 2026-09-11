@@ -42,6 +42,7 @@ func TestV2FileDownloadRoutes(t *testing.T) {
 					bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
 					bundle.RelationKeyTargetSpaceId:  domain.String("space1"),
 				}})
+				fx.objectStore.SpaceIndex("space1") // ensureSpace admits opened stores only
 				require.NoError(t, fx.objectStore.BindSpaceId(context.Background(), tc.fileSpace, "file1"))
 				fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
 				if tc.status == 200 {
@@ -82,6 +83,7 @@ func TestV2IconDownloadRechecksReference(t *testing.T) {
 		bundle.RelationKeyIconImage:      domain.String(iconId),
 	}
 	fx.objectStore.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{view})
+	fx.objectStore.SpaceIndex("space1") // ensureSpace admits opened stores only
 	fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
 	img := mock_files.NewMockImage(t)
 	file := mock_files.NewMockFile(t)

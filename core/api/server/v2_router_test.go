@@ -344,6 +344,7 @@ func TestV2Routes(t *testing.T) {
 					bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
 					bundle.RelationKeyTargetSpaceId:  domain.String("space1"),
 				}})
+				fx.objectStore.SpaceIndex("space1") // ensureSpace admits opened stores only
 
 				for run := 0; run < 2; run++ {
 					req := httptest.NewRequest("POST", path, strings.NewReader(`{}`))

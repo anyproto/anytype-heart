@@ -108,8 +108,19 @@ func newV2Fixture(t *testing.T) *v2Fixture {
 }
 
 // registerSpace adds a spaceView for spaceId to the tech space so
-// ensureSpace (via GetSpaceViewDetails) resolves it.
+// ensureSpace (via GetSpaceViewDetails) resolves it, and opens the space's
+// store so ensureSpace's store-opened check admits it — in production the
+// warm-up opens every store that has storage on the device; a registered
+// space with no open store is the never-loaded case ensureSpace refuses.
 func (fx *v2Fixture) registerSpace(t *testing.T, spaceId string) {
+	fx.registerSpaceUnopened(t, spaceId)
+	fx.objectStore.SpaceIndex(spaceId)
+}
+
+// registerSpaceUnopened adds only the tech-space view: the space exists in
+// the account, but this device holds no store for it — the never-loaded
+// case ensureSpace refuses rather than minting an index for.
+func (fx *v2Fixture) registerSpaceUnopened(t *testing.T, spaceId string) {
 	fx.objectStore.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:             domain.String("spaceView_" + spaceId),
