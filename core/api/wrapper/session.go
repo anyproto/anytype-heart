@@ -67,6 +67,46 @@ type Session struct {
 	Me map[string]string `json:"me,omitempty"`
 	// LastWrite is the idempotency reuse record.
 	LastWrite *LastWrite `json:"lastWrite,omitempty"`
+	// RecentSpaces and RecentTypes are the space ids and type names this
+	// conversation has touched — through find, describe and create — most
+	// recent first, capped at maxRecent. They are the preamble's "recently
+	// used" facts (preamble.go): sourced from the session itself, so the
+	// most useful workspace facts cost no store query, and reset with the
+	// conversation like the handles do.
+	RecentSpaces []string `json:"recentSpaces,omitempty"`
+	RecentTypes  []string `json:"recentTypes,omitempty"`
+}
+
+// maxRecent caps each recents list.
+const maxRecent = 8
+
+// noteSpace records a space as recently used.
+func (s *Session) noteSpace(id string) {
+	s.RecentSpaces = pushRecent(s.RecentSpaces, id)
+}
+
+// noteType records a type (by the name the text channel spelled) as
+// recently used.
+func (s *Session) noteType(name string) {
+	s.RecentTypes = pushRecent(s.RecentTypes, name)
+}
+
+// pushRecent moves v to the front of a most-recent-first list, capped.
+func pushRecent(list []string, v string) []string {
+	if v == "" {
+		return list
+	}
+	out := make([]string, 0, len(list)+1)
+	out = append(out, v)
+	for _, existing := range list {
+		if existing != v {
+			out = append(out, existing)
+		}
+	}
+	if len(out) > maxRecent {
+		out = out[:maxRecent]
+	}
+	return out
 }
 
 // registerHandle makes an object addressable without a find, and returns

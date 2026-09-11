@@ -289,6 +289,10 @@ func (r *Runner) runDescribe(ctx context.Context, session *Session, args map[str
 	sort.Slice(others, func(i, j int) bool { return others[i].Key < others[j].Key })
 	result.Properties = append(result.Properties, others...)
 
+	session.noteSpace(space)
+	if result.Name != "" {
+		session.noteType(result.Name)
+	}
 	return &Result{Text: describeText(result), JSON: result}, nil
 }
 

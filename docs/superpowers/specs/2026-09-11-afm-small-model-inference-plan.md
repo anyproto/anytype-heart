@@ -1,6 +1,6 @@
 # On-device small-model inference over the task-tool wrapper — plan
 
-2026-09-11 (rev 2). Status: heart side of workstream A built and recorded as `core/api/APIV2.md` §8.58 (cross-space find, `type=type`, honest empty lists, no-mint admission, manifest text, served instructions, `invalid_arguments`, optional `space`, four eval tasks); §6 decisions pending. Branch `go-7383-apiv2-clean`,
+2026-09-11 (rev 2). Status: heart side of workstream A built and recorded as `core/api/APIV2.md` §8.58 (cross-space find, `type=type`, honest empty lists, no-mint admission, manifest text, served instructions, `invalid_arguments`, optional `space`, four eval tasks); §8.59 adds the run context, space names as space arguments, the recents and the global preamble (D1 v1 with recents). D2 dropped in favour of the preamble's recent types; D4 (result-cap profile) next. Branch `go-7383-apiv2-clean`,
 HEAD `ea4b561b2`. Input: the Swift-side failure report
 (`heart-wrapper-afm-prompt.md`: a two-turn Apple Foundation Models run over
 `HeartToolsBridge`, tier `small`, that failed on every axis) plus a read of

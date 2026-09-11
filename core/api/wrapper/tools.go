@@ -116,17 +116,12 @@ const maxGlobalTypeIndexSpaces = 6
 // text channel of a cross-space find names each row's space, and a name is
 // what a model (and a user) recognises where a short ref means nothing.
 func (r *Runner) spaceNameIndex(ctx context.Context) map[string]string {
-	var resp v2model.ListResponse[v2model.SpaceRow]
-	err := r.client.decode(ctx, apiRequest{
-		method: "GET",
-		path:   "/v2/spaces",
-		query:  url.Values{"limit": []string{strconv.Itoa(maxSpacesListed)}},
-	}, &resp)
-	if err != nil {
+	rows := r.spaceRows(ctx)
+	if rows == nil {
 		return nil
 	}
-	names := make(map[string]string, len(resp.Data))
-	for _, row := range resp.Data {
+	names := make(map[string]string, len(rows))
+	for _, row := range rows {
 		if row.Name != "" {
 			names[row.Id] = row.Name
 		}
@@ -157,7 +152,10 @@ const maxSpacesListed = 100
 // so do its handles, and the working space is left EMPTY — a handle from
 // such a find resolves through its own space (Session.spaceOf).
 func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]any) (*Result, error) {
-	space := spaceArg(args)
+	space, err := r.resolveSpaceName(ctx, spaceArg(args))
+	if err != nil {
+		return nil, err
+	}
 	global := space == ""
 	limit := defaultFindLimit
 	if v, ok := args["limit"]; ok {
@@ -271,6 +269,19 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 		}
 		return text + ")"
 	}
+	// what this find touched, for the preamble's recents: the spaces the
+	// rows came from and the type names the text spelled
+	if !global {
+		session.noteSpace(space)
+	}
+	for _, h := range handles {
+		names := typeNames[space]
+		if global {
+			session.noteSpace(h.Space)
+			names = typeNames[h.Space]
+		}
+		session.noteType(typeLabel(names, h.Type))
+	}
 	// each find renumbers (§7.4) — and a listing numbers nothing, which
 	// clears whatever the previous find left behind: stale handles surviving
 	// a call that matched nothing would be the same mis-address one document
@@ -362,12 +373,83 @@ func listingText(rows []Handle, label func(Handle) string, global bool, total in
 // is a defect).
 func (r *Runner) spaceFor(ctx context.Context, session *Session, args map[string]any, tool string) (string, error) {
 	if space := spaceArg(args); space != "" {
-		return space, nil
+		return r.resolveSpaceName(ctx, space)
 	}
 	if session.Space != "" {
 		return session.Space, nil
 	}
+	// the space the user is looking at, when the host said (RunContext):
+	// on a first turn nothing else can name one, and it is the space a
+	// user means by default
+	if space := r.Context().Space; space != "" {
+		return space, nil
+	}
 	return "", r.noSpaceRefusal(ctx, tool)
+}
+
+// spaceRefRe recognises the two spellings of a space id — the served short
+// ref and the full <cid>.<replication key> — so anything else in a `space`
+// slot can be read as a NAME. Measured on device: asked which space, a
+// user answered "Weekend trip" and the model handed that on as `space`;
+// a name the surface prints must be a value it takes.
+var spaceRefRe = regexp.MustCompile(`^(?:[a-z0-9]{6}|[a-z2-7]{32,}\.[a-z0-9]+)$`)
+
+// resolveSpaceName maps a space NAME to its id: an exact match on the name
+// (case-insensitive), else the one space whose name contains the words.
+// An id-shaped value passes through untouched, and so does a name that
+// matches nothing — the server's 404 and its steer answer that. Several
+// matches refuse, naming them: a guess would write into the wrong space.
+func (r *Runner) resolveSpaceName(ctx context.Context, value string) (string, error) {
+	name := strings.TrimSpace(value)
+	if name == "" || spaceRefRe.MatchString(name) {
+		return value, nil
+	}
+	rows := r.spaceRows(ctx)
+	if rows == nil {
+		return value, nil
+	}
+	folded := strings.ToLower(name)
+	var exact, partial []v2model.SpaceRow
+	for _, row := range rows {
+		rowName := strings.ToLower(strings.TrimSpace(row.Name))
+		switch {
+		case rowName == folded:
+			exact = append(exact, row)
+		case strings.Contains(rowName, folded):
+			partial = append(partial, row)
+		}
+	}
+	candidates := exact
+	if len(candidates) == 0 {
+		candidates = partial
+	}
+	switch len(candidates) {
+	case 0:
+		return value, nil
+	case 1:
+		return candidates[0].Id, nil
+	default:
+		spellings := make([]string, 0, len(candidates))
+		for _, row := range candidates {
+			spellings = append(spellings, row.Name+spaceRowSeparator+row.Id)
+		}
+		return "", fmt.Errorf("space %q matches several spaces (%s) — pass the id after the dash", name, strings.Join(spellings, "; "))
+	}
+}
+
+// spaceRows lists the caller's spaces, best-effort (nil on failure): the
+// name index behind resolveSpaceName, spaceNameIndex and the preamble.
+func (r *Runner) spaceRows(ctx context.Context) []v2model.SpaceRow {
+	var resp v2model.ListResponse[v2model.SpaceRow]
+	err := r.client.decode(ctx, apiRequest{
+		method: "GET",
+		path:   "/v2/spaces",
+		query:  url.Values{"limit": []string{strconv.Itoa(maxSpacesListed)}},
+	}, &resp)
+	if err != nil {
+		return nil
+	}
+	return resp.Data
 }
 
 // noSpaceRefusal names the spaces the caller can pick from, in the row
@@ -492,6 +574,8 @@ func (r *Runner) runCreate(ctx context.Context, session *Session, args map[strin
 	// effort, so a failed type listing serves the resolved key instead
 	label := typeLabel(r.typeNameIndex(ctx, space), result.Type)
 	text := fmt.Sprintf("created %s (%s)", result.Id, label)
+	session.noteSpace(space)
+	session.noteType(label)
 	if !result.DryRun {
 		// create used to dead-end: it returned a full id, registered no
 		// handle and left the working space unset (only find set it), so a

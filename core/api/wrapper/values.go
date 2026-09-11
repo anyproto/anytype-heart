@@ -500,7 +500,7 @@ func (r *Runner) resolveValue(ctx context.Context, session *Session, spaceId, fo
 			return r.resolveObjectRefValue(ctx, session, spaceId, v)
 		}
 		if format == "date" {
-			if abs, ok := resolveRelativeDate(v, r.now()); ok {
+			if abs, ok := resolveRelativeDate(v, r.nowLocal()); ok {
 				return abs, nil
 			}
 		}

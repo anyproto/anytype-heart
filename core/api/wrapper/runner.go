@@ -53,12 +53,57 @@ type Runner struct {
 	// concurrent tool calls, and a tool call is a session read-modify-write.
 	mu sync.Mutex
 
+	// runCtx is what the embedding host knows (RunContext); ctxMu guards it
+	// because the host sets it from its own thread while a call may run.
+	ctxMu  sync.RWMutex
+	runCtx RunContext
+
 	now func() time.Time
+}
+
+// RunContext is what the embedding host knows and the model does not: the
+// space the user is looking at, their locale and time zone. It is APP
+// state, not conversation state — set by the host (Host.SetContext), it
+// survives ResetSession — and it feeds three things: the space default
+// when a call names none and no find has set one (spaceFor), the clock
+// relative dates resolve against (nowLocal), and the preamble (preamble.go).
+type RunContext struct {
+	Space    string `json:"space,omitempty"`
+	Locale   string `json:"locale,omitempty"`
+	TimeZone string `json:"time_zone,omitempty"` // IANA name, e.g. Europe/Berlin
 }
 
 // NewRunner builds a runner over a client and a session store.
 func NewRunner(client *Client, store Store) *Runner {
 	return &Runner{client: client, store: store, now: time.Now}
+}
+
+// SetContext replaces the run context. An empty field clears it.
+func (r *Runner) SetContext(c RunContext) {
+	r.ctxMu.Lock()
+	defer r.ctxMu.Unlock()
+	r.runCtx = c
+}
+
+// Context returns the current run context.
+func (r *Runner) Context() RunContext {
+	r.ctxMu.RLock()
+	defer r.ctxMu.RUnlock()
+	return r.runCtx
+}
+
+// nowLocal is the clock relative dates and the preamble read: the process
+// clock in the context's time zone when one is set, so "today" and
+// "friday" mean what they mean where the user is, not where the process
+// thinks it is. An unknown zone name falls back to the process zone.
+func (r *Runner) nowLocal() time.Time {
+	now := r.now()
+	if tz := r.Context().TimeZone; tz != "" {
+		if loc, err := time.LoadLocation(tz); err == nil {
+			now = now.In(loc)
+		}
+	}
+	return now
 }
 
 // executors maps tool names to implementations. A test asserts this map and

@@ -71,8 +71,27 @@ func (h *Host) Call(ctx context.Context, name string, args map[string]any) CallR
 	return CallResult{Text: result.Text, JSON: result.JSON}
 }
 
-// ResetSession forgets the handle table and the working space — the
-// conversation boundary for an embedding client.
+// SetContext tells the host what the app knows and the model does not
+// (RunContext). App state, so it survives ResetSession; an empty field
+// clears.
+func (h *Host) SetContext(c RunContext) {
+	h.runner.SetContext(c)
+}
+
+// Context returns the host's run context.
+func (h *Host) Context() RunContext {
+	return h.runner.Context()
+}
+
+// Preamble renders the workspace facts to put in front of the model
+// (preamble.go).
+func (h *Host) Preamble(ctx context.Context) (string, error) {
+	return h.runner.Preamble(ctx)
+}
+
+// ResetSession forgets the handle table, the working space and the
+// recents — the conversation boundary for an embedding client. The run
+// context is app state and stays.
 func (h *Host) ResetSession() error {
 	if err := h.store.Save(&Session{}); err != nil {
 		return fmt.Errorf("reset session: %w", err)

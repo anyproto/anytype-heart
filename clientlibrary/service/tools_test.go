@@ -170,6 +170,33 @@ func TestToolsCall(t *testing.T) {
 		assert.Contains(t, env.Text, "no such route")
 	})
 
+	t.Run("the context is set and the preamble renders it", func(t *testing.T) {
+		// given
+		host := stubHost(t)
+		withToolsHost(t, func() (*wrapper.Host, error) { return host, nil })
+
+		// when
+		set := decodeEnvelope(t, ToolsSetContext([]byte(`{"space":"space1","time_zone":"Europe/Berlin"}`)))
+		preamble := decodeEnvelope(t, ToolsPreamble())
+
+		// then
+		assert.False(t, set.IsError, set.Text)
+		assert.Equal(t, wrapper.RunContext{Space: "space1", TimeZone: "Europe/Berlin"}, host.Context())
+		assert.False(t, preamble.IsError, preamble.Text)
+		assert.Contains(t, preamble.Text, "Today is ")
+		assert.Contains(t, preamble.Text, "Current space: Work (space1)")
+	})
+
+	t.Run("a malformed context is bad_request", func(t *testing.T) {
+		host := stubHost(t)
+		withToolsHost(t, func() (*wrapper.Host, error) { return host, nil })
+
+		env := decodeEnvelope(t, ToolsSetContext([]byte(`[1]`)))
+
+		assert.True(t, env.IsError)
+		assert.Equal(t, ToolsCodeBadRequest, env.Code)
+	})
+
 	t.Run("a shape mistake is invalid_arguments, not a tool error", func(t *testing.T) {
 		// given: read without its object
 		host := stubHost(t)

@@ -7626,3 +7626,66 @@ work). `describe` does not yet take a handle from a `find type=type` row
 (the row's name resolves through the existing fold, so `describe
 type=Trip` composes today). The filter channel's `type IN ("type")` does
 not widen the layout scope; only the top-level `type` does.
+
+### 8.59 The run context and the preamble (2026-09-11 — decisions as built)
+
+The second on-device run, on §8.58's build, searched well and then stalled
+on one thing: `create {"name":"Trip to Copenhagen","type":"Trip"}` with no
+space — refused with the space list, the model asked the user which space,
+the user answered *"Weekend trip"*, and the model sent `space: ""` again
+(it could not turn the answer into an id). Two facts the host had and the
+model did not — the space the user was looking at, and the names of the
+spaces — decide that turn. This section gives the host a way to say them
+and the wrapper a way to use them.
+
+**The run context.** `RunContext{Space, Locale, TimeZone}` is what the
+embedding host knows and the model does not. It is APP state, not
+conversation state: `Host.SetContext` sets it, `ResetSession` leaves it
+alone, an empty field clears. It feeds three things: the space default —
+`spaceFor` resolves the argument, then the working space a find or create
+set, then the context's space, then the refusal that lists the spaces; the
+clock — relative dates (`today`, `friday`, `+3d`) resolve against the
+process clock in the context's IANA zone (`nowLocal`), so a date means
+what it means where the user is; and the preamble. Exported to mobile as
+`ServiceToolsSetContext(json)` (`{"space","locale","time_zone"}`).
+
+**A space name is a space argument.** `resolveSpaceName` runs on `find`'s
+space and on `spaceFor`'s explicit argument: an id-shaped value (the
+served short ref, or the full `<cid>.<replication key>`) passes untouched;
+anything else is matched against the space names — exact first
+(case-insensitive), else the ONE name containing the words. "Weekend
+trip", "Trips" and "weekend trips" all reach `hpujze`; several matches
+refuse and name them in the row shape `spaceArg` accepts back; no match
+passes through to the server's 404 and its steer. What a tool prints (and
+what a user says) is a value a tool takes.
+
+**The recents.** The session records what the conversation touched:
+`RecentSpaces` (ids) and `RecentTypes` (the display names the text channel
+spelled), most recent first, capped at 8, written by `find` (each row's
+space and type), `describe` and `create`. They reset with the session, and
+they cost no store query — the preamble's "recently used" facts come from
+what the model itself just saw.
+
+**The preamble.** `Host.Preamble` renders ONE global text, never a
+per-space one — an account can hold a hundred spaces, and a small model
+forgets fast, so the preamble carries the few most useful facts and stops:
+
+    Today is Thursday, 6 August 2026.
+    Current space: Weekend Trips (hpujze) — describe, create and create_type use it when given no space.
+    6 spaces in the account; find with no space searches all of them, spaces lists them.
+    Recently used spaces: Soft motion (xjwg44), Roots household (szunbq).
+    Recently used types: Trip, Page.
+
+The current space is the context's, else the working space; recents show
+at most 3 spaces (the current one excluded) and 5 types; a space listing
+that fails drops the space lines and keeps the date. Bounded well under
+400 characters. Exported as `ServiceToolsPreamble()`; the host calls it at
+the start of every turn (the recents move) and decides where the text
+goes — the instructions or the user turn. The MCP delivery serves no
+preamble yet: the CLI/MCP runner has no context (a `--space` flag is the
+obvious later addition).
+
+**Not built, stated.** The eval harness still hand-writes its preamble
+("Work in the Anytype space …"); switching the wrapper arm to the served
+one needs the MCP runner to carry a context. Locale is carried and not yet
+read.

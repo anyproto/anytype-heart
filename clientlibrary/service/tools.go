@@ -3,7 +3,8 @@ package service
 // tools.go — the mobile tool bridge (docs/superpowers/specs/
 // 2026-09-04-mobile-tool-bridge-design.md §5): the API v2 task tools
 // (core/api/wrapper) for an on-device model, exported through gomobile as
-// ServiceToolsManifest / ServiceToolsCall / ServiceToolsResetSession.
+// ServiceToolsManifest / ServiceToolsCall / ServiceToolsResetSession, plus
+// ServiceToolsSetContext / ServiceToolsPreamble (APIV2.md §8.59).
 // Nothing listens: the tools run in-process through the API component's
 // engine, authorized as the current account (api.Service.ToolsHost).
 
@@ -110,6 +111,48 @@ func toolsCall(name string, args []byte) toolsEnvelope {
 	}
 	result := host.Call(context.Background(), name, parsed)
 	return toolsEnvelope{Text: result.Text, JSON: result.JSON, IsError: result.IsError, Code: result.Code}
+}
+
+// ToolsSetContext tells the tools host what the app knows and the model
+// does not: the space the user is looking at, their locale and IANA time
+// zone — `{"space":"…","locale":"…","time_zone":"…"}`. App state: it
+// survives ToolsResetSession, and an absent field clears. It is the space
+// default for describe, create and create_type when a call names none and
+// no find has set one, the clock relative dates resolve against, and the
+// preamble's "current space".
+func ToolsSetContext(args []byte) []byte {
+	var runCtx wrapper.RunContext
+	if trimmed := bytes.TrimSpace(args); len(trimmed) > 0 && !bytes.Equal(trimmed, []byte("null")) {
+		if err := json.Unmarshal(trimmed, &runCtx); err != nil {
+			return encodeToolsEnvelope(toolsEnvelope{
+				Text:    fmt.Sprintf(`context must be a JSON object, e.g. {"space":"…","time_zone":"Europe/Berlin"}: %v`, err),
+				IsError: true, Code: ToolsCodeBadRequest,
+			})
+		}
+	}
+	host, err := toolsHostProvider()
+	if err != nil {
+		return encodeToolsEnvelope(hostErrorEnvelope(err))
+	}
+	host.SetContext(runCtx)
+	return encodeToolsEnvelope(toolsEnvelope{Text: "context set", JSON: runCtx})
+}
+
+// ToolsPreamble renders the workspace facts to put in front of the model
+// before the user's first word: the date, the current space, the space
+// count and what the conversation recently touched (wrapper/preamble.go).
+// One global text, bounded; call it at the start of every turn, since the
+// recents move.
+func ToolsPreamble() []byte {
+	host, err := toolsHostProvider()
+	if err != nil {
+		return encodeToolsEnvelope(hostErrorEnvelope(err))
+	}
+	text, err := host.Preamble(context.Background())
+	if err != nil {
+		return encodeToolsEnvelope(toolsEnvelope{Text: err.Error(), IsError: true, Code: ToolsCodeInternal})
+	}
+	return encodeToolsEnvelope(toolsEnvelope{Text: text})
 }
 
 // ToolsResetSession forgets the handle table — a new conversation.
