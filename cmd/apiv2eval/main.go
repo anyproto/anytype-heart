@@ -82,6 +82,7 @@ type options struct {
 	freshAccount    bool
 	keepAccount     bool
 	heartBinary     string
+	resultCap       int
 	list            bool
 	probe           bool
 	// constAsEnum is the probe's one diagnostic deviation from a served
@@ -123,6 +124,8 @@ func run() error {
 		"-fresh-account only: leave the temp data dir (and the heart log) behind — a failed run is unreadable without the account it failed against")
 	flag.StringVar(&opt.heartBinary, "heart-binary", "",
 		"-fresh-account only: a prebuilt cmd/grpcserver to run (default: build one from this tree, so the run measures the tree it is in)")
+	flag.IntVar(&opt.resultCap, "result-cap", 0,
+		"bound one tool result's text to N characters, the way an on-device host does (0 = unbounded) — the A/B for whether a small model does better with less")
 	flag.BoolVar(&opt.list, "list", false, "print the run matrix and exit")
 	flag.BoolVar(&opt.probe, "probe", false, "run the one-turn schema-emission probe instead of the loop (needs no live API)")
 	flag.BoolVar(&opt.constAsEnum, "probe-const-as-enum", false,
@@ -655,6 +658,10 @@ func buildToolset(ctx context.Context, deps attemptDeps, arm armSpec, fx *fixtur
 		client := wrapper.NewClient(deps.api.baseURL, deps.api.apiKey)
 		client.HTTP = &http.Client{Timeout: 60 * time.Second, Transport: deps.api.http.Transport}
 		runner := wrapper.NewRunner(client, wrapper.NewMemoryStore())
+		// the result budget an on-device host sets (-result-cap): off by
+		// default so a run is comparable with every earlier one, and an
+		// A/B when set
+		runner.DefaultResultChars = deps.opt.resultCap
 		ts, err := newMCPToolset(ctx, runner, arm.tier)
 		if err != nil {
 			return nil, fmt.Errorf("build wrapper toolset: %w", err)

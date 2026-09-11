@@ -6,6 +6,7 @@ package wrapper
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -254,12 +255,13 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 			typeNames[space] = r.typeNameIndex(ctx, space)
 		}
 	}
+	budget := r.resultBudget()
 	label := func(h Handle) string {
 		names := typeNames[space]
 		if global {
 			names = typeNames[h.Space]
 		}
-		text := fmt.Sprintf("%s (%s", displayName(h), typeLabel(names, h.Type))
+		text := fmt.Sprintf("%s (%s", clampName(displayName(h), budget), typeLabel(names, h.Type))
 		if global {
 			spaceName := spaceNames[h.Space]
 			if spaceName == "" {
@@ -332,6 +334,23 @@ func displayName(h Handle) string {
 		return "(unnamed)"
 	}
 	return h.Name
+}
+
+// maxListedNameRunes bounds one listed name under a result budget: a row
+// exists to be recognised and picked by number, and a name past this is
+// prose the model pays for and cannot use. Unbudgeted deliveries (the CLI)
+// print names whole.
+const maxListedNameRunes = 60
+
+// clampName shortens a listed object name under a budget.
+func clampName(name string, budget int) string {
+	if budget <= 0 {
+		return name
+	}
+	if cut, truncated := clampRunes(name, maxListedNameRunes); truncated {
+		return cut + "…"
+	}
+	return name
 }
 
 // listingText renders the no-criteria find. The frame comes FIRST: a small
@@ -452,27 +471,35 @@ func (r *Runner) spaceRows(ctx context.Context) []v2model.SpaceRow {
 	return resp.Data
 }
 
+// maxRefusalSpaces bounds how many spaces a refusal names. A refusal is
+// never clamped by the result budget — cutting a repair tip destroys the
+// repair — so it has to be short by construction, and an account can hold
+// a hundred spaces. Naming a handful and the count is the repair; the rest
+// are one `spaces` call away.
+const maxRefusalSpaces = 8
+
 // noSpaceRefusal names the spaces the caller can pick from, in the row
 // shape spaceArg accepts back.
 func (r *Runner) noSpaceRefusal(ctx context.Context, tool string) error {
-	var resp v2model.ListResponse[v2model.SpaceRow]
-	err := r.client.decode(ctx, apiRequest{
-		method: "GET",
-		path:   "/v2/spaces",
-		query:  url.Values{"limit": []string{strconv.Itoa(maxSpacesListed)}},
-	}, &resp)
-	if err != nil || len(resp.Data) == 0 {
+	spaces := r.spaceRows(ctx)
+	if len(spaces) == 0 {
 		return fmt.Errorf("%s needs a space and none is known yet — run spaces to list them, or find in a space (which sets the working space)", tool)
 	}
-	rows := make([]string, 0, len(resp.Data))
-	for _, row := range resp.Data {
+	listed := spaces
+	tail := ""
+	if len(listed) > maxRefusalSpaces {
+		listed = listed[:maxRefusalSpaces]
+		tail = fmt.Sprintf("; … and %d more — run spaces to see them all", len(spaces)-maxRefusalSpaces)
+	}
+	rows := make([]string, 0, len(listed))
+	for _, row := range listed {
 		name := row.Name
 		if name == "" {
 			name = "(unnamed)"
 		}
 		rows = append(rows, name+spaceRowSeparator+row.Id)
 	}
-	return fmt.Errorf("%s needs a space and none is known yet — pass one of these as space: %s", tool, strings.Join(rows, "; "))
+	return fmt.Errorf("%s needs a space and none is known yet — pass one of these as space: %s%s", tool, strings.Join(rows, "; "), tail)
 }
 
 func (r *Runner) runRead(ctx context.Context, session *Session, args map[string]any) (*Result, error) {
@@ -512,8 +539,81 @@ func (r *Runner) runRead(ctx context.Context, session *Session, args map[string]
 	// the served document already carries the reference vocabulary: the
 	// server labels minted ids itself and resolves either
 	// spelling on every write channel (C4), so the wrapper serves the body
-	// verbatim — client-side relabeling retired with the session label map
-	return &Result{Text: string(doc), JSON: rawJSONResult(doc)}, nil
+	// verbatim — client-side relabeling retired with the session label map.
+	// Verbatim within the budget: a document past it drops whole blocks
+	// (clampDocument) rather than meeting the generic backstop, which
+	// would cut mid-JSON and hand the model an unparseable half-document.
+	// The JSON channel keeps the WHOLE document: the app renders it, and
+	// the budget is the model's, not the app's.
+	text := clampDocument(doc, mode, r.resultBudget())
+	return &Result{Text: text, JSON: rawJSONResult(doc)}, nil
+}
+
+// clampDocument bounds a served document by dropping whole blocks from the
+// end and stating what it dropped IN the document, so what the model reads
+// stays valid JSON and says how much of the object it is looking at. A
+// document within the budget, or one this function cannot parse, passes
+// through byte for byte.
+func clampDocument(doc []byte, mode string, budget int) string {
+	if budget <= 0 || len(doc) <= budget {
+		return string(doc)
+	}
+	var envelope map[string]json.RawMessage
+	if err := json.Unmarshal(doc, &envelope); err != nil {
+		return string(doc)
+	}
+	field := "blocks"
+	if _, ok := envelope["outline"]; ok {
+		field = "outline"
+	}
+	var entries []json.RawMessage
+	if raw, ok := envelope[field]; !ok || json.Unmarshal(raw, &entries) != nil || len(entries) == 0 {
+		return string(doc)
+	}
+	// the repair is the cheaper survey — on a full read; an outline read
+	// IS that survey, so it can only report the count honestly
+	repair := " — read with mode=outline to survey every block"
+	if mode == "outline" {
+		repair = " — these are the first; the object has more"
+	}
+	// measure the envelope with an empty array and the note, then fill
+	skeleton := make(map[string]json.RawMessage, len(envelope)+1)
+	for k, v := range envelope {
+		skeleton[k] = v
+	}
+	skeleton[field] = json.RawMessage("[]")
+	note := fmt.Sprintf("showing %d of %d blocks%s", len(entries), len(entries), repair)
+	encoded, err := json.Marshal(note)
+	if err != nil {
+		return string(doc)
+	}
+	skeleton["truncated"] = encoded
+	base, err := json.Marshal(skeleton)
+	if err != nil {
+		return string(doc)
+	}
+	size := len(base)
+	kept := 0
+	for _, entry := range entries {
+		if size+len(entry)+1 > budget {
+			break
+		}
+		size += len(entry) + 1
+		kept++
+	}
+	skeleton[field], err = json.Marshal(entries[:kept])
+	if err != nil {
+		return string(doc)
+	}
+	note = fmt.Sprintf("showing %d of %d blocks%s", kept, len(entries), repair)
+	if encoded, err = json.Marshal(note); err == nil {
+		skeleton["truncated"] = encoded
+	}
+	out, err := json.Marshal(skeleton)
+	if err != nil {
+		return string(doc)
+	}
+	return string(out)
 }
 
 func (r *Runner) runCreate(ctx context.Context, session *Session, args map[string]any) (*Result, error) {

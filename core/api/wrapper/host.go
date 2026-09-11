@@ -33,11 +33,23 @@ type Host struct {
 	store  *MemoryStore
 }
 
+// defaultHostResultChars is the in-process delivery's result budget when
+// the embedding host names none. The host runs on a phone, where every
+// model has a window worth protecting and the largest document does not:
+// a 40 KB read has to be unable to end a conversation on its own. 8,000
+// characters is roughly 2,000 tokens — past what any single tool result
+// needs, under what a 4,096-token model can survive — and an on-device
+// client with a smaller window says so through SetContext
+// (MaxResultChars), which is the number that actually belongs to it.
+const defaultHostResultChars = 8000
+
 // NewHost builds a host over a client. The session store is in memory:
 // handles live until ResetSession or the process ends.
 func NewHost(client *Client) *Host {
 	store := NewMemoryStore()
-	return &Host{runner: NewRunner(client, store), store: store}
+	runner := NewRunner(client, store)
+	runner.DefaultResultChars = defaultHostResultChars
+	return &Host{runner: runner, store: store}
 }
 
 // CallResult is one tool call's outcome as the embedding client receives

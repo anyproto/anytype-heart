@@ -8,6 +8,9 @@ package wrapper
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -206,4 +209,191 @@ func TestRecentsAndPreamble(t *testing.T) {
 		}
 		assert.Equal(t, []string{"a", "i", "h", "g", "f", "e", "d", "c"}, list)
 	})
+}
+
+func TestResultBudget(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("a document past the budget drops whole blocks and says so", func(t *testing.T) {
+		// given: a document whose blocks do not fit
+		fx := newFixture(t)
+		fx.SetContext(RunContext{MaxResultChars: 260})
+		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
+		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200, longDoc(12))
+
+		// when
+		result, err := fx.Run(ctx, "read", map[string]any{"object": "1"})
+
+		// then: still a document, and honest about what it holds
+		require.NoError(t, err)
+		var doc struct {
+			Blocks []struct {
+				Id string `json:"id"`
+			} `json:"blocks"`
+			Truncated string `json:"truncated"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(result.Text), &doc), "the model must be handed parseable JSON, never a cut-off half")
+		assert.Greater(t, len(doc.Blocks), 0, "at least the head of the document survives")
+		assert.Less(t, len(doc.Blocks), 12)
+		assert.Contains(t, doc.Truncated, fmt.Sprintf("showing %d of 12 blocks", len(doc.Blocks)))
+		assert.Contains(t, doc.Truncated, "read with mode=outline")
+		assert.NotContains(t, result.Text, "the result was cut to fit", "read cut itself, so the backstop had nothing to do")
+
+		// and the app still gets the whole thing
+		whole, err := json.Marshal(result.JSON)
+		require.NoError(t, err)
+		assert.Contains(t, string(whole), `"e0011"`, "the JSON channel carries the document the budget kept from the model")
+	})
+
+	t.Run("an outline read reports the count with no false repair", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.SetContext(RunContext{MaxResultChars: 200})
+		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
+		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200,
+			`{"outline":[{"indent":0,"id":"e0001","type":"paragraph","text":"one"},{"indent":0,"id":"e0002","type":"paragraph","text":"two"},{"indent":0,"id":"e0003","type":"paragraph","text":"three"},{"indent":0,"id":"e0004","type":"paragraph","text":"four"}]}`)
+
+		result, err := fx.Run(ctx, "read", map[string]any{"object": "1", "mode": "outline"})
+
+		require.NoError(t, err)
+		assert.Contains(t, result.Text, "these are the first; the object has more")
+		assert.NotContains(t, result.Text, "mode=outline to survey", "the repair must not name the mode the caller is already in")
+	})
+
+	t.Run("a document within the budget passes byte for byte", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.SetContext(RunContext{MaxResultChars: 100000})
+		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
+		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200, testFullDoc)
+
+		result, err := fx.Run(ctx, "read", map[string]any{"object": "1"})
+
+		require.NoError(t, err)
+		assert.Equal(t, testFullDoc, result.Text)
+	})
+
+	t.Run("describe drops settable rows, never its guidance", func(t *testing.T) {
+		// given: a space with far more properties than the budget fits
+		fx := newFixture(t)
+		fx.SetContext(RunContext{MaxResultChars: 700})
+		rows := make([]v2model.PropertyRow, 0, 60)
+		for i := 0; i < 60; i++ {
+			rows = append(rows, v2model.PropertyRow{Key: fmt.Sprintf("prop_%02d", i), Name: fmt.Sprintf("Property number %02d", i), Format: "text"})
+		}
+		fx.stub("GET /v2/spaces/space1/types/Page", 200, pageTypeDoc)
+		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse(rows...))
+
+		// when
+		result, err := fx.Run(ctx, "describe", map[string]any{"space": "space1", "type": "Page"})
+
+		// then
+		require.NoError(t, err)
+		assert.Contains(t, result.Text, "use these exact property names", "the guidance is what makes the rows usable — it outranks three more rows")
+		assert.Contains(t, result.Text, "more in this space")
+		assert.NotContains(t, result.Text, "the result was cut to fit", "describe cut itself")
+		assert.LessOrEqual(t, len([]rune(result.Text)), 700)
+	})
+
+	t.Run("a select's options are trimmed under a budget and the note says where the rest are", func(t *testing.T) {
+		options := make([]string, 0, 20)
+		for i := 0; i < 20; i++ {
+			options = append(options, fmt.Sprintf("Option%02d", i))
+		}
+		result := describeResult{
+			Name: "Task",
+			Properties: []describeProperty{{
+				Key: "Status", Name: "Status", Format: "select", Options: options, OnType: true,
+			}},
+		}
+
+		budgeted := describeText(result, 4000)
+		unbudgeted := describeText(result, 0)
+
+		assert.Contains(t, budgeted, "Option07")
+		assert.NotContains(t, budgeted, "Option08", "a budgeted row names the first few options, not two dozen")
+		assert.Contains(t, budgeted, `describe with options "Status"`)
+		assert.Contains(t, unbudgeted, "Option19", "an unbudgeted delivery prints them all, as before")
+	})
+
+	t.Run("the backstop cuts anything else and says it cut", func(t *testing.T) {
+		// given: a find whose rows run past the budget
+		fx := newFixture(t)
+		fx.SetContext(RunContext{MaxResultChars: 120})
+		rows := make([]v2model.ObjectRow, 0, 20)
+		for i := 0; i < 20; i++ {
+			rows = append(rows, v2model.ObjectRow{Id: fmt.Sprintf("bafyobj%02d", i), Name: fmt.Sprintf("Result number %02d", i), Type: "page"})
+		}
+		fx.stub("POST /v2/spaces/space1/search", 200, searchResponse(20, false, rows...))
+		fx.stub("GET /v2/spaces/space1/types", 200, `{"data":[{"key":"page","name":"Page"}],"total":1,"offset":0,"limit":500,"has_more":false}`)
+
+		// when
+		result, err := fx.Run(ctx, "find", map[string]any{"space": "space1", "query": "result"})
+
+		// then
+		require.NoError(t, err)
+		assert.Contains(t, result.Text, "the result was cut to fit")
+		assert.LessOrEqual(t, len([]rune(result.Text)), 120+len([]rune("\n… the result was cut to fit this conversation — ask for less: a smaller limit, or read mode=outline")))
+		session, _ := fx.store.Load()
+		assert.Len(t, session.Handles, 20, "the cut is what the model READS; every row it could address is still addressable")
+	})
+
+	t.Run("a long name is shortened in a listing, only under a budget", func(t *testing.T) {
+		long := strings.Repeat("a", 120)
+		assert.Equal(t, long, clampName(long, 0))
+		assert.Equal(t, strings.Repeat("a", 60)+"…", clampName(long, 2000))
+	})
+
+	t.Run("no budget anywhere leaves every result whole", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
+		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200, longDoc(40))
+
+		result, err := fx.Run(ctx, "read", map[string]any{"object": "1"})
+
+		require.NoError(t, err)
+		assert.Equal(t, longDoc(40), result.Text, "the CLI and MCP deliveries are unbudgeted")
+	})
+
+	t.Run("the in-process host carries a ceiling the client can lower", func(t *testing.T) {
+		_, host := newHostFixture(t)
+		assert.Equal(t, 0, host.runner.DefaultResultChars, "the fixture's runner is the bare one")
+
+		client := NewClient("http://127.0.0.1:1", "")
+		real := NewHost(client)
+		assert.Equal(t, defaultHostResultChars, real.runner.DefaultResultChars,
+			"a mobile host without a client-set budget still cannot be ended by one huge read")
+		real.SetContext(RunContext{MaxResultChars: 2000})
+		assert.Equal(t, 2000, real.runner.resultBudget(), "the client's window wins")
+	})
+}
+
+// longDoc renders a served document with n paragraph blocks.
+func longDoc(n int) string {
+	blocks := make([]string, 0, n)
+	for i := 1; i <= n; i++ {
+		blocks = append(blocks, fmt.Sprintf(`{"id":"e%04d","type":"paragraph","text":"block number %d"}`, i, i))
+	}
+	return `{"formatVersion":"2.0","type":"page","properties":{"name":"Long"},"blocks":[` + strings.Join(blocks, ",") + `]}`
+}
+
+func TestRefusalsStaySmall(t *testing.T) {
+	// A refusal is never clamped — cutting a repair tip destroys the repair
+	// — so the one refusal that lists the workspace has to be short by
+	// construction. An account with a hundred spaces used to produce
+	// kilobytes of it.
+	fx := newFixture(t)
+	rows := make([]v2model.SpaceRow, 0, 100)
+	for i := 0; i < 100; i++ {
+		rows = append(rows, v2model.SpaceRow{Id: fmt.Sprintf("space%02d", i), Name: fmt.Sprintf("Space number %02d", i)})
+	}
+	body, err := json.Marshal(v2model.ListResponse[v2model.SpaceRow]{Data: rows, Total: len(rows), Limit: 100})
+	require.NoError(t, err)
+	fx.stub("GET /v2/spaces", 200, string(body))
+
+	_, err = fx.Run(context.Background(), "create", map[string]any{"name": "X", "type": "page"})
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Space number 00 — space00")
+	assert.Contains(t, err.Error(), "… and 92 more — run spaces to see them all")
+	assert.NotContains(t, err.Error(), "Space number 99")
+	assert.Less(t, len(err.Error()), 400, "a refusal an unbudgeted model reads whole")
 }

@@ -7689,3 +7689,71 @@ obvious later addition).
 ("Work in the Anytype space …"); switching the wrapper arm to the served
 one needs the MCP runner to carry a context. Locale is carried and not yet
 read.
+
+### 8.60 The result budget: who sets it, and who does the cutting (2026-09-11 — decisions as built)
+
+Nothing bounded a tool result. One `read` of a real page is a few kilobytes
+of JSON, and §8.58 measured the fixed cost of the small tier at ~9 KB
+against Apple Foundation Models' 4,096-token window: one ordinary read
+could end a conversation. The same tool table also drives Bonsai 8B and
+27B, whose windows are far larger, so a single global number would either
+kill the small model or throttle the large one.
+
+**The host sets it; the wrapper does the cutting.** `RunContext`
+(§8.59) gains `MaxResultChars`, set through the same call that carries the
+current space — the host is the only party that knows the model's window.
+`Runner.DefaultResultChars` is the delivery's fallback when the host names
+none: 0 (unbounded) for the CLI and the MCP server, whose hosts are
+terminals and desktop apps, and `defaultHostResultChars` = 8,000 for the
+in-process host, whose models live on a phone. That default is not a guess
+at any model's window; it is the ceiling below which one huge document
+cannot end a conversation on its own, and an on-device client with a
+4,096-token model sets 2,000 and overrides it. The cutting stays
+wrapper-side because only the wrapper can word the cut in the tool's own
+vocabulary — block labels, `mode=outline`, `limit`.
+
+**Three cuts, in the order they apply.**
+
+- `read` drops whole BLOCKS from the end and states the cut inside the
+  document (`"truncated": "showing 14 of 41 blocks — read with mode=outline
+  to survey every block"`). A byte cut would hand the model an unparseable
+  half-document, which is worse than a short one. An outline read gets a
+  different sentence, because the repair it would otherwise name is the
+  mode the caller is already in. The JSON channel keeps the WHOLE document:
+  the budget is the model's, not the app's.
+- `describe` drops settable ROWS, never its closing guidance ("use these
+  exact property names…") — the guidance is what makes the rows usable, so
+  the rows give way and the count says how many did
+  (`describeTailAllowance`). A select's options print at most
+  `describeOptionsShown` = 8 under a budget, with the existing note naming
+  `describe options` for the rest; unbudgeted deliveries print them all, as
+  before. The row is now RENDERED WITH ITS NOTE and committed together, so
+  a dropped row leaves no note behind describing a row the reader cannot
+  see.
+- Everything else meets the backstop in `Runner.Run`: cut to the budget and
+  one line saying so and what to ask for instead. A tool that cut itself
+  well arrives already inside the budget and the backstop does nothing.
+
+Listed object names clamp at 60 runes under a budget (`clampName`): a row
+exists to be recognised and picked by number, and a name past that is prose
+the model pays for and cannot use.
+
+**A refusal is never clamped, so it has to be short by construction.**
+Cutting a repair tip destroys the repair — the whole §8.34 rule — so
+refusal text bypasses the budget. The one refusal that lists the workspace
+(§8.58's no-space repair) now names at most `maxRefusalSpaces` = 8 spaces
+plus the count: an account can hold a hundred, and a four-kilobyte refusal
+was the failure mode this section exists to prevent, arriving through the
+one door the budget cannot close.
+
+**Measuring it.** `cmd/apiv2eval -result-cap N` sets the same budget on the
+wrapper arm's runner. Off by default, so a run stays comparable with every
+earlier one, and an A/B when set: whether a small model does better with
+less is the question, not an assumption.
+
+**Not built, stated.** The MCP delivery has no way to set a budget (no
+context; a `--result-cap` flag is the obvious addition when a local host
+wants one). `find`'s `limit` is not lowered under a budget — the rows are
+already short and the cut is honest — and nothing caps the number of tool
+calls a turn may make, which stays the host's concern (the iOS client
+budgets 12).

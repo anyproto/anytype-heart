@@ -293,7 +293,7 @@ func (r *Runner) runDescribe(ctx context.Context, session *Session, args map[str
 	if result.Name != "" {
 		session.noteType(result.Name)
 	}
-	return &Result{Text: describeText(result), JSON: result}, nil
+	return &Result{Text: describeText(result, r.resultBudget()), JSON: result}, nil
 }
 
 // matchDefinitionRow resolves a type-document property definition to its
@@ -362,7 +362,23 @@ func (r *Runner) fillOptions(ctx context.Context, space string, prop *describePr
 // rather than dropped — a caller who saw one in a read and then cannot find
 // it in describe would reasonably conclude describe is incomplete, which is
 // the defect this rendering exists to close.
-func describeText(result describeResult) string {
+// describeOptionsShown bounds how many of a select's options one row
+// PRINTS under a result budget (the fetch is bounded separately by
+// describeOptionsLimit). A tag-like property with two dozen options turns
+// the type's whole table into option names, which is exactly the wrong
+// trade on a model with one small window: the row exists to say the
+// property is a select and name the common values, and describe's own
+// options mode lists the rest on request.
+const describeOptionsShown = 8
+
+// describeTailAllowance reserves room for describe's closing lines — the
+// read-only list, the two guidance sentences and any notes — so the
+// settable list is what gives way under a budget. The guidance is what
+// makes the rows usable ("use these exact property names"); losing it to
+// keep three more rows would be the wrong half to save.
+const describeTailAllowance = 320
+
+func describeText(result describeResult, budget int) string {
 	var onType, others, readOnly []describeProperty
 	for _, p := range result.Properties {
 		switch {
@@ -375,18 +391,6 @@ func describeText(result describeResult) string {
 		}
 	}
 
-	var b strings.Builder
-	// the type is titled by its display NAME — "Query", not a key. The api
-	// key is `query` too now, but the STORED key is still `set`, and that is
-	// the one a user never sees. The internal key stays off the prompt surface: the
-	// type arguments accept the name (values.go foldTypeArg), so the name is
-	// the one spelling the model both reads here and hands back. The key
-	// remains in the machine shape (result.Type) for programmatic callers.
-	title := result.Name
-	if title == "" {
-		title = result.Type
-	}
-	fmt.Fprintf(&b, "type %s", title)
 	// one row = one `Name: format(options)` line, which is exactly the form
 	// create_type's `properties` argument takes (tools_type.go). The rule
 	// this serves is the surface's oldest: what a tool PRINTS must be
@@ -404,55 +408,102 @@ func describeText(result describeResult) string {
 	// options-unavailable sentence came back as a format named
 	// "select  — options could not be listed…". A row must be transcribable
 	// whole or it should not claim to be.
-	var notes []string
-	writeRow := func(p describeProperty) {
+	//
+	// The row is RETURNED with its note rather than written with it, so a
+	// row the budget drops leaves no note behind describing a row the
+	// reader cannot see.
+	optionCap := 0
+	if budget > 0 {
+		optionCap = describeOptionsShown
+	}
+	row := func(p describeProperty) (text, note string) {
+		var b strings.Builder
 		fmt.Fprintf(&b, "\n  %s: %s", p.Key, p.Format)
-		if len(p.Options) > 0 {
-			fmt.Fprintf(&b, "(%s)", strings.Join(p.Options, ", "))
+		options, hidden := p.Options, 0
+		if optionCap > 0 && len(options) > optionCap {
+			hidden = len(options) - optionCap
+			options = options[:optionCap]
+		}
+		if len(options) > 0 {
+			fmt.Fprintf(&b, "(%s)", strings.Join(options, ", "))
 		}
 		switch {
-		case p.MoreOptions:
-			notes = append(notes, fmt.Sprintf(
+		case p.MoreOptions || hidden > 0:
+			note = fmt.Sprintf(
 				"%s has more options than listed — describe with options %q to see them all",
-				p.Key, p.Key))
+				p.Key, p.Key)
 		case p.OptionsUnavailable:
-			notes = append(notes, fmt.Sprintf(
+			note = fmt.Sprintf(
 				"%s: its options could not be listed — describe with options %q before using it",
-				p.Key, p.Key))
+				p.Key, p.Key)
 		}
+		return b.String(), note
 	}
 
+	var b strings.Builder
+	var notes []string
+	// the type is titled by its display NAME — "Query", not a key. The api
+	// key is `query` too now, but the STORED key is still `set`, and that is
+	// the one a user never sees. The internal key stays off the prompt surface: the
+	// type arguments accept the name (values.go foldTypeArg), so the name is
+	// the one spelling the model both reads here and hands back. The key
+	// remains in the machine shape (result.Type) for programmatic callers.
+	title := result.Name
+	if title == "" {
+		title = result.Type
+	}
+	fmt.Fprintf(&b, "type %s", title)
+
+	// the type's OWN properties are the answer to the question describe was
+	// asked; they are never dropped for budget
 	b.WriteString("\nproperties of this type:")
 	if len(onType) == 0 {
 		b.WriteString(" (none — it names no settable property of its own)")
 	}
 	for _, p := range onType {
-		writeRow(p)
-	}
-
-	b.WriteString("\nalso settable on any object of this type:")
-	if len(others) == 0 {
-		b.WriteString(" (none)")
-	}
-	for i, p := range others {
-		if i == describeSettableLimit {
-			fmt.Fprintf(&b, "\n  … and %d more in this space", len(others)-describeSettableLimit)
-			break
+		text, note := row(p)
+		b.WriteString(text)
+		if note != "" {
+			notes = append(notes, note)
 		}
-		writeRow(p)
 	}
 
+	readOnlyLine := ""
 	if len(readOnly) > 0 {
 		keys := make([]string, 0, len(readOnly))
 		for _, p := range readOnly {
 			keys = append(keys, p.Key)
 		}
-		fmt.Fprintf(&b, "\nread-only — read serves these, set_properties refuses them: %s", strings.Join(keys, ", "))
+		readOnlyLine = "\nread-only — read serves these, set_properties refuses them: " + strings.Join(keys, ", ")
 	}
+	reserve := len(readOnlyLine) + describeTailAllowance
+
+	b.WriteString("\nalso settable on any object of this type:")
+	if len(others) == 0 {
+		b.WriteString(" (none)")
+	}
+	shown := 0
+	for i, p := range others {
+		text, note := row(p)
+		overBudget := budget > 0 && b.Len()+len(text)+reserve > budget
+		if i == describeSettableLimit || overBudget {
+			break
+		}
+		b.WriteString(text)
+		if note != "" {
+			notes = append(notes, note)
+		}
+		shown++
+	}
+	if shown < len(others) {
+		fmt.Fprintf(&b, "\n  … and %d more in this space — describe is not the way to see them; name the one you want", len(others)-shown)
+	}
+
+	b.WriteString(readOnlyLine)
 	b.WriteString("\nboth lists are settable: use these exact property names and option names in create and set_properties" +
 		"\neach row is written the way create_type takes a property — Name: format, a select's options in parentheses")
 	// the notes follow the rows rather than interrupting them, so a row
-	// stays transcribable as a create_type property (see writeRow)
+	// stays transcribable as a create_type property (see row)
 	for _, n := range notes {
 		fmt.Fprintf(&b, "\nnote: %s", n)
 	}

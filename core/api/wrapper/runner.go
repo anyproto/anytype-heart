@@ -41,6 +41,12 @@ type Runner struct {
 	// IfMatch adds an If-Match precondition on mutations (CLI advanced
 	// flag; the task tools themselves never set it — C7 advisory mode).
 	IfMatch string
+	// DefaultResultChars is the delivery's result budget when the run
+	// context names none: 0 (unbounded) for the CLI and the MCP server,
+	// whose hosts are terminals and desktop apps, and a ceiling for the
+	// in-process host, whose models live on a phone (host.go).
+	DefaultResultChars int
+
 	// AllowNewOptions is the caller's consent to MINT select options for
 	// names a property does not hold yet. It does two things, and needs to
 	// do both to mean anything: it skips the wrapper's own option-name
@@ -71,6 +77,14 @@ type RunContext struct {
 	Space    string `json:"space,omitempty"`
 	Locale   string `json:"locale,omitempty"`
 	TimeZone string `json:"time_zone,omitempty"` // IANA name, e.g. Europe/Berlin
+	// MaxResultChars bounds ONE tool result's text. The host sets it
+	// because the host is the only party that knows the model's window:
+	// the same tool table drives a 4,096-token on-device model and a 27B
+	// with room to spare, and one number cannot serve both. 0 leaves the
+	// delivery's own default (Runner.DefaultResultChars). The cut is
+	// always stated, and stated in the tool's vocabulary — never a silent
+	// slice (runner.clampResult, tools.clampDocument, describe).
+	MaxResultChars int `json:"max_result_chars,omitempty"`
 }
 
 // NewRunner builds a runner over a client and a session store.
@@ -90,6 +104,47 @@ func (r *Runner) Context() RunContext {
 	r.ctxMu.RLock()
 	defer r.ctxMu.RUnlock()
 	return r.runCtx
+}
+
+// resultBudget is the cap on one tool result's text, in characters: the
+// run context's when the host set one, else the delivery's default.
+func (r *Runner) resultBudget() int {
+	if n := r.Context().MaxResultChars; n > 0 {
+		return n
+	}
+	return r.DefaultResultChars
+}
+
+// clampResult is the generic backstop: it cuts a result's text to the
+// budget and SAYS it cut, because a silently truncated result is one a
+// model reports as complete. The tools whose text has a structure worth
+// preserving cut themselves first — read drops whole blocks so its JSON
+// stays parseable, describe drops property rows so its closing guidance
+// survives — and reach this already inside the budget.
+func clampResult(text string, budget int) string {
+	if budget <= 0 {
+		return text
+	}
+	cut, truncated := clampRunes(text, budget)
+	if !truncated {
+		return text
+	}
+	return cut + "\n… the result was cut to fit this conversation — ask for less: a smaller limit, or read mode=outline"
+}
+
+// clampRunes cuts s to at most max runes, reporting whether it cut.
+func clampRunes(s string, max int) (string, bool) {
+	if max <= 0 {
+		return s, false
+	}
+	n := 0
+	for i := range s {
+		n++
+		if n > max {
+			return s[:i], true
+		}
+	}
+	return s, false
 }
 
 // nowLocal is the clock relative dates and the preamble read: the process
@@ -162,6 +217,12 @@ func (r *Runner) Run(ctx context.Context, tool string, args map[string]any) (*Re
 		return nil, fmt.Errorf("load session: %w", err)
 	}
 	result, err := exec(r, ctx, session, args)
+	if result != nil {
+		// the backstop: every tool's text, after the tools that can cut
+		// themselves well have done so (read by blocks, describe by rows).
+		// A result that already fits is untouched.
+		result.Text = clampResult(result.Text, r.resultBudget())
+	}
 	err = r.steerError(ctx, def, session, args, err)
 	// the session is saved on BOTH paths: a failed mutation has already
 	// minted its Idempotency-Key (Session.LastWrite), and dropping it is

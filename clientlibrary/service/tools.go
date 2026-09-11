@@ -114,12 +114,16 @@ func toolsCall(name string, args []byte) toolsEnvelope {
 }
 
 // ToolsSetContext tells the tools host what the app knows and the model
-// does not: the space the user is looking at, their locale and IANA time
-// zone — `{"space":"…","locale":"…","time_zone":"…"}`. App state: it
-// survives ToolsResetSession, and an absent field clears. It is the space
-// default for describe, create and create_type when a call names none and
-// no find has set one, the clock relative dates resolve against, and the
-// preamble's "current space".
+// does not: the space the user is looking at, their locale, IANA time zone
+// and the model's result budget —
+// `{"space":"…","locale":"…","time_zone":"…","max_result_chars":2000}`.
+// App state: it survives ToolsResetSession, and an absent field clears. It
+// is the space default for describe, create and create_type when a call
+// names none and no find has set one, the clock relative dates resolve
+// against, the preamble's "current space", and the bound on one tool
+// result's text. Set max_result_chars from the model's window — a
+// 4,096-token on-device model wants ~2000, a large one can leave it unset
+// and keep the host's own ceiling.
 func ToolsSetContext(args []byte) []byte {
 	var runCtx wrapper.RunContext
 	if trimmed := bytes.TrimSpace(args); len(trimmed) > 0 && !bytes.Equal(trimmed, []byte("null")) {
