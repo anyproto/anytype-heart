@@ -14,9 +14,28 @@ type ChatMessage struct {
 	ModifiedAt       int64               `json:"modified_at" example:"1717405200"`
 	ReplyToMessageId string              `json:"reply_to_message_id,omitempty" example:"msg-def456"`
 	Content          ChatMessageContent  `json:"content"`
+	Blocks           []ChatMessageBlock  `json:"blocks"`
 	Attachments      []ChatAttachment    `json:"attachments"`
 	Reactions        map[string][]string `json:"reactions"`
 	Pinned           bool                `json:"pinned"`
+}
+
+// ChatMessageBlock is one block of a block-composed message. Desktop clients
+// compose messages from blocks and leave the flat Content part empty; Type
+// selects which fields are set: text, link, embed, editor_quote or
+// message_quote.
+type ChatMessageBlock struct {
+	Type           string     `json:"type" example:"text"`
+	Text           string     `json:"text,omitempty" example:"Hello, world!"`
+	Style          string     `json:"style,omitempty" example:"paragraph"`
+	Marks          []TextMark `json:"marks,omitempty"`
+	Checked        bool       `json:"checked,omitempty" example:"false"`
+	Lang           string     `json:"lang,omitempty" example:"go"`
+	TargetObjectId string     `json:"target_object_id,omitempty" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`
+	LinkType       string     `json:"link_type,omitempty" example:"object"`
+	BlockId        string     `json:"block_id,omitempty" example:"block-abc123"`
+	MessageId      string     `json:"message_id,omitempty" example:"msg-abc123"`
+	ParticipantId  string     `json:"participant_id,omitempty" example:"_participant_bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEbEzQx9FNvf5LQFEJEGRojZt3L1MRmBFzP2Q"`
 }
 
 type ChatMessageContent struct {
@@ -123,6 +142,8 @@ type ChatEventReactionsUpdated struct {
 func ChatMessageFromProto(msg *model.ChatMessage) ChatMessage {
 	if msg == nil {
 		return ChatMessage{
+			Content:     ChatMessageContent{},
+			Blocks:      []ChatMessageBlock{},
 			Attachments: []ChatAttachment{},
 			Reactions:   map[string][]string{},
 		}
@@ -136,6 +157,7 @@ func ChatMessageFromProto(msg *model.ChatMessage) ChatMessage {
 		ModifiedAt:       msg.ModifiedAt,
 		ReplyToMessageId: msg.ReplyToMessageId,
 		Content:          chatMessageContentFromProto(msg.Message),
+		Blocks:           chatMessageBlocksFromProto(msg.Blocks),
 		Attachments:      chatAttachmentsFromProto(msg.Attachments),
 		Reactions:        chatReactionsFromProto(msg.Reactions),
 		Pinned:           msg.Pinned,
@@ -156,8 +178,16 @@ func chatMessageContentFromProto(content *model.ChatMessageMessageContent) ChatM
 		return ChatMessageContent{}
 	}
 
-	marks := make([]TextMark, 0, len(content.Marks))
-	for _, m := range content.Marks {
+	return ChatMessageContent{
+		Text:  content.Text,
+		Style: textStyleToString(content.Style),
+		Marks: textMarksFromProto(content.Marks),
+	}
+}
+
+func textMarksFromProto(marks []*model.BlockContentTextMark) []TextMark {
+	result := make([]TextMark, 0, len(marks))
+	for _, m := range marks {
 		tm := TextMark{
 			Type:  markTypeToString(m.Type),
 			Param: m.Param,
@@ -166,14 +196,74 @@ func chatMessageContentFromProto(content *model.ChatMessageMessageContent) ChatM
 			tm.From = m.Range.From
 			tm.To = m.Range.To
 		}
-		marks = append(marks, tm)
+		result = append(result, tm)
 	}
+	return result
+}
 
-	return ChatMessageContent{
-		Text:  content.Text,
-		Style: textStyleToString(content.Style),
-		Marks: marks,
+func chatMessageBlocksFromProto(blocks []*model.ChatMessageMessageBlock) []ChatMessageBlock {
+	result := make([]ChatMessageBlock, 0, len(blocks))
+	for _, b := range blocks {
+		if b == nil {
+			continue
+		}
+		switch {
+		case b.GetText() != nil:
+			tb := b.GetText()
+			result = append(result, ChatMessageBlock{
+				Type:    "text",
+				Text:    tb.Text,
+				Style:   textStyleToString(tb.Style),
+				Marks:   textMarksFromProto(tb.Marks),
+				Checked: tb.Checked,
+				Lang:    tb.Lang,
+			})
+		case b.GetLink() != nil:
+			result = append(result, ChatMessageBlock{
+				Type:           "link",
+				TargetObjectId: b.GetLink().TargetObjectId,
+				LinkType:       linkTypeToString(b.GetLink().Type),
+			})
+		case b.GetEmbed() != nil:
+			result = append(result, ChatMessageBlock{
+				Type: "embed",
+				Text: b.GetEmbed().Text,
+			})
+		case b.GetEditorQuote() != nil:
+			eq := b.GetEditorQuote()
+			blk := ChatMessageBlock{Type: "editor_quote", BlockId: eq.BlockId}
+			if eq.Content != nil {
+				blk.Text = eq.Content.Text
+				blk.Marks = textMarksFromProto(eq.Content.Marks)
+			}
+			result = append(result, blk)
+		case b.GetMessageQuote() != nil:
+			mq := b.GetMessageQuote()
+			blk := ChatMessageBlock{
+				Type:          "message_quote",
+				MessageId:     mq.MessageId,
+				ParticipantId: mq.ParticipantId,
+			}
+			if mq.Content != nil {
+				blk.Text = mq.Content.Text
+				blk.Marks = textMarksFromProto(mq.Content.Marks)
+			}
+			result = append(result, blk)
+		}
 	}
+	return result
+}
+
+func linkTypeToString(t model.ChatMessageMessageBlockLinkLinkType) string {
+	switch t {
+	case model.ChatMessageMessageBlockLink_File:
+		return "file"
+	case model.ChatMessageMessageBlockLink_Image:
+		return "image"
+	case model.ChatMessageMessageBlockLink_Bookmark:
+		return "bookmark"
+	}
+	return "object"
 }
 
 func chatAttachmentsFromProto(attachments []*model.ChatMessageAttachment) []ChatAttachment {

@@ -417,16 +417,17 @@ func (s *Service) getObjectFromStruct(details *types.Struct) apimodel.Object {
 	typeMap := s.cache.getTypes(spaceId)
 
 	return apimodel.Object{
-		Object:     "object",
-		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       s.getIcon(spaceId, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
-		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-		SpaceId:    spaceId,
-		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
-		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())),
-		Type:       typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()],
-		Properties: s.getPropertiesFromStruct(details),
+		Object:       "object",
+		Id:           details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Name:         details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon:         s.getIcon(spaceId, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Archived:     details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
+		SpaceId:      spaceId,
+		Snippet:      details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
+		Layout:       s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())),
+		Type:         typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()],
+		Properties:   s.getPropertiesFromStruct(details),
+		DiscussionId: details.Fields[bundle.RelationKeyDiscussionId.String()].GetStringValue(),
 	}
 }
 
@@ -436,17 +437,18 @@ func (s *Service) getObjectWithBlocksFromStruct(details *types.Struct, markdown 
 	typeMap := s.cache.getTypes(spaceId)
 
 	return &apimodel.ObjectWithBody{
-		Object:     "object",
-		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       s.getIcon(spaceId, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
-		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
-		SpaceId:    spaceId,
-		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
-		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())),
-		Type:       typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()],
-		Properties: s.getPropertiesFromStruct(details),
-		Markdown:   markdown,
+		Object:       "object",
+		Id:           details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		Name:         details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
+		Icon:         s.getIcon(spaceId, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Archived:     details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
+		SpaceId:      spaceId,
+		Snippet:      details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
+		Layout:       s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())),
+		Type:         typeMap[details.Fields[bundle.RelationKeyType.String()].GetStringValue()],
+		Properties:   s.getPropertiesFromStruct(details),
+		Markdown:     markdown,
+		DiscussionId: details.Fields[bundle.RelationKeyDiscussionId.String()].GetStringValue(),
 	}
 }
 
