@@ -2068,6 +2068,11 @@
             "example": false,
             "type": "boolean"
           },
+          "discussion_id": {
+            "description": "The id of the object's inline discussion (chat); absent if the object has no discussion. Use it as chat_id with the Chat endpoints to read and write discussion messages",
+            "example": "bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge",
+            "type": "string"
+          },
           "icon": {
             "$ref": "#/components/schemas/Icon"
           },
@@ -2144,6 +2149,11 @@
             "description": "Whether the object is archived",
             "example": false,
             "type": "boolean"
+          },
+          "discussion_id": {
+            "description": "The id of the object's inline discussion (chat); absent if the object has no discussion. Use it as chat_id with the Chat endpoints to read and write discussion messages",
+            "example": "bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge",
+            "type": "string"
           },
           "icon": {
             "$ref": "#/components/schemas/Icon"
