@@ -6,7 +6,7 @@ require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
 	github.com/PuerkitoBio/goquery v1.10.2
 	github.com/ahmetb/govvv v0.3.0
-	github.com/anyproto/any-block v0.0.0-20260910130708-024662defcee // v2.0.0-rc2; upstream module path has no /v2 suffix
+	github.com/anyproto/any-block v0.0.0-20260912091754-f08d5ad04f02 // v2.0.0-rc3; upstream module path has no /v2 suffix
 	github.com/anyproto/any-store v1.0.1
 	github.com/anyproto/any-sync v0.13.2
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb
@@ -324,6 +324,3 @@ replace google.golang.org/genproto/googleapis/rpc => google.golang.org/genproto/
 replace github.com/btcsuite/btcutil => github.com/btcsuite/btcd/btcutil v1.1.5
 
 replace github.com/dsoprea/go-jpeg-image-structure/v2 => github.com/dchesterton/go-jpeg-image-structure/v2 v2.0.0-20240318203529-c3eea088bd38
-
-// Local until the reusable bundle converter is published.
-replace github.com/anyproto/any-block => ../any-block
