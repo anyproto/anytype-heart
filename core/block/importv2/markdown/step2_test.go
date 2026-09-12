@@ -395,3 +395,84 @@ func TestTypeFeaturedRelations(t *testing.T) {
 		assert.Len(t, rest, 1)
 	})
 }
+
+func TestImportedFileCarriesItsOwner(t *testing.T) {
+	t.Run("the referencing page and block travel with the file object", func(t *testing.T) {
+		// given / when
+		sink, _ := runConverterWithParams(t, map[string]string{
+			"a.md":    "# A\n\n![pic](pic.png)\n",
+			"pic.png": "png-bytes",
+		}, Params{})
+
+		// then — the file object names the page that referenced it and the
+		// block holding the reference; object GC reads those two to decide
+		// whether an imported file is still owned by something the user sees.
+		file := sink.byKey("pic.png")
+		require.NotNil(t, file)
+		require.NotNil(t, file.File)
+		assert.Equal(t, "a.md", file.File.OwnerSourceKey)
+
+		page := sink.byKey("a.md")
+		require.NotNil(t, page)
+		var fileBlockId string
+		for _, b := range page.Payload.Blocks {
+			if f := b.GetFile(); f != nil && f.TargetObjectId == "pic.png" {
+				fileBlockId = b.Id
+			}
+		}
+		require.NotEmpty(t, fileBlockId, "the page must hold a file block for the image")
+		assert.Equal(t, fileBlockId, file.File.OwnerRef)
+	})
+
+	t.Run("a file referenced twice keeps its first owner", func(t *testing.T) {
+		// given / when — one file object serves both pages (emission is
+		// deduped), so exactly one of them can own it.
+		sink, _ := runConverterWithParams(t, map[string]string{
+			"a.md":    "# A\n\n![pic](pic.png)\n",
+			"b.md":    "# B\n\n![pic](pic.png)\n",
+			"pic.png": "png-bytes",
+		}, Params{})
+
+		// then
+		var files int
+		for _, o := range sink.objects {
+			if o.SourceKey == "pic.png" && o.File != nil {
+				files++
+			}
+		}
+		require.Equal(t, 1, files, "a file is emitted once however often it is referenced")
+		file := sink.byKey("pic.png")
+		require.NotNil(t, file.File)
+		assert.Equal(t, "a.md", file.File.OwnerSourceKey,
+			"the page converted first owns it; the second reference keeps the file alive through its backlink")
+	})
+
+	t.Run("a file reached through a mention is owned by the text block", func(t *testing.T) {
+		// given / when
+		sink, _ := runConverterWithParams(t, map[string]string{
+			"a.md":     "Read [the spec](spec.pdf) before starting.\n",
+			"spec.pdf": "pdf-bytes",
+		}, Params{})
+
+		// then
+		file := sink.byKey("spec.pdf")
+		require.NotNil(t, file)
+		require.NotNil(t, file.File)
+		assert.Equal(t, "a.md", file.File.OwnerSourceKey)
+
+		page := sink.byKey("a.md")
+		require.NotNil(t, page)
+		var mentioningBlockId string
+		for _, b := range page.Payload.Blocks {
+			if text := b.GetText(); text != nil {
+				for _, mark := range text.GetMarks().GetMarks() {
+					if mark.Type == model.BlockContentTextMark_Mention && mark.Param == "spec.pdf" {
+						mentioningBlockId = b.Id
+					}
+				}
+			}
+		}
+		require.NotEmpty(t, mentioningBlockId)
+		assert.Equal(t, mentioningBlockId, file.File.OwnerRef)
+	})
+}

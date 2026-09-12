@@ -154,6 +154,8 @@ func (sp *Spool) Append(ctx context.Context, o *importv2.Object) error {
 		file.Set("name", arena.NewString(o.File.Name))
 		file.Set("url", arena.NewString(o.File.URL))
 		file.Set("imageKind", arena.NewNumberInt(int(o.File.ImageKind)))
+		file.Set("ownerSourceKey", arena.NewString(o.File.OwnerSourceKey))
+		file.Set("ownerRef", arena.NewString(o.File.OwnerRef))
 		if len(o.File.EncryptionKeys) > 0 {
 			keys := arena.NewObject()
 			for path, key := range o.File.EncryptionKeys {
@@ -325,10 +327,12 @@ func unmarshalSpoolRow(v *anyenc.Value) (*importv2.Object, error) {
 	}
 	if file := v.Get("file"); file != nil {
 		source := &importv2.FileSource{
-			Path:      string(file.GetStringBytes("path")),
-			Name:      string(file.GetStringBytes("name")),
-			URL:       string(file.GetStringBytes("url")),
-			ImageKind: model.ImageKind(file.GetInt("imageKind")),
+			Path:           string(file.GetStringBytes("path")),
+			Name:           string(file.GetStringBytes("name")),
+			URL:            string(file.GetStringBytes("url")),
+			ImageKind:      model.ImageKind(file.GetInt("imageKind")),
+			OwnerSourceKey: string(file.GetStringBytes("ownerSourceKey")),
+			OwnerRef:       string(file.GetStringBytes("ownerRef")),
 		}
 		if keys := file.GetObject("encryptionKeys"); keys != nil {
 			source.EncryptionKeys = map[string]string{}

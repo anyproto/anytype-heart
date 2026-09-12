@@ -618,6 +618,7 @@ func (s *service) engineDeps(request importv2.Request, spc clientspace.Space, lc
 		spc,
 		s.blockService,
 		&uploaderAdapter{blockService: s.blockService, fileObjectService: s.fileObjectService},
+		identitySvc,
 		s.detailsService,
 		resolver,
 		persist.NewInstallCoordinator(&installerAdapter{installer: s.installer, space: spc}),

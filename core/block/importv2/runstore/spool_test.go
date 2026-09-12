@@ -260,6 +260,8 @@ func TestSpoolRoundTripEveryField(t *testing.T) {
 			URL:            "https://prod-files-secure.s3.amazonaws.com/img.png?sig=x",
 			ImageKind:      model.ImageKind_Icon,
 			EncryptionKeys: map[string]string{"/0/": "enc"},
+			OwnerSourceKey: "notion-page-0",
+			OwnerRef:       "blockId1",
 		},
 		IsRootCandidate: true,
 		Favorite:        true,
@@ -287,6 +289,9 @@ func TestSpoolRoundTripEveryField(t *testing.T) {
 	assert.Equal(t, original.File.URL, replayed.File.URL)
 	assert.Equal(t, original.File.ImageKind, replayed.File.ImageKind)
 	assert.Equal(t, original.File.EncryptionKeys, replayed.File.EncryptionKeys)
+	assert.Equal(t, original.File.OwnerSourceKey, replayed.File.OwnerSourceKey,
+		"a file that loses its owner on replay is a file object GC can never clean up")
+	assert.Equal(t, original.File.OwnerRef, replayed.File.OwnerRef)
 	// the whole snapshot, on the wire representation
 	assert.Equal(t, original.Payload.ToProto(), replayed.Payload.ToProto())
 }

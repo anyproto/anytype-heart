@@ -378,7 +378,7 @@ func (fx *Fixture) RunMarkdown(t *testing.T, root string, req importv2.Request) 
 	identitySvc := identity.NewService(fx.Space, fx.Store.SpaceIndex(SpaceId), req.UpdateExisting, time.Unix(1700000000, 0))
 	resolver := resolve.New(identitySvc, keys, formats)
 	persister := persist.New(
-		SpaceId, req.Origin, fx.Space, fx.Space, fx.Uploader, nopFlags{},
+		SpaceId, req.Origin, fx.Space, fx.Space, fx.Uploader, identitySvc, nopFlags{},
 		resolver, persist.NewInstallCoordinator(nopInstaller{}), fx.Journal,
 		&storeChecker{store: fx.Store.SpaceIndex(SpaceId)}, spillDir,
 	)
@@ -409,7 +409,7 @@ func (fx *Fixture) durableDeps(t *testing.T, store *runstore.Store, req importv2
 		time.Unix(1700000000, 0), identityOpts...)
 	resolver := resolve.New(identitySvc, keys, formats)
 	persister := persist.New(
-		SpaceId, req.Origin, fx.Space, fx.Space, fx.Uploader, nopFlags{},
+		SpaceId, req.Origin, fx.Space, fx.Space, fx.Uploader, identitySvc, nopFlags{},
 		resolver, persist.NewInstallCoordinator(nopInstaller{}), journal,
 		&storeChecker{store: fx.Store.SpaceIndex(SpaceId)}, store.SpillDir(),
 	)

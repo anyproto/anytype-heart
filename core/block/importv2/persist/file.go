@@ -18,7 +18,7 @@ import (
 // inside the upload) or registers an already content-addressed file. The
 // returned outcome id is the file object's final identity — the engine
 // completes the identity future with it.
-func (p *Persister) persistFile(ctx context.Context, o *importv2.Object) (Outcome, error) {
+func (p *Persister) persistFile(ctx context.Context, o *importv2.Object, report func(importv2.Issue)) (Outcome, error) {
 	if o.File == nil {
 		return p.persistContentAddressedFile(o)
 	}
@@ -52,6 +52,7 @@ func (p *Persister) persistFile(ctx context.Context, o *importv2.Object) (Outcom
 	if localPath == "" {
 		req.Url = o.File.URL
 	}
+	p.applyOwner(ctx, o, &req, report)
 	// Classify BEFORE the upload can be indexed: an already-indexed id
 	// after upload means the content deduped onto a pre-existing object.
 	objectId, _, details, err := p.uploader.UploadFile(ctx, p.spaceId, req)
@@ -67,6 +68,29 @@ func (p *Persister) persistFile(ctx context.Context, o *importv2.Object) (Outcom
 		return Outcome{}, err
 	}
 	return Outcome{Id: objectId, Action: ActionCreated, Details: details}, nil
+}
+
+// applyOwner resolves the file's owning object and carries it into the upload
+// as createdInContext/createdInContextRef — what object GC reads to decide
+// whether a file is still owned by something the user can see. An owner that
+// does not resolve is reported and dropped: a file without its bookkeeping is
+// a far smaller loss than an import that fails over one.
+func (p *Persister) applyOwner(ctx context.Context, o *importv2.Object, req *block.FileUploadRequest, report func(importv2.Issue)) {
+	if o.File.OwnerSourceKey == "" {
+		return
+	}
+	ownerId, found, err := p.refs.ResolveRef(ctx, o.File.OwnerSourceKey)
+	if err != nil || !found {
+		report(importv2.Warning(importv2.IssueMissingTarget, o.SourceKey,
+			fmt.Sprintf("owner %q of this file did not resolve; the file is uploaded without a creation context",
+				o.File.OwnerSourceKey)))
+		return
+	}
+	// The ref is a block id or a relation key — already final, never a source
+	// key. Both fields travel together: object GC ignores a context whose ref
+	// is empty.
+	req.CreatedInContext = ownerId
+	req.CreatedInContextRef = o.File.OwnerRef
 }
 
 // persistContentAddressedFile handles files that already live in the content

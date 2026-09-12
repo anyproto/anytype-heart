@@ -119,6 +119,19 @@ type FileSource struct {
 	// URL is the original remote location, for provenance and diagnostics.
 	URL string
 
+	// OwnerSourceKey names the object the file was created in, and OwnerRef
+	// the block id (file blocks) or relation key (icon, cover, file-valued
+	// property) that holds the reference. The persister resolves the key to
+	// its final id and hands both to the upload as createdInContext /
+	// createdInContextRef, which is what object GC reads to decide whether a
+	// file is still owned. A file emitted by more than one reference keeps
+	// the first owner (converters emit each file once).
+	//
+	// Both empty means no owner: the file is uploaded without context, as an
+	// anytype export's files are, their ownership travelling in the snapshot.
+	OwnerSourceKey string
+	OwnerRef       string
+
 	ImageKind model.ImageKind
 }
 

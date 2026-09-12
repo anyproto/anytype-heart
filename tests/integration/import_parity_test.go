@@ -34,6 +34,11 @@ type parityProjection struct {
 	RelationNames   []string
 	OptionNames     []string
 	FileNames       []string
+	// OwnedFiles are the files that name the object they were created in and
+	// the block holding the reference. Object GC gates every cleanup path on
+	// that pair, so a name here and not there is an attachment the user can
+	// never be offered for cleanup.
+	OwnedFiles []string
 }
 
 // TestImportParityMarkdown imports one fixture through both engines into
@@ -57,6 +62,7 @@ func TestImportParityMarkdown(t *testing.T) {
 	// Pages and files must match exactly.
 	assert.Equal(t, v1.PageNames, v2.PageNames, "page set")
 	assert.Equal(t, v1.FileNames, v2.FileNames, "file set")
+	assert.Equal(t, v1.OwnedFiles, v2.OwnedFiles, "files carrying their creation context")
 	// Collections: the csv sub-collection plus the dated root collection.
 	assert.Equal(t, v1.CollectionCount, v2.CollectionCount, "collection count")
 	// Custom relations/options by display name (keys differ by design:
@@ -175,17 +181,22 @@ func projectionOf(t *testing.T, app *testApplication) parityProjection {
 			projection.OptionNames = append(projection.OptionNames, name)
 		case model.ObjectType_image, model.ObjectType_file:
 			projection.FileNames = append(projection.FileNames, name)
+			if record.Details.GetString(bundle.RelationKeyCreatedInContext) != "" &&
+				record.Details.GetString(bundle.RelationKeyCreatedInContextRef) != "" {
+				projection.OwnedFiles = append(projection.OwnedFiles, name)
+			}
 		}
 	}
 	sort.Strings(projection.PageNames)
 	sort.Strings(projection.RelationNames)
 	sort.Strings(projection.OptionNames)
 	sort.Strings(projection.FileNames)
+	sort.Strings(projection.OwnedFiles)
 	t.Logf("projection: %s", formatProjection(projection))
 	return projection
 }
 
 func formatProjection(p parityProjection) string {
-	return fmt.Sprintf("pages=%v collections=%d relations=%v options=%v files=%v",
-		p.PageNames, p.CollectionCount, p.RelationNames, p.OptionNames, p.FileNames)
+	return fmt.Sprintf("pages=%v collections=%d relations=%v options=%v files=%v owned=%v",
+		p.PageNames, p.CollectionCount, p.RelationNames, p.OptionNames, p.FileNames, p.OwnedFiles)
 }

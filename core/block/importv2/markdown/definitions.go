@@ -185,7 +185,7 @@ func (c *Converter) reportOwnedKey(key string, sink importv2.Sink) {
 	})
 }
 
-func (c *Converter) emitPropertyDefinitions(ctx context.Context, properties []yaml.Property, typeName string, sink importv2.Sink) (details []domain.Detail, links []*model.RelationLink, typeKey string, err error) {
+func (c *Converter) emitPropertyDefinitions(ctx context.Context, pageName string, properties []yaml.Property, typeName string, sink importv2.Sink) (details []domain.Detail, links []*model.RelationLink, typeKey string, err error) {
 	for _, property := range properties {
 		if _, owned := anytypeOwnedKeys[domain.RelationKey(property.Key)]; owned {
 			// Who created the object, which space it lives in, what its id is:
@@ -204,7 +204,10 @@ func (c *Converter) emitPropertyDefinitions(ctx context.Context, properties []ya
 		}
 		value := property.Value
 		if property.Format == model.RelationFormat_object || property.Format == model.RelationFormat_file {
-			resolved, err := c.resolveObjectValues(ctx, value, sink)
+			// A file-valued property owns its file through the relation key,
+			// the way a bookmark's image does: object GC needs a non-empty
+			// ref, and no block holds this reference.
+			resolved, err := c.resolveObjectValues(ctx, pageName, property.Key, value, sink)
 			if err != nil {
 				return nil, nil, "", err
 			}
@@ -240,14 +243,14 @@ func (c *Converter) emitPropertyDefinitions(ctx context.Context, properties []ya
 // resolveObjectValues rewrites object/file property values (source-relative
 // paths from the yaml parser) to entry source keys, emitting file objects
 // for non-page targets. Unknown values are left as-is (resolver leniency).
-func (c *Converter) resolveObjectValues(ctx context.Context, value domain.Value, sink importv2.Sink) (domain.Value, error) {
+func (c *Converter) resolveObjectValues(ctx context.Context, pageName, relationKey string, value domain.Value, sink importv2.Sink) (domain.Value, error) {
 	resolveOne := func(raw string) (string, error) {
 		entryName, found := c.lookupEntry(raw)
 		if !found {
 			return raw, nil
 		}
 		if !c.isPageEntry(entryName) {
-			if err := c.emitFileObject(ctx, entryName, sink); err != nil {
+			if err := c.emitFileObject(ctx, entryName, pageName, relationKey, sink); err != nil {
 				return "", err
 			}
 		}

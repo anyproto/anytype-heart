@@ -51,6 +51,13 @@ type FileUploader interface {
 	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin, additionalDetails *domain.Details) (string, error)
 }
 
+// RefResolver resolves a converter source key to the final object id. Pass 1
+// mints every page id before pass 2 streams a single object, so an owner
+// lookup never waits (only file entries carry futures, and files own nothing).
+type RefResolver interface {
+	ResolveRef(ctx context.Context, sourceKey string) (id string, found bool, err error)
+}
+
 // FlagSetter applies favorite/archive outside the object state.
 type FlagSetter interface {
 	SetIsFavorite(objectId string, isFavorite bool) error
@@ -99,6 +106,7 @@ type Persister struct {
 	space     Space
 	objects   ObjectAccess
 	uploader  FileUploader
+	refs      RefResolver
 	flags     FlagSetter
 	rewriter  StateRewriter
 	installer *InstallCoordinator
@@ -178,6 +186,7 @@ func New(
 	space Space,
 	objects ObjectAccess,
 	uploader FileUploader,
+	refs RefResolver,
 	flags FlagSetter,
 	rewriter StateRewriter,
 	installer *InstallCoordinator,
@@ -191,6 +200,7 @@ func New(
 		space:     space,
 		objects:   objects,
 		uploader:  uploader,
+		refs:      refs,
 		flags:     flags,
 		rewriter:  rewriter,
 		installer: installer,
@@ -206,7 +216,7 @@ func New(
 func (p *Persister) Persist(ctx context.Context, o *importv2.Object, target Target, report func(importv2.Issue)) (Outcome, error) {
 	switch o.SbType {
 	case coresb.SmartBlockTypeFileObject, coresb.SmartBlockTypeFile:
-		return p.persistFile(ctx, o)
+		return p.persistFile(ctx, o, report)
 	case coresb.SmartBlockTypeWorkspace, coresb.SmartBlockTypeWidget:
 		// Only anytype-export archives carry these; they arrive with the pb
 		// converter phase. A md/notion converter emitting them is a bug.

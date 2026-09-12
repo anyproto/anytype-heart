@@ -75,7 +75,7 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 			sort.SliceStable(parsed.Properties, func(i, j int) bool {
 				return parsed.Properties[i].Name < parsed.Properties[j].Name
 			})
-			yamlDetails, yamlLinks, typeKey, err = c.emitPropertyDefinitions(ctx, parsed.Properties, parsed.ObjectType, sink)
+			yamlDetails, yamlLinks, typeKey, err = c.emitPropertyDefinitions(ctx, entry.Name, parsed.Properties, parsed.ObjectType, sink)
 			if err != nil {
 				return err
 			}
@@ -362,7 +362,7 @@ func (c *Converter) rewriteFileBlock(ctx context.Context, pageName string, block
 		}}
 		return nil
 	}
-	if err := c.emitFileObject(ctx, entryName, sink); err != nil {
+	if err := c.emitFileObject(ctx, entryName, pageName, block.Id, sink); err != nil {
 		return err
 	}
 	file.TargetObjectId = entryName
@@ -396,7 +396,7 @@ func (c *Converter) rewriteTextBlock(ctx context.Context, pageName string, block
 			// An inline link to a local file: import the file and mention
 			// it — keeps the sentence intact (v1 replaced the whole block
 			// with a file block, losing the text).
-			if err := c.emitFileObject(ctx, entryName, sink); err != nil {
+			if err := c.emitFileObject(ctx, entryName, pageName, block.Id, sink); err != nil {
 				return nil, err
 			}
 		}
@@ -430,7 +430,7 @@ func (c *Converter) convertWholeLineLink(ctx context.Context, pageName string, b
 			}},
 		}, nil, true
 	}
-	if err := c.emitFileObject(ctx, entryName, sink); err != nil {
+	if err := c.emitFileObject(ctx, entryName, pageName, block.Id, sink); err != nil {
 		return nil, err, true
 	}
 	fileContent := anymark.ConvertTextToFile(entryName)
@@ -440,7 +440,12 @@ func (c *Converter) convertWholeLineLink(ctx context.Context, pageName string, b
 }
 
 // emitFileObject streams the file object backing a reference, once per file.
-func (c *Converter) emitFileObject(ctx context.Context, entryName string, sink importv2.Sink) error {
+// ownerKey/ownerRef name the page and the block (or relation key) the file was
+// first referenced from; they become the file's createdInContext pair, which
+// object GC reads to tell an owned attachment from an orphan. A file
+// referenced from several places keeps the first owner — the later references
+// keep it alive through their backlinks.
+func (c *Converter) emitFileObject(ctx context.Context, entryName, ownerKey, ownerRef string, sink importv2.Sink) error {
 	if c.emittedFiles[entryName] {
 		return nil
 	}
@@ -451,8 +456,10 @@ func (c *Converter) emitFileObject(ctx context.Context, entryName string, sink i
 		SbType:    coresb.SmartBlockTypeFileObject,
 		Payload:   &importv2.Snapshot{Details: domain.NewDetails()},
 		File: &importv2.FileSource{
-			Name: path.Base(entryName),
-			Open: c.openEntry(entryName),
+			Name:           path.Base(entryName),
+			Open:           c.openEntry(entryName),
+			OwnerSourceKey: ownerKey,
+			OwnerRef:       ownerRef,
 		},
 	}
 	if entry.FSPath != "" {

@@ -99,11 +99,13 @@ func (f *fakeObjects) DeleteObject(objectId string) error {
 }
 
 type fakeUploader struct {
-	uploadedPaths []string
-	uploadedUrls  []string
-	uploadedNames []string
-	resultId      string
-	err           error
+	uploadedPaths    []string
+	uploadedUrls     []string
+	uploadedNames    []string
+	uploadedContexts []string
+	uploadedRefs     []string
+	resultId         string
+	err              error
 }
 
 func (f *fakeUploader) UploadFile(ctx context.Context, spaceId string, req block.FileUploadRequest) (string, model.BlockContentFileType, *domain.Details, error) {
@@ -113,6 +115,8 @@ func (f *fakeUploader) UploadFile(ctx context.Context, spaceId string, req block
 	f.uploadedPaths = append(f.uploadedPaths, req.LocalPath)
 	f.uploadedUrls = append(f.uploadedUrls, req.Url)
 	f.uploadedNames = append(f.uploadedNames, req.Name)
+	f.uploadedContexts = append(f.uploadedContexts, req.CreatedInContext)
+	f.uploadedRefs = append(f.uploadedRefs, req.CreatedInContextRef)
 	return f.resultId, model.BlockContentFile_File, domain.NewDetails(), nil
 }
 
@@ -157,8 +161,20 @@ func (f *fakeInstaller) InstallBundledObjects(ctx context.Context, ids []string)
 	return nil
 }
 
+// fakeRefs resolves converter source keys the way the identity service does:
+// minted objects are known the moment pass 1 claimed them.
+type fakeRefs struct {
+	ids map[string]string
+}
+
+func (f *fakeRefs) ResolveRef(ctx context.Context, sourceKey string) (string, bool, error) {
+	id, ok := f.ids[sourceKey]
+	return id, ok, nil
+}
+
 type fixture struct {
 	*Persister
+	refs      *fakeRefs
 	space     *fakeSpace
 	objects   *fakeObjects
 	uploader  *fakeUploader
@@ -173,6 +189,7 @@ func newFixture(t *testing.T) *fixture {
 	space := &fakeSpace{existing: map[string]smartblock.SmartBlock{}}
 	objects := &fakeObjects{objects: map[string]smartblock.SmartBlock{}, failIds: map[string]error{}}
 	uploader := &fakeUploader{resultId: "fileObj1"}
+	refs := &fakeRefs{ids: map[string]string{}}
 	flags := &fakeFlags{}
 	installer := &fakeInstaller{}
 	journal := NewJournal()
@@ -180,6 +197,7 @@ func newFixture(t *testing.T) *fixture {
 		space:     space,
 		objects:   objects,
 		uploader:  uploader,
+		refs:      refs,
 		flags:     flags,
 		installer: installer,
 		journal:   journal,
@@ -191,6 +209,7 @@ func newFixture(t *testing.T) *fixture {
 		space,
 		objects,
 		uploader,
+		refs,
 		flags,
 		noopRewriter{},
 		NewInstallCoordinator(installer),
@@ -366,7 +385,7 @@ func TestPersistHeal(t *testing.T) {
 		ledger := &fakeLedger{}
 		fx.Persister = New(
 			testSpaceId, objectorigin.Import(model.Import_Markdown), fx.space, fx.objects,
-			fx.uploader, fx.flags, noopRewriter{}, NewInstallCoordinator(fx.installer),
+			fx.uploader, fx.refs, fx.flags, noopRewriter{}, NewInstallCoordinator(fx.installer),
 			NewJournalWithLedger(ledger), fx.checker, t.TempDir(),
 		)
 		var events []string
@@ -683,6 +702,93 @@ func TestPersistFile(t *testing.T) {
 		issue := importv2.AsIssue(err, importv2.SeverityFatal, importv2.IssueStoreError)
 		assert.Equal(t, importv2.IssueFileFetchFailed, issue.Code)
 		assert.Equal(t, importv2.SeverityObjectError, issue.Severity)
+	})
+
+	t.Run("the owning object and its block travel into the upload", func(t *testing.T) {
+		// given — the converter named the page that first referenced this
+		// file and the block holding the reference. Both must reach the
+		// upload as createdInContext/createdInContextRef: object GC gates
+		// cleanup suggestions on them, and an owner-less file is invisible
+		// to every cleanup path.
+		fx := newFixture(t)
+		fx.refs.ids["pages/home.md"] = "pageObjId"
+		path := filepath.Join(t.TempDir(), "img.png")
+		require.NoError(t, os.WriteFile(path, []byte("img"), 0o644))
+		obj := &importv2.Object{
+			SourceKey: "docs/img.png",
+			SbType:    coresb.SmartBlockTypeFileObject,
+			Payload:   &importv2.Snapshot{Details: domain.NewDetails()},
+			File: &importv2.FileSource{
+				Path:           path,
+				Name:           "img.png",
+				OwnerSourceKey: "pages/home.md",
+				OwnerRef:       "blockId1",
+			},
+		}
+
+		// when
+		_, err := fx.Persist(context.Background(), obj, Target{}, fx.report)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"pageObjId"}, fx.uploader.uploadedContexts,
+			"the owner source key must be resolved to its final object id")
+		assert.Equal(t, []string{"blockId1"}, fx.uploader.uploadedRefs,
+			"the block id is already final — it is not a source key")
+	})
+
+	t.Run("an unresolvable owner costs the file its context, not the upload", func(t *testing.T) {
+		// given — an owner key no pass-1 claim covers. Losing the bytes over
+		// a bookkeeping reference would be the worse failure by far.
+		fx := newFixture(t)
+		path := filepath.Join(t.TempDir(), "img.png")
+		require.NoError(t, os.WriteFile(path, []byte("img"), 0o644))
+		obj := &importv2.Object{
+			SourceKey: "docs/img.png",
+			SbType:    coresb.SmartBlockTypeFileObject,
+			Payload:   &importv2.Snapshot{Details: domain.NewDetails()},
+			File: &importv2.FileSource{
+				Path:           path,
+				Name:           "img.png",
+				OwnerSourceKey: "pages/never-claimed.md",
+				OwnerRef:       "blockId1",
+			},
+		}
+
+		// when
+		outcome, err := fx.Persist(context.Background(), obj, Target{}, fx.report)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "fileObj1", outcome.Id)
+		assert.Equal(t, []string{""}, fx.uploader.uploadedContexts)
+		assert.Equal(t, []string{""}, fx.uploader.uploadedRefs,
+			"a ref without a context is exactly the shape object GC rejects")
+		require.Len(t, fx.issues, 1)
+		assert.Equal(t, importv2.IssueMissingTarget, fx.issues[0].Code)
+		assert.Equal(t, importv2.SeverityWarning, fx.issues[0].Severity)
+	})
+
+	t.Run("a file with no owner uploads without context", func(t *testing.T) {
+		// given — converters that genuinely have no owner (an anytype export
+		// registers files whose ownership travels in the snapshot instead).
+		fx := newFixture(t)
+		path := filepath.Join(t.TempDir(), "img.png")
+		require.NoError(t, os.WriteFile(path, []byte("img"), 0o644))
+		obj := &importv2.Object{
+			SourceKey: "docs/img.png",
+			SbType:    coresb.SmartBlockTypeFileObject,
+			Payload:   &importv2.Snapshot{Details: domain.NewDetails()},
+			File:      &importv2.FileSource{Path: path, Name: "img.png"},
+		}
+
+		// when
+		_, err := fx.Persist(context.Background(), obj, Target{}, fx.report)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{""}, fx.uploader.uploadedContexts)
+		assert.Empty(t, fx.issues, "no owner is not a problem to report")
 	})
 }
 
