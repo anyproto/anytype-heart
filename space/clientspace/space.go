@@ -409,7 +409,11 @@ func (s *space) OnAclUpdated() {
 }
 
 func (s *space) readCanManageSpace() bool {
-	if s.IsPersonal() {
+	// The tech space and the personal space have one member, this account. Nothing in them is
+	// shared, so nothing in them needs guarding - and the tech space is where account creation
+	// writes the account object before any ACL is worth consulting. Checked before IsPersonal,
+	// which reads through to the common space.
+	if s.spaceType == spacedomain.SpaceTypeTech || s.IsPersonal() {
 		return true
 	}
 	acl := s.CommonSpace().Acl()

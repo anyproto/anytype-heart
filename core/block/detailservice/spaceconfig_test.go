@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // Apply refuses these writes too, but only after building and merging the state. Answering at the
@@ -78,3 +79,25 @@ func TestSetDetailsRefusesRestrictedObject(t *testing.T) {
 }
 
 var _ smartblock.SmartBlock = (*smarttest.SmartTest)(nil)
+
+// The account object carries objRestrictAll by its sbType alone, with no ACL input, and account
+// creation writes its own profile details through SetDetails. Enforcing that base restriction here
+// broke account creation and every integration test with it; the guard is the ACL lock only.
+func TestSetDetailsAllowsBaseRestrictedObject(t *testing.T) {
+	const objectId = "accountObjectId"
+
+	fx := newFixture(t)
+	sb := smarttest.New(objectId)
+	sb.SetType(coresb.SmartBlockTypeAccountObject)
+	fx.getter.EXPECT().GetObject(mock.Anything, objectId).Return(sb, nil)
+
+	require.Error(t, restriction.CheckRestrictions(sb, model.Restrictions_Details),
+		"precondition: the account object restricts details by its own nature")
+
+	err := fx.SetDetails(nil, objectId, []domain.Detail{
+		{Key: bundle.RelationKeyName, Value: domain.String("account name")},
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "account name", sb.Details().GetString(bundle.RelationKeyName))
+}

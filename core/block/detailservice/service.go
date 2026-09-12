@@ -17,6 +17,7 @@ Scope: global
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 
 	"github.com/anyproto/any-sync/app"
@@ -34,7 +35,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -145,16 +145,26 @@ func (s *service) SetDetailsInternal(objectId string, details []domain.Detail) e
 	})
 }
 
-// checkDetailsEditable refuses a details write the object's restrictions forbid. Apply already
-// refuses it for space configuration objects, but only after the state has been built and merged;
+// checkDetailsEditable refuses a details write to a space configuration object from an account that
+// may not change one. Apply refuses it too, but only after the state has been built and merged;
 // answering here keeps the loaded document untouched and hands the caller ErrRestricted instead of
 // a push failure.
+//
+// Deliberately only the ACL lock, NOT the object's whole Restrictions_Details. That restriction is
+// carried by sbType alone - the account object, spaceViews, participants, dates and identities all
+// have it - and no write path has ever enforced it. Enforcing it here would switch that on for
+// every one of them at once: it refused account creation's own bootstrap write, and nothing says
+// the rest are safe.
 func checkDetailsEditable(b any) error {
 	rh, ok := b.(restriction.RestrictionHolder)
 	if !ok {
 		return nil
 	}
-	return restriction.CheckRestrictions(rh, model.Restrictions_Details)
+	policy := rh.MemberPolicy()
+	if policy.LockSpaceConfig && restriction.IsSpaceConfigObject(rh, policy) {
+		return fmt.Errorf("%w: space configuration can only be changed by the space owner or an admin", restriction.ErrRestricted)
+	}
+	return nil
 }
 
 func (s *service) SetDetailsList(ctx session.Context, objectIds []string, details []domain.Detail) (resultError error) {
