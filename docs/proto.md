@@ -2195,10 +2195,10 @@
 - [pkg/lib/pb/model/protos/export_report.proto](#pkg_lib_pb_model_protos_export_report-proto)
     - [ExportReport](#anytype-model-ExportReport)
     - [ExportReport.Issue](#anytype-model-ExportReport-Issue)
-
+  
     - [ExportReport.Issue.Severity](#anytype-model-ExportReport-Issue-Severity)
     - [ExportReport.Status](#anytype-model-ExportReport-Status)
-
+  
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg_lib_pb_model_protos_localstore-proto)
     - [ObjectDetails](#anytype-model-ObjectDetails)
     - [ObjectInfo](#anytype-model-ObjectInfo)
@@ -34906,7 +34906,7 @@ issues without failing the RPC; clients should inspect status and issues.
 
 
 
-
+ 
 
 
 <a name="anytype-model-ExportReport-Issue-Severity"></a>
@@ -34935,11 +34935,11 @@ issues without failing the RPC; clients should inspect status and issues.
 | CANCELED | 3 |  |
 
 
+ 
 
+ 
 
-
-
-
+ 
 
 
 
@@ -38629,3 +38629,4 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | <a name="bool" /> bool |  | bool | boolean | boolean | bool | bool | boolean | TrueClass/FalseClass |
 | <a name="string" /> string | A string must always contain UTF-8 encoded or 7-bit ASCII text. | string | String | str/unicode | string | string | string | String (UTF-8) |
 | <a name="bytes" /> bytes | May contain any arbitrary sequence of bytes. | string | ByteString | str | []byte | ByteString | string | String (ASCII-8BIT) |
+

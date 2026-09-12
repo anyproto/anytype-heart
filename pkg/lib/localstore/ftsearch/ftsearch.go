@@ -346,6 +346,9 @@ func (f *ftSearch) Run(context.Context) error {
 	// on every exit, including copies an interrupted earlier start left
 	// behind. The goroutine may outlive Close; a concurrent account removal
 	// deleting the same paths is tolerated by os.RemoveAll.
+	// TODO: replace this fire-and-forget goroutine with a proper async
+	// cleanup (tracked by the component lifecycle, cancellable on Close,
+	// throttled so it does not compete with startup I/O).
 	defer func() { go f.removeQuarantinedIndexes() }()
 	var quarantinePath string
 	if len(report.MissingSegments) > 0 || len(report.MissingDelFiles) > 0 {
