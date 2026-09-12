@@ -165,7 +165,9 @@ func (s *Service) setProfileDetails(ctx context.Context, req *pb.RpcAccountCreat
 		return errors.Join(ErrSetDetails, err)
 	}
 	ds := app.MustComponent[detailservice.Service](s.app)
-	if err = ds.SetDetails(nil, accId, profileDetails); err != nil {
+	// Bootstrap, not a user edit: the account object carries objRestrictAll, so the
+	// restriction-checking path refuses this write outright.
+	if err = ds.SetDetailsInternal(accId, profileDetails); err != nil {
 		return errors.Join(ErrSetDetails, err)
 	}
 	return nil
