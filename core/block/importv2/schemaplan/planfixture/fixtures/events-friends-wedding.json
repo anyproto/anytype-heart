@@ -1,0 +1,243 @@
+{
+  "id": "events-friends-wedding",
+  "name": "Events — the unofficial wedding-planning committee",
+  "family": "events",
+  "inspiration": "notion.com/templates/category/wedding — the wedding-planner template family (budget tracker with estimated/actual/deposit columns, vendor database with contact + payment status, guest list with RSVP + meal, seating chart, registry), plus the bachelorette/honeymoon side-trip add-on that ships in most wedding template bundles. Naming mess ('(final!!)', a trailing space, an emoji mid-property) is copied from the real 37-database workspace dump.",
+  "notes": "A couple's own Notion, taken over by their wedding. Three friends volunteered as an informal committee and each bolted on a database of their own (seating chart, playlist requests, bachelorette trip), so the workspace is the same vendor/budget/timeline trio a professional event agency would build — assembled by people who have never run an event, with no naming convention and no shared vocabulary. Because it is the couple's personal space, their ordinary joint household budget sits one click away from the wedding budget.\n\nDecision points exercised: 3 (three separate 'Status' vocabularies), 5 ('Cost' as number vs text), 6 (five of the six bundled targets), 7 (five date/checkbox traps), 8 (personal vs event 'Category' collision), 10 (messy naming), plus 9 incidentally (a 2-property container and a 12-property one).\n\nDeliberately NOT asserted, because a thoughtful product person could argue either way:\n- db-vendors 'Category' [Venue, Catering, Florist, Photographer, DJ, Officiant] and db-wedding-budget 'Category' [Venue, Catering, Flowers, Photography, Attire, Music, Stationery] are arguably the same concept typed twice with sloppy wording (overlap 2/6). Merging them is defensible; so is keeping them apart. Left out of expect.\n- 'Deposit Paid?' is a checkbox in both db-wedding-budget and db-bachelorette, and 'Notes' is a text property in four containers. Whether generic fields like these should fuse across a wedding budget and a friend's trip planner is a taste call, not a regression.\n- db-guests 'Email' is an email-format property and would plausibly bundle to the built-in email relation too; only the vendor one is asserted so the trap set stays the point of this fixture.\n- db-playlist deliberately carries no titles — it exercises the no-samples path on the smallest container in the set.",
+  "containers": [
+    {
+      "id": "db-guests",
+      "name": "Guest List (final!!)",
+      "properties": [
+        {"id": "pSide", "name": "Side", "format": "select",
+         "options": ["Bride", "Groom", "Both"]},
+        {"id": "pRsvp", "name": "RSVP", "format": "select",
+         "options": ["No reply", "Yes", "No", "Maybe"]},
+        {"id": "pRsvpBy", "name": "RSVP By", "format": "date"},
+        {"id": "pSaveTheDate", "name": "Save-the-Date Sent", "format": "date"},
+        {"id": "pMeal", "name": "Meal 🍽️", "format": "select",
+         "options": ["Chicken", "Salmon", "Veg", "Kids"]},
+        {"id": "pPlusOne", "name": "Plus One?", "format": "checkbox"},
+        {"id": "pTable", "name": "Table", "format": "text"},
+        {"id": "pAddress", "name": "Address", "format": "text"},
+        {"id": "pEmail", "name": "Email", "format": "email"}
+      ],
+      "titles": [
+        "Aunt Bernadette + Roy",
+        "Kat Nwosu",
+        "Priya Raval (+1)",
+        "The Doyle family (4)",
+        "Manon Lefèvre",
+        "Uncle Ger — DO NOT SEAT NEAR DAD",
+        "Ines & Tomás",
+        "Grandma Sheila"
+      ]
+    },
+    {
+      "id": "db-wedding-budget",
+      "name": "💍 Wedding Budget",
+      "properties": [
+        {"id": "pCategory", "name": "Category", "format": "select",
+         "options": ["Venue", "Catering", "Flowers", "Photography", "Attire", "Music", "Stationery"]},
+        {"id": "pEstimated", "name": "Estimated Cost", "format": "number"},
+        {"id": "pActual", "name": "Actual Cost", "format": "number"},
+        {"id": "pDepositPaid", "name": "Deposit Paid?", "format": "checkbox"},
+        {"id": "pVendor", "name": "Vendor", "format": "objects"},
+        {"id": "pPaymentDue", "name": "Payment Due", "format": "date"},
+        {"id": "pPaymentMethod", "name": "Payment Method", "format": "select",
+         "options": ["Card", "Bank transfer", "Cash", "Dad"]},
+        {"id": "pPaidFull", "name": "Paid in Full?", "format": "checkbox"},
+        {"id": "pContractSigned", "name": "Contract Signed?", "format": "checkbox"},
+        {"id": "pPriority", "name": "Priority", "format": "select",
+         "options": ["Must have", "Nice to have", "Cut it"]},
+        {"id": "pWhosPaying", "name": "Who's Paying", "format": "multiSelect",
+         "options": ["Us", "Her parents", "His parents"]},
+        {"id": "pNotes", "name": "Notes", "format": "text"}
+      ],
+      "titles": [
+        "The Old Rectory — venue hire",
+        "Catering — 96 covers @ €74",
+        "Fleur & Vine Florals — arch + 8 centrepieces",
+        "Sorcha Ryan Photography — full day",
+        "DJ Halcyon — 7pm to 1am",
+        "Dress alterations (2nd fitting)",
+        "Letterpress invites + save-the-dates"
+      ]
+    },
+    {
+      "id": "db-household-budget",
+      "name": "Joint Household Budget",
+      "properties": [
+        {"id": "pCategory", "name": "Category", "format": "select",
+         "options": ["Rent", "Groceries", "Utilities", "Car", "Subscriptions", "Savings"]},
+        {"id": "pAmount", "name": "Amount", "format": "number"},
+        {"id": "pMonth", "name": "Month", "format": "date"},
+        {"id": "pRecurring", "name": "Recurring?", "format": "checkbox"},
+        {"id": "pAccount", "name": "Account", "format": "text"},
+        {"id": "pNotes", "name": "Notes", "format": "text"}
+      ],
+      "titles": [
+        "Rent — Flat 3, Gardiner St",
+        "Big shop (Lidl, weekly)",
+        "Electric Ireland — bi-monthly",
+        "Car insurance — Aviva",
+        "Netflix + Spotify Duo",
+        "Transfer to wedding pot"
+      ]
+    },
+    {
+      "id": "db-vendors",
+      "name": "Wedding Vendors ",
+      "properties": [
+        {"id": "pStatus", "name": "Status", "format": "select",
+         "options": ["Contacted", "Quote Received", "Booked", "Deposit Paid", "Paid in Full"]},
+        {"id": "pPhone", "name": "Phone", "format": "phone"},
+        {"id": "pEmail", "name": "Email", "format": "email"},
+        {"id": "pCost", "name": "Cost", "format": "number"},
+        {"id": "pContractSigned", "name": "Contract Signed", "format": "checkbox"},
+        {"id": "pLastContacted", "name": "Last Contacted", "format": "date"},
+        {"id": "pCategory", "name": "Category", "format": "select",
+         "options": ["Venue", "Catering", "Florist", "Photographer", "DJ", "Officiant"]},
+        {"id": "pNotes", "name": "Notes", "format": "text"}
+      ],
+      "titles": [
+        "The Old Rectory",
+        "Fleur & Vine Florals",
+        "DJ Halcyon (backup: Sam's cousin)",
+        "Sorcha Ryan Photography",
+        "Bia Catering Co.",
+        "Rev. Michael Dunne",
+        "Cakes by Orla — QUOTE ONLY"
+      ]
+    },
+    {
+      "id": "db-timeline",
+      "name": "Wedding Day Timeline",
+      "properties": [
+        {"id": "pTime", "name": "Time", "format": "text"},
+        {"id": "pOwner", "name": "Owner", "format": "multiSelect",
+         "options": ["Renata (planner)", "Best man", "Maid of honour", "Venue staff"]},
+        {"id": "pLocation", "name": "Location", "format": "text"},
+        {"id": "pDuration", "name": "Duration (min)", "format": "number"},
+        {"id": "pConfirmed", "name": "Confirmed?", "format": "checkbox"}
+      ],
+      "titles": [
+        "08:30 Hair & makeup, bridal suite",
+        "13:00 Ceremony",
+        "13:40 Confetti + group photos",
+        "15:00 Drinks reception on the lawn",
+        "17:30 Speeches (keep Dad to 5 min)",
+        "19:00 First dance",
+        "00:30 Last orders"
+      ]
+    },
+    {
+      "id": "db-seating",
+      "name": "Seating Chart (v3)",
+      "properties": [
+        {"id": "pTableNumber", "name": "Table Number", "format": "number"},
+        {"id": "pGuests", "name": "Guests", "format": "objects"},
+        {"id": "pTableShape", "name": "Table Shape", "format": "select",
+         "options": ["Round 8", "Round 10", "Long trestle"]},
+        {"id": "pDramaRisk", "name": "Drama Risk", "format": "select",
+         "options": ["None", "Mild", "Keep apart"]}
+      ],
+      "titles": [
+        "Table 1 — top table",
+        "Table 4 — uni friends",
+        "Table 6 — Mum's side",
+        "Table 7 — work + plus ones",
+        "Table 9 — kids"
+      ]
+    },
+    {
+      "id": "db-registry",
+      "name": "Registry Items",
+      "properties": [
+        {"id": "pCost", "name": "Cost", "format": "text"},
+        {"id": "pTags", "name": "Tags", "format": "multiSelect",
+         "options": ["Kitchen", "Bedding", "Experience", "Honeymoon fund", "Cash"]},
+        {"id": "pStore", "name": "Store", "format": "text"},
+        {"id": "pClaimedBy", "name": "Claimed by", "format": "text"},
+        {"id": "pLink", "name": "Link", "format": "url"}
+      ],
+      "titles": [
+        "Le Creuset casserole (28cm, sage)",
+        "Linen bedding set — double",
+        "Honeymoon: snorkelling day trip",
+        "Cocktail glasses x6",
+        "Cash towards the extension"
+      ]
+    },
+    {
+      "id": "db-bridesmaid-tasks",
+      "name": "Bridesmaid Task List",
+      "properties": [
+        {"id": "pStatus", "name": "Status", "format": "select",
+         "options": ["Not started", "In progress", "Done"]},
+        {"id": "pDone", "name": "Done?", "format": "checkbox"},
+        {"id": "pDueDate", "name": "Due Date", "format": "date"},
+        {"id": "pAssignedTo", "name": "Assigned To", "format": "multiSelect",
+         "options": ["Kat", "Priya", "Manon"]},
+        {"id": "pNotes", "name": "Notes", "format": "text"}
+      ],
+      "titles": [
+        "Book hen weekend flights",
+        "Chase Manon for her dress measurements",
+        "Make the 'guess who' game cards",
+        "Emergency kit — plasters, safety pins, Berocca",
+        "Sort speech order with the best man"
+      ]
+    },
+    {
+      "id": "db-bachelorette",
+      "name": "Bachelorette Trip Planner",
+      "properties": [
+        {"id": "pStatus", "name": "Status", "format": "select",
+         "options": ["Idea", "Voted on", "Booked", "Paid up"]},
+        {"id": "pTripStart", "name": "Trip Start Date", "format": "date"},
+        {"id": "pCostPerPerson", "name": "Cost Per Person", "format": "number"},
+        {"id": "pActivityType", "name": "Activity Type", "format": "select",
+         "options": ["Spa", "Dinner", "Club", "Daytime", "Travel"]},
+        {"id": "pDepositPaid", "name": "Deposit Paid?", "format": "checkbox"},
+        {"id": "pWhosIn", "name": "Who's In", "format": "multiSelect",
+         "options": ["Kat", "Priya", "Manon", "Ines", "Bride"]},
+        {"id": "pBookingLink", "name": "Booking Link", "format": "url"}
+      ],
+      "titles": [
+        "Lisbon, 2 nights — front runner",
+        "Flights Dublin → Lisbon (Ryanair)",
+        "Airbnb in Príncipe Real",
+        "Spa afternoon at Vidago",
+        "Fado dinner in Alfama",
+        "Rooftop drinks at Park"
+      ]
+    },
+    {
+      "id": "db-playlist",
+      "name": "Playlist Requests",
+      "properties": [
+        {"id": "pSong", "name": "Song", "format": "text"},
+        {"id": "pRequestedBy", "name": "Requested By", "format": "text"}
+      ]
+    }
+  ],
+  "expect": {
+    "differentKind": [["db-wedding-budget", "db-household-budget"]],
+    "bundled": {
+      "db-vendors": {"pPhone": "phone", "pEmail": "email"},
+      "db-registry": {"pTags": "tag"},
+      "db-bridesmaid-tasks": {"pDueDate": "dueDate", "pDone": "done"}
+    },
+    "notBundled": {
+      "db-guests": ["pRsvpBy", "pSaveTheDate", "pPlusOne"],
+      "db-vendors": ["pLastContacted"],
+      "db-bachelorette": ["pTripStart"]
+    },
+    "separateRelation": [
+      ["db-vendors:pStatus", "db-bridesmaid-tasks:pStatus", "db-bachelorette:pStatus"],
+      ["db-wedding-budget:pCategory", "db-household-budget:pCategory"],
+      ["db-vendors:pCost", "db-registry:pCost"]
+    ]
+  }
+}

@@ -24,7 +24,14 @@ var (
 var log = logging.Logger("notion-ping")
 
 const (
-	endpoint = "/users?page_size=1"
+	// endpoint is the token probe. /users/me returns the *bot* user tied to
+	// the token, so it needs no workspace user-read capability. The previous
+	// probe, /users, lists workspace members and 403s with
+	// "restricted_resource" whenever the integration's User Capabilities are
+	// set to "No user information" — blocking import over a capability the
+	// importer never uses. Nothing here resolves a user id against the API;
+	// created_by/last_edited_by come inline on the page payload.
+	endpoint = "/users/me"
 )
 
 type Service struct {

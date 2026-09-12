@@ -33,6 +33,9 @@ func (s *service) ObjectTypeAddRelations(ctx context.Context, objectTypeId strin
 		return ErrBundledTypeIsReadonly
 	}
 	return cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
+		if err := checkDetailsEditable(b); err != nil {
+			return err
+		}
 		st := b.NewState()
 		list := st.Details().GetStringList(bundle.RelationKeyRecommendedRelations)
 		for _, relKey := range relationKeys {
@@ -54,6 +57,9 @@ func (s *service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId st
 		return ErrBundledTypeIsReadonly
 	}
 	return cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
+		if err := checkDetailsEditable(b); err != nil {
+			return err
+		}
 		st := b.NewState()
 		list := st.Details().GetStringList(bundle.RelationKeyRecommendedRelations)
 		for _, relKey := range relationKeys {
@@ -87,6 +93,9 @@ func (s *service) objectTypeSetRelations(
 		relationToSet = bundle.RelationKeyRecommendedFeaturedRelations
 	}
 	return cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
+		if err := checkDetailsEditable(b); err != nil {
+			return err
+		}
 		st := b.NewState()
 		st.SetDetailAndBundledRelation(relationToSet, domain.StringList(relationList))
 		return b.Apply(st)

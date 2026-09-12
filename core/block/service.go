@@ -593,7 +593,9 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string, addAnalytic
 		st.SetLocalDetail(bundle.RelationKeyChatId, domain.String(chatId))
 		st.SetDetail(bundle.RelationKeyHasChat, domain.Bool(true))
 
-		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
+		// space bootstrap, not a user edit: every member runs it, including plain writers
+		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.KeepInternalFlags,
+			smartblock.IgnoreNoPermissions, smartblock.NoSpaceConfigCheck)
 	})
 	if err != nil {
 		return fmt.Errorf("apply chatId to workspace: %w", err)

@@ -155,13 +155,14 @@ type Heart struct {
 	// LogPath is DataDir/heart.log.
 	LogPath string
 
-	conn      *grpc.ClientConn
-	logFile   *os.File
-	tail      *logTail
-	proc      *procWaiter
-	dataTemp  bool
-	keepData  bool
-	stopGrace time.Duration
+	sessionToken string
+	conn         *grpc.ClientConn
+	logFile      *os.File
+	tail         *logTail
+	proc         *procWaiter
+	dataTemp     bool
+	keepData     bool
+	stopGrace    time.Duration
 
 	stopOnce sync.Once
 	stopErr  error
@@ -370,6 +371,7 @@ func (h *Heart) bootstrapAccount(ctx context.Context, client service.ClientComma
 		return fmt.Errorf("WalletCreateSession rejected: %s: %s%s", e.Code, e.Description, h.tail.quote())
 	}
 	token := sessResp.GetToken()
+	h.sessionToken = token
 	if token == "" {
 		return fmt.Errorf("WalletCreateSession returned no token%s", h.tail.quote())
 	}
@@ -685,4 +687,19 @@ func (t *logTail) quote() string {
 	}
 	return "\n--- last " + fmt.Sprint(len(t.lines)) + " lines from the heart ---\n" +
 		strings.Join(t.lines, "\n") + "\n--- end ---"
+}
+
+// GRPCClient returns the command client for this fresh account.
+func (h *Heart) GRPCClient() service.ClientCommandsClient {
+	return service.NewClientCommandsClient(h.conn)
+}
+
+// GRPCContext authenticates a command without exposing the account's token.
+func (h *Heart) GRPCContext(ctx context.Context) context.Context {
+	return withToken(ctx, h.sessionToken)
+}
+
+// ListenSessionEvents subscribes to asynchronous command completion events.
+func (h *Heart) ListenSessionEvents(ctx context.Context) (service.ClientCommands_ListenSessionEventsClient, error) {
+	return h.GRPCClient().ListenSessionEvents(ctx, &pb.StreamRequest{Token: h.sessionToken})
 }

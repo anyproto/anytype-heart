@@ -1,0 +1,448 @@
+package notion
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+
+	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+)
+
+// propertySchema is the shared shape of a property definition, whether it
+// comes from a database schema or a page's property map.
+type propertySchema struct {
+	Id     string `json:"id"`
+	Type   string `json:"type"`
+	Name   string `json:"name"`
+	Select struct {
+		Options []selectOption `json:"options"`
+	} `json:"select"`
+	MultiSelect struct {
+		Options []selectOption `json:"options"`
+	} `json:"multi_select"`
+	Status struct {
+		Options []selectOption `json:"options"`
+	} `json:"status"`
+}
+
+type selectOption struct {
+	Id    string `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color"`
+}
+
+// relationDef is the converter's resident record of one imported relation.
+type relationDef struct {
+	key       string // anytype internal key (deterministic from notion id)
+	sourceKey string // stream reference ("relation:<key>") or bundled URL
+	format    model.RelationFormat
+	name      string
+	bundled   bool
+}
+
+// propertiesStore dedupes relations and options, and implements the v1 Tag
+// redirection rules exactly: select/multi_select named "Tag" — or
+// "Tags"/"tags" only when no "Tag" property exists — redirect to the bundled
+// Tag relation; first match wins; status and people are never redirected.
+//
+// A property belongs to the database that declares it. Dedup is by notion
+// property id, which resolves the one case that must collapse — a database
+// and its pages describing the same property — while leaving same-named
+// properties in different databases as separate relations. Merging those by
+// name would give them one option pool: in a real workspace "Status" appeared
+// in 18 databases, and sharing it puts every database's lifecycle values in
+// one dropdown and every other database's empty columns on every board.
+// Sharing is opt-in and whitelisted: the bundled Tag redirect here, and
+// schemaplan.AllowedBundledTargets on the plan path.
+type propertiesStore struct {
+	// scopesByKey is which containers resolved onto each relation — the
+	// evidence that a relation is actually shared.
+	scopesByKey map[string]map[string]struct{}
+
+	// byScopedId is keyed by (database, notion property id) — Notion's real
+	// identity for a property. The id alone is unique only WITHIN a database:
+	// teamspace templates hand several databases a property with the same
+	// slug id (a live workspace had "project" in both Docs and Meetings), and
+	// Notion itself says those differ — each carries its own dual_property
+	// back reference on the target database.
+	byScopedId map[string]*relationDef
+	// byKey dedupes by final anytype key — the identity plan targets share
+	// (two containers remapping onto dueDate resolve to one def).
+	byKey         map[string]*relationDef
+	options       map[string]bool // option source key → emitted
+	tagRedirected bool
+	hasTagNamed   bool // a property named exactly "Tag" was seen
+}
+
+func newPropertiesStore() *propertiesStore {
+	return &propertiesStore{
+		byScopedId: map[string]*relationDef{},
+		byKey:      map[string]*relationDef{},
+		options:    map[string]bool{},
+	}
+}
+
+// resolveRelation returns the relation for a property, creating the
+// definition on first sight. created=true means the caller must emit the
+// relation object before using it.
+func (p *propertiesStore) resolveRelation(scope string, property propertySchema) (def *relationDef, created bool) {
+	format, ok := relationFormatOf(property.Type)
+	if !ok {
+		return nil, false
+	}
+	scopedId := scopePropertyId(scope, property.Id)
+	if def, ok := p.byScopedId[scopedId]; ok {
+		return def, false
+	}
+
+	if p.isTagRedirect(property) {
+		// The bundled tag relation is whitelisted-shared: one vocabulary for
+		// the whole space is the entire point of tags, so EVERY database's tag
+		// property joins the one relation. The redirect must therefore be
+		// checked before the first-match latch, which only decides which
+		// property of a database wins the name (v1 kept that latch per
+		// database); latching it globally would leave the second database's
+		// Tags minting a private relation with its own option pool.
+		if existing, ok := p.byKey[bundle.RelationKeyTag.String()]; ok {
+			p.byScopedId[scopedId] = existing
+			return existing, false
+		}
+		p.tagRedirected = true
+		def = &relationDef{
+			key:       bundle.RelationKeyTag.String(),
+			sourceKey: bundle.RelationKeyTag.BundledURL(),
+			format:    model.RelationFormat_tag,
+			name:      property.Name,
+			bundled:   true,
+		}
+		p.byScopedId[scopedId] = def
+		p.byKey[def.key] = def
+		return def, false
+	}
+
+	// The minted key must scope too, or two databases' same-id properties
+	// would derive the same relation key and merge anyway.
+	key := "nprop" + shortHash(scopedId)
+	def = &relationDef{
+		key:       key,
+		sourceKey: "relation:" + key,
+		format:    format,
+		name:      property.Name,
+	}
+	p.byScopedId[scopedId] = def
+	p.byKey[key] = def
+	return def, true
+}
+
+// scopePropertyId builds the (database, property id) key. Pages resolve under
+// their parent database's scope, so a page's property still collapses onto the
+// relation its database declared — the one case that must.
+func scopePropertyId(scope, propertyId string) string {
+	return scope + "\x00" + propertyId
+}
+
+// propertyScope canonicalises any of a database's identifiers — its stub id or
+// its data-source id — onto one scope, so a page (whose parent names the data
+// source) and its database (registered under the stub id) resolve the same
+// property to the same relation. An id with no known database, such as a
+// workspace-level page's, scopes to itself: its properties are its own.
+func (c *Converter) propertyScope(id string) string {
+	if canonical, ok := c.propertyScopes[id]; ok {
+		return canonical
+	}
+	return id
+}
+
+// registerPropertyScope aliases a database's data-source id onto its stub id.
+func (c *Converter) registerPropertyScope(stubId, schemaId string) {
+	c.propertyScopes[stubId] = stubId
+	if schemaId != "" {
+		c.propertyScopes[schemaId] = stubId
+	}
+}
+
+// parentContainerId is the database a page belongs to, in whichever parent
+// form the stub carries; empty for a page that is not a database row.
+func parentContainerId(stub Entity) string {
+	switch stub.Parent.Type {
+	case "data_source_id":
+		return stub.Parent.DataSourceId
+	case "database_id":
+		return stub.Parent.DatabaseId
+	}
+	return stub.Id
+}
+
+// resolvePlanTarget resolves a property onto its schema-plan target: the
+// bundled relation, or the plan's shared custom key. created follows the
+// resolveRelation contract (the caller emits the relation object once).
+// A nil def means the target's already-settled format cannot carry this
+// property's values — the caller degrades to the unplanned path with a
+// warning. Sanitize normalizes plans so this is a belt against unsanitized
+// or type-definition-seeded format divergence.
+// noteContainer records that a container resolved one of its columns onto a
+// relation, and reports how many OTHER containers already had. The plan
+// pre-registers every relation it minted, so "did this call create it?" says
+// nothing about sharing — this does.
+func (p *propertiesStore) noteContainer(key, scope string) (others int) {
+	if p.scopesByKey == nil {
+		p.scopesByKey = map[string]map[string]struct{}{}
+	}
+	scopes, ok := p.scopesByKey[key]
+	if !ok {
+		scopes = map[string]struct{}{}
+		p.scopesByKey[key] = scopes
+	}
+	if _, seen := scopes[scope]; seen {
+		return len(scopes) - 1
+	}
+	others = len(scopes)
+	scopes[scope] = struct{}{}
+	return others
+}
+
+func (p *propertiesStore) resolvePlanTarget(scope string, property propertySchema, plan schemaplan.PropertyPlan) (def *relationDef, created bool) {
+	scopedId := scopePropertyId(scope, property.Id)
+	if def, ok := p.byScopedId[scopedId]; ok {
+		return def, false
+	}
+	sourceFormat, _ := relationFormatOf(property.Type)
+	effective := plan.Format
+	if effective == 0 {
+		effective = sourceFormat
+	}
+	if bundle.HasRelation(plan.Key) {
+		key := plan.Key.String()
+		if def, ok := p.byKey[key]; ok {
+			p.byScopedId[scopedId] = def
+			return def, false
+		}
+		bundled := bundle.MustGetRelation(plan.Key)
+		def = &relationDef{
+			key:       key,
+			sourceKey: plan.Key.BundledURL(),
+			format:    bundled.Format,
+			name:      bundled.Name,
+			bundled:   true,
+		}
+		p.byKey[key] = def
+		p.byScopedId[scopedId] = def
+		return def, false
+	}
+	key := schemaplan.CustomRelationKey(plan.Key).String()
+	if def, ok := p.byKey[key]; ok {
+		if !schemaplan.FormatChangeAllowed(effective, def.format) {
+			return nil, false
+		}
+		p.byScopedId[scopedId] = def
+		return def, false
+	}
+	name := plan.Name
+	if name == "" {
+		name = property.Name
+	}
+	def = &relationDef{
+		key:       key,
+		sourceKey: "relation:" + key,
+		format:    effective,
+		name:      name,
+	}
+	p.byKey[key] = def
+	p.byScopedId[scopedId] = def
+	return def, true
+}
+
+// registerPlanDef seeds a plan-minted relation def ahead of use (plan type
+// definitions emit their relations before any container resolves them).
+// Returns whether the def was new — i.e. whether the caller must emit it.
+func (p *propertiesStore) registerPlanDef(key, sourceKey, name string, format model.RelationFormat) bool {
+	if _, ok := p.byKey[key]; ok {
+		return false
+	}
+	p.byKey[key] = &relationDef{key: key, sourceKey: sourceKey, format: format, name: name}
+	return true
+}
+
+func (p *propertiesStore) isTagRedirect(property propertySchema) bool {
+	if property.Type != "select" && property.Type != "multi_select" {
+		return false
+	}
+	switch property.Name {
+	case "Tag":
+		return true
+	case "Tags", "tags":
+		return !p.hasTagNamed
+	default:
+		return false
+	}
+}
+
+// noteName tracks whether an exact "Tag" property exists anywhere, which
+// blocks the "Tags"/"tags" fallback (call for every property before use).
+func (p *propertiesStore) noteName(name string) {
+	if name == "Tag" {
+		p.hasTagNamed = true
+	}
+}
+
+// resolveOption returns the option's source key and whether it still needs
+// to be emitted (workspace-wide dedup by relation key + option name).
+func (p *propertiesStore) resolveOption(relationKey, optionName string) (sourceKey string, created bool) {
+	sourceKey = "option:" + relationKey + ":" + optionName
+	if p.options[sourceKey] {
+		return sourceKey, false
+	}
+	p.options[sourceKey] = true
+	return sourceKey, true
+}
+
+func shortHash(value string) string {
+	sum := sha256.Sum256([]byte(value))
+	return hex.EncodeToString(sum[:8])
+}
+
+// relationFormatOf maps a property type to the anytype relation format
+// (verified against the current API docs; v1 mapped schema phone_number to
+// number). Unsupported types return false and are decided explicitly by the
+// caller.
+func relationFormatOf(propertyType string) (model.RelationFormat, bool) {
+	switch propertyType {
+	case "title":
+		return model.RelationFormat_shorttext, true
+	case "rich_text":
+		return model.RelationFormat_longtext, true
+	case "number":
+		return model.RelationFormat_number, true
+	case "select":
+		// Pick-one cardinality preserved: status is anytype's single-select
+		// format (a recorded decision — v1 collapsed select into tag and the
+		// choice was irreversibly multi-valued after import, GO-6345).
+		return model.RelationFormat_status, true
+	case "multi_select", "people":
+		return model.RelationFormat_tag, true
+	case "status":
+		return model.RelationFormat_status, true
+	case "date", "created_time", "last_edited_time":
+		return model.RelationFormat_date, true
+	case "created_by", "last_edited_by":
+		return model.RelationFormat_shorttext, true
+	case "checkbox":
+		return model.RelationFormat_checkbox, true
+	case "url":
+		return model.RelationFormat_url, true
+	case "email":
+		return model.RelationFormat_email, true
+	case "phone_number":
+		return model.RelationFormat_phone, true
+	case "files":
+		return model.RelationFormat_file, true
+	case "relation":
+		return model.RelationFormat_object, true
+	case "unique_id":
+		return model.RelationFormat_longtext, true
+	case "place":
+		// Notion's place value carries a human address and a display name
+		// (plus coordinates Anytype has nowhere to put); the text is real
+		// user data and used to be dropped as "not supported".
+		return model.RelationFormat_longtext, true
+	case "formula":
+		return model.RelationFormat_shorttext, true
+	case "rollup":
+		return model.RelationFormat_longtext, true
+	default:
+		// verification, button and future types: deliberate skip with an
+		// issue at the call site.
+		return 0, false
+	}
+}
+
+// valuelessProperty reports a Notion property type that holds no value at
+// all. A button is an action someone clicks; there is no data behind it, so
+// "was skipped" would report the loss of something that never existed.
+func valuelessProperty(propertyType string) bool {
+	return propertyType == "button"
+}
+
+func relationObject(def *relationDef) *importv2.Object {
+	uniqueKey, _ := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, def.key)
+	details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName:           domain.String(def.name),
+		bundle.RelationKeyRelationKey:    domain.String(def.key),
+		bundle.RelationKeyRelationFormat: domain.Int64(int64(def.format)),
+		bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+	})
+	if uniqueKey != nil {
+		details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
+	}
+	return &importv2.Object{
+		SourceKey: def.sourceKey,
+		SbType:    coresb.SmartBlockTypeRelation,
+		Payload: &importv2.Snapshot{
+			Key:         def.key,
+			Details:     details,
+			ObjectTypes: []string{bundle.TypeKeyRelation.String()},
+		},
+	}
+}
+
+func optionObject(relationKey, sourceKey, optionName, notionColor string) *importv2.Object {
+	optionKey := "nopt" + shortHash(relationKey+"\x00"+optionName)
+	uniqueKey, _ := domain.NewUniqueKey(coresb.SmartBlockTypeRelationOption, optionKey)
+	details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName:                domain.String(optionName),
+		bundle.RelationKeyRelationKey:         domain.String(relationKey),
+		bundle.RelationKeyRelationOptionColor: domain.String(anytypeColor(notionColor)),
+		bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
+	})
+	if uniqueKey != nil {
+		details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
+	}
+	return &importv2.Object{
+		SourceKey: sourceKey,
+		SbType:    coresb.SmartBlockTypeRelationOption,
+		Payload: &importv2.Snapshot{
+			Key:         optionKey,
+			Details:     details,
+			ObjectTypes: []string{bundle.TypeKeyRelationOption.String()},
+		},
+	}
+}
+
+// anytypeColor maps notion option/text colors onto the anytype palette.
+// brown has no anytype counterpart and maps to its nearest hue (approved
+// data decision — v1 silently dropped it to the default).
+func anytypeColor(notionColor string) string {
+	switch notionColor {
+	case "gray", "gray_background":
+		return "grey"
+	case "green", "green_background":
+		return "lime"
+	case "brown", "brown_background":
+		return "orange"
+	case "default", "default_background", "":
+		return ""
+	default:
+		base := notionColor
+		if idx := len(base) - len("_background"); idx > 0 && base[idx:] == "_background" {
+			base = base[:idx]
+		}
+		return base
+	}
+}
+
+func zeroValueOf(format model.RelationFormat) domain.Value {
+	switch format {
+	case model.RelationFormat_number:
+		return domain.Int64(0)
+	case model.RelationFormat_checkbox:
+		return domain.Bool(false)
+	case model.RelationFormat_tag, model.RelationFormat_status, model.RelationFormat_object, model.RelationFormat_file:
+		return domain.StringList(nil)
+	default:
+		return domain.String("")
+	}
+}

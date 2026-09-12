@@ -1,0 +1,459 @@
+package notion
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/block/importv2/notion/client"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+)
+
+type recordingSink struct {
+	objects []*importv2.Object
+	issues  []importv2.Issue
+	claims  []importv2.IdentityClaim
+	phases  []importv2.Phase
+	items   []importv2.DisplayText
+}
+
+func (s *recordingSink) Object(ctx context.Context, o *importv2.Object) error {
+	s.objects = append(s.objects, o)
+	return nil
+}
+
+func (s *recordingSink) Issue(i importv2.Issue)      { s.issues = append(s.issues, i) }
+func (s *recordingSink) Phase(p importv2.Phase)      { s.phases = append(s.phases, p) }
+func (s *recordingSink) Item(i importv2.DisplayText) { s.items = append(s.items, i) }
+
+func (s *recordingSink) Claim(ctx context.Context, claim importv2.IdentityClaim) error {
+	s.claims = append(s.claims, claim)
+	return nil
+}
+
+func (s *recordingSink) byKey(sourceKey string) *importv2.Object {
+	for _, o := range s.objects {
+		if o.SourceKey == sourceKey {
+			return o
+		}
+	}
+	return nil
+}
+
+func (s *recordingSink) relationByName(name string) *importv2.Object {
+	for _, o := range s.objects {
+		if o.SbType == coresb.SmartBlockTypeRelation &&
+			o.Payload.Details.GetString(bundle.RelationKeyName) == name {
+			return o
+		}
+	}
+	return nil
+}
+
+type stubFactory struct{}
+
+func (stubFactory) MakeCollection(name string, memberSourceKeys []string) (*importv2.Object, error) {
+	details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName: domain.String(name),
+	})
+	return &importv2.Object{
+		SbType:  coresb.SmartBlockTypePage,
+		Payload: &importv2.Snapshot{Details: details, ObjectTypes: []string{bundle.TypeKeyCollection.String()}},
+	}, nil
+}
+
+// scriptedWorkspace is a hand-written API fake: one database with two
+// property flavors (incl. the Tags redirect), one database page exercising
+// blocks (nesting fixes, synced content referenced twice, table headers,
+// mentions), one workspace-level page.
+func scriptedWorkspace(t *testing.T) http.HandlerFunc {
+	t.Helper()
+	routes := map[string]string{}
+
+	searchPage1 := `{"results":[
+		{"object":"data_source","id":"db1","parent":{"type":"database_id","database_id":"realdb1"},
+		 "database_parent":{"type":"workspace","workspace":true},
+		 "title":[{"plain_text":"Tasks","type":"text"}]},
+		{"object":"page","id":"p1","parent":{"type":"data_source_id","data_source_id":"db1"},
+		 "properties":{"Name":{"type":"title","title":[{"plain_text":"Alpha","type":"text"}]}}}
+	],"has_more":true,"next_cursor":"cursor-2"}`
+	searchPage2 := `{"results":[
+		{"object":"page","id":"p2","parent":{"type":"workspace","workspace":true},
+		 "properties":{"Name":{"type":"title","title":[{"plain_text":"Beta","type":"text"}]}}},
+		{"object":"page","id":"n1","parent":{"type":"page_id","page_id":"p1"},
+		 "properties":{"Name":{"type":"title","title":[{"plain_text":"NoteChild","type":"text"}]}}},
+		{"object":"page","id":"n2","parent":{"type":"block_id","block_id":"foreign-block"},
+		 "properties":{"Name":{"type":"title","title":[{"plain_text":"NoteChild","type":"text"}]}}},
+		{"object":"page","id":"n3","parent":{"type":"page_id","page_id":"p1"},
+		 "properties":{"Name":{"type":"title","title":[{"plain_text":"NoteChild","type":"text"}]}}}
+	],"has_more":false,"next_cursor":null}`
+
+	routes["GET /data_sources/db1"] = `{
+		"id":"db1","title":[{"plain_text":"Tasks","type":"text"}],
+		"created_time":"2024-01-01T10:00:00.000Z","last_edited_time":"2024-01-02T10:00:00.000Z",
+		"properties":{
+			"Name":{"id":"title","type":"title","name":"Name"},
+			"Priority":{"id":"prio","type":"select","select":{"options":[
+				{"id":"o1","name":"High","color":"red"},{"id":"o2","name":"Low","color":"brown"}]}},
+			"Tags":{"id":"tags","type":"multi_select","multi_select":{"options":[
+				{"id":"o3","name":"urgent","color":"gray"}]}},
+			"Score":{"id":"score","type":"number"}
+		}}`
+
+	routes["GET /pages/p1"] = `{
+		"id":"p1","archived":false,"icon":{"type":"emoji","emoji":"🔥"},
+		"created_time":"2024-02-01T10:00:00.000Z","last_edited_time":"2024-02-02T10:00:00.000Z",
+		"properties":{
+			"Name":{"id":"title","type":"title","title":[{"plain_text":"Alpha","type":"text"}]},
+			"Priority":{"id":"prio","type":"select","select":{"id":"o1","name":"High","color":"red"}},
+			"Score":{"id":"score","type":"number","number":4.5},
+			"Due":{"id":"due","type":"date","date":{"start":"2024-03-05","end":"2024-03-07"}}
+		}}`
+	routes["GET /pages/p2"] = `{
+		"id":"p2","archived":false,
+		"created_time":"2024-02-01T10:00:00.000Z","last_edited_time":"2024-02-02T10:00:00.000Z",
+		"properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"Beta","type":"text"}]}}}`
+
+	routes["GET /blocks/p1/children"] = `{"results":[
+		{"id":"b1","type":"paragraph","has_children":false,"paragraph":{"rich_text":[
+			{"plain_text":"see ","type":"text","annotations":{"bold":true}},
+			{"plain_text":"Beta","type":"mention","href":"https://app.notion.com/p/00000000000000000000000000000002","mention":{"type":"page","page":{"id":"p2"}}}]}},
+		{"id":"b2","type":"to_do","has_children":true,"to_do":{"rich_text":[{"plain_text":"task","type":"text"}],"checked":true}},
+		{"id":"b3","type":"heading_1","has_children":true,"heading_1":{"rich_text":[{"plain_text":"Head","type":"text"}],"is_toggleable":true}},
+		{"id":"b4","type":"synced_block","has_children":false,"synced_block":{"synced_from":{"block_id":"orig1"}}},
+		{"id":"b5","type":"synced_block","has_children":false,"synced_block":{"synced_from":{"block_id":"orig1"}}},
+		{"id":"tab1-e5f6","type":"table","has_children":true,"table":{"table_width":2,"has_column_header":true,"has_row_header":false}},
+		{"id":"n1","type":"child_page","has_children":true,"child_page":{"title":"NoteChild"}},
+		{"id":"n3","type":"child_page","has_children":true,"child_page":{"title":"NoteChild"}}
+	],"has_more":false,"next_cursor":null}`
+	routes["GET /blocks/b2/children"] = `{"results":[
+		{"id":"b2c","type":"paragraph","has_children":false,"paragraph":{"rich_text":[{"plain_text":"subtask","type":"text"}]}}
+	],"has_more":false,"next_cursor":null}`
+	routes["GET /blocks/b3/children"] = `{"results":[
+		{"id":"b3c","type":"paragraph","has_children":false,"paragraph":{"rich_text":[{"plain_text":"under heading","type":"text"}]}}
+	],"has_more":false,"next_cursor":null}`
+	routes["GET /blocks/orig1/children"] = `{"results":[
+		{"id":"sc1","type":"paragraph","has_children":false,"paragraph":{"rich_text":[{"plain_text":"synced content","type":"text"}]}}
+	],"has_more":false,"next_cursor":null}`
+	routes["GET /blocks/tab1-e5f6/children"] = `{"results":[
+		{"id":"row1-a1b2","type":"table_row","has_children":false,"table_row":{"cells":[[{"plain_text":"H1","type":"text"}],[{"plain_text":"H2","type":"text"}]]}},
+		{"id":"row2-c3d4","type":"table_row","has_children":false,"table_row":{"cells":[[{"plain_text":"a","type":"text"},{"type":"equation","plain_text":"E=mc^2","equation":{"expression":"E=mc^2"}}],[{"plain_text":"b","type":"text"}]]}}
+	],"has_more":false,"next_cursor":null}`
+	routes["GET /blocks/p2/children"] = `{"results":[
+		{"id":"m1","type":"image","has_children":false,"image":{"type":"file","file":{"url":""},"caption":[{"plain_text":"lost image","type":"text"}]}},
+		{"id":"m2","type":"file","has_children":false,"file":{"type":"external","name":"a.bin","external":{"url":"https://drive.example.com/uc?id=AAA"}}},
+		{"id":"m3","type":"file","has_children":false,"file":{"type":"external","name":"b.bin","external":{"url":"https://drive.example.com/uc?id=BBB"}}},
+		{"id":"m4","type":"image","has_children":false,"image":{"type":"file","file":{"url":"https://files.example.com/bucket/pic.png?X-Amz-Signature=one"}}},
+		{"id":"m5","type":"image","has_children":false,"image":{"type":"file","file":{"url":"https://files.example.com/bucket/pic.png?X-Amz-Signature=two"}}}
+	],"has_more":false,"next_cursor":null}`
+
+	emptyPage := func(id, title string) string {
+		return `{"id":"` + id + `","archived":false,
+			"created_time":"2024-02-01T10:00:00.000Z","last_edited_time":"2024-02-02T10:00:00.000Z",
+			"properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"` + title + `","type":"text"}]}}}`
+	}
+	routes["GET /pages/n1"] = emptyPage("n1", "NoteChild")
+	routes["GET /pages/n2"] = emptyPage("n2", "NoteChild")
+	routes["GET /pages/n3"] = emptyPage("n3", "NoteChild")
+	routes["GET /blocks/n1/children"] = `{"results":[],"has_more":false,"next_cursor":null}`
+	routes["GET /blocks/n2/children"] = `{"results":[],"has_more":false,"next_cursor":null}`
+	routes["GET /blocks/n3/children"] = `{"results":[],"has_more":false,"next_cursor":null}`
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/search" {
+			var body struct {
+				StartCursor string `json:"start_cursor"`
+			}
+			_ = jsonDecode(r, &body)
+			if body.StartCursor == "" {
+				fmt.Fprint(w, searchPage1)
+			} else {
+				fmt.Fprint(w, searchPage2)
+			}
+			return
+		}
+		if response, ok := routes[r.Method+" "+r.URL.Path]; ok {
+			fmt.Fprint(w, response)
+			return
+		}
+		t.Errorf("unexpected api call: %s %s", r.Method, r.URL.Path)
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+func jsonDecode(r *http.Request, out any) error {
+	defer r.Body.Close()
+	return json.NewDecoder(r.Body).Decode(out)
+}
+
+func runScripted(t *testing.T) (*recordingSink, importv2.RootSpec, []importv2.IdentityClaim) {
+	t.Helper()
+	server := httptest.NewServer(scriptedWorkspace(t))
+	t.Cleanup(server.Close)
+	apiClient := client.NewClient("token",
+		client.WithBaseURL(server.URL),
+		client.WithRateLimit(1000),
+		client.WithRetryPolicy(client.RetryPolicy{MaxAttempts: 2, BaseDelay: time.Millisecond, MaxDelay: time.Millisecond, TotalBudget: time.Second}),
+	)
+	converter := New(apiClient, client.NewFileFetcher(), stubFactory{}, t.TempDir())
+
+	var claims []importv2.IdentityClaim
+	require.NoError(t, converter.EnumerateIdentities(context.Background(), func(c importv2.IdentityClaim) error {
+		claims = append(claims, c)
+		return nil
+	}))
+	sink := &recordingSink{}
+	rootSpec, err := converter.Convert(context.Background(), sink)
+	require.NoError(t, err)
+	return sink, rootSpec, claims
+}
+
+func TestScriptedWorkspace(t *testing.T) {
+	sink, rootSpec, claims := runScripted(t)
+
+	t.Run("pass 1 claims every entity once", func(t *testing.T) {
+		require.Len(t, claims, 6)
+		assert.Equal(t, "Notion Import", rootSpec.CollectionName)
+		assert.Equal(t, model.BlockContentWidget_CompactList, rootSpec.WidgetLayout)
+	})
+
+	t.Run("database becomes a collection with its pages and seeded schema", func(t *testing.T) {
+		collection := sink.byKey("db1")
+		require.NotNil(t, collection)
+		assert.True(t, collection.IsRootCandidate)
+		assert.Equal(t, "Tasks", collection.Payload.Details.GetString(bundle.RelationKeyName))
+
+		priority := sink.relationByName("Priority")
+		require.NotNil(t, priority, "select property emits a relation")
+		assert.Equal(t, int64(model.RelationFormat_status), priority.Payload.Details.GetInt64(bundle.RelationKeyRelationFormat),
+			"single select keeps pick-one cardinality (decision §13.8)")
+
+		score := sink.relationByName("Score")
+		require.NotNil(t, score)
+		assert.Equal(t, int64(model.RelationFormat_number), score.Payload.Details.GetInt64(bundle.RelationKeyRelationFormat))
+
+		assert.Nil(t, sink.relationByName("Tags"),
+			"Tags multi_select redirects to the bundled tag relation, no new relation")
+		urgent := sink.byKey("option:tag:urgent")
+		require.NotNil(t, urgent, "redirected option lands on the bundled tag key")
+		assert.Equal(t, "grey", urgent.Payload.Details.GetString(bundle.RelationKeyRelationOptionColor))
+
+		priorityKey := priority.Payload.Key
+		low := sink.byKey("option:" + priorityKey + ":Low")
+		require.NotNil(t, low)
+		assert.Equal(t, "orange", low.Payload.Details.GetString(bundle.RelationKeyRelationOptionColor),
+			"brown maps to its nearest anytype hue")
+	})
+
+	t.Run("page details: options, numbers, date range companion", func(t *testing.T) {
+		page := sink.byKey("p1")
+		require.NotNil(t, page)
+		assert.False(t, page.IsRootCandidate, "parented to an imported database")
+		assert.Equal(t, "Alpha", page.Payload.Details.GetString(bundle.RelationKeyName))
+		assert.Equal(t, "🔥", page.Payload.Details.GetString(bundle.RelationKeyIconEmoji))
+
+		priorityKey := sink.relationByName("Priority").Payload.Key
+		assert.Equal(t, []string{"option:" + priorityKey + ":High"},
+			page.Payload.Details.GetStringList(domain.RelationKey(priorityKey)))
+
+		scoreKey := sink.relationByName("Score").Payload.Key
+		assert.Equal(t, 4.5, page.Payload.Details.GetFloat64(domain.RelationKey(scoreKey)))
+
+		due := sink.relationByName("Due")
+		require.NotNil(t, due)
+		dueEnd := sink.relationByName("Due (end)")
+		require.NotNil(t, dueEnd, "date range end becomes a companion relation")
+		assert.Positive(t, page.Payload.Details.GetInt64(domain.RelationKey(due.Payload.Key)))
+		assert.Positive(t, page.Payload.Details.GetInt64(domain.RelationKey(dueEnd.Payload.Key)))
+	})
+
+	t.Run("blocks: nesting, synced content, mentions, table headers", func(t *testing.T) {
+		page := sink.byKey("p1")
+		require.NotNil(t, page)
+		blocks := map[string]*model.Block{}
+		for _, b := range page.Payload.Blocks {
+			blocks[b.Id] = b
+		}
+
+		mentionBlock := blocks["b1"]
+		require.NotNil(t, mentionBlock)
+		marks := mentionBlock.GetText().GetMarks().GetMarks()
+		require.NotEmpty(t, marks)
+		var mentionParam string
+		for _, mark := range marks {
+			if mark.Type == model.BlockContentTextMark_Mention {
+				mentionParam = mark.Param
+			}
+			assert.NotEqual(t, model.BlockContentTextMark_Link, mark.Type,
+				"a resolved mention must not also carry a Link mark for its own href")
+		}
+		assert.Equal(t, "p2", mentionParam)
+
+		todo := blocks["b2"]
+		require.NotNil(t, todo)
+		assert.True(t, todo.GetText().Checked)
+		assert.Equal(t, []string{"b2c"}, todo.ChildrenIds, "to_do children nest exactly once")
+
+		heading := blocks["b3"]
+		require.NotNil(t, heading)
+		assert.Equal(t, []string{"b3c"}, heading.ChildrenIds, "toggleable heading keeps its children (v1 flattened)")
+
+		syncedA := blocks["sc1-b4"]
+		require.NotNil(t, syncedA, "synced-block content imported (v1 lost it)")
+		assert.Equal(t, "synced content", syncedA.GetText().GetText())
+		syncedB := blocks["sc1-b5"]
+		require.NotNil(t, syncedB, "second duplicate of the same original keeps its own copy")
+		assert.Equal(t, "synced content", syncedB.GetText().GetText())
+		assert.Nil(t, blocks["sc1"], "hoisted synced content must not reuse the original's ids verbatim")
+
+		row1 := blocks["rrow1a1b2"]
+		require.NotNil(t, row1, "row ids are dash-free derivatives of the notion id")
+		assert.True(t, row1.GetTableRow().IsHeader, "has_column_header marks the first row (v1 inverted)")
+		row2 := blocks["rrow2c3d4"]
+		require.NotNil(t, row2)
+		assert.False(t, row2.GetTableRow().IsHeader)
+	})
+
+	t.Run("table cell ids satisfy the rowID-colID single-dash invariant", func(t *testing.T) {
+		// ParseCellID splits on the FIRST dash and IsTableCell rejects
+		// multi-dash ids; dashed notion UUIDs corrupted every table before.
+		page := sink.byKey("p1")
+		require.NotNil(t, page)
+		cells := 0
+		for _, b := range page.Payload.Blocks {
+			if row := b.GetTableRow(); row != nil {
+				assert.NotContains(t, b.Id, "-", "row id must be dash-free")
+				for _, cellId := range b.ChildrenIds {
+					assert.Equal(t, 1, strings.Count(cellId, "-"),
+						"cell id %q must contain exactly one dash", cellId)
+					assert.True(t, strings.HasPrefix(cellId, b.Id+"-"),
+						"cell id %q must start with its row id", cellId)
+					cells++
+				}
+			}
+			if column := b.GetTableColumn(); column != nil {
+				assert.NotContains(t, b.Id, "-", "column id must be dash-free")
+			}
+		}
+		assert.Equal(t, 4, cells)
+	})
+
+	t.Run("child_page resolves by block id (== child page id), beating the ambiguous title twins", func(t *testing.T) {
+		// n1 and n3 are BOTH children of p1 titled "NoteChild" (and n2 is a
+		// same-titled page block-parented to ANOTHER page): title matching
+		// is ambiguous within the page, so only resolution by the block's
+		// own id (which equals the child page id) links each block right.
+		page := sink.byKey("p1")
+		require.NotNil(t, page)
+		links := map[string]string{}
+		for _, b := range page.Payload.Blocks {
+			if b.Id == "n1" || b.Id == "n3" {
+				require.NotNil(t, b.GetLink(), "child_page %s must resolve to a link, not a placeholder", b.Id)
+				links[b.Id] = b.GetLink().TargetBlockId
+			}
+		}
+		assert.Equal(t, map[string]string{"n1": "n1", "n3": "n3"}, links)
+	})
+
+	t.Run("nested and block-parented pages stay out of the root collection", func(t *testing.T) {
+		// v1's orphan rule: block-parented entities are reachable via their
+		// hosting page's child_page link, never root (the dead entityById
+		// check used to promote every one of them).
+		for _, key := range []string{"n1", "n2", "n3", "p1"} {
+			object := sink.byKey(key)
+			require.NotNil(t, object)
+			assert.False(t, object.IsRootCandidate, "%s must not be a root candidate", key)
+		}
+	})
+
+	t.Run("inline equation in a table cell stays in the text flow", func(t *testing.T) {
+		page := sink.byKey("p1")
+		require.NotNil(t, page)
+		var cellTexts []string
+		for _, b := range page.Payload.Blocks {
+			if strings.HasPrefix(b.Id, "rrow2c3d4-") && b.GetText() != nil {
+				cellTexts = append(cellTexts, b.GetText().Text)
+			}
+		}
+		assert.Contains(t, cellTexts, "aE=mc^2",
+			"the equation expression must stay inline in the cell, not vanish")
+	})
+
+	t.Run("media blocks: empty url degrades with caption, external files dedup by full url", func(t *testing.T) {
+		page := sink.byKey("p2")
+		require.NotNil(t, page)
+		blocks := map[string]*model.Block{}
+		for _, b := range page.Payload.Blocks {
+			blocks[b.Id] = b
+		}
+
+		assert.Nil(t, blocks["m1"], "empty-url image emits no file block")
+		caption := blocks["m1-caption"]
+		require.NotNil(t, caption, "the empty-url image's caption survives")
+		assert.Equal(t, "lost image", caption.GetText().GetText())
+		var warned bool
+		for _, issue := range sink.issues {
+			// Keyed by the PAGE, not the block: a block id resolves to
+			// nothing a reader can open, so the report could neither name
+			// nor link it.
+			if issue.Code == importv2.IssueDataLoss && issue.SourceKey == "p2" && issue.Subject == "image" {
+				warned = true
+			}
+		}
+		assert.True(t, warned, "empty-url media must report dataLoss against its page, not vanish silently")
+
+		require.NotNil(t, blocks["m2"])
+		require.NotNil(t, blocks["m3"])
+		assert.NotEqual(t, blocks["m2"].GetFile().TargetObjectId, blocks["m3"].GetFile().TargetObjectId,
+			"external urls differing only in query are different files")
+
+		require.NotNil(t, blocks["m4"])
+		require.NotNil(t, blocks["m5"])
+		assert.Equal(t, blocks["m4"].GetFile().TargetObjectId, blocks["m5"].GetFile().TargetObjectId,
+			"notion-hosted urls differing only in signature dedup to one file")
+		fileObjects := 0
+		for _, o := range sink.objects {
+			if o.SourceKey == blocks["m4"].GetFile().TargetObjectId {
+				fileObjects++
+			}
+		}
+		assert.Equal(t, 1, fileObjects, "the deduped notion-hosted file is emitted once")
+	})
+
+	t.Run("workspace-level page is a root candidate", func(t *testing.T) {
+		page := sink.byKey("p2")
+		require.NotNil(t, page)
+		assert.True(t, page.IsRootCandidate)
+	})
+
+	t.Run("block ids are unique within every snapshot", func(t *testing.T) {
+		// State keys blocks by id: a repeated id collapses all copies into
+		// one block claimed by several parents (repeated synced originals
+		// used to trigger exactly that).
+		assertUniqueBlockIds(t, sink)
+	})
+}
+
+func assertUniqueBlockIds(t *testing.T, sink *recordingSink) {
+	t.Helper()
+	for _, object := range sink.objects {
+		seen := map[string]bool{}
+		for _, block := range object.Payload.Blocks {
+			assert.False(t, seen[block.Id],
+				"duplicate block id %q in object %q", block.Id, object.SourceKey)
+			seen[block.Id] = true
+		}
+	}
+}

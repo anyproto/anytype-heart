@@ -1,0 +1,750 @@
+package enginetest
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"sort"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/query"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+)
+
+// The DM-2 equivalence gate: kill a run during pass 3 at the
+// create, upload and finalize boundaries; resume it from the run dir alone
+// (no source, no network — ResumeDurable never sees the markdown tree);
+// assert the final object set is IDENTICAL to an uninterrupted run. The
+// "kill" is a suspend-shaped stop with no settlement: the engine stops
+// without compensating and nothing marks the manifest, leaving exactly
+// what a killed process leaves — manifest at materializing, partial
+// effects journaled (detached writes land), spool whole.
+
+// crashTree is the shared source: five linked pages (c.md references the
+// FIRST page — a late row resolving against a possibly-skipped early row),
+// an image, and front-matter deriving a relation and a type.
+// crashFixtureMtime pins every fixture file's mtime, so the mtime-derived
+// original-created timestamps have an ABSOLUTE expected value (review
+// Class H, the structural finding: control==resumed equality alone cannot
+// catch a systematic drop — both sides go to zero together).
+var crashFixtureMtime = time.Unix(1700000000, 0)
+
+func crashTree(t *testing.T) string {
+	root := writeTree(t, map[string]string{
+		"index.md":       "---\nAuthor: Roman\ntype: Zettel\n---\n# Home\n\nSee [A](notes/a.md) and ![pic](assets/pic.png)\n",
+		"notes/a.md":     "# A\n\nNext: [B](b.md)\n",
+		"notes/b.md":     "# B\n",
+		"notes/c.md":     "# C\n\nBack to [Home](../index.md)\n",
+		"notes/d.md":     "# D\n",
+		"assets/pic.png": "png-bytes",
+	})
+	require.NoError(t, filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return err
+		}
+		return os.Chtimes(path, crashFixtureMtime, crashFixtureMtime)
+	}))
+	return root
+}
+
+// runControl produces the uninterrupted reference run over the same tree.
+func runControl(t *testing.T, root string) (*Fixture, *importv2.Result) {
+	t.Helper()
+	fx := NewFixture(t)
+	dir := filepath.Join(t.TempDir(), "run-control")
+	result := fx.RunMarkdownDurable(context.Background(), t, root, request(false, false), dir)
+	require.NoError(t, result.Err)
+	return fx, result
+}
+
+// interrupt runs one incarnation with the given hooks armed, expecting the
+// suspend-shaped stop, and disarms the hooks for the resume.
+func interrupt(t *testing.T, fx *Fixture, root, dir string, arm func(cancel context.CancelCauseFunc)) *importv2.Result {
+	t.Helper()
+	ctx, cancel := context.WithCancelCause(context.Background())
+	defer cancel(nil)
+	arm(cancel)
+	result := fx.RunMarkdownDurable(ctx, t, root, request(false, false), dir)
+	fx.Space.BeforeCreate = nil
+	fx.Space.AfterCreate = nil
+	fx.Space.BeforeReset = nil
+	fx.Uploader.BeforeUpload = nil
+	return result
+}
+
+// assertResumedClean is the shared postcondition: the resumed incarnation
+// succeeded, reported nothing (no reconcile noise, no rehydrated abort
+// records), and its counters continue the ledger's.
+func assertResumedClean(t *testing.T, resumed, control *importv2.Result) {
+	t.Helper()
+	require.NoError(t, resumed.Err)
+	assert.False(t, resumed.Suspended)
+	assert.Empty(t, resumed.Issues, "a resumed run must not invent issues")
+	assert.Zero(t, resumed.Failed)
+	assert.Equal(t, control.Created, resumed.Created, "counters must resume, not restart")
+	assert.Equal(t, control.Updated, resumed.Updated)
+}
+
+func TestCrashResumeMidCreate(t *testing.T) {
+	t.Run("killed before a create: the resumed run converges byte-identically", func(t *testing.T) {
+		// given: a control run and a run killed at its third tree create
+		root := crashTree(t)
+		control, controlResult := runControl(t, root)
+		fx := NewFixture(t)
+		dir := filepath.Join(t.TempDir(), "run-crash")
+		var creates atomic.Int32
+		inc1 := interrupt(t, fx, root, dir, func(cancel context.CancelCauseFunc) {
+			fx.Space.BeforeCreate = func(id string) error {
+				if creates.Add(1) == 3 {
+					cancel(importv2.ErrSuspended)
+					return context.Canceled
+				}
+				return nil
+			}
+		})
+		require.Error(t, inc1.Err)
+		require.True(t, inc1.Suspended, "the stop must be the suspend shape, not an abort")
+		require.Less(t, len(fx.Space.Created), len(control.Space.Created),
+			"the kill must land mid-materialize or the test proves nothing")
+
+		// when: resumed from the dir alone
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
+
+		// then
+		assertResumedClean(t, resumed, controlResult)
+		assert.Equal(t, control.Dump(), fx.Dump(),
+			"the final object set must be identical to the uninterrupted run")
+		// ABSOLUTE, not control-relative (review Class H: with
+		// stampProvenance dropping the field, control and resumed both went
+		// to zero and the equality stayed green): the fixture mtime is
+		// pinned, so the surviving value is a literal.
+		wantTs := crashFixtureMtime.Unix()
+		assert.Equal(t, map[string]int64{
+			"Home": wantTs, "A": wantTs, "B": wantTs, "C": wantTs, "D": wantTs,
+			"Author": 0, "Zettel": 0, "Markdown Import": 0,
+		}, fx.OriginalTimestamps(),
+			"original-created timestamps must survive the spool and the restart, at their real values")
+	})
+}
+
+func TestResumedCancelCompensatesEveryIncarnation(t *testing.T) {
+	t.Run("cancel on a resumed run removes ALL incarnations' objects", func(t *testing.T) {
+		// given — the review's Class A: the engine compensates from the
+		// in-memory journal, and a resumed incarnation's fresh journal knew
+		// nothing about the crash's ledger. A user pressing Cancel on the
+		// auto-resumed import at app launch is the ordinary trigger; the
+		// wire advertises CancelEffect = RemovesCreated on exactly these
+		// runs, so a partial undo is a broken promise plus orphans.
+		root := crashTree(t)
+		fx := NewFixture(t)
+		dir := filepath.Join(t.TempDir(), "run-crash")
+		var creates atomic.Int32
+		inc1 := interrupt(t, fx, root, dir, func(cancel context.CancelCauseFunc) {
+			fx.Space.BeforeCreate = func(id string) error {
+				if creates.Add(1) == 3 {
+					cancel(importv2.ErrSuspended)
+					return context.Canceled
+				}
+				return nil
+			}
+		})
+		require.Error(t, inc1.Err)
+		require.True(t, inc1.Suspended)
+		fx.Space.mu.Lock()
+		leftBehind := len(fx.Space.Created)
+		fx.Space.mu.Unlock()
+		require.Positive(t, leftBehind, "incarnation 1 must have created something to orphan")
+
+		// when: the resumed incarnation is cancelled mid-flight with a
+		// PLAIN cause (user cancel — the engine compensates)
+		ctx, cancel := context.WithCancelCause(context.Background())
+		defer cancel(nil)
+		var resumeCreates atomic.Int32
+		fx.Space.BeforeCreate = func(id string) error {
+			if resumeCreates.Add(1) == 2 {
+				cancel(nil)
+				return context.Canceled
+			}
+			return nil
+		}
+		resumed := fx.ResumeDurable(ctx, t, dir, request(false, false))
+		fx.Space.BeforeCreate = nil
+
+		// then: the cancel undoes EVERYTHING the run ever created, across
+		// incarnations, and reports it truthfully
+		require.Error(t, resumed.Err)
+		assert.False(t, resumed.Suspended)
+		fx.Space.mu.Lock()
+		remaining := len(fx.Space.Created)
+		fx.Space.mu.Unlock()
+		assert.Zero(t, remaining,
+			"cancel on a resumed run must remove every incarnation's objects, not only its own")
+		assert.Zero(t, resumed.Leaked)
+		assert.GreaterOrEqual(t, int64(resumed.Compensated), int64(leftBehind),
+			"the compensation count must cover the previous incarnation's objects")
+	})
+}
+
+func TestCrashResumeTornCreate(t *testing.T) {
+	t.Run("killed between the tree write and its effect row: the heal repairs it", func(t *testing.T) {
+		// given: a run killed right after page B's tree write. The kill's
+		// effect on the ledger — the detached effect write never landed — is
+		// reproduced by rewinding B's row to its pre-effect state (claimed),
+		// and the possibly-hollow tree by blanking B's recorded state.
+		root := crashTree(t)
+		control, controlResult := runControl(t, root)
+		fx := NewFixture(t)
+		dir := filepath.Join(t.TempDir(), "run-crash")
+		var tornId atomic.Value
+		inc1 := interrupt(t, fx, root, dir, func(cancel context.CancelCauseFunc) {
+			fx.Space.AfterCreate = func(id string) {
+				fx.Space.mu.Lock()
+				name := fx.Space.Created[id].CombinedDetails().GetString(bundle.RelationKeyName)
+				fx.Space.mu.Unlock()
+				if name == "B" {
+					tornId.Store(id)
+					cancel(importv2.ErrSuspended)
+				}
+			}
+		})
+		require.Error(t, inc1.Err)
+		require.True(t, inc1.Suspended)
+		id, ok := tornId.Load().(string)
+		require.True(t, ok, "page B must have been created before the kill")
+		rewindEntryToClaimed(t, dir, id)
+		fx.Space.mu.Lock()
+		fx.Space.Created[id] = hollowState(id)
+		fx.Space.mu.Unlock()
+
+		// when
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
+
+		// then: the hollow tree carries the full imported state again
+		assertResumedClean(t, resumed, controlResult)
+		assert.Equal(t, control.Dump(), fx.Dump(),
+			"the heal must leave the object set identical to the uninterrupted run")
+	})
+}
+
+func TestCrashResumeTornDerivedCreate(t *testing.T) {
+	t.Run("a torn derived-class create heals on resume", func(t *testing.T) {
+		// given — review Class C (executed): derived-class objects are never
+		// claimed in pass 1, so their only row was the effect row written
+		// AFTER the create. A tear in that window left no ledger proof at
+		// all: the hollow tree came back empty (skip-and-read), counters
+		// diverged, and the object was unrepairable afterwards (canUpdate
+		// excludes Relation/RelationOption; the origin guard refuses hollow
+		// types). The write-ahead intent row closes the window; this test
+		// reproduces the tear by rewinding the row to its pre-effect state
+		// and blanking the tree.
+		root := crashTree(t)
+		control, controlResult := runControl(t, root)
+		fx := NewFixture(t)
+		dir := filepath.Join(t.TempDir(), "run-crash")
+		var tornId atomic.Value
+		inc1 := interrupt(t, fx, root, dir, func(cancel context.CancelCauseFunc) {
+			fx.Space.AfterCreate = func(id string) {
+				fx.Space.mu.Lock()
+				name := fx.Space.Created[id].CombinedDetails().GetString(bundle.RelationKeyName)
+				fx.Space.mu.Unlock()
+				if name == "Author" { // the derived relation from the front matter
+					tornId.Store(id)
+					cancel(importv2.ErrSuspended)
+				}
+			}
+		})
+		require.Error(t, inc1.Err)
+		require.True(t, inc1.Suspended)
+		id, ok := tornId.Load().(string)
+		require.True(t, ok, "the derived relation must have been created before the kill")
+		rewindEntryToClaimed(t, dir, id)
+		fx.Space.mu.Lock()
+		fx.Space.Created[id] = hollowState(id)
+		fx.Space.mu.Unlock()
+
+		// when
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
+
+		// then: the hollow relation carries its full definition again
+		assertResumedClean(t, resumed, controlResult)
+		assert.Equal(t, control.Dump(), fx.Dump(),
+			"the healed derived object must leave the set identical to the uninterrupted run")
+	})
+}
+
+func TestCrashResumeAtUpload(t *testing.T) {
+	t.Run("killed at the upload: the resumed run re-uploads and converges", func(t *testing.T) {
+		// given
+		root := crashTree(t)
+		control, controlResult := runControl(t, root)
+		fx := NewFixture(t)
+		dir := filepath.Join(t.TempDir(), "run-crash")
+		inc1 := interrupt(t, fx, root, dir, func(cancel context.CancelCauseFunc) {
+			fx.Uploader.BeforeUpload = func(string) error {
+				cancel(importv2.ErrSuspended)
+				return context.Canceled
+			}
+		})
+		require.Error(t, inc1.Err)
+		require.True(t, inc1.Suspended)
+		require.Empty(t, fx.Uploader.Uploads, "the kill must land before the upload recorded")
+
+		// when
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
+
+		// then: uploaded exactly once — asserted ABSOLUTELY (the content
+		// hash of the fixture bytes), not only against the control — plus
+		// record equality for the request surface. Honesty note (review
+		// Class H): ImageKind and EncryptionKeys are zero-valued here
+		// because no converter in the repo sets them yet; their
+		// serialization is pinned by runstore's round-trip test, and
+		// consumer-side coverage is owed by the converter that first sets
+		// them (see the FileSource field docs).
+		assertResumedClean(t, resumed, controlResult)
+		assert.Equal(t, control.Dump(), fx.Dump())
+		assert.Equal(t, []string{contentHash([]byte("png-bytes"))}, fx.Uploader.Uploads,
+			"exactly one upload, of exactly the fixture bytes")
+		assert.Equal(t, control.Uploader.Records, fx.Uploader.Records,
+			"the resumed upload must present exactly what the uninterrupted one did")
+	})
+}
+
+// killInsideFinalizeCreate arms a kill that fires INSIDE finalize's own
+// tree create (the streamCreates+1-th create attempt): the collection is
+// CLAIMED — a late, non-terminal row — but never created. The review's
+// Class B found the earlier version of this boundary (kill after the last
+// stream create) never reached finalize at all: the post-stream guard
+// tripped first and the ledger held no collection row, so the
+// Late-non-terminal drop rule it claimed to pin was untested.
+func killInsideFinalizeCreate(fx *Fixture, streamCreates int32, cancel context.CancelCauseFunc) {
+	var creates atomic.Int32
+	fx.Space.BeforeCreate = func(id string) error {
+		if creates.Add(1) == streamCreates+1 {
+			cancel(importv2.ErrSuspended)
+			return context.Canceled
+		}
+		return nil
+	}
+}
+
+func TestCrashResumeWithoutSource(t *testing.T) {
+	t.Run("resumed with the source tree DELETED: the run dir alone suffices", func(t *testing.T) {
+		// given — review Class D (executed): markdown loose files were
+		// spooled as absolute paths into the USER'S tree, nothing was copied
+		// into the run dir, and the resumed upload read from a path that no
+		// longer existed — reported success with zero issues, because the
+		// old fake uploader never opened what it was given. The no-source
+		// invariant (a resumed run needs no source) must hold for
+		// every converter path, not only the two that were examined.
+		root := crashTree(t)
+		control, controlResult := runControl(t, root)
+		fx := NewFixture(t)
+		dir := filepath.Join(t.TempDir(), "run-crash")
+		inc1 := interrupt(t, fx, root, dir, func(cancel context.CancelCauseFunc) {
+			fx.Uploader.BeforeUpload = func(string) error {
+				cancel(importv2.ErrSuspended)
+				return context.Canceled
+			}
+		})
+		require.Error(t, inc1.Err)
+		require.True(t, inc1.Suspended)
+
+		// when: the source is gone — a moved tree, an unplugged drive
+		require.NoError(t, os.RemoveAll(root))
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
+
+		// then: identical outcome, from the run dir alone
+		assertResumedClean(t, resumed, controlResult)
+		assert.Equal(t, control.Dump(), fx.Dump(),
+			"the resumed run must not depend on the source tree existing")
+	})
+}
+
+func TestCompensationCoversFiles(t *testing.T) {
+	t.Run("cancel deletes owned file objects and never pre-existing ones", func(t *testing.T) {
+		// given — review Class H named this the worst blind spot: no crash
+		// test compensated a FILE at all, so inverting the ownership
+		// classification (!checker.Exists) left the entire suite green while
+		// compensation would delete a user's pre-existing file objects. Two
+		// images: one whose content-hash id is pre-indexed (a dedup hit on
+		// the user's existing file), one genuinely new.
+		root := writeTree(t, map[string]string{
+			"index.md":     "# Home\n\n![a](assets/a.png) ![b](assets/b.png)\n",
+			"assets/a.png": "png-bytes-owned",
+			"assets/b.png": "png-bytes-preexisting",
+		})
+		fx := NewFixture(t)
+		ownedId := "file-" + contentHash([]byte("png-bytes-owned"))
+		preId := "file-" + contentHash([]byte("png-bytes-preexisting"))
+		fx.Store.AddObjects(t, SpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:   domain.String(preId),
+			bundle.RelationKeyName: domain.String("user-file"),
+		}})
+
+		// kill inside finalize's create: every stream object (both uploads
+		// included) has persisted and journaled
+		control, _ := runControl(t, root)
+		streamCreates := int32(len(control.Space.Created) - 1)
+		dir := filepath.Join(t.TempDir(), "run-crash")
+		inc1 := interrupt(t, fx, root, dir, func(cancel context.CancelCauseFunc) {
+			killInsideFinalizeCreate(fx, streamCreates, cancel)
+		})
+		require.True(t, inc1.Suspended)
+		require.Len(t, fx.Uploader.Uploads, 2, "both files must have uploaded before the kill")
+
+		// when: the RESUMED run is cancelled at its first create (finalize's
+		// own — everything else replays skipped): plain cause, full undo
+		ctx, cancel := context.WithCancelCause(context.Background())
+		defer cancel(nil)
+		fx.Space.BeforeCreate = func(id string) error {
+			cancel(nil)
+			return context.Canceled
+		}
+		resumed := fx.ResumeDurable(ctx, t, dir, request(false, false))
+		fx.Space.BeforeCreate = nil
+
+		// then
+		require.Error(t, resumed.Err)
+		assert.Zero(t, resumed.Leaked)
+		fx.Space.mu.Lock()
+		deleted := append([]string(nil), fx.Space.Deleted...)
+		fx.Space.mu.Unlock()
+		assert.Contains(t, deleted, ownedId,
+			"the file object this run's upload created must be compensated")
+		assert.NotContains(t, deleted, preId,
+			"a pre-existing (content-deduped) file object must NEVER be deleted")
+	})
+}
+
+func TestCrashResumeAtFinalize(t *testing.T) {
+	t.Run("killed inside finalize's create: the resumed run builds ONE collection", func(t *testing.T) {
+		// given: the interrupted finalize claim is a late non-terminal row
+		// under the SAME source key the resumed finalize re-claims (the
+		// stub factory's name is stable — and the adapter's date suffix has
+		// minute granularity, so a fast crash-restart lands on the same key
+		// there too): the re-claim displaces the abandoned id.
+		root := crashTree(t)
+		control, controlResult := runControl(t, root)
+		streamCreates := int32(len(control.Space.Created) - 1) // minus the collection
+		fx := NewFixture(t)
+		dir := filepath.Join(t.TempDir(), "run-crash")
+		inc1 := interrupt(t, fx, root, dir, func(cancel context.CancelCauseFunc) {
+			killInsideFinalizeCreate(fx, streamCreates, cancel)
+		})
+		require.Error(t, inc1.Err)
+		require.True(t, inc1.Suspended)
+		require.Len(t, fx.Space.Created, int(streamCreates), "the collection must not exist yet")
+
+		// when
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
+
+		// then
+		assertResumedClean(t, resumed, controlResult)
+		assert.Equal(t, 1, countCollections(fx), "exactly one root collection despite the re-claim")
+		assert.Equal(t, normalizeDump(control.Dump()), normalizeDump(fx.Dump()),
+			"the object set must be identical up to the re-minted collection id")
+		assert.NotEmpty(t, resumed.RootCollectionId)
+	})
+
+	t.Run("killed inside finalize TWICE: displaced claims never become phantoms", func(t *testing.T) {
+		// given — the review's executed Class B repro: two crashes across
+		// finalize under one collection key. The second incarnation's
+		// re-claim displaces the first's abandoned id into a synthetic row;
+		// incarnation 3 must not read that synthetic as a stream row (a
+		// phantom 'claimed object was never emitted' on every resume, and a
+		// second collection).
+		root := crashTree(t)
+		control, controlResult := runControl(t, root)
+		streamCreates := int32(len(control.Space.Created) - 1)
+		fx := NewFixture(t)
+		dir := filepath.Join(t.TempDir(), "run-crash")
+		inc1 := interrupt(t, fx, root, dir, func(cancel context.CancelCauseFunc) {
+			killInsideFinalizeCreate(fx, streamCreates, cancel)
+		})
+		require.True(t, inc1.Suspended)
+
+		// incarnation 2: same kill, one create later (the collection create
+		// is now the FIRST create — everything else replays skipped)
+		ctx2, cancel2 := context.WithCancelCause(context.Background())
+		defer cancel2(nil)
+		fx.Space.BeforeCreate = func(id string) error {
+			cancel2(importv2.ErrSuspended)
+			return context.Canceled
+		}
+		inc2 := fx.ResumeDurable(ctx2, t, dir, request(false, false))
+		fx.Space.BeforeCreate = nil
+		require.Error(t, inc2.Err)
+		require.True(t, inc2.Suspended)
+
+		// when: the third incarnation runs to completion
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
+
+		// then
+		assertResumedClean(t, resumed, controlResult)
+		assert.Equal(t, 1, countCollections(fx),
+			"two abandoned finalize claims must yield ONE collection, not three")
+		assert.Equal(t, normalizeDump(control.Dump()), normalizeDump(fx.Dump()))
+	})
+}
+
+func TestCrashResumeAfterFinalize(t *testing.T) {
+	t.Run("killed after finalize, before disposal: the resumed run changes nothing", func(t *testing.T) {
+		// given: the kill lands right after the root collection persisted —
+		// its effect row is durable (detached write), its claim flushes at
+		// finish, but the run never reached the success gate, so the dir is
+		// left mid-materialize with everything actually done. The resumed
+		// incarnation must reuse the recorded collection instead of minting
+		// a second one.
+		root := crashTree(t)
+		control, controlResult := runControl(t, root)
+		fx := NewFixture(t)
+		dir := filepath.Join(t.TempDir(), "run-crash")
+		inc1 := interrupt(t, fx, root, dir, func(cancel context.CancelCauseFunc) {
+			fx.Space.AfterCreate = func(id string) {
+				fx.Space.mu.Lock()
+				isCollection := len(fx.Space.Created[id].GetStoreSlice(template.CollectionStoreKey)) > 0
+				fx.Space.mu.Unlock()
+				if isCollection {
+					cancel(importv2.ErrSuspended)
+				}
+			}
+		})
+		require.Error(t, inc1.Err)
+		require.True(t, inc1.Suspended)
+		require.Equal(t, 1, countCollections(fx), "the collection must exist before the resume")
+
+		// when
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
+
+		// then: byte-identical, ids included — nothing was re-minted
+		assertResumedClean(t, resumed, controlResult)
+		assert.Equal(t, 1, countCollections(fx))
+		assert.Equal(t, control.Dump(), fx.Dump())
+		assert.Equal(t, controlResult.RootCollectionId, resumed.RootCollectionId,
+			"the recorded collection must be reused, not rebuilt")
+	})
+}
+
+func TestCorruptedPayloadBytesFailTheResume(t *testing.T) {
+	t.Run("the gate detects rehydrated root bytes that are not the minted ones", func(t *testing.T) {
+		// given — review Class H: the old fake read only the payload's id,
+		// so corrupting the rehydrated bytes changed nothing end to end. The
+		// fake now models the real consumer (objecttree hashes the bytes):
+		// a create presenting different bytes under a known id is rejected,
+		// so this corruption MUST surface, never silently import.
+		root := crashTree(t)
+		fx := NewFixture(t)
+		dir := filepath.Join(t.TempDir(), "run-crash")
+		var creates atomic.Int32
+		inc1 := interrupt(t, fx, root, dir, func(cancel context.CancelCauseFunc) {
+			fx.Space.BeforeCreate = func(id string) error {
+				if creates.Add(1) == 3 {
+					cancel(importv2.ErrSuspended)
+					return context.Canceled
+				}
+				return nil
+			}
+		})
+		require.True(t, inc1.Suspended)
+		corruptOnePendingPayload(t, dir)
+
+		// when
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(false, false))
+
+		// then: loud, not silent
+		assert.NotEmpty(t, resumed.Issues,
+			"corrupted payload bytes must fail their object, never import silently")
+	})
+}
+
+func TestCrashResumeUpdateExisting(t *testing.T) {
+	t.Run("killed mid-update on a re-import: matched rows converge", func(t *testing.T) {
+		// given — review Class H: no crash variant exercised the matched-
+		// class update path. First import, indexed as the real indexer
+		// would; then a re-import with updateExisting killed inside a state
+		// reset; then resume — against an uninterrupted re-import control.
+		files := map[string]string{
+			"a.md": "---\nAuthor: Roman\ntype: Zettel\n---\n# A\n\n[B](b.md)\n",
+			"b.md": "# B\n",
+			"c.md": "# C\n",
+		}
+		buildReimported := func(t *testing.T) (*Fixture, string) {
+			root := writeTree(t, files)
+			fx := NewFixture(t)
+			first := fx.RunMarkdownDurable(context.Background(), t, root, request(true, true),
+				filepath.Join(t.TempDir(), "run-first"))
+			require.NoError(t, first.Err)
+			fx.IndexCreated(t)
+			return fx, root
+		}
+		control, controlRoot := buildReimported(t)
+		controlSecond := control.RunMarkdownDurable(context.Background(), t, controlRoot,
+			request(true, true), filepath.Join(t.TempDir(), "run-control-2"))
+		require.NoError(t, controlSecond.Err)
+		require.Positive(t, controlSecond.Updated, "the control re-import must take the update path")
+
+		fx, root := buildReimported(t)
+		dir := filepath.Join(t.TempDir(), "run-crash")
+		ctx, cancel := context.WithCancelCause(context.Background())
+		defer cancel(nil)
+		var resets atomic.Int32
+		fx.Space.BeforeReset = func(id string) error {
+			if resets.Add(1) == 2 {
+				cancel(importv2.ErrSuspended)
+				return context.Canceled
+			}
+			return nil
+		}
+		inc1 := fx.RunMarkdownDurable(ctx, t, root, request(true, true), dir)
+		fx.Space.BeforeReset = nil
+		require.Error(t, inc1.Err)
+		require.True(t, inc1.Suspended, "an interrupted update must classify as the stop, not a warning")
+
+		// when
+		resumed := fx.ResumeDurable(context.Background(), t, dir, request(true, true))
+
+		// then
+		assertResumedClean(t, resumed, controlSecond)
+		assert.Equal(t, control.Dump(), fx.Dump(),
+			"the resumed re-import must converge on the control's object set")
+		assert.Zero(t, resumed.Created, "a re-import updates in place; resume must not mint")
+	})
+}
+
+// corruptOnePendingPayload flips the payload bytes of one non-terminal
+// minted claim — the shape of on-disk corruption the versioning story
+// says must refuse, not replay wrong.
+func corruptOnePendingPayload(t *testing.T, dir string) {
+	t.Helper()
+	ctx := context.Background()
+	db, err := anystore.Open(ctx, filepath.Join(dir, "run.db"), nil)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, db.Close()) }()
+	entries, err := db.Collection(ctx, "entries")
+	require.NoError(t, err)
+	iter, err := entries.Find(`{"status":"claimed","mode":"minted"}`).Iter(ctx)
+	require.NoError(t, err)
+	var objectId string
+	if iter.Next() {
+		doc, err := iter.Doc()
+		require.NoError(t, err)
+		objectId = string(doc.Value().GetStringBytes("objectId"))
+	}
+	require.NoError(t, iter.Close())
+	require.NotEmpty(t, objectId, "a pending minted claim must exist")
+	payloads, err := db.Collection(ctx, "payloads")
+	require.NoError(t, err)
+	_, err = payloads.UpsertId(ctx, objectId, query.ModifyFunc(
+		func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+			v.Set("root", a.NewBinary([]byte("corrupted-bytes")))
+			return v, true, nil
+		}))
+	require.NoError(t, err)
+}
+
+// --- helpers ---
+
+// rewindEntryToClaimed reproduces the torn-crash ledger image: the row's
+// effect write (status persisted + action) never landed, so the row reads
+// exactly as the claim left it. Raw surgery on the closed run.db — the
+// production writers have no "unwrite" and must not grow one for a test.
+func rewindEntryToClaimed(t *testing.T, dir, objectId string) {
+	t.Helper()
+	ctx := context.Background()
+	db, err := anystore.Open(ctx, filepath.Join(dir, "run.db"), nil)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, db.Close()) }()
+	coll, err := db.Collection(ctx, "entries")
+	require.NoError(t, err)
+	iter, err := coll.Find(fmt.Sprintf(`{"objectId":%q}`, objectId)).Iter(ctx)
+	require.NoError(t, err)
+	var rowId string
+	for iter.Next() {
+		doc, err := iter.Doc()
+		require.NoError(t, err)
+		rowId = string(doc.Value().GetStringBytes("id"))
+	}
+	require.NoError(t, iter.Close())
+	require.NotEmpty(t, rowId, "the effect row to rewind must exist")
+	_, err = coll.UpsertId(ctx, rowId, query.ModifyFunc(
+		func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+			v.Set("status", a.NewString("claimed"))
+			v.Del("action")
+			return v, true, nil
+		}))
+	require.NoError(t, err)
+}
+
+// hollowState models the tree a torn create leaves: the root exists, the
+// imported state never applied.
+func hollowState(id string) *state.State {
+	return state.NewDoc(id, nil).(*state.State)
+}
+
+func countCollections(fx *Fixture) int {
+	fx.Space.mu.Lock()
+	defer fx.Space.mu.Unlock()
+	count := 0
+	for _, st := range fx.Space.Created {
+		if st != nil && len(st.GetStoreSlice(template.CollectionStoreKey)) > 0 {
+			count++
+		}
+	}
+	return count
+}
+
+// normalizeDump replaces object ids with object names (ids, members, link
+// and file targets) so runs whose finalize re-minted the collection id
+// compare on content. Names are unique in the crash fixtures.
+func normalizeDump(d Dump) Dump {
+	nameById := map[string]string{}
+	for _, object := range d.Objects {
+		if name, ok := object.Details["name"].(string); ok && name != "" {
+			nameById[object.Id] = name
+		}
+	}
+	mapId := func(id string) string {
+		if name, ok := nameById[id]; ok {
+			return name
+		}
+		return id
+	}
+	out := Dump{Uploads: d.Uploads}
+	for _, object := range d.Objects {
+		normalized := object
+		normalized.Id = mapId(object.Id)
+		if len(object.Members) > 0 {
+			normalized.Members = make([]string, 0, len(object.Members))
+			for _, member := range object.Members {
+				normalized.Members = append(normalized.Members, mapId(member))
+			}
+		}
+		normalized.Blocks = normalizeBlocks(object.Blocks, mapId)
+		out.Objects = append(out.Objects, normalized)
+	}
+	sort.Slice(out.Objects, func(a, b int) bool { return out.Objects[a].Id < out.Objects[b].Id })
+	return out
+}
+
+func normalizeBlocks(blocks []BlockDump, mapId func(string) string) []BlockDump {
+	normalized := make([]BlockDump, 0, len(blocks))
+	for _, block := range blocks {
+		block.Target = mapId(block.Target)
+		block.Children = normalizeBlocks(block.Children, mapId)
+		normalized = append(normalized, block)
+	}
+	return normalized
+}

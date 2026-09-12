@@ -17,6 +17,7 @@ Scope: global
 import (
 	"context"
 	"errors"
+	"fmt"
 	"slices"
 
 	"github.com/anyproto/any-sync/app"
@@ -26,8 +27,10 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/objectgc"
+	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -57,6 +60,11 @@ type Service interface {
 	ListRelationsWithValue(spaceId string, value domain.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error)
 
 	SetSpaceInfo(spaceId string, details *domain.Details) error
+
+	// SetDetailsInternal writes details on behalf of the middleware itself - migrations and
+	// bootstrap - rather than on behalf of a user edit, so it bypasses the object's restrictions
+	// and the space configuration lock. Must never be reachable from an RPC.
+	SetDetailsInternal(objectId string, details []domain.Detail) error
 
 	SetIsFavorite(objectId string, isFavorite bool) error
 	SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool, skipCascade bool) error
@@ -120,8 +128,43 @@ func (s *service) Close(ctx context.Context) error {
 
 func (s *service) SetDetails(ctx session.Context, objectId string, details []domain.Detail) (err error) {
 	return cache.Do(s.objectGetter, objectId, func(b basic.DetailsSettable) error {
+		if err := checkDetailsEditable(b); err != nil {
+			return err
+		}
 		return b.SetDetails(ctx, details, true)
 	})
+}
+
+func (s *service) SetDetailsInternal(objectId string, details []domain.Detail) error {
+	return cache.Do(s.objectGetter, objectId, func(b smartblock.SmartBlock) error {
+		st := b.NewState()
+		for _, detail := range details {
+			st.SetDetail(detail.Key, detail.Value)
+		}
+		return b.Apply(st, smartblock.NoRestrictions, smartblock.KeepInternalFlags, smartblock.NoSpaceConfigCheck)
+	})
+}
+
+// checkDetailsEditable refuses a details write to a space configuration object from an account that
+// may not change one. Apply refuses it too, but only after the state has been built and merged;
+// answering here keeps the loaded document untouched and hands the caller ErrRestricted instead of
+// a push failure.
+//
+// Deliberately only the ACL lock, NOT the object's whole Restrictions_Details. That restriction is
+// carried by sbType alone - the account object, spaceViews, participants, dates and identities all
+// have it - and no write path has ever enforced it. Enforcing it here would switch that on for
+// every one of them at once: it refused account creation's own bootstrap write, and nothing says
+// the rest are safe.
+func checkDetailsEditable(b any) error {
+	rh, ok := b.(restriction.RestrictionHolder)
+	if !ok {
+		return nil
+	}
+	policy := rh.MemberPolicy()
+	if policy.LockSpaceConfig && restriction.IsSpaceConfigObject(rh, policy) {
+		return fmt.Errorf("%w: space configuration can only be changed by the space owner or an admin", restriction.ErrRestricted)
+	}
+	return nil
 }
 
 func (s *service) SetDetailsList(ctx session.Context, objectIds []string, details []domain.Detail) (resultError error) {
@@ -146,6 +189,9 @@ func (s *service) SetDetailsList(ctx session.Context, objectIds []string, detail
 // ModifyDetails performs details get and update under the sb lock to make sure no modifications are done in the middle
 func (s *service) ModifyDetails(ctx session.Context, objectId string, modifier func(current *domain.Details) (*domain.Details, error)) (err error) {
 	return cache.Do(s.objectGetter, objectId, func(du basic.DetailsUpdatable) error {
+		if err := checkDetailsEditable(du); err != nil {
+			return err
+		}
 		return du.UpdateDetails(ctx, modifier)
 	})
 }

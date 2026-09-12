@@ -21,10 +21,16 @@ import (
 )
 
 const (
-	IssueCodeTypeIdentityMismatch = codec.IssueCodeTypeIdentityMismatch
-	FormatVersion                 = codec.FormatVersion
-	IndexFileName                 = codec.IndexFileName
-	PropertiesFileName            = codec.PropertiesFileName
+	IssueCodeFoldedParticipantsWithoutSpace = codec.IssueCodeFoldedParticipantsWithoutSpace
+	IssueCodeFoldedTypesWithoutResolver     = codec.IssueCodeFoldedTypesWithoutResolver
+	IssueCodeTypeIdentityMismatch           = codec.IssueCodeTypeIdentityMismatch
+	IssueCodeUnresolvedTarget               = codec.IssueCodeUnresolvedTarget
+	IssueCodeDeletedTarget                  = codec.IssueCodeDeletedTarget
+	IssueCodeOmittedTarget                  = codec.IssueCodeOmittedTarget
+	IssueCodeUnresolvedType                 = codec.IssueCodeUnresolvedType
+	FormatVersion                           = codec.FormatVersion
+	IndexFileName                           = codec.IndexFileName
+	PropertiesFileName                      = codec.PropertiesFileName
 )
 
 type (

@@ -1,0 +1,374 @@
+package markdown
+
+import (
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
+
+	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
+)
+
+// mdResolver implements schema.PropertyResolver for the yaml parser. Keys
+// come from loaded schemas when available, else are minted deterministically
+// from the property name (v1 minted random bson ids). Option values resolve
+// to option source keys and are recorded for lazy emission before the page —
+// one mechanism for both the schema and schema-less paths.
+type mdResolver struct {
+	schemas     *schemaSet
+	nameToKey   map[string]string
+	pending     []pendingOption
+	pendingSeen map[string]bool
+	// redirectKeys is the current page's schema-plan property remap
+	// (front-matter name → target key). It must act during parsing — option
+	// values embed the relation key — and is cleared after each page.
+	redirectKeys map[string]string
+}
+
+// setPlanRedirects installs (or clears, with nil) the page's key remaps.
+func (r *mdResolver) setPlanRedirects(redirects map[string]planRedirect) {
+	if len(redirects) == 0 {
+		r.redirectKeys = nil
+		return
+	}
+	r.redirectKeys = make(map[string]string, len(redirects))
+	for name, redirect := range redirects {
+		r.redirectKeys[name] = redirect.key
+	}
+}
+
+type pendingOption struct {
+	relationKey string
+	optionName  string
+}
+
+func newResolver(schemas *schemaSet) *mdResolver {
+	return &mdResolver{
+		schemas:     schemas,
+		nameToKey:   map[string]string{},
+		pendingSeen: map[string]bool{},
+	}
+}
+
+func (r *mdResolver) ResolvePropertyKey(objectTypeName, name string) string {
+	if key, ok := r.redirectKeys[name]; ok {
+		return key
+	}
+	if r.schemas != nil {
+		if key := r.schemas.propertyKey(objectTypeName, name); key != "" {
+			return key
+		}
+	}
+	// A front-matter key that IS an Anytype relation key names that relation:
+	// "iconEmoji: 🛠️" is the page's icon, not a text column called iconEmoji.
+	// Machine-written front matter reads this way — our own markdown export
+	// writes some of these, and vaults grown from one carry them — and minting
+	// a relation for them produced a column no one asked for, a page with no
+	// icon, and a duplicate of a bundled relation that can never be told apart
+	// from it in the UI.
+	//
+	// Only an exact key match counts. A human-written "Description" stays the
+	// user's own column: deciding that a column named like a bundled relation
+	// IS that relation is a different question, and the planner answers it
+	// deliberately for the few targets it allows.
+	if bundle.HasRelation(domain.RelationKey(name)) {
+		return name
+	}
+	if key, ok := r.nameToKey[name]; ok {
+		return key
+	}
+	key := stableKey("md", name)
+	r.nameToKey[name] = key
+	return key
+}
+
+func (r *mdResolver) GetRelationFormat(objectTypeName, key string) model.RelationFormat {
+	if r.schemas != nil {
+		if format, ok := r.schemas.relationFormat(objectTypeName, key); ok {
+			return format
+		}
+	}
+	return model.RelationFormat_longtext
+}
+
+func (r *mdResolver) GetRelationOptions(string) map[string]string { return nil }
+
+func (r *mdResolver) ResolveOptionValue(relationKey string, optionName string) string {
+	sourceKey := optionSourceKey(relationKey, optionName)
+	if !r.pendingSeen[sourceKey] {
+		r.pendingSeen[sourceKey] = true
+		r.pending = append(r.pending, pendingOption{relationKey: relationKey, optionName: optionName})
+	}
+	return sourceKey
+}
+
+func (r *mdResolver) ResolveOptionValues(relationKey string, optionNames []string) []string {
+	resolved := make([]string, 0, len(optionNames))
+	for _, name := range optionNames {
+		resolved = append(resolved, r.ResolveOptionValue(relationKey, name))
+	}
+	return resolved
+}
+
+// takePending drains options encountered since the last call.
+func (r *mdResolver) takePending() []pendingOption {
+	pending := r.pending
+	r.pending = nil
+	return pending
+}
+
+func stableKey(prefix, name string) string {
+	sum := sha256.Sum256([]byte(name))
+	return prefix + hex.EncodeToString(sum[:8])
+}
+
+// sourcePathHash mirrors v1's hashed sourceFilePath detail so re-import
+// dedup keeps working across engine versions.
+func sourcePathHash(sourcePath string) string {
+	sum := sha256.Sum256([]byte(sourcePath))
+	return hex.EncodeToString(sum[:])
+}
+
+// optionColors is the anytype option palette; the color is derived from the
+// option name so output is deterministic (v1 rolled dice).
+var optionColors = []string{"grey", "yellow", "orange", "red", "pink", "purple", "blue", "ice", "teal", "lime"}
+
+func stableOptionColor(name string) string {
+	sum := sha256.Sum256([]byte(name))
+	return optionColors[int(sum[0])%len(optionColors)]
+}
+
+func relationSourceKey(key string) string     { return "relation:" + key }
+func optionSourceKey(key, name string) string { return "option:" + key + ":" + name }
+func typeSourceKey(name string) string        { return "type:" + name }
+
+// emitPropertyDefinitions streams the relation, option and type objects a
+// page's front-matter introduces, before the page itself (definitions before
+// use). Bundled and schema-emitted relations are never redefined; option
+// values were already resolved to option source keys by the resolver.
+//
+// The returned relation links carry THIS page's inferred formats: the same
+// property name can infer different formats on different pages, and the
+// resolver trusts the object's own links over the run-wide registry.
+// anytypeOwnedKeys are the relations the destination owns: identity, location
+// and provenance. A file may name them, but never set them.
+var anytypeOwnedKeys = map[domain.RelationKey]struct{}{
+	bundle.RelationKeyId:             {},
+	bundle.RelationKeySpaceId:        {},
+	bundle.RelationKeyType:           {},
+	bundle.RelationKeyLayout:         {},
+	bundle.RelationKeyLayoutAlign:    {},
+	bundle.RelationKeySourceFilePath: {},
+	bundle.RelationKeyCreator:        {},
+	bundle.RelationKeyLastModifiedBy: {},
+	bundle.RelationKeyLinks:          {},
+	bundle.RelationKeyBacklinks:      {},
+}
+
+// reportOwnedKey says once per run that a file tried to set one of them.
+func (c *Converter) reportOwnedKey(key string, sink importv2.Sink) {
+	if c.reportedOwnedKeys == nil {
+		c.reportedOwnedKeys = map[string]bool{}
+	}
+	if c.reportedOwnedKeys[key] {
+		return
+	}
+	c.reportedOwnedKeys[key] = true
+	sink.Issue(importv2.Issue{
+		Severity: importv2.SeverityInfo, Code: importv2.IssueDataLoss, Subject: key,
+		Message: "Front matter set a field Anytype gives the object itself; it was ignored",
+	})
+}
+
+func (c *Converter) emitPropertyDefinitions(ctx context.Context, properties []yaml.Property, typeName string, sink importv2.Sink) (details []domain.Detail, links []*model.RelationLink, typeKey string, err error) {
+	for _, property := range properties {
+		if _, owned := anytypeOwnedKeys[domain.RelationKey(property.Key)]; owned {
+			// Who created the object, which space it lives in, what its id is:
+			// the destination decides these, and a value carried in from
+			// another account is at best stale and at worst someone else's
+			// identity. Reported once per key for the whole run — every file
+			// of an exported vault carries the same ones.
+			c.reportOwnedKey(property.Key, sink)
+			continue
+		}
+		if !bundle.HasRelation(domain.RelationKey(property.Key)) && !c.emittedRelations[property.Key] {
+			c.emittedRelations[property.Key] = true
+			if err := sink.Object(ctx, relationObject(property)); err != nil {
+				return nil, nil, "", err
+			}
+		}
+		value := property.Value
+		if property.Format == model.RelationFormat_object || property.Format == model.RelationFormat_file {
+			resolved, err := c.resolveObjectValues(ctx, value, sink)
+			if err != nil {
+				return nil, nil, "", err
+			}
+			value = resolved
+		}
+		details = append(details, domain.Detail{Key: domain.RelationKey(property.Key), Value: value})
+		links = append(links, &model.RelationLink{Key: property.Key, Format: property.Format})
+	}
+
+	// Options the resolver encountered while parsing this page's values.
+	for _, option := range c.resolver.takePending() {
+		sourceKey := optionSourceKey(option.relationKey, option.optionName)
+		if c.emittedOptions[sourceKey] {
+			continue
+		}
+		c.emittedOptions[sourceKey] = true
+		if err := sink.Object(ctx, optionObject(option.relationKey, option.optionName)); err != nil {
+			return nil, nil, "", err
+		}
+	}
+
+	typeKey = bundle.TypeKeyPage.String()
+	if typeName != "" {
+		key, err := c.emitTypeDefinition(ctx, typeName, properties, sink)
+		if err != nil {
+			return nil, nil, "", err
+		}
+		typeKey = key
+	}
+	return details, links, typeKey, nil
+}
+
+// resolveObjectValues rewrites object/file property values (source-relative
+// paths from the yaml parser) to entry source keys, emitting file objects
+// for non-page targets. Unknown values are left as-is (resolver leniency).
+func (c *Converter) resolveObjectValues(ctx context.Context, value domain.Value, sink importv2.Sink) (domain.Value, error) {
+	resolveOne := func(raw string) (string, error) {
+		entryName, found := c.lookupEntry(raw)
+		if !found {
+			return raw, nil
+		}
+		if !c.isPageEntry(entryName) {
+			if err := c.emitFileObject(ctx, entryName, sink); err != nil {
+				return "", err
+			}
+		}
+		return entryName, nil
+	}
+	if single, ok := value.TryString(); ok {
+		resolved, err := resolveOne(single)
+		if err != nil {
+			return domain.Value{}, err
+		}
+		return domain.String(resolved), nil
+	}
+	values := value.StringList()
+	resolved := make([]string, len(values))
+	for i, item := range values {
+		mapped, err := resolveOne(item)
+		if err != nil {
+			return domain.Value{}, err
+		}
+		resolved[i] = mapped
+	}
+	return domain.StringList(resolved), nil
+}
+
+// emitTypeDefinition emits an object type on first use. A name matching a
+// bundled type resolves to the bundled key instead (v1 parity). The type's
+// recommended relations are the first-use page's properties — deterministic,
+// unlike v1's map-order last-file-wins.
+func (c *Converter) emitTypeDefinition(ctx context.Context, typeName string, properties []yaml.Property, sink importv2.Sink) (string, error) {
+	if key, ok := c.emittedTypes[typeName]; ok {
+		return key, nil
+	}
+	if typeKey, err := bundle.GetTypeKeyByName(typeName); err == nil {
+		c.emittedTypes[typeName] = typeKey.String()
+		return typeKey.String(), nil
+	}
+	key := stableKey("mdtype", typeName)
+	c.emittedTypes[typeName] = key
+
+	uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, key)
+	if err != nil {
+		return "", fmt.Errorf("type unique key %q: %w", key, err)
+	}
+	recommended := make([]string, 0, len(properties))
+	for _, property := range properties {
+		if bundle.HasRelation(domain.RelationKey(property.Key)) {
+			recommended = append(recommended, domain.RelationKey(property.Key).BundledURL())
+			continue
+		}
+		recommended = append(recommended, relationSourceKey(property.Key))
+	}
+	// The first three properties are featured (v1 rule, minus its synthetic
+	// "Object type" relation that always occupied one featured slot).
+	featured := recommended[:min(len(recommended), 3)]
+	recommended = recommended[len(featured):]
+	details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName:                         domain.String(typeName),
+		bundle.RelationKeyUniqueKey:                    domain.String(uniqueKey.Marshal()),
+		bundle.RelationKeyRecommendedLayout:            domain.Int64(int64(model.ObjectType_basic)),
+		bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList(featured),
+		bundle.RelationKeyResolvedLayout:               domain.Int64(int64(model.ObjectType_objectType)),
+	})
+	if len(recommended) > 0 {
+		details.SetStringList(bundle.RelationKeyRecommendedRelations, recommended)
+	}
+	object := &importv2.Object{
+		SourceKey: typeSourceKey(typeName),
+		SbType:    coresb.SmartBlockTypeObjectType,
+		Payload: &importv2.Snapshot{
+			Key:         key,
+			Details:     details,
+			ObjectTypes: []string{bundle.TypeKeyObjectType.String()},
+		},
+	}
+	return key, sink.Object(ctx, object)
+}
+
+func relationObject(property yaml.Property) *importv2.Object {
+	uniqueKey, _ := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, property.Key)
+	details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName:           domain.String(property.Name),
+		bundle.RelationKeyRelationKey:    domain.String(property.Key),
+		bundle.RelationKeyRelationFormat: domain.Int64(int64(property.Format)),
+		bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+	})
+	if uniqueKey != nil {
+		details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
+	}
+	if property.Format == model.RelationFormat_date {
+		details.SetBool(bundle.RelationKeyRelationFormatIncludeTime, property.IncludeTime)
+	}
+	return &importv2.Object{
+		SourceKey: relationSourceKey(property.Key),
+		SbType:    coresb.SmartBlockTypeRelation,
+		Payload: &importv2.Snapshot{
+			Key:         property.Key,
+			Details:     details,
+			ObjectTypes: []string{bundle.TypeKeyRelation.String()},
+		},
+	}
+}
+
+func optionObject(relationKey, optionName string) *importv2.Object {
+	optionKey := stableKey("mdopt", relationKey+"\x00"+optionName)
+	uniqueKey, _ := domain.NewUniqueKey(coresb.SmartBlockTypeRelationOption, optionKey)
+	details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName:                domain.String(optionName),
+		bundle.RelationKeyRelationKey:         domain.String(relationKey),
+		bundle.RelationKeyRelationOptionColor: domain.String(stableOptionColor(optionName)),
+		bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
+	})
+	if uniqueKey != nil {
+		details.SetString(bundle.RelationKeyUniqueKey, uniqueKey.Marshal())
+	}
+	return &importv2.Object{
+		SourceKey: optionSourceKey(relationKey, optionName),
+		SbType:    coresb.SmartBlockTypeRelationOption,
+		Payload: &importv2.Snapshot{
+			Key:         optionKey,
+			Details:     details,
+			ObjectTypes: []string{bundle.TypeKeyRelationOption.String()},
+		},
+	}
+}

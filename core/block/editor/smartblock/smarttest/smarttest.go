@@ -56,6 +56,7 @@ type SmartTest struct {
 	id               string
 	hist             undo.History
 	TestRestrictions restriction.Restrictions
+	TestMemberPolicy restriction.MemberPolicy
 	App              *app.App
 	objectTree       objecttree.ObjectTree
 	isDeleted        bool
@@ -128,6 +129,10 @@ func (s *stubSpace) IsOneToOne() bool {
 	return false
 }
 
+func (s *stubSpace) CanManageSpace() bool {
+	return true
+}
+
 func (s *stubSpace) SpaceType() spacedomain.SpaceType {
 	return spacedomain.SpaceTypeRegular
 }
@@ -191,6 +196,12 @@ func (st *SmartTest) SetTree(tree objecttree.ObjectTree) {
 
 func (st *SmartTest) Restrictions() restriction.Restrictions {
 	return st.TestRestrictions
+}
+
+// MemberPolicy returns TestMemberPolicy, zero by default: tests that do not care about space
+// membership keep the restrictions the object carries by its own nature.
+func (st *SmartTest) MemberPolicy() restriction.MemberPolicy {
+	return st.TestMemberPolicy
 }
 
 func (st *SmartTest) GetDocInfo() smartblock.DocInfo {
