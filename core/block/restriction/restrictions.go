@@ -15,6 +15,9 @@ type RestrictionHolder interface {
 	Layout() (model.ObjectTypeLayout, bool)
 	UniqueKey() domain.UniqueKey
 	LocalDetails() *domain.Details
+	// MemberPolicy reports what the space ACL says about the caller for this object. Holders that
+	// know nothing about space membership return the zero value, which adds no restrictions.
+	MemberPolicy() MemberPolicy
 }
 
 func GetRestrictions(rh RestrictionHolder) (r Restrictions) {

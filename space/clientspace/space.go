@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	anystore "github.com/anyproto/any-store"
@@ -60,6 +61,8 @@ type Space interface {
 	IsReadOnly() bool
 	IsPersonal() bool
 	IsOneToOne() bool
+	CanManageSpace() bool
+	OnAclUpdated()
 	SpaceType() spacedomain.SpaceType
 	GetAclIdentity() crypto.PubKey
 
@@ -113,6 +116,20 @@ type space struct {
 
 	loadMissingBundledObjectsCtx       context.Context
 	loadMissingBundledObjectsCtxCancel context.CancelFunc
+
+	// aclGeneration is bumped on every ACL change, and manageVerdict caches CanManageSpace against
+	// it. The verdict is asked for on every Apply of every object, and reading it from the ACL
+	// means taking the ACL read lock - a lock sync and every change validation also want, where an
+	// uncontended 12ns read becomes 300ns+ under a handful of concurrent readers. Two atomic loads
+	// instead.
+	aclGeneration atomic.Uint64
+	manageVerdict atomic.Pointer[manageVerdict]
+}
+
+// manageVerdict is a CanManageSpace answer together with the ACL generation it was computed from.
+type manageVerdict struct {
+	generation uint64
+	canManage  bool
 }
 
 type SpaceDeps struct {
@@ -356,7 +373,58 @@ func (s *space) IsPersonal() bool {
 }
 
 func (s *space) IsOneToOne() bool {
-	return s.CommonSpace().Acl().AclState().IsOneToOne()
+	acl := s.CommonSpace().Acl()
+	if acl == nil {
+		// virtual spaces (marketplace) carry no ACL
+		return false
+	}
+	acl.RLock()
+	defer acl.RUnlock()
+	return acl.AclState().IsOneToOne()
+}
+
+// CanManageSpace reports whether this account may change space-wide configuration and act on
+// other members' objects. True for the owner and admins, for a personal space, and for BOTH
+// members of a one-to-one space: their real ACL role there is Writer for both, because the
+// one-to-one owner is a key derived from the two identities and belongs to neither of them.
+//
+// Answered from a cached verdict; only an ACL change makes it read the ACL again.
+func (s *space) CanManageSpace() bool {
+	generation := s.aclGeneration.Load()
+	if cached := s.manageVerdict.Load(); cached != nil && cached.generation == generation {
+		return cached.canManage
+	}
+	// An ACL change racing this read leaves the verdict stamped with the older generation, so the
+	// next call recomputes: at worst one wasted read, never a stale answer.
+	verdict := s.readCanManageSpace()
+	s.manageVerdict.Store(&manageVerdict{generation: generation, canManage: verdict})
+	return verdict
+}
+
+// OnAclUpdated invalidates the cached CanManageSpace verdict. Called from the one component that
+// any-sync notifies of ACL changes; it only bumps a counter, so it is safe to call while the ACL
+// holds its own lock.
+func (s *space) OnAclUpdated() {
+	s.aclGeneration.Add(1)
+}
+
+func (s *space) readCanManageSpace() bool {
+	if s.IsPersonal() {
+		return true
+	}
+	acl := s.CommonSpace().Acl()
+	if acl == nil {
+		// virtual spaces (marketplace) carry no ACL; they are guarded by object restrictions
+		return true
+	}
+	acl.RLock()
+	defer acl.RUnlock()
+	state := acl.AclState()
+	if state.IsOneToOne() {
+		return true
+	}
+	perms := state.Permissions(s.aclIdentity)
+	return perms.IsOwner() || perms.IsAdmin()
 }
 
 func (s *space) GetAclIdentity() crypto.PubKey {

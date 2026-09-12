@@ -35,8 +35,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
-	"github.com/anyproto/anytype-heart/core/block/personalfavorites"
 	"github.com/anyproto/anytype-heart/core/block/objectgc"
+	"github.com/anyproto/anytype-heart/core/block/personalfavorites"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -103,7 +103,7 @@ type ObjectFactory struct {
 	backlinksUpdater         backlinks.UpdateWatcher
 	formatFetcher            relationutils.RelationFormatFetcher
 	personalFavoritesService personalfavorites.Service
-	objectGC                objectgc.ObjectGC
+	objectGC                 objectgc.ObjectGC
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -195,7 +195,12 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 		return nil, fmt.Errorf("init smartblock: %w", err)
 	}
 
-	applyFlags := []smartblock.ApplyFlag{smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions}
+	// NoSpaceConfigCheck: init is our own code, and its writes must never be able to fail object
+	// loading - this Apply's error is returned straight to the caller. The state also carries
+	// ChangeTypeObjectInit, so the guard would pass anyway; the flag says so explicitly rather than
+	// leaving object loading resting on an enum value someone may repurpose.
+	applyFlags := []smartblock.ApplyFlag{smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions,
+		smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions, smartblock.NoSpaceConfigCheck}
 	if initCtx.IsNewObject {
 		applyFlags = append(applyFlags, smartblock.AllowApplyWithEmptyTree)
 	}

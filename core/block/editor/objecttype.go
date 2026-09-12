@@ -238,7 +238,9 @@ func (ot *ObjectType) ReconcileDataviewColumns() error {
 	if !ot.reconcileDataviewColumns(st) {
 		return nil
 	}
-	return ot.Apply(st)
+	// rebuilding a type's view from its own relations is maintenance, not a user edit, and system
+	// types need it just as much as custom ones
+	return ot.Apply(st, smartblock.NoSpaceConfigCheck)
 }
 
 // recommendedRelationLinks resolves the type's featured and recommended

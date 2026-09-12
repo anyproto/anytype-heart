@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/detailservice/mock_detailservice"
@@ -378,7 +377,7 @@ func TestRunObjectContextMigrationWithoutFiles(t *testing.T) {
 			},
 		})
 		detailsService := mock_detailservice.NewMockService(t)
-		detailsService.EXPECT().SetDetails(mock.Anything, workspaceId, []domain.Detail{
+		detailsService.EXPECT().SetDetailsInternal(workspaceId, []domain.Detail{
 			{Key: bundle.RelationKeyMigrationObjectContext, Value: domain.Int64(domain.MigrationObjectContextVersion)},
 		}).Return(nil)
 		s := &service{objectStore: store, detailsService: detailsService}

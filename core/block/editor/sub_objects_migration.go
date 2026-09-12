@@ -105,7 +105,8 @@ func (m *subObjectsMigration) migrateSubObjects(st *state.State) {
 		return
 	}
 	log.With("migrated", migratedSubObjects).Warnf("migrated sub-objects")
-	err := m.workspace.Apply(st)
+	// a one-time legacy migration run from Workspaces.Init, not a user edit: every member runs it
+	err := m.workspace.Apply(st, smartblock.NoSpaceConfigCheck)
 	if err != nil {
 		log.Errorf("failed to apply state: %v", err)
 	}
