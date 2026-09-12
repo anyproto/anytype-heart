@@ -286,8 +286,15 @@ func (c *Converter) mapText(ctx context.Context, mctx mapContext, block *notionB
 				}
 				return fresh.Icon.fileUrl()
 			})
+			// No owner on purpose. A callout's icon lives in the text block's
+			// IconImage field, and nothing turns that into a row in the links
+			// index (smartblock's collectOutgoingLinks reads link, file,
+			// bookmark, mark and dataview targets, plus details — never
+			// text.IconImage; simple/text exposes it only to file sync). Object
+			// GC judges "still referenced?" by backlinks, so a context here
+			// would offer the user an icon their page is visibly rendering.
 			sourceKey, err := c.emitFileFromUrl(ctx, sink, iconUrl, "icon", payload.Icon.isExternal(), refresh,
-				mctx.pageId, block.Id)
+				"", "")
 			if err != nil {
 				return nil, err
 			}

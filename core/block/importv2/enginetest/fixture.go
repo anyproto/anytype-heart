@@ -242,6 +242,12 @@ type UploadRecord struct {
 	ImageKind      model.ImageKind
 	EncryptionKeys map[string]string
 	Url            string
+	// CreatedInContext/Ref are the file's ownership as the persister resolved
+	// it against the REAL identity service — the only place a test can see
+	// that an owner source key survived pass 1's claim, the spool and a
+	// resumed run, rather than a fake resolving it.
+	CreatedInContext    string
+	CreatedInContextRef string
 }
 
 // FakeUploader models content addressing HONESTLY: it reads the bytes it
@@ -287,6 +293,9 @@ func (f *FakeUploader) UploadFile(ctx context.Context, spaceId string, req block
 		ImageKind:      req.ImageKind,
 		EncryptionKeys: req.CustomEncryptionKeys,
 		Url:            req.Url,
+
+		CreatedInContext:    req.CreatedInContext,
+		CreatedInContextRef: req.CreatedInContextRef,
 	})
 	return "file-" + hash, model.BlockContentFile_File, domain.NewDetails(), nil
 }

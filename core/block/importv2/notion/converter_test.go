@@ -162,7 +162,9 @@ func scriptedWorkspace(t *testing.T) http.HandlerFunc {
 		{"id":"m2","type":"file","has_children":false,"file":{"type":"external","name":"a.bin","external":{"url":"https://drive.example.com/uc?id=AAA"}}},
 		{"id":"m3","type":"file","has_children":false,"file":{"type":"external","name":"b.bin","external":{"url":"https://drive.example.com/uc?id=BBB"}}},
 		{"id":"m4","type":"image","has_children":false,"image":{"type":"file","file":{"url":"https://files.example.com/bucket/pic.png?X-Amz-Signature=one"}}},
-		{"id":"m5","type":"image","has_children":false,"image":{"type":"file","file":{"url":"https://files.example.com/bucket/pic.png?X-Amz-Signature=two"}}}
+		{"id":"m5","type":"image","has_children":false,"image":{"type":"file","file":{"url":"https://files.example.com/bucket/pic.png?X-Amz-Signature=two"}}},
+		{"id":"m6","type":"callout","has_children":false,"callout":{"rich_text":[{"plain_text":"note","type":"text"}],
+		 "icon":{"type":"external","external":{"url":"https://cdn.example.com/callout.png"}}}}
 	],"has_more":false,"next_cursor":null}`
 
 	emptyPage := func(id, title string) string {
@@ -510,15 +512,73 @@ func TestNotionFileOwnership(t *testing.T) {
 	})
 
 	t.Run("a file property owns its files through its relation key", func(t *testing.T) {
-		var attachmentKey, relationKey string
-		for key, value := range page.Payload.Details.Iterate() {
-			if list := value.StringList(); len(list) == 1 && strings.HasPrefix(list[0], "file:") {
-				attachmentKey, relationKey = list[0], string(key)
-			}
-		}
-		require.NotEmpty(t, attachmentKey, "the files property must resolve to a file source key")
+		// Look the property up by its relation, not by scanning for a
+		// "file:"-shaped value: a second files property would make a scan
+		// pick whichever detail the map happened to yield last.
+		relation := sink.relationByName("Attachments")
+		require.NotNil(t, relation, "the files property mints a relation")
+		relationKey := relation.Payload.Details.GetString(bundle.RelationKeyRelationKey)
+		require.NotEmpty(t, relationKey)
+		attachments := page.Payload.Details.GetStringList(domain.RelationKey(relationKey))
+		require.Len(t, attachments, 1, "the files property carries exactly the one attachment")
+		attachmentKey := attachments[0]
 		owner, ref := ownerOf(t, attachmentKey)
 		assert.Equal(t, "p2", owner)
 		assert.Equal(t, relationKey, ref)
 	})
+}
+
+// TestCalloutIconIsNotOwned pins the one reference shape that must NOT claim
+// ownership. A callout's image icon lives in the text block's IconImage
+// field, which contributes no row to the links index (core/block/editor/
+// smartblock collectOutgoingLinks reads blocks' link/file/bookmark/mark/
+// dataview targets and details, never text.IconImage). Object GC decides "is
+// this still referenced?" from backlinks alone, so a context on such a file
+// would make it a cleanup candidate while the page is alive and rendering it.
+func TestCalloutIconIsNotOwned(t *testing.T) {
+	sink, _, _ := runScripted(t)
+
+	page := sink.byKey("p2")
+	require.NotNil(t, page)
+	var iconKey string
+	for _, b := range page.Payload.Blocks {
+		if b.Id == "m6" {
+			iconKey = b.GetText().GetIconImage()
+		}
+	}
+	require.NotEmpty(t, iconKey, "the callout must still import its icon file")
+
+	file := sink.byKey(iconKey)
+	require.NotNil(t, file)
+	require.NotNil(t, file.File)
+	assert.Empty(t, file.File.OwnerSourceKey,
+		"a reference the links index cannot see must not claim ownership")
+	assert.Empty(t, file.File.OwnerRef)
+}
+
+// TestDerivedOwnerIsNotClaimed: a Notion database imported as a suggested
+// object type applies its icon to the TYPE object, and a type can never own
+// orphans (objectType is absent from domain.GCEligibleLayouts). Claiming it
+// would write a context object GC drops — and the id is not even resolvable
+// at that point, so every such file would also log a missing-target warning.
+func TestDerivedOwnerIsNotClaimed(t *testing.T) {
+	c := &Converter{files: newFileRegistry(), tempDir: t.TempDir()}
+	object := &importv2.Object{
+		SourceKey: "db-container-1",
+		SbType:    coresb.SmartBlockTypeObjectType,
+		Payload:   &importv2.Snapshot{Details: domain.NewDetails()},
+	}
+	icon := &iconValue{Type: "external", External: &struct {
+		Url string `json:"url"`
+	}{Url: "https://cdn.example.com/type-icon.png"}}
+
+	sink := &recordingSink{}
+	require.NoError(t, c.applyIcon(context.Background(), object, icon, nil, "/data_sources/db1", sink))
+
+	iconKey := object.Payload.Details.GetString(bundle.RelationKeyIconImage)
+	require.NotEmpty(t, iconKey, "the type still gets its icon")
+	file := sink.byKey(iconKey)
+	require.NotNil(t, file)
+	assert.Empty(t, file.File.OwnerSourceKey, "a derived-class owner cannot own orphans")
+	assert.Empty(t, file.File.OwnerRef)
 }

@@ -63,6 +63,8 @@ func TestImportParityMarkdown(t *testing.T) {
 	assert.Equal(t, v1.PageNames, v2.PageNames, "page set")
 	assert.Equal(t, v1.FileNames, v2.FileNames, "file set")
 	assert.Equal(t, v1.OwnedFiles, v2.OwnedFiles, "files carrying their creation context")
+	assert.NotEmpty(t, v2.OwnedFiles,
+		"both engines going ownerless would satisfy the equality above while the bug is back")
 	// Collections: the csv sub-collection plus the dated root collection.
 	assert.Equal(t, v1.CollectionCount, v2.CollectionCount, "collection count")
 	// Custom relations/options by display name (keys differ by design:

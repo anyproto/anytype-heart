@@ -447,6 +447,34 @@ func TestImportedFileCarriesItsOwner(t *testing.T) {
 			"the page converted first owns it; the second reference keeps the file alive through its backlink")
 	})
 
+	t.Run("a yaml file property owns its file through the relation key", func(t *testing.T) {
+		// given / when — no block holds a front-matter file value, so the
+		// relation key is the ref. A file-format relation value does produce
+		// a link row, so the ownership is backed by a real backlink.
+		sink, _ := runConverterWithParams(t, map[string]string{
+			"a.md":     "---\nAttachment: spec.pdf\n---\n# A\n\nBody.\n",
+			"spec.pdf": "pdf-bytes",
+		}, Params{})
+
+		// then
+		file := sink.byKey("spec.pdf")
+		require.NotNil(t, file, "a front-matter file reference must still be imported")
+		require.NotNil(t, file.File)
+		assert.Equal(t, "a.md", file.File.OwnerSourceKey)
+		page := sink.byKey("a.md")
+		require.NotNil(t, page)
+		var relationKey string
+		for key, value := range page.Payload.Details.Iterate() {
+			// A single front-matter value stays a plain string, not a list.
+			if single, ok := value.TryString(); ok && single == "spec.pdf" {
+				relationKey = string(key)
+			}
+		}
+		require.NotEmpty(t, relationKey, "the page must carry the property value")
+		assert.Equal(t, relationKey, file.File.OwnerRef,
+			"the ref is the relation the file is linked through, not its display name")
+	})
+
 	t.Run("a file reached through a mention is owned by the text block", func(t *testing.T) {
 		// given / when
 		sink, _ := runConverterWithParams(t, map[string]string{

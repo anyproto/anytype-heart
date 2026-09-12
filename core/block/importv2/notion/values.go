@@ -89,6 +89,23 @@ func (f *fileValue) url() string {
 // applyIcon writes icon/cover details, emitting file objects for
 // image-backed icons and covers. refreshPath is the entity's GET path
 // ("/pages/{id}" or "/data_sources/{id}") for expired-URL re-minting.
+// iconOwner is the createdInContext pair for a file carried by an object's
+// icon or cover detail: the object itself, through the relation key, since no
+// block holds the reference (a detail-carried file DOES produce a link row, so
+// the ownership is backed by a real backlink).
+//
+// A derived-class owner claims nothing. A Notion database imported as a
+// suggested object type applies its icon to the TYPE, and objectType is absent
+// from domain.GCEligibleLayouts, so object GC drops such a parent; the derived
+// id is not even assigned when the file is emitted, so claiming it would cost
+// a missing-target warning per database on top of a context nobody reads.
+func iconOwner(object *importv2.Object, relationKey domain.RelationKey) (ownerKey, ownerRef string) {
+	if importv2.IsDerivedClass(object.SbType) {
+		return "", ""
+	}
+	return object.SourceKey, relationKey.String()
+}
+
 func (c *Converter) applyIcon(ctx context.Context, object *importv2.Object, icon *iconValue, cover *fileValue, refreshPath string, sink importv2.Sink) error {
 	if icon != nil {
 		if icon.Type == "emoji" && icon.Emoji != "" {
@@ -105,11 +122,9 @@ func (c *Converter) applyIcon(ctx context.Context, object *importv2.Object, icon
 			refresh := c.entityUrlRefresher(refreshPath, func(fresh *iconValue, _ *fileValue) string {
 				return fresh.fileUrl()
 			})
-			// No block holds an icon or a cover: the relation key is the ref,
-			// as it is for a bookmark's image. Object GC ignores a context
-			// whose ref is empty, so a bare context would change nothing.
+			ownerKey, ownerRef := iconOwner(object, bundle.RelationKeyIconImage)
 			sourceKey, err := c.emitFileFromUrl(ctx, sink, iconUrl, "icon", icon.isExternal(), refresh,
-				object.SourceKey, bundle.RelationKeyIconImage.String())
+				ownerKey, ownerRef)
 			if err != nil {
 				return err
 			}
@@ -120,8 +135,9 @@ func (c *Converter) applyIcon(ctx context.Context, object *importv2.Object, icon
 		refresh := c.entityUrlRefresher(refreshPath, func(_ *iconValue, fresh *fileValue) string {
 			return fresh.url()
 		})
+		ownerKey, ownerRef := iconOwner(object, bundle.RelationKeyCoverId)
 		sourceKey, err := c.emitFileFromUrl(ctx, sink, coverUrl, "cover", cover.isExternal(), refresh,
-			object.SourceKey, bundle.RelationKeyCoverId.String())
+			ownerKey, ownerRef)
 		if err != nil {
 			return err
 		}

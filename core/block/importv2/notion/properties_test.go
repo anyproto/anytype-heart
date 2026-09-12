@@ -199,3 +199,15 @@ func TestPlannedPropertyNoteSaysWhatHappened(t *testing.T) {
 	assert.Contains(t, notes()[0], "same property as another database")
 	assert.Contains(t, notes()[0], "Description")
 }
+
+func TestPropertyRef(t *testing.T) {
+	// The ref must never come back empty: object GC ignores a context whose
+	// ref is empty, which is exactly the bug this ownership work fixes.
+	t.Run("a resolved relation contributes its key", func(t *testing.T) {
+		assert.Equal(t, "rel-key", propertyRef(&relationDef{key: "rel-key"}, "Attachments"))
+	})
+	t.Run("an unresolved relation falls back to the property name", func(t *testing.T) {
+		assert.Equal(t, "Attachments", propertyRef(nil, "Attachments"))
+		assert.Equal(t, "Attachments", propertyRef(&relationDef{}, "Attachments"))
+	})
+}

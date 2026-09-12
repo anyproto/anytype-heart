@@ -54,18 +54,6 @@ func activeObjects(t *testing.T, app *testApplication) []database.Record {
 	return records
 }
 
-func objectIdByNameAndLayout(t *testing.T, app *testApplication, name string, layout model.ObjectTypeLayout) string {
-	t.Helper()
-	for _, r := range activeObjects(t, app) {
-		if r.Details.GetString(bundle.RelationKeyName) == name &&
-			model.ObjectTypeLayout(r.Details.GetInt64(bundle.RelationKeyResolvedLayout)) == layout {
-			return r.Details.GetString(bundle.RelationKeyId)
-		}
-	}
-	t.Fatalf("no %v named %q in the space", layout, name)
-	return ""
-}
-
 func detailsOf(t *testing.T, app *testApplication, objectId string) *domain.Details {
 	t.Helper()
 	store := getService[objectstore.ObjectStore](app)
@@ -118,9 +106,9 @@ func TestImportedFileOwnership(t *testing.T) {
 	importWithV2(t, app, sharedFileFixture(t))
 	indexed.waitOneObjectDetailsSet(t, app, func(t *testing.T, msg *pb.EventObjectDetailsSet) {})
 
-	fileId := objectIdByNameAndLayout(t, app, "pic", model.ObjectType_image)
-	aPageId := objectIdByNameAndLayout(t, app, "APage", model.ObjectType_basic)
-	bPageId := objectIdByNameAndLayout(t, app, "BPage", model.ObjectType_basic)
+	fileId := objectIdByName(t, app, "pic", model.ObjectType_image)
+	aPageId := objectIdByName(t, app, "APage", model.ObjectType_basic)
+	bPageId := objectIdByName(t, app, "BPage", model.ObjectType_basic)
 
 	// both pages reference the one file object
 	aBlockId := fileBlockId(t, app, aPageId, fileId)

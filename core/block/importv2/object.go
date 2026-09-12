@@ -127,8 +127,14 @@ type FileSource struct {
 	// file is still owned. A file emitted by more than one reference keeps
 	// the first owner (converters emit each file once).
 	//
-	// Both empty means no owner: the file is uploaded without context, as an
-	// anytype export's files are, their ownership travelling in the snapshot.
+	// Both empty means no owner, and that is the honest value whenever the
+	// reference produces no link row for the indexer to turn into a backlink
+	// (a callout's text.IconImage) or the owner cannot own orphans (a derived
+	// object type): object GC judges "still referenced?" by backlinks, so a
+	// context those rules cannot back would offer the user a file in use.
+	// Content-addressed registrations (anytype exports) ignore these fields —
+	// persistContentAddressedFile does not upload, and file ownership there is
+	// not yet carried at all.
 	OwnerSourceKey string
 	OwnerRef       string
 

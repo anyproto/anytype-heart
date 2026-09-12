@@ -165,9 +165,13 @@ func (f *fakeInstaller) InstallBundledObjects(ctx context.Context, ids []string)
 // minted objects are known the moment pass 1 claimed them.
 type fakeRefs struct {
 	ids map[string]string
+	err error
 }
 
 func (f *fakeRefs) ResolveRef(ctx context.Context, sourceKey string) (string, bool, error) {
+	if f.err != nil {
+		return "", false, f.err
+	}
 	id, ok := f.ids[sourceKey]
 	return id, ok, nil
 }
@@ -767,6 +771,36 @@ func TestPersistFile(t *testing.T) {
 		require.Len(t, fx.issues, 1)
 		assert.Equal(t, importv2.IssueMissingTarget, fx.issues[0].Code)
 		assert.Equal(t, importv2.SeverityWarning, fx.issues[0].Severity)
+	})
+
+	t.Run("a resolver failure costs the file its context, not the upload", func(t *testing.T) {
+		// given — the same treatment as an owner that does not resolve: the
+		// bytes matter more than the bookkeeping.
+		fx := newFixture(t)
+		fx.refs.err = assert.AnError
+		path := filepath.Join(t.TempDir(), "img.png")
+		require.NoError(t, os.WriteFile(path, []byte("img"), 0o644))
+		obj := &importv2.Object{
+			SourceKey: "docs/img.png",
+			SbType:    coresb.SmartBlockTypeFileObject,
+			Payload:   &importv2.Snapshot{Details: domain.NewDetails()},
+			File: &importv2.FileSource{
+				Path:           path,
+				Name:           "img.png",
+				OwnerSourceKey: "pages/home.md",
+				OwnerRef:       "blockId1",
+			},
+		}
+
+		// when
+		outcome, err := fx.Persist(context.Background(), obj, Target{}, fx.report)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "fileObj1", outcome.Id)
+		assert.Equal(t, []string{""}, fx.uploader.uploadedContexts)
+		require.Len(t, fx.issues, 1)
+		assert.Equal(t, importv2.IssueMissingTarget, fx.issues[0].Code)
 	})
 
 	t.Run("a file with no owner uploads without context", func(t *testing.T) {
