@@ -101,6 +101,7 @@ func (f *fakeObjects) DeleteObject(objectId string) error {
 type fakeUploader struct {
 	uploadedPaths []string
 	uploadedUrls  []string
+	uploadedNames []string
 	resultId      string
 	err           error
 }
@@ -111,6 +112,7 @@ func (f *fakeUploader) UploadFile(ctx context.Context, spaceId string, req block
 	}
 	f.uploadedPaths = append(f.uploadedPaths, req.LocalPath)
 	f.uploadedUrls = append(f.uploadedUrls, req.Url)
+	f.uploadedNames = append(f.uploadedNames, req.Name)
 	return f.resultId, model.BlockContentFile_File, domain.NewDetails(), nil
 }
 
@@ -558,6 +560,52 @@ func TestPersistFile(t *testing.T) {
 		assert.Equal(t, []string{path}, fx.uploader.uploadedPaths)
 		assert.Equal(t, []string{""}, fx.uploader.uploadedUrls,
 			"a path-backed upload must not also carry a url")
+	})
+
+	t.Run("the display name travels with the source, not with the staged path", func(t *testing.T) {
+		// given — the shape pass 2 hands to pass 3: drainFile copied the
+		// bytes into the run's spill dir under a uniquified temp name and
+		// rewrote Path to it, so the name the user must see survives only in
+		// FileSource.Name.
+		fx := newFixture(t)
+		path := filepath.Join(t.TempDir(), "spool-1477001618-saturn.jpg")
+		require.NoError(t, os.WriteFile(path, []byte("img"), 0o644))
+		obj := &importv2.Object{
+			SourceKey: "files/saturn.jpg",
+			SbType:    coresb.SmartBlockTypeFileObject,
+			Payload:   &importv2.Snapshot{Details: domain.NewDetails()},
+			File:      &importv2.FileSource{Path: path, Name: "saturn.jpg"},
+		}
+
+		// when
+		_, err := fx.Persist(context.Background(), obj, Target{}, fx.report)
+
+		// then — the uploader names a file object after LocalPath's base
+		// unless told otherwise, which would publish the spill file's
+		// uniquifier as the object's name.
+		require.NoError(t, err)
+		assert.Equal(t, []string{"saturn.jpg"}, fx.uploader.uploadedNames)
+	})
+
+	t.Run("an unnamed source leaves the naming to the uploader", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		path := filepath.Join(t.TempDir(), "img.png")
+		require.NoError(t, os.WriteFile(path, []byte("img"), 0o644))
+		obj := &importv2.Object{
+			SourceKey: "docs/img.png",
+			SbType:    coresb.SmartBlockTypeFileObject,
+			Payload:   &importv2.Snapshot{Details: domain.NewDetails()},
+			File:      &importv2.FileSource{Path: path},
+		}
+
+		// when
+		_, err := fx.Persist(context.Background(), obj, Target{}, fx.report)
+
+		// then — an empty name must not travel as one, or the object would
+		// be named after sanitizeBase's placeholder instead of its path.
+		require.NoError(t, err)
+		assert.Equal(t, []string{""}, fx.uploader.uploadedNames)
 	})
 
 	t.Run("url-only source — the replayed-spool shape — uploads by url", func(t *testing.T) {

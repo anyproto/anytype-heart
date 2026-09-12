@@ -42,6 +42,13 @@ func (p *Persister) persistFile(ctx context.Context, o *importv2.Object) (Outcom
 		ObjectOrigin:         p.origin,
 		CustomEncryptionKeys: o.File.EncryptionKeys,
 	}
+	if o.File.Name != "" {
+		// The source's own name, not the staged path's: localPath is a spill
+		// file the engine chose (pass 2's drain, or materialize just above),
+		// and its uniquifier is no name to show a user. A source that names
+		// itself nothing keeps the uploader's own derivation.
+		req.Name = sanitizeBase(o.File.Name)
+	}
 	if localPath == "" {
 		req.Url = o.File.URL
 	}
