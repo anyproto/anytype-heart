@@ -61,7 +61,12 @@ type urlRefresher func(ctx context.Context) (string, error)
 // a remote URL. The download is lazy: it runs inside the persist worker via
 // FileSource.Open, in parallel with conversion, into the run's temp dir —
 // with the fetcher's bounded retries. Returns the reference source key.
-func (c *Converter) emitFileFromUrl(ctx context.Context, sink importv2.Sink, rawUrl, name string, external bool, refresh urlRefresher) (string, error) {
+//
+// ownerKey/ownerRef name the entity the file was first referenced from and
+// the block id or relation key holding the reference; they become the file's
+// createdInContext pair. A url referenced from several places keeps the first
+// owner — the rest keep the file alive through their backlinks.
+func (c *Converter) emitFileFromUrl(ctx context.Context, sink importv2.Sink, rawUrl, name string, external bool, refresh urlRefresher, ownerKey, ownerRef string) (string, error) {
 	sourceKey, created := c.files.sourceKeyFor(rawUrl, external)
 	if !created {
 		return sourceKey, nil
@@ -78,9 +83,11 @@ func (c *Converter) emitFileFromUrl(ctx context.Context, sink importv2.Sink, raw
 		SbType:    coresb.SmartBlockTypeFileObject,
 		Payload:   &importv2.Snapshot{Details: domain.NewDetails()},
 		File: &importv2.FileSource{
-			Name: name,
-			URL:  rawUrl,
-			Open: c.downloadOpener(sourceKey, name, rawUrl, refresh),
+			Name:           name,
+			URL:            rawUrl,
+			Open:           c.downloadOpener(sourceKey, name, rawUrl, refresh),
+			OwnerSourceKey: ownerKey,
+			OwnerRef:       ownerRef,
 		},
 	}
 	return sourceKey, sink.Object(ctx, object)

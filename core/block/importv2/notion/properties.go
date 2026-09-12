@@ -446,3 +446,14 @@ func zeroValueOf(format model.RelationFormat) domain.Value {
 		return domain.String("")
 	}
 }
+
+// propertyRef is the createdInContextRef of a file carried by a property
+// value: the relation the file is linked through, since no block holds it.
+// A property whose relation is still unresolved falls back to its Notion
+// name — a ref object GC can act on either way.
+func propertyRef(def *relationDef, name string) string {
+	if def != nil && def.key != "" {
+		return def.key
+	}
+	return name
+}

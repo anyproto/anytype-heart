@@ -452,7 +452,8 @@ func (c *Converter) propertyDetail(ctx context.Context, pageId, scope, name stri
 			// Property files carry no per-file refresh source (re-reading the
 			// whole page to match a file by name is not worth it) — nil skips
 			// the expired-URL retry.
-			sourceKey, err := c.emitFileFromUrl(ctx, sink, file.url(), file.Name, file.isExternal(), nil)
+			sourceKey, err := c.emitFileFromUrl(ctx, sink, file.url(), file.Name, file.isExternal(), nil,
+				pageId, propertyRef(def, name))
 			if err != nil {
 				return domain.Invalid(), nil, err
 			}

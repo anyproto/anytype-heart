@@ -123,8 +123,14 @@ func scriptedWorkspace(t *testing.T) http.HandlerFunc {
 		}}`
 	routes["GET /pages/p2"] = `{
 		"id":"p2","archived":false,
+		"icon":{"type":"external","external":{"url":"https://cdn.example.com/icon.png"}},
+		"cover":{"type":"external","external":{"url":"https://cdn.example.com/cover.png"}},
 		"created_time":"2024-02-01T10:00:00.000Z","last_edited_time":"2024-02-02T10:00:00.000Z",
-		"properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"Beta","type":"text"}]}}}`
+		"properties":{
+			"Name":{"id":"title","type":"title","title":[{"plain_text":"Beta","type":"text"}]},
+			"Attachments":{"id":"att","type":"files","files":[
+				{"type":"external","name":"att.pdf","external":{"url":"https://cdn.example.com/att.pdf"}}]}
+		}}`
 
 	routes["GET /blocks/p1/children"] = `{"results":[
 		{"id":"b1","type":"paragraph","has_children":false,"paragraph":{"rich_text":[
@@ -456,4 +462,63 @@ func assertUniqueBlockIds(t *testing.T, sink *recordingSink) {
 			seen[block.Id] = true
 		}
 	}
+}
+
+// TestNotionFileOwnership pins the createdInContext pair on every file a
+// Notion page brings in. Object GC reads those two fields to tell an owned
+// attachment from an orphan; a file without them can never be offered for
+// cleanup, whatever happens to the page it came from.
+func TestNotionFileOwnership(t *testing.T) {
+	sink, _, _ := runScripted(t)
+
+	page := sink.byKey("p2")
+	require.NotNil(t, page)
+	blocks := map[string]*model.Block{}
+	for _, b := range page.Payload.Blocks {
+		blocks[b.Id] = b
+	}
+
+	ownerOf := func(t *testing.T, sourceKey string) (string, string) {
+		t.Helper()
+		file := sink.byKey(sourceKey)
+		require.NotNil(t, file, "file object %q must be emitted", sourceKey)
+		require.NotNil(t, file.File)
+		return file.File.OwnerSourceKey, file.File.OwnerRef
+	}
+
+	t.Run("a file block owns its file through the block", func(t *testing.T) {
+		require.NotNil(t, blocks["m2"])
+		owner, ref := ownerOf(t, blocks["m2"].GetFile().TargetObjectId)
+		assert.Equal(t, "p2", owner)
+		assert.Equal(t, "m2", ref, "the block holding the reference is the ref")
+	})
+
+	t.Run("an icon and a cover own their files through the relation key", func(t *testing.T) {
+		// No block holds these references, so the relation key is the ref —
+		// the same shape bookmark images use.
+		iconKey := page.Payload.Details.GetString(bundle.RelationKeyIconImage)
+		require.NotEmpty(t, iconKey)
+		owner, ref := ownerOf(t, iconKey)
+		assert.Equal(t, "p2", owner)
+		assert.Equal(t, bundle.RelationKeyIconImage.String(), ref)
+
+		coverKey := page.Payload.Details.GetString(bundle.RelationKeyCoverId)
+		require.NotEmpty(t, coverKey)
+		owner, ref = ownerOf(t, coverKey)
+		assert.Equal(t, "p2", owner)
+		assert.Equal(t, bundle.RelationKeyCoverId.String(), ref)
+	})
+
+	t.Run("a file property owns its files through its relation key", func(t *testing.T) {
+		var attachmentKey, relationKey string
+		for key, value := range page.Payload.Details.Iterate() {
+			if list := value.StringList(); len(list) == 1 && strings.HasPrefix(list[0], "file:") {
+				attachmentKey, relationKey = list[0], string(key)
+			}
+		}
+		require.NotEmpty(t, attachmentKey, "the files property must resolve to a file source key")
+		owner, ref := ownerOf(t, attachmentKey)
+		assert.Equal(t, "p2", owner)
+		assert.Equal(t, relationKey, ref)
+	})
 }

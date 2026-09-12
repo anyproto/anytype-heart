@@ -286,7 +286,8 @@ func (c *Converter) mapText(ctx context.Context, mctx mapContext, block *notionB
 				}
 				return fresh.Icon.fileUrl()
 			})
-			sourceKey, err := c.emitFileFromUrl(ctx, sink, iconUrl, "icon", payload.Icon.isExternal(), refresh)
+			sourceKey, err := c.emitFileFromUrl(ctx, sink, iconUrl, "icon", payload.Icon.isExternal(), refresh,
+				mctx.pageId, block.Id)
 			if err != nil {
 				return nil, err
 			}
@@ -365,7 +366,8 @@ func (c *Converter) mapFile(ctx context.Context, mctx mapContext, block *notionB
 		}
 		return fresh.url()
 	})
-	sourceKey, err := c.emitFileFromUrl(ctx, sink, payload.url(), payload.Name, payload.isExternal(), refresh)
+	sourceKey, err := c.emitFileFromUrl(ctx, sink, payload.url(), payload.Name, payload.isExternal(), refresh,
+		mctx.pageId, block.Id)
 	if err != nil {
 		return nil, err
 	}

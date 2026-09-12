@@ -105,7 +105,11 @@ func (c *Converter) applyIcon(ctx context.Context, object *importv2.Object, icon
 			refresh := c.entityUrlRefresher(refreshPath, func(fresh *iconValue, _ *fileValue) string {
 				return fresh.fileUrl()
 			})
-			sourceKey, err := c.emitFileFromUrl(ctx, sink, iconUrl, "icon", icon.isExternal(), refresh)
+			// No block holds an icon or a cover: the relation key is the ref,
+			// as it is for a bookmark's image. Object GC ignores a context
+			// whose ref is empty, so a bare context would change nothing.
+			sourceKey, err := c.emitFileFromUrl(ctx, sink, iconUrl, "icon", icon.isExternal(), refresh,
+				object.SourceKey, bundle.RelationKeyIconImage.String())
 			if err != nil {
 				return err
 			}
@@ -116,7 +120,8 @@ func (c *Converter) applyIcon(ctx context.Context, object *importv2.Object, icon
 		refresh := c.entityUrlRefresher(refreshPath, func(_ *iconValue, fresh *fileValue) string {
 			return fresh.url()
 		})
-		sourceKey, err := c.emitFileFromUrl(ctx, sink, coverUrl, "cover", cover.isExternal(), refresh)
+		sourceKey, err := c.emitFileFromUrl(ctx, sink, coverUrl, "cover", cover.isExternal(), refresh,
+			object.SourceKey, bundle.RelationKeyCoverId.String())
 		if err != nil {
 			return err
 		}
