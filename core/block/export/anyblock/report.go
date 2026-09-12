@@ -88,6 +88,26 @@ func recordStats(r *report.Collector, stats compose.Stats) {
 	for _, key := range stats.OrphanUsedKeys {
 		r.Add(model.ExportReportIssue{Severity: model.ExportReportIssue_WARNING, Code: "undefined_property", Path: anyblockjson.PropertiesFileName, Message: fmt.Sprintf("Referenced property %q has no definition", key)})
 	}
+	// Types the documents name that no document carries and the source
+	// space never held (SPEC §2c, unresolved.types): one warning per
+	// reference, attributed to the document and the slot, because each such
+	// object restores as a Page.
+	if len(stats.UnresolvedTypeReferences) > 0 {
+		for _, ref := range stats.UnresolvedTypeReferences {
+			path := referenceSourcePath(ref.ObjectID, ref.Path)
+			if path == "" {
+				path = anyblockjson.IndexFileName
+			}
+			r.Add(model.ExportReportIssue{ObjectId: ref.ObjectID, Severity: model.ExportReportIssue_WARNING, Code: string(anyblockjson.IssueCodeUnresolvedType),
+				Path:    path,
+				Message: fmt.Sprintf("Referenced type %q has no declaration in the bundle and the source space never held it; the object is imported as a Page", ref.TargetObjectID)})
+		}
+	} else {
+		for _, target := range stats.UnresolvedTypes {
+			r.Add(model.ExportReportIssue{Severity: model.ExportReportIssue_WARNING, Code: string(anyblockjson.IssueCodeUnresolvedType), Path: anyblockjson.IndexFileName,
+				Message: fmt.Sprintf("Referenced type %q has no declaration in the bundle and the source space never held it; its objects are imported as Pages", target)})
+		}
+	}
 	// The index's dangling targets, graded by the class the composer gave
 	// them (SPEC §2c): a tombstone is by-design state and is info, an
 	// object the space holds that this export did not write is a warning,

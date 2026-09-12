@@ -465,7 +465,7 @@ func (e *Exporter) emitDoc(ctx context.Context, req Request, docs collect.Docs, 
 
 	err := cache.Do(e.Picker, id, func(b sb.SmartBlock) error {
 		st := b.NewState()
-		if st.CombinedDetails().GetBool(bundle.RelationKeyIsDeleted) {
+		if tombstoned(st.CombinedDetails()) {
 			return nil
 		}
 		st = st.Copy().Filter(stateFilters(req, docs, id))
@@ -601,6 +601,14 @@ func snapshotBase(st *state.State) *model.SmartBlockSnapshotBase {
 // close-after-write pays for itself across thousands of documents (§1.6),
 // while a single-document caller is typically exporting the object the user
 // is looking at, where an eviction only buys the next reader a cold load.
+// tombstoned reports an object that is really gone, as opposed to a type or
+// property the user REMOVED from the space: removal sets isUninstalled and
+// the app mirrors that into isDeleted on load, but the row is complete and
+// the definition still the space's, so it travels (SPEC §2a).
+func tombstoned(details *domain.Details) bool {
+	return details.GetBool(bundle.RelationKeyIsDeleted) && !details.GetBool(bundle.RelationKeyIsUninstalled)
+}
+
 func (e *Exporter) ExportDocument(ctx context.Context, spaceId, objectId string) ([]byte, *model.ExportReport, error) {
 	diagnostics := new(report.Collector)
 	opts := storeresolver.New(e.ObjectStore.SpaceIndex(spaceId)).Options()
@@ -608,7 +616,7 @@ func (e *Exporter) ExportDocument(ctx context.Context, spaceId, objectId string)
 	var data []byte
 	err := cache.Do(e.Picker, objectId, func(b sb.SmartBlock) error {
 		st := b.NewState()
-		if st.CombinedDetails().GetBool(bundle.RelationKeyIsDeleted) {
+		if tombstoned(st.CombinedDetails()) {
 			return fmt.Errorf("object is deleted")
 		}
 		out, err := anyblockjson.Marshal(b.Type().ToProto(), snapshotBase(st), opts)

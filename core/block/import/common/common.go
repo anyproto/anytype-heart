@@ -173,7 +173,13 @@ func handleBookmarkBlock(oldIDtoNew map[string]string, block simple.Block, st *s
 	}
 	newTarget := oldIDtoNew[target]
 	if newTarget == "" {
-		log.Errorf("failed to find bookmark object %s", target)
+		// the bookmark object is not in the import — an absent reference the
+		// export kept verbatim (AnyBlock SPEC §9). Cleared, the block is a
+		// URL-only bookmark, and the bookmark syncer fetches the object again
+		// from the URL: the most a restore can recover, and not an error.
+		log.Warnf("bookmark object %s is not in the import; the bookmark is re-fetched from its URL", target)
+		block.Model().GetBookmark().TargetObjectId = ""
+		st.Set(simple.New(block.Model()))
 		return
 	}
 

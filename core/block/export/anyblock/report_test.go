@@ -202,3 +202,25 @@ func TestUnresolvedTargetsAreGradedByClass(t *testing.T) {
 	assert.Equal(t, model.ExportReportIssue_WARNING, byTarget["absent"].Severity)
 	assert.Equal(t, "widget/blocks/w2/link", byTarget["absent"].Path, "source-path attribution is unchanged")
 }
+
+// A document naming a type no document carries and the source space never
+// held (SPEC §2c, unresolved.types) reaches the report as a warning per
+// reference, attributed to the document and the slot, so the user learns
+// which objects will restore as Pages.
+func TestUnresolvedTypeReferencesAreReported(t *testing.T) {
+	var c report.Collector
+	recordStats(&c, compose.Stats{
+		UnresolvedTypes: []string{"type-69aab06861fab2bc0d9afc59"},
+		UnresolvedTypeReferences: []codec.ObjectReference{
+			{TargetObjectID: "type-69aab06861fab2bc0d9afc59", Path: "/type_internal_key", ObjectID: "orphan"},
+		},
+	})
+	r := c.Snapshot(nil)
+	require.Len(t, r.Issues, 1)
+	assert.Equal(t, "unresolved_type", r.Issues[0].Code)
+	assert.Equal(t, model.ExportReportIssue_WARNING, r.Issues[0].Severity)
+	assert.Equal(t, "orphan", r.Issues[0].ObjectId)
+	assert.Equal(t, "orphan/type_internal_key", r.Issues[0].Path)
+	assert.Contains(t, r.Issues[0].Message, "69aab06861fab2bc0d9afc59")
+	assert.Contains(t, r.Issues[0].Message, "Page")
+}

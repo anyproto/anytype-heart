@@ -27,6 +27,7 @@ const (
 	IssueCodeUnresolvedTarget               = codec.IssueCodeUnresolvedTarget
 	IssueCodeDeletedTarget                  = codec.IssueCodeDeletedTarget
 	IssueCodeOmittedTarget                  = codec.IssueCodeOmittedTarget
+	IssueCodeUnresolvedType                 = codec.IssueCodeUnresolvedType
 	FormatVersion                           = codec.FormatVersion
 	IndexFileName                           = codec.IndexFileName
 	PropertiesFileName                      = codec.PropertiesFileName

@@ -434,6 +434,7 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *domain.Detai
 			return nil
 		}
 		preserveBundledIdentity(b, st)
+		keepLiveTypeInstalled(b.Details(), st)
 		if st.ObjectTypeKey() == bundle.TypeKeyObjectType {
 			template.InitTemplate(st, template.WithDetail(bundle.RelationKeyRecommendedLayout, domain.Int64(model.ObjectType_basic)))
 		}
@@ -448,6 +449,20 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *domain.Detai
 		log.With(zap.String("object id", newID)).Errorf("failed to reset state %s: %s", newID, err)
 	}
 	return respDetails
+}
+
+// keepLiveTypeInstalled drops an incoming `isUninstalled` when the object
+// it is about to reset is LIVE in the destination: a bundle restores a type
+// the user removed as removed (AnyBlock SPEC §2a), but a type the user has
+// since restored — or never removed here — must not be hidden by a backup.
+// A nil existing means a new object, which keeps the flag.
+func keepLiveTypeInstalled(existing *domain.Details, st *state.State) {
+	if existing == nil || existing.Len() == 0 {
+		return
+	}
+	if st.Details().GetBool(bundle.RelationKeyIsUninstalled) && !existing.GetBool(bundle.RelationKeyIsUninstalled) {
+		st.RemoveDetail(bundle.RelationKeyIsUninstalled)
+	}
 }
 
 func (oc *ObjectCreator) setFavorite(snapshot *common.StateSnapshot, newID string) {
