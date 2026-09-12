@@ -30,6 +30,7 @@ var (
 	ErrFailedUpdateObject        = errors.New("failed to update object")
 	ErrFailedReplaceBlocks       = errors.New("failed to replace blocks")
 	ErrFailedDeleteObject        = errors.New("failed to delete object")
+	ErrFailedAddDiscussion       = errors.New("failed to add discussion")
 )
 
 // ListObjects retrieves a paginated list of objects in a specific space.
@@ -526,4 +527,14 @@ func (s *Service) createAndPasteBody(ctx context.Context, spaceId string, object
 	}
 
 	return nil
+}
+
+// AddDiscussion creates an inline discussion for the object and returns the
+// chat id of the new discussion.
+func (s *Service) AddDiscussion(ctx context.Context, objectId string) (string, error) {
+	resp := s.mw.ObjectAddDiscussion(ctx, &pb.RpcObjectDiscussionAddRequest{ObjectId: objectId})
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectDiscussionAddResponseError_NULL {
+		return "", ErrFailedAddDiscussion
+	}
+	return resp.DiscussionId, nil
 }

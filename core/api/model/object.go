@@ -64,6 +64,10 @@ type ObjectResponse struct {
 	Object ObjectWithBody `json:"object"` // The object
 }
 
+type ObjectDiscussionResponse struct {
+	DiscussionId string `json:"discussion_id" example:"bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge"` // The chat id of the newly created inline discussion; use it as chat_id with the Chat endpoints
+}
+
 type Object struct {
 	Object       string              `json:"object" example:"object"`                                                                                                                                                                                                                      // The data model of the object
 	Id           string              `json:"id" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`                                                                                                                                                                     // The id of the object

@@ -1783,6 +1783,13 @@ components:
       - ObjectLayoutCollection
       - ObjectLayoutParticipant
       - ObjectLayoutChat
+    ObjectDiscussionResponse:
+      properties:
+        discussion_id:
+          description: The chat id of the newly created inline discussion; use it as chat_id with the Chat endpoints
+          example: bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge
+          type: string
+      type: object
     ObjectResponse:
       properties:
         object:
@@ -3250,6 +3257,66 @@ paths:
       summary: Update space
       tags:
       - Spaces
+  /v1/spaces/{space_id}/objects/{object_id}/discussion:
+    post:
+      description: Creates an inline discussion for the object identified by the object ID and returns the chat id of the new discussion. Agents can then use this id as chat_id with the Chat endpoints to read and write the discussion's messages. Adding a discussion to an object that already has one fails.
+      operationId: add_object_discussion
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-11-08"
+          type: string
+      - description: The ID of the space
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the object to add the discussion to; must be retrieved from ListObjects, SearchSpace or GlobalSearch endpoints or obtained from response context
+        in: path
+        name: object_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectDiscussionResponse'
+          description: The chat id of the newly created discussion
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+          description: Resource not found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateLimitError'
+          description: Rate limit exceeded
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Add a discussion to an object
+      tags:
+      - Object
   /v1/spaces/{space_id}/chats:
     get:
       description: |-
