@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -41,9 +42,17 @@ import (
 )
 
 const (
-	CName    = "fts"
-	ftsDir   = "fts"
-	ftsDir2  = "fts_tantivy"
+	CName   = "fts"
+	ftsDir  = "fts"
+	ftsDir2 = "fts_tantivy"
+	// ftsVer names the on-disk index directory. A bump throws every user's
+	// index away and rebuilds it from the object store, so it is reserved for
+	// changes that make an existing index unusable by design. The schema is
+	// pinned by TestSchemaPinned: tantivy refuses to open an index whose
+	// stored schema differs from the requested one, and Run recovers from
+	// that by quarantining and rebuilding only the affected index (releases
+	// up to v0.47.2 wrote a seven-field schema under this same version; from
+	// v0.48.0 the four chat message fields are part of it).
 	ftsVer   = "16"
 	docLimit = 10000
 
@@ -69,10 +78,30 @@ const (
 	tokenizerId  = "SimpleIdTokenizer"
 )
 
+// schemaFieldNames is the field order of the schema built in Run; an index
+// whose meta.json lists a different set or order cannot be opened by tantivy
+var schemaFieldNames = []string{
+	fieldId, fieldIdRaw, fieldSpace, fieldTitle, fieldTitleZh, fieldText, fieldTextZh,
+	fieldAuthor, fieldOrderId, fieldMessageId, fieldTimestamp,
+}
+
+// schemaMismatchMarker is the stable part of tantivy's error when an index
+// exists with a different schema ("Schema error: 'An index exists but the
+// schema does not match.'"); tantivy-go exposes the error as text only. A
+// variable so tests can prove the meta.json fallback works without it.
+var schemaMismatchMarker = "schema does not match"
+
+const (
+	schemaRecoveryTantivyError    = "tantivy-error"
+	schemaRecoveryMetaNames       = "meta-names"
+	schemaRecoveryMetaUndecodable = "meta-undecodable"
+)
+
 var (
 	log                    = logging.Logger("ftsearch")
 	ErrAppClosingInitiated = errors.New("app closing initiated")
 	ErrIndexInUse          = errors.New("tantivy index is locked by another process")
+	ErrSchemaMismatch      = errors.New("tantivy index schema does not match")
 )
 
 type FTSearch interface {
@@ -146,6 +175,9 @@ type ftSearch struct {
 	lang                tantivy.Language
 	appClosingInitiated atomic.Bool
 	startupReport       *tantivycheck.ConsistencyReport
+	// schemaRecovery records which check made Run rebuild an incompatible
+	// index ("" when it opened as is); for tests and diagnostics
+	schemaRecovery string
 }
 
 func (f *ftSearch) LastDbState() (uint64, error) {
@@ -299,6 +331,7 @@ func (f *ftSearch) Name() (name string) {
 
 func (f *ftSearch) Run(context.Context) error {
 	report, err := tantivycheck.Check(f.ftsPath)
+	metaUndecodable := errors.Is(err, tantivycheck.ErrMetaUndecodable)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			log.Warnf("tantivy index checking failed: %v", err)
@@ -308,12 +341,19 @@ func (f *ftSearch) Run(context.Context) error {
 	if report.WriterLockPresent || report.MetaLockPresent {
 		return ErrIndexInUse
 	}
+	// Quarantined copies hold nothing worth keeping once this run has
+	// decided their fate (rebuilt, or unopenable either way), so sweep them
+	// on every exit, including copies an interrupted earlier start left
+	// behind. The goroutine may outlive Close; a concurrent account removal
+	// deleting the same paths is tolerated by os.RemoveAll.
+	defer func() { go f.removeQuarantinedIndexes() }()
 	var quarantinePath string
 	if len(report.MissingSegments) > 0 || len(report.MissingDelFiles) > 0 {
 		quarantinePath, err = f.quarantineCorruptIndex()
 		if err != nil {
 			return err
 		}
+		f.startupReport = &tantivycheck.ConsistencyReport{Rebuilt: true, ReportTime: time.Now()}
 	}
 	if !report.IsOk() {
 		var gcErr error
@@ -477,15 +517,27 @@ func (f *ftSearch) Run(context.Context) error {
 		return err
 	}
 	index, err := f.tryToBuildSchema(schema)
-	if err != nil {
-		return err
-	}
-	if quarantinePath != "" {
-		go func() {
-			if removeErr := os.RemoveAll(quarantinePath); removeErr != nil {
-				log.Warnf("failed to remove quarantined tantivy index %s: %v", quarantinePath, removeErr)
+	if err != nil && quarantinePath == "" {
+		// An index written with a different schema (e.g. by a release with
+		// fewer fields) or whose meta.json is no longer valid JSON cannot be
+		// opened by tantivy. It is derived data: quarantine it and start from
+		// an empty one, the indexer rebuilds it from the object store (ftInit
+		// sees an empty index). The rebuild is only ever triggered by a
+		// failed open, so a healthy index can never be thrown away; lock,
+		// permission and I/O errors are not recovered.
+		f.schemaRecovery = unopenableIndexReason(err, report.SchemaFieldNames, metaUndecodable)
+		if f.schemaRecovery != "" {
+			log.With("recovery", f.schemaRecovery).With("onDisk", report.SchemaFieldNames).
+				Warnf("tantivy index schema mismatch, rebuilding: %v", err)
+			if _, err = f.quarantineCorruptIndex(); err != nil {
+				return err
 			}
-		}()
+			f.startupReport = &tantivycheck.ConsistencyReport{Rebuilt: true, ReportTime: time.Now()}
+			index, err = f.tryToBuildSchema(schema)
+		}
+	}
+	if err != nil {
+		return fmt.Errorf("open tantivy index: %w", err)
 	}
 	f.index = index
 	f.parserPool = &fastjson.ParserPool{}
@@ -521,8 +573,16 @@ func (f *ftSearch) Run(context.Context) error {
 	return nil
 }
 
+const quarantineSuffix = ".corrupt-"
+
+// quarantineCorruptIndex moves the whole index root aside so a fresh index
+// can be created in its place; nothing is deleted until the replacement
+// index has been opened (see removeQuarantinedIndexes)
 func (f *ftSearch) quarantineCorruptIndex() (string, error) {
-	quarantinePath := fmt.Sprintf("%s.corrupt-%d", f.rootPath, time.Now().UnixNano())
+	if !strings.HasSuffix(f.rootPath, ftsDir2) {
+		return "", fmt.Errorf("refusing to quarantine unexpected path %s", f.rootPath)
+	}
+	quarantinePath := fmt.Sprintf("%s%s%d", f.rootPath, quarantineSuffix, time.Now().UnixNano())
 	if err := os.Rename(f.rootPath, quarantinePath); err != nil {
 		return "", fmt.Errorf("quarantine corrupt tantivy index: %w", err)
 	}
@@ -530,8 +590,63 @@ func (f *ftSearch) quarantineCorruptIndex() (string, error) {
 	return quarantinePath, nil
 }
 
+// removeQuarantinedIndexes deletes every quarantined copy next to the index
+// root, including ones an earlier start left behind (killed during removal,
+// or a failed rebuild). A plain directory listing is used rather than a glob
+// so metacharacters in the account path cannot widen the match.
+func (f *ftSearch) removeQuarantinedIndexes() {
+	if !strings.HasSuffix(f.rootPath, ftsDir2) {
+		return
+	}
+	parent := filepath.Dir(f.rootPath)
+	entries, err := os.ReadDir(parent)
+	if err != nil {
+		log.Warnf("list quarantined tantivy indexes: %v", err)
+		return
+	}
+	prefix := filepath.Base(f.rootPath) + quarantineSuffix
+	for _, entry := range entries {
+		if !entry.IsDir() || !strings.HasPrefix(entry.Name(), prefix) {
+			continue
+		}
+		path := filepath.Join(parent, entry.Name())
+		if removeErr := os.RemoveAll(path); removeErr != nil {
+			log.Warnf("failed to remove quarantined tantivy index %s: %v", path, removeErr)
+		}
+	}
+}
+
 func (f *ftSearch) tryToBuildSchema(schema *tantivy.Schema) (*tantivy.TantivyContext, error) {
-	return tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
+	index, err := tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
+	if err != nil && isSchemaMismatchError(err) {
+		return nil, fmt.Errorf("%w: %w", ErrSchemaMismatch, err)
+	}
+	return index, err
+}
+
+// isSchemaMismatchError reports whether tantivy refused to open an existing
+// index because its stored schema differs from the requested one
+func isSchemaMismatchError(err error) bool {
+	return strings.Contains(strings.ToLower(err.Error()), schemaMismatchMarker)
+}
+
+// unopenableIndexReason classifies a failed open as one the index can be
+// rebuilt from: tantivy's own schema verdict first, then the field names
+// recorded in meta.json as a backstop should the error text ever change,
+// then a meta.json that is not valid JSON (detected locally, never from
+// tantivy's generic corruption/I/O text). Empty means the failure must
+// propagate.
+func unopenableIndexReason(openErr error, onDiskFieldNames []string, metaUndecodable bool) string {
+	if errors.Is(openErr, ErrSchemaMismatch) {
+		return schemaRecoveryTantivyError
+	}
+	if len(onDiskFieldNames) > 0 && !slices.Equal(onDiskFieldNames, schemaFieldNames) {
+		return schemaRecoveryMetaNames
+	}
+	if metaUndecodable {
+		return schemaRecoveryMetaUndecodable
+	}
+	return ""
 }
 
 func (f *ftSearch) Index(doc SearchDoc) error {
