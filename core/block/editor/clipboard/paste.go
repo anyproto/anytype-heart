@@ -307,6 +307,9 @@ func (p *pasteCtrl) singleRange() (err error) {
 			// Reverts the multi-block carve-out from GO-6615 "Keep target toggle
 			// block"; the single-block toggle case is handled by intoBlock mode.
 			selText.SetText(firstPasteText.GetText(), firstPasteText.Model().GetText().Marks)
+			if selText.Model().GetText().Style == model.BlockContentText_Paragraph {
+				selText.SetStyle(firstPasteText.Model().GetText().Style)
+			}
 			p.ps.Unlink(firstPasteText.Model().Id)
 			// an empty block's id is shared with peers — fork it (never a
 			// required block here: those returned earlier)
