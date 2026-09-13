@@ -17865,6 +17865,7 @@ var xxx_messageInfo_RpcAccountCreate proto.InternalMessageInfo
 type RpcAccountCreateRequest struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Types that are valid to be assigned to Avatar:
+	//
 	//	*RpcAccountCreateRequestAvatarOfAvatarLocalPath
 	Avatar                      IsRpcAccountCreateRequestAvatar `protobuf_oneof:"avatar"`
 	StorePath                   string                          `protobuf:"bytes,3,opt,name=storePath,proto3" json:"storePath,omitempty"`
