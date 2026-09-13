@@ -150,6 +150,8 @@ service ClientCommands {
     rpc ObjectImport (anytype.Rpc.Object.Import.Request) returns (anytype.Rpc.Object.Import.Response);
     rpc ObjectImportList (anytype.Rpc.Object.ImportList.Request) returns (anytype.Rpc.Object.ImportList.Response);
     rpc ObjectImportNotionValidateToken (anytype.Rpc.Object.Import.Notion.ValidateToken.Request) returns (anytype.Rpc.Object.Import.Notion.ValidateToken.Response);
+    rpc ObjectImportRunStatus (anytype.Rpc.Object.ImportRunStatus.Request) returns (anytype.Rpc.Object.ImportRunStatus.Response);
+    rpc ObjectImportRunList (anytype.Rpc.Object.ImportRunList.Request) returns (anytype.Rpc.Object.ImportRunList.Response);
     rpc ObjectImportUseCase (anytype.Rpc.Object.ImportUseCase.Request) returns (anytype.Rpc.Object.ImportUseCase.Response);
     rpc ObjectImportExperience (anytype.Rpc.Object.ImportExperience.Request) returns (anytype.Rpc.Object.ImportExperience.Response);
     rpc ObjectDateByTimestamp (anytype.Rpc.Object.DateByTimestamp.Request) returns (anytype.Rpc.Object.DateByTimestamp.Response);
@@ -459,6 +461,7 @@ service ClientCommands {
     rpc AIAutofill (anytype.Rpc.AI.Autofill.Request) returns (anytype.Rpc.AI.Autofill.Response);
     rpc AIListSummary (anytype.Rpc.AI.ListSummary.Request) returns (anytype.Rpc.AI.ListSummary.Response);
     rpc AIObjectCreateFromUrl (anytype.Rpc.AI.ObjectCreateFromUrl.Request) returns (anytype.Rpc.AI.ObjectCreateFromUrl.Response);
+    rpc AIListModels (anytype.Rpc.AI.ListModels.Request) returns (anytype.Rpc.AI.ListModels.Response);
 
     // Push
     rpc PushNotificationRegisterToken(anytype.Rpc.PushNotification.RegisterToken.Request) returns (anytype.Rpc.PushNotification.RegisterToken.Response);

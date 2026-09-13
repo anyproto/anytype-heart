@@ -2,6 +2,7 @@ package anyblock
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	codec "github.com/anyproto/any-block/codec/anyblockjson"
@@ -164,4 +165,62 @@ func TestUnusedBuiltInPropertiesDoNotCreateExportNotes(t *testing.T) {
 	assert.Equal(t, "unused_property", r.Issues[1].Code)
 	assert.Equal(t, model.ExportReportIssue_INFO, r.Issues[1].Severity)
 	assert.Equal(t, `Unused property "custom-sync-status" was omitted from the dictionary`, r.Issues[1].Message)
+}
+
+// The index's declared dangling targets reach the report graded by class
+// (SPEC §2c): a tombstone is by-design state and lands as info, an object
+// the space holds that the export did not write is a warning, and an id the
+// space had no row for — absent, most likely unsynced — keeps the
+// unresolved_target warning. Only the last is a loss worth a user's eye.
+func TestUnresolvedTargetsAreGradedByClass(t *testing.T) {
+	var c report.Collector
+	recordStats(&c, compose.Stats{
+		UnresolvedTargets: []string{"absent", "gone", "shelved"},
+		UnresolvedDeleted: []string{"gone"},
+		UnresolvedOmitted: []string{"shelved"},
+		UnresolvedReferences: []codec.ObjectReference{
+			{TargetObjectID: "gone", Path: "/homepage", ObjectID: "space", SourcePath: "/details/homepage"},
+			{TargetObjectID: "shelved", Path: "/widgets/0/target", ObjectID: "widget", SourcePath: "/blocks/w1/link"},
+			{TargetObjectID: "absent", Path: "/widgets/1/target", ObjectID: "widget", SourcePath: "/blocks/w2/link"},
+		},
+	})
+	r := c.Snapshot(nil)
+	byTarget := map[string]*model.ExportReportIssue{}
+	for _, issue := range r.Issues {
+		for _, target := range []string{"absent", "gone", "shelved"} {
+			if strings.Contains(issue.Message, `"`+target+`"`) {
+				byTarget[target] = issue
+			}
+		}
+	}
+	require.Len(t, byTarget, 3)
+	assert.Equal(t, "deleted_target", byTarget["gone"].Code)
+	assert.Equal(t, model.ExportReportIssue_INFO, byTarget["gone"].Severity)
+	assert.Equal(t, "omitted_target", byTarget["shelved"].Code)
+	assert.Equal(t, model.ExportReportIssue_WARNING, byTarget["shelved"].Severity)
+	assert.Equal(t, "unresolved_target", byTarget["absent"].Code)
+	assert.Equal(t, model.ExportReportIssue_WARNING, byTarget["absent"].Severity)
+	assert.Equal(t, "widget/blocks/w2/link", byTarget["absent"].Path, "source-path attribution is unchanged")
+}
+
+// A document naming a type no document carries and the source space never
+// held (SPEC §2c, unresolved.types) reaches the report as a warning per
+// reference, attributed to the document and the slot, so the user learns
+// which objects will restore as Pages.
+func TestUnresolvedTypeReferencesAreReported(t *testing.T) {
+	var c report.Collector
+	recordStats(&c, compose.Stats{
+		UnresolvedTypes: []string{"type-69aab06861fab2bc0d9afc59"},
+		UnresolvedTypeReferences: []codec.ObjectReference{
+			{TargetObjectID: "type-69aab06861fab2bc0d9afc59", Path: "/type_internal_key", ObjectID: "orphan"},
+		},
+	})
+	r := c.Snapshot(nil)
+	require.Len(t, r.Issues, 1)
+	assert.Equal(t, "unresolved_type", r.Issues[0].Code)
+	assert.Equal(t, model.ExportReportIssue_WARNING, r.Issues[0].Severity)
+	assert.Equal(t, "orphan", r.Issues[0].ObjectId)
+	assert.Equal(t, "orphan/type_internal_key", r.Issues[0].Path)
+	assert.Contains(t, r.Issues[0].Message, "69aab06861fab2bc0d9afc59")
+	assert.Contains(t, r.Issues[0].Message, "Page")
 }

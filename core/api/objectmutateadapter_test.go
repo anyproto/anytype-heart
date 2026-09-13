@@ -31,6 +31,7 @@ func (h layoutHolder) Type() coresb.SmartBlockType            { return coresb.Sm
 func (h layoutHolder) Layout() (model.ObjectTypeLayout, bool) { return h.layout, true }
 func (h layoutHolder) UniqueKey() domain.UniqueKey            { return nil }
 func (h layoutHolder) LocalDetails() *domain.Details          { return domain.NewDetails() }
+func (h layoutHolder) MemberPolicy() restriction.MemberPolicy { return restriction.MemberPolicy{} }
 
 // TestCheckObjectEditable covers A4: the apply runs with NoRestrictions, so
 // the adapter must enforce the object's own restrictions itself — and M1:
@@ -120,6 +121,7 @@ func (h ukHolder) Type() coresb.SmartBlockType            { return h.uk.Smartblo
 func (h ukHolder) Layout() (model.ObjectTypeLayout, bool) { return 0, false }
 func (h ukHolder) UniqueKey() domain.UniqueKey            { return h.uk }
 func (h ukHolder) LocalDetails() *domain.Details          { return domain.NewDetails() }
+func (h ukHolder) MemberPolicy() restriction.MemberPolicy { return restriction.MemberPolicy{} }
 
 // fakeGetter serves one smartblock to the adapter's DoContextFullID.
 type fakeGetter struct {

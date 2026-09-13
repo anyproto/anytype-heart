@@ -178,6 +178,8 @@ func (p *importProcessor) handleBuiltinConverterImport(ctx context.Context) *Imp
 
 	if resultErr != nil {
 		rootCollectionID = ""
+	} else {
+		p.tombstoneKeptIDs(ctx)
 	}
 
 	p.response.RootCollectionId = rootCollectionID
@@ -186,6 +188,41 @@ func (p *importProcessor) handleBuiltinConverterImport(ctx context.Context) *Imp
 	p.response.Err = resultErr
 
 	return p.response
+}
+
+// tombstoneKeptIDs gives every kept id (common.Response.KeptIDs) a
+// tombstone in the destination when the space has no row for it, so a link
+// to an object the SOURCE deleted restores as a link to a deleted object —
+// rendered as such, and classified as deleted again by a later export —
+// rather than as "not found". A live row is left alone: restoring into the
+// space the backup came from re-links the reference. An existing tombstone
+// needs nothing.
+//
+// This writes the store's tombstone only; it is not entered in the synced
+// deletion log, which refuses an id with no local tree, so another device
+// does not see it and a full reindex drops it — after which the reference
+// degrades to absent, exactly the state it would have had without this.
+func (p *importProcessor) tombstoneKeptIDs(ctx context.Context) {
+	if len(p.converterResponse.KeptIDs) == 0 {
+		return
+	}
+	index := p.deps.objectStore.SpaceIndex(p.request.SpaceId)
+	for _, id := range p.converterResponse.KeptIDs {
+		if ctx.Err() != nil {
+			return
+		}
+		details, err := index.GetDetails(id)
+		if err != nil {
+			log.With(zap.String("objectId", id)).Warnf("kept id: read details: %v", err)
+			continue
+		}
+		if details.Len() > 0 {
+			continue
+		}
+		if err := index.DeleteObject(id); err != nil {
+			log.With(zap.String("objectId", id)).Warnf("kept id: write tombstone: %v", err)
+		}
+	}
 }
 
 func (p *importProcessor) initConversionFields(converterResponse *common.Response, errors *common.ConvertError) error {
@@ -197,7 +234,14 @@ func (p *importProcessor) initConversionFields(converterResponse *common.Respons
 	}
 	p.converterResponse = converterResponse
 	p.errors = errors
-	p.oldIDToNew = make(map[string]string, len(converterResponse.Snapshots))
+	p.oldIDToNew = make(map[string]string, len(converterResponse.Snapshots)+len(converterResponse.KeptIDs))
+	// a converter's kept ids (a bundle's declared-deleted targets, SPEC §2c)
+	// map to themselves before any object is created, so every creation-time
+	// rewrite keeps them instead of writing the missing-object sentinel; a
+	// snapshot that carries one of these ids overrides the seed below
+	for _, id := range converterResponse.KeptIDs {
+		p.oldIDToNew[id] = id
+	}
 	p.createPayloads = make(map[string]treestorage.TreeStorageCreatePayload, len(converterResponse.Snapshots))
 	p.relationKeysToFormat = make(map[domain.RelationKey]int32, len(converterResponse.Snapshots))
 	return nil

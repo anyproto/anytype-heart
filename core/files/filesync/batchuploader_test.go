@@ -73,11 +73,18 @@ func TestAddToLimitedQueue(t *testing.T) {
 
 		err := fx.queue.Upsert(objectId, func(exists bool, prev FileInfo) FileInfo {
 			return FileInfo{
-				ObjectId:    objectId,
-				FileId:      fileId,
-				SpaceId:     "space1",
-				State:       FileStateUploading,
-				ScheduledAt: time.Now(),
+				ObjectId: objectId,
+				FileId:   fileId,
+				SpaceId:  "space1",
+				State:    FileStateUploading,
+				// Not yet due, and addToLimitedQueue keeps the schedule it
+				// finds. runLimitedUploader consumes limited items through
+				// GetNextScheduled, so it waits on the timer instead of
+				// immediately re-examining this one and parking it as
+				// FileStateMissingBlocks - a legitimate move for the service
+				// to make, and one that raced this assertion. A plain GetNext
+				// skips only locked items, so the wait below still sees it.
+				ScheduledAt: time.Now().Add(time.Hour),
 			}
 		})
 		require.NoError(t, err)
@@ -90,13 +97,13 @@ func TestAddToLimitedQueue(t *testing.T) {
 
 		it, err := fx.queue.GetNext(getCtx, filequeue.GetNextRequest[FileInfo]{
 			Subscribe:   true,
-			StoreFilter: query.Or{filterByState(FileStateLimited), filterByState(FileStatePendingUpload)},
+			StoreFilter: filterByState(FileStateLimited),
 			Filter: func(info FileInfo) bool {
-				return info.ObjectId == objectId && (info.State == FileStateLimited || info.State == FileStatePendingUpload)
+				return info.ObjectId == objectId && info.State == FileStateLimited
 			},
 		})
 		require.NoError(t, err)
-		assert.True(t, it.State == FileStateLimited || it.State == FileStatePendingUpload)
+		assert.Equal(t, FileStateLimited, it.State)
 		require.NoError(t, fx.queue.ReleaseAndUpdate(it.ObjectId, it))
 	})
 

@@ -649,3 +649,96 @@ func (w failAtWriter) WriteFile(name string, r io.Reader, _ int64) error {
 	_, err := io.Copy(io.Discard, r)
 	return err
 }
+
+// A type the user removed from the space still travels (SPEC §2a): the
+// store keeps its full row under isUninstalled, mirrored into isDeleted,
+// and the enumeration used to refuse every isDeleted row — so 64 of the 72
+// type identities the corpus sweep could not resolve were exactly these.
+// The type is exported as an ordinary type document carrying
+// `uninstalled: true`; the object of that type keeps resolving.
+func TestExporter_ExportsAnUninstalledTypeAsUninstalled(t *testing.T) {
+	// given
+	fx := newFixture(t)
+	const (
+		objectId = "objectId"
+		typeId   = "customObjectType"
+		goneId   = "removedObjectType"
+		goneKey  = "removedtype"
+	)
+	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, typeId)
+	require.NoError(t, err)
+	goneUk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, goneKey)
+	require.NoError(t, err)
+	fx.store.AddObjects(t, spaceId, []spaceindex.TestObject{
+		{
+			bundle.RelationKeyId:      domain.String(objectId),
+			bundle.RelationKeyType:    domain.String(goneId),
+			bundle.RelationKeyName:    domain.String("Orphaned page"),
+			bundle.RelationKeySpaceId: domain.String(spaceId),
+		},
+		{
+			bundle.RelationKeyId:             domain.String(typeId),
+			bundle.RelationKeyUniqueKey:      domain.String(uk.Marshal()),
+			bundle.RelationKeyName:           domain.String("Custom type"),
+			bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_objectType)),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+			bundle.RelationKeySpaceId:        domain.String(spaceId),
+			bundle.RelationKeyType:           domain.String(typeId),
+		},
+		{
+			bundle.RelationKeyId:             domain.String(goneId),
+			bundle.RelationKeyUniqueKey:      domain.String(goneUk.Marshal()),
+			bundle.RelationKeyName:           domain.String("Removed type"),
+			bundle.RelationKeyLayout:         domain.Int64(int64(model.ObjectType_objectType)),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+			bundle.RelationKeySpaceId:        domain.String(spaceId),
+			bundle.RelationKeyType:           domain.String(typeId),
+			bundle.RelationKeyIsUninstalled:  domain.Bool(true),
+			bundle.RelationKeyIsDeleted:      domain.Bool(true),
+		},
+	})
+	page := setupObject(objectId, goneId, smartblock.SmartBlockTypePage, map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName: domain.String("Orphaned page"),
+	})
+	pageState := page.NewState()
+	pageState.SetObjectTypeKey(domain.TypeKey(goneKey))
+	page.Doc = pageState
+	objectType := setupObject(typeId, typeId, smartblock.SmartBlockTypeObjectType, map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName:      domain.String("Custom type"),
+		bundle.RelationKeyUniqueKey: domain.String(uk.Marshal()),
+	})
+	typeState := objectType.NewState()
+	typeState.SetUniqueKeyInternal(typeId)
+	objectType.Doc = typeState
+	gone := setupObject(goneId, typeId, smartblock.SmartBlockTypeObjectType, map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName:          domain.String("Removed type"),
+		bundle.RelationKeyUniqueKey:     domain.String(goneUk.Marshal()),
+		bundle.RelationKeyIsUninstalled: domain.Bool(true),
+		bundle.RelationKeyIsDeleted:     domain.Bool(true),
+	})
+	goneState := gone.NewState()
+	goneState.SetUniqueKeyInternal(goneKey)
+	gone.Doc = goneState
+	fx.picker.EXPECT().GetObject(mock.Anything, objectId).Return(page, nil).Maybe()
+	fx.picker.EXPECT().GetObject(mock.Anything, typeId).Return(objectType, nil).Maybe()
+	fx.picker.EXPECT().GetObject(mock.Anything, goneId).Return(gone, nil).Maybe()
+	fx.provider.EXPECT().Type(spaceId, objectId).Return(smartblock.SmartBlockTypePage, nil).Maybe()
+	fx.provider.EXPECT().Type(spaceId, typeId).Return(smartblock.SmartBlockTypeObjectType, nil).Maybe()
+	fx.provider.EXPECT().Type(spaceId, goneId).Return(smartblock.SmartBlockTypeObjectType, nil).Maybe()
+	req := anyblock.Request{SpaceId: spaceId, SpaceName: "Fixture space", NetworkId: "test-network", IncludeArchived: true}
+	dir := t.TempDir()
+	wr, err := anyblock.NewDirWriter(dir)
+	require.NoError(t, err)
+
+	// when
+	_, err = fx.exporter.Export(context.Background(), req, wr)
+
+	// then
+	require.NoError(t, err)
+	tree := readTree(t, dir)
+	require.Contains(t, tree, "types/type-"+goneKey+".anyblock.json", "the removed type travels")
+	assert.Contains(t, tree["types/type-"+goneKey+".anyblock.json"], `"uninstalled": true`)
+	assert.NotContains(t, tree["types/type-"+goneKey+".anyblock.json"], "Is uninstalled")
+	require.Contains(t, tree, "objects/objectId.anyblock.json")
+	assert.Contains(t, tree["objects/objectId.anyblock.json"], `"type_internal_key": "`+goneKey+`"`)
+}

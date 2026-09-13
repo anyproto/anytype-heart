@@ -218,7 +218,8 @@ func (o *objectProvider) CreateMandatoryObjects(ctx context.Context, space smart
 		st := sb.NewState()
 		st.SetDetailAndBundledRelation(bundle.RelationKeyAnalyticsSpaceId, domain.String(metrics.GenerateAnalyticsId()))
 		st.SetDetailAndBundledRelation(bundle.RelationKeyMigrationObjectContext, domain.Int64(domain.MigrationObjectContextVersion))
-		return sb.Apply(st)
+		// space bootstrap, not a user edit: every member runs it, including plain writers
+		return sb.Apply(st, smartblock.NoSpaceConfigCheck)
 	})
 	if err != nil {
 		return fmt.Errorf("set analytics id: %w", err)

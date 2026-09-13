@@ -827,3 +827,21 @@ func TestOneEntityOnTwoRowsIsStillOneCandidate(t *testing.T) {
 		assert.Equal(t, want, got, "the type declares one property, however many of its lists name it")
 	})
 }
+
+// A type the user removed carries BOTH flags in production —
+// isUninstalled, mirrored into isDeleted — and the listing behind the
+// id-to-key naming went through Query, which injects `isDeleted != true`
+// and silently dropped every such row. The comment on the listing always
+// said an uninstalled type is included in the id-to-key naming; now it is.
+func TestTypeKeyById_NamesADoubleFlagUninstalledType(t *testing.T) {
+	corpse := typeRow("type-corpse", bsonTypeKey, "Removed")
+	corpse[bundle.RelationKeyIsUninstalled] = domain.Bool(true)
+	corpse[bundle.RelationKeyIsDeleted] = domain.Bool(true)
+	r := vocabFixture(t, corpse)
+
+	key, ok := r.TypeKeyById("type-corpse")
+	require.True(t, ok, "the id still names the type: the export writes type_internal_key from it")
+	assert.Equal(t, bsonTypeKey, key)
+	_, named := r.TypeKey("Removed")
+	assert.False(t, named, "and the corpse still claims no spelling")
+}

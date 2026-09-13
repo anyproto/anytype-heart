@@ -59,6 +59,8 @@ func TestV1ProtosMatchAnyBlockCanonicalSources(t *testing.T) {
 			}
 			heartNormalized = withoutIntegrationMetadata(filepath.Base(file.heart), heartNormalized)
 			canonicalNormalized = withoutIntegrationMetadata(filepath.Base(file.heart), canonicalNormalized)
+			heartNormalized = withoutImportProgressAPI(filepath.Base(file.heart), heartNormalized)
+			canonicalNormalized = withoutImportProgressAPI(filepath.Base(file.heart), canonicalNormalized)
 
 			if heartNormalized != canonicalNormalized {
 				t.Fatalf(
@@ -136,6 +138,56 @@ func TestIntegrationMetadataExclusionPreservesSchemaChecks(t *testing.T) {
 	}
 }
 
+// A running import describes itself to the client: which phase it is in, how
+// many objects and bytes are done, and where its issue report landed. None of
+// that is part of a v1 snapshot - the importer writes snapshots, it never
+// describes itself in one. Exclude only these additive fields and the Statistic
+// payload; Finish's own fields and the import error codes must still match.
+func TestImportProgressExclusionPreservesExistingSchemaChecks(t *testing.T) {
+	for _, tc := range []struct {
+		file, canonical, extended, unexpected string
+	}{
+		{
+			"models.proto",
+			`messageImport{stringname=5;stringspaceName=6;}`,
+			`messageImport{stringname=5;stringspaceName=6;stringreportObjectId=7;int64issuesCount=8;}`,
+			`messageImport{stringname=4;stringspaceName=6;stringreportObjectId=7;int64issuesCount=8;}`,
+		},
+		{
+			"events.proto",
+			`messageImport{messageFinish{int64objectsCount=2;model.Import.TypeimportType=3;}}`,
+			`messageImport{messageFinish{int64objectsCount=2;model.Import.TypeimportType=3;stringreportObjectId=4;int64issuesCount=5;}messageStatistic{stringimportId=1;enumPhase{Scanning=0;}}}`,
+			`messageImport{messageFinish{int64objectsCount=3;model.Import.TypeimportType=3;stringreportObjectId=4;int64issuesCount=5;}messageStatistic{stringimportId=1;enumPhase{Scanning=0;}}}`,
+		},
+	} {
+		t.Run(tc.file, func(t *testing.T) {
+			if got := withoutImportProgressAPI(tc.file, tc.extended); got != tc.canonical {
+				t.Fatalf("expected the explicit Heart extension to normalize: %s", got)
+			}
+			if withoutImportProgressAPI(tc.file, tc.unexpected) == tc.canonical {
+				t.Fatal("normalization hid an unexpected field number")
+			}
+			if withoutImportProgressAPI(tc.file, tc.canonical) != tc.canonical {
+				t.Fatal("normalization changed the canonical schema")
+			}
+		})
+	}
+}
+
+// The oneof entry carrying the progress event is excluded on its own: it is the
+// only import member of Event.Message that the canonical source lacks.
+func TestImportProgressExclusionDropsTheEventMember(t *testing.T) {
+	const canonical = `messageMessage{MembershipV2.UpdatemembershipV2Update=138;}`
+	extended := `messageMessage{MembershipV2.UpdatemembershipV2Update=138;Import.StatisticimportStatistic=147;}`
+	if got := withoutImportProgressAPI("events.proto", extended); got != canonical {
+		t.Fatalf("expected the progress event member to normalize away: %s", got)
+	}
+	changed := strings.Replace(extended, "membershipV2Update=138;", "membershipV2Update=139;", 1)
+	if withoutImportProgressAPI("events.proto", changed) == canonical {
+		t.Fatal("normalization hid a changed existing field number")
+	}
+}
+
 // Export diagnostics are Heart RPC/notification metadata, never part of a v1
 // snapshot. Allow only these additive API fields and their separate proto import;
 // every other definition (including the notification's existing fields) must
@@ -145,29 +197,61 @@ func withoutExportReportAPI(normalized string) string {
 	return strings.ReplaceAll(normalized, `model.Export.FormatexportType=3;ExportReportreport=4;stringpath=5;`, `model.Export.FormatexportType=3;`)
 }
 
+// withoutImportProgressAPI removes Heart's live import-progress surface: the
+// phase/counter payload a running import broadcasts, the oneof member that
+// carries it, and the report-page pointers a finished run reports. The importer
+// writes v1 snapshots; it does not describe its own run in one, so none of this
+// belongs to the canonical format. Anchored on the neighbouring field so a
+// changed number next door still fails the comparison.
+func withoutImportProgressAPI(file, normalized string) string {
+	switch file {
+	case "models.proto":
+		return strings.ReplaceAll(normalized,
+			`stringspaceName=6;stringreportObjectId=7;int64issuesCount=8;`,
+			`stringspaceName=6;`)
+	case "events.proto":
+		normalized = strings.NewReplacer(
+			`Import.StatisticimportStatistic=147;`, "",
+			`model.Import.TypeimportType=3;stringreportObjectId=4;int64issuesCount=5;`,
+			`model.Import.TypeimportType=3;`,
+		).Replace(normalized)
+		return withoutNestedMessage(normalized, "messageImport{", "messageStatistic{")
+	}
+	return normalized
+}
+
+// withoutNestedMessage removes one nested message declaration, by name, from
+// inside the named enclosing one - the enclosing scope is what keeps a
+// same-named message elsewhere in the file untouched. A declaration that is not
+// there, or that runs past its enclosure, leaves the input alone: the
+// comparison then fails loudly rather than on a silently mangled schema.
+func withoutNestedMessage(normalized, outer, inner string) string {
+	outerStart := strings.Index(normalized, outer)
+	if outerStart < 0 {
+		return normalized
+	}
+	outerEnd := normalizedMessageEnd(normalized, outerStart)
+	if outerEnd < 0 {
+		return normalized
+	}
+	innerStart := strings.Index(normalized[outerStart:outerEnd], inner)
+	if innerStart < 0 {
+		return normalized
+	}
+	innerStart += outerStart
+	innerEnd := normalizedMessageEnd(normalized, innerStart)
+	if innerEnd < 0 || innerEnd > outerEnd {
+		return normalized
+	}
+	return normalized[:innerStart] + normalized[innerEnd:]
+}
+
 // Account recovery progress is a live API stream added on develop, not a v1
 // snapshot event. Exclude only its new payload and Account.Recovery namespace;
 // existing account events and all persisted block/object definitions still match.
 func withoutAccountRecoveryAPI(normalized string) string {
 	normalized = strings.ReplaceAll(normalized, `Account.Recovery.UpdateaccountRecoveryUpdate=206;`, "")
-	account := strings.Index(normalized, "messageAccount{")
-	if account < 0 {
-		return normalized
-	}
-	accountEnd := normalizedMessageEnd(normalized, account)
-	if accountEnd < 0 {
-		return normalized
-	}
-	recovery := strings.Index(normalized[account:accountEnd], "messageRecovery{")
-	if recovery < 0 {
-		return normalized
-	}
-	recovery += account
-	end := normalizedMessageEnd(normalized, recovery)
-	if end < 0 || end > accountEnd {
-		return normalized
-	}
-	return normalized[:recovery] + normalized[end:]
+	return withoutNestedMessage(normalized, "messageAccount{", "messageRecovery{")
 }
 
 // Return the offset after a normalized message's closing brace. Quoted defaults

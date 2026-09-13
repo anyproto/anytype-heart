@@ -179,6 +179,7 @@ type fixture struct {
 	source          *sourceStub
 	spaceIdResolver *mock_idresolver.MockResolver
 	space           *MockSpace
+	canManageSpace  *mock.Call
 
 	*smartBlock
 }
@@ -193,6 +194,9 @@ func newFixture(id string, t *testing.T) *fixture {
 
 	space := NewMockSpace(t)
 	space.EXPECT().Id().Return(testSpaceId).Maybe()
+	// restrictions ask the space for the caller's standing on every Apply; tests that care about
+	// the space configuration lock Unset this and expect their own.
+	canManageSpace := space.EXPECT().CanManageSpace().Return(true).Maybe()
 
 	indexer := NewMockIndexer(t)
 
@@ -224,6 +228,7 @@ func newFixture(id string, t *testing.T) *fixture {
 		spaceIdResolver: spaceIdResolver,
 		objectStore:     objectStore,
 		space:           space,
+		canManageSpace:  canManageSpace,
 	}
 }
 

@@ -713,6 +713,24 @@ func (e *exportContext) getExistedObjects(closure collect.Closure) error {
 		}
 		res = append(res, archivedObjects...)
 	}
+	// A type the user removed from the space keeps its full row under
+	// isUninstalled, which the app mirrors into isDeleted — and List, like
+	// every Query, refuses isDeleted rows. The definition is still the
+	// space's and every object of the type still carries the key, so the
+	// type travels (AnyBlock SPEC §2a) and is restored hidden. The explicit
+	// isDeleted filter with the none condition is what keeps the query from
+	// injecting the refusal.
+	uninstalledTypes, err := spaceIndex.Query(database.Query{Filters: []database.FilterRequest{
+		{RelationKey: bundle.RelationKeyIsUninstalled, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.Bool(true)},
+		{RelationKey: bundle.RelationKeyResolvedLayout, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.Int64(int64(model.ObjectType_objectType))},
+		{RelationKey: bundle.RelationKeyIsDeleted, Condition: model.BlockContentDataviewFilter_None},
+	}})
+	if err != nil {
+		return fmt.Errorf("list uninstalled types: %w", err)
+	}
+	for _, record := range uninstalledTypes {
+		res = append(res, &database.ObjectInfo{Id: record.Details.GetString(bundle.RelationKeyId), Details: record.Details})
+	}
 	e.docs = make(map[string]*Doc, len(res))
 	for _, info := range res {
 		objectSpaceID := e.spaceId

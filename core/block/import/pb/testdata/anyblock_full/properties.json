@@ -1,0 +1,145 @@
+{
+  "$schema": "https://schemas.anytype.io/anyblock/2.0/properties.schema.json",
+  "formatVersion": "2.0",
+  "properties": [
+    {
+      "property": "Name",
+      "internal_key": "name",
+      "name": "Name",
+      "format": "text",
+      "description": "Name of the object",
+      "hidden": true
+    },
+    {
+      "property": "Created by",
+      "internal_key": "creator",
+      "name": "Created by",
+      "format": "objects",
+      "object_types": [
+        "type-participant"
+      ],
+      "description": "Human which created this object",
+      "max_count": 1,
+      "readonly": true
+    },
+    {
+      "property": "Creation date",
+      "internal_key": "createdDate",
+      "name": "Creation date",
+      "format": "date",
+      "readonly": true
+    },
+    {
+      "property": "Origin",
+      "internal_key": "origin",
+      "name": "Origin",
+      "format": "number",
+      "value_names": [
+        "api",
+        "bookmark",
+        "builtin",
+        "clipboard",
+        "drag_and_drop",
+        "import",
+        "none",
+        "sharing_extension",
+        "usecase",
+        "webclipper"
+      ],
+      "description": "Source of objects in Anytype (clipboard, import)",
+      "readonly": true
+    },
+    {
+      "property": "Resolved layout",
+      "internal_key": "resolvedLayout",
+      "name": "Resolved layout",
+      "format": "number",
+      "value_names": [
+        "audio",
+        "basic",
+        "bookmark",
+        "chat_deprecated",
+        "chat_derived",
+        "collection",
+        "dashboard",
+        "date",
+        "devices",
+        "discussion",
+        "file",
+        "image",
+        "missing_object",
+        "note",
+        "notification",
+        "object_type",
+        "participant",
+        "pdf",
+        "profile",
+        "property",
+        "property_option",
+        "property_options_list",
+        "set",
+        "space",
+        "space_view",
+        "tag",
+        "todo",
+        "video"
+      ],
+      "description": "Layout resolved based on object self layout and type recommended layout",
+      "readonly": true,
+      "hidden": true
+    },
+    {
+      "property": "File extension",
+      "internal_key": "fileExt",
+      "name": "File extension",
+      "format": "text",
+      "readonly": true
+    },
+    {
+      "property": "Mime type",
+      "internal_key": "fileMimeType",
+      "name": "Mime type",
+      "format": "text",
+      "description": "Mime type of object",
+      "hidden": true
+    },
+    {
+      "property": "Size",
+      "internal_key": "sizeInBytes",
+      "name": "Size",
+      "format": "number",
+      "description": "Size of file/image in bytes",
+      "readonly": true
+    },
+    {
+      "property": "0f1e2d3c4b5a69788796a5b4",
+      "internal_key": "0f1e2d3c4b5a69788796a5b4",
+      "name": "Weather",
+      "format": "select",
+      "options": [
+        {
+          "name": "Clear",
+          "color": "blue",
+          "internal_key": "0f1e2d3c4b5a69788796a5b5"
+        },
+        {
+          "name": "Rain",
+          "color": "grey",
+          "internal_key": "0f1e2d3c4b5a69788796a5b6"
+        }
+      ]
+    },
+    {
+      "property": "1a2b3c4d5e6f708192a3b4c5",
+      "internal_key": "1a2b3c4d5e6f708192a3b4c5",
+      "name": "Related notes",
+      "format": "objects",
+      "description": "Other notes from the same walk."
+    },
+    {
+      "property": "deadbeefdeadbeefdeadbeef",
+      "internal_key": "deadbeefdeadbeefdeadbeef",
+      "format": "unknown"
+    }
+  ]
+}

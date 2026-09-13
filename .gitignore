@@ -11,6 +11,7 @@ package-lock.json
 *gomock_reflect*
 lib-server/service.pb.go
 dist/cli
+/grpcserver
 grpc-web
 .gradle
 tests/.cache/

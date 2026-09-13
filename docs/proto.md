@@ -54,6 +54,11 @@
     - [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request)
     - [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response)
     - [Rpc.AI.Autofill.Response.Error](#anytype-Rpc-AI-Autofill-Response-Error)
+    - [Rpc.AI.ListModels](#anytype-Rpc-AI-ListModels)
+    - [Rpc.AI.ListModels.Model](#anytype-Rpc-AI-ListModels-Model)
+    - [Rpc.AI.ListModels.Request](#anytype-Rpc-AI-ListModels-Request)
+    - [Rpc.AI.ListModels.Response](#anytype-Rpc-AI-ListModels-Response)
+    - [Rpc.AI.ListModels.Response.Error](#anytype-Rpc-AI-ListModels-Response-Error)
     - [Rpc.AI.ListSummary](#anytype-Rpc-AI-ListSummary)
     - [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request)
     - [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response)
@@ -1072,6 +1077,7 @@
     - [Rpc.Object.Import.Notion.ValidateToken.Response](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response)
     - [Rpc.Object.Import.Notion.ValidateToken.Response.Error](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response-Error)
     - [Rpc.Object.Import.Request](#anytype-Rpc-Object-Import-Request)
+    - [Rpc.Object.Import.Request.AIParams](#anytype-Rpc-Object-Import-Request-AIParams)
     - [Rpc.Object.Import.Request.BookmarksParams](#anytype-Rpc-Object-Import-Request-BookmarksParams)
     - [Rpc.Object.Import.Request.CsvParams](#anytype-Rpc-Object-Import-Request-CsvParams)
     - [Rpc.Object.Import.Request.HtmlParams](#anytype-Rpc-Object-Import-Request-HtmlParams)
@@ -1091,6 +1097,15 @@
     - [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request)
     - [Rpc.Object.ImportList.Response](#anytype-Rpc-Object-ImportList-Response)
     - [Rpc.Object.ImportList.Response.Error](#anytype-Rpc-Object-ImportList-Response-Error)
+    - [Rpc.Object.ImportRunList](#anytype-Rpc-Object-ImportRunList)
+    - [Rpc.Object.ImportRunList.Request](#anytype-Rpc-Object-ImportRunList-Request)
+    - [Rpc.Object.ImportRunList.Response](#anytype-Rpc-Object-ImportRunList-Response)
+    - [Rpc.Object.ImportRunList.Response.Error](#anytype-Rpc-Object-ImportRunList-Response-Error)
+    - [Rpc.Object.ImportRunStatus](#anytype-Rpc-Object-ImportRunStatus)
+    - [Rpc.Object.ImportRunStatus.Request](#anytype-Rpc-Object-ImportRunStatus-Request)
+    - [Rpc.Object.ImportRunStatus.Response](#anytype-Rpc-Object-ImportRunStatus-Response)
+    - [Rpc.Object.ImportRunStatus.Response.Error](#anytype-Rpc-Object-ImportRunStatus-Response-Error)
+    - [Rpc.Object.ImportRunStatus.Run](#anytype-Rpc-Object-ImportRunStatus-Run)
     - [Rpc.Object.ImportUseCase](#anytype-Rpc-Object-ImportUseCase)
     - [Rpc.Object.ImportUseCase.Request](#anytype-Rpc-Object-ImportUseCase-Request)
     - [Rpc.Object.ImportUseCase.Response](#anytype-Rpc-Object-ImportUseCase-Response)
@@ -1546,6 +1561,7 @@
   
     - [Rpc.AI.Autofill.Request.AutofillMode](#anytype-Rpc-AI-Autofill-Request-AutofillMode)
     - [Rpc.AI.Autofill.Response.Error.Code](#anytype-Rpc-AI-Autofill-Response-Error-Code)
+    - [Rpc.AI.ListModels.Response.Error.Code](#anytype-Rpc-AI-ListModels-Response-Error-Code)
     - [Rpc.AI.ListSummary.Response.Error.Code](#anytype-Rpc-AI-ListSummary-Response-Error-Code)
     - [Rpc.AI.ObjectCreateFromUrl.Response.Error.Code](#anytype-Rpc-AI-ObjectCreateFromUrl-Response-Error-Code)
     - [Rpc.AI.Provider](#anytype-Rpc-AI-Provider)
@@ -1807,6 +1823,8 @@
     - [Rpc.Object.ImportExperience.Response.Error.Code](#anytype-Rpc-Object-ImportExperience-Response-Error-Code)
     - [Rpc.Object.ImportList.ImportResponse.Type](#anytype-Rpc-Object-ImportList-ImportResponse-Type)
     - [Rpc.Object.ImportList.Response.Error.Code](#anytype-Rpc-Object-ImportList-Response-Error-Code)
+    - [Rpc.Object.ImportRunList.Response.Error.Code](#anytype-Rpc-Object-ImportRunList-Response-Error-Code)
+    - [Rpc.Object.ImportRunStatus.Response.Error.Code](#anytype-Rpc-Object-ImportRunStatus-Response-Error-Code)
     - [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase)
     - [Rpc.Object.ImportUseCase.Response.Error.Code](#anytype-Rpc-Object-ImportUseCase-Response-Error-Code)
     - [Rpc.Object.ListDelete.Response.Error.Code](#anytype-Rpc-Object-ListDelete-Response-Error-Code)
@@ -2101,6 +2119,7 @@
     - [Event.File.SpaceUsage](#anytype-Event-File-SpaceUsage)
     - [Event.Import](#anytype-Event-Import)
     - [Event.Import.Finish](#anytype-Event-Import-Finish)
+    - [Event.Import.Statistic](#anytype-Event-Import-Statistic)
     - [Event.Membership](#anytype-Event-Membership)
     - [Event.Membership.TiersUpdate](#anytype-Event-Membership-TiersUpdate)
     - [Event.Membership.Update](#anytype-Event-Membership-Update)
@@ -2179,6 +2198,9 @@
     - [Event.Account.Recovery.SpaceKind](#anytype-Event-Account-Recovery-SpaceKind)
     - [Event.Account.Recovery.SpaceState](#anytype-Event-Account-Recovery-SpaceState)
     - [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation)
+    - [Event.Import.Statistic.CancelEffect](#anytype-Event-Import-Statistic-CancelEffect)
+    - [Event.Import.Statistic.Phase](#anytype-Event-Import-Statistic-Phase)
+    - [Event.Import.Statistic.State](#anytype-Event-Import-Statistic-State)
     - [Event.Object.CleanupSuggestion.Trigger](#anytype-Event-Object-CleanupSuggestion-Trigger)
     - [Event.P2PStatus.Status](#anytype-Event-P2PStatus-Status)
     - [Event.Space.Network](#anytype-Event-Space-Network)
@@ -2195,10 +2217,10 @@
 - [pkg/lib/pb/model/protos/export_report.proto](#pkg_lib_pb_model_protos_export_report-proto)
     - [ExportReport](#anytype-model-ExportReport)
     - [ExportReport.Issue](#anytype-model-ExportReport-Issue)
-
+  
     - [ExportReport.Issue.Severity](#anytype-model-ExportReport-Issue-Severity)
     - [ExportReport.Status](#anytype-model-ExportReport-Status)
-
+  
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg_lib_pb_model_protos_localstore-proto)
     - [ObjectDetails](#anytype-model-ObjectDetails)
     - [ObjectInfo](#anytype-model-ObjectInfo)
@@ -2554,6 +2576,8 @@
 | ObjectImport | [Rpc.Object.Import.Request](#anytype-Rpc-Object-Import-Request) | [Rpc.Object.Import.Response](#anytype-Rpc-Object-Import-Response) |  |
 | ObjectImportList | [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request) | [Rpc.Object.ImportList.Response](#anytype-Rpc-Object-ImportList-Response) |  |
 | ObjectImportNotionValidateToken | [Rpc.Object.Import.Notion.ValidateToken.Request](#anytype-Rpc-Object-Import-Notion-ValidateToken-Request) | [Rpc.Object.Import.Notion.ValidateToken.Response](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response) |  |
+| ObjectImportRunStatus | [Rpc.Object.ImportRunStatus.Request](#anytype-Rpc-Object-ImportRunStatus-Request) | [Rpc.Object.ImportRunStatus.Response](#anytype-Rpc-Object-ImportRunStatus-Response) |  |
+| ObjectImportRunList | [Rpc.Object.ImportRunList.Request](#anytype-Rpc-Object-ImportRunList-Request) | [Rpc.Object.ImportRunList.Response](#anytype-Rpc-Object-ImportRunList-Response) |  |
 | ObjectImportUseCase | [Rpc.Object.ImportUseCase.Request](#anytype-Rpc-Object-ImportUseCase-Request) | [Rpc.Object.ImportUseCase.Response](#anytype-Rpc-Object-ImportUseCase-Response) |  |
 | ObjectImportExperience | [Rpc.Object.ImportExperience.Request](#anytype-Rpc-Object-ImportExperience-Request) | [Rpc.Object.ImportExperience.Response](#anytype-Rpc-Object-ImportExperience-Response) |  |
 | ObjectDateByTimestamp | [Rpc.Object.DateByTimestamp.Request](#anytype-Rpc-Object-DateByTimestamp-Request) | [Rpc.Object.DateByTimestamp.Response](#anytype-Rpc-Object-DateByTimestamp-Response) |  |
@@ -2775,6 +2799,7 @@
 | AIAutofill | [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request) | [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response) |  |
 | AIListSummary | [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request) | [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response) |  |
 | AIObjectCreateFromUrl | [Rpc.AI.ObjectCreateFromUrl.Request](#anytype-Rpc-AI-ObjectCreateFromUrl-Request) | [Rpc.AI.ObjectCreateFromUrl.Response](#anytype-Rpc-AI-ObjectCreateFromUrl-Response) |  |
+| AIListModels | [Rpc.AI.ListModels.Request](#anytype-Rpc-AI-ListModels-Request) | [Rpc.AI.ListModels.Response](#anytype-Rpc-AI-ListModels-Response) |  |
 | PushNotificationRegisterToken | [Rpc.PushNotification.RegisterToken.Request](#anytype-Rpc-PushNotification-RegisterToken-Request) | [Rpc.PushNotification.RegisterToken.Response](#anytype-Rpc-PushNotification-RegisterToken-Response) | Push |
 | PushNotificationSetSpaceMode | [Rpc.PushNotification.SetSpaceMode.Request](#anytype-Rpc-PushNotification-SetSpaceMode-Request) | [Rpc.PushNotification.SetSpaceMode.Response](#anytype-Rpc-PushNotification-SetSpaceMode-Response) |  |
 | PushNotificationSetForceModeIds | [Rpc.PushNotification.SetForceModeIds.Request](#anytype-Rpc-PushNotification-SetForceModeIds-Request) | [Rpc.PushNotification.SetForceModeIds.Response](#anytype-Rpc-PushNotification-SetForceModeIds-Response) |  |
@@ -3509,6 +3534,97 @@ Response – message from a middleware.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.AI.Autofill.Response.Error.Code](#anytype-Rpc-AI-Autofill-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListModels"></a>
+
+### Rpc.AI.ListModels
+ListModels validates a provider config (base URL &#43; token) and
+returns the models it offers. A successful response already proves
+the endpoint is reachable and the token works, so there is no
+separate &#34;validate&#34; RPC: the model list IS the validation result,
+and the Error codes below (ENDPOINT_NOT_REACHABLE, AUTH_REQUIRED,
+...) tell the caller what to fix.
+
+config.model is ignored: at this point the caller does not know
+which model to use yet.
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListModels-Model"></a>
+
+### Rpc.AI.ListModels.Model
+Model is one catalog entry, trimmed to what a client-side model
+picker needs: an id to send back as ProviderConfig.model, plus
+whatever attribution the provider gives alongside it.
+
+For OPENAI the list is pre-filtered to models usable for chat
+completions (see FilterChatModels in core/ai/llmclient). For
+every other provider it is returned as-is: OLLAMA, LMSTUDIO and
+LLAMACPP only ever list what the user chose to pull/load onto
+that server, so there is nothing irrelevant to filter out, and
+no capability field to filter by even if there were (see
+FilterChatModels&#39; doc comment for the evidence).
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| ownedBy | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListModels-Request"></a>
+
+### Rpc.AI.ListModels.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| config | [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListModels-Response"></a>
+
+### Rpc.AI.ListModels.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.AI.ListModels.Response.Error](#anytype-Rpc-AI-ListModels-Response-Error) |  |  |
+| models | [Rpc.AI.ListModels.Model](#anytype-Rpc-AI-ListModels-Model) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListModels-Response-Error"></a>
+
+### Rpc.AI.ListModels.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.AI.ListModels.Response.Error.Code](#anytype-Rpc-AI-ListModels-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -18357,6 +18473,23 @@ DEPRECATED, GO-1926 |
 | noProgress | [bool](#bool) |  |  |
 | isMigration | [bool](#bool) |  |  |
 | isNewSpace | [bool](#bool) |  |  |
+| aiParams | [Rpc.Object.Import.Request.AIParams](#anytype-Rpc-Object-Import-Request-AIParams) |  | optional BYOK LLM enrichment of the imported structure (importv2); absent = feature off, import runs with built-in rules only |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Import-Request-AIParams"></a>
+
+### Rpc.Object.Import.Request.AIParams
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| config | [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig) |  | OpenAI-compatible provider; feature is off when endpoint and model are empty |
+| includeContentSamples | [bool](#bool) |  | allow sample property values and page titles in the analysis prompt (default: schema only) |
 
 
 
@@ -18649,6 +18782,142 @@ DEPRECATED, GO-1926 |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.ImportList.Response.Error.Code](#anytype-Rpc-Object-ImportList-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunList"></a>
+
+### Rpc.Object.ImportRunList
+ImportRunList enumerates every known importv2 run — live ones and
+dormant run dirs. A sibling RPC rather than an empty-id overload
+of ImportRunStatus by design.
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunList-Request"></a>
+
+### Rpc.Object.ImportRunList.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunList-Response"></a>
+
+### Rpc.Object.ImportRunList.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ImportRunList.Response.Error](#anytype-Rpc-Object-ImportRunList-Response-Error) |  |  |
+| runs | [Rpc.Object.ImportRunStatus.Run](#anytype-Rpc-Object-ImportRunStatus-Run) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunList-Response-Error"></a>
+
+### Rpc.Object.ImportRunList.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ImportRunList.Response.Error.Code](#anytype-Rpc-Object-ImportRunList-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunStatus"></a>
+
+### Rpc.Object.ImportRunStatus
+ImportRunStatus reports one importv2 run by its durable importId
+(returned nowhere yet client-side; discover via ImportRunList).
+Live runs are served from the running engine&#39;s surface; dormant
+runs — a crashed process&#39;s dir awaiting the sweep, a suspended
+run — are served from the manifest and the ledger alone, which is
+what makes the poll restart-proof (a server-side
+operator polls job state instead of holding a session stream open
+across sidecar restarts).
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunStatus-Request"></a>
+
+### Rpc.Object.ImportRunStatus.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| importId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunStatus-Response"></a>
+
+### Rpc.Object.ImportRunStatus.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ImportRunStatus.Response.Error](#anytype-Rpc-Object-ImportRunStatus-Response-Error) |  |  |
+| run | [Rpc.Object.ImportRunStatus.Run](#anytype-Rpc-Object-ImportRunStatus-Run) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunStatus-Response-Error"></a>
+
+### Rpc.Object.ImportRunStatus.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ImportRunStatus.Response.Error.Code](#anytype-Rpc-Object-ImportRunStatus-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunStatus-Run"></a>
+
+### Rpc.Object.ImportRunStatus.Run
+Run pairs the statistic payload with the durable lifecycle
+state and liveness.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [Event.Import.Statistic](#anytype-Event-Import-Statistic) |  |  |
+| manifestState | [string](#string) |  | the manifest lifecycle state (running | fetched | materializing | suspended | compensating | completed | failed) |
+| live | [bool](#bool) |  | an engine in this process is running it right now |
 
 
 
@@ -25228,6 +25497,23 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-AI-ListModels-Response-Error-Code"></a>
+
+### Rpc.AI.ListModels.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| RATE_LIMIT_EXCEEDED | 100 |  |
+| ENDPOINT_NOT_REACHABLE | 101 |  |
+| MODEL_NOT_FOUND | 102 |  |
+| AUTH_REQUIRED | 103 | ... |
+
+
+
 <a name="anytype-Rpc-AI-ListSummary-Response-Error-Code"></a>
 
 ### Rpc.AI.ListSummary.Response.Error.Code
@@ -28898,6 +29184,33 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | INTERNAL_ERROR | 3 |  |
+
+
+
+<a name="anytype-Rpc-Object-ImportRunList-Response-Error-Code"></a>
+
+### Rpc.Object.ImportRunList.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Object-ImportRunStatus-Response-Error-Code"></a>
+
+### Rpc.Object.ImportRunStatus.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_FOUND | 3 |  |
 
 
 
@@ -33453,6 +33766,54 @@ response already carries the path.
 | rootCollectionID | [string](#string) |  |  |
 | objectsCount | [int64](#int64) |  |  |
 | importType | [model.Import.Type](#anytype-model-Import-Type) |  |  |
+| reportObjectId | [string](#string) |  | id of the import report page listing per-object issues; empty when the run was clean (importv2) |
+| issuesCount | [int64](#int64) |  | number of issues recorded during the run (importv2) |
+
+
+
+
+
+
+<a name="anytype-Event-Import-Statistic"></a>
+
+### Event.Import.Statistic
+Statistic is the structured progress surface of one importv2 run:
+per-phase counters — deliberately NO blended overall percentage
+(fetching is rate-limit-bound at ~1.5 items/s, creating runs at
+persist speed: any blended bar crawls for an hour and then leaps) —
+plus the three-state running/throttled/retrying model: rate limiting
+is normal operation, not an error. The same message is served by
+ObjectImportRunStatus/ObjectImportRunList for runs with no live
+engine.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| importId | [string](#string) |  | the durable run id; stable across restarts |
+| processId | [string](#string) |  | correlates with the legacy progress process |
+| importType | [model.Import.Type](#anytype-model-Import-Type) |  |  |
+| phase | [Event.Import.Statistic.Phase](#anytype-Event-Import-Statistic-Phase) |  |  |
+| phaseStartedAt | [int64](#int64) |  | unix ms; clients show elapsed without their own clock |
+| totalsKnown | [bool](#bool) |  | false while the total is indeterminate (a cursor-chained scan has no total until it ends): render a count-up, never a fake bar |
+| pagesTotal | [int64](#int64) |  | pages and files are SEPARATE counters: 500 small files and one huge one behave nothing alike |
+| pagesDone | [int64](#int64) |  |  |
+| filesTotal | [int64](#int64) |  |  |
+| filesDone | [int64](#int64) |  |  |
+| bytesTotal | [int64](#int64) |  | files only; 0 = unknown |
+| bytesDone | [int64](#int64) |  |  |
+| state | [Event.Import.Statistic.State](#anytype-Event-Import-Statistic-State) |  |  |
+| resumesInMs | [int64](#int64) |  | Throttled: when the rate-limit window reopens |
+| attempt | [int32](#int32) |  | Retrying: attempt N... |
+| attemptsMax | [int32](#int32) |  | ...of M |
+| errorMessage | [string](#string) |  | Error only |
+| itemsPerSecond | [double](#double) |  | recent-window rate, per phase |
+| estimatedRemainingMs | [int64](#int64) |  | 0 = unknown; honest computation only |
+| cancelEffect | [Event.Import.Statistic.CancelEffect](#anytype-Event-Import-Statistic-CancelEffect) |  |  |
+| objectsCreated | [int64](#int64) |  | for phrasing &#34;stop and remove the N objects created&#34; |
+| safeToClose | [bool](#bool) |  | closing now loses nothing (resume exists for the current phase) |
+| warningCount | [int64](#int64) |  | live issue counts — abort a bad import at minute 20, not minute 110 |
+| errorCount | [int64](#int64) |  |  |
+| currentItem | [string](#string) |  | &#34;Fetching: Q3 Planning&#34; — the strongest not-stuck signal. USER CONTENT: displayable, never loggable. |
 
 
 
@@ -33640,6 +34001,7 @@ received to update per-message mention read status (if needed |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed |
 | membershipV2Update | [Event.MembershipV2.Update](#anytype-Event-MembershipV2-Update) |  |  |
 | membershipV2ProductsUpdate | [Event.MembershipV2.ProductsUpdate](#anytype-Event-MembershipV2-ProductsUpdate) |  |  |
+| importStatistic | [Event.Import.Statistic](#anytype-Event-Import-Statistic) |  |  |
 
 
 
@@ -34682,6 +35044,47 @@ is on Event.Space.SyncStatus.Update.
 
 
 
+<a name="anytype-Event-Import-Statistic-CancelEffect"></a>
+
+### Event.Import.Statistic.CancelEffect
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NothingToUndo | 0 | passes 1-2: nothing has entered the space yet |
+| RemovesCreated | 1 | pass 3 onward: cancel deletes what was created |
+
+
+
+<a name="anytype-Event-Import-Statistic-Phase"></a>
+
+### Event.Import.Statistic.Phase
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Scanning | 0 |  |
+| Analyzing | 1 |  |
+| Fetching | 2 |  |
+| Creating | 3 |  |
+| Finalizing | 4 |  |
+
+
+
+<a name="anytype-Event-Import-Statistic-State"></a>
+
+### Event.Import.Statistic.State
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Running | 0 |  |
+| Throttled | 1 | expected and calm; carries resumesInMs |
+| Retrying | 2 | transient failure under backoff |
+| Error | 3 | something is actually wrong |
+
+
+
 <a name="anytype-Event-Object-CleanupSuggestion-Trigger"></a>
 
 ### Event.Object.CleanupSuggestion.Trigger
@@ -34906,7 +35309,7 @@ issues without failing the RPC; clients should inspect status and issues.
 
 
 
-
+ 
 
 
 <a name="anytype-model-ExportReport-Issue-Severity"></a>
@@ -34935,11 +35338,11 @@ issues without failing the RPC; clients should inspect status and issues.
 | CANCELED | 3 |  |
 
 
+ 
 
+ 
 
-
-
-
+ 
 
 
 
@@ -36765,6 +37168,8 @@ if current user&#39;s top level product has isUpgradeable flag -&gt; show incent
 | spaceId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 | spaceName | [string](#string) |  |  |
+| reportObjectId | [string](#string) |  | id of the import report page listing per-object issues; empty when the run was clean (importv2) |
+| issuesCount | [int64](#int64) |  | number of issues recorded during the run, for &#34;imported with N issues&#34; UI (importv2) |
 
 
 
@@ -38629,3 +39034,4 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | <a name="bool" /> bool |  | bool | boolean | boolean | bool | bool | boolean | TrueClass/FalseClass |
 | <a name="string" /> string | A string must always contain UTF-8 encoded or 7-bit ASCII text. | string | String | str/unicode | string | string | string | String (UTF-8) |
 | <a name="bytes" /> bytes | May contain any arbitrary sequence of bytes. | string | ByteString | str | []byte | ByteString | string | String (ASCII-8BIT) |
+

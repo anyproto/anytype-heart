@@ -33,6 +33,11 @@ type FileUploadRequest struct {
 	pb.RpcFileUploadRequest
 	ObjectOrigin         objectorigin.ObjectOrigin
 	CustomEncryptionKeys map[string]string
+	// Name is the file object's display name. Without it the uploader names
+	// the object after LocalPath's base, which is wrong whenever the caller
+	// staged the bytes somewhere of its own choosing (an import spill dir).
+	// Not in the rpc request: no client sends it.
+	Name string
 }
 
 type UploadRequest struct {
@@ -422,6 +427,11 @@ func (s *Service) uploadFileInternal(ctx context.Context, spaceId string, req Fi
 	upl.SetAdditionalDetails(domain.NewDetailsFromProto(req.Details))
 	if req.Type != model.BlockContentFile_None {
 		upl.SetType(req.Type)
+	}
+	if req.Name != "" {
+		// Before SetFile/SetUrl: both fall back to deriving a name, and the
+		// uploader keeps the first one set.
+		upl.SetName(req.Name)
 	}
 	if req.LocalPath != "" {
 		upl.SetFile(req.LocalPath)

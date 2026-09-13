@@ -404,13 +404,17 @@ func (r *Resolvers) loadKeyMaps(ns namespace) *keyMaps {
 		Value:       domain.Int64(int64(ns.layout)),
 	}}
 	if ns.layout == model.ObjectType_objectType {
-		// Exports may include archived types. Query otherwise silently
-		// excludes them, leaving their document ids without the matching
-		// reference mapping. Keep the normal deleted-object filter.
-		filters = append(filters, database.FilterRequest{
-			RelationKey: bundle.RelationKeyIsArchived,
-			Condition:   model.BlockContentDataviewFilter_None,
-		})
+		// Exports include archived AND uninstalled types. Query otherwise
+		// silently excludes both — it injects `isArchived != true` and
+		// `isDeleted != true`, and a type the user removed carries
+		// isUninstalled mirrored into isDeleted — leaving their document ids
+		// without the matching reference mapping. Naming each key with the
+		// none condition is what suppresses the injection; the name half
+		// below still keeps every inactive row out of the spelling namespace.
+		filters = append(filters,
+			database.FilterRequest{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
+			database.FilterRequest{RelationKey: bundle.RelationKeyIsDeleted, Condition: model.BlockContentDataviewFilter_None},
+		)
 	}
 	records, err := r.index.Query(database.Query{Filters: filters})
 	if err != nil {
