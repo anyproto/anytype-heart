@@ -264,8 +264,12 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	meta := file.Meta()
+	disposition := "inline"
+	if attachmentRequested(r) {
+		disposition = "attachment"
+	}
 	w.Header().Set("Content-Type", meta.Media)
-	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", meta.Name))
+	w.Header().Set("Content-Disposition", contentDisposition(disposition, meta.Name))
 	w.Header().Set("Cache-Control", "max-age=31536000")
 
 	// Note: the DagReader is lazy and streams ~1MB blocks on demand. The CFBDecryptor.Seek
@@ -314,8 +318,10 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	meta := res.file.Meta()
+	// Images are always inline: this endpoint backs rendering, and the save
+	// flow fetches the original through /file/ instead.
 	w.Header().Set("Content-Type", res.mimeType)
-	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", meta.Name))
+	w.Header().Set("Content-Disposition", contentDisposition("inline", meta.Name))
 	w.Header().Set("Cache-Control", "max-age=31536000")
 
 	// todo: inside textile it still requires the file to be fully downloaded and decrypted(consuming 2xSize in ram) to provide the ReadSeeker interface
