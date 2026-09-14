@@ -230,6 +230,10 @@ func main() {
 
 	proxy.Handler = newProxyHandler(webrpc, originPolicy, withWebsockets)
 
+	// Register the parent-delivered secret before serving, so no bootstrap
+	// request can race the registration and slip through permissive.
+	registerParentLocalAPISecret(mw, parentLifeline, lifelineEnabled)
+
 	go func() {
 		server.Serve(lis)
 	}()

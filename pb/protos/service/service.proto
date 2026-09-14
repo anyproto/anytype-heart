@@ -15,6 +15,10 @@ service ClientCommands {
     rpc WalletCreate (anytype.Rpc.Wallet.Create.Request) returns (anytype.Rpc.Wallet.Create.Response);
     rpc WalletRecover (anytype.Rpc.Wallet.Recover.Request) returns (anytype.Rpc.Wallet.Recover.Response);
     rpc WalletConvert (anytype.Rpc.Wallet.Convert.Request) returns (anytype.Rpc.Wallet.Convert.Response);
+    // deprecated: pairing a gRPC ClientCommands session via the local-link
+    // challenge flow is being removed. Integrations should authenticate through
+    // the JSON API instead. Kept working for now (still callable without the
+    // local-API shared secret) until existing clients migrate.
     rpc AccountLocalLinkNewChallenge (anytype.Rpc.Account.LocalLink.NewChallenge.Request) returns (anytype.Rpc.Account.LocalLink.NewChallenge.Response);
     rpc AccountLocalLinkSolveChallenge (anytype.Rpc.Account.LocalLink.SolveChallenge.Request) returns (anytype.Rpc.Account.LocalLink.SolveChallenge.Response);
     rpc AccountLocalLinkApproveChallenge (anytype.Rpc.Account.LocalLink.ApproveChallenge.Request) returns (anytype.Rpc.Account.LocalLink.ApproveChallenge.Response);

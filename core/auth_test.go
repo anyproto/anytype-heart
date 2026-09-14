@@ -4,13 +4,17 @@
 package core
 
 import (
+	"context"
 	"testing"
 
 	"github.com/gogo/status"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -133,4 +137,267 @@ func TestCheckScopeAllowsMethod(t *testing.T) {
 func TestApproveChallengeRequiresFullScope(t *testing.T) {
 	assert.NotContains(t, noAuthMethods, "AccountLocalLinkApproveChallenge")
 	assert.NotContains(t, limitedScopeMethods, "AccountLocalLinkApproveChallenge")
+}
+
+// TestLocalAPISecretGatedMethods pins the set of methods that require the
+// parent-delivered secret. Adding a bootstrap method to noAuthMethods without
+// adding it here would reopen the self-mint path this gate closes.
+func TestLocalAPISecretGatedMethods(t *testing.T) {
+	want := []string{
+		"WalletCreate",
+		"WalletRecover",
+		"AccountCreate",
+		"AccountMigrate",
+		"AccountMigrateCancel",
+		"AccountRecoverFromLegacyExport",
+		"InitialSetParameters",
+		"DebugAccountSelectTrace",
+	}
+
+	assert.Len(t, localAPISecretMethods, len(want))
+	for _, method := range want {
+		assert.Contains(t, localAPISecretMethods, method)
+		// Every gated method is a pre-session bootstrap method: the gate is
+		// what replaces the missing token check for them.
+		assert.Contains(t, noAuthMethods, method)
+	}
+
+	// Carve-outs, per the design spec: a liveness probe that leaks nothing, and
+	// the deprecated pairing handshake (gating it would break all new pairing).
+	// WalletCreateSession is absent because it is gated per branch instead —
+	// see TestAuthorizeLocalAPISecretWalletCreateSession.
+	for _, method := range []string{
+		"AppGetVersion",
+		"AccountLocalLinkNewChallenge",
+		"AccountLocalLinkSolveChallenge",
+		"WalletCreateSession",
+	} {
+		assert.NotContains(t, localAPISecretMethods, method)
+	}
+}
+
+func TestAuthorizeLocalAPISecret(t *testing.T) {
+	const secret = "parent-delivered-secret"
+
+	newMiddleware := func(enforced bool) *Middleware {
+		mw := New()
+		if enforced {
+			mw.applicationService.SetLocalAPISecret(secret)
+		}
+		return mw
+	}
+
+	authorize := func(t *testing.T, mw *Middleware, method string, md metadata.MD) (bool, error) {
+		t.Helper()
+		ctx := context.Background()
+		if md != nil {
+			ctx = metadata.NewIncomingContext(ctx, md)
+		}
+		handlerCalled := false
+		_, err := mw.Authorize(ctx, nil,
+			&grpc.UnaryServerInfo{FullMethod: "/anytype.ClientCommands/" + method},
+			func(context.Context, interface{}) (interface{}, error) {
+				handlerCalled = true
+				return nil, nil
+			})
+		return handlerCalled, err
+	}
+
+	t.Run("gated method passes with the correct secret", func(t *testing.T) {
+		// given
+		mw := newMiddleware(true)
+
+		// when
+		called, err := authorize(t, mw, "WalletCreate", metadata.Pairs(localAPISecretMetadataKey, secret))
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, called)
+	})
+
+	t.Run("gated method is rejected with a wrong secret", func(t *testing.T) {
+		// given
+		mw := newMiddleware(true)
+
+		// when
+		called, err := authorize(t, mw, "WalletCreate", metadata.Pairs(localAPISecretMetadataKey, "guessed"))
+
+		// then
+		require.Error(t, err)
+		assert.Equal(t, codes.Unauthenticated, status.Code(err))
+		assert.False(t, called)
+	})
+
+	t.Run("gated method is rejected without a secret", func(t *testing.T) {
+		// given
+		mw := newMiddleware(true)
+
+		// when
+		called, err := authorize(t, mw, "AccountCreate", metadata.Pairs("token", "whatever"))
+
+		// then
+		require.Error(t, err)
+		assert.Equal(t, codes.Unauthenticated, status.Code(err))
+		assert.False(t, called)
+	})
+
+	t.Run("gated method is rejected without any metadata", func(t *testing.T) {
+		// given
+		mw := newMiddleware(true)
+
+		// when
+		called, err := authorize(t, mw, "InitialSetParameters", nil)
+
+		// then
+		require.Error(t, err)
+		assert.Equal(t, codes.Unauthenticated, status.Code(err))
+		assert.False(t, called)
+	})
+
+	t.Run("carve-out methods pass without a secret", func(t *testing.T) {
+		for _, method := range []string{
+			"AppGetVersion",
+			"AccountLocalLinkNewChallenge",
+			"AccountLocalLinkSolveChallenge",
+		} {
+			t.Run(method, func(t *testing.T) {
+				// given
+				mw := newMiddleware(true)
+
+				// when
+				called, err := authorize(t, mw, method, nil)
+
+				// then
+				require.NoError(t, err)
+				assert.True(t, called)
+			})
+		}
+	})
+
+	t.Run("gated method passes without a secret when enforcement is off", func(t *testing.T) {
+		// given
+		mw := newMiddleware(false)
+
+		// when
+		called, err := authorize(t, mw, "WalletCreate", nil)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, called)
+	})
+
+	t.Run("token-gated methods still need a token, secret or not", func(t *testing.T) {
+		// given
+		mw := newMiddleware(true)
+
+		// when
+		called, err := authorize(t, mw, "ObjectSearch", metadata.Pairs(localAPISecretMetadataKey, secret))
+
+		// then
+		require.Error(t, err)
+		assert.Equal(t, codes.Unauthenticated, status.Code(err))
+		assert.False(t, called)
+	})
+}
+
+// TestAuthorizeLocalAPISecretWalletCreateSession covers the branch-level gate.
+// WalletCreateSession is the self-mint path: its mnemonic/accountKey branches
+// hand out a Full-scope token with no prior credential, so they need the
+// secret. Its appKey/token branches already require a credential of their own
+// and stay reachable without it.
+func TestAuthorizeLocalAPISecretWalletCreateSession(t *testing.T) {
+	const secret = "parent-delivered-secret"
+
+	authorize := func(t *testing.T, enforced bool, auth pb.IsRpcWalletCreateSessionRequestAuth, md metadata.MD) (bool, error) {
+		t.Helper()
+		mw := New()
+		if enforced {
+			mw.applicationService.SetLocalAPISecret(secret)
+		}
+		ctx := context.Background()
+		if md != nil {
+			ctx = metadata.NewIncomingContext(ctx, md)
+		}
+		handlerCalled := false
+		_, err := mw.Authorize(ctx, &pb.RpcWalletCreateSessionRequest{Auth: auth},
+			&grpc.UnaryServerInfo{FullMethod: "/anytype.ClientCommands/WalletCreateSession"},
+			func(context.Context, interface{}) (interface{}, error) {
+				handlerCalled = true
+				return nil, nil
+			})
+		return handlerCalled, err
+	}
+
+	mnemonic := &pb.RpcWalletCreateSessionRequestAuthOfMnemonic{Mnemonic: "some words"}
+	accountKey := &pb.RpcWalletCreateSessionRequestAuthOfAccountKey{AccountKey: "some key"}
+	appKey := &pb.RpcWalletCreateSessionRequestAuthOfAppKey{AppKey: "app key"}
+	token := &pb.RpcWalletCreateSessionRequestAuthOfToken{Token: "session token"}
+
+	t.Run("mnemonic branch is rejected without the secret", func(t *testing.T) {
+		// when
+		called, err := authorize(t, true, mnemonic, nil)
+
+		// then
+		require.Error(t, err)
+		assert.Equal(t, codes.Unauthenticated, status.Code(err))
+		assert.False(t, called)
+	})
+
+	t.Run("accountKey branch is rejected without the secret", func(t *testing.T) {
+		// when
+		called, err := authorize(t, true, accountKey, metadata.Pairs(localAPISecretMetadataKey, "guessed"))
+
+		// then
+		require.Error(t, err)
+		assert.Equal(t, codes.Unauthenticated, status.Code(err))
+		assert.False(t, called)
+	})
+
+	t.Run("mnemonic branch passes with the secret", func(t *testing.T) {
+		// when
+		called, err := authorize(t, true, mnemonic, metadata.Pairs(localAPISecretMetadataKey, secret))
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, called)
+	})
+
+	t.Run("appKey branch is unaffected", func(t *testing.T) {
+		// when
+		called, err := authorize(t, true, appKey, nil)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, called)
+	})
+
+	t.Run("token branch is unaffected", func(t *testing.T) {
+		// when
+		called, err := authorize(t, true, token, nil)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, called)
+	})
+
+	t.Run("mnemonic branch passes when enforcement is off", func(t *testing.T) {
+		// when
+		called, err := authorize(t, false, mnemonic, nil)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, called)
+	})
+
+	t.Run("an empty request is treated as a self-mint attempt", func(t *testing.T) {
+		// A request with no auth branch set falls through CreateSession to the
+		// mnemonic path, so it must not be a way around the gate.
+		// when
+		called, err := authorize(t, true, nil, nil)
+
+		// then
+		require.Error(t, err)
+		assert.Equal(t, codes.Unauthenticated, status.Code(err))
+		assert.False(t, called)
+	})
 }
