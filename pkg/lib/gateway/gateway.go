@@ -32,9 +32,17 @@ import (
 const (
 	CName = "gateway"
 
-	defaultPort    = 47800
-	getFileTimeout = 1 * time.Minute
-	requestLimit   = 32
+	defaultPort = 47800
+	// fileStallTimeout cuts loose a file transfer that has stopped making
+	// progress. It is deliberately not a total deadline: a large file, or one
+	// still being fetched from a node, legitimately runs longer than any fixed
+	// budget, and a total deadline killed those mid-stream. The clock restarts
+	// on every byte, so only a window with nothing moving ends the request.
+	fileStallTimeout = 1 * time.Minute
+	// getImageTimeout stays a total deadline. Image responses are bounded and
+	// serve a render that has to either appear or give up quickly.
+	getImageTimeout = 1 * time.Minute
+	requestLimit    = 32
 )
 
 var (
@@ -61,6 +69,7 @@ type gateway struct {
 	listener          net.Listener
 	handler           *http.ServeMux
 	addr              string
+	fileStallTimeout  time.Duration
 	mu                sync.Mutex
 	isServerStarted   bool
 	limitCh           chan struct{}
@@ -89,6 +98,7 @@ func (g *gateway) Init(a *app.App) (err error) {
 	g.fileObjectService = app.MustComponent[fileobject.Service](a)
 	g.fileDownloader = app.MustComponent[filedownloader.Service](a)
 	g.addr = GatewayAddr()
+	g.fileStallTimeout = fileStallTimeout
 	log.Debugf("gateway.Init: %s", g.addr)
 	return nil
 }
@@ -239,8 +249,14 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	enableCors(w)
 
-	ctx, cancel := context.WithTimeout(r.Context(), getFileTimeout)
+	// The stall window covers the lookup too: nothing has moved yet while the
+	// file is being located, so an unreachable file still gives up after one
+	// window, exactly as the old total deadline did.
+	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
+	stall := newStallTimeout(g.fileStallTimeout, cancel)
+	defer stall.stop()
+
 	file, reader, err := g.getFile(rpcstore.ContextWithWaitAvailable(ctx), r)
 	if err != nil {
 		log.With("path", cleanUpPathForLogging(r.URL.Path)).Errorf("error getting file: %s", err)
@@ -254,7 +270,7 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Note: the DagReader is lazy and streams ~1MB blocks on demand. The CFBDecryptor.Seek
 	// fast-path avoids expensive IPFS block preloading during size determination (SeekEnd).
-	http.ServeContent(w, r, meta.Name, meta.Added, reader)
+	http.ServeContent(w, r, meta.Name, meta.Added, &progressReader{ReadSeeker: reader, onProgress: stall.progress})
 }
 
 func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
@@ -287,7 +303,7 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	enableCors(w)
 
-	ctx, cancel := context.WithTimeout(r.Context(), getFileTimeout)
+	ctx, cancel := context.WithTimeout(r.Context(), getImageTimeout)
 	defer cancel()
 
 	res, err := g.getImage(rpcstore.ContextWithWaitAvailable(ctx), r)
