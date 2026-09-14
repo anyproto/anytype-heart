@@ -267,6 +267,55 @@ func (_c *MockClientCommands_BlockPaste_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
+// BlockReplace provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) BlockReplace(_a0 context.Context, _a1 *pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for BlockReplace")
+	}
+
+	var r0 *pb.RpcBlockReplaceResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcBlockReplaceResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_BlockReplace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'BlockReplace'
+type MockClientCommands_BlockReplace_Call struct {
+	*mock.Call
+}
+
+// BlockReplace is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcBlockReplaceRequest
+func (_e *MockClientCommands_Expecter) BlockReplace(_a0 interface{}, _a1 interface{}) *MockClientCommands_BlockReplace_Call {
+	return &MockClientCommands_BlockReplace_Call{Call: _e.mock.On("BlockReplace", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_BlockReplace_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcBlockReplaceRequest)) *MockClientCommands_BlockReplace_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcBlockReplaceRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_BlockReplace_Call) Return(_a0 *pb.RpcBlockReplaceResponse) *MockClientCommands_BlockReplace_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_BlockReplace_Call) RunAndReturn(run func(context.Context, *pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse) *MockClientCommands_BlockReplace_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ChatAddMessage provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommands) ChatAddMessage(_a0 context.Context, _a1 *pb.RpcChatAddMessageRequest) *pb.RpcChatAddMessageResponse {
 	ret := _m.Called(_a0, _a1)

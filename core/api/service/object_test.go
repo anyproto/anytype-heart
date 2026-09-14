@@ -48,11 +48,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 				Type:        model.BlockContentDataviewSort_Desc,
 				IncludeTime: true,
 			}},
-			Offset:    int32(offset),
-			Limit:     int32(limit + 1),
-			NeedTotal: true,
 		}).Return(&pb.RpcObjectSearchResponse{
-			Total: 1,
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
@@ -160,11 +156,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 				Type:        model.BlockContentDataviewSort_Desc,
 				IncludeTime: true,
 			}},
-			Offset:    int32(offset),
-			Limit:     int32(limit + 1),
-			NeedTotal: true,
 		}).Return(&pb.RpcObjectSearchResponse{
-			Total:   0,
 			Records: []*types.Struct{},
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
@@ -238,7 +230,7 @@ func TestObjectService_GetObject(t *testing.T) {
 		}, nil).Once()
 
 		// when
-		object, err := fx.service.GetObject(ctx, mockedSpaceId, mockedObjectId)
+		object, err := fx.service.GetObject(ctx, mockedSpaceId, mockedObjectId, false)
 
 		// then
 		require.NoError(t, err)
@@ -301,7 +293,7 @@ func TestObjectService_GetObject(t *testing.T) {
 			}, nil).Once()
 
 		// when
-		object, err := fx.service.GetObject(ctx, mockedSpaceId, "missing-obj")
+		object, err := fx.service.GetObject(ctx, mockedSpaceId, "missing-obj", false)
 
 		// then
 		require.ErrorIs(t, err, ErrObjectNotFound)
@@ -424,5 +416,61 @@ func TestObjectService_CreateObject(t *testing.T) {
 		// then
 		require.ErrorIs(t, err, ErrFailedCreateObject)
 		require.Empty(t, object)
+	})
+}
+
+func TestBuildBlockLinkCandidates(t *testing.T) {
+	t.Run("skips required blocks and collects text and link", func(t *testing.T) {
+		rootID := "rootId"
+		ov := &model.ObjectView{
+			Blocks: []*model.Block{
+				{
+					Id:          rootID,
+					ChildrenIds: []string{"header", "title", "t1", "l1"},
+				},
+				{
+					Id:          "header",
+					ChildrenIds: []string{},
+					Content:     &model.BlockContentOfText{Text: &model.BlockContentText{Text: "h"}},
+				},
+				{
+					Id:          "title",
+					ChildrenIds: []string{},
+					Content:     &model.BlockContentOfText{Text: &model.BlockContentText{Text: "title here"}},
+				},
+				{
+					Id:          "t1",
+					ChildrenIds: []string{},
+					Content:     &model.BlockContentOfText{Text: &model.BlockContentText{Text: "  paragraph  "}},
+				},
+				{
+					Id:          "l1",
+					ChildrenIds: []string{},
+					Content: &model.BlockContentOfLink{
+						Link: &model.BlockContentLink{
+							TargetBlockId: "targetObj",
+							Style:         model.BlockContentLink_Page,
+						},
+					},
+				},
+			},
+		}
+		got := buildBlockLinkCandidates(ov)
+		require.Len(t, got, 2)
+		require.Equal(t, "t1", got[0].Id)
+		require.Equal(t, "text", got[0].Kind)
+		require.Equal(t, "paragraph", got[0].TextPreview)
+		require.Equal(t, "l1", got[1].Id)
+		require.Equal(t, "link", got[1].Kind)
+		require.Equal(t, "targetObj", got[1].TargetObjectId)
+		require.Equal(t, "page", got[1].LinkStyle)
+		require.Equal(t, "text", got[1].CardStyle)
+		require.Equal(t, "none", got[1].IconSize)
+		require.Equal(t, "none", got[1].LinkDescription)
+		require.Empty(t, got[1].Relations)
+	})
+
+	t.Run("nil view", func(t *testing.T) {
+		require.Empty(t, buildBlockLinkCandidates(nil))
 	})
 }

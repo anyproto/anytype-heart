@@ -58,6 +58,8 @@ type UpdateObjectRequest struct {
 	TypeKey    *string                  `json:"type_key" example:"page"`                                                                                                                                                                                                                                                                  // The key of the type of object to set
 	Properties *[]PropertyLinkWithValue `json:"properties" oneOf:"TextPropertyLinkValue,NumberPropertyLinkValue,SelectPropertyLinkValue,MultiSelectPropertyLinkValue,DatePropertyLinkValue,FilesPropertyLinkValue,CheckboxPropertyLinkValue,UrlPropertyLinkValue,EmailPropertyLinkValue,PhonePropertyLinkValue,ObjectsPropertyLinkValue"` // The properties to set for the object; see ListTypes or GetType endpoints for linked properties
 	Markdown   *string                  `json:"markdown" example:"This is the updated body of the object. Markdown syntax is supported here."`                                                                                                                                                                                            // The updated body of the object
+	// MarkdownAppend appends markdown as new blocks at the end without removing existing content (cannot be combined with markdown).
+	MarkdownAppend *string `json:"markdown_append,omitempty" example:"Paragraph added via API; use GET ?block_link_candidates=1 for block ids, then POST …/link."`
 }
 
 type ObjectResponse struct {
@@ -87,8 +89,28 @@ type ObjectWithBody struct {
 	Snippet    string              `json:"snippet" example:"The beginning of the object body..."`                                                                                                                                                                                        // The snippet of the object, especially important for notes as they don't have a name
 	Layout     ObjectLayout        `json:"layout" example:"basic"`                                                                                                                                                                                                                       // The layout of the object
 	Type       *Type               `json:"type" extensions:"nullable"`                                                                                                                                                                                                                   // The type of the object, or null if the type has been deleted.
-	Properties []PropertyWithValue `json:"properties" oneOf:"TextPropertyValue,NumberPropertyValue,SelectPropertyValue,MultiSelectPropertyValue,DatePropertyValue,FilesPropertyValue,CheckboxPropertyValue,UrlPropertyValue,EmailPropertyValue,PhonePropertyValue,ObjectsPropertyValue"` // The properties of the object
+	Properties []PropertyWithValue `json:"properties" oneOf:"TextPropertyValue,NumberPropertyValue,SelectPropertyValue,MultiPropertyValue,DatePropertyValue,FilesPropertyValue,CheckboxPropertyValue,UrlPropertyValue,EmailPropertyValue,PhonePropertyValue,ObjectsPropertyValue"` // The properties of the object
 	Markdown   string              `json:"markdown" example:"# This is the title\n..."`                                                                                                                                                                                                  // The markdown body of the object
+	// BlockLinkCandidates is set only when GET object is called with ?block_link_candidates=1 (then non-nil, maybe empty).
+	BlockLinkCandidates *[]BlockLinkCandidate `json:"block_link_candidates,omitempty"`
+}
+
+// BlockLinkCandidate describes a block that can be passed to POST …/blocks/{block_id}/link (text or existing link).
+type BlockLinkCandidate struct {
+	Object         string `json:"object" example:"block_link_candidate"`
+	Id             string `json:"id" example:"64394517de52ad5acb89c66c"`
+	Kind           string `json:"kind" enums:"text,link" example:"text"` // "text" or "link"
+	TextPreview    string `json:"text_preview,omitempty" example:"First words of the text block…"`
+	TargetObjectId string `json:"target_object_id,omitempty" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`
+	// LinkStyle / CardStyle are set for kind "link" only (current block presentation; pass to POST …/link as link_style / card_style).
+	LinkStyle string `json:"link_style,omitempty" example:"page"`
+	CardStyle string `json:"card_style,omitempty" example:"card"`
+	// IconSize / LinkDescription / Relations reflect link block details (for rich cards; use sync_link_presentation_from_block_id to copy from another link).
+	IconSize        string   `json:"icon_size,omitempty" example:"medium"`
+	LinkDescription string   `json:"link_description,omitempty" example:"content"`
+	Relations       []string `json:"relations,omitempty"`
+	// BackgroundColor is the block highlight (grey, yellow, orange, red, pink, purple, blue, ice, teal, lime — not "green").
+	BackgroundColor string `json:"background_color,omitempty" example:"lime"`
 }
 
 // ! Deprecated schemas, until json blocks properly implemented
