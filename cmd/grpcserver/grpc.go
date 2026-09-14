@@ -203,10 +203,10 @@ func main() {
 		"/anytype.ClientCommands/AccountLocalLinkNewChallenge",
 	))
 	// The Origin header rides gRPC metadata on this transport, not the
-	// request context the HTTP middleware fills. Without this, every origin
-	// check on a gRPC method reads "" and silently passes — including the
-	// one guarding AccountLocalLinkApproveChallenge, which exists precisely
-	// because the gRPC-Web proxy trusts the Webclipper's origins.
+	// request context the HTTP middleware fills. Without this, every reader
+	// of localorigin.OriginFromContext sees "" on a gRPC method — including
+	// the pairing prompt, which has no other way to name a browser caller,
+	// and the per-caller challenge budgets keyed on that name.
 	unaryInterceptors = append(unaryInterceptors, originInterceptor())
 
 	server := grpc.NewServer(grpc.MaxRecvMsgSize(20*1024*1024),

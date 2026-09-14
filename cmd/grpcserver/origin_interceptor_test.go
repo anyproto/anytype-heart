@@ -15,13 +15,12 @@ import (
 	"github.com/anyproto/anytype-heart/util/localorigin"
 )
 
-// TestOriginInterceptorCarriesOriginIntoContext is the wiring half of the
-// browser-caller guard, and it is the half that was missing: the check in
-// Middleware.rejectBrowserCaller reads localorigin.OriginFromContext, but on
-// this transport the Origin arrives as gRPC metadata. Without the
-// interceptor every origin check on a gRPC method read "" and passed, while
-// the unit test of the check itself kept passing because it injected the
-// context value by hand.
+// TestOriginInterceptorCarriesOriginIntoContext pins the wiring that gives a
+// browser caller a name: localorigin.OriginFromContext is what the pairing
+// prompt displays and what callerKey buckets the per-caller budgets by, but on
+// this transport the Origin arrives as gRPC metadata. Without the interceptor
+// every reader sees "" and every browser caller collapses into the one
+// unattributable bucket.
 func TestOriginInterceptorCarriesOriginIntoContext(t *testing.T) {
 	tests := []struct {
 		name string

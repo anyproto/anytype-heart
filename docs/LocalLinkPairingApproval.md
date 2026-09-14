@@ -165,7 +165,7 @@ message ApproveChallenge {
             enum Code {
                 NULL = 0;
                 UNKNOWN_ERROR = 1;
-                BAD_INPUT = 2;             // includes a browser-origin caller
+                BAD_INPUT = 2;             // a malformed or missing grant
                 ACCOUNT_IS_NOT_RUNNING = 101;
                 NO_PENDING_CHALLENGE = 102;  // never asked, decided, or expired
             }
@@ -230,10 +230,18 @@ and this design is strictly weaker than what ships today. Guard this with a test
 Additionally:
 
 - **No JSON API route.** Do not register it in `registerAuthRoutes`.
-- **Reject any call carrying an `Origin` header.** The gRPC-Web proxy trusts the
-  Webclipper's `chrome-extension://` origins (`cmd/grpcserver/proxy.go:37-43`),
-  so a browser context can reach the RPC surface. Approval is a desktop-UI-only
-  action; a request with any `Origin` must be refused even with a valid token.
+- **No `Origin` check, deliberately.** An earlier revision refused any caller
+  carrying an `Origin` header, on the grounds that the gRPC-Web proxy trusts the
+  Webclipper's `chrome-extension://` origins (`cmd/grpcserver/proxy.go:37-43`) and
+  every loopback one. It was removed: the scope check already does the work.
+  Pairing mints `Limited` and `JsonAPI` scopes only, so no paired app — the
+  Webclipper included — can reach this method at all; `Full` comes from the
+  mnemonic or account key (`core/application/sessions.go`), and a caller holding
+  either skips the prompt entirely via `AccountLocalLinkCreateApp`. Approving is
+  also not a guessing surface: it mints the code instead of checking one, which
+  is what §1 bought. The only callers the check actually refused were desktop
+  builds served over `http://localhost:*` — everything but a packaged Electron
+  renderer, which sends no `Origin` on gRPC-Web POSTs.
 
 ## 7. Anti-spam
 
@@ -331,7 +339,7 @@ the new prompt without implementing it first.
 | 1 | Proto: rename the events to `LinkApprovalRequest`/`LinkApprovalHide` (no `challenge` on either, hide keyed on `clientInfo`), `requestedPerm`, `ApproveChallenge`, `CHALLENGE_NOT_APPROVED` | `pb/protos/events.proto`, `pb/protos/commands.proto`, `pb/protos/service/service.proto` |
 | 2 | `challenge` gains `state`/`stateSince`; `StartNewChallenge` stops minting and returns only an id; new `ApproveChallenge`; `SolveChallenge` gates on state; `SweepExpired`; pending/deny bookkeeping; injectable clock | `core/session/challenge.go`, `core/session/service.go` |
 | 3 | `LinkLocalApproveChallenge`; broadcast `LinkApprovalRequest`; hide on approve/deny/supersede/expiry/solve | `core/application/sessions.go` |
-| 4 | RPC handler, error mapping, browser-origin rejection | `core/account.go` |
+| 4 | RPC handler, error mapping | `core/account.go` |
 | 5 | Leave both auth maps untouched; add the regression test | `core/auth.go`, `core/auth_test.go` |
 | 6 | Regenerate `pb/*.pb.go`, `pb/service`, `clientlibrary/service`, `docs/proto.md` | `make protos` |
 
@@ -352,7 +360,8 @@ Security:
   `limitedScopeMethods` — assert on the maps directly, so a future edit fails
   the build rather than the threat model.
 - `Limited` and `JsonAPI` scoped tokens are refused; `Full` is admitted.
-- A call carrying an `Origin` header is refused even with a `Full` token.
+- A caller carrying an `Origin` header is admitted like any other: a desktop
+  build served over http must be able to approve (see §6).
 
 Behaviour:
 

@@ -2,8 +2,6 @@ package core
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/anyproto/any-sync/net"
 
@@ -319,18 +317,24 @@ func (mw *Middleware) AccountLocalLinkNewChallenge(ctx context.Context, request 
 // core/auth.go: falling through both is what restricts it to AccountAuth_Full,
 // i.e. the desktop UI. Listing it in noAuthMethods would let any local process
 // approve its own pairing.
-func (mw *Middleware) AccountLocalLinkApproveChallenge(ctx context.Context, req *pb.RpcAccountLocalLinkApproveChallengeRequest) *pb.RpcAccountLocalLinkApproveChallengeResponse {
-	err := mw.rejectBrowserCaller(ctx)
+//
+// That scope check is the whole access control, and an Origin check on top of
+// it would be theatre. Full scope is unreachable through pairing — a challenge
+// mints Limited or JsonAPI only (core/session/challenge.go) — so reaching this
+// method at all takes the mnemonic or account key, and a caller holding either
+// skips the prompt entirely with AccountLocalLinkCreateApp. Approving also has
+// nothing to brute-force: it mints the code rather than checking one, and the
+// guessing surface is SolveChallenge, which has its own per-challenge and
+// per-run budgets. Refusing browser callers here only locks out a desktop
+// client served over http, which every non-packaged build is.
+func (mw *Middleware) AccountLocalLinkApproveChallenge(_ context.Context, req *pb.RpcAccountLocalLinkApproveChallengeRequest) *pb.RpcAccountLocalLinkApproveChallengeResponse {
+	challenge, _, err := mw.applicationService.LinkLocalApproveChallenge(req.ProcessPath, req.Origin, req.Allow, req.Grant)
 	if err == nil {
-		var challenge string
-		challenge, _, err = mw.applicationService.LinkLocalApproveChallenge(req.ProcessPath, req.Origin, req.Allow, req.Grant)
-		if err == nil {
-			return &pb.RpcAccountLocalLinkApproveChallengeResponse{
-				Challenge: challenge,
-				Error: &pb.RpcAccountLocalLinkApproveChallengeResponseError{
-					Code: pb.RpcAccountLocalLinkApproveChallengeResponseError_NULL,
-				},
-			}
+		return &pb.RpcAccountLocalLinkApproveChallengeResponse{
+			Challenge: challenge,
+			Error: &pb.RpcAccountLocalLinkApproveChallengeResponseError{
+				Code: pb.RpcAccountLocalLinkApproveChallengeResponseError_NULL,
+			},
 		}
 	}
 	code := accountLocalLinkApproveChallengeErrorCode(err)
@@ -351,25 +355,10 @@ func (mw *Middleware) AccountLocalLinkApproveChallenge(ctx context.Context, req 
 func accountLocalLinkApproveChallengeErrorCode(err error) pb.RpcAccountLocalLinkApproveChallengeResponseErrorCode {
 	return mapErrorCode(err,
 		errToCode(session.ErrNoPendingChallenge, pb.RpcAccountLocalLinkApproveChallengeResponseError_NO_PENDING_CHALLENGE),
-		errToCode(errBrowserCallerNotAllowed, pb.RpcAccountLocalLinkApproveChallengeResponseError_BAD_INPUT),
 		errToCode(walletComp.ErrInvalidGrant, pb.RpcAccountLocalLinkApproveChallengeResponseError_BAD_INPUT),
 		errToCode(application.ErrBadInput, pb.RpcAccountLocalLinkApproveChallengeResponseError_BAD_INPUT),
 		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkApproveChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),
 	)
-}
-
-// errBrowserCallerNotAllowed rejects a request that came from a browser context.
-var errBrowserCallerNotAllowed = errors.New("this method cannot be called from a browser")
-
-// rejectBrowserCaller refuses callers that carry an Origin header. Approving a
-// pairing is a desktop-UI action; the gRPC-Web proxy trusts the Webclipper
-// extension's origins, so a browser context can reach the RPC surface and must
-// be turned away here even when it holds a valid token.
-func (mw *Middleware) rejectBrowserCaller(ctx context.Context) error {
-	if origin := localorigin.OriginFromContext(ctx); origin != "" {
-		return fmt.Errorf("%w: origin %q", errBrowserCallerNotAllowed, origin)
-	}
-	return nil
 }
 
 // accountLocalLinkSolveChallengeErrorCode is AccountLocalLinkSolveChallenge's

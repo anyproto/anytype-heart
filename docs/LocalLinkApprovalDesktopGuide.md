@@ -120,9 +120,9 @@ Response:
 | `error.code = ACCOUNT_IS_NOT_RUNNING` | no account loaded. |
 
 This RPC requires a **full-scope** session — the desktop client's own. It is
-rejected for JsonAPI/Limited tokens and for any caller sending an `Origin`
-header, so it can only be driven from the app itself, never from a paired app or
-a browser.
+rejected for JsonAPI/Limited tokens, so it can only be driven from the app
+itself, never from a paired app. The transport does not matter: a build served
+over `http://localhost:*` approves exactly like a packaged one.
 
 ## 3. Hide the prompt on `LinkApprovalHide`
 

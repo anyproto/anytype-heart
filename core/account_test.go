@@ -75,7 +75,7 @@ func TestAccountLocalLinkApproveChallengeErrorCode(t *testing.T) {
 		assert.Equal(t, pb.RpcAccountLocalLinkApproveChallengeResponseError_NO_PENDING_CHALLENGE,
 			accountLocalLinkApproveChallengeErrorCode(session.ErrNoPendingChallenge))
 		assert.Equal(t, pb.RpcAccountLocalLinkApproveChallengeResponseError_BAD_INPUT,
-			accountLocalLinkApproveChallengeErrorCode(errBrowserCallerNotAllowed))
+			accountLocalLinkApproveChallengeErrorCode(application.ErrBadInput))
 		assert.Equal(t, pb.RpcAccountLocalLinkApproveChallengeResponseError_ACCOUNT_IS_NOT_RUNNING,
 			accountLocalLinkApproveChallengeErrorCode(application.ErrApplicationIsNotRunning))
 	})
