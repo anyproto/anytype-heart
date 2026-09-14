@@ -28,6 +28,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"sync"
 	"time"
 
@@ -137,6 +138,7 @@ type Service struct {
 	resolver             idresolver.Resolver
 	spaceService         space.Service
 	tempDirProvider      core.TempDirProvider
+	downloadScopeDir     string
 	builtinObjectService builtinObjects
 	fileObjectService    fileobject.Service
 	detailsService       detailservice.Service
@@ -191,6 +193,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.fileUploaderService = app.MustComponent[fileuploader.Service](a)
 	s.fileOffloader = app.MustComponent[fileoffloader.Service](a)
 	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
+	s.downloadScopeDir = downloadScopeForGOOS(runtime.GOOS, s.tempDirProvider.TempDir())
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
 	s.accountService = app.MustComponent[account.Service](a)
