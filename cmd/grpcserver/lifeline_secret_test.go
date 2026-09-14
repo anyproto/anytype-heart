@@ -5,7 +5,9 @@ package main
 
 import (
 	"io"
+	"os"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -72,7 +74,7 @@ func TestMonitorParentLifelineDeliversSecret(t *testing.T) {
 	monitor := startParentLifelineMonitor(strings.NewReader("secret s3cret\nshutdown\n"), true, time.Second, func(int) {})
 	defer monitor.markShutdownComplete()
 
-	secret, ok := monitor.waitForSecret(lifelineTestTimeout)
+	secret, ok := monitor.waitForSecret(lifelineTestTimeout, nil)
 	if !ok || secret != "s3cret" {
 		t.Fatalf("expected the parent secret, got %q, ok %t", secret, ok)
 	}
@@ -86,7 +88,7 @@ func TestMonitorParentLifelineSecretWaitEndsWithTheStream(t *testing.T) {
 	defer monitor.markShutdownComplete()
 
 	start := time.Now()
-	secret, ok := monitor.waitForSecret(time.Hour)
+	secret, ok := monitor.waitForSecret(time.Hour, nil)
 	if ok || secret != "" {
 		t.Fatalf("expected no secret, got %q, ok %t", secret, ok)
 	}
@@ -98,11 +100,12 @@ func TestMonitorParentLifelineSecretWaitEndsWithTheStream(t *testing.T) {
 func TestMonitorParentLifelineSecretWaitTimesOut(t *testing.T) {
 	// A reader that never yields a line and never ends, like a live parent that
 	// has not sent anything yet.
-	blocking, _ := newBlockingReader()
+	blocking, release := newBlockingReader()
+	defer release()
 	monitor := startParentLifelineMonitor(blocking, true, time.Second, func(int) {})
 	defer monitor.markShutdownComplete()
 
-	secret, ok := monitor.waitForSecret(50 * time.Millisecond)
+	secret, ok := monitor.waitForSecret(50*time.Millisecond, nil)
 	if ok || secret != "" {
 		t.Fatalf("expected the wait to time out, got %q, ok %t", secret, ok)
 	}
@@ -124,58 +127,129 @@ func (r *blockingReader) Read([]byte) (int, error) {
 	return 0, io.EOF
 }
 
-func TestParentLocalAPISecret(t *testing.T) {
-	t.Run("returns the secret in parented mode", func(t *testing.T) {
-		monitor := startParentLifelineMonitor(strings.NewReader("secret s3cret\n"), true, time.Second, func(int) {})
+// An OS signal must end the wait: signal.Notify has already disabled Go's
+// default terminate behavior by the time this runs, so a quit arriving during
+// the window would otherwise sit unhandled until it expires.
+func TestWaitForSecretAbortsOnSignal(t *testing.T) {
+	blocking, release := newBlockingReader()
+	defer release()
+	monitor := startParentLifelineMonitor(blocking, true, time.Second, func(int) {})
+	defer monitor.markShutdownComplete()
+
+	abort := make(chan os.Signal, 1)
+	abort <- syscall.SIGTERM
+
+	start := time.Now()
+	secret, ok := monitor.waitForSecret(time.Hour, abort)
+
+	if ok || secret != "" {
+		t.Fatalf("expected no secret on abort, got %q, ok %t", secret, ok)
+	}
+	if elapsed := time.Since(start); elapsed > lifelineTestTimeout {
+		t.Fatalf("expected the wait to end at once on a signal, took %s", elapsed)
+	}
+}
+
+func TestWatchParentLocalAPISecret(t *testing.T) {
+	// A parent whose main thread stalls past the window still delivers. Dropping
+	// that secret would leave the bootstrap API open for the whole session.
+	t.Run("a secret arriving after the window is registered late", func(t *testing.T) {
+		registered := make(chan string, 1)
+		reader := &delayedReader{after: 150 * time.Millisecond, line: "secret late\n"}
+		monitor := startParentLifelineMonitor(reader, true, time.Second, func(int) {})
 		defer monitor.markShutdownComplete()
 
-		secret, ok := parentLocalAPISecret(monitor, true)
-		if !ok || secret != "s3cret" {
-			t.Fatalf("expected the parent secret, got %q, ok %t", secret, ok)
+		watchParentLocalAPISecret(monitor, true, 20*time.Millisecond, nil,
+			func(secret string) { registered <- secret })
+
+		select {
+		case got := <-registered:
+			if got != "late" {
+				t.Fatalf("expected the late secret, got %q", got)
+			}
+		case <-time.After(lifelineTestTimeout):
+			t.Fatal("expected a late secret to be registered")
 		}
 	})
 
-	t.Run("reports none when the stream ends without one", func(t *testing.T) {
-		monitor := startParentLifelineMonitor(strings.NewReader(""), true, time.Second, func(int) {})
-		defer monitor.markShutdownComplete()
-
-		secret, ok := parentLocalAPISecret(monitor, true)
-		if ok || secret != "" {
-			t.Fatalf("expected no secret, got %q, ok %t", secret, ok)
-		}
-	})
-
-	t.Run("reports none for an empty secret line", func(t *testing.T) {
-		monitor := startParentLifelineMonitor(strings.NewReader("secret \n"), true, time.Second, func(int) {})
-		defer monitor.markShutdownComplete()
-
-		secret, ok := parentLocalAPISecret(monitor, true)
-		if ok || secret != "" {
-			t.Fatalf("expected an empty secret line to be rejected, got %q, ok %t", secret, ok)
-		}
-	})
-
-	// Standalone, Docker and the legacy Windows stdin protocol have no parent
-	// channel. Waiting on one there would stall every launch for the full
-	// window before the server can serve.
-	t.Run("does not wait when the lifeline is not parented", func(t *testing.T) {
-		blocking, release := newBlockingReader()
-		defer release()
-		monitor := startParentLifelineMonitor(blocking, false, time.Second, func(int) {})
+	// The legacy Windows path monitors stdin without opting into the lifeline.
+	// It must not stall waiting for a secret, but a secret it does receive has
+	// to count — otherwise a client that sends one is silently unprotected.
+	t.Run("a secret on a non-parented stream is registered without waiting", func(t *testing.T) {
+		registered := make(chan string, 1)
+		reader := &delayedReader{after: 100 * time.Millisecond, line: "secret windows\n"}
+		monitor := startParentLifelineMonitor(reader, false, time.Second, func(int) {})
 		defer monitor.markShutdownComplete()
 
 		start := time.Now()
-		if _, ok := parentLocalAPISecret(monitor, false); ok {
-			t.Fatal("expected no secret outside parented mode")
-		}
+		watchParentLocalAPISecret(monitor, false, time.Hour, nil,
+			func(secret string) { registered <- secret })
+
 		if elapsed := time.Since(start); elapsed > lifelineTestTimeout {
-			t.Fatalf("expected an immediate return outside parented mode, took %s", elapsed)
+			t.Fatalf("a non-parented stream must not be waited on, took %s", elapsed)
+		}
+		select {
+		case got := <-registered:
+			if got != "windows" {
+				t.Fatalf("expected the secret, got %q", got)
+			}
+		case <-time.After(lifelineTestTimeout):
+			t.Fatal("expected a secret on a non-parented stream to be registered")
 		}
 	})
 
-	t.Run("reports none without a monitor", func(t *testing.T) {
-		if _, ok := parentLocalAPISecret(nil, true); ok {
-			t.Fatal("expected no secret without a lifeline monitor")
+	t.Run("a secret within the window is registered before returning", func(t *testing.T) {
+		var registered []string
+		monitor := startParentLifelineMonitor(strings.NewReader("secret prompt\n"), true, time.Second, func(int) {})
+		defer monitor.markShutdownComplete()
+
+		watchParentLocalAPISecret(monitor, true, lifelineTestTimeout, nil,
+			func(secret string) { registered = append(registered, secret) })
+
+		if len(registered) != 1 || registered[0] != "prompt" {
+			t.Fatalf("expected the secret registered before serving, got %v", registered)
 		}
 	})
+
+	t.Run("nothing is registered when the stream ends without a secret", func(t *testing.T) {
+		monitor := startParentLifelineMonitor(strings.NewReader(""), true, time.Second, func(int) {})
+		defer monitor.markShutdownComplete()
+
+		watchParentLocalAPISecret(monitor, true, lifelineTestTimeout, nil,
+			func(string) { t.Fatal("registered a secret that was never sent") })
+		// The background watch ends with the stream; give it a moment to prove
+		// it does not register anything.
+		time.Sleep(50 * time.Millisecond)
+	})
+
+	t.Run("an empty secret line registers nothing", func(t *testing.T) {
+		monitor := startParentLifelineMonitor(strings.NewReader("secret \n"), true, time.Second, func(int) {})
+		defer monitor.markShutdownComplete()
+
+		watchParentLocalAPISecret(monitor, true, 50*time.Millisecond, nil,
+			func(secret string) { t.Fatalf("registered an empty secret line as %q", secret) })
+		time.Sleep(50 * time.Millisecond)
+	})
+
+	t.Run("nothing is registered without a monitor", func(t *testing.T) {
+		watchParentLocalAPISecret(nil, true, time.Millisecond, nil,
+			func(string) { t.Fatal("registered a secret with no lifeline monitor") })
+	})
+}
+
+// delayedReader yields one line after a pause, then blocks until it is read
+// from again — a parent that is slow to write.
+type delayedReader struct {
+	after time.Duration
+	line  string
+	done  bool
+}
+
+func (r *delayedReader) Read(p []byte) (int, error) {
+	if r.done {
+		return 0, io.EOF
+	}
+	time.Sleep(r.after)
+	r.done = true
+	return copy(p, r.line), nil
 }

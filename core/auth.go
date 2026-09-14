@@ -66,11 +66,10 @@ const localAPISecretMetadataKey = "local-api-secret"
 // caller can write to) closes that path; everything downstream is already
 // token-gated, so gating the bootstrap protects the whole surface.
 //
-// Not listed, deliberately: AppGetVersion (a liveness probe that leaks
-// nothing), the deprecated AccountLocalLink challenge pair (gating them would
-// break pairing for every unpaired caller — fold them in once they are
-// removed), and WalletCreateSession, which is gated per branch rather than
-// wholesale — see localAPISecretRequiredFor.
+// Every other noAuthMethod must appear in localAPISecretCarveOuts; one that
+// appears in neither is gated anyway (see localAPISecretRequiredFor), so the
+// unsafe default is the one that costs a caller an error rather than the one
+// that costs the account.
 var localAPISecretMethods = map[string]struct{}{
 	"WalletCreate":                   {},
 	"WalletRecover":                  {},
@@ -80,6 +79,26 @@ var localAPISecretMethods = map[string]struct{}{
 	"AccountRecoverFromLegacyExport": {},
 	"InitialSetParameters":           {},
 	"DebugAccountSelectTrace":        {},
+}
+
+// localAPISecretCarveOuts are the methods reachable without a token that
+// deliberately do NOT require the secret. Naming them is what lets the gate
+// default to fail-closed: together with localAPISecretMethods they must cover
+// noAuthMethods exactly, and a method in neither is treated as gated.
+//
+//   - AppGetVersion: a liveness probe that leaks nothing actionable.
+//   - The AccountLocalLink challenge pair: the handshake for callers that have
+//     no credential yet, so gating it would break every new pairing. Neither
+//     yields a token on its own — the code is minted only by
+//     AccountLocalLinkApproveChallenge, which is Full-token-only. Both are
+//     deprecated; fold them into the gated set once they are removed.
+//   - WalletCreateSession: gated per branch instead of wholesale, because only
+//     two of its four branches self-mint. See localAPISecretRequiredFor.
+var localAPISecretCarveOuts = map[string]struct{}{
+	"AppGetVersion":                  {},
+	"AccountLocalLinkNewChallenge":   {},
+	"AccountLocalLinkSolveChallenge": {},
+	"WalletCreateSession":            {},
 }
 
 func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
@@ -164,14 +183,21 @@ func localAPISecretRequiredFor(method string, req interface{}) bool {
 	if _, gated := localAPISecretMethods[method]; gated {
 		return true
 	}
-	if method != "WalletCreateSession" {
+	if method == "WalletCreateSession" {
+		sessionReq, ok := req.(*pb.RpcWalletCreateSessionRequest)
+		if !ok {
+			return true
+		}
+		return sessionReq.GetAppKey() == "" && sessionReq.GetToken() == ""
+	}
+	if _, carvedOut := localAPISecretCarveOuts[method]; carvedOut {
 		return false
 	}
-	sessionReq, ok := req.(*pb.RpcWalletCreateSessionRequest)
-	if !ok {
-		return true
-	}
-	return sessionReq.GetAppKey() == "" && sessionReq.GetToken() == ""
+	// A method reachable without a token that nobody classified is gated. New
+	// bootstrap methods are opt-out of the secret, not opt-in: forgetting to
+	// classify one then costs its caller an error, not the account.
+	_, noAuth := noAuthMethods[method]
+	return noAuth
 }
 
 // checkScopeAllowsMethod is the interceptor's scope decision: Full passes

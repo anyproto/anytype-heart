@@ -139,9 +139,33 @@ func TestApproveChallengeRequiresFullScope(t *testing.T) {
 	assert.NotContains(t, limitedScopeMethods, "AccountLocalLinkApproveChallenge")
 }
 
-// TestLocalAPISecretGatedMethods pins the set of methods that require the
-// parent-delivered secret. Adding a bootstrap method to noAuthMethods without
-// adding it here would reopen the self-mint path this gate closes.
+// TestLocalAPISecretCoversEveryNoAuthMethod is the closure check: every method
+// reachable without a token must be either gated on the secret or listed as a
+// deliberate carve-out. Membership assertions alone would not catch the case
+// that matters — a bootstrap method added to noAuthMethods and nowhere else,
+// which is ungated by default and reopens the self-mint path.
+func TestLocalAPISecretCoversEveryNoAuthMethod(t *testing.T) {
+	for method := range noAuthMethods {
+		_, gated := localAPISecretMethods[method]
+		_, carvedOut := localAPISecretCarveOuts[method]
+
+		assert.True(t, gated || carvedOut,
+			"%s is reachable without a token but is neither gated on the local API secret nor a declared carve-out", method)
+		assert.False(t, gated && carvedOut, "%s cannot be both gated and carved out", method)
+	}
+
+	// Neither set may name a method that does not need the exemption at all —
+	// a stale entry would hide the fact that it is token-gated anyway.
+	for method := range localAPISecretMethods {
+		assert.Contains(t, noAuthMethods, method)
+	}
+	for method := range localAPISecretCarveOuts {
+		assert.Contains(t, noAuthMethods, method)
+	}
+}
+
+// TestLocalAPISecretGatedMethods pins which side of that partition each method
+// landed on, so a change of mind about one is a deliberate edit here.
 func TestLocalAPISecretGatedMethods(t *testing.T) {
 	want := []string{
 		"WalletCreate",
@@ -157,21 +181,22 @@ func TestLocalAPISecretGatedMethods(t *testing.T) {
 	assert.Len(t, localAPISecretMethods, len(want))
 	for _, method := range want {
 		assert.Contains(t, localAPISecretMethods, method)
-		// Every gated method is a pre-session bootstrap method: the gate is
-		// what replaces the missing token check for them.
-		assert.Contains(t, noAuthMethods, method)
 	}
 
-	// Carve-outs, per the design spec: a liveness probe that leaks nothing, and
-	// the deprecated pairing handshake (gating it would break all new pairing).
-	// WalletCreateSession is absent because it is gated per branch instead —
-	// see TestAuthorizeLocalAPISecretWalletCreateSession.
-	for _, method := range []string{
+	// Carve-outs, per the design spec: a liveness probe that leaks nothing, the
+	// deprecated pairing handshake (gating it would break all new pairing), and
+	// WalletCreateSession, which is gated per branch instead — see
+	// TestAuthorizeLocalAPISecretWalletCreateSession.
+	want = []string{
 		"AppGetVersion",
 		"AccountLocalLinkNewChallenge",
 		"AccountLocalLinkSolveChallenge",
 		"WalletCreateSession",
-	} {
+	}
+
+	assert.Len(t, localAPISecretCarveOuts, len(want))
+	for _, method := range want {
+		assert.Contains(t, localAPISecretCarveOuts, method)
 		assert.NotContains(t, localAPISecretMethods, method)
 	}
 }

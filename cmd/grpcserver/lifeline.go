@@ -72,18 +72,33 @@ func (s *parentLifelineSecret) finish() {
 }
 
 // waitForSecret blocks until the parent sends the secret, the stdin stream
-// ends, or timeout elapses. It reports false in the latter two cases, leaving
-// the caller to run permissive.
-func (m *parentLifelineMonitor) waitForSecret(timeout time.Duration) (string, bool) {
+// ends, timeout elapses, or abort fires. It reports false in every case but the
+// first, leaving the caller to run permissive.
+//
+// abort carries OS signals so a quit arriving during the window is acted on at
+// once: by the time this runs, signal.Notify has already disabled Go's default
+// terminate behavior, so without it the process would look unresponsive for the
+// rest of the window. A nil abort channel simply never fires.
+func (m *parentLifelineMonitor) waitForSecret(timeout time.Duration, abort <-chan os.Signal) (string, bool) {
 	timer := time.NewTimer(timeout)
 	defer timer.Stop()
 
 	select {
 	case secret, ok := <-m.secret.values:
 		return secret, ok
+	case <-abort:
+		return "", false
 	case <-timer.C:
 		return "", false
 	}
+}
+
+// awaitSecret blocks until the secret arrives or the stdin stream ends, with no
+// deadline. It is how a secret that missed the startup window is still picked
+// up.
+func (m *parentLifelineMonitor) awaitSecret() (string, bool) {
+	secret, ok := <-m.secret.values
+	return secret, ok
 }
 
 type parentLifelineDeadline struct {
@@ -224,28 +239,56 @@ func notifyParentLifeline(events chan<- parentLifelineEvent, event parentLifelin
 // running permissive — older desktop clients do not send one yet, and refusing
 // to start would break them. Once the client ships it this becomes fail-closed
 // (see §3.4/§6.1 of the design spec).
-func registerParentLocalAPISecret(mw *core.Middleware, monitor *parentLifelineMonitor, lifelineEnabled bool) {
-	secret, ok := parentLocalAPISecret(monitor, lifelineEnabled)
-	if !ok {
-		log.Warn("parent sent no local api secret: the account bootstrap API stays open to any local caller")
-		return
-	}
-	mw.SetLocalAPISecret(secret)
-	log.Info("local api secret registered: the account bootstrap API now requires it")
+func registerParentLocalAPISecret(mw *core.Middleware, monitor *parentLifelineMonitor, lifelineEnabled bool, abort <-chan os.Signal) {
+	watchParentLocalAPISecret(monitor, lifelineEnabled, parentLifelineSecretTimeout, abort, mw.SetLocalAPISecret)
 }
 
-// parentLocalAPISecret waits for the secret line, bounded. Outside parented
-// mode it returns immediately: standalone, Docker and the legacy Windows stdin
-// protocol have no parent channel to prove ownership with, and stalling their
-// startup for the full window would buy nothing.
-func parentLocalAPISecret(monitor *parentLifelineMonitor, lifelineEnabled bool) (string, bool) {
-	if !lifelineEnabled || monitor == nil {
-		return "", false
+// watchParentLocalAPISecret registers the parent-delivered secret, and keeps
+// watching for one that did not arrive in time.
+//
+// In parented mode it waits, bounded, before returning, so the gate is on
+// before the server serves. When that window expires the watch continues in the
+// background: a parent whose main thread stalled past it still delivers, and
+// dropping that secret would leave the bootstrap API open for the whole session
+// while its client believes the header it sends is doing something. Registering
+// late narrows the hole instead of leaving it open — the store is write-once,
+// so a late secret cannot displace one already in place.
+//
+// Outside parented mode nothing is waited on: standalone and Docker have no
+// parent channel at all, and the legacy Windows stdin protocol reads the same
+// pipe without opting in, so stalling their startup would buy nothing. The
+// background watch still runs for them, which is what keeps a Windows client
+// that sends a secret without setting ANYTYPE_PARENT_LIFELINE from being
+// silently unprotected.
+func watchParentLocalAPISecret(
+	monitor *parentLifelineMonitor,
+	lifelineEnabled bool,
+	timeout time.Duration,
+	abort <-chan os.Signal,
+	register func(string),
+) {
+	if monitor == nil {
+		return
 	}
 
-	secret, ok := monitor.waitForSecret(parentLifelineSecretTimeout)
-	if !ok || secret == "" {
-		return "", false
+	if lifelineEnabled {
+		if secret, ok := monitor.waitForSecret(timeout, abort); ok && secret != "" {
+			register(secret)
+			log.Info("local api secret registered: the account bootstrap API now requires it")
+			return
+		}
+		// Only parented launches are expected to send one, so only they are
+		// worth warning about — standalone and Docker would log this on every
+		// start with nothing the operator could do about it.
+		log.Warn("parent sent no local api secret in time: the account bootstrap API stays open to any local caller")
 	}
-	return secret, true
+
+	go func() {
+		secret, ok := monitor.awaitSecret()
+		if !ok || secret == "" {
+			return
+		}
+		register(secret)
+		log.Warn("local api secret registered late: the account bootstrap API was open to any local caller until now")
+	}()
 }

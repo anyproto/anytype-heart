@@ -231,8 +231,15 @@ func main() {
 	proxy.Handler = newProxyHandler(webrpc, originPolicy, withWebsockets)
 
 	// Register the parent-delivered secret before serving, so no bootstrap
-	// request can race the registration and slip through permissive.
-	registerParentLocalAPISecret(mw, parentLifeline, lifelineEnabled)
+	// request can race the registration and slip through permissive. The wait
+	// gets its own signal channel: signal.Notify above already took over
+	// terminate handling, and the loop that acts on it is further down, so a
+	// quit arriving during the wait would otherwise go unanswered until the
+	// window expired. Both channels receive, so the loop still sees it.
+	startupSignalChan := make(chan os.Signal, 1)
+	signal.Notify(startupSignalChan, signals...)
+	registerParentLocalAPISecret(mw, parentLifeline, lifelineEnabled, startupSignalChan)
+	signal.Stop(startupSignalChan)
 
 	go func() {
 		server.Serve(lis)
