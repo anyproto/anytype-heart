@@ -153,7 +153,7 @@ func (s *service) StartNewChallenge(scope model.AccountAuthLocalApiScope, info *
 	// the id and the 4 digits. It used to be a bson ObjectId — a timestamp, a
 	// machine hash, the pid and a rolling counter — so every id one process
 	// minted in the same second shared 18 of its 24 hex characters, and a
-	// caller that had seen one could walk to its neighbours and be left
+	// caller that had seen one could walk to its neighbors and be left
 	// guessing only 10^4. crypto/rand.Text is ≥128 bits of OS entropy and
 	// cannot fail (it crashes the process rather than return a weak value).
 	id := cryptorand.Text()

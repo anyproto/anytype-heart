@@ -319,7 +319,7 @@ func (mw *Middleware) AccountLocalLinkNewChallenge(ctx context.Context, request 
 // approve its own pairing.
 //
 // That scope check is the whole access control, and an Origin check on top of
-// it would be theatre. Full scope is unreachable through pairing — a challenge
+// it would be theater. Full scope is unreachable through pairing — a challenge
 // mints Limited or JsonAPI only (core/session/challenge.go) — so reaching this
 // method at all takes the mnemonic or account key, and a caller holding either
 // skips the prompt entirely with AccountLocalLinkCreateApp. Approving also has
