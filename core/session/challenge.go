@@ -1,12 +1,12 @@
 package session
 
 import (
+	cryptorand "crypto/rand"
 	"fmt"
 	"math"
-	"math/rand"
+	"math/big"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
 	"go.uber.org/atomic"
 
 	"github.com/anyproto/anytype-heart/core/wallet"
@@ -149,7 +149,14 @@ func (s *service) StartNewChallenge(scope model.AccountAuthLocalApiScope, info *
 	// them, which can never be solved now — come off screen.
 	superseded = s.dropCallerChallengesLocked(caller)
 
-	id := bson.NewObjectId().Hex()
+	// A challenge id is a bearer value: SolveChallenge asks for nothing but
+	// the id and the 4 digits. It used to be a bson ObjectId — a timestamp, a
+	// machine hash, the pid and a rolling counter — so every id one process
+	// minted in the same second shared 18 of its 24 hex characters, and a
+	// caller that had seen one could walk to its neighbours and be left
+	// guessing only 10^4. crypto/rand.Text is ≥128 bits of OS entropy and
+	// cannot fail (it crashes the process rather than return a weak value).
+	id := cryptorand.Text()
 	s.challenges[id] = challenge{
 		clientInfo: info,
 		scope:      scope,
@@ -197,6 +204,12 @@ func (s *service) ApproveChallenge(processPath, origin string, allow bool, grant
 		if err = validateApprovalGrant(ch.scope, grant); err != nil {
 			return "", nil, fmt.Errorf("validate approval grant: %w", err)
 		}
+		// Minted here, before any state change, for the same reason the grant
+		// is validated here: a failure must leave the challenge pending and
+		// the prompt answerable rather than half-approved with no code.
+		if value, err = randomDigits(challengeDigits); err != nil {
+			return "", nil, fmt.Errorf("mint challenge code: %w", err)
+		}
 	}
 
 	delete(s.pendingByCaller, caller)
@@ -214,12 +227,29 @@ func (s *service) ApproveChallenge(processPath, origin string, allow bool, grant
 		return "", ch.clientInfo, nil
 	}
 
-	ch.value = fmt.Sprintf("%0*d", challengeDigits, rand.Intn(int(math.Pow10(challengeDigits))))
+	ch.value = value
 	ch.state = challengeApproved
 	ch.stateSince = s.now()
 	ch.approvedGrant = grant
 	s.challenges[id] = ch
 	return ch.value, ch.clientInfo, nil
+}
+
+// randomDigits returns n zero-padded decimal digits drawn from the OS entropy
+// source. The code is the whole secret of the pairing handshake, so it comes
+// from crypto/rand rather than math/rand, whose global source is a runtime
+// detail that happens to be strong today and promises nothing. crypto/rand.Int
+// rejection-samples, so the draw stays uniform over the 10^n space.
+//
+// The error can only come from the reader, which cannot fail with the package
+// Reader, but it is returned rather than swallowed: a caller that ignored it
+// would mint the constant "0000".
+func randomDigits(n int) (string, error) {
+	value, err := cryptorand.Int(cryptorand.Reader, big.NewInt(int64(math.Pow10(n))))
+	if err != nil {
+		return "", fmt.Errorf("read random int: %w", err)
+	}
+	return fmt.Sprintf("%0*d", n, value.Int64()), nil
 }
 
 // validateApprovalGrant holds the scope-dependent grant rules of an allow

@@ -113,7 +113,7 @@ components:
         challenge_id:
           description: The challenge id associated with the displayed code and needed
             to solve the challenge for api_key
-          example: 67647f5ecda913e9a2e11b26
+          example: GB6ZU3Y52UGUEQQCIJC33LM6XC
           type: string
       type: object
     CreateChallengeRequest:
@@ -140,7 +140,7 @@ components:
       properties:
         challenge_id:
           description: The challenge id associated with the previously displayed code
-          example: 67647f5ecda913e9a2e11b26
+          example: GB6ZU3Y52UGUEQQCIJC33LM6XC
           type: string
         code:
           description: The 4-digit code retrieved from Anytype Desktop app

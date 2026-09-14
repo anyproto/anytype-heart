@@ -2,7 +2,7 @@ package apimodel
 
 // TO BE DEPRECATED
 type DisplayCodeResponse struct {
-	ChallengeId string `json:"challenge_id" example:"67647f5ecda913e9a2e11b26"` // The challenge id associated with the displayed code and needed to solve the challenge for token
+	ChallengeId string `json:"challenge_id" example:"GB6ZU3Y52UGUEQQCIJC33LM6XC"` // The challenge id associated with the displayed code and needed to solve the challenge for token
 }
 
 // TO BE DEPRECATED
@@ -15,11 +15,11 @@ type CreateChallengeRequest struct {
 }
 
 type CreateChallengeResponse struct {
-	ChallengeId string `json:"challenge_id" example:"67647f5ecda913e9a2e11b26"` // The challenge id associated with the displayed code and needed to solve the challenge for api_key
+	ChallengeId string `json:"challenge_id" example:"GB6ZU3Y52UGUEQQCIJC33LM6XC"` // The challenge id associated with the displayed code and needed to solve the challenge for api_key
 }
 
 type CreateApiKeyRequest struct {
-	ChallengeId string `json:"challenge_id" example:"67647f5ecda913e9a2e11b26"` // The challenge id associated with the previously displayed code
+	ChallengeId string `json:"challenge_id" example:"GB6ZU3Y52UGUEQQCIJC33LM6XC"` // The challenge id associated with the previously displayed code
 	Code        string `json:"code" example:"1234"`                             // The 4-digit code retrieved from Anytype Desktop app
 }
 
