@@ -38,16 +38,15 @@ func newDocsFixture(t *testing.T) *Server {
 
 func TestDocumentationRoutes(t *testing.T) {
 	// One document per API version (core/api/docs/v1, core/api/docs/v2), and
-	// the unversioned /docs/* alias still answers with v1 — it is the path
-	// developers.anytype.io and existing integrations use, so repointing it at
-	// v2 would break them silently.
+	// the unversioned /docs/* alias answers with the current version, v2 —
+	// v1 remains reachable at its own versioned path.
 	for _, tc := range []struct {
 		path        string
 		contentType string
 		body        string
 	}{
-		{"/docs/openapi.yaml", "application/x-yaml", "v1-yaml"},
-		{"/docs/openapi.json", "application/json", `{"doc":"v1"}`},
+		{"/docs/openapi.yaml", "application/x-yaml", "v2-yaml"},
+		{"/docs/openapi.json", "application/json", `{"doc":"v2"}`},
 		{"/v1/docs/openapi.yaml", "application/x-yaml", "v1-yaml"},
 		{"/v1/docs/openapi.json", "application/json", `{"doc":"v1"}`},
 		{"/v2/docs/openapi.yaml", "application/x-yaml", "v2-yaml"},

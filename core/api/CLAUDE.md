@@ -27,7 +27,7 @@ make openapi
 # One document per API version:
 # - core/api/docs/v1/openapi.{yaml,json}   (from core/api, v2 excluded)
 # - core/api/docs/v2/openapi.{yaml,json}   (from core/api/v2)
-# Served at /v1/docs/openapi.*, /v2/docs/openapi.*, and /docs/openapi.* (= v1)
+# Served at /v1/docs/openapi.*, /v2/docs/openapi.*, and /docs/openapi.* (= v2)
 ```
 
 The v2 Introduction is authored in `core/api/v2/markdown/api.md`. Keep the
