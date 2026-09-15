@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "cc3a8156a759b0740666d12f2d776a62df7bfb87c7a6786dca59b2caff779dba"
+const RelationChecksum = "71001c404294aa631e6656584c2f9f1f73d99abc2fb15c7c4018ebf1dc81dcdb"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -43,6 +43,7 @@ const (
 	RelationKeyLayoutAlign                          domain.RelationKey = "layoutAlign"
 	RelationKeyStatus                               domain.RelationKey = "status"
 	RelationKeyIsHidden                             domain.RelationKey = "isHidden"
+	RelationKeyIsDraft                              domain.RelationKey = "isDraft"
 	RelationKeyIsHiddenDiscovery                    domain.RelationKey = "isHiddenDiscovery"
 	RelationKeyMediaArtistName                      domain.RelationKey = "mediaArtistName"
 	RelationKeyEmail                                domain.RelationKey = "email"
@@ -1295,6 +1296,20 @@ var (
 			MaxCount:         1,
 			Name:             "Is deleted",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIsDraft: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Specify if object is a draft created by a client and not yet finalized",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brisDraft",
+			Key:              "isDraft",
+			MaxCount:         1,
+			Name:             "Is draft",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

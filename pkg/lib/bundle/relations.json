@@ -332,6 +332,16 @@
     "source": "details"
   },
   {
+    "description": "Specify if object is a draft created by a client and not yet finalized",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isDraft",
+    "maxCount": 1,
+    "name": "Is draft",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Specify if object discovery is hidden",
     "format": "checkbox",
     "hidden": true,
