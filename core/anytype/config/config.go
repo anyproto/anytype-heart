@@ -121,6 +121,14 @@ func (c *Config) HostAddr() string {
 	return c.persisted.HostAddr
 }
 
+// GatewayAddr returns the address the gateway bound on the previous run, if any. Reusing it keeps
+// client-side caches keyed by the gateway URL valid across restarts.
+func (c *Config) GatewayAddr() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.persisted.GatewayAddr
+}
+
 // AutoDownloadFiles returns whether auto download is enabled.
 func (c *Config) AutoDownloadFiles() bool {
 	c.mu.RLock()
@@ -195,6 +203,17 @@ func (c *Config) SetHostAddr(addr string) error {
 		return nil
 	}
 	c.persisted.HostAddr = addr
+	return c.writeLocked()
+}
+
+// SetGatewayAddr sets the gateway address and writes to disk if changed.
+func (c *Config) SetGatewayAddr(addr string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.persisted.GatewayAddr == addr {
+		return nil
+	}
+	c.persisted.GatewayAddr = addr
 	return c.writeLocked()
 }
 

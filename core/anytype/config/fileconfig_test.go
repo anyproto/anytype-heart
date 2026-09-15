@@ -306,3 +306,26 @@ func TestConfigDisableFileConfig(t *testing.T) {
 		require.True(t, os.IsNotExist(err))
 	})
 }
+
+func TestConfigGatewayAddr(t *testing.T) {
+	t.Run("is written to disk so the next run can ask for the same port", func(t *testing.T) {
+		// given
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.json")
+		cfg := New()
+		cfg.RepoPath = tmpDir
+		cfg.configPath = configPath
+		want := "127.0.0.1:47801"
+
+		// when
+		err := cfg.SetGatewayAddr(want)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, cfg.GatewayAddr())
+
+		var persisted PersistedConfig
+		require.NoError(t, GetFileConfig(configPath, &persisted))
+		assert.Equal(t, want, persisted.GatewayAddr)
+	})
+}

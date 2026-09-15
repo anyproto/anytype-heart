@@ -12,13 +12,14 @@ var ErrInvalidConfigFormat = errors.New("failed to decode")
 
 // PersistedConfig contains configuration that is persisted to config.json
 type PersistedConfig struct {
-	HostAddr               string `json:",omitempty"`
-	CustomFileStorePath    string `json:",omitempty"`
-	LegacyFileStorePath    string `json:",omitempty"`
-	NetworkId              string `json:""` // in case this account was at least once connected to the network on this device, this field will be set to the network id
-	AutoDownloadFiles      bool   `json:",omitempty"`
-	AutoDownloadOnWifiOnly bool   `json:",omitempty"`
-	AutoDownloadSizeLimitMb int64 `json:",omitempty"` // 0=no limit, >0=max file size in mebibytes
+	HostAddr                string `json:",omitempty"`
+	GatewayAddr             string `json:",omitempty"`
+	CustomFileStorePath     string `json:",omitempty"`
+	LegacyFileStorePath     string `json:",omitempty"`
+	NetworkId               string `json:""` // in case this account was at least once connected to the network on this device, this field will be set to the network id
+	AutoDownloadFiles       bool   `json:",omitempty"`
+	AutoDownloadOnWifiOnly  bool   `json:",omitempty"`
+	AutoDownloadSizeLimitMb int64  `json:",omitempty"` // 0=no limit, >0=max file size in mebibytes
 }
 
 // writeConfigSafe writes config to disk using atomic rename for crash safety.
