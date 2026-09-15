@@ -16,6 +16,7 @@ const (
 	mockedSpaceId       = "mocked-space-id"
 	mockedObjectId      = "mocked-object-id"
 	mockedNewObjectId   = "mocked-new-object-id"
+	mockedDiscussionId  = "mocked-discussion-id"
 	mockedObjectName    = "mocked-object-name"
 	mockedObjectSnippet = "mocked-object-snippet"
 	mockedObjectIcon    = "🔍"
