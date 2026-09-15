@@ -3,8 +3,10 @@ package gateway
 import (
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 )
 
 // attachmentParam asks the gateway to serve a file as a download rather than
@@ -19,6 +21,14 @@ const fallbackFilename = "file"
 // rfc5987AttrChars are the characters RFC 5987 lets an ext-value carry
 // literally. Everything else is percent-encoded.
 const rfc5987AttrChars = "!#$&+-.^_`|~"
+
+// maxFilenameBytes caps the name both parameters are built from. No filesystem
+// takes a longer element, and an uncapped name is a response-header problem
+// before it is a filename problem: percent-encoding triples every non-ASCII
+// byte, so a 40k-character name produced a 280KB header, past the 256KB cap
+// browsers enforce — the download then fails for a reason that looks nothing
+// like a bad name.
+const maxFilenameBytes = 255
 
 // attachmentRequested reports whether the caller asked for a download. A bare
 // ?attachment counts, so a hand-written URL does the obvious thing.
@@ -45,6 +55,7 @@ func attachmentRequested(r *http.Request) bool {
 // name itself, percent-encoded as UTF-8. Clients prefer filename*; the ones
 // that do not still get something sane.
 func contentDisposition(disposition, name string) string {
+	name = sanitizeFilename(name)
 	fallback := asciiFilename(name)
 	switch fallback {
 	case "":
@@ -58,18 +69,79 @@ func contentDisposition(disposition, name string) string {
 	}
 }
 
+// sanitizeFilename reduces an untrusted name to a single, bounded path element,
+// before either parameter is built from it.
+//
+// Both parameters are advisory, but a client that saves under the name we hand
+// it should not be handed a path: the write path already confines the name with
+// filepath.Base, and a header saying "../../../.bashrc" invites exactly what
+// that guards against. Control characters go here rather than only in the ASCII
+// fallback, so a NUL cannot ride through filename* percent-encoded either.
+func sanitizeFilename(name string) string {
+	name = strings.Map(func(r rune) rune {
+		if r < 0x20 || r == 0x7f {
+			return -1
+		}
+		return r
+	}, name)
+
+	// Both separators, on every platform: the name came from whoever shared the
+	// file, not from this filesystem.
+	if i := strings.LastIndexAny(name, `/\`); i >= 0 {
+		name = name[i+1:]
+	}
+	if name == "." || name == ".." {
+		return ""
+	}
+	return capFilename(name)
+}
+
+// capFilename bounds the name to maxFilenameBytes, keeping the extension, which
+// is the part a client needs to open the file with the right application.
+func capFilename(name string) string {
+	if len(name) <= maxFilenameBytes {
+		return name
+	}
+
+	ext := filepath.Ext(name)
+	if len(ext) > maxFilenameBytes/2 {
+		// Not an extension so much as the tail of a long name.
+		ext = ""
+	}
+	return truncateToBytes(strings.TrimSuffix(name, ext), maxFilenameBytes-len(ext)) + ext
+}
+
+// truncateToBytes cuts s to at most limit bytes without splitting a rune.
+func truncateToBytes(s string, limit int) string {
+	if len(s) <= limit {
+		return s
+	}
+	for i := range s {
+		if i > limit {
+			return s[:lastRuneBoundary(s, limit)]
+		}
+	}
+	return s[:lastRuneBoundary(s, limit)]
+}
+
+func lastRuneBoundary(s string, limit int) int {
+	end := limit
+	for end > 0 && !utf8.RuneStart(s[end]) {
+		end--
+	}
+	return end
+}
+
 // asciiFilename reduces a name to something safe inside a quoted-string: one
-// underscore per character it cannot represent, and control characters dropped
-// outright. It works per rune, so a non-ASCII name does not swell into a run of
-// underscores, one per UTF-8 byte. An empty result means nothing of the name
-// survived; naming it is the caller's decision.
+// underscore per character it cannot represent. It works per rune, so a
+// non-ASCII name does not swell into a run of underscores, one per UTF-8 byte.
+// An empty result means nothing of the name survived; naming it is the caller's
+// decision. Control characters and separators are already gone — see
+// sanitizeFilename.
 func asciiFilename(name string) string {
 	var b strings.Builder
 	for _, r := range name {
 		switch {
-		case r < 0x20 || r == 0x7f:
-			// Control characters: drop. net/http would strip the newlines
-			// among them anyway, leaving a header nobody meant to send.
 		case r > 0x7f, r == '"', r == '\\':
 			b.WriteByte('_')
 		default:

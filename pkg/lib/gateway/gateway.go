@@ -231,7 +231,62 @@ func (g *gateway) stopServer() error {
 
 func enableCors(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+	// Without this a cross-origin reader sees none of these: only a short
+	// safelist is readable by default, and Content-Disposition is not on it. A
+	// client fetching a download would get no filename and, worse, no
+	// Accept-Ranges or Content-Range to resume with.
+	w.Header().Set("Access-Control-Expose-Headers", "Content-Disposition, Content-Length, Content-Range, Accept-Ranges")
+}
+
+// allowReadMethod answers a CORS preflight and refuses anything that is not a
+// read, before a limiter slot is taken.
+//
+// The mux routes every method to the same handler and ServeContent omits the
+// body only for HEAD, so without this an OPTIONS preflight — or a stray POST —
+// streams the entire object. On the multi-gigabyte path that is a
+// multi-gigabyte preflight, holding one of the shared slots throughout.
+func allowReadMethod(w http.ResponseWriter, r *http.Request) bool {
+	switch r.Method {
+	case http.MethodGet, http.MethodHead:
+		return true
+	case http.MethodOptions:
+		// A preflight that does not allow Range is no use to a download.
+		w.Header().Set("Access-Control-Allow-Headers", "Range, If-Range, If-None-Match, If-Modified-Since")
+		w.Header().Set("Access-Control-Max-Age", "600")
+		w.WriteHeader(http.StatusNoContent)
+		return false
+	default:
+		w.Header().Set("Allow", "GET, HEAD, OPTIONS")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return false
+	}
+}
+
+// transientStatusWriter rewrites the status ServeContent chose when the request
+// was canceled underneath it.
+//
+// ServeContent maps any seek failure while serving a range to 416, and a
+// failure while sizing to 500. Under the stall timeout both are reachable
+// transiently: seeking into an encrypted file fetches the previous block to
+// recover the IV, which is real network I/O, and the window can expire during
+// it. A resuming client told 416 concludes its partial file is invalid and
+// discards it — so a stall is reported as a timeout, which is what it is.
+//
+// Wrapping costs the ReadFrom fast path, which for a non-file source is a
+// buffered copy either way — the same 32KB reads the stall window already
+// counts progress in.
+type transientStatusWriter struct {
+	http.ResponseWriter
+	ctx context.Context
+}
+
+func (w *transientStatusWriter) WriteHeader(status int) {
+	if w.ctx.Err() != nil &&
+		(status == http.StatusRequestedRangeNotSatisfiable || status == http.StatusInternalServerError) {
+		status = http.StatusGatewayTimeout
+	}
+	w.ResponseWriter.WriteHeader(status)
 }
 
 func (g *gateway) readLimitCh() {
@@ -240,6 +295,11 @@ func (g *gateway) readLimitCh() {
 
 // fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
 func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(w)
+	if !allowReadMethod(w, r) {
+		return
+	}
+
 	select {
 	case g.limitCh <- struct{}{}:
 		defer g.readLimitCh()
@@ -247,7 +307,6 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 		// exit fast in case context is already done(e.g. server stopped or client canceled)
 		return
 	}
-	enableCors(w)
 
 	// The stall window covers the lookup too: nothing has moved yet while the
 	// file is being located, so an unreachable file still gives up after one
@@ -274,7 +333,8 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Note: the DagReader is lazy and streams ~1MB blocks on demand. The CFBDecryptor.Seek
 	// fast-path avoids expensive IPFS block preloading during size determination (SeekEnd).
-	http.ServeContent(w, r, meta.Name, meta.Added, &progressReader{ReadSeeker: reader, onProgress: stall.progress})
+	http.ServeContent(&transientStatusWriter{ResponseWriter: w, ctx: ctx}, r, meta.Name, meta.Added,
+		&progressReader{ReadSeeker: reader, onProgress: stall.progress})
 }
 
 func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
@@ -298,6 +358,11 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 
 // imageHandler gets image meta from the DB, gets the corresponding data from the IPFS and decrypts it
 func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(w)
+	if !allowReadMethod(w, r) {
+		return
+	}
+
 	select {
 	case g.limitCh <- struct{}{}:
 		defer g.readLimitCh()
@@ -305,7 +370,6 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 		// exit fast in case context is already done(e.g. server stopped or client canceled)
 		return
 	}
-	enableCors(w)
 
 	ctx, cancel := context.WithTimeout(r.Context(), getImageTimeout)
 	defer cancel()

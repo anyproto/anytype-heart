@@ -33,11 +33,11 @@ func TestContentDisposition(t *testing.T) {
 		assert.Contains(t, contentDisposition("attachment", "日本語.txt"), `filename="___.txt"`)
 	})
 
-	t.Run("quotes and backslashes cannot escape the quoted form", func(t *testing.T) {
-		got := contentDisposition("attachment", `my"quoted\name.txt`)
+	t.Run("a quote cannot escape the quoted form", func(t *testing.T) {
+		got := contentDisposition("attachment", `my"quoted.txt`)
 
 		assert.Equal(t,
-			`attachment; filename="my_quoted_name.txt"; filename*=UTF-8''my%22quoted%5Cname.txt`,
+			`attachment; filename="my_quoted.txt"; filename*=UTF-8''my%22quoted.txt`,
 			got)
 		assert.Equal(t, 2, strings.Count(got, `"`), "the quoted form must have exactly one pair of quotes")
 	})
@@ -48,6 +48,44 @@ func TestContentDisposition(t *testing.T) {
 		assert.Contains(t, got, `filename="ab.txt"`)
 		assert.NotContains(t, got, "\r")
 		assert.NotContains(t, got, "\n")
+	})
+
+	// The write path already confines the name to one path element; the header
+	// must not hand a caller back something it can treat as a path either.
+	// Both separators, whatever this machine's, because the name came from
+	// whoever shared the file and the client saving it may be on Windows.
+	t.Run("path separators do not survive into the filename", func(t *testing.T) {
+		assert.Equal(t, `attachment; filename=".bashrc"`,
+			contentDisposition("attachment", "../../../.bashrc"))
+		assert.Equal(t, `attachment; filename="passwd"`,
+			contentDisposition("attachment", "/etc/passwd"))
+		assert.Equal(t, `attachment; filename="report.pdf"`,
+			contentDisposition("attachment", `..\..\report.pdf`))
+	})
+
+	t.Run("a name that is only traversal gets the generic fallback", func(t *testing.T) {
+		for _, name := range []string{"..", "../..", "/", "/../"} {
+			got := contentDisposition("attachment", name)
+			assert.Equal(t, `attachment; filename="file"`, got, "name %q", name)
+		}
+	})
+
+	// A NUL reaching a client that decodes filename* is a footgun, and browsers
+	// cap response headers (Chromium at 256KB) so an unbounded name fails the
+	// download with a header error rather than a filename error.
+	t.Run("control characters never reach filename*", func(t *testing.T) {
+		got := contentDisposition("attachment", "x\x00y.txt")
+
+		assert.NotContains(t, got, "%00")
+		assert.Contains(t, got, `filename="xy.txt"`)
+	})
+
+	t.Run("an absurdly long name is capped, keeping the extension", func(t *testing.T) {
+		got := contentDisposition("attachment", strings.Repeat("ä", 40000)+".pdf")
+
+		assert.Less(t, len(got), 1024, "header must stay far below any client cap")
+		assert.Contains(t, got, `.pdf"`)
+		assert.True(t, strings.HasSuffix(got, ".pdf"), "filename* keeps the extension too: %s", got)
 	})
 
 	t.Run("an empty name gets a generic fallback", func(t *testing.T) {

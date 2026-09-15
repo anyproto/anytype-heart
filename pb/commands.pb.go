@@ -17865,7 +17865,6 @@ var xxx_messageInfo_RpcAccountCreate proto.InternalMessageInfo
 type RpcAccountCreateRequest struct {
 	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	// Types that are valid to be assigned to Avatar:
-	//
 	//	*RpcAccountCreateRequestAvatarOfAvatarLocalPath
 	Avatar                      IsRpcAccountCreateRequestAvatar `protobuf_oneof:"avatar"`
 	StorePath                   string                          `protobuf:"bytes,3,opt,name=storePath,proto3" json:"storePath,omitempty"`
@@ -21126,6 +21125,8 @@ func (m *RpcAccountLocalLink) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_RpcAccountLocalLink proto.InternalMessageInfo
 
+// deprecated: pairing a gRPC session via the local-link challenge
+// is being removed; authenticate through the JSON API instead.
 type RpcAccountLocalLinkNewChallenge struct {
 }
 

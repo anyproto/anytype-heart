@@ -462,6 +462,10 @@ type ClientCommandsHandler interface {
 	WalletCreate(context.Context, *pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse
 	WalletRecover(context.Context, *pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse
 	WalletConvert(context.Context, *pb.RpcWalletConvertRequest) *pb.RpcWalletConvertResponse
+	// deprecated: pairing a gRPC ClientCommands session via the local-link
+	// challenge flow is being removed. Integrations should authenticate through
+	// the JSON API instead. Kept working for now (still callable without the
+	// local-API shared secret) until existing clients migrate.
 	AccountLocalLinkNewChallenge(context.Context, *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse
 	AccountLocalLinkSolveChallenge(context.Context, *pb.RpcAccountLocalLinkSolveChallengeRequest) *pb.RpcAccountLocalLinkSolveChallengeResponse
 	AccountLocalLinkApproveChallenge(context.Context, *pb.RpcAccountLocalLinkApproveChallengeRequest) *pb.RpcAccountLocalLinkApproveChallengeResponse
