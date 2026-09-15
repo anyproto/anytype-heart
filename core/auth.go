@@ -150,9 +150,10 @@ func (mw *Middleware) checkLocalAPISecretForMethod(ctx context.Context, method s
 }
 
 // hasValidLocalAPISecret verifies the secret carried in the request's incoming
-// metadata. It reports true when no secret is registered: standalone/Docker
-// runs and parents that do not yet send one stay permissive (see the design
-// spec's §3.4 — this flips to fail-closed once the desktop client ships it).
+// metadata. It reports true when no secret is registered: standalone runs and
+// parents that do not yet send one stay permissive, which is what keeps an
+// older client working. That flips to fail-closed once the desktop client
+// ships the secret.
 func (mw *Middleware) hasValidLocalAPISecret(ctx context.Context) bool {
 	if !mw.applicationService.LocalAPISecretEnforced() {
 		return true

@@ -237,8 +237,8 @@ func notifyParentLifeline(events chan<- parentLifelineEvent, event parentLifelin
 //
 // A parented launch whose parent sends no secret within the window keeps
 // running permissive — older desktop clients do not send one yet, and refusing
-// to start would break them. Once the client ships it this becomes fail-closed
-// (see §3.4/§6.1 of the design spec).
+// to start would break them. Once the client ships it, this becomes
+// fail-closed.
 func registerParentLocalAPISecret(mw *core.Middleware, monitor *parentLifelineMonitor, lifelineEnabled bool, abort <-chan os.Signal) {
 	watchParentLocalAPISecret(monitor, lifelineEnabled, parentLifelineSecretTimeout, abort, mw.SetLocalAPISecret)
 }

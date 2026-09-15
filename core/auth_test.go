@@ -183,8 +183,8 @@ func TestLocalAPISecretGatedMethods(t *testing.T) {
 		assert.Contains(t, localAPISecretMethods, method)
 	}
 
-	// Carve-outs, per the design spec: a liveness probe that leaks nothing, the
-	// deprecated pairing handshake (gating it would break all new pairing), and
+	// Carve-outs: a liveness probe that leaks nothing, the deprecated pairing
+	// handshake (gating it would break all new pairing), and
 	// WalletCreateSession, which is gated per branch instead — see
 	// TestAuthorizeLocalAPISecretWalletCreateSession.
 	want = []string{
