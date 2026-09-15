@@ -72,6 +72,10 @@ type Service struct {
 	// way round. See app_start.go.
 	startMu  sync.Mutex
 	starting *startRun
+
+	// localAPISecret gates the unauthenticated bootstrap RPCs on the gRPC
+	// transport; see local_api_secret.go.
+	localAPISecret localAPISecret
 }
 
 func New() *Service {

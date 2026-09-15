@@ -2466,7 +2466,7 @@
 | WalletCreate | [Rpc.Wallet.Create.Request](#anytype-Rpc-Wallet-Create-Request) | [Rpc.Wallet.Create.Response](#anytype-Rpc-Wallet-Create-Response) | Wallet *** |
 | WalletRecover | [Rpc.Wallet.Recover.Request](#anytype-Rpc-Wallet-Recover-Request) | [Rpc.Wallet.Recover.Response](#anytype-Rpc-Wallet-Recover-Response) |  |
 | WalletConvert | [Rpc.Wallet.Convert.Request](#anytype-Rpc-Wallet-Convert-Request) | [Rpc.Wallet.Convert.Response](#anytype-Rpc-Wallet-Convert-Response) |  |
-| AccountLocalLinkNewChallenge | [Rpc.Account.LocalLink.NewChallenge.Request](#anytype-Rpc-Account-LocalLink-NewChallenge-Request) | [Rpc.Account.LocalLink.NewChallenge.Response](#anytype-Rpc-Account-LocalLink-NewChallenge-Response) |  |
+| AccountLocalLinkNewChallenge | [Rpc.Account.LocalLink.NewChallenge.Request](#anytype-Rpc-Account-LocalLink-NewChallenge-Request) | [Rpc.Account.LocalLink.NewChallenge.Response](#anytype-Rpc-Account-LocalLink-NewChallenge-Response) | deprecated: pairing a gRPC ClientCommands session via the local-link challenge flow is being removed. Integrations should authenticate through the JSON API instead. Kept working for now (still callable without the local-API shared secret) until existing clients migrate. |
 | AccountLocalLinkSolveChallenge | [Rpc.Account.LocalLink.SolveChallenge.Request](#anytype-Rpc-Account-LocalLink-SolveChallenge-Request) | [Rpc.Account.LocalLink.SolveChallenge.Response](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response) |  |
 | AccountLocalLinkApproveChallenge | [Rpc.Account.LocalLink.ApproveChallenge.Request](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Request) | [Rpc.Account.LocalLink.ApproveChallenge.Response](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Response) |  |
 | AccountLocalLinkCreateApp | [Rpc.Account.LocalLink.CreateApp.Request](#anytype-Rpc-Account-LocalLink-CreateApp-Request) | [Rpc.Account.LocalLink.CreateApp.Response](#anytype-Rpc-Account-LocalLink-CreateApp-Response) |  |
@@ -4426,7 +4426,8 @@ limitedScopeMethods, so authorization admits full scope alone.
 <a name="anytype-Rpc-Account-LocalLink-NewChallenge"></a>
 
 ### Rpc.Account.LocalLink.NewChallenge
-
+deprecated: pairing a gRPC session via the local-link challenge
+is being removed; authenticate through the JSON API instead.
 
 
 

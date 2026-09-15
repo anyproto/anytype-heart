@@ -203,10 +203,10 @@ func main() {
 		"/anytype.ClientCommands/AccountLocalLinkNewChallenge",
 	))
 	// The Origin header rides gRPC metadata on this transport, not the
-	// request context the HTTP middleware fills. Without this, every origin
-	// check on a gRPC method reads "" and silently passes — including the
-	// one guarding AccountLocalLinkApproveChallenge, which exists precisely
-	// because the gRPC-Web proxy trusts the Webclipper's origins.
+	// request context the HTTP middleware fills. Without this, every reader
+	// of localorigin.OriginFromContext sees "" on a gRPC method — including
+	// the pairing prompt, which has no other way to name a browser caller,
+	// and the per-caller challenge budgets keyed on that name.
 	unaryInterceptors = append(unaryInterceptors, originInterceptor())
 
 	server := grpc.NewServer(grpc.MaxRecvMsgSize(20*1024*1024),
@@ -229,6 +229,17 @@ func main() {
 	}
 
 	proxy.Handler = newProxyHandler(webrpc, originPolicy, withWebsockets)
+
+	// Register the parent-delivered secret before serving, so no bootstrap
+	// request can race the registration and slip through permissive. The wait
+	// gets its own signal channel: signal.Notify above already took over
+	// terminate handling, and the loop that acts on it is further down, so a
+	// quit arriving during the wait would otherwise go unanswered until the
+	// window expired. Both channels receive, so the loop still sees it.
+	startupSignalChan := make(chan os.Signal, 1)
+	signal.Notify(startupSignalChan, signals...)
+	registerParentLocalAPISecret(mw, parentLifeline, lifelineEnabled, startupSignalChan)
+	signal.Stop(startupSignalChan)
 
 	go func() {
 		server.Serve(lis)

@@ -36,8 +36,8 @@ Full scope (AccountAuth_Full) not available via challenge - only Limited and Jso
 */
 
 import (
+	cryptorand "crypto/rand"
 	"fmt"
-	"math/rand"
 	"sync"
 	"time"
 
@@ -162,21 +162,15 @@ func (s *service) CloseSession(token string) error {
 func generateToken(privKey []byte) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		// "expiresAt": time.Now().Add(10 * time.Minute).Unix(),
-		"seed": randStringRunes(8),
+		// The seed is what makes two tokens with identical claims differ, so
+		// it carries the unpredictability of the session token itself: 130
+		// bits from the OS entropy source, where it used to be 8 letters of
+		// math/rand (~45 bits off a source the runtime is free to change).
+		"seed": cryptorand.Text(),
 	})
 
 	// Sign and get the complete encoded token as a string using the secret
 	return token.SignedString(privKey)
-}
-
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-func randStringRunes(n int) string {
-	b := make([]rune, n)
-	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
-	}
-	return string(b)
 }
 
 func validateToken(privKey []byte, rawToken string) error {

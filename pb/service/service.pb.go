@@ -468,6 +468,10 @@ type ClientCommandsClient interface {
 	WalletCreate(ctx context.Context, in *pb.RpcWalletCreateRequest, opts ...grpc.CallOption) (*pb.RpcWalletCreateResponse, error)
 	WalletRecover(ctx context.Context, in *pb.RpcWalletRecoverRequest, opts ...grpc.CallOption) (*pb.RpcWalletRecoverResponse, error)
 	WalletConvert(ctx context.Context, in *pb.RpcWalletConvertRequest, opts ...grpc.CallOption) (*pb.RpcWalletConvertResponse, error)
+	// deprecated: pairing a gRPC ClientCommands session via the local-link
+	// challenge flow is being removed. Integrations should authenticate through
+	// the JSON API instead. Kept working for now (still callable without the
+	// local-API shared secret) until existing clients migrate.
 	AccountLocalLinkNewChallenge(ctx context.Context, in *pb.RpcAccountLocalLinkNewChallengeRequest, opts ...grpc.CallOption) (*pb.RpcAccountLocalLinkNewChallengeResponse, error)
 	AccountLocalLinkSolveChallenge(ctx context.Context, in *pb.RpcAccountLocalLinkSolveChallengeRequest, opts ...grpc.CallOption) (*pb.RpcAccountLocalLinkSolveChallengeResponse, error)
 	AccountLocalLinkApproveChallenge(ctx context.Context, in *pb.RpcAccountLocalLinkApproveChallengeRequest, opts ...grpc.CallOption) (*pb.RpcAccountLocalLinkApproveChallengeResponse, error)
@@ -4011,6 +4015,10 @@ type ClientCommandsServer interface {
 	WalletCreate(context.Context, *pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse
 	WalletRecover(context.Context, *pb.RpcWalletRecoverRequest) *pb.RpcWalletRecoverResponse
 	WalletConvert(context.Context, *pb.RpcWalletConvertRequest) *pb.RpcWalletConvertResponse
+	// deprecated: pairing a gRPC ClientCommands session via the local-link
+	// challenge flow is being removed. Integrations should authenticate through
+	// the JSON API instead. Kept working for now (still callable without the
+	// local-API shared secret) until existing clients migrate.
 	AccountLocalLinkNewChallenge(context.Context, *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse
 	AccountLocalLinkSolveChallenge(context.Context, *pb.RpcAccountLocalLinkSolveChallengeRequest) *pb.RpcAccountLocalLinkSolveChallengeResponse
 	AccountLocalLinkApproveChallenge(context.Context, *pb.RpcAccountLocalLinkApproveChallengeRequest) *pb.RpcAccountLocalLinkApproveChallengeResponse

@@ -1360,6 +1360,8 @@ message Rpc {
         }
 
         message LocalLink {
+            // deprecated: pairing a gRPC session via the local-link challenge
+            // is being removed; authenticate through the JSON API instead.
             message NewChallenge {
                 message Request {
                     string appName = 1; // just for info, not secure to rely on

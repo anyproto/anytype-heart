@@ -96,7 +96,7 @@ func TestMonitorParentLifelineCompletionCancelsDeadline(t *testing.T) {
 }
 
 func TestLegacyStdinShutdownMessageStillWorks(t *testing.T) {
-	event, shouldShutdown := readParentLifeline(strings.NewReader("shutdown\n"), false)
+	event, shouldShutdown := readParentLifeline(strings.NewReader("shutdown\n"), false, func(string) {})
 
 	if !shouldShutdown || event != parentLifelineShutdown {
 		t.Fatalf("expected legacy shutdown message, got event %q, shutdown %t", event, shouldShutdown)
@@ -126,7 +126,7 @@ func TestLegacyStdinShutdownDoesNotArmDeadline(t *testing.T) {
 }
 
 func TestLegacyStdinEOFDoesNotShutdown(t *testing.T) {
-	event, shouldShutdown := readParentLifeline(strings.NewReader(""), false)
+	event, shouldShutdown := readParentLifeline(strings.NewReader(""), false, func(string) {})
 
 	if shouldShutdown {
 		t.Fatalf("expected legacy stdin EOF to be ignored, got %q", event)
