@@ -580,3 +580,164 @@ func TestText_MigrateFile(t *testing.T) {
 
 	assert.Equal(t, want, got)
 }
+
+// RangeTextPaste adopts the pasted block's style when the paste replaces all of the target's
+// text (or fills an empty paragraph) and the caller asked for the style to be copied. Checked
+// rides along with the checkbox style, but only into an empty paragraph: there it has no state
+// of its own to destroy. Replacing the text of an existing block never moves its checked state,
+// so retitling a finished task cannot quietly reopen it.
+func TestText_RangeTextPasteChecked(t *testing.T) {
+	target := func(text string, style model.BlockContentTextStyle, checked bool) *Text {
+		return NewText(&model.Block{
+			Restrictions: &model.BlockRestrictions{},
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+				Text: text, Style: style, Checked: checked,
+				Marks: &model.BlockContentTextMarks{},
+			}},
+		}).(*Text)
+	}
+	pasted := func(text string, style model.BlockContentTextStyle, checked bool) *model.Block {
+		return &model.Block{Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+			Text: text, Style: style, Checked: checked,
+			Marks: &model.BlockContentTextMarks{},
+		}}}
+	}
+
+	for _, tc := range []struct {
+		name        string
+		target      *Text
+		from, to    int32
+		copied      *model.Block
+		copyStyle   bool
+		wantChecked bool
+		wantText    string // the label must survive; asserting Checked alone lets it vanish
+	}{
+		{
+			name:   "empty paragraph adopts a checked checkbox",
+			target: target("", model.BlockContentText_Paragraph, false),
+			from:   0, to: 0,
+			copied:      pasted("new", model.BlockContentText_Checkbox, true),
+			copyStyle:   true,
+			wantChecked: true,
+			wantText:    "new",
+		},
+		{
+			// Deliberate, and a change from the old behaviour: the leftover state is
+			// invisible (the block renders as a plain paragraph) while the pasted "- [ ]"
+			// is explicit, so honouring the paste is right. Preserving the residue here
+			// means pasting an unchecked task produces a checked one, which is what the
+			// old code did. Do not "restore" that.
+			name:   "empty paragraph adopts an unchecked checkbox over leftover state",
+			target: target("", model.BlockContentText_Paragraph, true),
+			from:   0, to: 0,
+			copied:      pasted("new", model.BlockContentText_Checkbox, false),
+			copyStyle:   true,
+			wantChecked: false,
+			wantText:    "new",
+		},
+		{
+			name:   "full replace does not set checked on the target",
+			target: target("old", model.BlockContentText_Checkbox, false),
+			from:   0, to: 3,
+			copied:      pasted("new", model.BlockContentText_Checkbox, true),
+			copyStyle:   true,
+			wantChecked: false,
+			wantText:    "new",
+		},
+		{
+			name:   "full replace does not clear checked on the target",
+			target: target("old", model.BlockContentText_Checkbox, true),
+			from:   0, to: 3,
+			copied:      pasted("new", model.BlockContentText_Checkbox, false),
+			copyStyle:   true,
+			wantChecked: true,
+			wantText:    "new",
+		},
+		{
+			name:   "copyStyle false does not clear checked",
+			target: target("", model.BlockContentText_Paragraph, true),
+			from:   0, to: 0,
+			copied:      pasted("new", model.BlockContentText_Checkbox, false),
+			copyStyle:   false,
+			wantChecked: true,
+			wantText:    "new",
+		},
+		{
+			name:   "copyStyle false does not set checked either",
+			target: target("", model.BlockContentText_Paragraph, false),
+			from:   0, to: 0,
+			copied:      pasted("new", model.BlockContentText_Checkbox, true),
+			copyStyle:   false,
+			wantChecked: false,
+			wantText:    "new",
+		},
+		{
+			// an empty checkbox has a style of its own, so it is not adopting one and
+			// must keep its own state whatever arrives
+			name:   "empty checkbox target does not take the pasted checked state",
+			target: target("", model.BlockContentText_Checkbox, false),
+			from:   0, to: 0,
+			copied:      pasted("new", model.BlockContentText_Checkbox, true),
+			copyStyle:   true,
+			wantChecked: false,
+			wantText:    "new",
+		},
+		{
+			name:   "empty checkbox target does not lose its checked state either",
+			target: target("", model.BlockContentText_Checkbox, true),
+			from:   0, to: 0,
+			copied:      pasted("new", model.BlockContentText_Checkbox, false),
+			copyStyle:   true,
+			wantChecked: true,
+			wantText:    "new",
+		},
+		{
+			name:   "partial replacement does not clear checked",
+			target: target("old", model.BlockContentText_Checkbox, true),
+			from:   0, to: 1,
+			copied:      pasted("n", model.BlockContentText_Checkbox, false),
+			copyStyle:   true,
+			wantChecked: true,
+			wantText:    "nld",
+		},
+		{
+			name:   "partial replacement does not set checked either",
+			target: target("old", model.BlockContentText_Checkbox, false),
+			from:   1, to: 2,
+			copied:      pasted("n", model.BlockContentText_Checkbox, true),
+			copyStyle:   true,
+			wantChecked: false,
+			wantText:    "ond",
+		},
+		{
+			name:   "filling an empty paragraph with a non-checkbox does not clear checked",
+			target: target("", model.BlockContentText_Paragraph, true),
+			from:   0, to: 0,
+			copied:      pasted("new", model.BlockContentText_Paragraph, false),
+			copyStyle:   true,
+			wantChecked: true,
+			wantText:    "new",
+		},
+		{
+			// a paragraph carrying checked residue is not a checkbox: pasting it in must
+			// not turn the target into one that is silently complete
+			name:   "filling an empty paragraph with a non-checkbox does not set checked",
+			target: target("", model.BlockContentText_Paragraph, false),
+			from:   0, to: 0,
+			copied:      pasted("new", model.BlockContentText_Paragraph, true),
+			copyStyle:   true,
+			wantChecked: false,
+			wantText:    "new",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// when
+			_, err := tc.target.RangeTextPaste(tc.from, tc.to, tc.copied, tc.copyStyle)
+
+			// then
+			require.NoError(t, err)
+			assert.Equal(t, tc.wantChecked, tc.target.content.Checked)
+			assert.Equal(t, tc.wantText, tc.target.content.Text, "the label must survive")
+		})
+	}
+}

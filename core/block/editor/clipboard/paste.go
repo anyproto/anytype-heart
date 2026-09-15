@@ -300,12 +300,17 @@ func (p *pasteCtrl) singleRange() (err error) {
 	}
 	if selText.GetText() == "" {
 		p.mode.removeSelection = true
-		if wasEmpty && firstPasteText != nil {
+		// Reusing the focused block silently flattens the first pasted block: only text
+		// and marks are carried over, so style, checked, colors, code language and
+		// children stay behind. Skip the reuse for a block that holds nothing a user put
+		// there and drop it instead, so the paste blocks land untouched. removeSelection
+		// unlinks it, so GO-7311's promise that no stray empty paragraph is left above
+		// the pasted content still holds.
+		//
+		// Anything the user did set keeps the old behaviour — in particular a style of
+		// its own, which is the GO-6615 "Keep target toggle block" intent.
+		if wasEmpty && firstPasteText != nil && !isDisposablePlaceholder(selText) {
 			p.mode.removeSelection = false
-			// Reuse the empty focused block for the first paste line instead of
-			// leaving it as a stray empty paragraph above the pasted content.
-			// Reverts the multi-block carve-out from GO-6615 "Keep target toggle
-			// block"; the single-block toggle case is handled by intoBlock mode.
 			selText.SetText(firstPasteText.GetText(), firstPasteText.Model().GetText().Marks)
 			p.ps.Unlink(firstPasteText.Model().Id)
 			// an empty block's id is shared with peers — fork it (never a
@@ -314,6 +319,27 @@ func (p *pasteCtrl) singleRange() (err error) {
 		}
 	}
 	return
+}
+
+// isDisposablePlaceholder reports whether a focused text block holds nothing a user put
+// there, so that paste can drop it instead of reusing it for the first pasted line.
+//
+// text.Block.IsEmpty covers the text itself plus marks, style, checked state, both colors,
+// both icon fields and both alignments. Three things it does not cover matter just as much
+// here: children, because unlinking a block orphans its whole subtree and the state apply
+// then deletes it; Fields, which carries a code block's language and survives a style change
+// back to Paragraph; and Restrictions, because dropping the block instead of writing to it
+// would slip past the restriction check that a write would have failed.
+func isDisposablePlaceholder(b text.Block) bool {
+	m := b.Model()
+	return b.IsEmpty() &&
+		len(m.ChildrenIds) == 0 &&
+		len(m.Fields.GetFields()) == 0 &&
+		!hasRestrictions(m.Restrictions)
+}
+
+func hasRestrictions(r *model.BlockRestrictions) bool {
+	return r != nil && (r.Read || r.Edit || r.Remove || r.Drag || r.DropOn)
 }
 
 // intoBlock handles pasting a single text block into the focused block inline.
