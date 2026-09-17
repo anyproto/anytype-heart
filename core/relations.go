@@ -11,41 +11,44 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 )
 
-func (mw *Middleware) ObjectTypeRelationAdd(cctx context.Context, req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
+func (mw *Middleware) ObjectTypePropertyAdd(cctx context.Context, req *pb.RpcObjectTypePropertyAddRequest) *pb.RpcObjectTypePropertyAddResponse {
 	detailsService := mustService[detailservice.Service](mw)
-	keys := make([]domain.RelationKey, 0, len(req.RelationKeys))
-	for _, relKey := range req.RelationKeys {
-		keys = append(keys, domain.RelationKey(relKey))
-	}
-
-	err := detailsService.ObjectTypeAddRelations(cctx, req.ObjectTypeUrl, keys)
+	res, err := detailsService.ObjectTypePropertyAdd(cctx, detailservice.ObjectTypePropertyAddRequest{
+		ObjectTypeId:  req.ObjectTypeId,
+		Key:           domain.RelationKey(req.Key),
+		Name:          req.Name,
+		Format:        req.Format,
+		Section:       detailservice.TypePropertySection(req.Section),
+		EnableInViews: req.EnableInViews,
+	})
 	code := mapErrorCode(err,
-		errToCode(detailservice.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRelationAddResponseError_READONLY_OBJECT_TYPE),
+		errToCode(detailservice.ErrBundledTypeIsReadonly, pb.RpcObjectTypePropertyAddResponseError_READONLY_OBJECT_TYPE),
+		errToCode(detailservice.ErrTypePropertyBadInput, pb.RpcObjectTypePropertyAddResponseError_BAD_INPUT),
 	)
-	return &pb.RpcObjectTypeRelationAddResponse{
-		Error: &pb.RpcObjectTypeRelationAddResponseError{
+	return &pb.RpcObjectTypePropertyAddResponse{
+		Error: &pb.RpcObjectTypePropertyAddResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},
+		Key:        res.Key.String(),
+		PropertyId: res.PropertyId,
+		ViewIds:    res.ViewIds,
 	}
 }
 
-func (mw *Middleware) ObjectTypeRelationRemove(cctx context.Context, req *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse {
+func (mw *Middleware) ObjectTypePropertyRemove(cctx context.Context, req *pb.RpcObjectTypePropertyRemoveRequest) *pb.RpcObjectTypePropertyRemoveResponse {
 	detailsService := mustService[detailservice.Service](mw)
-	keys := make([]domain.RelationKey, 0, len(req.RelationKeys))
-	for _, relKey := range req.RelationKeys {
-		keys = append(keys, domain.RelationKey(relKey))
-	}
-
-	err := detailsService.ObjectTypeRemoveRelations(cctx, req.ObjectTypeUrl, keys)
+	res, err := detailsService.ObjectTypePropertyRemove(cctx, req.ObjectTypeId, domain.RelationKey(req.Key))
 	code := mapErrorCode(err,
-		errToCode(detailservice.ErrBundledTypeIsReadonly, pb.RpcObjectTypeRelationRemoveResponseError_READONLY_OBJECT_TYPE),
+		errToCode(detailservice.ErrBundledTypeIsReadonly, pb.RpcObjectTypePropertyRemoveResponseError_READONLY_OBJECT_TYPE),
+		errToCode(detailservice.ErrTypePropertyBadInput, pb.RpcObjectTypePropertyRemoveResponseError_BAD_INPUT),
 	)
-	return &pb.RpcObjectTypeRelationRemoveResponse{
-		Error: &pb.RpcObjectTypeRelationRemoveResponseError{
+	return &pb.RpcObjectTypePropertyRemoveResponse{
+		Error: &pb.RpcObjectTypePropertyRemoveResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},
+		InUseViewIds: res.InUseViewIds,
 	}
 }
 

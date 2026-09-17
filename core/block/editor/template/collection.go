@@ -3,6 +3,8 @@ package template
 import (
 	"slices"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -539,4 +541,96 @@ func filtersUseKey(filters []*model.BlockContentDataviewFilter, key string) bool
 		}
 	}
 	return false
+}
+
+// TypeDataviewBlock finds a type's own dataview block: at the fixed id first,
+// which is where every type built by this app carries it, then by content for
+// anything older. Nil when the type has none.
+func TypeDataviewBlock(st *state.State) simple.Block {
+	if block := st.Pick(state.DataviewBlockID); block != nil && block.Model().GetDataview() != nil {
+		return block
+	}
+	var found simple.Block
+	st.Iterate(func(block simple.Block) bool {
+		if found == nil && block.Model().GetDataview() != nil {
+			found = block
+		}
+		return found == nil
+	})
+	return found
+}
+
+// AddTypeDataviewColumn is the explicit add direction for a type's own
+// dataview: the property becomes a column of every view that lacks one, shown
+// or hidden as the caller says, and its RelationLink is present with the
+// format the link carries. Unlike ReconcileTypeDataviewColumns it reads no
+// evidence about whether someone arranged the view — the caller just asked
+// for the column — and a column a view already has keeps whatever visibility
+// its owner gave it.
+//
+// Returns the ids of the views that gained a column, and whether anything at
+// all changed. The second is not len(gained) > 0: the link can be added or its
+// format corrected while every view already shows the column. A caller writes
+// the block only when it says true, so an add that finds everything already in
+// place commits nothing.
+func AddTypeDataviewColumn(dv *model.BlockContentDataview, link *model.RelationLink, visible bool) (gained []string, changed bool) {
+	if dv == nil || link == nil || link.Key == "" {
+		return nil, false
+	}
+	for _, view := range dv.Views {
+		if view == nil || viewHasColumn(view, link.Key) {
+			continue
+		}
+		view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{
+			Key:       link.Key,
+			IsVisible: visible,
+			Width:     propertyWidth(link.Format),
+		})
+		gained = append(gained, view.Id)
+	}
+	changed = len(gained) > 0
+	linked := false
+	for _, existing := range dv.RelationLinks {
+		if existing != nil && existing.Key == link.Key {
+			if existing.Format != link.Format {
+				existing.Format = link.Format
+				changed = true
+			}
+			linked = true
+			break
+		}
+	}
+	if !linked {
+		dv.RelationLinks = append(dv.RelationLinks, &model.RelationLink{Key: link.Key, Format: link.Format})
+		changed = true
+	}
+	return gained, changed
+}
+
+// DropUnreferencedTypeDataviewLink removes the property's RelationLink when
+// no view shows it as a column any more. PruneTypeDataviewColumns already does
+// this for the links whose columns it pruned; this covers the link that had no
+// column to begin with — the half-consistent state a client's delete leaves
+// behind — so a remove converges the dataview either way. Reports whether a
+// link went.
+func DropUnreferencedTypeDataviewLink(dv *model.BlockContentDataview, key string) bool {
+	if dv == nil || key == "" {
+		return false
+	}
+	for _, view := range dv.Views {
+		if view != nil && viewHasColumn(view, key) {
+			return false
+		}
+	}
+	links := dv.RelationLinks[:0]
+	dropped := false
+	for _, link := range dv.RelationLinks {
+		if link != nil && link.Key == key {
+			dropped = true
+			continue
+		}
+		links = append(links, link)
+	}
+	dv.RelationLinks = links
+	return dropped
 }

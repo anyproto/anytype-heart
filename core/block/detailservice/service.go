@@ -29,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -51,8 +52,12 @@ type Service interface {
 	ModifyDetails(ctx session.Context, objectId string, modifier func(current *domain.Details) (*domain.Details, error)) error
 	ModifyDetailsList(req *pb.RpcObjectListModifyDetailValuesRequest) error
 
-	ObjectTypeAddRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error
-	ObjectTypeRemoveRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error
+	// ObjectTypePropertyAdd puts a property on a type — its recommended list, its
+	// dataview's RelationLinks and every view's columns — in one apply.
+	ObjectTypePropertyAdd(ctx context.Context, req ObjectTypePropertyAddRequest) (ObjectTypePropertyAddResult, error)
+	// ObjectTypePropertyRemove takes a property off a type's lists, views and
+	// RelationLinks in one apply, leaving views that arrange by it alone.
+	ObjectTypePropertyRemove(ctx context.Context, objectTypeId string, key domain.RelationKey) (ObjectTypePropertyRemoveResult, error)
 	ObjectTypeSetRelations(objectTypeId string, relationObjectIds []string) error
 	ObjectTypeSetFeaturedRelations(objectTypeId string, relationObjectIds []string) error
 	ObjectTypeListConflictingRelations(spaceId, typeKey string) (relationObjectIds []string, err error)
@@ -94,6 +99,10 @@ type service struct {
 	store        objectstore.ObjectStore
 	fileService  fileService
 	objectGC     objectgc.ObjectGC
+	// objectCreator is the canonical mint path for a relation object
+	// (the same one ObjectCreateRelation takes) and the installer for
+	// bundled ones
+	objectCreator objectcreator.Service
 
 	componentCtx    context.Context
 	componentCancel context.CancelFunc
@@ -106,6 +115,7 @@ func (s *service) Init(a *app.App) error {
 	s.store = app.MustComponent[objectstore.ObjectStore](a)
 	s.fileService = app.MustComponent[fileService](a)
 	s.objectGC = app.MustComponent[objectgc.ObjectGC](a)
+	s.objectCreator = app.MustComponent[objectcreator.Service](a)
 
 	s.componentCtx, s.componentCancel = context.WithCancel(context.Background())
 	return nil

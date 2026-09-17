@@ -2,6 +2,7 @@ package detailservice
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"sort"
@@ -14,6 +15,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -26,52 +29,300 @@ import (
 	timeutil "github.com/anyproto/anytype-heart/util/time"
 )
 
-var ErrBundledTypeIsReadonly = fmt.Errorf("can't modify bundled object type")
+var (
+	ErrBundledTypeIsReadonly = fmt.Errorf("can't modify bundled object type")
+	// ErrTypePropertyBadInput is the request's fault: an unknown section, a
+	// key no relation in the space carries, or a mint with no name.
+	ErrTypePropertyBadInput = errors.New("bad type property input")
+)
 
-func (s *service) ObjectTypeAddRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error {
-	if strings.HasPrefix(objectTypeId, bundle.TypePrefix) {
-		return ErrBundledTypeIsReadonly
-	}
-	return cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
-		if err := checkDetailsEditable(b); err != nil {
-			return err
-		}
-		st := b.NewState()
-		list := st.Details().GetStringList(bundle.RelationKeyRecommendedRelations)
-		for _, relKey := range relationKeys {
-			relId, err := b.Space().GetRelationIdByKey(ctx, relKey)
-			if err != nil {
-				return err
-			}
-			if !slices.Contains(list, relId) {
-				list = append(list, relId)
-			}
-		}
-		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, domain.StringList(list))
-		return b.Apply(st)
-	})
+// TypePropertySection names one of the four lists a type recommends its
+// properties in. Recommended, Featured and Hidden match
+// Rpc.ObjectType.Property.Add.Request.Section; File has no wire value, because
+// the file list is derived rather than chosen — Add refuses it in either
+// direction. It is named here because Remove still has to strip the property
+// from all four.
+type TypePropertySection int
+
+const (
+	TypePropertySectionRecommended TypePropertySection = iota
+	TypePropertySectionFeatured
+	TypePropertySectionHidden
+	TypePropertySectionFile
+)
+
+// typePropertySectionKeys lists the four recommended lists in section order,
+// so a section indexes its list and a property moves between them by joining
+// one and leaving the other three.
+var typePropertySectionKeys = []domain.RelationKey{
+	TypePropertySectionRecommended: bundle.RelationKeyRecommendedRelations,
+	TypePropertySectionFeatured:    bundle.RelationKeyRecommendedFeaturedRelations,
+	TypePropertySectionHidden:      bundle.RelationKeyRecommendedHiddenRelations,
+	TypePropertySectionFile:        bundle.RelationKeyRecommendedFileRelations,
 }
 
-func (s *service) ObjectTypeRemoveRelations(ctx context.Context, objectTypeId string, relationKeys []domain.RelationKey) error {
-	if strings.HasPrefix(objectTypeId, bundle.TypePrefix) {
-		return ErrBundledTypeIsReadonly
+type ObjectTypePropertyAddRequest struct {
+	ObjectTypeId string
+	// Key is an existing property's key; empty means mint one from Name and Format
+	Key    domain.RelationKey
+	Name   string
+	Format model.RelationFormat
+	// Section is the recommended list the property joins (and the only one it stays in)
+	Section TypePropertySection
+	// EnableInViews is the visibility every view's new column gets
+	EnableInViews bool
+}
+
+type ObjectTypePropertyAddResult struct {
+	Key        domain.RelationKey
+	PropertyId string
+	// ViewIds lists the views that gained a column
+	ViewIds []string
+}
+
+type ObjectTypePropertyRemoveResult struct {
+	// InUseViewIds lists the views left untouched because they group, sort or
+	// filter by the property
+	InUseViewIds []string
+}
+
+// resolvedProperty is what the type's apply needs to know about a property:
+// the object id its lists hold and the link its dataview carries.
+type resolvedProperty struct {
+	id   string
+	link *model.RelationLink
+}
+
+func (s *service) ObjectTypePropertyAdd(ctx context.Context, req ObjectTypePropertyAddRequest) (ObjectTypePropertyAddResult, error) {
+	var res ObjectTypePropertyAddResult
+	// everything that can be rejected is rejected before anything is
+	// created: a minted relation is a separate object the type's apply
+	// cannot roll back
+	if strings.HasPrefix(req.ObjectTypeId, bundle.TypePrefix) {
+		return res, ErrBundledTypeIsReadonly
 	}
-	return cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
+	if req.Section < 0 || int(req.Section) >= len(typePropertySectionKeys) {
+		return res, fmt.Errorf("%w: unknown section %d", ErrTypePropertyBadInput, req.Section)
+	}
+	// the file section is not the caller's to set: it is derived by
+	// relationutils.FillRecommendedRelations from a fixed set of file-metadata
+	// keys, on the four file types only, and systemobjectreviser recomputes it
+	// wholesale — so a value written here is overwritten without notice the
+	// next time those types are revised. Rpc.…Property.Add.Request.Section
+	// reserves the number rather than offering it; this covers a direct caller.
+	if req.Section == TypePropertySectionFile {
+		return res, fmt.Errorf("%w: the file section is derived from the file types' metadata keys, not set by a caller", ErrTypePropertyBadInput)
+	}
+	if req.Key == "" {
+		if req.Name == "" {
+			return res, fmt.Errorf("%w: a name is required to create a property", ErrTypePropertyBadInput)
+		}
+		// String() of an unknown enum value is its number, not "", so the
+		// name table is the only real check
+		if _, known := model.RelationFormat_name[int32(req.Format)]; !known {
+			return res, fmt.Errorf("%w: unknown format %d", ErrTypePropertyBadInput, req.Format)
+		}
+	}
+	var spaceId string
+	var fileSectioned []string
+	err := cache.Do(s.objectGetter, req.ObjectTypeId, func(b smartblock.SmartBlock) error {
+		if err := checkDetailsEditable(b); err != nil {
+			return err
+		}
+		spaceId = b.Space().Id()
+		fileSectioned = b.NewState().Details().GetStringList(bundle.RelationKeyRecommendedFileRelations)
+		return nil
+	})
+	if err != nil {
+		return res, fmt.Errorf("open type %s: %w", req.ObjectTypeId, err)
+	}
+
+	var prop resolvedProperty
+	if req.Key == "" {
+		prop, err = s.mintProperty(ctx, spaceId, req.Name, req.Format)
+	} else {
+		prop, err = s.resolveProperty(ctx, spaceId, req.Key)
+	}
+	if err != nil {
+		return res, err
+	}
+	// the other direction of the same rule: a property the type already keeps
+	// in its file section cannot be moved into an authorable one, because the
+	// move edits the derived list and the reviser puts it back. A property just
+	// minted cannot be in that list, so this only ever fires on a resolved key.
+	if slices.Contains(fileSectioned, prop.id) {
+		return res, fmt.Errorf("%w: %s sits in the type's file section, which is derived rather than set", ErrTypePropertyBadInput, prop.link.Key)
+	}
+
+	err = cache.Do(s.objectGetter, req.ObjectTypeId, func(b smartblock.SmartBlock) error {
 		if err := checkDetailsEditable(b); err != nil {
 			return err
 		}
 		st := b.NewState()
-		list := st.Details().GetStringList(bundle.RelationKeyRecommendedRelations)
-		for _, relKey := range relationKeys {
-			relId, err := b.Space().GetRelationIdByKey(ctx, relKey)
-			if err != nil {
-				return fmt.Errorf("get relation id by key %s: %w", relKey, err)
+		// the property joins the section named and leaves the other three,
+		// so naming a different section moves it; naming the section it is
+		// already in leaves the list as it is, position included
+		for section, listKey := range typePropertySectionKeys {
+			list := st.Details().GetStringList(listKey)
+			var updated []string
+			if TypePropertySection(section) == req.Section {
+				if slices.Contains(list, prop.id) {
+					continue
+				}
+				updated = append(slices.Clone(list), prop.id)
+			} else {
+				updated = slice.RemoveMut(slices.Clone(list), prop.id)
 			}
-			list = slice.RemoveMut(list, relId)
+			if !slices.Equal(list, updated) {
+				st.SetDetailAndBundledRelation(listKey, domain.StringList(updated))
+			}
 		}
-		st.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, domain.StringList(list))
+		if block := template.TypeDataviewBlock(st); block != nil {
+			edited := block.Copy()
+			var changed bool
+			res.ViewIds, changed = template.AddTypeDataviewColumn(edited.Model().GetDataview(), prop.link, req.EnableInViews)
+			if changed {
+				st.Set(edited)
+			}
+		}
 		return b.Apply(st)
 	})
+	if err != nil {
+		return res, fmt.Errorf("add property %s to type %s: %w", prop.link.Key, req.ObjectTypeId, err)
+	}
+	res.Key = domain.RelationKey(prop.link.Key)
+	res.PropertyId = prop.id
+	return res, nil
+}
+
+// mintProperty creates the relation object the way ObjectCreateRelation
+// does, so a property minted here is indistinguishable from one the client
+// created first.
+func (s *service) mintProperty(ctx context.Context, spaceId, name string, format model.RelationFormat) (resolvedProperty, error) {
+	details := domain.NewDetails()
+	details.SetString(bundle.RelationKeyName, name)
+	details.SetInt64(bundle.RelationKeyRelationFormat, int64(format))
+	id, created, err := s.objectCreator.CreateObject(ctx, spaceId, objectcreator.CreateObjectRequest{
+		ObjectTypeKey: bundle.TypeKeyRelation,
+		Details:       details,
+	})
+	if err != nil {
+		return resolvedProperty{}, fmt.Errorf("create property %q: %w", name, err)
+	}
+	key := created.GetString(bundle.RelationKeyRelationKey)
+	if key == "" {
+		return resolvedProperty{}, fmt.Errorf("create property %q: created object %s carries no key", name, id)
+	}
+	return resolvedProperty{id: id, link: &model.RelationLink{Key: key, Format: format}}, nil
+}
+
+// resolveProperty finds the relation object a key names in the space. A
+// misspelt key is the caller's error, not a reason to mint: a live relation
+// object must carry it. A bundled key the space has not installed yet is
+// installed the way type creation installs its recommended relations —
+// idempotent, so a later failure leaves nothing behind that a retry would
+// not reuse.
+func (s *service) resolveProperty(ctx context.Context, spaceId string, key domain.RelationKey) (resolvedProperty, error) {
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyRelationKey,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(key.String()),
+			},
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_relation)),
+			},
+			database.NotTrueFilter(bundle.RelationKeyIsUninstalled),
+		},
+		Limit: 1,
+	})
+	if err != nil {
+		return resolvedProperty{}, fmt.Errorf("query property %s: %w", key, err)
+	}
+	if len(records) > 0 {
+		details := records[0].Details
+		return resolvedProperty{
+			id: details.GetString(bundle.RelationKeyId),
+			link: &model.RelationLink{
+				Key:    key.String(),
+				Format: model.RelationFormat(details.GetInt64(bundle.RelationKeyRelationFormat)),
+			},
+		}, nil
+	}
+	bundled, err := bundle.GetRelation(key)
+	if err != nil {
+		return resolvedProperty{}, fmt.Errorf("%w: no property with key %q in space", ErrTypePropertyBadInput, key)
+	}
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return resolvedProperty{}, fmt.Errorf("get space %s: %w", spaceId, err)
+	}
+	if _, _, err = s.objectCreator.InstallBundledObjects(ctx, spc, []string{key.BundledURL()}); err != nil {
+		return resolvedProperty{}, fmt.Errorf("install bundled property %s: %w", key, err)
+	}
+	id, err := spc.GetRelationIdByKey(ctx, key)
+	if err != nil {
+		return resolvedProperty{}, fmt.Errorf("get relation id by key %s: %w", key, err)
+	}
+	return resolvedProperty{id: id, link: &model.RelationLink{Key: key.String(), Format: bundled.Format}}, nil
+}
+
+func (s *service) ObjectTypePropertyRemove(ctx context.Context, objectTypeId string, key domain.RelationKey) (ObjectTypePropertyRemoveResult, error) {
+	var res ObjectTypePropertyRemoveResult
+	if strings.HasPrefix(objectTypeId, bundle.TypePrefix) {
+		return res, ErrBundledTypeIsReadonly
+	}
+	if key == "" {
+		return res, fmt.Errorf("%w: a property key is required", ErrTypePropertyBadInput)
+	}
+	err := cache.Do(s.objectGetter, objectTypeId, func(b smartblock.SmartBlock) error {
+		if err := checkDetailsEditable(b); err != nil {
+			return err
+		}
+		relId, err := b.Space().GetRelationIdByKey(ctx, key)
+		if err != nil {
+			return fmt.Errorf("get relation id by key %s: %w", key, err)
+		}
+		st := b.NewState()
+		// the file section is derived, not authorable, so Remove is not a back
+		// door into it either: refusing leaves the type whole, where stripping
+		// the list would edit something the reviser recomputes and pruning only
+		// the views would leave the list naming a property with no column.
+		if slices.Contains(st.Details().GetStringList(bundle.RelationKeyRecommendedFileRelations), relId) {
+			return fmt.Errorf("%w: %s sits in the type's file section, which is derived rather than set", ErrTypePropertyBadInput, key)
+		}
+		// a key the type does not list is not an error: the views and the
+		// link are still converged, which is what a client calling this on a
+		// half-consistent type needs
+		for _, listKey := range typePropertySectionKeys {
+			list := st.Details().GetStringList(listKey)
+			updated := slice.RemoveMut(slices.Clone(list), relId)
+			if !slices.Equal(list, updated) {
+				st.SetDetailAndBundledRelation(listKey, domain.StringList(updated))
+			}
+		}
+		if block := template.TypeDataviewBlock(st); block != nil {
+			edited := block.Copy()
+			dv := edited.Model().GetDataview()
+			keys := []string{key.String()}
+			plan := template.PlanTypeDataviewColumnPrune(dv, keys)
+			for _, inUse := range plan.InUse {
+				res.InUseViewIds = append(res.InUseViewIds, inUse.ViewId)
+			}
+			pruned := template.PruneTypeDataviewColumns(dv, keys)
+			if template.DropUnreferencedTypeDataviewLink(dv, key.String()) || pruned {
+				st.Set(edited)
+			}
+		}
+		return b.Apply(st)
+	})
+	if err != nil {
+		return res, fmt.Errorf("remove property %s from type %s: %w", key, objectTypeId, err)
+	}
+	return res, nil
 }
 
 func (s *service) ObjectTypeSetRelations(objectTypeId string, relationObjectIds []string) error {
