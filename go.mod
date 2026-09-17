@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.10.2
 	github.com/ahmetb/govvv v0.3.0
 	github.com/anyproto/any-block v0.0.0-20260912091754-f08d5ad04f02 // v2.0.0-rc3; upstream module path has no /v2 suffix
-	github.com/anyproto/any-store v1.0.1
+	github.com/anyproto/any-store v1.0.2
 	github.com/anyproto/any-sync v0.13.2
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb
 	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250801122506-553f6c085a23
