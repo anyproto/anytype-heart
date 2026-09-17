@@ -223,7 +223,12 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 		return nil, err
 	}
 
-	result, err := s.createFromDocument(ctx, spaceId, docJSON, docCreateOptions{dryRun: dryRun})
+	// createMissingOptions travels with dryRun. Dropping it here made
+	// ?create_missing_options=true inert for the SHORTCUT body — the shape an
+	// agent actually sends — while the document body honoured it, so the same
+	// flag worked or not depending on which form the caller picked.
+	result, err := s.createFromDocument(ctx, spaceId, docJSON,
+		docCreateOptions{dryRun: dryRun, createMissingOptions: createMissingOptions})
 	if err != nil && markdownBlocks {
 		// the blocks array is synthetic here — readdress its issues to the
 		// markdown channel the caller actually sent (C6)
@@ -431,16 +436,71 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	return result, nil
 }
 
-// rejectInvalidDocument maps anyblockjson.Validate failures onto the C6
+// rejectInvalidDocument maps AnyBlock validation failures onto the C6
 // contract: path-addressed validation_failed, or version_unsupported when
 // the document was produced by a newer format version (§8: on create an
 // unparseable formatVersion must fail the write).
+//
+// A create body is held to the full grammar, not the authoring subset: a
+// document read back from GET carries an etag, an id, warnings and block ids,
+// and pasting one straight into POST has to keep creating a copy rather than
+// demanding the caller hand-strip envelope fields. Those members are inert
+// here — the create path strips them.
+//
+// The LEGENDS are not inert, which is why they are refused separately below:
+// `property_internal_keys` rebinds a spelling to any stored key it names, so
+// {"properties":{"Foo":"bar"},"property_internal_keys":{"Foo":"description"}}
+// writes into the bundled description property instead of minting Foo. An
+// export writes a legend to preserve a space's own bindings; a caller creating
+// from nothing has no bindings to preserve, and the authoring subset excludes
+// both legends for that reason.
 func (s *Service) rejectInvalidDocument(body []byte) error {
+	if err := rejectExportLegends(body); err != nil {
+		return err
+	}
+	if err := rejectMisplacedPropertyArray(body); err != nil {
+		return err
+	}
 	err := anyblockjson.Validate(body)
 	if err == nil {
 		return nil
 	}
 	return mapUnmarshalError(body, err)
+}
+
+// exportLegends are the root members that bind a document's spellings to a
+// space's stored keys. They are an export's record of bindings that already
+// existed; on create there is nothing to record, and honouring one lets a
+// caller aim a property value at a stored key it never named in `properties`.
+var exportLegends = []struct{ member, rebinds string }{
+	{"property_internal_keys", "property spelling"},
+	{"option_ids", "select option name"},
+}
+
+// rejectExportLegends refuses a legend on a create body, before the format
+// validation, so the verdict names the member rather than a schema keyword.
+func rejectExportLegends(body []byte) error {
+	var root map[string]json.RawMessage
+	if err := json.Unmarshal(body, &root); err != nil {
+		return nil // malformed JSON is the format validation's verdict to give
+	}
+	issues := make([]v2model.Issue, 0, len(exportLegends))
+	for _, legend := range exportLegends {
+		if _, present := root[legend.member]; !present {
+			continue
+		}
+		issues = append(issues, v2model.Issue{
+			Path: "/" + legend.member,
+			Message: fmt.Sprintf(
+				"%s is an export legend, not an authoring member: it rebinds every %s in this document to the stored key it names",
+				legend.member, legend.rebinds),
+			Hint: "drop it — write the spelling you want in `properties` and the server resolves or mints the key",
+		})
+	}
+	if len(issues) == 0 {
+		return nil
+	}
+	return v2model.ValidationFailed("the document carries export legends", issues...)
 }
 
 // mapUnmarshalError converts anyblockjson validation errors into C6 errors.

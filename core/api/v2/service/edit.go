@@ -291,12 +291,14 @@ func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId stri
 		// fixing typos one round trip at a time is the failure mode a
 		// pre-lock guard exists to avoid. A dry run gets the same refusal:
 		// its job is to preview what the real run would do.
-		return optionConsentError(spaceId, pending[0].Property, pending[0].Name)
+		return optionConsentError(spaceId, probe.keys.PropertySlug(pending[0].Property), pending[0].Name)
 	}
 	if len(pending) > v2MaxCreatedOptionsPerPatch {
 		props := map[string]int{}
 		for _, o := range pending {
-			props[o.Property]++
+			// the caller's spelling, not the store's id: this message names
+			// the fields they must go and check
+			props[probe.keys.PropertySlug(o.Property)]++
 		}
 		issue := v2model.Issue{
 			Path: "/ops",
@@ -429,17 +431,47 @@ func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, o
 	return result, nil
 }
 
-// parsePatchRequest decodes the PATCH body strictly.
+// parsePatchRequest decodes the object PATCH body strictly.
 func parsePatchRequest(body []byte) ([]json.RawMessage, error) {
+	return parseOpsEnvelope(body, v2OpNames, "the If-Match precondition is a header, not a body field")
+}
+
+// parseOpsEnvelope is the one decoder behind every ops body. Two endpoints
+// now take one — the object surface and the type surface (typeops.go) — with
+// disjoint op sets, and the envelope rules are the same on both: the wrapper,
+// the unknown key, the empty list and the batch cap. Only what genuinely
+// differs travels as an argument, so neither endpoint can grow its own
+// version of a rule the other keeps.
+func parseOpsEnvelope(body []byte, opNames []string, unknownKeyHint string) ([]json.RawMessage, error) {
 	fields, err := parseEnvelope(body)
 	if err != nil {
 		return nil, v2model.ValidationFailed("the PATCH body must be a JSON object",
 			v2model.Issue{Message: err.Error(), Hint: `send {"ops": [...]} — GET /v2/schemas/ops/{op} documents each op`})
 	}
+	// A caller who read GET /v2/schemas/ops/<op> holds one op object and sends
+	// it as the whole body. The generic message below calls `op` an unknown key,
+	// which is the opposite of true, and hands them a hint that has nothing to
+	// do with the mistake. Name the wrapper instead.
+	// gated on `ops` being ABSENT: a body carrying both is a stray key, not an
+	// unwrapped op, and telling a caller who already wrapped to wrap again is
+	// worse than the unknown-key message below.
+	//
+	// One hint, with nothing copyable-and-broken in it. Spelling the op name
+	// into `{"ops":[{"op":"insert_blocks", ...}]}` produces a literal `...`
+	// that is not valid JSON, and a constrained decoder copies it.
+	_, wrapped := fields["ops"]
+	if _, unwrapped := fields["op"]; unwrapped && !wrapped {
+		return nil, v2model.ValidationFailed("this is one op, not the whole PATCH body",
+			v2model.Issue{
+				Path:    "/op",
+				Message: "the body carries a list of ops, and this object is one entry of that list",
+				Hint:    `send {"ops":[ this object ]}`,
+			})
+	}
 	for key := range fields {
 		if key != "ops" {
 			return nil, v2model.ValidationFailed("unknown field in PATCH body",
-				v2model.Issue{Path: "/" + key, Message: fmt.Sprintf("unknown key %q — the PATCH body carries only ops", key), Hint: "the If-Match precondition is a header, not a body field (C7)"})
+				v2model.Issue{Path: "/" + key, Message: fmt.Sprintf("unknown key %q — the PATCH body carries only ops", key), Hint: unknownKeyHint})
 		}
 	}
 	var req v2PatchRequest
@@ -448,7 +480,7 @@ func parsePatchRequest(body []byte) ([]json.RawMessage, error) {
 	}
 	if len(req.Ops) == 0 {
 		return nil, v2model.ValidationFailed("ops must not be empty",
-			v2model.Issue{Path: "/ops", Message: "give at least one op", Hint: "allowed ops: " + joinOpNames()})
+			v2model.Issue{Path: "/ops", Message: "give at least one op", Hint: "allowed ops: " + strings.Join(opNames, ", ")})
 	}
 	// bound the batch: every op re-renders the document view under the object
 	// lock, so an unbounded batch is a self-inflicted DoS (review A′2/B6).
@@ -473,21 +505,10 @@ func checkEditPreconditions(sbType model.SmartBlockType, heads []string, ifMatch
 		model.SmartBlockType_FileObject, model.SmartBlockType_Participant:
 		return v2model.ValidationFailed(
 			fmt.Sprintf("this object is system-managed (%s) and cannot be edited through the object surface", sbType.String()),
-			v2model.Issue{Message: "properties, types and files have their own endpoints"})
+			v2model.Issue{Message: "properties, options, files and members have their own endpoints"})
 	}
 	if !EtagMatches(ifMatch, heads) {
 		return v2model.EtagMismatch(ComputeEtag(heads))
 	}
 	return nil
-}
-
-func joinOpNames() string {
-	out := ""
-	for i, name := range v2OpNames {
-		if i > 0 {
-			out += ", "
-		}
-		out += name
-	}
-	return out
 }

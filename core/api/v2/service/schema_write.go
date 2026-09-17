@@ -99,6 +99,20 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	if err != nil {
 		return nil, err
 	}
+
+	// the flat body (typeshortcut.go), discriminated the way POST /objects
+	// discriminates its own: no formatVersion and no kind means the caller sent
+	// the shape they would have guessed, and it is translated into the document
+	// the rest of this function already handles.
+	if fields, perr := parseEnvelope(body); perr == nil && !isTypeDocument(fields) {
+		doc, derr := typeShortcutDocument(fields)
+		if derr != nil {
+			return nil, derr
+		}
+		if body, err = encodeEnvelope(doc); err != nil {
+			return nil, err
+		}
+	}
 	fields, err := parseEnvelope(body)
 	if err != nil {
 		return nil, v2model.ValidationFailed("request body is not a JSON object",
@@ -125,7 +139,11 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 		// deferred: a type's dataview block on create (the editor generates
 		// default views at first open — SPEC §2a); explicit beats silent loss
 		return nil, v2model.ValidationFailed("type blocks are not supported on create",
-			v2model.Issue{Path: "/blocks", Message: "omit blocks — the editor generates the type's default views", Hint: "customize views in the app after creating the type"})
+			v2model.Issue{
+				Path:    "/blocks",
+				Message: "omit blocks — a type gets its views generated for it",
+				Hint:    "to shape them, read the type at GET /v2/spaces/{space_id}/types/{key} for its id, then PATCH /v2/spaces/{space_id}/objects/{id} with insert_view or update_view",
+			})
 	}
 	if body, err = encodeEnvelope(fields); err != nil {
 		return nil, err
@@ -210,6 +228,19 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 		}
 	}
 
+	// consent is decided BEFORE Unmarshal mints a single property: the gate
+	// used to fire after, so a refused request still left the properties it
+	// had created behind (the M5 rule this function's own comment states).
+	if raw := envelope.propertyDefinitions(); len(raw) > 0 {
+		var declared []anyblockjson.TypeProperty
+		if err := json.Unmarshal(raw, &declared); err == nil {
+			if err := s.guardDeclaredOptions(spaceId, declared,
+				"/type_settings/property_definitions", createMissingOptions); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	// Unmarshal rebuilds the four recommended-relation lists from
 	// typeProperties, creating missing properties through the resolver
 	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun, createMissingOptions)
@@ -219,6 +250,17 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	}
 	if err := resolvers.err(); err != nil {
 		return nil, fmt.Errorf("resolve type properties: %w", err)
+	}
+	// the declared select vocabulary, before the dry-run return: a dry run's
+	// job is to preview what the real run does, and options it never mentions
+	// are options a caller does not know they are about to create
+	if raw := envelope.propertyDefinitions(); len(raw) > 0 {
+		var declared []anyblockjson.TypeProperty
+		if err := json.Unmarshal(raw, &declared); err == nil {
+			if err := s.applyDeclaredOptions(declared, resolvers, "/type_settings/property_definitions"); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	result := &v2model.CreateResult{Key: slug, Created: resolvers.created()}
@@ -454,8 +496,10 @@ var updatableTypeDetailKeys = map[string]bool{
 // typeSettingsPatchKeys is the PATCH surface of the §2a type_settings
 // subtree, mapped to the stored detail key each member carries.
 var typeSettingsPatchKeys = map[string]string{
-	"layout":      "recommendedLayout",
-	"plural_name": "pluralName",
+	"layout":           "recommendedLayout",
+	"plural_name":      "pluralName",
+	"default_view":     "defaultViewType",
+	"default_template": "defaultTemplateId",
 }
 
 // v2TypePatch is the PATCH types/{type} body: partial type-document
@@ -480,7 +524,22 @@ type v2TypePatch struct {
 type v2TypeSettingsPatch struct {
 	Layout              json.RawMessage              `json:"layout"`
 	PluralName          json.RawMessage              `json:"plural_name"`
+	DefaultView         json.RawMessage              `json:"default_view"`
+	DefaultTemplate     json.RawMessage              `json:"default_template"`
 	PropertyDefinitions *[]anyblockjson.TypeProperty `json:"property_definitions"`
+}
+
+// patchableSettings is the ONE place the patchable §2a members are paired with
+// their raw values. It used to be restated twice inline in the apply loop,
+// which is how default_view and default_template came to be declared on the
+// struct and silently ignored by the loop.
+func (p v2TypeSettingsPatch) patchableSettings() map[string]json.RawMessage {
+	return map[string]json.RawMessage{
+		"layout":           p.Layout,
+		"plural_name":      p.PluralName,
+		"default_view":     p.DefaultView,
+		"default_template": p.DefaultTemplate,
+	}
 }
 
 // propertyDefinitions is the patch's §2a definition array, nil-safe.
@@ -492,7 +551,7 @@ func (p v2TypePatch) propertyDefinitions() *[]anyblockjson.TypeProperty {
 }
 
 // UpdateType implements PATCH /v2/spaces/{space_id}/types/{type}.
-func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey string, body []byte, dryRun, createMissingOptions bool) (*v2model.CreateResult, error) {
+func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch string, body []byte, dryRun, createMissingOptions bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
@@ -504,6 +563,51 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey string, body 
 	}
 	typeId := entry.Id
 
+	// C7 concurrency precondition, advisory like the object channel's: absent
+	// If-Match is last-write-wins, a stale one is a 409. It matters more here
+	// than it looks — the ops path is a server-side read-modify-write of all
+	// four lists across several RPCs, so a featured-list change landing in
+	// that window is silently reverted, and a reverted featured list cascades
+	// to every object of the type.
+	if ifMatch != "" {
+		read, rerr := s.reader.ReadObject(ctx, spaceId, typeId)
+		if rerr != nil {
+			return nil, fmt.Errorf("read type %s: %w", typeId, rerr)
+		}
+		if !EtagMatches(ifMatch, read.Heads) {
+			return nil, v2model.EtagMismatch(ComputeEtag(read.Heads))
+		}
+	}
+
+	// the op channel (typeops.go), discriminated FIRST. An ops envelope
+	// carries none of the members isTypeDocument answers on, so left to fall
+	// through it would be read as a flat body and refused as an unknown key —
+	// and a body carrying a bare `op` routes here too, so the refusal names
+	// the missing wrapper instead of calling `op` an unknown field.
+	if fields, perr := parseEnvelope(body); perr == nil {
+		_, wrapped := fields["ops"]
+		_, unwrapped := fields["op"]
+		if wrapped || unwrapped {
+			return s.updateTypeOps(ctx, spaceId, entry, typeKey, body, dryRun, createMissingOptions)
+		}
+	}
+
+	// the same flat body the create verb takes: one shape for the resource,
+	// rather than a create body and an update body that reject each other
+	if fields, perr := parseEnvelope(body); perr == nil && !isTypeDocument(fields) {
+		if _, nested := fields["type_settings"]; !nested {
+			if _, valued := fields["properties"]; !valued {
+				translated, terr := typeShortcutPatch(fields)
+				if terr != nil {
+					return nil, terr
+				}
+				if body, err = encodeEnvelope(translated); err != nil {
+					return nil, err
+				}
+			}
+		}
+	}
+
 	var patch v2TypePatch
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.DisallowUnknownFields()
@@ -513,6 +617,7 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey string, body 
 	}
 
 	var detailUpdates []*model.Detail
+	var detached []v2model.PropertyRow
 	// two spellings of one key in one body: sortedKeys makes the winner
 	// deterministic, which is not the same as correct — the caller asked for
 	// two values on one detail and one of them is being dropped. Refuse, as
@@ -538,7 +643,7 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey string, body 
 		if !updatableTypeDetailKeys[key] {
 			return nil, v2model.ValidationFailed("property not updatable on a type",
 				v2model.Issue{Path: "/properties/" + raw, Message: fmt.Sprintf("cannot update %q", raw),
-					Hint: "properties takes name and description; the layout is type_settings.layout and the icon is the typed envelope icon (§2a, §2b)"})
+					Hint: "properties takes name and description; the layout is type_settings.layout and the icon is the typed envelope icon"})
 		}
 		// the map is keyed by the WIRE spelling — reading it back with the
 		// STORED one handed typeDetailValue a nil body for every key the two
@@ -564,12 +669,9 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey string, body 
 	// was lifted from, and reuses typeDetailValue so `layout` accepts a
 	// layout NAME exactly as the create path does.
 	if patch.TypeSettings != nil {
-		for _, member := range sortedKeys(map[string]json.RawMessage{
-			"layout": patch.TypeSettings.Layout, "plural_name": patch.TypeSettings.PluralName,
-		}) {
-			raw := map[string]json.RawMessage{
-				"layout": patch.TypeSettings.Layout, "plural_name": patch.TypeSettings.PluralName,
-			}[member]
+		settings := patch.TypeSettings.patchableSettings()
+		for _, member := range sortedKeys(settings) {
+			raw := settings[member]
 			if len(raw) == 0 {
 				continue
 			}
@@ -588,8 +690,17 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey string, body 
 		// resolve as identities even when their relation is removed — the
 		// GET/PATCH loop must not force-delete a reference the read served
 		resolvers.echoPropertyIds = s.recommendedRelationIds(spaceId, typeId)
+		detachedBefore := s.recommendedRelationIds(spaceId, typeId)
 		// the SPEC §2a format check, before the resolver can create
 		if err := s.validateTypePropertyFormats(spaceId, *defs); err != nil {
+			return nil, err
+		}
+		// UpdateType validates no document, so the rules CreateType gets from
+		// the format layer have to be stated here: options belong to a select
+		// property, and creating them needs consent. Both run before
+		// BuildRecommendedLists, which is what mints.
+		if err := s.guardDeclaredOptions(spaceId, *defs,
+			"/type_settings/property_definitions", createMissingOptions); err != nil {
 			return nil, err
 		}
 		lists, err := anyblockjson.BuildRecommendedLists(*defs, resolvers.Options())
@@ -599,12 +710,39 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey string, body 
 		if err := resolvers.err(); err != nil {
 			return nil, fmt.Errorf("resolve type properties: %w", err)
 		}
+		kept := map[string]bool{}
 		for _, list := range lists {
 			detailUpdates = append(detailUpdates, &model.Detail{Key: list.DetailKey, Value: pbtypes.StringList(list.Ids)})
+			for _, id := range list.Ids {
+				kept[id] = true
+			}
+		}
+		detached = s.detachedProperties(spaceId, detachedBefore, kept)
+		// the declared select vocabulary, which nothing used to apply
+		if err := s.applyDeclaredOptions(*defs, resolvers, "/type_settings/property_definitions"); err != nil {
+			return nil, err
 		}
 	}
 
 	result := &v2model.CreateResult{Id: typeId, Key: typeKey, Created: resolvers.created()}
+	// a replaced list detaches whatever it omitted. Report it in BOTH channels:
+	// `removed` so a client can act on it, and a warning so a human reading the
+	// response sees it without knowing to look for a new field. A dry run says
+	// the same thing, because a dry run that hides the destructive half is
+	// worse than none.
+	if len(detached) > 0 {
+		result.Removed = &v2model.SideEffects{Properties: detached}
+		names := make([]string, 0, len(detached))
+		for _, row := range detached {
+			names = append(names, row.Key)
+		}
+		result.Warnings = append(result.Warnings, v2model.Issue{
+			Path: "/type_settings/property_definitions",
+			Message: fmt.Sprintf("property_definitions replaces the type's whole field list: %d no longer listed (%s)",
+				len(detached), strings.Join(names, ", ")),
+			Hint: "send the complete list to keep a field, or omit property_definitions entirely to leave the list untouched",
+		})
+	}
 	if dryRun {
 		result.DryRun = true
 		return result, nil
@@ -697,6 +835,38 @@ func typeDetailValue(key, path string, raw json.RawMessage) (*types.Value, error
 		}
 		return nil, v2model.ValidationFailed("invalid recommendedLayout",
 			v2model.Issue{Path: path, Message: "expected a layout name or number"})
+	}
+	if key == "defaultViewType" {
+		var name string
+		if err := json.Unmarshal(raw, &name); err != nil {
+			return nil, v2model.ValidationFailed("invalid default_view",
+				v2model.Issue{Path: path, Message: "expected a view type name"})
+		}
+		// matched case-insensitively against heart's own enum rather than a
+		// fourth hand-written copy of the vocabulary: the served schema, the
+		// view ops and the format each already spell this list
+		for enumName, value := range model.BlockContentDataviewViewType_value {
+			if strings.EqualFold(enumName, name) {
+				return pbtypes.Int64(int64(value)), nil
+			}
+		}
+		return nil, v2model.ValidationFailed("unknown view type",
+			v2model.Issue{Path: path, Message: fmt.Sprintf("unknown view type %q", name),
+				Hint: "one of: " + strings.Join(anyblockjson.ViewTypeNames(), ", ")})
+	}
+	if key == "defaultTemplateId" {
+		var id string
+		if err := json.Unmarshal(raw, &id); err != nil {
+			return nil, v2model.ValidationFailed("invalid default_template",
+				v2model.Issue{Path: path, Message: "expected a template object id"})
+		}
+		// stored as a LIST even though the member is a single id — the client
+		// reads entry 0. Writing a bare string here makes the type unreadable
+		// to every client that expects the list shape.
+		if id == "" {
+			return pbtypes.StringList(nil), nil
+		}
+		return pbtypes.StringList([]string{id}), nil
 	}
 	var str string
 	if err := json.Unmarshal(raw, &str); err != nil {

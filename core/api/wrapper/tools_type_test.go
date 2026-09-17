@@ -584,12 +584,17 @@ func TestTypePropertyFormatsGolden(t *testing.T) {
 
 	// 2. and nothing the API publishes may be missing here, or that format
 	// is unreachable through create_type. The enum lives in an unexported
-	// map of JSON-schema strings (v2service schemas.go, the `property`
-	// discovery kind), so it is read from the source rather than imported.
+	// constant (v2service schemas.go, v2PropertyFormatEnum, published by both
+	// the `property` kind and the `type` kind's field list), so it is read
+	// from the source rather than imported.
+	//
+	// Anchored on the constant, not on the first format enum in the file: the
+	// loose pattern matched an icon's `format` once the type kind grew one,
+	// and compared this list against ["emoji","icon","file"].
 	src, err := os.ReadFile(filepath.Join("..", "v2", "service", "schemas.go"))
 	require.NoError(t, err)
-	m := regexp.MustCompile(`"format":\{"type":"string","enum":\[([^\]]*)\]\}`).FindSubmatch(src)
-	require.NotNil(t, m, "the property format enum moved in v2service/schemas.go — this check is now blind, fix the pattern")
+	m := regexp.MustCompile("v2PropertyFormatEnum = `([^`]*)`").FindSubmatch(src)
+	require.NotNil(t, m, "v2PropertyFormatEnum moved in v2service/schemas.go — this check is now blind, fix the pattern")
 	var published []string
 	for _, raw := range strings.Split(string(m[1]), ",") {
 		published = append(published, strings.Trim(strings.TrimSpace(raw), `"`))

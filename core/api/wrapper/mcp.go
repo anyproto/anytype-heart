@@ -219,7 +219,7 @@ func mcpInstructions(tier Tier) string {
 	b.WriteString("Anytype task tools over the local API. The loop: " +
 		"spaces lists space ids when none is known; " +
 		"find (space + query/type/filter) numbers matching objects 1, 2, … — pass that number as `object` to the other tools, and re-run find to renumber; " +
-		"find with a space and none of the three matches nothing, so it lists the space unnumbered and no number exists to pass on (§8.33); " +
+		"find with a space and none of the three matches nothing, so it lists the space unnumbered and no number exists to pass on; " +
 		"describe a type BEFORE create or set_properties — property names and select option names must match exactly; " +
 		"read lists every block with its text and the short label the editing tools take as `block` — " +
 		"edit_text alone can skip it: omit block and the find snippet locates the block when it matches exactly one.")

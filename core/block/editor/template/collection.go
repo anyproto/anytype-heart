@@ -335,3 +335,208 @@ func ReconcileTypeDataviewColumns(dv *model.BlockContentDataview, relLinks []*mo
 	}
 	return true
 }
+
+// ViewColumnPrune names one view and the property keys the prune touched in
+// it. Both halves of a prune plan are reported this way — the columns that
+// went, and the ones that stayed — so a caller hears about each view by the
+// name it is shown under rather than by its id.
+type ViewColumnPrune struct {
+	ViewId   string
+	ViewName string
+	Keys     []string
+}
+
+// TypeDataviewColumnPlan is what removing a set of properties from a type
+// does to the type's own dataview: Pruned lists the views that lose the
+// column, InUse the views that keep it because they group, sort or filter by
+// it.
+//
+// A view that arranges itself by a property is doing more than showing it,
+// and dropping the column out from under that arrangement would leave a
+// kanban board grouped by a column nobody can see. Those views are reported
+// and left exactly as they are, for their owner to change deliberately.
+type TypeDataviewColumnPlan struct {
+	Pruned []ViewColumnPrune
+	InUse  []ViewColumnPrune
+}
+
+// Empty reports whether the plan changes nothing and has nothing to say.
+func (p TypeDataviewColumnPlan) Empty() bool {
+	return len(p.Pruned) == 0 && len(p.InUse) == 0
+}
+
+// PlanTypeDataviewColumnPrune computes the prune without applying it, so the
+// preview a dry run serves and the edit a real run makes are the same rule
+// read twice rather than two rules that agree by hand.
+func PlanTypeDataviewColumnPrune(dv *model.BlockContentDataview, keys []string) TypeDataviewColumnPlan {
+	var plan TypeDataviewColumnPlan
+	if dv == nil || len(keys) == 0 {
+		return plan
+	}
+	wanted := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		if key != "" {
+			wanted[key] = struct{}{}
+		}
+	}
+	for _, view := range dv.Views {
+		if view == nil {
+			continue
+		}
+		var going, staying []string
+		for _, key := range keys {
+			if key == "" || !viewHasColumn(view, key) {
+				continue
+			}
+			if viewArrangesBy(view, key) {
+				staying = append(staying, key)
+				continue
+			}
+			going = append(going, key)
+		}
+		// a view that arranges itself by ANY of the removed keys is left
+		// whole: pruning its other columns would still be a rewrite of a view
+		// this plan has already decided not to touch
+		if len(staying) > 0 {
+			plan.InUse = append(plan.InUse, ViewColumnPrune{ViewId: view.Id, ViewName: view.Name, Keys: staying})
+			continue
+		}
+		if len(going) > 0 {
+			plan.Pruned = append(plan.Pruned, ViewColumnPrune{ViewId: view.Id, ViewName: view.Name, Keys: going})
+		}
+	}
+	return plan
+}
+
+// PruneTypeDataviewColumns is the removal direction of
+// ReconcileTypeDataviewColumns: a property the type no longer recommends
+// stops being a column of its views. Without it a detached property keeps
+// showing as a column for as long as the view lives, which is how a type
+// could read as still carrying a field its definition had already dropped.
+//
+// Only the views PlanTypeDataviewColumnPrune clears are touched.
+//
+// A RelationLink no view references any more goes too. Leaving it looked free
+// — it is the format cache the reconcile appends to — but it is not: the
+// served document builds its `properties` array by walking RelationLinks
+// (any-block codec/anyblockjson/dataview.go), so a stale link means GET still
+// lists a property the type no longer recommends, which is the exact "checked
+// and was reassured" reading this prune exists to end. It also feeds
+// syncViewRelationsAndRelationLinks, which re-adds a link with no column as a
+// hidden column — putting the pruned column back on the next edit.
+//
+// A link a surviving view still uses stays, so a view kept whole by the
+// in-use guard keeps its formats. Reports whether anything changed.
+func PruneTypeDataviewColumns(dv *model.BlockContentDataview, keys []string) bool {
+	plan := PlanTypeDataviewColumnPrune(dv, keys)
+	if len(plan.Pruned) == 0 {
+		return false
+	}
+	byId := make(map[string]map[string]struct{}, len(plan.Pruned))
+	for _, pruned := range plan.Pruned {
+		set := make(map[string]struct{}, len(pruned.Keys))
+		for _, key := range pruned.Keys {
+			set[key] = struct{}{}
+		}
+		byId[pruned.ViewId] = set
+	}
+	changed := false
+	for _, view := range dv.Views {
+		if view == nil {
+			continue
+		}
+		going, ok := byId[view.Id]
+		if !ok {
+			continue
+		}
+		kept := view.Relations[:0]
+		for _, rel := range view.Relations {
+			if rel == nil {
+				continue
+			}
+			if _, drop := going[rel.Key]; drop {
+				changed = true
+				continue
+			}
+			kept = append(kept, rel)
+		}
+		view.Relations = kept
+	}
+	if !changed {
+		return false
+	}
+	// drop the links nothing references now. Walk the views AFTER the prune,
+	// so a key a view kept whole still counts as referenced.
+	referenced := make(map[string]struct{}, len(dv.RelationLinks))
+	for _, view := range dv.Views {
+		if view == nil {
+			continue
+		}
+		for _, rel := range view.Relations {
+			if rel != nil {
+				referenced[rel.Key] = struct{}{}
+			}
+		}
+	}
+	pruning := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		pruning[key] = struct{}{}
+	}
+	links := dv.RelationLinks[:0]
+	for _, link := range dv.RelationLinks {
+		if link == nil {
+			continue
+		}
+		if _, asked := pruning[link.Key]; asked {
+			if _, used := referenced[link.Key]; !used {
+				continue
+			}
+		}
+		links = append(links, link)
+	}
+	dv.RelationLinks = links
+	return changed
+}
+
+func viewHasColumn(view *model.BlockContentDataviewView, key string) bool {
+	for _, rel := range view.Relations {
+		if rel != nil && rel.Key == key {
+			return true
+		}
+	}
+	return false
+}
+
+// viewArrangesBy reports whether the view uses the property for something
+// other than showing it: the group it boards by, one of its sorts, or one of
+// its filters (nested groups included).
+func viewArrangesBy(view *model.BlockContentDataviewView, key string) bool {
+	// grouping, covering and the calendar's date are all arrangements: the
+	// view is doing something WITH the property, not merely showing it.
+	// Dropping the column out from under any of them leaves the view
+	// arranged by something nobody can see.
+	if view.GroupRelationKey == key || view.CoverRelationKey == key || view.EndRelationKey == key {
+		return true
+	}
+	for _, sort := range view.Sorts {
+		if sort != nil && sort.RelationKey == key {
+			return true
+		}
+	}
+	return filtersUseKey(view.Filters, key)
+}
+
+func filtersUseKey(filters []*model.BlockContentDataviewFilter, key string) bool {
+	for _, filter := range filters {
+		if filter == nil {
+			continue
+		}
+		if filter.RelationKey == key {
+			return true
+		}
+		if filtersUseKey(filter.NestedFilters, key) {
+			return true
+		}
+	}
+	return false
+}

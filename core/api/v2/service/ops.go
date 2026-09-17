@@ -662,7 +662,7 @@ func decodeOpBlock(raw json.RawMessage, path string) (map[string]any, error) {
 	}
 	if typ := blockType(block); typ == "" {
 		return nil, v2model.ValidationFailed("a payload block needs a type",
-			v2model.Issue{Path: path + ".type", Message: "type is required (SPEC §5 lists the inventory)"})
+			v2model.Issue{Path: path + ".type", Message: "type is required"})
 	}
 	return block, nil
 }

@@ -389,7 +389,7 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 		})
 
 		_, err := fx.UpdateType(context.Background(), testSpaceId, "editable",
-			[]byte(`{"type_settings":{"property_definitions":[{"property":"severity","format":"number"}]}}`), false, true)
+			"", []byte(`{"type_settings":{"property_definitions":[{"property":"severity","format":"number"}]}}`), false, true)
 
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)

@@ -190,6 +190,33 @@ func propertyKeyExistsIn(entries []propertyEntry, key string) bool {
 	return propertyKeyInstalledIn(entries, key) || bundle.HasRelation(domain.RelationKey(key))
 }
 
+// servedPropertyEntry finds the live property whose SERVED spelling is `key` —
+// the api key a caller reads back from GET /properties and addresses a
+// property by everywhere else on this surface.
+//
+// propertyKeyExistsIn is not enough on its own: it matches the STORED key, and
+// a space-minted property stores a bson id while serving a slug. So a caller
+// who sent the only spelling the API ever showed them was told the key was
+// unknown — by an error that then listed that same slug among the known keys
+// and suggested it back, because knownPropertyKeysIn lists served spellings.
+// Matching here on the served spelling is what makes the check and the error
+// speak one vocabulary.
+//
+// Hidden entries are skipped for the same reason they are invisible to the
+// slug namespace everywhere else (propertyEntry.Hidden).
+func servedPropertyEntry(entries []propertyEntry, key string) (propertyEntry, bool) {
+	keyTaken, slugHolders := servedPropertyKeySets(entries)
+	for _, entry := range entries {
+		if entry.Hidden {
+			continue
+		}
+		if servedKey(entry.Key, entry.Slug, keyTaken, slugHolders) == key {
+			return entry, true
+		}
+	}
+	return propertyEntry{}, false
+}
+
 // propertyKeyInstalledIn is the live-entry half of propertyKeyExistsIn: the
 // key belongs to a relation object this space actually has. Split out
 // because the BUNDLED half answers for keys with no object at all, and the

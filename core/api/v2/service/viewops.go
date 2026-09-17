@@ -336,7 +336,7 @@ func (a *v2StateApplier) applyViewSet(set map[string]json.RawMessage, edited, vi
 			continue
 		case "groups", "object_orders":
 			*issues = append(*issues, v2model.Issue{Path: path,
-				Message: fmt.Sprintf("%q is output-only editor state (SPEC §4a) — export writes it, writes must not", field)})
+				Message: fmt.Sprintf("%q is output-only editor state — export writes it, writes must not", field)})
 			continue
 		}
 		kind, known := v2ViewFieldKinds[field]
@@ -500,7 +500,7 @@ func (a *v2StateApplier) applyViewSorts(raw json.RawMessage, view map[string]any
 	var probes []sortProbe
 	if err := json.Unmarshal(raw, &probes); err != nil {
 		*issues = append(*issues, v2model.Issue{Path: path,
-			Message: "sorts takes the SPEC §6.2 array of sort objects: " + err.Error()})
+			Message: "sorts takes an array of sort objects: " + err.Error()})
 		return nil
 	}
 	if len(probes) > maxV2QuerySorts {
@@ -764,7 +764,7 @@ func (a *v2StateApplier) applyColumnField(col map[string]any, field string, raw 
 	case "width":
 		var n float64
 		if err := json.Unmarshal(raw, &n); err != nil || n != float64(int(n)) || n < 0 || n > maxV2ColumnWidth {
-			return reject(fmt.Sprintf("width takes an integer between 0 and %d (pixels; omit it to let the client pick per format — SPEC §6.2)", maxV2ColumnWidth))
+			return reject(fmt.Sprintf("width takes an integer between 0 and %d (pixels; omit it to let the client pick per format)", maxV2ColumnWidth))
 		}
 		col[field] = n
 	case "align":
@@ -866,6 +866,19 @@ func (a *v2StateApplier) validateViewKeys(edited map[string]any, preKnown map[st
 			})
 			continue
 		}
+		// a live property addressed by its SERVED spelling. The applier's
+		// document is pinned to the slug vocabulary (marshalOptions), so this
+		// is the spelling the read served and the one a caller has; the entry
+		// is live by construction, so the removal gate above does not apply.
+		// Its format comes off the entry rather than propertyFormat, which
+		// resolves stored keys and would record a select column as text.
+		if entry, served := servedPropertyEntry(entries, use.key); served {
+			props = append(props, map[string]any{
+				"property": use.key,
+				"format":   anyblockjson.FormatName(entry.Format),
+			})
+			continue
+		}
 		// a bundled DERIVED slug that no longer resolves may be the removed
 		// relation's view spelling — say "removed", not "unknown key" with a
 		// did-you-mean pointing somewhere else (§8.41-10)
@@ -897,7 +910,7 @@ func (a *v2StateApplier) resolveDataviewBlock(doc *v2EditDoc, ref, opPath string
 		if typ := blockType(doc.blocks[idx]); typ != "dataview" {
 			return -1, v2model.ValidationFailed(
 				fmt.Sprintf("block %q is a %q block, not a dataview", ref, typ),
-				v2model.Issue{Path: opPath + ".block", Message: "update_view addresses a dataview block (SPEC §6.2)"})
+				v2model.Issue{Path: opPath + ".block", Message: "update_view addresses a dataview block"})
 		}
 		return idx, nil
 	}
@@ -955,8 +968,12 @@ func matchViewRef(views []any, ref, path string) (int, error) {
 			fmt.Sprintf("view reference %q matches more than one view — use the full view id", ref),
 			v2model.Issue{Path: path, Message: "the reference is a suffix of several view ids"})
 	default:
+		// "views: viewAll1 (\"All\")" reads as though the name were an
+		// address too. It is not — matchBlockRef resolves ids only, by full
+		// value or unique suffix — so a caller who reads the name back out of
+		// this list and sends it lands here a second time.
 		return -1, v2model.NotFound(
-			fmt.Sprintf("view %q not found — views: %s", ref, strings.Join(listed, ", ")))
+			fmt.Sprintf("view %q not found — send a view id: %s", ref, strings.Join(listed, ", ")))
 	}
 }
 

@@ -30,16 +30,18 @@ func respondV2Edit(c *gin.Context, result *v2model.EditResult) {
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id	path		string				true	"Space id"
-//	@Param			object_id	path		string				true	"Object id"
-//	@Param			If-Match	header		string				false	"The etag the object must still carry"
-//	@Param			dry_run		query		bool				false	"Validate and report without committing"
-//	@Param			ids			query		string				false	"ID spelling in created_blocks and created_views"	Enums(compact,full)	default(compact)
-//	@Success		200			{object}	v2model.EditResult	"New etag + created block ids + diff_stats"
-//	@Failure		400			{object}	v2model.Error		"Invalid ops or post-op document"
-//	@Failure		404			{object}	v2model.Error		"Object, space, or referenced block not found"
-//	@Failure		409			{object}	v2model.Error		"Stale If-Match (etag_mismatch)"
-//	@Failure		422			{object}	v2model.Error		"Existing content cannot be represented losslessly for this edit"
+//	@Param			space_id				path		string				true	"Space id"
+//	@Param			object_id				path		string				true	"Object id"
+//	@Param			If-Match				header		string				false	"The etag the object must still carry"
+//	@Param			dry_run					query		bool				false	"Validate and report without committing"
+//	@Param			ids						query		string				false	"ID spelling in created_blocks and created_views"	Enums(compact,full)	default(compact)
+//	@Param			create_missing_options	query		bool				false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
+//	@Param			body					body		object				true	"PATCH ops envelope, an array of ops. Body schema and example per op: GET /v2/schemas/ops/<op>"
+//	@Success		200						{object}	v2model.EditResult	"New etag + created block ids + diff_stats"
+//	@Failure		400						{object}	v2model.Error		"Invalid ops or post-op document"
+//	@Failure		404						{object}	v2model.Error		"Object, space, or referenced block not found"
+//	@Failure		409						{object}	v2model.Error		"Stale If-Match (etag_mismatch)"
+//	@Failure		422						{object}	v2model.Error		"Existing content cannot be represented losslessly for this edit"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/objects/{object_id} [patch]
 func PatchObjectHandler(s *v2service.Service) gin.HandlerFunc {

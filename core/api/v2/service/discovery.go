@@ -8,7 +8,6 @@ package v2service
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"sort"
 	"strings"
 
@@ -283,16 +282,6 @@ func (s *Service) GetType(ctx context.Context, spaceId, typeKey string, q Object
 		return nil, "", err
 	}
 	return s.GetObject(ctx, spaceId, entry.Id, q)
-}
-
-// GetTypeSchema is the GenerateSchema endpoint stub. The derived artifact
-// does not exist, so the route reports 501.
-func (s *Service) GetTypeSchema(ctx context.Context, spaceId, typeKey string) error {
-	if err := s.ensureSpace(ctx, spaceId); err != nil {
-		return err
-	}
-	return v2model.NewError(http.StatusNotImplemented, v2model.CodeNotImplemented,
-		fmt.Sprintf("type schema generation is not implemented yet — read the type document at GET /v2/spaces/%s/types/%s instead", spaceId, typeKey))
 }
 
 // ListProperties returns minimal property rows: key, name, format.

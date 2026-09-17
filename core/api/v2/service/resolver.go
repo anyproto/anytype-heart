@@ -49,7 +49,7 @@ type optionRef struct {
 type creatingResolvers struct {
 	// v is the request's error vocabulary (?keys — §4.3), captured at
 	// construction because the resolver callbacks run without a ctx.
-	v errKeys
+	v       errKeys
 	ctx     context.Context
 	mw      apicore.ClientCommands
 	svc     *Service
@@ -76,17 +76,22 @@ type creatingResolvers struct {
 	mintedSlugs map[string]string
 
 	createdOptions map[optionRef]string
+	// declaredColors carries the colour a type document states beside an
+	// option name. OptionId doubles as the READ resolver's interface, so the
+	// colour travels beside the call rather than in its signature.
+	declaredColors map[optionRef]string
 	// ambiguousOptions prevents repeated prewarm/apply resolution of the same
 	// duplicate label from appending the identical resolver error twice.
 	ambiguousOptions map[optionRef]bool
 	// dryReported are option refs already reported as would-be-created on a
 	// dry run, so resolving the same name twice (prewarm, then the op) does
 	// not list it twice (review C′2).
-	dryReported    map[optionRef]bool
-	createdProps   map[string]anyblockjson.PropertyDefinition // key → created def
-	createdPropIds map[string]string                          // key → id
-	sideEffects    v2model.SideEffects
-	errs           []error
+	dryReported     map[optionRef]bool
+	createdProps    map[string]anyblockjson.PropertyDefinition // key → created def
+	createdPropIds  map[string]string                          // key → id
+	createdPropKeys map[string]string                          // key → the STORED relation key the mint assigned
+	sideEffects     v2model.SideEffects
+	errs            []error
 
 	// echoPropertyIds are relation object ids the PATCHed type's recommended
 	// lists ALREADY carry (UpdateType primes them; empty on create). They are
@@ -126,10 +131,12 @@ func (s *Service) newCreatingResolvers(ctx context.Context, spaceId string, dryR
 		dryRun:               dryRun,
 		createMissingOptions: createMissingOptions,
 		createdOptions:       map[optionRef]string{},
+		declaredColors:       map[optionRef]string{},
 		ambiguousOptions:     map[optionRef]bool{},
 		dryReported:          map[optionRef]bool{},
 		createdProps:         map[string]anyblockjson.PropertyDefinition{},
 		createdPropIds:       map[string]string{},
+		createdPropKeys:      map[string]string{},
 		mintedSlugs:          map[string]string{},
 	}
 }
@@ -236,6 +243,17 @@ func (r *creatingResolvers) OptionName(key domain.RelationKey, id string) (strin
 // OptionId implements anyblockjson.OptionResolver with create-missing:
 // unknown names become new options of the property (SPEC §3 — the CSV/Notion
 // importer behavior).
+// DeclareOptionColor records the colour a type document states for an option
+// it declares, for OptionId to apply when it creates that option. Without it
+// the colour was accepted, published in the schema, and dropped — the sibling
+// POST /properties has honoured it all along.
+func (r *creatingResolvers) DeclareOptionColor(key domain.RelationKey, name, color string) {
+	if color == "" {
+		return
+	}
+	r.declaredColors[optionRef{property: string(key), name: name}] = color
+}
+
 func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (string, bool) {
 	ref := optionRef{property: string(key), name: name}
 	if id, ok := r.createdOptions[ref]; ok {
@@ -251,17 +269,11 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 		r.recordOptionAmbiguity(key, name, matches)
 		return "", false
 	}
-	if r.dryRun {
-		// nothing is created; the name passes through verbatim in the
-		// discarded snapshot. Report it once: prewarm and the op itself both
-		// resolve the same name, and dry_run must preview exactly what the
-		// real run reports (review C′2).
-		if !r.dryReported[ref] {
-			r.dryReported[ref] = true
-			r.sideEffects.Options = append(r.sideEffects.Options, v2model.CreatedOption{Property: string(key), Name: name})
-		}
-		return "", false
-	}
+	// consent is checked BEFORE the dry-run branch, or dry_run stops being a
+	// preview: it used to report the option as creatable whatever the flag
+	// said, so a caller got a green dry run and a refusal on the very same
+	// body. A dry run that disagrees with the real run is worse than none,
+	// because an agent dry-runs first precisely to avoid the refusal.
 	if !r.createMissingOptions {
 		// A2 backstop. The pre-lock guard (guardCreateMissing) is what a PATCH
 		// caller actually hits, and it refuses with the whole pending list;
@@ -270,17 +282,31 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 		// caller. Refusing beats returning "unresolved": that would store the
 		// NAME where an option id belongs — a value matching nothing that
 		// reads as if it matched.
-		r.errs = append(r.errs, optionConsentError(r.spaceId, string(key), name))
+		r.errs = append(r.errs, optionConsentError(r.spaceId, r.keys.PropertySlug(string(key)), name))
+		return "", false
+	}
+	if r.dryRun {
+		// consented, so the real run would create it: nothing is created here,
+		// the name passes through verbatim in the discarded snapshot. Report
+		// it once — prewarm and the op itself resolve the same name.
+		if !r.dryReported[ref] {
+			r.dryReported[ref] = true
+			r.sideEffects.Options = append(r.sideEffects.Options, v2model.CreatedOption{Property: string(key), Name: name})
+		}
 		return "", false
 	}
 	r.sideEffects.Options = append(r.sideEffects.Options, v2model.CreatedOption{Property: string(key), Name: name})
+	details := &types.Struct{Fields: map[string]*types.Value{
+		bundle.RelationKeyRelationKey.String(): pbtypes.String(string(key)),
+		bundle.RelationKeyName.String():        pbtypes.String(name),
+		bundle.RelationKeyOrigin.String():      pbtypes.Int64(int64(model.ObjectOrigin_api)),
+	}}
+	if color := r.declaredColors[ref]; color != "" {
+		details.Fields[bundle.RelationKeyRelationOptionColor.String()] = pbtypes.String(color)
+	}
 	resp := r.mw.ObjectCreateRelationOption(r.ctx, &pb.RpcObjectCreateRelationOptionRequest{
 		SpaceId: r.spaceId,
-		Details: &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyRelationKey.String(): pbtypes.String(string(key)),
-			bundle.RelationKeyName.String():        pbtypes.String(name),
-			bundle.RelationKeyOrigin.String():      pbtypes.Int64(int64(model.ObjectOrigin_api)),
-		}},
+		Details: details,
 	})
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateRelationOptionResponseError_NULL {
 		r.errs = append(r.errs, fmt.Errorf("create option %q of property %q: %s", name, key, resp.Error.Description))
@@ -299,10 +325,10 @@ func (r *creatingResolvers) recordOptionAmbiguity(key domain.RelationKey, name s
 	if r.keys == nil {
 		r.Options() // prime the same served slug vocabulary as the document
 	}
-	r.errs = append(r.errs, optionAmbiguityError(string(key), r.keys.PropertySlug(string(key)), name, matches))
+	r.errs = append(r.errs, optionAmbiguityError(r.keys.PropertySlug(string(key)), name, matches))
 }
 
-func optionAmbiguityError(internalKey, servedKey, name string, matches []*model.RelationOption) error {
+func optionAmbiguityError(servedKey, name string, matches []*model.RelationOption) error {
 	ordered := append([]*model.RelationOption(nil), matches...)
 	sort.SliceStable(ordered, func(i, j int) bool {
 		if ordered[i].Text != ordered[j].Text {
@@ -324,7 +350,7 @@ func optionAmbiguityError(internalKey, servedKey, name string, matches []*model.
 	return v2model.AmbiguousInput(
 		fmt.Sprintf("option name %q is ambiguous for property %q", name, servedKey),
 		v2model.Issue{
-			Path:    "/properties/" + internalKey,
+			Path:    "/properties/" + servedKey,
 			Message: fmt.Sprintf("the name matches %d options: %s", len(matches), strings.Join(descriptions, ", ")),
 			Hint:    "rename or remove one duplicate option before addressing it by name; v2 has no unambiguous bare-name choice",
 		})
@@ -333,13 +359,27 @@ func optionAmbiguityError(internalKey, servedKey, name string, matches []*model.
 // optionConsentError is the one statement of the A2 refusal, shared by the
 // pre-lock guard and the resolver backstop so the two cannot word the same
 // rule differently.
-func optionConsentError(spaceId, property, name string) error {
+// servedKey is the spelling the caller addresses the property by; the store's
+// own key, for a space-minted property, is a bson id. The refusal names the
+// served one throughout — path, message, and the URL it tells the caller to
+// fetch. An error reporting the stored id makes the caller map it back to the
+// field they wrote by hand.
+func optionConsentError(spaceId, servedKey, name string) error {
+	return optionConsentErrorAt(spaceId, servedKey, name, "/properties/"+servedKey)
+}
+
+// optionConsentErrorAt is the same refusal addressed at the member the caller
+// actually wrote. The type channel declares its options under
+// property_definitions, and a body sent there has no `properties` member at
+// all — the flat path rejects one by name — so the default path above would
+// point at a field the caller could not have written.
+func optionConsentErrorAt(spaceId, servedKey, name, path string) error {
 	return v2model.ValidationFailed("option does not exist",
 		v2model.Issue{
-			Path:    "/properties/" + property,
-			Message: fmt.Sprintf("property %q has no option named %q, and this request did not ask to create one", property, name),
+			Path:    path,
+			Message: fmt.Sprintf("property %q has no option named %q, and this request did not ask to create one", servedKey, name),
 			Hint: fmt.Sprintf("check the spelling against GET /v2/spaces/%s/properties/%s/options, "+
-				"or resend with ?create_missing_options=true to create it", spaceId, property),
+				"or resend with ?create_missing_options=true to create it", spaceId, servedKey),
 		})
 }
 
@@ -747,7 +787,68 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 	// resolve to the same relation whatever its stored key is
 	r.createdProps[docKey] = anyblockjson.PropertyDefinition{Key: def.Key, Name: name, Format: format}
 	r.createdPropIds[docKey] = resp.ObjectId
+	// the STORED key the mint assigned, read back from the object it created.
+	// Without it a property minted by THIS request has no address, and the
+	// select vocabulary declared beside it could not be attached in the same
+	// call.
+	if key, ok := r.svc.storedRelationKeyById(r.ctx, r.spaceId, resp.ObjectId); ok {
+		r.createdPropKeys[docKey] = key
+	}
 	return resp.ObjectId, true
+}
+
+// PropertyStoredKey resolves a document-facing property key to the STORED
+// relation key, which is the address an option is created against. It walks the
+// same chain as PropertyId, so the two cannot diverge.
+func (r *creatingResolvers) PropertyStoredKey(docKey string) (string, bool) {
+	if key, minted := r.createdPropKeys[docKey]; minted && key != "" {
+		return key, true
+	}
+	if _, minted := r.createdProps[docKey]; minted {
+		// minted, but its stored key could not be read back: refuse rather
+		// than resolve to something else
+		return "", false
+	}
+	entries, err := r.liveProps()
+	if err != nil {
+		r.errs = append(r.errs, err)
+		return "", false
+	}
+	entry, ok, ambiguous := r.svc.resolvePropertyInput(docKey, entries)
+	if len(ambiguous) > 0 || !ok || entry.Key == "" {
+		return "", false
+	}
+	return entry.Key, true
+}
+
+// CreateMissingConsent reports the caller's ?create_missing_options=true.
+func (r *creatingResolvers) CreateMissingConsent() bool { return r.createMissingOptions }
+
+// PlanOption records an option a real run would create, for a dry run whose
+// property is itself being minted and so has no stored key yet. A dry run must
+// preview what the real run does (review C'2); a refusal the real run would not
+// give is a worse answer than the preview.
+func (r *creatingResolvers) PlanOption(property, name string) {
+	ref := optionRef{property: property, name: name}
+	if r.dryReported[ref] {
+		return
+	}
+	r.dryReported[ref] = true
+	r.sideEffects.Options = append(r.sideEffects.Options, v2model.CreatedOption{Property: property, Name: name})
+}
+
+// MintingProperty reports whether this request is creating the property, so a
+// caller can tell "has no stored key yet" from "does not resolve at all".
+func (r *creatingResolvers) MintingProperty(docKey string) bool {
+	if _, minted := r.createdProps[docKey]; minted {
+		return true
+	}
+	for _, row := range r.sideEffects.Properties {
+		if row.Key == docKey || row.Name == docKey {
+			return true
+		}
+	}
+	return false
 }
 
 // canonicalPropertyKey maps an inbound term to its canonical stored key for

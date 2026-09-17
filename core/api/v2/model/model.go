@@ -364,19 +364,40 @@ type OutlineEntry struct {
 // created ids are always returned. On a dry run (C9) nothing is committed:
 // Id/Etag stay empty, DryRun is true, and Issues/Created report the would-be
 // outcome.
+//
+// Removed is Created's twin: what the write took AWAY. A type update sending
+// `property_definitions` REPLACES the list, so omitting a field detaches it —
+// and with only a `created` channel that detachment was unreportable, which is
+// how a caller adding one property silently lost the other four. A removal is
+// never inferable from the request alone (the caller sent what they wanted,
+// not what they dropped), so it has to be stated.
+//
+// Neither field carries a doc comment of its own, and that is deliberate:
+// swag lifts a field's comment onto the schema the field REFERENCES, a blank
+// line does not break the lift, and both fields reference SideEffects — so a
+// paragraph about `removed` became the served description of a component
+// `created` shares, and the served prose rules failed it for length, em
+// dashes and shouting. What a caller needs to know about `removed` is said on
+// the endpoints that set it, where it is specific rather than shared.
 type CreateResult struct {
-	Id       string       `json:"id,omitempty"`
-	Type     string       `json:"type,omitempty"` // type key of the created object
-	Key      string       `json:"key,omitempty"`  // identity key (types, properties)
-	Etag     string       `json:"etag,omitempty"` // etag of the created object
-	DryRun   bool         `json:"dry_run,omitempty"`
-	Created  *SideEffects `json:"created,omitempty"`
-	Issues   []Issue      `json:"issues,omitempty"`
-	Warnings []Issue      `json:"warnings,omitempty"`
+	Id      string       `json:"id,omitempty"`
+	Type    string       `json:"type,omitempty"` // type key of the created object
+	Key     string       `json:"key,omitempty"`  // identity key (types, properties)
+	Etag    string       `json:"etag,omitempty"` // etag of the created object
+	DryRun  bool         `json:"dry_run,omitempty"`
+	Created *SideEffects `json:"created,omitempty"`
+	Removed *SideEffects `json:"removed,omitempty"`
+	// CreatedViews maps an insert_view op's position ("/ops/N") to the view id
+	// it minted. A view id is always server-minted — the payload has no id
+	// slot — so without this a caller cannot address the view they just made.
+	CreatedViews map[string]string `json:"created_views,omitempty"`
+	Issues       []Issue           `json:"issues,omitempty"`
+	Warnings     []Issue           `json:"warnings,omitempty"`
 }
 
-// SideEffects lists the schema entities a create materialized on the way
-// (create-missing, SPEC §3/§2a) — or would materialize, on a dry run.
+// SideEffects lists the schema entities one write brought into existence on
+// the way, or would bring into existence on a dry run. Under `removed` it
+// lists the ones that write detached instead.
 type SideEffects struct {
 	Properties []PropertyRow   `json:"properties,omitempty"`
 	Options    []CreatedOption `json:"options,omitempty"`

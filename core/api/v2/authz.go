@@ -96,8 +96,6 @@ func routeKey(method, path string) string {
 //     the request needs a body; nothing is persisted.
 //   - POST …/chats/:chat_id/read is a WRITE: it advances the synced read
 //     watermark that every device sees.
-//   - GET …/types/:type/schema is classified as a derived-artifact read,
-//     although it currently answers 501.
 //   - POST /v2/spaces is a write AND scoped-denied: even a readwrite grant
 //     must not mint spaces outside its list.
 //   - GET /v2/auth/whoami is a read, classified service-filtered by
@@ -125,7 +123,6 @@ var v2RouteAuthz = map[string]RouteAuthz{
 	routeKey(http.MethodHead, "/v2/spaces/:space_id/files/:file_id/content"):            {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/types"):                              {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/types/:type"):                        {Verb: RouteVerbRead},
-	routeKey(http.MethodGet, "/v2/spaces/:space_id/types/:type/schema"):                 {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/properties"):                         {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/properties/:key/options"):            {Verb: RouteVerbRead},
 	routeKey(http.MethodPost, "/v2/search"):                                             {Verb: RouteVerbRead, Global: GlobalServiceFiltered},

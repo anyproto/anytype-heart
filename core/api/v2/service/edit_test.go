@@ -2430,7 +2430,10 @@ func TestPatchObject(t *testing.T) {
 				assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
 				assert.Equal(t, `option name "Twin option" is ambiguous for property "duplicate_option_labels"`, apiErr.Message)
 				require.Len(t, apiErr.Issues, 1)
-				assert.Equal(t, "/properties/"+internalKey, apiErr.Issues[0].Path)
+				// the path names the property the CALLER addresses, not the store's
+				// own id: a bson id here is one the caller never wrote and must map
+				// back by hand before they can find the field that failed
+				assert.Equal(t, "/properties/"+servedKey, apiErr.Issues[0].Path)
 				assert.Equal(t, `the name matches 2 options: "Twin option" (blue), "Twin option" (red)`, apiErr.Issues[0].Message)
 				assert.Equal(t, "rename or remove one duplicate option before addressing it by name; v2 has no unambiguous bare-name choice", apiErr.Issues[0].Hint)
 			})
@@ -2480,7 +2483,10 @@ func TestPatchObject(t *testing.T) {
 				assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
 				assert.Equal(t, `option name "Twin option" is ambiguous for property "duplicate_option_labels"`, apiErr.Message)
 				require.Len(t, apiErr.Issues, 1)
-				assert.Equal(t, "/properties/"+internalKey, apiErr.Issues[0].Path)
+				// the path names the property the CALLER addresses, not the store's
+				// own id: a bson id here is one the caller never wrote and must map
+				// back by hand before they can find the field that failed
+				assert.Equal(t, "/properties/"+servedKey, apiErr.Issues[0].Path)
 				assert.Equal(t, `the name matches 2 options: "Twin option" (blue), "Twin option" (red)`, apiErr.Issues[0].Message)
 				assert.Equal(t, "rename or remove one duplicate option before addressing it by name; v2 has no unambiguous bare-name choice", apiErr.Issues[0].Hint)
 			})

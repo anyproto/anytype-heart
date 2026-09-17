@@ -1424,3 +1424,65 @@ func TestViewOpKeySpellings(t *testing.T) {
 		assert.Equal(t, "due_date", sorts[0].(map[string]any)["property"])
 	})
 }
+
+// TestV2ViewAcceptsPropertyByServedKey is the api-key contract on the view
+// channel. Properties are addressed by their api key everywhere on this
+// surface — it is the only spelling GET /properties returns — but the view
+// channel checked the STORED key, which for a space-minted property is a bson
+// id. So group_by, columns, sorts and filters refused the one spelling a
+// caller has.
+//
+// The refusal was self-refuting: knownPropertyKeysIn lists SERVED spellings,
+// so the message named the rejected key among the known keys and the hint
+// suggested it straight back. A real agent session burned 21 calls on it.
+func TestV2ViewAcceptsPropertyByServedKey(t *testing.T) {
+	// given: a space-minted select property — bson stored key, served slug
+	fx := newV2Fixture(t)
+	fx.addRelation(t, testSpaceId, objectstore.TestObject{
+		bundle.RelationKeyId:             domain.String("rel-care"),
+		bundle.RelationKeyRelationKey:    domain.String("6aaaa885877a91303b03162f"),
+		bundle.RelationKeyApiObjectKey:   domain.String("care_status"),
+		bundle.RelationKeyName:           domain.String("Care Status"),
+		bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+	})
+
+	read := editRead(t, editSetDoc)
+	fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil).Maybe()
+
+	t.Run("group_by takes the api key", func(t *testing.T) {
+		// when: the spelling GET /properties serves, on a dataview that does
+		// not already carry the property as a column
+		_, err := fx.PatchObject(context.Background(), testSpaceId, "obj1",
+			patchBody(`{"op":"insert_view","name":"Care Board","set":{"type":"kanban","group_by":"care_status"}}`),
+			"", true, true)
+
+		// then
+		require.NoError(t, err, "the api key is the only spelling a caller has")
+	})
+
+	t.Run("a genuinely unknown key is still refused", func(t *testing.T) {
+		// when
+		_, err := fx.PatchObject(context.Background(), testSpaceId, "obj1",
+			patchBody(`{"op":"insert_view","name":"Nope","set":{"type":"kanban","group_by":"no_such_property"}}`),
+			"", true, true)
+
+		// then: widening the check must not open it
+		require.Error(t, err)
+		apiErr := v2Err(t, err)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Contains(t, apiErr.Issues[0].Message, "unknown property key")
+	})
+
+	t.Run("the refusal never lists the key it rejects", func(t *testing.T) {
+		// the self-refuting shape: rejecting a key while naming it among the
+		// known ones, and suggesting it back
+		_, err := fx.PatchObject(context.Background(), testSpaceId, "obj1",
+			patchBody(`{"op":"insert_view","name":"Nope","set":{"type":"kanban","group_by":"no_such_property"}}`),
+			"", true, true)
+		require.Error(t, err)
+		for _, iss := range v2Err(t, err).Issues {
+			assert.NotContains(t, iss.Message, `known property keys: no_such_property`)
+			assert.NotEqual(t, "did you mean no_such_property?", iss.Hint)
+		}
+	})
+}

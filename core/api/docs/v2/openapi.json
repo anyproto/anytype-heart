@@ -317,6 +317,9 @@
             "description": "identity key (types, properties)",
             "type": "string"
           },
+          "removed": {
+            "$ref": "#/components/schemas/SideEffects"
+          },
           "type": {
             "description": "type key of the created object",
             "type": "string"
@@ -2949,14 +2952,6 @@
             "schema": {
               "type": "boolean"
             }
-          },
-          {
-            "description": "Create select options for names the property does not hold yet (default false: an unmatched name is refused)",
-            "in": "query",
-            "name": "create_missing_options",
-            "schema": {
-              "type": "boolean"
-            }
           }
         ],
         "requestBody": {
@@ -2966,7 +2961,9 @@
                 "type": "object"
               }
             }
-          }
+          },
+          "description": "Collection to create. Body schema and example: GET /v2/schemas/collection",
+          "required": true
         },
         "responses": {
           "201": {
@@ -3971,7 +3968,9 @@
                 "type": "object"
               }
             }
-          }
+          },
+          "description": "AnyBlock object document. Body schema and example: GET /v2/schemas/object",
+          "required": true
         },
         "responses": {
           "201": {
@@ -4279,6 +4278,14 @@
               ],
               "type": "string"
             }
+          },
+          {
+            "description": "Create select options for names the property does not hold yet (default false: an unmatched name is refused)",
+            "in": "query",
+            "name": "create_missing_options",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "requestBody": {
@@ -4288,7 +4295,9 @@
                 "type": "object"
               }
             }
-          }
+          },
+          "description": "PATCH ops envelope, an array of ops. Body schema and example per op: GET /v2/schemas/ops/<op>",
+          "required": true
         },
         "responses": {
           "200": {
@@ -4438,7 +4447,9 @@
                 "type": "object"
               }
             }
-          }
+          },
+          "description": "Property to create. Body schema and example: GET /v2/schemas/property",
+          "required": true
         },
         "responses": {
           "201": {
@@ -4601,7 +4612,9 @@
                 "type": "object"
               }
             }
-          }
+          },
+          "description": "Fields of the property to change. Body schema and example: GET /v2/schemas/property",
+          "required": true
         },
         "responses": {
           "200": {
@@ -4772,7 +4785,9 @@
                 "type": "object"
               }
             }
-          }
+          },
+          "description": "Query to create. Body schema and example: GET /v2/schemas/query",
+          "required": true
         },
         "responses": {
           "201": {
@@ -5163,7 +5178,9 @@
                 "type": "object"
               }
             }
-          }
+          },
+          "description": "AnyBlock template document. Body schema and example: GET /v2/schemas/template",
+          "required": true
         },
         "responses": {
           "201": {
@@ -5279,7 +5296,7 @@
         ]
       },
       "post": {
-        "description": "A `type_settings.property_definitions` entry naming a property that does not exist creates it alongside the type. The body is an AnyBlock document with kind \"object_type\"; the type's api key, layout and plural name live in `type_settings`.",
+        "description": "A `property_definitions` entry naming a property that does not exist creates it alongside the type. The body is either the flat type body or an AnyBlock document with kind \"object_type\"; `formatVersion`, `kind` or `type_settings` picks the document form.",
         "operationId": "create_type",
         "parameters": [
           {
@@ -5315,7 +5332,9 @@
                 "type": "object"
               }
             }
-          }
+          },
+          "description": "Flat type body: GET /v2/schemas/type. Full document: GET /v2/schemas/type_document",
+          "required": true
         },
         "responses": {
           "201": {
@@ -5518,9 +5537,17 @@
         ]
       },
       "patch": {
-        "description": "`type_settings.property_definitions`, when present, replaces the recommended property lists rather than adding to them, and creates any property that does not exist yet. `properties` takes name and description; the layout is `type_settings.layout` and the icon is the typed envelope `icon`. Any other key is refused.",
+        "description": "Takes an ops envelope or the type body. Ops add, remove and reorder one property at a time; a removal also drops its column from the views, except any view that groups, covers, sorts or filters by it. In the body, `property_definitions` replaces the whole field list rather than adding to it, and names under `removed` whatever that detached. `api_key` is create-only.",
         "operationId": "update_type",
         "parameters": [
+          {
+            "description": "The etag the type must still carry",
+            "in": "header",
+            "name": "If-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
           {
             "description": "Space id",
             "in": "path",
@@ -5538,6 +5565,22 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Create select options for names the property does not hold yet (default false: an unmatched name is refused)",
+            "in": "query",
+            "name": "create_missing_options",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "requestBody": {
@@ -5547,7 +5590,9 @@
                 "type": "object"
               }
             }
-          }
+          },
+          "description": "Either an ops envelope (GET /v2/schemas/ops/add_property) or the fields of the type to change (GET /v2/schemas/type)",
+          "required": true
         },
         "responses": {
           "200": {
@@ -5600,72 +5645,6 @@
         ]
       }
     },
-    "/v2/spaces/{space_id}/types/{type}/schema": {
-      "get": {
-        "description": "Not implemented. Every request that resolves a space answers 501.",
-        "operationId": "get_type_schema",
-        "parameters": [
-          {
-            "description": "Space id",
-            "in": "path",
-            "name": "space_id",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "description": "Type key",
-            "in": "path",
-            "name": "type",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "Space not found or unavailable"
-          },
-          "501": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            },
-            "description": "Not implemented yet"
-          },
-          "400": {
-            "$ref": "#/components/responses/BadRequest"
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
-        },
-        "security": [
-          {
-            "bearerauth": []
-          }
-        ],
-        "summary": "Get a type schema",
-        "tags": [
-          "Types"
-        ]
-      }
-    },
     "/v2/validate": {
       "post": {
         "description": "Structure and format rules only. Nothing is resolved against a space, so option names and a type's property keys are not checked here. Findings come back as data: an invalid document is still a 200, carrying the issues, and a valid one carries empty lists.",
@@ -5687,7 +5666,9 @@
                 "type": "object"
               }
             }
-          }
+          },
+          "description": "Document to validate. Body schema and example: GET /v2/schemas/object",
+          "required": true
         },
         "responses": {
           "200": {

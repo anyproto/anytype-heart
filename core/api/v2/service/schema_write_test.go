@@ -249,7 +249,7 @@ func TestV2UpdateType(t *testing.T) {
 		fx.expectEtagRead("type-chore")
 
 		// when
-		result, err := fx.UpdateType(context.Background(), testSpaceId, "chore", []byte(`{
+		result, err := fx.UpdateType(context.Background(), testSpaceId, "chore", "", []byte(`{
 			"properties":{"name":"Chores"},
 			"type_settings":{"property_definitions":[{"property":"severity","section":"featured"}]}}`), false, true)
 
@@ -300,7 +300,7 @@ func TestV2UpdateType(t *testing.T) {
 				fx.expectEtagRead("type-chore")
 
 				// when
-				_, err := fx.UpdateType(context.Background(), testSpaceId, "chore", []byte(tc.body), false, true)
+				_, err := fx.UpdateType(context.Background(), testSpaceId, "chore", "", []byte(tc.body), false, true)
 
 				// then
 				require.NoError(t, err)
@@ -319,7 +319,7 @@ func TestV2UpdateType(t *testing.T) {
 
 		// when
 		_, err := fx.UpdateType(context.Background(), testSpaceId, "chore",
-			[]byte(`{"properties":{"recommended_layout":"frobnicate"}}`), false, true)
+			"", []byte(`{"properties":{"recommended_layout":"frobnicate"}}`), false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -336,7 +336,7 @@ func TestV2UpdateType(t *testing.T) {
 
 		// when
 		_, err := fx.UpdateType(context.Background(), testSpaceId, "chore",
-			[]byte(`{"properties":{"uniqueKey":"ot-hack"}}`), false, true)
+			"", []byte(`{"properties":{"uniqueKey":"ot-hack"}}`), false, true)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -349,7 +349,7 @@ func TestV2UpdateType(t *testing.T) {
 		fx := newV2Fixture(t)
 
 		// when
-		_, err := fx.UpdateType(context.Background(), testSpaceId, "ghost", []byte(`{}`), false, true)
+		_, err := fx.UpdateType(context.Background(), testSpaceId, "ghost", "", []byte(`{}`), false, true)
 
 		// then
 		apiErr := v2Err(t, err)

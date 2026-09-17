@@ -495,7 +495,7 @@ func decodeBody(t *testing.T, body []byte) map[string]any {
 }
 
 func TestV2GetObject(t *testing.T) {
-	t.Run("default read returns the full document with etag", func(t *testing.T) {
+	t.Run("default read returns the full document; the etag rides beside it, not in it", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectRead(), nil)
@@ -506,9 +506,11 @@ func TestV2GetObject(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, wantEtag, etag)
+		assert.Equal(t, wantEtag, etag, "the handler sets the ETag header from this")
 		doc := decodeBody(t, body)
-		assert.Equal(t, wantEtag, doc["etag"])
+		assert.NotContains(t, doc, "etag",
+			"the document is the document: an etag in it would be a member the served schema does not declare, "+
+				"and the published contract carries an etag body member only on the write receipts")
 		assert.Equal(t, "obj1", doc["id"])
 		assert.Equal(t, "page", doc["type"])
 		require.Contains(t, doc, "properties")

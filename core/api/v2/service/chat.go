@@ -33,7 +33,7 @@ import (
 
 // v2MarkupHint is the D′1 caveat, stated wherever message text fails to
 // parse: text is §8 markup SOURCE on both read and write.
-const v2MarkupHint = "message text is inline markup source (SPEC §8): *, [, ` and <mention> syntax mint real marks; escape literal specials with a backslash"
+const v2MarkupHint = "message text is inline markup source: *, [, ` and <mention> syntax mint real marks; escape literal specials with a backslash"
 
 // maxChatAttachments caps the attachment list per message — the bound the
 // chatMessage discovery schema advertises (maxItems), enforced here so the

@@ -32,7 +32,7 @@ func TestV2Schemas(t *testing.T) {
 			assert.NotEmpty(t, entry.Endpoint, entry.Kind)
 			assert.Equal(t, "/v2/schemas/"+entry.Kind, entry.Url)
 		}
-		for _, want := range []string{"object", "shortcut", "type", "template", "property", "query", "collection", "file", "filters", "search", "space", "chat", "chatMessage", "chatMessageEdit", "chatReaction", "chatRead"} {
+		for _, want := range []string{"object", "shortcut", "type", "type_document", "template", "property", "query", "collection", "file", "filters", "search", "space", "chat", "chatMessage", "chatMessageEdit", "chatReaction", "chatRead"} {
 			assert.True(t, kinds[want], "missing kind %s", want)
 		}
 	})
@@ -192,21 +192,42 @@ func TestV2Schemas(t *testing.T) {
 	})
 
 	t.Run("AnyBlock examples pass the format's own validation", func(t *testing.T) {
-		// the object, type and template examples are full AnyBlock documents;
-		// serving an example the format rejects would poison every agent
-		for _, kind := range []string{"object", "type", "template"} {
+		// the object, type_document and template examples are full AnyBlock
+		// documents; serving an example the format rejects would poison every
+		// agent. `type` is not in this set: it serves the flat body, which is
+		// rewritten into a document rather than being one (typeshortcut.go).
+		for _, kind := range []string{"object", "type_document", "template"} {
 			entry, err := fx.SchemaKind(kind)
 			require.NoError(t, err)
 			assert.NoError(t, anyblockjson.Validate(entry.Example), "example of kind %s", kind)
 		}
 	})
 
-	t.Run("object kind serves the complete embedded format schema with C13 bounds", func(t *testing.T) {
+	t.Run("object kind serves this API's own document schema with C13 bounds", func(t *testing.T) {
+		// NOT the format's complete schema: this surface publishes the format
+		// minus the members an export writes and a caller here can neither
+		// supply nor resolve (apiv2schema.go). The member list is asserted in
+		// apiv2schema_test.go; this pins that discovery serves that artifact.
 		entry, err := fx.SchemaKind("object")
 		require.NoError(t, err)
-		want, err := strictDiscoverySchema(anyblockjson.SchemaJSON())
+		want, err := strictDiscoverySchema(apiV2DocumentSchema())
 		require.NoError(t, err)
 		assert.JSONEq(t, string(want), string(entry.Schema))
+	})
+
+	t.Run("no create kind advertises a member this API refuses or never returns", func(t *testing.T) {
+		for _, kind := range []string{"object", "type", "template"} {
+			entry, err := fx.SchemaKind(kind)
+			require.NoError(t, err)
+			var served struct {
+				Properties map[string]json.RawMessage `json:"properties"`
+			}
+			require.NoError(t, json.Unmarshal(entry.Schema, &served))
+			for _, excluded := range apiV2ExcludedMembers {
+				assert.NotContainsf(t, served.Properties, excluded.member,
+					"kind %s advertises %s: %s", kind, excluded.member, excluded.why)
+			}
+		}
 	})
 
 	t.Run("the filters kind carries the filter-string grammar (§5 Phase 4)", func(t *testing.T) {
@@ -332,7 +353,7 @@ func TestDiscoverySchemasAreClosedAndBounded(t *testing.T) {
 		"filters: filterNode -> filterNode",
 		"object: filterNode -> filterNode",
 		"template: filterNode -> filterNode",
-		"type: filterNode -> filterNode",
+		"type_document: filterNode -> filterNode",
 	}, cycles)
 }
 
@@ -488,7 +509,7 @@ func decodeDiscoveryPointerPart(value string) string {
 
 func TestAnyBlockDiscoveryExamplesValidateAgainstServedSchema(t *testing.T) {
 	fx := newV2FixtureBare(t)
-	for _, kind := range []string{"object", "type", "template"} {
+	for _, kind := range []string{"object", "type", "type_document", "template"} {
 		entry, err := fx.SchemaKind(kind)
 		require.NoError(t, err)
 		assert.NoError(t, validateAgainstSchema(t, entry.Schema, entry.Example), kind)
@@ -497,7 +518,7 @@ func TestAnyBlockDiscoveryExamplesValidateAgainstServedSchema(t *testing.T) {
 
 func TestAnyBlockDiscoveryFlatteningPreservesInheritedPropertyConstraints(t *testing.T) {
 	fx := newV2FixtureBare(t)
-	entry, err := fx.SchemaKind("type")
+	entry, err := fx.SchemaKind("type_document")
 	require.NoError(t, err)
 
 	var invalid map[string]any
