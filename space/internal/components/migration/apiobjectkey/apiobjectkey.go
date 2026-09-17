@@ -239,11 +239,11 @@ func liveFilters() []database.FilterRequest {
 			Condition:   model.BlockContentDataviewFilter_In,
 			Value:       domain.Int64List([]model.ObjectTypeLayout{model.ObjectType_objectType, model.ObjectType_relation}),
 		},
-		{
-			RelationKey: bundle.RelationKeyIsUninstalled,
-			Condition:   model.BlockContentDataviewFilter_NotEqual,
-			Value:       domain.Bool(true),
-		},
+		// NOT a bare NotEqual: isUninstalled carries a sparse index and is
+		// only written when true, so CompOpNe answered from that index
+		// returns nothing. This list IS the namespace the backfill checks
+		// against, so an empty one mints colliding slugs (database.NotTrueFilter).
+		database.NotTrueFilter(bundle.RelationKeyIsUninstalled),
 	}
 }
 

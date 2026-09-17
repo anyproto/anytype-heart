@@ -151,11 +151,12 @@ func (s *service) loadApiKeyNamespace(spaceId string, kind apiKeyKind) (apiKeyNa
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(int64(layout)),
 			},
-			{
-				RelationKey: bundle.RelationKeyIsUninstalled,
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       domain.Bool(true),
-			},
+			// NOT a bare NotEqual: isUninstalled carries a sparse index and
+			// is only written when true, so CompOpNe answered from that index
+			// returns nothing — and an EMPTY namespace here means the slug
+			// collision check below passes for a key that is already taken
+			// (database.NotTrueFilter).
+			database.NotTrueFilter(bundle.RelationKeyIsUninstalled),
 		},
 	})
 	if err != nil {

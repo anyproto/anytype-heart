@@ -106,16 +106,34 @@ func TestCacheType_BsonKeyStaysAddressableAfterTheApiObjectKeyBackfill(t *testin
 	})
 }
 
+// indexFilters maps filters by the relation key they constrain, flattening one
+// level of Or. The corpse filter is database.NotTrueFilter, an Or over
+// {Empty, NotEqual} — a bare NotEqual on isUninstalled is answered from its
+// SPARSE index and matches nothing — so its key lives on the arms, not on the
+// wrapper. Indexing only the top level would report the guard as missing.
+func indexFilters(filters []database.FilterRequest) map[domain.RelationKey]database.FilterRequest {
+	byKey := map[domain.RelationKey]database.FilterRequest{}
+	var add func(fs []database.FilterRequest)
+	add = func(fs []database.FilterRequest) {
+		for _, f := range fs {
+			if len(f.NestedFilters) > 0 {
+				add(f.NestedFilters)
+				continue
+			}
+			byKey[f.RelationKey] = f
+		}
+	}
+	add(filters)
+	return byKey
+}
+
 // TestCrossSpacePropertyFiltersVacateCorpses. v1's property cache IS v1's key
 // namespace, and it filtered isHidden but not isUninstalled — so a UI-deleted
 // property still listed, still resolved as an address and still blocked a
 // same-key create in v1, while v2 had already vacated that slug and would
 // happily mint onto it. Two versions, one slug, opposite verdicts.
 func TestCrossSpacePropertyFiltersVacateCorpses(t *testing.T) {
-	byKey := map[domain.RelationKey]database.FilterRequest{}
-	for _, f := range crossSpacePropertyFilters() {
-		byKey[f.RelationKey] = f
-	}
+	byKey := indexFilters(crossSpacePropertyFilters())
 
 	require.Contains(t, byKey, bundle.RelationKeyIsUninstalled,
 		"the UI-delete flag must exclude a corpse from v1's namespace, as it does from v2's")
@@ -144,11 +162,7 @@ func TestCrossSpaceTypeAndTagFiltersLackTheCorpseFilter(t *testing.T) {
 	filtersBySub := map[string]map[domain.RelationKey]database.FilterRequest{}
 	fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).RunAndReturn(
 		func(req subscription.SubscribeRequest, _ crossspacesub.Predicate) (*subscription.SubscribeResponse, error) {
-			byKey := map[domain.RelationKey]database.FilterRequest{}
-			for _, f := range req.Filters {
-				byKey[f.RelationKey] = f
-			}
-			filtersBySub[req.SubId] = byKey
+			filtersBySub[req.SubId] = indexFilters(req.Filters)
 			return nil, errors.New("stop after capturing the request")
 		})
 

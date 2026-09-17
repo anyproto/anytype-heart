@@ -521,3 +521,36 @@ func recencyDecay(nowUnix, ts int64) float64 {
 	ageDays := float64(nowUnix-ts) / secondsPerDay
 	return math.Min(1.0, math.Exp(-math.Log(2)/30.0*ageDays))
 }
+
+// NotTrueFilter asks "this boolean flag is not true", INCLUDING documents that
+// do not carry the field at all.
+//
+// Use it instead of a bare NotEqual on any flag that is only written when true.
+// A bare NotEqual compiles to anystore's CompOpNe, whose index bounds are two
+// open ranges, and the planner will happily answer those from a SPARSE index —
+// which by construction contains only the documents that DO carry the field.
+// The rows that should match are exactly the ones missing from that index, so
+// the query returns none of them.
+//
+// That is not hypothetical: `isUninstalled` carries a sparse index and is only
+// written when true, so `isUninstalled != true` returned 0 rows against real
+// data that held 132 properties and 23 types. It emptied GET /types and
+// GET /properties for every space. It also only misbehaves after a restart:
+// both candidate indexes score the same weight, the planner's sort is not
+// stable, and a collection reloads its indexes in alphabetical order while a
+// freshly created one keeps creation order — so the sparse index wins the tie
+// from the first reopen onward.
+//
+// The OR is what avoids it: an Or contributes no index bounds, so the planner
+// falls back to a full scan and evaluates the predicate per document. For a
+// boolean this is exactly NOT(= true), since the value space is
+// {absent, false, true}.
+func NotTrueFilter(key domain.RelationKey) FilterRequest {
+	return FilterRequest{
+		Operator: model.BlockContentDataviewFilter_Or,
+		NestedFilters: []FilterRequest{
+			{RelationKey: key, Condition: model.BlockContentDataviewFilter_Empty},
+			{RelationKey: key, Condition: model.BlockContentDataviewFilter_NotEqual, Value: domain.Bool(true)},
+		},
+	}
+}
