@@ -63,29 +63,12 @@ func livePropertyFilters() []database.FilterRequest {
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       domain.Int64(int64(model.ObjectType_relation)),
 		},
-		corpseFilter(),
+		{
+			RelationKey: bundle.RelationKeyIsUninstalled,
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       domain.Bool(true),
+		},
 	}
-}
-
-// corpseFilter excludes a derived object the user uninstalled from the space.
-//
-// It asks the question as an explicit OR — the field is absent, or it is not
-// true — instead of a bare NotEqual, and that shape is load-bearing.
-// `isUninstalled` carries a SPARSE index (spaceindex/store.go) and is only
-// ever written when true, so no live object carries the field at all. A bare
-// NotEqual resolved through that index matches nothing: measured against real
-// data, `isUninstalled != true` cut 132 relations and 23 types to 0, which is
-// why GET /types and GET /properties returned empty for every space after a
-// restart, and why object bodies degraded to raw bson keys (the api-key
-// vocabulary is built from liveProperties).
-//
-// The OR keeps the exact meaning — only a true flag excludes — rather than
-// switching to isDeleted. Uninstalling does also reach the store's delete
-// path, but this gate should not depend on that: an object carrying
-// isUninstalled and nothing else must still be refused, which is what the
-// corpse tests pin.
-func corpseFilter() database.FilterRequest {
-	return database.NotTrueFilter(bundle.RelationKeyIsUninstalled)
 }
 
 // liveTypeFilters is livePropertyFilters for type objects.
@@ -96,7 +79,11 @@ func liveTypeFilters() []database.FilterRequest {
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       domain.Int64(int64(model.ObjectType_objectType)),
 		},
-		corpseFilter(),
+		{
+			RelationKey: bundle.RelationKeyIsUninstalled,
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       domain.Bool(true),
+		},
 	}
 }
 

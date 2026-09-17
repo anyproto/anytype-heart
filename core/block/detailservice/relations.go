@@ -235,7 +235,11 @@ func (s *service) resolveProperty(ctx context.Context, spaceId string, key domai
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.Int64(int64(model.ObjectType_relation)),
 			},
-			database.NotTrueFilter(bundle.RelationKeyIsUninstalled),
+			{
+				RelationKey: bundle.RelationKeyIsUninstalled,
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       domain.Bool(true),
+			},
 		},
 		Limit: 1,
 	})

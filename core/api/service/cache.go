@@ -59,10 +59,11 @@ func crossSpacePropertyFilters() []database.FilterRequest {
 			Condition:   model.BlockContentDataviewFilter_NotEqual,
 			Value:       domain.Bool(true),
 		},
-		// NOT a bare NotEqual: isUninstalled carries a sparse index and is
-		// only written when true, so CompOpNe answered from that index
-		// matches nothing (database.NotTrueFilter).
-		database.NotTrueFilter(bundle.RelationKeyIsUninstalled),
+		{
+			RelationKey: bundle.RelationKeyIsUninstalled,
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       domain.Bool(true),
+		},
 	}
 }
 
