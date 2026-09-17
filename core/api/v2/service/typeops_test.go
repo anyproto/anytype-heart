@@ -213,7 +213,7 @@ func TestV2TypeOpsAddKeepsTheFieldsAlreadyThere(t *testing.T) {
 			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
 		})
 		captured := fx.captureTypeDetails()
-		fx.expectEtagRead(typeOpsTypeId)
+		fx.expectTypeViewEdit(typeReadWithViews(viewWithColumns("v-a", "All", "name", "location", "sun_needs", "water_needs")))
 		want := []string{"rel-location", "rel-sun", "rel-water", "rel-harvest"}
 
 		// when
@@ -230,7 +230,7 @@ func TestV2TypeOpsAddKeepsTheFieldsAlreadyThere(t *testing.T) {
 		// given
 		fx := newTypeOpsFixture(t)
 		captured := fx.captureTypeDetails()
-		fx.expectEtagRead(typeOpsTypeId)
+		fx.expectTypeViewEdit(typeReadWithViews(viewWithColumns("v-a", "All", "name", "location", "sun_needs", "water_needs")))
 
 		// when
 		result, err := fx.UpdateType(context.Background(), testSpaceId, "plant",
@@ -252,7 +252,7 @@ func TestV2TypeOpsAddKeepsTheFieldsAlreadyThere(t *testing.T) {
 		// given
 		fx := newTypeOpsFixture(t)
 		captured := fx.captureTypeDetails()
-		fx.expectEtagRead(typeOpsTypeId)
+		fx.expectTypeViewEdit(typeReadWithViews(viewWithColumns("v-a", "All", "name", "location", "sun_needs", "water_needs")))
 
 		// when
 		result, err := fx.UpdateType(context.Background(), testSpaceId, "plant",
@@ -278,7 +278,7 @@ func TestV2TypeOpsAddMintsAnUnknownName(t *testing.T) {
 				Error:    &pb.RpcObjectCreateRelationResponseError{Code: pb.RpcObjectCreateRelationResponseError_NULL},
 			}).Maybe()
 		captured := fx.captureTypeDetails()
-		fx.expectEtagRead(typeOpsTypeId)
+		fx.expectTypeViewEdit(typeReadWithViews(viewWithColumns("v-a", "All", "name", "location", "sun_needs", "water_needs")))
 		want := v2model.PropertyRow{Key: "harvest_season", Name: "Harvest Season", Format: "select"}
 
 		// when
@@ -340,6 +340,83 @@ func TestV2TypeOpsAddMintsAnUnknownName(t *testing.T) {
 // TestV2TypeOpsRemovePrunesEveryView is the direction that did not exist: a
 // detached property kept showing as a column, which is what made a read of
 // the gutted type look correct.
+// TestV2TypeOpsAddPutsTheColumnInEveryView is the add direction this channel
+// used to leave to the open-time reconcile. A property added here is a column
+// now, not whenever someone next opens the type — through
+// template.AddTypeDataviewColumn, the same helper ObjectTypePropertyAdd
+// applies, so the two surfaces cannot disagree about what an add does.
+func TestV2TypeOpsAddPutsTheColumnInEveryView(t *testing.T) {
+	t.Run("a property added becomes a visible column of every view", func(t *testing.T) {
+		// given: a space property the type does not list, and two bare views
+		fx := newTypeOpsFixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("rel-height"),
+			bundle.RelationKeyRelationKey:    domain.String("height"),
+			bundle.RelationKeyApiObjectKey:   domain.String("height"),
+			bundle.RelationKeyName:           domain.String("Height"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_number)),
+		})
+		captured := fx.captureTypeDetails()
+		committed := fx.expectTypeViewEdit(typeReadWithViews(
+			viewWithColumns("v-a", "All", "name"),
+			viewWithColumns("v-b", "Grid", "name", "location"),
+		))
+
+		// when
+		_, err := fx.UpdateType(context.Background(), testSpaceId, "plant",
+			"", opsBody(`{"op":"add_property","property":"height"}`), false, false)
+
+		// then: the list half
+		require.NoError(t, err)
+		assert.Equal(t, []string{"rel-location", "rel-sun", "rel-water", "rel-height"},
+			(*captured)[bundle.RelationKeyRecommendedRelations.String()])
+
+		// and the view half, in EVERY view, without anyone reopening the type
+		assert.Equal(t, []string{"name", "height"}, viewColumnKeys(t, *committed, "v-a"))
+		assert.Equal(t, []string{"name", "location", "height"}, viewColumnKeys(t, *committed, "v-b"))
+
+		// visible, and carrying the property's format as its link
+		dv := (*committed).Pick(state.DataviewBlockID).Model().GetDataview()
+		for _, view := range dv.Views {
+			for _, rel := range view.Relations {
+				if rel.Key == "height" {
+					assert.True(t, rel.IsVisible, view.Id)
+				}
+			}
+		}
+		var link *model.RelationLink
+		for _, candidate := range dv.RelationLinks {
+			if candidate.Key == "height" {
+				link = candidate
+			}
+		}
+		require.NotNil(t, link, "the dataview must carry a link for the new column")
+		assert.Equal(t, model.RelationFormat_number, link.Format)
+	})
+
+	// The half-consistent type a client's own three-call add leaves behind:
+	// the property is listed, but no view shows it. Naming it again heals it,
+	// which is what makes this op safe to retry.
+	t.Run("a property the type already lists gains its missing column", func(t *testing.T) {
+		// given: sun_needs is on the type, and in neither view
+		fx := newTypeOpsFixture(t)
+		fx.captureTypeDetails()
+		committed := fx.expectTypeViewEdit(typeReadWithViews(
+			viewWithColumns("v-a", "All", "name"),
+			viewWithColumns("v-b", "Grid", "name"),
+		))
+
+		// when
+		_, err := fx.UpdateType(context.Background(), testSpaceId, "plant",
+			"", opsBody(`{"op":"add_property","property":"sun_needs"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"name", "sun_needs"}, viewColumnKeys(t, *committed, "v-a"))
+		assert.Equal(t, []string{"name", "sun_needs"}, viewColumnKeys(t, *committed, "v-b"))
+	})
+}
+
 func TestV2TypeOpsRemovePrunesEveryView(t *testing.T) {
 	t.Run("the column goes from every view, and the response says so", func(t *testing.T) {
 		// given: two views, both showing Sun Needs
@@ -566,7 +643,7 @@ func TestV2TypeOpsMoveReordersTheList(t *testing.T) {
 		// given
 		fx := newTypeOpsFixture(t)
 		captured := fx.captureTypeDetails()
-		fx.expectEtagRead(typeOpsTypeId)
+		fx.expectTypeViewEdit(typeReadWithViews(viewWithColumns("v-a", "All", "name", "location", "sun_needs", "water_needs")))
 
 		// when
 		_, err := fx.UpdateType(context.Background(), testSpaceId, "plant",
@@ -893,18 +970,19 @@ func TestV2TypeOpsCompose(t *testing.T) {
 				`{"op":"remove_property","property":"sun_needs"}`,
 				`{"op":"add_property","property":"sun_needs","section":"featured"}`,
 			), false, false)
-		// the batch nets to zero removals, so the prune never runs and no view
-		// edit is committed at all — which is the point: the column is safe
-		// because nothing went looking for it.
-		_ = committed
 
 		// then: the type still lists it, so nothing was detached
 		require.NoError(t, err)
 		assert.Contains(t, (*captured)[bundle.RelationKeyRecommendedFeaturedRelations.String()], "rel-sun")
 		assert.Nil(t, result.Removed, "it is still on the type, so nothing was removed")
 
-		// and no view edit was committed, because there was nothing to prune
-		assert.Nil(t, *committed, "a net-zero batch must not touch the views")
+		// and the column is exactly where it was. The batch nets to zero
+		// removals so the prune never runs, and the add finds the column and
+		// the link already in place, so it writes nothing either — the add
+		// direction does visit the dataview now, which is why this asserts the
+		// columns rather than that nobody looked at them.
+		assert.Equal(t, []string{"name", "location", "sun_needs"},
+			viewColumnKeys(t, *committed, "v1"))
 	})
 
 	t.Run("add then remove a new property creates nothing", func(t *testing.T) {

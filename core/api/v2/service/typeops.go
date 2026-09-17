@@ -133,6 +133,11 @@ type typeOpsPlan struct {
 	optionPaths []string
 	// removed names the entries remove_property took out, in op order.
 	removed []typeListEntry
+	// addedByOp are the entries an add_property op named, whether it appended
+	// a new one or re-placed one the type already listed. Both cases ensure
+	// the column, matching ObjectTypePropertyAdd: a property already listed
+	// but missing from a view is the half-consistent state this heals.
+	addedByOp []*typeListEntry
 	// fileSectioned are the properties that sat in the file section when the
 	// batch began. The one-way guard reads this rather than the live entry:
 	// remove_property drops the entry, so a later add of the same property
@@ -242,6 +247,12 @@ func (s *Service) updateTypeOps(ctx context.Context, spaceId string, typeObject 
 		if len(created) > 0 {
 			result.CreatedViews = created
 		}
+	}
+	// the columns last, so a view this same batch inserted gets them too. Add
+	// is idempotent and never overrides a visibility someone already chose,
+	// so running it after the view ops cannot undo one of them.
+	if _, err := s.addTypeDataviewColumns(ctx, spaceId, typeObject.Id, plan.addedLinks()); err != nil {
+		return nil, err
 	}
 	if read, err := s.reader.ReadObject(ctx, spaceId, typeObject.Id); err == nil {
 		result.Etag = ComputeEtag(read.Heads)
@@ -471,6 +482,7 @@ func (s *Service) planAddProperty(plan *typeOpsPlan, raw json.RawMessage, opPath
 			}
 			target.section = section
 		}
+		plan.addedByOp = append(plan.addedByOp, target)
 		if place.stated() {
 			return plan.place(target, place, opPath, entries, s, v)
 		}
@@ -507,6 +519,9 @@ func (s *Service) planAddProperty(plan *typeOpsPlan, raw json.RawMessage, opPath
 	}
 	if added.id == "" {
 		added.minting = true
+		// the format the link will carry; entry.format is otherwise only set
+		// for a property that already existed
+		added.format = declared
 		def := anyblockjson.PropertyDefinition{Key: domain.RelationKey(identity), Format: declared}
 		if !resolved {
 			def.Name = op.Property
@@ -516,6 +531,7 @@ func (s *Service) planAddProperty(plan *typeOpsPlan, raw json.RawMessage, opPath
 		plan.mintPath = append(plan.mintPath, opPath)
 	}
 	plan.list = append(plan.list, added)
+	plan.addedByOp = append(plan.addedByOp, added)
 	if place.stated() {
 		return plan.place(added, place, opPath, entries, s, v)
 	}
@@ -960,6 +976,30 @@ func (p *typeOpsPlan) removedKeys() []string {
 	return keys
 }
 
+// addedLinks are the dataview links for the properties add_property named and
+// the batch still lists, in op order. Like removedKeys this reads the NET
+// effect: an entry a later remove_property dropped is gone from p.list, so a
+// batch that adds a property and takes it away again adds no column.
+//
+// An entry with no stored key is skipped — a dry run mints nothing, so it has
+// none, and there is no column to add for a property that does not exist.
+func (p *typeOpsPlan) addedLinks() []*model.RelationLink {
+	listed := map[*typeListEntry]bool{}
+	for _, member := range p.list {
+		listed[member] = true
+	}
+	var links []*model.RelationLink
+	seen := map[string]bool{}
+	for _, member := range p.addedByOp {
+		if !listed[member] || member.key == "" || seen[member.key] {
+			continue
+		}
+		seen[member.key] = true
+		links = append(links, &model.RelationLink{Key: member.key, Format: member.format})
+	}
+	return links
+}
+
 // detailUpdates rebuilds the four recommended lists from the planned order.
 // All four are always written, empty ones included: that is how a type stores
 // an empty section, and it is what the whole-type body writes too.
@@ -1083,7 +1123,17 @@ func (s *Service) pruneTypeDataviewColumns(ctx context.Context, spaceId, typeId 
 			return nil
 		}
 		edited := block.Copy()
-		if !template.PruneTypeDataviewColumns(edited.Model().GetDataview(), keys) {
+		dv := edited.Model().GetDataview()
+		changed := template.PruneTypeDataviewColumns(dv, keys)
+		// the link that had no column to begin with — the half-consistent
+		// state a client's own delete leaves — which the prune above cannot
+		// reach because it only drops links whose columns it pruned
+		for _, key := range keys {
+			if template.DropUnreferencedTypeDataviewLink(dv, key) {
+				changed = true
+			}
+		}
+		if !changed {
 			return nil
 		}
 		edit.State.Set(edited)
@@ -1093,6 +1143,56 @@ func (s *Service) pruneTypeDataviewColumns(ctx context.Context, spaceId, typeId 
 		return mapWriteError(spaceId, typeId, err)
 	}
 	return nil
+}
+
+// addTypeDataviewColumns is the add direction, and the reason this channel no
+// longer leans on the open-time reconcile: a property added here becomes a
+// column of every view now, rather than whenever someone next opens the type.
+//
+// It is template.AddTypeDataviewColumn, the same helper ObjectTypePropertyAdd
+// applies, so the two surfaces cannot drift on what adding a property does to
+// a type's views. Unlike ReconcileTypeDataviewColumns it reads no evidence
+// about whether a human arranged the view — an explicit add was asked for —
+// and a column a view already has keeps the visibility its owner gave it.
+//
+// Returns the ids of the views that gained a column.
+func (s *Service) addTypeDataviewColumns(ctx context.Context, spaceId, typeId string, links []*model.RelationLink) ([]string, error) {
+	if len(links) == 0 {
+		return nil, nil
+	}
+	var gained []string
+	_, err := s.mutator.MutateObject(ctx, spaceId, typeId, apicore.EditNeeds{}, func(edit apicore.ObjectEdit) error {
+		block := typeDataviewBlock(edit.State)
+		if block == nil {
+			return nil
+		}
+		edited := block.Copy()
+		dv := edited.Model().GetDataview()
+		seen := map[string]bool{}
+		touched := false
+		for _, link := range links {
+			viewIds, changed := template.AddTypeDataviewColumn(dv, link, true)
+			touched = touched || changed
+			for _, viewId := range viewIds {
+				if !seen[viewId] {
+					seen[viewId] = true
+					gained = append(gained, viewId)
+				}
+			}
+		}
+		// a batch whose adds find every column and link already in place
+		// writes nothing, the way a batch of view ops alone leaves the four
+		// lists untouched
+		if !touched {
+			return nil
+		}
+		edit.State.Set(edited)
+		return nil
+	})
+	if err != nil {
+		return nil, mapWriteError(spaceId, typeId, err)
+	}
+	return gained, nil
 }
 
 // typeDataviewBlock finds a type's dataview block: at the fixed id first,
