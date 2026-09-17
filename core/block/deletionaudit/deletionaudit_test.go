@@ -446,3 +446,32 @@ func TestAuditQuery(t *testing.T) {
 		assert.Equal(t, "c", second[0].Details.GetString(bundle.RelationKeyId))
 	})
 }
+
+// The deletedDate index is sparse, and since any-store v1.0.2 a sparse index only serves a
+// predicate that guarantees its field is present and non-null (GO-7510). $exists does not qualify —
+// it also matches an explicit null, which the index skips — so swapping this filter back to
+// FilterExists turns every audit page into a full collection scan without changing any result.
+// Nothing else here would notice, hence the plan assertion.
+func TestAuditFiltersUseTheSparseIndex(t *testing.T) {
+	// given
+	index := spaceindex.NewStoreFixture(t)
+	index.AddObjects(t, []spaceindex.TestObject{
+		{
+			bundle.RelationKeyId:          domain.String("gone"),
+			bundle.RelationKeySpaceId:     domain.String(testSpaceId),
+			bundle.RelationKeyIsDeleted:   domain.Bool(true),
+			bundle.RelationKeyDeletedDate: domain.Int64(1000),
+		},
+		{
+			bundle.RelationKeyId:      domain.String("live"),
+			bundle.RelationKeySpaceId: domain.String(testSpaceId),
+		},
+	})
+	filters := auditFilters()
+
+	// when
+	used := index.IndexesUsedBy(t, filters.FilterObj, deletedDateSort)
+
+	// then
+	assert.True(t, used["deletedDate"], "audit query fell back to a full collection scan; indexes: %v", used)
+}

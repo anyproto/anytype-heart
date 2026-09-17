@@ -11,14 +11,18 @@ var (
 	filterReadTrue  = query.Key{Path: []string{chatmodel.ReadKey}, Filter: query.NewComp(query.CompOpEq, true)}
 	filterReadFalse = query.Not{Filter: filterReadTrue}
 
-	filterHasMention        = query.Key{Path: []string{chatmodel.HasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)}
-	filterMentionReadTrue   = query.And{filterHasMention, query.Key{Path: []string{chatmodel.MentionReadKey}, Filter: query.NewComp(query.CompOpEq, true)}}
-	filterMentionReadFalse  = query.And{filterHasMention, query.Key{Path: []string{chatmodel.MentionReadKey}, Filter: query.NewComp(query.CompOpEq, false)}}
+	filterHasMention       = query.Key{Path: []string{chatmodel.HasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)}
+	filterMentionReadTrue  = query.And{filterHasMention, query.Key{Path: []string{chatmodel.MentionReadKey}, Filter: query.NewComp(query.CompOpEq, true)}}
+	filterMentionReadFalse = query.And{filterHasMention, query.Key{Path: []string{chatmodel.MentionReadKey}, Filter: query.NewComp(query.CompOpEq, false)}}
 
 	filterSyncedTrue  = query.Key{Path: []string{chatmodel.SyncedKey}, Filter: query.NewComp(query.CompOpEq, true)}
 	filterSyncedFalse = query.Not{Filter: filterSyncedTrue}
 
-	filterReactionUnread = query.Key{Path: []string{chatmodel.ReactionUnreadOrderIdKey}, Filter: query.Exists{}}
+	// $ne null, not $exists: a sparse index stores no entry for a field that is missing or null, so
+	// since any-store v1.0.2 only a predicate excluding both lets the planner use it. $exists also
+	// matches an explicit null, so it degrades this to a full collection scan. reactionUnreadOrderId
+	// is only ever written as an order-id string, so the narrower match is equivalent here.
+	filterReactionUnread = query.Key{Path: []string{chatmodel.ReactionUnreadOrderIdKey}, Filter: query.NewComp(query.CompOpNe, nil)}
 )
 
 type readHandler interface {
