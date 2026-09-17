@@ -137,7 +137,12 @@ func auditFilters() *database.Filters {
 				Cond:  model.BlockContentDataviewFilter_Equal,
 				Value: domain.Bool(true),
 			},
-			database.FilterExists{Key: bundle.RelationKeyDeletedDate},
+			// FilterNotNull, not FilterExists: deletedDate carries a sparse index, which the planner
+			// only uses for a predicate that excludes both missing and null (any-store v1.0.2).
+			// FilterExists matches an explicit null too, so it would turn every audit page back into
+			// the full scan this index exists to avoid. deletedDate is only ever written as a
+			// timestamp on removal, so the narrower match selects the same rows.
+			database.FilterNotNull{Key: bundle.RelationKeyDeletedDate},
 		},
 		Order: deletedDateDesc{},
 	}

@@ -100,6 +100,21 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
+// chatCollectionIndexes is package-level so tests can build a collection with exactly the indexes
+// production has, and assert the queries below still reach them.
+//
+// The sparse ones are only usable by a filter that guarantees the field is present and non-null:
+// since any-store v1.0.2 the planner refuses a sparse index for anything weaker, $exists included
+// (it also matches an explicit null, which the index skips). See filterReactionUnread.
+var chatCollectionIndexes = []anystore.IndexInfo{
+	{Fields: []string{"_o.id"}},
+	{Fields: []string{chatmodel.PinnedKey}, Sparse: true},
+	{Fields: []string{chatmodel.ReactionUnreadOrderIdKey}, Sparse: true},
+	// serves GetLastMessagesByCreators: creator Eq + order walk with early
+	// exit (measured ~80µs vs a 25-45ms full-collection scan at 50k msgs)
+	{Fields: []string{chatmodel.CreatorKey, "_o.id"}},
+}
+
 func (s *service) Repository(spaceId, chatObjectId string) (Repository, error) {
 	s.lock.RLock()
 	repo, ok := s.cache[chatObjectId]
@@ -152,14 +167,7 @@ func (s *service) getOrInitRepository(spaceId, chatObjectId string) (Repository,
 		return nil, fmt.Errorf("get message history collection: %w", err)
 	}
 
-	if err = anystorehelper.AddIndexes(s.componentCtx, collection, []anystore.IndexInfo{
-		{Fields: []string{"_o.id"}},
-		{Fields: []string{chatmodel.PinnedKey}, Sparse: true},
-		{Fields: []string{chatmodel.ReactionUnreadOrderIdKey}, Sparse: true},
-		// serves GetLastMessagesByCreators: creator Eq + order walk with early
-		// exit (measured ~80µs vs a 25-45ms full-collection scan at 50k msgs)
-		{Fields: []string{chatmodel.CreatorKey, "_o.id"}},
-	}); err != nil {
+	if err = anystorehelper.AddIndexes(s.componentCtx, collection, chatCollectionIndexes); err != nil {
 		return nil, fmt.Errorf("ensure indexes: %w", err)
 	}
 

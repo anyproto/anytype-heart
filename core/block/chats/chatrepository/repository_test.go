@@ -8,11 +8,13 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/query"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -21,7 +23,7 @@ type fixture struct {
 	db   anystore.DB
 }
 
-func newFixture(t *testing.T) *fixture {
+func newFixture(t testing.TB) *fixture {
 	ctx := context.Background()
 	db, err := anystore.Open(ctx, filepath.Join(t.TempDir(), "store.db"), nil)
 	require.NoError(t, err)
@@ -612,5 +614,51 @@ func TestGetLastMessagesByCreators(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Empty(t, got)
+	})
+}
+
+// reactionUnreadOrderId carries a sparse index, and since any-store v1.0.2 the planner only lets a
+// sparse index serve a predicate that guarantees the field is present and non-null (GO-7510).
+// $exists does not qualify — it also matches an explicit null, which the index skips — so writing
+// filterReactionUnread as query.Exists{} silently turns all three of these into full collection
+// scans (measured 300-700x on a 50k-message collection) while returning identical results.
+func TestFilterReactionUnreadUsesTheSparseIndex(t *testing.T) {
+	newIndexedFixture := func(t *testing.T) *fixture {
+		fx := newFixture(t)
+		require.NoError(t, anystorehelper.AddIndexes(context.Background(), fx.repo.collection, chatCollectionIndexes))
+		return fx
+	}
+	indexUsed := func(t *testing.T, fx *fixture, q anystore.Query) bool {
+		t.Helper()
+		explain, err := q.Explain(context.Background())
+		require.NoError(t, err)
+		for _, idx := range explain.Indexes {
+			if idx.Name == chatmodel.ReactionUnreadOrderIdKey && idx.Used {
+				return true
+			}
+		}
+		t.Logf("plan: %s", explain.Sql)
+		return false
+	}
+
+	t.Run("GetNewestUnreadReactionOrderId — filter and sort", func(t *testing.T) {
+		fx := newIndexedFixture(t)
+		q := fx.repo.collection.Find(filterReactionUnread).
+			Sort("-" + chatmodel.ReactionUnreadOrderIdKey).Limit(1)
+		assert.True(t, indexUsed(t, fx, q))
+	})
+
+	t.Run("GetAllUnreadReactionChangeIds — filter only", func(t *testing.T) {
+		fx := newIndexedFixture(t)
+		assert.True(t, indexUsed(t, fx, fx.repo.collection.Find(filterReactionUnread)))
+	})
+
+	t.Run("ClearUnreadReactions — filter bounded by maxOrderId", func(t *testing.T) {
+		fx := newIndexedFixture(t)
+		filter := query.And{
+			filterReactionUnread,
+			query.Key{Path: []string{chatmodel.ReactionUnreadOrderIdKey}, Filter: query.NewComp(query.CompOpLte, "ord")},
+		}
+		assert.True(t, indexUsed(t, fx, fx.repo.collection.Find(filter).Limit(100)))
 	})
 }

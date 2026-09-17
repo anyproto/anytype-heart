@@ -270,12 +270,14 @@ func TestDeletedDateIndex(t *testing.T) {
 		s.AddObjects(t, objs)
 	}
 
+	// Mirrors deletionaudit.auditFilters(). FilterNotNull, not FilterExists: see the index comment
+	// in store.go — a sparse index cannot serve $exists, which also matches an explicit null.
 	auditFilter := database.FiltersAnd{
 		database.FilterEq{
 			Key: bundle.RelationKeyIsDeleted, Cond: model.BlockContentDataviewFilter_Equal,
 			Value: domain.Bool(true),
 		},
-		database.FilterExists{Key: bundle.RelationKeyDeletedDate},
+		database.FilterNotNull{Key: bundle.RelationKeyDeletedDate},
 	}
 
 	t.Run("the audit query and sort use it", func(t *testing.T) {
@@ -297,10 +299,35 @@ func TestDeletedDateIndex(t *testing.T) {
 		assert.True(t, used["deletedDate"], "audit query fell back to a full scan: %s", explain.Sql)
 	})
 
-	t.Run("sparse keeps live objects out of it", func(t *testing.T) {
-		// the plan INNER JOINs the index table, so a doc with no index entry cannot come back. A
-		// match-everything filter forced onto this index by the sort therefore returns exactly the
-		// rows the index holds.
+	t.Run("sparse holds only rows carrying deletedDate", func(t *testing.T) {
+		// The plan INNER JOINs the index table, so a doc with no index entry cannot come back. With
+		// a filter that guarantees deletedDate is present the join is sound, and the rows it yields
+		// are exactly the ones the index stores.
+		// given
+		s := NewStoreFixture(t)
+		seed(t, s)
+		sort, err := query.ParseSort("-" + bundle.RelationKeyDeletedDate.String())
+		require.NoError(t, err)
+		present := database.FilterNotNull{Key: bundle.RelationKeyDeletedDate}
+
+		// when
+		iter, err := s.objects.Find(present.AnystoreFilter()).Sort(sort).Iter(ctx)
+		require.NoError(t, err)
+		defer iter.Close()
+		var indexed int
+		for iter.Next() {
+			indexed++
+		}
+
+		// then
+		assert.Equal(t, 20, indexed, "index must hold only rows carrying deletedDate")
+	})
+
+	t.Run("a sort alone cannot pull a query onto it", func(t *testing.T) {
+		// Regression guard for GO-7510. Before any-store v1.0.2 a sort on deletedDate forced this
+		// sparse index onto a query that said nothing about deletedDate, and the INNER JOIN then
+		// silently dropped the 200 live objects the index never stored. The planner must now refuse
+		// the index and return every row.
 		// given
 		s := NewStoreFixture(t)
 		seed(t, s)
@@ -312,16 +339,16 @@ func TestDeletedDateIndex(t *testing.T) {
 		iter, err := s.objects.Find(everything.AnystoreFilter()).Sort(sort).Iter(ctx)
 		require.NoError(t, err)
 		defer iter.Close()
-		var indexed int
+		var got int
 		for iter.Next() {
-			indexed++
+			got++
 		}
 		total, err := s.objects.Find(everything.AnystoreFilter()).Count(ctx)
 
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, 220, total)
-		assert.Equal(t, 20, indexed, "index must hold only rows carrying deletedDate")
+		assert.Equal(t, 220, got, "sorting by a sparse field must not drop rows that lack it")
 	})
 }
 

@@ -527,6 +527,40 @@ func TestFilterExists(t *testing.T) {
 	})
 }
 
+// FilterNotNull is FilterExists minus the explicit null, and the two paths assertFilter
+// exercises — in-memory FilterObject and the anystore predicate — must agree on that row, or a
+// query answered from the index disagrees with one answered from a scan.
+func TestFilterNotNull(t *testing.T) {
+	t.Run("present and not null", func(t *testing.T) {
+		f := FilterNotNull{Key: "k"}
+		obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("v")})
+		assertFilter(t, f, obj, true)
+	})
+	t.Run("missing", func(t *testing.T) {
+		f := FilterNotNull{Key: "foo"}
+		obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("v")})
+		assertFilter(t, f, obj, false)
+	})
+	t.Run("explicitly null — the one row FilterExists matches and FilterNotNull does not", func(t *testing.T) {
+		obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Null()})
+		assertFilter(t, FilterExists{Key: "k"}, obj, true)
+		assertFilter(t, FilterNotNull{Key: "k"}, obj, false)
+	})
+	t.Run("zero values are not null", func(t *testing.T) {
+		for name, v := range map[string]domain.Value{
+			"empty string": domain.String(""),
+			"zero":         domain.Int64(0),
+			"false":        domain.Bool(false),
+			"empty list":   domain.StringList(nil),
+		} {
+			t.Run(name, func(t *testing.T) {
+				obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": v})
+				assertFilter(t, FilterNotNull{Key: "k"}, obj, true)
+			})
+		}
+	})
+}
+
 func TestFilterOptionsEqual(t *testing.T) {
 	optionIdToName := map[string]struct{}{
 		"optionId1": {},
