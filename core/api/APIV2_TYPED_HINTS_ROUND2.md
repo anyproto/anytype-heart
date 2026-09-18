@@ -587,6 +587,19 @@ reviewed by three fresh reviewers before the next.
 - F8c: kept as the doc recommends — the served examples stay in a real
   domain; the eval's scenarios are what must avoid the served vocabulary.
 
+  Reviewed by three fresh reviewers (no blockers); their should-fixes are
+  in: the envelope rule is stated per channel (PATCH types is planned and
+  refused whole but written in several RPCs — property ops, then view ops —
+  so "as one edit" was false there; the view family, on both channels, says
+  so), the typed `set` values keep the pipeline's list bound (2048) and
+  accept null elements as the codec does, three about sentences corrected
+  (delete_block refuses a parent without recursive; add_property needs
+  format to create; insert_view without copy_from is defaults, not blank),
+  the guard exempts the `anytype://` link span only and states its boundary
+  (index, endpoint, example, grammar unscanned), `example_body` is pinned
+  through the production envelope decoder, and every "schema kind X" / op
+  id mention in served prose is pinned to resolve. Design doc updated.
+
 # Ranked work order
 
 1. **F1** — warn or refuse on destructive `delete_property`; stop leaking

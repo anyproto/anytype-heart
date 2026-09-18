@@ -17,6 +17,7 @@ package v2service
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -201,6 +202,31 @@ var v2BlockShapedPayloadOps = map[string]bool{
 // against a regression here.
 const v2OpEnvelopeProse = `One entry of {"ops":[…]}, the request body (example_body shows it wrapped); 1 to 512 entries apply in order as one edit — if any one is refused, none is applied.`
 
+// v2TypeOpEnvelopeProse is the envelope rule as it holds on PATCH types: the
+// batch is planned and refused whole before anything is written, but the
+// writes themselves are several RPCs in a fixed order, and a view op refused
+// after the lists were written does not roll them back. Saying "as one
+// edit" there was false (the object channel's rule is a single state edit).
+const v2TypeOpEnvelopeProse = `One entry of {"ops":[…]}, the request body (example_body shows it wrapped); 1 to 512 entries, planned and refused whole before any write, then written in order: property ops first, view ops after — a view op refused then leaves the written lists in place.`
+
+// v2ViewOpEnvelopeSuffix is what the view family, which runs on both
+// channels, adds to the object rule.
+const v2ViewOpEnvelopeSuffix = ` On a type, property ops are written first; a view op refused after that leaves them written.`
+
+// opEnvelopeProse picks the envelope rule true of the channel(s) the op runs on.
+func opEnvelopeProse(op string) string {
+	onObject := slices.Contains(v2OpNames, op)
+	onType := slices.Contains(v2TypeOpNames, op)
+	switch {
+	case onObject && onType:
+		return v2OpEnvelopeProse + v2ViewOpEnvelopeSuffix
+	case onType:
+		return v2TypeOpEnvelopeProse
+	default:
+		return v2OpEnvelopeProse
+	}
+}
+
 // v2OpAbout is what each op does, in the one sentence that opens its served
 // description (round-two eval F8b: seventeen ops served one identical
 // description, and a caller who fetched set_cell's schema was told nothing
@@ -212,14 +238,14 @@ var v2OpAbout = map[string]string{
 	"replace_subtree": "Replaces one block and its descendants with new blocks",
 	"insert_blocks":   "Inserts new blocks or markdown after, before or inside a block, or at either end of the document",
 	"move_block":      "Moves a block and its subtree to a new place",
-	"delete_block":    "Deletes one block, found by id or by its text; its descendants only with recursive",
+	"delete_block":    "Deletes a childless block found by id or by its text, or its whole subtree with recursive set to true",
 	"replace_text":    "Replaces text inside one block, markup preserved",
 	"set_cell":        "Sets one table cell, by row and column",
 	"update_view":     "Changes a view's fields or columns on the object's dataview",
-	"insert_view":     "Adds a view to the object's dataview, blank or copied from another",
+	"insert_view":     "Adds a view to the object's dataview, with defaults or copied from another",
 	"move_view":       "Reorders a view among the dataview's views",
 	"delete_view":     "Deletes a view from the dataview; the last one is refused",
-	"add_property":    "Adds one property to the type's field list, creating the property when nothing answers to the name",
+	"add_property":    "Adds one property to the type's field list; an unknown name creates it, with the given format",
 	"remove_property": "Takes one property off the type's field list; the property and its values stay in the space",
 	"move_property":   "Reorders one property within its section of the type",
 	"add_items":       "Adds objects to the collection, by id",
@@ -242,7 +268,7 @@ func opSchema(op string, required []string, props ...string) string {
 		req = append(req, `"`+name+`"`)
 	}
 	all := append([]string{`"op":{"const":"` + op + `"}`}, props...)
-	description, _ := json.Marshal(about + ". " + v2OpEnvelopeProse)
+	description, _ := json.Marshal(about + ". " + opEnvelopeProse(op))
 	body := `"description":` + string(description) + `,"type":"object","additionalProperties":false,"required":[` +
 		strings.Join(req, ",") + `],"properties":{` + strings.Join(all, ",") + `}`
 
@@ -381,7 +407,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 	"set_properties": {
 		endpoint: v2OpsEndpoint,
 		schema: opSchema("set_properties", nil,
-			`"set":{"type":"object","maxProperties":128,"additionalProperties":{"type":["string","number","boolean","array","null"],"maxLength":1048576,"maxItems":128,"items":{"type":["string","number","boolean"],"maxLength":4096}},"description":"property key → value (a list-shaped key takes an array of option names or ids); presence is meaningful — an empty array means present-but-empty; unknown select option names are created"}`,
+			`"set":{"type":"object","maxProperties":128,"additionalProperties":{"type":["string","number","boolean","array","null"],"maxLength":1048576,"maxItems":2048,"items":{"type":["string","number","boolean","null"],"maxLength":4096}},"description":"property key → value (a list-shaped key takes an array of option names or ids); presence is meaningful — an empty array means present-but-empty; unknown select option names are created"}`,
 			`"unset":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":256},"description":"property keys to remove"}`,
 			`"add":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only (select, multi_select, objects, files): append entries without rewriting the array — existing entries are never duplicated; unknown option NAMES are created"}`,
 			`"remove":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only: delete matching entries — absent entries (and absent keys) are a no-op; a key may appear in only one of set/unset/add/remove"}`),

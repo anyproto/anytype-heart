@@ -51,9 +51,12 @@ shared through helpers and several naming two operations, so the count of
 | a bare read parameter | `GET the object with ?outline=true to list them`, `GET it with ?ids=full` |
 
 Every one is now a `v2model.Ref`. The schema documents (`schemas.go`,
-`schemas_ops.go`, `apiv2schema.go`) keep their `endpoint` lines and field
-descriptions in REST: they document the HTTP surface for a reader who asked
-for it, and they are not repairs.
+`schemas_ops.go`, `apiv2schema.go`) keep their `endpoint` lines in REST: they
+document the HTTP surface for a reader who asked for it. Their field
+descriptions do NOT spell routes (round-two eval F7: twelve reached callers
+that way): a description names an operation by its op id (`update_type`) or
+a schema by its kind ("schema kind filters"), and
+`service/schemaprose_test.go` guards the served JSON.
 
 ## The shape
 

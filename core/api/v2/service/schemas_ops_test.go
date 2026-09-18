@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 
@@ -592,7 +593,7 @@ func TestV2OpEnvelopeIsReachable(t *testing.T) {
 			desc, ok := schema["description"].(string)
 			require.True(t, ok, "%s schema has no root description", op)
 			assert.Contains(t, desc, `{"ops":[`, "%s does not name the wrapper", op)
-			assert.LessOrEqual(t, len(desc), 280, "%s root description is %d chars", op, len(desc))
+			assert.LessOrEqual(t, len(desc), 360, "%s root description is %d chars", op, len(desc))
 			assert.True(t, strings.HasPrefix(desc, v2OpAbout[op]+". "),
 				"%s opens with the envelope rule, not with what the op does: %s", op, desc)
 
@@ -603,6 +604,16 @@ func TestV2OpEnvelopeIsReachable(t *testing.T) {
 			require.NoError(t, json.Unmarshal(entry.ExampleBody, &body), op)
 			require.Len(t, body.Ops, 1, op)
 			assert.JSONEq(t, string(entry.Example), string(body.Ops[0]), op)
+			// and the production decoder of the channel(s) the op runs on
+			// accepts it as sent
+			for _, names := range [][]string{v2OpNames, v2TypeOpNames} {
+				if !slices.Contains(names, op) {
+					continue
+				}
+				ops, perr := parseOpsEnvelope(entry.ExampleBody, names, func(string) v2model.Hint { return v2model.Hint{} })
+				require.NoError(t, perr, "%s example_body is not a PATCH body", op)
+				require.Len(t, ops, 1, op)
+			}
 		}
 	})
 
