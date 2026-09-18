@@ -63,11 +63,17 @@ for it, and they are not repairs.
 the route. What did change for a REST caller, beyond the ten messages
 below: hints that shipped a `{space_id}` placeholder now carry the bound id
 where the site knows it; placeholders follow the OpenAPI names (`{key}`,
-`{type}`, not `{property_key}`, `{typeKey}`); the empty-body refusal's issue
-message is now "the body is empty" with the old text as its hint; the
-view-filter type refusal's message lost its parenthesised route, which is
-now its hint; and a handful of hints were reworded to stay true on every
-surface (listed under "Review findings"). Consumers keying on `status`/`code` are unaffected;
+`{type}`, not `{property_key}`, `{typeKey}`); object and chat ids are bound
+too where the site knows them; abbreviated (`GET .../messages`) and
+query-only (`?ids=full`, `?dry_run=true`, `?offset=&limit=`,
+`?after=`/`?before=`) routes are spelled out in full; the empty-body
+refusal's issue message is now "the body is empty" with the old text as its
+hint; the view-filter type refusal's message lost its parenthesised route,
+which is now its hint; the subtree-body refusal's message no longer names
+`?block=`; the duplicate-key hints no longer offer an update by a slug that
+several holders answer to; and a handful of hints were reworded to stay
+true on every surface (listed under "Review findings"). Every one of these
+is prose; no status, code, path or acceptance changed. Consumers keying on `status`/`code` are unaffected;
 consumers that only rendered `message` now miss the repairs that moved
 into `issues`.
 
@@ -123,13 +129,15 @@ rest, with an empty value leaving a parameter unbound. `didYouMean` and
 
 ### Guards
 
-- `core/api/v2/hintroutes_test.go` — no string literal in the service or
-  handlers may contain a method + route, an abbreviated `METHOD …/` route,
-  a `/v2/` path or any bare `?name=` parameter; the schema documents and
-  the route table are the only exemptions. It does not look outside
+- `core/api/v2/hintroutes_test.go` — no string literal (decoded, so an
+  escape cannot hide a slash) in the service or handlers may contain a
+  method before any path or ellipsis, an ellipsis path, a `/v2/` path or
+  any bare `?name=` parameter; the schema documents, the route table and
+  the operation table are the only exemptions. It does not look outside
   `core/api/v2` (the curated wrapper's own steering prose is covered by its
-  own tests), and a whole-file exemption hides a future repair added to a
-  schema file. Mutation-verified.
+  own tests), it cannot see a route assembled by concatenation, and a
+  whole-file exemption hides a future repair added to a schema file.
+  Mutation-verified.
 - `core/api/v2/model/ref_test.go` — table equals the OpenAPI document; every
   helper binds exactly its operation's path parameters; rendering cases.
 - `core/api/prose` and `openapiprose_test.go` still pass on the regenerated
@@ -221,8 +229,11 @@ a courtesy over a response that is already correct and must never be why a
 response fails. `restSpelling` is the Go `Ref.String` rule verbatim, with
 the Go test cases copied into `see-also.test.ts`.
 
-The hook is three lines in `proxy.ts` (constructor + both response sites),
-kept minimal because the main checkout carries uncommitted proxy work.
+The hook sits in `proxy.ts`: the index is built in the constructor from
+the loaded document, the success path re-spells before `compactWriteResponse`
+when the response declared for the actual status is JSON, and the
+structured error path re-spells unconditionally. Rebased onto the v2
+discovery merge (anytype-mcp PR 152).
 
 ## Constraints that still apply
 
@@ -343,6 +354,30 @@ test-only `spacesListRepair` constant moved into the test file; overview
 prose that still described `strings.Replacer` and unconditional success
 rewriting was corrected. Pre-existing and untouched: the upload-file
 request schema differs between the generated JSON and YAML documents.
+
+Round five (three FRESH reviewers, no prior context, merge-review framing):
+no merge-blocking finding. Fixed: the curated resend spelling offered a
+parameter no tool takes (option-creation consent and dry runs are host
+settings; it now says so); the block-listing repair named the plain read,
+whose curated form serves ROWS for a query or collection, not blocks — it
+names the outline read again, which lists every object's blocks, while the
+locator's full-text repair keeps the plain read (this reverses a round-one
+change, with the reason recorded here); the `list_properties` row promised
+an exhaustive list where `describe` caps at 120 names; the duplicate-key
+hints bound an update to a slug several holders answer to, which that
+update would refuse as ambiguous; the published `Ref` descriptions now
+state the rendering rule (verbatim substitution, no percent-encoding, kept
+placeholders, sorted query, query-only rendering for a resend); the guard
+decodes literals and matches versionless and ellipsis routes; the doc's
+"Wire" section and both PR descriptions were completed.
+
+Accepted, not fixed (added this round):
+
+- A server hint that names a tool (`set_cell` in the nested-block repair)
+  cannot know the caller's tier; on the small tier that tool is absent.
+- The locator's full-text repair names the plain read, whose curated form
+  serves rows for a query or collection; text edits on a list object's own
+  blocks are rare.
 
 Accepted, not fixed:
 

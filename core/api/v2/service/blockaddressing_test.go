@@ -75,17 +75,16 @@ func TestBlockNotFoundHintsAreTrue(t *testing.T) {
 }
 
 // assertAddressabilityHint pins the honest half of the repair loop: the hint
-// names the read whose blocks array is the addressable set (the plain read,
-// whose text an edit is made against — the outline truncates it) and says
-// outright that ids nested inside a block are not block references.
+// names the outline read, whose blocks array is the addressable set on
+// every object, and says outright that ids nested inside a block are not
+// block references.
 func assertAddressabilityHint(t *testing.T, issue v2model.Issue) {
 	t.Helper()
 	assert.Contains(t, issue.Message, "blocks array")
-	assert.Contains(t, issue.Hint, "/objects/")
-	assert.NotContains(t, issue.Hint, "?outline=true", "the repair is the full read, not the truncated outline")
+	assert.Contains(t, issue.Hint, "?outline=true lists them")
 	require.NotEmpty(t, issue.SeeAlso)
 	assert.Equal(t, v2model.OpGetObject, issue.SeeAlso[0].Op)
-	assert.Empty(t, issue.SeeAlso[0].Query)
+	assert.Equal(t, "true", issue.SeeAlso[0].Query["outline"])
 	assert.Contains(t, issue.Hint, "not individually addressable",
 		"the hint must admit the cell-descendant gap rather than send the caller round the outline again")
 	assert.Contains(t, issue.Hint, "set_cell", "and name the op that does reach it")

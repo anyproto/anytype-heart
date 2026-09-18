@@ -688,7 +688,7 @@ func TestV2GetObject(t *testing.T) {
 		assert.Equal(t, 404, v2Err.Status)
 		assert.Contains(t, v2Err.Message, `"nope"`)
 		require.NotEmpty(t, v2Err.Issues)
-		assert.Contains(t, v2Err.Issues[0].Hint, "GET /v2/spaces/{space_id}/objects/{object_id} lists them")
+		assert.Contains(t, v2Err.Issues[0].Hint, "GET /v2/spaces/{space_id}/objects/{object_id}?outline=true lists them")
 		assert.Equal(t, v2model.OpGetObject, v2Err.Issues[0].SeeAlso[0].Op)
 	})
 

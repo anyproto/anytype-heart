@@ -641,14 +641,15 @@ func resolveBlockRef(ids []string, ref string) (int, error) {
 // entry that says "this is not a sibling of the top-level run").
 const v2AddressableBlocksMessage = "the addressable blocks are the entries of the document's blocks array"
 
-// addressableBlocksHint names the read that lists the addressable blocks —
-// the plain read, whose blocks array carries every id with its text, so a
-// caller repairing an edit reads the full text it will edit against (the
-// outline shape truncates it); empty ids leave the read's parameters for
-// the caller to fill.
+// addressableBlocksHint names the read that lists the addressable blocks:
+// the outline, which serves every block with its id on EVERY object — the
+// curated wrapper's full read of a query or collection serves the rows
+// instead of the document, so the plain read would list nothing there.
+// The locator's repair, which needs full text, names the plain read
+// separately. Empty ids leave the read's parameters for the caller to fill.
 func addressableBlocksHint(spaceId, objectId string) v2model.Hint {
 	return v2model.Hintf("%s lists them. Ids nested inside a block are served but are not block references: a table's rows and columns are addressed by set_cell's row/col, a dataview's views by the view ops, and a block inside a table cell is not individually addressable — rewrite its cell with set_cell.",
-		v2model.RefGetObject(spaceId, objectId))
+		v2model.RefGetObject(spaceId, objectId).With("outline", "true"))
 }
 
 //

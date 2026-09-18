@@ -218,7 +218,7 @@ func TestUpdateView(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), `did you mean Due date`)
 		assert.Contains(t, err.Error(), "sort[0].property", "the op path is re-spelled to the tool's `sort` slot")
-		assert.Contains(t, err.Error(), "`describe` on the type", "the REST repair hint is re-spelled")
+		assert.Contains(t, err.Error(), "`describe` on the type (", "the REST repair hint is re-spelled")
 		assert.NotContains(t, err.Error(), "/v2/")
 		assert.NotContains(t, err.Error(), "ops[0]")
 		assert.NotContains(t, err.Error(), "GET /v2")

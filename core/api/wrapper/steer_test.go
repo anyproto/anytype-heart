@@ -251,12 +251,13 @@ func TestRestVocabulary(t *testing.T) {
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 404,
-			`{"status":404,"code":"not_found","message":"block \"zzzzz\" not found","issues":[{"path":"ops[0].id","message":"the addressable blocks are the entries of the document's blocks array","hint":"GET /v2/spaces/{space_id}/objects/{object_id} lists them. Ids nested inside a block are served but are not block references.","see_also":[{"op":"get_object"}]}]}`)
+			`{"status":404,"code":"not_found","message":"block \"zzzzz\" not found","issues":[{"path":"ops[0].id","message":"the addressable blocks are the entries of the document's blocks array","hint":"GET /v2/spaces/{space_id}/objects/{object_id}?outline=true lists them. Ids nested inside a block are served but are not block references.","see_also":[{"op":"get_object","query":{"outline":"true"}}]}]}`)
 
 		_, err := fx.Run(ctx, "check_item", map[string]any{"object": "1", "block": "zzzzz", "checked": true})
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "`read` lists them", "the repair names the full read — an edit needs the full text, and the outline truncates it")
+		assert.Contains(t, err.Error(), "`read` with mode=outline lists them",
+			"the outline is the one read that lists the blocks of EVERY object — the full read of a query or collection serves its rows instead")
 		assert.NotContains(t, err.Error(), "?outline=true")
 		assert.NotContains(t, err.Error(), "/v2/")
 	})
@@ -289,7 +290,7 @@ func TestRestVocabulary(t *testing.T) {
 				name: "property keys — the create half is not on this surface, and says so by name",
 				issue: v2model.Issue{}.Hintf("list all with %s, or create it with %s",
 					v2model.RefListProperties("space1"), v2model.RefCreateProperty("space1")),
-				want: "list all with `describe` on the type, or create it with an operation outside this tool set (create_property)",
+				want: "list all with `describe` on the type (which lists up to 120 property names), or create it with an operation outside this tool set (create_property)",
 			},
 			{
 				name:  "option names, property bound",
@@ -315,7 +316,7 @@ func TestRestVocabulary(t *testing.T) {
 			{
 				name:  "resend with a parameter",
 				issue: v2model.Issue{}.Hintf("or resend with %s to create it", v2model.Resend("create_missing_options", "true")),
-				want:  "or resend with create_missing_options=true to create it",
+				want:  "or resend with a parameter these tools do not take (create_missing_options=true) to create it",
 			},
 			{
 				name:  "a dotted real space id inside a bound route is consumed with it",
@@ -336,7 +337,7 @@ func TestRestVocabulary(t *testing.T) {
 				name: "one pass: a bound value that spells another reference is not rewritten again",
 				issue: v2model.Issue{}.Hintf("check %s, or resend with %s",
 					v2model.RefListPropertyOptions("space1", "?create_missing_options=true"), v2model.Resend("create_missing_options", "true")),
-				want: "check `describe` with options=?create_missing_options=true, or resend with create_missing_options=true",
+				want: "check `describe` with options=?create_missing_options=true, or resend with a parameter these tools do not take (create_missing_options=true)",
 			},
 			{
 				name:  "a hint from a server build without references falls to the catch-all",
@@ -367,8 +368,8 @@ func TestRestVocabulary(t *testing.T) {
 		}.Hintf("list all with %s", v2model.RefListProperties("space1"))}
 		te := &ToolError{Status: 400, Message: "unknown property keys", Issues: issues, Text: renderErrorText("unknown property keys", issues)}
 		deRest(te)
-		assert.Equal(t, "list all with `describe` on the type", te.Issues[0].Hint)
-		assert.Equal(t, "unknown property keys\n  /properties/prio: unknown property key \"prio\" — known keys: status (list all with `describe` on the type)", te.Text)
+		assert.Equal(t, "list all with `describe` on the type (which lists up to 120 property names)", te.Issues[0].Hint)
+		assert.Equal(t, "unknown property keys\n  /properties/prio: unknown property key \"prio\" — known keys: status (list all with `describe` on the type (which lists up to 120 property names))", te.Text)
 	})
 
 	t.Run("a message is a fact and is not rewritten by the hint's references", func(t *testing.T) {
@@ -381,7 +382,7 @@ func TestRestVocabulary(t *testing.T) {
 		assert.NotContains(t, te.Issues[0].Message, "`describe`",
 			"only the catch-all touches a message — a quoted value is never re-spelled as a tool")
 		assert.Contains(t, te.Issues[0].Message, "the HTTP API")
-		assert.Equal(t, "list them with `describe` on the type", te.Issues[0].Hint)
+		assert.Equal(t, "list them with `describe` on the type (which lists up to 120 property names)", te.Issues[0].Hint)
 	})
 
 	t.Run("the server's own envelope round-trips: marshal → decode → re-spell", func(t *testing.T) {
@@ -429,7 +430,7 @@ func TestRestVocabulary(t *testing.T) {
 		te := &ToolError{Status: 404, Message: "refused", Issues: issues, Text: renderErrorText("refused", issues)}
 		te.Text = strings.Replace(te.Text, "ops[0].id", "block", 1) + " — wrote 1 of 3"
 		deRest(te)
-		assert.Equal(t, "refused\n  block: not found (list keys with `describe` on the type) — wrote 1 of 3", te.Text)
+		assert.Equal(t, "refused\n  block: not found (list keys with `describe` on the type (which lists up to 120 property names)) — wrote 1 of 3", te.Text)
 	})
 
 	t.Run("prose that merely mentions a version prefix is untouched", func(t *testing.T) {
@@ -466,7 +467,7 @@ func TestRestVocabulary(t *testing.T) {
 			v2model.Issue{Message: "the view's filter was not applied"}.Hintf("list keys with %s", v2model.RefListProperties("space1")),
 			{Message: "plain"},
 		}
-		assert.Equal(t, "\nwarning: the view's filter was not applied — list keys with `describe` on the type\nwarning: plain",
+		assert.Equal(t, "\nwarning: the view's filter was not applied — list keys with `describe` on the type (which lists up to 120 property names)\nwarning: plain",
 			warningsText(warnings))
 	})
 }

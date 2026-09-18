@@ -30,11 +30,11 @@ import (
 // Ref names one operation of this API, or — with no op — the request that
 // produced the issue, to be resent with the query parameters given.
 type Ref struct {
-	// The operation's OpenAPI operationId, such as list_properties; absent means the request that produced this issue, resent with the query given.
+	// The operation's OpenAPI operationId, such as list_properties; absent means the request that produced this issue, resent with the query given, and the hint then spells only the query.
 	Op string `json:"op,omitempty"`
-	// Path parameters by their OpenAPI name; one left out is for the caller to fill.
+	// Path parameters by their OpenAPI name, each substituted into the path once and verbatim (no percent-encoding); one left out keeps its {name} placeholder in the hint for the caller to fill.
 	Params map[string]string `json:"params,omitempty"`
-	// Query parameters to send with the operation.
+	// Query parameters to send with the operation, spelled in the hint as ?name=value pairs joined by & and sorted by name, values verbatim.
 	Query map[string]string `json:"query,omitempty"`
 }
 

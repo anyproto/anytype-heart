@@ -271,9 +271,11 @@ var toolVocab = map[string]func(ref v2model.Ref) string{
 	v2model.OpListTypes: func(v2model.Ref) string {
 		return "a type listing (not in this tool set; `find` results show each object's type)"
 	},
-	v2model.OpGetType:        func(v2model.Ref) string { return "`describe`" },
-	v2model.OpCreateType:     func(v2model.Ref) string { return "`create_type`" },
-	v2model.OpListProperties: func(v2model.Ref) string { return "`describe` on the type" },
+	v2model.OpGetType:    func(v2model.Ref) string { return "`describe`" },
+	v2model.OpCreateType: func(v2model.Ref) string { return "`create_type`" },
+	v2model.OpListProperties: func(v2model.Ref) string {
+		return fmt.Sprintf("`describe` on the type (which lists up to %d property names)", describeSettableLimit)
+	},
 	v2model.OpListPropertyOptions: func(ref v2model.Ref) string {
 		if key := ref.Params["key"]; key != "" {
 			return "`describe` with options=" + key
@@ -300,12 +302,15 @@ var toolVocab = map[string]func(ref v2model.Ref) string{
 }
 
 // toolSpelling renders one typed reference in the tool vocabulary. A
-// resend reference (no op) is the parameter the server wants on the same
-// request, spelled bare; an operation without a row is named as outside
-// this tool set.
+// resend reference (no op) is a parameter the server wants on the same
+// request, which no tool here takes, and is named as such; an operation
+// without a row is named as outside this tool set.
 func toolSpelling(ref v2model.Ref) string {
 	if ref.Op == "" {
-		return strings.TrimPrefix(ref.String(), "?")
+		// a request parameter is not an argument of any tool here: consent
+		// to create options and dry runs are host settings (Runner), so the
+		// caller is told the repair is not theirs to send
+		return "a parameter these tools do not take (" + strings.TrimPrefix(ref.String(), "?") + ")"
 	}
 	if spell, ok := toolVocab[ref.Op]; ok {
 		return spell(ref)

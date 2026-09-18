@@ -2798,7 +2798,7 @@ func TestPatchObject(t *testing.T) {
 		assert.Contains(t, apiErr.Message, "matches more than one block")
 	})
 
-	t.Run("missing block steers to the read, C6-shaped", func(t *testing.T) {
+	t.Run("missing block steers to the outline, C6-shaped", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.expectMutate(editRead(t, editBaseDoc))
 
@@ -2810,8 +2810,8 @@ func TestPatchObject(t *testing.T) {
 		assert.Contains(t, apiErr.Message, `"nowhere"`)
 		require.NotEmpty(t, apiErr.Issues, "the repair loop rides a C6 issue, not the message prose")
 		assert.Equal(t, "ops[0].id", apiErr.Issues[0].Path)
-		assert.Contains(t, apiErr.Issues[0].Hint, "GET /v2/spaces/space1/objects/obj1 lists them")
-		assert.Equal(t, []v2model.Ref{v2model.RefGetObject(testSpaceId, "obj1")}, apiErr.Issues[0].SeeAlso)
+		assert.Contains(t, apiErr.Issues[0].Hint, "GET /v2/spaces/space1/objects/obj1?outline=true lists them")
+		assert.Equal(t, []v2model.Ref{v2model.RefGetObject(testSpaceId, "obj1").With("outline", "true")}, apiErr.Issues[0].SeeAlso)
 	})
 
 	t.Run("unknown op lists the op set", func(t *testing.T) {
