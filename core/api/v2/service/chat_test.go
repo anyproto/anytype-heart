@@ -205,7 +205,8 @@ func TestV2GetChatMessages(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, 812, got.MessageCount, "message_count must pass through (the peek)")
+		assert.Equal(t, 1, got.MessageCount, "message_count is what the chat holds now (R4-3: the lifetime total never decremented on delete)")
+		assert.Equal(t, 812, got.LifetimeMessageCount, "the lifetime total rides beside it")
 		require.NotNil(t, got.State, "chatState must pass through")
 		assert.Equal(t, 3, got.State.UnreadMessages)
 		assert.Equal(t, 1, got.State.UnreadMentions)
@@ -781,6 +782,7 @@ func TestV2ReadChat(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.mwMock.EXPECT().ChatGetMessages(mock.Anything, mock.Anything).Return(&pb.RpcChatGetMessagesResponse{}).Maybe()
 		fx.mwMock.EXPECT().ChatReadMessages(mock.Anything, &pb.RpcChatReadMessagesRequest{
 			ChatObjectId:  testChatId,
 			Type:          pb.RpcChatReadMessages_Messages,
@@ -801,6 +803,7 @@ func TestV2ReadChat(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.mwMock.EXPECT().ChatGetMessages(mock.Anything, mock.Anything).Return(&pb.RpcChatGetMessagesResponse{}).Maybe()
 		fx.mwMock.EXPECT().ChatReadMessages(mock.Anything, mock.MatchedBy(func(req *pb.RpcChatReadMessagesRequest) bool {
 			return req.Type == pb.RpcChatReadMessages_Mentions && req.BeforeOrderId == "00a5" && req.LastStateId == "state42"
 		})).Return(&pb.RpcChatReadMessagesResponse{})
@@ -820,6 +823,7 @@ func TestV2ReadChat(t *testing.T) {
 		// empty value is the same silent no-op (markedCount 0, HTTP 200)
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.mwMock.EXPECT().ChatGetMessages(mock.Anything, mock.Anything).Return(&pb.RpcChatGetMessagesResponse{}).Maybe()
 
 		// when: both missing
 		_, err := fx.ReadChat(context.Background(), testSpaceId, testChatId, v2model.ChatReadRequest{}, false)
@@ -839,6 +843,7 @@ func TestV2ReadChat(t *testing.T) {
 		// exact silent no-op requiring up_to was meant to close
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.mwMock.EXPECT().ChatGetMessages(mock.Anything, mock.Anything).Return(&pb.RpcChatGetMessagesResponse{}).Maybe()
 
 		// when
 		_, err := fx.ReadChat(context.Background(), testSpaceId, testChatId,
@@ -857,6 +862,7 @@ func TestV2ReadChat(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.mwMock.EXPECT().ChatGetMessages(mock.Anything, mock.Anything).Return(&pb.RpcChatGetMessagesResponse{}).Maybe()
 		fx.mwMock.EXPECT().ChatReadReactions(mock.Anything, &pb.RpcChatReadReactionsRequest{
 			ChatObjectId: testChatId,
 		}).Return(&pb.RpcChatReadReactionsResponse{})
@@ -872,6 +878,7 @@ func TestV2ReadChat(t *testing.T) {
 	t.Run("reactions scope rejects up_to — the backend takes no bound", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.mwMock.EXPECT().ChatGetMessages(mock.Anything, mock.Anything).Return(&pb.RpcChatGetMessagesResponse{}).Maybe()
 		_, err := fx.ReadChat(context.Background(), testSpaceId, testChatId,
 			v2model.ChatReadRequest{Scope: "reactions", UpTo: "00a5"}, false)
 		requireV2Code(t, err, v2model.CodeValidationFailed)
@@ -880,6 +887,7 @@ func TestV2ReadChat(t *testing.T) {
 	t.Run("unknown scope is a 400 naming the allowed values", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.mwMock.EXPECT().ChatGetMessages(mock.Anything, mock.Anything).Return(&pb.RpcChatGetMessagesResponse{}).Maybe()
 		_, err := fx.ReadChat(context.Background(), testSpaceId, testChatId,
 			v2model.ChatReadRequest{Scope: "everything", UpTo: "00a5"}, false)
 		requireV2Code(t, err, v2model.CodeValidationFailed)
@@ -890,6 +898,7 @@ func TestV2ReadChat(t *testing.T) {
 		// given: no RPC expectations
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.mwMock.EXPECT().ChatGetMessages(mock.Anything, mock.Anything).Return(&pb.RpcChatGetMessagesResponse{}).Maybe()
 
 		// when
 		got, err := fx.ReadChat(context.Background(), testSpaceId, testChatId,
@@ -905,6 +914,7 @@ func TestV2ReadChat(t *testing.T) {
 		// reaches the RPC must carry a non-empty guard
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.mwMock.EXPECT().ChatGetMessages(mock.Anything, mock.Anything).Return(&pb.RpcChatGetMessagesResponse{}).Maybe()
 		fx.mwMock.EXPECT().ChatReadMessages(mock.Anything, mock.MatchedBy(func(req *pb.RpcChatReadMessagesRequest) bool {
 			return req.LastStateId != "" && req.BeforeOrderId != ""
 		})).Return(&pb.RpcChatReadMessagesResponse{})

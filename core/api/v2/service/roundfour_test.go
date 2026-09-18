@@ -312,3 +312,58 @@ func TestV2DeletedTypeKeepsItsSpelling(t *testing.T) {
 		}
 	})
 }
+
+// Round-four group F: R4-3 / R4-9 (message counts and order), R4-8 (the
+// read receipt), R4-4 / R4-5 (whoami), R4-7 / R4-10 (update_space).
+func TestV2RoundFourChatAndIdentity(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("messages are served ascending whichever way the RPC handed them over", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.addChat(t, testChatId, "Team chat", 1000)
+		newer, older := chatProtoMessage(), chatProtoMessage()
+		newer.Id, newer.OrderId = "m2", "0002"
+		older.Id, older.OrderId = "m1", "0001"
+		fx.mwMock.EXPECT().ChatGetMessages(mock.Anything, mock.Anything).Return(&pb.RpcChatGetMessagesResponse{
+			Messages: []*model.ChatMessage{newer, older}, MessageCount: 2, LifetimeMessageCount: 5,
+		})
+
+		got, err := fx.GetChatMessages(ctx, testSpaceId, testChatId, ChatMessagesQuery{Limit: 25})
+
+		require.NoError(t, err)
+		require.Len(t, got.Messages, 2)
+		assert.Equal(t, "0001", got.Messages[0].Order)
+		assert.Equal(t, "0002", got.Messages[1].Order)
+		assert.Equal(t, 2, got.MessageCount)
+		assert.Equal(t, 5, got.LifetimeMessageCount)
+	})
+
+	t.Run("read_chat's receipt carries the chat's state after the move", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.mwMock.EXPECT().ChatReadMessages(mock.Anything, mock.Anything).Return(&pb.RpcChatReadMessagesResponse{})
+		fx.mwMock.EXPECT().ChatGetMessages(mock.Anything, mock.MatchedBy(func(req *pb.RpcChatGetMessagesRequest) bool {
+			return req.ChatObjectId == testChatId && req.Limit == 1
+		})).Return(&pb.RpcChatGetMessagesResponse{ChatState: &model.ChatState{
+			Messages: &model.ChatStateUnreadState{Counter: 0}, Mentions: &model.ChatStateUnreadState{Counter: 0}, LastStateId: "state43",
+		}})
+
+		got, err := fx.ReadChat(ctx, testSpaceId, testChatId, v2model.ChatReadRequest{UpTo: "00a5", LastStateId: "state42"}, false)
+
+		require.NoError(t, err)
+		require.NotNil(t, got.State, "a write nothing else made observable now says what it moved")
+		assert.Equal(t, 0, got.State.UnreadMessages)
+		assert.Equal(t, "state43", got.State.LastStateId)
+	})
+
+	t.Run("an empty space update names what is not writable here", func(t *testing.T) {
+		fx := newV2FixtureBare(t)
+		fx.registerNamedSpace(t, "spaceS", "Work")
+
+		_, err := fx.UpdateSpace(ctx, "spaceS", v2model.UpdateSpaceRequest{}, true)
+
+		apiErr := v2Err(t, err)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Contains(t, apiErr.Issues[0].Message, "the space icon and the default object type are not writable through this API")
+	})
+}

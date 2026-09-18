@@ -56,7 +56,7 @@ func TestWhoamiService(t *testing.T) {
 		}
 
 		// when
-		got, err := fx.Whoami(whoamiCtx(keyInfo, nil))
+		got, err := fx.Whoami(whoamiCtx(keyInfo, nil), false)
 
 		// then
 		require.NoError(t, err)
@@ -75,6 +75,7 @@ func TestWhoamiService(t *testing.T) {
 		perms := util.GrantPermsRead
 		want := v2model.WhoamiGrant{
 			Scoped:     true,
+			Restricted: true,
 			Permission: &perms,
 			Spaces: []v2model.WhoamiGrantSpace{
 				{Id: "spaceA", Name: "Work", Permission: util.GrantPermsRead},
@@ -83,7 +84,7 @@ func TestWhoamiService(t *testing.T) {
 		}
 
 		// when
-		got, err := fx.Whoami(whoamiCtx(keyInfo, grant))
+		got, err := fx.Whoami(whoamiCtx(keyInfo, grant), false)
 
 		// then
 		require.NoError(t, err)
@@ -106,7 +107,9 @@ func TestWhoamiService(t *testing.T) {
 		perms := util.GrantPermsReadWrite
 		want := v2model.WhoamiGrant{
 			Scoped:     true,
+			Restricted: false,
 			AllSpaces:  true,
+			SpaceCount: 2,
 			Permission: &perms,
 			Spaces: []v2model.WhoamiGrantSpace{
 				{Id: "spaceA", Name: "Work", Permission: util.GrantPermsReadWrite},
@@ -114,13 +117,21 @@ func TestWhoamiService(t *testing.T) {
 			},
 		}
 
-		// when
-		got, err := fx.Whoami(whoamiCtx(keyInfo, grant))
+		// when: the enumeration is asked for
+		got, err := fx.Whoami(whoamiCtx(keyInfo, grant), true)
 
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, want, got.Grant)
 		assert.Equal(t, util.KeyStatusScoped, got.KeyStatus)
+
+		// and by default the count alone: a permissions check is not the
+		// cheapest way to enumerate the account (R4-5)
+		plain, err := fx.Whoami(whoamiCtx(keyInfo, grant), false)
+		require.NoError(t, err)
+		want.Spaces = []v2model.WhoamiGrantSpace{}
+		assert.Equal(t, want, plain.Grant)
+		assert.NotNil(t, plain.Grant.Spaces, "[] never null")
 	})
 
 	t.Run("zero timestamps render null, set ones RFC 3339 UTC", func(t *testing.T) {
@@ -129,7 +140,7 @@ func TestWhoamiService(t *testing.T) {
 		info := util.ApiKeyInfo{Id: "hash2", Name: "cli", ExpiresAt: 1900000000, Scope: model.AccountAuth_Full}
 
 		// when
-		got, err := fx.Whoami(whoamiCtx(info, nil))
+		got, err := fx.Whoami(whoamiCtx(info, nil), false)
 
 		// then
 		require.NoError(t, err)
@@ -148,7 +159,7 @@ func TestWhoamiService(t *testing.T) {
 		info := util.ApiKeyInfo{Id: "hashFull", Name: "desktop", Scope: model.AccountAuth_Full}
 
 		// when
-		got, err := fx.Whoami(whoamiCtx(info, nil))
+		got, err := fx.Whoami(whoamiCtx(info, nil), false)
 
 		// then
 		require.NoError(t, err)
@@ -180,7 +191,7 @@ func TestWhoamiService(t *testing.T) {
 
 	t.Run("a request without an authenticated session fails closed", func(t *testing.T) {
 		fx := newV2FixtureBare(t)
-		_, err := fx.Whoami(context.Background())
+		_, err := fx.Whoami(context.Background(), false)
 		require.Error(t, err)
 	})
 }

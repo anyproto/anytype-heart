@@ -213,6 +213,38 @@ three fresh reviewers before the next.
   gone from the index) are not census-able on a read path and may both
   read as the slug in rows; `?keys=name` bypasses the vocabulary.
 
+**Group F (R4-3, R4-4, R4-5, R4-6, R4-7, R4-8, R4-9, R4-10) — done.**
+
+- R4-3: `message_count` is the number of messages the chat HOLDS now (the
+  RPC's live count — a deleted message leaves it); the total ever posted
+  rides beside it as `lifetime_message_count`. The handler's description
+  said "total since it began" and served exactly that; the field a caller
+  answers "how many messages" from now answers it.
+- R4-9: investigated. The chat repository sorts every read ascending by
+  order id, so the served order was not the cause; the served order is now
+  enforced in the service too, independent of the RPC. An empty array
+  beside a non-zero count is consistent with the OLD `message_count` (the
+  lifetime index) after deletes or during a history replay; it could not
+  be reproduced offline. If it recurs with the live count, it is a chat
+  store question, not an API one.
+- R4-8: `read_chat`'s receipt carries the chat's `state` after the move
+  (`unread_messages`, `unread_mentions`, `last_state_id`), best effort;
+  the messages read's `state.unread_messages` reflects it too, and both
+  descriptions say so.
+- R4-4: `grant.restricted` is the boolean to branch on — true iff the key
+  reaches only the spaces listed; false for an all-spaces grant and for a
+  legacy key alike. `grant.scoped` keeps meaning "a grant record exists",
+  and its description now says so instead of implying a subset.
+- R4-5: an all-spaces grant reports `space_count` and lists the spaces
+  only with `?spaces=true`; a restricted grant's list is its boundary and
+  is always served. The gate-agreement test derives the boundary from
+  `all_spaces`, never from the list.
+- R4-6: `key.id` is described: the hex sha256 of the key's raw bytes, the
+  id the key list in Settings shows, never the token itself.
+- R4-7 / R4-10: the space update's refusals, the `space` schema kind and
+  the PATCH description say that the space icon and the default object
+  type are not writable through this API, so neither costs a session.
+
 # What the fixes did achieve
 
 Worth recording so nobody re-opens them:

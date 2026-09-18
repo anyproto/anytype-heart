@@ -277,7 +277,8 @@ type WhoamiResponse struct {
 // WhoamiKey names the credential. CreatedAt/ExpiresAt are RFC 3339 UTC;
 // null means unknown (CreatedAt) / never (ExpiresAt).
 type WhoamiKey struct {
-	Id        string  `json:"id"` // the app link's hash, which is the id the key list shows
+	// An identifier of the key record, the one the key list in Settings shows: the hex sha256 of the key's raw bytes, never the token itself
+	Id        string  `json:"id"`
 	Name      string  `json:"name"`
 	CreatedAt *string `json:"created_at"`
 	ExpiresAt *string `json:"expires_at"`
@@ -290,10 +291,15 @@ type WhoamiKey struct {
 // agent concludes it may touch every space). When Scoped is false, Spaces
 // is [] and Permission is null.
 type WhoamiGrant struct {
-	Scoped     bool               `json:"scoped"`
-	AllSpaces  bool               `json:"all_spaces"` // the boundary field of an all-spaces grant: the key covers every space in the account, including spaces created later (the tech space excepted). When true, spaces enumerates the current live spaces and is informational only. Never infer the boundary from it
+	// The key carries an explicit grant record. This is NOT "limited to a subset": an all-spaces grant is scoped too. Branch on restricted for that
+	Scoped bool `json:"scoped"`
+	// The key reaches only the spaces listed: scoped, and not all_spaces. False for a legacy key and for an all-spaces grant alike
+	Restricted bool `json:"restricted"`
+	AllSpaces  bool `json:"all_spaces"` // the boundary field of an all-spaces grant: the key covers every space in the account, including spaces created later (the tech space excepted). Never infer the boundary from spaces
+	// For an all-spaces grant: how many live spaces the key covers now. spaces lists them only with ?spaces=true
+	SpaceCount int                `json:"space_count,omitempty"`
 	Permission *string            `json:"permission"` // the compact form agents string-match on
-	Spaces     []WhoamiGrantSpace `json:"spaces"`
+	Spaces     []WhoamiGrantSpace `json:"spaces"`     // the granted spaces of a restricted key; for an all-spaces grant, the current live spaces when ?spaces=true, else empty
 }
 
 // WhoamiGrantSpace is one granted space. Spaces are OBJECTS with a

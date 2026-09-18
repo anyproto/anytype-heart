@@ -83,7 +83,7 @@ func CreateSpaceHandler(s *v2service.Service) gin.HandlerFunc {
 // UpdateSpaceHandler updates a space
 //
 //	@Summary		Update a space
-//	@Description	At least one of the two fields must be present; a field left out keeps its current value.
+//	@Description	At least one of the two fields must be present; a field left out keeps its current value. The space icon and the default object type are not writable through this API.
 //	@Id				update_space
 //	@Tags			Spaces
 //	@Accept			json
@@ -102,7 +102,7 @@ func CreateSpaceHandler(s *v2service.Service) gin.HandlerFunc {
 func UpdateSpaceHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req v2model.UpdateSpaceRequest
-		if !decodeStrictJSONBody(c, &req, v2model.Plain("the update takes name and/or description — at least one"), maxSpaceRequestBody, "space") {
+		if !decodeStrictJSONBody(c, &req, v2model.Plain("the update takes name and/or description — at least one; the space icon and the default object type are not writable through this API"), maxSpaceRequestBody, "space") {
 			return
 		}
 		space, err := s.UpdateSpace(c.Request.Context(), c.Param("space_id"), req, isV2DryRun(c))

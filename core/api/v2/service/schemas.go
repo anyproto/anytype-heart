@@ -179,7 +179,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 	},
 	"space": {
 		endpoint: "POST /v2/spaces (PATCH /v2/spaces/{space_id} takes the same fields, both optional — at least one)",
-		schema: `{"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
+		schema: `{"type":"object","additionalProperties":false,"required":["name"],"description":"a space's name and description are the two writable members; its icon and its default object type are not writable through this API","properties":{` +
 			`"name":{"type":"string","minLength":1,"maxLength":4096},` +
 			`"description":{"type":"string","maxLength":4096}}}`,
 		example: `{"name":"Research","description":"Scratch space for the Q3 analysis"}`,
