@@ -210,8 +210,24 @@ func (s *dsObjectStore) eraseLinksForObject(ctx context.Context, from string) er
 }
 
 // deletedLayoutBackfillMarkerId is the headsState row that records the
-// backfill's completion — a marker row, not an object.
+// backfill's completion — a marker row, not an object. The `_migration/`
+// prefix is reserved for such rows: no object id starts with it, the
+// row carries no ftQueueCtr (so the full-text queue's greater-than query
+// never selects it), and ListLastIndexedHeadsHashes lists it with an empty
+// hash, which its caller only ever looks up by real tree ids.
 const deletedLayoutBackfillMarkerId = "_migration/deletedLayout"
+
+// DeletedLayoutBackfilled implements Store: whether BackfillDeletedLayout
+// has run to completion on this index. Until it has, a tombstone query on
+// deletedLayout can miss a legacy tombstone, so a negative answer from it
+// must not be trusted.
+func (s *dsObjectStore) DeletedLayoutBackfilled(ctx context.Context) (bool, error) {
+	marker, err := s.GetReconcileMarker(ctx, deletedLayoutBackfillMarkerId)
+	if err != nil {
+		return false, fmt.Errorf("read deleted layout backfill marker: %w", err)
+	}
+	return marker == "1", nil
+}
 
 // BackfillDeletedLayout implements Store: one scan of the space's tombstones,
 // a write for each derived-object tombstone that lacks its marker, and the
@@ -219,7 +235,7 @@ const deletedLayoutBackfillMarkerId = "_migration/deletedLayout"
 // next load runs the scan again — completion is never recorded on a
 // partial backfill.
 func (s *dsObjectStore) BackfillDeletedLayout(ctx context.Context) error {
-	if marker, err := s.GetReconcileMarker(ctx, deletedLayoutBackfillMarkerId); err == nil && marker == "1" {
+	if done, err := s.DeletedLayoutBackfilled(ctx); err == nil && done {
 		return nil
 	}
 	records, err := s.Query(database.Query{

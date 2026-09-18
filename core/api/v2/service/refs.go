@@ -9,6 +9,7 @@ package v2service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -670,7 +671,11 @@ func (s *Service) removedTypeRefusal(spaceId, input, path string, v errKeys) (v2
 // request was not wrong, the store could not be read.
 func unverifiableTypeError(typeKey, spaceId string, err error) error {
 	log.Warnf("api v2: verify type %q in space %s: %v", typeKey, spaceId, err)
+	issue := "the space's index could not be read"
+	if errors.Is(err, errRemovalIndexIncomplete) {
+		issue = "the space's index of removed types is not complete yet"
+	}
 	return v2model.NewError(http.StatusInternalServerError, v2model.CodeInternalError,
 		fmt.Sprintf("could not verify type %q in space %q — retry", typeKey, spaceId),
-		v2model.Issue{Message: "the space's index could not be read"})
+		v2model.Issue{Message: issue})
 }

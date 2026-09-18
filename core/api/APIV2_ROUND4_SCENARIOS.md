@@ -313,16 +313,36 @@ three fresh reviewers before the next.
   type or property keeps its tree, so the deleted-tree reindex the counter
   bump triggered never reached their tombstones, and a failed run recorded
   itself complete. Replaced by a targeted backfill on the space index
-  (`BackfillDeletedLayout`): one scan of the tombstones on every space
-  load, a write for each derived-object tombstone lacking its marker, and
-  a completion marker written LAST — a failure leaves it unset and the
-  next load runs the scan again. Also in: a mint that suffixed its slug
+  (`BackfillDeletedLayout`): checked on every space load, and scanned
+  until it has completed once — a write for each derived-object tombstone
+  lacking its marker, and a completion marker written LAST, so a failure
+  (logged; the space still loads) leaves it unset and the next load scans
+  again. Until the marker is set, a miss from the exact tombstone query is
+  not trusted: type resolution answers the retryable 500 instead of
+  falling through to the name and fold steps, so an incomplete index can
+  never let a removed spelling land on a live namesake. The upgrade
+  consequence (lookup by a legacy tombstone's slug) therefore holds after
+  a successful backfill. Also in: a mint that suffixed its slug
   reports the stored slug on the property row and its options (the
   receipt followed the proposal), global search no longer files a server
   error under "space skipped", `create_property` loads its property
   snapshot once and fails closed when it cannot, the lookup error is typed
   at the resolution boundary on every path (the cause is logged, not
   served), and the `property` kind states that names are not identities.
+
+  The review of that fix closed its own gap: a backfill that failed left
+  the session resolving on the incomplete index (the marker only protected
+  the NEXT load), hence the trust gate above, memoized per space once the
+  marker is seen; the store fixture writes the marker on first open, as a
+  loaded space has it. Also in: a mint that stored an EMPTY slug (the
+  suffix walk ran out) reports the minted key on the receipt, as
+  `create_property` already did; the twin-name refusal spells the holder
+  from the snapshot it already loaded; `create_property`'s operation
+  description carries the name rule so OpenAPI and the external tool
+  listing say it, not only the `property` schema kind; and the curated
+  `create_type` pre-flight prefixes "check the type name and formats" on
+  the caller's 4xx only — a 500 gets "the pre-flight did not run, nothing
+  was created".
   Accepted: a space that has not loaded since the upgrade may still miss
   a legacy tombstone by slug until it does; the resolution stop's queries
   on display-name inputs are not memoised per request.

@@ -144,6 +144,10 @@ type Store interface {
 	// been written after the marker existed; idempotent, and recorded as done
 	// only once every write succeeded.
 	BackfillDeletedLayout(ctx context.Context) error
+	// DeletedLayoutBackfilled reports whether BackfillDeletedLayout has
+	// completed on this index; a negative deletedLayout lookup is only
+	// trustworthy once it has.
+	DeletedLayoutBackfilled(ctx context.Context) (bool, error)
 	GetHeadsWithFtQueueCtrGreaterThan(ctx context.Context, threshold uint64) ([]HeadsStateEntry, error)
 	ClearHeadsState(ctx context.Context) error
 

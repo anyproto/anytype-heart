@@ -259,6 +259,10 @@ func (s *invalidStore) BackfillDeletedLayout(ctx context.Context) error {
 	return s.err
 }
 
+func (s *invalidStore) DeletedLayoutBackfilled(ctx context.Context) (bool, error) {
+	return false, s.err
+}
+
 func (s *invalidStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error) {
 	return s.err
 }

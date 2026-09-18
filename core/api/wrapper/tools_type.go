@@ -629,7 +629,14 @@ func (r *Runner) createTypeRequest(ctx context.Context, session *Session, spaceI
 	}, &result); err != nil {
 		if dry {
 			// says which of the two POST /types failed; the pre-flight's
-			// failure means nothing was written, the real one does not
+			// failure means nothing was written, the real one does not. The
+			// input-repair prefix is for the caller's own 4xx: a server
+			// error (the space's index could not be read) is nothing the
+			// name or formats can repair
+			var te *ToolError
+			if errors.As(err, &te) && te.Status >= 500 {
+				return nil, prefixToolError(err, "the pre-flight did not run, nothing was created")
+			}
 			return nil, prefixToolError(err, "check the type name and formats")
 		}
 		return nil, err

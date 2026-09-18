@@ -3,6 +3,7 @@ package objectstore
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
@@ -19,6 +20,30 @@ import (
 type StoreFixture struct {
 	*dsObjectStore
 	FullText ftsearch.FTSearch
+
+	backfilledMu sync.Mutex
+	backfilled   map[string]bool
+}
+
+// SpaceIndex opens the space's index as a LOADED space would have it: the
+// indexer runs BackfillDeletedLayout on every space load, so a negative
+// deletedLayout lookup is trusted only behind its completion marker. The
+// fixture writes that marker the first time it opens a space; a test that
+// wants the pre-migration state clears the heads state afterwards.
+func (fx *StoreFixture) SpaceIndex(spaceId string) spaceindex.Store {
+	store := fx.dsObjectStore.SpaceIndex(spaceId)
+	fx.backfilledMu.Lock()
+	defer fx.backfilledMu.Unlock()
+	if fx.backfilled[spaceId] {
+		return store
+	}
+	if fx.backfilled == nil {
+		fx.backfilled = map[string]bool{}
+	}
+	if err := store.BackfillDeletedLayout(context.Background()); err == nil {
+		fx.backfilled[spaceId] = true
+	}
+	return store
 }
 
 // func (fx *StoreFixture) TechSpaceId() string {

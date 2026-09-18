@@ -3420,6 +3420,9 @@ paths:
       tags:
       - Properties
     post:
+      description: 'Names are not identities: without an explicit key, a name a visible
+        property already carries is refused. Supply a different available key to create
+        another property with that name; the response carries a warning.'
       operationId: create_property
       parameters:
       - description: Space id

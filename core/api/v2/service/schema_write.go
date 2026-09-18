@@ -1208,11 +1208,13 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 	// not identity)
 	{
 		nfcName := norm.NFC.String(req.Name)
+		keyTaken, slugHolders := servedPropertyKeySets(propEntries)
 		for _, entry := range propEntries {
 			if entry.Hidden || entry.Name == "" || norm.NFC.String(entry.Name) != nfcName {
 				continue
 			}
-			existing := s.servedKeySpeller(spaceId)(entry.Key)
+			// spelled from the snapshot the two checks share, not a fresh load
+			existing := servedKey(entry.Key, entry.Slug, keyTaken, slugHolders)
 			if req.Key == "" {
 				return nil, v2model.ValidationFailed("property name already exists",
 					v2model.Issue{Path: "/name",

@@ -839,8 +839,15 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 	// already occupies (the request namespace excludes hidden entries, the
 	// mint does not), so the receipt and the option spelling follow the
 	// stored one, never the proposal (TestCreateReturnsTheStoredKeyNotTheProposal)
-	if !isBundled {
-		if stored := pbtypes.GetString(resp.Details, bundle.RelationKeyApiObjectKey.String()); stored != "" && stored != reportedKey {
+	// An explicitly EMPTY stored slug is authoritative too: the mint's
+	// suffix walk ran out and stored nothing, so the minted relation key is
+	// the property's only address (CreateProperty reads it the same way).
+	if !isBundled && resp.Details != nil {
+		stored := storedApiKeyOf(resp.Details, reportedKey)
+		if stored == "" {
+			stored = resp.Key
+		}
+		if stored != "" && stored != reportedKey {
 			reportedKey = stored
 			r.sideEffects.Properties[rowIndex].Key = stored
 			r.mintedSlugByKey[docKey] = stored

@@ -262,6 +262,36 @@ func TestCreateTypeRefusesAnUnaddressableMintedProperty(t *testing.T) {
 	assert.Len(t, fx.sent("POST /v2/spaces/space1/types"), 1, "the dry run only")
 }
 
+// TestCreateTypePreflightPrefixFollowsTheStatus: "check the type name and
+// formats" repairs a 4xx of the caller's own making; a server error from
+// the pre-flight (the space's index could not be read) is nothing the name
+// or formats can repair, and the prefix then says only that nothing ran.
+func TestCreateTypePreflightPrefixFollowsTheStatus(t *testing.T) {
+	t.Run("a validation refusal gets the input-repair prefix", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
+		fx.stub("POST /v2/spaces/space1/types", 400, `{"status":400,"code":"validation_failed","message":"type name already exists","issues":[]}`)
+
+		_, err := fx.Run(context.Background(), "create_type", map[string]any{"space": "space1", "name": "Thing"})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "check the type name and formats")
+	})
+
+	t.Run("a server error gets a neutral prefix", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
+		fx.stub("POST /v2/spaces/space1/types", 500, `{"status":500,"code":"internal_error","message":"could not verify type \"thing\" in space \"space1\" — retry","issues":[{"message":"the space's index could not be read"}]}`)
+
+		_, err := fx.Run(context.Background(), "create_type", map[string]any{"space": "space1", "name": "Thing"})
+
+		require.Error(t, err)
+		assert.NotContains(t, err.Error(), "check the type name and formats")
+		assert.Contains(t, err.Error(), "nothing was created")
+		assert.Contains(t, err.Error(), "could not verify type")
+	})
+}
+
 // TestObjectArgRefusalShowsTheShape covers the message that cost a model
 // eight turns and 43k tokens. It had found both objects and picked the right
 // property, then sent `set: "Linked Projects: 2"` — a string. The refusal

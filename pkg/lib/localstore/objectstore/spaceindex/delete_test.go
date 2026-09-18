@@ -497,7 +497,15 @@ func TestBackfillDeletedLayout(t *testing.T) {
 		},
 	})
 
+	done, err := s.DeletedLayoutBackfilled(ctx)
+	require.NoError(t, err)
+	assert.False(t, done, "nothing has run yet")
+
 	require.NoError(t, s.BackfillDeletedLayout(ctx))
+
+	done, err = s.DeletedLayoutBackfilled(ctx)
+	require.NoError(t, err)
+	assert.True(t, done, "completion is what the probe reads")
 
 	for id, want := range map[string]int64{"typeOld": int64(model.ObjectType_objectType), "relOld": int64(model.ObjectType_relation)} {
 		row, err := s.GetDetails(id)
@@ -526,4 +534,15 @@ func TestBackfillDeletedLayout(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, records, 1)
 	assert.Equal(t, "typeOld", records[0].Details.GetString(bundle.RelationKeyId))
+
+	// the marker lives with the heads state: clearing it (a full reindex)
+	// makes the next load scan again, and the probe says so meanwhile
+	require.NoError(t, s.ClearHeadsState(ctx))
+	done, err = s.DeletedLayoutBackfilled(ctx)
+	require.NoError(t, err)
+	assert.False(t, done, "cleared with the heads state")
+	require.NoError(t, s.BackfillDeletedLayout(ctx))
+	done, err = s.DeletedLayoutBackfilled(ctx)
+	require.NoError(t, err)
+	assert.True(t, done)
 }

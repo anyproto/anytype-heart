@@ -603,6 +603,41 @@ func TestV2RoundFourCarriedForward(t *testing.T) {
 		assert.Equal(t, "harvest_season_2", result.Created.Options[0].Property)
 	})
 
+	t.Run("R3-c: a mint whose suffix walk ran out reports the minted key, the property's only address", func(t *testing.T) {
+		fx := setup(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("rel-hs-bare"),
+			bundle.RelationKeyRelationKey:    domain.String("6a7663db61fab21cd4b9e303"),
+			bundle.RelationKeyName:           domain.String("Harvest Season (minted)"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+			bundle.RelationKeyIsHidden:       domain.Bool(true),
+		})
+		// the mint answered with an EMPTY apiObjectKey: authoritative, not
+		// absent — the proposal must not survive it
+		fx.mwMock.EXPECT().ObjectCreateRelation(mock.Anything, mock.Anything).Return(&pb.RpcObjectCreateRelationResponse{
+			ObjectId: "rel-hs-bare", Key: "6a7663db61fab21cd4b9e303",
+			Details: &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyApiObjectKey.String(): pbtypes.String("")}},
+			Error:   &pb.RpcObjectCreateRelationResponseError{Code: pb.RpcObjectCreateRelationResponseError_NULL},
+		}).Once()
+		fx.mwMock.EXPECT().ObjectCreateRelationOption(mock.Anything, mock.Anything).Return(&pb.RpcObjectCreateRelationOptionResponse{
+			ObjectId: "opt-summer", Error: &pb.RpcObjectCreateRelationOptionResponseError{Code: pb.RpcObjectCreateRelationOptionResponseError_NULL},
+		}).Once()
+		fx.mwMock.EXPECT().ObjectCreateObjectType(mock.Anything, mock.Anything).Return(&pb.RpcObjectCreateObjectTypeResponse{
+			ObjectId: "type-plant", Error: &pb.RpcObjectCreateObjectTypeResponseError{Code: pb.RpcObjectCreateObjectTypeResponseError_NULL},
+		}).Once()
+		fx.expectEtagRead("type-plant")
+
+		result, err := fx.CreateType(ctx, testSpaceId,
+			[]byte(`{"name":"Plant","property_definitions":[{"name":"Harvest Season","format":"select","options":[{"name":"Summer"}]}]}`), false, true)
+
+		require.NoError(t, err)
+		require.NotNil(t, result.Created)
+		require.Len(t, result.Created.Properties, 1)
+		assert.Equal(t, "6a7663db61fab21cd4b9e303", result.Created.Properties[0].Key, "the minted key, not the proposal")
+		require.Len(t, result.Created.Options, 1)
+		assert.Equal(t, "6a7663db61fab21cd4b9e303", result.Created.Options[0].Property)
+	})
+
 	t.Run("R3-f: list_objects lists the system keys as served too", func(t *testing.T) {
 		fx := setup(t)
 
@@ -624,5 +659,47 @@ func TestV2RoundFourCarriedForward(t *testing.T) {
 		issue := issueAt(t, err, "/fields/0")
 		assert.Contains(t, issue.Message, "last_opened_date")
 		assert.NotContains(t, issue.Message, "lastOpenedDate")
+	})
+}
+
+// TestV2RemovalIndexGate: until the deletedLayout backfill has completed on
+// a space, a miss from the exact tombstone query proves nothing — a legacy
+// tombstone may still lack its marker — so type resolution must not fall
+// through to the name and fold steps on its strength. The scenario the
+// review named: a removed "widget" and a live "machine" NAMED widget; on
+// an incomplete index a delete of "widget" must not land on machine.
+func TestV2RemovalIndexGate(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("an incomplete index refuses to verify a spelling instead of folding it onto a live namesake", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("type-machine"),
+			bundle.RelationKeyUniqueKey:    domain.String("ot-6aad7fbf61fab205fe53c2a1"),
+			bundle.RelationKeyApiObjectKey: domain.String("machine"),
+			bundle.RelationKeyName:         domain.String("widget"),
+		})
+		// the pre-migration state: the marker is gone with the heads state
+		require.NoError(t, fx.objectStore.SpaceIndex(testSpaceId).ClearHeadsState(ctx))
+
+		_, err := fx.DeleteType(ctx, testSpaceId, "widget", true)
+
+		var v2Err *v2model.Error
+		require.ErrorAs(t, err, &v2Err)
+		assert.Equal(t, http.StatusInternalServerError, v2Err.Status)
+		assert.Equal(t, v2model.CodeInternalError, v2Err.Code)
+		assert.Contains(t, v2Err.Message, `could not verify type "widget"`)
+		require.Len(t, v2Err.Issues, 1)
+		assert.Contains(t, v2Err.Issues[0].Message, "not complete yet")
+
+		// the live spelling needs no negative lookup and still resolves
+		_, err = fx.DeleteType(ctx, testSpaceId, "machine", true)
+		require.NoError(t, err)
+
+		// a completed backfill makes the miss trustworthy: the name step
+		// resolves widget to machine again
+		require.NoError(t, fx.objectStore.SpaceIndex(testSpaceId).BackfillDeletedLayout(ctx))
+		_, err = fx.DeleteType(ctx, testSpaceId, "widget", true)
+		require.NoError(t, err)
 	})
 }
