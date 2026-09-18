@@ -13,6 +13,7 @@ import (
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -394,6 +395,101 @@ func TestV2PropertyIdResolutionChain(t *testing.T) {
 		apiErr := v2ErrWithIssue(t, err)
 		require.NotEmpty(t, apiErr.Issues)
 		assert.Equal(t, "/type_properties/0/format", apiErr.Issues[0].Path)
+	})
+
+	t.Run("a name-only entry declaring a format the stored property lacks is refused on PATCH", func(t *testing.T) {
+		// given: the benchmark's call 47 — {"name":"Condition","format":"select"}
+		// against a stored text property. The entry names its property by
+		// `name` alone (the served property_definitions shape), which the
+		// codec matches by display name past the old guard; the property then
+		// stayed text and the 200 said nothing.
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t) // "Severity", format select
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:        domain.String("type-edit"),
+			bundle.RelationKeyUniqueKey: domain.String("ot-editable"),
+			bundle.RelationKeyName:      domain.String("Editable"),
+		})
+
+		// when
+		_, err := fx.UpdateType(context.Background(), testSpaceId, "editable",
+			"", []byte(`{"type_settings":{"property_definitions":[{"name":"Severity","format":"text"}]}}`), false, true)
+
+		// then: the same refusal the key-addressed entry gets, naming both formats
+		apiErr := v2ErrWithIssue(t, err)
+		assert.Equal(t, "property format conflict", apiErr.Message)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "/type_properties/0/format", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, `"Severity" declares format "text"`)
+		assert.Contains(t, apiErr.Issues[0].Message, `has format "select"`)
+	})
+
+	// The read side folds longtext and shorttext to one word, "text", while
+	// FormatByName answers only longtext. Comparing raw enums therefore made
+	// every shorttext property unsatisfiable: no format string matched, and
+	// the refusal read `declares format "text" but the existing property has
+	// format "text"`. shorttext is not exotic — it is the object title and 16
+	// other bundled keys, plus every property a markdown import minted before
+	// that default became longtext.
+	t.Run("a shorttext property is satisfied by the text it is served as", func(t *testing.T) {
+		// given: a stored shorttext property, served as format "text"
+		fx := newV2Fixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("rel-notes"),
+			bundle.RelationKeyRelationKey:    domain.String("notes"),
+			bundle.RelationKeyApiObjectKey:   domain.String("notes"),
+			bundle.RelationKeyName:           domain.String("Notes"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
+		})
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:        domain.String("type-note"),
+			bundle.RelationKeyUniqueKey: domain.String("ot-note"),
+			bundle.RelationKeyName:      domain.String("Note"),
+		})
+
+		// when — the format the read serves for it
+		err := fx.validateTypePropertyFormats(testSpaceId, []anyblockjson.TypeProperty{
+			{Name: "Notes", Format: "text"},
+		})
+
+		// then: accepted. Comparing raw enums refused this as text != text.
+		require.NoError(t, err)
+	})
+
+	t.Run("a name-only entry declaring a format the stored property lacks is refused on POST", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+
+		// when
+		_, err := fx.CreateType(context.Background(), testSpaceId,
+			[]byte(`{"kind":"object_type","properties":{"name":"Incident 3"},"type_settings":{"api_key":"incident3","property_definitions":[{"name":"Severity","format":"text"}]}}`), false, true)
+
+		// then
+		apiErr := v2ErrWithIssue(t, err)
+		assert.Equal(t, "property format conflict", apiErr.Message)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Contains(t, apiErr.Issues[0].Message, `has format "select"`)
+	})
+
+	t.Run("a name-only entry whose declared format matches the stored one passes", func(t *testing.T) {
+		// given: the legitimate read-modify-write shape — the name resolves
+		// to the existing property and the format agrees
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:        domain.String("type-edit"),
+			bundle.RelationKeyUniqueKey: domain.String("ot-editable"),
+			bundle.RelationKeyName:      domain.String("Editable"),
+		})
+
+		// when: a dry run, so nothing is written
+		result, err := fx.UpdateType(context.Background(), testSpaceId, "editable",
+			"", []byte(`{"type_settings":{"property_definitions":[{"name":"Severity","format":"select"}]}}`), true, true)
+
+		// then: resolved, not minted
+		require.NoError(t, err)
+		assert.Nil(t, result.Created, "the existing property is used, nothing is created")
 	})
 
 	t.Run("a custom key still creates on a full miss, slug stamped", func(t *testing.T) {

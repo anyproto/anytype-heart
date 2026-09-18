@@ -98,6 +98,143 @@ func TestV2GetQueryObjects(t *testing.T) {
 		assert.Equal(t, "chore1", rows[0].Id)
 	})
 
+	t.Run("a query with one stored view applies it when view is omitted", func(t *testing.T) {
+		// given: the benchmark's Autumn-harvest shape — one view filtering to
+		// severity=High. Before this, an omitted view meant NO view, and the
+		// query returned every chore with a plausible total and no signal.
+		fx := searchSetup(t)
+		dv := &model.BlockContentDataview{Views: []*model.BlockContentDataviewView{{
+			Id:   "view1abc",
+			Name: "High only",
+			Filters: []*model.BlockContentDataviewFilter{{
+				RelationKey: "severity",
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList([]string{"opt-high"}),
+			}},
+		}}}
+		fx.expectListRead("query1", queryRead(dv))
+
+		// when: no view passed
+		rows, total, _, warnings, err := fx.GetQueryObjects(context.Background(), testSpaceId, "query1", "", nil, 0, 25)
+
+		// then: the view's filter applied, and one view needs no explanation
+		require.NoError(t, err)
+		assert.Equal(t, 1, total)
+		assert.Equal(t, []string{"chore1"}, rowIds(rows))
+		assert.Empty(t, warnings)
+	})
+
+	t.Run("a query with several views applies the first and names the others", func(t *testing.T) {
+		// given: the default tab filters, the second does not
+		fx := searchSetup(t)
+		dv := &model.BlockContentDataview{Views: []*model.BlockContentDataviewView{
+			{
+				Id:   "viewHigh1",
+				Name: "High only",
+				Filters: []*model.BlockContentDataviewFilter{{
+					RelationKey: "severity",
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value:       pbtypes.StringList([]string{"opt-high"}),
+				}},
+			},
+			{Id: "viewAll2", Name: "All"},
+			{Id: "viewNoName3"},
+		}}
+		fx.expectListRead("query1", queryRead(dv))
+
+		// when
+		rows, total, _, warnings, err := fx.GetQueryObjects(context.Background(), testSpaceId, "query1", "", nil, 0, 25)
+
+		// then: position 0 applied, not refused; the response says which and
+		// lists the rest by id and name so the caller can re-request
+		require.NoError(t, err)
+		assert.Equal(t, 1, total)
+		assert.Equal(t, []string{"chore1"}, rowIds(rows))
+		require.Len(t, warnings, 1)
+		assert.Equal(t, "view", warnings[0].Path)
+		assert.Contains(t, warnings[0].Message, `first view "High only" (viewHigh1) was applied`)
+		assert.Contains(t, warnings[0].Message, `"All" (viewAll2)`)
+		assert.Contains(t, warnings[0].Message, "viewNoName3")
+		assert.Contains(t, warnings[0].Hint, "view=<id>")
+	})
+
+	// A stored view now applies by default, so a filter keyed on a property
+	// the space no longer holds empties the page for every caller — the
+	// silent no-match this file's contract rules out. The rows are still
+	// empty (the filter genuinely matches nothing); what must not be empty is
+	// the explanation.
+	t.Run("a default view filtering on a deleted property warns instead of emptying silently", func(t *testing.T) {
+		// given: one stored view, filtering on a key no live property has
+		fx := searchSetup(t)
+		dv := &model.BlockContentDataview{Views: []*model.BlockContentDataviewView{{
+			Id:   "vgone",
+			Name: "By status",
+			Filters: []*model.BlockContentDataviewFilter{{
+				RelationKey: "a_property_that_was_deleted",
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList([]string{"whatever"}),
+			}},
+		}}}
+		fx.expectListRead("query1", queryRead(dv))
+
+		// when — no view requested, so the stored one applies
+		rows, total, _, warnings, err := fx.GetQueryObjects(context.Background(), testSpaceId, "query1", "", nil, 0, 25)
+
+		// then: empty, but said out loud, naming the view and the key
+		require.NoError(t, err)
+		assert.Empty(t, rows)
+		assert.Zero(t, total)
+		require.NotEmpty(t, warnings, "an empty page from a dangling filter must not be silent")
+		joined := ""
+		for _, w := range warnings {
+			joined += w.Message + " | " + w.Hint + " "
+		}
+		assert.Contains(t, joined, "a_property_that_was_deleted")
+		assert.Contains(t, joined, "By status")
+		assert.Contains(t, joined, "matches nothing")
+	})
+
+	t.Run("a query whose dataview has no views reads its source only", func(t *testing.T) {
+		// given
+		fx := searchSetup(t)
+		fx.expectListRead("query1", queryRead(&model.BlockContentDataview{}))
+
+		// when
+		rows, total, _, warnings, err := fx.GetQueryObjects(context.Background(), testSpaceId, "query1", "", nil, 0, 25)
+
+		// then: unchanged — source constraints only, nothing to explain
+		require.NoError(t, err)
+		assert.Equal(t, 2, total)
+		assert.ElementsMatch(t, []string{"chore1", "chore2"}, rowIds(rows))
+		assert.Empty(t, warnings)
+	})
+
+	t.Run("an explicit view wins over the default first view", func(t *testing.T) {
+		// given: the first view filters, the second does not
+		fx := searchSetup(t)
+		dv := &model.BlockContentDataview{Views: []*model.BlockContentDataviewView{
+			{
+				Id:   "viewHigh1",
+				Name: "High only",
+				Filters: []*model.BlockContentDataviewFilter{{
+					RelationKey: "severity",
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value:       pbtypes.StringList([]string{"opt-high"}),
+				}},
+			},
+			{Id: "viewAll2", Name: "All"},
+		}}
+		fx.expectListRead("query1", queryRead(dv))
+
+		// when
+		rows, _, _, warnings, err := fx.GetQueryObjects(context.Background(), testSpaceId, "query1", "viewAll2", nil, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"chore1", "chore2"}, rowIds(rows))
+		assert.Empty(t, warnings, "an explicit choice needs no explanation")
+	})
+
 	t.Run("stored-view execution substitutes the current-user placeholder", func(t *testing.T) {
 		// given: the fixture's chore1 is created by the caller, chore2 by
 		// someone else (addChoreObjects)
@@ -306,6 +443,86 @@ func TestV2GetCollectionObjects(t *testing.T) {
 		assert.Empty(t, rows)
 		assert.Equal(t, 2, total)
 		assert.False(t, hasMore)
+	})
+
+	t.Run("a collection's filtering view is not applied unless requested", func(t *testing.T) {
+		// given: one view, filtering to severity=High — the case where a
+		// query WOULD apply it by default. A collection's objects are its
+		// membership, so the set comes back whole, in store order, and the
+		// response only notes that the filtering view exists.
+		fx := searchSetup(t)
+		dv := &model.BlockContentDataview{Views: []*model.BlockContentDataviewView{{
+			Id:   "viewHigh1",
+			Name: "High only",
+			Filters: []*model.BlockContentDataviewFilter{{
+				RelationKey: "severity",
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList([]string{"opt-high"}),
+			}},
+		}}}
+		fx.expectListRead("col1", collectionRead(dv, []string{"chore2", "chore1"}))
+
+		// when: no view passed
+		rows, total, _, warnings, err := fx.GetCollectionObjects(context.Background(), testSpaceId, "col1", "", nil, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, 2, total)
+		assert.Equal(t, []string{"chore2", "chore1"}, rowIds(rows), "membership, in store order")
+		require.Len(t, warnings, 1)
+		assert.Equal(t, "view", warnings[0].Path)
+		// the message must not claim completeness: the same response
+		// legitimately drops archived and dangling members
+		assert.Equal(t, `the filtering view "High only" (viewHigh1) did not apply; `+
+			`a collection reads the members it holds, not a view's selection`, warnings[0].Message)
+		assert.NotContains(t, warnings[0].Message, "whole membership")
+		assert.NotEmpty(t, warnings[0].Hint)
+	})
+
+	t.Run("a collection's view filter applies when the view is requested", func(t *testing.T) {
+		// given: the same collection
+		fx := searchSetup(t)
+		dv := &model.BlockContentDataview{Views: []*model.BlockContentDataviewView{{
+			Id:   "viewHigh1",
+			Name: "High only",
+			Filters: []*model.BlockContentDataviewFilter{{
+				RelationKey: "severity",
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       pbtypes.StringList([]string{"opt-high"}),
+			}},
+		}}}
+		fx.expectListRead("col1", collectionRead(dv, []string{"chore2", "chore1"}))
+
+		// when: the caller asked for it
+		rows, total, _, warnings, err := fx.GetCollectionObjects(context.Background(), testSpaceId, "col1", "viewHigh1", nil, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, 1, total)
+		assert.Equal(t, []string{"chore1"}, rowIds(rows))
+		assert.Empty(t, warnings)
+	})
+
+	t.Run("a collection whose views only sort is read silently", func(t *testing.T) {
+		// given: a sort-only view changes no membership, so there is nothing
+		// to note
+		fx := searchSetup(t)
+		dv := &model.BlockContentDataview{Views: []*model.BlockContentDataviewView{{
+			Id: "v1",
+			Sorts: []*model.BlockContentDataviewSort{{
+				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+				Type:        model.BlockContentDataviewSort_Asc,
+			}},
+		}}}
+		fx.expectListRead("col1", collectionRead(dv, []string{"chore2", "chore1"}))
+
+		// when
+		rows, _, _, warnings, err := fx.GetCollectionObjects(context.Background(), testSpaceId, "col1", "", nil, 0, 25)
+
+		// then: store order, no warning
+		require.NoError(t, err)
+		assert.Equal(t, []string{"chore2", "chore1"}, rowIds(rows))
+		assert.Empty(t, warnings)
 	})
 
 	t.Run("a stored view's sorts override the membership order", func(t *testing.T) {

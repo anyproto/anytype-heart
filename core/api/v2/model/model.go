@@ -387,9 +387,12 @@ type CreateResult struct {
 	DryRun  bool         `json:"dry_run,omitempty"`
 	Created *SideEffects `json:"created,omitempty"`
 	Removed *SideEffects `json:"removed,omitempty"`
-	// CreatedViews maps an insert_view op's position ("/ops/N") to the view id
-	// it minted. A view id is always server-minted — the payload has no id
-	// slot — so without this a caller cannot address the view they just made.
+	// A view id is always server-minted (the payload has no id slot), so
+	// without this a caller cannot address the view they just made. The
+	// attached line below is served: swag lifts a field's doc comment onto
+	// the schema, and the prose rules apply to it.
+
+	// The view id each insert_view op minted, keyed by the op's position, such as /ops/0.
 	CreatedViews map[string]string `json:"created_views,omitempty"`
 	Issues       []Issue           `json:"issues,omitempty"`
 	Warnings     []Issue           `json:"warnings,omitempty"`

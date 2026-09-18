@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
@@ -221,8 +222,8 @@ func (s *Service) listViews(ctx context.Context, spaceId, listId string, want li
 	return page, total, hasMore, nil
 }
 
-// listObjects executes the query / collection membership, optionally
-// through one stored view's filters and sorts.
+// listObjects executes the query / collection membership through the stored
+// view selectView picks: the requested one, a query's first view, or none.
 func (s *Service) listObjects(ctx context.Context, spaceId, listId string, want listKind, viewRef string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
 	target, err := s.readListTarget(ctx, spaceId, listId, want)
 	if err != nil {
@@ -237,13 +238,14 @@ func (s *Service) listObjects(ctx context.Context, spaceId, listId string, want 
 		sorts    []database.SortRequest
 		warnings []v2model.Issue
 	)
-	if viewRef != "" {
-		view, err := resolveViewRef(target.dataview, viewRef, listId)
-		if err != nil {
-			return nil, 0, false, nil, err
-		}
+	view, viewIssues, err := s.selectView(target.dataview, want, viewRef, listId)
+	if err != nil {
+		return nil, 0, false, nil, err
+	}
+	warnings = append(warnings, viewIssues...)
+	if view != nil {
 		viewFilters, viewWarnings := s.substitutePlaceholders(spaceId, listId, view.Filters)
-		warnings = viewWarnings
+		warnings = append(warnings, viewWarnings...)
 		filters = append(filters, database.FiltersFromProto(viewFilters)...)
 		sorts = database.SortsFromProto(view.Sorts)
 	}
@@ -273,6 +275,10 @@ func (s *Service) listObjects(ctx context.Context, spaceId, listId string, want 
 		records []database.Record
 		total   int
 	)
+	defaultedView := view
+	if viewRef != "" {
+		defaultedView = nil // the caller chose this view; it is not a surprise
+	}
 	if want == listKindCollection && len(sorts) == 0 {
 		// no stored sort: a collection reads in its curated store-slice
 		// order, so the matching members are fetched in full and reordered
@@ -309,6 +315,14 @@ func (s *Service) listObjects(ctx context.Context, spaceId, listId string, want 
 	rows := make([]v2model.ObjectRow, 0, len(records))
 	for _, record := range records {
 		rows = append(rows, builder.row(record))
+	}
+	// Checked here, not before the query, and only for a view the caller did
+	// not choose: the harm is an empty page nobody asked for. A view that
+	// returns rows is doing its job whatever its filters name, and warning
+	// then would fire on every ordinary read whose filter keys the live set
+	// happens not to list.
+	if total == 0 && defaultedView != nil {
+		warnings = append(warnings, s.danglingFilterWarnings(spaceId, defaultedView)...)
 	}
 	return rows, total, offset+len(records) < total, warnings, nil
 }
@@ -362,6 +376,84 @@ func (s *Service) validateListFields(spaceId string, fields []string, v errKeys)
 		return v2model.ValidationFailed(fmt.Sprintf("unknown %s", v.propertiesWord()), issues...)
 	}
 	return nil
+}
+
+// selectView decides which stored view, if any, shapes the read. An explicit
+// viewRef always wins, for both kinds. Without one the two kinds deliberately
+// differ, and the asymmetry is a product decision, not an accident:
+//
+//   - a QUERY is its views: its source names a population and the view is
+//     what turns that into the rows a user sees. So an omitted view means
+//     "the view this query has" — position 0, which is the client's default
+//     tab — never "no view". Before this, the benchmark's Autumn-harvest
+//     query returned all five plants with a confident total and no signal.
+//     With several views the choice is stated in an informational issue that
+//     names the applied view and the others, so a caller can re-request; a
+//     refusal would break every caller who never passes view.
+//   - a COLLECTION is its membership: a caller asking for a collection's
+//     objects means the set, not one filtered tab. So no view applies by
+//     default, even when the collection has exactly one, and a filtering
+//     view is only noted so the caller knows it exists.
+//
+// The issues carry the full stored view ids: resolveViewRef accepts an exact
+// id, so they always round-trip, whichever id form the views listing served.
+func (s *Service) selectView(dv *model.BlockContentDataview, want listKind, viewRef, listId string) (*model.BlockContentDataviewView, []v2model.Issue, error) {
+	if viewRef != "" {
+		view, err := resolveViewRef(dv, viewRef, listId)
+		if err != nil {
+			return nil, nil, err
+		}
+		return view, nil, nil
+	}
+	if dv == nil || len(dv.Views) == 0 {
+		return nil, nil, nil
+	}
+	switch want {
+	case listKindQuery:
+		chosen := dv.Views[0]
+		if len(dv.Views) == 1 {
+			return chosen, nil, nil
+		}
+		others := make([]string, 0, len(dv.Views)-1)
+		for _, other := range dv.Views[1:] {
+			others = append(others, describeView(other))
+		}
+		return chosen, []v2model.Issue{{
+			Path: "view",
+			Message: fmt.Sprintf("query %q has %d views and none was requested, so its first view %s was applied; the others are %s",
+				listId, len(dv.Views), describeView(chosen), strings.Join(others, ", ")),
+			Hint: "pass view=<id> to read through another view",
+		}}, nil
+	case listKindCollection:
+		var filtering []string
+		for _, view := range dv.Views {
+			if len(view.Filters) > 0 {
+				filtering = append(filtering, describeView(view))
+			}
+		}
+		if len(filtering) == 0 {
+			return nil, nil, nil
+		}
+		noun := "view"
+		if len(filtering) > 1 {
+			noun = "views"
+		}
+		return nil, []v2model.Issue{{
+			Path:    "view",
+			Message: fmt.Sprintf("the filtering %s %s did not apply; a collection reads the members it holds, not a view's selection", noun, strings.Join(filtering, ", ")),
+			Hint:    "pass view=<id> to read through a view",
+		}}, nil
+	}
+	return nil, nil, nil
+}
+
+// describeView renders one stored view as `"Name" (id)` for an issue; a view
+// without a name is its id alone.
+func describeView(view *model.BlockContentDataviewView) string {
+	if view.Name == "" {
+		return view.Id
+	}
+	return fmt.Sprintf("%q (%s)", view.Name, view.Id)
 }
 
 // resolveViewRef picks a stored view by exact id or unique suffix (the C4
@@ -525,6 +617,64 @@ func (b *byPrecomputedKey) Swap(i, j int) {
 // is wired — drops its leaf and degrades to a C6 warning: evaluated
 // literally it would match nothing, v1's silent-empty-result bug. The
 // snapshot is a per-read copy, so substitution never touches live state.
+// danglingFilterWarnings reports the view filters keyed on a property the
+// space no longer holds. Such a filter matches nothing, so the read comes back
+// empty — and since a stored view now applies by default, that empty page is
+// what an ordinary caller sees, with no signal that the view is the reason.
+// This file's contract is that an unresolvable filter degrades to a warning
+// and never to a silent no-match, which substitutePlaceholders already honours
+// for placeholders; a deleted property is the same failure through a different
+// door.
+//
+// The store is consulted only when a view actually carries filters.
+func (s *Service) danglingFilterWarnings(spaceId string, view *model.BlockContentDataviewView) []v2model.Issue {
+	if len(view.Filters) == 0 {
+		return nil
+	}
+	keys := map[string]bool{}
+	var walk func(nodes []*model.BlockContentDataviewFilter)
+	walk = func(nodes []*model.BlockContentDataviewFilter) {
+		for _, node := range nodes {
+			if node == nil {
+				continue
+			}
+			if node.RelationKey != "" {
+				keys[node.RelationKey] = true
+			}
+			walk(node.NestedFilters)
+		}
+	}
+	walk(view.Filters)
+	if len(keys) == 0 {
+		return nil
+	}
+	entries, err := s.liveProperties(spaceId)
+	if err != nil {
+		return nil // a store hiccup must not fail the read; the rows still stand
+	}
+	for _, entry := range entries {
+		delete(keys, entry.Key)
+	}
+	if len(keys) == 0 {
+		return nil
+	}
+	missing := make([]string, 0, len(keys))
+	for key := range keys {
+		missing = append(missing, strconv.Quote(key))
+	}
+	sort.Strings(missing)
+	noun := "a property"
+	if len(missing) > 1 {
+		noun = "properties"
+	}
+	return []v2model.Issue{{
+		Path: "view",
+		Message: fmt.Sprintf("the view %s filters on %s no property in this space answers to (%s), so it matches nothing",
+			describeView(view), noun, strings.Join(missing, ", ")),
+		Hint: "the property was probably deleted; edit the view's filters, or pass view=<id> to read through another view",
+	}}
+}
+
 func (s *Service) substitutePlaceholders(spaceId, hostId string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewFilter, []v2model.Issue) {
 	var warnings []v2model.Issue
 	substitute := func(value string) (string, bool) {

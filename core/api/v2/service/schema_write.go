@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
 	"github.com/gogo/protobuf/types"
+	"golang.org/x/text/unicode/norm"
 )
 
 // detailKeyId mirrors the anyblockjson envelope lift: the minted id detail
@@ -441,11 +442,22 @@ func (s *Service) validateTypePropertyFormats(spaceId string, props []anyblockjs
 		if term == "" {
 			term = tp.InternalKey
 		}
+		if term == "" {
+			// the served property_definitions item names its property by
+			// `name` alone, and the codec resolves such an entry through the
+			// NFC name (identityForResolution) — which resolvePropertyInput's
+			// display-name step answers with the existing property. This guard
+			// used to skip name-only entries, so the codec then matched
+			// {"name":"Condition","format":"select"} to the stored text
+			// property and kept it text, silently. Same identity, same guard.
+			term = norm.NFC.String(tp.Name)
+		}
 		if term == "" || tp.Format == "" {
 			continue
 		}
-		declared, ok := anyblockjson.FormatByName(tp.Format)
-		if !ok {
+		// the value is unused — the comparison below is on format NAMES — but
+		// the lookup still rejects a spelling no format answers to
+		if _, known := anyblockjson.FormatByName(tp.Format); !known {
 			continue
 		}
 		if entries == nil {
@@ -458,7 +470,15 @@ func (s *Service) validateTypePropertyFormats(spaceId string, props []anyblockjs
 		if len(ambiguous) > 0 || !ok {
 			continue
 		}
-		if entry.Format != declared {
+		// compared through the SERVED vocabulary, not the raw enum. FormatName
+		// folds longtext and shorttext to one word, "text", while FormatByName
+		// answers only longtext — so a shorttext property (the object title,
+		// 16 other bundled keys, and every property a markdown import minted
+		// before it defaulted to longtext) could never satisfy any format
+		// string, and the refusal read `declares format "text" but the
+		// existing property has format "text"`. Folding both sides keeps the
+		// guard agreeing with the read by construction.
+		if anyblockjson.FormatName(entry.Format) != tp.Format {
 			return v2model.ValidationFailed("property format conflict",
 				v2model.Issue{
 					Path: fmt.Sprintf("/type_properties/%d/format", i),
@@ -736,12 +756,13 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 		for _, row := range detached {
 			names = append(names, row.Key)
 		}
-		result.Warnings = append(result.Warnings, v2model.Issue{
+		warning := v2model.Issue{
 			Path: "/type_settings/property_definitions",
 			Message: fmt.Sprintf("property_definitions replaces the type's whole field list: %d no longer listed (%s)",
 				len(detached), strings.Join(names, ", ")),
 			Hint: "send the complete list to keep a field, or omit property_definitions entirely to leave the list untouched",
-		})
+		}
+		result.Warnings = append(result.Warnings, warning)
 	}
 	if dryRun {
 		result.DryRun = true
