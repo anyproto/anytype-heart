@@ -398,7 +398,7 @@ func TestV2ShadowedBundledTypeIsLoud(t *testing.T) {
 	require.NoError(t, err)
 
 	// when
-	_, ok, ambiguous := fx.resolveTypeInput("object_type", entries)
+	_, ok, ambiguous := fx.resolveTypeInput(testSpaceId, "object_type", entries)
 
 	// then
 	assert.False(t, ok)
@@ -408,7 +408,7 @@ func TestV2ShadowedBundledTypeIsLoud(t *testing.T) {
 
 	// and the stored key still addresses the squatter, which is what makes the
 	// refusal actionable
-	entry, ok, ambiguous := fx.resolveTypeInput("6a7663db61fab21cd4b9e108", entries)
+	entry, ok, ambiguous := fx.resolveTypeInput(testSpaceId, "6a7663db61fab21cd4b9e108", entries)
 	require.True(t, ok)
 	assert.Empty(t, ambiguous)
 	assert.Equal(t, "type-squatter", entry.Id)

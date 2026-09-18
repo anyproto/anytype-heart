@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/storeresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -230,7 +231,7 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 		if err != nil {
 			return nil, err
 		}
-		if holder, taken := s.typeSlugConflict(slug, typeEntries); taken {
+		if holder, taken := s.typeSlugConflict(spaceId, slug, typeEntries); taken {
 			if holder.Kind == "bundled type" {
 				return nil, v2model.ValidationFailed("type key is reserved",
 					v2model.Issue{Path: keyPath,
@@ -1039,7 +1040,7 @@ func (s *Service) DeleteType(ctx context.Context, spaceId, typeKey string, dryRu
 	// the objects of the type survive it, keeping it under the spelling
 	// they were served (round-four eval R4-1): say so, on the real run and
 	// the dry run alike, as delete_property does
-	result.Warnings = append(result.Warnings, s.typeDeleteWarnings(spaceId, typeId, typeKey)...)
+	result.Warnings = append(result.Warnings, s.typeDeleteWarnings(spaceId, entry)...)
 	if dryRun {
 		result.DryRun = true
 		return result, nil
@@ -1054,10 +1055,10 @@ func (s *Service) DeleteType(ctx context.Context, spaceId, typeKey string, dryRu
 // typeDeleteWarnings names the objects a type delete leaves behind: they
 // keep the type, served under its slug, and nothing new is created in it.
 // A store error makes no warning.
-func (s *Service) typeDeleteWarnings(spaceId, typeId, servedKey string) []v2model.Issue {
+func (s *Service) typeDeleteWarnings(spaceId string, entry typeEntry) []v2model.Issue {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
-			{RelationKey: bundle.RelationKeyType, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.String(typeId)},
+			{RelationKey: bundle.RelationKeyType, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.String(entry.Id)},
 			{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
 		},
 		Limit: propertyHolderProbeLimit,
@@ -1071,10 +1072,25 @@ func (s *Service) typeDeleteWarnings(spaceId, typeId, servedKey string) []v2mode
 	} else if len(records) >= propertyHolderProbeLimit {
 		count = fmt.Sprintf("at least %d objects are", propertyHolderProbeLimit)
 	}
+	// the spelling reads serve now, and the one they will serve after: the
+	// slug, unless a removed type already answers to it — then both read
+	// under their stored keys (the twin rule)
+	served := s.apiKeys(spaceId, storeresolver.New(s.store.SpaceIndex(spaceId))).TypeSlug(entry.Key)
+	after := fmt.Sprintf("reads still spell it %q", served)
+	if entry.Slug != "" && served == entry.Slug {
+		if removed, rerr := s.removedTypes(spaceId); rerr == nil {
+			for _, e := range removed {
+				if e.Slug == entry.Slug && e.Key != entry.Key {
+					after = fmt.Sprintf("reads will spell it by its stored key %q, because a removed type already answers to %q", entry.Key, entry.Slug)
+					break
+				}
+			}
+		}
+	}
 	issue := v2model.Issue{
 		Path:    "key",
-		Message: fmt.Sprintf("%s of type %q; they keep it, and reads still spell it %q, but nothing new is created in it and it is not listed or filterable, until this same type is restored in the app", count, servedKey, servedKey),
-	}.Hintf("a dry run reports this without deleting; to keep the type usable, keep it — its objects are listed by %s", v2model.RefListObjects(spaceId).With("type", servedKey))
+		Message: fmt.Sprintf("%s of type %q; they keep it, and %s, but nothing new is created in it and it is not listed or filterable, until this same type is restored in the app", count, served, after),
+	}.WithHint(v2model.Plain("a dry run reports this without deleting; to keep the type usable, keep it"))
 	return []v2model.Issue{issue}
 }
 

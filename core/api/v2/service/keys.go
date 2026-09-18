@@ -410,7 +410,7 @@ func (s *Service) resolvePropertyInput(input string, entries []propertyEntry) (p
 }
 
 // resolveTypeInput is resolvePropertyInput for the type namespace.
-func (s *Service) resolveTypeInput(input string, entries []typeEntry) (typeEntry, bool, []string) {
+func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (typeEntry, bool, []string) {
 	for _, entry := range entries {
 		if entry.Key == input {
 			return entry, true, nil
@@ -442,6 +442,16 @@ func (s *Service) resolveTypeInput(input string, entries []typeEntry) (typeEntry
 		}
 		t := bundle.MustGetType(key)
 		return typeEntry{Key: string(key), Name: t.Name}, true, nil
+	}
+	// the exact spelling a read served for a REMOVED type stops here: no
+	// live key, slug or bundled entry answered to it above, and the
+	// forgiving fold and name steps below must not land it on a live type
+	// that happens to be NAMED that way (round-four review: a removed
+	// "widget" resolved to live "machine" named "widget", and a create,
+	// a search and even a DELETE went to the wrong type). The caller's
+	// refusal then says removed (unknownTypeKeyError).
+	if _, removed := s.removedTypeBySpelling(spaceId, input); removed {
+		return typeEntry{}, false, nil
 	}
 	fold := bundle.FoldApiKey(input)
 	var candidates []typeEntry
@@ -668,7 +678,7 @@ func (s *Service) requireLiveType(spaceId, input, path string, v errKeys) (typeE
 	if err != nil {
 		return typeEntry{}, err
 	}
-	entry, ok, ambiguous := s.resolveTypeInput(input, entries)
+	entry, ok, ambiguous := s.resolveTypeInput(spaceId, input, entries)
 	if len(ambiguous) > 0 {
 		return typeEntry{}, ambiguousKeyError(v.typeWord(), input, path, ambiguous)
 	}
@@ -709,8 +719,8 @@ func (s *Service) propertySlugConflict(slug string, entries []propertyEntry) (sl
 }
 
 // typeSlugConflict is propertySlugConflict for the type namespace.
-func (s *Service) typeSlugConflict(slug string, entries []typeEntry) (slugHolder, bool) {
-	entry, ok, ambiguous := s.resolveTypeInput(slug, entries)
+func (s *Service) typeSlugConflict(spaceId, slug string, entries []typeEntry) (slugHolder, bool) {
+	entry, ok, ambiguous := s.resolveTypeInput(spaceId, slug, entries)
 	if len(ambiguous) > 0 {
 		return slugHolder{Kind: "types", Key: slug, Name: strings.Join(ambiguous, " and ")}, true
 	}
@@ -1163,7 +1173,7 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 				return nil, nil, err
 			}
 		}
-		entry, ok, ambiguous := s.resolveTypeInput(term, typeEntries)
+		entry, ok, ambiguous := s.resolveTypeInput(spaceId, term, typeEntries)
 		if len(ambiguous) > 0 {
 			return nil, nil, ambiguousKeyError("type key", term, "/"+field, ambiguous)
 		}
@@ -1340,19 +1350,70 @@ func tombstoneTypeSlugOf(index spaceindex.Store, id string) string {
 // removedTypeBySpelling finds a REMOVED space-minted type a caller may have
 // addressed by the slug or stored key a read served for it — the object's
 // `type` after the type was deleted — so a refusal can say removed rather
-// than unknown. Live entries are the caller's to check first.
+// than unknown. Live entries are the caller's to check first. All three
+// store shapes answer: the query-visible ones by row, a tombstone by its
+// snapshot (by stored key through the derived id; by slug through the
+// bounded tombstone scan — a refusal path, never a read).
 func (s *Service) removedTypeBySpelling(spaceId, input string) (typeEntry, bool) {
-	removed, err := s.removedTypes(spaceId)
+	if input == "" || bundle.HasObjectTypeByKey(domain.TypeKey(input)) {
+		return typeEntry{}, false // bundled removals have their own gate (refuseRemovedType)
+	}
+	if removed, err := s.removedTypes(spaceId); err == nil {
+		for _, e := range removed {
+			if bundle.HasObjectTypeByKey(domain.TypeKey(e.Key)) {
+				continue
+			}
+			if input == e.Key || (e.Slug != "" && input == e.Slug) {
+				return e, true
+			}
+		}
+	}
+	if slug := s.tombstonedTypeSlug(spaceId, input); slug != "" {
+		return typeEntry{Key: input, Slug: slug}, true
+	}
+	if _, isSlug := bundle.TypeKeyByApiSlug(input); !isSlug {
+		if e, ok := s.tombstonedTypeBySlug(spaceId, input); ok {
+			return e, true
+		}
+	}
+	return typeEntry{}, false
+}
+
+// tombstoneScanLimit bounds the tombstone scan a removal diagnosis may run:
+// it is a refusal path, and a space with more deleted rows than this
+// answers "unknown" for a slug-addressed tombstone rather than scanning on.
+const tombstoneScanLimit = 5000
+
+// tombstonedTypeBySlug finds a type tombstone by the slug its snapshot
+// kept. Tombstones carry no queryable identity, so this is a bounded scan
+// of the space's deleted rows, reading each snapshot.
+func (s *Service) tombstonedTypeBySlug(spaceId, slug string) (typeEntry, bool) {
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{RelationKey: bundle.RelationKeyIsDeleted, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.Bool(true)},
+			{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
+		},
+		Limit: tombstoneScanLimit,
+	})
 	if err != nil {
 		return typeEntry{}, false
 	}
-	for _, e := range removed {
-		if bundle.HasObjectTypeByKey(domain.TypeKey(e.Key)) {
-			continue // bundled removals have their own gate (refuseRemovedType)
+	for _, record := range records {
+		if _, full := record.Details.TryString(bundle.RelationKeyUniqueKey); full {
+			continue
 		}
-		if input == e.Key || (e.Slug != "" && input == e.Slug) {
-			return e, true
+		snapshot, ok := record.Details.TryMapValue(bundle.RelationKeyDeletedSnapshot)
+		if !ok || snapshot.GetInt64(bundle.RelationKeyResolvedLayout.String()) != int64(model.ObjectType_objectType) {
+			continue
 		}
+		if snapshot.GetString(bundle.RelationKeyApiObjectKey.String()) != slug {
+			continue
+		}
+		key, err := domain.GetTypeKeyFromRawUniqueKey(snapshot.GetString(bundle.RelationKeyUniqueKey.String()))
+		if err != nil {
+			continue
+		}
+		return typeEntry{Id: record.Details.GetString(bundle.RelationKeyId), Key: string(key), Slug: slug}, true
 	}
 	return typeEntry{}, false
 }

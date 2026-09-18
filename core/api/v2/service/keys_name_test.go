@@ -195,7 +195,7 @@ func TestResolveTypeInputDisplayNames(t *testing.T) {
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
 				// when
-				entry, ok, ambiguous := fx.resolveTypeInput(tc.input, entries)
+				entry, ok, ambiguous := fx.resolveTypeInput(testSpaceId, tc.input, entries)
 
 				// then
 				assert.Empty(t, ambiguous)
@@ -209,7 +209,7 @@ func TestResolveTypeInputDisplayNames(t *testing.T) {
 		twins := append([]typeEntry{}, entries...)
 		twins = append(twins, typeEntry{Id: "type-review-twin", Key: "6a7663db61fab21cd4b9e304", Name: "Sprint review"})
 
-		_, ok, ambiguous := fx.resolveTypeInput("Sprint review", twins)
+		_, ok, ambiguous := fx.resolveTypeInput(testSpaceId, "Sprint review", twins)
 
 		assert.False(t, ok)
 		require.Len(t, ambiguous, 2)
@@ -218,7 +218,7 @@ func TestResolveTypeInputDisplayNames(t *testing.T) {
 	t.Run("the bundled type name resolves the bundled key when nothing live claims it", func(t *testing.T) {
 		// "Space member" is bundled participant's display name — a spelling no
 		// slug step ever answered ("space_member" is not participant's slug)
-		entry, ok, ambiguous := fx.resolveTypeInput("Space member", entries)
+		entry, ok, ambiguous := fx.resolveTypeInput(testSpaceId, "Space member", entries)
 
 		assert.Empty(t, ambiguous)
 		require.True(t, ok)
@@ -227,7 +227,7 @@ func TestResolveTypeInputDisplayNames(t *testing.T) {
 	})
 
 	t.Run("the bundled type name's fold class resolves too", func(t *testing.T) {
-		entry, ok, ambiguous := fx.resolveTypeInput("space member", entries)
+		entry, ok, ambiguous := fx.resolveTypeInput(testSpaceId, "space member", entries)
 
 		assert.Empty(t, ambiguous)
 		require.True(t, ok)
@@ -238,7 +238,7 @@ func TestResolveTypeInputDisplayNames(t *testing.T) {
 		squatted := append([]typeEntry{}, entries...)
 		squatted = append(squatted, typeEntry{Id: "type-member-claim", Key: "6a7663db61fab21cd4b9e305", Name: "Space member"})
 
-		_, ok, ambiguous := fx.resolveTypeInput("Space member", squatted)
+		_, ok, ambiguous := fx.resolveTypeInput(testSpaceId, "Space member", squatted)
 
 		assert.False(t, ok)
 		require.Len(t, ambiguous, 2)

@@ -63,8 +63,11 @@ type apiKeyVocab struct {
 	typeSlugByKey map[string]string
 	typeKeyBySlug map[string]string
 	// removedTypeSlug marks the slugs emitted for REMOVED types (emit-only,
-	// see ensure) so a tombstone probe cannot hand a second corpse one.
+	// see ensure) so a tombstone probe cannot hand a second corpse one;
+	// removedTypeKeys is every removed type this vocabulary knows of,
+	// slug-bearing or not, for the read marker (TypeRemoved).
 	removedTypeSlug map[string]bool
+	removedTypeKeys map[string]bool
 	typeKeyTaken    map[string]bool
 	typeSlugHolders map[string][]string
 }
@@ -219,6 +222,10 @@ func (v *apiKeyVocab) ensure() bool {
 			if _, live := v.typeSlugByKey[e.Key]; live {
 				continue
 			}
+			if v.removedTypeKeys == nil {
+				v.removedTypeKeys = map[string]bool{}
+			}
+			v.removedTypeKeys[e.Key] = true
 			served := servedTypeKeyOf(e.Key, e.Slug, v.typeKeyTaken, v.typeSlugHolders)
 			if served == e.Key {
 				continue
@@ -329,8 +336,12 @@ func (v *apiKeyVocab) TypeSlug(key string) string {
 	}
 	// the post-delete tombstone window: the row has no queryable detail,
 	// but its snapshot kept the slug (spaceindex.SnapshotOnDelete)
-	if isBsonKey(key) && !v.typeKeyTaken[key] {
+	if !bundle.HasObjectTypeByKey(domain.TypeKey(key)) && !v.typeKeyTaken[key] {
 		if slug := v.svc.tombstonedTypeSlug(v.spaceId, key); slug != "" && !v.removedTypeSlug[slug] {
+			if v.removedTypeKeys == nil {
+				v.removedTypeKeys = map[string]bool{}
+			}
+			v.removedTypeKeys[key] = true
 			candidate := servedTypeKeyOf(key, slug, v.typeKeyTaken, v.typeSlugHolders)
 			if _, taken := v.typeKeyBySlug[candidate]; !taken && candidate != key {
 				if v.removedTypeSlug == nil {
@@ -343,6 +354,23 @@ func (v *apiKeyVocab) TypeSlug(key string) string {
 		}
 	}
 	return servedTypeKeyOf(key, "", v.typeKeyTaken, v.typeSlugHolders)
+}
+
+// TypeRemoved reports whether a stored type key this vocabulary has seen
+// belongs to a REMOVED type — the read marker's question (R4-1: an object
+// whose type is gone must not look like an ordinary object).
+func (v *apiKeyVocab) TypeRemoved(key string) bool {
+	if key == "" || !v.ensure() || v.typeKeyTaken[key] {
+		return false
+	}
+	if v.removedTypeKeys[key] {
+		return true
+	}
+	if !bundle.HasObjectTypeByKey(domain.TypeKey(key)) {
+		_ = v.TypeSlug(key) // the tombstone probe registers the key
+		return v.removedTypeKeys[key]
+	}
+	return false
 }
 
 //

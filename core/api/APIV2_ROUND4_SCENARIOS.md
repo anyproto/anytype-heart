@@ -193,6 +193,26 @@ three fresh reviewers before the next.
 - R4-2: `delete_object`'s receipt spells the type through the api
   vocabulary, as every other route does.
 
+  Reviewed by three fresh reviewers (one blocker: a removed type's emitted
+  slug folded onto a live type NAMED that way, so a search, a create and a
+  delete by that slug went to the wrong type — the type resolution chain
+  now stops at an exact removed spelling before its fold and name steps);
+  their should-fixes are in: the removal lookup sees tombstones (by key
+  through the derived id, by slug through a bounded scan of the deleted
+  rows — a refusal path only), the markdown envelope spells the slug, a
+  read of an object whose type was removed carries a `/type` warning
+  saying so (the served marker the reviewers asked for), GET types by a
+  removed spelling is a 404 that says removed, the delete warning spells
+  the served slug however the type was addressed and says when a twin
+  will demote it, its hint no longer references a `list_objects?type=`
+  filter that does not exist, the refusal for the old type's key names the
+  live type that took its slug, rows demote a tombstone whose slug a
+  query-visible corpse spells, and the tombstone probe is gated on
+  identity (not bundled, not live) rather than on a bson shape. Accepted:
+  two TOMBSTONES sharing a slug (delete, re-create, delete again, both
+  gone from the index) are not census-able on a read path and may both
+  read as the slug in rows; `?keys=name` bypasses the vocabulary.
+
 # What the fixes did achieve
 
 Worth recording so nobody re-opens them:

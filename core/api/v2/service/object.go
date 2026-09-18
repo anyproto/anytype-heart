@@ -232,8 +232,10 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 	// made HERE, in Options, never by re-spelling
 	// a marshaled document. `?keys=name` (§4.2) keeps the resolver's own
 	// raw-name vocabulary instead.
+	var vocab *apiKeyVocab
 	if !nameKeysRequested(ctx) {
-		opts.Keys = s.apiKeys(spaceId, opts.Keys)
+		vocab = s.apiKeys(spaceId, opts.Keys)
+		opts.Keys = vocab
 	}
 	// the shape comes pre-composed by validate() — see objectReadPlan;
 	// CompactObjectRefs stays at its zero value on every shape (no legend)
@@ -263,6 +265,15 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 	fields, err := parseEnvelope(doc)
 	if err != nil {
 		return nil, "", fmt.Errorf("object %s: %w", objectId, err)
+	}
+	// an object whose type was removed must not read like an ordinary one
+	// (R4-1): the envelope keeps the served spelling, and this says why
+	// nothing else answers to it
+	if typeKey := objectTypeKey(read); vocab != nil && vocab.TypeRemoved(typeKey) {
+		warnings = append(warnings, v2model.Issue{
+			Path:    "/type",
+			Message: fmt.Sprintf("the type %q of this object was removed from the space — the object keeps it, but nothing new is created in it and it cannot be filtered by", vocab.TypeSlug(typeKey)),
+		}.Hintf("the live types are listed by %s", v2model.RefListTypes(spaceId)))
 	}
 	// a served document matches the schema this API publishes for it
 	trimAPIDocumentEnvelope(fields)
@@ -378,7 +389,8 @@ func (s *Service) markdownEnvelope(ctx context.Context, spaceId, objectId string
 		return nil, "", err
 	}
 	if typeKey := objectTypeKey(read); typeKey != "" {
-		if fields["type"], err = rawJSON(typeKey); err != nil {
+		served := s.apiKeys(spaceId, storeresolver.New(s.store.SpaceIndex(spaceId))).TypeSlug(typeKey)
+		if fields["type"], err = rawJSON(served); err != nil {
 			return nil, "", err
 		}
 	}
@@ -764,13 +776,16 @@ type objectRowBuilder struct {
 	index    spaceindex.Store
 	typeKeys map[string]string
 	// liveTypeSets are servedTypeKeySets over the live types, loaded once
-	// on the first tombstoned type a row names
-	liveKeyTaken    map[string]bool
-	liveSlugHolders map[string][]string
-	liveSetsLoaded  bool
-	fields          []string
-	opts            anyblockjson.Options
-	spaceId         string // the store-facing full id
+	// on the first tombstoned type a row names; corpseSlugClaims are the
+	// slugs the query-visible corpses already spell (typeKeysAndClaims), so
+	// a tombstone sharing one is demoted the way the vocabulary demotes it
+	liveKeyTaken     map[string]bool
+	liveSlugHolders  map[string][]string
+	liveSetsLoaded   bool
+	corpseSlugClaims map[string]bool
+	fields           []string
+	opts             anyblockjson.Options
+	spaceId          string // the store-facing full id
 	// spaceRef is what a row's space_id FIELD carries when includeSpaceId
 	// (global search): the §8.35 short reference by default, the full id
 	// when its tail collides with another visible space's. Defaults to
@@ -785,12 +800,12 @@ type objectRowBuilder struct {
 }
 
 func (s *Service) newObjectRowBuilder(spaceId string, fields []string) (*objectRowBuilder, error) {
-	typeKeys, err := s.typeKeysById(spaceId)
+	typeKeys, claims, err := s.typeKeysAndClaims(spaceId)
 	if err != nil {
 		return nil, err
 	}
 	index := s.store.SpaceIndex(spaceId)
-	b := &objectRowBuilder{svc: s, index: index, typeKeys: typeKeys, fields: fields, spaceId: spaceId, spaceRef: spaceId}
+	b := &objectRowBuilder{svc: s, index: index, typeKeys: typeKeys, corpseSlugClaims: claims, fields: fields, spaceId: spaceId, spaceRef: spaceId}
 	if len(fields) > 0 {
 		b.opts = apiRefSpelling(storeresolver.New(index).Options())
 		b.opts.Keys = s.apiKeys(spaceId, b.opts.Keys)
@@ -882,7 +897,7 @@ func (b *objectRowBuilder) tombstoneTypeSpelling(key, slug string) string {
 			b.liveKeyTaken, b.liveSlugHolders = servedTypeKeySets(live)
 		}
 	}
-	if b.liveKeyTaken == nil {
+	if b.liveKeyTaken == nil || b.corpseSlugClaims[slug] {
 		return key
 	}
 	return servedTypeKeyOf(key, slug, b.liveKeyTaken, b.liveSlugHolders)
@@ -904,6 +919,13 @@ func (b *objectRowBuilder) tombstoneTypeSpelling(key, slug string) string {
 // no uniqueKey and are skipped; their objects' rows serve an empty type for
 // the window, the only honest answer a keyless row allows.
 func (s *Service) typeKeysById(spaceId string) (map[string]string, error) {
+	keys, _, err := s.typeKeysAndClaims(spaceId)
+	return keys, err
+}
+
+// typeKeysAndClaims is typeKeysById plus the slugs its removed types were
+// given, for the row builder's tombstone fallback.
+func (s *Service) typeKeysAndClaims(spaceId string) (map[string]string, map[string]bool, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -916,14 +938,15 @@ func (s *Service) typeKeysById(spaceId string) (map[string]string, error) {
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("query types in space %s: %w", spaceId, err)
+		return nil, nil, fmt.Errorf("query types in space %s: %w", spaceId, err)
 	}
 	liveEntries, err := s.liveTypes(spaceId)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	keyTaken, slugHolders := servedTypeKeySets(liveEntries)
 	out := make(map[string]string, len(records))
+	claims := map[string]bool{}
 	// a removed type keeps its slug (R4-1), unless a live type owns it
 	// (servedTypeKeyOf's guards) or two corpses would share it — the
 	// twin rule the vocabulary applies (apikeyvocab.go ensure)
@@ -948,7 +971,11 @@ func (s *Service) typeKeysById(spaceId string) (map[string]string, error) {
 			out[id] = string(key)
 			continue
 		}
-		out[id] = servedTypeKeyOf(string(key), slug, keyTaken, slugHolders)
+		served := servedTypeKeyOf(string(key), slug, keyTaken, slugHolders)
+		if corpseFlagged(record.Details) && served != string(key) {
+			claims[served] = true
+		}
+		out[id] = served
 	}
-	return out, nil
+	return out, claims, nil
 }

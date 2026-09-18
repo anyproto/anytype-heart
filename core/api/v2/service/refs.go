@@ -10,6 +10,7 @@ package v2service
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"slices"
 	"sort"
 	"strings"
@@ -109,7 +110,7 @@ func (s *Service) typeKeyExists(spaceId, typeKey string) bool {
 	if err != nil {
 		return false
 	}
-	_, ok, ambiguous := s.resolveTypeInput(typeKey, entries)
+	_, ok, ambiguous := s.resolveTypeInput(spaceId, typeKey, entries)
 	return ok && len(ambiguous) == 0
 }
 
@@ -135,19 +136,8 @@ func (s *Service) knownTypeKeys(spaceId string, v errKeys) []string {
 func (s *Service) unknownTypeKeyError(spaceId, typeKey, path string, v errKeys) error {
 	// the spelling a read served for a REMOVED space-minted type (its
 	// objects keep it — R4-1): say removed, not unknown with a guess
-	if entry, removed := s.removedTypeBySpelling(spaceId, typeKey); removed {
-		spelling := entry.Slug
-		if spelling == "" {
-			spelling = entry.Key
-		}
-		if v.names && entry.Name != "" {
-			spelling = entry.Name
-		}
-		return v2model.ValidationFailed(fmt.Sprintf("removed %s", v.typeWord()),
-			v2model.Issue{
-				Path:    path,
-				Message: fmt.Sprintf("type %q was removed from this space — its objects keep it, but nothing new is created in it and it is not filterable", spelling),
-			}.Hintf("use a live type instead — list them with %s", v2model.RefListTypes(spaceId)))
+	if issue, removed := s.removedTypeRefusal(spaceId, typeKey, path, v); removed {
+		return v2model.ValidationFailed(fmt.Sprintf("removed %s", v.typeWord()), issue)
 	}
 	known := s.knownTypeKeys(spaceId, v)
 	return v2model.ValidationFailed(
@@ -166,6 +156,13 @@ func (s *Service) unknownTypeKeyError(spaceId, typeKey, path string, v errKeys) 
 // benchmarked 4B did not retry at all, while the key-listing property tip
 // repaired on the first retry in the same run).
 func (s *Service) typeNotFoundError(spaceId, typeKey string, v errKeys) error {
+	// a type route addressed by the spelling its objects still serve: 404
+	// still (the type is not addressable), but saying why (R4-1)
+	if issue, removed := s.removedTypeRefusal(spaceId, typeKey, "type", v); removed {
+		known := s.knownTypeKeys(spaceId, v)
+		return v2model.NewError(http.StatusNotFound, v2model.CodeNotFound,
+			fmt.Sprintf("type %q not found in space %q — it was removed; %s", typeKey, spaceId, listKnown(v.typesWord(), known)), issue)
+	}
 	return notFoundWithKeys(
 		fmt.Sprintf("type %q not found in space %q", typeKey, spaceId),
 		"type", typeKey, v.typesWord(), s.knownTypeKeys(spaceId, v),
@@ -581,7 +578,7 @@ func (s *Service) typeListedKeys(spaceId, typeKey string) map[string]bool {
 		if err != nil {
 			return nil
 		}
-		entry, found, ambiguous := s.resolveTypeInput(typeKey, entries)
+		entry, found, ambiguous := s.resolveTypeInput(spaceId, typeKey, entries)
 		if !found || len(ambiguous) > 0 || entry.Id == "" {
 			return nil
 		}
@@ -615,4 +612,38 @@ func offTypePropertyIssue(spelling, typeKey, path string) v2model.Issue {
 		Path:    path,
 		Message: fmt.Sprintf("property %q is not on type %q — the value is stored and served on the object, but type-scoped search and queries over %q refuse the key and the type's default columns omit it", spelling, typeKey, typeKey),
 	}.Hintf("list it on the type with the add_property op (%s)", v2model.RefGetOpSchema("add_property"))
+}
+
+// removedTypeRefusal is the issue for a REMOVED space-minted type addressed
+// by the spelling a read served for it. When a live type has since taken
+// the removed one's slug, the caller addressed the old type by its stored
+// key, and the refusal must not call the live slug removed.
+func (s *Service) removedTypeRefusal(spaceId, input, path string, v errKeys) (v2model.Issue, bool) {
+	entry, removed := s.removedTypeBySpelling(spaceId, input)
+	if !removed {
+		return v2model.Issue{}, false
+	}
+	spelling := entry.Slug
+	if spelling == "" {
+		spelling = entry.Key
+	}
+	if v.names && entry.Name != "" {
+		spelling = entry.Name
+	}
+	if entry.Slug != "" && input != entry.Slug {
+		if live, err := s.liveTypes(spaceId); err == nil {
+			for _, e := range live {
+				if e.Slug == entry.Slug {
+					return v2model.Issue{
+						Path:    path,
+						Message: fmt.Sprintf("type %q (formerly %q) was removed from this space, and %q now names a different type — the old type's objects keep it under its stored key; nothing new is created in it", input, entry.Slug, entry.Slug),
+					}.Hintf("use a live type instead — list them with %s", v2model.RefListTypes(spaceId)), true
+				}
+			}
+		}
+	}
+	return v2model.Issue{
+		Path:    path,
+		Message: fmt.Sprintf("type %q was removed from this space — its objects keep it, but nothing new is created in it and it is not filterable", spelling),
+	}.Hintf("use a live type instead — list them with %s", v2model.RefListTypes(spaceId)), true
 }
