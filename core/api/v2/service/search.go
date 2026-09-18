@@ -1039,7 +1039,7 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 		plan, err := s.buildSearchPlan(space.id, req, false, errKeysFor(ctx))
 		if err != nil {
 			var v2Err *v2model.Error
-			if errors.As(err, &v2Err) {
+			if errors.As(err, &v2Err) && v2Err.Status < 500 {
 				if firstErr == nil {
 					firstErr = err
 				}

@@ -255,6 +255,10 @@ func (s *invalidStore) SaveReconcileMarker(ctx context.Context, id string, marke
 	return s.err
 }
 
+func (s *invalidStore) BackfillDeletedLayout(ctx context.Context) error {
+	return s.err
+}
+
 func (s *invalidStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error) {
 	return s.err
 }

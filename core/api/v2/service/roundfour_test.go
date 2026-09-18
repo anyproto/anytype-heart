@@ -558,6 +558,51 @@ func TestV2RoundFourCarriedForward(t *testing.T) {
 		assert.Equal(t, "spice_level", result.Created.Options[0].Property)
 	})
 
+	t.Run("R3-c: a real mint that suffixed its slug reports the stored slug on the property and its option", func(t *testing.T) {
+		// a HIDDEN holder of harvest_season: the request namespace does not
+		// see it, the mint does, and stores harvest_season_2
+		fx := setup(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("rel-hidden-hs"),
+			bundle.RelationKeyRelationKey:  domain.String("6a7663db61fab21cd4b9e301"),
+			bundle.RelationKeyApiObjectKey: domain.String("harvest_season"),
+			bundle.RelationKeyName:         domain.String("Hidden holder"),
+			bundle.RelationKeyIsHidden:     domain.Bool(true),
+		})
+		// the row the mint creates, as the store will index it (hidden so
+		// the name step cannot resolve to it before the mint)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("rel-hs"),
+			bundle.RelationKeyRelationKey:    domain.String("6a7663db61fab21cd4b9e302"),
+			bundle.RelationKeyApiObjectKey:   domain.String("harvest_season_2"),
+			bundle.RelationKeyName:           domain.String("Harvest Season (minted)"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+			bundle.RelationKeyIsHidden:       domain.Bool(true),
+		})
+		fx.mwMock.EXPECT().ObjectCreateRelation(mock.Anything, mock.Anything).Return(&pb.RpcObjectCreateRelationResponse{
+			ObjectId: "rel-hs", Key: "6a7663db61fab21cd4b9e302",
+			Details: &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyApiObjectKey.String(): pbtypes.String("harvest_season_2")}},
+			Error:   &pb.RpcObjectCreateRelationResponseError{Code: pb.RpcObjectCreateRelationResponseError_NULL},
+		}).Once()
+		fx.mwMock.EXPECT().ObjectCreateRelationOption(mock.Anything, mock.Anything).Return(&pb.RpcObjectCreateRelationOptionResponse{
+			ObjectId: "opt-summer", Error: &pb.RpcObjectCreateRelationOptionResponseError{Code: pb.RpcObjectCreateRelationOptionResponseError_NULL},
+		}).Once()
+		fx.mwMock.EXPECT().ObjectCreateObjectType(mock.Anything, mock.Anything).Return(&pb.RpcObjectCreateObjectTypeResponse{
+			ObjectId: "type-plant", Error: &pb.RpcObjectCreateObjectTypeResponseError{Code: pb.RpcObjectCreateObjectTypeResponseError_NULL},
+		}).Once()
+		fx.expectEtagRead("type-plant")
+
+		result, err := fx.CreateType(ctx, testSpaceId,
+			[]byte(`{"name":"Plant","property_definitions":[{"name":"Harvest Season","format":"select","options":[{"name":"Summer"}]}]}`), false, true)
+
+		require.NoError(t, err)
+		require.NotNil(t, result.Created)
+		require.Len(t, result.Created.Properties, 1)
+		assert.Equal(t, "harvest_season_2", result.Created.Properties[0].Key, "the stored slug, never the proposal")
+		require.Len(t, result.Created.Options, 1)
+		assert.Equal(t, "harvest_season_2", result.Created.Options[0].Property)
+	})
+
 	t.Run("R3-f: list_objects lists the system keys as served too", func(t *testing.T) {
 		fx := setup(t)
 

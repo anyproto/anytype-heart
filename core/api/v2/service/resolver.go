@@ -814,6 +814,7 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 		Name:   name,
 		Format: anyblockjson.FormatName(format),
 	})
+	rowIndex := len(r.sideEffects.Properties) - 1
 	r.mintedSlugByKey[docKey] = reportedKey
 	if r.dryRun {
 		return "", false
@@ -834,6 +835,17 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 	// Without it a property minted by THIS request has no address, and the
 	// select vocabulary declared beside it could not be attached in the same
 	// call.
+	// the slug the mint STORED: the creator suffixes a slug a hidden holder
+	// already occupies (the request namespace excludes hidden entries, the
+	// mint does not), so the receipt and the option spelling follow the
+	// stored one, never the proposal (TestCreateReturnsTheStoredKeyNotTheProposal)
+	if !isBundled {
+		if stored := pbtypes.GetString(resp.Details, bundle.RelationKeyApiObjectKey.String()); stored != "" && stored != reportedKey {
+			reportedKey = stored
+			r.sideEffects.Properties[rowIndex].Key = stored
+			r.mintedSlugByKey[docKey] = stored
+		}
+	}
 	if key, ok := r.svc.storedRelationKeyById(r.ctx, r.spaceId, resp.ObjectId); ok {
 		r.createdPropKeys[docKey] = key
 		r.mintedSlugByKey[key] = reportedKey

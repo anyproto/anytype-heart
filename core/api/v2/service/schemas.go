@@ -131,8 +131,8 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 	"property": {
 		endpoint: "POST /v2/spaces/{space_id}/properties",
 		schema: `{"type":"object","additionalProperties":false,"required":["name","format"],"properties":{` +
-			`"key":{"type":"string","maxLength":256,"pattern":"^[a-zA-Z0-9_]+$"},` +
-			`"name":{"type":"string","maxLength":4096},` +
+			`"key":{"type":"string","maxLength":256,"pattern":"^[a-zA-Z0-9_]+$","description":"the key the property is addressed by; derived from the name when omitted. Required to create another property under a display name the space already has"},` +
+			`"name":{"type":"string","maxLength":4096,"description":"display name. Names are not identities: a name a visible property already carries is refused unless key is given, and then creates another property under that name, with a warning"},` +
 			`"format":{"type":"string","enum":[` + v2PropertyFormatEnum + `]},` +
 			`"options":{"type":"array","maxItems":100,"items":{"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
 			`"name":{"type":"string","maxLength":4096},"color":{"type":"string","maxLength":64}}}}}}`,

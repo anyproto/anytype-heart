@@ -6,6 +6,9 @@ import (
 	"fmt"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/query"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -202,6 +205,60 @@ func (s *dsObjectStore) eraseLinksForObject(ctx context.Context, from string) er
 	err := s.links.DeleteId(ctx, from)
 	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 		return err
+	}
+	return nil
+}
+
+// deletedLayoutBackfillMarkerId is the headsState row that records the
+// backfill's completion — a marker row, not an object.
+const deletedLayoutBackfillMarkerId = "_migration/deletedLayout"
+
+// BackfillDeletedLayout implements Store: one scan of the space's tombstones,
+// a write for each derived-object tombstone that lacks its marker, and the
+// completion marker last. A failed write leaves the marker unset, so the
+// next load runs the scan again — completion is never recorded on a
+// partial backfill.
+func (s *dsObjectStore) BackfillDeletedLayout(ctx context.Context) error {
+	if marker, err := s.GetReconcileMarker(ctx, deletedLayoutBackfillMarkerId); err == nil && marker == "1" {
+		return nil
+	}
+	records, err := s.Query(database.Query{
+		Filters: []database.FilterRequest{
+			{RelationKey: bundle.RelationKeyIsDeleted, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.Bool(true)},
+			{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("query tombstones: %w", err)
+	}
+	for _, record := range records {
+		details := record.Details
+		if details.Has(bundle.RelationKeyDeletedLayout) {
+			continue
+		}
+		snapshot, ok := details.TryMapValue(bundle.RelationKeyDeletedSnapshot)
+		if !ok {
+			continue
+		}
+		layout := snapshot.GetInt64(bundle.RelationKeyResolvedLayout.String())
+		if !derivedLayouts[layout] {
+			continue
+		}
+		details.SetInt64(bundle.RelationKeyDeletedLayout, layout)
+		id := details.GetString(bundle.RelationKeyId)
+		if err := s.UpdateObjectDetails(ctx, id, details); err != nil {
+			return fmt.Errorf("backfill deleted layout of %s: %w", id, err)
+		}
+	}
+	_, err = s.headsState.UpsertId(ctx, deletedLayoutBackfillMarkerId, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+		if val == nil {
+			val = arena.NewObject()
+		}
+		val.Set(lastReconciledLinksField, arena.NewString("1"))
+		return val, true, nil
+	}))
+	if err != nil {
+		return fmt.Errorf("record deleted layout backfill: %w", err)
 	}
 	return nil
 }

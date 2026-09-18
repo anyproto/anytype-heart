@@ -50,10 +50,7 @@ const (
 	// ForceMarketplaceReindex forces to do reindex only for marketplace space
 	ForceMarketplaceReindex int32 = 1
 
-	// Bumped to 2: the tombstone of a deleted type or property now keeps its
-	// layout top level (spaceindex delete.go deletedLayout); re-running the
-	// delete on every deleted tree backfills tombstones written before that.
-	ForceReindexDeletedObjectsCounter int32 = 2
+	ForceReindexDeletedObjectsCounter int32 = 1
 
 	ForceReindexParticipantsCounter int32 = 1
 	ForceReindexChatsCounter        int32 = 7
@@ -295,6 +292,15 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		if err != nil {
 			log.Error("reindex deleted objects", zap.Error(err))
 		}
+	}
+
+	// the deletedLayout marker of tombstones written before it existed: a
+	// targeted backfill over the tombstones alone (a deleted type or property
+	// keeps its tree, so no deleted-tree reindex ever reaches them), which
+	// records its completion only once every write succeeded and runs again
+	// on the next load otherwise
+	if err := i.store.SpaceIndex(space.Id()).BackfillDeletedLayout(i.runCtx); err != nil {
+		log.Error("backfill deleted layout markers", zap.Error(err))
 	}
 
 	go i.addSyncDetails(space)

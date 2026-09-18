@@ -1,6 +1,7 @@
 package spaceindex
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -464,4 +465,65 @@ func TestDeleteObject_DerivedTombstoneKeepsItsLayoutTopLevel(t *testing.T) {
 	snapshot, ok := oldRow.TryMapValue(bundle.RelationKeyDeletedSnapshot)
 	require.True(t, ok)
 	assert.Equal(t, "type_old", snapshot.GetString(bundle.RelationKeyApiObjectKey.String()), "the snapshot is kept as it was")
+}
+
+func TestBackfillDeletedLayout(t *testing.T) {
+	s := NewStoreFixture(t)
+	ctx := context.Background()
+	// a legacy type tombstone (snapshot, no marker), a legacy relation
+	// tombstone, a bare tombstone, an ordinary object's tombstone
+	s.AddObjects(t, []TestObject{
+		{
+			bundle.RelationKeyId: domain.String("typeOld"), bundle.RelationKeySpaceId: domain.String("test"), bundle.RelationKeyIsDeleted: domain.Bool(true),
+			bundle.RelationKeyDeletedSnapshot: domain.NewValueMap(map[string]domain.Value{
+				bundle.RelationKeyResolvedLayout.String(): domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyUniqueKey.String():      domain.String("ot-typeOld"),
+				bundle.RelationKeyApiObjectKey.String():   domain.String("type_old"),
+			}),
+		},
+		{
+			bundle.RelationKeyId: domain.String("relOld"), bundle.RelationKeySpaceId: domain.String("test"), bundle.RelationKeyIsDeleted: domain.Bool(true),
+			bundle.RelationKeyDeletedSnapshot: domain.NewValueMap(map[string]domain.Value{
+				bundle.RelationKeyResolvedLayout.String(): domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey.String():    domain.String("relOldKey"),
+			}),
+		},
+		{bundle.RelationKeyId: domain.String("bare"), bundle.RelationKeySpaceId: domain.String("test"), bundle.RelationKeyIsDeleted: domain.Bool(true)},
+		{
+			bundle.RelationKeyId: domain.String("pageOld"), bundle.RelationKeySpaceId: domain.String("test"), bundle.RelationKeyIsDeleted: domain.Bool(true),
+			bundle.RelationKeyDeletedSnapshot: domain.NewValueMap(map[string]domain.Value{
+				bundle.RelationKeyResolvedLayout.String(): domain.Int64(int64(model.ObjectType_basic)),
+			}),
+		},
+	})
+
+	require.NoError(t, s.BackfillDeletedLayout(ctx))
+
+	for id, want := range map[string]int64{"typeOld": int64(model.ObjectType_objectType), "relOld": int64(model.ObjectType_relation)} {
+		row, err := s.GetDetails(id)
+		require.NoError(t, err)
+		assert.Equal(t, want, row.GetInt64(bundle.RelationKeyDeletedLayout), id)
+		assert.True(t, row.GetBool(bundle.RelationKeyIsDeleted), "still a tombstone")
+	}
+	for _, id := range []string{"bare", "pageOld"} {
+		row, err := s.GetDetails(id)
+		require.NoError(t, err)
+		assert.False(t, row.Has(bundle.RelationKeyDeletedLayout), id)
+	}
+	marker, err := s.GetReconcileMarker(ctx, deletedLayoutBackfillMarkerId)
+	require.NoError(t, err)
+	assert.Equal(t, "1", marker, "completion recorded")
+
+	// idempotent: a second run is a marker read
+	require.NoError(t, s.BackfillDeletedLayout(ctx))
+
+	// the marked tombstone is what the exact query finds
+	records, err := s.Query(database.Query{Filters: []database.FilterRequest{
+		{RelationKey: bundle.RelationKeyDeletedLayout, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.Int64(int64(model.ObjectType_objectType))},
+		{RelationKey: bundle.RelationKeyIsDeleted, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.Bool(true)},
+		{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
+	}})
+	require.NoError(t, err)
+	require.Len(t, records, 1)
+	assert.Equal(t, "typeOld", records[0].Details.GetString(bundle.RelationKeyId))
 }

@@ -139,6 +139,11 @@ type Store interface {
 	SaveLastIndexedHeadsHashWithFtQueueCtr(ctx context.Context, id string, headsHash string, ftQueueCtr uint64) (err error)
 	GetReconcileMarker(ctx context.Context, id string) (marker string, err error)
 	SaveReconcileMarker(ctx context.Context, id string, marker string) error
+	// BackfillDeletedLayout gives every tombstone of a deleted type or
+	// property the deletedLayout marker (delete.go) it would carry had it
+	// been written after the marker existed; idempotent, and recorded as done
+	// only once every write succeeded.
+	BackfillDeletedLayout(ctx context.Context) error
 	GetHeadsWithFtQueueCtrGreaterThan(ctx context.Context, threshold uint64) ([]HeadsStateEntry, error)
 	ClearHeadsState(ctx context.Context) error
 

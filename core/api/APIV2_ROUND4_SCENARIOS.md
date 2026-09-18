@@ -307,10 +307,25 @@ three fresh reviewers before the next.
   lists the system keys as served, a name-only `create_property` under an
   existing display name is refused (an explicit key creates another, with
   a warning), the `spaces` parameter refuses an empty value, and the
-  count wording is "the number of messages". Accepted: a space that has
-  not loaded since the upgrade may still miss a legacy tombstone by slug
-  until it does; the resolution stop's queries on display-name inputs are
-  not memoised per request.
+  count wording is "the number of messages".
+
+  A further fresh round found the migration wrong twice over: a deleted
+  type or property keeps its tree, so the deleted-tree reindex the counter
+  bump triggered never reached their tombstones, and a failed run recorded
+  itself complete. Replaced by a targeted backfill on the space index
+  (`BackfillDeletedLayout`): one scan of the tombstones on every space
+  load, a write for each derived-object tombstone lacking its marker, and
+  a completion marker written LAST — a failure leaves it unset and the
+  next load runs the scan again. Also in: a mint that suffixed its slug
+  reports the stored slug on the property row and its options (the
+  receipt followed the proposal), global search no longer files a server
+  error under "space skipped", `create_property` loads its property
+  snapshot once and fails closed when it cannot, the lookup error is typed
+  at the resolution boundary on every path (the cause is logged, not
+  served), and the `property` kind states that names are not identities.
+  Accepted: a space that has not loaded since the upgrade may still miss
+  a legacy tombstone by slug until it does; the resolution stop's queries
+  on display-name inputs are not memoised per request.
 
 # What the fixes did achieve
 

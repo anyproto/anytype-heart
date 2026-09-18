@@ -454,7 +454,7 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 	// retries nothing): a removal set that could not be read must neither
 	// authorize the fold and name steps below nor read as "unknown"
 	if _, removed, err := s.removedTypeBySpelling(spaceId, input); err != nil {
-		return typeEntry{}, false, nil, fmt.Errorf("verify type %q in space %s: %w", input, spaceId, err)
+		return typeEntry{}, false, nil, unverifiableTypeError(input, spaceId, err)
 	} else if removed {
 		return typeEntry{}, false, nil, nil
 	}

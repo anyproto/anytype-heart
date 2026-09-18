@@ -669,7 +669,8 @@ func (s *Service) removedTypeRefusal(spaceId, input, path string, v errKeys) (v2
 // resolution failed: a server error, said as such, with no guess — the
 // request was not wrong, the store could not be read.
 func unverifiableTypeError(typeKey, spaceId string, err error) error {
+	log.Warnf("api v2: verify type %q in space %s: %v", typeKey, spaceId, err)
 	return v2model.NewError(http.StatusInternalServerError, v2model.CodeInternalError,
 		fmt.Sprintf("could not verify type %q in space %q — retry", typeKey, spaceId),
-		v2model.Issue{Message: err.Error()})
+		v2model.Issue{Message: "the space's index could not be read"})
 }

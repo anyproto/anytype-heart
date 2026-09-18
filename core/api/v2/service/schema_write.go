@@ -1167,11 +1167,13 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 		// sanitize to the advertised key grammar (empty = no derivable slug)
 		slug = sanitizeApiSlug(bundle.ApiSlugFromName(req.Name))
 	}
+	// one snapshot of the live properties for the slug check and the name
+	// check alike; a snapshot that could not load fails the create closed
+	propEntries, err := s.liveProperties(spaceId)
+	if err != nil {
+		return nil, fmt.Errorf("load properties of space %s: %w", spaceId, err)
+	}
 	if slug != "" {
-		propEntries, err := s.liveProperties(spaceId)
-		if err != nil {
-			return nil, err
-		}
 		if holder, taken := s.propertySlugConflict(slug, propEntries); taken {
 			path, hint := "/key", v2model.Hintf("update it with %s, or pick a different key", v2model.RefUpdateProperty(spaceId, holder.Key))
 			if req.Key == "" {
@@ -1204,9 +1206,9 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 	// with two fields both called "Condition" — R3-d), accepted with a
 	// warning when an explicit key says a second one is meant (a name is
 	// not identity)
-	if twins, err := s.liveProperties(spaceId); err == nil {
+	{
 		nfcName := norm.NFC.String(req.Name)
-		for _, entry := range twins {
+		for _, entry := range propEntries {
 			if entry.Hidden || entry.Name == "" || norm.NFC.String(entry.Name) != nfcName {
 				continue
 			}
