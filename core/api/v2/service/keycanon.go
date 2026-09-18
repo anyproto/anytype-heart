@@ -47,6 +47,14 @@ func (k *keyCanon) canon(input string) (string, []string) {
 	if backing, ok := k.aliases[input]; ok {
 		return string(backing), nil
 	}
+	// an exact removed slug outranks a live display name (the served
+	// spelling is the caller's intent), never an exact live key or slug
+	if stored, found := k.removedStoredKey(input); found {
+		keyTaken, slugHolders := servedPropertyKeySets(k.entries)
+		if !keyTaken[input] && len(slugHolders[input]) == 0 {
+			return stored, nil
+		}
+	}
 	entry, ok, ambiguous := k.s.resolvePropertyInput(input, k.entries)
 	if len(ambiguous) > 0 {
 		return input, ambiguous
@@ -54,24 +62,17 @@ func (k *keyCanon) canon(input string) (string, []string) {
 	if ok && entry.Key != "" {
 		return entry.Key, nil
 	}
-	// a REMOVED property's slug, which its values still serve under
-	// (apikeyvocab.go): canonicalized to the stored key so an edit of a
-	// value already on a document lands where it lives, and so an
-	// off-document write is refused as removed by the stored key rather
-	// than as unknown. No live entry answers to the input at this point, so
-	// the corpse cannot shadow a live property. The tombstone window is
-	// blind here (a tombstone is indexed by nothing a slug can find); an
-	// in-document edit still lands, through the vocabulary that rendered
-	// the document (apikeyvocab.go rememberCorpse), but an off-document
-	// write in that window is refused as unknown rather than as removed.
-	if stored, found := k.removedStoredKey(input); found {
-		return stored, nil
-	}
 	return input, nil
 }
 
 // removedStoredKey resolves a removed property's served slug to its stored
-// key; the removed set is loaded on first use.
+// key (apikeyvocab.go serves it), so an edit of a value already on a
+// document lands where it lives and an off-document write is refused as
+// removed rather than as unknown; the removed set is loaded on first use.
+// The tombstone window is blind here (a tombstone is indexed by nothing a
+// slug can find): an in-document edit still lands, through the vocabulary
+// that rendered the document (rememberCorpse), but an off-document write in
+// that window is refused as unknown.
 func (k *keyCanon) removedStoredKey(input string) (string, bool) {
 	if k.spaceId == "" {
 		return "", false

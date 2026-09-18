@@ -697,4 +697,24 @@ func TestV2UpdateDeleteProperty(t *testing.T) {
 		assert.False(t, real.DryRun)
 		require.Len(t, real.Warnings, 2)
 	})
+
+	t.Run("the warnings spell the key reads will serve, not the spelling the delete used", func(t *testing.T) {
+		// given: deleted by display name; the values will read under "severity"
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("obj-a"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			"severity":                       domain.String("opt-high"),
+		}})
+
+		// when
+		result, err := fx.DeleteProperty(context.Background(), testSpaceId, "Severity", true)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 1)
+		assert.Contains(t, result.Warnings[0].Message, `1 object holds a value of "severity"`)
+		assert.NotContains(t, result.Warnings[0].Message, `"Severity"`)
+	})
 }

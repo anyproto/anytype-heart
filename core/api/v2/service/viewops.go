@@ -378,6 +378,15 @@ func (a *v2StateApplier) canonicalViewKey(input string) (string, []string) {
 	if input == "" {
 		return input, nil
 	}
+	// a spelling the render emitted for a removed property is that property
+	// (its served spelling stays the document's spelling); the forgiving
+	// chain below must not fold it onto a live property that shares its
+	// display name
+	if a.marshalOptions().Keys != nil && a.marshalKeys != nil {
+		if _, emitted := a.marshalKeys.emittedCorpse(input); emitted {
+			return input, nil
+		}
+	}
 	entries, err := a.propEntries()
 	if err != nil {
 		return input, nil // the load error surfaces in validateViewKeys

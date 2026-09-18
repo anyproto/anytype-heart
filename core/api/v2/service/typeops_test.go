@@ -519,6 +519,49 @@ func TestV2TypeOpsRemovePrunesEveryView(t *testing.T) {
 		assert.Equal(t, []string{"water_needs"}, viewColumnKeys(t, *committed, "v-b"))
 	})
 
+	// The delete warning points at remove_property; the op must then accept
+	// the spelling the type serves for a REMOVED property.
+	t.Run("remove_property takes a removed property off the type by the slug the type serves", func(t *testing.T) {
+		// given
+		fx := newTypeOpsFixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("rel-old"),
+			bundle.RelationKeyRelationKey:  domain.String("6a8f2c1d9e4b7a3f5c2d8e99"),
+			bundle.RelationKeyApiObjectKey: domain.String("old_field"),
+			bundle.RelationKeyName:         domain.String("Old field"),
+			bundle.RelationKeyIsArchived:   domain.Bool(true),
+		})
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:                   domain.String(typeOpsTypeId),
+			bundle.RelationKeyUniqueKey:            domain.String("ot-plant"),
+			bundle.RelationKeyApiObjectKey:         domain.String("plant"),
+			bundle.RelationKeyName:                 domain.String("Plant"),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-location", "rel-sun", "rel-water", "rel-old"}),
+		})
+		captured := fx.captureTypeDetails()
+		committed := fx.expectTypeViewEdit(typeReadWithViews(
+			viewWithColumns("v-a", "All", "name", "6a8f2c1d9e4b7a3f5c2d8e99"),
+		))
+
+		// when
+		result, err := fx.UpdateType(context.Background(), testSpaceId, "plant",
+			"", opsBody(`{"op":"remove_property","property":"old_field"}`), false, false)
+
+		// then: off the list, off the view, spelled as served
+		require.NoError(t, err)
+		assert.Equal(t, []string{"rel-location", "rel-sun", "rel-water"},
+			(*captured)[bundle.RelationKeyRecommendedRelations.String()])
+		assert.Equal(t, []string{"name"}, viewColumnKeys(t, *committed, "v-a"))
+		var dropped string
+		for _, w := range result.Warnings {
+			if strings.Contains(w.Message, "columns dropped") {
+				dropped = w.Message
+			}
+		}
+		assert.Contains(t, dropped, "old_field", "the warning spells the served key: %v", result.Warnings)
+		assert.NotContains(t, dropped, "6a8f2c1d9e4b7a3f5c2d8e99")
+	})
+
 	// A view that boards by a property is doing more than showing it.
 	t.Run("a view that groups by the property is left as it is", func(t *testing.T) {
 		// given

@@ -38,6 +38,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/storeresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -695,6 +696,24 @@ func (s *Service) typePropertyList(spaceId, typeId string, entries []propertyEnt
 		byId[entry.Id] = entry
 	}
 	keyTaken, slugHolders := servedPropertyKeySets(entries)
+	// the REMOVED properties the type still lists: they are served under
+	// their slug (apikeyvocab.go), so an op addresses them by it — that is
+	// how remove_property takes a removed property off a type — and their
+	// stored key is what the column prune works in
+	listed := map[string]bool{}
+	for _, section := range v2TypeSections {
+		for _, id := range details.GetStringList(section.detailKey) {
+			if id != "" {
+				if _, live := byId[id]; !live {
+					listed[id] = true
+				}
+			}
+		}
+	}
+	corpses := map[string]propertyEntry{}
+	for _, e := range s.referencedCorpses(spaceId, listed) {
+		corpses[e.Id] = e
+	}
 	var list []*typeListEntry
 	seen := map[string]bool{}
 	for _, section := range v2TypeSections {
@@ -707,6 +726,9 @@ func (s *Service) typePropertyList(spaceId, typeId string, entries []propertyEnt
 			if entry, live := byId[id]; live {
 				member.key, member.name, member.format = entry.Key, entry.Name, entry.Format
 				member.served = servedKey(entry.Key, entry.Slug, keyTaken, slugHolders)
+			} else if corpse, removed := corpses[id]; removed {
+				member.key, member.name, member.format = corpse.Key, corpse.Name, corpse.Format
+				member.served = servedKey(corpse.Key, corpse.Slug, keyTaken, slugHolders)
 			} else {
 				// a reference to a property this space cannot resolve. Its id
 				// is the only spelling left, so that is what addresses it —
@@ -1237,29 +1259,10 @@ func typePruneWarnings(plan template.TypeDataviewColumnPlan, path string, spell 
 // way the space's listings serve it, live and removed properties alike; an
 // unknown key spells as itself.
 func (s *Service) servedKeySpeller(spaceId string) func(string) string {
-	served := map[string]string{}
-	if entries, err := s.liveProperties(spaceId); err == nil {
-		keyTaken, slugHolders := servedPropertyKeySets(entries)
-		for _, e := range entries {
-			served[e.Key] = servedKey(e.Key, e.Slug, keyTaken, slugHolders)
-		}
-		if removed, rerr := s.removedProperties(spaceId); rerr == nil {
-			for _, e := range removed {
-				if _, live := served[e.Key]; live || e.Slug == "" {
-					continue
-				}
-				if slug := servedKey(e.Key, e.Slug, keyTaken, slugHolders); slug != e.Key {
-					served[e.Key] = slug
-				}
-			}
-		}
-	}
-	return func(key string) string {
-		if spelled, ok := served[key]; ok {
-			return spelled
-		}
-		return key
-	}
+	// the api vocabulary itself: live entries, removed ones, the tombstone
+	// window and every collision guard, exactly as a read spells them
+	vocab := s.apiKeys(spaceId, storeresolver.New(s.store.SpaceIndex(spaceId)))
+	return vocab.PropertySlug
 }
 
 // namedViews renders "the view \"All\"" / "2 views (All, Board)".

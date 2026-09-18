@@ -1182,34 +1182,42 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 				return nil, nil, err
 			}
 			renames := map[string]string{}
+			keyTaken, slugHolders := servedPropertyKeySets(propEntries)
 			var removed []propertyEntry
 			removedLoaded := false
-			for _, key := range sortedKeys(props) {
-				entry, ok, ambiguous := s.resolvePropertyInput(key, propEntries)
-				if len(ambiguous) > 0 {
-					return nil, nil, ambiguousKeyError("property key", key, "/properties/"+key, ambiguous)
-				}
-				if ok && entry.Key != key {
-					renames[key] = entry.Key
-					continue
-				}
-				if ok {
-					continue
-				}
+			removedStored := func(key string) (string, bool) {
 				// a REMOVED property's served slug (apikeyvocab.go): a read
 				// body pasted back carries it, and it canonicalizes to the
 				// stored key the value lives under, as the create's paste
-				// tolerance (validateDocumentRefs) expects — no live entry
-				// answered, so the corpse cannot shadow a live property
+				// tolerance (validateDocumentRefs) expects. It outranks a
+				// live property's display name — the exact spelling a read
+				// served is the caller's intent — but never an exact live
+				// key or slug
+				if keyTaken[key] || len(slugHolders[key]) > 0 {
+					return "", false
+				}
 				if !removedLoaded {
 					removedLoaded = true
 					removed, _ = s.removedProperties(spaceId)
 				}
 				for _, corpse := range removed {
 					if corpse.Slug != "" && corpse.Slug == key && corpse.Key != key {
-						renames[key] = corpse.Key
-						break
+						return corpse.Key, true
 					}
+				}
+				return "", false
+			}
+			for _, key := range sortedKeys(props) {
+				if stored, ok := removedStored(key); ok {
+					renames[key] = stored
+					continue
+				}
+				entry, ok, ambiguous := s.resolvePropertyInput(key, propEntries)
+				if len(ambiguous) > 0 {
+					return nil, nil, ambiguousKeyError("property key", key, "/properties/"+key, ambiguous)
+				}
+				if ok && entry.Key != key {
+					renames[key] = entry.Key
 				}
 			}
 			if len(renames) > 0 {

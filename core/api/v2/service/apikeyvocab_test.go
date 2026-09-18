@@ -170,6 +170,33 @@ func TestApiKeyVocab(t *testing.T) {
 			"a vocabulary that never served the slug does not resolve it: a definition or a create naming it mints anew (the namespace vacated)")
 	})
 
+	t.Run("two tombstones sharing a slug never both emit it", func(t *testing.T) {
+		// delete, re-create, delete again in one session: two tombstones
+		// carry "gamma"; whichever is asked first takes it, the other reads
+		// under its stored key — a suffixed spelling nothing could invert
+		// is never served
+		fx, _ := vocabFixture(t)
+		for _, key := range []string{"6aad3ad361fab22f055a8648", "6aad3ad361fab22f055a8649"} {
+			fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+				bundle.RelationKeyId:        domain.String("drv-rel-" + key),
+				bundle.RelationKeySpaceId:   domain.String(testSpaceId),
+				bundle.RelationKeyIsDeleted: domain.Bool(true),
+				bundle.RelationKeyDeletedSnapshot: domain.NewValueMap(map[string]domain.Value{
+					bundle.RelationKeyRelationKey.String():  domain.String(key),
+					bundle.RelationKeyApiObjectKey.String(): domain.String("gamma"),
+				}),
+			}})
+		}
+		v := fx.apiKeys(testSpaceId, storeresolver.New(fx.store.SpaceIndex(testSpaceId)))
+
+		first := v.PropertySlug("6aad3ad361fab22f055a8648")
+		second := v.PropertySlug("6aad3ad361fab22f055a8649")
+		assert.Equal(t, "gamma", first)
+		assert.Equal(t, "6aad3ad361fab22f055a8649", second, "the second tombstone is demoted to its stored key")
+		key, _ := v.PropertyKey("gamma")
+		assert.Equal(t, "6aad3ad361fab22f055a8648", key)
+	})
+
 	t.Run("a removed property's slug a live property has since claimed stays with the live one", func(t *testing.T) {
 		fx, _ := vocabFixture(t)
 		fx.addRelation(t, testSpaceId, objectstore.TestObject{

@@ -252,6 +252,13 @@ func (v *apiKeyVocab) PropertySlug(key string) string {
 			if _, taken := v.propKeyBySlug[candidate]; candidate != key && !taken && !v.removedSlug[candidate] {
 				served = candidate
 				v.rememberCorpse(candidate, key)
+				// claim it, so a second tombstone with the same slug (delete,
+				// re-create, delete again) reads under its stored key instead
+				// of a spelling the codec would have to suffix
+				if v.removedSlug == nil {
+					v.removedSlug = map[string]bool{}
+				}
+				v.removedSlug[candidate] = true
 			}
 		}
 		v.propSlugByKey[key] = served
@@ -337,6 +344,13 @@ func (v *apiKeyVocab) TypeKey(slug string) (string, bool) {
 // ---- ScopedKeyVocabulary: the importer's richer walk sees the table ----
 //
 
+// emittedCorpse reports the stored key this vocabulary served spelling for,
+// when spelling is a removed property's slug it emitted (rememberCorpse).
+func (v *apiKeyVocab) emittedCorpse(spelling string) (string, bool) {
+	key, ok := v.corpseKeyBySlug[spelling]
+	return key, ok
+}
+
 func (v *apiKeyVocab) PropertyKeyCandidates(spelling string) []string {
 	var out []string
 	if v.ensure() && !v.propKeyTaken[spelling] {
@@ -344,6 +358,11 @@ func (v *apiKeyVocab) PropertyKeyCandidates(spelling string) []string {
 			out = append(out, key)
 		} else if key, ok := bundle.RelationKeyByApiSlug(spelling); ok && v.PropertySlug(string(key)) == spelling {
 			out = append(out, string(key))
+		} else if key, ok := v.corpseKeyBySlug[spelling]; ok {
+			// a spelling this vocabulary emitted for a removed property is
+			// that property, before any live property's display name can
+			// claim it through the scoped chain
+			return []string{key}
 		}
 	}
 	if v.scoped != nil {

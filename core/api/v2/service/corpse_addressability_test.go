@@ -55,9 +55,18 @@ package v2service
 // create carries a pasted read body's values (§8.29, cause3_test.go), slug
 // or stored key alike; a type definition echoing a corpse the type still
 // lists is an identity, one naming a corpse the type never listed mints
-// anew. The stored bson key is never SERVED any more; it is still accepted
-// where a read body kept from before the flip could be pasted (create), and
-// nowhere else.
+// anew. The stored bson key is not served while the slug is free; it IS
+// served again when a live property claims the slug (the corpse must not
+// mislabel its value) or when two corpses share one slug (the second reads
+// under its key — a suffixed spelling nothing could invert is never made).
+// The stored key is still accepted wherever a read body kept from before
+// the flip could be pasted (create, a type definition's echo, unset), so a
+// client holding old addresses should re-read before writing by them.
+//
+// Removed properties reach only the read surfaces and the on-document
+// writes named above: `fields=`, list and unscoped search filters still
+// validate against live properties and refuse a corpse slug as unknown
+// (ROUND2 status lists this as accepted).
 
 import (
 	"context"

@@ -482,10 +482,31 @@ reviewed by three fresh reviewers before the next.
   objects, reconciliation errors propagate, `list_property_options`
   declares its pagination, and the delete warnings say what actually
   stays (the type's entry until taken off with `remove_property`).
+  A second pass of three fresh reviewers found the remaining namesake
+  paths and they are closed too: scoped resolution
+  (`PropertyKeyCandidates`, the codec's first stop on a fragment
+  re-import) returns the emitted corpse first, so a view rename beside a
+  live property NAMED like the corpse keeps the column; a pasted read body
+  beside such a namesake lands on the corpse (`canonicalizeDocumentKeys`
+  and `keyCanon` resolve an exact removed slug before the display-name
+  fold, unless a live key or slug takes it); tombstone emission registers
+  its claim so twin tombstones never both serve one slug; the type-op
+  planner carries the type's referenced corpses (`typePropertyList`), so
+  `remove_property` accepts the served slug the delete warning pointed at
+  and its prune warning spells it; prune warnings and delete warnings
+  spell the SERVED key through the api vocabulary (a delete by display
+  name promises the slug, not the name); the removed-property refusal
+  says what is actually closed ("set_properties gives no object that does
+  not already hold a value of it one") since a create still carries a
+  pasted value.
   Accepted: in the post-delete tombstone window an off-document write by
   the slug is refused as unknown rather than removed, and a create by the
   slug is a plain 400; `?keys=name` renders a corpse under its stored key;
-  tombstone slugs are not served by a service built without a creator.
+  tombstone slugs are not served by a service built without a creator;
+  `fields=`, list and unscoped search filters validate against live
+  properties and refuse a corpse slug as unknown (a canonicalized removed
+  slug can surface as its stored key in that error — F11 territory, group
+  D).
 - F2: a flat `property_definitions` replacement now reconciles the type's
   dataview like the op channel: columns pruned for detached properties
   (with the same "columns dropped" warning), added for newly listed ones.

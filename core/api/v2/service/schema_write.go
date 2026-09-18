@@ -1228,7 +1228,7 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId, propertyKey strin
 	// here: objects that hold a value of the property, and types that list
 	// it. Say so, on the real run and the dry run alike (round-two eval F1:
 	// a silent 200 here is how a caller destroyed five objects' data).
-	result.Warnings = append(result.Warnings, s.propertyDeleteWarnings(spaceId, entry, propertyKey)...)
+	result.Warnings = append(result.Warnings, s.propertyDeleteWarnings(spaceId, entry, s.servedKeySpeller(spaceId)(entry.Key))...)
 	if dryRun {
 		result.DryRun = true
 		return result, nil
@@ -1245,9 +1245,12 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId, propertyKey strin
 const propertyHolderProbeLimit = 1000
 
 // propertyDeleteWarnings names what a property delete leaves behind: the
-// objects holding a value of it and the types listing it. Store errors make
-// no warning — the delete still stands, and a warning the store could not
-// substantiate is worse than none.
+// objects holding a value of it and the types listing it. servedKey is the
+// spelling reads will serve for the property, not the one the caller
+// deleted it by — a delete by display name or stored key still promises the
+// slug the values will show under. Store errors make no warning — the
+// delete still stands, and a warning the store could not substantiate is
+// worse than none.
 func (s *Service) propertyDeleteWarnings(spaceId string, entry propertyEntry, servedKey string) []v2model.Issue {
 	var issues []v2model.Issue
 	// presence, not emptiness: a stored 0 or false is a value the caller

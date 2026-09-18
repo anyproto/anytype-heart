@@ -285,7 +285,7 @@ func removedCustomPropertyIssue(spaceId string, entry propertyEntry, spelledAs, 
 	}
 	return v2model.Issue{
 		Path:    path,
-		Message: fmt.Sprintf("property %q was removed from this space — nothing new lands on a removed property", spelling),
+		Message: fmt.Sprintf("property %q was removed from this space — set_properties gives no object that does not already hold a value of it one", spelling),
 	}.Hintf("remove %q from the request — values objects already hold stay readable, and reappear if the property is restored; for a different property, list them with %s",
 		spelledAs, v2model.RefListProperties(spaceId))
 }
@@ -302,7 +302,7 @@ func removedPropertyIssue(spaceId, key, spelledAs, path string, v errKeys) v2mod
 	}
 	return v2model.Issue{
 		Path:    path,
-		Message: fmt.Sprintf("property %q was removed from this space — nothing new lands on a removed property", spelling),
+		Message: fmt.Sprintf("property %q was removed from this space — set_properties gives no object that does not already hold a value of it one", spelling),
 	}.Hintf("remove %q from the request — values objects already hold stay readable, and reappear if the property is restored; for a different property, list them with %s",
 		spelledAs, v2model.RefListProperties(spaceId))
 }
