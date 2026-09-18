@@ -269,8 +269,16 @@ func (s *Service) applyTypeViewOps(ctx context.Context, spaceId, typeId string, 
 				return err
 			}
 		}
-		created = applier.createdViews
-		return nil
+		// the receipt spells a minted view id as a read serves it: compact by
+		// default, full with ?ids=full — the object channel's rule (R3-b: this
+		// channel handed back a 24-hex id no read ever showed)
+		if fullIdsRequested(ctx) {
+			created = applier.createdViews
+			return nil
+		}
+		var err error
+		_, created, err = applier.compactReceiptIDs()
+		return err
 	})
 	if err != nil {
 		return nil, mapWriteError(spaceId, typeId, err)

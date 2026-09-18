@@ -269,6 +269,28 @@ three fresh reviewers before the next.
   input (two queries and a derived-id probe); `?keys=name` bypasses the
   read marker; list and search rows carry no removal marker.
 
+**Group G (R3-a, R3-b, R3-c, R3-d, R3-f) — done.**
+
+- R3-a: the views/top-level ambiguity carries a `see_also` to the query
+  schema and says what to move where.
+- R3-b: a view the TYPE channel minted is spelled in its receipt as reads
+  spell it (compact by default, full with `?ids=full`) — the object
+  channel's rule, through the same receipt compaction. The two channels
+  keep their own receipt key spelling (`ops[i]` on objects, `/ops/i` on
+  types), each matching its issue paths.
+- R3-c: a created option's `property` in `created.options[]` is the served
+  key, not the stored one, on every receipt (`creatingResolvers.created`).
+- R3-d: `create_property` under a display name another property already
+  carries is accepted (a name is not identity) with a warning naming the
+  existing property's key and the repair. Type definitions and
+  `add_property` resolve a display name to the existing property before
+  minting, so they do not make twins.
+- R3-f: the system query keys (`created_date`, `last_modified_date`,
+  `creator`, `last_opened_date`) are accepted in both spellings and listed
+  in the served one, as `list_properties` serves them.
+- R3-e: `default_view` stays as documented under F16(a) (it governs how
+  sets and collections of the type open).
+
 # What the fixes did achieve
 
 Worth recording so nobody re-opens them:

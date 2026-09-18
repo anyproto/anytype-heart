@@ -253,10 +253,13 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	// the reference list a refusal shows speaks the request's vocabulary
 	// (?keys — §4.3); acceptance stays vocabulary-wide (D3) either way
 	refKeys = kc.referenceSpellings(refKeys, v)
-	for _, extra := range [][]string{v2SystemQueryKeys, {"type"}} {
-		refKeys = appendMissing(refKeys, extra...)
-		acceptKeys = appendMissing(acceptKeys, extra...)
-	}
+	// the system keys join in BOTH spellings on the accept side and in the
+	// served one on the reference side (R3-f: list_properties served
+	// last_opened_date while this refused it and listed lastOpenedDate)
+	acceptKeys = appendMissing(acceptKeys, kc.withServedSpellings(v2SystemQueryKeys)...)
+	refKeys = appendMissing(refKeys, servedBundledSpellings(v2SystemQueryKeys, v)...)
+	refKeys = appendMissing(refKeys, "type")
+	acceptKeys = appendMissing(acceptKeys, "type")
 	// The file aliases join the reference set when active (no real
 	// live property claims the spelling): mimeType/size are live in EVERY
 	// channel — fields, filters and sorts — translated to the backing store
@@ -1165,4 +1168,23 @@ func sortGlobalRecords(records []globalRecord) {
 		}
 		return a.record.Details.GetString(bundle.RelationKeyId) < b.record.Details.GetString(bundle.RelationKeyId)
 	})
+}
+
+// servedBundledSpellings spells bundled keys the way the surface serves
+// them: the derived slug, or the bundled display name under ?keys=name.
+func servedBundledSpellings(keys []string, v errKeys) []string {
+	out := make([]string, 0, len(keys))
+	for _, key := range keys {
+		spelling := key
+		if bundle.HasRelation(domain.RelationKey(key)) {
+			spelling = bundle.ApiSlug(key)
+			if v.names {
+				if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil && rel.Name != "" {
+					spelling = rel.Name
+				}
+			}
+		}
+		out = append(out, spelling)
+	}
+	return out
 }

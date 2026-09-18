@@ -2,6 +2,7 @@ package v2service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -440,5 +441,86 @@ func TestV2RoundFourChatAndIdentity(t *testing.T) {
 		apiErr := v2Err(t, err)
 		require.NotEmpty(t, apiErr.Issues)
 		assert.Contains(t, apiErr.Issues[0].Message, "the space icon and the default object type are not writable through this API")
+	})
+}
+
+// Round-four group G: the carried-forward round-three findings.
+func TestV2RoundFourCarriedForward(t *testing.T) {
+	ctx := context.Background()
+	setup := func(t *testing.T) *v2Fixture {
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.addTaskType(t)
+		return fx
+	}
+
+	t.Run("R3-a: the views ambiguity carries the query schema", func(t *testing.T) {
+		fx := setup(t)
+
+		_, err := fx.CreateQuery(ctx, testSpaceId, v2model.CreateQueryRequest{Name: "Q", Type: "chore",
+			Views: json.RawMessage(`[{"name":"V"}]`), Sorts: json.RawMessage(`[{"property":"severity"}]`)}, true, true)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, []v2model.Ref{v2model.RefGetSchema("query")}, apiErr.Issues[0].SeeAlso)
+	})
+
+	t.Run("R3-b: a view the type channel minted is spelled as reads spell it", func(t *testing.T) {
+		fx := newTypeOpsFixture(t)
+		fx.captureTypeDetails()
+		fx.expectTypeViewEdit(typeReadWithViews(viewWithColumns("viewAll1", "All", "name")))
+
+		result, err := fx.UpdateType(ctx, testSpaceId, "plant", "", opsBody(`{"op":"insert_view","name":"Board"}`), false, false)
+
+		require.NoError(t, err)
+		require.Len(t, result.CreatedViews, 1, "%v", result.CreatedViews)
+		for _, id := range result.CreatedViews {
+			assert.False(t, isBsonKey(id), "a compact label, not the 24-hex stored id: %s", id)
+		}
+	})
+
+	t.Run("R3-c: a created option names its property as the surface serves it", func(t *testing.T) {
+		fx := setup(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("rel-spice-level"),
+			bundle.RelationKeyRelationKey:    domain.String("6a8f2c1d9e4b7a3f5c2d8e55"),
+			bundle.RelationKeyApiObjectKey:   domain.String("spice_level"),
+			bundle.RelationKeyName:           domain.String("Spice level"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+		})
+
+		result, err := fx.CreateObject(ctx, testSpaceId,
+			[]byte(`{"formatVersion":"2.0","type":"chore","properties":{"name":"X","spice_level":"Hot"}}`), true, true)
+
+		require.NoError(t, err)
+		require.NotNil(t, result.Created)
+		require.Len(t, result.Created.Options, 1)
+		assert.Equal(t, "spice_level", result.Created.Options[0].Property)
+		assert.Equal(t, "Hot", result.Created.Options[0].Name)
+	})
+
+	t.Run("R3-d: a second property under an existing display name is created with a warning", func(t *testing.T) {
+		fx := setup(t)
+
+		result, err := fx.CreateProperty(ctx, testSpaceId, v2model.CreatePropertyRequest{Key: "severity2", Name: "Severity", Format: "text"}, true)
+
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 1)
+		assert.Equal(t, "/name", result.Warnings[0].Path)
+		assert.Contains(t, result.Warnings[0].Message, `a property named "Severity" already exists (key "severity")`)
+		assert.Equal(t, []v2model.Ref{v2model.RefListProperties(testSpaceId)}, result.Warnings[0].SeeAlso)
+	})
+
+	t.Run("R3-f: the system query keys are accepted and listed as list_properties serves them", func(t *testing.T) {
+		fx := setup(t)
+
+		_, _, _, _, err := fx.SearchObjects(ctx, testSpaceId, v2model.SearchRequest{Type: "chore", Fields: []string{"last_opened_date", "lastOpenedDate"}}, 0, 25)
+		require.NoError(t, err, "both spellings are accepted")
+
+		_, _, _, _, err = fx.SearchObjects(ctx, testSpaceId, v2model.SearchRequest{Type: "chore", Fields: []string{"last_opened_dat"}}, 0, 25)
+		issue := issueAt(t, err, "/fields/0")
+		assert.Contains(t, issue.Message, "last_opened_date")
+		assert.NotContains(t, issue.Message, "lastOpenedDate")
 	})
 }

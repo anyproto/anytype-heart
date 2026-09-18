@@ -1195,6 +1195,21 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 	}
 
 	result := &v2model.CreateResult{Key: slug}
+	// a second property under a display name the space already has is
+	// accepted (names are not identity here), but never silently: three of
+	// six eval runs ended with two fields both called "Condition" (R3-d)
+	if twins, err := s.liveProperties(spaceId); err == nil {
+		nfcName := norm.NFC.String(req.Name)
+		for _, entry := range twins {
+			if !entry.Hidden && entry.Name != "" && norm.NFC.String(entry.Name) == nfcName {
+				result.Warnings = append(result.Warnings, v2model.Issue{
+					Path:    "/name",
+					Message: fmt.Sprintf("a property named %q already exists (key %q) — this creates a second one under the same name", req.Name, s.servedKeySpeller(spaceId)(entry.Key)),
+				}.Hintf("to use the existing property, reference it by its key; the space's properties are listed by %s", v2model.RefListProperties(spaceId)))
+				break
+			}
+		}
+	}
 	if dryRun {
 		result.DryRun = true
 		result.Created = &v2model.SideEffects{

@@ -65,7 +65,8 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	}
 	if len(req.Views) > 0 && (req.Filter != "" || len(req.Filters) > 0 || len(req.Sorts) > 0) {
 		return nil, v2model.AmbiguousInput("provide views or top-level filter/filters/sorts, not both",
-			v2model.Issue{Path: "/views", Message: "views carry their own filters and sorts"})
+			v2model.Issue{Path: "/views", Message: "views carry their own filters and sorts"}.
+				Hintf("move the top-level filter and sorts into a view, or drop views — %s lists a view's members", v2model.RefGetSchema("query")))
 	}
 
 	// the queried type must exist in the space — its property keys are the

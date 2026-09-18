@@ -240,6 +240,15 @@ func (r *creatingResolvers) created() *v2model.SideEffects {
 		return nil
 	}
 	out := r.sideEffects
+	// an option's property is recorded by its stored key at mint time; the
+	// receipt spells it as every read does (R3-c: 53 hex ids in type
+	// receipts where create_property served the slug)
+	if r.keys != nil && len(out.Options) > 0 {
+		out.Options = append([]v2model.CreatedOption(nil), out.Options...)
+		for i := range out.Options {
+			out.Options[i].Property = r.keys.PropertySlug(out.Options[i].Property)
+		}
+	}
 	return &out
 }
 
