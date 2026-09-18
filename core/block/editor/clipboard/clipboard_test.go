@@ -3310,11 +3310,15 @@ func TestPasteNestedContentIntoEmptyStyledBlock(t *testing.T) {
 	}
 	type want struct {
 		tree []string
+		// the reused block's own Fields must come through the re-parenting and the fork
+		// untouched: it is the block the user configured, not the one that was pasted
+		firstLang string
 	}
 	for _, tc := range []struct {
 		name        string
 		targetStyle model.BlockContentTextStyle
 		targetKids  []string // text of the children the target already had
+		targetLang  string   // a code language the target was left carrying
 		pasteBlocks []*model.Block
 		want        want
 	}{
@@ -3405,6 +3409,54 @@ func TestPasteNestedContentIntoEmptyStyledBlock(t *testing.T) {
 			}},
 		},
 		{
+			// the target keeps the fields the user left on it. The pasted head is dropped
+			// in favour of this block, so nothing of the pasted block's own may be
+			// written onto it on the way past.
+			name:        "the reused block keeps its own fields through the adoption",
+			targetStyle: model.BlockContentText_Toggle,
+			targetLang:  "go",
+			pasteBlocks: nestedPaste(),
+			want: want{tree: []string{
+				"Toggle head",
+				"  Paragraph nested child",
+				"    Paragraph nested grandchild",
+				"Paragraph body",
+			}, firstLang: "go"},
+		},
+		{
+			// the same, with the pasted head carrying a conflicting language of its own
+			name:        "a conflicting language on the pasted head does not reach the reused block",
+			targetStyle: model.BlockContentText_Toggle,
+			targetLang:  "go",
+			pasteBlocks: func() []*model.Block {
+				blocks := nestedPaste()
+				blocks[0].Fields = &types.Struct{Fields: map[string]*types.Value{
+					"lang": pbtypes.String("rust"),
+				}}
+				return blocks
+			}(),
+			want: want{tree: []string{
+				"Toggle head",
+				"  Paragraph nested child",
+				"    Paragraph nested grandchild",
+				"Paragraph body",
+			}, firstLang: "go"},
+		},
+		{
+			// and where the subtree is not adopted, the sibling path must leave the
+			// block's fields alone too
+			name:        "the fields survive on the sibling path as well",
+			targetStyle: model.BlockContentText_Header1,
+			targetLang:  "go",
+			pasteBlocks: nestedPaste(),
+			want: want{tree: []string{
+				"Header1 head",
+				"Paragraph nested child",
+				"  Paragraph nested grandchild",
+				"Paragraph body",
+			}, firstLang: "go"},
+		},
+		{
 			// the block the reuse drops carries no children of its own here, so nothing
 			// should move: the plain case must keep behaving exactly as GO-7513 left it
 			name:        "a paste with no nesting is unaffected",
@@ -3422,6 +3474,11 @@ func TestPasteNestedContentIntoEmptyStyledBlock(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// given
 			target := textBlock("target", "", tc.targetStyle)
+			if tc.targetLang != "" {
+				target.Fields = &types.Struct{Fields: map[string]*types.Value{
+					"lang": pbtypes.String(tc.targetLang),
+				}}
+			}
 			sb := smarttest.New("test")
 			for i, txt := range tc.targetKids {
 				id := fmt.Sprintf("own%d", i)
@@ -3441,7 +3498,13 @@ func TestPasteNestedContentIntoEmptyStyledBlock(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			got := want{tree: renderTree(t, sb)}
+			st := sb.NewState()
+			first := st.Pick(st.Pick(st.RootId()).Model().ChildrenIds[0])
+			require.NotNil(t, first)
+			got := want{
+				tree:      renderTree(t, sb),
+				firstLang: pbtypes.GetString(first.Model().Fields, "lang"),
+			}
 			assert.Equal(t, tc.want, got)
 			// Every pasted block must be reported, nested ones included, each once and in
 			// the order a reader meets it: a tree alone passes when the caller is told
@@ -3636,6 +3699,95 @@ func TestPasteCaretPositionWhenFocusedBlockIsReplaced(t *testing.T) {
 			got := want{
 				caret:           caret,
 				focusedSurvives: lo.Contains(liveIds(t, sb), "target"),
+			}
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
+// Retitling a callout through the HTML slot must not cost it its icon. pasteHtml hands an
+// incoming plain paragraph the focused block's style and nothing else (GO-250), so the block
+// that reaches RangeTextPaste is a Callout with an empty icon — and an icon adopted
+// unconditionally would take that emptiness for an instruction and wipe the real one.
+//
+// Driven through the HtmlSlot rather than AnySlot on purpose: the synthesized block is what
+// makes this case, and a hand-built paste block cannot reproduce it.
+func TestPasteHtmlIntoStyledBlockKeepsItsIcon(t *testing.T) {
+	type want struct {
+		style model.BlockContentTextStyle
+		text  string
+		icon  string
+		image string
+	}
+	for _, tc := range []struct {
+		name       string
+		targetText string
+		rng        model.Range
+		html       string
+		want       want
+	}{
+		{
+			name:       "replacing all of the text",
+			targetText: "old",
+			rng:        model.Range{From: 0, To: 3},
+			html:       "<p>New note</p>",
+			want: want{
+				style: model.BlockContentText_Callout, text: "New note",
+				icon: "\U0001f4a1", image: "imagehash",
+			},
+		},
+		{
+			name:       "appending at the end",
+			targetText: "old",
+			rng:        model.Range{From: 3, To: 3},
+			html:       "<p>more</p>",
+			want: want{
+				style: model.BlockContentText_Callout, text: "oldmore",
+				icon: "\U0001f4a1", image: "imagehash",
+			},
+		},
+		{
+			// an empty callout has a style of its own, so it is not adopting one
+			name:       "filling it while it is empty",
+			targetText: "",
+			rng:        model.Range{From: 0, To: 0},
+			html:       "<p>New note</p>",
+			want: want{
+				style: model.BlockContentText_Callout, text: "New note",
+				icon: "\U0001f4a1", image: "imagehash",
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			target := textBlock("target", tc.targetText, model.BlockContentText_Callout)
+			target.GetText().IconEmoji = "\U0001f4a1"
+			target.GetText().IconImage = "imagehash"
+			sb := smarttest.New("test")
+			sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"target"}}))
+			sb.AddBlock(simple.New(target))
+			cb := newFixture(t, sb)
+			rng := tc.rng
+
+			// when
+			_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+				FocusedBlockId:    "target",
+				SelectedTextRange: &rng,
+				HtmlSlot:          tc.html,
+			}, "")
+
+			// then
+			require.NoError(t, err)
+			st := sb.NewState()
+			childIds := st.Pick("test").Model().ChildrenIds
+			require.Len(t, childIds, 1, "the paste must stay in the one block")
+			b := st.Pick(childIds[0])
+			require.NotNil(t, b)
+			got := want{
+				style: b.Model().GetText().Style,
+				text:  b.Model().GetText().Text,
+				icon:  b.Model().GetText().IconEmoji,
+				image: b.Model().GetText().IconImage,
 			}
 			assert.Equal(t, tc.want, got)
 		})

@@ -854,6 +854,58 @@ func TestText_RangeTextPasteStyleFields(t *testing.T) {
 			want:      want{style: model.BlockContentText_Paragraph, text: "plain"},
 		},
 		{
+			// The regression guard. pasteHtml hands an incoming plain paragraph the
+			// focused block's style and nothing else (GO-250), so retitling a callout
+			// through the HTML slot presents an icon-less Callout. Adopting that
+			// emptiness wiped an icon the paste never mentioned.
+			name: "replacing all the text of a callout keeps the block's own icon",
+			target: func() *model.Block {
+				b := target("old", model.BlockContentText_Callout)
+				b.GetText().IconEmoji = "\U0001f4a1"
+				b.GetText().IconImage = "imagehash"
+				return b
+			}(),
+			from: 0, to: 3,
+			copied:    pasted("New note", model.BlockContentText_Callout),
+			copyStyle: true,
+			want: want{
+				style: model.BlockContentText_Callout, iconEmoji: "\U0001f4a1",
+				iconImage: "imagehash", text: "New note",
+			},
+		},
+		{
+			// the same rule seen from the other side: where the style does not change,
+			// the icon on the block is the block's own and the paste does not touch it
+			name: "replacing all the text of a callout does not take another callout's icon",
+			target: func() *model.Block {
+				b := target("old", model.BlockContentText_Callout)
+				b.GetText().IconEmoji = "\U0001f4a1"
+				return b
+			}(),
+			from: 0, to: 3,
+			copied: func() *model.Block {
+				b := pasted("note", model.BlockContentText_Callout)
+				b.GetText().IconEmoji = "\U0001f525"
+				return b
+			}(),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Callout, iconEmoji: "\U0001f4a1", text: "note"},
+		},
+		{
+			// an empty callout is not an empty paragraph: it has a style of its own, so
+			// neither clause fires and its icon is left alone
+			name: "filling an empty callout keeps its icon",
+			target: func() *model.Block {
+				b := target("", model.BlockContentText_Callout)
+				b.GetText().IconEmoji = "\U0001f4a1"
+				return b
+			}(),
+			from: 0, to: 0,
+			copied:    pasted("New note", model.BlockContentText_Callout),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Callout, iconEmoji: "\U0001f4a1", text: "New note"},
+		},
+		{
 			name:   "empty paragraph adopts the code language",
 			target: target("", model.BlockContentText_Paragraph),
 			from:   0, to: 0,
@@ -891,6 +943,26 @@ func TestText_RangeTextPasteStyleFields(t *testing.T) {
 			}(),
 			from: 0, to: 0,
 			copied:    pasted("plain", model.BlockContentText_Paragraph),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Paragraph, lang: "go", text: "plain"},
+		},
+		{
+			// only the key owned by the style being adopted is written, so a language
+			// riding along on a paragraph is not applied to anything
+			name:   "adopting a non-Code style does not apply the source's language",
+			target: target("", model.BlockContentText_Paragraph),
+			from:   0, to: 0,
+			copied:    withLang(pasted("plain", model.BlockContentText_Paragraph), "rust"),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Paragraph, text: "plain"},
+		},
+		{
+			name: "adopting a non-Code style does not overwrite the language residue either",
+			target: func() *model.Block {
+				return withLang(target("", model.BlockContentText_Paragraph), "go")
+			}(),
+			from: 0, to: 0,
+			copied:    withLang(pasted("plain", model.BlockContentText_Paragraph), "rust"),
 			copyStyle: true,
 			want:      want{style: model.BlockContentText_Paragraph, lang: "go", text: "plain"},
 		},
@@ -981,53 +1053,117 @@ func TestText_RangeTextPasteStyleFields(t *testing.T) {
 
 // textDetails binds a block to a relation through Fields, under DetailsKeyFieldName. Adopting
 // the pasted block's Fields wholesale would drop that key and silently unbind the block, so
-// only the key belonging to the adopted style may be written.
+// only the key belonging to the adopted style may be written — never the struct as a whole,
+// and never a key the source happens to carry.
+//
+// The whole resulting field map is asserted, not just that the binding is still present: a
+// binding that survived alongside a key the paste had no business writing, or one quietly
+// replaced by the source's own binding, both read as "still bound" to a narrower assertion.
 func TestText_RangeTextPasteKeepsTheDetailsBinding(t *testing.T) {
+	boundTo := func(rel string) *types.Value { return pbtypes.StringList([]string{rel}) }
+	source := func(txt string, style model.BlockContentTextStyle, fields map[string]*types.Value) *model.Block {
+		b := &model.Block{Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+			Text: txt, Style: style, Marks: &model.BlockContentTextMarks{},
+		}}}
+		if fields != nil {
+			b.Fields = &types.Struct{Fields: fields}
+		}
+		return b
+	}
+
 	for _, tc := range []struct {
-		name     string
-		copied   *model.Block
-		wantLang string
+		name         string
+		targetFields map[string]*types.Value
+		targetText   string
+		from, to     int32
+		copied       *model.Block
+		want         *types.Struct
 	}{
 		{
-			name: "pasting a code block with a language",
-			copied: &model.Block{
-				Fields: &types.Struct{Fields: map[string]*types.Value{CodeLangFieldName: pbtypes.String("go")}},
-				Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-					Text: "fmt.Println(1)", Style: model.BlockContentText_Code,
-					Marks: &model.BlockContentTextMarks{},
-				}},
-			},
-			wantLang: "go",
+			name:         "a Code source with a language adds only that language",
+			targetFields: map[string]*types.Value{DetailsKeyFieldName: boundTo("name")},
+			copied: source("fmt.Println(1)", model.BlockContentText_Code,
+				map[string]*types.Value{CodeLangFieldName: pbtypes.String("go")}),
+			want: &types.Struct{Fields: map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("name"),
+				CodeLangFieldName:   pbtypes.String("go"),
+			}},
 		},
 		{
-			name: "pasting a plain paragraph",
-			copied: &model.Block{Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-				Text: "plain", Style: model.BlockContentText_Paragraph,
-				Marks: &model.BlockContentTextMarks{},
-			}}},
+			// the clearing branch runs on a bound block: it must remove one key, not the
+			// map the binding lives in
+			name:         "a Code source with no language leaves the binding standing",
+			targetFields: map[string]*types.Value{DetailsKeyFieldName: boundTo("name")},
+			copied:       source("plain code", model.BlockContentText_Code, nil),
+			want: &types.Struct{Fields: map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("name"),
+			}},
+		},
+		{
+			name: "a Code source with no language clears the language and keeps the binding",
+			targetFields: map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("name"),
+				CodeLangFieldName:   pbtypes.String("go"),
+			},
+			copied: source("plain code", model.BlockContentText_Code, nil),
+			want: &types.Struct{Fields: map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("name"),
+			}},
+		},
+		{
+			// a source carrying a binding of its own must not rebind the target
+			name:         "a Code source carrying its own binding does not rebind the target",
+			targetFields: map[string]*types.Value{DetailsKeyFieldName: boundTo("name")},
+			copied: source("fmt.Println(1)", model.BlockContentText_Code, map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("description"),
+				CodeLangFieldName:   pbtypes.String("go"),
+			}),
+			want: &types.Struct{Fields: map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("name"),
+				CodeLangFieldName:   pbtypes.String("go"),
+			}},
+		},
+		{
+			name:         "a paragraph source carrying a binding and a language changes nothing",
+			targetFields: map[string]*types.Value{DetailsKeyFieldName: boundTo("name")},
+			copied: source("plain", model.BlockContentText_Paragraph, map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("description"),
+				CodeLangFieldName:   pbtypes.String("rust"),
+			}),
+			want: &types.Struct{Fields: map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("name"),
+			}},
+		},
+		{
+			name:         "replacing all of a bound block's text keeps its binding",
+			targetFields: map[string]*types.Value{DetailsKeyFieldName: boundTo("name")},
+			targetText:   "old",
+			from:         0, to: 3,
+			copied: source("fmt.Println(1)", model.BlockContentText_Code, map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("description"),
+			}),
+			want: &types.Struct{Fields: map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("name"),
+			}},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// given
 			b := NewDetails(&model.Block{
 				Restrictions: &model.BlockRestrictions{},
-				Fields: &types.Struct{Fields: map[string]*types.Value{
-					DetailsKeyFieldName: pbtypes.StringList([]string{"name"}),
-				}},
+				Fields:       &types.Struct{Fields: tc.targetFields},
 				Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-					Style: model.BlockContentText_Paragraph, Marks: &model.BlockContentTextMarks{},
+					Text: tc.targetText, Style: model.BlockContentText_Paragraph,
+					Marks: &model.BlockContentTextMarks{},
 				}},
 			}, DetailsKeys{Text: "name"}).(*textDetails)
 
 			// when
-			_, err := b.RangeTextPaste(0, 0, tc.copied, true)
+			_, err := b.RangeTextPaste(tc.from, tc.to, tc.copied, true)
 
 			// then
 			require.NoError(t, err)
-			assert.Equal(t, []string{"name"},
-				pbtypes.GetStringList(b.Model().Fields, DetailsKeyFieldName),
-				"the block must stay bound to its relation")
-			assert.Equal(t, tc.wantLang, pbtypes.GetString(b.Model().Fields, CodeLangFieldName))
+			assert.Equal(t, tc.want, b.Model().Fields)
 		})
 	}
 }

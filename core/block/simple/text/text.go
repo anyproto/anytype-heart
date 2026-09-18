@@ -334,15 +334,32 @@ func (t *Text) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model
 
 	if isFullReplace || isPlaceInEmptyParagraph {
 		if copyStyle {
+			// read before the style is overwritten, below
+			styleChanged := t.content.Style != copiedText.Style
 			t.content.Style = copiedText.Style
 			t.content.Color = copiedText.Color
 			t.BackgroundColor = copiedBlock.BackgroundColor
-			// The icon is part of a callout's presentation, exactly like the two colors
-			// above it, and travels with the style for the same reason: a callout pasted
-			// on its own arrived without its icon, while a block adopting a style that has
-			// no icon kept one that nothing renders any more.
-			t.content.IconEmoji = copiedText.IconEmoji
-			t.content.IconImage = copiedText.IconImage
+			// The icon belongs to the callout style, so it is replaced when — and only
+			// when — the style it belongs to is replaced. It cannot follow the two colors
+			// above and be adopted unconditionally, because a plain paragraph pasted into
+			// a styled block does not arrive plain: pasteHtml hands it the focused block's
+			// style and nothing else (GO-250), so retitling a callout through the HTML
+			// slot presents an icon-less Callout, and adopting that emptiness would wipe
+			// an icon the paste never mentioned.
+			//
+			// Tying it to the style keeps both ends right: a callout pasted over other
+			// text brings its icon, and a block that stops being a callout stops carrying
+			// a callout's icon. Where the style does not change, the icon on the block is
+			// the block's own and the paste has no business touching it.
+			//
+			// An empty paragraph is the exception GO-7513 already argued for the checked
+			// state below: there is no state of its own to destroy there. The HTML hazard
+			// cannot reach this clause — pasteHtml only copies a style that is not
+			// Paragraph, and this clause only fires on a Paragraph target.
+			if styleChanged || isPlaceInEmptyParagraph {
+				t.content.IconEmoji = copiedText.IconEmoji
+				t.content.IconImage = copiedText.IconImage
+			}
 			t.adoptStyleFields(copiedBlock, copiedText.Style)
 			// A checkbox dropped into an empty paragraph brings its checked state with
 			// it, or a pasted "- [x]" lands unchecked, which looks right and is wrong.
