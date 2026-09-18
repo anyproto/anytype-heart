@@ -495,7 +495,7 @@ func (cb *clipboard) pasteAny(
 				delete(b.Fields.Fields, text.DetailsKeyFieldName)
 			}
 		}
-		dropInvalidMarks(b)
+		sanitizeMarks(b)
 		if d, ok := b.Content.(*model.BlockContentOfDataview); ok {
 			if err = cb.addRelationLinksToDataview(d.Dataview); err != nil {
 				return
@@ -667,16 +667,20 @@ func (cb *clipboard) getFileBlockPosition(req *pb.RpcBlockPasteRequest) model.Bl
 	return model.Block_Bottom
 }
 
-// dropInvalidMarks removes text marks that cannot be applied to the block's text: marks
-// without a range, with negative or reversed offsets, or with offsets outside the text.
+// sanitizeMarks makes every text mark of the block applicable to the block's text.
 //
-// Such marks describe no span of the text, so there is nothing to preserve by keeping them,
-// while storing one makes the block impossible to edit afterwards: the mark handling code
-// dereferences Range freely. We drop the mark instead of rejecting the whole paste, because
-// a paste carries the user's text, invalid marks come from the software assembling the slot
-// rather than from the user, and failing the request would leave the user with no way to
-// paste their content at all.
-func dropInvalidMarks(b *model.Block) {
+// A mark whose range merely overruns the text still says what the user meant, and the paste
+// machinery already clips such a range when it pastes into an existing block, so we repair it
+// here the same way and keep the mark with its param. Only a mark that cannot be repaired is
+// removed: one with no range at all, one whose range is reversed, and one that lies entirely
+// outside the text. Those describe no span of this text, so there is nothing to preserve,
+// while storing one makes the block impossible to edit afterwards - the mark handling code
+// dereferences Range freely.
+//
+// A bad mark is dropped rather than failing the whole request: a paste carries the user's
+// text, an unrepairable mark comes from the software assembling the slot rather than from the
+// user, and rejecting the paste would leave the user unable to paste their content at all.
+func sanitizeMarks(b *model.Block) {
 	txt := b.GetText()
 	if txt == nil || txt.Marks == nil || len(txt.Marks.Marks) == 0 {
 		return
@@ -689,7 +693,7 @@ func dropInvalidMarks(b *model.Block) {
 			log.Warnf("paste: drop mark of block %s: mark is not set", b.Id)
 			continue
 		}
-		if err := validateMarkRange(m.Range, textLen); err != nil {
+		if err := repairMarkRange(m.Range, textLen); err != nil {
 			log.Warnf("paste: drop %s mark of block %s: %v", m.Type.String(), b.Id, err)
 			continue
 		}
@@ -698,25 +702,32 @@ func dropInvalidMarks(b *model.Block) {
 	txt.Marks.Marks = validMarks
 }
 
-// validateMarkRange checks a mark range against a text of textLen UTF-16 code units.
-// The rules match the chat write path, see chatmodel.Message.Validate (GO-6049).
-func validateMarkRange(r *model.Range, textLen int32) error {
+// repairMarkRange clips r to a text of textLen UTF-16 code units, or reports why r cannot be
+// applied to that text at all.
+//
+// The bounds follow what the text API itself produces: SetMarkForAllText marks a text of
+// length n as [0, n], so To may equal textLen, and on an empty block that is [0, 0], so a
+// zero-width range at the very end is legal too. Interior zero-width ranges are legal for the
+// same reason, which is why a reversed range is From strictly greater than To.
+func repairMarkRange(r *model.Range, textLen int32) error {
 	if r == nil {
 		return fmt.Errorf("range is not set")
 	}
-	if r.From < 0 {
-		return fmt.Errorf("range.from is negative: %d", r.From)
-	}
-	// a negative range.to needs no check of its own: it is either below a non-negative
-	// range.from, and so caught as a reversed range, or range.from is negative too
 	if r.From > r.To {
 		return fmt.Errorf("range.from %d is greater than range.to %d", r.From, r.To)
 	}
-	if r.From >= textLen {
-		return fmt.Errorf("range.from %d is out of text of length %d", r.From, textLen)
+	// a negative To implies a negative From, since From is not greater than To
+	if r.To < 0 {
+		return fmt.Errorf("range %d-%d is entirely before the text", r.From, r.To)
+	}
+	if r.From > textLen {
+		return fmt.Errorf("range %d-%d is past the end of text of length %d", r.From, r.To, textLen)
+	}
+	if r.From < 0 {
+		r.From = 0
 	}
 	if r.To > textLen {
-		return fmt.Errorf("range.to %d is out of text of length %d", r.To, textLen)
+		r.To = textLen
 	}
 	return nil
 }

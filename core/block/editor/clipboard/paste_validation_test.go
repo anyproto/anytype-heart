@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/pb"
@@ -28,10 +29,17 @@ func markedBlock(id string, txt string, marks ...*model.BlockContentTextMark) *m
 // grin is U+1F600, a single rune that takes two UTF-16 code units
 const grin = "\U0001F600"
 
-func TestDropInvalidMarks(t *testing.T) {
+func TestSanitizeMarks(t *testing.T) {
 	boldAt := func(from, to int32) *model.BlockContentTextMark {
 		return &model.BlockContentTextMark{
 			Type:  model.BlockContentTextMark_Bold,
+			Range: &model.Range{From: from, To: to},
+		}
+	}
+	linkAt := func(from, to int32) *model.BlockContentTextMark {
+		return &model.BlockContentTextMark{
+			Type:  model.BlockContentTextMark_Link,
+			Param: "https://example.com/x",
 			Range: &model.Range{From: from, To: to},
 		}
 	}
@@ -42,6 +50,7 @@ func TestDropInvalidMarks(t *testing.T) {
 		marks []*model.BlockContentTextMark
 		want  []*model.BlockContentTextMark
 	}{
+		// unrepairable - dropped
 		{
 			name:  "mark without range is dropped",
 			text:  "hello",
@@ -55,15 +64,9 @@ func TestDropInvalidMarks(t *testing.T) {
 			want:  []*model.BlockContentTextMark{},
 		},
 		{
-			name:  "negative range.from is dropped",
+			name:  "reversed range is dropped",
 			text:  "hello",
-			marks: []*model.BlockContentTextMark{boldAt(-1, 3)},
-			want:  []*model.BlockContentTextMark{},
-		},
-		{
-			name:  "negative offsets are dropped",
-			text:  "hello",
-			marks: []*model.BlockContentTextMark{boldAt(-3, -1)},
+			marks: []*model.BlockContentTextMark{boldAt(4, 2)},
 			want:  []*model.BlockContentTextMark{},
 		},
 		{
@@ -74,29 +77,45 @@ func TestDropInvalidMarks(t *testing.T) {
 			want:  []*model.BlockContentTextMark{},
 		},
 		{
-			name:  "reversed range is dropped",
+			name:  "range entirely before the text is dropped",
 			text:  "hello",
-			marks: []*model.BlockContentTextMark{boldAt(4, 2)},
+			marks: []*model.BlockContentTextMark{boldAt(-3, -1)},
 			want:  []*model.BlockContentTextMark{},
 		},
 		{
-			name:  "range.to past the end of the text is dropped",
+			name:  "range entirely past the end of the text is dropped",
 			text:  "hello",
-			marks: []*model.BlockContentTextMark{boldAt(0, 6)},
+			marks: []*model.BlockContentTextMark{boldAt(7, 9)},
 			want:  []*model.BlockContentTextMark{},
 		},
 		{
-			name:  "range.from at the end of the text is dropped",
+			name:  "range starting one past the end of the text is dropped",
 			text:  "hello",
-			marks: []*model.BlockContentTextMark{boldAt(5, 5)},
+			marks: []*model.BlockContentTextMark{boldAt(6, 6)},
 			want:  []*model.BlockContentTextMark{},
+		},
+
+		// repairable - clipped, mark and param kept
+		{
+			name:  "range overrunning the text is clipped",
+			text:  "hello",
+			marks: []*model.BlockContentTextMark{linkAt(0, 6)},
+			want:  []*model.BlockContentTextMark{linkAt(0, 5)},
 		},
 		{
-			name:  "any mark on empty text is dropped",
-			text:  "",
-			marks: []*model.BlockContentTextMark{boldAt(0, 0)},
-			want:  []*model.BlockContentTextMark{},
+			name:  "range starting before the text is clipped",
+			text:  "hello",
+			marks: []*model.BlockContentTextMark{linkAt(-1, 3)},
+			want:  []*model.BlockContentTextMark{linkAt(0, 3)},
 		},
+		{
+			name:  "range overrunning the text on both ends is clipped",
+			text:  "hello",
+			marks: []*model.BlockContentTextMark{linkAt(-2, 99)},
+			want:  []*model.BlockContentTextMark{linkAt(0, 5)},
+		},
+
+		// already applicable - kept untouched
 		{
 			name:  "mark covering the whole text is kept",
 			text:  "hello",
@@ -104,23 +123,43 @@ func TestDropInvalidMarks(t *testing.T) {
 			want:  []*model.BlockContentTextMark{boldAt(0, 5)},
 		},
 		{
-			name:  "only the invalid mark is dropped",
+			name:  "interior zero width range is kept",
+			text:  "hello",
+			marks: []*model.BlockContentTextMark{boldAt(2, 2)},
+			want:  []*model.BlockContentTextMark{boldAt(2, 2)},
+		},
+		{
+			name:  "zero width range at the end of the text is kept",
+			text:  "hello",
+			marks: []*model.BlockContentTextMark{boldAt(5, 5)},
+			want:  []*model.BlockContentTextMark{boldAt(5, 5)},
+		},
+		{
+			// this is what SetMarkForAllText produces on an empty block
+			name:  "zero width range on empty text is kept",
+			text:  "",
+			marks: []*model.BlockContentTextMark{boldAt(0, 0)},
+			want:  []*model.BlockContentTextMark{boldAt(0, 0)},
+		},
+		{
+			name:  "only the unrepairable mark is dropped",
 			text:  "hello",
 			marks: []*model.BlockContentTextMark{boldAt(0, 2), {Type: model.BlockContentTextMark_Italic}, boldAt(3, 5)},
 			want:  []*model.BlockContentTextMark{boldAt(0, 2), boldAt(3, 5)},
 		},
+
+		// UTF-16: the emoji is 1 rune / 4 bytes / 2 UTF-16 code units
 		{
-			// the emoji is 1 rune / 4 bytes / 2 UTF-16 code units: offsets are UTF-16 units
 			name:  "mark covering a surrogate pair is kept",
 			text:  grin,
 			marks: []*model.BlockContentTextMark{boldAt(0, 2)},
 			want:  []*model.BlockContentTextMark{boldAt(0, 2)},
 		},
 		{
-			name:  "mark past a surrogate pair is dropped",
+			name:  "mark past a surrogate pair is clipped to the UTF-16 length",
 			text:  grin,
 			marks: []*model.BlockContentTextMark{boldAt(0, 3)},
-			want:  []*model.BlockContentTextMark{},
+			want:  []*model.BlockContentTextMark{boldAt(0, 2)},
 		},
 		{
 			name:  "mark starting inside a surrogate pair is kept",
@@ -129,9 +168,15 @@ func TestDropInvalidMarks(t *testing.T) {
 			want:  []*model.BlockContentTextMark{boldAt(1, 2)},
 		},
 		{
-			name:  "mark past the end of text measured in UTF-16 units is dropped",
+			name:  "clipping uses UTF-16 units not bytes or runes",
 			text:  grin + "a",
 			marks: []*model.BlockContentTextMark{boldAt(0, 4)},
+			want:  []*model.BlockContentTextMark{boldAt(0, 3)},
+		},
+		{
+			name:  "range starting past the end measured in UTF-16 units is dropped",
+			text:  grin,
+			marks: []*model.BlockContentTextMark{boldAt(3, 4)},
 			want:  []*model.BlockContentTextMark{},
 		},
 	} {
@@ -140,7 +185,7 @@ func TestDropInvalidMarks(t *testing.T) {
 			b := markedBlock("b", tc.text, tc.marks...)
 
 			// when
-			dropInvalidMarks(b)
+			sanitizeMarks(b)
 
 			// then
 			assert.Equal(t, tc.want, b.GetText().Marks.Marks)
@@ -155,7 +200,7 @@ func TestDropInvalidMarks(t *testing.T) {
 		}}
 
 		// when
-		dropInvalidMarks(b)
+		sanitizeMarks(b)
 
 		// then
 		require.Nil(t, b.GetText().Marks)
@@ -166,7 +211,7 @@ func TestDropInvalidMarks(t *testing.T) {
 		b := &model.Block{Id: "b", Content: &model.BlockContentOfDiv{Div: &model.BlockContentDiv{}}}
 
 		// when
-		dropInvalidMarks(b)
+		sanitizeMarks(b)
 
 		// then
 		require.Nil(t, b.GetText())
@@ -234,6 +279,78 @@ func TestPasteAny_InvalidMarks(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "aaaahello", sb.Pick("1").Model().GetText().Text)
 		assert.Empty(t, sb.Pick("1").Model().GetText().Marks.Marks)
+	})
+
+	t.Run("clipped mark reaches the document with its range and param", func(t *testing.T) {
+		// given
+		sb := createPage(t, createBlocks([]string{}, []string{"aaaa"}, emptyMarks))
+		cb := newFixture(t, sb)
+		want := []*model.BlockContentTextMark{{
+			Type:  model.BlockContentTextMark_Link,
+			Param: "https://example.com/x",
+			Range: &model.Range{From: 0, To: 5},
+		}}
+
+		// when
+		ids, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			AnySlot: []*model.Block{markedBlock("pasted", "hello", &model.BlockContentTextMark{
+				Type:  model.BlockContentTextMark_Link,
+				Param: "https://example.com/x",
+				Range: &model.Range{From: -1, To: 99},
+			})},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, ids, 1)
+		assert.Equal(t, want, sb.Pick(ids[0]).Model().GetText().Marks.Marks)
+	})
+
+	t.Run("every block of the slot is sanitized, not only the first", func(t *testing.T) {
+		// given
+		sb := createPage(t, createBlocks([]string{}, []string{"aaaa"}, emptyMarks))
+		cb := newFixture(t, sb)
+		first := markedBlock("first", "hello", &model.BlockContentTextMark{
+			Type: model.BlockContentTextMark_Bold, Range: &model.Range{From: 0, To: 5},
+		})
+		second := markedBlock("second", "world", &model.BlockContentTextMark{
+			Type: model.BlockContentTextMark_Bold, // no range
+		})
+
+		// when
+		ids, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			AnySlot: []*model.Block{first, second},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, ids, 2)
+		assert.Len(t, sb.Pick(ids[0]).Model().GetText().Marks.Marks, 1)
+		assert.Empty(t, sb.Pick(ids[1]).Model().GetText().Marks.Marks)
+	})
+
+	t.Run("nested child blocks are sanitized too", func(t *testing.T) {
+		// given
+		sb := createPage(t, createBlocks([]string{}, []string{"aaaa"}, emptyMarks))
+		cb := newFixture(t, sb)
+		parent := markedBlock("parent", "parent text")
+		parent.ChildrenIds = []string{"child"}
+		child := markedBlock("child", "child text", &model.BlockContentTextMark{
+			Type: model.BlockContentTextMark_Bold, // no range
+		})
+
+		// when
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			AnySlot: []*model.Block{parent, child},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		var childMarks []*model.BlockContentTextMark
+		for _, id := range sb.Pick("test").Model().ChildrenIds {
+			collectMarksOf(sb, id, "child text", &childMarks)
+		}
+		assert.Empty(t, childMarks, "the mark without a range must not reach the nested block")
 	})
 
 	t.Run("valid mark survives the paste", func(t *testing.T) {
@@ -343,4 +460,18 @@ func withId(b *model.Block, id string) *model.Block {
 
 func pbtypesString(s string) *types.Value {
 	return &types.Value{Kind: &types.Value_StringValue{StringValue: s}}
+}
+
+// collectMarksOf walks the pasted tree and collects the marks of the block holding wantText
+func collectMarksOf(sb *smarttest.SmartTest, id string, wantText string, out *[]*model.BlockContentTextMark) {
+	b := sb.Pick(id)
+	if b == nil {
+		return
+	}
+	if txt := b.Model().GetText(); txt != nil && txt.Text == wantText && txt.Marks != nil {
+		*out = append(*out, txt.Marks.Marks...)
+	}
+	for _, c := range b.Model().ChildrenIds {
+		collectMarksOf(sb, c, wantText, out)
+	}
 }
