@@ -76,6 +76,9 @@ func (cb *clipboard) Paste(ctx session.Context, req *pb.RpcBlockPasteRequest, gr
 	}
 
 	for _, b := range req.AnySlot {
+		if b == nil {
+			continue
+		}
 		if b.Id == template.FeaturedRelationsId {
 			return nil, nil, caretPosition, false, fmt.Errorf("paste: block %q is a system block and cannot be pasted", b.Id)
 		}
@@ -477,13 +480,22 @@ func (cb *clipboard) pasteAny(
 
 	destState := state.NewDoc(clipboardRootId, nil).(*state.State)
 
+	// AnySlot is assembled by clients, importers and integrations, so it may be structurally
+	// invalid. Sanitize it before anything downstream dereferences it.
+	req.AnySlot = slice.Filter(req.AnySlot, func(b *model.Block) bool {
+		return b != nil
+	})
+
 	for _, b := range req.AnySlot {
 		if b.Id == "" {
 			b.Id = bson.NewObjectId().Hex()
 		}
 		if b.Id == template.TitleBlockId || b.Id == template.DescriptionBlockId {
-			delete(b.Fields.Fields, text.DetailsKeyFieldName)
+			if b.Fields != nil {
+				delete(b.Fields.Fields, text.DetailsKeyFieldName)
+			}
 		}
+		dropInvalidMarks(b)
 		if d, ok := b.Content.(*model.BlockContentOfDataview); ok {
 			if err = cb.addRelationLinksToDataview(d.Dataview); err != nil {
 				return
@@ -655,7 +667,64 @@ func (cb *clipboard) getFileBlockPosition(req *pb.RpcBlockPasteRequest) model.Bl
 	return model.Block_Bottom
 }
 
+// dropInvalidMarks removes text marks that cannot be applied to the block's text: marks
+// without a range, with negative or reversed offsets, or with offsets outside the text.
+//
+// Such marks describe no span of the text, so there is nothing to preserve by keeping them,
+// while storing one makes the block impossible to edit afterwards: the mark handling code
+// dereferences Range freely. We drop the mark instead of rejecting the whole paste, because
+// a paste carries the user's text, invalid marks come from the software assembling the slot
+// rather than from the user, and failing the request would leave the user with no way to
+// paste their content at all.
+func dropInvalidMarks(b *model.Block) {
+	txt := b.GetText()
+	if txt == nil || txt.Marks == nil || len(txt.Marks.Marks) == 0 {
+		return
+	}
+	// offsets are counted in UTF-16 code units, the unit used by the mark code and the clients
+	textLen := int32(textutil.UTF16RuneCountString(txt.Text))
+	validMarks := txt.Marks.Marks[:0]
+	for _, m := range txt.Marks.Marks {
+		if m == nil {
+			log.Warnf("paste: drop mark of block %s: mark is not set", b.Id)
+			continue
+		}
+		if err := validateMarkRange(m.Range, textLen); err != nil {
+			log.Warnf("paste: drop %s mark of block %s: %v", m.Type.String(), b.Id, err)
+			continue
+		}
+		validMarks = append(validMarks, m)
+	}
+	txt.Marks.Marks = validMarks
+}
+
+// validateMarkRange checks a mark range against a text of textLen UTF-16 code units.
+// The rules match the chat write path, see chatmodel.Message.Validate (GO-6049).
+func validateMarkRange(r *model.Range, textLen int32) error {
+	if r == nil {
+		return fmt.Errorf("range is not set")
+	}
+	if r.From < 0 {
+		return fmt.Errorf("range.from is negative: %d", r.From)
+	}
+	// a negative range.to needs no check of its own: it is either below a non-negative
+	// range.from, and so caught as a reversed range, or range.from is negative too
+	if r.From > r.To {
+		return fmt.Errorf("range.from %d is greater than range.to %d", r.From, r.To)
+	}
+	if r.From >= textLen {
+		return fmt.Errorf("range.from %d is out of text of length %d", r.From, textLen)
+	}
+	if r.To > textLen {
+		return fmt.Errorf("range.to %d is out of text of length %d", r.To, textLen)
+	}
+	return nil
+}
+
 func (cb *clipboard) addRelationLinksToDataview(d *model.BlockContentDataview) (err error) {
+	if d == nil {
+		return nil
+	}
 	relationKeys := make(map[string]struct{})
 	if len(d.RelationLinks) != 0 || len(d.Views) == 0 {
 		return

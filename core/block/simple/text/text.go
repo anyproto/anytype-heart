@@ -81,6 +81,9 @@ func mustTextContent(content model.IsBlockContent) *model.BlockContentText {
 
 func toTextContent(content model.IsBlockContent) (textContent *model.BlockContentText, err error) {
 	if cot, ok := content.(*model.BlockContentOfText); ok {
+		if cot.Text == nil {
+			cot.Text = &model.BlockContentText{}
+		}
 		if cot.Text.Marks == nil {
 			cot.Text.Marks = &model.BlockContentTextMarks{}
 		}
@@ -230,6 +233,9 @@ func (t *Text) HasMarkForAllText(mark *model.BlockContentTextMark) bool {
 		To: int32(textutil.UTF16RuneCountString(t.content.Text)),
 	}
 	for _, m := range t.content.Marks.Marks {
+		if m == nil || m.Range == nil {
+			continue
+		}
 		if m.Type == mark.Type && m.Param == mark.Param {
 			if m.Range.From == mRange.From && m.Range.To >= mRange.To {
 				return true
@@ -273,6 +279,9 @@ func (t *Text) Split(pos int32) (simple.Block, error) {
 	newMarks := &model.BlockContentTextMarks{}
 	oldMarks := &model.BlockContentTextMarks{}
 	for _, mark := range t.content.Marks.Marks {
+		if mark == nil || mark.Range == nil {
+			continue
+		}
 		if mark.Range.From >= pos {
 			mark.Range.From -= pos
 			mark.Range.To -= pos
@@ -473,6 +482,11 @@ func (t *Text) RangeSplit(from int32, to int32, top bool) (newBlock simple.Block
 func (t *Text) splitMarks(marks []*model.BlockContentTextMark, r *model.Range, newTextLen int32) (topMarks []*model.BlockContentTextMark, botMarks []*model.BlockContentTextMark) {
 	for i := 0; i < len(marks); i++ {
 		m := marks[i]
+		// a mark without a range covers no part of the text, so it cannot be split;
+		// documents written before the paste path validated marks may still contain one
+		if m == nil || m.Range == nil {
+			continue
+		}
 
 		// <b>lorem</b> lorem (**********)  :--->   <b>lorem</b> lorem __PASTE__
 		if (m.Range.From < r.From) && (m.Range.To <= r.From) {

@@ -57,6 +57,9 @@ func markEq(m1, m2 *model.BlockContentTextMark) bool {
 	if m1.Param != m2.Param {
 		return false
 	}
+	if m1.Range == nil || m2.Range == nil {
+		return m1.Range == m2.Range
+	}
 	if *m1.Range != *m2.Range {
 		return false
 	}
@@ -71,6 +74,9 @@ func mergeAdjacentMarks(marks []*model.BlockContentTextMark) []*model.BlockConte
 		}
 		m := marks[i]
 		sm := marks[i+1]
+		if m.Range == nil || sm.Range == nil {
+			continue
+		}
 		if m.Type == sm.Type && m.Param == sm.Param && m.Range.To >= sm.Range.From && isMergeableMarkType(m.Type) {
 			m.Range.To = sm.Range.To
 			marks[i+1] = nil
