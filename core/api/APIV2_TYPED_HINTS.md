@@ -64,9 +64,10 @@ the route. What did change for a REST caller, beyond the ten messages
 below: hints that shipped a `{space_id}` placeholder now carry the bound id
 where the site knows it; placeholders follow the OpenAPI names (`{key}`,
 `{type}`, not `{property_key}`, `{typeKey}`); the empty-body refusal's issue
-message is now "the body is empty" with the old text as its hint; and a
-handful of hints were reworded to stay true on every surface (listed under
-"Review findings"). Consumers keying on `status`/`code` are unaffected;
+message is now "the body is empty" with the old text as its hint; the
+view-filter type refusal's message lost its parenthesised route, which is
+now its hint; and a handful of hints were reworded to stay true on every
+surface (listed under "Review findings"). Consumers keying on `status`/`code` are unaffected;
 consumers that only rendered `message` now miss the repairs that moved
 into `issues`.
 
@@ -171,15 +172,18 @@ rest, with an empty value leaving a parameter unbound. `didYouMean` and
 ### Curated wrapper (`core/api/wrapper/steer.go`)
 
 `restVocab` (ten regexes against the sentence) is gone. `toolVocab` maps
-operationId → spelling, and `deRest` replaces each reference's REST rendering
-in the issue's hint in one pass (`strings.Replacer`, so inserted text is
-never rescanned), longest first (the outline read extends the plain read).
-The issue's message is a fact and gets the catch-all only: a quoted value
-that happens to look like a route is never rewritten into a tool name. Every
-row is a noun phrase — the server's sentences supply the verb — and promises
-only what the tool does. The catch-all `restRoute` regex stays as the last
-line for a server build without references; its invariant — nothing
-route-shaped survives — is unchanged and still tested. A constructor-level
+operationId → spelling, and one span engine (`respellSpans`) rewrites a
+string in a single pass: the spans it knows (a reference's REST rendering in
+a hint; a hint as rendered, `(hint)`, in the error text) become their
+replacement verbatim, longest first where two match (the outline read
+extends the plain read), and the catch-all runs only over the prose between
+spans — so an inserted tool spelling is never rescanned or redacted. The
+issue's message is a fact and gets the catch-all only: a quoted value that
+happens to look like a route is never rewritten into a tool name. Every row
+is a noun phrase — the server's sentences supply the verb — and promises
+only what the tool does. The catch-all `restRoute` regex stays for a server
+build without references; its invariant — no route survives outside a
+protected span — is still tested. A constructor-level
 round trip (`v2model` constructors → `MarshalJSON` → `decodeAPIError` →
 `deRest`) pins the wire shape so the hand-written fixtures cannot drift
 from what the model package serializes; it does not exercise a real handler
@@ -201,7 +205,10 @@ eleven tests).
 
 ### External wrapper (`anytype-mcp`, `src/mcp/see-also.ts`)
 
-`respellResponse` runs on every success and error body: each reference's
+`respellResponse` runs on every error body and on success bodies whose
+declared response for the actual status is JSON (a download's content comes
+back untouched; a missing or content-less declaration is treated as JSON):
+each reference's
 REST rendering in the hint becomes `API-get-op-schema {"op":"set_properties"}`
 (tool name + arguments, unbound parameters as `<name>`, query values typed by
 the operation's declared OpenAPI parameter type — a resend reference is
@@ -324,6 +331,18 @@ Round three (the same sessions, resumed once more):
   bypassed the download gate (resolved and matched by actual status now);
   schema reference chains typed as string (resolved with cycle protection);
   arrays were accepted as parameter maps (rejected).
+
+Round four (merge review, all three lenses): **no merge-blocking finding.**
+Nits fixed: bound path values in the external wrapper are now typed by
+their declared parameter like query values; the view-filter type refusal's
+message-to-hint move is listed under "Wire"; the malformed-reference test
+returned early on a non-string message and did not exercise the list it
+supplied; the type tool's duplicate-name cleanup still matched the retired
+"the HTTP API" text and now drops the `update_type` hint by operation; the
+test-only `spacesListRepair` constant moved into the test file; overview
+prose that still described `strings.Replacer` and unconditional success
+rewriting was corrected. Pre-existing and untouched: the upload-file
+request schema differs between the generated JSON and YAML documents.
 
 Accepted, not fixed:
 

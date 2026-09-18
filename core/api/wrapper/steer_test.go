@@ -25,6 +25,10 @@ const (
 	evalSpacePrefix = "bafyreihwvsaekzzyb54o7um4hdpvpn5b2invn75lmijhhtghblvphxwz2i"
 )
 
+// spacesListRepair is how the server's space-not-found hint reads on this
+// surface; the space steer supersedes it, which these tests pin.
+const spacesListRepair = "list spaces with " + spacesToolSpelling
+
 // spaceNotFound is the server's own refusal for an unknown space, verbatim
 // (spaceNotFoundError): the fact in the message, the list steer as an issue
 // on the parameter, typed.
@@ -348,7 +352,7 @@ func TestRestVocabulary(t *testing.T) {
 				assert.Equal(t, tc.want, te.Issues[0].Hint)
 				assert.Contains(t, te.Text, tc.want, "the rendered text is rewritten in place by the same references")
 				assert.NotContains(t, te.Text, "/v2/",
-					"no route survives the pass — the catch-all takes what the references do not name")
+					"no route survives the pass outside a protected span — the catch-all takes what the references do not name")
 				assert.Nil(t, te.Issues[0].SeeAlso, "rendered references are dropped from the JSON channel")
 			})
 		}

@@ -75,8 +75,8 @@ type ToolError struct {
 	Status int
 	Code   string
 	// Message and Issues are the server's C6 envelope; Text is their
-	// rendering (renderErrorText), re-rendered after the tool-vocabulary
-	// pass (deRest).
+	// rendering (renderErrorText), rewritten in place by the tool-vocabulary
+	// pass (deRest) so an executor's edits to it survive.
 	Message string
 	Text    string
 	Issues  []v2model.Issue

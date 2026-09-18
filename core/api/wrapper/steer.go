@@ -239,10 +239,8 @@ func (r *Runner) spaceIdsWithPrefix(ctx context.Context, prefix string) []string
 // ---- the REST → tool vocabulary (§8.34) ----
 //
 
-// spacesListRepair is the tool-shaped spelling of the server's own
-// space-not-found hint, named because the space steer supersedes it.
-const spacesListRepair = "list spaces with " + spacesToolSpelling
-
+// spacesToolSpelling is the `list_spaces` row, named because the space
+// steer supersedes hints that name that operation (argSteers).
 const spacesToolSpelling = "the `spaces` tool"
 
 // toolVocab re-spells the server's repair hints for a caller that has tools
@@ -320,7 +318,7 @@ func toolSpelling(ref v2model.Ref) string {
 // as a bare route. The replacement is deliberately a plain noun phrase: it
 // reads grammatically wherever a route can appear in a sentence, and it
 // says the true thing, which is that the repair is not on this surface. A
-// test asserts nothing route-shaped survives this pass.
+// test asserts no route survives this pass outside a protected span.
 //
 // A dot is part of the route only when route characters follow it — real
 // space ids are dotted (`bafyreiabc.28y6mgnwgodt7`), and the earlier
