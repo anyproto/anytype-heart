@@ -31,13 +31,13 @@ func listFieldsParam(c *gin.Context) []string {
 // GetQueryObjectsHandler lists the objects a query matches
 //
 //	@Summary		List query results
-//	@Description	A stored view's dynamic placeholders, such as the current date or the calling member, are resolved here. One that cannot be resolved becomes a warning rather than a silently empty result.
+//	@Description	Without view, the query's first stored view applies, so its filters and sorts shape the rows; when the query has several views a warning names the one applied and the others. A view's dynamic placeholders, such as the calling member, are resolved here; one that cannot be resolved becomes a warning rather than a silently empty result.
 //	@Id				get_query_objects
 //	@Tags			Lists
 //	@Produce		json
 //	@Param			space_id	path		string									true	"Space id"
 //	@Param			query_id	path		string									true	"Query object id"
-//	@Param			view		query		string									false	"Stored view id (exact or unique suffix)"
+//	@Param			view		query		string									false	"Stored view id (exact or unique suffix). Omitted, the query's first view applies."
 //	@Param			fields		query		string									false	"Comma-separated property keys to include per row"
 //	@Param			offset		query		int										false	"Items to skip"		default(0)
 //	@Param			limit		query		int										false	"Items to return"	default(25)
@@ -95,13 +95,13 @@ func GetQueryViewsHandler(s *v2service.Service) gin.HandlerFunc {
 // GetCollectionObjectsHandler lists a collection's members
 //
 //	@Summary		List collection objects
-//	@Description	Members come back in the order the collection stores them, not sorted, unless a view is applied.
+//	@Description	A collection's objects are its membership, so without view the whole set comes back in the order the collection stores it and no view filter applies, even when the collection has one view. A view's filters and sorts apply only when view names it.
 //	@Id				get_collection_objects
 //	@Tags			Lists
 //	@Produce		json
 //	@Param			space_id		path		string									true	"Space id"
 //	@Param			collection_id	path		string									true	"Collection object id"
-//	@Param			view			query		string									false	"Stored view id (exact or unique suffix)"
+//	@Param			view			query		string									false	"Stored view id (exact or unique suffix). Omitted, no view applies and the whole membership is returned."
 //	@Param			fields			query		string									false	"Comma-separated property keys to include per row"
 //	@Param			offset			query		int										false	"Items to skip"		default(0)
 //	@Param			limit			query		int										false	"Items to return"	default(25)

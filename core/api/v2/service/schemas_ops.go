@@ -265,7 +265,7 @@ var v2ViewSetPropDefNoName = strings.Replace(strings.Replace(v2ViewSetPropDef,
 // surface serves, or a display name. Everything on this surface resolves the
 // same way, and a caller who has only ever been shown the served key must be
 // able to use it here.
-const v2TypePropertyRefDef = `"property":{"type":"string","minLength":1,"maxLength":256,"description":"the property, by the key GET /v2/spaces/{space_id}/properties serves or by its display name. A name nothing answers to creates the property, which is what format is for."}`
+const v2TypePropertyRefDef = `"property":{"type":"string","minLength":1,"maxLength":256,"description":"the property, by the key GET /v2/spaces/{space_id}/properties serves or by its display name. A name nothing answers to creates the property, which is what format is for. To rename a property send {name} to PATCH /v2/spaces/{space_id}/properties/{key}; do not re-send property_definitions."}`
 
 // v2TypeSectionPropDef is where on the type the property sits. Null names
 // the plain field list, the same way an explicit null clears a view field to

@@ -97,7 +97,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"api_key":{"type":"string","maxLength":256,"pattern":"^[a-zA-Z0-9_]+$","description":"the key object bodies name this type by; derived from the name when omitted"},` +
 			`"default_view":{"type":"string","enum":["table","list","gallery","kanban","calendar","graph"],"description":"how a set or collection of this type opens; applies to ones created after the change"},` +
 			`"default_template":{"type":"string","maxLength":256,"description":"id of the template new objects of this type start from; empty string clears it"},` +
-			`"property_definitions":{"type":"array","maxItems":128,"description":"the type's whole field list; an unknown name mints a property. On PATCH it replaces the list, so to change one field send an ops envelope with add_property instead","items":{` +
+			`"property_definitions":{"type":"array","maxItems":128,"description":"the type's whole field list; an unknown name mints a property. On PATCH it replaces the list, so to change one field send an ops envelope with add_property to PATCH /v2/spaces/{space_id}/types/{type} instead, and to rename a property send {name} to PATCH /v2/spaces/{space_id}/properties/{key}","items":{` +
 			`"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
 			`"name":{"type":"string","minLength":1,"maxLength":128,"description":"the property's spelling, e.g. Due date"},` +
 			`"format":{"type":"string","enum":[` + v2PropertyFormatEnum + `],"description":"the new property's format; omit it and an unknown name is created as text"},` +
