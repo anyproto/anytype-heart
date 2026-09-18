@@ -72,3 +72,44 @@ func TestPasteMarks_DevelopParity(t *testing.T) {
 		}), "bold must still apply to the whole (empty) block, otherwise a later toggle inverts")
 	})
 }
+
+// Clipping can align two marks of the same type and param on the same start, which makes
+// them merge. The merged mark must still span both, not collapse into the shorter one.
+func TestPasteMarks_ClippedMarksKeepTheirSpan(t *testing.T) {
+	t.Run("two link marks clipped to the same start keep the full span and param", func(t *testing.T) {
+		// given
+		sb := createPage(t, createBlocks([]string{}, []string{"aa"}, emptyMarks))
+		cb := newFixture(t, sb)
+		linkMark := func(from, to int32) *model.BlockContentTextMark {
+			return &model.BlockContentTextMark{
+				Type:  model.BlockContentTextMark_Link,
+				Param: "https://example.com/x",
+				Range: &model.Range{From: from, To: to},
+			}
+		}
+
+		// when: the first mark covers all of "hello", the second only its start
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "1",
+			SelectedTextRange: &model.Range{From: 1, To: 1},
+			IsPartOfBlock:     true,
+			AnySlot: []*model.Block{{Id: "p", Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "hello",
+					Marks: &model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+						linkMark(0, 5), linkMark(-3, 2),
+					}},
+				},
+			}}},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		got := sb.Pick("1").Model().GetText()
+		assert.Equal(t, "ahelloa", got.Text)
+		require.Len(t, got.Marks.Marks, 1)
+		assert.Equal(t, "https://example.com/x", got.Marks.Marks[0].Param)
+		assert.Equal(t, &model.Range{From: 1, To: 6}, got.Marks.Marks[0].Range,
+			"the link must still cover all of the pasted word, not collapse into the shorter mark")
+	})
+}
