@@ -119,6 +119,11 @@ func HTMLToBlocks(source []byte, url string) (blocks []*model.Block, rootBlockID
 			escapeAll(n)
 		}
 	})
+	// Replace the library's default after hook with a fence-aware one. The
+	// default right-trims every line and collapses blank runs across the whole
+	// document, which corrupts the contents of a fenced code block (GO-7515).
+	converter.ClearAfter()
+	converter.After(trimMarkdownOutsideFences)
 	converter.Use(plugin.GitHubFlavored())
 	converter.AddRules(getCustomHTMLRules()...)
 	md, err := converter.ConvertString(preprocessedSource)

@@ -67,6 +67,10 @@ type MD struct {
 	includeSchema    bool
 	mw               *marksWriter
 	fn               FileNamer
+	// inTableCell is set while rendering the contents of a GFM table cell. A
+	// pipe inside a cell has to stay escaped even within a code span, because
+	// GFM resolves cell boundaries before inline parsing.
+	inTableCell bool
 }
 
 var removeArrayRelations = []string{
@@ -542,10 +546,18 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 			// Code span contents are literal in markdown: escaping them would
 			// write the backslash out as visible content rather than escape
 			// anything (GO-7514).
-			if mw.inCodeSpan(i) {
-				buf.WriteString(string(r))
-			} else {
+			//
+			// The one exception is a pipe inside a GFM table cell. GFM resolves
+			// cell boundaries BEFORE inline parsing, so an unescaped pipe splits
+			// the cell even in the middle of a code span; `\|` is required there
+			// and is turned back into a literal pipe before the span is parsed.
+			switch {
+			case !mw.inCodeSpan(i):
 				buf.WriteString(escape.MarkdownCharacters(string(r)))
+			case r == '|' && h.inTableCell:
+				buf.WriteString(`\|`)
+			default:
+				buf.WriteString(string(r))
 			}
 		}
 		mw.writeMarks(buf, i+1)
@@ -757,7 +769,10 @@ func (h *MD) renderTable(buf writer, in *renderState, b *model.Block) {
 		err = tb.Iterate(func(b simple.Block, pos table.CellPosition) bool {
 			cellBuf := &bytes.Buffer{}
 			if b != nil {
+				wasInTableCell := h.inTableCell
+				h.inTableCell = true
 				h.render(cellBuf, in, b.Model())
+				h.inTableCell = wasInTableCell
 			}
 			content := cellBuf.String()
 			// Convert newlines to <br> tags for GFM compatibility
@@ -945,22 +960,73 @@ func newCodeSpan(content string) codeSpan {
 	return cs
 }
 
-// initCodeSpans precomputes, for every Keyboard mark, the delimiter and padding
-// its contents require, and records the rune ranges that must stay unescaped.
-func (mw *marksWriter) initCodeSpans(text *model.BlockContentText) {
+// splitCodeSpanMarks returns marks with every Keyboard mark that spans a line
+// break replaced by one mark per line.
+//
+// A markdown code span cannot contain a line break at all: CommonMark converts
+// line endings inside a span to spaces, so there is no spelling of a multiline
+// span that round-trips. Worse, a multiline span is what makes the widened
+// delimiter dangerous — a run of three or more backticks at the start of a line
+// opens a fenced code block, and with the content on a LATER line the rest of
+// the opening line reads as a clean info string, so the fence is accepted and
+// swallows everything after it (GO-7514).
+//
+// Emitting one span per line fixes both: the line break is carried by the block
+// itself rather than by the span, and the fence becomes unreachable. A delimiter
+// of three or more backticks means the content holds a run of at least two, and
+// with the content now on the same line as its opener that backtick lands in
+// what would have been the info string — which a backtick fence may not contain,
+// so it can never be parsed as a fence.
+func splitCodeSpanMarks(text *model.BlockContentText) []*model.BlockContentTextMark {
 	runes := []rune(text.Text)
+	out := make([]*model.BlockContentTextMark, 0, len(text.Marks.Marks))
 	for _, mark := range text.Marks.Marks {
-		if mark.Type != model.BlockContentTextMark_Keyboard || mark.Range == nil {
+		from, to, ok := codeSpanBounds(mark, len(runes))
+		if !ok || !strings.ContainsRune(string(runes[from:to]), '\n') {
+			out = append(out, mark)
 			continue
 		}
-		from, to := int(mark.Range.From), int(mark.Range.To)
-		if from < 0 {
-			from = 0
+		segStart := from
+		for i := from; i <= to; i++ {
+			if i < to && runes[i] != '\n' {
+				continue
+			}
+			if i > segStart {
+				out = append(out, &model.BlockContentTextMark{
+					Range: &model.Range{From: int32(segStart), To: int32(i)},
+					Type:  model.BlockContentTextMark_Keyboard,
+					Param: mark.Param,
+				})
+			}
+			segStart = i + 1
 		}
-		if to > len(runes) {
-			to = len(runes)
-		}
-		if from >= to {
+	}
+	return out
+}
+
+// codeSpanBounds returns the clamped rune bounds of a Keyboard mark, and whether
+// the mark is a non-empty code span at all.
+func codeSpanBounds(mark *model.BlockContentTextMark, textLen int) (from, to int, ok bool) {
+	if mark.Type != model.BlockContentTextMark_Keyboard || mark.Range == nil {
+		return 0, 0, false
+	}
+	from, to = int(mark.Range.From), int(mark.Range.To)
+	if from < 0 {
+		from = 0
+	}
+	if to > textLen {
+		to = textLen
+	}
+	return from, to, from < to
+}
+
+// initCodeSpans precomputes, for every Keyboard mark, the delimiter and padding
+// its contents require, and records the rune ranges that must stay unescaped.
+func (mw *marksWriter) initCodeSpans(text *model.BlockContentText, marks []*model.BlockContentTextMark) {
+	runes := []rune(text.Text)
+	for _, mark := range marks {
+		from, to, ok := codeSpanBounds(mark, len(runes))
+		if !ok {
 			continue
 		}
 		if mw.codeSpans == nil {
@@ -1083,12 +1149,13 @@ func (mw *marksWriter) Init(text *model.BlockContentText) *marksWriter {
 	mw.codeSpans = nil
 	mw.codeRanges = mw.codeRanges[:0]
 	if text.Marks != nil && len(text.Marks.Marks) > 0 {
-		mw.initCodeSpans(text)
+		marks := splitCodeSpanMarks(text)
+		mw.initCodeSpans(text, marks)
 		mw.breakpoints = make(map[int]struct {
 			starts []*model.BlockContentTextMark
 			ends   []*model.BlockContentTextMark
 		})
-		for _, mark := range text.Marks.Marks {
+		for _, mark := range marks {
 			if mark.Range != nil && mark.Range.From != mark.Range.To {
 				from := mw.breakpoints[int(mark.Range.From)]
 				from.starts = append(from.starts, mark)

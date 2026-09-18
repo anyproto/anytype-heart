@@ -115,6 +115,30 @@ func TestHTML_CodeBlockRoundTripsThroughHTMLSlot(t *testing.T) {
 			text: "single",
 			want: "single",
 		},
+		{
+			// GO-7515: the outer <pre> makes the importer treat this as fenced
+			// code, and the library's default post-processing right-trimmed every
+			// line of the whole document, silently rewriting the code.
+			name: "trailing spaces are preserved",
+			text: "a  ",
+			want: "a  ",
+		},
+		{
+			name: "a line of nothing but spaces is preserved",
+			text: "   ",
+			want: "   ",
+		},
+		{
+			name: "trailing spaces on every line are preserved",
+			text: "line1  \nline2  ",
+			want: "line1  \nline2  ",
+		},
+		{
+			// The same default post-processing collapsed runs of blank lines.
+			name: "consecutive blank lines inside the code are preserved",
+			text: "a\n\n\n\nb",
+			want: "a\n\n\n\nb",
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// given
@@ -139,4 +163,25 @@ func TestHTML_CodeBlockRoundTripsThroughHTMLSlot(t *testing.T) {
 			assert.Equal(t, tc.want, strings.TrimSuffix(text.Text, "\n"))
 		})
 	}
+}
+
+// The fence-aware post-processing must only spare FENCED content: ordinary
+// paragraph text still has its trailing whitespace trimmed, and blank runs
+// between blocks still collapse.
+func TestHTML_OrdinaryTextIsStillTrimmedAroundCodeBlocks(t *testing.T) {
+	// given
+	const in = "<p>para trailing   </p><pre><code>x  </code></pre><p>after</p>"
+
+	// when
+	parsed, _, err := anymark.HTMLToBlocks([]byte(in), "")
+
+	// then
+	require.NoError(t, err)
+	require.Len(t, parsed, 3, "got:\n%+v", parsed)
+	assert.Equal(t, "para trailing", parsed[0].GetText().Text,
+		"ordinary text must still be right-trimmed")
+	assert.Equal(t, model.BlockContentText_Code, parsed[1].GetText().Style)
+	assert.Equal(t, "x  \n", parsed[1].GetText().Text,
+		"code content must keep its trailing spaces")
+	assert.Equal(t, "after", parsed[2].GetText().Text)
 }
