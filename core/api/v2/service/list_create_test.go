@@ -240,7 +240,8 @@ func TestV2CreateQuery(t *testing.T) {
 		assert.Equal(t, "/filter", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, `parse error at offset 0 near "sevirity"`)
 		assert.Contains(t, apiErr.Issues[0].Message, `unknown property key "sevirity"`)
-		assert.Equal(t, "did you mean severity?", apiErr.Issues[0].Hint)
+		assert.Contains(t, apiErr.Issues[0].Hint, "did you mean severity? — if not, ")
+		assert.Equal(t, []v2model.Ref{v2model.RefListProperties(testSpaceId)}, apiErr.Issues[0].SeeAlso)
 	})
 
 	t.Run("system keys pass the queries reference set (rule 2)", func(t *testing.T) {

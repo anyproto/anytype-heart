@@ -9,8 +9,10 @@ package v2service
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
+	"strings"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -120,7 +122,7 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 			ResolveFormat: canonFormatName(s.formatNameResolver(spaceId), kc),
 		})
 		if err != nil {
-			return nil, filterStringError(err)
+			return nil, filterStringError(spaceId, err)
 		}
 		req.Filter = ""
 		req.Filters = parsed
@@ -159,7 +161,32 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	if err != nil {
 		return nil, err
 	}
-	return s.createFromDocument(ctx, spaceId, doc, docCreateOptions{dryRun: dryRun, createMissingOptions: createMissingOptions})
+	result, err := s.createFromDocument(ctx, spaceId, doc, docCreateOptions{dryRun: dryRun, createMissingOptions: createMissingOptions})
+	if err != nil {
+		return nil, queryDocumentError(err)
+	}
+	return result, nil
+}
+
+// queryDocumentError re-addresses a refusal of the document CreateQuery
+// built onto the request the caller sent: the views they wrote at /views
+// were reported at /blocks/0/views, a path nothing in the request has, and
+// the shape they take is the query kind's (F17).
+func queryDocumentError(err error) error {
+	var v2Err *v2model.Error
+	if !errors.As(err, &v2Err) {
+		return err
+	}
+	for i := range v2Err.Issues {
+		rest, ok := strings.CutPrefix(v2Err.Issues[i].Path, "/blocks/0/views")
+		if !ok {
+			continue
+		}
+		v2Err.Issues[i] = v2model.Issue{Path: "/views" + rest, Message: v2Err.Issues[i].Message}.
+			Hintf("a view's members are listed on %s — the fields the insert_view op takes (%s)",
+				v2model.RefGetSchema("query"), v2model.RefGetOpSchema("insert_view"))
+	}
+	return v2Err
 }
 
 // CreateCollection implements POST /v2/spaces/{space_id}/collections: the

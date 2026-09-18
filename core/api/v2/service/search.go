@@ -26,8 +26,10 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"regexp"
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/gogo/protobuf/types"
 
@@ -313,7 +315,7 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 			},
 		})
 		if err != nil {
-			return nil, filterStringError(err)
+			return nil, filterStringError(spaceId, err)
 		}
 		filtersJSON = parsed
 	}
@@ -559,10 +561,18 @@ func (s *Service) propertyOptionNames(spaceId, key string) ([]string, bool) {
 	return names, true
 }
 
+// filterNoOptionMessage is the parser's verdict on an unknown option name,
+// with the property it belongs to.
+var filterNoOptionMessage = regexp.MustCompile(`^property "([^"]+)" has no option named`)
+
 // filterStringError maps a filterstring parse error to the C6 shape: one
-// issue at /filter carrying the offset-addressed message and the
-// did-you-mean hint.
-func filterStringError(err error) error {
+// issue at /filter carrying the offset-addressed message and a hint with the
+// reference the fault calls for (F6). The parser is a library that knows no
+// space and no operation table — it composes a did-you-mean and spells a
+// raw route for the fallback — so the hint is re-composed here: an unknown
+// key points at the property list, an unknown option name at the option
+// list, and every other parse error at the grammar.
+func filterStringError(spaceId string, err error) error {
 	var pe *filterstring.Error
 	if !errors.As(err, &pe) {
 		return v2model.ValidationFailed("invalid filter",
@@ -572,12 +582,40 @@ func filterStringError(err error) error {
 	if pe.Token == "" {
 		where = "at end of input"
 	}
-	return v2model.ValidationFailed("invalid filter",
-		v2model.Issue{
-			Path:    "/filter",
-			Message: fmt.Sprintf("parse error at offset %d %s: %s", pe.Offset, where, pe.Message),
-			Hint:    pe.Hint,
-		})
+	issue := v2model.Issue{
+		Path:    "/filter",
+		Message: fmt.Sprintf("parse error at offset %d %s: %s", pe.Offset, where, pe.Message),
+	}
+	var repair v2model.Hint
+	switch {
+	case strings.HasPrefix(pe.Message, "unknown property key"):
+		repair = v2model.Hintf("list keys with %s", v2model.RefListProperties(spaceId))
+	case filterNoOptionMessage.MatchString(pe.Message):
+		key := filterNoOptionMessage.FindStringSubmatch(pe.Message)[1]
+		repair = v2model.Hintf("list them with %s", v2model.RefListPropertyOptions(spaceId, key))
+	default:
+		repair = v2model.Hintf("the compact filter grammar is on %s", v2model.RefGetSchema("filters"))
+	}
+	guess, steer := pe.Hint, ""
+	if !strings.HasPrefix(guess, "did you mean") {
+		// the parser's own fallback is a raw route the surface does not
+		// serve; its steering sentences (a key the compact form cannot
+		// spell, the value grammar) are kept
+		guess, steer = "", pe.Hint
+		if strings.HasPrefix(steer, "list them with GET ") {
+			steer = ""
+		}
+	} else if before, after, found := strings.Cut(guess, "? — "); found {
+		guess, steer = before+"?", after
+	}
+	text := repair.Text
+	if guess != "" {
+		text = guess + " — if not, " + text
+	}
+	if steer != "" {
+		text = steer + " — " + text
+	}
+	return v2model.ValidationFailed("invalid filter", issue.WithHint(v2model.Hint{Text: text, Refs: repair.Refs}))
 }
 
 // mapFilterCodecError converts anyblockjson.ValidationError issues from the
@@ -595,7 +633,8 @@ func mapFilterCodecError(err error, fromString bool) error {
 		if fromString {
 			path = "/filter"
 		}
-		issues = append(issues, v2model.Issue{Path: path, Message: iss.Message})
+		issues = append(issues, v2model.Issue{Path: path, Message: iss.Message}.
+			Hintf("the filter node shape is on %s", v2model.RefGetSchema("filters")))
 	}
 	return v2model.ValidationFailed("invalid filters", issues...)
 }
@@ -679,9 +718,8 @@ func validateFilterStructure(nodes []searchFilterNode, path string) []v2model.Is
 				issues = append(issues, v2model.Issue{
 					Path:    nodePath + "/condition",
 					Message: fmt.Sprintf("filter on %q has no condition", node.Property),
-					Hint: "a leaf needs a condition (equal, notEqual, contains, in, empty, …); " +
-						"without one the filter is dropped and every object matches",
-				})
+				}.Hintf("a leaf needs a condition (equal, not_equal, contains, in, empty, …); "+
+					"without one the filter is dropped and every object matches — the node shape is on %s", v2model.RefGetSchema("filters")))
 			}
 		}
 	}

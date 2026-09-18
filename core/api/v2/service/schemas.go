@@ -148,7 +148,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays simple to decode — see kind filters"},` +
 			`"sorts":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
 			`"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc"]},"empty_placement":{"type":"string","enum":["start","end"]}}}},` +
-			`"views":{"type":"array","maxItems":10,"description":"full view objects; mutually exclusive with top-level filter/sorts"}}}`,
+			`"views":{"type":"array","maxItems":10,"description":"the query's views, each whole: the fields the insert_view op's set takes, plus its columns. Mutually exclusive with top-level filter/sorts, which build one view named All","items":{"type":"object","required":["name"],"properties":{` + v2ViewFieldsDef + `,` + v2ViewColumnsListDef + `}}}}}`,
 		example: `{"name":"Open tasks","type":"task","filter":"done = false","sorts":[{"property":"due_date","direction":"asc"}]}`,
 	},
 	"collection": {

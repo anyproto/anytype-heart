@@ -365,7 +365,7 @@ func (a *v2StateApplier) mintBlockId() string {
 // the whole PATCH is rejected with the format's path-addressed issues under
 // the unchanged agent-facing message.
 func invalidDocError(err error) error {
-	verr := mapUnmarshalError(nil, err)
+	verr := mapUnmarshalError(nil, err, "")
 	var v2Err *v2model.Error
 	if errors.As(verr, &v2Err) && v2Err.Code == v2model.CodeValidationFailed {
 		v2Err.Message = v2InvalidDocMessage

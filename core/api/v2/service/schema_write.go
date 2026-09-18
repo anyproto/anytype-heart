@@ -108,6 +108,10 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	// discriminates its own: no formatVersion and no kind means the caller sent
 	// the shape they would have guessed, and it is translated into the document
 	// the rest of this function already handles.
+	// the flat body's members sit at the root; the document's sit under
+	// type_settings and properties. Every refusal below is addressed to the
+	// body the caller sent, so a flat body's issues are rebased back
+	flat := false
 	if fields, perr := parseEnvelope(body); perr == nil && !isTypeDocument(fields) {
 		doc, derr := typeShortcutDocument(fields)
 		if derr != nil {
@@ -116,11 +120,30 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 		if body, err = encodeEnvelope(doc); err != nil {
 			return nil, err
 		}
+		flat = true
 	}
 	fields, err := parseEnvelope(body)
 	if err != nil {
 		return nil, v2model.ValidationFailed("request body is not a JSON object",
 			v2model.Issue{Message: err.Error()})
+	}
+	addressed := func(err error) error {
+		if !flat || err == nil {
+			return err
+		}
+		return rebaseIssuePaths(err, flatTypeBodyPath)
+	}
+	// the two member guesses a definition invites (F10), named before the
+	// format prunes one of them
+	if raw, ok := fields["type_settings"]; ok {
+		var settings struct {
+			Definitions []map[string]any `json:"property_definitions"`
+		}
+		if json.Unmarshal(raw, &settings) == nil {
+			if issues := typeDefinitionMemberIssues(settings.Definitions, "/type_settings/property_definitions"); len(issues) > 0 {
+				return nil, addressed(v2model.ValidationFailed("the document failed AnyBlock validation", issues...))
+			}
+		}
 	}
 
 	// the endpoint IS the kind: inject/enforce kind object_type and default
@@ -152,8 +175,8 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	if body, err = encodeEnvelope(fields); err != nil {
 		return nil, err
 	}
-	if err := s.rejectInvalidDocument(body); err != nil {
-		return nil, err
+	if err := s.rejectInvalidDocument(body, "type"); err != nil {
+		return nil, addressed(err)
 	}
 
 	var envelope docEnvelope
@@ -258,7 +281,7 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun, createMissingOptions)
 	_, snapshot, err := anyblockjson.Unmarshal(body, resolvers.Options())
 	if err != nil {
-		return nil, mapUnmarshalError(body, err)
+		return nil, addressed(mapUnmarshalError(body, err, "type"))
 	}
 	if err := resolvers.err(); err != nil {
 		return nil, fmt.Errorf("resolve type properties: %w", err)

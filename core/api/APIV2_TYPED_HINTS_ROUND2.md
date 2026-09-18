@@ -514,6 +514,38 @@ reviewed by three fresh reviewers before the next.
 - F4/F13: `dry_run` declared on `update_property`, `delete_property`,
   `delete_type`; `offset`/`limit` on the four list endpoints.
 
+**Group B (F6, F9, F10, F15, F17) — done.**
+
+- F9: a missing or malformed `formatVersion` says `include
+  "formatVersion":"2.0"` and points at the document's schema
+  (`get_schema {"kind":"object"}` / `"type"`), on create and on the
+  validate endpoint alike (`docissues.go`).
+- F10: a type definition's `key` and `type` members are both named, at
+  the path the caller sent (a flat body's issues are rebased off the
+  document built from it: `/property_definitions/0/type`, not
+  `/type_settings/…`), with the repair spelled once each (`property`,
+  `format` with the format vocabulary) and `see_also: get_schema type`.
+  The validator's one-of-three "missing property" trio on a definition
+  collapses into one verdict. The format's self-cancelling `key` prose is
+  replaced.
+- F6: the did-you-mean branch keeps the list-all branch's reference
+  ("did you mean severity? — if not, list all with …"); the compact
+  filter parser's hints are re-composed with typed references (property
+  list for an unknown key, option list for an unknown option name, the
+  filters schema for a grammar error — the parser's raw
+  `GET /v2/spaces/{spaceId}/…` fallback is no longer served); the
+  structured filter issues point at the node shape, and spell conditions
+  as the schema does (`not_equal`, not `notEqual`).
+- F15: the If-Match hint fires only for a precondition written into the
+  body; a member the create body takes points at the op that carries it
+  (`properties` → `set_properties`, `blocks` → `insert_blocks`, …), and
+  any other stray key at the op index. The type surface's stray-key hint
+  carries the op index too.
+- F17: the query kind's `views` are typed — the view fields the
+  `insert_view` op takes (one constant, `v2ViewFieldsDef`) plus a typed
+  column list — and a view refusal is addressed at `/views/…` rather than
+  `/blocks/0/views/…`, with `see_also` to the query schema and the op.
+
 # Ranked work order
 
 1. **F1** — warn or refuse on destructive `delete_property`; stop leaking

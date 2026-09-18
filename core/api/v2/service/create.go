@@ -338,7 +338,7 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	}
 
 	// 1. structural + format-semantic validation (no side effects)
-	if err := s.rejectInvalidDocument(body); err != nil {
+	if err := s.rejectInvalidDocument(body, "object"); err != nil {
 		return nil, err
 	}
 
@@ -386,7 +386,7 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	resolvers := s.newCreatingResolvers(ctx, spaceId, opts.dryRun, opts.createMissingOptions)
 	_, snapshot, err := anyblockjson.Unmarshal(body, resolvers.Options())
 	if err != nil {
-		return nil, mapUnmarshalError(body, err)
+		return nil, mapUnmarshalError(body, err, "object")
 	}
 	if err := resolvers.err(); err != nil {
 		return nil, fmt.Errorf("resolve document references: %w", err)
@@ -453,7 +453,7 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 // export writes a legend to preserve a space's own bindings; a caller creating
 // from nothing has no bindings to preserve, and the authoring subset excludes
 // both legends for that reason.
-func (s *Service) rejectInvalidDocument(body []byte) error {
+func (s *Service) rejectInvalidDocument(body []byte, kind string) error {
 	if err := rejectExportLegends(body); err != nil {
 		return err
 	}
@@ -464,7 +464,7 @@ func (s *Service) rejectInvalidDocument(body []byte) error {
 	if err == nil {
 		return nil
 	}
-	return mapUnmarshalError(body, err)
+	return mapUnmarshalError(body, err, kind)
 }
 
 // exportLegends are the root members that bind a document's spellings to a
@@ -503,7 +503,10 @@ func rejectExportLegends(body []byte) error {
 }
 
 // mapUnmarshalError converts anyblockjson validation errors into C6 errors.
-func mapUnmarshalError(body []byte, err error) error {
+// mapUnmarshalError is the C6 shape of a format error. kind names the
+// schema that documents the whole document ("object", "type"), or is empty
+// for a fragment, and steers the repairs documentIssues attaches.
+func mapUnmarshalError(body []byte, err error, kind string) error {
 	var validationErr *anyblockjson.ValidationError
 	if !errors.As(err, &validationErr) {
 		return v2model.ValidationFailed("invalid AnyBlock document", v2model.Issue{Message: err.Error()})
@@ -515,11 +518,7 @@ func mapUnmarshalError(body []byte, err error) error {
 		}
 		return v2model.VersionUnsupported(docVersion, anyblockjson.FormatVersion)
 	}
-	issues := make([]v2model.Issue, 0, len(validationErr.Issues))
-	for _, issue := range validationErr.Issues {
-		issues = append(issues, v2model.Issue{Path: issue.Path, Message: issue.Message})
-	}
-	return v2model.ValidationFailed("the document failed AnyBlock validation", issues...)
+	return v2model.ValidationFailed("the document failed AnyBlock validation", documentIssues(kind, validationErr.Issues)...)
 }
 
 // validateDocumentRefs is the R9 layer for object creates: kind and type

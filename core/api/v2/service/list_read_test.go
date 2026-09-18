@@ -369,7 +369,8 @@ func TestV2GetQueryObjects(t *testing.T) {
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "fields", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, `unknown property key "sevirity"`)
-		assert.Equal(t, "did you mean severity?", apiErr.Issues[0].Hint)
+		assert.Contains(t, apiErr.Issues[0].Hint, "did you mean severity? — if not, ")
+		assert.NotEmpty(t, apiErr.Issues[0].SeeAlso, "the guess carries the list-all reference too")
 	})
 }
 

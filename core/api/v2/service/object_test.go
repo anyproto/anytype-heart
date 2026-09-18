@@ -842,7 +842,8 @@ func TestV2ListObjects(t *testing.T) {
 		assert.Equal(t,
 			`unknown property key "list_fields_validation_porbe" — known property keys: createdDate, creator, id, lastModifiedDate, lastOpenedDate, list_fields_validation_probe, mimeType, name, size, type`,
 			apiErr.Issues[0].Message)
-		assert.Equal(t, "did you mean id, list_fields_validation_probe?", apiErr.Issues[0].Hint)
+		assert.Contains(t, apiErr.Issues[0].Hint, "did you mean id, list_fields_validation_probe? — if not, ")
+		assert.NotEmpty(t, apiErr.Issues[0].SeeAlso)
 
 		rows, _, _, err := fx.ListObjects(context.Background(), testSpaceId,
 			[]string{"list_fields_validation_probe"}, 0, 25)

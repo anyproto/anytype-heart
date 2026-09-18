@@ -235,10 +235,11 @@ func opSchema(op string, required []string, props ...string) string {
 // view-family ops.
 const v2ViewBlockPropDef = `"block":{"$ref":"#/$defs/blockRef","description":"a dataview block — optional when the object has exactly one (types, queries and collections do)"}`
 
-// v2ViewSetPropDef is the shared `set` channel of update_view and insert_view:
-// the authorable §6.2 view-level fields, merge semantics.
-const v2ViewSetPropDef = `"set":{"type":"object","maxProperties":18,"additionalProperties":false,"description":"merge: only the named fields change, null clears one to its default. sorts and filters replace whole. filter is the compact-string alternative to filters; never both. Columns use the columns channel.","properties":{` +
-	`"name":{"type":["string","null"],"maxLength":4096},` +
+// v2ViewFieldsDef is the authorable §6.2 view-level field set — one
+// spelling for the view ops' set channel and for the views a query is
+// created with (round-two eval F17: the query kind typed them as anyValue,
+// and a caller guessed groupBy, then groupProperty, then gave up).
+const v2ViewFieldsDef = `"name":{"type":["string","null"],"maxLength":4096},` +
 	`"type":{"type":["string","null"],"enum":["table","list","gallery","kanban","calendar","graph",null]},` +
 	`"group_by":{"type":["string","null"],"maxLength":256,"description":"property key to group by (kanban/board views)"},` +
 	`"cover_property":{"type":["string","null"],"maxLength":256},` +
@@ -254,7 +255,19 @@ const v2ViewSetPropDef = `"set":{"type":"object","maxProperties":18,"additionalP
 	`"list_size":{"type":["string","null"],"enum":["compact","regular",null]},` +
 	`"alternate_rows":{"type":["boolean","null"]},` +
 	`"sorts":{"type":["array","null"],"maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc","custom"]},"custom_order":{"type":"array","maxItems":128},"empty_placement":{"type":"string","enum":["start","end"]},"include_time":{"type":"boolean"},"no_collate":{"type":"boolean"},"id":{"type":"string","maxLength":64,"description":"output-only on reads; accepted back so a read sort round-trips"}}}},` +
-	`"filters":{"type":["array","null"],"maxItems":32,"description":"filter nodes (GET /v2/schemas/filters), at most 32 at the top level (group more under and/or nodes) — recursive, so prefer filter, the compact string"},` +
+	`"filters":{"type":["array","null"],"maxItems":32,"description":"filter nodes (GET /v2/schemas/filters), at most 32 at the top level (group more under and/or nodes) — recursive, so prefer filter, the compact string"}`
+
+// v2ViewColumnsListDef is a view's column list as a whole, the shape a
+// created view carries (the ops merge per column through v2ViewColumnsPropDef).
+const v2ViewColumnsListDef = `"columns":{"type":"array","maxItems":64,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
+	`"property":{"type":"string","maxLength":256},"hidden":{"type":"boolean"},"width":{"type":"integer","minimum":0,"maximum":10000},` +
+	`"align":{"type":"string","enum":["left","center","right","justify"]},` +
+	`"aggregation":{"type":"string","enum":["count","count_value","count_distinct","count_empty","count_not_empty","percent_empty","percent_not_empty","sum","average","median","min","max","range"]}}}}`
+
+// v2ViewSetPropDef is the shared `set` channel of update_view and insert_view:
+// the authorable §6.2 view-level fields, merge semantics.
+const v2ViewSetPropDef = `"set":{"type":"object","maxProperties":18,"additionalProperties":false,"description":"merge: only the named fields change, null clears one to its default. sorts and filters replace whole. filter is the compact-string alternative to filters; never both. Columns use the columns channel.","properties":{` +
+	v2ViewFieldsDef + `,` +
 	`"filter":{"type":"string","maxLength":4096,"description":"compact filter syntax (GET /v2/schemas/filters serves the grammar); parsed server-side into filters"}}}`
 
 // v2ViewColumnsPropDef is the shared per-column merge channel.

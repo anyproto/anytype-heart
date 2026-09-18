@@ -390,13 +390,20 @@ func listKnown(what string, known []string) string {
 }
 
 // didYouMean picks the closest known keys for the hint; fallback steers to
-// the discovery list.
+// the discovery list, and rides along behind the guess — a guess is a
+// question, and the caller whose answer is "no" needs the list as much as
+// one who got no guess at all (round-two eval F6: the did-you-mean branch
+// dropped the reference the list-all branch carried).
 func didYouMean(input string, known []string, fallback v2model.Hint) v2model.Hint {
 	suggestions := closestKeys(input, known, 3)
 	if len(suggestions) == 0 {
 		return fallback
 	}
-	return v2model.Plain("did you mean " + strings.Join(suggestions, ", ") + "?")
+	guess := "did you mean " + strings.Join(suggestions, ", ") + "?"
+	if fallback.Text == "" {
+		return v2model.Plain(guess)
+	}
+	return v2model.Hint{Text: guess + " — if not, " + fallback.Text, Refs: fallback.Refs}
 }
 
 // closestKeys ranks known keys by simple similarity to input:

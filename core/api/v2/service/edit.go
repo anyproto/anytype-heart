@@ -431,7 +431,35 @@ func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, o
 
 // parsePatchRequest decodes the object PATCH body strictly.
 func parsePatchRequest(body []byte) ([]json.RawMessage, error) {
-	return parseOpsEnvelope(body, v2OpNames, "the If-Match precondition is a header, not a body field")
+	return parseOpsEnvelope(body, v2OpNames, objectPatchUnknownKeyHint)
+}
+
+// v2BodyKeyOps maps the members a caller writes at the PATCH body root,
+// having guessed the create body's shape, to the op that carries them.
+var v2BodyKeyOps = map[string]string{
+	"properties":       "set_properties",
+	"name":             "set_properties",
+	"blocks":           "insert_blocks",
+	"markdown":         "insert_blocks",
+	"views":            "insert_view",
+	"items":            "add_items",
+	"collection_items": "add_items",
+}
+
+// objectPatchUnknownKeyHint is the repair for a key beside ops on the object
+// surface. The If-Match sentence used to be the hint for EVERY unknown key
+// (F15) — it fires only for a precondition written into the body now; a
+// member the create body takes is pointed at the op that carries it, and
+// anything else at the op index.
+func objectPatchUnknownKeyHint(key string) v2model.Hint {
+	switch strings.ToLower(key) {
+	case "if-match", "if_match", "ifmatch", "etag":
+		return v2model.Plain("the If-Match precondition is a header, not a body field")
+	}
+	if op, ok := v2BodyKeyOps[key]; ok {
+		return v2model.Hintf("%s is carried by the %s op inside ops (%s)", key, op, v2model.RefGetOpSchema(op))
+	}
+	return v2model.Hintf("every change travels as an op inside ops — %s documents each", v2model.NewRef(v2model.OpGetOpSchema))
 }
 
 // parseOpsEnvelope is the one decoder behind every ops body. Two endpoints
@@ -440,7 +468,7 @@ func parsePatchRequest(body []byte) ([]json.RawMessage, error) {
 // the unknown key, the empty list and the batch cap. Only what genuinely
 // differs travels as an argument, so neither endpoint can grow its own
 // version of a rule the other keeps.
-func parseOpsEnvelope(body []byte, opNames []string, unknownKeyHint string) ([]json.RawMessage, error) {
+func parseOpsEnvelope(body []byte, opNames []string, unknownKeyHint func(key string) v2model.Hint) ([]json.RawMessage, error) {
 	fields, err := parseEnvelope(body)
 	if err != nil {
 		return nil, v2model.ValidationFailed("the PATCH body must be a JSON object",
@@ -469,7 +497,7 @@ func parseOpsEnvelope(body []byte, opNames []string, unknownKeyHint string) ([]j
 	for key := range fields {
 		if key != "ops" {
 			return nil, v2model.ValidationFailed("unknown field in PATCH body",
-				v2model.Issue{Path: "/" + key, Message: fmt.Sprintf("unknown key %q — the PATCH body carries only ops", key), Hint: unknownKeyHint})
+				v2model.Issue{Path: "/" + key, Message: fmt.Sprintf("unknown key %q — the PATCH body carries only ops", key)}.WithHint(unknownKeyHint(key)))
 		}
 	}
 	var req v2PatchRequest

@@ -641,7 +641,7 @@ func (a *v2StateApplier) applyViewFilterString(raw json.RawMessage, edited, view
 		ResolveFormat: a.s.formatNameResolver(a.spaceId),
 	})
 	if err != nil {
-		fsErr := filterStringError(err)
+		fsErr := filterStringError(a.spaceId, err)
 		var v2Err *v2model.Error
 		if errors.As(fsErr, &v2Err) {
 			for i := range v2Err.Issues {
