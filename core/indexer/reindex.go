@@ -232,20 +232,6 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 			}
 		}
 
-		// Derived objects (types, properties, options) first, synchronously:
-		// an uninstall tombstones the row and drops its indexed heads hash
-		// while the tree stays, so the pass below would rebuild it — but only
-		// in the background, and until it has, the API's removed-type lookups
-		// cannot see the object and a removed spelling falls through to name
-		// resolution, where a live namesake answers for it (round-four
-		// review: a delete landed on the wrong type). Bounded by the derived
-		// trees of the space, idempotent (a rebuilt row carries its hash).
-		if rebuilt, err := i.reindexOutdatedDerivedObjects(ctx, space); err != nil {
-			log.With(zap.String("space", space.Id())).Errorf("reindex outdated derived objects: %s", err)
-		} else if rebuilt > 0 {
-			log.With(zap.String("space", space.Id()), zap.Int("rebuilt", rebuilt)).Warn("reindexOutdatedDerivedObjects: rebuilt uninstalled derived objects")
-		}
-
 		// Index objects that updated, but not indexed yet
 		// we can have objects which actual state is newer than the indexed one
 		// this may happen e.g. if the app got closed in the middle of object updates processing
@@ -808,56 +794,22 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 	// but the FT queue wasn't flushed before crash
 	i.checkFTQueueConsistency(ctx, store, space.Id())
 
-	start := time.Now()
-	idsToReindex, err := i.outdatedObjectIds(ctx, space, func(headstorage.HeadsEntry) bool { return true })
-	if err != nil {
-		return 0, 0, err
-	}
-	if len(idsToReindex) == 0 {
-		return 0, 0, nil
-	}
-	log.Warn("reindexOutdatedObjects: found outdated objects to reindex", zap.Int("len", len(idsToReindex)), zap.Int64("durMs", time.Since(start).Milliseconds()))
-	success = i.reindexIdsIgnoreErr(ctx, space, idsToReindex...)
-	return len(idsToReindex), success, nil
-}
-
-// reindexOutdatedDerivedObjects is reindexOutdatedObjects restricted to the
-// live (not deleted) derived trees — types, properties, options — and run
-// synchronously by ReindexSpace before the space is served. An uninstalled
-// derived object is exactly such a tree whose indexed heads hash the
-// tombstone dropped; rebuilding it restores the full row (name, keys,
-// isUninstalled → isDeleted) the API's removed-type lookups read.
-func (i *indexer) reindexOutdatedDerivedObjects(ctx context.Context, space clientspace.Space) (rebuilt int, err error) {
-	ids, err := i.outdatedObjectIds(ctx, space, func(entry headstorage.HeadsEntry) bool {
-		return entry.IsDerived && entry.DeletedStatus == headstorage.DeletedStatusNotDeleted
-	})
-	if err != nil {
-		return 0, err
-	}
-	if len(ids) == 0 {
-		return 0, nil
-	}
-	return i.reindexIdsIgnoreErr(ctx, space, ids...), nil
-}
-
-// outdatedObjectIds lists the trees whose indexed heads hash differs from
-// their current heads, among those keep accepts. Acl and settings entries
-// are never objects.
-func (i *indexer) outdatedObjectIds(ctx context.Context, space clientspace.Space, keep func(headstorage.HeadsEntry) bool) ([]string, error) {
 	var entries []headstorage.HeadsEntry
-	err := space.Storage().HeadStorage().IterateEntries(ctx, headstorage.IterOpts{}, func(entry headstorage.HeadsEntry) (bool, error) {
+
+	start := time.Now()
+	err = space.Storage().HeadStorage().IterateEntries(ctx, headstorage.IterOpts{}, func(entry headstorage.HeadsEntry) (bool, error) {
 		// skipping Acl
-		if entry.CommonSnapshot != "" && entry.Id != space.Storage().StateStorage().SettingsId() && keep(entry) {
+		if entry.CommonSnapshot != "" && entry.Id != space.Storage().StateStorage().SettingsId() {
 			entries = append(entries, entry)
 		}
 		return true, nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("iterate head entries: %w", err)
+		return
 	}
-	indexedHashes, err := i.store.SpaceIndex(space.Id()).ListLastIndexedHeadsHashes(ctx)
+	indexedHashes, err := store.ListLastIndexedHeadsHashes(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("list last indexed heads hashes: %w", err)
+		return 0, 0, fmt.Errorf("list last indexed heads hashes: %w", err)
 	}
 	var idsToReindex []string
 	for _, entry := range entries {
@@ -866,7 +818,12 @@ func (i *indexer) outdatedObjectIds(ctx context.Context, space clientspace.Space
 			idsToReindex = append(idsToReindex, entry.Id)
 		}
 	}
-	return idsToReindex, nil
+	if len(idsToReindex) == 0 {
+		return 0, 0, nil
+	}
+	log.Warn("reindexOutdatedObjects: found outdated objects to reindex", zap.Int("len", len(idsToReindex)), zap.Int64("durMs", time.Since(start).Milliseconds()))
+	success = i.reindexIdsIgnoreErr(ctx, space, idsToReindex...)
+	return len(idsToReindex), success, nil
 }
 
 // checkFTQueueConsistency checks for objects that may have been added to headsState

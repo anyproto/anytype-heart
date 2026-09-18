@@ -327,20 +327,20 @@ three fresh reviewers before the next.
   NO migration. New tombstones keep the `deletedLayout` marker and the
   exact query answers the same-session window; the backfill, its
   completion marker, the gate, the tech-space call and the fixture
-  override were removed again. The review of that removal caught the
-  window it left: until the outdated-object reindex (a goroutine behind
-  the reindex limiter) had rebuilt a pre-branch tombstone, its spelling
-  was invisible to both removal lookups and fell through to NAME
-  resolution — a live type named like the removed slug answered for it,
-  and a delete landed there. So the outdated pass now runs synchronously
-  for the live derived trees alone (`reindexOutdatedDerivedObjects`,
-  before the space is served; bounded by the space's types, properties
-  and options, idempotent, no marker): an uninstalled derived object is
-  exactly a live derived tree whose indexed hash the tombstone dropped.
-  Accepted residual: a derived object whose rebuild FAILS on that pass
-  (logged) stays invisible to the removal lookups until the background
-  pass or the next load succeeds, and its spelling resolves like any
-  other unknown one, name step included.
+  override were removed again. The review of that removal named the
+  window it leaves, and it is ACCEPTED: on the first load after the
+  upgrade, until the outdated-object reindex (a goroutine behind the
+  reindex limiter) has rebuilt a pre-branch tombstone of an uninstalled
+  type, its spelling is invisible to both removal lookups and resolves
+  like any other unknown one — name step included, so a live type whose
+  display name equals the removed slug answers for it, and a create,
+  a search or a delete lands there. It takes a type uninstalled before
+  the upgrade on this device, not yet rebuilt, and such a namesake. A
+  synchronous rebuild on load was tried and reverted: the personal
+  space's types and properties are not flagged derived in head storage,
+  and the API admits requests to a space that is still loading, so it
+  neither found the objects that matter most nor established the
+  boundary it claimed.
 
   Also in from those rounds: a mint that suffixed or emptied its slug
   reports the stored slug (or the minted key) on the property row and its

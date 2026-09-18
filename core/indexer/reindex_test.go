@@ -742,56 +742,6 @@ func TestReindexOutdatedObjects(t *testing.T) {
 	})
 }
 
-// TestReindexOutdatedDerivedObjects: the synchronous pass rebuilds exactly the
-// live derived trees whose indexed hash is missing or stale — an uninstalled
-// type (tombstone dropped the hash) — and leaves deleted trees, up-to-date
-// derived objects and ordinary pages to the background pass.
-func TestReindexOutdatedDerivedObjects(t *testing.T) {
-	const spaceId = "space1"
-	fx := newFixture(t)
-	store := fx.store.SpaceIndex(spaceId)
-	require.NoError(t, store.SaveLastIndexedHeadsHash(ctx, "typeLive", headsHash([]string{"head1"})))
-
-	entries := []headstorage.HeadsEntry{
-		{Id: "typeUninstalled", Heads: []string{"head2"}, CommonSnapshot: "cs", IsDerived: true},
-		{Id: "typeLive", Heads: []string{"head1"}, CommonSnapshot: "cs", IsDerived: true},
-		{Id: "typeGone", Heads: []string{"head3"}, CommonSnapshot: "cs", IsDerived: true, DeletedStatus: headstorage.DeletedStatusDeleted},
-		{Id: "pageNeverIndexed", Heads: []string{"head4"}, CommonSnapshot: "cs"},
-		{Id: "settingsId", Heads: []string{"head5"}, CommonSnapshot: "cs", IsDerived: true},
-	}
-	ctrl := gomock.NewController(t)
-	headStorage := mock_headstorage.NewMockHeadStorage(ctrl)
-	headStorage.EXPECT().IterateEntries(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
-		func(_ context.Context, _ headstorage.IterOpts, iter headstorage.EntryIterator) error {
-			for _, entry := range entries {
-				if cont, err := iter(entry); !cont || err != nil {
-					return err
-				}
-			}
-			return nil
-		})
-	stateStorage := mock_statestorage.NewMockStateStorage(ctrl)
-	stateStorage.EXPECT().SettingsId().AnyTimes().Return("settingsId")
-	storage := mock_anystorage.NewMockClientSpaceStorage(t)
-	storage.EXPECT().HeadStorage().Return(headStorage).Maybe()
-	storage.EXPECT().StateStorage().Return(stateStorage).Maybe()
-
-	var reindexed []string
-	spc := mock_space.NewMockSpace(t)
-	spc.EXPECT().Id().Return(spaceId).Maybe()
-	spc.EXPECT().Storage().Return(storage).Maybe()
-	spc.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(id string, _ func(smartblock.SmartBlock) error) error {
-		reindexed = append(reindexed, id)
-		return nil
-	})
-
-	rebuilt, err := fx.reindexOutdatedDerivedObjects(ctx, spc)
-
-	require.NoError(t, err)
-	assert.Equal(t, 1, rebuilt)
-	assert.Equal(t, []string{"typeUninstalled"}, reindexed)
-}
-
 func TestReindexOutdatedConcurrencyLimit(t *testing.T) {
 	// each mock space has one never-indexed object whose space.Do blocks on
 	// proceed, so a space's outdated pass stays "running" until released
