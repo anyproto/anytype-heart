@@ -1403,39 +1403,30 @@ func (s *Service) removedTypeBySpelling(spaceId, input string) (typeEntry, bool,
 	return typeEntry{}, false, nil
 }
 
-// errRemovalIndexIncomplete says the deletedLayout backfill has not completed
-// on the space: legacy tombstones may still lack the marker, so a miss from
-// the exact query proves nothing, and resolution must not fall through to
-// the name and fold steps on its strength (a live namesake would win, and a
-// delete would land on it).
+// errRemovalIndexIncomplete says the deletedLayout backfill has not been
+// recorded complete on the space: legacy tombstones may still lack the
+// marker, so a miss from the exact query proves nothing, and resolution
+// must not fall through to the name and fold steps on its strength (a live
+// namesake would win, and a delete would land on it).
 var errRemovalIndexIncomplete = errors.New("deleted-type index backfill has not completed")
-
-// removalIndexComplete reports whether the space's deletedLayout backfill
-// has completed, memoized per space once seen: completion is monotonic
-// (the marker is only ever written, and cleared together with the heads
-// state a full reindex rebuilds — which runs the backfill again before the
-// space is served).
-func (s *Service) removalIndexComplete(spaceId string) (bool, error) {
-	if _, done := s.removalIndexReady.Load(spaceId); done {
-		return true, nil
-	}
-	done, err := s.store.SpaceIndex(spaceId).DeletedLayoutBackfilled(context.Background())
-	if err != nil {
-		return false, fmt.Errorf("check deleted-type index of space %s: %w", spaceId, err)
-	}
-	if done {
-		s.removalIndexReady.Store(spaceId, struct{}{})
-	}
-	return done, nil
-}
 
 // tombstonedTypeBySlug finds a type tombstone by the slug its snapshot
 // kept, through the deletedLayout marker every deleted type's tombstone
 // carries top level (spaceindex delete.go) — an exact, indexed query over
 // the deleted types alone, complete by construction once the backfill has
-// run; before that a miss is an error, never a "not removed".
+// run. The completion marker is read BEFORE the query, every time: read
+// after a miss it could vouch for a query that ran while the backfill was
+// still writing, and no memo — the marker goes with the heads state on an
+// index invalidation and with the index on a delete, and a memo would
+// outlive both. The read is one local FindId.
 func (s *Service) tombstonedTypeBySlug(spaceId, slug string) (typeEntry, bool, error) {
-	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+	index := s.store.SpaceIndex(spaceId)
+	if complete, err := index.DeletedLayoutBackfilled(context.Background()); err != nil {
+		return typeEntry{}, false, fmt.Errorf("check deleted-type index of space %s: %w", spaceId, err)
+	} else if !complete {
+		return typeEntry{}, false, fmt.Errorf("space %s: %w", spaceId, errRemovalIndexIncomplete)
+	}
+	records, err := index.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{RelationKey: bundle.RelationKeyDeletedLayout, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.Int64(int64(model.ObjectType_objectType))},
 			{RelationKey: bundle.RelationKeyIsDeleted, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.Bool(true)},
@@ -1458,11 +1449,6 @@ func (s *Service) tombstonedTypeBySlug(spaceId, slug string) (typeEntry, bool, e
 			continue
 		}
 		return typeEntry{Id: record.Details.GetString(bundle.RelationKeyId), Key: string(key), Slug: slug}, true, nil
-	}
-	if complete, err := s.removalIndexComplete(spaceId); err != nil {
-		return typeEntry{}, false, err
-	} else if !complete {
-		return typeEntry{}, false, fmt.Errorf("space %s: %w", spaceId, errRemovalIndexIncomplete)
 	}
 	return typeEntry{}, false, nil
 }

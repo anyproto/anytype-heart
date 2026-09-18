@@ -669,13 +669,18 @@ func (s *Service) removedTypeRefusal(spaceId, input, path string, v errKeys) (v2
 // unverifiableTypeError is the answer when the removal lookup behind a type
 // resolution failed: a server error, said as such, with no guess — the
 // request was not wrong, the store could not be read.
+//
+// The incomplete-index case says what a retry needs: nothing in the
+// session re-runs the backfill, the next space load does, so a bare
+// "retry" would loop until then.
 func unverifiableTypeError(typeKey, spaceId string, err error) error {
 	log.Warnf("api v2: verify type %q in space %s: %v", typeKey, spaceId, err)
-	issue := "the space's index could not be read"
 	if errors.Is(err, errRemovalIndexIncomplete) {
-		issue = "the space's index of removed types is not complete yet"
+		return v2model.NewError(http.StatusInternalServerError, v2model.CodeInternalError,
+			fmt.Sprintf("could not verify type %q in space %q — reload the space before retrying", typeKey, spaceId),
+			v2model.Issue{Message: "the space's index of removed types has not been verified"})
 	}
 	return v2model.NewError(http.StatusInternalServerError, v2model.CodeInternalError,
 		fmt.Sprintf("could not verify type %q in space %q — retry", typeKey, spaceId),
-		v2model.Issue{Message: issue})
+		v2model.Issue{Message: "the space's index could not be read"})
 }

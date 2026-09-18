@@ -619,7 +619,11 @@ func TestV2RoundFourCarriedForward(t *testing.T) {
 			Details: &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyApiObjectKey.String(): pbtypes.String("")}},
 			Error:   &pb.RpcObjectCreateRelationResponseError{Code: pb.RpcObjectCreateRelationResponseError_NULL},
 		}).Once()
-		fx.mwMock.EXPECT().ObjectCreateRelationOption(mock.Anything, mock.Anything).Return(&pb.RpcObjectCreateRelationOptionResponse{
+		// the option is created against the minted relation key — the
+		// property's only address
+		fx.mwMock.EXPECT().ObjectCreateRelationOption(mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectCreateRelationOptionRequest) bool {
+			return pbtypes.GetString(req.Details, bundle.RelationKeyRelationKey.String()) == "6a7663db61fab21cd4b9e303"
+		})).Return(&pb.RpcObjectCreateRelationOptionResponse{
 			ObjectId: "opt-summer", Error: &pb.RpcObjectCreateRelationOptionResponseError{Code: pb.RpcObjectCreateRelationOptionResponseError_NULL},
 		}).Once()
 		fx.mwMock.EXPECT().ObjectCreateObjectType(mock.Anything, mock.Anything).Return(&pb.RpcObjectCreateObjectTypeResponse{
@@ -688,9 +692,9 @@ func TestV2RemovalIndexGate(t *testing.T) {
 		require.ErrorAs(t, err, &v2Err)
 		assert.Equal(t, http.StatusInternalServerError, v2Err.Status)
 		assert.Equal(t, v2model.CodeInternalError, v2Err.Code)
-		assert.Contains(t, v2Err.Message, `could not verify type "widget"`)
+		assert.Equal(t, `could not verify type "widget" in space "`+testSpaceId+`" — reload the space before retrying`, v2Err.Message)
 		require.Len(t, v2Err.Issues, 1)
-		assert.Contains(t, v2Err.Issues[0].Message, "not complete yet")
+		assert.Equal(t, "the space's index of removed types has not been verified", v2Err.Issues[0].Message)
 
 		// the live spelling needs no negative lookup and still resolves
 		_, err = fx.DeleteType(ctx, testSpaceId, "machine", true)
@@ -701,5 +705,13 @@ func TestV2RemovalIndexGate(t *testing.T) {
 		require.NoError(t, fx.objectStore.SpaceIndex(testSpaceId).BackfillDeletedLayout(ctx))
 		_, err = fx.DeleteType(ctx, testSpaceId, "widget", true)
 		require.NoError(t, err)
+
+		// the marker goes with the heads state (an index invalidation): the
+		// gate closes again at once — nothing in the service remembers a
+		// completion the store no longer records
+		require.NoError(t, fx.objectStore.SpaceIndex(testSpaceId).ClearHeadsState(ctx))
+		_, err = fx.DeleteType(ctx, testSpaceId, "widget", true)
+		require.ErrorAs(t, err, &v2Err)
+		assert.Equal(t, http.StatusInternalServerError, v2Err.Status)
 	})
 }

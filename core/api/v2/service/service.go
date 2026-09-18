@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"sync"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/util"
@@ -54,9 +53,6 @@ type Service struct {
 	// chatStreams caps how many streams are open at once; see
 	// maxConcurrentChatStreams.
 	chatStreams chatStreamSlots
-	// removalIndexReady memoizes, per space, that the deletedLayout backfill
-	// has completed (removalIndexComplete); a set of space ids.
-	removalIndexReady sync.Map
 }
 
 // NewService creates the API v2 service. creator may be nil when only the

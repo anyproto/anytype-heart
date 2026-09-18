@@ -204,3 +204,23 @@ func TestDeleteSpaceIndex_ConcurrentCrossSpace(t *testing.T) {
 		assert.False(t, slices.Contains(opened, id), "space %s must be forgotten", id)
 	}
 }
+
+// TestStoreFixtureModelsABackfilledSpace: the fixture's spaces are what a
+// successfully loaded space is — the deletedLayout backfill recorded
+// complete — on first open and again after a delete-and-reopen (the marker
+// went with the index).
+func TestStoreFixtureModelsABackfilledSpace(t *testing.T) {
+	s := NewStoreFixture(t)
+	ctx := context.Background()
+	const spaceId = "spaceReopened"
+
+	done, err := s.SpaceIndex(spaceId).DeletedLayoutBackfilled(ctx)
+	require.NoError(t, err)
+	assert.True(t, done, "first open")
+
+	require.NoError(t, s.DeleteSpaceIndex(spaceId))
+
+	done, err = s.SpaceIndex(spaceId).DeletedLayoutBackfilled(ctx)
+	require.NoError(t, err)
+	assert.True(t, done, "reopened after a delete")
+}

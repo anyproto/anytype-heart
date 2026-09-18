@@ -332,17 +332,28 @@ three fresh reviewers before the next.
 
   The review of that fix closed its own gap: a backfill that failed left
   the session resolving on the incomplete index (the marker only protected
-  the NEXT load), hence the trust gate above, memoized per space once the
-  marker is seen; the store fixture writes the marker on first open, as a
-  loaded space has it. Also in: a mint that stored an EMPTY slug (the
-  suffix walk ran out) reports the minted key on the receipt, as
-  `create_property` already did; the twin-name refusal spells the holder
-  from the snapshot it already loaded; `create_property`'s operation
-  description carries the name rule so OpenAPI and the external tool
-  listing say it, not only the `property` schema kind; and the curated
-  `create_type` pre-flight prefixes "check the type name and formats" on
-  the caller's 4xx only — a 500 gets "the pre-flight did not run, nothing
-  was created".
+  the NEXT load), hence the trust gate above. The gate reads the marker
+  BEFORE the tombstone query, on every lookup, with no memo: read after a
+  miss it could vouch for a query that ran while the backfill was still
+  writing, and a memo would outlive the marker, which goes with the heads
+  state on an index invalidation and with the index on a delete. The
+  incomplete case says what a retry needs ("reload the space before
+  retrying" / "the space's index of removed types has not been verified"):
+  nothing in the session re-runs the backfill, the next space load does. A
+  created tech space, which is not reindexed the way a loaded one is,
+  records the marker on creation (a fresh index has nothing to backfill).
+  The store fixture models a successfully backfilled space: it writes the
+  marker on first open and again after a delete-and-reopen. Also in: a mint
+  that stored an EMPTY slug (the suffix walk ran out) reports the minted
+  key on the receipt, as `create_property` already did, and creates the
+  option against it; the twin-name refusal spells the holder from the
+  snapshot it already loaded; `create_property`'s operation description
+  carries the name rule so OpenAPI and the external tool listing say it,
+  not only the `property` schema kind; and the curated `create_type`
+  pre-flight prefixes "check the type name and formats" on a 4xx of the
+  caller's own alone — a 5xx, a transport failure or an undecodable reply
+  gets "the pre-flight failed" (the caller appends "nothing was created"
+  itself).
   Accepted: a space that has not loaded since the upgrade may still miss
   a legacy tombstone by slug until it does; the resolution stop's queries
   on display-name inputs are not memoised per request.

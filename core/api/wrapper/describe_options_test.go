@@ -287,8 +287,20 @@ func TestCreateTypePreflightPrefixFollowsTheStatus(t *testing.T) {
 
 		require.Error(t, err)
 		assert.NotContains(t, err.Error(), "check the type name and formats")
-		assert.Contains(t, err.Error(), "nothing was created")
+		assert.Contains(t, err.Error(), "the pre-flight failed")
 		assert.Contains(t, err.Error(), "could not verify type")
+	})
+
+	t.Run("a transport failure gets the neutral prefix too", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
+		fx.stub("POST /v2/spaces/space1/types", 200, `not json`)
+
+		_, err := fx.Run(context.Background(), "create_type", map[string]any{"space": "space1", "name": "Thing"})
+
+		require.Error(t, err)
+		assert.NotContains(t, err.Error(), "check the type name and formats")
+		assert.Contains(t, err.Error(), "the pre-flight failed")
 	})
 }
 
