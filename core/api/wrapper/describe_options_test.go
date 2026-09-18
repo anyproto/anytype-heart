@@ -118,6 +118,23 @@ func TestDescribeOptions(t *testing.T) {
 		assert.Contains(t, err.Error(), `"Cook time" holds number`)
 	})
 
+	t.Run("a property the listing hides is read by its exact key", func(t *testing.T) {
+		// given: the property listing excludes hidden properties, but a
+		// write's refusal names the hidden property's exact key and points
+		// here — the options read is tried by that key before refusing
+		fx := newFixture(t)
+		stubSpaceProperties(fx, propRow("region", "Region", "select"))
+		fx.stub("GET /v2/spaces/space1/properties/hidden_status/options", 200, optionsBody(false, "Open", "Closed"))
+
+		// when
+		result, err := fx.Run(context.Background(), "describe", map[string]any{
+			"space": "space1", "type": "Task", "options": "hidden_status"})
+
+		// then
+		require.NoError(t, err)
+		assert.Contains(t, result.Text, "hidden_status: options(Open, Closed)")
+	})
+
 	t.Run("an unknown property points back at describe", func(t *testing.T) {
 		// given
 		fx := newFixture(t)

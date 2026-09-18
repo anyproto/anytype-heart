@@ -391,6 +391,20 @@ section is capped; it now says the listing may be truncated); the Wire
 section gained the three create refusals' rewording and the several-types
 message. Nothing that landed on develop meanwhile touched `core/api`.
 
+Round seven (three fresh reviewers on the merged commits plus the
+follow-up): nothing must-fix. Fixed in the follow-up: a key collision with
+a built-in property (installed or not) offered an update that the update
+route refuses as read-only or 404s — the key is now called reserved, with
+no reference; the curated `describe … options` refused a hidden property's
+exact key because its index comes from the listing, which hides such
+properties, while the consent refusal names that key and points there —
+it now tries the options read by the key as given and only refuses on the
+server's own 404; a server build that predates the references spells the
+block hint as "GET the object with ?outline=true", which neither the
+references nor the route catch-all touched — a bare `?name=value` is now
+redacted too; the external wrapper's response gate rejected vendor JSON
+media types with digits in the subtype (`application/vnd.anytype.v2+json`).
+
 Accepted, not fixed (added in round five):
 
 - A server hint that names a tool (`set_cell` in the nested-block repair)

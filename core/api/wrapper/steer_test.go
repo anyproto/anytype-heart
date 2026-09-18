@@ -433,6 +433,16 @@ func TestRestVocabulary(t *testing.T) {
 		assert.Equal(t, "refused\n  block: not found (list keys with `describe` on the type (its property listing may be truncated)) — wrote 1 of 3", te.Text)
 	})
 
+	t.Run("a bare parameter from a server build without references is redacted", func(t *testing.T) {
+		// the pre-typed wording of the block-not-found hint, verbatim: no
+		// method + route for restRoute, no see_also to look up — the
+		// parameter still must not reach a caller whose tools take none
+		te := &ToolError{Status: 404, Text: "GET the object with ?outline=true to list them"}
+		deRest(te)
+		assert.Equal(t, "GET the object with a parameter these tools do not take to list them", te.Text)
+		assert.NotContains(t, te.Text, "?outline=true")
+	})
+
 	t.Run("prose that merely mentions a version prefix is untouched", func(t *testing.T) {
 		te := &ToolError{Status: 400, Text: "the /v2 surface accepts ops only"}
 		deRest(te)

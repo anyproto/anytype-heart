@@ -1016,6 +1016,12 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 				// repair is a key of the caller's own, whichever slot they wrote
 				hint = v2model.Plain(fmt.Sprintf("several properties answer to %q (%s) — pass an explicit different key", slug, holder.Name))
 			}
+			if _, bundled := bundle.PickRelation(domain.RelationKey(holder.Key)); bundled == nil || holder.Kind == "bundled property" {
+				// a built-in property, installed or not: an update by its key
+				// is refused (read-only) or 404s (not installed), so neither
+				// repair above can be followed — the key is simply reserved
+				hint = v2model.Plain(fmt.Sprintf("key %q is reserved by the built-in property %q — pick a different key", holder.Key, holder.Name))
+			}
 			return nil, v2model.ValidationFailed("property key already exists",
 				v2model.Issue{Path: path,
 					Message: fmt.Sprintf("key %q is taken by %s %q", slug, holder.Kind, holder.Name),

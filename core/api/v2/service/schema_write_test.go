@@ -540,6 +540,24 @@ func TestV2CreateProperty(t *testing.T) {
 		}
 	})
 
+	t.Run("a built-in property's key is reserved, not offered for update", func(t *testing.T) {
+		// given: createdDate is bundled and read-only — an update by its key
+		// is refused, so the repair must not offer one
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateProperty(context.Background(), testSpaceId,
+			v2model.CreatePropertyRequest{Key: "created_date", Name: "Again", Format: "date"}, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		issue := apiErr.Issues[0]
+		assert.Contains(t, issue.Hint, "reserved by the built-in property")
+		assert.NotContains(t, issue.Hint, "update it with")
+		assert.Empty(t, issue.SeeAlso)
+	})
+
 	t.Run("dry run reports without creating", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)

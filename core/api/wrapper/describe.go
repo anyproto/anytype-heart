@@ -22,7 +22,9 @@ package wrapper
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"sort"
 	"strings"
@@ -505,9 +507,19 @@ func (r *Runner) describeOptions(ctx context.Context, space, typeKey, property, 
 	}
 	format, known := idx.formats[resolved]
 	if !known {
-		return nil, &ToolError{Text: fmt.Sprintf(
-			"this space has no property named %q — describe %q lists the property names it does have",
-			property, typeKey)}
+		// the index comes from the property listing, which excludes hidden
+		// properties; the server addresses one by its exact key all the
+		// same — and a write's refusal names that key and points here — so
+		// the options read is tried by the key as given before refusing,
+		// and the server's own 404 is what makes this a refusal
+		result, err := r.listOptions(ctx, space, property, property, "options", startingWith)
+		var te *ToolError
+		if errors.As(err, &te) && te.Status == http.StatusNotFound {
+			return nil, &ToolError{Text: fmt.Sprintf(
+				"this space has no property named %q — describe %q lists the property names it does have",
+				property, typeKey)}
+		}
+		return result, err
 	}
 	row := v2model.PropertyRow{Key: resolved, Format: format}
 	label := idx.displayName(row.Key)
@@ -516,7 +528,12 @@ func (r *Runner) describeOptions(ctx context.Context, space, typeKey, property, 
 			"property %q holds %s, not a select — only select and multi_select properties have options",
 			label, row.Format)}
 	}
+	return r.listOptions(ctx, space, row.Key, label, row.Format, startingWith)
+}
 
+// listOptions reads one property's options by key and renders them under
+// label; format is the word the listing is headed with.
+func (r *Runner) listOptions(ctx context.Context, space, key, label, format, startingWith string) (*Result, error) {
 	query := url.Values{
 		"limit": []string{fmt.Sprintf("%d", listOptionsLimit)},
 		"keys":  []string{"name"},
@@ -527,14 +544,14 @@ func (r *Runner) describeOptions(ctx context.Context, space, typeKey, property, 
 	var resp v2model.ListResponse[v2model.OptionRow]
 	if err := r.client.decode(ctx, apiRequest{
 		method: "GET",
-		path:   "/v2/spaces/" + seg(space) + "/properties/" + seg(row.Key) + "/options",
+		path:   "/v2/spaces/" + seg(space) + "/properties/" + seg(key) + "/options",
 		query:  query,
 	}, &resp); err != nil {
 		return nil, fmt.Errorf("list options of %q: %w", label, err)
 	}
 
 	out := describeOptionsResult{
-		Property: label, Format: row.Format, StartingWith: startingWith,
+		Property: label, Format: format, StartingWith: startingWith,
 		More: resp.HasMore,
 	}
 	for _, o := range resp.Data {
@@ -548,7 +565,7 @@ func (r *Runner) describeOptions(ctx context.Context, space, typeKey, property, 
 	case len(out.Options) == 0:
 		fmt.Fprintf(&b, "property %q has no options yet", label)
 	default:
-		fmt.Fprintf(&b, "%s: %s(%s)", label, row.Format, strings.Join(out.Options, ", "))
+		fmt.Fprintf(&b, "%s: %s(%s)", label, format, strings.Join(out.Options, ", "))
 	}
 	if out.More {
 		// the ellipsis this mode exists to resolve must not reappear as a
