@@ -30,7 +30,9 @@ import (
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // v2MaxOpsPerPatch bounds one PATCH batch. Each op re-renders the document
@@ -229,14 +231,15 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 		return nil, mapWriteError(spaceId, objectId, err)
 	}
 	result.Etag = ComputeEtag(heads)
-	// the favorite flag lives outside the object (stateops.go favorite): it
-	// is set once the edit has committed, so a refused batch never favorites
-	if favorite != nil {
+	// the favorite flag is made real outside the object (stateops.go
+	// favorite): once the edit has committed, so a refused batch never
+	// favorites, and only on a transition — clearing a clear flag or setting
+	// a set one is a no-op, not an RPC that can fail on a missing link
+	if favorite != nil && *favorite != pbtypes.GetBool(cur.Snapshot.GetDetails(), bundle.RelationKeyIsFavorite.String()) {
 		resp := s.mw.ObjectListSetIsFavorite(ctx, &pb.RpcObjectListSetIsFavoriteRequest{ObjectIds: []string{objectId}, IsFavorite: *favorite})
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectListSetIsFavoriteResponseError_NULL {
-			return nil, fmt.Errorf("set favorite on %s: %s", objectId, resp.Error.Description)
+			return nil, fmt.Errorf("the edit of %s was committed, but its favorite flag could not be set: %s", objectId, resp.Error.Description)
 		}
-		result.DiffStats.PropertiesChanged++
 	}
 	return result, nil
 }
@@ -422,7 +425,7 @@ func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, o
 	if err != nil {
 		return nil, nil, err
 	}
-	stats.ItemsAdded, stats.ItemsRemoved = applier.itemsAdded, applier.itemsRemoved
+	stats.ItemsAdded, stats.ItemsRemoved = applier.itemsDiff()
 	result := &v2model.EditResult{Created: resolvers.created(), DiffStats: stats}
 	if len(applier.createdBlocks) > 0 {
 		result.CreatedBlocks = applier.createdBlocks

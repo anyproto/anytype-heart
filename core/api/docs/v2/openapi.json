@@ -321,7 +321,7 @@
             "uniqueItems": false
           },
           "items": {
-            "description": "Member objects a created collection holds",
+            "description": "Count of the member objects a created collection holds, on every collection create",
             "type": "integer"
           },
           "key": {
@@ -383,10 +383,11 @@
             "type": "integer"
           },
           "items_added": {
-            "description": "Collection members add_items added and remove_items removed (present ones are not re-added, absent ones not re-removed)",
+            "description": "Collection members the batch added, as a set difference; absent means none",
             "type": "integer"
           },
           "items_removed": {
+            "description": "Collection members the batch removed, as a set difference; absent means none",
             "type": "integer"
           },
           "properties_changed": {

@@ -399,8 +399,8 @@ type CreateResult struct {
 
 	// The view id each insert_view op minted, keyed by the op's position, such as /ops/0.
 	CreatedViews map[string]string `json:"created_views,omitempty"`
-	// Member objects a created collection holds
-	Items    int     `json:"items,omitempty"`
+	// Count of the member objects a created collection holds, on every collection create
+	Items    *int    `json:"items,omitempty"`
 	Issues   []Issue `json:"issues,omitempty"`
 	Warnings []Issue `json:"warnings,omitempty"`
 }
@@ -532,8 +532,9 @@ type DiffStats struct {
 	BlocksChanged     int `json:"blocks_changed"`
 	BlocksMoved       int `json:"blocks_moved"`
 	PropertiesChanged int `json:"properties_changed"`
-	// Collection members add_items added and remove_items removed (present ones are not re-added, absent ones not re-removed)
-	ItemsAdded   int `json:"items_added,omitempty"`
+	// Collection members the batch added, as a set difference; absent means none
+	ItemsAdded int `json:"items_added,omitempty"`
+	// Collection members the batch removed, as a set difference; absent means none
 	ItemsRemoved int `json:"items_removed,omitempty"`
 }
 

@@ -168,14 +168,26 @@ func rawTypeDefinitions(fields map[string]json.RawMessage) []map[string]any {
 	return settings.Definitions
 }
 
-// readWarningIsNoise reports a format warning a read should not serve: the
-// export's legend bookkeeping ("no legend entry is written for X; the term
-// is spelled verbatim"). This API strips every legend from the documents it
-// serves (trimAPIDocumentEnvelope), so a warning about an entry that was
-// not written into a member the caller never sees names nothing they can
-// act on (round-two eval F18: forty-two of them across two runs, acted on
-// by none).
+// readWarningIsNoise reports a format warning a read should not serve: one
+// addressed at a member this API strips from every document it serves
+// (apiV2ExcludedMembers — the legends and the stored type key). A warning
+// about an entry that was not written into a member the caller never sees
+// names nothing they can act on (round-two eval F18: forty-two of them
+// across two runs, acted on by none). Keyed on the PATH, not the prose:
+// the format's wording is not this layer's to match, and a warning about a
+// served member is kept whatever it says.
 func readWarningIsNoise(iss anyblockjson.Issue) bool {
-	return strings.Contains(iss.Message, "no legend entry is written") ||
-		strings.Contains(iss.Message, "spelled verbatim")
+	member, _, _ := strings.Cut(strings.TrimPrefix(iss.Path, "/"), "/")
+	return member != "" && apiV2ExcludedSet[member]
+}
+
+// readWarningIssue is a read warning in the C6 shape, with the repair for
+// the one degradation an exposed operation fixes: a date stored in
+// milliseconds where seconds belong is a value set_properties rewrites.
+func readWarningIssue(iss anyblockjson.Issue) v2model.Issue {
+	issue := v2model.Issue{Path: iss.Path, Message: iss.Message}
+	if strings.Contains(iss.Message, "milliseconds where seconds belong") {
+		issue = issue.Hintf("set the value in seconds with the set_properties op (%s)", v2model.RefGetOpSchema("set_properties"))
+	}
+	return issue
 }

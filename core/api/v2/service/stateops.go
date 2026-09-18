@@ -100,15 +100,18 @@ type v2StateApplier struct {
 	liveEntriesLoaded bool
 
 	// favorite is the is_favorite intent a set_properties carried (round-two
-	// eval F20). It is not a detail of the object: the app keeps favorites
-	// as links from the space's home object, and the object's isFavorite is
-	// derived from them — so the applier records the intent and PatchObject
-	// runs the favorite RPC after the state edit commits, instead of writing
-	// a detail that persists but does nothing.
+	// eval F20). The flag is a LOCAL detail the app derives from links on
+	// the space's home object: the applier writes the detail so a read that
+	// follows the PATCH sees it at once, and PatchObject makes it real by
+	// running the favorite RPC after the state edit commits — only when the
+	// object's current state differs, so clearing a clear flag is a no-op.
 	favorite *bool
-	// itemsAdded / itemsRemoved count the collection members add_items and
-	// remove_items actually changed, for the receipt (F19).
-	itemsAdded, itemsRemoved int
+	// itemsBefore is the collection membership at begin(), so the receipt
+	// can report the members the batch added and removed as a set
+	// difference (F19), the way the block and property counts are diffs.
+	itemsBefore []string
+	// typeKeysCache memoizes typeListedKeys per type for this PATCH.
+	typeKeysCache map[string]map[string]bool
 	// removedBundled is the same shape for the bundled relations this space
 	// uninstalled — primed lazily by removedBundledKeys, and only when a key
 	// reaches the bundled arm at all.
@@ -244,7 +247,31 @@ func (a *v2StateApplier) begin() ([]byte, error) {
 	if err := a.seedView(doc); err != nil {
 		return nil, err
 	}
+	a.itemsBefore = append([]string(nil), a.st.GetStoreSlice(template.CollectionStoreKey)...)
 	return doc, nil
+}
+
+// itemsDiff is the collection membership the batch added and removed, as a
+// set difference against begin() — a member added and removed in one batch
+// counts in neither.
+func (a *v2StateApplier) itemsDiff() (added, removed int) {
+	before := map[string]bool{}
+	for _, id := range a.itemsBefore {
+		before[id] = true
+	}
+	after := map[string]bool{}
+	for _, id := range a.st.GetStoreSlice(template.CollectionStoreKey) {
+		after[id] = true
+		if !before[id] {
+			added++
+		}
+	}
+	for id := range before {
+		if !after[id] {
+			removed++
+		}
+	}
+	return added, removed
 }
 
 // isPatchLossWarning separates actual representation loss from exporter
@@ -1139,8 +1166,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		}
 		if key == bundle.RelationKeyIsFavorite.String() {
 			off := false
-			a.favorite = &off
-			continue
+			a.favorite = &off // the detail is removed below like any other
 		}
 		unset[key] = true
 	}
@@ -1174,9 +1200,17 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		return v2model.ValidationFailed("set_properties rejected", issues...)
 	}
 	// F16: a value on a property the object's type does not list is stored
-	// and served, but the type's views, fields and filters never show it —
-	// said once, when the object first takes the key, not on every edit
-	typeKeys := a.typeListedKeys(doc.docType())
+	// and served, but type-scoped search and queries refuse the key and the
+	// type's default columns omit it — said once, when the object first
+	// takes the key, not on every edit
+	offTypeFields := map[string]string{}
+	for _, key := range setKeys {
+		offTypeFields[key] = "set"
+	}
+	for key := range addEntries {
+		offTypeFields[key] = "add"
+	}
+	a.warnOffTypeKeys(doc, opPath, offTypeFields, spelledAs)
 	for _, key := range setKeys {
 		var raw any
 		if err := decodeJSONUseNumber(op.Set[key], &raw); err != nil {
@@ -1190,17 +1224,8 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 					v2model.Issue{Path: opPath + ".set." + spelledAs(key), Message: "is_favorite takes true or false"})
 			}
 			a.favorite = &flag
+			a.st.SetDetail(bundle.RelationKeyIsFavorite, domain.Bool(flag))
 			continue
-		}
-		_, carried := doc.properties[key]
-		if !carried {
-			_, carried = doc.properties[spelledAs(key)] // the document is served in the slug vocabulary
-		}
-		if !carried && typeKeys != nil && !typeKeys[key] && !bundle.HasRelation(domain.RelationKey(key)) {
-			a.warnings = append(a.warnings, v2model.Issue{
-				Path:    opPath + ".set." + spelledAs(key),
-				Message: fmt.Sprintf("property %q is not on type %q — the value is stored, but the type's views, fields and filters do not show it", spelledAs(key), doc.docType()),
-			}.Hintf("list it on the type with the add_property op (%s)", v2model.RefGetOpSchema("add_property")))
 		}
 		// the CHECKED door: a value that cannot survive v1's 64-bit float
 		// model is refused here, at the caller's own field. The unchecked
@@ -2479,7 +2504,6 @@ func (a *v2StateApplier) applyItems(op opItems, opPath string) error {
 			if !present[id] {
 				present[id] = true
 				items = append(items, id)
-				a.itemsAdded++
 			}
 		}
 		a.st.UpdateStoreSlice(template.CollectionStoreKey, items)
@@ -2496,7 +2520,6 @@ func (a *v2StateApplier) applyItems(op opItems, opPath string) error {
 			kept = append(kept, id)
 		}
 	}
-	a.itemsRemoved += len(items) - len(kept)
 	a.st.UpdateStoreSlice(template.CollectionStoreKey, kept)
 	a.mutated()
 	return nil
@@ -2588,20 +2611,47 @@ func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field,
 	return run, nil
 }
 
-// typeListedKeys is the stored key set the object's type recommends, or nil
-// when the type cannot be resolved (then no F16 warning is issued: a warning
-// the code cannot substantiate is worse than none).
-func (a *v2StateApplier) typeListedKeys(typeKey string) map[string]bool {
-	if typeKey == "" {
-		return nil
+// warnOffTypeKeys appends the F16 warning for each of keys (stored
+// spellings, in set or add) that the object's type does not list and the
+// object did not carry before this op. The type lookup runs only when a
+// candidate exists, once per type per PATCH.
+func (a *v2StateApplier) warnOffTypeKeys(doc *v2EditDoc, opPath string, fields map[string]string, spelledAs func(string) string) {
+	keys := sortedKeys(fields)
+	carried := func(key string) bool {
+		if _, ok := doc.properties[key]; ok {
+			return true
+		}
+		if _, ok := doc.properties[spelledAs(key)]; ok {
+			return true
+		}
+		if a.marshalKeys != nil {
+			if _, ok := doc.properties[a.marshalKeys.PropertySlug(key)]; ok {
+				return true
+			}
+		}
+		return false
 	}
-	typeId, ok := a.s.typeIdInSpace(a.spaceId, typeKey)
-	if !ok {
-		return nil
+	var typeKeys map[string]bool
+	loaded := false
+	for _, key := range keys {
+		if key == bundle.RelationKeyIsFavorite.String() || carried(key) || !offTypeCandidate(key) {
+			continue
+		}
+		if !loaded {
+			loaded = true
+			if a.typeKeysCache == nil {
+				a.typeKeysCache = map[string]map[string]bool{}
+			}
+			if cached, ok := a.typeKeysCache[doc.docType()]; ok {
+				typeKeys = cached
+			} else {
+				typeKeys = a.s.typeListedKeys(a.spaceId, doc.docType())
+				a.typeKeysCache[doc.docType()] = typeKeys
+			}
+		}
+		if typeKeys == nil || typeKeys[key] {
+			continue
+		}
+		a.warnings = append(a.warnings, offTypePropertyIssue(spelledAs(key), doc.docType(), opPath+"."+fields[key]+"."+spelledAs(key)))
 	}
-	keys := map[string]bool{}
-	for _, key := range a.s.typePropertyKeys(a.spaceId, typeId) {
-		keys[key] = true
-	}
-	return keys
 }

@@ -253,7 +253,7 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 		if readWarningIsNoise(iss) {
 			return
 		}
-		warnings = append(warnings, v2model.Issue{Path: iss.Path, Message: iss.Message})
+		warnings = append(warnings, readWarningIssue(iss))
 	}
 
 	doc, err := anyblockjson.Marshal(read.SbType, read.Snapshot, opts)

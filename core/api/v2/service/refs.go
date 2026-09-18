@@ -10,6 +10,7 @@ package v2service
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -547,4 +548,55 @@ func (s *Service) recommendedRelationIds(spaceId, typeId string) map[string]bool
 		}
 	}
 	return out
+}
+
+// typeListedKeys is the stored key set a type recommends, resolved from the
+// key a document spells the type by — a bundled key (ot-page), or the api
+// slug this surface serves for a space-minted type. Nil when the type cannot
+// be resolved: then no F16 warning is issued, because a warning the code
+// cannot substantiate is worse than none.
+func (s *Service) typeListedKeys(spaceId, typeKey string) map[string]bool {
+	if typeKey == "" {
+		return nil
+	}
+	typeId, ok := s.typeIdInSpace(spaceId, typeKey)
+	if !ok {
+		entries, err := s.liveTypes(spaceId)
+		if err != nil {
+			return nil
+		}
+		entry, found, ambiguous := s.resolveTypeInput(typeKey, entries)
+		if !found || len(ambiguous) > 0 || entry.Id == "" {
+			return nil
+		}
+		typeId = entry.Id
+	}
+	keys := map[string]bool{}
+	for _, key := range s.typePropertyKeys(spaceId, typeId) {
+		keys[key] = true
+	}
+	return keys
+}
+
+// offTypeCandidate reports whether a stored property key is one the F16
+// warning applies to: not a key every type's queries accept (name and the
+// system query keys), and not a hidden bundled relation (icon, layout and
+// the like — system fields, never listed on a type).
+func offTypeCandidate(key string) bool {
+	if key == bundle.RelationKeyName.String() || slices.Contains(v2SystemQueryKeys, key) {
+		return false
+	}
+	if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil && rel.Hidden {
+		return false
+	}
+	return true
+}
+
+// offTypePropertyIssue is the F16 warning: the value lands, but the type's
+// own surfaces do not reach it.
+func offTypePropertyIssue(spelling, typeKey, path string) v2model.Issue {
+	return v2model.Issue{
+		Path:    path,
+		Message: fmt.Sprintf("property %q is not on type %q — the value is stored and served on the object, but type-scoped search and queries over %q refuse the key and the type's default columns omit it", spelling, typeKey, typeKey),
+	}.Hintf("list it on the type with the add_property op (%s)", v2model.RefGetOpSchema("add_property"))
 }

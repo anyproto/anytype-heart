@@ -602,31 +602,54 @@ reviewed by three fresh reviewers before the next.
 
 **Group D (F11, F16, F18, F19, F20) — done.**
 
-- F20: `is_favorite` is functional. A `set_properties` set/unset of it is
-  routed to the app's favorite mechanism (`ObjectListSetIsFavorite`: a
-  link from the space's home object, from which the object's `isFavorite`
-  is derived) after the state edit commits — never written as a detail
-  that persists but does nothing; a non-boolean is a 400 at the field; an
-  RPC failure is an error; a dry run does not favorite. The receipt counts
-  it in `properties_changed`. Not done: a create body's `is_favorite`
-  (still a plain detail import) and a `list_properties` row for it.
-- F16: (b) a query created with no filter anywhere warns that it lists
-  every object of its type, with the filters schema as the repair; (c) a
-  `set_properties` value on a space-minted property the object's type does
-  not list is stored with a warning, once (when the object first takes the
-  key), pointing at `add_property`. (a) `default_view` is left as is: it
-  governs how sets and collections of the type open, which the schema
-  says; it never promised a view on the type.
-- F18: the export's legend bookkeeping warnings ("no legend entry is
-  written for X; the term is spelled verbatim") are dropped from reads:
-  this API strips every legend from the documents it serves, so they
-  described members no caller sees (`readWarningIsNoise`). The remaining
-  read warnings (an unrepresentable block degraded, an indent clamped)
-  name no operation because none repairs them.
+- F20: `is_favorite` is functional. A `set_properties` set/unset of it
+  writes the local detail (so a read that follows sees the flag at once)
+  AND is routed to the app's favorite mechanism (`ObjectListSetIsFavorite`:
+  a link from the space's home object, from which the app reconciles the
+  detail) after the state edit commits — only on a transition, so setting
+  a set flag or clearing a clear one runs no RPC and cannot fail on a
+  missing link. A non-boolean is a 400 at the field; a dry run does not
+  favorite but reports the same receipt (the flag is a diffed property);
+  an RPC failure is an error that says the edit was committed and the flag
+  was not. Not done: a create body's `is_favorite` is accepted and then
+  DISCARDED (the create adapter's `NewDocFromSnapshot` strips local
+  relations, so a fresh object's read does not echo it) and
+  `list_properties` does not list it.
+- F16: (b) a query created with no filter anywhere (none top-level, an
+  explicit `[]`, or views without filters) warns that it lists every live
+  object of its type, with the filters schema as the repair — addressed at
+  `/views` with a view-side repair when views were sent, since a top-level
+  filter is refused beside them; (c) a `set_properties` set/add, or a
+  create, of a value on a property the object's type does not list is
+  stored with a warning, once (when the object first takes the key),
+  stating the real boundary (type-scoped search and queries refuse the
+  key; the type's default columns omit it) and pointing at
+  `add_property`. The cut is the API's own reference set: name and the
+  system query keys are universal, hidden bundled relations are system
+  fields; every other key the type does not list warns. (a)
+  `default_view` is left as is: it governs how sets and collections of the
+  type open, which the schema says; it never promised a view on the type.
+- F18: read warnings addressed at a member this API strips from every
+  served document (the legends, the stored type key — `apiV2ExcludedSet`)
+  are dropped: they described members no caller sees
+  (`readWarningIsNoise`, keyed on the path, not the format's prose). The
+  one remaining read degradation an exposed operation repairs — a date
+  stored in milliseconds — carries a `set_properties` reference; the
+  others (an unrepresentable block, a clamped indent, a dangling target)
+  describe what the read could not render.
 - F19: `add_items` / `remove_items` receipts carry `items_added` /
-  `items_removed` (members actually changed); a created collection's
-  receipt carries `items`. `update_property`'s receipt is unchanged (the
-  property row is one `get_property` away and the PATCH echoes its key).
+  `items_removed` as a SET DIFFERENCE against the membership before the
+  batch (like the block and property counts; absent means none); a
+  created collection's receipt carries `items`, zero included.
+  `update_property`'s receipt is unchanged (the property row is one
+  `get_property` away and the PATCH echoes its key).
+
+  Reviewed by three fresh reviewers (one blocker: clearing a clear flag
+  hit the home link's not-found error after the commit — closed by the
+  transition check above); their should-fixes are in, as listed. Accepted:
+  a favorite RPC that fails after the commit is a partial write, reported
+  as such; no blanket guard for a bson id in a message (a response-level
+  sentinel test is the sketch, not yet written).
 - F11: the query view-key refusal spells the property as the surface
   serves it (tombstone-aware), and the duplicate-field refusal in
   `set_properties` spells the caller's key; the type is spelled as the

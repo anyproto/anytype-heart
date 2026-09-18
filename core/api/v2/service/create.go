@@ -398,6 +398,20 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	result := &v2model.CreateResult{Type: resolvers.keys.TypeSlug(envelope.Type), Created: resolvers.created()}
 	// the label-adoption tell rides real runs and dry runs alike (C9)
 	result.Warnings = warnLabelShapedIds(body)
+	// F16: a value on a property the type does not list, said at create as
+	// on set_properties (the object takes the key here for the first time)
+	if typeKeys := s.typeListedKeys(spaceId, envelope.Type); typeKeys != nil {
+		for _, key := range sortedKeys(envelope.Properties) {
+			if typeKeys[key] || !offTypeCandidate(key) {
+				continue
+			}
+			spelling := key
+			if original, ok := spellings[key]; ok {
+				spelling = original
+			}
+			result.Warnings = append(result.Warnings, offTypePropertyIssue(spelling, result.Type, "/properties/"+spelling))
+		}
+	}
 	if opts.dryRun {
 		result.DryRun = true
 		return result, nil

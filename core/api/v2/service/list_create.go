@@ -170,13 +170,28 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	// F16: a query with no filter anywhere lists every object of the type —
 	// created under a predicate name ("Plants needing frequent watering")
 	// that is a query that quietly contains the whole type, for good
-	if len(req.Filters) == 0 && !viewsCarryFilters(req.Views) {
-		result.Warnings = append(result.Warnings, v2model.Issue{
+	if rawArrayLen(req.Filters) == 0 && !viewsCarryFilters(req.Views) {
+		issue := v2model.Issue{
 			Path:    "/filter",
-			Message: fmt.Sprintf("the query has no filter: it lists every object of type %q", callerType),
-		}.Hintf("narrow it with filter, the compact string (grammar on %s), or with filters", v2model.RefGetSchema("filters")))
+			Message: fmt.Sprintf("the query has no filter beyond its type: it lists every live object of type %q", callerType),
+		}.Hintf("narrow it with filter, the compact string (grammar on %s), or with filters", v2model.RefGetSchema("filters"))
+		if len(req.Views) > 0 {
+			// a top-level filter is refused beside views: the repair is theirs
+			issue = v2model.Issue{Path: "/views", Message: issue.Message}.
+				Hintf("give a view filters, the nodes %s documents", v2model.RefGetSchema("filters"))
+		}
+		result.Warnings = append(result.Warnings, issue)
 	}
 	return result, nil
+}
+
+// rawArrayLen is the element count of a raw JSON array, 0 for anything else.
+func rawArrayLen(raw json.RawMessage) int {
+	var items []json.RawMessage
+	if len(raw) == 0 || json.Unmarshal(raw, &items) != nil {
+		return 0
+	}
+	return len(items)
 }
 
 // viewsCarryFilters reports whether any requested view filters.
@@ -290,9 +305,11 @@ func (s *Service) CreateCollection(ctx context.Context, spaceId string, req v2mo
 	if err != nil {
 		return nil, err
 	}
-	// the receipt says how many members landed (F19: no caller ever
-	// verified a collection's membership, because nothing echoed it)
-	result.Items = len(req.Items)
+	// the receipt says how many members landed, zero included (F19: no
+	// caller ever verified a collection's membership, because nothing
+	// echoed it)
+	count := len(req.Items)
+	result.Items = &count
 	return result, nil
 }
 
