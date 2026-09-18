@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func markedBlock(id string, txt string, marks ...*model.BlockContentTextMark) *model.Block {
@@ -353,6 +354,60 @@ func TestPasteAny_InvalidMarks(t *testing.T) {
 		assert.Empty(t, childMarks, "the mark without a range must not reach the nested block")
 	})
 
+	t.Run("param bearing marks keep their param through the paste", func(t *testing.T) {
+		// given: params carry the colour, the mention target and the object target,
+		// so losing one silently changes what the mark points at or looks like
+		sb := createPage(t, createBlocks([]string{}, []string{"aaaa"}, emptyMarks))
+		cb := newFixture(t, sb)
+		want := []*model.BlockContentTextMark{
+			{Type: model.BlockContentTextMark_TextColor, Param: "red", Range: &model.Range{From: 0, To: 2}},
+			{Type: model.BlockContentTextMark_BackgroundColor, Param: "blue", Range: &model.Range{From: 2, To: 4}},
+			{Type: model.BlockContentTextMark_Mention, Param: "mentionedObjectId", Range: &model.Range{From: 4, To: 6}},
+			{Type: model.BlockContentTextMark_Object, Param: "targetObjectId", Range: &model.Range{From: 6, To: 8}},
+		}
+
+		// when
+		ids, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			AnySlot: []*model.Block{markedBlock("pasted", "hello123", want...)},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, ids, 1)
+		got := sb.Pick(ids[0]).Model().GetText().Marks.Marks
+		require.Len(t, got, len(want))
+		for i, w := range want {
+			assert.Equal(t, w.Type, got[i].Type)
+			assert.Equal(t, w.Param, got[i].Param, "param of the %s mark must survive", w.Type)
+			assert.Equal(t, w.Range, got[i].Range)
+		}
+	})
+
+	t.Run("param survives when the mark range is clipped", func(t *testing.T) {
+		// given
+		sb := createPage(t, createBlocks([]string{}, []string{"aaaa"}, emptyMarks))
+		cb := newFixture(t, sb)
+		want := []*model.BlockContentTextMark{{
+			Type:  model.BlockContentTextMark_TextColor,
+			Param: "red",
+			Range: &model.Range{From: 0, To: 5},
+		}}
+
+		// when
+		ids, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			AnySlot: []*model.Block{markedBlock("pasted", "hello", &model.BlockContentTextMark{
+				Type:  model.BlockContentTextMark_TextColor,
+				Param: "red",
+				Range: &model.Range{From: -2, To: 99},
+			})},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, ids, 1)
+		assert.Equal(t, want, sb.Pick(ids[0]).Model().GetText().Marks.Marks)
+	})
+
 	t.Run("valid mark survives the paste", func(t *testing.T) {
 		// given
 		sb := createPage(t, createBlocks([]string{}, []string{"aaaa"}, emptyMarks))
@@ -433,24 +488,47 @@ func TestPasteAny_MalformedBlocks(t *testing.T) {
 		assert.Equal(t, "hello", sb.Pick(ids[0]).Model().GetText().Text)
 	})
 
-	t.Run("title block keeps other fields and loses the details key", func(t *testing.T) {
-		// given
-		sb := createPage(t, createBlocks([]string{}, []string{"aaaa"}, emptyMarks))
-		cb := newFixture(t, sb)
-		b := withId(markedBlock("", "hello"), template.TitleBlockId)
-		b.Fields = &types.Struct{Fields: map[string]*types.Value{
-			text.DetailsKeyFieldName: pbtypesString("name"),
-			"keepMe":                 pbtypesString("value"),
-		}}
+	for _, tc := range []struct {
+		name      string
+		blockId   string
+		detailKey string
+		want      string
+	}{
+		{
+			name:      "title block is unbound from its detail and keeps its text",
+			blockId:   template.TitleBlockId,
+			detailKey: "name",
+			want:      "copied title",
+		},
+		{
+			name:      "description block is unbound from its detail and keeps its text",
+			blockId:   template.DescriptionBlockId,
+			detailKey: "description",
+			want:      "copied description",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given: a block still bound to a detail, as Copy hands it over
+			sb := createPage(t, createBlocks([]string{}, []string{"aaaa"}, emptyMarks))
+			cb := newFixture(t, sb)
+			b := withId(markedBlock("", tc.want), tc.blockId)
+			b.Fields = &types.Struct{Fields: map[string]*types.Value{
+				text.DetailsKeyFieldName: pbtypes.StringList([]string{tc.detailKey}),
+				"keepMe":                 pbtypesString("value"),
+			}}
 
-		// when
-		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{AnySlot: []*model.Block{b}}, "")
+			// when
+			ids, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{AnySlot: []*model.Block{b}}, "")
 
-		// then
-		require.NoError(t, err)
-		assert.NotContains(t, b.Fields.Fields, text.DetailsKeyFieldName)
-		assert.Contains(t, b.Fields.Fields, "keepMe")
-	})
+			// then: still bound, the pasted block would render the target object's detail,
+			// which this page does not have, and the copied text would be lost
+			require.NoError(t, err)
+			require.Len(t, ids, 1)
+			assert.Equal(t, tc.want, sb.Pick(ids[0]).Model().GetText().Text)
+			assert.NotContains(t, b.Fields.Fields, text.DetailsKeyFieldName)
+			assert.Contains(t, b.Fields.Fields, "keepMe")
+		})
+	}
 }
 
 func withId(b *model.Block, id string) *model.Block {

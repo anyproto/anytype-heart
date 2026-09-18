@@ -12,8 +12,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// These tests pin behaviour that already worked on develop. They use only the public paste
-// API so they can be run against the develop revision of the production files unchanged.
+// Every test in this file uses only the public paste API, so it can be run against the
+// develop revision of the production files unchanged. TestPasteMarks_DevelopParity and
+// TestPasteMarks_ClippingIntoZeroWidthKeepsMark pin behaviour that already worked there and
+// must keep passing on both revisions; TestPasteMarks_ClippedMarksKeepTheirSpan asserts the
+// mark merge fix and fails on develop by design.
 
 func TestPasteMarks_DevelopParity(t *testing.T) {
 	t.Run("mark overrunning the pasted text is clipped and keeps its param", func(t *testing.T) {
@@ -111,5 +114,35 @@ func TestPasteMarks_ClippedMarksKeepTheirSpan(t *testing.T) {
 		assert.Equal(t, "https://example.com/x", got.Marks.Marks[0].Param)
 		assert.Equal(t, &model.Range{From: 1, To: 6}, got.Marks.Marks[0].Range,
 			"the link must still cover all of the pasted word, not collapse into the shorter mark")
+	})
+}
+
+// Clipping the upper bound can legitimately produce a zero-width range. That is the same
+// shape SetMarkForAllText gives an empty block, so the repaired mark must be kept.
+func TestPasteMarks_ClippingIntoZeroWidthKeepsMark(t *testing.T) {
+	t.Run("bold clipped onto empty text still marks the whole block", func(t *testing.T) {
+		// given: an empty paragraph carrying bold [0,1], which clips to [0,0]
+		sb := createPage(t, createBlocks([]string{}, []string{"aaaa"}, emptyMarks))
+		cb := newFixture(t, sb)
+		pasted := &model.Block{Id: "p", Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "",
+				Marks: &model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{{
+					Type:  model.BlockContentTextMark_Bold,
+					Range: &model.Range{From: 0, To: 1},
+				}}},
+			},
+		}}
+
+		// when
+		ids, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{AnySlot: []*model.Block{pasted}}, "")
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, ids, 1)
+		pastedBlock := simple.New(sb.Pick(ids[0]).Model()).(text.Block)
+		assert.True(t, pastedBlock.HasMarkForAllText(&model.BlockContentTextMark{
+			Type: model.BlockContentTextMark_Bold,
+		}), "whole block bold must survive a range clipped down to zero width")
 	})
 }
