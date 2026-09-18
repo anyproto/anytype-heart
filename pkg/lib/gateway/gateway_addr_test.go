@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"io"
 	"net"
 	"net/http"
 	"testing"
@@ -10,12 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/domain"
 )
-
-// The config component is what actually satisfies the gateway's addrStore at runtime, and it is
-// resolved by interface, so a rename there would compile everywhere and panic on every app start.
-var _ addrStore = (*config.Config)(nil)
 
 // assertServes proves the gateway answers on addr. An unhandled path is enough - it exercises the
 // mux without touching the file mocks.
@@ -30,9 +27,27 @@ func assertServes(t *testing.T, addr string) {
 }
 
 func TestGatewayAddr(t *testing.T) {
-	t.Run("persists the bound address for the next run", func(t *testing.T) {
+	t.Run("serves on the well-known port without remembering it", func(t *testing.T) {
 		// given
-		fx := newFixture(t)
+		wellKnown := freeAddr(t)
+
+		// when
+		fx := newFixtureWithConfig(t, &fakeConfig{}, portOf(t, wellKnown))
+
+		// then
+		assert.Equal(t, wellKnown, fx.Addr())
+		assertServes(t, fx.Addr())
+
+		// and: remembering it would erase the fallback that worked when it was busy
+		assert.Empty(t, fx.config.GatewayAddr())
+	})
+
+	t.Run("remembers a fallback port for the next run", func(t *testing.T) {
+		// given
+		taken := occupiedAddr(t)
+
+		// when
+		fx := newFixtureWithConfig(t, &fakeConfig{}, portOf(t, taken))
 
 		// then
 		assert.NotEmpty(t, fx.Addr())
@@ -40,16 +55,18 @@ func TestGatewayAddr(t *testing.T) {
 		assertServes(t, fx.Addr())
 	})
 
-	t.Run("prefers the well-known port over the one the previous run persisted", func(t *testing.T) {
-		// given: a persisted port that is free, so only the ranking decides
-		persisted := freeAddr(t)
+	t.Run("keeps the remembered fallback when the well-known port comes back", func(t *testing.T) {
+		// given: a fallback learned on an earlier run, and a well-known port that is free again
+		fallback := freeAddr(t)
 		wellKnown := freeAddr(t)
+		cfg := &fakeConfig{addr: fallback}
 
 		// when
-		fx := newFixtureWithConfig(t, &fakeConfig{addr: persisted}, portOf(t, wellKnown))
+		fx := newFixtureWithConfig(t, cfg, portOf(t, wellKnown))
 
-		// then: otherwise one busy start would strand us on an OS-assigned port for good
-		assert.Equal(t, wellKnown, fx.Addr())
+		// then: the well-known port wins, but the fallback survives for the next run that needs it
+		require.Equal(t, wellKnown, fx.Addr())
+		assert.Equal(t, fallback, cfg.GatewayAddr())
 	})
 
 	t.Run("falls back to the persisted port when the well-known one is taken", func(t *testing.T) {
@@ -77,6 +94,112 @@ func TestGatewayAddr(t *testing.T) {
 		assert.NotEqual(t, taken, fx.Addr())
 		assertServes(t, fx.Addr())
 		assert.Equal(t, fx.Addr(), fx.config.GatewayAddr())
+	})
+
+	t.Run("keeps its port when the well-known one frees up mid-session", func(t *testing.T) {
+		// given: the well-known port is busy at start, so the gateway lands elsewhere
+		wellKnown, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+		fx := newFixtureWithConfig(t, &fakeConfig{}, portOf(t, wellKnown.Addr().String()))
+		want := fx.Addr()
+		require.NotEqual(t, wellKnown.Addr().String(), want)
+
+		// when: the well-known port frees up and mobile cycles background/foreground
+		require.NoError(t, wellKnown.Close())
+		require.NoError(t, fx.stopServer())
+		require.NoError(t, fx.startServer())
+
+		// then: moving back would strand every URL clients have cached
+		assert.Equal(t, want, fx.Addr())
+		assertServes(t, want)
+	})
+
+	t.Run("rebinds after the listener stops working", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.mu.Lock()
+		ln := fx.listener
+		fx.mu.Unlock()
+
+		// when: the socket dies under the running server
+		require.NoError(t, ln.Close())
+
+		// then: the dead listener is given up instead of serving nothing for the rest of the session
+		require.Eventually(t, func() bool {
+			fx.mu.Lock()
+			defer fx.mu.Unlock()
+			return fx.listener == nil && !fx.isServerStarted
+		}, 5*time.Second, 10*time.Millisecond)
+
+		// and: the next start brings it back
+		require.NoError(t, fx.startServer())
+		assertServes(t, fx.Addr())
+	})
+
+	t.Run("does not keep serving on connections after the listener stops working", func(t *testing.T) {
+		// given: a client holding a keep-alive connection
+		fx := newFixture(t)
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Get("http://" + fx.Addr() + "/")
+		require.NoError(t, err)
+		_, err = io.Copy(io.Discard, resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+
+		// when: the socket dies under the running server
+		fx.mu.Lock()
+		ln := fx.listener
+		fx.mu.Unlock()
+		require.NoError(t, ln.Close())
+		require.Eventually(t, func() bool {
+			fx.mu.Lock()
+			defer fx.mu.Unlock()
+			return fx.listener == nil
+		}, 5*time.Second, 10*time.Millisecond)
+
+		// then: nothing else would ever shut that server down, so it would answer on the pooled
+		// connection long after Close returned
+		require.Eventually(t, func() bool {
+			resp, err := client.Get("http://" + fx.Addr() + "/")
+			if err != nil {
+				return true
+			}
+			_ = resp.Body.Close()
+			return false
+		}, 5*time.Second, 50*time.Millisecond)
+	})
+
+	t.Run("reports a duplicate start instead of starting twice", func(t *testing.T) {
+		// given: mobile reports the same foreground state more than once
+		fx := newFixture(t)
+
+		// when
+		err := fx.startServer()
+
+		// then: starting twice would leak both a listener and an http.Server
+		require.ErrorIs(t, err, errGatewayAlreadyStarted)
+		assertServes(t, fx.Addr())
+	})
+
+	t.Run("stops and restarts with the mobile state changes", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		addr := fx.Addr()
+		wasMobile := isMobile
+		isMobile = true
+		t.Cleanup(func() { isMobile = wasMobile })
+
+		// when
+		fx.StateChange(int(domain.CompStateAppWentBackground))
+
+		// then
+		_, err := net.DialTimeout("tcp", addr, 5*time.Second)
+		require.Error(t, err)
+
+		// and
+		fx.StateChange(int(domain.CompStateAppWentForeground))
+		assert.Equal(t, addr, fx.Addr())
+		assertServes(t, addr)
 	})
 
 	t.Run("keeps the port across repeated stop and start cycles", func(t *testing.T) {
@@ -154,6 +277,8 @@ func TestGatewayAddr(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, errGatewayClosed)
+		fx.mu.Lock()
+		defer fx.mu.Unlock()
 		assert.Nil(t, fx.listener)
 	})
 

@@ -2,12 +2,19 @@ package gateway
 
 import (
 	"net"
+	"os"
 	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMain(m *testing.M) {
+	// an ambient override would send every fixture to the same address, and the second bind loses
+	_ = os.Unsetenv("ANYTYPE_GATEWAY_ADDR")
+	os.Exit(m.Run())
+}
 
 // occupiedAddr binds an address and holds it for the rest of the test, so that
 // anything else trying to bind it fails.
@@ -127,6 +134,19 @@ func TestListenGateway(t *testing.T) {
 		assert.Equal(t, gatewayHost, host)
 	})
 
+	t.Run("ignores a zero candidate", func(t *testing.T) {
+		// given: what portFromAddr returns for an address a hand-edited config could hold
+		want := freeAddr(t)
+
+		// when
+		ln, err := listenGateway(listenConfig{candidates: []int{0, portOf(t, want)}})
+
+		// then: without the guard, 0 would bind an OS-assigned port and never try the real candidate
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = ln.Close() })
+		assert.Equal(t, want, ln.Addr().String())
+	})
+
 	t.Run("ignores an out-of-range candidate", func(t *testing.T) {
 		// given
 		want := freeAddr(t)
@@ -139,4 +159,25 @@ func TestListenGateway(t *testing.T) {
 		t.Cleanup(func() { _ = ln.Close() })
 		assert.Equal(t, want, ln.Addr().String())
 	})
+}
+
+func TestPortFromAddr(t *testing.T) {
+	tests := []struct {
+		name string
+		addr string
+		want int
+	}{
+		{name: "an address we bound earlier", addr: "127.0.0.1:47800", want: 47800},
+		{name: "nothing persisted yet", addr: "", want: 0},
+		{name: "no port at all", addr: "127.0.0.1", want: 0},
+		{name: "a named port", addr: "127.0.0.1:http", want: 0},
+		{name: "the wildcard port", addr: "127.0.0.1:0", want: 0},
+		{name: "a negative port", addr: "127.0.0.1:-1", want: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, portFromAddr(tt.addr))
+		})
+	}
 }

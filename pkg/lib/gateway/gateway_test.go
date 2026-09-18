@@ -118,14 +118,14 @@ func newFixture(t *testing.T) *fixture {
 	return newFixtureWithConfig(t, &fakeConfig{}, portOf(t, freeAddr(t)))
 }
 
-func newFixtureWithConfig(t *testing.T, cfg *fakeConfig, defaultPort int) *fixture {
+func newFixtureWithConfig(t *testing.T, cfg *fakeConfig, wellKnownPort int) *fixture {
 	a := new(app.App)
 
 	fileService := mock_files.NewMockService(t)
 	fileObjectService := mock_fileobject.NewMockService(t)
 	fileDownloader := mock_filedownloader.NewMockService(t)
 	gw := New().(*gateway)
-	gw.defaultPort = defaultPort
+	gw.wellKnownPort = wellKnownPort
 
 	ctx := context.Background()
 	a.Register(testutil.PrepareMock(ctx, a, fileService))
