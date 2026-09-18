@@ -1305,15 +1305,15 @@ func TestClipboard_PasteToTableCellBlock(t *testing.T) {
 
 func TestPasteIntoEmptyStyledBlock(t *testing.T) {
 	for _, tc := range []struct {
-		name       string
-		style      model.BlockContentTextStyle
+		name        string
+		style       model.BlockContentTextStyle
 		pasteBlocks []*model.Block
 	}{
 		{
 			name:  "multi-block header paste into empty bullet",
 			style: model.BlockContentText_Marked,
 			pasteBlocks: []*model.Block{
-				blockbuilder.Text("Header Text", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(),
+				withBold(blockbuilder.Text("Header Text", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(), 0, 6),
 				blockbuilder.Text("Paragraph Text", blockbuilder.ID("p2"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)).Block(),
 			},
 		},
@@ -1321,7 +1321,7 @@ func TestPasteIntoEmptyStyledBlock(t *testing.T) {
 			name:  "multi-block header paste into empty toggle",
 			style: model.BlockContentText_Toggle,
 			pasteBlocks: []*model.Block{
-				blockbuilder.Text("Header Text", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(),
+				withBold(blockbuilder.Text("Header Text", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(), 0, 6),
 				blockbuilder.Text("Paragraph Text", blockbuilder.ID("p2"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)).Block(),
 			},
 		},
@@ -1329,7 +1329,7 @@ func TestPasteIntoEmptyStyledBlock(t *testing.T) {
 			name:  "multi-block header paste into empty callout",
 			style: model.BlockContentText_Callout,
 			pasteBlocks: []*model.Block{
-				blockbuilder.Text("Header Text", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(),
+				withBold(blockbuilder.Text("Header Text", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(), 0, 6),
 				blockbuilder.Text("Paragraph Text", blockbuilder.ID("p2"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)).Block(),
 			},
 		},
@@ -1337,14 +1337,14 @@ func TestPasteIntoEmptyStyledBlock(t *testing.T) {
 			name:  "single header paste into empty bullet",
 			style: model.BlockContentText_Marked,
 			pasteBlocks: []*model.Block{
-				blockbuilder.Text("Header Text", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(),
+				withBold(blockbuilder.Text("Header Text", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(), 0, 6),
 			},
 		},
 		{
 			name:  "multi-block paragraph paste into empty checkbox",
 			style: model.BlockContentText_Checkbox,
 			pasteBlocks: []*model.Block{
-				blockbuilder.Text("First Line", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)).Block(),
+				withBold(blockbuilder.Text("First Line", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)).Block(), 0, 5),
 				blockbuilder.Text("Second Line", blockbuilder.ID("p2"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)).Block(),
 			},
 		},
@@ -1372,22 +1372,645 @@ func TestPasteIntoEmptyStyledBlock(t *testing.T) {
 
 			// then
 			require.NoError(t, err)
-			targetBlock := sb.Doc.Pick("1")
-			require.NotNil(t, targetBlock, "target block should not be deleted")
+			// Resolve the replacement through the live tree. forkFilledEmptyBlock
+			// unlinks the focused block and re-creates it under a fresh id, so
+			// Pick("1") still returns the unlinked original — asserting on that
+			// passes even when the block actually in the document lost its style.
+			st := sb.NewState()
+			childIds := st.Pick("root").Model().ChildrenIds
+			assert.NotContains(t, childIds, "1", "the original block id must be unlinked after the fork")
+			// one live block per pasted block, single- and multi-block alike, so a paste
+			// that duplicates the first line instead of reusing the target is caught
+			require.Len(t, childIds, len(tc.pasteBlocks), "one live block per pasted block")
+			// the caller must be handed the live replacement, never the unlinked target
+			assert.Equal(t, childIds, blockIds, "returned ids must be the live blocks, in document order")
+
+			targetBlock := st.Pick(childIds[0])
+			require.NotNil(t, targetBlock, "replacement block should be in the document")
 			assert.Equal(t, tc.style, targetBlock.Model().GetText().Style, "target block style should be preserved")
-			
+
 			// The empty focused block is reused for the first paste line (both for
 			// single- and multi-block paste) instead of being left as a stray empty
 			// paragraph above the pasted content; remaining paste blocks are inserted
 			// below. The block keeps its own style.
 			assert.Equal(t, tc.pasteBlocks[0].GetText().Text, targetBlock.Model().GetText().Text, "first paste text should be merged into target")
+			assert.Equal(t, tc.pasteBlocks[0].GetText().Marks.GetMarks(), targetBlock.Model().GetText().Marks.GetMarks(),
+				"the first pasted line's marks must be carried into the reused block")
 			if len(tc.pasteBlocks) > 1 {
-				require.NotEmpty(t, blockIds, "remaining paste blocks should be inserted")
-				lastPasteBlock := sb.Doc.Pick(blockIds[len(blockIds)-1])
-				require.NotNil(t, lastPasteBlock, "last paste block should exist in state")
+				lastPasteBlock := st.Pick(childIds[len(childIds)-1])
+				require.NotNil(t, lastPasteBlock, "last paste block should be in the document")
 				assert.Equal(t, tc.pasteBlocks[len(tc.pasteBlocks)-1].GetText().Text, lastPasteBlock.Model().GetText().Text, "remaining paste block text should be preserved")
 			}
 		})
+	}
+}
+
+// A plain empty paragraph carries no style intent of its own, so a multi-block paste
+// must drop it and let the first pasted block land untouched. Contrast with
+// TestPasteIntoEmptyStyledBlock, where the target's own style is what has to survive.
+func TestPasteMultiBlockIntoEmptyParagraph(t *testing.T) {
+	type want struct {
+		style   model.BlockContentTextStyle
+		text    string
+		checked bool
+		color   string
+		bgColor string
+		icon    string
+		lang    string
+		// text of each child, so a corrupted child is caught rather than just a missing one
+		children []string
+		// text of each grandchild: one level of nesting cannot show that deeper levels survive
+		grandchildren []string
+		// the marks carried onto the first pasted block, compared in full: a count alone
+		// passes when the type or range is corrupted
+		marks []*model.BlockContentTextMark
+	}
+	for _, tc := range []struct {
+		name        string
+		pasteBlocks []*model.Block
+		want        want
+	}{
+		{
+			name: "header style is adopted",
+			pasteBlocks: []*model.Block{
+				withBold(textBlock("p1", "Title", model.BlockContentText_Header2), 0, 5),
+				textBlock("p2", "body", model.BlockContentText_Paragraph),
+			},
+			want: want{style: model.BlockContentText_Header2, text: "Title", marks: []*model.BlockContentTextMark{
+				{Range: &model.Range{From: 0, To: 5}, Type: model.BlockContentTextMark_Bold},
+				{Range: &model.Range{From: 0, To: 5}, Type: model.BlockContentTextMark_Link,
+					Param: "https://example.com/kept"},
+			}},
+		},
+		{
+			name: "checked checkbox stays checked",
+			pasteBlocks: []*model.Block{
+				func() *model.Block {
+					b := textBlock("p1", "done", model.BlockContentText_Checkbox)
+					b.GetText().Checked = true
+					return b
+				}(),
+				textBlock("p2", "todo", model.BlockContentText_Checkbox),
+			},
+			want: want{style: model.BlockContentText_Checkbox, text: "done", checked: true},
+		},
+		{
+			name: "title style is demoted, never adopted",
+			pasteBlocks: []*model.Block{
+				textBlock("p1", "I am a title", model.BlockContentText_Title),
+				textBlock("p2", "body", model.BlockContentText_Paragraph),
+			},
+			want: want{style: model.BlockContentText_Header1, text: "I am a title"},
+		},
+		{
+			name: "description style is demoted, never adopted",
+			pasteBlocks: []*model.Block{
+				textBlock("p1", "I am a description", model.BlockContentText_Description),
+				textBlock("p2", "body", model.BlockContentText_Paragraph),
+			},
+			want: want{style: model.BlockContentText_Paragraph, text: "I am a description"},
+		},
+		{
+			name: "code block keeps its language",
+			pasteBlocks: []*model.Block{
+				func() *model.Block {
+					b := textBlock("p1", "fmt.Println(1)", model.BlockContentText_Code)
+					b.Fields = &types.Struct{Fields: map[string]*types.Value{
+						"lang": pbtypes.String("go"),
+					}}
+					return b
+				}(),
+				textBlock("p2", "after", model.BlockContentText_Paragraph),
+			},
+			want: want{style: model.BlockContentText_Code, text: "fmt.Println(1)", lang: "go"},
+		},
+		{
+			name: "callout keeps its icon and colors",
+			pasteBlocks: []*model.Block{
+				func() *model.Block {
+					b := textBlock("p1", "note", model.BlockContentText_Callout)
+					b.GetText().IconEmoji = "💡"
+					b.GetText().Color = "red"
+					b.BackgroundColor = "blue"
+					return b
+				}(),
+				textBlock("p2", "body", model.BlockContentText_Paragraph),
+			},
+			want: want{
+				style: model.BlockContentText_Callout, text: "note",
+				color: "red", bgColor: "blue", icon: "💡",
+			},
+		},
+		{
+			name: "toggle keeps its children and grandchildren",
+			pasteBlocks: []*model.Block{
+				func() *model.Block {
+					b := textBlock("p1", "toggle head", model.BlockContentText_Toggle)
+					b.ChildrenIds = []string{"c1"}
+					return b
+				}(),
+				func() *model.Block {
+					b := textBlock("c1", "nested child", model.BlockContentText_Paragraph)
+					b.ChildrenIds = []string{"g1"}
+					return b
+				}(),
+				textBlock("g1", "nested grandchild", model.BlockContentText_Paragraph),
+				textBlock("p2", "body", model.BlockContentText_Paragraph),
+			},
+			want: want{
+				style: model.BlockContentText_Toggle, text: "toggle head",
+				children:      []string{"nested child"},
+				grandchildren: []string{"nested grandchild"},
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			sb := smarttest.New("test")
+			sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+				blockbuilder.ID("root"),
+				blockbuilder.Children(
+					blockbuilder.Text("", blockbuilder.ID("1"),
+						blockbuilder.TextStyle(model.BlockContentText_Paragraph)),
+				)))
+			cb := newFixture(t, sb)
+
+			// when
+			blockIds, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+				FocusedBlockId:    "1",
+				SelectedTextRange: &model.Range{From: 0, To: 0},
+				AnySlot:           tc.pasteBlocks,
+			}, "")
+
+			// then
+			require.NoError(t, err)
+			childIds := sb.NewState().Pick("root").Model().ChildrenIds
+			require.Len(t, childIds, 2, "the empty paragraph must be dropped, not left above the paste")
+			// the caller is told about every block that landed, nested ones included, in
+			// document order — a count alone passes when an id is duplicated or misordered
+			st0 := sb.NewState()
+			var walk func(ids []string) []string
+			walk = func(ids []string) []string {
+				var out []string
+				for _, id := range ids {
+					out = append(out, id)
+					if b := st0.Pick(id); b != nil {
+						out = append(out, walk(b.Model().ChildrenIds)...)
+					}
+				}
+				return out
+			}
+			assert.Equal(t, walk(childIds), blockIds,
+				"returned ids must be the live pasted tree in traversal order")
+
+			st := sb.NewState()
+			first := st.Pick(childIds[0])
+			require.NotNil(t, first)
+			var childTexts, grandchildTexts []string
+			for _, id := range first.Model().ChildrenIds {
+				child := st.Pick(id)
+				require.NotNil(t, child, "pasted child %s must be in the document", id)
+				childTexts = append(childTexts, child.Model().GetText().Text)
+				for _, gid := range child.Model().ChildrenIds {
+					g := st.Pick(gid)
+					require.NotNil(t, g, "pasted grandchild %s must be in the document", gid)
+					grandchildTexts = append(grandchildTexts, g.Model().GetText().Text)
+				}
+			}
+			got := want{
+				style:         first.Model().GetText().Style,
+				text:          first.Model().GetText().Text,
+				checked:       first.Model().GetText().Checked,
+				color:         first.Model().GetText().Color,
+				bgColor:       first.Model().BackgroundColor,
+				icon:          first.Model().GetText().IconEmoji,
+				lang:          pbtypes.GetString(first.Model().Fields, "lang"),
+				children:      childTexts,
+				grandchildren: grandchildTexts,
+				marks:         first.Model().GetText().Marks.GetMarks(),
+			}
+			assert.Equal(t, tc.want, got)
+
+			// the trailing pasted block must survive too
+			last := st.Pick(childIds[len(childIds)-1])
+			require.NotNil(t, last)
+			assert.Equal(t, tc.pasteBlocks[len(tc.pasteBlocks)-1].GetText().Text, last.Model().GetText().Text,
+				"last pasted block text must be preserved")
+		})
+	}
+}
+
+// A paragraph is only disposable when it holds nothing the user put there. Every case here
+// has empty text but carries one setting that develop preserves by reusing the block, so
+// dropping the block would silently destroy it. Style residue (a code block's language, a
+// callout icon, a checkbox's checked state) survives a style change back to Paragraph and
+// reappears when the style changes back, so it is not dead data.
+func TestPasteIntoConfiguredEmptyParagraph(t *testing.T) {
+	type want struct {
+		align   model.BlockAlign
+		vAlign  model.BlockVerticalAlign
+		color   string
+		bgColor string
+		icon    string
+		iconImg string
+		lang    string
+		checked bool
+	}
+	for _, tc := range []struct {
+		name  string
+		apply func(b *model.Block)
+		want  want
+	}{
+		{"center aligned", func(b *model.Block) { b.Align = model.Block_AlignCenter },
+			want{align: model.Block_AlignCenter}},
+		{"vertical align", func(b *model.Block) { b.VerticalAlign = model.Block_VerticalAlignBottom },
+			want{vAlign: model.Block_VerticalAlignBottom}},
+		{"text color", func(b *model.Block) { b.GetText().Color = "red" },
+			want{color: "red"}},
+		{"background color", func(b *model.Block) { b.BackgroundColor = "blue" },
+			want{bgColor: "blue"}},
+		{"callout icon residue", func(b *model.Block) { b.GetText().IconEmoji = "\U0001f525" },
+			want{icon: "\U0001f525"}},
+		{"icon image residue", func(b *model.Block) { b.GetText().IconImage = "imagehash" },
+			want{iconImg: "imagehash"}},
+		{"code language residue", func(b *model.Block) {
+			b.Fields = &types.Struct{Fields: map[string]*types.Value{"lang": pbtypes.String("go")}}
+		}, want{lang: "go"}},
+		{"checked residue", func(b *model.Block) { b.GetText().Checked = true },
+			want{checked: true}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			target := textBlock("target", "", model.BlockContentText_Paragraph)
+			tc.apply(target)
+			sb := smarttest.New("test")
+			sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"target"}}))
+			sb.AddBlock(simple.New(target))
+			cb := newFixture(t, sb)
+
+			// when
+			_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+				FocusedBlockId:    "target",
+				SelectedTextRange: &model.Range{From: 0, To: 0},
+				AnySlot: []*model.Block{
+					textBlock("p1", "first", model.BlockContentText_Paragraph),
+					textBlock("p2", "second", model.BlockContentText_Paragraph),
+				},
+			}, "")
+
+			// then
+			require.NoError(t, err)
+			st := sb.NewState()
+			childIds := st.Pick("test").Model().ChildrenIds
+			require.Len(t, childIds, 2)
+			first := st.Pick(childIds[0])
+			require.NotNil(t, first)
+			got := want{
+				align:   first.Model().Align,
+				vAlign:  first.Model().VerticalAlign,
+				color:   first.Model().GetText().Color,
+				bgColor: first.Model().BackgroundColor,
+				icon:    first.Model().GetText().IconEmoji,
+				iconImg: first.Model().GetText().IconImage,
+				lang:    pbtypes.GetString(first.Model().Fields, "lang"),
+				checked: first.Model().GetText().Checked,
+			}
+			assert.Equal(t, tc.want, got, "the setting must survive the paste")
+			assert.Equal(t, "first", first.Model().GetText().Text, "first pasted line still lands here")
+			second := st.Pick(childIds[1])
+			require.NotNil(t, second)
+			assert.Equal(t, "second", second.Model().GetText().Text, "trailing pasted line must be intact")
+		})
+	}
+}
+
+// Dropping the focused block instead of writing to it must not slip past a restriction that a
+// write would have failed, and must not silently discard the restriction itself. Each flag is
+// exercised on its own: a fixture that sets several at once passes even if the predicate only
+// looks at one of them.
+func TestPasteIntoRestrictedEmptyParagraph(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		r          *model.BlockRestrictions
+		wantReject bool // Edit forbids the write the reuse path performs
+	}{
+		{"read", &model.BlockRestrictions{Read: true}, false},
+		{"edit", &model.BlockRestrictions{Edit: true}, true},
+		{"remove", &model.BlockRestrictions{Remove: true}, false},
+		{"drag", &model.BlockRestrictions{Drag: true}, false},
+		{"dropOn", &model.BlockRestrictions{DropOn: true}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			target := textBlock("target", "", model.BlockContentText_Paragraph)
+			target.Restrictions = tc.r
+			sb := smarttest.New("test")
+			sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"target"}}))
+			sb.AddBlock(simple.New(target))
+			cb := newFixture(t, sb)
+
+			// when
+			_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+				FocusedBlockId:    "target",
+				SelectedTextRange: &model.Range{From: 0, To: 0},
+				AnySlot: []*model.Block{
+					textBlock("p1", "first", model.BlockContentText_Paragraph),
+					textBlock("p2", "second", model.BlockContentText_Paragraph),
+				},
+			}, "")
+
+			// then: Edit forbids writing to the block, so the paste must be rejected and the
+			// document left alone. Every other flag permits the paste, and the block must be
+			// reused rather than dropped, so the restriction survives with it. Accepting
+			// "any error" here would hide a regression that rejects permitted pastes.
+			st := sb.NewState()
+			if tc.wantReject {
+				require.Error(t, err, "a write-forbidding restriction must reject the paste")
+				assert.Equal(t, []string{"target"}, st.Pick("test").Model().ChildrenIds,
+					"a rejected paste must leave the document untouched")
+				assert.Equal(t, "", st.Pick("target").Model().GetText().Text,
+					"a rejected paste must not write into the block")
+				return
+			}
+			require.NoError(t, err, "this restriction does not forbid the paste")
+			childIds := st.Pick("test").Model().ChildrenIds
+			require.Len(t, childIds, 2, "both pasted lines must land")
+			first := st.Pick(childIds[0])
+			require.NotNil(t, first)
+			assert.Equal(t, "first", first.Model().GetText().Text)
+			assert.Equal(t, tc.r, first.Model().Restrictions,
+				"the restriction must survive the paste")
+		})
+	}
+}
+
+// An empty paragraph is only dropped when it holds nothing worth keeping. Empty text does
+// not imply an empty subtree: unlinking a block orphans its children, and the state apply
+// then deletes them, so a paragraph with children is reused the way it always was.
+func TestPasteIntoEmptyParagraphWithChildren(t *testing.T) {
+	// given
+	sb := smarttest.New("test")
+	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"target"}}))
+	sb.AddBlock(simple.New(&model.Block{
+		Id:          "target",
+		ChildrenIds: []string{"child"},
+		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+			Text: "", Style: model.BlockContentText_Paragraph}},
+	}))
+	sb.AddBlock(simple.New(&model.Block{
+		Id:          "child",
+		ChildrenIds: []string{"grandchild"},
+		Content:     &model.BlockContentOfText{Text: &model.BlockContentText{Text: "existing child"}},
+	}))
+	sb.AddBlock(simple.New(&model.Block{
+		Id:      "grandchild",
+		Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "existing grandchild"}},
+	}))
+	cb := newFixture(t, sb)
+
+	// when
+	_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+		FocusedBlockId:    "target",
+		SelectedTextRange: &model.Range{From: 0, To: 0},
+		AnySlot: []*model.Block{
+			textBlock("p1", "one", model.BlockContentText_Paragraph),
+			textBlock("p2", "two", model.BlockContentText_Paragraph),
+		},
+	}, "")
+
+	// then: the paste itself must be correct, with no stray empty block left behind
+	require.NoError(t, err)
+	st := sb.NewState()
+	childIds := st.Pick("test").Model().ChildrenIds
+	require.Len(t, childIds, 2, "exactly the two pasted lines, no stray empty paragraph")
+
+	first, second := st.Pick(childIds[0]), st.Pick(childIds[1])
+	require.NotNil(t, first)
+	require.NotNil(t, second)
+	assert.Equal(t, "one", first.Model().GetText().Text)
+	assert.Equal(t, "two", second.Model().GetText().Text)
+
+	// and the existing subtree must still hang off the reused block, with its content intact
+	require.Equal(t, []string{"child"}, first.Model().ChildrenIds, "existing child stays under the reused block")
+	child := st.Pick("child")
+	require.NotNil(t, child, "existing child must survive the paste")
+	assert.Equal(t, "existing child", child.Model().GetText().Text)
+	require.Equal(t, []string{"grandchild"}, child.Model().ChildrenIds)
+	grandchild := st.Pick("grandchild")
+	require.NotNil(t, grandchild, "existing grandchild must survive the paste")
+	assert.Equal(t, "existing grandchild", grandchild.Model().GetText().Text)
+}
+
+// A single-block markdown body goes through intoBlock/RangeTextPaste rather than singleRange,
+// so it needs its own guard: a checked task pasted there must stay checked. The API creates an
+// empty paragraph and pastes into it, so `{"markdown": "- [x] Done"}` hits exactly this path.
+func TestPasteSingleBlockIntoEmptyParagraphKeepsChecked(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		markdown  string
+		want      []bool   // checked state per resulting block
+		wantTexts []string // and its label, so a truncated or blanked task is caught
+	}{
+		{"single checked task", "- [x] Done\n", []bool{true}, []string{"Done"}},
+		{"single unchecked task", "- [ ] Todo\n", []bool{false}, []string{"Todo"}},
+		{"checked then unchecked", "- [x] Done\n- [ ] Todo\n", []bool{true, false}, []string{"Done", "Todo"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			sb := smarttest.New("test")
+			sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"b"}}))
+			sb.AddBlock(simple.New(textBlock("b", "", model.BlockContentText_Paragraph)))
+			cb := newFixture(t, sb)
+
+			// when
+			_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+				FocusedBlockId: "b",
+				TextSlot:       tc.markdown,
+			}, "")
+
+			// then
+			require.NoError(t, err)
+			st := sb.NewState()
+			childIds := st.Pick("test").Model().ChildrenIds
+			require.Len(t, childIds, len(tc.want))
+			got := make([]bool, 0, len(childIds))
+			for _, id := range childIds {
+				b := st.Pick(id)
+				require.NotNil(t, b)
+				assert.Equal(t, model.BlockContentText_Checkbox, b.Model().GetText().Style)
+				assert.Equal(t, tc.wantTexts[len(got)], b.Model().GetText().Text,
+					"the task label must survive the paste")
+				got = append(got, b.Model().GetText().Checked)
+			}
+			assert.Equal(t, tc.want, got, "checked state must survive the paste")
+		})
+	}
+}
+
+// Replacing the label of a completed task must not reopen it. GO-250 makes a plain pasted
+// paragraph inherit the focused block's style, so an HTML paste into a checkbox arrives as a
+// checkbox — and RangeTextPaste adopts the pasted block's checked state along with its style.
+// The synthesized block therefore has to borrow the target's checked state too, or the adoption
+// silently clears it. A real checkbox carrying its own state is a different case and is adopted.
+func TestPasteOverCheckedCheckbox(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		req         func(r *pb.RpcBlockPasteRequest)
+		wantStyle   model.BlockContentTextStyle
+		wantChecked bool
+	}{
+		{
+			name:        "plain html keeps the task completed",
+			req:         func(r *pb.RpcBlockPasteRequest) { r.HtmlSlot = "<p>New</p>" },
+			wantStyle:   model.BlockContentText_Checkbox,
+			wantChecked: true,
+		},
+		{
+			// replacing the label never moves the state, whatever was pasted over it
+			name: "an unchecked checkbox pasted over it leaves it completed",
+			req: func(r *pb.RpcBlockPasteRequest) {
+				r.AnySlot = []*model.Block{textBlock("p1", "New", model.BlockContentText_Checkbox)}
+			},
+			wantStyle:   model.BlockContentText_Checkbox,
+			wantChecked: true,
+		},
+		{
+			// checked is meaningful only for a checkbox, so adopting some other style
+			// leaves it untouched: the block keeps its state while it is a paragraph and
+			// gets it back if it is turned into a checkbox again.
+			name:        "plain text turns it into a paragraph without touching the state",
+			req:         func(r *pb.RpcBlockPasteRequest) { r.TextSlot = "New" },
+			wantStyle:   model.BlockContentText_Paragraph,
+			wantChecked: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			done := textBlock("t", "Done", model.BlockContentText_Checkbox)
+			done.GetText().Checked = true
+			sb := smarttest.New("test")
+			sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"t"}}))
+			sb.AddBlock(simple.New(done))
+			cb := newFixture(t, sb)
+
+			req := &pb.RpcBlockPasteRequest{
+				FocusedBlockId:    "t",
+				SelectedTextRange: &model.Range{From: 0, To: 4}, // replaces the whole label
+			}
+			tc.req(req)
+
+			// when
+			_, _, _, _, err := cb.Paste(nil, req, "")
+
+			// then
+			require.NoError(t, err)
+			st := sb.NewState()
+			childIds := st.Pick("test").Model().ChildrenIds
+			require.Len(t, childIds, 1)
+			got := st.Pick(childIds[0])
+			require.NotNil(t, got)
+			assert.Equal(t, "New", got.Model().GetText().Text)
+			assert.Equal(t, tc.wantStyle, got.Model().GetText().Style)
+			assert.Equal(t, tc.wantChecked, got.Model().GetText().Checked, "checked state")
+		})
+	}
+}
+
+// A paragraph carrying checked residue — a checked checkbox someone turned into a paragraph —
+// must survive a paste with its state intact, and single-block and multi-block paste must agree.
+// They are fixed by different mechanisms in different packages, so nothing else pins that.
+func TestPasteKeepsCheckedResidue(t *testing.T) {
+	for _, tc := range []struct{ name, markdown string }{
+		{"single block", "New text"},
+		{"multi block", "New text\n\nAfter"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			residue := textBlock("t", "", model.BlockContentText_Paragraph)
+			residue.GetText().Checked = true
+			sb := smarttest.New("test")
+			sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"t"}}))
+			sb.AddBlock(simple.New(residue))
+			cb := newFixture(t, sb)
+
+			// when
+			_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+				FocusedBlockId: "t", TextSlot: tc.markdown,
+			}, "")
+
+			// then
+			require.NoError(t, err)
+			st := sb.NewState()
+			first := st.Pick(st.Pick("test").Model().ChildrenIds[0])
+			require.NotNil(t, first)
+			assert.Equal(t, "New text", first.Model().GetText().Text)
+			assert.True(t, first.Model().GetText().Checked, "checked residue must survive the paste")
+		})
+	}
+}
+
+// Lines pasted under a completed task become new tasks, and new tasks are not born complete.
+// GO-250 gives them the focused block's style; the state that goes with it is not theirs.
+func TestPasteHtmlUnderCheckedCheckbox(t *testing.T) {
+	// given
+	done := textBlock("t", "Done", model.BlockContentText_Checkbox)
+	done.GetText().Checked = true
+	sb := smarttest.New("test")
+	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"t"}}))
+	sb.AddBlock(simple.New(done))
+	cb := newFixture(t, sb)
+
+	// when: caret at the end of the label, nothing replaced
+	_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+		FocusedBlockId:    "t",
+		SelectedTextRange: &model.Range{From: 4, To: 4},
+		HtmlSlot:          "<p>new task one</p><p>new task two</p>",
+	}, "")
+
+	// then
+	require.NoError(t, err)
+	st := sb.NewState()
+	childIds := st.Pick("test").Model().ChildrenIds
+	require.Len(t, childIds, 3)
+
+	first := st.Pick(childIds[0])
+	require.NotNil(t, first)
+	assert.True(t, first.Model().GetText().Checked, "the original task stays completed")
+
+	for i, id := range childIds[1:] {
+		b := st.Pick(id)
+		require.NotNil(t, b)
+		assert.Equal(t, model.BlockContentText_Checkbox, b.Model().GetText().Style,
+			"GO-250: pasted lines inherit the focused block's style")
+		assert.Equal(t, []string{"new task one", "new task two"}[i], b.Model().GetText().Text,
+			"the pasted label must survive, in order")
+		assert.False(t, b.Model().GetText().Checked,
+			"a new task must not be born completed: %q", b.Model().GetText().Text)
+	}
+}
+
+// withBold attaches a bold mark, so a test that would otherwise ignore marks notices when
+// they are dropped on the way into the reused block.
+func withBold(b *model.Block, from, to int32) *model.Block {
+	b.GetText().Marks = &model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+		{Range: &model.Range{From: from, To: to}, Type: model.BlockContentTextMark_Bold},
+		// a link keeps its destination in Param: a bold-only fixture cannot show that a
+		// mark's payload survives, only that a mark of some kind does
+		{Range: &model.Range{From: from, To: to}, Type: model.BlockContentTextMark_Link,
+			Param: "https://example.com/kept"},
+	}}
+	return b
+}
+
+// textBlock builds a styled text block for the paste slot.
+func textBlock(id, txt string, style model.BlockContentTextStyle) *model.Block {
+	return &model.Block{
+		Id: id,
+		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+			Text:  txt,
+			Style: style,
+			Marks: &model.BlockContentTextMarks{},
+		}},
 	}
 }
 

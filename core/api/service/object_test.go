@@ -426,3 +426,87 @@ func TestObjectService_CreateObject(t *testing.T) {
 		require.Empty(t, object)
 	})
 }
+
+// The export opens with the object's title, which the API returns separately as `name`, so the
+// first heading is dropped to avoid repeating it. A note has no title block, so its export opens
+// with the body and nothing may be dropped — otherwise the user's own first heading disappears,
+// and a body that is only a heading comes back empty.
+func TestService_getMarkdownExport_TitleStripping(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		layout   model.ObjectTypeLayout
+		exported string
+		want     string
+	}{
+		{
+			name:     "titled object drops its exported title",
+			layout:   model.ObjectType_basic,
+			exported: "# My Page\n\n## Keep this heading\n\nbody\n",
+			want:     "## Keep this heading\n\nbody\n",
+		},
+		{
+			// what the renderer actually emits: a hard break, so one newline, not two
+			name:     "titled object, single newline after the title",
+			layout:   model.ObjectType_basic,
+			exported: "# My Page   \nBody   \n",
+			want:     "Body   \n",
+		},
+		{
+			name:     "titled object whose export is only the title",
+			layout:   model.ObjectType_basic,
+			exported: "# My Page   \n",
+			want:     "",
+		},
+		{
+			name:     "task layout drops its title too",
+			layout:   model.ObjectType_todo,
+			exported: "# My Task   \nBody   \n",
+			want:     "Body   \n",
+		},
+		{
+			name:     "profile layout drops its title too",
+			layout:   model.ObjectType_profile,
+			exported: "# Someone   \nBody   \n",
+			want:     "Body   \n",
+		},
+		{
+			name:     "note keeps a leading heading",
+			layout:   model.ObjectType_note,
+			exported: "## Keep this heading\n\nKeep this body\n",
+			want:     "## Keep this heading\n\nKeep this body\n",
+		},
+		{
+			name:     "note whose whole body is one heading is not emptied",
+			layout:   model.ObjectType_note,
+			exported: "## Only a heading\n",
+			want:     "## Only a heading\n",
+		},
+		{
+			name:     "note starting with a paragraph is untouched",
+			layout:   model.ObjectType_note,
+			exported: "Just a paragraph\n",
+			want:     "Just a paragraph\n",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			ctx := context.Background()
+			fx := newFixture(t)
+			fx.mwMock.On("ObjectExport", mock.Anything, &pb.RpcObjectExportRequest{
+				SpaceId:  mockedSpaceId,
+				ObjectId: mockedObjectId,
+				Format:   model.Export_Markdown,
+			}).Return(&pb.RpcObjectExportResponse{
+				Result: tc.exported,
+				Error:  &pb.RpcObjectExportResponseError{Code: pb.RpcObjectExportResponseError_NULL},
+			}, nil).Once()
+
+			// when
+			got, err := fx.service.getMarkdownExport(ctx, mockedSpaceId, mockedObjectId, tc.layout)
+
+			// then
+			require.NoError(t, err)
+			require.Equal(t, tc.want, got)
+		})
+	}
+}

@@ -335,6 +335,14 @@ func (t *Text) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model
 			t.content.Style = copiedText.Style
 			t.content.Color = copiedText.Color
 			t.BackgroundColor = copiedBlock.BackgroundColor
+			// A checkbox dropped into an empty paragraph brings its checked state with
+			// it, or a pasted "- [x]" lands unchecked, which looks right and is wrong.
+			// Only into an empty paragraph: there is no state of its own to destroy
+			// there. Replacing the text of an existing block leaves its checked state
+			// alone, so retitling a finished task cannot quietly reopen it.
+			if isPlaceInEmptyParagraph && copiedText.Style == model.BlockContentText_Checkbox {
+				t.content.Checked = copiedText.Checked
+			}
 		}
 	}
 
