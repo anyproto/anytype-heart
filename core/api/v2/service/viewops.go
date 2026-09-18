@@ -568,6 +568,9 @@ func (a *v2StateApplier) applyViewFilters(raw json.RawMessage, view map[string]a
 	}
 	opts := a.marshalOptions()
 	opts.OnWarning = func(iss anyblockjson.Issue) {
+		if readWarningIsNoise(iss) {
+			return
+		}
 		a.warnings = append(a.warnings, v2model.Issue{
 			Path:    rebaseSlashPath(path, strings.TrimPrefix(iss.Path, "/filters")),
 			Message: iss.Message,

@@ -320,6 +320,10 @@
             "type": "array",
             "uniqueItems": false
           },
+          "items": {
+            "description": "Member objects a created collection holds",
+            "type": "integer"
+          },
           "key": {
             "description": "identity key (types, properties)",
             "type": "string"
@@ -376,6 +380,13 @@
             "type": "integer"
           },
           "blocks_removed": {
+            "type": "integer"
+          },
+          "items_added": {
+            "description": "Collection members add_items added and remove_items removed (present ones are not re-added, absent ones not re-removed)",
+            "type": "integer"
+          },
+          "items_removed": {
             "type": "integer"
           },
           "properties_changed": {

@@ -399,8 +399,10 @@ type CreateResult struct {
 
 	// The view id each insert_view op minted, keyed by the op's position, such as /ops/0.
 	CreatedViews map[string]string `json:"created_views,omitempty"`
-	Issues       []Issue           `json:"issues,omitempty"`
-	Warnings     []Issue           `json:"warnings,omitempty"`
+	// Member objects a created collection holds
+	Items    int     `json:"items,omitempty"`
+	Issues   []Issue `json:"issues,omitempty"`
+	Warnings []Issue `json:"warnings,omitempty"`
 }
 
 // SideEffects lists the schema entities one write brought into existence on
@@ -530,6 +532,9 @@ type DiffStats struct {
 	BlocksChanged     int `json:"blocks_changed"`
 	BlocksMoved       int `json:"blocks_moved"`
 	PropertiesChanged int `json:"properties_changed"`
+	// Collection members add_items added and remove_items removed (present ones are not re-added, absent ones not re-removed)
+	ItemsAdded   int `json:"items_added,omitempty"`
+	ItemsRemoved int `json:"items_removed,omitempty"`
 }
 
 // EditResult is the PATCH response: the new etag, the created-block id map

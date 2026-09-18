@@ -600,6 +600,40 @@ reviewed by three fresh reviewers before the next.
   through the production envelope decoder, and every "schema kind X" / op
   id mention in served prose is pinned to resolve. Design doc updated.
 
+**Group D (F11, F16, F18, F19, F20) — done.**
+
+- F20: `is_favorite` is functional. A `set_properties` set/unset of it is
+  routed to the app's favorite mechanism (`ObjectListSetIsFavorite`: a
+  link from the space's home object, from which the object's `isFavorite`
+  is derived) after the state edit commits — never written as a detail
+  that persists but does nothing; a non-boolean is a 400 at the field; an
+  RPC failure is an error; a dry run does not favorite. The receipt counts
+  it in `properties_changed`. Not done: a create body's `is_favorite`
+  (still a plain detail import) and a `list_properties` row for it.
+- F16: (b) a query created with no filter anywhere warns that it lists
+  every object of its type, with the filters schema as the repair; (c) a
+  `set_properties` value on a space-minted property the object's type does
+  not list is stored with a warning, once (when the object first takes the
+  key), pointing at `add_property`. (a) `default_view` is left as is: it
+  governs how sets and collections of the type open, which the schema
+  says; it never promised a view on the type.
+- F18: the export's legend bookkeeping warnings ("no legend entry is
+  written for X; the term is spelled verbatim") are dropped from reads:
+  this API strips every legend from the documents it serves, so they
+  described members no caller sees (`readWarningIsNoise`). The remaining
+  read warnings (an unrepresentable block degraded, an indent clamped)
+  name no operation because none repairs them.
+- F19: `add_items` / `remove_items` receipts carry `items_added` /
+  `items_removed` (members actually changed); a created collection's
+  receipt carries `items`. `update_property`'s receipt is unchanged (the
+  property row is one `get_property` away and the PATCH echoes its key).
+- F11: the query view-key refusal spells the property as the surface
+  serves it (tombstone-aware), and the duplicate-field refusal in
+  `set_properties` spells the caller's key; the type is spelled as the
+  caller sent it (group B). Other refusals that canonicalize before they
+  speak are caught case by case — no blanket guard exists for a bson id in
+  a message.
+
 # Ranked work order
 
 1. **F1** — warn or refuse on destructive `delete_property`; stop leaking

@@ -250,6 +250,9 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 	// unmapped/over-deep blocks degrade to warnings that ride the envelope.
 	var warnings []v2model.Issue
 	opts.OnWarning = func(iss anyblockjson.Issue) {
+		if readWarningIsNoise(iss) {
+			return
+		}
 		warnings = append(warnings, v2model.Issue{Path: iss.Path, Message: iss.Message})
 	}
 

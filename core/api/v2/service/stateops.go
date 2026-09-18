@@ -98,6 +98,17 @@ type v2StateApplier struct {
 	liveEntries       []propertyEntry
 	liveEntriesErr    error
 	liveEntriesLoaded bool
+
+	// favorite is the is_favorite intent a set_properties carried (round-two
+	// eval F20). It is not a detail of the object: the app keeps favorites
+	// as links from the space's home object, and the object's isFavorite is
+	// derived from them — so the applier records the intent and PatchObject
+	// runs the favorite RPC after the state edit commits, instead of writing
+	// a detail that persists but does nothing.
+	favorite *bool
+	// itemsAdded / itemsRemoved count the collection members add_items and
+	// remove_items actually changed, for the receipt (F19).
+	itemsAdded, itemsRemoved int
 	// removedBundled is the same shape for the bundled relations this space
 	// uninstalled — primed lazily by removedBundledKeys, and only when a key
 	// reaches the bundled arm at all.
@@ -1040,6 +1051,8 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	// unknown with did-you-mean); false = the key is unusable.
 	checkKey := func(key, path string) bool {
 		switch {
+		case key == bundle.RelationKeyIsFavorite.String():
+			return true // routed to the favorite RPC below, never a detail
 		case key == "id" || key == "type":
 			issues = append(issues, v2model.Issue{Path: path,
 				Message: fmt.Sprintf("%q is not a property — it is lifted to the document envelope and cannot be set here", key)})
@@ -1098,7 +1111,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	claim := func(key, field, path string) bool {
 		if prev, ok := seenIn[key]; ok {
 			issues = append(issues, v2model.Issue{Path: path,
-				Message: fmt.Sprintf("%q appears in both %s and %s — pick one", key, prev, field)})
+				Message: fmt.Sprintf("%q appears in both %s and %s — pick one", spelledAs(key), prev, field)})
 			return false
 		}
 		seenIn[key] = field
@@ -1122,6 +1135,11 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 			continue
 		}
 		if !claim(key, "unset", path) {
+			continue
+		}
+		if key == bundle.RelationKeyIsFavorite.String() {
+			off := false
+			a.favorite = &off
 			continue
 		}
 		unset[key] = true
@@ -1155,11 +1173,34 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	if len(issues) > 0 {
 		return v2model.ValidationFailed("set_properties rejected", issues...)
 	}
+	// F16: a value on a property the object's type does not list is stored
+	// and served, but the type's views, fields and filters never show it —
+	// said once, when the object first takes the key, not on every edit
+	typeKeys := a.typeListedKeys(doc.docType())
 	for _, key := range setKeys {
 		var raw any
 		if err := decodeJSONUseNumber(op.Set[key], &raw); err != nil {
 			return v2model.ValidationFailed("invalid set value",
 				v2model.Issue{Path: opPath + ".set." + spelledAs(key), Message: err.Error()})
+		}
+		if key == bundle.RelationKeyIsFavorite.String() {
+			flag, isBool := raw.(bool)
+			if !isBool {
+				return v2model.ValidationFailed("invalid set value",
+					v2model.Issue{Path: opPath + ".set." + spelledAs(key), Message: "is_favorite takes true or false"})
+			}
+			a.favorite = &flag
+			continue
+		}
+		_, carried := doc.properties[key]
+		if !carried {
+			_, carried = doc.properties[spelledAs(key)] // the document is served in the slug vocabulary
+		}
+		if !carried && typeKeys != nil && !typeKeys[key] && !bundle.HasRelation(domain.RelationKey(key)) {
+			a.warnings = append(a.warnings, v2model.Issue{
+				Path:    opPath + ".set." + spelledAs(key),
+				Message: fmt.Sprintf("property %q is not on type %q — the value is stored, but the type's views, fields and filters do not show it", spelledAs(key), doc.docType()),
+			}.Hintf("list it on the type with the add_property op (%s)", v2model.RefGetOpSchema("add_property")))
 		}
 		// the CHECKED door: a value that cannot survive v1's 64-bit float
 		// model is refused here, at the caller's own field. The unchecked
@@ -2438,6 +2479,7 @@ func (a *v2StateApplier) applyItems(op opItems, opPath string) error {
 			if !present[id] {
 				present[id] = true
 				items = append(items, id)
+				a.itemsAdded++
 			}
 		}
 		a.st.UpdateStoreSlice(template.CollectionStoreKey, items)
@@ -2454,6 +2496,7 @@ func (a *v2StateApplier) applyItems(op opItems, opPath string) error {
 			kept = append(kept, id)
 		}
 	}
+	a.itemsRemoved += len(items) - len(kept)
 	a.st.UpdateStoreSlice(template.CollectionStoreKey, kept)
 	a.mutated()
 	return nil
@@ -2543,4 +2586,22 @@ func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field,
 		run = append(run, block)
 	}
 	return run, nil
+}
+
+// typeListedKeys is the stored key set the object's type recommends, or nil
+// when the type cannot be resolved (then no F16 warning is issued: a warning
+// the code cannot substantiate is worse than none).
+func (a *v2StateApplier) typeListedKeys(typeKey string) map[string]bool {
+	if typeKey == "" {
+		return nil
+	}
+	typeId, ok := a.s.typeIdInSpace(a.spaceId, typeKey)
+	if !ok {
+		return nil
+	}
+	keys := map[string]bool{}
+	for _, key := range a.s.typePropertyKeys(a.spaceId, typeId) {
+		keys[key] = true
+	}
+	return keys
 }

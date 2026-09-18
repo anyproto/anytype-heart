@@ -167,7 +167,33 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	if err != nil {
 		return nil, queryDocumentError(err, len(req.Views) > 0)
 	}
+	// F16: a query with no filter anywhere lists every object of the type —
+	// created under a predicate name ("Plants needing frequent watering")
+	// that is a query that quietly contains the whole type, for good
+	if len(req.Filters) == 0 && !viewsCarryFilters(req.Views) {
+		result.Warnings = append(result.Warnings, v2model.Issue{
+			Path:    "/filter",
+			Message: fmt.Sprintf("the query has no filter: it lists every object of type %q", callerType),
+		}.Hintf("narrow it with filter, the compact string (grammar on %s), or with filters", v2model.RefGetSchema("filters")))
+	}
 	return result, nil
+}
+
+// viewsCarryFilters reports whether any requested view filters.
+func viewsCarryFilters(raw json.RawMessage) bool {
+	if len(raw) == 0 {
+		return false
+	}
+	var views []viewProbe
+	if json.Unmarshal(raw, &views) != nil {
+		return false
+	}
+	for _, view := range views {
+		if len(view.Filters) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // queryDocumentError re-addresses a refusal of the document CreateQuery
@@ -260,7 +286,14 @@ func (s *Service) CreateCollection(ctx context.Context, spaceId string, req v2mo
 	}
 	// a collection body is {name, items}: object ids, no property values, so
 	// no select name can reach the resolver and no consent is meaningful
-	return s.createFromDocument(ctx, spaceId, doc, docCreateOptions{dryRun: dryRun})
+	result, err := s.createFromDocument(ctx, spaceId, doc, docCreateOptions{dryRun: dryRun})
+	if err != nil {
+		return nil, err
+	}
+	// the receipt says how many members landed (F19: no caller ever
+	// verified a collection's membership, because nothing echoed it)
+	result.Items = len(req.Items)
+	return result, nil
 }
 
 // viewKeyRef is one property reference inside the requested views, with its
@@ -375,6 +408,9 @@ func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey
 		return nil
 	}
 	typeKeys := s.typePropertyKeys(spaceId, typeId)
+	// refusals spell a key as the surface serves it (F11: a canonicalized
+	// input came back as a stored bson id the caller had never seen)
+	spell := s.servedKeySpeller(spaceId)
 	allowed := map[string]bool{"name": true} // universal
 	for _, key := range v2SystemQueryKeys {
 		allowed[key] = true
@@ -426,7 +462,7 @@ func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey
 		}
 		issues = append(issues, v2model.Issue{
 			Path:    ref.path,
-			Message: fmt.Sprintf("type %q has no property %q — %s", typeKey, ref.key, listKnown(v.propertiesWord()+" of the type", typeKeys)),
+			Message: fmt.Sprintf("type %q has no property %q — %s", typeKey, spell(ref.key), listKnown(v.propertiesWord()+" of the type", typeKeys)),
 		}.WithHint(didYouMean(ref.key, typeKeys, v2model.Hintf("inspect the type with %s", v2model.RefGetType(spaceId, typeKey)))))
 	}
 	if len(issues) > 0 {

@@ -167,3 +167,15 @@ func rawTypeDefinitions(fields map[string]json.RawMessage) []map[string]any {
 	}
 	return settings.Definitions
 }
+
+// readWarningIsNoise reports a format warning a read should not serve: the
+// export's legend bookkeeping ("no legend entry is written for X; the term
+// is spelled verbatim"). This API strips every legend from the documents it
+// serves (trimAPIDocumentEnvelope), so a warning about an entry that was
+// not written into a member the caller never sees names nothing they can
+// act on (round-two eval F18: forty-two of them across two runs, acted on
+// by none).
+func readWarningIsNoise(iss anyblockjson.Issue) bool {
+	return strings.Contains(iss.Message, "no legend entry is written") ||
+		strings.Contains(iss.Message, "spelled verbatim")
+}

@@ -200,12 +200,13 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 	s.prewarmCreateMissing(ops, resolvers)
 
 	var result *v2model.EditResult
+	var favorite *bool
 	run := func(edit apicore.ObjectEdit) error {
-		res, err := s.applyPatchOps(ctx, spaceId, objectId, ops, ifMatch, edit, resolvers)
+		res, applier, err := s.applyPatchOps(ctx, spaceId, objectId, ops, ifMatch, edit, resolvers)
 		if err != nil {
 			return err
 		}
-		result = res
+		result, favorite = res, applier.favorite
 		return nil
 	}
 	if dryRun {
@@ -228,6 +229,15 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 		return nil, mapWriteError(spaceId, objectId, err)
 	}
 	result.Etag = ComputeEtag(heads)
+	// the favorite flag lives outside the object (stateops.go favorite): it
+	// is set once the edit has committed, so a refused batch never favorites
+	if favorite != nil {
+		resp := s.mw.ObjectListSetIsFavorite(ctx, &pb.RpcObjectListSetIsFavoriteRequest{ObjectIds: []string{objectId}, IsFavorite: *favorite})
+		if resp.Error != nil && resp.Error.Code != pb.RpcObjectListSetIsFavoriteResponseError_NULL {
+			return nil, fmt.Errorf("set favorite on %s: %s", objectId, resp.Error.Description)
+		}
+		result.DiffStats.PropertiesChanged++
+	}
 	return result, nil
 }
 
@@ -320,7 +330,7 @@ func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId stri
 	if err != nil {
 		return err
 	}
-	if _, err := s.applyPatchOps(ctx, spaceId, objectId, ops, ifMatch, edit, probe); err != nil {
+	if _, _, err := s.applyPatchOps(ctx, spaceId, objectId, ops, ifMatch, edit, probe); err != nil {
 		return err
 	}
 	return nil
@@ -356,62 +366,63 @@ func editFromRead(objectId string, cur apicore.ObjectRead) (apicore.ObjectEdit, 
 // applied to the state), the resolver error check, the flag-gated safety
 // net, and the diff_stats. The caller commits (or, on dry run, discards) the
 // state.
-func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, edit apicore.ObjectEdit, resolvers *creatingResolvers) (*v2model.EditResult, error) {
+func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, edit apicore.ObjectEdit, resolvers *creatingResolvers) (*v2model.EditResult, *v2StateApplier, error) {
 	if err := checkEditPreconditions(edit.SbType, edit.Heads, ifMatch); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	applier := newV2StateApplier(s, spaceId, objectId, edit.SbType, edit.State, resolvers, errKeysFor(ctx))
 	beforeDoc, err := applier.begin()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	legacyFileDescendants, err := apiFileDescendantSet(beforeDoc)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// the M7 render-work bound, checked against the authoritative view the
 	// begin() marshal just produced: refusing here costs one marshal — the
 	// same floor a GET pays — instead of the batch's whole product
 	if err := checkPatchRenderWork(ops, applier.view.blocks); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for i, raw := range ops {
 		// the loop runs under the object lock: honour cancellation so an
 		// abandoned request stops holding it (review A′2)
 		if err := ctx.Err(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if err := applier.apply(i, raw); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if opCanChangeFileContainment(raw) {
 			current, err := applier.currentDoc()
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			if err := validateNoNewFileDescendants(legacyFileDescendants, current, applier.createdBlocks, fmt.Sprintf("ops[%d]", i)); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		}
 	}
 	if err := resolvers.err(); err != nil {
-		return nil, fmt.Errorf("resolve document references: %w", err)
+		return nil, nil, fmt.Errorf("resolve document references: %w", err)
 	}
 	// reuse the view's document when the last op left it valid (review A′2)
 	afterDoc, err := applier.currentDoc()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// R5: the whole-document net, on by default (review B′3) — catches what a
 	// payload fragment cannot see (V3 containment, the document-wide id
 	// domain, the absolute depth bound)
 	if err := validateEditedDoc(objectId, afterDoc, applier.createdBlocks); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	stats, err := diffEditDocs(beforeDoc, afterDoc)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	stats.ItemsAdded, stats.ItemsRemoved = applier.itemsAdded, applier.itemsRemoved
 	result := &v2model.EditResult{Created: resolvers.created(), DiffStats: stats}
 	if len(applier.createdBlocks) > 0 {
 		result.CreatedBlocks = applier.createdBlocks
@@ -422,11 +433,11 @@ func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, o
 	if !fullIdsRequested(ctx) && (len(result.CreatedBlocks) > 0 || len(result.CreatedViews) > 0) {
 		result.CreatedBlocks, result.CreatedViews, err = applier.compactReceiptIDs()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	result.Warnings = applier.warnings
-	return result, nil
+	return result, applier, nil
 }
 
 // parsePatchRequest decodes the object PATCH body strictly.
