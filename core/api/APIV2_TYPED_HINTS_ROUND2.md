@@ -462,8 +462,30 @@ reviewed by three fresh reviewers before the next.
   with the slug re-imports onto the stored key (in-document edits and
   unsets work by the slug), a write to it off-document is refused as
   REMOVED, and a type definition or a create naming the slug mints anew.
-  The stored bson key is no longer an address on any channel. Recorded in
-  the header of `corpse_addressability_test.go`.
+  Create keeps carrying a pasted read body's values (§8.29: "a pasted read
+  body creates a copy"), slug or stored key alike; the closed channel for
+  a removed property is `set_properties` off the document. The stored bson
+  key is never served any more. Recorded in the header of
+  `corpse_addressability_test.go`.
+
+  Reviewed by three fresh reviewers; their blockers and should-fixes are
+  in: a definition echoing the slug a type's read served resolves to that
+  corpse (the type's referenced corpses are remembered before resolving —
+  `referencedCorpses`, `rememberCorpses`), the applier renders and
+  re-imports through ONE vocabulary so a view edit keeps a corpse column
+  on its stored key, a served corpse slug on a document is resolved before
+  the forgiving name chain can fold it onto a live namesake, twin corpses
+  sharing a slug are both demoted, tombstone emission passes the same
+  guards as a listed entry, a replacement prunes the columns of detached
+  removed properties too, dry runs report the prune, prune warnings spell
+  served keys, the holder count is presence-based and includes archived
+  objects, reconciliation errors propagate, `list_property_options`
+  declares its pagination, and the delete warnings say what actually
+  stays (the type's entry until taken off with `remove_property`).
+  Accepted: in the post-delete tombstone window an off-document write by
+  the slug is refused as unknown rather than removed, and a create by the
+  slug is a plain 400; `?keys=name` renders a corpse under its stored key;
+  tombstone slugs are not served by a service built without a creator.
 - F2: a flat `property_definitions` replacement now reconciles the type's
   dataview like the op channel: columns pruned for detached properties
   (with the same "columns dropped" warning), added for newly listed ones.

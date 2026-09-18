@@ -431,6 +431,39 @@ func TestV2TypeOpsAddPutsTheColumnInEveryView(t *testing.T) {
 		assert.Empty(t, result.Removed, "nothing was dropped")
 	})
 
+	t.Run("a list replacement that drops a property prunes its column, and the dry run says so", func(t *testing.T) {
+		// given: the type lists location, sun_needs, water_needs; a view shows location
+		fx := newTypeOpsFixture(t)
+		captured := fx.captureTypeDetails()
+		committed := fx.expectTypeViewEdit(typeReadWithViews(
+			viewWithColumns("v-a", "All", "name", "location"),
+		))
+
+		// when: the list is resent without location — rehearsed first
+		rehearsal, err := fx.UpdateType(context.Background(), testSpaceId, "plant", "", []byte(`{
+			"type_settings":{"property_definitions":[{"property":"sun_needs"},{"property":"water_needs"}]}}`), true, false)
+		require.NoError(t, err)
+		require.NotNil(t, rehearsal.Removed)
+		require.NotEmpty(t, rehearsal.Warnings)
+		var dropped bool
+		for _, w := range rehearsal.Warnings {
+			if strings.Contains(w.Message, "columns dropped") {
+				dropped = true
+				assert.Equal(t, "/type_settings/property_definitions", w.Path)
+			}
+		}
+		assert.True(t, dropped, "a rehearsal names the columns a real run would drop")
+
+		// and for real
+		_, err = fx.UpdateType(context.Background(), testSpaceId, "plant", "", []byte(`{
+			"type_settings":{"property_definitions":[{"property":"sun_needs"},{"property":"water_needs"}]}}`), false, false)
+
+		// then: the list half and the view half
+		require.NoError(t, err)
+		assert.Equal(t, []string{"rel-sun", "rel-water"}, (*captured)[bundle.RelationKeyRecommendedRelations.String()])
+		assert.Equal(t, []string{"name"}, viewColumnKeys(t, *committed, "v-a"))
+	})
+
 	// The half-consistent type a client's own three-call add leaves behind:
 	// the property is listed, but no view shows it. Naming it again heals it,
 	// which is what makes this op safe to retry.

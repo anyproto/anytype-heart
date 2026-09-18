@@ -3569,6 +3569,18 @@ paths:
         name: prefix
         schema:
           type: string
+      - description: Items to skip
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: Items to return
+        in: query
+        name: limit
+        schema:
+          default: 25
+          type: integer
       responses:
         "200":
           content:

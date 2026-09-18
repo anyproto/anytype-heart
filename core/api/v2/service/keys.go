@@ -182,6 +182,52 @@ func (s *Service) tombstonedPropertySlug(spaceId, storedKey string) string {
 	return snapshot.GetString(bundle.RelationKeyApiObjectKey.String())
 }
 
+// referencedCorpses returns the REMOVED relation objects among ids — the
+// entries a type's recommended lists still name after a delete — with the
+// slug and stored key each still carries, in every store shape: the
+// query-visible ones through removedProperties, the post-delete tombstone
+// through its unindexed snapshot. What a type served under a slug it must
+// understand back (the echo baseline), so these are the corpses whose slugs
+// a type write remembers before resolving its definitions.
+func (s *Service) referencedCorpses(spaceId string, ids map[string]bool) []propertyEntry {
+	if len(ids) == 0 {
+		return nil
+	}
+	var out []propertyEntry
+	seen := map[string]bool{}
+	if removed, err := s.removedProperties(spaceId); err == nil {
+		for _, e := range removed {
+			if ids[e.Id] {
+				out = append(out, e)
+				seen[e.Id] = true
+			}
+		}
+	}
+	for id := range ids {
+		if seen[id] {
+			continue
+		}
+		details, err := s.store.SpaceIndex(spaceId).GetDetails(id)
+		if err != nil || details == nil || !details.GetBool(bundle.RelationKeyIsDeleted) {
+			continue
+		}
+		snapshot, ok := details.TryMapValue(bundle.RelationKeyDeletedSnapshot)
+		if !ok {
+			continue
+		}
+		key := snapshot.GetString(bundle.RelationKeyRelationKey.String())
+		if key == "" {
+			continue
+		}
+		out = append(out, propertyEntry{
+			Id:   id,
+			Key:  key,
+			Slug: snapshot.GetString(bundle.RelationKeyApiObjectKey.String()),
+		})
+	}
+	return out
+}
+
 // liveTypes lists the space's live type objects (error contract as above).
 func (s *Service) liveTypes(spaceId string) ([]typeEntry, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{Filters: liveTypeFilters()})
@@ -1136,6 +1182,8 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 				return nil, nil, err
 			}
 			renames := map[string]string{}
+			var removed []propertyEntry
+			removedLoaded := false
 			for _, key := range sortedKeys(props) {
 				entry, ok, ambiguous := s.resolvePropertyInput(key, propEntries)
 				if len(ambiguous) > 0 {
@@ -1143,6 +1191,25 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 				}
 				if ok && entry.Key != key {
 					renames[key] = entry.Key
+					continue
+				}
+				if ok {
+					continue
+				}
+				// a REMOVED property's served slug (apikeyvocab.go): a read
+				// body pasted back carries it, and it canonicalizes to the
+				// stored key the value lives under, as the create's paste
+				// tolerance (validateDocumentRefs) expects — no live entry
+				// answered, so the corpse cannot shadow a live property
+				if !removedLoaded {
+					removedLoaded = true
+					removed, _ = s.removedProperties(spaceId)
+				}
+				for _, corpse := range removed {
+					if corpse.Slug != "" && corpse.Slug == key && corpse.Key != key {
+						renames[key] = corpse.Key
+						break
+					}
 				}
 			}
 			if len(renames) > 0 {

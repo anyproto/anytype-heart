@@ -695,11 +695,17 @@ func (s *Service) validatePropertyKeys(ctx context.Context, spaceId string, prop
 			}
 			continue
 		}
+		// a pasted read body creates a copy (cause3_test.go, §8.29): a key
+		// SOME relation object holds — a removed one included — is carried,
+		// under the stored key the read's slug canonicalized to. Create is
+		// the channel a read body is pasted into; the closed channel for a
+		// removed property is set_properties (stateops.go checkKey).
 		if s.propertyKeyHeldByAnyRelation(ctx, spaceId, key) {
 			continue
 		}
-		// a REMOVED space-minted property, by the slug its values still
-		// serve under: refused as removed, which is what happened to it
+		// a REMOVED space-minted property nothing holds any more (the
+		// tombstone window, by its slug): refused as removed, which is what
+		// happened to it, rather than as unknown
 		if entry, removed := s.removedCustomProperty(spaceId, key); removed {
 			issues = append(issues, removedCustomPropertyIssue(spaceId, entry, spelledAs(key), "/properties/"+spelledAs(key), v))
 			removedCount++

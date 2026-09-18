@@ -163,6 +163,11 @@ func (v *apiKeyVocab) ensure() bool {
 	// itself. A slug a live entry already answers to is left alone, so the
 	// live one keeps its spelling and the corpse reads under its stored key.
 	if removed, rerr := v.svc.removedProperties(v.spaceId); rerr == nil {
+		// two corpses answering to one slug (delete, re-create, delete
+		// again) would both emit it and the codec would suffix one of them
+		// into a spelling nothing here inverts — so neither gets the slug,
+		// exactly as claimTerm demotes live twins
+		corpseBySlug := map[string]string{}
 		for _, e := range removed {
 			if _, live := v.propSlugByKey[e.Key]; live {
 				continue
@@ -174,6 +179,12 @@ func (v *apiKeyVocab) ensure() bool {
 			if _, taken := v.propKeyBySlug[served]; taken {
 				continue
 			}
+			if prev, twin := corpseBySlug[served]; twin {
+				delete(v.propSlugByKey, prev)
+				delete(v.removedSlug, served)
+				continue
+			}
+			corpseBySlug[served] = e.Key
 			v.propSlugByKey[e.Key] = served
 			if v.removedSlug == nil {
 				v.removedSlug = map[string]bool{}
@@ -234,9 +245,13 @@ func (v *apiKeyVocab) PropertySlug(key string) string {
 	if isBsonKey(key) {
 		served := key
 		if slug := v.svc.tombstonedPropertySlug(v.spaceId, key); slug != "" {
-			if _, taken := v.propKeyBySlug[slug]; !taken && !v.propKeyTaken[slug] {
-				served = slug
-				v.rememberCorpse(slug, key)
+			// the same guards a listed entry's slug passes — a live stored
+			// key, a live holder, the bundled table's shadow — and never a
+			// slug another corpse already emits
+			candidate := servedKey(key, slug, v.propKeyTaken, v.propSlugHolders)
+			if _, taken := v.propKeyBySlug[candidate]; candidate != key && !taken && !v.removedSlug[candidate] {
+				served = candidate
+				v.rememberCorpse(candidate, key)
 			}
 		}
 		v.propSlugByKey[key] = served

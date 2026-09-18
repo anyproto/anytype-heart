@@ -682,8 +682,19 @@ func TestV2UpdateDeleteProperty(t *testing.T) {
 		assert.True(t, result.DryRun)
 		require.Len(t, result.Warnings, 2)
 		assert.Contains(t, result.Warnings[0].Message, `2 objects hold a value of "severity"`)
-		assert.Contains(t, result.Warnings[0].Message, "nothing new lands on a removed property")
+		assert.Contains(t, result.Warnings[0].Message, "set_properties gives no other object one")
 		assert.Equal(t, "key", result.Warnings[0].Path)
 		assert.Contains(t, result.Warnings[1].Message, `1 type lists "severity" (Chore)`)
+		assert.Contains(t, result.Warnings[1].Message, "keep the entry", "the delete does not edit the type: the entry stays until taken off")
+		assert.Equal(t, []v2model.Ref{v2model.RefGetOpSchema("remove_property")}, result.Warnings[1].SeeAlso)
+
+		// and the real run carries the same warnings
+		fx.mwMock.EXPECT().ObjectSetIsArchived(mock.Anything, &pb.RpcObjectSetIsArchivedRequest{
+			ContextId: "rel-severity", IsArchived: true,
+		}).Return(&pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_NULL}})
+		real, err := fx.DeleteProperty(context.Background(), testSpaceId, "severity", false)
+		require.NoError(t, err)
+		assert.False(t, real.DryRun)
+		require.Len(t, real.Warnings, 2)
 	})
 }

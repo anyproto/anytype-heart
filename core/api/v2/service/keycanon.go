@@ -60,8 +60,10 @@ func (k *keyCanon) canon(input string) (string, []string) {
 	// off-document write is refused as removed by the stored key rather
 	// than as unknown. No live entry answers to the input at this point, so
 	// the corpse cannot shadow a live property. The tombstone window is
-	// blind here (a tombstone is indexed by nothing a slug can find), so
-	// right after a delete, until the next space load, that edit is refused.
+	// blind here (a tombstone is indexed by nothing a slug can find); an
+	// in-document edit still lands, through the vocabulary that rendered
+	// the document (apikeyvocab.go rememberCorpse), but an off-document
+	// write in that window is refused as unknown rather than as removed.
 	if stored, found := k.removedStoredKey(input); found {
 		return stored, nil
 	}

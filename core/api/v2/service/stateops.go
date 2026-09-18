@@ -160,8 +160,17 @@ func (a *v2StateApplier) marshalOptions() anyblockjson.Options {
 		a.marshalResolver = storeresolver.New(a.s.store.SpaceIndex(a.spaceId))
 		// D1/§4.2: the applier's whole RMW cycle — after-documents, view
 		// rebuilds, receipts — is pinned to the slug vocabulary, so what a
-		// view op compares against is what the read served
-		a.marshalKeys = a.s.apiKeys(a.spaceId, a.marshalResolver)
+		// view op compares against is what the read served. ONE vocabulary
+		// for the render and the re-import (the resolvers'): a removed
+		// property's slug the render emitted is understood back by the
+		// import that commits the edited dataview, so its column lands on
+		// the stored key rather than on the slug as a new key
+		if a.resolvers != nil {
+			a.resolvers.Options()
+			a.marshalKeys = a.resolvers.keys
+		} else {
+			a.marshalKeys = a.s.apiKeys(a.spaceId, a.marshalResolver)
+		}
 	}
 	opts := apiRefSpelling(a.marshalResolver.Options())
 	opts.Keys = a.marshalKeys
@@ -1307,7 +1316,36 @@ func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath
 	if err != nil {
 		return nil, err
 	}
+	// the vocabulary that rendered this document may have served a key for
+	// a REMOVED property (apikeyvocab.go rememberCorpse), and what it served
+	// it understands back: a key the document carries under that exact
+	// spelling resolves to the stored key it lives under BEFORE the
+	// forgiving chain gets to fold it onto a live property that merely
+	// shares its display name — the document's own spelling is the
+	// caller's intent. Off the document the live chain keeps precedence.
+	servedCorpse := func(key string) (string, bool) {
+		if keys := a.marshalOptions().Keys; keys != nil {
+			if stored, served := keys.PropertyKey(key); served && stored != key {
+				return stored, true
+			}
+		}
+		return "", false
+	}
+	onDocument := func(key string) bool {
+		doc, derr := a.doc()
+		if derr != nil {
+			return false
+		}
+		_, ok := doc.properties[key]
+		return ok
+	}
 	canon := func(key, path string) (string, error) {
+		if onDocument(key) {
+			if stored, ok := servedCorpse(key); ok {
+				spellings[stored] = key
+				return stored, nil
+			}
+		}
 		entry, ok, ambiguous := a.s.resolvePropertyInput(key, entries)
 		if len(ambiguous) > 0 {
 			return "", ambiguousKeyError("property key", key, path, ambiguous)
@@ -1316,16 +1354,9 @@ func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath
 			spellings[entry.Key] = key
 			return entry.Key, nil
 		}
-		// not live: the vocabulary that rendered this document may have
-		// served the key for a REMOVED property (apikeyvocab.go
-		// rememberCorpse), and what it served it understands back — the
-		// in-document escape below then edits that value under the stored
-		// key it lives under, instead of writing the slug as a new key
-		if keys := a.marshalOptions().Keys; keys != nil {
-			if stored, served := keys.PropertyKey(key); served && stored != key {
-				spellings[stored] = key
-				return stored, nil
-			}
+		if stored, ok := servedCorpse(key); ok {
+			spellings[stored] = key
+			return stored, nil
 		}
 		return key, nil
 	}

@@ -183,6 +183,7 @@ func (s *Service) updateTypeOps(ctx context.Context, spaceId string, typeObject 
 	// that names one is not forced to delete the reference
 	before := s.recommendedRelationIds(spaceId, typeObject.Id)
 	resolvers.echoPropertyIds = before
+	resolvers.rememberCorpses(s.referencedCorpses(spaceId, before))
 	if err := plan.mint(resolvers); err != nil {
 		return nil, err
 	}
@@ -207,7 +208,7 @@ func (s *Service) updateTypeOps(ctx context.Context, spaceId string, typeObject 
 	if err != nil {
 		return nil, err
 	}
-	result.Warnings = append(result.Warnings, typePruneWarnings(prune)...)
+	result.Warnings = append(result.Warnings, typePruneWarnings(prune, "/ops", s.servedKeySpeller(spaceId))...)
 
 	if dryRun {
 		result.DryRun = true
@@ -1207,35 +1208,75 @@ func typeDataviewBlock(st *state.State) simple.Block {
 // lost a column, and the views that kept one because they arrange themselves
 // by it. Neither is inferable from the request, which named a property and
 // said nothing about views.
-func typePruneWarnings(plan template.TypeDataviewColumnPlan) []v2model.Issue {
+// typePruneWarnings renders a prune plan for the caller: path is the
+// request member the change came from, spell turns a stored relation key
+// into the spelling the surface serves (a bson stored key must never reach
+// the caller).
+func typePruneWarnings(plan template.TypeDataviewColumnPlan, path string, spell func(string) string) []v2model.Issue {
 	var issues []v2model.Issue
 	if len(plan.Pruned) > 0 {
 		issues = append(issues, v2model.Issue{
-			Path:    "/ops",
-			Message: fmt.Sprintf("columns dropped: %s", prunedPerView(plan.Pruned)),
+			Path:    path,
+			Message: fmt.Sprintf("columns dropped: %s", prunedPerView(plan.Pruned, spell)),
 		})
 	}
 	if len(plan.InUse) > 0 {
+		verb, left := "group, sort or filter by a removed property and were left as they are", ""
+		if len(plan.InUse) == 1 {
+			verb, left = "groups, sorts or filters by a removed property and was left as it is", ""
+		}
 		issues = append(issues, v2model.Issue{
-			Path: "/ops",
-			Message: fmt.Sprintf("%s group, sort or filter by a removed property and were left as they are",
-				namedViews(plan.InUse)),
+			Path:    path,
+			Message: fmt.Sprintf("%s %s%s", namedViews(plan.InUse), verb, left),
 		}.Hintf("change those views with update_view through %s", v2model.NewRef(v2model.OpPatchObject)))
 	}
 	return issues
 }
 
+// servedKeySpeller returns a function spelling a stored relation key the
+// way the space's listings serve it, live and removed properties alike; an
+// unknown key spells as itself.
+func (s *Service) servedKeySpeller(spaceId string) func(string) string {
+	served := map[string]string{}
+	if entries, err := s.liveProperties(spaceId); err == nil {
+		keyTaken, slugHolders := servedPropertyKeySets(entries)
+		for _, e := range entries {
+			served[e.Key] = servedKey(e.Key, e.Slug, keyTaken, slugHolders)
+		}
+		if removed, rerr := s.removedProperties(spaceId); rerr == nil {
+			for _, e := range removed {
+				if _, live := served[e.Key]; live || e.Slug == "" {
+					continue
+				}
+				if slug := servedKey(e.Key, e.Slug, keyTaken, slugHolders); slug != e.Key {
+					served[e.Key] = slug
+				}
+			}
+		}
+	}
+	return func(key string) string {
+		if spelled, ok := served[key]; ok {
+			return spelled
+		}
+		return key
+	}
+}
+
 // namedViews renders "the view \"All\"" / "2 views (All, Board)".
 // prunedPerView names what left each view, rather than letting a reader pair
 // every removed property with every view.
-func prunedPerView(views []template.ViewColumnPrune) string {
+func prunedPerView(views []template.ViewColumnPrune, spell func(string) string) string {
 	parts := make([]string, 0, len(views))
 	for _, view := range views {
 		name := view.ViewName
 		if name == "" {
 			name = view.ViewId
 		}
-		parts = append(parts, fmt.Sprintf("%s from %q", listKeys(view.Keys), name))
+		keys := make([]string, 0, len(view.Keys))
+		for _, key := range view.Keys {
+			keys = append(keys, spell(key))
+		}
+		parts = append(parts, fmt.Sprintf("%s from %q", listKeys(keys), name))
 	}
 	return strings.Join(parts, "; ")
 }

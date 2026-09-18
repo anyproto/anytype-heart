@@ -727,6 +727,10 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 		// GET/PATCH loop must not force-delete a reference the read served
 		resolvers.echoPropertyIds = s.recommendedRelationIds(spaceId, typeId)
 		detachedBefore := s.recommendedRelationIds(spaceId, typeId)
+		// the corpses the type still lists, whose slugs its read served: a
+		// definition echoing one resolves to it (no namesake is minted)
+		corpses := s.referencedCorpses(spaceId, detachedBefore)
+		resolvers.rememberCorpses(corpses)
 		// the SPEC §2a format check, before the resolver can create
 		if err := s.validateTypePropertyFormats(spaceId, *defs); err != nil {
 			return nil, err
@@ -758,12 +762,21 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 		}
 		detached = s.detachedProperties(spaceId, detachedBefore, kept)
 		// the stored keys the prune works in, read BEFORE the write while
-		// the detached entries are still what the type listed
-		if entries, eerr := s.liveProperties(spaceId); eerr == nil {
-			for _, e := range entries {
-				if detachedBefore[e.Id] && !kept[e.Id] {
-					removedKeys = append(removedKeys, e.Key)
-				}
+		// the detached entries are still what the type listed — the live
+		// ones and the already-removed ones alike, since a removed
+		// property's column is exactly the one a replacement should drop
+		entries, eerr := s.liveProperties(spaceId)
+		if eerr != nil {
+			return nil, eerr
+		}
+		for _, e := range entries {
+			if detachedBefore[e.Id] && !kept[e.Id] {
+				removedKeys = append(removedKeys, e.Key)
+			}
+		}
+		for _, e := range corpses {
+			if !kept[e.Id] {
+				removedKeys = append(removedKeys, e.Key)
 			}
 		}
 		// the declared select vocabulary, which nothing used to apply
@@ -792,6 +805,16 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 			v2model.RefGetOpSchema("add_property"))
 		result.Warnings = append(result.Warnings, warning)
 	}
+	// the views' half of the report, computed from the live type before the
+	// dry-run return — as the op channel does — so a rehearsal names the
+	// columns a real run would drop
+	if len(removedKeys) > 0 {
+		plan, perr := s.typeDataviewPrunePlan(ctx, spaceId, typeId, removedKeys)
+		if perr != nil {
+			return nil, perr
+		}
+		result.Warnings = append(result.Warnings, typePruneWarnings(plan, "/type_settings/property_definitions", s.servedKeySpeller(spaceId))...)
+	}
 	if dryRun {
 		result.DryRun = true
 		return result, nil
@@ -803,18 +826,19 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 		}
 	}
 	// the views, in the op channel's order: the lists are written, then the
-	// columns of removed properties go (and the response says so), then the
-	// added properties gain their columns
+	// columns of removed properties go, then the added properties gain
+	// their columns
 	if len(removedKeys) > 0 {
-		if plan, perr := s.typeDataviewPrunePlan(ctx, spaceId, typeId, removedKeys); perr == nil {
-			result.Warnings = append(result.Warnings, typePruneWarnings(plan)...)
-		}
 		if err := s.pruneTypeDataviewColumns(ctx, spaceId, typeId, removedKeys); err != nil {
 			return nil, err
 		}
 	}
 	if len(addedIds) > 0 {
-		if _, err := s.addTypeDataviewColumns(ctx, spaceId, typeId, s.relationLinksOf(spaceId, addedIds)); err != nil {
+		links, err := s.relationLinksOf(spaceId, addedIds)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := s.addTypeDataviewColumns(ctx, spaceId, typeId, links); err != nil {
 			return nil, err
 		}
 	}
@@ -827,10 +851,10 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 // relationLinksOf builds the dataview links for relation object ids, in the
 // order given, from the space's live properties — read after the write, so a
 // property this same request created is among them.
-func (s *Service) relationLinksOf(spaceId string, ids []string) []*model.RelationLink {
+func (s *Service) relationLinksOf(spaceId string, ids []string) ([]*model.RelationLink, error) {
 	entries, err := s.liveProperties(spaceId)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("reconcile type columns: %w", err)
 	}
 	byId := make(map[string]propertyEntry, len(entries))
 	for _, e := range entries {
@@ -842,7 +866,7 @@ func (s *Service) relationLinksOf(spaceId string, ids []string) []*model.Relatio
 			links = append(links, &model.RelationLink{Key: e.Key, Format: e.Format})
 		}
 	}
-	return links
+	return links, nil
 }
 
 // iconPatchDetails turns §2b's typed `icon` into the stored detail keys it
@@ -1226,11 +1250,15 @@ const propertyHolderProbeLimit = 1000
 // substantiate is worse than none.
 func (s *Service) propertyDeleteWarnings(spaceId string, entry propertyEntry, servedKey string) []v2model.Issue {
 	var issues []v2model.Issue
+	// presence, not emptiness: a stored 0 or false is a value the caller
+	// set; and archived objects hold values too (a restore brings them
+	// back), so the injected isArchived default is suppressed — deleted
+	// objects stay out
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
-		Filters: []database.FilterRequest{{
-			RelationKey: domain.RelationKey(entry.Key),
-			Condition:   model.BlockContentDataviewFilter_NotEmpty,
-		}},
+		Filters: []database.FilterRequest{
+			{RelationKey: domain.RelationKey(entry.Key), Condition: model.BlockContentDataviewFilter_Exists},
+			{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
+		},
 		Limit: propertyHolderProbeLimit,
 	})
 	if err == nil && len(records) > 0 {
@@ -1242,8 +1270,8 @@ func (s *Service) propertyDeleteWarnings(spaceId string, entry propertyEntry, se
 		}
 		issues = append(issues, v2model.Issue{
 			Path:    "key",
-			Message: fmt.Sprintf("%s a value of %q; those values stay readable under the property's key and reappear if the property is restored, but nothing new lands on a removed property", count, servedKey),
-		}.WithHint(v2model.Plain("a dry run reports this without deleting; to keep the values settable, keep the property")))
+			Message: fmt.Sprintf("%s a value of %q; those values stay readable and editable in place under that key, but set_properties gives no other object one, until this same property is restored in the app (a new property with the same name is a different property)", count, servedKey),
+		}.WithHint(v2model.Plain("a dry run reports this without deleting")))
 	}
 	types, err := s.store.SpaceIndex(spaceId).Query(database.Query{Filters: liveTypeFilters()})
 	if err == nil {
@@ -1268,8 +1296,8 @@ func (s *Service) propertyDeleteWarnings(spaceId string, entry propertyEntry, se
 			}
 			issues = append(issues, v2model.Issue{
 				Path:    "key",
-				Message: fmt.Sprintf("%d %s %q (%s); the field leaves their property lists and their views", len(listing), noun, servedKey, strings.Join(listing, ", ")),
-			})
+				Message: fmt.Sprintf("%d %s %q (%s); their property lists and views keep the entry, spelled %q, until it is taken off them", len(listing), noun, servedKey, strings.Join(listing, ", "), servedKey),
+			}.Hintf("take it off a type with the remove_property op (%s)", v2model.RefGetOpSchema("remove_property")))
 		}
 	}
 	return issues

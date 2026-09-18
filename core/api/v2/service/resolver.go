@@ -163,6 +163,24 @@ func (s *Service) newCreatingResolvers(ctx context.Context, spaceId string, dryR
 // document import, schema_write.go's type import, and stateops.go's
 // insert_blocks/replace_subtree fragments and whole-dataview re-import behind
 // every view op.
+// rememberCorpses teaches this write's vocabulary the slugs of the removed
+// properties a type still references, so a definition echoing the slug the
+// type's read served resolves to that very relation (through the bson key
+// and the echoPropertyIds identity) instead of minting a namesake. A slug a
+// live property claims stays with the live one — the vocabulary's live
+// table is consulted first.
+func (r *creatingResolvers) rememberCorpses(corpses []propertyEntry) {
+	if len(corpses) == 0 {
+		return
+	}
+	r.Options() // builds r.keys
+	for _, e := range corpses {
+		if e.Slug != "" && e.Slug != e.Key {
+			r.keys.rememberCorpse(e.Slug, e.Key)
+		}
+	}
+}
+
 func (r *creatingResolvers) Options() anyblockjson.Options {
 	if r.keys == nil {
 		// D3: the write half's vocabulary is the read half's PLUS the slug

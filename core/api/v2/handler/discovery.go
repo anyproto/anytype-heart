@@ -178,6 +178,8 @@ func ListPropertiesHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param		space_id	path		string									true	"Space id"
 //	@Param		key			path		string									true	"Property key"
 //	@Param		prefix		query		string									false	"Case-insensitive name prefix filter"
+//	@Param		offset		query		int										false	"Items to skip"		default(0)
+//	@Param		limit		query		int										false	"Items to return"	default(25)
 //	@Success	200			{object}	v2model.ListResponse[v2model.OptionRow]	"Option rows"
 //	@Failure	404			{object}	v2model.Error							"Property not found"
 //	@Security	bearerauth
