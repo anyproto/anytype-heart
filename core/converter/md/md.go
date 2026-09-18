@@ -525,7 +525,12 @@ func (h *MD) renderChildren(buf writer, in *renderState, parent *model.Block) {
 
 func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 	text := b.GetText()
-	renderText := func() {
+	// writeMarkedText renders the block text with its marks (links, bold, italic,
+	// code, ...) into the given writer. It is split out of renderText so that
+	// styles which need to post-process the rendered text — Quote, which has to
+	// prefix every line with "> " — can render into a temporary buffer instead of
+	// writing the raw, mark-less text.
+	writeMarkedText := func(buf writer) {
 		mw := h.marksWriter(text)
 		var (
 			i int
@@ -537,6 +542,9 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 			buf.WriteString(escape.MarkdownCharacters(string(r)))
 		}
 		mw.writeMarks(buf, i+1)
+	}
+	renderText := func() {
+		writeMarkedText(buf)
 		buf.WriteString("   \n")
 	}
 	if in.listOpened && text.Style != model.BlockContentText_Marked && text.Style != model.BlockContentText_Numbered {
@@ -586,8 +594,13 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
 	case model.BlockContentText_Quote:
+		// Render the marks (links, bold, ...) into a temporary buffer first, then
+		// apply the "> " blockquote prefix per line. Writing text.Text directly
+		// here used to drop every mark of a quote block (GO-7514).
+		quoteBuf := bytes.NewBuffer(nil)
+		writeMarkedText(quoteBuf)
 		buf.WriteString("> ")
-		buf.WriteString(strings.ReplaceAll(text.Text, "\n", "   \n> "))
+		buf.WriteString(strings.ReplaceAll(quoteBuf.String(), "\n", "   \n> "))
 		buf.WriteString("   \n\n")
 		h.renderChildren(buf, in, b)
 	case model.BlockContentText_Toggle:
