@@ -93,7 +93,9 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	}
 	typeId := entry.Id
 	// downstream builders derive `ot-` URLs from the type term — hand them
-	// the canonical internal key, not the caller's slug spelling
+	// the canonical internal key, not the caller's slug spelling; refusals
+	// keep addressing the type as the caller spelled it
+	callerType := req.Type
 	req.Type = entry.Key
 
 	// the compact filter string (SPEC §6.2.1) parses to the structured array
@@ -153,7 +155,7 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	if err != nil {
 		return nil, err
 	}
-	if err := s.validateViewKeys(ctx, spaceId, typeId, req.Type, referenced); err != nil {
+	if err := s.validateViewKeys(ctx, spaceId, typeId, callerType, referenced); err != nil {
 		return nil, err
 	}
 
@@ -163,7 +165,7 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	}
 	result, err := s.createFromDocument(ctx, spaceId, doc, docCreateOptions{dryRun: dryRun, createMissingOptions: createMissingOptions})
 	if err != nil {
-		return nil, queryDocumentError(err)
+		return nil, queryDocumentError(err, len(req.Views) > 0)
 	}
 	return result, nil
 }
@@ -171,8 +173,10 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 // queryDocumentError re-addresses a refusal of the document CreateQuery
 // built onto the request the caller sent: the views they wrote at /views
 // were reported at /blocks/0/views, a path nothing in the request has, and
-// the shape they take is the query kind's (F17).
-func queryDocumentError(err error) error {
+// the shape they take is the query kind's (F17). When the caller sent no
+// views, the one view in the document is the default built from their
+// top-level sorts and filters, and a fault in it is theirs at that level.
+func queryDocumentError(err error, explicitViews bool) error {
 	var v2Err *v2model.Error
 	if !errors.As(err, &v2Err) {
 		return err
@@ -182,9 +186,16 @@ func queryDocumentError(err error) error {
 		if !ok {
 			continue
 		}
-		v2Err.Issues[i] = v2model.Issue{Path: "/views" + rest, Message: v2Err.Issues[i].Message}.
-			Hintf("a view's members are listed on %s — the fields the insert_view op takes (%s)",
-				v2model.RefGetSchema("query"), v2model.RefGetOpSchema("insert_view"))
+		message := v2Err.Issues[i].Message
+		if explicitViews {
+			v2Err.Issues[i] = v2model.Issue{Path: "/views" + rest, Message: message}.
+				Hintf("a view's members are listed on %s — the fields the insert_view op takes (%s)",
+					v2model.RefGetSchema("query"), v2model.RefGetOpSchema("insert_view"))
+			continue
+		}
+		path := strings.TrimPrefix(rest, "/0")
+		v2Err.Issues[i] = v2model.Issue{Path: path, Message: message}.
+			Hintf("the query's members are listed on %s", v2model.RefGetSchema("query"))
 	}
 	return v2Err
 }

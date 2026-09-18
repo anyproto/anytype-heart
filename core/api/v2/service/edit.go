@@ -459,7 +459,7 @@ func objectPatchUnknownKeyHint(key string) v2model.Hint {
 	if op, ok := v2BodyKeyOps[key]; ok {
 		return v2model.Hintf("%s is carried by the %s op inside ops (%s)", key, op, v2model.RefGetOpSchema(op))
 	}
-	return v2model.Hintf("every change travels as an op inside ops — %s documents each", v2model.NewRef(v2model.OpGetOpSchema))
+	return v2model.Hintf("every change travels as an op inside ops — %s lists them", v2model.NewRef(v2model.OpListSchemas))
 }
 
 // parseOpsEnvelope is the one decoder behind every ops body. Two endpoints

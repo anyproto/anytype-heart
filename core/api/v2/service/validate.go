@@ -34,7 +34,7 @@ func (s *Service) ValidateDocument(data []byte) v2model.ValidateResponse {
 	if fields, err := parseEnvelope(data); err == nil {
 		var docKind string
 		if json.Unmarshal(fields["kind"], &docKind) == nil && docKind == "object_type" {
-			kind = "type"
+			kind = "type_document"
 		}
 	}
 	resp.Issues = append(resp.Issues, documentIssues(kind, validationErr.Issues)...)

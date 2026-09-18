@@ -546,6 +546,25 @@ reviewed by three fresh reviewers before the next.
   column list — and a view refusal is addressed at `/views/…` rather than
   `/blocks/0/views/…`, with `see_also` to the query schema and the op.
 
+  Reviewed by three fresh reviewers (no blockers); their should-fixes are
+  in: the created-view schema drops the merge channel's nulls and its
+  compact-`filter` advice (a created view takes nodes; `v2ViewCreateFieldsDef`
+  derives it from the shared field set), a type DOCUMENT's repairs point at
+  `type_document` and a flat body's at `type` (whose definition items now
+  declare both identity forms, `name` and `property`), the format's
+  version gate outranks the definition pre-scan, every CreateType refusal
+  of a flat body is rebased at the return boundary (api_key, collisions,
+  formats, consent too), PATCH types runs the same pre-scan (its decoder
+  silently dropped `type` and minted text), a fault in the default view a
+  query builds from top-level sorts/filters is addressed at `/sorts` and
+  `/filters`, the view-key did-you-mean names the type as the caller spelled
+  it (no stored key in `see_also`), the "op index" reference is
+  `list_schemas`, and the shared filters description carries no raw route.
+  Accepted: the schema-prose channel still spells routes in descriptions
+  (F7, group C); the served create-view schema omits a read view's
+  output-only `id`/`groups`/`object_orders` (a narrower authoring schema,
+  as elsewhere).
+
 # Ranked work order
 
 1. **F1** — warn or refuse on destructive `delete_property`; stop leaking

@@ -98,8 +98,9 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"default_view":{"type":"string","enum":["table","list","gallery","kanban","calendar","graph"],"description":"how a set or collection of this type opens; applies to ones created after the change"},` +
 			`"default_template":{"type":"string","maxLength":256,"description":"id of the template new objects of this type start from; empty string clears it"},` +
 			`"property_definitions":{"type":"array","maxItems":128,"description":"the type's whole field list; an unknown name mints a property. On PATCH it replaces the list, so to change one field send an ops envelope with add_property to PATCH /v2/spaces/{space_id}/types/{type} instead, and to rename a property send {name} to PATCH /v2/spaces/{space_id}/properties/{key}","items":{` +
-			`"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
-			`"name":{"type":"string","minLength":1,"maxLength":128,"description":"the property's spelling, e.g. Due date"},` +
+			`"type":"object","additionalProperties":false,"description":"names its property by name or by property, one of the two","properties":{` +
+			`"name":{"type":"string","minLength":1,"maxLength":128,"description":"the property's display name, e.g. Due date; an unknown one is created"},` +
+			`"property":{"type":"string","minLength":1,"maxLength":256,"description":"the property by the key the space serves, for one that exists"},` +
 			`"format":{"type":"string","enum":[` + v2PropertyFormatEnum + `],"description":"the new property's format; omit it and an unknown name is created as text"},` +
 			`"section":{"type":"string","enum":["featured","hidden"],"description":"featured shows the property on the object itself"},` +
 			`"options":{"type":"array","maxItems":100,"description":"select and multi_select only: the option vocabulary; creating options here needs ?create_missing_options=true","items":{` +
@@ -148,7 +149,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays simple to decode — see kind filters"},` +
 			`"sorts":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
 			`"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc"]},"empty_placement":{"type":"string","enum":["start","end"]}}}},` +
-			`"views":{"type":"array","maxItems":10,"description":"the query's views, each whole: the fields the insert_view op's set takes, plus its columns. Mutually exclusive with top-level filter/sorts, which build one view named All","items":{"type":"object","required":["name"],"properties":{` + v2ViewFieldsDef + `,` + v2ViewColumnsListDef + `}}}}}`,
+			`"views":{"type":"array","maxItems":10,"description":"the query's views, each whole: the fields the insert_view op's set takes (except filter — write a view's filters as nodes here), plus its columns. Mutually exclusive with top-level filter/sorts, which build one view named All","items":{"type":"object","required":["name"],"properties":{` + v2ViewCreateFieldsDef() + `,` + v2ViewColumnsListDef + `}}}}}`,
 		example: `{"name":"Open tasks","type":"task","filter":"done = false","sorts":[{"property":"due_date","direction":"asc"}]}`,
 	},
 	"collection": {

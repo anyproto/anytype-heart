@@ -255,7 +255,50 @@ const v2ViewFieldsDef = `"name":{"type":["string","null"],"maxLength":4096},` +
 	`"list_size":{"type":["string","null"],"enum":["compact","regular",null]},` +
 	`"alternate_rows":{"type":["boolean","null"]},` +
 	`"sorts":{"type":["array","null"],"maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc","custom"]},"custom_order":{"type":"array","maxItems":128},"empty_placement":{"type":"string","enum":["start","end"]},"include_time":{"type":"boolean"},"no_collate":{"type":"boolean"},"id":{"type":"string","maxLength":64,"description":"output-only on reads; accepted back so a read sort round-trips"}}}},` +
-	`"filters":{"type":["array","null"],"maxItems":32,"description":"filter nodes (GET /v2/schemas/filters), at most 32 at the top level (group more under and/or nodes) — recursive, so prefer filter, the compact string"}`
+	`"filters":{"type":["array","null"],"maxItems":32,"description":"filter nodes (schema kind filters), at most 32 at the top level (group more under and/or nodes) — recursive, so prefer filter, the compact string"}`
+
+// v2ViewCreateFieldsDef is v2ViewFieldsDef for a view that is CREATED whole
+// rather than merged into: the same members, minus the null that means
+// "clear to default" on the merge channel and is refused by the document a
+// created view lands in, and with the filters advice restated for a shape
+// that has no compact-string alternative.
+func v2ViewCreateFieldsDef() string {
+	var fields map[string]map[string]any
+	if err := json.Unmarshal([]byte(`{`+v2ViewFieldsDef+`}`), &fields); err != nil {
+		panic(fmt.Sprintf("view field defs: %v", err))
+	}
+	for _, field := range fields {
+		if types, ok := field["type"].([]any); ok {
+			if kept := withoutNull(types); len(kept) == 1 {
+				field["type"] = kept[0]
+			} else {
+				field["type"] = kept
+			}
+		}
+		if enum, ok := field["enum"].([]any); ok {
+			field["enum"] = withoutNull(enum)
+		}
+	}
+	fields["filters"]["description"] = "filter nodes (schema kind filters), at most 32 at the top level (group more under and/or nodes); a created view takes nodes only — the compact string is the query's top-level filter"
+	out, err := json.Marshal(fields)
+	if err != nil {
+		panic(fmt.Sprintf("view create field defs: %v", err))
+	}
+	return strings.TrimSuffix(strings.TrimPrefix(string(out), "{"), "}")
+}
+
+// withoutNull drops the null of a JSON Schema list: the type name "null" in
+// a type list, the literal null in an enum.
+func withoutNull(values []any) []any {
+	kept := make([]any, 0, len(values))
+	for _, v := range values {
+		if v == nil || v == "null" {
+			continue
+		}
+		kept = append(kept, v)
+	}
+	return kept
+}
 
 // v2ViewColumnsListDef is a view's column list as a whole, the shape a
 // created view carries (the ops merge per column through v2ViewColumnsPropDef).

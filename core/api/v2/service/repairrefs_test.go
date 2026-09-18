@@ -95,7 +95,38 @@ func TestV2RepairReferences(t *testing.T) {
 
 		format := issueAt(t, err, "/type_settings/property_definitions/0/type")
 		assert.Contains(t, format.Message, `spelled "format"`)
+		assert.Equal(t, []v2model.Ref{v2model.RefGetSchema("type_document")}, format.SeeAlso,
+			"the document form is documented by type_document; the flat kind type has neither type_settings nor formatVersion")
 		assert.Len(t, v2Err(t, err).Issues, 1)
+	})
+
+	t.Run("an unsupported formatVersion outranks the definition repairs", func(t *testing.T) {
+		fx := setup(t)
+
+		_, err := fx.CreateType(context.Background(), testSpaceId,
+			[]byte(`{"formatVersion":"9.0","kind":"object_type","properties":{"name":"Plant"},"type_settings":{"property_definitions":[{"name":"Loc","type":"select"}]}}`), true, true)
+
+		assert.Equal(t, v2model.CodeVersionUnsupported, v2Err(t, err).Code)
+	})
+
+	t.Run("a type document's formatVersion repair points at type_document", func(t *testing.T) {
+		fx := setup(t)
+
+		_, err := fx.CreateType(context.Background(), testSpaceId,
+			[]byte(`{"formatVersion":2,"kind":"object_type","properties":{"name":"Plant"}}`), true, true)
+
+		assert.Equal(t, []v2model.Ref{v2model.RefGetSchema("type_document")}, issueAt(t, err, "/formatVersion").SeeAlso)
+	})
+
+	t.Run("PATCH types names a definition's type member too, instead of minting text", func(t *testing.T) {
+		fx := newTypeOpsFixture(t)
+
+		_, err := fx.UpdateType(context.Background(), testSpaceId, "plant", "",
+			[]byte(`{"property_definitions":[{"name":"New location","type":"select"}]}`), true, false)
+
+		format := issueAt(t, err, "/property_definitions/0/type")
+		assert.Contains(t, format.Message, `spelled "format"`)
+		assert.Equal(t, []v2model.Ref{v2model.RefGetSchema("type")}, format.SeeAlso)
 	})
 
 	t.Run("a definition naming nothing gets one verdict, not three", func(t *testing.T) {
@@ -122,6 +153,12 @@ func TestV2RepairReferences(t *testing.T) {
 			assert.NotContains(t, issue.Path, "/type_settings", "%v", apiErr.Issues)
 		}
 		issueAt(t, err, "/layout")
+
+		// the checks this function runs itself, after the format: same address
+		_, err = fx.CreateType(context.Background(), testSpaceId, []byte(`{"name":"Plant","api_key":"bad-key"}`), true, true)
+		issueAt(t, err, "/api_key")
+		_, err = fx.CreateType(context.Background(), testSpaceId, []byte(`{"name":"Chore"}`), true, true)
+		issueAt(t, err, "/name")
 	})
 
 	t.Run("the validate endpoint attaches the same repairs", func(t *testing.T) {
@@ -131,6 +168,10 @@ func TestV2RepairReferences(t *testing.T) {
 
 		require.Len(t, resp.Issues, 1)
 		assert.Equal(t, []v2model.Ref{v2model.RefGetSchema("object")}, resp.Issues[0].SeeAlso)
+
+		typed := fx.ValidateDocument([]byte(`{"kind":"object_type","properties":{"name":"Plant"}}`))
+		require.NotEmpty(t, typed.Issues)
+		assert.Equal(t, []v2model.Ref{v2model.RefGetSchema("type_document")}, typed.Issues[0].SeeAlso)
 	})
 
 	t.Run("an unknown property's guess carries the list reference the list-all branch carries", func(t *testing.T) {
@@ -165,7 +206,7 @@ func TestV2RepairReferences(t *testing.T) {
 		_, err = fx.PatchObject(context.Background(), testSpaceId, "obj1", []byte(`{"ops":[],"colour":"red"}`), "", true, true)
 		stray := issueAt(t, err, "/colour")
 		assert.NotContains(t, stray.Hint, "If-Match")
-		assert.Equal(t, []v2model.Ref{v2model.NewRef(v2model.OpGetOpSchema)}, stray.SeeAlso)
+		assert.Equal(t, []v2model.Ref{v2model.NewRef(v2model.OpListSchemas)}, stray.SeeAlso, "the op index is the schema index, not an unbound single-op lookup")
 	})
 
 	t.Run("a type ops body with a stray member names the op index", func(t *testing.T) {
@@ -175,7 +216,7 @@ func TestV2RepairReferences(t *testing.T) {
 			[]byte(`{"ops":[{"op":"remove_property","property":"sun_needs"}],"name":"Plant"}`), true, false)
 
 		issue := issueAt(t, err, "/name")
-		assert.Equal(t, []v2model.Ref{v2model.NewRef(v2model.OpGetOpSchema)}, issue.SeeAlso)
+		assert.Equal(t, []v2model.Ref{v2model.NewRef(v2model.OpListSchemas)}, issue.SeeAlso)
 	})
 
 	t.Run("a filter grammar error points at the grammar", func(t *testing.T) {
@@ -223,6 +264,30 @@ func TestV2RepairReferences(t *testing.T) {
 		assert.Equal(t, []v2model.Ref{v2model.RefGetSchema("query"), v2model.RefGetOpSchema("insert_view")}, issue.SeeAlso)
 	})
 
+	t.Run("a fault in the default view is addressed at the top-level channel that built it", func(t *testing.T) {
+		fx := setup(t)
+
+		_, err := fx.CreateQuery(context.Background(), testSpaceId,
+			v2model.CreateQueryRequest{Name: "Q", Type: "chore", Sorts: json.RawMessage(`[{"property":"severity","direction":"sideways"}]`)}, true, true)
+
+		issue := issueAt(t, err, "/sorts/0/direction")
+		assert.Equal(t, []v2model.Ref{v2model.RefGetSchema("query")}, issue.SeeAlso)
+		for _, iss := range v2Err(t, err).Issues {
+			assert.NotContains(t, iss.Path, "/views", "the caller sent no views")
+		}
+	})
+
+	t.Run("an unknown view key's guess names the type as the caller spelled it", func(t *testing.T) {
+		fx := setup(t)
+
+		_, err := fx.CreateQuery(context.Background(), testSpaceId,
+			v2model.CreateQueryRequest{Name: "Q", Type: "chore", Sorts: json.RawMessage(`[{"property":"severty"}]`)}, true, true)
+
+		issue := issueAt(t, err, "/sorts/0/property")
+		assert.Contains(t, issue.Hint, "did you mean severity? — if not, ")
+		assert.Equal(t, []v2model.Ref{v2model.RefGetType(testSpaceId, "chore")}, issue.SeeAlso)
+	})
+
 	t.Run("the query kind's views are typed, with the fields insert_view takes", func(t *testing.T) {
 		fx := setup(t)
 
@@ -233,5 +298,19 @@ func TestV2RepairReferences(t *testing.T) {
 		assert.Contains(t, string(raw), `"group_by"`)
 		assert.Contains(t, string(raw), `"columns"`)
 		assert.NotContains(t, string(raw), "full view objects", "the views member is a typed list now, not prose over anyValue")
+		var entry struct {
+			Schema struct {
+				Properties struct {
+					Views struct {
+						Items map[string]any `json:"items"`
+					} `json:"views"`
+				} `json:"properties"`
+			} `json:"schema"`
+		}
+		require.NoError(t, json.Unmarshal(raw, &entry))
+		items, _ := json.Marshal(entry.Schema.Properties.Views.Items)
+		assert.NotContains(t, string(items), "null", "a created view takes no null: that is the merge channel's clear-to-default")
+		assert.NotContains(t, string(items), "/v2/", "no raw route rides into the query schema")
+		assert.NotContains(t, string(items), `"filter"`, "the compact string is the query's top-level filter, not a view member")
 	})
 }

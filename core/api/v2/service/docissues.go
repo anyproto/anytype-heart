@@ -1,6 +1,7 @@
 package v2service
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"regexp"
@@ -112,7 +113,7 @@ func rebaseIssuePaths(err error, fn func(string) string) error {
 // told to rename one member and nothing about the other, dropped it, and
 // every field silently became text (F10). Both are named here, at the path
 // the caller sent them.
-func typeDefinitionMemberIssues(definitions []map[string]any, pathPrefix string) []v2model.Issue {
+func typeDefinitionMemberIssues(definitions []map[string]any, pathPrefix, kind string) []v2model.Issue {
 	var issues []v2model.Issue
 	for i, def := range definitions {
 		at := fmt.Sprintf("%s/%d", pathPrefix, i)
@@ -135,7 +136,34 @@ func typeDefinitionMemberIssues(definitions []map[string]any, pathPrefix string)
 		}
 	}
 	for i := range issues {
-		issues[i] = schemaRef(issues[i], "type")
+		issues[i] = schemaRef(issues[i], kind)
 	}
 	return issues
+}
+
+// typeBodyKind names the schema kind that documents a type body: the flat
+// body is kind type, the interchange document kind type_document — the two
+// differ in every member, so a repair pointing at the wrong one contradicts
+// itself.
+func typeBodyKind(flat bool) string {
+	if flat {
+		return "type"
+	}
+	return "type_document"
+}
+
+// rawTypeDefinitions decodes a type body's property_definitions as sent,
+// for the member pre-scan; nil when absent or not an array.
+func rawTypeDefinitions(fields map[string]json.RawMessage) []map[string]any {
+	raw, ok := fields["type_settings"]
+	if !ok {
+		return nil
+	}
+	var settings struct {
+		Definitions []map[string]any `json:"property_definitions"`
+	}
+	if json.Unmarshal(raw, &settings) != nil {
+		return nil
+	}
+	return settings.Definitions
 }

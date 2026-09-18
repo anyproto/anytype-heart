@@ -70,7 +70,7 @@ var v2TypeViewOpNames = map[string]bool{
 // caller mixed the two bodies this endpoint takes. The object surface's hint
 // (an If-Match header written as a body field) has no counterpart on a type.
 func v2TypeOpsUnknownKeyHint(string) v2model.Hint {
-	return v2model.Hintf("this endpoint takes either an ops envelope or the type body (name, plural_name, icon, layout, default_view, default_template, property_definitions), never both in one request — %s documents the ops", v2model.NewRef(v2model.OpGetOpSchema))
+	return v2model.Hintf("this endpoint takes either an ops envelope or the type body (name, plural_name, icon, layout, default_view, default_template, property_definitions), never both in one request — %s lists the ops", v2model.NewRef(v2model.OpListSchemas))
 }
 
 // v2TypeSections pairs each of the type's four recommended-relation detail

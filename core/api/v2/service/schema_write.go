@@ -91,7 +91,7 @@ func validateV2ArrayCount(path string, raw json.RawMessage, max int) error {
 // CreateType implements POST /v2/spaces/{space_id}/types: a kind:"object_type"
 // AnyBlock document; typeProperties creates missing properties atomically
 // with the type (SPEC §2a create-missing).
-func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, dryRun, createMissingOptions bool) (*v2model.CreateResult, error) {
+func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, dryRun, createMissingOptions bool) (result *v2model.CreateResult, err error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	// carries etag (and possibly warnings) — without the strip, POST types
 	// 400ed on the etag of its own read; the ?block= subtree marker is
 	// refused by name instead of as an anonymous unknown field
-	body, err := normalizeCreateBody(body)
+	body, err = normalizeCreateBody(body)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,8 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	// the rest of this function already handles.
 	// the flat body's members sit at the root; the document's sit under
 	// type_settings and properties. Every refusal below is addressed to the
-	// body the caller sent, so a flat body's issues are rebased back
+	// body the caller sent, so a flat body's issues are rebased back at the
+	// return boundary — whichever check produced them
 	flat := false
 	if fields, perr := parseEnvelope(body); perr == nil && !isTypeDocument(fields) {
 		doc, derr := typeShortcutDocument(fields)
@@ -122,28 +123,16 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 		}
 		flat = true
 	}
+	defer func() {
+		if err != nil && flat {
+			err = rebaseIssuePaths(err, flatTypeBodyPath)
+		}
+	}()
+	kind := typeBodyKind(flat)
 	fields, err := parseEnvelope(body)
 	if err != nil {
 		return nil, v2model.ValidationFailed("request body is not a JSON object",
 			v2model.Issue{Message: err.Error()})
-	}
-	addressed := func(err error) error {
-		if !flat || err == nil {
-			return err
-		}
-		return rebaseIssuePaths(err, flatTypeBodyPath)
-	}
-	// the two member guesses a definition invites (F10), named before the
-	// format prunes one of them
-	if raw, ok := fields["type_settings"]; ok {
-		var settings struct {
-			Definitions []map[string]any `json:"property_definitions"`
-		}
-		if json.Unmarshal(raw, &settings) == nil {
-			if issues := typeDefinitionMemberIssues(settings.Definitions, "/type_settings/property_definitions"); len(issues) > 0 {
-				return nil, addressed(v2model.ValidationFailed("the document failed AnyBlock validation", issues...))
-			}
-		}
 	}
 
 	// the endpoint IS the kind: inject/enforce kind object_type and default
@@ -175,8 +164,18 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	if body, err = encodeEnvelope(fields); err != nil {
 		return nil, err
 	}
-	if err := s.rejectInvalidDocument(body, "type"); err != nil {
-		return nil, addressed(err)
+	// the two member guesses a definition invites (F10), named before the
+	// format prunes one of them — but after the format's own version gate,
+	// which is the one verdict a definition repair must not pre-empt
+	docErr := s.rejectInvalidDocument(body, kind)
+	if v2Err := (*v2model.Error)(nil); errors.As(docErr, &v2Err) && v2Err.Code == v2model.CodeVersionUnsupported {
+		return nil, docErr
+	}
+	if issues := typeDefinitionMemberIssues(rawTypeDefinitions(fields), "/type_settings/property_definitions", kind); len(issues) > 0 {
+		return nil, v2model.ValidationFailed("the document failed AnyBlock validation", issues...)
+	}
+	if docErr != nil {
+		return nil, docErr
 	}
 
 	var envelope docEnvelope
@@ -281,7 +280,7 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun, createMissingOptions)
 	_, snapshot, err := anyblockjson.Unmarshal(body, resolvers.Options())
 	if err != nil {
-		return nil, addressed(mapUnmarshalError(body, err, "type"))
+		return nil, mapUnmarshalError(body, err, kind)
 	}
 	if err := resolvers.err(); err != nil {
 		return nil, fmt.Errorf("resolve type properties: %w", err)
@@ -298,7 +297,7 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 		}
 	}
 
-	result := &v2model.CreateResult{Key: slug, Created: resolvers.created()}
+	result = &v2model.CreateResult{Key: slug, Created: resolvers.created()}
 	if dryRun {
 		result.DryRun = true
 		return result, nil
@@ -605,7 +604,7 @@ func (p v2TypePatch) propertyDefinitions() *[]anyblockjson.TypeProperty {
 }
 
 // UpdateType implements PATCH /v2/spaces/{space_id}/types/{type}.
-func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch string, body []byte, dryRun, createMissingOptions bool) (*v2model.CreateResult, error) {
+func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch string, body []byte, dryRun, createMissingOptions bool) (result *v2model.CreateResult, err error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
@@ -648,6 +647,7 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 
 	// the same flat body the create verb takes: one shape for the resource,
 	// rather than a create body and an update body that reject each other
+	flat := false
 	if fields, perr := parseEnvelope(body); perr == nil && !isTypeDocument(fields) {
 		if _, nested := fields["type_settings"]; !nested {
 			if _, valued := fields["properties"]; !valued {
@@ -658,7 +658,21 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 				if body, err = encodeEnvelope(translated); err != nil {
 					return nil, err
 				}
+				flat = true
 			}
+		}
+	}
+	defer func() {
+		if err != nil && flat {
+			err = rebaseIssuePaths(err, flatTypeBodyPath)
+		}
+	}()
+	// the definition member guesses (F10): the patch decoder below would
+	// silently drop a `type` member (TypeProperty's own decoder ignores
+	// unknown members), and the property would be minted as text
+	if fields, perr := parseEnvelope(body); perr == nil {
+		if issues := typeDefinitionMemberIssues(rawTypeDefinitions(fields), "/type_settings/property_definitions", typeBodyKind(flat)); len(issues) > 0 {
+			return nil, v2model.ValidationFailed("invalid type patch", issues...)
 		}
 	}
 
@@ -808,7 +822,7 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 		}
 	}
 
-	result := &v2model.CreateResult{Id: typeId, Key: typeKey, Created: resolvers.created()}
+	result = &v2model.CreateResult{Id: typeId, Key: typeKey, Created: resolvers.created()}
 	// a replaced list detaches whatever it omitted. Report it in BOTH channels:
 	// `removed` so a client can act on it, and a warning so a human reading the
 	// response sees it without knowing to look for a new field. A dry run says
