@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -3244,4 +3245,399 @@ func TestClipboard_PasteIntoEmptyBlockForksId(t *testing.T) {
 		require.NotNil(t, sb.Pick(template.TitleBlockId))
 		assert.Equal(t, "t", sb.Pick(template.TitleBlockId).Model().GetText().Text)
 	})
+}
+
+// renderTree draws the live document one line per block, indented by nesting depth and
+// prefixed with the block's style. A child that vanished, lost its parent or changed places
+// is then as visible in the diff as one whose text was corrupted.
+func renderTree(t *testing.T, sb *smarttest.SmartTest) []string {
+	t.Helper()
+	st := sb.NewState()
+	var out []string
+	var walk func(ids []string, depth int)
+	walk = func(ids []string, depth int) {
+		for _, id := range ids {
+			b := st.Pick(id)
+			require.NotNil(t, b, "block %s is referenced but not in the document", id)
+			out = append(out, fmt.Sprintf("%s%s %s", strings.Repeat("  ", depth),
+				b.Model().GetText().GetStyle(), b.Model().GetText().GetText()))
+			walk(b.Model().ChildrenIds, depth+1)
+		}
+	}
+	walk(st.Pick(st.RootId()).Model().ChildrenIds, 0)
+	return out
+}
+
+// liveIds lists the document's blocks in the order a reader meets them, which is the order
+// paste reports them in.
+func liveIds(t *testing.T, sb *smarttest.SmartTest) []string {
+	t.Helper()
+	st := sb.NewState()
+	var out []string
+	var walk func(ids []string)
+	walk = func(ids []string) {
+		for _, id := range ids {
+			out = append(out, id)
+			if b := st.Pick(id); b != nil {
+				walk(b.Model().ChildrenIds)
+			}
+		}
+	}
+	walk(st.Pick(st.RootId()).Model().ChildrenIds)
+	return out
+}
+
+// A multi-block paste into an empty block the user styled reuses that block for the first
+// pasted line and drops the pasted block it stood in for. State.Unlink only detaches an id
+// from its parent, so the dropped block's subtree stayed in the paste state unreachable from
+// its root, and insertUnderSelection — which walks the tree — never moved it into the
+// document: pasting a toggle with anything under it lost everything under it.
+//
+// The subtree is re-parented onto the reused block when its style can own children, and
+// follows it as siblings when it cannot. GO-7513 keeps the target's own children alive, so
+// both sides can be populated at once: the pasted subtree goes first, where the caret was.
+func TestPasteNestedContentIntoEmptyStyledBlock(t *testing.T) {
+	nestedPaste := func() []*model.Block {
+		head := textBlock("p1", "head", model.BlockContentText_Toggle)
+		head.ChildrenIds = []string{"c1"}
+		child := textBlock("c1", "nested child", model.BlockContentText_Paragraph)
+		child.ChildrenIds = []string{"g1"}
+		return []*model.Block{
+			head, child,
+			textBlock("g1", "nested grandchild", model.BlockContentText_Paragraph),
+			textBlock("p2", "body", model.BlockContentText_Paragraph),
+		}
+	}
+	type want struct {
+		tree []string
+	}
+	for _, tc := range []struct {
+		name        string
+		targetStyle model.BlockContentTextStyle
+		targetKids  []string // text of the children the target already had
+		pasteBlocks []*model.Block
+		want        want
+	}{
+		{
+			name:        "a style that can own children adopts the pasted subtree",
+			targetStyle: model.BlockContentText_Toggle,
+			pasteBlocks: nestedPaste(),
+			want: want{tree: []string{
+				"Toggle head",
+				"  Paragraph nested child",
+				"    Paragraph nested grandchild",
+				"Paragraph body",
+			}},
+		},
+		{
+			name:        "a callout adopts it too",
+			targetStyle: model.BlockContentText_Callout,
+			pasteBlocks: nestedPaste(),
+			want: want{tree: []string{
+				"Callout head",
+				"  Paragraph nested child",
+				"    Paragraph nested grandchild",
+				"Paragraph body",
+			}},
+		},
+		{
+			// a header cannot own children, so the subtree keeps the place
+			// insertUnderSelection gave it rather than being forced under a block that
+			// would not render it
+			name:        "a style that cannot own children is followed by the subtree",
+			targetStyle: model.BlockContentText_Header1,
+			pasteBlocks: nestedPaste(),
+			want: want{tree: []string{
+				"Header1 head",
+				"Paragraph nested child",
+				"  Paragraph nested grandchild",
+				"Paragraph body",
+			}},
+		},
+		{
+			// the caret sat in the block's text, above everything nested under it, so
+			// what was pasted at the caret belongs in front of what was already there
+			name:        "the pasted subtree goes in front of the block's own children",
+			targetStyle: model.BlockContentText_Toggle,
+			targetKids:  []string{"own child"},
+			pasteBlocks: nestedPaste(),
+			want: want{tree: []string{
+				"Toggle head",
+				"  Paragraph nested child",
+				"    Paragraph nested grandchild",
+				"  Paragraph own child",
+				"Paragraph body",
+			}},
+		},
+		{
+			name:        "a block that cannot own children keeps its own and is followed by the subtree",
+			targetStyle: model.BlockContentText_Header1,
+			targetKids:  []string{"own child"},
+			pasteBlocks: nestedPaste(),
+			want: want{tree: []string{
+				"Header1 head",
+				"  Paragraph own child",
+				"Paragraph nested child",
+				"  Paragraph nested grandchild",
+				"Paragraph body",
+			}},
+		},
+		{
+			name:        "several children keep their order",
+			targetStyle: model.BlockContentText_Toggle,
+			pasteBlocks: func() []*model.Block {
+				head := textBlock("p1", "head", model.BlockContentText_Toggle)
+				head.ChildrenIds = []string{"c1", "c2", "c3"}
+				return []*model.Block{
+					head,
+					textBlock("c1", "one", model.BlockContentText_Paragraph),
+					textBlock("c2", "two", model.BlockContentText_Paragraph),
+					textBlock("c3", "three", model.BlockContentText_Paragraph),
+					textBlock("p2", "body", model.BlockContentText_Paragraph),
+				}
+			}(),
+			want: want{tree: []string{
+				"Toggle head",
+				"  Paragraph one",
+				"  Paragraph two",
+				"  Paragraph three",
+				"Paragraph body",
+			}},
+		},
+		{
+			// the block the reuse drops carries no children of its own here, so nothing
+			// should move: the plain case must keep behaving exactly as GO-7513 left it
+			name:        "a paste with no nesting is unaffected",
+			targetStyle: model.BlockContentText_Toggle,
+			pasteBlocks: []*model.Block{
+				textBlock("p1", "head", model.BlockContentText_Header1),
+				textBlock("p2", "body", model.BlockContentText_Paragraph),
+			},
+			want: want{tree: []string{
+				"Toggle head",
+				"Paragraph body",
+			}},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			target := textBlock("target", "", tc.targetStyle)
+			sb := smarttest.New("test")
+			for i, txt := range tc.targetKids {
+				id := fmt.Sprintf("own%d", i)
+				target.ChildrenIds = append(target.ChildrenIds, id)
+				sb.AddBlock(simple.New(textBlock(id, txt, model.BlockContentText_Paragraph)))
+			}
+			sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"target"}}))
+			sb.AddBlock(simple.New(target))
+			cb := newFixture(t, sb)
+
+			// when
+			blockIds, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+				FocusedBlockId:    "target",
+				SelectedTextRange: &model.Range{From: 0, To: 0},
+				AnySlot:           tc.pasteBlocks,
+			}, "")
+
+			// then
+			require.NoError(t, err)
+			got := want{tree: renderTree(t, sb)}
+			assert.Equal(t, tc.want, got)
+			// Every pasted block must be reported, nested ones included, each once and in
+			// the order a reader meets it: a tree alone passes when the caller is told
+			// nothing. The count pins that none went missing — one live block per pasted
+			// block, the reused target standing in for the first — and comparing against
+			// the live document filtered to the reported ids pins their order and that
+			// every one of them is really there.
+			live := liveIds(t, sb)
+			require.Len(t, blockIds, len(tc.pasteBlocks), "one reported id per pasted block")
+			reported := lo.Filter(live, func(id string, _ int) bool {
+				return lo.Contains(blockIds, id)
+			})
+			assert.Equal(t, reported, blockIds,
+				"returned ids must be live, unique and in traversal order")
+			assert.NotContains(t, live, "target",
+				"the original block id must be unlinked after the fork")
+		})
+	}
+}
+
+// A body of exactly one block goes through intoBlock and RangeTextPaste, a longer one through
+// singleRange, and the two disagreed about what a pasted block is: the short route carried
+// the style but not the callout's icon nor the code block's language, so the same clipboard
+// arrived stripped or intact depending on whether a trailing line happened to follow it.
+// Every case here is pasted both ways and must come out the same.
+func TestPasteSingleBlockKeepsStyleProperties(t *testing.T) {
+	type want struct {
+		style model.BlockContentTextStyle
+		text  string
+		icon  string
+		lang  string
+	}
+	for _, tc := range []struct {
+		name  string
+		block *model.Block
+		want  want
+	}{
+		{
+			name: "a fenced code block keeps its language",
+			block: func() *model.Block {
+				b := textBlock("p1", "fmt.Println(1)", model.BlockContentText_Code)
+				b.Fields = &types.Struct{Fields: map[string]*types.Value{
+					"lang": pbtypes.String("go"),
+				}}
+				return b
+			}(),
+			want: want{style: model.BlockContentText_Code, text: "fmt.Println(1)", lang: "go"},
+		},
+		{
+			name: "a callout keeps its icon",
+			block: func() *model.Block {
+				b := textBlock("p1", "note", model.BlockContentText_Callout)
+				b.GetText().IconEmoji = "\U0001f4a1"
+				return b
+			}(),
+			want: want{style: model.BlockContentText_Callout, text: "note", icon: "\U0001f4a1"},
+		},
+	} {
+		for _, route := range []struct {
+			name    string
+			trailer []*model.Block
+		}{
+			{name: "pasted alone", trailer: nil},
+			{name: "pasted with a trailing paragraph", trailer: []*model.Block{
+				textBlock("p2", "after", model.BlockContentText_Paragraph),
+			}},
+		} {
+			t.Run(tc.name+", "+route.name, func(t *testing.T) {
+				// given
+				sb := smarttest.New("test")
+				sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"target"}}))
+				sb.AddBlock(simple.New(textBlock("target", "", model.BlockContentText_Paragraph)))
+				cb := newFixture(t, sb)
+				blocks := append([]*model.Block{pbtypes.CopyBlock(tc.block)}, route.trailer...)
+
+				// when
+				_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+					FocusedBlockId:    "target",
+					SelectedTextRange: &model.Range{From: 0, To: 0},
+					AnySlot:           blocks,
+				}, "")
+
+				// then
+				require.NoError(t, err)
+				st := sb.NewState()
+				childIds := st.Pick("test").Model().ChildrenIds
+				require.Len(t, childIds, len(blocks), "one live block per pasted block")
+				first := st.Pick(childIds[0])
+				require.NotNil(t, first)
+				got := want{
+					style: first.Model().GetText().Style,
+					text:  first.Model().GetText().Text,
+					icon:  first.Model().GetText().IconEmoji,
+					lang:  pbtypes.GetString(first.Model().Fields, "lang"),
+				}
+				assert.Equal(t, tc.want, got)
+			})
+		}
+	}
+}
+
+// caretPosition addresses a position inside the block the request focused. singleRange never
+// set it, so it kept its zero value and Paste reported 0 for a block it had just unlinked —
+// either dropped outright or forked to a fresh id. Android prefers any caretPosition >= 0 over
+// blockIds, so it pinned the caret to an id that no longer exists; -1 sends it to blockIds,
+// which is how intoBlock already reports the same situation.
+func TestPasteCaretPositionWhenFocusedBlockIsReplaced(t *testing.T) {
+	type want struct {
+		caret int32
+		// whether the focused block is still in the document; -1 is only correct because
+		// it is not, so asserting the number alone would not say why
+		focusedSurvives bool
+	}
+	for _, tc := range []struct {
+		name        string
+		targetStyle model.BlockContentTextStyle
+		targetText  string
+		rng         model.Range
+		pasteBlocks []*model.Block
+		want        want
+	}{
+		{
+			name:        "several blocks into an empty styled block, which is reused and forked",
+			targetStyle: model.BlockContentText_Toggle,
+			rng:         model.Range{From: 0, To: 0},
+			pasteBlocks: []*model.Block{
+				textBlock("p1", "first", model.BlockContentText_Paragraph),
+				textBlock("p2", "second", model.BlockContentText_Paragraph),
+			},
+			want: want{caret: -1},
+		},
+		{
+			name:        "several blocks into an empty paragraph, which is dropped",
+			targetStyle: model.BlockContentText_Paragraph,
+			rng:         model.Range{From: 0, To: 0},
+			pasteBlocks: []*model.Block{
+				textBlock("p1", "first", model.BlockContentText_Paragraph),
+				textBlock("p2", "second", model.BlockContentText_Paragraph),
+			},
+			want: want{caret: -1},
+		},
+		{
+			name:        "several blocks at the start of a block with text, which is emptied and dropped",
+			targetStyle: model.BlockContentText_Paragraph,
+			targetText:  "existing",
+			rng:         model.Range{From: 0, To: 8},
+			pasteBlocks: []*model.Block{
+				textBlock("p1", "first", model.BlockContentText_Paragraph),
+				textBlock("p2", "second", model.BlockContentText_Paragraph),
+			},
+			want: want{caret: -1},
+		},
+		{
+			// intoBlock, which has always reported -1 here for the same reason
+			name:        "one block into an empty paragraph, which is filled and forked",
+			targetStyle: model.BlockContentText_Paragraph,
+			rng:         model.Range{From: 0, To: 0},
+			pasteBlocks: []*model.Block{
+				textBlock("p1", "first", model.BlockContentText_Paragraph),
+			},
+			want: want{caret: -1},
+		},
+		{
+			// the block survives, so a position inside it is meaningful and is reported
+			name:        "one block into a block with text, which survives",
+			targetStyle: model.BlockContentText_Paragraph,
+			targetText:  "existing",
+			rng:         model.Range{From: 8, To: 8},
+			pasteBlocks: []*model.Block{
+				textBlock("p1", "first", model.BlockContentText_Paragraph),
+			},
+			want: want{caret: 13, focusedSurvives: true},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			sb := smarttest.New("test")
+			sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"target"}}))
+			sb.AddBlock(simple.New(textBlock("target", tc.targetText, tc.targetStyle)))
+			cb := newFixture(t, sb)
+			rng := tc.rng
+
+			// when
+			_, _, caret, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+				FocusedBlockId:    "target",
+				SelectedTextRange: &rng,
+				AnySlot:           tc.pasteBlocks,
+			}, "")
+
+			// then
+			require.NoError(t, err)
+			got := want{
+				caret:           caret,
+				focusedSurvives: lo.Contains(liveIds(t, sb), "target"),
+			}
+			assert.Equal(t, tc.want, got)
+		})
+	}
 }
