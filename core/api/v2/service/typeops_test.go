@@ -394,6 +394,43 @@ func TestV2TypeOpsAddPutsTheColumnInEveryView(t *testing.T) {
 		assert.Equal(t, model.RelationFormat_number, link.Format)
 	})
 
+	// The flat body's whole-list replacement must keep the same invariant
+	// (round-two eval F2): a caller who re-sends property_definitions with
+	// one more entry got the list updated and the views not, behind a 200 —
+	// and the actors that resend whole lists are exactly the ones that never
+	// find the op channel.
+	t.Run("a list replacement adds the column too", func(t *testing.T) {
+		// given: the same space property and views as the op case
+		fx := newTypeOpsFixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("rel-height"),
+			bundle.RelationKeyRelationKey:    domain.String("height"),
+			bundle.RelationKeyApiObjectKey:   domain.String("height"),
+			bundle.RelationKeyName:           domain.String("Height"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_number)),
+		})
+		captured := fx.captureTypeDetails()
+		committed := fx.expectTypeViewEdit(typeReadWithViews(
+			viewWithColumns("v-a", "All", "name"),
+			viewWithColumns("v-b", "Grid", "name", "location"),
+		))
+
+		// when: the whole list, resent with Height appended
+		result, err := fx.UpdateType(context.Background(), testSpaceId, "plant", "", []byte(`{
+			"type_settings":{"property_definitions":[
+				{"property":"location"},{"property":"sun_needs"},{"property":"water_needs"},{"property":"height"}]}}`), false, false)
+
+		// then: the list half
+		require.NoError(t, err)
+		assert.Equal(t, []string{"rel-location", "rel-sun", "rel-water", "rel-height"},
+			(*captured)[bundle.RelationKeyRecommendedRelations.String()])
+
+		// and the view half, exactly as the op channel does it
+		assert.Equal(t, []string{"name", "height"}, viewColumnKeys(t, *committed, "v-a"))
+		assert.Equal(t, []string{"name", "location", "height"}, viewColumnKeys(t, *committed, "v-b"))
+		assert.Empty(t, result.Removed, "nothing was dropped")
+	})
+
 	// The half-consistent type a client's own three-call add leaves behind:
 	// the property is listed, but no view shows it. Naming it again heals it,
 	// which is what makes this op safe to retry.

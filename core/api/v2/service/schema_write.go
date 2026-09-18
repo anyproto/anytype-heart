@@ -12,6 +12,8 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
+	"sort"
 	"strings"
 	"unicode/utf8"
 
@@ -20,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
@@ -713,6 +716,11 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 	}
 
 	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun, createMissingOptions)
+	// the dataview half of a list replacement (round-two eval F2): the op
+	// channel keeps the type's views in step with its lists — a column for
+	// every property added, none for one removed — and a replaced list must
+	// do the same, or the type is half-updated behind a 200
+	var addedIds, removedKeys []string
 	if defs := patch.propertyDefinitions(); defs != nil {
 		// the echo baseline (§8.41): entries this type ALREADY references
 		// resolve as identities even when their relation is removed — the
@@ -743,9 +751,21 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 			detailUpdates = append(detailUpdates, &model.Detail{Key: list.DetailKey, Value: pbtypes.StringList(list.Ids)})
 			for _, id := range list.Ids {
 				kept[id] = true
+				if !detachedBefore[id] {
+					addedIds = append(addedIds, id)
+				}
 			}
 		}
 		detached = s.detachedProperties(spaceId, detachedBefore, kept)
+		// the stored keys the prune works in, read BEFORE the write while
+		// the detached entries are still what the type listed
+		if entries, eerr := s.liveProperties(spaceId); eerr == nil {
+			for _, e := range entries {
+				if detachedBefore[e.Id] && !kept[e.Id] {
+					removedKeys = append(removedKeys, e.Key)
+				}
+			}
+		}
 		// the declared select vocabulary, which nothing used to apply
 		if err := s.applyDeclaredOptions(*defs, resolvers, "/type_settings/property_definitions"); err != nil {
 			return nil, err
@@ -768,8 +788,8 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 			Path: "/type_settings/property_definitions",
 			Message: fmt.Sprintf("property_definitions replaces the type's whole field list: %d no longer listed (%s)",
 				len(detached), strings.Join(names, ", ")),
-			Hint: "send the complete list to keep a field, or omit property_definitions entirely to leave the list untouched",
-		}
+		}.Hintf("send the complete list to keep a field, omit property_definitions to leave the list untouched, or change one field at a time with the add_property, remove_property and move_property ops (%s)",
+			v2model.RefGetOpSchema("add_property"))
 		result.Warnings = append(result.Warnings, warning)
 	}
 	if dryRun {
@@ -782,10 +802,47 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 			return nil, fmt.Errorf("update type %s: %s", typeKey, resp.Error.Description)
 		}
 	}
+	// the views, in the op channel's order: the lists are written, then the
+	// columns of removed properties go (and the response says so), then the
+	// added properties gain their columns
+	if len(removedKeys) > 0 {
+		if plan, perr := s.typeDataviewPrunePlan(ctx, spaceId, typeId, removedKeys); perr == nil {
+			result.Warnings = append(result.Warnings, typePruneWarnings(plan)...)
+		}
+		if err := s.pruneTypeDataviewColumns(ctx, spaceId, typeId, removedKeys); err != nil {
+			return nil, err
+		}
+	}
+	if len(addedIds) > 0 {
+		if _, err := s.addTypeDataviewColumns(ctx, spaceId, typeId, s.relationLinksOf(spaceId, addedIds)); err != nil {
+			return nil, err
+		}
+	}
 	if read, err := s.reader.ReadObject(ctx, spaceId, typeId); err == nil {
 		result.Etag = ComputeEtag(read.Heads)
 	}
 	return result, nil
+}
+
+// relationLinksOf builds the dataview links for relation object ids, in the
+// order given, from the space's live properties — read after the write, so a
+// property this same request created is among them.
+func (s *Service) relationLinksOf(spaceId string, ids []string) []*model.RelationLink {
+	entries, err := s.liveProperties(spaceId)
+	if err != nil {
+		return nil
+	}
+	byId := make(map[string]propertyEntry, len(entries))
+	for _, e := range entries {
+		byId[e.Id] = e
+	}
+	links := make([]*model.RelationLink, 0, len(ids))
+	for _, id := range ids {
+		if e, ok := byId[id]; ok {
+			links = append(links, &model.RelationLink{Key: e.Key, Format: e.Format})
+		}
+	}
+	return links
 }
 
 // iconPatchDetails turns §2b's typed `icon` into the stored detail keys it
@@ -1143,6 +1200,11 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId, propertyKey strin
 		return nil, err
 	}
 	result := &v2model.CreateResult{Id: entry.Id, Key: propertyKey}
+	// the delete is destructive in two places the caller cannot see from
+	// here: objects that hold a value of the property, and types that list
+	// it. Say so, on the real run and the dry run alike (round-two eval F1:
+	// a silent 200 here is how a caller destroyed five objects' data).
+	result.Warnings = append(result.Warnings, s.propertyDeleteWarnings(spaceId, entry, propertyKey)...)
 	if dryRun {
 		result.DryRun = true
 		return result, nil
@@ -1152,4 +1214,63 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId, propertyKey strin
 		return nil, fmt.Errorf("archive property %s: %s", propertyKey, resp.Error.Description)
 	}
 	return result, nil
+}
+
+// propertyHolderProbeLimit bounds the object count a delete reports: the
+// count exists to make the loss visible, not to be exact past this.
+const propertyHolderProbeLimit = 1000
+
+// propertyDeleteWarnings names what a property delete leaves behind: the
+// objects holding a value of it and the types listing it. Store errors make
+// no warning — the delete still stands, and a warning the store could not
+// substantiate is worse than none.
+func (s *Service) propertyDeleteWarnings(spaceId string, entry propertyEntry, servedKey string) []v2model.Issue {
+	var issues []v2model.Issue
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+		Filters: []database.FilterRequest{{
+			RelationKey: domain.RelationKey(entry.Key),
+			Condition:   model.BlockContentDataviewFilter_NotEmpty,
+		}},
+		Limit: propertyHolderProbeLimit,
+	})
+	if err == nil && len(records) > 0 {
+		count := fmt.Sprintf("%d objects hold", len(records))
+		if len(records) == 1 {
+			count = "1 object holds"
+		} else if len(records) >= propertyHolderProbeLimit {
+			count = fmt.Sprintf("at least %d objects hold", propertyHolderProbeLimit)
+		}
+		issues = append(issues, v2model.Issue{
+			Path:    "key",
+			Message: fmt.Sprintf("%s a value of %q; those values stay readable under the property's key and reappear if the property is restored, but nothing new lands on a removed property", count, servedKey),
+		}.WithHint(v2model.Plain("a dry run reports this without deleting; to keep the values settable, keep the property")))
+	}
+	types, err := s.store.SpaceIndex(spaceId).Query(database.Query{Filters: liveTypeFilters()})
+	if err == nil {
+		var listing []string
+		for _, record := range types {
+			for _, listKey := range typeRecommendedListKeys {
+				if slices.Contains(record.Details.GetStringList(listKey), entry.Id) {
+					name := record.Details.GetString(bundle.RelationKeyName)
+					if name == "" {
+						name = record.Details.GetString(bundle.RelationKeyUniqueKey)
+					}
+					listing = append(listing, name)
+					break
+				}
+			}
+		}
+		if len(listing) > 0 {
+			sort.Strings(listing)
+			noun := "types list"
+			if len(listing) == 1 {
+				noun = "type lists"
+			}
+			issues = append(issues, v2model.Issue{
+				Path:    "key",
+				Message: fmt.Sprintf("%d %s %q (%s); the field leaves their property lists and their views", len(listing), noun, servedKey, strings.Join(listing, ", ")),
+			})
+		}
+	}
+	return issues
 }

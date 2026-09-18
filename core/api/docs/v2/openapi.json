@@ -1722,6 +1722,24 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Items to skip",
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Items to return",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 25,
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -3780,6 +3798,24 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Items to skip",
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Items to return",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 25,
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -4414,6 +4450,24 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Items to skip",
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Items to return",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 25,
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -4571,6 +4625,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
           }
         ],
         "responses": {
@@ -4640,6 +4702,14 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],
@@ -5290,6 +5360,24 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Items to skip",
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Items to return",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 25,
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -5452,6 +5540,14 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],

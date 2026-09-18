@@ -42,6 +42,12 @@ func (s *dsObjectStore) DeleteDetails(ctx context.Context, ids []string) error {
 // when, where, and what was it" for the deletion audit, and carries no user-authored content.
 // Notably absent: name, description and snippet.
 //
+// A derived object (a type, a property) also keeps its IDENTITY keys — uniqueKey, relationKey and
+// apiObjectKey. They are what a cold recovery on another device would carry anyway (a derived object
+// is uninstalled, never removed from the tree), and a value an object still holds under a removed
+// property is served under that apiObjectKey; without them the local index alone, right after the
+// delete and until the next space load, could spell the property only by its stored key.
+//
 // They are captured into a nested map rather than left under their own keys because four of them —
 // resolvedLayout, type, lastModifiedDate and fileId — are indexed on the objects collection. Keeping
 // them top-level would file every tombstone under a live value: fileId's index is sparse, so
@@ -61,6 +67,9 @@ var SnapshotOnDelete = []domain.RelationKey{
 	bundle.RelationKeyResolvedLayout,
 	bundle.RelationKeySizeInBytes,
 	bundle.RelationKeyFileId,
+	bundle.RelationKeyUniqueKey,
+	bundle.RelationKeyRelationKey,
+	bundle.RelationKeyApiObjectKey,
 }
 
 // preservedOnDelete are the top-level relations that survive a delete. All of them are unindexed,

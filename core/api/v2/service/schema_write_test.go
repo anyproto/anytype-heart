@@ -646,5 +646,44 @@ func TestV2UpdateDeleteProperty(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, "rel-severity", result.Id)
+		assert.Empty(t, result.Warnings, "nothing holds or lists the property")
+	})
+
+	t.Run("delete says what it leaves behind, on the dry run too", func(t *testing.T) {
+		// given: two objects hold a value of the property and one type lists it
+		// (round-two eval F1: a silent 200 here is how a caller destroyed data)
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("obj-a"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+				"severity":                       domain.String("opt-high"),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("obj-b"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+				"severity":                       domain.String("opt-low"),
+			},
+			{
+				bundle.RelationKeyId:                   domain.String("type-chore"),
+				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyName:                 domain.String("Chore"),
+				bundle.RelationKeyUniqueKey:            domain.String("ot-chore"),
+				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-severity"}),
+			},
+		})
+
+		// when
+		result, err := fx.DeleteProperty(context.Background(), testSpaceId, "severity", true)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, result.DryRun)
+		require.Len(t, result.Warnings, 2)
+		assert.Contains(t, result.Warnings[0].Message, `2 objects hold a value of "severity"`)
+		assert.Contains(t, result.Warnings[0].Message, "nothing new lands on a removed property")
+		assert.Equal(t, "key", result.Warnings[0].Path)
+		assert.Contains(t, result.Warnings[1].Message, `1 type lists "severity" (Chore)`)
 	})
 }

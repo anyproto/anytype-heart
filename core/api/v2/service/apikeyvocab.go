@@ -35,9 +35,13 @@ import (
 // apiKeyVocab is per-request, like the storeresolver it embeds: lazily
 // loaded on first use, no locking (a request is one goroutine).
 type apiKeyVocab struct {
-	svc     *Service
-	spaceId string
-	inner   anyblockjson.KeyVocabulary
+	// removedSlug marks the served slugs that belong to REMOVED properties;
+	// corpseKeyBySlug inverts those this vocabulary has emitted (rememberCorpse)
+	removedSlug     map[string]bool
+	corpseKeyBySlug map[string]string
+	svc             *Service
+	spaceId         string
+	inner           anyblockjson.KeyVocabulary
 	// scoped is inner's ScopedKeyVocabulary half when it has one (the
 	// storeresolver always does); the importer's richer resolution walks
 	// candidates instead of PropertyKey, so the slug table must surface
@@ -104,6 +108,20 @@ func apiRefSpelling(opts anyblockjson.Options) anyblockjson.Options {
 	return opts
 }
 
+// corpseKeyBySlug inverts the removed-property slugs THIS vocabulary has
+// emitted (PropertySlug), and nothing else: what a vocabulary served, it
+// understands back — so a document it rendered with a corpse slug re-imports
+// onto the stored key (the object channel's in-document edit) — while a
+// request that never saw the slug served (a type definition, a create)
+// resolves it like any unknown name and mints anew (the namespace vacated,
+// §8-OQ2).
+func (v *apiKeyVocab) rememberCorpse(slug, key string) {
+	if v.corpseKeyBySlug == nil {
+		v.corpseKeyBySlug = map[string]string{}
+	}
+	v.corpseKeyBySlug[slug] = key
+}
+
 func (v *apiKeyVocab) ensure() bool {
 	if v.loaded {
 		return !v.degraded
@@ -128,6 +146,39 @@ func (v *apiKeyVocab) ensure() bool {
 		v.propSlugByKey[e.Key] = served
 		if served != e.Key {
 			claimTerm(v.propKeyBySlug, v.propSlugByKey, served, e.Key)
+		}
+	}
+
+	// a REMOVED property keeps its slug on the EMIT side: the value an
+	// object still holds, the type list that still names it and the view
+	// column that still shows it spell the slug the caller was taught
+	// (round-two eval F1 — a caller shown the bson key took it for garbage
+	// and unset the value on every object). Not on the accept side: the
+	// reverse table stays unaware, so a definition or a create naming that
+	// slug mints a NEW property (the namespace vacated, §8-OQ2 — deleting
+	// and re-creating a field must not resurrect the corpse), and a write
+	// to it on an object is refused as removed (removedCustomProperty). The
+	// one place the slug is understood back is the in-document escape
+	// (stateops checkKey), which reads the stored key off the document
+	// itself. A slug a live entry already answers to is left alone, so the
+	// live one keeps its spelling and the corpse reads under its stored key.
+	if removed, rerr := v.svc.removedProperties(v.spaceId); rerr == nil {
+		for _, e := range removed {
+			if _, live := v.propSlugByKey[e.Key]; live {
+				continue
+			}
+			served := servedKey(e.Key, e.Slug, v.propKeyTaken, v.propSlugHolders)
+			if served == e.Key {
+				continue
+			}
+			if _, taken := v.propKeyBySlug[served]; taken {
+				continue
+			}
+			v.propSlugByKey[e.Key] = served
+			if v.removedSlug == nil {
+				v.removedSlug = map[string]bool{}
+			}
+			v.removedSlug[served] = true
 		}
 	}
 
@@ -170,12 +221,45 @@ func (v *apiKeyVocab) PropertySlug(key string) string {
 		return key
 	}
 	if served, ok := v.propSlugByKey[key]; ok {
+		if served != key && v.removedSlug[served] {
+			v.rememberCorpse(served, key)
+		}
+		return served
+	}
+	// a space-minted property in the post-delete tombstone window: its slug
+	// sits in the tombstone's snapshot at the derived id (keys.go
+	// tombstonedPropertySlug), and is served under the same guards as a
+	// removed property's — never over a live entry's claim. Probed once per
+	// key per vocabulary, and only for a key shaped like a stored bson id.
+	if isBsonKey(key) {
+		served := key
+		if slug := v.svc.tombstonedPropertySlug(v.spaceId, key); slug != "" {
+			if _, taken := v.propKeyBySlug[slug]; !taken && !v.propKeyTaken[slug] {
+				served = slug
+				v.rememberCorpse(slug, key)
+			}
+		}
+		v.propSlugByKey[key] = served
 		return served
 	}
 	// not live in this space: a bundled key spells as its derived slug
 	// under the same three round-trip guards the listings apply; anything
 	// else is its own address.
 	return servedKey(key, "", v.propKeyTaken, v.propSlugHolders)
+}
+
+// isBsonKey reports whether key is shaped like a space-minted stored relation
+// key: 24 lowercase hex characters.
+func isBsonKey(key string) bool {
+	if len(key) != 24 {
+		return false
+	}
+	for _, r := range key {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'f') {
+			return false
+		}
+	}
+	return true
 }
 
 func (v *apiKeyVocab) TypeSlug(key string) string {
@@ -211,6 +295,9 @@ func (v *apiKeyVocab) PropertyKey(slug string) (string, bool) {
 		// space entry squats on was demoted at emit and must not resolve
 		// to the bundled key on accept either.
 		return string(key), true
+	}
+	if key, ok := v.corpseKeyBySlug[slug]; ok {
+		return key, true // emitted by this vocabulary, so understood back
 	}
 	return v.inner.PropertyKey(slug)
 }

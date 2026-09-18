@@ -1,318 +1,526 @@
 # Typed hints, round two — findings and work order
 
-Status: **measured, not fixed.** Everything below is reproduced against a live
-build; each finding carries the command that shows it. Companion to
+Status: **measured, not fixed.** Two benchmark rounds (sonnet, haiku) against a
+live build, then independent reproduction of every finding below. Each carries
+the command that shows it. Companion to
 [`APIV2_TYPED_HINTS.md`](APIV2_TYPED_HINTS.md), which is the design brief this
-round tested.
+tested.
 
-Build under test: `dffcdb5e8` (heart) + `8592284` (anytype-mcp, packed local
-tarball). Server on `127.0.0.1:31009`, `Anytype-Version: 2025-11-08`.
+Build under test: `dffcdb5e8` (heart) + `8592284` (anytype-mcp local tarball),
+server on `127.0.0.1:31009`, `Anytype-Version: 2025-11-08`.
 
-## What was measured
+## Verdict first
 
-Three sonnet actors, ten plant tasks, one fresh space each, no self-assessment;
-an opus agent then judged from the raw jsonl tool calls. Prompt byte-identical
-to the pre-typed-hints baseline apart from space names, so the two rounds
-compare directly.
+**The typed hints work, and they fixed the exact failure they were built for.**
+The haiku round is the evidence; the sonnet round shows nothing because sonnet
+had no headroom.
 
-| | this round | baseline `d34ca3ed6` |
+| | haiku before (`d34ca3ed6`) | haiku now (`dffcdb5e8`) |
 |---|---|---|
-| tasks achieved | **30/30** | 27/30 |
-| anytype tool calls | **162** | 175 |
-| error responses | **11** | 2 |
-| responses carrying `see_also` | **1** | n/a |
-| typed-hint follow rate | **0%** (0 followed / 1 ignored) | n/a |
+| calls spent guessing an op's shape | **80** | **11** |
+| all request-shape guessing | 80 / 212 (38%) | **25 / 130 (19%)** |
+| `get_op_schema` calls | **0** | **9** |
+| error responses | 119 (56%) | **29 (22%)** |
+| typed-hint follow rate | n/a (0 of 15 for the URL form) | **5 / 8 = 62.5%** |
+| tasks achieved | 12 / 30 | 11 / 30 ¹ |
 
-**Do not read 30/30 as a win for typed hints.** Three sonnet actors improvising
-differ by a few calls and a few 400s on temperature alone. The error delta is
-fully explained by causes the feature does not touch (see F6). The honest
-finding is the last row: the mechanism fired **once in 162 calls**, and that
-once was an actor's own synthetic probe (`totally_made_up_test_prop_xyz`).
+¹ One actor (Delta) made **zero** API calls — it loaded tools via `ToolSearch`
+nine times, then wrongly concluded they were "not directly callable" and gave
+up. That is a harness/model failure with no API content. Excluding it, the two
+runs that reached the API averaged **5.5/10 against the old round's 4.0/10**.
 
-**The mechanism is sound where it fires. It is wired to almost nothing.** That
-is the whole result, and F1 is the whole fix.
+The mechanism's own numbers are unambiguous. No error hint anywhere reads
+`GET /v2/…` any more. Epsilon's error rate across its first `get_op_schema`
+call went **54.5% → 17.4%** — the Epsilon 70%→18% result from last round
+reproduced, this time *caused* rather than lucky.
+
+**But the tasks still do not come out right, for reasons that are mostly not
+about hints.** 11/30 is the honest headline. The change made the API cheaper to
+fight; it did not make it correct. F1–F3 below are why.
+
+Sonnet, for completeness: **30/30, 162 calls, 11 errors** (was 27/30, 175, 2),
+with `see_also` firing **once in 162 calls**. Do not read 30/30 as a win —
+three sonnet actors differ by that much on temperature alone.
 
 ---
 
-## F1 — `see_also` is absent from the errors that actually happen
+# Priority 0 — correctness and data integrity
 
-**Priority 0.** The design brief assumed the reference would ride along on
-repair-shaped errors. It rides on one branch. Every error below is one a real
-actor hit, none carried `see_also`, and each has an obvious referent.
+These are not hint problems. They surfaced because the benchmark drove the API
+harder than the tests do, and they outrank the hint work.
 
-| error | occurrences | has `see_also`? | the referent it should carry |
-|---|---|---|---|
-| `formatVersion is required` | 6 | no | `get_schema {"kind":"object"}` |
-| `did you mean is_favorite?` | 1 | **no** | `list_properties` — *same error class as the one that does* |
-| `unknown key "properties" — the PATCH body carries only ops` | 1 | no | `get_op_schema {"op":"set_properties"}` |
-| filter `parse error at offset 19` | 1 | no | `get_schema {"kind":"filters"}` |
-| option colour not in enum | 1 | no | `get_schema {"kind":"type"}` |
+## F1 — `delete_property` leaks internal ids onto the public surface
 
-The second row is the sharpest: `unknown property key` **does** attach
-`see_also` when it falls through to the list-all branch, and **drops it** when
-it finds a near-match and says "did you mean". The did-you-mean branch is the
-one a confused caller hits more often.
+**Severity: data integrity. Reproduced end to end.**
 
-Work: enumerate every `Issue` construction site that has a natural referent and
-attach one. The existing `Ref*` constructors already cover most of them.
+Deleting a property that is live on objects and referenced by a type's dataview
+returns a bare `200` with no warning, and leaves the raw internal id in place of
+the slug everywhere it was referenced:
 
-```bash
-# the did-you-mean branch, with no see_also
-curl -s -X PATCH -H "$AUTH" -H 'Content-Type: application/json' \
-  -d '{"ops":[{"op":"set_properties","set":{"Favorite":true}}]}' \
-  "$API/v2/spaces/$SPACE/objects/$OID?dry_run=true"
+```
+before  defs: [alpha, beta, gamma, delta]     object: {"gamma": "VALUABLE"}
+DELETE /v2/spaces/{sp}/properties/gamma  ->  200  {"id":"bafyrei…","key":"gamma"}
+after   defs: [alpha, beta, 6aad3ad361fab22f055a8648, delta]
+        cols: [..., alpha, beta, 6aad3ad361fab22f055a8648]
+        object: {"6aad3ad361fab22f055a8648": "VALUABLE", …}
 ```
 
+The value survives but becomes addressable **only by an internal hex key**,
+which this API refuses as a property key elsewhere. In the benchmark this is
+how an actor destroyed five objects' data: it saw the hex key on read-back,
+did not recognise it, and unset it on every object.
+
+Two distinct defects:
+
+1. **No warning on a destructive delete.** The server knows the property is
+   referenced — it rewrites those references. It should say so, or refuse
+   without a force flag.
+2. **Internal ids reaching the apiv2 layer at all.** The three-layer identity
+   contract says internal keys belong to the backup layer. This is a leak
+   across it, into `property_definitions`, into view `columns`, and into an
+   object's served properties.
+
+```bash
+# full repro
+curl -sX POST "$API/v2/spaces/$SP/objects" -d '{"type":"probe","name":"h","properties":{"gamma":"VALUABLE"}}'
+curl -sX DELETE "$API/v2/spaces/$SP/properties/gamma"      # 200, silent
+curl -s "$API/v2/spaces/$SP/types/probe"                   # hex id in defs and columns
+```
+
+## F2 — `property_definitions` replacement does not update the board; `add_property` does
+
+**Severity: silent inconsistency. A/B verified in one space.**
+
+Both paths return `200`. Only one keeps the type's own dataview consistent:
+
+```
+add Gamma via  {"ops":[{"op":"add_property",...}]}        -> defs +gamma, columns +gamma  ✓
+add Delta via  {"property_definitions":[... , Delta]}     -> defs +delta, columns UNCHANGED ✗
+
+final defs:    [alpha, beta, gamma, delta]
+final columns: [name, created_date, ..., alpha, beta, gamma]
+```
+
+This resolves an apparent contradiction between the two rounds: sonnet reported
+that a new property *did* appear as a board column without reopening the type;
+haiku reported that it did **not**. Both were right. Sonnet used the op channel;
+haiku resent the whole list.
+
+So the op channel is not merely safer — it is the **only** path that maintains
+the invariant. Meanwhile (F3) it is undiscoverable, so the actors that most
+need it never find it.
+
+Fix: make full replacement reconcile the dataview too, or refuse it. A write
+that half-updates a type and returns 200 is the worst option.
+
+## F3 — `add_property` / `remove_property` / `move_property` are undiscoverable
+
+**Zero uses across 130 haiku calls.** Both actors mutated type fields by
+resending the entire `property_definitions` list — the operation the schema
+itself warns is a full replacement, and the one that breaks F2's invariant.
+Their lists survived by luck; one slip and four fields vanish with a 200.
+
+(Sonnet found the ops — 4 uses, zero `property_definitions` re-sends. The gap
+is exactly the model class the hints were built for.)
+
+The only place `add_property` is named to a caller is inside `schemas/type`'s
+`property_definitions` description — **next to two raw HTTP routes** (F5). A
+haiku actor read that string and then performed the rename by hand, destroying
+a live property (F1).
+
+## F4 — `dry_run` is implemented everywhere, declared on 18 of 26 mutators
+
+**Severity: a rehearsal that commits. Verified both directions.**
+
+C9 honours `?dry_run=true` globally — verified: `delete_type?dry_run=true`
+returns `"dry_run":true` and the type survives. The OpenAPI omits the parameter
+on three operations that implement it:
+
+- `update_property` (PATCH)
+- `delete_property` (DELETE) — the F1 endpoint
+- `delete_type` (DELETE)
+
+The generated wrapper mirrors the declaration, so it **drops the argument before
+sending** and the write commits. The response is shape-identical to a real
+write — no `"dry_run":true` echo — so the caller cannot tell.
+
+This is not hypothetical: a sonnet actor's task-10 rename committed this way and
+got the right answer only by luck.
+
+Fix: add the annotation to those three, `make openapi`, re-run prose tests. Then
+the general rule — **never silently drop an argument a caller sent.** An
+undeclared argument should 400.
+
 ---
 
-## F2 — twelve raw HTTP routes still leak, through the schema-prose channel
+# Priority 0 — the hint mechanism's own ceiling
 
-**Priority 0**, and the guard test's blind spot: it covers `Hint:` strings but
-not schema `description:` strings, which carry the same repair advice to the
-same callers. Full inventory from the live server (7 schema kinds + 17 op
-schemas probed):
+## F5 — `see_also` names a tool the caller has not loaded
 
-| source | description field | the route |
+**This is the round's most important hint finding, and it is new.**
+
+The tool surface is loaded on demand through `ToolSearch`. A `see_also` that
+names a tool the caller has not yet loaded requires a step the caller cannot
+take from where it is standing — the same *shape* as the URL problem, milder
+only because the tool is fetchable at all.
+
+Cross-referencing each hint against what that actor had loaded:
+
+| hint named a tool… | followed | rate |
 |---|---|---|
-| `schemas/type` | `property_definitions` | `PATCH /v2/spaces/{space_id}/types/{type}`, `PATCH /v2/spaces/{space_id}/properties/{key}` |
-| `ops/add_property` | `property` | `GET /v2/spaces/{space_id}/properties`, `PATCH …/properties/{key}` |
-| `ops/remove_property` | `property` | `GET /v2/spaces/{space_id}/properties` |
-| `ops/move_property` | `property` | `GET /v2/spaces/{space_id}/properties` |
+| already loaded | 3 of 3 | **100%** |
+| not loaded | 2 of 5 | **40%** |
+
+**All three ignored hints named a tool the actor did not have**
+(`API-get-schema` ×2, `API-list-properties` ×1). Both recoveries cost an extra
+`ToolSearch` round trip.
+
+So the 62.5% follow rate is not the mechanism's ceiling — it is the ceiling
+imposed by tool residency. Two candidate fixes, pick deliberately:
+
+- keep the small discovery set (`get_schema`, `get_op_schema`,
+  `list_properties`) always resident in the wrapper; or
+- have `see_also` carry a `load_with` field naming how to obtain the tool.
+
+The first is simpler and removes the failure entirely. This belongs in the
+[embedded-wrapper](APIV2_WRAPPER_IN_HEART.md) decision — it is a concrete,
+measured argument for a curated resident tier.
+
+## F6 — `see_also` is absent from most errors that actually happen
+
+The design assumed the reference would ride on repair-shaped errors. It rides on
+some. Every error below is one a real actor hit, and none carried `see_also`:
+
+| error | seen | referent it should carry |
+|---|---|---|
+| `formatVersion is required` | 6× sonnet, 4 calls haiku | `get_schema {"kind":"object"}` |
+| `did you mean is_favorite?` | 1× | `list_properties` — **same class as one that does** |
+| `unknown key "properties" — the PATCH body carries only ops` | 3× haiku, 1× sonnet | `get_op_schema {"op":"set_properties"}` |
+| `"key" is not allowed` / `"type" is not allowed` on create-type | 1× | `get_schema {"kind":"type"}` |
+| filter `parse error at offset 19` | 1× | `get_schema {"kind":"filters"}` |
+| `views` rejected in create-query | 3× | `get_op_schema {"op":"insert_view"}` |
+
+The second row is the sharpest: `unknown property key` **attaches** `see_also`
+on the list-all branch and **drops it** on the did-you-mean branch — the branch
+a confused caller hits more often.
+
+What already works, and is worth preserving as the model: the
+`create_missing_options` error emits **two** reference kinds, including the
+param kind the brief doubted —
+`[{"op":"list_property_options",…},{"query":{"create_missing_options":"true"}}]`.
+
+## F7 — twelve raw HTTP routes still served, through the schema-prose channel
+
+The guard test covers `Hint:` strings and holds there. It does not cover schema
+`description:` strings, which carry the same repair advice to the same callers —
+and which is where a route-blind caller goes to recover. Live inventory (7
+schema kinds + 17 op schemas):
+
+| source | field | route |
+|---|---|---|
+| `schemas/type` | `property_definitions` | `PATCH …/types/{type}`, `PATCH …/properties/{key}` |
+| `ops/add_property` | `property` | `GET …/properties`, `PATCH …/properties/{key}` |
+| `ops/remove_property`, `ops/move_property` | `property` | `GET …/properties` |
 | `ops/insert_view`, `ops/update_view` | `set.filter`, `set.filters` | `GET /v2/schemas/filters` (×4) |
 | `ops/insert_blocks`, `update_block`, `replace_subtree`, `set_cell` | `$defs/block` | `GET /v2/schemas/object` (×4) |
 
-The first row matters most: it is the single sentence tasks 3 and 10 depend on,
-and it names two routes an MCP caller cannot issue.
+Row one is the costliest string in the API: it is the only documentation of the
+rename and add-field paths, it names two routes an MCP caller cannot issue, and
+a haiku actor followed it by hand into the F1 data loss.
 
-These need the same treatment as hints — a structured referent the wrapper can
-re-spell — or, where the advice is short, inlining. Extend the guard test to
-the description channel in the same change, or it regrows.
+Extend the guard test to the description channel in the same change, or it
+regrows.
+
+---
+
+# Priority 1 — messages that cost calls or corrupt state
+
+## F8 — the op-schema `example` contradicts its own `description`
+
+`get_op_schema {"op":"set_properties"}` returns:
+
+```
+description: "one entry of the ops array. The request body wraps entries: {"ops":[ this, ... ]} …"
+example:     {"op":"set_properties","set":{"status":["Done"]},…}      ← unwrapped
+```
+
+An actor read this schema **before** erroring, copied the example to the body
+root, and sent the same wrong envelope five times. **The API punishes the caller
+who reads ahead** — and that is precisely the caller the hints are trying to
+create. This is the direct cause of one actor's error rate *rising* after its
+first schema fetch.
+
+Fix: make `example` the full body, or add `example_body`.
+
+Secondary: the response is 4,249 bytes, most of it a recursive `anyValue`
+`$defs` blob ahead of the one-line description. For a small model that is the
+whole signal budget spent on a union it never needs.
+
+## F8b — every op schema's top-level `description` is byte-identical
+
+All 17 op schemas return the **same** 181-character string (sha1 `9087ecd503a1`):
+
+> `"one entry of the ops array. The request body wraps entries: {"ops":[ this, ... ]}, 1 to 512 of them, applied in order as one edit: if any one op is refused, none of them is applied."`
+
+`get_op_schema {"op":"set_cell"}` says nothing about `set_cell`. Only the
+`example` and the nested property descriptions distinguish one op from another —
+and the example is the one that misleads (F8).
+
+**This matters more than it looks.** The typed hints' headline success is that
+callers now *reach* `get_op_schema` (0 → 9 uses). We fixed the routing; the
+destination is thin. Every op should describe itself in its own first sentence,
+with the envelope boilerplate stated once somewhere else.
 
 ```bash
-# reproduce the inventory
-for k in type object filters; do curl -s -H "$AUTH" "$API/v2/schemas/$k"; done \
-  | grep -o '"description":"[^"]*/v2/[^"]*"'
+for op in set_properties insert_blocks move_view add_items set_cell; do
+  curl -s "$API/v2/schemas/ops/$op" | jq -r '.schema.description' | shasum | cut -c1-12
+done   # five identical hashes
 ```
 
----
+## F8c — served examples use the benchmark's own vocabulary
 
-## F3 — `dry_run` is implemented everywhere and declared on 18 of 26 mutators
+`add_property` and `move_property` examples name `harvest_season`;
+`remove_property` names `sun_needs`. Those are plant-benchmark terms.
 
-**Priority 0, and the only data-loss risk in this document.**
+Two consequences, one minor and one not:
 
-The C9 middleware honours `?dry_run=true` globally — **verified**. The OpenAPI
-declares it on 18 mutating operations and omits it on three that implement it:
+- The plant benchmark partly measures its own leaked examples, so its task-3
+  result is inflated. (Known; recorded here with proof.)
+- More usefully: examples drawn from a real domain are *better* than abstract
+  ones, so the fix is not to genericise them — it is to stop reusing the same
+  domain in the eval. The replacement scenarios in
+  `docs/evals/anytype-mcp-v2/scenarios-v2.md` avoid all served vocabulary.
 
-- `update_property` (PATCH)
-- `delete_property` (DELETE)
-- `delete_type` (DELETE)
+## F9 — `formatVersion` takes three round trips to learn one literal
 
-The generated MCP wrapper mirrors the declaration, so it **drops the argument
-before the request is sent** and the write commits for real. The response is
-shape-identical to a genuine write — no `"dry_run":true` echo — so a caller
-cannot tell a rehearsal from a commit.
-
-This is not hypothetical: it is how Garden Alpha's task-10 rename landed. The
-actor sent `dry_run:"true"`, the wrapper dropped it, the rename committed. It
-got the right end state only because the rename was what it wanted anyway.
-
-For `delete_type` this is a rehearsal that deletes.
-
-Fix: add the `dry_run` query annotation to those three handlers, `make openapi`,
-re-run the prose tests. Then consider the general rule — **never silently drop
-an argument a caller sent.** An undeclared argument should 400, not vanish.
-
-```bash
-# server honours it (type survives, response echoes dry_run:true)
-curl -s -X DELETE -H "$AUTH" "$API/v2/spaces/$SPACE/types/$KEY?dry_run=true"
-curl -s -o /dev/null -w '%{http_code}\n' -H "$AUTH" "$API/v2/spaces/$SPACE/types/$KEY"   # 200
-# but the tool schema has no dry_run parameter
+```
+"formatVersion is required"
+"formatVersion must be a string in major.minor form"     ← still doesn't say which
+"document formatVersion 3.0 is newer than the supported formatVersion 2.0"
 ```
 
----
+6 of sonnet's 11 errors; 4 haiku calls. **The correct text already exists one
+branch over**, on the same endpoint:
 
-## F4 — the one `see_also` that fired was not usable verbatim
+> `"to send a full AnyBlock document, include \"formatVersion\":\"2.0\""`
 
-**Priority 1.** The single reference emitted in 162 calls carried two entries:
+Copy it onto the required-field branch. `formatVersion` has exactly one legal
+value; an error that withholds it is a riddle.
 
-```json
-"see_also":[
- {"op":"list_properties","params":{"space_id":"h7ii3i"},"tool":"API-list-properties","args":{"space_id":"h7ii3i"}},
- {"op":"create_property","params":{"space_id":"h7ii3i"},"tool":"API-create-property","args":{"space_id":"h7ii3i"}}]
+## F10 — the create-type error never says `format`, and its prose self-cancels
+
+```
+property "key" is not allowed — the member that names a property is spelled "property" in every
+structure: a dataview's properties[] entry and the property block spelled it "key" earlier, twelve
+lines from view columns, sorts and filters that spelled "property". Rename the member and keep its value
+property "type" is not allowed
 ```
 
-`API-create-property` requires `space_id` **and** `body`. Passed through as
-supplied it is rejected for a missing required argument.
+"spelled `property` in every structure … spelled it `key` earlier" cancels
+itself, and "twelve lines from view columns" is not parseable. Critically
+`"type" is not allowed` **never says the member is `format`** — so the actor
+dropped the member entirely and **every field silently became `text`** where it
+wanted `select`. The message cost that run its typed fields on task 1, and
+everything downstream.
 
-If the contract is "these args are ready to send", it must hold — a partial
-payload is worse than none, because it invites a call that fails. Either fill
-required arguments or mark the reference as needing completion. Decide which,
-and state it in the `Ref` schema description, which currently promises neither.
+## F11 — errors report hex ids the caller never sent
 
----
+```
+"type \"6aad367a61fab22f055a85a3\" has no property \"6aad36b761fab22f055a85bd\" —
+ known property keys of the type: condition, location, sun, watering_frequency"
+```
 
-## F5 — served prose names affordances the caller does not have
+The caller sent `"type":"plant"` and `"property":"harvest_season"`. It is told
+about two strings it has never seen, **and the `see_also` args echo the hex**,
+so following the reference propagates the unusable spelling. The useful half —
+the known-key list — is buried behind them. Same identity leak as F1.
 
-**Priority 1.** Same disease as F2, different channel. `list_properties`
-declares exactly one parameter, `space_id`. Its own success message says:
+## F12 — `see_also.args` are not always sufficient for the named tool
+
+Sonnet's single `see_also` named `API-create-property` with
+`{"space_id":"h7ii3i"}`; that tool also requires `body`. Passed verbatim it is
+rejected. Four of haiku's five followed hints *were* verbatim-usable, so the
+contract mostly holds — but it must hold always, or the reference invites a
+failing call. Decide whether `args` are send-ready and state it in the `Ref`
+schema description, which currently promises neither.
+
+## F13 — served prose names affordances the caller does not have
+
+`list_properties` declares exactly one parameter, `space_id`, yet its own
+success message says:
 
 > `"43 matches — showing 25 from offset 0; request the next offset"`
 
-There is no declared `offset`. The server honours one anyway (verified:
-`?offset=25` pages correctly), so the wrapper cannot expose it and the caller
-must guess an undeclared argument — which is exactly what the sonnet actor did.
+There is no declared `offset`. The server honours one anyway (verified), so the
+wrapper cannot expose it and a sonnet actor guessed it. The F12 hint compounds
+this by saying *"list all with API-list-properties"* — it cannot list all.
 
-And the `see_also` hint from F4 says *"list all with API-list-properties"*. It
-cannot list all: 25 of 43, no declared paging.
+Fix: declare `limit`/`offset` here and audit the other list endpoints.
 
-Fix: declare `limit`/`offset` on `list_properties` (and audit the other list
-endpoints for the same gap), or stop telling callers to page.
+## F14 — every write tool declares `body` with no schema and no description
 
----
+`{"type":"object","additionalProperties":true}`, on every mutating tool.
+Consequence: **34 of 162 sonnet calls (21%) were schema fetches** before any
+work happened, plus the F9 failures.
 
-## F6 — `formatVersion is required` does not state the value, and the fix already exists
-
-**Priority 1**, and the cheapest win here: **6 of this round's 11 errors.**
-
-```json
-{"path":"/formatVersion","message":"formatVersion is required"}
-```
-
-No hint, no `see_also`, and it never prints the one legal value. The adjacent
-branch — same endpoint, one field different — gets it right:
-
-```json
-{"path":"/body","message":"unknown key \"body\" — the shortcut accepts type, name, properties, markdown",
- "hint":"to send a full AnyBlock document, include \"formatVersion\":\"2.0\""}
-```
-
-Copy that hint onto the required-field branch. `formatVersion` has exactly one
-legal value (`{"const":"2.0"}`); an error that withholds it is a riddle.
+Strongest input to the [embedded-wrapper](APIV2_WRAPPER_IN_HEART.md) research: a
+curated tool with flat arguments has no envelope to get wrong and no schema to
+fetch.
 
 ---
 
-## F7 — the If-Match hint misfires on unknown PATCH body keys
+# Priority 2
 
-**Priority 2.** Reproduced verbatim:
+## F15 — the If-Match hint misfires on every unknown PATCH body key
 
 ```json
 {"path":"/properties","message":"unknown key \"properties\" — the PATCH body carries only ops",
  "hint":"the If-Match precondition is a header, not a body field"}
 ```
 
-The message is correct and useful. The hint is about `If-Match`, which the
-caller never sent — a canned hint attached to the wrong branch. It is served on
-every unknown body key. Already noted as out of scope in the original brief;
-it is now observed in the wild, costing an actor a call.
+The message is right; the hint is about something the caller never sent. Fires
+identically for `type_settings`, `blocks` and `properties`. Delete it, or fire
+it only when the key is `If-Match` — and give the error F6's `see_also`.
 
-Delete it, or make it fire only when the key actually is `If-Match`.
+## F16 — writes that accept impossible state
 
----
+- **`{"default_view":"kanban"}` accepted** against a type with no kanban view
+  and no group-by. 200, no warning, no view created.
+- **`create_query` with no filter** accepted under predicate names ("Plants
+  needing frequent watering") — three such objects created, each matching
+  everything. The same server elsewhere volunteers *"a node with both is read as
+  an empty group, which matches everything"*, so the detection exists.
+- **`set_properties` writes a property the object's type does not declare**,
+  returns `properties_changed:1`, and reads back cleanly — while remaining
+  invisible to `fields`, to filters, and to `get_type`.
 
-## F8 — warnings carry no `see_also`, and what they do carry is noise
+## F17 — `views` in the query schema is `anyValue` with no structure
 
-**Priority 2.** 6 responses carried `warnings`, 20 entries in total, `see_also`
-present in **zero**. The brief already flagged that `Hint` is rendered only on
-the error path (`client.go:208`); this confirms the encoding gap too.
+Typed `{"$ref":"#/$defs/anyValue"}`, described only as "full view objects". An
+actor guessed `groupBy`, then `groupProperty`, then abandoned creating the board
+at create time. A `see_also` to `get_op_schema {"op":"insert_view"}` on the
+rejection saves three calls.
 
-All 20 entries were the same string, served on every `get-type` / `get-object`:
+## F18 — warnings are noise, and carry no `see_also`
 
-> `"lastOpenedDate" cannot be a legend value (import refuses the internal keys export strips), so its spelling "last_opened_date" is not written; the stored key is its own address`
+22 instances across the haiku round, 20 across sonnet, `see_also` on **zero**.
+Every `get_type` carries variants of:
 
-A user reading their own type gets three paragraphs about export legends. This
-is backup-layer vocabulary leaking into the apiv2 layer — the three-layer
-identity split says it should not be here at all. Worth its own look.
+> `"legend value: \"backlinks\" is internal: export strips it, so import does not accept it — so no legend entry is written for \"backlinks\"; the term is spelled verbatim"`
 
----
+The caller never mentioned backlinks and cannot act on it. This is
+export-pipeline vocabulary leaking into a read API — same layer violation as F1
+and F11. The brief already noted hints on warnings are never *rendered* on the
+curated wrapper; they are also not worth rendering in their current form.
 
-## F9 — writes echo nothing a caller can check
+## F19 — writes echo nothing a caller can check
 
-**Priority 2.** `patch_object` returns `diff_stats`, and it is the single best
-affordance in this API: task 6 ("change ONLY this sentence") was clean in all
-three runs precisely because the server proved the constraint held —
-`{"blocks_added":0,"blocks_removed":0,"blocks_changed":1}`.
+`patch_object` returns `diff_stats`, and it is the best affordance in this API:
+"change ONLY this sentence" was clean in **all five** runs across both rounds
+because the server proved the constraint (`blocks_changed:1, added:0,
+removed:0`). Nothing else does this. `update_property` → `{"id","key"}`.
+`create_collection` → `{"id","type","etag"}`, no item count — and no run in
+either round ever verified its collection's membership.
 
-Nothing else does this. `update_property` → `{"id","key"}`: no name, no etag.
-`create_collection` → `{"id","type","etag"}`: no item count, and no run in the
-round ever verified its collection actually contained the two objects.
+## F20 — `is_favorite` is a dead flag that accepts writes
 
-Give mutating endpoints an echo of what changed. It converts "I think it
-worked" into "the server says it worked" and removes a read-back call.
+No favourite/pin mechanism exists; `set_properties` accepts `is_favorite` and
+`get_object` echoes it, but it appears in no schema and no `list_properties`.
+Writing it and reading back `true` proves persistence, not function.
 
----
+Improvement worth recording: **no haiku actor wrote it this round** (0
+occurrences). One attempted a real substitute and was refused with
 
-## F10 — `is_favorite` is undiscoverable, and cost 25 calls
+> `403 … "this refusal is permanent for this object — do not retry the same request"`
 
-**Priority 2 (product), but it dominated one task.** "Put it somewhere I'll see
-every morning" cost Alpha 10 calls, Beta 8, Gamma 7. `is_favorite` appears in
-no schema, no tool description and no example; `set_properties` accepts it and
-`get-object` echoes it, but it does not appear in `list_properties`. Two of
-three actors found it only by 400-ing into the did-you-mean.
+which stopped a retry loop dead. **That message is the model to copy** for every
+permanent refusal.
 
-Note for scoring any future round: **writing it and reading back `true` proves
-persistence, not function.** It is a dead flag — there is no favourite/pin
-mechanism behind it. Either implement it, surface it, or reject it on write.
-Silently accepting a write that does nothing is the worst of the three.
-
----
-
-## F11 — every write tool declares `body` with no schema and no description
-
-**Priority 1 for call cost.** `{"type":"object","additionalProperties":true}`,
-no description, on every mutating tool. Consequence: **34 of 162 calls (21%)
-were schema fetches** before any work happened, plus the six F6 failures.
-
-This is the finding with the most leverage on the embedded-wrapper decision in
-[`APIV2_WRAPPER_IN_HEART.md`](APIV2_WRAPPER_IN_HEART.md): a curated tool with
-flat arguments has no envelope to get wrong and no schema to fetch. Feed this
-number into that research.
+Either implement the flag, surface it, or reject it on write. Silently accepting
+a write that does nothing is the worst of the three.
 
 ---
+
+# Status
+
+Worked on branch `go-7383-typed-hints-followup` in groups, each group
+reviewed by three fresh reviewers before the next.
+
+**Group A (F1, F2, F3 hint, F4, F13) — done.**
+
+- F1(a): `delete_property` returns warnings naming how many objects hold a
+  value and which types list the property, on real and dry runs.
+- F1(b): the corpse policy is REVERSED. A removed property's values, type
+  list entries and view columns now spell its api slug, on every read
+  surface and in every store shape — including the post-delete tombstone
+  window, because `spaceindex.SnapshotOnDelete` now keeps `uniqueKey`,
+  `relationKey` and `apiObjectKey` inside the tombstone's unindexed
+  snapshot (a derived object is uninstalled, never removed from the tree;
+  a cold recovery carried those keys anyway, so the local index carrying
+  them too closes an asymmetry, not a contract). The accept side inverts
+  only the corpse slugs a vocabulary itself emitted, so a document served
+  with the slug re-imports onto the stored key (in-document edits and
+  unsets work by the slug), a write to it off-document is refused as
+  REMOVED, and a type definition or a create naming the slug mints anew.
+  The stored bson key is no longer an address on any channel. Recorded in
+  the header of `corpse_addressability_test.go`.
+- F2: a flat `property_definitions` replacement now reconciles the type's
+  dataview like the op channel: columns pruned for detached properties
+  (with the same "columns dropped" warning), added for newly listed ones.
+- F3: the replacement warning names the ops with a `see_also`.
+- F4/F13: `dry_run` declared on `update_property`, `delete_property`,
+  `delete_type`; `offset`/`limit` on the four list endpoints.
+
+# Ranked work order
+
+1. **F1** — warn or refuse on destructive `delete_property`; stop leaking
+   internal ids into `property_definitions`, view columns and object properties.
+2. **F2** — make `property_definitions` replacement reconcile the dataview, or
+   refuse it.
+3. **F4** — declare `dry_run` on the three mutators; adopt "never silently drop
+   an argument".
+4. **F5** — make the discovery tools resident, or add `load_with`. This is the
+   difference between a 62.5% and a ~100% follow rate.
+5. **F6** — attach `see_also` to the six branches that actually fire, starting
+   with did-you-mean.
+6. **F7** — structured referents for the 12 schema-prose routes; extend the
+   guard test to the description channel.
+7. **F8 + F8b** — fix the op-schema example, and give each op a description of
+   its own. The hints now successfully route callers here; the payload they
+   arrive at penalises reading ahead (F8) and does not say what the op does.
+8. **F9** — copy the existing `formatVersion` hint one branch over.
+9. **F10** — say `format`; rewrite the self-cancelling sentence.
+10. **F3, F11–F20** — as scoped above.
 
 ## The guard test
 
-It asserts nothing route-shaped survives onto the wrapper surface, and for
-`Hint` strings it holds. It does not cover:
+Holds for `Hint` strings. Does not cover:
 
-1. schema `description` fields (F2, 12 live leaks)
-2. success-path `message` fields (F5)
-3. whether a `see_also`'s `args` are actually sufficient for the named tool (F4)
+1. schema `description` fields (F7 — 12 live leaks)
+2. success-path `message` fields (F13)
+3. whether a `see_also`'s `args` suffice for the named tool (F12)
+4. whether the named tool is reachable by the caller (F5)
 
-Extend it to all three in the same change, otherwise each regrows independently.
-
----
-
-## Ranked work order
-
-1. **F3** — declare `dry_run` on the three mutators; adopt "never silently drop
-   an argument". Data-loss risk, smallest diff.
-2. **F1** — attach `see_also` to the five error branches that actually fire,
-   starting with did-you-mean.
-3. **F2** — structured referents for the 12 schema-prose routes; extend the
-   guard test to the description channel.
-4. **F6** — copy the existing `formatVersion` hint one branch over. 6 of 11 errors.
-5. **F5** — declare `limit`/`offset` on `list_properties`; stop promising paging
-   that is not exposed.
-6. **F4** — decide and document whether `see_also.args` are send-ready.
-7. **F7, F8, F9, F10, F11** — as scoped above.
+Extend to all four together, or each regrows independently.
 
 ## What held up
 
-Worth knowing, so nobody re-litigates it:
-
-- **The type op channel works.** `add_property` used 4 times across 3 runs,
-  **zero** `property_definitions` re-sends, all five fields intact on read-back.
-  That was the wipe it was built to prevent.
-- **Property propagation works, on the harder case.** The task-3 property
-  appeared as a column in the `default` view that was minted in task 1, *before*
-  the property existed — no reopen, no view edit.
-- **`diff_stats` works** (F9), and is the model for the rest.
+- **The op-shape failure is fixed.** 80 guessing calls → 11; `get_op_schema`
+  0 → 9 uses; one actor's error rate 54.5% → 17.4% across its first call.
+- **No error hint contains a URL.** The re-spell works: `list keys with
+  API-list-properties {"space_id":"…"}`.
+- **The param-kind reference works** (`create_missing_options`).
+- **`diff_stats`** (F19) and the **permanent-403 wording** (F20) are the two
+  affordances worth copying everywhere.
 
 ## Caveat on the evidence
 
-Sonnet's baseline was already 27/30, so this round had almost no headroom and
-cannot show an improvement even if one exists. Typed hints were built for
-callers that cannot make the REST→tool inference; sonnet makes it silently. The
-haiku round — where the baseline was 12/30 with 119 errors and 80 of 212 calls
-spent guessing one op's shape — is the discriminating test. Its result appends
-here.
+Sonnet's baseline was 27/30, so that round could not show an improvement and
+did not; its value is the defect list, not the score. The haiku round is the
+discriminating test and n=2, because one actor never reached the API. Treat the
+per-task scores as indicative and the call/error/follow-rate counts as solid —
+those come from every tool call in the transcripts, and the parse was validated
+by reproducing the sonnet audit's totals exactly.
+
+A scratch space `ZZ Scratch Probe` (`ksfgk4`) and the six Garden spaces remain
+in the dev account from these runs; delete at will.

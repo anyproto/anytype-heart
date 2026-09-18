@@ -349,7 +349,7 @@ func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey
 	// channel rejects (review cause 3)
 	entries, entriesErr := s.liveProperties(spaceId)
 	if entriesErr == nil {
-		kc := &keyCanon{s: s, entries: entries}
+		kc := &keyCanon{s: s, spaceId: spaceId, entries: entries}
 		typeKeys = kc.servedSpellings(typeKeys)
 	}
 	// the bundled-removal set, primed lazily and only when an allowed key is

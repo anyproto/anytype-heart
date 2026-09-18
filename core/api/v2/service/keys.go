@@ -116,6 +116,72 @@ func (s *Service) liveProperties(spaceId string) ([]propertyEntry, error) {
 	return entries, nil
 }
 
+// removedProperties lists the space's REMOVED relation objects — archived
+// (v2 DELETE), uninstalled (UI delete) or deleted — with the slug each still
+// carries. Both injected defaults are suppressed so every corpse shape is
+// seen. This is the OUTPUT side's source only: a value an object still holds
+// under a removed property, a type list that still names it and a view
+// column that still shows it must keep spelling the slug the caller was
+// taught, not the stored key (which is a bson id for a space-minted
+// property, and which no route accepts back). Nothing here feeds the accept
+// side: writing to a removed property stays refused.
+func (s *Service) removedProperties(spaceId string) ([]propertyEntry, error) {
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_relation)),
+			},
+			{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
+			{RelationKey: bundle.RelationKeyIsDeleted, Condition: model.BlockContentDataviewFilter_None},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("query removed properties of space %s: %w", spaceId, err)
+	}
+	var entries []propertyEntry
+	for _, record := range records {
+		if !corpseFlagged(record.Details) {
+			continue
+		}
+		key := record.Details.GetString(bundle.RelationKeyRelationKey)
+		if key == "" {
+			continue
+		}
+		entries = append(entries, propertyEntry{
+			Id:     record.Details.GetString(bundle.RelationKeyId),
+			Key:    key,
+			Slug:   record.Details.GetString(bundle.RelationKeyApiObjectKey),
+			Name:   record.Details.GetString(bundle.RelationKeyName),
+			Format: model.RelationFormat(record.Details.GetInt64(bundle.RelationKeyRelationFormat)),
+			Hidden: record.Details.GetBool(bundle.RelationKeyIsHidden),
+		})
+	}
+	return entries, nil
+}
+
+// tombstonedPropertySlug reads the api slug a property's TOMBSTONE keeps —
+// the {id, isDeleted, deletedSnapshot} row DeleteObject leaves at the
+// derived id from the delete until the next space load, which no
+// query-built set can contain (no relationKey at the top level; the
+// identity keys sit in the unindexed snapshot, spaceindex.SnapshotOnDelete).
+// Empty when there is no such row or it keeps no slug.
+func (s *Service) tombstonedPropertySlug(spaceId, storedKey string) string {
+	details, _, err := s.derivedRelationRow(context.Background(), spaceId, storedKey)
+	if err != nil || details == nil || !details.GetBool(bundle.RelationKeyIsDeleted) {
+		return ""
+	}
+	if _, live := details.TryString(bundle.RelationKeyRelationKey); live {
+		return "" // a full-detail row belongs to the query-built sets
+	}
+	snapshot, ok := details.TryMapValue(bundle.RelationKeyDeletedSnapshot)
+	if !ok {
+		return ""
+	}
+	return snapshot.GetString(bundle.RelationKeyApiObjectKey.String())
+}
+
 // liveTypes lists the space's live type objects (error contract as above).
 func (s *Service) liveTypes(spaceId string) ([]typeEntry, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{Filters: liveTypeFilters()})

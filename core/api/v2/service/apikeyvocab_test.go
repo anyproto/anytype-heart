@@ -144,6 +144,56 @@ func TestApiKeyVocab(t *testing.T) {
 			"the contested spelling never lands on the squatter (v2's request channels refuse it loudly — resolvePropertyInput's shadow check)")
 	})
 
+	t.Run("a removed property keeps its slug on emit, and only on emit", func(t *testing.T) {
+		// round-two eval F1: after DELETE the values objects still held, the
+		// type list and the view columns spelled the bson key — which no
+		// route accepts back, and which a caller took for garbage
+		fx, _ := vocabFixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("rel-gone"),
+			bundle.RelationKeyRelationKey:  domain.String("6aad3ad361fab22f055a8648"),
+			bundle.RelationKeyApiObjectKey: domain.String("gamma"),
+			bundle.RelationKeyName:         domain.String("Gamma"),
+			bundle.RelationKeyIsArchived:   domain.Bool(true),
+		})
+		v := fx.apiKeys(testSpaceId, storeresolver.New(fx.store.SpaceIndex(testSpaceId)))
+
+		assert.Equal(t, "gamma", v.PropertySlug("6aad3ad361fab22f055a8648"),
+			"a value still held under the removed property spells the slug the caller was taught")
+		key, _ := v.PropertyKey("gamma")
+		assert.Equal(t, "6aad3ad361fab22f055a8648", key,
+			"what this vocabulary emitted, it understands back — a document it rendered re-imports onto the stored key")
+
+		fresh := fx.apiKeys(testSpaceId, storeresolver.New(fx.store.SpaceIndex(testSpaceId)))
+		key, _ = fresh.PropertyKey("gamma")
+		assert.NotEqual(t, "6aad3ad361fab22f055a8648", key,
+			"a vocabulary that never served the slug does not resolve it: a definition or a create naming it mints anew (the namespace vacated)")
+	})
+
+	t.Run("a removed property's slug a live property has since claimed stays with the live one", func(t *testing.T) {
+		fx, _ := vocabFixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("rel-gone"),
+			bundle.RelationKeyRelationKey:  domain.String("6aad3ad361fab22f055a8648"),
+			bundle.RelationKeyApiObjectKey: domain.String("gamma"),
+			bundle.RelationKeyName:         domain.String("Gamma"),
+			bundle.RelationKeyIsArchived:   domain.Bool(true),
+		})
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("rel-new-gamma"),
+			bundle.RelationKeyRelationKey:  domain.String("6aad3ad361fab22f055a8700"),
+			bundle.RelationKeyApiObjectKey: domain.String("gamma"),
+			bundle.RelationKeyName:         domain.String("Gamma again"),
+		})
+		v := fx.apiKeys(testSpaceId, storeresolver.New(fx.store.SpaceIndex(testSpaceId)))
+
+		assert.Equal(t, "gamma", v.PropertySlug("6aad3ad361fab22f055a8700"), "the live property owns the slug")
+		assert.Equal(t, "6aad3ad361fab22f055a8648", v.PropertySlug("6aad3ad361fab22f055a8648"),
+			"the corpse reads under its stored key rather than mislabel its value with a slug that now names something else")
+		key, _ := v.PropertyKey("gamma")
+		assert.Equal(t, "6aad3ad361fab22f055a8700", key)
+	})
+
 	t.Run("a slug-spelled body owes no legend", func(t *testing.T) {
 		fx, v := vocabFixture(t)
 		reads := storeresolver.New(fx.store.SpaceIndex(testSpaceId))

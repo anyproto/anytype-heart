@@ -79,6 +79,34 @@ func TestDeleteObject_PreservesAuditRelations(t *testing.T) {
 	// resolvedLayout, type and lastModifiedDate are non-sparse, so a top-level value would move the
 	// tombstone out of the null bucket into the ranges live queries scan. Any of them reappearing at
 	// the top level is the regression this guards.
+	t.Run("a derived object's identity keys survive inside the snapshot", func(t *testing.T) {
+		// given: a relation object, as the space stores one
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{{
+			bundle.RelationKeyId:             domain.String("rel1"),
+			bundle.RelationKeySpaceId:        domain.String("space1"),
+			bundle.RelationKeyUniqueKey:      domain.String("rel-6a7663db61fab21cd4b9e201"),
+			bundle.RelationKeyRelationKey:    domain.String("6a7663db61fab21cd4b9e201"),
+			bundle.RelationKeyApiObjectKey:   domain.String("warranty_until"),
+			bundle.RelationKeyName:           domain.String("Warranty until"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+		}})
+
+		// when
+		require.NoError(t, s.DeleteObject("rel1"))
+
+		// then: nothing indexed at the top level, the identity inside
+		got, err := s.GetDetails("rel1")
+		require.NoError(t, err)
+		assert.False(t, got.Has(bundle.RelationKeyRelationKey), "relationKey must stay inside deletedSnapshot")
+		assert.False(t, got.Has(bundle.RelationKeyName), "no user-authored content survives")
+		snapshot, ok := got.TryMapValue(bundle.RelationKeyDeletedSnapshot)
+		require.True(t, ok)
+		assert.Equal(t, "warranty_until", snapshot.GetString(bundle.RelationKeyApiObjectKey.String()))
+		assert.Equal(t, "6a7663db61fab21cd4b9e201", snapshot.GetString(bundle.RelationKeyRelationKey.String()))
+		assert.Equal(t, "rel-6a7663db61fab21cd4b9e201", snapshot.GetString(bundle.RelationKeyUniqueKey.String()))
+	})
+
 	t.Run("indexed relations never appear at the top level", func(t *testing.T) {
 		// given
 		s := NewStoreFixture(t)

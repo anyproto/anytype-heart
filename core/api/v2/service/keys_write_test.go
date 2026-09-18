@@ -156,6 +156,10 @@ func TestV2WriteVocabularyIsTheReadVocabulary(t *testing.T) {
 				return &pb.RpcObjectSetDetailsResponse{Error: &pb.RpcObjectSetDetailsResponseError{Code: pb.RpcObjectSetDetailsResponseError_NULL}}
 			})
 		fx.expectEtagRead("type-chore")
+		// the replaced list adds a column for the newly listed property
+		// (round-two eval F2); this fixture's type has no dataview to edit
+		fx.mutatorMock.EXPECT().MutateObject(mock.Anything, testSpaceId, "type-chore", mock.Anything, mock.Anything).
+			Return([]string{"headY"}, nil).Maybe()
 
 		// when
 		_, err := fx.UpdateType(ctx, testSpaceId, "chore",

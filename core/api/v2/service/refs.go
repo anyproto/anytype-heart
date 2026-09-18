@@ -254,6 +254,42 @@ func propertyKeyRemovedIn(entries []propertyEntry, removed map[string]bool, key 
 // before validation on these channels, and a hint naming a spelling the
 // request never contained is unactionable; the message keeps the served
 // slug, the one spelling every listing agrees on.
+// removedCustomProperty finds the REMOVED space-minted property a key names
+// — by the slug the surface serves for it or by its stored key — so a write
+// to it can be refused as removed rather than as unknown (the served
+// spelling must be understood back: a caller who read `gamma` off an object
+// and writes `gamma` is told what happened to it). One bounded query, and
+// only on the unknown-key path, which is rare.
+func (s *Service) removedCustomProperty(spaceId, key string) (propertyEntry, bool) {
+	removed, err := s.removedProperties(spaceId)
+	if err != nil {
+		return propertyEntry{}, false
+	}
+	for _, e := range removed {
+		if e.Key == key || (e.Slug != "" && e.Slug == key) {
+			return e, true
+		}
+	}
+	return propertyEntry{}, false
+}
+
+// removedCustomPropertyIssue is removedPropertyIssue for a space-minted
+// property: the same repair, with the spelling the surface serves for it.
+func removedCustomPropertyIssue(spaceId string, entry propertyEntry, spelledAs, path string, v errKeys) v2model.Issue {
+	spelling := entry.Slug
+	if spelling == "" {
+		spelling = entry.Key
+	}
+	if v.names && entry.Name != "" {
+		spelling = entry.Name
+	}
+	return v2model.Issue{
+		Path:    path,
+		Message: fmt.Sprintf("property %q was removed from this space — nothing new lands on a removed property", spelling),
+	}.Hintf("remove %q from the request — values objects already hold stay readable, and reappear if the property is restored; for a different property, list them with %s",
+		spelledAs, v2model.RefListProperties(spaceId))
+}
+
 func removedPropertyIssue(spaceId, key, spelledAs, path string, v errKeys) v2model.Issue {
 	slug := bundle.ApiSlug(key)
 	spelling := slug

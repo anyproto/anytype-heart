@@ -1045,8 +1045,21 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 				issues = append(issues, v2model.Issue{Path: path, Message: err.Error()})
 				return false
 			}
-			if _, inDoc := doc.properties[key]; !inDoc {
+			// the document is served in the slug vocabulary, so a key on it
+			// is found by the spelling the caller sent (the served one) as
+			// well as by its stored key
+			_, inDoc := doc.properties[key]
+			if !inDoc {
+				_, inDoc = doc.properties[spelledAs(key)]
+			}
+			if !inDoc {
 				if !propertyKeyExistsIn(entries, key) {
+					// a REMOVED space-minted property, by the slug its values
+					// still serve under elsewhere: refused as removed
+					if entry, removed := a.s.removedCustomProperty(a.spaceId, key); removed {
+						issues = append(issues, removedCustomPropertyIssue(a.spaceId, entry, spelledAs(key), path, a.v))
+						return false
+					}
 					if known == nil {
 						known = knownPropertyKeysIn(entries, a.v)
 					}
@@ -1302,6 +1315,17 @@ func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath
 		if ok && entry.Key != key {
 			spellings[entry.Key] = key
 			return entry.Key, nil
+		}
+		// not live: the vocabulary that rendered this document may have
+		// served the key for a REMOVED property (apikeyvocab.go
+		// rememberCorpse), and what it served it understands back — the
+		// in-document escape below then edits that value under the stored
+		// key it lives under, instead of writing the slug as a new key
+		if keys := a.marshalOptions().Keys; keys != nil {
+			if stored, served := keys.PropertyKey(key); served && stored != key {
+				spellings[stored] = key
+				return stored, nil
+			}
 		}
 		return key, nil
 	}

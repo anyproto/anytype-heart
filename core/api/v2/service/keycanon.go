@@ -21,8 +21,13 @@ import (
 // keyCanon is the per-request canonicalizer.
 type keyCanon struct {
 	s       *Service
+	spaceId string
 	entries []propertyEntry
 	aliases map[string]domain.RelationKey // chain-aware active file aliases
+	// removed is the space's removed properties, loaded on the first input
+	// no live entry answers to (one bounded query, and only on that path)
+	removed       []propertyEntry
+	removedLoaded bool
 }
 
 func (s *Service) newKeyCanon(spaceId string) (*keyCanon, error) {
@@ -30,7 +35,7 @@ func (s *Service) newKeyCanon(spaceId string) (*keyCanon, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &keyCanon{s: s, entries: entries, aliases: s.activeFieldAliasesIn(entries)}, nil
+	return &keyCanon{s: s, spaceId: spaceId, entries: entries, aliases: s.activeFieldAliasesIn(entries)}, nil
 }
 
 // canon translates one concrete input to its stored spelling: an active
@@ -49,7 +54,36 @@ func (k *keyCanon) canon(input string) (string, []string) {
 	if ok && entry.Key != "" {
 		return entry.Key, nil
 	}
+	// a REMOVED property's slug, which its values still serve under
+	// (apikeyvocab.go): canonicalized to the stored key so an edit of a
+	// value already on a document lands where it lives, and so an
+	// off-document write is refused as removed by the stored key rather
+	// than as unknown. No live entry answers to the input at this point, so
+	// the corpse cannot shadow a live property. The tombstone window is
+	// blind here (a tombstone is indexed by nothing a slug can find), so
+	// right after a delete, until the next space load, that edit is refused.
+	if stored, found := k.removedStoredKey(input); found {
+		return stored, nil
+	}
 	return input, nil
+}
+
+// removedStoredKey resolves a removed property's served slug to its stored
+// key; the removed set is loaded on first use.
+func (k *keyCanon) removedStoredKey(input string) (string, bool) {
+	if k.spaceId == "" {
+		return "", false
+	}
+	if !k.removedLoaded {
+		k.removedLoaded = true
+		k.removed, _ = k.s.removedProperties(k.spaceId)
+	}
+	for _, e := range k.removed {
+		if e.Slug != "" && e.Slug == input && e.Key != input {
+			return e.Key, true
+		}
+	}
+	return "", false
 }
 
 // withServedSpellings widens a stored-key reference set with every

@@ -698,6 +698,13 @@ func (s *Service) validatePropertyKeys(ctx context.Context, spaceId string, prop
 		if s.propertyKeyHeldByAnyRelation(ctx, spaceId, key) {
 			continue
 		}
+		// a REMOVED space-minted property, by the slug its values still
+		// serve under: refused as removed, which is what happened to it
+		if entry, removed := s.removedCustomProperty(spaceId, key); removed {
+			issues = append(issues, removedCustomPropertyIssue(spaceId, entry, spelledAs(key), "/properties/"+spelledAs(key), v))
+			removedCount++
+			continue
+		}
 		if known == nil {
 			known = knownPropertyKeysIn(entries, v)
 		}

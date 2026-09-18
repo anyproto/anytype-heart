@@ -219,6 +219,7 @@ func UpdateTypeHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Produce	json
 //	@Param		space_id	path		string					true	"Space id"
 //	@Param		type		path		string					true	"Type key"
+//	@Param		dry_run		query		bool					false	"Validate and report without committing"
 //	@Success	200			{object}	v2model.CreateResult	"Archived type"
 //	@Failure	404			{object}	v2model.Error			"No live type with this key. A type that is already deleted is a 404 too, not a second delete."
 //	@Security	bearerauth
@@ -277,6 +278,7 @@ func CreatePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			key			path		string					true	"Property key"
 //	@Param			body		body		object					true	"Fields of the property to change. Body schema and example: GET /v2/schemas/property"
+//	@Param			dry_run		query		bool					false	"Validate and report without committing"
 //	@Success		200			{object}	v2model.CreateResult	"Updated property"
 //	@Failure		400			{object}	v2model.Error			"Validation failure"
 //	@Failure		404			{object}	v2model.Error			"Property not found"
@@ -308,6 +310,7 @@ func UpdatePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Produce	json
 //	@Param		space_id	path		string					true	"Space id"
 //	@Param		key			path		string					true	"Property key"
+//	@Param		dry_run		query		bool					false	"Validate and report without committing"
 //	@Success	200			{object}	v2model.CreateResult	"Archived property"
 //	@Failure	404			{object}	v2model.Error			"No live property with this key. A property that is already deleted is a 404 too, not a second delete."
 //	@Security	bearerauth
