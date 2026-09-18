@@ -760,11 +760,17 @@ func (s *Service) activeFieldAliases(spaceId string) map[string]domain.RelationK
 // resolvers across rows. Shared by the object list, the query surface and
 // the set/collection reads.
 type objectRowBuilder struct {
+	svc      *Service
 	index    spaceindex.Store
 	typeKeys map[string]string
-	fields   []string
-	opts     anyblockjson.Options
-	spaceId  string // the store-facing full id
+	// liveTypeSets are servedTypeKeySets over the live types, loaded once
+	// on the first tombstoned type a row names
+	liveKeyTaken    map[string]bool
+	liveSlugHolders map[string][]string
+	liveSetsLoaded  bool
+	fields          []string
+	opts            anyblockjson.Options
+	spaceId         string // the store-facing full id
 	// spaceRef is what a row's space_id FIELD carries when includeSpaceId
 	// (global search): the §8.35 short reference by default, the full id
 	// when its tail collides with another visible space's. Defaults to
@@ -784,7 +790,7 @@ func (s *Service) newObjectRowBuilder(spaceId string, fields []string) (*objectR
 		return nil, err
 	}
 	index := s.store.SpaceIndex(spaceId)
-	b := &objectRowBuilder{index: index, typeKeys: typeKeys, fields: fields, spaceId: spaceId, spaceRef: spaceId}
+	b := &objectRowBuilder{svc: s, index: index, typeKeys: typeKeys, fields: fields, spaceId: spaceId, spaceRef: spaceId}
 	if len(fields) > 0 {
 		b.opts = apiRefSpelling(storeresolver.New(index).Options())
 		b.opts.Keys = s.apiKeys(spaceId, b.opts.Keys)
@@ -817,6 +823,13 @@ func (b *objectRowBuilder) row(record database.Record) v2model.ObjectRow {
 		if det, err := b.index.GetDetails(typeId); err == nil {
 			if k, err := domain.GetTypeKeyFromRawUniqueKey(det.GetString(bundle.RelationKeyUniqueKey)); err == nil {
 				typeKey = string(k)
+			} else if snapshot, ok := det.TryMapValue(bundle.RelationKeyDeletedSnapshot); ok && det.GetBool(bundle.RelationKeyIsDeleted) {
+				// the post-delete tombstone window: the snapshot kept the
+				// identity keys (spaceindex.SnapshotOnDelete), so the row
+				// spells the slug the type was served under (R4-1)
+				if k, err := domain.GetTypeKeyFromRawUniqueKey(snapshot.GetString(bundle.RelationKeyUniqueKey.String())); err == nil {
+					typeKey = b.tombstoneTypeSpelling(string(k), snapshot.GetString(bundle.RelationKeyApiObjectKey.String()))
+				}
 			}
 		}
 		b.typeKeys[typeId] = typeKey // memoize (including "" to avoid re-querying)
@@ -860,12 +873,28 @@ func (b *objectRowBuilder) row(record database.Record) v2model.ObjectRow {
 	return row
 }
 
+// tombstoneTypeSpelling spells a tombstoned type's key for a row: its slug
+// while no live type owns it, else the stored key.
+func (b *objectRowBuilder) tombstoneTypeSpelling(key, slug string) string {
+	if !b.liveSetsLoaded {
+		b.liveSetsLoaded = true
+		if live, err := b.svc.liveTypes(b.spaceId); err == nil {
+			b.liveKeyTaken, b.liveSlugHolders = servedTypeKeySets(live)
+		}
+	}
+	if b.liveKeyTaken == nil {
+		return key
+	}
+	return servedTypeKeyOf(key, slug, b.liveKeyTaken, b.liveSlugHolders)
+}
+
 // typeKeysById maps type object ids to type keys — rows carry the type key
 // (C2), never the type object (C5). Live types are spelled as their served
 // key (the slug for a BSON-keyed type, §7.5a — the spelling the search
 // type filter resolves right back); removed types (uninstalled, archived —
 // or the prod corpse shape carrying isDeleted) stay in the map so their
-// objects' rows keep a type, spelled by the honest internal key.
+// objects' rows keep a type, spelled by the slug the type was served under
+// while no live type owns it (round-four eval R4-1).
 //
 // The query suppresses both injected defaults DELIBERATELY (§8.41): a
 // production corpse carries isDeleted, so the plain query this used to be
@@ -895,6 +924,18 @@ func (s *Service) typeKeysById(spaceId string) (map[string]string, error) {
 	}
 	keyTaken, slugHolders := servedTypeKeySets(liveEntries)
 	out := make(map[string]string, len(records))
+	// a removed type keeps its slug (R4-1), unless a live type owns it
+	// (servedTypeKeyOf's guards) or two corpses would share it — the
+	// twin rule the vocabulary applies (apikeyvocab.go ensure)
+	corpseSlugCount := map[string]int{}
+	for _, record := range records {
+		if !corpseFlagged(record.Details) {
+			continue
+		}
+		if slug := record.Details.GetString(bundle.RelationKeyApiObjectKey); slug != "" {
+			corpseSlugCount[slug]++
+		}
+	}
 	for _, record := range records {
 		id := record.Details.GetString(bundle.RelationKeyId)
 		uniqueKey := record.Details.GetString(bundle.RelationKeyUniqueKey)
@@ -902,11 +943,12 @@ func (s *Service) typeKeysById(spaceId string) (map[string]string, error) {
 		if err != nil {
 			continue
 		}
-		if corpseFlagged(record.Details) {
-			out[id] = string(key) // a corpse's slug vacated the namespace
+		slug := record.Details.GetString(bundle.RelationKeyApiObjectKey)
+		if corpseFlagged(record.Details) && corpseSlugCount[slug] > 1 {
+			out[id] = string(key)
 			continue
 		}
-		out[id] = servedTypeKeyOf(string(key), record.Details.GetString(bundle.RelationKeyApiObjectKey), keyTaken, slugHolders)
+		out[id] = servedTypeKeyOf(string(key), slug, keyTaken, slugHolders)
 	}
 	return out, nil
 }

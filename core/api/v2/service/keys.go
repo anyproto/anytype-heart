@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -1264,4 +1265,94 @@ func sortedDistinct(values []string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// removedTypes is removedProperties for the type namespace: every type row
+// the store still has a full-detail record of that carries a lifecycle-exit
+// flag. The query suppresses both injected defaults, as typeKeysById does,
+// so the prod corpse shape (isDeleted) is returned too.
+func (s *Service) removedTypes(spaceId string) ([]typeEntry, error) {
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
+			{RelationKey: bundle.RelationKeyIsDeleted, Condition: model.BlockContentDataviewFilter_None},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("query removed types of space %s: %w", spaceId, err)
+	}
+	var entries []typeEntry
+	for _, record := range records {
+		if !corpseFlagged(record.Details) {
+			continue
+		}
+		key, err := domain.GetTypeKeyFromRawUniqueKey(record.Details.GetString(bundle.RelationKeyUniqueKey))
+		if err != nil {
+			continue
+		}
+		entries = append(entries, typeEntry{
+			Id:     record.Details.GetString(bundle.RelationKeyId),
+			Key:    string(key),
+			Slug:   record.Details.GetString(bundle.RelationKeyApiObjectKey),
+			Name:   record.Details.GetString(bundle.RelationKeyName),
+			Hidden: record.Details.GetBool(bundle.RelationKeyIsHidden),
+		})
+	}
+	return entries, nil
+}
+
+// tombstonedTypeSlug is tombstonedPropertySlug for a type: the slug the
+// tombstone's snapshot kept for a stored type key, or "" when the row is
+// not a tombstone (a full-detail row belongs to the query-built sets).
+func (s *Service) tombstonedTypeSlug(spaceId, key string) string {
+	if s.creator == nil {
+		return ""
+	}
+	id, err := s.creator.TypeIdByKey(context.Background(), spaceId, domain.TypeKey(key))
+	if err != nil {
+		return ""
+	}
+	return tombstoneTypeSlugOf(s.store.SpaceIndex(spaceId), id)
+}
+
+// tombstoneTypeSlugOf reads the served slug a type tombstone's snapshot
+// kept, "" for anything that is not a tombstone.
+func tombstoneTypeSlugOf(index spaceindex.Store, id string) string {
+	details, err := index.GetDetails(id)
+	if err != nil || details == nil || !details.GetBool(bundle.RelationKeyIsDeleted) {
+		return ""
+	}
+	if _, live := details.TryString(bundle.RelationKeyUniqueKey); live {
+		return ""
+	}
+	snapshot, ok := details.TryMapValue(bundle.RelationKeyDeletedSnapshot)
+	if !ok {
+		return ""
+	}
+	return snapshot.GetString(bundle.RelationKeyApiObjectKey.String())
+}
+
+// removedTypeBySpelling finds a REMOVED space-minted type a caller may have
+// addressed by the slug or stored key a read served for it — the object's
+// `type` after the type was deleted — so a refusal can say removed rather
+// than unknown. Live entries are the caller's to check first.
+func (s *Service) removedTypeBySpelling(spaceId, input string) (typeEntry, bool) {
+	removed, err := s.removedTypes(spaceId)
+	if err != nil {
+		return typeEntry{}, false
+	}
+	for _, e := range removed {
+		if bundle.HasObjectTypeByKey(domain.TypeKey(e.Key)) {
+			continue // bundled removals have their own gate (refuseRemovedType)
+		}
+		if input == e.Key || (e.Slug != "" && input == e.Slug) {
+			return e, true
+		}
+	}
+	return typeEntry{}, false
 }

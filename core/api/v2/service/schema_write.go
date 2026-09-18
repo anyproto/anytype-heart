@@ -1036,6 +1036,10 @@ func (s *Service) DeleteType(ctx context.Context, spaceId, typeKey string, dryRu
 	}
 	typeId := entry.Id
 	result := &v2model.CreateResult{Id: typeId, Key: typeKey}
+	// the objects of the type survive it, keeping it under the spelling
+	// they were served (round-four eval R4-1): say so, on the real run and
+	// the dry run alike, as delete_property does
+	result.Warnings = append(result.Warnings, s.typeDeleteWarnings(spaceId, typeId, typeKey)...)
 	if dryRun {
 		result.DryRun = true
 		return result, nil
@@ -1045,6 +1049,33 @@ func (s *Service) DeleteType(ctx context.Context, spaceId, typeKey string, dryRu
 		return nil, fmt.Errorf("archive type %s: %s", typeKey, resp.Error.Description)
 	}
 	return result, nil
+}
+
+// typeDeleteWarnings names the objects a type delete leaves behind: they
+// keep the type, served under its slug, and nothing new is created in it.
+// A store error makes no warning.
+func (s *Service) typeDeleteWarnings(spaceId, typeId, servedKey string) []v2model.Issue {
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{RelationKey: bundle.RelationKeyType, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.String(typeId)},
+			{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
+		},
+		Limit: propertyHolderProbeLimit,
+	})
+	if err != nil || len(records) == 0 {
+		return nil
+	}
+	count := fmt.Sprintf("%d objects are", len(records))
+	if len(records) == 1 {
+		count = "1 object is"
+	} else if len(records) >= propertyHolderProbeLimit {
+		count = fmt.Sprintf("at least %d objects are", propertyHolderProbeLimit)
+	}
+	issue := v2model.Issue{
+		Path:    "key",
+		Message: fmt.Sprintf("%s of type %q; they keep it, and reads still spell it %q, but nothing new is created in it and it is not listed or filterable, until this same type is restored in the app", count, servedKey, servedKey),
+	}.Hintf("a dry run reports this without deleting; to keep the type usable, keep it — its objects are listed by %s", v2model.RefListObjects(spaceId).With("type", servedKey))
+	return []v2model.Issue{issue}
 }
 
 // CreateProperty implements POST /v2/spaces/{space_id}/properties.

@@ -19,6 +19,7 @@ import (
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/storeresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -94,7 +95,10 @@ func (s *Service) DeleteObject(ctx context.Context, spaceId, objectId string, dr
 		return nil, err
 	}
 
-	result := &v2model.CreateResult{Id: objectId, Type: objectTypeKey(read)}
+	// the receipt spells the type as every read does (round-four eval R4-2:
+	// a custom type came back as its 24-hex stored key here, and as its
+	// slug from every other route)
+	result := &v2model.CreateResult{Id: objectId, Type: s.apiKeys(spaceId, storeresolver.New(s.store.SpaceIndex(spaceId))).TypeSlug(objectTypeKey(read))}
 	if dryRun {
 		result.DryRun = true
 	}

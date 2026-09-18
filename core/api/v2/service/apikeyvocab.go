@@ -60,8 +60,11 @@ type apiKeyVocab struct {
 	propKeyTaken    map[string]bool
 	propSlugHolders map[string][]string
 
-	typeSlugByKey   map[string]string
-	typeKeyBySlug   map[string]string
+	typeSlugByKey map[string]string
+	typeKeyBySlug map[string]string
+	// removedTypeSlug marks the slugs emitted for REMOVED types (emit-only,
+	// see ensure) so a tombstone probe cannot hand a second corpse one.
+	removedTypeSlug map[string]bool
 	typeKeyTaken    map[string]bool
 	typeSlugHolders map[string][]string
 }
@@ -203,6 +206,39 @@ func (v *apiKeyVocab) ensure() bool {
 			claimTerm(v.typeKeyBySlug, v.typeSlugByKey, served, e.Key)
 		}
 	}
+	// a REMOVED type keeps its slug on the EMIT side, exactly as a removed
+	// property does (round-four eval R4-1: deleting a type rewrote every
+	// surviving object's `type` from the slug to a 24-hex stored key that
+	// nothing in the API resolved). Emit only: the reverse table stays
+	// unaware, so a create naming the slug is refused as removed
+	// (removedTypeBySpelling) and a re-created type may take the slug —
+	// then the corpse reads under its stored key, as the live one owns it.
+	if removed, rerr := v.svc.removedTypes(v.spaceId); rerr == nil {
+		corpseBySlug := map[string]string{}
+		for _, e := range removed {
+			if _, live := v.typeSlugByKey[e.Key]; live {
+				continue
+			}
+			served := servedTypeKeyOf(e.Key, e.Slug, v.typeKeyTaken, v.typeSlugHolders)
+			if served == e.Key {
+				continue
+			}
+			if _, taken := v.typeKeyBySlug[served]; taken {
+				continue
+			}
+			if prev, twin := corpseBySlug[served]; twin {
+				delete(v.typeSlugByKey, prev)
+				delete(v.removedTypeSlug, served)
+				continue
+			}
+			corpseBySlug[served] = e.Key
+			v.typeSlugByKey[e.Key] = served
+			if v.removedTypeSlug == nil {
+				v.removedTypeSlug = map[string]bool{}
+			}
+			v.removedTypeSlug[served] = true
+		}
+	}
 	return true
 }
 
@@ -290,6 +326,21 @@ func (v *apiKeyVocab) TypeSlug(key string) string {
 	}
 	if served, ok := v.typeSlugByKey[key]; ok {
 		return served
+	}
+	// the post-delete tombstone window: the row has no queryable detail,
+	// but its snapshot kept the slug (spaceindex.SnapshotOnDelete)
+	if isBsonKey(key) && !v.typeKeyTaken[key] {
+		if slug := v.svc.tombstonedTypeSlug(v.spaceId, key); slug != "" && !v.removedTypeSlug[slug] {
+			candidate := servedTypeKeyOf(key, slug, v.typeKeyTaken, v.typeSlugHolders)
+			if _, taken := v.typeKeyBySlug[candidate]; !taken && candidate != key {
+				if v.removedTypeSlug == nil {
+					v.removedTypeSlug = map[string]bool{}
+				}
+				v.removedTypeSlug[candidate] = true
+				v.typeSlugByKey[key] = candidate
+				return candidate
+			}
+		}
 	}
 	return servedTypeKeyOf(key, "", v.typeKeyTaken, v.typeSlugHolders)
 }

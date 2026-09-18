@@ -133,6 +133,22 @@ func (s *Service) knownTypeKeys(spaceId string, v errKeys) []string {
 
 // unknownTypeKeyError is the R9 did-you-mean 400 for a type reference.
 func (s *Service) unknownTypeKeyError(spaceId, typeKey, path string, v errKeys) error {
+	// the spelling a read served for a REMOVED space-minted type (its
+	// objects keep it — R4-1): say removed, not unknown with a guess
+	if entry, removed := s.removedTypeBySpelling(spaceId, typeKey); removed {
+		spelling := entry.Slug
+		if spelling == "" {
+			spelling = entry.Key
+		}
+		if v.names && entry.Name != "" {
+			spelling = entry.Name
+		}
+		return v2model.ValidationFailed(fmt.Sprintf("removed %s", v.typeWord()),
+			v2model.Issue{
+				Path:    path,
+				Message: fmt.Sprintf("type %q was removed from this space — its objects keep it, but nothing new is created in it and it is not filterable", spelling),
+			}.Hintf("use a live type instead — list them with %s", v2model.RefListTypes(spaceId)))
+	}
 	known := s.knownTypeKeys(spaceId, v)
 	return v2model.ValidationFailed(
 		fmt.Sprintf("type %q not found in space %q", typeKey, spaceId),

@@ -152,6 +152,21 @@ func (fx *v2Fixture) addPropertyTombstone(t *testing.T, id, storedKey, slug stri
 	}})
 }
 
+// addTypeTombstone is addPropertyTombstone for a type object: the identity
+// keys ride the unindexed deletedSnapshot.
+func (fx *v2Fixture) addTypeTombstone(t *testing.T, id, storedKey, slug string) {
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+		bundle.RelationKeyId:        domain.String(id),
+		bundle.RelationKeySpaceId:   domain.String(testSpaceId),
+		bundle.RelationKeyIsDeleted: domain.Bool(true),
+		bundle.RelationKeyDeletedSnapshot: domain.NewValueMap(map[string]domain.Value{
+			bundle.RelationKeyResolvedLayout.String(): domain.Int64(int64(model.ObjectType_objectType)),
+			bundle.RelationKeyUniqueKey.String():      domain.String("ot-" + storedKey),
+			bundle.RelationKeyApiObjectKey.String():   domain.String(slug),
+		}),
+	}})
+}
+
 // addCorpseProperty registers the BSON-keyed, slug-bearing corpse relation.
 func (fx *v2Fixture) addCorpseProperty(t *testing.T, shape corpseShape) {
 	if shape == corpseTombstone {
@@ -173,7 +188,7 @@ func (fx *v2Fixture) addCorpseProperty(t *testing.T, shape corpseShape) {
 
 func (fx *v2Fixture) addCorpseType(t *testing.T, shape corpseShape) {
 	if shape == corpseTombstone {
-		fx.addTombstone(t, corpseTypeId)
+		fx.addTypeTombstone(t, corpseTypeId, corpseTypeBsonKey, corpseTypeSlug)
 		return
 	}
 	obj := objectstore.TestObject{
@@ -211,11 +226,12 @@ func corpseHeldRead() apicore.ObjectRead {
 
 // TestV2CorpseHeldValueReadsUnderItsSlug: GET serves a corpse-held value
 // under the corpse's slug — the read-emit half of the split the header
-// describes — never the raw 24-hex stored key; the object's corpse TYPE
-// still spells its internal key (types are not part of the flip). The slug
-// is emitted only while no live entity answers to it: the corpse vacated
-// the namespace (§8-OQ2), and a reused slug would mislabel the value —
-// TestApiKeyVocab pins that guard.
+// describes — never the raw 24-hex stored key; and the object's corpse
+// TYPE spells its slug the same way (round-four eval R4-1: a deleted type
+// rewrote every surviving object's `type` to a hex nothing resolved). The
+// slug is emitted only while no live entity answers to it: the corpse
+// vacated the namespace (§8-OQ2), and a reused slug would mislabel the
+// value — TestApiKeyVocab pins that guard.
 func TestV2CorpseHeldValueReadsUnderItsSlug(t *testing.T) {
 	corpseShapes(t, func(t *testing.T, shape corpseShape) {
 		// given
@@ -234,7 +250,7 @@ func TestV2CorpseHeldValueReadsUnderItsSlug(t *testing.T) {
 		// in every shape, the tombstone included: its snapshot keeps the slug
 		assert.Equal(t, "2027-01-01", props[corpseSlug], "the value is served, under the slug the caller was taught")
 		assert.NotContains(t, props, corpseBsonKey, "the stored bson key is an internal id and never a served spelling")
-		assert.Equal(t, corpseTypeBsonKey, doc["type"], "a corpse type spells its internal key in the envelope")
+		assert.Equal(t, corpseTypeSlug, doc["type"], "a removed type spells the slug its objects were served, in every store shape")
 	})
 }
 

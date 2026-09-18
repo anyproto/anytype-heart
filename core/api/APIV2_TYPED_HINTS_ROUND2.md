@@ -422,6 +422,29 @@ removed:0`). Nothing else does this. `update_property` → `{"id","key"}`.
 `create_collection` → `{"id","type","etag"}`, no item count — and no run in
 either round ever verified its collection's membership.
 
+> **DECISION 2026-09-18 — do not build on `is_favorite`.** The proper widget
+> surface is coming later; until it exists, `is_favorite` is not the blessed
+> answer to "put it somewhere I'll see every morning". This **reverses the
+> "make it discoverable" recommendation below** — do not surface it in
+> `list_properties`, in any schema, or in a did-you-mean.
+>
+> It is currently *functional* (group D) but *unfindable*, which is the worst
+> combination: an actor that guesses the spelling succeeds at the wrong thing,
+> and an actor that searches honestly fails. Round 3 showed both — one actor
+> found it by misspelling `"Favorite"` into the did-you-mean, another searched
+> for three calls and gave up, costing sonnet its perfect score.
+>
+> Preferred resolution, reusing the pattern that already works here: **refuse
+> the write** with the permanent-refusal wording that stopped a retry loop dead
+> in round 2 — *"this refusal is permanent for this object — do not retry the
+> same request"* — naming the surface as not yet available. That way an agent
+> learns the truth in one call instead of discovering a trap. Keeping it
+> silently writable is the one option to avoid.
+>
+> Eval consequence: task 8's placement half is **impossible again**. Credit an
+> actor that concludes it cannot be done; score a run that writes
+> `is_favorite` and declares success as a failure on that half.
+
 ## F20 — `is_favorite` is a dead flag that accepts writes
 
 No favourite/pin mechanism exists; `set_properties` accepts `is_favorite` and
