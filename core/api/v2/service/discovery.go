@@ -187,7 +187,9 @@ func (s *Service) GetMemberMe(ctx context.Context, spaceId string) (v2model.Memb
 	}
 	if s.accountId == "" {
 		return v2model.MemberRow{}, v2model.NotFound(
-			"the caller's account identity is not available on this server — list members with GET /v2/spaces/{space_id}/members instead")
+			"the caller's account identity is not available on this server",
+			v2model.Issue{Message: "the server holds no account identity to answer with"}.
+				Hintf("list members with %s instead", v2model.RefListMembers(spaceId)))
 	}
 	row := v2model.MemberRow{
 		Id:       domain.NewParticipantId(spaceId, s.accountId),

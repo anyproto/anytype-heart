@@ -132,8 +132,7 @@ func (s *Service) applyDeclaredOptionsAt(defs []anyblockjson.TypeProperty, resol
 					Message: fmt.Sprintf(
 						"property %q is created by this request, so its options (%s) cannot be created in the same call",
 						docKey, joinQuoted(names)),
-					Hint: "create the property first with POST /v2/spaces/{space_id}/properties, which takes its options, then reference it here",
-				})
+				}.Hintf("create the property first with %s, which takes its options, then reference it here", v2model.NewRef(v2model.OpCreateProperty)))
 		}
 		for _, opt := range def.Options {
 			if opt.Name == "" {

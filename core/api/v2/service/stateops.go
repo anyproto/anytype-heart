@@ -698,7 +698,7 @@ func (a *v2StateApplier) resolveRef(doc *v2EditDoc, ref, path string) (int, erro
 			v2model.Issue{Path: path, Message: "the reference is a suffix of several block ids"})
 	default:
 		return -1, v2model.NotFound(fmt.Sprintf("block %q not found", ref),
-			v2model.Issue{Path: path, Message: v2AddressableBlocksMessage, Hint: v2AddressableBlocksHint})
+			v2model.Issue{Path: path, Message: v2AddressableBlocksMessage}.WithHint(addressableBlocksHint(a.spaceId, a.objectId)))
 	}
 }
 
@@ -1050,8 +1050,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 					if known == nil {
 						known = knownPropertyKeysIn(entries, a.v)
 					}
-					issues = append(issues, unknownPropertyIssue(key, path, known,
-						fmt.Sprintf("list all with GET /v2/spaces/%s/properties, or create it with POST /v2/spaces/%s/properties", a.spaceId, a.spaceId), a.v))
+					issues = append(issues, unknownPropertyIssue(key, path, known, propertyListHint(a.spaceId), a.v))
 					return false
 				}
 				// the key exists only through the bundled table and this space
@@ -2373,7 +2372,7 @@ func (a *v2StateApplier) applyItems(op opItems, opPath string) error {
 	if len(items) == 0 && !a.s.isCollectionType(a.spaceId, doc.docType()) {
 		return v2model.ValidationFailed(
 			fmt.Sprintf("%s requires a collection — this object's type is %q", op.Op, doc.docType()),
-			v2model.Issue{Path: opPath, Message: "only collection objects carry items", Hint: "POST /v2/spaces/{space_id}/collections creates one"})
+			v2model.Issue{Path: opPath, Message: "only collection objects carry items"}.Hintf("%s creates one", v2model.RefCreateCollection(a.spaceId)))
 	}
 	if op.Op == "add_items" {
 		present := map[string]bool{}

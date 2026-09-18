@@ -43,11 +43,16 @@ const (
 
 // Issue is one path-addressed problem (C6): path into the request
 // document or the query-parameter name, a message naming allowed values,
-// and an optional repair hint.
+// and an optional repair hint. SeeAlso is the hint's operations as data
+// (ref.go): every route the hint spells is one entry, rendered by Ref.String,
+// so a caller without routes re-spells the hint by lookup instead of
+// inference.
 type Issue struct {
 	Path    string `json:"path,omitempty"`
 	Message string `json:"message"`
 	Hint    string `json:"hint,omitempty"`
+	// The operations the hint names, as data: each renders in the hint as its method and path with params substituted and `?k=v` query sorted by key, so a caller with tools instead of routes can find and replace it by op.
+	SeeAlso []Ref `json:"see_also,omitempty"`
 }
 
 // Error is the C6 error envelope, returned by every v2 endpoint.

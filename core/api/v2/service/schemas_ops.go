@@ -27,6 +27,16 @@ import (
 // v2OpsEndpoint is the endpoint every op schema belongs to.
 const v2OpsEndpoint = "PATCH /v2/spaces/{space_id}/objects/{object_id}"
 
+// v2TypeOpsEndpoint is the endpoint the three type-op schemas belong to.
+const v2TypeOpsEndpoint = "PATCH /v2/spaces/{space_id}/types/{type}"
+
+// v2ViewOpsEndpoints is the view family's endpoint line. Those ops run on
+// BOTH channels with the same body: a dataview op does not care whether the
+// dataview belongs to a set, a collection or a type. A type's own document
+// already serves its views (GET /types/{key} returns blocks), so the endpoint
+// that shows them is the endpoint that changes them.
+const v2ViewOpsEndpoints = v2OpsEndpoint + " · " + v2TypeOpsEndpoint
+
 // The payload block comes in TWO shapes, and the split is the whole point
 // (§8.30). `id` in a payload means "name an EXISTING block, keep its
 // identity" — which is meaningful only where the op has existing content to

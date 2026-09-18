@@ -615,7 +615,7 @@ func resolveBlockRef(ids []string, ref string) (int, error) {
 			v2model.Issue{Path: "block", Message: "the label is a suffix of several block ids"})
 	default:
 		return -1, v2model.NotFound(fmt.Sprintf("block %q not found", ref),
-			v2model.Issue{Path: "block", Message: v2AddressableBlocksMessage, Hint: v2AddressableBlocksHint})
+			v2model.Issue{Path: "block", Message: v2AddressableBlocksMessage}.WithHint(addressableBlocksHint("", "")))
 	}
 }
 
@@ -639,10 +639,18 @@ func resolveBlockRef(ids []string, ref string) (int, error) {
 // see APIV2.md §8.29 for what it would cost (a second addressing mode in
 // every ref-taking op, a served shape for a partial cell run, and an outline
 // entry that says "this is not a sibling of the top-level run").
-const (
-	v2AddressableBlocksMessage = "the addressable blocks are the entries of the document's blocks array"
-	v2AddressableBlocksHint    = "GET the object with ?outline=true to list them. Ids nested inside a block are served but are not block references: a table's rows and columns are addressed by set_cell's row/col, a dataview's views by the view ops, and a block inside a table cell is not individually addressable — rewrite its cell with set_cell."
-)
+const v2AddressableBlocksMessage = "the addressable blocks are the entries of the document's blocks array"
+
+// addressableBlocksHint names the read that lists the addressable blocks:
+// the outline, which serves every block with its id on EVERY object — the
+// curated wrapper's full read of a query or collection serves the rows
+// instead of the document, so the plain read would list nothing there.
+// The locator's repair, which needs full text, names the plain read
+// separately. Empty ids leave the read's parameters for the caller to fill.
+func addressableBlocksHint(spaceId, objectId string) v2model.Hint {
+	return v2model.Hintf("%s lists them. Ids nested inside a block are served but are not block references: a table's rows and columns are addressed by set_cell's row/col, a dataview's views by the view ops, and a block inside a table cell is not individually addressable — rewrite its cell with set_cell.",
+		v2model.RefGetObject(spaceId, objectId).With("outline", "true"))
+}
 
 //
 // ---- object list (C5 minimal rows) ----

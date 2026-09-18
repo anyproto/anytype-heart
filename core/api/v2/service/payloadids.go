@@ -360,8 +360,7 @@ func newContentIdError(op, id, path string) error {
 		v2model.Issue{
 			Path:    path,
 			Message: fmt.Sprintf("id %q is not part of this op: an id names an EXISTING element, and %s only creates them; no value of this field can succeed, so the op's schema does not have it", id, op),
-			Hint:    fmt.Sprintf("drop the id — the server mints one and reports it under this exact path in created_blocks (created_views for a view); see GET /v2/schemas/ops/%s. To change an existing block use update_block, or replace_subtree to swap it whole", op),
-		})
+		}.Hintf("drop the id — the server mints one and reports it under this exact path in created_blocks (created_views for a view); see %s. To change an existing block use update_block, or replace_subtree to swap it whole", v2model.RefGetOpSchema(op)))
 }
 
 // suffixCandidates lists the ids ref is a suffix of, bounded.
@@ -386,8 +385,8 @@ func unresolvedPayloadIdError(path, id string) error {
 		v2model.Issue{
 			Path:    path,
 			Message: "a payload id names an EXISTING element whose identity the op keeps — a full id or a unique suffix, the same rule every other id slot follows; it is not a way to choose the id of new content",
-			Hint:    "omit id to author something new — the server mints one and reports it under this exact path in created_blocks (created_views for a view); if you meant an existing element, re-read the object (GET ?outline=true lists block ids) — it may have changed under you",
-		})
+		}.Hintf("omit id to author something new — the server mints one and reports it under this exact path in created_blocks (created_views for a view); if you meant an existing element, re-read the object (%s lists block ids) — it may have changed under you",
+			v2model.NewRef(v2model.OpGetObject).With("outline", "true")))
 }
 
 // ambiguousPayloadIdError refuses a payload id that is a suffix of several

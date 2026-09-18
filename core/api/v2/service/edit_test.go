@@ -2810,7 +2810,8 @@ func TestPatchObject(t *testing.T) {
 		assert.Contains(t, apiErr.Message, `"nowhere"`)
 		require.NotEmpty(t, apiErr.Issues, "the repair loop rides a C6 issue, not the message prose")
 		assert.Equal(t, "ops[0].id", apiErr.Issues[0].Path)
-		assert.Contains(t, apiErr.Issues[0].Hint, "?outline=true")
+		assert.Contains(t, apiErr.Issues[0].Hint, "GET /v2/spaces/space1/objects/obj1?outline=true lists them")
+		assert.Equal(t, []v2model.Ref{v2model.RefGetObject(testSpaceId, "obj1").With("outline", "true")}, apiErr.Issues[0].SeeAlso)
 	})
 
 	t.Run("unknown op lists the op set", func(t *testing.T) {

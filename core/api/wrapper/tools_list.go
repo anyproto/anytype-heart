@@ -522,9 +522,7 @@ func listText(def listDefinition, selfHandle int, rows []Handle, typeNames map[s
 	} else {
 		b.WriteString("\n" + addressing + "update_view changes this collection's filter, sort or columns — its filter narrows which rows are SHOWN; to change which objects belong, add or remove them")
 	}
-	for _, w := range warnings {
-		b.WriteString("\nwarning: " + w.Message)
-	}
+	b.WriteString(warningsText(warnings))
 	return b.String()
 }
 

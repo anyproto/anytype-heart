@@ -36,7 +36,7 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	}
 	if req.Type == "" {
 		return nil, v2model.ValidationFailed("type is required",
-			v2model.Issue{Path: "/type", Message: "a query runs over one type — name its key", Hint: fmt.Sprintf("list keys with GET /v2/spaces/%s/types", spaceId)})
+			v2model.Issue{Path: "/type", Message: "a query runs over one type — name its key"}.Hintf("list keys with %s", v2model.RefListTypes(spaceId)))
 	}
 	// the bounds the query kind advertises (M6): field lengths and the
 	// sorts/views item caps
@@ -193,8 +193,7 @@ func (s *Service) CreateCollection(ctx context.Context, spaceId string, req v2mo
 			issues = append(issues, v2model.Issue{
 				Path:    fmt.Sprintf("/items/%d", i),
 				Message: fmt.Sprintf("object %q not found in space %q", itemId, spaceId),
-				Hint:    "items are full object ids — find them with GET /v2/spaces/{space_id}/objects",
-			})
+			}.Hintf("items are full object ids — find them with %s", v2model.RefListObjects(spaceId)))
 		}
 	}
 	if len(issues) > 0 {
@@ -384,15 +383,13 @@ func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey
 			issues = append(issues, v2model.Issue{
 				Path:    ref.path,
 				Message: fmt.Sprintf("a query is already scoped to type %q — drop the type filter", typeKey),
-				Hint:    "to query across types use POST /v2/spaces/{space_id}/search, where type is a filterable pseudo-key",
-			})
+			}.Hintf("to query across types use %s, where type is a filterable pseudo-key", v2model.RefSearchSpace(spaceId)))
 			continue
 		}
 		issues = append(issues, v2model.Issue{
 			Path:    ref.path,
 			Message: fmt.Sprintf("type %q has no property %q — %s", typeKey, ref.key, listKnown(v.propertiesWord()+" of the type", typeKeys)),
-			Hint:    didYouMean(ref.key, typeKeys, fmt.Sprintf("inspect the type with GET /v2/spaces/%s/types/%s", spaceId, typeKey)),
-		})
+		}.WithHint(didYouMean(ref.key, typeKeys, v2model.Hintf("inspect the type with %s", v2model.RefGetType(spaceId, typeKey)))))
 	}
 	if len(issues) > 0 {
 		return v2model.ValidationFailed(fmt.Sprintf("the view addresses properties type %q does not have", typeKey), issues...)

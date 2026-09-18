@@ -272,7 +272,7 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	}
 
 	formatName := canonFormatName(aliasedFormatName(s.formatNameResolver(spaceId), aliases), kc)
-	listUrl := fmt.Sprintf("list keys with GET /v2/spaces/%s/properties", spaceId)
+	listHint := v2model.Hintf("list keys with %s", v2model.RefListProperties(spaceId))
 
 	// rule 1 covers field keys too — hard on the space search, warning-grade
 	// on the global fan-out (see the strictFields contract above)
@@ -285,7 +285,7 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 			continue
 		}
 		if strictFields {
-			issues = append(issues, unknownPropertyIssue(field, fmt.Sprintf("/fields/%d", i), refKeys, listUrl, v))
+			issues = append(issues, unknownPropertyIssue(field, fmt.Sprintf("/fields/%d", i), refKeys, listHint, v))
 		} else {
 			plan.warnings = append(plan.warnings, v2model.Issue{
 				Path:    fmt.Sprintf("/fields/%d", i),
@@ -330,7 +330,7 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	if !fromString && len(filtersJSON) > 0 {
 		// the parser validated the string form with offsets; the structured
 		// form gets the same checks path-addressed (rules 1 + 3)
-		if err := s.validateStructuredFilters(spaceId, filtersJSON, allowed, refKeys, formatName, listUrl, v); err != nil {
+		if err := s.validateStructuredFilters(spaceId, filtersJSON, allowed, refKeys, formatName, listHint, v); err != nil {
 			return nil, err
 		}
 	}
@@ -374,7 +374,7 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 			if canonical, ambiguous := kc.canon(probe.Property); len(ambiguous) > 0 {
 				issues = append(issues, ambiguousInputIssue(v.propertyWord(), probe.Property, fmt.Sprintf("/sorts/%d/property", i), ambiguous))
 			} else if !allowed[probe.Property] && !allowed[canonical] {
-				issues = append(issues, unknownPropertyIssue(probe.Property, fmt.Sprintf("/sorts/%d/property", i), refKeys, listUrl, v))
+				issues = append(issues, unknownPropertyIssue(probe.Property, fmt.Sprintf("/sorts/%d/property", i), refKeys, listHint, v))
 			}
 		}
 		if len(issues) > 0 {
@@ -706,7 +706,7 @@ func decodeFilterNodes(raw json.RawMessage, path string) ([]searchFilterNode, er
 // option names) to the structured filters array, path-addressed with
 // did-you-mean — the same checks the string form gets offset-addressed from
 // the parser.
-func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage, allowed map[string]bool, refKeys []string, formatName func(string) (string, bool), listUrl string, v errKeys) error {
+func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage, allowed map[string]bool, refKeys []string, formatName func(string) (string, bool), listHint v2model.Hint, v errKeys) error {
 	nodes, err := decodeFilterNodes(raw, "/filters")
 	if err != nil {
 		return err
@@ -726,7 +726,7 @@ func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage,
 				continue // the codec reports the missing key
 			}
 			if !allowed[node.Property] {
-				issues = append(issues, unknownPropertyIssue(node.Property, nodePath+"/property", refKeys, listUrl, v))
+				issues = append(issues, unknownPropertyIssue(node.Property, nodePath+"/property", refKeys, listHint, v))
 				continue
 			}
 			format, formatKnown := formatName(node.Property)
@@ -761,8 +761,7 @@ func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage,
 						issues = append(issues, v2model.Issue{
 							Path:    nodePath + "/value",
 							Message: fmt.Sprintf("property %q has no option named %q — a query never creates options", node.Property, value),
-							Hint:    didYouMean(value, names, fmt.Sprintf("list them with GET /v2/spaces/%s/properties/%s/options", spaceId, node.Property)),
-						})
+						}.WithHint(didYouMean(value, names, v2model.Hintf("list them with %s", v2model.RefListPropertyOptions(spaceId, node.Property)))))
 					}
 				}
 			}
@@ -956,8 +955,7 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 			v2model.Issue{
 				Path:    "offset",
 				Message: fmt.Sprintf("offset %d exceeds the global-search maximum of %d", offset, maxGlobalSearchOffset),
-				Hint:    "narrow with filter, type or query, or page one space with POST /v2/spaces/{space_id}/search",
-			})
+			}.Hintf("narrow with filter, type or query, or search one space at a time with %s", v2model.NewRef(v2model.OpSearchSpace)))
 	}
 	spaces, err := s.spaceRefs(ctx)
 	if err != nil {

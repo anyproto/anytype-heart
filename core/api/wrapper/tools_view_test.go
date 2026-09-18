@@ -207,7 +207,7 @@ func TestUpdateView(t *testing.T) {
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1", Name: "Tasks", Type: "set"})
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 400,
-			`{"status":400,"code":"validation_failed","message":"update_view rejected","issues":[{"path":"ops[0].set.sorts[0].property","message":"unknown property \"due_dat\" — did you mean Due date?","hint":"list all with GET /v2/spaces/space1/properties, or create it with POST /v2/spaces/space1/properties"}]}`)
+			`{"status":400,"code":"validation_failed","message":"update_view rejected","issues":[{"path":"ops[0].set.sorts[0].property","message":"unknown property \"due_dat\" — did you mean Due date?","hint":"list all with GET /v2/spaces/space1/properties, or create it with POST /v2/spaces/space1/properties","see_also":[{"op":"list_properties","params":{"space_id":"space1"}},{"op":"create_property","params":{"space_id":"space1"}}]}]}`)
 
 		// when: filter AND sort — one bad channel must sink both
 		_, err := fx.Run(ctx, "update_view", map[string]any{
@@ -218,7 +218,8 @@ func TestUpdateView(t *testing.T) {
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), `did you mean Due date`)
 		assert.Contains(t, err.Error(), "sort[0].property", "the op path is re-spelled to the tool's `sort` slot")
-		assert.Contains(t, err.Error(), "run describe on the type", "the REST repair hint is re-spelled")
+		assert.Contains(t, err.Error(), "`describe` on the type (", "the REST repair hint is re-spelled")
+		assert.NotContains(t, err.Error(), "/v2/")
 		assert.NotContains(t, err.Error(), "ops[0]")
 		assert.NotContains(t, err.Error(), "GET /v2")
 		assert.Len(t, fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1"), 1, "no blind retry")

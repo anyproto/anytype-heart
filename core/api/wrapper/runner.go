@@ -718,8 +718,6 @@ func editSummary(target string, result *v2model.EditResult) string {
 	if result.DryRun {
 		line = fmt.Sprintf("dry run — %s: would apply %s", target, strings.Join(parts, ", "))
 	}
-	for _, w := range result.Warnings {
-		line += "\nwarning: " + w.Message
-	}
+	line += warningsText(result.Warnings)
 	return line
 }

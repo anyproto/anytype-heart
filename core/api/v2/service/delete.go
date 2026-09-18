@@ -31,9 +31,8 @@ var deleteProbeIssue = v2model.Issue{
 	// empty on four production 403s: the whole reason lived in the OPTIONAL
 	// hint, so a reader that renders only the required field got nothing
 	Message: "this key may delete only objects it created",
-	Hint: "probe deletability without writing via DELETE …?dry_run=true; " +
-		"the created_date/creator properties on GET show who created the object",
-}
+}.Hintf("probe deletability without writing by resending with %s; the created_date/creator properties on a read show who created the object",
+	v2model.Resend("dry_run", "true"))
 
 // DeleteObject implements DELETE /v2/spaces/{space_id}/objects/{object_id}
 // (§9.4). The authorization is a CONJUNCTION (§9.3): for scoped keys the
@@ -164,17 +163,17 @@ func steerSchemaDelete(sbType model.SmartBlockType, spaceId string) error {
 		return v2model.ValidationFailed("types are deleted through their own route",
 			v2model.Issue{Path: "object_id",
 				Message: "this object is a type",
-				Hint:    fmt.Sprintf("use DELETE /v2/spaces/%s/types/{typeKey}", spaceId)})
+			}.Hintf("use %s", v2model.NewRef(v2model.OpDeleteType, "space_id", spaceId)))
 	case model.SmartBlockType_STRelation:
 		return v2model.ValidationFailed("properties are deleted through their own route",
 			v2model.Issue{Path: "object_id",
 				Message: "this object is a property",
-				Hint:    fmt.Sprintf("use DELETE /v2/spaces/%s/properties/{property_key}", spaceId)})
+			}.Hintf("use %s", v2model.NewRef(v2model.OpDeleteProperty, "space_id", spaceId)))
 	case model.SmartBlockType_STRelationOption:
 		return v2model.ValidationFailed("tag options are managed through their property",
 			v2model.Issue{Path: "object_id",
 				Message: "this object is a select/multiSelect option",
-				Hint:    fmt.Sprintf("options are edited via their property — see GET /v2/spaces/%s/properties/{property_key}/options", spaceId)})
+			}.Hintf("options are edited via their property — see %s", v2model.NewRef(v2model.OpListPropertyOptions, "space_id", spaceId)))
 	}
 	return nil
 }

@@ -740,12 +740,12 @@ func createTypeNameRepair(name string, err error) error {
 	if !named {
 		return err
 	}
-	// The server's own repair offers a route ("update it with the HTTP
-	// API", once deRest has generalised the PATCH away) that no tool on this
-	// surface backs — and the sentence appended below then denies it one
-	// clause later. Drop the contradicting offer rather than ship both.
-	te.Text = strings.ReplaceAll(te.Text, " (update it with the HTTP API, or pick a different key)", "")
-	te.Text = strings.ReplaceAll(te.Text, "update it with the HTTP API, or pick a different key", "pick a different name")
+	// The server's own repair offers the type update operation, which no
+	// tool on this surface backs — and the sentence appended below then
+	// denies it one clause later. Drop the contradicting offer rather than
+	// ship both: the hint names the operation typed, so it is dropped by
+	// operation, before the vocabulary pass renders it.
+	dropHintsNaming(te, v2model.OpUpdateType)
 
 	// the bundled wording is the server's; the fallback below is correct for
 	// either case, so a reworded server message degrades rather than breaks
@@ -787,9 +787,7 @@ func createTypeReceipt(name string, plans []typePropertyPlan, result *v2model.Cr
 	if len(plans) == 0 {
 		b.WriteString("\n  (no properties — every object still takes Name and Description)")
 	}
-	for _, w := range result.Warnings {
-		b.WriteString("\nwarning: " + w.Message)
-	}
+	b.WriteString(warningsText(result.Warnings))
 	if !dryRun {
 		fmt.Fprintf(&b, "\ncreate objects of it with create: type %q — describe %q lists these properties again", name, name)
 	}

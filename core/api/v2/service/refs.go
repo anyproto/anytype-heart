@@ -138,8 +138,7 @@ func (s *Service) unknownTypeKeyError(spaceId, typeKey, path string, v errKeys) 
 		v2model.Issue{
 			Path:    path,
 			Message: fmt.Sprintf("unknown %s %q — %s", v.typeWord(), typeKey, listKnown(v.typesWord(), known)),
-			Hint:    didYouMean(typeKey, known, fmt.Sprintf("list all with GET /v2/spaces/%s/types", spaceId)),
-		})
+		}.WithHint(didYouMean(typeKey, known, v2model.Hintf("list all with %s", v2model.RefListTypes(spaceId)))))
 }
 
 // typeNotFoundError is the 404 for a type-KEY lookup miss on the routes that
@@ -150,35 +149,36 @@ func (s *Service) unknownTypeKeyError(spaceId, typeKey, path string, v errKeys) 
 // benchmarked 4B did not retry at all, while the key-listing property tip
 // repaired on the first retry in the same run).
 func (s *Service) typeNotFoundError(spaceId, typeKey string, v errKeys) error {
-	return v2model.NotFound(notFoundWithKeys(
+	return notFoundWithKeys(
 		fmt.Sprintf("type %q not found in space %q", typeKey, spaceId),
-		typeKey, v.typesWord(), s.knownTypeKeys(spaceId, v),
-		fmt.Sprintf("list all with GET /v2/spaces/%s/types", spaceId)))
+		"type", typeKey, v.typesWord(), s.knownTypeKeys(spaceId, v),
+		v2model.Hintf("list all with %s", v2model.RefListTypes(spaceId)))
 }
 
 // propertyNotFoundError is typeNotFoundError's sibling for property-KEY
 // routes (options listing, PATCH/DELETE properties/{key}).
 func (s *Service) propertyNotFoundError(spaceId, propertyKey string, v errKeys) error {
-	return v2model.NotFound(notFoundWithKeys(
+	return notFoundWithKeys(
 		fmt.Sprintf("property %q not found in space %q", propertyKey, spaceId),
-		propertyKey, v.propertiesWord(), s.knownPropertyKeys(spaceId, v),
-		fmt.Sprintf("GET /v2/spaces/%s/properties lists user-visible properties only; hidden addressable properties are excluded and contribute to the total above", spaceId)))
+		"key", propertyKey, v.propertiesWord(), s.knownPropertyKeys(spaceId, v),
+		v2model.Hintf("%s lists user-visible properties only; hidden addressable properties are excluded and contribute to the total above", v2model.RefListProperties(spaceId)))
 }
 
-// notFoundWithKeys composes a not-found message that is repairable from the
-// error alone: subject, the known keys (capped), and a did-you-mean when a
-// close key exists. The list route rides along only when the key list was
-// truncated and no suggestion fired — the one case where the message alone
-// cannot show every candidate.
-func notFoundWithKeys(subject, input, what string, known []string, listRoute string) string {
+// notFoundWithKeys composes a 404 that is repairable from the error alone:
+// subject, the known keys (capped), and a did-you-mean when a close key
+// exists. The list operation rides along, as an issue on the path parameter
+// `param`, only when the key list was truncated and no suggestion fired —
+// the one case where the message alone cannot show every candidate.
+func notFoundWithKeys(subject, param, input, what string, known []string, list v2model.Hint) error {
 	msg := subject + " — " + listKnown(what, known)
-	if hint := didYouMean(input, known, ""); hint != "" {
-		return msg + "; " + hint
+	if hint := didYouMean(input, known, v2model.Hint{}); hint.Text != "" {
+		return v2model.NotFound(msg + "; " + hint.Text)
 	}
 	if len(known) > maxListedKeys {
-		return msg + "; " + listRoute
+		return v2model.NotFound(msg,
+			v2model.Issue{Path: param, Message: "not among the " + what + " listed"}.WithHint(list))
 	}
-	return msg
+	return v2model.NotFound(msg)
 }
 
 // propertyKeyExistsIn reports whether a property key resolves in a primed
@@ -267,9 +267,8 @@ func removedPropertyIssue(spaceId, key, spelledAs, path string, v errKeys) v2mod
 	return v2model.Issue{
 		Path:    path,
 		Message: fmt.Sprintf("property %q was removed from this space — nothing new lands on a removed property", spelling),
-		Hint: fmt.Sprintf("remove %q from the request — values objects already hold stay readable, and reappear if the property is restored; for a different property, list them with GET /v2/spaces/%s/properties",
-			spelledAs, spaceId),
-	}
+	}.Hintf("remove %q from the request — values objects already hold stay readable, and reappear if the property is restored; for a different property, list them with %s",
+		spelledAs, v2model.RefListProperties(spaceId))
 }
 
 // removedTypeIssue is removedPropertyIssue for the TYPE namespace (§8.41):
@@ -290,8 +289,7 @@ func removedTypeIssue(spaceId, key, path string, v errKeys) v2model.Issue {
 	return v2model.Issue{
 		Path:    path,
 		Message: fmt.Sprintf("type %q was removed from this space — nothing new is created in a removed type", spelling),
-		Hint:    fmt.Sprintf("use a live type instead — list them with GET /v2/spaces/%s/types", spaceId),
-	}
+	}.Hintf("use a live type instead — list them with %s", v2model.RefListTypes(spaceId))
 }
 
 // propertyKeyExists is the single-lookup form; loops prime entries once and
@@ -327,12 +325,18 @@ func knownPropertyKeysIn(entries []propertyEntry, v errKeys) []string {
 
 // unknownPropertyIssue builds one path-addressed did-you-mean issue for an
 // unknown property key.
-func unknownPropertyIssue(key, path string, known []string, listUrl string, v errKeys) v2model.Issue {
+func unknownPropertyIssue(key, path string, known []string, list v2model.Hint, v errKeys) v2model.Issue {
 	return v2model.Issue{
 		Path:    path,
 		Message: fmt.Sprintf("unknown %s %q — %s", v.propertyWord(), key, listKnown(v.propertiesWord(), known)),
-		Hint:    didYouMean(key, known, listUrl),
-	}
+	}.WithHint(didYouMean(key, known, list))
+}
+
+// propertyListHint is the repair every unknown-property refusal ends on:
+// list the space's properties, or create the missing one.
+func propertyListHint(spaceId string) v2model.Hint {
+	return v2model.Hintf("list all with %s, or create it with %s",
+		v2model.RefListProperties(spaceId), v2model.RefCreateProperty(spaceId))
 }
 
 // listKnown renders "known <what>: a, b, c…" capped at maxListedKeys.
@@ -351,12 +355,12 @@ func listKnown(what string, known []string) string {
 
 // didYouMean picks the closest known keys for the hint; fallback steers to
 // the discovery list.
-func didYouMean(input string, known []string, fallback string) string {
+func didYouMean(input string, known []string, fallback v2model.Hint) v2model.Hint {
 	suggestions := closestKeys(input, known, 3)
 	if len(suggestions) == 0 {
 		return fallback
 	}
-	return "did you mean " + strings.Join(suggestions, ", ") + "?"
+	return v2model.Plain("did you mean " + strings.Join(suggestions, ", ") + "?")
 }
 
 // closestKeys ranks known keys by simple similarity to input:

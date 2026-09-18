@@ -311,7 +311,10 @@ func TestV2GetQueryObjects(t *testing.T) {
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		assert.Contains(t, apiErr.Message, `object "col1" is a collection, not a query`)
-		assert.Contains(t, apiErr.Message, "GET /v2/spaces/space1/collections/col1/objects")
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "query_id", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Hint, "GET /v2/spaces/space1/collections/col1/objects")
+		assert.Equal(t, []v2model.Ref{v2model.RefGetCollectionObjects(testSpaceId, "col1")}, apiErr.Issues[0].SeeAlso)
 	})
 
 	t.Run("a query over a file type returns its rows and renders the file fields", func(t *testing.T) {
@@ -412,7 +415,10 @@ func TestV2GetCollectionObjects(t *testing.T) {
 		// then
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, `object "query1" is a query, not a collection`)
-		assert.Contains(t, apiErr.Message, "GET /v2/spaces/space1/queries/query1/objects")
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "collection_id", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Hint, "GET /v2/spaces/space1/queries/query1/objects")
+		assert.Equal(t, []v2model.Ref{v2model.RefGetQueryObjects(testSpaceId, "query1")}, apiErr.Issues[0].SeeAlso)
 	})
 
 	t.Run("a plain object is neither — the error names both routes", func(t *testing.T) {
@@ -426,8 +432,12 @@ func TestV2GetCollectionObjects(t *testing.T) {
 		// then
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, "neither a query nor a collection")
-		assert.Contains(t, apiErr.Message, "/queries/{query_id}/objects")
-		assert.Contains(t, apiErr.Message, "/collections/{collection_id}/objects")
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Hint, "GET /v2/spaces/space1/queries/{query_id}/objects")
+		assert.Contains(t, apiErr.Issues[0].Hint, "GET /v2/spaces/space1/collections/{collection_id}/objects")
+		require.Len(t, apiErr.Issues[0].SeeAlso, 2)
+		assert.Equal(t, v2model.OpGetQueryObjects, apiErr.Issues[0].SeeAlso[0].Op)
+		assert.Equal(t, v2model.OpGetCollectionObjects, apiErr.Issues[0].SeeAlso[1].Op)
 	})
 
 	t.Run("an offset past the membership is an empty page, has_more false", func(t *testing.T) {

@@ -106,16 +106,28 @@ func (s *Service) readListTarget(ctx context.Context, spaceId, listId string, wa
 	// internal name (ObjectType_set) — only the surface was renamed
 	isQuery := layout == model.ObjectType_set
 	isCollection := layout == model.ObjectType_collection
+	param := "query_id"
+	if want == listKindCollection {
+		param = "collection_id"
+	}
 	switch {
 	case want == listKindQuery && isCollection:
 		return listTarget{}, v2model.ValidationFailed(
-			fmt.Sprintf("object %q is a collection, not a query — use GET /v2/spaces/%s/collections/%s/objects", listId, spaceId, listId))
+			fmt.Sprintf("object %q is a collection, not a query", listId),
+			v2model.Issue{Path: param, Message: "collections are read through their own operation"}.
+				Hintf("use %s", v2model.RefGetCollectionObjects(spaceId, listId)))
 	case want == listKindCollection && isQuery:
 		return listTarget{}, v2model.ValidationFailed(
-			fmt.Sprintf("object %q is a query, not a collection — use GET /v2/spaces/%s/queries/%s/objects", listId, spaceId, listId))
+			fmt.Sprintf("object %q is a query, not a collection", listId),
+			v2model.Issue{Path: param, Message: "queries are read through their own operation"}.
+				Hintf("use %s", v2model.RefGetQueryObjects(spaceId, listId)))
 	case !isQuery && !isCollection:
 		return listTarget{}, v2model.ValidationFailed(
-			fmt.Sprintf("object %q is neither a query nor a collection — queries read via /v2/spaces/{space_id}/queries/{query_id}/objects, collections via /v2/spaces/{space_id}/collections/{collection_id}/objects", listId))
+			fmt.Sprintf("object %q is neither a query nor a collection", listId),
+			v2model.Issue{Path: param, Message: "only queries and collections list objects"}.
+				Hintf("queries read via %s, collections via %s",
+					v2model.NewRef(v2model.OpGetQueryObjects, "space_id", spaceId),
+					v2model.NewRef(v2model.OpGetCollectionObjects, "space_id", spaceId)))
 	}
 
 	target := listTarget{read: read}
@@ -363,13 +375,13 @@ func (s *Service) validateListFields(spaceId string, fields []string, v errKeys)
 	for _, key := range acceptKeys {
 		allowed[key] = true
 	}
-	listUrl := fmt.Sprintf("list keys with GET /v2/spaces/%s/properties", spaceId)
+	listHint := v2model.Hintf("list keys with %s", v2model.RefListProperties(spaceId))
 	var issues []v2model.Issue
 	for _, field := range fields {
 		if canonical, ambiguous := kc.canon(field); len(ambiguous) > 0 {
 			issues = append(issues, ambiguousInputIssue(v.propertyWord(), field, "fields", ambiguous))
 		} else if !allowed[field] && !allowed[canonical] {
-			issues = append(issues, unknownPropertyIssue(field, "fields", refKeys, listUrl, v))
+			issues = append(issues, unknownPropertyIssue(field, "fields", refKeys, listHint, v))
 		}
 	}
 	if len(issues) > 0 {

@@ -378,9 +378,8 @@ func optionConsentErrorAt(spaceId, servedKey, name, path string) error {
 		v2model.Issue{
 			Path:    path,
 			Message: fmt.Sprintf("property %q has no option named %q, and this request did not ask to create one", servedKey, name),
-			Hint: fmt.Sprintf("check the spelling against GET /v2/spaces/%s/properties/%s/options, "+
-				"or resend with ?create_missing_options=true to create it", spaceId, servedKey),
-		})
+		}.Hintf("check the spelling against %s, or resend with %s to create it",
+			v2model.RefListPropertyOptions(spaceId, servedKey), v2model.Resend("create_missing_options", "true")))
 }
 
 // prewarmCreateMissing resolves a PATCH's create-missing references BEFORE

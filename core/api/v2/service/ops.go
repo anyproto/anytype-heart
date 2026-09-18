@@ -470,8 +470,7 @@ func decodeStrictOp(raw json.RawMessage, opName, opPath string, v any) error {
 			v2model.Issue{
 				Path:    opPath,
 				Message: err.Error(),
-				Hint:    fmt.Sprintf("GET /v2/schemas/ops/%s for the op's schema and example", opName),
-			})
+			}.Hintf("%s for the op's schema and example", v2model.RefGetOpSchema(opName)))
 	}
 	return nil
 }

@@ -7,6 +7,7 @@ package wrapper
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -24,10 +25,17 @@ const (
 	evalSpacePrefix = "bafyreihwvsaekzzyb54o7um4hdpvpn5b2invn75lmijhhtghblvphxwz2i"
 )
 
-// spaceNotFound is the server's own refusal for an unknown space, verbatim.
+// spacesListRepair is how the server's space-not-found hint reads on this
+// surface; the space steer supersedes it, which these tests pin.
+const spacesListRepair = "list spaces with " + spacesToolSpelling
+
+// spaceNotFound is the server's own refusal for an unknown space, verbatim
+// (spaceNotFoundError): the fact in the message, the list steer as an issue
+// on the parameter, typed.
 func spaceNotFound(spaceId string) string {
-	return `{"status":404,"code":"not_found","message":"space \"` + spaceId +
-		`\" not found — list spaces with GET /v2/spaces"}`
+	return `{"status":404,"code":"not_found","message":"space \"` + spaceId + `\" not found",` +
+		`"issues":[{"path":"space_id","message":"no space with this id is open on this account",` +
+		`"hint":"list spaces with GET /v2/spaces","see_also":[{"op":"list_spaces"}]}]}`
 }
 
 // spacesBody renders a stub space list.
@@ -219,6 +227,10 @@ func TestObjectRefSteering(t *testing.T) {
 // so a hint like "list spaces with GET /v2/spaces" tells the model to do
 // something it cannot do while the tool that does it goes unnamed — which is
 // exactly what the e4b run shows, the model having already called `spaces`.
+//
+// The server ships each route as a typed reference (see_also) beside the
+// prose, so the re-spelling is a lookup on the operation, not a regex on
+// the sentence.
 func TestRestVocabulary(t *testing.T) {
 	ctx := context.Background()
 
@@ -230,84 +242,119 @@ func TestRestVocabulary(t *testing.T) {
 		_, err := fx.Run(ctx, "find", map[string]any{"space": "nosuchspace", "query": "x"})
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "list them with the `spaces` tool")
+		assert.Contains(t, err.Error(), spacesListRepair)
 		assert.NotContains(t, err.Error(), "GET /v2/spaces")
 	})
 
 	t.Run("the block-not-found hint names read, not the query parameter", func(t *testing.T) {
-		// the server's CURRENT phrasing (v2AddressableBlocksHint), which the
-		// retired ops-only rewrite did not cover
+		// the server's CURRENT phrasing (addressableBlocksHint), typed
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 404,
-			`{"status":404,"code":"not_found","message":"block \"zzzzz\" not found","issues":[{"path":"ops[0].id","message":"the addressable blocks are the entries of the document's blocks array","hint":"GET the object with ?outline=true to list them. Ids nested inside a block are served but are not block references."}]}`)
+			`{"status":404,"code":"not_found","message":"block \"zzzzz\" not found","issues":[{"path":"ops[0].id","message":"the addressable blocks are the entries of the document's blocks array","hint":"GET /v2/spaces/{space_id}/objects/{object_id}?outline=true lists them. Ids nested inside a block are served but are not block references.","see_also":[{"op":"get_object","query":{"outline":"true"}}]}]}`)
 
 		_, err := fx.Run(ctx, "check_item", map[string]any{"object": "1", "block": "zzzzz", "checked": true})
 
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "run read (the default mode=full) to see each block's text")
+		assert.Contains(t, err.Error(), "`read` with mode=outline lists them",
+			"the outline is the one read that lists the blocks of EVERY object — the full read of a query or collection serves its rows instead")
 		assert.NotContains(t, err.Error(), "?outline=true")
+		assert.NotContains(t, err.Error(), "/v2/")
 	})
 
-	// the rest of the vocabulary, on the exact strings the server ships: each
-	// row is a hint reachable from a route the wrapper calls (routes.go)
-	t.Run("every reachable server hint is re-spelled", func(t *testing.T) {
+	// the vocabulary, on the exact shapes the server ships: each case is a
+	// hint reachable from a route the wrapper calls (routes.go), with the
+	// references the server attaches to it
+	t.Run("every reachable server hint is re-spelled by its references", func(t *testing.T) {
 		cases := []struct {
-			name, from, want string
+			name  string
+			issue v2model.Issue
+			want  string
 		}{
 			{
-				name: "spaces",
-				from: `space "s1" not found — list spaces with GET /v2/spaces`,
-				want: "list them with the `spaces` tool",
+				name:  "spaces",
+				issue: v2model.Issue{}.Hintf("list spaces with %s", v2model.RefListSpaces()),
+				want:  "list spaces with the `spaces` tool",
 			},
 			{
-				name: "type keys (R9 create/search)",
-				from: `unknown type key "tsak" (list all with GET /v2/spaces/space1/types)`,
-				want: "check the type name (find results show each object's type)",
+				name:  "type keys (R9 create/search)",
+				issue: v2model.Issue{}.Hintf("list all with %s", v2model.RefListTypes("space1")),
+				want:  "list all with a type listing (not in this tool set; `find` results show each object's type)",
 			},
 			{
-				name: "type keys (shortcut create, literal placeholder)",
-				from: `the shortcut needs a type key (list keys with GET /v2/spaces/{space_id}/types)`,
-				want: "check the type name (find results show each object's type)",
+				name:  "type keys, parameter unbound (placeholder route)",
+				issue: v2model.Issue{}.Hintf("list keys with %s", v2model.NewRef(v2model.OpListTypes)),
+				want:  "list keys with a type listing (not in this tool set; `find` results show each object's type)",
 			},
 			{
-				name: "property keys",
-				from: `unknown property key "prio" (list all with GET /v2/spaces/space1/properties, or create it with POST /v2/spaces/space1/properties)`,
-				want: "run describe on the type to list the property names it takes",
+				name: "property keys — the create half is not on this surface, and says so by name",
+				issue: v2model.Issue{}.Hintf("list all with %s, or create it with %s",
+					v2model.RefListProperties("space1"), v2model.RefCreateProperty("space1")),
+				want: "list all with `describe` on the type (which lists up to 120 property names), or create it with an operation outside this tool set (create_property)",
 			},
 			{
-				name: "option names",
-				from: `too many new options in one request (creating an option is permanent and there is no delete surface — check the names against GET /v2/spaces/{space_id}/properties/{property_key}/options, or set values in smaller batches if they are all genuinely new)`,
-				want: "check the names against describe, which lists the live option names",
+				name:  "option names, property bound",
+				issue: v2model.Issue{}.Hintf("check the names against %s", v2model.RefListPropertyOptions("space1", "Status")),
+				want:  "check the names against `describe` with options=Status",
 			},
 			{
-				name: "members",
-				from: `the caller's account identity is not available on this server — list members with GET /v2/spaces/{space_id}/members instead`,
-				want: "the tool set has no member listing",
+				name:  "option names, property unbound",
+				issue: v2model.Issue{}.Hintf("check the names against %s", v2model.NewRef(v2model.OpListPropertyOptions, "space_id", "space1")),
+				want:  "check the names against `describe` with options naming the property",
 			},
 			{
-				name: "removed property (§8.41)",
-				from: `remove "due_date" from the request — values objects already hold stay readable, and reappear if the property is restored; for a different property, list them with GET /v2/spaces/space1/properties`,
-				want: "for a different property, run describe on the type to list its live property names",
+				name:  "members — not offered",
+				issue: v2model.Issue{}.Hintf("list members with %s instead", v2model.RefListMembers("space1")),
+				want:  "list members with an operation outside this tool set (list_members) instead",
 			},
 			{
-				name: "removed type (§8.41)",
-				from: `use a live type instead — list them with GET /v2/spaces/space1/types`,
-				want: "use a live type instead (find results show each object's type)",
+				name: "the locator's two reads: the outline read extends the plain one and is replaced whole",
+				issue: v2model.Issue{}.Hintf("read the object with %s and copy the text; %s truncates text to a snippet",
+					v2model.RefGetObject("space1", "obj1"), v2model.RefGetObject("space1", "obj1").With("outline", "true")),
+				want: "read the object with `read` and copy the text; `read` with mode=outline truncates text to a snippet",
 			},
 			{
-				name: "a hint this table has never seen",
-				from: `"image" objects come from file uploads (POST /v2/spaces/{space_id}/files)`,
-				want: "the HTTP API",
+				name:  "resend with a parameter",
+				issue: v2model.Issue{}.Hintf("or resend with %s to create it", v2model.Resend("create_missing_options", "true")),
+				want:  "or resend with a parameter these tools do not take (create_missing_options=true) to create it",
+			},
+			{
+				name:  "a dotted real space id inside a bound route is consumed with it",
+				issue: v2model.Issue{}.Hintf("list them with %s", v2model.RefListObjects("bafyreiabc.28y6mgnwgodt7")),
+				want:  "list them with `find` (which serves handles, not full ids, on this tool set)",
+			},
+			{
+				name:  "a full-id read is a shape `read` cannot ask for, and says so",
+				issue: v2model.Issue{}.Hintf("read it with %s", v2model.NewRef(v2model.OpGetObject).With("ids", "full")),
+				want:  "read it with a full-id read (not in this tool set)",
+			},
+			{
+				name:  "query and collection reads are `read` on the list object",
+				issue: v2model.Issue{}.Hintf("use %s", v2model.RefGetCollectionObjects("space1", "col1")),
+				want:  "use `read` on the collection",
+			},
+			{
+				name: "one pass: a bound value that spells another reference is not rewritten again",
+				issue: v2model.Issue{}.Hintf("check %s, or resend with %s",
+					v2model.RefListPropertyOptions("space1", "?create_missing_options=true"), v2model.Resend("create_missing_options", "true")),
+				want: "check `describe` with options=?create_missing_options=true, or resend with a parameter these tools do not take (create_missing_options=true)",
+			},
+			{
+				name:  "a hint from a server build without references falls to the catch-all",
+				issue: v2model.Issue{Hint: `"image" objects come from file uploads (POST /v2/spaces/{space_id}/files)`},
+				want:  `"image" objects come from file uploads (the HTTP API)`,
 			},
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
-				te := &ToolError{Status: 404, Text: tc.from}
+				issues := []v2model.Issue{tc.issue}
+				te := &ToolError{Status: 400, Message: "refused", Issues: issues, Text: renderErrorText("refused", issues)}
 				deRest(te)
-				assert.Contains(t, te.Text, tc.want)
+				assert.Equal(t, tc.want, te.Issues[0].Hint)
+				assert.Contains(t, te.Text, tc.want, "the rendered text is rewritten in place by the same references")
 				assert.NotContains(t, te.Text, "/v2/",
-					"no route survives the pass — the last rule catches what the table does not name")
+					"no route survives the pass outside a protected span — the catch-all takes what the references do not name")
+				assert.Nil(t, te.Issues[0].SeeAlso, "rendered references are dropped from the JSON channel")
 			})
 		}
 	})
@@ -315,17 +362,75 @@ func TestRestVocabulary(t *testing.T) {
 	t.Run("issue messages and hints are rewritten too", func(t *testing.T) {
 		// the rendered text is built from message + issues, and the JSON
 		// channel serves the issues themselves — both have to be clean
-		te := &ToolError{
-			Status: 400,
-			Text:   "unknown property keys",
-			Issues: []v2model.Issue{{
-				Path:    "/properties/prio",
-				Message: `unknown property key "prio" — known keys: status`,
-				Hint:    "list all with GET /v2/spaces/space1/properties, or create it with POST /v2/spaces/space1/properties",
-			}},
-		}
+		issues := []v2model.Issue{v2model.Issue{
+			Path:    "/properties/prio",
+			Message: `unknown property key "prio" — known keys: status`,
+		}.Hintf("list all with %s", v2model.RefListProperties("space1"))}
+		te := &ToolError{Status: 400, Message: "unknown property keys", Issues: issues, Text: renderErrorText("unknown property keys", issues)}
 		deRest(te)
-		assert.Equal(t, "run describe on the type to list the property names it takes", te.Issues[0].Hint)
+		assert.Equal(t, "list all with `describe` on the type (which lists up to 120 property names)", te.Issues[0].Hint)
+		assert.Equal(t, "unknown property keys\n  /properties/prio: unknown property key \"prio\" — known keys: status (list all with `describe` on the type (which lists up to 120 property names))", te.Text)
+	})
+
+	t.Run("a message is a fact and is not rewritten by the hint's references", func(t *testing.T) {
+		issues := []v2model.Issue{v2model.Issue{
+			Path:    "/properties/x",
+			Message: `property "GET /v2/spaces/space1/properties" has no option named "a"`,
+		}.Hintf("list them with %s", v2model.RefListProperties("space1"))}
+		te := &ToolError{Status: 400, Message: "refused", Issues: issues, Text: renderErrorText("refused", issues)}
+		deRest(te)
+		assert.NotContains(t, te.Issues[0].Message, "`describe`",
+			"only the catch-all touches a message — a quoted value is never re-spelled as a tool")
+		assert.Contains(t, te.Issues[0].Message, "the HTTP API")
+		assert.Equal(t, "list them with `describe` on the type (which lists up to 120 property names)", te.Issues[0].Hint)
+	})
+
+	t.Run("the server's own envelope round-trips: marshal → decode → re-spell", func(t *testing.T) {
+		// built with the server's constructors and marshalled by its
+		// MarshalJSON, so this fixture cannot drift from the wire shape the
+		// way a hand-written JSON literal can
+		served := v2model.NotFound(`space "bafyreiabc.28y6mgnwgodt7" not found`,
+			v2model.Issue{Path: "space_id", Message: "no space with this id is open on this account"}.
+				Hintf("list spaces with %s", v2model.RefListSpaces()))
+		body, err := json.Marshal(served)
+		require.NoError(t, err)
+
+		te := decodeAPIError(http.StatusNotFound, body).(*ToolError)
+		deRest(te)
+
+		assert.Equal(t, "space \"bafyreiabc.28y6mgnwgodt7\" not found\n  space_id: no space with this id is open on this account (list spaces with the `spaces` tool)", te.Text)
+		assert.Nil(t, te.Issues[0].SeeAlso)
+	})
+
+	t.Run("a bound value that looks like a route is not redacted by the catch-all — in the text either", func(t *testing.T) {
+		issue := v2model.Issue{Path: "/x", Message: "m"}.Hintf("check the names against %s", v2model.RefListPropertyOptions("space1", "GET /v2/spaces/space1/properties"))
+		want := "check the names against `describe` with options=GET /v2/spaces/space1/properties"
+		assert.Equal(t, want, deRestIssue(issue).Hint,
+			"the catch-all sees only the prose between the renderings, never a tool spelling")
+
+		issues := []v2model.Issue{issue}
+		te := &ToolError{Status: 400, Message: "refused", Issues: issues, Text: renderErrorText("refused", issues)}
+		deRest(te)
+		assert.Equal(t, "refused\n  /x: m ("+want+")", te.Text)
+	})
+
+	t.Run("a message that quotes the hint's own text is not rewritten as a hint", func(t *testing.T) {
+		hint := v2model.Issue{}.Hintf("list all with %s", v2model.RefListTypes("s")).Hint
+		issues := []v2model.Issue{v2model.Issue{Path: "/type", Message: `unknown type "` + hint + `"`}.Hintf("list all with %s", v2model.RefListTypes("s"))}
+		te := &ToolError{Status: 400, Message: `type "` + hint + `" not found`, Issues: issues, Text: renderErrorText(`type "`+hint+`" not found`, issues)}
+		deRest(te)
+		assert.NotContains(t, te.Message, "a type listing", "the quoted input is the caller's value, redacted by the catch-all only")
+		assert.Contains(t, te.Message, `type "list all with the HTTP API`)
+		assert.Equal(t, 1, strings.Count(te.Text, "a type listing (not in this tool set"), "only the rendered hint span is re-spelled")
+	})
+
+	t.Run("an executor's edit to the text survives the hint substitution", func(t *testing.T) {
+		issues := []v2model.Issue{v2model.Issue{Path: "ops[0].id", Message: "not found"}.
+			Hintf("list keys with %s", v2model.RefListProperties("space1"))}
+		te := &ToolError{Status: 404, Message: "refused", Issues: issues, Text: renderErrorText("refused", issues)}
+		te.Text = strings.Replace(te.Text, "ops[0].id", "block", 1) + " — wrote 1 of 3"
+		deRest(te)
+		assert.Equal(t, "refused\n  block: not found (list keys with `describe` on the type (which lists up to 120 property names)) — wrote 1 of 3", te.Text)
 	})
 
 	t.Run("prose that merely mentions a version prefix is untouched", func(t *testing.T) {
@@ -353,17 +458,37 @@ func TestRestVocabulary(t *testing.T) {
 		assert.Equal(t, "use the HTTP API. Then retry.", te.Text,
 			"a dot followed by whitespace is prose, not route")
 	})
+
+	t.Run("success-path warnings render their hint, re-spelled", func(t *testing.T) {
+		// a warning's repair lives in its hint (the query and collection
+		// reads put it there); printing the message alone hid it from every
+		// MCP caller
+		warnings := []v2model.Issue{
+			v2model.Issue{Message: "the view's filter was not applied"}.Hintf("list keys with %s", v2model.RefListProperties("space1")),
+			{Message: "plain"},
+		}
+		assert.Equal(t, "\nwarning: the view's filter was not applied — list keys with `describe` on the type (which lists up to 120 property names)\nwarning: plain",
+			warningsText(warnings))
+	})
 }
 
-// TestRestVocabularyReplacementsAreToolShaped guards the table itself: a
-// replacement that reintroduced a route would be re-caught by the generic
-// rule and redacted into "the HTTP API", silently losing the repair the row
-// exists to give.
-func TestRestVocabularyReplacementsAreToolShaped(t *testing.T) {
-	for _, sub := range restVocab {
-		assert.False(t, strings.Contains(sub.to, "/v2/"),
-			"a replacement must not reintroduce a route: %q", sub.to)
+// TestToolVocabularyIsRouteFree guards the table and its fallback: for every
+// operation the API has, the spelling must carry no route — a row that
+// reintroduced one would be re-caught by the catch-all and redacted into
+// "the HTTP API", silently losing the repair the row exists to give — and an
+// operation with no row must be named, so the caller learns which repair is
+// not on this surface instead of guessing.
+func TestToolVocabularyIsRouteFree(t *testing.T) {
+	for _, op := range v2model.OperationIds() {
+		spelling := toolSpelling(v2model.NewRef(op))
+		assert.NotContains(t, spelling, "/v2/", "op %s", op)
+		assert.NotEmpty(t, spelling, "op %s", op)
+		if _, offered := toolVocab[op]; !offered {
+			assert.Contains(t, spelling, op, "an operation outside the tool set is named")
+		}
 	}
+	assert.NotContains(t, toolSpelling(v2model.RefGetObject("s", "o").With("outline", "true")), "outline=true",
+		"the outline query renders as the tool's mode, not as a query parameter")
 }
 
 // TestWrapperAsksForNameVocabulary: the wrapper does ZERO translation of

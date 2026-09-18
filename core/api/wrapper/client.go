@@ -74,8 +74,12 @@ type apiRequest struct {
 type ToolError struct {
 	Status int
 	Code   string
-	Text   string
-	Issues []v2model.Issue
+	// Message and Issues are the server's C6 envelope; Text is their
+	// rendering (renderErrorText), rewritten in place by the tool-vocabulary
+	// pass (deRest) so an executor's edits to it survive.
+	Message string
+	Text    string
+	Issues  []v2model.Issue
 }
 
 func (e *ToolError) Error() string { return e.Text }
@@ -196,9 +200,16 @@ func decodeAPIError(status int, body []byte) error {
 	if err := json.Unmarshal(body, &v2); err != nil || v2.Message == "" {
 		return &ToolError{Status: status, Text: fmt.Sprintf("server answered %d: %s", status, strings.TrimSpace(string(body)))}
 	}
+	return &ToolError{Status: status, Code: v2.Code, Message: v2.Message, Text: renderErrorText(v2.Message, v2.Issues), Issues: v2.Issues}
+}
+
+// renderErrorText renders a C6 envelope as the one-string error the tool
+// surface serves: the message, then one indented line per issue with its
+// path, message and hint.
+func renderErrorText(message string, issues []v2model.Issue) string {
 	var b strings.Builder
-	b.WriteString(v2.Message)
-	for _, issue := range v2.Issues {
+	b.WriteString(message)
+	for _, issue := range issues {
 		b.WriteString("\n  ")
 		if issue.Path != "" {
 			b.WriteString(issue.Path)
@@ -211,7 +222,7 @@ func decodeAPIError(status int, body []byte) error {
 			b.WriteString(")")
 		}
 	}
-	return &ToolError{Status: status, Code: v2.Code, Text: b.String(), Issues: v2.Issues}
+	return b.String()
 }
 
 // isAmbiguous reports whether an error is the server's 400 ambiguous_input

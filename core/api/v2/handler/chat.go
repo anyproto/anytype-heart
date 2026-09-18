@@ -28,7 +28,7 @@ const maxChatRequestBody = 1 << 20 // 1 MiB
 // 400s with the field named — C13's spirit at the request layer, matching
 // search). A false return means the error response was already written.
 func decodeChatBody(c *gin.Context, into any, hint string) bool {
-	return decodeStrictJSONBody(c, into, hint, maxChatRequestBody, "chat")
+	return decodeStrictJSONBody(c, into, v2model.Plain(hint), maxChatRequestBody, "chat")
 }
 
 // respondChatMutation writes a chat mutation result: createdStatus on a real
@@ -122,7 +122,8 @@ func GetChatMessagesHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Query("offset") != "" {
 			RespondError(c, v2model.ValidationFailed("offset does not apply to the messages read",
-				v2model.Issue{Path: "offset", Message: "messages are cursor-paged", Hint: "page with ?after= / ?before= order ids from a previous read"}))
+				v2model.Issue{Path: "offset", Message: "messages are cursor-paged"}.
+					Hintf("page with %s or %s, using order ids from a previous read", v2model.Resend("after", "<order_id>"), v2model.Resend("before", "<order_id>"))))
 			return
 		}
 		fullReactions := false

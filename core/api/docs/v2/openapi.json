@@ -487,6 +487,14 @@
           },
           "path": {
             "type": "string"
+          },
+          "see_also": {
+            "description": "The operations the hint names, as data: each renders in the hint as its method and path with params substituted and `?k=v` query sorted by key, so a caller with tools instead of routes can find and replace it by op.",
+            "items": {
+              "$ref": "#/components/schemas/Ref"
+            },
+            "type": "array",
+            "uniqueItems": false
           }
         },
         "type": "object",
@@ -841,6 +849,29 @@
           },
           "name": {
             "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "Ref": {
+        "properties": {
+          "op": {
+            "description": "The operation's OpenAPI operationId, such as list_properties; absent means the request that produced this issue, resent with the query given, and the hint then spells only the query.",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Path parameters by their OpenAPI name, each substituted into the path once and verbatim (no percent-encoding); one left out keeps its {name} placeholder in the hint for the caller to fill.",
+            "type": "object"
+          },
+          "query": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Query parameters to send with the operation, spelled in the hint as ?name=value pairs joined by & and sorted by name, values verbatim.",
+            "type": "object"
           }
         },
         "type": "object"

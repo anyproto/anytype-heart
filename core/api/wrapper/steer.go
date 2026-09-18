@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -37,11 +38,12 @@ import (
 // "" to leave the server's refusal exactly as it was written.
 type argSteer struct {
 	arg string
-	// supersedes is a generic hint the specific repair makes redundant, cut
-	// from the message when the repair fires. Two repairs in one refusal
-	// compete, and the run that produced §8.34 shows which one loses: the
-	// model had already run `spaces`, been served the full ids, and gone
-	// straight back to the truncated form.
+	// supersedes is the operation whose generic hint the specific repair
+	// makes redundant: every issue whose references name it loses its hint
+	// when the repair fires. Two repairs in one refusal compete, and the run
+	// that produced §8.34 shows which one loses: the model had already run
+	// `spaces`, been served the full ids, and gone straight back to the
+	// truncated form.
 	supersedes string
 	repair     func(r *Runner, ctx context.Context, def Tool, session *Session, ref string) string
 }
@@ -50,7 +52,7 @@ type argSteer struct {
 // recognisable means adding a row here — not a hook in an executor.
 var argSteers = []argSteer{
 	{arg: "object", repair: objectRefRepair},
-	{arg: "space", supersedes: spacesListRepair, repair: spaceRefRepair},
+	{arg: "space", supersedes: v2model.OpListSpaces, repair: spaceRefRepair},
 }
 
 // steerError is Run's error path. It re-spells the server's REST hints for
@@ -70,29 +72,51 @@ func (r *Runner) steerError(ctx context.Context, def Tool, session *Session, arg
 	if !errors.As(err, &te) {
 		return err
 	}
-	deRest(te)
-	if te.Status != http.StatusNotFound {
-		return te
-	}
-	for _, s := range argSteers {
-		if _, takes := def.arg(s.arg); !takes {
-			continue
-		}
-		ref := strArg(args, s.arg)
-		// only when the server's message names the caller's OWN value: a
-		// not-found about anything else is a different failure and must not
-		// be re-explained as a bad argument
-		if ref == "" || !strings.Contains(te.Text, strconv.Quote(ref)) {
-			continue
-		}
-		if repair := s.repair(r, ctx, def, session, ref); repair != "" {
-			if s.supersedes != "" {
-				te.Text = strings.Replace(te.Text, " — "+s.supersedes, "", 1)
+	var repairs []string
+	if te.Status == http.StatusNotFound {
+		for _, s := range argSteers {
+			if _, takes := def.arg(s.arg); !takes {
+				continue
 			}
-			te.Text += " — " + repair
+			ref := strArg(args, s.arg)
+			// only when the server's message names the caller's OWN value: a
+			// not-found about anything else is a different failure and must
+			// not be re-explained as a bad argument
+			if ref == "" || !strings.Contains(te.Text, strconv.Quote(ref)) {
+				continue
+			}
+			if repair := s.repair(r, ctx, def, session, ref); repair != "" {
+				if s.supersedes != "" {
+					dropHintsNaming(te, s.supersedes)
+				}
+				repairs = append(repairs, repair)
+			}
 		}
+	}
+	// the vocabulary pass runs after the steers have dropped what they
+	// supersede, and the repairs are appended to the re-spelled text
+	deRest(te)
+	for _, repair := range repairs {
+		te.Text += " — " + repair
 	}
 	return te
+}
+
+// dropHintsNaming blanks the hint of every issue whose references name op —
+// the generic repair a specific one supersedes — on the issue and in the
+// rendered text. It runs before deRest, while the references are still on
+// the issues.
+func dropHintsNaming(te *ToolError, op string) {
+	for i, issue := range te.Issues {
+		for _, ref := range issue.SeeAlso {
+			if ref.Op == op {
+				te.Text = strings.Replace(te.Text, " ("+issue.Hint+")", "", 1)
+				te.Issues[i].Hint = ""
+				te.Issues[i].SeeAlso = nil
+				break
+			}
+		}
+	}
 }
 
 //
@@ -215,61 +239,91 @@ func (r *Runner) spaceIdsWithPrefix(ctx context.Context, prefix string) []string
 // ---- the REST → tool vocabulary (§8.34) ----
 //
 
-// spacesListRepair is the tool-shaped spelling of the server's own
-// space-not-found hint, named because the space steer supersedes it.
-const spacesListRepair = "list them with the `spaces` tool"
+// spacesToolSpelling is the `list_spaces` row, named because the space
+// steer supersedes hints that name that operation (argSteers).
+const spacesToolSpelling = "the `spaces` tool"
 
-// restVocab re-spells the server's repair hints for a caller that has tools
-// and no routes. The server is right to name the route on the HTTP surface —
-// that IS its vocabulary — but a tool-calling model handed
-// "list spaces with GET /v2/spaces" is told to do something it cannot do,
-// while the tool that does it (`spaces`) goes unnamed. The run that produced
-// §8.34 shows the cost: the model had already called `spaces` and the hint
-// sent it nowhere.
+// toolVocab re-spells the server's repair hints for a caller that has tools
+// and no routes. The server names an operation in REST on the HTTP surface —
+// that IS its vocabulary — but a tool-calling model handed "list spaces
+// with GET /v2/spaces" is told to do something it cannot do, while the tool
+// that does it (`spaces`) goes unnamed. The run that produced §8.34 shows
+// the cost: the model had already called `spaces` and the hint sent it
+// nowhere.
 //
-// The space id in these patterns is interpolated by the server, so the
-// patterns match it as a segment; some hints ship the literal `{space_id}`
-// placeholder and those match too.
-var restVocab = []struct {
-	from *regexp.Regexp
-	to   string
-}{
-	{regexp.MustCompile(`list spaces with GET /v2/spaces\b`), spacesListRepair},
-	{regexp.MustCompile(`list (?:all|keys) with GET /v2/spaces/[^/\s]+/types\b`),
-		"check the type name (find results show each object's type)"},
-	{regexp.MustCompile(`list all with GET /v2/spaces/[^/\s]+/properties, or create it with POST /v2/spaces/[^/\s]+/properties\b`),
-		"run describe on the type to list the property names it takes"},
-	{regexp.MustCompile(`check the names against GET /v2/spaces/[^/\s]+/properties/[^/\s]+/options\b`),
-		"check the names against describe, which lists the live option names"},
-	// the removed-property refusal (§8.41): the remove-the-key repair works
-	// verbatim on this surface; only the list-route tail needs the tool
-	// spelling
-	{regexp.MustCompile(`for a different property, list them with GET /v2/spaces/[^/\s]+/properties\b`),
-		"for a different property, run describe on the type to list its live property names"},
-	// the removed-type refusal (§8.41)
-	{regexp.MustCompile(`use a live type instead — list them with GET /v2/spaces/[^/\s]+/types\b`),
-		"use a live type instead (find results show each object's type)"},
-	// the locator's repair steers to the full read — outline text is a
-	// truncated snippet, so an exact copy needs mode=full; only the REST
-	// spelling of the outline caveat needs translating for this surface
-	{regexp.MustCompile(`\?outline=true truncates text to a snippet\b`),
-		"read with mode=outline truncates text to a snippet"},
-	{regexp.MustCompile(`GET the object with \?outline=true to list them\b`),
-		"run read (the default mode=full) to see each block's text"},
-	// the no-dataview refusal (viewops.go resolveDataviewBlock) steers to an
-	// outline read; the tool spelling of that read is read mode=outline
-	{regexp.MustCompile(`GET the object \(\?outline=true\) to inspect its blocks\b`),
-		"run read (mode=outline) to inspect its blocks"},
-	{regexp.MustCompile(`list members with GET /v2/spaces/[^/\s]+/members\b`),
-		"the tool set has no member listing"},
+// The server ships every route it names as a typed reference beside the
+// prose (Issue.SeeAlso, model/ref.go), keyed by OpenAPI operationId, and the
+// prose spells the reference exactly as Ref.String renders it. So this is a
+// lookup, not a regex table: for each reference, the REST spelling is found
+// in the hint and replaced with the row below. An operation with no row is
+// one this tool set does not offer, and the fallback says so by name — the
+// caller learns the repair exists and is not on this surface, instead of
+// guessing at a route. A hint added server-side tomorrow is translated
+// without a change here, as long as it names an operation this table knows.
+//
+// Every row is a NOUN PHRASE: the server's sentences supply the verb ("list
+// keys with %s", "%s lists them", "use %s"), so a row that carries its own
+// predicate collides with theirs. A row must also promise only what the tool
+// does: there is no type listing here, so the type-list row says where types
+// are visible rather than pretending `find` lists them.
+var toolVocab = map[string]func(ref v2model.Ref) string{
+	v2model.OpListSpaces: func(v2model.Ref) string { return spacesToolSpelling },
+	v2model.OpListTypes: func(v2model.Ref) string {
+		return "a type listing (not in this tool set; `find` results show each object's type)"
+	},
+	v2model.OpGetType:    func(v2model.Ref) string { return "`describe`" },
+	v2model.OpCreateType: func(v2model.Ref) string { return "`create_type`" },
+	v2model.OpListProperties: func(v2model.Ref) string {
+		return fmt.Sprintf("`describe` on the type (which lists up to %d property names)", describeSettableLimit)
+	},
+	v2model.OpListPropertyOptions: func(ref v2model.Ref) string {
+		if key := ref.Params["key"]; key != "" {
+			return "`describe` with options=" + key
+		}
+		return "`describe` with options naming the property"
+	},
+	// the object read; ?outline=true is the outline mode, and ?ids=full is a
+	// shape `read` cannot ask for (it serves compact labels)
+	v2model.OpGetObject: func(ref v2model.Ref) string {
+		if ref.Query["ids"] == "full" {
+			return "a full-id read (not in this tool set)"
+		}
+		if ref.Query["outline"] == "true" {
+			return "`read` with mode=outline"
+		}
+		return "`read`"
+	},
+	// query and collection rows are read by `read` on the list object
+	v2model.OpGetQueryObjects:      func(v2model.Ref) string { return "`read` on the query" },
+	v2model.OpGetCollectionObjects: func(v2model.Ref) string { return "`read` on the collection" },
+	v2model.OpPatchObject:          func(v2model.Ref) string { return "the editing tools of this tool set" },
+	v2model.OpSearchSpace:          func(v2model.Ref) string { return "`find`" },
+	v2model.OpListObjects:          func(v2model.Ref) string { return "`find` (which serves handles, not full ids, on this tool set)" },
 }
 
-// restRoute catches any REST route the vocabulary above does not name — a
-// hint added server-side tomorrow, on a route the wrapper calls today. The
-// replacement is deliberately a plain noun phrase: it reads grammatically
-// wherever a route can appear in a sentence, and it says the true thing,
-// which is that the repair is not on this surface. A test asserts nothing
-// route-shaped survives this pass.
+// toolSpelling renders one typed reference in the tool vocabulary. A
+// resend reference (no op) is a parameter the server wants on the same
+// request, which no tool here takes, and is named as such; an operation
+// without a row is named as outside this tool set.
+func toolSpelling(ref v2model.Ref) string {
+	if ref.Op == "" {
+		// a request parameter is not an argument of any tool here: consent
+		// to create options and dry runs are host settings (Runner), so the
+		// caller is told the repair is not theirs to send
+		return "a parameter these tools do not take (" + strings.TrimPrefix(ref.String(), "?") + ")"
+	}
+	if spell, ok := toolVocab[ref.Op]; ok {
+		return spell(ref)
+	}
+	return fmt.Sprintf("an operation outside this tool set (%s)", ref.Op)
+}
+
+// restRoute catches any REST route the references above do not cover — a
+// hint from a server build older than the typed references, or one written
+// as a bare route. The replacement is deliberately a plain noun phrase: it
+// reads grammatically wherever a route can appear in a sentence, and it
+// says the true thing, which is that the repair is not on this surface. A
+// test asserts no route survives this pass outside a protected span.
 //
 // A dot is part of the route only when route characters follow it — real
 // space ids are dotted (`bafyreiabc.28y6mgnwgodt7`), and the earlier
@@ -281,21 +335,108 @@ var restRoute = regexp.MustCompile(`(?:GET|POST|PATCH|PUT|DELETE) /v[0-9]+[^\s,;
 
 const restRouteFallback = "the HTTP API"
 
-// deRest rewrites a ToolError in place — text, issue messages and issue
-// hints, since the text is built from all three.
-func deRest(te *ToolError) {
-	rewrite := func(s string) string {
-		if s == "" {
-			return s
+// respellSpans rewrites s in ONE pass: every key of spans found in s
+// becomes its value (longest key first where two match at a position), and
+// the catch-all runs over the text BETWEEN the keys only. The two never see
+// each other's output: a value that happens to contain something
+// route-shaped (a tool spelling carrying an option name, say) is not
+// redacted, and nothing is rescanned.
+func respellSpans(s string, spans map[string]string) string {
+	if s == "" {
+		return s
+	}
+	keys := make([]string, 0, len(spans))
+	for k := range spans {
+		if k != "" {
+			keys = append(keys, k)
 		}
-		for _, sub := range restVocab {
-			s = sub.from.ReplaceAllString(s, sub.to)
-		}
+	}
+	if len(keys) == 0 {
 		return restRoute.ReplaceAllString(s, restRouteFallback)
 	}
-	te.Text = rewrite(te.Text)
-	for i := range te.Issues {
-		te.Issues[i].Message = rewrite(te.Issues[i].Message)
-		te.Issues[i].Hint = rewrite(te.Issues[i].Hint)
+	sort.SliceStable(keys, func(i, j int) bool { return len(keys[i]) > len(keys[j]) })
+	for i, k := range keys {
+		keys[i] = regexp.QuoteMeta(k)
 	}
+	matcher := regexp.MustCompile(strings.Join(keys, "|"))
+	var b strings.Builder
+	last := 0
+	for _, m := range matcher.FindAllStringIndex(s, -1) {
+		b.WriteString(restRoute.ReplaceAllString(s[last:m[0]], restRouteFallback))
+		b.WriteString(spans[s[m[0]:m[1]]])
+		last = m[1]
+	}
+	b.WriteString(restRoute.ReplaceAllString(s[last:], restRouteFallback))
+	return b.String()
+}
+
+// deRestText re-spells the references in s: each reference's REST rendering
+// becomes its tool spelling — the outline read's rendering extends the
+// plain read's, and the longer wins — and the prose between the renderings
+// falls to restRoute.
+func deRestText(s string, refs []v2model.Ref) string {
+	spans := make(map[string]string, len(refs))
+	for _, ref := range refs {
+		if rest := ref.String(); rest != "" {
+			if _, seen := spans[rest]; !seen {
+				spans[rest] = toolSpelling(ref)
+			}
+		}
+	}
+	return respellSpans(s, spans)
+}
+
+// deRestIssue re-spells one issue's hint by its own references and drops
+// the references, which have been rendered. The message is a fact and names
+// no operation (the references are the hint's, by contract), so it only
+// gets the catch-all — a quoted value in it that happens to look like a
+// route rendering must not be rewritten into a tool name.
+func deRestIssue(issue v2model.Issue) v2model.Issue {
+	issue.Message = deRestText(issue.Message, nil)
+	issue.Hint = deRestText(issue.Hint, issue.SeeAlso)
+	issue.SeeAlso = nil
+	return issue
+}
+
+// deRest rewrites a ToolError in place — issues, message and text. The
+// references rewrite HINTS only. The text was rendered from the same issues
+// (renderErrorText puts each hint in " (…)" after its message) and may since
+// have been edited by an executor that re-spelled op paths into its own
+// argument names or appended what was and was not written; so the text is
+// rewritten by the same span engine, keyed on each hint AS RENDERED — the
+// parenthesised form, which a quoted value that merely equals the hint does
+// not take — with the catch-all covering everything outside those spans.
+// Executor edits survive. The one false positive left is a caller value
+// that is itself "x (<the whole hint>)"; closing it needs the executors to
+// edit issues rather than the text, so the text can be re-rendered, and is
+// accepted (APIV2_TYPED_HINTS.md, review findings).
+func deRest(te *ToolError) {
+	spans := map[string]string{}
+	for i := range te.Issues {
+		before := te.Issues[i].Hint
+		te.Issues[i] = deRestIssue(te.Issues[i])
+		if before != "" {
+			spans[" ("+before+")"] = " (" + te.Issues[i].Hint + ")"
+		}
+	}
+	te.Message = deRestText(te.Message, nil)
+	te.Text = respellSpans(te.Text, spans)
+}
+
+// warningsText renders success-path warnings for the tool surface, hint
+// included: a warning's repair lives in its hint (the P0 query and
+// collection reads put it there), and a renderer that prints the message
+// alone leaves the caller with the fact and no fix.
+func warningsText(warnings []v2model.Issue) string {
+	var b strings.Builder
+	for _, w := range warnings {
+		w = deRestIssue(w)
+		b.WriteString("\nwarning: ")
+		b.WriteString(w.Message)
+		if w.Hint != "" {
+			b.WriteString(" — ")
+			b.WriteString(w.Hint)
+		}
+	}
+	return b.String()
 }

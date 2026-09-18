@@ -61,7 +61,20 @@ func isLiveSpaceView(details *domain.Details) bool {
 
 func spaceUnavailableError(spaceId string) error {
 	return v2model.NotFound(
-		fmt.Sprintf("space %q is not available (deleted, left, or still joining) — list live spaces with GET /v2/spaces", spaceId))
+		fmt.Sprintf("space %q is not available (deleted, left, or still joining)", spaceId),
+		v2model.Issue{Path: "space_id", Message: "the space is not live on this account"}.
+			Hintf("list live spaces with %s", v2model.RefListSpaces()))
+}
+
+// spaceNotFoundError is the 404 for a space id this account does not hold.
+// No candidate list: ids are opaque (no did-you-mean can help) and a
+// per-caller grant means the full space list must not be implied — the
+// steer to the discovery operation is the whole repair.
+func spaceNotFoundError(spaceId string) error {
+	return v2model.NotFound(
+		fmt.Sprintf("space %q not found", spaceId),
+		v2model.Issue{Path: "space_id", Message: "no space with this id is open on this account"}.
+			Hintf("list spaces with %s", v2model.RefListSpaces()))
 }
 
 // GetSpace implements GET /v2/spaces/{space_id}: the space row read from the
@@ -82,8 +95,7 @@ func (s *Service) GetSpace(ctx context.Context, spaceId string) (v2model.Space, 
 	}
 	details, err := s.store.GetSpaceViewDetails(spaceId)
 	if err != nil {
-		return v2model.Space{}, v2model.NotFound(
-			fmt.Sprintf("space %q not found — list spaces with GET /v2/spaces", spaceId))
+		return v2model.Space{}, spaceNotFoundError(spaceId)
 	}
 	if !isLiveSpaceView(details) {
 		return v2model.Space{}, spaceUnavailableError(spaceId)
@@ -292,7 +304,12 @@ func v2SpaceRpcError(op string, code, badInputCode int32, description string) er
 	case strings.Contains(description, space.ErrSpaceNotExists.Error()),
 		strings.Contains(description, space.ErrSpaceDeleted.Error()),
 		strings.Contains(description, space.ErrSpaceStorageMissig.Error()):
-		return v2model.NotFound(fmt.Sprintf("%s: %s — list live spaces with GET /v2/spaces", op, description))
+		// no path: this conversion also serves space creation, which has no
+		// space_id parameter, and a missing store does not establish account
+		// status — the description already says what failed
+		return v2model.NotFound(fmt.Sprintf("%s: %s", op, description),
+			v2model.Issue{Message: "the space could not be opened"}.
+				Hintf("list live spaces with %s", v2model.RefListSpaces()))
 	case strings.Contains(description, restriction.ErrRestricted.Error()):
 		return v2model.NewError(http.StatusForbidden, v2model.CodeForbidden,
 			fmt.Sprintf("%s: %s — this account's role cannot change the space's info", op, description))

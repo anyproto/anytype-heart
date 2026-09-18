@@ -318,7 +318,7 @@ func TestCreateType(t *testing.T) {
 		fx := newFixture(t)
 		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
 		fx.stub("POST /v2/spaces/space1/types", 400,
-			`{"status":400,"code":"validation_failed","message":"type key already exists","issues":[{"path":"/properties/name","message":"key \"cookbook\" is taken by type \"Cookbook\" in space space1","hint":"update it with PATCH /v2/spaces/space1/types/cookbook, or pick a different key"}]}`)
+			`{"status":400,"code":"validation_failed","message":"type key already exists","issues":[{"path":"/properties/name","message":"key \"cookbook\" is taken by type \"Cookbook\" in space space1","hint":"update it with PATCH /v2/spaces/space1/types/cookbook, or pick a different key","see_also":[{"op":"update_type","params":{"space_id":"space1","type":"cookbook"}}]}]}`)
 
 		// when
 		_, err := fx.Run(ctx, "create_type", map[string]any{

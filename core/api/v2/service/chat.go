@@ -409,12 +409,12 @@ func (s *Service) ReadChat(ctx context.Context, spaceId, chatId string, req v2mo
 	case "", v2model.ChatReadScopeMessages, v2model.ChatReadScopeMentions:
 		var missing []v2model.Issue
 		if req.UpTo == "" {
-			missing = append(missing, v2model.Issue{Path: "/up_to", Message: "the inclusive order id to mark read up to",
-				Hint: "use the newest message's order from GET .../messages (a limit=1 read returns it)"})
+			missing = append(missing, v2model.Issue{Path: "/up_to", Message: "the inclusive order id to mark read up to"}.
+				Hintf("use the newest message's order from %s", v2model.RefGetChatMessages(spaceId, chatId).With("limit", "1")))
 		}
 		if req.LastStateId == "" {
-			missing = append(missing, v2model.Issue{Path: "/last_state_id", Message: "the race guard from the same messages read",
-				Hint: "use state.last_state_id from GET .../messages — an empty guard matches no message and would silently mark nothing"})
+			missing = append(missing, v2model.Issue{Path: "/last_state_id", Message: "the race guard from the same messages read"}.
+				Hintf("use state.last_state_id from %s — an empty guard matches no message and would silently mark nothing", v2model.RefGetChatMessages(spaceId, chatId)))
 		}
 		if len(missing) > 0 {
 			return nil, v2model.ValidationFailed("the read watermark needs up_to and last_state_id", missing...)
@@ -435,7 +435,8 @@ func (s *Service) ReadChat(ctx context.Context, spaceId, chatId string, req v2mo
 		if resp.Error != nil && resp.Error.Code != pb.RpcChatReadMessagesResponseError_NULL {
 			if resp.Error.Code == pb.RpcChatReadMessagesResponseError_MESSAGES_NOT_FOUND {
 				return nil, v2model.ValidationFailed("no messages matched the read range",
-					v2model.Issue{Path: "/up_to", Message: "the chat is empty or up_to is not a valid order id", Hint: "read GET .../messages and use a returned order value"})
+					v2model.Issue{Path: "/up_to", Message: "the chat is empty or up_to is not a valid order id"}.
+						Hintf("read %s and use a returned order value", v2model.RefGetChatMessages(spaceId, chatId)))
 			}
 			return nil, v2ChatRpcError("mark chat read", int32(resp.Error.Code), int32(pb.RpcChatReadMessagesResponseError_BAD_INPUT), resp.Error.Description)
 		}
@@ -480,7 +481,8 @@ func (s *Service) ensureChat(ctx context.Context, spaceId, chatId string) error 
 	}
 	details, err := s.store.SpaceIndex(spaceId).GetDetails(chatId)
 	if err != nil || details.Len() == 0 {
-		return v2model.NotFound(fmt.Sprintf("chat %q not found in space %q — list chats with GET /v2/spaces/%s/chats", chatId, spaceId, spaceId))
+		return v2model.NotFound(fmt.Sprintf("chat %q not found in space %q", chatId, spaceId),
+			v2model.Issue{Path: "chat_id", Message: "no chat has this id"}.Hintf("list chats with %s", v2model.RefListChats(spaceId)))
 	}
 	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
 	for _, chatLayout := range util.ChatLayouts {
@@ -489,7 +491,7 @@ func (s *Service) ensureChat(ctx context.Context, spaceId, chatId string) error 
 		}
 	}
 	return v2model.ValidationFailed(fmt.Sprintf("object %q is not a chat", chatId),
-		v2model.Issue{Message: fmt.Sprintf("its layout is %q", layout.String()), Hint: fmt.Sprintf("chat ids come from GET /v2/spaces/%s/chats", spaceId)})
+		v2model.Issue{Message: fmt.Sprintf("its layout is %q", layout.String())}.Hintf("chat ids come from %s", v2model.RefListChats(spaceId)))
 }
 
 // ensureChatWrite is ensureChat for the chat WRITE entry points (message
@@ -551,7 +553,7 @@ func (s *Service) resolveChatAttachments(spaceId string, ids []string) ([]*model
 			return nil, v2model.ValidationFailed("attachment target not found",
 				v2model.Issue{Path: fmt.Sprintf("/attachments/%d", i),
 					Message: fmt.Sprintf("object %q not found in space %q", id, spaceId),
-					Hint:    "upload files via POST /v2/spaces/{space_id}/files first, or pass an existing object id"})
+				}.Hintf("upload files via %s first, or pass an existing object id", v2model.RefUploadFile(spaceId)))
 		}
 		layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
 		attachmentType := model.ChatMessageAttachment_LINK

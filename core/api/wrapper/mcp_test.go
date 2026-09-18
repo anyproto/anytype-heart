@@ -271,7 +271,7 @@ func TestMCPRepairLoop(t *testing.T) {
 		fx := newFixture(t)
 		fx.stub("POST /v2/spaces/space1/search", 200, searchResponse(1, false, v2model.ObjectRow{Id: "bafyobj1", Name: "Doc", Type: "task"}))
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 400,
-			`{"status":400,"code":"validation_failed","message":"validation failed","issues":[{"path":"ops[0].inside","message":"block \"zzzzz\" not found","hint":"GET the object with ?outline=true to list them"}]}`)
+			`{"status":400,"code":"validation_failed","message":"validation failed","issues":[{"path":"ops[0].inside","message":"block \"zzzzz\" not found","hint":"GET /v2/spaces/{space_id}/objects/{object_id}?outline=true lists them","see_also":[{"op":"get_object","query":{"outline":"true"}}]}]}`)
 		fx.stub("GET /v2/spaces/space1/objects/bafyobj1", 200, testFullDoc)
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
 		resps := fx.mcpSession(t, TierLarge,
@@ -283,7 +283,7 @@ func TestMCPRepairLoop(t *testing.T) {
 		tip, isErr := callText(t, resps[1])
 		assert.True(t, isErr)
 		assert.Contains(t, tip, "under: block \"zzzzz\" not found")
-		assert.Contains(t, tip, "run read (the default mode=full) to see each block's text")
+		assert.Contains(t, tip, "`read` with mode=outline lists them")
 		assert.NotContains(t, tip, "ops[0]", "the op-path vocabulary must not reach the model")
 		assert.NotContains(t, tip, "inside", "the REST op vocabulary must not reach the model")
 

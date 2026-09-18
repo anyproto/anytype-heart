@@ -96,8 +96,8 @@ func resolveByText(doc *v2EditDoc, text, field, path string, scope locatorScope)
 			v2model.Issue{
 				Path:    path,
 				Message: fmt.Sprintf("the %s text must appear in exactly one block for the locator to resolve", field),
-				Hint:    "read the object and copy the text exactly as the read serves it — or give the block id. ?outline=true truncates text to a snippet, so copy from the full read",
-			})
+			}.Hintf("read the object with %s and copy the text exactly as it is served — or give the block id. %s truncates text to a snippet, so copy from the full read",
+				v2model.NewRef(v2model.OpGetObject), v2model.NewRef(v2model.OpGetObject).With("outline", "true")))
 	default:
 		var b strings.Builder
 		fmt.Fprintf(&b, "%q appears in %d blocks — retry with id naming one of:", text, len(matches))

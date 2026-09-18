@@ -5,7 +5,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -33,9 +35,12 @@ func TestPropertyNotFoundInventoryDoesNotOverpromisePublicList(t *testing.T) {
 
 	apiErr := v2Err(t, fx.propertyNotFoundError(testSpaceId, "!!!!!!!!", errKeys{}))
 	assert.Contains(t, apiErr.Message, "known property keys:")
-	assert.Contains(t, apiErr.Message, "total above")
-	assert.Contains(t, apiErr.Message, "hidden addressable properties are excluded")
 	assert.NotContains(t, apiErr.Message, "list all")
+	require.Len(t, apiErr.Issues, 1, "a truncated key list carries the list operation as an issue on the key parameter")
+	assert.Equal(t, "key", apiErr.Issues[0].Path)
+	assert.Contains(t, apiErr.Issues[0].Hint, "total above")
+	assert.Contains(t, apiErr.Issues[0].Hint, "hidden addressable properties are excluded")
+	assert.Equal(t, []v2model.Ref{v2model.RefListProperties(testSpaceId)}, apiErr.Issues[0].SeeAlso)
 
 	closeMatch := v2Err(t, fx.propertyNotFoundError(testSpaceId, "repair_property_0x", errKeys{}))
 	assert.Contains(t, closeMatch.Message, "did you mean repair_property_")
