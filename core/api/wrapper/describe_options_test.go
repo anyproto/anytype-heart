@@ -291,16 +291,33 @@ func TestCreateTypePreflightPrefixFollowsTheStatus(t *testing.T) {
 		assert.Contains(t, err.Error(), "could not verify type")
 	})
 
-	t.Run("a transport failure gets the neutral prefix too", func(t *testing.T) {
+	t.Run("an undecodable reply gets the neutral prefix, whatever its status", func(t *testing.T) {
+		for name, status := range map[string]int{"a 200 that is not JSON": 200, "a 400 that is not JSON": 400} {
+			t.Run(name, func(t *testing.T) {
+				fx := newFixture(t)
+				fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
+				fx.stub("POST /v2/spaces/space1/types", status, `not json`)
+
+				_, err := fx.Run(context.Background(), "create_type", map[string]any{"space": "space1", "name": "Thing"})
+
+				require.Error(t, err)
+				assert.NotContains(t, err.Error(), "check the type name and formats")
+				assert.Contains(t, err.Error(), "the pre-flight failed")
+			})
+		}
+	})
+
+	t.Run("a 4xx that is not a validation refusal gets the neutral prefix", func(t *testing.T) {
 		fx := newFixture(t)
 		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
-		fx.stub("POST /v2/spaces/space1/types", 200, `not json`)
+		fx.stub("POST /v2/spaces/space1/types", 403, `{"status":403,"code":"write_not_granted","message":"this key cannot write to space \"space1\"","issues":[]}`)
 
 		_, err := fx.Run(context.Background(), "create_type", map[string]any{"space": "space1", "name": "Thing"})
 
 		require.Error(t, err)
 		assert.NotContains(t, err.Error(), "check the type name and formats")
 		assert.Contains(t, err.Error(), "the pre-flight failed")
+		assert.Contains(t, err.Error(), "cannot write")
 	})
 }
 

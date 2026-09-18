@@ -350,10 +350,13 @@ three fresh reviewers before the next.
   snapshot it already loaded; `create_property`'s operation description
   carries the name rule so OpenAPI and the external tool listing say it,
   not only the `property` schema kind; and the curated `create_type`
-  pre-flight prefixes "check the type name and formats" on a 4xx of the
-  caller's own alone — a 5xx, a transport failure or an undecodable reply
-  gets "the pre-flight failed" (the caller appends "nothing was created"
-  itself).
+  pre-flight prefixes "check the type name and formats" on a decoded
+  validation refusal alone — a grant refusal, a rate limit, a 5xx, a
+  transport failure or an undecodable reply of any status gets "the
+  pre-flight failed" (the caller appends "nothing was created" itself).
+  Open on that surface, carried forward: a transport or decode failure
+  still serves the raw route inside the cause (`call POST /v2/...`), which
+  the tool vocabulary pass does not render.
   Accepted: a space that has not loaded since the upgrade may still miss
   a legacy tombstone by slug until it does; the resolution stop's queries
   on display-name inputs are not memoised per request.
