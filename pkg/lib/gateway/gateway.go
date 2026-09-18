@@ -232,27 +232,47 @@ func (g *gateway) startServer() error {
 	g.lifecycleMu.Lock()
 	defer g.lifecycleMu.Unlock()
 
+	remember, addr, err := g.startServingLocked()
+	if err != nil {
+		return err
+	}
+
+	if remember != "" {
+		// best effort, and deliberately outside g.mu: this fsyncs config.json, and Addr() is on the
+		// account-info path. The gateway works either way; the next run just may not get the same
+		// port.
+		if err := g.addrStore.SetGatewayAddr(remember); err != nil {
+			log.Errorf("gateway: persist address %s: %v", remember, err)
+		}
+	}
+
+	log.Infof("gateway listening at %s", addr)
+	return nil
+}
+
+// startServingLocked binds and starts serving. It returns the address worth remembering for the
+// next run (or "") and the address it is now serving on, leaving the caller to persist outside
+// g.mu. Must be called with g.lifecycleMu held.
+func (g *gateway) startServingLocked() (remember string, addr string, err error) {
 	g.mu.Lock()
+	defer g.mu.Unlock()
 
 	if g.closed {
-		g.mu.Unlock()
-		return errGatewayClosed
+		return "", "", errGatewayClosed
 	}
 	if g.isServerStarted {
-		g.mu.Unlock()
-		return errGatewayAlreadyStarted
+		return "", "", errGatewayAlreadyStarted
 	}
 
 	// a stop always gives the listener up, so there is never one to reuse here
-	remember, err := g.bindLocked()
+	remember, err = g.bindLocked()
 	if err != nil {
-		g.mu.Unlock()
-		return fmt.Errorf("bind gateway listener: %w", err)
+		return "", "", fmt.Errorf("bind gateway listener: %w", err)
 	}
 
 	g.server = &http.Server{Handler: g.handler}
 	g.isServerStarted = true
-	srv, ln, addr := g.server, g.listener, g.addr
+	srv, ln := g.server, g.listener
 
 	go func() {
 		err := srv.Serve(ln)
@@ -268,19 +288,7 @@ func (g *gateway) startServer() error {
 		log.Info("gateway was shutdown")
 	}()
 
-	g.mu.Unlock()
-
-	if remember != "" {
-		// best effort, and deliberately outside the locks: this fsyncs config.json, and Addr() is
-		// on the account-info path. The gateway works either way; the next run just may not get the
-		// same port.
-		if err := g.addrStore.SetGatewayAddr(remember); err != nil {
-			log.Errorf("gateway: persist address %s: %v", remember, err)
-		}
-	}
-
-	log.Infof("gateway listening at %s", addr)
-	return nil
+	return remember, g.addr, nil
 }
 
 // dropListener gives up a listener that stopped working, so that the next start binds a fresh one
