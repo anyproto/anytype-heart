@@ -26,7 +26,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -162,69 +161,24 @@ func (s *Service) removedProperties(spaceId string) ([]propertyEntry, error) {
 	return entries, nil
 }
 
-// tombstonedPropertySlug reads the api slug a property's TOMBSTONE keeps —
-// the {id, isDeleted, deletedSnapshot} row DeleteObject leaves at the
-// derived id from the delete until the next space load, which no
-// query-built set can contain (no relationKey at the top level; the
-// identity keys sit in the unindexed snapshot, spaceindex.SnapshotOnDelete).
-// Empty when there is no such row or it keeps no slug.
-func (s *Service) tombstonedPropertySlug(spaceId, storedKey string) string {
-	details, _, err := s.derivedRelationRow(context.Background(), spaceId, storedKey)
-	if err != nil || details == nil || !details.GetBool(bundle.RelationKeyIsDeleted) {
-		return ""
-	}
-	if _, live := details.TryString(bundle.RelationKeyRelationKey); live {
-		return "" // a full-detail row belongs to the query-built sets
-	}
-	snapshot, ok := details.TryMapValue(bundle.RelationKeyDeletedSnapshot)
-	if !ok {
-		return ""
-	}
-	return snapshot.GetString(bundle.RelationKeyApiObjectKey.String())
-}
-
 // referencedCorpses returns the REMOVED relation objects among ids — the
 // entries a type's recommended lists still name after a delete — with the
-// slug and stored key each still carries, in every store shape: the
-// query-visible ones through removedProperties, the post-delete tombstone
-// through its unindexed snapshot. What a type served under a slug it must
-// understand back (the echo baseline), so these are the corpses whose slugs
-// a type write remembers before resolving its definitions.
+// slug and stored key each still carries (removedProperties: the corpse row
+// a delete leaves, full details with a lifecycle flag). What a type served
+// under a slug it must understand back (the echo baseline), so these are
+// the corpses whose slugs a type write remembers before resolving its
+// definitions.
 func (s *Service) referencedCorpses(spaceId string, ids map[string]bool) []propertyEntry {
 	if len(ids) == 0 {
 		return nil
 	}
 	var out []propertyEntry
-	seen := map[string]bool{}
 	if removed, err := s.removedProperties(spaceId); err == nil {
 		for _, e := range removed {
 			if ids[e.Id] {
 				out = append(out, e)
-				seen[e.Id] = true
 			}
 		}
-	}
-	for id := range ids {
-		if seen[id] {
-			continue
-		}
-		details, err := s.store.SpaceIndex(spaceId).GetDetails(id)
-		if err != nil || details == nil || !details.GetBool(bundle.RelationKeyIsDeleted) {
-			continue
-		}
-		snapshot, ok := details.TryMapValue(bundle.RelationKeyDeletedSnapshot)
-		if !ok {
-			continue
-		}
-		key := snapshot.GetString(bundle.RelationKeyRelationKey.String())
-		if key == "" {
-			continue
-		}
-		out = append(out, propertyEntry{
-			Id:   id,
-			Key:  key,
-			Slug: snapshot.GetString(bundle.RelationKeyApiObjectKey.String()),
-		})
 	}
 	return out
 }
@@ -1330,49 +1284,16 @@ func (s *Service) removedTypes(spaceId string) ([]typeEntry, error) {
 	return entries, nil
 }
 
-// tombstonedTypeSlug is tombstonedPropertySlug for a type: the slug the
-// tombstone's snapshot kept for a stored type key, or "" when the row is
-// not a tombstone (a full-detail row belongs to the query-built sets).
-func (s *Service) tombstonedTypeSlug(spaceId, key string) (string, error) {
-	if s.creator == nil || key == "" {
-		return "", nil
-	}
-	id, err := s.creator.TypeIdByKey(context.Background(), spaceId, domain.TypeKey(key))
-	if err != nil {
-		return "", fmt.Errorf("derive type id for %q in space %s: %w", key, spaceId, err)
-	}
-	return tombstoneTypeSlugOf(s.store.SpaceIndex(spaceId), id)
-}
-
-// tombstoneTypeSlugOf reads the served slug a type tombstone's snapshot
-// kept, "" for anything that is not a tombstone.
-func tombstoneTypeSlugOf(index spaceindex.Store, id string) (string, error) {
-	details, err := index.GetDetails(id)
-	if err != nil {
-		return "", fmt.Errorf("read type row %s: %w", id, err)
-	}
-	if details == nil || !details.GetBool(bundle.RelationKeyIsDeleted) {
-		return "", nil
-	}
-	if _, live := details.TryString(bundle.RelationKeyUniqueKey); live {
-		return "", nil
-	}
-	snapshot, ok := details.TryMapValue(bundle.RelationKeyDeletedSnapshot)
-	if !ok {
-		return "", nil
-	}
-	return snapshot.GetString(bundle.RelationKeyApiObjectKey.String()), nil
-}
-
 // removedTypeBySpelling finds a REMOVED space-minted type a caller may have
 // addressed by the slug or stored key a read served for it — the object's
 // `type` after the type was deleted — so a refusal can say removed rather
 // than unknown, and so the resolution chain stops there. Live entries are
-// the caller's to check first. All three store shapes answer: the
-// query-visible ones by row, a tombstone by its snapshot (by stored key
-// through the derived id; by slug through the deletedLayout index, an
-// exact query). An error is returned, never swallowed: a lookup that could
-// not complete must not read as "nothing was removed".
+// the caller's to check first. A removed type is a corpse ROW: a delete
+// leaves the full details in place under a lifecycle flag (core/block
+// beforeDeleteDerived), the same row every other device holds, so the
+// query-visible set is the whole answer. An error is returned, never
+// swallowed: a lookup that could not complete must not read as "nothing
+// was removed".
 func (s *Service) removedTypeBySpelling(spaceId, input string) (typeEntry, bool, error) {
 	if input == "" || bundle.HasObjectTypeByKey(domain.TypeKey(input)) {
 		return typeEntry{}, false, nil // bundled removals have their own gate (refuseRemovedType)
@@ -1388,52 +1309,6 @@ func (s *Service) removedTypeBySpelling(spaceId, input string) (typeEntry, bool,
 		if input == e.Key || (e.Slug != "" && input == e.Slug) {
 			return e, true, nil
 		}
-	}
-	slug, err := s.tombstonedTypeSlug(spaceId, input)
-	if err != nil {
-		return typeEntry{}, false, err
-	}
-	if slug != "" {
-		return typeEntry{Key: input, Slug: slug}, true, nil
-	}
-	if _, isSlug := bundle.TypeKeyByApiSlug(input); !isSlug {
-		return s.tombstonedTypeBySlug(spaceId, input)
-	}
-	return typeEntry{}, false, nil
-}
-
-// tombstonedTypeBySlug finds a type tombstone by the slug its snapshot
-// kept, through the deletedLayout marker every deleted type's tombstone
-// carries top level (spaceindex delete.go) — an exact, indexed query over
-// the deleted types alone. Tombstones written before the marker existed
-// need no backfill: a deleted type keeps its tree, its tombstone drops the
-// indexed heads hash, and the next space load's outdated-object reindex
-// rebuilds the full row from the tree — which the removedTypes query
-// then serves by row, name and slug included.
-func (s *Service) tombstonedTypeBySlug(spaceId, slug string) (typeEntry, bool, error) {
-	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
-		Filters: []database.FilterRequest{
-			{RelationKey: bundle.RelationKeyDeletedLayout, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.Int64(int64(model.ObjectType_objectType))},
-			{RelationKey: bundle.RelationKeyIsDeleted, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.Bool(true)},
-			{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
-		},
-	})
-	if err != nil {
-		return typeEntry{}, false, fmt.Errorf("query deleted types of space %s: %w", spaceId, err)
-	}
-	for _, record := range records {
-		if _, full := record.Details.TryString(bundle.RelationKeyUniqueKey); full {
-			continue
-		}
-		snapshot, ok := record.Details.TryMapValue(bundle.RelationKeyDeletedSnapshot)
-		if !ok || snapshot.GetString(bundle.RelationKeyApiObjectKey.String()) != slug {
-			continue
-		}
-		key, err := domain.GetTypeKeyFromRawUniqueKey(snapshot.GetString(bundle.RelationKeyUniqueKey.String()))
-		if err != nil {
-			continue
-		}
-		return typeEntry{Id: record.Details.GetString(bundle.RelationKeyId), Key: string(key), Slug: slug}, true, nil
 	}
 	return typeEntry{}, false, nil
 }

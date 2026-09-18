@@ -3,7 +3,6 @@ package v2service
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"testing"
 
@@ -19,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/storeresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -204,16 +202,6 @@ func TestV2DeletedTypeKeepsItsSpelling(t *testing.T) {
 		assert.Equal(t, "6aad7fbf61fab205fe53c2f2", entry.Key)
 	})
 
-	t.Run("a tombstoned type is refused as removed by its key and by its slug", func(t *testing.T) {
-		fx := newV2Fixture(t)
-		fx.addTypeTombstone(t, "drv-ot-"+gadgetTypeKey, gadgetTypeKey, "gadget")
-
-		for _, spelling := range []string{gadgetTypeKey, "gadget"} {
-			_, _, _, _, err := fx.SearchObjects(ctx, testSpaceId, v2model.SearchRequest{Type: spelling}, 0, 25)
-			assert.Contains(t, v2Err(t, err).Issues[0].Message, "was removed from this space", spelling)
-		}
-	})
-
 	t.Run("addressing the old type by its key when a live type took the slug names both", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addGadgetType(t, true)
@@ -269,54 +257,6 @@ func TestV2DeletedTypeKeepsItsSpelling(t *testing.T) {
 		assert.Equal(t, "gadget", decodeBody(t, body)["type"])
 	})
 
-	t.Run("a tombstone whose slug a query-visible corpse already spells reads under its key in rows", func(t *testing.T) {
-		fx := newV2Fixture(t)
-		fx.addGadgetType(t, true) // query-visible corpse, slug gadget
-		fx.addTypeTombstone(t, "type-gadget-ts", "6aad7fbf61fab205fe53c2f3", "gadget")
-		builder, err := fx.newObjectRowBuilder(testSpaceId, nil)
-		require.NoError(t, err)
-
-		corpse := domain.NewDetails()
-		corpse.SetString(bundle.RelationKeyId, "o1")
-		corpse.SetString(bundle.RelationKeyType, "type-gadget")
-		tomb := domain.NewDetails()
-		tomb.SetString(bundle.RelationKeyId, "o2")
-		tomb.SetString(bundle.RelationKeyType, "type-gadget-ts")
-
-		assert.Equal(t, "gadget", builder.row(database.Record{Details: corpse}).Type)
-		assert.Equal(t, "6aad7fbf61fab205fe53c2f3", builder.row(database.Record{Details: tomb}).Type, "one address, one holder")
-	})
-
-	t.Run("a tombstone demoted behind a visible corpse still reads as removed", func(t *testing.T) {
-		fx := newV2Fixture(t)
-		fx.addGadgetType(t, true) // visible corpse, slug gadget
-		fx.addTypeTombstone(t, "drv-ot-6aad7fbf61fab205fe53c2f3", "6aad7fbf61fab205fe53c2f3", "gadget")
-
-		v := fx.apiKeys(testSpaceId, storeresolver.New(fx.store.SpaceIndex(testSpaceId)))
-
-		assert.Equal(t, "6aad7fbf61fab205fe53c2f3", v.TypeSlug("6aad7fbf61fab205fe53c2f3"), "one address, one holder")
-		assert.True(t, v.TypeRemoved("6aad7fbf61fab205fe53c2f3"), "the marker does not depend on the spelling")
-	})
-
-	t.Run("a tombstone is found by its slug through the indexed marker, however many other rows were deleted", func(t *testing.T) {
-		fx := newV2Fixture(t)
-		for i := 0; i < 20; i++ {
-			fx.addTombstone(t, fmt.Sprintf("gone-%02d", i)) // ordinary deleted objects
-		}
-		fx.addTypeTombstone(t, "drv-ot-"+gadgetTypeKey, gadgetTypeKey, "gadget")
-
-		entry, removed, err := fx.removedTypeBySpelling(testSpaceId, "gadget")
-
-		require.NoError(t, err)
-		require.True(t, removed)
-		assert.Equal(t, gadgetTypeKey, entry.Key)
-
-		// a bare tombstone (no marker, no snapshot) is not a type
-		_, removed, err = fx.removedTypeBySpelling(testSpaceId, "gone-01")
-		require.NoError(t, err)
-		assert.False(t, removed)
-	})
-
 	t.Run("the markdown envelope carries the removed-type warning too", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addGadgetType(t, true)
@@ -330,16 +270,6 @@ func TestV2DeletedTypeKeepsItsSpelling(t *testing.T) {
 		warnings, _ := doc["warnings"].([]any)
 		require.Len(t, warnings, 1)
 		assert.Contains(t, warnings[0].(map[string]any)["message"], "searches cannot filter by it")
-	})
-
-	t.Run("a non-bson custom key reaches the tombstone probe too", func(t *testing.T) {
-		fx := newV2Fixture(t)
-		fx.addTypeTombstone(t, "drv-ot-customNote", "customNote", "custom_note")
-
-		v := fx.apiKeys(testSpaceId, storeresolver.New(fx.store.SpaceIndex(testSpaceId)))
-
-		assert.Equal(t, "custom_note", v.TypeSlug("customNote"))
-		assert.True(t, v.TypeRemoved("customNote"))
 	})
 
 	t.Run("delete_object's receipt spells a custom type as reads do", func(t *testing.T) {
@@ -476,7 +406,7 @@ func TestV2RoundFourCarriedForward(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, result.CreatedViews, 1, "%v", result.CreatedViews)
 		for _, id := range result.CreatedViews {
-			assert.False(t, isBsonKey(id), "a compact label, not the 24-hex stored id: %s", id)
+			assert.NotRegexp(t, "^[0-9a-f]{24}$", id, "a compact label, not the 24-hex stored id: %s", id)
 		}
 	})
 

@@ -9,7 +9,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func (s *dsObjectStore) DeleteDetails(ctx context.Context, ids []string) error {
@@ -43,12 +42,6 @@ func (s *dsObjectStore) DeleteDetails(ctx context.Context, ids []string) error {
 // when, where, and what was it" for the deletion audit, and carries no user-authored content.
 // Notably absent: name, description and snippet.
 //
-// A derived object (a type, a property) also keeps its IDENTITY keys — uniqueKey, relationKey and
-// apiObjectKey. They are what a cold recovery on another device would carry anyway (a derived object
-// is uninstalled, never removed from the tree), and a value an object still holds under a removed
-// property is served under that apiObjectKey; without them the local index alone, right after the
-// delete and until the next space load, could spell the property only by its stored key.
-//
 // They are captured into a nested map rather than left under their own keys because four of them —
 // resolvedLayout, type, lastModifiedDate and fileId — are indexed on the objects collection. Keeping
 // them top-level would file every tombstone under a live value: fileId's index is sparse, so
@@ -68,9 +61,6 @@ var SnapshotOnDelete = []domain.RelationKey{
 	bundle.RelationKeyResolvedLayout,
 	bundle.RelationKeySizeInBytes,
 	bundle.RelationKeyFileId,
-	bundle.RelationKeyUniqueKey,
-	bundle.RelationKeyRelationKey,
-	bundle.RelationKeyApiObjectKey,
 }
 
 // preservedOnDelete are the top-level relations that survive a delete. All of them are unindexed,
@@ -84,18 +74,6 @@ var preservedOnDelete = []domain.RelationKey{
 	bundle.RelationKeyDeletedDate,
 	bundle.RelationKeyDeletionChangeId,
 	bundle.RelationKeyDeletedSnapshot,
-	bundle.RelationKeyDeletedLayout,
-}
-
-// derivedLayouts are the layouts whose tombstones keep deletedLayout at the
-// TOP level (sparse-indexed, see store.go): a type or a property that was
-// deleted is still addressed by the slug its objects serve, and answering
-// "is this spelling a removed type" must be an exact query, never a scan of
-// every deleted row — a bounded scan that misses one lets the spelling fall
-// through to a live type that merely shares its name.
-var derivedLayouts = map[int64]bool{
-	int64(model.ObjectType_objectType): true,
-	int64(model.ObjectType_relation):   true,
 }
 
 // snapshotOnDelete captures SnapshotOnDelete out of an object's live details. It returns false when
@@ -136,16 +114,6 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	newDetails := oldDetails.CopyOnlyKeys(preservedOnDelete...)
 	if snapshot, ok := snapshotOnDelete(oldDetails); ok {
 		newDetails.Set(bundle.RelationKeyDeletedSnapshot, snapshot)
-	}
-	// the marker is derived from the RETAINED snapshot, fresh or old, so an
-	// explicit re-delete of a tombstone written before the marker existed
-	// sets it too. (The deleted-tree reindex re-runs the delete for DELETED
-	// trees only; a derived object keeps its tree, and its tombstone is
-	// rebuilt into a full row by the outdated-object reindex instead.)
-	if snapshot, ok := newDetails.TryMapValue(bundle.RelationKeyDeletedSnapshot); ok {
-		if layout := snapshot.GetInt64(bundle.RelationKeyResolvedLayout.String()); derivedLayouts[layout] {
-			newDetails.SetInt64(bundle.RelationKeyDeletedLayout, layout)
-		}
 	}
 	newDetails.SetString(bundle.RelationKeyId, id)
 	newDetails.SetString(bundle.RelationKeySpaceId, s.spaceId)

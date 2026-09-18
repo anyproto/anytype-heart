@@ -135,35 +135,32 @@ func (fx *v2Fixture) addTombstone(t *testing.T, id string) {
 	}})
 }
 
-// addPropertyTombstone registers the row DeleteObject leaves for a relation
-// object: id, spaceId, isDeleted and the unindexed deletedSnapshot with the
-// identity keys (spaceindex.SnapshotOnDelete) — nothing at the top level a
-// key-filtered query could match.
-func (fx *v2Fixture) addPropertyTombstone(t *testing.T, id, storedKey, slug string) {
+// addPropertyTombstone registers the row an OLDER build's DeleteObject left
+// for a relation object: id, spaceId, isDeleted and the unindexed
+// deletedSnapshot (spaceindex.SnapshotOnDelete: audit fields and the
+// layout, no identity keys) — nothing a key-filtered query could match.
+// This build no longer tombstones a derived object (core/block
+// beforeDeleteDerived leaves the full corpse row), so the shape exists only
+// until the next space load rebuilds it from the tree.
+func (fx *v2Fixture) addPropertyTombstone(t *testing.T, id string) {
 	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
 		bundle.RelationKeyId:        domain.String(id),
 		bundle.RelationKeySpaceId:   domain.String(testSpaceId),
 		bundle.RelationKeyIsDeleted: domain.Bool(true),
 		bundle.RelationKeyDeletedSnapshot: domain.NewValueMap(map[string]domain.Value{
 			bundle.RelationKeyResolvedLayout.String(): domain.Int64(int64(model.ObjectType_relation)),
-			bundle.RelationKeyRelationKey.String():    domain.String(storedKey),
-			bundle.RelationKeyApiObjectKey.String():   domain.String(slug),
 		}),
 	}})
 }
 
-// addTypeTombstone is addPropertyTombstone for a type object: the identity
-// keys ride the unindexed deletedSnapshot.
-func (fx *v2Fixture) addTypeTombstone(t *testing.T, id, storedKey, slug string) {
+// addTypeTombstone is addPropertyTombstone for a type object.
+func (fx *v2Fixture) addTypeTombstone(t *testing.T, id string) {
 	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
-		bundle.RelationKeyId:            domain.String(id),
-		bundle.RelationKeySpaceId:       domain.String(testSpaceId),
-		bundle.RelationKeyIsDeleted:     domain.Bool(true),
-		bundle.RelationKeyDeletedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+		bundle.RelationKeyId:        domain.String(id),
+		bundle.RelationKeySpaceId:   domain.String(testSpaceId),
+		bundle.RelationKeyIsDeleted: domain.Bool(true),
 		bundle.RelationKeyDeletedSnapshot: domain.NewValueMap(map[string]domain.Value{
 			bundle.RelationKeyResolvedLayout.String(): domain.Int64(int64(model.ObjectType_objectType)),
-			bundle.RelationKeyUniqueKey.String():      domain.String("ot-" + storedKey),
-			bundle.RelationKeyApiObjectKey.String():   domain.String(slug),
 		}),
 	}})
 }
@@ -171,7 +168,7 @@ func (fx *v2Fixture) addTypeTombstone(t *testing.T, id, storedKey, slug string) 
 // addCorpseProperty registers the BSON-keyed, slug-bearing corpse relation.
 func (fx *v2Fixture) addCorpseProperty(t *testing.T, shape corpseShape) {
 	if shape == corpseTombstone {
-		fx.addPropertyTombstone(t, corpsePropertyId, corpseBsonKey, corpseSlug)
+		fx.addPropertyTombstone(t, corpsePropertyId)
 		return
 	}
 	obj := objectstore.TestObject{
@@ -189,7 +186,7 @@ func (fx *v2Fixture) addCorpseProperty(t *testing.T, shape corpseShape) {
 
 func (fx *v2Fixture) addCorpseType(t *testing.T, shape corpseShape) {
 	if shape == corpseTombstone {
-		fx.addTypeTombstone(t, corpseTypeId, corpseTypeBsonKey, corpseTypeSlug)
+		fx.addTypeTombstone(t, corpseTypeId)
 		return
 	}
 	obj := objectstore.TestObject{
@@ -248,10 +245,18 @@ func TestV2CorpseHeldValueReadsUnderItsSlug(t *testing.T) {
 		require.NoError(t, err)
 		doc := decodeBody(t, body)
 		props, _ := doc["properties"].(map[string]any)
-		// in every shape, the tombstone included: its snapshot keeps the slug
+		if shape == corpseTombstone {
+			// an OLDER build's tombstone kept no identity: the store has
+			// nothing to spell but the stored key, until the next space
+			// load rebuilds the corpse row from the tree
+			assert.Equal(t, "2027-01-01", props[corpseBsonKey], "the value is served, under the only address the row has")
+			assert.NotContains(t, props, corpseSlug)
+			assert.Equal(t, corpseTypeBsonKey, doc["type"])
+			return
+		}
 		assert.Equal(t, "2027-01-01", props[corpseSlug], "the value is served, under the slug the caller was taught")
 		assert.NotContains(t, props, corpseBsonKey, "the stored bson key is an internal id and never a served spelling")
-		assert.Equal(t, corpseTypeSlug, doc["type"], "a removed type spells the slug its objects were served, in every store shape")
+		assert.Equal(t, corpseTypeSlug, doc["type"], "a removed type spells the slug its objects were served")
 	})
 }
 
@@ -397,20 +402,6 @@ func TestV2CloneToleranceSurvivesTheProdShape(t *testing.T) {
 		})
 	})
 
-	t.Run("in the tombstone window the slug is refused as removed, by name", func(t *testing.T) {
-		// a tombstone's identity sits in its unindexed snapshot, so a create
-		// cannot canonicalize the slug to the stored key it holds; the
-		// refusal still says REMOVED rather than unknown when the removed
-		// set can see the corpse, and is a plain 400 when it cannot
-		fx := newV2Fixture(t)
-		fx.addCorpseProperty(t, corpseTombstone)
-
-		_, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"formatVersion":"2.0","type":"page","properties":{"name":"Fresh","`+corpseSlug+`":"x"}}`), false, true)
-
-		apiErr := v2Err(t, err)
-		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
-	})
 }
 
 // TestV2PatchCorpseKeyChannels: PATCH's only corpse escape is the document
@@ -989,8 +980,14 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 			defs := doc.TypeSettings.PropertyDefinitions
 			require.Len(t, defs, 1)
 			// §2e: the entry names the property by its document-facing
-			// spelling — the slug — and carries the stored key beside it
-			assert.Equal(t, corpseSlug, defs[0].Property)
+			// spelling — the slug — and carries the stored key beside it;
+			// an older build's identity-less tombstone can only spell the
+			// stored key, until the next load rebuilds the row
+			if shape == corpseTombstone {
+				assert.Equal(t, corpseBsonKey, defs[0].Property)
+			} else {
+				assert.Equal(t, corpseSlug, defs[0].Property)
+			}
 			assert.Equal(t, corpseBsonKey, defs[0].InternalKey)
 			assert.Equal(t, "Warranty until", defs[0].Name)
 		})
@@ -1057,8 +1054,12 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 						Error: &pb.RpcObjectSetDetailsResponseError{Code: pb.RpcObjectSetDetailsResponseError_NULL}}
 				})
 
+			echoed := corpseSlug
+			if shape == corpseTombstone {
+				echoed = corpseBsonKey // what an older build's tombstone served
+			}
 			result, err := fx.UpdateType(context.Background(), testSpaceId, "livetype",
-				"", []byte(`{"type_settings":{"property_definitions":[{"property":"`+corpseSlug+`","name":"Warranty until","format":"text"}]}}`), false, true)
+				"", []byte(`{"type_settings":{"property_definitions":[{"property":"`+echoed+`","name":"Warranty until","format":"text"}]}}`), false, true)
 
 			require.NoError(t, err)
 			assert.Nil(t, result.Created)

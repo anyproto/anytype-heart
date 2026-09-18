@@ -369,14 +369,6 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 			Fields: []string{bundle.RelationKeyIsUninstalled.String()},
 			Sparse: true,
 		},
-		// The tombstone of a deleted type or property keeps its layout top level (delete.go
-		// derivedLayouts), so "every deleted type" is one indexed query rather than a scan of every
-		// deleted row. Sparse: only those tombstones carry it.
-		{
-			Name:   "deletedLayout",
-			Fields: []string{bundle.RelationKeyDeletedLayout.String()},
-			Sparse: true,
-		},
 	}
 	err = anystorehelper.AddIndexes(ctx, objects, objectIndexes)
 	if err != nil {

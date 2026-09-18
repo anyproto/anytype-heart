@@ -126,7 +126,7 @@ func (s *Service) deleteDerivedObject(id domain.FullID, sbType coresb.SmartBlock
 	if err != nil {
 		return fmt.Errorf("set isUninstalled flag: %w", err)
 	}
-	err = s.BeforeDelete(id, nil)
+	err = s.beforeDeleteDerived(id)
 	if err != nil {
 		return fmt.Errorf("on delete: %w", err)
 	}
@@ -197,6 +197,33 @@ func (s *Service) DeleteObject(objectId string) (err error) {
 		return fmt.Errorf("resolve spaceID: %w", err)
 	}
 	return s.DeleteObjectByFullID(domain.FullID{SpaceID: spaceId, ObjectID: objectId})
+}
+
+// beforeDeleteDerived is BeforeDelete for a derived object (a type, a
+// property, an option, a template): the sessions close and the smartblock is
+// marked deleted in memory, but the index row is NOT tombstoned. The Apply
+// that set isUninstalled has just indexed the full row with isDeleted (the
+// smartblock's details injection), which is the row every other device
+// holds and the row this device would hold again after a restart, when the
+// outdated-object reindex rebuilt it from the surviving tree. Keeping it
+// makes the object read the same before and after a restart — its name,
+// keys and api slug stay addressable while it is refused as removed — and
+// leaves no second, stripped shape for the API to reconcile.
+func (s *Service) beforeDeleteDerived(id domain.FullID) error {
+	err := s.DoFullId(id, func(b smartblock.SmartBlock) error {
+		b.ObjectCloseAllSessions()
+		st := b.NewState()
+		isFavorite := st.LocalDetails().GetBool(bundle.RelationKeyIsFavorite)
+		if err := s.detailsService.SetIsFavorite(id.ObjectID, isFavorite); err != nil {
+			log.With("objectId", id).Errorf("failed to favorite object: %v", err)
+		}
+		b.SetIsDeleted()
+		return nil
+	})
+	if err != nil && !errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+		log.With("error", err, "objectId", id.ObjectID).Error("failed to perform delete operation on derived object")
+	}
+	return nil
 }
 
 func (s *Service) BeforeDelete(id domain.FullID, workspaceRemove func() error) error {

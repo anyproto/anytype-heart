@@ -475,12 +475,13 @@ reviewed by three fresh reviewers before the next.
   value and which types list the property, on real and dry runs.
 - F1(b): the corpse policy is REVERSED. A removed property's values, type
   list entries and view columns now spell its api slug, on every read
-  surface and in every store shape — including the post-delete tombstone
-  window, because `spaceindex.SnapshotOnDelete` now keeps `uniqueKey`,
-  `relationKey` and `apiObjectKey` inside the tombstone's unindexed
-  snapshot (a derived object is uninstalled, never removed from the tree;
-  a cold recovery carried those keys anyway, so the local index carrying
-  them too closes an asymmetry, not a contract). The accept side inverts
+  surface, from the corpse row a delete leaves. (Superseded on the way:
+  this first kept `uniqueKey`, `relationKey` and `apiObjectKey` inside the
+  tombstone's unindexed snapshot so the post-delete tombstone window could
+  spell the slug too; round four then removed the window itself — a
+  derived object's delete no longer strips its index row, see
+  APIV2_ROUND4_SCENARIOS.md Group G — and the snapshot is back to what
+  develop keeps.) The accept side inverts
   only the corpse slugs a vocabulary itself emitted, so a document served
   with the slug re-imports onto the stored key (in-document edits and
   unsets work by the slug), a write to it off-document is refused as
@@ -522,10 +523,10 @@ reviewed by three fresh reviewers before the next.
   says what is actually closed ("set_properties gives no object that does
   not already hold a value of it one") since a create still carries a
   pasted value.
-  Accepted: in the post-delete tombstone window an off-document write by
-  the slug is refused as unknown rather than removed, and a create by the
-  slug is a plain 400; `?keys=name` renders a corpse under its stored key;
-  tombstone slugs are not served by a service built without a creator;
+  Accepted: `?keys=name` renders a corpse under its stored key; a
+  tombstone an OLDER build left (no identity in its snapshot) reads and
+  refuses under its stored key until the next space load rebuilds the
+  corpse row from the tree;
   `fields=`, list and unscoped search filters validate against live
   properties and refuse a corpse slug as unknown (a canonicalized removed
   slug can surface as its stored key in that error — F11 territory, group

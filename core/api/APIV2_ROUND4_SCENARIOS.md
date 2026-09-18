@@ -154,15 +154,13 @@ actor could confirm task 6 ("mark everything as read"). An unverifiable write is
 indistinguishable from a no-op. Either expose the read cursor on
 `get_chat_messages`/`list_chats`, or have the receipt state what it moved.
 
-## R4-9 — `get_chat_messages` read an empty array with a non-zero count **[repro, unexplained]**
+## R4-9 — WITHDRAWN: my own parse error, not an API defect
 
-In my own probe, messages posted successfully (200, ids returned) read back as
-`array=0` while `message_count` showed them, then a later read of a different
-chat showed 3 and a subsequent identical read showed 0. I could not explain this
-and it may be my misuse of the endpoint (no ordering/window parameters passed).
-Flagging it because if a freshly-posted message is not immediately readable, it
-would also explain R4-3's symptoms differently. **Worth a deliberate check
-before acting on R4-3.**
+**Retracted 2026-09-19.** The chat message list is served under the key
+`messages`, not `data`. My probe read `data`, got nothing, and I reported an
+empty array with a non-zero count. The endpoint was correct throughout. This
+also means R4-3's diagnosis needed no re-sequencing — the auditor's evidence
+for it was sound as filed.
 
 ## R4-10 — a space's default object type is inexpressible, expensively **[audit]**
 
@@ -182,9 +180,9 @@ three fresh reviewers before the next.
 - R4-1: the post-delete contract is the one group A gave properties — the
   objects keep the type, and every read spells it by the slug the type was
   served under (`apikeyvocab.go ensure` adds removed types on the EMIT side;
-  `typeKeysById` and the row builder's tombstone fallback do the same for
-  rows; the tombstone window works because `SnapshotOnDelete` keeps
-  `uniqueKey` and `apiObjectKey`). Emit only: a create or a filter naming the
+  `typeKeysById` does the same for rows — all from the corpse row a delete
+  leaves; the tombstone-window machinery this first carried is gone, see
+  the last paragraph under Group G). Emit only: a create or a filter naming the
   slug is refused as REMOVED (`removedTypeBySpelling`), never as unknown
   with a guess, and never a hex; a live type that later takes the slug owns
   it, and the corpse reads under its stored key (the twin rule too).
@@ -197,21 +195,17 @@ three fresh reviewers before the next.
   slug folded onto a live type NAMED that way, so a search, a create and a
   delete by that slug went to the wrong type — the type resolution chain
   now stops at an exact removed spelling before its fold and name steps);
-  their should-fixes are in: the removal lookup sees tombstones (by key
-  through the derived id, by slug through a bounded scan of the deleted
-  rows — a refusal path only), the markdown envelope spells the slug, a
+  their should-fixes are in: the removal lookup saw tombstones too (since
+  removed with the tombstone shape itself, Group G), the markdown envelope
+  spells the slug, a
   read of an object whose type was removed carries a `/type` warning
   saying so (the served marker the reviewers asked for), GET types by a
   removed spelling is a 404 that says removed, the delete warning spells
   the served slug however the type was addressed and says when a twin
   will demote it, its hint no longer references a `list_objects?type=`
-  filter that does not exist, the refusal for the old type's key names the
-  live type that took its slug, rows demote a tombstone whose slug a
-  query-visible corpse spells, and the tombstone probe is gated on
-  identity (not bundled, not live) rather than on a bson shape. Accepted:
-  two TOMBSTONES sharing a slug (delete, re-create, delete again, both
-  gone from the index) are not census-able on a read path and may both
-  read as the slug in rows; `?keys=name` bypasses the vocabulary.
+  filter that does not exist, and the refusal for the old type's key names
+  the live type that took its slug. Accepted: `?keys=name` bypasses the
+  vocabulary.
 
 **Group F (R4-3, R4-4, R4-5, R4-6, R4-7, R4-8, R4-9, R4-10) — done.**
 
@@ -324,23 +318,34 @@ three fresh reviewers before the next.
   of a derived object therefore lives only from the uninstall to the next
   load on the uninstalling device; tombstones from before this branch
   carry no slug to match anyway and are gone after the first load. So:
-  NO migration. New tombstones keep the `deletedLayout` marker and the
-  exact query answers the same-session window; the backfill, its
-  completion marker, the gate, the tech-space call and the fixture
-  override were removed again. The review of that removal named the
-  window it leaves, and it is ACCEPTED: on the first load after the
-  upgrade, until the outdated-object reindex (a goroutine behind the
-  reindex limiter) has rebuilt a pre-branch tombstone of an uninstalled
-  type, its spelling is invisible to both removal lookups and resolves
-  like any other unknown one — name step included, so a live type whose
-  display name equals the removed slug answers for it, and a create,
-  a search or a delete lands there. It takes a type uninstalled before
-  the upgrade on this device, not yet rebuilt, and such a namesake. A
-  synchronous rebuild on load was tried and reverted: the personal
+  NO migration; the backfill, its completion marker, the gate, the
+  tech-space call and the fixture override were removed again. A
+  synchronous rebuild on load was tried and reverted (the personal
   space's types and properties are not flagged derived in head storage,
-  and the API admits requests to a space that is still loading, so it
-  neither found the objects that matter most nor established the
-  boundary it claimed.
+  and the API admits requests to a space that is still loading).
+
+  The last step removed the second shape itself. A derived object's
+  delete no longer strips its index row: `core/block/delete.go
+  beforeDeleteDerived` closes the sessions and marks the smartblock
+  deleted in memory, but does not call the store's `DeleteObject`, so the
+  row stays the full corpse the `isUninstalled` Apply just indexed — the
+  same row every other device holds and the same row this device would
+  hold again after a restart. One shape, before and after a restart;
+  `removedTypes` / `removedProperties` read it by row, and the whole
+  tombstone-reading machinery went with the window: the `deletedLayout`
+  relation and its index, the identity keys in `SnapshotOnDelete`, the
+  tombstone lookups by slug and by key, the vocabulary's and the row
+  builder's tombstone probes. What the store's `DeleteObject` still
+  tombstones is what it always did: objects whose tree is gone, and the
+  index row of a derived object deleted by an OLDER build, which reads
+  and refuses under its stored key until the next load rebuilds it from
+  the tree (the outdated-object reindex, since the tombstone dropped the
+  heads hash). That one-load window on upgrade is the accepted residual:
+  such a spelling resolves like any other unknown one, name step
+  included. Full-text removal and subscriptions follow the Apply path,
+  as they always did on every other device: the indexer returns no docs
+  for a row flagged deleted and the queue consumer removes the existing
+  ones.
 
   Also in from those rounds: a mint that suffixed or emptied its slug
   reports the stored slug (or the minted key) on the property row and its
@@ -364,9 +369,8 @@ three fresh reviewers before the next.
   pass does not render. Also found on the way and kept:
   `anystorehelper.AddIndexes` aliased its input (`indexes[:0]`), so any
   upgrade that added one index dropped the `uniqueKey` index.
-  Accepted: a space that has not loaded since the upgrade may still miss
-  a legacy tombstone by slug until it does; the resolution stop's queries
-  on display-name inputs are not memoised per request.
+  Accepted: the resolution stop's queries on display-name inputs are not
+  memoised per request.
 
 # What the fixes did achieve
 

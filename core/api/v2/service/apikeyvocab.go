@@ -280,51 +280,10 @@ func (v *apiKeyVocab) PropertySlug(key string) string {
 		}
 		return served
 	}
-	// a space-minted property in the post-delete tombstone window: its slug
-	// sits in the tombstone's snapshot at the derived id (keys.go
-	// tombstonedPropertySlug), and is served under the same guards as a
-	// removed property's — never over a live entry's claim. Probed once per
-	// key per vocabulary, and only for a key shaped like a stored bson id.
-	if isBsonKey(key) {
-		served := key
-		if slug := v.svc.tombstonedPropertySlug(v.spaceId, key); slug != "" {
-			// the same guards a listed entry's slug passes — a live stored
-			// key, a live holder, the bundled table's shadow — and never a
-			// slug another corpse already emits
-			candidate := servedKey(key, slug, v.propKeyTaken, v.propSlugHolders)
-			if _, taken := v.propKeyBySlug[candidate]; candidate != key && !taken && !v.removedSlug[candidate] {
-				served = candidate
-				v.rememberCorpse(candidate, key)
-				// claim it, so a second tombstone with the same slug (delete,
-				// re-create, delete again) reads under its stored key instead
-				// of a spelling the codec would have to suffix
-				if v.removedSlug == nil {
-					v.removedSlug = map[string]bool{}
-				}
-				v.removedSlug[candidate] = true
-			}
-		}
-		v.propSlugByKey[key] = served
-		return served
-	}
 	// not live in this space: a bundled key spells as its derived slug
 	// under the same three round-trip guards the listings apply; anything
 	// else is its own address.
 	return servedKey(key, "", v.propKeyTaken, v.propSlugHolders)
-}
-
-// isBsonKey reports whether key is shaped like a space-minted stored relation
-// key: 24 lowercase hex characters.
-func isBsonKey(key string) bool {
-	if len(key) != 24 {
-		return false
-	}
-	for _, r := range key {
-		if (r < '0' || r > '9') && (r < 'a' || r > 'f') {
-			return false
-		}
-	}
-	return true
 }
 
 func (v *apiKeyVocab) TypeSlug(key string) string {
@@ -333,30 +292,6 @@ func (v *apiKeyVocab) TypeSlug(key string) string {
 	}
 	if served, ok := v.typeSlugByKey[key]; ok {
 		return served
-	}
-	// the post-delete tombstone window: the row has no queryable detail,
-	// but its snapshot kept the slug (spaceindex.SnapshotOnDelete)
-	if !bundle.HasObjectTypeByKey(domain.TypeKey(key)) && !v.typeKeyTaken[key] {
-		slug, _ := v.svc.tombstonedTypeSlug(v.spaceId, key)
-		if slug != "" {
-			// a confirmed tombstone is a removed type whatever its spelling
-			// ends up as (the read marker asks TypeRemoved, not the slug)
-			if v.removedTypeKeys == nil {
-				v.removedTypeKeys = map[string]bool{}
-			}
-			v.removedTypeKeys[key] = true
-		}
-		if slug != "" && !v.removedTypeSlug[slug] {
-			candidate := servedTypeKeyOf(key, slug, v.typeKeyTaken, v.typeSlugHolders)
-			if _, taken := v.typeKeyBySlug[candidate]; !taken && candidate != key {
-				if v.removedTypeSlug == nil {
-					v.removedTypeSlug = map[string]bool{}
-				}
-				v.removedTypeSlug[candidate] = true
-				v.typeSlugByKey[key] = candidate
-				return candidate
-			}
-		}
 	}
 	return servedTypeKeyOf(key, "", v.typeKeyTaken, v.typeSlugHolders)
 }
@@ -368,14 +303,7 @@ func (v *apiKeyVocab) TypeRemoved(key string) bool {
 	if key == "" || !v.ensure() || v.typeKeyTaken[key] {
 		return false
 	}
-	if v.removedTypeKeys[key] {
-		return true
-	}
-	if !bundle.HasObjectTypeByKey(domain.TypeKey(key)) {
-		_ = v.TypeSlug(key) // the tombstone probe registers the key
-		return v.removedTypeKeys[key]
-	}
-	return false
+	return v.removedTypeKeys[key]
 }
 
 //

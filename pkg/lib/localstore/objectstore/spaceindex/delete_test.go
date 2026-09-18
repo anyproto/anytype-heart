@@ -79,34 +79,6 @@ func TestDeleteObject_PreservesAuditRelations(t *testing.T) {
 	// resolvedLayout, type and lastModifiedDate are non-sparse, so a top-level value would move the
 	// tombstone out of the null bucket into the ranges live queries scan. Any of them reappearing at
 	// the top level is the regression this guards.
-	t.Run("a derived object's identity keys survive inside the snapshot", func(t *testing.T) {
-		// given: a relation object, as the space stores one
-		s := NewStoreFixture(t)
-		s.AddObjects(t, []TestObject{{
-			bundle.RelationKeyId:             domain.String("rel1"),
-			bundle.RelationKeySpaceId:        domain.String("space1"),
-			bundle.RelationKeyUniqueKey:      domain.String("rel-6a7663db61fab21cd4b9e201"),
-			bundle.RelationKeyRelationKey:    domain.String("6a7663db61fab21cd4b9e201"),
-			bundle.RelationKeyApiObjectKey:   domain.String("warranty_until"),
-			bundle.RelationKeyName:           domain.String("Warranty until"),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
-		}})
-
-		// when
-		require.NoError(t, s.DeleteObject("rel1"))
-
-		// then: nothing indexed at the top level, the identity inside
-		got, err := s.GetDetails("rel1")
-		require.NoError(t, err)
-		assert.False(t, got.Has(bundle.RelationKeyRelationKey), "relationKey must stay inside deletedSnapshot")
-		assert.False(t, got.Has(bundle.RelationKeyName), "no user-authored content survives")
-		snapshot, ok := got.TryMapValue(bundle.RelationKeyDeletedSnapshot)
-		require.True(t, ok)
-		assert.Equal(t, "warranty_until", snapshot.GetString(bundle.RelationKeyApiObjectKey.String()))
-		assert.Equal(t, "6a7663db61fab21cd4b9e201", snapshot.GetString(bundle.RelationKeyRelationKey.String()))
-		assert.Equal(t, "rel-6a7663db61fab21cd4b9e201", snapshot.GetString(bundle.RelationKeyUniqueKey.String()))
-	})
-
 	t.Run("indexed relations never appear at the top level", func(t *testing.T) {
 		// given
 		s := NewStoreFixture(t)
@@ -411,57 +383,4 @@ func TestCountRaw(t *testing.T) {
 		// then
 		require.Error(t, err)
 	})
-}
-
-func TestDeleteObject_DerivedTombstoneKeepsItsLayoutTopLevel(t *testing.T) {
-	// a deleted type's tombstone is findable as a type through an indexed
-	// query; an ordinary object's tombstone carries no such marker
-	s := NewStoreFixture(t)
-	s.AddObjects(t, []TestObject{
-		{
-			bundle.RelationKeyId:             domain.String("typeA"),
-			bundle.RelationKeySpaceId:        domain.String("test"),
-			bundle.RelationKeyUniqueKey:      domain.String("ot-typeA"),
-			bundle.RelationKeyApiObjectKey:   domain.String("type_a"),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
-		},
-		liveObject("page1"),
-	})
-
-	require.NoError(t, s.DeleteObject("typeA"))
-	require.NoError(t, s.DeleteObject("page1"))
-
-	typeRow, err := s.GetDetails("typeA")
-	require.NoError(t, err)
-	assert.Equal(t, int64(model.ObjectType_objectType), typeRow.GetInt64(bundle.RelationKeyDeletedLayout))
-	assert.False(t, typeRow.Has(bundle.RelationKeyResolvedLayout), "the indexed live layout stays out of the tombstone")
-	pageRow, err := s.GetDetails("page1")
-	require.NoError(t, err)
-	assert.False(t, pageRow.Has(bundle.RelationKeyDeletedLayout))
-
-	// re-deleting keeps the marker
-	require.NoError(t, s.DeleteObject("typeA"))
-	typeRow, err = s.GetDetails("typeA")
-	require.NoError(t, err)
-	assert.Equal(t, int64(model.ObjectType_objectType), typeRow.GetInt64(bundle.RelationKeyDeletedLayout))
-
-	// an explicit re-delete of a tombstone written before the marker
-	// existed sets it, from the snapshot it kept
-	s.AddObjects(t, []TestObject{{
-		bundle.RelationKeyId:        domain.String("typeOld"),
-		bundle.RelationKeySpaceId:   domain.String("test"),
-		bundle.RelationKeyIsDeleted: domain.Bool(true),
-		bundle.RelationKeyDeletedSnapshot: domain.NewValueMap(map[string]domain.Value{
-			bundle.RelationKeyResolvedLayout.String(): domain.Int64(int64(model.ObjectType_objectType)),
-			bundle.RelationKeyUniqueKey.String():      domain.String("ot-typeOld"),
-			bundle.RelationKeyApiObjectKey.String():   domain.String("type_old"),
-		}),
-	}})
-	require.NoError(t, s.DeleteObject("typeOld"))
-	oldRow, err := s.GetDetails("typeOld")
-	require.NoError(t, err)
-	assert.Equal(t, int64(model.ObjectType_objectType), oldRow.GetInt64(bundle.RelationKeyDeletedLayout))
-	snapshot, ok := oldRow.TryMapValue(bundle.RelationKeyDeletedSnapshot)
-	require.True(t, ok)
-	assert.Equal(t, "type_old", snapshot.GetString(bundle.RelationKeyApiObjectKey.String()), "the snapshot is kept as it was")
 }

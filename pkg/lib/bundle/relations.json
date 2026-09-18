@@ -2054,15 +2054,5 @@
     "name": "Deleted object snapshot",
     "readonly": true,
     "source": "local"
-  },
-  {
-    "description": "The layout a deleted derived object (a type, a property) had, kept top level and sparse-indexed so the tombstones of one kind are an exact query",
-    "format": "number",
-    "hidden": true,
-    "key": "deletedLayout",
-    "maxCount": 1,
-    "name": "Deleted object layout",
-    "readonly": true,
-    "source": "local"
   }
 ]

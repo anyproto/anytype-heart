@@ -123,11 +123,13 @@ func TestV2ListingsServeSlugs(t *testing.T) {
 	t.Run("a corpse type whose slug no live type holds spells the slug in rows", func(t *testing.T) {
 		// round-four eval R4-1: a deleted type's objects kept a hex the API
 		// resolved nowhere. The row spells the slug the type was served
-		// under, in every store shape — the tombstone through its snapshot
+		// under, from the corpse row a delete leaves; an older build's
+		// identity-less tombstone spells nothing until the next load
+		// rebuilds it
 		corpseShapes(t, func(t *testing.T, shape corpseShape) {
 			fx := slugSpaceFixture(t)
 			if shape == corpseTombstone {
-				fx.addTypeTombstone(t, "type-gone", "6a7663db61fab21cd4b9e107", "old_note")
+				fx.addTypeTombstone(t, "type-gone")
 			} else {
 				obj := objectstore.TestObject{
 					bundle.RelationKeyId:            domain.String("type-gone"),
@@ -149,6 +151,10 @@ func TestV2ListingsServeSlugs(t *testing.T) {
 
 			row := builder.row(database.Record{Details: details})
 
+			if shape == corpseTombstone {
+				assert.Equal(t, "", row.Type)
+				return
+			}
 			assert.Equal(t, "old_note", row.Type)
 		})
 	})
