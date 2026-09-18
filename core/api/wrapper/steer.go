@@ -273,8 +273,10 @@ var toolVocab = map[string]func(ref v2model.Ref) string{
 	},
 	v2model.OpGetType:    func(v2model.Ref) string { return "`describe`" },
 	v2model.OpCreateType: func(v2model.Ref) string { return "`create_type`" },
+	// describe lists the type's own properties in full and caps the space's
+	// other settable ones (describeSettableLimit), so its listing may be cut
 	v2model.OpListProperties: func(v2model.Ref) string {
-		return fmt.Sprintf("`describe` on the type (which lists up to %d property names)", describeSettableLimit)
+		return "`describe` on the type (its property listing may be truncated)"
 	},
 	v2model.OpListPropertyOptions: func(ref v2model.Ref) string {
 		if key := ref.Params["key"]; key != "" {

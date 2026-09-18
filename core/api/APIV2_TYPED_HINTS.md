@@ -65,13 +65,19 @@ below: hints that shipped a `{space_id}` placeholder now carry the bound id
 where the site knows it; placeholders follow the OpenAPI names (`{key}`,
 `{type}`, not `{property_key}`, `{typeKey}`); object and chat ids are bound
 too where the site knows them; abbreviated (`GET .../messages`) and
-query-only (`?ids=full`, `?dry_run=true`, `?offset=&limit=`,
-`?after=`/`?before=`) routes are spelled out in full; the empty-body
+query-only read routes (`?ids=full`) are spelled out in full, while a
+resend of the same request (`?dry_run=true`, `?limit=25`,
+`?after=`/`?before=`, `?create_missing_options=true`) stays query-only by
+design; three create refusals that were a bare route now read "create it
+with …", "create a collection with …" and "upload one with …"; the empty-body
 refusal's issue message is now "the body is empty" with the old text as its
 hint; the view-filter type refusal's message lost its parenthesised route,
 which is now its hint; the subtree-body refusal's message no longer names
-`?block=`; the duplicate-key hints no longer offer an update by a slug that
-several holders answer to; and a handful of hints were reworded to stay
+`?block=`; the duplicate-key refusals no longer offer an update by a slug
+that several holders answer to (the type variant's issue message now reads
+"answered by several types", and the name-only property create says to
+pass an explicit key rather than to use the ambiguous one); and a handful
+of hints were reworded to stay
 true on every surface (listed under "Review findings"). Every one of these
 is prose; no status, code, path or acceptance changed. Consumers keying on `status`/`code` are unaffected;
 consumers that only rendered `message` now miss the repairs that moved
@@ -371,7 +377,21 @@ placeholders, sorted query, query-only rendering for a resend); the guard
 decodes literals and matches versionless and ellipsis routes; the doc's
 "Wire" section and both PR descriptions were completed.
 
-Accepted, not fixed (added this round):
+Round six (three fresh reviewers on the MERGED commits, develop feb1ee1ad
+and main c6f069f): nothing needing a must-fix follow-up. Fixed in the
+follow-up: the name-only property create overwrote the ambiguous-slug
+repair with "use the existing property <slug>", which cannot be followed
+(now "pass an explicit different key", tested for both request shapes);
+the three list-read warnings that said "pass view=<id>" carried no
+reference and escaped the guard — on the curated wrapper, whose `read`
+takes no view argument, they now render as a parameter these tools do not
+take (the guard matches `name=<placeholder>` mentions too); the
+`list_properties` row overstated `describe`'s cap (only the off-type
+section is capped; it now says the listing may be truncated); the Wire
+section gained the three create refusals' rewording and the several-types
+message. Nothing that landed on develop meanwhile touched `core/api`.
+
+Accepted, not fixed (added in round five):
 
 - A server hint that names a tool (`set_cell` in the nested-block repair)
   cannot know the caller's tier; on the small tier that tool is absent.

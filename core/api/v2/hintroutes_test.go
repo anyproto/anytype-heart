@@ -27,9 +27,10 @@ import (
 // they are not repairs.
 func TestServedRoutesComeFromTheOperationTable(t *testing.T) {
 	// a method before any path or an ellipsis (versioned or not), an
-	// ellipsis path on its own, a versioned path, or a bare `?name=`
-	// query-parameter mention — every spelling a repair has used
-	routeShaped := regexp.MustCompile(`(?:GET|POST|PATCH|PUT|DELETE|HEAD) (?:/|…|\.\.\./)|(?:…|\.\.\.)/[a-z]|/v2/(?:spaces|schemas|search|auth|validate)\b|\?[A-Za-z0-9_-]+=`)
+	// ellipsis path on its own, a versioned path, a bare `?name=`
+	// query-parameter mention, or a `name=<placeholder>` one — every
+	// spelling a repair has used
+	routeShaped := regexp.MustCompile(`(?:GET|POST|PATCH|PUT|DELETE|HEAD) (?:/|…|\.\.\./)|(?:…|\.\.\.)/[a-z]|/v2/(?:spaces|schemas|search|auth|validate)\b|\?[A-Za-z0-9_-]+=|\b[a-z_]+=<[a-z_]+>`)
 	documentation := map[string]bool{
 		"service/schemas.go":     true,
 		"service/schemas_ops.go": true,

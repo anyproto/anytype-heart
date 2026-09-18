@@ -1005,14 +1005,16 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 		}
 		if holder, taken := s.propertySlugConflict(slug, propEntries); taken {
 			path, hint := "/key", v2model.Hintf("update it with %s, or pick a different key", v2model.RefUpdateProperty(spaceId, holder.Key))
-			if holder.Kind == "properties" {
-				// several properties answer to this slug already: an update by
-				// that slug would be refused as ambiguous, so it is not offered
-				hint = v2model.Plain(fmt.Sprintf("several properties answer to %q (%s) — pick a different key", slug, holder.Name))
-			}
 			if req.Key == "" {
 				path = "/name"
 				hint = v2model.Plain(fmt.Sprintf("use the existing property %q, or pass an explicit different key", holder.Key))
+			}
+			if holder.Kind == "properties" {
+				// several properties answer to this slug already: neither an
+				// update by that slug nor "use the existing property" can be
+				// followed — both would be refused as ambiguous — so the only
+				// repair is a key of the caller's own, whichever slot they wrote
+				hint = v2model.Plain(fmt.Sprintf("several properties answer to %q (%s) — pass an explicit different key", slug, holder.Name))
 			}
 			return nil, v2model.ValidationFailed("property key already exists",
 				v2model.Issue{Path: path,

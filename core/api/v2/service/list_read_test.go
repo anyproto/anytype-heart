@@ -155,7 +155,7 @@ func TestV2GetQueryObjects(t *testing.T) {
 		assert.Contains(t, warnings[0].Message, `first view "High only" (viewHigh1) was applied`)
 		assert.Contains(t, warnings[0].Message, `"All" (viewAll2)`)
 		assert.Contains(t, warnings[0].Message, "viewNoName3")
-		assert.Contains(t, warnings[0].Hint, "view=<id>")
+		assert.Contains(t, warnings[0].Hint, "pass ?view=<view_id> to read through another view")
 	})
 
 	// A stored view now applies by default, so a filter keyed on a property

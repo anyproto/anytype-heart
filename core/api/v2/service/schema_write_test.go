@@ -509,6 +509,37 @@ func TestV2CreateProperty(t *testing.T) {
 		assert.Equal(t, "/key", apiErr.Issues[0].Path)
 	})
 
+	t.Run("a name that mints a slug several properties answer to is refused with a repair that can be followed", func(t *testing.T) {
+		// given: twin slugs (keys_input_test.go) — neither "update it" nor
+		// "use the existing property" by that slug can be followed, since
+		// addressing it is refused as ambiguous; the only repair is an
+		// explicit key of the caller's own
+		fx := slugSpaceFixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("rel-manual-twin"),
+			bundle.RelationKeyRelationKey:  domain.String("6a7663db61fab21cd4b9e104"),
+			bundle.RelationKeyApiObjectKey: domain.String("manual_property"),
+			bundle.RelationKeyName:         domain.String("Manual property twin"),
+		})
+
+		for _, req := range []v2model.CreatePropertyRequest{
+			{Name: "Manual property", Format: "text"},
+			{Key: "manual_property", Name: "Again", Format: "text"},
+		} {
+			// when
+			_, err := fx.CreateProperty(context.Background(), testSpaceId, req, false)
+
+			// then
+			apiErr := v2Err(t, err)
+			require.Len(t, apiErr.Issues, 1)
+			issue := apiErr.Issues[0]
+			assert.Contains(t, issue.Hint, "several properties answer to \"manual_property\"")
+			assert.Contains(t, issue.Hint, "pass an explicit different key")
+			assert.NotContains(t, issue.Hint, "use the existing property", "that key cannot be addressed")
+			assert.Empty(t, issue.SeeAlso, "no update reference: an update by that slug would be refused as ambiguous")
+		}
+	})
+
 	t.Run("dry run reports without creating", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
