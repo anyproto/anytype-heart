@@ -42,7 +42,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/shareablespace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/internal/streamablespace"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
@@ -78,7 +77,6 @@ type spaceFactory struct {
 	indexer         dependencies.SpaceIndexer
 	installer       dependencies.BundledObjectsInstaller
 	storageService  storage.ClientStorage
-	objectStore     objectstore.ObjectStore
 	personalSpaceId string
 }
 
@@ -94,7 +92,6 @@ func (s *spaceFactory) Init(a *app.App) (err error) {
 	s.indexer = app.MustComponent[dependencies.SpaceIndexer](a)
 	s.installer = app.MustComponent[dependencies.BundledObjectsInstaller](a)
 	s.storageService = app.MustComponent[storage.ClientStorage](a)
-	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacedomain.SpaceTypeRegular)
 	if err != nil {
 		return
@@ -169,15 +166,6 @@ func (s *spaceFactory) CreateAndSetTechSpace(ctx context.Context) (*clientspace.
 	if err != nil {
 		return nil, fmt.Errorf("run tech space: %w", err)
 	}
-	// a created tech space is not reindexed the way a loaded one is
-	// (LoadAndSetTechSpace → ReindexSpace), so the deletedLayout backfill
-	// records its completion here: the index is fresh, there is nothing to
-	// backfill, and the API trusts removed-type lookups only behind the
-	// marker
-	if err := s.objectStore.SpaceIndex(ts.Id()).BackfillDeletedLayout(ctx); err != nil {
-		return nil, fmt.Errorf("mark tech space deleted layout backfill: %w", err)
-	}
-
 	return ts, nil
 }
 

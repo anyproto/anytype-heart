@@ -3,7 +3,6 @@ package objectstore
 import (
 	"context"
 	"fmt"
-	"sync"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
@@ -20,31 +19,6 @@ import (
 type StoreFixture struct {
 	*dsObjectStore
 	FullText ftsearch.FTSearch
-
-	backfilledMu sync.Mutex
-	backfilled   map[string]bool
-}
-
-// SpaceIndex opens the space's index as a successfully backfilled LOADED
-// space has it: the indexer runs BackfillDeletedLayout on every space load,
-// and a negative deletedLayout lookup is trusted only behind its completion
-// marker. The fixture writes that marker the first time it opens a space
-// (again after DeleteSpaceIndex: the marker went with the index); a test
-// that wants the pre-migration state clears the heads state afterwards.
-func (fx *StoreFixture) SpaceIndex(spaceId string) spaceindex.Store {
-	store := fx.dsObjectStore.SpaceIndex(spaceId)
-	fx.backfilledMu.Lock()
-	defer fx.backfilledMu.Unlock()
-	if fx.backfilled[spaceId] {
-		return store
-	}
-	if fx.backfilled == nil {
-		fx.backfilled = map[string]bool{}
-	}
-	if err := store.BackfillDeletedLayout(context.Background()); err == nil {
-		fx.backfilled[spaceId] = true
-	}
-	return store
 }
 
 // func (fx *StoreFixture) TechSpaceId() string {
@@ -185,18 +159,6 @@ func newStoreFixture(t testing.TB, extra ...app.Component) *StoreFixture {
 		dsObjectStore: ds.(*dsObjectStore),
 		FullText:      fullText,
 	}
-}
-
-// DeleteSpaceIndex forgets the space's backfill memo with its index: a
-// reopened space is a fresh index and gets its marker on its first open.
-func (fx *StoreFixture) DeleteSpaceIndex(spaceId string) error {
-	if err := fx.dsObjectStore.DeleteSpaceIndex(spaceId); err != nil {
-		return err
-	}
-	fx.backfilledMu.Lock()
-	delete(fx.backfilled, spaceId)
-	fx.backfilledMu.Unlock()
-	return nil
 }
 
 func (fx *StoreFixture) Init(a *app.App) (err error) {

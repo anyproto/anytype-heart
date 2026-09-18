@@ -309,54 +309,49 @@ three fresh reviewers before the next.
   a warning), the `spaces` parameter refuses an empty value, and the
   count wording is "the number of messages".
 
-  A further fresh round found the migration wrong twice over: a deleted
+  A further fresh round found the migration wrong twice over (a deleted
   type or property keeps its tree, so the deleted-tree reindex the counter
   bump triggered never reached their tombstones, and a failed run recorded
-  itself complete. Replaced by a targeted backfill on the space index
-  (`BackfillDeletedLayout`): checked on every space load, and scanned
-  until it has completed once — a write for each derived-object tombstone
-  lacking its marker, and a completion marker written LAST, so a failure
-  (logged; the space still loads) leaves it unset and the next load scans
-  again. Until the marker is set, a miss from the exact tombstone query is
-  not trusted: type resolution answers the retryable 500 instead of
-  falling through to the name and fold steps, so an incomplete index can
-  never let a removed spelling land on a live namesake. The upgrade
-  consequence (lookup by a legacy tombstone's slug) therefore holds after
-  a successful backfill. Also in: a mint that suffixed its slug
-  reports the stored slug on the property row and its options (the
-  receipt followed the proposal), global search no longer files a server
-  error under "space skipped", `create_property` loads its property
-  snapshot once and fails closed when it cannot, the lookup error is typed
-  at the resolution boundary on every path (the cause is logged, not
-  served), and the `property` kind states that names are not identities.
+  itself complete), and the replacement — a targeted backfill with a
+  completion marker and a resolution gate that answered 500 until it had
+  run — was then found to guard an empty set. Checked on real stores
+  (every space of a 126-space account, pre- and post-wipe, and a prod
+  space after an uninstall and a restart): a deleted type or property
+  keeps its tree, its tombstone drops the indexed heads hash, and the next
+  space load's outdated-object reindex rebuilds the full row from the tree
+  — name, key and slug included, flagged uninstalled and deleted — which
+  the removedTypes / removedProperties queries serve by row. A tombstone
+  of a derived object therefore lives only from the uninstall to the next
+  load on the uninstalling device; tombstones from before this branch
+  carry no slug to match anyway and are gone after the first load. So:
+  NO migration. New tombstones keep the `deletedLayout` marker and the
+  exact query answers the same-session window; the backfill, its
+  completion marker, the gate, the tech-space call and the fixture
+  override were removed again. Accepted residual: on the first load after
+  the upgrade, until the outdated-object reindex has run (a goroutine
+  after the load), a pre-branch tombstone is invisible to the slug lookup
+  and its spelling resolves as unknown.
 
-  The review of that fix closed its own gap: a backfill that failed left
-  the session resolving on the incomplete index (the marker only protected
-  the NEXT load), hence the trust gate above. The gate reads the marker
-  BEFORE the tombstone query, on every lookup, with no memo: read after a
-  miss it could vouch for a query that ran while the backfill was still
-  writing, and a memo would outlive the marker, which goes with the heads
-  state on an index invalidation and with the index on a delete. The
-  incomplete case says what a retry needs ("reload the space before
-  retrying" / "the space's index of removed types has not been verified"):
-  nothing in the session re-runs the backfill, the next space load does. A
-  created tech space, which is not reindexed the way a loaded one is,
-  records the marker on creation (a fresh index has nothing to backfill).
-  The store fixture models a successfully backfilled space: it writes the
-  marker on first open and again after a delete-and-reopen. Also in: a mint
-  that stored an EMPTY slug (the suffix walk ran out) reports the minted
-  key on the receipt, as `create_property` already did, and creates the
-  option against it; the twin-name refusal spells the holder from the
-  snapshot it already loaded; `create_property`'s operation description
-  carries the name rule so OpenAPI and the external tool listing say it,
-  not only the `property` schema kind; and the curated `create_type`
-  pre-flight prefixes "check the type name and formats" on a decoded
-  validation refusal alone — a grant refusal, a rate limit, a 5xx, a
-  transport failure or an undecodable reply of any status gets "the
-  pre-flight failed" (the caller appends "nothing was created" itself).
-  Open on that surface, carried forward: a transport or decode failure
-  still serves the raw route inside the cause (`call POST /v2/...`), which
-  the tool vocabulary pass does not render.
+  Also in from those rounds: a mint that suffixed or emptied its slug
+  reports the stored slug (or the minted key) on the property row and its
+  options, and creates the option against it; global search no longer
+  files a server error under "space skipped"; `create_property` loads its
+  property snapshot once, fails closed when it cannot, spells the
+  twin-name holder from that snapshot, and refuses a name-only twin (an
+  explicit key creates another, with a warning); its operation
+  description carries the name rule into OpenAPI; the removal-lookup
+  error is typed at the resolution boundary on every path (the cause is
+  logged, not served); the `property` kind states that names are not
+  identities; and the curated `create_type` pre-flight prefixes "check
+  the type name and formats" on a decoded validation refusal alone — a
+  grant refusal, a rate limit, a 5xx, a transport failure or an
+  undecodable reply of any status gets "the pre-flight failed" (the
+  caller appends "nothing was created" itself). Open on that surface,
+  carried forward: a transport or decode failure still serves the raw
+  route inside the cause (`call POST /v2/...`), which the tool vocabulary
+  pass does not render. Also found on the way and kept:
+  `anystorehelper.AddIndexes` aliased its input (`indexes[:0]`), so any
+  upgrade that added one index dropped the `uniqueKey` index.
   Accepted: a space that has not loaded since the upgrade may still miss
   a legacy tombstone by slug until it does; the resolution stop's queries
   on display-name inputs are not memoised per request.

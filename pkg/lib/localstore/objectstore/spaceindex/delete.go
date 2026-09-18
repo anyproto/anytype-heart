@@ -6,9 +6,6 @@ import (
 	"fmt"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/anyenc"
-	"github.com/anyproto/any-store/query"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -205,76 +202,6 @@ func (s *dsObjectStore) eraseLinksForObject(ctx context.Context, from string) er
 	err := s.links.DeleteId(ctx, from)
 	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
 		return err
-	}
-	return nil
-}
-
-// deletedLayoutBackfillMarkerId is the headsState row that records the
-// backfill's completion — a marker row, not an object. The `_migration/`
-// prefix is reserved for such rows: no object id starts with it, the
-// row carries no ftQueueCtr (so the full-text queue's greater-than query
-// never selects it), and ListLastIndexedHeadsHashes lists it with an empty
-// hash, which its caller only ever looks up by real tree ids.
-const deletedLayoutBackfillMarkerId = "_migration/deletedLayout"
-
-// DeletedLayoutBackfilled implements Store: whether BackfillDeletedLayout
-// has run to completion on this index. Until it has, a tombstone query on
-// deletedLayout can miss a legacy tombstone, so a negative answer from it
-// must not be trusted.
-func (s *dsObjectStore) DeletedLayoutBackfilled(ctx context.Context) (bool, error) {
-	marker, err := s.GetReconcileMarker(ctx, deletedLayoutBackfillMarkerId)
-	if err != nil {
-		return false, fmt.Errorf("read deleted layout backfill marker: %w", err)
-	}
-	return marker == "1", nil
-}
-
-// BackfillDeletedLayout implements Store: one scan of the space's tombstones,
-// a write for each derived-object tombstone that lacks its marker, and the
-// completion marker last. A failed write leaves the marker unset, so the
-// next load runs the scan again — completion is never recorded on a
-// partial backfill.
-func (s *dsObjectStore) BackfillDeletedLayout(ctx context.Context) error {
-	if done, err := s.DeletedLayoutBackfilled(ctx); err == nil && done {
-		return nil
-	}
-	records, err := s.Query(database.Query{
-		Filters: []database.FilterRequest{
-			{RelationKey: bundle.RelationKeyIsDeleted, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.Bool(true)},
-			{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("query tombstones: %w", err)
-	}
-	for _, record := range records {
-		details := record.Details
-		if details.Has(bundle.RelationKeyDeletedLayout) {
-			continue
-		}
-		snapshot, ok := details.TryMapValue(bundle.RelationKeyDeletedSnapshot)
-		if !ok {
-			continue
-		}
-		layout := snapshot.GetInt64(bundle.RelationKeyResolvedLayout.String())
-		if !derivedLayouts[layout] {
-			continue
-		}
-		details.SetInt64(bundle.RelationKeyDeletedLayout, layout)
-		id := details.GetString(bundle.RelationKeyId)
-		if err := s.UpdateObjectDetails(ctx, id, details); err != nil {
-			return fmt.Errorf("backfill deleted layout of %s: %w", id, err)
-		}
-	}
-	_, err = s.headsState.UpsertId(ctx, deletedLayoutBackfillMarkerId, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
-		if val == nil {
-			val = arena.NewObject()
-		}
-		val.Set(lastReconciledLinksField, arena.NewString("1"))
-		return val, true, nil
-	}))
-	if err != nil {
-		return fmt.Errorf("record deleted layout backfill: %w", err)
 	}
 	return nil
 }

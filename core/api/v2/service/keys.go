@@ -15,7 +15,6 @@ package v2service
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -1403,30 +1402,16 @@ func (s *Service) removedTypeBySpelling(spaceId, input string) (typeEntry, bool,
 	return typeEntry{}, false, nil
 }
 
-// errRemovalIndexIncomplete says the deletedLayout backfill has not been
-// recorded complete on the space: legacy tombstones may still lack the
-// marker, so a miss from the exact query proves nothing, and resolution
-// must not fall through to the name and fold steps on its strength (a live
-// namesake would win, and a delete would land on it).
-var errRemovalIndexIncomplete = errors.New("deleted-type index backfill has not completed")
-
 // tombstonedTypeBySlug finds a type tombstone by the slug its snapshot
 // kept, through the deletedLayout marker every deleted type's tombstone
 // carries top level (spaceindex delete.go) — an exact, indexed query over
-// the deleted types alone, complete by construction once the backfill has
-// run. The completion marker is read BEFORE the query, every time: read
-// after a miss it could vouch for a query that ran while the backfill was
-// still writing, and no memo — the marker goes with the heads state on an
-// index invalidation and with the index on a delete, and a memo would
-// outlive both. The read is one local FindId.
+// the deleted types alone. Tombstones written before the marker existed
+// need no backfill: a deleted type keeps its tree, its tombstone drops the
+// indexed heads hash, and the next space load's outdated-object reindex
+// rebuilds the full row from the tree — which the removedTypes query
+// then serves by row, name and slug included.
 func (s *Service) tombstonedTypeBySlug(spaceId, slug string) (typeEntry, bool, error) {
-	index := s.store.SpaceIndex(spaceId)
-	if complete, err := index.DeletedLayoutBackfilled(context.Background()); err != nil {
-		return typeEntry{}, false, fmt.Errorf("check deleted-type index of space %s: %w", spaceId, err)
-	} else if !complete {
-		return typeEntry{}, false, fmt.Errorf("space %s: %w", spaceId, errRemovalIndexIncomplete)
-	}
-	records, err := index.Query(database.Query{
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{RelationKey: bundle.RelationKeyDeletedLayout, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.Int64(int64(model.ObjectType_objectType))},
 			{RelationKey: bundle.RelationKeyIsDeleted, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.Bool(true)},

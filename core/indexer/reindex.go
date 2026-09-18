@@ -294,15 +294,6 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		}
 	}
 
-	// the deletedLayout marker of tombstones written before it existed: a
-	// targeted backfill over the tombstones alone (a deleted type or property
-	// keeps its tree, so no deleted-tree reindex ever reaches them), which
-	// records its completion only once every write succeeded and runs again
-	// on the next load otherwise
-	if err := i.store.SpaceIndex(space.Id()).BackfillDeletedLayout(i.runCtx); err != nil {
-		log.Error("backfill deleted layout markers", zap.Error(err))
-	}
-
 	go i.addSyncDetails(space)
 	go i.reconcileLinkDerivedDetails(space)
 
