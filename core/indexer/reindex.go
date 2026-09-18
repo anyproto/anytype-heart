@@ -50,7 +50,10 @@ const (
 	// ForceMarketplaceReindex forces to do reindex only for marketplace space
 	ForceMarketplaceReindex int32 = 1
 
-	ForceReindexDeletedObjectsCounter int32 = 1
+	// Bumped to 2: the tombstone of a deleted type or property now keeps its
+	// layout top level (spaceindex delete.go deletedLayout); re-running the
+	// delete on every deleted tree backfills tombstones written before that.
+	ForceReindexDeletedObjectsCounter int32 = 2
 
 	ForceReindexParticipantsCounter int32 = 1
 	ForceReindexChatsCounter        int32 = 7

@@ -136,7 +136,12 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	newDetails := oldDetails.CopyOnlyKeys(preservedOnDelete...)
 	if snapshot, ok := snapshotOnDelete(oldDetails); ok {
 		newDetails.Set(bundle.RelationKeyDeletedSnapshot, snapshot)
-		if layout := oldDetails.GetInt64(bundle.RelationKeyResolvedLayout); derivedLayouts[layout] {
+	}
+	// the marker is derived from the RETAINED snapshot, fresh or old, so
+	// re-running the delete on a tombstone written before the marker
+	// existed backfills it (reindexDeletedObjects re-runs every tombstone)
+	if snapshot, ok := newDetails.TryMapValue(bundle.RelationKeyDeletedSnapshot); ok {
+		if layout := snapshot.GetInt64(bundle.RelationKeyResolvedLayout.String()); derivedLayouts[layout] {
 			newDetails.SetInt64(bundle.RelationKeyDeletedLayout, layout)
 		}
 	}

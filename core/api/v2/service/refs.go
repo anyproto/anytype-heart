@@ -110,8 +110,8 @@ func (s *Service) typeKeyExists(spaceId, typeKey string) bool {
 	if err != nil {
 		return false
 	}
-	_, ok, ambiguous := s.resolveTypeInput(spaceId, typeKey, entries)
-	return ok && len(ambiguous) == 0
+	_, ok, ambiguous, err := s.resolveTypeInput(spaceId, typeKey, entries)
+	return err == nil && ok && len(ambiguous) == 0
 }
 
 // knownTypeKeys lists the space's LIVE type keys in their SERVED spelling
@@ -135,8 +135,14 @@ func (s *Service) knownTypeKeys(spaceId string, v errKeys) []string {
 // unknownTypeKeyError is the R9 did-you-mean 400 for a type reference.
 func (s *Service) unknownTypeKeyError(spaceId, typeKey, path string, v errKeys) error {
 	// the spelling a read served for a REMOVED space-minted type (its
-	// objects keep it — R4-1): say removed, not unknown with a guess
-	if issue, removed := s.removedTypeRefusal(spaceId, typeKey, path, v); removed {
+	// objects keep it — R4-1): say removed, not unknown with a guess; and a
+	// lookup that failed is neither — an infrastructure error, not a bad
+	// input, with no guess attached
+	issue, removed, err := s.removedTypeRefusal(spaceId, typeKey, path, v)
+	if err != nil {
+		return unverifiableTypeError(typeKey, spaceId, err)
+	}
+	if removed {
 		return v2model.ValidationFailed(fmt.Sprintf("removed %s", v.typeWord()), issue)
 	}
 	known := s.knownTypeKeys(spaceId, v)
@@ -158,7 +164,11 @@ func (s *Service) unknownTypeKeyError(spaceId, typeKey, path string, v errKeys) 
 func (s *Service) typeNotFoundError(spaceId, typeKey string, v errKeys) error {
 	// a type route addressed by the spelling its objects still serve: 404
 	// still (the type is not addressable), but saying why (R4-1)
-	if issue, removed := s.removedTypeRefusal(spaceId, typeKey, "type", v); removed {
+	issue, removed, err := s.removedTypeRefusal(spaceId, typeKey, "type", v)
+	if err != nil {
+		return unverifiableTypeError(typeKey, spaceId, err)
+	}
+	if removed {
 		// the diagnosis once, in the message; the issue carries the
 		// consequences and the live-type reference
 		known := s.knownTypeKeys(spaceId, v)
@@ -581,8 +591,8 @@ func (s *Service) typeListedKeys(spaceId, typeKey string) map[string]bool {
 		if err != nil {
 			return nil
 		}
-		entry, found, ambiguous := s.resolveTypeInput(spaceId, typeKey, entries)
-		if !found || len(ambiguous) > 0 || entry.Id == "" {
+		entry, found, ambiguous, err := s.resolveTypeInput(spaceId, typeKey, entries)
+		if err != nil || !found || len(ambiguous) > 0 || entry.Id == "" {
 			return nil
 		}
 		typeId = entry.Id
@@ -621,10 +631,13 @@ func offTypePropertyIssue(spelling, typeKey, path string) v2model.Issue {
 // by the spelling a read served for it. When a live type has since taken
 // the removed one's slug, the caller addressed the old type by its stored
 // key, and the refusal must not call the live slug removed.
-func (s *Service) removedTypeRefusal(spaceId, input, path string, v errKeys) (v2model.Issue, bool) {
+func (s *Service) removedTypeRefusal(spaceId, input, path string, v errKeys) (v2model.Issue, bool, error) {
 	entry, removed, err := s.removedTypeBySpelling(spaceId, input)
-	if err != nil || !removed {
-		return v2model.Issue{}, false
+	if err != nil {
+		return v2model.Issue{}, false, err
+	}
+	if !removed {
+		return v2model.Issue{}, false, nil
 	}
 	spelling := entry.Slug
 	if spelling == "" {
@@ -642,12 +655,21 @@ func (s *Service) removedTypeRefusal(spaceId, input, path string, v errKeys) (v2
 				return v2model.Issue{
 					Path:    path,
 					Message: fmt.Sprintf("type %q (formerly %q) was removed from this space, and %q now names a different type — the old type's objects keep it under its stored key; nothing new is created in it", input, entry.Slug, entry.Slug),
-				}.Hintf("use a live type instead — list them with %s", v2model.RefListTypes(spaceId)), true
+				}.Hintf("use a live type instead — list them with %s", v2model.RefListTypes(spaceId)), true, nil
 			}
 		}
 	}
 	return v2model.Issue{
 		Path:    path,
 		Message: fmt.Sprintf("type %q was removed from this space — its objects keep it, but nothing new is created in it and it is not filterable", spelling),
-	}.Hintf("use a live type instead — list them with %s", v2model.RefListTypes(spaceId)), true
+	}.Hintf("use a live type instead — list them with %s", v2model.RefListTypes(spaceId)), true, nil
+}
+
+// unverifiableTypeError is the answer when the removal lookup behind a type
+// resolution failed: a server error, said as such, with no guess — the
+// request was not wrong, the store could not be read.
+func unverifiableTypeError(typeKey, spaceId string, err error) error {
+	return v2model.NewError(http.StatusInternalServerError, v2model.CodeInternalError,
+		fmt.Sprintf("could not verify type %q in space %q — retry", typeKey, spaceId),
+		v2model.Issue{Message: err.Error()})
 }

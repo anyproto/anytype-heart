@@ -444,4 +444,24 @@ func TestDeleteObject_DerivedTombstoneKeepsItsLayoutTopLevel(t *testing.T) {
 	typeRow, err = s.GetDetails("typeA")
 	require.NoError(t, err)
 	assert.Equal(t, int64(model.ObjectType_objectType), typeRow.GetInt64(bundle.RelationKeyDeletedLayout))
+
+	// a tombstone written before the marker existed is backfilled by the
+	// re-delete a reindex runs, from the snapshot it kept
+	s.AddObjects(t, []TestObject{{
+		bundle.RelationKeyId:        domain.String("typeOld"),
+		bundle.RelationKeySpaceId:   domain.String("test"),
+		bundle.RelationKeyIsDeleted: domain.Bool(true),
+		bundle.RelationKeyDeletedSnapshot: domain.NewValueMap(map[string]domain.Value{
+			bundle.RelationKeyResolvedLayout.String(): domain.Int64(int64(model.ObjectType_objectType)),
+			bundle.RelationKeyUniqueKey.String():      domain.String("ot-typeOld"),
+			bundle.RelationKeyApiObjectKey.String():   domain.String("type_old"),
+		}),
+	}})
+	require.NoError(t, s.DeleteObject("typeOld"))
+	oldRow, err := s.GetDetails("typeOld")
+	require.NoError(t, err)
+	assert.Equal(t, int64(model.ObjectType_objectType), oldRow.GetInt64(bundle.RelationKeyDeletedLayout))
+	snapshot, ok := oldRow.TryMapValue(bundle.RelationKeyDeletedSnapshot)
+	require.True(t, ok)
+	assert.Equal(t, "type_old", snapshot.GetString(bundle.RelationKeyApiObjectKey.String()), "the snapshot is kept as it was")
 }

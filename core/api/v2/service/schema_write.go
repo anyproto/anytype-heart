@@ -231,7 +231,11 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 		if err != nil {
 			return nil, err
 		}
-		if holder, taken := s.typeSlugConflict(spaceId, slug, typeEntries); taken {
+		holder, taken, err := s.typeSlugConflict(spaceId, slug, typeEntries)
+		if err != nil {
+			return nil, err
+		}
+		if taken {
 			if holder.Kind == "bundled type" {
 				return nil, v2model.ValidationFailed("type key is reserved",
 					v2model.Issue{Path: keyPath,
@@ -1195,19 +1199,29 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 	}
 
 	result := &v2model.CreateResult{Key: slug}
-	// a second property under a display name the space already has is
-	// accepted (names are not identity here), but never silently: three of
-	// six eval runs ended with two fields both called "Condition" (R3-d)
+	// another property under a display name the space already has: refused
+	// when the name is all the caller gave (three of six eval runs ended
+	// with two fields both called "Condition" — R3-d), accepted with a
+	// warning when an explicit key says a second one is meant (a name is
+	// not identity)
 	if twins, err := s.liveProperties(spaceId); err == nil {
 		nfcName := norm.NFC.String(req.Name)
 		for _, entry := range twins {
-			if !entry.Hidden && entry.Name != "" && norm.NFC.String(entry.Name) == nfcName {
-				result.Warnings = append(result.Warnings, v2model.Issue{
-					Path:    "/name",
-					Message: fmt.Sprintf("a property named %q already exists (key %q) — this creates a second one under the same name", req.Name, s.servedKeySpeller(spaceId)(entry.Key)),
-				}.Hintf("to use the existing property, reference it by its key; the space's properties are listed by %s", v2model.RefListProperties(spaceId)))
-				break
+			if entry.Hidden || entry.Name == "" || norm.NFC.String(entry.Name) != nfcName {
+				continue
 			}
+			existing := s.servedKeySpeller(spaceId)(entry.Key)
+			if req.Key == "" {
+				return nil, v2model.ValidationFailed("property name already exists",
+					v2model.Issue{Path: "/name",
+						Message: fmt.Sprintf("a property named %q already exists (key %q)", req.Name, existing),
+					}.Hintf("use the existing property %q, or pass an explicit different key to create another under the same name; the space's properties are listed by %s", existing, v2model.RefListProperties(spaceId)))
+			}
+			result.Warnings = append(result.Warnings, v2model.Issue{
+				Path:    "/name",
+				Message: fmt.Sprintf("a property named %q already exists (key %q) — this creates another property under the same name", req.Name, existing),
+			}.Hintf("to use the existing property, reference it by its key; the space's properties are listed by %s", v2model.RefListProperties(spaceId)))
+			break
 		}
 	}
 	if dryRun {

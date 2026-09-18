@@ -76,7 +76,10 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	if err != nil {
 		return nil, err
 	}
-	entry, ok, ambiguous := s.resolveTypeInput(spaceId, req.Type, typeEntries)
+	entry, ok, ambiguous, err := s.resolveTypeInput(spaceId, req.Type, typeEntries)
+	if err != nil {
+		return nil, err
+	}
 	if len(ambiguous) > 0 {
 		return nil, ambiguousKeyError("type key", req.Type, "/type", ambiguous)
 	}

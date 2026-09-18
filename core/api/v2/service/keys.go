@@ -410,10 +410,10 @@ func (s *Service) resolvePropertyInput(input string, entries []propertyEntry) (p
 }
 
 // resolveTypeInput is resolvePropertyInput for the type namespace.
-func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (typeEntry, bool, []string) {
+func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (typeEntry, bool, []string, error) {
 	for _, entry := range entries {
 		if entry.Key == input {
-			return entry, true, nil
+			return entry, true, nil, nil
 		}
 	}
 	var slugMatches []typeEntry
@@ -424,24 +424,24 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 	}
 	if len(slugMatches) == 1 {
 		if shadowed, ok := shadowedBundledType(input, slugMatches[0].Key); ok {
-			return typeEntry{}, false, append(describeTypeEntries(slugMatches), shadowed)
+			return typeEntry{}, false, append(describeTypeEntries(slugMatches), shadowed), nil
 		}
-		return slugMatches[0], true, nil
+		return slugMatches[0], true, nil, nil
 	}
 	if len(slugMatches) > 1 {
-		return typeEntry{}, false, describeTypeEntries(slugMatches)
+		return typeEntry{}, false, describeTypeEntries(slugMatches), nil
 	}
 	if t, err := bundle.GetType(domain.TypeKey(input)); err == nil {
-		return typeEntry{Key: input, Name: t.Name}, true, nil
+		return typeEntry{Key: input, Name: t.Name}, true, nil, nil
 	}
 	if key, ok := bundle.TypeKeyByApiSlug(input); ok {
 		for _, entry := range entries {
 			if entry.Key == string(key) {
-				return entry, true, nil
+				return entry, true, nil, nil
 			}
 		}
 		t := bundle.MustGetType(key)
-		return typeEntry{Key: string(key), Name: t.Name}, true, nil
+		return typeEntry{Key: string(key), Name: t.Name}, true, nil, nil
 	}
 	// the exact spelling a read served for a REMOVED type stops here: no
 	// live key, slug or bundled entry answered to it above, and the
@@ -450,10 +450,13 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 	// "widget" resolved to live "machine" named "widget", and a create,
 	// a search and even a DELETE went to the wrong type). The caller's
 	// refusal then says removed (unknownTypeKeyError).
-	// fail CLOSED on a lookup error: a removal set that could not be read
-	// must not authorize the fold and name steps below
-	if _, removed, err := s.removedTypeBySpelling(spaceId, input); removed || err != nil {
-		return typeEntry{}, false, nil
+	// a lookup error is an outcome of its own (the caller says so and
+	// retries nothing): a removal set that could not be read must neither
+	// authorize the fold and name steps below nor read as "unknown"
+	if _, removed, err := s.removedTypeBySpelling(spaceId, input); err != nil {
+		return typeEntry{}, false, nil, fmt.Errorf("verify type %q in space %s: %w", input, spaceId, err)
+	} else if removed {
+		return typeEntry{}, false, nil, nil
 	}
 	fold := bundle.FoldApiKey(input)
 	var candidates []typeEntry
@@ -478,10 +481,10 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 		candidates = append(candidates, typeEntry{Key: string(key), Name: t.Name})
 	}
 	if len(candidates) == 1 {
-		return candidates[0], true, nil
+		return candidates[0], true, nil, nil
 	}
 	if len(candidates) > 1 {
-		return typeEntry{}, false, describeTypeEntries(candidates)
+		return typeEntry{}, false, describeTypeEntries(candidates), nil
 	}
 	// 5: display names — resolvePropertyInput's step 5 on the type
 	// namespace, same order, same shadow discipline, same refusal rules
@@ -493,20 +496,20 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 		}
 	}
 	if len(nameMatches) > 1 {
-		return typeEntry{}, false, describeTypeEntries(nameMatches)
+		return typeEntry{}, false, describeTypeEntries(nameMatches), nil
 	}
 	if len(nameMatches) == 1 {
 		if shadowed, ok := shadowedBundledTypeName(nfcInput, nameMatches[0].Key); ok {
-			return typeEntry{}, false, append(describeTypeEntries(nameMatches), shadowed)
+			return typeEntry{}, false, append(describeTypeEntries(nameMatches), shadowed), nil
 		}
-		return nameMatches[0], true, nil
+		return nameMatches[0], true, nil, nil
 	}
 	if key, ok := anyblockjson.BundledTypeKeyByName(nfcInput); ok {
-		return bundledTypeCandidate(key, entries), true, nil
+		return bundledTypeCandidate(key, entries), true, nil, nil
 	}
 	nameFold := anyblockjson.FoldKeyTerm(input)
 	if nameFold == "" {
-		return typeEntry{}, false, nil
+		return typeEntry{}, false, nil, nil
 	}
 	var nameCandidates []typeEntry
 	nameSeen := map[string]bool{}
@@ -527,12 +530,12 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 		nameCandidates = append(nameCandidates, bundledTypeCandidate(key, entries))
 	}
 	if len(nameCandidates) == 1 {
-		return nameCandidates[0], true, nil
+		return nameCandidates[0], true, nil, nil
 	}
 	if len(nameCandidates) > 1 {
-		return typeEntry{}, false, describeTypeEntries(nameCandidates)
+		return typeEntry{}, false, describeTypeEntries(nameCandidates), nil
 	}
-	return typeEntry{}, false, nil
+	return typeEntry{}, false, nil, nil
 }
 
 // shadowedBundledProperty reports whether a STORED slug that just matched at
@@ -680,7 +683,10 @@ func (s *Service) requireLiveType(spaceId, input, path string, v errKeys) (typeE
 	if err != nil {
 		return typeEntry{}, err
 	}
-	entry, ok, ambiguous := s.resolveTypeInput(spaceId, input, entries)
+	entry, ok, ambiguous, err := s.resolveTypeInput(spaceId, input, entries)
+	if err != nil {
+		return typeEntry{}, err
+	}
 	if len(ambiguous) > 0 {
 		return typeEntry{}, ambiguousKeyError(v.typeWord(), input, path, ambiguous)
 	}
@@ -721,18 +727,21 @@ func (s *Service) propertySlugConflict(slug string, entries []propertyEntry) (sl
 }
 
 // typeSlugConflict is propertySlugConflict for the type namespace.
-func (s *Service) typeSlugConflict(spaceId, slug string, entries []typeEntry) (slugHolder, bool) {
-	entry, ok, ambiguous := s.resolveTypeInput(spaceId, slug, entries)
+func (s *Service) typeSlugConflict(spaceId, slug string, entries []typeEntry) (slugHolder, bool, error) {
+	entry, ok, ambiguous, err := s.resolveTypeInput(spaceId, slug, entries)
+	if err != nil {
+		return slugHolder{}, false, err
+	}
 	if len(ambiguous) > 0 {
-		return slugHolder{Kind: "types", Key: slug, Name: strings.Join(ambiguous, " and ")}, true
+		return slugHolder{Kind: "types", Key: slug, Name: strings.Join(ambiguous, " and ")}, true, nil
 	}
 	if !ok {
-		return slugHolder{}, false
+		return slugHolder{}, false, nil
 	}
 	if entry.Id == "" {
-		return slugHolder{Kind: "bundled type", Key: bundle.TypeApiSlug(entry.Key), Name: entry.Name}, true
+		return slugHolder{Kind: "bundled type", Key: bundle.TypeApiSlug(entry.Key), Name: entry.Name}, true, nil
 	}
-	return slugHolder{Kind: "type", Key: entry.Key, Name: entry.Name}, true
+	return slugHolder{Kind: "type", Key: entry.Key, Name: entry.Name}, true, nil
 }
 
 // There is exactly ONE authority for the wire spelling of a key: servedKeyOf
@@ -1175,7 +1184,10 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 				return nil, nil, err
 			}
 		}
-		entry, ok, ambiguous := s.resolveTypeInput(spaceId, term, typeEntries)
+		entry, ok, ambiguous, rerr := s.resolveTypeInput(spaceId, term, typeEntries)
+		if rerr != nil {
+			return nil, nil, rerr
+		}
 		if len(ambiguous) > 0 {
 			return nil, nil, ambiguousKeyError("type key", term, "/"+field, ambiguous)
 		}

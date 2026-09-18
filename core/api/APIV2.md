@@ -900,8 +900,9 @@ the write.)
 can't represent: unmapped block types and over-deep nesting degrade to
 `warnings[]` on the envelope (the `anyblockjson.Options.OnWarning` sink);
 canonical export leaves the sink nil and still errors. The markdown export
-path has no loss channel yet, so `format=md` carries no warnings (build
-item: md-export loss detector).
+path has no loss channel yet, so `format=md` carries no loss warnings
+(build item: md-export loss detector); it does carry the removed-type
+warning both envelopes share.
 
 **Idempotency store (C8).** In-process, keyed by
 `(authenticated credential, resolved space, Idempotency-Key)` →

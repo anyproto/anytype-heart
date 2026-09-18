@@ -199,7 +199,7 @@ func TestV2DeletedTypeKeepsItsSpelling(t *testing.T) {
 		// the live namesake stays reachable by its own slug and its name
 		// spelled with a different case is still its own
 		entries, _ := fx.liveTypes(testSpaceId)
-		entry, ok, _ := fx.resolveTypeInput(testSpaceId, "machine", entries)
+		entry, ok, _, _ := fx.resolveTypeInput(testSpaceId, "machine", entries)
 		assert.True(t, ok)
 		assert.Equal(t, "6aad7fbf61fab205fe53c2f2", entry.Key)
 	})
@@ -500,16 +500,73 @@ func TestV2RoundFourCarriedForward(t *testing.T) {
 		assert.Equal(t, "Hot", result.Created.Options[0].Name)
 	})
 
-	t.Run("R3-d: a second property under an existing display name is created with a warning", func(t *testing.T) {
+	t.Run("R3-d: a name-only create under an existing display name is refused; an explicit key creates another with a warning", func(t *testing.T) {
 		fx := setup(t)
+		// a name whose derived slug ("cafe") collides with nothing: the slug
+		// check cannot catch it, the name check must (an ASCII twin like
+		// "Severity" is already refused by the slug collision)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("rel-cafe"),
+			bundle.RelationKeyRelationKey:  domain.String("6a8f2c1d9e4b7a3f5c2d8e66"),
+			bundle.RelationKeyApiObjectKey: domain.String("coffee_rating"),
+			bundle.RelationKeyName:         domain.String("Café"),
+		})
+
+		_, err := fx.CreateProperty(ctx, testSpaceId, v2model.CreatePropertyRequest{Name: "Café", Format: "text"}, true)
+		apiErr := v2Err(t, err)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Equal(t, "/name", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, `a property named "Café" already exists (key "coffee_rating")`)
+		assert.Contains(t, apiErr.Issues[0].Hint, `use the existing property "coffee_rating", or pass an explicit different key`)
 
 		result, err := fx.CreateProperty(ctx, testSpaceId, v2model.CreatePropertyRequest{Key: "severity2", Name: "Severity", Format: "text"}, true)
-
 		require.NoError(t, err)
 		require.Len(t, result.Warnings, 1)
 		assert.Equal(t, "/name", result.Warnings[0].Path)
-		assert.Contains(t, result.Warnings[0].Message, `a property named "Severity" already exists (key "severity")`)
+		assert.Contains(t, result.Warnings[0].Message, "this creates another property under the same name")
 		assert.Equal(t, []v2model.Ref{v2model.RefListProperties(testSpaceId)}, result.Warnings[0].SeeAlso)
+	})
+
+	t.Run("R3-c: an option on a property minted by the same request, and one added by a type op, are spelled by slug", func(t *testing.T) {
+		fx := setup(t)
+
+		// a type document minting the property and its option together
+		result, err := fx.CreateType(ctx, testSpaceId,
+			[]byte(`{"name":"Plant","property_definitions":[{"name":"Harvest Season","format":"select","options":[{"name":"Summer"}]}]}`), true, true)
+		require.NoError(t, err)
+		require.NotNil(t, result.Created)
+		require.Len(t, result.Created.Options, 1, "%v", result.Created)
+		assert.Equal(t, "harvest_season", result.Created.Options[0].Property)
+
+		// a type op adding an option to an existing bson-keyed select, with
+		// no document import to build the vocabulary
+		fx2 := newTypeOpsFixture(t)
+		fx2.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("rel-spice-level"),
+			bundle.RelationKeyRelationKey:    domain.String("6a8f2c1d9e4b7a3f5c2d8e55"),
+			bundle.RelationKeyApiObjectKey:   domain.String("spice_level"),
+			bundle.RelationKeyName:           domain.String("Spice level"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+		})
+		fx2.captureTypeDetails()
+		fx2.expectTypeViewEdit(typeReadWithViews(viewWithColumns("viewAll1", "All", "name")))
+		result, err = fx2.UpdateType(ctx, testSpaceId, "plant", "",
+			opsBody(`{"op":"add_property","property":"spice_level","options":[{"name":"Hot"}]}`), true, true)
+		require.NoError(t, err)
+		require.NotNil(t, result.Created)
+		require.Len(t, result.Created.Options, 1, "%v", result.Created)
+		assert.Equal(t, "spice_level", result.Created.Options[0].Property)
+	})
+
+	t.Run("R3-f: list_objects lists the system keys as served too", func(t *testing.T) {
+		fx := setup(t)
+
+		_, _, _, err := fx.ListObjects(ctx, testSpaceId, []string{"last_opened_dat"}, 0, 25)
+
+		apiErr := v2Err(t, err)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Contains(t, apiErr.Issues[0].Message, "last_opened_date")
+		assert.NotContains(t, apiErr.Issues[0].Message, "lastOpenedDate")
 	})
 
 	t.Run("R3-f: the system query keys are accepted and listed as list_properties serves them", func(t *testing.T) {

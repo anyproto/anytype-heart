@@ -208,7 +208,10 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 		if err != nil {
 			return nil, err
 		}
-		entry, ok, ambiguous := s.resolveTypeInput(spaceId, req.Type, typeEntries)
+		entry, ok, ambiguous, err := s.resolveTypeInput(spaceId, req.Type, typeEntries)
+		if err != nil {
+			return nil, err
+		}
 		if len(ambiguous) > 0 {
 			return nil, ambiguousKeyError(v.typeWord(), req.Type, "/type", ambiguous)
 		}
@@ -882,7 +885,10 @@ func (s *Service) resolveTypeLeavesIn(spaceId string, filters []*model.BlockCont
 		}
 		positive := !negatedFilterConditions[f.Condition]
 		resolve := func(key string) (string, error) {
-			entry, ok, ambiguous := s.resolveTypeInput(spaceId, key, typeEntries)
+			entry, ok, ambiguous, err := s.resolveTypeInput(spaceId, key, typeEntries)
+			if err != nil {
+				return "", err
+			}
 			if len(ambiguous) > 0 {
 				return "", ambiguousKeyError(v.typeWord(), key, path, ambiguous)
 			}

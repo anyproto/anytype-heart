@@ -103,7 +103,7 @@ func CreateChatHandler(s *v2service.Service) gin.HandlerFunc {
 // GetChatMessagesHandler reads messages with the state passthrough
 //
 //	@Summary		List chat messages
-//	@Description	`after` alone walks forward, oldest first, continuing from `next_after`. Every other query is anchored at the newest end and walks backward from `next_before`. Both bounds are exclusive; messages are always ascending. `message_count` is the messages the chat holds now; `lifetime_message_count` counts every message ever posted. `offset` is refused.
+//	@Description	`after` alone walks forward, oldest first, continuing from `next_after`. Every other query is anchored at the newest end and walks backward from `next_before`. Both bounds are exclusive; messages are always ascending. `message_count` is the number of messages the chat holds now; `lifetime_message_count` counts every message ever posted. `offset` is refused.
 //	@Id				get_chat_messages
 //	@Tags			Chat
 //	@Produce		json

@@ -90,6 +90,10 @@ type creatingResolvers struct {
 	createdProps    map[string]anyblockjson.PropertyDefinition // key → created def
 	createdPropIds  map[string]string                          // key → id
 	createdPropKeys map[string]string                          // key → the STORED relation key the mint assigned
+	// mintedSlugByKey maps every spelling a mint of THIS request is recorded
+	// under (its document key, its stored key) to the served slug, for the
+	// receipt: the vocabulary was built before the mint and cannot know it
+	mintedSlugByKey map[string]string
 	sideEffects     v2model.SideEffects
 	errs            []error
 
@@ -135,6 +139,7 @@ func (s *Service) newCreatingResolvers(ctx context.Context, spaceId string, dryR
 		ambiguousOptions:     map[optionRef]bool{},
 		dryReported:          map[optionRef]bool{},
 		createdProps:         map[string]anyblockjson.PropertyDefinition{},
+		mintedSlugByKey:      map[string]string{},
 		createdPropIds:       map[string]string{},
 		createdPropKeys:      map[string]string{},
 		mintedSlugs:          map[string]string{},
@@ -242,11 +247,22 @@ func (r *creatingResolvers) created() *v2model.SideEffects {
 	out := r.sideEffects
 	// an option's property is recorded by its stored key at mint time; the
 	// receipt spells it as every read does (R3-c: 53 hex ids in type
-	// receipts where create_property served the slug)
-	if r.keys != nil && len(out.Options) > 0 {
+	// receipts where create_property served the slug). A property THIS
+	// request minted is spelled from the mint's own record: the vocabulary
+	// predates it. The vocabulary is built here when no import built it
+	// (a type op that only adds options never calls Options()).
+	if len(out.Options) > 0 {
+		keys := r.keys
+		if keys == nil {
+			keys = r.svc.apiKeys(r.spaceId, r.reads.Options().Keys)
+		}
 		out.Options = append([]v2model.CreatedOption(nil), out.Options...)
 		for i := range out.Options {
-			out.Options[i].Property = r.keys.PropertySlug(out.Options[i].Property)
+			if slug, minted := r.mintedSlugByKey[out.Options[i].Property]; minted {
+				out.Options[i].Property = slug
+				continue
+			}
+			out.Options[i].Property = keys.PropertySlug(out.Options[i].Property)
 		}
 	}
 	return &out
@@ -798,6 +814,7 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 		Name:   name,
 		Format: anyblockjson.FormatName(format),
 	})
+	r.mintedSlugByKey[docKey] = reportedKey
 	if r.dryRun {
 		return "", false
 	}
@@ -819,6 +836,7 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 	// call.
 	if key, ok := r.svc.storedRelationKeyById(r.ctx, r.spaceId, resp.ObjectId); ok {
 		r.createdPropKeys[docKey] = key
+		r.mintedSlugByKey[key] = reportedKey
 	}
 	return resp.ObjectId, true
 }

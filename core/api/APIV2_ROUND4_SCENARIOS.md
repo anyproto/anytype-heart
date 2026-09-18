@@ -291,6 +291,27 @@ three fresh reviewers before the next.
 - R3-e: `default_view` stays as documented under F16(a) (it governs how
   sets and collections of the type open).
 
+  Reviewed (with the E/F review fixes) by three fresh reviewers. One
+  blocker: tombstones written before the `deletedLayout` marker existed
+  were invisible to the slug lookup, so the resolution stop could still
+  miss one. Closed: the marker is derived from the tombstone's RETAINED
+  snapshot, so re-running the delete on a tombstone backfills it, and the
+  deleted-objects reindex counter is bumped so every space backfills its
+  tombstones on its next load. Found on the way: the index helper aliased
+  its input slice, so adding one index dropped the first existing one on
+  an upgraded space — fixed. Their should-fixes are in: a lookup error is
+  an outcome of its own through the whole resolution chain (a 500 "could
+  not verify the type — retry", never "unknown" with a guess, and never a
+  free slug for a mint), receipts spell options on a property this same
+  request minted and on a type op that imported nothing, `list_objects`
+  lists the system keys as served, a name-only `create_property` under an
+  existing display name is refused (an explicit key creates another, with
+  a warning), the `spaces` parameter refuses an empty value, and the
+  count wording is "the number of messages". Accepted: a space that has
+  not loaded since the upgrade may still miss a legacy tombstone by slug
+  until it does; the resolution stop's queries on display-name inputs are
+  not memoised per request.
+
 # What the fixes did achieve
 
 Worth recording so nobody re-opens them:

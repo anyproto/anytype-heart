@@ -40,9 +40,9 @@ import (
 func WhoamiHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		enumerate := false
-		switch c.Query("spaces") {
-		case "", "false":
-		case "true":
+		switch value, present := c.GetQuery("spaces"); {
+		case !present, value == "false":
+		case value == "true":
 			enumerate = true
 		default:
 			RespondError(c, v2model.ValidationFailed("invalid spaces value",

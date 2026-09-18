@@ -114,6 +114,13 @@ func TestWhoami(t *testing.T) {
 		require.NotNil(t, counted.Grant.SpaceCount)
 		require.Equal(t, 2, *counted.Grant.SpaceCount)
 		require.NotContains(t, plain.Body.String(), "Personal", "a permissions check does not enumerate the account by default")
+
+		// the parameter takes true or false; an empty or other value is refused
+		for _, raw := range []string{"?spaces=", "?spaces=1"} {
+			bad := serveWithKey(fx, "GET", "/v2/auth/whoami"+raw, "allKey")
+			require.Equal(t, http.StatusBadRequest, bad.Code, raw)
+			require.Contains(t, bad.Body.String(), "invalid spaces value")
+		}
 		require.NotNil(t, got.Grant.Permission)
 		require.Equal(t, util.GrantPermsReadWrite, *got.Grant.Permission)
 		names := map[string]bool{}
