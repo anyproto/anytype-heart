@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -304,5 +305,50 @@ func TestConfigDisableFileConfig(t *testing.T) {
 		// File should not exist
 		_, err = os.Stat(configPath)
 		require.True(t, os.IsNotExist(err))
+	})
+}
+
+func TestConfigGatewayAddr(t *testing.T) {
+	t.Run("is written to disk so the next run can ask for the same port", func(t *testing.T) {
+		// given
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.json")
+		cfg := New()
+		cfg.RepoPath = tmpDir
+		cfg.configPath = configPath
+		want := "127.0.0.1:47801"
+
+		// when
+		err := cfg.SetGatewayAddr(want)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, cfg.GatewayAddr())
+
+		var persisted PersistedConfig
+		require.NoError(t, GetFileConfig(configPath, &persisted))
+		assert.Equal(t, want, persisted.GatewayAddr)
+	})
+
+	t.Run("does not rewrite the file when the address is unchanged", func(t *testing.T) {
+		// given
+		tmpDir := t.TempDir()
+		configPath := filepath.Join(tmpDir, "config.json")
+		cfg := New()
+		cfg.RepoPath = tmpDir
+		cfg.configPath = configPath
+		require.NoError(t, cfg.SetGatewayAddr("127.0.0.1:47801"))
+
+		info, err := os.Stat(configPath)
+		require.NoError(t, err)
+
+		// when: every start re-reports the address it bound
+		time.Sleep(10 * time.Millisecond)
+		require.NoError(t, cfg.SetGatewayAddr("127.0.0.1:47801"))
+
+		// then
+		after, err := os.Stat(configPath)
+		require.NoError(t, err)
+		assert.Equal(t, info.ModTime(), after.ModTime())
 	})
 }

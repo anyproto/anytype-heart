@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -32,7 +33,8 @@ import (
 const (
 	CName = "gateway"
 
-	defaultPort = 47800
+	gatewayHost   = "127.0.0.1"
+	wellKnownPort = 47800
 	// fileStallTimeout cuts loose a file transfer that has stopped making
 	// progress. It is deliberately not a total deadline: a large file, or one
 	// still being fetched from a node, legitimately runs longer than any fixed
@@ -45,13 +47,21 @@ const (
 	requestLimit    = 32
 )
 
+// errGatewayClosed is returned when something tries to start the gateway after the component was
+// closed - on mobile a foreground state change can still arrive while the app is shutting down.
+var (
+	errGatewayClosed = errors.New("gateway is closed")
+	// errGatewayAlreadyStarted is expected: mobile reports the same foreground state more than once
+	errGatewayAlreadyStarted = errors.New("gateway already started")
+)
+
 var (
 	log      = logging.Logger("anytype-gateway")
 	isMobile = runtime.GOOS == "ios" || runtime.GOOS == "android"
 )
 
 func New() Gateway {
-	return new(gateway)
+	return &gateway{wellKnownPort: wellKnownPort}
 }
 
 // Gateway is a HTTP API for getting files and links from IPFS
@@ -65,41 +75,45 @@ type gateway struct {
 	fileService       files.Service
 	fileObjectService fileobject.Service
 	fileDownloader    filedownloader.Service
-	server            *http.Server
-	listener          net.Listener
+	addrStore         AddrStore
 	handler           *http.ServeMux
-	addr              string
-	fileStallTimeout  time.Duration
-	mu                sync.Mutex
-	isServerStarted   bool
 	limitCh           chan struct{}
+	fileStallTimeout  time.Duration
+	wellKnownPort     int
+
+	// lifecycleMu serializes whole start and stop operations against each other. mu alone is not
+	// enough: a stop has to drop it midway, to shut the HTTP server down without holding a lock the
+	// serving goroutine needs, and a start landing in that window would adopt a dying listener.
+	lifecycleMu sync.Mutex
+
+	mu              sync.Mutex
+	server          *http.Server
+	listener        net.Listener
+	addr            string
+	isServerStarted bool
+	closed          bool
 }
 
-func GatewayAddr() string {
-	if addr := os.Getenv("ANYTYPE_GATEWAY_ADDR"); addr != "" {
-		return addr
-	}
-
-	port := defaultPort
-	for range 100 {
-		ln, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
-		if err == nil {
-			_ = ln.Close()
-			break
-		}
-		port++
-	}
-
-	return fmt.Sprintf("127.0.0.1:%d", port)
+// AddrStore remembers the address the gateway bound, so the next run can ask for the same port.
+// The config component implements it; the gateway declares its own interface rather than importing
+// config, which sits a layer above pkg/lib.
+type AddrStore interface {
+	GatewayAddr() string
+	SetGatewayAddr(addr string) error
 }
 
 func (g *gateway) Init(a *app.App) (err error) {
 	g.fileService = app.MustComponent[files.Service](a)
 	g.fileObjectService = app.MustComponent[fileobject.Service](a)
 	g.fileDownloader = app.MustComponent[filedownloader.Service](a)
-	g.addr = GatewayAddr()
+	g.addrStore = app.MustComponent[AddrStore](a)
 	g.fileStallTimeout = fileStallTimeout
-	log.Debugf("gateway.Init: %s", g.addr)
+
+	g.handler = http.NewServeMux()
+	g.handler.HandleFunc("/file/", g.fileHandler)
+	g.handler.HandleFunc("/image/", g.imageHandler)
+	g.limitCh = make(chan struct{}, requestLimit)
+
 	return nil
 }
 
@@ -108,41 +122,88 @@ func (g *gateway) Name() string {
 }
 
 func (g *gateway) Run(context.Context) error {
-	if g.isServerStarted {
-		return fmt.Errorf("gateway already started")
-	}
-
-	log.Infof("gateway.Run: %s", g.addr)
-	g.handler = http.NewServeMux()
-	g.handler.HandleFunc("/file/", g.fileHandler)
-	g.handler.HandleFunc("/image/", g.imageHandler)
-	g.limitCh = make(chan struct{}, requestLimit)
-
-	// check port first
-	listener, err := net.Listen("tcp", g.addr)
-	if err != nil {
-		// todo: choose next available port
-		return err
-	}
-
-	err = listener.Close()
-	if err != nil {
-		return err
-	}
-
-	g.startServer()
-
-	return nil
+	return g.startServer()
 }
 
-// Close stops the gateway
-func (g *gateway) Close(ctx context.Context) (err error) {
-	err = g.stopServer()
+// bindLocked binds the listener. It returns the address worth remembering for the next run, or ""
+// when there is nothing to remember. Persisting is left to the caller: it writes and fsyncs
+// config.json, which must not happen under the lock Addr() needs. Must be called with g.mu held.
+func (g *gateway) bindLocked() (remember string, err error) {
+	override := os.Getenv("ANYTYPE_GATEWAY_ADDR")
+	previous := g.addr
+	ln, err := listenGateway(listenConfig{
+		override:   override,
+		candidates: g.candidatePortsLocked(),
+	})
+	if err != nil {
+		return "", fmt.Errorf("listen gateway: %w", err)
+	}
+
+	g.listener = ln
+	g.addr = ln.Addr().String()
+	log.Infof("gateway bound to %s", g.addr)
+
+	if previous != "" && previous != g.addr {
+		// clients cache the gateway URL from AccountInfo and no event carries a new one, so they
+		// keep asking the old port until they next open a space or select the account
+		log.Warnf("gateway moved from %s to %s, cached client URLs are now stale", previous, g.addr)
+	}
+
+	if override != "" {
+		// a dev-only address must not become the next run's preference, and it is the only one that
+		// can be non-loopback
+		return "", nil
+	}
+	if portFromAddr(g.addr) == g.wellKnownPort {
+		// what is worth remembering is the port that worked when the well-known one did not.
+		// Storing the well-known port instead would erase that, and the next start that finds it
+		// busy would have to take a fresh random port rather than the one it used last time.
+		return "", nil
+	}
+	return g.addr, nil
+}
+
+// candidatePortsLocked ranks the ports to try. Must be called with g.mu held.
+func (g *gateway) candidatePortsLocked() []int {
+	ranked := []int{g.wellKnownPort, portFromAddr(g.addrStore.GatewayAddr())}
+	if g.addr != "" {
+		// rebinding mid-session: the port clients were already told about comes first, because
+		// moving would strand every URL they have cached
+		ranked = []int{portFromAddr(g.addr), g.wellKnownPort}
+	}
+	// a fresh start prefers the well-known port over the persisted one. The other way round, a
+	// single busy start would strand us on an OS-assigned port for good - and that port comes from
+	// the range the kernel hands out for outbound sockets, the worst place to keep a fixed one.
+
+	candidates := make([]int, 0, len(ranked))
+	for _, port := range ranked {
+		if port <= 0 || slices.Contains(candidates, port) {
+			continue
+		}
+		candidates = append(candidates, port)
+	}
+	return candidates
+}
+
+// Close stops the gateway for good: nothing may start it again, so a foreground state change
+// arriving during shutdown cannot resurrect it on a socket nobody will ever close.
+func (g *gateway) Close(ctx context.Context) error {
+	g.lifecycleMu.Lock()
+	defer g.lifecycleMu.Unlock()
+
+	err := g.stopServingLocked()
+
+	g.mu.Lock()
+	g.closed = true
+	g.mu.Unlock()
+
 	return err
 }
 
 // Addr returns the gateway's address
 func (g *gateway) Addr() string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	return g.addr
 }
 
@@ -160,7 +221,9 @@ func (g *gateway) StateChange(state int) {
 
 	switch domain.CompState(state) {
 	case domain.CompStateAppWentForeground:
-		g.startServer()
+		if err := g.startServer(); err != nil && !errors.Is(err, errGatewayAlreadyStarted) {
+			log.Errorf("err gateway start: %+v", err)
+		}
 	case domain.CompStateAppWentBackground:
 		if err := g.stopServer(); err != nil {
 			log.Errorf("err gateway close: %+v", err)
@@ -173,59 +236,119 @@ func (g *gateway) StateChange(state int) {
 	}
 }
 
-func (g *gateway) startServer() {
+// startServer binds and serves. It reports why it could not start instead of leaving a gateway that
+// answers nothing for the rest of the session.
+func (g *gateway) startServer() error {
+	g.lifecycleMu.Lock()
+	defer g.lifecycleMu.Unlock()
+
+	remember, addr, err := g.startServingLocked()
+	if err != nil {
+		return err
+	}
+
+	if remember != "" {
+		// best effort, and deliberately outside g.mu: this fsyncs config.json, and Addr() is on the
+		// account-info path. The gateway works either way; the next run just may not get the same
+		// port.
+		if err := g.addrStore.SetGatewayAddr(remember); err != nil {
+			log.Errorf("gateway: persist address %s: %v", remember, err)
+		}
+	}
+
+	log.Infof("gateway listening at %s", addr)
+	return nil
+}
+
+// startServingLocked binds and starts serving. It returns the address worth remembering for the
+// next run (or "") and the address it is now serving on, leaving the caller to persist outside
+// g.mu. Must be called with g.lifecycleMu held.
+func (g *gateway) startServingLocked() (remember string, addr string, err error) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
+	if g.closed {
+		return "", "", errGatewayClosed
+	}
 	if g.isServerStarted {
-		log.Errorf("server already started")
-		return
+		return "", "", errGatewayAlreadyStarted
 	}
 
-	ln, err := net.Listen("tcp", g.addr)
+	// a stop always gives the listener up, so there is never one to reuse here
+	remember, err = g.bindLocked()
 	if err != nil {
-		log.Errorf("listen addr err: %s", err)
-		return
+		return "", "", fmt.Errorf("bind gateway listener: %w", err)
 	}
 
-	g.listener = ln
+	g.server = &http.Server{Handler: g.handler}
+	g.isServerStarted = true
+	srv, ln := g.server, g.listener
 
-	g.server = &http.Server{
-		Addr:    g.addr,
-		Handler: g.handler,
-	}
-
-	go func(srv *http.Server, l net.Listener) {
-		err := srv.Serve(l)
-		if err != nil && err != http.ErrServerClosed {
-			log.Errorf("gateway error: %s", err)
+	go func() {
+		err := srv.Serve(ln)
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Errorf("gateway: serve on %s: %v", ln.Addr(), err)
+			// Serve giving up early leaves this server's connections open and nobody else will ever
+			// shut it down: the next start replaces g.server, and every stop skips it because
+			// dropListener has already cleared isServerStarted
+			_ = srv.Close()
+			g.dropListener(ln)
 			return
 		}
 		log.Info("gateway was shutdown")
-	}(g.server, ln)
+	}()
 
-	g.isServerStarted = true
-
-	log.Infof("gateway listening at %s", g.server.Addr)
+	return remember, g.addr, nil
 }
 
-func (g *gateway) stopServer() error {
+// dropListener gives up a listener that stopped working, so that the next start binds a fresh one
+// instead of serving nothing for the rest of the session.
+func (g *gateway) dropListener(ln net.Listener) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
-	if g.isServerStarted {
-		g.isServerStarted = false
-		// don't wait for the server shutdown because we don't care for the requests to interrupt
-		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(0))
-		defer cancel()
-		if err := g.server.Shutdown(ctx); err != nil && !errors.Is(err, context.DeadlineExceeded) {
-			log.Errorf("gateway stop error: %s", err)
-		}
-		if err := g.listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
-			return err
-		}
+	if g.listener != ln {
+		return
+	}
+	_ = g.listener.Close()
+	g.listener = nil
+	g.isServerStarted = false
+}
+
+// stopServer stops serving and gives the port back. Apple's TN2277 is explicit that a listening
+// socket must not be held across suspension - the system may reclaim its resources without telling
+// the app, and a socket left bound makes the kernel accept connections the suspended app will never
+// answer, so clients hang instead of failing fast. The next start asks for the same port again.
+func (g *gateway) stopServer() error {
+	g.lifecycleMu.Lock()
+	defer g.lifecycleMu.Unlock()
+
+	return g.stopServingLocked()
+}
+
+// stopServingLocked must be called with g.lifecycleMu held.
+func (g *gateway) stopServingLocked() error {
+	g.mu.Lock()
+	if !g.isServerStarted {
+		g.mu.Unlock()
+		return nil
+	}
+	g.isServerStarted = false
+	srv, ln := g.server, g.listener
+	g.listener = nil
+	g.mu.Unlock()
+
+	// don't wait for the server shutdown because we don't care for the requests to interrupt
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(0))
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil && !errors.Is(err, context.DeadlineExceeded) {
+		log.Errorf("gateway stop error: %s", err)
 	}
 
+	// Shutdown closes the listener it serves on, so this is usually already done
+	if err := ln.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+		return fmt.Errorf("close gateway listener: %w", err)
+	}
 	return nil
 }
 
