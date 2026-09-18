@@ -539,7 +539,14 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 
 		for i, r = range []rune(text.Text) {
 			mw.writeMarks(buf, i)
-			buf.WriteString(escape.MarkdownCharacters(string(r)))
+			// Code span contents are literal in markdown: escaping them would
+			// write the backslash out as visible content rather than escape
+			// anything (GO-7514).
+			if mw.inCodeSpan(i) {
+				buf.WriteString(string(r))
+			} else {
+				buf.WriteString(escape.MarkdownCharacters(string(r)))
+			}
 		}
 		mw.writeMarks(buf, i+1)
 	}
@@ -881,6 +888,98 @@ type marksWriter struct {
 		ends   []*model.BlockContentTextMark
 	}
 	open []*model.BlockContentTextMark
+	// codeSpans holds the rendering decided for each Keyboard (code span) mark:
+	// how many backticks delimit it and whether it needs space padding. It is
+	// computed in Init, because the delimiter depends on the span's contents.
+	codeSpans map[*model.BlockContentTextMark]codeSpan
+	// codeRanges are the [from, to) rune ranges covered by Keyboard marks. Text
+	// inside them must NOT be markdown-escaped: a code span is literal, so a
+	// backslash written there shows up as content rather than escaping anything.
+	codeRanges [][2]int
+}
+
+// codeSpan is how one Keyboard mark is rendered as a markdown code span.
+type codeSpan struct {
+	delim string // the backtick run opening and closing the span
+	pad   bool   // whether a space is needed just inside each delimiter
+}
+
+// maxBacktickRun returns the length of the longest run of backticks in s.
+func maxBacktickRun(s string) int {
+	var max, cur int
+	for _, r := range s {
+		if r == '`' {
+			cur++
+			if cur > max {
+				max = cur
+			}
+		} else {
+			cur = 0
+		}
+	}
+	return max
+}
+
+// newCodeSpan decides how to delimit a code span holding content.
+//
+// CommonMark closes a code span at the next backtick run of exactly the same
+// length as the opener, so a delimiter one backtick longer than the longest run
+// inside the content can never be closed early.
+//
+// The padding rule is the other half: a code span whose content both begins and
+// ends with a space has one space stripped from each end by the parser, and a
+// content that starts or ends with a backtick would otherwise merge into the
+// delimiter run. Adding a space at each end covers both — the parser strips
+// exactly the pair we added, so the content survives byte for byte. Content that
+// is nothing but spaces is left alone: the strip rule explicitly does not apply
+// to it, so padding would corrupt rather than preserve it.
+func newCodeSpan(content string) codeSpan {
+	cs := codeSpan{delim: strings.Repeat("`", maxBacktickRun(content)+1)}
+	if strings.Trim(content, " ") == "" {
+		return cs
+	}
+	if strings.HasPrefix(content, "`") || strings.HasSuffix(content, "`") ||
+		(strings.HasPrefix(content, " ") && strings.HasSuffix(content, " ")) {
+		cs.pad = true
+	}
+	return cs
+}
+
+// initCodeSpans precomputes, for every Keyboard mark, the delimiter and padding
+// its contents require, and records the rune ranges that must stay unescaped.
+func (mw *marksWriter) initCodeSpans(text *model.BlockContentText) {
+	runes := []rune(text.Text)
+	for _, mark := range text.Marks.Marks {
+		if mark.Type != model.BlockContentTextMark_Keyboard || mark.Range == nil {
+			continue
+		}
+		from, to := int(mark.Range.From), int(mark.Range.To)
+		if from < 0 {
+			from = 0
+		}
+		if to > len(runes) {
+			to = len(runes)
+		}
+		if from >= to {
+			continue
+		}
+		if mw.codeSpans == nil {
+			mw.codeSpans = make(map[*model.BlockContentTextMark]codeSpan)
+		}
+		mw.codeSpans[mark] = newCodeSpan(string(runes[from:to]))
+		mw.codeRanges = append(mw.codeRanges, [2]int{from, to})
+	}
+}
+
+// inCodeSpan reports whether the rune at index pos is inside a code span, and so
+// must be written literally rather than markdown-escaped.
+func (mw *marksWriter) inCodeSpan(pos int) bool {
+	for _, r := range mw.codeRanges {
+		if pos >= r[0] && pos < r[1] {
+			return true
+		}
+	}
+	return false
 }
 
 func (mw *marksWriter) writeMarks(buf writer, pos int) {
@@ -913,7 +1012,21 @@ func (mw *marksWriter) writeMarks(buf writer, pos int) {
 				}
 			}
 		case model.BlockContentTextMark_Keyboard:
-			buf.WriteString("`")
+			cs, ok := mw.codeSpans[m]
+			if !ok {
+				cs = codeSpan{delim: "`"}
+			}
+			if start {
+				buf.WriteString(cs.delim)
+				if cs.pad {
+					buf.WriteString(" ")
+				}
+			} else {
+				if cs.pad {
+					buf.WriteString(" ")
+				}
+				buf.WriteString(cs.delim)
+			}
 		case model.BlockContentTextMark_Emoji:
 			if start {
 				_, err := buf.WriteString(m.Param)
@@ -967,7 +1080,10 @@ func (mw *marksWriter) writeMarks(buf writer, pos int) {
 
 func (mw *marksWriter) Init(text *model.BlockContentText) *marksWriter {
 	mw.open = mw.open[:0]
+	mw.codeSpans = nil
+	mw.codeRanges = mw.codeRanges[:0]
 	if text.Marks != nil && len(text.Marks.Marks) > 0 {
+		mw.initCodeSpans(text)
 		mw.breakpoints = make(map[int]struct {
 			starts []*model.BlockContentTextMark
 			ends   []*model.BlockContentTextMark

@@ -51,8 +51,15 @@ print(2)</code></pre>`
 
 	// The monospace styling that external paste targets rely on is still carried
 	// on a tag that wraps the whole code text.
-	assert.Contains(t, got, `<code style="`+styleCode+`">`,
-		"the code styling attribute must be preserved, got:\n%s", got)
+	//
+	// This is asserted with a LITERAL declaration rather than against styleCode,
+	// on purpose: building the expectation out of the production constant makes
+	// the test agree with whatever that constant says, so changing it to a
+	// proportional font would still pass.
+	assert.Contains(t, got, "font-family: monospace",
+		"code must be styled monospace for external paste targets, got:\n%s", got)
+	assert.Regexp(t, `<pre><code style="[^"]*font-family: monospace;?[^"]*">`, got,
+		"the monospace declaration must sit on the <code> tag wrapping the code text, got:\n%s", got)
 }
 
 // The same markup is used by the HTML export path, not only the clipboard copy

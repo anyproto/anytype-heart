@@ -11,9 +11,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// quoteStateWithMarks builds a single-block doc of the given style carrying the
+// stateWithMarks builds a single-block doc of the given style carrying the
 // given marks.
-func quoteStateWithMarks(text string, style model.BlockContentTextStyle, marks ...*model.BlockContentTextMark) *state.State {
+func stateWithMarks(text string, style model.BlockContentTextStyle, marks ...*model.BlockContentTextMark) *state.State {
 	blocks := map[string]simple.Block{
 		"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{"b1"}}),
 		"b1": simple.New(&model.Block{
@@ -111,7 +111,7 @@ func TestMD_QuoteExportsMarks(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// given
-			s := quoteStateWithMarks(tc.text, model.BlockContentText_Quote, tc.marks...)
+			s := stateWithMarks(tc.text, model.BlockContentText_Quote, tc.marks...)
 
 			// when
 			got := string(NewMDConverter(s, &testFileNamer{}, false).Convert(model.SmartBlockType_Page))
@@ -133,8 +133,8 @@ func TestMD_QuoteMarksMatchParagraphMarks(t *testing.T) {
 	want := "[Alpha](https://example.com/target) **Beta**"
 
 	// when
-	quote := string(NewMDConverter(quoteStateWithMarks("Alpha Beta", model.BlockContentText_Quote, marks...), &testFileNamer{}, false).Convert(model.SmartBlockType_Page))
-	paragraph := string(NewMDConverter(quoteStateWithMarks("Alpha Beta", model.BlockContentText_Paragraph, marks...), &testFileNamer{}, false).Convert(model.SmartBlockType_Page))
+	quote := string(NewMDConverter(stateWithMarks("Alpha Beta", model.BlockContentText_Quote, marks...), &testFileNamer{}, false).Convert(model.SmartBlockType_Page))
+	paragraph := string(NewMDConverter(stateWithMarks("Alpha Beta", model.BlockContentText_Paragraph, marks...), &testFileNamer{}, false).Convert(model.SmartBlockType_Page))
 
 	// then
 	assert.Equal(t, "> "+want+"   \n\n", quote)
