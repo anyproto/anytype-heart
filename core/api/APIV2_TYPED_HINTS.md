@@ -36,7 +36,8 @@ gap that is really ours. From the six-actor benchmark in
 Counted against `origin/develop` at `bd0f1ec86` by the walk the guard test
 now performs (every string literal in `core/api/v2` outside the schema
 documents that matches a method + route, an abbreviated `METHOD …/` route,
-a `/v2/` path, or a bare `?name=` parameter): **72 literals**, several
+an ASCII-ellipsis route, a `/v2/` path, or a bare `?name=` parameter):
+**75 literals**, several
 shared through helpers and several naming two operations, so the count of
 *references* is higher and the count of *call sites* lower. By kind:
 
@@ -300,8 +301,29 @@ Round two (the same three sessions, resumed against the amended tree):
   "a full-id read (not in this tool set)". The type-views hint named
   `insert_view`, which the curated wrapper does not offer; it now says
   "edit its views through" the patch operation without naming ops.
-- The inventory count is 72 under the widened rule, not 66, and the
-  round-trip test is described as constructor-level, not end to end.
+- The inventory count is 75 under the final rule (66 under the original
+  guard, 72 before the ASCII-ellipsis widening), and the round-trip test
+  is described as constructor-level, not end to end.
+
+Round three (the same sessions, resumed once more):
+
+- **The round-two echo still over-reached**: a value that EQUALS the space
+  id was echoed whether or not it was a space id. Only the `space_id`
+  binding is echoed now; a property key equal to the id stays a key.
+- **The round-two text rewrite still had two holes**: the final catch-all
+  ran over the whole text and redacted the tool spellings the span engine
+  had just protected, and substituting the hint text wherever it occurred
+  also rewrote a message that quoted it. The text now goes through the same
+  span engine keyed on each hint as rendered — the parenthesised `(hint)`
+  form, which a quoted value in a message does not take — with the
+  catch-all confined to everything outside those spans. A message whose
+  own text is `x (hint)` is the remaining, accepted, false positive.
+- **`find` serves handles, not full ids**, so the collection-items repair
+  said so falsely on the curated surface; the row now says it.
+- **External wrapper**: response `$ref`s and `2XX` range declarations
+  bypassed the download gate (resolved and matched by actual status now);
+  schema reference chains typed as string (resolved with cycle protection);
+  arrays were accepted as parameter maps (rejected).
 
 Accepted, not fixed:
 

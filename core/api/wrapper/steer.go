@@ -298,7 +298,7 @@ var toolVocab = map[string]func(ref v2model.Ref) string{
 	v2model.OpGetCollectionObjects: func(v2model.Ref) string { return "`read` on the collection" },
 	v2model.OpPatchObject:          func(v2model.Ref) string { return "the editing tools of this tool set" },
 	v2model.OpSearchSpace:          func(v2model.Ref) string { return "`find`" },
-	v2model.OpListObjects:          func(v2model.Ref) string { return "`find`" },
+	v2model.OpListObjects:          func(v2model.Ref) string { return "`find` (which serves handles, not full ids, on this tool set)" },
 }
 
 // toolSpelling renders one typed reference in the tool vocabulary. A
@@ -332,47 +332,55 @@ var restRoute = regexp.MustCompile(`(?:GET|POST|PATCH|PUT|DELETE) /v[0-9]+[^\s,;
 
 const restRouteFallback = "the HTTP API"
 
-// deRestText re-spells the references in s: each reference's REST rendering
-// becomes its tool spelling, and the text between the renderings falls to
-// restRoute. The two never touch each other's output: the renderings are
-// located in ONE pass over the original text (a regexp alternation, longest
-// first, so a rendering that extends another — the outline read extends
-// the plain read — wins where both match), and only the gaps between them
-// see the catch-all, so a tool spelling that happens to contain something
-// route-shaped (an option name, say) is not redacted into "the HTTP API".
-func deRestText(s string, refs []v2model.Ref) string {
+// respellSpans rewrites s in ONE pass: every key of spans found in s
+// becomes its value (longest key first where two match at a position), and
+// the catch-all runs over the text BETWEEN the keys only. The two never see
+// each other's output: a value that happens to contain something
+// route-shaped (a tool spelling carrying an option name, say) is not
+// redacted, and nothing is rescanned.
+func respellSpans(s string, spans map[string]string) string {
 	if s == "" {
 		return s
 	}
-	spellings := make(map[string]string, len(refs))
-	patterns := make([]string, 0, len(refs))
-	for _, ref := range refs {
-		rest := ref.String()
-		if rest == "" {
-			continue
-		}
-		if _, seen := spellings[rest]; !seen {
-			patterns = append(patterns, rest)
-			spellings[rest] = toolSpelling(ref)
+	keys := make([]string, 0, len(spans))
+	for k := range spans {
+		if k != "" {
+			keys = append(keys, k)
 		}
 	}
-	if len(patterns) == 0 {
+	if len(keys) == 0 {
 		return restRoute.ReplaceAllString(s, restRouteFallback)
 	}
-	sort.SliceStable(patterns, func(i, j int) bool { return len(patterns[i]) > len(patterns[j]) })
-	for i, p := range patterns {
-		patterns[i] = regexp.QuoteMeta(p)
+	sort.SliceStable(keys, func(i, j int) bool { return len(keys[i]) > len(keys[j]) })
+	for i, k := range keys {
+		keys[i] = regexp.QuoteMeta(k)
 	}
-	spans := regexp.MustCompile(strings.Join(patterns, "|"))
+	matcher := regexp.MustCompile(strings.Join(keys, "|"))
 	var b strings.Builder
 	last := 0
-	for _, m := range spans.FindAllStringIndex(s, -1) {
+	for _, m := range matcher.FindAllStringIndex(s, -1) {
 		b.WriteString(restRoute.ReplaceAllString(s[last:m[0]], restRouteFallback))
-		b.WriteString(spellings[s[m[0]:m[1]]])
+		b.WriteString(spans[s[m[0]:m[1]]])
 		last = m[1]
 	}
 	b.WriteString(restRoute.ReplaceAllString(s[last:], restRouteFallback))
 	return b.String()
+}
+
+// deRestText re-spells the references in s: each reference's REST rendering
+// becomes its tool spelling — the outline read's rendering extends the
+// plain read's, and the longer wins — and the prose between the renderings
+// falls to restRoute.
+func deRestText(s string, refs []v2model.Ref) string {
+	spans := make(map[string]string, len(refs))
+	for _, ref := range refs {
+		if rest := ref.String(); rest != "" {
+			if _, seen := spans[rest]; !seen {
+				spans[rest] = toolSpelling(ref)
+			}
+		}
+	}
+	return respellSpans(s, spans)
 }
 
 // deRestIssue re-spells one issue's hint by its own references and drops
@@ -388,23 +396,28 @@ func deRestIssue(issue v2model.Issue) v2model.Issue {
 }
 
 // deRest rewrites a ToolError in place — issues, message and text. The
-// references rewrite HINTS only, and the text — rendered from the same
-// issues, then possibly edited by an executor that re-spelled op paths into
-// its own argument names or appended what was and was not written — is
-// rewritten by substituting each hint as a whole: the old hint is a span of
-// the text, and it becomes the re-spelled one, so an executor's edits
-// around it survive and the message part of the text is never touched by a
-// reference. The catch-all then covers the rest of the text and the message.
+// references rewrite HINTS only. The text was rendered from the same issues
+// (renderErrorText puts each hint in " (…)" after its message) and may since
+// have been edited by an executor that re-spelled op paths into its own
+// argument names or appended what was and was not written; so the text is
+// rewritten by the same span engine, keyed on each hint AS RENDERED — the
+// parenthesised form, which a quoted value that merely equals the hint does
+// not take — with the catch-all covering everything outside those spans.
+// Executor edits survive. The one false positive left is a caller value
+// that is itself "x (<the whole hint>)"; closing it needs the executors to
+// edit issues rather than the text, so the text can be re-rendered, and is
+// accepted (APIV2_TYPED_HINTS.md, review findings).
 func deRest(te *ToolError) {
+	spans := map[string]string{}
 	for i := range te.Issues {
 		before := te.Issues[i].Hint
 		te.Issues[i] = deRestIssue(te.Issues[i])
-		if before != "" && te.Issues[i].Hint != before {
-			te.Text = strings.ReplaceAll(te.Text, before, te.Issues[i].Hint)
+		if before != "" {
+			spans[" ("+before+")"] = " (" + te.Issues[i].Hint + ")"
 		}
 	}
 	te.Message = deRestText(te.Message, nil)
-	te.Text = deRestText(te.Text, nil)
+	te.Text = respellSpans(te.Text, spans)
 }
 
 // warningsText renders success-path warnings for the tool surface, hint

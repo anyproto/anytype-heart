@@ -64,31 +64,27 @@ func echoSpaceRef(c *gin.Context, v2Err *v2model.Error) *v2model.Error {
 	return &echoed
 }
 
-// echoRefs returns copies of refs with every parameter or query value that
-// IS the full space id re-spelled to the caller's reference. Only a whole
-// value: a property key or an option name that happens to contain the id
-// is an identity, and shortening a substring of it would address a
-// different thing (round-two review).
+// echoRefs returns copies of refs with the space_id binding re-spelled to
+// the caller's reference when it is the resolved id. Only that binding: any
+// other parameter or query value is an identity of its own — a property key
+// or option name that contains, or even equals, the space id names a
+// different thing once shortened (round-two and round-three reviews).
 func echoRefs(refs []v2model.Ref, full, ref string) []v2model.Ref {
 	if len(refs) == 0 {
 		return refs
 	}
-	echo := func(values map[string]string) map[string]string {
-		if len(values) == 0 {
-			return values
-		}
-		out := make(map[string]string, len(values))
-		for k, v := range values {
-			if v == full {
-				v = ref
-			}
-			out[k] = v
-		}
-		return out
-	}
 	out := make([]v2model.Ref, len(refs))
 	for i, r := range refs {
-		out[i] = v2model.Ref{Op: r.Op, Params: echo(r.Params), Query: echo(r.Query)}
+		out[i] = r
+		if r.Params["space_id"] != full {
+			continue
+		}
+		params := make(map[string]string, len(r.Params))
+		for k, v := range r.Params {
+			params[k] = v
+		}
+		params["space_id"] = ref
+		out[i].Params = params
 	}
 	return out
 }

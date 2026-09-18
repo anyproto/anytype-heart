@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -315,7 +316,7 @@ func TestRestVocabulary(t *testing.T) {
 			{
 				name:  "a dotted real space id inside a bound route is consumed with it",
 				issue: v2model.Issue{}.Hintf("list them with %s", v2model.RefListObjects("bafyreiabc.28y6mgnwgodt7")),
-				want:  "list them with `find`",
+				want:  "list them with `find` (which serves handles, not full ids, on this tool set)",
 			},
 			{
 				name:  "a full-id read is a shape `read` cannot ask for, and says so",
@@ -394,6 +395,37 @@ func TestRestVocabulary(t *testing.T) {
 
 		assert.Equal(t, "space \"bafyreiabc.28y6mgnwgodt7\" not found\n  space_id: no space with this id is open on this account (list spaces with the `spaces` tool)", te.Text)
 		assert.Nil(t, te.Issues[0].SeeAlso)
+	})
+
+	t.Run("a bound value that looks like a route is not redacted by the catch-all — in the text either", func(t *testing.T) {
+		issue := v2model.Issue{Path: "/x", Message: "m"}.Hintf("check the names against %s", v2model.RefListPropertyOptions("space1", "GET /v2/spaces/space1/properties"))
+		want := "check the names against `describe` with options=GET /v2/spaces/space1/properties"
+		assert.Equal(t, want, deRestIssue(issue).Hint,
+			"the catch-all sees only the prose between the renderings, never a tool spelling")
+
+		issues := []v2model.Issue{issue}
+		te := &ToolError{Status: 400, Message: "refused", Issues: issues, Text: renderErrorText("refused", issues)}
+		deRest(te)
+		assert.Equal(t, "refused\n  /x: m ("+want+")", te.Text)
+	})
+
+	t.Run("a message that quotes the hint's own text is not rewritten as a hint", func(t *testing.T) {
+		hint := v2model.Issue{}.Hintf("list all with %s", v2model.RefListTypes("s")).Hint
+		issues := []v2model.Issue{v2model.Issue{Path: "/type", Message: `unknown type "` + hint + `"`}.Hintf("list all with %s", v2model.RefListTypes("s"))}
+		te := &ToolError{Status: 400, Message: `type "` + hint + `" not found`, Issues: issues, Text: renderErrorText(`type "`+hint+`" not found`, issues)}
+		deRest(te)
+		assert.NotContains(t, te.Message, "a type listing", "the quoted input is the caller's value, redacted by the catch-all only")
+		assert.Contains(t, te.Message, `type "list all with the HTTP API`)
+		assert.Equal(t, 1, strings.Count(te.Text, "a type listing (not in this tool set"), "only the rendered hint span is re-spelled")
+	})
+
+	t.Run("an executor's edit to the text survives the hint substitution", func(t *testing.T) {
+		issues := []v2model.Issue{v2model.Issue{Path: "ops[0].id", Message: "not found"}.
+			Hintf("list keys with %s", v2model.RefListProperties("space1"))}
+		te := &ToolError{Status: 404, Message: "refused", Issues: issues, Text: renderErrorText("refused", issues)}
+		te.Text = strings.Replace(te.Text, "ops[0].id", "block", 1) + " — wrote 1 of 3"
+		deRest(te)
+		assert.Equal(t, "refused\n  block: not found (list keys with `describe` on the type) — wrote 1 of 3", te.Text)
 	})
 
 	t.Run("prose that merely mentions a version prefix is untouched", func(t *testing.T) {

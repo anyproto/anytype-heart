@@ -61,4 +61,21 @@ func TestEchoSpaceRefKeepsHintAndReferencesAligned(t *testing.T) {
 		assert.Equal(t, "no such option in "+short, issue.Message)
 		assert.Contains(t, issue.Hint, issue.SeeAlso[0].String())
 	})
+
+	t.Run("a key that EQUALS the space id is still a key", func(t *testing.T) {
+		rec := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(rec)
+		c.Request = httptest.NewRequest(http.MethodPost, "/v2/spaces/"+short+"/objects", nil).
+			WithContext(v2service.CtxWithSpaceEcho(context.Background(), full, short))
+
+		RespondError(c, v2model.ValidationFailed("option does not exist",
+			v2model.Issue{Path: "/properties/x", Message: "no such option"}.
+				Hintf("check the spelling against %s", v2model.RefListPropertyOptions(full, full))))
+
+		var body v2model.Error
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+		issue := body.Issues[0]
+		assert.Equal(t, v2model.RefListPropertyOptions(short, full), issue.SeeAlso[0], "only the space_id binding is echoed")
+		assert.Equal(t, "check the spelling against GET /v2/spaces/"+short+"/properties/"+full+"/options", issue.Hint)
+	})
 }
