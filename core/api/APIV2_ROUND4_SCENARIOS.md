@@ -327,10 +327,20 @@ three fresh reviewers before the next.
   NO migration. New tombstones keep the `deletedLayout` marker and the
   exact query answers the same-session window; the backfill, its
   completion marker, the gate, the tech-space call and the fixture
-  override were removed again. Accepted residual: on the first load after
-  the upgrade, until the outdated-object reindex has run (a goroutine
-  after the load), a pre-branch tombstone is invisible to the slug lookup
-  and its spelling resolves as unknown.
+  override were removed again. The review of that removal caught the
+  window it left: until the outdated-object reindex (a goroutine behind
+  the reindex limiter) had rebuilt a pre-branch tombstone, its spelling
+  was invisible to both removal lookups and fell through to NAME
+  resolution — a live type named like the removed slug answered for it,
+  and a delete landed there. So the outdated pass now runs synchronously
+  for the live derived trees alone (`reindexOutdatedDerivedObjects`,
+  before the space is served; bounded by the space's types, properties
+  and options, idempotent, no marker): an uninstalled derived object is
+  exactly a live derived tree whose indexed hash the tombstone dropped.
+  Accepted residual: a derived object whose rebuild FAILS on that pass
+  (logged) stays invisible to the removal lookups until the background
+  pass or the next load succeeds, and its spelling resolves like any
+  other unknown one, name step included.
 
   Also in from those rounds: a mint that suffixed or emptied its slug
   reports the stored slug (or the minted key) on the property row and its
@@ -340,8 +350,10 @@ three fresh reviewers before the next.
   twin-name holder from that snapshot, and refuses a name-only twin (an
   explicit key creates another, with a warning); its operation
   description carries the name rule into OpenAPI; the removal-lookup
-  error is typed at the resolution boundary on every path (the cause is
-  logged, not served); the `property` kind states that names are not
+  error is typed at the resolution boundary on every type-resolution path
+  and on the bundled-type removal gate (the cause is logged, not served;
+  a failure to load the live type list itself still serves its own
+  message); the `property` kind states that names are not
   identities; and the curated `create_type` pre-flight prefixes "check
   the type name and formats" on a decoded validation refusal alone — a
   grant refusal, a rate limit, a 5xx, a transport failure or an

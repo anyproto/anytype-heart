@@ -445,8 +445,8 @@ func TestDeleteObject_DerivedTombstoneKeepsItsLayoutTopLevel(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(model.ObjectType_objectType), typeRow.GetInt64(bundle.RelationKeyDeletedLayout))
 
-	// a tombstone written before the marker existed is backfilled by the
-	// re-delete a reindex runs, from the snapshot it kept
+	// an explicit re-delete of a tombstone written before the marker
+	// existed sets it, from the snapshot it kept
 	s.AddObjects(t, []TestObject{{
 		bundle.RelationKeyId:        domain.String("typeOld"),
 		bundle.RelationKeySpaceId:   domain.String("test"),

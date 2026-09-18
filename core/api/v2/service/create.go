@@ -618,13 +618,15 @@ func (s *Service) refuseRemovedType(ctx context.Context, spaceId, typeKey, path 
 	if err != nil {
 		return err
 	}
+	// the same typed 500 the custom-type resolution boundary answers: the
+	// removal set could not be read, the request was not wrong
 	removed, err := s.bundledTypeRemovalSet(spaceId)
 	if err != nil {
-		return err
+		return unverifiableTypeError(typeKey, spaceId, err)
 	}
 	isRemoved, err := s.bundledTypeRemoved(ctx, spaceId, entries, removed, typeKey)
 	if err != nil {
-		return err
+		return unverifiableTypeError(typeKey, spaceId, err)
 	}
 	if isRemoved {
 		v := errKeysFor(ctx)
