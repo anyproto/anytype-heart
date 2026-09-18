@@ -97,13 +97,13 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"api_key":{"type":"string","maxLength":256,"pattern":"^[a-zA-Z0-9_]+$","description":"the key object bodies name this type by; derived from the name when omitted"},` +
 			`"default_view":{"type":"string","enum":["table","list","gallery","kanban","calendar","graph"],"description":"how a set or collection of this type opens; applies to ones created after the change"},` +
 			`"default_template":{"type":"string","maxLength":256,"description":"id of the template new objects of this type start from; empty string clears it"},` +
-			`"property_definitions":{"type":"array","maxItems":128,"description":"the type's whole field list; an unknown name mints a property. On PATCH it replaces the list, so to change one field send an ops envelope with add_property to PATCH /v2/spaces/{space_id}/types/{type} instead, and to rename a property send {name} to PATCH /v2/spaces/{space_id}/properties/{key}","items":{` +
+			`"property_definitions":{"type":"array","maxItems":128,"description":"the type's whole field list; an unknown name mints a property. On PATCH it replaces the list, so to change one field send an ops envelope with add_property to update_type instead, and to rename a property send {name} to update_property","items":{` +
 			`"type":"object","additionalProperties":false,"description":"names its property by name or by property, one of the two","properties":{` +
 			`"name":{"type":"string","minLength":1,"maxLength":128,"description":"the property's display name, e.g. Due date; an unknown one is created"},` +
 			`"property":{"type":"string","minLength":1,"maxLength":256,"description":"the property by the key the space serves, for one that exists"},` +
 			`"format":{"type":"string","enum":[` + v2PropertyFormatEnum + `],"description":"the new property's format; omit it and an unknown name is created as text"},` +
 			`"section":{"type":"string","enum":["featured","hidden"],"description":"featured shows the property on the object itself"},` +
-			`"options":{"type":"array","maxItems":100,"description":"select and multi_select only: the option vocabulary; creating options here needs ?create_missing_options=true","items":{` +
+			`"options":{"type":"array","maxItems":100,"description":"select and multi_select only: the option vocabulary; creating options here needs the create_missing_options parameter set to true","items":{` +
 			`"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
 			`"name":{"type":"string","minLength":1,"maxLength":4096},"color":{"type":"string","maxLength":64}}}}}}}}}`,
 		// no `options` here on purpose: declaring them needs
@@ -330,10 +330,41 @@ func strictDiscoverySchema(raw json.RawMessage) (json.RawMessage, error) {
 		flattenDiscoveryObjectBases(root)
 	}
 	strictDiscoveryNode(schema)
-	if root, ok := schema.(map[string]any); ok {
-		hoistAnyValue(root)
+	root, ok := schema.(map[string]any)
+	if !ok {
+		return json.Marshal(schema)
 	}
-	return json.Marshal(schema)
+	hoistAnyValue(root)
+	return marshalDefsLast(root)
+}
+
+// marshalDefsLast serializes a schema with its $defs member LAST. Sorted
+// keys put "$defs" first, so an op schema opened with a two-kilobyte
+// any-value definition before the one sentence that says what the op does
+// (round-two eval F8) — the whole signal budget of a small consumer spent on
+// a union it never reads. Member order carries no meaning in JSON Schema.
+func marshalDefsLast(root map[string]any) ([]byte, error) {
+	defs, ok := root["$defs"]
+	if !ok {
+		return json.Marshal(root)
+	}
+	delete(root, "$defs")
+	defer func() { root["$defs"] = defs }()
+	body, err := json.Marshal(root)
+	if err != nil {
+		return nil, err
+	}
+	tail, err := json.Marshal(defs)
+	if err != nil {
+		return nil, err
+	}
+	if len(root) == 0 {
+		return append(append([]byte(`{"$defs":`), tail...), '}'), nil
+	}
+	out := append([]byte{}, body[:len(body)-1]...)
+	out = append(out, `,"$defs":`...)
+	out = append(out, tail...)
+	return append(out, '}'), nil
 }
 
 // flattenDiscoveryObjectBases inlines the deliberately-open object bases

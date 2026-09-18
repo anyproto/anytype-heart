@@ -565,6 +565,28 @@ reviewed by three fresh reviewers before the next.
   output-only `id`/`groups`/`object_orders` (a narrower authoring schema,
   as elsewhere).
 
+**Group C (F7, F8, F8b, F8c) — done.**
+
+- F7: the twelve routes in served schema descriptions are gone; a
+  description names an operation by its op id (`update_type`,
+  `update_property`, `list_properties`) or a schema by its kind ("schema
+  kind filters"), the same vocabulary `see_also` uses. Guarded at runtime by
+  `TestServedSchemaProseCarriesNoRoutes` (service/schemaprose_test.go),
+  which walks every served kind and op schema's strings with the hint
+  guard's route pattern (the format's own `anytype://` link grammar exempt);
+  the AST guard keeps its schema-file exemption for the `endpoint` lines.
+- F8: every op schema serves `example_body` — the bare example wrapped as
+  the `{"ops":[…]}` body it is sent in — beside the bare `example` (which
+  stays an instance of the schema, §8.32). The `$defs` blob is serialized
+  LAST, behind the description (`marshalDefsLast`), and `set_properties`
+  types its values (scalars, or lists of scalars) so no any-value blob
+  rides on it at all (3.7KB → ~1.5KB).
+- F8b: each op's description opens with its own sentence (`v2OpAbout`,
+  seventeen of them) followed by the envelope rule; pinned by the envelope
+  test, which also pins `example_body`.
+- F8c: kept as the doc recommends — the served examples stay in a real
+  domain; the eval's scenarios are what must avoid the served vocabulary.
+
 # Ranked work order
 
 1. **F1** — warn or refuse on destructive `delete_property`; stop leaking

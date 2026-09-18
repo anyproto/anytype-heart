@@ -770,6 +770,10 @@ components:
           type: string
         example:
           type: object
+        example_body:
+          description: An op schema's example wrapped as the request body it is sent
+            in
+          type: object
         grammar:
           type: string
         grammar_examples:

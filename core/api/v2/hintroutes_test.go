@@ -22,9 +22,10 @@ import (
 // affordance the MCP benchmark showed callers cannot use, and it is
 // invisible to every wrapper's lookup.
 //
-// The schema documents are the exception: their `endpoint` lines and field
-// descriptions document the REST surface for a reader who asked for it, and
-// they are not repairs.
+// The schema documents are the exception here: their `endpoint` lines
+// document the REST surface for a reader who asked for it. Their field
+// descriptions are NOT exempt — they are guarded on the served JSON by
+// service/schemaprose_test.go, where the endpoint line is a separate member.
 func TestServedRoutesComeFromTheOperationTable(t *testing.T) {
 	// a method before any path or an ellipsis (versioned or not), an
 	// ellipsis path on its own, a versioned path, a bare `?name=`

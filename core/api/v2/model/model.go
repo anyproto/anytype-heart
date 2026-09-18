@@ -571,10 +571,12 @@ type EditResult struct {
 // one concept, one discovery slot (§5), the artifact the GBNF
 // conversion consumes.
 type SchemaEntry struct {
-	Kind            string          `json:"kind"`
-	Endpoint        string          `json:"endpoint"`
-	Schema          json.RawMessage `json:"schema" swaggertype:"object"`
-	Example         json.RawMessage `json:"example" swaggertype:"object"`
+	Kind     string          `json:"kind"`
+	Endpoint string          `json:"endpoint"`
+	Schema   json.RawMessage `json:"schema" swaggertype:"object"`
+	Example  json.RawMessage `json:"example" swaggertype:"object"`
+	// An op schema's example wrapped as the request body it is sent in
+	ExampleBody     json.RawMessage `json:"example_body,omitempty" swaggertype:"object"`
 	Grammar         string          `json:"grammar,omitempty"`
 	GrammarExamples []string        `json:"grammar_examples,omitempty"`
 }

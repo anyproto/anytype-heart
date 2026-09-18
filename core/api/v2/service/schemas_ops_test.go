@@ -592,7 +592,17 @@ func TestV2OpEnvelopeIsReachable(t *testing.T) {
 			desc, ok := schema["description"].(string)
 			require.True(t, ok, "%s schema has no root description", op)
 			assert.Contains(t, desc, `{"ops":[`, "%s does not name the wrapper", op)
-			assert.LessOrEqual(t, len(desc), 200, "%s root description is %d chars", op, len(desc))
+			assert.LessOrEqual(t, len(desc), 280, "%s root description is %d chars", op, len(desc))
+			assert.True(t, strings.HasPrefix(desc, v2OpAbout[op]+". "),
+				"%s opens with the envelope rule, not with what the op does: %s", op, desc)
+
+			// the wrapped body rides beside the bare example (F8)
+			var body struct {
+				Ops []json.RawMessage `json:"ops"`
+			}
+			require.NoError(t, json.Unmarshal(entry.ExampleBody, &body), op)
+			require.Len(t, body.Ops, 1, op)
+			assert.JSONEq(t, string(entry.Example), string(body.Ops[0]), op)
 		}
 	})
 
