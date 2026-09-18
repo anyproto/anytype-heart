@@ -352,11 +352,14 @@ func (t *Text) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model
 			// a callout's icon. Where the style does not change, the icon on the block is
 			// the block's own and the paste has no business touching it.
 			//
-			// An empty paragraph is the exception GO-7513 already argued for the checked
-			// state below: there is no state of its own to destroy there. The HTML hazard
-			// cannot reach this clause — pasteHtml only copies a style that is not
-			// Paragraph, and this clause only fires on a Paragraph target.
-			if styleChanged || isPlaceInEmptyParagraph {
+			// There is no empty-paragraph exception here, unlike the checked state below.
+			// That guard also requires the pasted style to be the one that owns the field
+			// — Checkbox — so it only ever adopts a value the paste actually states. An
+			// empty paragraph receiving a Callout is already a style change, so the
+			// exception would add nothing except the case where the pasted style is
+			// Paragraph too: a paste that says nothing whatsoever about icons, whose
+			// emptiness would then overwrite a real one.
+			if styleChanged {
 				t.content.IconEmoji = copiedText.IconEmoji
 				t.content.IconImage = copiedText.IconImage
 			}

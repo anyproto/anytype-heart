@@ -812,10 +812,12 @@ func TestText_RangeTextPasteStyleFields(t *testing.T) {
 			want:      want{style: model.BlockContentText_Callout, iconImage: "imagehash", text: "note"},
 		},
 		{
-			// The residue is invisible — the block renders as a plain paragraph — while the
-			// pasted block plainly has no icon, so the paste wins. Same call GO-7513 made
-			// for a pasted unchecked checkbox landing on leftover checked state.
-			name: "adopting a style with no icon clears the icon residue",
+			// A plain paragraph states nothing whatsoever about icons, so its empty icon
+			// is not a value to adopt — taking it would destroy state the paste never
+			// mentioned. This is where the analogy to the checked state below runs out:
+			// that guard requires the pasted style to be Checkbox, the style that owns
+			// the field, so a pasted "- [ ]" really is an explicit statement.
+			name: "a paste that says nothing about icons leaves the block's own icon alone",
 			target: func() *model.Block {
 				b := target("", model.BlockContentText_Paragraph)
 				b.GetText().IconEmoji = "\U0001f525"
@@ -825,7 +827,25 @@ func TestText_RangeTextPasteStyleFields(t *testing.T) {
 			from: 0, to: 0,
 			copied:    pasted("plain", model.BlockContentText_Paragraph),
 			copyStyle: true,
-			want:      want{style: model.BlockContentText_Paragraph, text: "plain"},
+			want: want{
+				style: model.BlockContentText_Paragraph, iconEmoji: "\U0001f525",
+				iconImage: "oldhash", text: "plain",
+			},
+		},
+		{
+			// the residue does go when the style that owned it is replaced, which is the
+			// moment it actually becomes stale
+			name: "a style change clears the icon residue",
+			target: func() *model.Block {
+				b := target("", model.BlockContentText_Paragraph)
+				b.GetText().IconEmoji = "\U0001f525"
+				b.GetText().IconImage = "oldhash"
+				return b
+			}(),
+			from: 0, to: 0,
+			copied:    pasted("note", model.BlockContentText_Callout),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Callout, text: "note"},
 		},
 		{
 			name:   "replacing all the text adopts the callout icon",
@@ -892,8 +912,40 @@ func TestText_RangeTextPasteStyleFields(t *testing.T) {
 			want:      want{style: model.BlockContentText_Callout, iconEmoji: "\U0001f4a1", text: "note"},
 		},
 		{
+			// the image twin of the case above: an icon guard that special-cases the
+			// image field passes every emoji-only fixture
+			name: "replacing all the text of a callout does not take another callout's image",
+			target: func() *model.Block {
+				b := target("old", model.BlockContentText_Callout)
+				b.GetText().IconImage = "imageA"
+				return b
+			}(),
+			from: 0, to: 3,
+			copied: func() *model.Block {
+				b := pasted("note", model.BlockContentText_Callout)
+				b.GetText().IconImage = "imageB"
+				return b
+			}(),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Callout, iconImage: "imageA", text: "note"},
+		},
+		{
+			// adoption of the image is not restricted to an empty paragraph: the style
+			// changes here over text that was already there
+			name:   "replacing all the text adopts the callout image",
+			target: target("old", model.BlockContentText_Paragraph),
+			from:   0, to: 3,
+			copied: func() *model.Block {
+				b := pasted("note", model.BlockContentText_Callout)
+				b.GetText().IconImage = "imageB"
+				return b
+			}(),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Callout, iconImage: "imageB", text: "note"},
+		},
+		{
 			// an empty callout is not an empty paragraph: it has a style of its own, so
-			// neither clause fires and its icon is left alone
+			// the guard does not fire and its icon is left alone
 			name: "filling an empty callout keeps its icon",
 			target: func() *model.Block {
 				b := target("", model.BlockContentText_Callout)

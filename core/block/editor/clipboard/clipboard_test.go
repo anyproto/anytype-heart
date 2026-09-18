@@ -3793,3 +3793,121 @@ func TestPasteHtmlIntoStyledBlockKeepsItsIcon(t *testing.T) {
 		})
 	}
 }
+
+// The icon follows the style it belongs to, driven end to end through the public Paste.
+// Every case runs twice, once carrying the emoji field and once the image field: a guard that
+// special-cases one of the two passes every fixture written with only the other, and both
+// "adopt the image whenever the source has one" and "adopt the image only into an empty
+// paragraph" survive an emoji-only suite.
+func TestPasteIconFollowsTheStyle(t *testing.T) {
+	type want struct {
+		style model.BlockContentTextStyle
+		text  string
+		icon  string
+	}
+	for _, tc := range []struct {
+		name        string
+		targetStyle model.BlockContentTextStyle
+		targetText  string
+		targetIcon  string
+		pastedStyle model.BlockContentTextStyle
+		pastedIcon  string
+		rng         model.Range
+		want        want
+	}{
+		{
+			name:        "a callout pasted over a paragraph's text brings its icon",
+			targetStyle: model.BlockContentText_Paragraph, targetText: "old",
+			pastedStyle: model.BlockContentText_Callout, pastedIcon: "B",
+			rng:  model.Range{From: 0, To: 3},
+			want: want{style: model.BlockContentText_Callout, text: "note", icon: "B"},
+		},
+		{
+			name:        "a callout pasted into an empty paragraph brings its icon",
+			targetStyle: model.BlockContentText_Paragraph,
+			pastedStyle: model.BlockContentText_Callout, pastedIcon: "B",
+			rng:  model.Range{From: 0, To: 0},
+			want: want{style: model.BlockContentText_Callout, text: "note", icon: "B"},
+		},
+		{
+			// the block keeps the icon it has: the style is not changing, so the paste is
+			// not replacing the thing the icon belongs to
+			name:        "a callout pasted over a callout does not take its icon",
+			targetStyle: model.BlockContentText_Callout, targetText: "old", targetIcon: "A",
+			pastedStyle: model.BlockContentText_Callout, pastedIcon: "B",
+			rng:  model.Range{From: 0, To: 3},
+			want: want{style: model.BlockContentText_Callout, text: "note", icon: "A"},
+		},
+		{
+			name:        "a plain paragraph pasted over an empty block's text leaves its icon alone",
+			targetStyle: model.BlockContentText_Paragraph, targetIcon: "A",
+			pastedStyle: model.BlockContentText_Paragraph,
+			rng:         model.Range{From: 0, To: 0},
+			want:        want{style: model.BlockContentText_Paragraph, text: "note", icon: "A"},
+		},
+		{
+			name:        "a block that stops being a callout stops carrying its icon",
+			targetStyle: model.BlockContentText_Callout, targetText: "old", targetIcon: "A",
+			pastedStyle: model.BlockContentText_Paragraph,
+			rng:         model.Range{From: 0, To: 3},
+			want:        want{style: model.BlockContentText_Paragraph, text: "note"},
+		},
+	} {
+		for _, field := range []struct {
+			name string
+			get  func(*model.BlockContentText) string
+			set  func(*model.BlockContentText, string)
+		}{
+			{
+				name: "emoji",
+				get:  func(c *model.BlockContentText) string { return c.IconEmoji },
+				set:  func(c *model.BlockContentText, v string) { c.IconEmoji = v },
+			},
+			{
+				name: "image",
+				get:  func(c *model.BlockContentText) string { return c.IconImage },
+				set:  func(c *model.BlockContentText, v string) { c.IconImage = v },
+			},
+		} {
+			t.Run(tc.name+", "+field.name, func(t *testing.T) {
+				// given
+				target := textBlock("target", tc.targetText, tc.targetStyle)
+				field.set(target.GetText(), tc.targetIcon)
+				sb := smarttest.New("test")
+				sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"target"}}))
+				sb.AddBlock(simple.New(target))
+				cb := newFixture(t, sb)
+				pasted := textBlock("p1", "note", tc.pastedStyle)
+				field.set(pasted.GetText(), tc.pastedIcon)
+				rng := tc.rng
+
+				// when
+				_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+					FocusedBlockId:    "target",
+					SelectedTextRange: &rng,
+					AnySlot:           []*model.Block{pasted},
+				}, "")
+
+				// then
+				require.NoError(t, err)
+				st := sb.NewState()
+				childIds := st.Pick("test").Model().ChildrenIds
+				require.Len(t, childIds, 1)
+				b := st.Pick(childIds[0])
+				require.NotNil(t, b)
+				got := want{
+					style: b.Model().GetText().Style,
+					text:  b.Model().GetText().Text,
+					icon:  field.get(b.Model().GetText()),
+				}
+				assert.Equal(t, tc.want, got)
+				// the other field must not have been written on the way past
+				other := b.Model().GetText().IconImage
+				if field.name == "image" {
+					other = b.Model().GetText().IconEmoji
+				}
+				assert.Empty(t, other, "the paste must not touch the other icon field")
+			})
+		}
+	}
+}
