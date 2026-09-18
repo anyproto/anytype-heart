@@ -787,9 +787,7 @@ func createTypeReceipt(name string, plans []typePropertyPlan, result *v2model.Cr
 	if len(plans) == 0 {
 		b.WriteString("\n  (no properties — every object still takes Name and Description)")
 	}
-	for _, w := range result.Warnings {
-		b.WriteString("\nwarning: " + w.Message)
-	}
+	b.WriteString(warningsText(result.Warnings))
 	if !dryRun {
 		fmt.Fprintf(&b, "\ncreate objects of it with create: type %q — describe %q lists these properties again", name, name)
 	}

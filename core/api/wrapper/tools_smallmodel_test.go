@@ -25,7 +25,8 @@ const (
 	locatorZeroBody = `{"status":404,"code":"not_found",` +
 		`"message":"no block contains \"Q9\" — copy the find text exactly, including inline markup (text is markdown source: ** [ ] etc. count)",` +
 		`"issues":[{"path":"ops[0].find","message":"the find text must appear in exactly one block for the locator to resolve",` +
-		`"hint":"GET the object with ?outline=true to list them, then copy the text exactly as a read serves it — or give the block id"}]}`
+		`"hint":"read the object with GET /v2/spaces/{space_id}/objects/{object_id} and copy the text exactly as it is served — or give the block id. GET /v2/spaces/{space_id}/objects/{object_id}?outline=true truncates text to a snippet, so copy from the full read",` +
+		`"see_also":[{"op":"get_object"},{"op":"get_object","query":{"outline":"true"}}]}]}`
 	locatorAmbiguousBody = `{"status":400,"code":"ambiguous_input",` +
 		`"message":"\"budget\" appears in 2 blocks — retry with id naming one of:\n  block aaaaaaaaaaaaaaaaaaaae0002 (paragraph): \"the draft budget is due\"\n  block aaaaaaaaaaaaaaaaaaaae0003 (paragraph): \"todo todo budget\"",` +
 		`"issues":[{"path":"ops[0].find","message":"the find text appears in 2 blocks — a locator must identify exactly one",` +
@@ -72,7 +73,8 @@ func TestEditTextLocatesBlock(t *testing.T) {
 
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), `no block contains "Q9"`)
-		assert.Contains(t, err.Error(), "run read (the default mode=full)", "the REST outline steer is re-spelled (§8.34)")
+		assert.Contains(t, err.Error(), "read the object with `read` and copy the text exactly", "the REST read is re-spelled (§8.34)")
+		assert.Contains(t, err.Error(), "`read` with mode=outline truncates text to a snippet")
 		assert.NotContains(t, err.Error(), "?outline=true", "no REST vocabulary reaches the model")
 		assert.Contains(t, err.Error(), "markdown source", "the snippet may have missed only because of markup")
 		assert.Contains(t, err.Error(), "or pass block")

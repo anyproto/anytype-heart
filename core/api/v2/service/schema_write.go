@@ -143,8 +143,8 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 			v2model.Issue{
 				Path:    "/blocks",
 				Message: "omit blocks — a type gets its views generated for it",
-				Hint:    "to shape them, read the type at GET /v2/spaces/{space_id}/types/{key} for its id, then PATCH /v2/spaces/{space_id}/objects/{id} with insert_view or update_view",
-			})
+			}.Hintf("to shape them, create the type first, then edit its views through %s, addressing the type by its object id",
+				v2model.NewRef(v2model.OpPatchObject, "space_id", spaceId)))
 	}
 	if body, err = encodeEnvelope(fields); err != nil {
 		return nil, err
@@ -214,7 +214,7 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 			return nil, v2model.ValidationFailed("type key already exists",
 				v2model.Issue{Path: keyPath,
 					Message: fmt.Sprintf("key %q is taken by %s %q in space %s", slug, holder.Kind, holder.Name, spaceId),
-					Hint:    fmt.Sprintf("update it with PATCH /v2/spaces/%s/types/%s, or pick a different key", spaceId, holder.Key)})
+				}.Hintf("update it with %s, or pick a different key", v2model.RefUpdateType(spaceId, holder.Key)))
 		}
 	}
 
@@ -996,15 +996,15 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 			return nil, err
 		}
 		if holder, taken := s.propertySlugConflict(slug, propEntries); taken {
-			path, hint := "/key", fmt.Sprintf("update it with PATCH /v2/spaces/%s/properties/%s, or pick a different key", spaceId, holder.Key)
+			path, hint := "/key", v2model.Hintf("update it with %s, or pick a different key", v2model.RefUpdateProperty(spaceId, holder.Key))
 			if req.Key == "" {
 				path = "/name"
-				hint = fmt.Sprintf("use the existing property %q, or pass an explicit different key", holder.Key)
+				hint = v2model.Plain(fmt.Sprintf("use the existing property %q, or pass an explicit different key", holder.Key))
 			}
 			return nil, v2model.ValidationFailed("property key already exists",
 				v2model.Issue{Path: path,
 					Message: fmt.Sprintf("key %q is taken by %s %q", slug, holder.Kind, holder.Name),
-					Hint:    hint})
+				}.WithHint(hint))
 		}
 	}
 

@@ -216,9 +216,7 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 	default:
 		fmt.Fprintf(&b, "%d matches", resp.Total)
 	}
-	for _, w := range resp.Warnings {
-		b.WriteString("\nwarning: " + w.Message)
-	}
+	b.WriteString(warningsText(resp.Warnings))
 	return &Result{
 		Text: b.String(),
 		JSON: findResult{Handles: handles, Total: resp.Total, HasMore: resp.HasMore},
@@ -254,9 +252,7 @@ func listingText(rows []Handle, typeNames map[string]string, total int, hasMore 
 		fmt.Fprintf(&b, "%d objects", total)
 	}
 	b.WriteString("\nto address one, run find again with query (words from its name), type or filter — a search numbers its results 1, 2, …, and those numbers are what `object` takes.")
-	for _, w := range warnings {
-		b.WriteString("\nwarning: " + w.Message)
-	}
+	b.WriteString(warningsText(warnings))
 	return b.String()
 }
 
@@ -369,9 +365,7 @@ func (r *Runner) runCreate(ctx context.Context, session *Session, args map[strin
 	if result.DryRun {
 		text = fmt.Sprintf("dry run — a %s object would be created", label)
 	}
-	for _, w := range result.Warnings {
-		text += "\nwarning: " + w.Message
-	}
+	text += warningsText(result.Warnings)
 	return &Result{Text: text, JSON: result}, nil
 }
 

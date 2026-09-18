@@ -203,7 +203,7 @@ func TestOpsErrorVocabulary(t *testing.T) {
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 400,
-			`{"status":400,"code":"not_found","message":"block \"zzz\" not found — GET the object with ?outline=true to list them","issues":[{"path":"ops[0].inside","message":"the reference is a suffix of several block ids"}]}`)
+			`{"status":400,"code":"not_found","message":"block \"zzz\" not found","issues":[{"path":"ops[0].inside","hint":"GET /v2/spaces/space1/objects/bafyobj1?outline=true lists them","see_also":[{"op":"get_object","params":{"space_id":"space1","object_id":"bafyobj1"},"query":{"outline":"true"}}],"message":"the reference is a suffix of several block ids"}]}`)
 
 		_, err := fx.Run(ctx, "add_blocks", map[string]any{"object": "1", "under": "zzz", "markdown": "- x"})
 
@@ -212,7 +212,7 @@ func TestOpsErrorVocabulary(t *testing.T) {
 		assert.NotContains(t, err.Error(), "ops[0]")
 		assert.NotContains(t, err.Error(), "?outline=true")
 		assert.Contains(t, err.Error(), "under: the reference is a suffix")
-		assert.Contains(t, err.Error(), "run read (the default mode=full)")
+		assert.Contains(t, err.Error(), "`read` with mode=outline lists them")
 	})
 
 	t.Run("markdown fragment paths lose the ops prefix", func(t *testing.T) {

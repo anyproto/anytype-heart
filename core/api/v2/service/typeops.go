@@ -65,16 +65,6 @@ var v2TypeViewOpNames = map[string]bool{
 	"insert_view": true, "update_view": true, "move_view": true, "delete_view": true,
 }
 
-// v2TypeOpsEndpoint is the endpoint the three type-op schemas belong to.
-const v2TypeOpsEndpoint = "PATCH /v2/spaces/{space_id}/types/{type}"
-
-// v2ViewOpsEndpoints is the view family's endpoint line. Those ops run on
-// BOTH channels with the same body: a dataview op does not care whether the
-// dataview belongs to a set, a collection or a type. A type's own document
-// already serves its views (GET /types/{key} returns blocks), so the endpoint
-// that shows them is the endpoint that changes them.
-const v2ViewOpsEndpoints = v2OpsEndpoint + " · " + v2TypeOpsEndpoint
-
 // v2TypeOpsUnknownKeyHint is what an unknown key beside `ops` means here: the
 // caller mixed the two bodies this endpoint takes. The object surface's hint
 // (an If-Match header written as a body field) has no counterpart on a type.
@@ -120,7 +110,9 @@ type typeListEntry struct {
 
 // typeOpsPlan is the whole batch decided before anything is written.
 type typeOpsPlan struct {
-	list []*typeListEntry
+	// spaceId is the space the type lives in, for the hints a refusal names.
+	spaceId string
+	list    []*typeListEntry
 	// mints are the entries whose property does not exist yet, in op order,
 	// paired with the definition to create it from.
 	mints    []*typeListEntry
@@ -294,7 +286,7 @@ func (s *Service) planTypeOps(spaceId, typeId string, ops []json.RawMessage, ent
 	if err != nil {
 		return nil, err
 	}
-	plan := &typeOpsPlan{list: list, fileSectioned: fileSectionedKeys(list)}
+	plan := &typeOpsPlan{spaceId: spaceId, list: list, fileSectioned: fileSectionedKeys(list)}
 	for i, raw := range ops {
 		opPath := fmt.Sprintf("/ops/%d", i)
 		var probe struct {
@@ -324,7 +316,7 @@ func (s *Service) planTypeOps(spaceId, typeId string, ops []json.RawMessage, ent
 			err = v2model.ValidationFailed(fmt.Sprintf("unknown op %q on a type", probe.Op),
 				v2model.Issue{Path: opPath + ".op",
 					Message: fmt.Sprintf("a type takes %s", strings.Join(v2TypeOpNames, ", ")),
-					Hint:    "blocks, views and property values are edited on the object surface at PATCH /v2/spaces/{space_id}/objects/{object_id}"})
+				}.Hintf("blocks, views and property values are edited on the object surface through %s", v2model.NewRef(v2model.OpPatchObject, "space_id", spaceId)))
 		}
 		if err != nil {
 			return nil, err
@@ -386,7 +378,7 @@ func (s *Service) planAddProperty(plan *typeOpsPlan, raw json.RawMessage, opPath
 		return v2model.ValidationFailed("unknown property format",
 			v2model.Issue{Path: opPath + ".format",
 				Message: fmt.Sprintf("%q is not a property format", op.Format),
-				Hint:    "formats are listed on GET /v2/schemas/property"})
+			}.Hintf("formats are listed on %s", v2model.RefGetSchema("property")))
 	}
 
 	// identity: the stored key once the chain has answered, the caller's own
@@ -432,7 +424,7 @@ func (s *Service) planAddProperty(plan *typeOpsPlan, raw json.RawMessage, opPath
 			return v2model.ValidationFailed("format is required to create a property",
 				v2model.Issue{Path: opPath + ".format",
 					Message: fmt.Sprintf("no property in this space answers to %q, so this op would create one", op.Property),
-					Hint:    "give format, or address an existing property by the key GET /v2/spaces/{space_id}/properties lists"})
+				}.Hintf("give format, or address an existing property by the key %s lists", v2model.RefListProperties(plan.spaceId)))
 		}
 	}
 
@@ -599,7 +591,7 @@ func (s *Service) targetListEntry(plan *typeOpsPlan, term, opPath string, entrie
 		return nil, v2model.ValidationFailed(fmt.Sprintf("unknown %s %q", v.propertyWord(), term),
 			v2model.Issue{Path: opPath + ".property",
 				Message: fmt.Sprintf("no property in this space answers to %q", term),
-				Hint:    "GET /v2/spaces/{space_id}/properties lists them"})
+			}.Hintf("%s lists them", v2model.RefListProperties(plan.spaceId)))
 	}
 	return nil, v2model.ValidationFailed(
 		fmt.Sprintf("this type does not list %q", term),
@@ -1073,8 +1065,7 @@ func typeOpsOptionBudget(defs []anyblockjson.TypeProperty, paths []string) error
 			v2model.Issue{
 				Path:    "/ops",
 				Message: fmt.Sprintf("this batch declares %d options (limit %d)", total, v2MaxCreatedOptionsPerPatch),
-				Hint:    "split the vocabulary across several requests, or create the property with POST /v2/spaces/{space_id}/properties",
-			})
+			}.Hintf("split the vocabulary across several requests, or create the property with %s", v2model.NewRef(v2model.OpCreateProperty)))
 	}
 	return nil
 }
@@ -1229,8 +1220,7 @@ func typePruneWarnings(plan template.TypeDataviewColumnPlan) []v2model.Issue {
 			Path: "/ops",
 			Message: fmt.Sprintf("%s group, sort or filter by a removed property and were left as they are",
 				namedViews(plan.InUse)),
-			Hint: "change those views with update_view at PATCH /v2/spaces/{space_id}/objects/{object_id}",
-		})
+		}.Hintf("change those views with update_view through %s", v2model.NewRef(v2model.OpPatchObject)))
 	}
 	return issues
 }

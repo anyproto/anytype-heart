@@ -304,10 +304,8 @@ func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId stri
 			Path: "/ops",
 			Message: fmt.Sprintf("this batch would create %d new options (limit %d): %s",
 				len(pending), v2MaxCreatedOptionsPerPatch, describeCreateCounts(props)),
-			Hint: "creating an option is permanent and there is no delete surface — " +
-				"check the names against GET /v2/spaces/{space_id}/properties/{property_key}/options, " +
-				"or set values in smaller batches if they are all genuinely new",
-		}
+		}.Hintf("creating an option is permanent and there is no delete surface — check the names against %s, or set values in smaller batches if they are all genuinely new",
+			v2model.NewRef(v2model.OpListPropertyOptions, "space_id", spaceId))
 		return v2model.ValidationFailed("too many new options in one request", issue)
 	}
 	if dryRun {
@@ -446,7 +444,7 @@ func parseOpsEnvelope(body []byte, opNames []string, unknownKeyHint string) ([]j
 	fields, err := parseEnvelope(body)
 	if err != nil {
 		return nil, v2model.ValidationFailed("the PATCH body must be a JSON object",
-			v2model.Issue{Message: err.Error(), Hint: `send {"ops": [...]} — GET /v2/schemas/ops/{op} documents each op`})
+			v2model.Issue{Message: err.Error()}.Hintf(`send {"ops": [...]} — %s documents each op`, v2model.NewRef(v2model.OpGetOpSchema)))
 	}
 	// A caller who read GET /v2/schemas/ops/<op> holds one op object and sends
 	// it as the whole body. The generic message below calls `op` an unknown key,

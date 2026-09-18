@@ -174,7 +174,7 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 	}
 	if shortcut.Type == "" {
 		return nil, v2model.ValidationFailed("type is required",
-			v2model.Issue{Path: "/type", Message: "the shortcut needs a type key", Hint: "list keys with GET /v2/spaces/{space_id}/types"})
+			v2model.Issue{Path: "/type", Message: "the shortcut needs a type key"}.Hintf("list keys with %s", v2model.RefListTypes(spaceId)))
 	}
 
 	doc := map[string]json.RawMessage{}
@@ -278,9 +278,9 @@ func normalizeCreateBody(body []byte) ([]byte, error) {
 			v2model.Issue{Message: err.Error()})
 	}
 	if _, partial := fields["subtree"]; partial {
-		return nil, v2model.ValidationFailed("this body is a partial ?block= subtree read, not a whole document",
-			v2model.Issue{Path: "/subtree", Message: "an object cannot be created from a subtree read — it is a fragment of another document",
-				Hint: "GET the source object with ?ids=full and without ?block= for a complete document"})
+		return nil, v2model.ValidationFailed("this body is a partial subtree read (a read with the block parameter), not a whole document",
+			v2model.Issue{Path: "/subtree", Message: "an object cannot be created from a subtree read — it is a fragment of another document"}.
+				Hintf("read the source object whole with %s, without the block parameter, for a complete document", v2model.NewRef(v2model.OpGetObject).With("ids", "full")))
 	}
 	delete(fields, "etag") // C7: concurrency lives in headers, never in create bodies
 	delete(fields, "warnings")
@@ -320,11 +320,10 @@ func warnLabelShapedIds(body []byte) []v2model.Issue {
 	if len(labelLike) == 0 {
 		return nil
 	}
-	return []v2model.Issue{{
+	return []v2model.Issue{v2model.Issue{
 		Path:    "/blocks",
 		Message: fmt.Sprintf("ids %s look like compact labels from a default read and were adopted as this object's real ids", strings.Join(labelLike, ", ")),
-		Hint:    "to clone with the source's real ids, GET it with ?ids=full; to mint fresh ids, omit them",
-	}}
+	}.Hintf("to clone with the source's real ids, read it with %s; to mint fresh ids, omit them", v2model.NewRef(v2model.OpGetObject).With("ids", "full"))}
 }
 
 // createFromDocument is the shared full-document create path: structural
@@ -537,7 +536,7 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 	case "", "page", "template":
 	case "object_type":
 		return v2model.ValidationFailed("type documents are created via their own endpoint",
-			v2model.Issue{Path: "/kind", Message: "kind \"object_type\" is not accepted here", Hint: fmt.Sprintf("POST /v2/spaces/%s/types", spaceId)})
+			v2model.Issue{Path: "/kind", Message: "kind \"object_type\" is not accepted here"}.Hintf("create it with %s", v2model.RefCreateType(spaceId)))
 	default:
 		return v2model.ValidationFailed("unsupported document kind",
 			v2model.Issue{Path: "/kind", Message: fmt.Sprintf("kind %q cannot be created through the API", envelope.Kind), Hint: "omit kind (page) or use type \"template\""})
@@ -560,7 +559,7 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 	// from it (SPEC §2 template_for); enforced on both endpoints
 	if envelope.Type == string(bundle.TypeKeyTemplate) && envelope.TemplateFor == "" {
 		return v2model.ValidationFailed("template_for is required",
-			v2model.Issue{Path: "/template_for", Message: "a template document names its target type key", Hint: fmt.Sprintf("list keys with GET /v2/spaces/%s/types", spaceId)})
+			v2model.Issue{Path: "/template_for", Message: "a template document names its target type key"}.Hintf("list keys with %s", v2model.RefListTypes(spaceId)))
 	}
 
 	if envelope.Type != "" && envelope.Type != string(bundle.TypeKeyTemplate) {
@@ -591,7 +590,7 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 	// SPEC §2: collection_items requires a collection document.
 	if len(envelope.Items) > 0 && envelope.Type != string(bundle.TypeKeyCollection) {
 		return v2model.ValidationFailed("items on a non-collection document",
-			v2model.Issue{Path: "/collection_items", Message: fmt.Sprintf("collection_items requires type \"collection\", got %q", envelope.Type), Hint: fmt.Sprintf("POST /v2/spaces/%s/collections", spaceId)})
+			v2model.Issue{Path: "/collection_items", Message: fmt.Sprintf("collection_items requires type \"collection\", got %q", envelope.Type)}.Hintf("create a collection with %s", v2model.RefCreateCollection(spaceId)))
 	}
 
 	// property keys must exist — did-you-mean, never silent create (R9)
@@ -702,8 +701,7 @@ func (s *Service) validatePropertyKeys(ctx context.Context, spaceId string, prop
 		if known == nil {
 			known = knownPropertyKeysIn(entries, v)
 		}
-		issues = append(issues, unknownPropertyIssue(key, "/properties/"+spelledAs(key), known,
-			fmt.Sprintf("list all with GET /v2/spaces/%s/properties, or create it with POST /v2/spaces/%s/properties", spaceId, spaceId), v))
+		issues = append(issues, unknownPropertyIssue(key, "/properties/"+spelledAs(key), known, propertyListHint(spaceId), v))
 	}
 	if len(issues) > 0 {
 		// the envelope names what actually happened: "unknown" on a key the
@@ -730,7 +728,7 @@ func rejectRestrictedType(typeKey string) error {
 	switch key {
 	case bundle.TypeKeyFile, bundle.TypeKeyImage, bundle.TypeKeyAudio, bundle.TypeKeyVideo:
 		return v2model.ValidationFailed("file objects are created by upload",
-			v2model.Issue{Path: "/type", Message: fmt.Sprintf("%q objects come from file uploads", typeKey), Hint: "POST /v2/spaces/{space_id}/files"})
+			v2model.Issue{Path: "/type", Message: fmt.Sprintf("%q objects come from file uploads", typeKey)}.Hintf("upload one with %s", v2model.NewRef(v2model.OpUploadFile)))
 	}
 	return nil
 }

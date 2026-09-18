@@ -109,8 +109,7 @@ type viewKeyUse struct {
 func (a *v2StateApplier) applyUpdateView(op opUpdateView, opPath string) error {
 	if len(op.Set) == 0 && len(op.Columns) == 0 {
 		return v2model.ValidationFailed("update_view needs set and/or columns",
-			v2model.Issue{Path: opPath, Message: "set (view-level fields) and columns (per-column patches) are both empty",
-				Hint: "GET /v2/schemas/ops/update_view for the op's schema and example"})
+			v2model.Issue{Path: opPath, Message: "set (view-level fields) and columns (per-column patches) are both empty"}.Hintf("%s for the op's schema and example", v2model.RefGetOpSchema("update_view")))
 	}
 	doc, err := a.doc()
 	if err != nil {
@@ -613,7 +612,8 @@ func stripValuelessConditionValues(nodes []any) {
 func (a *v2StateApplier) applyViewFilterString(raw json.RawMessage, edited, view map[string]any, path string, issues *[]v2model.Issue) error {
 	var s string
 	if err := json.Unmarshal(raw, &s); err != nil {
-		*issues = append(*issues, v2model.Issue{Path: path, Message: "filter takes a string (the compact filter syntax — GET /v2/schemas/filters serves the grammar)"})
+		*issues = append(*issues, v2model.Issue{Path: path, Message: "filter takes a string in the compact filter syntax"}.
+			Hintf("%s serves the grammar", v2model.RefGetSchema("filters")))
 		return nil
 	}
 	if length := utf8.RuneCountInString(s); length > maxV2FilterLength {
@@ -892,8 +892,7 @@ func (a *v2StateApplier) validateViewKeys(edited map[string]any, preKnown map[st
 		if known == nil {
 			known = knownPropertyKeysIn(entries, a.v)
 		}
-		*issues = append(*issues, unknownPropertyIssue(use.key, use.path, known,
-			fmt.Sprintf("list all with GET /v2/spaces/%s/properties, or create it with POST /v2/spaces/%s/properties", a.spaceId, a.spaceId), a.v))
+		*issues = append(*issues, unknownPropertyIssue(use.key, use.path, known, propertyListHint(a.spaceId), a.v))
 	}
 	edited["properties"] = props
 }
@@ -927,7 +926,7 @@ func (a *v2StateApplier) resolveDataviewBlock(doc *v2EditDoc, ref, opPath string
 		return -1, v2model.ValidationFailed("this object has no dataview block",
 			v2model.Issue{Path: opPath,
 				Message: "views live in dataview blocks — types, sets and collections carry one",
-				Hint:    "GET the object (?outline=true) to inspect its blocks"})
+			}.Hintf("%s to inspect its blocks", v2model.RefGetObject(a.spaceId, a.objectId).With("outline", "true")))
 	default:
 		ids := make([]string, len(found))
 		for i, bi := range found {
@@ -1152,8 +1151,7 @@ func isJSONNull(raw json.RawMessage) bool {
 func (a *v2StateApplier) applyInsertView(op opInsertView, opPath string) error {
 	if op.Name == "" {
 		return v2model.ValidationFailed("a view needs a name",
-			v2model.Issue{Path: opPath + ".name", Message: "name is required — a view is a named tab",
-				Hint: "GET /v2/schemas/ops/insert_view for the op's schema and example"})
+			v2model.Issue{Path: opPath + ".name", Message: "name is required — a view is a named tab"}.Hintf("%s for the op's schema and example", v2model.RefGetOpSchema("insert_view")))
 	}
 	if length := utf8.RuneCountInString(op.Name); length > maxV2NameLength {
 		return v2model.ValidationFailed("name is too long",

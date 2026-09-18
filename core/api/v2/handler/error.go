@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -50,18 +52,96 @@ func echoSpaceRef(c *gin.Context, v2Err *v2model.Error) *v2model.Error {
 		echoed.Issues = make([]v2model.Issue, len(v2Err.Issues))
 		for i, issue := range v2Err.Issues {
 			issue.Message = strings.ReplaceAll(issue.Message, full, ref)
-			issue.Hint = strings.ReplaceAll(issue.Hint, full, ref)
+			// the typed references must keep spelling exactly what the hint
+			// spells (v2model.Ref): a reference's space id is re-spelled, and
+			// the hint's rendering of it with it
+			before := issue.SeeAlso
+			issue.SeeAlso = echoRefs(before, full, ref)
+			issue.Hint = echoHint(issue.Hint, full, ref, before, issue.SeeAlso)
 			echoed.Issues[i] = issue
 		}
 	}
 	return &echoed
 }
 
+// echoRefs returns copies of refs with every parameter or query value that
+// IS the full space id re-spelled to the caller's reference. Only a whole
+// value: a property key or an option name that happens to contain the id
+// is an identity, and shortening a substring of it would address a
+// different thing (round-two review).
+func echoRefs(refs []v2model.Ref, full, ref string) []v2model.Ref {
+	if len(refs) == 0 {
+		return refs
+	}
+	echo := func(values map[string]string) map[string]string {
+		if len(values) == 0 {
+			return values
+		}
+		out := make(map[string]string, len(values))
+		for k, v := range values {
+			if v == full {
+				v = ref
+			}
+			out[k] = v
+		}
+		return out
+	}
+	out := make([]v2model.Ref, len(refs))
+	for i, r := range refs {
+		out[i] = v2model.Ref{Op: r.Op, Params: echo(r.Params), Query: echo(r.Query)}
+	}
+	return out
+}
+
+// echoHint re-spells a hint for the echo: each reference's rendering (as it
+// was) becomes the rendering of the echoed reference, and the prose between
+// the renderings gets the plain substitution. Done span-wise so a value
+// inside a rendering that merely contains the id is left alone, exactly as
+// echoRefs leaves it — the hint and its references keep agreeing.
+func echoHint(hint, full, ref string, before, after []v2model.Ref) string {
+	if hint == "" {
+		return hint
+	}
+	if len(before) == 0 {
+		return strings.ReplaceAll(hint, full, ref)
+	}
+	renders := make(map[string]string, len(before))
+	patterns := make([]string, 0, len(before))
+	for i, r := range before {
+		rest := r.String()
+		if rest == "" {
+			continue
+		}
+		if _, seen := renders[rest]; !seen {
+			patterns = append(patterns, rest)
+		}
+		renders[rest] = after[i].String()
+	}
+	if len(patterns) == 0 {
+		return strings.ReplaceAll(hint, full, ref)
+	}
+	// longest first, so a rendering that extends another wins where both match
+	sort.SliceStable(patterns, func(i, j int) bool { return len(patterns[i]) > len(patterns[j]) })
+	for i, p := range patterns {
+		patterns[i] = regexp.QuoteMeta(p)
+	}
+	spans := regexp.MustCompile(strings.Join(patterns, "|"))
+	var b strings.Builder
+	last := 0
+	for _, m := range spans.FindAllStringIndex(hint, -1) {
+		b.WriteString(strings.ReplaceAll(hint[last:m[0]], full, ref))
+		b.WriteString(renders[hint[m[0]:m[1]]])
+		last = m[1]
+	}
+	b.WriteString(strings.ReplaceAll(hint[last:], full, ref))
+	return b.String()
+}
+
 // decodeStrictJSONBody decodes a v2 request body strictly: unknown fields
 // are 400s with the field named (C13's spirit at the request layer), an
 // empty body 400s with the hint, and an oversized body 413s naming the
 // surface. A false return means the error response was already written.
-func decodeStrictJSONBody(c *gin.Context, into any, hint string, maxBody int64, surface string) bool {
+func decodeStrictJSONBody(c *gin.Context, into any, hint v2model.Hint, maxBody int64, surface string) bool {
 	body, err := io.ReadAll(io.LimitReader(c.Request.Body, maxBody+1))
 	if err != nil {
 		RespondError(c, v2model.ValidationFailed("read request body",
@@ -75,13 +155,13 @@ func decodeStrictJSONBody(c *gin.Context, into any, hint string, maxBody int64, 
 	}
 	if len(bytes.TrimSpace(body)) == 0 {
 		RespondError(c, v2model.ValidationFailed("request body is required",
-			v2model.Issue{Message: hint}))
+			v2model.Issue{Message: "the body is empty"}.WithHint(hint)))
 		return false
 	}
 	dec := json.NewDecoder(bytes.NewReader(body))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(into); err != nil {
-		issue := v2model.Issue{Message: err.Error(), Hint: hint}
+		issue := v2model.Issue{Message: err.Error()}.WithHint(hint)
 		if field, ok := unknownFieldName(err); ok {
 			issue.Path = "/" + field
 		}

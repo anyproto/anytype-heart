@@ -62,7 +62,10 @@ func TestV2GetSpace(t *testing.T) {
 		// then
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusNotFound, apiErr.Status)
-		assert.Contains(t, apiErr.Message, "GET /v2/spaces")
+		assert.Equal(t, `space "bogus" not found`, apiErr.Message)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "list spaces with GET /v2/spaces", apiErr.Issues[0].Hint)
+		assert.Equal(t, []v2model.Ref{v2model.RefListSpaces()}, apiErr.Issues[0].SeeAlso)
 	})
 
 	t.Run("a deleted space is 404, not a live-looking row", func(t *testing.T) {

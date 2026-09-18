@@ -253,7 +253,7 @@ func CreatePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req v2model.CreatePropertyRequest
 		if !decodeStrictJSONBody(c, &req,
-			"the property body is {key?, name, format, options?} — GET /v2/schemas/property for the schema",
+			v2model.Hintf("the property body is {key?, name, format, options?} — %s for the schema", v2model.RefGetSchema("property")),
 			maxV2StructuredBodySize, "property") {
 			return
 		}
@@ -287,7 +287,7 @@ func UpdatePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req v2model.UpdatePropertyRequest
 		if !decodeStrictJSONBody(c, &req,
-			"the property patch takes name — the key is identity and cannot change",
+			v2model.Plain("the property patch takes name — the key is identity and cannot change"),
 			maxV2StructuredBodySize, "property") {
 			return
 		}
@@ -344,7 +344,7 @@ func CreateQueryHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req v2model.CreateQueryRequest
 		if !decodeStrictJSONBody(c, &req,
-			"the query body is {name, type, filter?/filters?, sorts?, views?} — GET /v2/schemas/query for the schema",
+			v2model.Hintf("the query body is {name, type, filter?/filters?, sorts?, views?} — %s for the schema", v2model.RefGetSchema("query")),
 			maxV2StructuredBodySize, "query") {
 			return
 		}
@@ -377,7 +377,7 @@ func CreateCollectionHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req v2model.CreateCollectionRequest
 		if !decodeStrictJSONBody(c, &req,
-			"the collection body is {name, items?} — GET /v2/schemas/collection for the schema",
+			v2model.Hintf("the collection body is {name, items?} — %s for the schema", v2model.RefGetSchema("collection")),
 			maxV2StructuredBodySize, "collection") {
 			return
 		}
@@ -431,7 +431,7 @@ func UploadFileHandler(s *v2service.Service) gin.HandlerFunc {
 
 		var req v2model.UploadFileRequest
 		if !decodeStrictJSONBody(c, &req,
-			"send multipart/form-data with a file field, or JSON {\"url\": …} — GET /v2/schemas/file for the schema",
+			v2model.Hintf("send multipart/form-data with a file field, or JSON {\"url\": …} — %s for the schema", v2model.RefGetSchema("file")),
 			maxV2StructuredBodySize, "file") {
 			return
 		}

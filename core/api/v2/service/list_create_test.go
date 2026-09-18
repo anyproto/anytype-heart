@@ -120,7 +120,8 @@ func TestV2CreateQuery(t *testing.T) {
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Contains(t, apiErr.Issues[0].Message, `a query is already scoped to type "chore" — drop the type filter`)
-		assert.Contains(t, apiErr.Issues[0].Hint, "POST /v2/spaces/{space_id}/search")
+		assert.Contains(t, apiErr.Issues[0].Hint, "POST /v2/spaces/space1/search")
+		assert.Equal(t, []v2model.Ref{v2model.RefSearchSpace(testSpaceId)}, apiErr.Issues[0].SeeAlso)
 	})
 
 	t.Run("a type filter gets the targeted message in the structured form too", func(t *testing.T) {

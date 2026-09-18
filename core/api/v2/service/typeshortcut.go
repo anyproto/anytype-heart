@@ -109,8 +109,7 @@ func typeShortcutDocument(fields map[string]json.RawMessage) (map[string]json.Ra
 				v2model.Issue{
 					Path:    "/" + member,
 					Message: "there is no property list to add to, remove from or reorder until the type is created",
-					Hint:    "create the type with property_definitions, then send ops to PATCH /v2/spaces/{space_id}/types/{type}",
-				})
+				}.Hintf("create the type with property_definitions, then send ops to %s", v2model.NewRef(v2model.OpUpdateType)))
 		}
 	}
 

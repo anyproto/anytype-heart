@@ -167,7 +167,10 @@ func TestV2EnsureSpace(t *testing.T) {
 				apiErr := v2Err(t, call(fx))
 				assert.Equal(t, http.StatusNotFound, apiErr.Status)
 				assert.Equal(t, v2model.CodeNotFound, apiErr.Code)
-				assert.Equal(t, `space "deadSpace" is not available (deleted, left, or still joining) — list live spaces with GET /v2/spaces`, apiErr.Message)
+				assert.Equal(t, `space "deadSpace" is not available (deleted, left, or still joining)`, apiErr.Message)
+				require.Len(t, apiErr.Issues, 1)
+				assert.Equal(t, "list live spaces with GET /v2/spaces", apiErr.Issues[0].Hint)
+				assert.Equal(t, []v2model.Ref{v2model.RefListSpaces()}, apiErr.Issues[0].SeeAlso, "the repair is typed for callers without routes")
 			})
 		}
 	})
@@ -257,7 +260,9 @@ func TestV2GetMemberMe(t *testing.T) {
 		// then
 		apiErr := v2Err(t, err)
 		assert.Equal(t, v2model.CodeNotFound, apiErr.Code)
-		assert.Contains(t, apiErr.Message, "GET /v2/spaces/{space_id}/members")
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Hint, "GET /v2/spaces/"+testSpaceId+"/members")
+		assert.Equal(t, []v2model.Ref{v2model.RefListMembers(testSpaceId)}, apiErr.Issues[0].SeeAlso)
 	})
 }
 

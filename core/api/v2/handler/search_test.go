@@ -50,7 +50,7 @@ func TestSearchObjectsHandler(t *testing.T) {
 		assert.Equal(t, v2model.CodeValidationFailed, got.Code)
 		require.Len(t, got.Issues, 1)
 		assert.Equal(t, "/limit", got.Issues[0].Path)
-		assert.Contains(t, got.Issues[0].Hint, "?offset=&limit= query params")
+		assert.Contains(t, got.Issues[0].Hint, "resend with ?limit=25")
 	})
 
 	t.Run("any unknown body field names the allowed fields", func(t *testing.T) {

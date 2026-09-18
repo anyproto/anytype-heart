@@ -245,8 +245,7 @@ func (s *Service) ResolveSpaceRef(ctx context.Context, ref string) (string, erro
 			v2model.Issue{
 				Path:    "space",
 				Message: "candidates: " + strings.Join(candidates, ", "),
-				Hint:    "use a longer reference, or the id exactly as GET /v2/spaces prints it",
-			})
+			}.Hintf("use a longer reference, or the id exactly as %s prints it", v2model.RefListSpaces()))
 	default:
 		return ref, nil
 	}

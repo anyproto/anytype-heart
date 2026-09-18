@@ -63,7 +63,7 @@ func GetSpaceHandler(s *v2service.Service) gin.HandlerFunc {
 func CreateSpaceHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req v2model.CreateSpaceRequest
-		if !decodeStrictJSONBody(c, &req, "the space body takes name and an optional description", maxSpaceRequestBody, "space") {
+		if !decodeStrictJSONBody(c, &req, v2model.Plain("the space body takes name and an optional description"), maxSpaceRequestBody, "space") {
 			return
 		}
 		dryRun := isV2DryRun(c)
@@ -102,7 +102,7 @@ func CreateSpaceHandler(s *v2service.Service) gin.HandlerFunc {
 func UpdateSpaceHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req v2model.UpdateSpaceRequest
-		if !decodeStrictJSONBody(c, &req, "the update takes name and/or description — at least one", maxSpaceRequestBody, "space") {
+		if !decodeStrictJSONBody(c, &req, v2model.Plain("the update takes name and/or description — at least one"), maxSpaceRequestBody, "space") {
 			return
 		}
 		space, err := s.UpdateSpace(c.Request.Context(), c.Param("space_id"), req, isV2DryRun(c))
