@@ -159,7 +159,7 @@ func TestV2WriteVocabularyIsTheReadVocabulary(t *testing.T) {
 
 		// when
 		_, err := fx.UpdateType(ctx, testSpaceId, "chore",
-			[]byte(`{"type_settings":{"property_definitions":[{"property":"due_date","section":"featured"}]}}`), false, true)
+			"", []byte(`{"type_settings":{"property_definitions":[{"property":"due_date","section":"featured"}]}}`), false, true)
 
 		// then
 		require.NoError(t, err)

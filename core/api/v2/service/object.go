@@ -261,10 +261,14 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 	if err != nil {
 		return nil, "", fmt.Errorf("object %s: %w", objectId, err)
 	}
+	// a served document matches the schema this API publishes for it
+	trimAPIDocumentEnvelope(fields)
 
-	if fields["etag"], err = rawJSON(etag); err != nil {
-		return nil, "", err
-	}
+	// the etag rides the ETag header (handler/object.go), which is where a
+	// precondition is read from and what If-Match consumes. It is returned
+	// beside the body for the handler to set, not written into the document:
+	// the published contract declares an etag BODY member only on the write
+	// receipts (CreateResult, EditResult), which are not documents.
 
 	if plan.outline {
 		if err := buildOutlineEnvelope(fields, plan.wantProperties); err != nil {

@@ -365,7 +365,7 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 		var probes []sortProbe
 		if err := json.Unmarshal(req.Sorts, &probes); err != nil {
 			return nil, v2model.ValidationFailed("invalid sorts",
-				v2model.Issue{Path: "/sorts", Message: err.Error(), Hint: "sorts is the SPEC §6.2 array of sort objects"})
+				v2model.Issue{Path: "/sorts", Message: err.Error(), Hint: "sorts is an array of sort objects"})
 		}
 		for i, probe := range probes {
 			if probe.Property == "" {
@@ -694,7 +694,7 @@ func decodeFilterNodes(raw json.RawMessage, path string) ([]searchFilterNode, er
 	var nodes []searchFilterNode
 	if err := json.Unmarshal(raw, &nodes); err != nil {
 		return nil, v2model.ValidationFailed("invalid filters",
-			v2model.Issue{Path: path, Message: err.Error(), Hint: "filters is the SPEC §6.2 array of filter nodes"})
+			v2model.Issue{Path: path, Message: err.Error(), Hint: "filters is an array of filter nodes"})
 	}
 	if issues := validateFilterStructure(nodes, path); len(issues) > 0 {
 		return nil, v2model.ValidationFailed("invalid filter structure", issues...)

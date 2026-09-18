@@ -60,9 +60,9 @@ type v2StateApplier struct {
 	objectId string
 	// v is the request's error vocabulary (?keys — §4.3), captured at
 	// construction: the op appliers run without a ctx of their own.
-	v errKeys
-	sbType   model.SmartBlockType
-	st       *state.State
+	v      errKeys
+	sbType model.SmartBlockType
+	st     *state.State
 
 	resolvers *creatingResolvers
 
@@ -215,7 +215,7 @@ func (a *v2StateApplier) begin() ([]byte, error) {
 	}
 	if len(warnings) > 0 {
 		return nil, v2model.NewError(http.StatusUnprocessableEntity, v2model.CodeValidationFailed,
-			"this object contains content the AnyBlock format cannot fully represent — a PATCH would drop it (C11); edit it in the app",
+			"this object contains content the AnyBlock format cannot fully represent — a PATCH would drop it; edit it in the app",
 			warnings...)
 	}
 	// seed the view from the document we just rendered: without this the first
@@ -535,7 +535,13 @@ func rebaseEditedDocError(doc []byte, createdBlocks map[string]string, err error
 // apply dispatches one op. i is the op's position (error paths are
 // "ops[i]…", R5).
 func (a *v2StateApplier) apply(i int, raw json.RawMessage) error {
-	opPath := fmt.Sprintf("ops[%d]", i)
+	return a.applyAt(raw, fmt.Sprintf("ops[%d]", i))
+}
+
+// applyAt is apply with the op's path supplied. The type channel addresses
+// its ops as "/ops/N" rather than "ops[N]", and an error pointing at a
+// position in a list the caller did not write is the defect this avoids.
+func (a *v2StateApplier) applyAt(raw json.RawMessage, opPath string) error {
 	// per-op scratch: which payload ids this op resolved from a shorter
 	// spelling. Reset here rather than in claimPayloadIds so an op that
 	// never reaches the collision guard cannot leave an origin behind for
@@ -1031,7 +1037,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 			return false
 		case v2OutputOnlyPropertyKeys(key):
 			issues = append(issues, v2model.Issue{Path: path,
-				Message: fmt.Sprintf("%q is output-only (SPEC §4a) — export writes it, writes must not", key)})
+				Message: fmt.Sprintf("%q is output-only — export writes it, writes must not", key)})
 			return false
 		default:
 			entries, err := a.propEntries() // primed once per PATCH (§7.5a-2)
@@ -1091,7 +1097,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		path := opPath + ".unset." + spelledAs(key)
 		if v2OutputOnlyPropertyKeys(key) {
 			issues = append(issues, v2model.Issue{Path: path,
-				Message: fmt.Sprintf("%q is output-only (SPEC §4a) and cannot be unset", key)})
+				Message: fmt.Sprintf("%q is output-only and cannot be unset", key)})
 			continue
 		}
 		if !claim(key, "unset", path) {
@@ -2274,11 +2280,11 @@ func (a *v2StateApplier) applySetCell(op opSetCell, opPath string) error {
 	if typ := blockType(table); typ != "table" {
 		return v2model.ValidationFailed(
 			fmt.Sprintf("block %q is a %q block, not a table", op.TableId, typ),
-			v2model.Issue{Path: opPath + ".table_id", Message: "set_cell addresses a table block (SPEC §6.1)"})
+			v2model.Issue{Path: opPath + ".table_id", Message: "set_cell addresses a table block"})
 	}
 	if op.Value == nil {
 		return v2model.ValidationFailed("value is required",
-			v2model.Issue{Path: opPath + ".value", Message: "give the new cell content — a string, null (clear), a block object, or an array of blocks (SPEC §6.1)"})
+			v2model.Issue{Path: opPath + ".value", Message: "give the new cell content — a string, null (clear), a block object, or an array of blocks"})
 	}
 	var value any
 	if err := decodeJSONUseNumber(op.Value, &value); err != nil {
@@ -2289,7 +2295,7 @@ func (a *v2StateApplier) applySetCell(op opSetCell, opPath string) error {
 	case nil, string, map[string]any, []any:
 	default:
 		return v2model.ValidationFailed("invalid cell value",
-			v2model.Issue{Path: opPath + ".value", Message: "a cell is a string, null, a block object, or an array of blocks (SPEC §6.1)"})
+			v2model.Issue{Path: opPath + ".value", Message: "a cell is a string, null, a block object, or an array of blocks"})
 	}
 	// the array form's elements past the first are the cell's flat
 	// DESCENDANTS, ids and all — a default read serves those relabeled, so

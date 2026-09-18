@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -761,4 +762,276 @@ func TestReconcileTypeDataviewColumns(t *testing.T) {
 		assert.False(t, ReconcileTypeDataviewColumns(nil, typeProperties))
 		assert.False(t, ReconcileTypeDataviewColumns(&model.BlockContentDataview{}, typeProperties))
 	})
+}
+
+func TestPruneTypeDataviewColumns(t *testing.T) {
+	dataview := func(views ...*model.BlockContentDataviewView) *model.BlockContentDataview {
+		return &model.BlockContentDataview{
+			RelationLinks: []*model.RelationLink{
+				{Key: bundle.RelationKeyName.String(), Format: model.RelationFormat_longtext},
+				{Key: "sun_needs", Format: model.RelationFormat_status},
+			},
+			Views: views,
+		}
+	}
+	view := func(id, name string, keys ...string) *model.BlockContentDataviewView {
+		v := &model.BlockContentDataviewView{Id: id, Name: name}
+		for _, key := range keys {
+			v.Relations = append(v.Relations, &model.BlockContentDataviewRelation{Key: key, IsVisible: true})
+		}
+		return v
+	}
+	columnKeys := func(v *model.BlockContentDataviewView) []string {
+		keys := make([]string, 0, len(v.Relations))
+		for _, rel := range v.Relations {
+			keys = append(keys, rel.Key)
+		}
+		return keys
+	}
+
+	t.Run("the column goes from every view that merely shows it", func(t *testing.T) {
+		// given
+		dv := dataview(
+			view("all", "All", bundle.RelationKeyName.String(), "sun_needs"),
+			view("grid", "Grid", "sun_needs"),
+		)
+
+		// when
+		changed := PruneTypeDataviewColumns(dv, []string{"sun_needs"})
+
+		// then
+		assert.True(t, changed)
+		assert.Equal(t, []string{bundle.RelationKeyName.String()}, columnKeys(dv.Views[0]))
+		assert.Empty(t, columnKeys(dv.Views[1]))
+	})
+
+	// The three ways a view can be arranged by a property. Dropping the column
+	// out from under any of them leaves a view organised by something nobody
+	// can see, so the view is reported and left alone instead.
+	t.Run("a view arranged by the property keeps it", func(t *testing.T) {
+		for name, arrange := range map[string]func(*model.BlockContentDataviewView){
+			"group": func(v *model.BlockContentDataviewView) { v.GroupRelationKey = "sun_needs" },
+			"sort": func(v *model.BlockContentDataviewView) {
+				v.Sorts = []*model.BlockContentDataviewSort{{RelationKey: "sun_needs"}}
+			},
+			"filter": func(v *model.BlockContentDataviewView) {
+				v.Filters = []*model.BlockContentDataviewFilter{{RelationKey: "sun_needs"}}
+			},
+			"nested filter": func(v *model.BlockContentDataviewView) {
+				v.Filters = []*model.BlockContentDataviewFilter{{NestedFilters: []*model.BlockContentDataviewFilter{
+					{RelationKey: "sun_needs"},
+				}}}
+			},
+		} {
+			t.Run(name, func(t *testing.T) {
+				// given
+				board := view("board", "Board", bundle.RelationKeyName.String(), "sun_needs")
+				arrange(board)
+				dv := dataview(board)
+
+				// when
+				plan := PlanTypeDataviewColumnPrune(dv, []string{"sun_needs"})
+				changed := PruneTypeDataviewColumns(dv, []string{"sun_needs"})
+
+				// then
+				assert.False(t, changed)
+				assert.Equal(t, []string{bundle.RelationKeyName.String(), "sun_needs"}, columnKeys(dv.Views[0]))
+				require.Len(t, plan.InUse, 1, "a view left alone must be named")
+				assert.Equal(t, "Board", plan.InUse[0].ViewName)
+				assert.Empty(t, plan.Pruned)
+			})
+		}
+	})
+
+	t.Run("a view arranged by one removed property keeps its other columns too", func(t *testing.T) {
+		// given: pruning the rest would still be a rewrite of a view this
+		// plan has decided not to touch
+		board := view("board", "Board", "sun_needs", "water_needs")
+		board.GroupRelationKey = "sun_needs"
+		dv := dataview(board)
+
+		// when
+		changed := PruneTypeDataviewColumns(dv, []string{"sun_needs", "water_needs"})
+
+		// then
+		assert.False(t, changed)
+		assert.Equal(t, []string{"sun_needs", "water_needs"}, columnKeys(dv.Views[0]))
+	})
+
+	t.Run("a property no view shows changes nothing", func(t *testing.T) {
+		// given
+		dv := dataview(view("all", "All", bundle.RelationKeyName.String()))
+
+		// when
+		plan := PlanTypeDataviewColumnPrune(dv, []string{"sun_needs"})
+
+		// then
+		assert.True(t, plan.Empty())
+		assert.False(t, PruneTypeDataviewColumns(dv, []string{"sun_needs"}))
+	})
+
+	t.Run("nothing to work on is not a crash", func(t *testing.T) {
+		assert.False(t, PruneTypeDataviewColumns(nil, []string{"sun_needs"}))
+		assert.False(t, PruneTypeDataviewColumns(&model.BlockContentDataview{}, []string{"sun_needs"}))
+		assert.False(t, PruneTypeDataviewColumns(dataview(view("all", "All", "sun_needs")), nil))
+	})
+
+	// The reconcile that runs on every type open only ever ADDS a column for a
+	// property the type recommends, so a prune of a property the type no
+	// longer lists is not undone by it.
+	t.Run("the reconcile does not put a removed column back", func(t *testing.T) {
+		// given
+		dv := dataview(view("all", "All", bundle.RelationKeyName.String(), "sun_needs"))
+		require.True(t, PruneTypeDataviewColumns(dv, []string{"sun_needs"}))
+
+		// when: the type now recommends only name
+		ReconcileTypeDataviewColumns(dv, []*model.RelationLink{
+			{Key: bundle.RelationKeyName.String(), Format: model.RelationFormat_longtext},
+		})
+
+		// then
+		assert.Equal(t, []string{bundle.RelationKeyName.String()}, columnKeys(dv.Views[0]))
+	})
+}
+
+// TestPruneDropsUnreferencedRelationLinks covers the half a pruned column
+// leaves behind. The served type document builds its `properties` array by
+// walking RelationLinks, so a link left after its column is gone means GET
+// still lists a property the type no longer recommends — the "checked and was
+// reassured" reading this prune exists to end. It also feeds the reconcile,
+// which re-adds a link with no column as a hidden column.
+func TestPruneDropsUnreferencedRelationLinks(t *testing.T) {
+	newDv := func() *model.BlockContentDataview {
+		return &model.BlockContentDataview{
+			RelationLinks: []*model.RelationLink{
+				{Key: "name", Format: model.RelationFormat_longtext},
+				{Key: "sun_needs", Format: model.RelationFormat_status},
+				{Key: "water_needs", Format: model.RelationFormat_longtext},
+			},
+			Views: []*model.BlockContentDataviewView{
+				{Id: "v1", Name: "All", Relations: []*model.BlockContentDataviewRelation{
+					{Key: "name", IsVisible: true},
+					{Key: "sun_needs", IsVisible: true},
+				}},
+				{Id: "v2", Name: "Grid", Relations: []*model.BlockContentDataviewRelation{
+					{Key: "sun_needs", IsVisible: true},
+					{Key: "water_needs", IsVisible: true},
+				}},
+			},
+		}
+	}
+	linkKeys := func(dv *model.BlockContentDataview) []string {
+		var keys []string
+		for _, link := range dv.RelationLinks {
+			keys = append(keys, link.Key)
+		}
+		return keys
+	}
+
+	t.Run("a link no view references any more goes", func(t *testing.T) {
+		// given
+		dv := newDv()
+
+		// when: sun_needs leaves both views
+		changed := PruneTypeDataviewColumns(dv, []string{"sun_needs"})
+
+		// then
+		require.True(t, changed)
+		assert.Equal(t, []string{"name", "water_needs"}, linkKeys(dv),
+			"a stale link keeps the property in the served document")
+	})
+
+	t.Run("a link a surviving view still uses stays", func(t *testing.T) {
+		// given: a view that groups by the key is left whole, so it keeps the column
+		dv := newDv()
+		dv.Views[1].GroupRelationKey = "sun_needs"
+
+		// when
+		PruneTypeDataviewColumns(dv, []string{"sun_needs"})
+
+		// then: v2 kept its column, so the format cache must keep the link
+		assert.Contains(t, linkKeys(dv), "sun_needs",
+			"a view still showing it needs its format")
+	})
+
+	t.Run("an untouched key keeps its link", func(t *testing.T) {
+		// given
+		dv := newDv()
+
+		// when
+		PruneTypeDataviewColumns(dv, []string{"sun_needs"})
+
+		// then
+		assert.Contains(t, linkKeys(dv), "name")
+	})
+}
+
+// TestPruneKeepsViewsArrangedByCoverOrEnd covers the two arrangements beyond
+// grouping. A gallery's cover and a calendar's date are the view doing
+// something WITH the property, not merely showing it — dropping the column out
+// from under either leaves the view arranged by something nobody can see, and
+// a dangling key in its settings.
+func TestPruneKeepsViewsArrangedByCoverOrEnd(t *testing.T) {
+	newDv := func(arrange func(*model.BlockContentDataviewView)) *model.BlockContentDataview {
+		view := &model.BlockContentDataviewView{
+			Id: "v1", Name: "Gallery",
+			Relations: []*model.BlockContentDataviewRelation{
+				{Key: "name", IsVisible: true},
+				{Key: "photo", IsVisible: true},
+			},
+		}
+		arrange(view)
+		return &model.BlockContentDataview{
+			RelationLinks: []*model.RelationLink{{Key: "name"}, {Key: "photo"}},
+			Views:         []*model.BlockContentDataviewView{view},
+		}
+	}
+
+	t.Run("a view covering by the property keeps it", func(t *testing.T) {
+		// given
+		dv := newDv(func(v *model.BlockContentDataviewView) { v.CoverRelationKey = "photo" })
+
+		// when
+		plan := PlanTypeDataviewColumnPrune(dv, []string{"photo"})
+		PruneTypeDataviewColumns(dv, []string{"photo"})
+
+		// then
+		require.Len(t, plan.InUse, 1, "the view is arranged by it, so it is reported in use")
+		assert.Empty(t, plan.Pruned)
+		assert.Equal(t, []string{"name", "photo"}, viewRelationKeys(dv.Views[0]))
+	})
+
+	t.Run("a view ending by the property keeps it", func(t *testing.T) {
+		// given
+		dv := newDv(func(v *model.BlockContentDataviewView) { v.EndRelationKey = "photo" })
+
+		// when
+		plan := PlanTypeDataviewColumnPrune(dv, []string{"photo"})
+		PruneTypeDataviewColumns(dv, []string{"photo"})
+
+		// then
+		require.Len(t, plan.InUse, 1)
+		assert.Equal(t, []string{"name", "photo"}, viewRelationKeys(dv.Views[0]))
+	})
+
+	t.Run("a view merely showing it loses the column", func(t *testing.T) {
+		// given: the control — no arrangement
+		dv := newDv(func(v *model.BlockContentDataviewView) {})
+
+		// when
+		PruneTypeDataviewColumns(dv, []string{"photo"})
+
+		// then
+		assert.Equal(t, []string{"name"}, viewRelationKeys(dv.Views[0]))
+	})
+}
+
+func viewRelationKeys(view *model.BlockContentDataviewView) []string {
+	var keys []string
+	for _, rel := range view.Relations {
+		if rel != nil {
+			keys = append(keys, rel.Key)
+		}
+	}
+	return keys
 }

@@ -55,7 +55,7 @@ func decodeSearchRequest(c *gin.Context) (v2model.SearchRequest, bool) {
 		if field, ok := unknownFieldName(err); ok {
 			issue.Path = "/" + field
 			if field == "limit" || field == "offset" {
-				issue.Hint = fmt.Sprintf("pagination is the ?offset=&limit= query params (C10), not a body field — e.g. POST …/search?%s=25", field)
+				issue.Hint = fmt.Sprintf("pagination is the ?offset=&limit= query params, not a body field — e.g. POST …/search?%s=25", field)
 			}
 		}
 		RespondError(c, v2model.ValidationFailed("invalid search request", issue))

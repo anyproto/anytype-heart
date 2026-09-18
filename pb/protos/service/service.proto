@@ -186,10 +186,12 @@ service ClientCommands {
     // ObjectType commands
     // ***
     rpc ObjectCreateObjectType (anytype.Rpc.Object.CreateObjectType.Request) returns (anytype.Rpc.Object.CreateObjectType.Response);
-    rpc ObjectTypeRelationAdd (anytype.Rpc.ObjectType.Relation.Add.Request) returns (anytype.Rpc.ObjectType.Relation.Add.Response);
-    rpc ObjectTypeRelationRemove (anytype.Rpc.ObjectType.Relation.Remove.Request) returns (anytype.Rpc.ObjectType.Relation.Remove.Response);
-    rpc ObjectTypeRecommendedRelationsSet (anytype.Rpc.ObjectType.Recommended.RelationsSet.Request) returns (anytype.Rpc.ObjectType.Recommended.RelationsSet.Response);
-    rpc ObjectTypeRecommendedFeaturedRelationsSet (anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request) returns (anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response);
+    rpc ObjectTypePropertyAdd (anytype.Rpc.ObjectType.Property.Add.Request) returns (anytype.Rpc.ObjectType.Property.Add.Response);
+    rpc ObjectTypePropertyRemove (anytype.Rpc.ObjectType.Property.Remove.Request) returns (anytype.Rpc.ObjectType.Property.Remove.Response);
+    // Deprecated: use ObjectTypePropertyAdd / ObjectTypePropertyRemove.
+    rpc ObjectTypeRecommendedRelationsSet (anytype.Rpc.ObjectType.Recommended.RelationsSet.Request) returns (anytype.Rpc.ObjectType.Recommended.RelationsSet.Response) { option deprecated = true; }
+    // Deprecated: use ObjectTypePropertyAdd / ObjectTypePropertyRemove.
+    rpc ObjectTypeRecommendedFeaturedRelationsSet (anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request) returns (anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response) { option deprecated = true; }
     rpc ObjectTypeListConflictingRelations (anytype.Rpc.ObjectType.ListConflictingRelations.Request) returns (anytype.Rpc.ObjectType.ListConflictingRelations.Response);
     rpc ObjectTypeResolveLayoutConflicts (anytype.Rpc.ObjectType.ResolveLayoutConflicts.Request) returns (anytype.Rpc.ObjectType.ResolveLayoutConflicts.Response);
     rpc ObjectTypeSetOrder (anytype.Rpc.ObjectType.SetOrder.Request) returns (anytype.Rpc.ObjectType.SetOrder.Response);

@@ -54,8 +54,14 @@ type (
 )
 
 var (
-	DetectFormat              = codec.DetectFormat
-	SchemaJSON                = codec.SchemaJSON
+	DetectFormat = codec.DetectFormat
+	SchemaJSON   = codec.SchemaJSON
+	// The authoring subset (the format's §2g): the same format at the same
+	// version, narrowed to what an author composes from nothing. The API's
+	// create endpoints serve and enforce THIS, not the full backup grammar,
+	// which additionally carries legends, minted ids and export provenance.
+	AuthoringSchemaJSON       = codec.AuthoringSchemaJSON
+	ValidateAuthoring         = codec.ValidateAuthoring
 	FoldKeyTerm               = codec.FoldKeyTerm
 	BundledPropertyKeyByName  = codec.BundledPropertyKeyByName
 	BundledPropertyKeysByFold = codec.BundledPropertyKeysByFold

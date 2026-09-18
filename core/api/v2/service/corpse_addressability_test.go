@@ -914,7 +914,7 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 
 			// when — exactly the typeProperties GET just served
 			result, err := fx.UpdateType(context.Background(), testSpaceId, "livetype",
-				[]byte(`{"type_settings":{"property_definitions":[{"property":"`+corpseBsonKey+`","name":"Warranty until","format":"text"}]}}`), false, true)
+				"", []byte(`{"type_settings":{"property_definitions":[{"property":"`+corpseBsonKey+`","name":"Warranty until","format":"text"}]}}`), false, true)
 
 			// then — nothing is minted and the list still points at the very
 			// relation object the GET resolved it from: a round-trip identity
@@ -950,7 +950,7 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 				Error: &pb.RpcObjectSetDetailsResponseError{Code: pb.RpcObjectSetDetailsResponseError_NULL}}).Maybe()
 
 			_, err := fx.UpdateType(context.Background(), testSpaceId, "livetype",
-				[]byte(`{"type_settings":{"property_definitions":[{"property":"`+corpseSlug+`","name":"Warranty until","format":"text"}]}}`), false, true)
+				"", []byte(`{"type_settings":{"property_definitions":[{"property":"`+corpseSlug+`","name":"Warranty until","format":"text"}]}}`), false, true)
 
 			require.NoError(t, err)
 			require.Len(t, minted, 1)
@@ -1279,7 +1279,7 @@ func TestV2TypePropertiesRefusesRemovedBundledKey(t *testing.T) {
 			})
 
 			_, err := fx.UpdateType(ctx, testSpaceId, "livetype",
-				[]byte(`{"type_settings":{"property_definitions":[{"property":"tag"}]}}`), false, true)
+				"", []byte(`{"type_settings":{"property_definitions":[{"property":"tag"}]}}`), false, true)
 
 			apiErr := v2Err(t, err)
 			assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -1311,7 +1311,7 @@ func TestV2TypePropertiesRefusesRemovedBundledKey(t *testing.T) {
 
 			// when — the spelling the GET serves
 			result, err := fx.UpdateType(ctx, testSpaceId, "livetype",
-				[]byte(`{"type_settings":{"property_definitions":[{"property":"due_date","format":"date"}]}}`), false, true)
+				"", []byte(`{"type_settings":{"property_definitions":[{"property":"due_date","format":"date"}]}}`), false, true)
 
 			// then — the reference survives, nothing minted, nothing installed
 			require.NoError(t, err)

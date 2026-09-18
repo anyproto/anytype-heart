@@ -196,10 +196,6 @@ func RegisterRoutes(router *gin.Engine, deps RouteDeps) {
 		deps.AnalyticsEvent("V2GetType"),
 		v2handler.GetTypeHandler(deps.Service),
 	)
-	v2.GET("/spaces/:space_id/types/:type/schema",
-		deps.AnalyticsEvent("V2GetTypeSchema"),
-		v2handler.GetTypeSchemaHandler(deps.Service),
-	)
 	v2.GET("/spaces/:space_id/properties",
 		deps.AnalyticsEvent("V2ListProperties"),
 		v2handler.ListPropertiesHandler(deps.Service),

@@ -266,7 +266,7 @@ func collectViewPropertyKeys(req v2model.CreateQueryRequest) ([]viewKeyRef, erro
 		var nodes []filterNodeProbe
 		if err := json.Unmarshal(req.Filters, &nodes); err != nil {
 			return nil, v2model.ValidationFailed("invalid filters",
-				v2model.Issue{Path: "/filters", Message: err.Error(), Hint: "filters is the SPEC §6.2 array of filter nodes"})
+				v2model.Issue{Path: "/filters", Message: err.Error(), Hint: "filters is an array of filter nodes"})
 		}
 		collectFilterKeys(nodes, "/filters", &refs)
 	}
@@ -274,7 +274,7 @@ func collectViewPropertyKeys(req v2model.CreateQueryRequest) ([]viewKeyRef, erro
 		var sorts []sortProbe
 		if err := json.Unmarshal(req.Sorts, &sorts); err != nil {
 			return nil, v2model.ValidationFailed("invalid sorts",
-				v2model.Issue{Path: "/sorts", Message: err.Error(), Hint: "sorts is the SPEC §6.2 array of sort objects"})
+				v2model.Issue{Path: "/sorts", Message: err.Error(), Hint: "sorts is an array of sort objects"})
 		}
 		for i, sort := range sorts {
 			if sort.Property != "" {
@@ -286,7 +286,7 @@ func collectViewPropertyKeys(req v2model.CreateQueryRequest) ([]viewKeyRef, erro
 		var views []viewProbe
 		if err := json.Unmarshal(req.Views, &views); err != nil {
 			return nil, v2model.ValidationFailed("invalid views",
-				v2model.Issue{Path: "/views", Message: err.Error(), Hint: "views is the SPEC §6.2 array of view objects"})
+				v2model.Issue{Path: "/views", Message: err.Error(), Hint: "views is an array of view objects"})
 		}
 		for i, view := range views {
 			prefix := fmt.Sprintf("/views/%d", i)

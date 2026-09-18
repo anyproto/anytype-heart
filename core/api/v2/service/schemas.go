@@ -13,13 +13,13 @@ package v2service
 // the GBNF conversion consumes.
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
 )
 
@@ -30,11 +30,33 @@ type v2SchemaKind struct {
 	example  string
 }
 
+// v2PropertyFormatEnum is the authorable property-format vocabulary, published
+// by both the `property` kind and the `type` kind's property_definitions. One
+// constant because two spellings of this list drift: core/api/wrapper's
+// create_type reads it to keep its own list in step.
+//
+// Deliberately NARROWER than the server takes: POST /properties also accepts
+// `emoji`, `properties` and `map`. They are left unpublished as a vocabulary
+// choice, not because the server refuses them, so widening this list is a
+// product decision rather than a bug fix.
+const v2PropertyFormatEnum = `"text","number","select","multi_select","date","files","checkbox","url","email","phone","objects"`
+
+// v2IconColorProp is the icon palette, shared by all three icon shapes. The
+// format layer also accepts a raw palette number for a stored colour the names
+// do not cover; an author never writes one, so it is not advertised here.
+const v2IconColorProp = `"type":"string","enum":["grey","yellow","orange","red","pink","purple","blue","ice","teal","lime"]`
+
 var v2SchemaKinds = map[string]v2SchemaKind{
 	"object": {
 		endpoint: "POST /v2/spaces/{space_id}/objects",
 		// the full AnyBlock document schema is served verbatim (schema: "")
-		example: `{"formatVersion":"2.0","type":"task","properties":{"name":"Prepare the Q3 report","status":["In progress"],"due_date":"2026-08-01T00:00:00Z"},"blocks":[{"type":"heading_2","text":"Steps"},{"type":"checkbox","text":"Collect the numbers"},{"indent":1,"type":"paragraph","text":"Ask **finance** first"}]}`,
+		//
+		// No select value here. `status` carried ["In progress"], and options
+		// are per-space objects that no bundled property ships with — so the
+		// published example needed ?create_missing_options=true and was
+		// refused at default settings. The `property` kind is where the option
+		// vocabulary is demonstrated, and there it needs no flag.
+		example: `{"formatVersion":"2.0","type":"task","properties":{"name":"Prepare the Q3 report","due_date":"2026-08-01T00:00:00Z"},"blocks":[{"type":"heading_2","text":"Steps"},{"type":"checkbox","text":"Collect the numbers"},{"indent":1,"type":"paragraph","text":"Ask **finance** first"}]}`,
 	},
 	"shortcut": {
 		endpoint: "POST /v2/spaces/{space_id}/objects",
@@ -45,10 +67,61 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"markdown":{"type":"string","maxLength":1048576,"description":"markdown body parsed into blocks server-side — part of the same single create (dry runs validate it too); at most 2048 parsed blocks"}}}`,
 		example: `{"type":"task","name":"Buy milk","properties":{"due_date":"2026-08-01T00:00:00Z"},"markdown":"- [ ] oat\n- [ ] whole"}`,
 	},
+	// The flat body, not the AnyBlock document. `type` is the kind an agent
+	// reaches for before it has read anything, and serving the interchange
+	// document here was a measured failure: that document puts the display name
+	// inside `properties`, the settings inside `type_settings` and the field
+	// list inside `type_settings.property_definitions`, and callers reliably
+	// sent a flat body anyway and got a refusal. The document stays available,
+	// under `type_document`, and both bodies reach the same endpoint.
 	"type": {
 		endpoint: "POST /v2/spaces/{space_id}/types",
-		// a type document is an AnyBlock document (kind object_type)
-		example: `{"formatVersion":"2.0","kind":"object_type","icon":{"format":"emoji","emoji":"✅"},"properties":{"name":"Task"},"type_settings":{"api_key":"task","layout":"todo","plural_name":"Tasks","property_definitions":[{"property":"due_date","name":"Due date","format":"date","section":"featured"},{"property":"status","name":"Status","format":"select"}]}}`,
+		// NO root `required`. One schema serves POST and PATCH, and a
+		// grammar-constrained decoder emits every required member — so
+		// `required:["name"]` made it invent a name on each PATCH, silently
+		// renaming the type. The requirement moves into `name`'s own
+		// description, where it informs without compelling.
+		schema: `{"type":"object","additionalProperties":false,"description":"the body POST takes. PATCH takes the same members, all optional, except api_key, which is create-only","properties":{` +
+			`"name":{"type":"string","minLength":1,"maxLength":4096,"description":"display name, singular. Required on POST; on PATCH send it only to rename"},` +
+			`"plural_name":{"type":"string","maxLength":4096},` +
+			`"icon":{"type":"object","additionalProperties":false,"description":"give format plus its own member: emoji, name or file","properties":{` +
+			`"format":{"type":"string","enum":["emoji","icon","file"]},` +
+			`"emoji":{"type":"string","minLength":1,"maxLength":32},` +
+			`"name":{"type":"string","minLength":1,"maxLength":256,"description":"a built-in icon name, with format icon"},` +
+			`"file":{"type":"string","minLength":1,"maxLength":4096,"description":"id of an image object in this space, with format file"},` +
+			`"color":{` + v2IconColorProp + `}},` +
+			`"oneOf":[{"required":["format","emoji"],"properties":{"format":{"const":"emoji"}}},` +
+			`{"required":["format","name"],"properties":{"format":{"const":"icon"}}},` +
+			`{"required":["format","file"],"properties":{"format":{"const":"file"}}}]},` +
+			`"layout":{"type":"string","enum":["basic","note","todo","profile","bookmark","set","collection"],"description":"the layout instances of this type get; basic unless you need another"},` +
+			`"api_key":{"type":"string","maxLength":256,"pattern":"^[a-zA-Z0-9_]+$","description":"the key object bodies name this type by; derived from the name when omitted"},` +
+			`"default_view":{"type":"string","enum":["table","list","gallery","kanban","calendar","graph"],"description":"how a set or collection of this type opens; applies to ones created after the change"},` +
+			`"default_template":{"type":"string","maxLength":256,"description":"id of the template new objects of this type start from; empty string clears it"},` +
+			`"property_definitions":{"type":"array","maxItems":128,"description":"the type's whole field list; an unknown name mints a property. On PATCH it replaces the list, so to change one field send an ops envelope with add_property instead","items":{` +
+			`"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
+			`"name":{"type":"string","minLength":1,"maxLength":128,"description":"the property's spelling, e.g. Due date"},` +
+			`"format":{"type":"string","enum":[` + v2PropertyFormatEnum + `],"description":"the new property's format; omit it and an unknown name is created as text"},` +
+			`"section":{"type":"string","enum":["featured","hidden"],"description":"featured shows the property on the object itself"},` +
+			`"options":{"type":"array","maxItems":100,"description":"select and multi_select only: the option vocabulary; creating options here needs ?create_missing_options=true","items":{` +
+			`"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
+			`"name":{"type":"string","minLength":1,"maxLength":4096},"color":{"type":"string","maxLength":64}}}}}}}}}`,
+		// no `options` here on purpose: declaring them needs
+		// ?create_missing_options=true, and an example that only works with a
+		// non-default query param is one a caller copies and gets refused.
+		// The `property` kind demonstrates options, where they need no flag.
+		example: `{"name":"Plant","plural_name":"Plants","icon":{"format":"emoji","emoji":"🌱"},"layout":"basic","property_definitions":[{"name":"Location","format":"select"},{"name":"Watered","format":"date","section":"featured"}]}`,
+	},
+	"type_document": {
+		endpoint: "POST /v2/spaces/{space_id}/types (the interchange document; kind `type` is the body to author one)",
+		// the interchange document (kind object_type), served verbatim: what an
+		// export writes and an import reads. Prefer `type` to author one.
+		//
+		// The same type as the `type` example, in the other form, so the two
+		// read side by side: `name` moves into `properties`, everything else
+		// into `type_settings`. The key is `plant`, not the `task` this example
+		// carried before — `task` is a bundled type, so the endpoint refused
+		// its own published example with "type key is reserved".
+		example: `{"formatVersion":"2.0","kind":"object_type","icon":{"format":"emoji","emoji":"🌱"},"properties":{"name":"Plant"},"type_settings":{"api_key":"plant","layout":"basic","plural_name":"Plants","property_definitions":[{"property":"Location","format":"select"},{"property":"Watered","format":"date","section":"featured"}]}}`,
 	},
 	"template": {
 		endpoint: "POST /v2/spaces/{space_id}/templates",
@@ -59,20 +132,23 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		schema: `{"type":"object","additionalProperties":false,"required":["name","format"],"properties":{` +
 			`"key":{"type":"string","maxLength":256,"pattern":"^[a-zA-Z0-9_]+$"},` +
 			`"name":{"type":"string","maxLength":4096},` +
-			`"format":{"type":"string","enum":["text","number","select","multi_select","date","files","checkbox","url","email","phone","objects"]},` +
+			`"format":{"type":"string","enum":[` + v2PropertyFormatEnum + `]},` +
 			`"options":{"type":"array","maxItems":100,"items":{"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
 			`"name":{"type":"string","maxLength":4096},"color":{"type":"string","maxLength":64}}}}}}`,
-		example: `{"key":"priority","name":"Priority","format":"select","options":[{"name":"High","color":"red"},{"name":"Low"}]}`,
+		// `urgency`, not the `priority` this carried before: `priority` is a
+		// bundled relation, so the endpoint answered its own published example
+		// with "property key already exists" in every space.
+		example: `{"key":"urgency","name":"Urgency","format":"select","options":[{"name":"High","color":"red"},{"name":"Low"}]}`,
 	},
 	"query": {
 		endpoint: "POST /v2/spaces/{space_id}/queries",
 		schema: `{"type":"object","additionalProperties":false,"required":["name","type"],"properties":{` +
 			`"name":{"type":"string","maxLength":4096},` +
 			`"type":{"type":"string","maxLength":256,"description":"the queried type's key"},` +
-			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays strict-mode-decodable (C13) — see kind filters"},` +
+			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays simple to decode — see kind filters"},` +
 			`"sorts":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
 			`"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc"]},"empty_placement":{"type":"string","enum":["start","end"]}}}},` +
-			`"views":{"type":"array","maxItems":10,"description":"full SPEC §6.2 view objects; mutually exclusive with top-level filter/sorts"}}}`,
+			`"views":{"type":"array","maxItems":10,"description":"full view objects; mutually exclusive with top-level filter/sorts"}}}`,
 		example: `{"name":"Open tasks","type":"task","filter":"done = false","sorts":[{"property":"due_date","direction":"asc"}]}`,
 	},
 	"collection": {
@@ -94,7 +170,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		schema: `{"type":"object","additionalProperties":false,"properties":{` +
 			`"query":{"type":"string","maxLength":4096,"description":"full-text query"},` +
 			`"type":{"type":"string","maxLength":256,"description":"one type key; multi-type queries use the type pseudo-key in the filter channel; naming a file type (file, image, video, audio) opts file objects into the results — they are excluded otherwise"},` +
-			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays strict-mode-decodable (C13) — see kind filters"},` +
+			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays simple to decode — see kind filters"},` +
 			`"sorts":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
 			`"property":{"type":"string","maxLength":256,"description":"any property key"},"direction":{"type":"string","enum":["asc","desc"]},"empty_placement":{"type":"string","enum":["start","end"]}}}},` +
 			`"fields":{"type":"array","maxItems":25,"items":{"type":"string","maxLength":256},"description":"property keys to include per row; file rows additionally take mimeType and size — also valid filter and sort keys (they translate to the store's fileMimeType/sizeInBytes); file rows enter scope only when the type channel names a file type"}}}`,
@@ -119,7 +195,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		// units, the STORE's cap) — advertising more turns schema-obedient
 		// callers into rejected requests; a drift test pins the two together
 		schema: `{"type":"object","additionalProperties":false,"properties":{` +
-			`"text":{"type":"string","maxLength":8000,"description":"inline markup SOURCE (SPEC §8): *, [, backtick and <mention object_id=\"…\"> mint real marks; escape literal specials with a backslash; at most 8000 UTF-16 code units (an emoji counts 2+); required unless attachments are given"},` +
+			`"text":{"type":"string","maxLength":8000,"description":"inline markup source: *, [, backtick and <mention object_id=\"…\"> mint real marks; escape literal specials with a backslash; at most 8000 UTF-16 code units (an emoji counts 2+); required unless attachments are given"},` +
 			`"reply_to":{"type":"string","maxLength":256,"description":"message id being replied to"},` +
 			`"attachments":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":256},"description":"object ids, at most 32 (enforced); the kind is inferred from each target's layout (image → image, other file layouts → file, anything else → link)"}}}`,
 		example: `{"text":"can you **check** the doc?","attachments":["bafyreie6n5l5nkbjal37su54cha4coy"]}`,
@@ -127,7 +203,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 	"chatMessageEdit": {
 		endpoint: "PATCH /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}",
 		schema: `{"type":"object","additionalProperties":false,"required":["text"],"properties":{` +
-			`"text":{"type":"string","maxLength":8000,"description":"replacement inline markup SOURCE (SPEC §8), at most 8000 UTF-16 code units; ALL marks are re-derived from this string (the D′1 caveat bites hardest here — escape literal specials); the message's attachments, reply target, style and blocks are preserved"}}}`,
+			`"text":{"type":"string","maxLength":8000,"description":"replacement inline markup source, at most 8000 UTF-16 code units; every mark is re-derived from this string (escape literal specials); the message's attachments, reply target, style and blocks are preserved"}}}`,
 		example: `{"text":"updated: can you **check** the doc?"}`,
 	},
 	"chatReaction": {
@@ -158,7 +234,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"date_preset":{"type":"string","enum":["yesterday","today","tomorrow","last_week","current_week","next_week","last_month","current_month","next_month","number_of_days_ago","number_of_days_now","last_year","current_year","next_year"]},` +
 			`"include_time":{"type":"boolean"}}}]}},` +
 			`"type":"array","maxItems":50,"items":{"$ref":"#/$defs/filterNode"},` +
-			`"description":"RECURSIVE (documented C13 exception): top-level nodes combine with an implicit AND; select values are option names; date values are unix seconds"}`,
+			`"description":"Recursive: top-level nodes combine with an implicit AND; select values are option names; date values are unix seconds"}`,
 		example: `[{"property":"done","condition":"equal","value":false},{"operator":"or","filters":[{"property":"due_date","condition":"less","date_preset":"current_week"},{"property":"due_date","condition":"empty"}]}]`,
 	},
 }
@@ -178,10 +254,10 @@ func (s *Service) SchemaIndex() v2model.SchemaIndex {
 			Url:      "/v2/schemas/" + kind,
 		})
 	}
-	for _, op := range v2OpNames {
+	for _, op := range v2AllOpNames() {
 		index.Ops = append(index.Ops, v2model.SchemaIndexEntry{
 			Kind:     op,
-			Endpoint: v2OpsEndpoint,
+			Endpoint: v2OpSchemas[op].endpoint,
 			Url:      "/v2/schemas/ops/" + op,
 		})
 	}
@@ -204,8 +280,12 @@ func (s *Service) SchemaKind(kind string) (v2model.SchemaEntry, error) {
 	if entry.schema == "" {
 		// object/type/template bodies ARE AnyBlock documents: serve the
 		// format's complete published schema, normalized with the same C13
-		// finite bounds as the hand-built discovery schemas
-		schema = json.RawMessage(anyblockjson.SchemaJSON())
+		// finite bounds as the hand-built discovery schemas.
+		//
+		// apiV2DocumentSchema, not the format's full schema and not the
+		// authoring subset: see apiv2schema.go for why this surface needs its
+		// own, and for the member list that is the whole difference.
+		schema = json.RawMessage(apiV2DocumentSchema())
 	}
 	schema, err := strictDiscoverySchema(schema)
 	if err != nil {
@@ -229,6 +309,8 @@ func (s *Service) SchemaKind(kind string) (v2model.SchemaEntry, error) {
 const (
 	strictSchemaDefaultMaxLength = 1 << 20
 	strictSchemaDefaultMaxItems  = 2048
+	// the bound an open map gets when nothing narrower is declared
+	strictSchemaDefaultMaxProperties = 128
 )
 
 // strictDiscoverySchema closes and finitely bounds every typed schema node
@@ -247,6 +329,9 @@ func strictDiscoverySchema(raw json.RawMessage) (json.RawMessage, error) {
 		flattenDiscoveryObjectBases(root)
 	}
 	strictDiscoveryNode(schema)
+	if root, ok := schema.(map[string]any); ok {
+		hoistAnyValue(root)
+	}
 	return json.Marshal(schema)
 }
 
@@ -364,8 +449,24 @@ func strictDiscoveryNode(value any) {
 				additional, isMap := node["additionalProperties"].(map[string]any)
 				_, hasMaxProperties := positiveJSONNumber(node["maxProperties"])
 				closed := node["additionalProperties"] == false || node["unevaluatedProperties"] == false
-				if !closed && !(isMap && len(additional) > 0 && hasMaxProperties) {
-					node["maxProperties"] = 128
+				// An author who wrote `additionalProperties` already said what
+				// a value may be. Only the COUNT is unbounded, so only the
+				// count is added: replacing their schema with the any-value
+				// would WIDEN a slot they narrowed, and discovery would then
+				// advertise values the reader refuses. This is how
+				// property_internal_keys came to be published as any-JSON when
+				// the format declares it a bounded string.
+				switch {
+				case closed:
+					// nothing open to bound
+				case isMap && len(additional) > 0:
+					if !hasMaxProperties {
+						node["maxProperties"] = strictSchemaDefaultMaxProperties
+					}
+				default:
+					if !hasMaxProperties {
+						node["maxProperties"] = strictSchemaDefaultMaxProperties
+					}
 					node["additionalProperties"] = boundedDiscoveryValue(3)
 				}
 			}
@@ -391,6 +492,86 @@ func strictDiscoveryNode(value any) {
 	}
 }
 
+// anyValueDef is where the hoisted any-value schema lives, and the pointer
+// every inlined copy is replaced by.
+const (
+	anyValueDef = "anyValue"
+	anyValueRef = "#/$defs/" + anyValueDef
+)
+
+// hoistAnyValue replaces every inlined any-value blob with one $ref to a
+// single $defs entry. strictDiscoveryNode stamps that blob wherever an open
+// map or an untyped array needs a finite value schema, and it is ~2.2KB each
+// time — by far the largest repeated structure in the served payload.
+//
+// The definition must NOT reference itself. The blob is recursive by
+// construction (depth 3: an object whose values are depth-2 blobs, and so on),
+// so the walk replaces only the OUTERMOST occurrence and never descends into
+// one. $defs/anyValue therefore keeps its inner levels literal, and the
+// published schema stays acyclic — which is the whole property a constrained
+// decoder needs and the reason strictDiscoverySchema exists.
+func hoistAnyValue(root map[string]any) {
+	blob := boundedDiscoveryValue(3)
+	want, err := json.Marshal(blob)
+	if err != nil {
+		return
+	}
+
+	replaced := 0
+	var walk func(node any)
+	walk = func(node any) {
+		switch n := node.(type) {
+		case map[string]any:
+			for key, child := range n {
+				if isAnyValueBlob(child, want) {
+					n[key] = map[string]any{"$ref": anyValueRef}
+					replaced++
+					continue // never descend into a blob: that is what would make the def cyclic
+				}
+				walk(child)
+			}
+		case []any:
+			for i, child := range n {
+				if isAnyValueBlob(child, want) {
+					n[i] = map[string]any{"$ref": anyValueRef}
+					replaced++
+					continue
+				}
+				walk(child)
+			}
+		}
+	}
+	walk(root)
+	if replaced == 0 {
+		return
+	}
+
+	defs, ok := root["$defs"].(map[string]any)
+	if !ok {
+		defs = map[string]any{}
+		root["$defs"] = defs
+	}
+	if _, taken := defs[anyValueDef]; taken {
+		return // a definition already owns the name; leave the schema alone
+	}
+	defs[anyValueDef] = blob
+}
+
+// isAnyValueBlob reports whether a node is exactly the stamped any-value
+// schema. Compared by marshaled bytes so a hand-written lookalike that
+// differs in any way is left alone.
+func isAnyValueBlob(node any, want []byte) bool {
+	candidate, ok := node.(map[string]any)
+	if !ok {
+		return false
+	}
+	if _, isOneOf := candidate["oneOf"]; !isOneOf {
+		return false
+	}
+	got, err := json.Marshal(candidate)
+	return err == nil && bytes.Equal(got, want)
+}
+
 func boundedDiscoveryValue(depth int) map[string]any {
 	variants := []any{
 		map[string]any{"type": "string", "maxLength": strictSchemaDefaultMaxLength},
@@ -401,7 +582,7 @@ func boundedDiscoveryValue(depth int) map[string]any {
 	if depth > 0 {
 		variants = append(variants,
 			map[string]any{"type": "array", "maxItems": strictSchemaDefaultMaxItems, "items": boundedDiscoveryValue(depth - 1)},
-			map[string]any{"type": "object", "maxProperties": 128, "additionalProperties": boundedDiscoveryValue(depth - 1)},
+			map[string]any{"type": "object", "maxProperties": strictSchemaDefaultMaxProperties, "additionalProperties": boundedDiscoveryValue(depth - 1)},
 		)
 	}
 	return map[string]any{"oneOf": variants}

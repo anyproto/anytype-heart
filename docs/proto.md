@@ -1273,6 +1273,15 @@
     - [Rpc.ObjectType.ListConflictingRelations.Request](#anytype-Rpc-ObjectType-ListConflictingRelations-Request)
     - [Rpc.ObjectType.ListConflictingRelations.Response](#anytype-Rpc-ObjectType-ListConflictingRelations-Response)
     - [Rpc.ObjectType.ListConflictingRelations.Response.Error](#anytype-Rpc-ObjectType-ListConflictingRelations-Response-Error)
+    - [Rpc.ObjectType.Property](#anytype-Rpc-ObjectType-Property)
+    - [Rpc.ObjectType.Property.Add](#anytype-Rpc-ObjectType-Property-Add)
+    - [Rpc.ObjectType.Property.Add.Request](#anytype-Rpc-ObjectType-Property-Add-Request)
+    - [Rpc.ObjectType.Property.Add.Response](#anytype-Rpc-ObjectType-Property-Add-Response)
+    - [Rpc.ObjectType.Property.Add.Response.Error](#anytype-Rpc-ObjectType-Property-Add-Response-Error)
+    - [Rpc.ObjectType.Property.Remove](#anytype-Rpc-ObjectType-Property-Remove)
+    - [Rpc.ObjectType.Property.Remove.Request](#anytype-Rpc-ObjectType-Property-Remove-Request)
+    - [Rpc.ObjectType.Property.Remove.Response](#anytype-Rpc-ObjectType-Property-Remove-Response)
+    - [Rpc.ObjectType.Property.Remove.Response.Error](#anytype-Rpc-ObjectType-Property-Remove-Response-Error)
     - [Rpc.ObjectType.Recommended](#anytype-Rpc-ObjectType-Recommended)
     - [Rpc.ObjectType.Recommended.FeaturedRelationsSet](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet)
     - [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Request)
@@ -1282,15 +1291,6 @@
     - [Rpc.ObjectType.Recommended.RelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Request)
     - [Rpc.ObjectType.Recommended.RelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response)
     - [Rpc.ObjectType.Recommended.RelationsSet.Response.Error](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response-Error)
-    - [Rpc.ObjectType.Relation](#anytype-Rpc-ObjectType-Relation)
-    - [Rpc.ObjectType.Relation.Add](#anytype-Rpc-ObjectType-Relation-Add)
-    - [Rpc.ObjectType.Relation.Add.Request](#anytype-Rpc-ObjectType-Relation-Add-Request)
-    - [Rpc.ObjectType.Relation.Add.Response](#anytype-Rpc-ObjectType-Relation-Add-Response)
-    - [Rpc.ObjectType.Relation.Add.Response.Error](#anytype-Rpc-ObjectType-Relation-Add-Response-Error)
-    - [Rpc.ObjectType.Relation.Remove](#anytype-Rpc-ObjectType-Relation-Remove)
-    - [Rpc.ObjectType.Relation.Remove.Request](#anytype-Rpc-ObjectType-Relation-Remove-Request)
-    - [Rpc.ObjectType.Relation.Remove.Response](#anytype-Rpc-ObjectType-Relation-Remove-Response)
-    - [Rpc.ObjectType.Relation.Remove.Response.Error](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error)
     - [Rpc.ObjectType.ResolveLayoutConflicts](#anytype-Rpc-ObjectType-ResolveLayoutConflicts)
     - [Rpc.ObjectType.ResolveLayoutConflicts.Request](#anytype-Rpc-ObjectType-ResolveLayoutConflicts-Request)
     - [Rpc.ObjectType.ResolveLayoutConflicts.Response](#anytype-Rpc-ObjectType-ResolveLayoutConflicts-Response)
@@ -1866,10 +1866,11 @@
     - [Rpc.ObjectRelation.ListAvailable.Response.Error.Code](#anytype-Rpc-ObjectRelation-ListAvailable-Response-Error-Code)
     - [Rpc.ObjectRelation.RemoveFeatured.Response.Error.Code](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response-Error-Code)
     - [Rpc.ObjectType.ListConflictingRelations.Response.Error.Code](#anytype-Rpc-ObjectType-ListConflictingRelations-Response-Error-Code)
+    - [Rpc.ObjectType.Property.Add.Request.Section](#anytype-Rpc-ObjectType-Property-Add-Request-Section)
+    - [Rpc.ObjectType.Property.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Property-Add-Response-Error-Code)
+    - [Rpc.ObjectType.Property.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Property-Remove-Response-Error-Code)
     - [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response.Error.Code](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response-Error-Code)
     - [Rpc.ObjectType.Recommended.RelationsSet.Response.Error.Code](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response-Error-Code)
-    - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code)
-    - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code)
     - [Rpc.ObjectType.ResolveLayoutConflicts.Response.Error.Code](#anytype-Rpc-ObjectType-ResolveLayoutConflicts-Response-Error-Code)
     - [Rpc.ObjectType.SetOrder.Response.Error.Code](#anytype-Rpc-ObjectType-SetOrder-Response-Error-Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
@@ -2596,10 +2597,10 @@
 | ObjectRelationRemoveFeatured | [Rpc.ObjectRelation.RemoveFeatured.Request](#anytype-Rpc-ObjectRelation-RemoveFeatured-Request) | [Rpc.ObjectRelation.RemoveFeatured.Response](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response) |  |
 | ObjectRelationListAvailable | [Rpc.ObjectRelation.ListAvailable.Request](#anytype-Rpc-ObjectRelation-ListAvailable-Request) | [Rpc.ObjectRelation.ListAvailable.Response](#anytype-Rpc-ObjectRelation-ListAvailable-Response) |  |
 | ObjectCreateObjectType | [Rpc.Object.CreateObjectType.Request](#anytype-Rpc-Object-CreateObjectType-Request) | [Rpc.Object.CreateObjectType.Response](#anytype-Rpc-Object-CreateObjectType-Response) | ObjectType commands *** |
-| ObjectTypeRelationAdd | [Rpc.ObjectType.Relation.Add.Request](#anytype-Rpc-ObjectType-Relation-Add-Request) | [Rpc.ObjectType.Relation.Add.Response](#anytype-Rpc-ObjectType-Relation-Add-Response) |  |
-| ObjectTypeRelationRemove | [Rpc.ObjectType.Relation.Remove.Request](#anytype-Rpc-ObjectType-Relation-Remove-Request) | [Rpc.ObjectType.Relation.Remove.Response](#anytype-Rpc-ObjectType-Relation-Remove-Response) |  |
-| ObjectTypeRecommendedRelationsSet | [Rpc.ObjectType.Recommended.RelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Request) | [Rpc.ObjectType.Recommended.RelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response) |  |
-| ObjectTypeRecommendedFeaturedRelationsSet | [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Request) | [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response) |  |
+| ObjectTypePropertyAdd | [Rpc.ObjectType.Property.Add.Request](#anytype-Rpc-ObjectType-Property-Add-Request) | [Rpc.ObjectType.Property.Add.Response](#anytype-Rpc-ObjectType-Property-Add-Response) |  |
+| ObjectTypePropertyRemove | [Rpc.ObjectType.Property.Remove.Request](#anytype-Rpc-ObjectType-Property-Remove-Request) | [Rpc.ObjectType.Property.Remove.Response](#anytype-Rpc-ObjectType-Property-Remove-Response) |  |
+| ObjectTypeRecommendedRelationsSet | [Rpc.ObjectType.Recommended.RelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Request) | [Rpc.ObjectType.Recommended.RelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response) | Deprecated: use ObjectTypePropertyAdd / ObjectTypePropertyRemove. |
+| ObjectTypeRecommendedFeaturedRelationsSet | [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Request) | [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response) | Deprecated: use ObjectTypePropertyAdd / ObjectTypePropertyRemove. |
 | ObjectTypeListConflictingRelations | [Rpc.ObjectType.ListConflictingRelations.Request](#anytype-Rpc-ObjectType-ListConflictingRelations-Request) | [Rpc.ObjectType.ListConflictingRelations.Response](#anytype-Rpc-ObjectType-ListConflictingRelations-Response) |  |
 | ObjectTypeResolveLayoutConflicts | [Rpc.ObjectType.ResolveLayoutConflicts.Request](#anytype-Rpc-ObjectType-ResolveLayoutConflicts-Request) | [Rpc.ObjectType.ResolveLayoutConflicts.Response](#anytype-Rpc-ObjectType-ResolveLayoutConflicts-Response) |  |
 | ObjectTypeSetOrder | [Rpc.ObjectType.SetOrder.Request](#anytype-Rpc-ObjectType-SetOrder-Request) | [Rpc.ObjectType.SetOrder.Response](#anytype-Rpc-ObjectType-SetOrder-Response) |  |
@@ -21399,6 +21400,140 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-ObjectType-Property"></a>
+
+### Rpc.ObjectType.Property
+Property keeps a type&#39;s property lists, its dataview relationLinks and
+its views consistent in one apply, so the client no longer has to do
+it lazily in three calls.
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Add"></a>
+
+### Rpc.ObjectType.Property.Add
+
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Add-Request"></a>
+
+### Rpc.ObjectType.Property.Add.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectTypeId | [string](#string) |  |  |
+| key | [string](#string) |  | an existing property key; empty means &#34;mint one&#34; from name &#43; format |
+| name | [string](#string) |  | required when key is empty |
+| format | [model.RelationFormat](#anytype-model-RelationFormat) |  | required when key is empty |
+| section | [Rpc.ObjectType.Property.Add.Request.Section](#anytype-Rpc-ObjectType-Property-Add-Request-Section) |  |  |
+| enableInViews | [bool](#bool) |  | the isVisible the new column gets in every view |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Add-Response"></a>
+
+### Rpc.ObjectType.Property.Add.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectType.Property.Add.Response.Error](#anytype-Rpc-ObjectType-Property-Add-Response-Error) |  |  |
+| key | [string](#string) |  | the resolved-or-minted property key |
+| propertyId | [string](#string) |  | the relation object&#39;s id |
+| viewIds | [string](#string) | repeated | the views that gained a column |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Add-Response-Error"></a>
+
+### Rpc.ObjectType.Property.Add.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectType.Property.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Property-Add-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Remove"></a>
+
+### Rpc.ObjectType.Property.Remove
+
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Remove-Request"></a>
+
+### Rpc.ObjectType.Property.Remove.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectTypeId | [string](#string) |  |  |
+| key | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Remove-Response"></a>
+
+### Rpc.ObjectType.Property.Remove.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectType.Property.Remove.Response.Error](#anytype-Rpc-ObjectType-Property-Remove-Response-Error) |  |  |
+| inUseViewIds | [string](#string) | repeated | the views left untouched because they group, sort or filter by the property |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Remove-Response-Error"></a>
+
+### Rpc.ObjectType.Property.Remove.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectType.Property.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Property-Remove-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-ObjectType-Recommended"></a>
 
 ### Rpc.ObjectType.Recommended
@@ -21412,7 +21547,10 @@ Available undo/redo operations
 <a name="anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet"></a>
 
 ### Rpc.ObjectType.Recommended.FeaturedRelationsSet
-
+Deprecated: replaces the whole list and touches neither the
+dataview relationLinks nor the views, so a caller must do its own
+read-modify-write and the type is left half-consistent. Use
+ObjectTypePropertyAdd / ObjectTypePropertyRemove instead.
 
 
 
@@ -21469,7 +21607,10 @@ Available undo/redo operations
 <a name="anytype-Rpc-ObjectType-Recommended-RelationsSet"></a>
 
 ### Rpc.ObjectType.Recommended.RelationsSet
-
+Deprecated: replaces the whole list and touches neither the
+dataview relationLinks nor the views, so a caller must do its own
+read-modify-write and the type is left half-consistent. Use
+ObjectTypePropertyAdd / ObjectTypePropertyRemove instead.
 
 
 
@@ -21516,131 +21657,6 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.ObjectType.Recommended.RelationsSet.Response.Error.Code](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation"></a>
-
-### Rpc.ObjectType.Relation
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Add"></a>
-
-### Rpc.ObjectType.Relation.Add
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Add-Request"></a>
-
-### Rpc.ObjectType.Relation.Add.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectTypeUrl | [string](#string) |  |  |
-| relationKeys | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Add-Response"></a>
-
-### Rpc.ObjectType.Relation.Add.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.ObjectType.Relation.Add.Response.Error](#anytype-Rpc-ObjectType-Relation-Add-Response-Error) |  |  |
-| relations | [model.Relation](#anytype-model-Relation) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Add-Response-Error"></a>
-
-### Rpc.ObjectType.Relation.Add.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Remove"></a>
-
-### Rpc.ObjectType.Relation.Remove
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Remove-Request"></a>
-
-### Rpc.ObjectType.Relation.Remove.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectTypeUrl | [string](#string) |  |  |
-| relationKeys | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Remove-Response"></a>
-
-### Rpc.ObjectType.Relation.Remove.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.ObjectType.Relation.Remove.Response.Error](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Remove-Response-Error"></a>
-
-### Rpc.ObjectType.Relation.Remove.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -29762,6 +29778,51 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-ObjectType-Property-Add-Request-Section"></a>
+
+### Rpc.ObjectType.Property.Add.Request.Section
+Which of the type&#39;s recommended lists the property joins.
+The fourth list, recommendedFileRelations, is absent by
+design: it is derived from a fixed set of file-metadata
+keys on the four file types, and a value written there is
+overwritten the next time those types are revised.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Recommended | 0 |  |
+| Featured | 1 |  |
+| Hidden | 2 |  |
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Add-Response-Error-Code"></a>
+
+### Rpc.ObjectType.Property.Add.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| READONLY_OBJECT_TYPE | 3 | ... |
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Remove-Response-Error-Code"></a>
+
+### Rpc.ObjectType.Property.Remove.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| READONLY_OBJECT_TYPE | 3 | ... |
+
+
+
 <a name="anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response-Error-Code"></a>
 
 ### Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response.Error.Code
@@ -29779,34 +29840,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-ObjectType-Recommended-RelationsSet-Response-Error-Code"></a>
 
 ### Rpc.ObjectType.Recommended.RelationsSet.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| READONLY_OBJECT_TYPE | 3 | ... |
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code"></a>
-
-### Rpc.ObjectType.Relation.Add.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| READONLY_OBJECT_TYPE | 3 | ... |
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code"></a>
-
-### Rpc.ObjectType.Relation.Remove.Response.Error.Code
 
 
 | Name | Number | Description |

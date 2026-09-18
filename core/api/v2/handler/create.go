@@ -96,6 +96,7 @@ func respondV2Create(c *gin.Context, result *v2model.CreateResult, createdStatus
 //	@Param			space_id				path		string					true	"Space id"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
+//	@Param			body					body		object					true	"AnyBlock object document. Body schema and example: GET /v2/schemas/object"
 //	@Success		201						{object}	v2model.CreateResult	"Created object id + etag"
 //	@Failure		400						{object}	v2model.Error			"Validation or reference failure"
 //	@Security		bearerauth
@@ -126,6 +127,7 @@ func CreateObjectHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param			space_id				path		string					true	"Space id"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
+//	@Param			body					body		object					true	"AnyBlock template document. Body schema and example: GET /v2/schemas/template"
 //	@Success		201						{object}	v2model.CreateResult	"Created template id"
 //	@Failure		400						{object}	v2model.Error			"Validation or reference failure"
 //	@Security		bearerauth
@@ -148,7 +150,7 @@ func CreateTemplateHandler(s *v2service.Service) gin.HandlerFunc {
 // CreateTypeHandler creates a type from a kind:"object_type" document
 //
 //	@Summary		Create a type
-//	@Description	A `type_settings.property_definitions` entry naming a property that does not exist creates it alongside the type. The body is an AnyBlock document with kind "object_type"; the type's api key, layout and plural name live in `type_settings`.
+//	@Description	A `property_definitions` entry naming a property that does not exist creates it alongside the type. The body is either the flat type body or an AnyBlock document with kind "object_type"; `formatVersion`, `kind` or `type_settings` picks the document form.
 //	@Id				create_type
 //	@Tags			Types
 //	@Accept			json
@@ -156,6 +158,7 @@ func CreateTemplateHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param			space_id				path		string					true	"Space id"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
+//	@Param			body					body		object					true	"Flat type body: GET /v2/schemas/type. Full document: GET /v2/schemas/type_document"
 //	@Success		201						{object}	v2model.CreateResult	"Created type id + key"
 //	@Failure		400						{object}	v2model.Error			"Validation failure"
 //	@Security		bearerauth
@@ -178,15 +181,19 @@ func CreateTypeHandler(s *v2service.Service) gin.HandlerFunc {
 // UpdateTypeHandler updates a type (type-document semantics)
 //
 //	@Summary		Update a type
-//	@Description	`type_settings.property_definitions`, when present, replaces the recommended property lists rather than adding to them, and creates any property that does not exist yet. `properties` takes name and description; the layout is `type_settings.layout` and the icon is the typed envelope `icon`. Any other key is refused.
+//	@Description	Takes an ops envelope or the type body. Ops add, remove and reorder one property at a time; a removal also drops its column from the views, except any view that groups, covers, sorts or filters by it. In the body, `property_definitions` replaces the whole field list rather than adding to it, and names under `removed` whatever that detached. `api_key` is create-only.
+//	@Param			If-Match	header	string	false	"The etag the type must still carry"
 //	@Id				update_type
 //	@Tags			Types
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id	path		string					true	"Space id"
-//	@Param			type		path		string					true	"Type key"
-//	@Success		200			{object}	v2model.CreateResult	"Updated type"
-//	@Failure		404			{object}	v2model.Error			"Type not found"
+//	@Param			space_id				path		string					true	"Space id"
+//	@Param			type					path		string					true	"Type key"
+//	@Param			dry_run					query		bool					false	"Validate and report without committing"
+//	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
+//	@Param			body					body		object					true	"Either an ops envelope (GET /v2/schemas/ops/add_property) or the fields of the type to change (GET /v2/schemas/type)"
+//	@Success		200						{object}	v2model.CreateResult	"Updated type"
+//	@Failure		404						{object}	v2model.Error			"Type not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/types/{type} [patch]
 func UpdateTypeHandler(s *v2service.Service) gin.HandlerFunc {
@@ -195,7 +202,7 @@ func UpdateTypeHandler(s *v2service.Service) gin.HandlerFunc {
 		if body == nil {
 			return
 		}
-		result, err := s.UpdateType(c.Request.Context(), c.Param("space_id"), c.Param("type"), body, isV2DryRun(c), mayCreateMissingOptions(c))
+		result, err := s.UpdateType(c.Request.Context(), c.Param("space_id"), c.Param("type"), c.GetHeader("If-Match"), body, isV2DryRun(c), mayCreateMissingOptions(c))
 		if err != nil {
 			RespondError(c, err)
 			return
@@ -236,6 +243,7 @@ func DeleteTypeHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Produce	json
 //	@Param		space_id	path		string					true	"Space id"
 //	@Param		dry_run		query		bool					false	"Validate and report without committing"
+//	@Param		body		body		object					true	"Property to create. Body schema and example: GET /v2/schemas/property"
 //	@Success	201			{object}	v2model.CreateResult	"Created property id + key"
 //	@Failure	400			{object}	v2model.Error			"Validation failure"
 //	@Failure	413			{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
@@ -268,6 +276,7 @@ func CreatePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			key			path		string					true	"Property key"
+//	@Param			body		body		object					true	"Fields of the property to change. Body schema and example: GET /v2/schemas/property"
 //	@Success		200			{object}	v2model.CreateResult	"Updated property"
 //	@Failure		400			{object}	v2model.Error			"Validation failure"
 //	@Failure		404			{object}	v2model.Error			"Property not found"
@@ -325,6 +334,7 @@ func DeletePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param			space_id				path		string					true	"Space id"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
+//	@Param			body					body		object					true	"Query to create. Body schema and example: GET /v2/schemas/query"
 //	@Success		201						{object}	v2model.CreateResult	"Created query id"
 //	@Failure		400						{object}	v2model.Error			"Validation or reference failure"
 //	@Failure		413						{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
@@ -355,12 +365,12 @@ func CreateQueryHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Lists
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id				path		string					true	"Space id"
-//	@Param			dry_run					query		bool					false	"Validate and report without committing"
-//	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
-//	@Success		201						{object}	v2model.CreateResult	"Created collection id"
-//	@Failure		400						{object}	v2model.Error			"Validation or reference failure"
-//	@Failure		413						{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
+//	@Param			space_id	path		string					true	"Space id"
+//	@Param			dry_run		query		bool					false	"Validate and report without committing"
+//	@Param			body		body		object					true	"Collection to create. Body schema and example: GET /v2/schemas/collection"
+//	@Success		201			{object}	v2model.CreateResult	"Created collection id"
+//	@Failure		400			{object}	v2model.Error			"Validation or reference failure"
+//	@Failure		413			{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/collections [post]
 func CreateCollectionHandler(s *v2service.Service) gin.HandlerFunc {

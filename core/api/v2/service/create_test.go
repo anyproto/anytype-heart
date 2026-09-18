@@ -573,3 +573,61 @@ func TestV2CreateTemplate(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, apiErr.Status)
 	})
 }
+
+func TestV2CreateRefusesExportLegends(t *testing.T) {
+	// A legend is not inert on create: property_internal_keys rebinds every
+	// spelling in the document to the stored key it names, so a caller could
+	// aim a value at a bundled property it never spelled in `properties`.
+	// Verified against the codec: {"Foo":"bar"} with {"Foo":"description"}
+	// stores under `description`, not `Foo`.
+	t.Run("property_internal_keys is refused, and the verdict names the member", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		body := `{"formatVersion":"2.0","type":"page","properties":{"Foo":"bar"},` +
+			`"property_internal_keys":{"Foo":"description"}}`
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId, []byte(body), false, true)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/property_internal_keys", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "export legend")
+		assert.Contains(t, apiErr.Issues[0].Hint, "`properties`")
+	})
+
+	t.Run("option_ids is refused the same way", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		body := `{"formatVersion":"2.0","type":"page","properties":{"Tag":["Red"]},` +
+			`"option_ids":{"Tag":{"Red":"optRed"}}}`
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId, []byte(body), false, true)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/option_ids", apiErr.Issues[0].Path)
+	})
+
+	t.Run("a pasted read body still clones — inert envelope fields are untouched", func(t *testing.T) {
+		// the legend refusal must not regress the read-then-copy path: etag,
+		// id, warnings and block ids are stripped, not refused.
+		// given
+		fx := newV2Fixture(t)
+		fx.expectCreate("cloneObj")
+		fx.expectEtagRead("cloneObj")
+		body := `{"formatVersion":"2.0","etag":"abcd1234","id":"sourceObj","type":"page",` +
+			`"warnings":[{"message":"from the read"}],` +
+			`"blocks":[{"id":"blockHeading1","type":"heading_1","text":"Section"}]}`
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId, []byte(body), false, true)
+
+		// then
+		require.NoError(t, err)
+	})
+}

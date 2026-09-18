@@ -106,7 +106,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	var jsonDoc responseContractDocument
 	require.NoError(t, json.Unmarshal(jsonBody, &jsonDoc))
 	jsonOperations := responseContractOperations(t, jsonDoc)
-	require.Len(t, jsonOperations, 50)
+	require.Len(t, jsonOperations, 49)
 
 	yamlBody, err := os.ReadFile("../docs/v2/openapi.yaml")
 	require.NoError(t, err)
@@ -200,7 +200,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	for _, operation := range jsonOperations {
 		pairCount += len(operation.Responses)
 	}
-	assert.Equal(t, 318, pairCount, "the checked-in response inventory changes only deliberately")
+	assert.Equal(t, 313, pairCount, "the checked-in response inventory changes only deliberately")
 
 	dryRunCreates := stringSet(
 		"add_chat_message", "create_chat", "create_collection", "create_object", "create_property",
