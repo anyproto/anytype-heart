@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func (s *dsObjectStore) DeleteDetails(ctx context.Context, ids []string) error {
@@ -83,6 +84,18 @@ var preservedOnDelete = []domain.RelationKey{
 	bundle.RelationKeyDeletedDate,
 	bundle.RelationKeyDeletionChangeId,
 	bundle.RelationKeyDeletedSnapshot,
+	bundle.RelationKeyDeletedLayout,
+}
+
+// derivedLayouts are the layouts whose tombstones keep deletedLayout at the
+// TOP level (sparse-indexed, see store.go): a type or a property that was
+// deleted is still addressed by the slug its objects serve, and answering
+// "is this spelling a removed type" must be an exact query, never a scan of
+// every deleted row — a bounded scan that misses one lets the spelling fall
+// through to a live type that merely shares its name.
+var derivedLayouts = map[int64]bool{
+	int64(model.ObjectType_objectType): true,
+	int64(model.ObjectType_relation):   true,
 }
 
 // snapshotOnDelete captures SnapshotOnDelete out of an object's live details. It returns false when
@@ -123,6 +136,9 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	newDetails := oldDetails.CopyOnlyKeys(preservedOnDelete...)
 	if snapshot, ok := snapshotOnDelete(oldDetails); ok {
 		newDetails.Set(bundle.RelationKeyDeletedSnapshot, snapshot)
+		if layout := oldDetails.GetInt64(bundle.RelationKeyResolvedLayout); derivedLayouts[layout] {
+			newDetails.SetInt64(bundle.RelationKeyDeletedLayout, layout)
+		}
 	}
 	newDetails.SetString(bundle.RelationKeyId, id)
 	newDetails.SetString(bundle.RelationKeySpaceId, s.spaceId)

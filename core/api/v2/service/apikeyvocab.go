@@ -337,11 +337,16 @@ func (v *apiKeyVocab) TypeSlug(key string) string {
 	// the post-delete tombstone window: the row has no queryable detail,
 	// but its snapshot kept the slug (spaceindex.SnapshotOnDelete)
 	if !bundle.HasObjectTypeByKey(domain.TypeKey(key)) && !v.typeKeyTaken[key] {
-		if slug := v.svc.tombstonedTypeSlug(v.spaceId, key); slug != "" && !v.removedTypeSlug[slug] {
+		slug, _ := v.svc.tombstonedTypeSlug(v.spaceId, key)
+		if slug != "" {
+			// a confirmed tombstone is a removed type whatever its spelling
+			// ends up as (the read marker asks TypeRemoved, not the slug)
 			if v.removedTypeKeys == nil {
 				v.removedTypeKeys = map[string]bool{}
 			}
 			v.removedTypeKeys[key] = true
+		}
+		if slug != "" && !v.removedTypeSlug[slug] {
 			candidate := servedTypeKeyOf(key, slug, v.typeKeyTaken, v.typeSlugHolders)
 			if _, taken := v.typeKeyBySlug[candidate]; !taken && candidate != key {
 				if v.removedTypeSlug == nil {

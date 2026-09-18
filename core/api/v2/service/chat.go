@@ -468,7 +468,7 @@ func (s *Service) ReadChat(ctx context.Context, spaceId, chatId string, req v2mo
 		if resp.Error != nil && resp.Error.Code != pb.RpcChatReadReactionsResponseError_NULL {
 			return nil, v2ChatRpcError("mark chat reactions read", int32(resp.Error.Code), int32(pb.RpcChatReadReactionsResponseError_BAD_INPUT), resp.Error.Description)
 		}
-		return &v2model.ChatReadResult{}, nil
+		return &v2model.ChatReadResult{State: s.chatStateAfter(ctx, chatId)}, nil
 
 	default:
 		return nil, v2model.ValidationFailed("invalid scope value",

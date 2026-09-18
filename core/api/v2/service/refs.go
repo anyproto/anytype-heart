@@ -159,7 +159,10 @@ func (s *Service) typeNotFoundError(spaceId, typeKey string, v errKeys) error {
 	// a type route addressed by the spelling its objects still serve: 404
 	// still (the type is not addressable), but saying why (R4-1)
 	if issue, removed := s.removedTypeRefusal(spaceId, typeKey, "type", v); removed {
+		// the diagnosis once, in the message; the issue carries the
+		// consequences and the live-type reference
 		known := s.knownTypeKeys(spaceId, v)
+		issue.Message = "existing objects keep this type; creating objects with it and filtering by it are unavailable"
 		return v2model.NewError(http.StatusNotFound, v2model.CodeNotFound,
 			fmt.Sprintf("type %q not found in space %q — it was removed; %s", typeKey, spaceId, listKnown(v.typesWord(), known)), issue)
 	}
@@ -619,8 +622,8 @@ func offTypePropertyIssue(spelling, typeKey, path string) v2model.Issue {
 // the removed one's slug, the caller addressed the old type by its stored
 // key, and the refusal must not call the live slug removed.
 func (s *Service) removedTypeRefusal(spaceId, input, path string, v errKeys) (v2model.Issue, bool) {
-	entry, removed := s.removedTypeBySpelling(spaceId, input)
-	if !removed {
+	entry, removed, err := s.removedTypeBySpelling(spaceId, input)
+	if err != nil || !removed {
 		return v2model.Issue{}, false
 	}
 	spelling := entry.Slug
@@ -631,14 +634,15 @@ func (s *Service) removedTypeRefusal(spaceId, input, path string, v errKeys) (v2
 		spelling = entry.Name
 	}
 	if entry.Slug != "" && input != entry.Slug {
+		// a live type OWNS the removed one's slug only when it is the one
+		// visible holder and serves it unchanged (servedTypeKeyOf's guards)
 		if live, err := s.liveTypes(spaceId); err == nil {
-			for _, e := range live {
-				if e.Slug == entry.Slug {
-					return v2model.Issue{
-						Path:    path,
-						Message: fmt.Sprintf("type %q (formerly %q) was removed from this space, and %q now names a different type — the old type's objects keep it under its stored key; nothing new is created in it", input, entry.Slug, entry.Slug),
-					}.Hintf("use a live type instead — list them with %s", v2model.RefListTypes(spaceId)), true
-				}
+			keyTaken, holders := servedTypeKeySets(live)
+			if owners := holders[entry.Slug]; len(owners) == 1 && servedTypeKeyOf(owners[0], entry.Slug, keyTaken, holders) == entry.Slug {
+				return v2model.Issue{
+					Path:    path,
+					Message: fmt.Sprintf("type %q (formerly %q) was removed from this space, and %q now names a different type — the old type's objects keep it under its stored key; nothing new is created in it", input, entry.Slug, entry.Slug),
+				}.Hintf("use a live type instead — list them with %s", v2model.RefListTypes(spaceId)), true
 			}
 		}
 	}

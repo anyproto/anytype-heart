@@ -78,7 +78,8 @@ func (s *Service) Whoami(ctx context.Context, enumerateSpaces bool) (v2model.Who
 		if err != nil {
 			return v2model.WhoamiResponse{}, fmt.Errorf("enumerate spaces for the all-spaces grant echo: %w", err)
 		}
-		resp.Grant.SpaceCount = len(rows)
+		count := len(rows)
+		resp.Grant.SpaceCount = &count
 		if !enumerateSpaces {
 			return resp, nil
 		}

@@ -102,7 +102,8 @@ func TestWhoami(t *testing.T) {
 		require.True(t, got.Grant.Scoped)
 		require.False(t, got.Grant.Restricted, "an all-spaces grant is scoped but not restricted")
 		require.True(t, got.Grant.AllSpaces)
-		require.Equal(t, 2, got.Grant.SpaceCount)
+		require.NotNil(t, got.Grant.SpaceCount)
+		require.Equal(t, 2, *got.Grant.SpaceCount)
 
 		// without ?spaces=true the count stands alone
 		plain := serveWithKey(fx, "GET", "/v2/auth/whoami", "allKey")
@@ -110,7 +111,8 @@ func TestWhoami(t *testing.T) {
 		var counted v2model.WhoamiResponse
 		require.NoError(t, json.Unmarshal(plain.Body.Bytes(), &counted))
 		require.Empty(t, counted.Grant.Spaces)
-		require.Equal(t, 2, counted.Grant.SpaceCount)
+		require.NotNil(t, counted.Grant.SpaceCount)
+		require.Equal(t, 2, *counted.Grant.SpaceCount)
 		require.NotContains(t, plain.Body.String(), "Personal", "a permissions check does not enumerate the account by default")
 		require.NotNil(t, got.Grant.Permission)
 		require.Equal(t, util.GrantPermsReadWrite, *got.Grant.Permission)

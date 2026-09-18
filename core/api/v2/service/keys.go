@@ -450,7 +450,9 @@ func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (
 	// "widget" resolved to live "machine" named "widget", and a create,
 	// a search and even a DELETE went to the wrong type). The caller's
 	// refusal then says removed (unknownTypeKeyError).
-	if _, removed := s.removedTypeBySpelling(spaceId, input); removed {
+	// fail CLOSED on a lookup error: a removal set that could not be read
+	// must not authorize the fold and name steps below
+	if _, removed, err := s.removedTypeBySpelling(spaceId, input); removed || err != nil {
 		return typeEntry{}, false, nil
 	}
 	fold := bundle.FoldApiKey(input)
@@ -1319,101 +1321,106 @@ func (s *Service) removedTypes(spaceId string) ([]typeEntry, error) {
 // tombstonedTypeSlug is tombstonedPropertySlug for a type: the slug the
 // tombstone's snapshot kept for a stored type key, or "" when the row is
 // not a tombstone (a full-detail row belongs to the query-built sets).
-func (s *Service) tombstonedTypeSlug(spaceId, key string) string {
-	if s.creator == nil {
-		return ""
+func (s *Service) tombstonedTypeSlug(spaceId, key string) (string, error) {
+	if s.creator == nil || key == "" {
+		return "", nil
 	}
 	id, err := s.creator.TypeIdByKey(context.Background(), spaceId, domain.TypeKey(key))
 	if err != nil {
-		return ""
+		return "", fmt.Errorf("derive type id for %q in space %s: %w", key, spaceId, err)
 	}
 	return tombstoneTypeSlugOf(s.store.SpaceIndex(spaceId), id)
 }
 
 // tombstoneTypeSlugOf reads the served slug a type tombstone's snapshot
 // kept, "" for anything that is not a tombstone.
-func tombstoneTypeSlugOf(index spaceindex.Store, id string) string {
+func tombstoneTypeSlugOf(index spaceindex.Store, id string) (string, error) {
 	details, err := index.GetDetails(id)
-	if err != nil || details == nil || !details.GetBool(bundle.RelationKeyIsDeleted) {
-		return ""
+	if err != nil {
+		return "", fmt.Errorf("read type row %s: %w", id, err)
+	}
+	if details == nil || !details.GetBool(bundle.RelationKeyIsDeleted) {
+		return "", nil
 	}
 	if _, live := details.TryString(bundle.RelationKeyUniqueKey); live {
-		return ""
+		return "", nil
 	}
 	snapshot, ok := details.TryMapValue(bundle.RelationKeyDeletedSnapshot)
 	if !ok {
-		return ""
+		return "", nil
 	}
-	return snapshot.GetString(bundle.RelationKeyApiObjectKey.String())
+	return snapshot.GetString(bundle.RelationKeyApiObjectKey.String()), nil
 }
 
 // removedTypeBySpelling finds a REMOVED space-minted type a caller may have
 // addressed by the slug or stored key a read served for it — the object's
 // `type` after the type was deleted — so a refusal can say removed rather
-// than unknown. Live entries are the caller's to check first. All three
-// store shapes answer: the query-visible ones by row, a tombstone by its
-// snapshot (by stored key through the derived id; by slug through the
-// bounded tombstone scan — a refusal path, never a read).
-func (s *Service) removedTypeBySpelling(spaceId, input string) (typeEntry, bool) {
+// than unknown, and so the resolution chain stops there. Live entries are
+// the caller's to check first. All three store shapes answer: the
+// query-visible ones by row, a tombstone by its snapshot (by stored key
+// through the derived id; by slug through the deletedLayout index, an
+// exact query). An error is returned, never swallowed: a lookup that could
+// not complete must not read as "nothing was removed".
+func (s *Service) removedTypeBySpelling(spaceId, input string) (typeEntry, bool, error) {
 	if input == "" || bundle.HasObjectTypeByKey(domain.TypeKey(input)) {
-		return typeEntry{}, false // bundled removals have their own gate (refuseRemovedType)
+		return typeEntry{}, false, nil // bundled removals have their own gate (refuseRemovedType)
 	}
-	if removed, err := s.removedTypes(spaceId); err == nil {
-		for _, e := range removed {
-			if bundle.HasObjectTypeByKey(domain.TypeKey(e.Key)) {
-				continue
-			}
-			if input == e.Key || (e.Slug != "" && input == e.Slug) {
-				return e, true
-			}
+	removed, err := s.removedTypes(spaceId)
+	if err != nil {
+		return typeEntry{}, false, err
+	}
+	for _, e := range removed {
+		if bundle.HasObjectTypeByKey(domain.TypeKey(e.Key)) {
+			continue
+		}
+		if input == e.Key || (e.Slug != "" && input == e.Slug) {
+			return e, true, nil
 		}
 	}
-	if slug := s.tombstonedTypeSlug(spaceId, input); slug != "" {
-		return typeEntry{Key: input, Slug: slug}, true
+	slug, err := s.tombstonedTypeSlug(spaceId, input)
+	if err != nil {
+		return typeEntry{}, false, err
+	}
+	if slug != "" {
+		return typeEntry{Key: input, Slug: slug}, true, nil
 	}
 	if _, isSlug := bundle.TypeKeyByApiSlug(input); !isSlug {
-		if e, ok := s.tombstonedTypeBySlug(spaceId, input); ok {
-			return e, true
-		}
+		return s.tombstonedTypeBySlug(spaceId, input)
 	}
-	return typeEntry{}, false
+	return typeEntry{}, false, nil
 }
 
-// tombstoneScanLimit bounds the tombstone scan a removal diagnosis may run:
-// it is a refusal path, and a space with more deleted rows than this
-// answers "unknown" for a slug-addressed tombstone rather than scanning on.
-const tombstoneScanLimit = 5000
-
+// tombstonedTypeBySlug finds a type tombstone by the slug its snapshot
+// kept, through the deletedLayout marker every deleted type's tombstone
+// carries top level (spaceindex delete.go) — an exact, indexed query over
+// the deleted types alone, complete by construction.
 // tombstonedTypeBySlug finds a type tombstone by the slug its snapshot
 // kept. Tombstones carry no queryable identity, so this is a bounded scan
 // of the space's deleted rows, reading each snapshot.
-func (s *Service) tombstonedTypeBySlug(spaceId, slug string) (typeEntry, bool) {
+func (s *Service) tombstonedTypeBySlug(spaceId, slug string) (typeEntry, bool, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
+			{RelationKey: bundle.RelationKeyDeletedLayout, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.Int64(int64(model.ObjectType_objectType))},
 			{RelationKey: bundle.RelationKeyIsDeleted, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.Bool(true)},
 			{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
 		},
-		Limit: tombstoneScanLimit,
 	})
 	if err != nil {
-		return typeEntry{}, false
+		return typeEntry{}, false, fmt.Errorf("query deleted types of space %s: %w", spaceId, err)
 	}
 	for _, record := range records {
 		if _, full := record.Details.TryString(bundle.RelationKeyUniqueKey); full {
 			continue
 		}
 		snapshot, ok := record.Details.TryMapValue(bundle.RelationKeyDeletedSnapshot)
-		if !ok || snapshot.GetInt64(bundle.RelationKeyResolvedLayout.String()) != int64(model.ObjectType_objectType) {
-			continue
-		}
-		if snapshot.GetString(bundle.RelationKeyApiObjectKey.String()) != slug {
+		if !ok || snapshot.GetString(bundle.RelationKeyApiObjectKey.String()) != slug {
 			continue
 		}
 		key, err := domain.GetTypeKeyFromRawUniqueKey(snapshot.GetString(bundle.RelationKeyUniqueKey.String()))
 		if err != nil {
 			continue
 		}
-		return typeEntry{Id: record.Details.GetString(bundle.RelationKeyId), Key: string(key), Slug: slug}, true
+		return typeEntry{Id: record.Details.GetString(bundle.RelationKeyId), Key: string(key), Slug: slug}, true, nil
 	}
-	return typeEntry{}, false
+	return typeEntry{}, false, nil
 }

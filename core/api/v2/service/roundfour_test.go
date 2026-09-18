@@ -2,6 +2,7 @@ package v2service
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
+	"github.com/anyproto/anytype-heart/core/api/util"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -168,7 +170,7 @@ func TestV2DeletedTypeKeepsItsSpelling(t *testing.T) {
 		result, err = fx.DeleteType(ctx, testSpaceId, "gadget", true)
 		require.NoError(t, err)
 		require.Len(t, result.Warnings, 1)
-		assert.Contains(t, result.Warnings[0].Message, `reads will spell it by its stored key "`+gadgetTypeKey+`", because a removed type already answers to "gadget"`)
+		assert.Contains(t, result.Warnings[0].Message, `another removed type used "gadget" before, so after this delete the objects of both read under their stored keys ("`+gadgetTypeKey+`" here)`)
 	})
 
 	t.Run("a removed slug never folds onto a live type NAMED that way", func(t *testing.T) {
@@ -284,6 +286,51 @@ func TestV2DeletedTypeKeepsItsSpelling(t *testing.T) {
 		assert.Equal(t, "6aad7fbf61fab205fe53c2f3", builder.row(database.Record{Details: tomb}).Type, "one address, one holder")
 	})
 
+	t.Run("a tombstone demoted behind a visible corpse still reads as removed", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.addGadgetType(t, true) // visible corpse, slug gadget
+		fx.addTypeTombstone(t, "drv-ot-6aad7fbf61fab205fe53c2f3", "6aad7fbf61fab205fe53c2f3", "gadget")
+
+		v := fx.apiKeys(testSpaceId, storeresolver.New(fx.store.SpaceIndex(testSpaceId)))
+
+		assert.Equal(t, "6aad7fbf61fab205fe53c2f3", v.TypeSlug("6aad7fbf61fab205fe53c2f3"), "one address, one holder")
+		assert.True(t, v.TypeRemoved("6aad7fbf61fab205fe53c2f3"), "the marker does not depend on the spelling")
+	})
+
+	t.Run("a tombstone is found by its slug through the indexed marker, however many other rows were deleted", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		for i := 0; i < 20; i++ {
+			fx.addTombstone(t, fmt.Sprintf("gone-%02d", i)) // ordinary deleted objects
+		}
+		fx.addTypeTombstone(t, "drv-ot-"+gadgetTypeKey, gadgetTypeKey, "gadget")
+
+		entry, removed, err := fx.removedTypeBySpelling(testSpaceId, "gadget")
+
+		require.NoError(t, err)
+		require.True(t, removed)
+		assert.Equal(t, gadgetTypeKey, entry.Key)
+
+		// a bare tombstone (no marker, no snapshot) is not a type
+		_, removed, err = fx.removedTypeBySpelling(testSpaceId, "gone-01")
+		require.NoError(t, err)
+		assert.False(t, removed)
+	})
+
+	t.Run("the markdown envelope carries the removed-type warning too", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.addGadgetType(t, true)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, deleteObjId).Return(gadgetRead(), nil)
+		fx.mwMock.EXPECT().ObjectExport(mock.Anything, mock.Anything).Return(&pb.RpcObjectExportResponse{Result: "# Thing\n"})
+
+		body, _, err := fx.GetObject(ctx, testSpaceId, deleteObjId, ObjectQuery{Format: "md"})
+
+		require.NoError(t, err)
+		doc := decodeBody(t, body)
+		warnings, _ := doc["warnings"].([]any)
+		require.Len(t, warnings, 1)
+		assert.Contains(t, warnings[0].(map[string]any)["message"], "searches cannot filter by it")
+	})
+
 	t.Run("a non-bson custom key reaches the tombstone probe too", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addTypeTombstone(t, "drv-ot-customNote", "customNote", "custom_note")
@@ -354,6 +401,34 @@ func TestV2RoundFourChatAndIdentity(t *testing.T) {
 		require.NotNil(t, got.State, "a write nothing else made observable now says what it moved")
 		assert.Equal(t, 0, got.State.UnreadMessages)
 		assert.Equal(t, "state43", got.State.LastStateId)
+	})
+
+	t.Run("the reactions scope receipt carries the state too", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.mwMock.EXPECT().ChatReadReactions(mock.Anything, mock.Anything).Return(&pb.RpcChatReadReactionsResponse{})
+		fx.mwMock.EXPECT().ChatGetMessages(mock.Anything, mock.Anything).Return(&pb.RpcChatGetMessagesResponse{ChatState: &model.ChatState{LastStateId: "state44"}})
+
+		got, err := fx.ReadChat(ctx, testSpaceId, testChatId, v2model.ChatReadRequest{Scope: v2model.ChatReadScopeReactions}, false)
+
+		require.NoError(t, err)
+		require.NotNil(t, got.State)
+		assert.Equal(t, "state44", got.State.LastStateId)
+	})
+
+	t.Run("a restricted grant's list is its boundary: the spaces flag changes nothing", func(t *testing.T) {
+		fx := newV2FixtureBare(t)
+		fx.registerNamedSpace(t, "spaceA", "Work")
+		fx.registerNamedSpace(t, "spaceB", "Personal")
+		grant := &util.ApiGrant{Spaces: []string{"spaceA"}, Perms: util.GrantPermsRead}
+
+		got, err := fx.Whoami(whoamiCtx(util.ApiKeyInfo{Id: "h", Name: "k"}, grant), true)
+
+		require.NoError(t, err)
+		assert.True(t, got.Grant.Restricted)
+		assert.Nil(t, got.Grant.SpaceCount)
+		require.Len(t, got.Grant.Spaces, 1)
+		assert.Equal(t, "spaceA", got.Grant.Spaces[0].Id)
 	})
 
 	t.Run("an empty space update names what is not writable here", func(t *testing.T) {

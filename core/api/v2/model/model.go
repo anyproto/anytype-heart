@@ -266,12 +266,13 @@ type UpdateSpaceRequest struct {
 // and Notice repeat the Anytype-Key-Status / Anytype-Notice header signal in
 // the body, because agents read bodies, not headers.
 type WhoamiResponse struct {
-	Key       WhoamiKey   `json:"key"`
-	Scope     string      `json:"scope"` // "jsonApi" | "full" | "limited"
-	Grant     WhoamiGrant `json:"grant"`
-	Api       WhoamiApi   `json:"api"`
-	KeyStatus string      `json:"key_status"`       // "legacy" | "scoped", always present
-	Notice    string      `json:"notice,omitempty"` // the legacy sentence, verbatim printable
+	Key   WhoamiKey   `json:"key"`
+	Scope string      `json:"scope"` // "jsonApi" | "full" | "limited"
+	Grant WhoamiGrant `json:"grant"`
+	Api   WhoamiApi   `json:"api"`
+	// Credential kind: scoped means a grant record exists (all-spaces grants included), legacy means none. Use grant.restricted for the space boundary
+	KeyStatus string `json:"key_status"`
+	Notice    string `json:"notice,omitempty"` // the legacy sentence, verbatim printable
 }
 
 // WhoamiKey names the credential. CreatedAt/ExpiresAt are RFC 3339 UTC;
@@ -291,15 +292,15 @@ type WhoamiKey struct {
 // agent concludes it may touch every space). When Scoped is false, Spaces
 // is [] and Permission is null.
 type WhoamiGrant struct {
-	// The key carries an explicit grant record. This is NOT "limited to a subset": an all-spaces grant is scoped too. Branch on restricted for that
+	// A grant record exists. An all-spaces grant is scoped too; branch on restricted for the space boundary
 	Scoped bool `json:"scoped"`
 	// The key reaches only the spaces listed: scoped, and not all_spaces. False for a legacy key and for an all-spaces grant alike
 	Restricted bool `json:"restricted"`
 	AllSpaces  bool `json:"all_spaces"` // the boundary field of an all-spaces grant: the key covers every space in the account, including spaces created later (the tech space excepted). Never infer the boundary from spaces
-	// For an all-spaces grant: how many live spaces the key covers now. spaces lists them only with ?spaces=true
-	SpaceCount int                `json:"space_count,omitempty"`
+	// For an all-spaces grant: how many live spaces the key covers now, zero included. spaces lists them only when the spaces parameter is true
+	SpaceCount *int               `json:"space_count,omitempty"`
 	Permission *string            `json:"permission"` // the compact form agents string-match on
-	Spaces     []WhoamiGrantSpace `json:"spaces"`     // the granted spaces of a restricted key; for an all-spaces grant, the current live spaces when ?spaces=true, else empty
+	Spaces     []WhoamiGrantSpace `json:"spaces"`     // the granted spaces of a restricted key; for an all-spaces grant, the current live spaces when the spaces parameter is true, else empty
 }
 
 // WhoamiGrantSpace is one granted space. Spaces are OBJECTS with a

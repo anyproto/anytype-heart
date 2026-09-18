@@ -245,6 +245,30 @@ three fresh reviewers before the next.
   the PATCH description say that the space icon and the default object
   type are not writable through this API, so neither costs a session.
 
+  Reviewed (together with the group E review fixes) by three fresh
+  reviewers. One blocker: the removed-spelling stop in the type resolution
+  chain relied on a BOUNDED scan of the deleted rows for a tombstone, so a
+  tombstone past the bound let the spelling fall through to a live type
+  named that way. Closed store-side: the tombstone of a deleted type or
+  property now keeps its layout top level as `deletedLayout` (a new local
+  bundled relation, sparse-indexed in the space index), so "every deleted
+  type" is one exact query, and the resolution chain fails CLOSED when the
+  lookup errors. Their should-fixes are in: a tombstone demoted behind a
+  visible corpse still reads as removed, the markdown envelope carries the
+  removed-type warning, the reactions scope's receipt carries the state,
+  the removed-type 404 states the diagnosis once, the live owner of a
+  removed slug is checked for unambiguous visible ownership, the twin
+  sentence describes both corpses, `space_count` is reported for every
+  all-spaces grant (zero included), the `spaces` parameter refuses values
+  other than true and false, `key_status` is explained beside
+  `grant.scoped`, and the OpenAPI descriptions fit the prose guard again
+  (the regenerated document had broken it). The external MCP wrapper keeps
+  an operation's description beside its summary for v2 tools, so the
+  update_space and chat rules reach that surface. Accepted: the resolution
+  chain now pays the removed-type queries on a display-name-addressed
+  input (two queries and a derived-id probe); `?keys=name` bypasses the
+  read marker; list and search rows carry no removal marker.
+
 # What the fixes did achieve
 
 Worth recording so nobody re-opens them:

@@ -160,10 +160,13 @@ type ChatReadRequest struct {
 }
 
 // ChatReadResult acknowledges a read watermark move.
+// ChatReadResult is the read receipt: the chat's state after the move, when
+// it could be read back (best effort — the write itself has succeeded).
+// Deliberately no comment on the field: swag would lift it onto the shared
+// ChatState schema, where "after the move" is false on an ordinary read.
 type ChatReadResult struct {
-	DryRun bool `json:"dry_run,omitempty"`
-	// The chat's state after the move: unread_messages and unread_mentions reflect it, as they do on every messages read
-	State *ChatState `json:"state,omitempty"`
+	DryRun bool       `json:"dry_run,omitempty"`
+	State  *ChatState `json:"state,omitempty"`
 }
 
 // Read scopes (ChatReadRequest.Scope).

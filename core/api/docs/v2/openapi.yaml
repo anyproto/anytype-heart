@@ -334,8 +334,6 @@ components:
           type: string
       type: object
     ChatState:
-      description: 'The chat''s state after the move: unread_messages and unread_mentions
-        reflect it, as they do on every messages read'
       properties:
         last_state_id:
           type: string
@@ -959,17 +957,17 @@ components:
             False for a legacy key and for an all-spaces grant alike'
           type: boolean
         scoped:
-          description: 'The key carries an explicit grant record. This is NOT "limited
-            to a subset": an all-spaces grant is scoped too. Branch on restricted
-            for that'
+          description: A grant record exists. An all-spaces grant is scoped too; branch
+            on restricted for the space boundary
           type: boolean
         space_count:
           description: 'For an all-spaces grant: how many live spaces the key covers
-            now. spaces lists them only with ?spaces=true'
+            now, zero included. spaces lists them only when the spaces parameter is
+            true'
           type: integer
         spaces:
           description: the granted spaces of a restricted key; for an all-spaces grant,
-            the current live spaces when ?spaces=true, else empty
+            the current live spaces when the spaces parameter is true, else empty
           items:
             $ref: '#/components/schemas/WhoamiGrantSpace'
           type: array
@@ -1006,7 +1004,9 @@ components:
         key:
           $ref: '#/components/schemas/WhoamiKey'
         key_status:
-          description: '"legacy" | "scoped", always present'
+          description: 'Credential kind: scoped means a grant record exists (all-spaces
+            grants included), legacy means none. Use grant.restricted for the space
+            boundary'
           type: string
         notice:
           description: the legacy sentence, verbatim printable
@@ -1397,13 +1397,10 @@ paths:
       - Auth
   /v2/auth/whoami:
     get:
-      description: 'This describes the key, not a person; there is one account behind
-        this API. Branch on `grant.restricted`: true means the key reaches exactly
-        the spaces listed in `spaces`; false means every space — either an all-spaces
-        grant (`grant.all_spaces` true, covering spaces created later too) or a legacy
-        key with no grant (`grant.scoped` false, `spaces` empty). `grant.scoped` only
-        says a grant record exists. An all-spaces grant reports `space_count` and
-        lists the spaces only with `?spaces=true`.'
+      description: 'Describes the key, not a person. Branch on `grant.restricted`:
+        true means the key reaches only the spaces in `spaces`; false means every
+        space, either an all-spaces grant or a legacy key with no grant. An all-spaces
+        grant reports `space_count` and lists its spaces only when `spaces` is true.'
       operationId: auth_whoami
       parameters:
       - description: 'How grant.spaces[].id is spelled: compact (default) is the short
@@ -1413,8 +1410,8 @@ paths:
         name: ids
         schema:
           type: string
-      - description: 'For an all-spaces grant: list the current live spaces in grant.spaces
-          (default false — the count alone)'
+      - description: 'For an all-spaces grant: list the current live spaces in grant.spaces.
+          Default false, the count alone'
         in: query
         name: spaces
         schema:
@@ -1924,14 +1921,11 @@ paths:
       - Chat
   /v2/spaces/{space_id}/chats/{chat_id}/messages:
     get:
-      description: '`after` on its own walks forward, oldest first, continuing from
-        `next_after`. Every other query, including `after` together with `before`,
-        is anchored at the newest end of the range and walks backward from `next_before`.
-        Both bounds are exclusive. Messages are always in ascending order. `message_count`
-        is the number of messages the chat holds now, not the size of the range; `lifetime_message_count`
-        counts every message ever posted, deleted ones included. `state.unread_messages`
-        reflects the read watermark. Offset paging does not apply here, and `offset`
-        is refused.'
+      description: '`after` alone walks forward, oldest first, continuing from `next_after`.
+        Every other query is anchored at the newest end and walks backward from `next_before`.
+        Both bounds are exclusive; messages are always ascending. `message_count`
+        is the messages the chat holds now; `lifetime_message_count` counts every
+        message ever posted. `offset` is refused.'
       operationId: get_chat_messages
       parameters:
       - description: Space id
@@ -2365,12 +2359,11 @@ paths:
       - Chat
   /v2/spaces/{space_id}/chats/{chat_id}/read:
     post:
-      description: '`up_to` is inclusive, and it and `last_state_id` both come from
-        one messages read: the newest message''s order, and the state''s own id. An
-        empty value for either would silently mark nothing, so it is refused. Messages
-        that arrived after that state stay unread. The reactions scope marks every
-        unread reaction and takes neither field. The receipt carries the chat''s state
-        after the move; `state.unread_messages` on any messages read reflects it too.'
+      description: '`up_to` is inclusive; it and `last_state_id` come from one messages
+        read: the newest order and the state''s id. An empty value would silently
+        mark nothing, so both are required. Later messages stay unread. The reactions
+        scope takes neither field. The receipt carries the chat''s state after the
+        move when it could be read back.'
       operationId: read_chat
       parameters:
       - description: Space id

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "71001c404294aa631e6656584c2f9f1f73d99abc2fb15c7c4018ebf1dc81dcdb"
+const RelationChecksum = "fb9e5091677d0b9abbc2fd773fb3acf39dc28b50954f2594d2e19c967c6583f7"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -210,6 +210,7 @@ const (
 	RelationKeyDeletedDate                          domain.RelationKey = "deletedDate"
 	RelationKeyDeletionChangeId                     domain.RelationKey = "deletionChangeId"
 	RelationKeyDeletedSnapshot                      domain.RelationKey = "deletedSnapshot"
+	RelationKeyDeletedLayout                        domain.RelationKey = "deletedLayout"
 )
 
 var (
@@ -667,6 +668,20 @@ var (
 			Key:              "deletedDate",
 			MaxCount:         1,
 			Name:             "Deletion date",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDeletedLayout: {
+
+			DataSource:       model.Relation_local,
+			Description:      "The layout a deleted derived object (a type, a property) had, kept top level and sparse-indexed so the tombstones of one kind are an exact query",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brdeletedLayout",
+			Key:              "deletedLayout",
+			MaxCount:         1,
+			Name:             "Deleted object layout",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

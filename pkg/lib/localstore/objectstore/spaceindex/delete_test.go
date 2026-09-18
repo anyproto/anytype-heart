@@ -412,3 +412,36 @@ func TestCountRaw(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestDeleteObject_DerivedTombstoneKeepsItsLayoutTopLevel(t *testing.T) {
+	// a deleted type's tombstone is findable as a type through an indexed
+	// query; an ordinary object's tombstone carries no such marker
+	s := NewStoreFixture(t)
+	s.AddObjects(t, []TestObject{
+		{
+			bundle.RelationKeyId:             domain.String("typeA"),
+			bundle.RelationKeySpaceId:        domain.String("test"),
+			bundle.RelationKeyUniqueKey:      domain.String("ot-typeA"),
+			bundle.RelationKeyApiObjectKey:   domain.String("type_a"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+		},
+		liveObject("page1"),
+	})
+
+	require.NoError(t, s.DeleteObject("typeA"))
+	require.NoError(t, s.DeleteObject("page1"))
+
+	typeRow, err := s.GetDetails("typeA")
+	require.NoError(t, err)
+	assert.Equal(t, int64(model.ObjectType_objectType), typeRow.GetInt64(bundle.RelationKeyDeletedLayout))
+	assert.False(t, typeRow.Has(bundle.RelationKeyResolvedLayout), "the indexed live layout stays out of the tombstone")
+	pageRow, err := s.GetDetails("page1")
+	require.NoError(t, err)
+	assert.False(t, pageRow.Has(bundle.RelationKeyDeletedLayout))
+
+	// re-deleting keeps the marker
+	require.NoError(t, s.DeleteObject("typeA"))
+	typeRow, err = s.GetDetails("typeA")
+	require.NoError(t, err)
+	assert.Equal(t, int64(model.ObjectType_objectType), typeRow.GetInt64(bundle.RelationKeyDeletedLayout))
+}

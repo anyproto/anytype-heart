@@ -156,9 +156,10 @@ func (fx *v2Fixture) addPropertyTombstone(t *testing.T, id, storedKey, slug stri
 // keys ride the unindexed deletedSnapshot.
 func (fx *v2Fixture) addTypeTombstone(t *testing.T, id, storedKey, slug string) {
 	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
-		bundle.RelationKeyId:        domain.String(id),
-		bundle.RelationKeySpaceId:   domain.String(testSpaceId),
-		bundle.RelationKeyIsDeleted: domain.Bool(true),
+		bundle.RelationKeyId:            domain.String(id),
+		bundle.RelationKeySpaceId:       domain.String(testSpaceId),
+		bundle.RelationKeyIsDeleted:     domain.Bool(true),
+		bundle.RelationKeyDeletedLayout: domain.Int64(int64(model.ObjectType_objectType)),
 		bundle.RelationKeyDeletedSnapshot: domain.NewValueMap(map[string]domain.Value{
 			bundle.RelationKeyResolvedLayout.String(): domain.Int64(int64(model.ObjectType_objectType)),
 			bundle.RelationKeyUniqueKey.String():      domain.String("ot-" + storedKey),

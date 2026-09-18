@@ -109,7 +109,7 @@ func TestWhoamiService(t *testing.T) {
 			Scoped:     true,
 			Restricted: false,
 			AllSpaces:  true,
-			SpaceCount: 2,
+			SpaceCount: intPtr(2),
 			Permission: &perms,
 			Spaces: []v2model.WhoamiGrantSpace{
 				{Id: "spaceA", Name: "Work", Permission: util.GrantPermsReadWrite},
@@ -195,3 +195,5 @@ func TestWhoamiService(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func intPtr(n int) *int { return &n }

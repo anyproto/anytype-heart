@@ -1081,7 +1081,7 @@ func (s *Service) typeDeleteWarnings(spaceId string, entry typeEntry) []v2model.
 		if removed, rerr := s.removedTypes(spaceId); rerr == nil {
 			for _, e := range removed {
 				if e.Slug == entry.Slug && e.Key != entry.Key {
-					after = fmt.Sprintf("reads will spell it by its stored key %q, because a removed type already answers to %q", entry.Key, entry.Slug)
+					after = fmt.Sprintf("another removed type used %q before, so after this delete the objects of both read under their stored keys (%q here)", entry.Slug, entry.Key)
 					break
 				}
 			}

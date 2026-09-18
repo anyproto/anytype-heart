@@ -269,11 +269,8 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 	// an object whose type was removed must not read like an ordinary one
 	// (R4-1): the envelope keeps the served spelling, and this says why
 	// nothing else answers to it
-	if typeKey := objectTypeKey(read); vocab != nil && vocab.TypeRemoved(typeKey) {
-		warnings = append(warnings, v2model.Issue{
-			Path:    "/type",
-			Message: fmt.Sprintf("the type %q of this object was removed from the space — the object keeps it, but nothing new is created in it and it cannot be filtered by", vocab.TypeSlug(typeKey)),
-		}.Hintf("the live types are listed by %s", v2model.RefListTypes(spaceId)))
+	if issue, removed := removedTypeWarning(spaceId, vocab, objectTypeKey(read)); removed {
+		warnings = append(warnings, issue)
 	}
 	// a served document matches the schema this API publishes for it
 	trimAPIDocumentEnvelope(fields)
@@ -389,9 +386,14 @@ func (s *Service) markdownEnvelope(ctx context.Context, spaceId, objectId string
 		return nil, "", err
 	}
 	if typeKey := objectTypeKey(read); typeKey != "" {
-		served := s.apiKeys(spaceId, storeresolver.New(s.store.SpaceIndex(spaceId))).TypeSlug(typeKey)
-		if fields["type"], err = rawJSON(served); err != nil {
+		vocab := s.apiKeys(spaceId, storeresolver.New(s.store.SpaceIndex(spaceId)))
+		if fields["type"], err = rawJSON(vocab.TypeSlug(typeKey)); err != nil {
 			return nil, "", err
+		}
+		if issue, removed := removedTypeWarning(spaceId, vocab, typeKey); removed {
+			if fields["warnings"], err = rawJSON([]v2model.Issue{issue}); err != nil {
+				return nil, "", err
+			}
 		}
 	}
 	if fields["etag"], err = rawJSON(etag); err != nil {
@@ -402,6 +404,18 @@ func (s *Service) markdownEnvelope(ctx context.Context, spaceId, objectId string
 	}
 	body, err := encodeEnvelope(fields)
 	return body, etag, err
+}
+
+// removedTypeWarning is the read marker for an object whose type was
+// removed (R4-1), on every envelope a read serves.
+func removedTypeWarning(spaceId string, vocab *apiKeyVocab, typeKey string) (v2model.Issue, bool) {
+	if vocab == nil || typeKey == "" || !vocab.TypeRemoved(typeKey) {
+		return v2model.Issue{}, false
+	}
+	return v2model.Issue{
+		Path:    "/type",
+		Message: fmt.Sprintf("the type %q of this object was removed from the space — the object keeps it, but nothing new is created in it and searches cannot filter by it", vocab.TypeSlug(typeKey)),
+	}.Hintf("the live types are listed by %s", v2model.RefListTypes(spaceId)), true
 }
 
 // objectTypeKey extracts the object's type key from the snapshot.
