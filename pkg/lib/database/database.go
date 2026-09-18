@@ -72,8 +72,11 @@ type SortRequest struct {
 }
 
 type Query struct {
-	TextQuery       string
-	SpaceId         string
+	TextQuery string
+	SpaceId   string
+	// SpaceIds limits cross-space queries before any store is queried.
+	// Nil means all user spaces; an empty, non-nil list means none.
+	SpaceIds        []string
 	Filters         []FilterRequest // filters results. apply sequentially
 	Sorts           []SortRequest   // order results. apply hierarchically
 	Limit           int             // maximum number of results
@@ -208,6 +211,34 @@ func FiltersFromProto(filters []*model.BlockContentDataviewFilter) []FilterReque
 		})
 	}
 	return res
+}
+
+func FiltersToProto(filters []FilterRequest) []*model.BlockContentDataviewFilter {
+	result := make([]*model.BlockContentDataviewFilter, 0, len(filters))
+	for _, f := range filters {
+		result = append(result, &model.BlockContentDataviewFilter{
+			Id: f.Id, Operator: f.Operator, RelationKey: f.RelationKey.String(),
+			RelationProperty: f.RelationProperty, Condition: f.Condition, Value: f.Value.ToProto(),
+			QuickOption: f.QuickOption, Format: f.Format, IncludeTime: f.IncludeTime,
+			NestedFilters: FiltersToProto(f.NestedFilters),
+		})
+	}
+	return result
+}
+
+func SortsToProto(sorts []SortRequest) []*model.BlockContentDataviewSort {
+	result := make([]*model.BlockContentDataviewSort, 0, len(sorts))
+	for _, s := range sorts {
+		item := &model.BlockContentDataviewSort{
+			RelationKey: s.RelationKey.String(), Type: s.Type, Format: s.Format,
+			IncludeTime: s.IncludeTime, Id: s.Id, EmptyPlacement: s.EmptyPlacement, NoCollate: s.NoCollate,
+		}
+		for _, value := range s.CustomOrder {
+			item.CustomOrder = append(item.CustomOrder, value.ToProto())
+		}
+		result = append(result, item)
+	}
+	return result
 }
 
 func SortsFromProto(sorts []*model.BlockContentDataviewSort) []SortRequest {

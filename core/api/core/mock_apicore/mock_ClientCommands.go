@@ -1100,6 +1100,55 @@ func (_c *MockClientCommands_ObjectCreateRelationOption_Call) RunAndReturn(run f
 	return _c
 }
 
+// ObjectCrossSpaceSearch provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) ObjectCrossSpaceSearch(_a0 context.Context, _a1 *pb.RpcObjectCrossSpaceSearchRequest) *pb.RpcObjectCrossSpaceSearchResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ObjectCrossSpaceSearch")
+	}
+
+	var r0 *pb.RpcObjectCrossSpaceSearchResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectCrossSpaceSearchRequest) *pb.RpcObjectCrossSpaceSearchResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcObjectCrossSpaceSearchResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_ObjectCrossSpaceSearch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectCrossSpaceSearch'
+type MockClientCommands_ObjectCrossSpaceSearch_Call struct {
+	*mock.Call
+}
+
+// ObjectCrossSpaceSearch is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcObjectCrossSpaceSearchRequest
+func (_e *MockClientCommands_Expecter) ObjectCrossSpaceSearch(_a0 interface{}, _a1 interface{}) *MockClientCommands_ObjectCrossSpaceSearch_Call {
+	return &MockClientCommands_ObjectCrossSpaceSearch_Call{Call: _e.mock.On("ObjectCrossSpaceSearch", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_ObjectCrossSpaceSearch_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcObjectCrossSpaceSearchRequest)) *MockClientCommands_ObjectCrossSpaceSearch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcObjectCrossSpaceSearchRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectCrossSpaceSearch_Call) Return(_a0 *pb.RpcObjectCrossSpaceSearchResponse) *MockClientCommands_ObjectCrossSpaceSearch_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectCrossSpaceSearch_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectCrossSpaceSearchRequest) *pb.RpcObjectCrossSpaceSearchResponse) *MockClientCommands_ObjectCrossSpaceSearch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ObjectExport provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommands) ObjectExport(_a0 context.Context, _a1 *pb.RpcObjectExportRequest) *pb.RpcObjectExportResponse {
 	ret := _m.Called(_a0, _a1)

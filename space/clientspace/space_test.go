@@ -14,6 +14,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage/mock_anystorage"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 )
 
 func TestMissingMandatoryObjects(t *testing.T) {
@@ -106,4 +107,13 @@ func TestMissingMandatoryObjects(t *testing.T) {
 		// then
 		assert.ElementsMatch(t, want, missing)
 	})
+}
+
+// The tech space holds the account object, which account creation writes before any ACL is worth
+// consulting, and it has exactly one member. Checked before IsPersonal, which reads through to the
+// common space, so this must not require one.
+func TestCanManageSpace_TechSpace(t *testing.T) {
+	techSpace := &space{spaceType: spacedomain.SpaceTypeTech}
+
+	assert.True(t, techSpace.CanManageSpace())
 }

@@ -8,10 +8,37 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMakeExportName(t *testing.T) {
+	date := time.Date(2026, 9, 9, 16, 35, 0, 123000000, time.UTC)
+	for _, tc := range []struct {
+		name, space, object, want string
+	}{
+		{"space", "My Space", "", "my-space"},
+		{"object", "My Space", "Project Plan", "my-space-project-plan"},
+		{"normalize", " ../Café/Notes ", `Weekly\Plan: draft?`, "cafe-notes-weekly-plan-draft"},
+		{"empty space", "", "", "untitled"},
+		{"punctuation", "...", "?!", "untitled-untitled"},
+		{"long space", strings.Repeat("s", 150), "", strings.Repeat("s", 100)},
+		{"both long", strings.Repeat("s", 150), strings.Repeat("o", 150), strings.Repeat("s", 49) + "-" + strings.Repeat("o", 50)},
+		{"short space", "space", strings.Repeat("o", 150), "space-" + strings.Repeat("o", 94)},
+		{"short object", strings.Repeat("s", 150), "object", strings.Repeat("s", 93) + "-object"},
+		{"trim separator", strings.Repeat("s", 48) + " " + strings.Repeat("s", 100), strings.Repeat("o", 150), strings.Repeat("s", 48) + "-" + strings.Repeat("o", 50)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := makeExportName(tc.space, tc.object, date)
+			assert.Equal(t, "anytype-"+tc.want+"-2026-09-09-163500.123", got)
+			assert.LessOrEqual(t, len(tc.want), exportNamesMaxLength)
+			assert.Equal(t, got, filepath.Base(got))
+			assert.NotContains(t, got, "--")
+		})
+	}
+}
 
 func TestDirWriter_WriteFile(t *testing.T) {
 	path, err := ioutil.TempDir("", "")
@@ -19,7 +46,7 @@ func TestDirWriter_WriteFile(t *testing.T) {
 	defer os.RemoveAll(path)
 
 	lastModifiedDate := int64(1692203040)
-	wr, err := newDirWriter(path, false)
+	wr, err := newDirWriter(path, "export", false)
 	require.NoError(t, err)
 	require.NoError(t, wr.WriteFile("some.test", strings.NewReader("some string"), lastModifiedDate))
 	require.NoError(t, wr.Close())
@@ -46,7 +73,7 @@ func TestZipWriter_WriteFile(t *testing.T) {
 
 	lastModifiedDate := int64(1692203040)
 
-	wr, err := newZipWriter(path, uniqName()+".zip")
+	wr, err := newZipWriter(path, "export.zip")
 	require.NoError(t, err)
 	require.NoError(t, wr.WriteFile("some.test", strings.NewReader("some string"), lastModifiedDate))
 	require.NoError(t, wr.Close())
@@ -84,7 +111,7 @@ func TestZipWriter_Get(t *testing.T) {
 		require.NoError(t, err)
 		defer os.RemoveAll(path)
 
-		wr, err := newZipWriter(path, uniqName()+".zip")
+		wr, err := newZipWriter(path, "export.zip")
 		require.NoError(t, err)
 
 		// when

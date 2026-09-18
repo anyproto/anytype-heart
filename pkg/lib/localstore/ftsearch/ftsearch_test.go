@@ -1,7 +1,6 @@
 package ftsearch
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/wallet"
 )
 
 func TestQuarantineCorruptIndex(t *testing.T) {
@@ -41,13 +39,8 @@ type fixture struct {
 }
 
 func newFixture(path string, t *testing.T) *fixture {
-	ft := TantivyNew()
-	ta := new(app.App)
-
-	ta.Register(wallet.NewWithRepoDirAndRandomKeys(path)).
-		Register(ft)
-
-	require.NoError(t, ta.Start(context.Background()))
+	ft, ta, err := startFts(t, path)
+	require.NoError(t, err)
 	return &fixture{
 		ft: ft,
 		ta: ta,

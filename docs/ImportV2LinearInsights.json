@@ -1,0 +1,155 @@
+{
+  "clusters": [
+    {
+      "cluster": "Silent / partial import failure with no error surfaced",
+      "issueCount": 37,
+      "representativeIssues": [
+        "GO-6620",
+        "GO-2466",
+        "GO-5273",
+        "GO-1146",
+        "GO-3918",
+        "GO-4114",
+        "GO-1771",
+        "GO-917"
+      ],
+      "userProblem": "Users run an import, watch the progress bar reach 100%, and get a \"success\" notification while large amounts of data are silently gone. In GO-6620 a Notion import \"finished without error,\" yet many pages are absent \u2014 replaced by grey \"page not found\" placeholders showing a raw id \u2014 and every date inserted via @now is missing from page bodies. In GO-2466 the import completes but only a tiny fraction of thousands of pages arrive, with no relationships and the whole tree flattened into one page. GO-5273 shows pages missed on one run that import fine on a retry, proving nothing detected the loss. The opposite face appears in GO-1146/GO-3918/GO-4114: a \"successful\" import that yields an empty collection with nothing inside. In every case the user gets no signal about what was dropped, how much, or why.",
+      "whyWeHaveThisProblem": "The v1 pipeline has no concept of completeness and several independent silent-drop paths. Notion discovery relies entirely on Notion's /search index (search.go); child pages the index omits or returns late (eventual consistency \u2014 GO-5273) are never crawled, so their references resolve to \"page not found\" placeholders in link.go, and progress.SetTotal (converter.go:73) is computed from what search returned \u2014 the bar reaches 100% over an already-truncated set. Per-object losses never surface: handlePageProperties (task.go:213) does log.Error;continue on any failed relation, dropping dates/people/rollups; fillBlocks (retrieve.go) has no default case and drops unknown or unmarshal-failing blocks with only a log; MapBlocks skips non-Getter blocks. The ConvertError bag (error.go) does no expected-vs-created reconciliation, ShouldAbortImport is called with pathsCount=0 so partial failure never aborts under IGNORE_ERRORS, and the success flag, notification, and root-collection creation are keyed solely on response.Err.",
+      "howToAvoid": "Make completeness a first-class, enforced invariant instead of an emergent property. Establish the full set of expected objects up front via an enumerate/claim pass that does not depend on any external search index, then reconcile that claimed set against what was actually persisted, so any gap becomes a reportable outcome rather than invisible. Forbid silent drops structurally: every place that cannot represent something \u2014 unknown block, unresolved reference, failed property, un-fetched child page, un-synced file \u2014 must emit a typed, severity-graded issue or an explicit placeholder that a test pins, never a bare continue or lone log line. Route all abort/skip decisions through a single predicate keyed on real object counts, and derive every user-facing result (success flag, notification, whether a root collection is created) from that reconciled ledger, so \"success\" can only mean every claimed object is accounted for and partial loss always carries an actionable, per-object signal."
+    },
+    {
+      "cluster": "No schema negotiation for source properties/relations/types",
+      "issueCount": 65,
+      "representativeIssues": [
+        "GO-6345",
+        "GO-824",
+        "GO-780",
+        "GO-6914",
+        "GO-2590",
+        "GO-2170",
+        "GO-6919",
+        "GO-2198"
+      ],
+      "userProblem": "After import, relations arrive as the wrong kind, multiply, or lose values. A Notion \"Select\" (pick-one) property imports as a multi-select Tag you can't convert back (GO-6345); a \"Person\" property becomes a Tag relation whose options are people's names rather than a proper people/object relation (GO-824); Notion \"Date\" relations land as plain Text so date filters and sorting break (GO-780, GO-2198) and timezone offsets are wrong (GO-6676). Re-importing the same Notion database, or re-importing your own Markdown export, spawns duplicates: system relations like Created By, Links and Backlinks reappear as extra \"Tag\" copies (GO-6914), and repeated Notion imports scatter data across many identically-named relations so you cannot build one Set over them (GO-2590). Every CSV column becomes long-text, losing numbers, dates and tags (GO-2170).",
+      "whyWeHaveThisProblem": "There is no schema-negotiation layer: each converter projects source properties onto Anytype relation formats item-by-item and mints relation identity independently. In Notion (property/propertyitem.go) every property type hard-returns one RelationFormat \u2014 SelectItem and MultiSelectItem both return tag (single/multi cardinality lost), PeopleItem returns tag, DateItem.SetDetail reads only Date.Start (drops End/TimeZone); database-only Formula/Rollup return nil and vanish. Relation keys are random bson.NewObjectId().Hex(), deduped only within one run via an in-memory PropertiesStore keyed by name+format (relationsmaps.go) that never consults the target space. Cross-run merge is a single post-hoc query, getExistingRelation (existingobject.go), filtering on RelationFormat AND (name OR key) \u2014 so any format disagreement defeats it. The Markdown/YAML parser (parser.go) guesses format from a value's Go type (array\u2192tag) with only a 5-entry replaceMap to bundled keys, so bundled object-format system relations re-import as fresh tag relations and never match. CSV (collectionstrategy.go) assigns every column longtext with a fresh key.",
+      "howToAvoid": "Introduce an explicit schema-mapping layer shared by every source: model each source property as a first-class descriptor carrying a stable source identity plus its native type AND cardinality, and resolve it once to a target relation through a deterministic, space-aware negotiation instead of per-value guessing. Make relation/option/type identity derivable from that descriptor (source id to unique key) so the same property always converges to the same object on re-import, rather than minting random ids and hoping a later name+format query re-merges them. Keep format out of identity: reconcile against bundled/system relations by canonical key first, and treat cardinality (single vs multi) and value type as negotiated attributes of the mapping, never inferred from a serialized value's shape or leaked from value text into a key. When a source type has no faithful target, emit a typed, user-visible issue rather than silently collapsing to tag/longtext or dropping the value."
+    },
+    {
+      "cluster": "File/attachment/link resolution failures across export-import",
+      "issueCount": 48,
+      "representativeIssues": [
+        "GO-3943",
+        "GO-5161",
+        "GO-2909",
+        "GO-7010",
+        "GO-6022",
+        "GO-4573",
+        "GO-7247"
+      ],
+      "userProblem": "Users round-trip a space and the text survives but the media does not. Export reports \"no errors\" yet the zip is missing files or won't even decompress (GO-3943, GO-4482), and reimporting silently drops images. HTML/markdown with relative or CJK-named references (`z.png`, `\u4f60\u597d.md`) show \"there was an error uploading the file\" placeholders instead of the picture (GO-5161, GO-4573). A directory exported on Windows fails to import on Mac/Linux with \"file not found\" because paths carry backslashes (GO-2909, GO-2985). Even when a file does import, its own metadata is lost: tag values on images vanish and creation dates reset to today (GO-7010, GO-6753). A link to a file that no longer exists silently becomes a bookmark (GO-6022). Notion videos/audio/PDFs frequently never arrive at all (GO-3792, GO-2350, PROD-865).",
+      "whyWeHaveThisProblem": "Files are handled out-of-band from the object graph by several disconnected code paths instead of one authority. In Phase 2, `objectid/fileobject.go` and `oldfile.go` call `uploadFile()` serially and, on any failure, `log.Error(...)` then `return id, payload, nil` \u2014 swallowing the error and handing back the original tree id, so the block points at a nonexistent object with zero signal to the mode/abort predicate. Phase 3's `FileSyncer`/`FileRelationSyncer` re-enter already-created objects because file ids don't exist until upload. The link\u2194file join is fragile host-local string matching: `ProvideFileName` does `filepath.Join(path)+os.Stat` assuming the media sits on this machine/platform, and `zip.go normalizeName` renames non-UTF8 entries to \"import file N\", so CJK/relative/backslashed references never match their bytes. `uploadFile` rebuilds a bare file via `copyDetailsExcludingFileRelations`, dropping custom relations.",
+      "howToAvoid": "Make files first-class nodes of the same object graph, not a side-channel. Their identity should be a resolvable future in the single identity index, resolved by the same reference-rewriter that handles every other link \u2014 so there is exactly one place a file id is produced and one place references are fixed, eliminating the Phase-2-upload / Phase-3-syncer split and its re-entry. Every fetch, path, or decode failure must become a typed issue flowing through the one abort(mode) predicate, never a bare log line, so \"no errors\" can never coexist with missing media. Canonicalize the link\u2194file join once at the source boundary (NFC normalization, platform-agnostic slashes, content addressing) so matching never depends on host filesystem, OS, or encoding. Carry the file object's full details through upload rather than reconstructing a bare file and re-whitelisting relations."
+    },
+    {
+      "cluster": "Export format can't losslessly encode structure/formatting",
+      "issueCount": 63,
+      "representativeIssues": [
+        "GO-5961",
+        "GO-7050",
+        "GO-6445",
+        "GO-3014",
+        "GO-3013",
+        "GO-7164",
+        "GO-1347"
+      ],
+      "userProblem": "Users export a page or whole space and reimport it (often into a fresh space) and the document silently comes back reshaped. Rich blocks markdown has no token for get flattened or vanish: a Mermaid diagram, a YouTube/Figma embed, and a LaTeX formula all export as `$$\u2026$$`, so on reimport they are indistinguishable and land as plain latex (GO-5961, GO-7050); a bookmark card with title, description and favicon exports as a bare `[title](url)` link, losing everything but the URL (GO-6445). Structured objects fare worse: a Set whose views each point at a different object type reimports pointing at nothing (GO-3014), an inline set loses all its views and filters (GO-3013), and kanban option colors reset to grey while hidden \"uncategorized\" groups reappear (GO-7164, GO-3624). Callouts, in-app emoji icons, and heading levels also quietly degrade.",
+      "whyWeHaveThisProblem": "Two mechanisms, both silent. Markdown export (`core/converter/md/md.go`) is a hand-maintained `render()` switch over block-content types that is not total: only 8 of 21 types have cases, and Dataview, Embed, Icon, Relation, FeaturedRelations, TableOfContents and Widget fall through to `default \u2192 renderLayout`, which only recurses into children and emits nothing for the block itself \u2014 inline sets and embeds just disappear. Where a case exists it is lossy by construction: `renderLatex` ignores the block's `Processor` field so all 20 embed variants (Mermaid, Youtube, Figma\u2026) collapse to `$$`; `renderBookmark` reduces a rich object to `[title](url)`. On the .pb/space path, `handleDataviewBlock` remaps view references with bare map indexing \u2014 `view.DefaultObjectTypeId = oldIDtoNew[id]` yields \"\" on a miss and assigns it, silently clearing the type; relation-option dedup (`getExistingRelationOption`) matches on name+relationKey+layout only, excluding color, so colors reset and recomputed group ids stop matching saved visibility.",
+      "howToAvoid": "Treat interchange as two distinct channels with an explicit fidelity contract, not one format asked to do both. Make the lossless channel a full-model snapshot (protobuf/JSON + schema) that carries every block type and every value-object's complete identity \u2014 option color, per-view type binding, group visibility \u2014 so space round-trip fidelity is a property of the canonical format and never depends on markdown's expressive limits. Make the presentation channel (markdown/HTML) a total, schema-driven mapping: enumerate the type/attribute space in a registry so an unhandled type is a build or validation failure, never a silent `default`. Any downgrade a target format genuinely cannot hold must emit exactly one typed Issue (Warning) \u2014 the \"no silent drops\" invariant \u2014 so degradation is visible and auditable. Resolve references and value-object identities by matching on full identity with an explicit miss policy, never bare map lookups that coerce misses to empty."
+    },
+    {
+      "cluster": "No stable identity/dedup semantics across (re)import",
+      "issueCount": 37,
+      "representativeIssues": [
+        "GO-3369",
+        "GO-6495",
+        "GO-5446",
+        "GO-6013",
+        "GO-2555",
+        "GO-6837",
+        "GO-5308"
+      ],
+      "userProblem": "Repeat and cross-space imports silently corrupt the destination instead of matching what is already there. Importing an Any-Block/gallery archive into a fresh account renames the user's Personal Space to the archive's name and collapses the space list to a single entry (GO-3369) - the space's own identity is overwritten. Importing an archive that shares a type with the target wipes that type's pre-configured views and resets its header layout, and after a cmd+R reload the views are gone everywhere (GO-6495). Exporting a space and importing it into another drags in internal/system objects like \"Class notes\" and \"Daily note\" that were never user content (GO-5446); installing the same gallery experience twice duplicates every status option value (GO-2555); and re-importing the same space twice leaves a dangling _missing_object link on the Get-Started objects (GO-6013).",
+      "whyWeHaveThisProblem": "Identity is a serial side effect of phase 2 (common/objectid.IDProvider), computed per-snapshot from store heuristics, not a stable property. workspace.go always resolves the archive's workspace snapshot to the destination space's own DerivedIDs().Workspace, and objectcreator.setWorkspaceDetails then unconditionally SetDetails the archive's Name/icon/homepage onto it - no guard that the destination is a different or non-empty space (GO-3369). For a matched existing type no create payload is minted, so materialize routes to updateExistingObject -> resetState -> history.ResetToVersion, wholesale replacing the live type's state and wiping its views; only a Revision compare guards it (GO-6495). existingobject.go dedup is best-effort name+key queries with the getExisting flag applied inconsistently per provider, so re-imports resolve ids differently across runs and references remap against non-convergent oldToNewID maps -> _missing_object (GO-6013). Convert loads the whole archive with no filter separating user content from internal/system objects, and participant ids embedding the source spaceId are never rewritten (GO-5446, GO-6837).",
+      "howToAvoid": "Treat identity as a first-class, deterministic, idempotent contract resolved before materialization, not a per-object store heuristic run mid-write. Hold one invariant: the same source object yields the same destination id on every run, resolved through a single authoritative identity index that every reference passes through, so a re-import becomes a merge/no-op rather than a fresh mint. Draw a hard boundary between \"content this archive contributes\" and \"identity and configuration the destination space owns\" - the space's name, its existing types, and their views must be immutable to a normal import, mutable only under an explicit, separately-requested full-restore mode. Make match-vs-create-vs-update an explicit typed decision per identity class (derivable / minted / upload-determined) guarded by a revision check, and make same-source-imported-twice idempotency a tested launch gate rather than an emergent behavior."
+    },
+    {
+      "cluster": "Import pipeline crashes/panics on edge-case input",
+      "issueCount": 19,
+      "representativeIssues": [
+        "GO-4574",
+        "GO-4272",
+        "GO-6440",
+        "GO-6435",
+        "GO-1472",
+        "GO-1270",
+        "GO-2249"
+      ],
+      "userProblem": "Ordinary-but-imperfect source data takes the whole app down instead of failing gracefully. A single markdown file containing one broken link \u2014 `[x](no_exist_file.md)` \u2014 crashes the entire desktop app on import (GO-4574). A CSV (empty, or with transpose enabled) panics ObjectImport (GO-4272). A markdown .zip crashes, but \"usually doesn't crash on the second try\" \u2014 non-deterministic (GO-6440). Notion import crashes the moment the user enters their API token and clicks next (GO-6435, GO-1270). Outcomes span a hard process crash (the Anytype window dies, in-progress work lost) and a silent death \u2014 white screen, no notification (JS-9010), the import simply vanishes. In every case the user cannot tell which file/page was malformed, cannot get partial results, and retrying is guesswork.",
+      "whyWeHaveThisProblem": "Phase-1 converters read the whole source into memory with pervasive unchecked indexing and type-assumed parsing: `transpose` does `len(csvTable[0])` (csv/converter.go:199); markdown/import.go dereferences `blocks[0]`, `ParsedBlocks[0]`, `a[len(a)-1]`, `allRootObjectsIds[0]` with no length guard; Notion assumes JSON error bodies (the `<`-in-HTML case, GO-1472). Malformed/truncated input hits an out-of-range or nil deref. Critically, there is zero `recover()` anywhere in core/block/import, so blast radius depends purely on where the panic fires: synchronous handlers (ValidateToken) are caught by the gRPC interceptor (grpc.go:280) \u2192 a reported \"code 1 panic recovered\"; the async import runs fire-and-forget under conc.Go's recover (importer.go:169) \u2192 logged, import silently dead; but the materialize phase fans out through workerpool.go's raw `go func` (line 41) with no recover \u2014 a panic there crashes the entire process. Singleton converters with mutable per-request state explain the non-determinism (GO-6440).",
+      "howToAvoid": "Treat every converter and every persist worker as an untrusted boundary that structurally cannot take down the process. Hold one invariant: a per-unit panic firewall \u2014 recover around each converter emission and each persist-task goroutine \u2014 that turns ANY panic, not just anticipated ones, into a typed per-object Issue (ObjectError/Fatal) flowing through the same single abort predicate as ordinary failures. Then the worst case for any malformed page/row/link is one skipped-and-reported object, never a crash or a silent white screen. Fixing individual known panic sites and adding a typed-Issue model for anticipated bad input (as v2 does) is necessary but insufficient \u2014 the class recurs because unanticipated input reaches unguarded code. Note v2's engine still spawns raw `go func` converter/persist goroutines (engine.go:203/215/223) with no recover; the firewall must be the pipeline's default, pinned by fuzz/edge-case fixtures."
+    },
+    {
+      "cluster": "Import RPC lifecycle, error-code, and capability architecture gaps",
+      "issueCount": 76,
+      "representativeIssues": [
+        "GO-2794",
+        "GO-4475",
+        "GO-6854",
+        "GO-2043",
+        "GO-7037",
+        "GO-1822",
+        "JS-1727",
+        "GO-4132"
+      ],
+      "userProblem": "The import control surface behaves as if it were fire-once-and-hope. Pressing \"cancel\" on a large import does nothing \u2014 it keeps running to completion (GO-2794), and there's no cross/cancel button surfaced at all (JS-5777). When something goes wrong, users get contradictory or useless signals: a zip with no importable files shows one code in the notification banner but different, correct text in the process bar (GO-4475), and a Notion import that exceeds remote storage quota reports a misleading \"not enough space\" while silently dropping many images (GO-7037). The API is also too thin to do real work: backup/restore via external snapshots always fails because type info can't be carried (GO-6854), and CSV delimiter / first-row settings (JS-1727, GO-1027) and multi-file/multi-format selection (GO-4132) either don't exist or misbehave. Clients can't map error codes to actionable messages (GO-2043, GO-1822).",
+      "whyWeHaveThisProblem": "Cancellation and cancellation-context are two disconnected things. `progress.Cancel()` (progress.go) merely closes a Go channel, checked ONLY by `TryStep` inside `readResults` \u2014 i.e. once per already-created object in the materialize phase. The `ctx` handed to converters is `componentCtx` (async) or the caller ctx, never derived from Progress, so phase-1 `GetSnapshots` (reads the whole source) and phase-2 ID-assign + synchronous single-threaded file upload never observe cancel. Async runs are `conc.Go` on `componentCtx`, response discarded, untracked; `Close()` cancels but doesn't drain, so sleep/account-stop tears imports down mid-flight (GO-1774) with no rollback. Errors flow through two divergent surfaces: `Progress.Finish` carries a raw `err.Error()` string, while notifications run `GetImportNotificationErrorCode` \u2014 a flat `errors.Is` switch over a hand-kept sentinel list that collapses everything unmatched to `INTERNAL_ERROR`, re-reshaped again by `GetResultError`'s no-object logic. Capabilities live in a per-format `pb.RpcObjectImportRequest` oneof; new settings need proto edits plus a branch through singleton converters.",
+      "howToAvoid": "Model an import as a first-class, addressable long-running job with exactly one cancellation context threaded through every stage \u2014 source read, network calls, uploads, tree creation, future waits \u2014 so cancel is honored mid-object, not just between created objects; the job must be tracked and drained (bounded grace) on shutdown, never fire-and-forget on a component ctx. Make one typed issue/result model the single source of outcome truth: severity + stable code emitted at the point of failure, with exactly one thin adapter mapping to the wire code, so process bar, notification, and RPC response can never disagree and new conditions (quota, permission, per-format loss) get a real code instead of INTERNAL_ERROR. Treat format-specific settings and object-type identity as data in a converter-agnostic request contract with declared per-converter capabilities, so CSV options, migration flags, multi-file selection, and external-snapshot types extend without editing the engine core."
+    },
+    {
+      "cluster": "Import pipeline doesn't scale to large workspaces/files",
+      "issueCount": 20,
+      "representativeIssues": [
+        "GO-5268",
+        "GO-4164",
+        "GO-4027",
+        "GO-2635",
+        "GO-1778",
+        "GO-3998",
+        "GO-4964",
+        "GO-1433"
+      ],
+      "userProblem": "Large or long imports get slow, freeze the app, run out of memory, or fail with confusing errors. A Notion import can churn for up to 150 minutes and stall (GO-1778); file URLs expire mid-crawl so attachments never arrive (GO-3998). A 30k-page Markdown import balloons memory (GO-4027); importing War and Peace as a single TXT errors out where paste works fine (GO-2635); a big object trips a hard 64MB limit (GO-1433). Most jarring, CSV files that are objectively small get rejected with \"exceeds 1000 lines\" (GO-5268, 124 lines) or \"Import Limit Exceeded\" (GO-4164, 8 columns / 288 rows), blocking the whole import. And once thousands of objects land, a flood of subscription events freezes the client (GO-4964, JS-2751).",
+      "whyWeHaveThisProblem": "v1's Convert phase (`Converter.GetSnapshots`) must return the ENTIRE workspace as an in-memory `[]*common.Snapshot` before any object is created \u2014 no streaming, no backpressure \u2014 so resident memory scales with total source size (csv `ReadAll` into `[][]string`; txt `io.ReadAll`+`MarkdownToBlocks`). One object becomes one CRDT change, so a huge file blows the 64MB change ceiling (GO-1433). Because dataview/relation creation can't scale in width, v1 papers over it with arbitrary global caps (`limitForColumns=10`, `limitForRows=1000` in csv/converter.go) computed from a lenient parse \u2014 `LazyQuotes`, `FieldsPerRecord=-1`, default comma, then `normalizeCSV` widens every row to the widest \u2014 so one stray-delimiter or embedded-newline row inflates the shape and trips `ErrCsvLimitExceeded`, a hard-abort even under IGNORE_ERRORS, on small files. Notion does identity+content+download in one serial, `time.Sleep(5ms)`-throttled, unbounded-retry crawl, uploading files in a later phase after URLs expire. Wrap-up emits one event per object, uncoalesced.",
+      "howToAvoid": "Hold a memory invariant: peak resident heavy data must be O(concurrency), never O(workspace) \u2014 a streaming producer\u2192bounded-channel\u2192worker-pool with real backpressure, so a slow store or slow API stalls intake instead of accumulating; enforce it with a gauge test on a synthetic huge source. Split cheap identity enumeration from content, overlap file downloads/uploads with page fetching via resolvable futures, and put all external I/O behind one shared adaptive rate limiter with bounded (not infinite) retry and resumability, so URLs can't expire underneath a serial crawl. Size/shape limits must be per-object structural guards on robustly-parsed structure \u2014 chunk oversized content, degrade wide tables gracefully with a visible warning \u2014 never a global counter derived from a lenient parse, and never a silent whole-import hard-abort. Finally, coalesce downstream events so post-import notification cost is O(1), not O(objects)."
+    },
+    {
+      "cluster": "Other / not a specific architectural pattern",
+      "issueCount": 4,
+      "representativeIssues": [
+        "GO-1785",
+        "PROD-597",
+        "GO-1035",
+        "GO-7349"
+      ],
+      "userProblem": "These are meta-tickets rather than one reproducible defect, but they share a symptom: import failures that nobody can pin down. GO-1785 is literally a \"research\" ticket built around a single Sentry event (message ObjectImport) and three Graylog log lines, with DOD \"Fix or extract to separate tasks\" \u2014 it was canceled ~18 months later, never reproduced. Users experience imports that \"mostly work\" yet silently drop or mangle content (e.g. unsupported Notion blocks collapse into a bare \"Unsupported block\" placeholder), and the only signal is a generic failure notification or nothing at all. Support-side, this produces grab-bag umbrella tickets \u2014 PROD-597 \"Notion import improvements\", GO-1035 \"Import issues\" \u2014 because there is no per-object detail to turn vague reports into concrete, fixable bugs.",
+      "whyWeHaveThisProblem": "Legacy v1 has no structured diagnostic model. Errors accumulate in common.ConvertError, a flat []error bag (error.go) whose Error() just concatenates opaque strings \u2014 no per-entry code, no severity, no attribution to which source file, object, block, or property failed. At the user boundary GetImportNotificationErrorCode collapses the entire run into one model.ImportErrorCode, with the default branch sending anything unrecognized to Import_INTERNAL_ERROR. Telemetry is a single line: importer.go logs log.Errorf(\"import from %s failed with error: %s\", type, res.Err) \u2014 the exact opaque \"ObjectImport\" signature GO-1785 chased. Worse, many losses never enter the bag at all: notion's UnsupportedBlock.GetBlocks drops content behind a placeholder emitting no error. With no stable code tying a Sentry event to a converter/object/field, failures are structurally un-attributable, so they can only become \"research this\" tickets that rot.",
+      "howToAvoid": "Hold one invariant: no silent drop and no anonymous error. Every failure and every deliberate data-loss decision must become a first-class, structured, attributable record at the moment it happens \u2014 not a string appended to a bag at the end. Each record should carry a stable typed code, a severity, and the source/object/block it belongs to, and that same taxonomy must be the single source that feeds both the user notification and telemetry (wire codes generated from the taxonomy, not a hand-written switch defaulting to INTERNAL_ERROR). When that holds, a production Sentry event names the code and the offending object, umbrella tickets decompose into concrete coded defects, and \"research this vague error\" tickets stop being creatable. importv2's Issue{Severity,Code,SourceKey,ObjectId} plus the run journal and \"visible, never silent\" data-loss rule is exactly this shape \u2014 verify it is wired through to both notifications and telemetry."
+    }
+  ],
+  "meta": {
+    "totalCandidates": 572,
+    "totalRelevant": 369,
+    "droppedAsNoiseBySynthesis": 0,
+    "clusterCount": 9
+  }
+}

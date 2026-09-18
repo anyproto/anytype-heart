@@ -327,7 +327,9 @@ func (s *service) verifyContextObject(spaceIndex spaceindex.Store, ci *contextIn
 }
 
 func (s *service) markFileContextMigrationDone(workspaceId string) error {
-	return s.detailsService.SetDetails(nil, workspaceId, []domain.Detail{
+	// the workspace is space configuration: a plain member may not edit it, but every member runs
+	// this migration, so it writes as the middleware rather than as the user
+	return s.detailsService.SetDetailsInternal(workspaceId, []domain.Detail{
 		{Key: bundle.RelationKeyMigrationObjectContext, Value: domain.Int64(domain.MigrationObjectContextVersion)},
 	})
 }

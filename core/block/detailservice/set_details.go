@@ -249,10 +249,30 @@ func (s *service) setIsArchivedForObjects(sctx session.Context, ctx context.Cont
 			}
 			return true
 		})
-		anySucceed, err := s.modifyArchiveLinks(ctx, archive, isArchived, ids...)
-
+		// Success is judged over the EXPLICIT ids only: the caller asked
+		// about the objects, not their orphans, and a cascaded file
+		// archiving while every requested object was refused must not turn
+		// into a success return (an API DELETE would answer 200 with the
+		// object still there). The cascade stays best-effort — its failures
+		// are logged, never returned.
+		explicit := make(map[string]struct{}, len(objectIds))
+		for _, id := range objectIds {
+			explicit[id] = struct{}{}
+		}
+		var explicitIds, cascadeIds []string
+		for _, id := range ids {
+			if _, ok := explicit[id]; ok {
+				explicitIds = append(explicitIds, id)
+			} else {
+				cascadeIds = append(cascadeIds, id)
+			}
+		}
+		anySucceed, err := s.modifyArchiveLinks(ctx, archive, isArchived, explicitIds...)
 		if err != nil {
 			log.Warn("failed to archive", zap.Error(err))
+		}
+		if _, cascadeErr := s.modifyArchiveLinks(ctx, archive, isArchived, cascadeIds...); cascadeErr != nil {
+			log.Warn("failed to archive cascaded files", zap.Error(cascadeErr))
 		}
 		if anySucceed {
 			return nil

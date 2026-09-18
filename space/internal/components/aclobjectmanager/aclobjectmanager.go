@@ -109,6 +109,9 @@ func (a *aclObjectManager) StatType() string {
 }
 
 func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
+	// drop the cached CanManageSpace verdict: a permission change here is exactly what the object
+	// restrictions have to start reflecting
+	a.sp.OnAclUpdated()
 	err := a.processAcl()
 	if err != nil {
 		log.Error("UpdateAcl: error processing acl", zap.Error(err))

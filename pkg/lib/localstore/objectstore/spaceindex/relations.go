@@ -147,32 +147,56 @@ func (s *dsObjectStore) ListAllRelations() (relations relationutils.Relations, e
 	return
 }
 
+// GetRelationByKey resolves a relation by its key. It goes through QueryRaw,
+// not Query, so that a property the user removed is still returned: Query
+// injects `isDeleted != true` and `isArchived != true` for any caller that does
+// not mention those keys (database.addDefaultFilters), while the by-id arm
+// (GetRelationById) reads details directly and never applies them. That
+// asymmetry made one relation resolvable by id and unresolvable by key, so an
+// export could name a property in a type document and fail to define it in the
+// dictionary. Every caller here — the AnyBlock and markdown exporters, and the
+// sub-object link migration — wants the definition of a property whose values
+// still sit on objects.
+//
+// A LIVE row still wins. Dropping the default filters means a removed row and a
+// live one can both match, and returning the removed one would be a regression,
+// so the scan prefers a row marked neither deleted nor archived and falls back
+// to a removed one only when that is all there is. This is also why the query
+// takes no limit: the live row is not necessarily first.
+//
+// A tombstoned relation is out of reach either way: DeleteObject strips the row
+// to id, isDeleted, preservedOnDelete and a deletedSnapshot, and neither
+// relationKey nor relationFormat survives that (see SnapshotOnDelete), so
+// nothing is left to match a key against or to build a definition from.
 func (s *dsObjectStore) GetRelationByKey(key string) (*model.Relation, error) {
-	q := database.Query{
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyRelationKey,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.String(key),
-			},
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.Int64(int64(model.ObjectType_relation)),
-			},
+	records, err := s.QueryRaw(&database.Filters{FilterObj: database.FiltersAnd{
+		database.FilterEq{
+			Key:   bundle.RelationKeyRelationKey,
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: domain.String(key),
 		},
-	}
-
-	records, err := s.Query(q)
+		database.FilterEq{
+			Key:   bundle.RelationKeyResolvedLayout,
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: domain.Int64(int64(model.ObjectType_relation)),
+		},
+	}}, 0, 0)
 	if err != nil {
 		return nil, err
 	}
-
 	if len(records) == 0 {
 		return nil, ds.ErrNotFound
 	}
 
-	rel := relationutils.RelationFromDetails(records[0].Details)
+	chosen := records[0].Details
+	for _, rec := range records {
+		if !rec.Details.GetBool(bundle.RelationKeyIsDeleted) && !rec.Details.GetBool(bundle.RelationKeyIsArchived) {
+			chosen = rec.Details
+			break
+		}
+	}
+
+	rel := relationutils.RelationFromDetails(chosen)
 
 	return rel.Relation, nil
 }
@@ -210,7 +234,15 @@ func (s *dsObjectStore) GetRelationFormatByKey(key domain.RelationKey) (model.Re
 	return model.RelationFormat(details.GetInt64(bundle.RelationKeyRelationFormat)), nil
 }
 
-// ListRelationOptions returns options for specific relation
+// ListRelationOptions returns options for specific relation.
+//
+// The explicit isUninstalled exclusion pins the corpse policy for options
+// the way livePropertyFilters does for relations (API v2 §8.41): a UI-deleted
+// option persists as {isUninstalled, isDeleted} plus full details, and until
+// this filter the injected `isDeleted != true` default was the SOLE thing
+// hiding it — any snapshot-shaped row carrying only isUninstalled (exports;
+// isDeleted is a local relation re-derived on load), or any future caller
+// suppressing the defaults, would have served deleted options as live.
 func (s *dsObjectStore) ListRelationOptions(relationKey domain.RelationKey) (options []*model.RelationOption, err error) {
 	filters := []database.FilterRequest{
 		{
@@ -222,6 +254,11 @@ func (s *dsObjectStore) ListRelationOptions(relationKey domain.RelationKey) (opt
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			RelationKey: bundle.RelationKeyResolvedLayout,
 			Value:       domain.Int64(model.ObjectType_relationOption),
+		},
+		{
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			RelationKey: bundle.RelationKeyIsUninstalled,
+			Value:       domain.Bool(true),
 		},
 	}
 	records, err := s.Query(database.Query{

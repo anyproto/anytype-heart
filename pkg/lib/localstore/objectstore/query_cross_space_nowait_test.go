@@ -52,6 +52,25 @@ func TestQueryCrossSpaceNoWait(t *testing.T) {
 		assert.Equal(t, "b", records[1].Details.GetString(bundle.RelationKeyName))
 	})
 
+	t.Run("space allowlist precedes pagination and returns the actual origin", func(t *testing.T) {
+		fx := newLoadedFixture(t)
+		records, loaded, err := fx.QueryCrossSpaceNoWait(context.Background(), database.Query{
+			SpaceIds: []string{"space2"}, Limit: 1,
+			Sorts: []database.SortRequest{{RelationKey: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc}},
+		})
+		require.NoError(t, err)
+		require.True(t, loaded)
+		require.Len(t, records, 1)
+		assert.Equal(t, "obj-b", records[0].Details.GetString(bundle.RelationKeyId))
+		assert.Equal(t, "space2", records[0].Details.GetString(bundle.RelationKeySpaceId))
+		stored, err := fx.GetDetails("space2", "obj-b")
+		require.NoError(t, err)
+		assert.Empty(t, stored.GetString(bundle.RelationKeySpaceId), "response decoration is not persisted")
+		records, _, err = fx.QueryCrossSpaceNoWait(context.Background(), database.Query{SpaceIds: []string{}, Limit: 1})
+		require.NoError(t, err)
+		assert.Empty(t, records, "an explicitly empty internal allowlist denies every space")
+	})
+
 	t.Run("no paging returns the full merged set", func(t *testing.T) {
 		// given
 		fx := newLoadedFixture(t)
@@ -213,6 +232,14 @@ func TestQueryCrossSpaceNoWait(t *testing.T) {
 		// stronger space1 matches outrank it: global relevance order
 		assert.NotEqual(t, "s2-lonely", records[0].Details.GetString(bundle.RelationKeyId))
 		assert.Equal(t, "s2-lonely", records[len(records)-1].Details.GetString(bundle.RelationKeyId))
+
+		restricted, _, err := fx.QueryCrossSpaceNoWait(context.Background(), database.Query{
+			TextQuery: "apple", SpaceIds: []string{"space2"}, Limit: 1,
+		})
+		require.NoError(t, err)
+		require.Len(t, restricted, 1)
+		assert.Equal(t, "s2-lonely", restricted[0].Details.GetString(bundle.RelationKeyId))
+		assert.Equal(t, "space2", restricted[0].Details.GetString(bundle.RelationKeySpaceId))
 
 		// paging comes from the merged global ranking
 		page, _, err := fx.QueryCrossSpaceNoWait(context.Background(), database.Query{TextQuery: "apple", Limit: 10})

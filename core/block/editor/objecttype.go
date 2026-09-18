@@ -52,9 +52,9 @@ func (f *ObjectFactory) newObjectType(spaceId string, sb smartblock.SmartBlock) 
 	store := f.objectStore.SpaceIndex(spaceId)
 	fileComponent := file.NewFile(sb, f.picker, f.fileUploaderService)
 	return &ObjectType{
-		SmartBlock:     sb,
-		AllOperations:  basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),
-		IHistory:       basic.NewHistory(sb),
+		SmartBlock:    sb,
+		AllOperations: basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),
+		IHistory:      basic.NewHistory(sb),
 		Text: stext.NewText(
 			sb,
 			store,
@@ -82,6 +82,16 @@ func (ot *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	ot.AddHook(ot.syncLayoutHook, smartblock.HookAfterApply)
+	// reconcileDataviewColumns is deliberately NOT wired here — see GO-7511.
+	// Init mutates ctx.State and InitObject applies it, so a repair here is a
+	// real change on the type's tree: opening a type became a write, and every
+	// device that opened the same stale type pushed the same repair. It was
+	// added (aeab6750c) partly as a migration for types created before the
+	// columns fix, and a migration on open is what we are removing.
+	//
+	// The end-of-import pass still runs, through ReconcileDataviewColumns
+	// below — that is the half that fixes the import race, and it belongs to
+	// the import rather than to opening a type.
 
 	oldLayout := layout.NewLayoutStateFromDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_basic),
@@ -203,6 +213,76 @@ func (ot *ObjectType) syncLayoutHook(info smartblock.ApplyInfo) error {
 	newLayout := layout.NewLayoutStateFromEvents(info.Events)
 	oldLayout := layout.NewLayoutStateFromDetails(info.ParentDetails)
 	return ot.syncLayoutForObjectsAndTemplates(oldLayout, newLayout, info.ApplyOtherObjects)
+}
+
+// reconcileDataviewColumns keeps the type's own dataview in step with the
+// type's properties: a view can fall behind because it was built before
+// columns were made visible, or because a property's relation object was not
+// indexed yet when the view was built — an import creates both within moments
+// of each other and can outrun the index. The state is only written when
+// something actually changed.
+//
+// It no longer runs on open (GO-7511); the import's own pass is the one
+// caller left.
+func (ot *ObjectType) reconcileDataviewColumns(s *state.State) bool {
+	if s == nil {
+		return false
+	}
+	block := s.Pick(state.DataviewBlockID)
+	if block == nil {
+		return false // a new type has no dataview yet; the creation migration builds it
+	}
+	reconciled := block.Copy()
+	if !template.ReconcileTypeDataviewColumns(reconciled.Model().GetDataview(), ot.recommendedRelationLinks(s.Details())) {
+		return false
+	}
+	s.Set(reconciled)
+	return true
+}
+
+// ReconcileDataviewColumns runs the same reconcile outside the init path, for
+// a type already open. The importer calls it once its run has created every
+// object: its workers run concurrently, so a type can be built while one of
+// its relations is still being written, and the view then misses that
+// property until something reloads the type.
+//
+// This is now the only caller: the Init hook that used to catch up a type on
+// open is disabled (GO-7511), so nothing reloads a type to repair it. A type
+// that still loses the race is repaired when someone next edits it — both
+// PATCH /v2/.../types/{type} and ObjectTypePropertyAdd maintain the views in
+// the same call — or not at all, which is what GO-7511 has to settle.
+func (ot *ObjectType) ReconcileDataviewColumns() error {
+	st := ot.NewState()
+	if !ot.reconcileDataviewColumns(st) {
+		return nil
+	}
+	// rebuilding a type's view from its own relations is maintenance, not a user edit, and system
+	// types need it just as much as custom ones
+	return ot.Apply(st, smartblock.NoSpaceConfigCheck)
+}
+
+// recommendedRelationLinks resolves the type's featured and recommended
+// relation ids into the links a dataview needs (key plus format). Ids that do
+// not resolve are skipped — an id that is merely not indexed yet resolves on a
+// later pass. That used to be the next open; with the Init hook gone
+// (GO-7511) it is the end of the import run, and after that only an edit.
+func (ot *ObjectType) recommendedRelationLinks(details *domain.Details) []*model.RelationLink {
+	ids := slices.Concat(
+		details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations),
+		details.GetStringList(bundle.RelationKeyRecommendedRelations),
+	)
+	links := make([]*model.RelationLink, 0, len(ids))
+	for _, id := range ids {
+		rel, err := ot.spaceIndex.GetRelationById(id)
+		if err != nil || rel == nil {
+			continue
+		}
+		if rel.Key == bundle.RelationKeyType.String() {
+			continue
+		}
+		links = append(links, &model.RelationLink{Key: rel.Key, Format: rel.Format})
+	}
+	return links
 }
 
 func (ot *ObjectType) dataviewTemplates() []template.StateTransformer {

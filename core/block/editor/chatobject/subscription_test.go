@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -201,6 +202,30 @@ func TestSubscription(t *testing.T) {
 		}
 		assert.Equal(t, wantEvents, fx.events)
 	})
+}
+
+func TestLifetimeMessageCountSurvivesDelete(t *testing.T) {
+	ctx := context.Background()
+	fx := newFixture(t)
+
+	messageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("message"))
+	require.NoError(t, err)
+	before, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{Limit: 10})
+	require.NoError(t, err)
+	require.Equal(t, int32(1), before.MessageCount)
+	require.Equal(t, int32(1), before.LifetimeMessageCount)
+
+	require.NoError(t, fx.DeleteMessage(ctx, messageId))
+	after, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{Limit: 10})
+	require.NoError(t, err)
+	assert.Empty(t, after.Messages)
+	assert.Equal(t, int32(0), after.MessageCount, "the shared live count keeps its non-deleted semantics")
+	assert.Equal(t, int32(1), after.LifetimeMessageCount, "deletion must not move the lifetime total backwards")
+
+	fx.subscription.Lock()
+	fx.subscription.ReconcileChatState()
+	fx.subscription.Unlock()
+	assert.Equal(t, int32(0), fx.subscription.GetMessageCount(), "shared subscription reconciliation remains a live count")
 }
 
 func TestSubscriptionMessageCounters(t *testing.T) {

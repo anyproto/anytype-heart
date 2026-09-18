@@ -28,6 +28,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"sync"
 	"time"
 
@@ -137,6 +138,7 @@ type Service struct {
 	resolver             idresolver.Resolver
 	spaceService         space.Service
 	tempDirProvider      core.TempDirProvider
+	downloadScopeDir     string
 	builtinObjectService builtinObjects
 	fileObjectService    fileobject.Service
 	detailsService       detailservice.Service
@@ -191,6 +193,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.fileUploaderService = app.MustComponent[fileuploader.Service](a)
 	s.fileOffloader = app.MustComponent[fileoffloader.Service](a)
 	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
+	s.downloadScopeDir = downloadScopeForGOOS(runtime.GOOS, s.tempDirProvider.TempDir())
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
 	s.accountService = app.MustComponent[account.Service](a)
@@ -593,7 +596,9 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string, addAnalytic
 		st.SetLocalDetail(bundle.RelationKeyChatId, domain.String(chatId))
 		st.SetDetail(bundle.RelationKeyHasChat, domain.Bool(true))
 
-		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
+		// space bootstrap, not a user edit: every member runs it, including plain writers
+		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.KeepInternalFlags,
+			smartblock.IgnoreNoPermissions, smartblock.NoSpaceConfigCheck)
 	})
 	if err != nil {
 		return fmt.Errorf("apply chatId to workspace: %w", err)

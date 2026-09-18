@@ -19,6 +19,9 @@ func Change(ch *pb.Change) (res *pb.Change) {
 	resB, _ := ch.Marshal()
 	res = &pb.Change{}
 	res.Unmarshal(resB)
+	// the raw, user-chosen name of the paired API key (§8.44) — it identifies
+	// a person's tooling, so it must not ride a debug export verbatim
+	res.IntegrationName = Text(res.IntegrationName)
 	if sh := res.Snapshot; sh != nil {
 		sh.Data.Details = Struct(sh.Data.Details)
 		for _, b := range sh.Data.Blocks {

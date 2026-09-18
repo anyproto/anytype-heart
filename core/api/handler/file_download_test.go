@@ -15,6 +15,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/api/core/mock_apicore"
 	"github.com/anyproto/anytype-heart/core/api/service"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/mock_files"
 	"github.com/anyproto/anytype-heart/pb"
@@ -44,6 +45,7 @@ func TestDownloadFileHandler(t *testing.T) {
 		fileObjectMock.EXPECT().GetImageData(mock.Anything, "obj-1").Return(nil, errors.New("not an image")).Once()
 
 		fileMock := mock_files.NewMockFile(t)
+		fileMock.EXPECT().FileId().Return(domain.FileId("file-cid"))
 		fileMock.EXPECT().Meta().Return(&files.FileMeta{
 			Media:            "text/plain",
 			Name:             "hello.txt",
@@ -70,6 +72,7 @@ func TestDownloadFileHandler(t *testing.T) {
 		fileObjectMock.EXPECT().GetImageData(mock.Anything, "obj-1").Return(nil, errors.New("not an image")).Once()
 
 		fileMock := mock_files.NewMockFile(t)
+		fileMock.EXPECT().FileId().Return(domain.FileId("file-cid"))
 		fileMock.EXPECT().Meta().Return(&files.FileMeta{
 			Media:            "text/plain",
 			Name:             "hello.txt",
@@ -97,6 +100,7 @@ func TestDownloadFileHandler(t *testing.T) {
 		fileObjectMock.EXPECT().GetImageData(mock.Anything, "obj-1").Return(nil, errors.New("not an image")).Once()
 
 		fileMock := mock_files.NewMockFile(t)
+		fileMock.EXPECT().FileId().Return(domain.FileId("file-cid"))
 		fileMock.EXPECT().Meta().Return(&files.FileMeta{
 			Media:            "text/plain",
 			Name:             "hello.txt",

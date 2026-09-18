@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
+	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/anytype-publish-server/publishclient/publishapi"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
@@ -758,6 +759,15 @@ func prepareSpaceService(t *testing.T, isPersonal bool, includeSpaceInfo bool) (
 	return spaceService, nil
 }
 
+type exportObjectGetter struct {
+	*mock_cache.MockObjectGetterComponent
+}
+
+func (g *exportObjectGetter) TryRemoveFromCache(ctx context.Context, objectId string) (bool, error) {
+	args := g.Called(ctx, objectId)
+	return args.Bool(0), args.Error(1)
+}
+
 func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space.MockService, includeSpaceInfo bool) export.Export {
 	storeFixture := objectstore.NewStoreFixture(t)
 	objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeId)
@@ -848,8 +858,10 @@ func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space
 	mockSender := mock_event.NewMockSender(t)
 	a.Register(storeFixture)
 	a.Register(testutil.PrepareMock(context.Background(), a, mockSender))
-	a.Register(testutil.PrepareMock(context.Background(), a, objectGetter))
+	testutil.PrepareMock(context.Background(), a, objectGetter)
+	a.Register(&exportObjectGetter{objectGetter})
 	a.Register(process.New())
+	a.Register(nodeconf.New())
 	a.Register(testutil.PrepareMock(context.Background(), a, spaceService))
 	a.Register(testutil.PrepareMock(context.Background(), a, mock_typeprovider.NewMockSmartBlockTypeProvider(t)))
 	a.Register(testutil.PrepareMock(context.Background(), a, mock_files.NewMockService(t)))
@@ -999,8 +1011,10 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	ctx := context.Background()
 	a.Register(storeFixture)
 	a.Register(testutil.PrepareMock(ctx, a, mockSender))
-	a.Register(testutil.PrepareMock(ctx, a, objectGetter))
+	testutil.PrepareMock(ctx, a, objectGetter)
+	a.Register(&exportObjectGetter{objectGetter})
 	a.Register(process.New())
+	a.Register(nodeconf.New())
 	a.Register(testutil.PrepareMock(ctx, a, spaceService))
 	a.Register(testutil.PrepareMock(ctx, a, mock_typeprovider.NewMockSmartBlockTypeProvider(t)))
 	a.Register(testutil.PrepareMock(ctx, a, mock_account.NewMockService(t)))

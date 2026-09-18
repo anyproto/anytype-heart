@@ -52,6 +52,7 @@ const (
 	ChangeTypeSystemObjectReviserMigration
 	ChangeTypeDescriptionToggle
 	ChangeTypeCreatedInContext
+	ChangeTypeApiObjectKeyBackfill
 )
 
 func (c ChangeType) String() string {
@@ -80,6 +81,8 @@ func (c ChangeType) String() string {
 		return "DescriptionToggle"
 	case ChangeTypeCreatedInContext:
 		return "CreatedInContext"
+	case ChangeTypeApiObjectKeyBackfill:
+		return "ApiObjectKeyBackfill"
 	default:
 		return "Unknown"
 	}

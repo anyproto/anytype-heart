@@ -603,6 +603,31 @@ func (e FilterExists) AnystoreFilter() query.Filter {
 	}
 }
 
+// FilterNotNull matches objects where the relation is present and not null.
+//
+// Narrower than FilterExists, which also matches a relation explicitly set to null. Use it on
+// relations carrying a sparse index: such an index stores no entry for a field that is missing OR
+// null, so since any-store v1.0.2 the planner only lets it serve a predicate that excludes both
+// (query.GuaranteesPresence). FilterExists does not qualify, and those queries fall back to a full
+// collection scan — three orders of magnitude on the collection sizes we ship.
+//
+// Only use it where the relation is never written as an explicit null, or the narrower match
+// changes results. Everywhere else FilterExists remains correct.
+type FilterNotNull struct {
+	Key domain.RelationKey
+}
+
+func (e FilterNotNull) FilterObject(g *domain.Details) bool {
+	return g.Has(e.Key) && !g.Get(e.Key).IsNull()
+}
+
+func (e FilterNotNull) AnystoreFilter() query.Filter {
+	return query.Key{
+		Path:   []string{string(e.Key)},
+		Filter: query.NewComp(query.CompOpNe, nil),
+	}
+}
+
 type FilterEmpty struct {
 	Key domain.RelationKey
 }

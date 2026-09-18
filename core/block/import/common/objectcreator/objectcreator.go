@@ -133,6 +133,12 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 	}
 
 	st.ModifyLinkedFilesInDetails(oc.formatFetcher, func(fileId string) string {
+		// File objects skip the general remap because their context references were
+		// already mapped before upload. Their own icon can still name the source ID.
+		if mapped, ok := oldIDtoNew[fileId]; ok {
+			fileId = mapped
+		}
+
 		newFileId := oc.relationSyncer.Sync(spaceID, fileId, dataObject.newIdsSet, origin, newID)
 		if newFileId != fileId {
 			filesToDelete = append(filesToDelete, fileId)
@@ -358,6 +364,12 @@ func (oc *ObjectCreator) setWorkspaceDetails(spaceID string, st *state.State) {
 		})
 	}
 
+	// Restore descriptive space metadata carried by full exports.
+	for _, key := range []domain.RelationKey{bundle.RelationKeyDescription, bundle.RelationKeyIconEmoji, bundle.RelationKeyIconImage, bundle.RelationKeyIconName} {
+		if combinedDetails.Has(key) {
+			details = append(details, domain.Detail{Key: key, Value: combinedDetails.Get(key)})
+		}
+	}
 	iconOption := combinedDetails.GetInt64(bundle.RelationKeyIconOption)
 	if iconOption != 0 {
 		details = append(details, domain.Detail{
@@ -383,17 +395,46 @@ func (oc *ObjectCreator) setWorkspaceDetails(spaceID string, st *state.State) {
 	}
 }
 
+// isDerivedFromBundledObject reports whether the incoming snapshot claims to be a copy of a
+// bundled object. Revision numbers version bundled definitions, so comparing them is only
+// meaningful between two copies of the same bundled object. A user's own object carries no
+// revision, and comparing its implicit 0 against a bundled object's revision would silently
+// drop the whole imported state.
+func isDerivedFromBundledObject(st *state.State) bool {
+	return st.Details().GetInt64(bundle.RelationKeyRevision) > 0 ||
+		st.Details().GetString(bundle.RelationKeySourceObject) != ""
+}
+
+// preserveBundledIdentity keeps sourceObject and revision of the object we are resetting when the
+// incoming snapshot carries neither. Resetting to a version drops details the new state omits, and
+// these two tie an installed object back to its bundled definition: sourceObject is what
+// InstallBundledObjects matches on to see an object is already installed, and revision is what
+// SystemObjectReviser compares against the bundle. A user's snapshot landing on such an object
+// should replace its content, not sever that link.
+func preserveBundledIdentity(b smartblock.SmartBlock, st *state.State) {
+	if isDerivedFromBundledObject(st) {
+		return
+	}
+	for _, key := range []domain.RelationKey{bundle.RelationKeySourceObject, bundle.RelationKeyRevision} {
+		if value := b.Details().Get(key); value.Ok() {
+			st.SetDetail(key, value)
+		}
+	}
+}
+
 func (oc *ObjectCreator) resetState(newID string, st *state.State) *domain.Details {
 	var respDetails *domain.Details
 	err := cache.Do(oc.objectGetterDeleter, newID, func(b smartblock.SmartBlock) error {
 		currentRevision := b.Details().GetInt64(bundle.RelationKeyRevision)
 		newRevision := st.Details().GetInt64(bundle.RelationKeyRevision)
-		if currentRevision > newRevision {
+		// never update objects with older revision
+		// we use revision for bundled objects like relations and object types
+		if isDerivedFromBundledObject(st) && currentRevision > newRevision {
 			log.With(zap.String("object id", newID)).Warnf("skipping object %s, revision %d > %d", st.Details().GetString(bundle.RelationKeyUniqueKey), currentRevision, newRevision)
-			// never update objects with older revision
-			// we use revision for bundled objects like relations and object types
 			return nil
 		}
+		preserveBundledIdentity(b, st)
+		keepLiveTypeInstalled(b.Details(), st)
 		if st.ObjectTypeKey() == bundle.TypeKeyObjectType {
 			template.InitTemplate(st, template.WithDetail(bundle.RelationKeyRecommendedLayout, domain.Int64(model.ObjectType_basic)))
 		}
@@ -408,6 +449,20 @@ func (oc *ObjectCreator) resetState(newID string, st *state.State) *domain.Detai
 		log.With(zap.String("object id", newID)).Errorf("failed to reset state %s: %s", newID, err)
 	}
 	return respDetails
+}
+
+// keepLiveTypeInstalled drops an incoming `isUninstalled` when the object
+// it is about to reset is LIVE in the destination: a bundle restores a type
+// the user removed as removed (AnyBlock SPEC §2a), but a type the user has
+// since restored — or never removed here — must not be hidden by a backup.
+// A nil existing means a new object, which keeps the flag.
+func keepLiveTypeInstalled(existing *domain.Details, st *state.State) {
+	if existing == nil || existing.Len() == 0 {
+		return
+	}
+	if st.Details().GetBool(bundle.RelationKeyIsUninstalled) && !existing.GetBool(bundle.RelationKeyIsUninstalled) {
+		st.RemoveDetail(bundle.RelationKeyIsUninstalled)
+	}
 }
 
 func (oc *ObjectCreator) setFavorite(snapshot *common.StateSnapshot, newID string) {

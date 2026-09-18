@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/block/detailservice/mock_detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -19,6 +18,12 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 )
+
+type archiverStub func(sctx session.Context, ctx context.Context, objectId string, isArchived bool, skipCascade bool) error
+
+func (f archiverStub) SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool, skipCascade bool) error {
+	return f(sctx, ctx, objectId, isArchived, skipCascade)
+}
 
 type objKey interface {
 	URL() string
@@ -127,8 +132,10 @@ func TestInstaller_reinstallObject(t *testing.T) {
 		})
 		spc.EXPECT().IsReadOnly().Return(true)
 
-		archiver := mock_detailservice.NewMockService(t)
-		archiver.EXPECT().SetIsArchived(mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(sctx session.Context, ctx context.Context, id string, isArchived bool, skipCascade bool) error {
+		// a local stub rather than mock_detailservice: detailservice now
+		// depends on this package (its property RPCs mint relations through
+		// it), so importing its mock here is an import cycle in test
+		archiver := archiverStub(func(sctx session.Context, ctx context.Context, id string, isArchived bool, skipCascade bool) error {
 			assert.Equal(t, id, bundle.TypeKeyProject.URL())
 			assert.False(t, isArchived)
 			return nil

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-sync/app"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
@@ -174,4 +175,25 @@ func (fx *StoreFixture) AddObjects(t testing.TB, objects []TestObject) {
 		err := fx.UpdateObjectDetails(context.Background(), id, makeDetails(obj))
 		require.NoError(t, err)
 	}
+}
+
+// IndexesUsedBy reports, per index name, whether the planner would use it for filters+sort.
+//
+// It exists so packages that own a query can assert their real filter still reaches the sparse
+// index it was shaped for: since any-store v1.0.2 a sparse index only serves a predicate that
+// guarantees its fields are present and non-null, so an innocuous-looking filter change silently
+// turns an index seek into a full collection scan. False for every index means a full scan.
+func (fx *StoreFixture) IndexesUsedBy(t testing.TB, filters database.Filter, sort query.Sort) map[string]bool {
+	t.Helper()
+	q := fx.objects.Find(filters.AnystoreFilter())
+	if sort != nil {
+		q = q.Sort(sort)
+	}
+	explain, err := q.Explain(context.Background())
+	require.NoError(t, err)
+	used := make(map[string]bool, len(explain.Indexes))
+	for _, idx := range explain.Indexes {
+		used[idx.Name] = idx.Used
+	}
+	return used
 }

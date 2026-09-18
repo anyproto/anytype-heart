@@ -1,0 +1,292 @@
+{
+  "id": "events-conference-flagship",
+  "name": "TechFwd Summit — conference production company (flagship + city roadshows)",
+  "family": "events",
+  "inspiration": "notion.com/templates/category/event-planning — the 'Event Planning OS' / conference-producer stack: program grid, speaker roster, sponsor tiers, exhibitor booths, volunteer shift board, vendor + budget line ledger. Naming decoration (emoji, city/year suffixes, a trailing space) copied from the real 37-database workspace ('Sponsors 💰' in the manner of 'Recipe SB' / 'Meal Calendar DB').",
+  "notes": "A B2B conference producer with a real ops team: one flagship annual summit (multi-track program, sponsors, exhibitors, volunteers, vendors, budget) plus a cut-down version of the same session grid taken on the road as single-day city stops. The roadshow session database was duplicated per city and lightly trimmed, which is the professional-scale version of the duplicate-template problem. Exercises decision points 1 (exact-ish duplicate databases), 2 (same concept, disjoint schemas), 4 (same property name with identical options across unrelated types), 6 (bundled whitelist hits), 9 (scale: 2 properties vs 13) and 10 (messy real-world naming).\n\nOPTION DRIFT INSIDE A MERGED KIND. The three session databases carry the SAME 'Room' select under three locally re-optioned vocabularies (Hall A/Hall B/Studio 1/Studio 2/Atrium vs Kesselhaus/Salon/Rooftop vs Main Stage/The Loft/Mezzanine), and the roadshows disagree on 'City' too. That is exactly what happens when a duplicated template gets re-optioned per venue. Nothing is asserted about Room or City on purpose: kind-merging MUST survive option divergence (the three are one kind regardless), while relation-merging need not — whether the three Room selects collapse to one relation with a fifteen-value vocabulary or stay three is a defensible judgement call either way, so it stays out of expect. 'Track 🎤', 'Session Type' and 'Tags' are kept byte-identical across all three so the merge signal is unambiguous.\n\nDELIBERATELY UNASSERTED. (a) The 'Slides Received', 'Travel Booked', 'Contract Signed' and 'Paid' checkboxes are arguable completion flags; mapping any of them to bundled `done` is taste, not correctness, so none is asserted in either direction. (b) 'Status' appears with three unrelated vocabularies (session lifecycle, speaker invitation funnel, sponsorship pipeline); status-vocabulary splitting is another fixture's job. (c) db-program 'Tags' (skill level) and db-marketing 'Tags' (campaign phase) share a name and format but not a vocabulary — only the marketing one is asserted onto bundled `tag`; whether the session one follows is left open. (d) 'Capacity' (number) appears in both db-program and db-venues, and 'Contact Phone' in both db-sponsors and db-venues — plausible shares, but not worth baking in.",
+  "containers": [
+    {
+      "id": "db-program",
+      "name": "Program Sessions",
+      "properties": [
+        {"id": "pTrack", "name": "Track 🎤", "format": "multiSelect", "options": ["Engineering", "Product", "Design", "AI/ML", "Leadership"]},
+        {"id": "pSessionType", "name": "Session Type", "format": "select", "options": ["Keynote", "Breakout", "Workshop", "Panel", "Lightning Talk"]},
+        {"id": "pSessionDate", "name": "Session Date", "format": "date"},
+        {"id": "pStartTime", "name": "Start Time", "format": "text"},
+        {"id": "pRoom", "name": "Room", "format": "select", "options": ["Hall A", "Hall B", "Studio 1", "Studio 2", "Atrium"]},
+        {"id": "pSpeaker", "name": "Speaker", "format": "objects"},
+        {"id": "pAbstract", "name": "Abstract", "format": "text"},
+        {"id": "pSlidesReceived", "name": "Slides Received", "format": "checkbox"},
+        {"id": "pRecordingLink", "name": "Recording Link", "format": "url"},
+        {"id": "pCapacity", "name": "Capacity", "format": "number"},
+        {"id": "pStatus", "name": "Status", "format": "select", "options": ["Proposed", "Accepted", "Scheduled", "Delivered", "Cancelled"]},
+        {"id": "pAVNotes", "name": "AV Notes", "format": "text"},
+        {"id": "pTags", "name": "Tags", "format": "multiSelect", "options": ["Beginner", "Intermediate", "Advanced", "Hands-on"]}
+      ],
+      "titles": [
+        "Opening keynote: the year platform engineering grew up",
+        "Scaling Postgres past the read replica wall",
+        "Fireside: what we got wrong about agents",
+        "Workshop: shipping evals you actually trust",
+        "Hallway track: platform teams meetup",
+        "Lightning: killing our last Jenkins box",
+        "Panel: hiring senior engineers in 2026"
+      ]
+    },
+    {
+      "id": "db-roadshow-berlin",
+      "name": "Roadshow Sessions — Berlin (2026)",
+      "properties": [
+        {"id": "pTrack", "name": "Track 🎤", "format": "multiSelect", "options": ["Engineering", "Product", "Design", "AI/ML", "Leadership"]},
+        {"id": "pSessionType", "name": "Session Type", "format": "select", "options": ["Keynote", "Breakout", "Workshop", "Panel", "Lightning Talk"]},
+        {"id": "pSessionDate", "name": "Session Date", "format": "date"},
+        {"id": "pStartTime", "name": "Start Time", "format": "text"},
+        {"id": "pRoom", "name": "Room", "format": "select", "options": ["Kesselhaus", "Salon", "Rooftop"]},
+        {"id": "pSpeaker", "name": "Speaker", "format": "objects"},
+        {"id": "pAbstract", "name": "Abstract", "format": "text"},
+        {"id": "pSlidesReceived", "name": "Slides Received", "format": "checkbox"},
+        {"id": "pCapacity", "name": "Capacity", "format": "number"},
+        {"id": "pStatus", "name": "Status", "format": "select", "options": ["Proposed", "Accepted", "Scheduled", "Delivered", "Cancelled"]},
+        {"id": "pCity", "name": "City", "format": "select", "options": ["Berlin", "Hamburg", "Munich"]},
+        {"id": "pTags", "name": "Tags", "format": "multiSelect", "options": ["Beginner", "Intermediate", "Advanced", "Hands-on"]}
+      ],
+      "titles": [
+        "Berlin opening: what TechFwd learned on the road",
+        "Berlin: scaling Postgres past the read replica wall",
+        "Kesselhaus workshop: evals you actually trust",
+        "Lightning: killing our last Jenkins box",
+        "Rooftop closer: drinks + platform teams meetup"
+      ]
+    },
+    {
+      "id": "db-roadshow-austin",
+      "name": "Roadshow Sessions — Austin (2026) ",
+      "properties": [
+        {"id": "pTrack", "name": "Track 🎤", "format": "multiSelect", "options": ["Engineering", "Product", "Design", "AI/ML", "Leadership"]},
+        {"id": "pSessionType", "name": "Session Type", "format": "select", "options": ["Keynote", "Breakout", "Workshop", "Panel", "Lightning Talk"]},
+        {"id": "pSessionDate", "name": "Session Date", "format": "date"},
+        {"id": "pStartTime", "name": "Start Time", "format": "text"},
+        {"id": "pRoom", "name": "Room", "format": "select", "options": ["Main Stage", "The Loft", "Mezzanine"]},
+        {"id": "pSpeaker", "name": "Speaker", "format": "objects"},
+        {"id": "pAbstract", "name": "Abstract", "format": "text"},
+        {"id": "pSlidesReceived", "name": "Slides Received", "format": "checkbox"},
+        {"id": "pCapacity", "name": "Capacity", "format": "number"},
+        {"id": "pStatus", "name": "Status", "format": "select", "options": ["Proposed", "Accepted", "Scheduled", "Delivered", "Cancelled"]},
+        {"id": "pCity", "name": "City", "format": "select", "options": ["Austin", "Dallas", "Denver"]},
+        {"id": "pTags", "name": "Tags", "format": "multiSelect", "options": ["Beginner", "Intermediate", "Advanced", "Hands-on"]}
+      ],
+      "titles": [
+        "Main Stage opening: what TechFwd learned on the road",
+        "Austin: scaling Postgres past the read replica wall",
+        "The Loft workshop: evals you actually trust",
+        "Lightning: killing our last Jenkins box",
+        "Mezzanine panel: hiring senior engineers in Texas"
+      ]
+    },
+    {
+      "id": "db-speakers",
+      "name": "Speakers",
+      "properties": [
+        {"id": "pEmail", "name": "Email", "format": "email"},
+        {"id": "pPhone", "name": "Phone", "format": "phone"},
+        {"id": "pStatus", "name": "Status", "format": "select", "options": ["Invited", "Confirmed", "Declined", "Backed out"]},
+        {"id": "pBio", "name": "Bio", "format": "text"},
+        {"id": "pHeadshot", "name": "Headshot 📸", "format": "files"},
+        {"id": "pTravelBooked", "name": "Travel Booked", "format": "checkbox"},
+        {"id": "pCompany", "name": "Company", "format": "text"},
+        {"id": "pTalkTags", "name": "Talk Tags", "format": "multiSelect", "options": ["AI", "Platform", "Career", "DevEx"]}
+      ],
+      "titles": [
+        "Priya Raghunathan",
+        "Tomás Ferreira",
+        "Bea Lindqvist",
+        "Ade Salami",
+        "Hannah Wu",
+        "Rob Kettering (backup — do not announce)"
+      ]
+    },
+    {
+      "id": "db-sponsors",
+      "name": "Sponsors 💰",
+      "properties": [
+        {"id": "pTier", "name": "Tier", "format": "select", "options": ["Platinum", "Gold", "Silver", "Community"]},
+        {"id": "pStatus", "name": "Status", "format": "select", "options": ["Prospecting", "Contract Sent", "Contracted", "Invoiced", "Paid"]},
+        {"id": "pContractValue", "name": "Contract Value", "format": "number"},
+        {"id": "pLogo", "name": "Logo", "format": "files"},
+        {"id": "pBenefits", "name": "Benefits", "format": "multiSelect", "options": ["Booth", "Logo on site", "Keynote slot", "Swag insert", "Attendee list"]},
+        {"id": "pContactEmail", "name": "Contact Email", "format": "email"},
+        {"id": "pContactPhone", "name": "Contact Phone", "format": "phone"},
+        {"id": "pPaymentDue", "name": "Payment Due", "format": "date"},
+        {"id": "pPaid", "name": "Paid", "format": "checkbox"},
+        {"id": "pAccountManager", "name": "Account Manager", "format": "multiSelect", "options": ["Dani O.", "Marcus H.", "Yuki T."]}
+      ],
+      "titles": [
+        "Datadog",
+        "Vercel",
+        "Neon",
+        "Grafana Labs",
+        "Chainguard",
+        "Cortex (renewal from 2025)",
+        "Honeycomb"
+      ]
+    },
+    {
+      "id": "db-exhibitors",
+      "name": "Exhibitors",
+      "properties": [
+        {"id": "pBoothNumber", "name": "Booth Number", "format": "text"},
+        {"id": "pBoothSize", "name": "Booth Size", "format": "select", "options": ["3x3", "6x3", "6x6"]},
+        {"id": "pLoadIn", "name": "Load-in Date", "format": "date"},
+        {"id": "pPowerNeeded", "name": "Power Needed", "format": "checkbox"},
+        {"id": "pShippingTracking", "name": "Shipping Tracking", "format": "url"},
+        {"id": "pContactEmail", "name": "Contact Email", "format": "email"}
+      ],
+      "titles": [
+        "Depot",
+        "WorkOS",
+        "Railway",
+        "Pulumi",
+        "Sentry",
+        "LaunchDarkly"
+      ]
+    },
+    {
+      "id": "db-volunteers",
+      "name": "Volunteer Shifts",
+      "properties": [
+        {"id": "pVolunteer", "name": "Volunteer", "format": "text"},
+        {"id": "pFilled", "name": "Filled?", "format": "checkbox"}
+      ],
+      "titles": [
+        "Registration desk — Thu 07:30–11:00",
+        "Hall A door check — Thu 09:00–12:30",
+        "Speaker green room — Thu 13:00–17:00",
+        "Swag table — Fri 08:00–12:00",
+        "Load-out crew — Fri 18:00–21:00"
+      ]
+    },
+    {
+      "id": "db-budget",
+      "name": "Budget Lines",
+      "properties": [
+        {"id": "pCostCenter", "name": "Cost Center", "format": "select", "options": ["AV", "Catering", "Venue", "Travel", "Print", "Staffing"]},
+        {"id": "pEstimate", "name": "Estimate", "format": "number"},
+        {"id": "pActual", "name": "Actual", "format": "number"},
+        {"id": "pDueDate", "name": "Due Date", "format": "date"},
+        {"id": "pInvoice", "name": "Invoice", "format": "url"},
+        {"id": "pApproved", "name": "Approved", "format": "checkbox"},
+        {"id": "pNotes", "name": "Notes", "format": "text"}
+      ],
+      "titles": [
+        "Hall A line array + FOH desk rental",
+        "Venue deposit — Kraftwerk (50%)",
+        "Barista cart, 2 days",
+        "Speaker flights (12 pax)",
+        "Lanyards + badge stock, 1,400 units",
+        "AV quote — old",
+        "Roadshow van hire, Berlin"
+      ]
+    },
+    {
+      "id": "db-vendors",
+      "name": "Vendors & Suppliers",
+      "properties": [
+        {"id": "pCostCenter", "name": "Cost Center", "format": "select", "options": ["AV", "Catering", "Venue", "Travel", "Print", "Staffing"]},
+        {"id": "pPrimaryContact", "name": "Primary Contact", "format": "text"},
+        {"id": "pRateCard", "name": "Rate Card", "format": "files"},
+        {"id": "pContractSigned", "name": "Contract Signed", "format": "checkbox"},
+        {"id": "pPhone", "name": "Phone", "format": "phone"},
+        {"id": "pNotes", "name": "Notes", "format": "text"}
+      ],
+      "titles": [
+        "Pixel & Pitch AV",
+        "Kraftwerk Berlin (venue)",
+        "Fork & Field Catering",
+        "Moo — badge and print",
+        "CrewCall Staffing",
+        "Egencia (travel)"
+      ]
+    },
+    {
+      "id": "db-marketing",
+      "name": "Marketing Campaigns",
+      "properties": [
+        {"id": "pCostCenter", "name": "Cost Center", "format": "select", "options": ["AV", "Catering", "Venue", "Travel", "Print", "Staffing"]},
+        {"id": "pChannel", "name": "Channel", "format": "multiSelect", "options": ["LinkedIn", "Email", "Paid search", "Partner newsletter"]},
+        {"id": "pTags", "name": "Tags", "format": "multiSelect", "options": ["Early bird", "Speaker announce", "Last call", "Post-event"]},
+        {"id": "pSpend", "name": "Spend", "format": "number"},
+        {"id": "pLaunchDate", "name": "Launch Date", "format": "date"},
+        {"id": "pOwner", "name": "Owner", "format": "multiSelect", "options": ["Dani O.", "Marcus H."]}
+      ],
+      "titles": [
+        "Early bird push (v2)",
+        "Speaker announce wave 1 — LinkedIn",
+        "Last call: 72 hours left",
+        "Partner newsletter swap with Platform Weekly",
+        "Retargeting: abandoned checkout",
+        "Post-event highlight reel"
+      ]
+    },
+    {
+      "id": "db-venues",
+      "name": "Venues & Rooms",
+      "properties": [
+        {"id": "pCapacity", "name": "Capacity", "format": "number"},
+        {"id": "pAddress", "name": "Address", "format": "text"},
+        {"id": "pContactPhone", "name": "Contact Phone", "format": "phone"},
+        {"id": "pFloorplan", "name": "Floorplan", "format": "files"},
+        {"id": "pRoomType", "name": "Room Type", "format": "select", "options": ["Theatre", "Classroom", "Cabaret", "Expo floor"]}
+      ],
+      "titles": [
+        "Kraftwerk Berlin — Hall A",
+        "Kraftwerk Berlin — Hall B",
+        "Studio 1 (upstairs)",
+        "Atrium / expo floor",
+        "Kesselhaus",
+        "Austin Central Library — Main Stage"
+      ]
+    },
+    {
+      "id": "db-feedback",
+      "name": "Attendee Feedback",
+      "properties": [
+        {"id": "pSession", "name": "Session", "format": "objects"},
+        {"id": "pRating", "name": "Rating", "format": "select", "options": ["5 – loved it", "4", "3", "2", "1 – waste of time"]},
+        {"id": "pWhatWorked", "name": "What worked", "format": "text"},
+        {"id": "pWhatDidnt", "name": "What didn't", "format": "text"},
+        {"id": "pWouldRecommend", "name": "Would recommend", "format": "checkbox"}
+      ],
+      "titles": [
+        "Loved the Postgres talk, hated the queue for coffee",
+        "Workshop room was freezing all afternoon",
+        "Track labels in the app didn't match the signage",
+        "Panel ran 15 min over and I missed my train",
+        "Best conference food I've had in years",
+        "More hallway time, fewer keynotes please"
+      ]
+    }
+  ],
+  "expect": {
+    "sameKind": [
+      ["db-program", "db-roadshow-berlin", "db-roadshow-austin"]
+    ],
+    "differentKind": [
+      ["db-sponsors", "db-exhibitors"],
+      ["db-program", "db-volunteers"]
+    ],
+    "bundled": {
+      "db-speakers": {"pEmail": "email", "pPhone": "phone"},
+      "db-marketing": {"pTags": "tag"},
+      "db-budget": {"pDueDate": "dueDate"},
+      "db-sponsors": {"pPaymentDue": "dueDate"}
+    },
+    "notBundled": {
+      "db-program": ["pSessionDate"],
+      "db-exhibitors": ["pLoadIn"],
+      "db-marketing": ["pLaunchDate"]
+    },
+    "sharedRelation": [
+      ["db-budget:pCostCenter", "db-vendors:pCostCenter", "db-marketing:pCostCenter"]
+    ]
+  }
+}

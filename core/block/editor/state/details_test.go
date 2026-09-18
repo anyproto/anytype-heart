@@ -1,6 +1,7 @@
 package state
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,9 +11,39 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils/mock_relationutils"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
+
+func TestSetDetailClearsExactJSONIntegerMetadata(t *testing.T) {
+	const exact = "9007199254740993"
+	key := domain.RelationKey("precision_number")
+	metadataKey, lexeme, ok := anyblockjson.ExactJSONIntegerMetadata(string(key), json.Number(exact))
+	require.True(t, ok)
+
+	newDoc := func() *State {
+		doc := NewDoc("root", nil).(*State)
+		doc.details = domain.NewDetails()
+		doc.details.Set(key, domain.Float64(9007199254740992))
+		doc.details.Set(domain.RelationKey(metadataKey), domain.String(lexeme))
+		return doc
+	}
+
+	t.Run("same rounded native value", func(t *testing.T) {
+		next := newDoc().NewState()
+		next.SetDetail(key, domain.Float64(9007199254740992))
+		assert.False(t, next.Details().Has(domain.RelationKey(metadataKey)))
+		assert.True(t, next.Details().Get(key).IsFloat64())
+	})
+
+	t.Run("removal", func(t *testing.T) {
+		next := newDoc().NewState()
+		next.RemoveDetail(key)
+		assert.False(t, next.Details().Has(key))
+		assert.False(t, next.Details().Has(domain.RelationKey(metadataKey)))
+	})
+}
 
 func TestState_FileRelationKeys(t *testing.T) {
 	fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)

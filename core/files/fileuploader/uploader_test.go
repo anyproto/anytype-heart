@@ -121,6 +121,20 @@ func TestUploader_Upload(t *testing.T) {
 		b := res.ToBlock()
 		assert.Equal(t, b.Model().GetFile().Name, "unnamed.jpg")
 	})
+	t.Run("url answering non-2xx yields ErrFailedToDownload", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.tearDown()
+
+		serv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			http.NotFound(w, r)
+		}))
+		defer serv.Close()
+
+		res := fx.Uploader.SetUrl(serv.URL + "/missing.jpg").Upload(ctx)
+		require.Error(t, res.Err)
+		require.ErrorIs(t, res.Err, ErrFailedToDownload,
+			"core/api/v2 classifies the upload failure on this sentinel — the download path must keep wrapping it")
+	})
 	t.Run("file from Content-Disposition", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()

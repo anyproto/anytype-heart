@@ -33,10 +33,18 @@ import (
 const (
 	CName = "gateway"
 
-	gatewayHost    = "127.0.0.1"
-	wellKnownPort  = 47800
-	getFileTimeout = 1 * time.Minute
-	requestLimit   = 32
+	gatewayHost   = "127.0.0.1"
+	wellKnownPort = 47800
+	// fileStallTimeout cuts loose a file transfer that has stopped making
+	// progress. It is deliberately not a total deadline: a large file, or one
+	// still being fetched from a node, legitimately runs longer than any fixed
+	// budget, and a total deadline killed those mid-stream. The clock restarts
+	// on every byte, so only a window with nothing moving ends the request.
+	fileStallTimeout = 1 * time.Minute
+	// getImageTimeout stays a total deadline. Image responses are bounded and
+	// serve a render that has to either appear or give up quickly.
+	getImageTimeout = 1 * time.Minute
+	requestLimit    = 32
 )
 
 // errGatewayClosed is returned when something tries to start the gateway after the component was
@@ -70,6 +78,7 @@ type gateway struct {
 	addrStore         AddrStore
 	handler           *http.ServeMux
 	limitCh           chan struct{}
+	fileStallTimeout  time.Duration
 	wellKnownPort     int
 
 	// lifecycleMu serializes whole start and stop operations against each other. mu alone is not
@@ -98,6 +107,7 @@ func (g *gateway) Init(a *app.App) (err error) {
 	g.fileObjectService = app.MustComponent[fileobject.Service](a)
 	g.fileDownloader = app.MustComponent[filedownloader.Service](a)
 	g.addrStore = app.MustComponent[AddrStore](a)
+	g.fileStallTimeout = fileStallTimeout
 
 	g.handler = http.NewServeMux()
 	g.handler.HandleFunc("/file/", g.fileHandler)
@@ -344,7 +354,62 @@ func (g *gateway) stopServingLocked() error {
 
 func enableCors(w http.ResponseWriter) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+	// Without this a cross-origin reader sees none of these: only a short
+	// safelist is readable by default, and Content-Disposition is not on it. A
+	// client fetching a download would get no filename and, worse, no
+	// Accept-Ranges or Content-Range to resume with.
+	w.Header().Set("Access-Control-Expose-Headers", "Content-Disposition, Content-Length, Content-Range, Accept-Ranges")
+}
+
+// allowReadMethod answers a CORS preflight and refuses anything that is not a
+// read, before a limiter slot is taken.
+//
+// The mux routes every method to the same handler and ServeContent omits the
+// body only for HEAD, so without this an OPTIONS preflight — or a stray POST —
+// streams the entire object. On the multi-gigabyte path that is a
+// multi-gigabyte preflight, holding one of the shared slots throughout.
+func allowReadMethod(w http.ResponseWriter, r *http.Request) bool {
+	switch r.Method {
+	case http.MethodGet, http.MethodHead:
+		return true
+	case http.MethodOptions:
+		// A preflight that does not allow Range is no use to a download.
+		w.Header().Set("Access-Control-Allow-Headers", "Range, If-Range, If-None-Match, If-Modified-Since")
+		w.Header().Set("Access-Control-Max-Age", "600")
+		w.WriteHeader(http.StatusNoContent)
+		return false
+	default:
+		w.Header().Set("Allow", "GET, HEAD, OPTIONS")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return false
+	}
+}
+
+// transientStatusWriter rewrites the status ServeContent chose when the request
+// was canceled underneath it.
+//
+// ServeContent maps any seek failure while serving a range to 416, and a
+// failure while sizing to 500. Under the stall timeout both are reachable
+// transiently: seeking into an encrypted file fetches the previous block to
+// recover the IV, which is real network I/O, and the window can expire during
+// it. A resuming client told 416 concludes its partial file is invalid and
+// discards it — so a stall is reported as a timeout, which is what it is.
+//
+// Wrapping costs the ReadFrom fast path, which for a non-file source is a
+// buffered copy either way — the same 32KB reads the stall window already
+// counts progress in.
+type transientStatusWriter struct {
+	http.ResponseWriter
+	ctx context.Context
+}
+
+func (w *transientStatusWriter) WriteHeader(status int) {
+	if w.ctx.Err() != nil &&
+		(status == http.StatusRequestedRangeNotSatisfiable || status == http.StatusInternalServerError) {
+		status = http.StatusGatewayTimeout
+	}
+	w.ResponseWriter.WriteHeader(status)
 }
 
 func (g *gateway) readLimitCh() {
@@ -353,6 +418,11 @@ func (g *gateway) readLimitCh() {
 
 // fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
 func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(w)
+	if !allowReadMethod(w, r) {
+		return
+	}
+
 	select {
 	case g.limitCh <- struct{}{}:
 		defer g.readLimitCh()
@@ -360,10 +430,15 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 		// exit fast in case context is already done(e.g. server stopped or client canceled)
 		return
 	}
-	enableCors(w)
 
-	ctx, cancel := context.WithTimeout(r.Context(), getFileTimeout)
+	// The stall window covers the lookup too: nothing has moved yet while the
+	// file is being located, so an unreachable file still gives up after one
+	// window, exactly as the old total deadline did.
+	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
+	stall := newStallTimeout(g.fileStallTimeout, cancel)
+	defer stall.stop()
+
 	file, reader, err := g.getFile(rpcstore.ContextWithWaitAvailable(ctx), r)
 	if err != nil {
 		log.With("path", cleanUpPathForLogging(r.URL.Path)).Errorf("error getting file: %s", err)
@@ -371,13 +446,18 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	meta := file.Meta()
+	disposition := "inline"
+	if attachmentRequested(r) {
+		disposition = "attachment"
+	}
 	w.Header().Set("Content-Type", meta.Media)
-	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", meta.Name))
+	w.Header().Set("Content-Disposition", contentDisposition(disposition, meta.Name))
 	w.Header().Set("Cache-Control", "max-age=31536000")
 
 	// Note: the DagReader is lazy and streams ~1MB blocks on demand. The CFBDecryptor.Seek
 	// fast-path avoids expensive IPFS block preloading during size determination (SeekEnd).
-	http.ServeContent(w, r, meta.Name, meta.Added, reader)
+	http.ServeContent(&transientStatusWriter{ResponseWriter: w, ctx: ctx}, r, meta.Name, meta.Added,
+		&progressReader{ReadSeeker: reader, onProgress: stall.progress})
 }
 
 func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.ReadSeeker, error) {
@@ -401,6 +481,11 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 
 // imageHandler gets image meta from the DB, gets the corresponding data from the IPFS and decrypts it
 func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(w)
+	if !allowReadMethod(w, r) {
+		return
+	}
+
 	select {
 	case g.limitCh <- struct{}{}:
 		defer g.readLimitCh()
@@ -408,9 +493,8 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 		// exit fast in case context is already done(e.g. server stopped or client canceled)
 		return
 	}
-	enableCors(w)
 
-	ctx, cancel := context.WithTimeout(r.Context(), getFileTimeout)
+	ctx, cancel := context.WithTimeout(r.Context(), getImageTimeout)
 	defer cancel()
 
 	res, err := g.getImage(rpcstore.ContextWithWaitAvailable(ctx), r)
@@ -421,8 +505,10 @@ func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	meta := res.file.Meta()
+	// Images are always inline: this endpoint backs rendering, and the save
+	// flow fetches the original through /file/ instead.
 	w.Header().Set("Content-Type", res.mimeType)
-	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", meta.Name))
+	w.Header().Set("Content-Disposition", contentDisposition("inline", meta.Name))
 	w.Header().Set("Cache-Control", "max-age=31536000")
 
 	// todo: inside textile it still requires the file to be fully downloaded and decrypted(consuming 2xSize in ram) to provide the ReadSeeker interface

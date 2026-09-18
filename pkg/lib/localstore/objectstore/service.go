@@ -89,6 +89,8 @@ type CrossSpace interface {
 	// with — the requested sorts plus the implicit score-first order of
 	// fulltext queries — with a final id tiebreak for stable paging. Empty
 	// sorts without a text query default to lastModifiedDate desc (browse).
+	// q.SpaceIds restricts the stores before querying; nil means all user
+	// spaces, an empty non-nil list means none. Results carry the store's spaceId.
 	QueryCrossSpaceNoWait(ctx context.Context, q database.Query) (records []database.Record, allStoresLoaded bool, err error)
 	QueryByIdCrossSpace(ctx context.Context, ids []string) (records []database.Record, err error)
 
@@ -1107,6 +1109,9 @@ func (s *dsObjectStore) QueryCrossSpaceNoWait(ctx context.Context, q database.Qu
 		if store.SpaceId() == s.techSpaceId || store.SpaceId() == addr.AnytypeMarketplaceWorkspace {
 			continue
 		}
+		if q.SpaceIds != nil && !slices.Contains(q.SpaceIds, store.SpaceId()) {
+			continue
+		}
 		candidates = append(candidates, store)
 	}
 
@@ -1165,7 +1170,7 @@ func (s *dsObjectStore) QueryCrossSpaceNoWait(ctx context.Context, q database.Qu
 				skippedSpace.Store(true)
 				return nil
 			}
-			perSlot[i] = items
+			perSlot[i] = recordsWithSpaceId(items, store.SpaceId())
 			succeeded[i] = true
 			return nil
 		})
@@ -1309,7 +1314,7 @@ func (s *dsObjectStore) resolveSpaceFulltext(store spaceindex.Store, q database.
 	if err != nil {
 		return nil, fmt.Errorf("resolve fulltext candidates: %w", err)
 	}
-	return items, nil
+	return recordsWithSpaceId(items, store.SpaceId()), nil
 }
 
 // sortMergedRecords restores a global order over records merged from several
@@ -1340,6 +1345,16 @@ func (s *dsObjectStore) sortMergedRecords(records []database.Record, q database.
 		}
 		return strings.Compare(a.Details.GetString(bundle.RelationKeyId), b.Details.GetString(bundle.RelationKeyId))
 	})
+}
+
+// The origin is the queried store, including for older rows without spaceId.
+// Copy the details so this response decoration never changes cached records.
+func recordsWithSpaceId(records []database.Record, spaceId string) []database.Record {
+	for i := range records {
+		records[i].Details = records[i].Details.Copy()
+		records[i].Details.SetString(bundle.RelationKeySpaceId, spaceId)
+	}
+	return records
 }
 
 // unionOrderStore lets the merge's order builder resolve relation formats and

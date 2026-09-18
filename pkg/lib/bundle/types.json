@@ -224,17 +224,18 @@
   },
   {
     "id": "relationOption",
-    "name": "Relation option",
+    "name": "Property option",
     "types": [
       "SubObject"
     ],
     "hidden": true,
     "layout": "relationOption",
-    "relations": []
+    "relations": [],
+    "revision": 1
   },
   {
     "id": "space",
-    "name": "Space",
+    "name": "Space settings",
     "pluralName": "Spaces",
     "types": [
       "Workspace"
@@ -247,7 +248,7 @@
       "tag"
     ],
     "restrictObjectCreation": true,
-    "revision": 3
+    "revision": 4
   },
   {
     "id": "spaceView",

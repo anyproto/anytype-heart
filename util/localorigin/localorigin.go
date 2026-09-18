@@ -17,10 +17,32 @@
 package localorigin
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"strings"
 )
+
+type originCtxKey struct{}
+
+// WithOrigin carries the caller's Origin header down to code that needs to name
+// the caller, notably the local-link challenge event shown to the user. Only
+// set it after the policy has accepted the request: a rejected request has no
+// business naming itself, and the value must come from the header the browser
+// sets rather than from anything in the request body.
+func WithOrigin(ctx context.Context, origin string) context.Context {
+	if origin == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, originCtxKey{}, origin)
+}
+
+// OriginFromContext returns the Origin header of the current request, or "" for
+// native clients, which send none.
+func OriginFromContext(ctx context.Context) string {
+	origin, _ := ctx.Value(originCtxKey{}).(string)
+	return origin
+}
 
 // fileOrigin is the origin an Electron renderer loaded over file:// sends on a
 // WebSocket handshake. A remote page can never obtain it.
@@ -206,4 +228,36 @@ func normalize(origin string) string {
 		return origin
 	}
 	return strings.TrimSuffix(origin, "/")
+}
+
+// Normalize exposes the spelling rules AllowOrigin decides by, so that code
+// keying on an origin buckets the way the policy does. The policy lowercases
+// and drops a trailing slash before deciding, so "http://localhost:3000",
+// "HTTP://LocalHost:3000" and "http://localhost:3000/" are one admitted
+// origin; anything keying on the raw header would see three.
+//
+// Display keeps the raw header (the pairing prompt shows the caller what it
+// actually sent); identity keys use this.
+func Normalize(origin string) string {
+	return normalize(origin)
+}
+
+// MetadataKey is the gRPC metadata key the Origin header arrives under. The
+// gRPC-Web proxy forwards HTTP headers as metadata, lowercasing the name.
+const MetadataKey = "origin"
+
+// OriginFromMetadata reads the Origin the gRPC-Web proxy forwarded. Native
+// gRPC callers send none.
+//
+// Trust: the proxy applies Policy.AllowOrigin (grpcweb.WithOriginFunc) before
+// a request reaches the server, so anything arriving here was already
+// admitted. A native gRPC client can set the key itself, which can only cost
+// it access — rejectBrowserCaller then refuses it — never grant any.
+func OriginFromMetadata(md map[string][]string) string {
+	for _, v := range md[MetadataKey] {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
 }

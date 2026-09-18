@@ -15,9 +15,15 @@ service ClientCommands {
     rpc WalletCreate (anytype.Rpc.Wallet.Create.Request) returns (anytype.Rpc.Wallet.Create.Response);
     rpc WalletRecover (anytype.Rpc.Wallet.Recover.Request) returns (anytype.Rpc.Wallet.Recover.Response);
     rpc WalletConvert (anytype.Rpc.Wallet.Convert.Request) returns (anytype.Rpc.Wallet.Convert.Response);
+    // deprecated: pairing a gRPC ClientCommands session via the local-link
+    // challenge flow is being removed. Integrations should authenticate through
+    // the JSON API instead. Kept working for now (still callable without the
+    // local-API shared secret) until existing clients migrate.
     rpc AccountLocalLinkNewChallenge (anytype.Rpc.Account.LocalLink.NewChallenge.Request) returns (anytype.Rpc.Account.LocalLink.NewChallenge.Response);
     rpc AccountLocalLinkSolveChallenge (anytype.Rpc.Account.LocalLink.SolveChallenge.Request) returns (anytype.Rpc.Account.LocalLink.SolveChallenge.Response);
+    rpc AccountLocalLinkApproveChallenge (anytype.Rpc.Account.LocalLink.ApproveChallenge.Request) returns (anytype.Rpc.Account.LocalLink.ApproveChallenge.Response);
     rpc AccountLocalLinkCreateApp (anytype.Rpc.Account.LocalLink.CreateApp.Request) returns (anytype.Rpc.Account.LocalLink.CreateApp.Response);
+    rpc AccountLocalLinkUpdateApp (anytype.Rpc.Account.LocalLink.UpdateApp.Request) returns (anytype.Rpc.Account.LocalLink.UpdateApp.Response);
     rpc AccountLocalLinkListApps (anytype.Rpc.Account.LocalLink.ListApps.Request) returns (anytype.Rpc.Account.LocalLink.ListApps.Response);
     rpc AccountLocalLinkRevokeApp (anytype.Rpc.Account.LocalLink.RevokeApp.Request) returns (anytype.Rpc.Account.LocalLink.RevokeApp.Response);
 
@@ -148,6 +154,8 @@ service ClientCommands {
     rpc ObjectImport (anytype.Rpc.Object.Import.Request) returns (anytype.Rpc.Object.Import.Response);
     rpc ObjectImportList (anytype.Rpc.Object.ImportList.Request) returns (anytype.Rpc.Object.ImportList.Response);
     rpc ObjectImportNotionValidateToken (anytype.Rpc.Object.Import.Notion.ValidateToken.Request) returns (anytype.Rpc.Object.Import.Notion.ValidateToken.Response);
+    rpc ObjectImportRunStatus (anytype.Rpc.Object.ImportRunStatus.Request) returns (anytype.Rpc.Object.ImportRunStatus.Response);
+    rpc ObjectImportRunList (anytype.Rpc.Object.ImportRunList.Request) returns (anytype.Rpc.Object.ImportRunList.Response);
     rpc ObjectImportUseCase (anytype.Rpc.Object.ImportUseCase.Request) returns (anytype.Rpc.Object.ImportUseCase.Response);
     rpc ObjectImportExperience (anytype.Rpc.Object.ImportExperience.Request) returns (anytype.Rpc.Object.ImportExperience.Response);
     rpc ObjectDateByTimestamp (anytype.Rpc.Object.DateByTimestamp.Request) returns (anytype.Rpc.Object.DateByTimestamp.Response);
@@ -178,10 +186,12 @@ service ClientCommands {
     // ObjectType commands
     // ***
     rpc ObjectCreateObjectType (anytype.Rpc.Object.CreateObjectType.Request) returns (anytype.Rpc.Object.CreateObjectType.Response);
-    rpc ObjectTypeRelationAdd (anytype.Rpc.ObjectType.Relation.Add.Request) returns (anytype.Rpc.ObjectType.Relation.Add.Response);
-    rpc ObjectTypeRelationRemove (anytype.Rpc.ObjectType.Relation.Remove.Request) returns (anytype.Rpc.ObjectType.Relation.Remove.Response);
-    rpc ObjectTypeRecommendedRelationsSet (anytype.Rpc.ObjectType.Recommended.RelationsSet.Request) returns (anytype.Rpc.ObjectType.Recommended.RelationsSet.Response);
-    rpc ObjectTypeRecommendedFeaturedRelationsSet (anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request) returns (anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response);
+    rpc ObjectTypePropertyAdd (anytype.Rpc.ObjectType.Property.Add.Request) returns (anytype.Rpc.ObjectType.Property.Add.Response);
+    rpc ObjectTypePropertyRemove (anytype.Rpc.ObjectType.Property.Remove.Request) returns (anytype.Rpc.ObjectType.Property.Remove.Response);
+    // Deprecated: use ObjectTypePropertyAdd / ObjectTypePropertyRemove.
+    rpc ObjectTypeRecommendedRelationsSet (anytype.Rpc.ObjectType.Recommended.RelationsSet.Request) returns (anytype.Rpc.ObjectType.Recommended.RelationsSet.Response) { option deprecated = true; }
+    // Deprecated: use ObjectTypePropertyAdd / ObjectTypePropertyRemove.
+    rpc ObjectTypeRecommendedFeaturedRelationsSet (anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request) returns (anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response) { option deprecated = true; }
     rpc ObjectTypeListConflictingRelations (anytype.Rpc.ObjectType.ListConflictingRelations.Request) returns (anytype.Rpc.ObjectType.ListConflictingRelations.Response);
     rpc ObjectTypeResolveLayoutConflicts (anytype.Rpc.ObjectType.ResolveLayoutConflicts.Request) returns (anytype.Rpc.ObjectType.ResolveLayoutConflicts.Response);
     rpc ObjectTypeSetOrder (anytype.Rpc.ObjectType.SetOrder.Request) returns (anytype.Rpc.ObjectType.SetOrder.Response);
@@ -457,6 +467,7 @@ service ClientCommands {
     rpc AIAutofill (anytype.Rpc.AI.Autofill.Request) returns (anytype.Rpc.AI.Autofill.Response);
     rpc AIListSummary (anytype.Rpc.AI.ListSummary.Request) returns (anytype.Rpc.AI.ListSummary.Response);
     rpc AIObjectCreateFromUrl (anytype.Rpc.AI.ObjectCreateFromUrl.Request) returns (anytype.Rpc.AI.ObjectCreateFromUrl.Response);
+    rpc AIListModels (anytype.Rpc.AI.ListModels.Request) returns (anytype.Rpc.AI.ListModels.Response);
 
     // Push
     rpc PushNotificationRegisterToken(anytype.Rpc.PushNotification.RegisterToken.Request) returns (anytype.Rpc.PushNotification.RegisterToken.Response);

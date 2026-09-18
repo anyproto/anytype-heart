@@ -91,7 +91,8 @@ func TestReadMessagesLoadedInBackground(t *testing.T) {
 			LastStateId: secondMessage.StateId,
 			Order:       4,
 		},
-		MessageCount: 2,
+		MessageCount:         2,
+		LifetimeMessageCount: 2,
 	}
 	assert.Equal(t, wantResponse, gotResponse)
 }

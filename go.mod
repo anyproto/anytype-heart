@@ -6,13 +6,15 @@ require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
 	github.com/PuerkitoBio/goquery v1.10.2
 	github.com/ahmetb/govvv v0.3.0
-	github.com/anyproto/any-store v1.0.1
+	github.com/anyproto/any-block v0.0.0-20260916181942-e108b5ec991b // v2.0.0-rc4; upstream module path has no /v2 suffix
+	github.com/anyproto/any-store v1.0.2
 	github.com/anyproto/any-sync v0.13.2
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb
 	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250801122506-553f6c085a23
 	github.com/anyproto/go-chash v0.1.0
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/anyproto/go-slip10 v1.0.1
+	github.com/anyproto/go-sqlite v1.4.2-any
 	github.com/anyproto/goheif v0.0.0-20260216083627-c3efd00cd92e
 	github.com/anyproto/lexid v0.0.6
 	github.com/anyproto/tantivy-go v1.0.6
@@ -89,11 +91,12 @@ require (
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/samber/lo v1.49.1
 	github.com/sasha-s/go-deadlock v0.3.5
+	github.com/sashabaranov/go-openai v1.41.2
 	github.com/shirou/gopsutil/v4 v4.26.2
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef
 	github.com/stretchr/testify v1.12.1
-	github.com/swaggo/swag/v2 v2.0.0-rc4
+	github.com/swaggo/swag/v2 v2.0.0-rc4 // openapi generation: rc5 emits BearerAuth (not bearerauth) and an empty externalDocs.description, so make openapi must build THIS version
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/valyala/fastjson v1.6.10
 	github.com/vektra/mockery/v2 v2.53.6
@@ -112,8 +115,10 @@ require (
 	golang.org/x/sync v0.22.0
 	golang.org/x/sys v0.47.0
 	golang.org/x/text v0.41.0
+	golang.org/x/time v0.15.0
 	google.golang.org/grpc v1.81.1
 	google.golang.org/protobuf v1.36.12
+	gopkg.in/dnaeon/go-vcr.v4 v4.0.7
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
 	storj.io/drpc v1.0.0
@@ -131,7 +136,6 @@ require (
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/anyproto/go-bip39 v1.0.0 // indirect
 	github.com/anyproto/go-slip21 v1.0.0 // indirect
-	github.com/anyproto/go-sqlite v1.4.2-any // indirect
 	github.com/aymerick/douceur v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.5 // indirect
@@ -252,6 +256,7 @@ require (
 	github.com/rs/cors v1.11.0 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
+	github.com/santhosh-tekuri/jsonschema/v6 v6.0.2 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
@@ -279,11 +284,11 @@ require (
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
+	go.yaml.in/yaml/v4 v4.0.0-rc.6 // indirect
 	golang.org/x/arch v0.8.0 // indirect
 	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/mod v0.39.0 // indirect
 	golang.org/x/term v0.45.0 // indirect
-	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.49.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect

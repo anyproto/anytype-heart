@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
 
@@ -52,10 +53,16 @@ func (sp *SortProperty) UnmarshalJSON(data []byte) error {
 }
 
 type SearchRequest struct {
-	Query   string            `json:"query" example:"test"`               // The text to search within object names and content; use types field for type filtering
+	Query   string            `json:"query" example:"test"`               // Full-text query for cross-space search; within a single space, matches names and snippets. Use types for type filtering.
 	Types   []string          `json:"types" example:"page,task,bookmark"` // The types of objects to include in results (e.g., "page", "task", "bookmark"); see ListTypes endpoint for valid values. File-layout types (file, image, video, audio) are excluded by default and must be listed explicitly here to be searchable.
 	Sort    SortOptions       `json:"sort"`                               // The sorting options for the search results
 	Filters *FilterExpression `json:"filters,omitempty"`                  // Expression filter with nested AND/OR conditions
+}
+
+// GlobalSearchResponse is a page from the currently loaded user spaces.
+type GlobalSearchResponse struct {
+	pagination.PaginatedResponse[Object]
+	AllStoresLoaded bool `json:"all_stores_loaded"` // False when spaces are still loading or a store was unavailable. Retry later for a complete view.
 }
 
 type SortOptions struct {

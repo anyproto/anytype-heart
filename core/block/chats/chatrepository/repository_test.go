@@ -8,10 +8,13 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/query"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -20,12 +23,16 @@ type fixture struct {
 	db   anystore.DB
 }
 
-func newFixture(t *testing.T) *fixture {
+func newFixture(t testing.TB) *fixture {
 	ctx := context.Background()
 	db, err := anystore.Open(ctx, filepath.Join(t.TempDir(), "store.db"), nil)
 	require.NoError(t, err)
 
 	coll, err := db.CreateCollection(ctx, "testchats")
+	require.NoError(t, err)
+	historyColl, err := db.CreateCollection(ctx, "testchatMessageHistory")
+	require.NoError(t, err)
+	_, err = db.CreateCollection(ctx, storestate.CollMeta)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -34,8 +41,9 @@ func newFixture(t *testing.T) *fixture {
 
 	return &fixture{
 		repo: &repository{
-			collection: coll,
-			arenaPool:  &anyenc.ArenaPool{},
+			collection:        coll,
+			historyCollection: historyColl,
+			arenaPool:         &anyenc.ArenaPool{},
 		},
 		db: db,
 	}
@@ -231,6 +239,59 @@ func TestCountMessages(t *testing.T) {
 		// sanity: pre-existing unread counter still reflects only unread
 		assert.Equal(t, int32(1), state.Messages.Counter)
 	})
+}
+
+func TestCountMessagesLifetime(t *testing.T) {
+	fx := newFixture(t)
+	fx.addMessage(t, "msg1", "order1", true, false, false)
+	fx.addMessage(t, "msg2", "order2", true, false, false)
+
+	recorded, err := fx.repo.RecordMessage(context.Background(), "msg2")
+	require.NoError(t, err)
+	assert.False(t, recorded, "replaying a create is idempotent")
+	require.NoError(t, fx.repo.collection.DeleteId(context.Background(), "msg1"))
+
+	live, err := fx.repo.CountMessages(context.Background())
+	require.NoError(t, err)
+	lifetime, err := fx.repo.CountMessagesLifetime(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, 1, live)
+	assert.Equal(t, 2, lifetime, "deleting a live document must not decrement the lifetime total")
+}
+
+func TestEnsureMessageHistoryForcesOneFullReplay(t *testing.T) {
+	ctx := context.Background()
+	fx := newFixture(t)
+	fx.addMessage(t, "msg1", "order1", true, false, false)
+	require.NoError(t, fx.repo.historyCollection.DeleteId(ctx, "msg1"), "simulate a pre-history-index message")
+
+	meta, err := fx.db.Collection(ctx, storestate.CollMeta)
+	require.NoError(t, err)
+	arena := &anyenc.Arena{}
+	metaDoc := arena.NewObject()
+	metaDoc.Set("id", arena.NewString("chat1"))
+	metaDoc.Set("q", arena.NewNumberInt(42))
+	metaDoc.Set("r", arena.NewTrue())
+	require.NoError(t, meta.Insert(ctx, metaDoc))
+
+	require.NoError(t, fx.repo.ensureMessageHistory(ctx, fx.db, "chat1"))
+	_, err = meta.FindId(ctx, "chat1")
+	assert.ErrorIs(t, err, anystore.ErrDocNotFound, "the next open must replay the full tree, not the incremental tail")
+	lifetime, err := fx.repo.CountMessagesLifetime(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, lifetime, "the schema marker is not counted as a message")
+
+	// Once versioned, initialization is idempotent and does not keep forcing
+	// expensive full replays on every repository open.
+	arena.Reset()
+	metaDoc = arena.NewObject()
+	metaDoc.Set("id", arena.NewString("chat1"))
+	metaDoc.Set("q", arena.NewNumberInt(43))
+	metaDoc.Set("r", arena.NewTrue())
+	require.NoError(t, meta.Insert(ctx, metaDoc))
+	require.NoError(t, fx.repo.ensureMessageHistory(ctx, fx.db, "chat1"))
+	_, err = meta.FindId(ctx, "chat1")
+	require.NoError(t, err, "the version marker prevents a second replay reset")
 }
 
 func TestSetReadFlag(t *testing.T) {
@@ -553,5 +614,51 @@ func TestGetLastMessagesByCreators(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Empty(t, got)
+	})
+}
+
+// reactionUnreadOrderId carries a sparse index, and since any-store v1.0.2 the planner only lets a
+// sparse index serve a predicate that guarantees the field is present and non-null (GO-7510).
+// $exists does not qualify — it also matches an explicit null, which the index skips — so writing
+// filterReactionUnread as query.Exists{} silently turns all three of these into full collection
+// scans (measured 300-700x on a 50k-message collection) while returning identical results.
+func TestFilterReactionUnreadUsesTheSparseIndex(t *testing.T) {
+	newIndexedFixture := func(t *testing.T) *fixture {
+		fx := newFixture(t)
+		require.NoError(t, anystorehelper.AddIndexes(context.Background(), fx.repo.collection, chatCollectionIndexes))
+		return fx
+	}
+	indexUsed := func(t *testing.T, fx *fixture, q anystore.Query) bool {
+		t.Helper()
+		explain, err := q.Explain(context.Background())
+		require.NoError(t, err)
+		for _, idx := range explain.Indexes {
+			if idx.Name == chatmodel.ReactionUnreadOrderIdKey && idx.Used {
+				return true
+			}
+		}
+		t.Logf("plan: %s", explain.Sql)
+		return false
+	}
+
+	t.Run("GetNewestUnreadReactionOrderId — filter and sort", func(t *testing.T) {
+		fx := newIndexedFixture(t)
+		q := fx.repo.collection.Find(filterReactionUnread).
+			Sort("-" + chatmodel.ReactionUnreadOrderIdKey).Limit(1)
+		assert.True(t, indexUsed(t, fx, q))
+	})
+
+	t.Run("GetAllUnreadReactionChangeIds — filter only", func(t *testing.T) {
+		fx := newIndexedFixture(t)
+		assert.True(t, indexUsed(t, fx, fx.repo.collection.Find(filterReactionUnread)))
+	})
+
+	t.Run("ClearUnreadReactions — filter bounded by maxOrderId", func(t *testing.T) {
+		fx := newIndexedFixture(t)
+		filter := query.And{
+			filterReactionUnread,
+			query.Key{Path: []string{chatmodel.ReactionUnreadOrderIdKey}, Filter: query.NewComp(query.CompOpLte, "ord")},
+		}
+		assert.True(t, indexUsed(t, fx, fx.repo.collection.Find(filter).Limit(100)))
 	})
 }

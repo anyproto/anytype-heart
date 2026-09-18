@@ -1,0 +1,383 @@
+package adapter
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"runtime/debug"
+
+	"github.com/anyproto/anytype-heart/core/block/importv2/persist"
+	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
+	"github.com/anyproto/anytype-heart/space"
+)
+
+// The startup sweep: every run dir left behind
+// by a previous process is finished being deleted, RESUMED (a run whose
+// pass 2 completed — fetched/materializing, or suspended after
+// materialization began — restarts pass 3 from its spool, attempts-capped),
+// or compensated from its durable ledger and then deleted.
+
+type spaceStatus int
+
+const (
+	spaceOK spaceStatus = iota
+	spaceGone
+	spaceUnknown
+)
+
+type spaceProbe func(ctx context.Context, spaceId string) spaceStatus
+
+type sweepAction string
+
+const (
+	sweepDeletedTerminal         sweepAction = "deleted-terminal"
+	sweepCompensated             sweepAction = "compensated"
+	sweepCompensatedPartially    sweepAction = "compensated-partially" // leaks left; dir kept for retry
+	sweepDeletedCorrupt          sweepAction = "deleted-corrupt"
+	sweepDeletedEmpty            sweepAction = "deleted-empty"
+	sweepDeletedSpaceGone        sweepAction = "deleted-space-gone"
+	sweepSkippedActive           sweepAction = "skipped-active"
+	sweepSkippedNewerSchema      sweepAction = "skipped-newer-schema"
+	sweepSkippedSpaceUnavailable sweepAction = "skipped-space-unavailable"
+	sweepSkippedError            sweepAction = "skipped-error"
+	sweepResumedCompleted        sweepAction = "resumed-completed"
+	sweepResumedSuspended        sweepAction = "resumed-suspended" // shut down again mid-resume; dir kept
+	sweepResumedFailed           sweepAction = "resumed-failed"
+)
+
+// maxResumeAttempts caps resume-and-crash loops: the counter
+// moves durably BEFORE each attempt (runstore.BeginResume), so however
+// early the crash lands, the run reaches compensation after this many
+// tries.
+const maxResumeAttempts = 3
+
+// resumeFn restarts a resumable run from its open store. The store's
+// ownership passes to the callee (it settles or keeps the dir; sweepOne's
+// deferred Close is idempotent insurance). nil disables resume — every
+// resumable state then falls through to compensation, the phase-A shape.
+type resumeFn func(ctx context.Context, store *runstore.Store, manifest runstore.Manifest) sweepOutcome
+
+type sweepOutcome struct {
+	Dir    string
+	Action sweepAction
+	Result persist.CompensationResult
+	Err    error
+}
+
+// sweepRuns walks the runs root once and settles every dir it finds. New
+// dirs created by imports starting mid-sweep are not in the listing
+// snapshot, and dirs a live Store holds open are skipped via the active
+// registry — an active run is never touched. A dead ctx (the component is
+// closing) stops the walk: remaining dirs settle on the next start.
+func sweepRuns(ctx context.Context, root string, objects persist.ObjectAccess, probe spaceProbe, resume, crawlResume resumeFn) []sweepOutcome {
+	dirs, err := runstore.ListRunDirs(root)
+	if err != nil {
+		log.Errorf("sweep: list run dirs: %s", err)
+		return nil
+	}
+	var outcomes []sweepOutcome
+	for _, dir := range dirs {
+		if ctx.Err() != nil {
+			return outcomes
+		}
+		outcomes = append(outcomes, sweepOneGuarded(ctx, dir, objects, probe, resume, crawlResume))
+	}
+	return outcomes
+}
+
+// sweepOneGuarded contains a panic to ITS dir: one poison dir must not
+// abort the rest of the sweep (previously the recover sat a level up, so
+// aaa-poison left zzz-healthy uncompensated on every start, forever).
+func sweepOneGuarded(ctx context.Context, dir string, objects persist.ObjectAccess, probe spaceProbe, resume, crawlResume resumeFn) (outcome sweepOutcome) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			outcome.Dir = dir
+			outcome.Action = sweepSkippedError
+			outcome.Err = fmt.Errorf("sweep panic: %v", rec)
+			log.With("dir", dir).Errorf("sweep of one run dir panicked; continuing with the rest: %v", rec)
+		}
+	}()
+	return sweepOne(ctx, dir, objects, probe, resume, crawlResume)
+}
+
+// resumable reports whether the manifest describes a run whose pass 2
+// completed — the class: the spool is provably whole (the
+// fetched marker or later), so pass 3 can restart from the dir alone. A
+// suspend BEFORE materialization began is not in this class — it belongs
+// to crawlResumable below when its manifest carries the request, and
+// compensates (trivially, to nothing) when it does not (pre-DM-3 dirs).
+//
+// Resume also happens only WITHIN a schema version (only the frozen
+// compensation core is promised across versions, and resume rehydrates far
+// more than the core). An older-schema dir falls through to the compensate
+// branch below, which reads only frozen fields — "resume is refused,
+// compensation is guaranteed". Newer-schema dirs never reach here (the
+// hands-off check above).
+func resumable(m runstore.Manifest) bool {
+	if m.SchemaVersion != runstore.SchemaVersion {
+		return false
+	}
+	switch m.State {
+	case runstore.StateFetched, runstore.StateMaterializing:
+		return true
+	case runstore.StateSuspended:
+		return m.MaterializeStarted
+	default:
+		return false
+	}
+}
+
+// crawlResumable is the crawl-resume class, disjoint from resumable() by the
+// sticky marker: a run interrupted BEFORE its crawl completed — crashed
+// (running) or suspended pre-materialize — whose manifest still carries the
+// request that rebuilds its converter. Dirs written by pre-DM-3 binaries
+// have no request and keep the old disposition (compensate — trivially, to
+// nothing). Same version gate as resumable (resume only within a
+// version), belt-checked again in resume.LoadCrawl.
+func crawlResumable(m runstore.Manifest) bool {
+	if m.SchemaVersion != runstore.SchemaVersion || m.MaterializeStarted || len(m.Request) == 0 {
+		return false
+	}
+	return m.State == runstore.StateRunning || m.State == runstore.StateSuspended
+}
+
+func sweepOne(ctx context.Context, dir string, objects persist.ObjectAccess, probe spaceProbe, resume, crawlResume resumeFn) sweepOutcome {
+	outcome := sweepOutcome{Dir: dir}
+	// OpenExclusive takes the guard atomically with the liveness check —
+	// the IsActive-then-Open pair had a gap a DM-2 resume could slip into.
+	// A live Store holding the dir (a run Close's grace gave up on, still
+	// finishing in this process) yields ErrActive: the db's .lock is a
+	// dirty sentinel, not a mutex — opening and dropping here would unlink
+	// the dir under the live writer.
+	store, err := runstore.OpenExclusive(ctx, dir)
+	if err != nil {
+		switch {
+		case errors.Is(err, runstore.ErrActive):
+			outcome.Action = sweepSkippedActive
+			return outcome
+		case ctx.Err() != nil:
+			// The stop is consulted BEFORE the corrupt branch (review P0-A):
+			// a shutdown mid-open surfaces through whatever error the driver
+			// was in the middle of — including a cancelled quick check that
+			// any-store wraps as ErrQuickCheckFailed — and the corrupt
+			// branch three lines down answers by UNLINKING the ledger.
+			outcome.Action = sweepSkippedError
+			outcome.Err = fmt.Errorf("sweep stopped: %w", err)
+			return outcome
+		case runstore.IsCorrupted(err):
+			// The ledger is lost: whatever the run created can no longer be
+			// attributed. Delete the dir, say so loudly — leak, never guess.
+			outcome.Action = sweepDeletedCorrupt
+			outcome.Err = err
+			removeDir(dir, &outcome)
+		case runstore.IsMissingManifest(err):
+			// Crashed between dir creation and the manifest write: nothing
+			// was ever recorded, so nothing was ever done. Plain garbage.
+			outcome.Action = sweepDeletedEmpty
+			removeDir(dir, &outcome)
+		default:
+			// Transient (IO, lock): keep the dir, retry next start.
+			outcome.Action = sweepSkippedError
+			outcome.Err = err
+		}
+		return outcome
+	}
+
+	// C1: the sweep's own store hold must survive a panic anywhere below
+	// (a panicking DeleteObject is recovered one level up) — Close is
+	// idempotent, so the branches that Close/Drop explicitly are unharmed.
+	defer store.Close()
+	manifest, err := store.Manifest(ctx)
+	if err != nil {
+		_ = store.Close()
+		outcome.Action = sweepSkippedError
+		outcome.Err = err
+		return outcome
+	}
+	if manifest.SchemaVersion > runstore.SchemaVersion {
+		// A newer binary owns this run (downgrade scenario) — hands off.
+		_ = store.Close()
+		outcome.Action = sweepSkippedNewerSchema
+		return outcome
+	}
+	if manifest.State == runstore.StateCompleted || manifest.State == runstore.StateFailed {
+		// Finished run whose Drop didn't complete: just finish the delete.
+		outcome.Action = sweepDeletedTerminal
+		dropStore(store, &outcome)
+		return outcome
+	}
+
+	switch probe(ctx, manifest.SpaceId) {
+	case spaceGone:
+		if ctx.Err() != nil {
+			// The stop is consulted BEFORE the destructive branch, the same
+			// rule the corrupt branch above obeys (review P0-A) and for the
+			// same reason: this branch UNLINKS the ledger, and "the space is
+			// gone" is not something a closing process can establish. The
+			// answer arrives through techspace, whose SpaceViewExists reports
+			// exists = (view read succeeded) — so a shutdown mid-read is
+			// indistinguishable, by shape, from a deleted space (review item
+			// 8). The dir keeps; the next start asks again.
+			outcome.Action = sweepSkippedError
+			outcome.Err = fmt.Errorf("sweep stopped: %w", ctx.Err())
+			_ = store.Close()
+			return outcome
+		}
+		// Nothing to compensate into; the objects died with the space.
+		outcome.Action = sweepDeletedSpaceGone
+		dropStore(store, &outcome)
+		return outcome
+	case spaceUnknown:
+		_ = store.Close()
+		outcome.Action = sweepSkippedSpaceUnavailable
+		return outcome
+	}
+
+	if resume != nil && resumable(manifest) && manifest.ResumeAttempts < maxResumeAttempts {
+		// fetched | materializing | suspended-mid-materialize: finish the
+		// materialization from the dir instead of destroying it —
+		// headlessly: no source, no credentials, no network. Attempts are
+		// capped; exhaustion falls through to compensation below.
+		return resume(ctx, store, manifest)
+	}
+	if crawlResume != nil && crawlResumable(manifest) && manifest.CrawlResumeAttempts < maxResumeAttempts {
+		// running | suspended mid-crawl, request stored: re-run the crawl
+		// with the spool as the skip set — this needs the source and
+		// its credentials, which is exactly what the manifest's request
+		// carries. The CRAWL counter gates (review P1: one shared counter
+		// let cheap ~1-request crawl attempts spend the pass-3 budget, whose
+		// exhaustion is the destructive one); same cap value, exhaustion
+		// falls through to compensation (trivially nothing — pass 2 touched
+		// no space). Transient failures refund their attempt, so only
+		// crashes and genuine failures walk toward the cap.
+		return crawlResume(ctx, store, manifest)
+	}
+
+	// running | suspended | cancelling | compensating — and resumable runs
+	// whose attempts are exhausted: compensate from the frozen-core view
+	// — CompensateIds tolerates already-deleted objects, so
+	// re-running a crashed compensation is safe.
+	inputs, err := store.CompensationInputs(ctx)
+	if err != nil {
+		_ = store.Close()
+		outcome.Action = sweepSkippedError
+		outcome.Err = err
+		return outcome
+	}
+	if err = store.SetState(ctx, runstore.StateCompensating); err != nil {
+		// Same gate as the engine's OnCompensating: no durable marker, no
+		// deletes — a crash mid-cleanup without it makes the next start
+		// resume a partly-compensated run, silently missing its deleted
+		// objects.
+		_ = store.Close()
+		outcome.Action = sweepSkippedError
+		outcome.Err = fmt.Errorf("mark compensating: %w", err)
+		return outcome
+	}
+	if err = store.Flush(ctx); err != nil {
+		// The marker must be ON DISK before the first delete (review P2):
+		// a committed-but-unflushed marker can be lost to power loss while
+		// its authorised deletes are already in the space.
+		_ = store.Close()
+		outcome.Action = sweepSkippedError
+		outcome.Err = fmt.Errorf("flush compensating marker: %w", err)
+		return outcome
+	}
+	outcome.Result = persist.CompensateIds(ctx, objects, inputs.Created, inputs.OwnedFiles, inputs.Updated)
+	if outcome.Result.Leaked > 0 {
+		// Leaks are retryable — compensation is idempotent, so the next
+		// start simply runs it again (already-deleted objects count
+		// compensated). Dropping the dir here would turn a retryable leak
+		// into a permanent orphan; keep it in the compensating state.
+		outcome.Action = sweepCompensatedPartially
+		if err = store.Close(); err != nil {
+			outcome.Err = errors.Join(outcome.Err, err)
+		}
+		return outcome
+	}
+	outcome.Action = sweepCompensated
+	if err = store.SetState(ctx, runstore.StateFailed); err != nil {
+		log.Errorf("sweep: mark %s failed: %s", dir, err)
+	}
+	dropStore(store, &outcome)
+	return outcome
+}
+
+func removeDir(dir string, outcome *sweepOutcome) {
+	if err := os.RemoveAll(dir); err != nil {
+		outcome.Err = errors.Join(outcome.Err, err)
+	}
+}
+
+func dropStore(store *runstore.Store, outcome *sweepOutcome) {
+	if err := store.Drop(); err != nil {
+		outcome.Err = errors.Join(outcome.Err, err)
+	}
+}
+
+// sweepAbandoned runs the sweep in the background at component start,
+// logging one structured line per settled run on the import-v2 scope.
+func (s *service) sweepAbandoned() {
+	defer func() {
+		if rec := recover(); rec != nil {
+			log.Errorf("sweep panic: %v\n%s", rec, debug.Stack())
+		}
+	}()
+	outcomes := sweepRuns(s.componentCtx, runstore.RunsRoot(s.config.RepoPath), s.objects, s.probeSpace, s.resumeRunner, s.crawlResumeRunner)
+	for _, outcome := range outcomes {
+		logger := log.With(
+			"dir", outcome.Dir,
+			"action", string(outcome.Action),
+			"compensated", outcome.Result.Compensated,
+			"alreadyGone", outcome.Result.AlreadyGone,
+			"leaked", outcome.Result.Leaked,
+			"uncovered", len(outcome.Result.Uncovered),
+		)
+		switch {
+		case outcome.Err != nil:
+			logger.Errorf("swept abandoned import run: %s", outcome.Err)
+		case outcome.Action == sweepDeletedCorrupt:
+			logger.Errorf("abandoned import run had a corrupted ledger; its objects may be orphaned")
+		case outcome.Action == sweepCompensated || outcome.Action == sweepDeletedSpaceGone:
+			logger.Warnf("swept abandoned import run")
+		default:
+			logger.Infof("swept abandoned import run")
+		}
+	}
+}
+
+// probeSpace classifies whether a run's target space still exists. Only a
+// definitive not-exists/deleted answer allows deleting the run dir without
+// compensation; anything else is retried on the next start.
+//
+// ErrSpaceNotExists is taken as definitive only while the STOP is not live
+// (review item 8). The 2026-08-13 review reasoned that Get →
+// ensureSpaceStarted → resolveDerivedInfo reads the space view directly from
+// techspace, so a lazily-not-yet-started space resolves rather than
+// answering not-exists — true, but it is not the only rung: the waiter
+// consults techspace.SpaceViewExists first, which returns
+// exists = (objectCache.GetObject error == nil) and therefore reports "no
+// such space" for a view read that was CANCELLED or hit its
+// spaceViewCheckTimeout. The startup sweep runs concurrently with techspace
+// warm-up and with shutdown, so that read failing is ordinary — and the
+// branch this feeds unlinks a ledger.
+func (s *service) probeSpace(ctx context.Context, spaceId string) spaceStatus {
+	if spaceId == "" {
+		return spaceGone
+	}
+	_, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil && ctx.Err() != nil {
+		return spaceUnknown
+	}
+	switch {
+	case err == nil:
+		return spaceOK
+	case errors.Is(err, space.ErrSpaceNotExists),
+		errors.Is(err, space.ErrSpaceDeleted),
+		errors.Is(err, space.ErrSpaceStorageMissig):
+		return spaceGone
+	default:
+		return spaceUnknown
+	}
+}
