@@ -60,15 +60,17 @@ var openAPIBodyRecipes = map[string]func(c *openAPIBodyComposer) (json.RawMessag
 			if err := json.Unmarshal(filters, &node); err != nil {
 				return fmt.Errorf("decode filters kind: %w", err)
 			}
-			node["description"] = "structured filter nodes (schema kind filters), an alternative to the compact filter string; a body sends one of the two"
+			node["description"] = "structured filter nodes (schema kind filters), an alternative to the compact filter string; a body sends at most one of the two"
 			props := root["properties"].(map[string]any)
 			props["filters"] = node
-			props["filter"].(map[string]any)["description"] = "compact filter string (grammar on kind filters), an alternative to the structured filters array; a body sends one of the two"
+			props["filter"].(map[string]any)["description"] = "compact filter string (grammar on kind filters), an alternative to the structured filters array; a body sends at most one of the two"
 			// CreateQuery refuses both filter channels at once, and views
-			// beside any top-level filter or sort
+			// beside any top-level filter or sort. An empty filter string
+			// is not a filter; an array, even empty, is
+			nonEmptyFilter := map[string]any{"filter": map[string]any{"minLength": 1}}
 			root["allOf"] = []any{
-				map[string]any{"not": map[string]any{"required": []string{"filter", "filters"}}},
-				map[string]any{"not": map[string]any{"required": []string{"views", "filter"}}},
+				map[string]any{"not": map[string]any{"required": []string{"filter", "filters"}, "properties": nonEmptyFilter}},
+				map[string]any{"not": map[string]any{"required": []string{"views", "filter"}, "properties": nonEmptyFilter}},
 				map[string]any{"not": map[string]any{"required": []string{"views", "filters"}}},
 				map[string]any{"not": map[string]any{"required": []string{"views", "sorts"}}},
 			}
@@ -114,7 +116,7 @@ var openAPIBodyRecipes = map[string]func(c *openAPIBodyComposer) (json.RawMessag
 		return c.pointer("template", "the template as an AnyBlock document: formatVersion 2.0, kind template, template_for naming the type")
 	},
 	v2model.OpValidate: func(c *openAPIBodyComposer) (json.RawMessage, error) {
-		return c.pointer("document", "an AnyBlock document of any kind, checked without being stored")
+		return c.pointer(apiV2ValidateKind, "an AnyBlock document of any kind, checked without being stored")
 	},
 	v2model.OpPatchObject: func(c *openAPIBodyComposer) (json.RawMessage, error) {
 		return c.envelope(v2OpNames, "applied in order as one edit, and if any one is refused none is applied")

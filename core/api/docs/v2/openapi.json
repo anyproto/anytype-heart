@@ -5527,6 +5527,11 @@
                 "allOf": [
                   {
                     "not": {
+                      "properties": {
+                        "filter": {
+                          "minLength": 1
+                        }
+                      },
                       "required": [
                         "filter",
                         "filters"
@@ -5535,6 +5540,11 @@
                   },
                   {
                     "not": {
+                      "properties": {
+                        "filter": {
+                          "minLength": 1
+                        }
+                      },
                       "required": [
                         "views",
                         "filter"
@@ -5560,12 +5570,12 @@
                 ],
                 "properties": {
                   "filter": {
-                    "description": "compact filter string (grammar on kind filters), an alternative to the structured filters array; a body sends one of the two",
+                    "description": "compact filter string (grammar on kind filters), an alternative to the structured filters array; a body sends at most one of the two",
                     "maxLength": 4096,
                     "type": "string"
                   },
                   "filters": {
-                    "description": "structured filter nodes (schema kind filters), an alternative to the compact filter string; a body sends one of the two",
+                    "description": "structured filter nodes (schema kind filters), an alternative to the compact filter string; a body sends at most one of the two",
                     "items": {
                       "$ref": "#/components/schemas/FilterNode"
                     },

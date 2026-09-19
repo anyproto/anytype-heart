@@ -7,7 +7,6 @@ package v2service
 // the space-aware write layer, not this endpoint.
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -30,14 +29,10 @@ func (s *Service) ValidateDocument(data []byte) v2model.ValidateResponse {
 		resp.Issues = append(resp.Issues, v2model.Issue{Message: fmt.Sprintf("validate document: %v", err)})
 		return resp
 	}
-	kind := "object"
-	if fields, err := parseEnvelope(data); err == nil {
-		var docKind string
-		if json.Unmarshal(fields["kind"], &docKind) == nil && docKind == "object_type" {
-			kind = "type_document"
-		}
-	}
-	resp.Issues = append(resp.Issues, documentIssues(kind, validationErr.Issues)...)
+	// the repair names the schema the validator applied: the document kind,
+	// unnarrowed. The create kinds are narrower (a type document with
+	// blocks is valid here and refused on create), so they would misdirect.
+	resp.Issues = append(resp.Issues, documentIssues(apiV2ValidateKind, validationErr.Issues)...)
 	if validationErr.NewerFormat {
 		// The formatVersion issue already names both
 		// versions; the hint steers the repair loop.

@@ -511,7 +511,7 @@ func decodeDiscoveryPointerPart(value string) string {
 
 func TestAnyBlockDiscoveryExamplesValidateAgainstServedSchema(t *testing.T) {
 	fx := newV2FixtureBare(t)
-	for _, kind := range []string{"object", "type", "type_document", "template"} {
+	for _, kind := range []string{"object", "type", "type_document", "template", "document"} {
 		entry, err := fx.SchemaKind(kind)
 		require.NoError(t, err)
 		assert.NoError(t, validateAgainstSchema(t, entry.Schema, entry.Example), kind)

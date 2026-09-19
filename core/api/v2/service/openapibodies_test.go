@@ -47,10 +47,12 @@ func TestOpenAPIBodiesAcceptTheServedExamples(t *testing.T) {
 		{v2model.OpCreateProperty, []string{v2SchemaKinds["property"].example}},
 		{v2model.OpUpdateProperty, []string{`{"name":"Priority"}`, `{"name":""}`}},
 		{v2model.OpCreateQuery, []string{v2SchemaKinds["query"].example,
+			// an empty filter string is no filter, so it may sit beside the array or views
+			`{"name":"All","type":"task","filter":"","filters":[]}`, `{"name":"All","type":"task","views":[{"name":"All"}],"filter":""}`,
 			`{"name":"Open","type":"task","filters":[{"property":"severity","condition":"in","value":["High"]},{"operator":"or","filters":[{"property":"done","condition":"equal","value":false}]}]}`}},
 		{v2model.OpCreateCollection, []string{v2SchemaKinds["collection"].example}},
 		{v2model.OpCreateType, []string{v2SchemaKinds["type"].example, v2SchemaKinds["type_document"].example}},
-		{v2model.OpUpdateType, []string{`{"name":"Plants"}`, `{"properties":{"description":"Updated"}}`, `{"type_settings":{"layout":"todo","property_definitions":[{"name":"Location","format":"select"}]}}`, `{"icon":{"format":"emoji","emoji":"🌱"}}`,
+		{v2model.OpUpdateType, []string{`{"name":"Plants"}`, `{"properties":{"description":"Updated"}}`, `{"properties":{"name":"Plant","description":null}}`, `{"type_settings":{"layout":"todo","property_definitions":[{"name":"Location","format":"select"}]}}`, `{"icon":{"format":"emoji","emoji":"🌱"}}`,
 			`{"ops":[` + v2OpSchemas["add_property"].example + `]}`, `{"ops":[` + v2OpSchemas["insert_view"].example + `]}`}},
 		{v2model.OpCreateObject, []string{v2SchemaKinds["shortcut"].example, v2SchemaKinds["object"].example}},
 		{v2model.OpCreateTemplate, []string{v2SchemaKinds["template"].example}},
@@ -100,6 +102,7 @@ func TestOpenAPIBodiesRefuseTheWrongShape(t *testing.T) {
 		{v2model.OpCreateQuery, `{"name":"Open","type":"task","filter":"done = false","filters":[]}`},
 		{v2model.OpCreateQuery, `{"name":"Open","type":"task","views":[{"name":"All"}],"sorts":[{"property":"name"}]}`},
 		{v2model.OpCreateQuery, `{"name":"Open","type":"task","views":[{"name":"All"}],"filter":"done = false"}`},
+		{v2model.OpCreateQuery, `{"name":"Open","type":"task","views":[{"name":"All"}],"filters":[]}`},
 		// the partial document writes name and description only, as strings
 		{v2model.OpUpdateType, `{"properties":{"status":"Done"}}`},
 		{v2model.OpUpdateType, `{"properties":{"name":123}}`},

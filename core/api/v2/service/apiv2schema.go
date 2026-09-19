@@ -237,6 +237,10 @@ func documentCreateKindNames() []string {
 	return names
 }
 
+// apiV2ValidateKind is the discovery kind that serves the document schema
+// as the validator applies it: the format's full schema, unnarrowed.
+const apiV2ValidateKind = "document"
+
 // apiV2KindSchemas caches each narrowed schema; the input is constant.
 var apiV2KindSchemas sync.Map // kind → []byte
 
@@ -244,6 +248,12 @@ var apiV2KindSchemas sync.Map // kind → []byte
 // A kind without a narrowing, or a narrowing that fails, serves the
 // document schema: too wide is a documentation bug, absent breaks discovery.
 func apiV2KindSchema(kind string) []byte {
+	if kind == apiV2ValidateKind {
+		// what POST /v2/validate checks is the format's own schema, legends
+		// and all (anyblockjson.Validate); the trimmed schema describes what
+		// a create accepts, which is narrower
+		return anyblockjson.SchemaJSON()
+	}
 	if cached, ok := apiV2KindSchemas.Load(kind); ok {
 		return cached.([]byte)
 	}

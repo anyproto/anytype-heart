@@ -157,6 +157,8 @@ func TestAPIV2KindSchemasAreNarrowedToWhatTheOperationAccepts(t *testing.T) {
 	})
 
 	t.Run("a template of a set keeps its query source", func(t *testing.T) {
+		// in the spelling CreateTemplate injects, and in the bare one it accepts
+		assert.NoError(t, validateAgainstSchema(t, template.Schema, json.RawMessage(`{"formatVersion":"2.0","kind":"template","type":"template","template_for":"set","query_source":{"types":["task"]}}`)))
 		assert.NoError(t, validateAgainstSchema(t, template.Schema, json.RawMessage(`{"formatVersion":"2.0","template_for":"set","query_source":{"types":["task"]}}`)))
 	})
 
@@ -172,11 +174,22 @@ func TestAPIV2KindSchemasAreNarrowedToWhatTheOperationAccepts(t *testing.T) {
 		assert.Contains(t, apiV2KindNarrowings["type_document"].drop, typeDocumentRefusedOnCreate)
 	})
 
-	t.Run("the document kind serves the schema unnarrowed, for validate", func(t *testing.T) {
+	t.Run("the document kind serves what the validator applies", func(t *testing.T) {
 		document := entry("document")
+		assert.NoError(t, validateAgainstSchema(t, document.Schema, document.Example))
 		assert.NoError(t, validateAgainstSchema(t, document.Schema, typeDocument.Example))
 		assert.NoError(t, validateAgainstSchema(t, document.Schema, template.Example))
 		assert.NoError(t, validateAgainstSchema(t, document.Schema, object.Example))
+		// a property document needs its settings: the format's rule, which
+		// the validator applies and the trimmed create schema does not carry
+		withSettings := json.RawMessage(`{"formatVersion":"2.0","kind":"property","properties":{"name":"Due"},"property_settings":{"format":"date"}}`)
+		without := json.RawMessage(`{"formatVersion":"2.0","kind":"property","properties":{"name":"Due"}}`)
+		assert.NoError(t, validateAgainstSchema(t, document.Schema, withSettings))
+		assert.NoError(t, anyblockjson.Validate(withSettings))
+		assert.Error(t, validateAgainstSchema(t, document.Schema, without))
+		assert.Error(t, anyblockjson.Validate(without))
+		// and a type document may carry blocks here, where nothing is created
+		assert.NoError(t, validateAgainstSchema(t, document.Schema, json.RawMessage(`{"formatVersion":"2.0","kind":"object_type","properties":{"name":"Plant"},"type_settings":{"api_key":"plant"},"blocks":[{"type":"dataview"}]}`)))
 	})
 
 	t.Run("the type document refuses what CreateType refuses", func(t *testing.T) {

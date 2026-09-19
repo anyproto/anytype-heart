@@ -269,9 +269,11 @@ read: no `Idempotency-Key`, `dry_run` ignored.
 
 - `GET /v2/schemas` — index. `GET /v2/schemas/{kind}` — strict JSON Schema
   + worked example per request kind (`object`, `shortcut`, `type`,
-  `template`, `property`, `query`, `collection`, `file`, `search`, `space`,
-  `filters`, `chat`, `chatMessage`, `chatMessageEdit`, `chatReaction`,
-  `chatRead`). The `filters` kind also serves the filter-string grammar
+  `type_document`, `template`, `document`, `property`, `query`,
+  `collection`, `file`, `search`, `space`, `filters`, `chat`,
+  `chatMessage`, `chatMessageEdit`, `chatReaction`, `chatRead`). The
+  three document kinds are narrowed to what their endpoint accepts;
+  `document` is the full format, what `POST /v2/validate` checks. The `filters` kind also serves the filter-string grammar
   (EBNF + examples). `GET /v2/schemas/ops/{op}` — per-op schema + example.
 - Live vocabulary: `GET …/types` and `GET …/types/{key}` (the type
   document, incl. its property keys); `GET …/properties`;
