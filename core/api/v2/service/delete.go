@@ -58,7 +58,7 @@ func (s *Service) DeleteObject(ctx context.Context, spaceId, objectId string, dr
 	if err != nil {
 		return nil, mapReadError(spaceId, objectId, err)
 	}
-	// a tombstoned row (deleted derived object whose tree survives) is gone
+	// a deleted row — a corpse, or a tombstone an older build left — is gone
 	// as far as the API is concerned
 	row, rowErr := s.store.SpaceIndex(spaceId).GetDetails(objectId)
 	if rowErr == nil && row.GetBool(bundle.RelationKeyIsDeleted) {

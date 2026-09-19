@@ -19,10 +19,11 @@ package v2service
 //     query injects `isDeleted != true` (database.go addDefaultFilters), so
 //     a prod corpse is hidden from queries even where nothing filters
 //     isUninstalled.
-//   - "tombstone": {id, spaceId, isDeleted} and NOTHING else — what
-//     BeforeDelete leaves in the index (spaceindex.DeleteObject) from the
-//     moment of the delete until the next space load, i.e. normally the
-//     rest of the app session on the deleting device. No relationKey, no
+//   - "tombstone": {id, spaceId, isDeleted} and NOTHING else — what an
+//     OLDER build's delete left in the index (spaceindex.DeleteObject)
+//     until the next space load rebuilt the row from the tree; a delete by
+//     this build keeps the full row (core/block deleteDerivedObject), so
+//     the shape exists only across an upgrade, for one load. No relationKey, no
 //     resolvedLayout: every key-filtered query — including the corpse
 //     probes' own — misses it on its FIRST filter. Only the derived id
 //     (ADDRESSING §2.4: id = f(space, kind, key)) can find it, which is
@@ -1054,10 +1055,12 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 						Error: &pb.RpcObjectSetDetailsResponseError{Code: pb.RpcObjectSetDetailsResponseError_NULL}}
 				})
 
-			echoed := corpseSlug
 			if shape == corpseTombstone {
-				echoed = corpseBsonKey // what an older build's tombstone served
+				// an older build's tombstone served the stored key, and echoing
+				// that back is the preceding subtest's input by construction
+				t.Skip("no slug is served over a legacy tombstone")
 			}
+			echoed := corpseSlug
 			result, err := fx.UpdateType(context.Background(), testSpaceId, "livetype",
 				"", []byte(`{"type_settings":{"property_definitions":[{"property":"`+echoed+`","name":"Warranty until","format":"text"}]}}`), false, true)
 

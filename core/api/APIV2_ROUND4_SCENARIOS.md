@@ -182,7 +182,7 @@ three fresh reviewers before the next.
   served under (`apikeyvocab.go ensure` adds removed types on the EMIT side;
   `typeKeysById` does the same for rows — all from the corpse row a delete
   leaves; the tombstone-window machinery this first carried is gone, see
-  the last paragraph under Group G). Emit only: a create or a filter naming the
+  the corpse-row paragraph under Group G). Emit only: a create or a filter naming the
   slug is refused as REMOVED (`removedTypeBySpelling`), never as unknown
   with a guess, and never a hex; a live type that later takes the slug owns
   it, and the corpse reads under its stored key (the twin rule too).
@@ -243,11 +243,11 @@ three fresh reviewers before the next.
   reviewers. One blocker: the removed-spelling stop in the type resolution
   chain relied on a BOUNDED scan of the deleted rows for a tombstone, so a
   tombstone past the bound let the spelling fall through to a live type
-  named that way. Closed store-side: the tombstone of a deleted type or
-  property now keeps its layout top level as `deletedLayout` (a new local
-  bundled relation, sparse-indexed in the space index), so "every deleted
-  type" is one exact query, and the resolution chain fails CLOSED when the
-  lookup errors. Their should-fixes are in: a tombstone demoted behind a
+  named that way. Closed store-side at the time (superseded — see the
+  corpse-row paragraph under Group G): the tombstone of a deleted type or
+  property kept its layout top level as `deletedLayout` (a local bundled
+  relation, sparse-indexed), so "every deleted type" was one exact query;
+  the resolution chain fails CLOSED when a lookup errors, which stays. Their should-fixes are in: a tombstone demoted behind a
   visible corpse still reads as removed, the markdown envelope carries the
   removed-type warning, the reactions scope's receipt carries the state,
   the removed-type 404 states the diagnosis once, the live owner of a
@@ -288,10 +288,10 @@ three fresh reviewers before the next.
   Reviewed (with the E/F review fixes) by three fresh reviewers. One
   blocker: tombstones written before the `deletedLayout` marker existed
   were invisible to the slug lookup, so the resolution stop could still
-  miss one. Closed: the marker is derived from the tombstone's RETAINED
-  snapshot, so re-running the delete on a tombstone backfills it, and the
-  deleted-objects reindex counter is bumped so every space backfills its
-  tombstones on its next load. Found on the way: the index helper aliased
+  miss one. Closed at the time (superseded — see below): the marker was
+  derived from the tombstone's RETAINED snapshot, and the deleted-objects
+  reindex counter was bumped so every space would backfill its tombstones
+  on its next load. Found on the way: the index helper aliased
   its input slice, so adding one index dropped the first existing one on
   an upgraded space — fixed. Their should-fixes are in: a lookup error is
   an outcome of its own through the whole resolution chain (a 500 "could
@@ -331,21 +331,35 @@ three fresh reviewers before the next.
   row stays the full corpse the `isUninstalled` Apply just indexed — the
   same row every other device holds and the same row this device would
   hold again after a restart. One shape, before and after a restart;
-  `removedTypes` / `removedProperties` read it by row, and the whole
-  tombstone-reading machinery went with the window: the `deletedLayout`
-  relation and its index, the identity keys in `SnapshotOnDelete`, the
-  tombstone lookups by slug and by key, the vocabulary's and the row
-  builder's tombstone probes. What the store's `DeleteObject` still
-  tombstones is what it always did: objects whose tree is gone, and the
-  index row of a derived object deleted by an OLDER build, which reads
-  and refuses under its stored key until the next load rebuilds it from
-  the tree (the outdated-object reindex, since the tombstone dropped the
-  heads hash). That one-load window on upgrade is the accepted residual:
-  such a spelling resolves like any other unknown one, name step
-  included. Full-text removal and subscriptions follow the Apply path,
-  as they always did on every other device: the indexer returns no docs
-  for a row flagged deleted and the queue consumer removes the existing
-  ones.
+  `removedTypes` / `removedProperties` read it by row, and the
+  tombstone-reading machinery THIS BRANCH had added went with the window:
+  the `deletedLayout` relation and its index, the identity keys in
+  `SnapshotOnDelete`, the tombstone lookups by slug and by key, the
+  vocabulary's and the row builder's tombstone probes (develop's §8.41
+  derived-id probes stay, for the rows below). The store's `DeleteObject`
+  is unchanged — a deleted tree, an import's kept id, the marketplace's
+  stale bundled templates — and the rows an OLDER build left for its
+  deleted derived objects stay as they are until the next space load
+  rebuilds them from the tree (the outdated-object reindex, a goroutine
+  behind the reindex limiter, since that tombstone dropped the heads
+  hash). Until then such a row has three faces, all accepted: an object
+  read serves the stored key (a 24-hex for a space-minted type or
+  property) with no removal warning, a list or search row serves an
+  empty `type`, and a write naming either spelling is refused as unknown
+  with a did-you-mean, name step included, never as removed. Full-text
+  removal and subscriptions follow the Apply path, as they always did on
+  every other device: the indexer returns no docs for a row flagged
+  deleted and the queue consumer deletes the existing ones; the links
+  row is no longer erased on the deleting device, which also matches
+  every other device. Two side effects, both improvements: the deletion
+  audit materialises a derived delete at once (the tombstone carried no
+  `isUninstalled` for it to find, so "recently deleted" missed a type
+  until the next load), and the row write now rides the indexer — a
+  store-write failure during the delete leaves the object live in the
+  index until the next load, where the unsaved heads hash rebuilds it.
+  One backstop moved: `deleteRelationOptions` no longer stops at the
+  first failing option (nothing re-runs it on the next load now that the
+  relation keeps its heads hash).
 
   Also in from those rounds: a mint that suffixed or emptied its slug
   reports the stored slug (or the minted key) on the property row and its

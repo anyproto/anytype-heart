@@ -80,8 +80,8 @@ type ObjectReader interface {
 // exists). RelationIdByKey is the relation twin: derived objects' ids are a
 // pure function of (space, kind, internal key) (ADDRESSING §2.4), so the id
 // is computable whether or not the relation object — or even its index
-// row — exists; the corpse probes use it to see a tombstoned row that no
-// key-filtered query can return (§8.41).
+// row — exists; the corpse probes use it to see a tombstone an older build
+// left, which no key-filtered query can return (§8.41).
 type ObjectCreator interface {
 	CreateObjectFromSnapshot(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase) (id string, err error)
 	TypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (string, error)

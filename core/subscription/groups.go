@@ -36,9 +36,10 @@ type groupsSub struct {
 	match database.Filter
 
 	// members maps matching object id → its grouped-key value; options
-	// tracks known relationOption ids of the grouped relation — a hard
-	// delete tombstones an option down to {id, isDeleted}, dropping the
-	// layout and relationKey that would otherwise identify it. Both are
+	// tracks known relationOption ids of the grouped relation — an option
+	// deleted by an older build was tombstoned down to {id, isDeleted},
+	// dropping the layout and relationKey that would otherwise identify it
+	// (a delete today keeps the row, flagged). Both are
 	// maintained under the space mutex by checkItem, so only changes that
 	// can affect groups mark the sub dirty.
 	members map[string]domain.Value
@@ -82,8 +83,8 @@ func (g *groupsSub) checkItem(id string, details *domain.Details) {
 		return
 	}
 	if _, ok := g.options[id]; ok {
-		// a tracked option that no longer qualifies: soft/hard deleted (a
-		// hard delete tombstones it down to {id, isDeleted}), re-keyed to
+		// a tracked option that no longer qualifies: deleted (flagged, or
+		// tombstoned down to {id, isDeleted} by an older build), re-keyed to
 		// another relation, or converted away from the option layout
 		delete(g.options, id)
 		g.dirty = true

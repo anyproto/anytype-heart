@@ -62,11 +62,8 @@ type apiKeyVocab struct {
 
 	typeSlugByKey map[string]string
 	typeKeyBySlug map[string]string
-	// removedTypeSlug marks the slugs emitted for REMOVED types (emit-only,
-	// see ensure) so a tombstone probe cannot hand a second corpse one;
 	// removedTypeKeys is every removed type this vocabulary knows of,
 	// slug-bearing or not, for the read marker (TypeRemoved).
-	removedTypeSlug map[string]bool
 	removedTypeKeys map[string]bool
 	typeKeyTaken    map[string]bool
 	typeSlugHolders map[string][]string
@@ -235,15 +232,10 @@ func (v *apiKeyVocab) ensure() bool {
 			}
 			if prev, twin := corpseBySlug[served]; twin {
 				delete(v.typeSlugByKey, prev)
-				delete(v.removedTypeSlug, served)
 				continue
 			}
 			corpseBySlug[served] = e.Key
 			v.typeSlugByKey[e.Key] = served
-			if v.removedTypeSlug == nil {
-				v.removedTypeSlug = map[string]bool{}
-			}
-			v.removedTypeSlug[served] = true
 		}
 	}
 	return true

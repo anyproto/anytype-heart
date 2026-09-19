@@ -662,7 +662,7 @@ func (s *Service) refuseRemovedType(ctx context.Context, spaceId, typeKey, path 
 //
 // The ONE key class the tolerance does not cover is a BUNDLED relation this
 // space removed (removedPropertyIssue; §8.41 widened "removed" from
-// uninstalled to archived too, and to the tombstone window): bundle.
+// uninstalled to archived too, and to a tombstone an older build left): bundle.
 // HasRelation answers for it forever, so without the explicit check a
 // create lands new data on a property the user deleted, and the reinstall
 // lights it back up.
@@ -718,9 +718,9 @@ func (s *Service) validatePropertyKeys(ctx context.Context, spaceId string, prop
 		if s.propertyKeyHeldByAnyRelation(ctx, spaceId, key) {
 			continue
 		}
-		// a REMOVED space-minted property nothing holds any more (the
-		// tombstone window, by its slug): refused as removed, which is what
-		// happened to it, rather than as unknown
+		// a REMOVED space-minted property nothing holds any more (its corpse
+		// row, by its slug): refused as removed, which is what happened to
+		// it, rather than as unknown
 		if entry, removed := s.removedCustomProperty(spaceId, key); removed {
 			issues = append(issues, removedCustomPropertyIssue(spaceId, entry, spelledAs(key), "/properties/"+spelledAs(key), v))
 			removedCount++

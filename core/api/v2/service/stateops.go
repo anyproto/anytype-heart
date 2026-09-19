@@ -1353,9 +1353,8 @@ func (a *v2StateApplier) removedBundledKeys() (map[string]bool, error) {
 
 // refusesRemovedBundled is the PATCH-side verdict: the key exists ONLY
 // because the bundled table answers for it, and this space removed that
-// bundled relation (uninstalled, archived, or sitting in the post-delete
-// tombstone window — bundledPropertyRemoved covers all three shapes,
-// §8.41). It is consulted AFTER the in-document escape — a removed
+// bundled relation (uninstalled, archived, or a tombstone an older build
+// left — bundledPropertyRemoved covers all three shapes, §8.41). It is consulted AFTER the in-document escape — a removed
 // property's existing values stay editable and removable, since unset is the
 // one cleanup channel a caller has left; what this refuses is landing the
 // key on a document that does not already carry it.

@@ -834,11 +834,13 @@ func corpseFlagged(details *domain.Details) bool {
 // deliberately sees EVERY store shape a relation row can have.
 //
 // A corpse has THREE store shapes, not two (§8.41). A UI delete sets
-// isUninstalled, the same Apply stamps isDeleted (smartblock's
-// detailsinject, since GO-1978), and BeforeDelete then TOMBSTONES the index
-// row down to {id, spaceId, isDeleted} — no relationKey, no resolvedLayout —
-// until the next space load re-indexes the surviving tree with full details
-// and both flags. So:
+// isUninstalled and the same Apply stamps isDeleted (smartblock's
+// detailsinject, since GO-1978) — the full row with both flags, which is
+// what a delete by THIS build leaves (core/block deleteDerivedObject) and
+// what every other device holds. An OLDER build's delete then TOMBSTONED
+// the index row down to {id, spaceId, isDeleted} — no relationKey, no
+// resolvedLayout — until the next space load re-indexed the surviving tree;
+// such rows exist until that load. So:
 //
 //   - the query below (both injected defaults suppressed via the no-op
 //     Condition None clauses) sees the full-detail shapes, flag-only and
@@ -903,7 +905,8 @@ func (s *Service) relationObjectHoldingKey(ctx context.Context, spaceId, key str
 	if best != "" {
 		return best, true, nil
 	}
-	// tombstone window: the row may exist with nothing but {id, isDeleted}
+	// a tombstone an older build left: the row may exist with nothing but
+	// {id, isDeleted} until the next load rebuilds it
 	details, id, err := s.derivedRelationRow(ctx, spaceId, key)
 	if err != nil {
 		return "", false, err
@@ -970,9 +973,9 @@ func (s *Service) propertyKeyHeldByAnyRelation(ctx context.Context, spaceId, key
 // this set, which is the whole distinction the refusal rests on: "not
 // installed yet" and "you deleted it" look identical through
 // bundle.HasRelation and could not be told apart without this probe. The
-// TOMBSTONE shape is invisible to this query too (no relationKey field) —
-// per-key consultation goes through bundledPropertyRemoved, which adds the
-// derived-id probe for that window.
+// TOMBSTONE shape an older build left is invisible to this query too (no
+// relationKey field) — per-key consultation goes through
+// bundledPropertyRemoved, which adds the derived-id probe for that window.
 func (s *Service) bundledRemovalSet(spaceId string) (map[string]bool, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
@@ -1006,9 +1009,9 @@ func (s *Service) bundledRemovalSet(spaceId string) (map[string]bool, error) {
 
 // bundledPropertyRemoved is the per-key removal verdict for a BUNDLED
 // property key: the space explicitly removed it (bundledRemovalSet), or its
-// relation object sits in the post-delete tombstone window — a row at the
-// derived id carrying isDeleted and no relationKey, which no query-built set
-// can contain. A live installed entry always outvotes; a missing row means
+// relation object is a tombstone an OLDER build left — a row at the derived
+// id carrying isDeleted and no relationKey, which no query-built set can
+// contain, until the next load rebuilds it. A live installed entry always outvotes; a missing row means
 // never-installed and keeps install-on-write working.
 func (s *Service) bundledPropertyRemoved(ctx context.Context, spaceId string, entries []propertyEntry, removed map[string]bool, key string) (bool, error) {
 	if propertyKeyRemovedIn(entries, removed, key) {

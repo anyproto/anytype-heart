@@ -499,8 +499,9 @@ reviewed by three fresh reviewers before the next.
   re-imports through ONE vocabulary so a view edit keeps a corpse column
   on its stored key, a served corpse slug on a document is resolved before
   the forgiving name chain can fold it onto a live namesake, twin corpses
-  sharing a slug are both demoted, tombstone emission passes the same
-  guards as a listed entry, a replacement prunes the columns of detached
+  sharing a slug are both demoted, tombstone emission passed the same
+  guards as a listed entry (since removed with the tombstone shape, see
+  the ROUND4 doc), a replacement prunes the columns of detached
   removed properties too, dry runs report the prune, prune warnings spell
   served keys, the holder count is presence-based and includes archived
   objects, reconciliation errors propagate, `list_property_options`
@@ -513,8 +514,9 @@ reviewed by three fresh reviewers before the next.
   live property NAMED like the corpse keeps the column; a pasted read body
   beside such a namesake lands on the corpse (`canonicalizeDocumentKeys`
   and `keyCanon` resolve an exact removed slug before the display-name
-  fold, unless a live key or slug takes it); tombstone emission registers
-  its claim so twin tombstones never both serve one slug; the type-op
+  fold, unless a live key or slug takes it); tombstone emission registered
+  its claim so twin tombstones never both served one slug (removed with
+  the tombstone shape); the type-op
   planner carries the type's referenced corpses (`typePropertyList`), so
   `remove_property` accepts the served slug the delete warning pointed at
   and its prune warning spells it; prune warnings and delete warnings
@@ -675,7 +677,7 @@ reviewed by three fresh reviewers before the next.
   as such; no blanket guard for a bson id in a message (a response-level
   sentinel test is the sketch, not yet written).
 - F11: the query view-key refusal spells the property as the surface
-  serves it (tombstone-aware), and the duplicate-field refusal in
+  serves it, and the duplicate-field refusal in
   `set_properties` spells the caller's key; the type is spelled as the
   caller sent it (group B). Other refusals that canonicalize before they
   speak are caught case by case — no blanket guard exists for a bson id in

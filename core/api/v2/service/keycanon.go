@@ -69,10 +69,11 @@ func (k *keyCanon) canon(input string) (string, []string) {
 // key (apikeyvocab.go serves it), so an edit of a value already on a
 // document lands where it lives and an off-document write is refused as
 // removed rather than as unknown; the removed set is loaded on first use.
-// The tombstone window is blind here (a tombstone is indexed by nothing a
-// slug can find): an in-document edit still lands, through the vocabulary
-// that rendered the document (rememberCorpse), but an off-document write in
-// that window is refused as unknown.
+// A tombstone an older build left is blind here (indexed by nothing a slug
+// can find, and served under its stored key): an in-document edit still
+// lands, because canon passes an unresolved key through, but an
+// off-document write to it is refused as unknown until the next load
+// rebuilds the row.
 func (k *keyCanon) removedStoredKey(input string) (string, bool) {
 	if k.spaceId == "" {
 		return "", false

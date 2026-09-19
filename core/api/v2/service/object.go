@@ -218,13 +218,14 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 
 	reads := storeresolver.New(s.store.SpaceIndex(spaceId))
 	if read.SbType == model.SmartBlockType_STType {
-		// tombstone window (§8.41): a just-deleted relation's index row is
-		// {id, isDeleted} only, so the by-id resolve behind typeProperties
-		// fails and the entry would silently VANISH from the served list —
-		// and the documented read-modify-write loop would then delete the
-		// type's reference to it. The surviving tree still knows everything;
-		// read it and seed the resolver so all three store shapes serve the
-		// same bytes.
+		// the pre-upgrade window (§8.41): a relation an OLDER build deleted
+		// left an index row of {id, isDeleted} only, until the next space
+		// load rebuilds it, so the by-id resolve behind typeProperties fails
+		// and the entry would silently VANISH from the served list — and the
+		// documented read-modify-write loop would then delete the type's
+		// reference to it. The surviving tree still knows everything; read
+		// it and seed the resolver. (A delete by THIS build keeps the full
+		// row, core/block deleteDerivedObject.)
 		s.seedTombstonedTypeProperties(ctx, spaceId, reads, read.Snapshot)
 	}
 	opts := apiRefSpelling(reads.Options())
@@ -314,12 +315,12 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 }
 
 // seedTombstonedTypeProperties makes a type read serve the SAME
-// typeProperties in the tombstone window as before the delete and after the
-// next space load (§8.41). For every recommended-relation id the store
-// resolver cannot answer (GetRelationById needs a relationKey the tombstone
-// row lost), it confirms the row exists as a tombstone and reads the LIVE
-// object — the tree survives a UI delete by design — to
-// recover key, name and format, then seeds the resolver. Every miss degrades
+// typeProperties over a tombstone an OLDER build left as after the next
+// space load rebuilds it (§8.41). For every recommended-relation id the
+// store resolver cannot answer (GetRelationById needs a relationKey the
+// tombstone row lost), it confirms the row exists as a tombstone and reads
+// the LIVE object — the tree survives a delete by design — to recover key,
+// name and format, then seeds the resolver. Every miss degrades
 // to the pre-§8.41 behavior for that entry (dropped), never to an error: a
 // dangling id in a recommended list has always been dropped, and the read
 // must not fail on it.
@@ -786,12 +787,10 @@ func (s *Service) activeFieldAliases(spaceId string) map[string]domain.RelationK
 // resolvers across rows. Shared by the object list, the query surface and
 // the set/collection reads.
 type objectRowBuilder struct {
-	svc      *Service
 	index    spaceindex.Store
 	typeKeys map[string]string
 	fields   []string
 	opts     anyblockjson.Options
-	spaceId  string // the store-facing full id
 	// spaceRef is what a row's space_id FIELD carries when includeSpaceId
 	// (global search): the §8.35 short reference by default, the full id
 	// when its tail collides with another visible space's. Defaults to
@@ -811,7 +810,7 @@ func (s *Service) newObjectRowBuilder(spaceId string, fields []string) (*objectR
 		return nil, err
 	}
 	index := s.store.SpaceIndex(spaceId)
-	b := &objectRowBuilder{svc: s, index: index, typeKeys: typeKeys, fields: fields, spaceId: spaceId, spaceRef: spaceId}
+	b := &objectRowBuilder{index: index, typeKeys: typeKeys, fields: fields, spaceRef: spaceId}
 	if len(fields) > 0 {
 		b.opts = apiRefSpelling(storeresolver.New(index).Options())
 		b.opts.Keys = s.apiKeys(spaceId, b.opts.Keys)
@@ -840,7 +839,10 @@ func (b *objectRowBuilder) row(record database.Record) v2model.ObjectRow {
 	typeKey, cached := b.typeKeys[typeId]
 	if !cached && typeId != "" {
 		// the bulk map misses edge type ids (hidden/bundled); resolve the
-		// one type object directly so no row carries an empty type (C5).
+		// one type object directly so a row carries its type (C5). A row
+		// whose type is a tombstone an OLDER build left (no uniqueKey until
+		// the next load rebuilds it) serves an empty type — the only honest
+		// answer a keyless row allows.
 		if det, err := b.index.GetDetails(typeId); err == nil {
 			if k, err := domain.GetTypeKeyFromRawUniqueKey(det.GetString(bundle.RelationKeyUniqueKey)); err == nil {
 				typeKey = string(k)
@@ -899,7 +901,9 @@ func (b *objectRowBuilder) row(record database.Record) v2model.ObjectRow {
 // production corpse carries isDeleted, so the plain query this used to be
 // never returned one and the corpse branch below was dead outside flag-only
 // fixtures — production rows fell through to the per-row GetDetails fallback
-// instead.
+// instead. A tombstone an older build left ({id, isDeleted} and a snapshot)
+// has no layout and never enters this query; its objects' rows serve an
+// empty type until the next load rebuilds the row.
 func (s *Service) typeKeysById(spaceId string) (map[string]string, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{

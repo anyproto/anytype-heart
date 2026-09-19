@@ -1269,8 +1269,8 @@ func typePruneWarnings(plan template.TypeDataviewColumnPlan, path string, spell 
 // way the space's listings serve it, live and removed properties alike; an
 // unknown key spells as itself.
 func (s *Service) servedKeySpeller(spaceId string) func(string) string {
-	// the api vocabulary itself: live entries, removed ones, the tombstone
-	// window and every collision guard, exactly as a read spells them
+	// the api vocabulary itself: live entries, removed ones and every
+	// collision guard, exactly as a read spells them
 	vocab := s.apiKeys(spaceId, storeresolver.New(s.store.SpaceIndex(spaceId)))
 	return vocab.PropertySlug
 }
