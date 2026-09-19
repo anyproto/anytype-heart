@@ -37,6 +37,11 @@ type pasteCtrl struct {
 	// formerly-empty focused block that got paste content written in place;
 	// forked to a fresh id at the end of Exec (see forkFilledEmptyBlock)
 	filledEmptyBlockId string
+
+	// children of the dropped first pasted block, to be re-parented onto the focused
+	// block that took its place once they are in the document (see adoptPastedChildren)
+	adoptedChildIds []string
+	adoptParentId   string
 }
 
 type pasteMode struct {
@@ -75,6 +80,9 @@ func (p *pasteCtrl) Exec(req *pb.RpcBlockPasteRequest) (err error) {
 		}
 	}
 	if err = p.insertUnderSelection(); err != nil {
+		return
+	}
+	if err = p.adoptPastedChildren(); err != nil {
 		return
 	}
 	if p.mode.removeSelection {
@@ -312,13 +320,70 @@ func (p *pasteCtrl) singleRange() (err error) {
 		if wasEmpty && firstPasteText != nil && !isDisposablePlaceholder(selText) {
 			p.mode.removeSelection = false
 			selText.SetText(firstPasteText.GetText(), firstPasteText.Model().GetText().Marks)
+			if err = p.rehomeFirstPasteChildren(selText, firstPasteText); err != nil {
+				return
+			}
 			p.ps.Unlink(firstPasteText.Model().Id)
 			// an empty block's id is shared with peers — fork it (never a
 			// required block here: those returned earlier)
 			p.filledEmptyBlockId = targetId
 		}
+		// Either way the focused block is gone by the end of Exec: dropped by
+		// removeSelection, or forked to a fresh id and unlinked. A position inside it
+		// addresses a block that is no longer there, and Android takes any caretPosition
+		// >= 0 in preference to blockIds, so it would pin the caret to the dead id.
+		// intoBlock reports the caret through blockIds the same way.
+		p.caretPos = -1
 	}
 	return
+}
+
+// rehomeFirstPasteChildren keeps the subtree of the first pasted block alive when the block
+// itself is dropped in favour of the reused focused block. State.Unlink only removes an id
+// from its parent's ChildrenIds: the subtree stays in the paste state but stops being
+// reachable from its root, so insertUnderSelection, which walks the tree, never moves it into
+// the document and the nested content is silently lost.
+//
+// Re-attaching the children to the paste root in the place their parent held is enough on its
+// own: they then land in the document as blocks following the reused one. When the reused
+// block's style can own children they are re-parented onto it afterwards, once
+// insertUnderSelection has put them in the document — see adoptPastedChildren.
+func (p *pasteCtrl) rehomeFirstPasteChildren(selText, firstPasteText text.Block) error {
+	childIds := append([]string(nil), firstPasteText.Model().ChildrenIds...)
+	if len(childIds) == 0 {
+		return nil
+	}
+	for _, id := range childIds {
+		p.ps.Unlink(id)
+	}
+	if err := p.ps.InsertTo(firstPasteText.Model().Id, model.Block_Bottom, childIds...); err != nil {
+		return fmt.Errorf("re-attach children of the first pasted block: %w", err)
+	}
+	if text.CanHaveChildren(selText.Model().GetText().GetStyle()) {
+		p.adoptedChildIds = childIds
+		p.adoptParentId = selText.Model().Id
+	}
+	return nil
+}
+
+// adoptPastedChildren re-parents the children of the dropped first pasted block onto the
+// focused block that took its place, which insertUnderSelection has just left as their
+// preceding sibling. A style that cannot own children keeps them there instead.
+//
+// They go in front of the children the focused block already had, which GO-7513 keeps alive:
+// the caret sat in its text, above everything nested under it, and pasted content belongs
+// where the caret was. This also keeps the pasted subtree contiguous.
+func (p *pasteCtrl) adoptPastedChildren() error {
+	if len(p.adoptedChildIds) == 0 {
+		return nil
+	}
+	for _, id := range p.adoptedChildIds {
+		p.s.Unlink(id)
+	}
+	if err := p.s.InsertTo(p.adoptParentId, model.Block_InnerFirst, p.adoptedChildIds...); err != nil {
+		return fmt.Errorf("re-parent pasted children onto the reused block: %w", err)
+	}
+	return nil
 }
 
 // isDisposablePlaceholder reports whether a focused text block holds nothing a user put

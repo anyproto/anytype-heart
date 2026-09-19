@@ -3,6 +3,7 @@ package text
 import (
 	"testing"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func TestText_Diff(t *testing.T) {
@@ -738,6 +740,514 @@ func TestText_RangeTextPasteChecked(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tc.wantChecked, tc.target.content.Checked)
 			assert.Equal(t, tc.wantText, tc.target.content.Text, "the label must survive")
+		})
+	}
+}
+
+// RangeTextPaste adopts the pasted block's presentation along with its style. GO-7513 covered
+// the two colors and the checked state; the icon and the code block's language were still left
+// behind, so a callout or a fenced block pasted on its own — a body of one block takes this
+// route, a longer one does not — arrived stripped of what a pasted pair keeps.
+//
+// Fields is shared storage: textDetails keeps a block's detail binding there, so only the key
+// owned by the style being adopted is ever written, never the struct as a whole. Every field
+// is exercised in both directions, because adopting a value and adopting its absence are two
+// different code paths and only one of them is obvious.
+func TestText_RangeTextPasteStyleFields(t *testing.T) {
+	type want struct {
+		style     model.BlockContentTextStyle
+		iconEmoji string
+		iconImage string
+		lang      string
+		text      string // the text must land too: asserting a field alone lets the paste vanish
+	}
+	withLang := func(b *model.Block, lang string) *model.Block {
+		b.Fields = &types.Struct{Fields: map[string]*types.Value{CodeLangFieldName: pbtypes.String(lang)}}
+		return b
+	}
+	target := func(text string, style model.BlockContentTextStyle) *model.Block {
+		return &model.Block{
+			Restrictions: &model.BlockRestrictions{},
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+				Text: text, Style: style, Marks: &model.BlockContentTextMarks{},
+			}},
+		}
+	}
+	pasted := func(text string, style model.BlockContentTextStyle) *model.Block {
+		return &model.Block{Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+			Text: text, Style: style, Marks: &model.BlockContentTextMarks{},
+		}}}
+	}
+
+	for _, tc := range []struct {
+		name      string
+		target    *model.Block
+		from, to  int32
+		copied    *model.Block
+		copyStyle bool
+		want      want
+	}{
+		{
+			name:   "empty paragraph adopts the callout icon",
+			target: target("", model.BlockContentText_Paragraph),
+			from:   0, to: 0,
+			copied: func() *model.Block {
+				b := pasted("note", model.BlockContentText_Callout)
+				b.GetText().IconEmoji = "\U0001f4a1"
+				return b
+			}(),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Callout, iconEmoji: "\U0001f4a1", text: "note"},
+		},
+		{
+			name:   "empty paragraph adopts the callout icon image",
+			target: target("", model.BlockContentText_Paragraph),
+			from:   0, to: 0,
+			copied: func() *model.Block {
+				b := pasted("note", model.BlockContentText_Callout)
+				b.GetText().IconImage = "imagehash"
+				return b
+			}(),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Callout, iconImage: "imagehash", text: "note"},
+		},
+		{
+			// A plain paragraph states nothing whatsoever about icons, so its empty icon
+			// is not a value to adopt — taking it would destroy state the paste never
+			// mentioned. This is where the analogy to the checked state below runs out:
+			// that guard requires the pasted style to be Checkbox, the style that owns
+			// the field, so a pasted "- [ ]" really is an explicit statement.
+			name: "a paste that says nothing about icons leaves the block's own icon alone",
+			target: func() *model.Block {
+				b := target("", model.BlockContentText_Paragraph)
+				b.GetText().IconEmoji = "\U0001f525"
+				b.GetText().IconImage = "oldhash"
+				return b
+			}(),
+			from: 0, to: 0,
+			copied:    pasted("plain", model.BlockContentText_Paragraph),
+			copyStyle: true,
+			want: want{
+				style: model.BlockContentText_Paragraph, iconEmoji: "\U0001f525",
+				iconImage: "oldhash", text: "plain",
+			},
+		},
+		{
+			// the residue does go when the style that owned it is replaced, which is the
+			// moment it actually becomes stale
+			name: "a style change clears the icon residue",
+			target: func() *model.Block {
+				b := target("", model.BlockContentText_Paragraph)
+				b.GetText().IconEmoji = "\U0001f525"
+				b.GetText().IconImage = "oldhash"
+				return b
+			}(),
+			from: 0, to: 0,
+			copied:    pasted("note", model.BlockContentText_Callout),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Callout, text: "note"},
+		},
+		{
+			name:   "replacing all the text adopts the callout icon",
+			target: target("old", model.BlockContentText_Paragraph),
+			from:   0, to: 3,
+			copied: func() *model.Block {
+				b := pasted("note", model.BlockContentText_Callout)
+				b.GetText().IconEmoji = "\U0001f4a1"
+				return b
+			}(),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Callout, iconEmoji: "\U0001f4a1", text: "note"},
+		},
+		{
+			// the icon goes with the style it belonged to, exactly like the two colors
+			// beside it, rather than lingering on a block that no longer renders one
+			name: "replacing all the text of a callout clears the icon with the style",
+			target: func() *model.Block {
+				b := target("old", model.BlockContentText_Callout)
+				b.GetText().IconEmoji = "\U0001f4a1"
+				return b
+			}(),
+			from: 0, to: 3,
+			copied:    pasted("plain", model.BlockContentText_Paragraph),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Paragraph, text: "plain"},
+		},
+		{
+			// The regression guard. pasteHtml hands an incoming plain paragraph the
+			// focused block's style and nothing else (GO-250), so retitling a callout
+			// through the HTML slot presents an icon-less Callout. Adopting that
+			// emptiness wiped an icon the paste never mentioned.
+			name: "replacing all the text of a callout keeps the block's own icon",
+			target: func() *model.Block {
+				b := target("old", model.BlockContentText_Callout)
+				b.GetText().IconEmoji = "\U0001f4a1"
+				b.GetText().IconImage = "imagehash"
+				return b
+			}(),
+			from: 0, to: 3,
+			copied:    pasted("New note", model.BlockContentText_Callout),
+			copyStyle: true,
+			want: want{
+				style: model.BlockContentText_Callout, iconEmoji: "\U0001f4a1",
+				iconImage: "imagehash", text: "New note",
+			},
+		},
+		{
+			// the same rule seen from the other side: where the style does not change,
+			// the icon on the block is the block's own and the paste does not touch it
+			name: "replacing all the text of a callout does not take another callout's icon",
+			target: func() *model.Block {
+				b := target("old", model.BlockContentText_Callout)
+				b.GetText().IconEmoji = "\U0001f4a1"
+				return b
+			}(),
+			from: 0, to: 3,
+			copied: func() *model.Block {
+				b := pasted("note", model.BlockContentText_Callout)
+				b.GetText().IconEmoji = "\U0001f525"
+				return b
+			}(),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Callout, iconEmoji: "\U0001f4a1", text: "note"},
+		},
+		{
+			// the image twin of the case above: an icon guard that special-cases the
+			// image field passes every emoji-only fixture
+			name: "replacing all the text of a callout does not take another callout's image",
+			target: func() *model.Block {
+				b := target("old", model.BlockContentText_Callout)
+				b.GetText().IconImage = "imageA"
+				return b
+			}(),
+			from: 0, to: 3,
+			copied: func() *model.Block {
+				b := pasted("note", model.BlockContentText_Callout)
+				b.GetText().IconImage = "imageB"
+				return b
+			}(),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Callout, iconImage: "imageA", text: "note"},
+		},
+		{
+			// adoption of the image is not restricted to an empty paragraph: the style
+			// changes here over text that was already there
+			name:   "replacing all the text adopts the callout image",
+			target: target("old", model.BlockContentText_Paragraph),
+			from:   0, to: 3,
+			copied: func() *model.Block {
+				b := pasted("note", model.BlockContentText_Callout)
+				b.GetText().IconImage = "imageB"
+				return b
+			}(),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Callout, iconImage: "imageB", text: "note"},
+		},
+		{
+			// an empty callout is not an empty paragraph: it has a style of its own, so
+			// the guard does not fire and its icon is left alone
+			name: "filling an empty callout keeps its icon",
+			target: func() *model.Block {
+				b := target("", model.BlockContentText_Callout)
+				b.GetText().IconEmoji = "\U0001f4a1"
+				return b
+			}(),
+			from: 0, to: 0,
+			copied:    pasted("New note", model.BlockContentText_Callout),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Callout, iconEmoji: "\U0001f4a1", text: "New note"},
+		},
+		{
+			name:   "empty paragraph adopts the code language",
+			target: target("", model.BlockContentText_Paragraph),
+			from:   0, to: 0,
+			copied:    withLang(pasted("fmt.Println(1)", model.BlockContentText_Code), "go"),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Code, lang: "go", text: "fmt.Println(1)"},
+		},
+		{
+			name:   "replacing all the text adopts the code language",
+			target: target("old", model.BlockContentText_Paragraph),
+			from:   0, to: 3,
+			copied:    withLang(pasted("fmt.Println(1)", model.BlockContentText_Code), "go"),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Code, lang: "go", text: "fmt.Println(1)"},
+		},
+		{
+			// a fence with no language after one that had it must not keep the old one
+			name: "adopting the code style with no language clears the language residue",
+			target: func() *model.Block {
+				return withLang(target("", model.BlockContentText_Paragraph), "go")
+			}(),
+			from: 0, to: 0,
+			copied:    pasted("plain code", model.BlockContentText_Code),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Code, text: "plain code"},
+		},
+		{
+			// Deliberate asymmetry with the icon above. The language is invisible on a
+			// block that is not code and clearing it buys nothing, while it would destroy
+			// a real one on the intoCodeBlock path, where a select-all paste already
+			// rewrites the style of the code block it lands in.
+			name: "adopting a style that owns no fields leaves the language alone",
+			target: func() *model.Block {
+				return withLang(target("", model.BlockContentText_Paragraph), "go")
+			}(),
+			from: 0, to: 0,
+			copied:    pasted("plain", model.BlockContentText_Paragraph),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Paragraph, lang: "go", text: "plain"},
+		},
+		{
+			// only the key owned by the style being adopted is written, so a language
+			// riding along on a paragraph is not applied to anything
+			name:   "adopting a non-Code style does not apply the source's language",
+			target: target("", model.BlockContentText_Paragraph),
+			from:   0, to: 0,
+			copied:    withLang(pasted("plain", model.BlockContentText_Paragraph), "rust"),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Paragraph, text: "plain"},
+		},
+		{
+			name: "adopting a non-Code style does not overwrite the language residue either",
+			target: func() *model.Block {
+				return withLang(target("", model.BlockContentText_Paragraph), "go")
+			}(),
+			from: 0, to: 0,
+			copied:    withLang(pasted("plain", model.BlockContentText_Paragraph), "rust"),
+			copyStyle: true,
+			want:      want{style: model.BlockContentText_Paragraph, lang: "go", text: "plain"},
+		},
+		{
+			name:   "copyStyle false does not adopt the icon",
+			target: target("", model.BlockContentText_Paragraph),
+			from:   0, to: 0,
+			copied: func() *model.Block {
+				b := pasted("note", model.BlockContentText_Callout)
+				b.GetText().IconEmoji = "\U0001f4a1"
+				return b
+			}(),
+			copyStyle: false,
+			want:      want{style: model.BlockContentText_Paragraph, text: "note"},
+		},
+		{
+			name: "copyStyle false does not clear the icon either",
+			target: func() *model.Block {
+				b := target("", model.BlockContentText_Paragraph)
+				b.GetText().IconEmoji = "\U0001f525"
+				return b
+			}(),
+			from: 0, to: 0,
+			copied:    pasted("plain", model.BlockContentText_Paragraph),
+			copyStyle: false,
+			want:      want{style: model.BlockContentText_Paragraph, iconEmoji: "\U0001f525", text: "plain"},
+		},
+		{
+			name:   "copyStyle false does not adopt the language",
+			target: target("", model.BlockContentText_Paragraph),
+			from:   0, to: 0,
+			copied:    withLang(pasted("code", model.BlockContentText_Code), "go"),
+			copyStyle: false,
+			want:      want{style: model.BlockContentText_Paragraph, text: "code"},
+		},
+		{
+			name: "copyStyle false does not clear the language either",
+			target: func() *model.Block {
+				return withLang(target("", model.BlockContentText_Paragraph), "go")
+			}(),
+			from: 0, to: 0,
+			copied:    pasted("plain code", model.BlockContentText_Code),
+			copyStyle: false,
+			want:      want{style: model.BlockContentText_Paragraph, lang: "go", text: "plain code"},
+		},
+		{
+			// nothing is adopted when the paste only replaces part of the text: the block
+			// keeps its own presentation, so neither the icon nor the language moves
+			name: "a partial replacement adopts neither the icon nor the language",
+			target: func() *model.Block {
+				b := withLang(target("old", model.BlockContentText_Paragraph), "go")
+				b.GetText().IconEmoji = "\U0001f525"
+				return b
+			}(),
+			from: 0, to: 1,
+			copied: func() *model.Block {
+				b := withLang(pasted("n", model.BlockContentText_Code), "rust")
+				b.GetText().IconEmoji = "\U0001f4a1"
+				return b
+			}(),
+			copyStyle: true,
+			want: want{
+				style: model.BlockContentText_Paragraph, iconEmoji: "\U0001f525",
+				lang: "go", text: "nld",
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			b := NewText(tc.target).(*Text)
+
+			// when
+			_, err := b.RangeTextPaste(tc.from, tc.to, tc.copied, tc.copyStyle)
+
+			// then
+			require.NoError(t, err)
+			got := want{
+				style:     b.content.Style,
+				iconEmoji: b.content.IconEmoji,
+				iconImage: b.content.IconImage,
+				lang:      pbtypes.GetString(b.Model().Fields, CodeLangFieldName),
+				text:      b.content.Text,
+			}
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
+// textDetails binds a block to a relation through Fields, under DetailsKeyFieldName. Adopting
+// the pasted block's Fields wholesale would drop that key and silently unbind the block, so
+// only the key belonging to the adopted style may be written — never the struct as a whole,
+// and never a key the source happens to carry.
+//
+// The whole resulting field map is asserted, not just that the binding is still present: a
+// binding that survived alongside a key the paste had no business writing, or one quietly
+// replaced by the source's own binding, both read as "still bound" to a narrower assertion.
+func TestText_RangeTextPasteKeepsTheDetailsBinding(t *testing.T) {
+	boundTo := func(rel string) *types.Value { return pbtypes.StringList([]string{rel}) }
+	source := func(txt string, style model.BlockContentTextStyle, fields map[string]*types.Value) *model.Block {
+		b := &model.Block{Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+			Text: txt, Style: style, Marks: &model.BlockContentTextMarks{},
+		}}}
+		if fields != nil {
+			b.Fields = &types.Struct{Fields: fields}
+		}
+		return b
+	}
+
+	for _, tc := range []struct {
+		name         string
+		targetFields map[string]*types.Value
+		targetText   string
+		from, to     int32
+		copied       *model.Block
+		want         *types.Struct
+	}{
+		{
+			name:         "a Code source with a language adds only that language",
+			targetFields: map[string]*types.Value{DetailsKeyFieldName: boundTo("name")},
+			copied: source("fmt.Println(1)", model.BlockContentText_Code,
+				map[string]*types.Value{CodeLangFieldName: pbtypes.String("go")}),
+			want: &types.Struct{Fields: map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("name"),
+				CodeLangFieldName:   pbtypes.String("go"),
+			}},
+		},
+		{
+			// the clearing branch runs on a bound block: it must remove one key, not the
+			// map the binding lives in
+			name:         "a Code source with no language leaves the binding standing",
+			targetFields: map[string]*types.Value{DetailsKeyFieldName: boundTo("name")},
+			copied:       source("plain code", model.BlockContentText_Code, nil),
+			want: &types.Struct{Fields: map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("name"),
+			}},
+		},
+		{
+			name: "a Code source with no language clears the language and keeps the binding",
+			targetFields: map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("name"),
+				CodeLangFieldName:   pbtypes.String("go"),
+			},
+			copied: source("plain code", model.BlockContentText_Code, nil),
+			want: &types.Struct{Fields: map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("name"),
+			}},
+		},
+		{
+			// a source carrying a binding of its own must not rebind the target
+			name:         "a Code source carrying its own binding does not rebind the target",
+			targetFields: map[string]*types.Value{DetailsKeyFieldName: boundTo("name")},
+			copied: source("fmt.Println(1)", model.BlockContentText_Code, map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("description"),
+				CodeLangFieldName:   pbtypes.String("go"),
+			}),
+			want: &types.Struct{Fields: map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("name"),
+				CodeLangFieldName:   pbtypes.String("go"),
+			}},
+		},
+		{
+			name:         "a paragraph source carrying a binding and a language changes nothing",
+			targetFields: map[string]*types.Value{DetailsKeyFieldName: boundTo("name")},
+			copied: source("plain", model.BlockContentText_Paragraph, map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("description"),
+				CodeLangFieldName:   pbtypes.String("rust"),
+			}),
+			want: &types.Struct{Fields: map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("name"),
+			}},
+		},
+		{
+			name:         "replacing all of a bound block's text keeps its binding",
+			targetFields: map[string]*types.Value{DetailsKeyFieldName: boundTo("name")},
+			targetText:   "old",
+			from:         0, to: 3,
+			copied: source("fmt.Println(1)", model.BlockContentText_Code, map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("description"),
+			}),
+			want: &types.Struct{Fields: map[string]*types.Value{
+				DetailsKeyFieldName: boundTo("name"),
+			}},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			b := NewDetails(&model.Block{
+				Restrictions: &model.BlockRestrictions{},
+				Fields:       &types.Struct{Fields: tc.targetFields},
+				Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+					Text: tc.targetText, Style: model.BlockContentText_Paragraph,
+					Marks: &model.BlockContentTextMarks{},
+				}},
+			}, DetailsKeys{Text: "name"}).(*textDetails)
+
+			// when
+			_, err := b.RangeTextPaste(tc.from, tc.to, tc.copied, true)
+
+			// then
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, b.Model().Fields)
+		})
+	}
+}
+
+// The list lives here now, next to the styles it is about, and basic.canHaveChildren delegates
+// to it. Pinning it here means moving it cannot quietly change which styles may own children —
+// paste consults the same answer when it decides where a pasted subtree lands.
+func TestCanHaveChildren(t *testing.T) {
+	for _, tc := range []struct {
+		style model.BlockContentTextStyle
+		want  bool
+	}{
+		{model.BlockContentText_Paragraph, true},
+		{model.BlockContentText_Header1, false},
+		{model.BlockContentText_Header2, false},
+		{model.BlockContentText_Header3, false},
+		{model.BlockContentText_Header4, false},
+		{model.BlockContentText_Quote, true},
+		{model.BlockContentText_Code, false},
+		{model.BlockContentText_Title, false},
+		{model.BlockContentText_Description, false},
+		{model.BlockContentText_Checkbox, true},
+		{model.BlockContentText_Marked, true},
+		{model.BlockContentText_Numbered, true},
+		{model.BlockContentText_Toggle, true},
+		{model.BlockContentText_Callout, true},
+		{model.BlockContentText_ToggleHeader1, true},
+		{model.BlockContentText_ToggleHeader2, true},
+		{model.BlockContentText_ToggleHeader3, true},
+	} {
+		t.Run(tc.style.String(), func(t *testing.T) {
+			assert.Equal(t, tc.want, CanHaveChildren(tc.style))
 		})
 	}
 }

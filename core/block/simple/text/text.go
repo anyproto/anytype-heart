@@ -3,6 +3,8 @@ package text
 import (
 	"fmt"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -341,9 +343,36 @@ func (t *Text) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model
 
 	if isFullReplace || isPlaceInEmptyParagraph {
 		if copyStyle {
+			// read before the style is overwritten, below
+			styleChanged := t.content.Style != copiedText.Style
 			t.content.Style = copiedText.Style
 			t.content.Color = copiedText.Color
 			t.BackgroundColor = copiedBlock.BackgroundColor
+			// The icon belongs to the callout style, so it is replaced when — and only
+			// when — the style it belongs to is replaced. It cannot follow the two colors
+			// above and be adopted unconditionally, because a plain paragraph pasted into
+			// a styled block does not arrive plain: pasteHtml hands it the focused block's
+			// style and nothing else (GO-250), so retitling a callout through the HTML
+			// slot presents an icon-less Callout, and adopting that emptiness would wipe
+			// an icon the paste never mentioned.
+			//
+			// Tying it to the style keeps both ends right: a callout pasted over other
+			// text brings its icon, and a block that stops being a callout stops carrying
+			// a callout's icon. Where the style does not change, the icon on the block is
+			// the block's own and the paste has no business touching it.
+			//
+			// There is no empty-paragraph exception here, unlike the checked state below.
+			// That guard also requires the pasted style to be the one that owns the field
+			// — Checkbox — so it only ever adopts a value the paste actually states. An
+			// empty paragraph receiving a Callout is already a style change, so the
+			// exception would add nothing except the case where the pasted style is
+			// Paragraph too: a paste that says nothing whatsoever about icons, whose
+			// emptiness would then overwrite a real one.
+			if styleChanged {
+				t.content.IconEmoji = copiedText.IconEmoji
+				t.content.IconImage = copiedText.IconImage
+			}
+			t.adoptStyleFields(copiedBlock, copiedText.Style)
 			// A checkbox dropped into an empty paragraph brings its checked state with
 			// it, or a pasted "- [x]" lands unchecked, which looks right and is wrong.
 			// Only into an empty paragraph: there is no state of its own to destroy
@@ -378,6 +407,40 @@ func (t *Text) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model
 
 	caretPosition = rangeFrom + (copyTo - copyFrom)
 	return caretPosition, nil
+}
+
+// CodeLangFieldName is where a Code block keeps the language its content is highlighted in.
+// It survives a style change away from Code and reappears when the style changes back, so it
+// is not dead data on a block that currently renders as something else.
+const CodeLangFieldName = "lang"
+
+// adoptStyleFields carries over the Fields entries that belong to the style being adopted,
+// and only those. Fields is shared storage: textDetails keeps the block-to-detail binding of
+// the title and description blocks there under DetailsKeyFieldName, so copying the pasted
+// block's Fields wholesale would unbind them from their relation.
+//
+// Nothing is cleared when a style that owns no fields is adopted. A language left on a block
+// that is no longer code is invisible and costs nothing, while clearing it would destroy a
+// real one on the intoCodeBlock path, where a select-all paste already rewrites the style of
+// the code block it lands in.
+func (t *Text) adoptStyleFields(copiedBlock *model.Block, style model.BlockContentTextStyle) {
+	if style != model.BlockContentText_Code {
+		return
+	}
+	lang := pbtypes.GetString(copiedBlock.GetFields(), CodeLangFieldName)
+	if lang == "" {
+		if t.Fields.GetFields() != nil {
+			delete(t.Fields.Fields, CodeLangFieldName)
+		}
+		return
+	}
+	if t.Fields == nil {
+		t.Fields = &types.Struct{}
+	}
+	if t.Fields.Fields == nil {
+		t.Fields.Fields = map[string]*types.Value{}
+	}
+	t.Fields.Fields[CodeLangFieldName] = pbtypes.String(lang)
 }
 
 func (t *Text) RangeCut(from int32, to int32) (cutBlock *model.Block, initialBlock *model.Block, err error) {
@@ -740,3 +803,26 @@ func isIncompatibleType(firstType, secondType model.BlockContentTextMarkType) bo
 }
 
 func (t *Text) CanInheritChildrenOnReplace() {}
+
+// CanHaveChildren reports whether a text block of this style can own nested blocks. Moving a
+// block inside one that cannot is rejected by the editor, and paste consults it before
+// re-parenting the children of a pasted block onto the block that took its place.
+//
+// This is a property of the style, not of the block: CanInheritChildrenOnReplace above is
+// implemented by every *Text whatever its style, so it cannot answer this question.
+func CanHaveChildren(style model.BlockContentTextStyle) bool {
+	switch style {
+	case model.BlockContentText_Paragraph,
+		model.BlockContentText_Quote,
+		model.BlockContentText_Checkbox,
+		model.BlockContentText_Marked,
+		model.BlockContentText_Numbered,
+		model.BlockContentText_Toggle,
+		model.BlockContentText_Callout,
+		model.BlockContentText_ToggleHeader1,
+		model.BlockContentText_ToggleHeader2,
+		model.BlockContentText_ToggleHeader3:
+		return true
+	}
+	return false
+}
