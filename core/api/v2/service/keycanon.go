@@ -181,6 +181,18 @@ func (k *keyCanon) canonOrErr(input, path string) (string, error) {
 	return canonical, nil
 }
 
+// canonKey is canon without its ambiguity arm, for the passes that run AFTER
+// canonOrErr over the same inputs: an ambiguous one was already refused
+// there, so nothing here can meet one. It exists so a validator can keep the
+// caller's spelling in its messages and resolve the stored key only where the
+// semantics need it — a refusal quoting the rewritten key names, for a
+// space-minted property, a 24-hex id the caller never sent and cannot look up
+// (F11, round-six R6-7).
+func (k *keyCanon) canonKey(input string) string {
+	canonical, _ := k.canon(input)
+	return canonical
+}
+
 func (k *keyCanon) rewriteFilterNodes(nodes []any, path string) error {
 	for i, raw := range nodes {
 		node, ok := raw.(map[string]any)

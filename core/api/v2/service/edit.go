@@ -440,6 +440,9 @@ func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, o
 		}
 	}
 	result.Warnings = applier.warnings
+	if applier.spaceLinkExp != nil {
+		result.Warnings = append(result.Warnings, applier.spaceLinkExp.Warnings("ops")...)
+	}
 	return result, applier, nil
 }
 

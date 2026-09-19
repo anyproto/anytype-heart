@@ -1293,7 +1293,7 @@ func (s *Service) removedTypes(spaceId string) ([]typeEntry, error) {
 // than unknown, and so the resolution chain stops there. Live entries are
 // the caller's to check first. A removed type is a corpse ROW: a delete
 // leaves the full details in place under a lifecycle flag (core/block
-// beforeDeleteDerived), the same row every other device holds, so the
+// deleteDerivedObject), the same row every other device holds, so the
 // query-visible set is the whole answer. An error is returned, never
 // swallowed: a lookup that could not complete must not read as "nothing
 // was removed".

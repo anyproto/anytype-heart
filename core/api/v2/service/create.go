@@ -391,7 +391,8 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	if err := resolvers.err(); err != nil {
 		return nil, fmt.Errorf("resolve document references: %w", err)
 	}
-	expandSpaceRefsInBlocks(snapshot.Blocks, s.spaceRefExpander(ctx))
+	links := s.newSpaceLinkExpander(ctx)
+	links.Blocks(snapshot.Blocks)
 
 	// The importer needs the stored type key, but every v2 response speaks the
 	// stable API vocabulary. In particular, a custom type slug is rewritten to
@@ -399,6 +400,8 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	result := &v2model.CreateResult{Type: resolvers.keys.TypeSlug(envelope.Type), Created: resolvers.created()}
 	// the label-adoption tell rides real runs and dry runs alike (C9)
 	result.Warnings = warnLabelShapedIds(body)
+	// a cross-space object link whose space reference could not be expanded
+	result.Warnings = append(result.Warnings, links.Warnings("/blocks")...)
 	// F16: a value on a property the type does not list, said at create as
 	// on set_properties (the object takes the key here for the first time)
 	if typeKeys := s.typeListedKeys(spaceId, envelope.Type); typeKeys != nil {
@@ -588,7 +591,7 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 		// create landed a new object in a type whose route 404s, and a
 		// reinstall lit it back up (§8.41; the type twin of the property
 		// refusal below)
-		if err := s.refuseRemovedType(ctx, spaceId, envelope.Type, "/type"); err != nil {
+		if err := s.refuseRemovedType(ctx, spaceId, envelope.Type, docSpelling(spellings, envelope.Type), "/type"); err != nil {
 			return err
 		}
 	}
@@ -596,7 +599,7 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 		if !s.typeKeyExists(spaceId, envelope.TemplateFor) {
 			return s.unknownTypeKeyError(spaceId, envelope.TemplateFor, "/template_for", v)
 		}
-		if err := s.refuseRemovedType(ctx, spaceId, envelope.TemplateFor, "/template_for"); err != nil {
+		if err := s.refuseRemovedType(ctx, spaceId, envelope.TemplateFor, docSpelling(spellings, envelope.TemplateFor), "/template_for"); err != nil {
 			return err
 		}
 	}
@@ -614,7 +617,14 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 // refuseRemovedType is the type-namespace removal gate for one canonicalized
 // type slot (§8.41). Fails closed on any probe error: an unverifiable
 // removal set must not read as "nothing was removed".
-func (s *Service) refuseRemovedType(ctx context.Context, spaceId, typeKey, path string) error {
+// spelledAs is the caller's own spelling of typeKey: canonicalization has
+// already replaced it (`query` becomes the bundled `set`, a custom slug
+// becomes its 24-hex stored key), and an error must quote what the caller
+// wrote, never a key they never sent (F11).
+func (s *Service) refuseRemovedType(ctx context.Context, spaceId, typeKey, spelledAs, path string) error {
+	if spelledAs == "" {
+		spelledAs = typeKey
+	}
 	entries, err := s.liveTypes(spaceId)
 	if err != nil {
 		return err
@@ -623,11 +633,11 @@ func (s *Service) refuseRemovedType(ctx context.Context, spaceId, typeKey, path 
 	// removal set could not be read, the request was not wrong
 	removed, err := s.bundledTypeRemovalSet(spaceId)
 	if err != nil {
-		return unverifiableTypeError(typeKey, spaceId, err)
+		return unverifiableTypeError(spelledAs, spaceId, err)
 	}
 	isRemoved, err := s.bundledTypeRemoved(ctx, spaceId, entries, removed, typeKey)
 	if err != nil {
-		return unverifiableTypeError(typeKey, spaceId, err)
+		return unverifiableTypeError(spelledAs, spaceId, err)
 	}
 	if isRemoved {
 		v := errKeysFor(ctx)
@@ -770,4 +780,13 @@ func sortedKeys[V any](m map[string]V) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// docSpelling is the caller's original spelling of a canonicalized key, the
+// key itself when canonicalization left it alone.
+func docSpelling(spellings map[string]string, key string) string {
+	if original, ok := spellings[key]; ok {
+		return original
+	}
+	return key
 }

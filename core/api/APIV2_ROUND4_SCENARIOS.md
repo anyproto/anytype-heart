@@ -317,7 +317,8 @@ three fresh reviewers before the next.
   the removedTypes / removedProperties queries serve by row. A tombstone
   of a derived object therefore lives only from the uninstall to the next
   load on the uninstalling device; tombstones from before this branch
-  carry no slug to match anyway and are gone after the first load. So:
+  carry no slug to match anyway, and are gone once a rebuild succeeds,
+  normally on the first load. So:
   NO migration; the backfill, its completion marker, the gate, the
   tech-space call and the fixture override were removed again. A
   synchronous rebuild on load was tried and reverted (the personal
@@ -326,8 +327,9 @@ three fresh reviewers before the next.
 
   The last step removed the second shape itself. A derived object's
   delete no longer strips its index row: `core/block/delete.go
-  beforeDeleteDerived` closes the sessions and marks the smartblock
-  deleted in memory, but does not call the store's `DeleteObject`, so the
+  deleteDerivedObject` closes the sessions and marks the smartblock
+  deleted in memory (`closeAndMarkDeleted`), but does not call the store's
+  `DeleteObject`, so the
   row stays the full corpse the `isUninstalled` Apply just indexed — the
   same row every other device holds and the same row this device would
   hold again after a restart. One shape, before and after a restart;
@@ -342,11 +344,20 @@ three fresh reviewers before the next.
   deleted derived objects stay as they are until the next space load
   rebuilds them from the tree (the outdated-object reindex, a goroutine
   behind the reindex limiter, since that tombstone dropped the heads
-  hash). Until then such a row has three faces, all accepted: an object
-  read serves the stored key (a 24-hex for a space-minted type or
-  property) with no removal warning, a list or search row serves an
-  empty `type`, and a write naming either spelling is refused as unknown
-  with a did-you-mean, name step included, never as removed. Full-text
+  hash; a failed or cancelled rebuild is logged and retried on a later
+  load, so the window is "until a successful rebuild", not "one load").
+  Until then such a row has three faces, all accepted. An object read
+  serves the stored key (a 24-hex for a space-minted type or property)
+  with no removal warning. A list or search row whose TYPE is such a row
+  serves an empty `type`. And a write naming either spelling is not seen
+  as removed: for a custom type that no live type answers for, it is
+  refused as unknown (with a did-you-mean only when a known key is close
+  enough) — but where a LIVE type carries the removed slug as its display
+  name, the name step resolves to that type and a create, a search or a
+  delete lands there, which is the hazard the revert weighed and
+  accepted. Two cases are unaffected: a BUNDLED type or property is still
+  refused as REMOVED, through develop's derived-id probes, and a custom
+  property's stored key still passes the clone tolerance (§8.29). Full-text
   removal and subscriptions follow the Apply path, as they always did on
   every other device: the indexer returns no docs for a row flagged
   deleted and the queue consumer deletes the existing ones; the links
@@ -360,6 +371,14 @@ three fresh reviewers before the next.
   One backstop moved: `deleteRelationOptions` no longer stops at the
   first failing option (nothing re-runs it on the next load now that the
   relation keeps its heads hash).
+
+  Three fresh reviewers on that tail found no blocker and one defect worth
+  fixing: the bundled-type removal gate's typed 500 quoted the
+  CANONICALIZED key — `{"type":"query"}` came back as `set`, a custom slug
+  as its 24-hex — so it now carries the caller's own spelling
+  (`docSpelling`). Still unpinned there: that 500 has no test, because
+  failing the removal query alone needs a store wrapper the fixtures do
+  not have.
 
   Also in from those rounds: a mint that suffixed or emptied its slug
   reports the stored slug (or the minted key) on the property row and its

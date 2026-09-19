@@ -37,7 +37,18 @@ setup-protoc-js:
 
 setup-swag:
 	@echo 'Setting up swag...'
-	# -mod=mod allows go to auto-add swag's transitive deps to go.sum (they get stripped by go mod tidy since the main module doesn't import them directly)
-	@GOFLAGS=-mod=mod go build -o deps github.com/swaggo/swag/v2/cmd/swag
+	# swag is pinned the way every other build tool here is: deps/deps.go
+	# blank-imports github.com/swaggo/swag/v2/cmd/swag behind the `deps` build
+	# tag, so `go mod tidy` keeps the module and the command's own
+	# requirements, and the require line in go.mod fixes the version. Without
+	# that import tidy drops both, since no Go file imports a generator, and
+	# the build then resolves the newest swag — which since rc5 emits
+	# `BearerAuth` where scripts/fix_openapi_v2.py expects `bearerauth`.
+	# If the pin ever goes missing again, restore it with:
+	#   go get github.com/swaggo/swag/v2@v2.0.0-rc4 && go mod tidy
+	# No -mod=mod here on purpose: with the pin it is unnecessary, and a
+	# readonly build fails loudly instead of regenerating the documents with
+	# whatever generator the graph happens to resolve.
+	@go build -o deps github.com/swaggo/swag/v2/cmd/swag
 
 setup-protoc: setup-protoc-go

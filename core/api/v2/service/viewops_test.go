@@ -1539,6 +1539,67 @@ func TestV2StoredDateFiltersTakeDateStrings(t *testing.T) {
 		assert.Equal(t, float64(1782950400), values[1].GetNumberValue())
 	})
 
+	t.Run("a presence predicate keeps its value untouched — the strip discards it", func(t *testing.T) {
+		// before the conversion existed this succeeded: §11 strips the value
+		// of empty/not_empty/exists, so refusing it would be a regression
+		for _, condition := range []string{"empty", "not_empty", "exists"} {
+			t.Run(condition, func(t *testing.T) {
+				fx := setup(t)
+				committed := fx.expectMutateState(editRead(t, editSetDoc), nil)
+
+				_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+					patchBody(`{"op":"update_view","set":{"filters":[{"property":"dueDate","condition":"`+condition+`","value":"Ghost"}]}}`), "", false, true)
+
+				require.NoError(t, err)
+				filter := (*committed).Pick(state.DataviewBlockID).Model().GetDataview().Views[0].Filters[0]
+				assert.Nil(t, filter.Value, "the value is stripped, never converted nor refused")
+			})
+		}
+	})
+
+	t.Run("a counting preset's value stays a day count", func(t *testing.T) {
+		// "1970-01-01T00:00:07Z" parses as 7 seconds; converted it would read
+		// as SEVEN DAYS AGO, which is not what the caller wrote
+		fx := setup(t)
+		fx.expectMutate(editRead(t, editSetDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"update_view","set":{"filters":[{"property":"dueDate","condition":"greater_or_equal","date_preset":"number_of_days_ago","value":"1970-01-01T00:00:07Z"}]}}`), "", false, true)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.NotContains(t, apiErr.Issues[0].Message, "is a date, and", "the day-count check answers, not the date conversion")
+	})
+
+	t.Run("a valid day count beside a counting preset still passes", func(t *testing.T) {
+		fx := setup(t)
+		committed := fx.expectMutateState(editRead(t, editSetDoc), nil)
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"update_view","set":{"filters":[{"property":"dueDate","condition":"greater_or_equal","date_preset":"number_of_days_ago","value":7}]}}`), "", false, true)
+
+		require.NoError(t, err)
+		filter := (*committed).Pick(state.DataviewBlockID).Model().GetDataview().Views[0].Filters[0]
+		assert.Equal(t, float64(7), filter.Value.GetNumberValue())
+		assert.Equal(t, model.BlockContentDataviewFilter_NumberOfDaysAgo, filter.QuickOption)
+	})
+
+	t.Run("the compact filter string converts a date under a SERVED slug too", func(t *testing.T) {
+		// the parser's KnownKeys accept the served spelling, so its format
+		// lookup has to as well — otherwise the string reaches the store
+		fx := setup(t)
+		committed := fx.expectMutateState(editRead(t, editSetDoc), nil)
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"update_view","set":{"filter":"due_date >= \"2026-07-01\""}}`), "", false, true)
+
+		require.NoError(t, err)
+		filter := (*committed).Pick(state.DataviewBlockID).Model().GetDataview().Views[0].Filters[0]
+		assert.Equal(t, "dueDate", filter.RelationKey)
+		assert.Equal(t, float64(1782864000), filter.Value.GetNumberValue(), "not the string the parser would have kept")
+	})
+
 	t.Run("a string that is no date is refused, path-addressed", func(t *testing.T) {
 		fx := setup(t)
 		fx.expectMutate(editRead(t, editSetDoc))
@@ -1552,5 +1613,7 @@ func TestV2StoredDateFiltersTakeDateStrings(t *testing.T) {
 		assert.Equal(t, "ops[0].set.filters[0].value", apiErr.Issues[0].Path)
 		assert.Equal(t, `property "dueDate" is a date, and "next tuesday" is not one`, apiErr.Issues[0].Message)
 		assert.Contains(t, apiErr.Issues[0].Hint, "YYYY-MM-DD")
+		assert.Contains(t, apiErr.Issues[0].Hint, `"date_preset":"today"`, "the member the surface accepts, not the codec's camelCase")
+		assert.Equal(t, []v2model.Ref{v2model.RefGetSchema("filters")}, apiErr.Issues[0].SeeAlso)
 	})
 }
