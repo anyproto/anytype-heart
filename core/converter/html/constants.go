@@ -64,13 +64,23 @@ type styleTag struct {
 	OpenTag, ToggleCloseTag, CloseTag string
 }
 
+// styleTags maps a text block style to the HTML tags it is wrapped in, both for
+// the clipboard copy slot and for HTML export.
+//
+// Code is wrapped as <pre><code>, NOT <code><pre>: <pre> is the block-level,
+// whitespace-preserving element and must be the outer one. The importer converts
+// HTML to markdown and dispatches on the OUTERMOST tag, so with <code> outermost
+// it matched the inline `code` rule and emitted a one-line backtick code SPAN —
+// a code block copied out of Anytype and pasted back through the HTML slot came
+// back as a paragraph with a Keyboard mark and its line breaks turned into
+// spaces (GO-7515). With <pre> outermost the block `pre` rule fences it instead.
 var styleTags = map[model.BlockContentTextStyle]styleTag{
 	model.BlockContentText_Header1:       {OpenTag: `<h1 style="` + styleHeader1 + `">`, CloseTag: `</h1>`},
 	model.BlockContentText_Header2:       {OpenTag: `<h2 style="` + styleHeader2 + `">`, CloseTag: `</h2>`},
 	model.BlockContentText_Header3:       {OpenTag: `<h3 style="` + styleHeader3 + `">`, CloseTag: `</h3>`},
 	model.BlockContentText_Header4:       {OpenTag: `<h4 style="` + styleHeader4 + `">`, CloseTag: `</h4>`},
 	model.BlockContentText_Quote:         {OpenTag: `<quote style="` + styleQuote + `">`, CloseTag: `</quote>`},
-	model.BlockContentText_Code:          {OpenTag: `<code style="` + styleCode + `"><pre>`, CloseTag: `</pre></code>`},
+	model.BlockContentText_Code:          {OpenTag: `<pre><code style="` + styleCode + `">`, CloseTag: `</code></pre>`},
 	model.BlockContentText_Title:         {OpenTag: `<h1 style="` + styleTitle + `">`, CloseTag: `</h1>`},
 	model.BlockContentText_Checkbox:      {OpenTag: `<div style="` + styleCheckbox + `" class="check"><input type="checkbox"/>`, CloseTag: `</div>`},
 	model.BlockContentText_Toggle:        {OpenTag: `<details> <summary style="` + styleToggle + `">`, ToggleCloseTag: `</summary>`, CloseTag: `</details>`},
