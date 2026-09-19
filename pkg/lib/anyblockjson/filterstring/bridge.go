@@ -15,4 +15,5 @@ var (
 	Examples  = external.Examples
 	Parse     = external.Parse
 	ParseDate = external.ParseDate
+	IsBareKey = external.IsBareKey
 )

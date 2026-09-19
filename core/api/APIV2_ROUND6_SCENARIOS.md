@@ -250,17 +250,61 @@ open, each needing a task written for it:
 **R6-7 — done.** Search canonicalizes every filter leaf's property to its
 stored key before validating it, so a refusal quoted that key — for a
 space-minted property a 24-hex id the caller never sent and cannot look up,
-inside an otherwise exemplary message. `keyCanon` now records the caller's
-spelling at its one choke point (`canonOrErr`, which every filter, sort and
-view rewrite passes through) and `spelledAs` gives it back, so each refusal
-raised AFTER canonicalization quotes what the caller wrote: the date-value
-refusal and its worked example, the option-name refusal and its
-`list_property_options` reference, the unknown-key refusal, and the
-missing-condition refusal. A display name sent under `?keys=name` comes back
-as that display name. The reference stays usable because the property route
-resolves a stored key, a slug and a display name alike. The compact filter
-string was already correct: the parser reports offsets into the caller's own
-text.
+inside an otherwise exemplary message. Validation now runs on the leaves AS
+SENT: the canonical tree still feeds the store query and the plan, and
+`validateStructuredFilters` reads the caller's own array beside it, resolving
+each leaf's stored key (`keyCanon.canonKey`) only for the three lookups that
+need the store's spelling — the membership test, the format resolution and the
+option list. `node.Property` in a message is therefore, by construction, what
+that leaf carried, so the date-value refusal, the option-name refusal and its
+`list_property_options` reference, the unknown-key refusal and the
+missing-condition refusal all quote it, and no refusal added later has to
+remember to ask. The spelling is a property of the LEAF: two leaves may name
+one property differently, and one spelling per request would misquote
+whichever one it did not keep. `POST /queries` runs its M3 shape gate and its
+view-key validation on the pre-canonicalization request for the same reason,
+carrying both spellings per reference (`viewKeyRef.spelled`), which also fixes
+the removal gate's repair (it named the stored key in a hint telling the caller
+to remove it) and the type-membership refusal (a display name sent under
+`?keys=name` came back as a slug).
+
+A display name sent under `?keys=name` comes back as that display name, and
+the reference beside it stays usable because the property route resolves a
+stored key, a slug and a display name alike. The compact filter string was
+already correct: the parser reports offsets into the caller's own text.
+
+The date refusal's worked example is now only offered where it would PARSE.
+The compact grammar's `key` production is a bare identifier
+(`filterstring.IsBareKey`, asked of the grammar rather than restated), so
+`"Close date > \"2026-08-01\""` fails at the space and a stored key beginning
+with a digit fails at the digit; and the example used to interpolate the
+caller's value even when that value was no date, suggesting
+`"close_date > \"bananas\""`. Where the compact form cannot carry the repair,
+the hint names unix seconds instead, with the converted number when the value
+did parse. A test feeds the emitted example back through the parser the search
+path parses with.
+
+Four leaks of the same family are LEFT, each needing its own task:
+
+- the compact string's unknown-key refusal lists the space's known keys from
+  the parser's ACCEPTANCE vocabulary, which includes stored keys, so it can
+  advertise a 24-hex id; separating acceptance from displayed candidates is its
+  own change (`search.go`, `acceptKeys` into `filterstring.Options.KnownKeys`;
+  verified — a space-minted property makes the list read `known property keys:
+  6aadcde161fab2f86565765c, close_date, …`);
+- codec warnings forwarded verbatim by search (`search.go`, the `OnWarning`
+  sink) quote stored keys — the unguarded-date warning among them;
+- query-READ warnings (`list_read.go`) quote the stored key for a removed
+  property;
+- the curated wrapper's `propertyLabel` (`core/api/wrapper/tools_list.go`)
+  falls through to the raw stored key for a property-sourced query read of a
+  custom property: it matches by fold class against the listing, and a bson id
+  folds onto nothing, its slug having been minted from the display name.
+
+Two older infelicities are also left, both predating this work: the compact
+example does not preserve the caller's predicate (it always shows `>`), and a
+refusal about one element of a list value is addressed to the whole `/value`
+path.
 
 **R6-1 — done.** A stored filter takes a date the way the compact string
 does: on `POST /queries` (a view's filters and the top-level filters) and on

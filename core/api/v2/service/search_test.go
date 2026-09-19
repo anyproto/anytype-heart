@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,6 +13,7 @@ import (
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
@@ -1314,13 +1316,32 @@ func TestV2FieldAliasShadowing(t *testing.T) {
 	})
 }
 
+// compactExampleIn lifts the compact filter string out of a date refusal's
+// hint so a test can hand it straight back to the parser the search path
+// parses with: an example that does not parse is a repair the caller cannot
+// perform, and finding that out costs them a whole round trip.
+func compactExampleIn(t *testing.T, hint string) string {
+	t.Helper()
+	const prefix = `e.g. "filter": `
+	start := strings.Index(hint, prefix)
+	require.GreaterOrEqual(t, start, 0, "the hint offers a compact example: %s", hint)
+	rest := hint[start+len(prefix):]
+	end := strings.Index(rest, " — ")
+	require.GreaterOrEqual(t, end, 0, "the example ends before the datePreset alternative: %s", hint)
+	var literal string
+	require.NoError(t, json.Unmarshal([]byte(rest[:end]), &literal), "the example is a JSON string literal")
+	return literal
+}
+
 // TestV2SearchRefusalsNameTheCallersSpelling is round-six R6-7: search
-// canonicalizes every filter's property to its STORED key before validating,
-// so a refusal quoted that key — for a space-minted property a 24-hex id the
-// caller never sent and cannot look up, in an otherwise excellent message.
-// Every refusal raised after canonicalization now quotes the caller's own
-// spelling, and the typed reference beside it addresses the property the same
-// way (the route resolves a slug, a stored key or a display name alike).
+// canonicalizes every filter leaf's property to its STORED key before
+// validating, so a refusal quoted that key — for a space-minted property a
+// 24-hex id the caller never sent and cannot look up, in an otherwise
+// excellent message. Validation reads the leaves AS SENT and resolves the
+// stored key only for the semantic lookups, so a message can only ever quote
+// the spelling its own leaf carried, and the typed reference beside it
+// addresses the property the same way (the route resolves a slug, a stored key
+// or a display name alike).
 func TestV2SearchRefusalsNameTheCallersSpelling(t *testing.T) {
 	const hexKey = "6aadcde161fab2f86565765c"
 
@@ -1339,36 +1360,154 @@ func TestV2SearchRefusalsNameTheCallersSpelling(t *testing.T) {
 	}
 
 	t.Run("a date value refusal quotes the slug the caller sent", func(t *testing.T) {
+		// given
 		fx := setup(t)
 		req := v2model.SearchRequest{
 			Filters: json.RawMessage(`[{"property":"close_date","condition":"less","value":"2026-08-01"}]`),
 		}
 
+		// when
 		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
 
+		// then
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Contains(t, apiErr.Issues[0].Message, `property "close_date" is a date`)
 		assert.NotContains(t, apiErr.Issues[0].Message, hexKey, "never the stored key")
 		assert.NotContains(t, apiErr.Issues[0].Hint, hexKey, "and not in the worked example either")
 		assert.Contains(t, apiErr.Issues[0].Hint, `"close_date > `, "the example is one the caller can paste")
+
+		// and the example really is pasteable: the parser that parses the
+		// compact channel accepts it, and so does the search that offered it
+		example := compactExampleIn(t, apiErr.Issues[0].Hint)
+		_, parseErr := filterstring.Parse(example, filterstring.Options{})
+		require.NoError(t, parseErr, "the suggested example must parse: %s", example)
+		_, _, _, _, err = fx.SearchObjects(context.Background(), testSpaceId,
+			v2model.SearchRequest{Filter: example}, 0, 25)
+		require.NoError(t, err, "and be accepted by the surface that suggested it")
 	})
 
 	t.Run("a display name under ?keys=name comes back as the display name", func(t *testing.T) {
+		// given
 		fx := setup(t)
 		req := v2model.SearchRequest{
 			Filters: json.RawMessage(`[{"property":"Close date","condition":"less","value":"2026-08-01"}]`),
 		}
 
+		// when
 		_, _, _, _, err := fx.SearchObjects(CtxWithNameKeys(context.Background()), testSpaceId, req, 0, 25)
 
+		// then
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Contains(t, apiErr.Issues[0].Message, `property "Close date" is a date`)
 		assert.NotContains(t, apiErr.Issues[0].Message, hexKey)
+		// a display name is no compact identifier — `Close date > "…"` fails
+		// to parse at the space, so the repair is the structured one
+		assert.NotContains(t, apiErr.Issues[0].Hint, `"filter":`)
+		assert.Equal(t, `the structured form takes unix seconds — send "value": 1785542400 for "Close date", or use a datePreset`,
+			apiErr.Issues[0].Hint)
 	})
 
-	t.Run("an option-name refusal quotes the slug too", func(t *testing.T) {
+	t.Run("a value that is no date offers no example the parser would reject", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		req := v2model.SearchRequest{
+			Filters: json.RawMessage(`[{"property":"close_date","condition":"less","value":"bananas"}]`),
+		}
+
+		// when
+		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, `property "close_date" is a date — the structured form takes unix seconds, and "bananas" is not a date`,
+			apiErr.Issues[0].Message)
+		assert.NotContains(t, apiErr.Issues[0].Message, hexKey)
+		assert.Equal(t, `the structured form takes unix seconds for "close_date" — or use a datePreset for a named window`,
+			apiErr.Issues[0].Hint)
+		assert.NotContains(t, apiErr.Issues[0].Hint, `"filter":`,
+			`the compact channel has no literal for "bananas", so an example built from it could only mislead`)
+	})
+
+	// One request may name one property two ways. A spelling recorded per
+	// REQUEST holds exactly one of them, so the other leaf's refusal quotes a
+	// string that leaf never carried: unrecognizable to the caller reading it,
+	// and unrepairable at the path it is addressed to.
+	t.Run("two leaves naming one property differently each keep their own spelling", func(t *testing.T) {
+		for _, tc := range []struct {
+			name   string
+			first  string
+			second string
+		}{
+			{"slug first", "close_date", "Close date"},
+			{"display name first", "Close date", "close_date"},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				// given
+				fx := setup(t)
+				req := v2model.SearchRequest{Filters: json.RawMessage(fmt.Sprintf(
+					`[{"property":%q,"condition":"less","value":"2026-08-01"},{"property":%q,"condition":"less","value":"2026-09-01"}]`,
+					tc.first, tc.second))}
+
+				// when
+				_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
+
+				// then
+				apiErr := v2Err(t, err)
+				require.Len(t, apiErr.Issues, 2)
+				assert.Equal(t, "/filters/0/value", apiErr.Issues[0].Path)
+				assert.Contains(t, apiErr.Issues[0].Message, fmt.Sprintf("property %q is a date", tc.first))
+				assert.Equal(t, "/filters/1/value", apiErr.Issues[1].Path)
+				assert.Contains(t, apiErr.Issues[1].Message, fmt.Sprintf("property %q is a date", tc.second))
+			})
+		}
+	})
+
+	// A sort spelled differently from a filter used to overwrite the filter's
+	// spelling on the way through the shared canonicalizer, which is the same
+	// defect reached from the other channel.
+	t.Run("a sort spelled differently does not rename the filter's property", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		req := v2model.SearchRequest{
+			Filters: json.RawMessage(`[{"property":"close_date","condition":"less","value":"2026-08-01"}]`),
+			Sorts:   json.RawMessage(`[{"property":"Close date","direction":"desc"}]`),
+		}
+
+		// when
+		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Message, `property "close_date" is a date`)
+		assert.NotContains(t, apiErr.Issues[0].Message, "Close date")
+	})
+
+	t.Run("an unknown property is refused in the spelling that was sent", func(t *testing.T) {
+		// given — close_date is the SPACE's property, not the type's, so the
+		// type-scoped reference set refuses it after canonicalization
+		fx := setup(t)
+		req := v2model.SearchRequest{
+			Type:    "chore",
+			Filters: json.RawMessage(`[{"property":"close_date","condition":"less","value":123}]`),
+		}
+
+		// when
+		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/filters/0/property", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, `unknown property key "close_date"`)
+		assert.NotContains(t, apiErr.Issues[0].Message, hexKey)
+	})
+
+	t.Run("an option-name refusal quotes the slug too, and so does its reference", func(t *testing.T) {
+		// given
 		fx := searchSetup(t)
 		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
 			bundle.RelationKeyId:             domain.String("rel-stage"),
@@ -1382,23 +1521,68 @@ func TestV2SearchRefusalsNameTheCallersSpelling(t *testing.T) {
 			Filters: json.RawMessage(`[{"property":"stage","condition":"equal","value":"Nope"}]`),
 		}
 
+		// when
 		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
 
+		// then
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Contains(t, apiErr.Issues[0].Message, `property "stage" has no option named "Nope"`)
 		assert.NotContains(t, apiErr.Issues[0].Message, hexKey)
 		assert.NotContains(t, apiErr.Issues[0].Hint, hexKey, "the options reference addresses it by the caller's spelling")
+		// the reference is not merely hex-free: it is the options route,
+		// addressed by the spelling the caller used
+		require.Len(t, apiErr.Issues[0].SeeAlso, 1)
+		assert.Equal(t, v2model.OpListPropertyOptions, apiErr.Issues[0].SeeAlso[0].Op)
+		assert.Equal(t, "stage", apiErr.Issues[0].SeeAlso[0].Params["key"])
+		assert.Equal(t, testSpaceId, apiErr.Issues[0].SeeAlso[0].Params["space_id"])
+	})
+
+	// The three lookups behind those messages need the STORE's spelling, and
+	// the option list is the one that fails SILENTLY when it does not get it:
+	// fed a slug it finds no options at all and then refuses a name that
+	// exists.
+	t.Run("a slug-addressed option filter still resolves its options", func(t *testing.T) {
+		// given
+		fx := searchSetup(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel-stage"),
+				bundle.RelationKeyRelationKey:    domain.String(hexKey),
+				bundle.RelationKeyApiObjectKey:   domain.String("stage"),
+				bundle.RelationKeyName:           domain.String("Stage"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("opt-shipped"),
+				bundle.RelationKeyRelationKey:    domain.String(hexKey),
+				bundle.RelationKeyName:           domain.String("Shipped"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+			},
+		})
+		req := v2model.SearchRequest{
+			Filters: json.RawMessage(`[{"property":"stage","condition":"equal","value":"Shipped"}]`),
+		}
+
+		// when
+		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
+
+		// then
+		require.NoError(t, err)
 	})
 
 	t.Run("a leaf with no condition names the slug as well", func(t *testing.T) {
+		// given
 		fx := setup(t)
 		req := v2model.SearchRequest{
 			Filters: json.RawMessage(`[{"property":"close_date"}]`),
 		}
 
+		// when
 		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
 
+		// then
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Contains(t, apiErr.Issues[0].Message, `filter on "close_date" has no condition`)

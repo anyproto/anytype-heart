@@ -143,6 +143,12 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	if req.Views, err = convertRawViewDateFilters(req.Views, formatName); err != nil {
 		return nil, err
 	}
+	// the channels as the caller spelled them, kept beside the canonicalized
+	// ones the query DOCUMENT stores: a canonicalized leaf carries the stored
+	// key, which for a space-minted property is a 24-hex id the caller never
+	// sent and cannot look up, so every refusal below reads its property from
+	// here (round-six R6-7)
+	spelled := req
 	if req.Filters, err = kc.canonicalizeRawChannel(req.Filters, "filters", "/filters"); err != nil {
 		return nil, err
 	}
@@ -156,16 +162,18 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	// filter, so a match-everything shape here is not a bad query — it is a
 	// query that quietly contains the whole space, for good. (The string form
 	// above cannot produce these shapes; the parser emits a condition on
-	// every leaf and never a childless group.)
-	if len(req.Filters) > 0 {
-		if _, err := decodeFilterNodes(req.Filters, "/filters", kc.spelledAs); err != nil {
+	// every leaf and never a childless group.) It reads the leaves as sent:
+	// canonicalization cannot change a node's SHAPE, only its property
+	// spelling, and the refusal names that property.
+	if len(spelled.Filters) > 0 {
+		if _, err := decodeFilterNodes(spelled.Filters, "/filters"); err != nil {
 			return nil, err
 		}
 	}
 
 	// R9 referential validation: every property key the view addresses must
 	// be one the type actually recommends
-	referenced, err := collectViewPropertyKeys(req)
+	referenced, err := collectViewPropertyKeys(spelled, kc.canonKey)
 	if err != nil {
 		return nil, err
 	}
@@ -327,11 +335,16 @@ func (s *Service) CreateCollection(ctx context.Context, spaceId string, req v2mo
 	return result, nil
 }
 
-// viewKeyRef is one property reference inside the requested views, with its
-// JSON path for error addressing.
+// viewKeyRef is one property reference inside the requested views: the stored
+// key it resolves to, the spelling the caller wrote it as, and its JSON path
+// for error addressing. The two spellings are kept apart per REFERENCE, never
+// per request: one request may name one property several ways, and a refusal
+// that quotes another occurrence's spelling names something the caller can
+// neither recognize nor repair.
 type viewKeyRef struct {
-	key  string
-	path string
+	key     string
+	spelled string
+	path    string
 }
 
 // filterNodeProbe decodes the §6.2 filter tree just deep enough to collect
@@ -360,8 +373,10 @@ type viewProbe struct {
 }
 
 // collectViewPropertyKeys gathers every property key the request's filters,
-// sorts and views address, each with its JSON path.
-func collectViewPropertyKeys(req v2model.CreateQueryRequest) ([]viewKeyRef, error) {
+// sorts and views address, each with its JSON path. req carries the caller's
+// own spellings and canon resolves each one to the stored key the validation
+// and the stored document need.
+func collectViewPropertyKeys(req v2model.CreateQueryRequest, canon func(string) string) ([]viewKeyRef, error) {
 	var refs []viewKeyRef
 	if len(req.Filters) > 0 {
 		var nodes []filterNodeProbe
@@ -369,7 +384,7 @@ func collectViewPropertyKeys(req v2model.CreateQueryRequest) ([]viewKeyRef, erro
 			return nil, v2model.ValidationFailed("invalid filters",
 				v2model.Issue{Path: "/filters", Message: err.Error(), Hint: "filters is an array of filter nodes"})
 		}
-		collectFilterKeys(nodes, "/filters", &refs)
+		collectFilterKeys(nodes, "/filters", canon, &refs)
 	}
 	if len(req.Sorts) > 0 {
 		var sorts []sortProbe
@@ -379,7 +394,7 @@ func collectViewPropertyKeys(req v2model.CreateQueryRequest) ([]viewKeyRef, erro
 		}
 		for i, sort := range sorts {
 			if sort.Property != "" {
-				refs = append(refs, viewKeyRef{key: sort.Property, path: fmt.Sprintf("/sorts/%d/property", i)})
+				refs = append(refs, viewKeyRef{key: canon(sort.Property), spelled: sort.Property, path: fmt.Sprintf("/sorts/%d/property", i)})
 			}
 		}
 	}
@@ -392,31 +407,31 @@ func collectViewPropertyKeys(req v2model.CreateQueryRequest) ([]viewKeyRef, erro
 		for i, view := range views {
 			prefix := fmt.Sprintf("/views/%d", i)
 			if view.GroupBy != "" {
-				refs = append(refs, viewKeyRef{key: view.GroupBy, path: prefix + "/groupBy"})
+				refs = append(refs, viewKeyRef{key: canon(view.GroupBy), spelled: view.GroupBy, path: prefix + "/groupBy"})
 			}
 			for j, sort := range view.Sorts {
 				if sort.Property != "" {
-					refs = append(refs, viewKeyRef{key: sort.Property, path: fmt.Sprintf("%s/sorts/%d/property", prefix, j)})
+					refs = append(refs, viewKeyRef{key: canon(sort.Property), spelled: sort.Property, path: fmt.Sprintf("%s/sorts/%d/property", prefix, j)})
 				}
 			}
 			for j, column := range view.Columns {
 				if column.Property != "" {
-					refs = append(refs, viewKeyRef{key: column.Property, path: fmt.Sprintf("%s/columns/%d/property", prefix, j)})
+					refs = append(refs, viewKeyRef{key: canon(column.Property), spelled: column.Property, path: fmt.Sprintf("%s/columns/%d/property", prefix, j)})
 				}
 			}
-			collectFilterKeys(view.Filters, prefix+"/filters", &refs)
+			collectFilterKeys(view.Filters, prefix+"/filters", canon, &refs)
 		}
 	}
 	return refs, nil
 }
 
-func collectFilterKeys(nodes []filterNodeProbe, path string, refs *[]viewKeyRef) {
+func collectFilterKeys(nodes []filterNodeProbe, path string, canon func(string) string, refs *[]viewKeyRef) {
 	for i, node := range nodes {
 		nodePath := fmt.Sprintf("%s/%d", path, i)
 		if node.Property != "" {
-			*refs = append(*refs, viewKeyRef{key: node.Property, path: nodePath + "/property"})
+			*refs = append(*refs, viewKeyRef{key: canon(node.Property), spelled: node.Property, path: nodePath + "/property"})
 		}
-		collectFilterKeys(node.Filters, nodePath+"/filters", refs)
+		collectFilterKeys(node.Filters, nodePath+"/filters", canon, refs)
 	}
 }
 
@@ -439,9 +454,6 @@ func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey
 		return nil
 	}
 	typeKeys := s.typePropertyKeys(spaceId, typeId)
-	// refusals spell a key as the surface serves it (F11: a canonicalized
-	// input came back as a stored bson id the caller had never seen)
-	spell := s.servedKeySpeller(spaceId)
 	allowed := map[string]bool{"name": true} // universal
 	for _, key := range v2SystemQueryKeys {
 		allowed[key] = true
@@ -475,7 +487,7 @@ func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey
 					return err
 				}
 				if isRemoved {
-					issues = append(issues, removedPropertyIssue(spaceId, ref.key, ref.key, ref.path, v))
+					issues = append(issues, removedPropertyIssue(spaceId, ref.key, ref.spelled, ref.path, v))
 					continue
 				}
 			}
@@ -493,8 +505,8 @@ func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey
 		}
 		issues = append(issues, v2model.Issue{
 			Path:    ref.path,
-			Message: fmt.Sprintf("type %q has no property %q — %s", typeKey, spell(ref.key), listKnown(v.propertiesWord()+" of the type", typeKeys)),
-		}.WithHint(didYouMean(ref.key, typeKeys, v2model.Hintf("inspect the type with %s", v2model.RefGetType(spaceId, typeKey)))))
+			Message: fmt.Sprintf("type %q has no property %q — %s", typeKey, ref.spelled, listKnown(v.propertiesWord()+" of the type", typeKeys)),
+		}.WithHint(didYouMean(ref.spelled, typeKeys, v2model.Hintf("inspect the type with %s", v2model.RefGetType(spaceId, typeKey)))))
 	}
 	if len(issues) > 0 {
 		return v2model.ValidationFailed(fmt.Sprintf("the view addresses properties type %q does not have", typeKey), issues...)

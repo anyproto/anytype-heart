@@ -28,11 +28,6 @@ type keyCanon struct {
 	// no live entry answers to (one bounded query, and only on that path)
 	removed       []propertyEntry
 	removedLoaded bool
-	// spellings maps a canonicalized key back to what the CALLER wrote, so a
-	// refusal can quote that instead of the stored key it rewrote the input
-	// to — for a space-minted property the stored key is a 24-hex id the
-	// caller never saw and cannot look up (F11, round-six R6-7).
-	spellings map[string]string
 }
 
 func (s *Service) newKeyCanon(spaceId string) (*keyCanon, error) {
@@ -183,23 +178,19 @@ func (k *keyCanon) canonOrErr(input, path string) (string, error) {
 	if len(ambiguous) > 0 {
 		return "", ambiguousKeyError("property key", input, path, ambiguous)
 	}
-	if canonical != input {
-		if k.spellings == nil {
-			k.spellings = map[string]string{}
-		}
-		k.spellings[canonical] = input
-	}
 	return canonical, nil
 }
 
-// spelledAs returns the spelling the caller used for a canonicalized key, the
-// key itself when canonicalization left it alone. Every refusal raised AFTER
-// canonicalization quotes this, never the rewritten key.
-func (k *keyCanon) spelledAs(key string) string {
-	if original, ok := k.spellings[key]; ok {
-		return original
-	}
-	return key
+// canonKey is canon without its ambiguity arm, for the passes that run AFTER
+// canonOrErr over the same inputs: an ambiguous one was already refused
+// there, so nothing here can meet one. It exists so a validator can keep the
+// caller's spelling in its messages and resolve the stored key only where the
+// semantics need it — a refusal quoting the rewritten key names, for a
+// space-minted property, a 24-hex id the caller never sent and cannot look up
+// (F11, round-six R6-7).
+func (k *keyCanon) canonKey(input string) string {
+	canonical, _ := k.canon(input)
+	return canonical
 }
 
 func (k *keyCanon) rewriteFilterNodes(nodes []any, path string) error {
