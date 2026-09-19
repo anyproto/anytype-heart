@@ -325,6 +325,12 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 		}
 		filtersJSON = parsed
 	}
+	// the filter tree as the caller spelled it, kept beside the canonical one:
+	// a canonicalized leaf carries the STORED key, which for a space-minted
+	// property is a 24-hex id the caller never sent and cannot look up, so the
+	// validation below reads the leaves as sent and resolves the stored key
+	// only where the semantics need it (round-six R6-7)
+	spelledFilters := filtersJSON
 	if len(filtersJSON) > 0 {
 		// canonicalize every property leaf to its stored spelling BEFORE
 		// validation and the store query — a served slug in a filter would
@@ -335,10 +341,10 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 		}
 		filtersJSON = canonical
 	}
-	if !fromString && len(filtersJSON) > 0 {
+	if !fromString && len(spelledFilters) > 0 {
 		// the parser validated the string form with offsets; the structured
 		// form gets the same checks path-addressed (rules 1 + 3)
-		if err := s.validateStructuredFilters(spaceId, filtersJSON, allowed, refKeys, formatName, listHint, v); err != nil {
+		if err := s.validateStructuredFilters(spaceId, spelledFilters, allowed, refKeys, formatName, listHint, v, kc); err != nil {
 			return nil, err
 		}
 	}
@@ -750,7 +756,13 @@ func decodeFilterNodes(raw json.RawMessage, path string) ([]searchFilterNode, er
 // option names) to the structured filters array, path-addressed with
 // did-you-mean — the same checks the string form gets offset-addressed from
 // the parser.
-func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage, allowed map[string]bool, refKeys []string, formatName func(string) (string, bool), listHint v2model.Hint, v errKeys) error {
+//
+// raw is the filters array AS THE CALLER SENT IT, not the canonicalized tree
+// the store query runs on, so every message below quotes the spelling that
+// leaf carried; kc resolves each leaf's stored key for the three lookups that
+// need the store's own spelling. The spelling belongs to the LEAF and can
+// belong to nothing wider: two leaves may name one property differently.
+func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage, allowed map[string]bool, refKeys []string, formatName func(string) (string, bool), listHint v2model.Hint, v errKeys, kc *keyCanon) error {
 	nodes, err := decodeFilterNodes(raw, "/filters")
 	if err != nil {
 		return err
@@ -769,11 +781,12 @@ func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage,
 			if node.Property == "" {
 				continue // the codec reports the missing key
 			}
-			if !allowed[node.Property] {
+			canonical := kc.canonKey(node.Property)
+			if !allowed[canonical] {
 				issues = append(issues, unknownPropertyIssue(node.Property, nodePath+"/property", refKeys, listHint, v))
 				continue
 			}
-			format, formatKnown := formatName(node.Property)
+			format, formatKnown := formatName(canonical)
 			// a date property takes unix seconds in the structured form
 			// (SPEC §6.2) — an RFC 3339 string would survive to the store,
 			// compare string-against-int64 and silently match nothing (or,
@@ -782,21 +795,20 @@ func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage,
 			// mistake is rejected with the conversion spelled out.
 			if formatKnown && format == "date" {
 				for _, value := range stringValues(node.Value) {
-					issue := v2model.Issue{
-						Path: nodePath + "/value",
-						Hint: fmt.Sprintf(`RFC 3339 dates belong to the compact filter string, e.g. "filter": "%s > \"%s\"" — or use a datePreset`, node.Property, value),
-					}
-					if sec, ok := filterstring.ParseDate(value); ok {
+					issue := v2model.Issue{Path: nodePath + "/value"}
+					sec, isDate := filterstring.ParseDate(value)
+					if isDate {
 						issue.Message = fmt.Sprintf("property %q is a date — the structured form takes unix seconds (%d), not %q", node.Property, sec, value)
 					} else {
 						issue.Message = fmt.Sprintf("property %q is a date — the structured form takes unix seconds, and %q is not a date", node.Property, value)
 					}
+					issue.Hint = dateValueRepair(node.Property, value, sec, isDate)
 					issues = append(issues, issue)
 				}
 			}
 			// rule 3: option names resolve read-only — never a silent no-match
 			if formatKnown && (format == "select" || format == "multi_select") {
-				names, ok := s.propertyOptionNames(spaceId, node.Property)
+				names, ok := s.propertyOptionNames(spaceId, canonical)
 				if !ok {
 					continue // the store could not list the options — no check
 				}
@@ -816,6 +828,26 @@ func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage,
 		return v2model.ValidationFailed("invalid filters", issues...)
 	}
 	return nil
+}
+
+// dateValueRepair is the hint beside a date refusal in the structured form.
+// The compact example is offered only where the caller can paste it back and
+// have it parse: the grammar's `key` production is a bare identifier
+// (filterstring.IsBareKey), so a display name like "Close date" — a spelling
+// §7.5a accepts — has no compact form at all, and a value that is no date has
+// no compact literal either. An example the parser rejects at the first space
+// costs a whole round trip to find out about, which is worse than no example.
+// Everything offered carries the caller's own spelling, so the repair is
+// written in the vocabulary the request was.
+func dateValueRepair(spelling, value string, sec int64, isDate bool) string {
+	switch {
+	case isDate && filterstring.IsBareKey(spelling):
+		return fmt.Sprintf(`RFC 3339 dates belong to the compact filter string, e.g. "filter": "%s > \"%s\"" — or use a datePreset`, spelling, value)
+	case isDate:
+		return fmt.Sprintf(`the structured form takes unix seconds — send "value": %d for %q, or use a datePreset`, sec, spelling)
+	default:
+		return fmt.Sprintf("the structured form takes unix seconds for %q — or use a datePreset for a named window", spelling)
+	}
 }
 
 // stringValues extracts the string entries of a filter value (bare string or

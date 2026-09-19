@@ -161,17 +161,20 @@ func TestV2RepairReferences(t *testing.T) {
 		issueAt(t, err, "/name")
 	})
 
-	t.Run("the validate endpoint attaches the same repairs", func(t *testing.T) {
+	t.Run("the validate endpoint attaches the same repairs, pointed at the document kind", func(t *testing.T) {
+		// validate applies the format's full schema, so its repair names the
+		// unnarrowed document kind for every document, not the create kinds
+		// (a type document with blocks is valid here and refused on create)
 		fx := setup(t)
 
 		resp := fx.ValidateDocument([]byte(`{"blocks":[{"type":"paragraph","text":"hi"}]}`))
 
 		require.Len(t, resp.Issues, 1)
-		assert.Equal(t, []v2model.Ref{v2model.RefGetSchema("object")}, resp.Issues[0].SeeAlso)
+		assert.Equal(t, []v2model.Ref{v2model.RefGetSchema("document")}, resp.Issues[0].SeeAlso)
 
 		typed := fx.ValidateDocument([]byte(`{"kind":"object_type","properties":{"name":"Plant"}}`))
 		require.NotEmpty(t, typed.Issues)
-		assert.Equal(t, []v2model.Ref{v2model.RefGetSchema("type_document")}, typed.Issues[0].SeeAlso)
+		assert.Equal(t, []v2model.Ref{v2model.RefGetSchema("document")}, typed.Issues[0].SeeAlso)
 	})
 
 	t.Run("an unknown property's guess carries the list reference the list-all branch carries", func(t *testing.T) {

@@ -32,7 +32,7 @@ func TestV2Schemas(t *testing.T) {
 			assert.NotEmpty(t, entry.Endpoint, entry.Kind)
 			assert.Equal(t, "/v2/schemas/"+entry.Kind, entry.Url)
 		}
-		for _, want := range []string{"object", "shortcut", "type", "type_document", "template", "property", "query", "collection", "file", "filters", "search", "space", "chat", "chatMessage", "chatMessageEdit", "chatReaction", "chatRead"} {
+		for _, want := range []string{"object", "shortcut", "type", "type_document", "template", "document", "property", "query", "collection", "file", "filters", "search", "space", "chat", "chatMessage", "chatMessageEdit", "chatReaction", "chatRead"} {
 			assert.True(t, kinds[want], "missing kind %s", want)
 		}
 	})
@@ -210,7 +210,7 @@ func TestV2Schemas(t *testing.T) {
 		// apiv2schema_test.go; this pins that discovery serves that artifact.
 		entry, err := fx.SchemaKind("object")
 		require.NoError(t, err)
-		want, err := strictDiscoverySchema(apiV2DocumentSchema())
+		want, err := strictDiscoverySchema(apiV2KindSchema("object"))
 		require.NoError(t, err)
 		assert.JSONEq(t, string(want), string(entry.Schema))
 	})
@@ -350,10 +350,12 @@ func TestDiscoverySchemasAreClosedAndBounded(t *testing.T) {
 	assert.Empty(t, badReferences)
 	sort.Strings(cycles)
 	assert.Equal(t, []string{
+		"document: filterNode -> filterNode",
 		"filters: filterNode -> filterNode",
 		"object: filterNode -> filterNode",
 		"template: filterNode -> filterNode",
-		"type_document: filterNode -> filterNode",
+		// type_document has no view tree: the block family, and with it
+		// the filter node, is pruned from its narrowed schema
 	}, cycles)
 }
 
@@ -509,7 +511,7 @@ func decodeDiscoveryPointerPart(value string) string {
 
 func TestAnyBlockDiscoveryExamplesValidateAgainstServedSchema(t *testing.T) {
 	fx := newV2FixtureBare(t)
-	for _, kind := range []string{"object", "type", "type_document", "template"} {
+	for _, kind := range []string{"object", "type", "type_document", "template", "document"} {
 		entry, err := fx.SchemaKind(kind)
 		require.NoError(t, err)
 		assert.NoError(t, validateAgainstSchema(t, entry.Schema, entry.Example), kind)

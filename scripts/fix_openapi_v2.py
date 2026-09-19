@@ -4,6 +4,7 @@
 import json
 import pathlib
 import re
+import subprocess
 import sys
 from copy import deepcopy
 
@@ -483,13 +484,91 @@ UPLOAD_YAML = """      requestBody:
 """
 
 
-def fix_json(path: pathlib.Path) -> None:
+# swag emits a bare `{"type": "object"}` for every body it cannot describe
+# from a Go struct: the create/patch bodies whose shape is a served discovery
+# schema. cmd/openapibodies prints the schema each of them publishes (composed
+# in core/api/v2/service/openapibodies.go) as JSON and as a YAML fragment;
+# both documents get the same splice, and core/api/openapibodies_test.go pins
+# the embedded document to that composition.
+def request_bodies(directory: pathlib.Path) -> dict:
+    root = pathlib.Path(__file__).resolve().parents[1]
+    result = subprocess.run(["go", "run", "./cmd/openapibodies"], cwd=root, capture_output=True, text=True)
+    if result.returncode != 0:
+        raise SystemExit(f"cmd/openapibodies failed:\n{result.stderr}")
+    return json.loads(result.stdout)
+
+
+def operation_locations(doc: dict) -> dict[str, tuple[str, str]]:
+    locations = {}
+    for path, item in doc["paths"].items():
+        for method, operation in item.items():
+            if isinstance(operation, dict) and "operationId" in operation:
+                locations[operation["operationId"]] = (path, method)
+    return locations
+
+
+def apply_request_bodies(doc: dict, bodies: dict) -> None:
+    locations = operation_locations(doc)
+    for operation_id, body in bodies["bodies"].items():
+        if operation_id not in locations:
+            raise ValueError(f"composed body for unknown operation {operation_id}")
+        path, method = locations[operation_id]
+        content = doc["paths"][path][method]["requestBody"]["content"]
+        if content["application/json"]["schema"] != {"type": "object"}:
+            raise ValueError(f"{operation_id} no longer declares a bare object body; drop its composed body or the annotation")
+        content["application/json"]["schema"] = body["json"]
+    for name, component in bodies["components"].items():
+        if name in doc["components"]["schemas"]:
+            raise ValueError(f"component {name} already exists in the generated document")
+        doc["components"]["schemas"][name] = component["json"]
+
+
+def indented(fragment: str, indent: int) -> list[str]:
+    return [" " * indent + line + "\n" for line in fragment.rstrip("\n").splitlines()]
+
+
+def yaml_block_end(lines: list[str], start: int, indent: int) -> int:
+    return next((i for i in range(start + 1, len(lines))
+                 if lines[i].strip() and len(lines[i]) - len(lines[i].lstrip()) <= indent), len(lines))
+
+
+def apply_yaml_request_bodies(lines: list[str], bodies: dict, locations: dict[str, tuple[str, str]]) -> list[str]:
+    for operation_id, body in bodies["bodies"].items():
+        path, method = locations[operation_id]
+        path_start = lines.index(f"  {path}:\n")
+        path_end = yaml_block_end(lines, path_start, 2)
+        method_start = lines.index(f"    {method}:\n", path_start, path_end)
+        method_end = yaml_block_end(lines, method_start, 4)
+        request = lines.index("      requestBody:\n", method_start, method_end)
+        request_end = yaml_block_end(lines, request, 6)
+        schema = lines.index("            schema:\n", request, request_end)
+        schema_end = yaml_block_end(lines, schema, 12)
+        if lines[schema + 1:schema_end] != ["              type: object\n"]:
+            raise ValueError(f"{operation_id}: the YAML body is not the bare object swag emits")
+        lines[schema + 1:schema_end] = indented(body["yaml"], 14)
+    components = lines.index("components:\n")
+    schemas = lines.index("  schemas:\n", components + 1)
+    schemas_end = yaml_block_end(lines, schemas, 2)
+    for name in sorted(bodies["components"], reverse=True):
+        # alphabetical among the existing top-level component keys
+        keys = [(i, lines[i][4:-2]) for i in range(schemas + 1, schemas_end)
+                if lines[i].startswith("    ") and not lines[i].startswith("     ") and lines[i].rstrip().endswith(":")]
+        if any(key == name for _, key in keys):
+            raise ValueError(f"component {name} already exists in the generated YAML")
+        at = next((i for i, key in keys if key > name), schemas_end)
+        lines[at:at] = [f"    {name}:\n"] + indented(bodies["components"][name]["yaml"], 6)
+        schemas_end = yaml_block_end(lines, schemas, 2)
+    return lines
+
+
+def fix_json(path: pathlib.Path, bodies: dict) -> None:
     doc = json.loads(path.read_text())
     auth_paths, auth_schemas = shared_auth_document(path.parent)
     doc["paths"].update(auth_paths)
     doc["components"]["schemas"].update(auth_schemas)
     doc["components"]["securitySchemes"]["bearerauth"].pop("bearerFormat", None)
     doc["paths"]["/v2/spaces/{space_id}/files"]["post"]["requestBody"] = upload_request_body()
+    apply_request_bodies(doc, bodies)
     apply_response_policies(doc)
     apply_stream_content_type(doc)
     apply_file_responses(doc)
@@ -641,7 +720,7 @@ def apply_yaml_response_policies(lines: list[str]) -> list[str]:
     return lines
 
 
-def fix_yaml(path: pathlib.Path) -> None:
+def fix_yaml(path: pathlib.Path, bodies: dict) -> None:
     lines = [line for line in path.read_text().splitlines(keepends=True)
              if line.strip() != "bearerFormat: JWT"]
     lines = copy_yaml_auth(lines, path.parent)
@@ -658,6 +737,7 @@ def fix_yaml(path: pathlib.Path) -> None:
         lines[existing:schemas] = RESPONSES_YAML.splitlines(keepends=True)
     else:
         lines[schemas:schemas] = RESPONSES_YAML.splitlines(keepends=True)
+    lines = apply_yaml_request_bodies(lines, bodies, operation_locations(json.loads((path.parent / "openapi.json").read_text())))
     lines = apply_yaml_response_policies(lines)
     lines = apply_yaml_stream_content_type(lines)
     lines = apply_yaml_file_responses(lines)
@@ -706,8 +786,9 @@ def main() -> None:
         raise SystemExit("usage: fix_openapi_v2.py <v2-openapi-directory>")
     directory = pathlib.Path(sys.argv[1])
     fix_shared_auth_grant(directory)
-    fix_json(directory / "openapi.json")
-    fix_yaml(directory / "openapi.yaml")
+    bodies = request_bodies(directory)
+    fix_json(directory / "openapi.json", bodies)
+    fix_yaml(directory / "openapi.yaml", bodies)
     fix_introduction(directory)
 
 

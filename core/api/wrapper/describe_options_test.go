@@ -288,10 +288,11 @@ func TestCreateTypePreflightPrefixFollowsTheStatus(t *testing.T) {
 		require.Error(t, err)
 		assert.NotContains(t, err.Error(), "check the type name and formats")
 		assert.Contains(t, err.Error(), "the pre-flight failed")
+		assert.Contains(t, err.Error(), "nothing was created")
 		assert.Contains(t, err.Error(), "could not verify type")
 	})
 
-	t.Run("an undecodable reply gets the neutral prefix, whatever its status", func(t *testing.T) {
+	t.Run("an undecodable reply gets the neutral prefix, whatever its status — the pre-flight could not be completed, and nothing was created", func(t *testing.T) {
 		for name, status := range map[string]int{"a 200 that is not JSON": 200, "a 400 that is not JSON": 400} {
 			t.Run(name, func(t *testing.T) {
 				fx := newFixture(t)

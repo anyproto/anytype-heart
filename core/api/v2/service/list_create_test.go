@@ -449,3 +449,102 @@ func TestV2CreateQueryDateFiltersTakeDateStrings(t *testing.T) {
 		assert.Equal(t, `property "lastModifiedDate" is a date, and "soon" is not one`, apiErr.Issues[0].Message)
 	})
 }
+
+// TestV2CreateQueryRefusalsNameTheCallersSpelling is round-six R6-7 on the
+// query-create channel: the request's property spellings are canonicalized to
+// stored keys before validation, because the query DOCUMENT persists those
+// keys, so a refusal that read its property from the rewritten tree named a
+// spelling the caller never sent — for a space-minted property a 24-hex id
+// they cannot look up. Each gate now reads the reference the caller wrote and
+// resolves the stored key beside it.
+func TestV2CreateQueryRefusalsNameTheCallersSpelling(t *testing.T) {
+	const hexKey = "6aadcde161fab2f86565765c"
+
+	// a space-minted date property the type does NOT recommend: stored key a
+	// bson id, served as its slug
+	setup := func(t *testing.T) *v2Fixture {
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.addTaskType(t) // type "chore" recommending "severity"
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("rel-close-date"),
+			bundle.RelationKeyRelationKey:    domain.String(hexKey),
+			bundle.RelationKeyApiObjectKey:   domain.String("close_date"),
+			bundle.RelationKeyName:           domain.String("Close date"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_date)),
+		})
+		return fx
+	}
+
+	t.Run("M3's missing-condition refusal names the slug the caller sent", func(t *testing.T) {
+		// given
+		fx := setup(t)
+
+		// when — no creator expectation: reaching the create path fails the test
+		_, err := fx.CreateQuery(context.Background(), testSpaceId, v2model.CreateQueryRequest{
+			Name: "Closing soon", Type: "chore",
+			Filters: json.RawMessage(`[{"property":"close_date"}]`),
+		}, false, true)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/filters/0/condition", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, `filter on "close_date" has no condition`)
+		assert.NotContains(t, apiErr.Issues[0].Message, hexKey)
+	})
+
+	t.Run("a display name under ?keys=name is not answered with a slug", func(t *testing.T) {
+		// given
+		fx := setup(t)
+
+		// when
+		_, err := fx.CreateQuery(CtxWithNameKeys(context.Background()), testSpaceId, v2model.CreateQueryRequest{
+			Name: "Closing soon", Type: "chore",
+			Filters: json.RawMessage(`[{"property":"Close date","condition":"empty"}]`),
+		}, false, true)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/filters/0/property", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, `type "chore" has no property "Close date"`)
+		assert.NotContains(t, apiErr.Issues[0].Message, hexKey)
+		assert.NotContains(t, apiErr.Issues[0].Message, "close_date",
+			"a name-mode caller is answered in names, not in the slug the served vocabulary happens to use")
+	})
+
+	t.Run("the removal gate's repair names the spelling the caller sent", func(t *testing.T) {
+		// given — the space removed the bundled `dueDate` property, and the
+		// type still recommends the corpse: nothing strips a deleted relation
+		// from a type's recommended lists (§8.41)
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:            domain.String("rel-due-date"),
+			bundle.RelationKeyRelationKey:   domain.String("dueDate"),
+			bundle.RelationKeyName:          domain.String("Due date"),
+			bundle.RelationKeyIsUninstalled: domain.Bool(true),
+		})
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:                           domain.String("type-chore"),
+			bundle.RelationKeyName:                         domain.String("Chore"),
+			bundle.RelationKeyUniqueKey:                    domain.String("ot-chore"),
+			bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{"rel-severity", "rel-due-date"}),
+		})
+
+		// when — the caller filters on the spelling the surface serves
+		_, err := fx.CreateQuery(context.Background(), testSpaceId, v2model.CreateQueryRequest{
+			Name: "Overdue chores", Type: "chore",
+			Filters: json.RawMessage(`[{"property":"due_date","condition":"not_empty"}]`),
+		}, false, true)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Message, `property "due_date" was removed from this space`)
+		assert.Contains(t, apiErr.Issues[0].Hint, `remove "due_date" from the request`)
+		assert.NotContains(t, apiErr.Issues[0].Hint, `"dueDate"`,
+			"the repair is written in the spelling the request used — removing a key it never contained is no repair")
+	})
+}

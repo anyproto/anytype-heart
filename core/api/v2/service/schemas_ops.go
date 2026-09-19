@@ -337,7 +337,7 @@ func v2ViewCreateFieldsDef() string {
 			field["enum"] = withoutNull(enum)
 		}
 	}
-	fields["filters"]["description"] = "filter nodes (schema kind filters), at most 32 at the top level (group more under and/or nodes); a created view takes nodes only — the compact string is the query's top-level filter"
+	fields["filters"]["description"] = "filter nodes (schema kind filters), at most 32 at the top level (group more under and/or nodes); a created view takes nodes only; the compact string is the query's top-level filter"
 	out, err := json.Marshal(fields)
 	if err != nil {
 		panic(fmt.Sprintf("view create field defs: %v", err))

@@ -134,7 +134,7 @@ func (s *Service) deleteDerivedObject(id domain.FullID, sbType coresb.SmartBlock
 	// it to a tombstone gave the deleting device a second shape for one
 	// session that nothing else ever had; the API's removed-type and
 	// removed-property lookups read the corpse row.
-	s.closeAndMarkDeleted(id)
+	s.closeAndMarkDeleted(id, nil)
 	switch sbType {
 	case coresb.SmartBlockTypeRelation:
 		if err = s.deleteRelationOptions(id.SpaceID, relationKey); err != nil {
@@ -210,8 +210,8 @@ func (s *Service) DeleteObject(objectId string) (err error) {
 // closeAndMarkDeleted is the in-memory half of a delete: the sessions
 // close and the smartblock is marked deleted, so no further Apply lands on
 // it. Failures are logged, never returned — the delete proceeds.
-// workspaceRemove, when given, runs inside the same lock.
-func (s *Service) closeAndMarkDeleted(id domain.FullID, workspaceRemove ...func() error) {
+// workspaceRemove, when not nil, runs inside the same lock.
+func (s *Service) closeAndMarkDeleted(id domain.FullID, workspaceRemove func() error) {
 	err := s.DoFullId(id, func(b smartblock.SmartBlock) error {
 		b.ObjectCloseAllSessions()
 		st := b.NewState()
@@ -220,10 +220,8 @@ func (s *Service) closeAndMarkDeleted(id domain.FullID, workspaceRemove ...func(
 			log.With("objectId", id).Errorf("failed to favorite object: %v", err)
 		}
 		b.SetIsDeleted()
-		for _, remove := range workspaceRemove {
-			if remove != nil {
-				return remove()
-			}
+		if workspaceRemove != nil {
+			return workspaceRemove()
 		}
 		return nil
 	})
@@ -232,9 +230,11 @@ func (s *Service) closeAndMarkDeleted(id domain.FullID, workspaceRemove ...func(
 	}
 }
 
-// BeforeDelete is the delete of an object whose TREE goes away: the
-// in-memory half, then the index row stripped to a tombstone (the store's
-// DeleteObject). A derived object — whose tree stays — takes
+// BeforeDelete prepares the delete of an object whose TREE goes away: the
+// in-memory half (sessions, the favourite, the deleted flag — all
+// best-effort, logged), then the index row stripped to a tombstone by the
+// store's DeleteObject, whose failure IS returned. It does not delete the
+// tree itself. A derived object — whose tree stays — takes
 // deleteDerivedObject instead, which keeps its index row.
 func (s *Service) BeforeDelete(id domain.FullID, workspaceRemove func() error) error {
 	s.closeAndMarkDeleted(id, workspaceRemove)

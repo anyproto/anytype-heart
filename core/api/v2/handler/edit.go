@@ -36,7 +36,7 @@ func respondV2Edit(c *gin.Context, result *v2model.EditResult) {
 //	@Param			dry_run					query		bool				false	"Validate and report without committing"
 //	@Param			ids						query		string				false	"ID spelling in created_blocks and created_views"	Enums(compact,full)	default(compact)
 //	@Param			create_missing_options	query		bool				false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
-//	@Param			body					body		object				true	"PATCH ops envelope, an array of ops. Body schema and example per op: GET /v2/schemas/ops/<op>"
+//	@Param			body					body		object				true	"Ops envelope, an array of ops applied as one edit"
 //	@Success		200						{object}	v2model.EditResult	"New etag + created block ids + diff_stats"
 //	@Failure		400						{object}	v2model.Error		"Invalid ops or post-op document"
 //	@Failure		404						{object}	v2model.Error		"Object, space, or referenced block not found"

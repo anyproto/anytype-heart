@@ -15,6 +15,7 @@ package v2service
 // with the same validation a whole document gets.
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
@@ -128,6 +129,10 @@ type v2StateApplier struct {
 	// §6.2 unguarded-date-comparison trap from an update_view filter edit);
 	// applyPatchOps surfaces them on the EditResult.
 	warnings []v2model.Issue
+	// spaceLinkExp expands the space reference of a cross-space object link
+	// in any text this PATCH imports. One per PATCH: its census read and its
+	// per-reference warnings are request-scoped (spacelinks.go).
+	spaceLinkExp *spaceLinkExpander
 
 	// createdViews maps each insert_view op ("ops[i]") to the view id it
 	// minted — the view-family twin of createdBlocks (ids are always
@@ -963,7 +968,7 @@ func (a *v2StateApplier) fragmentBlocks(base string, run []map[string]any) ([]*m
 	if err != nil {
 		return nil, nil, invalidFragmentError(base, err)
 	}
-	expandSpaceRefsInBlocks(blocks, a.spaceRefExpander())
+	a.spaceLinks().Blocks(blocks)
 	return blocks, topIds, nil
 }
 
@@ -1465,6 +1470,20 @@ func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath
 	return spellings, nil
 }
 
+// spaceLinks is the PATCH's one cross-space link expander, built on the
+// request context the resolvers captured (the op appliers run without a ctx
+// of their own).
+func (a *v2StateApplier) spaceLinks() *spaceLinkExpander {
+	if a.spaceLinkExp == nil {
+		ctx := context.Background()
+		if a.resolvers != nil {
+			ctx = a.resolvers.ctx
+		}
+		a.spaceLinkExp = a.s.newSpaceLinkExpander(ctx)
+	}
+	return a.spaceLinkExp
+}
+
 // propertyFormat resolves a property key's format for its relation link
 // (bundle first, then the space, per §3).
 func (a *v2StateApplier) propertyFormat(key string) model.RelationFormat {
@@ -1576,7 +1595,7 @@ func (a *v2StateApplier) applyUpdateBlock(op opUpdateBlock, opPath string) error
 		return invalidPayloadError(opPath+".set", "/blocks/0",
 			func(member string) bool { _, ok := op.Set[member]; return ok }, err)
 	}
-	expandSpaceRefsInBlocks(blocks, a.spaceRefExpander())
+	a.spaceLinks().Blocks(blocks)
 	if err := a.claimPayloadIds(blocks, collectSubtreeIds(a.st, fullId), func(string) string { return opPath + ".set" }); err != nil {
 		return err
 	}
@@ -2168,7 +2187,7 @@ func (a *v2StateApplier) applyReplaceText(op opReplaceText, opPath string) error
 				}
 				return invalidDocError(err)
 			}
-			expandSpaceRefsInMarks(marks, a.spaceRefExpander())
+			a.spaceLinks().Marks(marks)
 			content.Text.Text = plain
 			if len(marks) == 0 {
 				content.Text.Marks = nil
@@ -2475,7 +2494,7 @@ func (a *v2StateApplier) applySetCell(op opSetCell, opPath string) error {
 		return invalidPayloadError(opPath+".value",
 			fmt.Sprintf("/blocks/0/rows/%d/cells/%d", ri, ci), nil, err)
 	}
-	expandSpaceRefsInBlocks(blocks, a.spaceRefExpander())
+	a.spaceLinks().Blocks(blocks)
 	if err := a.claimPayloadIds(blocks, collectSubtreeIds(a.st, fullId), func(string) string { return opPath + ".value" }); err != nil {
 		return err
 	}

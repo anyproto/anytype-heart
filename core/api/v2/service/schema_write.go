@@ -152,7 +152,7 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 			return nil, err
 		}
 	}
-	if _, ok := fields["blocks"]; ok {
+	if _, ok := fields[typeDocumentRefusedOnCreate]; ok {
 		// deferred: a type's dataview block on create (the editor generates
 		// default views at first open — SPEC §2a); explicit beats silent loss
 		return nil, v2model.ValidationFailed("type blocks are not supported on create",
@@ -290,7 +290,9 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	if err := resolvers.err(); err != nil {
 		return nil, fmt.Errorf("resolve type properties: %w", err)
 	}
-	expandSpaceRefsInBlocks(snapshot.Blocks, s.spaceRefExpander(ctx))
+	// no cross-space link expansion here: a type document's `blocks` are
+	// refused on create (above), so this snapshot carries no text marks;
+	// a template's document goes through createFromDocument, which expands.
 	// the declared select vocabulary, before the dry-run return: a dry run's
 	// job is to preview what the real run does, and options it never mentions
 	// are options a caller does not know they are about to create
@@ -608,6 +610,11 @@ func (p v2TypePatch) propertyDefinitions() *[]anyblockjson.TypeProperty {
 	}
 	return p.TypeSettings.PropertyDefinitions
 }
+
+// typeDocumentRefusedOnCreate is the type-document member POST types
+// refuses: a type gets its views generated for it. The discovery schema for
+// kind type_document drops the same member (apiV2KindNarrowings).
+const typeDocumentRefusedOnCreate = "blocks"
 
 // UpdateType implements PATCH /v2/spaces/{space_id}/types/{type}.
 func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch string, body []byte, dryRun, createMissingOptions bool) (result *v2model.CreateResult, err error) {

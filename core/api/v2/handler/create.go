@@ -96,7 +96,7 @@ func respondV2Create(c *gin.Context, result *v2model.CreateResult, createdStatus
 //	@Param			space_id				path		string					true	"Space id"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
-//	@Param			body					body		object					true	"AnyBlock object document. Body schema and example: GET /v2/schemas/object"
+//	@Param			body					body		object					true	"The shortcut body, or an AnyBlock object document"
 //	@Success		201						{object}	v2model.CreateResult	"Created object id + etag"
 //	@Failure		400						{object}	v2model.Error			"Validation or reference failure"
 //	@Security		bearerauth
@@ -127,7 +127,7 @@ func CreateObjectHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param			space_id				path		string					true	"Space id"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
-//	@Param			body					body		object					true	"AnyBlock template document. Body schema and example: GET /v2/schemas/template"
+//	@Param			body					body		object					true	"AnyBlock template document"
 //	@Success		201						{object}	v2model.CreateResult	"Created template id"
 //	@Failure		400						{object}	v2model.Error			"Validation or reference failure"
 //	@Security		bearerauth
@@ -158,7 +158,7 @@ func CreateTemplateHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param			space_id				path		string					true	"Space id"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
-//	@Param			body					body		object					true	"Flat type body: GET /v2/schemas/type. Full document: GET /v2/schemas/type_document"
+//	@Param			body					body		object					true	"The flat type body, or the type as an AnyBlock document"
 //	@Success		201						{object}	v2model.CreateResult	"Created type id + key"
 //	@Failure		400						{object}	v2model.Error			"Validation failure"
 //	@Security		bearerauth
@@ -191,7 +191,7 @@ func CreateTypeHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param			type					path		string					true	"Type key"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
-//	@Param			body					body		object					true	"Either an ops envelope (GET /v2/schemas/ops/add_property) or the fields of the type to change (GET /v2/schemas/type)"
+//	@Param			body					body		object					true	"The fields of the type to change, or an ops envelope"
 //	@Success		200						{object}	v2model.CreateResult	"Updated type"
 //	@Failure		404						{object}	v2model.Error			"Type not found"
 //	@Security		bearerauth
@@ -245,7 +245,7 @@ func DeleteTypeHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
-//	@Param			body		body		object					true	"Property to create. Body schema and example: GET /v2/schemas/property"
+//	@Param			body		body		object					true	"Property to create"
 //	@Success		201			{object}	v2model.CreateResult	"Created property id + key"
 //	@Failure		400			{object}	v2model.Error			"Validation failure"
 //	@Failure		413			{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
@@ -278,7 +278,7 @@ func CreatePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			key			path		string					true	"Property key"
-//	@Param			body		body		object					true	"Fields of the property to change. Body schema and example: GET /v2/schemas/property"
+//	@Param			body		body		object					true	"The new display name"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
 //	@Success		200			{object}	v2model.CreateResult	"Updated property"
 //	@Failure		400			{object}	v2model.Error			"Validation failure"
@@ -338,7 +338,7 @@ func DeletePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param			space_id				path		string					true	"Space id"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
-//	@Param			body					body		object					true	"Query to create. Body schema and example: GET /v2/schemas/query"
+//	@Param			body					body		object					true	"Query to create"
 //	@Success		201						{object}	v2model.CreateResult	"Created query id"
 //	@Failure		400						{object}	v2model.Error			"Validation or reference failure"
 //	@Failure		413						{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
@@ -371,7 +371,7 @@ func CreateQueryHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
-//	@Param			body		body		object					true	"Collection to create. Body schema and example: GET /v2/schemas/collection"
+//	@Param			body		body		object					true	"Collection to create"
 //	@Success		201			{object}	v2model.CreateResult	"Created collection id"
 //	@Failure		400			{object}	v2model.Error			"Validation or reference failure"
 //	@Failure		413			{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
@@ -536,7 +536,7 @@ func SchemaIndexHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id			get_schema
 //	@Tags		Schemas
 //	@Produce	json
-//	@Param		kind	path		string				true	"Schema kind, as listed by GET /v2/schemas"
+//	@Param		kind	path		string				true	"Schema kind, as listed by list_schemas"
 //	@Success	200		{object}	v2model.SchemaEntry	"Schema + example"
 //	@Failure	404		{object}	v2model.Error		"Unknown kind"
 //	@Security	bearerauth
