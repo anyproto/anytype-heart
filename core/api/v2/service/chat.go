@@ -229,7 +229,8 @@ func (s *Service) AddChatMessage(ctx context.Context, spaceId, chatId string, re
 		return nil, v2model.ValidationFailed("message text does not parse as inline markup",
 			v2model.Issue{Path: "/text", Message: err.Error(), Hint: v2MarkupHint})
 	}
-	expandSpaceRefsInMarks(marks, s.spaceRefExpander(ctx))
+	links := s.newSpaceLinkExpander(ctx)
+	links.Marks(marks)
 	if err := v2ValidateChatTextLength(text); err != nil {
 		return nil, err
 	}
@@ -238,7 +239,7 @@ func (s *Service) AddChatMessage(ctx context.Context, spaceId, chatId string, re
 		return nil, err
 	}
 	if dryRun {
-		return &v2model.ChatMessageResult{DryRun: true}, nil
+		return &v2model.ChatMessageResult{DryRun: true, Warnings: links.Warnings("/text")}, nil
 	}
 	resp := s.mw.ChatAddMessage(ctx, &pb.RpcChatAddMessageRequest{
 		ChatObjectId: chatId,
@@ -255,7 +256,7 @@ func (s *Service) AddChatMessage(ctx context.Context, spaceId, chatId string, re
 	if resp.Error != nil && resp.Error.Code != pb.RpcChatAddMessageResponseError_NULL {
 		return nil, v2ChatRpcError("add chat message", int32(resp.Error.Code), int32(pb.RpcChatAddMessageResponseError_BAD_INPUT), resp.Error.Description)
 	}
-	return &v2model.ChatMessageResult{Id: resp.MessageId}, nil
+	return &v2model.ChatMessageResult{Id: resp.MessageId, Warnings: links.Warnings("/text")}, nil
 }
 
 // EditChatMessage implements PATCH .../messages/{message_id} as a text-only
@@ -273,7 +274,8 @@ func (s *Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageI
 		return nil, v2model.ValidationFailed("message text does not parse as inline markup",
 			v2model.Issue{Path: "/text", Message: err.Error(), Hint: v2MarkupHint})
 	}
-	expandSpaceRefsInMarks(marks, s.spaceRefExpander(ctx))
+	links := s.newSpaceLinkExpander(ctx)
+	links.Marks(marks)
 	if err := v2ValidateChatTextLength(text); err != nil {
 		return nil, err
 	}
@@ -286,7 +288,7 @@ func (s *Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageI
 			v2model.Issue{Path: "/text", Message: "the edited text is empty and the message has no attachments"})
 	}
 	if dryRun {
-		return &v2model.ChatMessageResult{Id: messageId, DryRun: true}, nil
+		return &v2model.ChatMessageResult{Id: messageId, DryRun: true, Warnings: links.Warnings("/text")}, nil
 	}
 	edited := &model.ChatMessage{
 		Message: &model.ChatMessageMessageContent{
@@ -307,7 +309,7 @@ func (s *Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageI
 	if resp.Error != nil && resp.Error.Code != pb.RpcChatEditMessageContentResponseError_NULL {
 		return nil, v2ChatRpcError("edit chat message", int32(resp.Error.Code), int32(pb.RpcChatEditMessageContentResponseError_BAD_INPUT), resp.Error.Description)
 	}
-	return &v2model.ChatMessageResult{Id: messageId}, nil
+	return &v2model.ChatMessageResult{Id: messageId, Warnings: links.Warnings("/text")}, nil
 }
 
 // DeleteChatMessage implements DELETE .../messages/{message_id}. BOTH paths
