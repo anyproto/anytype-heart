@@ -3,6 +3,7 @@ package participantwatcher
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
@@ -277,4 +278,54 @@ func TestConvertPermissions_Reader(t *testing.T) {
 
 func TestConvertPermissions_None(t *testing.T) {
 	require.Equal(t, model.ParticipantPermissions_NoPermissions, convertPermissions(list.AclPermissionsNone))
+}
+
+// TestWatchParticipantUnderAclWriteLock covers GO-7525: WatchParticipant runs inside the
+// aclobjectmanager UpdateAcl callback, which any-sync calls with the ACL write lock held, so it
+// must not read the ACL back through the space. sync.RWMutex is not reentrant, and the writer
+// that never returns strands every reader in the space.
+func TestWatchParticipantUnderAclWriteLock(t *testing.T) {
+	executor := list.NewAclExecutor(testSpaceId)
+	require.NoError(t, executor.Execute("a.init::a"))
+	acl := executor.ActualAccounts()["a"].Acl
+
+	fx := newWatcherFixture(t)
+	// mirrors clientspace.(*space).IsOneToOne, which takes the acl read lock. A double that
+	// answers without touching the lock is what let this deadlock through review.
+	fx.space.EXPECT().IsOneToOne().RunAndReturn(func() bool {
+		acl.RLock()
+		defer acl.RUnlock()
+		return acl.AclState().IsOneToOne()
+	}).Maybe()
+
+	memberKeys, err := accountdata.NewRandom()
+	require.NoError(t, err)
+	md, symKey, err := domain.DeriveAccountMetadata(memberKeys.SignKey)
+	require.NoError(t, err)
+	metadata, err := md.Marshal()
+	require.NoError(t, err)
+
+	accState := list.AccountState{
+		PubKey:          memberKeys.SignKey.GetPublic(),
+		Permissions:     list.AclPermissions(aclrecordproto.AclUserPermissions_Writer),
+		Status:          list.StatusActive,
+		RequestMetadata: metadata,
+	}
+	fx.identityService.EXPECT().
+		RegisterIdentity(testSpaceId, memberKeys.SignKey.GetPublic().Account(), symKey).
+		Return(nil).Once()
+
+	done := make(chan error, 1)
+	go func() {
+		// exactly how any-sync enters the UpdateAcl callback this runs under
+		acl.Lock()
+		defer acl.Unlock()
+		done <- fx.WatchParticipant(context.Background(), fx.space, accState, false)
+	}()
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("WatchParticipant deadlocked: it read the acl while the write lock was held")
+	}
 }

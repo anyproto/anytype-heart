@@ -352,17 +352,17 @@ func (_c *MockParticipantWatcher_UpdateParticipantFromAclState_Call) RunAndRetur
 	return _c
 }
 
-// WatchParticipant provides a mock function with given fields: ctx, space, accState
-func (_m *MockParticipantWatcher) WatchParticipant(ctx context.Context, space clientspace.Space, accState list.AccountState) error {
-	ret := _m.Called(ctx, space, accState)
+// WatchParticipant provides a mock function with given fields: ctx, space, accState, isOneToOne
+func (_m *MockParticipantWatcher) WatchParticipant(ctx context.Context, space clientspace.Space, accState list.AccountState, isOneToOne bool) error {
+	ret := _m.Called(ctx, space, accState, isOneToOne)
 
 	if len(ret) == 0 {
 		panic("no return value specified for WatchParticipant")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, list.AccountState) error); ok {
-		r0 = rf(ctx, space, accState)
+	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, list.AccountState, bool) error); ok {
+		r0 = rf(ctx, space, accState, isOneToOne)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -379,13 +379,14 @@ type MockParticipantWatcher_WatchParticipant_Call struct {
 //   - ctx context.Context
 //   - space clientspace.Space
 //   - accState list.AccountState
-func (_e *MockParticipantWatcher_Expecter) WatchParticipant(ctx interface{}, space interface{}, accState interface{}) *MockParticipantWatcher_WatchParticipant_Call {
-	return &MockParticipantWatcher_WatchParticipant_Call{Call: _e.mock.On("WatchParticipant", ctx, space, accState)}
+//   - isOneToOne bool
+func (_e *MockParticipantWatcher_Expecter) WatchParticipant(ctx interface{}, space interface{}, accState interface{}, isOneToOne interface{}) *MockParticipantWatcher_WatchParticipant_Call {
+	return &MockParticipantWatcher_WatchParticipant_Call{Call: _e.mock.On("WatchParticipant", ctx, space, accState, isOneToOne)}
 }
 
-func (_c *MockParticipantWatcher_WatchParticipant_Call) Run(run func(ctx context.Context, space clientspace.Space, accState list.AccountState)) *MockParticipantWatcher_WatchParticipant_Call {
+func (_c *MockParticipantWatcher_WatchParticipant_Call) Run(run func(ctx context.Context, space clientspace.Space, accState list.AccountState, isOneToOne bool)) *MockParticipantWatcher_WatchParticipant_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(clientspace.Space), args[2].(list.AccountState))
+		run(args[0].(context.Context), args[1].(clientspace.Space), args[2].(list.AccountState), args[3].(bool))
 	})
 	return _c
 }
@@ -395,7 +396,7 @@ func (_c *MockParticipantWatcher_WatchParticipant_Call) Return(_a0 error) *MockP
 	return _c
 }
 
-func (_c *MockParticipantWatcher_WatchParticipant_Call) RunAndReturn(run func(context.Context, clientspace.Space, list.AccountState) error) *MockParticipantWatcher_WatchParticipant_Call {
+func (_c *MockParticipantWatcher_WatchParticipant_Call) RunAndReturn(run func(context.Context, clientspace.Space, list.AccountState, bool) error) *MockParticipantWatcher_WatchParticipant_Call {
 	_c.Call.Return(run)
 	return _c
 }

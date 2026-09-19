@@ -58,7 +58,11 @@ var log = logger.NewNamed(CName)
 
 type ParticipantWatcher interface {
 	app.ComponentRunnable
-	WatchParticipant(ctx context.Context, space clientspace.Space, accState list.AccountState) error
+	// WatchParticipant registers a participant's identity for tracking. isOneToOne is passed in
+	// by the caller rather than read from the space: this runs inside the aclobjectmanager
+	// UpdateAcl callback, which any-sync invokes with the ACL write lock held, so reading the ACL
+	// back through the space would deadlock the space (GO-7525).
+	WatchParticipant(ctx context.Context, space clientspace.Space, accState list.AccountState, isOneToOne bool) error
 	UpdateParticipantFromAclState(ctx context.Context, space clientspace.Space, accState list.AccountState) error
 	// WatchPersistedParticipants registers all participant identities found in the
 	// space's object index for identity tracking, using previously persisted
@@ -143,7 +147,7 @@ func (p *participantWatcher) getOneToOneKey(space clientspace.Space, state list.
 	return
 
 }
-func (p *participantWatcher) WatchParticipant(ctx context.Context, space clientspace.Space, state list.AccountState) (err error) {
+func (p *participantWatcher) WatchParticipant(ctx context.Context, space clientspace.Space, state list.AccountState, isOneToOne bool) (err error) {
 	p.mx.Lock()
 	defer p.mx.Unlock()
 	accKey := state.PubKey.Account()
@@ -152,7 +156,7 @@ func (p *participantWatcher) WatchParticipant(ctx context.Context, space clients
 	}
 	var key crypto.SymKey
 
-	if space.IsOneToOne() {
+	if isOneToOne {
 		key, err = p.getOneToOneKey(space, state)
 	} else {
 		key, err = getSymKey(state.RequestMetadata)

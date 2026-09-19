@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -61,7 +62,7 @@ func TestAclObjectManager(t *testing.T) {
 				require.True(t, state.PubKey.Equals(acl.AclState().Identity()))
 				return nil
 			})
-		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
+		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetAclInfo(true, nil, nil, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetMyParticipantStatus(mock.Anything).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
@@ -110,7 +111,7 @@ func TestAclObjectManager(t *testing.T) {
 				}
 				return nil
 			})
-		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
+		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetAclInfo(false, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetMyParticipantStatus(mock.Anything).Return(nil)
 		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
@@ -153,7 +154,7 @@ func TestAclObjectManager(t *testing.T) {
 				require.True(t, state.PubKey.Equals(a.ActualAccounts()["a"].Keys.SignKey.GetPublic()))
 				return nil
 			})
-		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
+		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetAclInfo(false, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetMyParticipantStatus(model.ParticipantStatus_Removed).Return(nil)
 		fx.mockStatus.EXPECT().SetPersistentStatus(spaceinfo.AccountStatusDeleted).Return(nil)
@@ -225,7 +226,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockParticipantWatcher.EXPECT().SetProcessedAclHeadId(mock.Anything, fx.mockSpace, acl.Head().Id).Return(nil).Once()
 		fx.mockStatus.EXPECT().SetOwner(acl.AclState().Identity().Account(), mock.Anything).Return(nil)
 		fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
-		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
+		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetAclInfo(true, nil, nil, mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().SetMyParticipantStatus(mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
@@ -362,3 +363,65 @@ func (s *testSpaceLoaderListener) OnSpaceUnload(_ string) {}
 
 func (s *testSpaceLoaderListener) Init(a *app.App) (err error) { return nil }
 func (s *testSpaceLoaderListener) Name() (name string)         { return "spaceLoaderListener" }
+
+// TestAclObjectManagerUpdateAclUnderAclWriteLock covers GO-7525: any-sync invokes the
+// UpdateAcl callback while holding the ACL write lock (syncacl.syncAclHandler.HandleResponse
+// locks before AddRawRecords), so nothing reachable from the callback may take the ACL read
+// lock again. sync.RWMutex is not reentrant: the writer never returns, and every reader in
+// that space - tree building, change validation, object restrictions - stalls behind it for
+// good, which is what makes ObjectOpen hang forever.
+func TestAclObjectManagerUpdateAclUnderAclWriteLock(t *testing.T) {
+	a := list.NewAclExecutor("spaceId")
+	for _, cmd := range []string{"a.init::a", "a.invite::invId", "b.join::invId", "a.approve::b,r"} {
+		require.NoError(t, a.Execute(cmd))
+	}
+	acl := &syncAclStub{AclList: a.ActualAccounts()["a"].Acl}
+
+	fx := newFixture(t)
+	defer fx.finish(t)
+	fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
+	fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
+	fx.mockSpace.EXPECT().Id().Return("spaceId")
+	fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
+	fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
+	// Both doubles read the ACL exactly the way their clientspace.(*space) counterparts do, so
+	// this test deadlocks if anything on the callback path starts asking the space about the ACL
+	// again. A double that answers without touching the lock is what let this bug through review.
+	readsAcl := func() bool {
+		acl.RLock()
+		defer acl.RUnlock()
+		return acl.AclState().IsOneToOne()
+	}
+	fx.mockSpace.EXPECT().IsOneToOne().RunAndReturn(readsAcl).Maybe()
+	fx.mockSpace.EXPECT().CanManageSpace().RunAndReturn(readsAcl).Maybe()
+	fx.mockSpace.EXPECT().OnAclUpdated().Once()
+	fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("").Maybe()
+	fx.mockStatus.EXPECT().SetOwner(mock.Anything, mock.Anything).Return(nil).Maybe()
+	fx.mockStatus.EXPECT().SetAclInfo(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+	fx.mockStatus.EXPECT().SetMyParticipantStatus(mock.Anything).Return(nil).Maybe()
+	fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk).Maybe()
+	fx.mockParticipantWatcher.EXPECT().GetProcessedAclHeadId(mock.Anything, fx.mockSpace).Return("").Maybe()
+	fx.mockParticipantWatcher.EXPECT().SetProcessedAclHeadId(mock.Anything, fx.mockSpace, mock.Anything).Return(nil).Maybe()
+	fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).Return(nil).Maybe()
+	fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything, mock.Anything).Return(nil).Maybe()
+	fx.mockAclNotification.EXPECT().AddRecords(acl, mock.Anything, "spaceId", mock.Anything, mock.Anything).Maybe()
+	fx.run(t)
+	<-fx.aclObjectManager.wait
+
+	// new records arrive from a peer: the head moves, so the callback has real work to do
+	require.NoError(t, a.Execute("a.invite::invId2"))
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		// exactly how any-sync enters the callback
+		acl.Lock()
+		defer acl.Unlock()
+		fx.aclObjectManager.UpdateAcl(acl)
+	}()
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("UpdateAcl deadlocked: the callback path took the acl read lock while the write lock was held")
+	}
+}
