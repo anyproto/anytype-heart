@@ -64,7 +64,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"type":{"type":"string","maxLength":256,"description":"type key, e.g. page or task"},` +
 			`"name":{"type":"string","maxLength":4096},` +
 			`"properties":{"type":"object","maxProperties":128,"additionalProperties":{"type":["string","number","boolean","array","null"]}},` +
-			`"markdown":{"type":"string","maxLength":1048576,"description":"markdown body parsed into blocks server-side — part of the same single create (dry runs validate it too); at most 2048 parsed blocks"}}}`,
+			`"markdown":{"type":"string","maxLength":1048576,"description":"markdown body parsed into blocks server-side, part of the same single create (dry runs validate it too); at most 2048 parsed blocks"}}}`,
 		example: `{"type":"task","name":"Buy milk","properties":{"due_date":"2026-08-01T00:00:00Z"},"markdown":"- [ ] oat\n- [ ] whole"}`,
 	},
 	// The flat body, not the AnyBlock document. `type` is the kind an agent
@@ -146,10 +146,10 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		schema: `{"type":"object","additionalProperties":false,"required":["name","type"],"properties":{` +
 			`"name":{"type":"string","maxLength":4096},` +
 			`"type":{"type":"string","maxLength":256,"description":"the queried type's key"},` +
-			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays simple to decode — see kind filters"},` +
+			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays simple to decode; see kind filters"},` +
 			`"sorts":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
 			`"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc"]},"empty_placement":{"type":"string","enum":["start","end"]}}}},` +
-			`"views":{"type":"array","maxItems":10,"description":"the query's views, each whole: the fields the insert_view op's set takes (except filter — write a view's filters as nodes here), plus its columns. Mutually exclusive with top-level filter/sorts, which build one view named All","items":{"type":"object","required":["name"],"properties":{` + v2ViewCreateFieldsDef() + `,` + v2ViewColumnsListDef + `}}}}}`,
+			`"views":{"type":"array","maxItems":10,"description":"the query's views, each whole: the fields the insert_view op's set takes (except filter: write a view's filters as nodes here), plus its columns. Mutually exclusive with top-level filter/sorts, which build one view named All","items":{"type":"object","required":["name"],"properties":{` + v2ViewCreateFieldsDef() + `,` + v2ViewColumnsListDef + `}}}}}`,
 		example: `{"name":"Open tasks","type":"task","filter":"done = false","sorts":[{"property":"due_date","direction":"asc"}]}`,
 	},
 	"collection": {
@@ -171,7 +171,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		schema: `{"type":"object","additionalProperties":false,"properties":{` +
 			`"query":{"type":"string","maxLength":4096,"description":"full-text query"},` +
 			`"type":{"type":"string","maxLength":256,"description":"one type key; multi-type queries use the type pseudo-key in the filter channel; naming a file type (file, image, video, audio) opts file objects into the results — they are excluded otherwise"},` +
-			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays simple to decode — see kind filters"},` +
+			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays simple to decode; see kind filters"},` +
 			`"sorts":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
 			`"property":{"type":"string","maxLength":256,"description":"any property key"},"direction":{"type":"string","enum":["asc","desc"]},"empty_placement":{"type":"string","enum":["start","end"]}}}},` +
 			`"fields":{"type":"array","maxItems":25,"items":{"type":"string","maxLength":256},"description":"property keys to include per row; file rows additionally take mimeType and size — also valid filter and sort keys (they translate to the store's fileMimeType/sizeInBytes); file rows enter scope only when the type channel names a file type"}}}`,
@@ -267,6 +267,12 @@ func (s *Service) SchemaIndex() v2model.SchemaIndex {
 
 // SchemaKind implements GET /v2/schemas/{kind}.
 func (s *Service) SchemaKind(kind string) (v2model.SchemaEntry, error) {
+	return schemaKind(kind)
+}
+
+// schemaKind is the served entry for a kind, a package function so the
+// OpenAPI body composition (openapibodies.go) can run without a service.
+func schemaKind(kind string) (v2model.SchemaEntry, error) {
 	entry, ok := v2SchemaKinds[kind]
 	if !ok {
 		kinds := make([]string, 0, len(v2SchemaKinds))

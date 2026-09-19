@@ -1342,6 +1342,317 @@
           "space_ids",
           "permission"
         ]
+      },
+      "AnyValue": {
+        "oneOf": [
+          {
+            "maxLength": 1048576,
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          },
+          {
+            "type": "null"
+          },
+          {
+            "items": {
+              "oneOf": [
+                {
+                  "maxLength": 1048576,
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "items": {
+                    "oneOf": [
+                      {
+                        "maxLength": 1048576,
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "items": {
+                          "oneOf": [
+                            {
+                              "maxLength": 1048576,
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "maxItems": 2048,
+                        "type": "array"
+                      },
+                      {
+                        "additionalProperties": {
+                          "oneOf": [
+                            {
+                              "maxLength": 1048576,
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "maxProperties": 128,
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "maxItems": 2048,
+                  "type": "array"
+                },
+                {
+                  "additionalProperties": {
+                    "oneOf": [
+                      {
+                        "maxLength": 1048576,
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "items": {
+                          "oneOf": [
+                            {
+                              "maxLength": 1048576,
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "maxItems": 2048,
+                        "type": "array"
+                      },
+                      {
+                        "additionalProperties": {
+                          "oneOf": [
+                            {
+                              "maxLength": 1048576,
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "maxProperties": 128,
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "maxProperties": 128,
+                  "type": "object"
+                }
+              ]
+            },
+            "maxItems": 2048,
+            "type": "array"
+          },
+          {
+            "additionalProperties": {
+              "oneOf": [
+                {
+                  "maxLength": 1048576,
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                },
+                {
+                  "items": {
+                    "oneOf": [
+                      {
+                        "maxLength": 1048576,
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "items": {
+                          "oneOf": [
+                            {
+                              "maxLength": 1048576,
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "maxItems": 2048,
+                        "type": "array"
+                      },
+                      {
+                        "additionalProperties": {
+                          "oneOf": [
+                            {
+                              "maxLength": 1048576,
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "maxProperties": 128,
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "maxItems": 2048,
+                  "type": "array"
+                },
+                {
+                  "additionalProperties": {
+                    "oneOf": [
+                      {
+                        "maxLength": 1048576,
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      },
+                      {
+                        "items": {
+                          "oneOf": [
+                            {
+                              "maxLength": 1048576,
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "maxItems": 2048,
+                        "type": "array"
+                      },
+                      {
+                        "additionalProperties": {
+                          "oneOf": [
+                            {
+                              "maxLength": 1048576,
+                              "type": "string"
+                            },
+                            {
+                              "type": "number"
+                            },
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "maxProperties": 128,
+                        "type": "object"
+                      }
+                    ]
+                  },
+                  "maxProperties": 128,
+                  "type": "object"
+                }
+              ]
+            },
+            "maxProperties": 128,
+            "type": "object"
+          }
+        ]
       }
     },
     "securitySchemes": {
@@ -3056,11 +3367,30 @@
           "content": {
             "application/json": {
               "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "items": {
+                    "items": {
+                      "description": "member object id",
+                      "maxLength": 256,
+                      "type": "string"
+                    },
+                    "maxItems": 1000,
+                    "type": "array"
+                  },
+                  "name": {
+                    "maxLength": 4096,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
                 "type": "object"
               }
             }
           },
-          "description": "Collection to create. Body schema and example: GET /v2/schemas/collection",
+          "description": "Collection to create",
           "required": true
         },
         "responses": {
@@ -4081,11 +4411,58 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "markdown": {
+                        "description": "markdown body parsed into blocks server-side, part of the same single create (dry runs validate it too); at most 2048 parsed blocks",
+                        "maxLength": 1048576,
+                        "type": "string"
+                      },
+                      "name": {
+                        "maxLength": 4096,
+                        "type": "string"
+                      },
+                      "properties": {
+                        "additionalProperties": {
+                          "items": {
+                            "$ref": "#/components/schemas/AnyValue"
+                          },
+                          "maxItems": 2048,
+                          "maxLength": 1048576,
+                          "type": [
+                            "string",
+                            "number",
+                            "boolean",
+                            "array",
+                            "null"
+                          ]
+                        },
+                        "maxProperties": 128,
+                        "type": "object"
+                      },
+                      "type": {
+                        "description": "type key, e.g. page or task",
+                        "maxLength": 256,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "description": "a full AnyBlock document: formatVersion 2.0, properties, and blocks in preorder; its schema and a worked example come from get_schema with kind object",
+                    "type": "object"
+                  }
+                ],
+                "description": "the shortcut body, or a full AnyBlock document; formatVersion or blocks picks the document form"
               }
             }
           },
-          "description": "AnyBlock object document. Body schema and example: GET /v2/schemas/object",
+          "description": "The shortcut body, or an AnyBlock object document",
           "required": true
         },
         "responses": {
@@ -4408,11 +4785,50 @@
           "content": {
             "application/json": {
               "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "ops": {
+                    "description": "applied in order as one edit; if any one is refused, none is applied. Each op's members, schema and example come from get_op_schema with its op name",
+                    "items": {
+                      "properties": {
+                        "op": {
+                          "enum": [
+                            "set_properties",
+                            "update_block",
+                            "replace_subtree",
+                            "insert_blocks",
+                            "move_block",
+                            "delete_block",
+                            "replace_text",
+                            "set_cell",
+                            "update_view",
+                            "insert_view",
+                            "move_view",
+                            "delete_view",
+                            "add_items",
+                            "remove_items"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "op"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 512,
+                    "minItems": 1,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "ops"
+                ],
                 "type": "object"
               }
             }
           },
-          "description": "PATCH ops envelope, an array of ops. Body schema and example per op: GET /v2/schemas/ops/<op>",
+          "description": "Ops envelope, an array of ops applied as one edit",
           "required": true
         },
         "responses": {
@@ -4579,11 +4995,66 @@
           "content": {
             "application/json": {
               "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "format": {
+                    "enum": [
+                      "text",
+                      "number",
+                      "select",
+                      "multi_select",
+                      "date",
+                      "files",
+                      "checkbox",
+                      "url",
+                      "email",
+                      "phone",
+                      "objects"
+                    ],
+                    "type": "string"
+                  },
+                  "key": {
+                    "description": "the key the property is addressed by; derived from the name when omitted. Required to create another property under a display name the space already has",
+                    "maxLength": 256,
+                    "pattern": "^[a-zA-Z0-9_]+$",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "display name. Names are not identities: without an explicit key, a name a visible property already carries is refused. Supply a different available key to create another property with that name; the response carries a warning",
+                    "maxLength": 4096,
+                    "type": "string"
+                  },
+                  "options": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "color": {
+                          "maxLength": 64,
+                          "type": "string"
+                        },
+                        "name": {
+                          "maxLength": 4096,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 100,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "name",
+                  "format"
+                ],
                 "type": "object"
               }
             }
           },
-          "description": "Property to create. Body schema and example: GET /v2/schemas/property",
+          "description": "Property to create",
           "required": true
         },
         "responses": {
@@ -4760,11 +5231,23 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "name"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096,
+                    "description": "the new display name; the key is identity and does not change"
+                  }
+                }
               }
             }
           },
-          "description": "Fields of the property to change. Body schema and example: GET /v2/schemas/property",
+          "description": "The new display name",
           "required": true
         },
         "responses": {
@@ -4951,11 +5434,258 @@
           "content": {
             "application/json": {
               "schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "filter": {
+                    "description": "compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays simple to decode; see kind filters",
+                    "maxLength": 4096,
+                    "type": "string"
+                  },
+                  "name": {
+                    "maxLength": 4096,
+                    "type": "string"
+                  },
+                  "sorts": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "direction": {
+                          "enum": [
+                            "asc",
+                            "desc"
+                          ],
+                          "type": "string"
+                        },
+                        "empty_placement": {
+                          "enum": [
+                            "start",
+                            "end"
+                          ],
+                          "type": "string"
+                        },
+                        "property": {
+                          "maxLength": 256,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "property"
+                      ],
+                      "type": "object"
+                    },
+                    "maxItems": 10,
+                    "type": "array"
+                  },
+                  "type": {
+                    "description": "the queried type's key",
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  "views": {
+                    "description": "the query's views, each whole: the fields the insert_view op's set takes (except filter: write a view's filters as nodes here), plus its columns. Mutually exclusive with top-level filter/sorts, which build one view named All",
+                    "items": {
+                      "properties": {
+                        "alternate_rows": {
+                          "type": "boolean"
+                        },
+                        "card_size": {
+                          "enum": [
+                            "small",
+                            "medium",
+                            "large"
+                          ],
+                          "type": "string"
+                        },
+                        "colored_groups": {
+                          "type": "boolean"
+                        },
+                        "columns": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "aggregation": {
+                                "enum": [
+                                  "count",
+                                  "count_value",
+                                  "count_distinct",
+                                  "count_empty",
+                                  "count_not_empty",
+                                  "percent_empty",
+                                  "percent_not_empty",
+                                  "sum",
+                                  "average",
+                                  "median",
+                                  "min",
+                                  "max",
+                                  "range"
+                                ],
+                                "type": "string"
+                              },
+                              "align": {
+                                "enum": [
+                                  "left",
+                                  "center",
+                                  "right",
+                                  "justify"
+                                ],
+                                "type": "string"
+                              },
+                              "hidden": {
+                                "type": "boolean"
+                              },
+                              "property": {
+                                "maxLength": 256,
+                                "type": "string"
+                              },
+                              "width": {
+                                "maximum": 10000,
+                                "minimum": 0,
+                                "type": "integer"
+                              }
+                            },
+                            "required": [
+                              "property"
+                            ],
+                            "type": "object"
+                          },
+                          "maxItems": 64,
+                          "type": "array"
+                        },
+                        "cover_fit": {
+                          "type": "boolean"
+                        },
+                        "cover_property": {
+                          "maxLength": 256,
+                          "type": "string"
+                        },
+                        "default_template_id": {
+                          "maxLength": 256,
+                          "type": "string"
+                        },
+                        "default_type_id": {
+                          "maxLength": 256,
+                          "type": "string"
+                        },
+                        "end_property": {
+                          "maxLength": 256,
+                          "type": "string"
+                        },
+                        "filters": {
+                          "description": "filter nodes (schema kind filters), at most 32 at the top level (group more under and/or nodes); a created view takes nodes only; the compact string is the query's top-level filter",
+                          "items": {
+                            "$ref": "#/components/schemas/AnyValue"
+                          },
+                          "maxItems": 32,
+                          "type": "array"
+                        },
+                        "group_by": {
+                          "description": "property key to group by (kanban/board views)",
+                          "maxLength": 256,
+                          "type": "string"
+                        },
+                        "hide_icon": {
+                          "type": "boolean"
+                        },
+                        "list_size": {
+                          "enum": [
+                            "compact",
+                            "regular"
+                          ],
+                          "type": "string"
+                        },
+                        "name": {
+                          "maxLength": 4096,
+                          "type": "string"
+                        },
+                        "page_size": {
+                          "maximum": 1000,
+                          "minimum": 0,
+                          "type": "integer"
+                        },
+                        "sorts": {
+                          "items": {
+                            "additionalProperties": false,
+                            "properties": {
+                              "custom_order": {
+                                "items": {
+                                  "$ref": "#/components/schemas/AnyValue"
+                                },
+                                "maxItems": 128,
+                                "type": "array"
+                              },
+                              "direction": {
+                                "enum": [
+                                  "asc",
+                                  "desc",
+                                  "custom"
+                                ],
+                                "type": "string"
+                              },
+                              "empty_placement": {
+                                "enum": [
+                                  "start",
+                                  "end"
+                                ],
+                                "type": "string"
+                              },
+                              "id": {
+                                "description": "output-only on reads; accepted back so a read sort round-trips",
+                                "maxLength": 64,
+                                "type": "string"
+                              },
+                              "include_time": {
+                                "type": "boolean"
+                              },
+                              "no_collate": {
+                                "type": "boolean"
+                              },
+                              "property": {
+                                "maxLength": 256,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "property"
+                            ],
+                            "type": "object"
+                          },
+                          "maxItems": 10,
+                          "type": "array"
+                        },
+                        "type": {
+                          "enum": [
+                            "table",
+                            "list",
+                            "gallery",
+                            "kanban",
+                            "calendar",
+                            "graph"
+                          ],
+                          "type": "string"
+                        },
+                        "wrap_content": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ],
+                      "type": "object",
+                      "unevaluatedProperties": false
+                    },
+                    "maxItems": 10,
+                    "type": "array"
+                  }
+                },
+                "required": [
+                  "name",
+                  "type"
+                ],
                 "type": "object"
               }
             }
           },
-          "description": "Query to create. Body schema and example: GET /v2/schemas/query",
+          "description": "Query to create",
           "required": true
         },
         "responses": {
@@ -5344,11 +6074,12 @@
           "content": {
             "application/json": {
               "schema": {
+                "description": "the template as an AnyBlock document: formatVersion 2.0, kind template, template_for naming the type; its schema and a worked example come from get_schema with kind template",
                 "type": "object"
               }
             }
           },
-          "description": "AnyBlock template document. Body schema and example: GET /v2/schemas/template",
+          "description": "AnyBlock template document",
           "required": true
         },
         "responses": {
@@ -5516,11 +6247,224 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "description": "the body POST takes. PATCH takes the same members, all optional, except api_key, which is create-only",
+                    "properties": {
+                      "api_key": {
+                        "description": "the key object bodies name this type by; derived from the name when omitted",
+                        "maxLength": 256,
+                        "pattern": "^[a-zA-Z0-9_]+$",
+                        "type": "string"
+                      },
+                      "default_template": {
+                        "description": "id of the template new objects of this type start from; empty string clears it",
+                        "maxLength": 256,
+                        "type": "string"
+                      },
+                      "default_view": {
+                        "description": "how a set or collection of this type opens; applies to ones created after the change",
+                        "enum": [
+                          "table",
+                          "list",
+                          "gallery",
+                          "kanban",
+                          "calendar",
+                          "graph"
+                        ],
+                        "type": "string"
+                      },
+                      "icon": {
+                        "additionalProperties": false,
+                        "description": "give format plus its own member: emoji, name or file",
+                        "oneOf": [
+                          {
+                            "properties": {
+                              "format": {
+                                "const": "emoji"
+                              }
+                            },
+                            "required": [
+                              "format",
+                              "emoji"
+                            ]
+                          },
+                          {
+                            "properties": {
+                              "format": {
+                                "const": "icon"
+                              }
+                            },
+                            "required": [
+                              "format",
+                              "name"
+                            ]
+                          },
+                          {
+                            "properties": {
+                              "format": {
+                                "const": "file"
+                              }
+                            },
+                            "required": [
+                              "format",
+                              "file"
+                            ]
+                          }
+                        ],
+                        "properties": {
+                          "color": {
+                            "enum": [
+                              "grey",
+                              "yellow",
+                              "orange",
+                              "red",
+                              "pink",
+                              "purple",
+                              "blue",
+                              "ice",
+                              "teal",
+                              "lime"
+                            ],
+                            "type": "string"
+                          },
+                          "emoji": {
+                            "maxLength": 32,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "file": {
+                            "description": "id of an image object in this space, with format file",
+                            "maxLength": 4096,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "format": {
+                            "enum": [
+                              "emoji",
+                              "icon",
+                              "file"
+                            ],
+                            "type": "string"
+                          },
+                          "name": {
+                            "description": "a built-in icon name, with format icon",
+                            "maxLength": 256,
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "layout": {
+                        "description": "the layout instances of this type get; basic unless you need another",
+                        "enum": [
+                          "basic",
+                          "note",
+                          "todo",
+                          "profile",
+                          "bookmark",
+                          "set",
+                          "collection"
+                        ],
+                        "type": "string"
+                      },
+                      "name": {
+                        "description": "display name, singular. Required on POST; on PATCH send it only to rename",
+                        "maxLength": 4096,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "plural_name": {
+                        "maxLength": 4096,
+                        "type": "string"
+                      },
+                      "property_definitions": {
+                        "description": "the type's whole field list; an unknown name mints a property. On PATCH it replaces the list, so to change one field send an ops envelope with add_property to update_type instead, and to rename a property send {name} to update_property",
+                        "items": {
+                          "additionalProperties": false,
+                          "description": "names its property by name or by property, one of the two",
+                          "properties": {
+                            "format": {
+                              "description": "the new property's format; omit it and an unknown name is created as text",
+                              "enum": [
+                                "text",
+                                "number",
+                                "select",
+                                "multi_select",
+                                "date",
+                                "files",
+                                "checkbox",
+                                "url",
+                                "email",
+                                "phone",
+                                "objects"
+                              ],
+                              "type": "string"
+                            },
+                            "name": {
+                              "description": "the property's display name, e.g. Due date; an unknown one is created",
+                              "maxLength": 128,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "options": {
+                              "description": "select and multi_select only: the option vocabulary; creating options here needs the create_missing_options parameter set to true",
+                              "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "color": {
+                                    "maxLength": 64,
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "maxLength": 4096,
+                                    "minLength": 1,
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "name"
+                                ],
+                                "type": "object"
+                              },
+                              "maxItems": 100,
+                              "type": "array"
+                            },
+                            "property": {
+                              "description": "the property by the key the space serves, for one that exists",
+                              "maxLength": 256,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "section": {
+                              "description": "featured shows the property on the object itself",
+                              "enum": [
+                                "featured",
+                                "hidden"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "maxItems": 128,
+                        "type": "array"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  {
+                    "description": "the type as an AnyBlock document: formatVersion 2.0, kind object_type, the definition under type_settings; its schema and a worked example come from get_schema with kind type_document",
+                    "type": "object"
+                  }
+                ],
+                "description": "the flat type body, or the interchange document with kind object_type"
               }
             }
           },
-          "description": "Flat type body: GET /v2/schemas/type. Full document: GET /v2/schemas/type_document",
+          "description": "The flat type body, or the type as an AnyBlock document",
           "required": true
         },
         "responses": {
@@ -5782,11 +6726,255 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "anyOf": [
+                  {
+                    "additionalProperties": false,
+                    "description": "the body POST takes. PATCH takes the same members, all optional, except api_key, which is create-only",
+                    "properties": {
+                      "api_key": {
+                        "description": "the key object bodies name this type by; derived from the name when omitted",
+                        "maxLength": 256,
+                        "pattern": "^[a-zA-Z0-9_]+$",
+                        "type": "string"
+                      },
+                      "default_template": {
+                        "description": "id of the template new objects of this type start from; empty string clears it",
+                        "maxLength": 256,
+                        "type": "string"
+                      },
+                      "default_view": {
+                        "description": "how a set or collection of this type opens; applies to ones created after the change",
+                        "enum": [
+                          "table",
+                          "list",
+                          "gallery",
+                          "kanban",
+                          "calendar",
+                          "graph"
+                        ],
+                        "type": "string"
+                      },
+                      "icon": {
+                        "additionalProperties": false,
+                        "description": "give format plus its own member: emoji, name or file",
+                        "oneOf": [
+                          {
+                            "properties": {
+                              "format": {
+                                "const": "emoji"
+                              }
+                            },
+                            "required": [
+                              "format",
+                              "emoji"
+                            ]
+                          },
+                          {
+                            "properties": {
+                              "format": {
+                                "const": "icon"
+                              }
+                            },
+                            "required": [
+                              "format",
+                              "name"
+                            ]
+                          },
+                          {
+                            "properties": {
+                              "format": {
+                                "const": "file"
+                              }
+                            },
+                            "required": [
+                              "format",
+                              "file"
+                            ]
+                          }
+                        ],
+                        "properties": {
+                          "color": {
+                            "enum": [
+                              "grey",
+                              "yellow",
+                              "orange",
+                              "red",
+                              "pink",
+                              "purple",
+                              "blue",
+                              "ice",
+                              "teal",
+                              "lime"
+                            ],
+                            "type": "string"
+                          },
+                          "emoji": {
+                            "maxLength": 32,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "file": {
+                            "description": "id of an image object in this space, with format file",
+                            "maxLength": 4096,
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          "format": {
+                            "enum": [
+                              "emoji",
+                              "icon",
+                              "file"
+                            ],
+                            "type": "string"
+                          },
+                          "name": {
+                            "description": "a built-in icon name, with format icon",
+                            "maxLength": 256,
+                            "minLength": 1,
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "layout": {
+                        "description": "the layout instances of this type get; basic unless you need another",
+                        "enum": [
+                          "basic",
+                          "note",
+                          "todo",
+                          "profile",
+                          "bookmark",
+                          "set",
+                          "collection"
+                        ],
+                        "type": "string"
+                      },
+                      "name": {
+                        "description": "display name, singular. Required on POST; on PATCH send it only to rename",
+                        "maxLength": 4096,
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "plural_name": {
+                        "maxLength": 4096,
+                        "type": "string"
+                      },
+                      "property_definitions": {
+                        "description": "the type's whole field list; an unknown name mints a property. On PATCH it replaces the list, so to change one field send an ops envelope with add_property to update_type instead, and to rename a property send {name} to update_property",
+                        "items": {
+                          "additionalProperties": false,
+                          "description": "names its property by name or by property, one of the two",
+                          "properties": {
+                            "format": {
+                              "description": "the new property's format; omit it and an unknown name is created as text",
+                              "enum": [
+                                "text",
+                                "number",
+                                "select",
+                                "multi_select",
+                                "date",
+                                "files",
+                                "checkbox",
+                                "url",
+                                "email",
+                                "phone",
+                                "objects"
+                              ],
+                              "type": "string"
+                            },
+                            "name": {
+                              "description": "the property's display name, e.g. Due date; an unknown one is created",
+                              "maxLength": 128,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "options": {
+                              "description": "select and multi_select only: the option vocabulary; creating options here needs the create_missing_options parameter set to true",
+                              "items": {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "color": {
+                                    "maxLength": 64,
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "maxLength": 4096,
+                                    "minLength": 1,
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "name"
+                                ],
+                                "type": "object"
+                              },
+                              "maxItems": 100,
+                              "type": "array"
+                            },
+                            "property": {
+                              "description": "the property by the key the space serves, for one that exists",
+                              "maxLength": 256,
+                              "minLength": 1,
+                              "type": "string"
+                            },
+                            "section": {
+                              "description": "featured shows the property on the object itself",
+                              "enum": [
+                                "featured",
+                                "hidden"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "maxItems": 128,
+                        "type": "array"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "ops": {
+                        "description": "applied in order as one edit; property ops are written first, view ops after. Each op's members, schema and example come from get_op_schema with its op name",
+                        "items": {
+                          "properties": {
+                            "op": {
+                              "enum": [
+                                "add_property",
+                                "remove_property",
+                                "move_property",
+                                "insert_view",
+                                "update_view",
+                                "move_view",
+                                "delete_view"
+                              ],
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "op"
+                          ],
+                          "type": "object"
+                        },
+                        "maxItems": 512,
+                        "minItems": 1,
+                        "type": "array"
+                      }
+                    },
+                    "required": [
+                      "ops"
+                    ],
+                    "type": "object"
+                  }
+                ],
+                "description": "the fields to change, or an ops envelope that edits the property list and the views one op at a time"
               }
             }
           },
-          "description": "Either an ops envelope (GET /v2/schemas/ops/add_property) or the fields of the type to change (GET /v2/schemas/type)",
+          "description": "The fields of the type to change, or an ops envelope",
           "required": true
         },
         "responses": {
@@ -5858,11 +7046,12 @@
           "content": {
             "application/json": {
               "schema": {
+                "description": "an AnyBlock document of any kind, checked without being stored; its schema and a worked example come from get_schema with kind object",
                 "type": "object"
               }
             }
           },
-          "description": "Document to validate. Body schema and example: GET /v2/schemas/object",
+          "description": "Document to validate",
           "required": true
         },
         "responses": {
