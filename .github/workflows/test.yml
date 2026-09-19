@@ -66,6 +66,12 @@ jobs:
           make setup
           make setup-protoc
           make generate
+          # the OpenAPI documents are generated artifacts too, and their
+          # generator is pinned through deps/deps.go: regenerating here is what
+          # catches a dropped pin (make openapi then fails) and a committed
+          # document that no longer matches its annotations (the diff below)
+          command -v jq >/dev/null || HOMEBREW_NO_AUTO_UPDATE=1 brew install jq
+          make openapi
           if ! git diff --quiet; then
             git status --short
             git diff > codegen.patch

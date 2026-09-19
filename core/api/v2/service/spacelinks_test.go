@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -76,15 +77,25 @@ func TestV2CrossSpaceObjectLinksExpandShortSpaceRefs(t *testing.T) {
 		assert.Equal(t, "hxwz2i", mention.Param)
 	})
 
-	t.Run("one census read per distinct reference, however many links carry it", func(t *testing.T) {
-		fx := census(t)
+	t.Run("a reference is resolved once, not once per link", func(t *testing.T) {
+		// the census is a store read, and a document can carry hundreds of
+		// links. Proving the memo needs the store to CHANGE under it: a
+		// second space whose tail collides would make a fresh resolution
+		// ambiguous, so an unchanged answer is the cache answering.
+		fx := newV2Fixture(t)
+		fx.registerSpaceView(t, realSpacePersonal, "Space A", "")
 		e := fx.newSpaceLinkExpander(context.Background())
+		first := e.destination(link(realSpacePersonalShort))
+		require.Equal(t, link(realSpacePersonal), first, "resolved against the one visible space")
 
-		for i := 0; i < 50; i++ {
-			assert.Equal(t, link(realSpaceEval), e.destination(link("hxwz2i")))
-		}
+		fx.registerSpaceView(t, twinPersonal, "Space B", "")
 
-		assert.Len(t, e.resolved, 1, "the reference is resolved once and memoized")
+		assert.Equal(t, first, e.destination(link(realSpacePersonalShort)), "the memo answered, not a second census read")
+		assert.Empty(t, e.Warnings("/blocks"), "and so no ambiguity was reported")
+		// a DIFFERENT reference does read the census, and now sees the twin
+		fresh := fx.newSpaceLinkExpander(context.Background())
+		assert.Equal(t, link(realSpacePersonalShort), fresh.destination(link(realSpacePersonalShort)))
+		assert.Len(t, fresh.Warnings("/blocks"), 1, "a fresh expander sees the collision")
 	})
 
 	t.Run("a reference that names no visible space keeps the link and warns once", func(t *testing.T) {
@@ -118,11 +129,17 @@ func TestV2CrossSpaceObjectLinksExpandShortSpaceRefs(t *testing.T) {
 	})
 
 	t.Run("expansion never pushes a destination past what the renderer can write", func(t *testing.T) {
+		// the fixture must be UNDER the bound as sent — otherwise the codec
+		// would not have parsed it and a check that only refused
+		// already-overlong destinations would pass this test
 		fx := census(t)
 		e := fx.newSpaceLinkExpander(context.Background())
-		// a destination that parses (under the 2048 bound as spelled) but
-		// cannot survive the ~66 characters the full id adds
-		long := "anytype://object?objectId=bafyreiobj&spaceId=hxwz2i&pad=" + strings.Repeat("a", 2020)
+		grows := len(realSpaceEval) - len("hxwz2i")
+		base := "anytype://object?objectId=bafyreiobj&spaceId=hxwz2i&pad="
+		pad := maxCrossSpaceLinkDest - 8 - spelledDestLen(base)
+		long := base + strings.Repeat("a", pad)
+		require.Less(t, spelledDestLen(long), maxCrossSpaceLinkDest, "parses as sent")
+		require.Greater(t, spelledDestLen(long)+grows, maxCrossSpaceLinkDest, "but cannot survive the full id")
 
 		got := e.destination(long)
 
@@ -130,6 +147,16 @@ func TestV2CrossSpaceObjectLinksExpandShortSpaceRefs(t *testing.T) {
 		warnings := e.Warnings("/blocks")
 		require.Len(t, warnings, 1)
 		assert.Contains(t, warnings[0].Message, "too long to write back")
+
+		// the control: short enough to survive the full id, and it expands.
+		// The query comes back in url.Values order, so compare the parameter
+		// rather than the spelling.
+		shorter := base + strings.Repeat("a", pad-grows)
+		expanded := e.destination(shorter)
+		require.NotEqual(t, shorter, expanded, "short enough to expand")
+		u, err := url.Parse(expanded)
+		require.NoError(t, err)
+		assert.Equal(t, realSpaceEval, u.Query().Get("spaceId"))
 	})
 
 	t.Run("a created document's link carries the full id", func(t *testing.T) {
