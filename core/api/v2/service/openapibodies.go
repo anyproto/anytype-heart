@@ -46,20 +46,51 @@ type OpenAPIBodies struct {
 var openAPIBodyRecipes = map[string]func(c *openAPIBodyComposer) (json.RawMessage, error){
 	v2model.OpCreateProperty:   func(c *openAPIBodyComposer) (json.RawMessage, error) { return c.kind("property") },
 	v2model.OpUpdateProperty:   func(c *openAPIBodyComposer) (json.RawMessage, error) { return c.literal(openAPIUpdatePropertyBody) },
-	v2model.OpCreateQuery:      func(c *openAPIBodyComposer) (json.RawMessage, error) { return c.kind("query") },
 	v2model.OpCreateCollection: func(c *openAPIBodyComposer) (json.RawMessage, error) { return c.kind("collection") },
+	v2model.OpCreateQuery: func(c *openAPIBodyComposer) (json.RawMessage, error) {
+		// the served kind leaves the recursive structured filter tree out so
+		// it stays simple to decode; the document is the contract and
+		// CreateQueryRequest takes `filters`, so the body declares it
+		filters, err := c.kind("filters")
+		if err != nil {
+			return nil, err
+		}
+		return c.kindWith("query", func(root map[string]any) error {
+			var node map[string]any
+			if err := json.Unmarshal(filters, &node); err != nil {
+				return fmt.Errorf("decode filters kind: %w", err)
+			}
+			node["description"] = "structured filter nodes (schema kind filters); the compact filter string is the simpler channel, and a body sends one of the two"
+			root["properties"].(map[string]any)["filters"] = node
+			return nil
+		})
+	},
 	v2model.OpCreateType: func(c *openAPIBodyComposer) (json.RawMessage, error) {
 		return c.anyOf("the flat type body, or the interchange document with kind object_type",
-			func() (json.RawMessage, error) { return c.kind("type") },
+			func() (json.RawMessage, error) {
+				return c.kindWith("type", func(root map[string]any) error {
+					root["required"] = []string{"name"}
+					return nil
+				})
+			},
 			func() (json.RawMessage, error) {
 				return c.pointer("type_document", "the type as an AnyBlock document: formatVersion 2.0, kind object_type, the definition under type_settings")
 			})
 	},
 	v2model.OpUpdateType: func(c *openAPIBodyComposer) (json.RawMessage, error) {
-		return c.anyOf("the fields to change, or an ops envelope that edits the property list and the views one op at a time",
-			func() (json.RawMessage, error) { return c.kind("type") },
+		return c.anyOf("the flat type body with the fields to change, a partial type document, or an ops envelope that edits the property list and the views one op at a time",
 			func() (json.RawMessage, error) {
-				return c.envelope(v2TypeOpNames, "property ops are written first, view ops after")
+				// the same flat body as create, minus api_key: the slug is
+				// identity and the patch refuses it
+				return c.kindWith("type", func(root map[string]any) error {
+					delete(root["properties"].(map[string]any), "api_key")
+					root["description"] = "the flat body, every member optional; at least one"
+					return nil
+				})
+			},
+			func() (json.RawMessage, error) { return c.typePatchDocument() },
+			func() (json.RawMessage, error) {
+				return c.envelope(v2TypeOpNames, "planned and refused whole before any write, then written in order: property ops first, view ops after, and a view op refused leaves the written property lists in place")
 			})
 	},
 	v2model.OpCreateObject: func(c *openAPIBodyComposer) (json.RawMessage, error) {
@@ -76,14 +107,14 @@ var openAPIBodyRecipes = map[string]func(c *openAPIBodyComposer) (json.RawMessag
 		return c.pointer("object", "an AnyBlock document of any kind, checked without being stored")
 	},
 	v2model.OpPatchObject: func(c *openAPIBodyComposer) (json.RawMessage, error) {
-		return c.envelope(v2OpNames, "if any one is refused, none is applied")
+		return c.envelope(v2OpNames, "applied in order as one edit, and if any one is refused none is applied")
 	},
 }
 
 // openAPIUpdatePropertyBody is PATCH properties/{key}: the one member
 // UpdatePropertyRequest takes. The key is identity and does not change.
 const openAPIUpdatePropertyBody = `{"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
-	`"name":{"type":"string","minLength":1,"maxLength":4096,"description":"the new display name; the key is identity and does not change"}}}`
+	`"name":{"type":"string","maxLength":4096,"description":"the new display name; the key is identity and does not change"}}}`
 
 // ComposeOpenAPIBodies builds every request body in the recipe table.
 func ComposeOpenAPIBodies() (*OpenAPIBodies, error) {
@@ -113,6 +144,13 @@ type openAPIBodyComposer struct {
 // kind is a served discovery schema, spliced whole, its `$defs` hoisted into
 // components and every `#/$defs/x` reference re-aimed at them.
 func (c *openAPIBodyComposer) kind(kind string) (json.RawMessage, error) {
+	return c.kindWith(kind, nil)
+}
+
+// kindWith is kind with one edit to the decoded root before the hoist: the
+// document publishes a served schema where an operation's body differs from
+// the kind by a member or a requirement.
+func (c *openAPIBodyComposer) kindWith(kind string, edit func(root map[string]any) error) (json.RawMessage, error) {
 	entry, err := schemaKind(kind)
 	if err != nil {
 		return nil, err
@@ -120,6 +158,11 @@ func (c *openAPIBodyComposer) kind(kind string) (json.RawMessage, error) {
 	var root map[string]any
 	if err := json.Unmarshal(entry.Schema, &root); err != nil {
 		return nil, fmt.Errorf("decode served schema %q: %w", kind, err)
+	}
+	if edit != nil {
+		if err := edit(root); err != nil {
+			return nil, fmt.Errorf("edit served schema %q: %w", kind, err)
+		}
 	}
 	defs, _ := root["$defs"].(map[string]any)
 	delete(root, "$defs")
@@ -143,6 +186,46 @@ func (c *openAPIBodyComposer) kind(kind string) (json.RawMessage, error) {
 	return json.Marshal(root)
 }
 
+// typePatchDocument is the partial type document PATCH types/{type} takes
+// (v2TypePatch): the type's own details under properties, the patchable
+// settings under type_settings, and the envelope icon. The member schemas
+// are the flat kind's, so the two cannot drift.
+func (c *openAPIBodyComposer) typePatchDocument() (json.RawMessage, error) {
+	flat, err := c.kind("type")
+	if err != nil {
+		return nil, err
+	}
+	var root map[string]any
+	if err := json.Unmarshal(flat, &root); err != nil {
+		return nil, fmt.Errorf("decode type kind: %w", err)
+	}
+	members := root["properties"].(map[string]any)
+	settings := map[string]any{}
+	for name := range typeSettingsPatchKeys {
+		settings[name] = members[name]
+	}
+	settings["property_definitions"] = members["property_definitions"]
+	return json.Marshal(map[string]any{
+		"type":                 "object",
+		"additionalProperties": false,
+		"description":          "a partial type document: properties carries the type's own details (name, description), type_settings the settings to change",
+		"properties": map[string]any{
+			"properties": map[string]any{
+				"type":                 "object",
+				"maxProperties":        128,
+				"description":          "the type's own details by key, such as name and description",
+				"additionalProperties": map[string]any{"type": []string{"string", "number", "boolean", "array", "null"}},
+			},
+			"type_settings": map[string]any{
+				"type":                 "object",
+				"additionalProperties": false,
+				"properties":           settings,
+			},
+			"icon": members["icon"],
+		},
+	})
+}
+
 // literal is a hand-written body, validated as JSON.
 func (c *openAPIBodyComposer) literal(schema string) (json.RawMessage, error) {
 	if !json.Valid([]byte(schema)) {
@@ -162,7 +245,9 @@ func (c *openAPIBodyComposer) pointer(kind, what string) (json.RawMessage, error
 }
 
 // envelope is `{"ops":[…]}` with the op vocabulary closed and each op's
-// members left to its own served schema.
+// members left to its own served schema. `order` states the channel's
+// write semantics, which differ: the object channel is atomic, the type
+// channel is planned whole but written list by list.
 func (c *openAPIBodyComposer) envelope(opNames []string, order string) (json.RawMessage, error) {
 	names := append([]string(nil), opNames...)
 	return json.Marshal(map[string]any{
@@ -173,8 +258,8 @@ func (c *openAPIBodyComposer) envelope(opNames []string, order string) (json.Raw
 			"ops": map[string]any{
 				"type":        "array",
 				"minItems":    1,
-				"maxItems":    512,
-				"description": "applied in order as one edit; " + order + ". Each op's members, schema and example come from " + v2model.OpGetOpSchema + " with its op name",
+				"maxItems":    v2MaxOpsPerPatch,
+				"description": order + ". Each op's members, schema and example come from " + v2model.OpGetOpSchema + " with its op name",
 				"items": map[string]any{
 					"type":     "object",
 					"required": []string{"op"},

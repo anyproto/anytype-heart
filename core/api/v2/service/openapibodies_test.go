@@ -2,6 +2,7 @@ package v2service
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -44,11 +45,13 @@ func TestOpenAPIBodiesAcceptTheServedExamples(t *testing.T) {
 		examples []string
 	}{
 		{v2model.OpCreateProperty, []string{v2SchemaKinds["property"].example}},
-		{v2model.OpUpdateProperty, []string{`{"name":"Priority"}`}},
-		{v2model.OpCreateQuery, []string{v2SchemaKinds["query"].example}},
+		{v2model.OpUpdateProperty, []string{`{"name":"Priority"}`, `{"name":""}`}},
+		{v2model.OpCreateQuery, []string{v2SchemaKinds["query"].example,
+			`{"name":"Open","type":"task","filters":[{"property":"severity","condition":"in","value":["High"]},{"operator":"or","filters":[{"property":"done","condition":"equal","value":false}]}]}`}},
 		{v2model.OpCreateCollection, []string{v2SchemaKinds["collection"].example}},
 		{v2model.OpCreateType, []string{v2SchemaKinds["type"].example, v2SchemaKinds["type_document"].example}},
-		{v2model.OpUpdateType, []string{`{"name":"Plants"}`, `{"ops":[` + v2OpSchemas["add_property"].example + `]}`, `{"ops":[` + v2OpSchemas["insert_view"].example + `]}`}},
+		{v2model.OpUpdateType, []string{`{"name":"Plants"}`, `{"properties":{"description":"Updated"}}`, `{"type_settings":{"layout":"todo","property_definitions":[{"name":"Location","format":"select"}]}}`, `{"icon":{"format":"emoji","emoji":"🌱"}}`,
+			`{"ops":[` + v2OpSchemas["add_property"].example + `]}`, `{"ops":[` + v2OpSchemas["insert_view"].example + `]}`}},
 		{v2model.OpCreateObject, []string{v2SchemaKinds["shortcut"].example, v2SchemaKinds["object"].example}},
 		{v2model.OpCreateTemplate, []string{v2SchemaKinds["template"].example}},
 		{v2model.OpValidate, []string{v2SchemaKinds["object"].example}},
@@ -88,6 +91,11 @@ func TestOpenAPIBodiesRefuseTheWrongShape(t *testing.T) {
 		// a bare op object instead of the envelope
 		{v2model.OpPatchObject, `{"op":"set_properties","set":{"name":"x"}}`},
 		{v2model.OpUpdateProperty, `{"format":"text"}`},
+		// the slug is identity: create-only
+		{v2model.OpUpdateType, `{"api_key":"changed"}`},
+		{v2model.OpUpdateType, `{"type_settings":{"api_key":"changed"}}`},
+		// a filter node the served kind refuses
+		{v2model.OpCreateQuery, `{"name":"Open","type":"task","filters":[{"key":"done","value":false}]}`},
 	}
 	for _, tc := range refused {
 		t.Run(tc.op+" "+tc.body, func(t *testing.T) {
@@ -104,6 +112,9 @@ func TestOpenAPIBodiesHoistDefsIntoComponents(t *testing.T) {
 	require.NoError(t, err)
 	_, ok := composed.Components["AnyValue"]
 	assert.True(t, ok, "the query kind's anyValue def is a component")
+	filterNode, ok := composed.Components["FilterNode"]
+	assert.True(t, ok, "the filters kind's filterNode def is a component")
+	assert.Contains(t, string(filterNode), `"#/components/schemas/FilterNode"`, "the recursive reference is re-aimed inside the def too")
 	for op, body := range composed.Bodies {
 		assert.NotContains(t, string(body), `#/$defs/`, "%s still references a root def a flattening reader would drop", op)
 		assert.NotContains(t, string(body), `"$defs"`, op)
@@ -123,4 +134,12 @@ func TestOpenAPIBodiesNameOperationsByOpId(t *testing.T) {
 	assert.True(t, strings.Contains(pointer, v2model.OpGetSchema+" with kind template"), pointer)
 	envelope := string(composed.Bodies[v2model.OpPatchObject])
 	assert.True(t, strings.Contains(envelope, v2model.OpGetOpSchema), envelope)
+	assert.Contains(t, envelope, "none is applied", "the object channel is atomic")
+	// the union's document branch is open by design, so the flat branch's
+	// requirement is asserted on its text
+	assert.Contains(t, string(composed.Bodies[v2model.OpCreateType]), `"required":["name"]`)
+	typeEnvelope := string(composed.Bodies[v2model.OpUpdateType])
+	assert.Contains(t, typeEnvelope, "leaves the written property lists in place", "the type channel is not, and says so")
+	assert.NotContains(t, typeEnvelope, "none is applied")
+	assert.Contains(t, envelope, fmt.Sprintf(`"maxItems":%d`, v2MaxOpsPerPatch))
 }

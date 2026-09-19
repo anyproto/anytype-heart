@@ -491,7 +491,7 @@ UPLOAD_YAML = """      requestBody:
 # both documents get the same splice, and core/api/openapibodies_test.go pins
 # the embedded document to that composition.
 def request_bodies(directory: pathlib.Path) -> dict:
-    root = directory.resolve().parents[3]
+    root = pathlib.Path(__file__).resolve().parents[1]
     result = subprocess.run(["go", "run", "./cmd/openapibodies"], cwd=root, capture_output=True, text=True)
     if result.returncode != 0:
         raise SystemExit(f"cmd/openapibodies failed:\n{result.stderr}")

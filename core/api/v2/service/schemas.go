@@ -231,7 +231,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`{"type":"object","additionalProperties":false,"required":["property","condition"],"properties":{` +
 			`"property":{"type":"string","maxLength":256},` +
 			`"condition":{"type":"string","enum":["equal","not_equal","greater","less","greater_or_equal","less_or_equal","contains","not_contains","in","not_in","empty","not_empty","all_in","not_all_in","exact_in","not_exact_in","exists"]},` +
-			`"value":{"description":"leaf value — select/multi_select: option NAMES; date: unix SECONDS, or an RFC 3339 or YYYY-MM-DD string where the filter is STORED (a query's views, update_view), converted on write; search takes the string only in the compact filter string"},` +
+			`"value":{"description":"leaf value. A select or multi_select takes option names, never ids. A date takes unix seconds; where the filter is stored (a query's views, update_view) it also takes a date string such as 2026-08-01 or 2026-08-01T09:00:00Z, converted on write, while search takes a date string only in the compact filter string"},` +
 			`"date_preset":{"type":"string","enum":["yesterday","today","tomorrow","last_week","current_week","next_week","last_month","current_month","next_month","number_of_days_ago","number_of_days_now","last_year","current_year","next_year"]},` +
 			`"include_time":{"type":"boolean"}}}]}},` +
 			`"type":"array","maxItems":50,"items":{"$ref":"#/$defs/filterNode"},` +

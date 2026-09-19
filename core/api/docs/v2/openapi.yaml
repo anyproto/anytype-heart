@@ -191,6 +191,75 @@ components:
                 type: object
           maxProperties: 128
           type: object
+    FilterNode:
+      oneOf:
+        - additionalProperties: false
+          properties:
+            filters:
+              items:
+                $ref: '#/components/schemas/FilterNode'
+              maxItems: 50
+              minItems: 1
+              type: array
+            operator:
+              enum:
+                - and
+                - or
+              type: string
+          required:
+            - operator
+            - filters
+          type: object
+        - additionalProperties: false
+          properties:
+            condition:
+              enum:
+                - equal
+                - not_equal
+                - greater
+                - less
+                - greater_or_equal
+                - less_or_equal
+                - contains
+                - not_contains
+                - in
+                - not_in
+                - empty
+                - not_empty
+                - all_in
+                - not_all_in
+                - exact_in
+                - not_exact_in
+                - exists
+              type: string
+            date_preset:
+              enum:
+                - yesterday
+                - today
+                - tomorrow
+                - last_week
+                - current_week
+                - next_week
+                - last_month
+                - current_month
+                - next_month
+                - number_of_days_ago
+                - number_of_days_now
+                - last_year
+                - current_year
+                - next_year
+              type: string
+            include_time:
+              type: boolean
+            property:
+              maxLength: 256
+              type: string
+            value:
+              description: leaf value. A select or multi_select takes option names, never ids. A date takes unix seconds; where the filter is stored (a query's views, update_view) it also takes a date string such as 2026-08-01 or 2026-08-01T09:00:00Z, converted on write, while search takes a date string only in the compact filter string
+          required:
+            - property
+            - condition
+          type: object
     ValidationError:
       properties:
         code:
@@ -3513,7 +3582,7 @@ paths:
               additionalProperties: false
               properties:
                 ops:
-                  description: applied in order as one edit; if any one is refused, none is applied. Each op's members, schema and example come from get_op_schema with its op name
+                  description: applied in order as one edit, and if any one is refused none is applied. Each op's members, schema and example come from get_op_schema with its op name
                   items:
                     properties:
                       op:
@@ -3813,7 +3882,6 @@ paths:
                 name:
                   description: the new display name; the key is identity and does not change
                   maxLength: 4096
-                  minLength: 1
                   type: string
               required:
                 - name
@@ -3944,6 +4012,12 @@ paths:
                   description: compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays simple to decode; see kind filters
                   maxLength: 4096
                   type: string
+                filters:
+                  description: structured filter nodes (schema kind filters); the compact filter string is the simpler channel, and a body sends one of the two
+                  items:
+                    $ref: '#/components/schemas/FilterNode'
+                  maxItems: 50
+                  type: array
                 name:
                   maxLength: 4096
                   type: string
@@ -4645,6 +4719,8 @@ paths:
                         type: object
                       maxItems: 128
                       type: array
+                  required:
+                    - name
                   type: object
                 - description: 'the type as an AnyBlock document: formatVersion 2.0, kind object_type, the definition under type_settings; its schema and a worked example come from get_schema with kind type_document'
                   type: object
@@ -4823,13 +4899,8 @@ paths:
             schema:
               anyOf:
                 - additionalProperties: false
-                  description: the body POST takes. PATCH takes the same members, all optional, except api_key, which is create-only
+                  description: the flat body, every member optional; at least one
                   properties:
-                    api_key:
-                      description: the key object bodies name this type by; derived from the name when omitted
-                      maxLength: 256
-                      pattern: ^[a-zA-Z0-9_]+$
-                      type: string
                     default_template:
                       description: id of the template new objects of this type start from; empty string clears it
                       maxLength: 256
@@ -4979,9 +5050,170 @@ paths:
                       type: array
                   type: object
                 - additionalProperties: false
+                  description: 'a partial type document: properties carries the type''s own details (name, description), type_settings the settings to change'
+                  properties:
+                    icon:
+                      additionalProperties: false
+                      description: 'give format plus its own member: emoji, name or file'
+                      oneOf:
+                        - properties:
+                            format:
+                              const: emoji
+                          required:
+                            - format
+                            - emoji
+                        - properties:
+                            format:
+                              const: icon
+                          required:
+                            - format
+                            - name
+                        - properties:
+                            format:
+                              const: file
+                          required:
+                            - format
+                            - file
+                      properties:
+                        color:
+                          enum:
+                            - grey
+                            - yellow
+                            - orange
+                            - red
+                            - pink
+                            - purple
+                            - blue
+                            - ice
+                            - teal
+                            - lime
+                          type: string
+                        emoji:
+                          maxLength: 32
+                          minLength: 1
+                          type: string
+                        file:
+                          description: id of an image object in this space, with format file
+                          maxLength: 4096
+                          minLength: 1
+                          type: string
+                        format:
+                          enum:
+                            - emoji
+                            - icon
+                            - file
+                          type: string
+                        name:
+                          description: a built-in icon name, with format icon
+                          maxLength: 256
+                          minLength: 1
+                          type: string
+                      type: object
+                    properties:
+                      additionalProperties:
+                        type:
+                          - string
+                          - number
+                          - boolean
+                          - array
+                          - "null"
+                      description: the type's own details by key, such as name and description
+                      maxProperties: 128
+                      type: object
+                    type_settings:
+                      additionalProperties: false
+                      properties:
+                        default_template:
+                          description: id of the template new objects of this type start from; empty string clears it
+                          maxLength: 256
+                          type: string
+                        default_view:
+                          description: how a set or collection of this type opens; applies to ones created after the change
+                          enum:
+                            - table
+                            - list
+                            - gallery
+                            - kanban
+                            - calendar
+                            - graph
+                          type: string
+                        layout:
+                          description: the layout instances of this type get; basic unless you need another
+                          enum:
+                            - basic
+                            - note
+                            - todo
+                            - profile
+                            - bookmark
+                            - set
+                            - collection
+                          type: string
+                        plural_name:
+                          maxLength: 4096
+                          type: string
+                        property_definitions:
+                          description: the type's whole field list; an unknown name mints a property. On PATCH it replaces the list, so to change one field send an ops envelope with add_property to update_type instead, and to rename a property send {name} to update_property
+                          items:
+                            additionalProperties: false
+                            description: names its property by name or by property, one of the two
+                            properties:
+                              format:
+                                description: the new property's format; omit it and an unknown name is created as text
+                                enum:
+                                  - text
+                                  - number
+                                  - select
+                                  - multi_select
+                                  - date
+                                  - files
+                                  - checkbox
+                                  - url
+                                  - email
+                                  - phone
+                                  - objects
+                                type: string
+                              name:
+                                description: the property's display name, e.g. Due date; an unknown one is created
+                                maxLength: 128
+                                minLength: 1
+                                type: string
+                              options:
+                                description: 'select and multi_select only: the option vocabulary; creating options here needs the create_missing_options parameter set to true'
+                                items:
+                                  additionalProperties: false
+                                  properties:
+                                    color:
+                                      maxLength: 64
+                                      type: string
+                                    name:
+                                      maxLength: 4096
+                                      minLength: 1
+                                      type: string
+                                  required:
+                                    - name
+                                  type: object
+                                maxItems: 100
+                                type: array
+                              property:
+                                description: the property by the key the space serves, for one that exists
+                                maxLength: 256
+                                minLength: 1
+                                type: string
+                              section:
+                                description: featured shows the property on the object itself
+                                enum:
+                                  - featured
+                                  - hidden
+                                type: string
+                            type: object
+                          maxItems: 128
+                          type: array
+                      type: object
+                  type: object
+                - additionalProperties: false
                   properties:
                     ops:
-                      description: applied in order as one edit; property ops are written first, view ops after. Each op's members, schema and example come from get_op_schema with its op name
+                      description: 'planned and refused whole before any write, then written in order: property ops first, view ops after, and a view op refused leaves the written property lists in place. Each op''s members, schema and example come from get_op_schema with its op name'
                       items:
                         properties:
                           op:
@@ -5003,7 +5235,7 @@ paths:
                   required:
                     - ops
                   type: object
-              description: the fields to change, or an ops envelope that edits the property list and the views one op at a time
+              description: the flat type body with the fields to change, a partial type document, or an ops envelope that edits the property list and the views one op at a time
         description: The fields of the type to change, or an ops envelope
         required: true
       responses:
