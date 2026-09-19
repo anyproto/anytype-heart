@@ -20,8 +20,10 @@ package v2service
 // valid under it is valid AnyBlock JSON is a test rather than a promise.
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
@@ -170,5 +172,189 @@ func withoutExcluded(value any, excluded map[string]bool) any {
 func trimAPIDocumentEnvelope(fields map[string]json.RawMessage) {
 	for member := range apiV2ExcludedSet {
 		delete(fields, member)
+	}
+}
+
+// ---- per-kind narrowing ----
+//
+// Three discovery kinds serve the document schema: object, template and
+// type_document. Serving the one trimmed schema for all three was
+// measured as a byte-identical 44 KB three times (surface audit SA-c), and
+// it advertised members the operation refuses: a type document with
+// `blocks` is refused on create, a template must name `template_for`, and
+// POST objects takes kind page or template only. Each kind now serves the
+// document schema narrowed to what its operation accepts — the delta is
+// data (apiV2KindNarrowings), derived from the trimmed schema at first use,
+// and the invariant that a document valid under a narrowed schema is valid
+// under the document schema is a test.
+
+// apiV2KindNarrowing is one kind's delta from the document schema.
+type apiV2KindNarrowing struct {
+	// kinds is the closed `kind` vocabulary; one value becomes a const
+	kinds []string
+	// drop are root members the operation refuses or ignores
+	drop []string
+	// require are root members the operation demands beyond formatVersion
+	require []string
+}
+
+// apiV2KindNarrowings is the whole delta, per kind. A kind absent here
+// serves the document schema unchanged.
+var apiV2KindNarrowings = map[string]apiV2KindNarrowing{
+	// POST objects: validateDocumentRefs takes kind "", page or template
+	// and sends object_type to its own endpoint; type_settings is refused
+	// by the format on every kind here
+	"object": {
+		kinds: []string{"page", "template"},
+		drop:  []string{"type_settings", "uninstalled"},
+	},
+	// POST templates: kind and type default to template, the target type
+	// is required (createFromDocument with requireTemplate)
+	"template": {
+		kinds:   []string{"template"},
+		drop:    []string{"type_settings", "uninstalled", "query_source", "collection_items"},
+		require: []string{"template_for"},
+	},
+	// POST types (document form): CreateType injects kind object_type and
+	// refuses blocks ("a type gets its views generated for it"); the other
+	// dropped members belong to instances, not to the type
+	"type_document": {
+		kinds: []string{"object_type"},
+		drop:  []string{"blocks", "template_for", "collection_items", "query_source"},
+	},
+}
+
+// apiV2KindSchemas caches each narrowed schema; the input is constant.
+var apiV2KindSchemas sync.Map // kind → []byte
+
+// apiV2KindSchema is the document schema narrowed for one discovery kind.
+// A kind without a narrowing, or a narrowing that fails, serves the
+// document schema: too wide is a documentation bug, absent breaks discovery.
+func apiV2KindSchema(kind string) []byte {
+	if cached, ok := apiV2KindSchemas.Load(kind); ok {
+		return cached.([]byte)
+	}
+	narrowing, ok := apiV2KindNarrowings[kind]
+	if !ok {
+		return apiV2DocumentSchema()
+	}
+	narrowed, err := narrowDocumentSchema(apiV2DocumentSchema(), narrowing)
+	if err != nil {
+		narrowed = apiV2DocumentSchema()
+	}
+	apiV2KindSchemas.Store(kind, narrowed)
+	return narrowed
+}
+
+// narrowDocumentSchema applies one narrowing: closes `kind`, drops the
+// members and the conditional gates that mention them, adds the
+// requirements, and prunes the definitions nothing references any more
+// (the block family alone is a quarter of the document schema).
+func narrowDocumentSchema(raw []byte, n apiV2KindNarrowing) ([]byte, error) {
+	var root map[string]any
+	if err := json.Unmarshal(raw, &root); err != nil {
+		return nil, fmt.Errorf("decode document schema: %w", err)
+	}
+	props, ok := root["properties"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("document schema has no properties")
+	}
+	dropped := make(map[string]bool, len(n.drop))
+	for _, member := range n.drop {
+		dropped[member] = true
+		delete(props, member)
+	}
+	switch len(n.kinds) {
+	case 0:
+	case 1:
+		props["kind"] = map[string]any{"const": n.kinds[0]}
+	default:
+		props["kind"] = map[string]any{"enum": n.kinds}
+	}
+	setOrDelete(root, "required", withoutExcluded(root["required"], dropped))
+	if len(n.require) > 0 {
+		required, _ := root["required"].([]any)
+		for _, member := range n.require {
+			required = append(required, member)
+		}
+		root["required"] = required
+	}
+	if branches, ok := root["allOf"].([]any); ok {
+		kept := make([]any, 0, len(branches))
+		for _, raw := range branches {
+			encoded, err := json.Marshal(raw)
+			if err != nil {
+				return nil, fmt.Errorf("encode gate: %w", err)
+			}
+			if gateMentions(encoded, dropped) {
+				continue // it only ever gated a member this kind does not carry
+			}
+			kept = append(kept, raw)
+		}
+		setOrDelete(root, "allOf", nonEmpty(kept))
+	}
+	pruneUnreferencedDefs(root)
+	return json.Marshal(root)
+}
+
+// gateMentions reports whether a conditional names one of the members, as
+// a property key or in a required list.
+func gateMentions(encoded []byte, members map[string]bool) bool {
+	for member := range members {
+		if bytes.Contains(encoded, []byte(`"`+member+`"`)) {
+			return true
+		}
+	}
+	return false
+}
+
+// nonEmpty returns the slice, or nil when it is empty so the key is dropped.
+func nonEmpty(items []any) any {
+	if len(items) == 0 {
+		return nil
+	}
+	return items
+}
+
+// pruneUnreferencedDefs keeps only the `$defs` reachable from the schema
+// body, transitively through the definitions themselves.
+func pruneUnreferencedDefs(root map[string]any) {
+	defs, ok := root["$defs"].(map[string]any)
+	if !ok {
+		return
+	}
+	reachable := map[string]bool{}
+	var walk func(node any)
+	walk = func(node any) {
+		switch v := node.(type) {
+		case map[string]any:
+			if ref, ok := v["$ref"].(string); ok && strings.HasPrefix(ref, "#/$defs/") {
+				name := strings.TrimPrefix(ref, "#/$defs/")
+				if !reachable[name] {
+					reachable[name] = true
+					walk(defs[name])
+				}
+			}
+			for _, child := range v {
+				walk(child)
+			}
+		case []any:
+			for _, child := range v {
+				walk(child)
+			}
+		}
+	}
+	for key, child := range root {
+		if key != "$defs" {
+			walk(child)
+		}
+	}
+	for name := range defs {
+		if !reachable[name] {
+			delete(defs, name)
+		}
+	}
+	if len(defs) == 0 {
+		delete(root, "$defs")
 	}
 }

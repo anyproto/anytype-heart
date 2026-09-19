@@ -291,8 +291,9 @@ func schemaKind(kind string) (v2model.SchemaEntry, error) {
 		//
 		// apiV2DocumentSchema, not the format's full schema and not the
 		// authoring subset: see apiv2schema.go for why this surface needs its
-		// own, and for the member list that is the whole difference.
-		schema = json.RawMessage(apiV2DocumentSchema())
+		// own, and for the member list that is the whole difference —
+		// narrowed per kind to what the kind's operation accepts.
+		schema = json.RawMessage(apiV2KindSchema(kind))
 	}
 	schema, err := strictDiscoverySchema(schema)
 	if err != nil {

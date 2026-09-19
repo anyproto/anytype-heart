@@ -3,11 +3,13 @@ package v2service
 import (
 	"encoding/json"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 )
 
@@ -132,4 +134,78 @@ func sortedEnvelopeKeys(m map[string]json.RawMessage) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+func TestAPIV2KindSchemasAreNarrowedToWhatTheOperationAccepts(t *testing.T) {
+	fx := newV2FixtureBare(t)
+	entry := func(kind string) v2model.SchemaEntry {
+		e, err := fx.SchemaKind(kind)
+		require.NoError(t, err)
+		return e
+	}
+	object, template, typeDocument := entry("object"), entry("template"), entry("type_document")
+
+	t.Run("each kind's example validates against its own schema and no other", func(t *testing.T) {
+		assert.NoError(t, validateAgainstSchema(t, object.Schema, object.Example))
+		assert.NoError(t, validateAgainstSchema(t, template.Schema, template.Example))
+		assert.NoError(t, validateAgainstSchema(t, typeDocument.Schema, typeDocument.Example))
+		assert.Error(t, validateAgainstSchema(t, template.Schema, object.Example), "a template names its target type")
+		assert.Error(t, validateAgainstSchema(t, typeDocument.Schema, template.Example), "a type document has kind object_type")
+		assert.Error(t, validateAgainstSchema(t, object.Schema, typeDocument.Example), "POST objects refuses kind object_type")
+		// the object endpoint also takes a template document
+		assert.NoError(t, validateAgainstSchema(t, object.Schema, template.Example))
+	})
+
+	t.Run("the type document refuses what CreateType refuses", func(t *testing.T) {
+		withBlocks := `{"formatVersion":"2.0","kind":"object_type","properties":{"name":"Plant"},"type_settings":{"api_key":"plant"},"blocks":[{"type":"paragraph","text":"x"}]}`
+		assert.Error(t, validateAgainstSchema(t, typeDocument.Schema, json.RawMessage(withBlocks)), "blocks are refused on type create")
+		assert.NoError(t, validateAgainstSchema(t, typeDocument.Schema, json.RawMessage(`{"formatVersion":"2.0","kind":"object_type","properties":{"name":"Plant"},"type_settings":{"api_key":"plant"}}`)))
+	})
+
+	t.Run("the narrowed schemas are smaller, and the type document loses the block family", func(t *testing.T) {
+		// compared as served, through the same normalization
+		full, err := strictDiscoverySchema(apiV2DocumentSchema())
+		require.NoError(t, err)
+		assert.Less(t, len(typeDocument.Schema), len(full)/2, "type_document: %d of %d bytes", len(typeDocument.Schema), len(full))
+		assert.Less(t, len(template.Schema), len(full))
+		assert.Less(t, len(object.Schema), len(full))
+		assert.NotContains(t, string(typeDocument.Schema), `"blockCore"`)
+		assert.Contains(t, string(template.Schema), `"blockCore"`, "a template carries blocks")
+	})
+
+	t.Run("no reference dangles after pruning", func(t *testing.T) {
+		for kind, schema := range map[string]json.RawMessage{"object": object.Schema, "template": template.Schema, "type_document": typeDocument.Schema} {
+			var root map[string]any
+			require.NoError(t, json.Unmarshal(schema, &root))
+			defs, _ := root["$defs"].(map[string]any)
+			var walk func(node any)
+			walk = func(node any) {
+				switch v := node.(type) {
+				case map[string]any:
+					if ref, ok := v["$ref"].(string); ok && strings.HasPrefix(ref, "#/$defs/") {
+						_, present := defs[strings.TrimPrefix(ref, "#/$defs/")]
+						assert.True(t, present, "%s: %s dangles", kind, ref)
+					}
+					for _, child := range v {
+						walk(child)
+					}
+				case []any:
+					for _, child := range v {
+						walk(child)
+					}
+				}
+			}
+			walk(root)
+		}
+	})
+
+	t.Run("a document valid under a narrowed schema is valid AnyBlock JSON", func(t *testing.T) {
+		for _, doc := range []json.RawMessage{object.Example, template.Example, typeDocument.Example} {
+			assert.NoError(t, anyblockjson.Validate(doc))
+		}
+	})
+
+	t.Run("a kind without a narrowing serves the document schema", func(t *testing.T) {
+		assert.Equal(t, string(apiV2DocumentSchema()), string(apiV2KindSchema("no_such_kind")))
+	})
 }

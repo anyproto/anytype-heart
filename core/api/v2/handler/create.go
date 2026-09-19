@@ -536,7 +536,7 @@ func SchemaIndexHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id			get_schema
 //	@Tags		Schemas
 //	@Produce	json
-//	@Param		kind	path		string				true	"Schema kind, as listed by GET /v2/schemas"
+//	@Param		kind	path		string				true	"Schema kind, as listed by list_schemas"
 //	@Success	200		{object}	v2model.SchemaEntry	"Schema + example"
 //	@Failure	404		{object}	v2model.Error		"Unknown kind"
 //	@Security	bearerauth

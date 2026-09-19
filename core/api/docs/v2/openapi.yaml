@@ -1661,7 +1661,7 @@ paths:
     get:
       operationId: get_schema
       parameters:
-      - description: Schema kind, as listed by GET /v2/schemas
+      - description: Schema kind, as listed by list_schemas
         in: path
         name: kind
         required: true
