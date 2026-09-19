@@ -412,6 +412,16 @@ func (a *v2StateApplier) viewFormatName() func(string) (string, bool) {
 		if format, ok := base(key); ok {
 			return format, true
 		}
+		// a spelling the render emitted for a REMOVED property IS that
+		// property (canonicalViewKey keeps it), so its format is the stored
+		// key's — never a live property that merely carries the spelling as
+		// its display name, which would convert a value the filter does not
+		// compare as a date (round-six review)
+		if a.marshalOptions().Keys != nil && a.marshalKeys != nil {
+			if stored, emitted := a.marshalKeys.emittedCorpse(key); emitted {
+				return base(stored)
+			}
+		}
 		entries, err := a.propEntries()
 		if err != nil {
 			return "", false
@@ -633,8 +643,7 @@ func stripValuelessConditionValues(nodes []any) {
 			stripValuelessConditionValues(nested)
 			continue
 		}
-		switch node["condition"] {
-		case "empty", "notEmpty", "exists":
+		if presenceCondition(node["condition"]) {
 			delete(node, "value")
 		}
 	}
@@ -666,8 +675,12 @@ func (a *v2StateApplier) applyViewFilterString(raw json.RawMessage, edited, view
 	}
 	sort.Strings(refKeys)
 	parsed, err := filterstring.Parse(s, filterstring.Options{
-		KnownKeys:     refKeys,
-		ResolveFormat: a.s.formatNameResolver(a.spaceId),
+		KnownKeys: refKeys,
+		// the SAME spellings KnownKeys accepts: a served slug must reach the
+		// parser's date conversion too, or `last_modified_date >= "2026-07-01"`
+		// parses to a string and the stored view compares it against int64
+		// (round-six review, the compact half of R6-1)
+		ResolveFormat: a.viewFormatName(),
 	})
 	if err != nil {
 		fsErr := filterStringError(a.spaceId, err)

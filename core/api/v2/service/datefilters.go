@@ -42,6 +42,15 @@ func convertDateFilterValues(nodes []any, base string, style filterPathStyle, fo
 		if property == "" {
 			continue
 		}
+		// a presence predicate DISCARDS its value (§11 canonical form strips
+		// it below), and a counting preset's value is a DAY COUNT rather
+		// than a time. Converting either would refuse a value the view
+		// throws away, or turn a date string into a plausible number of days
+		// — "1970-01-01T00:00:07Z" becoming 7 reads as "seven days ago"
+		// (round-six review).
+		if presenceCondition(node["condition"]) || carriesDatePreset(node) {
+			continue
+		}
 		if format, known := formatName(property); !known || format != "date" {
 			continue
 		}
@@ -79,8 +88,30 @@ func notADateIssue(property, value, path string) v2model.Issue {
 	return v2model.Issue{
 		Path:    path,
 		Message: fmt.Sprintf("property %q is a date, and %q is not one", property, value),
-		Hint:    "a date takes unix seconds, an RFC 3339 string or YYYY-MM-DD — or a datePreset",
+	}.Hintf(`a date takes unix seconds as a JSON number, an RFC 3339 string or YYYY-MM-DD — or replace value with date_preset, e.g. "date_preset":"today" (%s lists them)`, v2model.RefGetSchema("filters"))
+}
+
+// presenceCondition reports whether a condition ignores its leaf's value.
+// Both spellings are accepted: the surface serves snake_case, and the
+// canonical-form strip has long matched the camelCase one too.
+func presenceCondition(v any) bool {
+	switch v {
+	case "empty", "not_empty", "notEmpty", "exists":
+		return true
 	}
+	return false
+}
+
+// carriesDatePreset reports whether a leaf names a date preset, in which
+// case any value beside it belongs to the preset (a day count for the
+// counting presets), not to a timestamp comparison.
+func carriesDatePreset(node map[string]any) bool {
+	for _, key := range []string{"date_preset", "datePreset"} {
+		if preset, ok := node[key].(string); ok && preset != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func filterChildSegment(style filterPathStyle) string {

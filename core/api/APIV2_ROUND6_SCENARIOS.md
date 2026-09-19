@@ -249,16 +249,36 @@ open, each needing a task written for it:
 
 **R6-1 — done.** A stored filter takes a date the way the compact string
 does: on `POST /queries` (a view's filters and the top-level filters) and on
-`update_view`, a string value on a date property that is RFC 3339 or
-`YYYY-MM-DD` is converted to unix seconds before the filter is stored
-(`convertDateFilterValues`), and a string that is no date is refused,
-path-addressed, naming the property as the caller sent it. The conversion
-runs before key canonicalization on both routes, so the refusal never spells
-a stored key. Search's structured form is unchanged: it still refuses the
-string with the conversion spelled out. Later iteration: teach search the
-same conversion; if a bare string proves ambiguous there (a text property
-whose value happens to look like a date), an explicit form in the compact
-string, on the pattern of SQL's `DATE(2026-01-26)`, would make the intent
-unmistakable. The `filters` schema kind and APIV2.md say where a date
-string is accepted.
+`update_view` / `insert_view` (the structured channel and, since the review,
+the compact `filter` string too), a string value on a date property that is
+RFC 3339 or `YYYY-MM-DD` is converted to unix seconds before the filter is
+stored (`convertDateFilterValues`), and a string that is no date is refused,
+path-addressed. The conversion runs before key canonicalization on both
+routes, so the refusal preserves the caller's own property spelling instead
+of substituting the stored key. Two leaf kinds are left alone: a presence
+predicate (`empty`, `not_empty`, `exists`), whose value the canonical form
+discards anyway, and a leaf carrying a `date_preset`, whose value belongs to
+the preset — a counting preset takes a DAY COUNT, so converting
+"1970-01-01T00:00:07Z" to 7 would silently read as "seven days ago". The
+format lookup follows the same spellings key canonicalization accepts,
+including a slug a read emitted for a REMOVED property, which resolves to
+that property's stored key rather than to a live property sharing the
+spelling as a display name.
 
+Search's structured form is unchanged: it still refuses the string with the
+conversion spelled out. Later iteration: teach search the same conversion.
+The conversion is property-format-aware, so a text property whose value
+looks like a date is never touched and the ambiguity may not arise; should
+it, an explicit form on the pattern of SQL's `DATE(2026-01-26)` is the
+fallback. The `filters` schema kind and APIV2.md say where a date string is
+accepted, and the refusal's hint names `date_preset` with an example.
+
+Remaining scope, recorded rather than fixed: a filter inside a whole
+document (`POST /objects` or a template carrying a dataview) and the
+generic block payloads (`insert_blocks`, `replace_subtree`,
+`update_block.set.views`, a dataview inside `set_cell`) import through the
+codec directly and are NOT converted, so a date string persists there as
+before; `insert_view.copy_from` reproduces its source's filters verbatim,
+including a bad value already stored. Nothing migrates filters written
+before this change. Found on the way and fixed: the canonical-form strip
+matched only the camelCase `notEmpty`, so a `not_empty` leaf kept its value.
