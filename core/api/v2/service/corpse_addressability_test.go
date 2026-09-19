@@ -141,7 +141,7 @@ func (fx *v2Fixture) addTombstone(t *testing.T, id string) {
 // deletedSnapshot (spaceindex.SnapshotOnDelete: audit fields and the
 // layout, no identity keys) — nothing a key-filtered query could match.
 // This build no longer tombstones a derived object (core/block
-// beforeDeleteDerived leaves the full corpse row), so the shape exists only
+// deleteDerivedObject leaves the full corpse row), so the shape exists only
 // until the next space load rebuilds it from the tree.
 func (fx *v2Fixture) addPropertyTombstone(t *testing.T, id string) {
 	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
@@ -225,7 +225,9 @@ func corpseHeldRead() apicore.ObjectRead {
 
 // TestV2CorpseHeldValueReadsUnderItsSlug: GET serves a corpse-held value
 // under the corpse's slug — the read-emit half of the split the header
-// describes — never the raw 24-hex stored key; and the object's corpse
+// describes — rather than the raw 24-hex stored key (which IS what a
+// tombstone an older build left has to serve, since it keeps no identity:
+// the tombstone leg below asserts exactly that); and the object's corpse
 // TYPE spells its slug the same way (round-four eval R4-1: a deleted type
 // rewrote every surviving object's `type` to a hex nothing resolved). The
 // slug is emitted only while no live entity answers to it: the corpse

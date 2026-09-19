@@ -89,7 +89,7 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 		// the refusal itself predates §8.41 (a query requires an installed
 		// type either way)
 		if ok && entry.Id == "" {
-			if err := s.refuseRemovedType(ctx, spaceId, entry.Key, "/type"); err != nil {
+			if err := s.refuseRemovedType(ctx, spaceId, entry.Key, req.Type, "/type"); err != nil {
 				return nil, err
 			}
 		}

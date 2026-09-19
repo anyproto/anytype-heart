@@ -254,7 +254,10 @@ func TestSubscribeGroups(t *testing.T) {
 		assert.Equal(t, "opt-done", events[0].Group.Id)
 	})
 
-	t.Run("a hard-deleted option emits a group remove event", func(t *testing.T) {
+	// the store primitive is invoked directly here: a derived object's delete
+	// no longer strips its row (core/block deleteDerivedObject), so this is
+	// the store-level contract plus the shape an older build left behind
+	t.Run("a store-tombstoned option emits a group remove event", func(t *testing.T) {
 		fx := newEngineFixture(t)
 		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
 			givenStatusRelation(),
