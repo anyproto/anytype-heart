@@ -4978,7 +4978,21 @@ now names beside the same-space form. The codec keeps it as an ordinary
 link, param verbatim; the API rewrites a short `spaceId` in it to the full
 id on every path that turns caller text into marks (documents, block ops,
 `replace_text`, chat messages — `spacelinks.go`), so the stored link is one
-the client can open. A reference that does not resolve stays verbatim.
+the client can open. One expander serves a whole request, so a document
+with a hundred links to one space reads the space census once.
+
+Three consequences, all deliberate. The stored destination keeps the FULL
+space id, and so does every read of that text, including under the default
+compact shape: a shortened destination is one no client could open, so link
+destinations are the one place the echo rule does not reach. A reference
+the expander cannot resolve — unknown, invisible to this key, or ambiguous
+between two spaces — leaves the link exactly as sent and reports it on the
+`warnings` channel, path-addressed, once per reference: preserving a link
+pasted from elsewhere matters more than refusing it, but a link that will
+not open should not be stored in silence. And a destination already so long
+that adding the full id would pass what the renderer can write back keeps
+its reference too, with the same kind of warning, rather than becoming a
+document export would refuse.
 
 #### The measurement this answers
 

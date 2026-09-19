@@ -391,7 +391,8 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	if err := resolvers.err(); err != nil {
 		return nil, fmt.Errorf("resolve document references: %w", err)
 	}
-	expandSpaceRefsInBlocks(snapshot.Blocks, s.spaceRefExpander(ctx))
+	links := s.newSpaceLinkExpander(ctx)
+	links.Blocks(snapshot.Blocks)
 
 	// The importer needs the stored type key, but every v2 response speaks the
 	// stable API vocabulary. In particular, a custom type slug is rewritten to
@@ -399,6 +400,8 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	result := &v2model.CreateResult{Type: resolvers.keys.TypeSlug(envelope.Type), Created: resolvers.created()}
 	// the label-adoption tell rides real runs and dry runs alike (C9)
 	result.Warnings = warnLabelShapedIds(body)
+	// a cross-space object link whose space reference could not be expanded
+	result.Warnings = append(result.Warnings, links.Warnings("/blocks")...)
 	// F16: a value on a property the type does not list, said at create as
 	// on set_properties (the object takes the key here for the first time)
 	if typeKeys := s.typeListedKeys(spaceId, envelope.Type); typeKeys != nil {
