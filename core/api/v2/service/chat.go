@@ -229,6 +229,7 @@ func (s *Service) AddChatMessage(ctx context.Context, spaceId, chatId string, re
 		return nil, v2model.ValidationFailed("message text does not parse as inline markup",
 			v2model.Issue{Path: "/text", Message: err.Error(), Hint: v2MarkupHint})
 	}
+	expandSpaceRefsInMarks(marks, s.spaceRefExpander(ctx))
 	if err := v2ValidateChatTextLength(text); err != nil {
 		return nil, err
 	}
@@ -272,6 +273,7 @@ func (s *Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageI
 		return nil, v2model.ValidationFailed("message text does not parse as inline markup",
 			v2model.Issue{Path: "/text", Message: err.Error(), Hint: v2MarkupHint})
 	}
+	expandSpaceRefsInMarks(marks, s.spaceRefExpander(ctx))
 	if err := v2ValidateChatTextLength(text); err != nil {
 		return nil, err
 	}

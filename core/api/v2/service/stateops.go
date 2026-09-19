@@ -963,6 +963,7 @@ func (a *v2StateApplier) fragmentBlocks(base string, run []map[string]any) ([]*m
 	if err != nil {
 		return nil, nil, invalidFragmentError(base, err)
 	}
+	expandSpaceRefsInBlocks(blocks, a.spaceRefExpander())
 	return blocks, topIds, nil
 }
 
@@ -1575,6 +1576,7 @@ func (a *v2StateApplier) applyUpdateBlock(op opUpdateBlock, opPath string) error
 		return invalidPayloadError(opPath+".set", "/blocks/0",
 			func(member string) bool { _, ok := op.Set[member]; return ok }, err)
 	}
+	expandSpaceRefsInBlocks(blocks, a.spaceRefExpander())
 	if err := a.claimPayloadIds(blocks, collectSubtreeIds(a.st, fullId), func(string) string { return opPath + ".set" }); err != nil {
 		return err
 	}
@@ -2166,6 +2168,7 @@ func (a *v2StateApplier) applyReplaceText(op opReplaceText, opPath string) error
 				}
 				return invalidDocError(err)
 			}
+			expandSpaceRefsInMarks(marks, a.spaceRefExpander())
 			content.Text.Text = plain
 			if len(marks) == 0 {
 				content.Text.Marks = nil
@@ -2472,6 +2475,7 @@ func (a *v2StateApplier) applySetCell(op opSetCell, opPath string) error {
 		return invalidPayloadError(opPath+".value",
 			fmt.Sprintf("/blocks/0/rows/%d/cells/%d", ri, ci), nil, err)
 	}
+	expandSpaceRefsInBlocks(blocks, a.spaceRefExpander())
 	if err := a.claimPayloadIds(blocks, collectSubtreeIds(a.st, fullId), func(string) string { return opPath + ".value" }); err != nil {
 		return err
 	}

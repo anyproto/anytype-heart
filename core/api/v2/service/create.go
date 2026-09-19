@@ -391,6 +391,7 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	if err := resolvers.err(); err != nil {
 		return nil, fmt.Errorf("resolve document references: %w", err)
 	}
+	expandSpaceRefsInBlocks(snapshot.Blocks, s.spaceRefExpander(ctx))
 
 	// The importer needs the stored type key, but every v2 response speaks the
 	// stable API vocabulary. In particular, a custom type slug is rewritten to

@@ -4971,6 +4971,15 @@ now **serves** spaces by a short reference and **accepts** either spelling
 everywhere a space id is accepted. The full id keeps working, forever; this
 is additive addressing over the existing identity, not a new identity.
 
+"Everywhere" includes a cross-space object link in block text or a chat
+message — `[t](anytype://object?objectId=<id>&spaceId=<space id>)`, the
+platform's own two-parameter deep link, which the served block-text syntax
+now names beside the same-space form. The codec keeps it as an ordinary
+link, param verbatim; the API rewrites a short `spaceId` in it to the full
+id on every path that turns caller text into marks (documents, block ops,
+`replace_text`, chat messages — `spacelinks.go`), so the stored link is one
+the client can open. A reference that does not resolve stays verbatim.
+
 #### The measurement this answers
 
 A space id is `<CID>.<base36 replication key>` —

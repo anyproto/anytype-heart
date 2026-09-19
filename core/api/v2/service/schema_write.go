@@ -290,6 +290,7 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	if err := resolvers.err(); err != nil {
 		return nil, fmt.Errorf("resolve type properties: %w", err)
 	}
+	expandSpaceRefsInBlocks(snapshot.Blocks, s.spaceRefExpander(ctx))
 	// the declared select vocabulary, before the dry-run return: a dry run's
 	// job is to preview what the real run does, and options it never mentions
 	// are options a caller does not know they are about to create
