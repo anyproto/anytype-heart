@@ -314,9 +314,12 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 	return body, etag, nil
 }
 
-// seedTombstonedTypeProperties makes a type read serve the SAME
-// typeProperties over a tombstone an OLDER build left as after the next
-// space load rebuilds it (§8.41). For every recommended-relation id the
+// seedTombstonedTypeProperties keeps a type read's typeProperties ENTRY
+// over a tombstone an OLDER build left — the entry, its identity, name and
+// format, so the documented read-modify-write loop does not drop it. Its
+// served SPELLING can still change once the row is rebuilt: a removed
+// custom property spells as its stored key here and as its slug afterwards
+// (§8.41, TestV2TypePropertiesCorpseEchoResolvesToItsHolder). For every recommended-relation id the
 // store resolver cannot answer (GetRelationById needs a relationKey the
 // tombstone row lost), it confirms the row exists as a tombstone and reads
 // the LIVE object — the tree survives a delete by design — to recover key,

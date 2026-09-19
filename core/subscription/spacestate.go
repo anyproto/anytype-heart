@@ -396,9 +396,10 @@ func (st *spaceState) installGroups(g *groupsSub) error {
 		g.members[id] = rec.Details.Get(g.relationKey)
 	}
 
-	// seed the known option ids: an option an older build deleted is a
-	// tombstone of {id, isDeleted}, which checkItem can only recognize by
-	// this set
+	// seed the known option ids of the grouped relation: the live ones, so
+	// that a later delete, re-key or layout change of one is recognized by
+	// checkItem as leaving the set (a deleted row, whether flagged or a
+	// tombstone an older build left, no longer matches this query)
 	optionFilters := &database.Filters{FilterObj: database.FiltersAnd{
 		database.FilterEq{
 			Key:   bundle.RelationKeyResolvedLayout,
