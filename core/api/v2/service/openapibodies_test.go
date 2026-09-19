@@ -54,7 +54,7 @@ func TestOpenAPIBodiesAcceptTheServedExamples(t *testing.T) {
 			`{"ops":[` + v2OpSchemas["add_property"].example + `]}`, `{"ops":[` + v2OpSchemas["insert_view"].example + `]}`}},
 		{v2model.OpCreateObject, []string{v2SchemaKinds["shortcut"].example, v2SchemaKinds["object"].example}},
 		{v2model.OpCreateTemplate, []string{v2SchemaKinds["template"].example}},
-		{v2model.OpValidate, []string{v2SchemaKinds["object"].example}},
+		{v2model.OpValidate, []string{v2SchemaKinds["object"].example, v2SchemaKinds["type_document"].example}},
 		{v2model.OpPatchObject, []string{`{"ops":[` + v2OpSchemas["set_properties"].example + `,` + v2OpSchemas["insert_blocks"].example + `]}`}},
 	}
 	seen := map[string]bool{}
@@ -96,6 +96,13 @@ func TestOpenAPIBodiesRefuseTheWrongShape(t *testing.T) {
 		{v2model.OpUpdateType, `{"type_settings":{"api_key":"changed"}}`},
 		// a filter node the served kind refuses
 		{v2model.OpCreateQuery, `{"name":"Open","type":"task","filters":[{"key":"done","value":false}]}`},
+		// both filter channels, and views beside a top-level channel: ambiguous_input
+		{v2model.OpCreateQuery, `{"name":"Open","type":"task","filter":"done = false","filters":[]}`},
+		{v2model.OpCreateQuery, `{"name":"Open","type":"task","views":[{"name":"All"}],"sorts":[{"property":"name"}]}`},
+		{v2model.OpCreateQuery, `{"name":"Open","type":"task","views":[{"name":"All"}],"filter":"done = false"}`},
+		// the partial document writes name and description only, as strings
+		{v2model.OpUpdateType, `{"properties":{"status":"Done"}}`},
+		{v2model.OpUpdateType, `{"properties":{"name":123}}`},
 	}
 	for _, tc := range refused {
 		t.Run(tc.op+" "+tc.body, func(t *testing.T) {
@@ -132,6 +139,7 @@ func TestOpenAPIBodiesNameOperationsByOpId(t *testing.T) {
 	}
 	pointer := string(composed.Bodies[v2model.OpCreateTemplate])
 	assert.True(t, strings.Contains(pointer, v2model.OpGetSchema+" with kind template"), pointer)
+	assert.Contains(t, string(composed.Bodies[v2model.OpValidate]), v2model.OpGetSchema+" with kind document", "validate checks any kind, so it points at the unnarrowed schema")
 	envelope := string(composed.Bodies[v2model.OpPatchObject])
 	assert.True(t, strings.Contains(envelope, v2model.OpGetOpSchema), envelope)
 	assert.Contains(t, envelope, "none is applied", "the object channel is atomic")

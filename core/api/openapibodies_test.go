@@ -2,12 +2,14 @@ package api
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	v2service "github.com/anyproto/anytype-heart/core/api/v2/service"
 )
 
@@ -52,7 +54,6 @@ func assertRequestBodiesMatch(t *testing.T, doc map[string]any, composed *v2serv
 		require.NoError(t, json.Unmarshal(raw, &v))
 		return v
 	}
-	bare := map[string]any{"type": "object"}
 	seen := map[string]bool{}
 	for path, item := range doc["paths"].(map[string]any) {
 		for method, raw := range item.(map[string]any) {
@@ -69,9 +70,9 @@ func assertRequestBodiesMatch(t *testing.T, doc map[string]any, composed *v2serv
 			}
 			schema := media["schema"]
 			// the opacity guard runs first, on every body: a recipe that
-			// composes a bare object is as opaque as no recipe at all
-			assert.NotEqual(t, bare, schema,
-				"%s %s (%s) publishes an opaque body; add a recipe to openAPIBodyRecipes", method, path, operationId)
+			// composes an unconstrained object is as opaque as no recipe
+			assert.False(t, opaqueBody(schema),
+				"%s %s (%s) publishes an opaque body: give it a shape, or a description naming the discovery operation to read", method, path, operationId)
 			if want, composedHere := composed.Bodies[operationId]; composedHere {
 				seen[operationId] = true
 				assert.Equal(t, canonical(want), schema,
@@ -88,4 +89,25 @@ func assertRequestBodiesMatch(t *testing.T, doc map[string]any, composed *v2serv
 		require.True(t, ok, "component %s missing from the document; run make openapi", name)
 		assert.Equal(t, canonical(want), got, "component %s", name)
 	}
+}
+
+// opaqueBody reports whether a body schema constrains nothing and says
+// nothing about where its shape is published: an object with no members,
+// no composition and no reference, whose description names neither
+// discovery operation.
+func opaqueBody(schema any) bool {
+	node, ok := schema.(map[string]any)
+	if !ok {
+		return false
+	}
+	for _, shaping := range []string{"properties", "required", "anyOf", "oneOf", "allOf", "$ref", "not", "if", "enum", "const", "patternProperties", "propertyNames"} {
+		if _, has := node[shaping]; has {
+			return false
+		}
+	}
+	if extra, ok := node["additionalProperties"].(map[string]any); ok && len(extra) > 0 {
+		return false
+	}
+	description, _ := node["description"].(string)
+	return !strings.Contains(description, v2model.OpGetSchema) && !strings.Contains(description, v2model.OpGetOpSchema)
 }

@@ -20,9 +20,9 @@ package v2service
 // valid under it is valid AnyBlock JSON is a test rather than a promise.
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 
@@ -201,27 +201,40 @@ type apiV2KindNarrowing struct {
 // apiV2KindNarrowings is the whole delta, per kind. A kind absent here
 // serves the document schema unchanged.
 var apiV2KindNarrowings = map[string]apiV2KindNarrowing{
-	// POST objects: validateDocumentRefs takes kind "", page or template
-	// and sends object_type to its own endpoint; type_settings is refused
-	// by the format on every kind here
+	// POST objects: validateDocumentRefs takes documentCreateKinds and sends
+	// object_type to its own endpoint; type_settings is refused by the
+	// format on every kind here
 	"object": {
-		kinds: []string{"page", "template"},
+		kinds: documentCreateKindNames(),
 		drop:  []string{"type_settings", "uninstalled"},
 	},
 	// POST templates: kind and type default to template, the target type
-	// is required (createFromDocument with requireTemplate)
+	// is required (createFromDocument with requireTemplate); a template of
+	// a set carries its query_source, so that stays
 	"template": {
 		kinds:   []string{"template"},
-		drop:    []string{"type_settings", "uninstalled", "query_source", "collection_items"},
+		drop:    []string{"type_settings", "uninstalled", "collection_items"},
 		require: []string{"template_for"},
 	},
 	// POST types (document form): CreateType injects kind object_type and
-	// refuses blocks ("a type gets its views generated for it"); the other
-	// dropped members belong to instances, not to the type
+	// refuses blocks; the other dropped members belong to instances
 	"type_document": {
 		kinds: []string{"object_type"},
-		drop:  []string{"blocks", "template_for", "collection_items", "query_source"},
+		drop:  []string{typeDocumentRefusedOnCreate, "template_for", "collection_items", "query_source"},
 	},
+}
+
+// documentCreateKindNames is documentCreateKinds without the omitted
+// spelling, sorted: the closed vocabulary a schema can state.
+func documentCreateKindNames() []string {
+	names := make([]string, 0, len(documentCreateKinds))
+	for kind := range documentCreateKinds {
+		if kind != "" {
+			names = append(names, kind)
+		}
+	}
+	sort.Strings(names)
+	return names
 }
 
 // apiV2KindSchemas caches each narrowed schema; the input is constant.
@@ -246,23 +259,29 @@ func apiV2KindSchema(kind string) []byte {
 	return narrowed
 }
 
-// narrowDocumentSchema applies one narrowing: closes `kind`, drops the
-// members and the conditional gates that mention them, adds the
-// requirements, and prunes the definitions nothing references any more
-// (the block family alone is a quarter of the document schema).
+// narrowDocumentSchema applies one narrowing: drops the members the way the
+// excluded members are dropped (trimExcludedMembers: from the root, from
+// every conditional gate's arms, and a gate left with nothing goes with
+// them, while a gate that also constrains a kept member keeps that part),
+// closes `kind`, adds the requirements, and prunes the definitions nothing
+// references any more (the block family alone is a quarter of the document
+// schema).
 func narrowDocumentSchema(raw []byte, n apiV2KindNarrowing) ([]byte, error) {
+	dropped := make(map[string]bool, len(n.drop))
+	for _, member := range n.drop {
+		dropped[member] = true
+	}
+	trimmed, err := trimExcludedMembers(raw, dropped)
+	if err != nil {
+		return nil, fmt.Errorf("drop narrowed members: %w", err)
+	}
 	var root map[string]any
-	if err := json.Unmarshal(raw, &root); err != nil {
-		return nil, fmt.Errorf("decode document schema: %w", err)
+	if err := json.Unmarshal(trimmed, &root); err != nil {
+		return nil, fmt.Errorf("decode trimmed document schema: %w", err)
 	}
 	props, ok := root["properties"].(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("document schema has no properties")
-	}
-	dropped := make(map[string]bool, len(n.drop))
-	for _, member := range n.drop {
-		dropped[member] = true
-		delete(props, member)
 	}
 	switch len(n.kinds) {
 	case 0:
@@ -271,7 +290,6 @@ func narrowDocumentSchema(raw []byte, n apiV2KindNarrowing) ([]byte, error) {
 	default:
 		props["kind"] = map[string]any{"enum": n.kinds}
 	}
-	setOrDelete(root, "required", withoutExcluded(root["required"], dropped))
 	if len(n.require) > 0 {
 		required, _ := root["required"].([]any)
 		for _, member := range n.require {
@@ -279,41 +297,12 @@ func narrowDocumentSchema(raw []byte, n apiV2KindNarrowing) ([]byte, error) {
 		}
 		root["required"] = required
 	}
-	if branches, ok := root["allOf"].([]any); ok {
-		kept := make([]any, 0, len(branches))
-		for _, raw := range branches {
-			encoded, err := json.Marshal(raw)
-			if err != nil {
-				return nil, fmt.Errorf("encode gate: %w", err)
-			}
-			if gateMentions(encoded, dropped) {
-				continue // it only ever gated a member this kind does not carry
-			}
-			kept = append(kept, raw)
-		}
-		setOrDelete(root, "allOf", nonEmpty(kept))
-	}
 	pruneUnreferencedDefs(root)
-	return json.Marshal(root)
-}
-
-// gateMentions reports whether a conditional names one of the members, as
-// a property key or in a required list.
-func gateMentions(encoded []byte, members map[string]bool) bool {
-	for member := range members {
-		if bytes.Contains(encoded, []byte(`"`+member+`"`)) {
-			return true
-		}
+	out, err := json.Marshal(root)
+	if err != nil {
+		return nil, fmt.Errorf("encode narrowed document schema: %w", err)
 	}
-	return false
-}
-
-// nonEmpty returns the slice, or nil when it is empty so the key is dropped.
-func nonEmpty(items []any) any {
-	if len(items) == 0 {
-		return nil
-	}
-	return items
+	return out, nil
 }
 
 // pruneUnreferencedDefs keeps only the `$defs` reachable from the schema

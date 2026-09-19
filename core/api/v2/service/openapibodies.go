@@ -53,15 +53,25 @@ var openAPIBodyRecipes = map[string]func(c *openAPIBodyComposer) (json.RawMessag
 		// CreateQueryRequest takes `filters`, so the body declares it
 		filters, err := c.kind("filters")
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("compose filters member: %w", err)
 		}
 		return c.kindWith("query", func(root map[string]any) error {
 			var node map[string]any
 			if err := json.Unmarshal(filters, &node); err != nil {
 				return fmt.Errorf("decode filters kind: %w", err)
 			}
-			node["description"] = "structured filter nodes (schema kind filters); the compact filter string is the simpler channel, and a body sends one of the two"
-			root["properties"].(map[string]any)["filters"] = node
+			node["description"] = "structured filter nodes (schema kind filters), an alternative to the compact filter string; a body sends one of the two"
+			props := root["properties"].(map[string]any)
+			props["filters"] = node
+			props["filter"].(map[string]any)["description"] = "compact filter string (grammar on kind filters), an alternative to the structured filters array; a body sends one of the two"
+			// CreateQuery refuses both filter channels at once, and views
+			// beside any top-level filter or sort
+			root["allOf"] = []any{
+				map[string]any{"not": map[string]any{"required": []string{"filter", "filters"}}},
+				map[string]any{"not": map[string]any{"required": []string{"views", "filter"}}},
+				map[string]any{"not": map[string]any{"required": []string{"views", "filters"}}},
+				map[string]any{"not": map[string]any{"required": []string{"views", "sorts"}}},
+			}
 			return nil
 		})
 	},
@@ -104,7 +114,7 @@ var openAPIBodyRecipes = map[string]func(c *openAPIBodyComposer) (json.RawMessag
 		return c.pointer("template", "the template as an AnyBlock document: formatVersion 2.0, kind template, template_for naming the type")
 	},
 	v2model.OpValidate: func(c *openAPIBodyComposer) (json.RawMessage, error) {
-		return c.pointer("object", "an AnyBlock document of any kind, checked without being stored")
+		return c.pointer("document", "an AnyBlock document of any kind, checked without being stored")
 	},
 	v2model.OpPatchObject: func(c *openAPIBodyComposer) (json.RawMessage, error) {
 		return c.envelope(v2OpNames, "applied in order as one edit, and if any one is refused none is applied")
@@ -205,16 +215,22 @@ func (c *openAPIBodyComposer) typePatchDocument() (json.RawMessage, error) {
 		settings[name] = members[name]
 	}
 	settings["property_definitions"] = members["property_definitions"]
-	return json.Marshal(map[string]any{
+	// the type's own details the patch writes: updatableTypeDetailKeys,
+	// each a string, null to clear
+	details := map[string]any{}
+	for key := range updatableTypeDetailKeys {
+		details[key] = map[string]any{"type": []string{"string", "null"}, "maxLength": 4096}
+	}
+	out, err := json.Marshal(map[string]any{
 		"type":                 "object",
 		"additionalProperties": false,
-		"description":          "a partial type document: properties carries the type's own details (name, description), type_settings the settings to change",
+		"description":          "a partial type document: properties carries the type's own details, type_settings the settings to change",
 		"properties": map[string]any{
 			"properties": map[string]any{
 				"type":                 "object",
-				"maxProperties":        128,
-				"description":          "the type's own details by key, such as name and description",
-				"additionalProperties": map[string]any{"type": []string{"string", "number", "boolean", "array", "null"}},
+				"additionalProperties": false,
+				"description":          "the type's own details, name and description only",
+				"properties":           details,
 			},
 			"type_settings": map[string]any{
 				"type":                 "object",
@@ -224,6 +240,10 @@ func (c *openAPIBodyComposer) typePatchDocument() (json.RawMessage, error) {
 			"icon": members["icon"],
 		},
 	})
+	if err != nil {
+		return nil, fmt.Errorf("encode type patch document: %w", err)
+	}
+	return out, nil
 }
 
 // literal is a hand-written body, validated as JSON.
@@ -238,10 +258,14 @@ func (c *openAPIBodyComposer) literal(schema string) (json.RawMessage, error) {
 // read first. The vocabulary is the operation id, which every wrapper
 // re-spells into its own tool name (the same rule as a hint's see_also).
 func (c *openAPIBodyComposer) pointer(kind, what string) (json.RawMessage, error) {
-	return json.Marshal(map[string]any{
+	out, err := json.Marshal(map[string]any{
 		"type":        "object",
 		"description": what + "; its schema and a worked example come from " + v2model.OpGetSchema + " with kind " + kind,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("encode pointer body for kind %q: %w", kind, err)
+	}
+	return out, nil
 }
 
 // envelope is `{"ops":[…]}` with the op vocabulary closed and each op's

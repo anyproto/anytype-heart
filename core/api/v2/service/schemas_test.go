@@ -32,7 +32,7 @@ func TestV2Schemas(t *testing.T) {
 			assert.NotEmpty(t, entry.Endpoint, entry.Kind)
 			assert.Equal(t, "/v2/schemas/"+entry.Kind, entry.Url)
 		}
-		for _, want := range []string{"object", "shortcut", "type", "type_document", "template", "property", "query", "collection", "file", "filters", "search", "space", "chat", "chatMessage", "chatMessageEdit", "chatReaction", "chatRead"} {
+		for _, want := range []string{"object", "shortcut", "type", "type_document", "template", "document", "property", "query", "collection", "file", "filters", "search", "space", "chat", "chatMessage", "chatMessageEdit", "chatReaction", "chatRead"} {
 			assert.True(t, kinds[want], "missing kind %s", want)
 		}
 	})
@@ -350,6 +350,7 @@ func TestDiscoverySchemasAreClosedAndBounded(t *testing.T) {
 	assert.Empty(t, badReferences)
 	sort.Strings(cycles)
 	assert.Equal(t, []string{
+		"document: filterNode -> filterNode",
 		"filters: filterNode -> filterNode",
 		"object: filterNode -> filterNode",
 		"template: filterNode -> filterNode",

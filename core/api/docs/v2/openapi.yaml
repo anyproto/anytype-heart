@@ -4007,13 +4007,30 @@ paths:
           application/json:
             schema:
               additionalProperties: false
+              allOf:
+                - not:
+                    required:
+                      - filter
+                      - filters
+                - not:
+                    required:
+                      - views
+                      - filter
+                - not:
+                    required:
+                      - views
+                      - filters
+                - not:
+                    required:
+                      - views
+                      - sorts
               properties:
                 filter:
-                  description: compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays simple to decode; see kind filters
+                  description: compact filter string (grammar on kind filters), an alternative to the structured filters array; a body sends one of the two
                   maxLength: 4096
                   type: string
                 filters:
-                  description: structured filter nodes (schema kind filters); the compact filter string is the simpler channel, and a body sends one of the two
+                  description: structured filter nodes (schema kind filters), an alternative to the compact filter string; a body sends one of the two
                   items:
                     $ref: '#/components/schemas/FilterNode'
                   maxItems: 50
@@ -5050,7 +5067,7 @@ paths:
                       type: array
                   type: object
                 - additionalProperties: false
-                  description: 'a partial type document: properties carries the type''s own details (name, description), type_settings the settings to change'
+                  description: 'a partial type document: properties carries the type''s own details, type_settings the settings to change'
                   properties:
                     icon:
                       additionalProperties: false
@@ -5110,15 +5127,19 @@ paths:
                           type: string
                       type: object
                     properties:
-                      additionalProperties:
-                        type:
-                          - string
-                          - number
-                          - boolean
-                          - array
-                          - "null"
-                      description: the type's own details by key, such as name and description
-                      maxProperties: 128
+                      additionalProperties: false
+                      description: the type's own details, name and description only
+                      properties:
+                        description:
+                          maxLength: 4096
+                          type:
+                            - string
+                            - "null"
+                        name:
+                          maxLength: 4096
+                          type:
+                            - string
+                            - "null"
                       type: object
                     type_settings:
                       additionalProperties: false
@@ -5285,7 +5306,7 @@ paths:
         content:
           application/json:
             schema:
-              description: an AnyBlock document of any kind, checked without being stored; its schema and a worked example come from get_schema with kind object
+              description: an AnyBlock document of any kind, checked without being stored; its schema and a worked example come from get_schema with kind document
               type: object
         description: Document to validate
         required: true

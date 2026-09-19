@@ -539,6 +539,12 @@ func mapUnmarshalError(body []byte, err error, kind string) error {
 	return v2model.ValidationFailed("the document failed AnyBlock validation", documentIssues(kind, validationErr.Issues)...)
 }
 
+// documentCreateKinds are the document kinds POST objects and POST templates
+// create: an instance (kind omitted or page) or a template. The discovery
+// schema for kind object closes its kind vocabulary to this same set
+// (apiV2KindNarrowings), so the two cannot drift.
+var documentCreateKinds = map[string]bool{"": true, "page": true, "template": true}
+
 // validateDocumentRefs is the R9 layer for object creates: kind and type
 // gating, template target, items-on-collections, and property-key existence
 // in the properties map (reject with did-you-mean — creating properties from
@@ -549,9 +555,9 @@ func mapUnmarshalError(body []byte, err error, kind string) error {
 func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, envelope *docEnvelope, opts docCreateOptions, spellings map[string]string) error {
 	// the refusals below speak the request's key vocabulary (?keys — §4.3)
 	v := errKeysFor(ctx)
-	switch envelope.Kind {
-	case "", "page", "template":
-	case "object_type":
+	switch {
+	case documentCreateKinds[envelope.Kind]:
+	case envelope.Kind == "object_type":
 		return v2model.ValidationFailed("type documents are created via their own endpoint",
 			v2model.Issue{Path: "/kind", Message: "kind \"object_type\" is not accepted here"}.Hintf("create it with %s", v2model.RefCreateType(spaceId)))
 	default:

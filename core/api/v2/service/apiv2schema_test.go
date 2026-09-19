@@ -156,6 +156,29 @@ func TestAPIV2KindSchemasAreNarrowedToWhatTheOperationAccepts(t *testing.T) {
 		assert.NoError(t, validateAgainstSchema(t, object.Schema, template.Example))
 	})
 
+	t.Run("a template of a set keeps its query source", func(t *testing.T) {
+		assert.NoError(t, validateAgainstSchema(t, template.Schema, json.RawMessage(`{"formatVersion":"2.0","template_for":"set","query_source":{"types":["task"]}}`)))
+	})
+
+	t.Run("a gate that also constrains a kept member keeps that part", func(t *testing.T) {
+		// the format reserves ids starting type- for type documents; the
+		// gate that says so also mentions type_settings, which object drops
+		assert.Error(t, validateAgainstSchema(t, object.Schema, json.RawMessage(`{"formatVersion":"2.0","kind":"page","id":"type-x"}`)))
+		assert.NoError(t, validateAgainstSchema(t, object.Schema, json.RawMessage(`{"formatVersion":"2.0","kind":"page","id":"page-x"}`)))
+	})
+
+	t.Run("the vocabulary and the refused member are the handlers' own", func(t *testing.T) {
+		assert.Equal(t, documentCreateKindNames(), apiV2KindNarrowings["object"].kinds)
+		assert.Contains(t, apiV2KindNarrowings["type_document"].drop, typeDocumentRefusedOnCreate)
+	})
+
+	t.Run("the document kind serves the schema unnarrowed, for validate", func(t *testing.T) {
+		document := entry("document")
+		assert.NoError(t, validateAgainstSchema(t, document.Schema, typeDocument.Example))
+		assert.NoError(t, validateAgainstSchema(t, document.Schema, template.Example))
+		assert.NoError(t, validateAgainstSchema(t, document.Schema, object.Example))
+	})
+
 	t.Run("the type document refuses what CreateType refuses", func(t *testing.T) {
 		withBlocks := `{"formatVersion":"2.0","kind":"object_type","properties":{"name":"Plant"},"type_settings":{"api_key":"plant"},"blocks":[{"type":"paragraph","text":"x"}]}`
 		assert.Error(t, validateAgainstSchema(t, typeDocument.Schema, json.RawMessage(withBlocks)), "blocks are refused on type create")

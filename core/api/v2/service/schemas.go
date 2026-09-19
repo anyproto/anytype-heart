@@ -124,6 +124,13 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		// its own published example with "type key is reserved".
 		example: `{"formatVersion":"2.0","kind":"object_type","icon":{"format":"emoji","emoji":"🌱"},"properties":{"name":"Plant"},"type_settings":{"api_key":"plant","layout":"basic","plural_name":"Plants","property_definitions":[{"property":"Location","format":"select"},{"property":"Watered","format":"date","section":"featured"}]}}`,
 	},
+	// the document schema unnarrowed: what POST /v2/validate checks, a
+	// document of any kind. The create kinds (object, template,
+	// type_document) each serve it narrowed to what their endpoint accepts.
+	"document": {
+		endpoint: "POST /v2/validate",
+		example:  `{"formatVersion":"2.0","kind":"object_type","properties":{"name":"Plant"},"type_settings":{"api_key":"plant","layout":"basic"}}`,
+	},
 	"template": {
 		endpoint: "POST /v2/spaces/{space_id}/templates",
 		example:  `{"formatVersion":"2.0","kind":"template","type":"template","template_for":"task","properties":{"name":"Weekly task"},"blocks":[{"type":"heading_2","text":"Checklist"},{"type":"checkbox","text":"First step"}]}`,
