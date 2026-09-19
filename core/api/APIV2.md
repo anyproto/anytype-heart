@@ -370,7 +370,9 @@ illustration):
   reserved post-v1). Parse → the §6.2 structured tree; offset-addressed
   parse errors naming the offending token and position, with did-you-mean.
   The string uses RFC 3339 dates / preset functions; the structured form
-  uses unix numbers — the §6.2.1 mapping applies. The `POST /queries`
+  uses unix numbers — the §6.2.1 mapping applies — except where the filter
+  is STORED (a query's views, `update_view`), which also takes an RFC 3339
+  or YYYY-MM-DD string and stores the seconds (R6-1). The `POST /queries`
   wiring (replacing the §8.1 501), through the same R9 referential layer,
   shipped with it.
 - **Validation & resolution rules** (previously a one-line "design deltas"
@@ -900,8 +902,9 @@ the write.)
 can't represent: unmapped block types and over-deep nesting degrade to
 `warnings[]` on the envelope (the `anyblockjson.Options.OnWarning` sink);
 canonical export leaves the sink nil and still errors. The markdown export
-path has no loss channel yet, so `format=md` carries no warnings (build
-item: md-export loss detector).
+path has no loss channel yet, so `format=md` carries no loss warnings
+(build item: md-export loss detector); it does carry the removed-type
+warning both envelopes share.
 
 **Idempotency store (C8).** In-process, keyed by
 `(authenticated credential, resolved space, Idempotency-Key)` →
@@ -1480,7 +1483,8 @@ recursive structured `filters` array (an array without `items` breaks
 every constrained decoder — the C13 exception would otherwise have
 swallowed the whole kind); their `filter` string description points at
 kind `filters` for the escape hatch, which the endpoints still accept.
-The `filters` kind documents that date values are unix seconds. The EBNF
+The `filters` kind documents that date values are unix seconds, and that a
+stored filter also takes a date string and converts it. The EBNF
 defines `identifier`/`number` and states keyword case-insensitivity
 in-grammar; a test pins every parser-accepted token to the served text.
 
@@ -4966,6 +4970,15 @@ dropping the truncated-space case from the `object` repair
 now **serves** spaces by a short reference and **accepts** either spelling
 everywhere a space id is accepted. The full id keeps working, forever; this
 is additive addressing over the existing identity, not a new identity.
+
+"Everywhere" includes a cross-space object link in block text or a chat
+message — `[t](anytype://object?objectId=<id>&spaceId=<space id>)`, the
+platform's own two-parameter deep link, which the served block-text syntax
+now names beside the same-space form. The codec keeps it as an ordinary
+link, param verbatim; the API rewrites a short `spaceId` in it to the full
+id on every path that turns caller text into marks (documents, block ops,
+`replace_text`, chat messages — `spacelinks.go`), so the stored link is one
+the client can open. A reference that does not resolve stays verbatim.
 
 #### The measurement this answers
 

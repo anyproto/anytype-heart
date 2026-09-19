@@ -12,6 +12,8 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
+	"sort"
 	"strings"
 	"unicode/utf8"
 
@@ -19,7 +21,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/storeresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
@@ -88,7 +92,7 @@ func validateV2ArrayCount(path string, raw json.RawMessage, max int) error {
 // CreateType implements POST /v2/spaces/{space_id}/types: a kind:"object_type"
 // AnyBlock document; typeProperties creates missing properties atomically
 // with the type (SPEC §2a create-missing).
-func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, dryRun, createMissingOptions bool) (*v2model.CreateResult, error) {
+func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, dryRun, createMissingOptions bool) (result *v2model.CreateResult, err error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
@@ -96,7 +100,7 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	// carries etag (and possibly warnings) — without the strip, POST types
 	// 400ed on the etag of its own read; the ?block= subtree marker is
 	// refused by name instead of as an anonymous unknown field
-	body, err := normalizeCreateBody(body)
+	body, err = normalizeCreateBody(body)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +109,11 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	// discriminates its own: no formatVersion and no kind means the caller sent
 	// the shape they would have guessed, and it is translated into the document
 	// the rest of this function already handles.
+	// the flat body's members sit at the root; the document's sit under
+	// type_settings and properties. Every refusal below is addressed to the
+	// body the caller sent, so a flat body's issues are rebased back at the
+	// return boundary — whichever check produced them
+	flat := false
 	if fields, perr := parseEnvelope(body); perr == nil && !isTypeDocument(fields) {
 		doc, derr := typeShortcutDocument(fields)
 		if derr != nil {
@@ -113,7 +122,14 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 		if body, err = encodeEnvelope(doc); err != nil {
 			return nil, err
 		}
+		flat = true
 	}
+	defer func() {
+		if err != nil && flat {
+			err = rebaseIssuePaths(err, flatTypeBodyPath)
+		}
+	}()
+	kind := typeBodyKind(flat)
 	fields, err := parseEnvelope(body)
 	if err != nil {
 		return nil, v2model.ValidationFailed("request body is not a JSON object",
@@ -149,8 +165,18 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	if body, err = encodeEnvelope(fields); err != nil {
 		return nil, err
 	}
-	if err := s.rejectInvalidDocument(body); err != nil {
-		return nil, err
+	// the two member guesses a definition invites (F10), named before the
+	// format prunes one of them — but after the format's own version gate,
+	// which is the one verdict a definition repair must not pre-empt
+	docErr := s.rejectInvalidDocument(body, kind)
+	if v2Err := (*v2model.Error)(nil); errors.As(docErr, &v2Err) && v2Err.Code == v2model.CodeVersionUnsupported {
+		return nil, docErr
+	}
+	if issues := typeDefinitionMemberIssues(rawTypeDefinitions(fields), "/type_settings/property_definitions", kind); len(issues) > 0 {
+		return nil, v2model.ValidationFailed("the document failed AnyBlock validation", issues...)
+	}
+	if docErr != nil {
+		return nil, docErr
 	}
 
 	var envelope docEnvelope
@@ -205,7 +231,11 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 		if err != nil {
 			return nil, err
 		}
-		if holder, taken := s.typeSlugConflict(slug, typeEntries); taken {
+		holder, taken, err := s.typeSlugConflict(spaceId, slug, typeEntries)
+		if err != nil {
+			return nil, err
+		}
+		if taken {
 			if holder.Kind == "bundled type" {
 				return nil, v2model.ValidationFailed("type key is reserved",
 					v2model.Issue{Path: keyPath,
@@ -255,11 +285,12 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun, createMissingOptions)
 	_, snapshot, err := anyblockjson.Unmarshal(body, resolvers.Options())
 	if err != nil {
-		return nil, mapUnmarshalError(body, err)
+		return nil, mapUnmarshalError(body, err, kind)
 	}
 	if err := resolvers.err(); err != nil {
 		return nil, fmt.Errorf("resolve type properties: %w", err)
 	}
+	expandSpaceRefsInBlocks(snapshot.Blocks, s.spaceRefExpander(ctx))
 	// the declared select vocabulary, before the dry-run return: a dry run's
 	// job is to preview what the real run does, and options it never mentions
 	// are options a caller does not know they are about to create
@@ -272,7 +303,7 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 		}
 	}
 
-	result := &v2model.CreateResult{Key: slug, Created: resolvers.created()}
+	result = &v2model.CreateResult{Key: slug, Created: resolvers.created()}
 	if dryRun {
 		result.DryRun = true
 		return result, nil
@@ -579,7 +610,7 @@ func (p v2TypePatch) propertyDefinitions() *[]anyblockjson.TypeProperty {
 }
 
 // UpdateType implements PATCH /v2/spaces/{space_id}/types/{type}.
-func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch string, body []byte, dryRun, createMissingOptions bool) (*v2model.CreateResult, error) {
+func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch string, body []byte, dryRun, createMissingOptions bool) (result *v2model.CreateResult, err error) {
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
@@ -622,6 +653,7 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 
 	// the same flat body the create verb takes: one shape for the resource,
 	// rather than a create body and an update body that reject each other
+	flat := false
 	if fields, perr := parseEnvelope(body); perr == nil && !isTypeDocument(fields) {
 		if _, nested := fields["type_settings"]; !nested {
 			if _, valued := fields["properties"]; !valued {
@@ -632,7 +664,21 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 				if body, err = encodeEnvelope(translated); err != nil {
 					return nil, err
 				}
+				flat = true
 			}
+		}
+	}
+	defer func() {
+		if err != nil && flat {
+			err = rebaseIssuePaths(err, flatTypeBodyPath)
+		}
+	}()
+	// the definition member guesses (F10): the patch decoder below would
+	// silently drop a `type` member (TypeProperty's own decoder ignores
+	// unknown members), and the property would be minted as text
+	if fields, perr := parseEnvelope(body); perr == nil {
+		if issues := typeDefinitionMemberIssues(rawTypeDefinitions(fields), "/type_settings/property_definitions", typeBodyKind(flat)); len(issues) > 0 {
+			return nil, v2model.ValidationFailed("invalid type patch", issues...)
 		}
 	}
 
@@ -713,12 +759,21 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 	}
 
 	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun, createMissingOptions)
+	// the dataview half of a list replacement (round-two eval F2): the op
+	// channel keeps the type's views in step with its lists — a column for
+	// every property added, none for one removed — and a replaced list must
+	// do the same, or the type is half-updated behind a 200
+	var addedIds, removedKeys []string
 	if defs := patch.propertyDefinitions(); defs != nil {
 		// the echo baseline (§8.41): entries this type ALREADY references
 		// resolve as identities even when their relation is removed — the
 		// GET/PATCH loop must not force-delete a reference the read served
 		resolvers.echoPropertyIds = s.recommendedRelationIds(spaceId, typeId)
 		detachedBefore := s.recommendedRelationIds(spaceId, typeId)
+		// the corpses the type still lists, whose slugs its read served: a
+		// definition echoing one resolves to it (no namesake is minted)
+		corpses := s.referencedCorpses(spaceId, detachedBefore)
+		resolvers.rememberCorpses(corpses)
 		// the SPEC §2a format check, before the resolver can create
 		if err := s.validateTypePropertyFormats(spaceId, *defs); err != nil {
 			return nil, err
@@ -743,16 +798,37 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 			detailUpdates = append(detailUpdates, &model.Detail{Key: list.DetailKey, Value: pbtypes.StringList(list.Ids)})
 			for _, id := range list.Ids {
 				kept[id] = true
+				if !detachedBefore[id] {
+					addedIds = append(addedIds, id)
+				}
 			}
 		}
 		detached = s.detachedProperties(spaceId, detachedBefore, kept)
+		// the stored keys the prune works in, read BEFORE the write while
+		// the detached entries are still what the type listed — the live
+		// ones and the already-removed ones alike, since a removed
+		// property's column is exactly the one a replacement should drop
+		entries, eerr := s.liveProperties(spaceId)
+		if eerr != nil {
+			return nil, eerr
+		}
+		for _, e := range entries {
+			if detachedBefore[e.Id] && !kept[e.Id] {
+				removedKeys = append(removedKeys, e.Key)
+			}
+		}
+		for _, e := range corpses {
+			if !kept[e.Id] {
+				removedKeys = append(removedKeys, e.Key)
+			}
+		}
 		// the declared select vocabulary, which nothing used to apply
 		if err := s.applyDeclaredOptions(*defs, resolvers, "/type_settings/property_definitions"); err != nil {
 			return nil, err
 		}
 	}
 
-	result := &v2model.CreateResult{Id: typeId, Key: typeKey, Created: resolvers.created()}
+	result = &v2model.CreateResult{Id: typeId, Key: typeKey, Created: resolvers.created()}
 	// a replaced list detaches whatever it omitted. Report it in BOTH channels:
 	// `removed` so a client can act on it, and a warning so a human reading the
 	// response sees it without knowing to look for a new field. A dry run says
@@ -768,9 +844,19 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 			Path: "/type_settings/property_definitions",
 			Message: fmt.Sprintf("property_definitions replaces the type's whole field list: %d no longer listed (%s)",
 				len(detached), strings.Join(names, ", ")),
-			Hint: "send the complete list to keep a field, or omit property_definitions entirely to leave the list untouched",
-		}
+		}.Hintf("send the complete list to keep a field, omit property_definitions to leave the list untouched, or change one field at a time with the add_property, remove_property and move_property ops (%s)",
+			v2model.RefGetOpSchema("add_property"))
 		result.Warnings = append(result.Warnings, warning)
+	}
+	// the views' half of the report, computed from the live type before the
+	// dry-run return — as the op channel does — so a rehearsal names the
+	// columns a real run would drop
+	if len(removedKeys) > 0 {
+		plan, perr := s.typeDataviewPrunePlan(ctx, spaceId, typeId, removedKeys)
+		if perr != nil {
+			return nil, perr
+		}
+		result.Warnings = append(result.Warnings, typePruneWarnings(plan, "/type_settings/property_definitions", s.servedKeySpeller(spaceId))...)
 	}
 	if dryRun {
 		result.DryRun = true
@@ -782,10 +868,48 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 			return nil, fmt.Errorf("update type %s: %s", typeKey, resp.Error.Description)
 		}
 	}
+	// the views, in the op channel's order: the lists are written, then the
+	// columns of removed properties go, then the added properties gain
+	// their columns
+	if len(removedKeys) > 0 {
+		if err := s.pruneTypeDataviewColumns(ctx, spaceId, typeId, removedKeys); err != nil {
+			return nil, err
+		}
+	}
+	if len(addedIds) > 0 {
+		links, err := s.relationLinksOf(spaceId, addedIds)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := s.addTypeDataviewColumns(ctx, spaceId, typeId, links); err != nil {
+			return nil, err
+		}
+	}
 	if read, err := s.reader.ReadObject(ctx, spaceId, typeId); err == nil {
 		result.Etag = ComputeEtag(read.Heads)
 	}
 	return result, nil
+}
+
+// relationLinksOf builds the dataview links for relation object ids, in the
+// order given, from the space's live properties — read after the write, so a
+// property this same request created is among them.
+func (s *Service) relationLinksOf(spaceId string, ids []string) ([]*model.RelationLink, error) {
+	entries, err := s.liveProperties(spaceId)
+	if err != nil {
+		return nil, fmt.Errorf("reconcile type columns: %w", err)
+	}
+	byId := make(map[string]propertyEntry, len(entries))
+	for _, e := range entries {
+		byId[e.Id] = e
+	}
+	links := make([]*model.RelationLink, 0, len(ids))
+	for _, id := range ids {
+		if e, ok := byId[id]; ok {
+			links = append(links, &model.RelationLink{Key: e.Key, Format: e.Format})
+		}
+	}
+	return links, nil
 }
 
 // iconPatchDetails turns §2b's typed `icon` into the stored detail keys it
@@ -918,6 +1042,10 @@ func (s *Service) DeleteType(ctx context.Context, spaceId, typeKey string, dryRu
 	}
 	typeId := entry.Id
 	result := &v2model.CreateResult{Id: typeId, Key: typeKey}
+	// the objects of the type survive it, keeping it under the spelling
+	// they were served (round-four eval R4-1): say so, on the real run and
+	// the dry run alike, as delete_property does
+	result.Warnings = append(result.Warnings, s.typeDeleteWarnings(spaceId, entry)...)
 	if dryRun {
 		result.DryRun = true
 		return result, nil
@@ -927,6 +1055,48 @@ func (s *Service) DeleteType(ctx context.Context, spaceId, typeKey string, dryRu
 		return nil, fmt.Errorf("archive type %s: %s", typeKey, resp.Error.Description)
 	}
 	return result, nil
+}
+
+// typeDeleteWarnings names the objects a type delete leaves behind: they
+// keep the type, served under its slug, and nothing new is created in it.
+// A store error makes no warning.
+func (s *Service) typeDeleteWarnings(spaceId string, entry typeEntry) []v2model.Issue {
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{RelationKey: bundle.RelationKeyType, Condition: model.BlockContentDataviewFilter_Equal, Value: domain.String(entry.Id)},
+			{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
+		},
+		Limit: propertyHolderProbeLimit,
+	})
+	if err != nil || len(records) == 0 {
+		return nil
+	}
+	count := fmt.Sprintf("%d objects are", len(records))
+	if len(records) == 1 {
+		count = "1 object is"
+	} else if len(records) >= propertyHolderProbeLimit {
+		count = fmt.Sprintf("at least %d objects are", propertyHolderProbeLimit)
+	}
+	// the spelling reads serve now, and the one they will serve after: the
+	// slug, unless a removed type already answers to it — then both read
+	// under their stored keys (the twin rule)
+	served := s.apiKeys(spaceId, storeresolver.New(s.store.SpaceIndex(spaceId))).TypeSlug(entry.Key)
+	after := fmt.Sprintf("reads still spell it %q", served)
+	if entry.Slug != "" && served == entry.Slug {
+		if removed, rerr := s.removedTypes(spaceId); rerr == nil {
+			for _, e := range removed {
+				if e.Slug == entry.Slug && e.Key != entry.Key {
+					after = fmt.Sprintf("another removed type used %q before, so after this delete the objects of both read under their stored keys (%q here)", entry.Slug, entry.Key)
+					break
+				}
+			}
+		}
+	}
+	issue := v2model.Issue{
+		Path:    "key",
+		Message: fmt.Sprintf("%s of type %q; they keep it, and %s, but nothing new is created in it and it is not listed or filterable, until this same type is restored in the app", count, served, after),
+	}.WithHint(v2model.Plain("a dry run reports this without deleting; to keep the type usable, keep it"))
+	return []v2model.Issue{issue}
 }
 
 // CreateProperty implements POST /v2/spaces/{space_id}/properties.
@@ -998,21 +1168,31 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 		// sanitize to the advertised key grammar (empty = no derivable slug)
 		slug = sanitizeApiSlug(bundle.ApiSlugFromName(req.Name))
 	}
+	// one snapshot of the live properties for the slug check and the name
+	// check alike; a snapshot that could not load fails the create closed
+	propEntries, err := s.liveProperties(spaceId)
+	if err != nil {
+		return nil, fmt.Errorf("load properties of space %s: %w", spaceId, err)
+	}
 	if slug != "" {
-		propEntries, err := s.liveProperties(spaceId)
-		if err != nil {
-			return nil, err
-		}
 		if holder, taken := s.propertySlugConflict(slug, propEntries); taken {
 			path, hint := "/key", v2model.Hintf("update it with %s, or pick a different key", v2model.RefUpdateProperty(spaceId, holder.Key))
-			if holder.Kind == "properties" {
-				// several properties answer to this slug already: an update by
-				// that slug would be refused as ambiguous, so it is not offered
-				hint = v2model.Plain(fmt.Sprintf("several properties answer to %q (%s) — pick a different key", slug, holder.Name))
-			}
 			if req.Key == "" {
 				path = "/name"
 				hint = v2model.Plain(fmt.Sprintf("use the existing property %q, or pass an explicit different key", holder.Key))
+			}
+			if holder.Kind == "properties" {
+				// several properties answer to this slug already: neither an
+				// update by that slug nor "use the existing property" can be
+				// followed — both would be refused as ambiguous — so the only
+				// repair is a key of the caller's own, whichever slot they wrote
+				hint = v2model.Plain(fmt.Sprintf("several properties answer to %q (%s) — pass an explicit different key", slug, holder.Name))
+			}
+			if _, bundled := bundle.PickRelation(domain.RelationKey(holder.Key)); bundled == nil || holder.Kind == "bundled property" {
+				// a built-in property, installed or not: an update by its key
+				// is refused (read-only) or 404s (not installed), so neither
+				// repair above can be followed — the key is simply reserved
+				hint = v2model.Plain(fmt.Sprintf("key %q is reserved by the built-in property %q — pick a different key", holder.Key, holder.Name))
 			}
 			return nil, v2model.ValidationFailed("property key already exists",
 				v2model.Issue{Path: path,
@@ -1022,6 +1202,33 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 	}
 
 	result := &v2model.CreateResult{Key: slug}
+	// another property under a display name the space already has: refused
+	// when the name is all the caller gave (three of six eval runs ended
+	// with two fields both called "Condition" — R3-d), accepted with a
+	// warning when an explicit key says a second one is meant (a name is
+	// not identity)
+	{
+		nfcName := norm.NFC.String(req.Name)
+		keyTaken, slugHolders := servedPropertyKeySets(propEntries)
+		for _, entry := range propEntries {
+			if entry.Hidden || entry.Name == "" || norm.NFC.String(entry.Name) != nfcName {
+				continue
+			}
+			// spelled from the snapshot the two checks share, not a fresh load
+			existing := servedKey(entry.Key, entry.Slug, keyTaken, slugHolders)
+			if req.Key == "" {
+				return nil, v2model.ValidationFailed("property name already exists",
+					v2model.Issue{Path: "/name",
+						Message: fmt.Sprintf("a property named %q already exists (key %q)", req.Name, existing),
+					}.Hintf("use the existing property %q, or pass an explicit different key to create another under the same name; the space's properties are listed by %s", existing, v2model.RefListProperties(spaceId)))
+			}
+			result.Warnings = append(result.Warnings, v2model.Issue{
+				Path:    "/name",
+				Message: fmt.Sprintf("a property named %q already exists (key %q) — this creates another property under the same name", req.Name, existing),
+			}.Hintf("to use the existing property, reference it by its key; the space's properties are listed by %s", v2model.RefListProperties(spaceId)))
+			break
+		}
+	}
 	if dryRun {
 		result.DryRun = true
 		result.Created = &v2model.SideEffects{
@@ -1135,6 +1342,11 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId, propertyKey strin
 		return nil, err
 	}
 	result := &v2model.CreateResult{Id: entry.Id, Key: propertyKey}
+	// the delete is destructive in two places the caller cannot see from
+	// here: objects that hold a value of the property, and types that list
+	// it. Say so, on the real run and the dry run alike (round-two eval F1:
+	// a silent 200 here is how a caller destroyed five objects' data).
+	result.Warnings = append(result.Warnings, s.propertyDeleteWarnings(spaceId, entry, s.servedKeySpeller(spaceId)(entry.Key))...)
 	if dryRun {
 		result.DryRun = true
 		return result, nil
@@ -1144,4 +1356,70 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId, propertyKey strin
 		return nil, fmt.Errorf("archive property %s: %s", propertyKey, resp.Error.Description)
 	}
 	return result, nil
+}
+
+// propertyHolderProbeLimit bounds the object count a delete reports: the
+// count exists to make the loss visible, not to be exact past this.
+const propertyHolderProbeLimit = 1000
+
+// propertyDeleteWarnings names what a property delete leaves behind: the
+// objects holding a value of it and the types listing it. servedKey is the
+// spelling reads will serve for the property, not the one the caller
+// deleted it by — a delete by display name or stored key still promises the
+// slug the values will show under. Store errors make no warning — the
+// delete still stands, and a warning the store could not substantiate is
+// worse than none.
+func (s *Service) propertyDeleteWarnings(spaceId string, entry propertyEntry, servedKey string) []v2model.Issue {
+	var issues []v2model.Issue
+	// presence, not emptiness: a stored 0 or false is a value the caller
+	// set; and archived objects hold values too (a restore brings them
+	// back), so the injected isArchived default is suppressed — deleted
+	// objects stay out
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{RelationKey: domain.RelationKey(entry.Key), Condition: model.BlockContentDataviewFilter_Exists},
+			{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
+		},
+		Limit: propertyHolderProbeLimit,
+	})
+	if err == nil && len(records) > 0 {
+		count := fmt.Sprintf("%d objects hold", len(records))
+		if len(records) == 1 {
+			count = "1 object holds"
+		} else if len(records) >= propertyHolderProbeLimit {
+			count = fmt.Sprintf("at least %d objects hold", propertyHolderProbeLimit)
+		}
+		issues = append(issues, v2model.Issue{
+			Path:    "key",
+			Message: fmt.Sprintf("%s a value of %q; those values stay readable and editable in place under that key, but set_properties gives no other object one, until this same property is restored in the app (a new property with the same name is a different property)", count, servedKey),
+		}.WithHint(v2model.Plain("a dry run reports this without deleting")))
+	}
+	types, err := s.store.SpaceIndex(spaceId).Query(database.Query{Filters: liveTypeFilters()})
+	if err == nil {
+		var listing []string
+		for _, record := range types {
+			for _, listKey := range typeRecommendedListKeys {
+				if slices.Contains(record.Details.GetStringList(listKey), entry.Id) {
+					name := record.Details.GetString(bundle.RelationKeyName)
+					if name == "" {
+						name = record.Details.GetString(bundle.RelationKeyUniqueKey)
+					}
+					listing = append(listing, name)
+					break
+				}
+			}
+		}
+		if len(listing) > 0 {
+			sort.Strings(listing)
+			noun := "types list"
+			if len(listing) == 1 {
+				noun = "type lists"
+			}
+			issues = append(issues, v2model.Issue{
+				Path:    "key",
+				Message: fmt.Sprintf("%d %s %q (%s); their property lists and views keep the entry, spelled %q, until it is taken off them", len(listing), noun, servedKey, strings.Join(listing, ", "), servedKey),
+			}.Hintf("take it off a type with the remove_property op (%s)", v2model.RefGetOpSchema("remove_property")))
+		}
+	}
+	return issues
 }

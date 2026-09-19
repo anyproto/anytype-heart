@@ -378,6 +378,15 @@ func (a *v2StateApplier) canonicalViewKey(input string) (string, []string) {
 	if input == "" {
 		return input, nil
 	}
+	// a spelling the render emitted for a removed property is that property
+	// (its served spelling stays the document's spelling); the forgiving
+	// chain below must not fold it onto a live property that shares its
+	// display name
+	if a.marshalOptions().Keys != nil && a.marshalKeys != nil {
+		if _, emitted := a.marshalKeys.emittedCorpse(input); emitted {
+			return input, nil
+		}
+	}
 	entries, err := a.propEntries()
 	if err != nil {
 		return input, nil // the load error surfaces in validateViewKeys
@@ -391,6 +400,28 @@ func (a *v2StateApplier) canonicalViewKey(input string) (string, []string) {
 	}
 	keyTaken, slugHolders := servedPropertyKeySets(entries)
 	return servedKey(entry.Key, entry.Slug, keyTaken, slugHolders), nil
+}
+
+// viewFormatName resolves a property's format name by any spelling a view
+// slot may carry — the stored key, or the served spelling
+// canonicalizeDecodedKeySlots just wrote there — through the same entries
+// that canonicalization used.
+func (a *v2StateApplier) viewFormatName() func(string) (string, bool) {
+	base := a.s.formatNameResolver(a.spaceId)
+	return func(key string) (string, bool) {
+		if format, ok := base(key); ok {
+			return format, true
+		}
+		entries, err := a.propEntries()
+		if err != nil {
+			return "", false
+		}
+		entry, ok, ambiguous := a.s.resolvePropertyInput(key, entries)
+		if !ok || len(ambiguous) > 0 || entry.Key == "" {
+			return "", false
+		}
+		return base(entry.Key)
+	}
 }
 
 // canonicalizeDecodedKeySlots rewrites every `property` slot in a decoded
@@ -559,6 +590,9 @@ func (a *v2StateApplier) applyViewFilters(raw json.RawMessage, view map[string]a
 	}
 	opts := a.marshalOptions()
 	opts.OnWarning = func(iss anyblockjson.Issue) {
+		if readWarningIsNoise(iss) {
+			return
+		}
 		a.warnings = append(a.warnings, v2model.Issue{
 			Path:    rebaseSlashPath(path, strings.TrimPrefix(iss.Path, "/filters")),
 			Message: iss.Message,
@@ -572,6 +606,10 @@ func (a *v2StateApplier) applyViewFilters(raw json.RawMessage, view map[string]a
 	if err := json.Unmarshal(raw, &decoded); err != nil {
 		return fmt.Errorf("re-decode filters: %w", err)
 	}
+	// a date leaf stores unix seconds whatever spelling the caller sent
+	// (R6-1: a string survived to the store and the view matched nothing);
+	// before canonicalization, so a refusal names the property as sent
+	*issues = append(*issues, convertDateFilterValues(decoded, path, opFilterPath, a.viewFormatName())...)
 	a.canonicalizeDecodedKeySlots(decoded, path, issues)
 	collectDecodedKeys(decoded, path, keyUses)
 	// §11 canonical form: empty/notEmpty/exists leaves carry no value —
@@ -632,7 +670,7 @@ func (a *v2StateApplier) applyViewFilterString(raw json.RawMessage, edited, view
 		ResolveFormat: a.s.formatNameResolver(a.spaceId),
 	})
 	if err != nil {
-		fsErr := filterStringError(err)
+		fsErr := filterStringError(a.spaceId, err)
 		var v2Err *v2model.Error
 		if errors.As(fsErr, &v2Err) {
 			for i := range v2Err.Issues {

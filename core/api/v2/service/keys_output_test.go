@@ -120,10 +120,49 @@ func TestV2ListingsServeSlugs(t *testing.T) {
 		assert.Equal(t, "meeting_note", keys["type-meeting"])
 	})
 
-	t.Run("a corpse type keeps its internal spelling in rows", func(t *testing.T) {
+	t.Run("a corpse type whose slug no live type holds spells the slug in rows", func(t *testing.T) {
+		// round-four eval R4-1: a deleted type's objects kept a hex the API
+		// resolved nowhere. The row spells the slug the type was served
+		// under, from the corpse row a delete leaves; an older build's
+		// identity-less tombstone spells nothing until the next load
+		// rebuilds it
+		corpseShapes(t, func(t *testing.T, shape corpseShape) {
+			fx := slugSpaceFixture(t)
+			if shape == corpseTombstone {
+				fx.addTypeTombstone(t, "type-gone")
+			} else {
+				obj := objectstore.TestObject{
+					bundle.RelationKeyId:            domain.String("type-gone"),
+					bundle.RelationKeyUniqueKey:     domain.String("ot-6a7663db61fab21cd4b9e107"),
+					bundle.RelationKeyApiObjectKey:  domain.String("old_note"),
+					bundle.RelationKeyName:          domain.String("Old note"),
+					bundle.RelationKeyIsUninstalled: domain.Bool(true),
+				}
+				if shape == corpseProd {
+					obj[bundle.RelationKeyIsDeleted] = domain.Bool(true)
+				}
+				fx.addType(t, testSpaceId, obj)
+			}
+			builder, err := fx.newObjectRowBuilder(testSpaceId, nil)
+			require.NoError(t, err)
+			details := domain.NewDetails()
+			details.SetString(bundle.RelationKeyId, "note1")
+			details.SetString(bundle.RelationKeyType, "type-gone")
+
+			row := builder.row(database.Record{Details: details})
+
+			if shape == corpseTombstone {
+				assert.Equal(t, "", row.Type)
+				return
+			}
+			assert.Equal(t, "old_note", row.Type)
+		})
+	})
+
+	t.Run("a corpse type whose slug a live type holds keeps its internal spelling in rows", func(t *testing.T) {
 		// its slug vacated the namespace (§8-OQ2) — a recreated live type
-		// may hold it now, and two rows advertising one address would be
-		// the D2 shape all over.
+		// holds it here (meeting_note), and two rows advertising one address
+		// would be the D2 shape all over.
 		//
 		// All three corpse shapes run, THROUGH THE ROW BUILDER — the path
 		// that serves production. The original flag-only fixture asserted on
@@ -166,9 +205,9 @@ func TestV2ListingsServeSlugs(t *testing.T) {
 			row := builder.row(database.Record{Details: details})
 
 			if shape == corpseTombstone {
-				assert.Equal(t, "", row.Type, "a tombstoned type row spells nothing — the store has nothing to spell")
+				assert.Equal(t, "", row.Type, "a bare tombstone row (no snapshot) spells nothing — the store has nothing to spell")
 			} else {
-				assert.Equal(t, "6a7663db61fab21cd4b9e106", row.Type, "a corpse type spells its internal key")
+				assert.Equal(t, "6a7663db61fab21cd4b9e106", row.Type, "the live holder owns the slug; the corpse spells its internal key")
 			}
 
 			keys, err := fx.typeKeysById(testSpaceId)
@@ -365,7 +404,7 @@ func TestV2ShadowedBundledTypeIsLoud(t *testing.T) {
 	require.NoError(t, err)
 
 	// when
-	_, ok, ambiguous := fx.resolveTypeInput("object_type", entries)
+	_, ok, ambiguous, _ := fx.resolveTypeInput(testSpaceId, "object_type", entries)
 
 	// then
 	assert.False(t, ok)
@@ -375,7 +414,7 @@ func TestV2ShadowedBundledTypeIsLoud(t *testing.T) {
 
 	// and the stored key still addresses the squatter, which is what makes the
 	// refusal actionable
-	entry, ok, ambiguous := fx.resolveTypeInput("6a7663db61fab21cd4b9e108", entries)
+	entry, ok, ambiguous, _ := fx.resolveTypeInput(testSpaceId, "6a7663db61fab21cd4b9e108", entries)
 	require.True(t, ok)
 	assert.Empty(t, ambiguous)
 	assert.Equal(t, "type-squatter", entry.Id)

@@ -35,9 +35,13 @@ import (
 // apiKeyVocab is per-request, like the storeresolver it embeds: lazily
 // loaded on first use, no locking (a request is one goroutine).
 type apiKeyVocab struct {
-	svc     *Service
-	spaceId string
-	inner   anyblockjson.KeyVocabulary
+	// removedSlug marks the served slugs that belong to REMOVED properties;
+	// corpseKeyBySlug inverts those this vocabulary has emitted (rememberCorpse)
+	removedSlug     map[string]bool
+	corpseKeyBySlug map[string]string
+	svc             *Service
+	spaceId         string
+	inner           anyblockjson.KeyVocabulary
 	// scoped is inner's ScopedKeyVocabulary half when it has one (the
 	// storeresolver always does); the importer's richer resolution walks
 	// candidates instead of PropertyKey, so the slug table must surface
@@ -56,8 +60,11 @@ type apiKeyVocab struct {
 	propKeyTaken    map[string]bool
 	propSlugHolders map[string][]string
 
-	typeSlugByKey   map[string]string
-	typeKeyBySlug   map[string]string
+	typeSlugByKey map[string]string
+	typeKeyBySlug map[string]string
+	// removedTypeKeys is every removed type this vocabulary knows of,
+	// slug-bearing or not, for the read marker (TypeRemoved).
+	removedTypeKeys map[string]bool
 	typeKeyTaken    map[string]bool
 	typeSlugHolders map[string][]string
 }
@@ -104,6 +111,20 @@ func apiRefSpelling(opts anyblockjson.Options) anyblockjson.Options {
 	return opts
 }
 
+// corpseKeyBySlug inverts the removed-property slugs THIS vocabulary has
+// emitted (PropertySlug), and nothing else: what a vocabulary served, it
+// understands back — so a document it rendered with a corpse slug re-imports
+// onto the stored key (the object channel's in-document edit) — while a
+// request that never saw the slug served (a type definition, a create)
+// resolves it like any unknown name and mints anew (the namespace vacated,
+// §8-OQ2).
+func (v *apiKeyVocab) rememberCorpse(slug, key string) {
+	if v.corpseKeyBySlug == nil {
+		v.corpseKeyBySlug = map[string]string{}
+	}
+	v.corpseKeyBySlug[slug] = key
+}
+
 func (v *apiKeyVocab) ensure() bool {
 	if v.loaded {
 		return !v.degraded
@@ -131,6 +152,50 @@ func (v *apiKeyVocab) ensure() bool {
 		}
 	}
 
+	// a REMOVED property keeps its slug on the EMIT side: the value an
+	// object still holds, the type list that still names it and the view
+	// column that still shows it spell the slug the caller was taught
+	// (round-two eval F1 — a caller shown the bson key took it for garbage
+	// and unset the value on every object). Not on the accept side: the
+	// reverse table stays unaware, so a definition or a create naming that
+	// slug mints a NEW property (the namespace vacated, §8-OQ2 — deleting
+	// and re-creating a field must not resurrect the corpse), and a write
+	// to it on an object is refused as removed (removedCustomProperty). The
+	// one place the slug is understood back is the in-document escape
+	// (stateops checkKey), which reads the stored key off the document
+	// itself. A slug a live entry already answers to is left alone, so the
+	// live one keeps its spelling and the corpse reads under its stored key.
+	if removed, rerr := v.svc.removedProperties(v.spaceId); rerr == nil {
+		// two corpses answering to one slug (delete, re-create, delete
+		// again) would both emit it and the codec would suffix one of them
+		// into a spelling nothing here inverts — so neither gets the slug,
+		// exactly as claimTerm demotes live twins
+		corpseBySlug := map[string]string{}
+		for _, e := range removed {
+			if _, live := v.propSlugByKey[e.Key]; live {
+				continue
+			}
+			served := servedKey(e.Key, e.Slug, v.propKeyTaken, v.propSlugHolders)
+			if served == e.Key {
+				continue
+			}
+			if _, taken := v.propKeyBySlug[served]; taken {
+				continue
+			}
+			if prev, twin := corpseBySlug[served]; twin {
+				delete(v.propSlugByKey, prev)
+				delete(v.removedSlug, served)
+				continue
+			}
+			corpseBySlug[served] = e.Key
+			v.propSlugByKey[e.Key] = served
+			if v.removedSlug == nil {
+				v.removedSlug = map[string]bool{}
+			}
+			v.removedSlug[served] = true
+		}
+	}
+
 	v.typeKeyTaken, v.typeSlugHolders = servedTypeKeySets(types)
 	v.typeSlugByKey = make(map[string]string, len(types))
 	v.typeKeyBySlug = map[string]string{}
@@ -139,6 +204,38 @@ func (v *apiKeyVocab) ensure() bool {
 		v.typeSlugByKey[e.Key] = served
 		if served != e.Key {
 			claimTerm(v.typeKeyBySlug, v.typeSlugByKey, served, e.Key)
+		}
+	}
+	// a REMOVED type keeps its slug on the EMIT side, exactly as a removed
+	// property does (round-four eval R4-1: deleting a type rewrote every
+	// surviving object's `type` from the slug to a 24-hex stored key that
+	// nothing in the API resolved). Emit only: the reverse table stays
+	// unaware, so a create naming the slug is refused as removed
+	// (removedTypeBySpelling) and a re-created type may take the slug —
+	// then the corpse reads under its stored key, as the live one owns it.
+	if removed, rerr := v.svc.removedTypes(v.spaceId); rerr == nil {
+		corpseBySlug := map[string]string{}
+		for _, e := range removed {
+			if _, live := v.typeSlugByKey[e.Key]; live {
+				continue
+			}
+			if v.removedTypeKeys == nil {
+				v.removedTypeKeys = map[string]bool{}
+			}
+			v.removedTypeKeys[e.Key] = true
+			served := servedTypeKeyOf(e.Key, e.Slug, v.typeKeyTaken, v.typeSlugHolders)
+			if served == e.Key {
+				continue
+			}
+			if _, taken := v.typeKeyBySlug[served]; taken {
+				continue
+			}
+			if prev, twin := corpseBySlug[served]; twin {
+				delete(v.typeSlugByKey, prev)
+				continue
+			}
+			corpseBySlug[served] = e.Key
+			v.typeSlugByKey[e.Key] = served
 		}
 	}
 	return true
@@ -170,6 +267,9 @@ func (v *apiKeyVocab) PropertySlug(key string) string {
 		return key
 	}
 	if served, ok := v.propSlugByKey[key]; ok {
+		if served != key && v.removedSlug[served] {
+			v.rememberCorpse(served, key)
+		}
 		return served
 	}
 	// not live in this space: a bundled key spells as its derived slug
@@ -186,6 +286,16 @@ func (v *apiKeyVocab) TypeSlug(key string) string {
 		return served
 	}
 	return servedTypeKeyOf(key, "", v.typeKeyTaken, v.typeSlugHolders)
+}
+
+// TypeRemoved reports whether a stored type key this vocabulary has seen
+// belongs to a REMOVED type — the read marker's question (R4-1: an object
+// whose type is gone must not look like an ordinary object).
+func (v *apiKeyVocab) TypeRemoved(key string) bool {
+	if key == "" || !v.ensure() || v.typeKeyTaken[key] {
+		return false
+	}
+	return v.removedTypeKeys[key]
 }
 
 //
@@ -212,6 +322,9 @@ func (v *apiKeyVocab) PropertyKey(slug string) (string, bool) {
 		// to the bundled key on accept either.
 		return string(key), true
 	}
+	if key, ok := v.corpseKeyBySlug[slug]; ok {
+		return key, true // emitted by this vocabulary, so understood back
+	}
 	return v.inner.PropertyKey(slug)
 }
 
@@ -235,6 +348,13 @@ func (v *apiKeyVocab) TypeKey(slug string) (string, bool) {
 // ---- ScopedKeyVocabulary: the importer's richer walk sees the table ----
 //
 
+// emittedCorpse reports the stored key this vocabulary served spelling for,
+// when spelling is a removed property's slug it emitted (rememberCorpse).
+func (v *apiKeyVocab) emittedCorpse(spelling string) (string, bool) {
+	key, ok := v.corpseKeyBySlug[spelling]
+	return key, ok
+}
+
 func (v *apiKeyVocab) PropertyKeyCandidates(spelling string) []string {
 	var out []string
 	if v.ensure() && !v.propKeyTaken[spelling] {
@@ -242,6 +362,11 @@ func (v *apiKeyVocab) PropertyKeyCandidates(spelling string) []string {
 			out = append(out, key)
 		} else if key, ok := bundle.RelationKeyByApiSlug(spelling); ok && v.PropertySlug(string(key)) == spelling {
 			out = append(out, string(key))
+		} else if key, ok := v.corpseKeyBySlug[spelling]; ok {
+			// a spelling this vocabulary emitted for a removed property is
+			// that property, before any live property's display name can
+			// claim it through the scoped chain
+			return []string{key}
 		}
 	}
 	if v.scoped != nil {

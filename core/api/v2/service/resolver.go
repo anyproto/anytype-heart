@@ -90,6 +90,10 @@ type creatingResolvers struct {
 	createdProps    map[string]anyblockjson.PropertyDefinition // key → created def
 	createdPropIds  map[string]string                          // key → id
 	createdPropKeys map[string]string                          // key → the STORED relation key the mint assigned
+	// mintedSlugByKey maps every spelling a mint of THIS request is recorded
+	// under (its document key, its stored key) to the served slug, for the
+	// receipt: the vocabulary was built before the mint and cannot know it
+	mintedSlugByKey map[string]string
 	sideEffects     v2model.SideEffects
 	errs            []error
 
@@ -135,6 +139,7 @@ func (s *Service) newCreatingResolvers(ctx context.Context, spaceId string, dryR
 		ambiguousOptions:     map[optionRef]bool{},
 		dryReported:          map[optionRef]bool{},
 		createdProps:         map[string]anyblockjson.PropertyDefinition{},
+		mintedSlugByKey:      map[string]string{},
 		createdPropIds:       map[string]string{},
 		createdPropKeys:      map[string]string{},
 		mintedSlugs:          map[string]string{},
@@ -163,6 +168,24 @@ func (s *Service) newCreatingResolvers(ctx context.Context, spaceId string, dryR
 // document import, schema_write.go's type import, and stateops.go's
 // insert_blocks/replace_subtree fragments and whole-dataview re-import behind
 // every view op.
+// rememberCorpses teaches this write's vocabulary the slugs of the removed
+// properties a type still references, so a definition echoing the slug the
+// type's read served resolves to that very relation (through the bson key
+// and the echoPropertyIds identity) instead of minting a namesake. A slug a
+// live property claims stays with the live one — the vocabulary's live
+// table is consulted first.
+func (r *creatingResolvers) rememberCorpses(corpses []propertyEntry) {
+	if len(corpses) == 0 {
+		return
+	}
+	r.Options() // builds r.keys
+	for _, e := range corpses {
+		if e.Slug != "" && e.Slug != e.Key {
+			r.keys.rememberCorpse(e.Slug, e.Key)
+		}
+	}
+}
+
 func (r *creatingResolvers) Options() anyblockjson.Options {
 	if r.keys == nil {
 		// D3: the write half's vocabulary is the read half's PLUS the slug
@@ -222,6 +245,26 @@ func (r *creatingResolvers) created() *v2model.SideEffects {
 		return nil
 	}
 	out := r.sideEffects
+	// an option's property is recorded by its stored key at mint time; the
+	// receipt spells it as every read does (R3-c: 53 hex ids in type
+	// receipts where create_property served the slug). A property THIS
+	// request minted is spelled from the mint's own record: the vocabulary
+	// predates it. The vocabulary is built here when no import built it
+	// (a type op that only adds options never calls Options()).
+	if len(out.Options) > 0 {
+		keys := r.keys
+		if keys == nil {
+			keys = r.svc.apiKeys(r.spaceId, r.reads.Options().Keys)
+		}
+		out.Options = append([]v2model.CreatedOption(nil), out.Options...)
+		for i := range out.Options {
+			if slug, minted := r.mintedSlugByKey[out.Options[i].Property]; minted {
+				out.Options[i].Property = slug
+				continue
+			}
+			out.Options[i].Property = keys.PropertySlug(out.Options[i].Property)
+		}
+	}
 	return &out
 }
 
@@ -771,6 +814,8 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 		Name:   name,
 		Format: anyblockjson.FormatName(format),
 	})
+	rowIndex := len(r.sideEffects.Properties) - 1
+	r.mintedSlugByKey[docKey] = reportedKey
 	if r.dryRun {
 		return "", false
 	}
@@ -790,8 +835,27 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 	// Without it a property minted by THIS request has no address, and the
 	// select vocabulary declared beside it could not be attached in the same
 	// call.
+	// the slug the mint STORED: the creator suffixes a slug a hidden holder
+	// already occupies (the request namespace excludes hidden entries, the
+	// mint does not), so the receipt and the option spelling follow the
+	// stored one, never the proposal (TestCreateReturnsTheStoredKeyNotTheProposal)
+	// An explicitly EMPTY stored slug is authoritative too: the mint's
+	// suffix walk ran out and stored nothing, so the minted relation key is
+	// the property's only address (CreateProperty reads it the same way).
+	if !isBundled && resp.Details != nil {
+		stored := storedApiKeyOf(resp.Details, reportedKey)
+		if stored == "" {
+			stored = resp.Key
+		}
+		if stored != "" && stored != reportedKey {
+			reportedKey = stored
+			r.sideEffects.Properties[rowIndex].Key = stored
+			r.mintedSlugByKey[docKey] = stored
+		}
+	}
 	if key, ok := r.svc.storedRelationKeyById(r.ctx, r.spaceId, resp.ObjectId); ok {
 		r.createdPropKeys[docKey] = key
+		r.mintedSlugByKey[key] = reportedKey
 	}
 	return resp.ObjectId, true
 }

@@ -166,7 +166,6 @@ func (s *spaceFactory) CreateAndSetTechSpace(ctx context.Context) (*clientspace.
 	if err != nil {
 		return nil, fmt.Errorf("run tech space: %w", err)
 	}
-
 	return ts, nil
 }
 

@@ -19,10 +19,11 @@ package v2service
 //     query injects `isDeleted != true` (database.go addDefaultFilters), so
 //     a prod corpse is hidden from queries even where nothing filters
 //     isUninstalled.
-//   - "tombstone": {id, spaceId, isDeleted} and NOTHING else — what
-//     BeforeDelete leaves in the index (spaceindex.DeleteObject) from the
-//     moment of the delete until the next space load, i.e. normally the
-//     rest of the app session on the deleting device. No relationKey, no
+//   - "tombstone": {id, spaceId, isDeleted} and NOTHING else — what an
+//     OLDER build's delete left in the index (spaceindex.DeleteObject)
+//     until the next space load rebuilt the row from the tree; a delete by
+//     this build keeps the full row (core/block deleteDerivedObject), so
+//     the shape exists only across an upgrade, for one load. No relationKey, no
 //     resolvedLayout: every key-filtered query — including the corpse
 //     probes' own — misses it on its FIRST filter. Only the derived id
 //     (ADDRESSING §2.4: id = f(space, kind, key)) can find it, which is
@@ -38,9 +39,35 @@ package v2service
 //
 // Fixture discipline: the corpse is BSON-keyed (24-hex) WITH a stored
 // apiObjectKey slug — the one shape that can tell the two vocabularies
-// apart. If any surface started emitting or resolving the corpse's slug, or
-// resolving its BSON as a live address, these assertions flip; a readable or
-// bundled corpse key could not detect either.
+// apart. A readable or bundled corpse key could not detect a vocabulary
+// slip.
+//
+// THE POLICY, since the round-two eval (APIV2_TYPED_HINTS_ROUND2.md F1): a
+// corpse-held value is SERVED under the corpse's slug — the spelling the
+// caller was taught — not its stored bson key, on every read surface
+// (object, type list, view column). The stored key of a space-minted
+// property is an internal id, and serving it is how a caller took its own
+// property for garbage and unset the value on every object. The slug is
+// served only while no live entity has claimed it (apikeyvocab.go ensure).
+// On the write side: set_properties honours the served spelling through
+// its in-document escape — a value the object legitimately carries stays
+// editable and removable by the slug — and refuses the slug off the
+// document as REMOVED rather than unknown (removedCustomPropertyIssue);
+// create carries a pasted read body's values (§8.29, cause3_test.go), slug
+// or stored key alike; a type definition echoing a corpse the type still
+// lists is an identity, one naming a corpse the type never listed mints
+// anew. The stored bson key is not served while the slug is free; it IS
+// served again when a live property claims the slug (the corpse must not
+// mislabel its value) or when two corpses share one slug (the second reads
+// under its key — a suffixed spelling nothing could invert is never made).
+// The stored key is still accepted wherever a read body kept from before
+// the flip could be pasted (create, a type definition's echo, unset), so a
+// client holding old addresses should re-read before writing by them.
+//
+// Removed properties reach only the read surfaces and the on-document
+// writes named above: `fields=`, list and unscoped search filters still
+// validate against live properties and refuse a corpse slug as unknown
+// (ROUND2 status lists this as accepted).
 
 import (
 	"context"
@@ -109,10 +136,40 @@ func (fx *v2Fixture) addTombstone(t *testing.T, id string) {
 	}})
 }
 
+// addPropertyTombstone registers the row an OLDER build's DeleteObject left
+// for a relation object: id, spaceId, isDeleted and the unindexed
+// deletedSnapshot (spaceindex.SnapshotOnDelete: audit fields and the
+// layout, no identity keys) — nothing a key-filtered query could match.
+// This build no longer tombstones a derived object (core/block
+// beforeDeleteDerived leaves the full corpse row), so the shape exists only
+// until the next space load rebuilds it from the tree.
+func (fx *v2Fixture) addPropertyTombstone(t *testing.T, id string) {
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+		bundle.RelationKeyId:        domain.String(id),
+		bundle.RelationKeySpaceId:   domain.String(testSpaceId),
+		bundle.RelationKeyIsDeleted: domain.Bool(true),
+		bundle.RelationKeyDeletedSnapshot: domain.NewValueMap(map[string]domain.Value{
+			bundle.RelationKeyResolvedLayout.String(): domain.Int64(int64(model.ObjectType_relation)),
+		}),
+	}})
+}
+
+// addTypeTombstone is addPropertyTombstone for a type object.
+func (fx *v2Fixture) addTypeTombstone(t *testing.T, id string) {
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+		bundle.RelationKeyId:        domain.String(id),
+		bundle.RelationKeySpaceId:   domain.String(testSpaceId),
+		bundle.RelationKeyIsDeleted: domain.Bool(true),
+		bundle.RelationKeyDeletedSnapshot: domain.NewValueMap(map[string]domain.Value{
+			bundle.RelationKeyResolvedLayout.String(): domain.Int64(int64(model.ObjectType_objectType)),
+		}),
+	}})
+}
+
 // addCorpseProperty registers the BSON-keyed, slug-bearing corpse relation.
 func (fx *v2Fixture) addCorpseProperty(t *testing.T, shape corpseShape) {
 	if shape == corpseTombstone {
-		fx.addTombstone(t, corpsePropertyId)
+		fx.addPropertyTombstone(t, corpsePropertyId)
 		return
 	}
 	obj := objectstore.TestObject{
@@ -130,7 +187,7 @@ func (fx *v2Fixture) addCorpseProperty(t *testing.T, shape corpseShape) {
 
 func (fx *v2Fixture) addCorpseType(t *testing.T, shape corpseShape) {
 	if shape == corpseTombstone {
-		fx.addTombstone(t, corpseTypeId)
+		fx.addTypeTombstone(t, corpseTypeId)
 		return
 	}
 	obj := objectstore.TestObject{
@@ -166,16 +223,15 @@ func corpseHeldRead() apicore.ObjectRead {
 	}
 }
 
-// TestV2CorpseHeldValueReadsUnderStoredKey: GET serves a corpse-held value
-// under the raw 24-hex stored key — never the corpse's stored slug, and the
-// object's corpse TYPE spells its internal key too. The corpse vacated the
-// slug namespace (§8-OQ2), so its slug may already label a NEW live entity;
-// emitting it here would mislabel the value. This test is the read half the
-// proposed read-emit/write-refuse split would change — if PropertySlug ever
-// starts emitting a corpse's stored slug, the first assertion flips.
-// Revert check: drop the isUninstalled filter in storeresolver's loadKeyMaps
-// and the flag-only subtest serves "warranty_until" instead of the BSON.
-func TestV2CorpseHeldValueReadsUnderStoredKey(t *testing.T) {
+// TestV2CorpseHeldValueReadsUnderItsSlug: GET serves a corpse-held value
+// under the corpse's slug — the read-emit half of the split the header
+// describes — never the raw 24-hex stored key; and the object's corpse
+// TYPE spells its slug the same way (round-four eval R4-1: a deleted type
+// rewrote every surviving object's `type` to a hex nothing resolved). The
+// slug is emitted only while no live entity answers to it: the corpse
+// vacated the namespace (§8-OQ2), and a reused slug would mislabel the
+// value — TestApiKeyVocab pins that guard.
+func TestV2CorpseHeldValueReadsUnderItsSlug(t *testing.T) {
 	corpseShapes(t, func(t *testing.T, shape corpseShape) {
 		// given
 		fx := newV2Fixture(t)
@@ -190,9 +246,18 @@ func TestV2CorpseHeldValueReadsUnderStoredKey(t *testing.T) {
 		require.NoError(t, err)
 		doc := decodeBody(t, body)
 		props, _ := doc["properties"].(map[string]any)
-		assert.Equal(t, "2027-01-01", props[corpseBsonKey], "the value is served, under the stored key")
-		assert.NotContains(t, props, corpseSlug, "a corpse's slug is never a served spelling")
-		assert.Equal(t, corpseTypeBsonKey, doc["type"], "a corpse type spells its internal key in the envelope")
+		if shape == corpseTombstone {
+			// an OLDER build's tombstone kept no identity: the store has
+			// nothing to spell but the stored key, until the next space
+			// load rebuilds the corpse row from the tree
+			assert.Equal(t, "2027-01-01", props[corpseBsonKey], "the value is served, under the only address the row has")
+			assert.NotContains(t, props, corpseSlug)
+			assert.Equal(t, corpseTypeBsonKey, doc["type"])
+			return
+		}
+		assert.Equal(t, "2027-01-01", props[corpseSlug], "the value is served, under the slug the caller was taught")
+		assert.NotContains(t, props, corpseBsonKey, "the stored bson key is an internal id and never a served spelling")
+		assert.Equal(t, corpseTypeSlug, doc["type"], "a removed type spells the slug its objects were served")
 	})
 }
 
@@ -314,60 +379,48 @@ func TestV2CorpseHeldValueIsUnqueryable(t *testing.T) {
 // fails the tombstone leg the same way while both full-detail legs stay
 // green.
 func TestV2CloneToleranceSurvivesTheProdShape(t *testing.T) {
-	cloneBody := []byte(`{"formatVersion":"2.0","type":"page","properties":{"name":"Fresh","` + corpseBsonKey + `":"x"}}`)
-
 	t.Run("the clone loop round-trips on EVERY shape", func(t *testing.T) {
+		// a pasted read body creates a copy (§8.29): what GET serves — the
+		// SLUG now — lands back on the stored key; the stored key itself
+		// still lands too (a body kept from before the flip)
 		corpseShapes(t, func(t *testing.T, shape corpseShape) {
-			// given
-			fx := newV2Fixture(t)
-			fx.addCorpseProperty(t, shape)
-			captured := fx.expectCreate("clone1")
-			fx.expectEtagRead("clone1")
+			for _, spelling := range []string{corpseSlug, corpseBsonKey} {
+				if shape == corpseTombstone && spelling == corpseSlug {
+					continue // the tombstone's slug is indexed by nothing a create can canonicalize through
+				}
+				fx := newV2Fixture(t)
+				fx.addCorpseProperty(t, shape)
+				captured := fx.expectCreate("clone1")
+				fx.expectEtagRead("clone1")
 
-			// when — the bytes a GET of a corpse-held object serves
-			_, err := fx.CreateObject(context.Background(), testSpaceId, cloneBody, false, true)
+				_, err := fx.CreateObject(context.Background(), testSpaceId,
+					[]byte(`{"formatVersion":"2.0","type":"page","properties":{"name":"Fresh","`+spelling+`":"x"}}`), false, true)
 
-			// then — the value lands under the STORED key it was served under
-			require.NoError(t, err)
-			require.NotNil(t, *captured)
-			assert.Equal(t, "x", (*captured).Details.Fields[corpseBsonKey].GetStringValue())
+				require.NoError(t, err, spelling)
+				require.NotNil(t, *captured)
+				assert.Equal(t, "x", (*captured).Details.Fields[corpseBsonKey].GetStringValue(), "the value lands under the stored key, spelled %q", spelling)
+			}
 		})
 	})
 
-	t.Run("the corpse SLUG is refused on create in both shapes", func(t *testing.T) {
-		// the tolerance is a round-trip escape for the STORED key only; the
-		// slug vacated the namespace and must not be an address
-		corpseShapes(t, func(t *testing.T, shape corpseShape) {
-			fx := newV2Fixture(t)
-			fx.addCorpseProperty(t, shape)
-
-			_, err := fx.CreateObject(context.Background(), testSpaceId,
-				[]byte(`{"formatVersion":"2.0","type":"page","properties":{"name":"Fresh","`+corpseSlug+`":"x"}}`), false, true)
-
-			apiErr := v2Err(t, err)
-			assert.Equal(t, http.StatusBadRequest, apiErr.Status)
-		})
-	})
 }
 
 // TestV2PatchCorpseKeyChannels: PATCH's only corpse escape is the document
 // itself, and it survives the prod shape — checkKey (stateops.go) passes any
 // key already on the document without consulting the store, so a value the
-// object legitimately carries stays editable and removable by its stored
-// key. Everything else refuses: the same key off-document, and the corpse's
-// slug in every case (the slug is severed by uninstall even for in-document
-// values — canonicalization no longer maps it to the stored key).
+// object legitimately carries stays editable and removable by the spelling
+// the document serves, which is the corpse's SLUG (the header's policy).
+// Everything else refuses: the slug off-document — as REMOVED, so the caller
+// learns what happened — and the stored bson key in every case, since an
+// internal id is no address.
 // Revert check: dropping the in-document escape (`inDoc` in checkKey) fails
-// the first subtest (executed). The unset subtest pins the cleanup channel:
-// it fails only under a strictly live-only unset (checkKey WITHOUT the
-// in-document escape) — merely routing unset through today's checkKey keeps
-// it green, because the escape covers it.
+// the first subtest (executed). The unset subtest pins the cleanup channel.
 func TestV2PatchCorpseKeyChannels(t *testing.T) {
 	ctx := context.Background()
 	corpseDoc := `{"formatVersion":"2.0","id":"obj1","type":"page","properties":{"name":"Doc","` + corpseBsonKey + `":"2027-01-01"},"blocks":[{"id":"blockOne1","type":"paragraph","text":"hi"}]}`
 	cleanDocNoCorpse := `{"formatVersion":"2.0","id":"obj1","type":"page","properties":{"name":"Doc"},"blocks":[{"id":"blockOne1","type":"paragraph","text":"hi"}]}`
 
-	t.Run("set by stored key, value on the document: applies (prod shape)", func(t *testing.T) {
+	t.Run("set by slug, value on the document: applies (prod shape)", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
 		fx.addCorpseProperty(t, corpseProd)
@@ -375,46 +428,76 @@ func TestV2PatchCorpseKeyChannels(t *testing.T) {
 
 		// when
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"`+corpseBsonKey+`":"2030-12-31"}}`), "", false, true)
+			patchBody(`{"op":"set_properties","set":{"`+corpseSlug+`":"2030-12-31"}}`), "", false, true)
 
-		// then
+		// then — the value lands under the STORED key the slug stands for
 		require.NoError(t, err)
 		assert.Equal(t, "2030-12-31", (*captured).CombinedDetails().GetString(domain.RelationKey(corpseBsonKey)))
 	})
 
-	t.Run("set by stored key, value NOT on the document: 400", func(t *testing.T) {
+	t.Run("a live property whose display name equals the corpse slug does not capture the edit", func(t *testing.T) {
+		// the document serves the corpse value as "warranty_until"; a live
+		// property NAMED "warranty_until" (slug beta) must not receive the
+		// edit — the document's own spelling is the caller's intent
+		fx := newV2Fixture(t)
+		fx.addCorpseProperty(t, corpseProd)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("rel-beta"),
+			bundle.RelationKeyRelationKey:  domain.String("6a7663db61fab21cd4b9e555"),
+			bundle.RelationKeyApiObjectKey: domain.String("beta"),
+			bundle.RelationKeyName:         domain.String(corpseSlug),
+		})
+		captured := fx.expectMutate(editRead(t, corpseDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","set":{"`+corpseSlug+`":"2030-12-31"}}`), "", false, true)
+
+		require.NoError(t, err)
+		details := (*captured).CombinedDetails()
+		assert.Equal(t, "2030-12-31", details.GetString(domain.RelationKey(corpseBsonKey)), "the corpse value on the document was edited")
+		_, betaTouched := details.TryString("6a7663db61fab21cd4b9e555")
+		assert.False(t, betaTouched, "the live namesake was not written")
+	})
+
+	t.Run("set by slug, value NOT on the document: refused as removed", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addCorpseProperty(t, corpseProd)
 		fx.expectMutate(editRead(t, cleanDocNoCorpse), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"`+corpseBsonKey+`":"2030-12-31"}}`), "", false, true)
+			patchBody(`{"op":"set_properties","set":{"`+corpseSlug+`":"2030-12-31"}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Contains(t, apiErr.Issues[0].Message, "was removed from this space",
+			"the served spelling is understood back: the refusal says what happened, not \"unknown\"")
 	})
 
-	t.Run("unset by stored key removes the corpse-held value", func(t *testing.T) {
+	t.Run("unset by slug removes the corpse-held value", func(t *testing.T) {
 		// the one cleanup channel a caller has left
 		fx := newV2Fixture(t)
 		fx.addCorpseProperty(t, corpseProd)
 		captured := fx.expectMutate(editRead(t, corpseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","unset":["`+corpseBsonKey+`"]}`), "", false, true)
+			patchBody(`{"op":"set_properties","unset":["`+corpseSlug+`"]}`), "", false, true)
 
 		require.NoError(t, err)
 		_, present := (*captured).CombinedDetails().TryString(domain.RelationKey(corpseBsonKey))
 		assert.False(t, present, "unset removes the value")
 	})
 
-	t.Run("the corpse slug is refused even with the value on the document", func(t *testing.T) {
+	t.Run("the stored bson key is refused even with the value on the document", func(t *testing.T) {
+		// an internal id is not a served spelling: the document serves the
+		// slug, and the in-document escape honours only what the document
+		// serves
 		fx := newV2Fixture(t)
 		fx.addCorpseProperty(t, corpseProd)
 		fx.expectMutate(editRead(t, corpseDoc), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"set_properties","set":{"`+corpseSlug+`":"2030-12-31"}}`), "", false, true)
+			patchBody(`{"op":"set_properties","set":{"`+corpseBsonKey+`":"2030-12-31"}}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
@@ -451,15 +534,29 @@ func TestV2ViewOpsCorpseKeys(t *testing.T) {
 
 		require.NoError(t, err)
 		require.NotNil(t, *captured)
+		// the column the view showed under the slug is committed under the
+		// STORED key: the render and the re-import share one vocabulary
+		dv := (*captured).Pick("dataview").Model().GetDataview()
+		var columnKeys, linkKeys []string
+		for _, rel := range dv.Views[0].Relations {
+			columnKeys = append(columnKeys, rel.Key)
+		}
+		for _, link := range dv.RelationLinks {
+			linkKeys = append(linkKeys, link.Key)
+		}
+		assert.Contains(t, columnKeys, corpseBsonKey)
+		assert.NotContains(t, columnKeys, corpseSlug, "the slug is a served spelling, never a stored key")
+		assert.Contains(t, linkKeys, corpseBsonKey)
+		assert.NotContains(t, linkKeys, corpseSlug)
 	})
 
-	t.Run("groupBy an in-view corpse key is accepted", func(t *testing.T) {
+	t.Run("groupBy an in-view corpse key is accepted, by the slug the view serves", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addCorpseProperty(t, corpseProd)
 		fx.expectMutate(editRead(t, corpseViewDocBody), "headB")
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"update_view","view":"viewAll1","set":{"group_by":"`+corpseBsonKey+`"}}`), "", false, true)
+			patchBody(`{"op":"update_view","view":"viewAll1","set":{"group_by":"`+corpseSlug+`"}}`), "", false, true)
 
 		require.NoError(t, err)
 	})
@@ -868,7 +965,8 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 			// when
 			body, _, err := fx.GetType(context.Background(), testSpaceId, "livetype", ObjectQuery{})
 
-			// then — served under the stored BSON key, with the corpse's name
+			// then — served under the corpse's slug (the header's policy), the
+			// stored key beside it, with the corpse's name
 			require.NoError(t, err)
 			var doc struct {
 				TypeSettings struct {
@@ -883,9 +981,15 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 			defs := doc.TypeSettings.PropertyDefinitions
 			require.Len(t, defs, 1)
 			// §2e: the entry names the property by its document-facing
-			// spelling, and carries the stored key beside it — a BSON-keyed
-			// corpse has no slug, so both land on the stored key
-			assert.Equal(t, corpseBsonKey, defs[0].Property)
+			// spelling — the slug — and carries the stored key beside it;
+			// an older build's identity-less tombstone can only spell the
+			// stored key, until the next load rebuilds the row
+			if shape == corpseTombstone {
+				assert.Equal(t, corpseBsonKey, defs[0].Property)
+			} else {
+				assert.Equal(t, corpseSlug, defs[0].Property)
+			}
+			assert.Equal(t, corpseBsonKey, defs[0].InternalKey)
 			assert.Equal(t, "Warranty until", defs[0].Name)
 		})
 	})
@@ -931,11 +1035,66 @@ func TestV2TypePropertiesCorpseEchoResolvesToItsHolder(t *testing.T) {
 		})
 	})
 
-	t.Run("the corpse SLUG in typeProperties still mints — the namespace vacated", func(t *testing.T) {
-		// the resolve is KEY-ONLY: a corpse's slug is free for re-minting
-		// (§8-OQ2), so naming it declares a NEW property, never the corpse
+	t.Run("the corpse SLUG echoed back resolves to the holder too — what the read served, the write understands", func(t *testing.T) {
+		// GET serves the entry under its slug (the header's policy); a
+		// PATCH that re-sends exactly that list must be an identity, never
+		// a namesake mint that detaches the corpse and its values
 		corpseShapes(t, func(t *testing.T, shape corpseShape) {
 			fx := newFx(t, shape)
+			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "bafyreilivetype").Return(liveTypeRead(), nil).Maybe()
+			fx.mwMock.EXPECT().ObjectCreateRelation(mock.Anything, mock.Anything).RunAndReturn(
+				func(ctx context.Context, req *pb.RpcObjectCreateRelationRequest) *pb.RpcObjectCreateRelationResponse {
+					t.Fatalf("an echoed slug must not mint: %v", req.Details)
+					return nil
+				}).Maybe()
+			var applied []*model.Detail
+			fx.mwMock.EXPECT().ObjectSetDetails(mock.Anything, mock.Anything).RunAndReturn(
+				func(ctx context.Context, req *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse {
+					applied = req.Details
+					return &pb.RpcObjectSetDetailsResponse{
+						Error: &pb.RpcObjectSetDetailsResponseError{Code: pb.RpcObjectSetDetailsResponseError_NULL}}
+				})
+
+			if shape == corpseTombstone {
+				// an older build's tombstone served the stored key, and echoing
+				// that back is the preceding subtest's input by construction
+				t.Skip("no slug is served over a legacy tombstone")
+			}
+			echoed := corpseSlug
+			result, err := fx.UpdateType(context.Background(), testSpaceId, "livetype",
+				"", []byte(`{"type_settings":{"property_definitions":[{"property":"`+echoed+`","name":"Warranty until","format":"text"}]}}`), false, true)
+
+			require.NoError(t, err)
+			assert.Nil(t, result.Created)
+			var recommended []string
+			for _, detail := range applied {
+				if detail.Key == bundle.RelationKeyRecommendedRelations.String() {
+					recommended = pbtypes.GetStringListValue(detail.Value)
+				}
+			}
+			assert.Equal(t, []string{corpsePropertyId}, recommended, "the list still points at the corpse it named")
+		})
+	})
+
+	t.Run("the corpse SLUG on a type that does NOT list the corpse mints anew — the namespace vacated", func(t *testing.T) {
+		// only what a type served is understood back; a type that never
+		// listed the corpse names a NEW property with that slug (§8-OQ2)
+		corpseShapes(t, func(t *testing.T, shape corpseShape) {
+			fx := newV2Fixture(t)
+			fx.addCorpseProperty(t, shape)
+			fx.addType(t, testSpaceId, objectstore.TestObject{
+				bundle.RelationKeyId:        domain.String("bafyreilivetype"),
+				bundle.RelationKeyUniqueKey: domain.String("ot-livetype"),
+				bundle.RelationKeyName:      domain.String("Live type"),
+			})
+			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "bafyreilivetype").Return(apicore.ObjectRead{
+				SbType: model.SmartBlockType_STType,
+				Snapshot: &model.SmartBlockSnapshotBase{
+					Details:     &types.Struct{Fields: map[string]*types.Value{"id": pbtypes.String("bafyreilivetype"), "uniqueKey": pbtypes.String("ot-livetype"), "name": pbtypes.String("Live type")}},
+					ObjectTypes: []string{"ot-objectType"},
+				},
+				Heads: []string{"headA"},
+			}, nil).Maybe()
 			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "bafyreilivetype").Return(liveTypeRead(), nil).Maybe()
 			var minted []*pb.RpcObjectCreateRelationRequest
 			fx.mwMock.EXPECT().ObjectCreateRelation(mock.Anything, mock.Anything).RunAndReturn(

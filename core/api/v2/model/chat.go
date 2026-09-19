@@ -74,18 +74,22 @@ type ChatState struct {
 // messages plus the state+message_count the underlying RPC already returns
 // at zero extra cost. A poll is a limit=1 read of this
 // shape. Cursor-paged (after/before order ids), not C10 offset pagination.
-// MessageCount is the chat's LIFETIME total, not the size of the requested
-// range; HasMore says more messages exist inside the requested bounds, and
-// NextAfter/NextBefore carry the boundary order id to continue from —
-// forward walks (?after alone) get NextAfter, everything else (newest-
-// anchored) gets NextBefore.
+// MessageCount is the number of messages the chat HOLDS (a deleted one is
+// gone from it), not the size of the requested range; LifetimeMessageCount
+// counts every message ever posted, deleted ones included. HasMore says
+// more messages exist inside the requested bounds, and NextAfter/NextBefore
+// carry the boundary order id to continue from — forward walks (?after
+// alone) get NextAfter, everything else (newest-anchored) gets NextBefore.
 type ChatMessagesResponse struct {
-	Messages     []ChatMessage `json:"messages"`
-	State        *ChatState    `json:"state,omitempty"`
-	MessageCount int           `json:"message_count"`
-	HasMore      bool          `json:"has_more"` // more messages inside the requested bounds, not in the chat as a whole
-	NextAfter    string        `json:"next_after,omitempty"`
-	NextBefore   string        `json:"next_before,omitempty"`
+	Messages []ChatMessage `json:"messages"`
+	State    *ChatState    `json:"state,omitempty"`
+	// Messages the chat holds now; a deleted message leaves it
+	MessageCount int `json:"message_count"`
+	// Messages ever posted, deleted ones included
+	LifetimeMessageCount int    `json:"lifetime_message_count"`
+	HasMore              bool   `json:"has_more"` // more messages inside the requested bounds, not in the chat as a whole
+	NextAfter            string `json:"next_after,omitempty"`
+	NextBefore           string `json:"next_before,omitempty"`
 }
 
 // CreateChatRequest is the POST chats body.
@@ -156,8 +160,13 @@ type ChatReadRequest struct {
 }
 
 // ChatReadResult acknowledges a read watermark move.
+// ChatReadResult is the read receipt: the chat's state after the move, when
+// it could be read back (best effort — the write itself has succeeded).
+// Deliberately no comment on the field: swag would lift it onto the shared
+// ChatState schema, where "after the move" is false on an ordinary read.
 type ChatReadResult struct {
-	DryRun bool `json:"dry_run,omitempty"`
+	DryRun bool       `json:"dry_run,omitempty"`
+	State  *ChatState `json:"state,omitempty"`
 }
 
 // Read scopes (ChatReadRequest.Scope).

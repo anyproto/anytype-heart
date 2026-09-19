@@ -266,7 +266,11 @@ components:
           description: more messages inside the requested bounds, not in the chat
             as a whole
           type: boolean
+        lifetime_message_count:
+          description: Messages ever posted, deleted ones included
+          type: integer
         message_count:
+          description: Messages the chat holds now; a deleted message leaves it
           type: integer
         messages:
           items:
@@ -310,6 +314,8 @@ components:
       properties:
         dry_run:
           type: boolean
+        state:
+          $ref: '#/components/schemas/ChatState'
       type: object
     ChatResult:
       properties:
@@ -369,6 +375,10 @@ components:
             $ref: '#/components/schemas/Issue'
           type: array
           uniqueItems: false
+        items:
+          description: Count of the member objects a created collection holds, on
+            every collection create
+          type: integer
         key:
           description: identity key (types, properties)
           type: string
@@ -407,6 +417,14 @@ components:
         blocks_moved:
           type: integer
         blocks_removed:
+          type: integer
+        items_added:
+          description: Collection members the batch added, as a set difference; absent
+            means none
+          type: integer
+        items_removed:
+          description: Collection members the batch removed, as a set difference;
+            absent means none
           type: integer
         properties_changed:
           type: integer
@@ -770,6 +788,10 @@ components:
           type: string
         example:
           type: object
+        example_body:
+          description: An op schema's example wrapped as the request body it is sent
+            in
+          type: object
         grammar:
           type: string
         grammar_examples:
@@ -925,15 +947,27 @@ components:
         all_spaces:
           description: 'the boundary field of an all-spaces grant: the key covers
             every space in the account, including spaces created later (the tech space
-            excepted). When true, spaces enumerates the current live spaces and is
-            informational only. Never infer the boundary from it'
+            excepted). Never infer the boundary from spaces'
           type: boolean
         permission:
           description: the compact form agents string-match on
           type: string
-        scoped:
+        restricted:
+          description: 'The key reaches only the spaces listed: scoped, and not all_spaces.
+            False for a legacy key and for an all-spaces grant alike'
           type: boolean
+        scoped:
+          description: A grant record exists. An all-spaces grant is scoped too; branch
+            on restricted for the space boundary
+          type: boolean
+        space_count:
+          description: 'For an all-spaces grant: how many live spaces the key covers
+            now, zero included. spaces lists them only when the spaces parameter is
+            true'
+          type: integer
         spaces:
+          description: the granted spaces of a restricted key; for an all-spaces grant,
+            the current live spaces when the spaces parameter is true, else empty
           items:
             $ref: '#/components/schemas/WhoamiGrantSpace'
           type: array
@@ -955,7 +989,8 @@ components:
         expires_at:
           type: string
         id:
-          description: the app link's hash, which is the id the key list shows
+          description: 'An identifier of the key record, the one the key list in Settings
+            shows: the hex sha256 of the key''s raw bytes, never the token itself'
           type: string
         name:
           type: string
@@ -969,7 +1004,9 @@ components:
         key:
           $ref: '#/components/schemas/WhoamiKey'
         key_status:
-          description: '"legacy" | "scoped", always present'
+          description: 'Credential kind: scoped means a grant record exists (all-spaces
+            grants included), legacy means none. Use grant.restricted for the space
+            boundary'
           type: string
         notice:
           description: the legacy sentence, verbatim printable
@@ -1360,11 +1397,10 @@ paths:
       - Auth
   /v2/auth/whoami:
     get:
-      description: This describes the key, not a person; there is one account behind
-        this API. Branch on `grant.scoped`. False is a legacy key with no space restriction,
-        and its `spaces` list is empty rather than absent. True means the key reaches
-        exactly the spaces listed. When `grant.all_spaces` is true the key covers
-        every space, including ones created later, and `spaces` is informational only.
+      description: 'Describes the key, not a person. Branch on `grant.restricted`:
+        true means the key reaches only the spaces in `spaces`; false means every
+        space, either an all-spaces grant or a legacy key with no grant. An all-spaces
+        grant reports `space_count` and lists its spaces only when `spaces` is true.'
       operationId: auth_whoami
       parameters:
       - description: 'How grant.spaces[].id is spelled: compact (default) is the short
@@ -1374,6 +1410,12 @@ paths:
         name: ids
         schema:
           type: string
+      - description: 'For an all-spaces grant: list the current live spaces in grant.spaces.
+          Default false, the count alone'
+        in: query
+        name: spaces
+        schema:
+          type: boolean
       responses:
         "200":
           content:
@@ -1557,6 +1599,18 @@ paths:
         name: ids
         schema:
           type: string
+      - description: Items to skip
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: Items to return
+        in: query
+        name: limit
+        schema:
+          default: 25
+          type: integer
       responses:
         "200":
           content:
@@ -1684,7 +1738,8 @@ paths:
       - Spaces
     patch:
       description: At least one of the two fields must be present; a field left out
-        keeps its current value.
+        keeps its current value. The space icon and the default object type are not
+        writable through this API.
       operationId: update_space
       parameters:
       - description: Space id
@@ -1866,12 +1921,11 @@ paths:
       - Chat
   /v2/spaces/{space_id}/chats/{chat_id}/messages:
     get:
-      description: '`after` on its own walks forward, oldest first, continuing from
-        `next_after`. Every other query, including `after` together with `before`,
-        is anchored at the newest end of the range and walks backward from `next_before`.
-        Both bounds are exclusive. `message_count` is the chat''s total since it began,
-        not the size of the range. Offset paging does not apply here, and `offset`
-        is refused.'
+      description: '`after` alone walks forward, oldest first, continuing from `next_after`.
+        Every other query is anchored at the newest end and walks backward from `next_before`.
+        Both bounds are exclusive; messages are always ascending. `message_count`
+        is the number of messages the chat holds now; `lifetime_message_count` counts
+        every message ever posted. `offset` is refused.'
       operationId: get_chat_messages
       parameters:
       - description: Space id
@@ -2305,11 +2359,11 @@ paths:
       - Chat
   /v2/spaces/{space_id}/chats/{chat_id}/read:
     post:
-      description: '`up_to` is inclusive, and it and `last_state_id` both come from
-        one messages read: the newest message''s order, and the state''s own id. An
-        empty value for either would silently mark nothing, so it is refused. Messages
-        that arrived after that state stay unread. The reactions scope marks every
-        unread reaction and takes neither field.'
+      description: '`up_to` is inclusive; it and `last_state_id` come from one messages
+        read: the newest order and the state''s id. An empty value would silently
+        mark nothing, so both are required. Later messages stay unread. The reactions
+        scope takes neither field. The receipt carries the chat''s state after the
+        move when it could be read back.'
       operationId: read_chat
       parameters:
       - description: Space id
@@ -2900,6 +2954,18 @@ paths:
         required: true
         schema:
           type: string
+      - description: Items to skip
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: Items to return
+        in: query
+        name: limit
+        schema:
+          default: 25
+          type: integer
       responses:
         "200":
           content:
@@ -3317,6 +3383,18 @@ paths:
         required: true
         schema:
           type: string
+      - description: Items to skip
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: Items to return
+        in: query
+        name: limit
+        schema:
+          default: 25
+          type: integer
       responses:
         "200":
           content:
@@ -3342,6 +3420,9 @@ paths:
       tags:
       - Properties
     post:
+      description: 'Names are not identities: without an explicit key, a name a visible
+        property already carries is refused. Supply a different available key to create
+        another property with that name; the response carries a warning.'
       operationId: create_property
       parameters:
       - description: Space id
@@ -3414,6 +3495,11 @@ paths:
         required: true
         schema:
           type: string
+      - description: Validate and report without committing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
       responses:
         "200":
           content:
@@ -3460,6 +3546,11 @@ paths:
         required: true
         schema:
           type: string
+      - description: Validate and report without committing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
       requestBody:
         content:
           application/json:
@@ -3523,6 +3614,18 @@ paths:
         name: prefix
         schema:
           type: string
+      - description: Items to skip
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: Items to return
+        in: query
+        name: limit
+        schema:
+          default: 25
+          type: integer
       responses:
         "200":
           content:
@@ -3876,6 +3979,18 @@ paths:
         required: true
         schema:
           type: string
+      - description: Items to skip
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: Items to return
+        in: query
+        name: limit
+        schema:
+          default: 25
+          type: integer
       responses:
         "200":
           content:
@@ -3981,6 +4096,11 @@ paths:
         required: true
         schema:
           type: string
+      - description: Validate and report without committing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
       responses:
         "200":
           content:

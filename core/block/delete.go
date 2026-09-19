@@ -126,10 +126,15 @@ func (s *Service) deleteDerivedObject(id domain.FullID, sbType coresb.SmartBlock
 	if err != nil {
 		return fmt.Errorf("set isUninstalled flag: %w", err)
 	}
-	err = s.BeforeDelete(id, nil)
-	if err != nil {
-		return fmt.Errorf("on delete: %w", err)
-	}
+	// NOT BeforeDelete: a derived object's index row is left as the full
+	// corpse the Apply above just indexed (isUninstalled, and isDeleted from
+	// the smartblock's details injection) — the row every other device holds
+	// and the row this device would hold again after a restart, when the
+	// outdated-object reindex rebuilt it from the surviving tree. Stripping
+	// it to a tombstone gave the deleting device a second shape for one
+	// session that nothing else ever had; the API's removed-type and
+	// removed-property lookups read the corpse row.
+	s.closeAndMarkDeleted(id)
 	switch sbType {
 	case coresb.SmartBlockTypeRelation:
 		if err = s.deleteRelationOptions(id.SpaceID, relationKey); err != nil {
@@ -161,13 +166,16 @@ func (s *Service) deleteRelationOptions(spaceId string, relationKey string) erro
 	if err != nil {
 		return err
 	}
+	// every option is attempted: a relation that is already uninstalled
+	// keeps its index row and its heads hash, so nothing re-runs this on
+	// the next load — one failing option must not strand the ones after it
+	var errs []error
 	for _, id := range relationOptions {
-		err := s.DeleteObject(id)
-		if err != nil {
-			return err
+		if err := s.DeleteObject(id); err != nil {
+			errs = append(errs, fmt.Errorf("delete option %s: %w", id, err))
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func (s *Service) unsetDefaultTemplateId(templateId, typeId string, spc clientspace.Space) error {
@@ -199,7 +207,11 @@ func (s *Service) DeleteObject(objectId string) (err error) {
 	return s.DeleteObjectByFullID(domain.FullID{SpaceID: spaceId, ObjectID: objectId})
 }
 
-func (s *Service) BeforeDelete(id domain.FullID, workspaceRemove func() error) error {
+// closeAndMarkDeleted is the in-memory half of a delete: the sessions
+// close and the smartblock is marked deleted, so no further Apply lands on
+// it. Failures are logged, never returned — the delete proceeds.
+// workspaceRemove, when given, runs inside the same lock.
+func (s *Service) closeAndMarkDeleted(id domain.FullID, workspaceRemove ...func() error) {
 	err := s.DoFullId(id, func(b smartblock.SmartBlock) error {
 		b.ObjectCloseAllSessions()
 		st := b.NewState()
@@ -208,18 +220,27 @@ func (s *Service) BeforeDelete(id domain.FullID, workspaceRemove func() error) e
 			log.With("objectId", id).Errorf("failed to favorite object: %v", err)
 		}
 		b.SetIsDeleted()
-		if workspaceRemove != nil {
-			return workspaceRemove()
+		for _, remove := range workspaceRemove {
+			if remove != nil {
+				return remove()
+			}
 		}
 		return nil
 	})
 	if err != nil && !errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
 		log.With("error", err, "objectId", id.ObjectID).Error("failed to perform delete operation on object")
 	}
+}
+
+// BeforeDelete is the delete of an object whose TREE goes away: the
+// in-memory half, then the index row stripped to a tombstone (the store's
+// DeleteObject). A derived object — whose tree stays — takes
+// deleteDerivedObject instead, which keeps its index row.
+func (s *Service) BeforeDelete(id domain.FullID, workspaceRemove func() error) error {
+	s.closeAndMarkDeleted(id, workspaceRemove)
 	if err := s.objectStore.SpaceIndex(id.SpaceID).DeleteObject(id.ObjectID); err != nil {
 		return fmt.Errorf("delete object from local store: %w", err)
 	}
-
 	return nil
 }
 

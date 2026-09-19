@@ -22,14 +22,16 @@ import (
 // affordance the MCP benchmark showed callers cannot use, and it is
 // invisible to every wrapper's lookup.
 //
-// The schema documents are the exception: their `endpoint` lines and field
-// descriptions document the REST surface for a reader who asked for it, and
-// they are not repairs.
+// The schema documents are the exception here: their `endpoint` lines
+// document the REST surface for a reader who asked for it. Their field
+// descriptions are NOT exempt — they are guarded on the served JSON by
+// service/schemaprose_test.go, where the endpoint line is a separate member.
 func TestServedRoutesComeFromTheOperationTable(t *testing.T) {
 	// a method before any path or an ellipsis (versioned or not), an
-	// ellipsis path on its own, a versioned path, or a bare `?name=`
-	// query-parameter mention — every spelling a repair has used
-	routeShaped := regexp.MustCompile(`(?:GET|POST|PATCH|PUT|DELETE|HEAD) (?:/|…|\.\.\./)|(?:…|\.\.\.)/[a-z]|/v2/(?:spaces|schemas|search|auth|validate)\b|\?[A-Za-z0-9_-]+=`)
+	// ellipsis path on its own, a versioned path, a bare `?name=`
+	// query-parameter mention, or a `name=<placeholder>` one — every
+	// spelling a repair has used
+	routeShaped := regexp.MustCompile(`(?:GET|POST|PATCH|PUT|DELETE|HEAD) (?:/|…|\.\.\./)|(?:…|\.\.\.)/[a-z]|/v2/(?:spaces|schemas|search|auth|validate)\b|\?[A-Za-z0-9_-]+=|\b[a-z_]+=<[a-z_]+>`)
 	documentation := map[string]bool{
 		"service/schemas.go":     true,
 		"service/schemas_ops.go": true,

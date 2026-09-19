@@ -394,6 +394,76 @@ func TestV2TypeOpsAddPutsTheColumnInEveryView(t *testing.T) {
 		assert.Equal(t, model.RelationFormat_number, link.Format)
 	})
 
+	// The flat body's whole-list replacement must keep the same invariant
+	// (round-two eval F2): a caller who re-sends property_definitions with
+	// one more entry got the list updated and the views not, behind a 200 —
+	// and the actors that resend whole lists are exactly the ones that never
+	// find the op channel.
+	t.Run("a list replacement adds the column too", func(t *testing.T) {
+		// given: the same space property and views as the op case
+		fx := newTypeOpsFixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("rel-height"),
+			bundle.RelationKeyRelationKey:    domain.String("height"),
+			bundle.RelationKeyApiObjectKey:   domain.String("height"),
+			bundle.RelationKeyName:           domain.String("Height"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_number)),
+		})
+		captured := fx.captureTypeDetails()
+		committed := fx.expectTypeViewEdit(typeReadWithViews(
+			viewWithColumns("v-a", "All", "name"),
+			viewWithColumns("v-b", "Grid", "name", "location"),
+		))
+
+		// when: the whole list, resent with Height appended
+		result, err := fx.UpdateType(context.Background(), testSpaceId, "plant", "", []byte(`{
+			"type_settings":{"property_definitions":[
+				{"property":"location"},{"property":"sun_needs"},{"property":"water_needs"},{"property":"height"}]}}`), false, false)
+
+		// then: the list half
+		require.NoError(t, err)
+		assert.Equal(t, []string{"rel-location", "rel-sun", "rel-water", "rel-height"},
+			(*captured)[bundle.RelationKeyRecommendedRelations.String()])
+
+		// and the view half, exactly as the op channel does it
+		assert.Equal(t, []string{"name", "height"}, viewColumnKeys(t, *committed, "v-a"))
+		assert.Equal(t, []string{"name", "location", "height"}, viewColumnKeys(t, *committed, "v-b"))
+		assert.Empty(t, result.Removed, "nothing was dropped")
+	})
+
+	t.Run("a list replacement that drops a property prunes its column, and the dry run says so", func(t *testing.T) {
+		// given: the type lists location, sun_needs, water_needs; a view shows location
+		fx := newTypeOpsFixture(t)
+		captured := fx.captureTypeDetails()
+		committed := fx.expectTypeViewEdit(typeReadWithViews(
+			viewWithColumns("v-a", "All", "name", "location"),
+		))
+
+		// when: the list is resent without location — rehearsed first
+		rehearsal, err := fx.UpdateType(context.Background(), testSpaceId, "plant", "", []byte(`{
+			"type_settings":{"property_definitions":[{"property":"sun_needs"},{"property":"water_needs"}]}}`), true, false)
+		require.NoError(t, err)
+		require.NotNil(t, rehearsal.Removed)
+		require.NotEmpty(t, rehearsal.Warnings)
+		var dropped bool
+		for _, w := range rehearsal.Warnings {
+			if strings.Contains(w.Message, "columns dropped") {
+				dropped = true
+				assert.Equal(t, "/type_settings/property_definitions", w.Path)
+			}
+		}
+		assert.True(t, dropped, "a rehearsal names the columns a real run would drop")
+
+		// and for real
+		_, err = fx.UpdateType(context.Background(), testSpaceId, "plant", "", []byte(`{
+			"type_settings":{"property_definitions":[{"property":"sun_needs"},{"property":"water_needs"}]}}`), false, false)
+
+		// then: the list half and the view half
+		require.NoError(t, err)
+		assert.Equal(t, []string{"rel-sun", "rel-water"}, (*captured)[bundle.RelationKeyRecommendedRelations.String()])
+		assert.Equal(t, []string{"name"}, viewColumnKeys(t, *committed, "v-a"))
+	})
+
 	// The half-consistent type a client's own three-call add leaves behind:
 	// the property is listed, but no view shows it. Naming it again heals it,
 	// which is what makes this op safe to retry.
@@ -447,6 +517,49 @@ func TestV2TypeOpsRemovePrunesEveryView(t *testing.T) {
 		// and the view half
 		assert.Equal(t, []string{"name", "location"}, viewColumnKeys(t, *committed, "v-a"))
 		assert.Equal(t, []string{"water_needs"}, viewColumnKeys(t, *committed, "v-b"))
+	})
+
+	// The delete warning points at remove_property; the op must then accept
+	// the spelling the type serves for a REMOVED property.
+	t.Run("remove_property takes a removed property off the type by the slug the type serves", func(t *testing.T) {
+		// given
+		fx := newTypeOpsFixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("rel-old"),
+			bundle.RelationKeyRelationKey:  domain.String("6a8f2c1d9e4b7a3f5c2d8e99"),
+			bundle.RelationKeyApiObjectKey: domain.String("old_field"),
+			bundle.RelationKeyName:         domain.String("Old field"),
+			bundle.RelationKeyIsArchived:   domain.Bool(true),
+		})
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:                   domain.String(typeOpsTypeId),
+			bundle.RelationKeyUniqueKey:            domain.String("ot-plant"),
+			bundle.RelationKeyApiObjectKey:         domain.String("plant"),
+			bundle.RelationKeyName:                 domain.String("Plant"),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-location", "rel-sun", "rel-water", "rel-old"}),
+		})
+		captured := fx.captureTypeDetails()
+		committed := fx.expectTypeViewEdit(typeReadWithViews(
+			viewWithColumns("v-a", "All", "name", "6a8f2c1d9e4b7a3f5c2d8e99"),
+		))
+
+		// when
+		result, err := fx.UpdateType(context.Background(), testSpaceId, "plant",
+			"", opsBody(`{"op":"remove_property","property":"old_field"}`), false, false)
+
+		// then: off the list, off the view, spelled as served
+		require.NoError(t, err)
+		assert.Equal(t, []string{"rel-location", "rel-sun", "rel-water"},
+			(*captured)[bundle.RelationKeyRecommendedRelations.String()])
+		assert.Equal(t, []string{"name"}, viewColumnKeys(t, *committed, "v-a"))
+		var dropped string
+		for _, w := range result.Warnings {
+			if strings.Contains(w.Message, "columns dropped") {
+				dropped = w.Message
+			}
+		}
+		assert.Contains(t, dropped, "old_field", "the warning spells the served key: %v", result.Warnings)
+		assert.NotContains(t, dropped, "6a8f2c1d9e4b7a3f5c2d8e99")
 	})
 
 	// A view that boards by a property is doing more than showing it.

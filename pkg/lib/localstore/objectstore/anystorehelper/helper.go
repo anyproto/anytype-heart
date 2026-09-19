@@ -73,7 +73,10 @@ func RemoveSqliteFiles(dbPath string) error {
 
 func AddIndexes(ctx context.Context, coll anystore.Collection, indexes []anystore.IndexInfo) error {
 	gotIndexes := coll.GetIndexes()
-	toCreate := indexes[:0]
+	// a fresh slice: `indexes[:0]` aliased the input, so appending the one
+	// missing index overwrote indexes[0] and the drop pass below then
+	// removed the index that used to be there
+	toCreate := make([]anystore.IndexInfo, 0, len(indexes))
 	var toDrop []string
 	for i, idx := range indexes {
 		if idx.Name == "" {

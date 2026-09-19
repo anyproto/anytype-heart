@@ -56,7 +56,7 @@ func TestWhoami(t *testing.T) {
 		want := fmt.Sprintf(`{
 			"key": {"id":"hash1","name":"Claude Desktop","created_at":"2023-11-14T22:13:20Z","expires_at":null},
 			"scope": "jsonApi",
-			"grant": {"scoped":true,"all_spaces":false,"permission":"readwrite",
+			"grant": {"scoped":true,"restricted":true,"all_spaces":false,"permission":"readwrite",
 			          "spaces":[{"id":"spaceA","name":"Work","permission":"readwrite"}]},
 			"api": {"version":%q},
 			"key_status": "scoped"
@@ -93,14 +93,34 @@ func TestWhoami(t *testing.T) {
 		fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
 
 		// when
-		w := serveWithKey(fx, "GET", "/v2/auth/whoami", "allKey")
+		w := serveWithKey(fx, "GET", "/v2/auth/whoami?spaces=true", "allKey")
 
 		// then
 		require.Equal(t, http.StatusOK, w.Code)
 		var got v2model.WhoamiResponse
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
 		require.True(t, got.Grant.Scoped)
+		require.False(t, got.Grant.Restricted, "an all-spaces grant is scoped but not restricted")
 		require.True(t, got.Grant.AllSpaces)
+		require.NotNil(t, got.Grant.SpaceCount)
+		require.Equal(t, 2, *got.Grant.SpaceCount)
+
+		// without ?spaces=true the count stands alone
+		plain := serveWithKey(fx, "GET", "/v2/auth/whoami", "allKey")
+		require.Equal(t, http.StatusOK, plain.Code)
+		var counted v2model.WhoamiResponse
+		require.NoError(t, json.Unmarshal(plain.Body.Bytes(), &counted))
+		require.Empty(t, counted.Grant.Spaces)
+		require.NotNil(t, counted.Grant.SpaceCount)
+		require.Equal(t, 2, *counted.Grant.SpaceCount)
+		require.NotContains(t, plain.Body.String(), "Personal", "a permissions check does not enumerate the account by default")
+
+		// the parameter takes true or false; an empty or other value is refused
+		for _, raw := range []string{"?spaces=", "?spaces=1"} {
+			bad := serveWithKey(fx, "GET", "/v2/auth/whoami"+raw, "allKey")
+			require.Equal(t, http.StatusBadRequest, bad.Code, raw)
+			require.Contains(t, bad.Body.String(), "invalid spaces value")
+		}
 		require.NotNil(t, got.Grant.Permission)
 		require.Equal(t, util.GrantPermsReadWrite, *got.Grant.Permission)
 		names := map[string]bool{}
@@ -128,7 +148,7 @@ func TestWhoami(t *testing.T) {
 		want := fmt.Sprintf(`{
 			"key": {"id":"hash2","name":"old-script","created_at":null,"expires_at":"2030-03-17T17:46:40Z"},
 			"scope": "jsonApi",
-			"grant": {"scoped":false,"all_spaces":false,"permission":null,"spaces":[]},
+			"grant": {"scoped":false,"restricted":false,"all_spaces":false,"permission":null,"spaces":[]},
 			"api": {"version":%q},
 			"key_status": "legacy",
 			"notice": %q
@@ -259,9 +279,14 @@ func TestWhoamiAgreesWithTheGate(t *testing.T) {
 			require.Equal(t, tc.grant.AllSpaces, mirror.Grant.AllSpaces,
 				"the mirror's boundary field must match the enforced grant")
 
+			// the boundary is the mirror's all_spaces flag, never its list:
+			// an all-spaces grant lists nothing by default (R4-5)
 			claimed := map[string]bool{}
 			for _, space := range mirror.Grant.Spaces {
 				claimed[space.Id] = true
+			}
+			if mirror.Grant.AllSpaces {
+				claimed["spaceA"], claimed["spaceB"] = true, true
 			}
 
 			// then: the gate must agree, space by space, in both directions

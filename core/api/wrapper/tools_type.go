@@ -629,8 +629,18 @@ func (r *Runner) createTypeRequest(ctx context.Context, session *Session, spaceI
 	}, &result); err != nil {
 		if dry {
 			// says which of the two POST /types failed; the pre-flight's
-			// failure means nothing was written, the real one does not
-			return nil, prefixToolError(err, "check the type name and formats")
+			// failure means nothing was written, the real one does not. The
+			// input-repair prefix is for a DECODED validation refusal alone:
+			// a grant refusal, a rate limit, a server error (the space's
+			// index could not be read), a transport failure or an
+			// undecodable reply of any status is nothing the name or
+			// formats can repair (the caller appends "nothing was created"
+			// itself)
+			var te *ToolError
+			if errors.As(err, &te) && te.Code == v2model.CodeValidationFailed {
+				return nil, prefixToolError(err, "check the type name and formats")
+			}
+			return nil, prefixToolError(err, "the pre-flight failed")
 		}
 		return nil, err
 	}

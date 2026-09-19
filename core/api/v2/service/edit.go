@@ -30,7 +30,9 @@ import (
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // v2MaxOpsPerPatch bounds one PATCH batch. Each op re-renders the document
@@ -200,12 +202,13 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 	s.prewarmCreateMissing(ops, resolvers)
 
 	var result *v2model.EditResult
+	var favorite *bool
 	run := func(edit apicore.ObjectEdit) error {
-		res, err := s.applyPatchOps(ctx, spaceId, objectId, ops, ifMatch, edit, resolvers)
+		res, applier, err := s.applyPatchOps(ctx, spaceId, objectId, ops, ifMatch, edit, resolvers)
 		if err != nil {
 			return err
 		}
-		result = res
+		result, favorite = res, applier.favorite
 		return nil
 	}
 	if dryRun {
@@ -228,6 +231,16 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 		return nil, mapWriteError(spaceId, objectId, err)
 	}
 	result.Etag = ComputeEtag(heads)
+	// the favorite flag is made real outside the object (stateops.go
+	// favorite): once the edit has committed, so a refused batch never
+	// favorites, and only on a transition — clearing a clear flag or setting
+	// a set one is a no-op, not an RPC that can fail on a missing link
+	if favorite != nil && *favorite != pbtypes.GetBool(cur.Snapshot.GetDetails(), bundle.RelationKeyIsFavorite.String()) {
+		resp := s.mw.ObjectListSetIsFavorite(ctx, &pb.RpcObjectListSetIsFavoriteRequest{ObjectIds: []string{objectId}, IsFavorite: *favorite})
+		if resp.Error != nil && resp.Error.Code != pb.RpcObjectListSetIsFavoriteResponseError_NULL {
+			return nil, fmt.Errorf("the edit of %s was committed, but its favorite flag could not be set: %s", objectId, resp.Error.Description)
+		}
+	}
 	return result, nil
 }
 
@@ -320,7 +333,7 @@ func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId stri
 	if err != nil {
 		return err
 	}
-	if _, err := s.applyPatchOps(ctx, spaceId, objectId, ops, ifMatch, edit, probe); err != nil {
+	if _, _, err := s.applyPatchOps(ctx, spaceId, objectId, ops, ifMatch, edit, probe); err != nil {
 		return err
 	}
 	return nil
@@ -356,62 +369,63 @@ func editFromRead(objectId string, cur apicore.ObjectRead) (apicore.ObjectEdit, 
 // applied to the state), the resolver error check, the flag-gated safety
 // net, and the diff_stats. The caller commits (or, on dry run, discards) the
 // state.
-func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, edit apicore.ObjectEdit, resolvers *creatingResolvers) (*v2model.EditResult, error) {
+func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, edit apicore.ObjectEdit, resolvers *creatingResolvers) (*v2model.EditResult, *v2StateApplier, error) {
 	if err := checkEditPreconditions(edit.SbType, edit.Heads, ifMatch); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	applier := newV2StateApplier(s, spaceId, objectId, edit.SbType, edit.State, resolvers, errKeysFor(ctx))
 	beforeDoc, err := applier.begin()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	legacyFileDescendants, err := apiFileDescendantSet(beforeDoc)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// the M7 render-work bound, checked against the authoritative view the
 	// begin() marshal just produced: refusing here costs one marshal — the
 	// same floor a GET pays — instead of the batch's whole product
 	if err := checkPatchRenderWork(ops, applier.view.blocks); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	for i, raw := range ops {
 		// the loop runs under the object lock: honour cancellation so an
 		// abandoned request stops holding it (review A′2)
 		if err := ctx.Err(); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if err := applier.apply(i, raw); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if opCanChangeFileContainment(raw) {
 			current, err := applier.currentDoc()
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 			if err := validateNoNewFileDescendants(legacyFileDescendants, current, applier.createdBlocks, fmt.Sprintf("ops[%d]", i)); err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		}
 	}
 	if err := resolvers.err(); err != nil {
-		return nil, fmt.Errorf("resolve document references: %w", err)
+		return nil, nil, fmt.Errorf("resolve document references: %w", err)
 	}
 	// reuse the view's document when the last op left it valid (review A′2)
 	afterDoc, err := applier.currentDoc()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// R5: the whole-document net, on by default (review B′3) — catches what a
 	// payload fragment cannot see (V3 containment, the document-wide id
 	// domain, the absolute depth bound)
 	if err := validateEditedDoc(objectId, afterDoc, applier.createdBlocks); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	stats, err := diffEditDocs(beforeDoc, afterDoc)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	stats.ItemsAdded, stats.ItemsRemoved = applier.itemsDiff()
 	result := &v2model.EditResult{Created: resolvers.created(), DiffStats: stats}
 	if len(applier.createdBlocks) > 0 {
 		result.CreatedBlocks = applier.createdBlocks
@@ -422,16 +436,44 @@ func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, o
 	if !fullIdsRequested(ctx) && (len(result.CreatedBlocks) > 0 || len(result.CreatedViews) > 0) {
 		result.CreatedBlocks, result.CreatedViews, err = applier.compactReceiptIDs()
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	result.Warnings = applier.warnings
-	return result, nil
+	return result, applier, nil
 }
 
 // parsePatchRequest decodes the object PATCH body strictly.
 func parsePatchRequest(body []byte) ([]json.RawMessage, error) {
-	return parseOpsEnvelope(body, v2OpNames, "the If-Match precondition is a header, not a body field")
+	return parseOpsEnvelope(body, v2OpNames, objectPatchUnknownKeyHint)
+}
+
+// v2BodyKeyOps maps the members a caller writes at the PATCH body root,
+// having guessed the create body's shape, to the op that carries them.
+var v2BodyKeyOps = map[string]string{
+	"properties":       "set_properties",
+	"name":             "set_properties",
+	"blocks":           "insert_blocks",
+	"markdown":         "insert_blocks",
+	"views":            "insert_view",
+	"items":            "add_items",
+	"collection_items": "add_items",
+}
+
+// objectPatchUnknownKeyHint is the repair for a key beside ops on the object
+// surface. The If-Match sentence used to be the hint for EVERY unknown key
+// (F15) — it fires only for a precondition written into the body now; a
+// member the create body takes is pointed at the op that carries it, and
+// anything else at the op index.
+func objectPatchUnknownKeyHint(key string) v2model.Hint {
+	switch strings.ToLower(key) {
+	case "if-match", "if_match", "ifmatch", "etag":
+		return v2model.Plain("the If-Match precondition is a header, not a body field")
+	}
+	if op, ok := v2BodyKeyOps[key]; ok {
+		return v2model.Hintf("%s is carried by the %s op inside ops (%s)", key, op, v2model.RefGetOpSchema(op))
+	}
+	return v2model.Hintf("every change travels as an op inside ops — %s lists them", v2model.NewRef(v2model.OpListSchemas))
 }
 
 // parseOpsEnvelope is the one decoder behind every ops body. Two endpoints
@@ -440,7 +482,7 @@ func parsePatchRequest(body []byte) ([]json.RawMessage, error) {
 // the unknown key, the empty list and the batch cap. Only what genuinely
 // differs travels as an argument, so neither endpoint can grow its own
 // version of a rule the other keeps.
-func parseOpsEnvelope(body []byte, opNames []string, unknownKeyHint string) ([]json.RawMessage, error) {
+func parseOpsEnvelope(body []byte, opNames []string, unknownKeyHint func(key string) v2model.Hint) ([]json.RawMessage, error) {
 	fields, err := parseEnvelope(body)
 	if err != nil {
 		return nil, v2model.ValidationFailed("the PATCH body must be a JSON object",
@@ -469,7 +511,7 @@ func parseOpsEnvelope(body []byte, opNames []string, unknownKeyHint string) ([]j
 	for key := range fields {
 		if key != "ops" {
 			return nil, v2model.ValidationFailed("unknown field in PATCH body",
-				v2model.Issue{Path: "/" + key, Message: fmt.Sprintf("unknown key %q — the PATCH body carries only ops", key), Hint: unknownKeyHint})
+				v2model.Issue{Path: "/" + key, Message: fmt.Sprintf("unknown key %q — the PATCH body carries only ops", key)}.WithHint(unknownKeyHint(key)))
 		}
 	}
 	var req v2PatchRequest

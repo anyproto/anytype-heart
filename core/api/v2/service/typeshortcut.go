@@ -28,6 +28,7 @@ package v2service
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
@@ -213,4 +214,17 @@ func withNamePlaceholder(fields map[string]json.RawMessage) map[string]json.RawM
 	}
 	out["name"] = json.RawMessage(`"unchanged"`)
 	return out
+}
+
+// flatTypeBodyPath maps a path into the document typeShortcutDocument built
+// back onto the flat body it was built from: the settings members sit at
+// the root there, and the display name is `name`.
+func flatTypeBodyPath(path string) string {
+	if path == "/properties/name" {
+		return "/name"
+	}
+	if rest, ok := strings.CutPrefix(path, "/type_settings"); ok && (rest == "" || rest[0] == '/') {
+		return rest
+	}
+	return path
 }

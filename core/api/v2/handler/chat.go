@@ -103,7 +103,7 @@ func CreateChatHandler(s *v2service.Service) gin.HandlerFunc {
 // GetChatMessagesHandler reads messages with the state passthrough
 //
 //	@Summary		List chat messages
-//	@Description	`after` on its own walks forward, oldest first, continuing from `next_after`. Every other query, including `after` together with `before`, is anchored at the newest end of the range and walks backward from `next_before`. Both bounds are exclusive. `message_count` is the chat's total since it began, not the size of the range. Offset paging does not apply here, and `offset` is refused.
+//	@Description	`after` alone walks forward, oldest first, continuing from `next_after`. Every other query is anchored at the newest end and walks backward from `next_before`. Both bounds are exclusive; messages are always ascending. `message_count` is the number of messages the chat holds now; `lifetime_message_count` counts every message ever posted. `offset` is refused.
 //	@Id				get_chat_messages
 //	@Tags			Chat
 //	@Produce		json
@@ -281,7 +281,7 @@ func ToggleChatReactionHandler(s *v2service.Service) gin.HandlerFunc {
 // ReadChatHandler moves the read watermark
 //
 //	@Summary		Mark chat activity as read
-//	@Description	`up_to` is inclusive, and it and `last_state_id` both come from one messages read: the newest message's order, and the state's own id. An empty value for either would silently mark nothing, so it is refused. Messages that arrived after that state stay unread. The reactions scope marks every unread reaction and takes neither field.
+//	@Description	`up_to` is inclusive; it and `last_state_id` come from one messages read: the newest order and the state's id. An empty value would silently mark nothing, so both are required. Later messages stay unread. The reactions scope takes neither field. The receipt carries the chat's state after the move when it could be read back.
 //	@Id				read_chat
 //	@Tags			Chat
 //	@Accept			json

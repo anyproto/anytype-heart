@@ -10,6 +10,8 @@ package v2service
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"slices"
 	"sort"
 	"strings"
 
@@ -108,8 +110,8 @@ func (s *Service) typeKeyExists(spaceId, typeKey string) bool {
 	if err != nil {
 		return false
 	}
-	_, ok, ambiguous := s.resolveTypeInput(typeKey, entries)
-	return ok && len(ambiguous) == 0
+	_, ok, ambiguous, err := s.resolveTypeInput(spaceId, typeKey, entries)
+	return err == nil && ok && len(ambiguous) == 0
 }
 
 // knownTypeKeys lists the space's LIVE type keys in their SERVED spelling
@@ -132,6 +134,17 @@ func (s *Service) knownTypeKeys(spaceId string, v errKeys) []string {
 
 // unknownTypeKeyError is the R9 did-you-mean 400 for a type reference.
 func (s *Service) unknownTypeKeyError(spaceId, typeKey, path string, v errKeys) error {
+	// the spelling a read served for a REMOVED space-minted type (its
+	// objects keep it — R4-1): say removed, not unknown with a guess; and a
+	// lookup that failed is neither — an infrastructure error, not a bad
+	// input, with no guess attached
+	issue, removed, err := s.removedTypeRefusal(spaceId, typeKey, path, v)
+	if err != nil {
+		return unverifiableTypeError(typeKey, spaceId, err)
+	}
+	if removed {
+		return v2model.ValidationFailed(fmt.Sprintf("removed %s", v.typeWord()), issue)
+	}
 	known := s.knownTypeKeys(spaceId, v)
 	return v2model.ValidationFailed(
 		fmt.Sprintf("type %q not found in space %q", typeKey, spaceId),
@@ -149,6 +162,20 @@ func (s *Service) unknownTypeKeyError(spaceId, typeKey, path string, v errKeys) 
 // benchmarked 4B did not retry at all, while the key-listing property tip
 // repaired on the first retry in the same run).
 func (s *Service) typeNotFoundError(spaceId, typeKey string, v errKeys) error {
+	// a type route addressed by the spelling its objects still serve: 404
+	// still (the type is not addressable), but saying why (R4-1)
+	issue, removed, err := s.removedTypeRefusal(spaceId, typeKey, "type", v)
+	if err != nil {
+		return unverifiableTypeError(typeKey, spaceId, err)
+	}
+	if removed {
+		// the diagnosis once, in the message; the issue carries the
+		// consequences and the live-type reference
+		known := s.knownTypeKeys(spaceId, v)
+		issue.Message = "existing objects keep this type; creating objects with it and filtering by it are unavailable"
+		return v2model.NewError(http.StatusNotFound, v2model.CodeNotFound,
+			fmt.Sprintf("type %q not found in space %q — it was removed; %s", typeKey, spaceId, listKnown(v.typesWord(), known)), issue)
+	}
 	return notFoundWithKeys(
 		fmt.Sprintf("type %q not found in space %q", typeKey, spaceId),
 		"type", typeKey, v.typesWord(), s.knownTypeKeys(spaceId, v),
@@ -254,6 +281,42 @@ func propertyKeyRemovedIn(entries []propertyEntry, removed map[string]bool, key 
 // before validation on these channels, and a hint naming a spelling the
 // request never contained is unactionable; the message keeps the served
 // slug, the one spelling every listing agrees on.
+// removedCustomProperty finds the REMOVED space-minted property a key names
+// — by the slug the surface serves for it or by its stored key — so a write
+// to it can be refused as removed rather than as unknown (the served
+// spelling must be understood back: a caller who read `gamma` off an object
+// and writes `gamma` is told what happened to it). One bounded query, and
+// only on the unknown-key path, which is rare.
+func (s *Service) removedCustomProperty(spaceId, key string) (propertyEntry, bool) {
+	removed, err := s.removedProperties(spaceId)
+	if err != nil {
+		return propertyEntry{}, false
+	}
+	for _, e := range removed {
+		if e.Key == key || (e.Slug != "" && e.Slug == key) {
+			return e, true
+		}
+	}
+	return propertyEntry{}, false
+}
+
+// removedCustomPropertyIssue is removedPropertyIssue for a space-minted
+// property: the same repair, with the spelling the surface serves for it.
+func removedCustomPropertyIssue(spaceId string, entry propertyEntry, spelledAs, path string, v errKeys) v2model.Issue {
+	spelling := entry.Slug
+	if spelling == "" {
+		spelling = entry.Key
+	}
+	if v.names && entry.Name != "" {
+		spelling = entry.Name
+	}
+	return v2model.Issue{
+		Path:    path,
+		Message: fmt.Sprintf("property %q was removed from this space — set_properties gives no object that does not already hold a value of it one", spelling),
+	}.Hintf("remove %q from the request — values objects already hold stay readable, and reappear if the property is restored; for a different property, list them with %s",
+		spelledAs, v2model.RefListProperties(spaceId))
+}
+
 func removedPropertyIssue(spaceId, key, spelledAs, path string, v errKeys) v2model.Issue {
 	slug := bundle.ApiSlug(key)
 	spelling := slug
@@ -266,7 +329,7 @@ func removedPropertyIssue(spaceId, key, spelledAs, path string, v errKeys) v2mod
 	}
 	return v2model.Issue{
 		Path:    path,
-		Message: fmt.Sprintf("property %q was removed from this space — nothing new lands on a removed property", spelling),
+		Message: fmt.Sprintf("property %q was removed from this space — set_properties gives no object that does not already hold a value of it one", spelling),
 	}.Hintf("remove %q from the request — values objects already hold stay readable, and reappear if the property is restored; for a different property, list them with %s",
 		spelledAs, v2model.RefListProperties(spaceId))
 }
@@ -354,13 +417,20 @@ func listKnown(what string, known []string) string {
 }
 
 // didYouMean picks the closest known keys for the hint; fallback steers to
-// the discovery list.
+// the discovery list, and rides along behind the guess — a guess is a
+// question, and the caller whose answer is "no" needs the list as much as
+// one who got no guess at all (round-two eval F6: the did-you-mean branch
+// dropped the reference the list-all branch carried).
 func didYouMean(input string, known []string, fallback v2model.Hint) v2model.Hint {
 	suggestions := closestKeys(input, known, 3)
 	if len(suggestions) == 0 {
 		return fallback
 	}
-	return v2model.Plain("did you mean " + strings.Join(suggestions, ", ") + "?")
+	guess := "did you mean " + strings.Join(suggestions, ", ") + "?"
+	if fallback.Text == "" {
+		return v2model.Plain(guess)
+	}
+	return v2model.Hint{Text: guess + " — if not, " + fallback.Text, Refs: fallback.Refs}
 }
 
 // closestKeys ranks known keys by simple similarity to input:
@@ -504,4 +574,103 @@ func (s *Service) recommendedRelationIds(spaceId, typeId string) map[string]bool
 		}
 	}
 	return out
+}
+
+// typeListedKeys is the stored key set a type recommends, resolved from the
+// key a document spells the type by — a bundled key (ot-page), or the api
+// slug this surface serves for a space-minted type. Nil when the type cannot
+// be resolved: then no F16 warning is issued, because a warning the code
+// cannot substantiate is worse than none.
+func (s *Service) typeListedKeys(spaceId, typeKey string) map[string]bool {
+	if typeKey == "" {
+		return nil
+	}
+	typeId, ok := s.typeIdInSpace(spaceId, typeKey)
+	if !ok {
+		entries, err := s.liveTypes(spaceId)
+		if err != nil {
+			return nil
+		}
+		entry, found, ambiguous, err := s.resolveTypeInput(spaceId, typeKey, entries)
+		if err != nil || !found || len(ambiguous) > 0 || entry.Id == "" {
+			return nil
+		}
+		typeId = entry.Id
+	}
+	keys := map[string]bool{}
+	for _, key := range s.typePropertyKeys(spaceId, typeId) {
+		keys[key] = true
+	}
+	return keys
+}
+
+// offTypeCandidate reports whether a stored property key is one the F16
+// warning applies to: not a key every type's queries accept (name and the
+// system query keys), and not a hidden bundled relation (icon, layout and
+// the like — system fields, never listed on a type).
+func offTypeCandidate(key string) bool {
+	if key == bundle.RelationKeyName.String() || slices.Contains(v2SystemQueryKeys, key) {
+		return false
+	}
+	if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil && rel.Hidden {
+		return false
+	}
+	return true
+}
+
+// offTypePropertyIssue is the F16 warning: the value lands, but the type's
+// own surfaces do not reach it.
+func offTypePropertyIssue(spelling, typeKey, path string) v2model.Issue {
+	return v2model.Issue{
+		Path:    path,
+		Message: fmt.Sprintf("property %q is not on type %q — the value is stored and served on the object, but type-scoped search and queries over %q refuse the key and the type's default columns omit it", spelling, typeKey, typeKey),
+	}.Hintf("list it on the type with the add_property op (%s)", v2model.RefGetOpSchema("add_property"))
+}
+
+// removedTypeRefusal is the issue for a REMOVED space-minted type addressed
+// by the spelling a read served for it. When a live type has since taken
+// the removed one's slug, the caller addressed the old type by its stored
+// key, and the refusal must not call the live slug removed.
+func (s *Service) removedTypeRefusal(spaceId, input, path string, v errKeys) (v2model.Issue, bool, error) {
+	entry, removed, err := s.removedTypeBySpelling(spaceId, input)
+	if err != nil {
+		return v2model.Issue{}, false, err
+	}
+	if !removed {
+		return v2model.Issue{}, false, nil
+	}
+	spelling := entry.Slug
+	if spelling == "" {
+		spelling = entry.Key
+	}
+	if v.names && entry.Name != "" {
+		spelling = entry.Name
+	}
+	if entry.Slug != "" && input != entry.Slug {
+		// a live type OWNS the removed one's slug only when it is the one
+		// visible holder and serves it unchanged (servedTypeKeyOf's guards)
+		if live, err := s.liveTypes(spaceId); err == nil {
+			keyTaken, holders := servedTypeKeySets(live)
+			if owners := holders[entry.Slug]; len(owners) == 1 && servedTypeKeyOf(owners[0], entry.Slug, keyTaken, holders) == entry.Slug {
+				return v2model.Issue{
+					Path:    path,
+					Message: fmt.Sprintf("type %q (formerly %q) was removed from this space, and %q now names a different type — the old type's objects keep it under its stored key; nothing new is created in it", input, entry.Slug, entry.Slug),
+				}.Hintf("use a live type instead — list them with %s", v2model.RefListTypes(spaceId)), true, nil
+			}
+		}
+	}
+	return v2model.Issue{
+		Path:    path,
+		Message: fmt.Sprintf("type %q was removed from this space — its objects keep it, but nothing new is created in it and it is not filterable", spelling),
+	}.Hintf("use a live type instead — list them with %s", v2model.RefListTypes(spaceId)), true, nil
+}
+
+// unverifiableTypeError is the answer when the removal lookup behind a type
+// resolution failed: a server error, said as such, with no guess — the
+// request was not wrong, the store could not be read.
+func unverifiableTypeError(typeKey, spaceId string, err error) error {
+	log.Warnf("api v2: verify type %q in space %s: %v", typeKey, spaceId, err)
+	return v2model.NewError(http.StatusInternalServerError, v2model.CodeInternalError,
+		fmt.Sprintf("could not verify type %q in space %q — retry", typeKey, spaceId),
+		v2model.Issue{Message: "the space's index could not be read"})
 }

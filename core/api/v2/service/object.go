@@ -218,13 +218,14 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 
 	reads := storeresolver.New(s.store.SpaceIndex(spaceId))
 	if read.SbType == model.SmartBlockType_STType {
-		// tombstone window (§8.41): a just-deleted relation's index row is
-		// {id, isDeleted} only, so the by-id resolve behind typeProperties
-		// fails and the entry would silently VANISH from the served list —
-		// and the documented read-modify-write loop would then delete the
-		// type's reference to it. The surviving tree still knows everything;
-		// read it and seed the resolver so all three store shapes serve the
-		// same bytes.
+		// the pre-upgrade window (§8.41): a relation an OLDER build deleted
+		// left an index row of {id, isDeleted} only, until the next space
+		// load rebuilds it, so the by-id resolve behind typeProperties fails
+		// and the entry would silently VANISH from the served list — and the
+		// documented read-modify-write loop would then delete the type's
+		// reference to it. The surviving tree still knows everything; read
+		// it and seed the resolver. (A delete by THIS build keeps the full
+		// row, core/block deleteDerivedObject.)
 		s.seedTombstonedTypeProperties(ctx, spaceId, reads, read.Snapshot)
 	}
 	opts := apiRefSpelling(reads.Options())
@@ -232,8 +233,10 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 	// made HERE, in Options, never by re-spelling
 	// a marshaled document. `?keys=name` (§4.2) keeps the resolver's own
 	// raw-name vocabulary instead.
+	var vocab *apiKeyVocab
 	if !nameKeysRequested(ctx) {
-		opts.Keys = s.apiKeys(spaceId, opts.Keys)
+		vocab = s.apiKeys(spaceId, opts.Keys)
+		opts.Keys = vocab
 	}
 	// the shape comes pre-composed by validate() — see objectReadPlan;
 	// CompactObjectRefs stays at its zero value on every shape (no legend)
@@ -250,7 +253,10 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 	// unmapped/over-deep blocks degrade to warnings that ride the envelope.
 	var warnings []v2model.Issue
 	opts.OnWarning = func(iss anyblockjson.Issue) {
-		warnings = append(warnings, v2model.Issue{Path: iss.Path, Message: iss.Message})
+		if readWarningIsNoise(iss) {
+			return
+		}
+		warnings = append(warnings, readWarningIssue(iss))
 	}
 
 	doc, err := anyblockjson.Marshal(read.SbType, read.Snapshot, opts)
@@ -260,6 +266,12 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 	fields, err := parseEnvelope(doc)
 	if err != nil {
 		return nil, "", fmt.Errorf("object %s: %w", objectId, err)
+	}
+	// an object whose type was removed must not read like an ordinary one
+	// (R4-1): the envelope keeps the served spelling, and this says why
+	// nothing else answers to it
+	if issue, removed := removedTypeWarning(spaceId, vocab, objectTypeKey(read)); removed {
+		warnings = append(warnings, issue)
 	}
 	// a served document matches the schema this API publishes for it
 	trimAPIDocumentEnvelope(fields)
@@ -303,12 +315,12 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 }
 
 // seedTombstonedTypeProperties makes a type read serve the SAME
-// typeProperties in the tombstone window as before the delete and after the
-// next space load (§8.41). For every recommended-relation id the store
-// resolver cannot answer (GetRelationById needs a relationKey the tombstone
-// row lost), it confirms the row exists as a tombstone and reads the LIVE
-// object — the tree survives a UI delete by design — to
-// recover key, name and format, then seeds the resolver. Every miss degrades
+// typeProperties over a tombstone an OLDER build left as after the next
+// space load rebuilds it (§8.41). For every recommended-relation id the
+// store resolver cannot answer (GetRelationById needs a relationKey the
+// tombstone row lost), it confirms the row exists as a tombstone and reads
+// the LIVE object — the tree survives a delete by design — to recover key,
+// name and format, then seeds the resolver. Every miss degrades
 // to the pre-§8.41 behavior for that entry (dropped), never to an error: a
 // dangling id in a recommended list has always been dropped, and the read
 // must not fail on it.
@@ -375,8 +387,14 @@ func (s *Service) markdownEnvelope(ctx context.Context, spaceId, objectId string
 		return nil, "", err
 	}
 	if typeKey := objectTypeKey(read); typeKey != "" {
-		if fields["type"], err = rawJSON(typeKey); err != nil {
+		vocab := s.apiKeys(spaceId, storeresolver.New(s.store.SpaceIndex(spaceId)))
+		if fields["type"], err = rawJSON(vocab.TypeSlug(typeKey)); err != nil {
 			return nil, "", err
+		}
+		if issue, removed := removedTypeWarning(spaceId, vocab, typeKey); removed {
+			if fields["warnings"], err = rawJSON([]v2model.Issue{issue}); err != nil {
+				return nil, "", err
+			}
 		}
 	}
 	if fields["etag"], err = rawJSON(etag); err != nil {
@@ -387,6 +405,18 @@ func (s *Service) markdownEnvelope(ctx context.Context, spaceId, objectId string
 	}
 	body, err := encodeEnvelope(fields)
 	return body, etag, err
+}
+
+// removedTypeWarning is the read marker for an object whose type was
+// removed (R4-1), on every envelope a read serves.
+func removedTypeWarning(spaceId string, vocab *apiKeyVocab, typeKey string) (v2model.Issue, bool) {
+	if vocab == nil || typeKey == "" || !vocab.TypeRemoved(typeKey) {
+		return v2model.Issue{}, false
+	}
+	return v2model.Issue{
+		Path:    "/type",
+		Message: fmt.Sprintf("the type %q of this object was removed from the space — the object keeps it, but nothing new is created in it and searches cannot filter by it", vocab.TypeSlug(typeKey)),
+	}.Hintf("the live types are listed by %s", v2model.RefListTypes(spaceId)), true
 }
 
 // objectTypeKey extracts the object's type key from the snapshot.
@@ -761,7 +791,6 @@ type objectRowBuilder struct {
 	typeKeys map[string]string
 	fields   []string
 	opts     anyblockjson.Options
-	spaceId  string // the store-facing full id
 	// spaceRef is what a row's space_id FIELD carries when includeSpaceId
 	// (global search): the §8.35 short reference by default, the full id
 	// when its tail collides with another visible space's. Defaults to
@@ -781,7 +810,7 @@ func (s *Service) newObjectRowBuilder(spaceId string, fields []string) (*objectR
 		return nil, err
 	}
 	index := s.store.SpaceIndex(spaceId)
-	b := &objectRowBuilder{index: index, typeKeys: typeKeys, fields: fields, spaceId: spaceId, spaceRef: spaceId}
+	b := &objectRowBuilder{index: index, typeKeys: typeKeys, fields: fields, spaceRef: spaceId}
 	if len(fields) > 0 {
 		b.opts = apiRefSpelling(storeresolver.New(index).Options())
 		b.opts.Keys = s.apiKeys(spaceId, b.opts.Keys)
@@ -810,7 +839,10 @@ func (b *objectRowBuilder) row(record database.Record) v2model.ObjectRow {
 	typeKey, cached := b.typeKeys[typeId]
 	if !cached && typeId != "" {
 		// the bulk map misses edge type ids (hidden/bundled); resolve the
-		// one type object directly so no row carries an empty type (C5).
+		// one type object directly so a row carries its type (C5). A row
+		// whose type is a tombstone an OLDER build left (no uniqueKey until
+		// the next load rebuilds it) serves an empty type — the only honest
+		// answer a keyless row allows.
 		if det, err := b.index.GetDetails(typeId); err == nil {
 			if k, err := domain.GetTypeKeyFromRawUniqueKey(det.GetString(bundle.RelationKeyUniqueKey)); err == nil {
 				typeKey = string(k)
@@ -862,15 +894,16 @@ func (b *objectRowBuilder) row(record database.Record) v2model.ObjectRow {
 // key (the slug for a BSON-keyed type, §7.5a — the spelling the search
 // type filter resolves right back); removed types (uninstalled, archived —
 // or the prod corpse shape carrying isDeleted) stay in the map so their
-// objects' rows keep a type, spelled by the honest internal key.
+// objects' rows keep a type, spelled by the slug the type was served under
+// while no live type owns it (round-four eval R4-1).
 //
 // The query suppresses both injected defaults DELIBERATELY (§8.41): a
 // production corpse carries isDeleted, so the plain query this used to be
 // never returned one and the corpse branch below was dead outside flag-only
 // fixtures — production rows fell through to the per-row GetDetails fallback
-// instead. Tombstoned rows ({id, isDeleted} only) still land here but carry
-// no uniqueKey and are skipped; their objects' rows serve an empty type for
-// the window, the only honest answer a keyless row allows.
+// instead. A tombstone an older build left ({id, isDeleted} and a snapshot)
+// has no layout and never enters this query; its objects' rows serve an
+// empty type until the next load rebuilds the row.
 func (s *Service) typeKeysById(spaceId string) (map[string]string, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
@@ -892,6 +925,18 @@ func (s *Service) typeKeysById(spaceId string) (map[string]string, error) {
 	}
 	keyTaken, slugHolders := servedTypeKeySets(liveEntries)
 	out := make(map[string]string, len(records))
+	// a removed type keeps its slug (R4-1), unless a live type owns it
+	// (servedTypeKeyOf's guards) or two corpses would share it — the
+	// twin rule the vocabulary applies (apikeyvocab.go ensure)
+	corpseSlugCount := map[string]int{}
+	for _, record := range records {
+		if !corpseFlagged(record.Details) {
+			continue
+		}
+		if slug := record.Details.GetString(bundle.RelationKeyApiObjectKey); slug != "" {
+			corpseSlugCount[slug]++
+		}
+	}
 	for _, record := range records {
 		id := record.Details.GetString(bundle.RelationKeyId)
 		uniqueKey := record.Details.GetString(bundle.RelationKeyUniqueKey)
@@ -899,11 +944,12 @@ func (s *Service) typeKeysById(spaceId string) (map[string]string, error) {
 		if err != nil {
 			continue
 		}
-		if corpseFlagged(record.Details) {
-			out[id] = string(key) // a corpse's slug vacated the namespace
+		slug := record.Details.GetString(bundle.RelationKeyApiObjectKey)
+		if corpseFlagged(record.Details) && corpseSlugCount[slug] > 1 {
+			out[id] = string(key)
 			continue
 		}
-		out[id] = servedTypeKeyOf(string(key), record.Details.GetString(bundle.RelationKeyApiObjectKey), keyTaken, slugHolders)
+		out[id] = servedTypeKeyOf(string(key), slug, keyTaken, slugHolders)
 	}
 	return out, nil
 }

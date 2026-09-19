@@ -227,7 +227,8 @@ func TestV2SearchObjects(t *testing.T) {
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/filters/0/property", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, `unknown property key "sevirity"`)
-		assert.Equal(t, "did you mean severity?", apiErr.Issues[0].Hint)
+		assert.Contains(t, apiErr.Issues[0].Hint, "did you mean severity? — if not, ")
+		assert.NotEmpty(t, apiErr.Issues[0].SeeAlso)
 	})
 
 	t.Run("unknown filter-string key gets an offset-addressed did-you-mean", func(t *testing.T) {
@@ -263,7 +264,8 @@ func TestV2SearchObjects(t *testing.T) {
 			assert.Equal(t, "/filters/0/value", apiErr.Issues[0].Path)
 			assert.Contains(t, apiErr.Issues[0].Message, `property "severity" has no option named "Hgih"`)
 			assert.Contains(t, apiErr.Issues[0].Message, "a query never creates options")
-			assert.Equal(t, "did you mean High?", apiErr.Issues[0].Hint)
+			assert.Contains(t, apiErr.Issues[0].Hint, "did you mean High? — if not, ")
+			assert.Equal(t, []v2model.Ref{v2model.RefListPropertyOptions(testSpaceId, "severity")}, apiErr.Issues[0].SeeAlso)
 		})
 
 		t.Run("string form", func(t *testing.T) {
@@ -276,7 +278,8 @@ func TestV2SearchObjects(t *testing.T) {
 			assert.Equal(t, "/filter", apiErr.Issues[0].Path)
 			assert.Contains(t, apiErr.Issues[0].Message, "parse error at offset 11")
 			assert.Contains(t, apiErr.Issues[0].Message, `no option named "Hgih"`)
-			assert.Equal(t, "did you mean High?", apiErr.Issues[0].Hint)
+			assert.Contains(t, apiErr.Issues[0].Hint, "did you mean High? — if not, ")
+			assert.Equal(t, []v2model.Ref{v2model.RefListPropertyOptions(testSpaceId, "severity")}, apiErr.Issues[0].SeeAlso)
 		})
 	})
 
@@ -384,7 +387,8 @@ func TestV2SearchObjects(t *testing.T) {
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/fields/0", apiErr.Issues[0].Path)
-		assert.Equal(t, "did you mean severity?", apiErr.Issues[0].Hint)
+		assert.Contains(t, apiErr.Issues[0].Hint, "did you mean severity? — if not, ")
+		assert.NotEmpty(t, apiErr.Issues[0].SeeAlso)
 	})
 
 	t.Run("fields expand rows with property values (C5)", func(t *testing.T) {

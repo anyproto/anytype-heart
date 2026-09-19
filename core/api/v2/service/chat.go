@@ -13,6 +13,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
@@ -177,6 +178,9 @@ func (s *Service) GetChatMessages(ctx context.Context, spaceId, chatId string, q
 	for _, msg := range protos {
 		messages = append(messages, v2model.ChatMessageFromProto(msg, opts))
 	}
+	// the served order is the contract, not the RPC's: ascending by order
+	// id whichever way the range was walked
+	sort.SliceStable(messages, func(i, j int) bool { return messages[i].Order < messages[j].Order })
 	lifetimeCount := resp.LifetimeMessageCount
 	if lifetimeCount < resp.MessageCount {
 		// A lifetime total cannot be smaller than the current live set. This
@@ -184,11 +188,15 @@ func (s *Service) GetChatMessages(ctx context.Context, spaceId, chatId string, q
 		// being materialized for the first time.
 		lifetimeCount = resp.MessageCount
 	}
+	// message_count is the messages the chat HOLDS (round-four eval R4-3: a
+	// caller answering "how many messages" from it got the lifetime total,
+	// which never decrements on delete); the lifetime total rides beside it
 	out := &v2model.ChatMessagesResponse{
-		Messages:     messages,
-		State:        v2model.ChatStateFromProto(resp.ChatState),
-		MessageCount: int(lifetimeCount),
-		HasMore:      hasMore,
+		Messages:             messages,
+		State:                v2model.ChatStateFromProto(resp.ChatState),
+		MessageCount:         int(resp.MessageCount),
+		LifetimeMessageCount: int(lifetimeCount),
+		HasMore:              hasMore,
 	}
 	if hasMore && len(messages) > 0 {
 		if forward {
@@ -221,6 +229,7 @@ func (s *Service) AddChatMessage(ctx context.Context, spaceId, chatId string, re
 		return nil, v2model.ValidationFailed("message text does not parse as inline markup",
 			v2model.Issue{Path: "/text", Message: err.Error(), Hint: v2MarkupHint})
 	}
+	expandSpaceRefsInMarks(marks, s.spaceRefExpander(ctx))
 	if err := v2ValidateChatTextLength(text); err != nil {
 		return nil, err
 	}
@@ -264,6 +273,7 @@ func (s *Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageI
 		return nil, v2model.ValidationFailed("message text does not parse as inline markup",
 			v2model.Issue{Path: "/text", Message: err.Error(), Hint: v2MarkupHint})
 	}
+	expandSpaceRefsInMarks(marks, s.spaceRefExpander(ctx))
 	if err := v2ValidateChatTextLength(text); err != nil {
 		return nil, err
 	}
@@ -440,7 +450,7 @@ func (s *Service) ReadChat(ctx context.Context, spaceId, chatId string, req v2mo
 			}
 			return nil, v2ChatRpcError("mark chat read", int32(resp.Error.Code), int32(pb.RpcChatReadMessagesResponseError_BAD_INPUT), resp.Error.Description)
 		}
-		return &v2model.ChatReadResult{}, nil
+		return &v2model.ChatReadResult{State: s.chatStateAfter(ctx, chatId)}, nil
 
 	case v2model.ChatReadScopeReactions:
 		var issues []v2model.Issue
@@ -460,7 +470,7 @@ func (s *Service) ReadChat(ctx context.Context, spaceId, chatId string, req v2mo
 		if resp.Error != nil && resp.Error.Code != pb.RpcChatReadReactionsResponseError_NULL {
 			return nil, v2ChatRpcError("mark chat reactions read", int32(resp.Error.Code), int32(pb.RpcChatReadReactionsResponseError_BAD_INPUT), resp.Error.Description)
 		}
-		return &v2model.ChatReadResult{}, nil
+		return &v2model.ChatReadResult{State: s.chatStateAfter(ctx, chatId)}, nil
 
 	default:
 		return nil, v2model.ValidationFailed("invalid scope value",
@@ -659,4 +669,16 @@ func v2ChatRpcError(op string, code, badInputCode int32, description string) err
 		msg += ": " + description
 	}
 	return v2model.NewError(http.StatusInternalServerError, v2model.CodeInternalError, msg)
+}
+
+// chatStateAfter is the chat's state once a watermark moved — the receipt
+// of a write nothing else made observable (round-four eval R4-8: a read
+// receipt of `{}` was indistinguishable from a no-op). Best effort: a read
+// failure leaves it out rather than failing the write that succeeded.
+func (s *Service) chatStateAfter(ctx context.Context, chatId string) *v2model.ChatState {
+	resp := s.mw.ChatGetMessages(ctx, &pb.RpcChatGetMessagesRequest{ChatObjectId: chatId, Limit: 1})
+	if resp == nil || (resp.Error != nil && resp.Error.Code != pb.RpcChatGetMessagesResponseError_NULL) {
+		return nil
+	}
+	return v2model.ChatStateFromProto(resp.ChatState)
 }

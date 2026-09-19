@@ -38,6 +38,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/storeresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -68,7 +69,9 @@ var v2TypeViewOpNames = map[string]bool{
 // v2TypeOpsUnknownKeyHint is what an unknown key beside `ops` means here: the
 // caller mixed the two bodies this endpoint takes. The object surface's hint
 // (an If-Match header written as a body field) has no counterpart on a type.
-const v2TypeOpsUnknownKeyHint = "this endpoint takes either an ops envelope or the type body (name, plural_name, icon, layout, default_view, default_template, property_definitions), never both in one request"
+func v2TypeOpsUnknownKeyHint(string) v2model.Hint {
+	return v2model.Hintf("this endpoint takes either an ops envelope or the type body (name, plural_name, icon, layout, default_view, default_template, property_definitions), never both in one request — %s lists the ops", v2model.NewRef(v2model.OpListSchemas))
+}
 
 // v2TypeSections pairs each of the type's four recommended-relation detail
 // keys with the section name the property list speaks. The pairing is the
@@ -183,6 +186,7 @@ func (s *Service) updateTypeOps(ctx context.Context, spaceId string, typeObject 
 	// that names one is not forced to delete the reference
 	before := s.recommendedRelationIds(spaceId, typeObject.Id)
 	resolvers.echoPropertyIds = before
+	resolvers.rememberCorpses(s.referencedCorpses(spaceId, before))
 	if err := plan.mint(resolvers); err != nil {
 		return nil, err
 	}
@@ -207,7 +211,7 @@ func (s *Service) updateTypeOps(ctx context.Context, spaceId string, typeObject 
 	if err != nil {
 		return nil, err
 	}
-	result.Warnings = append(result.Warnings, typePruneWarnings(prune)...)
+	result.Warnings = append(result.Warnings, typePruneWarnings(prune, "/ops", s.servedKeySpeller(spaceId))...)
 
 	if dryRun {
 		result.DryRun = true
@@ -265,8 +269,16 @@ func (s *Service) applyTypeViewOps(ctx context.Context, spaceId, typeId string, 
 				return err
 			}
 		}
-		created = applier.createdViews
-		return nil
+		// the receipt spells a minted view id as a read serves it: compact by
+		// default, full with ?ids=full — the object channel's rule (R3-b: this
+		// channel handed back a 24-hex id no read ever showed)
+		if fullIdsRequested(ctx) {
+			created = applier.createdViews
+			return nil
+		}
+		var err error
+		_, created, err = applier.compactReceiptIDs()
+		return err
 	})
 	if err != nil {
 		return nil, mapWriteError(spaceId, typeId, err)
@@ -694,6 +706,24 @@ func (s *Service) typePropertyList(spaceId, typeId string, entries []propertyEnt
 		byId[entry.Id] = entry
 	}
 	keyTaken, slugHolders := servedPropertyKeySets(entries)
+	// the REMOVED properties the type still lists: they are served under
+	// their slug (apikeyvocab.go), so an op addresses them by it — that is
+	// how remove_property takes a removed property off a type — and their
+	// stored key is what the column prune works in
+	listed := map[string]bool{}
+	for _, section := range v2TypeSections {
+		for _, id := range details.GetStringList(section.detailKey) {
+			if id != "" {
+				if _, live := byId[id]; !live {
+					listed[id] = true
+				}
+			}
+		}
+	}
+	corpses := map[string]propertyEntry{}
+	for _, e := range s.referencedCorpses(spaceId, listed) {
+		corpses[e.Id] = e
+	}
 	var list []*typeListEntry
 	seen := map[string]bool{}
 	for _, section := range v2TypeSections {
@@ -706,6 +736,9 @@ func (s *Service) typePropertyList(spaceId, typeId string, entries []propertyEnt
 			if entry, live := byId[id]; live {
 				member.key, member.name, member.format = entry.Key, entry.Name, entry.Format
 				member.served = servedKey(entry.Key, entry.Slug, keyTaken, slugHolders)
+			} else if corpse, removed := corpses[id]; removed {
+				member.key, member.name, member.format = corpse.Key, corpse.Name, corpse.Format
+				member.served = servedKey(corpse.Key, corpse.Slug, keyTaken, slugHolders)
 			} else {
 				// a reference to a property this space cannot resolve. Its id
 				// is the only spelling left, so that is what addresses it —
@@ -1207,35 +1240,56 @@ func typeDataviewBlock(st *state.State) simple.Block {
 // lost a column, and the views that kept one because they arrange themselves
 // by it. Neither is inferable from the request, which named a property and
 // said nothing about views.
-func typePruneWarnings(plan template.TypeDataviewColumnPlan) []v2model.Issue {
+// typePruneWarnings renders a prune plan for the caller: path is the
+// request member the change came from, spell turns a stored relation key
+// into the spelling the surface serves (a bson stored key must never reach
+// the caller).
+func typePruneWarnings(plan template.TypeDataviewColumnPlan, path string, spell func(string) string) []v2model.Issue {
 	var issues []v2model.Issue
 	if len(plan.Pruned) > 0 {
 		issues = append(issues, v2model.Issue{
-			Path:    "/ops",
-			Message: fmt.Sprintf("columns dropped: %s", prunedPerView(plan.Pruned)),
+			Path:    path,
+			Message: fmt.Sprintf("columns dropped: %s", prunedPerView(plan.Pruned, spell)),
 		})
 	}
 	if len(plan.InUse) > 0 {
+		verb, left := "group, sort or filter by a removed property and were left as they are", ""
+		if len(plan.InUse) == 1 {
+			verb, left = "groups, sorts or filters by a removed property and was left as it is", ""
+		}
 		issues = append(issues, v2model.Issue{
-			Path: "/ops",
-			Message: fmt.Sprintf("%s group, sort or filter by a removed property and were left as they are",
-				namedViews(plan.InUse)),
+			Path:    path,
+			Message: fmt.Sprintf("%s %s%s", namedViews(plan.InUse), verb, left),
 		}.Hintf("change those views with update_view through %s", v2model.NewRef(v2model.OpPatchObject)))
 	}
 	return issues
 }
 
+// servedKeySpeller returns a function spelling a stored relation key the
+// way the space's listings serve it, live and removed properties alike; an
+// unknown key spells as itself.
+func (s *Service) servedKeySpeller(spaceId string) func(string) string {
+	// the api vocabulary itself: live entries, removed ones and every
+	// collision guard, exactly as a read spells them
+	vocab := s.apiKeys(spaceId, storeresolver.New(s.store.SpaceIndex(spaceId)))
+	return vocab.PropertySlug
+}
+
 // namedViews renders "the view \"All\"" / "2 views (All, Board)".
 // prunedPerView names what left each view, rather than letting a reader pair
 // every removed property with every view.
-func prunedPerView(views []template.ViewColumnPrune) string {
+func prunedPerView(views []template.ViewColumnPrune, spell func(string) string) string {
 	parts := make([]string, 0, len(views))
 	for _, view := range views {
 		name := view.ViewName
 		if name == "" {
 			name = view.ViewId
 		}
-		parts = append(parts, fmt.Sprintf("%s from %q", listKeys(view.Keys), name))
+		keys := make([]string, 0, len(view.Keys))
+		for _, key := range view.Keys {
+			keys = append(keys, spell(key))
+		}
+		parts = append(parts, fmt.Sprintf("%s from %q", listKeys(keys), name))
 	}
 	return strings.Join(parts, "; ")
 }

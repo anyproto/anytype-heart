@@ -7,6 +7,7 @@ package v2service
 // the space-aware write layer, not this endpoint.
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -29,9 +30,14 @@ func (s *Service) ValidateDocument(data []byte) v2model.ValidateResponse {
 		resp.Issues = append(resp.Issues, v2model.Issue{Message: fmt.Sprintf("validate document: %v", err)})
 		return resp
 	}
-	for _, issue := range validationErr.Issues {
-		resp.Issues = append(resp.Issues, v2model.Issue{Path: issue.Path, Message: issue.Message})
+	kind := "object"
+	if fields, err := parseEnvelope(data); err == nil {
+		var docKind string
+		if json.Unmarshal(fields["kind"], &docKind) == nil && docKind == "object_type" {
+			kind = "type_document"
+		}
 	}
+	resp.Issues = append(resp.Issues, documentIssues(kind, validationErr.Issues)...)
 	if validationErr.NewerFormat {
 		// The formatVersion issue already names both
 		// versions; the hint steers the repair loop.

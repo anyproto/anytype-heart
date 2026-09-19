@@ -17,6 +17,7 @@ package v2service
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -147,7 +148,7 @@ func opTableProps(withId bool) string {
 // because naming what the op replaces is what makes echoing a read back a
 // no-op instead of a rename.
 var v2OpBlockDef = `{"type":"object","additionalProperties":false,"required":["type"],` +
-	`"description":"a flat AnyBlock block; the full field inventory is GET /v2/schemas/object",` +
+	`"description":"a flat AnyBlock block; the full field inventory is schema kind object",` +
 	`"properties":{` + v2OpBlockIndentProp + `,` + v2OpBlockIdProp + `,` + v2OpBlockCommonProps + `,` + opTableProps(true) + `}}`
 
 // v2OpNewBlockDef is the NEW-content payload block (insert_blocks): no id
@@ -156,7 +157,7 @@ var v2OpBlockDef = `{"type":"object","additionalProperties":false,"required":["t
 // block cannot name a dataview view at all through this channel; views are
 // authored by the view-family ops and by update_block's untyped `set`.
 var v2OpNewBlockDef = `{"type":"object","additionalProperties":false,"required":["type"],` +
-	`"description":"a flat AnyBlock block to create. No id slot here or on its rows and columns: the server mints every id into created_blocks, keyed by payload path. Full fields: GET /v2/schemas/object.",` +
+	`"description":"a flat AnyBlock block to create. No id slot here or on its rows and columns: the server mints every id into created_blocks, keyed by payload path. Full fields: schema kind object.",` +
 	`"properties":{` + v2OpBlockIndentProp + `,` + v2OpBlockCommonProps + `,` + opTableProps(false) + `}}`
 
 // v2BlockRefDef is a block reference: full id (canonical) or unique suffix.
@@ -199,9 +200,65 @@ var v2BlockShapedPayloadOps = map[string]bool{
 // of 60. A description is not a copyable instance, so it buys the same
 // knowledge without the shape to copy. schemas_ops_test.go pins the example
 // against a regression here.
-const v2OpEnvelopeProse = `"one entry of the ops array. The request body wraps entries: {\"ops\":[ this, ... ]}, 1 to 512 of them, applied in order as one edit: if any one op is refused, none of them is applied."`
+const v2OpEnvelopeProse = `One entry of {"ops":[…]}, the request body (example_body shows it wrapped); 1 to 512 entries apply in order as one edit — if any one is refused, none is applied.`
 
+// v2TypeOpEnvelopeProse is the envelope rule as it holds on PATCH types: the
+// batch is planned and refused whole before anything is written, but the
+// writes themselves are several RPCs in a fixed order, and a view op refused
+// after the lists were written does not roll them back. Saying "as one
+// edit" there was false (the object channel's rule is a single state edit).
+const v2TypeOpEnvelopeProse = `One entry of {"ops":[…]}, the request body (example_body shows it wrapped); 1 to 512 entries, planned and refused whole before any write, then written in order: property ops first, view ops after — a view op refused then leaves the written lists in place.`
+
+// v2ViewOpEnvelopeSuffix is what the view family, which runs on both
+// channels, adds to the object rule.
+const v2ViewOpEnvelopeSuffix = ` On a type, property ops are written first; a view op refused after that leaves them written.`
+
+// opEnvelopeProse picks the envelope rule true of the channel(s) the op runs on.
+func opEnvelopeProse(op string) string {
+	onObject := slices.Contains(v2OpNames, op)
+	onType := slices.Contains(v2TypeOpNames, op)
+	switch {
+	case onObject && onType:
+		return v2OpEnvelopeProse + v2ViewOpEnvelopeSuffix
+	case onType:
+		return v2TypeOpEnvelopeProse
+	default:
+		return v2OpEnvelopeProse
+	}
+}
+
+// v2OpAbout is what each op does, in the one sentence that opens its served
+// description (round-two eval F8b: seventeen ops served one identical
+// description, and a caller who fetched set_cell's schema was told nothing
+// about set_cell). Its own table, because the op table's entries are built
+// by opSchema, which reads this.
+var v2OpAbout = map[string]string{
+	"set_properties":  "Sets, adds to, removes from or unsets property values on the object",
+	"update_block":    "Changes fields of one existing block, found by id or by its text",
+	"replace_subtree": "Replaces one block and its descendants with new blocks",
+	"insert_blocks":   "Inserts new blocks or markdown after, before or inside a block, or at either end of the document",
+	"move_block":      "Moves a block and its subtree to a new place",
+	"delete_block":    "Deletes a childless block found by id or by its text, or its whole subtree with recursive set to true",
+	"replace_text":    "Replaces text inside one block, markup preserved",
+	"set_cell":        "Sets one table cell, by row and column",
+	"update_view":     "Changes a view's fields or columns on the object's dataview",
+	"insert_view":     "Adds a view to the object's dataview, with defaults or copied from another",
+	"move_view":       "Reorders a view among the dataview's views",
+	"delete_view":     "Deletes a view from the dataview; the last one is refused",
+	"add_property":    "Adds one property to the type's field list; an unknown name creates it, with the given format",
+	"remove_property": "Takes one property off the type's field list; the property and its values stay in the space",
+	"move_property":   "Reorders one property within its section of the type",
+	"add_items":       "Adds objects to the collection, by id",
+	"remove_items":    "Removes objects from the collection, by id",
+}
+
+// opSchema builds one op's strict schema: its own sentence first, then the
+// envelope rule every op shares.
 func opSchema(op string, required []string, props ...string) string {
+	about, ok := v2OpAbout[op]
+	if !ok {
+		panic("op schema without an about sentence: " + op)
+	}
 	blockDef := v2OpBlockDef
 	if v2NewContentOps[op] {
 		blockDef = v2OpNewBlockDef
@@ -211,7 +268,8 @@ func opSchema(op string, required []string, props ...string) string {
 		req = append(req, `"`+name+`"`)
 	}
 	all := append([]string{`"op":{"const":"` + op + `"}`}, props...)
-	body := `"description":` + v2OpEnvelopeProse + `,"type":"object","additionalProperties":false,"required":[` +
+	description, _ := json.Marshal(about + ". " + opEnvelopeProse(op))
+	body := `"description":` + string(description) + `,"type":"object","additionalProperties":false,"required":[` +
 		strings.Join(req, ",") + `],"properties":{` + strings.Join(all, ",") + `}`
 
 	// emit only the definitions this op actually uses. Every op used to carry
@@ -235,10 +293,11 @@ func opSchema(op string, required []string, props ...string) string {
 // view-family ops.
 const v2ViewBlockPropDef = `"block":{"$ref":"#/$defs/blockRef","description":"a dataview block — optional when the object has exactly one (types, queries and collections do)"}`
 
-// v2ViewSetPropDef is the shared `set` channel of update_view and insert_view:
-// the authorable §6.2 view-level fields, merge semantics.
-const v2ViewSetPropDef = `"set":{"type":"object","maxProperties":18,"additionalProperties":false,"description":"merge: only the named fields change, null clears one to its default. sorts and filters replace whole. filter is the compact-string alternative to filters; never both. Columns use the columns channel.","properties":{` +
-	`"name":{"type":["string","null"],"maxLength":4096},` +
+// v2ViewFieldsDef is the authorable §6.2 view-level field set — one
+// spelling for the view ops' set channel and for the views a query is
+// created with (round-two eval F17: the query kind typed them as anyValue,
+// and a caller guessed groupBy, then groupProperty, then gave up).
+const v2ViewFieldsDef = `"name":{"type":["string","null"],"maxLength":4096},` +
 	`"type":{"type":["string","null"],"enum":["table","list","gallery","kanban","calendar","graph",null]},` +
 	`"group_by":{"type":["string","null"],"maxLength":256,"description":"property key to group by (kanban/board views)"},` +
 	`"cover_property":{"type":["string","null"],"maxLength":256},` +
@@ -254,8 +313,63 @@ const v2ViewSetPropDef = `"set":{"type":"object","maxProperties":18,"additionalP
 	`"list_size":{"type":["string","null"],"enum":["compact","regular",null]},` +
 	`"alternate_rows":{"type":["boolean","null"]},` +
 	`"sorts":{"type":["array","null"],"maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc","custom"]},"custom_order":{"type":"array","maxItems":128},"empty_placement":{"type":"string","enum":["start","end"]},"include_time":{"type":"boolean"},"no_collate":{"type":"boolean"},"id":{"type":"string","maxLength":64,"description":"output-only on reads; accepted back so a read sort round-trips"}}}},` +
-	`"filters":{"type":["array","null"],"maxItems":32,"description":"filter nodes (GET /v2/schemas/filters), at most 32 at the top level (group more under and/or nodes) — recursive, so prefer filter, the compact string"},` +
-	`"filter":{"type":"string","maxLength":4096,"description":"compact filter syntax (GET /v2/schemas/filters serves the grammar); parsed server-side into filters"}}}`
+	`"filters":{"type":["array","null"],"maxItems":32,"description":"filter nodes (schema kind filters), at most 32 at the top level (group more under and/or nodes) — recursive, so prefer filter, the compact string"}`
+
+// v2ViewCreateFieldsDef is v2ViewFieldsDef for a view that is CREATED whole
+// rather than merged into: the same members, minus the null that means
+// "clear to default" on the merge channel and is refused by the document a
+// created view lands in, and with the filters advice restated for a shape
+// that has no compact-string alternative.
+func v2ViewCreateFieldsDef() string {
+	var fields map[string]map[string]any
+	if err := json.Unmarshal([]byte(`{`+v2ViewFieldsDef+`}`), &fields); err != nil {
+		panic(fmt.Sprintf("view field defs: %v", err))
+	}
+	for _, field := range fields {
+		if types, ok := field["type"].([]any); ok {
+			if kept := withoutNull(types); len(kept) == 1 {
+				field["type"] = kept[0]
+			} else {
+				field["type"] = kept
+			}
+		}
+		if enum, ok := field["enum"].([]any); ok {
+			field["enum"] = withoutNull(enum)
+		}
+	}
+	fields["filters"]["description"] = "filter nodes (schema kind filters), at most 32 at the top level (group more under and/or nodes); a created view takes nodes only — the compact string is the query's top-level filter"
+	out, err := json.Marshal(fields)
+	if err != nil {
+		panic(fmt.Sprintf("view create field defs: %v", err))
+	}
+	return strings.TrimSuffix(strings.TrimPrefix(string(out), "{"), "}")
+}
+
+// withoutNull drops the null of a JSON Schema list: the type name "null" in
+// a type list, the literal null in an enum.
+func withoutNull(values []any) []any {
+	kept := make([]any, 0, len(values))
+	for _, v := range values {
+		if v == nil || v == "null" {
+			continue
+		}
+		kept = append(kept, v)
+	}
+	return kept
+}
+
+// v2ViewColumnsListDef is a view's column list as a whole, the shape a
+// created view carries (the ops merge per column through v2ViewColumnsPropDef).
+const v2ViewColumnsListDef = `"columns":{"type":"array","maxItems":64,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
+	`"property":{"type":"string","maxLength":256},"hidden":{"type":"boolean"},"width":{"type":"integer","minimum":0,"maximum":10000},` +
+	`"align":{"type":"string","enum":["left","center","right","justify"]},` +
+	`"aggregation":{"type":"string","enum":["count","count_value","count_distinct","count_empty","count_not_empty","percent_empty","percent_not_empty","sum","average","median","min","max","range"]}}}}`
+
+// v2ViewSetPropDef is the shared `set` channel of update_view and insert_view:
+// the authorable §6.2 view-level fields, merge semantics.
+const v2ViewSetPropDef = `"set":{"type":"object","maxProperties":18,"additionalProperties":false,"description":"merge: only the named fields change, null clears one to its default. sorts and filters replace whole. filter is the compact-string alternative to filters; never both. Columns use the columns channel.","properties":{` +
+	v2ViewFieldsDef + `,` +
+	`"filter":{"type":"string","maxLength":4096,"description":"compact filter syntax (schema kind filters serves the grammar); parsed server-side into filters"}}}`
 
 // v2ViewColumnsPropDef is the shared per-column merge channel.
 const v2ViewColumnsPropDef = `"columns":{"type":"object","maxProperties":64,"description":"per-column patches keyed by property key: each merges into that property's column (appending one if absent); null removes the column; unnamed columns are untouched — never resend the whole column list","additionalProperties":{"type":["object","null"],"additionalProperties":false,"properties":{` +
@@ -275,7 +389,7 @@ var v2ViewSetPropDefNoName = strings.Replace(strings.Replace(v2ViewSetPropDef,
 // surface serves, or a display name. Everything on this surface resolves the
 // same way, and a caller who has only ever been shown the served key must be
 // able to use it here.
-const v2TypePropertyRefDef = `"property":{"type":"string","minLength":1,"maxLength":256,"description":"the property, by the key GET /v2/spaces/{space_id}/properties serves or by its display name. A name nothing answers to creates the property, which is what format is for. To rename a property send {name} to PATCH /v2/spaces/{space_id}/properties/{key}; do not re-send property_definitions."}`
+const v2TypePropertyRefDef = `"property":{"type":"string","minLength":1,"maxLength":256,"description":"the property, by the key list_properties serves or by its display name. A name nothing answers to creates the property, which is what format is for. To rename a property send {name} to update_property; do not re-send property_definitions."}`
 
 // v2TypeSectionPropDef is where on the type the property sits. Null names
 // the plain field list, the same way an explicit null clears a view field to
@@ -293,7 +407,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 	"set_properties": {
 		endpoint: v2OpsEndpoint,
 		schema: opSchema("set_properties", nil,
-			`"set":{"type":"object","maxProperties":128,"additionalProperties":{"type":["string","number","boolean","array","null"]},"description":"property key → value; presence is meaningful — an empty array means present-but-empty; unknown select option names are created"}`,
+			`"set":{"type":"object","maxProperties":128,"additionalProperties":{"type":["string","number","boolean","array","null"],"maxLength":1048576,"maxItems":2048,"items":{"type":["string","number","boolean","null"],"maxLength":4096}},"description":"property key → value (a list-shaped key takes an array of option names or ids); presence is meaningful — an empty array means present-but-empty; unknown select option names are created"}`,
 			`"unset":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":256},"description":"property keys to remove"}`,
 			`"add":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only (select, multi_select, objects, files): append entries without rewriting the array — existing entries are never duplicated; unknown option NAMES are created"}`,
 			`"remove":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only: delete matching entries — absent entries (and absent keys) are a no-op; a key may appear in only one of set/unset/add/remove"}`),
@@ -423,13 +537,13 @@ var v2OpSchemas = map[string]v2SchemaKind{
 	"remove_property": {
 		endpoint: v2TypeOpsEndpoint,
 		schema: opSchema("remove_property", []string{"property"},
-			`"property":{"type":"string","minLength":1,"maxLength":256,"description":"the property to take off this type, by the key GET /v2/spaces/{space_id}/properties serves or by its display name. A property this type does not list is refused, never ignored. The property itself stays in the space with its values; only this type stops declaring it."}`),
+			`"property":{"type":"string","minLength":1,"maxLength":256,"description":"the property to take off this type, by the key list_properties serves or by its display name. A property this type does not list is refused, never ignored. The property itself stays in the space with its values; only this type stops declaring it."}`),
 		example: `{"op":"remove_property","property":"sun_needs"}`,
 	},
 	"move_property": {
 		endpoint: v2TypeOpsEndpoint,
 		schema: opSchema("move_property", []string{"property"},
-			`"property":{"type":"string","minLength":1,"maxLength":256,"description":"the property to move, by the key GET /v2/spaces/{space_id}/properties serves or by its display name. This reorders within a section; add_property with section moves it between sections."}`,
+			`"property":{"type":"string","minLength":1,"maxLength":256,"description":"the property to move, by the key list_properties serves or by its display name. This reorders within a section; add_property with section moves it between sections."}`,
 			v2TypeAfterPropDef, v2TypeBeforePropDef,
 			`"position":{"type":"string","enum":["first","last"],"description":"give exactly one of after, before or position. first makes this the type's leading field, within the section it sits in."}`),
 		example: `{"op":"move_property","property":"harvest_season","position":"first"}`,
@@ -464,6 +578,11 @@ func (s *Service) SchemaOp(op string) (v2model.SchemaEntry, error) {
 		Endpoint: entry.endpoint,
 		Schema:   schema,
 		Example:  json.RawMessage(entry.example),
+		// the example stays the bare op the schema describes (a constrained
+		// decoder copies an instance verbatim, §8.32); the body it goes in
+		// is served beside it, so a caller who reads ahead is not punished
+		// for it (round-two eval F8)
+		ExampleBody: json.RawMessage(`{"ops":[` + entry.example + `]}`),
 	}, nil
 }
 

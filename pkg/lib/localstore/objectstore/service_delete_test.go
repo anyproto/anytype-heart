@@ -204,3 +204,4 @@ func TestDeleteSpaceIndex_ConcurrentCrossSpace(t *testing.T) {
 		assert.False(t, slices.Contains(opened, id), "space %s must be forgotten", id)
 	}
 }
+

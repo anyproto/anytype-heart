@@ -10,6 +10,7 @@ import (
 
 	"github.com/gogo/protobuf/types"
 
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -342,8 +343,11 @@ func TestV2UpdateTypeReportsDetachedProperties(t *testing.T) {
 	}
 
 	t.Run("a one-entry list names what it detached", func(t *testing.T) {
-		// given: a type that already recommends location and sun_needs
+		// given: a type that already recommends location and sun_needs; the
+		// rehearsal reads the type for the columns a real run would drop
 		fx := newTypeFixture(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "type-plant").
+			Return(apicore.ObjectRead{Heads: []string{"headX"}}, nil).Maybe()
 
 		// when: the benchmark's call — add one field by sending only that field
 		result, err := fx.UpdateType(context.Background(), testSpaceId, "plant",

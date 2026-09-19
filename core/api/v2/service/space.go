@@ -244,7 +244,7 @@ func (s *Service) UpdateSpace(ctx context.Context, spaceId string, req v2model.U
 	}
 	if req.Name == nil && req.Description == nil {
 		return nil, v2model.ValidationFailed("update needs at least one of name, description",
-			v2model.Issue{Message: "omitted fields stay unchanged — an empty update would change nothing"})
+			v2model.Issue{Message: "omitted fields stay unchanged — an empty update would change nothing; the space icon and the default object type are not writable through this API"})
 	}
 	if req.Name != nil && strings.TrimSpace(*req.Name) == "" {
 		return nil, v2model.ValidationFailed("space name cannot be empty",

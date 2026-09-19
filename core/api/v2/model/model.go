@@ -266,18 +266,20 @@ type UpdateSpaceRequest struct {
 // and Notice repeat the Anytype-Key-Status / Anytype-Notice header signal in
 // the body, because agents read bodies, not headers.
 type WhoamiResponse struct {
-	Key       WhoamiKey   `json:"key"`
-	Scope     string      `json:"scope"` // "jsonApi" | "full" | "limited"
-	Grant     WhoamiGrant `json:"grant"`
-	Api       WhoamiApi   `json:"api"`
-	KeyStatus string      `json:"key_status"`       // "legacy" | "scoped", always present
-	Notice    string      `json:"notice,omitempty"` // the legacy sentence, verbatim printable
+	Key   WhoamiKey   `json:"key"`
+	Scope string      `json:"scope"` // "jsonApi" | "full" | "limited"
+	Grant WhoamiGrant `json:"grant"`
+	Api   WhoamiApi   `json:"api"`
+	// Credential kind: scoped means a grant record exists (all-spaces grants included), legacy means none. Use grant.restricted for the space boundary
+	KeyStatus string `json:"key_status"`
+	Notice    string `json:"notice,omitempty"` // the legacy sentence, verbatim printable
 }
 
 // WhoamiKey names the credential. CreatedAt/ExpiresAt are RFC 3339 UTC;
 // null means unknown (CreatedAt) / never (ExpiresAt).
 type WhoamiKey struct {
-	Id        string  `json:"id"` // the app link's hash, which is the id the key list shows
+	// An identifier of the key record, the one the key list in Settings shows: the hex sha256 of the key's raw bytes, never the token itself
+	Id        string  `json:"id"`
 	Name      string  `json:"name"`
 	CreatedAt *string `json:"created_at"`
 	ExpiresAt *string `json:"expires_at"`
@@ -290,10 +292,15 @@ type WhoamiKey struct {
 // agent concludes it may touch every space). When Scoped is false, Spaces
 // is [] and Permission is null.
 type WhoamiGrant struct {
-	Scoped     bool               `json:"scoped"`
-	AllSpaces  bool               `json:"all_spaces"` // the boundary field of an all-spaces grant: the key covers every space in the account, including spaces created later (the tech space excepted). When true, spaces enumerates the current live spaces and is informational only. Never infer the boundary from it
+	// A grant record exists. An all-spaces grant is scoped too; branch on restricted for the space boundary
+	Scoped bool `json:"scoped"`
+	// The key reaches only the spaces listed: scoped, and not all_spaces. False for a legacy key and for an all-spaces grant alike
+	Restricted bool `json:"restricted"`
+	AllSpaces  bool `json:"all_spaces"` // the boundary field of an all-spaces grant: the key covers every space in the account, including spaces created later (the tech space excepted). Never infer the boundary from spaces
+	// For an all-spaces grant: how many live spaces the key covers now, zero included. spaces lists them only when the spaces parameter is true
+	SpaceCount *int               `json:"space_count,omitempty"`
 	Permission *string            `json:"permission"` // the compact form agents string-match on
-	Spaces     []WhoamiGrantSpace `json:"spaces"`
+	Spaces     []WhoamiGrantSpace `json:"spaces"`     // the granted spaces of a restricted key; for an all-spaces grant, the current live spaces when the spaces parameter is true, else empty
 }
 
 // WhoamiGrantSpace is one granted space. Spaces are OBJECTS with a
@@ -399,8 +406,10 @@ type CreateResult struct {
 
 	// The view id each insert_view op minted, keyed by the op's position, such as /ops/0.
 	CreatedViews map[string]string `json:"created_views,omitempty"`
-	Issues       []Issue           `json:"issues,omitempty"`
-	Warnings     []Issue           `json:"warnings,omitempty"`
+	// Count of the member objects a created collection holds, on every collection create
+	Items    *int    `json:"items,omitempty"`
+	Issues   []Issue `json:"issues,omitempty"`
+	Warnings []Issue `json:"warnings,omitempty"`
 }
 
 // SideEffects lists the schema entities one write brought into existence on
@@ -530,6 +539,10 @@ type DiffStats struct {
 	BlocksChanged     int `json:"blocks_changed"`
 	BlocksMoved       int `json:"blocks_moved"`
 	PropertiesChanged int `json:"properties_changed"`
+	// Collection members the batch added, as a set difference; absent means none
+	ItemsAdded int `json:"items_added,omitempty"`
+	// Collection members the batch removed, as a set difference; absent means none
+	ItemsRemoved int `json:"items_removed,omitempty"`
 }
 
 // EditResult is the PATCH response: the new etag, the created-block id map
@@ -571,10 +584,12 @@ type EditResult struct {
 // one concept, one discovery slot (§5), the artifact the GBNF
 // conversion consumes.
 type SchemaEntry struct {
-	Kind            string          `json:"kind"`
-	Endpoint        string          `json:"endpoint"`
-	Schema          json.RawMessage `json:"schema" swaggertype:"object"`
-	Example         json.RawMessage `json:"example" swaggertype:"object"`
+	Kind     string          `json:"kind"`
+	Endpoint string          `json:"endpoint"`
+	Schema   json.RawMessage `json:"schema" swaggertype:"object"`
+	Example  json.RawMessage `json:"example" swaggertype:"object"`
+	// An op schema's example wrapped as the request body it is sent in
+	ExampleBody     json.RawMessage `json:"example_body,omitempty" swaggertype:"object"`
 	Grammar         string          `json:"grammar,omitempty"`
 	GrammarExamples []string        `json:"grammar_examples,omitempty"`
 }

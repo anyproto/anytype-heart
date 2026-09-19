@@ -509,6 +509,55 @@ func TestV2CreateProperty(t *testing.T) {
 		assert.Equal(t, "/key", apiErr.Issues[0].Path)
 	})
 
+	t.Run("a name that mints a slug several properties answer to is refused with a repair that can be followed", func(t *testing.T) {
+		// given: twin slugs (keys_input_test.go) — neither "update it" nor
+		// "use the existing property" by that slug can be followed, since
+		// addressing it is refused as ambiguous; the only repair is an
+		// explicit key of the caller's own
+		fx := slugSpaceFixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("rel-manual-twin"),
+			bundle.RelationKeyRelationKey:  domain.String("6a7663db61fab21cd4b9e104"),
+			bundle.RelationKeyApiObjectKey: domain.String("manual_property"),
+			bundle.RelationKeyName:         domain.String("Manual property twin"),
+		})
+
+		for _, req := range []v2model.CreatePropertyRequest{
+			{Name: "Manual property", Format: "text"},
+			{Key: "manual_property", Name: "Again", Format: "text"},
+		} {
+			// when
+			_, err := fx.CreateProperty(context.Background(), testSpaceId, req, false)
+
+			// then
+			apiErr := v2Err(t, err)
+			require.Len(t, apiErr.Issues, 1)
+			issue := apiErr.Issues[0]
+			assert.Contains(t, issue.Hint, "several properties answer to \"manual_property\"")
+			assert.Contains(t, issue.Hint, "pass an explicit different key")
+			assert.NotContains(t, issue.Hint, "use the existing property", "that key cannot be addressed")
+			assert.Empty(t, issue.SeeAlso, "no update reference: an update by that slug would be refused as ambiguous")
+		}
+	})
+
+	t.Run("a built-in property's key is reserved, not offered for update", func(t *testing.T) {
+		// given: createdDate is bundled and read-only — an update by its key
+		// is refused, so the repair must not offer one
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateProperty(context.Background(), testSpaceId,
+			v2model.CreatePropertyRequest{Key: "created_date", Name: "Again", Format: "date"}, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		issue := apiErr.Issues[0]
+		assert.Contains(t, issue.Hint, "reserved by the built-in property")
+		assert.NotContains(t, issue.Hint, "update it with")
+		assert.Empty(t, issue.SeeAlso)
+	})
+
 	t.Run("dry run reports without creating", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
@@ -597,5 +646,75 @@ func TestV2UpdateDeleteProperty(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, "rel-severity", result.Id)
+		assert.Empty(t, result.Warnings, "nothing holds or lists the property")
+	})
+
+	t.Run("delete says what it leaves behind, on the dry run too", func(t *testing.T) {
+		// given: two objects hold a value of the property and one type lists it
+		// (round-two eval F1: a silent 200 here is how a caller destroyed data)
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("obj-a"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+				"severity":                       domain.String("opt-high"),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("obj-b"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+				"severity":                       domain.String("opt-low"),
+			},
+			{
+				bundle.RelationKeyId:                   domain.String("type-chore"),
+				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyName:                 domain.String("Chore"),
+				bundle.RelationKeyUniqueKey:            domain.String("ot-chore"),
+				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-severity"}),
+			},
+		})
+
+		// when
+		result, err := fx.DeleteProperty(context.Background(), testSpaceId, "severity", true)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, result.DryRun)
+		require.Len(t, result.Warnings, 2)
+		assert.Contains(t, result.Warnings[0].Message, `2 objects hold a value of "severity"`)
+		assert.Contains(t, result.Warnings[0].Message, "set_properties gives no other object one")
+		assert.Equal(t, "key", result.Warnings[0].Path)
+		assert.Contains(t, result.Warnings[1].Message, `1 type lists "severity" (Chore)`)
+		assert.Contains(t, result.Warnings[1].Message, "keep the entry", "the delete does not edit the type: the entry stays until taken off")
+		assert.Equal(t, []v2model.Ref{v2model.RefGetOpSchema("remove_property")}, result.Warnings[1].SeeAlso)
+
+		// and the real run carries the same warnings
+		fx.mwMock.EXPECT().ObjectSetIsArchived(mock.Anything, &pb.RpcObjectSetIsArchivedRequest{
+			ContextId: "rel-severity", IsArchived: true,
+		}).Return(&pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_NULL}})
+		real, err := fx.DeleteProperty(context.Background(), testSpaceId, "severity", false)
+		require.NoError(t, err)
+		assert.False(t, real.DryRun)
+		require.Len(t, real.Warnings, 2)
+	})
+
+	t.Run("the warnings spell the key reads will serve, not the spelling the delete used", func(t *testing.T) {
+		// given: deleted by display name; the values will read under "severity"
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("obj-a"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			"severity":                       domain.String("opt-high"),
+		}})
+
+		// when
+		result, err := fx.DeleteProperty(context.Background(), testSpaceId, "Severity", true)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 1)
+		assert.Contains(t, result.Warnings[0].Message, `1 object holds a value of "severity"`)
+		assert.NotContains(t, result.Warnings[0].Message, `"Severity"`)
 	})
 }

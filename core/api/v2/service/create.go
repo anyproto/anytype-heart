@@ -338,7 +338,7 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	}
 
 	// 1. structural + format-semantic validation (no side effects)
-	if err := s.rejectInvalidDocument(body); err != nil {
+	if err := s.rejectInvalidDocument(body, "object"); err != nil {
 		return nil, err
 	}
 
@@ -386,11 +386,12 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	resolvers := s.newCreatingResolvers(ctx, spaceId, opts.dryRun, opts.createMissingOptions)
 	_, snapshot, err := anyblockjson.Unmarshal(body, resolvers.Options())
 	if err != nil {
-		return nil, mapUnmarshalError(body, err)
+		return nil, mapUnmarshalError(body, err, "object")
 	}
 	if err := resolvers.err(); err != nil {
 		return nil, fmt.Errorf("resolve document references: %w", err)
 	}
+	expandSpaceRefsInBlocks(snapshot.Blocks, s.spaceRefExpander(ctx))
 
 	// The importer needs the stored type key, but every v2 response speaks the
 	// stable API vocabulary. In particular, a custom type slug is rewritten to
@@ -398,6 +399,20 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	result := &v2model.CreateResult{Type: resolvers.keys.TypeSlug(envelope.Type), Created: resolvers.created()}
 	// the label-adoption tell rides real runs and dry runs alike (C9)
 	result.Warnings = warnLabelShapedIds(body)
+	// F16: a value on a property the type does not list, said at create as
+	// on set_properties (the object takes the key here for the first time)
+	if typeKeys := s.typeListedKeys(spaceId, envelope.Type); typeKeys != nil {
+		for _, key := range sortedKeys(envelope.Properties) {
+			if typeKeys[key] || !offTypeCandidate(key) {
+				continue
+			}
+			spelling := key
+			if original, ok := spellings[key]; ok {
+				spelling = original
+			}
+			result.Warnings = append(result.Warnings, offTypePropertyIssue(spelling, result.Type, "/properties/"+spelling))
+		}
+	}
 	if opts.dryRun {
 		result.DryRun = true
 		return result, nil
@@ -453,7 +468,7 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 // export writes a legend to preserve a space's own bindings; a caller creating
 // from nothing has no bindings to preserve, and the authoring subset excludes
 // both legends for that reason.
-func (s *Service) rejectInvalidDocument(body []byte) error {
+func (s *Service) rejectInvalidDocument(body []byte, kind string) error {
 	if err := rejectExportLegends(body); err != nil {
 		return err
 	}
@@ -464,7 +479,7 @@ func (s *Service) rejectInvalidDocument(body []byte) error {
 	if err == nil {
 		return nil
 	}
-	return mapUnmarshalError(body, err)
+	return mapUnmarshalError(body, err, kind)
 }
 
 // exportLegends are the root members that bind a document's spellings to a
@@ -503,7 +518,10 @@ func rejectExportLegends(body []byte) error {
 }
 
 // mapUnmarshalError converts anyblockjson validation errors into C6 errors.
-func mapUnmarshalError(body []byte, err error) error {
+// mapUnmarshalError is the C6 shape of a format error. kind names the
+// schema that documents the whole document ("object", "type"), or is empty
+// for a fragment, and steers the repairs documentIssues attaches.
+func mapUnmarshalError(body []byte, err error, kind string) error {
 	var validationErr *anyblockjson.ValidationError
 	if !errors.As(err, &validationErr) {
 		return v2model.ValidationFailed("invalid AnyBlock document", v2model.Issue{Message: err.Error()})
@@ -515,11 +533,7 @@ func mapUnmarshalError(body []byte, err error) error {
 		}
 		return v2model.VersionUnsupported(docVersion, anyblockjson.FormatVersion)
 	}
-	issues := make([]v2model.Issue, 0, len(validationErr.Issues))
-	for _, issue := range validationErr.Issues {
-		issues = append(issues, v2model.Issue{Path: issue.Path, Message: issue.Message})
-	}
-	return v2model.ValidationFailed("the document failed AnyBlock validation", issues...)
+	return v2model.ValidationFailed("the document failed AnyBlock validation", documentIssues(kind, validationErr.Issues)...)
 }
 
 // validateDocumentRefs is the R9 layer for object creates: kind and type
@@ -605,13 +619,15 @@ func (s *Service) refuseRemovedType(ctx context.Context, spaceId, typeKey, path 
 	if err != nil {
 		return err
 	}
+	// the same typed 500 the custom-type resolution boundary answers: the
+	// removal set could not be read, the request was not wrong
 	removed, err := s.bundledTypeRemovalSet(spaceId)
 	if err != nil {
-		return err
+		return unverifiableTypeError(typeKey, spaceId, err)
 	}
 	isRemoved, err := s.bundledTypeRemoved(ctx, spaceId, entries, removed, typeKey)
 	if err != nil {
-		return err
+		return unverifiableTypeError(typeKey, spaceId, err)
 	}
 	if isRemoved {
 		v := errKeysFor(ctx)
@@ -647,7 +663,7 @@ func (s *Service) refuseRemovedType(ctx context.Context, spaceId, typeKey, path 
 //
 // The ONE key class the tolerance does not cover is a BUNDLED relation this
 // space removed (removedPropertyIssue; §8.41 widened "removed" from
-// uninstalled to archived too, and to the tombstone window): bundle.
+// uninstalled to archived too, and to a tombstone an older build left): bundle.
 // HasRelation answers for it forever, so without the explicit check a
 // create lands new data on a property the user deleted, and the reinstall
 // lights it back up.
@@ -695,7 +711,20 @@ func (s *Service) validatePropertyKeys(ctx context.Context, spaceId string, prop
 			}
 			continue
 		}
+		// a pasted read body creates a copy (cause3_test.go, §8.29): a key
+		// SOME relation object holds — a removed one included — is carried,
+		// under the stored key the read's slug canonicalized to. Create is
+		// the channel a read body is pasted into; the closed channel for a
+		// removed property is set_properties (stateops.go checkKey).
 		if s.propertyKeyHeldByAnyRelation(ctx, spaceId, key) {
+			continue
+		}
+		// a REMOVED space-minted property nothing holds any more (its corpse
+		// row, by its slug): refused as removed, which is what happened to
+		// it, rather than as unknown
+		if entry, removed := s.removedCustomProperty(spaceId, key); removed {
+			issues = append(issues, removedCustomPropertyIssue(spaceId, entry, spelledAs(key), "/properties/"+spelledAs(key), v))
+			removedCount++
 			continue
 		}
 		if known == nil {

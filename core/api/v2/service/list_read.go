@@ -361,9 +361,9 @@ func (s *Service) validateListFields(spaceId string, fields []string, v errKeys)
 		stored = append(stored, entry.Key)
 	}
 	acceptKeys := appendMissing(kc.withServedSpellings(sortedDistinct(stored)), "id", "name", "type")
-	acceptKeys = appendMissing(acceptKeys, v2SystemQueryKeys...)
+	acceptKeys = appendMissing(acceptKeys, kc.withServedSpellings(v2SystemQueryKeys)...)
 	refKeys := appendMissing(kc.referenceSpellings(sortedDistinct(stored), v), "id", "name", "type")
-	refKeys = appendMissing(refKeys, v2SystemQueryKeys...)
+	refKeys = appendMissing(refKeys, servedBundledSpellings(v2SystemQueryKeys, v)...)
 	// the file aliases are valid ?fields= keys when active (per space — a
 	// real property claiming the spelling wins instead)
 	for alias := range kc.aliases {
@@ -430,12 +430,11 @@ func (s *Service) selectView(dv *model.BlockContentDataview, want listKind, view
 		for _, other := range dv.Views[1:] {
 			others = append(others, describeView(other))
 		}
-		return chosen, []v2model.Issue{{
+		return chosen, []v2model.Issue{v2model.Issue{
 			Path: "view",
 			Message: fmt.Sprintf("query %q has %d views and none was requested, so its first view %s was applied; the others are %s",
 				listId, len(dv.Views), describeView(chosen), strings.Join(others, ", ")),
-			Hint: "pass view=<id> to read through another view",
-		}}, nil
+		}.Hintf("pass %s to read through another view", v2model.Resend("view", "<view_id>"))}, nil
 	case listKindCollection:
 		var filtering []string
 		for _, view := range dv.Views {
@@ -450,11 +449,10 @@ func (s *Service) selectView(dv *model.BlockContentDataview, want listKind, view
 		if len(filtering) > 1 {
 			noun = "views"
 		}
-		return nil, []v2model.Issue{{
+		return nil, []v2model.Issue{v2model.Issue{
 			Path:    "view",
 			Message: fmt.Sprintf("the filtering %s %s did not apply; a collection reads the members it holds, not a view's selection", noun, strings.Join(filtering, ", ")),
-			Hint:    "pass view=<id> to read through a view",
-		}}, nil
+		}.Hintf("pass %s to read through a view", v2model.Resend("view", "<view_id>"))}, nil
 	}
 	return nil, nil, nil
 }
@@ -679,12 +677,11 @@ func (s *Service) danglingFilterWarnings(spaceId string, view *model.BlockConten
 	if len(missing) > 1 {
 		noun = "properties"
 	}
-	return []v2model.Issue{{
+	return []v2model.Issue{v2model.Issue{
 		Path: "view",
 		Message: fmt.Sprintf("the view %s filters on %s no property in this space answers to (%s), so it matches nothing",
 			describeView(view), noun, strings.Join(missing, ", ")),
-		Hint: "the property was probably deleted; edit the view's filters, or pass view=<id> to read through another view",
-	}}
+	}.Hintf("the property was probably deleted; edit the view's filters, or pass %s to read through another view", v2model.Resend("view", "<view_id>"))}
 }
 
 func (s *Service) substitutePlaceholders(spaceId, hostId string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewFilter, []v2model.Issue) {

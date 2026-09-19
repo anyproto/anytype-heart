@@ -98,6 +98,20 @@ type v2StateApplier struct {
 	liveEntries       []propertyEntry
 	liveEntriesErr    error
 	liveEntriesLoaded bool
+
+	// favorite is the is_favorite intent a set_properties carried (round-two
+	// eval F20). The flag is a LOCAL detail the app derives from links on
+	// the space's home object: the applier writes the detail so a read that
+	// follows the PATCH sees it at once, and PatchObject makes it real by
+	// running the favorite RPC after the state edit commits — only when the
+	// object's current state differs, so clearing a clear flag is a no-op.
+	favorite *bool
+	// itemsBefore is the collection membership at begin(), so the receipt
+	// can report the members the batch added and removed as a set
+	// difference (F19), the way the block and property counts are diffs.
+	itemsBefore []string
+	// typeKeysCache memoizes typeListedKeys per type for this PATCH.
+	typeKeysCache map[string]map[string]bool
 	// removedBundled is the same shape for the bundled relations this space
 	// uninstalled — primed lazily by removedBundledKeys, and only when a key
 	// reaches the bundled arm at all.
@@ -160,8 +174,17 @@ func (a *v2StateApplier) marshalOptions() anyblockjson.Options {
 		a.marshalResolver = storeresolver.New(a.s.store.SpaceIndex(a.spaceId))
 		// D1/§4.2: the applier's whole RMW cycle — after-documents, view
 		// rebuilds, receipts — is pinned to the slug vocabulary, so what a
-		// view op compares against is what the read served
-		a.marshalKeys = a.s.apiKeys(a.spaceId, a.marshalResolver)
+		// view op compares against is what the read served. ONE vocabulary
+		// for the render and the re-import (the resolvers'): a removed
+		// property's slug the render emitted is understood back by the
+		// import that commits the edited dataview, so its column lands on
+		// the stored key rather than on the slug as a new key
+		if a.resolvers != nil {
+			a.resolvers.Options()
+			a.marshalKeys = a.resolvers.keys
+		} else {
+			a.marshalKeys = a.s.apiKeys(a.spaceId, a.marshalResolver)
+		}
 	}
 	opts := apiRefSpelling(a.marshalResolver.Options())
 	opts.Keys = a.marshalKeys
@@ -224,7 +247,31 @@ func (a *v2StateApplier) begin() ([]byte, error) {
 	if err := a.seedView(doc); err != nil {
 		return nil, err
 	}
+	a.itemsBefore = append([]string(nil), a.st.GetStoreSlice(template.CollectionStoreKey)...)
 	return doc, nil
+}
+
+// itemsDiff is the collection membership the batch added and removed, as a
+// set difference against begin() — a member added and removed in one batch
+// counts in neither.
+func (a *v2StateApplier) itemsDiff() (added, removed int) {
+	before := map[string]bool{}
+	for _, id := range a.itemsBefore {
+		before[id] = true
+	}
+	after := map[string]bool{}
+	for _, id := range a.st.GetStoreSlice(template.CollectionStoreKey) {
+		after[id] = true
+		if !before[id] {
+			added++
+		}
+	}
+	for id := range before {
+		if !after[id] {
+			removed++
+		}
+	}
+	return added, removed
 }
 
 // isPatchLossWarning separates actual representation loss from exporter
@@ -356,7 +403,7 @@ func (a *v2StateApplier) mintBlockId() string {
 // the whole PATCH is rejected with the format's path-addressed issues under
 // the unchanged agent-facing message.
 func invalidDocError(err error) error {
-	verr := mapUnmarshalError(nil, err)
+	verr := mapUnmarshalError(nil, err, "")
 	var v2Err *v2model.Error
 	if errors.As(verr, &v2Err) && v2Err.Code == v2model.CodeValidationFailed {
 		v2Err.Message = v2InvalidDocMessage
@@ -916,6 +963,7 @@ func (a *v2StateApplier) fragmentBlocks(base string, run []map[string]any) ([]*m
 	if err != nil {
 		return nil, nil, invalidFragmentError(base, err)
 	}
+	expandSpaceRefsInBlocks(blocks, a.spaceRefExpander())
 	return blocks, topIds, nil
 }
 
@@ -1031,6 +1079,8 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	// unknown with did-you-mean); false = the key is unusable.
 	checkKey := func(key, path string) bool {
 		switch {
+		case key == bundle.RelationKeyIsFavorite.String():
+			return true // routed to the favorite RPC below, never a detail
 		case key == "id" || key == "type":
 			issues = append(issues, v2model.Issue{Path: path,
 				Message: fmt.Sprintf("%q is not a property — it is lifted to the document envelope and cannot be set here", key)})
@@ -1045,8 +1095,21 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 				issues = append(issues, v2model.Issue{Path: path, Message: err.Error()})
 				return false
 			}
-			if _, inDoc := doc.properties[key]; !inDoc {
+			// the document is served in the slug vocabulary, so a key on it
+			// is found by the spelling the caller sent (the served one) as
+			// well as by its stored key
+			_, inDoc := doc.properties[key]
+			if !inDoc {
+				_, inDoc = doc.properties[spelledAs(key)]
+			}
+			if !inDoc {
 				if !propertyKeyExistsIn(entries, key) {
+					// a REMOVED space-minted property, by the slug its values
+					// still serve under elsewhere: refused as removed
+					if entry, removed := a.s.removedCustomProperty(a.spaceId, key); removed {
+						issues = append(issues, removedCustomPropertyIssue(a.spaceId, entry, spelledAs(key), path, a.v))
+						return false
+					}
 					if known == nil {
 						known = knownPropertyKeysIn(entries, a.v)
 					}
@@ -1076,7 +1139,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	claim := func(key, field, path string) bool {
 		if prev, ok := seenIn[key]; ok {
 			issues = append(issues, v2model.Issue{Path: path,
-				Message: fmt.Sprintf("%q appears in both %s and %s — pick one", key, prev, field)})
+				Message: fmt.Sprintf("%q appears in both %s and %s — pick one", spelledAs(key), prev, field)})
 			return false
 		}
 		seenIn[key] = field
@@ -1101,6 +1164,10 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		}
 		if !claim(key, "unset", path) {
 			continue
+		}
+		if key == bundle.RelationKeyIsFavorite.String() {
+			off := false
+			a.favorite = &off // the detail is removed below like any other
 		}
 		unset[key] = true
 	}
@@ -1133,11 +1200,33 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	if len(issues) > 0 {
 		return v2model.ValidationFailed("set_properties rejected", issues...)
 	}
+	// F16: a value on a property the object's type does not list is stored
+	// and served, but type-scoped search and queries refuse the key and the
+	// type's default columns omit it — said once, when the object first
+	// takes the key, not on every edit
+	offTypeFields := map[string]string{}
+	for _, key := range setKeys {
+		offTypeFields[key] = "set"
+	}
+	for key := range addEntries {
+		offTypeFields[key] = "add"
+	}
+	a.warnOffTypeKeys(doc, opPath, offTypeFields, spelledAs)
 	for _, key := range setKeys {
 		var raw any
 		if err := decodeJSONUseNumber(op.Set[key], &raw); err != nil {
 			return v2model.ValidationFailed("invalid set value",
 				v2model.Issue{Path: opPath + ".set." + spelledAs(key), Message: err.Error()})
+		}
+		if key == bundle.RelationKeyIsFavorite.String() {
+			flag, isBool := raw.(bool)
+			if !isBool {
+				return v2model.ValidationFailed("invalid set value",
+					v2model.Issue{Path: opPath + ".set." + spelledAs(key), Message: "is_favorite takes true or false"})
+			}
+			a.favorite = &flag
+			a.st.SetDetail(bundle.RelationKeyIsFavorite, domain.Bool(flag))
+			continue
 		}
 		// the CHECKED door: a value that cannot survive v1's 64-bit float
 		// model is refused here, at the caller's own field. The unchecked
@@ -1265,9 +1354,8 @@ func (a *v2StateApplier) removedBundledKeys() (map[string]bool, error) {
 
 // refusesRemovedBundled is the PATCH-side verdict: the key exists ONLY
 // because the bundled table answers for it, and this space removed that
-// bundled relation (uninstalled, archived, or sitting in the post-delete
-// tombstone window — bundledPropertyRemoved covers all three shapes,
-// §8.41). It is consulted AFTER the in-document escape — a removed
+// bundled relation (uninstalled, archived, or a tombstone an older build
+// left — bundledPropertyRemoved covers all three shapes, §8.41). It is consulted AFTER the in-document escape — a removed
 // property's existing values stay editable and removable, since unset is the
 // one cleanup channel a caller has left; what this refuses is landing the
 // key on a document that does not already carry it.
@@ -1294,7 +1382,36 @@ func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath
 	if err != nil {
 		return nil, err
 	}
+	// the vocabulary that rendered this document may have served a key for
+	// a REMOVED property (apikeyvocab.go rememberCorpse), and what it served
+	// it understands back: a key the document carries under that exact
+	// spelling resolves to the stored key it lives under BEFORE the
+	// forgiving chain gets to fold it onto a live property that merely
+	// shares its display name — the document's own spelling is the
+	// caller's intent. Off the document the live chain keeps precedence.
+	servedCorpse := func(key string) (string, bool) {
+		if keys := a.marshalOptions().Keys; keys != nil {
+			if stored, served := keys.PropertyKey(key); served && stored != key {
+				return stored, true
+			}
+		}
+		return "", false
+	}
+	onDocument := func(key string) bool {
+		doc, derr := a.doc()
+		if derr != nil {
+			return false
+		}
+		_, ok := doc.properties[key]
+		return ok
+	}
 	canon := func(key, path string) (string, error) {
+		if onDocument(key) {
+			if stored, ok := servedCorpse(key); ok {
+				spellings[stored] = key
+				return stored, nil
+			}
+		}
 		entry, ok, ambiguous := a.s.resolvePropertyInput(key, entries)
 		if len(ambiguous) > 0 {
 			return "", ambiguousKeyError("property key", key, path, ambiguous)
@@ -1302,6 +1419,10 @@ func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath
 		if ok && entry.Key != key {
 			spellings[entry.Key] = key
 			return entry.Key, nil
+		}
+		if stored, ok := servedCorpse(key); ok {
+			spellings[stored] = key
+			return stored, nil
 		}
 		return key, nil
 	}
@@ -1455,6 +1576,7 @@ func (a *v2StateApplier) applyUpdateBlock(op opUpdateBlock, opPath string) error
 		return invalidPayloadError(opPath+".set", "/blocks/0",
 			func(member string) bool { _, ok := op.Set[member]; return ok }, err)
 	}
+	expandSpaceRefsInBlocks(blocks, a.spaceRefExpander())
 	if err := a.claimPayloadIds(blocks, collectSubtreeIds(a.st, fullId), func(string) string { return opPath + ".set" }); err != nil {
 		return err
 	}
@@ -2046,6 +2168,7 @@ func (a *v2StateApplier) applyReplaceText(op opReplaceText, opPath string) error
 				}
 				return invalidDocError(err)
 			}
+			expandSpaceRefsInMarks(marks, a.spaceRefExpander())
 			content.Text.Text = plain
 			if len(marks) == 0 {
 				content.Text.Marks = nil
@@ -2352,6 +2475,7 @@ func (a *v2StateApplier) applySetCell(op opSetCell, opPath string) error {
 		return invalidPayloadError(opPath+".value",
 			fmt.Sprintf("/blocks/0/rows/%d/cells/%d", ri, ci), nil, err)
 	}
+	expandSpaceRefsInBlocks(blocks, a.spaceRefExpander())
 	if err := a.claimPayloadIds(blocks, collectSubtreeIds(a.st, fullId), func(string) string { return opPath + ".value" }); err != nil {
 		return err
 	}
@@ -2488,4 +2612,49 @@ func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field,
 		run = append(run, block)
 	}
 	return run, nil
+}
+
+// warnOffTypeKeys appends the F16 warning for each of keys (stored
+// spellings, in set or add) that the object's type does not list and the
+// object did not carry before this op. The type lookup runs only when a
+// candidate exists, once per type per PATCH.
+func (a *v2StateApplier) warnOffTypeKeys(doc *v2EditDoc, opPath string, fields map[string]string, spelledAs func(string) string) {
+	keys := sortedKeys(fields)
+	carried := func(key string) bool {
+		if _, ok := doc.properties[key]; ok {
+			return true
+		}
+		if _, ok := doc.properties[spelledAs(key)]; ok {
+			return true
+		}
+		if a.marshalKeys != nil {
+			if _, ok := doc.properties[a.marshalKeys.PropertySlug(key)]; ok {
+				return true
+			}
+		}
+		return false
+	}
+	var typeKeys map[string]bool
+	loaded := false
+	for _, key := range keys {
+		if key == bundle.RelationKeyIsFavorite.String() || carried(key) || !offTypeCandidate(key) {
+			continue
+		}
+		if !loaded {
+			loaded = true
+			if a.typeKeysCache == nil {
+				a.typeKeysCache = map[string]map[string]bool{}
+			}
+			if cached, ok := a.typeKeysCache[doc.docType()]; ok {
+				typeKeys = cached
+			} else {
+				typeKeys = a.s.typeListedKeys(a.spaceId, doc.docType())
+				a.typeKeysCache[doc.docType()] = typeKeys
+			}
+		}
+		if typeKeys == nil || typeKeys[key] {
+			continue
+		}
+		a.warnings = append(a.warnings, offTypePropertyIssue(spelledAs(key), doc.docType(), opPath+"."+fields[key]+"."+spelledAs(key)))
+	}
 }

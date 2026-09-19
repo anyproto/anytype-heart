@@ -118,6 +118,23 @@ func TestDescribeOptions(t *testing.T) {
 		assert.Contains(t, err.Error(), `"Cook time" holds number`)
 	})
 
+	t.Run("a property the listing hides is read by its exact key", func(t *testing.T) {
+		// given: the property listing excludes hidden properties, but a
+		// write's refusal names the hidden property's exact key and points
+		// here — the options read is tried by that key before refusing
+		fx := newFixture(t)
+		stubSpaceProperties(fx, propRow("region", "Region", "select"))
+		fx.stub("GET /v2/spaces/space1/properties/hidden_status/options", 200, optionsBody(false, "Open", "Closed"))
+
+		// when
+		result, err := fx.Run(context.Background(), "describe", map[string]any{
+			"space": "space1", "type": "Task", "options": "hidden_status"})
+
+		// then
+		require.NoError(t, err)
+		assert.Contains(t, result.Text, "hidden_status: options(Open, Closed)")
+	})
+
 	t.Run("an unknown property points back at describe", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
@@ -243,6 +260,65 @@ func TestCreateTypeRefusesAnUnaddressableMintedProperty(t *testing.T) {
 	assert.Contains(t, err.Error(), "no key for it")
 	assert.Contains(t, err.Error(), "these properties WERE created and remain in the space: ★")
 	assert.Len(t, fx.sent("POST /v2/spaces/space1/types"), 1, "the dry run only")
+}
+
+// TestCreateTypePreflightPrefixFollowsTheStatus: "check the type name and
+// formats" repairs a 4xx of the caller's own making; a server error from
+// the pre-flight (the space's index could not be read) is nothing the name
+// or formats can repair, and the prefix then says only that nothing ran.
+func TestCreateTypePreflightPrefixFollowsTheStatus(t *testing.T) {
+	t.Run("a validation refusal gets the input-repair prefix", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
+		fx.stub("POST /v2/spaces/space1/types", 400, `{"status":400,"code":"validation_failed","message":"type name already exists","issues":[]}`)
+
+		_, err := fx.Run(context.Background(), "create_type", map[string]any{"space": "space1", "name": "Thing"})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "check the type name and formats")
+	})
+
+	t.Run("a server error gets a neutral prefix", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
+		fx.stub("POST /v2/spaces/space1/types", 500, `{"status":500,"code":"internal_error","message":"could not verify type \"thing\" in space \"space1\" — retry","issues":[{"message":"the space's index could not be read"}]}`)
+
+		_, err := fx.Run(context.Background(), "create_type", map[string]any{"space": "space1", "name": "Thing"})
+
+		require.Error(t, err)
+		assert.NotContains(t, err.Error(), "check the type name and formats")
+		assert.Contains(t, err.Error(), "the pre-flight failed")
+		assert.Contains(t, err.Error(), "could not verify type")
+	})
+
+	t.Run("an undecodable reply gets the neutral prefix, whatever its status", func(t *testing.T) {
+		for name, status := range map[string]int{"a 200 that is not JSON": 200, "a 400 that is not JSON": 400} {
+			t.Run(name, func(t *testing.T) {
+				fx := newFixture(t)
+				fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
+				fx.stub("POST /v2/spaces/space1/types", status, `not json`)
+
+				_, err := fx.Run(context.Background(), "create_type", map[string]any{"space": "space1", "name": "Thing"})
+
+				require.Error(t, err)
+				assert.NotContains(t, err.Error(), "check the type name and formats")
+				assert.Contains(t, err.Error(), "the pre-flight failed")
+			})
+		}
+	})
+
+	t.Run("a 4xx that is not a validation refusal gets the neutral prefix", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
+		fx.stub("POST /v2/spaces/space1/types", 403, `{"status":403,"code":"write_not_granted","message":"this key cannot write to space \"space1\"","issues":[]}`)
+
+		_, err := fx.Run(context.Background(), "create_type", map[string]any{"space": "space1", "name": "Thing"})
+
+		require.Error(t, err)
+		assert.NotContains(t, err.Error(), "check the type name and formats")
+		assert.Contains(t, err.Error(), "the pre-flight failed")
+		assert.Contains(t, err.Error(), "cannot write")
+	})
 }
 
 // TestObjectArgRefusalShowsTheShape covers the message that cost a model

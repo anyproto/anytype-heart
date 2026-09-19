@@ -219,6 +219,7 @@ func UpdateTypeHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Produce	json
 //	@Param		space_id	path		string					true	"Space id"
 //	@Param		type		path		string					true	"Type key"
+//	@Param		dry_run		query		bool					false	"Validate and report without committing"
 //	@Success	200			{object}	v2model.CreateResult	"Archived type"
 //	@Failure	404			{object}	v2model.Error			"No live type with this key. A type that is already deleted is a 404 too, not a second delete."
 //	@Security	bearerauth
@@ -236,19 +237,20 @@ func DeleteTypeHandler(s *v2service.Service) gin.HandlerFunc {
 
 // CreatePropertyHandler creates a property
 //
-//	@Summary	Create a property
-//	@Id			create_property
-//	@Tags		Properties
-//	@Accept		json
-//	@Produce	json
-//	@Param		space_id	path		string					true	"Space id"
-//	@Param		dry_run		query		bool					false	"Validate and report without committing"
-//	@Param		body		body		object					true	"Property to create. Body schema and example: GET /v2/schemas/property"
-//	@Success	201			{object}	v2model.CreateResult	"Created property id + key"
-//	@Failure	400			{object}	v2model.Error			"Validation failure"
-//	@Failure	413			{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
-//	@Security	bearerauth
-//	@Router		/v2/spaces/{space_id}/properties [post]
+//	@Summary		Create a property
+//	@Description	Names are not identities: without an explicit key, a name a visible property already carries is refused. Supply a different available key to create another property with that name; the response carries a warning.
+//	@Id				create_property
+//	@Tags			Properties
+//	@Accept			json
+//	@Produce		json
+//	@Param			space_id	path		string					true	"Space id"
+//	@Param			dry_run		query		bool					false	"Validate and report without committing"
+//	@Param			body		body		object					true	"Property to create. Body schema and example: GET /v2/schemas/property"
+//	@Success		201			{object}	v2model.CreateResult	"Created property id + key"
+//	@Failure		400			{object}	v2model.Error			"Validation failure"
+//	@Failure		413			{object}	v2model.Error			"Request body exceeds the 1 MiB cap"
+//	@Security		bearerauth
+//	@Router			/v2/spaces/{space_id}/properties [post]
 func CreatePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var req v2model.CreatePropertyRequest
@@ -277,6 +279,7 @@ func CreatePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			key			path		string					true	"Property key"
 //	@Param			body		body		object					true	"Fields of the property to change. Body schema and example: GET /v2/schemas/property"
+//	@Param			dry_run		query		bool					false	"Validate and report without committing"
 //	@Success		200			{object}	v2model.CreateResult	"Updated property"
 //	@Failure		400			{object}	v2model.Error			"Validation failure"
 //	@Failure		404			{object}	v2model.Error			"Property not found"
@@ -308,6 +311,7 @@ func UpdatePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Produce	json
 //	@Param		space_id	path		string					true	"Space id"
 //	@Param		key			path		string					true	"Property key"
+//	@Param		dry_run		query		bool					false	"Validate and report without committing"
 //	@Success	200			{object}	v2model.CreateResult	"Archived property"
 //	@Failure	404			{object}	v2model.Error			"No live property with this key. A property that is already deleted is a 404 too, not a second delete."
 //	@Security	bearerauth

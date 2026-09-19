@@ -273,8 +273,10 @@ var toolVocab = map[string]func(ref v2model.Ref) string{
 	},
 	v2model.OpGetType:    func(v2model.Ref) string { return "`describe`" },
 	v2model.OpCreateType: func(v2model.Ref) string { return "`create_type`" },
+	// describe lists the type's own properties in full and caps the space's
+	// other settable ones (describeSettableLimit), so its listing may be cut
 	v2model.OpListProperties: func(v2model.Ref) string {
-		return fmt.Sprintf("`describe` on the type (which lists up to %d property names)", describeSettableLimit)
+		return "`describe` on the type (its property listing may be truncated)"
 	},
 	v2model.OpListPropertyOptions: func(ref v2model.Ref) string {
 		if key := ref.Params["key"]; key != "" {
@@ -335,6 +337,18 @@ var restRoute = regexp.MustCompile(`(?:GET|POST|PATCH|PUT|DELETE) /v[0-9]+[^\s,;
 
 const restRouteFallback = "the HTTP API"
 
+// restParam catches a bare `?name=value` from a server build that shipped
+// no references (the pre-typed "GET the object with ?outline=true" wording),
+// so a request parameter never reaches a caller whose tools take none.
+var restParam = regexp.MustCompile(`\?[a-z_]+=[A-Za-z0-9_<>-]*`)
+
+const restParamFallback = "a parameter these tools do not take"
+
+// catchAll redacts what no reference named: routes, then bare parameters.
+func catchAll(s string) string {
+	return restParam.ReplaceAllString(restRoute.ReplaceAllString(s, restRouteFallback), restParamFallback)
+}
+
 // respellSpans rewrites s in ONE pass: every key of spans found in s
 // becomes its value (longest key first where two match at a position), and
 // the catch-all runs over the text BETWEEN the keys only. The two never see
@@ -352,7 +366,7 @@ func respellSpans(s string, spans map[string]string) string {
 		}
 	}
 	if len(keys) == 0 {
-		return restRoute.ReplaceAllString(s, restRouteFallback)
+		return catchAll(s)
 	}
 	sort.SliceStable(keys, func(i, j int) bool { return len(keys[i]) > len(keys[j]) })
 	for i, k := range keys {
@@ -362,11 +376,11 @@ func respellSpans(s string, spans map[string]string) string {
 	var b strings.Builder
 	last := 0
 	for _, m := range matcher.FindAllStringIndex(s, -1) {
-		b.WriteString(restRoute.ReplaceAllString(s[last:m[0]], restRouteFallback))
+		b.WriteString(catchAll(s[last:m[0]]))
 		b.WriteString(spans[s[m[0]:m[1]]])
 		last = m[1]
 	}
-	b.WriteString(restRoute.ReplaceAllString(s[last:], restRouteFallback))
+	b.WriteString(catchAll(s[last:]))
 	return b.String()
 }
 

@@ -26,8 +26,10 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"regexp"
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/gogo/protobuf/types"
 
@@ -206,7 +208,10 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 		if err != nil {
 			return nil, err
 		}
-		entry, ok, ambiguous := s.resolveTypeInput(req.Type, typeEntries)
+		entry, ok, ambiguous, err := s.resolveTypeInput(spaceId, req.Type, typeEntries)
+		if err != nil {
+			return nil, err
+		}
 		if len(ambiguous) > 0 {
 			return nil, ambiguousKeyError(v.typeWord(), req.Type, "/type", ambiguous)
 		}
@@ -251,10 +256,13 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	// the reference list a refusal shows speaks the request's vocabulary
 	// (?keys — §4.3); acceptance stays vocabulary-wide (D3) either way
 	refKeys = kc.referenceSpellings(refKeys, v)
-	for _, extra := range [][]string{v2SystemQueryKeys, {"type"}} {
-		refKeys = appendMissing(refKeys, extra...)
-		acceptKeys = appendMissing(acceptKeys, extra...)
-	}
+	// the system keys join in BOTH spellings on the accept side and in the
+	// served one on the reference side (R3-f: list_properties served
+	// last_opened_date while this refused it and listed lastOpenedDate)
+	acceptKeys = appendMissing(acceptKeys, kc.withServedSpellings(v2SystemQueryKeys)...)
+	refKeys = appendMissing(refKeys, servedBundledSpellings(v2SystemQueryKeys, v)...)
+	refKeys = appendMissing(refKeys, "type")
+	acceptKeys = appendMissing(acceptKeys, "type")
 	// The file aliases join the reference set when active (no real
 	// live property claims the spelling): mimeType/size are live in EVERY
 	// channel — fields, filters and sorts — translated to the backing store
@@ -313,7 +321,7 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 			},
 		})
 		if err != nil {
-			return nil, filterStringError(err)
+			return nil, filterStringError(spaceId, err)
 		}
 		filtersJSON = parsed
 	}
@@ -559,10 +567,18 @@ func (s *Service) propertyOptionNames(spaceId, key string) ([]string, bool) {
 	return names, true
 }
 
+// filterNoOptionMessage is the parser's verdict on an unknown option name,
+// with the property it belongs to.
+var filterNoOptionMessage = regexp.MustCompile(`^property "([^"]+)" has no option named`)
+
 // filterStringError maps a filterstring parse error to the C6 shape: one
-// issue at /filter carrying the offset-addressed message and the
-// did-you-mean hint.
-func filterStringError(err error) error {
+// issue at /filter carrying the offset-addressed message and a hint with the
+// reference the fault calls for (F6). The parser is a library that knows no
+// space and no operation table — it composes a did-you-mean and spells a
+// raw route for the fallback — so the hint is re-composed here: an unknown
+// key points at the property list, an unknown option name at the option
+// list, and every other parse error at the grammar.
+func filterStringError(spaceId string, err error) error {
 	var pe *filterstring.Error
 	if !errors.As(err, &pe) {
 		return v2model.ValidationFailed("invalid filter",
@@ -572,12 +588,40 @@ func filterStringError(err error) error {
 	if pe.Token == "" {
 		where = "at end of input"
 	}
-	return v2model.ValidationFailed("invalid filter",
-		v2model.Issue{
-			Path:    "/filter",
-			Message: fmt.Sprintf("parse error at offset %d %s: %s", pe.Offset, where, pe.Message),
-			Hint:    pe.Hint,
-		})
+	issue := v2model.Issue{
+		Path:    "/filter",
+		Message: fmt.Sprintf("parse error at offset %d %s: %s", pe.Offset, where, pe.Message),
+	}
+	var repair v2model.Hint
+	switch {
+	case strings.HasPrefix(pe.Message, "unknown property key"):
+		repair = v2model.Hintf("list keys with %s", v2model.RefListProperties(spaceId))
+	case filterNoOptionMessage.MatchString(pe.Message):
+		key := filterNoOptionMessage.FindStringSubmatch(pe.Message)[1]
+		repair = v2model.Hintf("list them with %s", v2model.RefListPropertyOptions(spaceId, key))
+	default:
+		repair = v2model.Hintf("the compact filter grammar is on %s", v2model.RefGetSchema("filters"))
+	}
+	guess, steer := pe.Hint, ""
+	if !strings.HasPrefix(guess, "did you mean") {
+		// the parser's own fallback is a raw route the surface does not
+		// serve; its steering sentences (a key the compact form cannot
+		// spell, the value grammar) are kept
+		guess, steer = "", pe.Hint
+		if strings.HasPrefix(steer, "list them with GET ") {
+			steer = ""
+		}
+	} else if before, after, found := strings.Cut(guess, "? — "); found {
+		guess, steer = before+"?", after
+	}
+	text := repair.Text
+	if guess != "" {
+		text = guess + " — if not, " + text
+	}
+	if steer != "" {
+		text = steer + " — " + text
+	}
+	return v2model.ValidationFailed("invalid filter", issue.WithHint(v2model.Hint{Text: text, Refs: repair.Refs}))
 }
 
 // mapFilterCodecError converts anyblockjson.ValidationError issues from the
@@ -595,7 +639,8 @@ func mapFilterCodecError(err error, fromString bool) error {
 		if fromString {
 			path = "/filter"
 		}
-		issues = append(issues, v2model.Issue{Path: path, Message: iss.Message})
+		issues = append(issues, v2model.Issue{Path: path, Message: iss.Message}.
+			Hintf("the filter node shape is on %s", v2model.RefGetSchema("filters")))
 	}
 	return v2model.ValidationFailed("invalid filters", issues...)
 }
@@ -679,9 +724,8 @@ func validateFilterStructure(nodes []searchFilterNode, path string) []v2model.Is
 				issues = append(issues, v2model.Issue{
 					Path:    nodePath + "/condition",
 					Message: fmt.Sprintf("filter on %q has no condition", node.Property),
-					Hint: "a leaf needs a condition (equal, notEqual, contains, in, empty, …); " +
-						"without one the filter is dropped and every object matches",
-				})
+				}.Hintf("a leaf needs a condition (equal, not_equal, contains, in, empty, …); "+
+					"without one the filter is dropped and every object matches — the node shape is on %s", v2model.RefGetSchema("filters")))
 			}
 		}
 	}
@@ -841,7 +885,10 @@ func (s *Service) resolveTypeLeavesIn(spaceId string, filters []*model.BlockCont
 		}
 		positive := !negatedFilterConditions[f.Condition]
 		resolve := func(key string) (string, error) {
-			entry, ok, ambiguous := s.resolveTypeInput(key, typeEntries)
+			entry, ok, ambiguous, err := s.resolveTypeInput(spaceId, key, typeEntries)
+			if err != nil {
+				return "", err
+			}
 			if len(ambiguous) > 0 {
 				return "", ambiguousKeyError(v.typeWord(), key, path, ambiguous)
 			}
@@ -992,7 +1039,7 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 		plan, err := s.buildSearchPlan(space.id, req, false, errKeysFor(ctx))
 		if err != nil {
 			var v2Err *v2model.Error
-			if errors.As(err, &v2Err) {
+			if errors.As(err, &v2Err) && v2Err.Status < 500 {
 				if firstErr == nil {
 					firstErr = err
 				}
@@ -1127,4 +1174,23 @@ func sortGlobalRecords(records []globalRecord) {
 		}
 		return a.record.Details.GetString(bundle.RelationKeyId) < b.record.Details.GetString(bundle.RelationKeyId)
 	})
+}
+
+// servedBundledSpellings spells bundled keys the way the surface serves
+// them: the derived slug, or the bundled display name under ?keys=name.
+func servedBundledSpellings(keys []string, v errKeys) []string {
+	out := make([]string, 0, len(keys))
+	for _, key := range keys {
+		spelling := key
+		if bundle.HasRelation(domain.RelationKey(key)) {
+			spelling = bundle.ApiSlug(key)
+			if v.names {
+				if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil && rel.Name != "" {
+					spelling = rel.Name
+				}
+			}
+		}
+		out = append(out, spelling)
+	}
+	return out
 }

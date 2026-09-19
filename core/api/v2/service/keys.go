@@ -116,6 +116,73 @@ func (s *Service) liveProperties(spaceId string) ([]propertyEntry, error) {
 	return entries, nil
 }
 
+// removedProperties lists the space's REMOVED relation objects — archived
+// (v2 DELETE), uninstalled (UI delete) or deleted — with the slug each still
+// carries. Both injected defaults are suppressed so every corpse shape is
+// seen. This is the OUTPUT side's source only: a value an object still holds
+// under a removed property, a type list that still names it and a view
+// column that still shows it must keep spelling the slug the caller was
+// taught, not the stored key (which is a bson id for a space-minted
+// property, and which no route accepts back). Nothing here feeds the accept
+// side: writing to a removed property stays refused.
+func (s *Service) removedProperties(spaceId string) ([]propertyEntry, error) {
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_relation)),
+			},
+			{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
+			{RelationKey: bundle.RelationKeyIsDeleted, Condition: model.BlockContentDataviewFilter_None},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("query removed properties of space %s: %w", spaceId, err)
+	}
+	var entries []propertyEntry
+	for _, record := range records {
+		if !corpseFlagged(record.Details) {
+			continue
+		}
+		key := record.Details.GetString(bundle.RelationKeyRelationKey)
+		if key == "" {
+			continue
+		}
+		entries = append(entries, propertyEntry{
+			Id:     record.Details.GetString(bundle.RelationKeyId),
+			Key:    key,
+			Slug:   record.Details.GetString(bundle.RelationKeyApiObjectKey),
+			Name:   record.Details.GetString(bundle.RelationKeyName),
+			Format: model.RelationFormat(record.Details.GetInt64(bundle.RelationKeyRelationFormat)),
+			Hidden: record.Details.GetBool(bundle.RelationKeyIsHidden),
+		})
+	}
+	return entries, nil
+}
+
+// referencedCorpses returns the REMOVED relation objects among ids — the
+// entries a type's recommended lists still name after a delete — with the
+// slug and stored key each still carries (removedProperties: the corpse row
+// a delete leaves, full details with a lifecycle flag). What a type served
+// under a slug it must understand back (the echo baseline), so these are
+// the corpses whose slugs a type write remembers before resolving its
+// definitions.
+func (s *Service) referencedCorpses(spaceId string, ids map[string]bool) []propertyEntry {
+	if len(ids) == 0 {
+		return nil
+	}
+	var out []propertyEntry
+	if removed, err := s.removedProperties(spaceId); err == nil {
+		for _, e := range removed {
+			if ids[e.Id] {
+				out = append(out, e)
+			}
+		}
+	}
+	return out
+}
+
 // liveTypes lists the space's live type objects (error contract as above).
 func (s *Service) liveTypes(spaceId string) ([]typeEntry, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{Filters: liveTypeFilters()})
@@ -297,10 +364,10 @@ func (s *Service) resolvePropertyInput(input string, entries []propertyEntry) (p
 }
 
 // resolveTypeInput is resolvePropertyInput for the type namespace.
-func (s *Service) resolveTypeInput(input string, entries []typeEntry) (typeEntry, bool, []string) {
+func (s *Service) resolveTypeInput(spaceId, input string, entries []typeEntry) (typeEntry, bool, []string, error) {
 	for _, entry := range entries {
 		if entry.Key == input {
-			return entry, true, nil
+			return entry, true, nil, nil
 		}
 	}
 	var slugMatches []typeEntry
@@ -311,24 +378,39 @@ func (s *Service) resolveTypeInput(input string, entries []typeEntry) (typeEntry
 	}
 	if len(slugMatches) == 1 {
 		if shadowed, ok := shadowedBundledType(input, slugMatches[0].Key); ok {
-			return typeEntry{}, false, append(describeTypeEntries(slugMatches), shadowed)
+			return typeEntry{}, false, append(describeTypeEntries(slugMatches), shadowed), nil
 		}
-		return slugMatches[0], true, nil
+		return slugMatches[0], true, nil, nil
 	}
 	if len(slugMatches) > 1 {
-		return typeEntry{}, false, describeTypeEntries(slugMatches)
+		return typeEntry{}, false, describeTypeEntries(slugMatches), nil
 	}
 	if t, err := bundle.GetType(domain.TypeKey(input)); err == nil {
-		return typeEntry{Key: input, Name: t.Name}, true, nil
+		return typeEntry{Key: input, Name: t.Name}, true, nil, nil
 	}
 	if key, ok := bundle.TypeKeyByApiSlug(input); ok {
 		for _, entry := range entries {
 			if entry.Key == string(key) {
-				return entry, true, nil
+				return entry, true, nil, nil
 			}
 		}
 		t := bundle.MustGetType(key)
-		return typeEntry{Key: string(key), Name: t.Name}, true, nil
+		return typeEntry{Key: string(key), Name: t.Name}, true, nil, nil
+	}
+	// the exact spelling a read served for a REMOVED type stops here: no
+	// live key, slug or bundled entry answered to it above, and the
+	// forgiving fold and name steps below must not land it on a live type
+	// that happens to be NAMED that way (round-four review: a removed
+	// "widget" resolved to live "machine" named "widget", and a create,
+	// a search and even a DELETE went to the wrong type). The caller's
+	// refusal then says removed (unknownTypeKeyError).
+	// a lookup error is an outcome of its own (the caller says so and
+	// retries nothing): a removal set that could not be read must neither
+	// authorize the fold and name steps below nor read as "unknown"
+	if _, removed, err := s.removedTypeBySpelling(spaceId, input); err != nil {
+		return typeEntry{}, false, nil, unverifiableTypeError(input, spaceId, err)
+	} else if removed {
+		return typeEntry{}, false, nil, nil
 	}
 	fold := bundle.FoldApiKey(input)
 	var candidates []typeEntry
@@ -353,10 +435,10 @@ func (s *Service) resolveTypeInput(input string, entries []typeEntry) (typeEntry
 		candidates = append(candidates, typeEntry{Key: string(key), Name: t.Name})
 	}
 	if len(candidates) == 1 {
-		return candidates[0], true, nil
+		return candidates[0], true, nil, nil
 	}
 	if len(candidates) > 1 {
-		return typeEntry{}, false, describeTypeEntries(candidates)
+		return typeEntry{}, false, describeTypeEntries(candidates), nil
 	}
 	// 5: display names — resolvePropertyInput's step 5 on the type
 	// namespace, same order, same shadow discipline, same refusal rules
@@ -368,20 +450,20 @@ func (s *Service) resolveTypeInput(input string, entries []typeEntry) (typeEntry
 		}
 	}
 	if len(nameMatches) > 1 {
-		return typeEntry{}, false, describeTypeEntries(nameMatches)
+		return typeEntry{}, false, describeTypeEntries(nameMatches), nil
 	}
 	if len(nameMatches) == 1 {
 		if shadowed, ok := shadowedBundledTypeName(nfcInput, nameMatches[0].Key); ok {
-			return typeEntry{}, false, append(describeTypeEntries(nameMatches), shadowed)
+			return typeEntry{}, false, append(describeTypeEntries(nameMatches), shadowed), nil
 		}
-		return nameMatches[0], true, nil
+		return nameMatches[0], true, nil, nil
 	}
 	if key, ok := anyblockjson.BundledTypeKeyByName(nfcInput); ok {
-		return bundledTypeCandidate(key, entries), true, nil
+		return bundledTypeCandidate(key, entries), true, nil, nil
 	}
 	nameFold := anyblockjson.FoldKeyTerm(input)
 	if nameFold == "" {
-		return typeEntry{}, false, nil
+		return typeEntry{}, false, nil, nil
 	}
 	var nameCandidates []typeEntry
 	nameSeen := map[string]bool{}
@@ -402,12 +484,12 @@ func (s *Service) resolveTypeInput(input string, entries []typeEntry) (typeEntry
 		nameCandidates = append(nameCandidates, bundledTypeCandidate(key, entries))
 	}
 	if len(nameCandidates) == 1 {
-		return nameCandidates[0], true, nil
+		return nameCandidates[0], true, nil, nil
 	}
 	if len(nameCandidates) > 1 {
-		return typeEntry{}, false, describeTypeEntries(nameCandidates)
+		return typeEntry{}, false, describeTypeEntries(nameCandidates), nil
 	}
-	return typeEntry{}, false, nil
+	return typeEntry{}, false, nil, nil
 }
 
 // shadowedBundledProperty reports whether a STORED slug that just matched at
@@ -555,7 +637,10 @@ func (s *Service) requireLiveType(spaceId, input, path string, v errKeys) (typeE
 	if err != nil {
 		return typeEntry{}, err
 	}
-	entry, ok, ambiguous := s.resolveTypeInput(input, entries)
+	entry, ok, ambiguous, err := s.resolveTypeInput(spaceId, input, entries)
+	if err != nil {
+		return typeEntry{}, err
+	}
 	if len(ambiguous) > 0 {
 		return typeEntry{}, ambiguousKeyError(v.typeWord(), input, path, ambiguous)
 	}
@@ -596,18 +681,21 @@ func (s *Service) propertySlugConflict(slug string, entries []propertyEntry) (sl
 }
 
 // typeSlugConflict is propertySlugConflict for the type namespace.
-func (s *Service) typeSlugConflict(slug string, entries []typeEntry) (slugHolder, bool) {
-	entry, ok, ambiguous := s.resolveTypeInput(slug, entries)
+func (s *Service) typeSlugConflict(spaceId, slug string, entries []typeEntry) (slugHolder, bool, error) {
+	entry, ok, ambiguous, err := s.resolveTypeInput(spaceId, slug, entries)
+	if err != nil {
+		return slugHolder{}, false, err
+	}
 	if len(ambiguous) > 0 {
-		return slugHolder{Kind: "types", Key: slug, Name: strings.Join(ambiguous, " and ")}, true
+		return slugHolder{Kind: "types", Key: slug, Name: strings.Join(ambiguous, " and ")}, true, nil
 	}
 	if !ok {
-		return slugHolder{}, false
+		return slugHolder{}, false, nil
 	}
 	if entry.Id == "" {
-		return slugHolder{Kind: "bundled type", Key: bundle.TypeApiSlug(entry.Key), Name: entry.Name}, true
+		return slugHolder{Kind: "bundled type", Key: bundle.TypeApiSlug(entry.Key), Name: entry.Name}, true, nil
 	}
-	return slugHolder{Kind: "type", Key: entry.Key, Name: entry.Name}, true
+	return slugHolder{Kind: "type", Key: entry.Key, Name: entry.Name}, true, nil
 }
 
 // There is exactly ONE authority for the wire spelling of a key: servedKeyOf
@@ -746,11 +834,13 @@ func corpseFlagged(details *domain.Details) bool {
 // deliberately sees EVERY store shape a relation row can have.
 //
 // A corpse has THREE store shapes, not two (§8.41). A UI delete sets
-// isUninstalled, the same Apply stamps isDeleted (smartblock's
-// detailsinject, since GO-1978), and BeforeDelete then TOMBSTONES the index
-// row down to {id, spaceId, isDeleted} — no relationKey, no resolvedLayout —
-// until the next space load re-indexes the surviving tree with full details
-// and both flags. So:
+// isUninstalled and the same Apply stamps isDeleted (smartblock's
+// detailsinject, since GO-1978) — the full row with both flags, which is
+// what a delete by THIS build leaves (core/block deleteDerivedObject) and
+// what every other device holds. An OLDER build's delete then TOMBSTONED
+// the index row down to {id, spaceId, isDeleted} — no relationKey, no
+// resolvedLayout — until the next space load re-indexed the surviving tree;
+// such rows exist until that load. So:
 //
 //   - the query below (both injected defaults suppressed via the no-op
 //     Condition None clauses) sees the full-detail shapes, flag-only and
@@ -815,7 +905,8 @@ func (s *Service) relationObjectHoldingKey(ctx context.Context, spaceId, key str
 	if best != "" {
 		return best, true, nil
 	}
-	// tombstone window: the row may exist with nothing but {id, isDeleted}
+	// a tombstone an older build left: the row may exist with nothing but
+	// {id, isDeleted} until the next load rebuilds it
 	details, id, err := s.derivedRelationRow(ctx, spaceId, key)
 	if err != nil {
 		return "", false, err
@@ -882,9 +973,9 @@ func (s *Service) propertyKeyHeldByAnyRelation(ctx context.Context, spaceId, key
 // this set, which is the whole distinction the refusal rests on: "not
 // installed yet" and "you deleted it" look identical through
 // bundle.HasRelation and could not be told apart without this probe. The
-// TOMBSTONE shape is invisible to this query too (no relationKey field) —
-// per-key consultation goes through bundledPropertyRemoved, which adds the
-// derived-id probe for that window.
+// TOMBSTONE shape an older build left is invisible to this query too (no
+// relationKey field) — per-key consultation goes through
+// bundledPropertyRemoved, which adds the derived-id probe for that window.
 func (s *Service) bundledRemovalSet(spaceId string) (map[string]bool, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
 		Filters: []database.FilterRequest{
@@ -918,9 +1009,9 @@ func (s *Service) bundledRemovalSet(spaceId string) (map[string]bool, error) {
 
 // bundledPropertyRemoved is the per-key removal verdict for a BUNDLED
 // property key: the space explicitly removed it (bundledRemovalSet), or its
-// relation object sits in the post-delete tombstone window — a row at the
-// derived id carrying isDeleted and no relationKey, which no query-built set
-// can contain. A live installed entry always outvotes; a missing row means
+// relation object is a tombstone an OLDER build left — a row at the derived
+// id carrying isDeleted and no relationKey, which no query-built set can
+// contain, until the next load rebuilds it. A live installed entry always outvotes; a missing row means
 // never-installed and keeps install-on-write working.
 func (s *Service) bundledPropertyRemoved(ctx context.Context, spaceId string, entries []propertyEntry, removed map[string]bool, key string) (bool, error) {
 	if propertyKeyRemovedIn(entries, removed, key) {
@@ -1050,7 +1141,10 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 				return nil, nil, err
 			}
 		}
-		entry, ok, ambiguous := s.resolveTypeInput(term, typeEntries)
+		entry, ok, ambiguous, rerr := s.resolveTypeInput(spaceId, term, typeEntries)
+		if rerr != nil {
+			return nil, nil, rerr
+		}
 		if len(ambiguous) > 0 {
 			return nil, nil, ambiguousKeyError("type key", term, "/"+field, ambiguous)
 		}
@@ -1070,7 +1164,36 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 				return nil, nil, err
 			}
 			renames := map[string]string{}
+			keyTaken, slugHolders := servedPropertyKeySets(propEntries)
+			var removed []propertyEntry
+			removedLoaded := false
+			removedStored := func(key string) (string, bool) {
+				// a REMOVED property's served slug (apikeyvocab.go): a read
+				// body pasted back carries it, and it canonicalizes to the
+				// stored key the value lives under, as the create's paste
+				// tolerance (validateDocumentRefs) expects. It outranks a
+				// live property's display name — the exact spelling a read
+				// served is the caller's intent — but never an exact live
+				// key or slug
+				if keyTaken[key] || len(slugHolders[key]) > 0 {
+					return "", false
+				}
+				if !removedLoaded {
+					removedLoaded = true
+					removed, _ = s.removedProperties(spaceId)
+				}
+				for _, corpse := range removed {
+					if corpse.Slug != "" && corpse.Slug == key && corpse.Key != key {
+						return corpse.Key, true
+					}
+				}
+				return "", false
+			}
 			for _, key := range sortedKeys(props) {
+				if stored, ok := removedStored(key); ok {
+					renames[key] = stored
+					continue
+				}
 				entry, ok, ambiguous := s.resolvePropertyInput(key, propEntries)
 				if len(ambiguous) > 0 {
 					return nil, nil, ambiguousKeyError("property key", key, "/properties/"+key, ambiguous)
@@ -1123,4 +1246,72 @@ func sortedDistinct(values []string) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// removedTypes is removedProperties for the type namespace: every type row
+// the store still has a full-detail record of that carries a lifecycle-exit
+// flag. The query suppresses both injected defaults, as typeKeysById does,
+// so the prod corpse shape (isDeleted) is returned too.
+func (s *Service) removedTypes(spaceId string) ([]typeEntry, error) {
+	records, err := s.store.SpaceIndex(spaceId).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			{RelationKey: bundle.RelationKeyIsArchived, Condition: model.BlockContentDataviewFilter_None},
+			{RelationKey: bundle.RelationKeyIsDeleted, Condition: model.BlockContentDataviewFilter_None},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("query removed types of space %s: %w", spaceId, err)
+	}
+	var entries []typeEntry
+	for _, record := range records {
+		if !corpseFlagged(record.Details) {
+			continue
+		}
+		key, err := domain.GetTypeKeyFromRawUniqueKey(record.Details.GetString(bundle.RelationKeyUniqueKey))
+		if err != nil {
+			continue
+		}
+		entries = append(entries, typeEntry{
+			Id:     record.Details.GetString(bundle.RelationKeyId),
+			Key:    string(key),
+			Slug:   record.Details.GetString(bundle.RelationKeyApiObjectKey),
+			Name:   record.Details.GetString(bundle.RelationKeyName),
+			Hidden: record.Details.GetBool(bundle.RelationKeyIsHidden),
+		})
+	}
+	return entries, nil
+}
+
+// removedTypeBySpelling finds a REMOVED space-minted type a caller may have
+// addressed by the slug or stored key a read served for it — the object's
+// `type` after the type was deleted — so a refusal can say removed rather
+// than unknown, and so the resolution chain stops there. Live entries are
+// the caller's to check first. A removed type is a corpse ROW: a delete
+// leaves the full details in place under a lifecycle flag (core/block
+// beforeDeleteDerived), the same row every other device holds, so the
+// query-visible set is the whole answer. An error is returned, never
+// swallowed: a lookup that could not complete must not read as "nothing
+// was removed".
+func (s *Service) removedTypeBySpelling(spaceId, input string) (typeEntry, bool, error) {
+	if input == "" || bundle.HasObjectTypeByKey(domain.TypeKey(input)) {
+		return typeEntry{}, false, nil // bundled removals have their own gate (refuseRemovedType)
+	}
+	removed, err := s.removedTypes(spaceId)
+	if err != nil {
+		return typeEntry{}, false, err
+	}
+	for _, e := range removed {
+		if bundle.HasObjectTypeByKey(domain.TypeKey(e.Key)) {
+			continue
+		}
+		if input == e.Key || (e.Slug != "" && input == e.Slug) {
+			return e, true, nil
+		}
+	}
+	return typeEntry{}, false, nil
 }

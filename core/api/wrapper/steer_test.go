@@ -290,7 +290,7 @@ func TestRestVocabulary(t *testing.T) {
 				name: "property keys — the create half is not on this surface, and says so by name",
 				issue: v2model.Issue{}.Hintf("list all with %s, or create it with %s",
 					v2model.RefListProperties("space1"), v2model.RefCreateProperty("space1")),
-				want: "list all with `describe` on the type (which lists up to 120 property names), or create it with an operation outside this tool set (create_property)",
+				want: "list all with `describe` on the type (its property listing may be truncated), or create it with an operation outside this tool set (create_property)",
 			},
 			{
 				name:  "option names, property bound",
@@ -368,8 +368,8 @@ func TestRestVocabulary(t *testing.T) {
 		}.Hintf("list all with %s", v2model.RefListProperties("space1"))}
 		te := &ToolError{Status: 400, Message: "unknown property keys", Issues: issues, Text: renderErrorText("unknown property keys", issues)}
 		deRest(te)
-		assert.Equal(t, "list all with `describe` on the type (which lists up to 120 property names)", te.Issues[0].Hint)
-		assert.Equal(t, "unknown property keys\n  /properties/prio: unknown property key \"prio\" — known keys: status (list all with `describe` on the type (which lists up to 120 property names))", te.Text)
+		assert.Equal(t, "list all with `describe` on the type (its property listing may be truncated)", te.Issues[0].Hint)
+		assert.Equal(t, "unknown property keys\n  /properties/prio: unknown property key \"prio\" — known keys: status (list all with `describe` on the type (its property listing may be truncated))", te.Text)
 	})
 
 	t.Run("a message is a fact and is not rewritten by the hint's references", func(t *testing.T) {
@@ -382,7 +382,7 @@ func TestRestVocabulary(t *testing.T) {
 		assert.NotContains(t, te.Issues[0].Message, "`describe`",
 			"only the catch-all touches a message — a quoted value is never re-spelled as a tool")
 		assert.Contains(t, te.Issues[0].Message, "the HTTP API")
-		assert.Equal(t, "list them with `describe` on the type (which lists up to 120 property names)", te.Issues[0].Hint)
+		assert.Equal(t, "list them with `describe` on the type (its property listing may be truncated)", te.Issues[0].Hint)
 	})
 
 	t.Run("the server's own envelope round-trips: marshal → decode → re-spell", func(t *testing.T) {
@@ -430,7 +430,17 @@ func TestRestVocabulary(t *testing.T) {
 		te := &ToolError{Status: 404, Message: "refused", Issues: issues, Text: renderErrorText("refused", issues)}
 		te.Text = strings.Replace(te.Text, "ops[0].id", "block", 1) + " — wrote 1 of 3"
 		deRest(te)
-		assert.Equal(t, "refused\n  block: not found (list keys with `describe` on the type (which lists up to 120 property names)) — wrote 1 of 3", te.Text)
+		assert.Equal(t, "refused\n  block: not found (list keys with `describe` on the type (its property listing may be truncated)) — wrote 1 of 3", te.Text)
+	})
+
+	t.Run("a bare parameter from a server build without references is redacted", func(t *testing.T) {
+		// the pre-typed wording of the block-not-found hint, verbatim: no
+		// method + route for restRoute, no see_also to look up — the
+		// parameter still must not reach a caller whose tools take none
+		te := &ToolError{Status: 404, Text: "GET the object with ?outline=true to list them"}
+		deRest(te)
+		assert.Equal(t, "GET the object with a parameter these tools do not take to list them", te.Text)
+		assert.NotContains(t, te.Text, "?outline=true")
 	})
 
 	t.Run("prose that merely mentions a version prefix is untouched", func(t *testing.T) {
@@ -466,8 +476,12 @@ func TestRestVocabulary(t *testing.T) {
 		warnings := []v2model.Issue{
 			v2model.Issue{Message: "the view's filter was not applied"}.Hintf("list keys with %s", v2model.RefListProperties("space1")),
 			{Message: "plain"},
+			// the list read's own warning (list_read.go): `read` takes no view
+			// argument, and the rendering must not pretend it does
+			v2model.Issue{Path: "view", Message: "the first view was applied"}.Hintf("pass %s to read through another view", v2model.Resend("view", "<view_id>")),
 		}
-		assert.Equal(t, "\nwarning: the view's filter was not applied — list keys with `describe` on the type (which lists up to 120 property names)\nwarning: plain",
+		assert.Equal(t, "\nwarning: the view's filter was not applied — list keys with `describe` on the type (its property listing may be truncated)\nwarning: plain"+
+			"\nwarning: the first view was applied — pass a parameter these tools do not take (view=<view_id>) to read through another view",
 			warningsText(warnings))
 	})
 }

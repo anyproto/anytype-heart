@@ -97,12 +97,13 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"api_key":{"type":"string","maxLength":256,"pattern":"^[a-zA-Z0-9_]+$","description":"the key object bodies name this type by; derived from the name when omitted"},` +
 			`"default_view":{"type":"string","enum":["table","list","gallery","kanban","calendar","graph"],"description":"how a set or collection of this type opens; applies to ones created after the change"},` +
 			`"default_template":{"type":"string","maxLength":256,"description":"id of the template new objects of this type start from; empty string clears it"},` +
-			`"property_definitions":{"type":"array","maxItems":128,"description":"the type's whole field list; an unknown name mints a property. On PATCH it replaces the list, so to change one field send an ops envelope with add_property to PATCH /v2/spaces/{space_id}/types/{type} instead, and to rename a property send {name} to PATCH /v2/spaces/{space_id}/properties/{key}","items":{` +
-			`"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
-			`"name":{"type":"string","minLength":1,"maxLength":128,"description":"the property's spelling, e.g. Due date"},` +
+			`"property_definitions":{"type":"array","maxItems":128,"description":"the type's whole field list; an unknown name mints a property. On PATCH it replaces the list, so to change one field send an ops envelope with add_property to update_type instead, and to rename a property send {name} to update_property","items":{` +
+			`"type":"object","additionalProperties":false,"description":"names its property by name or by property, one of the two","properties":{` +
+			`"name":{"type":"string","minLength":1,"maxLength":128,"description":"the property's display name, e.g. Due date; an unknown one is created"},` +
+			`"property":{"type":"string","minLength":1,"maxLength":256,"description":"the property by the key the space serves, for one that exists"},` +
 			`"format":{"type":"string","enum":[` + v2PropertyFormatEnum + `],"description":"the new property's format; omit it and an unknown name is created as text"},` +
 			`"section":{"type":"string","enum":["featured","hidden"],"description":"featured shows the property on the object itself"},` +
-			`"options":{"type":"array","maxItems":100,"description":"select and multi_select only: the option vocabulary; creating options here needs ?create_missing_options=true","items":{` +
+			`"options":{"type":"array","maxItems":100,"description":"select and multi_select only: the option vocabulary; creating options here needs the create_missing_options parameter set to true","items":{` +
 			`"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
 			`"name":{"type":"string","minLength":1,"maxLength":4096},"color":{"type":"string","maxLength":64}}}}}}}}}`,
 		// no `options` here on purpose: declaring them needs
@@ -130,8 +131,8 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 	"property": {
 		endpoint: "POST /v2/spaces/{space_id}/properties",
 		schema: `{"type":"object","additionalProperties":false,"required":["name","format"],"properties":{` +
-			`"key":{"type":"string","maxLength":256,"pattern":"^[a-zA-Z0-9_]+$"},` +
-			`"name":{"type":"string","maxLength":4096},` +
+			`"key":{"type":"string","maxLength":256,"pattern":"^[a-zA-Z0-9_]+$","description":"the key the property is addressed by; derived from the name when omitted. Required to create another property under a display name the space already has"},` +
+			`"name":{"type":"string","maxLength":4096,"description":"display name. Names are not identities: without an explicit key, a name a visible property already carries is refused. Supply a different available key to create another property with that name; the response carries a warning"},` +
 			`"format":{"type":"string","enum":[` + v2PropertyFormatEnum + `]},` +
 			`"options":{"type":"array","maxItems":100,"items":{"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
 			`"name":{"type":"string","maxLength":4096},"color":{"type":"string","maxLength":64}}}}}}`,
@@ -148,7 +149,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays simple to decode — see kind filters"},` +
 			`"sorts":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
 			`"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc"]},"empty_placement":{"type":"string","enum":["start","end"]}}}},` +
-			`"views":{"type":"array","maxItems":10,"description":"full view objects; mutually exclusive with top-level filter/sorts"}}}`,
+			`"views":{"type":"array","maxItems":10,"description":"the query's views, each whole: the fields the insert_view op's set takes (except filter — write a view's filters as nodes here), plus its columns. Mutually exclusive with top-level filter/sorts, which build one view named All","items":{"type":"object","required":["name"],"properties":{` + v2ViewCreateFieldsDef() + `,` + v2ViewColumnsListDef + `}}}}}`,
 		example: `{"name":"Open tasks","type":"task","filter":"done = false","sorts":[{"property":"due_date","direction":"asc"}]}`,
 	},
 	"collection": {
@@ -178,7 +179,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 	},
 	"space": {
 		endpoint: "POST /v2/spaces (PATCH /v2/spaces/{space_id} takes the same fields, both optional — at least one)",
-		schema: `{"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
+		schema: `{"type":"object","additionalProperties":false,"required":["name"],"description":"a space's name and description are the two writable members; its icon and its default object type are not writable through this API","properties":{` +
 			`"name":{"type":"string","minLength":1,"maxLength":4096},` +
 			`"description":{"type":"string","maxLength":4096}}}`,
 		example: `{"name":"Research","description":"Scratch space for the Q3 analysis"}`,
@@ -230,11 +231,11 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`{"type":"object","additionalProperties":false,"required":["property","condition"],"properties":{` +
 			`"property":{"type":"string","maxLength":256},` +
 			`"condition":{"type":"string","enum":["equal","not_equal","greater","less","greater_or_equal","less_or_equal","contains","not_contains","in","not_in","empty","not_empty","all_in","not_all_in","exact_in","not_exact_in","exists"]},` +
-			`"value":{"description":"leaf value — select/multi_select: option NAMES; date: unix SECONDS (RFC 3339 strings belong to the compact filter string, which converts them)"},` +
+			`"value":{"description":"leaf value — select/multi_select: option NAMES; date: unix SECONDS, or an RFC 3339 or YYYY-MM-DD string where the filter is STORED (a query's views, update_view), converted on write; search takes the string only in the compact filter string"},` +
 			`"date_preset":{"type":"string","enum":["yesterday","today","tomorrow","last_week","current_week","next_week","last_month","current_month","next_month","number_of_days_ago","number_of_days_now","last_year","current_year","next_year"]},` +
 			`"include_time":{"type":"boolean"}}}]}},` +
 			`"type":"array","maxItems":50,"items":{"$ref":"#/$defs/filterNode"},` +
-			`"description":"Recursive: top-level nodes combine with an implicit AND; select values are option names; date values are unix seconds"}`,
+			`"description":"Recursive: top-level nodes combine with an implicit AND; select values are option names; date values are unix seconds (a stored filter also takes a date string and converts it)"}`,
 		example: `[{"property":"done","condition":"equal","value":false},{"operator":"or","filters":[{"property":"due_date","condition":"less","date_preset":"current_week"},{"property":"due_date","condition":"empty"}]}]`,
 	},
 }
@@ -329,10 +330,41 @@ func strictDiscoverySchema(raw json.RawMessage) (json.RawMessage, error) {
 		flattenDiscoveryObjectBases(root)
 	}
 	strictDiscoveryNode(schema)
-	if root, ok := schema.(map[string]any); ok {
-		hoistAnyValue(root)
+	root, ok := schema.(map[string]any)
+	if !ok {
+		return json.Marshal(schema)
 	}
-	return json.Marshal(schema)
+	hoistAnyValue(root)
+	return marshalDefsLast(root)
+}
+
+// marshalDefsLast serializes a schema with its $defs member LAST. Sorted
+// keys put "$defs" first, so an op schema opened with a two-kilobyte
+// any-value definition before the one sentence that says what the op does
+// (round-two eval F8) — the whole signal budget of a small consumer spent on
+// a union it never reads. Member order carries no meaning in JSON Schema.
+func marshalDefsLast(root map[string]any) ([]byte, error) {
+	defs, ok := root["$defs"]
+	if !ok {
+		return json.Marshal(root)
+	}
+	delete(root, "$defs")
+	defer func() { root["$defs"] = defs }()
+	body, err := json.Marshal(root)
+	if err != nil {
+		return nil, err
+	}
+	tail, err := json.Marshal(defs)
+	if err != nil {
+		return nil, err
+	}
+	if len(root) == 0 {
+		return append(append([]byte(`{"$defs":`), tail...), '}'), nil
+	}
+	out := append([]byte{}, body[:len(body)-1]...)
+	out = append(out, `,"$defs":`...)
+	out = append(out, tail...)
+	return append(out, '}'), nil
 }
 
 // flattenDiscoveryObjectBases inlines the deliberately-open object bases

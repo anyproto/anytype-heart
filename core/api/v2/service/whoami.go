@@ -26,7 +26,7 @@ import (
 // mirror starts lying to the agents that plan against it. The anti-drift
 // test in core/api/server pins that this answer and the gate's decisions
 // cannot disagree for the same key.
-func (s *Service) Whoami(ctx context.Context) (v2model.WhoamiResponse, error) {
+func (s *Service) Whoami(ctx context.Context, enumerateSpaces bool) (v2model.WhoamiResponse, error) {
 	info, ok := util.ApiKeyInfoFromCtx(ctx)
 	if !ok {
 		// unreachable behind the shared auth middleware; fail closed rather
@@ -62,19 +62,26 @@ func (s *Service) Whoami(ctx context.Context) (v2model.WhoamiResponse, error) {
 
 	perms := grant.Perms
 	resp.Grant.Scoped = true
+	resp.Grant.Restricted = !grant.AllSpaces
 	resp.Grant.AllSpaces = grant.AllSpaces
 	resp.Grant.Permission = &perms
 
 	if grant.AllSpaces {
-		// An all-spaces grant holds no space list, so spaces[] is the
-		// informational enumeration of the CURRENT live spaces — the same
-		// grant-intersected path GET /v2/spaces serves (liveSpaceRows, which
-		// under allSpaces is every live user space and never the tech
-		// space). allSpaces stays the boundary field: the enumeration lets
-		// an agent map "put this in Work" to an id, nothing more.
+		// An all-spaces grant holds no space list. allSpaces is the boundary
+		// field; the CURRENT live spaces — the same grant-intersected path
+		// GET /v2/spaces serves (liveSpaceRows, which under allSpaces is
+		// every live user space and never the tech space) — are counted,
+		// and enumerated only on request (round-four eval R4-5: "what may
+		// I do" is not "what exists", and a permissions check must not be
+		// the cheapest way to enumerate the account).
 		rows, err := s.liveSpaceRows(ctx)
 		if err != nil {
 			return v2model.WhoamiResponse{}, fmt.Errorf("enumerate spaces for the all-spaces grant echo: %w", err)
+		}
+		count := len(rows)
+		resp.Grant.SpaceCount = &count
+		if !enumerateSpaces {
+			return resp, nil
 		}
 		ids := make([]string, len(rows))
 		for i, row := range rows {

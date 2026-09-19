@@ -396,8 +396,9 @@ func (st *spaceState) installGroups(g *groupsSub) error {
 		g.members[id] = rec.Details.Get(g.relationKey)
 	}
 
-	// seed the known option ids: hard deletes tombstone options down to
-	// {id, isDeleted}, so checkItem can only recognize them by this set
+	// seed the known option ids: an option an older build deleted is a
+	// tombstone of {id, isDeleted}, which checkItem can only recognize by
+	// this set
 	optionFilters := &database.Filters{FilterObj: database.FiltersAnd{
 		database.FilterEq{
 			Key:   bundle.RelationKeyResolvedLayout,

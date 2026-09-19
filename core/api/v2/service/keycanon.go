@@ -21,8 +21,13 @@ import (
 // keyCanon is the per-request canonicalizer.
 type keyCanon struct {
 	s       *Service
+	spaceId string
 	entries []propertyEntry
 	aliases map[string]domain.RelationKey // chain-aware active file aliases
+	// removed is the space's removed properties, loaded on the first input
+	// no live entry answers to (one bounded query, and only on that path)
+	removed       []propertyEntry
+	removedLoaded bool
 }
 
 func (s *Service) newKeyCanon(spaceId string) (*keyCanon, error) {
@@ -30,7 +35,7 @@ func (s *Service) newKeyCanon(spaceId string) (*keyCanon, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &keyCanon{s: s, entries: entries, aliases: s.activeFieldAliasesIn(entries)}, nil
+	return &keyCanon{s: s, spaceId: spaceId, entries: entries, aliases: s.activeFieldAliasesIn(entries)}, nil
 }
 
 // canon translates one concrete input to its stored spelling: an active
@@ -42,6 +47,14 @@ func (k *keyCanon) canon(input string) (string, []string) {
 	if backing, ok := k.aliases[input]; ok {
 		return string(backing), nil
 	}
+	// an exact removed slug outranks a live display name (the served
+	// spelling is the caller's intent), never an exact live key or slug
+	if stored, found := k.removedStoredKey(input); found {
+		keyTaken, slugHolders := servedPropertyKeySets(k.entries)
+		if !keyTaken[input] && len(slugHolders[input]) == 0 {
+			return stored, nil
+		}
+	}
 	entry, ok, ambiguous := k.s.resolvePropertyInput(input, k.entries)
 	if len(ambiguous) > 0 {
 		return input, ambiguous
@@ -50,6 +63,31 @@ func (k *keyCanon) canon(input string) (string, []string) {
 		return entry.Key, nil
 	}
 	return input, nil
+}
+
+// removedStoredKey resolves a removed property's served slug to its stored
+// key (apikeyvocab.go serves it), so an edit of a value already on a
+// document lands where it lives and an off-document write is refused as
+// removed rather than as unknown; the removed set is loaded on first use.
+// A tombstone an older build left is blind here (indexed by nothing a slug
+// can find, and served under its stored key): an in-document edit still
+// lands, because canon passes an unresolved key through, but an
+// off-document write to it is refused as unknown until the next load
+// rebuilds the row.
+func (k *keyCanon) removedStoredKey(input string) (string, bool) {
+	if k.spaceId == "" {
+		return "", false
+	}
+	if !k.removedLoaded {
+		k.removedLoaded = true
+		k.removed, _ = k.s.removedProperties(k.spaceId)
+	}
+	for _, e := range k.removed {
+		if e.Slug != "" && e.Slug == input && e.Key != input {
+			return e.Key, true
+		}
+	}
+	return "", false
 }
 
 // withServedSpellings widens a stored-key reference set with every

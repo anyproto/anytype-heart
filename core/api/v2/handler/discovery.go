@@ -17,8 +17,10 @@ import (
 //	@Id				list_spaces
 //	@Tags			Spaces
 //	@Produce		json
-//	@Param			ids	query		string						false	"compact (default) is the short space reference; full is the whole <cid>.<replicationKey> id, and the spelling to store outside this API"
-//	@Success		200	{object}	v2model.ListSpacesResponse	"Granted space rows and whether other live spaces require access"
+//	@Param			ids		query		string						false	"compact (default) is the short space reference; full is the whole <cid>.<replicationKey> id, and the spelling to store outside this API"
+//	@Param			offset	query		int							false	"Items to skip"		default(0)
+//	@Param			limit	query		int							false	"Items to return"	default(25)
+//	@Success		200		{object}	v2model.ListSpacesResponse	"Granted space rows and whether other live spaces require access"
 //	@Security		bearerauth
 //	@Router			/v2/spaces [get]
 func ListSpacesHandler(s *v2service.Service) gin.HandlerFunc {
@@ -44,6 +46,8 @@ func ListSpacesHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags		Members
 //	@Produce	json
 //	@Param		space_id	path		string									true	"Space id"
+//	@Param		offset		query		int										false	"Items to skip"		default(0)
+//	@Param		limit		query		int										false	"Items to return"	default(25)
 //	@Success	200			{object}	v2model.ListResponse[v2model.MemberRow]	"Minimal member rows"
 //	@Failure	404			{object}	v2model.Error							"Space not found or unavailable"
 //	@Security	bearerauth
@@ -92,6 +96,8 @@ func GetMemberMeHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags		Types
 //	@Produce	json
 //	@Param		space_id	path		string									true	"Space id"
+//	@Param		offset		query		int										false	"Items to skip"		default(0)
+//	@Param		limit		query		int										false	"Items to return"	default(25)
 //	@Success	200			{object}	v2model.ListResponse[v2model.TypeRow]	"Type rows"
 //	@Failure	404			{object}	v2model.Error							"Space not found or unavailable"
 //	@Security	bearerauth
@@ -143,6 +149,8 @@ func GetTypeHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags		Properties
 //	@Produce	json
 //	@Param		space_id	path		string										true	"Space id"
+//	@Param		offset		query		int											false	"Items to skip"		default(0)
+//	@Param		limit		query		int											false	"Items to return"	default(25)
 //	@Success	200			{object}	v2model.ListResponse[v2model.PropertyRow]	"Property rows"
 //	@Failure	404			{object}	v2model.Error								"Space not found or unavailable"
 //	@Security	bearerauth
@@ -170,6 +178,8 @@ func ListPropertiesHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Param		space_id	path		string									true	"Space id"
 //	@Param		key			path		string									true	"Property key"
 //	@Param		prefix		query		string									false	"Case-insensitive name prefix filter"
+//	@Param		offset		query		int										false	"Items to skip"		default(0)
+//	@Param		limit		query		int										false	"Items to return"	default(25)
 //	@Success	200			{object}	v2model.ListResponse[v2model.OptionRow]	"Option rows"
 //	@Failure	404			{object}	v2model.Error							"Property not found"
 //	@Security	bearerauth
