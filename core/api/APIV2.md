@@ -370,7 +370,9 @@ illustration):
   reserved post-v1). Parse → the §6.2 structured tree; offset-addressed
   parse errors naming the offending token and position, with did-you-mean.
   The string uses RFC 3339 dates / preset functions; the structured form
-  uses unix numbers — the §6.2.1 mapping applies. The `POST /queries`
+  uses unix numbers — the §6.2.1 mapping applies — except where the filter
+  is STORED (a query's views, `update_view`), which also takes an RFC 3339
+  or YYYY-MM-DD string and stores the seconds (R6-1). The `POST /queries`
   wiring (replacing the §8.1 501), through the same R9 referential layer,
   shipped with it.
 - **Validation & resolution rules** (previously a one-line "design deltas"
@@ -1481,7 +1483,8 @@ recursive structured `filters` array (an array without `items` breaks
 every constrained decoder — the C13 exception would otherwise have
 swallowed the whole kind); their `filter` string description points at
 kind `filters` for the escape hatch, which the endpoints still accept.
-The `filters` kind documents that date values are unix seconds. The EBNF
+The `filters` kind documents that date values are unix seconds, and that a
+stored filter also takes a date string and converts it. The EBNF
 defines `identifier`/`number` and states keyword case-insensitivity
 in-grammar; a test pins every parser-accepted token to the served text.
 

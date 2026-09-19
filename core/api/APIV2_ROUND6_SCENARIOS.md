@@ -79,15 +79,49 @@ served document, so it exists only for MCP callers.
 *(Correction: my own brief for this scenario claimed `create-object` declares
 `request_key`. It does not — the auditor caught the error.)*
 
-## R6-4 — there is no cross-space object reference of any kind **[audit 2/2]**
+## R6-4 — cross-space links work and the docs say they do not **[repro]**
 
-S9 task 6 asks to link an observation in one space to an experiment in another.
-Both actors found the same wall by three independent routes each and were
-refused every time. Objects cannot reference objects across spaces.
+**Corrected 2026-09-19. The original finding — "no cross-space object reference
+of any kind" — was wrong**, and the evidence was sitting in one of the actors'
+own objects. What is true is more interesting.
 
-That may be a deliberate boundary — but nothing says so. Both actors spent
-calls discovering it by failure. If it is permanent, an error naming it as a
-boundary would end the search in one call.
+A cross-space deep link **works**. Lab B's *Nitrogen Fixation Rate Trial* holds:
+
+```
+Related field observations (Field Notes B): [Soil Nitrogen Levels — East Field]
+(anytype://object?objectId=bafyreiaxzmto2f…&spaceId=bafyreiecu…tyc7ze.1nzm3nx8rq2hb)
+```
+
+The served documentation describes only half of it. From `schemas/object`,
+the sole mention of the scheme anywhere on the surface:
+
+> `` `[text](anytype://object?objectId=<id>)` links to an object in this space ``
+
+**`spaceId` is documented nowhere** — 0 occurrences across 8 schema kinds and 6
+op schemas — and the sentence explicitly scopes the link to *this space*. A
+caller who reads the documentation carefully concludes cross-space linking is
+impossible. That is precisely what the other actor concluded after being
+refused by three typed-relation routes, and it is what the audit reported.
+
+Actor B extrapolated `&spaceId=` past the documentation and was right.
+
+So the defect is not a missing capability, it is **documentation that denies a
+capability the product has**. Three things to fix:
+
+1. Document `spaceId`, and drop "in this space".
+2. Say which space-id spelling it takes. The actor used the **full**
+   `<cid>.<replicationKey>` form; the API serves the compact form (`tyc7ze`)
+   nearly everywhere else, and whether compact is accepted here is untested.
+3. Note what a typed relation cannot do, since three relation-shaped routes
+   refuse cross-space targets while the deep link allows them. A caller needs
+   to know the link is the mechanism.
+
+**Methodology note.** Neither the actor nor the auditor was at fault; the
+auditor reported what the transcript's failures showed, and nothing in the
+run contradicted it except one object's stored text. I relayed it without
+checking the stored state. The lesson for future rounds: **when an audit
+reports a capability absent, read the end state, not only the calls** — a
+success that happened by an unexpected route leaves no failing call behind.
 
 ## R6-5 — a type's dataview views have no read path for their rows **[audit]**
 
@@ -195,8 +229,8 @@ collection's. R5-8 (sort `direction` not echoed) also reproduced here.
 4. **R6-5** — a read path for a type dataview's rows, or a warning when a view
    is created somewhere it cannot be read.
 5. **R6-7** — the hex-for-slug leak in filter errors.
-6. **R6-4, R6-10** — say no by name: cross-space references, and which type key
-   a create is about to use.
+6. **R6-4** — document `spaceId` on `anytype://object`, and stop saying the
+   link is same-space only. **R6-10** — say which type key a create will use.
 7. **R6-8** — dry runs should return the `diff_stats` they would produce.
 8. **R6-6, R6-9, R6-11, R6-12** — as scoped above.
 
@@ -210,3 +244,21 @@ open, each needing a task written for it:
 - the bundled-type half of `delete_object`'s receipt spelling (R4-2);
 - naming a removed type's slug in a create or filter after `delete_type` (R4-1
   sub-claim C).
+
+# Status
+
+**R6-1 — done.** A stored filter takes a date the way the compact string
+does: on `POST /queries` (a view's filters and the top-level filters) and on
+`update_view`, a string value on a date property that is RFC 3339 or
+`YYYY-MM-DD` is converted to unix seconds before the filter is stored
+(`convertDateFilterValues`), and a string that is no date is refused,
+path-addressed, naming the property as the caller sent it. The conversion
+runs before key canonicalization on both routes, so the refusal never spells
+a stored key. Search's structured form is unchanged: it still refuses the
+string with the conversion spelled out. Later iteration: teach search the
+same conversion; if a bare string proves ambiguous there (a text property
+whose value happens to look like a date), an explicit form in the compact
+string, on the pattern of SQL's `DATE(2026-01-26)`, would make the intent
+unmistakable. The `filters` schema kind and APIV2.md say where a date
+string is accepted.
+

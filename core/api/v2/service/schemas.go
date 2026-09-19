@@ -231,11 +231,11 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`{"type":"object","additionalProperties":false,"required":["property","condition"],"properties":{` +
 			`"property":{"type":"string","maxLength":256},` +
 			`"condition":{"type":"string","enum":["equal","not_equal","greater","less","greater_or_equal","less_or_equal","contains","not_contains","in","not_in","empty","not_empty","all_in","not_all_in","exact_in","not_exact_in","exists"]},` +
-			`"value":{"description":"leaf value — select/multi_select: option NAMES; date: unix SECONDS (RFC 3339 strings belong to the compact filter string, which converts them)"},` +
+			`"value":{"description":"leaf value — select/multi_select: option NAMES; date: unix SECONDS, or an RFC 3339 or YYYY-MM-DD string where the filter is STORED (a query's views, update_view), converted on write; search takes the string only in the compact filter string"},` +
 			`"date_preset":{"type":"string","enum":["yesterday","today","tomorrow","last_week","current_week","next_week","last_month","current_month","next_month","number_of_days_ago","number_of_days_now","last_year","current_year","next_year"]},` +
 			`"include_time":{"type":"boolean"}}}]}},` +
 			`"type":"array","maxItems":50,"items":{"$ref":"#/$defs/filterNode"},` +
-			`"description":"Recursive: top-level nodes combine with an implicit AND; select values are option names; date values are unix seconds"}`,
+			`"description":"Recursive: top-level nodes combine with an implicit AND; select values are option names; date values are unix seconds (a stored filter also takes a date string and converts it)"}`,
 		example: `[{"property":"done","condition":"equal","value":false},{"operator":"or","filters":[{"property":"due_date","condition":"less","date_preset":"current_week"},{"property":"due_date","condition":"empty"}]}]`,
 	},
 }

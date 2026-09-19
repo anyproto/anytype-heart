@@ -388,3 +388,64 @@ func TestV2CreateCollection(t *testing.T) {
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 	})
 }
+
+// TestV2CreateQueryDateFiltersTakeDateStrings is the queries-route half of
+// R6-1: a date string in a view's filters, or in the top-level filters, is
+// stored as unix seconds — never verbatim, where the view would match
+// nothing.
+func TestV2CreateQueryDateFiltersTakeDateStrings(t *testing.T) {
+	setup := func(t *testing.T) *v2Fixture {
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.addTaskType(t)
+		return fx
+	}
+
+	t.Run("a view's date filter string is stored as unix seconds", func(t *testing.T) {
+		fx := setup(t)
+		captured := fx.expectCreate("newSet")
+		fx.expectEtagRead("newSet")
+
+		_, err := fx.CreateQuery(context.Background(), testSpaceId, v2model.CreateQueryRequest{
+			Name: "This quarter", Type: "chore",
+			Views: json.RawMessage(`[{"name":"Q3","filters":[{"property":"lastModifiedDate","condition":"greater_or_equal","value":"2026-07-01"}]}]`),
+		}, false, true)
+
+		require.NoError(t, err)
+		dv := (*captured).Blocks[1].GetDataview()
+		require.Len(t, dv.Views, 1)
+		require.Len(t, dv.Views[0].Filters, 1)
+		assert.Equal(t, "lastModifiedDate", dv.Views[0].Filters[0].RelationKey)
+		assert.Equal(t, float64(1782864000), dv.Views[0].Filters[0].Value.GetNumberValue())
+	})
+
+	t.Run("a top-level date filter string is stored as unix seconds", func(t *testing.T) {
+		fx := setup(t)
+		captured := fx.expectCreate("newSet")
+		fx.expectEtagRead("newSet")
+
+		_, err := fx.CreateQuery(context.Background(), testSpaceId, v2model.CreateQueryRequest{
+			Name: "Recent", Type: "chore",
+			Filters: json.RawMessage(`[{"property":"lastModifiedDate","condition":"greater","value":"2026-07-01T00:00:00Z"}]`),
+		}, false, true)
+
+		require.NoError(t, err)
+		dv := (*captured).Blocks[1].GetDataview()
+		require.Len(t, dv.Views[0].Filters, 1)
+		assert.Equal(t, float64(1782864000), dv.Views[0].Filters[0].Value.GetNumberValue())
+	})
+
+	t.Run("a string that is no date is refused under the view it came in", func(t *testing.T) {
+		fx := setup(t)
+
+		_, err := fx.CreateQuery(context.Background(), testSpaceId, v2model.CreateQueryRequest{
+			Name: "X", Type: "chore",
+			Views: json.RawMessage(`[{"name":"V","filters":[{"property":"lastModifiedDate","condition":"greater","value":"soon"}]}]`),
+		}, false, true)
+
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/views/0/filters/0/value", apiErr.Issues[0].Path)
+		assert.Equal(t, `property "lastModifiedDate" is a date, and "soon" is not one`, apiErr.Issues[0].Message)
+	})
+}

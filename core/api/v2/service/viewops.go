@@ -402,6 +402,28 @@ func (a *v2StateApplier) canonicalViewKey(input string) (string, []string) {
 	return servedKey(entry.Key, entry.Slug, keyTaken, slugHolders), nil
 }
 
+// viewFormatName resolves a property's format name by any spelling a view
+// slot may carry — the stored key, or the served spelling
+// canonicalizeDecodedKeySlots just wrote there — through the same entries
+// that canonicalization used.
+func (a *v2StateApplier) viewFormatName() func(string) (string, bool) {
+	base := a.s.formatNameResolver(a.spaceId)
+	return func(key string) (string, bool) {
+		if format, ok := base(key); ok {
+			return format, true
+		}
+		entries, err := a.propEntries()
+		if err != nil {
+			return "", false
+		}
+		entry, ok, ambiguous := a.s.resolvePropertyInput(key, entries)
+		if !ok || len(ambiguous) > 0 || entry.Key == "" {
+			return "", false
+		}
+		return base(entry.Key)
+	}
+}
+
 // canonicalizeDecodedKeySlots rewrites every `property` slot in a decoded
 // sorts/filters/columns array to the document spelling, recursively through
 // filter groups. Ambiguous terms are left alone and reported.
@@ -584,6 +606,10 @@ func (a *v2StateApplier) applyViewFilters(raw json.RawMessage, view map[string]a
 	if err := json.Unmarshal(raw, &decoded); err != nil {
 		return fmt.Errorf("re-decode filters: %w", err)
 	}
+	// a date leaf stores unix seconds whatever spelling the caller sent
+	// (R6-1: a string survived to the store and the view matched nothing);
+	// before canonicalization, so a refusal names the property as sent
+	*issues = append(*issues, convertDateFilterValues(decoded, path, opFilterPath, a.viewFormatName())...)
 	a.canonicalizeDecodedKeySlots(decoded, path, issues)
 	collectDecodedKeys(decoded, path, keyUses)
 	// §11 canonical form: empty/notEmpty/exists leaves carry no value —

@@ -133,6 +133,16 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 		req.Filter = ""
 		req.Filters = parsed
 	}
+	// a date leaf stores unix seconds whatever spelling the caller sent
+	// (R6-1: a string survived to the store and the view matched nothing);
+	// before canonicalization, so a refusal names the property as sent
+	formatName := canonFormatName(s.formatNameResolver(spaceId), kc)
+	if req.Filters, err = convertRawDateFilters(req.Filters, "/filters", formatName); err != nil {
+		return nil, err
+	}
+	if req.Views, err = convertRawViewDateFilters(req.Views, formatName); err != nil {
+		return nil, err
+	}
 	if req.Filters, err = kc.canonicalizeRawChannel(req.Filters, "filters", "/filters"); err != nil {
 		return nil, err
 	}
@@ -606,4 +616,52 @@ func storeFormatResolver(s *Service, spaceId string) anyblockjson.FormatResolver
 		}
 		return reads.ResolveFormat(key)
 	}
+}
+
+// convertRawDateFilters is convertDateFilterValues over a raw filters array;
+// an empty array passes through untouched.
+func convertRawDateFilters(raw json.RawMessage, base string, formatName func(string) (string, bool)) (json.RawMessage, error) {
+	if rawArrayLen(raw) == 0 {
+		return raw, nil
+	}
+	var nodes []any
+	if err := json.Unmarshal(raw, &nodes); err != nil {
+		return raw, nil // the shape gate reports it
+	}
+	if issues := convertDateFilterValues(nodes, base, pointerFilterPath, formatName); len(issues) > 0 {
+		return nil, v2model.ValidationFailed("invalid filters", issues...)
+	}
+	out, err := json.Marshal(nodes)
+	if err != nil {
+		return nil, fmt.Errorf("encode filters: %w", err)
+	}
+	return out, nil
+}
+
+// convertRawViewDateFilters runs convertRawDateFilters over each view's
+// filters, path-addressed under /views.
+func convertRawViewDateFilters(raw json.RawMessage, formatName func(string) (string, bool)) (json.RawMessage, error) {
+	if len(raw) == 0 {
+		return raw, nil
+	}
+	var views []map[string]any
+	if err := json.Unmarshal(raw, &views); err != nil {
+		return raw, nil // the codec reports the shape
+	}
+	var issues []v2model.Issue
+	for i, view := range views {
+		nodes, ok := view["filters"].([]any)
+		if !ok || len(nodes) == 0 {
+			continue
+		}
+		issues = append(issues, convertDateFilterValues(nodes, fmt.Sprintf("/views/%d/filters", i), pointerFilterPath, formatName)...)
+	}
+	if len(issues) > 0 {
+		return nil, v2model.ValidationFailed("invalid filters", issues...)
+	}
+	out, err := json.Marshal(views)
+	if err != nil {
+		return nil, fmt.Errorf("encode views: %w", err)
+	}
+	return out, nil
 }

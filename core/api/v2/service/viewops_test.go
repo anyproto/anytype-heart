@@ -1486,3 +1486,71 @@ func TestV2ViewAcceptsPropertyByServedKey(t *testing.T) {
 		}
 	})
 }
+
+// TestV2StoredDateFiltersTakeDateStrings: a view PERSISTS its filter, so a
+// date left as a string is not a bad query but a view that compares
+// string-against-int64 and quietly matches nothing (round-six eval R6-1).
+// update_view converts a date string to unix seconds on write and refuses a
+// string that is no date — the same value search refuses with the
+// conversion spelled out.
+func TestV2StoredDateFiltersTakeDateStrings(t *testing.T) {
+	ctx := context.Background()
+	// the set's own date property, dueDate, with the store row the format
+	// lookup reads
+	setup := func(t *testing.T) *v2Fixture {
+		fx := newV2Fixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("rel-due-date"),
+			bundle.RelationKeyRelationKey:    domain.String("dueDate"),
+			bundle.RelationKeyName:           domain.String("Due date"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_date)),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+		}})
+		return fx
+	}
+
+	t.Run("update_view stores a YYYY-MM-DD string as unix seconds", func(t *testing.T) {
+		fx := setup(t)
+		committed := fx.expectMutateState(editRead(t, editSetDoc), nil)
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"update_view","set":{"filters":[{"property":"dueDate","condition":"greater_or_equal","value":"2026-07-01"}]}}`), "", false, true)
+
+		require.NoError(t, err)
+		require.NotNil(t, *committed)
+		dv := (*committed).Pick(state.DataviewBlockID).Model().GetDataview()
+		require.Len(t, dv.Views, 1)
+		require.Len(t, dv.Views[0].Filters, 1)
+		assert.Equal(t, "dueDate", dv.Views[0].Filters[0].RelationKey)
+		assert.Equal(t, float64(1782864000), dv.Views[0].Filters[0].Value.GetNumberValue(), "2026-07-01T00:00:00Z")
+	})
+
+	t.Run("an RFC 3339 string inside an in-list converts too", func(t *testing.T) {
+		fx := setup(t)
+		committed := fx.expectMutateState(editRead(t, editSetDoc), nil)
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"update_view","set":{"filters":[{"property":"dueDate","condition":"in","value":["2026-07-01T00:00:00Z",1782950400]}]}}`), "", false, true)
+
+		require.NoError(t, err)
+		values := (*committed).Pick(state.DataviewBlockID).Model().GetDataview().Views[0].Filters[0].Value.GetListValue().GetValues()
+		require.Len(t, values, 2)
+		assert.Equal(t, float64(1782864000), values[0].GetNumberValue())
+		assert.Equal(t, float64(1782950400), values[1].GetNumberValue())
+	})
+
+	t.Run("a string that is no date is refused, path-addressed", func(t *testing.T) {
+		fx := setup(t)
+		fx.expectMutate(editRead(t, editSetDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"update_view","set":{"filters":[{"property":"dueDate","condition":"greater","value":"next tuesday"}]}}`), "", false, true)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "ops[0].set.filters[0].value", apiErr.Issues[0].Path)
+		assert.Equal(t, `property "dueDate" is a date, and "next tuesday" is not one`, apiErr.Issues[0].Message)
+		assert.Contains(t, apiErr.Issues[0].Hint, "YYYY-MM-DD")
+	})
+}
