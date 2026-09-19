@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/sync/syncdeps"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 	"github.com/anyproto/any-sync/net/peer"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -385,8 +386,10 @@ func TestAclObjectManagerUpdateAclUnderAclWriteLock(t *testing.T) {
 	fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
 	fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
 	// Both doubles read the ACL exactly the way their clientspace.(*space) counterparts do, so
-	// this test deadlocks if anything on the callback path starts asking the space about the ACL
-	// again. A double that answers without touching the lock is what let this bug through review.
+	// this test deadlocks if the manager itself starts asking the space about the ACL again. A
+	// double that answers without touching the lock is what let this bug through review. The
+	// watcher, status and notification components are mocked here, so their own paths are covered
+	// by their own packages' tests - this tripwire only guards what the manager calls directly.
 	readsAcl := func() bool {
 		acl.RLock()
 		defer acl.RUnlock()
@@ -401,15 +404,34 @@ func TestAclObjectManagerUpdateAclUnderAclWriteLock(t *testing.T) {
 	fx.mockStatus.EXPECT().SetMyParticipantStatus(mock.Anything).Return(nil).Maybe()
 	fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk).Maybe()
 	fx.mockParticipantWatcher.EXPECT().GetProcessedAclHeadId(mock.Anything, fx.mockSpace).Return("").Maybe()
-	fx.mockParticipantWatcher.EXPECT().SetProcessedAclHeadId(mock.Anything, fx.mockSpace, mock.Anything).Return(nil).Maybe()
-	fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).Return(nil).Maybe()
-	fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything, mock.Anything).Return(nil).Maybe()
+	fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
+	// the forwarded flag has to be the one the locked state reports, not a hardcoded false: a
+	// one-to-one member's state carries no RequestMetadata, so a wrong false would send it through
+	// getSymKey and its identity would never register
+	wantOneToOne := acl.AclState().IsOneToOne()
+	var watchCalls atomic.Int32
+	var wrongFlag atomic.Bool
+	fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, _ clientspace.Space, _ list.AccountState, isOneToOne bool) error {
+			if isOneToOne != wantOneToOne {
+				wrongFlag.Store(true)
+			}
+			watchCalls.Add(1)
+			return nil
+		})
 	fx.mockAclNotification.EXPECT().AddRecords(acl, mock.Anything, "spaceId", mock.Anything, mock.Anything).Maybe()
+
+	startupHead := acl.Head().Id
+	fx.mockParticipantWatcher.EXPECT().SetProcessedAclHeadId(mock.Anything, fx.mockSpace, startupHead).Return(nil).Once()
 	fx.run(t)
 	<-fx.aclObjectManager.wait
+	startupWatches := watchCalls.Load()
 
 	// new records arrive from a peer: the head moves, so the callback has real work to do
 	require.NoError(t, a.Execute("a.invite::invId2"))
+	newHead := acl.Head().Id
+	require.NotEqual(t, startupHead, newHead)
+	fx.mockParticipantWatcher.EXPECT().SetProcessedAclHeadId(mock.Anything, fx.mockSpace, newHead).Return(nil).Once()
 
 	done := make(chan struct{})
 	go func() {
@@ -424,4 +446,71 @@ func TestAclObjectManagerUpdateAclUnderAclWriteLock(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("UpdateAcl deadlocked: the callback path took the acl read lock while the write lock was held")
 	}
+
+	// not deadlocking is not enough: the callback has to have done the work. Without these, a
+	// callback that returned early would pass this test.
+	assert.False(t, wrongFlag.Load(), "WatchParticipant got an isOneToOne that disagrees with the acl state")
+	assert.Greater(t, watchCalls.Load(), startupWatches, "the callback processed no participants")
+	fx.aclObjectManager.mx.Lock()
+	defer fx.aclObjectManager.mx.Unlock()
+	assert.Equal(t, newHead, fx.aclObjectManager.lastIndexed)
+}
+
+// TestAclObjectManagerForwardsOneToOne pins the other half of the GO-7525 handoff: the flag the
+// callback passes down has to come from the locked ACL state. In a one-to-one space the derived
+// owner must be skipped, and the members must be announced with isOneToOne true - their account
+// states carry no RequestMetadata, so a hardcoded false would send them through getSymKey and
+// their identities would never register.
+func TestAclObjectManagerForwardsOneToOne(t *testing.T) {
+	a := list.NewAclExecutor("spaceId")
+	require.NoError(t, a.Execute("a;b.init-onetoone::a;b"))
+	acl := &syncAclStub{AclList: a.ActualAccounts()["a"].Acl}
+	require.True(t, acl.AclState().IsOneToOne(), "fixture must be a one-to-one acl")
+
+	fx := newFixture(t)
+	defer fx.finish(t)
+	fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
+	fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
+	fx.mockSpace.EXPECT().Id().Return("spaceId")
+	fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
+	fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
+	// the manager must not consult the space: it is under the acl lock
+	fx.mockSpace.EXPECT().IsOneToOne().RunAndReturn(func() bool {
+		acl.RLock()
+		defer acl.RUnlock()
+		return acl.AclState().IsOneToOne()
+	}).Maybe()
+	fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("").Maybe()
+	fx.mockStatus.EXPECT().SetOwner(mock.Anything, mock.Anything).Return(nil).Maybe()
+	fx.mockStatus.EXPECT().SetAclInfo(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Maybe()
+	fx.mockStatus.EXPECT().SetMyParticipantStatus(mock.Anything).Return(nil).Maybe()
+	fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk).Maybe()
+	fx.mockParticipantWatcher.EXPECT().GetProcessedAclHeadId(mock.Anything, fx.mockSpace).Return("").Maybe()
+	fx.mockParticipantWatcher.EXPECT().SetProcessedAclHeadId(mock.Anything, fx.mockSpace, mock.Anything).Return(nil).Maybe()
+
+	var sawOwner atomic.Bool
+	fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).
+		RunAndReturn(func(_ context.Context, _ clientspace.Space, state list.AccountState) error {
+			if state.Permissions.IsOwner() {
+				sawOwner.Store(true)
+			}
+			return nil
+		})
+	var watched atomic.Int32
+	var wrongFlag atomic.Bool
+	fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything, mock.Anything).
+		RunAndReturn(func(_ context.Context, _ clientspace.Space, _ list.AccountState, isOneToOne bool) error {
+			if !isOneToOne {
+				wrongFlag.Store(true)
+			}
+			watched.Add(1)
+			return nil
+		})
+	fx.mockAclNotification.EXPECT().AddRecords(acl, mock.Anything, "spaceId", mock.Anything, mock.Anything).Maybe()
+	fx.run(t)
+	<-fx.aclObjectManager.wait
+
+	assert.Positive(t, watched.Load(), "no participant was announced")
+	assert.False(t, wrongFlag.Load(), "one-to-one members were announced with isOneToOne false")
+	assert.False(t, sawOwner.Load(), "the derived one-to-one owner must not become a participant")
 }

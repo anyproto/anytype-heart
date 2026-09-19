@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies/mock_dependencies"
 	"github.com/anyproto/anytype-heart/space/techspace/mock_techspace"
@@ -47,7 +48,9 @@ func newWatcherFixture(t *testing.T) *watcherFixture {
 
 	space := mock_clientspace.NewMockSpace(t)
 	space.EXPECT().Id().Return(testSpaceId).Maybe()
-	space.EXPECT().GetTypeIdByKey(mock.Anything, bundle.TypeKeyParticipant).Return("participantTypeId", nil).Maybe()
+	space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{
+		SystemTypes: map[domain.TypeKey]string{bundle.TypeKeyParticipant: "participantTypeId"},
+	}).Maybe()
 
 	techSpaceMock := mock_techspace.NewMockTechSpace(t)
 	identityService := mock_dependencies.NewMockIdentityService(t)
@@ -328,4 +331,50 @@ func TestWatchParticipantUnderAclWriteLock(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("WatchParticipant deadlocked: it read the acl while the write lock was held")
 	}
+}
+
+// TestUpdateParticipantFromAclStateUnderAclWriteLock covers the second half of GO-7525: participant
+// records are written from inside the UpdateAcl callback, and in the PERSONAL space deriving the
+// participant type id reaches any-sync's CreateObjectTreeRoot, which takes the ACL read lock -
+// DeriveTreePayload picks CreateTree, not DeriveTree, when personalSpaceId == space.Id(). Under the
+// write lock any-sync already holds, that deadlocks the space outright; under process()'s read lock
+// it deadlocks as soon as a writer queues between the two.
+func TestUpdateParticipantFromAclStateUnderAclWriteLock(t *testing.T) {
+	executor := list.NewAclExecutor(testSpaceId)
+	require.NoError(t, executor.Execute("a.init::a"))
+	acl := executor.ActualAccounts()["a"].Acl
+
+	fx := newWatcherFixture(t)
+	space := mock_clientspace.NewMockSpace(t)
+	space.EXPECT().Id().Return(testSpaceId).Maybe()
+	// mirrors the personal-space derivation, which reads the acl head under RLock
+	space.EXPECT().GetTypeIdByKey(mock.Anything, bundle.TypeKeyParticipant).
+		RunAndReturn(func(context.Context, domain.TypeKey) (string, error) {
+			acl.RLock()
+			defer acl.RUnlock()
+			return "participantTypeId", nil
+		}).Maybe()
+	space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{
+		SystemTypes: map[domain.TypeKey]string{bundle.TypeKeyParticipant: "participantTypeId"},
+	}).Maybe()
+
+	accState, identity := newAccState(t, aclrecordproto.AclUserPermissions_Writer, list.StatusActive)
+
+	done := make(chan error, 1)
+	go func() {
+		// exactly how any-sync enters the UpdateAcl callback this runs under
+		acl.Lock()
+		defer acl.Unlock()
+		done <- fx.UpdateParticipantFromAclState(context.Background(), space, accState)
+	}()
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("UpdateParticipantFromAclState deadlocked: it derived an id that reads the acl while the write lock was held")
+	}
+
+	got, err := fx.objectStore.SpaceIndex(testSpaceId).GetDetails(domain.NewParticipantId(testSpaceId, identity.Account()))
+	require.NoError(t, err)
+	assert.Equal(t, "participantTypeId", got.GetString(bundle.RelationKeyType))
 }
