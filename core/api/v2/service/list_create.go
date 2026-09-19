@@ -158,7 +158,7 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	// above cannot produce these shapes; the parser emits a condition on
 	// every leaf and never a childless group.)
 	if len(req.Filters) > 0 {
-		if _, err := decodeFilterNodes(req.Filters, "/filters"); err != nil {
+		if _, err := decodeFilterNodes(req.Filters, "/filters", kc.spelledAs); err != nil {
 			return nil, err
 		}
 	}

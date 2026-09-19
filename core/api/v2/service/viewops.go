@@ -586,7 +586,7 @@ func (a *v2StateApplier) applyViewSorts(raw json.RawMessage, view map[string]any
 // filters. The §6.2 unguarded-date-comparison finding rides the C11 warnings
 // channel, exactly as on document import.
 func (a *v2StateApplier) applyViewFilters(raw json.RawMessage, view map[string]any, path string, issues *[]v2model.Issue, keyUses *[]viewKeyUse) error {
-	nodes, err := decodeFilterNodes(raw, "")
+	nodes, err := decodeFilterNodes(raw, "", nil) // the applier canonicalizes after this
 	if err != nil {
 		appendCodecIssues(issues, err, path, "")
 		return nil

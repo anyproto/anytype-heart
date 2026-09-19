@@ -338,7 +338,7 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	if !fromString && len(filtersJSON) > 0 {
 		// the parser validated the string form with offsets; the structured
 		// form gets the same checks path-addressed (rules 1 + 3)
-		if err := s.validateStructuredFilters(spaceId, filtersJSON, allowed, refKeys, formatName, listHint, v); err != nil {
+		if err := s.validateStructuredFilters(spaceId, filtersJSON, allowed, refKeys, formatName, listHint, v, kc.spelledAs); err != nil {
 			return nil, err
 		}
 	}
@@ -697,7 +697,9 @@ func (n searchFilterNode) hasLeafFields() bool {
 // is most likely to emit these shapes. It runs on the query path AND on
 // POST /queries, where a malformed filter would otherwise be persisted into
 // the query's dataview and match everything for good.
-func validateFilterStructure(nodes []searchFilterNode, path string) []v2model.Issue {
+// spell is the caller's spelling of a canonicalized property key; nil on the
+// channels that validate before any canonicalization.
+func validateFilterStructure(nodes []searchFilterNode, path string, spell func(string) string) []v2model.Issue {
 	var issues []v2model.Issue
 	for i, node := range nodes {
 		nodePath := fmt.Sprintf("%s/%d", path, i)
@@ -716,14 +718,14 @@ func validateFilterStructure(nodes []searchFilterNode, path string) []v2model.Is
 				Hint:    "an empty group matches every object — remove it, or give it at least one leaf",
 			})
 		case node.isGroup():
-			issues = append(issues, validateFilterStructure(node.Filters, nodePath+"/filters")...)
+			issues = append(issues, validateFilterStructure(node.Filters, nodePath+"/filters", spell)...)
 		case node.Condition == "":
 			// the codec reports a missing property separately; a leaf that
 			// names one but no condition is the typo case
 			if node.Property != "" {
 				issues = append(issues, v2model.Issue{
 					Path:    nodePath + "/condition",
-					Message: fmt.Sprintf("filter on %q has no condition", node.Property),
+					Message: fmt.Sprintf("filter on %q has no condition", callerSpelling(spell, node.Property)),
 				}.Hintf("a leaf needs a condition (equal, not_equal, contains, in, empty, …); "+
 					"without one the filter is dropped and every object matches — the node shape is on %s", v2model.RefGetSchema("filters")))
 			}
@@ -734,13 +736,13 @@ func validateFilterStructure(nodes []searchFilterNode, path string) []v2model.Is
 
 // decodeFilterNodes decodes the §6.2 array and checks its shape. Both v2
 // entry points that accept the structured form go through here.
-func decodeFilterNodes(raw json.RawMessage, path string) ([]searchFilterNode, error) {
+func decodeFilterNodes(raw json.RawMessage, path string, spell func(string) string) ([]searchFilterNode, error) {
 	var nodes []searchFilterNode
 	if err := json.Unmarshal(raw, &nodes); err != nil {
 		return nil, v2model.ValidationFailed("invalid filters",
 			v2model.Issue{Path: path, Message: err.Error(), Hint: "filters is an array of filter nodes"})
 	}
-	if issues := validateFilterStructure(nodes, path); len(issues) > 0 {
+	if issues := validateFilterStructure(nodes, path, spell); len(issues) > 0 {
 		return nil, v2model.ValidationFailed("invalid filter structure", issues...)
 	}
 	return nodes, nil
@@ -750,8 +752,8 @@ func decodeFilterNodes(raw json.RawMessage, path string) ([]searchFilterNode, er
 // option names) to the structured filters array, path-addressed with
 // did-you-mean — the same checks the string form gets offset-addressed from
 // the parser.
-func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage, allowed map[string]bool, refKeys []string, formatName func(string) (string, bool), listHint v2model.Hint, v errKeys) error {
-	nodes, err := decodeFilterNodes(raw, "/filters")
+func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage, allowed map[string]bool, refKeys []string, formatName func(string) (string, bool), listHint v2model.Hint, v errKeys, spell func(string) string) error {
+	nodes, err := decodeFilterNodes(raw, "/filters", spell)
 	if err != nil {
 		return err
 	}
@@ -769,8 +771,9 @@ func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage,
 			if node.Property == "" {
 				continue // the codec reports the missing key
 			}
+			spelled := callerSpelling(spell, node.Property)
 			if !allowed[node.Property] {
-				issues = append(issues, unknownPropertyIssue(node.Property, nodePath+"/property", refKeys, listHint, v))
+				issues = append(issues, unknownPropertyIssue(spelled, nodePath+"/property", refKeys, listHint, v))
 				continue
 			}
 			format, formatKnown := formatName(node.Property)
@@ -784,12 +787,12 @@ func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage,
 				for _, value := range stringValues(node.Value) {
 					issue := v2model.Issue{
 						Path: nodePath + "/value",
-						Hint: fmt.Sprintf(`RFC 3339 dates belong to the compact filter string, e.g. "filter": "%s > \"%s\"" — or use a datePreset`, node.Property, value),
+						Hint: fmt.Sprintf(`RFC 3339 dates belong to the compact filter string, e.g. "filter": "%s > \"%s\"" — or use a datePreset`, spelled, value),
 					}
 					if sec, ok := filterstring.ParseDate(value); ok {
-						issue.Message = fmt.Sprintf("property %q is a date — the structured form takes unix seconds (%d), not %q", node.Property, sec, value)
+						issue.Message = fmt.Sprintf("property %q is a date — the structured form takes unix seconds (%d), not %q", spelled, sec, value)
 					} else {
-						issue.Message = fmt.Sprintf("property %q is a date — the structured form takes unix seconds, and %q is not a date", node.Property, value)
+						issue.Message = fmt.Sprintf("property %q is a date — the structured form takes unix seconds, and %q is not a date", spelled, value)
 					}
 					issues = append(issues, issue)
 				}
@@ -804,8 +807,8 @@ func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage,
 					if !containsString(names, value) {
 						issues = append(issues, v2model.Issue{
 							Path:    nodePath + "/value",
-							Message: fmt.Sprintf("property %q has no option named %q — a query never creates options", node.Property, value),
-						}.WithHint(didYouMean(value, names, v2model.Hintf("list them with %s", v2model.RefListPropertyOptions(spaceId, node.Property)))))
+							Message: fmt.Sprintf("property %q has no option named %q — a query never creates options", spelled, value),
+						}.WithHint(didYouMean(value, names, v2model.Hintf("list them with %s", v2model.RefListPropertyOptions(spaceId, spelled)))))
 					}
 				}
 			}
@@ -1193,4 +1196,13 @@ func servedBundledSpellings(keys []string, v errKeys) []string {
 		out = append(out, spelling)
 	}
 	return out
+}
+
+// callerSpelling is spell(key) with a nil-safe identity: a channel that
+// validates before canonicalization has no rewriting to undo.
+func callerSpelling(spell func(string) string, key string) string {
+	if spell == nil {
+		return key
+	}
+	return spell(key)
 }

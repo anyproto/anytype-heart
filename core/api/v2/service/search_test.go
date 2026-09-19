@@ -1313,3 +1313,95 @@ func TestV2FieldAliasShadowing(t *testing.T) {
 		assert.Empty(t, rowIds(rows))
 	})
 }
+
+// TestV2SearchRefusalsNameTheCallersSpelling is round-six R6-7: search
+// canonicalizes every filter's property to its STORED key before validating,
+// so a refusal quoted that key — for a space-minted property a 24-hex id the
+// caller never sent and cannot look up, in an otherwise excellent message.
+// Every refusal raised after canonicalization now quotes the caller's own
+// spelling, and the typed reference beside it addresses the property the same
+// way (the route resolves a slug, a stored key or a display name alike).
+func TestV2SearchRefusalsNameTheCallersSpelling(t *testing.T) {
+	const hexKey = "6aadcde161fab2f86565765c"
+
+	// a space-minted date property: stored key a bson id, served as its slug
+	setup := func(t *testing.T) *v2Fixture {
+		fx := searchSetup(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("rel-close-date"),
+			bundle.RelationKeyRelationKey:    domain.String(hexKey),
+			bundle.RelationKeyApiObjectKey:   domain.String("close_date"),
+			bundle.RelationKeyName:           domain.String("Close date"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_date)),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+		}})
+		return fx
+	}
+
+	t.Run("a date value refusal quotes the slug the caller sent", func(t *testing.T) {
+		fx := setup(t)
+		req := v2model.SearchRequest{
+			Filters: json.RawMessage(`[{"property":"close_date","condition":"less","value":"2026-08-01"}]`),
+		}
+
+		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
+
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Message, `property "close_date" is a date`)
+		assert.NotContains(t, apiErr.Issues[0].Message, hexKey, "never the stored key")
+		assert.NotContains(t, apiErr.Issues[0].Hint, hexKey, "and not in the worked example either")
+		assert.Contains(t, apiErr.Issues[0].Hint, `"close_date > `, "the example is one the caller can paste")
+	})
+
+	t.Run("a display name under ?keys=name comes back as the display name", func(t *testing.T) {
+		fx := setup(t)
+		req := v2model.SearchRequest{
+			Filters: json.RawMessage(`[{"property":"Close date","condition":"less","value":"2026-08-01"}]`),
+		}
+
+		_, _, _, _, err := fx.SearchObjects(CtxWithNameKeys(context.Background()), testSpaceId, req, 0, 25)
+
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Message, `property "Close date" is a date`)
+		assert.NotContains(t, apiErr.Issues[0].Message, hexKey)
+	})
+
+	t.Run("an option-name refusal quotes the slug too", func(t *testing.T) {
+		fx := searchSetup(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("rel-stage"),
+			bundle.RelationKeyRelationKey:    domain.String(hexKey),
+			bundle.RelationKeyApiObjectKey:   domain.String("stage"),
+			bundle.RelationKeyName:           domain.String("Stage"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+		}})
+		req := v2model.SearchRequest{
+			Filters: json.RawMessage(`[{"property":"stage","condition":"equal","value":"Nope"}]`),
+		}
+
+		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
+
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Message, `property "stage" has no option named "Nope"`)
+		assert.NotContains(t, apiErr.Issues[0].Message, hexKey)
+		assert.NotContains(t, apiErr.Issues[0].Hint, hexKey, "the options reference addresses it by the caller's spelling")
+	})
+
+	t.Run("a leaf with no condition names the slug as well", func(t *testing.T) {
+		fx := setup(t)
+		req := v2model.SearchRequest{
+			Filters: json.RawMessage(`[{"property":"close_date"}]`),
+		}
+
+		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
+
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Message, `filter on "close_date" has no condition`)
+		assert.NotContains(t, apiErr.Issues[0].Message, hexKey)
+	})
+}

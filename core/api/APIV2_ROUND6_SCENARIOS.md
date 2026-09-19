@@ -247,6 +247,21 @@ open, each needing a task written for it:
 
 # Status
 
+**R6-7 — done.** Search canonicalizes every filter leaf's property to its
+stored key before validating it, so a refusal quoted that key — for a
+space-minted property a 24-hex id the caller never sent and cannot look up,
+inside an otherwise exemplary message. `keyCanon` now records the caller's
+spelling at its one choke point (`canonOrErr`, which every filter, sort and
+view rewrite passes through) and `spelledAs` gives it back, so each refusal
+raised AFTER canonicalization quotes what the caller wrote: the date-value
+refusal and its worked example, the option-name refusal and its
+`list_property_options` reference, the unknown-key refusal, and the
+missing-condition refusal. A display name sent under `?keys=name` comes back
+as that display name. The reference stays usable because the property route
+resolves a stored key, a slug and a display name alike. The compact filter
+string was already correct: the parser reports offsets into the caller's own
+text.
+
 **R6-1 — done.** A stored filter takes a date the way the compact string
 does: on `POST /queries` (a view's filters and the top-level filters) and on
 `update_view` / `insert_view` (the structured channel and, since the review,
