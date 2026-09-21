@@ -196,6 +196,14 @@ type apiV2KindNarrowing struct {
 	drop []string
 	// require are root members the operation demands beyond formatVersion
 	require []string
+	// add are root members the OPERATION takes that the document format does
+	// not have: a create directive, lifted out of the body before the
+	// document is validated. Widening a narrowing sounds like a
+	// contradiction, and is not: the delta describes what the endpoint
+	// accepts, and a member the endpoint accepts but never stores belongs in
+	// the schema a caller writes against. It is also why an example must not
+	// use one — an example is checked against the format.
+	add map[string]string
 }
 
 // apiV2KindNarrowings is the whole delta, per kind. A kind absent here
@@ -207,6 +215,7 @@ var apiV2KindNarrowings = map[string]apiV2KindNarrowing{
 	"object": {
 		kinds: documentCreateKindNames(),
 		drop:  []string{"type_settings", "uninstalled"},
+		add:   map[string]string{"template": apiV2TemplateMember},
 	},
 	// POST templates: kind and type default to template, the target type
 	// is required (createFromDocument with requireTemplate); a template of
@@ -299,6 +308,13 @@ func narrowDocumentSchema(raw []byte, n apiV2KindNarrowing) ([]byte, error) {
 		props["kind"] = map[string]any{"const": n.kinds[0]}
 	default:
 		props["kind"] = map[string]any{"enum": n.kinds}
+	}
+	for member, schema := range n.add {
+		var node any
+		if err := json.Unmarshal([]byte(schema), &node); err != nil {
+			return nil, fmt.Errorf("decode added member %s: %w", member, err)
+		}
+		props[member] = node
 	}
 	if len(n.require) > 0 {
 		required, _ := root["required"].([]any)

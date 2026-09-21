@@ -24,9 +24,9 @@ func (_m *MockObjectCreator) EXPECT() *MockObjectCreator_Expecter {
 	return &MockObjectCreator_Expecter{mock: &_m.Mock}
 }
 
-// CreateObjectFromSnapshot provides a mock function with given fields: ctx, spaceId, snapshot
-func (_m *MockObjectCreator) CreateObjectFromSnapshot(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase) (string, error) {
-	ret := _m.Called(ctx, spaceId, snapshot)
+// CreateObjectFromSnapshot provides a mock function with given fields: ctx, spaceId, snapshot, templateId
+func (_m *MockObjectCreator) CreateObjectFromSnapshot(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase, templateId string) (string, error) {
+	ret := _m.Called(ctx, spaceId, snapshot, templateId)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateObjectFromSnapshot")
@@ -34,17 +34,17 @@ func (_m *MockObjectCreator) CreateObjectFromSnapshot(ctx context.Context, space
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, *model.SmartBlockSnapshotBase) (string, error)); ok {
-		return rf(ctx, spaceId, snapshot)
+	if rf, ok := ret.Get(0).(func(context.Context, string, *model.SmartBlockSnapshotBase, string) (string, error)); ok {
+		return rf(ctx, spaceId, snapshot, templateId)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, *model.SmartBlockSnapshotBase) string); ok {
-		r0 = rf(ctx, spaceId, snapshot)
+	if rf, ok := ret.Get(0).(func(context.Context, string, *model.SmartBlockSnapshotBase, string) string); ok {
+		r0 = rf(ctx, spaceId, snapshot, templateId)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, *model.SmartBlockSnapshotBase) error); ok {
-		r1 = rf(ctx, spaceId, snapshot)
+	if rf, ok := ret.Get(1).(func(context.Context, string, *model.SmartBlockSnapshotBase, string) error); ok {
+		r1 = rf(ctx, spaceId, snapshot, templateId)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -61,13 +61,14 @@ type MockObjectCreator_CreateObjectFromSnapshot_Call struct {
 //   - ctx context.Context
 //   - spaceId string
 //   - snapshot *model.SmartBlockSnapshotBase
-func (_e *MockObjectCreator_Expecter) CreateObjectFromSnapshot(ctx interface{}, spaceId interface{}, snapshot interface{}) *MockObjectCreator_CreateObjectFromSnapshot_Call {
-	return &MockObjectCreator_CreateObjectFromSnapshot_Call{Call: _e.mock.On("CreateObjectFromSnapshot", ctx, spaceId, snapshot)}
+//   - templateId string
+func (_e *MockObjectCreator_Expecter) CreateObjectFromSnapshot(ctx interface{}, spaceId interface{}, snapshot interface{}, templateId interface{}) *MockObjectCreator_CreateObjectFromSnapshot_Call {
+	return &MockObjectCreator_CreateObjectFromSnapshot_Call{Call: _e.mock.On("CreateObjectFromSnapshot", ctx, spaceId, snapshot, templateId)}
 }
 
-func (_c *MockObjectCreator_CreateObjectFromSnapshot_Call) Run(run func(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase)) *MockObjectCreator_CreateObjectFromSnapshot_Call {
+func (_c *MockObjectCreator_CreateObjectFromSnapshot_Call) Run(run func(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase, templateId string)) *MockObjectCreator_CreateObjectFromSnapshot_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(*model.SmartBlockSnapshotBase))
+		run(args[0].(context.Context), args[1].(string), args[2].(*model.SmartBlockSnapshotBase), args[3].(string))
 	})
 	return _c
 }
@@ -77,7 +78,7 @@ func (_c *MockObjectCreator_CreateObjectFromSnapshot_Call) Return(id string, err
 	return _c
 }
 
-func (_c *MockObjectCreator_CreateObjectFromSnapshot_Call) RunAndReturn(run func(context.Context, string, *model.SmartBlockSnapshotBase) (string, error)) *MockObjectCreator_CreateObjectFromSnapshot_Call {
+func (_c *MockObjectCreator_CreateObjectFromSnapshot_Call) RunAndReturn(run func(context.Context, string, *model.SmartBlockSnapshotBase, string) (string, error)) *MockObjectCreator_CreateObjectFromSnapshot_Call {
 	_c.Call.Return(run)
 	return _c
 }

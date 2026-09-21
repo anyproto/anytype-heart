@@ -38,7 +38,7 @@ func TestCreateObjectHandler(t *testing.T) {
 		// given
 		fx := newV2HandlerFixture(t)
 		fx.router.POST("/v2/spaces/:space_id/objects", withDryRunFlag(), CreateObjectHandler(fx.svc))
-		fx.creatorMock.EXPECT().CreateObjectFromSnapshot(mock.Anything, "space1", mock.Anything).Return("newObj", nil)
+		fx.creatorMock.EXPECT().CreateObjectFromSnapshot(mock.Anything, "space1", mock.Anything, mock.Anything).Return("newObj", nil)
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, "space1", "newObj").
 			Return(apicore.ObjectRead{Heads: []string{"h"}}, nil)
 
@@ -344,8 +344,8 @@ func TestCreateObjectV2HandlerContext(t *testing.T) {
 	fx := newV2HandlerFixture(t)
 	fx.router.POST("/v2/spaces/:space_id/objects", withDryRunFlag(), CreateObjectHandler(fx.svc))
 	var gotCtx context.Context
-	fx.creatorMock.EXPECT().CreateObjectFromSnapshot(mock.Anything, "space1", mock.Anything).
-		RunAndReturn(func(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase) (string, error) {
+	fx.creatorMock.EXPECT().CreateObjectFromSnapshot(mock.Anything, "space1", mock.Anything, mock.Anything).
+		RunAndReturn(func(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase, templateId string) (string, error) {
 			gotCtx = ctx
 			return "obj", nil
 		})

@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
+	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
@@ -122,10 +123,11 @@ func (s *apiService) Init(a *app.App) error {
 	s.chatSubService = &chatSubAdapter{svc: a.MustComponent(chatsubscription.CName).(chatsubscription.Service)}
 	s.fileObjectService = a.MustComponent(fileobject.CName).(apicore.FileObjectService)
 	s.objectReader = newObjectReadAdapter(app.MustComponent[cache.ObjectGetterComponent](a))
-	s.objectCreator = newObjectCreateAdapter(app.MustComponent[objectcreator.Service](a), app.MustComponent[space.Service](a))
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
+	s.objectCreator = newObjectCreateAdapter(app.MustComponent[objectcreator.Service](a), app.MustComponent[space.Service](a),
+		app.MustComponent[template.Service](a), s.objectStore)
 	s.objectMutator = newObjectMutateAdapter(app.MustComponent[cache.ObjectGetterComponent](a))
 	s.objectProvenance = newObjectProvenanceAdapter(app.MustComponent[space.Service](a), a.MustComponent(account.CName).(account.Service))
-	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return nil
 }
 

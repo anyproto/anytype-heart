@@ -82,8 +82,15 @@ type ObjectReader interface {
 // is computable whether or not the relation object — or even its index
 // row — exists; the corpse probes use it to see a tombstone an older build
 // left, which no key-filtered query can return (§8.41).
+//
+// templateId, when set, is the template the new object starts from: the
+// adapter builds the same state a client-initiated create builds from it and
+// rebases the document on top. It is a store id the CALLER's layer has
+// already validated (v2service.resolveCreateTemplate) — the adapter resolves
+// nothing and applies what it is given, so a template that has vanished
+// between the two is an error here, not a silent blank object.
 type ObjectCreator interface {
-	CreateObjectFromSnapshot(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase) (id string, err error)
+	CreateObjectFromSnapshot(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase, templateId string) (id string, err error)
 	TypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (string, error)
 	RelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (string, error)
 }

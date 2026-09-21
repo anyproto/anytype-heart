@@ -76,6 +76,10 @@ type v2ObjectShortcut struct {
 	Markdown   string                     `json:"markdown"`
 }
 
+// shortcutKeys gates the shortcut body. `template` is absent on purpose: it
+// is lifted out of the body before the discriminator runs (liftTemplate), so
+// by the time this gate is reached no create body has one, whichever form it
+// was sent in.
 var shortcutKeys = map[string]bool{"type": true, "name": true, "properties": true, "markdown": true}
 
 // docCreateOptions parameterizes the shared document create path.
@@ -86,6 +90,19 @@ type docCreateOptions struct {
 	// to the resolver that would otherwise mint a select option for a name
 	// that matches nothing.
 	createMissingOptions bool
+	// template is the create body's `template` member, lifted before
+	// validation: a template id, the word none, or empty for absent.
+	// honourTemplates gates the whole mechanism — the type's default template
+	// included — to POST /objects.
+	//
+	// The other document creates are excluded because their document is
+	// composed by the server, not by the caller: a query and a collection are
+	// built around a dataview this endpoint generates, and dropping a
+	// template's blocks into one would blend two structures nobody asked to
+	// merge. A type of theirs that carries a default template still honours it
+	// through POST /objects, which is where a caller creates an instance.
+	template        string
+	honourTemplates bool
 }
 
 // CreateObject implements POST /v2/spaces/{space_id}/objects.
@@ -98,14 +115,50 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, body []byte,
 		return nil, v2model.ValidationFailed("request body is not a JSON object",
 			v2model.Issue{Message: err.Error()})
 	}
+	template, lifted, err := liftTemplate(fields)
+	if err != nil {
+		return nil, err
+	}
+	if lifted {
+		if body, err = encodeEnvelope(fields); err != nil {
+			return nil, err
+		}
+	}
+	opts := docCreateOptions{
+		dryRun:               dryRun,
+		createMissingOptions: createMissingOptions,
+		template:             template,
+		honourTemplates:      true,
+	}
 
 	// §8/R7 discriminator: presence of formatVersion or blocks ⇒ full document
 	_, hasVersion := fields["formatVersion"]
 	_, hasBlocks := fields["blocks"]
 	if hasVersion || hasBlocks {
-		return s.createFromDocument(ctx, spaceId, body, docCreateOptions{dryRun: dryRun, createMissingOptions: createMissingOptions})
+		return s.createFromDocument(ctx, spaceId, body, opts)
 	}
-	return s.createFromShortcut(ctx, spaceId, fields, dryRun, createMissingOptions)
+	return s.createFromShortcut(ctx, spaceId, fields, opts)
+}
+
+// liftTemplate takes the `template` member off a create body and reports
+// whether it was there. It is a create DIRECTIVE, not document content: an
+// object does not store which template it came from, a read never serves the
+// member back, and the interchange document is a closed set that would refuse
+// it outright. So it is lifted here, before the shortcut gate and before the
+// format validation, and the same member works in both body forms — the same
+// seam `etag` and `warnings` take on their way in (normalizeCreateBody).
+func liftTemplate(fields map[string]json.RawMessage) (string, bool, error) {
+	raw, ok := fields["template"]
+	if !ok {
+		return "", false, nil
+	}
+	delete(fields, "template")
+	var template string
+	if err := json.Unmarshal(raw, &template); err != nil {
+		return "", true, v2model.ValidationFailed("invalid template",
+			v2model.Issue{Path: "/template", Message: "expected the id of a template object, or \"none\""})
+	}
+	return template, true, nil
 }
 
 // CreateTemplate implements POST /v2/spaces/{space_id}/templates: an AnyBlock
@@ -153,7 +206,7 @@ func (s *Service) CreateTemplate(ctx context.Context, spaceId string, body []byt
 // and rides the same single-change-set create as an explicit blocks array —
 // dry runs validate it, no half-built object on failure, and the C8 result
 // cache replays it safely (the §7.2 two-change-set caveats are gone).
-func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields map[string]json.RawMessage, dryRun, createMissingOptions bool) (*v2model.CreateResult, error) {
+func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields map[string]json.RawMessage, opts docCreateOptions) (*v2model.CreateResult, error) {
 	for key := range fields {
 		if !shortcutKeys[key] {
 			return nil, v2model.ValidationFailed("unknown field in create shortcut",
@@ -223,12 +276,13 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 		return nil, err
 	}
 
-	// createMissingOptions travels with dryRun. Dropping it here made
-	// ?create_missing_options=true inert for the SHORTCUT body — the shape an
-	// agent actually sends — while the document body honoured it, so the same
-	// flag worked or not depending on which form the caller picked.
-	result, err := s.createFromDocument(ctx, spaceId, docJSON,
-		docCreateOptions{dryRun: dryRun, createMissingOptions: createMissingOptions})
+	// the whole option set travels, dryRun included. Dropping
+	// createMissingOptions here once made ?create_missing_options=true inert
+	// for the SHORTCUT body — the shape an agent actually sends — while the
+	// document body honoured it, so the same flag worked or not depending on
+	// which form the caller picked; passing the struct is what keeps a new
+	// option from repeating that.
+	result, err := s.createFromDocument(ctx, spaceId, docJSON, opts)
 	if err != nil && markdownBlocks {
 		// the blocks array is synthetic here — readdress its issues to the
 		// markdown channel the caller actually sent (C6)
@@ -381,6 +435,22 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 		return nil, err
 	}
 
+	// 2a. which template the object starts from. Resolved HERE, before the
+	// create-missing resolvers run: on a real create those mint select
+	// options as a side effect, and a template refusal after that point
+	// would leave a caller's space holding options for an object that was
+	// never created.
+	var (
+		appliedTemplate  *v2model.AppliedTemplate
+		templateWarnings []v2model.Issue
+	)
+	if opts.honourTemplates {
+		appliedTemplate, templateWarnings, err = s.resolveDocumentTemplate(ctx, spaceId, &envelope, opts.template)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// 3. Unmarshal with create-missing resolvers (SPEC §3/§2a); on a dry run
 	// the resolvers only record would-be creations
 	resolvers := s.newCreatingResolvers(ctx, spaceId, opts.dryRun, opts.createMissingOptions)
@@ -398,8 +468,13 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	// stable API vocabulary. In particular, a custom type slug is rewritten to
 	// its BSON key during canonicalization above and must not leak here.
 	result := &v2model.CreateResult{Type: resolvers.keys.TypeSlug(envelope.Type), Created: resolvers.created()}
+	// what the object starts from, on dry runs too: a dry run that did not
+	// name the template would be silent about the one part of the outcome
+	// the request did not state
+	result.Template = appliedTemplate
 	// the label-adoption tell rides real runs and dry runs alike (C9)
 	result.Warnings = warnLabelShapedIds(body)
+	result.Warnings = append(result.Warnings, templateWarnings...)
 	// a cross-space object link whose space reference could not be expanded
 	result.Warnings = append(result.Warnings, links.Warnings("/blocks")...)
 	// F16: a value on a property the type does not list, said at create as
@@ -435,8 +510,9 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 		snapshot.Details.Fields[bundle.RelationKeyTargetObjectType.String()] = pbtypes.String(targetId)
 	}
 
-	// 5. create — the whole document as the object's initial state
-	id, err := s.creator.CreateObjectFromSnapshot(ctx, spaceId, snapshot)
+	// 5. create — the whole document as the object's initial state, on top of
+	// the template's when one applies
+	id, err := s.creator.CreateObjectFromSnapshot(ctx, spaceId, snapshot, appliedTemplate.GetId())
 	if err != nil {
 		return nil, fmt.Errorf("create object in space %s: %w", spaceId, err)
 	}

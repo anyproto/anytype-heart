@@ -110,6 +110,31 @@ func TestCreate(t *testing.T) {
 		require.Len(t, sent, 1)
 		assert.Equal(t, "true", sent[0].Query.Get("dry_run"))
 	})
+
+	t.Run("a template the type chose is named in the receipt", func(t *testing.T) {
+		// given — the body carried no template, so the blocks that appear in
+		// the new object came from somewhere the caller cannot see
+		fx := newFixture(t)
+		fx.stub("POST /v2/spaces/space1/objects", 200,
+			`{"id":"bafynew","type":"task","etag":"e1","template":{"id":"bafytpl","name":"Weekly task","source":"type_default"}}`)
+
+		// when
+		result, err := fx.Run(ctx, "create", map[string]any{"space": "space1", "type": "task", "name": "X"})
+
+		// then
+		require.NoError(t, err)
+		assert.Contains(t, result.Text, "started from template Weekly task (the type's default)")
+	})
+
+	t.Run("no template means nothing is said about one", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.stub("POST /v2/spaces/space1/objects", 200, `{"id":"bafynew","type":"task","etag":"e1"}`)
+
+		result, err := fx.Run(ctx, "create", map[string]any{"space": "space1", "type": "task", "name": "X"})
+
+		require.NoError(t, err)
+		assert.NotContains(t, result.Text, "template")
+	})
 }
 
 func TestSetProperties(t *testing.T) {

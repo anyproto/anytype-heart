@@ -407,9 +407,50 @@ type CreateResult struct {
 	// The view id each insert_view op minted, keyed by the op's position, such as /ops/0.
 	CreatedViews map[string]string `json:"created_views,omitempty"`
 	// Count of the member objects a created collection holds, on every collection create
-	Items    *int    `json:"items,omitempty"`
-	Issues   []Issue `json:"issues,omitempty"`
-	Warnings []Issue `json:"warnings,omitempty"`
+	Items *int `json:"items,omitempty"`
+	// The template the new object started from, absent when it started from nothing.
+	Template *AppliedTemplate `json:"template,omitempty"`
+	Issues   []Issue          `json:"issues,omitempty"`
+	Warnings []Issue          `json:"warnings,omitempty"`
+}
+
+// AppliedTemplate names the template an object create started from, and says
+// who chose it. Reported on dry runs too, and absent from the result when the
+// object started from nothing — which is what a caller sending
+// `template: "none"`, or creating an object of a type with no default
+// template, gets.
+//
+// It exists because the choice is otherwise invisible: a type's default
+// template is applied by the server, so without this field a caller cannot
+// tell a template apart from content they did not send.
+type AppliedTemplate struct {
+	// Store id of the template.
+	Id string `json:"id"`
+	// Display name of the template, empty when it has none.
+	Name string `json:"name,omitempty"`
+	// Who chose it: request when the create named it, type_default when the type's default_template did.
+	Source string `json:"source"`
+}
+
+// GetId reads the applied template's id through a nil receiver: an object
+// that started from no template reads as the empty id, which is what the
+// create path passes on.
+func (t *AppliedTemplate) GetId() string {
+	if t == nil {
+		return ""
+	}
+	return t.Id
+}
+
+// TemplateRow is one row of the template list: what a create names in
+// `template`, and which type it starts an object of.
+type TemplateRow struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+	// Key of the type this template starts an object of.
+	TemplateFor string `json:"template_for,omitempty"`
+	// True when this is the type's default_template, the one a create with no template of its own starts from.
+	Default bool `json:"default,omitempty"`
 }
 
 // SideEffects lists the schema entities one write brought into existence on

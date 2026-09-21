@@ -7445,3 +7445,91 @@ synthesises a stub with only an id, and rendering that through the full DTO
 would put an empty text and author on the wire for a client to merge over
 the real message. Pinning something OLD is the ordinary case, so that is the
 common path.
+
+### 8.57 Creating from a template (2026-09-21 — as built)
+
+The round-six scenarios recorded this as R6-2, and the finding was not that
+templates were missing — it was that the API presented every appearance of
+supporting them. `default_template` on a type was accepted, persisted and
+read back correctly, and had no effect on any create; `create_object` had no
+member to name a template with; and nothing in either schema said what
+`default_template` did at create time. A 200, a moved etag, a correct
+read-back, and no effect.
+
+**The member.** A create body takes `template`: a template's store id, or the
+word `none` to start from nothing. Both body shapes take it — the shortcut
+declares it, and the full document has it LIFTED out
+(`liftTemplate`) before the discriminator runs, the same seam `etag` and
+`warnings` take on their way in. That lift is what makes one member serve two
+shapes: the interchange document is a closed set, so a `template` left in it
+would be refused as an unknown envelope member, and adding it to the FORMAT
+would be wrong in a different way — an object does not record which template
+it came from, and no read ever serves the member back. It is a create
+directive, like `dry_run`, and it lives in the body because that is where
+this API's callers look.
+
+An empty string reads as ABSENT, not as `none`. A body generated against a
+schema tends to carry every member it can see, empty ones included, and
+reading `""` as an opt-out would let that habit quietly switch a type's
+default template off — the failure being fixed here, wearing the other hat.
+
+**Three answers, kept apart.** Heart's own resolution
+(`templateimpl.resolveValidTemplateId`) answers every miss the same way: it
+falls back to the blank template, in silence. The API separates the cases by
+WHO chose the template:
+
+- the caller named one and it cannot be applied — unknown, deleted, not a
+  template, or a template of another type — is a **refusal**, path-addressed
+  at `/template`, because a create that asked for a specific starting point
+  and silently got another is the whole defect;
+- the TYPE's default cannot be applied: the object is **created without it**,
+  and a warning names the dead id and the repair. Refusing would make every
+  create of that type fail until someone repaired the type, over a choice the
+  caller did not make;
+- whatever is applied is **named in the result** (`template: {id, name,
+  source}`), on dry runs too. `source` is `request` or `type_default`, and
+  that distinction is the point: a type's default is content the caller did
+  not send, so without it the blocks that appear in a new object read as the
+  server inventing a body.
+
+**The stale default is real, not hypothetical.** Deleting a template clears
+the type that pointed at it (`core/block/delete.go` — `unsetDefaultTemplateId`),
+but that check reads the detail with `GetString`, and this API writes
+`defaultTemplateId` as a one-element LIST, which is the spelling the clients
+read. A default set through v2 therefore outlives its own template. The read
+here takes both spellings (`WrapToStringList`), so the warning fires instead
+of the id silently resolving to nothing. The clearing asymmetry is left as it
+is: a warning that names the dead id and the repair is honest about a state
+the space is already in, and changing the delete path's read is a fix for the
+whole store, not for this endpoint.
+
+**How it is applied.** `apicore.ObjectCreator.CreateObjectFromSnapshot` takes
+the resolved id. The adapter builds the base with
+`templateService.CreateTemplateStateWithDetails` — the same call an
+app-initiated create makes — so placeholders, featured relations, layout
+conversion and the template's own detail precedence behave exactly as they do
+for a user-created object. The caller's document is then merged ON TOP: its
+blocks after the template's, its relation links, its collection items. Two
+details are load-bearing. A document block whose id the template state
+already holds is REMINTED, references included (`title` and `header` are
+ordinary words for a caller and real block ids in a template state, and a
+collision would overwrite template content). And validation is OFF on that
+call: the id was checked against the type's live templates before anything
+was written, and `WithTemplateValidation` would re-resolve a miss to the
+BLANK template — turning a vanished template into a silent empty object after
+the response had already named it.
+
+The mechanism is gated to `POST /objects` (`docCreateOptions.honourTemplates`).
+`POST /queries` and `POST /collections` compose their document server-side
+around a dataview they generate, and dropping a template's blocks into one
+blends two structures nobody asked to merge; `POST /templates` is excluded
+because a template has no template of its own, which the refusal says rather
+than resolving `template`'s own `default_template`.
+
+**Finding one.** Templates were unreachable by read: search excludes them
+from every result by design, so a template id could only come from the
+response that created it. `GET /v2/spaces/{space_id}/templates` is the read
+half of the collection `POST /templates` writes to, with `?type=` narrowing
+to one type's templates — the question a create actually asks — and each row
+carrying `default`, so which template a type starts from is visible where the
+templates are.

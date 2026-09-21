@@ -405,6 +405,21 @@ components:
         text:
           type: string
       type: object
+    AppliedTemplate:
+      description: The template the new object started from, absent when it started
+        from nothing.
+      properties:
+        id:
+          description: Store id of the template.
+          type: string
+        name:
+          description: Display name of the template, empty when it has none.
+          type: string
+        source:
+          description: 'Who chose it: request when the create named it, type_default
+            when the type''s default_template did.'
+          type: string
+      type: object
     ChatAttachment:
       properties:
         id:
@@ -586,6 +601,8 @@ components:
           type: string
         removed:
           $ref: '#/components/schemas/SideEffects'
+        template:
+          $ref: '#/components/schemas/AppliedTemplate'
         type:
           description: type key of the created object
           type: string
@@ -820,6 +837,29 @@ components:
         data:
           items:
             $ref: '#/components/schemas/PropertyRow'
+          type: array
+          uniqueItems: false
+        has_more:
+          type: boolean
+        limit:
+          type: integer
+        message:
+          type: string
+        offset:
+          type: integer
+        total:
+          type: integer
+        warnings:
+          items:
+            $ref: '#/components/schemas/Issue'
+          type: array
+          uniqueItems: false
+      type: object
+    ListResponse-TemplateRow:
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/TemplateRow'
           type: array
           uniqueItems: false
         has_more:
@@ -1098,6 +1138,20 @@ components:
             takes a space.
           type: string
         name:
+          type: string
+      type: object
+    TemplateRow:
+      properties:
+        default:
+          description: True when this is the type's default_template, the one a create
+            with no template of its own starts from.
+          type: boolean
+        id:
+          type: string
+        name:
+          type: string
+        template_for:
+          description: Key of the type this template starts an object of.
           type: string
       type: object
     TypeRow:
@@ -3300,9 +3354,10 @@ paths:
     post:
       description: A select value naming an option the property does not hold is refused
         unless `create_missing_options=true` is set. An unknown type or property key
-        is rejected either way, with the closest matches named. The body is either
-        a full AnyBlock document or the shortcut {type, name, properties, markdown};
-        `formatVersion` or `blocks` picks the document form.
+        is rejected either way. The body is a full AnyBlock document or the shortcut
+        {type, name, properties, markdown}; `formatVersion` or `blocks` picks the
+        document form. `template` starts the object from one; absent, the type's `default_template`
+        applies.
       operationId: create_object
       parameters:
       - description: Space id
@@ -3350,6 +3405,10 @@ paths:
                           - "null"
                       maxProperties: 128
                       type: object
+                    template:
+                      description: id of the template this object starts from. Leave it out and the type's default_template applies, if it has one; send "none" to start from nothing. The result names the template that was applied
+                      maxLength: 256
+                      type: string
                     type:
                       description: type key, e.g. page or task
                       maxLength: 256
@@ -3357,7 +3416,7 @@ paths:
                   required:
                     - type
                   type: object
-                - description: 'a full AnyBlock document: formatVersion 2.0, properties, and blocks in preorder; its schema and a worked example come from get_schema with kind object'
+                - description: 'a full AnyBlock document: formatVersion 2.0, properties, and blocks in preorder. It takes the shortcut''s template member too; its schema and a worked example come from get_schema with kind object'
                   type: object
               description: the shortcut body, or a full AnyBlock document; formatVersion or blocks picks the document form
         description: The shortcut body, or an AnyBlock object document
@@ -4448,6 +4507,64 @@ paths:
       tags:
       - Search
   /v2/spaces/{space_id}/templates:
+    get:
+      description: '`type` narrows the list to the templates of one type. Each row''s
+        id is what a create passes in `template`, and `default` marks the one a create
+        of that type starts from on its own.'
+      operationId: list_templates
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: 'Type key: list only the templates that start an object of this
+          type'
+        in: query
+        name: type
+        schema:
+          type: string
+      - description: Items to skip
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: Items to return
+        in: query
+        name: limit
+        schema:
+          default: 25
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResponse-TemplateRow'
+          description: Template rows
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Unknown type key
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Space not found or unavailable
+      security:
+      - bearerauth: []
+      summary: List templates
+      tags:
+      - Templates
     post:
       description: '`template_for` names the type key this template starts an object
         of.'
@@ -4596,7 +4713,7 @@ paths:
                       pattern: ^[a-zA-Z0-9_]+$
                       type: string
                     default_template:
-                      description: id of the template new objects of this type start from; empty string clears it
+                      description: id of the template new objects of this type start from unless the create names its own or sends none; empty string clears it
                       maxLength: 256
                       type: string
                     default_view:
@@ -4925,7 +5042,7 @@ paths:
                   description: the flat body, every member optional; at least one
                   properties:
                     default_template:
-                      description: id of the template new objects of this type start from; empty string clears it
+                      description: id of the template new objects of this type start from unless the create names its own or sends none; empty string clears it
                       maxLength: 256
                       type: string
                     default_view:
@@ -5151,7 +5268,7 @@ paths:
                       additionalProperties: false
                       properties:
                         default_template:
-                          description: id of the template new objects of this type start from; empty string clears it
+                          description: id of the template new objects of this type start from unless the create names its own or sends none; empty string clears it
                           maxLength: 256
                           type: string
                         default_view:

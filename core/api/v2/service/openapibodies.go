@@ -109,7 +109,7 @@ var openAPIBodyRecipes = map[string]func(c *openAPIBodyComposer) (json.RawMessag
 		return c.anyOf("the shortcut body, or a full AnyBlock document; formatVersion or blocks picks the document form",
 			func() (json.RawMessage, error) { return c.kind("shortcut") },
 			func() (json.RawMessage, error) {
-				return c.pointer("object", "a full AnyBlock document: formatVersion 2.0, properties, and blocks in preorder")
+				return c.pointer("object", "a full AnyBlock document: formatVersion 2.0, properties, and blocks in preorder. It takes the shortcut's template member too")
 			})
 	},
 	v2model.OpCreateTemplate: func(c *openAPIBodyComposer) (json.RawMessage, error) {
