@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'pkg/lib/pb/model/protos/models.proto'
+      - 'pkg/lib/pb/model/protos/export_report.proto'
       - 'pb/protos/changes.proto'
       - 'pb/protos/events.proto'
       - 'pb/protos/snapshot.proto'
@@ -25,12 +26,42 @@ jobs:
 
     - name: Set variables
       run: |
-        echo "any-block-files=pkg/lib/pb/model/protos/models.proto,pb/protos/changes.proto,pb/protos/events.proto,pb/protos/snapshot.proto" >> "$GITHUB_ENV"
+        echo "any-block-files=pkg/lib/pb/model/protos/models.proto,pkg/lib/pb/model/protos/export_report.proto,pb/protos/changes.proto,pb/protos/events.proto,pb/protos/snapshot.proto" >> "$GITHUB_ENV"
 
-    - name: Update import paths
+    # any-block used to receive these at its repository root with flattened
+    # imports. It now keeps a single import graph under format/v1/proto, so the
+    # mirror rewrites both the import paths and the go_package values that name
+    # Heart's own Go bindings.
+    - name: Rewrite import paths and go_package
       run: |
+        set -eu
         for file in $(echo "${{ env.any-block-files }}" | tr ',' ' '); do
-          sed -i -E '/google/! s/(import\s+")([^\/]+\/)*([^\/]+\.proto")/\1\3/g' "anytype-heart/$file"
+          [ -f "anytype-heart/$file" ] || continue
+          sed -i -E '/"google\//! s#(import[[:space:]]+")([^"]*/)?([^"/]+\.proto")#\1format/v1/proto/\3#' "anytype-heart/$file"
+          sed -i -E \
+            -e 's#^(option go_package = ")pkg/lib/pb/model(";)$#\1github.com/anyproto/any-block/format/v1/model\2#' \
+            -e 's#^(option go_package = ")pb(";)$#\1github.com/anyproto/any-block/format/v1/pb\2#' \
+            "anytype-heart/$file"
+        done
+
+    # A new dependency added here but not mirrored would reach any-block as an
+    # unresolvable import, so fail loudly instead.
+    - name: Verify rewritten sources
+      run: |
+        set -eu
+        mirrored='^format/v1/proto/(models|export_report|changes|events|snapshot)\.proto$'
+        for file in $(echo "${{ env.any-block-files }}" | tr ',' ' '); do
+          [ -f "anytype-heart/$file" ] || continue
+          unmirrored=$(sed -n -E 's/^import "([^"]+)";.*/\1/p' "anytype-heart/$file" \
+            | grep -v '^google/' | grep -vE "$mirrored" || true)
+          if [ -n "$unmirrored" ]; then
+            echo "::error file=$file::imports not mirrored to any-block: $(echo "$unmirrored" | tr '\n' ' ')"
+            exit 1
+          fi
+          if ! grep -q '^option go_package = "github.com/anyproto/any-block/format/v1/' "anytype-heart/$file"; then
+            echo "::error file=$file::go_package was not remapped to any-block"
+            exit 1
+          fi
         done
 
     - name: Clone any-block
@@ -42,15 +73,24 @@ jobs:
 
     - name: Copy changed files to any-block
       run: |
+        set -eu
+        mkdir -p any-block/format/v1/proto
         for file in $(echo "${{ env.any-block-files }}" | tr ',' ' '); do
-          cp -f "anytype-heart/$file" any-block/
+          [ -f "anytype-heart/$file" ] || continue
+          cp -f "anytype-heart/$file" any-block/format/v1/proto/
         done
 
     - name: Commit and push changes to any-block
       run: |
+        set -eu
         cd any-block
         git config --global user.email "association@anytype.io"
         git config --global user.name "Any Association"
-        git add .
-        git commit -m "Update proto files"
+        git add format/v1/proto
+        if git diff --cached --quiet; then
+          echo "any-block already matches these protos; nothing to push"
+          exit 0
+        fi
+        git commit -m "Update proto files" \
+          -m "Mirrored from anytype-heart ${GITHUB_SHA}. Run 'go generate ./format/v1 ./codec/anyblockjson' in any-block to refresh the JSON Schemas and Go bindings."
         git push origin main
