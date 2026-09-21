@@ -373,3 +373,75 @@ func TestOrphanWal(t *testing.T) {
 		assert.Empty(t, s.ListCorruptedBackups())
 	})
 }
+
+// collidingPayloads mints real space payloads until two of them land on one
+// lock shard. Space ids are CIDs, so a collision has to be found rather than
+// chosen; the birthday bound makes that a few dozen tries.
+func collidingPayloads(t *testing.T) (a, b spacestorage.SpaceStorageCreatePayload) {
+	t.Helper()
+	seen := map[int]spacestorage.SpaceStorageCreatePayload{}
+	for i := 0; i < 20000; i++ {
+		p := newCreatePayload(t)
+		shard := spaceLockShard(p.SpaceHeaderWithId.Id)
+		if prev, ok := seen[shard]; ok {
+			return prev, p
+		}
+		seen[shard] = p
+	}
+	t.Fatal("no two payloads landed on one shard")
+	return
+}
+
+// A shard is reused: one space takes it, finishes and hands it back, and a
+// different space that hashes to the same shard takes it next. Reuse must not
+// weaken what the lock is for -- two callers for ONE id still have to be
+// serialized, because one id always maps to one shard.
+func TestCreateSpaceStorage_ShardReuse(t *testing.T) {
+	// given: two spaces sharing a shard, the first already created and closed
+	// so the shard is back in the pool
+	s := newTestService(t)
+	ctx := context.Background()
+	first, second := collidingPayloads(t)
+	require.Equal(t, spaceLockShard(first.SpaceHeaderWithId.Id), spaceLockShard(second.SpaceHeaderWithId.Id))
+
+	firstStore, err := s.CreateSpaceStorage(ctx, first)
+	require.NoError(t, err)
+	require.NoError(t, firstStore.Close(ctx))
+
+	// when: the second space is created while others open it, on that same shard
+	spaceId := second.SpaceHeaderWithId.Id
+	dbPath := filepath.Join(s.rootPath, spaceId, "store.db")
+	done := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if !waitForFile(t, dbPath, done) {
+			return
+		}
+		for {
+			select {
+			case <-done:
+				return
+			default:
+			}
+			if st, err := s.WaitSpaceStorage(ctx, spaceId); err == nil {
+				_ = st.Close(ctx)
+			}
+		}
+	}()
+	secondStore, err := s.CreateSpaceStorage(ctx, second)
+	close(done)
+	wg.Wait()
+
+	// then
+	require.NoError(t, err, "a reused shard must still serialize the create it is asked to protect")
+	require.NoError(t, secondStore.Close(ctx))
+	assert.Empty(t, s.ListCorruptedBackups())
+	assert.True(t, s.SpaceExists(spaceId))
+	// the space that handed the shard over is untouched
+	assert.True(t, s.SpaceExists(first.SpaceHeaderWithId.Id))
+	reopened, err := s.WaitSpaceStorage(ctx, first.SpaceHeaderWithId.Id)
+	require.NoError(t, err)
+	require.NoError(t, reopened.Close(ctx))
+}

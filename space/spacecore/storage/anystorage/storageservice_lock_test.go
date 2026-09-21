@@ -156,6 +156,24 @@ func TestLockSpace(t *testing.T) {
 		c.acquires(t, "C never got the space after B released")()
 	})
 
+	t.Run("two spaces sharing a shard queue and both finish", func(t *testing.T) {
+		// given: a collision costs the second space one open, and must never
+		// cost it the space -- nothing takes a second lock while holding one,
+		// so a shared shard cannot deadlock
+		s := newTestService(t)
+		colliding := sameShardId(t, "space1")
+		unlock, err := s.lockSpace(ctx, "space1")
+		require.NoError(t, err)
+
+		// when
+		second := newWaiter(ctx, s, colliding)
+
+		// then
+		second.waiting(t, "a colliding id shares the shard, so it has to queue")
+		unlock()
+		second.acquires(t, "a colliding id must get the shard once it is free")()
+	})
+
 	t.Run("callers racing to create one shard still exclude each other", func(t *testing.T) {
 		// given: nobody has touched this space, so the shard is created under
 		// contention rather than by a prior sequential caller
@@ -190,6 +208,21 @@ func TestLockSpace(t *testing.T) {
 		// then
 		assert.Equal(t, int32(1), maxInside.Load(), "only one caller at a time may hold a space")
 	})
+}
+
+// sameShardId finds an id that collides with base. Spreading the locks over
+// shards means two unrelated spaces can share one, so what a collision costs is
+// part of the design and worth pinning.
+func sameShardId(t *testing.T, base string) string {
+	t.Helper()
+	for i := 0; i < 100000; i++ {
+		candidate := fmt.Sprintf("space-%d", i)
+		if candidate != base && spaceLockShard(candidate) == spaceLockShard(base) {
+			return candidate
+		}
+	}
+	t.Fatal("no colliding id found")
+	return ""
 }
 
 // otherShardId finds an id that hashes to a different lock shard than base, so

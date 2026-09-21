@@ -58,13 +58,22 @@ type storageService struct {
 	reporter debugreporter.Reporter
 }
 
-// spaceLockShards is how many locks space ids are spread over. Two spaces that
-// land on one shard briefly queue behind each other while one of them opens,
-// which costs an open and nothing else. Keying the locks by id instead would
-// mean a map an untrusted peer can grow without bound: SpacePush hands a
-// remote id to NewSpace, which reaches WaitSpaceStorage before the payload is
-// validated, so a rejected push would still leave its entry behind.
-const spaceLockShards = 256
+// spaceLockShards is how many locks space ids are spread over. Keying the locks
+// by id instead would mean a map an untrusted peer can grow without bound:
+// SpacePush hands a remote id to NewSpace, which reaches WaitSpaceStorage
+// before the payload is validated, so a rejected push would still leave its
+// entry behind.
+//
+// Two spaces that land on one shard queue behind each other for the length of
+// one open, which is microseconds unless the db is dirty and any-store runs its
+// quick check -- and a caller that will not wait that long has its ctx. Nothing
+// takes a second space lock while holding one (openDb, createDb and
+// handleStorageBuildError are the only service calls inside the critical
+// section, and none re-enters), so a shared shard can never deadlock, only
+// queue. The count is well past the handful of spaces that open at once --
+// deferred loads run at preloadConcurrency, which is 2 -- because the array
+// costs one pointer per shard and the channels are made on first use.
+const spaceLockShards = 4096
 
 // lockSpace serializes whoever opens, creates or deletes one space's store.db,
 // and returns the func that releases it.
