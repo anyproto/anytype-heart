@@ -1452,3 +1452,108 @@ func TestCreateObjectMarkdownTitleRoundFour(t *testing.T) {
 		assert.Empty(t, result.Warnings)
 	})
 }
+
+func TestCreateObjectMarkdownTitleRoundFive(t *testing.T) {
+	// the finding all three fifth-round lenses reached independently: the
+	// question "may a promotion add `name`" and the question "what is this
+	// object called" are not the same question, and answering both with a
+	// folded key deleted a heading that repeated nothing
+	addShadow := func(t *testing.T, fx *v2Fixture, storedKey string) {
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("rel-" + storedKey),
+			bundle.RelationKeyRelationKey:    domain.String(storedKey),
+			bundle.RelationKeyName:           domain.String("Vendor " + storedKey),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_longtext)),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+		}})
+	}
+
+	t.Run("a shadowed spelling never supplies the name a heading is compared against", func(t *testing.T) {
+		// given — `Name` is this space's own property, so "Acme" is not what
+		// the object is called and the heading repeats nothing
+		fx := newV2Fixture(t)
+		addShadow(t, fx, "Name")
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","properties":{"Name":"Acme"},"markdown":"# Acme\n\nbody"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"Acme", "body"}, snapshotTexts(*captured), "the heading was never a duplicate")
+		assert.Empty(t, result.Warnings, "and nothing may claim it was")
+	})
+
+	t.Run("a shadowed spelling still blocks a promotion", func(t *testing.T) {
+		// given — adding `name` beside `Name` is a document the format refuses
+		fx := newV2Fixture(t)
+		addShadow(t, fx, "Name")
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","properties":{"Name":"Acme"},"markdown":"# Section\n\nbody"}`), false, false)
+
+		// then
+		require.NoError(t, err, "the create must not be refused for a name the server added")
+		assert.Equal(t, []string{"Section", "body"}, snapshotTexts(*captured))
+	})
+
+	t.Run("a key the format folds past separators blocks a promotion too", func(t *testing.T) {
+		// given — the format folds `n_ame` onto `name`, so adding `name`
+		// beside it collides; a lowercase test would have missed it
+		fx := newV2Fixture(t)
+		addShadow(t, fx, "n_ame")
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","properties":{"n_ame":"Acme"},"markdown":"# Section\n\nbody"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"Section", "body"}, snapshotTexts(*captured))
+	})
+
+	t.Run("a promoted name takes the caller's own spelling of the property", func(t *testing.T) {
+		// given — an empty `Name` with a new `name` beside it is two
+		// spellings of one property, which the format refuses
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","properties":{"Name":""},"markdown":"# Tegel loop\n\nbody"}`), false, false)
+
+		// then
+		require.NoError(t, err, "the promotion must not build a document the format refuses")
+		assert.Equal(t, "Tegel loop", pbtypes.GetString((*captured).Details, "name"))
+		assert.Equal(t, []string{"body"}, snapshotTexts(*captured))
+		require.Len(t, result.Warnings, 1)
+		assert.Contains(t, result.Warnings[0].Message, "became the object's name")
+	})
+}
+
+func TestListTemplatesAcceptsTheTypesCreateAccepts(t *testing.T) {
+	t.Run("a bundled type this space has not installed lists its templates", func(t *testing.T) {
+		// given — the create path derives the id; a listing that refused
+		// would hide templates a create would then accept
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.addTemplate(t, "tpl-task", "Weekly task", "drv-ot-task")
+
+		// when
+		rows, total, _, err := fx.ListTemplates(context.Background(), testSpaceId, "task", 0, 25)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, rows, 1)
+		assert.Equal(t, "tpl-task", rows[0].Id)
+		assert.Equal(t, 1, total)
+	})
+}

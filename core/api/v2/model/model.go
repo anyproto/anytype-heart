@@ -432,7 +432,7 @@ type AppliedTemplate struct {
 	Source string `json:"source"`
 	// How many blocks the template carried, counted before the object's layout runs and without its header: the title, description and featured properties every object carries. Absent on a dry run, which does not build the template, and zero is a real answer.
 	BlocksAdded *int `json:"blocks_added,omitempty"`
-	// True when the object's blocks are the template's followed by the ones this request sent.
+	// True when this request sent blocks of its own, which follow the template's in the object.
 	Combined bool `json:"combined,omitempty"`
 }
 

@@ -245,10 +245,10 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 	}
 	// the shortcut takes a name either way, and both spellings reach the same
 	// detail
-	name, supplied := shortcut.Name, s.inspectShortcutProperties(spaceId, properties)
-	nameSupplied := name != "" || supplied.name
+	facts := s.inspectShortcutProperties(spaceId, properties)
+	name := shortcut.Name
 	if name == "" {
-		name = supplied.nameValue
+		name = facts.nameValue
 	}
 
 	var run []json.RawMessage
@@ -269,21 +269,28 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 		}
 	}
 	// the leading heading is the title, not the first paragraph of the body
-	// the caller's own layout choice makes the type's recommended one the
-	// wrong thing to read, so a promotion is off the table there too
-	run, name, titleNotice := s.liftMarkdownTitle(spaceId, shortcut.Type, run, name, !nameSupplied && !supplied.layout)
+	promotable := name == "" && !facts.blocked
+	run, promoted, titleNotice := s.liftMarkdownTitle(spaceId, shortcut.Type, run, name, promotable)
 	droppedLeadingBlocks := 0
 	if titleNotice != nil {
 		droppedLeadingBlocks = 1
 	}
 
-	if name != "" && !nameSupplied {
-		// only a PROMOTED name is written here; one the caller sent is
-		// already in the body, under whichever spelling they used
-		if properties["name"], err = rawJSON(name); err != nil {
+	switch {
+	case promoted != name:
+		// a PROMOTED name goes under the caller's own spelling of the name
+		// property when they sent one (an empty `Name` beside a new `name`
+		// is two spellings of one property, which the format refuses), and
+		// under `name` when they sent none
+		key := facts.nameKey
+		if key == "" {
+			key = bundle.RelationKeyName.String()
+		}
+		if properties[key], err = rawJSON(promoted); err != nil {
 			return nil, err
 		}
-	} else if shortcut.Name != "" {
+		name = promoted
+	case shortcut.Name != "":
 		if properties["name"], err = rawJSON(shortcut.Name); err != nil {
 			return nil, err
 		}
@@ -432,12 +439,22 @@ var targetCarryingMarks = map[model.BlockContentTextMarkType]bool{
 }
 
 // shortcutPropertyFacts is what the title rule needs to know about the
-// properties the caller sent: whether they name the object, and whether they
-// choose its layout.
+// properties the caller sent. The two answers it holds are NOT the same
+// question, and conflating them dropped a heading that was never a duplicate:
+//
+//   - nameKey/nameValue is what the object will actually be CALLED, so only a
+//     key that resolves to the name property can supply it. A space that keys
+//     some relation of its own `Name` sends that value to its own property,
+//     and comparing a heading against it would delete a heading that repeats
+//     nothing;
+//   - blocked is whether a promotion may ADD `name`, which the FORMAT decides:
+//     it folds separators, case and spacing together and refuses a document
+//     carrying two spellings of one property, so any folding key blocks the
+//     promotion whatever this space resolves it to.
 type shortcutPropertyFacts struct {
-	name      bool   // a key resolving to the name property is present
-	nameValue string // its value, when it is a non-empty string
-	layout    bool   // a key resolving to the layout property is present
+	nameKey   string // the caller's own spelling of the name property
+	nameValue string // the value under it
+	blocked   bool   // a promotion must not add `name`
 }
 
 // inspectShortcutProperties resolves the caller's property keys the way every
@@ -453,38 +470,45 @@ func (s *Service) inspectShortcutProperties(spaceId string, properties map[strin
 	if len(properties) == 0 {
 		return facts
 	}
+	nameFold := anyblockjson.FoldKeyTerm(bundle.RelationKeyName.String())
+	layoutFold := anyblockjson.FoldKeyTerm(bundle.RelationKeyLayout.String())
 	entries, err := s.liveProperties(spaceId)
 	for key, raw := range properties {
-		// the two tests are a UNION, not alternatives. The format folds a
-		// property key onto its canonical spelling — it refuses `Name`
-		// beside `name` with "both address property name" — so a fold match
-		// is the format's own answer and must count even when this space
-		// keys some other relation that way. Resolution catches the rest: a
-		// display name or a slug that reaches the same property without
-		// folding to it.
-		resolved := strings.ToLower(key)
+		fold := anyblockjson.FoldKeyTerm(key)
+		resolved := ""
 		if err == nil {
-			if entry, ok, ambiguous := s.resolvePropertyInput(key, entries); ok && len(ambiguous) == 0 && entry.Key != "" {
-				if resolved != bundle.RelationKeyName.String() && resolved != bundle.RelationKeyLayout.String() {
-					resolved = entry.Key
-				}
+			if entry, ok, ambiguous := s.resolvePropertyInput(key, entries); ok && len(ambiguous) == 0 {
+				resolved = entry.Key
 			}
+		} else if fold == nameFold {
+			// the resolution is unavailable; the fold is the best answer
+			// left, and losing the rule entirely on a store hiccup is worse
+			resolved = bundle.RelationKeyName.String()
 		}
-		switch resolved {
-		case bundle.RelationKeyName.String():
+		if fold == layoutFold || resolved == bundle.RelationKeyLayout.String() {
+			// the caller chose the layout, so the type's recommended one is
+			// no longer what this object will be
+			facts.blocked = true
+			continue
+		}
+		if resolved == bundle.RelationKeyName.String() {
+			facts.nameKey = key
 			var value string
-			if json.Unmarshal(raw, &value) == nil {
-				// an empty name is no name, the same reading the `template`
-				// member takes of an empty string; a value that does not
-				// decode as a string is still a value the caller CHOSE, and
-				// is never replaced
-				facts.nameValue = value
-				facts.name = value != ""
+			if json.Unmarshal(raw, &value) != nil {
+				// unreadable here, but the caller's: never replaced
+				facts.blocked = true
 				continue
 			}
-			facts.name = true
-		case bundle.RelationKeyLayout.String():
-			facts.layout = true
+			facts.nameValue = value
+			if value != "" {
+				facts.blocked = true
+			}
+			continue
+		}
+		if fold == nameFold {
+			// it folds onto `name` without being it, so adding `name` beside
+			// it would make a document the format refuses
+			facts.blocked = true
 		}
 	}
 	return facts

@@ -7704,12 +7704,55 @@ throwaway account, objects created and read back over HTTP). Between them:
   nothing is the only outcome there that neither refuses the create nor moves
   the caller's content.
 
+**A fifth round, and its one finding three lenses reached separately.** The
+question "may a promotion ADD `name`" and the question "what is this object
+CALLED" are not the same question, and answering both from a folded key
+deleted a heading that repeated nothing: a space that keys a relation of its
+own `Name` sends that value to its own property, so the object stays unnamed
+while the heading matched it. They are separate tests now — the FORMAT's fold
+(`anyblockjson.FoldKeyTerm`, which drops separators and spacing as well as
+case, so `n_ame` folds too) decides whether `name` may be added beside what
+the caller sent, and only a key that RESOLVES to the name property supplies
+the value a heading is compared against. A promoted name is written under the
+caller's own spelling when they sent one, because an empty `Name` beside a
+new `name` is the same document the format refuses.
+
+Three smaller ones from the same round: the template-type lookup read a store
+error as "not a template" and dropped a valid default with a false warning;
+`servedTypeSpelling` returned the stored key for a bundled type with no live
+row, where the served spelling differs (`set` is served as `query`); and
+`GET /templates?type=` refused a bundled type this space had not installed
+while a create with the same type accepted it, so the listing now derives the
+id the way the create path does. `combined`'s description says what it
+computes — that this request sent blocks of its own — rather than promising
+something about the object's final block list, which normalization can still
+change.
+
+Left as known edges, with reasons: a TEMPLATE that overrides the layout (a
+note-layout template on a basic type) is outside the promotion guard, which
+reads the TYPE's layout, because the template is resolved after the shortcut
+has already built its document; an explicitly empty `collection_items` does
+not clear a template's members, since a create carries content rather than
+removals; and the option-minting order remains as filed (GO-7533).
+
 The live run found what no unit test could: the stale-default warning named
 the type by its 24-hex STORED key rather than its api key, because every
 fixture used a type whose two spellings were the same word. It is the leak
 the search refusals were rebuilt to close (§8.57's predecessor), reappearing
 in a new message. Both the warning and the refusal hint now take the served
 spelling.
+
+A second live pass, over the paths the first one never reached, confirmed all
+of it: the type spelling in the stale-default warning, a link-carrying
+heading keeping its target, an indented child no longer refusing the create,
+an empty name promoting, both note exemptions, and a dry run whose claim the
+real create then matched. It also turned up a defect of its own, older than
+this work: `PATCH types/{type}` with `default_template: ""` — the repair
+every stale-default warning names, and the behaviour the served schema
+promises with "empty string clears it" — answered "the patch changes
+nothing", because the create path drops empty settings members and the patch
+path reuses it. An empty `default_template` now survives into the patch, and
+clearing works.
 
 Not taken from the importer: its emoji split, which reads a leading emoji out
 of the title into the object's icon. The shortcut has no icon member, and

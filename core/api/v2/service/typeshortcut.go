@@ -194,6 +194,27 @@ func typeShortcutPatch(fields map[string]json.RawMessage) (map[string]json.RawMe
 	if icon, ok := doc["icon"]; ok {
 		patch["icon"] = icon
 	}
+	// An empty `default_template` is the documented way to CLEAR the type's
+	// default, and it is the repair every stale-default warning names. The
+	// create path drops empty settings members — there an empty value says
+	// nothing — so without this the one member whose schema promises
+	// "empty string clears it" was answered with "the patch changes
+	// nothing", and the warning pointed at a 400.
+	if raw, present := fields["default_template"]; present {
+		var value string
+		if json.Unmarshal(raw, &value) == nil && value == "" {
+			settings := map[string]json.RawMessage{}
+			if existing, ok := patch["type_settings"]; ok {
+				if err := json.Unmarshal(existing, &settings); err != nil {
+					return nil, fmt.Errorf("decode type settings patch: %w", err)
+				}
+			}
+			settings["default_template"] = raw
+			if patch["type_settings"], err = rawJSON(settings); err != nil {
+				return nil, err
+			}
+		}
+	}
 	if len(patch) == 0 {
 		return nil, v2model.ValidationFailed("the patch changes nothing",
 			v2model.Issue{Message: "give at least one of name, plural_name, icon, layout, default_view, default_template, property_definitions — only api_key is create-only"})

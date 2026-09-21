@@ -81,7 +81,7 @@
             "type": "integer"
           },
           "combined": {
-            "description": "True when the object's blocks are the template's followed by the ones this request sent.",
+            "description": "True when this request sent blocks of its own, which follow the template's in the object.",
             "type": "boolean"
           },
           "id": {

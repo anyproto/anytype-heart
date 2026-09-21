@@ -326,6 +326,38 @@ func TestV2TypePatchAcceptsDefaultViewAndTemplate(t *testing.T) {
 		assert.Equal(t, "tpl-123", v.GetListValue().Values[0].GetStringValue())
 	})
 
+	t.Run("an empty default_template clears the type's default", func(t *testing.T) {
+		// given — the served schema says "empty string clears it", and every
+		// stale-default warning names this PATCH as the repair. The create
+		// path drops empty settings members, and without an exception here
+		// the documented repair answered "the patch changes nothing"
+		fx, captured := setup(t)
+		fx.expectEtagRead("type-plant")
+
+		// when
+		_, err := fx.UpdateType(context.Background(), testSpaceId, "plant",
+			"", []byte(`{"default_template":""}`), false, false)
+
+		// then
+		require.NoError(t, err, "the schema promises this clears the default")
+		v := find(*captured, "defaultTemplateId")
+		require.NotNil(t, v, "the cleared value has to reach the store")
+		require.NotNil(t, v.GetListValue())
+		assert.Empty(t, v.GetListValue().Values)
+	})
+
+	t.Run("an empty body is still nothing to do", func(t *testing.T) {
+		// given — the exception above is for a member the caller SENT
+		fx, _ := setup(t)
+
+		// when
+		_, err := fx.UpdateType(context.Background(), testSpaceId, "plant", "", []byte(`{}`), false, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, "the patch changes nothing", apiErr.Message)
+	})
+
 	t.Run("an unknown view type is refused by name", func(t *testing.T) {
 		// given
 		fx, _ := setup(t)

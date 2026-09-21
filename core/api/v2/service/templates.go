@@ -194,7 +194,10 @@ func (s *Service) inspectTemplate(spaceId, templateId, typeId string) (name stri
 	if row.GetBool(bundle.RelationKeyIsDeleted) || row.GetBool(bundle.RelationKeyIsArchived) || row.GetBool(bundle.RelationKeyIsUninstalled) {
 		return name, fmt.Sprintf("template %q is deleted", templateId), nil
 	}
-	templateTypeId, ok := s.typeIdInSpace(spaceId, string(bundle.TypeKeyTemplate))
+	templateTypeId, ok, err := s.liveTypeIdInSpace(spaceId, string(bundle.TypeKeyTemplate))
+	if err != nil {
+		return name, "", err
+	}
 	if !ok || row.GetString(bundle.RelationKeyType) != templateTypeId {
 		return name, fmt.Sprintf("object %q is not a template", templateId), nil
 	}
@@ -235,6 +238,13 @@ func (s *Service) typeDefaultTemplate(spaceId, typeId string) (string, error) {
 func (s *Service) servedTypeSpelling(spaceId, storedKey, typeId string) string {
 	if served := s.servedTypeKeyById(spaceId, typeId); served != "" {
 		return served
+	}
+	// no live row: a bundled key still has a served spelling of its own, and
+	// they differ — the stored `set` is served as `query`
+	if bundle.HasObjectTypeByKey(domain.TypeKey(storedKey)) {
+		if slug := bundle.TypeApiSlug(storedKey); slug != "" {
+			return slug
+		}
 	}
 	return storedKey
 }
@@ -302,13 +312,25 @@ func (s *Service) ListTemplates(ctx context.Context, spaceId, typeTerm string, o
 		if len(ambiguous) > 0 {
 			return nil, 0, false, ambiguousKeyError("type key", typeTerm, "type", ambiguous)
 		}
-		if !ok || entry.Id == "" {
+		if !ok {
 			return nil, 0, false, s.unknownTypeKeyError(spaceId, typeTerm, "type", errKeysFor(ctx))
+		}
+		targetId := entry.Id
+		if targetId == "" {
+			// a bundled type this space has not installed yet: its id is
+			// derivable and is what a template of it carries as its target,
+			// which is how the CREATE path resolves it. A listing that
+			// refused here would refuse to show templates a create accepts
+			derived, err := s.creator.TypeIdByKey(ctx, spaceId, domain.TypeKey(entry.Key))
+			if err != nil {
+				return nil, 0, false, fmt.Errorf("derive type id for %s: %w", entry.Key, err)
+			}
+			targetId = derived
 		}
 		filters = append(filters, database.FilterRequest{
 			RelationKey: bundle.RelationKeyTargetObjectType,
 			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       domain.String(entry.Id),
+			Value:       domain.String(targetId),
 		})
 	}
 	records, total, err := s.store.SpaceIndex(spaceId).QueryAndCount(database.Query{
