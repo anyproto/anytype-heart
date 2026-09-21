@@ -549,8 +549,12 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	result.Id = created.Id
 	if result.Template != nil {
 		// what the template put in the object, which the caller did not send
-		// and would otherwise have to read the object back to see
-		result.Template.BlocksAdded = created.TemplateBlocks
+		// and would otherwise have to read the object back to see. A pointer
+		// because zero is a real answer here — a template can carry nothing
+		// but its header — and absent has to keep meaning "not known", which
+		// is what a dry run leaves it as.
+		blocks := created.TemplateBlocks
+		result.Template.BlocksAdded = &blocks
 	}
 
 	// 6. etag read-back (best effort — the create already succeeded)

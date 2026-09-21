@@ -215,12 +215,13 @@ func mergeDocumentIntoTemplate(base, doc *state.State) {
 	// the walk is from the root, so a block the document never parented is
 	// dropped the same way the create path drops it without a template
 	doc.Iterate(func(b simple.Block) bool {
-		if b.Model().Id == doc.RootId() {
+		id := b.Model().Id
+		if id == doc.RootId() {
 			return true
 		}
 		ordered = append(ordered, b.Copy())
-		if base.Exists(b.Model().Id) {
-			renamed[b.Model().Id] = bson.NewObjectId().Hex()
+		if base.Exists(id) || editorReservedBlockIds[id] {
+			renamed[id] = bson.NewObjectId().Hex()
 		}
 		return true
 	})
@@ -313,6 +314,23 @@ func bundledIdsToInstall(relationKeys []domain.RelationKey, typeKeys []domain.Ty
 		}
 	}
 	return ids
+}
+
+// editorReservedBlockIds are the ids the editor owns on every object: it
+// creates them, moves them and, for a note, UNLINKS the title outright
+// (template.WithNoTitle). A caller's block carrying one of them is reminted
+// even when the template state has no such block, because the object's own
+// initialization will assert its claim afterwards and the caller's content
+// would go with it.
+//
+// Nothing is lost by the rename: these blocks are structural, and a read of
+// this API never serves them — a document a caller pastes back cannot carry
+// one, so an id from this set is always authored rather than cloned.
+var editorReservedBlockIds = map[string]bool{
+	editortemplate.HeaderLayoutId:      true,
+	editortemplate.TitleBlockId:        true,
+	editortemplate.DescriptionBlockId:  true,
+	editortemplate.FeaturedRelationsId: true,
 }
 
 // carryTableCells keeps a renamed table coherent. A cell's id is not free:

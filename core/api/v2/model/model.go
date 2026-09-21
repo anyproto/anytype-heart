@@ -430,9 +430,9 @@ type AppliedTemplate struct {
 	Name string `json:"name"`
 	// Who chose it: request when the create named it, type_default when the type's default_template did.
 	Source string `json:"source"`
-	// How many blocks the template put in the object, not counting the title and featured properties every object of the layout carries. Absent on a dry run, which does not build the template.
-	BlocksAdded int `json:"blocks_added,omitempty"`
-	// True when the object's blocks are the template's followed by the ones this request sent, so its body holds more than the request did.
+	// How many blocks the template put in the object, not counting its header: the title, description and featured properties every object carries. Absent on a dry run, which does not build the template, and zero is a real answer.
+	BlocksAdded *int `json:"blocks_added,omitempty"`
+	// True when the object's blocks are the template's followed by the ones this request sent.
 	Combined bool `json:"combined,omitempty"`
 }
 

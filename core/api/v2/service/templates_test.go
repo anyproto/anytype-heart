@@ -23,6 +23,9 @@ const (
 	testMemoTypeId     = "type-memo"
 )
 
+// blockCountPtr is the pointer form a known count takes on the wire.
+func blockCountPtr(n int) *int { return &n }
+
 // addTemplateType registers the space's template type, without which no row
 // can BE a template (its `type` names this object).
 func (fx *v2Fixture) addTemplateType(t *testing.T) {
@@ -77,7 +80,7 @@ func TestCreateObjectTemplate(t *testing.T) {
 		fx.addTemplate(t, "tpl-weekly", "Weekly memo", testMemoTypeId)
 		applied := fx.expectCreateWithTemplate("newObj")
 		fx.expectEtagRead("newObj")
-		want := &v2model.AppliedTemplate{Id: "tpl-weekly", Name: "Weekly memo", Source: "request"}
+		want := &v2model.AppliedTemplate{Id: "tpl-weekly", Name: "Weekly memo", Source: "request", BlocksAdded: blockCountPtr(0)}
 
 		// when
 		result, err := fx.CreateObject(context.Background(), testSpaceId,
@@ -98,7 +101,7 @@ func TestCreateObjectTemplate(t *testing.T) {
 		fx.addTemplate(t, "tpl-weekly", "Weekly memo", testMemoTypeId)
 		applied := fx.expectCreateWithTemplate("newObj")
 		fx.expectEtagRead("newObj")
-		want := &v2model.AppliedTemplate{Id: "tpl-weekly", Name: "Weekly memo", Source: "type_default"}
+		want := &v2model.AppliedTemplate{Id: "tpl-weekly", Name: "Weekly memo", Source: "type_default", BlocksAdded: blockCountPtr(0)}
 
 		// when
 		result, err := fx.CreateObject(context.Background(), testSpaceId,
@@ -220,26 +223,60 @@ func TestCreateObjectTemplate(t *testing.T) {
 		assert.Contains(t, result.Warnings[0].Hint, "default_template")
 	})
 
-	t.Run("a deleted default warns like a missing one", func(t *testing.T) {
-		// given
+	t.Run("a default in the bin warns like a missing one, whichever way it went", func(t *testing.T) {
+		// the three flags a template can end its life under. The API's word
+		// for all of them is deleted: its own DELETE archives, and an
+		// archived object is what a caller of this surface cannot address
+		for _, gone := range []domain.RelationKey{
+			bundle.RelationKeyIsArchived,
+			bundle.RelationKeyIsDeleted,
+			bundle.RelationKeyIsUninstalled,
+		} {
+			t.Run(gone.String(), func(t *testing.T) {
+				// given
+				fx := newV2Fixture(t)
+				fx.addTemplateType(t)
+				fx.addMemoType(t, "tpl-weekly")
+				fx.addTemplate(t, "tpl-weekly", "Weekly memo", testMemoTypeId, objectstore.TestObject{
+					gone: domain.Bool(true),
+				})
+				applied := fx.expectCreateWithTemplate("newObj")
+				fx.expectEtagRead("newObj")
+
+				// when
+				result, err := fx.CreateObject(context.Background(), testSpaceId,
+					[]byte(`{"type":"memo","name":"Monday"}`), false, false)
+
+				// then
+				require.NoError(t, err)
+				assert.Equal(t, "newObj", result.Id, "the object is created either way")
+				assert.Nil(t, result.Template)
+				assert.Empty(t, *applied, "and it starts from nothing")
+				require.Len(t, result.Warnings, 1)
+				assert.Contains(t, result.Warnings[0].Message, "is deleted")
+				assert.Contains(t, result.Warnings[0].Hint, "default_template")
+			})
+		}
+	})
+
+	t.Run("a template in the bin that the body names is refused, not warned about", func(t *testing.T) {
+		// given — the same state, the other chooser
 		fx := newV2Fixture(t)
 		fx.addTemplateType(t)
-		fx.addMemoType(t, "tpl-weekly")
+		fx.addMemoType(t)
 		fx.addTemplate(t, "tpl-weekly", "Weekly memo", testMemoTypeId, objectstore.TestObject{
-			bundle.RelationKeyIsDeleted: domain.Bool(true),
+			bundle.RelationKeyIsArchived: domain.Bool(true),
 		})
-		fx.expectCreateWithTemplate("newObj")
-		fx.expectEtagRead("newObj")
 
-		// when
-		result, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"type":"memo","name":"Monday"}`), false, false)
+		// when — no create expectation: nothing may be written
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"memo","name":"Monday","template":"tpl-weekly"}`), false, false)
 
 		// then
-		require.NoError(t, err)
-		assert.Nil(t, result.Template)
-		require.Len(t, result.Warnings, 1)
-		assert.Contains(t, result.Warnings[0].Message, "deleted")
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/template", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "is deleted")
 	})
 
 	t.Run("a template the body names and the space does not hold is refused", func(t *testing.T) {
@@ -661,9 +698,10 @@ func TestCreateObjectTemplateHardening(t *testing.T) {
 		fx.addMemoType(t)
 		fx.addTemplate(t, "tpl-weekly", "Weekly memo", testMemoTypeId)
 		fx.creatorMock.EXPECT().CreateObjectFromSnapshot(mock.Anything, testSpaceId, mock.Anything, "tpl-weekly").
-			Return(apicore.CreateOutcome{}, apicore.ErrTemplateUnavailable)
+			Return(apicore.CreateOutcome{}, apicore.ErrTemplateUnavailable).Once()
 
-		// when
+		// when — the Once above is the assertion that a refusal does not fall
+		// back to creating the object anyway
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
 			[]byte(`{"type":"memo","name":"Monday","template":"tpl-weekly"}`), false, false)
 
@@ -681,9 +719,10 @@ func TestCreateObjectTemplateHardening(t *testing.T) {
 		fx.addMemoType(t, "tpl-weekly")
 		fx.addTemplate(t, "tpl-weekly", "Weekly memo", testMemoTypeId)
 		fx.creatorMock.EXPECT().CreateObjectFromSnapshot(mock.Anything, testSpaceId, mock.Anything, "tpl-weekly").
-			Return(apicore.CreateOutcome{}, apicore.ErrTemplateUnavailable)
+			Return(apicore.CreateOutcome{}, apicore.ErrTemplateUnavailable).Once()
+		// exactly one retry, and it must carry NO template
 		fx.creatorMock.EXPECT().CreateObjectFromSnapshot(mock.Anything, testSpaceId, mock.Anything, "").
-			Return(apicore.CreateOutcome{Id: "newObj"}, nil)
+			Return(apicore.CreateOutcome{Id: "newObj"}, nil).Once()
 		fx.expectEtagRead("newObj")
 
 		// when
@@ -810,7 +849,7 @@ func TestCreateObjectTemplateReportsComposition(t *testing.T) {
 		fx.addTemplateType(t)
 		fx.addMemoType(t, "tpl-weekly")
 		fx.addTemplate(t, "tpl-weekly", "Weekly memo", testMemoTypeId)
-		fx.expectCreateWithTemplate("newObj", 4)
+		applied := fx.expectCreateWithTemplate("newObj", 4)
 		fx.expectEtagRead("newObj")
 
 		// when
@@ -819,9 +858,11 @@ func TestCreateObjectTemplateReportsComposition(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
+		assert.Equal(t, "tpl-weekly", *applied, "the composition describes a template the create actually started from")
 		require.NotNil(t, result.Template)
 		assert.True(t, result.Template.Combined)
-		assert.Equal(t, 4, result.Template.BlocksAdded)
+		require.NotNil(t, result.Template.BlocksAdded)
+		assert.Equal(t, 4, *result.Template.BlocksAdded)
 	})
 
 	t.Run("a request that sent no content is not told its body was combined", func(t *testing.T) {
@@ -830,7 +871,7 @@ func TestCreateObjectTemplateReportsComposition(t *testing.T) {
 		fx.addTemplateType(t)
 		fx.addMemoType(t, "tpl-weekly")
 		fx.addTemplate(t, "tpl-weekly", "Weekly memo", testMemoTypeId)
-		fx.expectCreateWithTemplate("newObj", 4)
+		applied := fx.expectCreateWithTemplate("newObj", 4)
 		fx.expectEtagRead("newObj")
 
 		// when
@@ -839,9 +880,11 @@ func TestCreateObjectTemplateReportsComposition(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
+		assert.Equal(t, "tpl-weekly", *applied)
 		require.NotNil(t, result.Template)
 		assert.False(t, result.Template.Combined, "nothing of the caller's went after the template's blocks")
-		assert.Equal(t, 4, result.Template.BlocksAdded)
+		require.NotNil(t, result.Template.BlocksAdded)
+		assert.Equal(t, 4, *result.Template.BlocksAdded)
 	})
 
 	t.Run("a dry run says the body would be combined and counts nothing", func(t *testing.T) {
@@ -860,7 +903,7 @@ func TestCreateObjectTemplateReportsComposition(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, result.Template)
 		assert.True(t, result.Template.Combined)
-		assert.Zero(t, result.Template.BlocksAdded)
+		assert.Nil(t, result.Template.BlocksAdded, "a dry run does not build the template, so the count is not known")
 	})
 
 	t.Run("an object created without a template carries no composition at all", func(t *testing.T) {
@@ -875,5 +918,49 @@ func TestCreateObjectTemplateReportsComposition(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Nil(t, result.Template)
+	})
+}
+
+func TestCreateObjectTemplateZeroContribution(t *testing.T) {
+	t.Run("a template that adds nothing reports zero, not nothing", func(t *testing.T) {
+		// given — a template can carry only its header; absent has to keep
+		// meaning "not known", which is what a dry run leaves behind
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.addMemoType(t, "tpl-empty")
+		fx.addTemplate(t, "tpl-empty", "Empty", testMemoTypeId)
+		fx.expectCreateWithTemplate("newObj", 0)
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"memo","name":"Monday"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, result.Template)
+		require.NotNil(t, result.Template.BlocksAdded, "zero is an answer this create knows")
+		assert.Equal(t, 0, *result.Template.BlocksAdded)
+
+		// and the wire shape carries it
+		encoded, err := json.Marshal(result.Template)
+		require.NoError(t, err)
+		assert.Contains(t, string(encoded), `"blocks_added":0`)
+	})
+
+	t.Run("a dry run leaves the count out of the wire shape entirely", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.addMemoType(t, "tpl-empty")
+		fx.addTemplate(t, "tpl-empty", "Empty", testMemoTypeId)
+
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"memo","name":"Monday"}`), true, false)
+
+		require.NoError(t, err)
+		require.NotNil(t, result.Template)
+		encoded, err := json.Marshal(result.Template)
+		require.NoError(t, err)
+		assert.NotContains(t, string(encoded), "blocks_added")
 	})
 }

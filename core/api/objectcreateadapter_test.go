@@ -482,3 +482,56 @@ func TestCountContentBlocks(t *testing.T) {
 		assert.Zero(t, countContentBlocks(st))
 	})
 }
+
+func TestMergeDocumentIntoTemplateReservedIds(t *testing.T) {
+	t.Run("a caller block carrying an editor-owned id is reminted even when the template has none", func(t *testing.T) {
+		// given — a note template carries no title block, and note layout
+		// UNLINKS the block with that id at creation, so a caller's paragraph
+		// under it would go with it
+		base := templateState(t, "tplRoot", "intro")
+		doc := docState(t, "docRoot", "title", "p1")
+
+		// when
+		mergeDocumentIntoTemplate(base, doc)
+
+		// then
+		children := base.Pick(base.RootId()).Model().ChildrenIds
+		require.Len(t, children, 3)
+		assert.Equal(t, "intro", children[0])
+		assert.NotEqual(t, "title", children[1], "the caller's block does not keep an id the editor owns")
+		assert.Equal(t, "doc title", blockText(base, children[1]), "and its content survives under the new id")
+	})
+
+	t.Run("every editor-owned id is covered", func(t *testing.T) {
+		base := templateState(t, "tplRoot", "intro")
+		doc := docState(t, "docRoot", "header", "title", "description", "featuredRelations")
+
+		mergeDocumentIntoTemplate(base, doc)
+
+		for _, reserved := range []string{"header", "title", "description", "featuredRelations"} {
+			assert.Nil(t, base.Pick(reserved), "%s must not be the caller's", reserved)
+		}
+		assert.Len(t, base.Pick(base.RootId()).Model().ChildrenIds, 5)
+	})
+}
+
+func TestMergeDocumentIntoTemplateColumnCollision(t *testing.T) {
+	t.Run("a renamed column carries the cells addressed by it", func(t *testing.T) {
+		// given — only the COLUMN collides
+		base := templateState(t, "tplRoot", "c1")
+		doc := tableSnapshotState(t, "r1", "c1")
+
+		// when
+		mergeDocumentIntoTemplate(base, doc)
+
+		// then
+		cols := base.Pick("cols")
+		require.NotNil(t, cols)
+		require.Len(t, cols.Model().ChildrenIds, 1)
+		newCol := cols.Model().ChildrenIds[0]
+		assert.NotEqual(t, "c1", newCol, "the template's block kept the id")
+		assert.Equal(t, "template c1", blockText(base, "c1"))
+		assert.Equal(t, "r1-"+newCol, cellIdOf(base, "r1"), "the cell follows its column")
+		assert.NotNil(t, base.Pick("r1-"+newCol))
+	})
+}

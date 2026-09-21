@@ -380,11 +380,15 @@ func (r *Runner) runCreate(ctx context.Context, session *Session, args map[strin
 // much of it the template wrote, and whether the caller's own content follows
 // it. Both are facts a read-back would otherwise be sent to discover.
 func templateComposition(applied *v2model.AppliedTemplate) string {
+	added := 0
+	if applied.BlocksAdded != nil {
+		added = *applied.BlocksAdded
+	}
 	switch {
-	case applied.BlocksAdded > 0 && applied.Combined:
-		return fmt.Sprintf(" — it wrote %s, and yours follow", blockCount(applied.BlocksAdded))
-	case applied.BlocksAdded > 0:
-		return fmt.Sprintf(" — it wrote %s", blockCount(applied.BlocksAdded))
+	case added > 0 && applied.Combined:
+		return fmt.Sprintf(" — it wrote %s, and yours follow", blockCount(added))
+	case added > 0:
+		return fmt.Sprintf(" — it wrote %s", blockCount(added))
 	case applied.Combined:
 		return " — your blocks follow it"
 	}

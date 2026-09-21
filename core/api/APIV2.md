@@ -7463,10 +7463,12 @@ declares it, and the full document has it LIFTED out
 `warnings` take on their way in. That lift is what makes one member serve two
 shapes: the interchange document is a closed set, so a `template` left in it
 would be refused as an unknown envelope member, and adding it to the FORMAT
-would be wrong in a different way — an object does not record which template
-it came from, and no read ever serves the member back. It is a create
-directive, like `dry_run`, and it lives in the body because that is where
-this API's callers look.
+would be wrong in a different way — no read serves the member back, so a
+document could carry it only on the way in. (The store does keep provenance:
+the template service stamps `sourceObject` with the template's id. That is a
+detail, not a document member, and this API neither serves nor accepts it.)
+`template` is a create directive, like `dry_run`, and it lives in the body
+because that is where this API's callers look.
 
 An empty string reads as ABSENT, not as `none`. A body generated against a
 schema tends to carry every member it can see, empty ones included, and
@@ -7503,7 +7505,20 @@ not counting the title and featured relations the object would carry either
 way — and `combined`, true when the request's own blocks follow the
 template's. `combined` is knowable from the request's own snapshot, so it
 rides dry runs too; `blocks_added` is not, because a dry run never builds the
-template, and it is absent there rather than guessed.
+template, and it is absent there rather than guessed — which is also why it is
+a POINTER: a template can carry nothing but its header, and a known zero must
+not read like an unknown.
+
+Two edges of the count, recorded rather than chased. It is taken from the
+template state BEFORE the merge, so a layout conversion that runs later at
+creation is outside it: a note whose name becomes its first block
+(`template.WithNameToFirstBlock`) lands one block the count did not include.
+And a caller block carrying an id the editor owns — `title`, `header`,
+`description`, `featuredRelations` — is reminted whether or not the template
+state holds one, because note layout UNLINKS the title block at creation and
+the caller's content would go with it. Nothing is lost by that rename: a read
+of this API never serves those blocks, so such an id is always authored
+rather than cloned.
 
 The steering lives in the MEMBER's description rather than the endpoint's
 because this API has measured which one a model reads: the A/B recorded
@@ -7577,6 +7592,16 @@ family — the response naming a template the object did not get:
 - The caller's root-block attributes were dropped when a template applied,
   because the merge skips the document root. They are merged onto the
   template's root now, caller wins.
+
+**One ordering is left as it is, deliberately.** The template is loaded by the
+create itself, which runs after the create-missing resolvers have minted any
+options the document asked for. A template that passes every index check and
+then fails to LOAD — the deletion race — therefore refuses at `/template`
+with those options already written. Closing it means loading the template
+tree a second time, before the resolvers, on every create that names one, to
+protect a millisecond-wide window whose cost is an orphaned select option the
+caller consented to create. Any create that fails after that point has always
+had this property; it is not new here, and it is filed rather than fixed.
 
 One defect the review found is OLDER than this change and is fixed with it:
 the format's `type_internal_key` is excluded from the document this API

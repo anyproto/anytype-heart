@@ -129,6 +129,35 @@ func TestCreate(t *testing.T) {
 			"what the object holds is a read-back the receipt can spare the caller")
 	})
 
+	t.Run("a template that added blocks to a bodyless request says only that", func(t *testing.T) {
+		// given — nothing of the caller's follows, so there is no "and yours"
+		fx := newFixture(t)
+		fx.stub("POST /v2/spaces/space1/objects", 200,
+			`{"id":"bafynew","type":"task","etag":"e1","template":{"id":"bafytpl","name":"Weekly task","source":"request","blocks_added":1}}`)
+
+		result, err := fx.Run(ctx, "create", map[string]any{"space": "space1", "type": "task", "name": "X"})
+
+		require.NoError(t, err)
+		assert.Contains(t, result.Text, "it wrote 1 block")
+		assert.NotContains(t, result.Text, "yours follow")
+	})
+
+	t.Run("a dry run has no count and still says the body would be combined", func(t *testing.T) {
+		// given — a dry run does not build the template, so only the caller's
+		// own half of the composition is known
+		fx := newFixture(t)
+		fx.DryRun = true
+		fx.stub("POST /v2/spaces/space1/objects", 200,
+			`{"type":"task","dry_run":true,"template":{"id":"bafytpl","name":"Weekly task","source":"type_default","combined":true}}`)
+
+		result, err := fx.Run(ctx, "create", map[string]any{"space": "space1", "type": "task", "name": "X",
+			"markdown": "# Mine"})
+
+		require.NoError(t, err)
+		assert.Contains(t, result.Text, "your blocks follow it")
+		assert.NotContains(t, result.Text, "it wrote")
+	})
+
 	t.Run("no template means nothing is said about one", func(t *testing.T) {
 		fx := newFixture(t)
 		fx.stub("POST /v2/spaces/space1/objects", 200, `{"id":"bafynew","type":"task","etag":"e1"}`)
