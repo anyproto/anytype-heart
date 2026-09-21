@@ -265,3 +265,107 @@ type ClientCommands interface {
 	ChatReadReactions(context.Context, *pb.RpcChatReadReactionsRequest) *pb.RpcChatReadReactionsResponse
 	ChatSearch(context.Context, *pb.RpcChatSearchRequest) *pb.RpcChatSearchResponse
 }
+
+// WidgetScope names which sidebar root a widget lives in. A space has two:
+// the space root (the desktop's "Pinned" section, shared by every member and
+// writable by the owner and admins only) and the personal root (the desktop's
+// "My Favorites", this account's own, held in the tech space).
+type WidgetScope string
+
+const (
+	WidgetScopeSpace    WidgetScope = "space"
+	WidgetScopePersonal WidgetScope = "personal"
+)
+
+// WidgetEntry is one sidebar widget as the root holds it: the wrapper block
+// (Id, what every mutation addresses), its link child (LinkId), and the
+// members the desktop reads. Target is the STORED spelling — an object id or
+// a bare built-in listing id such as favorite — never the format's
+// underscore spelling.
+type WidgetEntry struct {
+	Id     string
+	LinkId string
+	Scope  WidgetScope
+	Target string
+	Layout model.BlockContentWidgetLayout
+	Limit  int32
+	ViewId string
+	// Placed is set on the entry a create or an update answers when the
+	// request placed the widget: the placement as it was applied under the
+	// lock, in wrapper ids — which may differ from what the caller asked
+	// (a default placement lands before a bin that became last meanwhile).
+	Placed *WidgetPlacement
+}
+
+// WidgetPlacement says where a widget goes in its root's order: after or
+// before a sibling wrapper id, at the head (First), or — the zero value — at
+// the end.
+type WidgetPlacement struct {
+	AfterId  string
+	BeforeId string
+	First    bool
+}
+
+// WidgetCreate is what a create writes: the stored target spelling and the
+// wrapper's members, already validated by the caller — the adapter checks
+// shape, not vocabulary.
+type WidgetCreate struct {
+	Target    string
+	Layout    model.BlockContentWidgetLayout
+	Limit     int32
+	ViewId    string
+	Placement WidgetPlacement
+}
+
+// WidgetUpdate is a partial update of one wrapper: nil leaves a member as
+// it is. The target is immutable — the desktop cannot change it either, and
+// the personal root's store models a target change as delete + create.
+//
+// An update is PLANNED under the root's lock: UpdateWidget hands the plan
+// the widget as it is at that moment, so a layout and a limit validated
+// against each other are validated against the stored pair, not against
+// a read that another request may have overtaken.
+type WidgetUpdate struct {
+	Layout    *model.BlockContentWidgetLayout
+	Limit     *int32
+	ViewId    *string
+	Placement *WidgetPlacement
+}
+
+// ErrWidgetNotFound is what a widget mutation returns when the wrapper id
+// names no widget in the root.
+var ErrWidgetNotFound = errors.New("widget not found")
+
+// ErrBinPlacement is what a placement returns when, under the lock, it
+// would put a widget after the bin widget: the desktop lands every drop
+// near the bin before it, and never lets the bin itself be dragged.
+var ErrBinPlacement = errors.New("nothing goes after the bin widget")
+
+// ErrWidgetRetargeted is what a delete returns when the widget's target under
+// the lock is not the one the caller resolved it by.
+var ErrWidgetRetargeted = errors.New("widget target changed")
+
+// ErrWidgetExists is what a create returns when the root already holds a
+// widget for the target. The service checks this before calling, but only
+// the adapter checks it under the root's lock, so two concurrent creates
+// for one target cannot both pass.
+var ErrWidgetExists = errors.New("widget for this target already exists")
+
+// Widgets is the sidebar-widget port of API v2: the two widget roots of a
+// space read and written through the same editor path the desktop uses (one
+// locked state, one Apply per request), so ordering, wrapper+link pairing
+// and the personal root's store projection all ride the existing machinery.
+type Widgets interface {
+	// CanEditWidgets reports whether this account may write the root of
+	// scope in the space: the owner or an admin for the space root, any
+	// writing participant for the personal root.
+	CanEditWidgets(ctx context.Context, spaceId string, scope WidgetScope) (bool, error)
+	ListWidgets(ctx context.Context, spaceId string, scope WidgetScope) ([]WidgetEntry, error)
+	CreateWidget(ctx context.Context, spaceId string, scope WidgetScope, create WidgetCreate) (WidgetEntry, error)
+	UpdateWidget(ctx context.Context, spaceId string, scope WidgetScope, widgetId string, plan func(current WidgetEntry) (WidgetUpdate, error)) (WidgetEntry, error)
+	// DeleteWidget removes the wrapper and its link. expectedTarget is the
+	// target the caller resolved the widget by; a widget retargeted since
+	// (heart's own RPC can) is refused with ErrWidgetRetargeted rather than
+	// removed under a stale name. The removed entry is answered.
+	DeleteWidget(ctx context.Context, spaceId string, scope WidgetScope, widgetId string, expectedTarget string) (WidgetEntry, error)
+}

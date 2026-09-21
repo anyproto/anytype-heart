@@ -826,6 +826,40 @@
         },
         "type": "object"
       },
+      "ListResponse-WidgetRow": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/WidgetRow"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
       "ListSpacesResponse": {
         "properties": {
           "data": {
@@ -1307,6 +1341,101 @@
           },
           "scope": {
             "description": "\"jsonApi\" | \"full\" | \"limited\"",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "WidgetPlaced": {
+        "description": "Where the widget was placed, present when the request asked for a placement.",
+        "properties": {
+          "after": {
+            "description": "Id of the widget this one now follows.",
+            "type": "string"
+          },
+          "before": {
+            "description": "Id of the widget this one now precedes.",
+            "type": "string"
+          },
+          "position": {
+            "description": "first or last, when the placement was absolute.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "WidgetResult": {
+        "properties": {
+          "dry_run": {
+            "description": "True on a dry run, when nothing was written.",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Id of the widget, what update and delete address.",
+            "type": "string"
+          },
+          "layout": {
+            "description": "How it renders: link is one row, tree expands the object's children, list and compact_list show a query's or type's entries, view renders the target's own view.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "How many entries a listing shows. Absent on a link widget, which shows none.",
+            "type": "integer"
+          },
+          "placed": {
+            "$ref": "#/components/schemas/WidgetPlaced"
+          },
+          "removed": {
+            "description": "True when this delete removed the widget.",
+            "type": "boolean"
+          },
+          "scope": {
+            "description": "Which sidebar root holds it: space, the shared sidebar the owner and admins write, or personal, this account's own.",
+            "type": "string"
+          },
+          "target": {
+            "description": "What the widget points at: an object id, or a built-in listing spelled with a leading underscore, such as _favorite or _bin.",
+            "type": "string"
+          },
+          "view_id": {
+            "description": "Which of the target's views a view widget shows. Absent means the target's first view.",
+            "type": "string"
+          },
+          "warnings": {
+            "description": "What the server changed about the request on the way, such as a layout or limit the target could not take.",
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "WidgetRow": {
+        "properties": {
+          "id": {
+            "description": "Id of the widget, what update and delete address.",
+            "type": "string"
+          },
+          "layout": {
+            "description": "How it renders: link is one row, tree expands the object's children, list and compact_list show a query's or type's entries, view renders the target's own view.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "How many entries a listing shows. Absent on a link widget, which shows none.",
+            "type": "integer"
+          },
+          "scope": {
+            "description": "Which sidebar root holds it: space, the shared sidebar the owner and admins write, or personal, this account's own.",
+            "type": "string"
+          },
+          "target": {
+            "description": "What the widget points at: an object id, or a built-in listing spelled with a leading underscore, such as _favorite or _bin.",
+            "type": "string"
+          },
+          "view_id": {
+            "description": "Which of the target's views a view widget shows. Absent means the target's first view.",
             "type": "string"
           }
         },
@@ -1959,7 +2088,7 @@
     "termsOfService": "https://anytype.io/terms_of_use",
     "title": "Anytype API v2",
     "version": "2025-11-08",
-    "description": "Anytype API v2 exposes an object as one editable **AnyBlock JSON document**.\nA single `GET` reads its properties and content; a single `PATCH` applies a\nbatch of edits. It is designed for agents, scripts, and integrations that\nneed to work with whole documents.\n\n> **Pre-release:** API v2 can change without a new API version. Use\n> [API v1](https://developers.anytype.io/docs/reference) for production\n> integrations that need a stable contract.\n\n## Connect and authenticate\n\nThe API runs locally with Anytype, at `http://127.0.0.1:31009` by default.\nBoth API majors share the same process, port, and API keys. v2 routes start\nwith `/v2/` and do not require the `Anytype-Version` request header.\n\nTo obtain a key through Desktop pairing:\n\n1. Send `POST /v2/auth/challenges` with an `app_name`.\n2. The user approves spaces and permissions in Anytype Desktop, then receives\n   a four-digit code.\n3. Send `POST /v2/auth/api_keys` with the `challenge_id` and `code`. The\n   response contains an `api_key` and the approved grant.\n\nThese two pairing endpoints require no existing key. For authenticated\nrequests, send the key in the `Authorization` header:\n\n```bash\ncurl http://127.0.0.1:31009/v2/auth/whoami \\\n  -H \"Authorization: Bearer $api_key\"\n```\n\nSet `api_key` to your key before running the example. The `whoami` response\ndescribes which spaces and permissions it grants.\n\nThe bearer credential is an opaque Anytype API key. It is not a JWT, and it\nis never read from a query or body parameter. An unknown, revoked, or expired\nkey returns `401`.\n\n## Objects, properties, and blocks\n\n- **Spaces** contain objects. Most routes are scoped to one space.\n- **Objects** combine typed `properties` with document content in `blocks`.\n- **Types** describe an object's shape and are addressed by a type key, such\n  as `page` or `task`.\n- **Queries** show a live selection of objects. **Collections** hold a\n  hand-curated list.\n- **Chats** store messages separately from document blocks.\n\nBlocks form a flat array in document order, with `indent` describing the\nhierarchy. Inline text formatting uses Markdown. The title and description\nlive in the `name` and `description` properties.\n\n| Task | Request |\n| --- | --- |\n| Find available spaces | `GET /v2/spaces` |\n| Search within a space | `POST /v2/spaces/{space_id}/search` |\n| Search across spaces | `POST /v2/search` |\n| Read a document | `GET /v2/spaces/{space_id}/objects/{object_id}` |\n| Create an object | `POST /v2/spaces/{space_id}/objects` |\n| Edit a document | `PATCH /v2/spaces/{space_id}/objects/{object_id}` |\n\n## Names and identifiers\n\nNames owned by v2 use `snake_case`: path and query parameters, request and\nresponse fields, and `PATCH` operation names. Content inside an AnyBlock\ndocument retains the format's own field vocabulary.\n\n### Property and type keys\n\nReads use stable keys such as `due_date` by default. A key is minted when\nthe property or type is created and stays the same after a rename. Use keys\nin scripts, configuration, and integrations.\n\nUse `?keys=name` to read display names such as `Due date` instead. This is\nuseful when showing users their own vocabulary.\n\nInputs accept keys, display names, and forgiving spelling variants. For\nexample, `due_date`, `dueDate`, `due-date`, and `Due date` can address the same\nproperty. An ambiguous spelling returns `400` with the candidates. An\nunknown spelling never creates a property implicitly.\n\nSelect options are addressed by their names. Object references remain full\nobject ids and are included inline.\n\n### Block and view ids\n\nDefault object reads shorten machine-minted block ids to document-local\nsuffixes. Use ids exactly as the read returns them when editing. Routes and\noperations that address a block or view accept a full id or a unique suffix;\nan ambiguous suffix is refused with a list of candidates.\n\nUse `?ids=full` for the export shape, with full ids throughout. This is the\nshape to store for a backup or use when cloning a document.\n\nPATCH receipts follow the same choice: `created_blocks` and `created_views`\nuse the labels from the resulting document by default, and full ids with\n`?ids=full`. This also applies to dry runs. Collision handling can leave an\nid full. An id removed by a later operation or omitted from the resulting\ndocument retains its minted spelling in the receipt.\n\n### Space references\n\nA space is normally served with a short reference: the last six characters\nof the first half of its full `<cid>.<replicationKey>` id. Space-scoped routes\naccept either spelling. Resolution tries an exact id first, then a unique\nsuffix among the spaces the key can access.\n\nAn ambiguous reference returns `400` with the candidates. Spaces whose\nsuffixes collide are served with full ids.\n\nA short reference is only unique among the spaces currently visible to the\nkey. Joining another space can make it ambiguous. Use `?ids=full` whenever a\nspace reference will be stored outside the API.\n\n## Read and search efficiently\n\nObject reads return the editable document by default. For a smaller read:\n\n- `?outline=true` returns the block structure with shortened text.\n- `?include=properties` or `?include=blocks` selects part of the object.\n- `?block={block_id}` returns one subtree, marked as a partial document.\n- `?format=md` returns a read-only Markdown rendering.\n\nPartial documents and Markdown renderings cannot be sent back as whole\ndocument writes. Use `PATCH` operations to edit the object.\n\nList and search rows are compact: `id`, `name`, `type`, and the properties\nyou request. They do not embed a type object. Request the fields you need\ninstead of reading every object separately.\n\nLists use `offset` and `limit`, with 25 rows by default. Responses include\n`total` and `has_more`, plus a narrowing hint when truncated. Chat messages\nuse an order-id cursor instead.\n\nSearch accepts full text in the JSON body's `query` field, for example\n`{\"query\":\"meeting notes\"}`. Cross-space search uses the currently loaded\nspaces. Its `total` is a lower bound when results are clipped; use `has_more`\nto continue paging. Warnings indicate when stores are still loading or\nunavailable, so retry later for a complete view.\n\n## Edit with a batch of operations\n\nSend an `ops` array to the object's `PATCH` endpoint. For example, this body\nchanges the title and appends a paragraph:\n\n```json\n{\n  \"ops\": [\n    {\n      \"op\": \"set_properties\",\n      \"set\": { \"name\": \"Meeting notes\" }\n    },\n    {\n      \"op\": \"insert_blocks\",\n      \"markdown\": \"Next step: review the proposal.\"\n    }\n  ]\n}\n```\n\nThe batch is atomic: an invalid operation rejects the whole request.\nDiscover the accepted fields for each operation at\n`GET /v2/schemas/ops/{op}`.\n\nAn object's type is part of the document envelope, not a property: change\nit with the `set_type` operation. Only layouts of one family convert, and\na refused change names the types the object can take instead.\n\n### Concurrency, retries, and dry runs\n\n| Control | Behavior |\n| --- | --- |\n| `ETag` / `If-Match` | Object reads return an `etag` in the body and an `ETag` header. Send it back in `If-Match` to check for concurrent changes. A stale value returns `409` with the current etag. Without the header, the last write wins. |\n| `Idempotency-Key` | Resource mutations replay the stored response when retried with the same key and request. `POST /v2/validate` also accepts a key. Search requests do not. |\n| `?dry_run=true` | Resource mutations validate the request and report the outcome without committing. A dry run returns `200` where the committed create would return `201`. Each operation documents any limits to its dry-run result. |\n\nChats use order ids and `last_state_id` for concurrency, and have no etag.\n\nResource bodies reject unknown fields with `400` and name the offending\nfield. Document bodies are capped at 10 MiB; structured bodies at 1 MiB.\n\nDeleting an object, type, or property archives it in Bin, where the Anytype\napp can restore it. Object deletion is limited by creator provenance; see\nthe [delete operation](https://developers.anytype.io/docs/reference/v2/delete-object)\nfor its requirements. Deleting a chat message, including any attachment\ncleanup that follows, is not an archive.\n\n## Errors and warnings\n\nErrors from v2 handlers have this structure:\n\n```json\n{\n  \"status\": 400,\n  \"code\": \"...\",\n  \"message\": \"...\",\n  \"issues\": [\n    { \"path\": \"...\", \"message\": \"...\", \"hint\": \"...\" }\n  ]\n}\n```\n\nAll four top-level fields are always present. `issues` is an empty array\nwhen there is no path to name. Issues identify the failing input and can\ndescribe the allowed values or how to repair the request.\n\nSome refusals occur before v2 handlers run:\n\n- Pairing, authentication, key-scope checks, request-origin checks, and the\n  shared write rate limit use the older shared error envelope.\n- An unmatched route or an unhandled panic returns no error envelope.\n\nA read does not fail because it encounters content its representation\ncannot express. Such content is reported in `warnings` beside the result.\n\n## Stream chat messages\n\n`GET /v2/spaces/{space_id}/chats/{chat_id}/messages/stream` opens a\nServer-Sent Events connection. It starts with the last `limit` messages as\n`message_added` events, then delivers live changes:\n\n- `message_added`, `message_updated`, and `message_deleted`\n- `reactions_updated`, `state_updated`, and `pinned_updated`\n\nIdle connections stay open with comment lines that clients ignore.\n\nEach addition carries the chat state id as its event id. An id-only frame\nafter the opening window carries the highest such id. Send the last id back\nas `Last-Event-ID` to resume a dropped connection against the same node.\n\n**Only additions replay.** Edits, deletions, pins, and reactions do not\nchange that state id. Re-read messages to refresh changes made while the\nconnection was down.\n\nA `resync_required` event means the retained messages could not establish\ncoverage of the gap since your last event id. Content outside the following\nwindow is unverified. The absence of this event does not guarantee a\ncomplete history: out-of-order additions or reindexing can create gaps the\nstream cannot detect. Re-read messages when you need certainty.\n\n## Download files and icons\n\nUse `GET /v2/spaces/{space_id}/files/{file_id}/content` with a file id or the\n`icon_image` value from a space or member. The response contains bytes with\nthe matching `Content-Type`.\n\nDownloads support byte ranges and conditional requests with `ETag` or\n`Last-Modified`. File preconditions use standard status codes, including\n`304` and `412`. Access is checked on every request.\n\n## Discover schemas at runtime\n\n| Request | Result |\n| --- | --- |\n| `GET /v2/schemas` | Available schema kinds |\n| `GET /v2/schemas/{kind}` | The schema for one kind |\n| `GET /v2/schemas/ops/{op}` | The schema for one edit operation |\n\nThe schemas support strict constrained decoding. Read them before writing\nrequests, and use `POST /v2/validate` to check an AnyBlock document.\n"
+    "description": "Anytype API v2 exposes an object as one editable **AnyBlock JSON document**.\nA single `GET` reads its properties and content; a single `PATCH` applies a\nbatch of edits. It is designed for agents, scripts, and integrations that\nneed to work with whole documents.\n\n> **Pre-release:** API v2 can change without a new API version. Use\n> [API v1](https://developers.anytype.io/docs/reference) for production\n> integrations that need a stable contract.\n\n## Connect and authenticate\n\nThe API runs locally with Anytype, at `http://127.0.0.1:31009` by default.\nBoth API majors share the same process, port, and API keys. v2 routes start\nwith `/v2/` and do not require the `Anytype-Version` request header.\n\nTo obtain a key through Desktop pairing:\n\n1. Send `POST /v2/auth/challenges` with an `app_name`.\n2. The user approves spaces and permissions in Anytype Desktop, then receives\n   a four-digit code.\n3. Send `POST /v2/auth/api_keys` with the `challenge_id` and `code`. The\n   response contains an `api_key` and the approved grant.\n\nThese two pairing endpoints require no existing key. For authenticated\nrequests, send the key in the `Authorization` header:\n\n```bash\ncurl http://127.0.0.1:31009/v2/auth/whoami \\\n  -H \"Authorization: Bearer $api_key\"\n```\n\nSet `api_key` to your key before running the example. The `whoami` response\ndescribes which spaces and permissions it grants.\n\nThe bearer credential is an opaque Anytype API key. It is not a JWT, and it\nis never read from a query or body parameter. An unknown, revoked, or expired\nkey returns `401`.\n\n## Objects, properties, and blocks\n\n- **Spaces** contain objects. Most routes are scoped to one space.\n- **Objects** combine typed `properties` with document content in `blocks`.\n- **Types** describe an object's shape and are addressed by a type key, such\n  as `page` or `task`.\n- **Queries** show a live selection of objects. **Collections** hold a\n  hand-curated list.\n- **Chats** store messages separately from document blocks.\n- **Widgets** are the sidebar: the objects a space pins for every member,\n  and the ones this account keeps for itself.\n\nBlocks form a flat array in document order, with `indent` describing the\nhierarchy. Inline text formatting uses Markdown. The title and description\nlive in the `name` and `description` properties.\n\n| Task | Request |\n| --- | --- |\n| Find available spaces | `GET /v2/spaces` |\n| Search within a space | `POST /v2/spaces/{space_id}/search` |\n| Search across spaces | `POST /v2/search` |\n| Read a document | `GET /v2/spaces/{space_id}/objects/{object_id}` |\n| Create an object | `POST /v2/spaces/{space_id}/objects` |\n| Edit a document | `PATCH /v2/spaces/{space_id}/objects/{object_id}` |\n| Pin an object to the sidebar | `POST /v2/spaces/{space_id}/widgets` |\n\n## Names and identifiers\n\nNames owned by v2 use `snake_case`: path and query parameters, request and\nresponse fields, and `PATCH` operation names. Content inside an AnyBlock\ndocument retains the format's own field vocabulary.\n\n### Property and type keys\n\nReads use stable keys such as `due_date` by default. A key is minted when\nthe property or type is created and stays the same after a rename. Use keys\nin scripts, configuration, and integrations.\n\nUse `?keys=name` to read display names such as `Due date` instead. This is\nuseful when showing users their own vocabulary.\n\nInputs accept keys, display names, and forgiving spelling variants. For\nexample, `due_date`, `dueDate`, `due-date`, and `Due date` can address the same\nproperty. An ambiguous spelling returns `400` with the candidates. An\nunknown spelling never creates a property implicitly.\n\nSelect options are addressed by their names. Object references remain full\nobject ids and are included inline.\n\n### Block and view ids\n\nDefault object reads shorten machine-minted block ids to document-local\nsuffixes. Use ids exactly as the read returns them when editing. Routes and\noperations that address a block or view accept a full id or a unique suffix;\nan ambiguous suffix is refused with a list of candidates.\n\nUse `?ids=full` for the export shape, with full ids throughout. This is the\nshape to store for a backup or use when cloning a document.\n\nPATCH receipts follow the same choice: `created_blocks` and `created_views`\nuse the labels from the resulting document by default, and full ids with\n`?ids=full`. This also applies to dry runs. Collision handling can leave an\nid full. An id removed by a later operation or omitted from the resulting\ndocument retains its minted spelling in the receipt.\n\n### Space references\n\nA space is normally served with a short reference: the last six characters\nof the first half of its full `<cid>.<replicationKey>` id. Space-scoped routes\naccept either spelling. Resolution tries an exact id first, then a unique\nsuffix among the spaces the key can access.\n\nAn ambiguous reference returns `400` with the candidates. Spaces whose\nsuffixes collide are served with full ids.\n\nA short reference is only unique among the spaces currently visible to the\nkey. Joining another space can make it ambiguous. Use `?ids=full` whenever a\nspace reference will be stored outside the API.\n\n## Read and search efficiently\n\nObject reads return the editable document by default. For a smaller read:\n\n- `?outline=true` returns the block structure with shortened text.\n- `?include=properties` or `?include=blocks` selects part of the object.\n- `?block={block_id}` returns one subtree, marked as a partial document.\n- `?format=md` returns a read-only Markdown rendering.\n\nPartial documents and Markdown renderings cannot be sent back as whole\ndocument writes. Use `PATCH` operations to edit the object.\n\nList and search rows are compact: `id`, `name`, `type`, and the properties\nyou request. They do not embed a type object. Request the fields you need\ninstead of reading every object separately.\n\nLists use `offset` and `limit`, with 25 rows by default. Responses include\n`total` and `has_more`, plus a narrowing hint when truncated. Chat messages\nuse an order-id cursor instead.\n\nSearch accepts full text in the JSON body's `query` field, for example\n`{\"query\":\"meeting notes\"}`. Cross-space search uses the currently loaded\nspaces. Its `total` is a lower bound when results are clipped; use `has_more`\nto continue paging. Warnings indicate when stores are still loading or\nunavailable, so retry later for a complete view.\n\n## Edit with a batch of operations\n\nSend an `ops` array to the object's `PATCH` endpoint. For example, this body\nchanges the title and appends a paragraph:\n\n```json\n{\n  \"ops\": [\n    {\n      \"op\": \"set_properties\",\n      \"set\": { \"name\": \"Meeting notes\" }\n    },\n    {\n      \"op\": \"insert_blocks\",\n      \"markdown\": \"Next step: review the proposal.\"\n    }\n  ]\n}\n```\n\nThe batch is atomic: an invalid operation rejects the whole request.\nDiscover the accepted fields for each operation at\n`GET /v2/schemas/ops/{op}`.\n\nAn object's type is part of the document envelope, not a property: change\nit with the `set_type` operation. Only layouts of one family convert, and\na refused change names the types the object can take instead.\n\n### Concurrency, retries, and dry runs\n\n| Control | Behavior |\n| --- | --- |\n| `ETag` / `If-Match` | Object reads return an `etag` in the body and an `ETag` header. Send it back in `If-Match` to check for concurrent changes. A stale value returns `409` with the current etag. Without the header, the last write wins. |\n| `Idempotency-Key` | Resource mutations replay the stored response when retried with the same key and request. `POST /v2/validate` also accepts a key. Search requests do not. |\n| `?dry_run=true` | Resource mutations validate the request and report the outcome without committing. A dry run returns `200` where the committed create would return `201`. Each operation documents any limits to its dry-run result. |\n\nChats use order ids and `last_state_id` for concurrency, and have no etag.\n\nResource bodies reject unknown fields with `400` and name the offending\nfield. Document bodies are capped at 10 MiB; structured bodies at 1 MiB.\n\nDeleting an object, type, or property archives it in Bin, where the Anytype\napp can restore it. Object deletion is limited by creator provenance; see\nthe [delete operation](https://developers.anytype.io/docs/reference/v2/delete-object)\nfor its requirements. Deleting a chat message, including any attachment\ncleanup that follows, is not an archive.\n\n## Errors and warnings\n\nErrors from v2 handlers have this structure:\n\n```json\n{\n  \"status\": 400,\n  \"code\": \"...\",\n  \"message\": \"...\",\n  \"issues\": [\n    { \"path\": \"...\", \"message\": \"...\", \"hint\": \"...\" }\n  ]\n}\n```\n\nAll four top-level fields are always present. `issues` is an empty array\nwhen there is no path to name. Issues identify the failing input and can\ndescribe the allowed values or how to repair the request.\n\nSome refusals occur before v2 handlers run:\n\n- Pairing, authentication, key-scope checks, request-origin checks, and the\n  shared write rate limit use the older shared error envelope.\n- An unmatched route or an unhandled panic returns no error envelope.\n\nA read does not fail because it encounters content its representation\ncannot express. Such content is reported in `warnings` beside the result.\n\n## Stream chat messages\n\n`GET /v2/spaces/{space_id}/chats/{chat_id}/messages/stream` opens a\nServer-Sent Events connection. It starts with the last `limit` messages as\n`message_added` events, then delivers live changes:\n\n- `message_added`, `message_updated`, and `message_deleted`\n- `reactions_updated`, `state_updated`, and `pinned_updated`\n\nIdle connections stay open with comment lines that clients ignore.\n\nEach addition carries the chat state id as its event id. An id-only frame\nafter the opening window carries the highest such id. Send the last id back\nas `Last-Event-ID` to resume a dropped connection against the same node.\n\n**Only additions replay.** Edits, deletions, pins, and reactions do not\nchange that state id. Re-read messages to refresh changes made while the\nconnection was down.\n\nA `resync_required` event means the retained messages could not establish\ncoverage of the gap since your last event id. Content outside the following\nwindow is unverified. The absence of this event does not guarantee a\ncomplete history: out-of-order additions or reindexing can create gaps the\nstream cannot detect. Re-read messages when you need certainty.\n\n## Download files and icons\n\nUse `GET /v2/spaces/{space_id}/files/{file_id}/content` with a file id or the\n`icon_image` value from a space or member. The response contains bytes with\nthe matching `Content-Type`.\n\nDownloads support byte ranges and conditional requests with `ETag` or\n`Last-Modified`. File preconditions use standard status codes, including\n`304` and `412`. Access is checked on every request.\n\n## Discover schemas at runtime\n\n| Request | Result |\n| --- | --- |\n| `GET /v2/schemas` | Available schema kinds |\n| `GET /v2/schemas/{kind}` | The schema for one kind |\n| `GET /v2/schemas/ops/{op}` | The schema for one edit operation |\n\nThe schemas support strict constrained decoding. Read them before writing\nrequests, and use `POST /v2/validate` to check an AnyBlock document.\n"
   },
   "externalDocs": {
     "description": "OpenAPI",
@@ -7580,6 +7709,574 @@
         ]
       }
     },
+    "/v2/spaces/{space_id}/widgets": {
+      "get": {
+        "description": "The sidebar in its order: the space widgets every member sees, then this account's personal ones. `scope` narrows to one of the two. A built-in listing is a target spelled with a leading underscore, such as _favorite or _bin; an object id is served as it is.",
+        "operationId": "list_widgets",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "space or personal; omitted lists both",
+            "in": "query",
+            "name": "scope",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Items to skip",
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Items to return",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 25,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse-WidgetRow"
+                }
+              }
+            },
+            "description": "Widget rows"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown scope"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Space not found or unavailable"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "List widgets",
+        "tags": [
+          "Widgets"
+        ]
+      },
+      "post": {
+        "description": "Adds a widget for an object to the space sidebar (scope space, owner and admins) or to this account's own (scope personal, any member who can write). One widget per target per scope. The layout and limit follow the app's own rules: a layout the target cannot render, or a limit off the app's list, is replaced with the app's fallback and reported in warnings.",
+        "operationId": "create_widget",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Replay guard: the same key with the same body replays the stored response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "allOf": [
+                  {
+                    "not": {
+                      "required": [
+                        "after",
+                        "before"
+                      ]
+                    }
+                  },
+                  {
+                    "not": {
+                      "required": [
+                        "after",
+                        "position"
+                      ]
+                    }
+                  },
+                  {
+                    "not": {
+                      "required": [
+                        "before",
+                        "position"
+                      ]
+                    }
+                  }
+                ],
+                "description": "a sidebar widget. POST needs target and scope; PATCH takes the rest, all optional, at least one",
+                "properties": {
+                  "after": {
+                    "description": "id or target of the sidebar widget to place this one after. At most one of after, before and position; on PATCH, none of the three keeps the position",
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "before": {
+                    "description": "id or target of the sidebar widget to place this one before",
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "layout": {
+                    "description": "how the widget renders. Omitted on POST, the target's kind picks it: tree for a page, view for a query, collection or type, link for everything else. A layout the target cannot render is replaced with the one it can, with a warning",
+                    "enum": [
+                      "link",
+                      "tree",
+                      "list",
+                      "compact_list",
+                      "view"
+                    ],
+                    "type": "string"
+                  },
+                  "limit": {
+                    "description": "how many entries a listing shows, from the app's own pick-list: 6, 10, 14, 30 or 50, or 4, 6, 8, 30, 50 for the list layout; any other value is stored as the smallest, with a warning. Omitted on POST, the smallest; omitted on PATCH, the stored limit stays unless a new layout's list lacks it. Not taken by link",
+                    "type": "integer"
+                  },
+                  "position": {
+                    "description": "first or last in the sidebar, last meaning before the bin widget when that is last; omitted with no after or before, a POST goes last",
+                    "enum": [
+                      "first",
+                      "last"
+                    ],
+                    "type": "string"
+                  },
+                  "scope": {
+                    "description": "space is the sidebar every member sees, written by the owner and admins; personal is this account's own sidebar in the space. Required on POST",
+                    "enum": [
+                      "space",
+                      "personal"
+                    ],
+                    "type": "string"
+                  },
+                  "target": {
+                    "description": "id of the object the widget points at. Required on POST, refused on PATCH. Built-in listings cannot be added",
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "view_id": {
+                    "description": "which of the target's views a view widget shows. Only a query, collection or type target has views, and only a space widget keeps one",
+                    "maxLength": 256,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "target",
+                  "scope"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "description": "Widget to create",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetResult"
+                }
+              }
+            },
+            "description": "The widget as stored"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Validation failure: the target is missing, archived, a property, a template or a built-in listing, or the sidebar already holds it"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "413": {
+            "$ref": "#/components/responses/RequestTooLarge"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          },
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetResult"
+                }
+              }
+            },
+            "description": "Dry run; validation result without committing"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Create a widget",
+        "tags": [
+          "Widgets"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/widgets/{widget_id}": {
+      "delete": {
+        "description": "Removes the widget from its sidebar. The object it pointed at is untouched. The path names the widget by its id or by its target; a target the sidebar holds in both scopes needs `scope`.",
+        "operationId": "delete_widget",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Widget id, or the id of the object the widget points at",
+            "in": "path",
+            "name": "widget_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "space or personal, when the target is in both",
+            "in": "query",
+            "name": "scope",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Report without removing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Replay guard: the same key replays the stored response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetResult"
+                }
+              }
+            },
+            "description": "The removed widget"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "A target held in both scopes without scope"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No widget with this id or target"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Delete a widget",
+        "tags": [
+          "Widgets"
+        ]
+      },
+      "patch": {
+        "description": "Changes the layout, the limit or the view of a widget, or moves it with after, before or position. The path names the widget by its id or by its target; a target the sidebar holds in both scopes needs `scope`. The target itself does not change: delete the widget and create one for the other object.",
+        "operationId": "update_widget",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Widget id, or the id of the object the widget points at",
+            "in": "path",
+            "name": "widget_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "space or personal, when the target is in both",
+            "in": "query",
+            "name": "scope",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Replay guard: the same key with the same body replays the stored response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": false,
+                "allOf": [
+                  {
+                    "not": {
+                      "required": [
+                        "after",
+                        "before"
+                      ]
+                    }
+                  },
+                  {
+                    "not": {
+                      "required": [
+                        "after",
+                        "position"
+                      ]
+                    }
+                  },
+                  {
+                    "not": {
+                      "required": [
+                        "before",
+                        "position"
+                      ]
+                    }
+                  }
+                ],
+                "description": "the members to change, every one optional; at least one. The target and the scope are the widget's identity and are refused here",
+                "minProperties": 1,
+                "properties": {
+                  "after": {
+                    "description": "id or target of the sidebar widget to move this one after. At most one of after, before and position; omitted, the widget keeps its position",
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "before": {
+                    "description": "id or target of the sidebar widget to move this one before",
+                    "maxLength": 256,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "layout": {
+                    "description": "link, tree, list, compact_list or view. The layout and the limit are re-validated as a pair whenever either is sent: a layout the target cannot render is replaced with the one it can, with a warning, and a stored layout the target cannot render is replaced the same way on a limit change",
+                    "enum": [
+                      "link",
+                      "tree",
+                      "list",
+                      "compact_list",
+                      "view"
+                    ],
+                    "type": "string"
+                  },
+                  "limit": {
+                    "description": "how many entries a listing shows, from the app's own pick-list: 6, 10, 14, 30 or 50, or 4, 6, 8, 30, 50 for the list layout; any other value is stored as the smallest, with a warning. Omitted, the stored limit stays, re-fitted to the list of a new layout when that list does not hold it. With the link layout the stored limit stays untouched and a sent one is not stored",
+                    "type": "integer"
+                  },
+                  "position": {
+                    "description": "first or last in the sidebar, last meaning before the bin widget when that is last",
+                    "enum": [
+                      "first",
+                      "last"
+                    ],
+                    "type": "string"
+                  },
+                  "view_id": {
+                    "description": "which of the target's views a view widget shows, by view id; an empty string returns to the target's first view. Only a query, collection or type target has views, and only a space widget keeps one",
+                    "maxLength": 256,
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "description": "The members to change",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetResult"
+                }
+              }
+            },
+            "description": "The widget as stored"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Validation failure, or a target held in both scopes without scope"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "No widget with this id or target"
+          },
+          "413": {
+            "$ref": "#/components/responses/RequestTooLarge"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Update a widget",
+        "tags": [
+          "Widgets"
+        ]
+      }
+    },
     "/v2/validate": {
       "post": {
         "description": "Structure and format rules only. Nothing is resolved against a space, so option names and a type's property keys are not checked here. Findings come back as data: an invalid document is still a 200, carrying the issues, and a valid one carries empty lists.",
@@ -7839,6 +8536,10 @@
     {
       "description": "Starting documents for a type.",
       "name": "Templates"
+    },
+    {
+      "description": "The sidebar: which objects a space pins for every member, and which this account keeps for itself.",
+      "name": "Widgets"
     },
     {
       "description": "The format itself: what a valid document looks like, what each PATCH op accepts, and a validator to check one against them. Read these before writing.",

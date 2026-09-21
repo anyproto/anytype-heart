@@ -1628,6 +1628,33 @@ PATCH /v2/spaces/{space_id}
   come from the producers' exported sentinels so a rewording updates the
   matcher at compile time (`core/api/v2/service/space.go:286`).
 
+### Phase 8 — sidebar widgets
+
+```
+GET    /v2/spaces/{space_id}/widgets                # both roots, sidebar order
+POST   /v2/spaces/{space_id}/widgets                # scope required
+PATCH  /v2/spaces/{space_id}/widgets/{widget_id}    # members and placement; id or target
+DELETE /v2/spaces/{space_id}/widgets/{widget_id}
+```
+
+- **Two roots, one resource.** `scope: space` is the derived widget object
+  (the desktop's Pinned section; owner or admin, never in a one-to-one
+  space); `scope: personal` is the `_personalWidgets_` virtual object over
+  the tech-space store (My Favorites; any writer). `scope` is required on a
+  create: the two roots have different writers, and a default that 403s for
+  every editor is worse than a required word.
+- **The desktop's rules, stated once** (`core/api/v2/service/widgets.go`):
+  live objects only as targets, one widget per target per root, layout from
+  the desktop's per-target set and limit from its pick-lists with off-set
+  values stored as the app's render fallback and reported in `warnings`,
+  `view_id` only on query/collection/type targets on the space root, the bin
+  widget never moved and nothing placed after it.
+- **Re-checked under the root's lock** by the `apicore.Widgets` adapter
+  (`core/api/widgetadapter.go`): the target is still absent, the caller may
+  still write, the PATCH layout/limit pair is planned against the stored
+  one, and a widget retargeted meanwhile is a 409 on PATCH and DELETE.
+- Research, decisions and the full as-built record: `APIV2_WIDGETS.md`.
+
 ## 3. Decisions ledger
 
 **Decided**: id-addressed closed op set, no RFC 6902, no index/offset

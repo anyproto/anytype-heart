@@ -100,6 +100,10 @@ var operations = map[string]operation{
 	OpGetType:              {"GET", "/v2/spaces/{space_id}/types/{type}"},
 	OpUpdateType:           {"PATCH", "/v2/spaces/{space_id}/types/{type}"},
 	OpValidate:             {"POST", "/v2/validate"},
+	OpListWidgets:          {"GET", "/v2/spaces/{space_id}/widgets"},
+	OpCreateWidget:         {"POST", "/v2/spaces/{space_id}/widgets"},
+	OpUpdateWidget:         {"PATCH", "/v2/spaces/{space_id}/widgets/{widget_id}"},
+	OpDeleteWidget:         {"DELETE", "/v2/spaces/{space_id}/widgets/{widget_id}"},
 }
 
 // The operationIds, as constants so a hint site cannot misspell one.
@@ -154,6 +158,10 @@ const (
 	OpGetType              = "get_type"
 	OpUpdateType           = "update_type"
 	OpValidate             = "validate"
+	OpListWidgets          = "list_widgets"
+	OpCreateWidget         = "create_widget"
+	OpUpdateWidget         = "update_widget"
+	OpDeleteWidget         = "delete_widget"
 )
 
 // Operation returns the method and path template of an operationId, and
@@ -345,6 +353,9 @@ func RefGetCollectionObjects(spaceId, collectionId string) Ref {
 func RefGetQueryObjects(spaceId, queryId string) Ref {
 	return NewRef(OpGetQueryObjects, "space_id", spaceId, "query_id", queryId)
 }
+
+func RefListWidgets(spaceId string) Ref  { return NewRef(OpListWidgets, "space_id", spaceId) }
+func RefCreateWidget(spaceId string) Ref { return NewRef(OpCreateWidget, "space_id", spaceId) }
 
 func RefGetSchema(kind string) Ref { return NewRef(OpGetSchema, "kind", kind) }
 func RefGetOpSchema(op string) Ref { return NewRef(OpGetOpSchema, "op", op) }

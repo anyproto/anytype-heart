@@ -40,6 +40,7 @@ type v2Fixture struct {
 	creatorMock    *mock_apicore.MockObjectCreator
 	mutatorMock    *mock_apicore.MockObjectMutator
 	provenanceMock *mock_apicore.MockObjectProvenance
+	widgetsMock    *mock_apicore.MockWidgets
 	objectStore    *objectstore.StoreFixture
 }
 
@@ -52,6 +53,7 @@ func newV2FixtureBare(t *testing.T) *v2Fixture {
 	creatorMock := mock_apicore.NewMockObjectCreator(t)
 	mutatorMock := mock_apicore.NewMockObjectMutator(t)
 	provenanceMock := mock_apicore.NewMockObjectProvenance(t)
+	widgetsMock := mock_apicore.NewMockWidgets(t)
 	objectStore := objectstore.NewStoreFixture(t)
 	require.NoError(t, objectStore.WaitStoresLoaded(context.Background()))
 	mwMock.EXPECT().ObjectCrossSpaceSearch(mock.Anything, mock.Anything).RunAndReturn(
@@ -89,12 +91,13 @@ func newV2FixtureBare(t *testing.T) *v2Fixture {
 			return "drv-ot-" + string(key), nil
 		}).Maybe()
 	return &v2Fixture{
-		Service:        NewService(mwMock, readerMock, creatorMock, mutatorMock, provenanceMock, nil, nil, objectStore, objectstore.TestTechSpaceId, testAccountId),
+		Service:        NewService(mwMock, readerMock, creatorMock, mutatorMock, provenanceMock, widgetsMock, nil, nil, objectStore, objectstore.TestTechSpaceId, testAccountId),
 		mwMock:         mwMock,
 		readerMock:     readerMock,
 		creatorMock:    creatorMock,
 		mutatorMock:    mutatorMock,
 		provenanceMock: provenanceMock,
+		widgetsMock:    widgetsMock,
 		objectStore:    objectStore,
 	}
 }

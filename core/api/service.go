@@ -72,6 +72,7 @@ type apiService struct {
 	objectCreator        apicore.ObjectCreator
 	objectMutator        apicore.ObjectMutator
 	objectProvenance     apicore.ObjectProvenance
+	widgets              apicore.Widgets
 	objectStore          objectstore.ObjectStore
 
 	listenAddr string
@@ -128,6 +129,7 @@ func (s *apiService) Init(a *app.App) error {
 		app.MustComponent[template.Service](a), s.objectStore)
 	s.objectMutator = newObjectMutateAdapter(app.MustComponent[cache.ObjectGetterComponent](a))
 	s.objectProvenance = newObjectProvenanceAdapter(app.MustComponent[space.Service](a), a.MustComponent(account.CName).(account.Service))
+	s.widgets = newWidgetAdapter(app.MustComponent[cache.ObjectGetterComponent](a), app.MustComponent[space.Service](a))
 	return nil
 }
 
@@ -180,7 +182,7 @@ func (s *apiService) startServer() error {
 		s.crossSpaceSubService,
 		s.chatSubService,
 		s.fileObjectService,
-		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, ChatSub: s.chatSubService, Store: s.objectStore, AccountId: s.accountId()},
+		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, Widgets: s.widgets, ChatSub: s.chatSubService, Store: s.objectStore, AccountId: s.accountId()},
 		s.listenAddr,
 		server.OpenApiDocs{
 			V1YAML: openapiV1YAML,

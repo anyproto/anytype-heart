@@ -118,6 +118,32 @@ var openAPIBodyRecipes = map[string]func(c *openAPIBodyComposer) (json.RawMessag
 	v2model.OpValidate: func(c *openAPIBodyComposer) (json.RawMessage, error) {
 		return c.pointer(apiV2ValidateKind, "an AnyBlock document of any kind, checked without being stored")
 	},
+	v2model.OpCreateWidget: func(c *openAPIBodyComposer) (json.RawMessage, error) {
+		return c.kindWith("widget", func(root map[string]any) error {
+			root["required"] = []string{"target", "scope"}
+			return nil
+		})
+	},
+	v2model.OpUpdateWidget: func(c *openAPIBodyComposer) (json.RawMessage, error) {
+		// the same body minus the two identity members: the target and the
+		// scope are what the widget IS, and the patch refuses them
+		return c.kindWith("widget", func(root map[string]any) error {
+			props := root["properties"].(map[string]any)
+			delete(props, "target")
+			delete(props, "scope")
+			root["description"] = "the members to change, every one optional; at least one. The target and the scope are the widget's identity and are refused here"
+			root["minProperties"] = 1
+			// the create defaults do not apply to a patch: an omitted member
+			// keeps what is stored, and an omitted placement keeps the position
+			props["limit"].(map[string]any)["description"] = "how many entries a listing shows, from the app's own pick-list: 6, 10, 14, 30 or 50, or 4, 6, 8, 30, 50 for the list layout; any other value is stored as the smallest, with a warning. Omitted, the stored limit stays, re-fitted to the list of a new layout when that list does not hold it. With the link layout the stored limit stays untouched and a sent one is not stored"
+			props["view_id"].(map[string]any)["description"] = "which of the target's views a view widget shows, by view id; an empty string returns to the target's first view. Only a query, collection or type target has views, and only a space widget keeps one"
+			props["after"].(map[string]any)["description"] = "id or target of the sidebar widget to move this one after. At most one of after, before and position; omitted, the widget keeps its position"
+			props["before"].(map[string]any)["description"] = "id or target of the sidebar widget to move this one before"
+			props["position"].(map[string]any)["description"] = "first or last in the sidebar, last meaning before the bin widget when that is last"
+			props["layout"].(map[string]any)["description"] = "link, tree, list, compact_list or view. The layout and the limit are re-validated as a pair whenever either is sent: a layout the target cannot render is replaced with the one it can, with a warning, and a stored layout the target cannot render is replaced the same way on a limit change"
+			return nil
+		})
+	},
 	v2model.OpPatchObject: func(c *openAPIBodyComposer) (json.RawMessage, error) {
 		return c.envelope(v2OpNames, "applied in order as one edit, and if any one is refused none is applied")
 	},

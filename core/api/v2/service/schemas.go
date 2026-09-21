@@ -237,6 +237,23 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"scope":{"type":"string","enum":["messages","mentions","reactions"],"description":"defaults to messages; reactions marks ALL unread reactions"}}}`,
 		example: `{"up_to":"00a1b2c3d4e5f6","last_state_id":"66f2a1b0c9d8e7f6a5b4c3d2","scope":"messages"}`,
 	},
+	"widget": {
+		endpoint: "POST /v2/spaces/{space_id}/widgets (PATCH /v2/spaces/{space_id}/widgets/{widget_id} takes layout, limit, view_id, after, before, position)",
+		// NO root `required`: one schema serves POST and PATCH, and a
+		// grammar-constrained decoder emits every required member, which on
+		// a PATCH would re-send target and scope the patch refuses.
+		schema: `{"type":"object","additionalProperties":false,"description":"a sidebar widget. POST needs target and scope; PATCH takes the rest, all optional, at least one","properties":{` +
+			`"target":{"type":"string","minLength":1,"maxLength":256,"description":"id of the object the widget points at. Required on POST, refused on PATCH. Built-in listings cannot be added"},` +
+			`"scope":{"type":"string","enum":["space","personal"],"description":"space is the sidebar every member sees, written by the owner and admins; personal is this account's own sidebar in the space. Required on POST"},` +
+			`"layout":{"type":"string","enum":["link","tree","list","compact_list","view"],"description":"how the widget renders. Omitted on POST, the target's kind picks it: tree for a page, view for a query, collection or type, link for everything else. A layout the target cannot render is replaced with the one it can, with a warning"},` +
+			`"limit":{"type":"integer","description":"how many entries a listing shows, from the app's own pick-list: 6, 10, 14, 30 or 50, or 4, 6, 8, 30, 50 for the list layout; any other value is stored as the smallest, with a warning. Omitted on POST, the smallest; omitted on PATCH, the stored limit stays unless a new layout's list lacks it. Not taken by link"},` +
+			`"view_id":{"type":"string","maxLength":256,"description":"which of the target's views a view widget shows. Only a query, collection or type target has views, and only a space widget keeps one"},` +
+			`"after":{"type":"string","minLength":1,"maxLength":256,"description":"id or target of the sidebar widget to place this one after. At most one of after, before and position; on PATCH, none of the three keeps the position"},` +
+			`"before":{"type":"string","minLength":1,"maxLength":256,"description":"id or target of the sidebar widget to place this one before"},` +
+			`"position":{"type":"string","enum":["first","last"],"description":"first or last in the sidebar, last meaning before the bin widget when that is last; omitted with no after or before, a POST goes last"}},` +
+			`"allOf":[{"not":{"required":["after","before"]}},{"not":{"required":["after","position"]}},{"not":{"required":["before","position"]}}]}`,
+		example: `{"target":"bafyreieqh63jv…","scope":"personal","layout":"tree"}`,
+	},
 	"filters": {
 		endpoint: "POST /v2/spaces/{space_id}/search (filters field) · POST /v2/spaces/{space_id}/queries (filters field)",
 		// documented C13 exception: the structured filter tree is recursive

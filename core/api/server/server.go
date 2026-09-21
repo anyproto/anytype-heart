@@ -103,6 +103,9 @@ type V2Deps struct {
 	// validated change storage). With it nil the object DELETE route still
 	// registers but refuses every delete — fail closed, not fail open.
 	Provenance apicore.ObjectProvenance
+	// Widgets is the sidebar-widget port. With it nil the widget routes
+	// still register and refuse every call (fail closed).
+	Widgets apicore.Widgets
 	// ChatSub backs the chat message stream. With it nil the stream route
 	// is not registered at all — there is no useful degraded form of a
 	// subscription, unlike Provenance's fail-closed refusal.
@@ -139,7 +142,7 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 		docs:        docs,
 	}
 	if v2Deps.Reader != nil && v2Deps.Store != nil {
-		s.v2Service = v2service.NewService(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Provenance, v2Deps.ChatSub, fileObjectService, v2Deps.Store, techSpaceId, v2Deps.AccountId)
+		s.v2Service = v2service.NewService(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Provenance, v2Deps.Widgets, v2Deps.ChatSub, fileObjectService, v2Deps.Store, techSpaceId, v2Deps.AccountId)
 		s.v2CreateDisabled = v2Deps.Creator == nil
 		s.v2EditDisabled = v2Deps.Mutator == nil
 		s.v2StreamDisabled = v2Deps.ChatSub == nil
