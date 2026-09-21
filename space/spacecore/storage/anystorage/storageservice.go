@@ -50,7 +50,63 @@ type storageService struct {
 	backupsMu sync.RWMutex
 	backups   []CorruptedBackup
 
+	spaceLocksMu sync.Mutex
+	spaceLocks   map[string]*spaceLock
+
 	reporter debugreporter.Reporter
+}
+
+// spaceLock serializes whoever opens, creates or deletes one space's store.db.
+//
+// any-store stamps `PRAGMA user_version` only after SQLite has already created
+// the file, so for the few milliseconds a create spends inside anystore.Open
+// the store on disk reads back as version 0. IsCorruptedError reports that as
+// corruption and openDb answers corruption by renaming the space directory --
+// which was being done to a store another goroutine was still creating (a LAN
+// handshake derives discovery keys over every id AllSpaceIds returns, whether
+// or not it is finished). The create then died on its vanished file and the
+// account came up with no personal space (GO-7534). Openers of one space now
+// queue behind its creator and always see a stamped db.
+type spaceLock struct {
+	ch   chan struct{}
+	refs int
+}
+
+// lockSpace waits until no other goroutine holds this space's db, and returns
+// the func that releases it. It gives up if ctx is cancelled first.
+func (s *storageService) lockSpace(ctx context.Context, id string) (unlock func(), err error) {
+	s.spaceLocksMu.Lock()
+	if s.spaceLocks == nil {
+		s.spaceLocks = make(map[string]*spaceLock)
+	}
+	l, ok := s.spaceLocks[id]
+	if !ok {
+		l = &spaceLock{ch: make(chan struct{}, 1)}
+		s.spaceLocks[id] = l
+	}
+	// held while waiting too, so the entry survives until the last waiter is gone
+	l.refs++
+	s.spaceLocksMu.Unlock()
+
+	release := func() {
+		s.spaceLocksMu.Lock()
+		defer s.spaceLocksMu.Unlock()
+		l.refs--
+		if l.refs == 0 {
+			delete(s.spaceLocks, id)
+		}
+	}
+
+	select {
+	case l.ch <- struct{}{}:
+		return func() {
+			<-l.ch
+			release()
+		}, nil
+	case <-ctx.Done():
+		release()
+		return nil, ctx.Err()
+	}
 }
 
 func (s *storageService) AllSpaceIds() (ids []string, err error) {
@@ -116,7 +172,45 @@ func (s *storageService) createDb(ctx context.Context, id string) (db anystore.D
 		return nil, err
 	}
 	dbPath := path.Join(dirPath, "store.db")
-	return anystore.Open(ctx, dbPath, s.anyStoreConfig())
+	start := time.Now()
+	db, err = anystore.Open(ctx, dbPath, s.anyStoreConfig())
+	if err == nil {
+		return db, nil
+	}
+	code, isCorrupted := anystorehelper.IsCorruptedError(err)
+	if !isCorrupted {
+		return nil, err
+	}
+	// A create killed before any-store stamped `user_version` leaves a store.db
+	// every later open reads as version 0. openDb heals that by moving the dir
+	// aside so the space is fetched again, but a derived space (tech, personal)
+	// is created rather than fetched: without the same recovery here, one
+	// interrupted create left the account unable to bootstrap for good
+	// (GO-7534).
+	log.With(zap.Error(err), zap.String("spaceId", id), zap.String("code", code.String()), zap.String("desc", code.Message())).
+		With(zap.Int64("tookMs", time.Since(start).Milliseconds())).
+		Error("failed to open spacestore for create, backing up")
+	if s.reporter != nil {
+		s.reporter.Report("DB_CORRUPTION", map[string]any{
+			"db":      filepath.Join(id, "store.db"),
+			"spaceId": id,
+			"code":    code.String(),
+			"desc":    code.Message(),
+			"error":   err.Error(),
+			"tookMs":  time.Since(start).Milliseconds(),
+		}, debugreporter.Capture{Kind: debugreporter.KindNone})
+	}
+	if _, backupErr := s.backupCorruptedSpace(id); backupErr != nil {
+		return nil, fmt.Errorf("backup unusable space store: %w", backupErr)
+	}
+	if err = os.MkdirAll(dirPath, 0755); err != nil {
+		return nil, fmt.Errorf("recreate space dir: %w", err)
+	}
+	db, err = anystore.Open(ctx, dbPath, s.anyStoreConfig())
+	if err != nil {
+		return nil, fmt.Errorf("open space store after backup: %w", err)
+	}
+	return db, nil
 }
 
 func (s *storageService) Close(ctx context.Context) (err error) {
@@ -173,6 +267,12 @@ func (s *storageService) Name() (name string) {
 }
 
 func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (spacestorage.SpaceStorage, error) {
+	unlock, err := s.lockSpace(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("lock space: %w", err)
+	}
+	defer unlock()
+
 	start := time.Now()
 	db, err := s.openDb(ctx, id)
 	if err != nil {
@@ -245,6 +345,12 @@ func (s *storageService) CreateSpaceStorage(ctx context.Context, payload spacest
 	if err := validateSpaceType(payload.SpaceHeaderWithId); err != nil {
 		return nil, err
 	}
+	unlock, err := s.lockSpace(ctx, payload.SpaceHeaderWithId.Id)
+	if err != nil {
+		return nil, fmt.Errorf("lock space: %w", err)
+	}
+	defer unlock()
+
 	db, err := s.createDb(ctx, payload.SpaceHeaderWithId.Id)
 	if err != nil {
 		err = fmt.Errorf("failed to create db: %w", err)
@@ -259,6 +365,12 @@ func (s *storageService) CreateSpaceStorage(ctx context.Context, payload spacest
 }
 
 func (s *storageService) DeleteSpaceStorage(ctx context.Context, spaceId string) error {
+	unlock, err := s.lockSpace(ctx, spaceId)
+	if err != nil {
+		return fmt.Errorf("lock space: %w", err)
+	}
+	defer unlock()
+
 	dbPath := path.Join(s.rootPath, spaceId)
 	return os.RemoveAll(dbPath)
 }
