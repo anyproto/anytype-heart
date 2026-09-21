@@ -2,15 +2,20 @@ package anystorage
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
 	"testing"
+	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/commonspace/spacepayloads"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/go-sqlite"
+	"github.com/anyproto/go-sqlite/sqlitex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -39,9 +44,12 @@ func newCreatePayload(t *testing.T) spacestorage.SpaceStorageCreatePayload {
 
 // waitForFile busy-waits until path exists, so the reader lands inside the
 // window any-store leaves open between SQLite creating store.db and the
-// `PRAGMA user_version = 2` that stamps it.
+// `PRAGMA user_version = 2` that stamps it. It gives up on done or on the
+// deadline, so a create that fails before it ever makes the file ends the test
+// with its own error instead of spinning until the go test timeout.
 func waitForFile(t *testing.T, path string, done <-chan struct{}) bool {
 	t.Helper()
+	deadline := time.Now().Add(20 * time.Second)
 	for {
 		select {
 		case <-done:
@@ -50,6 +58,9 @@ func waitForFile(t *testing.T, path string, done <-chan struct{}) bool {
 		}
 		if _, err := os.Stat(path); err == nil {
 			return true
+		}
+		if time.Now().After(deadline) {
+			return false
 		}
 		runtime.Gosched()
 	}
@@ -117,7 +128,9 @@ func TestCreateSpaceStorage_ConcurrentOpen(t *testing.T) {
 			dbPath := filepath.Join(s.rootPath, spaceId, "store.db")
 
 			createErr := make(chan error, 1)
+			createDone := make(chan struct{})
 			go func() {
+				defer close(createDone)
 				st, err := s.CreateSpaceStorage(ctx, payload)
 				if err == nil {
 					err = st.Close(ctx)
@@ -125,12 +138,13 @@ func TestCreateSpaceStorage_ConcurrentOpen(t *testing.T) {
 				createErr <- err
 			}()
 
-			require.True(t, waitForFile(t, dbPath, nil))
+			waitForFile(t, dbPath, createDone)
 
 			// when
 			st, err := s.WaitSpaceStorage(ctx, spaceId)
 
 			// then
+			<-createDone
 			require.NoError(t, <-createErr, "round %d", i)
 			require.NoError(t, err, "round %d: an open that races the creator must join it, not report the space missing", i)
 			require.NoError(t, st.Close(ctx))
@@ -183,12 +197,75 @@ func TestCreateSpaceStorage_UnstampedLeftover(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, st.Close(ctx))
 
-		// when: derived spaces re-run the create on every bootstrap
+		// when: Derive creates before it loads, so an account-create retry runs
+		// the create again over the store the previous attempt left
 		_, err = s.CreateSpaceStorage(ctx, payload)
 
 		// then
 		require.ErrorIs(t, err, spacestorage.ErrSpaceStorageExists)
 		assert.Empty(t, s.ListCorruptedBackups(), "a healthy store must never be moved aside")
 		assert.True(t, s.SpaceExists(spaceId))
+	})
+}
+
+// setUserVersion stamps an arbitrary schema version on an existing store, the
+// state a store written by an incompatible any-store would be in.
+func setUserVersion(t *testing.T, dbPath string, version int) {
+	t.Helper()
+	conn, err := sqlite.OpenConn(dbPath, sqlite.OpenReadWrite|sqlite.OpenWAL|sqlite.OpenURI)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, conn.Close())
+	}()
+	require.NoError(t, sqlitex.ExecuteTransient(conn, fmt.Sprintf("PRAGMA user_version = %d", version), nil))
+}
+
+// The recovery in createDb moves a space directory aside, so it must fire only
+// for a store that provably holds nothing. IsCorruptedError is far broader --
+// it also covers ErrQuickCheckFailed, which any-store returns for any error the
+// check hit, a cancelled context included.
+func TestCreateSpaceStorage_RecoveryIsNarrow(t *testing.T) {
+	t.Run("a populated store with a foreign version is left alone", func(t *testing.T) {
+		// given
+		s := newTestService(t)
+		ctx := context.Background()
+		payload := newCreatePayload(t)
+		spaceId := payload.SpaceHeaderWithId.Id
+		st, err := s.CreateSpaceStorage(ctx, payload)
+		require.NoError(t, err)
+		require.NoError(t, st.Close(ctx))
+		dbPath := filepath.Join(s.rootPath, spaceId, "store.db")
+		setUserVersion(t, dbPath, 99)
+
+		// when
+		_, err = s.CreateSpaceStorage(ctx, payload)
+
+		// then
+		require.ErrorIs(t, err, anystore.ErrIncompatibleVersion)
+		assert.Empty(t, s.ListCorruptedBackups(), "a store holding data must never be moved aside")
+		_, statErr := os.Stat(dbPath)
+		assert.NoError(t, statErr, "the store must stay where it is")
+	})
+
+	t.Run("a backup directory is not offered as a space", func(t *testing.T) {
+		// given: the state left behind once a store has been backed up
+		s := newTestService(t)
+		ctx := context.Background()
+		payload := newCreatePayload(t)
+		spaceId := payload.SpaceHeaderWithId.Id
+		dirPath := filepath.Join(s.rootPath, spaceId)
+		require.NoError(t, os.MkdirAll(dirPath, 0755))
+		require.NoError(t, os.WriteFile(filepath.Join(dirPath, "store.db"), nil, 0644))
+		st, err := s.CreateSpaceStorage(ctx, payload)
+		require.NoError(t, err)
+		require.NoError(t, st.Close(ctx))
+		require.Len(t, s.ListCorruptedBackups(), 1)
+
+		// when
+		ids, err := s.AllSpaceIds()
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{spaceId}, ids, "discovery must not be handed backup dirs to open")
 	})
 }

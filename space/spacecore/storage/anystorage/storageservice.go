@@ -16,6 +16,8 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
+	"github.com/anyproto/go-sqlite"
+	"github.com/anyproto/go-sqlite/sqlitex"
 	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 
@@ -51,12 +53,13 @@ type storageService struct {
 	backups   []CorruptedBackup
 
 	spaceLocksMu sync.Mutex
-	spaceLocks   map[string]*spaceLock
+	spaceLocks   map[string]chan struct{}
 
 	reporter debugreporter.Reporter
 }
 
-// spaceLock serializes whoever opens, creates or deletes one space's store.db.
+// lockSpace serializes whoever opens, creates or deletes one space's store.db,
+// and returns the func that releases it.
 //
 // any-store stamps `PRAGMA user_version` only after SQLite has already created
 // the file, so for the few milliseconds a create spends inside anystore.Open
@@ -67,44 +70,32 @@ type storageService struct {
 // or not it is finished). The create then died on its vanished file and the
 // account came up with no personal space (GO-7534). Openers of one space now
 // queue behind its creator and always see a stamped db.
-type spaceLock struct {
-	ch   chan struct{}
-	refs int
-}
-
-// lockSpace waits until no other goroutine holds this space's db, and returns
-// the func that releases it. It gives up if ctx is cancelled first.
+//
+// The channel is a mutex a context can wait on, which sync.Mutex is not: a
+// discovery-key derive queued behind a slow open has to give up when its
+// budget runs out. Entries are never removed -- one channel per space id the
+// process touches, like the provider's per-space db map -- because dropping an
+// entry while its token is held lets the next caller build a second channel
+// for the same space and walk straight in.
 func (s *storageService) lockSpace(ctx context.Context, id string) (unlock func(), err error) {
 	s.spaceLocksMu.Lock()
 	if s.spaceLocks == nil {
-		s.spaceLocks = make(map[string]*spaceLock)
+		s.spaceLocks = make(map[string]chan struct{})
 	}
 	l, ok := s.spaceLocks[id]
 	if !ok {
-		l = &spaceLock{ch: make(chan struct{}, 1)}
+		l = make(chan struct{}, 1)
 		s.spaceLocks[id] = l
 	}
-	// held while waiting too, so the entry survives until the last waiter is gone
-	l.refs++
 	s.spaceLocksMu.Unlock()
 
-	release := func() {
-		s.spaceLocksMu.Lock()
-		defer s.spaceLocksMu.Unlock()
-		l.refs--
-		if l.refs == 0 {
-			delete(s.spaceLocks, id)
-		}
-	}
-
 	select {
-	case l.ch <- struct{}{}:
-		return func() {
-			<-l.ch
-			release()
-		}, nil
+	case l <- struct{}{}:
+		// released once: a second call would hand the lock to nobody and let
+		// the caller after that run alongside whoever holds it now
+		var once sync.Once
+		return func() { once.Do(func() { <-l }) }, nil
 	case <-ctx.Done():
-		release()
 		return nil, ctx.Err()
 	}
 }
@@ -116,9 +107,16 @@ func (s *storageService) AllSpaceIds() (ids []string, err error) {
 		return files, fmt.Errorf("can't read datadir '%v': %w", s.rootPath, err)
 	}
 	for _, file := range fileInfo {
-		if !strings.HasPrefix(file.Name(), ".") {
-			files = append(files, file.Name())
+		if strings.HasPrefix(file.Name(), ".") {
+			continue
 		}
+		// a backup is not a space: handing it to discovery makes it open the
+		// dir, hit the very error that produced it, and back the backup up
+		// again -- orphaning the recovery path already recorded for the space
+		if strings.Contains(file.Name(), backupSuffix) {
+			continue
+		}
+		files = append(files, file.Name())
 	}
 	return files, nil
 }
@@ -177,31 +175,35 @@ func (s *storageService) createDb(ctx context.Context, id string) (db anystore.D
 	if err == nil {
 		return db, nil
 	}
-	code, isCorrupted := anystorehelper.IsCorruptedError(err)
-	if !isCorrupted {
+	// Only a store that was created and never initialized is moved aside. Any
+	// other failure keeps the directory where it is: IsCorruptedError also
+	// covers ErrQuickCheckFailed, which any-store returns for any error the
+	// check hit including a cancelled context, and ErrIncompatibleVersion is
+	// any version mismatch, not only the unstamped 0 -- renaming on those
+	// would orphan a populated store whose changes no peer can give back.
+	if !errors.Is(err, anystore.ErrIncompatibleVersion) || !storeIsUninitialized(dbPath) {
 		return nil, err
 	}
 	// A create killed before any-store stamped `user_version` leaves a store.db
 	// every later open reads as version 0. openDb heals that by moving the dir
-	// aside so the space is fetched again, but a derived space (tech, personal)
-	// is created rather than fetched: without the same recovery here, one
-	// interrupted create left the account unable to bootstrap for good
+	// aside so the space is fetched again, but a space reached through Derive
+	// (the tech space on account create, and the old-account tech-space
+	// recovery) is created rather than fetched: without the same recovery here,
+	// retrying a bootstrap that died mid-create could never get past it
 	// (GO-7534).
-	log.With(zap.Error(err), zap.String("spaceId", id), zap.String("code", code.String()), zap.String("desc", code.Message())).
+	log.With(zap.Error(err), zap.String("spaceId", id)).
 		With(zap.Int64("tookMs", time.Since(start).Milliseconds())).
-		Error("failed to open spacestore for create, backing up")
+		Error("space store was never initialized, backing up for a fresh create")
 	if s.reporter != nil {
-		s.reporter.Report("DB_CORRUPTION", map[string]any{
+		s.reporter.Report("DB_UNINITIALIZED", map[string]any{
 			"db":      filepath.Join(id, "store.db"),
 			"spaceId": id,
-			"code":    code.String(),
-			"desc":    code.Message(),
 			"error":   err.Error(),
 			"tookMs":  time.Since(start).Milliseconds(),
 		}, debugreporter.Capture{Kind: debugreporter.KindNone})
 	}
 	if _, backupErr := s.backupCorruptedSpace(id); backupErr != nil {
-		return nil, fmt.Errorf("backup unusable space store: %w", backupErr)
+		return nil, fmt.Errorf("backup uninitialized space store: %w", backupErr)
 	}
 	if err = os.MkdirAll(dirPath, 0755); err != nil {
 		return nil, fmt.Errorf("recreate space dir: %w", err)
@@ -211,6 +213,37 @@ func (s *storageService) createDb(ctx context.Context, id string) (db anystore.D
 		return nil, fmt.Errorf("open space store after backup: %w", err)
 	}
 	return db, nil
+}
+
+// storeIsUninitialized reports whether dbPath holds a database that was created
+// but never initialized -- a create killed before any-store stamped
+// `user_version` and wrote its tables. Anything it cannot prove empty is
+// false, so an unreadable or populated store is never moved aside.
+func storeIsUninitialized(dbPath string) bool {
+	conn, err := sqlite.OpenConn(dbPath, sqlite.OpenReadOnly|sqlite.OpenWAL|sqlite.OpenURI)
+	if err != nil {
+		return false
+	}
+	defer func() {
+		_ = conn.Close()
+	}()
+	var version, objects int
+	err = sqlitex.ExecuteTransient(conn, "PRAGMA user_version", &sqlitex.ExecOptions{
+		ResultFunc: func(stmt *sqlite.Stmt) error {
+			version = stmt.ColumnInt(0)
+			return nil
+		},
+	})
+	if err != nil || version != 0 {
+		return false
+	}
+	err = sqlitex.ExecuteTransient(conn, "SELECT count(*) FROM sqlite_master", &sqlitex.ExecOptions{
+		ResultFunc: func(stmt *sqlite.Stmt) error {
+			objects = stmt.ColumnInt(0)
+			return nil
+		},
+	})
+	return err == nil && objects == 0
 }
 
 func (s *storageService) Close(ctx context.Context) (err error) {
@@ -358,10 +391,20 @@ func (s *storageService) CreateSpaceStorage(ctx context.Context, payload spacest
 	}
 	st, err := spacestorage.Create(ctx, db, payload)
 	if err != nil {
-		err = fmt.Errorf("failed to create spacestorage: %w", err)
-		return nil, err
+		// the db outlives this call otherwise: an unclosed handle keeps its
+		// auto-flush goroutine and connections alive for the process lifetime,
+		// and leaves the durability sentinel set so the next open quick-checks.
+		// ErrSpaceStorageExists is the common way in -- Derive creates before
+		// it loads, so an existing space takes this path on every attempt.
+		_ = db.Close()
+		return nil, fmt.Errorf("failed to create spacestorage: %w", err)
 	}
-	return NewClientStorage(ctx, st)
+	cs, err := NewClientStorage(ctx, st)
+	if err != nil {
+		_ = db.Close()
+		return nil, fmt.Errorf("new client storage: %w", err)
+	}
+	return cs, nil
 }
 
 func (s *storageService) DeleteSpaceStorage(ctx context.Context, spaceId string) error {
