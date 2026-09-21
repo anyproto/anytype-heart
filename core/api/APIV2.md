@@ -7652,6 +7652,23 @@ The markdown channel of the create shortcut now applies the same rule
 A `heading_2` or `heading_3` is enough to be a duplicate and not enough to
 become a name: a model restating the name does not always pick the same
 level, but promoting a section heading would invent a title out of a section.
+
+Four edges a third review round found, each now part of the rule. The
+heading's text is MARKDOWN, not plain text (`# **Title**` parses to a block
+whose text carries the emphasis), so both the comparison and the promotion
+take `ParseInlineText`'s rendering — which also lets `**Title**` match a name
+of `Title`, as a reader would expect. A heading that owns nested content is
+left whole, because removing it alone would leave its children indented under
+nothing and the document would be refused — a create that worked before. A
+name the caller SENT is never replaced, including one this layer cannot read
+(`"name": 123`) and one spelled as the display name (`"Name"`), since
+promoting beside it would add a second spelling of the same property. And a
+NOTE is exempt from promotion: it has no title, and
+`template.WithNameToFirstBlock` turns its name back into the first block of
+its body, so a promoted heading would lose its style, move below any template
+content and leave the object with no name while the response claimed one. A
+note still DROPS a heading that repeats its name, for exactly the same reason
+— the name is already going to be that first block.
 Either way the result carries a warning addressed at `/markdown[0]`, because
 a body the server changed is not the body the caller sent, and the sentence
 that explains it is also the one that teaches the next call.

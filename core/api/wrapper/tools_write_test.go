@@ -140,6 +140,8 @@ func TestCreate(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, result.Text, "it wrote 1 block")
 		assert.NotContains(t, result.Text, "yours follow")
+		assert.NotContains(t, result.Text, "the type's default",
+			"the request chose this one, and a receipt that says otherwise is wrong about who did")
 	})
 
 	t.Run("a dry run has no count and still says the body would be combined", func(t *testing.T) {

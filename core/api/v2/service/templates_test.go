@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -1017,12 +1018,14 @@ func TestCreateObjectMarkdownTitle(t *testing.T) {
 		fx.expectEtagRead("newObj")
 
 		// when
-		_, err := fx.CreateObject(context.Background(), testSpaceId,
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
 			[]byte(`{"type":"page","properties":{"name":"Tegeler Forst"},"markdown":"# Tegeler Forst\n\nA forest."}`), false, false)
 
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, []string{"A forest."}, snapshotTexts(*captured))
+		require.Len(t, result.Warnings, 1)
+		assert.Contains(t, result.Warnings[0].Message, "repeated", "dropped as a duplicate, not promoted")
 	})
 
 	t.Run("a heading that is not the name is body content", func(t *testing.T) {
@@ -1102,4 +1105,173 @@ func snapshotTexts(snapshot *model.SmartBlockSnapshotBase) []string {
 		texts = append(texts, block.GetText().GetText())
 	}
 	return texts
+}
+
+func TestCreateObjectMarkdownTitleEdges(t *testing.T) {
+	// the cases a third review round found: the heading's text is markdown,
+	// a heading can own the blocks under it, a name the caller sent is never
+	// replaced, and a note has no title to duplicate
+	t.Run("emphasis in the heading matches the name and never reaches it", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","name":"Tegeler Forst","markdown":"# **Tegeler Forst**\n\nA forest."}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"A forest."}, snapshotTexts(*captured))
+	})
+
+	t.Run("a promoted name is the rendered text, not the markdown", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","markdown":"# **Tegeler** Forst\n\nA forest."}`), false, false)
+
+		require.NoError(t, err)
+		assert.Equal(t, "Tegeler Forst", pbtypes.GetString((*captured).Details, "name"))
+	})
+
+	t.Run("a heading with nested content under it is left whole", func(t *testing.T) {
+		// given — removing it would leave its children indented under nothing,
+		// and the document would be refused: a create that worked before
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","name":"Title","markdown":"# Title\n\n  child"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"Title", "child"}, snapshotTexts(*captured))
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("a name the caller sent is never replaced by a heading", func(t *testing.T) {
+		// given — a value this layer cannot read is still a value the caller
+		// chose
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","properties":{"name":123},"markdown":"# Section\n\nbody"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"Section", "body"}, snapshotTexts(*captured), "the heading stayed body content")
+	})
+
+	t.Run("a display-name spelling of the name property counts as supplied", func(t *testing.T) {
+		// given — properties take display names too, and promoting would add a
+		// second spelling of the same property
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","properties":{"Name":"Chosen"},"markdown":"# Section\n\nbody"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "Chosen", pbtypes.GetString((*captured).Details, "name"))
+		assert.Equal(t, []string{"Section", "body"}, snapshotTexts(*captured))
+	})
+
+	t.Run("a note has no title, so its heading is not promoted", func(t *testing.T) {
+		// given — a note turns its name back into the first block of its body,
+		// so a promoted heading would lose its style, move below any template
+		// content and leave the object unnamed while the response claimed a name
+		fx := newV2Fixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:                domain.String("type-note"),
+			bundle.RelationKeyName:              domain.String("Jotting"),
+			bundle.RelationKeyUniqueKey:         domain.String("ot-jotting"),
+			bundle.RelationKeyApiObjectKey:      domain.String("jotting"),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(int64(model.ObjectType_note)),
+			bundle.RelationKeyResolvedLayout:    domain.Int64(int64(model.ObjectType_objectType)),
+		}})
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"jotting","markdown":"# Monday\n\nbody"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"Monday", "body"}, snapshotTexts(*captured))
+		assert.Empty(t, pbtypes.GetString((*captured).Details, "name"))
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("a note still drops a heading that repeats its name", func(t *testing.T) {
+		// given — the name becomes the first block there, so the heading would
+		// be the duplicate this rule exists to remove
+		fx := newV2Fixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:                domain.String("type-note"),
+			bundle.RelationKeyName:              domain.String("Jotting"),
+			bundle.RelationKeyUniqueKey:         domain.String("ot-jotting"),
+			bundle.RelationKeyApiObjectKey:      domain.String("jotting"),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(int64(model.ObjectType_note)),
+			bundle.RelationKeyResolvedLayout:    domain.Int64(int64(model.ObjectType_objectType)),
+		}})
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"jotting","name":"Monday","markdown":"# Monday\n\nbody"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"body"}, snapshotTexts(*captured))
+	})
+}
+
+func TestCreateObjectMarkdownTitleContracts(t *testing.T) {
+	t.Run("a dry run reports the transformation it would make", func(t *testing.T) {
+		// given — a dry run that silently changed the body would be a worse
+		// answer than no dry run at all
+		fx := newV2Fixture(t)
+
+		// when — no create expectation
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","name":"Title","markdown":"# Title\n\nbody"}`), true, false)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, result.DryRun)
+		require.Len(t, result.Warnings, 1)
+		assert.Equal(t, "/markdown[0]", result.Warnings[0].Path)
+	})
+
+	t.Run("every heading level can be the duplicate", func(t *testing.T) {
+		for markdown, kept := range map[string][]string{
+			"# Title\n\nbody":   {"body"},
+			"## Title\n\nbody":  {"body"},
+			"### Title\n\nbody": {"body"},
+		} {
+			fx := newV2Fixture(t)
+			captured := fx.expectCreate("newObj")
+			fx.expectEtagRead("newObj")
+
+			_, err := fx.CreateObject(context.Background(), testSpaceId,
+				[]byte(`{"type":"page","name":"Title","markdown":`+strconv.Quote(markdown)+`}`), false, false)
+
+			require.NoError(t, err, markdown)
+			assert.Equal(t, kept, snapshotTexts(*captured), markdown)
+		}
+	})
 }

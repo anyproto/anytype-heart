@@ -77,7 +77,7 @@
         "description": "The template the new object started from, absent when it started from nothing.",
         "properties": {
           "blocks_added": {
-            "description": "How many blocks the template put in the object, not counting its header: the title, description and featured properties every object carries. Absent on a dry run, which does not build the template, and zero is a real answer.",
+            "description": "How many blocks the template carried, counted before the object's layout runs and without its header: the title, description and featured properties every object carries. Absent on a dry run, which does not build the template, and zero is a real answer.",
             "type": "integer"
           },
           "combined": {
@@ -4588,12 +4588,12 @@
                     "additionalProperties": false,
                     "properties": {
                       "markdown": {
-                        "description": "markdown body parsed into blocks server-side, part of the same single create (dry runs validate it too); at most 2048 parsed blocks. Start it at the first section: a leading heading that repeats the name is dropped, and with no name a leading heading becomes the name",
+                        "description": "markdown body parsed into blocks server-side, part of the same single create (dry runs validate it too); at most 2048 parsed blocks. Start it at the first section: a leading heading that repeats the name is dropped, and with no name a leading # heading becomes the name",
                         "maxLength": 1048576,
                         "type": "string"
                       },
                       "name": {
-                        "description": "display name. The object shows it as its title, so the markdown body must not repeat it as a heading",
+                        "description": "display name. The object displays it above its body, so a markdown body that repeats it as a heading shows it twice",
                         "maxLength": 4096,
                         "type": "string"
                       },

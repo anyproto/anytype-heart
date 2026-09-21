@@ -70,9 +70,9 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		endpoint: "POST /v2/spaces/{space_id}/objects",
 		schema: `{"type":"object","additionalProperties":false,"required":["type"],"properties":{` +
 			`"type":{"type":"string","maxLength":256,"description":"type key, e.g. page or task"},` +
-			`"name":{"type":"string","maxLength":4096,"description":"display name. The object shows it as its title, so the markdown body must not repeat it as a heading"},` +
+			`"name":{"type":"string","maxLength":4096,"description":"display name. The object displays it above its body, so a markdown body that repeats it as a heading shows it twice"},` +
 			`"properties":{"type":"object","maxProperties":128,"additionalProperties":{"type":["string","number","boolean","array","null"]}},` +
-			`"markdown":{"type":"string","maxLength":1048576,"description":"markdown body parsed into blocks server-side, part of the same single create (dry runs validate it too); at most 2048 parsed blocks. Start it at the first section: a leading heading that repeats the name is dropped, and with no name a leading heading becomes the name"},` +
+			`"markdown":{"type":"string","maxLength":1048576,"description":"markdown body parsed into blocks server-side, part of the same single create (dry runs validate it too); at most 2048 parsed blocks. Start it at the first section: a leading heading that repeats the name is dropped, and with no name a leading # heading becomes the name"},` +
 			`"template":` + apiV2TemplateMember + `}}`,
 		example: `{"type":"task","name":"Buy milk","properties":{"due_date":"2026-08-01T00:00:00Z"},"markdown":"- [ ] oat\n- [ ] whole"}`,
 	},

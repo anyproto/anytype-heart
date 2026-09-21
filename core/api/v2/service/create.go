@@ -243,12 +243,21 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 	if properties == nil {
 		properties = map[string]json.RawMessage{}
 	}
-	name := shortcut.Name
-	if name == "" {
-		// the shortcut takes a name either way, and both spellings reach the
-		// same detail
+	// the shortcut takes a name either way, and both spellings reach the same
+	// detail. What matters below is not only the VALUE but whether the caller
+	// said anything at all: a name they sent is never replaced, even when it
+	// is a shape this layer cannot read.
+	name, nameSupplied := shortcut.Name, shortcut.Name != ""
+	for key, raw := range properties {
+		if !strings.EqualFold(key, "name") {
+			continue
+		}
+		nameSupplied = true
+		if name != "" {
+			continue
+		}
 		var fromProperties string
-		if raw, ok := properties["name"]; ok && json.Unmarshal(raw, &fromProperties) == nil {
+		if json.Unmarshal(raw, &fromProperties) == nil {
 			name = fromProperties
 		}
 	}
@@ -271,10 +280,20 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 		}
 	}
 	// the leading heading is the title, not the first paragraph of the body
-	run, name, titleNotice := liftMarkdownTitle(run, name)
+	run, name, titleNotice := s.liftMarkdownTitle(spaceId, shortcut.Type, run, name, nameSupplied)
+	droppedLeadingBlocks := 0
+	if titleNotice != nil {
+		droppedLeadingBlocks = 1
+	}
 
-	if name != "" {
+	if name != "" && !nameSupplied {
+		// only a PROMOTED name is written here; one the caller sent is
+		// already in the body, under whichever spelling they used
 		if properties["name"], err = rawJSON(name); err != nil {
+			return nil, err
+		}
+	} else if shortcut.Name != "" {
+		if properties["name"], err = rawJSON(shortcut.Name); err != nil {
 			return nil, err
 		}
 	}
@@ -304,8 +323,9 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 	result, err := s.createFromDocument(ctx, spaceId, docJSON, opts)
 	if err != nil && markdownBlocks {
 		// the blocks array is synthetic here — readdress its issues to the
-		// markdown channel the caller actually sent (C6)
-		err = rebaseMarkdownCreateError(err)
+		// markdown channel the caller actually sent (C6), counting from the
+		// caller's first parsed block rather than from the first one kept
+		err = rebaseMarkdownCreateError(err, droppedLeadingBlocks)
 	}
 	if err == nil && titleNotice != nil {
 		result.Warnings = append(result.Warnings, *titleNotice)
@@ -347,7 +367,7 @@ var headingStyles = map[string]bool{"heading_1": true, "heading_2": true, "headi
 //
 // It returns the blocks to keep, the name to use and the notice to attach,
 // nil when nothing was touched.
-func liftMarkdownTitle(run []json.RawMessage, name string) ([]json.RawMessage, string, *v2model.Issue) {
+func (s *Service) liftMarkdownTitle(spaceId, typeTerm string, run []json.RawMessage, name string, nameSupplied bool) ([]json.RawMessage, string, *v2model.Issue) {
 	if len(run) == 0 {
 		return run, name, nil
 	}
@@ -355,9 +375,28 @@ func liftMarkdownTitle(run []json.RawMessage, name string) ([]json.RawMessage, s
 	if err := json.Unmarshal(run[0], &first); err != nil || first.Indent != 0 || !headingStyles[first.Type] {
 		return run, name, nil
 	}
-	heading := strings.TrimSpace(first.Text)
+	// the heading's text is markdown, not plain text: `# **Title**` parses to
+	// a block whose text carries the emphasis for the format to resolve into
+	// marks. A name is a plain detail and cannot, so the comparison and the
+	// promotion both take the rendered text — which also lets `**Title**`
+	// match a name of "Title", as a reader would expect.
+	heading, _, err := anyblockjson.ParseInlineText(first.Text)
+	if err != nil {
+		heading = first.Text
+	}
+	heading = strings.TrimSpace(heading)
 	if heading == "" {
 		return run, name, nil
+	}
+	// a heading that owns nested content cannot be removed on its own: the
+	// blocks under it would keep an indentation with nothing above them, and
+	// the document would be refused. Left whole, it is a duplicate title and
+	// nothing worse.
+	if len(run) > 1 {
+		var second markdownHeading
+		if err := json.Unmarshal(run[1], &second); err != nil || second.Indent > 0 {
+			return run, name, nil
+		}
 	}
 	switch {
 	case name != "" && heading == strings.TrimSpace(name):
@@ -366,7 +405,7 @@ func liftMarkdownTitle(run []json.RawMessage, name string) ([]json.RawMessage, s
 			Message: "the first heading repeated the object's name and was dropped",
 			Hint:    "an object shows its name as its title, so a heading that restates it appears twice",
 		}
-	case name == "" && first.Type == "heading_1":
+	case !nameSupplied && first.Type == "heading_1" && s.typeShowsNameAsTitle(spaceId, typeTerm):
 		return run[1:], heading, &v2model.Issue{
 			Path:    "/markdown[0]",
 			Message: fmt.Sprintf("the first heading became the object's name: %q", heading),
@@ -374,6 +413,31 @@ func liftMarkdownTitle(run []json.RawMessage, name string) ([]json.RawMessage, s
 		}
 	}
 	return run, name, nil
+}
+
+// typeShowsNameAsTitle reports whether objects of this type render their name
+// as a title — true for every layout but the NOTE, which has no title and
+// turns its name back into the first block of its body
+// (template.WithNameToFirstBlock). Promoting a heading there would move the
+// caller's line below any template content, strip it of its heading style and
+// leave the object with no name at all, while the response claimed one.
+//
+// Unknown answers true: the type gate owns an unresolvable type, and the
+// duplicate-dropping half of the rule is right for a note either way.
+func (s *Service) typeShowsNameAsTitle(spaceId, typeTerm string) bool {
+	entries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return true
+	}
+	entry, ok, ambiguous, err := s.resolveTypeInput(spaceId, typeTerm, entries)
+	if err != nil || !ok || len(ambiguous) > 0 || entry.Id == "" {
+		return true
+	}
+	objectType, err := s.store.SpaceIndex(spaceId).GetObjectType(entry.Id)
+	if err != nil {
+		return true
+	}
+	return objectType.Layout != model.ObjectType_note
 }
 
 // v2MaxCreateMarkdownBlocks caps how many blocks a create shortcut's markdown
@@ -387,10 +451,22 @@ const v2MaxCreateMarkdownBlocks = 2048
 // array, so a path into the synthesized document is unactionable (C6). j is
 // the parsed block position, the same convention the insert_blocks op's
 // created_blocks keys document.
-func rebaseMarkdownCreateError(err error) error {
+//
+// dropped is how many parsed blocks were taken off the FRONT before the
+// document was synthesized (liftMarkdownTitle removes the leading heading),
+// and it is added back: without it every path after a lifted title would
+// address the block before the one that actually failed.
+func rebaseMarkdownCreateError(err error, dropped int) error {
 	var v2Err *v2model.Error
 	if !errors.As(err, &v2Err) {
 		return err
+	}
+	position := func(idx string) string {
+		parsed, convErr := strconv.Atoi(idx)
+		if convErr != nil {
+			return idx
+		}
+		return strconv.Itoa(parsed + dropped)
 	}
 	for i := range v2Err.Issues {
 		rest, ok := strings.CutPrefix(v2Err.Issues[i].Path, "/blocks/")
@@ -398,9 +474,9 @@ func rebaseMarkdownCreateError(err error) error {
 			continue
 		}
 		if idx, tail, found := strings.Cut(rest, "/"); found {
-			v2Err.Issues[i].Path = fmt.Sprintf("/markdown[%s]/%s", idx, tail)
+			v2Err.Issues[i].Path = fmt.Sprintf("/markdown[%s]/%s", position(idx), tail)
 		} else {
-			v2Err.Issues[i].Path = fmt.Sprintf("/markdown[%s]", rest)
+			v2Err.Issues[i].Path = fmt.Sprintf("/markdown[%s]", position(rest))
 		}
 	}
 	return v2Err

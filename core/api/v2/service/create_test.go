@@ -239,11 +239,22 @@ func TestV2CreateObjectShortcut(t *testing.T) {
 		err := rebaseMarkdownCreateError(v2model.ValidationFailed("the document failed AnyBlock validation",
 			v2model.Issue{Path: "/blocks/1", Message: "nested under a divider block"},
 			v2model.Issue{Path: "/blocks/3/text", Message: "too long"},
-			v2model.Issue{Path: "/type", Message: "untouched"}))
+			v2model.Issue{Path: "/type", Message: "untouched"}), 0)
 		apiErr := v2Err(t, err)
 		assert.Equal(t, "/markdown[1]", apiErr.Issues[0].Path)
 		assert.Equal(t, "/markdown[3]/text", apiErr.Issues[1].Path)
 		assert.Equal(t, "/type", apiErr.Issues[2].Path)
+	})
+
+	t.Run("a lifted title shifts the readdressed positions back", func(t *testing.T) {
+		// the caller counts from their own first parsed block; the document
+		// was synthesized from the ones kept after the title was lifted
+		err := rebaseMarkdownCreateError(v2model.ValidationFailed("the document failed AnyBlock validation",
+			v2model.Issue{Path: "/blocks/0", Message: "nested under a divider block"},
+			v2model.Issue{Path: "/blocks/2/text", Message: "too long"}), 1)
+		apiErr := v2Err(t, err)
+		assert.Equal(t, "/markdown[1]", apiErr.Issues[0].Path)
+		assert.Equal(t, "/markdown[3]/text", apiErr.Issues[1].Path)
 	})
 
 	t.Run("unknown shortcut key steers to the full document", func(t *testing.T) {
