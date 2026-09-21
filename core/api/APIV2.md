@@ -7445,3 +7445,315 @@ synthesises a stub with only an id, and rendering that through the full DTO
 would put an empty text and author on the wire for a client to merge over
 the real message. Pinning something OLD is the ordinary case, so that is the
 common path.
+
+### 8.57 Creating from a template (2026-09-21 — as built)
+
+The round-six scenarios recorded this as R6-2, and the finding was not that
+templates were missing — it was that the API presented every appearance of
+supporting them. `default_template` on a type was accepted, persisted and
+read back correctly, and had no effect on any create; `create_object` had no
+member to name a template with; and nothing in either schema said what
+`default_template` did at create time. A 200, a moved etag, a correct
+read-back, and no effect.
+
+**The member.** A create body takes `template`: a template's store id, or the
+word `none` to start from nothing. Both body shapes take it — the shortcut
+declares it, and the full document has it LIFTED out
+(`liftTemplate`) before the discriminator runs, the same seam `etag` and
+`warnings` take on their way in. That lift is what makes one member serve two
+shapes: the interchange document is a closed set, so a `template` left in it
+would be refused as an unknown envelope member, and adding it to the FORMAT
+would be wrong in a different way — no read serves the member back, so a
+document could carry it only on the way in. (The store does keep provenance:
+the template service stamps `sourceObject` with the template's id. That is a
+detail, not a document member, and this API neither serves nor accepts it.)
+`template` is a create directive, like `dry_run`, and it lives in the body
+because that is where this API's callers look.
+
+An empty string reads as ABSENT, not as `none`. A body generated against a
+schema tends to carry every member it can see, empty ones included, and
+reading `""` as an opt-out would let that habit quietly switch a type's
+default template off — the failure being fixed here, wearing the other hat.
+
+**Three answers, kept apart.** Heart's own resolution
+(`templateimpl.resolveValidTemplateId`) answers every miss the same way: it
+falls back to the blank template, in silence. The API separates the cases by
+WHO chose the template:
+
+- the caller named one and it cannot be applied — unknown, deleted, not a
+  template, or a template of another type — is a **refusal**, path-addressed
+  at `/template`, because a create that asked for a specific starting point
+  and silently got another is the whole defect;
+- the TYPE's default cannot be applied: the object is **created without it**,
+  and a warning names the dead id and the repair. Refusing would make every
+  create of that type fail until someone repaired the type, over a choice the
+  caller did not make;
+- whatever is applied is **named in the result** (`template: {id, name,
+  source}`), on dry runs too. `source` is `request` or `type_default`, and
+  that distinction is the point: a type's default is content the caller did
+  not send, so without it the blocks that appear in a new object read as the
+  server inventing a body.
+
+**What the result says, and the reads it is there to spare.** Two calls a
+caller would otherwise make are answered by the response instead. The
+`template` member's own description closes the first: leaving it out is
+normal, a type with no default applies nothing, and reading the type first is
+not needed, because the result names what was applied. The second is the
+read-BACK: an object created from a template holds blocks the request never
+sent, so `template` also carries `blocks_added` — what the template wrote,
+not counting the title and featured relations the object would carry either
+way — and `combined`, true when the request's own blocks follow the
+template's. `combined` is knowable from the request's own snapshot, so it
+rides dry runs too; `blocks_added` is not, because a dry run never builds the
+template, and it is absent there rather than guessed — which is also why it is
+a POINTER: a template can carry nothing but its header, and a known zero must
+not read like an unknown.
+
+Two edges of the count, recorded rather than chased. It is taken from the
+template state BEFORE the merge, so a layout conversion that runs later at
+creation is outside it: a note whose name becomes its first block
+(`template.WithNameToFirstBlock`) lands one block the count did not include.
+And a caller block carrying an id the editor owns — `title`, `header`,
+`description`, `featuredRelations` — is reminted whether or not the template
+state holds one, because note layout UNLINKS the title block at creation and
+the caller's content would go with it. Nothing is lost by that rename: a read
+of this API never serves those blocks, so such an id is always authored
+rather than cloned.
+
+The steering lives in the MEMBER's description rather than the endpoint's
+because this API has measured which one a model reads: the A/B recorded
+above published one field three ways and got it supplied on every call where
+the schema showed it, none where it did not, and on every call in the arm
+whose prose argued against using it. Prose nudges, shape decides — so the
+fact that removes a call is stated as a field in the result, not as a
+sentence about the result.
+
+**The stale default is real, not hypothetical.** Deleting a template clears
+the type that pointed at it (`core/block/delete.go` — `unsetDefaultTemplateId`),
+but that check reads the detail with `GetString`, and this API writes
+`defaultTemplateId` as a one-element LIST, which is the spelling the clients
+read. A default set through v2 therefore outlives its own template. The read
+here takes both spellings (`WrapToStringList`), so the warning fires instead
+of the id silently resolving to nothing. The clearing asymmetry is left as it
+is: a warning that names the dead id and the repair is honest about a state
+the space is already in, and changing the delete path's read is a fix for the
+whole store, not for this endpoint.
+
+**How it is applied.** `apicore.ObjectCreator.CreateObjectFromSnapshot` takes
+the resolved id. The adapter builds the base with
+`templateService.CreateTemplateStateWithDetails` — the same call an
+app-initiated create makes — so placeholders, featured relations, layout
+conversion and the template's own detail precedence behave exactly as they do
+for a user-created object. The caller's document is then merged ON TOP: its
+blocks after the template's, its relation links, its collection items. Two
+details are load-bearing. A document block whose id the template state
+already holds is REMINTED, references included (`title` and `header` are
+ordinary words for a caller and real block ids in a template state, and a
+collision would overwrite template content). And validation is OFF on that
+call: the id was checked against the type's live templates before anything
+was written, and `WithTemplateValidation` would re-resolve a miss to the
+BLANK template — turning a vanished template into a silent empty object after
+the response had already named it.
+
+The mechanism is gated to `POST /objects` (`docCreateOptions.honourTemplates`).
+`POST /queries` and `POST /collections` compose their document server-side
+around a dataview they generate, and dropping a template's blocks into one
+blends two structures nobody asked to merge; `POST /templates` is excluded
+because a template has no template of its own, which the refusal says rather
+than resolving `template`'s own `default_template`.
+
+**What a four-lens review changed.** Five defects, four of them in the same
+family — the response naming a template the object did not get:
+
+- The template service degrades a template it cannot LOAD to the blank
+  template and returns no error, so `WithTemplateValidation: false` was not
+  enough: a template deleted between the index check and the load produced an
+  empty object under a response naming it. The adapter now detects the
+  degrade structurally — a state built from a real template is rooted at that
+  template's id, the blank one is not — and reports
+  `apicore.ErrTemplateUnavailable`. The API layer decides what that means,
+  because the adapter cannot: a template the CALLER named refuses, a type
+  DEFAULT is dropped and the create is retried without it, with a warning.
+  The root is the signal rather than the `sourceObject` detail, because a
+  document's own properties are merged into those details and the root is
+  out of a caller's reach.
+- A type this space has not installed yet has no store row, and the target
+  check was skipped when its id could not be read — silently applying a
+  template of ANOTHER type. The id is derivable (a derived object's id is a
+  pure function of space and key), and it is exactly what a template carries
+  as its target, so the check now always runs.
+- `typeIdInSpace` returns a miss for a store ERROR, which read as "this type
+  has no default template" and applied none, silently. The default path takes
+  the error instead.
+- A table cell's id is `<rowId>-<colId>` arithmetic, not a reference, so
+  reminting a colliding row or column left its cells behind. Renames now
+  carry cells, and a cell that collides on its own promotes the collision to
+  its row — the only rename a cell id can follow.
+- The caller's root-block attributes were dropped when a template applied,
+  because the merge skips the document root. They are merged onto the
+  template's root now, caller wins.
+
+**One ordering is left as it is, deliberately.** The template is loaded by the
+create itself, which runs after the create-missing resolvers have minted any
+options the document asked for. A template that passes every index check and
+then fails to LOAD — the deletion race — therefore refuses at `/template`
+with those options already written. Closing it means loading the template
+tree a second time, before the resolvers, on every create that names one, to
+protect a millisecond-wide window whose cost is an orphaned select option the
+caller consented to create. Any create that fails after that point has always
+had this property; it is not new here, and it is filed rather than fixed.
+
+One defect the review found is OLDER than this change and is fixed with it:
+the format's `type_internal_key` is excluded from the document this API
+serves, but the format's own validation still accepts it on a create, and on
+import it WINS over `type`. Everything the endpoint decides reads `type` —
+the type gate, the restricted-type refusal, the property keys, the type the
+result reports, and now the template — so a body carrying both was validated
+as one type and created as another. It is refused, path-addressed. The
+remaining excluded members (`root`, `store`, `file_remote`, `uninstalled`,
+`property_settings`) are accepted on create the same way and deserve the same
+audit; only this one was verified to override identity.
+
+**Finding one.** Templates were unreachable by read: search excludes them
+from every result by design, so a template id could only come from the
+response that created it. `GET /v2/spaces/{space_id}/templates` is the read
+half of the collection `POST /templates` writes to, with `?type=` narrowing
+to one type's templates — the question a create actually asks — and each row
+carrying `default`, so which template a type starts from is visible where the
+templates are. The listing excludes uninstalled and hidden rows on top of the
+store's archived/deleted defaults: offering an id the create path then
+refuses is the same broken loop pointing the other way.
+
+### 8.58 The leading heading is the title, not the first line of the body (2026-09-21 — as built)
+
+A create carrying both a `name` and a markdown body that opens by restating
+it produces an object that shows the same words twice: once as the title the
+object renders from its name, once as a heading. It is the shape a small
+model reaches for by default — measured in the wild, on an object whose
+export carries `"Name": "Tegeler Forst Woodland Escape"` and a
+`heading_1` block with that exact text, `origin: api`.
+
+**This product already had the rule; the API was the one surface not
+following it.** `markdown.extractTitleAndEmojiFromBlock` takes a leading
+`heading_1` as the imported object's name and REMOVES the block, for every
+markdown file that comes in from disk. So a file imported from disk shows its
+name once and an object created through this API showed it twice.
+
+The markdown channel of the create shortcut now applies the same rule
+(`liftMarkdownTitle`), in the two forms one convention takes:
+
+- the leading heading repeats the name the request set — it is dropped,
+  because the object renders the name as its title and the block only
+  duplicates it;
+- the request set no name and the document opens with a `heading_1` — the
+  heading becomes the name and is dropped, so the caller gets a named object
+  instead of an untitled one whose first line is its title.
+
+A `heading_2` or `heading_3` is enough to be a duplicate and not enough to
+become a name: a model restating the name does not always pick the same
+level, but promoting a section heading would invent a title out of a section.
+
+Four edges a third review round found, each now part of the rule. The
+heading's text is MARKDOWN, not plain text (`# **Title**` parses to a block
+whose text carries the emphasis), so both the comparison and the promotion
+take `ParseInlineText`'s rendering — which also lets `**Title**` match a name
+of `Title`, as a reader would expect. A heading that owns nested content is
+left whole, because removing it alone would leave its children indented under
+nothing and the document would be refused — a create that worked before. A
+name the caller SENT is never replaced, including one this layer cannot read
+(`"name": 123`) and one spelled as the display name (`"Name"`), since
+promoting beside it would add a second spelling of the same property. And a
+NOTE is exempt from promotion: it has no title, and
+`template.WithNameToFirstBlock` turns its name back into the first block of
+its body, so a promoted heading would lose its style, move below any template
+content and leave the object with no name while the response claimed one. A
+note still DROPS a heading that repeats its name, for exactly the same reason
+— the name is already going to be that first block.
+Either way the result carries a warning addressed at `/markdown[0]`, because
+a body the server changed is not the body the caller sent, and the sentence
+that explains it is also the one that teaches the next call.
+
+**Scope is the markdown channel only.** A full AnyBlock document is an
+authored block tree, and its first block is a choice rather than a
+convention; the rule would be editing a caller's structure rather than
+reading their prose. The `name` and `markdown` descriptions in the served
+shortcut schema state the rule, so a caller can see it before sending.
+
+**A fourth round, and a live one.** Two more lenses over the hardened rule,
+plus the first run of any of this against a real heart (`heartboot`, a
+throwaway account, objects created and read back over HTTP). Between them:
+
+- a heading whose text carries a LINK, a mention or an object reference is
+  left alone. Its rendering can equal the name while its content does not,
+  and dropping it would take the destination with it — a name is text and
+  holds no marks. Styling marks are not in that class: dropping a bold
+  duplicate loses the bold of a line nobody was going to see.
+- a bundled type this space has not installed yet is read from the BUNDLE,
+  so an uninstalled `note` is exempt from promotion like an installed one.
+- a caller who sets a `layout` property has decided the layout themselves,
+  and the type's recommended one stops being the right thing to read, so
+  promotion is off there too.
+- an empty name reads as absent in EITHER spelling, the same reading the
+  `template` member takes of an empty string, while a value that does not
+  decode as a string is still a value the caller chose and is never replaced.
+- the property test is the UNION of the format's fold and this API's
+  resolution. The format folds `Name` onto `name` and refuses a document
+  carrying both, so a fold match is the format's own answer even where a
+  space keys some other relation that way — in which case the value lands on
+  that property, the object has no name, and the rule does nothing. Doing
+  nothing is the only outcome there that neither refuses the create nor moves
+  the caller's content.
+
+**A fifth round, and its one finding three lenses reached separately.** The
+question "may a promotion ADD `name`" and the question "what is this object
+CALLED" are not the same question, and answering both from a folded key
+deleted a heading that repeated nothing: a space that keys a relation of its
+own `Name` sends that value to its own property, so the object stays unnamed
+while the heading matched it. They are separate tests now — the FORMAT's fold
+(`anyblockjson.FoldKeyTerm`, which drops separators and spacing as well as
+case, so `n_ame` folds too) decides whether `name` may be added beside what
+the caller sent, and only a key that RESOLVES to the name property supplies
+the value a heading is compared against. A promoted name is written under the
+caller's own spelling when they sent one, because an empty `Name` beside a
+new `name` is the same document the format refuses.
+
+Three smaller ones from the same round: the template-type lookup read a store
+error as "not a template" and dropped a valid default with a false warning;
+`servedTypeSpelling` returned the stored key for a bundled type with no live
+row, where the served spelling differs (`set` is served as `query`); and
+`GET /templates?type=` refused a bundled type this space had not installed
+while a create with the same type accepted it, so the listing now derives the
+id the way the create path does. `combined`'s description says what it
+computes — that this request sent blocks of its own — rather than promising
+something about the object's final block list, which normalization can still
+change.
+
+Left as known edges, with reasons: a TEMPLATE that overrides the layout (a
+note-layout template on a basic type) is outside the promotion guard, which
+reads the TYPE's layout, because the template is resolved after the shortcut
+has already built its document; an explicitly empty `collection_items` does
+not clear a template's members, since a create carries content rather than
+removals; and the option-minting order remains as filed (GO-7533).
+
+The live run found what no unit test could: the stale-default warning named
+the type by its 24-hex STORED key rather than its api key, because every
+fixture used a type whose two spellings were the same word. It is the leak
+the search refusals were rebuilt to close (§8.57's predecessor), reappearing
+in a new message. Both the warning and the refusal hint now take the served
+spelling.
+
+A second live pass, over the paths the first one never reached, confirmed all
+of it: the type spelling in the stale-default warning, a link-carrying
+heading keeping its target, an indented child no longer refusing the create,
+an empty name promoting, both note exemptions, and a dry run whose claim the
+real create then matched. It also turned up a defect of its own, older than
+this work: `PATCH types/{type}` with `default_template: ""` — the repair
+every stale-default warning names, and the behaviour the served schema
+promises with "empty string clears it" — answered "the patch changes
+nothing", because the create path drops empty settings members and the patch
+path reuses it. An empty `default_template` now survives into the patch, and
+clearing works.
+
+Not taken from the importer: its emoji split, which reads a leading emoji out
+of the title into the object's icon. The shortcut has no icon member, and
+inventing one here would be a second convention rather than the same one.

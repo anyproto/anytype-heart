@@ -46,6 +46,14 @@ const v2PropertyFormatEnum = `"text","number","select","multi_select","date","fi
 // do not cover; an author never writes one, so it is not advertised here.
 const v2IconColorProp = `"type":"string","enum":["grey","yellow","orange","red","pink","purple","blue","ice","teal","lime"]`
 
+// apiV2TemplateMember is the `template` member of a create body, served by
+// both create shapes: the shortcut kind declares it inline, and the object
+// kind has it added to the narrowed document schema (apiV2KindNarrowings).
+// One text, because two would drift the moment one of them learned the word
+// none.
+const apiV2TemplateMember = `{"type":"string","maxLength":256,` +
+	`"description":"id of the template this object starts from. Leave it out: the type's default_template applies when it has one, and nothing is applied when it does not. Reading the type first is not needed. The result names the template that was applied, how many blocks it added, and whether the body is those blocks followed by yours. Send \"none\" to start from nothing"}`
+
 var v2SchemaKinds = map[string]v2SchemaKind{
 	"object": {
 		endpoint: "POST /v2/spaces/{space_id}/objects",
@@ -62,9 +70,10 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		endpoint: "POST /v2/spaces/{space_id}/objects",
 		schema: `{"type":"object","additionalProperties":false,"required":["type"],"properties":{` +
 			`"type":{"type":"string","maxLength":256,"description":"type key, e.g. page or task"},` +
-			`"name":{"type":"string","maxLength":4096},` +
+			`"name":{"type":"string","maxLength":4096,"description":"display name. The object displays it above its body, so a markdown body that repeats it as a heading shows it twice"},` +
 			`"properties":{"type":"object","maxProperties":128,"additionalProperties":{"type":["string","number","boolean","array","null"]}},` +
-			`"markdown":{"type":"string","maxLength":1048576,"description":"markdown body parsed into blocks server-side, part of the same single create (dry runs validate it too); at most 2048 parsed blocks"}}}`,
+			`"markdown":{"type":"string","maxLength":1048576,"description":"markdown body parsed into blocks server-side, part of the same single create (dry runs validate it too); at most 2048 parsed blocks. Start it at the first section: a leading heading that repeats the name is dropped, and with no name a leading # heading becomes the name"},` +
+			`"template":` + apiV2TemplateMember + `}}`,
 		example: `{"type":"task","name":"Buy milk","properties":{"due_date":"2026-08-01T00:00:00Z"},"markdown":"- [ ] oat\n- [ ] whole"}`,
 	},
 	// The flat body, not the AnyBlock document. `type` is the kind an agent
@@ -96,7 +105,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"layout":{"type":"string","enum":["basic","note","todo","profile","bookmark","set","collection"],"description":"the layout instances of this type get; basic unless you need another"},` +
 			`"api_key":{"type":"string","maxLength":256,"pattern":"^[a-zA-Z0-9_]+$","description":"the key object bodies name this type by; derived from the name when omitted"},` +
 			`"default_view":{"type":"string","enum":["table","list","gallery","kanban","calendar","graph"],"description":"how a set or collection of this type opens; applies to ones created after the change"},` +
-			`"default_template":{"type":"string","maxLength":256,"description":"id of the template new objects of this type start from; empty string clears it"},` +
+			`"default_template":{"type":"string","maxLength":256,"description":"id of the template new objects of this type start from unless the create names its own or sends none; empty string clears it"},` +
 			`"property_definitions":{"type":"array","maxItems":128,"description":"the type's whole field list; an unknown name mints a property. On PATCH it replaces the list, so to change one field send an ops envelope with add_property to update_type instead, and to rename a property send {name} to update_property","items":{` +
 			`"type":"object","additionalProperties":false,"description":"names its property by name or by property, one of the two","properties":{` +
 			`"name":{"type":"string","minLength":1,"maxLength":128,"description":"the property's display name, e.g. Due date; an unknown one is created"},` +

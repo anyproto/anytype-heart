@@ -169,6 +169,36 @@ func ListPropertiesHandler(s *v2service.Service) gin.HandlerFunc {
 	}
 }
 
+// ListTemplatesHandler lists a space's templates
+//
+//	@Summary		List templates
+//	@Description	`type` narrows the list to the templates of one type. Each row's id is what a create passes in `template`, and `default` marks the one a create of that type starts from on its own.
+//	@Id				list_templates
+//	@Tags			Templates
+//	@Produce		json
+//	@Param			space_id	path		string										true	"Space id"
+//	@Param			type		query		string										false	"Type key: list only the templates that start an object of this type"
+//	@Param			offset		query		int											false	"Items to skip"		default(0)
+//	@Param			limit		query		int											false	"Items to return"	default(25)
+//	@Success		200			{object}	v2model.ListResponse[v2model.TemplateRow]	"Template rows"
+//	@Failure		400			{object}	v2model.Error								"Unknown type key"
+//	@Failure		404			{object}	v2model.Error								"Space not found or unavailable"
+//	@Security		bearerauth
+//	@Router			/v2/spaces/{space_id}/templates [get]
+func ListTemplatesHandler(s *v2service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		offset := c.GetInt(pagination.QueryParamOffset)
+		limit := c.GetInt(pagination.QueryParamLimit)
+		rows, total, hasMore, err := s.ListTemplates(c.Request.Context(), c.Param("space_id"), c.Query("type"), offset, limit)
+		if err != nil {
+			RespondError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, v2model.NewListResponse(rows, total, offset, limit, hasMore,
+			"narrow with type= or request the next offset"))
+	}
+}
+
 // ListPropertyOptionsHandler lists option names of one property
 //
 //	@Summary	List property options

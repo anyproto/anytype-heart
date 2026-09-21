@@ -2,6 +2,7 @@ package apicore
 
 import (
 	"context"
+	"errors"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -71,6 +72,19 @@ type ObjectReader interface {
 	ReadObject(ctx context.Context, spaceId string, objectId string) (ObjectRead, error)
 }
 
+// ErrTemplateUnavailable is what CreateObjectFromSnapshot returns when the
+// template it was handed could not be turned into a state: deleted or
+// archived since the caller's id was checked, or unloadable.
+//
+// It exists because the two callers of that outcome want opposite things. A
+// template the CALLER named must refuse — the object would otherwise be
+// created without the content the request asked for, under a response naming
+// the template. A template the TYPE named must not fail the create at all;
+// the create is retried without it and the result says so. Neither decision
+// belongs in the adapter, which knows nothing of who chose the id, so the
+// adapter reports the fact and the API layer decides.
+var ErrTemplateUnavailable = errors.New("template unavailable")
+
 // ObjectCreator creates objects from AnyBlock snapshots — the API v2 create
 // path (APIV2.md §2 Phase 2). CreateObjectFromSnapshot builds the object's
 // initial state from the snapshot and creates it in one change set (atomic
@@ -82,10 +96,32 @@ type ObjectReader interface {
 // is computable whether or not the relation object — or even its index
 // row — exists; the corpse probes use it to see a tombstone an older build
 // left, which no key-filtered query can return (§8.41).
+//
+// templateId, when set, is the template the new object starts from: the
+// adapter builds the same state a client-initiated create builds from it and
+// rebases the document on top. It is a store id the CALLER's layer has
+// already validated (v2service.resolveCreateTemplate) — the adapter resolves
+// nothing and applies what it is given, so a template that has vanished
+// between the two is an error here, not a silent blank object.
 type ObjectCreator interface {
-	CreateObjectFromSnapshot(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase) (id string, err error)
+	CreateObjectFromSnapshot(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase, templateId string) (CreateOutcome, error)
 	TypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (string, error)
 	RelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (string, error)
+}
+
+// CreateOutcome is what a snapshot create produced. It is a struct rather
+// than a bare id because a create that started from a template did something
+// to the object the caller cannot infer from the request: TemplateBlocks is
+// how many blocks the template contributed, so the response can say that the
+// object holds content the request did not send without the caller reading
+// the object back to find out.
+//
+// The count excludes the header the object would carry either way (its
+// title, description and featured relations): a number that moved because an
+// object has a title would say nothing about the template.
+type CreateOutcome struct {
+	Id             string
+	TemplateBlocks int
 }
 
 // ObjectEdit is one locked editing session on a live object — what the

@@ -365,8 +365,56 @@ func (r *Runner) runCreate(ctx context.Context, session *Session, args map[strin
 	if result.DryRun {
 		text = fmt.Sprintf("dry run — a %s object would be created", label)
 	}
+	// a template the TYPE chose is content the caller did not send; unsaid,
+	// it reads as the server inventing a body — and a caller that cannot see
+	// what the object holds reads it back to find out
+	if result.Template != nil {
+		text += fmt.Sprintf("\nstarted from template %s%s",
+			templateLabel(result.Template), templateComposition(result.Template))
+	}
 	text += warningsText(result.Warnings)
 	return &Result{Text: text, JSON: result}, nil
+}
+
+// templateComposition says what the template did to the object's body: how
+// much of it the template wrote, and whether the caller's own content follows
+// it. Both are facts a read-back would otherwise be sent to discover.
+func templateComposition(applied *v2model.AppliedTemplate) string {
+	added := 0
+	if applied.BlocksAdded != nil {
+		added = *applied.BlocksAdded
+	}
+	switch {
+	case added > 0 && applied.Combined:
+		return fmt.Sprintf(" — it wrote %s, and yours follow", blockCount(added))
+	case added > 0:
+		return fmt.Sprintf(" — it wrote %s", blockCount(added))
+	case applied.Combined:
+		return " — your blocks follow it"
+	}
+	return ""
+}
+
+// blockCount pluralizes a block count.
+func blockCount(n int) string {
+	if n == 1 {
+		return "1 block"
+	}
+	return fmt.Sprintf("%d blocks", n)
+}
+
+// templateLabel names an applied template the way the text channel names
+// everything else: by display name, falling back to the id, and saying so
+// when the type chose it rather than the caller.
+func templateLabel(applied *v2model.AppliedTemplate) string {
+	name := applied.Name
+	if name == "" {
+		name = applied.Id
+	}
+	if applied.Source == "type_default" {
+		return fmt.Sprintf("%s (the type's default)", name)
+	}
+	return name
 }
 
 // maxSetPropertiesObjects bounds one set_properties call's object list.

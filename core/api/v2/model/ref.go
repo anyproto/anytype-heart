@@ -92,6 +92,7 @@ var operations = map[string]operation{
 	OpGetQueryObjects:      {"GET", "/v2/spaces/{space_id}/queries/{query_id}/objects"},
 	OpGetQueryViews:        {"GET", "/v2/spaces/{space_id}/queries/{query_id}/views"},
 	OpSearchSpace:          {"POST", "/v2/spaces/{space_id}/search"},
+	OpListTemplates:        {"GET", "/v2/spaces/{space_id}/templates"},
 	OpCreateTemplate:       {"POST", "/v2/spaces/{space_id}/templates"},
 	OpListTypes:            {"GET", "/v2/spaces/{space_id}/types"},
 	OpCreateType:           {"POST", "/v2/spaces/{space_id}/types"},
@@ -145,6 +146,7 @@ const (
 	OpGetQueryObjects      = "get_query_objects"
 	OpGetQueryViews        = "get_query_views"
 	OpSearchSpace          = "search_space"
+	OpListTemplates        = "list_templates"
 	OpCreateTemplate       = "create_template"
 	OpListTypes            = "list_types"
 	OpCreateType           = "create_type"
@@ -325,7 +327,8 @@ func RefGetChatMessages(spaceId, chatId string) Ref {
 	return NewRef(OpGetChatMessages, "space_id", spaceId, "chat_id", chatId)
 }
 
-func RefListObjects(spaceId string) Ref { return NewRef(OpListObjects, "space_id", spaceId) }
+func RefListObjects(spaceId string) Ref   { return NewRef(OpListObjects, "space_id", spaceId) }
+func RefListTemplates(spaceId string) Ref { return NewRef(OpListTemplates, "space_id", spaceId) }
 func RefGetObject(spaceId, objectId string) Ref {
 	return NewRef(OpGetObject, "space_id", spaceId, "object_id", objectId)
 }

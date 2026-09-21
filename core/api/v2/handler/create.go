@@ -88,7 +88,7 @@ func respondV2Create(c *gin.Context, result *v2model.CreateResult, createdStatus
 // CreateObjectHandler creates an object from an AnyBlock document or the shortcut
 //
 //	@Summary		Create an object
-//	@Description	A select value naming an option the property does not hold is refused unless `create_missing_options=true` is set. An unknown type or property key is rejected either way, with the closest matches named. The body is either a full AnyBlock document or the shortcut {type, name, properties, markdown}; `formatVersion` or `blocks` picks the document form.
+//	@Description	A select value naming an option the property does not hold is refused unless `create_missing_options=true` is set. An unknown type or property key is rejected either way. The body is a full AnyBlock document or the shortcut {type, name, properties, markdown}; `formatVersion` or `blocks` picks the document form. `template` starts the object from one; absent, the type's `default_template` applies.
 //	@Id				create_object
 //	@Tags			Objects
 //	@Accept			json
