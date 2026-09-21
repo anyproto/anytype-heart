@@ -201,30 +201,58 @@ func (s *storageService) openDb(ctx context.Context, id string) (db anystore.DB,
 	start := time.Now()
 	db, err = anystore.Open(ctx, dbPath, s.anyStoreConfig())
 	if err != nil {
-		code, isCorrupted := anystorehelper.IsCorruptedError(err)
-		if isCorrupted {
-			log.With(zap.Error(err), zap.String("code", code.String()), zap.String("desc", code.Message())).
-				With(zap.Bool("isCorrupted", isCorrupted)).
-				With(zap.Int64("tookMs", time.Since(start).Milliseconds())).
-				Error("failed to open spacestore, backing up")
-			if s.reporter != nil {
-				s.reporter.Report("DB_CORRUPTION", map[string]any{
-					"db":      filepath.Join(filepath.Base(filepath.Dir(dbPath)), filepath.Base(dbPath)),
-					"spaceId": id,
-					"code":    code.String(),
-					"desc":    code.Message(),
-					"error":   err.Error(),
-					"tookMs":  time.Since(start).Milliseconds(),
-				}, debugreporter.Capture{Kind: debugreporter.KindNone})
-			}
-			if _, backupErr := s.backupCorruptedSpace(id); backupErr != nil {
-				log.With(zap.Error(backupErr)).Error("failed to backup corrupted space")
-			}
-			return nil, spacestorage.ErrSpaceStorageMissing
+		reason, proven := provenUnusable(ctx, err, dbPath)
+		if !proven {
+			return nil, fmt.Errorf("open space store: %w", err)
 		}
-		return nil, err
+		code, _ := anystorehelper.IsCorruptedError(err)
+		log.With(zap.Error(err), zap.String("spaceId", id), zap.String("reason", reason)).
+			With(zap.String("code", code.String()), zap.String("desc", code.Message())).
+			With(zap.Int64("tookMs", time.Since(start).Milliseconds())).
+			Error("failed to open spacestore, backing up")
+		if s.reporter != nil {
+			s.reporter.Report(reason, map[string]any{
+				"db":      filepath.Join(filepath.Base(filepath.Dir(dbPath)), filepath.Base(dbPath)),
+				"spaceId": id,
+				"code":    code.String(),
+				"desc":    code.Message(),
+				"error":   err.Error(),
+				"tookMs":  time.Since(start).Milliseconds(),
+			}, debugreporter.Capture{Kind: debugreporter.KindNone})
+		}
+		if _, backupErr := s.backupCorruptedSpace(id); backupErr != nil {
+			log.With(zap.Error(backupErr)).Error("failed to backup corrupted space")
+		}
+		return nil, spacestorage.ErrSpaceStorageMissing
 	}
 	return db, nil
+}
+
+// provenUnusable reports whether a failed open proves the store is no good to
+// anyone, which is the only thing that justifies moving a space directory
+// aside. IsCorruptedError alone does not: it takes ErrQuickCheckFailed, which
+// any-store returns for every error the check hit -- the caller's own ctx
+// running out included, and the discovery-key derive hands us a 10s one for
+// every space on disk -- and ErrIncompatibleVersion, which is any version
+// mismatch, a populated store written by a newer build included. Neither says
+// anything about the store, so neither may cost the user their data.
+func provenUnusable(ctx context.Context, err error, dbPath string) (reason string, proven bool) {
+	// the caller gave up, or SQLite was interrupted on its way out: an
+	// interrupted step surfaces with no context error anywhere in the chain
+	if ctx.Err() != nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) ||
+		sqlite.ErrCode(err) == sqlite.ResultInterrupt {
+		return "", false
+	}
+	if errors.Is(err, anystore.ErrIncompatibleVersion) {
+		if storeIsUninitialized(dbPath) {
+			return "DB_UNINITIALIZED", true
+		}
+		return "", false
+	}
+	if _, isCorrupted := anystorehelper.IsCorruptedError(err); isCorrupted {
+		return "DB_CORRUPTION", true
+	}
+	return "", false
 }
 
 func (s *storageService) createDb(ctx context.Context, id string) (db anystore.DB, err error) {
@@ -251,7 +279,7 @@ func (s *storageService) createDb(ctx context.Context, id string) (db anystore.D
 	// check hit including a cancelled context, and ErrIncompatibleVersion is
 	// any version mismatch, not only the unstamped 0 -- renaming on those
 	// would orphan a populated store whose changes no peer can give back.
-	if !errors.Is(err, anystore.ErrIncompatibleVersion) || !storeIsUninitialized(dbPath) {
+	if reason, proven := provenUnusable(ctx, err, dbPath); !proven || reason != "DB_UNINITIALIZED" {
 		return nil, fmt.Errorf("open space store: %w", err)
 	}
 	// A create killed before any-store stamped `user_version` leaves a store.db

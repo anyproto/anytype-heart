@@ -445,3 +445,49 @@ func TestCreateSpaceStorage_ShardReuse(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, reopened.Close(ctx))
 }
+
+// The open path moves a space directory aside too, and had the broader
+// predicate the create path was already narrowed away from: a populated store
+// written by a newer build, or a check the caller's own ctx cut short, is not
+// evidence that the store is no good to anyone.
+func TestWaitSpaceStorage_RecoveryIsNarrow(t *testing.T) {
+	t.Run("a populated store with a foreign version is left alone", func(t *testing.T) {
+		// given
+		s := newTestService(t)
+		ctx := context.Background()
+		payload := newCreatePayload(t)
+		spaceId := payload.SpaceHeaderWithId.Id
+		st, err := s.CreateSpaceStorage(ctx, payload)
+		require.NoError(t, err)
+		require.NoError(t, st.Close(ctx))
+		dbPath := filepath.Join(s.rootPath, spaceId, "store.db")
+		setUserVersion(t, dbPath, 99)
+
+		// when
+		_, err = s.WaitSpaceStorage(ctx, spaceId)
+
+		// then
+		require.ErrorIs(t, err, anystore.ErrIncompatibleVersion)
+		assert.Empty(t, s.ListCorruptedBackups(), "a store holding data must never be moved aside")
+		_, statErr := os.Stat(dbPath)
+		assert.NoError(t, statErr, "the store must stay where it is")
+		assert.True(t, s.SpaceExists(spaceId))
+	})
+
+	t.Run("a never-stamped store is still moved aside", func(t *testing.T) {
+		// given: the recovery that has to keep working
+		s := newTestService(t)
+		const spaceId = "space1"
+		dirPath := filepath.Join(s.rootPath, spaceId)
+		require.NoError(t, os.MkdirAll(dirPath, 0755))
+		require.NoError(t, os.WriteFile(filepath.Join(dirPath, "store.db"), nil, 0644))
+
+		// when
+		_, err := s.WaitSpaceStorage(context.Background(), spaceId)
+
+		// then
+		require.ErrorIs(t, err, spacestorage.ErrSpaceStorageMissing)
+		require.Len(t, s.ListCorruptedBackups(), 1)
+		assert.Equal(t, spaceId, s.ListCorruptedBackups()[0].SpaceId)
+	})
+}
