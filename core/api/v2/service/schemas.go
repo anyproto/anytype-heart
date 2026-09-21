@@ -220,7 +220,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 	"chatMessageEdit": {
 		endpoint: "PATCH /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}",
 		schema: `{"type":"object","additionalProperties":false,"required":["text"],"properties":{` +
-			`"text":{"type":"string","maxLength":8000,"description":"replacement inline markup source, at most 8000 UTF-16 code units; every mark is re-derived from this string (escape literal specials); the message's attachments, reply target, style and blocks are preserved"}}}`,
+			`"text":{"type":"string","maxLength":8000,"description":"replacement inline markup source, at most 8000 UTF-16 code units; every mark is re-derived from this string (escape literal specials); the message's attachments, reply target and style are preserved, and so are its blocks in a space chat — in a discussion the text replaces the blocks (styles become paragraphs), and quotes or links the text cannot express are dropped with a warning"}}}`,
 		example: `{"text":"updated: can you **check** the doc?"}`,
 	},
 	"chatReaction": {

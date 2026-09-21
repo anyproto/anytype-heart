@@ -44,7 +44,7 @@ func TestRefHelpersMatchOperations(t *testing.T) {
 		RefListTypes("s"), RefGetType("s", "t"), RefCreateType("s"), RefUpdateType("s", "t"), RefDeleteType("s", "t"),
 		RefListProperties("s"), RefCreateProperty("s"), RefUpdateProperty("s", "k"), RefDeleteProperty("s", "k"), RefListPropertyOptions("s", "k"),
 		RefListMembers("s"), RefListChats("s"), RefGetChatMessages("s", "c"),
-		RefListObjects("s"), RefGetObject("s", "o"), RefPatchObject("s", "o"), RefSearchSpace("s"),
+		RefListObjects("s"), RefGetObject("s", "o"), RefPatchObject("s", "o"), RefCreateDiscussion("s", "o"), RefSearchSpace("s"),
 		RefCreateCollection("s"), RefCreateQuery("s"), RefUploadFile("s"),
 		RefGetCollectionObjects("s", "c"), RefGetQueryObjects("s", "q"),
 		RefGetSchema("k"), RefGetOpSchema("op"),

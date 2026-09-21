@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/api/util"
@@ -143,7 +144,7 @@ type ChatMessagesQuery struct {
 // at its newest end (the repository sorts DESC), so the OLDEST extra is
 // trimmed and paging continues backward with next_before.
 func (s *Service) GetChatMessages(ctx context.Context, spaceId, chatId string, q ChatMessagesQuery) (*v2model.ChatMessagesResponse, error) {
-	if err := s.ensureChat(ctx, spaceId, chatId); err != nil {
+	if _, err := s.ensureChat(ctx, spaceId, chatId); err != nil {
 		return nil, err
 	}
 	limit := q.Limit
@@ -215,9 +216,12 @@ func (s *Service) GetChatMessages(ctx context.Context, spaceId, chatId string, q
 // AddChatMessage implements POST .../messages: text is §8 markup source
 // parsed by the anyblockjson inline codec (offset mark arrays never cross
 // the API); attachments are bare object ids with the kind inferred from
-// each target's layout. A dry run validates everything and sends nothing.
+// each target's layout. The parsed text is stored the way the chat's
+// layout stores it (chatMessageBody: content for a space chat, one text
+// block for a discussion). A dry run validates everything and sends nothing.
 func (s *Service) AddChatMessage(ctx context.Context, spaceId, chatId string, req v2model.AddChatMessageRequest, dryRun bool) (*v2model.ChatMessageResult, error) {
-	if err := s.ensureChatWrite(ctx, spaceId, chatId); err != nil {
+	layout, err := s.ensureChatWrite(ctx, spaceId, chatId)
+	if err != nil {
 		return nil, err
 	}
 	if req.Text == "" && len(req.Attachments) == 0 {
@@ -238,6 +242,10 @@ func (s *Service) AddChatMessage(ctx context.Context, spaceId, chatId string, re
 	if err != nil {
 		return nil, err
 	}
+	content, blocks := chatMessageBody(layout, text, marks)
+	if err := v2ValidateChatBody(layout, blocks, len(attachments)); err != nil {
+		return nil, err
+	}
 	if dryRun {
 		return &v2model.ChatMessageResult{DryRun: true, Warnings: links.Warnings("/text")}, nil
 	}
@@ -245,12 +253,9 @@ func (s *Service) AddChatMessage(ctx context.Context, spaceId, chatId string, re
 		ChatObjectId: chatId,
 		Message: &model.ChatMessage{
 			ReplyToMessageId: req.ReplyTo,
-			Message: &model.ChatMessageMessageContent{
-				Text:  text,
-				Style: model.BlockContentText_Paragraph,
-				Marks: marks,
-			},
-			Attachments: attachments,
+			Message:          content,
+			Blocks:           blocks,
+			Attachments:      attachments,
 		},
 	})
 	if resp.Error != nil && resp.Error.Code != pb.RpcChatAddMessageResponseError_NULL {
@@ -262,11 +267,16 @@ func (s *Service) AddChatMessage(ctx context.Context, spaceId, chatId string, re
 // EditChatMessage implements PATCH .../messages/{message_id} as a text-only
 // MERGE: the middleware's edit replaces the whole message content
 // (attachments included — chatmodel content = {message, attachments,
-// blocks}), so the service reads the message first and carries its style,
-// attachments and blocks through unchanged. A dry run stops after the
-// existence check.
+// blocks}), so the service reads the message first and carries its style
+// and attachments through unchanged. In a content chat the blocks are
+// carried through too and the text lands in the content; in a blocks chat
+// (a discussion) the text REPLACES the blocks with one text block — the
+// same "every mark is re-derived from the text you send" rule, one level
+// up: a quote or link block the new text does not spell out is lost. A dry
+// run stops after the existence check.
 func (s *Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageId string, req v2model.EditChatMessageRequest, dryRun bool) (*v2model.ChatMessageResult, error) {
-	if err := s.ensureChatWrite(ctx, spaceId, chatId); err != nil {
+	layout, err := s.ensureChatWrite(ctx, spaceId, chatId)
+	if err != nil {
 		return nil, err
 	}
 	text, marks, err := anyblockjson.ParseInlineText(req.Text)
@@ -287,19 +297,27 @@ func (s *Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageI
 		return nil, v2model.ValidationFailed("a message needs text or attachments",
 			v2model.Issue{Path: "/text", Message: "the edited text is empty and the message has no attachments"})
 	}
+	warnings := links.Warnings("/text")
+	if chatWritesBlocks(layout) {
+		warnings = append(warnings, blocksEditWarnings(existing.Blocks)...)
+	}
+	content, blocks := chatMessageBody(layout, text, marks)
+	if err := v2ValidateChatBody(layout, blocks, len(existing.Attachments)); err != nil {
+		return nil, err
+	}
 	if dryRun {
-		return &v2model.ChatMessageResult{Id: messageId, DryRun: true, Warnings: links.Warnings("/text")}, nil
+		return &v2model.ChatMessageResult{Id: messageId, DryRun: true, Warnings: warnings}, nil
+	}
+	if !chatWritesBlocks(layout) {
+		blocks = existing.Blocks
+		if existing.Message != nil {
+			content.Style = existing.Message.Style
+		}
 	}
 	edited := &model.ChatMessage{
-		Message: &model.ChatMessageMessageContent{
-			Text:  text,
-			Marks: marks,
-		},
+		Message:     content,
+		Blocks:      blocks,
 		Attachments: existing.Attachments,
-		Blocks:      existing.Blocks,
-	}
-	if existing.Message != nil {
-		edited.Message.Style = existing.Message.Style
 	}
 	resp := s.mw.ChatEditMessageContent(ctx, &pb.RpcChatEditMessageContentRequest{
 		ChatObjectId:  chatId,
@@ -309,7 +327,7 @@ func (s *Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageI
 	if resp.Error != nil && resp.Error.Code != pb.RpcChatEditMessageContentResponseError_NULL {
 		return nil, v2ChatRpcError("edit chat message", int32(resp.Error.Code), int32(pb.RpcChatEditMessageContentResponseError_BAD_INPUT), resp.Error.Description)
 	}
-	return &v2model.ChatMessageResult{Id: messageId, Warnings: links.Warnings("/text")}, nil
+	return &v2model.ChatMessageResult{Id: messageId, Warnings: warnings}, nil
 }
 
 // DeleteChatMessage implements DELETE .../messages/{message_id}. BOTH paths
@@ -322,7 +340,7 @@ func (s *Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageI
 // the response names the ids at risk instead of hiding the irreversible
 // part behind a 200.
 func (s *Service) DeleteChatMessage(ctx context.Context, spaceId, chatId, messageId string, dryRun bool) (*v2model.ChatMessageResult, error) {
-	if err := s.ensureChatWrite(ctx, spaceId, chatId); err != nil {
+	if _, err := s.ensureChatWrite(ctx, spaceId, chatId); err != nil {
 		return nil, err
 	}
 	existing, err := s.getChatMessageProto(ctx, chatId, messageId)
@@ -351,7 +369,7 @@ func (s *Service) DeleteChatMessage(ctx context.Context, spaceId, chatId, messag
 // service has no account identity to predict with, in which case added is
 // omitted with a warning instead of asserting a coin flip.
 func (s *Service) ToggleChatReaction(ctx context.Context, spaceId, chatId, messageId string, req v2model.ChatReactionRequest, dryRun bool) (*v2model.ChatReactionResult, error) {
-	if err := s.ensureChatWrite(ctx, spaceId, chatId); err != nil {
+	if _, err := s.ensureChatWrite(ctx, spaceId, chatId); err != nil {
 		return nil, err
 	}
 	if req.Emoji == "" {
@@ -414,7 +432,7 @@ func (s *Service) ToggleChatReaction(ctx context.Context, spaceId, chatId, messa
 // ALL unread reactions (the backend takes no bound) and therefore rejects
 // up_to/last_state_id.
 func (s *Service) ReadChat(ctx context.Context, spaceId, chatId string, req v2model.ChatReadRequest, dryRun bool) (*v2model.ChatReadResult, error) {
-	if err := s.ensureChatWrite(ctx, spaceId, chatId); err != nil {
+	if _, err := s.ensureChatWrite(ctx, spaceId, chatId); err != nil {
 		return nil, err
 	}
 	switch req.Scope {
@@ -484,26 +502,61 @@ func (s *Service) ReadChat(ctx context.Context, spaceId, chatId string, req v2mo
 // ---- helpers ----
 //
 
-// ensureChat verifies chatId names a chat object in the space: a clean 404
-// for an unknown id and a targeted 400 for a non-chat object, instead of
-// the RPC's opaque failure.
-func (s *Service) ensureChat(ctx context.Context, spaceId, chatId string) error {
+// chatMessageLayouts are the layouts a chat_id may name: a space chat and
+// an object's discussion. Both are the same store-backed chat object, so
+// every message operation serves both unchanged. util.ChatLayouts — the
+// list_chats filter — stays chats-only on purpose: a discussion belongs to
+// its object and is reached through it (the `discussion` member of the
+// object read, or create_discussion), never listed beside the space chats,
+// which is also how the desktop keeps the two apart.
+var chatMessageLayouts = append(append([]model.ObjectTypeLayout{}, util.ChatLayouts...), model.ObjectType_discussion)
+
+// ensureChat verifies chatId names a chat object in the space — a space
+// chat or an object's discussion: a clean 404 for an unknown id and a
+// targeted 400 for anything else, instead of the RPC's opaque failure. The
+// 400 steers an object id to create_discussion, since the likeliest way to
+// send a page id here is wanting its comment thread.
+func (s *Service) ensureChat(ctx context.Context, spaceId, chatId string) (model.ObjectTypeLayout, error) {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
-		return err
+		return 0, err
 	}
 	details, err := s.store.SpaceIndex(spaceId).GetDetails(chatId)
 	if err != nil || details.Len() == 0 {
-		return v2model.NotFound(fmt.Sprintf("chat %q not found in space %q", chatId, spaceId),
-			v2model.Issue{Path: "chat_id", Message: "no chat has this id"}.Hintf("list chats with %s", v2model.RefListChats(spaceId)))
+		return 0, v2model.NotFound(fmt.Sprintf("chat %q not found in space %q", chatId, spaceId),
+			v2model.Issue{Path: "chat_id", Message: "no chat or discussion has this id"}.
+				Hintf("list chats with %s; an object's discussion id is the discussion member of its read, or comes from %s", v2model.RefListChats(spaceId), v2model.RefCreateDiscussion(spaceId, "")))
 	}
 	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
-	for _, chatLayout := range util.ChatLayouts {
+	for _, chatLayout := range chatMessageLayouts {
 		if layout == chatLayout {
-			return nil
+			return layout, nil
 		}
 	}
-	return v2model.ValidationFailed(fmt.Sprintf("object %q is not a chat", chatId),
-		v2model.Issue{Message: fmt.Sprintf("its layout is %q", layout.String())}.Hintf("chat ids come from %s", v2model.RefListChats(spaceId)))
+	issue := v2model.Issue{Path: "chat_id", Message: fmt.Sprintf("its layout is %q", layout.String())}.
+		Hintf("chat ids come from %s", v2model.RefListChats(spaceId))
+	if discussionHolderRow(details) {
+		issue = issue.Hintf("chat ids come from %s; for this object's comment thread, use the id from %s as chat_id", v2model.RefListChats(spaceId), v2model.RefCreateDiscussion(spaceId, chatId))
+	}
+	return 0, v2model.ValidationFailed(fmt.Sprintf("object %q is not a chat", chatId), issue)
+}
+
+// discussionHolderRow says whether the object behind a store row can hold
+// a discussion — the store-row view of CreateDiscussion's rules (a page or
+// file, not a template, not archived), so a repair hint only recommends
+// create_discussion where it can succeed. A template carries a page
+// layout and is told apart by its target type.
+func discussionHolderRow(details *domain.Details) bool {
+	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
+	if layout == model.ObjectType_chatDerived || layout == model.ObjectType_discussion ||
+		details.GetBool(bundle.RelationKeyIsArchived) || details.GetString(bundle.RelationKeyTargetObjectType) != "" {
+		return false
+	}
+	for _, objectLayout := range util.ObjectLayouts {
+		if layout == objectLayout {
+			return true
+		}
+	}
+	return util.IsFileLayout(layout)
 }
 
 // ensureChatWrite is ensureChat for the chat WRITE entry points (message
@@ -511,14 +564,133 @@ func (s *Service) ensureChat(ctx context.Context, spaceId, chatId string) error 
 // it mutates synced state). Route-gate precedence: grant space check, then
 // the write-verb check, then the chat lookup — a read-only key is refused
 // before anything resolves.
-func (s *Service) ensureChatWrite(ctx context.Context, spaceId, chatId string) error {
+func (s *Service) ensureChatWrite(ctx context.Context, spaceId, chatId string) (model.ObjectTypeLayout, error) {
 	if err := s.ensureSpaceGranted(ctx, spaceId); err != nil {
-		return err
+		return 0, err
 	}
 	if err := ensureWriteGranted(ctx); err != nil {
-		return err
+		return 0, err
 	}
 	return s.ensureChat(ctx, spaceId, chatId)
+}
+
+// chatWritesBlocks says whether a message written into a chat of this
+// layout is stored as BLOCKS rather than as the legacy single content. The
+// two stores are asymmetric today: a space chat's messages are content
+// (`message`), a discussion's are blocks beside an EMPTY content object —
+// what the desktop's discussion composer writes, and its renderer reads
+// blocks first. The
+// product plan is to move space chats to blocks as well; when the desktop
+// chat UI follows, this becomes `return true` and nothing else changes.
+func chatWritesBlocks(layout model.ObjectTypeLayout) bool {
+	return layout == model.ObjectType_discussion
+}
+
+// chatMessageBody is the stored form of a parsed text: one paragraph
+// content for a content chat, or paragraph text blocks for a blocks chat.
+// Both are what the desktop renders for the respective store, and the
+// read side serves either as `text`. A blocks chat still carries an EMPTY
+// content object beside its blocks — the store serializer dereferences the
+// content unconditionally (chatmodel.MarshalAnyenc), and the desktop's
+// discussion composer writes the same empty object.
+func chatMessageBody(layout model.ObjectTypeLayout, text string, marks []*model.BlockContentTextMark) (*model.ChatMessageMessageContent, []*model.ChatMessageMessageBlock) {
+	if chatWritesBlocks(layout) {
+		return &model.ChatMessageMessageContent{Style: model.BlockContentText_Paragraph}, splitTextBlocks(text, marks)
+	}
+	return &model.ChatMessageMessageContent{
+		Text:  text,
+		Style: model.BlockContentText_Paragraph,
+		Marks: marks,
+	}, nil
+}
+
+// splitTextBlocks turns a parsed inline text into one paragraph block per
+// line, the shape the desktop's discussion composer writes (one part per
+// paragraph) and its renderer expects — a newline INSIDE a discussion block
+// is not rendered as a break there, unlike in a space chat. Empty lines
+// produce no block, so a blank-line paragraph break reads back as a single
+// newline; marks are clipped to the line they fall on, with their UTF-16
+// ranges rebased. An empty text yields no blocks (an attachments-only
+// message).
+func splitTextBlocks(text string, marks []*model.BlockContentTextMark) []*model.ChatMessageMessageBlock {
+	units := textutil.StrToUTF16(text)
+	var blocks []*model.ChatMessageMessageBlock
+	start := 0
+	for i := 0; i <= len(units); i++ {
+		if i < len(units) && units[i] != '\n' {
+			continue
+		}
+		if i > start {
+			blocks = append(blocks, &model.ChatMessageMessageBlock{
+				Content: &model.ChatMessageMessageBlockContentOfText{Text: &model.ChatMessageMessageBlockText{
+					Text:  textutil.UTF16ToStr(units[start:i]),
+					Style: model.BlockContentText_Paragraph,
+					Marks: clipMarks(marks, int32(start), int32(i)),
+				}},
+			})
+		}
+		start = i + 1
+	}
+	return blocks
+}
+
+// clipMarks keeps the part of every mark that falls inside [from, to) and
+// rebases it to start at 0; a mark entirely outside, or left empty by the
+// clip, is dropped.
+func clipMarks(marks []*model.BlockContentTextMark, from, to int32) []*model.BlockContentTextMark {
+	var out []*model.BlockContentTextMark
+	for _, mark := range marks {
+		if mark == nil || mark.Range == nil || mark.Range.To <= from || mark.Range.From >= to {
+			continue
+		}
+		clipped := *mark
+		clipped.Range = &model.Range{From: max(mark.Range.From, from) - from, To: min(mark.Range.To, to) - from}
+		if clipped.Range.From >= clipped.Range.To {
+			continue
+		}
+		out = append(out, &clipped)
+	}
+	return out
+}
+
+// blocksEditWarnings is the C6 warning for an edit that replaces a
+// discussion message's blocks with plain text: the blocks the text cannot
+// express — quotes, links, embeds, styled text — are dropped, and a caller
+// who merely echoed the served `text` back would not know. Served on the
+// dry run and the receipt alike.
+func blocksEditWarnings(blocks []*model.ChatMessageMessageBlock) []v2model.Issue {
+	var lost []string
+	count := func(kind string, n int) {
+		if n > 0 {
+			lost = append(lost, fmt.Sprintf("%d %s", n, kind))
+		}
+	}
+	var quotes, links, embeds, styled int
+	for _, block := range blocks {
+		switch {
+		case block == nil:
+		case block.GetEditorQuote() != nil, block.GetMessageQuote() != nil:
+			quotes++
+		case block.GetLink() != nil:
+			links++
+		case block.GetEmbed() != nil:
+			embeds++
+		case block.GetText() != nil && block.GetText().Style != model.BlockContentText_Paragraph:
+			styled++
+		}
+	}
+	count("quote block(s)", quotes)
+	count("link block(s)", links)
+	count("embed block(s)", embeds)
+	count("styled text block(s)", styled)
+	if len(lost) == 0 {
+		return nil
+	}
+	return []v2model.Issue{{
+		Path:    "/text",
+		Message: fmt.Sprintf("this edit replaces the message's blocks with the text: %s the text cannot express are dropped", strings.Join(lost, ", ")),
+		Hint:    "quotes, links and embeds cannot be written through this API; keep the original message if they matter",
+	}}
 }
 
 // participantNameLookup returns a memoized participant-id → display-name
@@ -612,16 +784,36 @@ func v2ValidateChatTextLength(parsedText string) error {
 	return nil
 }
 
+// v2ValidateChatBody is the C9 guard for the one emptiness the store sees
+// and the request does not: in a blocks chat a text of newlines only
+// produces no block (splitTextBlocks), and a message with no block and no
+// attachment is refused by chatmodel.Validate — so the dry run must refuse
+// it too, rather than predict a 201 the real call turns into a 400.
+func v2ValidateChatBody(layout model.ObjectTypeLayout, blocks []*model.ChatMessageMessageBlock, attachments int) error {
+	if chatWritesBlocks(layout) && len(blocks) == 0 && attachments == 0 {
+		return v2model.ValidationFailed("a message needs text or attachments",
+			v2model.Issue{Path: "/text", Message: "the text has no non-empty line, and there are no attachments"})
+	}
+	return nil
+}
+
 // v2ChatDeleteWarnings surfaces the irreversible side effect of a message
 // delete: the middleware garbage-collects attachment and link-block targets
 // orphaned by the delete with skipBin=true — permanently deleted, not
 // binned, asynchronously AFTER the API has replied. The dry run and the
-// real receipt both carry the ids at risk (C6 warnings).
+// real receipt both carry the ids at risk (C6 warnings): the attachments,
+// and the targets of link blocks (a desktop discussion post's files ride
+// there rather than in attachments).
 func v2ChatDeleteWarnings(msg *model.ChatMessage) []v2model.Issue {
 	var ids []string
 	for _, att := range msg.Attachments {
 		if att != nil && att.Target != "" {
 			ids = append(ids, att.Target)
+		}
+	}
+	for _, block := range msg.Blocks {
+		if link := block.GetLink(); link != nil && link.TargetObjectId != "" {
+			ids = append(ids, link.TargetObjectId)
 		}
 	}
 	if len(ids) == 0 {
@@ -660,6 +852,11 @@ func v2ChatRpcError(op string, code, badInputCode int32, description string) err
 		strings.Contains(description, chatobject.ErrDeleteForeignMessage.Error()):
 		return v2model.NewError(http.StatusForbidden, v2model.CodeForbidden,
 			fmt.Sprintf("%s: %s — only the author can edit or delete a message", op, description))
+	case strings.Contains(description, list.ErrInsufficientPermissions.Error()):
+		// the space ACL refused the write (the account is a reader there):
+		// a permanent refusal for this key, not a server failure
+		return v2model.NewError(http.StatusForbidden, v2model.CodeForbidden,
+			fmt.Sprintf("%s: %s — this account cannot write in the space; ask the owner for edit rights", op, description))
 	case strings.Contains(description, "validate:"):
 		return v2model.ValidationFailed(fmt.Sprintf("%s: the middleware rejected the message", op),
 			v2model.Issue{Message: description})

@@ -153,7 +153,7 @@ func GetChatMessagesHandler(s *v2service.Service) gin.HandlerFunc {
 // AddChatMessageHandler sends a message
 //
 //	@Summary		Send a chat message
-//	@Description	The text is markup source, so `*`, `[` and a mention tag mint real marks; escape a literal one with a backslash. The cap is 8000 UTF-16 code units, where one emoji can cost two or more. Attachments are object ids, at most 32, and each one's kind is taken from the target's layout.
+//	@Description	The text is markup source, so `*`, `[` and a mention tag mint real marks; escape a literal one with a backslash. The cap is 8000 UTF-16 code units, where one emoji can cost two or more. Attachments are object ids, at most 32, and each one's kind is taken from the target's layout. In a discussion the text is stored as blocks, one per line; a line of exactly --- is a divider.
 //	@Id				add_chat_message
 //	@Tags			Chat
 //	@Accept			json
@@ -186,7 +186,7 @@ func AddChatMessageHandler(s *v2service.Service) gin.HandlerFunc {
 // EditChatMessageHandler edits a message's text
 //
 //	@Summary		Update chat message text
-//	@Description	Every mark is re-derived from the text you send, so a mark the old text carried and the new text does not spell out is lost. Attachments, the reply target and the style survive. Editing another member's message is a 403.
+//	@Description	Every mark is re-derived from the text you send, so a mark the old text carried and the new text does not spell out is lost; in a discussion the text replaces the message's blocks the same way, and dropped quotes or links are named in `warnings`. Attachments and the reply target survive; the style does in a space chat. Editing another member's message is a 403.
 //	@Id				edit_chat_message
 //	@Tags			Chat
 //	@Accept			json

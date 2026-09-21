@@ -549,6 +549,9 @@ func TestV2EditChatMessage(t *testing.T) {
 		existing := chatProtoMessage()
 		existing.Message.Style = model.BlockContentText_Quote
 		existing.Attachments = []*model.ChatMessageAttachment{{Target: "file1", Type: model.ChatMessageAttachment_IMAGE}}
+		existing.Blocks = []*model.ChatMessageMessageBlock{
+			{Content: &model.ChatMessageMessageBlockContentOfEditorQuote{EditorQuote: &model.ChatMessageMessageBlockEditorQuote{BlockId: "b1", Content: &model.ChatMessageMessageBlockText{Text: "quoted"}}}},
+		}
 		fx.mwMock.EXPECT().ChatGetMessagesByIds(mock.Anything, &pb.RpcChatGetMessagesByIdsRequest{
 			ChatObjectId: testChatId, MessageIds: []string{"msg1"},
 		}).Return(&pb.RpcChatGetMessagesByIdsResponse{Messages: []*model.ChatMessage{existing}})
@@ -557,7 +560,8 @@ func TestV2EditChatMessage(t *testing.T) {
 			return req.MessageId == "msg1" &&
 				msg.Message.Text == "updated text" &&
 				msg.Message.Style == model.BlockContentText_Quote &&
-				len(msg.Attachments) == 1 && msg.Attachments[0].Target == "file1"
+				len(msg.Attachments) == 1 && msg.Attachments[0].Target == "file1" &&
+				len(msg.Blocks) == 1 && msg.Blocks[0].GetEditorQuote() != nil // a space chat keeps its blocks verbatim
 		})).Return(&pb.RpcChatEditMessageContentResponse{})
 
 		// when

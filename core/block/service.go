@@ -53,6 +53,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
+	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
@@ -616,7 +617,27 @@ func (s *Service) ObjectAddDiscussion(ctx context.Context, objectId string) (dis
 		return "", fmt.Errorf("get space: %w", err)
 	}
 	discussionId, err = s.objectCreator.AddDiscussionDerivedObject(ctx, spc, objectId)
-	if err != nil {
+	if errors.Is(err, treestorage.ErrTreeExists) {
+		// the tree is derived from the parent id, so it already existing
+		// means an earlier attempt — this device before a crash, or another
+		// device concurrently — created it; recover the id and finish the
+		// link below instead of refusing every retry forever
+		//
+		// The derivation must match the create's exactly: createDiscussion
+		// derives WITH the parent id (WithParentId → DeriveTreeObject), and
+		// in a shared space the parent id is hashed into the root, so
+		// DeriveObjectID — key only — would name a different tree and link
+		// the parent to a discussion that does not exist.
+		uk, ukErr := domain.NewUniqueKey(coresb.SmartBlockTypeDiscussionObject, objectId)
+		if ukErr != nil {
+			return "", fmt.Errorf("derive existing discussion key: %w", ukErr)
+		}
+		payload, deriveErr := spc.DeriveTreePayload(ctx, payloadcreator.PayloadDerivationParams{Key: uk, ParentId: objectId})
+		if deriveErr != nil {
+			return "", fmt.Errorf("derive existing discussion id: %w", deriveErr)
+		}
+		discussionId = payload.RootRawChange.Id
+	} else if err != nil {
 		return "", fmt.Errorf("add discussion derived object: %w", err)
 	}
 

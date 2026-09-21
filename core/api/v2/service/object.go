@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/util"
@@ -163,7 +164,10 @@ func (q ObjectQuery) validate() (objectReadPlan, error) {
 
 // mapReadError converts live-read failures into C6 errors.
 func mapReadError(spaceId, objectId string, err error) error {
-	if errors.Is(err, treestorage.ErrUnknownTreeId) {
+	// an id no tree has, and a tree whose storage was deleted for good (a
+	// permanently deleted object that is no longer cached), are the same
+	// answer: nothing to read
+	if errors.Is(err, treestorage.ErrUnknownTreeId) || errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
 		return v2model.NotFound(fmt.Sprintf("object %q not found in space %q", objectId, spaceId))
 	}
 	if errors.Is(err, space.ErrSpaceNotExists) || errors.Is(err, space.ErrSpaceDeleted) {
@@ -275,6 +279,13 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 	}
 	// a served document matches the schema this API publishes for it
 	trimAPIDocumentEnvelope(fields)
+	// the object's discussion (its comment thread) is a chat reached by its
+	// own id; the parent keeps that id in a hidden relation the property
+	// vocabulary never serves, so the read carries it as its own member, on
+	// every shape — it is how a reader learns the thread exists at all
+	if err := setDiscussionMember(fields, read); err != nil {
+		return nil, "", fmt.Errorf("object %s: %w", objectId, err)
+	}
 
 	// the etag rides the ETag header (handler/object.go), which is where a
 	// precondition is read from and what If-Match consumes. It is returned
@@ -403,11 +414,29 @@ func (s *Service) markdownEnvelope(ctx context.Context, spaceId, objectId string
 	if fields["etag"], err = rawJSON(etag); err != nil {
 		return nil, "", err
 	}
+	if err := setDiscussionMember(fields, read); err != nil {
+		return nil, "", fmt.Errorf("object %s: %w", objectId, err)
+	}
 	if fields["markdown"], err = rawJSON(resp.Result); err != nil {
 		return nil, "", err
 	}
 	body, err := encodeEnvelope(fields)
 	return body, etag, err
+}
+
+// setDiscussionMember adds the `discussion` envelope member — the id of the
+// object's comment thread, a chat id — when the live object carries one.
+func setDiscussionMember(fields map[string]json.RawMessage, read apicore.ObjectRead) error {
+	discussionId := discussionIdOf(read.Snapshot)
+	if discussionId == "" {
+		return nil
+	}
+	raw, err := rawJSON(discussionId)
+	if err != nil {
+		return err
+	}
+	fields["discussion"] = raw
+	return nil
 }
 
 // removedTypeWarning is the read marker for an object whose type was

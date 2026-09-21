@@ -44,7 +44,9 @@ key returns `401`.
   as `page` or `task`.
 - **Queries** show a live selection of objects. **Collections** hold a
   hand-curated list.
-- **Chats** store messages separately from document blocks.
+- **Chats** store messages separately from document blocks. An object's
+  discussion, its comment thread, is a chat reached by the id an object read
+  serves as `discussion`.
 - **Widgets** are the sidebar: the objects a space pins for every member,
   and the ones this account keeps for itself.
 

@@ -658,6 +658,15 @@ components:
         properties_changed:
           type: integer
       type: object
+    DiscussionResult:
+      properties:
+        created:
+          type: boolean
+        dry_run:
+          type: boolean
+        id:
+          type: string
+      type: object
     EditChatMessageRequest:
       properties:
         text:
@@ -1455,7 +1464,9 @@ info:
       as `page` or `task`.
     - **Queries** show a live selection of objects. **Collections** hold a
       hand-curated list.
-    - **Chats** store messages separately from document blocks.
+    - **Chats** store messages separately from document blocks. An object's
+      discussion, its comment thread, is a chat reached by the id an object read
+      serves as `discussion`.
     - **Widgets** are the sidebar: the objects a space pins for every member,
       and the ones this account keeps for itself.
 
@@ -2386,7 +2397,8 @@ paths:
       description: The text is markup source, so `*`, `[` and a mention tag mint real
         marks; escape a literal one with a backslash. The cap is 8000 UTF-16 code
         units, where one emoji can cost two or more. Attachments are object ids, at
-        most 32, and each one's kind is taken from the target's layout.
+        most 32, and each one's kind is taken from the target's layout. In a discussion
+        the text is stored as blocks, one per line; a line of exactly --- is a divider.
       operationId: add_chat_message
       parameters:
       - description: Space id
@@ -2526,9 +2538,10 @@ paths:
       - Chat
     patch:
       description: Every mark is re-derived from the text you send, so a mark the
-        old text carried and the new text does not spell out is lost. Attachments,
-        the reply target and the style survive. Editing another member's message is
-        a 403.
+        old text carried and the new text does not spell out is lost; in a discussion
+        the text replaces the message's blocks the same way, and dropped quotes or
+        links are named in `warnings`. Attachments and the reply target survive; the
+        style does in a space chat. Editing another member's message is a 403.
       operationId: edit_chat_message
       parameters:
       - description: Space id
@@ -3849,6 +3862,77 @@ paths:
       summary: Update an object
       tags:
       - Objects
+  /v2/spaces/{space_id}/objects/{object_id}/discussion:
+    post:
+      description: 'A discussion is the comment thread under an object, and it is
+        a chat: the returned id is the `chat_id` for every chat operation, where `reply_to`
+        makes a threaded reply. An object that already has one answers 200 with the
+        same id and no `created`, so the call is safe to repeat. An object read serves
+        the id as `discussion`. Chats, types, templates and system objects cannot
+        hold one.'
+      operationId: create_discussion
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Object id
+        in: path
+        name: object_id
+        required: true
+        schema:
+          type: string
+      - description: Report whether the object has a discussion without creating one
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      - description: 'Replay guard: the same key with the same body replays the stored
+          response'
+        in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscussionResult'
+          description: The object already has a discussion, or a dry run
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiscussionResult'
+          description: Discussion created
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: A chat, or an object that cannot hold a discussion
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Object or space not found
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Start an object's discussion
+      tags:
+      - Chat
   /v2/spaces/{space_id}/properties:
     get:
       operationId: list_properties

@@ -149,6 +149,7 @@ IDEMPOTENT_OPERATIONS = {
     "create_widget",
     "update_widget",
     "delete_widget",
+    "create_discussion",
 }
 
 WRITE_LIMITED_OPERATIONS = IDEMPOTENT_OPERATIONS - {"validate"}

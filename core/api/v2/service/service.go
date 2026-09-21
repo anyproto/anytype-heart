@@ -213,11 +213,11 @@ func EtagMatches(ifMatch string, heads []string) bool {
 
 // envelopeKeyOrder is the canonical top-level key order of v2 response
 // envelopes: the AnyBlock document order (SPEC §2) with the v2 additions
-// (etag, outline, markdown, warnings) slotted in. Unknown keys append
+// (etag, discussion, outline, markdown, warnings) slotted in. Unknown keys append
 // alphabetically after these.
 var envelopeKeyOrder = []string{
 	"$schema", "formatVersion", "etag", "kind", "id", "type", "template_for", "key",
-	"properties", "type_properties", "refs", "outline", "blocks", "items",
+	"discussion", "properties", "type_properties", "refs", "outline", "blocks", "items",
 	"store", "root", "markdown", "warnings",
 }
 

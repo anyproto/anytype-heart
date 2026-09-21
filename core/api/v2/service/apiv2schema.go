@@ -59,17 +59,52 @@ var apiV2ExcludedSet = func() map[string]bool {
 	return set
 }()
 
+// apiV2AddedMembers are root members THIS API serves that the format's
+// document does not have: facts about the live object that no export
+// carries and no caller authors. Each is declared x-output-only — the
+// format's own marker for a member a read serves and a write ignores — and
+// normalizeCreateBody strips them from a create body, so a read body still
+// writes back.
+var apiV2AddedMembers = map[string]map[string]any{
+	"discussion": {
+		"type":          "string",
+		"maxLength":     256,
+		"x-output-only": true,
+		"description":   "The id of this object's discussion (its comment thread), present when one exists. It is a chat: the chat operations take it as chat_id. Start one with create_discussion.",
+	},
+}
+
 // apiV2DocumentSchema is the format's document schema with the excluded
-// members removed, computed once. A failure returns the full schema unchanged
-// rather than nothing: a schema that advertises too much is a documentation
-// bug, an absent one breaks discovery.
+// members removed and the API's own added, computed once. A failure returns
+// the full schema unchanged rather than nothing: a schema that advertises
+// too much is a documentation bug, an absent one breaks discovery.
 var apiV2DocumentSchema = sync.OnceValue(func() []byte {
 	trimmed, err := trimExcludedMembers(anyblockjson.SchemaJSON(), apiV2ExcludedSet)
 	if err != nil {
 		return anyblockjson.SchemaJSON()
 	}
-	return trimmed
+	widened, err := addAPIMembers(trimmed, apiV2AddedMembers)
+	if err != nil {
+		return trimmed
+	}
+	return widened
 })
+
+// addAPIMembers declares the API's own root members on a document schema.
+func addAPIMembers(raw []byte, added map[string]map[string]any) ([]byte, error) {
+	var root map[string]any
+	if err := json.Unmarshal(raw, &root); err != nil {
+		return nil, fmt.Errorf("decode document schema: %w", err)
+	}
+	props, ok := root["properties"].(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("document schema root has no properties")
+	}
+	for member, schema := range added {
+		props[member] = schema
+	}
+	return json.Marshal(root)
+}
 
 // trimExcludedMembers removes each excluded member from a document schema's
 // root, together with the conditional gates that exist only to forbid it.

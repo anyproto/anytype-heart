@@ -314,6 +314,16 @@ func registerChatRoutes(v2 *gin.RouterGroup, deps RouteDeps, idempotencyMW gin.H
 		deps.AnalyticsEvent("V2ReadChat"),
 		v2handler.ReadChatHandler(deps.Service),
 	)
+	// An object's discussion is minted here and served through the chat
+	// routes above by the returned id: it lives under the object because
+	// that is the id a caller holds. C8 because a retried create must not
+	// try to mint twice; the service answers the existing id either way.
+	v2.POST("/spaces/:space_id/objects/:object_id/discussion",
+		deps.WriteRateLimit,
+		idempotencyMW,
+		deps.AnalyticsEvent("V2CreateDiscussion"),
+		v2handler.CreateDiscussionHandler(deps.Service),
+	)
 }
 
 // registerEditRoutes registers the edit surface: PATCH alone — snapshots
