@@ -628,7 +628,18 @@ type EditResult struct {
 	CreatedViews map[string]string `json:"created_views,omitempty"`
 	Created      *SideEffects      `json:"created,omitempty"`
 	DiffStats    DiffStats         `json:"diff_stats"`
-	Warnings     []Issue           `json:"warnings,omitempty"`
+	// The object's type before and after the batch, present only when a
+	// set_type op changed it. Not part of diff_stats, which counts blocks,
+	// values and members. A type change can move none of them.
+	TypeChanged *TypeChange `json:"type_changed,omitempty"`
+	Warnings    []Issue     `json:"warnings,omitempty"`
+}
+
+// TypeChange names the types a set_type op moved the object between, in
+// the spelling the document envelope serves.
+type TypeChange struct {
+	From string `json:"from"`
+	To   string `json:"to"`
 }
 
 // SchemaEntry is one GET /v2/schemas/{kind} payload: the strict-mode

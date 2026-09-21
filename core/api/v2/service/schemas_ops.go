@@ -234,6 +234,7 @@ func opEnvelopeProse(op string) string {
 // by opSchema, which reads this.
 var v2OpAbout = map[string]string{
 	"set_properties":  "Sets, adds to, removes from or unsets property values on the object",
+	"set_type":        "Changes the object's type and converts the document to the new type's layout",
 	"update_block":    "Changes fields of one existing block, found by id or by its text",
 	"replace_subtree": "Replaces one block and its descendants with new blocks",
 	"insert_blocks":   "Inserts new blocks or markdown after, before or inside a block, or at either end of the document",
@@ -412,6 +413,12 @@ var v2OpSchemas = map[string]v2SchemaKind{
 			`"add":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only (select, multi_select, objects, files): append entries without rewriting the array — existing entries are never duplicated; unknown option NAMES are created"}`,
 			`"remove":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only: delete matching entries — absent entries (and absent keys) are a no-op; a key may appear in only one of set/unset/add/remove"}`),
 		example: `{"op":"set_properties","set":{"status":["Done"]},"add":{"tags":["Urgent"]},"unset":["due_date"]}`,
+	},
+	"set_type": {
+		endpoint: v2OpsEndpoint,
+		schema: opSchema("set_type", []string{"type"},
+			`"type":{"type":"string","minLength":1,"maxLength":256,"description":"the type the object becomes, by key, api key or name. Only layouts of one family convert (basic, todo, note, profile and bookmark among themselves; otherwise the same layout), and a refused change names the types this object can take. The document is rewritten for the new layout: to note the name becomes the first block, from note the first block becomes the name"}`),
+		example: `{"op":"set_type","type":"task"}`,
 	},
 	"update_block": {
 		endpoint: v2OpsEndpoint,

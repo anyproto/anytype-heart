@@ -64,6 +64,14 @@ func (c *layoutConverter) CheckRecommendedLayoutConversionAllowed(st *state.Stat
 // isConversionAllowed provides more strict check of layout conversion with introduction of primitives.
 // Only conversion between page layouts (page/note/task/profile) and list layouts (set->collection) is allowed
 func (c *layoutConverter) isConversionAllowed(from, to model.ObjectTypeLayout) bool {
+	return IsConversionAllowed(from, to)
+}
+
+// IsConversionAllowed is the layout conversion table Convert enforces, exposed
+// so a caller can refuse an impossible conversion with its own message before
+// reaching the editor: between the page layouts (basic, todo, note, profile,
+// bookmark) and from set to collection; everything else is refused.
+func IsConversionAllowed(from, to model.ObjectTypeLayout) bool {
 	if from == to {
 		return true
 	}

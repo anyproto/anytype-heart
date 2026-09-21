@@ -183,6 +183,10 @@ func (fx *v2Fixture) expectMutateState(read apicore.ObjectRead, prepare func(*st
 	// create-missing refs and taking the lock (review A′1), so every PATCH
 	// test needs the read wired.
 	fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil).Maybe()
+	// strict on purpose: a batch that never reaches the mutator fails the
+	// test, which is what the atomicity cases rely on ("the first op ran
+	// before the second failed"); a test about a pre-lock refusal wires the
+	// reader alone instead
 	fx.mutatorMock.EXPECT().MutateObject(mock.Anything, testSpaceId, "obj1", mock.Anything, mock.Anything).
 		RunAndReturn(func(ctx context.Context, spaceId, objectId string, needs apicore.EditNeeds, apply func(apicore.ObjectEdit) error) ([]string, error) {
 			st, err := state.NewDocFromSnapshot(objectId, &pb.ChangeSnapshot{Data: read.Snapshot})

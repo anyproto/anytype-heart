@@ -176,7 +176,11 @@ var WithTitle = StateTransformer(func(s *state.State) {
 		}
 	}
 
-	blockExists := s.Exists(TitleBlockId)
+	// a block can exist in the state and yet hang from no parent: WithNoTitle
+	// only unlinks it, and Apply removes it later. Between the two — a
+	// note-to-page conversion after a page-to-note one in the same state —
+	// existence alone would leave the title detached for good
+	blockExists := s.Exists(TitleBlockId) && s.PickParentOf(TitleBlockId) != nil
 
 	if blockExists {
 		isAlignOk := s.Pick(TitleBlockId).Model().Align == align
@@ -280,7 +284,9 @@ var WithDescription = func(s *state.State) {
 	if slice.FindPos(featRels, bundle.RelationKeyDescription.String()) == -1 {
 		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(append(featRels, bundle.RelationKeyDescription.String())))
 	}
-	if !s.Exists(DescriptionBlockId) {
+	// same reachability rule as WithTitle: a description block WithNoDescription
+	// detached in this state must come back
+	if !s.Exists(DescriptionBlockId) || s.PickParentOf(DescriptionBlockId) == nil {
 		WithForcedDescription(s)
 	}
 }
@@ -354,10 +360,14 @@ var WithNameFromFirstBlock = StateTransformer(func(s *state.State) {
 		}
 		s.SetDetail(bundle.RelationKeyName, domain.String(textBlock.Model().GetText().GetText()))
 
-		for _, id := range textBlock.Model().ChildrenIds {
+		// copy first: when the block is already the state's mutable copy (an
+		// earlier edit in the same state touched it), Unlink empties the very
+		// list the reinsertion below reads, and the children vanish
+		children := slices.Clone(textBlock.Model().ChildrenIds)
+		for _, id := range children {
 			s.Unlink(id)
 		}
-		err = s.InsertTo(textBlock.Model().Id, model.Block_Bottom, textBlock.Model().ChildrenIds...)
+		err = s.InsertTo(textBlock.Model().Id, model.Block_Bottom, children...)
 		if err != nil {
 			log.Errorf("insert children: %v", err)
 			return

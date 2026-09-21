@@ -711,6 +711,11 @@ func editSummary(target string, result *v2model.EditResult) string {
 	add(stats.BlocksChanged, "changed")
 	add(stats.BlocksMoved, "moved")
 	add(stats.PropertiesChanged, "properties changed")
+	// a type change moves no block and no value, so without this line a
+	// successful set_type reads "no changes" and the model retries it
+	if tc := result.TypeChanged; tc != nil {
+		parts = append(parts, fmt.Sprintf("type %s → %s", tc.From, tc.To))
+	}
 	if len(parts) == 0 {
 		parts = append(parts, "no changes")
 	}

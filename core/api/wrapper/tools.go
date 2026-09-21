@@ -505,42 +505,54 @@ func (r *Runner) runSetProperties(ctx context.Context, session *Session, args ma
 		targets = append(targets, setTarget{ref: ref, id: objectId, label: targetLabel(session, ref)})
 	}
 	setM, addM, removeM := objArg(args, "set"), objArg(args, "add"), objArg(args, "remove")
-	if len(setM)+len(addM)+len(removeM) == 0 {
-		return nil, fmt.Errorf("set_properties needs set, add or remove — e.g. set: {\"Status\": \"Done\"}")
+	typeArg := strArg(args, "type")
+	if len(setM)+len(addM)+len(removeM) == 0 && typeArg == "" {
+		return nil, fmt.Errorf("set_properties needs set, add, remove or type — e.g. set: {\"Status\": \"Done\"}")
 	}
-	// one property-index fetch serves set, add AND remove
-	idx, err := r.propertyIndexFor(ctx, space)
-	if err != nil {
-		return nil, err
+	// the type change goes FIRST in the batch, so the values that follow are
+	// set on the object as its new type; the server resolves the type's
+	// spelling (name, key or api key) and refuses an impossible layout
+	// conversion with the types the object can take (v2service set_type)
+	var ops []map[string]any
+	if typeArg != "" {
+		ops = append(ops, map[string]any{"op": "set_type", "type": typeArg})
 	}
-	op := map[string]any{"op": "set_properties"}
-	for _, field := range []struct {
-		name string
-		m    map[string]any
-	}{{"set", setM}, {"add", addM}} {
-		if len(field.m) == 0 {
-			continue
-		}
-		resolved, err := r.prepareValues(ctx, session, space, idx, field.m, true)
+	if len(setM)+len(addM)+len(removeM) > 0 {
+		// one property-index fetch serves set, add AND remove
+		idx, err := r.propertyIndexFor(ctx, space)
 		if err != nil {
 			return nil, err
 		}
-		op[field.name] = resolved
-	}
-	if len(removeM) > 0 {
-		// remove never creates anything server-side — no option guard, but
-		// @me / relative dates still resolve so entries match
-		resolved, err := r.prepareValues(ctx, session, space, idx, removeM, false)
-		if err != nil {
-			return nil, err
+		op := map[string]any{"op": "set_properties"}
+		for _, field := range []struct {
+			name string
+			m    map[string]any
+		}{{"set", setM}, {"add", addM}} {
+			if len(field.m) == 0 {
+				continue
+			}
+			resolved, err := r.prepareValues(ctx, session, space, idx, field.m, true)
+			if err != nil {
+				return nil, err
+			}
+			op[field.name] = resolved
 		}
-		op["remove"] = resolved
+		if len(removeM) > 0 {
+			// remove never creates anything server-side — no option guard, but
+			// @me / relative dates still resolve so entries match
+			resolved, err := r.prepareValues(ctx, session, space, idx, removeM, false)
+			if err != nil {
+				return nil, err
+			}
+			op["remove"] = resolved
+		}
+		ops = append(ops, op)
 	}
 	// one object keeps the receipt and the machine shape every other
 	// mutation tool serves — the batch form must not change what a
 	// single-object call has always returned
 	if len(targets) == 1 {
-		result, err := r.patchOps(ctx, session, space, targets[0].id, op, nil)
+		result, err := r.patchOpsBatch(ctx, session, space, targets[0].id, ops, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -555,11 +567,13 @@ func (r *Runner) runSetProperties(ctx context.Context, session *Session, args ma
 		// so a re-run of the whole call replays the last object's write and
 		// RE-APPLIES the others. Harmless for this op in particular, which is
 		// why the batch is allowed to be several requests at all: set
-		// replaces, add appends without duplicating an existing entry, and
-		// remove is a no-op when the entry is absent (v2service stateops.go),
-		// so applying the same resolved body twice lands on the same state
-		// and the second receipt reports 0 properties changed
-		result, err := r.patchOps(ctx, session, space, t.id, op, nil)
+		// replaces, add appends without duplicating an existing entry,
+		// remove is a no-op when the entry is absent (v2service stateops.go)
+		// and set_type on an object already of that type is a no-op too
+		// (v2service settype.go), so applying the same resolved body twice
+		// lands on the same state and the second receipt reports 0
+		// properties changed
+		result, err := r.patchOpsBatch(ctx, session, space, t.id, ops, nil)
 		if err != nil {
 			return nil, setBatchError(err, targets, i)
 		}

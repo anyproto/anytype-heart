@@ -272,6 +272,30 @@ func (a *objectCreateAdapter) TypeIdByKey(ctx context.Context, spaceId string, k
 	return id, nil
 }
 
+// InstallBundledType is the create path's bundled install for ONE type, for
+// the set_type op: basic.SetObjectTypesInState reads the target type from
+// the space's store, so a bundled type the space never installed has to be
+// installed before the edit takes the object lock.
+func (a *objectCreateAdapter) InstallBundledType(ctx context.Context, spaceId string, key domain.TypeKey) error {
+	ids := bundledIdsToInstall(nil, []domain.TypeKey{key})
+	if len(ids) == 0 {
+		return nil
+	}
+	spc, err := a.spaces.Get(ctx, spaceId)
+	if err != nil {
+		return fmt.Errorf("get space %s: %w", spaceId, err)
+	}
+	// the installer answers a read-only space with silent success; say so
+	// instead, or the caller waits for a row that never comes
+	if spc.IsReadOnly() {
+		return apicore.ErrSpaceReadOnly
+	}
+	if _, _, err := a.creator.InstallBundledObjects(ctx, spc, ids); err != nil {
+		return fmt.Errorf("install bundled type %s: %w", key, err)
+	}
+	return nil
+}
+
 func (a *objectCreateAdapter) RelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (string, error) {
 	spc, err := a.spaces.Get(ctx, spaceId)
 	if err != nil {

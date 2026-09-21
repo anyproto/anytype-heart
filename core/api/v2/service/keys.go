@@ -51,6 +51,10 @@ type typeEntry struct {
 	Slug   string
 	Name   string
 	Hidden bool
+	// Layout is the type's recommended layout — what its objects get, and
+	// what a set_type conversion has to reach. Read with the row so a
+	// compatibility listing costs no lookup per type.
+	Layout model.ObjectTypeLayout
 }
 
 // livePropertyFilters are the corpse-policy filters for relation queries:
@@ -201,6 +205,7 @@ func (s *Service) liveTypes(spaceId string) ([]typeEntry, error) {
 			Slug:   record.Details.GetString(bundle.RelationKeyApiObjectKey),
 			Name:   record.Details.GetString(bundle.RelationKeyName),
 			Hidden: record.Details.GetBool(bundle.RelationKeyIsHidden),
+			Layout: model.ObjectTypeLayout(record.Details.GetInt64(bundle.RelationKeyRecommendedLayout)), //nolint:gosec
 		})
 	}
 	return entries, nil

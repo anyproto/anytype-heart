@@ -110,6 +110,8 @@ func TestMCPInitialize(t *testing.T) {
 			instructions := result["instructions"].(string)
 			assert.Contains(t, instructions, "find")
 			assert.Contains(t, instructions, "describe a type BEFORE create")
+			assert.Contains(t, instructions, "pass type to set_properties",
+				"a small model only learns the type change from the instructions")
 			assert.Contains(t, instructions, "retry once")
 			assert.Contains(t, instructions, "edit_text alone can skip it",
 				"the instructions must not steer the model back into read-before-edit_text (§8.21)")

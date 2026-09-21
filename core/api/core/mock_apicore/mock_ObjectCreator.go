@@ -86,6 +86,54 @@ func (_c *MockObjectCreator_CreateObjectFromSnapshot_Call) RunAndReturn(run func
 	return _c
 }
 
+// InstallBundledType provides a mock function with given fields: ctx, spaceId, key
+func (_m *MockObjectCreator) InstallBundledType(ctx context.Context, spaceId string, key domain.TypeKey) error {
+	ret := _m.Called(ctx, spaceId, key)
+
+	if len(ret) == 0 {
+		panic("no return value specified for InstallBundledType")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, domain.TypeKey) error); ok {
+		r0 = rf(ctx, spaceId, key)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockObjectCreator_InstallBundledType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InstallBundledType'
+type MockObjectCreator_InstallBundledType_Call struct {
+	*mock.Call
+}
+
+// InstallBundledType is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+//   - key domain.TypeKey
+func (_e *MockObjectCreator_Expecter) InstallBundledType(ctx interface{}, spaceId interface{}, key interface{}) *MockObjectCreator_InstallBundledType_Call {
+	return &MockObjectCreator_InstallBundledType_Call{Call: _e.mock.On("InstallBundledType", ctx, spaceId, key)}
+}
+
+func (_c *MockObjectCreator_InstallBundledType_Call) Run(run func(ctx context.Context, spaceId string, key domain.TypeKey)) *MockObjectCreator_InstallBundledType_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(domain.TypeKey))
+	})
+	return _c
+}
+
+func (_c *MockObjectCreator_InstallBundledType_Call) Return(_a0 error) *MockObjectCreator_InstallBundledType_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockObjectCreator_InstallBundledType_Call) RunAndReturn(run func(context.Context, string, domain.TypeKey) error) *MockObjectCreator_InstallBundledType_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RelationIdByKey provides a mock function with given fields: ctx, spaceId, key
 func (_m *MockObjectCreator) RelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (string, error) {
 	ret := _m.Called(ctx, spaceId, key)

@@ -439,10 +439,17 @@ func describeText(result describeResult) string {
 
 	if len(readOnly) > 0 {
 		keys := make([]string, 0, len(readOnly))
+		hasType := false
 		for _, p := range readOnly {
 			keys = append(keys, p.Key)
+			// the row's Key is the display spelling ("Object type"); the
+			// stored key is the identity
+			hasType = hasType || p.restKey == "type" || p.Key == "type"
 		}
 		fmt.Fprintf(&b, "\nread-only — read serves these, set_properties refuses them: %s", strings.Join(keys, ", "))
+		if hasType {
+			b.WriteString(" (the object's type is not a property value: change it with set_properties' type argument)")
+		}
 	}
 	b.WriteString("\nboth lists are settable: use these exact property names and option names in create and set_properties" +
 		"\neach row is written the way create_type takes a property — Name: format, a select's options in parentheses")

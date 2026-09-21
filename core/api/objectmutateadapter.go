@@ -6,6 +6,7 @@ import (
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -54,6 +55,21 @@ func (a *objectMutateAdapter) MutateObject(ctx context.Context, spaceId string, 
 			Heads:  append([]string(nil), sb.GetDocInfo().Heads...),
 			State:  st,
 		}
+		// the set_type op goes through the editor's own type change
+		// (basic.SetObjectTypesInState) so that heart's guardrails — the
+		// type-change and layout restrictions, the template refusal, the
+		// layout conversion table — and the document rewrite the new layout
+		// needs run exactly as they do for the app, on this child state.
+		// Restrictions stay ON: the service's pre-check reads the same table,
+		// and the editor's own verdict is the last word under the lock.
+		if ops, ok := sb.(basic.CommonOperations); ok {
+			edit.SetObjectType = func(st *state.State, key domain.TypeKey) error {
+				if err := ops.SetObjectTypesInState(st, []domain.TypeKey{key}, false); err != nil {
+					return fmt.Errorf("set object type %s: %w", key, err)
+				}
+				return nil
+			}
+		}
 		if err := apply(edit); err != nil {
 			return err
 		}
@@ -87,6 +103,8 @@ func checkRestriction(sb smartblock.SmartBlock, r model.RestrictionsObjectRestri
 			return fmt.Errorf("%w: this object's blocks cannot be edited through the API", err)
 		case model.Restrictions_Details:
 			return fmt.Errorf("%w: this object's properties cannot be edited through the API", err)
+		case model.Restrictions_TypeChange:
+			return fmt.Errorf("%w: this object's type cannot be changed through the API", err)
 		}
 		return err
 	}
@@ -111,6 +129,11 @@ func checkObjectEditable(sb smartblock.SmartBlock, needs apicore.EditNeeds) erro
 	}
 	if needs.Details {
 		if err := checkRestriction(sb, model.Restrictions_Details); err != nil {
+			return err
+		}
+	}
+	if needs.TypeChange {
+		if err := checkRestriction(sb, model.Restrictions_TypeChange); err != nil {
 			return err
 		}
 	}
