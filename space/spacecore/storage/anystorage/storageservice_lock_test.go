@@ -2,6 +2,9 @@ package anystorage
 
 import (
 	"context"
+	"fmt"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -9,17 +12,64 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// blocked reports whether f is still running after a short grace period. It is
-// the only way to assert "this caller is waiting" without reaching into the
-// lock, and it never reports a false positive: acquired is closed before the
-// grace period starts elapsing.
-func blocked(acquired <-chan struct{}) bool {
-	select {
-	case <-acquired:
-		return false
-	case <-time.After(200 * time.Millisecond):
-		return true
+// waiter calls lockSpace in the background. started closes before the call, so
+// a subsequent "still waiting" assertion cannot pass merely because the
+// goroutine had not run yet; acquired closes once it holds the space.
+type waiter struct {
+	started  chan struct{}
+	acquired chan struct{}
+	failed   chan error
+	unlock   chan func()
+}
+
+func newWaiter(ctx context.Context, s *storageService, id string) *waiter {
+	w := &waiter{
+		started:  make(chan struct{}),
+		acquired: make(chan struct{}),
+		failed:   make(chan error, 1),
+		unlock:   make(chan func(), 1),
 	}
+	go func() {
+		close(w.started)
+		unlock, err := s.lockSpace(ctx, id)
+		if err != nil {
+			w.failed <- err
+			return
+		}
+		w.unlock <- unlock
+		close(w.acquired)
+	}()
+	<-w.started
+	return w
+}
+
+// waiting asserts the caller has not taken the space. The grace period only
+// risks a false pass (a goroutine descheduled past it), never a false failure,
+// so a loaded machine cannot turn a correct lock red here.
+func (w *waiter) waiting(t *testing.T, msg string) {
+	t.Helper()
+	select {
+	case <-w.acquired:
+		t.Fatal(msg)
+	case err := <-w.failed:
+		t.Fatalf("%s: lockSpace failed: %v", msg, err)
+	case <-time.After(200 * time.Millisecond):
+	}
+}
+
+// acquires asserts the caller gets the space, waiting generously: a correct
+// lock hands it over at once, and only a broken one runs out the clock.
+func (w *waiter) acquires(t *testing.T, msg string) func() {
+	t.Helper()
+	select {
+	case <-w.acquired:
+		return <-w.unlock
+	case err := <-w.failed:
+		t.Fatalf("%s: lockSpace failed: %v", msg, err)
+	case <-time.After(30 * time.Second):
+		t.Fatal(msg)
+	}
+	return nil
 }
 
 // The race regression tests depend on the scheduler landing a reader inside the
@@ -35,23 +85,12 @@ func TestLockSpace(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		acquired := make(chan struct{})
-		go func() {
-			secondUnlock, err := s.lockSpace(ctx, "space1")
-			if err == nil {
-				close(acquired)
-				secondUnlock()
-			}
-		}()
+		second := newWaiter(ctx, s, "space1")
 
 		// then
-		assert.True(t, blocked(acquired), "the second caller must wait while the first holds the space")
+		second.waiting(t, "the second caller must wait while the first holds the space")
 		unlock()
-		select {
-		case <-acquired:
-		case <-time.After(10 * time.Second):
-			t.Fatal("the second caller never acquired the space after it was released")
-		}
+		second.acquires(t, "the second caller never got the space after it was released")()
 	})
 
 	t.Run("a caller for another space is not held up", func(t *testing.T) {
@@ -61,18 +100,12 @@ func TestLockSpace(t *testing.T) {
 		require.NoError(t, err)
 		defer unlock()
 
-		// when
-		acquired := make(chan struct{})
-		go func() {
-			otherUnlock, err := s.lockSpace(ctx, "space2")
-			if err == nil {
-				close(acquired)
-				otherUnlock()
-			}
-		}()
+		// when: an id that does not share space1's shard
+		other := otherShardId(t, "space1")
+		second := newWaiter(ctx, s, other)
 
 		// then
-		assert.False(t, blocked(acquired), "spaces must not serialize against each other")
+		second.acquires(t, "spaces must not serialize against each other")()
 	})
 
 	t.Run("a queued caller gives up when its context is cancelled", func(t *testing.T) {
@@ -81,51 +114,94 @@ func TestLockSpace(t *testing.T) {
 		unlock, err := s.lockSpace(ctx, "space1")
 		require.NoError(t, err)
 		cancelCtx, cancel := context.WithCancel(ctx)
+		queued := newWaiter(cancelCtx, s, "space1")
+		queued.waiting(t, "the caller must be queued before its context is cancelled")
 
 		// when
-		failed := make(chan error, 1)
-		go func() {
-			_, err := s.lockSpace(cancelCtx, "space1")
-			failed <- err
-		}()
 		cancel()
 
 		// then
 		select {
-		case err := <-failed:
+		case err := <-queued.failed:
 			require.ErrorIs(t, err, context.Canceled)
-		case <-time.After(10 * time.Second):
+		case <-queued.acquired:
+			t.Fatal("a cancelled caller took the space out from under its holder")
+		case <-time.After(30 * time.Second):
 			t.Fatal("a cancelled caller kept waiting for the space")
 		}
-		// the holder is unaffected and the space is still usable afterwards
+		// the holder is unaffected and the space is usable once it releases
 		unlock()
 		again, err := s.lockSpace(ctx, "space1")
 		require.NoError(t, err)
 		again()
 	})
 
-	t.Run("releasing twice does not hand the space to two callers", func(t *testing.T) {
-		// given
+	t.Run("a stale release cannot let two callers hold one space", func(t *testing.T) {
+		// given: the ordering a select/default release would survive -- A
+		// releases, B takes the space, and only then does A release again
 		s := newTestService(t)
-		unlock, err := s.lockSpace(ctx, "space1")
+		unlockA, err := s.lockSpace(ctx, "space1")
 		require.NoError(t, err)
+		unlockA()
+		b := newWaiter(ctx, s, "space1")
+		unlockB := b.acquires(t, "B never took the released space")
 
 		// when
-		unlock()
-		unlock()
+		unlockA()
 
 		// then
-		first, err := s.lockSpace(ctx, "space1")
-		require.NoError(t, err)
-		defer first()
-		acquired := make(chan struct{})
-		go func() {
-			secondUnlock, err := s.lockSpace(ctx, "space1")
-			if err == nil {
-				close(acquired)
-				secondUnlock()
-			}
-		}()
-		assert.True(t, blocked(acquired), "a double release must not leave a spare token behind")
+		c := newWaiter(ctx, s, "space1")
+		c.waiting(t, "a stale release handed the space to C while B still held it")
+		unlockB()
+		c.acquires(t, "C never got the space after B released")()
 	})
+
+	t.Run("callers racing to create one shard still exclude each other", func(t *testing.T) {
+		// given: nobody has touched this space, so the shard is created under
+		// contention rather than by a prior sequential caller
+		s := newTestService(t)
+		const callers = 16
+		var inside, maxInside atomic.Int32
+		var wg sync.WaitGroup
+
+		// when
+		for i := 0; i < callers; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				unlock, err := s.lockSpace(ctx, "space1")
+				if err != nil {
+					return
+				}
+				defer unlock()
+				n := inside.Add(1)
+				for {
+					got := maxInside.Load()
+					if n <= got || maxInside.CompareAndSwap(got, n) {
+						break
+					}
+				}
+				time.Sleep(time.Millisecond)
+				inside.Add(-1)
+			}()
+		}
+		wg.Wait()
+
+		// then
+		assert.Equal(t, int32(1), maxInside.Load(), "only one caller at a time may hold a space")
+	})
+}
+
+// otherShardId finds an id that hashes to a different lock shard than base, so
+// a test of cross-space independence is not silently testing a collision.
+func otherShardId(t *testing.T, base string) string {
+	t.Helper()
+	for i := 0; i < 10000; i++ {
+		candidate := fmt.Sprintf("space-%d", i)
+		if spaceLockShard(candidate) != spaceLockShard(base) {
+			return candidate
+		}
+	}
+	t.Fatal("no id found on a different shard")
+	return ""
 }

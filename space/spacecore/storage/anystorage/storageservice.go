@@ -53,10 +53,18 @@ type storageService struct {
 	backups   []CorruptedBackup
 
 	spaceLocksMu sync.Mutex
-	spaceLocks   map[string]chan struct{}
+	spaceLocks   [spaceLockShards]chan struct{}
 
 	reporter debugreporter.Reporter
 }
+
+// spaceLockShards is how many locks space ids are spread over. Two spaces that
+// land on one shard briefly queue behind each other while one of them opens,
+// which costs an open and nothing else. Keying the locks by id instead would
+// mean a map an untrusted peer can grow without bound: SpacePush hands a
+// remote id to NewSpace, which reaches WaitSpaceStorage before the payload is
+// validated, so a rejected push would still leave its entry behind.
+const spaceLockShards = 256
 
 // lockSpace serializes whoever opens, creates or deletes one space's store.db,
 // and returns the func that releases it.
@@ -73,22 +81,9 @@ type storageService struct {
 //
 // The channel is a mutex a context can wait on, which sync.Mutex is not: a
 // discovery-key derive queued behind a slow open has to give up when its
-// budget runs out. Entries are never removed -- one channel per space id the
-// process touches, like the provider's per-space db map -- because dropping an
-// entry while its token is held lets the next caller build a second channel
-// for the same space and walk straight in.
+// budget runs out.
 func (s *storageService) lockSpace(ctx context.Context, id string) (unlock func(), err error) {
-	s.spaceLocksMu.Lock()
-	if s.spaceLocks == nil {
-		s.spaceLocks = make(map[string]chan struct{})
-	}
-	l, ok := s.spaceLocks[id]
-	if !ok {
-		l = make(chan struct{}, 1)
-		s.spaceLocks[id] = l
-	}
-	s.spaceLocksMu.Unlock()
-
+	l := s.spaceLockFor(id)
 	select {
 	case l <- struct{}{}:
 		// released once: a second call would hand the lock to nobody and let
@@ -98,6 +93,62 @@ func (s *storageService) lockSpace(ctx context.Context, id string) (unlock func(
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
+}
+
+func (s *storageService) spaceLockFor(id string) chan struct{} {
+	idx := spaceLockShard(id)
+	s.spaceLocksMu.Lock()
+	defer s.spaceLocksMu.Unlock()
+	if s.spaceLocks[idx] == nil {
+		s.spaceLocks[idx] = make(chan struct{}, 1)
+	}
+	return s.spaceLocks[idx]
+}
+
+// spaceLockShard is FNV-1a over the id, written out so it neither allocates nor
+// pulls in a hash for something this small.
+func spaceLockShard(id string) int {
+	const (
+		offsetBasis = 14695981039346656037
+		prime       = 1099511628211
+	)
+	var h uint64 = offsetBasis
+	for i := 0; i < len(id); i++ {
+		h ^= uint64(id[i])
+		h *= prime
+	}
+	return int(h % spaceLockShards)
+}
+
+// preserveOrphanWal moves a space dir aside when its store.db has been
+// truncated away while the WAL beside it still holds data. SQLite drops the WAL
+// of a zero-page main file as soon as the db is opened, so opening first would
+// destroy what can be the only copy of changes no peer can give back; the
+// rename keeps the pair together for recovery. A healthy store never looks like
+// this -- its main file carries a page from the moment WAL mode is set.
+func (s *storageService) preserveOrphanWal(id, dbPath string) (preserved bool) {
+	main, err := os.Stat(dbPath)
+	if err != nil || main.Size() > 0 {
+		return false
+	}
+	wal, err := os.Stat(dbPath + "-wal")
+	if err != nil || wal.Size() == 0 {
+		return false
+	}
+	log.With(zap.String("spaceId", id), zap.Int64("walSize", wal.Size())).
+		Error("space store is empty but its wal is not, backing up before the wal is dropped")
+	if s.reporter != nil {
+		s.reporter.Report("DB_ORPHAN_WAL", map[string]any{
+			"db":      filepath.Join(id, "store.db"),
+			"spaceId": id,
+			"walSize": wal.Size(),
+		}, debugreporter.Capture{Kind: debugreporter.KindNone})
+	}
+	if _, backupErr := s.backupCorruptedSpace(id); backupErr != nil {
+		log.With(zap.String("spaceId", id), zap.Error(backupErr)).Error("failed to back up space store with an orphan wal")
+		return false
+	}
+	return true
 }
 
 func (s *storageService) AllSpaceIds() (ids []string, err error) {
@@ -132,6 +183,10 @@ func (s *storageService) openDb(ctx context.Context, id string) (db anystore.DB,
 			return nil, spacestorage.ErrSpaceStorageMissing
 		}
 		return nil, err
+	}
+
+	if s.preserveOrphanWal(id, dbPath) {
+		return nil, spacestorage.ErrSpaceStorageMissing
 	}
 
 	start := time.Now()
@@ -170,6 +225,12 @@ func (s *storageService) createDb(ctx context.Context, id string) (db anystore.D
 		return nil, err
 	}
 	dbPath := path.Join(dirPath, "store.db")
+	if s.preserveOrphanWal(id, dbPath) {
+		if err = os.MkdirAll(dirPath, 0755); err != nil {
+			return nil, fmt.Errorf("recreate space dir: %w", err)
+		}
+	}
+
 	start := time.Now()
 	db, err = anystore.Open(ctx, dbPath, s.anyStoreConfig())
 	if err == nil {
@@ -182,7 +243,7 @@ func (s *storageService) createDb(ctx context.Context, id string) (db anystore.D
 	// any version mismatch, not only the unstamped 0 -- renaming on those
 	// would orphan a populated store whose changes no peer can give back.
 	if !errors.Is(err, anystore.ErrIncompatibleVersion) || !storeIsUninitialized(dbPath) {
-		return nil, err
+		return nil, fmt.Errorf("open space store: %w", err)
 	}
 	// A create killed before any-store stamped `user_version` leaves a store.db
 	// every later open reads as version 0. openDb heals that by moving the dir

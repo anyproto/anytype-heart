@@ -2,6 +2,7 @@ package anystorage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -138,7 +139,7 @@ func TestCreateSpaceStorage_ConcurrentOpen(t *testing.T) {
 				createErr <- err
 			}()
 
-			waitForFile(t, dbPath, createDone)
+			sawFile := waitForFile(t, dbPath, createDone)
 
 			// when
 			st, err := s.WaitSpaceStorage(ctx, spaceId)
@@ -146,6 +147,11 @@ func TestCreateSpaceStorage_ConcurrentOpen(t *testing.T) {
 			// then
 			<-createDone
 			require.NoError(t, <-createErr, "round %d", i)
+			if !sawFile && errors.Is(err, spacestorage.ErrSpaceStorageMissing) {
+				// we looked before the creator had put anything on disk, so
+				// nothing raced this round and missing is the honest answer
+				continue
+			}
 			require.NoError(t, err, "round %d: an open that races the creator must join it, not report the space missing", i)
 			require.NoError(t, st.Close(ctx))
 		}
@@ -292,5 +298,78 @@ func TestCreateSpaceStorage_RecoveryIsNarrow(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, []string{spaceId}, ids, "discovery must not be handed backup dirs to open")
+	})
+}
+
+// SQLite drops the WAL of a zero-page main file the moment the db is opened, so
+// a store truncated away with its WAL still holding data has to be preserved
+// before anything opens it.
+func TestOrphanWal(t *testing.T) {
+	writeOrphanWal := func(t *testing.T, dirPath string) (dbPath string, walBytes int64) {
+		t.Helper()
+		require.NoError(t, os.MkdirAll(dirPath, 0755))
+		dbPath = filepath.Join(dirPath, "store.db")
+		require.NoError(t, os.WriteFile(dbPath, nil, 0644))
+		wal := []byte("not really a wal, but not empty either")
+		require.NoError(t, os.WriteFile(dbPath+"-wal", wal, 0644))
+		return dbPath, int64(len(wal))
+	}
+
+	t.Run("an open preserves the pair instead of dropping the wal", func(t *testing.T) {
+		// given
+		s := newTestService(t)
+		const spaceId = "space1"
+		_, walBytes := writeOrphanWal(t, filepath.Join(s.rootPath, spaceId))
+
+		// when
+		_, err := s.WaitSpaceStorage(context.Background(), spaceId)
+
+		// then
+		require.ErrorIs(t, err, spacestorage.ErrSpaceStorageMissing)
+		backups := s.ListCorruptedBackups()
+		require.Len(t, backups, 1)
+		kept, statErr := os.Stat(filepath.Join(backups[0].BackupPath, "store.db-wal"))
+		require.NoError(t, statErr, "the wal must survive in the backup")
+		assert.Equal(t, walBytes, kept.Size())
+	})
+
+	t.Run("a create preserves the pair and still makes the space", func(t *testing.T) {
+		// given
+		s := newTestService(t)
+		ctx := context.Background()
+		payload := newCreatePayload(t)
+		spaceId := payload.SpaceHeaderWithId.Id
+		_, walBytes := writeOrphanWal(t, filepath.Join(s.rootPath, spaceId))
+
+		// when
+		st, err := s.CreateSpaceStorage(ctx, payload)
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, st.Close(ctx))
+		backups := s.ListCorruptedBackups()
+		require.Len(t, backups, 1)
+		kept, statErr := os.Stat(filepath.Join(backups[0].BackupPath, "store.db-wal"))
+		require.NoError(t, statErr, "the wal must survive in the backup")
+		assert.Equal(t, walBytes, kept.Size())
+	})
+
+	t.Run("a healthy store is untouched", func(t *testing.T) {
+		// given: a live store carries a page in its main file, so it can never
+		// look like the truncated pair above
+		s := newTestService(t)
+		ctx := context.Background()
+		payload := newCreatePayload(t)
+		st, err := s.CreateSpaceStorage(ctx, payload)
+		require.NoError(t, err)
+		require.NoError(t, st.Close(ctx))
+
+		// when
+		reopened, err := s.WaitSpaceStorage(ctx, payload.SpaceHeaderWithId.Id)
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, reopened.Close(ctx))
+		assert.Empty(t, s.ListCorruptedBackups())
 	})
 }
