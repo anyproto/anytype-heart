@@ -243,19 +243,20 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 	if properties == nil {
 		properties = map[string]json.RawMessage{}
 	}
-	if shortcut.Name != "" {
-		if properties["name"], err = rawJSON(shortcut.Name); err != nil {
-			return nil, err
+	name := shortcut.Name
+	if name == "" {
+		// the shortcut takes a name either way, and both spellings reach the
+		// same detail
+		var fromProperties string
+		if raw, ok := properties["name"]; ok && json.Unmarshal(raw, &fromProperties) == nil {
+			name = fromProperties
 		}
 	}
-	if len(properties) > 0 {
-		if doc["properties"], err = rawJSON(properties); err != nil {
-			return nil, err
-		}
-	}
-	markdownBlocks := false
+
+	var run []json.RawMessage
 	if shortcut.Markdown != "" {
-		run, exceeded := anyblockjson.ParseMarkdownBlocksLimit(shortcut.Markdown, v2MaxCreateMarkdownBlocks)
+		exceeded := false
+		run, exceeded = anyblockjson.ParseMarkdownBlocksLimit(shortcut.Markdown, v2MaxCreateMarkdownBlocks)
 		if exceeded {
 			return nil, v2model.ValidationFailed("markdown produced too many blocks",
 				v2model.Issue{Path: "/markdown", Message: fmt.Sprintf(
@@ -268,6 +269,22 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 			return nil, v2model.ValidationFailed("markdown produced no blocks",
 				v2model.Issue{Path: "/markdown", Message: "the markdown body contains no content — give at least one non-blank line, or omit markdown"})
 		}
+	}
+	// the leading heading is the title, not the first paragraph of the body
+	run, name, titleNotice := liftMarkdownTitle(run, name)
+
+	if name != "" {
+		if properties["name"], err = rawJSON(name); err != nil {
+			return nil, err
+		}
+	}
+	if len(properties) > 0 {
+		if doc["properties"], err = rawJSON(properties); err != nil {
+			return nil, err
+		}
+	}
+	markdownBlocks := false
+	if len(run) > 0 {
 		if doc["blocks"], err = rawJSON(run); err != nil {
 			return nil, err
 		}
@@ -290,7 +307,73 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 		// markdown channel the caller actually sent (C6)
 		err = rebaseMarkdownCreateError(err)
 	}
+	if err == nil && titleNotice != nil {
+		result.Warnings = append(result.Warnings, *titleNotice)
+	}
 	return result, err
+}
+
+// markdownHeading is the parsed shape of one markdown block, enough to ask
+// whether it is a top-of-document heading.
+type markdownHeading struct {
+	Type   string `json:"type"`
+	Text   string `json:"text"`
+	Indent int    `json:"indent"`
+}
+
+// headingStyles are the block types a title-shaped first line parses to.
+var headingStyles = map[string]bool{"heading_1": true, "heading_2": true, "heading_3": true}
+
+// liftMarkdownTitle applies the rule this product already has everywhere else
+// a markdown document arrives: the leading heading is the object's TITLE, not
+// the first line of its body. The markdown importer does exactly this
+// (markdown.extractTitleAndEmojiFromBlock), which is why a file imported from
+// disk shows its name once and an object created through this API showed it
+// twice — a name plus a heading repeating it is the shape a model reaches for
+// by default.
+//
+// Two cases, one rule:
+//
+//   - the heading repeats the name the request set: it is dropped, because an
+//     object renders its name as its title and the block only duplicates it;
+//   - the request set NO name and the document opens with a `heading_1`: the
+//     heading becomes the name and is dropped, so the object is named instead
+//     of being an untitled document whose first line is its title.
+//
+// A `heading_2` or `heading_3` is enough to be a DUPLICATE (a model that
+// restates the name does not always pick the same level) but not enough to
+// become one: promoting a subheading to the object's name would invent a
+// title out of a section.
+//
+// It returns the blocks to keep, the name to use and the notice to attach,
+// nil when nothing was touched.
+func liftMarkdownTitle(run []json.RawMessage, name string) ([]json.RawMessage, string, *v2model.Issue) {
+	if len(run) == 0 {
+		return run, name, nil
+	}
+	var first markdownHeading
+	if err := json.Unmarshal(run[0], &first); err != nil || first.Indent != 0 || !headingStyles[first.Type] {
+		return run, name, nil
+	}
+	heading := strings.TrimSpace(first.Text)
+	if heading == "" {
+		return run, name, nil
+	}
+	switch {
+	case name != "" && heading == strings.TrimSpace(name):
+		return run[1:], name, &v2model.Issue{
+			Path:    "/markdown[0]",
+			Message: "the first heading repeated the object's name and was dropped",
+			Hint:    "an object shows its name as its title, so a heading that restates it appears twice",
+		}
+	case name == "" && first.Type == "heading_1":
+		return run[1:], heading, &v2model.Issue{
+			Path:    "/markdown[0]",
+			Message: fmt.Sprintf("the first heading became the object's name: %q", heading),
+			Hint:    "an object shows its name as its title; send name to choose it yourself",
+		}
+	}
+	return run, name, nil
 }
 
 // v2MaxCreateMarkdownBlocks caps how many blocks a create shortcut's markdown

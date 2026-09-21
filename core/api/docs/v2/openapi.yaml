@@ -3395,10 +3395,11 @@ paths:
                 - additionalProperties: false
                   properties:
                     markdown:
-                      description: markdown body parsed into blocks server-side, part of the same single create (dry runs validate it too); at most 2048 parsed blocks
+                      description: 'markdown body parsed into blocks server-side, part of the same single create (dry runs validate it too); at most 2048 parsed blocks. Start it at the first section: a leading heading that repeats the name is dropped, and with no name a leading heading becomes the name'
                       maxLength: 1048576
                       type: string
                     name:
+                      description: display name. The object shows it as its title, so the markdown body must not repeat it as a heading
                       maxLength: 4096
                       type: string
                     properties:

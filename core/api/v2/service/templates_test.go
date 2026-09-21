@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -963,4 +964,142 @@ func TestCreateObjectTemplateZeroContribution(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotContains(t, string(encoded), "blocks_added")
 	})
+}
+
+func TestCreateObjectMarkdownTitle(t *testing.T) {
+	// the object renders its name as its title, so a body that opens by
+	// restating it shows the same words twice — the shape a small model
+	// reaches for by default
+	t.Run("a leading heading that repeats the name is dropped", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","name":"Tegeler Forst","markdown":"# Tegeler Forst\n\n## Overview\n\nA forest."}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		snapshot := *captured
+		require.NotNil(t, snapshot)
+		assert.Equal(t, []string{"Overview", "A forest."}, snapshotTexts(snapshot))
+		assert.Equal(t, "Tegeler Forst", pbtypes.GetString(snapshot.Details, "name"))
+		require.Len(t, result.Warnings, 1)
+		assert.Equal(t, "/markdown[0]", result.Warnings[0].Path)
+		assert.Contains(t, result.Warnings[0].Message, "repeated")
+	})
+
+	t.Run("a leading heading becomes the name when the request set none", func(t *testing.T) {
+		// given — what the markdown importer does with every file
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","markdown":"# Tegeler Forst\n\nA forest."}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		snapshot := *captured
+		assert.Equal(t, "Tegeler Forst", pbtypes.GetString(snapshot.Details, "name"))
+		assert.Equal(t, []string{"A forest."}, snapshotTexts(snapshot))
+		require.Len(t, result.Warnings, 1)
+		assert.Contains(t, result.Warnings[0].Message, "became the object's name")
+	})
+
+	t.Run("a name in properties counts as the name", func(t *testing.T) {
+		// given — the shortcut takes the name either way
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","properties":{"name":"Tegeler Forst"},"markdown":"# Tegeler Forst\n\nA forest."}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"A forest."}, snapshotTexts(*captured))
+	})
+
+	t.Run("a heading that is not the name is body content", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","name":"Tegeler Forst","markdown":"# Overview\n\nA forest."}`), false, false)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"Overview", "A forest."}, snapshotTexts(*captured))
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("a subheading may repeat the name but may not become it", func(t *testing.T) {
+		// given — a model restating the name does not always pick h1, but
+		// promoting a section heading would invent a title out of a section
+		fx := newV2Fixture(t)
+		dropped := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","name":"Tegeler Forst","markdown":"## Tegeler Forst\n\nA forest."}`), false, false)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"A forest."}, snapshotTexts(*dropped))
+
+		// when — the same heading with no name to match
+		fx2 := newV2Fixture(t)
+		kept := fx2.expectCreate("newObj2")
+		fx2.expectEtagRead("newObj2")
+		_, err = fx2.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","markdown":"## Tegeler Forst\n\nA forest."}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"Tegeler Forst", "A forest."}, snapshotTexts(*kept))
+		assert.Empty(t, pbtypes.GetString((*kept).Details, "name"))
+	})
+
+	t.Run("markdown that is only the title leaves a named object with no body", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","name":"Tegeler Forst","markdown":"# Tegeler Forst"}`), false, false)
+
+		require.NoError(t, err)
+		assert.Empty(t, snapshotTexts(*captured))
+		assert.Equal(t, "Tegeler Forst", pbtypes.GetString((*captured).Details, "name"))
+	})
+
+	t.Run("a full document is left alone", func(t *testing.T) {
+		// given — an authored block tree is a deliberate choice, and the
+		// markdown convention does not reach it
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"formatVersion":"2.0","type":"page","properties":{"name":"Tegeler Forst"},"blocks":[{"type":"heading_1","text":"Tegeler Forst"},{"type":"paragraph","text":"A forest."}]}`),
+			false, false)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"Tegeler Forst", "A forest."}, snapshotTexts(*captured))
+		assert.Empty(t, result.Warnings)
+	})
+}
+
+// snapshotTexts is the text of a snapshot's blocks in document order, root aside.
+func snapshotTexts(snapshot *model.SmartBlockSnapshotBase) []string {
+	var texts []string
+	for _, block := range snapshot.Blocks {
+		if block.GetSmartblock() != nil {
+			continue
+		}
+		texts = append(texts, block.GetText().GetText())
+	}
+	return texts
 }

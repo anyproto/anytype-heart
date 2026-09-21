@@ -7623,3 +7623,45 @@ carrying `default`, so which template a type starts from is visible where the
 templates are. The listing excludes uninstalled and hidden rows on top of the
 store's archived/deleted defaults: offering an id the create path then
 refuses is the same broken loop pointing the other way.
+
+### 8.58 The leading heading is the title, not the first line of the body (2026-09-21 — as built)
+
+A create carrying both a `name` and a markdown body that opens by restating
+it produces an object that shows the same words twice: once as the title the
+object renders from its name, once as a heading. It is the shape a small
+model reaches for by default — measured in the wild, on an object whose
+export carries `"Name": "Tegeler Forst Woodland Escape"` and a
+`heading_1` block with that exact text, `origin: api`.
+
+**This product already had the rule; the API was the one surface not
+following it.** `markdown.extractTitleAndEmojiFromBlock` takes a leading
+`heading_1` as the imported object's name and REMOVES the block, for every
+markdown file that comes in from disk. So a file imported from disk shows its
+name once and an object created through this API showed it twice.
+
+The markdown channel of the create shortcut now applies the same rule
+(`liftMarkdownTitle`), in the two forms one convention takes:
+
+- the leading heading repeats the name the request set — it is dropped,
+  because the object renders the name as its title and the block only
+  duplicates it;
+- the request set no name and the document opens with a `heading_1` — the
+  heading becomes the name and is dropped, so the caller gets a named object
+  instead of an untitled one whose first line is its title.
+
+A `heading_2` or `heading_3` is enough to be a duplicate and not enough to
+become a name: a model restating the name does not always pick the same
+level, but promoting a section heading would invent a title out of a section.
+Either way the result carries a warning addressed at `/markdown[0]`, because
+a body the server changed is not the body the caller sent, and the sentence
+that explains it is also the one that teaches the next call.
+
+**Scope is the markdown channel only.** A full AnyBlock document is an
+authored block tree, and its first block is a choice rather than a
+convention; the rule would be editing a caller's structure rather than
+reading their prose. The `name` and `markdown` descriptions in the served
+shortcut schema state the rule, so a caller can see it before sending.
+
+Not taken from the importer: its emoji split, which reads a leading emoji out
+of the title into the object's icon. The shortcut has no icon member, and
+inventing one here would be a second convention rather than the same one.
