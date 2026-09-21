@@ -58,6 +58,8 @@ func TestOpenAPIBodiesAcceptTheServedExamples(t *testing.T) {
 		{v2model.OpCreateTemplate, []string{v2SchemaKinds["template"].example}},
 		{v2model.OpValidate, []string{v2SchemaKinds["object"].example, v2SchemaKinds["type_document"].example}},
 		{v2model.OpPatchObject, []string{`{"ops":[` + v2OpSchemas["set_properties"].example + `,` + v2OpSchemas["insert_blocks"].example + `]}`}},
+		{v2model.OpCreateWidget, []string{v2SchemaKinds["widget"].example, `{"target":"obj1","scope":"space","layout":"view","limit":10,"view_id":"v1","after":"_favorite"}`}},
+		{v2model.OpUpdateWidget, []string{`{"layout":"compact_list"}`, `{"limit":30,"position":"first"}`, `{"view_id":""}`}},
 	}
 	seen := map[string]bool{}
 	for _, tc := range cases {
@@ -76,6 +78,35 @@ func TestOpenAPIBodiesAcceptTheServedExamples(t *testing.T) {
 	for op := range composed.Bodies {
 		assert.True(t, seen[op], "%s is composed but has no example case here", op)
 	}
+
+	// and the refusals the widget bodies promise: POST needs its identity
+	// members, PATCH refuses them and takes at least one member; an
+	// off-list or negative limit is the service's to normalise, not the
+	// schema's to refuse
+	t.Run("widget refusals", func(t *testing.T) {
+		create := compileOpenAPIBody(t, composed, composed.Bodies[v2model.OpCreateWidget])
+		update := compileOpenAPIBody(t, composed, composed.Bodies[v2model.OpUpdateWidget])
+		for _, example := range []string{`{"scope":"personal"}`, `{"target":"obj1"}`, `{"target":"obj1","scope":"shared"}`,
+			`{"target":"obj1","scope":"space","after":""}`, `{"target":"obj1","scope":"space","after":"w1","position":"last"}`} {
+			var v any
+			require.NoError(t, json.Unmarshal([]byte(example), &v))
+			assert.Error(t, create.Validate(v), example)
+		}
+		for _, example := range []string{`{}`, `{"target":"obj1","limit":10}`, `{"scope":"space","limit":10}`, `{"position":"middle"}`,
+			`{"after":""}`, `{"before":""}`, `{"after":"w1","before":"w2"}`, `{"after":"w1","position":"first"}`, `{"before":"w1","position":"last"}`} {
+			var v any
+			require.NoError(t, json.Unmarshal([]byte(example), &v))
+			assert.Error(t, update.Validate(v), example)
+		}
+		for _, example := range []string{`{"target":"obj1","scope":"space","limit":7}`, `{"target":"obj1","scope":"space","limit":-1}`} {
+			var v any
+			require.NoError(t, json.Unmarshal([]byte(example), &v))
+			assert.NoError(t, create.Validate(v), example)
+		}
+		var v any
+		require.NoError(t, json.Unmarshal([]byte(`{"limit":-1}`), &v))
+		assert.NoError(t, update.Validate(v))
+	})
 }
 
 func TestOpenAPIBodiesRefuseTheWrongShape(t *testing.T) {

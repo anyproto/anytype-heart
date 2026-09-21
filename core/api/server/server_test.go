@@ -23,6 +23,7 @@ type fixture struct {
 	mwMock               *mock_apicore.MockClientCommands
 	accountMock          *mock_apicore.MockAccountService
 	eventMock            *mock_apicore.MockEventService
+	widgetsMock          *mock_apicore.MockWidgets
 	crossSpaceSubService *mock_apicore.MockCrossSpaceSubscriptionService
 	chatSubService       *mock_apicore.MockChatSubscriptionService
 	fileObjectMock       *mock_apicore.MockFileObjectService

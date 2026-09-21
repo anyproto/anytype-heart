@@ -45,6 +45,8 @@ key returns `401`.
 - **Queries** show a live selection of objects. **Collections** hold a
   hand-curated list.
 - **Chats** store messages separately from document blocks.
+- **Widgets** are the sidebar: the objects a space pins for every member,
+  and the ones this account keeps for itself.
 
 Blocks form a flat array in document order, with `indent` describing the
 hierarchy. Inline text formatting uses Markdown. The title and description
@@ -58,6 +60,7 @@ live in the `name` and `description` properties.
 | Read a document | `GET /v2/spaces/{space_id}/objects/{object_id}` |
 | Create an object | `POST /v2/spaces/{space_id}/objects` |
 | Edit a document | `PATCH /v2/spaces/{space_id}/objects/{object_id}` |
+| Pin an object to the sidebar | `POST /v2/spaces/{space_id}/widgets` |
 
 ## Names and identifiers
 

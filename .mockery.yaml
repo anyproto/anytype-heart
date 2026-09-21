@@ -279,6 +279,7 @@ packages:
       ObjectCreator:
       ObjectMutator:
       ObjectProvenance:
+      Widgets:
   github.com/anyproto/anytype-heart/core/api/filter:
     interfaces:
       ApiService:
