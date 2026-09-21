@@ -247,6 +247,31 @@ func TestCreateSpaceStorage_RecoveryIsNarrow(t *testing.T) {
 		assert.NoError(t, statErr, "the store must stay where it is")
 	})
 
+	t.Run("an unstamped store holding tables is left alone", func(t *testing.T) {
+		// given: version 0 alone must not be enough to move a directory aside
+		s := newTestService(t)
+		ctx := context.Background()
+		payload := newCreatePayload(t)
+		spaceId := payload.SpaceHeaderWithId.Id
+		dirPath := filepath.Join(s.rootPath, spaceId)
+		require.NoError(t, os.MkdirAll(dirPath, 0755))
+		dbPath := filepath.Join(dirPath, "store.db")
+		conn, err := sqlite.OpenConn(dbPath, sqlite.OpenCreate|sqlite.OpenReadWrite|sqlite.OpenWAL|sqlite.OpenURI)
+		require.NoError(t, err)
+		require.NoError(t, sqlitex.ExecuteTransient(conn, "CREATE TABLE somebodys_data (v TEXT)", nil))
+		require.NoError(t, sqlitex.ExecuteTransient(conn, "PRAGMA user_version = 0", nil))
+		require.NoError(t, conn.Close())
+
+		// when
+		_, err = s.CreateSpaceStorage(ctx, payload)
+
+		// then
+		require.ErrorIs(t, err, anystore.ErrIncompatibleVersion)
+		assert.Empty(t, s.ListCorruptedBackups(), "only a store with nothing in it may be moved aside")
+		_, statErr := os.Stat(dbPath)
+		assert.NoError(t, statErr)
+	})
+
 	t.Run("a backup directory is not offered as a space", func(t *testing.T) {
 		// given: the state left behind once a store has been backed up
 		s := newTestService(t)
