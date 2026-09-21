@@ -427,7 +427,7 @@ type AppliedTemplate struct {
 	// Store id of the template.
 	Id string `json:"id"`
 	// Display name of the template, empty when it has none.
-	Name string `json:"name,omitempty"`
+	Name string `json:"name"`
 	// Who chose it: request when the create named it, type_default when the type's default_template did.
 	Source string `json:"source"`
 }
@@ -440,6 +440,14 @@ func (t *AppliedTemplate) GetId() string {
 		return ""
 	}
 	return t.Id
+}
+
+// GetSource is GetId's twin for who chose the template.
+func (t *AppliedTemplate) GetSource() string {
+	if t == nil {
+		return ""
+	}
+	return t.Source
 }
 
 // TemplateRow is one row of the template list: what a create names in

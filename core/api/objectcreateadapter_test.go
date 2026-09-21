@@ -88,10 +88,10 @@ func docState(t *testing.T, rootId string, childIds ...string) *state.State {
 
 // templateState builds the state a template produces: a root whose children
 // are the template's own blocks.
-func templateState(t *testing.T, childIds ...string) *state.State {
+func templateState(t *testing.T, rootId string, childIds ...string) *state.State {
 	t.Helper()
 	blocks := []*model.Block{{
-		Id:          "tplRoot",
+		Id:          rootId,
 		ChildrenIds: childIds,
 		Content:     &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
 	}}
@@ -101,7 +101,7 @@ func templateState(t *testing.T, childIds ...string) *state.State {
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "template " + id}},
 		})
 	}
-	st, err := state.NewDocFromSnapshot("tplRoot", &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{Blocks: blocks}})
+	st, err := state.NewDocFromSnapshot(rootId, &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{Blocks: blocks}})
 	require.NoError(t, err)
 	return st
 }
@@ -119,7 +119,7 @@ func blockText(st *state.State, id string) string {
 func TestMergeDocumentIntoTemplate(t *testing.T) {
 	t.Run("the document's blocks land after the template's, in order", func(t *testing.T) {
 		// given
-		base := templateState(t, "header", "intro")
+		base := templateState(t, "tplRoot", "header", "intro")
 		doc := docState(t, "docRoot", "p1", "p2")
 
 		// when
@@ -134,7 +134,7 @@ func TestMergeDocumentIntoTemplate(t *testing.T) {
 	t.Run("a document block whose id the template holds is reminted, references included", func(t *testing.T) {
 		// given — `title` is an ordinary word for a caller and a real block id
 		// in a template state; the collision must not overwrite the template's
-		base := templateState(t, "title")
+		base := templateState(t, "tplRoot", "title")
 		doc := docState(t, "docRoot", "title", "after")
 		// the caller's own block nests the colliding one
 		doc.Get("after").Model().ChildrenIds = []string{"title"}
@@ -155,7 +155,7 @@ func TestMergeDocumentIntoTemplate(t *testing.T) {
 
 	t.Run("relation links and collection items travel with the document", func(t *testing.T) {
 		// given
-		base := templateState(t, "intro")
+		base := templateState(t, "tplRoot", "intro")
 		doc := docState(t, "docRoot", "p1")
 		doc.AddRelationLinks(&model.RelationLink{Key: "severity", Format: model.RelationFormat_status})
 		doc.UpdateStoreSlice("objects", []string{"obj1", "obj2"})
@@ -170,7 +170,7 @@ func TestMergeDocumentIntoTemplate(t *testing.T) {
 
 	t.Run("a document with no blocks leaves the template untouched", func(t *testing.T) {
 		// given
-		base := templateState(t, "header", "intro")
+		base := templateState(t, "tplRoot", "header", "intro")
 		doc := docState(t, "docRoot")
 
 		// when
@@ -264,7 +264,7 @@ func TestCreateObjectFromSnapshotTemplate(t *testing.T) {
 		fx.templates.EXPECT().CreateTemplateStateWithDetails(mock.Anything).
 			RunAndReturn(func(req template.CreateTemplateRequest) (*state.State, error) {
 				request = req
-				return templateState(t, "intro"), nil
+				return templateState(t, "tpl-weekly", "intro"), nil
 			})
 		var created *state.State
 		fx.creator.EXPECT().CreateSmartBlockFromStateInSpace(mock.Anything, mock.Anything, []domain.TypeKey{"memo"}, mock.Anything).
@@ -306,5 +306,147 @@ func TestCreateObjectFromSnapshotTemplate(t *testing.T) {
 		// then
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "tpl-weekly")
+	})
+}
+
+func TestApplyTemplateGuards(t *testing.T) {
+	t.Run("a blank state stands in for a template that could not load, and is reported", func(t *testing.T) {
+		// given — templateimpl degrades a deleted or archived template to the
+		// blank template and returns no error; the caller's layer has already
+		// told the caller which template applies
+		fx := newCreateAdapterFixture(t)
+		fx.space.EXPECT().GetTypeIdByKey(mock.Anything, domain.TypeKey("memo")).Return("type-memo", nil)
+		fx.templates.EXPECT().CreateTemplateStateWithDetails(mock.Anything).
+			RunAndReturn(func(req template.CreateTemplateRequest) (*state.State, error) {
+				return templateState(t, "blank"), nil
+			})
+
+		// when — no create expectation: nothing may be written
+		_, err := fx.CreateObjectFromSnapshot(context.Background(), "space1", memoSnapshot(), "tpl-weekly")
+
+		// then
+		require.Error(t, err)
+		assert.ErrorIs(t, err, apicore.ErrTemplateUnavailable)
+	})
+
+	t.Run("a template service failure is the same unavailable signal", func(t *testing.T) {
+		fx := newCreateAdapterFixture(t)
+		fx.space.EXPECT().GetTypeIdByKey(mock.Anything, domain.TypeKey("memo")).Return("type-memo", nil)
+		fx.templates.EXPECT().CreateTemplateStateWithDetails(mock.Anything).Return(nil, errors.New("tree missing"))
+
+		_, err := fx.CreateObjectFromSnapshot(context.Background(), "space1", memoSnapshot(), "tpl-weekly")
+
+		require.ErrorIs(t, err, apicore.ErrTemplateUnavailable)
+	})
+}
+
+// tableSnapshotState builds a document holding a one-cell table: the cell's
+// id is arithmetic over the row and column ids, not a reference.
+func tableSnapshotState(t *testing.T, rowId, colId string) *state.State {
+	t.Helper()
+	cellId := rowId + "-" + colId
+	blocks := []*model.Block{
+		{Id: "docRoot", ChildrenIds: []string{"tbl"},
+			Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
+		{Id: "tbl", ChildrenIds: []string{"cols", "rows"},
+			Content: &model.BlockContentOfTable{Table: &model.BlockContentTable{}}},
+		{Id: "cols", ChildrenIds: []string{colId},
+			Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableColumns}}},
+		{Id: colId, Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}}},
+		{Id: "rows", ChildrenIds: []string{rowId},
+			Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableRows}}},
+		{Id: rowId, ChildrenIds: []string{cellId},
+			Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}}},
+		{Id: cellId, Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "cell"}}},
+	}
+	st, err := state.NewDocFromSnapshot("docRoot", &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{Blocks: blocks}})
+	require.NoError(t, err)
+	return st
+}
+
+// cellIdOf reads the one cell id a row block points at.
+func cellIdOf(st *state.State, rowId string) string {
+	row := st.Pick(rowId)
+	if row == nil || len(row.Model().ChildrenIds) != 1 {
+		return ""
+	}
+	return row.Model().ChildrenIds[0]
+}
+
+func TestMergeDocumentIntoTemplateTables(t *testing.T) {
+	t.Run("a renamed row carries its cells with it", func(t *testing.T) {
+		// given — the caller's row id is a word a template state also uses
+		base := templateState(t, "tplRoot", "title")
+		doc := tableSnapshotState(t, "title", "c1")
+
+		// when
+		mergeDocumentIntoTemplate(base, doc)
+
+		// then
+		assert.Equal(t, "template title", blockText(base, "title"), "the template's block keeps the id")
+		rows := base.Pick("rows")
+		require.NotNil(t, rows)
+		require.Len(t, rows.Model().ChildrenIds, 1)
+		newRow := rows.Model().ChildrenIds[0]
+		assert.NotEqual(t, "title", newRow)
+		assert.Equal(t, newRow+"-c1", cellIdOf(base, newRow),
+			"a cell is addressed as rowId-colId, so the rename has to reach it")
+		assert.NotNil(t, base.Pick(newRow+"-c1"), "and the cell block itself must carry the derived id")
+	})
+
+	t.Run("a colliding cell renames its row instead of taking a fresh id", func(t *testing.T) {
+		// given — only the CELL collides; reminting it alone would detach it
+		base := templateState(t, "tplRoot", "r1-c1")
+		doc := tableSnapshotState(t, "r1", "c1")
+
+		// when
+		mergeDocumentIntoTemplate(base, doc)
+
+		// then
+		rows := base.Pick("rows")
+		require.NotNil(t, rows)
+		newRow := rows.Model().ChildrenIds[0]
+		assert.NotEqual(t, "r1", newRow, "the collision was promoted to the row")
+		assert.Equal(t, newRow+"-c1", cellIdOf(base, newRow))
+		assert.Equal(t, "template r1-c1", blockText(base, "r1-c1"), "the template's block kept the colliding id")
+	})
+
+	t.Run("a table with no collision is untouched", func(t *testing.T) {
+		base := templateState(t, "tplRoot", "intro")
+		doc := tableSnapshotState(t, "r1", "c1")
+
+		mergeDocumentIntoTemplate(base, doc)
+
+		assert.Equal(t, "r1-c1", cellIdOf(base, "r1"))
+	})
+}
+
+func TestMergeDocumentIntoTemplateRootAttributes(t *testing.T) {
+	t.Run("the caller's root attributes survive the template's root", func(t *testing.T) {
+		// given
+		base := templateState(t, "tplRoot", "intro")
+		base.Get("tplRoot").Model().BackgroundColor = "grey"
+		doc := docState(t, "docRoot", "p1")
+		docRoot := doc.Get("docRoot").Model()
+		docRoot.BackgroundColor = "red"
+		docRoot.Fields = &types.Struct{Fields: map[string]*types.Value{"width": pbtypes.Float64(0.5)}}
+
+		// when
+		mergeDocumentIntoTemplate(base, doc)
+
+		// then
+		root := base.Pick(base.RootId()).Model()
+		assert.Equal(t, "red", root.BackgroundColor, "the caller said something; the template's value was a default")
+		assert.Equal(t, 0.5, pbtypes.GetFloat64(root.Fields, "width"))
+	})
+
+	t.Run("a document that sets nothing leaves the template's root alone", func(t *testing.T) {
+		base := templateState(t, "tplRoot", "intro")
+		base.Get("tplRoot").Model().BackgroundColor = "grey"
+		doc := docState(t, "docRoot", "p1")
+
+		mergeDocumentIntoTemplate(base, doc)
+
+		assert.Equal(t, "grey", base.Pick(base.RootId()).Model().BackgroundColor)
 	})
 }

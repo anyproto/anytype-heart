@@ -2,6 +2,7 @@ package apicore
 
 import (
 	"context"
+	"errors"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -70,6 +71,19 @@ type EditNeeds struct {
 type ObjectReader interface {
 	ReadObject(ctx context.Context, spaceId string, objectId string) (ObjectRead, error)
 }
+
+// ErrTemplateUnavailable is what CreateObjectFromSnapshot returns when the
+// template it was handed could not be turned into a state: deleted or
+// archived since the caller's id was checked, or unloadable.
+//
+// It exists because the two callers of that outcome want opposite things. A
+// template the CALLER named must refuse — the object would otherwise be
+// created without the content the request asked for, under a response naming
+// the template. A template the TYPE named must not fail the create at all;
+// the create is retried without it and the result says so. Neither decision
+// belongs in the adapter, which knows nothing of who chose the id, so the
+// adapter reports the fact and the API layer decides.
+var ErrTemplateUnavailable = errors.New("template unavailable")
 
 // ObjectCreator creates objects from AnyBlock snapshots — the API v2 create
 // path (APIV2.md §2 Phase 2). CreateObjectFromSnapshot builds the object's

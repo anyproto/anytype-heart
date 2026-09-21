@@ -3,13 +3,16 @@ package api
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/block/simple/table"
 	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -121,7 +124,20 @@ func (a *objectCreateAdapter) applyTemplate(
 		Details:    doc.Details(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("build state from template %s: %w", templateId, err)
+		return nil, fmt.Errorf("%w: build state from template %s: %v", apicore.ErrTemplateUnavailable, templateId, err)
+	}
+	// The template service degrades a template it cannot load to the BLANK
+	// template and reports no error (templateimpl.createCustomTemplateState
+	// does this for one that was deleted or archived between the API's index
+	// check and this load). Silence there would mean an object created with
+	// none of the content the response says it started from, so the degrade
+	// is detected and reported: a state built from a real template is rooted
+	// at that template's id, the blank one is not. The root is used rather
+	// than the sourceObject detail because a document's own properties are
+	// merged into these details, so the detail is reachable by the caller and
+	// the root is not.
+	if base.RootId() != templateId {
+		return nil, fmt.Errorf("%w: template %s did not load", apicore.ErrTemplateUnavailable, templateId)
 	}
 	base.SetObjectTypeKeys(typeKeys)
 	if key := doc.UniqueKeyInternal(); key != "" {
@@ -164,6 +180,7 @@ func mergeDocumentIntoTemplate(base, doc *state.State) {
 		}
 		return true
 	})
+	carryTableCells(ordered, renamed)
 	rename := func(id string) string {
 		if minted, ok := renamed[id]; ok {
 			return minted
@@ -185,6 +202,11 @@ func mergeDocumentIntoTemplate(base, doc *state.State) {
 	for _, child := range root.Model().ChildrenIds {
 		baseRoot.Model().ChildrenIds = append(baseRoot.Model().ChildrenIds, rename(child))
 	}
+	// the document's root block keeps its identity from the template — it IS
+	// the template's root — but the attributes the caller set on theirs are
+	// theirs, and dropping them would make a create with a template quietly
+	// lose what the same create without one keeps
+	mergeRootAttributes(baseRoot.Model(), root.Model())
 	base.AddRelationLinks(doc.PickRelationLinks()...)
 	if store := doc.Store(); store != nil {
 		for key, value := range store.Fields {
@@ -247,4 +269,85 @@ func bundledIdsToInstall(relationKeys []domain.RelationKey, typeKeys []domain.Ty
 		}
 	}
 	return ids
+}
+
+// carryTableCells keeps a renamed table coherent. A cell's id is not free:
+// it is `<rowId>-<colId>` (table.MakeCellID), and the row and column blocks
+// reach their cells through that arithmetic rather than through a reference
+// the rename map would rewrite. So a renamed row or column drags its cells
+// with it, and a cell that collided on its own is not reminted in place —
+// its ROW is renamed instead, which is the only rename a cell id can follow.
+// A minted id is bson hex and carries no separator, so a derived cell id
+// still parses as one.
+//
+// The test is the id's SHAPE, and a caller's ordinary `intro-1` matches it.
+// That is harmless: every reference to an id travels through the same map, so
+// renaming a block that is not a cell is invisible.
+func carryTableCells(blocks []simple.Block, renamed map[string]string) {
+	rowOf := map[string]string{}
+	for _, b := range blocks {
+		id := b.Model().Id
+		if !table.IsTableCell(id) {
+			continue
+		}
+		row, _, found := strings.Cut(id, table.TableCellSeparator)
+		if !found {
+			continue
+		}
+		rowOf[id] = row
+	}
+	// a cell that collided cannot take a fresh id of its own: promote the
+	// collision to its row, whose rename every cell of that row then follows
+	for cellId, rowId := range rowOf {
+		if _, collided := renamed[cellId]; !collided {
+			continue
+		}
+		delete(renamed, cellId)
+		if _, alreadyRenamed := renamed[rowId]; !alreadyRenamed {
+			renamed[rowId] = bson.NewObjectId().Hex()
+		}
+	}
+	for cellId, rowId := range rowOf {
+		row, col, _ := strings.Cut(cellId, table.TableCellSeparator)
+		newRow, rowRenamed := renamed[rowId]
+		newCol, colRenamed := renamed[col]
+		if !rowRenamed && !colRenamed {
+			continue
+		}
+		if !rowRenamed {
+			newRow = row
+		}
+		if !colRenamed {
+			newCol = col
+		}
+		renamed[cellId] = newRow + table.TableCellSeparator + newCol
+	}
+}
+
+// mergeRootAttributes copies the root-block attributes the caller's document
+// set onto the template's root. The caller wins where they said something:
+// what the template carries on its root is a default, and what the document
+// carries is a choice.
+func mergeRootAttributes(base, doc *model.Block) {
+	if doc.BackgroundColor != "" {
+		base.BackgroundColor = doc.BackgroundColor
+	}
+	if doc.Align != model.Block_AlignLeft {
+		base.Align = doc.Align
+	}
+	if doc.VerticalAlign != model.Block_VerticalAlignTop {
+		base.VerticalAlign = doc.VerticalAlign
+	}
+	if doc.Fields == nil || len(doc.Fields.Fields) == 0 {
+		return
+	}
+	if base.Fields == nil {
+		base.Fields = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	if base.Fields.Fields == nil {
+		base.Fields.Fields = map[string]*types.Value{}
+	}
+	for key, value := range doc.Fields.Fields {
+		base.Fields.Fields[key] = value
+	}
 }

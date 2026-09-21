@@ -7526,10 +7526,54 @@ blends two structures nobody asked to merge; `POST /templates` is excluded
 because a template has no template of its own, which the refusal says rather
 than resolving `template`'s own `default_template`.
 
+**What a four-lens review changed.** Five defects, four of them in the same
+family — the response naming a template the object did not get:
+
+- The template service degrades a template it cannot LOAD to the blank
+  template and returns no error, so `WithTemplateValidation: false` was not
+  enough: a template deleted between the index check and the load produced an
+  empty object under a response naming it. The adapter now detects the
+  degrade structurally — a state built from a real template is rooted at that
+  template's id, the blank one is not — and reports
+  `apicore.ErrTemplateUnavailable`. The API layer decides what that means,
+  because the adapter cannot: a template the CALLER named refuses, a type
+  DEFAULT is dropped and the create is retried without it, with a warning.
+  The root is the signal rather than the `sourceObject` detail, because a
+  document's own properties are merged into those details and the root is
+  out of a caller's reach.
+- A type this space has not installed yet has no store row, and the target
+  check was skipped when its id could not be read — silently applying a
+  template of ANOTHER type. The id is derivable (a derived object's id is a
+  pure function of space and key), and it is exactly what a template carries
+  as its target, so the check now always runs.
+- `typeIdInSpace` returns a miss for a store ERROR, which read as "this type
+  has no default template" and applied none, silently. The default path takes
+  the error instead.
+- A table cell's id is `<rowId>-<colId>` arithmetic, not a reference, so
+  reminting a colliding row or column left its cells behind. Renames now
+  carry cells, and a cell that collides on its own promotes the collision to
+  its row — the only rename a cell id can follow.
+- The caller's root-block attributes were dropped when a template applied,
+  because the merge skips the document root. They are merged onto the
+  template's root now, caller wins.
+
+One defect the review found is OLDER than this change and is fixed with it:
+the format's `type_internal_key` is excluded from the document this API
+serves, but the format's own validation still accepts it on a create, and on
+import it WINS over `type`. Everything the endpoint decides reads `type` —
+the type gate, the restricted-type refusal, the property keys, the type the
+result reports, and now the template — so a body carrying both was validated
+as one type and created as another. It is refused, path-addressed. The
+remaining excluded members (`root`, `store`, `file_remote`, `uninstalled`,
+`property_settings`) are accepted on create the same way and deserve the same
+audit; only this one was verified to override identity.
+
 **Finding one.** Templates were unreachable by read: search excludes them
 from every result by design, so a template id could only come from the
 response that created it. `GET /v2/spaces/{space_id}/templates` is the read
 half of the collection `POST /templates` writes to, with `?type=` narrowing
 to one type's templates — the question a create actually asks — and each row
 carrying `default`, so which template a type starts from is visible where the
-templates are.
+templates are. The listing excludes uninstalled and hidden rows on top of the
+store's archived/deleted defaults: offering an id the create path then
+refuses is the same broken loop pointing the other way.

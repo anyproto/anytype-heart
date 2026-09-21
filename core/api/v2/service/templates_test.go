@@ -7,8 +7,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -516,5 +518,286 @@ func TestTemplateSchemaMembers(t *testing.T) {
 		assert.Contains(t, objectRoot["properties"].(map[string]any), "template")
 		assert.NotContains(t, templateRoot["properties"].(map[string]any), "template",
 			"a template does not start from a template")
+	})
+}
+
+func TestCreateObjectTemplateHardening(t *testing.T) {
+	t.Run("a refused template mints nothing on the way", func(t *testing.T) {
+		// given — an option that would be created, and a template that will
+		// not resolve: the refusal has to come first, or the caller's space
+		// keeps an option for an object that was never created
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.addMemoType(t)
+		fx.addSelectProperty(t)
+
+		// when — no ObjectCreateRelationOption expectation: minting one fails the test
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"memo","name":"Monday","template":"tpl-nope","properties":{"severity":"Brand new"}}`), false, true)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/template", apiErr.Issues[0].Path)
+	})
+
+	t.Run("a template of another type is refused for a type this space has not installed", func(t *testing.T) {
+		// given — `task` is bundled, so it resolves as a type key while
+		// holding no store row; its id is still derivable, and it is what any
+		// template of that type carries as its target
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.addMemoType(t)
+		fx.addTemplate(t, "tpl-memo", "Weekly memo", testMemoTypeId)
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"task","name":"Monday","template":"tpl-memo"}`), false, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/template", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "memo")
+	})
+
+	t.Run("a template of the derived type applies for a type this space has not installed", func(t *testing.T) {
+		// given — the fixture derives type ids as drv-ot-<key>
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.addTemplate(t, "tpl-task", "Weekly task", "drv-ot-task")
+		applied := fx.expectCreateWithTemplate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"task","name":"Monday","template":"tpl-task"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, result.Template)
+		assert.Equal(t, "tpl-task", *applied)
+	})
+
+	t.Run("a default that points at another type's template warns and is not applied", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.addMemoType(t, "tpl-task")
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("type-task"),
+			bundle.RelationKeyName:           domain.String("Task"),
+			bundle.RelationKeyUniqueKey:      domain.String("ot-task"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+		}})
+		fx.addTemplate(t, "tpl-task", "Weekly task", "type-task")
+		applied := fx.expectCreateWithTemplate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"memo","name":"Monday"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Nil(t, result.Template)
+		assert.Empty(t, *applied)
+		require.Len(t, result.Warnings, 1)
+		assert.Contains(t, result.Warnings[0].Message, "tpl-task")
+	})
+
+	t.Run("a create with no type takes the page type's default", func(t *testing.T) {
+		// given — an absent type defaults to page, and the default template
+		// must follow the type the object is actually created as
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:                domain.String("type-page"),
+			bundle.RelationKeyName:              domain.String("Page"),
+			bundle.RelationKeyUniqueKey:         domain.String("ot-page"),
+			bundle.RelationKeyResolvedLayout:    domain.Int64(int64(model.ObjectType_objectType)),
+			bundle.RelationKeyDefaultTemplateId: domain.StringList([]string{"tpl-page"}),
+		}})
+		fx.addTemplate(t, "tpl-page", "Blank-ish page", "type-page")
+		applied := fx.expectCreateWithTemplate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"formatVersion":"2.0","properties":{"name":"Monday"}}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, result.Template)
+		assert.Equal(t, "tpl-page", result.Template.Id)
+		assert.Equal(t, "tpl-page", *applied)
+	})
+
+	t.Run("the full document form passes the template to the create, not only to the result", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.addMemoType(t)
+		fx.addTemplate(t, "tpl-weekly", "Weekly memo", testMemoTypeId)
+		applied := fx.expectCreateWithTemplate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"formatVersion":"2.0","type":"memo","template":"tpl-weekly","properties":{"name":"Monday"},"blocks":[{"type":"paragraph","text":"body"}]}`),
+			false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "tpl-weekly", *applied)
+		require.NotNil(t, result.Template)
+		assert.Equal(t, "tpl-weekly", result.Template.Id)
+	})
+
+	t.Run("a template that vanishes mid-request refuses when the caller named it", func(t *testing.T) {
+		// given — it passed the index check, then failed to load
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.addMemoType(t)
+		fx.addTemplate(t, "tpl-weekly", "Weekly memo", testMemoTypeId)
+		fx.creatorMock.EXPECT().CreateObjectFromSnapshot(mock.Anything, testSpaceId, mock.Anything, "tpl-weekly").
+			Return("", apicore.ErrTemplateUnavailable)
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"memo","name":"Monday","template":"tpl-weekly"}`), false, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/template", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "deleted")
+	})
+
+	t.Run("a default that vanishes mid-request warns, and the object is created without it", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.addMemoType(t, "tpl-weekly")
+		fx.addTemplate(t, "tpl-weekly", "Weekly memo", testMemoTypeId)
+		fx.creatorMock.EXPECT().CreateObjectFromSnapshot(mock.Anything, testSpaceId, mock.Anything, "tpl-weekly").
+			Return("", apicore.ErrTemplateUnavailable)
+		fx.creatorMock.EXPECT().CreateObjectFromSnapshot(mock.Anything, testSpaceId, mock.Anything, "").
+			Return("newObj", nil)
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"memo","name":"Monday"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "newObj", result.Id)
+		assert.Nil(t, result.Template, "the result must not name a template the object did not get")
+		require.Len(t, result.Warnings, 1)
+		assert.Contains(t, result.Warnings[0].Message, "tpl-weekly")
+	})
+
+	t.Run("a stored type key beside the api key is refused, not silently preferred", func(t *testing.T) {
+		// given — the format lets a document carry type_internal_key, and on
+		// import it wins over `type`: every check this endpoint makes, the
+		// template included, reads `type`
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.addMemoType(t)
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"formatVersion":"2.0","type":"memo","type_internal_key":"task","properties":{"name":"X"}}`), false, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/type_internal_key", apiErr.Issues[0].Path)
+	})
+}
+
+func TestListTemplatesHardening(t *testing.T) {
+	t.Run("an uninstalled or hidden template does not list", func(t *testing.T) {
+		// given — the create path refuses both, so offering them here would
+		// hand the caller ids that cannot be used
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.addMemoType(t)
+		fx.addTemplate(t, "tpl-live", "Weekly memo", testMemoTypeId)
+		fx.addTemplate(t, "tpl-uninstalled", "Removed", testMemoTypeId, objectstore.TestObject{
+			bundle.RelationKeyIsUninstalled: domain.Bool(true),
+		})
+		fx.addTemplate(t, "tpl-hidden", "Hidden", testMemoTypeId, objectstore.TestObject{
+			bundle.RelationKeyIsHidden: domain.Bool(true),
+		})
+
+		// when
+		rows, total, _, err := fx.ListTemplates(context.Background(), testSpaceId, "", 0, 25)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, rows, 1)
+		assert.Equal(t, "tpl-live", rows[0].Id)
+		assert.Equal(t, 1, total)
+	})
+
+	t.Run("pages carry has_more and a stable total", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.addMemoType(t)
+		fx.addTemplate(t, "tpl-a", "A", testMemoTypeId, objectstore.TestObject{
+			bundle.RelationKeyLastModifiedDate: domain.Int64(300),
+		})
+		fx.addTemplate(t, "tpl-b", "B", testMemoTypeId, objectstore.TestObject{
+			bundle.RelationKeyLastModifiedDate: domain.Int64(200),
+		})
+		fx.addTemplate(t, "tpl-c", "C", testMemoTypeId, objectstore.TestObject{
+			bundle.RelationKeyLastModifiedDate: domain.Int64(100),
+		})
+
+		// when
+		first, total, hasMore, err := fx.ListTemplates(context.Background(), testSpaceId, "", 0, 2)
+		require.NoError(t, err)
+		second, secondTotal, secondHasMore, err := fx.ListTemplates(context.Background(), testSpaceId, "", 2, 2)
+		require.NoError(t, err)
+		beyond, _, _, err := fx.ListTemplates(context.Background(), testSpaceId, "", 3, 2)
+		require.NoError(t, err)
+
+		// then
+		assert.Equal(t, []string{"tpl-a", "tpl-b"}, []string{first[0].Id, first[1].Id})
+		assert.True(t, hasMore)
+		assert.Equal(t, 3, total)
+		require.Len(t, second, 1)
+		assert.Equal(t, "tpl-c", second[0].Id)
+		assert.False(t, secondHasMore)
+		assert.Equal(t, 3, secondTotal)
+		assert.Empty(t, beyond)
+	})
+
+	t.Run("the type filter takes every spelling the type routes take", func(t *testing.T) {
+		// given — a stored key that is not the served spelling
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("type-custom"),
+			bundle.RelationKeyName:           domain.String("Field note"),
+			bundle.RelationKeyUniqueKey:      domain.String("ot-6a941a2861fab2a6d6059813"),
+			bundle.RelationKeyApiObjectKey:   domain.String("field_note"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+		}})
+		fx.addTemplate(t, "tpl-note", "Weekly note", "type-custom")
+
+		for _, term := range []string{"field_note", "6a941a2861fab2a6d6059813", "Field note"} {
+			// when
+			rows, _, _, err := fx.ListTemplates(context.Background(), testSpaceId, term, 0, 25)
+
+			// then
+			require.NoError(t, err, term)
+			require.Len(t, rows, 1, term)
+			assert.Equal(t, "tpl-note", rows[0].Id, term)
+			assert.Equal(t, "field_note", rows[0].TemplateFor, term, "the row spells the type the way every other response does")
+		}
 	})
 }

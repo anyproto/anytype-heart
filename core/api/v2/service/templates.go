@@ -18,12 +18,15 @@ package v2service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -60,15 +63,30 @@ func (s *Service) resolveCreateTemplate(ctx context.Context, spaceId, typeKey, r
 	if requested == createTemplateNone {
 		return nil, nil, nil
 	}
-	// a bundled type that this space has not installed yet resolves as a type
-	// (validateDocumentRefs passed it) while holding no store row, so typeId
-	// can be empty here. A template the CALLER named is still checked in that
-	// case — everything but the one check that needs an id to compare against
-	// — because silently ignoring an id the caller sent is the defect this
-	// surface exists to close.
-	typeId, typeFound := s.typeIdInSpace(spaceId, typeKey)
+	// a store error here is an error, never a missing type: reading "this
+	// type has no row" out of a failed read would apply no template and say
+	// nothing, which is the silence this surface exists to end
+	typeId, typeFound, err := s.liveTypeIdInSpace(spaceId, typeKey)
+	if err != nil {
+		return nil, nil, err
+	}
 	if requested != "" {
-		name, problem, err := s.inspectTemplate(spaceId, requested, typeId)
+		// a bundled type this space has not installed yet passes
+		// validateDocumentRefs while holding no store row. Its id is still
+		// knowable — a derived object's id is a pure function of space and
+		// key — and it has to be, because it is the id any template of that
+		// type carries as its target: without it the one check that catches
+		// a template of ANOTHER type would be skipped exactly where a caller
+		// cannot see the difference either.
+		targetId := typeId
+		if !typeFound {
+			derived, err := s.creator.TypeIdByKey(ctx, spaceId, domain.TypeKey(typeKey))
+			if err != nil {
+				return nil, nil, fmt.Errorf("derive type id for %s: %w", typeKey, err)
+			}
+			targetId = derived
+		}
+		name, problem, err := s.inspectTemplate(spaceId, requested, targetId)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -81,6 +99,8 @@ func (s *Service) resolveCreateTemplate(ctx context.Context, spaceId, typeKey, r
 		return &v2model.AppliedTemplate{Id: requested, Name: name, Source: templateSourceRequest}, nil, nil
 	}
 	if !typeFound {
+		// no row, so no default_template to read; a type this space has yet
+		// to install carries no settings of its own
 		return nil, nil, nil
 	}
 	defaultId, err := s.typeDefaultTemplate(spaceId, typeId)
@@ -124,6 +144,26 @@ func (s *Service) resolveDocumentTemplate(ctx context.Context, spaceId string, e
 		return nil, nil, nil
 	}
 	return s.resolveCreateTemplate(ctx, spaceId, envelope.Type, requested)
+}
+
+// liveTypeIdInSpace is typeIdInSpace with the store error kept apart from the
+// miss. The nil-error twin is right where a lookup failure can only widen a
+// refusal (a key that resolves elsewhere in the chain); here it would decide
+// silently that a type has no settings, so this path takes the error.
+func (s *Service) liveTypeIdInSpace(spaceId, typeKey string) (string, bool, error) {
+	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, typeKey)
+	if err != nil {
+		return "", false, nil // not a type key shape; the type gate owns that verdict
+	}
+	details, err := s.store.SpaceIndex(spaceId).GetObjectByUniqueKey(uk)
+	if err != nil {
+		if errors.Is(err, spaceindex.ErrObjectNotFound) {
+			return "", false, nil
+		}
+		return "", false, fmt.Errorf("read type %s of space %s: %w", typeKey, spaceId, err)
+	}
+	id := details.GetString(bundle.RelationKeyId)
+	return id, id != "", nil
 }
 
 // inspectTemplate reads one template candidate and reports its display name
@@ -214,11 +254,24 @@ func (s *Service) ListTemplates(ctx context.Context, spaceId, typeTerm string, o
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, err
 	}
+	// archived and deleted rows are excluded by the store's query defaults;
+	// these two are not, and a listing that offers a template the create path
+	// then refuses is the same broken loop in the other direction
 	filters := []database.FilterRequest{
 		{
 			RelationKey: "type.uniqueKey",
 			Condition:   model.BlockContentDataviewFilter_Equal,
 			Value:       domain.String(bundle.TypeKeyTemplate.URL()),
+		},
+		{
+			RelationKey: bundle.RelationKeyIsUninstalled,
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       domain.Bool(true),
+		},
+		{
+			RelationKey: bundle.RelationKeyIsHidden,
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       domain.Bool(true),
 		},
 	}
 	entries, err := s.liveTypes(spaceId)

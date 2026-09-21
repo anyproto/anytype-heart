@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
@@ -513,6 +514,26 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	// 5. create — the whole document as the object's initial state, on top of
 	// the template's when one applies
 	id, err := s.creator.CreateObjectFromSnapshot(ctx, spaceId, snapshot, appliedTemplate.GetId())
+	if errors.Is(err, apicore.ErrTemplateUnavailable) {
+		// the template passed every check this layer can make and then could
+		// not be loaded — deleted between the two, in the usual case. Who
+		// chose it decides what that means: the caller's choice is refused,
+		// the type's is dropped with a warning rather than failing a create
+		// over a setting the caller never touched.
+		if appliedTemplate.GetSource() == templateSourceRequest {
+			return nil, v2model.ValidationFailed("the template cannot be applied",
+				v2model.Issue{Path: "/template", Message: fmt.Sprintf(
+					"template %q could not be loaded — it was most likely deleted while this request was in flight", appliedTemplate.GetId())}.
+					Hintf("list the templates of this type with %s", v2model.RefListTemplates(spaceId).With("type", result.Type)))
+		}
+		result.Warnings = append(result.Warnings, v2model.Issue{
+			Path: "/type",
+			Message: fmt.Sprintf("the default template of type %q was not applied: template %q could not be loaded",
+				result.Type, appliedTemplate.GetId()),
+		}.Hintf("point default_template at a live template, or clear it, with %s", v2model.RefUpdateType(spaceId, result.Type)))
+		result.Template = nil
+		id, err = s.creator.CreateObjectFromSnapshot(ctx, spaceId, snapshot, "")
+	}
 	if err != nil {
 		return nil, fmt.Errorf("create object in space %s: %w", spaceId, err)
 	}
@@ -549,6 +570,9 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 // both legends for that reason.
 func (s *Service) rejectInvalidDocument(body []byte, kind string) error {
 	if err := rejectExportLegends(body); err != nil {
+		return err
+	}
+	if err := rejectTypeInternalKey(body); err != nil {
 		return err
 	}
 	if err := rejectMisplacedPropertyArray(body); err != nil {
@@ -594,6 +618,33 @@ func rejectExportLegends(body []byte) error {
 		return nil
 	}
 	return v2model.ValidationFailed("the document carries export legends", issues...)
+}
+
+// rejectTypeInternalKey refuses the stored-key twin of the envelope `type`.
+//
+// It is one of the members this API excludes from the document it serves and
+// publishes (apiV2ExcludedMembers), and excluding it from the SCHEMA was not
+// enough: the format's own validation still accepts it, and on import it wins
+// over `type`. Everything this endpoint decides — the type gate, the
+// restricted-type refusal, the removed-type check, the property keys it holds
+// the document to, the type the result reports, and which template applies —
+// reads `type`, so a body carrying both is validated as one type and created
+// as another. Refusing is the fix rather than honouring it: a caller of this
+// surface addresses a type by the api key `type` already carries.
+func rejectTypeInternalKey(body []byte) error {
+	var root map[string]json.RawMessage
+	if err := json.Unmarshal(body, &root); err != nil {
+		return nil // malformed JSON is the format validation's verdict to give
+	}
+	if _, present := root["type_internal_key"]; !present {
+		return nil
+	}
+	return v2model.ValidationFailed("the document carries a stored type key",
+		v2model.Issue{
+			Path:    "/type_internal_key",
+			Message: "type_internal_key is an export member, and on import it overrides type",
+			Hint:    "drop it — name the type in `type`",
+		})
 }
 
 // mapUnmarshalError converts anyblockjson validation errors into C6 errors.
