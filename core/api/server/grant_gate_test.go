@@ -79,6 +79,7 @@ var knownRouteParams = map[string]bool{
 	"collection_id":  true,
 	"chat_id":        true,
 	"message_id":     true,
+	"widget_id":      true,
 }
 
 // substituteRouteParams replaces every :param / *param segment so gin

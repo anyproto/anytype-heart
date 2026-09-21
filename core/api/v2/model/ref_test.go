@@ -48,6 +48,7 @@ func TestRefHelpersMatchOperations(t *testing.T) {
 		RefCreateCollection("s"), RefCreateQuery("s"), RefUploadFile("s"),
 		RefGetCollectionObjects("s", "c"), RefGetQueryObjects("s", "q"),
 		RefGetSchema("k"), RefGetOpSchema("op"),
+		RefListWidgets("s"), RefCreateWidget("s"),
 	}
 	placeholder := regexp.MustCompile(`\{[a-z_]+\}`)
 	for _, r := range refs {

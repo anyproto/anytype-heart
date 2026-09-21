@@ -47,6 +47,8 @@ key returns `401`.
 - **Chats** store messages separately from document blocks. An object's
   discussion, its comment thread, is a chat reached by the id an object read
   serves as `discussion`.
+- **Widgets** are the sidebar: the objects a space pins for every member,
+  and the ones this account keeps for itself.
 
 Blocks form a flat array in document order, with `indent` describing the
 hierarchy. Inline text formatting uses Markdown. The title and description
@@ -60,6 +62,7 @@ live in the `name` and `description` properties.
 | Read a document | `GET /v2/spaces/{space_id}/objects/{object_id}` |
 | Create an object | `POST /v2/spaces/{space_id}/objects` |
 | Edit a document | `PATCH /v2/spaces/{space_id}/objects/{object_id}` |
+| Pin an object to the sidebar | `POST /v2/spaces/{space_id}/widgets` |
 
 ## Names and identifiers
 

@@ -119,6 +119,7 @@ DRY_RUN_CREATES = {
     "create_space",
     "create_template",
     "create_type",
+    "create_widget",
     "upload_file",
 }
 
@@ -145,6 +146,9 @@ IDEMPOTENT_OPERATIONS = {
     "delete_chat_message",
     "toggle_chat_reaction",
     "read_chat",
+    "create_widget",
+    "update_widget",
+    "delete_widget",
     "create_discussion",
 }
 
@@ -167,6 +171,8 @@ REQUEST_BODY_LIMITED_OPERATIONS = {
     "update_space",
     "update_type",
     "upload_file",
+    "create_widget",
+    "update_widget",
 }
 
 

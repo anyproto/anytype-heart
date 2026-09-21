@@ -302,6 +302,7 @@ Request processing order:
 - `APIV2_TYPED_HINTS.md` — how repair hints name operations instead of spelling HTTP routes.
 - `APIV2_TYPE_OPS.md` — the incremental type-edit op channel.
 - `APIV2_OBJECT_DELETE.md` — creator provenance and the own-output delete rule.
+- `APIV2_WIDGETS.md` — the sidebar widget surface: the desktop's rules mirrored, the two roots, what is re-checked under the lock.
 - `v2/markdown/api.md` — the **published** API introduction. A test pins it; run `make openapi` after
   editing it.
 

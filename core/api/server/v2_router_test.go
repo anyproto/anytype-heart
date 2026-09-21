@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/core/mock_apicore"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	apiv2 "github.com/anyproto/anytype-heart/core/api/v2"
@@ -57,12 +58,13 @@ func newV2ServerFixture(t *testing.T) *fixture {
 
 	creatorMock := mock_apicore.NewMockObjectCreator(t)
 	mutatorMock := mock_apicore.NewMockObjectMutator(t)
+	widgetsMock := mock_apicore.NewMockWidgets(t)
 
 	crossSpaceSubService.On("Subscribe", mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{}, nil).Maybe()
 	accountMock.On("GetInfo", mock.Anything).Return(&model.AccountInfo{TechSpaceId: mockedTechSpaceId}, nil).Once()
 
 	server := NewServer(mwMock, accountMock, eventMock, crossSpaceSubService, chatSubService, fileObjectMock,
-		V2Deps{Reader: readerMock, Creator: creatorMock, Mutator: mutatorMock, ChatSub: chatSubService, Store: store}, mockedListenAddr, OpenApiDocs{})
+		V2Deps{Reader: readerMock, Creator: creatorMock, Mutator: mutatorMock, Widgets: widgetsMock, ChatSub: chatSubService, Store: store}, mockedListenAddr, OpenApiDocs{})
 
 	return &fixture{
 		Server:               server,
@@ -72,6 +74,7 @@ func newV2ServerFixture(t *testing.T) *fixture {
 		crossSpaceSubService: crossSpaceSubService,
 		chatSubService:       chatSubService,
 		fileObjectMock:       fileObjectMock,
+		widgetsMock:          widgetsMock,
 		objectStore:          store,
 	}
 }
@@ -268,6 +271,11 @@ func TestV2Routes(t *testing.T) {
 			{"DELETE", "/v2/spaces/space1/chats/chat1/messages/msg1"},
 			{"POST", "/v2/spaces/space1/chats/chat1/messages/msg1/reactions"},
 			{"POST", "/v2/spaces/space1/chats/chat1/read"},
+			// the sidebar mutations: a retried create duplicates a widget the
+			// desktop itself never lets a user duplicate
+			{"POST", "/v2/spaces/space1/widgets"},
+			{"PATCH", "/v2/spaces/space1/widgets/w1"},
+			{"DELETE", "/v2/spaces/space1/widgets/w1"},
 			{"POST", "/v2/spaces/space1/objects/obj1/discussion"},
 		} {
 			t.Run(route.method+" "+route.path, func(t *testing.T) {
@@ -397,6 +405,48 @@ func TestV2Routes(t *testing.T) {
 		require.Equal(t, http.StatusNotFound, w.Code)
 	})
 
+	t.Run("widget dry runs through the real engine commit nothing", func(t *testing.T) {
+		// the handler tests install their own dry-run flag; this is the
+		// production wiring — group-level ensureDryRun ahead of the widget
+		// routes — exercised end to end with a keyed session
+		fx := newV2ServerFixture(t)
+		fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "tok", Scope: model.AccountAuth_JsonAPI}}
+		fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
+		fx.objectStore.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("spaceView_space1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
+			bundle.RelationKeyTargetSpaceId:  domain.String("space1"),
+		}})
+		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("page1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}})
+		fx.widgetsMock.EXPECT().CanEditWidgets(mock.Anything, "space1", mock.Anything).Return(true, nil).Maybe()
+		fx.widgetsMock.EXPECT().ListWidgets(mock.Anything, "space1", apicore.WidgetScopeSpace).Return([]apicore.WidgetEntry{{Id: "w1", Scope: apicore.WidgetScopeSpace, Target: "page1", Layout: model.BlockContentWidget_Tree, Limit: 6}}, nil).Maybe()
+		fx.widgetsMock.EXPECT().ListWidgets(mock.Anything, "space1", apicore.WidgetScopePersonal).Return(nil, nil).Maybe()
+		// no CreateWidget / UpdateWidget / DeleteWidget expectation: a call fails the mock
+		for _, probe := range []struct {
+			method, path, body string
+			status             int
+		}{
+			{"GET", "/v2/spaces/space1/widgets", "", http.StatusOK},
+			{"POST", "/v2/spaces/space1/widgets?dry_run=true", `{"target":"page1","scope":"personal"}`, http.StatusOK},
+			{"PATCH", "/v2/spaces/space1/widgets/w1?dry_run=true", `{"limit":10}`, http.StatusOK},
+			{"DELETE", "/v2/spaces/space1/widgets/w1?dry_run=true", "", http.StatusOK},
+		} {
+			req := httptest.NewRequest(probe.method, probe.path, strings.NewReader(probe.body))
+			req.Host = localApiHost
+			req.Header.Set("Authorization", "Bearer validKey")
+			req.Header.Set("Content-Type", "application/json")
+			w := httptest.NewRecorder()
+			fx.Engine().ServeHTTP(w, req)
+			require.Equal(t, probe.status, w.Code, "%s %s: %s", probe.method, probe.path, w.Body.String())
+			if probe.method != "GET" {
+				require.Contains(t, w.Body.String(), `"dry_run":true`, "%s %s", probe.method, probe.path)
+			}
+		}
+	})
+
 	t.Run("create routes are registered and require auth", func(t *testing.T) {
 		// given
 		fx := newV2ServerFixture(t)
@@ -434,6 +484,10 @@ func TestV2Routes(t *testing.T) {
 			{"DELETE", "/v2/spaces/space1/chats/chat1/messages/msg1"},
 			{"POST", "/v2/spaces/space1/chats/chat1/messages/msg1/reactions"},
 			{"POST", "/v2/spaces/space1/chats/chat1/read"},
+			{"GET", "/v2/spaces/space1/widgets"},
+			{"POST", "/v2/spaces/space1/widgets"},
+			{"PATCH", "/v2/spaces/space1/widgets/w1"},
+			{"DELETE", "/v2/spaces/space1/widgets/w1"},
 			{"POST", "/v2/spaces/space1/objects/obj1/discussion"},
 		} {
 			// when

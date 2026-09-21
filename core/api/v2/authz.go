@@ -122,6 +122,7 @@ var v2RouteAuthz = map[string]RouteAuthz{
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/files/:file_id/content"):             {Verb: RouteVerbRead},
 	routeKey(http.MethodHead, "/v2/spaces/:space_id/files/:file_id/content"):            {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/templates"):                          {Verb: RouteVerbRead},
+	routeKey(http.MethodGet, "/v2/spaces/:space_id/widgets"):                            {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/types"):                              {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/types/:type"):                        {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/properties"):                         {Verb: RouteVerbRead},
@@ -147,6 +148,10 @@ var v2RouteAuthz = map[string]RouteAuthz{
 	routeKey(http.MethodPost, "/v2/spaces/:space_id/queries"):           {Verb: RouteVerbWrite},
 	routeKey(http.MethodPost, "/v2/spaces/:space_id/collections"):       {Verb: RouteVerbWrite},
 	routeKey(http.MethodPost, "/v2/spaces/:space_id/files"):             {Verb: RouteVerbWrite},
+	// widget surface (registerWidgetRoutes)
+	routeKey(http.MethodPost, "/v2/spaces/:space_id/widgets"):              {Verb: RouteVerbWrite},
+	routeKey(http.MethodPatch, "/v2/spaces/:space_id/widgets/:widget_id"):  {Verb: RouteVerbWrite},
+	routeKey(http.MethodDelete, "/v2/spaces/:space_id/widgets/:widget_id"): {Verb: RouteVerbWrite},
 	// edit surface (registerEditRoutes)
 	routeKey(http.MethodPatch, "/v2/spaces/:space_id/objects/:object_id"):  {Verb: RouteVerbWrite},
 	routeKey(http.MethodDelete, "/v2/spaces/:space_id/objects/:object_id"): {Verb: RouteVerbWrite},

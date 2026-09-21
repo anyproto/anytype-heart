@@ -79,6 +79,7 @@ whether you may write. Ask this instead of discovering limits through 403s
 | upload a file | `POST …/files` (multipart or `{"url":…}`) → the id file blocks and chat attachments need |
 | download a file or icon | `GET …/files/{file_id}/content`; use a file id or a space/member's `icon_image`. Optional `?width=` selects an image size. Supports ranges, conditional reads, and `HEAD`. |
 | chat | `GET/POST …/chats/{id}/messages`, `POST …/read` — see Chats |
+| put an object in the sidebar | `POST …/widgets` `{target, scope}` — `scope:"personal"` is this account's own sidebar (any writer); `scope:"space"` is the shared one (owner/admin; not offered in one-to-one spaces). `GET …/widgets` lists both; `PATCH`/`DELETE …/widgets/{id-or-target}` change or remove one. Not `is_favorite` |
 | comment on an object | `POST …/objects/{id}/discussion` → `{id}`, then the chat routes with that id — see Chats |
 
 ## Read cheaply

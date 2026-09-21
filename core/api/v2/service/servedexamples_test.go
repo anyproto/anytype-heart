@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
@@ -117,6 +118,34 @@ func TestV2ServedExamplesAreAcceptedByTheirEndpoints(t *testing.T) {
 			var req v2model.CreateQueryRequest
 			decodeInto(t, b, &req)
 			_, err := fx.CreateQuery(ctx, testSpaceId, req, true, false)
+			return err
+		}},
+		{"widget", func(t *testing.T, fx *v2Fixture, example []byte) []byte {
+			// the published target is an elided placeholder; substitute an
+			// object this space has, and let the personal sidebar be writable
+			// and empty, as a fresh account's is
+			var published struct {
+				Target string `json:"target"`
+			}
+			require.NoError(t, json.Unmarshal(example, &published))
+			assert.True(t, strings.ContainsRune(published.Target, '…'), "%q reads as a real id", published.Target)
+			fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+				bundle.RelationKeyId:             domain.String("page1"),
+				bundle.RelationKeyName:           domain.String("Page"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			}})
+			fx.widgetsMock.EXPECT().CanEditWidgets(mock.Anything, testSpaceId, mock.Anything).Return(true, nil).Maybe()
+			fx.widgetsMock.EXPECT().ListWidgets(mock.Anything, testSpaceId, mock.Anything).Return(nil, nil).Maybe()
+			var body map[string]any
+			require.NoError(t, json.Unmarshal(example, &body))
+			body["target"] = "page1"
+			rewritten, err := json.Marshal(body)
+			require.NoError(t, err)
+			return rewritten
+		}, func(t *testing.T, fx *v2Fixture, ctx context.Context, b []byte) error {
+			var req v2model.CreateWidgetRequest
+			decodeInto(t, b, &req)
+			_, err := fx.CreateWidget(ctx, testSpaceId, req, true)
 			return err
 		}},
 		{"collection", func(t *testing.T, fx *v2Fixture, example []byte) []byte {

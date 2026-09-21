@@ -32,6 +32,8 @@
 //	@tag.description				Upload files and download file or icon content.
 //	@tag.name						Templates
 //	@tag.description				Starting documents for a type.
+//	@tag.name						Widgets
+//	@tag.description				The sidebar: which objects a space pins for every member, and which this account keeps for itself.
 //	@tag.name						Schemas
 //	@tag.description				The format itself: what a valid document looks like, what each PATCH op accepts, and a validator to check one against them. Read these before writing.
 //	@termsOfService					https://anytype.io/terms_of_use

@@ -106,7 +106,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	var jsonDoc responseContractDocument
 	require.NoError(t, json.Unmarshal(jsonBody, &jsonDoc))
 	jsonOperations := responseContractOperations(t, jsonDoc)
-	require.Len(t, jsonOperations, 51)
+	require.Len(t, jsonOperations, 55)
 
 	yamlBody, err := os.ReadFile("../docs/v2/openapi.yaml")
 	require.NoError(t, err)
@@ -200,17 +200,18 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	for _, operation := range jsonOperations {
 		pairCount += len(operation.Responses)
 	}
-	assert.Equal(t, 326, pairCount, "the checked-in response inventory changes only deliberately")
+	assert.Equal(t, 355, pairCount, "the checked-in response inventory changes only deliberately")
 
 	dryRunCreates := stringSet(
 		"add_chat_message", "create_chat", "create_collection", "create_object", "create_property",
-		"create_query", "create_space", "create_template", "create_type", "upload_file",
+		"create_query", "create_space", "create_template", "create_type", "create_widget", "upload_file",
 	)
 	idempotent := stringSet(
 		"validate", "create_space", "update_space", "create_object", "create_template", "create_type",
 		"update_type", "delete_type", "create_property", "update_property", "delete_property", "create_query",
 		"create_collection", "upload_file", "patch_object", "delete_object", "create_chat", "add_chat_message",
 		"edit_chat_message", "delete_chat_message", "toggle_chat_reaction", "read_chat",
+		"create_widget", "update_widget", "delete_widget",
 		// create_discussion is a create with a dry run, but not in
 		// dryRunCreates: its 200 is ALSO the answer for an object that already
 		// has a discussion, and that description says so rather than
@@ -220,6 +221,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	requestBodyLimited := stringSet(
 		"add_chat_message", "create_chat", "create_collection", "create_property", "create_query", "create_space",
 		"edit_chat_message", "read_chat", "toggle_chat_reaction", "update_property", "update_space", "update_type", "upload_file",
+		"create_widget", "update_widget",
 	)
 
 	// A concurrency cap is not a rate limit: the chat stream refuses when too
@@ -315,5 +317,180 @@ func TestV2OpenAPIQueryPaths(t *testing.T) {
 			assert.NotContains(t, path, "{set_id}",
 				"%s still documents the pre-rename path param in %s", name, path)
 		}
+	}
+}
+
+// TestV2WidgetSchemasArePinned keeps the served widget shapes honest: the
+// result flattens its row (no nested `widget` member), a link row omits its
+// limit, and the three mutations advertise the replay header.
+func TestV2WidgetSchemasArePinned(t *testing.T) {
+	body, err := os.ReadFile("../docs/v2/openapi.json")
+	require.NoError(t, err)
+	var doc struct {
+		Components struct {
+			Schemas map[string]struct {
+				Properties map[string]json.RawMessage `json:"properties"`
+			} `json:"schemas"`
+		} `json:"components"`
+		Paths map[string]map[string]struct {
+			Parameters []struct {
+				Name string `json:"name"`
+				In   string `json:"in"`
+			} `json:"parameters"`
+		} `json:"paths"`
+	}
+	require.NoError(t, json.Unmarshal(body, &doc))
+
+	yamlBody, err := os.ReadFile("../docs/v2/openapi.yaml")
+	require.NoError(t, err)
+	var yamlDoc struct {
+		Components struct {
+			Schemas map[string]struct {
+				Properties map[string]struct {
+					Type string `yaml:"type"`
+					Ref  string `yaml:"$ref"`
+				} `yaml:"properties"`
+			} `yaml:"schemas"`
+		} `yaml:"components"`
+	}
+	require.NoError(t, yaml.Unmarshal(yamlBody, &yamlDoc))
+
+	// the members, their types, and the same shape in both forms
+	rowTypes := map[string]string{"id": "string", "scope": "string", "target": "string", "layout": "string", "limit": "integer", "view_id": "string"}
+	// placed is a reference to its own component, so its type sits there
+	resultTypes := map[string]string{"dry_run": "boolean", "removed": "boolean", "warnings": "array", "placed": ""}
+	for member, typ := range rowTypes {
+		resultTypes[member] = typ
+	}
+	for schema, want := range map[string]map[string]string{"WidgetRow": rowTypes, "WidgetResult": resultTypes} {
+		jsonProps := doc.Components.Schemas[schema].Properties
+		yamlProps := yamlDoc.Components.Schemas[schema].Properties
+		require.Len(t, jsonProps, len(want), schema)
+		require.Len(t, yamlProps, len(want), schema)
+		for member, typ := range want {
+			var prop struct {
+				Type string `json:"type"`
+				Ref  string `json:"$ref"`
+			}
+			require.Contains(t, jsonProps, member, "%s.%s (the row is flattened into the result)", schema, member)
+			require.NoError(t, json.Unmarshal(jsonProps[member], &prop))
+			if typ == "" {
+				assert.Equal(t, "#/components/schemas/WidgetPlaced", prop.Ref, "%s.%s", schema, member)
+				continue
+			}
+			assert.Equal(t, typ, prop.Type, "%s.%s", schema, member)
+			assert.Equal(t, typ, yamlProps[member].Type, "%s.%s in yaml", schema, member)
+		}
+	}
+
+	// the placement receipt's own members, in both forms
+	placedTypes := map[string]string{"after": "string", "before": "string", "position": "string"}
+	require.Len(t, doc.Components.Schemas["WidgetPlaced"].Properties, len(placedTypes))
+	for member, typ := range placedTypes {
+		var prop struct {
+			Type string `json:"type"`
+		}
+		require.NoError(t, json.Unmarshal(doc.Components.Schemas["WidgetPlaced"].Properties[member], &prop))
+		assert.Equal(t, typ, prop.Type, "WidgetPlaced.%s", member)
+		assert.Equal(t, typ, yamlDoc.Components.Schemas["WidgetPlaced"].Properties[member].Type, "WidgetPlaced.%s in yaml", member)
+	}
+	assert.Equal(t, "#/components/schemas/WidgetPlaced", yamlDoc.Components.Schemas["WidgetResult"].Properties["placed"].Ref, "placed in yaml")
+
+	// the replay header on the three mutations, and the success bindings
+	var bindings struct {
+		Paths map[string]map[string]struct {
+			Responses map[string]struct {
+				Content map[string]struct {
+					Schema struct {
+						Ref string `json:"$ref"`
+					} `json:"schema"`
+				} `json:"content"`
+			} `json:"responses"`
+		} `json:"paths"`
+	}
+	require.NoError(t, json.Unmarshal(body, &bindings))
+	// nested item references, both forms
+	var nested struct {
+		Components struct {
+			Schemas map[string]struct {
+				Properties map[string]struct {
+					Items struct {
+						Ref string `json:"$ref" yaml:"$ref"`
+					} `json:"items" yaml:"items"`
+				} `json:"properties" yaml:"properties"`
+				Required []string `json:"required" yaml:"required"`
+			} `json:"schemas" yaml:"schemas"`
+		} `json:"components" yaml:"components"`
+	}
+	// each form decoded into its own value: a yaml decode into a value the
+	// json decode already filled would keep the json's components and let a
+	// component missing from the yaml pass
+	nestedYaml := nested
+	require.NoError(t, json.Unmarshal(body, &nested))
+	require.NoError(t, yaml.Unmarshal(yamlBody, &nestedYaml))
+	for form, n := range map[string]*struct {
+		Components struct {
+			Schemas map[string]struct {
+				Properties map[string]struct {
+					Items struct {
+						Ref string `json:"$ref" yaml:"$ref"`
+					} `json:"items" yaml:"items"`
+				} `json:"properties" yaml:"properties"`
+				Required []string `json:"required" yaml:"required"`
+			} `json:"schemas" yaml:"schemas"`
+		} `json:"components" yaml:"components"`
+	}{"json": &nested, "yaml": &nestedYaml} {
+		for _, component := range []string{"WidgetRow", "WidgetResult", "WidgetPlaced", "ListResponse-WidgetRow"} {
+			require.Contains(t, n.Components.Schemas, component, "%s in %s", component, form)
+		}
+		assert.Equal(t, "#/components/schemas/Issue", n.Components.Schemas["WidgetResult"].Properties["warnings"].Items.Ref, form)
+		assert.Equal(t, "#/components/schemas/WidgetRow", n.Components.Schemas["ListResponse-WidgetRow"].Properties["data"].Items.Ref, form)
+		assert.NotContains(t, n.Components.Schemas["WidgetRow"].Required, "limit", "limit stays optional in %s: a link row omits it", form)
+	}
+
+	var yamlBindings struct {
+		Paths map[string]map[string]struct {
+			Parameters []struct {
+				Name string `yaml:"name"`
+				In   string `yaml:"in"`
+			} `yaml:"parameters"`
+			Responses map[string]struct {
+				Content map[string]struct {
+					Schema struct {
+						Ref string `yaml:"$ref"`
+					} `yaml:"schema"`
+				} `yaml:"content"`
+			} `yaml:"responses"`
+		} `yaml:"paths"`
+	}
+	require.NoError(t, yaml.Unmarshal(yamlBody, &yamlBindings))
+
+	for _, route := range []struct{ path, method, status, ref string }{
+		{"/v2/spaces/{space_id}/widgets", "post", "201", "#/components/schemas/WidgetResult"},
+		{"/v2/spaces/{space_id}/widgets", "post", "200", "#/components/schemas/WidgetResult"},
+		{"/v2/spaces/{space_id}/widgets/{widget_id}", "patch", "200", "#/components/schemas/WidgetResult"},
+		{"/v2/spaces/{space_id}/widgets/{widget_id}", "delete", "200", "#/components/schemas/WidgetResult"},
+		{"/v2/spaces/{space_id}/widgets", "get", "200", "#/components/schemas/ListResponse-WidgetRow"},
+	} {
+		assert.Equal(t, route.ref, bindings.Paths[route.path][route.method].Responses[route.status].Content["application/json"].Schema.Ref,
+			"%s %s %s", route.method, route.path, route.status)
+		assert.Equal(t, route.ref, yamlBindings.Paths[route.path][route.method].Responses[route.status].Content["application/json"].Schema.Ref,
+			"%s %s %s in yaml", route.method, route.path, route.status)
+		if route.method == "get" {
+			continue
+		}
+		var found, foundYaml bool
+		for _, param := range doc.Paths[route.path][route.method].Parameters {
+			if param.Name == "Idempotency-Key" && param.In == "header" {
+				found = true
+			}
+		}
+		for _, param := range yamlBindings.Paths[route.path][route.method].Parameters {
+			if param.Name == "Idempotency-Key" && param.In == "header" {
+				foundYaml = true
+			}
+		}
+		assert.True(t, found, "%s %s advertises Idempotency-Key", route.method, route.path)
+		assert.True(t, foundYaml, "%s %s advertises Idempotency-Key in yaml", route.method, route.path)
 	}
 }

@@ -39,7 +39,10 @@ type Service struct {
 	// provenance is the DELETE enforcement read: creator provenance from
 	// validated change storage, never from details.
 	// nil refuses every object DELETE — fail closed.
-	provenance  apicore.ObjectProvenance
+	provenance apicore.ObjectProvenance
+	// widgets is the sidebar-widget port (APIV2_WIDGETS.md). nil refuses
+	// every widget call — fail closed.
+	widgets     apicore.Widgets
 	store       objectstore.ObjectStore
 	techSpaceId string
 	// accountId is the caller's account identity — the input of the SPEC
@@ -60,8 +63,8 @@ type Service struct {
 // may be nil when the edit surface is not served; provenance may be nil
 // (object DELETE then refuses everything — fail closed). accountId may be
 // empty (degraded placeholder substitution only).
-func NewService(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, provenance apicore.ObjectProvenance, chatSub apicore.ChatSubscriptionService, fileService apicore.FileObjectService, store objectstore.ObjectStore, techSpaceId, accountId string) *Service {
-	return &Service{fileService: fileService, mw: mw, reader: reader, creator: creator, mutator: mutator, provenance: provenance, chatSub: chatSub, store: store, techSpaceId: techSpaceId, accountId: accountId}
+func NewService(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, provenance apicore.ObjectProvenance, widgets apicore.Widgets, chatSub apicore.ChatSubscriptionService, fileService apicore.FileObjectService, store objectstore.ObjectStore, techSpaceId, accountId string) *Service {
+	return &Service{fileService: fileService, mw: mw, reader: reader, creator: creator, mutator: mutator, provenance: provenance, widgets: widgets, chatSub: chatSub, store: store, techSpaceId: techSpaceId, accountId: accountId}
 }
 
 // ensureSpaceGranted is the space half of the service-level backstop of the

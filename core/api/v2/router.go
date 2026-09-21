@@ -200,6 +200,10 @@ func RegisterRoutes(router *gin.Engine, deps RouteDeps) {
 		deps.AnalyticsEvent("V2ListTemplates"),
 		v2handler.ListTemplatesHandler(deps.Service),
 	)
+	v2.GET("/spaces/:space_id/widgets",
+		deps.AnalyticsEvent("V2ListWidgets"),
+		v2handler.ListWidgetsHandler(deps.Service),
+	)
 	v2.GET("/spaces/:space_id/properties",
 		deps.AnalyticsEvent("V2ListProperties"),
 		v2handler.ListPropertiesHandler(deps.Service),
@@ -249,6 +253,7 @@ func RegisterRoutes(router *gin.Engine, deps RouteDeps) {
 	)
 
 	registerCreateRoutes(v2, deps, idempotencyMW)
+	registerWidgetRoutes(v2, deps, idempotencyMW)
 	registerEditRoutes(v2, deps, idempotencyMW)
 	registerChatRoutes(v2, deps, idempotencyMW)
 }
@@ -424,5 +429,34 @@ func registerCreateRoutes(v2 *gin.RouterGroup, deps RouteDeps, idempotencyMW gin
 		idempotencyMW,
 		deps.AnalyticsEvent("V2UploadFile"),
 		v2handler.UploadFileHandler(deps.Service),
+	)
+}
+
+// registerWidgetRoutes registers the sidebar widget mutations
+// (APIV2_WIDGETS.md): every one behind the C8 idempotency middleware and the
+// write limiter, like every other mutation, and all of them parse
+// ?dry_run=true. Skipped with the create surface: both need a writable
+// server.
+func registerWidgetRoutes(v2 *gin.RouterGroup, deps RouteDeps, idempotencyMW gin.HandlerFunc) {
+	if deps.CreateDisabled {
+		return
+	}
+	v2.POST("/spaces/:space_id/widgets",
+		deps.WriteRateLimit,
+		idempotencyMW,
+		deps.AnalyticsEvent("V2CreateWidget"),
+		v2handler.CreateWidgetHandler(deps.Service),
+	)
+	v2.PATCH("/spaces/:space_id/widgets/:widget_id",
+		deps.WriteRateLimit,
+		idempotencyMW,
+		deps.AnalyticsEvent("V2UpdateWidget"),
+		v2handler.UpdateWidgetHandler(deps.Service),
+	)
+	v2.DELETE("/spaces/:space_id/widgets/:widget_id",
+		deps.WriteRateLimit,
+		idempotencyMW,
+		deps.AnalyticsEvent("V2DeleteWidget"),
+		v2handler.DeleteWidgetHandler(deps.Service),
 	)
 }
