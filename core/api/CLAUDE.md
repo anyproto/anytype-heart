@@ -291,3 +291,21 @@ Request processing order:
 3. Verify authentication token validity
 4. Use integration tests for end-to-end validation
 5. Check rate limiting configuration
+## Where the design is written down
+
+- `APIV2.md` — the v2 specification. Start here.
+- `APIV2_PLAN.md` — outstanding work and the decisions still waiting on a human.
+- `APIV2_SURFACES.md` — what `/v1` serves that `/v2` does not yet, and the decisions about it.
+- `APIV2_ADDRESSING.md` — the identifier layer: how a type or property is named, minted and resolved.
+- `APIV2_VOCABULARY.md` — slugs on the wire, names at the edge, ids in reference slots.
+- `APIV2_TOKENS.md` — the measured token review the served shapes were chosen from.
+- `APIV2_TYPED_HINTS.md` — how repair hints name operations instead of spelling HTTP routes.
+- `APIV2_TYPE_OPS.md` — the incremental type-edit op channel.
+- `APIV2_OBJECT_DELETE.md` — creator provenance and the own-output delete rule.
+- `v2/markdown/api.md` — the **published** API introduction. A test pins it; run `make openapi` after
+  editing it.
+
+Eval rounds and surface-review reports are not kept in the repo. They are archived at
+`../anytype-heart-docs/core/api/` along with an unapplied Swagger prose patch; see the MANIFEST there.
+Their findings were never re-triaged against current code, so treat one as a lead to verify, not as a
+known-open bug.

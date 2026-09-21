@@ -23,8 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
-// Round-four eval (APIV2_ROUND4_SCENARIOS.md) R4-1 and R4-2: a deleted type
-// and a delete receipt spell a type the way every read does.
+// A deleted type, and a delete receipt, spell a type the way every read does.
 
 const gadgetTypeKey = "6aad7fbf61fab205fe53c2f0"
 

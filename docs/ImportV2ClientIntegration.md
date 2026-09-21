@@ -28,18 +28,19 @@ phase) and [ImportErrorCodes.md](ImportErrorCodes.md) (wire error codes).
 
 ## 2. Which imports go through V2
 
-Routing happens inside `ObjectImport` per `req.type`, gated by config flags:
+Routing happens inside `ObjectImport` per `req.type`:
 
-| `model.Import.Type` | V2? | Flag (env) |
+| `model.Import.Type` | Engine | Kill switch |
 |---|---|---|
-| `Markdown` (1) | yes | `ImportV2Markdown` / `ANYTYPE_IMPORTV2MARKDOWN` |
-| `Obsidian` (7) | yes | `ImportV2Markdown` / `ANYTYPE_IMPORTV2MARKDOWN` |
-| `Notion` (0) | yes | `ImportV2Notion` / `ANYTYPE_IMPORTV2NOTION` |
-| `Html`, `Txt`, `Csv`, `Pb`, `External` | no — v1 | — |
+| `Markdown` (1) | **v2** | `ANYTYPE_IMPORTV2MARKDOWN=false` |
+| `Obsidian` (7) | **v2** | `ANYTYPE_IMPORTV2MARKDOWN=false` |
+| `Notion` (0) | **v2** | `ANYTYPE_IMPORTV2NOTION=false` |
+| `Html`, `Txt`, `Csv`, `Pb`, `External` | v1 | — |
 
-While the flags are off, every import runs on v1 exactly as before. The flags are middleware-side;
-clients cannot set them and must not depend on which engine served a request. **Write client code so
-it works on both** — the v2-only fields are additive and arrive empty from v1.
+v2 is the default for the first three; the env switches exist to fall back to v1 without a new build.
+They are middleware-side — clients cannot set them and must not depend on which engine served a
+request. **Write client code so it works on both**: the v2-only fields are additive and arrive empty
+from v1.
 
 `ObjectImportList` and `ObjectImportUseCase` are untouched.
 

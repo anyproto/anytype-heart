@@ -1,11 +1,10 @@
 # Typed hints
 
-Status: **implemented** on branch `typed-hints` (heart) and `typed-hints`
-(anytype-mcp), 2026-09-18, then reviewed through three lenses (correctness,
-served-prose truth on each surface, contract and guards) and amended — see
-"Review findings" at the end. The open questions of the original brief are
-answered below with the decision taken; the evidence section is kept as the
-rationale.
+Status: **implemented**, in heart and in anytype-mcp. Every repair hint this
+API emits names an operation through a typed reference rather than spelling an
+HTTP route, and a guard refuses a route that reaches served prose. The open
+questions of the original brief are answered below with the decision taken; the
+evidence sections are kept as the rationale.
 
 ## The problem
 
@@ -256,179 +255,25 @@ discovery merge (anytype-mcp PR 152).
 - Do not add a route to a served string. The guard will refuse it; name the
   operation with a `Ref`.
 
-## Review findings (three lenses, 2026-09-18)
 
-Confirmed and fixed:
-
-- **Space-reference echo broke the contract** (all three lenses). The
-  echo rewrote hint text to the caller's short space id but not the
-  reference's `space_id`, so the rendering no longer occurred in the hint.
-  Fixed in `echoRefs`, pinned by `TestEchoSpaceRefKeepsHintAndReferencesAligned`.
-- **Sequential replacement rescanned inserted text**, and **placeholder
-  substitution iterated a map** (nondeterministic when a bound value looked
-  like a placeholder). Both renderers now substitute in one pass.
-- **Messages were rewritten by the hint's references**; a quoted value
-  spelling a route would have become a tool name. Messages now get the
-  catch-all only.
-- **Five query-parameter hints escaped the guard** (`?ids=full`,
-  `?dry_run=true`, `?offset=&limit=`, `?after=`/`?before=`, `?block=`).
-  Converted; the guard now matches any `?name=`.
-- **Curated renderings that were false or broken**: `find` presented as a
-  type listing (it is not; the row now says types are visible on `find`
-  results and that there is no listing); `describe` "for its id" (it serves
-  no id; the sentence no longer claims a source for it); the
-  `list_properties` row carried its own verb and collided with three
-  sentences (now a noun phrase); query and collection reads were called
-  "outside this tool set" (they are `read` on the list object); "page one
-  space with `find`" (`find` cannot page; the sentence now says "search one
-  space at a time"); "at the editing tools" (now "through"); the
-  block-not-found repair pointed at the outline read where the old wrapper
-  deliberately steered to the full read (the server now names the plain
-  read, which lists the same blocks with their full text).
-- **The shared RPC-error conversion** put `path: "space_id"` on space
-  creation, which has no such parameter, and asserted an account status a
-  missing store does not establish. Now path-less with a neutral fact.
-- **External wrapper**: a `see_also` entry that was `null`, or an op id that
-  named an `Object.prototype` member, threw; query arguments were typed by
-  spelling rather than schema (`limit: "5"`). All fixed and tested.
-
-Round two (the same three sessions, resumed against the amended tree):
-
-- **The round-one echo fix over-reached**: it shortened any reference value
-  containing the space id, so a property key or option name that happened
-  to contain it was re-addressed. The echo now re-spells only a value that
-  IS the space id, and the hint span-wise (each rendering follows its
-  reference; the prose between renderings gets the plain substitution), so
-  the hint and its references keep agreeing even for such a key. Pinned by
-  a subtest of `TestEchoSpaceRefKeepsHintAndReferencesAligned`.
-- **The "message is a fact" rule did not hold in the served text**: the
-  wrapper's `Text` was still rewritten by references, message part
-  included. `deRest` now substitutes each hint as a whole span of the text
-  (old hint → re-spelled hint), so an executor's edits around it survive
-  and the message is never touched by a reference; both `Text` and
-  `Message` are asserted.
-- **The catch-all rescanned inserted tool spellings**: a bound value that
-  looked like a route was redacted into "the HTTP API" after the reference
-  had been rendered. The catch-all now sees only the prose between
-  renderings.
-- **External wrapper**: JSON file downloads were rewritten when their
-  content looked like an envelope (now skipped for any operation whose
-  success response is not JSON, with a proxy test); `$ref` parameters and
-  schemas were typed as strings (now resolved through the document's
-  components); malformed references were annotated (now passed through).
-- **Three chat hints spelled the route with an ASCII ellipsis**
-  (`GET .../messages`) and escaped both the original and the widened guard;
-  converted to bound `get_chat_messages` references (the first with
-  `limit=1`), and the guard now matches `.../` too.
-- **Curated wording, second pass**: the type-listing row read as an
-  instruction to list keys "with the types find results show"; it is now
-  "a type listing (not in this tool set; `find` results show each object's
-  type)". A read with `?ids=full` rendered as plain `read`, which serves
-  compact labels and cannot satisfy the clone repair; it now renders as
-  "a full-id read (not in this tool set)". The type-views hint named
-  `insert_view`, which the curated wrapper does not offer; it now says
-  "edit its views through" the patch operation without naming ops.
-- The inventory count is 75 under the final rule (66 under the original
-  guard, 72 before the ASCII-ellipsis widening), and the round-trip test
-  is described as constructor-level, not end to end.
-
-Round three (the same sessions, resumed once more):
-
-- **The round-two echo still over-reached**: a value that EQUALS the space
-  id was echoed whether or not it was a space id. Only the `space_id`
-  binding is echoed now; a property key equal to the id stays a key.
-- **The round-two text rewrite still had two holes**: the final catch-all
-  ran over the whole text and redacted the tool spellings the span engine
-  had just protected, and substituting the hint text wherever it occurred
-  also rewrote a message that quoted it. The text now goes through the same
-  span engine keyed on each hint as rendered — the parenthesised `(hint)`
-  form, which a quoted value in a message does not take — with the
-  catch-all confined to everything outside those spans. A message whose
-  own text is `x (hint)` is the remaining, accepted, false positive.
-- **`find` serves handles, not full ids**, so the collection-items repair
-  said so falsely on the curated surface; the row now says it.
-- **External wrapper**: response `$ref`s and `2XX` range declarations
-  bypassed the download gate (resolved and matched by actual status now);
-  schema reference chains typed as string (resolved with cycle protection);
-  arrays were accepted as parameter maps (rejected).
-
-Round four (merge review, all three lenses): **no merge-blocking finding.**
-Nits fixed: bound path values in the external wrapper are now typed by
-their declared parameter like query values; the view-filter type refusal's
-message-to-hint move is listed under "Wire"; the malformed-reference test
-returned early on a non-string message and did not exercise the list it
-supplied; the type tool's duplicate-name cleanup still matched the retired
-"the HTTP API" text and now drops the `update_type` hint by operation; the
-test-only `spacesListRepair` constant moved into the test file; overview
-prose that still described `strings.Replacer` and unconditional success
-rewriting was corrected. Pre-existing and untouched: the upload-file
-request schema differs between the generated JSON and YAML documents.
-
-Round five (three FRESH reviewers, no prior context, merge-review framing):
-no merge-blocking finding. Fixed: the curated resend spelling offered a
-parameter no tool takes (option-creation consent and dry runs are host
-settings; it now says so); the block-listing repair named the plain read,
-whose curated form serves ROWS for a query or collection, not blocks — it
-names the outline read again, which lists every object's blocks, while the
-locator's full-text repair keeps the plain read (this reverses a round-one
-change, with the reason recorded here); the `list_properties` row promised
-an exhaustive list where `describe` caps at 120 names; the duplicate-key
-hints bound an update to a slug several holders answer to, which that
-update would refuse as ambiguous; the published `Ref` descriptions now
-state the rendering rule (verbatim substitution, no percent-encoding, kept
-placeholders, sorted query, query-only rendering for a resend); the guard
-decodes literals and matches versionless and ellipsis routes; the doc's
-"Wire" section and both PR descriptions were completed.
-
-Round six (three fresh reviewers on the MERGED commits, develop feb1ee1ad
-and main c6f069f): nothing needing a must-fix follow-up. Fixed in the
-follow-up: the name-only property create overwrote the ambiguous-slug
-repair with "use the existing property <slug>", which cannot be followed
-(now "pass an explicit different key", tested for both request shapes);
-the three list-read warnings that said "pass view=<id>" carried no
-reference and escaped the guard — on the curated wrapper, whose `read`
-takes no view argument, they now render as a parameter these tools do not
-take (the guard matches `name=<placeholder>` mentions too); the
-`list_properties` row overstated `describe`'s cap (only the off-type
-section is capped; it now says the listing may be truncated); the Wire
-section gained the three create refusals' rewording and the several-types
-message. Nothing that landed on develop meanwhile touched `core/api`.
-
-Round seven (three fresh reviewers on the merged commits plus the
-follow-up): nothing must-fix. Fixed in the follow-up: a key collision with
-a built-in property (installed or not) offered an update that the update
-route refuses as read-only or 404s — the key is now called reserved, with
-no reference; the curated `describe … options` refused a hidden property's
-exact key because its index comes from the listing, which hides such
-properties, while the consent refusal names that key and points there —
-it now tries the options read by the key as given and only refuses on the
-server's own 404; a server build that predates the references spells the
-block hint as "GET the object with ?outline=true", which neither the
-references nor the route catch-all touched — a bare `?name=value` is now
-redacted too; the external wrapper's response gate rejected vendor JSON
-media types with digits in the subtype (`application/vnd.anytype.v2+json`).
-
-Accepted, not fixed (added in round five):
+## Known limitations, accepted
 
 - A server hint that names a tool (`set_cell` in the nested-block repair)
   cannot know the caller's tier; on the small tier that tool is absent.
 - The locator's full-text repair names the plain read, whose curated form
-  serves rows for a query or collection; text edits on a list object's own
-  blocks are rare.
-
-Accepted, not fixed:
-
-- The `hint == Ref.String()` contract is by construction, not checked at
-  response time (see "The shape").
+  serves rows for a query or collection. Text edits on a list object's own
+  blocks are rare enough to accept this.
+- The `hint == Ref.String()` contract holds by construction and is not
+  checked at response time (see "The shape").
 - `describe` on the curated wrapper injects the hidden `Name` property, so
-  "lists user-visible properties only" is very slightly off on that surface
-  for the one over-15-keys property refusal.
+  "lists user-visible properties only" is slightly off on that surface, for
+  the one over-15-keys property refusal.
 - The guard exempts whole schema-document files.
 
 ## Not in scope
 
-The ranked fix list in `result.md` also has: inlining the op envelope in
-`decodeStrictOp`'s error; the object-channel unknown-op error pointing at the
-type surface; naming every offending key instead of one; deleting the
-irrelevant If-Match line from unknown-field errors. Independent and cheaper;
-none needed this design.
+Four adjacent error-message improvements are independent of this design and
+cheaper than it: inlining the op envelope in `decodeStrictOp`'s error; pointing
+the object-channel unknown-op error at the type surface; naming every offending
+key instead of one; and deleting the irrelevant If-Match line from
+unknown-field errors. None of them needed typed hints to land.
