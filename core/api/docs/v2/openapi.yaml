@@ -692,6 +692,8 @@ components:
           type: boolean
         etag:
           type: string
+        type_changed:
+          $ref: '#/components/schemas/TypeChange'
         warnings:
           items:
             $ref: '#/components/schemas/Issue'
@@ -1164,6 +1166,17 @@ components:
           description: Key of the type this template starts an object of.
           type: string
       type: object
+    TypeChange:
+      description: |-
+        The object's type before and after the batch, present only when a
+        set_type op changed it. Not part of diff_stats, which counts blocks,
+        values and members. A type change can move none of them.
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+      type: object
     TypeRow:
       properties:
         key:
@@ -1453,6 +1466,10 @@ info:
     The batch is atomic: an invalid operation rejects the whole request.
     Discover the accepted fields for each operation at
     `GET /v2/schemas/ops/{op}`.
+
+    An object's type is part of the document envelope, not a property: change
+    it with the `set_type` operation. Only layouts of one family convert, and
+    a refused change names the types the object can take instead.
 
     ### Concurrency, retries, and dry runs
 
@@ -3658,6 +3675,7 @@ paths:
                       op:
                         enum:
                           - set_properties
+                          - set_type
                           - update_block
                           - replace_subtree
                           - insert_blocks

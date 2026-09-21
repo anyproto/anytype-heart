@@ -29,6 +29,7 @@ import (
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -196,15 +197,28 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 	if err != nil {
 		return nil, err
 	}
+	// set_type's own refusals (malformed op, a removed type, an impossible
+	// conversion) come BEFORE the option guard and prewarm: the create-
+	// missing probe cannot see them, and an option created for a batch that
+	// is then refused is permanent (settype.go checkSetTypeTargets)
+	toInstall, err := s.checkSetTypeTargets(ctx, spaceId, ops, cur)
+	if err != nil {
+		return nil, err
+	}
 	if err := s.guardCreateMissing(ctx, spaceId, objectId, ops, ifMatch, cur, dryRun, createMissingOptions); err != nil {
 		return nil, err
 	}
 	s.prewarmCreateMissing(ops, resolvers)
+	if !dryRun {
+		if err := s.installSetTypeTargets(ctx, spaceId, toInstall); err != nil {
+			return nil, err
+		}
+	}
 
 	var result *v2model.EditResult
 	var favorite *bool
 	run := func(edit apicore.ObjectEdit) error {
-		res, applier, err := s.applyPatchOps(ctx, spaceId, objectId, ops, ifMatch, edit, resolvers)
+		res, applier, err := s.applyPatchOps(ctx, spaceId, objectId, ops, ifMatch, edit, resolvers, dryRun)
 		if err != nil {
 			return err
 		}
@@ -329,11 +343,20 @@ func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId stri
 	// ORDERING: prove the batch applies before anything is created. The probe
 	// resolvers create nothing, so a failure here leaves the space untouched;
 	// the error is the same one the real pass would raise, in the same order.
+	//
+	// Known limit: the probe cannot run a set_type's layout conversion (no
+	// editor behind its state — settype.go simulate), so a later op that
+	// depends on the converted document (a locator that becomes unique only
+	// once the first block turned into the name) is refused here although
+	// the committed batch would succeed, and conversely a later op the
+	// conversion would break passes here and fails under the lock, leaving
+	// the created option. Both need a set_type AND a new option AND a
+	// conversion-sensitive later op in one batch.
 	edit, err := editFromRead(objectId, cur)
 	if err != nil {
 		return err
 	}
-	if _, _, err := s.applyPatchOps(ctx, spaceId, objectId, ops, ifMatch, edit, probe); err != nil {
+	if _, _, err := s.applyPatchOps(ctx, spaceId, objectId, ops, ifMatch, edit, probe, true); err != nil {
 		return err
 	}
 	return nil
@@ -357,9 +380,28 @@ func describeCreateCounts(counts map[string]int) string {
 // editFromRead builds a dry-run editing session from a plain read: a private
 // state reconstructed from the snapshot, never committed (C9).
 func editFromRead(objectId string, cur apicore.ObjectRead) (apicore.ObjectEdit, error) {
-	st, err := state.NewDocFromSnapshot(objectId, &pb.ChangeSnapshot{Data: cur.Snapshot})
+	// a state built from a snapshot wraps the snapshot's own block pointers,
+	// so a probe pass that unlinks a block would edit the read itself and a
+	// second pass over the same read (the create-missing probe, then the
+	// dry run) would start from a document the first pass changed
+	snapshot := *cur.Snapshot
+	snapshot.Blocks = make([]*model.Block, 0, len(cur.Snapshot.Blocks))
+	for _, block := range cur.Snapshot.Blocks {
+		snapshot.Blocks = append(snapshot.Blocks, pbtypes.CopyBlock(block))
+	}
+	snapshot.Details = pbtypes.CopyStruct(cur.Snapshot.Details, true)
+	snapshot.Collections = pbtypes.CopyStruct(cur.Snapshot.Collections, true)
+	st, err := state.NewDocFromSnapshot(objectId, &pb.ChangeSnapshot{Data: &snapshot})
 	if err != nil {
 		return apicore.ObjectEdit{}, fmt.Errorf("state from read snapshot: %w", err)
+	}
+	// the snapshot's details carry the live resolvedLayout, but a state built
+	// from a snapshot strips the local keys; put it back so a dry run of a
+	// set_type starts from the layout the committed edit would (C′3)
+	if raw := cur.Snapshot.GetDetails(); raw != nil {
+		if v, ok := raw.Fields[bundle.RelationKeyResolvedLayout.String()]; ok && v != nil {
+			st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(pbtypes.GetInt64(raw, bundle.RelationKeyResolvedLayout.String())))
+		}
 	}
 	return apicore.ObjectEdit{SbType: cur.SbType, Heads: cur.Heads, State: st}, nil
 }
@@ -369,11 +411,17 @@ func editFromRead(objectId string, cur apicore.ObjectRead) (apicore.ObjectEdit, 
 // applied to the state), the resolver error check, the flag-gated safety
 // net, and the diff_stats. The caller commits (or, on dry run, discards) the
 // state.
-func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, edit apicore.ObjectEdit, resolvers *creatingResolvers) (*v2model.EditResult, *v2StateApplier, error) {
+//
+// simulate says the state has no editor behind it by design — a dry run, or
+// the create-missing probe — so an op that needs the editor (set_type)
+// validates and records instead of failing on the missing hook.
+func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, edit apicore.ObjectEdit, resolvers *creatingResolvers, simulate bool) (*v2model.EditResult, *v2StateApplier, error) {
 	if err := checkEditPreconditions(edit.SbType, edit.Heads, ifMatch); err != nil {
 		return nil, nil, err
 	}
 	applier := newV2StateApplier(s, spaceId, objectId, edit.SbType, edit.State, resolvers, errKeysFor(ctx))
+	applier.setObjectType = edit.SetObjectType
+	applier.simulate = simulate
 	beforeDoc, err := applier.begin()
 	if err != nil {
 		return nil, nil, err
@@ -426,7 +474,7 @@ func (s *Service) applyPatchOps(ctx context.Context, spaceId, objectId string, o
 		return nil, nil, err
 	}
 	stats.ItemsAdded, stats.ItemsRemoved = applier.itemsDiff()
-	result := &v2model.EditResult{Created: resolvers.created(), DiffStats: stats}
+	result := &v2model.EditResult{Created: resolvers.created(), DiffStats: stats, TypeChanged: applier.typeChanged}
 	if len(applier.createdBlocks) > 0 {
 		result.CreatedBlocks = applier.createdBlocks
 	}

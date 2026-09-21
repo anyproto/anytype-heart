@@ -229,13 +229,14 @@ func Tools() []Tool {
 			// separate PATCHes — no cross-object transaction exists — so the
 			// description promises per-object honesty rather than atomicity
 			// (runSetProperties states the whole rule).
-			Description: "Change property values on an object — or on several at once, passed as a comma-separated list. set replaces a value; add/remove edit list values (tags, assignees) without rewriting the whole list. Option names must exist (describe shows them). Values of object properties (assignee, related objects) take a handle number or the object's exact name as well as an id.",
+			Description: "Change property values on an object — or on several at once, passed as a comma-separated list. set replaces a value; add/remove edit list values (tags, assignees) without rewriting the whole list. Option names must exist (describe shows them). Values of object properties (assignee, related objects) take a handle number or the object's exact name as well as an id. type changes the object's type (a page to a Task, a note to a page); only same-family layouts convert, and a refused conversion names the types the object can take.",
 			Args: []Arg{
 				{Name: "object", Type: ArgString, Required: true, MaxLen: maxRefListLen, Description: objectArgDescription + "; several objects separate with commas (\"1,2,3\") — the same change is written to each, one at a time"},
 				{Name: "space", Type: ArgString, MaxLen: maxKeyLen, Description: spaceArgDescription},
 				{Name: "set", Type: ArgObject, Description: "property name → new value"},
 				{Name: "add", Type: ArgObject, Description: "list property name → entries to append"},
 				{Name: "remove", Type: ArgObject, Description: "list property name → entries to delete"},
+				{Name: "type", Type: ArgString, MaxLen: maxKeyLen, Description: "a type name the object becomes, e.g. Task; applied before set/add/remove in the same edit"},
 			},
 			// the example shows the LIST form deliberately: the measured
 			// failure is models splitting N property writes into N dependent

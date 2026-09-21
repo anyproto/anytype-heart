@@ -23,7 +23,7 @@ import (
 
 // v2OpNames is the closed op set, in documentation order.
 var v2OpNames = []string{
-	"set_properties", "update_block", "replace_subtree",
+	"set_properties", "set_type", "update_block", "replace_subtree",
 	"insert_blocks", "move_block", "delete_block", "replace_text", "set_cell",
 	"update_view", "insert_view", "move_view", "delete_view",
 	"add_items", "remove_items",
@@ -54,8 +54,14 @@ var v2OpNames = []string{
 // objectmutateadapter_test.go pins these facts against the live restriction
 // table; viewops_test.go pins the whole family's classification through
 // PatchObject.
+//
+// set_type needs the TYPE axis alone (Restrictions_TypeChange): the layout
+// conversion it triggers may add or move blocks, but that rewrite is the
+// editor's own (basic.SetObjectTypesInState), the same one the app runs,
+// and the editor re-checks its restrictions under the lock.
 var v2OpEditNeeds = map[string]apicore.EditNeeds{
 	"set_properties":  {Details: true},
+	"set_type":        {TypeChange: true},
 	"update_block":    {Blocks: true},
 	"replace_subtree": {Blocks: true},
 	"insert_blocks":   {Blocks: true},
@@ -106,6 +112,12 @@ func editNeedsForOps(ops []json.RawMessage, cur apicore.ObjectRead) (apicore.Edi
 			}
 			union.Details = true
 		}
+		if needs.TypeChange {
+			if cur.TypeChangeRefused != nil {
+				return union, restrictionRefusal(cur.TypeChangeRefused, probe.Op, opPath, "type")
+			}
+			union.TypeChange = true
+		}
 	}
 	return union, nil
 }
@@ -150,6 +162,7 @@ var v2NewContentOps = map[string]bool{
 // fails at dispatch first.
 var v2OpRebuildsView = map[string]bool{
 	"set_properties":  true,
+	"set_type":        true,
 	"update_block":    true,
 	"replace_subtree": true,
 	"insert_blocks":   true,
@@ -308,6 +321,13 @@ func (d *v2EditDoc) docType() string {
 //
 // ---- op decoding ----
 //
+
+// opSetType changes the object's type. Its `type` takes the spellings
+// create's `type` takes: a type key, an api key or a name.
+type opSetType struct {
+	Op   string `json:"op"`
+	Type string `json:"type"`
+}
 
 type opSetProperties struct {
 	Op    string                     `json:"op"`

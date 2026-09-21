@@ -12,6 +12,7 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
@@ -358,7 +359,13 @@ func TestMatchLocatorIsPublishedExactlyWhereItWorks(t *testing.T) {
 			published := len(schemaPropertyOwners(t, entry.Schema, "match")) > 0
 
 			fx := newV2Fixture(t)
-			fx.expectMutate(editRead(t, editBaseDoc))
+			if op == "set_type" {
+				// refused by the pre-lock strict decode (settype.go
+				// checkSetTypeTargets), before the mutator is reached
+				fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(editRead(t, editBaseDoc), nil)
+			} else {
+				fx.expectMutate(editRead(t, editBaseDoc))
+			}
 			_, err = fx.PatchObject(ctx, testSpaceId, "obj1",
 				patchBody(fmt.Sprintf(`{"op":%q,"match":"no block says this"}`, op)), "", false, true)
 
@@ -549,7 +556,7 @@ func TestDiffEditDocs(t *testing.T) {
 // check passed on a payload channel and would have survived update_block
 // losing both `id` and `match`.
 var v2ObjectLevelOps = map[string]bool{
-	"set_properties": true, "add_items": true, "remove_items": true,
+	"set_properties": true, "set_type": true, "add_items": true, "remove_items": true,
 }
 
 func addressingChannels(t *testing.T, entry v2model.SchemaEntry) []string {

@@ -53,8 +53,9 @@ type ObjectRead struct {
 	// collection carry Restrictions_Blocks but NOT Restrictions_Details, so
 	// one blanket verdict made renaming a set — and every add_items — refuse
 	// (surface review M1).
-	BlocksRefused  error
-	DetailsRefused error
+	BlocksRefused     error
+	DetailsRefused    error
+	TypeChangeRefused error
 }
 
 // EditNeeds declares which object-level restriction axes an edit touches, so
@@ -62,8 +63,9 @@ type ObjectRead struct {
 // remove_items) need NEITHER: they mutate the collection store, which no
 // object restriction governs — matching v1's ObjectCollectionAdd.
 type EditNeeds struct {
-	Blocks  bool
-	Details bool
+	Blocks     bool
+	Details    bool
+	TypeChange bool
 }
 
 // ObjectReader reads the live smartblock state of an object — the API v2
@@ -84,6 +86,12 @@ type ObjectReader interface {
 // belongs in the adapter, which knows nothing of who chose the id, so the
 // adapter reports the fact and the API layer decides.
 var ErrTemplateUnavailable = errors.New("template unavailable")
+
+// ErrSpaceReadOnly is InstallBundledType's answer for a space this account
+// can only read: the installer itself returns success without installing
+// there, which would otherwise look like an install that never became
+// readable.
+var ErrSpaceReadOnly = errors.New("space is read-only for this account")
 
 // ObjectCreator creates objects from AnyBlock snapshots — the API v2 create
 // path (APIV2.md §2 Phase 2). CreateObjectFromSnapshot builds the object's
@@ -107,6 +115,13 @@ type ObjectCreator interface {
 	CreateObjectFromSnapshot(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase, templateId string) (CreateOutcome, error)
 	TypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (string, error)
 	RelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (string, error)
+	// InstallBundledType installs a bundled type into the space, the way a
+	// create of an object of that type does — a no-op when it is already
+	// installed. The editor's type change reads the target type from the
+	// space's store, so an uninstalled bundled target has to be installed
+	// first, and outside the object lock, since an install is its own
+	// object create.
+	InstallBundledType(ctx context.Context, spaceId string, key domain.TypeKey) error
 }
 
 // CreateOutcome is what a snapshot create produced. It is a struct rather
@@ -135,6 +150,15 @@ type ObjectEdit struct {
 	SbType model.SmartBlockType
 	Heads  []string
 	State  *state.State
+	// SetObjectType changes the object's type IN st through the editor's own
+	// path (basic.SetObjectTypesInState): the type-change and layout
+	// restrictions, the template refusal and the layout conversion that
+	// rewrites the document all run there, on the same child state the
+	// ops edit, so later ops in the batch see the converted document. Nil
+	// when no editor is behind the state — a dry run — and the applier then
+	// records the new type keys alone and says the conversion is not
+	// simulated.
+	SetObjectType func(st *state.State, key domain.TypeKey) error
 }
 
 // ObjectMutator applies one atomic mutation to a live object — the API v2

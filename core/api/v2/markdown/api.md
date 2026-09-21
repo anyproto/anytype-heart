@@ -162,6 +162,10 @@ The batch is atomic: an invalid operation rejects the whole request.
 Discover the accepted fields for each operation at
 `GET /v2/schemas/ops/{op}`.
 
+An object's type is part of the document envelope, not a property: change
+it with the `set_type` operation. Only layouts of one family convert, and
+a refused change names the types the object can take instead.
+
 ### Concurrency, retries, and dry runs
 
 | Control | Behavior |

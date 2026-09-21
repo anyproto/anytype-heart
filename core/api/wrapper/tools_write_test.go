@@ -226,7 +226,49 @@ func TestSetProperties(t *testing.T) {
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
 		_, err := fx.Run(ctx, "set_properties", map[string]any{"object": "1"})
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "set_properties needs set, add or remove")
+		assert.Contains(t, err.Error(), "set_properties needs set, add, remove or type")
+	})
+
+	t.Run("type becomes a set_type op ahead of the property op, in one PATCH", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
+		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesBody)
+		fx.stub("GET /v2/spaces/space1/properties/status/options", 200,
+			`{"data":[{"name":"Done"}],"total":1,"offset":0,"limit":50,"has_more":false}`)
+		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200, editOKBody)
+
+		_, err := fx.Run(ctx, "set_properties", map[string]any{
+			"object": "1",
+			"type":   "Task",
+			"set":    map[string]any{"status": "Done"},
+		})
+
+		require.NoError(t, err)
+		sent := fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")
+		require.Len(t, sent, 1, "one atomic PATCH: the type change and the values land together or not at all")
+		ops := patchOpsSent(t, sent[0])
+		require.Len(t, ops, 2)
+		assert.Equal(t, map[string]any{"op": "set_type", "type": "Task"}, ops[0],
+			"the type changes first, so the values are set on the object as its new type")
+		assert.Equal(t, map[string]any{"op": "set_properties", "set": map[string]any{"status": "Done"}}, ops[1],
+			"the values ride the same PATCH, complete")
+	})
+
+	t.Run("type alone is a whole call, and the summary names the change", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
+		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 200,
+			`{"type_changed":{"from":"page","to":"task"},"diff_stats":{"blocks_added":0,"blocks_removed":0,"blocks_changed":0,"blocks_moved":0,"properties_changed":0}}`)
+
+		result, err := fx.Run(ctx, "set_properties", map[string]any{"object": "1", "type": "Task"})
+
+		require.NoError(t, err)
+		sent := fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")
+		require.Len(t, sent, 1)
+		assert.Equal(t, map[string]any{"op": "set_type", "type": "Task"}, firstOp(t, sent[0]))
+		assert.Empty(t, fx.sent("GET /v2/spaces/space1/properties"), "no values to resolve, no property index fetched")
+		assert.Contains(t, result.Text, "type page → task", "a type change moves no block and no value: without this the summary reads \"no changes\"")
+		assert.NotContains(t, result.Text, "no changes")
 	})
 }
 

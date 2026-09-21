@@ -113,6 +113,21 @@ type v2StateApplier struct {
 	itemsBefore []string
 	// typeKeysCache memoizes typeListedKeys per type for this PATCH.
 	typeKeysCache map[string]map[string]bool
+	// setObjectType is the editor's type change (apicore.ObjectEdit
+	// .SetObjectType). simulate says no editor is behind the state BY
+	// DESIGN — a dry run, or the create-missing probe pass — so set_type
+	// records the new type keys alone and warns that the layout conversion
+	// is not simulated. A nil hook on a committing run is an error, never a
+	// silent downgrade to that bare write.
+	setObjectType func(st *state.State, key domain.TypeKey) error
+	simulate      bool
+	// typeChanged is the receipt's type_changed: the envelope type at
+	// begin() and after the last set_type, nil until one changes it.
+	typeChanged *v2model.TypeChange
+	// typeEntries memoizes liveTypes for this PATCH (one store query per
+	// request, like propEntries).
+	typeEntries       []typeEntry
+	typeEntriesLoaded bool
 	// removedBundled is the same shape for the bundled relations this space
 	// uninstalled — primed lazily by removedBundledKeys, and only when a key
 	// reaches the bundled arm at all.
@@ -613,6 +628,12 @@ func (a *v2StateApplier) applyAt(raw json.RawMessage, opPath string) error {
 			return err
 		}
 		return a.applySetProperties(op, opPath)
+	case "set_type":
+		var op opSetType
+		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
+			return err
+		}
+		return a.applySetType(op, opPath)
 	case "update_block":
 		var op opUpdateBlock
 		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
@@ -1086,7 +1107,14 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		switch {
 		case key == bundle.RelationKeyIsFavorite.String():
 			return true // routed to the favorite RPC below, never a detail
-		case key == "id" || key == "type":
+		case key == "type":
+			// the one envelope member that IS writable, through its own op:
+			// name it, or the caller is left with a dead end (typed hints)
+			issues = append(issues, v2model.Issue{Path: path,
+				Message: "\"type\" is not a property — it is the document envelope's type, and changes through the set_type op"}.
+				Hintf("send {\"op\":\"set_type\",\"type\":…} instead; %s describes it", v2model.RefGetOpSchema("set_type")))
+			return false
+		case key == "id":
 			issues = append(issues, v2model.Issue{Path: path,
 				Message: fmt.Sprintf("%q is not a property — it is lifted to the document envelope and cannot be set here", key)})
 			return false
@@ -1165,6 +1193,13 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		if v2OutputOnlyPropertyKeys(key) {
 			issues = append(issues, v2model.Issue{Path: path,
 				Message: fmt.Sprintf("%q is output-only and cannot be unset", key)})
+			continue
+		}
+		if key == "type" || key == "id" {
+			// envelope members: an object always has both, so there is no
+			// set_type recipe to offer here — only the fact
+			issues = append(issues, v2model.Issue{Path: path,
+				Message: fmt.Sprintf("%q is not a property and cannot be unset — an object always has one", key)})
 			continue
 		}
 		if !claim(key, "unset", path) {
