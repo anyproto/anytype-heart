@@ -178,7 +178,7 @@ func TestChatMessageFromProto(t *testing.T) {
 		assert.Equal(t, "2024-06-03T09:01:40Z", got.EditedAt)
 	})
 
-	t.Run("block-composed content surfaces as blocks_text — a blocks-only message is not empty", func(t *testing.T) {
+	t.Run("a blocks-only message reads as text — the store a discussion writes", func(t *testing.T) {
 		// given: chatmodel.Validate accepts a message whose ONLY content is
 		// blocks (desktop quotes, rich pastes) — dropping them on read makes
 		// real content invisible to an agent
@@ -202,9 +202,43 @@ func TestChatMessageFromProto(t *testing.T) {
 		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
 
 		// then
-		assert.Empty(t, got.Text)
-		assert.Equal(t, "**quoted** line\nthe quoted editor text", got.BlocksText,
-			"text-bearing blocks render as §8 markup, newline-joined")
+		assert.Equal(t, "**quoted** line\nthe quoted editor text", got.Text,
+			"text-bearing blocks render as §8 markup, newline-joined, in the text slot")
+		assert.Empty(t, got.BlocksText, "nothing is served twice")
+	})
+
+	t.Run("a message with BOTH content and blocks keeps the blocks in blocks_text", func(t *testing.T) {
+		// given: a legacy desktop post — content text plus a quote block
+		msg := chatTestMessage()
+		msg.Blocks = []*model.ChatMessageMessageBlock{
+			{Content: &model.ChatMessageMessageBlockContentOfEditorQuote{EditorQuote: &model.ChatMessageMessageBlockEditorQuote{
+				BlockId: "b1",
+				Content: &model.ChatMessageMessageBlockText{Text: "the quoted editor text"},
+			}}},
+		}
+
+		// when
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
+
+		// then
+		assert.Equal(t, "can you **check** the doc?", got.Text, "the content text keeps the text slot")
+		assert.Equal(t, "the quoted editor text", got.BlocksText)
+	})
+
+	t.Run("the desktop's discussion shape — an EMPTY content object beside blocks — reads as text", func(t *testing.T) {
+		// given: comment/section.tsx posts {content:{text:"",style,marks:[]}, blocks}
+		msg := chatTestMessage()
+		msg.Message = &model.ChatMessageMessageContent{Style: model.BlockContentText_Paragraph}
+		msg.Blocks = []*model.ChatMessageMessageBlock{
+			{Content: &model.ChatMessageMessageBlockContentOfText{Text: &model.ChatMessageMessageBlockText{Text: "a comment"}}},
+		}
+
+		// when
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
+
+		// then
+		assert.Equal(t, "a comment", got.Text)
+		assert.Empty(t, got.BlocksText)
 	})
 
 	t.Run("non-BMP text round-trips with UTF-16 offsets across the bridge", func(t *testing.T) {

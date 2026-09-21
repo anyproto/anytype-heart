@@ -114,7 +114,7 @@ func (s *Service) ChatStreamMessageOptions(ctx context.Context, spaceId string) 
 // subscribes. v1's handler took space_id only to enrich author names and
 // subscribed to whatever chat id it was handed.
 func (s *Service) OpenChatStream(ctx context.Context, spaceId, chatId string, q ChatStreamQuery) (*ChatStream, error) {
-	if err := s.ensureChat(ctx, spaceId, chatId); err != nil {
+	if _, err := s.ensureChat(ctx, spaceId, chatId); err != nil {
 		return nil, err
 	}
 	limit := q.Limit

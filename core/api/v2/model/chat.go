@@ -32,9 +32,13 @@ type ChatRow struct {
 // shape across v2 (C2), matching every AnyBlock date. Reactions is ALWAYS
 // the counts map; ReactedBy (participant-id lists) appears only under
 // ?reactions=full — two slots so neither ever changes type (C2).
-// BlocksText is the read-only rendering of a block-composed message's
-// text-bearing blocks (desktop quotes etc.) — without it a blocks-only
-// message would read back as empty.
+// A message is stored either as content (a space chat) or as blocks (a
+// discussion, or a desktop chat post with quotes); Text is what the message
+// SAYS whichever store holds it: the content's text when there is one,
+// otherwise the text-bearing blocks rendered and newline-joined. BlocksText
+// carries the blocks rendering only when a message has BOTH — legacy
+// desktop posts — so nothing is served twice and a blocks-only message,
+// the API's own discussion posts included, reads back as text.
 type ChatMessage struct {
 	Id          string              `json:"id"`
 	Order       string              `json:"order"`
@@ -102,6 +106,18 @@ type ChatResult struct {
 	Id     string `json:"id,omitempty"`
 	Name   string `json:"name,omitempty"`
 	DryRun bool   `json:"dry_run,omitempty"`
+}
+
+// DiscussionResult is the POST objects/{object_id}/discussion response: the
+// id of the object's discussion, which is a chat id for every chat
+// operation. Created says whether THIS call minted it — false when the
+// object already had one and the same id is returned — so a caller who
+// cannot see the status code (201 vs 200) still knows. On a dry run Created
+// is the would-be outcome and Id is set only when a discussion exists.
+type DiscussionResult struct {
+	Id      string `json:"id,omitempty"`
+	Created bool   `json:"created,omitempty"`
+	DryRun  bool   `json:"dry_run,omitempty"`
 }
 
 // AddChatMessageRequest is the POST messages body. Text is §8 markup
@@ -225,7 +241,13 @@ func ChatMessageFromProto(msg *model.ChatMessage, opts ChatMessageOptions) ChatM
 	if msg.Message != nil {
 		out.Text = anyblockjson.RenderInlineText(msg.Message.Text, msg.Message.Marks)
 	}
-	out.BlocksText = blocksText(msg.Blocks)
+	if rendered := blocksText(msg.Blocks); rendered != "" {
+		if out.Text == "" {
+			out.Text = rendered
+		} else {
+			out.BlocksText = rendered
+		}
+	}
 	for _, att := range msg.Attachments {
 		if att == nil {
 			continue
@@ -251,9 +273,10 @@ func chatTime(sec int64) string {
 
 // blocksText renders a message's text-bearing blocks (text blocks and the
 // contents of editor/message quotes) as §8 markup, newline-joined. Chat
-// messages composed of blocks (desktop quotes, rich pastes) are valid with
-// empty text (chatmodel.Validate) — without this field they would read back
-// as empty messages. Read-only: PATCH preserves blocks untouched.
+// messages composed of blocks (a discussion post, desktop quotes, rich
+// pastes) are valid with empty content (chatmodel.Validate) — without this
+// they would read back as empty messages. Link and embed blocks have no
+// text and stay invisible here.
 func blocksText(blocks []*model.ChatMessageMessageBlock) string {
 	var parts []string
 	appendText := func(tb *model.ChatMessageMessageBlockText) {

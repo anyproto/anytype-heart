@@ -37,10 +37,13 @@ func TestAPIV2SchemaIsTheFormatSchemaMinusTheExcludedMembers(t *testing.T) {
 		servedProps := served["properties"].(map[string]any)
 
 		// when
-		want := len(fullProps) - len(apiV2ExcludedMembers)
+		want := len(fullProps) - len(apiV2ExcludedMembers) + len(apiV2AddedMembers)
 
 		// then
-		assert.Len(t, servedProps, want, "the delta is the excluded list and nothing else")
+		assert.Len(t, servedProps, want, "the delta is the excluded list, plus the API's own added members, and nothing else")
+		for name := range apiV2AddedMembers {
+			assert.Containsf(t, servedProps, name, "%s is served on a read and must be declared", name)
+		}
 		for name := range fullProps {
 			if apiV2ExcludedSet[name] {
 				continue

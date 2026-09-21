@@ -1476,6 +1476,7 @@ GET        /v2/spaces/{space_id}/chats/{chat_id}/messages/stream   # SSE, when e
 PATCH/DELETE /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}
 POST       /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}/reactions
 POST       /v2/spaces/{space_id}/chats/{chat_id}/read
+POST       /v2/spaces/{space_id}/objects/{object_id}/discussion   # the object's comment thread, a chat
 ```
 
 - Every chat-scoped route first resolves the chat id in the store: an unknown
@@ -1500,10 +1501,13 @@ POST       /v2/spaces/{space_id}/chats/{chat_id}/read
   — rendered on read, parsed on write, with mentions as
   `<mention object_id="…">` tags — and offset mark arrays never appear on the
   wire. `style` is dropped on read and not accepted on write: a new message is
-  always a paragraph and an edit preserves the stored style. Block-composed
-  content (quotes, rich pastes) surfaces read-only as `blocks_text`, the
-  text-bearing blocks rendered as markup and newline-joined; link and embed
-  blocks stay invisible (`core/api/v2/model/chat.go:200`).
+  always a paragraph and an edit preserves the stored style in a space chat
+  (in a discussion the text replaces the blocks, paragraphs all). Block-composed
+  content (a discussion post, desktop quotes, rich pastes) reads as `text`
+  when the message has no content text, and as `blocks_text` beside the
+  content when it has both — the text-bearing blocks rendered as markup and
+  newline-joined; link and embed blocks stay invisible
+  (`core/api/v2/model/chat.go:200`).
 - **`reactions` is ALWAYS the counts map** (`{"👍": 2}`); `?reactions=full`
   adds `reacted_by`, a separate slot carrying participant-id lists — the same
   vocabulary as `author_id`, never raw identities — so neither field ever
@@ -1535,8 +1539,10 @@ POST       /v2/spaces/{space_id}/chats/{chat_id}/read
   `/text`, and more than **32 attachments** is a 400 at `/attachments`
   (`core/api/v2/service/chat.go:653`).
 - **`PATCH` on a message is a read-merge, not a replace**: the service reads
-  the message first and carries its style, attachments, reply target and
-  blocks through unchanged, so a text edit never wipes attachments. An emoji
+  the message first and carries its attachments and reply target through
+  unchanged — and, in a space chat, its style and blocks — so a text edit
+  never wipes attachments (a discussion edit replaces the blocks with the
+  text and warns about what that drops; see the discussion bullet). An emoji
   MARK is materialized into its literal emoji on read and the re-parse does
   not re-mint it, so a read-then-PATCH round trip leaves the emoji as plain
   text (`core/api/v2/service/chat.go:264`).
@@ -1559,6 +1565,61 @@ POST       /v2/spaces/{space_id}/chats/{chat_id}/read
   account identity wired it is omitted and a warning takes its place, because
   nothing would match the stored reactions and the prediction would be a coin
   flip (`core/api/v2/service/chat.go:524`).
+
+- **An object's discussion is a chat** (decided 2026-09-21, option "chats
+  carry messages, the object owns discovery"). A discussion is the comment
+  thread the desktop shows under a document: the same store-backed chat
+  object a space chat is, derived from its parent, with the `discussion`
+  layout. It is reached by its own id through every chat operation above —
+  `ensureChat` admits the discussion layout beside `chatDerived` — so
+  messaging keeps one vocabulary and no route is duplicated; `reply_to` in a
+  discussion is a threaded reply, as the desktop renders it. The OBJECT owns
+  discovery and creation: an object read serves the id as the `discussion`
+  envelope member (on every shape, declared x-output-only in the served
+  schema and stripped by normalizeCreateBody so a read body writes back),
+  and `POST …/objects/{object_id}/discussion` (`create_discussion`) mints
+  one — 201 with `created:true` — or answers the existing id with 200, so an
+  unkeyed retry is a lookup (a keyed retry replays the stored 201, as C8
+  does everywhere). The object is read live so the id is exact even when
+  the index row lags a mint from another device. The id is derived from the
+  parent, so a mint that finds the tree already there — another device got
+  there first, or a crash left the tree unlinked — recovers the id and
+  finishes the parent link in `ObjectAddDiscussion` instead of failing;
+  the API keeps no fallback of its own, so an RPC error is a real one. Only
+  user content holds one (pages and files, the shapes the desktop shows a
+  comment section for): a chat or a discussion id is a targeted 400
+  steering to the chat routes, an archived object a 400 naming Bin, a type,
+  template or system object a plain 400, a deleted one a 404, and a space
+  whose ACL makes this account a reader a 403 from the mint itself. The
+  crash recovery derives the id WITH the parent id, exactly as the create
+  did — a key-only derivation names a different tree in a shared space. `list_chats`
+  stays chats-only, as the desktop's chat list does — a discussion belongs
+  to its object. A page id sent as `chat_id` is steered to
+  `create_discussion`. **The two stores are asymmetric and the API hides
+  it**: a space chat's messages are content, a discussion's are blocks
+  beside an empty content object (what the desktop's discussion composer
+  writes). A post takes the
+  same `{text, reply_to, attachments}` body either way and is stored the way
+  the chat's layout stores it — content, or one paragraph text block PER
+  LINE beside an empty content object (the store serializer dereferences
+  content unconditionally, and the desktop discussion renderer shows no
+  break for a newline inside a block; marks are clipped per line) —
+  through `chatWritesBlocks`, the one switch to flip when space chats move
+  to blocks in the desktop (the stated plan). A text of newlines only makes
+  no block and is refused on the dry run as on the real call; a line of
+  exactly `---` is what the desktop renders as a divider. A delete's
+  warning names link-block targets beside attachments, since a desktop
+  post's files ride in link blocks. An edit in a discussion
+  replaces the blocks with the text, the mark re-derivation rule one level
+  up, and warns — on the dry run and the receipt — when quotes, links,
+  embeds or styled blocks the text cannot express are dropped. On read
+  `text` is what the message says whichever store holds
+  it: the content's text, else the blocks rendered and newline-joined;
+  `blocks_text` remains only for a legacy post carrying both, so nothing is
+  served twice and the API's own discussion post round-trips through `text`.
+  Link and embed blocks stay invisible. Not built: authoring quote/link
+  blocks, exposing `ChatSearch`, and the v1 gap (no layout gate, blocks
+  dropped on edit) (`core/api/v2/service/discussion.go`).
 
 **Streaming (`GET …/messages/stream`)**
 

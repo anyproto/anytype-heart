@@ -591,7 +591,7 @@ func rebaseMarkdownCreateError(err error, dropped int) error {
 }
 
 // normalizeCreateBody strips the v2 read-envelope additions (etag,
-// warnings) so "read a document, create a copy" works from every GET shape,
+// warnings, discussion) so "read a document, create a copy" works from every GET shape,
 // and refuses the partial ?block= subtree marker — a subtree is not a
 // document.
 func normalizeCreateBody(body []byte) ([]byte, error) {
@@ -607,6 +607,7 @@ func normalizeCreateBody(body []byte) ([]byte, error) {
 	}
 	delete(fields, "etag") // C7: concurrency lives in headers, never in create bodies
 	delete(fields, "warnings")
+	delete(fields, "discussion") // a live fact about the SOURCE object; a copy starts without one
 	return encodeEnvelope(fields)
 }
 

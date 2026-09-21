@@ -44,7 +44,9 @@ key returns `401`.
   as `page` or `task`.
 - **Queries** show a live selection of objects. **Collections** hold a
   hand-curated list.
-- **Chats** store messages separately from document blocks.
+- **Chats** store messages separately from document blocks. An object's
+  discussion, its comment thread, is a chat reached by the id an object read
+  serves as `discussion`.
 
 Blocks form a flat array in document order, with `indent` describing the
 hierarchy. Inline text formatting uses Markdown. The title and description

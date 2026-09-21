@@ -145,6 +145,7 @@ IDEMPOTENT_OPERATIONS = {
     "delete_chat_message",
     "toggle_chat_reaction",
     "read_chat",
+    "create_discussion",
 }
 
 WRITE_LIMITED_OPERATIONS = IDEMPOTENT_OPERATIONS - {"validate"}

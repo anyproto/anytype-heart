@@ -268,6 +268,7 @@ func TestV2Routes(t *testing.T) {
 			{"DELETE", "/v2/spaces/space1/chats/chat1/messages/msg1"},
 			{"POST", "/v2/spaces/space1/chats/chat1/messages/msg1/reactions"},
 			{"POST", "/v2/spaces/space1/chats/chat1/read"},
+			{"POST", "/v2/spaces/space1/objects/obj1/discussion"},
 		} {
 			t.Run(route.method+" "+route.path, func(t *testing.T) {
 				fx := newV2ServerFixture(t)
@@ -433,6 +434,7 @@ func TestV2Routes(t *testing.T) {
 			{"DELETE", "/v2/spaces/space1/chats/chat1/messages/msg1"},
 			{"POST", "/v2/spaces/space1/chats/chat1/messages/msg1/reactions"},
 			{"POST", "/v2/spaces/space1/chats/chat1/read"},
+			{"POST", "/v2/spaces/space1/objects/obj1/discussion"},
 		} {
 			// when
 			w := httptest.NewRecorder()

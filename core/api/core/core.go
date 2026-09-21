@@ -229,6 +229,7 @@ type ClientCommands interface {
 	ObjectListDelete(context.Context, *pb.RpcObjectListDeleteRequest) *pb.RpcObjectListDeleteResponse
 	ObjectExport(context.Context, *pb.RpcObjectExportRequest) *pb.RpcObjectExportResponse
 	ObjectSetObjectType(context.Context, *pb.RpcObjectSetObjectTypeRequest) *pb.RpcObjectSetObjectTypeResponse
+	ObjectAddDiscussion(context.Context, *pb.RpcObjectDiscussionAddRequest) *pb.RpcObjectDiscussionAddResponse
 
 	// Type
 	ObjectCreateObjectType(context.Context, *pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse

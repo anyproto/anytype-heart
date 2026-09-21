@@ -83,6 +83,7 @@ var operations = map[string]operation{
 	OpDeleteObject:         {"DELETE", "/v2/spaces/{space_id}/objects/{object_id}"},
 	OpGetObject:            {"GET", "/v2/spaces/{space_id}/objects/{object_id}"},
 	OpPatchObject:          {"PATCH", "/v2/spaces/{space_id}/objects/{object_id}"},
+	OpCreateDiscussion:     {"POST", "/v2/spaces/{space_id}/objects/{object_id}/discussion"},
 	OpListProperties:       {"GET", "/v2/spaces/{space_id}/properties"},
 	OpCreateProperty:       {"POST", "/v2/spaces/{space_id}/properties"},
 	OpDeleteProperty:       {"DELETE", "/v2/spaces/{space_id}/properties/{key}"},
@@ -137,6 +138,7 @@ const (
 	OpDeleteObject         = "delete_object"
 	OpGetObject            = "get_object"
 	OpPatchObject          = "patch_object"
+	OpCreateDiscussion     = "create_discussion"
 	OpListProperties       = "list_properties"
 	OpCreateProperty       = "create_property"
 	OpDeleteProperty       = "delete_property"
@@ -334,6 +336,9 @@ func RefGetObject(spaceId, objectId string) Ref {
 }
 func RefPatchObject(spaceId, objectId string) Ref {
 	return NewRef(OpPatchObject, "space_id", spaceId, "object_id", objectId)
+}
+func RefCreateDiscussion(spaceId, objectId string) Ref {
+	return NewRef(OpCreateDiscussion, "space_id", spaceId, "object_id", objectId)
 }
 func RefSearchSpace(spaceId string) Ref      { return NewRef(OpSearchSpace, "space_id", spaceId) }
 func RefCreateCollection(spaceId string) Ref { return NewRef(OpCreateCollection, "space_id", spaceId) }

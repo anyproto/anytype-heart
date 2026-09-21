@@ -79,6 +79,7 @@ whether you may write. Ask this instead of discovering limits through 403s
 | upload a file | `POST …/files` (multipart or `{"url":…}`) → the id file blocks and chat attachments need |
 | download a file or icon | `GET …/files/{file_id}/content`; use a file id or a space/member's `icon_image`. Optional `?width=` selects an image size. Supports ranges, conditional reads, and `HEAD`. |
 | chat | `GET/POST …/chats/{id}/messages`, `POST …/read` — see Chats |
+| comment on an object | `POST …/objects/{id}/discussion` → `{id}`, then the chat routes with that id — see Chats |
 
 ## Read cheaply
 
@@ -230,14 +231,23 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   read. Cursors only (`?after=` walks forward; otherwise newest-first via
   `next_before`); `?offset=` is rejected.
 - Message `text` is inline markup both ways (mentions as
-  `<mention objectId="…">`); ≤8000 chars; `attachments` = up to 32 object
+  `<mention object_id="…">`); ≤8000 UTF-16 units; `attachments` = up to 32 object
   ids from `POST …/files`. `?reactions=full` adds who reacted.
 - Mark read: `POST …/chats/{id}/read` with `{"up_to": <order>,
   "last_state_id": <id>}` — **both** from the same GET, else nothing marks.
-- `PATCH …/messages/{id}` `{"text"}` edits text only (attachments kept);
+- `PATCH …/messages/{id}` `{"text"}` edits text only (attachments kept; in a
+  discussion the text replaces the message's blocks, with a warning naming
+  dropped quotes/links);
   editing/deleting another member's message → 403. DELETE permanently
   removes orphaned attachments — the response warns with their ids.
 - No etag/If-Match on chats; order ids are the concurrency vocabulary.
+- An object's **discussion** (its comment thread) is a chat. An object read
+  carries `discussion: "<id>"` when one exists; `POST …/objects/{id}/discussion`
+  mints one (201, `created: true`) or returns the existing id (200). Use
+  that id as the chat id on every route above; `reply_to` makes a threaded
+  reply. Same message body; a discussion stores the text as one paragraph
+  block per line (blank lines dropped, a `---` line is a divider) and reads
+  it back as `text`. Discussions are not in `GET …/chats`.
 
 ## Conventions on every call
 
