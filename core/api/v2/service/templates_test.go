@@ -661,7 +661,7 @@ func TestCreateObjectTemplateHardening(t *testing.T) {
 		fx.addMemoType(t)
 		fx.addTemplate(t, "tpl-weekly", "Weekly memo", testMemoTypeId)
 		fx.creatorMock.EXPECT().CreateObjectFromSnapshot(mock.Anything, testSpaceId, mock.Anything, "tpl-weekly").
-			Return("", apicore.ErrTemplateUnavailable)
+			Return(apicore.CreateOutcome{}, apicore.ErrTemplateUnavailable)
 
 		// when
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
@@ -681,9 +681,9 @@ func TestCreateObjectTemplateHardening(t *testing.T) {
 		fx.addMemoType(t, "tpl-weekly")
 		fx.addTemplate(t, "tpl-weekly", "Weekly memo", testMemoTypeId)
 		fx.creatorMock.EXPECT().CreateObjectFromSnapshot(mock.Anything, testSpaceId, mock.Anything, "tpl-weekly").
-			Return("", apicore.ErrTemplateUnavailable)
+			Return(apicore.CreateOutcome{}, apicore.ErrTemplateUnavailable)
 		fx.creatorMock.EXPECT().CreateObjectFromSnapshot(mock.Anything, testSpaceId, mock.Anything, "").
-			Return("newObj", nil)
+			Return(apicore.CreateOutcome{Id: "newObj"}, nil)
 		fx.expectEtagRead("newObj")
 
 		// when
@@ -799,5 +799,81 @@ func TestListTemplatesHardening(t *testing.T) {
 			assert.Equal(t, "tpl-note", rows[0].Id, term)
 			assert.Equal(t, "field_note", rows[0].TemplateFor, term, "the row spells the type the way every other response does")
 		}
+	})
+}
+
+func TestCreateObjectTemplateReportsComposition(t *testing.T) {
+	t.Run("a request that sent content is told its body holds the template's too", func(t *testing.T) {
+		// given — the object's blocks are the template's followed by these,
+		// which is the one thing a caller cannot infer from its own request
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.addMemoType(t, "tpl-weekly")
+		fx.addTemplate(t, "tpl-weekly", "Weekly memo", testMemoTypeId)
+		fx.expectCreateWithTemplate("newObj", 4)
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"memo","name":"Monday","markdown":"# Notes\n\nfirst"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, result.Template)
+		assert.True(t, result.Template.Combined)
+		assert.Equal(t, 4, result.Template.BlocksAdded)
+	})
+
+	t.Run("a request that sent no content is not told its body was combined", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.addMemoType(t, "tpl-weekly")
+		fx.addTemplate(t, "tpl-weekly", "Weekly memo", testMemoTypeId)
+		fx.expectCreateWithTemplate("newObj", 4)
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"memo","name":"Monday"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, result.Template)
+		assert.False(t, result.Template.Combined, "nothing of the caller's went after the template's blocks")
+		assert.Equal(t, 4, result.Template.BlocksAdded)
+	})
+
+	t.Run("a dry run says the body would be combined and counts nothing", func(t *testing.T) {
+		// given — no template is built on a dry run, so the count is unknown;
+		// what the request itself carries is not
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.addMemoType(t, "tpl-weekly")
+		fx.addTemplate(t, "tpl-weekly", "Weekly memo", testMemoTypeId)
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"memo","name":"Monday","markdown":"# Notes"}`), true, false)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, result.Template)
+		assert.True(t, result.Template.Combined)
+		assert.Zero(t, result.Template.BlocksAdded)
+	})
+
+	t.Run("an object created without a template carries no composition at all", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		fx.addMemoType(t)
+		fx.expectCreateWithTemplate("newObj")
+		fx.expectEtagRead("newObj")
+
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"memo","name":"Monday","markdown":"# Notes"}`), false, false)
+
+		require.NoError(t, err)
+		assert.Nil(t, result.Template)
 	})
 }

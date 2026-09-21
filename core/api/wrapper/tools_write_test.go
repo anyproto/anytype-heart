@@ -116,14 +116,17 @@ func TestCreate(t *testing.T) {
 		// the new object came from somewhere the caller cannot see
 		fx := newFixture(t)
 		fx.stub("POST /v2/spaces/space1/objects", 200,
-			`{"id":"bafynew","type":"task","etag":"e1","template":{"id":"bafytpl","name":"Weekly task","source":"type_default"}}`)
+			`{"id":"bafynew","type":"task","etag":"e1","template":{"id":"bafytpl","name":"Weekly task","source":"type_default","blocks_added":4,"combined":true}}`)
 
 		// when
-		result, err := fx.Run(ctx, "create", map[string]any{"space": "space1", "type": "task", "name": "X"})
+		result, err := fx.Run(ctx, "create", map[string]any{"space": "space1", "type": "task", "name": "X",
+			"markdown": "# Mine"})
 
 		// then
 		require.NoError(t, err)
 		assert.Contains(t, result.Text, "started from template Weekly task (the type's default)")
+		assert.Contains(t, result.Text, "it wrote 4 blocks, and yours follow",
+			"what the object holds is a read-back the receipt can spare the caller")
 	})
 
 	t.Run("no template means nothing is said about one", func(t *testing.T) {

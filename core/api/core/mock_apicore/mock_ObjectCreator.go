@@ -5,7 +5,10 @@ package mock_apicore
 import (
 	context "context"
 
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
+
 	domain "github.com/anyproto/anytype-heart/core/domain"
+
 	mock "github.com/stretchr/testify/mock"
 
 	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -25,22 +28,22 @@ func (_m *MockObjectCreator) EXPECT() *MockObjectCreator_Expecter {
 }
 
 // CreateObjectFromSnapshot provides a mock function with given fields: ctx, spaceId, snapshot, templateId
-func (_m *MockObjectCreator) CreateObjectFromSnapshot(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase, templateId string) (string, error) {
+func (_m *MockObjectCreator) CreateObjectFromSnapshot(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase, templateId string) (apicore.CreateOutcome, error) {
 	ret := _m.Called(ctx, spaceId, snapshot, templateId)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateObjectFromSnapshot")
 	}
 
-	var r0 string
+	var r0 apicore.CreateOutcome
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, *model.SmartBlockSnapshotBase, string) (string, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, *model.SmartBlockSnapshotBase, string) (apicore.CreateOutcome, error)); ok {
 		return rf(ctx, spaceId, snapshot, templateId)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, *model.SmartBlockSnapshotBase, string) string); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, *model.SmartBlockSnapshotBase, string) apicore.CreateOutcome); ok {
 		r0 = rf(ctx, spaceId, snapshot, templateId)
 	} else {
-		r0 = ret.Get(0).(string)
+		r0 = ret.Get(0).(apicore.CreateOutcome)
 	}
 
 	if rf, ok := ret.Get(1).(func(context.Context, string, *model.SmartBlockSnapshotBase, string) error); ok {
@@ -73,12 +76,12 @@ func (_c *MockObjectCreator_CreateObjectFromSnapshot_Call) Run(run func(ctx cont
 	return _c
 }
 
-func (_c *MockObjectCreator_CreateObjectFromSnapshot_Call) Return(id string, err error) *MockObjectCreator_CreateObjectFromSnapshot_Call {
-	_c.Call.Return(id, err)
+func (_c *MockObjectCreator_CreateObjectFromSnapshot_Call) Return(_a0 apicore.CreateOutcome, _a1 error) *MockObjectCreator_CreateObjectFromSnapshot_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockObjectCreator_CreateObjectFromSnapshot_Call) RunAndReturn(run func(context.Context, string, *model.SmartBlockSnapshotBase, string) (string, error)) *MockObjectCreator_CreateObjectFromSnapshot_Call {
+func (_c *MockObjectCreator_CreateObjectFromSnapshot_Call) RunAndReturn(run func(context.Context, string, *model.SmartBlockSnapshotBase, string) (apicore.CreateOutcome, error)) *MockObjectCreator_CreateObjectFromSnapshot_Call {
 	_c.Call.Return(run)
 	return _c
 }

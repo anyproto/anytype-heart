@@ -52,7 +52,7 @@ const v2IconColorProp = `"type":"string","enum":["grey","yellow","orange","red",
 // One text, because two would drift the moment one of them learned the word
 // none.
 const apiV2TemplateMember = `{"type":"string","maxLength":256,` +
-	`"description":"id of the template this object starts from. Leave it out and the type's default_template applies, if it has one; send \"none\" to start from nothing. The result names the template that was applied"}`
+	`"description":"id of the template this object starts from. Leave it out: the type's default_template applies when it has one, and nothing is applied when it does not. Reading the type first is not needed. The result names the template that was applied, how many blocks it added, and whether the body is those blocks followed by yours. Send \"none\" to start from nothing"}`
 
 var v2SchemaKinds = map[string]v2SchemaKind{
 	"object": {

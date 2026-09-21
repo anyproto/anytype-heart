@@ -10,6 +10,7 @@ import (
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	editortemplate "github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/table"
@@ -42,14 +43,15 @@ func newObjectCreateAdapter(creator objectcreator.Service, spaces space.Service,
 	return &objectCreateAdapter{creator: creator, spaces: spaces, templates: templates, store: store}
 }
 
-func (a *objectCreateAdapter) CreateObjectFromSnapshot(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase, templateId string) (string, error) {
+func (a *objectCreateAdapter) CreateObjectFromSnapshot(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase, templateId string) (apicore.CreateOutcome, error) {
+	var outcome apicore.CreateOutcome
 	rootId := snapshotRootId(snapshot)
 	if rootId == "" {
-		return "", fmt.Errorf("snapshot has no root block")
+		return outcome, fmt.Errorf("snapshot has no root block")
 	}
 	createState, err := state.NewDocFromSnapshot(rootId, &pb.ChangeSnapshot{Data: snapshot})
 	if err != nil {
-		return "", fmt.Errorf("state from snapshot: %w", err)
+		return outcome, fmt.Errorf("state from snapshot: %w", err)
 	}
 
 	typeKeys := createState.ObjectTypeKeys()
@@ -59,21 +61,23 @@ func (a *objectCreateAdapter) CreateObjectFromSnapshot(ctx context.Context, spac
 
 	spc, err := a.spaces.Get(ctx, spaceId)
 	if err != nil {
-		return "", fmt.Errorf("get space %s: %w", spaceId, err)
+		return outcome, fmt.Errorf("get space %s: %w", spaceId, err)
 	}
 	// A document may reference bundled types/relations not yet present in the
 	// space (a fresh space has only a few installed); install them so the
 	// created object's type and relations resolve (mirrors the import path).
 	if ids := bundledIdsToInstall(createState.AllRelationKeys(), typeKeys); len(ids) > 0 {
 		if _, _, err := a.creator.InstallBundledObjects(ctx, spc, ids); err != nil {
-			return "", fmt.Errorf("install bundled objects: %w", err)
+			return outcome, fmt.Errorf("install bundled objects: %w", err)
 		}
 	}
 
 	if templateId != "" {
-		if createState, err = a.applyTemplate(ctx, spc, typeKeys, createState, templateId); err != nil {
-			return "", err
+		var templateBlocks int
+		if createState, templateBlocks, err = a.applyTemplate(ctx, spc, typeKeys, createState, templateId); err != nil {
+			return outcome, err
 		}
+		outcome.TemplateBlocks = templateBlocks
 	}
 	// after the template merge, so the detail lands on whichever state is
 	// created — and so it is never offered to the template service as one of
@@ -82,9 +86,10 @@ func (a *objectCreateAdapter) CreateObjectFromSnapshot(ctx context.Context, spac
 
 	id, _, err := a.creator.CreateSmartBlockFromStateInSpace(ctx, spc, typeKeys, createState)
 	if err != nil {
-		return "", fmt.Errorf("create object from state: %w", err)
+		return outcome, fmt.Errorf("create object from state: %w", err)
 	}
-	return id, nil
+	outcome.Id = id
+	return outcome, nil
 }
 
 // applyTemplate rebases the document on the state the template produces.
@@ -105,10 +110,10 @@ func (a *objectCreateAdapter) CreateObjectFromSnapshot(ctx context.Context, spac
 // response has already told the caller which template was applied.
 func (a *objectCreateAdapter) applyTemplate(
 	ctx context.Context, spc clientspace.Space, typeKeys []domain.TypeKey, doc *state.State, templateId string,
-) (*state.State, error) {
+) (*state.State, int, error) {
 	typeId, err := spc.GetTypeIdByKey(ctx, typeKeys[0])
 	if err != nil {
-		return nil, fmt.Errorf("derive type id for %s: %w", typeKeys[0], err)
+		return nil, 0, fmt.Errorf("derive type id for %s: %w", typeKeys[0], err)
 	}
 	layout := model.ObjectType_basic
 	if objectType, err := a.store.SpaceIndex(spc.Id()).GetObjectType(typeId); err == nil {
@@ -124,7 +129,7 @@ func (a *objectCreateAdapter) applyTemplate(
 		Details:    doc.Details(),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("%w: build state from template %s: %v", apicore.ErrTemplateUnavailable, templateId, err)
+		return nil, 0, fmt.Errorf("%w: build state from template %s: %v", apicore.ErrTemplateUnavailable, templateId, err)
 	}
 	// The template service degrades a template it cannot load to the BLANK
 	// template and reports no error (templateimpl.createCustomTemplateState
@@ -137,14 +142,53 @@ func (a *objectCreateAdapter) applyTemplate(
 	// merged into these details, so the detail is reachable by the caller and
 	// the root is not.
 	if base.RootId() != templateId {
-		return nil, fmt.Errorf("%w: template %s did not load", apicore.ErrTemplateUnavailable, templateId)
+		return nil, 0, fmt.Errorf("%w: template %s did not load", apicore.ErrTemplateUnavailable, templateId)
 	}
 	base.SetObjectTypeKeys(typeKeys)
 	if key := doc.UniqueKeyInternal(); key != "" {
 		base.SetUniqueKeyInternal(key)
 	}
+	// counted BEFORE the merge, so the number is the template's contribution
+	// and not the whole document
+	contributed := countContentBlocks(base)
 	mergeDocumentIntoTemplate(base, doc)
-	return base, nil
+	return base, contributed, nil
+}
+
+// countContentBlocks counts the blocks a template state contributes to the
+// object, skipping the root and the header subtree — the title, description
+// and featured relations an object of this layout carries whether or not a
+// template was applied. What is left is what the caller did not send and
+// would otherwise have to read the object back to discover.
+func countContentBlocks(st *state.State) int {
+	root := st.Pick(st.RootId())
+	if root == nil {
+		return 0
+	}
+	// state.Iterate cannot skip a SUBTREE — a false return ends the whole
+	// walk, and the header is the root's first child — so the walk is its
+	// own. The visited set is what keeps a malformed state from looping.
+	var (
+		count   int
+		visited = map[string]bool{st.RootId(): true}
+		walk    func(ids []string)
+	)
+	walk = func(ids []string) {
+		for _, id := range ids {
+			if id == editortemplate.HeaderLayoutId || visited[id] {
+				continue
+			}
+			visited[id] = true
+			block := st.Pick(id)
+			if block == nil {
+				continue
+			}
+			count++
+			walk(block.Model().ChildrenIds)
+		}
+	}
+	walk(root.Model().ChildrenIds)
+	return count
 }
 
 // mergeDocumentIntoTemplate copies what the caller's document holds and the

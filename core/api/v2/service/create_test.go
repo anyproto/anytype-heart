@@ -72,9 +72,9 @@ func (fx *v2Fixture) addTagProperty(t *testing.T) {
 func (fx *v2Fixture) expectCreate(id string) **model.SmartBlockSnapshotBase {
 	var captured *model.SmartBlockSnapshotBase
 	fx.creatorMock.EXPECT().CreateObjectFromSnapshot(mock.Anything, testSpaceId, mock.Anything, mock.Anything).
-		RunAndReturn(func(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase, templateId string) (string, error) {
+		RunAndReturn(func(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase, templateId string) (apicore.CreateOutcome, error) {
 			captured = snapshot
-			return id, nil
+			return apicore.CreateOutcome{Id: id}, nil
 		})
 	return &captured
 }
@@ -82,12 +82,16 @@ func (fx *v2Fixture) expectCreate(id string) **model.SmartBlockSnapshotBase {
 // expectCreateWithTemplate captures the template id handed to the creator
 // beside the snapshot: what a create actually starts the object from, as
 // opposed to what the result says it did.
-func (fx *v2Fixture) expectCreateWithTemplate(id string) *string {
+func (fx *v2Fixture) expectCreateWithTemplate(id string, templateBlocks ...int) *string {
 	var captured string
+	blocks := 0
+	if len(templateBlocks) > 0 {
+		blocks = templateBlocks[0]
+	}
 	fx.creatorMock.EXPECT().CreateObjectFromSnapshot(mock.Anything, testSpaceId, mock.Anything, mock.Anything).
-		RunAndReturn(func(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase, templateId string) (string, error) {
+		RunAndReturn(func(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase, templateId string) (apicore.CreateOutcome, error) {
 			captured = templateId
-			return id, nil
+			return apicore.CreateOutcome{Id: id, TemplateBlocks: blocks}, nil
 		})
 	return &captured
 }

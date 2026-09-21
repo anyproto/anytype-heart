@@ -409,6 +409,15 @@ components:
       description: The template the new object started from, absent when it started
         from nothing.
       properties:
+        blocks_added:
+          description: How many blocks the template put in the object, not counting
+            the title and featured properties every object of the layout carries.
+            Absent on a dry run, which does not build the template.
+          type: integer
+        combined:
+          description: True when the object's blocks are the template's followed by
+            the ones this request sent, so its body holds more than the request did.
+          type: boolean
         id:
           description: Store id of the template.
           type: string
@@ -3406,7 +3415,7 @@ paths:
                       maxProperties: 128
                       type: object
                     template:
-                      description: id of the template this object starts from. Leave it out and the type's default_template applies, if it has one; send "none" to start from nothing. The result names the template that was applied
+                      description: 'id of the template this object starts from. Leave it out: the type''s default_template applies when it has one, and nothing is applied when it does not. Reading the type first is not needed. The result names the template that was applied, how many blocks it added, and whether the body is those blocks followed by yours. Send "none" to start from nothing'
                       maxLength: 256
                       type: string
                     type:

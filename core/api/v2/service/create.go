@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
 	"github.com/gogo/protobuf/types"
@@ -473,6 +474,14 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	// name the template would be silent about the one part of the outcome
 	// the request did not state
 	result.Template = appliedTemplate
+	if appliedTemplate != nil {
+		// the request's own content goes AFTER the template's, so an object
+		// created this way holds blocks the request never sent. Said here, on
+		// dry runs too, because the alternative is a caller reading the object
+		// back to discover it — the snapshot is the request's own blocks, so
+		// this is knowable without building the template.
+		appliedTemplate.Combined = countRequestBlocks(snapshot) > 0
+	}
 	// the label-adoption tell rides real runs and dry runs alike (C9)
 	result.Warnings = warnLabelShapedIds(body)
 	result.Warnings = append(result.Warnings, templateWarnings...)
@@ -513,7 +522,7 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 
 	// 5. create — the whole document as the object's initial state, on top of
 	// the template's when one applies
-	id, err := s.creator.CreateObjectFromSnapshot(ctx, spaceId, snapshot, appliedTemplate.GetId())
+	created, err := s.creator.CreateObjectFromSnapshot(ctx, spaceId, snapshot, appliedTemplate.GetId())
 	if errors.Is(err, apicore.ErrTemplateUnavailable) {
 		// the template passed every check this layer can make and then could
 		// not be loaded — deleted between the two, in the usual case. Who
@@ -532,15 +541,20 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 				result.Type, appliedTemplate.GetId()),
 		}.Hintf("point default_template at a live template, or clear it, with %s", v2model.RefUpdateType(spaceId, result.Type)))
 		result.Template = nil
-		id, err = s.creator.CreateObjectFromSnapshot(ctx, spaceId, snapshot, "")
+		created, err = s.creator.CreateObjectFromSnapshot(ctx, spaceId, snapshot, "")
 	}
 	if err != nil {
 		return nil, fmt.Errorf("create object in space %s: %w", spaceId, err)
 	}
-	result.Id = id
+	result.Id = created.Id
+	if result.Template != nil {
+		// what the template put in the object, which the caller did not send
+		// and would otherwise have to read the object back to see
+		result.Template.BlocksAdded = created.TemplateBlocks
+	}
 
 	// 6. etag read-back (best effort — the create already succeeded)
-	if read, err := s.reader.ReadObject(ctx, spaceId, id); err == nil {
+	if read, err := s.reader.ReadObject(ctx, spaceId, created.Id); err == nil {
 		result.Etag = ComputeEtag(read.Heads)
 	} else {
 		result.Warnings = append(result.Warnings, v2model.Issue{
@@ -548,6 +562,21 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 		})
 	}
 	return result, nil
+}
+
+// countRequestBlocks counts the blocks the request's own document carries,
+// which is every block of the create snapshot but its root.
+func countRequestBlocks(snapshot *model.SmartBlockSnapshotBase) int {
+	if snapshot == nil {
+		return 0
+	}
+	var count int
+	for _, block := range snapshot.Blocks {
+		if block.GetSmartblock() == nil {
+			count++
+		}
+	}
+	return count
 }
 
 // rejectInvalidDocument maps AnyBlock validation failures onto the C6

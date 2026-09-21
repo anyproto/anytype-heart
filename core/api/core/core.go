@@ -104,9 +104,24 @@ var ErrTemplateUnavailable = errors.New("template unavailable")
 // nothing and applies what it is given, so a template that has vanished
 // between the two is an error here, not a silent blank object.
 type ObjectCreator interface {
-	CreateObjectFromSnapshot(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase, templateId string) (id string, err error)
+	CreateObjectFromSnapshot(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase, templateId string) (CreateOutcome, error)
 	TypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (string, error)
 	RelationIdByKey(ctx context.Context, spaceId string, key domain.RelationKey) (string, error)
+}
+
+// CreateOutcome is what a snapshot create produced. It is a struct rather
+// than a bare id because a create that started from a template did something
+// to the object the caller cannot infer from the request: TemplateBlocks is
+// how many blocks the template contributed, so the response can say that the
+// object holds content the request did not send without the caller reading
+// the object back to find out.
+//
+// The count excludes the header the object would carry either way (its
+// title, description and featured relations): a number that moved because an
+// object has a title would say nothing about the template.
+type CreateOutcome struct {
+	Id             string
+	TemplateBlocks int
 }
 
 // ObjectEdit is one locked editing session on a live object — what the

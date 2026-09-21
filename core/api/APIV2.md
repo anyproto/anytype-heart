@@ -7492,6 +7492,27 @@ WHO chose the template:
   not send, so without it the blocks that appear in a new object read as the
   server inventing a body.
 
+**What the result says, and the reads it is there to spare.** Two calls a
+caller would otherwise make are answered by the response instead. The
+`template` member's own description closes the first: leaving it out is
+normal, a type with no default applies nothing, and reading the type first is
+not needed, because the result names what was applied. The second is the
+read-BACK: an object created from a template holds blocks the request never
+sent, so `template` also carries `blocks_added` — what the template wrote,
+not counting the title and featured relations the object would carry either
+way — and `combined`, true when the request's own blocks follow the
+template's. `combined` is knowable from the request's own snapshot, so it
+rides dry runs too; `blocks_added` is not, because a dry run never builds the
+template, and it is absent there rather than guessed.
+
+The steering lives in the MEMBER's description rather than the endpoint's
+because this API has measured which one a model reads: the A/B recorded
+above published one field three ways and got it supplied on every call where
+the schema showed it, none where it did not, and on every call in the arm
+whose prose argued against using it. Prose nudges, shape decides — so the
+fact that removes a call is stated as a field in the result, not as a
+sentence about the result.
+
 **The stale default is real, not hypothetical.** Deleting a template clears
 the type that pointed at it (`core/block/delete.go` — `unsetDefaultTemplateId`),
 but that check reads the detail with `GetString`, and this API writes

@@ -13,6 +13,7 @@ import (
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator/mock_objectcreator"
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/block/template/mock_template"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -246,11 +247,12 @@ func TestCreateObjectFromSnapshotTemplate(t *testing.T) {
 			})
 
 		// when
-		id, err := fx.CreateObjectFromSnapshot(context.Background(), "space1", memoSnapshot(), "")
+		outcome, err := fx.CreateObjectFromSnapshot(context.Background(), "space1", memoSnapshot(), "")
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, "obj1", id)
+		assert.Equal(t, "obj1", outcome.Id)
+		assert.Zero(t, outcome.TemplateBlocks, "no template, nothing added")
 		require.NotNil(t, created)
 		assert.Equal(t, []string{"p1"}, created.Pick(created.RootId()).Model().ChildrenIds)
 		assert.Equal(t, int64(model.ObjectOrigin_api), created.Details().GetInt64(bundle.RelationKeyOrigin))
@@ -274,11 +276,12 @@ func TestCreateObjectFromSnapshotTemplate(t *testing.T) {
 			})
 
 		// when
-		id, err := fx.CreateObjectFromSnapshot(context.Background(), "space1", memoSnapshot(), "tpl-weekly")
+		outcome, err := fx.CreateObjectFromSnapshot(context.Background(), "space1", memoSnapshot(), "tpl-weekly")
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, "obj1", id)
+		assert.Equal(t, "obj1", outcome.Id)
+		assert.Equal(t, 1, outcome.TemplateBlocks, "the template's one content block, counted before the merge")
 		assert.Equal(t, "tpl-weekly", request.TemplateId)
 		assert.Equal(t, "type-memo", request.TypeId)
 		assert.Equal(t, "space1", request.SpaceId)
@@ -448,5 +451,34 @@ func TestMergeDocumentIntoTemplateRootAttributes(t *testing.T) {
 		mergeDocumentIntoTemplate(base, doc)
 
 		assert.Equal(t, "grey", base.Pick(base.RootId()).Model().BackgroundColor)
+	})
+}
+
+func TestCountContentBlocks(t *testing.T) {
+	t.Run("the header the object would carry anyway is not counted", func(t *testing.T) {
+		// given — a template state holds the header, title and featured
+		// relations of its layout; counting them would report a number that
+		// moved because an object has a title
+		st := templateState(t, "tpl-1", "header", "intro", "steps")
+		st.Add(simple.New(&model.Block{Id: "title", Content: &model.BlockContentOfText{Text: &model.BlockContentText{}}}))
+		st.Add(simple.New(&model.Block{Id: "featuredRelations", Content: &model.BlockContentOfFeaturedRelations{FeaturedRelations: &model.BlockContentFeaturedRelations{}}}))
+		st.Get("header").Model().ChildrenIds = []string{"title", "featuredRelations"}
+
+		// then
+		assert.Equal(t, 2, countContentBlocks(st), "intro and steps")
+	})
+
+	t.Run("nested content counts, and a cycle terminates", func(t *testing.T) {
+		st := templateState(t, "tpl-1", "intro")
+		st.Add(simple.New(&model.Block{Id: "nested", Content: &model.BlockContentOfText{Text: &model.BlockContentText{}}}))
+		st.Get("intro").Model().ChildrenIds = []string{"nested"}
+		st.Get("nested").Model().ChildrenIds = []string{"intro"} // malformed on purpose
+
+		assert.Equal(t, 2, countContentBlocks(st))
+	})
+
+	t.Run("a template with nothing but its header counts zero", func(t *testing.T) {
+		st := templateState(t, "tpl-1", "header")
+		assert.Zero(t, countContentBlocks(st))
 	})
 }
