@@ -42,7 +42,7 @@ package v2service
 // apart. A readable or bundled corpse key could not detect a vocabulary
 // slip.
 //
-// THE POLICY, since the round-two eval (APIV2_TYPED_HINTS_ROUND2.md F1): a
+// THE POLICY: a
 // corpse-held value is SERVED under the corpse's slug — the spelling the
 // caller was taught — not its stored bson key, on every read surface
 // (object, type list, view column). The stored key of a space-minted

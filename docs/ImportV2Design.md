@@ -1,9 +1,8 @@
 # Import V2 — Architecture & Plan
 
 Design for the greenfield replacement of `core/block/import` ("v1"). This is the engine's one
-architecture document: sections 1-16 were written before implementation and carry the original
-reasoning; sections 17-20 fold in the subsystem designs that followed, so what shipped and why is
-in one place. The client-facing contract lives in `docs/ImportV2ClientIntegration.md`.
+architecture document: sections 1-14 carry the engine's design and the decisions that bind it;
+sections 15-18 describe the subsystems that followed, so what the engine does and why is in one place. The client-facing contract lives in `docs/ImportV2ClientIntegration.md`.
 
 Scope of the first implementation: **engine core + Markdown**, then **Notion**. Other formats (PB, CSV,
 HTML, TXT, Web, External) stay on v1 and are out of scope until parity is reached and a switch is
@@ -266,7 +265,7 @@ Per-object persist (direct descendant of v1's `objectcreator.Create`, minus its 
    - create: `space.CreateTreeObjectWithPayload(payload, initFunc)`; on `treestorage.ErrTreeExists`
      fall back to opening the existing object (kept — it is what makes racy re-imports idempotent);
    - update (dedup match + updatable): open via object getter, Revision guard, reset state
-     (`history.ResetToVersion`), **collections: membership policy per §12 open question**;
+     (`history.ResetToVersion`), **collections: membership replaces, per §13.1**;
    - workspace/widget: the two v1 special cases preserved (set details on workspace; merge widget
      blocks), reached only by PB imports today but kept in the engine since they're format-neutral.
 5. **File objects**: upload via `BlockService.UploadFile` with `CustomEncryptionKeys` (or
@@ -331,7 +330,7 @@ Every effect is recorded in an in-memory **run journal** before/as it happens:
 |---|---|---|
 | Created tree object | id | delete object |
 | Uploaded/created file object | id | delete object **unless** it has inbound links from outside this run (`GetOutboundLinksById`-style check — dedup means an "uploaded" file may pre-date the run; matched ids are journaled as *matched*, never deleted) |
-| Updated existing object | id + previous heads/version id | restore previous version (needs a spike — see §12 open question; fallback: report as non-compensated in the result, explicitly) |
+| Updated existing object | id + previous heads/version id | report as non-compensated in the result, explicitly (§13.2 — restoring a previous version is a possible later addition) |
 | Favorite/archive flags | id + previous value | revert |
 | Installed bundled objects | ids | none (idempotent, shared, harmless — deliberately not compensated) |
 | Root collection + widget | ids | delete |
@@ -545,7 +544,7 @@ Proposed defaults — flag disagreements in review:
 | Date ranges / time zones | end + tz dropped; malformed → epoch 0 | apply tz; store start; end → companion "<name> (end)" relation; malformed → Warning, detail omitted (never epoch-0) |
 | Date formulas | dropped | import as date detail |
 | `verification` property | dropped | skipped + Warning (no Anytype analogue) |
-| Notion `select` (single-choice) | tag relation — pick-one cardinality lost | **status** relation (single-select preserved; `multi_select` stays tag) — decision §13.8, implementation §16 item 6 |
+| Notion `select` (single-choice) | tag relation — pick-one cardinality lost | **status** relation (single-select preserved; `multi_select` stays tag) — decision §13.5 |
 | People (`created_by`, mentions…) | name strings / dangling raw ids | name strings kept; dangling ids never emitted (skip + Warning). Property maps to tag-of-names for now; an object-format mapping to imported member pages is a possible later improvement |
 | Rollup arrays | pseudo-tag with unbacked values | joined longtext + Warning (no unbacked tag values) |
 | Brown color | silently → default | nearest supported color + Warning |
@@ -724,7 +723,7 @@ positives. The counts are pinned in the cassette fidelity snapshot.
 collection view (blocked on resolver passthrough + installed-type ids for bundled types); csv header
 line as property evidence; per-page content signals; multilingual/learned matching.
 
-**LLM enrichment.** The "learned model behind the same interface" iteration is section 17: an
+**LLM enrichment.** The "learned model behind the same interface" iteration is section 15: an
 optional BYOK (OpenAI-compatible) schema-plan step that sees
 all container schemas before conversion and returns whole-workspace types *plus* property
 normalization (bundled-key remaps, format fixes, cross-container merges). It generalizes this seam
@@ -757,215 +756,75 @@ Plus: two `Config` bools, one guarded branch in `core/object.go`, one `Register(
 
 ---
 
-## 13. Decisions (resolved in review, 2026-07-02)
+## 13. Decisions that bind
 
-1. **Issue**: `GO-7349`, branch `go-7349-import-refactor`.
-2. **Root/CSV collection membership on re-import**: **replace** (idempotent re-import converges to the
-   source), not v1's union.
-3. **Compensating updated objects** (ALL_OR_NOTHING + `updateExistingObjects`): **postponed**. In most
-   cases compensation is just deleting created objects; updated objects are journaled and reported as
-   non-compensated for now. History-based restore is a possible later addition.
-4. **go-vcr** (`gopkg.in/dnaeon/go-vcr.v4`, test-only) approved for Notion cassettes.
-5. **Data-decision table** (§11.3) approved as proposed.
-6. **Package**: `core/block/importv2`. Layout note: the contract types (Object, Snapshot, Converter,
-   Sink, IdentityClaim, Issue, Result, Request) live in the **root package** `importv2` (avoiding a
-   package-name clash with `pkg/lib/pb/model`); the app component registered in bootstrap lives in
-   `importv2/adapter`. Subpackages import the root, never each other's internals.
+These are settled and load-bearing; a change to any of them is a design change, not a bug fix.
 
-Added 2026-07-11 (Linear-insights review, `docs/ImportV2LinearInsights.json` — see §16):
+1. **Collection membership on re-import replaces, it does not union.** A re-import converges to the
+   source (v1 unioned, so a removed row never disappeared).
+2. **Compensation covers created objects, not updated ones.** Under `ALL_OR_NOTHING` with
+   `updateExistingObjects`, compensation deletes what the run created; objects it modified are
+   journaled and reported as non-compensated. History-based restore is a possible later addition.
+3. **Package layout.** The contract types (`Object`, `Snapshot`, `Converter`, `Sink`, `IdentityClaim`,
+   `Issue`, `Result`, `Request`) live in the root package `importv2` — the name avoids a clash with
+   `pkg/lib/pb/model`. The app component registered in bootstrap lives in `importv2/adapter`.
+   Subpackages import the root; they never import each other's internals.
+4. **The issue ledger's user surface is an object, not a popup.** A run that finishes with at least one
+   issue creates an import report object in the target space (`importv2/report`), added to the root
+   collection and root widget so it sits next to the imported content. Grouping is by
+   **(severity, message)**, not by issue code: one code spans unrelated causes, and a reader groups by
+   what happened rather than by taxonomy. The message is the constant half of an issue — whatever varies
+   goes in `Issue.Subject` and `Issue.Count`, and a message that interpolates a value splits its own
+   group. Objects appear by **name**, never by source key (the engine records what it called everything
+   it emitted and hands the report a `Lookup`); objects it cannot name collapse into one counted line.
+   That same table gates the mention mark: a key that resolves through the identity table but has no
+   object behind it renders as `_missing_object`. Severity renders as an outcome — "Not imported",
+   "Imported with changes", "Note" — and notes are counted apart from problems, because "these rows
+   became Tasks" is a decision, not damage.
+5. **Select cardinality follows UX, not v1 parity.** Notion single `select` maps to **status**, which is
+   Anytype's single-select format, so pick-one survives the import; `multi_select` and `people` stay
+   tag (`notion/properties.go:320`). v1 collapsed `select` into tag and the choice was irreversibly
+   multi-valued afterwards.
+6. **Export lossiness is out of scope.** Embeds, bookmarks, inline sets and option colors flattened by
+   markdown export are an *exporter* problem. The v2 `anytype-export` flavour maximizes what import can
+   recover, but it cannot restore data the exporter never wrote.
+7. **Destination-owned identity and configuration are immutable to a normal import.** The space's name
+   and icon, and existing types and their views, are mutable only under an explicit, separately
+   requested full-restore mode. Persist rejects Workspace and Widget snapshots today; this binds the
+   future pb converter.
 
-7. **Issue-ledger user surface = import report object.** When a run finishes with issues, create one
-   Anytype object in the target space: a table-block summary (count by code × severity) plus a
-   toggleable per-issue list grouped by code (details in §16 item 1). The report **page is the primary
-   UX surface** — an ephemeral popup/progress bar is the wrong medium for per-object detail; the
-   client renders it with a discard button. Import API changes are sanctioned (2026-07-11: "client
-   will adopt the new api"): `NotificationImport` + `EventImportFinish` gain `reportObjectId` and
-   issue counts so clients can navigate to the report. One structured end-of-run log line records
-   counts by code for telemetry.
-8. **Select cardinality — UX over v1 parity.** v1 parity is explicitly *not* a goal where it degrades
-   UX. Notion single `select` → **status** format (pick-one preserved); `multi_select` stays tag.
-   §11.3 row updated; implementation tracked in §16 item 6.
-9. **Export lossiness is out of scope.** The round-trip-fidelity issue cluster (63 issues: embeds,
-   bookmarks, inline sets, option colors flattened by markdown export) is an *exporter* problem; the
-   export rewrite (lossless snapshot channel + total, registry-driven markdown renderer) is a separate
-   issue. v2's `anytype-export` flavour maximizes what import can recover but cannot restore data the
-   exporter never wrote.
-10. **PB-phase ground rule.** Destination-owned identity and configuration — the space's name/icon,
-    existing types and their views — are **immutable** to a normal import; mutable only under an
-    explicit, separately requested full-restore mode. Binding for the future pb converter (today's
-    persist already rejects Workspace/Widget snapshots).
+## 14. Coexistence with v1
 
-## 14. Phased plan
+**v2 is the default engine** for Markdown, Obsidian and Notion: `ImportV2Markdown` and `ImportV2Notion`
+both default to `true` (`core/anytype/config/config.go:272-273`) and `adapter.Handles`
+(`importv2/adapter/adapter.go:216-224`) routes those three types to the engine. The kill switches are
+`ANYTYPE_IMPORTV2MARKDOWN=false` and `ANYTYPE_IMPORTV2NOTION=false` — env-only, no build needed.
 
-- **Phase 1 — engine core + Markdown** (★ pause): scaffolding (model/engine/identity/resolve/persist/
-  source + fakes) → markdown converter → golden + memory + idempotency + cancellation tests green →
-  adapter + flags → demonstrate a real Markdown import end-to-end. Reviewable increments in that order.
-- **Phase 2 — Notion** (★ pause): client (transport/limiter/retry) → search/pass 1 → databases →
-  pages/blocks → files → cassette + mock suites green, resilience defects covered → real import
-  demonstrated (or documented re-record path).
-- **Phase 3 — parity & switch plan**: side-by-side comparison harness (same fixture through v1 and v2,
-  diff object sets), flip flags per format only when told, migration notes. v1 deletion is a separate,
-  later decision.
-- **Phase 4 — markdown flavour profiles** (§11.4): flavour seam + detection (pure refactor) → land the
-  2026-07-07 review deltas on the seam (notion field-blocks, `Collection:` store, emoji/link/collision
-  fixes) → new flavours (Logseq, Bear, Joplin) one profile file at a time.
-- **Phase 5 — hardening backlog** (§16): items from the 2026-07-11 Linear-insights review. Items 1–2
-  (issue-ledger surfacing, panic firewall) gate the flip; the rest can land after.
+**v1 still serves** PB, CSV, HTML, TXT, Web and External, plus `builtinobjects` (the Pb and
+AI-experience markdown paths) and `bookmarkimporter`.
 
-## 15. Switch plan (phase 3)
+**Differences from v1 that are intended, not parity bugs:**
 
-**Current state.** Both engines coexist; v1 is the default for everything. V2 serves Markdown/Obsidian
-when `Config.ImportV2Markdown` is set (env `ANYTYPE_IMPORTV2MARKDOWN=1`) and Notion when
-`Config.ImportV2Notion` is set — one guarded branch in `ObjectImport` +
-`ObjectImportNotionValidateToken`. PB/CSV/HTML/TXT/Web/External, `builtinobjects` and
-`bookmarkimporter` always use v1.
+- v2 derives stable relation and option keys and colors where v1 rolled random ones;
+- collection membership on re-import replaces instead of unioning (§13.1);
+- the orphan self-link block (v1 step 6, flagged "not understood" in v1's own code) is dropped;
+- multi-path selections run per path instead of merged;
+- `sourceFilePath` uses the same hash as v1, so cross-version re-import dedup keeps working.
 
-**Parity evidence so far.**
-- `tests/integration/import_parity_test.go` runs one markdown fixture through both engines against
-  real accounts and compares engine-independent projections (pages, files, collections, custom
-  relations, options) — currently identical.
-- The intended differences (not parity bugs): v2 derives stable relation/option keys and colors where
-  v1 rolled random ones; collection membership on re-import replaces instead of unions (§13.2); the
-  orphan self-link block (v1 step 6, flagged "not understood" in v1's own code) is dropped; multi-path
-  selections run per-path instead of merged (open item); `sourceFilePath` uses the same hash as v1 so
-  cross-version re-import dedup keeps working.
-- Notion parity procedure (needs a real token once): record the cassette
-  (`NOTION_TOKEN=… go test ./core/block/importv2/notion/ -run TestCassetteWorkspace`), commit it, then
-  import the same workspace with `ANYTYPE_IMPORTV2NOTION=1` and inspect against a v1 import of the same
-  workspace. The scripted-workspace test pins the semantic mapping meanwhile.
+`tests/integration/import_parity_test.go` runs one markdown fixture through both engines against real
+accounts and compares engine-independent projections — pages, files, collections, custom relations,
+options.
 
-**Flip procedure (per format, when told):**
-1. Default the config flag to true (one line in `config.go`); keep the env override as the kill switch
-   (`ANYTYPE_IMPORTV2MARKDOWN=0` reverts instantly, no build needed).
-2. Watch the import completion notifications' error-code distribution and the `import-v2*` log scopes.
-3. One release later, remove the flag and the handler branch for that format.
-
-**v1 deletion criteria (explicitly out of scope until told):** all formats flipped ≥1 release,
-`builtinobjects` (Pb + AI-experience markdown paths) and `bookmarkimporter`/`ImportWeb` migrated onto
-the engine (needs the pb converter and a web converter or their retirement), `ListImports` reimplemented
-or dropped, and `core/block/import/common/filetime` relocated (v2 imports it today).
-
-**Open items tracked for the flip:** multi-path common-parent merging; Workspace/Widget snapshot
-support (pb phase); re-imported files counted as Created in the report; mockery entries for the new
-seams; §16 items 1–2 (issue-ledger surfacing, panic firewall) are flip-gating.
-
-**Notion fetch parallelism (done 2026-07-11):** v1 fetched pages through a 10-worker pool with no
-client-side pacer (reactive 429 only); v2's serial fetch was RTT-bound at ~1.5–2 rps, *below* the
-3 rps allowance — a wall-clock regression. Pages now fetch through a bounded prefetch pipeline
-(`notion/prefetch.go`, 6 in flight, shared pacer caps throughput at 3 rps): fetching is parallel,
-emission stays in stub order on the converter goroutine (deterministic output,
-definitions-before-use), and fetch-phase issues are buffered per page and replayed in order.
-Pass-1 `/search` stays serial by nature (cursor chain, ~1 request per 100 entities). The remaining
-ceiling is Notion's documented 3 rps average — no amount of parallelism beats it.
+**Before v1 can be deleted:** `builtinobjects` and `bookmarkimporter`/`ImportWeb` must migrate onto the
+engine (which needs a pb converter and a web converter, or their retirement), `ListImports`
+(`core/block/import/importer.go:199`) must be reimplemented or dropped, and
+`core/block/import/common/filetime` must be relocated — v2 imports it today
+(`importv2/markdown/page.go`).
 
 ---
 
-## 16. Hardening backlog (Linear-insights review, 2026-07-11)
 
-Source: `docs/ImportV2LinearInsights.json` — 369 historical import issues clustered into 8
-architectural patterns, mapped against the v2 code on 2026-07-11 (every claim below verified against
-the working tree, not taken from the synthesis).
-
-**Cluster verdicts:**
-
-| Cluster (issue count) | v2 status |
-|---|---|
-| Silent / partial import failure (37) | Claim pass + typed issues + placeholders kill the drop paths. Residual: items 1, 3, 4. |
-| No schema negotiation (65) | Deterministic derivable identity + dedup by source property id + pinned idempotency solve the duplicate/convergence family; date→date w/ range+tz solved. Residual: item 6 (select cardinality); CSV column typing belongs to the future standalone CSV converter. |
-| File/link resolution (48) | Files as futures in the one identity index, one reference rewriter, typed fetch issues, NFC + slash canonicalization (`source.go`) solve the class. Residual: item 5. |
-| Export can't losslessly encode (63) | **Out of scope** — decision §13.9; export rewrite is a separate issue. |
-| No stable identity/dedup on re-import (37) | Solved for md/notion (2nd-run Created=0 pinned; Revision guard; Workspace/Widget rejected in persist). The pb phase must honor decision §13.10. |
-| Crashes/panics on edge input (19) | Known v1 panic sites gone (guarded parsing), but the *class* needs item 2 — zero `recover()` in importv2 today. |
-| RPC lifecycle / error codes (76) | One runCtx threaded through fetches/uploads, Close drains with grace, single `errorCode` mapping (surfaces can't disagree). Residual: item 7; capability contract = §11.4 open Qs. |
-| Doesn't scale (20) | O(concurrency) memory + gauge test, no arbitrary caps, shared pacer w/ bounded retries, spill uploads. Residual: item 8; post-import subscription-event flood is outside import. |
-
-**Ranked items:**
-
-1. **Surface the issue ledger** (flip-gating). Today `Result.Issues` is assembled
-   (`adapter/adapter.go` combine step) and then discarded: the notification carries only the fatal
-   code, `EventImportFinish` only counts, and nothing logs the taxonomy — a lossy import is
-   indistinguishable from a clean one. Work (decision §13.7):
-   - **Import report object**, created in the target space when a run finishes with ≥1 issue:
-     - name: "Import report — {source type}, {date}";
-     - a lead line, then a table summarizing what happened × how many times × how many objects;
-     - a toggle per KIND of issue, children = one line per affected object, biggest first;
-     - capped at `IssueCap` with an explicit overflow line (`IssuesDropped`);
-     - added to the root collection (and root widget) so it is discoverable next to the imported
-       content.
-
-     Grouping (revised 2026-08-21, after reading the report a real workspace produces — 960 issues
-     saying eleven distinct things, every line beginning with a Notion id):
-
-     - The group key is **(severity, message)**, not the code: one code covers unrelated causes
-       (`dataLoss` spans skipped properties, files Notion returned no URL for, and people the
-       integration may not read), and a user groups by what happened, not by taxonomy. The message
-       is therefore the CONSTANT half of an issue; whatever varies goes in `Issue.Subject` (the
-       property, block kind or child it is about) and `Issue.Count` (how many times, for converters
-       that tally rather than repeat). A message that interpolates a value splits its own group.
-     - Objects are shown by **name**, never by source key: the engine records what it called every
-       object it emitted (`run.names`) and hands the report a `Lookup`. The mention mark renders the
-       text it is given — the client does not substitute the object's name — so the id was what the
-       user saw before this.
-     - That table also gates the mention mark. A key can resolve through the identity table and
-       still have no object behind it (a claim from an interrupted session, a page whose fetch
-       failed); a mention pointing at one of those renders as `_missing_object`.
-     - Objects the report cannot name collapse into one counted line rather than a column of ids.
-     - Severity is rendered as an outcome ("Not imported" / "Imported with changes" / "Note"), and
-       notes are counted apart from problems in the lead line: "these rows became Tasks" is a
-       decision, not damage.
-   - Notification payload distinguishes clean success from success-with-N-issues (counts by
-     severity; proto extension of `NotificationImport`).
-   - One structured end-of-run log line (counts by code) on the `import-v2` scope so
-     Sentry/Graylog events become attributable — kills the "unresearchable import failure"
-     meta-ticket class (GO-1785).
-2. **Panic firewall** (flip-gating). `engine/engine.go` spawns the converter and persist goroutines
-   bare (three `go func` sites) and there is no `recover()` anywhere in importv2 — one panic on
-   unanticipated input still kills the whole process (the class behind 19 crash issues). Add a
-   per-goroutine recover in the engine spawn sites + persist workers that converts any panic into
-   `Issue(IssueInvariant)` flowing through the normal abort predicate. Pin with a test injecting a
-   panicking converter and a panicking uploader.
-3. **Second-chance Notion discovery.** Discovery is `/search`-only; a child page Notion's
-   eventually-consistent index omits (GO-5273) is reported (`missingTarget` warning + "Unresolved
-   link" text) but still lost — even though `mapChildEntity` already holds the child's exact
-   fetchable id (a `child_page` block's id IS the page id). Fetch-and-claim on demand any
-   `child_page`/`child_database`/`link_to_page` id seen in pass-2 blocks but absent from the
-   pass-1 claim set; a permission 404 keeps today's warning. Closes the eventual-consistency hole
-   instead of reporting it. Scope note (implemented 2026-07-11): inline rich-text MENTIONS are
-   excluded — an unresolved mention degrades to an external notion.so link (no content loss), and
-   hooking discovery into rich-text rendering would thread ctx through the whole renderer for
-   marginal gain; revisit if user reports demand it. Late claims flow through the new `Sink.Claim`,
-   count toward progress, and are drained by the converter's pending queue (capped at 1000).
-4. **Claims-reconciliation invariant.** `identity.Assign` rejects unclaimed keys, but nothing asserts
-   the inverse: at end of run the engine should verify every pass-1 claim ended persisted,
-   skipped-with-issue, or failed-with-issue — anything else emits `IssueInvariant`. Placeholder
-   emission is converter discipline today; this makes completeness structural for every future
-   converter.
-5. **Fresh-URL retry for Notion files.** Signed file URLs expire (~1h); the URL string is captured at
-   block-fetch time but downloaded by a persist worker later, and `resettableFile.Reset`
-   (`notion/files.go`) only rewinds the same URL. On a long run (150-minute-class imports, GO-1778 /
-   GO-3998) the gap can exceed the expiry. On 403, re-fetch the owning block to mint a fresh URL
-   before failing the file.
-6. **Select cardinality** (decision §13.8). `relationFormatOf` (`notion/properties.go`) maps
-   `"select", "multi_select", "people"` → tag; change single `select` → status format. Update the
-   §11.3 row's pinning test, scripted-workspace fixtures, and cassette summary literals.
-7. **Quota-specific issue code.** ~~Storage-quota upload failures currently collapse into
-   `FILE_LOAD_ERROR`/`INTERNAL_ERROR`~~ **Resolved by architecture, no code change (verified
-   2026-07-11):** in v2 an import cannot fail or mislead on quota at all. Uploads are local-first —
-   `filesync.AddFile` only queues (no synchronous limit check), so every file lands locally and the
-   run's outcome is quota-independent. Quota exhaustion surfaces asynchronously through the dedicated
-   `EventFileLimitReached` contract; filesync batches those events during an import
-   (`sendImportEvents`) and the v2 adapter flushes them after a successful run
-   (`SendImportEvents`, adapter.go). GO-7037's misleading "not enough space" + silently-dropped
-   images cannot recur: nothing is dropped and the import error-code path is never involved.
-   Client-side quota UX (upgrade prompt on `FileLimitReached`) is the existing, correct surface.
-8. **Oversized-object guard.** Nothing guards the ~64MB CRDT-change ceiling (GO-1433, GO-2635 —
-   giant single documents fail downstream with an opaque error). Persist should measure the payload
-   and reject/degrade with a typed `ObjectError` naming the object; chunking/splitting oversized
-   documents is a possible later refinement.
-
----
-
-## 17. Schema planning — the model names kinds, code maps properties
+## 15. Schema planning — the model names kinds, code maps properties
 
 Consolidated from the four planner design notes (always-mint, whitelist mapper, LLM
 enrichment, reuse-existing-types), which this section replaces.
@@ -1064,7 +923,7 @@ are the user's, the import may only add objects.
 
 ---
 
-## 18. Durable runs — the ledger, compensation, resume
+## 16. Durable runs — the ledger, compensation, resume
 
 Consolidated from the durable-runs design note, which this section replaces. Shipped in
 `core/block/importv2/runstore` and `resume`.
@@ -1097,7 +956,7 @@ collected with everything else instead of leaking from an OS temp dir.
 
 ---
 
-## 19. Deferred materialization — fetch, convert, spool, then materialize
+## 17. Deferred materialization — fetch, convert, spool, then materialize
 
 Consolidated from the deferred-materialization design note, which this section replaces.
 
@@ -1136,7 +995,7 @@ content — displayable, never loggable.
 
 ---
 
-## 20. Notion fidelity — what the warnings were hiding
+## 18. Notion fidelity — what the warnings were hiding
 
 Consolidated from the fidelity review, which this section replaces. Measured against the
 recorded workspace (403 pages, 35 data sources, 5248 blocks): 960 issues that turned out to be

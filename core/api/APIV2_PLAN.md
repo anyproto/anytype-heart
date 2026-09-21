@@ -1,13 +1,15 @@
 # API v2 — the plan of outstanding work
 
-Status: plan v1.0 · 2026-08-09 · GO-7383, branch `go-7383-apiv2-phase0`.
+Status: GO-7383. This is the **index**, not a replacement for the specs. Work
+is specified in `APIV2.md` (the API spec), `APIV2_SURFACES.md` (the
+remaining-surfaces decisions), `APIV2_ADDRESSING.md` (the identifier layer) and
+`APIV2_TOKENS.md` (the measured token review). Each item below says where it
+lives.
 
-This is the **index**, not a replacement for the specs. Work is specified in
-`APIV2.md` (the API spec + §8.x as-built notes), `APIV2_SURFACES.md` (the
-remaining-surfaces decisions and phases), `APIV2_ADDRESSING.md` (the identifier
-layer), `APIV2_TOKENS.md` (the measured token review) and
-`APIV2_SURFACE_REVIEW.md` (the whole-surface audit). Each item below says
-where it lives.
+The whole-surface audit this plan was built from, and the eval rounds that
+measured it, are archived outside the repo at `../anytype-heart-docs/core/api/`.
+Their findings were not re-triaged, so treat a reference to one as a lead, not
+as a known-open bug.
 
 Ordering is by **dependency and evidence**, not by size. Waves 0–1 are the
 ones with measured numbers or a live defect behind them.
