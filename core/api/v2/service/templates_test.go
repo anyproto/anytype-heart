@@ -1275,3 +1275,180 @@ func TestCreateObjectMarkdownTitleContracts(t *testing.T) {
 		}
 	})
 }
+
+func TestCreateObjectTemplateNamesTheTypeAsTheCallerDoes(t *testing.T) {
+	// a space-minted type's STORED key is a bson id the caller never sent;
+	// the fixtures elsewhere use `memo` for both spellings and so cannot see
+	// the difference. A live run could, and did.
+	const storedKey = "6ab13f0f877a91054dd66c3e"
+
+	addMintedType := func(t *testing.T, fx *v2Fixture, defaultTemplate ...string) {
+		row := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("type-minted"),
+			bundle.RelationKeyName:           domain.String("Bike trip"),
+			bundle.RelationKeyUniqueKey:      domain.String("ot-" + storedKey),
+			bundle.RelationKeyApiObjectKey:   domain.String("bike_trip"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+		}
+		if len(defaultTemplate) > 0 {
+			row[bundle.RelationKeyDefaultTemplateId] = domain.StringList(defaultTemplate)
+		}
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{row})
+	}
+
+	t.Run("a stale default warns in the api spelling, never the stored key", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		addMintedType(t, fx, "tpl-gone")
+		fx.expectCreateWithTemplate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"bike_trip","name":"Monday"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Warnings, 1)
+		assert.Contains(t, result.Warnings[0].Message, `"bike_trip"`)
+		assert.NotContains(t, result.Warnings[0].Message, storedKey)
+		assert.NotContains(t, result.Warnings[0].Hint, storedKey)
+		require.Len(t, result.Warnings[0].SeeAlso, 1)
+		assert.Equal(t, "bike_trip", result.Warnings[0].SeeAlso[0].Params["type"])
+	})
+
+	t.Run("a refused template points at the list in the api spelling", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addTemplateType(t)
+		addMintedType(t, fx)
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"bike_trip","name":"Monday","template":"tpl-nope"}`), false, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.NotContains(t, apiErr.Issues[0].Hint, storedKey)
+		require.Len(t, apiErr.Issues[0].SeeAlso, 1)
+		assert.Equal(t, "bike_trip", apiErr.Issues[0].SeeAlso[0].Query["type"])
+	})
+}
+
+func TestCreateObjectMarkdownTitleRoundFour(t *testing.T) {
+	t.Run("a heading carrying a link keeps its target and its place", func(t *testing.T) {
+		// given — the rendering matches the name, the content does not: the
+		// link has a destination a name could never hold
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","name":"Title","markdown":"# [Title](https://example.com)\n\nbody"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"Title", "body"}, snapshotTexts(*captured))
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("a heading that is only emphasis is still a duplicate", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","name":"Title","markdown":"# *Title*\n\nbody"}`), false, false)
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"body"}, snapshotTexts(*captured))
+	})
+
+	t.Run("an empty name reads as absent in either spelling", func(t *testing.T) {
+		for _, body := range []string{
+			`{"type":"page","name":"","markdown":"# Title\n\nbody"}`,
+			`{"type":"page","properties":{"name":""},"markdown":"# Title\n\nbody"}`,
+		} {
+			fx := newV2Fixture(t)
+			captured := fx.expectCreate("newObj")
+			fx.expectEtagRead("newObj")
+
+			_, err := fx.CreateObject(context.Background(), testSpaceId, []byte(body), false, false)
+
+			require.NoError(t, err, body)
+			assert.Equal(t, "Title", pbtypes.GetString((*captured).Details, "name"), body)
+			assert.Equal(t, []string{"body"}, snapshotTexts(*captured), body)
+		}
+	})
+
+	t.Run("a caller-chosen layout keeps the heading where it is", func(t *testing.T) {
+		// given — the type's recommended layout is not the one this object
+		// will have, so it cannot answer whether the name becomes a title
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","properties":{"layout":"note"},"markdown":"# Monday\n\nbody"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"Monday", "body"}, snapshotTexts(*captured))
+		assert.Empty(t, pbtypes.GetString((*captured).Details, "name"))
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("a bundled note this space has not installed is exempt too", func(t *testing.T) {
+		// given — no store row for `note`, so the layout comes from the
+		// bundle the create is about to install
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"note","markdown":"# Monday\n\nbody"}`), false, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"Monday", "body"}, snapshotTexts(*captured))
+		assert.Empty(t, pbtypes.GetString((*captured).Details, "name"))
+	})
+
+	t.Run("a key the format folds onto name supplies the name, whatever the space keys that way", func(t *testing.T) {
+		// given — a space-local relation whose STORED key is `Name`. It
+		// changes nothing: the format folds the spelling onto the name
+		// property and refuses a document carrying both ("Name and name both
+		// address property name"), so promoting beside it would produce a
+		// document the format rejects
+		fx := newV2Fixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("rel-shadow"),
+			bundle.RelationKeyRelationKey:    domain.String("Name"),
+			bundle.RelationKeyName:           domain.String("Vendor name"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_longtext)),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+		}})
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","properties":{"Name":"Acme"},"markdown":"# Section\n\nbody"}`), false, false)
+
+		// then — the value lands on the space's own property (an exact stored
+		// key wins the resolution), so the object has no name and no title
+		// was lifted. That is the only outcome that neither refuses the
+		// create nor moves the caller's content: promoting would add `name`
+		// beside `Name`, and the format rejects a document carrying both
+		require.NoError(t, err, "the create must not be refused for a name the server added")
+		assert.Empty(t, pbtypes.GetString((*captured).Details, "name"))
+		assert.Equal(t, "Acme", pbtypes.GetString((*captured).Details, "Name"))
+		assert.Equal(t, []string{"Section", "body"}, snapshotTexts(*captured))
+		assert.Empty(t, result.Warnings)
+	})
+}

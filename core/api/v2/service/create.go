@@ -244,22 +244,11 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 		properties = map[string]json.RawMessage{}
 	}
 	// the shortcut takes a name either way, and both spellings reach the same
-	// detail. What matters below is not only the VALUE but whether the caller
-	// said anything at all: a name they sent is never replaced, even when it
-	// is a shape this layer cannot read.
-	name, nameSupplied := shortcut.Name, shortcut.Name != ""
-	for key, raw := range properties {
-		if !strings.EqualFold(key, "name") {
-			continue
-		}
-		nameSupplied = true
-		if name != "" {
-			continue
-		}
-		var fromProperties string
-		if json.Unmarshal(raw, &fromProperties) == nil {
-			name = fromProperties
-		}
+	// detail
+	name, supplied := shortcut.Name, s.inspectShortcutProperties(spaceId, properties)
+	nameSupplied := name != "" || supplied.name
+	if name == "" {
+		name = supplied.nameValue
 	}
 
 	var run []json.RawMessage
@@ -280,7 +269,9 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 		}
 	}
 	// the leading heading is the title, not the first paragraph of the body
-	run, name, titleNotice := s.liftMarkdownTitle(spaceId, shortcut.Type, run, name, nameSupplied)
+	// the caller's own layout choice makes the type's recommended one the
+	// wrong thing to read, so a promotion is off the table there too
+	run, name, titleNotice := s.liftMarkdownTitle(spaceId, shortcut.Type, run, name, !nameSupplied && !supplied.layout)
 	droppedLeadingBlocks := 0
 	if titleNotice != nil {
 		droppedLeadingBlocks = 1
@@ -365,9 +356,13 @@ var headingStyles = map[string]bool{"heading_1": true, "heading_2": true, "headi
 // become one: promoting a subheading to the object's name would invent a
 // title out of a section.
 //
+// promotable is false when the caller said anything that makes the object's
+// name or layout theirs to decide: a name in any spelling, or a layout, which
+// is what the note exemption below is read from.
+//
 // It returns the blocks to keep, the name to use and the notice to attach,
 // nil when nothing was touched.
-func (s *Service) liftMarkdownTitle(spaceId, typeTerm string, run []json.RawMessage, name string, nameSupplied bool) ([]json.RawMessage, string, *v2model.Issue) {
+func (s *Service) liftMarkdownTitle(spaceId, typeTerm string, run []json.RawMessage, name string, promotable bool) ([]json.RawMessage, string, *v2model.Issue) {
 	if len(run) == 0 {
 		return run, name, nil
 	}
@@ -380,13 +375,24 @@ func (s *Service) liftMarkdownTitle(spaceId, typeTerm string, run []json.RawMess
 	// marks. A name is a plain detail and cannot, so the comparison and the
 	// promotion both take the rendered text — which also lets `**Title**`
 	// match a name of "Title", as a reader would expect.
-	heading, _, err := anyblockjson.ParseInlineText(first.Text)
+	heading, marks, err := anyblockjson.ParseInlineText(first.Text)
 	if err != nil {
 		heading = first.Text
 	}
 	heading = strings.TrimSpace(heading)
 	if heading == "" {
 		return run, name, nil
+	}
+	// a heading whose text carries a LINK, a mention or an object reference
+	// is not a restatement of the name: its rendering matches, and its
+	// content does not. Removing it would take the target with it, and a
+	// promoted name could not carry one — a detail holds text, not marks.
+	// Styling marks are another matter: dropping a bold duplicate loses the
+	// bold of a line that was never going to be shown.
+	for _, mark := range marks {
+		if targetCarryingMarks[mark.GetType()] {
+			return run, name, nil
+		}
 	}
 	// a heading that owns nested content cannot be removed on its own: the
 	// blocks under it would keep an indentation with nothing above them, and
@@ -405,7 +411,7 @@ func (s *Service) liftMarkdownTitle(spaceId, typeTerm string, run []json.RawMess
 			Message: "the first heading repeated the object's name and was dropped",
 			Hint:    "an object shows its name as its title, so a heading that restates it appears twice",
 		}
-	case !nameSupplied && first.Type == "heading_1" && s.typeShowsNameAsTitle(spaceId, typeTerm):
+	case promotable && first.Type == "heading_1" && s.typeShowsNameAsTitle(spaceId, typeTerm):
 		return run[1:], heading, &v2model.Issue{
 			Path:    "/markdown[0]",
 			Message: fmt.Sprintf("the first heading became the object's name: %q", heading),
@@ -413,6 +419,75 @@ func (s *Service) liftMarkdownTitle(spaceId, typeTerm string, run []json.RawMess
 		}
 	}
 	return run, name, nil
+}
+
+// targetCarryingMarks are the inline marks that hold something the text does
+// not: a destination, an object, a mentioned id. A heading carrying one is
+// left alone by the title rule.
+var targetCarryingMarks = map[model.BlockContentTextMarkType]bool{
+	model.BlockContentTextMark_Link:    true,
+	model.BlockContentTextMark_Object:  true,
+	model.BlockContentTextMark_Mention: true,
+	model.BlockContentTextMark_Emoji:   true,
+}
+
+// shortcutPropertyFacts is what the title rule needs to know about the
+// properties the caller sent: whether they name the object, and whether they
+// choose its layout.
+type shortcutPropertyFacts struct {
+	name      bool   // a key resolving to the name property is present
+	nameValue string // its value, when it is a non-empty string
+	layout    bool   // a key resolving to the layout property is present
+}
+
+// inspectShortcutProperties resolves the caller's property keys the way every
+// other channel does, rather than matching the word "name" by folding it.
+// Both answers gate a rule that can change the body: a name the caller SENT
+// is never replaced, and a layout they chose makes the type's recommended one
+// the wrong thing to read.
+//
+// A store failure falls back to the fold. It is the weaker test, and losing
+// the rule entirely on a store hiccup would be the worse trade.
+func (s *Service) inspectShortcutProperties(spaceId string, properties map[string]json.RawMessage) shortcutPropertyFacts {
+	var facts shortcutPropertyFacts
+	if len(properties) == 0 {
+		return facts
+	}
+	entries, err := s.liveProperties(spaceId)
+	for key, raw := range properties {
+		// the two tests are a UNION, not alternatives. The format folds a
+		// property key onto its canonical spelling — it refuses `Name`
+		// beside `name` with "both address property name" — so a fold match
+		// is the format's own answer and must count even when this space
+		// keys some other relation that way. Resolution catches the rest: a
+		// display name or a slug that reaches the same property without
+		// folding to it.
+		resolved := strings.ToLower(key)
+		if err == nil {
+			if entry, ok, ambiguous := s.resolvePropertyInput(key, entries); ok && len(ambiguous) == 0 && entry.Key != "" {
+				if resolved != bundle.RelationKeyName.String() && resolved != bundle.RelationKeyLayout.String() {
+					resolved = entry.Key
+				}
+			}
+		}
+		switch resolved {
+		case bundle.RelationKeyName.String():
+			var value string
+			if json.Unmarshal(raw, &value) == nil {
+				// an empty name is no name, the same reading the `template`
+				// member takes of an empty string; a value that does not
+				// decode as a string is still a value the caller CHOSE, and
+				// is never replaced
+				facts.nameValue = value
+				facts.name = value != ""
+				continue
+			}
+			facts.name = true
+		case bundle.RelationKeyLayout.String():
+			facts.layout = true
+		}
+	}
+	return facts
 }
 
 // typeShowsNameAsTitle reports whether objects of this type render their name
@@ -430,8 +505,17 @@ func (s *Service) typeShowsNameAsTitle(spaceId, typeTerm string) bool {
 		return true
 	}
 	entry, ok, ambiguous, err := s.resolveTypeInput(spaceId, typeTerm, entries)
-	if err != nil || !ok || len(ambiguous) > 0 || entry.Id == "" {
+	if err != nil || !ok || len(ambiguous) > 0 {
 		return true
+	}
+	if entry.Id == "" {
+		// a bundled type this space has not installed yet: the create
+		// installs it, so the layout that will apply is the bundle's
+		bundled, bundleErr := bundle.GetType(domain.TypeKey(entry.Key))
+		if bundleErr != nil {
+			return true
+		}
+		return bundled.Layout != model.ObjectType_note
 	}
 	objectType, err := s.store.SpaceIndex(spaceId).GetObjectType(entry.Id)
 	if err != nil {

@@ -7679,6 +7679,38 @@ convention; the rule would be editing a caller's structure rather than
 reading their prose. The `name` and `markdown` descriptions in the served
 shortcut schema state the rule, so a caller can see it before sending.
 
+**A fourth round, and a live one.** Two more lenses over the hardened rule,
+plus the first run of any of this against a real heart (`heartboot`, a
+throwaway account, objects created and read back over HTTP). Between them:
+
+- a heading whose text carries a LINK, a mention or an object reference is
+  left alone. Its rendering can equal the name while its content does not,
+  and dropping it would take the destination with it — a name is text and
+  holds no marks. Styling marks are not in that class: dropping a bold
+  duplicate loses the bold of a line nobody was going to see.
+- a bundled type this space has not installed yet is read from the BUNDLE,
+  so an uninstalled `note` is exempt from promotion like an installed one.
+- a caller who sets a `layout` property has decided the layout themselves,
+  and the type's recommended one stops being the right thing to read, so
+  promotion is off there too.
+- an empty name reads as absent in EITHER spelling, the same reading the
+  `template` member takes of an empty string, while a value that does not
+  decode as a string is still a value the caller chose and is never replaced.
+- the property test is the UNION of the format's fold and this API's
+  resolution. The format folds `Name` onto `name` and refuses a document
+  carrying both, so a fold match is the format's own answer even where a
+  space keys some other relation that way — in which case the value lands on
+  that property, the object has no name, and the rule does nothing. Doing
+  nothing is the only outcome there that neither refuses the create nor moves
+  the caller's content.
+
+The live run found what no unit test could: the stale-default warning named
+the type by its 24-hex STORED key rather than its api key, because every
+fixture used a type whose two spellings were the same word. It is the leak
+the search refusals were rebuilt to close (§8.57's predecessor), reappearing
+in a new message. Both the warning and the refusal hint now take the served
+spelling.
+
 Not taken from the importer: its emoji split, which reads a leading emoji out
 of the title into the object's icon. The shortcut has no icon member, and
 inventing one here would be a second convention rather than the same one.

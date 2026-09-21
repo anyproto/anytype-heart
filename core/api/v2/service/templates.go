@@ -94,7 +94,7 @@ func (s *Service) resolveCreateTemplate(ctx context.Context, spaceId, typeKey, r
 			return nil, nil, v2model.ValidationFailed("the template cannot be applied",
 				v2model.Issue{Path: "/template", Message: problem}.
 					Hintf("list the templates of this type with %s, or send \"none\" to start from nothing",
-						v2model.RefListTemplates(spaceId).With("type", typeKey)))
+						v2model.RefListTemplates(spaceId).With("type", s.servedTypeSpelling(spaceId, typeKey, targetId))))
 		}
 		return &v2model.AppliedTemplate{Id: requested, Name: name, Source: templateSourceRequest}, nil, nil
 	}
@@ -117,11 +117,15 @@ func (s *Service) resolveCreateTemplate(ctx context.Context, spaceId, typeKey, r
 		// through this API outlives its own template. The object is created
 		// without a template, and the warning says so rather than leaving the
 		// caller to wonder where the template went.
+		// the type is named the way every other response names it: the
+		// canonicalized key here is a stored one, which for a space-minted
+		// type is a 24-hex id the caller never sent and cannot look up
+		spelling := s.servedTypeSpelling(spaceId, typeKey, typeId)
 		return nil, []v2model.Issue{v2model.Issue{
 			Path:    "/type",
-			Message: fmt.Sprintf("the default template of type %q was not applied: %s", typeKey, problem),
+			Message: fmt.Sprintf("the default template of type %q was not applied: %s", spelling, problem),
 		}.Hintf("point default_template at a live template, or clear it, with %s",
-			v2model.RefUpdateType(spaceId, typeKey))}, nil
+			v2model.RefUpdateType(spaceId, spelling))}, nil
 	}
 	return &v2model.AppliedTemplate{Id: defaultId, Name: name, Source: templateSourceTypeDefault}, nil, nil
 }
@@ -221,6 +225,18 @@ func (s *Service) typeDefaultTemplate(spaceId, typeId string) (string, error) {
 		}
 	}
 	return "", nil
+}
+
+// servedTypeSpelling is the api spelling of a type a refusal or warning has
+// to name: by its id when one resolves, and by the stored key only when it
+// does not. A canonicalized key is the STORE's spelling, and for a type this
+// space minted that is a 24-hex id — the caller sent a slug, and quoting the
+// id back is the leak the search refusals were rebuilt to close.
+func (s *Service) servedTypeSpelling(spaceId, storedKey, typeId string) string {
+	if served := s.servedTypeKeyById(spaceId, typeId); served != "" {
+		return served
+	}
+	return storedKey
 }
 
 // servedTypeKeyById spells one type id the way every other v2 response spells
