@@ -52,81 +52,89 @@ type storageService struct {
 	backupsMu sync.RWMutex
 	backups   []CorruptedBackup
 
-	spaceLocksMu sync.Mutex
-	spaceLocks   [spaceLockShards]chan struct{}
+	spaceLocks spaceLocks
 
 	reporter debugreporter.Reporter
 }
 
-// spaceLockShards is how many locks space ids are spread over. Keying the locks
-// by id instead would mean a map an untrusted peer can grow without bound:
-// SpacePush hands a remote id to NewSpace, which reaches WaitSpaceStorage
-// before the payload is validated, so a rejected push would still leave its
-// entry behind.
-//
-// Two spaces that land on one shard queue behind each other for the length of
-// one open, which is microseconds unless the db is dirty and any-store runs its
-// quick check -- and a caller that will not wait that long has its ctx. Nothing
-// takes a second space lock while holding one (openDb, createDb and
-// handleStorageBuildError are the only service calls inside the critical
-// section, and none re-enters), so a shared shard can never deadlock, only
-// queue. The count is well past the handful of spaces that open at once --
-// deferred loads run at preloadConcurrency, which is 2 -- because the array
-// costs one pointer per shard and the channels are made on first use.
-const spaceLockShards = 4096
-
-// lockSpace serializes whoever opens, creates or deletes one space's store.db,
-// and returns the func that releases it.
+// spaceLocks serializes whoever opens, creates or deletes one space's store.db.
 //
 // any-store stamps `PRAGMA user_version` only after SQLite has already created
 // the file, so for the few milliseconds a create spends inside anystore.Open
-// the store on disk reads back as version 0. IsCorruptedError reports that as
-// corruption and openDb answers corruption by renaming the space directory --
-// which was being done to a store another goroutine was still creating (a LAN
-// handshake derives discovery keys over every id AllSpaceIds returns, whether
-// or not it is finished). The create then died on its vanished file and the
-// account came up with no personal space (GO-7534). Openers of one space now
-// queue behind its creator and always see a stamped db.
+// the store on disk reads back as version 0. provenUnusable would not move that
+// directory aside today, but the create it belongs to still dies on a file
+// pulled out from under it, and an opener that saw it would report a space the
+// account needs as missing (GO-7534). Openers of one space queue behind its
+// creator and always see a stamped db.
 //
-// The channel is a mutex a context can wait on, which sync.Mutex is not: a
-// discovery-key derive queued behind a slow open has to give up when its
-// budget runs out.
-func (s *storageService) lockSpace(ctx context.Context, id string) (unlock func(), err error) {
-	l := s.spaceLockFor(id)
+// One entry per space, reclaimed once nobody holds or waits on it. The refcount
+// is what bounds the map: SpacePush reaches WaitSpaceStorage with a remote id
+// before any-sync validates the payload, so entries that outlived their callers
+// would be a map a peer can grow with rejected pushes.
+type spaceLocks struct {
+	mu   sync.Mutex
+	byId map[string]*spaceLock
+}
+
+type spaceLock struct {
+	// cap 1, held as a mutex a context can wait on -- a discovery-key derive
+	// queued behind a slow open has to give up when its budget runs out, and
+	// sync.Mutex cannot be waited on with a ctx
+	ch chan struct{}
+	// holders plus waiters; the entry lives while either exists
+	refs int
+}
+
+func (l *spaceLocks) lock(ctx context.Context, id string) (unlock func(), err error) {
+	l.mu.Lock()
+	if l.byId == nil {
+		l.byId = map[string]*spaceLock{}
+	}
+	e := l.byId[id]
+	if e == nil {
+		e = &spaceLock{ch: make(chan struct{}, 1)}
+		l.byId[id] = e
+	}
+	// counted before waiting, so the entry cannot be reclaimed under a waiter
+	e.refs++
+	l.mu.Unlock()
+
+	release := func() {
+		l.mu.Lock()
+		defer l.mu.Unlock()
+		e.refs--
+		if e.refs == 0 {
+			delete(l.byId, id)
+		}
+	}
+
 	select {
-	case l <- struct{}{}:
+	case e.ch <- struct{}{}:
 		// released once: a second call would hand the lock to nobody and let
 		// the caller after that run alongside whoever holds it now
 		var once sync.Once
-		return func() { once.Do(func() { <-l }) }, nil
+		return func() {
+			once.Do(func() {
+				<-e.ch
+				release()
+			})
+		}, nil
 	case <-ctx.Done():
+		release()
 		return nil, ctx.Err()
 	}
 }
 
-func (s *storageService) spaceLockFor(id string) chan struct{} {
-	idx := spaceLockShard(id)
-	s.spaceLocksMu.Lock()
-	defer s.spaceLocksMu.Unlock()
-	if s.spaceLocks[idx] == nil {
-		s.spaceLocks[idx] = make(chan struct{}, 1)
-	}
-	return s.spaceLocks[idx]
+// held reports how many spaces have a lock entry. Only the tests use it, to
+// pin that the map is reclaimed rather than grown.
+func (l *spaceLocks) held() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return len(l.byId)
 }
 
-// spaceLockShard is FNV-1a over the id, written out so it neither allocates nor
-// pulls in a hash for something this small.
-func spaceLockShard(id string) int {
-	const (
-		offsetBasis = 14695981039346656037
-		prime       = 1099511628211
-	)
-	var h uint64 = offsetBasis
-	for i := 0; i < len(id); i++ {
-		h ^= uint64(id[i])
-		h *= prime
-	}
-	return int(h % spaceLockShards)
+func (s *storageService) lockSpace(ctx context.Context, id string) (unlock func(), err error) {
+	return s.spaceLocks.lock(ctx, id)
 }
 
 // preserveOrphanWal moves a space dir aside when its store.db has been
