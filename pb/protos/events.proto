@@ -25,6 +25,7 @@ message Event {
       Account.LinkApprovalRequest accountLinkApprovalRequest = 204;
       Account.LinkApprovalHide accountLinkApprovalHide = 205;
       Account.Recovery.Update accountRecoveryUpdate = 206;
+      Account.JsonApiStatus accountJsonApiStatus = 207;
 
       Object.Details.Set objectDetailsSet = 16;
       Object.Details.Amend objectDetailsAmend = 50;
@@ -567,6 +568,23 @@ message Event {
           int32 attempt = 6;
         }
       }
+    }
+
+    // JsonApiStatus reports the outcome of one bind attempt for the local
+    // JSON API server (core/api). Broadcast after the initial bind at
+    // AccountSelect/AccountCreate and after every AccountChangeJsonApiAddr,
+    // whichever session triggered it. Not emitted when the server is
+    // disabled (an empty listen address). AccountChangeJsonApiAddr's
+    // response carries this exact same message as `status`, so the event
+    // and the RPC response are never two schemas to keep in sync.
+    message JsonApiStatus {
+      bool success = 1;
+      // the effective, OS-confirmed bound address on success; the
+      // requested address on failure, since nothing bound
+      string listenAddr = 2;
+      // raw OS error text — debug/log only, never shown to the user
+      // verbatim; empty when success = true
+      string error = 3;
     }
   }
 

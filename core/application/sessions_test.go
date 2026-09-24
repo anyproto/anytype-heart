@@ -396,12 +396,14 @@ type mockApiService struct {
 	revokedTokens []string
 }
 
-func (m *mockApiService) Name() string                                      { return api.CName }
-func (m *mockApiService) Init(_ *app.App) error                             { return nil }
-func (m *mockApiService) Run(_ context.Context) error                       { return nil }
-func (m *mockApiService) Close(_ context.Context) error                     { return nil }
-func (m *mockApiService) ReassignAddress(_ context.Context, _ string) error { return nil }
-func (m *mockApiService) RevokeToken(token string)                          { m.revokedTokens = append(m.revokedTokens, token) }
+func (m *mockApiService) Name() string                  { return api.CName }
+func (m *mockApiService) Init(_ *app.App) error         { return nil }
+func (m *mockApiService) Run(_ context.Context) error   { return nil }
+func (m *mockApiService) Close(_ context.Context) error { return nil }
+func (m *mockApiService) ReassignAddress(_ context.Context, _ string) (*pb.EventAccountJsonApiStatus, error) {
+	return nil, nil
+}
+func (m *mockApiService) RevokeToken(token string) { m.revokedTokens = append(m.revokedTokens, token) }
 
 func TestLinkLocalRevokeApp(t *testing.T) {
 	signingKey := []byte("test-signing-key-1234")

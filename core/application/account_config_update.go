@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/anyproto/any-sync/app"
 
@@ -27,13 +28,17 @@ func (s *Service) AccountConfigUpdate(req *pb.RpcAccountConfigUpdateRequest) err
 	return nil
 }
 
-func (s *Service) AccountChangeJsonApiAddr(ctx context.Context, addr string) error {
+func (s *Service) AccountChangeJsonApiAddr(ctx context.Context, addr string) (*pb.EventAccountJsonApiStatus, error) {
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
 	if s.app == nil {
-		return ErrApplicationIsNotRunning
+		return nil, ErrApplicationIsNotRunning
 	}
 	apiService := app.MustComponent[api.Service](s.app)
-	return apiService.ReassignAddress(ctx, addr)
+	status, err := apiService.ReassignAddress(ctx, addr)
+	if err != nil {
+		return nil, fmt.Errorf("reassign json api address: %w", err)
+	}
+	return status, nil
 }

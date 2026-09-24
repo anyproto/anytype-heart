@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -22,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
@@ -57,7 +59,12 @@ var (
 
 type Service interface {
 	app.ComponentRunnable
-	ReassignAddress(ctx context.Context, listenAddr string) error
+	// ReassignAddress rebinds the JSON API to listenAddr, returning the bind
+	// outcome directly to the caller. A failed bind is reported through the
+	// returned status (Success == false), not through err: err is reserved
+	// for failures that kept the rebind from being attempted at all (e.g.
+	// shutting down the previous listener).
+	ReassignAddress(ctx context.Context, listenAddr string) (*pb.EventAccountJsonApiStatus, error)
 	RevokeToken(token string)
 }
 
@@ -77,8 +84,9 @@ type apiService struct {
 
 	listenAddr string
 
-	srv     *server.Server
-	httpSrv *http.Server
+	srv      *server.Server
+	httpSrv  *http.Server
+	listener net.Listener
 
 	lock sync.Mutex
 }
@@ -134,9 +142,12 @@ func (s *apiService) Init(a *app.App) error {
 }
 
 func (s *apiService) Run(ctx context.Context) error {
-	if err := s.startServer(); err != nil {
-		return fmt.Errorf("failed to start server: %w", err)
-	}
+	// A failed bind must not fail the app's component lifecycle: the JSON
+	// API is an optional side feature of account select/create. The bind
+	// outcome (success or failure) is reported to clients via the
+	// accountJsonApiStatus event published from startServer, not via this
+	// return value.
+	s.startServer(s.listenAddr)
 	return nil
 }
 
@@ -166,14 +177,55 @@ func (s *apiService) Close(ctx context.Context) error {
 	return s.shutdownHTTP(ctx)
 }
 
-func (s *apiService) startServer() error {
+// startServer attempts one bind of the JSON API to listenAddr and reports
+// the outcome as a status value — a failed bind is a value (Success ==
+// false), never a Go error, so every caller (the component lifecycle and
+// ReassignAddress) reads it off one place. Returns nil only when the server
+// is disabled (listenAddr == ""), in which case nothing is published.
+//
+// Publishing happens here, outside bindLocked's critical section: the
+// eventService.Broadcast it triggers is synchronous on the mobile/library
+// sender (unlike the queued gRPC sender), so a client callback that
+// re-enters this service — e.g. retrying AccountChangeJsonApiAddr from
+// inside its own event handler — must not find s.lock still held.
+func (s *apiService) startServer(listenAddr string) *pb.EventAccountJsonApiStatus {
+	status := s.bindLocked(listenAddr)
+	if status != nil {
+		s.publishStatus(status)
+	}
+	return status
+}
+
+// bindLocked does the actual (re)bind under s.lock and returns the outcome
+// without publishing it. listenAddr is taken as a parameter, and s.listenAddr
+// is written here (under the lock) rather than by the caller, so there is
+// exactly one, synchronized writer.
+func (s *apiService) bindLocked(listenAddr string) *pb.EventAccountJsonApiStatus {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	if s.listenAddr == "" {
+	s.listenAddr = listenAddr
+	if listenAddr == "" {
 		log.Info("API server disabled (no listen address)")
 		return nil
 	}
+
+	ln, err := net.Listen("tcp", listenAddr)
+	if err != nil {
+		log.Errorf("API server failed to start on %s: %v", listenAddr, err)
+		return &pb.EventAccountJsonApiStatus{Success: false, ListenAddr: listenAddr, Error: err.Error()}
+	}
+
+	// server.NewServer panics if the account's tech space can't be
+	// resolved. Until ownership of ln is handed to the Serve goroutine
+	// below, this keeps the listener from leaking past that panic (or any
+	// early return added here later).
+	closeListener := true
+	defer func() {
+		if closeListener {
+			_ = ln.Close()
+		}
+	}()
 
 	s.srv = server.NewServer(
 		s.mw,
@@ -183,7 +235,7 @@ func (s *apiService) startServer() error {
 		s.chatSubService,
 		s.fileObjectService,
 		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, Widgets: s.widgets, ChatSub: s.chatSubService, Store: s.objectStore, AccountId: s.accountId()},
-		s.listenAddr,
+		listenAddr,
 		server.OpenApiDocs{
 			V1YAML: openapiV1YAML,
 			V1JSON: openapiV1JSON,
@@ -192,44 +244,76 @@ func (s *apiService) startServer() error {
 		},
 	)
 
-	s.httpSrv = &http.Server{
-		Addr:              s.listenAddr,
+	// httpSrv is captured by the goroutine below instead of read back off
+	// s.httpSrv: a concurrent ReassignAddress can only start once this call
+	// releases s.lock, but its own bindLocked call would still overwrite
+	// s.httpSrv before this goroutine gets scheduled. A live field read
+	// would then hand ln — the listener THIS call just bound — to the
+	// newer server, silently keeping the address this call owns reachable
+	// (routed through the wrong handler) even after a later shutdownHTTP.
+	httpSrv := &http.Server{
 		Handler:           s.srv.Engine(),
 		ReadHeaderTimeout: readTimeout,
 	}
+	s.httpSrv = httpSrv
+	s.listener = ln
 
-	log.Infof("Starting API server on %s", s.httpSrv.Addr)
+	status := &pb.EventAccountJsonApiStatus{Success: true, ListenAddr: ln.Addr().String()}
+	log.Infof("Starting API server on %s", status.ListenAddr)
 
 	go func() {
-		if err := s.httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := httpSrv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Errorf("API server error: %v", err)
 		}
 	}()
 
-	return nil
+	closeListener = false
+	return status
 }
 
+// publishStatus broadcasts the outcome of one bind attempt as an
+// account-level event (spaceId ""), same type ReassignAddress hands back to
+// its own caller. Must be called without s.lock held.
+func (s *apiService) publishStatus(status *pb.EventAccountJsonApiStatus) {
+	s.eventService.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfAccountJsonApiStatus{
+		AccountJsonApiStatus: status,
+	}))
+}
+
+// shutdownHTTP tears down whatever is currently bound, if anything. The
+// listener is closed explicitly rather than left to httpSrv.Shutdown alone:
+// Shutdown only closes listeners Serve has already registered with the
+// server, and the Serve goroutine bindLocked starts may not have run yet by
+// the time shutdownHTTP is called — without this, that still-unregistered
+// listener would keep accepting connections indefinitely.
 func (s *apiService) shutdownHTTP(ctx context.Context) error {
-	if s.httpSrv == nil {
+	s.lock.Lock()
+	httpSrv := s.httpSrv
+	listener := s.listener
+	s.httpSrv = nil
+	s.listener = nil
+	s.lock.Unlock()
+
+	if httpSrv == nil {
 		return nil
 	}
-
-	s.lock.Lock()
-	defer s.lock.Unlock()
 
 	shutdownCtx, cancel := context.WithTimeout(ctx, shutdownTimeout)
 	defer cancel()
 
-	return s.httpSrv.Shutdown(shutdownCtx)
+	err := httpSrv.Shutdown(shutdownCtx)
+	if listener != nil {
+		_ = listener.Close()
+	}
+	return err
 }
 
-func (s *apiService) ReassignAddress(ctx context.Context, listenAddr string) error {
+func (s *apiService) ReassignAddress(ctx context.Context, listenAddr string) (*pb.EventAccountJsonApiStatus, error) {
 	if err := s.shutdownHTTP(ctx); err != nil {
-		return fmt.Errorf("failed to shutdown server: %w", err)
+		return nil, fmt.Errorf("shutdown server: %w", err)
 	}
 
-	s.listenAddr = listenAddr
-	return s.startServer()
+	return s.startServer(listenAddr), nil
 }
 
 // RevokeToken removes a cached API session token from the server's in-memory cache.

@@ -1944,6 +1944,7 @@
     - [Event.Account.Config](#anytype-Event-Account-Config)
     - [Event.Account.Config.Update](#anytype-Event-Account-Config-Update)
     - [Event.Account.Details](#anytype-Event-Account-Details)
+    - [Event.Account.JsonApiStatus](#anytype-Event-Account-JsonApiStatus)
     - [Event.Account.LinkApprovalHide](#anytype-Event-Account-LinkApprovalHide)
     - [Event.Account.LinkApprovalRequest](#anytype-Event-Account-LinkApprovalRequest)
     - [Event.Account.LinkApprovalRequest.ClientInfo](#anytype-Event-Account-LinkApprovalRequest-ClientInfo)
@@ -3876,6 +3877,7 @@ FilterChatModels&#39; doc comment for the evidence).
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| status | [Event.Account.JsonApiStatus](#anytype-Event-Account-JsonApiStatus) |  | the bind outcome, same type the accountJsonApiStatus event carries; nil only when listenAddr == &#34;&#34; (disabling) or error.code != NULL |
 | error | [Rpc.Account.ChangeJsonApiAddr.Response.Error](#anytype-Rpc-Account-ChangeJsonApiAddr-Response-Error) |  |  |
 
 
@@ -30903,6 +30905,29 @@ corresponding front-end.
 
 
 
+<a name="anytype-Event-Account-JsonApiStatus"></a>
+
+### Event.Account.JsonApiStatus
+JsonApiStatus reports the outcome of one bind attempt for the local
+JSON API server (core/api). Broadcast after the initial bind at
+AccountSelect/AccountCreate and after every AccountChangeJsonApiAddr,
+whichever session triggered it. Not emitted when the server is
+disabled (an empty listen address). AccountChangeJsonApiAddr&#39;s
+response carries this exact same message as `status`, so the event
+and the RPC response are never two schemas to keep in sync.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| success | [bool](#bool) |  |  |
+| listenAddr | [string](#string) |  | the effective, OS-confirmed bound address on success; the requested address on failure, since nothing bound |
+| error | [string](#string) |  | raw OS error text — debug/log only, never shown to the user verbatim; empty when success = true |
+
+
+
+
+
+
 <a name="anytype-Event-Account-LinkApprovalHide"></a>
 
 ### Event.Account.LinkApprovalHide
@@ -33950,6 +33975,7 @@ engine.
 | accountLinkApprovalRequest | [Event.Account.LinkApprovalRequest](#anytype-Event-Account-LinkApprovalRequest) |  |  |
 | accountLinkApprovalHide | [Event.Account.LinkApprovalHide](#anytype-Event-Account-LinkApprovalHide) |  |  |
 | accountRecoveryUpdate | [Event.Account.Recovery.Update](#anytype-Event-Account-Recovery-Update) |  |  |
+| accountJsonApiStatus | [Event.Account.JsonApiStatus](#anytype-Event-Account-JsonApiStatus) |  |  |
 | objectDetailsSet | [Event.Object.Details.Set](#anytype-Event-Object-Details-Set) |  |  |
 | objectDetailsAmend | [Event.Object.Details.Amend](#anytype-Event-Object-Details-Amend) |  |  |
 | objectDetailsUnset | [Event.Object.Details.Unset](#anytype-Event-Object-Details-Unset) |  |  |

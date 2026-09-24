@@ -253,11 +253,12 @@ func (mw *Middleware) AccountEnableLocalNetworkSync(_ context.Context, req *pb.R
 }
 
 func (mw *Middleware) AccountChangeJsonApiAddr(ctx context.Context, req *pb.RpcAccountChangeJsonApiAddrRequest) *pb.RpcAccountChangeJsonApiAddrResponse {
-	err := mw.applicationService.AccountChangeJsonApiAddr(ctx, req.ListenAddr)
+	status, err := mw.applicationService.AccountChangeJsonApiAddr(ctx, req.ListenAddr)
 	code := mapErrorCode(err,
 		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountChangeJsonApiAddrResponseError_ACCOUNT_IS_NOT_RUNNING),
 	)
 	return &pb.RpcAccountChangeJsonApiAddrResponse{
+		Status: status,
 		Error: &pb.RpcAccountChangeJsonApiAddrResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
