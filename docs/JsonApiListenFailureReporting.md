@@ -13,7 +13,7 @@ outside the component lifecycle after the app is already running).
 Today, none of the three can report a bind failure (e.g. `"address already in use"`) to the caller:
 
 ```go
-// core/api/service.go, current code
+// core/api/service.go, before this feature (develop)
 func (s *apiService) startServer() error {
     ...
     s.httpSrv = &http.Server{Addr: s.listenAddr, Handler: s.srv.Engine(), ...}
@@ -48,7 +48,12 @@ their outcome with **one shared model**, not three ad hoc ones:
   feature riding along (`JsonApiListenAddr` is `omitempty`, `""` disables it entirely). Failing the
   whole account-open over a JSON-API-only bind problem would be wrong, and `Run(ctx)`'s error is
   what `app.Start` uses to decide whether the app came up at all — the bind attempt must not gate it.
-  → **stays non-blocking**; the outcome is only visible via the async event.
+  → **`Run` still performs the bind synchronously and never returns a non-nil error for it** — "stays
+  non-blocking" describes the *lifecycle outcome* (a bind failure can never fail account open), not
+  the timing: `Run` waits for `net.Listen` to resolve before `app.Start` moves on to the next
+  component. That synchronous wait is itself introduced by this change (`develop`'s `Run` returned
+  immediately, the bind happening fully inside a detached goroutine) — see Background above. The
+  outcome is only visible to callers via the async event.
 
 Every bind attempt — success or failure, whether triggered by `Run` or by `ReassignAddress` —
 broadcasts the same status as an event, so every open session learns the JSON API's current address
@@ -125,44 +130,75 @@ message ChangeJsonApiAddr {
 ### `core/api/service.go`
 
 `startServer()` no longer returns a Go `error` for a bind failure — that outcome is a value
-(`status.success == false`), not an exceptional condition. It publishes the event itself and returns
-the same status struct, so every caller (the component lifecycle and `ReassignAddress`) reads it off
-one place:
+(`status.success == false`), not an exceptional condition. Everything that mutates `apiService`'s
+state (`bindLocked`, `shutdownLocked`) is written as a "must be called with `s.lock` held" helper, and
+the two public entry points (`startServer`, `ReassignAddress`) take the lock once for their *entire*
+operation — including, for `ReassignAddress`, the shutdown of whatever was there before:
 
 ```go
-func (s *apiService) startServer() *pb.EventAccountJsonApiStatus {
+func (s *apiService) startServer(listenAddr string) *pb.EventAccountJsonApiStatus {
     s.lock.Lock()
     defer s.lock.Unlock()
 
-    if s.listenAddr == "" {
+    status := s.bindLocked(listenAddr)
+    if status != nil {
+        s.publishStatus(status)
+    }
+    return status
+}
+
+// bindLocked does the actual (re)bind. Must be called with s.lock held.
+func (s *apiService) bindLocked(listenAddr string) *pb.EventAccountJsonApiStatus {
+    s.listenAddr = listenAddr
+    if listenAddr == "" {
         log.Info("API server disabled (no listen address)")
         return nil
     }
 
-    ln, err := net.Listen("tcp", s.listenAddr)
+    ln, err := net.Listen("tcp", listenAddr)
     if err != nil {
-        status := &pb.EventAccountJsonApiStatus{Success: false, ListenAddr: s.listenAddr, Error: err.Error()}
-        s.publishStatus(status)
-        return status
+        return &pb.EventAccountJsonApiStatus{Success: false, ListenAddr: listenAddr, Error: err.Error()}
     }
 
+    closeListener := true // guards against leaking ln if server.NewServer panics below
+    defer func() {
+        if closeListener {
+            _ = ln.Close()
+        }
+    }()
+
     s.srv = server.NewServer(...)
-    s.httpSrv = &http.Server{Handler: s.srv.Engine(), ReadHeaderTimeout: readTimeout}
+    httpSrv := &http.Server{Handler: s.srv.Engine(), ReadHeaderTimeout: readTimeout}
+    s.httpSrv = httpSrv
+    s.listener = ln
 
     status := &pb.EventAccountJsonApiStatus{Success: true, ListenAddr: ln.Addr().String()}
     log.Infof("Starting API server on %s", status.ListenAddr)
-    s.publishStatus(status)
 
     go func() {
-        if err := s.httpSrv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+        // httpSrv, not s.httpSrv: this goroutine outlives s.lock, and a
+        // later bindLocked call can overwrite s.httpSrv before this line
+        // runs — a live field read would then serve ln through the wrong
+        // (newer) server.
+        if err := httpSrv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
             log.Errorf("API server error: %v", err)
         }
     }()
+
+    closeListener = false
     return status
 }
 
+// publishStatus dispatches Broadcast on its own goroutine, unconditionally.
+// Every caller of startServer/ReassignAddress holds s.lock for the whole
+// call, and AccountSelect/AccountCreate/AccountChangeJsonApiAddr additionally
+// hold application.Service's own lock for their whole duration. Broadcast
+// delivers synchronously to the client callback on the mobile/library
+// sender, so a client that reacts to this event by calling back into this
+// service (retrying AccountChangeJsonApiAddr, or calling AccountStop) would
+// deadlock on either lock if this ran inline.
 func (s *apiService) publishStatus(status *pb.EventAccountJsonApiStatus) {
-    s.eventService.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfAccountJsonApiStatus{
+    go s.eventService.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfAccountJsonApiStatus{
         AccountJsonApiStatus: status,
     }))
 }
@@ -173,23 +209,74 @@ anyone who's listening):
 
 ```go
 func (s *apiService) Run(ctx context.Context) error {
-    s.startServer()
+    s.startServer(s.listenAddr)
     return nil
 }
 ```
 
-`ReassignAddress` now returns the status directly to its caller, alongside a Go `error` reserved for
-genuine RPC-level failures (shutting down the previous listener):
+`ReassignAddress` shuts down whatever is currently bound and binds the new address as **one**
+operation under `s.lock`, not two separately-locked steps. `AccountChangeJsonApiAddr`'s caller only
+takes a read lock at the application layer, so nothing stops two reassignments from racing; without
+this, the loser's shutdown+bind could interleave with the winner's and overwrite the winner's still-
+live `s.httpSrv`/`s.listener`, orphaning its listener with nothing left able to track or close it —
+found and reproduced in review, alongside the field-capture fix above:
 
 ```go
+func (s *apiService) shutdownLocked(ctx context.Context) error {
+    httpSrv := s.httpSrv
+    listener := s.listener
+    s.httpSrv = nil
+    s.listener = nil
+
+    if httpSrv == nil {
+        return nil
+    }
+
+    shutdownCtx, cancel := context.WithTimeout(ctx, shutdownTimeout)
+    defer cancel()
+
+    err := httpSrv.Shutdown(shutdownCtx)
+    if listener != nil {
+        _ = listener.Close() // Shutdown alone can't close a listener Serve hasn't registered yet
+    }
+    if err != nil {
+        return fmt.Errorf("close previous http server: %w", err)
+    }
+    return nil
+}
+
 func (s *apiService) ReassignAddress(ctx context.Context, listenAddr string) (*pb.EventAccountJsonApiStatus, error) {
-    if err := s.shutdownHTTP(ctx); err != nil {
+    s.lock.Lock()
+    defer s.lock.Unlock()
+
+    if err := s.shutdownLocked(ctx); err != nil {
         return nil, fmt.Errorf("shutdown server: %w", err)
     }
-    s.listenAddr = listenAddr
-    return s.startServer(), nil
+
+    status := s.bindLocked(listenAddr)
+    if status != nil {
+        s.publishStatus(status)
+    }
+    return status, nil
 }
 ```
+
+`shutdownHTTP` (used only by `Close`, which has nothing to bind afterward) is the thin, lock-taking
+wrapper around `shutdownLocked`.
+
+**Event ordering is not guaranteed, full stop.** The bind itself is atomic (one `s.lock`-held
+operation per `startServer`/`ReassignAddress` call), but `publishStatus`'s dispatch is fire-and-forget
+(`go s.eventService.Broadcast(...)`) — this is what makes it safe to call while holding a lock (see
+above), but it also means the order two events are *delivered* in is not guaranteed to match the
+order the two binds *completed* in. This applies to any two bind attempts on the same instance,
+overlapping or not, and to the very first bind (`Run`) racing a fast subsequent `ReassignAddress`
+just as much as two reassignments racing each other. **This is not self-correcting**: if B's bind
+happens after A's but B's event is delivered first, and no further bind ever occurs, a client that
+only trusts "the latest event I received = current state" is left believing A's (stale) status
+indefinitely — nothing forces a corrective event afterward. A client that needs a strict ordering
+guarantee cannot get one from this event alone and would need to poll or otherwise reconcile state;
+for the intended use (surfacing bind failures, showing the current port on a settings screen) treating
+each event as "informational, may occasionally be stale under rapid changes" is enough.
 
 `Service` interface signature changes accordingly:
 
@@ -211,7 +298,11 @@ func (s *Service) AccountChangeJsonApiAddr(ctx context.Context, addr string) (*p
         return nil, ErrApplicationIsNotRunning
     }
     apiService := app.MustComponent[api.Service](s.app)
-    return apiService.ReassignAddress(ctx, addr)
+    status, err := apiService.ReassignAddress(ctx, addr)
+    if err != nil {
+        return nil, fmt.Errorf("reassign json api address: %w", err)
+    }
+    return status, nil
 }
 ```
 
@@ -241,6 +332,13 @@ or `error.code != NULL` (the bind was never attempted at all).
   means the switch failed; `status.error` is raw debug text, not user-facing copy. `status == nil`
   with `error.code == NULL` means the server was disabled (empty `listenAddr`); `status == nil` with
   a non-NULL `error.code` means the switch was never attempted (e.g. `ACCOUNT_IS_NOT_RUNNING`).
+- **The RPC response and the broadcast event for that same call have no defined ordering.**
+  `publishStatus` dispatches the broadcast on its own goroutine and neither
+  `AccountChangeJsonApiAddr`'s handler nor the application layer waits for it, so the event for your
+  own call can arrive before or after your own RPC response. For the outcome of the call **you**
+  made, trust `response.status` — it's authoritative and already synchronous. Use the event stream
+  only for learning about changes made by *other* sessions, or for a general "what's the JSON API's
+  state right now" signal.
 - **`AccountSelect` / `AccountCreate`**: unchanged. Continue to block and return exactly as before.
 - **New:** subscribe to `Event.Message.accountJsonApiStatus` — same fields as the RPC's `status`. It
   fires after the initial bind (success or failure) and after every later `AccountChangeJsonApiAddr`,
@@ -260,6 +358,13 @@ or `error.code != NULL` (the bind was never attempted at all).
 - **Proto field number** (`accountJsonApiStatus = 207`, and `status = 1` on
   `ChangeJsonApiAddr.Response`) are the next free slots as of this writing — reconfirm against
   `develop` at merge time in case another in-flight branch claimed them first.
+- **`publishStatus` spawns one goroutine per bind attempt, unbounded.** Normal usage (occasional
+  account open, occasional manual port change) never gets close to this mattering. A pathological
+  client that both (a) hammers `AccountChangeJsonApiAddr` in a tight loop and (b) has an event
+  callback that blocks forever would accumulate one goroutine per call indefinitely (reproduced in
+  review: 256 rapid failed reassignments → 256 retained goroutines). A callback that never returns is
+  already a client bug independent of this feature; not fixing it here to avoid adding a bounded
+  dispatcher/queue for a misuse scenario, but flagging in case usage patterns change.
 
 ## Non-goals
 

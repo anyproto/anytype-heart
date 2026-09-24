@@ -182,13 +182,10 @@ func (s *apiService) Close(ctx context.Context) error {
 // false), never a Go error, so every caller (the component lifecycle and
 // ReassignAddress) reads it off one place. Returns nil only when the server
 // is disabled (listenAddr == ""), in which case nothing is published.
-//
-// Publishing happens here, outside bindLocked's critical section: the
-// eventService.Broadcast it triggers is synchronous on the mobile/library
-// sender (unlike the queued gRPC sender), so a client callback that
-// re-enters this service — e.g. retrying AccountChangeJsonApiAddr from
-// inside its own event handler — must not find s.lock still held.
 func (s *apiService) startServer(listenAddr string) *pb.EventAccountJsonApiStatus {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	status := s.bindLocked(listenAddr)
 	if status != nil {
 		s.publishStatus(status)
@@ -196,14 +193,11 @@ func (s *apiService) startServer(listenAddr string) *pb.EventAccountJsonApiStatu
 	return status
 }
 
-// bindLocked does the actual (re)bind under s.lock and returns the outcome
-// without publishing it. listenAddr is taken as a parameter, and s.listenAddr
-// is written here (under the lock) rather than by the caller, so there is
-// exactly one, synchronized writer.
+// bindLocked does the actual (re)bind and returns the outcome without
+// publishing it. Must be called with s.lock held. listenAddr is taken as a
+// parameter and written to s.listenAddr here, so there is exactly one,
+// synchronized writer regardless of caller.
 func (s *apiService) bindLocked(listenAddr string) *pb.EventAccountJsonApiStatus {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
 	s.listenAddr = listenAddr
 	if listenAddr == "" {
 		log.Info("API server disabled (no listen address)")
@@ -245,12 +239,13 @@ func (s *apiService) bindLocked(listenAddr string) *pb.EventAccountJsonApiStatus
 	)
 
 	// httpSrv is captured by the goroutine below instead of read back off
-	// s.httpSrv: a concurrent ReassignAddress can only start once this call
-	// releases s.lock, but its own bindLocked call would still overwrite
-	// s.httpSrv before this goroutine gets scheduled. A live field read
-	// would then hand ln — the listener THIS call just bound — to the
-	// newer server, silently keeping the address this call owns reachable
-	// (routed through the wrong handler) even after a later shutdownHTTP.
+	// s.httpSrv: bindLocked returns (and the caller releases s.lock) before
+	// this goroutine is guaranteed to have run Serve, and a later, properly
+	// serialized ReassignAddress can then overwrite s.httpSrv before it
+	// does. A live field read would hand ln — the listener THIS call just
+	// bound — to that newer server, silently keeping this call's address
+	// reachable (routed through the wrong handler) even after its own
+	// listener was supposedly replaced.
 	httpSrv := &http.Server{
 		Handler:           s.srv.Engine(),
 		ReadHeaderTimeout: readTimeout,
@@ -273,26 +268,37 @@ func (s *apiService) bindLocked(listenAddr string) *pb.EventAccountJsonApiStatus
 
 // publishStatus broadcasts the outcome of one bind attempt as an
 // account-level event (spaceId ""), same type ReassignAddress hands back to
-// its own caller. Must be called without s.lock held.
+// its own caller.
+//
+// Dispatched on its own goroutine, unconditionally: every caller of
+// startServer/ReassignAddress runs this while holding s.lock, and
+// AccountSelect/AccountCreate/AccountChangeJsonApiAddr additionally hold
+// application.Service's own lock for their whole duration (see
+// core/application). eventService.Broadcast delivers synchronously to the
+// client callback on the mobile/library sender (unlike the queued gRPC
+// sender), so a client that reacts to this event by calling back into this
+// service — retrying AccountChangeJsonApiAddr, or calling AccountStop —
+// would deadlock on either lock if this ran inline. Detaching it here is
+// what makes that safe regardless of which lock any current or future
+// caller holds.
 func (s *apiService) publishStatus(status *pb.EventAccountJsonApiStatus) {
-	s.eventService.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfAccountJsonApiStatus{
+	go s.eventService.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfAccountJsonApiStatus{
 		AccountJsonApiStatus: status,
 	}))
 }
 
-// shutdownHTTP tears down whatever is currently bound, if anything. The
-// listener is closed explicitly rather than left to httpSrv.Shutdown alone:
-// Shutdown only closes listeners Serve has already registered with the
-// server, and the Serve goroutine bindLocked starts may not have run yet by
-// the time shutdownHTTP is called — without this, that still-unregistered
-// listener would keep accepting connections indefinitely.
-func (s *apiService) shutdownHTTP(ctx context.Context) error {
-	s.lock.Lock()
+// shutdownLocked closes whatever is currently bound, if anything. Must be
+// called with s.lock held. The listener is closed explicitly rather than
+// left to httpSrv.Shutdown alone: Shutdown only closes listeners Serve has
+// already registered with the server, and the Serve goroutine bindLocked
+// starts may not have run yet by the time this is called — without this,
+// that still-unregistered listener would keep accepting connections
+// indefinitely.
+func (s *apiService) shutdownLocked(ctx context.Context) error {
 	httpSrv := s.httpSrv
 	listener := s.listener
 	s.httpSrv = nil
 	s.listener = nil
-	s.lock.Unlock()
 
 	if httpSrv == nil {
 		return nil
@@ -305,15 +311,38 @@ func (s *apiService) shutdownHTTP(ctx context.Context) error {
 	if listener != nil {
 		_ = listener.Close()
 	}
-	return err
+	if err != nil {
+		return fmt.Errorf("close previous http server: %w", err)
+	}
+	return nil
 }
 
+func (s *apiService) shutdownHTTP(ctx context.Context) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.shutdownLocked(ctx)
+}
+
+// ReassignAddress shuts down whatever is currently bound and binds
+// listenAddr, as one operation under s.lock: two overlapping
+// ReassignAddress calls (the caller, AccountChangeJsonApiAddr, only takes a
+// read lock at the application layer — nothing prevents two from racing)
+// must not interleave their shutdown/bind steps, or the loser's server can
+// overwrite the winner's still-live s.httpSrv/s.listener, orphaning the
+// winner's listener with nothing left able to track or close it.
 func (s *apiService) ReassignAddress(ctx context.Context, listenAddr string) (*pb.EventAccountJsonApiStatus, error) {
-	if err := s.shutdownHTTP(ctx); err != nil {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	if err := s.shutdownLocked(ctx); err != nil {
 		return nil, fmt.Errorf("shutdown server: %w", err)
 	}
 
-	return s.startServer(listenAddr), nil
+	status := s.bindLocked(listenAddr)
+	if status != nil {
+		s.publishStatus(status)
+	}
+	return status, nil
 }
 
 // RevokeToken removes a cached API session token from the server's in-memory cache.
