@@ -314,6 +314,11 @@ func (srv *Server) registerObjectRoutes(v1 *gin.RouterGroup, eventService apicor
 		ensureAnalyticsEvent("DeleteObject", eventService),
 		handler.DeleteObjectHandler(srv.service),
 	)
+	v1.POST("/spaces/:space_id/objects/:object_id/discussion",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("AddObjectDiscussion", eventService),
+		handler.AddDiscussionHandler(srv.service),
+	)
 }
 
 // registerPropertyRoutes registers property-related routes
