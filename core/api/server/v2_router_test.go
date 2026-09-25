@@ -271,6 +271,7 @@ func TestV2Routes(t *testing.T) {
 			{"DELETE", "/v2/spaces/space1/chats/chat1/messages/msg1"},
 			{"POST", "/v2/spaces/space1/chats/chat1/messages/msg1/reactions"},
 			{"POST", "/v2/spaces/space1/chats/chat1/read"},
+			{"POST", "/v2/spaces/space1/chats/chat1/status"},
 			// the sidebar mutations: a retried create duplicates a widget the
 			// desktop itself never lets a user duplicate
 			{"POST", "/v2/spaces/space1/widgets"},
@@ -484,6 +485,7 @@ func TestV2Routes(t *testing.T) {
 			{"DELETE", "/v2/spaces/space1/chats/chat1/messages/msg1"},
 			{"POST", "/v2/spaces/space1/chats/chat1/messages/msg1/reactions"},
 			{"POST", "/v2/spaces/space1/chats/chat1/read"},
+			{"POST", "/v2/spaces/space1/chats/chat1/status"},
 			{"GET", "/v2/spaces/space1/widgets"},
 			{"POST", "/v2/spaces/space1/widgets"},
 			{"PATCH", "/v2/spaces/space1/widgets/w1"},

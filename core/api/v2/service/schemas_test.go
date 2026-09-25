@@ -32,7 +32,7 @@ func TestV2Schemas(t *testing.T) {
 			assert.NotEmpty(t, entry.Endpoint, entry.Kind)
 			assert.Equal(t, "/v2/schemas/"+entry.Kind, entry.Url)
 		}
-		for _, want := range []string{"object", "shortcut", "type", "type_document", "template", "document", "property", "query", "collection", "file", "filters", "search", "space", "chat", "chatMessage", "chatMessageEdit", "chatReaction", "chatRead"} {
+		for _, want := range []string{"object", "shortcut", "type", "type_document", "template", "document", "property", "query", "collection", "file", "filters", "search", "space", "chat", "chatMessage", "chatMessageEdit", "chatReaction", "chatRead", "chatStatus"} {
 			assert.True(t, kinds[want], "missing kind %s", want)
 		}
 	})
@@ -42,7 +42,7 @@ func TestV2Schemas(t *testing.T) {
 		// incl. the tiny edit/reaction bodies, because the handlers decode
 		// strictly and a guessed field name eats an avoidable 400;
 		// strictness follows C13
-		for _, kind := range []string{"chat", "chatMessage", "chatMessageEdit", "chatReaction", "chatRead"} {
+		for _, kind := range []string{"chat", "chatMessage", "chatMessageEdit", "chatReaction", "chatRead", "chatStatus"} {
 			entry, err := fx.SchemaKind(kind)
 			require.NoError(t, err, kind)
 			var schema struct {

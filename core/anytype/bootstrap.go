@@ -305,8 +305,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(transportpenalty.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
-		Register(pubsubService).
 		Register(anysyncpubsub.New(pubsubService.EngineDeps())).
+		// Cancel accepted publishes before the engine waits for its workers.
+		Register(pubsubService).
 		Register(typeprovider.New()).
 		Register(fileuploader.New()).
 		Register(rpcstore.New()).

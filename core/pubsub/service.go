@@ -18,11 +18,18 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
-const CName = "client.pubsub"
+const (
+	CName                   = "client.pubsub"
+	maxPatternsPerSpace     = 100
+	maxEncryptedPayloadSize = 64 * 1024
+	// MaxPayloadSize leaves room for the Space read key's AES-GCM nonce and tag.
+	MaxPayloadSize = maxEncryptedPayloadSize - 28
+)
 
 var log = logging.Logger(CName)
 
@@ -40,9 +47,9 @@ var (
 // gated on space membership, and publishes go to the responsible node plus
 // LAN-discovered peers.
 type Service interface {
-	app.Component
+	app.ComponentRunnable
 	Publish(ctx context.Context, spaceId, topic string, payload []byte) error
-	Subscribe(spaceId string, topics []string, subId string) (string, error)
+	Subscribe(ctx context.Context, spaceId string, topics []string, subId string) (string, error)
 	Unsubscribe(subId string) error
 	// CloseSpace drops all subscriptions of the space; called on space close.
 	CloseSpace(spaceId string)
@@ -52,14 +59,20 @@ type Service interface {
 }
 
 func New() Service {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &service{
+		ctx:      ctx,
+		cancel:   cancel,
 		subs:     make(map[string]*subscription),
 		patterns: make(map[string]map[string]*patternEntry),
 	}
 }
 
 type service struct {
+	ctx         context.Context
+	cancel      context.CancelFunc
 	engine      anysyncpubsub.Service
+	spaces      space.Service
 	spaceCore   spacecore.SpaceCoreService
 	peerStore   peerstore.PeerStore
 	pool        pool.Pool
@@ -87,6 +100,7 @@ type patternEntry struct {
 // component. Field access happens at call time, after Init resolved them.
 func (s *service) EngineDeps() anysyncpubsub.Deps {
 	return anysyncpubsub.Deps{
+		Config:     anysyncpubsub.Config{MaxPatternsPerSpace: maxPatternsPerSpace, MaxPayloadSize: maxEncryptedPayloadSize},
 		Membership: s,
 		Crypto:     s,
 		Peers:      s,
@@ -96,6 +110,7 @@ func (s *service) EngineDeps() anysyncpubsub.Deps {
 
 func (s *service) Init(a *app.App) error {
 	s.engine = app.MustComponent[anysyncpubsub.Service](a)
+	s.spaces = app.MustComponent[space.Service](a)
 	s.spaceCore = app.MustComponent[spacecore.SpaceCoreService](a)
 	s.peerStore = app.MustComponent[peerstore.PeerStore](a)
 	s.pool = a.MustComponent(pool.CName).(pool.Pool)
@@ -109,8 +124,23 @@ func (s *service) Init(a *app.App) error {
 
 func (s *service) Name() string { return CName }
 
+func (s *service) Run(context.Context) error { return nil }
+
+func (s *service) Close(context.Context) error {
+	s.cancel()
+	return nil
+}
+
 func (s *service) Publish(ctx context.Context, spaceId, topic string, payload []byte) error {
-	if err := s.engine.Publish(ctx, spaceId, topic, payload); err != nil {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := s.ctx.Err(); err != nil {
+		return err
+	}
+	// The engine queues delivery and may open a persistent stream after this
+	// RPC returns. Its context must survive the end of the unary request.
+	if err := s.engine.Publish(s.ctx, spaceId, topic, payload); err != nil {
 		return fmt.Errorf("publish to topic %s: %w", topic, err)
 	}
 	return nil
@@ -118,7 +148,13 @@ func (s *service) Publish(ctx context.Context, spaceId, topic string, payload []
 
 // Subscribe registers subId for the given patterns; an existing subId's
 // pattern set is replaced. Returns the (possibly generated) subId.
-func (s *service) Subscribe(spaceId string, topics []string, subId string) (string, error) {
+func (s *service) Subscribe(ctx context.Context, spaceId string, topics []string, subId string) (string, error) {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	if err := s.ctx.Err(); err != nil {
+		return "", err
+	}
 	if len(topics) == 0 {
 		return "", fmt.Errorf("subscribe: %w", ErrEmptyTopics)
 	}
@@ -127,12 +163,45 @@ func (s *service) Subscribe(spaceId string, topics []string, subId string) (stri
 			return "", fmt.Errorf("validate pattern %s: %w", t, err)
 		}
 	}
+	// Only a local request may load a Space. Inbound membership checks keep
+	// using Pick, so a remote peer cannot trigger arbitrary Space loads.
+	loadCtx, cancelLoad := context.WithCancel(ctx)
+	stop := context.AfterFunc(s.ctx, cancelLoad)
+	_, loadErr := s.spaces.Get(loadCtx, spaceId)
+	stop()
+	cancelLoad()
+	if loadErr != nil {
+		return "", fmt.Errorf("load subscribed space: %w", loadErr)
+	}
 	if subId == "" {
 		subId = bson.NewObjectId().Hex()
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if prev, ok := s.subs[subId]; ok {
+	if err := ctx.Err(); err != nil {
+		return "", err
+	}
+	if err := s.ctx.Err(); err != nil {
+		return "", err
+	}
+	prev := s.subs[subId]
+	// Validate the final distinct pattern count before withdrawing anything.
+	// A failed replacement must leave the previous subscription intact, while
+	// a replacement of the same size must still work at the engine's limit.
+	finalPatterns := make(map[string]struct{}, len(s.patterns[spaceId])+len(topics))
+	for pattern, entry := range s.patterns[spaceId] {
+		_, belongsToSub := entry.subIds[subId]
+		if !belongsToSub || len(entry.subIds) > 1 {
+			finalPatterns[pattern] = struct{}{}
+		}
+	}
+	for _, pattern := range topics {
+		finalPatterns[pattern] = struct{}{}
+	}
+	if len(finalPatterns) > maxPatternsPerSpace {
+		return "", fmt.Errorf("subscribe: %w", pubsubproto.ErrTooManyTopics)
+	}
+	if prev != nil {
 		s.removeLocked(subId, prev)
 	}
 	sub := &subscription{spaceId: spaceId, patterns: slices.Clone(topics)}
@@ -140,6 +209,14 @@ func (s *service) Subscribe(spaceId string, topics []string, subId string) (stri
 		if err := s.addPatternLocked(spaceId, pattern, subId); err != nil {
 			// roll back the patterns added so far
 			s.removeLocked(subId, sub)
+			if prev != nil {
+				for _, oldPattern := range prev.patterns {
+					if restoreErr := s.addPatternLocked(prev.spaceId, oldPattern, subId); restoreErr != nil {
+						err = errors.Join(err, fmt.Errorf("restore pattern %s: %w", oldPattern, restoreErr))
+					}
+				}
+				s.subs[subId] = prev
+			}
 			return "", fmt.Errorf("subscribe pattern %s: %w", pattern, err)
 		}
 	}
@@ -203,6 +280,7 @@ func (s *service) removeLocked(subId string, sub *subscription) {
 
 func (s *service) CloseSpace(spaceId string) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	for subId, sub := range s.subs {
 		if sub.spaceId == spaceId {
 			delete(s.subs, subId)
@@ -210,7 +288,6 @@ func (s *service) CloseSpace(spaceId string) {
 	}
 	byPattern := s.patterns[spaceId]
 	delete(s.patterns, spaceId)
-	s.mu.Unlock()
 	for _, entry := range byPattern {
 		entry.unsub()
 	}

@@ -106,7 +106,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	var jsonDoc responseContractDocument
 	require.NoError(t, json.Unmarshal(jsonBody, &jsonDoc))
 	jsonOperations := responseContractOperations(t, jsonDoc)
-	require.Len(t, jsonOperations, 55)
+	require.Len(t, jsonOperations, 56)
 
 	yamlBody, err := os.ReadFile("../docs/v2/openapi.yaml")
 	require.NoError(t, err)
@@ -200,7 +200,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	for _, operation := range jsonOperations {
 		pairCount += len(operation.Responses)
 	}
-	assert.Equal(t, 355, pairCount, "the checked-in response inventory changes only deliberately")
+	assert.Equal(t, 364, pairCount, "the checked-in response inventory changes only deliberately")
 
 	dryRunCreates := stringSet(
 		"add_chat_message", "create_chat", "create_collection", "create_object", "create_property",
@@ -211,6 +211,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 		"update_type", "delete_type", "create_property", "update_property", "delete_property", "create_query",
 		"create_collection", "upload_file", "patch_object", "delete_object", "create_chat", "add_chat_message",
 		"edit_chat_message", "delete_chat_message", "toggle_chat_reaction", "read_chat",
+		"publish_chat_status",
 		"create_widget", "update_widget", "delete_widget",
 		// create_discussion is a create with a dry run, but not in
 		// dryRunCreates: its 200 is ALSO the answer for an object that already
@@ -221,6 +222,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	requestBodyLimited := stringSet(
 		"add_chat_message", "create_chat", "create_collection", "create_property", "create_query", "create_space",
 		"edit_chat_message", "read_chat", "toggle_chat_reaction", "update_property", "update_space", "update_type", "upload_file",
+		"publish_chat_status",
 		"create_widget", "update_widget",
 	)
 

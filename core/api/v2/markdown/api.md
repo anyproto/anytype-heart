@@ -218,6 +218,35 @@ Some refusals occur before v2 handlers run:
 A read does not fail because it encounters content its representation
 cannot express. Such content is reported in `warnings` beside the result.
 
+## Publish chat status
+
+`POST /v2/spaces/{space_id}/chats/{chat_id}/status` sends ephemeral activity
+for a chat or discussion. For a typing indicator, send an empty body or `{}`.
+For detailed agent activity, send:
+
+```json
+{"text":"Searching documentation","data":{"tool_call":"web_search"}}
+```
+
+`text` is optional display text. Empty or omitted text stays omitted on the
+wire, allowing clients to show their localized typing label. `data` is optional
+and accepts any JSON value, including arrays, scalars, and null. The encoded
+JSON payload, including field names and escaping, must fit in 65,508 bytes.
+
+Success is `200 {}` and means the update was accepted for publication. The
+Space's pubsub topic is `<chat_id>/status`; subscribers receive
+`Event.Pubsub.Message` with the verified sender identity. Status is neither
+stored as a chat message nor replayed by the chat-message stream.
+
+This route requires write access. `?dry_run=true` validates without publishing;
+`Idempotency-Key` retries replay the response without publishing again. Use
+a fresh key for each refresh, or omit it.
+
+Recommended client convention: refresh every two seconds while active and
+expire the status ten seconds after its last receipt. Stop refreshing when
+finished. Expiry is the receiving client's responsibility; empty text still
+means activity and does not clear it.
+
 ## Stream chat messages
 
 `GET /v2/spaces/{space_id}/chats/{chat_id}/messages/stream` opens a

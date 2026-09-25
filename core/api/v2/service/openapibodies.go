@@ -44,9 +44,10 @@ type OpenAPIBodies struct {
 // operation whose swag annotation declares `body object` must have a row:
 // core/api/openapibodies_test.go refuses a bare object body in the document.
 var openAPIBodyRecipes = map[string]func(c *openAPIBodyComposer) (json.RawMessage, error){
-	v2model.OpCreateProperty:   func(c *openAPIBodyComposer) (json.RawMessage, error) { return c.kind("property") },
-	v2model.OpUpdateProperty:   func(c *openAPIBodyComposer) (json.RawMessage, error) { return c.literal(openAPIUpdatePropertyBody) },
-	v2model.OpCreateCollection: func(c *openAPIBodyComposer) (json.RawMessage, error) { return c.kind("collection") },
+	v2model.OpPublishChatStatus: func(c *openAPIBodyComposer) (json.RawMessage, error) { return c.kind("chatStatus") },
+	v2model.OpCreateProperty:    func(c *openAPIBodyComposer) (json.RawMessage, error) { return c.kind("property") },
+	v2model.OpUpdateProperty:    func(c *openAPIBodyComposer) (json.RawMessage, error) { return c.literal(openAPIUpdatePropertyBody) },
+	v2model.OpCreateCollection:  func(c *openAPIBodyComposer) (json.RawMessage, error) { return c.kind("collection") },
 	v2model.OpCreateQuery: func(c *openAPIBodyComposer) (json.RawMessage, error) {
 		// the served kind leaves the recursive structured filter tree out so
 		// it stays simple to decode; the document is the contract and

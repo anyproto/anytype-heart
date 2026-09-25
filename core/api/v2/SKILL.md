@@ -226,6 +226,16 @@ read: no `Idempotency-Key`, `dry_run` ignored.
 
 ## Chats
 
+- `POST …/chats/{id}/status` publishes ephemeral activity. An empty body or
+  `{}` signals typing; the server omits empty `text` so clients can localize
+  the label. Agents can send `{"text":"Searching documentation","data":{"tool_call":"web_search"}}`.
+  `data` accepts any JSON value. The encoded payload is limited to 65,508 bytes.
+  The pubsub topic is `<chat_id>/status`; `Event.Pubsub.Message` carries the
+  verified sender identity. These updates are not stored messages or SSE
+  message events. Refresh while active (two seconds recommended), stop when
+  finished, and let receivers expire status (ten seconds recommended).
+  `?dry_run=true` does not publish; use a fresh `Idempotency-Key` per refresh.
+
 - `GET …/chats/{id}/messages` returns `{messages, state, message_count,
   has_more, next_before?, next_after?}`. `state` carries `unread_messages`,
   `unread_mentions`, `last_state_id` — so "anything new?" is a `?limit=1`

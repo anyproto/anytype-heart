@@ -66,7 +66,8 @@ Two components registered in `core/anytype/bootstrap.go`:
    (`Crypto`, `MembershipChecker`, `PeerProvider`, `StatusHandler`) plus the
    middleware-facing `Service` (Publish/Subscribe/Unsubscribe) and the
    subscription registry.
-2. the any-sync engine `pubsub.New(deps)` wired to (1). Registered after (1);
+2. the any-sync engine `pubsub.New(deps)` wired to (1). Registered before (1),
+   so Heart cancels accepted publishes before the engine shuts down its workers;
    both resolve each other at `Init` (registration completes before init, so
    mutual runtime lookup is safe; Go import cycle avoided because only
    `core/pubsub` imports the engine).
@@ -80,12 +81,18 @@ Two components registered in `core/anytype/bootstrap.go`:
   automatically. Keyless spaces: `ErrNoReadKey` → engine falls back is NOT
   allowed (we return the error; plaintext only if `Crypto` is nil, which we
   never set client-side).
+  Ciphertext is checked against the engine's 64 KiB limit before publish can
+  echo or send it; the current encryption overhead leaves 65,508 bytes for
+  the app payload.
 - **MembershipChecker** (gates inbound LAN subscribes/publishes we serve) —
   space must already be in the spacecore cache (`Pick`, no load on behalf of
   LAN peers); `AclState().Permissions(identity).NoPermissions()` → reject.
-- **PeerProvider** — mirror of `clientPeerManager.getStreamResponsiblePeers`:
-  one responsible node via `pool.GetOneOf(peerStore.ResponsibleNodeIds(spaceId))`
-  plus all `peerStore.LocalPeerIds(spaceId)` LAN peers.
+- **PeerProvider** — immediately returns a connected responsible node and all
+  connected LAN peers from the shared pool, without waiting behind in-flight
+  dials. The Space's sync peer manager continues establishing other connections.
+  If no route is connected, node and LAN lookups race with a five-second bound;
+  the first available route wins. Lookup cancellation does not become the
+  persistent stream's context.
 - **LAN serving** — `pubsubproto.DRPCRegisterPubSub` on the shared
   `server.DRPCServer` (same mux spacesync registers on), handler delegates to
   `engine.HandleStream`.
@@ -97,15 +104,23 @@ subs:     subId -> {spaceId, patterns}
 patterns: spaceId -> pattern -> {subIds set, engine unsubscribe func}
 ```
 
-- `Subscribe(spaceId, topics, subId)`: adds subId to each pattern entry;
+- `Subscribe(ctx, spaceId, topics, subId)`: loads the locally requested Space
+  through the Space service before adding subId to each pattern entry;
   first subId on a pattern creates the engine subscription whose handler
   emits `Event.Pubsub.Message` with that pattern's current subIds.
 - Re-subscribing an existing subId replaces its pattern set (idempotent).
+  The final distinct pattern count is checked before changing the existing
+  subscription, so a rejected replacement preserves it, including at capacity.
 - `Unsubscribe(subId)`: removes subId everywhere; last subId on a pattern
   tears down the engine subscription.
 - `CloseSpace(spaceId)` (invoked from spacecore space close/eviction via a
   narrow local interface — no import cycle): drops all registry state for the
-  space and calls `engine.CloseSpace`.
+  space and calls `engine.CloseSpace` under the same registry lock, preventing
+  concurrent new subscriptions from being erased by the previous teardown.
+
+Accepted publishes use Heart's component context for asynchronous delivery
+and stream creation. Ending the originating RPC does not cancel them; closing
+the component does. Requests already canceled before publish are rejected.
 
 Subscriptions are app-global (not session-scoped), matching the object-search
 subscription model: clients own subId lifecycles and unsubscribe explicitly.

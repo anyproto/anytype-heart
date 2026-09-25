@@ -20,8 +20,11 @@ transport's guarantees.
 - **Local echo.** You receive your own published messages back. Filter with a
   per-app-run `sessionId` in the payload (do NOT filter by identity — the same
   account on another device is a legitimate remote peer).
-- **Rate limits (server-side, per peer):** 30 msg/s, burst 60, payload ≤64 KiB,
-  ≤100 patterns per space / 1000 per stream. Stay far below all of these.
+- **Rate limits (server-side, per peer):** 30 msg/s, burst 60, encrypted payload
+  ≤64 KiB, ≤100 patterns per space / 1000 per stream. App payloads may contain
+  at most **65,508 bytes**, leaving 28 bytes for encryption overhead. Larger
+  payloads return `BAD_INPUT` before local echo or network delivery. Stay far
+  below all of these limits.
 - **Wildcards in subscriptions only:** `*` = exactly one segment, `>` = one or
   more trailing segments (tail only). Publish topics are always concrete.
 
@@ -44,6 +47,7 @@ no leading `/`). Anytype apps use these conventions:
 
 | Topic | Payload | Who publishes | Purpose |
 |---|---|---|---|
+| `<chat_id>/status` | Optional `text` and arbitrary JSON `data` | chat clients and agents | typing and detailed activity |
 | `typing/<objectId>` | Typing state (§3) | anyone with the object open | typing indicator in chat, live "typing in block" cursor in the editor |
 | `presence/<objectId>` | reserved | — | future: who has the object open (viewer presence) |
 | `presence` | reserved | — | future: space-level presence |
@@ -59,6 +63,40 @@ Rules for new topics:
   fields on receive; never repurpose existing ones.
 - Use a wildcard (`typing/*`) only when you genuinely render all objects at
   once; otherwise subscribe to the concrete topics you display.
+
+### Chat activity: `<chat_id>/status`
+
+API v2 exposes `POST /v2/spaces/{space_id}/chats/{chat_id}/status` for clients
+and agents. Its payload is JSON with optional `text` and `data`:
+
+```json
+{"text":"Searching documentation","data":{"tool_call":"web_search"}}
+```
+
+An empty request or `{"text":""}` publishes `{}`. The receiving client
+supplies its localized typing label when text is absent. `data` accepts any
+JSON value; it is not restricted to objects. A nonempty `text` is plain display
+text, not markup. Sender identity comes from the verified pubsub event.
+
+Subscribe to the exact topic in the same Space. These events have no history
+and do not appear in API v2's chat-message SSE stream. A successful status POST
+acknowledges acceptance, not delivery. Dry runs do not publish; retries using
+the same idempotency key do not refresh the status.
+
+Recommended UI convention: keep the latest update for each verified sender,
+refresh every two seconds while active, and expire it ten seconds after its
+last receipt. A message from that sender may clear it earlier. Empty text
+means default activity, not clear; completion stops the refresh loop. Clients
+that distinguish concurrent sessions can agree on a session identifier in
+`data`.
+
+The naming follows Hermes' `set_status_text` adapter abstraction: tool starts
+set a phrase and tool completion restores the default indicator. Platform
+precedents also treat typing as ephemeral: [Matrix](https://spec.matrix.org/latest/client-server-api/#typing-notifications)
+supports a timeout and explicit stop, [Discord](https://docs.discord.com/developers/resources/channel#trigger-typing-indicator)
+expires typing after ten seconds, and [Slack assistant status](https://docs.slack.dev/reference/methods/assistant.threads.setStatus/)
+supports custom text. The refresh/expiry values above are an Anytype client
+convention, not server-side timers.
 
 ## 3. Typing topic: `typing/<objectId>`
 

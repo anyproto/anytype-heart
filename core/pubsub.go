@@ -25,7 +25,7 @@ func (mw *Middleware) PubsubPublish(cctx context.Context, req *pb.RpcPubsubPubli
 }
 
 func (mw *Middleware) PubsubSubscribe(cctx context.Context, req *pb.RpcPubsubSubscribeRequest) *pb.RpcPubsubSubscribeResponse {
-	subId, err := mustService[pubsub.Service](mw).Subscribe(req.SpaceId, req.Topics, req.SubId)
+	subId, err := mustService[pubsub.Service](mw).Subscribe(cctx, req.SpaceId, req.Topics, req.SubId)
 	code := mapErrorCode(err,
 		errToCode(pubsubproto.ErrInvalidTopic, pb.RpcPubsubSubscribeResponseError_BAD_INPUT),
 		errToCode(pubsubproto.ErrTooManyTopics, pb.RpcPubsubSubscribeResponseError_BAD_INPUT),

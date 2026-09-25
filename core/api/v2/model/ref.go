@@ -70,6 +70,7 @@ var operations = map[string]operation{
 	OpEditChatMessage:      {"PATCH", "/v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}"},
 	OpToggleChatReaction:   {"POST", "/v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}/reactions"},
 	OpReadChat:             {"POST", "/v2/spaces/{space_id}/chats/{chat_id}/read"},
+	OpPublishChatStatus:    {"POST", "/v2/spaces/{space_id}/chats/{chat_id}/status"},
 	OpCreateCollection:     {"POST", "/v2/spaces/{space_id}/collections"},
 	OpGetCollectionObjects: {"GET", "/v2/spaces/{space_id}/collections/{collection_id}/objects"},
 	OpGetCollectionViews:   {"GET", "/v2/spaces/{space_id}/collections/{collection_id}/views"},
@@ -129,6 +130,7 @@ const (
 	OpEditChatMessage      = "edit_chat_message"
 	OpToggleChatReaction   = "toggle_chat_reaction"
 	OpReadChat             = "read_chat"
+	OpPublishChatStatus    = "publish_chat_status"
 	OpCreateCollection     = "create_collection"
 	OpGetCollectionObjects = "get_collection_objects"
 	OpGetCollectionViews   = "get_collection_views"

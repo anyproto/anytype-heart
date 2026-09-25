@@ -2,9 +2,11 @@ package pubsub
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	anysyncpubsub "github.com/anyproto/any-sync/commonspace/pubsub"
@@ -16,6 +18,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 )
 
 const testSpaceId = "space1"
@@ -38,6 +42,8 @@ func newFixture(t *testing.T) *fixture {
 		identity:    keys.SignKey.GetPublic(),
 	}
 	fx.service.engine = engine
+	fx.spaces = &testSpaceLoader{}
+	t.Cleanup(func() { require.NoError(t, fx.Close(context.Background())) })
 	fx.service.eventSender = fx.eventSender
 	return fx
 }
@@ -46,6 +52,7 @@ func newFixture(t *testing.T) *fixture {
 type fakeEngine struct {
 	anysyncpubsub.Service
 	publish      func(ctx context.Context, spaceId, topic string, payload []byte) error
+	subscribeErr func(spaceId, pattern string) error
 	mu           sync.Mutex
 	subs         map[string]anysyncpubsub.Handler // spaceId+"/"+pattern -> handler
 	unsubs       []string
@@ -60,6 +67,11 @@ func (f *fakeEngine) Publish(ctx context.Context, spaceId, topic string, payload
 }
 
 func (f *fakeEngine) Subscribe(spaceId, pattern string, h anysyncpubsub.Handler) (func(), error) {
+	if f.subscribeErr != nil {
+		if err := f.subscribeErr(spaceId, pattern); err != nil {
+			return nil, err
+		}
+	}
 	if err := anysyncpubsub.ValidatePattern(pattern); err != nil {
 		return nil, err
 	}
@@ -112,7 +124,7 @@ func TestSubscribe(t *testing.T) {
 		fx := newFixture(t)
 
 		// when
-		subId, err := fx.Subscribe(testSpaceId, []string{"typing/obj1"}, "")
+		subId, err := fx.Subscribe(context.Background(), testSpaceId, []string{"typing/obj1"}, "")
 
 		// then
 		require.NoError(t, err)
@@ -125,7 +137,7 @@ func TestSubscribe(t *testing.T) {
 		fx := newFixture(t)
 
 		// when
-		_, err := fx.Subscribe(testSpaceId, []string{"/bad//topic"}, "sub1")
+		_, err := fx.Subscribe(context.Background(), testSpaceId, []string{"/bad//topic"}, "sub1")
 
 		// then
 		require.Error(t, err)
@@ -137,7 +149,7 @@ func TestSubscribe(t *testing.T) {
 		fx := newFixture(t)
 
 		// when
-		_, err := fx.Subscribe(testSpaceId, nil, "sub1")
+		_, err := fx.Subscribe(context.Background(), testSpaceId, nil, "sub1")
 
 		// then
 		require.ErrorIs(t, err, ErrEmptyTopics)
@@ -148,8 +160,8 @@ func TestSubscribe(t *testing.T) {
 		fx := newFixture(t)
 
 		// when
-		_, err1 := fx.Subscribe(testSpaceId, []string{"typing/obj1"}, "sub1")
-		_, err2 := fx.Subscribe(testSpaceId, []string{"typing/obj1"}, "sub2")
+		_, err1 := fx.Subscribe(context.Background(), testSpaceId, []string{"typing/obj1"}, "sub1")
+		_, err2 := fx.Subscribe(context.Background(), testSpaceId, []string{"typing/obj1"}, "sub2")
 
 		// then
 		require.NoError(t, err1)
@@ -160,11 +172,11 @@ func TestSubscribe(t *testing.T) {
 	t.Run("resubscribe replaces pattern set", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		_, err := fx.Subscribe(testSpaceId, []string{"typing/obj1"}, "sub1")
+		_, err := fx.Subscribe(context.Background(), testSpaceId, []string{"typing/obj1"}, "sub1")
 		require.NoError(t, err)
 
 		// when
-		_, err = fx.Subscribe(testSpaceId, []string{"typing/obj2"}, "sub1")
+		_, err = fx.Subscribe(context.Background(), testSpaceId, []string{"typing/obj2"}, "sub1")
 
 		// then
 		require.NoError(t, err)
@@ -178,9 +190,9 @@ func TestReceive(t *testing.T) {
 	t.Run("message emitted once with all matching subIds", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		_, err := fx.Subscribe(testSpaceId, []string{"typing/obj1"}, "sub1")
+		_, err := fx.Subscribe(context.Background(), testSpaceId, []string{"typing/obj1"}, "sub1")
 		require.NoError(t, err)
-		_, err = fx.Subscribe(testSpaceId, []string{"typing/obj1"}, "sub2")
+		_, err = fx.Subscribe(context.Background(), testSpaceId, []string{"typing/obj1"}, "sub2")
 		require.NoError(t, err)
 		want := &pb.EventPubsubMessage{
 			Topic:    "typing/obj1",
@@ -206,7 +218,7 @@ func TestReceive(t *testing.T) {
 	t.Run("no event after unsubscribe", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		subId, err := fx.Subscribe(testSpaceId, []string{"typing/obj1"}, "sub1")
+		subId, err := fx.Subscribe(context.Background(), testSpaceId, []string{"typing/obj1"}, "sub1")
 		require.NoError(t, err)
 		require.NoError(t, fx.Unsubscribe(subId))
 
@@ -234,9 +246,9 @@ func TestUnsubscribe(t *testing.T) {
 	t.Run("shared pattern survives until last subId", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		_, err := fx.Subscribe(testSpaceId, []string{"typing/obj1"}, "sub1")
+		_, err := fx.Subscribe(context.Background(), testSpaceId, []string{"typing/obj1"}, "sub1")
 		require.NoError(t, err)
-		_, err = fx.Subscribe(testSpaceId, []string{"typing/obj1"}, "sub2")
+		_, err = fx.Subscribe(context.Background(), testSpaceId, []string{"typing/obj1"}, "sub2")
 		require.NoError(t, err)
 
 		// when
@@ -257,9 +269,9 @@ func TestCloseSpace(t *testing.T) {
 	t.Run("drops all space subscriptions", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		_, err := fx.Subscribe(testSpaceId, []string{"typing/obj1", "typing/obj2"}, "sub1")
+		_, err := fx.Subscribe(context.Background(), testSpaceId, []string{"typing/obj1", "typing/obj2"}, "sub1")
 		require.NoError(t, err)
-		_, err = fx.Subscribe("space2", []string{"typing/obj3"}, "sub2")
+		_, err = fx.Subscribe(context.Background(), "space2", []string{"typing/obj3"}, "sub2")
 		require.NoError(t, err)
 
 		// when
@@ -275,6 +287,16 @@ func TestCloseSpace(t *testing.T) {
 }
 
 func TestPublish(t *testing.T) {
+	t.Run("rejects canceled requests before enqueueing", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.engine.publish = func(context.Context, string, string, []byte) error {
+			t.Fatal("canceled request reached engine")
+			return nil
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		require.ErrorIs(t, fx.Publish(ctx, testSpaceId, "typing/object", nil), context.Canceled)
+	})
 	t.Run("delegates to engine", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
@@ -293,4 +315,83 @@ func TestPublish(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, published)
 	})
+}
+
+func TestSubscribeLoadingFailurePreservesExistingSubscription(t *testing.T) {
+	fx := newFixture(t)
+	_, err := fx.Subscribe(context.Background(), testSpaceId, []string{"typing/old"}, "sub")
+	require.NoError(t, err)
+	loadErr := errors.New("space unavailable")
+	fx.spaces = &testSpaceLoader{load: func(context.Context, string) error { return loadErr }}
+	_, err = fx.Subscribe(context.Background(), "other-space", []string{"typing/new"}, "sub")
+	require.ErrorIs(t, err, loadErr)
+	require.Contains(t, fx.engine.subs, testSpaceId+"/typing/old")
+	require.Equal(t, testSpaceId, fx.subs["sub"].spaceId)
+}
+
+func TestSubscribeLoadingCanceledOnClose(t *testing.T) {
+	fx := newFixture(t)
+	started := make(chan struct{})
+	fx.spaces = &testSpaceLoader{load: func(ctx context.Context, _ string) error {
+		close(started)
+		<-ctx.Done()
+		return ctx.Err()
+	}}
+	done := make(chan error, 1)
+	go func() {
+		_, err := fx.Subscribe(context.Background(), testSpaceId, []string{"typing/object"}, "sub")
+		done <- err
+	}()
+	<-started
+	require.NoError(t, fx.Close(context.Background()))
+	select {
+	case err := <-done:
+		require.ErrorIs(t, err, context.Canceled)
+	case <-time.After(time.Second):
+		t.Fatal("shutdown did not cancel Space loading")
+	}
+	require.Empty(t, fx.engine.subs)
+}
+
+func TestSubscribeRollsBackUnexpectedEngineFailure(t *testing.T) {
+	for _, targetSpace := range []string{testSpaceId, "other-space"} {
+		t.Run(targetSpace, func(t *testing.T) {
+			fx := newFixture(t)
+			_, err := fx.Subscribe(context.Background(), testSpaceId, []string{"typing/old", "typing/shared"}, "sub")
+			require.NoError(t, err)
+			_, err = fx.Subscribe(context.Background(), testSpaceId, []string{"typing/shared"}, "other-sub")
+			require.NoError(t, err)
+			subscribeErr := errors.New("engine refused pattern")
+			fx.engine.subscribeErr = func(_, pattern string) error {
+				if pattern == "typing/fail" {
+					return subscribeErr
+				}
+				return nil
+			}
+			_, err = fx.Subscribe(context.Background(), targetSpace, []string{"typing/new", "typing/shared", "typing/fail"}, "sub")
+			require.ErrorIs(t, err, subscribeErr)
+			require.Len(t, fx.engine.subs, 2)
+			require.Contains(t, fx.engine.subs, testSpaceId+"/typing/old")
+			require.Contains(t, fx.engine.subs, testSpaceId+"/typing/shared")
+			require.Equal(t, testSpaceId, fx.subs["sub"].spaceId)
+			require.Len(t, fx.patterns[testSpaceId]["typing/shared"].subIds, 2)
+			require.NoError(t, fx.Unsubscribe("sub"))
+			require.Len(t, fx.engine.subs, 1)
+			require.NoError(t, fx.Unsubscribe("other-sub"))
+			require.Empty(t, fx.engine.subs)
+		})
+	}
+}
+
+// testSpaceLoader substitutes only the local Space loading boundary.
+type testSpaceLoader struct {
+	space.Service
+	load func(context.Context, string) error
+}
+
+func (s *testSpaceLoader) Get(ctx context.Context, id string) (clientspace.Space, error) {
+	if s.load != nil {
+		return nil, s.load(ctx, id)
+	}
+	return nil, ctx.Err()
 }
