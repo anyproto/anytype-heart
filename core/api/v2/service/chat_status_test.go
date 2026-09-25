@@ -40,7 +40,7 @@ func TestPublishChatStatusPayload(t *testing.T) {
 			fx.mwMock.EXPECT().PubsubPublish(mock.Anything, mock.Anything).Run(
 				func(_ context.Context, req *pb.RpcPubsubPublishRequest) {
 					require.Equal(t, testSpaceId, req.SpaceId)
-					require.Equal(t, testChatId+"/status", req.Topic)
+					require.Equal(t, "status/"+testChatId, req.Topic)
 					require.Equal(t, tc.want, string(req.Payload))
 				}).Return(&pb.RpcPubsubPublishResponse{}).Once()
 			result, err := fx.PublishChatStatus(context.Background(), testSpaceId, testChatId, tc.req, false)
@@ -105,7 +105,7 @@ func TestPublishChatStatusScope(t *testing.T) {
 	_, err := fx.PublishChatStatus(context.Background(), testSpaceId, "page1", v2model.ChatStatusRequest{}, false)
 	requireV2Code(t, err, v2model.CodeValidationFailed)
 	fx.mwMock.EXPECT().PubsubPublish(mock.Anything, mock.MatchedBy(func(req *pb.RpcPubsubPublishRequest) bool {
-		return req.Topic == "discussion1/status"
+		return req.Topic == "status/discussion1"
 	})).Return(&pb.RpcPubsubPublishResponse{}).Once()
 	_, err = fx.PublishChatStatus(context.Background(), testSpaceId, "discussion1", v2model.ChatStatusRequest{}, false)
 	require.NoError(t, err)

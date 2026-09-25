@@ -16,7 +16,7 @@ import (
 // PublishChatStatusHandler publishes ephemeral chat activity.
 //
 //	@Summary		Publish chat status
-//	@Description	Publishes encrypted ephemeral JSON on <chat_id>/status. Empty text is omitted so clients can show localized typing. data accepts any JSON value. The encoded payload is limited to 65,508 bytes. Status is not stored or replayed; receivers expire it. Success acknowledges acceptance, not delivery.
+//	@Description	Publishes encrypted ephemeral JSON on status/<chat_id>. Empty text is omitted so clients can show localized typing. data accepts any JSON value. The encoded payload is limited to 65,508 bytes. Status is not stored or replayed; receivers expire it. Success acknowledges acceptance, not delivery.
 //	@Id				publish_chat_status
 //	@Tags			Chat
 //	@Accept			json

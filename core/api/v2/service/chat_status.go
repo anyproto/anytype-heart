@@ -29,7 +29,7 @@ func (s *Service) PublishChatStatus(ctx context.Context, spaceId, chatId string,
 	}
 	resp := s.mw.PubsubPublish(ctx, &pb.RpcPubsubPublishRequest{
 		SpaceId: spaceId,
-		Topic:   chatId + "/status",
+		Topic:   "status/" + chatId,
 		Payload: payload,
 	})
 	if resp.Error != nil && resp.Error.Code != pb.RpcPubsubPublishResponseError_NULL {

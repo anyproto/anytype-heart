@@ -230,7 +230,7 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   `{}` signals typing; the server omits empty `text` so clients can localize
   the label. Agents can send `{"text":"Searching documentation","data":{"tool_call":"web_search"}}`.
   `data` accepts any JSON value. The encoded payload is limited to 65,508 bytes.
-  The pubsub topic is `<chat_id>/status`; `Event.Pubsub.Message` carries the
+  The pubsub topic is `status/<chat_id>`; `Event.Pubsub.Message` carries the
   verified sender identity. These updates are not stored messages or SSE
   message events. Refresh while active (two seconds recommended), stop when
   finished, and let receivers expire status (ten seconds recommended).

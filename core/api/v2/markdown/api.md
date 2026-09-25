@@ -234,7 +234,7 @@ and accepts any JSON value, including arrays, scalars, and null. The encoded
 JSON payload, including field names and escaping, must fit in 65,508 bytes.
 
 Success is `200 {}` and means the update was accepted for publication. The
-Space's pubsub topic is `<chat_id>/status`; subscribers receive
+Space's pubsub topic is `status/<chat_id>`; subscribers receive
 `Event.Pubsub.Message` with the verified sender identity. Status is neither
 stored as a chat message nor replayed by the chat-message stream.
 

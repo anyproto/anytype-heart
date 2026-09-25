@@ -1659,7 +1659,7 @@ info:
     JSON payload, including field names and escaping, must fit in 65,508 bytes.
 
     Success is `200 {}` and means the update was accepted for publication. The
-    Space's pubsub topic is `<chat_id>/status`; subscribers receive
+    Space's pubsub topic is `status/<chat_id>`; subscribers receive
     `Event.Pubsub.Message` with the verified sender identity. Status is neither
     stored as a chat message nor replayed by the chat-message stream.
 
@@ -2871,7 +2871,7 @@ paths:
       - Chat
   /v2/spaces/{space_id}/chats/{chat_id}/status:
     post:
-      description: Publishes encrypted ephemeral JSON on <chat_id>/status. Empty text
+      description: Publishes encrypted ephemeral JSON on status/<chat_id>. Empty text
         is omitted so clients can show localized typing. data accepts any JSON value.
         The encoded payload is limited to 65,508 bytes. Status is not stored or replayed;
         receivers expire it. Success acknowledges acceptance, not delivery.

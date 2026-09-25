@@ -39,7 +39,7 @@ func TestChatStatusHTTP(t *testing.T) {
 				fx.mwMock.EXPECT().PubsubPublish(mock.Anything, mock.Anything).Run(
 					func(_ context.Context, req *pb.RpcPubsubPublishRequest) {
 						require.Equal(t, "space1", req.SpaceId)
-						require.Equal(t, "chat1/status", req.Topic)
+						require.Equal(t, "status/chat1", req.Topic)
 						require.Equal(t, tc.payload, string(req.Payload))
 					}).Return(&pb.RpcPubsubPublishResponse{}).Once()
 			}

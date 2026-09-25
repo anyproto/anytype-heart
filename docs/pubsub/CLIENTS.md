@@ -47,7 +47,7 @@ no leading `/`). Anytype apps use these conventions:
 
 | Topic | Payload | Who publishes | Purpose |
 |---|---|---|---|
-| `<chat_id>/status` | Optional `text` and arbitrary JSON `data` | chat clients and agents | typing and detailed activity |
+| `status/<chat_id>` | Optional `text` and arbitrary JSON `data` | chat clients and agents | typing and detailed activity |
 | `typing/<objectId>` | Typing state (§3) | anyone with the object open | typing indicator in chat, live "typing in block" cursor in the editor |
 | `presence/<objectId>` | reserved | — | future: who has the object open (viewer presence) |
 | `presence` | reserved | — | future: space-level presence |
@@ -64,7 +64,7 @@ Rules for new topics:
 - Use a wildcard (`typing/*`) only when you genuinely render all objects at
   once; otherwise subscribe to the concrete topics you display.
 
-### Chat activity: `<chat_id>/status`
+### Chat activity: `status/<chat_id>`
 
 API v2 exposes `POST /v2/spaces/{space_id}/chats/{chat_id}/status` for clients
 and agents. Its payload is JSON with optional `text` and `data`:
