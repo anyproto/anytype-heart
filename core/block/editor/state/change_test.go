@@ -297,6 +297,63 @@ func TestState_ChangesCreate_MoveAdd_Wrap(t *testing.T) {
 	assert.Equal(t, d.(*State).String(), dc.String())
 }
 
+func TestState_ApplyChange_MoveConflicts(t *testing.T) {
+	newCrossMoveDoc := func() Doc {
+		return NewDoc("root", map[string]simple.Block{
+			"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{"x", "y"}}),
+			"x":    simple.New(&model.Block{Id: "x", ChildrenIds: []string{"x1"}}),
+			"x1":   simple.New(&model.Block{Id: "x1"}),
+			"y":    simple.New(&model.Block{Id: "y", ChildrenIds: []string{"y1"}}),
+			"y1":   simple.New(&model.Block{Id: "y1"}),
+		})
+	}
+
+	reachable := func(s *State) map[string]bool {
+		found := map[string]bool{}
+		s.Iterate(func(b simple.Block) bool {
+			found[b.Model().Id] = true
+			return true
+		})
+		return found
+	}
+
+	t.Run("concurrent cross moves must not detach both subtrees", func(t *testing.T) {
+		// given
+		d := newCrossMoveDoc()
+		s := d.NewState()
+
+		// when: replaying concurrent moves from two devices
+		s.ApplyChangeIgnoreErr(newMoveChange("y", model.Block_Inner, "x")) // device A: x under y
+		s.ApplyChangeIgnoreErr(newMoveChange("x", model.Block_Inner, "y")) // device B: y under x
+		_, _, err := ApplyState("", s, false)
+
+		// then: all blocks are still reachable from root
+		require.NoError(t, err)
+		found := reachable(d.(*State))
+		for _, id := range []string{"x", "x1", "y", "y1"} {
+			assert.True(t, found[id], "block %s must remain reachable", id)
+		}
+	})
+
+	t.Run("move into concurrently deleted target must not lose moved blocks", func(t *testing.T) {
+		// given
+		d := newCrossMoveDoc()
+		s := d.NewState()
+
+		// when: device A deletes y, device B moves x under y
+		s.ApplyChangeIgnoreErr(newRemoveChange("y"))
+		s.ApplyChangeIgnoreErr(newMoveChange("y", model.Block_Inner, "x"))
+		_, _, err := ApplyState("", s, false)
+
+		// then: x and its subtree are still reachable
+		require.NoError(t, err)
+		found := reachable(d.(*State))
+		assert.True(t, found["x"], "x must remain reachable")
+		assert.True(t, found["x1"], "x1 must remain reachable")
+		assert.False(t, found["y"], "y was removed")
+	})
+}
+
 func TestState_ChangesCreate_MoveAdd_Side(t *testing.T) {
 	d := NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{"a", "b"}}),
