@@ -89,6 +89,57 @@ func TestListService_GetListViews(t *testing.T) {
 		require.Len(t, retView.Sorts, 1)
 	})
 
+	t.Run("returns filters nested in groups", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+
+		view := &model.BlockContentDataviewView{
+			Id:   "grouped-view",
+			Name: "Grouped View",
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					Condition: model.BlockContentDataviewFilter_None,
+					NestedFilters: []*model.BlockContentDataviewFilter{
+						{
+							Id:          "nested-filter-1",
+							RelationKey: "status",
+							Condition:   model.BlockContentDataviewFilter_Equal,
+							Value:       pbtypes.String("done"),
+						},
+					},
+				},
+			},
+		}
+		resp := &pb.RpcObjectShowResponse{
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+			ObjectView: &model.ObjectView{
+				Blocks: []*model.Block{{
+					Id: "dataview",
+					Content: &model.BlockContentOfDataview{
+						Dataview: &model.BlockContentDataview{Views: []*model.BlockContentDataviewView{view}},
+					},
+				}},
+			},
+		}
+		fx.mwMock.
+			On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+				SpaceId:  mockedSpaceId,
+				ObjectId: mockedListId,
+			}).
+			Return(resp, nil).Once()
+
+		views, _, _, err := fx.service.GetListViews(context.Background(), mockedSpaceId, mockedListId, offset, limit)
+		require.NoError(t, err)
+		require.Len(t, views, 1)
+		require.Equal(t, []apimodel.Filter{{
+			Id:          "nested-filter-1",
+			PropertyKey: "status",
+			Format:      apimodel.PropertyFormatText,
+			Condition:   apimodel.FilterConditionEq,
+			Value:       "done",
+		}}, views[0].Filters)
+	})
+
 	t.Run("object show error", func(t *testing.T) {
 		fx := newFixture(t)
 		fx.populateCache(mockedSpaceId)
