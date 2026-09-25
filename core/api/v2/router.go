@@ -314,6 +314,12 @@ func registerChatRoutes(v2 *gin.RouterGroup, deps RouteDeps, idempotencyMW gin.H
 		deps.AnalyticsEvent("V2ReadChat"),
 		v2handler.ReadChatHandler(deps.Service),
 	)
+	v2.POST("/spaces/:space_id/chats/:chat_id/status",
+		deps.WriteRateLimit,
+		idempotencyMW,
+		deps.AnalyticsEvent("V2PublishChatStatus"),
+		v2handler.PublishChatStatusHandler(deps.Service),
+	)
 	// An object's discussion is minted here and served through the chat
 	// routes above by the returned id: it lives under the object because
 	// that is the id a caller holds. C8 because a retried create must not

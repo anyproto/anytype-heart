@@ -575,6 +575,11 @@ components:
         unread_reaction_order:
           type: string
       type: object
+    ChatStatusResult:
+      properties:
+        dry_run:
+          type: boolean
+      type: object
     CreateChatRequest:
       properties:
         name:
@@ -1637,6 +1642,35 @@ info:
 
     A read does not fail because it encounters content its representation
     cannot express. Such content is reported in `warnings` beside the result.
+
+    ## Publish chat status
+
+    `POST /v2/spaces/{space_id}/chats/{chat_id}/status` sends ephemeral activity
+    for a chat or discussion. For a typing indicator, send an empty body or `{}`.
+    For detailed agent activity, send:
+
+    ```json
+    {"text":"Searching documentation","data":{"tool_call":"web_search"}}
+    ```
+
+    `text` is optional display text. Empty or omitted text stays omitted on the
+    wire, allowing clients to show their localized typing label. `data` is optional
+    and accepts any JSON value, including arrays, scalars, and null. The encoded
+    JSON payload, including field names and escaping, must fit in 65,508 bytes.
+
+    Success is `200 {}` and means the update was accepted for publication. The
+    Space's pubsub topic is `status/<chat_id>`; subscribers receive
+    `Event.Pubsub.Message` with the verified sender identity. Status is neither
+    stored as a chat message nor replayed by the chat-message stream.
+
+    This route requires write access. `?dry_run=true` validates without publishing;
+    `Idempotency-Key` retries replay the response without publishing again. Use
+    a fresh key for each refresh, or omit it.
+
+    Recommended client convention: refresh every two seconds while active and
+    expire the status ten seconds after its last receipt. Stop refreshing when
+    finished. Expiry is the receiving client's responsibility; empty text still
+    means activity and does not clear it.
 
     ## Stream chat messages
 
@@ -2833,6 +2867,93 @@ paths:
       security:
       - bearerauth: []
       summary: Mark chat activity as read
+      tags:
+      - Chat
+  /v2/spaces/{space_id}/chats/{chat_id}/status:
+    post:
+      description: Publishes encrypted ephemeral JSON on status/<chat_id>. Empty text
+        is omitted so clients can show localized typing. data accepts any JSON value.
+        The encoded payload is limited to 65,508 bytes. Status is not stored or replayed;
+        receivers expire it. Success acknowledges acceptance, not delivery.
+      operationId: publish_chat_status
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Chat or discussion id
+        in: path
+        name: chat_id
+        required: true
+        schema:
+          type: string
+      - description: Validate without publishing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      - description: Unique key for this update; a reused key replays the response
+          without publishing again
+        in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              additionalProperties: false
+              description: ephemeral activity; the encoded JSON payload must fit in 65508 bytes, including field names and escaping
+              properties:
+                data:
+                  description: 'optional arbitrary JSON value: object, array, string, number, boolean or null'
+                text:
+                  description: optional display text; empty or omitted is left out of the pubsub payload so receivers can show a localized typing label; JSON escaping and data consume the same byte budget
+                  maxLength: 65497
+                  type: string
+              type: object
+        description: Optional text and arbitrary JSON data; clients localize the default
+          typing label
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatStatusResult'
+          description: Status accepted, or validated on a dry run
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Invalid status
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Space or chat not found
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "413":
+          $ref: '#/components/responses/RequestTooLarge'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Publication failed
+      security:
+      - bearerauth: []
+      summary: Publish chat status
       tags:
       - Chat
   /v2/spaces/{space_id}/collections:
