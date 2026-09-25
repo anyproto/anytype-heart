@@ -9,7 +9,7 @@ require (
 	github.com/anyproto/any-block v0.0.0-20260919082013-9906a7c36b68 // v2.0.0-rc5; upstream module path has no /v2 suffix
 	github.com/anyproto/any-store v1.0.2
 	github.com/anyproto/any-sync v0.13.5
-	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb
+	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20260925080338-0fb960f00458
 	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250801122506-553f6c085a23
 	github.com/anyproto/go-chash v0.1.0
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
