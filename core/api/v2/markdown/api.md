@@ -218,6 +218,20 @@ Some refusals occur before v2 handlers run:
 A read does not fail because it encounters content its representation
 cannot express. Such content is reported in `warnings` beside the result.
 
+## Write chat messages
+
+Message `text` is Markdown in both directions. Emphasis, code, links, and
+`<mention object_id="…">` tags become formatting. Escape a literal special
+character with a backslash.
+
+A space chat stores each message as one formatted text, so it keeps only
+the block syntax that text can show:
+
+- A `#` heading line becomes a bold line.
+- A fenced code block becomes a code block. Its language is dropped, and a
+  read returns it as a fence.
+- Lists, quotes, and other block syntax stay literal.
+
 ## Publish chat status
 
 `POST /v2/spaces/{space_id}/chats/{chat_id}/status` sends ephemeral activity

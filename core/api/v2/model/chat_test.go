@@ -74,6 +74,51 @@ func TestChatMessageFromProto(t *testing.T) {
 		assert.Equal(t, msg.Message.Marks[0].Range.To, marks[0].Range.To)
 	})
 
+	codeMessage := func(text string, from, to int32) *model.ChatMessage {
+		return &model.ChatMessage{Id: "msg1", Message: &model.ChatMessageMessageContent{
+			Text:  text,
+			Marks: []*model.BlockContentTextMark{{Range: &model.Range{From: from, To: to}, Type: model.BlockContentTextMark_Keyboard}},
+		}}
+	}
+
+	t.Run("a multi-line code mark over whole lines reads back as a fence", func(t *testing.T) {
+		// given: the shape the desktop composer (and the API) store for ``` fences
+		msg := codeMessage("Run:\nmake\nmake test\ndone", 5, 19)
+
+		// when
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
+
+		// then
+		assert.Equal(t, "Run:\n```\nmake\nmake test\n```\ndone", got.Text)
+	})
+
+	t.Run("a fence around code holding a backtick fence is longer than it", func(t *testing.T) {
+		// given
+		msg := codeMessage("```go\nx\n```", 0, 11)
+
+		// when
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
+
+		// then
+		assert.Equal(t, "````\n```go\nx\n```\n````", got.Text)
+	})
+
+	t.Run("a single-line code mark stays inline code", func(t *testing.T) {
+		// when
+		got := ChatMessageFromProto(codeMessage("x\ny", 2, 3), ChatMessageOptions{SpaceId: "space1"})
+
+		// then
+		assert.Equal(t, "x\n`y`", got.Text)
+	})
+
+	t.Run("a multi-line code mark that starts mid-line stays inline code", func(t *testing.T) {
+		// when
+		got := ChatMessageFromProto(codeMessage("see a\nb", 4, 7), ChatMessageOptions{SpaceId: "space1"})
+
+		// then
+		assert.Equal(t, "see `a\nb`", got.Text)
+	})
+
 	t.Run("mention marks render as §8 mention tags", func(t *testing.T) {
 		// given
 		msg := chatTestMessage()

@@ -1,20 +1,23 @@
 package v2model
 
-// chat.go holds the chat DTOs and the inline-markup bridge: message text
-// crosses the API as SPEC §8
-// markup source in BOTH directions (the anyblockjson inline codec — one
-// vocabulary with block text, C2); offset mark arrays never cross the API.
+// chat.go holds the chat DTOs and the markup bridge: message text crosses
+// the API as markdown source in BOTH directions (the anyblockjson inline
+// codec — one vocabulary with block text, C2 — plus code fences for
+// multi-line code marks); offset mark arrays never cross the API.
 // Reactions are counts ({"👍":2}, Q4); ?reactions=full adds reacted_by
 // (participant-id lists) in its own slot so neither field ever changes
 // type.
 
 import (
+	"slices"
+	"sort"
 	"strings"
 	"time"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	textutil "github.com/anyproto/anytype-heart/util/text"
 )
 
 // ChatRow is the C5 chat list row. Deliberately counter-free (Q3):
@@ -120,8 +123,9 @@ type DiscussionResult struct {
 	DryRun  bool   `json:"dry_run,omitempty"`
 }
 
-// AddChatMessageRequest is the POST messages body. Text is §8 markup
-// SOURCE (the D′1 caveat applies: *, [ and mention syntax mint real marks).
+// AddChatMessageRequest is the POST messages body. Text is markdown
+// SOURCE (the D′1 caveat applies: *, [ and mention syntax mint real marks,
+// and in a space chat so do heading lines and code fences).
 // Attachments are bare object ids — the attachment kind is inferred from
 // each target's layout (image → image, other file layouts → file, anything
 // else → link).
@@ -239,7 +243,7 @@ func ChatMessageFromProto(msg *model.ChatMessage, opts ChatMessageOptions) ChatM
 		}
 	}
 	if msg.Message != nil {
-		out.Text = anyblockjson.RenderInlineText(msg.Message.Text, msg.Message.Marks)
+		out.Text = renderChatContent(msg.Message.Text, msg.Message.Marks)
 	}
 	if rendered := blocksText(msg.Blocks); rendered != "" {
 		if out.Text == "" {
@@ -269,6 +273,86 @@ func chatTime(sec int64) string {
 		return ""
 	}
 	return time.Unix(sec, 0).UTC().Format(time.RFC3339)
+}
+
+// renderChatContent renders a message's content as §8 markup, except that a
+// multi-line code mark over whole lines — how a ``` fence is stored, by the
+// desktop composer and the API alike — reads back as a fence, which posts
+// back as the same mark. The fence outgrows any backtick run in the code.
+func renderChatContent(text string, marks []*model.BlockContentTextMark) string {
+	units := textutil.StrToUTF16(text)
+	var out strings.Builder
+	cursor := int32(0)
+	for _, fence := range fencedCodeRanges(units, marks) {
+		out.WriteString(renderInlineRange(units, marks, cursor, fence.From))
+		code := textutil.UTF16ToStr(units[fence.From:fence.To])
+		marker := strings.Repeat("`", max(3, longestRun(code, '`')+1))
+		out.WriteString(marker + "\n" + code + "\n" + marker)
+		cursor = fence.To
+	}
+	out.WriteString(renderInlineRange(units, marks, cursor, int32(len(units))))
+	return out.String()
+}
+
+// fencedCodeRanges picks the code marks that read back as fences: spanning
+// a newline, starting a line and ending one, in order, none overlapping.
+func fencedCodeRanges(units []uint16, marks []*model.BlockContentTextMark) []model.Range {
+	var ranges []model.Range
+	for _, mark := range marks {
+		if mark == nil || mark.Range == nil || mark.Type != model.BlockContentTextMark_Keyboard {
+			continue
+		}
+		from, to := mark.Range.From, mark.Range.To
+		if from < 0 || to > int32(len(units)) || from >= to {
+			continue
+		}
+		startsLine := from == 0 || units[from-1] == '\n'
+		endsLine := to == int32(len(units)) || units[to] == '\n'
+		if startsLine && endsLine && slices.Contains(units[from:to], '\n') {
+			ranges = append(ranges, model.Range{From: from, To: to})
+		}
+	}
+	sort.Slice(ranges, func(i, j int) bool { return ranges[i].From < ranges[j].From })
+	kept := ranges[:0]
+	for _, r := range ranges {
+		if len(kept) == 0 || r.From >= kept[len(kept)-1].To {
+			kept = append(kept, r)
+		}
+	}
+	return kept
+}
+
+// renderInlineRange renders units[from:to] with the marks clipped to it and
+// rebased.
+func renderInlineRange(units []uint16, marks []*model.BlockContentTextMark, from, to int32) string {
+	if from >= to {
+		return ""
+	}
+	var clipped []*model.BlockContentTextMark
+	for _, mark := range marks {
+		if mark == nil || mark.Range == nil || mark.Range.To <= from || mark.Range.From >= to {
+			continue
+		}
+		part := *mark
+		part.Range = &model.Range{From: max(mark.Range.From, from) - from, To: min(mark.Range.To, to) - from}
+		if part.Range.From < part.Range.To {
+			clipped = append(clipped, &part)
+		}
+	}
+	return anyblockjson.RenderInlineText(textutil.UTF16ToStr(units[from:to]), clipped)
+}
+
+func longestRun(s string, c rune) int {
+	longest, current := 0, 0
+	for _, r := range s {
+		if r == c {
+			current++
+			longest = max(longest, current)
+		} else {
+			current = 0
+		}
+	}
+	return longest
 }
 
 // blocksText renders a message's text-bearing blocks (text blocks and the

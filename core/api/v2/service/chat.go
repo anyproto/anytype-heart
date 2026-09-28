@@ -25,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -34,8 +33,8 @@ import (
 )
 
 // v2MarkupHint is the D′1 caveat, stated wherever message text fails to
-// parse: text is §8 markup SOURCE on both read and write.
-const v2MarkupHint = "message text is inline markup source: *, [, ` and <mention> syntax mint real marks; escape literal specials with a backslash"
+// parse: text is markdown SOURCE on both read and write.
+const v2MarkupHint = "message text is markdown source: *, [, ` and <mention> syntax mint real marks, and in a space chat a # heading line becomes a bold line and a ``` fence a code block; escape literal specials with a backslash"
 
 // maxChatAttachments caps the attachment list per message — the bound the
 // chatMessage discovery schema advertises (maxItems), enforced here so the
@@ -213,9 +212,9 @@ func (s *Service) GetChatMessages(ctx context.Context, spaceId, chatId string, q
 // ---- message mutations ----
 //
 
-// AddChatMessage implements POST .../messages: text is §8 markup source
-// parsed by the anyblockjson inline codec (offset mark arrays never cross
-// the API); attachments are bare object ids with the kind inferred from
+// AddChatMessage implements POST .../messages: text is markdown source
+// parsed for the chat's store (parseChatText; offset mark arrays never
+// cross the API); attachments are bare object ids with the kind inferred from
 // each target's layout. The parsed text is stored the way the chat's
 // layout stores it (chatMessageBody: content for a space chat, one text
 // block for a discussion). A dry run validates everything and sends nothing.
@@ -228,7 +227,7 @@ func (s *Service) AddChatMessage(ctx context.Context, spaceId, chatId string, re
 		return nil, v2model.ValidationFailed("a message needs text or attachments",
 			v2model.Issue{Path: "/text", Message: "text and attachments are both empty"})
 	}
-	text, marks, err := anyblockjson.ParseInlineText(req.Text)
+	text, marks, err := parseChatText(layout, req.Text)
 	if err != nil {
 		return nil, v2model.ValidationFailed("message text does not parse as inline markup",
 			v2model.Issue{Path: "/text", Message: err.Error(), Hint: v2MarkupHint})
@@ -279,7 +278,7 @@ func (s *Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageI
 	if err != nil {
 		return nil, err
 	}
-	text, marks, err := anyblockjson.ParseInlineText(req.Text)
+	text, marks, err := parseChatText(layout, req.Text)
 	if err != nil {
 		return nil, v2model.ValidationFailed("message text does not parse as inline markup",
 			v2model.Issue{Path: "/text", Message: err.Error(), Hint: v2MarkupHint})

@@ -1643,6 +1643,20 @@ info:
     A read does not fail because it encounters content its representation
     cannot express. Such content is reported in `warnings` beside the result.
 
+    ## Write chat messages
+
+    Message `text` is Markdown in both directions. Emphasis, code, links, and
+    `<mention object_id="…">` tags become formatting. Escape a literal special
+    character with a backslash.
+
+    A space chat stores each message as one formatted text, so it keeps only
+    the block syntax that text can show:
+
+    - A `#` heading line becomes a bold line.
+    - A fenced code block becomes a code block. Its language is dropped, and a
+      read returns it as a fence.
+    - Lists, quotes, and other block syntax stay literal.
+
     ## Publish chat status
 
     `POST /v2/spaces/{space_id}/chats/{chat_id}/status` sends ephemeral activity
@@ -2428,11 +2442,11 @@ paths:
       tags:
       - Chat
     post:
-      description: The text is markup source, so `*`, `[` and a mention tag mint real
-        marks; escape a literal one with a backslash. The cap is 8000 UTF-16 code
-        units, where one emoji can cost two or more. Attachments are object ids, at
-        most 32, and each one's kind is taken from the target's layout. In a discussion
-        the text is stored as blocks, one per line; a line of exactly --- is a divider.
+      description: The text is Markdown, formatted as described under Write chat messages.
+        The cap is 8000 UTF-16 code units, where one emoji can cost two or more. Attachments
+        are object ids, at most 32, and each one's kind is taken from the target's
+        layout. In a discussion the text is stored as blocks, one per line; a line
+        of exactly --- is a divider.
       operationId: add_chat_message
       parameters:
       - description: Space id

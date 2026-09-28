@@ -241,8 +241,10 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   `unread_mentions`, `last_state_id` — so "anything new?" is a `?limit=1`
   read. Cursors only (`?after=` walks forward; otherwise newest-first via
   `next_before`); `?offset=` is rejected.
-- Message `text` is inline markup both ways (mentions as
-  `<mention object_id="…">`); ≤8000 UTF-16 units; `attachments` = up to 32 object
+- Message `text` is markdown both ways (mentions as
+  `<mention object_id="…">`). In a space chat a `#` heading line posts as a
+  bold line and a ``` fence as a code block (read back as a fence, language
+  dropped); other block syntax stays literal. ≤8000 UTF-16 units; `attachments` = up to 32 object
   ids from `POST …/files`. `?reactions=full` adds who reacted.
 - Mark read: `POST …/chats/{id}/read` with `{"up_to": <order>,
   "last_state_id": <id>}` — **both** from the same GET, else nothing marks.
