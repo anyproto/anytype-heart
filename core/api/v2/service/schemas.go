@@ -229,6 +229,13 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"emoji":{"type":"string","minLength":1,"maxLength":64,"description":"the reaction emoji to toggle, e.g. 👍 — the response's added reports whether it was added or removed"}}}`,
 		example: `{"emoji":"👍"}`,
 	},
+	"chatStatus": {
+		endpoint: "POST /v2/spaces/{space_id}/chats/{chat_id}/status",
+		schema: `{"type":"object","additionalProperties":false,"description":"ephemeral activity; the encoded JSON payload must fit in 65508 bytes, including field names and escaping","properties":{` +
+			`"text":{"type":"string","maxLength":65497,"description":"optional display text; empty or omitted is left out of the pubsub payload so receivers can show a localized typing label; JSON escaping and data consume the same byte budget"},` +
+			`"data":{"description":"optional arbitrary JSON value: object, array, string, number, boolean or null"}}}`,
+		example: `{"text":"Searching documentation","data":{"tool_call":"web_search"}}`,
+	},
 	"chatRead": {
 		endpoint: "POST /v2/spaces/{space_id}/chats/{chat_id}/read",
 		schema: `{"type":"object","additionalProperties":false,"properties":{` +

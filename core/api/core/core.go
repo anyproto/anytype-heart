@@ -265,6 +265,7 @@ type ClientCommands interface {
 	ChatReadMessages(context.Context, *pb.RpcChatReadMessagesRequest) *pb.RpcChatReadMessagesResponse
 	ChatReadReactions(context.Context, *pb.RpcChatReadReactionsRequest) *pb.RpcChatReadReactionsResponse
 	ChatSearch(context.Context, *pb.RpcChatSearchRequest) *pb.RpcChatSearchResponse
+	PubsubPublish(context.Context, *pb.RpcPubsubPublishRequest) *pb.RpcPubsubPublishResponse
 }
 
 // WidgetScope names which sidebar root a widget lives in. A space has two:

@@ -254,11 +254,12 @@ func TestV2RouteAuthzTable(t *testing.T) {
 
 	t.Run("the non-obvious verb calls hold", func(t *testing.T) {
 		want := map[string]RouteVerb{
-			"POST /v2/validate":                             RouteVerbRead,
-			"POST /v2/search":                               RouteVerbRead,
-			"POST /v2/spaces/:space_id/search":              RouteVerbRead,
-			"POST /v2/spaces/:space_id/chats/:chat_id/read": RouteVerbWrite,
-			"POST /v2/spaces":                               RouteVerbWrite,
+			"POST /v2/validate":                               RouteVerbRead,
+			"POST /v2/search":                                 RouteVerbRead,
+			"POST /v2/spaces/:space_id/search":                RouteVerbRead,
+			"POST /v2/spaces/:space_id/chats/:chat_id/read":   RouteVerbWrite,
+			"POST /v2/spaces/:space_id/chats/:chat_id/status": RouteVerbWrite,
+			"POST /v2/spaces":                                 RouteVerbWrite,
 		}
 		table := RouteAuthzTable()
 		for key, verb := range want {
