@@ -58,6 +58,8 @@ func TestV1ProtosMatchAnyBlockCanonicalSources(t *testing.T) {
 				canonicalNormalized = withoutAccountRecoveryAPI(canonicalNormalized)
 				heartNormalized = withoutJsonApiStatusAPI(heartNormalized)
 				canonicalNormalized = withoutJsonApiStatusAPI(canonicalNormalized)
+				heartNormalized = withoutPubsubAPI(heartNormalized)
+				canonicalNormalized = withoutPubsubAPI(canonicalNormalized)
 			}
 			heartNormalized = withoutIntegrationMetadata(filepath.Base(file.heart), heartNormalized)
 			canonicalNormalized = withoutIntegrationMetadata(filepath.Base(file.heart), canonicalNormalized)
@@ -264,6 +266,14 @@ func withoutJsonApiStatusAPI(normalized string) string {
 	return withoutNestedMessage(normalized, "messageAccount{", "messageJsonApiStatus{")
 }
 
+// Pub/sub messages are ephemeral client-to-client traffic delivered only to
+// live subscribers; nothing about them is persisted, so they never appear in a
+// v1 snapshot. Exclude only the oneof member and the Event.Pubsub namespace.
+func withoutPubsubAPI(normalized string) string {
+	normalized = strings.ReplaceAll(normalized, `Pubsub.MessagepubsubMessage=148;`, "")
+	return withoutNestedMessage(normalized, "messageEvent{", "messagePubsub{")
+}
+
 // Return the offset after a normalized message's closing brace. Quoted defaults
 // can contain braces, so only structural braces change the nesting depth.
 func normalizedMessageEnd(source string, start int) int {
@@ -329,6 +339,26 @@ func TestJsonApiStatusExclusionPreservesExistingSchemaChecks(t *testing.T) {
 	}
 	if withoutJsonApiStatusAPI(canonical) != canonical {
 		t.Fatal("JSON API status exclusion changed the canonical schema")
+	}
+}
+
+func TestPubsubExclusionPreservesExistingSchemaChecks(t *testing.T) {
+	canonical := `messageEvent{messageMessage{Import.FinishimportFinish=97;}messageImport{messageFinish{int64objectsCount=2;}}}messageModel{messagePubsub{stringid=1;}}`
+	withPubsub := strings.Replace(canonical, `Import.FinishimportFinish=97;`, `Import.FinishimportFinish=97;Pubsub.MessagepubsubMessage=148;`, 1)
+	withPubsub = strings.Replace(withPubsub, `messageImport{`, `messagePubsub{messageMessage{stringtopic=1;bytespayload=2;stringidentity=3;repeatedstringsubIds=4;}}messageImport{`, 1)
+	if got := withoutPubsubAPI(withPubsub); got != canonical {
+		t.Fatalf("pubsub exclusion changed an existing definition: %s", got)
+	}
+	changed := strings.Replace(withPubsub, "int64objectsCount=2;", "int64objectsCount=3;", 1)
+	if withoutPubsubAPI(changed) == canonical {
+		t.Fatal("pubsub exclusion hid a changed existing field number")
+	}
+	renumbered := strings.Replace(withPubsub, "pubsubMessage=148;", "pubsubMessage=149;", 1)
+	if withoutPubsubAPI(renumbered) == canonical {
+		t.Fatal("pubsub exclusion hid a renumbered event member")
+	}
+	if withoutPubsubAPI(canonical) != canonical {
+		t.Fatal("pubsub exclusion changed the canonical schema")
 	}
 }
 
