@@ -56,6 +56,8 @@ func TestV1ProtosMatchAnyBlockCanonicalSources(t *testing.T) {
 			if filepath.Base(file.heart) == "events.proto" {
 				heartNormalized = withoutAccountRecoveryAPI(heartNormalized)
 				canonicalNormalized = withoutAccountRecoveryAPI(canonicalNormalized)
+				heartNormalized = withoutJsonApiStatusAPI(heartNormalized)
+				canonicalNormalized = withoutJsonApiStatusAPI(canonicalNormalized)
 			}
 			heartNormalized = withoutIntegrationMetadata(filepath.Base(file.heart), heartNormalized)
 			canonicalNormalized = withoutIntegrationMetadata(filepath.Base(file.heart), canonicalNormalized)
@@ -254,6 +256,14 @@ func withoutAccountRecoveryAPI(normalized string) string {
 	return withoutNestedMessage(normalized, "messageAccount{", "messageRecovery{")
 }
 
+// The JSON API bind status reports whether Heart's local API server is
+// listening. It is a live account event, never a v1 snapshot event. Exclude
+// only its oneof member and the Account.JsonApiStatus payload.
+func withoutJsonApiStatusAPI(normalized string) string {
+	normalized = strings.ReplaceAll(normalized, `Account.JsonApiStatusaccountJsonApiStatus=207;`, "")
+	return withoutNestedMessage(normalized, "messageAccount{", "messageJsonApiStatus{")
+}
+
 // Return the offset after a normalized message's closing brace. Quoted defaults
 // can contain braces, so only structural braces change the nesting depth.
 func normalizedMessageEnd(source string, start int) int {
@@ -299,6 +309,26 @@ func TestAccountRecoveryExclusionPreservesExistingSchemaChecks(t *testing.T) {
 	}
 	if withoutAccountRecoveryAPI(canonical) != canonical {
 		t.Fatal("recovery exclusion changed the canonical schema")
+	}
+}
+
+func TestJsonApiStatusExclusionPreservesExistingSchemaChecks(t *testing.T) {
+	canonical := `messageEvent{messageMessage{Account.UpdateaccountUpdate=203;}messageAccount{messageUpdate{stringname=1;}}messageObject{messageJsonApiStatus{stringid=1;}}}`
+	withStatus := strings.Replace(canonical, `Account.UpdateaccountUpdate=203;`, `Account.UpdateaccountUpdate=203;Account.JsonApiStatusaccountJsonApiStatus=207;`, 1)
+	withStatus = strings.Replace(withStatus, `messageAccount{`, `messageAccount{messageJsonApiStatus{boolsuccess=1;stringlistenAddr=2;stringerror=3;}`, 1)
+	if got := withoutJsonApiStatusAPI(withStatus); got != canonical {
+		t.Fatalf("JSON API status exclusion changed an existing definition: %s", got)
+	}
+	changed := strings.Replace(withStatus, "stringname=1;", "stringname=2;", 1)
+	if withoutJsonApiStatusAPI(changed) == canonical {
+		t.Fatal("JSON API status exclusion hid a changed existing field number")
+	}
+	renumbered := strings.Replace(withStatus, "accountJsonApiStatus=207;", "accountJsonApiStatus=208;", 1)
+	if withoutJsonApiStatusAPI(renumbered) == canonical {
+		t.Fatal("JSON API status exclusion hid a renumbered event member")
+	}
+	if withoutJsonApiStatusAPI(canonical) != canonical {
+		t.Fatal("JSON API status exclusion changed the canonical schema")
 	}
 }
 
