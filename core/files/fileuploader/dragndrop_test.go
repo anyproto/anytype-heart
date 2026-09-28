@@ -667,10 +667,11 @@ func TestDetectFileType(t *testing.T) {
 	})
 
 	t.Run("mp3 file detected as audio", func(t *testing.T) {
-		// given — ID3v2 header (common MP3 tag)
+		// given — ID3v2 header (common MP3 tag); the tag size must be non-zero,
+		// mimetype rejects an empty tag as not MP3
 		dir := t.TempDir()
 		path := filepath.Join(dir, "song.mp3")
-		id3Header := []byte("ID3\x04\x00\x00\x00\x00\x00\x00")
+		id3Header := []byte("ID3\x04\x00\x00\x00\x00\x00\x01")
 		err := os.WriteFile(path, id3Header, 0o644)
 		assert.NoError(t, err)
 
