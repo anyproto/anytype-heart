@@ -66,7 +66,7 @@ const CName = "identity"
 const identityBatch = 100
 
 var (
-	log = logging.Logger("anytype-identity").Desugar()
+	log = logging.LoggerNotSugared("anytype-identity")
 )
 
 type Service interface {

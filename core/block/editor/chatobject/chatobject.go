@@ -47,7 +47,7 @@ const (
 	diffManagerReactions = "reactions"
 )
 
-var log = logging.Logger("core.block.editor.chatobject").Desugar()
+var log = logging.LoggerNotSugared("core.block.editor.chatobject")
 
 type StoreObject interface {
 	smartblock.SmartBlock

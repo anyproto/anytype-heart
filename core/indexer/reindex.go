@@ -572,7 +572,7 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 	}
 
 	if len(ids) > 0 {
-		fmt.Printf("### addSyncDetails: backfilling sync details for %d objects in space %s\n", len(ids), space.Id())
+		log.Infof("addSyncDetails: backfilling sync details for %d objects in space %s", len(ids), space.Id())
 	}
 
 	for start := 0; start < len(ids); start += addSyncDetailsBatchSize {

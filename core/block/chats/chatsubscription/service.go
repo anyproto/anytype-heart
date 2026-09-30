@@ -45,7 +45,7 @@ import (
 
 const CName = "chatsubscription"
 
-var log = logging.Logger(CName).Desugar()
+var log = logging.LoggerNotSugared(CName)
 
 type Manager interface {
 	sync.Locker

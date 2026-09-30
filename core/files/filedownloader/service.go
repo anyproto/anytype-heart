@@ -50,7 +50,7 @@ import (
 
 const CName = "core.files.filedownloader"
 
-var log = logging.Logger(CName).Desugar()
+var log = logging.LoggerNotSugared(CName)
 
 type Service interface {
 	SetEnabled(enabled bool, wifiOnly bool) error
