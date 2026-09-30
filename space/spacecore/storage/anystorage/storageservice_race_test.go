@@ -374,78 +374,6 @@ func TestOrphanWal(t *testing.T) {
 	})
 }
 
-// collidingPayloads mints real space payloads until two of them land on one
-// lock shard. Space ids are CIDs, so a collision has to be found rather than
-// chosen; the birthday bound makes that a few dozen tries.
-func collidingPayloads(t *testing.T) (a, b spacestorage.SpaceStorageCreatePayload) {
-	t.Helper()
-	seen := map[int]spacestorage.SpaceStorageCreatePayload{}
-	for i := 0; i < 20000; i++ {
-		p := newCreatePayload(t)
-		shard := spaceLockShard(p.SpaceHeaderWithId.Id)
-		if prev, ok := seen[shard]; ok {
-			return prev, p
-		}
-		seen[shard] = p
-	}
-	t.Fatal("no two payloads landed on one shard")
-	return
-}
-
-// A shard is reused: one space takes it, finishes and hands it back, and a
-// different space that hashes to the same shard takes it next. Reuse must not
-// weaken what the lock is for -- two callers for ONE id still have to be
-// serialized, because one id always maps to one shard.
-func TestCreateSpaceStorage_ShardReuse(t *testing.T) {
-	// given: two spaces sharing a shard, the first already created and closed
-	// so the shard is back in the pool
-	s := newTestService(t)
-	ctx := context.Background()
-	first, second := collidingPayloads(t)
-	require.Equal(t, spaceLockShard(first.SpaceHeaderWithId.Id), spaceLockShard(second.SpaceHeaderWithId.Id))
-
-	firstStore, err := s.CreateSpaceStorage(ctx, first)
-	require.NoError(t, err)
-	require.NoError(t, firstStore.Close(ctx))
-
-	// when: the second space is created while others open it, on that same shard
-	spaceId := second.SpaceHeaderWithId.Id
-	dbPath := filepath.Join(s.rootPath, spaceId, "store.db")
-	done := make(chan struct{})
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if !waitForFile(t, dbPath, done) {
-			return
-		}
-		for {
-			select {
-			case <-done:
-				return
-			default:
-			}
-			if st, err := s.WaitSpaceStorage(ctx, spaceId); err == nil {
-				_ = st.Close(ctx)
-			}
-		}
-	}()
-	secondStore, err := s.CreateSpaceStorage(ctx, second)
-	close(done)
-	wg.Wait()
-
-	// then
-	require.NoError(t, err, "a reused shard must still serialize the create it is asked to protect")
-	require.NoError(t, secondStore.Close(ctx))
-	assert.Empty(t, s.ListCorruptedBackups())
-	assert.True(t, s.SpaceExists(spaceId))
-	// the space that handed the shard over is untouched
-	assert.True(t, s.SpaceExists(first.SpaceHeaderWithId.Id))
-	reopened, err := s.WaitSpaceStorage(ctx, first.SpaceHeaderWithId.Id)
-	require.NoError(t, err)
-	require.NoError(t, reopened.Close(ctx))
-}
-
 // The open path moves a space directory aside too, and had the broader
 // predicate the create path was already narrowed away from: a populated store
 // written by a newer build, or a check the caller's own ctx cut short, is not
@@ -490,4 +418,51 @@ func TestWaitSpaceStorage_RecoveryIsNarrow(t *testing.T) {
 		require.Len(t, s.ListCorruptedBackups(), 1)
 		assert.Equal(t, spaceId, s.ListCorruptedBackups()[0].SpaceId)
 	})
+}
+
+// An entry is reclaimed when its last caller leaves, so the create race has to
+// be survived by an entry that is built fresh while the race is already on --
+// not only by one a previous caller left warm.
+func TestCreateSpaceStorage_AfterEntryReclaimed(t *testing.T) {
+	// given: a space whose lock entry has come and gone
+	s := newTestService(t)
+	ctx := context.Background()
+	payload := newCreatePayload(t)
+	spaceId := payload.SpaceHeaderWithId.Id
+	unlock, err := s.lockSpace(ctx, spaceId)
+	require.NoError(t, err)
+	unlock()
+	require.Zero(t, s.spaceLocks.held(), "the entry must be gone before the race starts")
+
+	// when
+	dbPath := filepath.Join(s.rootPath, spaceId, "store.db")
+	done := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if !waitForFile(t, dbPath, done) {
+			return
+		}
+		for {
+			select {
+			case <-done:
+				return
+			default:
+			}
+			if st, err := s.WaitSpaceStorage(ctx, spaceId); err == nil {
+				_ = st.Close(ctx)
+			}
+		}
+	}()
+	st, err := s.CreateSpaceStorage(ctx, payload)
+	close(done)
+	wg.Wait()
+
+	// then
+	require.NoError(t, err, "a freshly built entry must serialize the create it is made for")
+	require.NoError(t, st.Close(ctx))
+	assert.Empty(t, s.ListCorruptedBackups())
+	assert.True(t, s.SpaceExists(spaceId))
+	assert.Zero(t, s.spaceLocks.held(), "every entry must be handed back afterwards")
 }
