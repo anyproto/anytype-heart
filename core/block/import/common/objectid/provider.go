@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 )
 
-var log = logging.Logger("import").Desugar()
+var log = logging.LoggerNotSugared("import")
 
 type IdAndKeyProvider interface {
 	IDProvider

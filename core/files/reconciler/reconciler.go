@@ -29,7 +29,7 @@ const (
 	CName = "core.files.reconciler"
 )
 
-var log = logging.Logger(CName).Desugar()
+var log = logging.LoggerNotSugared(CName)
 
 type Reconciler interface {
 	app.ComponentRunnable

@@ -65,7 +65,7 @@ import (
 
 const CName = "common.acl.aclservice"
 
-var log = logging.Logger(CName).Desugar()
+var log = logging.LoggerNotSugared(CName)
 
 var sleepTime = time.Millisecond * 500
 

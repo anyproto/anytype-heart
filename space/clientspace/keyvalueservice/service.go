@@ -38,7 +38,7 @@ import (
 
 const CName = "core.keyvalueservice"
 
-var log = logging.Logger(CName).Desugar()
+var log = logging.LoggerNotSugared(CName)
 
 type ObserverFunc func(key string, val Value)
 

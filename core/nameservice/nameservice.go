@@ -21,15 +21,12 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
 	proto "github.com/anyproto/any-sync/nameservice/nameserviceproto"
 )
 
 const CName = "nameservice"
-
-var log = logging.Logger(CName).Desugar()
 
 var (
 	ErrBadResolve = errors.New("can not resolve anyname")
