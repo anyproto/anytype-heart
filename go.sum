@@ -42,8 +42,8 @@ github.com/anyproto/any-block v0.0.0-20260919082013-9906a7c36b68 h1:7EAL+fDiqZs/
 github.com/anyproto/any-block v0.0.0-20260919082013-9906a7c36b68/go.mod h1:ctWUBba2Nm+mHwkh4bBej57avQHaW2HDzDZDSlbVchs=
 github.com/anyproto/any-store v1.0.2 h1:vQvgKKDDmM0j9EheBWGq8bMVU7Oi3061DKJFG8D3sTQ=
 github.com/anyproto/any-store v1.0.2/go.mod h1:8cqb52gjZSaYnlybugqpSqSG1RQygY96D2vWMbSJsLo=
-github.com/anyproto/any-sync v0.13.5 h1:wWDEcdJReNdZh1yuVcUgWA/VsPom7uP59KM25SdqSCU=
-github.com/anyproto/any-sync v0.13.5/go.mod h1:c6f4LXwoji9JkJYt14dXuVbPzYBRa3Z85+sBQ4HX5+4=
+github.com/anyproto/any-sync v0.13.7-0.20261001142530-62e171d20124 h1:+TmHkxR7JhWnrXqkq8Rr2u3i23W7w6bHC2trKn7JNf4=
+github.com/anyproto/any-sync v0.13.7-0.20261001142530-62e171d20124/go.mod h1:d56Pxkt2zaK8K9SAEf8KkhBwJx/a6mEGeRY6h717x0w=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20260925080338-0fb960f00458 h1:kg/BHaimoLI2suFe4Kq1MfNxFvWYlFfPPkgVehU9+FE=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20260925080338-0fb960f00458/go.mod h1:lRppnNvn5vAw/ASBOYV6LTYPqEg+XC34AzloxK1E/Ac=
 github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250801122506-553f6c085a23 h1:jXAjKY4g9ec7lDtayIlzM9u0/b3xGS9YgGA6JtRhHfU=
@@ -589,8 +589,8 @@ github.com/libp2p/go-buffer-pool v0.1.0 h1:oK4mSFcQz7cTQIfqbe4MIj9gLW+mnanjyFtc6
 github.com/libp2p/go-buffer-pool v0.1.0/go.mod h1:N+vh8gMqimBzdKkSMVuydVDq+UV5QTWy5HSiZacSbPg=
 github.com/libp2p/go-flow-metrics v0.3.0 h1:q31zcHUvHnwDO0SHaukewPYgwOBSxtt830uJtUx6784=
 github.com/libp2p/go-flow-metrics v0.3.0/go.mod h1:nuhlreIwEguM1IvHAew3ij7A8BMlyHQJ279ao24eZZo=
-github.com/libp2p/go-libp2p v0.49.0 h1:ibXuYPIHmMIPShob1BktQvSuFQkq/MemhQOLKfGujjw=
-github.com/libp2p/go-libp2p v0.49.0/go.mod h1:lzjVcOBk5fCn1QD2XbSOKLZesB6gEsry8SLjCsAAGT4=
+github.com/libp2p/go-libp2p v0.50.0 h1:A0tBP6mr6GV7l5ip2Q04a/IxPqVYYaCiif5s8JuXkN4=
+github.com/libp2p/go-libp2p v0.50.0/go.mod h1:RjqB+dxCWNZ33yw0yeK5Pu157oNxKuaTZY6vLed4t8w=
 github.com/libp2p/go-libp2p-asn-util v0.4.1 h1:xqL7++IKD9TBFMgnLPZR6/6iYhawHKHl950SO9L6n94=
 github.com/libp2p/go-libp2p-asn-util v0.4.1/go.mod h1:d/NI6XZ9qxw67b4e+NgpQexCIiFYJjErASrYW4PFDN8=
 github.com/libp2p/go-libp2p-kad-dht v0.42.2 h1:5RtESYeBbjaF+KIPmU47xz2DOb2iLqvoRCZcsjxCS48=
@@ -807,8 +807,8 @@ github.com/quic-go/go-ossfuzz-seeds v0.1.0 h1:APacT+iIaNF6fd8AGEiN3bT/Jtkd2jz4v4
 github.com/quic-go/go-ossfuzz-seeds v0.1.0/go.mod h1:3IOHRbJIc+L6YKMwfDtJAM9Vj9k0YY4muhuyUYk5tbk=
 github.com/quic-go/qpack v0.6.0 h1:g7W+BMYynC1LbYLSqRt8PBg5Tgwxn214ZZR34VIOjz8=
 github.com/quic-go/qpack v0.6.0/go.mod h1:lUpLKChi8njB4ty2bFLX2x4gzDqXwUpaO1DP9qMDZII=
-github.com/quic-go/quic-go v0.62.0 h1:ZHDjCk5OacATwGvs8PWE97CTvX7AqZiVoW7++ZOXTf8=
-github.com/quic-go/quic-go v0.62.0/go.mod h1:RAro2j2yN9a9EiPACLHT9IB2NXCvGQmmo/alT0yYI0w=
+github.com/quic-go/quic-go v0.63.0 h1:LIFGHI4PFUhhw2dDD1ARHdCff143ffMHwZtbnbuJ78A=
+github.com/quic-go/quic-go v0.63.0/go.mod h1:RAro2j2yN9a9EiPACLHT9IB2NXCvGQmmo/alT0yYI0w=
 github.com/quic-go/webtransport-go v0.13.0 h1:RJLrTUHlTj8jJaQlQJUy0z0Mf7u1fVM0I6L1b9pe2M0=
 github.com/quic-go/webtransport-go v0.13.0/go.mod h1:K83X9YHbAqgSLO6ikS6BXCMdWOvqh9JTHALulvb2JVk=
 github.com/rcrowley/go-metrics v0.0.0-20181016184325-3113b8401b8a/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=

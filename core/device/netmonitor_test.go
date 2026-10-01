@@ -1,6 +1,7 @@
 package device
 
 import (
+	"context"
 	"net"
 	"testing"
 	"time"
@@ -55,8 +56,6 @@ type monitorFixture struct {
 	*netMonitor
 	events   []string
 	linkDown []bool
-	wall     time.Time
-	elapsed  time.Duration
 	addrs    addrs.InterfacesAddrs
 	addrsErr error
 }
@@ -66,62 +65,63 @@ func newMonitorFixture() *monitorFixture {
 }
 
 func newMonitorFixtureAddrs(initial []net.Addr) *monitorFixture {
-	fx := &monitorFixture{wall: time.Unix(1000000, 0)}
+	fx := &monitorFixture{}
 	fx.addrs.Addrs = initial
-	m := &netMonitor{
-		getAddrs: func() (addrs.InterfacesAddrs, error) { return fx.addrs, fx.addrsErr },
-		nowWall:  func() time.Time { return fx.wall },
-		elapsed:  func() time.Duration { return fx.elapsed },
-	}
-	m.onEvent = func(reason string) { fx.events = append(fx.events, reason) }
-	m.onSnapshot = func(key string, down bool) { fx.linkDown = append(fx.linkDown, down) }
+	m := newNetMonitor(
+		func(reason, _ string) { fx.events = append(fx.events, reason) },
+		func(key string, down bool) { fx.linkDown = append(fx.linkDown, down) },
+		nil,
+		func() (addrs.InterfacesAddrs, error) { return fx.addrs, fx.addrsErr },
+	)
 	fx.netMonitor = m
 	// mirror run()'s initialization
-	m.prevWall = fx.wall
-	m.prevElapsed = fx.elapsed
 	m.checkInterfaces()
 	return fx
 }
 
-// advance moves wall time by wallDelta and the monotonic clock by monoDelta,
-// then runs one tick. During sleep the monotonic clock pauses, so a wake shows
-// wallDelta >> monoDelta.
-func (fx *monitorFixture) advance(wallDelta, monoDelta time.Duration) {
-	fx.wall = fx.wall.Add(wallDelta)
-	fx.elapsed += monoDelta
-	fx.tick()
+// advance runs one interface-probe tick. Freeze detection lives in
+// networkState (observeGap) and is tested there.
+func (fx *monitorFixture) advance() {
+	fx.checkInterfaces()
 }
 
-func TestNetMonitor_ClockJump(t *testing.T) {
-	t.Run("sleep longer than threshold fires wake event", func(t *testing.T) {
-		fx := newMonitorFixture()
-		fx.advance(2*time.Minute, netMonitorTickInterval) // slept ~2min
-		require.Len(t, fx.events, 1)
-		assert.Contains(t, fx.events[0], "wake from sleep")
-	})
-	t.Run("normal ticks do not fire", func(t *testing.T) {
-		fx := newMonitorFixture()
-		for i := 0; i < 10; i++ {
-			fx.advance(netMonitorTickInterval, netMonitorTickInterval)
-		}
-		assert.Empty(t, fx.events)
-	})
-	t.Run("short sleep below threshold does not fire", func(t *testing.T) {
-		fx := newMonitorFixture()
-		fx.advance(netMonitorTickInterval+sleepJumpThreshold/2, netMonitorTickInterval)
-		assert.Empty(t, fx.events)
-	})
+func TestNetMonitor_Heartbeat(t *testing.T) {
+	// the sampler runs on its own goroutine and only calls onHeartbeat, so a
+	// blocked interface probe can't delay or hide a sample
+	block := make(chan struct{})
+	defer close(block)
+	beats := make(chan struct{}, 1)
+	m := newNetMonitor(func(string, string) {}, func(string, bool) {},
+		func() {
+			select {
+			case beats <- struct{}{}:
+			default:
+			}
+		},
+		func() (addrs.InterfacesAddrs, error) {
+			<-block // interface enumeration stuck (e.g. suspended mid-call)
+			return addrs.InterfacesAddrs{}, nil
+		})
+	m.heartbeatEvery = time.Millisecond * 10
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go m.run(ctx)
+	select {
+	case <-beats:
+	case <-time.After(time.Second * 5):
+		t.Fatal("heartbeat sampler did not run while the interface probe was blocked")
+	}
 }
 
 func TestNetMonitor_InterfaceChanges(t *testing.T) {
 	t.Run("regaining connectivity from zero fires recovery", func(t *testing.T) {
 		fx := newMonitorFixture() // empty baseline = no connectivity
 		fx.addrs.Addrs = []net.Addr{ipNet(t, "192.168.1.10/24")}
-		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
+		fx.advance()
 		require.Len(t, fx.events, 1, "link coming back must trigger recovery")
 		assert.Contains(t, fx.events[0], "regained")
 
-		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
+		fx.advance()
 		assert.Len(t, fx.events, 1, "stable addresses must not fire again")
 	})
 	t.Run("additions on existing connectivity do not fire, losses do", func(t *testing.T) {
@@ -130,24 +130,24 @@ func TestNetMonitor_InterfaceChanges(t *testing.T) {
 		// pure addition (docker bridge, VPN tunnel, hotspot): existing
 		// connections are not invalidated, so no teardown event
 		fx.addrs.Addrs = []net.Addr{ipNet(t, "192.168.1.10/24"), ipNet(t, "10.99.0.1/24")}
-		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
+		fx.advance()
 		assert.Empty(t, fx.events, "pure addition must not fire")
 
 		// network switch: old address replaced -> the loss fires
 		fx.addrs.Addrs = []net.Addr{ipNet(t, "10.20.30.40/24"), ipNet(t, "10.99.0.1/24")}
-		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
+		fx.advance()
 		require.Len(t, fx.events, 1)
-		assert.Contains(t, fx.events[0], "192.168.1.10")
+		assert.Equal(t, "interface addresses lost (1)", fx.events[0], "no addresses in the reason")
 
 		// losing everything fires the loss path (not regain)
 		fx.addrs.Addrs = nil
-		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
+		fx.advance()
 		require.Len(t, fx.events, 2)
 		assert.Contains(t, fx.events[1], "lost")
 
 		// and coming back fires regain
 		fx.addrs.Addrs = []net.Addr{ipNet(t, "10.20.30.40/24")}
-		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
+		fx.advance()
 		require.Len(t, fx.events, 3)
 		assert.Contains(t, fx.events[2], "regained")
 	})
@@ -156,17 +156,17 @@ func TestNetMonitor_InterfaceChanges(t *testing.T) {
 		assert.Equal(t, []bool{true}, fx.linkDown, "no addresses at start -> down")
 
 		fx.addrs.Addrs = []net.Addr{ipNet(t, "192.168.1.10/24")}
-		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
+		fx.advance()
 		assert.Equal(t, []bool{true, false}, fx.linkDown)
 
 		fx.addrs.Addrs = nil
-		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
+		fx.advance()
 		assert.Equal(t, []bool{true, false, true}, fx.linkDown)
 	})
 	t.Run("enumeration error fails open", func(t *testing.T) {
 		fx := newMonitorFixture()
 		fx.addrsErr = assert.AnError
-		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
+		fx.advance()
 		assert.Empty(t, fx.events)
 		// "unknown" must not wedge linkDown=true (Android without the injected
 		// getter, transient failures): the error tick reports link up

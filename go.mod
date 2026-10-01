@@ -8,7 +8,7 @@ require (
 	github.com/ahmetb/govvv v0.3.0
 	github.com/anyproto/any-block v0.0.0-20260919082013-9906a7c36b68 // v2.0.0-rc5; upstream module path has no /v2 suffix
 	github.com/anyproto/any-store v1.0.2
-	github.com/anyproto/any-sync v0.13.5
+	github.com/anyproto/any-sync v0.13.7-0.20261001142530-62e171d20124
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20260925080338-0fb960f00458
 	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250801122506-553f6c085a23
 	github.com/anyproto/go-chash v0.1.0
@@ -223,7 +223,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/libp2p/go-buffer-pool v0.1.0 // indirect
-	github.com/libp2p/go-libp2p v0.49.0 // indirect
+	github.com/libp2p/go-libp2p v0.50.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
@@ -255,7 +255,7 @@ require (
 	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/pseudomuto/protokit v0.2.1 // indirect
 	github.com/quic-go/qpack v0.6.0 // indirect
-	github.com/quic-go/quic-go v0.62.0 // indirect
+	github.com/quic-go/quic-go v0.63.0 // indirect
 	github.com/quic-go/webtransport-go v0.13.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rs/cors v1.11.0 // indirect
