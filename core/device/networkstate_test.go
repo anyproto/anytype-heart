@@ -913,11 +913,12 @@ func TestNetworkState_FlushBound(t *testing.T) {
 		assert.Contains(t, st.LastFlushError, "abandoned")
 		assert.Equal(t, base+1, fx.flushCalls.Load())
 	})
-	t.Run("the next flush waits for an abandoned one: flushes never overlap", func(t *testing.T) {
+	t.Run("a later Flush doesn't wait for an abandoned one (overlap is safe with pool generations)", func(t *testing.T) {
 		fx := newNetworkStateFixture(t)
 		fx.SetNetworkState(model.DeviceNetworkType_WIFI, "w1")
 		base := fx.foregroundSettled()
 		release := make(chan struct{})
+		defer close(release)
 		var calls atomic.Int32
 		fx.flushHook = func() {
 			if calls.Inc() == 1 {
@@ -926,28 +927,43 @@ func TestNetworkState_FlushBound(t *testing.T) {
 		}
 		fx.flushBound = 20 * time.Millisecond
 		fx.SetNetworkState(model.DeviceNetworkType_WIFI, "w2")
-		fx.drain()                      // abandons flush #1
-		fx.flushBound = 2 * time.Second // the wait for #1 is bounded by this
+		fx.drain() // abandons flush #1
+		fx.flushBound = 2 * time.Second
 		fx.ticks(2)
 		fx.SetNetworkState(model.DeviceNetworkType_WIFI, "w3")
-		done := make(chan struct{})
-		go func() { fx.drainRecoveries(); close(done) }()
-		select {
-		case <-done:
-			t.Fatal("second recovery ran while the abandoned flush was still running")
-		case <-time.After(50 * time.Millisecond):
+		start := time.Now()
+		fx.drain()
+		assert.Less(t, time.Since(start), time.Second, "no wait for the abandoned flush")
+		assert.Equal(t, base+2, fx.flushCalls.Load())
+		assert.Equal(t, int64(1), fx.stat().FlushTimeouts)
+	})
+	t.Run("a Flush that finished right at the deadline is not counted as abandoned", func(t *testing.T) {
+		fx := newNetworkStateFixture(t)
+		fx.foregroundSettled()
+		fx.flushBound = time.Millisecond
+		fx.beforeFlushWait = func() {
+			// both ready: the result is sent and the deadline has passed
+			require.Eventually(t, func() bool { return fx.flushes.Load() > 0 }, time.Second, time.Millisecond)
+			time.Sleep(5 * time.Millisecond)
 		}
-		assert.Equal(t, base+1, fx.flushCalls.Load(), "no second Flush while the first is in flight")
-		close(release)
-		waitFor(t, done, "second drain")
-		ev := fx.events()
-		assert.Equal(t, []string{"flush", "flush"}, ev[len(ev)-2:])
-		assert.Equal(t, base+2, fx.flushes.Load())
+		for i := 0; i < 40; i++ {
+			fx.flushes.Store(0)
+			fx.ticks(2)
+			nt := model.DeviceNetworkType_CELLULAR
+			if i%2 == 1 {
+				nt = model.DeviceNetworkType_WIFI
+			}
+			fx.SetNetworkState(nt, "")
+			fx.drain()
+		}
+		st := fx.stat()
+		assert.Equal(t, int64(0), st.FlushTimeouts)
+		assert.Equal(t, int64(0), st.FlushErrors)
 	})
 }
 
 func TestNetworkState_FlushBoundStuckForever(t *testing.T) {
-	// Q2: a Flush that never returns must not wedge recovery until Close
+	// a Flush that never returns must not wedge recovery until Close
 	fx := newNetworkStateFixtureOpts(t, fixtureOpts{mobile: true})
 	fx.SetNetworkState(model.DeviceNetworkType_WIFI, "w1")
 	fx.foregroundSettled()
@@ -969,13 +985,12 @@ func TestNetworkState_FlushBoundStuckForever(t *testing.T) {
 	fx.sleepFor(time.Hour)
 	fx.ticks(4)
 	fx.StateChange(int(domain.CompStateAppWentForeground)) // foregroundWake/transition with refresh
-	fx.drain()                                             // waits one bound, then skips its Flush
+	fx.drain()
 	st := fx.stat()
-	assert.Equal(t, int64(1), st.FlushSkippedAbandoned)
-	assert.Equal(t, int64(1), st.WakeGenCompleted, "the generation still completes")
-	assert.Equal(t, refreshes+1, fx.refreshCalls(), "the Foreground refresh still runs")
-	assert.Equal(t, syncs+1, fx.syncer.callCount(), "head-sync still runs")
-	assert.Equal(t, int32(1), calls.Load(), "no overlapping Flush started")
+	assert.Equal(t, int64(1), st.WakeGenCompleted, "the generation completes")
+	assert.Equal(t, refreshes+1, fx.refreshCalls(), "the Foreground refresh runs")
+	assert.Equal(t, syncs+1, fx.syncer.callCount(), "head-sync runs")
+	assert.Equal(t, int32(2), calls.Load(), "the new Flush runs despite the stuck one")
 }
 
 func TestNetworkState_RefreshOrdering(t *testing.T) {

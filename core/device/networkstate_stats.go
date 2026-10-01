@@ -60,12 +60,11 @@ type recoveryStats struct {
 	refreshTimeouts   atomic.Int64
 	closeWaitTimeouts atomic.Int64
 
-	flushErrors           atomic.Int64
-	flushTimeouts         atomic.Int64
-	flushSkippedAbandoned atomic.Int64
-	flushSkippedClosed    atomic.Int64
-	lastFlushError        atomic.String
-	lastFlushDurationMs   atomic.Int64
+	flushErrors         atomic.Int64
+	flushTimeouts       atomic.Int64
+	flushSkippedClosed  atomic.Int64
+	lastFlushError      atomic.String
+	lastFlushDurationMs atomic.Int64
 }
 
 func triggerCounts(c *[len(allTriggers)]atomic.Int64) map[string]int64 {
@@ -123,12 +122,11 @@ type networkStateStat struct {
 	RefreshTimeouts   int64 `json:"refreshTimeouts"`
 	CloseWaitTimeouts int64 `json:"closeWaitTimeouts"`
 
-	FlushErrors           int64  `json:"flushErrors"`
-	FlushTimeouts         int64  `json:"flushTimeouts"`
-	FlushSkippedAbandoned int64  `json:"flushSkippedAbandoned"`
-	FlushSkippedClosed    int64  `json:"flushSkippedClosed"`
-	LastFlushDurationMs   int64  `json:"lastFlushDurationMs,omitempty"`
-	LastFlushError        string `json:"lastFlushError,omitempty"`
+	FlushErrors         int64  `json:"flushErrors"`
+	FlushTimeouts       int64  `json:"flushTimeouts"`
+	FlushSkippedClosed  int64  `json:"flushSkippedClosed"`
+	LastFlushDurationMs int64  `json:"lastFlushDurationMs,omitempty"`
+	LastFlushError      string `json:"lastFlushError,omitempty"`
 }
 
 func deviceStateName(s domain.CompState, reported bool) string {
@@ -202,12 +200,11 @@ func (n *networkState) ProvideStat() any {
 		RefreshTimeouts:   s.refreshTimeouts.Load(),
 		CloseWaitTimeouts: s.closeWaitTimeouts.Load(),
 
-		FlushErrors:           s.flushErrors.Load(),
-		FlushTimeouts:         s.flushTimeouts.Load(),
-		FlushSkippedAbandoned: s.flushSkippedAbandoned.Load(),
-		FlushSkippedClosed:    s.flushSkippedClosed.Load(),
-		LastFlushDurationMs:   s.lastFlushDurationMs.Load(),
-		LastFlushError:        s.lastFlushError.Load(),
+		FlushErrors:         s.flushErrors.Load(),
+		FlushTimeouts:       s.flushTimeouts.Load(),
+		FlushSkippedClosed:  s.flushSkippedClosed.Load(),
+		LastFlushDurationMs: s.lastFlushDurationMs.Load(),
+		LastFlushError:      s.lastFlushError.Load(),
 	}
 	if w.observed > 0 {
 		st.LastWakeUnix = w.lastAtWall.Unix()

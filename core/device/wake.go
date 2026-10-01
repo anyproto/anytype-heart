@@ -223,7 +223,7 @@ func (n *networkState) desktopFallbackLocked(newGen bool) {
 	}
 	if n.mobile {
 		if newGen {
-			log.Warn("wake: mobile, recovery waits for the Foreground report", zap.Int64("wakeGen", n.wake.observed))
+			log.Info("wake: mobile, recovery waits for the Foreground report", zap.Int64("wakeGen", n.wake.observed))
 		}
 		return
 	}

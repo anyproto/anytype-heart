@@ -20,7 +20,9 @@ Scope: global
   change, process freeze (sleep/suspend), foreground resume after a long
   background. Admission never blocks; the pipeline runs on one serialized
   worker
-- Opened-objects refresh on a Foreground transition: runs after the flush of
+- Opened-objects refresh on a Foreground transition is asynchronous to
+  AppSetDeviceState when a recovery carries it (develop refreshed before the
+  RPC returned): it runs after the flush of
   the job the transition enqueued, or right after the flush of a recovery
   that is already running; otherwise inline in StateChange (as before), even
   ahead of a merely queued flush
@@ -185,11 +187,8 @@ type networkState struct {
 	// refreshAfterRunning: a Foreground transition arrived while a recovery
 	// ran; the worker refreshes opened objects once that run finishes
 	refreshAfterRunning bool
-	// abandonedFlush is closed when a timed-out Flush finally returns; the
-	// next flush waits for it so flushes never overlap
-	abandonedFlush <-chan struct{}
-	workerKick     chan struct{}
-	workerDone     chan struct{}
+	workerKick          chan struct{}
+	workerDone          chan struct{}
 
 	monitor     *netMonitor
 	runCtx      context.Context
@@ -220,6 +219,9 @@ type testHooks struct {
 	flushBound      time.Duration
 	refreshBound    time.Duration
 	closeBound      time.Duration
+	// beforeFlushWait runs after Flush is started, before the worker waits
+	// for it (lets tests make the result and the deadline ready together)
+	beforeFlushWait func()
 	// manualDrive: Run starts neither the monitor goroutines nor the recovery
 	// worker; tests drive onHeartbeat, monitor.checkInterfaces and
 	// drainRecoveries themselves.

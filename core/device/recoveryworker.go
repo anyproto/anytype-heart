@@ -10,10 +10,10 @@ Scope: part of the networkState component
 - Admits recoveries leading-edge with a suppression window (bursts coalesce
   into one trailing run) and hands them to one serialized worker without
   blocking the caller
-- Runs the pipeline: pool Flush (bounded by flushTimeout; never overlapping an
-  abandoned one: waits for it at most another flushTimeout, else skips this
-  Flush), completes the bound wake generation (with any-sync pool generations
-  Flush invalidates every pre-flush peer synchronously), then connectivity
+- Runs the pipeline: pool Flush (bounded by flushTimeout; an abandoned Flush
+  may overlap a later one, which is safe with any-sync pool generations),
+  completes the bound wake generation (Flush invalidates every pre-flush peer
+  synchronously via the pool generation bump), then connectivity
   hooks, head-sync and the opened-objects refresh (bounded) when a Foreground
   transition asked for it
 - Logs wake/lifecycle-related runs at WARN (visible in user builds), plain
@@ -305,41 +305,19 @@ type flushResult int
 
 const (
 	flushRan flushResult = iota
-	// skipped: an earlier abandoned Flush is still running after another
-	// flushTimeout; flushes must not overlap, the run goes on without one
-	flushSkippedAbandoned
 	// skipped: Close cancelled the run
 	flushSkippedClosed
 )
 
 // flush runs pool.Flush bounded by flushTimeout and by Close (workCtx). Flush
 // runs on its own goroutine so even a Flush that ignores its context can't
-// wedge the worker. An abandoned Flush is remembered: the next flush first
-// waits for it, at most another flushTimeout, so two flushes never overlap; if
-// it is still running then, this run skips its Flush rather than stall every
-// later recovery.
+// wedge the worker. A timed-out Flush is abandoned and may keep running;
+// a later Flush may overlap it. That is safe with any-sync pool generations
+// (C.0): Flush bumps the generation synchronously, closes peers
+// asynchronously and removes only the instances it saw, so an old pass can't
+// tear down peers dialed after a newer flush.
 func (n *networkState) flush(gen int64) flushResult {
 	base := n.workCtx()
-	n.recoveryMu.Lock()
-	abandoned := n.abandonedFlush
-	n.recoveryMu.Unlock()
-	if abandoned != nil {
-		log.Warn("flush: waiting for a previously abandoned flush", zap.Int64("wakeGen", gen))
-		timer := time.NewTimer(n.flushTimeout())
-		select {
-		case <-abandoned:
-			n.recoveryMu.Lock()
-			n.abandonedFlush = nil
-			n.recoveryMu.Unlock()
-		case <-base.Done():
-		case <-timer.C:
-			timer.Stop()
-			n.stats.flushSkippedAbandoned.Inc()
-			log.Warn("flush skipped: a previously abandoned flush is still running", zap.Int64("wakeGen", gen))
-			return flushSkippedAbandoned
-		}
-		timer.Stop()
-	}
 	if base.Err() != nil {
 		n.stats.flushSkippedClosed.Inc()
 		return flushSkippedClosed
@@ -348,22 +326,22 @@ func (n *networkState) flush(gen int64) flushResult {
 	ctx, cancel := context.WithTimeout(base, n.flushTimeout())
 	defer cancel()
 	res := make(chan error, 1)
-	finished := make(chan struct{})
-	go func() {
-		defer close(finished)
-		res <- n.pool.Flush(ctx)
-	}()
+	go func() { res <- n.pool.Flush(ctx) }()
+	if n.beforeFlushWait != nil {
+		n.beforeFlushWait()
+	}
 	var err error
 	select {
 	case err = <-res:
 	case <-ctx.Done():
-		n.recoveryMu.Lock()
-		n.abandonedFlush = finished
-		n.recoveryMu.Unlock()
-		if base.Err() == nil {
-			n.stats.flushTimeouts.Inc()
+		select {
+		case err = <-res: // finished right at the deadline: not abandoned
+		default:
+			if base.Err() == nil {
+				n.stats.flushTimeouts.Inc()
+			}
+			err = fmt.Errorf("flush abandoned: %w", ctx.Err())
 		}
-		err = fmt.Errorf("flush abandoned: %w", ctx.Err())
 	}
 	n.stats.lastFlushDurationMs.Store(n.timeNow().Sub(start).Milliseconds())
 	if err != nil && !errors.Is(err, context.Canceled) {
