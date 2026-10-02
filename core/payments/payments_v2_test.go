@@ -1910,3 +1910,12 @@ func TestV2ProvideStat(t *testing.T) {
 	assert.Zero(t, st.Products.Attempts["user"])
 	require.NotNil(t, st.Force)
 }
+
+func TestNewV2StateEpochIsJSSafe(t *testing.T) {
+	const maxSafeInteger = 1<<53 - 1
+	for i := 0; i < 1000; i++ {
+		epoch := newV2State().epoch
+		require.NotZero(t, epoch)
+		require.LessOrEqual(t, epoch, uint64(maxSafeInteger))
+	}
+}

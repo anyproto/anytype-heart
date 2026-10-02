@@ -122,7 +122,9 @@ type v2State struct {
 func newV2State() *v2State {
 	var b [8]byte
 	_, _ = rand.Read(b[:])
-	epoch := binary.LittleEndian.Uint64(b[:])
+	// 53 bits: JS clients decode uint64 as a number and reject values
+	// above Number.MAX_SAFE_INTEGER
+	epoch := binary.LittleEndian.Uint64(b[:]) & (1<<53 - 1)
 	if epoch == 0 {
 		epoch = 1
 	}
