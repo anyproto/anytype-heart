@@ -8,7 +8,7 @@ require (
 	github.com/ahmetb/govvv v0.3.0
 	github.com/anyproto/any-block v0.0.0-20260919082013-9906a7c36b68 // v2.0.0-rc5; upstream module path has no /v2 suffix
 	github.com/anyproto/any-store v1.0.2
-	github.com/anyproto/any-sync v0.13.7-0.20261002132819-e8a47e906e95
+	github.com/anyproto/any-sync v0.13.7-0.20261002144318-b672339796f0
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20260925080338-0fb960f00458
 	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250801122506-553f6c085a23
 	github.com/anyproto/go-chash v0.1.0
