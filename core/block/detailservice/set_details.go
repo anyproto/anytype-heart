@@ -462,3 +462,25 @@ func (s *service) SetCreatedInContextIgnored(ctx context.Context, objectIds []st
 	}
 	return resultErr
 }
+
+// ErrCreatedInContextAlreadySet is returned by SetCreatedInContextInternal when the object already has a
+// creation context: written at creation, or by a backfill of another member that synced in meanwhile.
+var ErrCreatedInContextAlreadySet = errors.New("created in context is already set")
+
+// SetCreatedInContextInternal never overwrites an existing context. Like SetCreatedInContextIgnored it
+// writes with a non-user change type, which skips the lastModifiedDate bump, and it keeps the object's
+// internal flags, so the backfill leaves no trace besides the context itself.
+func (s *service) SetCreatedInContextInternal(objectId, contextId, contextRef string) error {
+	return cache.Do(s.objectGetter, objectId, func(sb smartblock.SmartBlock) error {
+		st := sb.NewState()
+		if st.Details().GetString(bundle.RelationKeyCreatedInContext) != "" {
+			return ErrCreatedInContextAlreadySet
+		}
+		st.SetDetail(bundle.RelationKeyCreatedInContext, domain.String(contextId))
+		if contextRef != "" {
+			st.SetDetail(bundle.RelationKeyCreatedInContextRef, domain.String(contextRef))
+		}
+		st.SetChangeType(domain.ChangeTypeCreatedInContext)
+		return sb.Apply(st, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
+	})
+}
