@@ -7,17 +7,21 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/detailservice/mock_detailservice"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // blockIdAt returns a BSON ObjectId created at ts; n tells apart ids created in the same second
@@ -28,13 +32,44 @@ func blockIdAt(ts int64, n int) string {
 // objectCreatedAt is a creation date inside the object migration scope
 var objectCreatedAt = objectContextCutoff - 30*24*60*60
 
+func page(createdDate int64) sourceInfo {
+	return sourceInfo{createdDate: createdDate, layout: model.ObjectType_basic}
+}
+
+func collection(createdDate int64) sourceInfo {
+	return sourceInfo{createdDate: createdDate, layout: model.ObjectType_collection}
+}
+
+var chat = sourceInfo{layout: model.ObjectType_chatDerived}
+
+// fakeReader is a contextReader in which every block links its target, except the mention blocks, and the
+// collections have the given histories. reads counts the collection history reads.
+type fakeReader struct {
+	mentions    map[string]bool
+	collections map[string]map[string]collectionAdd
+	reads       int
+}
+
+func (f *fakeReader) reader() *contextReader {
+	return newContextReader(
+		func(objectId, blockId, targetId string) (bool, error) {
+			return !f.mentions[blockId], nil
+		},
+		func(collectionId string) (map[string]collectionAdd, error) {
+			f.reads++
+			return f.collections[collectionId], nil
+		},
+	)
+}
+
 func TestService_findBestContext(t *testing.T) {
 	s := &service{}
 	file := contextTarget{id: "file1", isFile: true, createdAt: 9999999999}
-	sources := map[string]int64{"page1": 0, "page2": 0, "chat1": 0}
+	sources := map[string]sourceInfo{"page1": page(1), "page2": page(1), "chat1": chat}
+	reader := (&fakeReader{}).reader()
 
 	t.Run("empty links and no chat returns nil", func(t *testing.T) {
-		result := s.findBestContext(file, nil, nil, sources)
+		result := s.findBestContext(file, nil, nil, sources, reader)
 		assert.Nil(t, result)
 	})
 
@@ -43,7 +78,7 @@ func TestService_findBestContext(t *testing.T) {
 			{SourceID: "page1", BlockID: "507f1f77bcf86cd799439011"},
 		}
 
-		result := s.findBestContext(file, links, nil, sources)
+		result := s.findBestContext(file, links, nil, sources, reader)
 
 		require.NotNil(t, result)
 		assert.Equal(t, "page1", result.objectId)
@@ -58,7 +93,7 @@ func TestService_findBestContext(t *testing.T) {
 			CreatedAt:    1000,
 		}
 
-		result := s.findBestContext(file, nil, chatCtx, sources)
+		result := s.findBestContext(file, nil, chatCtx, sources, reader)
 
 		require.NotNil(t, result)
 		assert.Equal(t, "chat1", result.objectId)
@@ -71,7 +106,7 @@ func TestService_findBestContext(t *testing.T) {
 			{SourceID: "page1", RelationKey: "attachment"},
 		}
 
-		result := s.findBestContext(file, links, nil, sources)
+		result := s.findBestContext(file, links, nil, sources, reader)
 
 		require.NotNil(t, result)
 		assert.Equal(t, contextKindRelation, result.kind)
@@ -92,7 +127,7 @@ func TestService_findBestContext(t *testing.T) {
 			CreatedAt:    2000000000, // Later than block
 		}
 
-		result := s.findBestContext(file, links, chatCtx, sources)
+		result := s.findBestContext(file, links, chatCtx, sources, reader)
 
 		require.NotNil(t, result)
 		assert.Equal(t, "page1", result.objectId)
@@ -110,7 +145,7 @@ func TestService_findBestContext(t *testing.T) {
 			CreatedAt:    1000, // Earlier than block
 		}
 
-		result := s.findBestContext(file, links, chatCtx, sources)
+		result := s.findBestContext(file, links, chatCtx, sources, reader)
 
 		require.NotNil(t, result)
 		assert.Equal(t, "chat1", result.objectId)
@@ -127,7 +162,7 @@ func TestService_findBestContext(t *testing.T) {
 			CreatedAt:    1000,
 		}
 
-		result := s.findBestContext(file, links, chatCtx, sources)
+		result := s.findBestContext(file, links, chatCtx, sources, reader)
 
 		require.NotNil(t, result)
 		assert.Equal(t, "chat1", result.objectId)
@@ -144,7 +179,7 @@ func TestService_findBestContext(t *testing.T) {
 			CreatedAt:    file.createdAt + 1000, // Newer than file
 		}
 
-		result := s.findBestContext(file, links, chatCtx, sources)
+		result := s.findBestContext(file, links, chatCtx, sources, reader)
 
 		require.NotNil(t, result)
 		assert.Equal(t, "page1", result.objectId) // Falls back to relation
@@ -157,7 +192,19 @@ func TestService_findBestContext(t *testing.T) {
 			CreatedAt:    1000,
 		}
 
-		result := s.findBestContext(file, nil, chatCtx, sources)
+		result := s.findBestContext(file, nil, chatCtx, sources, reader)
+
+		assert.Nil(t, result)
+	})
+
+	t.Run("message in an object that is not a chat is ignored", func(t *testing.T) {
+		chatCtx := &ChatAttachmentContext{
+			ChatObjectId: "page1",
+			MessageId:    "msg1",
+			CreatedAt:    1000,
+		}
+
+		result := s.findBestContext(file, nil, chatCtx, sources, reader)
 
 		assert.Nil(t, result)
 	})
@@ -169,7 +216,7 @@ func TestService_findBestContext(t *testing.T) {
 			{SourceID: "page2", RelationKey: "attachment"},
 		}
 
-		result := s.findBestContext(smallFile, links, nil, sources)
+		result := s.findBestContext(smallFile, links, nil, sources, reader)
 
 		require.NotNil(t, result)
 		assert.Equal(t, "page2", result.objectId) // Falls back to relation
@@ -180,12 +227,60 @@ func TestService_findBestContext(t *testing.T) {
 		chatCtx := &ChatAttachmentContext{
 			ChatObjectId: "chat1",
 			MessageId:    "msg1",
-			CreatedAt:    objectCreatedAt - objectContextTimeTolerance - 1, // message edited to attach it later
+			CreatedAt:    objectCreatedAt - 61, // message edited to attach it later
 		}
 
-		result := s.findBestContext(object, nil, chatCtx, sources)
+		result := s.findBestContext(object, nil, chatCtx, sources, reader)
 
 		assert.Nil(t, result)
+	})
+
+	t.Run("object gets no context from a relation link", func(t *testing.T) {
+		object := contextTarget{id: "obj1", createdAt: objectCreatedAt}
+		links := []spaceindex.IncomingLink{
+			{SourceID: "page1", RelationKey: "assignee"},
+		}
+
+		result := s.findBestContext(object, links, nil, sources, reader)
+
+		assert.Nil(t, result)
+	})
+
+	t.Run("collection fills in when there is no timed context", func(t *testing.T) {
+		object := contextTarget{id: "obj1", creator: "me", createdAt: objectCreatedAt}
+		fake := &fakeReader{collections: map[string]map[string]collectionAdd{
+			"coll1": {"obj1": {timestamp: objectCreatedAt + 2, participantId: "me"}},
+		}}
+		links := []spaceindex.IncomingLink{{SourceID: "coll1"}}
+		want := &contextInfo{
+			kind:          contextKindCollection,
+			objectId:      "coll1",
+			timestamp:     objectCreatedAt + 2,
+			sourceCreated: objectCreatedAt - 100,
+		}
+
+		got := s.findBestContext(object, links, nil, map[string]sourceInfo{"coll1": collection(objectCreatedAt - 100)}, fake.reader())
+
+		assert.Equal(t, want, got)
+		assert.Empty(t, got.ref())
+	})
+
+	t.Run("block context wins without reading the collection", func(t *testing.T) {
+		object := contextTarget{id: "obj1", creator: "me", createdAt: objectCreatedAt}
+		fake := &fakeReader{collections: map[string]map[string]collectionAdd{
+			"coll1": {"obj1": {timestamp: objectCreatedAt, participantId: "me"}},
+		}}
+		links := []spaceindex.IncomingLink{
+			{SourceID: "coll1"},
+			{SourceID: "page1", BlockID: blockIdAt(objectCreatedAt, 1)},
+		}
+		sources := map[string]sourceInfo{"coll1": collection(1), "page1": page(1)}
+
+		result := s.findBestContext(object, links, nil, sources, fake.reader())
+
+		require.NotNil(t, result)
+		assert.Equal(t, "page1", result.objectId)
+		assert.Zero(t, fake.reads)
 	})
 }
 
@@ -219,17 +314,19 @@ func TestService_filterLinks(t *testing.T) {
 
 func TestService_findBlockContext(t *testing.T) {
 	s := &service{}
+	reader := (&fakeReader{}).reader()
+	object := contextTarget{id: "obj1", createdAt: objectCreatedAt}
 
 	t.Run("finds earliest block", func(t *testing.T) {
 		file := contextTarget{id: "file1", isFile: true, createdAt: 9999999999}
-		sources := map[string]int64{"page1": 0, "page2": 0}
+		sources := map[string]sourceInfo{"page1": page(1), "page2": page(1)}
 		// 507f1f77 = 1350844279, 600000000 = 1610612736
 		links := []spaceindex.IncomingLink{
 			{SourceID: "page2", BlockID: "60000000bcf86cd799439011"}, // Later
 			{SourceID: "page1", BlockID: "507f1f77bcf86cd799439011"}, // Earlier
 		}
 
-		result := s.findBlockContext(file, links, sources)
+		result := s.findBlockContext(file, links, sources, reader)
 
 		require.NotNil(t, result)
 		assert.Equal(t, "page1", result.objectId)
@@ -241,7 +338,7 @@ func TestService_findBlockContext(t *testing.T) {
 			{SourceID: "page1", BlockID: "507f1f77bcf86cd799439011"}, // timestamp > 1000
 		}
 
-		result := s.findBlockContext(file, links, map[string]int64{"page1": 0})
+		result := s.findBlockContext(file, links, map[string]sourceInfo{"page1": page(1)}, reader)
 
 		assert.Nil(t, result)
 	})
@@ -251,14 +348,13 @@ func TestService_findBlockContext(t *testing.T) {
 		blockId := blockIdAt(objectCreatedAt-24*60*60, 1) // empty file block filled a day later
 		links := []spaceindex.IncomingLink{{SourceID: "page1", BlockID: blockId}}
 
-		result := s.findBlockContext(file, links, map[string]int64{"page1": 0})
+		result := s.findBlockContext(file, links, map[string]sourceInfo{"page1": page(1)}, reader)
 
 		require.NotNil(t, result)
 		assert.Equal(t, blockId, result.blockId)
 	})
 
 	t.Run("object accepts a block made right after it", func(t *testing.T) {
-		object := contextTarget{id: "obj1", createdAt: objectCreatedAt}
 		blockId := blockIdAt(objectCreatedAt+1, 1)
 		links := []spaceindex.IncomingLink{{SourceID: "page1", BlockID: blockId}}
 		want := &contextInfo{
@@ -269,45 +365,57 @@ func TestService_findBlockContext(t *testing.T) {
 			sourceCreated: objectCreatedAt - 100,
 		}
 
-		got := s.findBlockContext(object, links, map[string]int64{"page1": objectCreatedAt - 100})
+		got := s.findBlockContext(object, links, map[string]sourceInfo{"page1": page(objectCreatedAt - 100)}, reader)
 
 		assert.Equal(t, want, got)
 	})
 
-	t.Run("object rejects an older block that got the link later", func(t *testing.T) {
-		// a mention typed into a paragraph written a year before the object
-		object := contextTarget{id: "obj1", createdAt: objectCreatedAt}
+	for _, tc := range []struct {
+		name   string
+		offset int64
+		want   bool
+	}{
+		{name: "60s before", offset: -60, want: true},
+		{name: "61s before", offset: -61, want: false},
+		{name: "30s after", offset: 30, want: true},
+		{name: "31s after", offset: 31, want: false},
+		{name: "a year before (a mention typed into an old paragraph)", offset: -365 * 24 * 60 * 60, want: false},
+	} {
+		t.Run("object block window: "+tc.name, func(t *testing.T) {
+			links := []spaceindex.IncomingLink{
+				{SourceID: "page1", BlockID: blockIdAt(objectCreatedAt+tc.offset, 1)},
+			}
+
+			result := s.findBlockContext(object, links, map[string]sourceInfo{"page1": page(1)}, reader)
+
+			assert.Equal(t, tc.want, result != nil)
+		})
+	}
+
+	t.Run("a text block mentioning the target is skipped for the next link block", func(t *testing.T) {
+		mentionId, linkId := blockIdAt(objectCreatedAt-10, 1), blockIdAt(objectCreatedAt+5, 2)
+		fake := &fakeReader{mentions: map[string]bool{mentionId: true}}
 		links := []spaceindex.IncomingLink{
-			{SourceID: "page1", BlockID: blockIdAt(objectCreatedAt-365*24*60*60, 1)},
+			{SourceID: "page1", BlockID: mentionId},
+			{SourceID: "page2", BlockID: linkId},
 		}
 
-		result := s.findBlockContext(object, links, map[string]int64{"page1": 0})
+		result := s.findBlockContext(object, links, map[string]sourceInfo{"page1": page(1), "page2": page(1)}, fake.reader())
 
-		assert.Nil(t, result)
-	})
-
-	t.Run("object rejects a block made after the window", func(t *testing.T) {
-		object := contextTarget{id: "obj1", createdAt: objectCreatedAt}
-		links := []spaceindex.IncomingLink{
-			{SourceID: "page1", BlockID: blockIdAt(objectCreatedAt+objectContextTimeTolerance+1, 1)},
-		}
-
-		result := s.findBlockContext(object, links, map[string]int64{"page1": 0})
-
-		assert.Nil(t, result)
+		require.NotNil(t, result)
+		assert.Equal(t, linkId, result.blockId)
 	})
 
 	t.Run("block copied into a newer object is rejected, the original wins", func(t *testing.T) {
 		// page2 is a duplicate of page1 made a day later: it carries the link block with the same id
-		object := contextTarget{id: "obj1", createdAt: objectCreatedAt}
 		blockId := blockIdAt(objectCreatedAt, 1)
 		links := []spaceindex.IncomingLink{
 			{SourceID: "page2", BlockID: blockId},
 			{SourceID: "page1", BlockID: blockId},
 		}
-		sources := map[string]int64{"page1": objectCreatedAt - 100, "page2": objectCreatedAt + 24*60*60}
+		sources := map[string]sourceInfo{"page1": page(objectCreatedAt - 100), "page2": page(objectCreatedAt + 24*60*60)}
 
-		result := s.findBlockContext(object, links, sources)
+		result := s.findBlockContext(object, links, sources, reader)
 
 		require.NotNil(t, result)
 		assert.Equal(t, "page1", result.objectId)
@@ -315,43 +423,109 @@ func TestService_findBlockContext(t *testing.T) {
 
 	t.Run("same block in two objects resolves to the earlier object", func(t *testing.T) {
 		// page2 is a duplicate made within the window, so the copied block passes the checks
-		object := contextTarget{id: "obj1", createdAt: objectCreatedAt}
 		blockId := blockIdAt(objectCreatedAt, 1)
 		links := []spaceindex.IncomingLink{
 			{SourceID: "page1", BlockID: blockId},
 			{SourceID: "page2", BlockID: blockId},
 		}
-		sources := map[string]int64{"page1": objectCreatedAt - 100, "page2": objectCreatedAt - 200}
+		sources := map[string]sourceInfo{"page1": page(objectCreatedAt - 100), "page2": page(objectCreatedAt - 200)}
 
-		result := s.findBlockContext(object, links, sources)
+		result := s.findBlockContext(object, links, sources, reader)
 
 		require.NotNil(t, result)
 		assert.Equal(t, "page2", result.objectId)
 	})
 
-	t.Run("skips context objects that are not indexed", func(t *testing.T) {
-		object := contextTarget{id: "obj1", createdAt: objectCreatedAt}
-		links := []spaceindex.IncomingLink{{SourceID: "page1", BlockID: blockIdAt(objectCreatedAt, 1)}}
+	for _, tc := range []struct {
+		name    string
+		sources map[string]sourceInfo
+	}{
+		{name: "not indexed", sources: map[string]sourceInfo{}},
+		{name: "created after the target", sources: map[string]sourceInfo{"page1": page(objectCreatedAt + 24*60*60)}},
+		{name: "without creation date", sources: map[string]sourceInfo{"page1": page(0)}},
+		{name: "not a content object", sources: map[string]sourceInfo{"page1": {createdDate: 1, layout: model.ObjectType_objectType}}},
+	} {
+		t.Run("skips context object "+tc.name, func(t *testing.T) {
+			links := []spaceindex.IncomingLink{{SourceID: "page1", BlockID: blockIdAt(objectCreatedAt, 1)}}
 
-		result := s.findBlockContext(object, links, map[string]int64{})
+			result := s.findBlockContext(object, links, tc.sources, reader)
+
+			assert.Nil(t, result)
+		})
+	}
+}
+
+func TestService_findCollectionContext(t *testing.T) {
+	s := &service{}
+	object := contextTarget{id: "obj1", creator: "me", createdAt: objectCreatedAt}
+	links := []spaceindex.IncomingLink{{SourceID: "coll1"}}
+	sources := map[string]sourceInfo{"coll1": collection(1)}
+
+	for _, tc := range []struct {
+		name string
+		add  collectionAdd
+		want bool
+	}{
+		{name: "added by the creator 10s after creation", add: collectionAdd{timestamp: objectCreatedAt + 10, participantId: "me"}, want: true},
+		{name: "added by the creator 10s before creation", add: collectionAdd{timestamp: objectCreatedAt - 10, participantId: "me"}, want: true},
+		{name: "added 11s after creation", add: collectionAdd{timestamp: objectCreatedAt + 11, participantId: "me"}, want: false},
+		{name: "added by another member", add: collectionAdd{timestamp: objectCreatedAt, participantId: "other"}, want: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fake := &fakeReader{collections: map[string]map[string]collectionAdd{"coll1": {"obj1": tc.add}}}
+
+			result := s.findCollectionContext(object, links, sources, fake.reader())
+
+			assert.Equal(t, tc.want, result != nil)
+		})
+	}
+
+	t.Run("file uses the collection window too", func(t *testing.T) {
+		file := contextTarget{id: "obj1", isFile: true, creator: "me", createdAt: objectCreatedAt}
+		fake := &fakeReader{collections: map[string]map[string]collectionAdd{
+			"coll1": {"obj1": {timestamp: objectCreatedAt - 60, participantId: "me"}},
+		}}
+
+		result := s.findCollectionContext(file, links, sources, fake.reader())
 
 		assert.Nil(t, result)
 	})
 
-	t.Run("skips context objects created after the target", func(t *testing.T) {
-		object := contextTarget{id: "obj1", createdAt: objectCreatedAt}
-		links := []spaceindex.IncomingLink{{SourceID: "page1", BlockID: blockIdAt(objectCreatedAt, 1)}}
+	t.Run("link without block or relation from an object that is not a collection", func(t *testing.T) {
+		fake := &fakeReader{collections: map[string]map[string]collectionAdd{
+			"coll1": {"obj1": {timestamp: objectCreatedAt, participantId: "me"}},
+		}}
 
-		result := s.findBlockContext(object, links, map[string]int64{"page1": objectCreatedAt + 24*60*60})
+		result := s.findCollectionContext(object, links, map[string]sourceInfo{"coll1": page(1)}, fake.reader())
 
 		assert.Nil(t, result)
+		assert.Zero(t, fake.reads)
+	})
+
+	t.Run("collection history is read once", func(t *testing.T) {
+		fake := &fakeReader{collections: map[string]map[string]collectionAdd{
+			"coll1": {
+				"obj1": {timestamp: objectCreatedAt, participantId: "me"},
+				"obj2": {timestamp: objectCreatedAt, participantId: "me"},
+			},
+		}}
+		reader := fake.reader()
+		other := contextTarget{id: "obj2", creator: "me", createdAt: objectCreatedAt}
+
+		first := s.findCollectionContext(object, links, sources, reader)
+		second := s.findCollectionContext(other, links, sources, reader)
+
+		require.NotNil(t, first)
+		require.NotNil(t, second)
+		assert.Equal(t, 1, fake.reads)
+		assert.Equal(t, 1, reader.collectionsRead)
 	})
 }
 
 func TestService_findRelationContext(t *testing.T) {
 	s := &service{}
 	file := contextTarget{id: "file1", isFile: true, createdAt: 9999999999}
-	sources := map[string]int64{"page1": 0, "page2": 0}
+	sources := map[string]sourceInfo{"page1": page(1), "page2": page(1)}
 
 	t.Run("returns first relation by key", func(t *testing.T) {
 		links := []spaceindex.IncomingLink{
@@ -387,19 +561,120 @@ func TestService_findRelationContext(t *testing.T) {
 		assert.Nil(t, result)
 	})
 
+	t.Run("skips collection membership", func(t *testing.T) {
+		links := []spaceindex.IncomingLink{{SourceID: "page1"}}
+
+		result := s.findRelationContext(file, links, sources)
+
+		assert.Nil(t, result)
+	})
+
+	t.Run("skips sources that are not content objects", func(t *testing.T) {
+		// the space links its icon image without being where it was created, and has no creation date
+		links := []spaceindex.IncomingLink{{SourceID: "space1", RelationKey: string(bundle.RelationKeyIconImage)}}
+
+		result := s.findRelationContext(file, links, map[string]sourceInfo{"space1": {layout: model.ObjectType_space}})
+
+		assert.Nil(t, result)
+	})
+
 	t.Run("skips sources created after the target", func(t *testing.T) {
-		object := contextTarget{id: "obj1", createdAt: objectCreatedAt}
+		smallFile := contextTarget{id: "file1", isFile: true, createdAt: objectCreatedAt}
 		links := []spaceindex.IncomingLink{
 			{SourceID: "page1", RelationKey: "a"},
 			{SourceID: "page2", RelationKey: "b"},
 		}
-		sources := map[string]int64{"page1": objectCreatedAt + 24*60*60, "page2": objectCreatedAt - 100}
+		sources := map[string]sourceInfo{"page1": page(objectCreatedAt + 24*60*60), "page2": page(objectCreatedAt - 100)}
 
-		result := s.findRelationContext(object, links, sources)
+		result := s.findRelationContext(smallFile, links, sources)
 
 		require.NotNil(t, result)
 		assert.Equal(t, "page2", result.objectId)
 	})
+}
+
+func TestBlockLinksTarget(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		block *model.Block
+		want  bool
+	}{
+		{
+			name:  "link block",
+			block: &model.Block{Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "target"}}},
+			want:  true,
+		},
+		{
+			name:  "file block",
+			block: &model.Block{Content: &model.BlockContentOfFile{File: &model.BlockContentFile{TargetObjectId: "target"}}},
+			want:  true,
+		},
+		{
+			name:  "bookmark block",
+			block: &model.Block{Content: &model.BlockContentOfBookmark{Bookmark: &model.BlockContentBookmark{TargetObjectId: "target"}}},
+			want:  true,
+		},
+		{
+			name:  "inline set block",
+			block: &model.Block{Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{TargetObjectId: "target"}}},
+			want:  true,
+		},
+		{
+			name:  "link block to another object",
+			block: &model.Block{Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "other"}}},
+			want:  false,
+		},
+		{
+			name: "text block mentioning the target",
+			block: &model.Block{Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+				Text:  "see target",
+				Marks: &model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{{Type: model.BlockContentTextMark_Mention, Param: "target"}}},
+			}}},
+			want: false,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, blockLinksTarget(tc.block, "target"))
+		})
+	}
+}
+
+func TestUnmarshalCollectionAdds(t *testing.T) {
+	// given
+	change := &pb.Change{
+		Snapshot: &pb.ChangeSnapshot{Data: &model.SmartBlockSnapshotBase{
+			Collections: &types.Struct{Fields: map[string]*types.Value{
+				"objects": pbtypes.StringList([]string{"a", "b"}),
+			}},
+		}},
+		Content: []*pb.ChangeContent{
+			{Value: &pb.ChangeContentValueOfStoreSliceUpdate{StoreSliceUpdate: &pb.ChangeStoreSliceUpdate{
+				Key:       "objects",
+				Operation: &pb.ChangeStoreSliceUpdateOperationOfAdd{Add: &pb.ChangeStoreSliceUpdateAdd{Ids: []string{"c"}}},
+			}}},
+			{Value: &pb.ChangeContentValueOfStoreSliceUpdate{StoreSliceUpdate: &pb.ChangeStoreSliceUpdate{
+				Key:       "objects",
+				Operation: &pb.ChangeStoreSliceUpdateOperationOfRemove{Remove: &pb.ChangeStoreSliceUpdateRemove{Ids: []string{"a"}}},
+			}}},
+			{Value: &pb.ChangeContentValueOfStoreSliceUpdate{StoreSliceUpdate: &pb.ChangeStoreSliceUpdate{
+				Key:       "other",
+				Operation: &pb.ChangeStoreSliceUpdateOperationOfAdd{Add: &pb.ChangeStoreSliceUpdateAdd{Ids: []string{"x"}}},
+			}}},
+			{Value: &pb.ChangeContentValueOfStoreKeySet{StoreKeySet: &pb.ChangeStoreKeySet{
+				Path:  []string{"objects"},
+				Value: pbtypes.StringList([]string{"d"}),
+			}}},
+		},
+	}
+	data, err := change.Marshal()
+	require.NoError(t, err)
+
+	// when
+	got, err := unmarshalCollectionAdds(&objecttree.Change{}, data)
+
+	// then
+	require.NoError(t, err)
+	assert.Equal(t, []string{"a", "b", "c", "d"}, got)
 }
 
 func TestNewContextTarget(t *testing.T) {
@@ -415,8 +690,9 @@ func TestNewContextTarget(t *testing.T) {
 				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_image)),
 				bundle.RelationKeyAddedDate:      domain.Int64(1000),
 				bundle.RelationKeyCreatedDate:    domain.Int64(500),
+				bundle.RelationKeyCreator:        domain.String("me"),
 			},
-			want:   contextTarget{id: "id1", isFile: true, createdAt: 1000},
+			want:   contextTarget{id: "id1", isFile: true, creator: "me", createdAt: 1000},
 			wantOk: true,
 		},
 		{
@@ -570,6 +846,7 @@ type fixture struct {
 	*service
 	objectStore    *objectstore.StoreFixture
 	detailsService *mock_detailservice.MockService
+	contextReader  *fakeReader
 }
 
 func newFixture(t *testing.T, permissions model.ParticipantPermissions) *fixture {
@@ -587,28 +864,38 @@ func newFixture(t *testing.T, permissions model.ParticipantPermissions) *fixture
 			bundle.RelationKeyParticipantPermissions: domain.Int64(int64(permissions)),
 		},
 	})
+	fakeContextReader := &fakeReader{collections: map[string]map[string]collectionAdd{}}
 	return &fixture{
 		service: &service{
 			objectStore:    objectStore,
 			detailsService: detailsService,
 			accountService: fakeAccountService{participantId: myParticipantId},
+			newContextReader: func(context.Context, string) *contextReader {
+				return fakeContextReader.reader()
+			},
 		},
 		objectStore:    objectStore,
 		detailsService: detailsService,
+		contextReader:  fakeContextReader,
 	}
 }
 
-// addPage adds a page created at createdAt by creator
-func (fx *fixture) addPage(t *testing.T, id string, createdAt int64, creator string) {
+// addObject adds an object of the layout created at createdAt by creator
+func (fx *fixture) addObject(t *testing.T, id string, layout model.ObjectTypeLayout, createdAt int64, creator string) {
 	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:             domain.String(id),
 			bundle.RelationKeySpaceId:        domain.String(testSpaceId),
-			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(layout)),
 			bundle.RelationKeyCreatedDate:    domain.Int64(createdAt),
 			bundle.RelationKeyCreator:        domain.String(creator),
 		},
 	})
+}
+
+// addPage adds a page created at createdAt by creator
+func (fx *fixture) addPage(t *testing.T, id string, createdAt int64, creator string) {
+	fx.addObject(t, id, model.ObjectType_basic, createdAt, creator)
 }
 
 func (fx *fixture) addLinks(t *testing.T, sourceId string, links ...spaceindex.OutgoingLink) {
@@ -651,7 +938,26 @@ func TestRunObjectContextMigration(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	t.Run("relation fallback is a dry-run for objects", func(t *testing.T) {
+	t.Run("object created in a collection gets the collection context", func(t *testing.T) {
+		// given
+		fx := newFixture(t, model.ParticipantPermissions_Owner)
+		fx.addObject(t, "coll", model.ObjectType_collection, objectCreatedAt-1000, myParticipantId)
+		fx.addPage(t, "child", objectCreatedAt, myParticipantId)
+		fx.addLinks(t, "coll", spaceindex.OutgoingLink{TargetID: "child"})
+		fx.contextReader.collections["coll"] = map[string]collectionAdd{
+			"child": {timestamp: objectCreatedAt + 1, participantId: myParticipantId},
+		}
+		fx.detailsService.EXPECT().SetCreatedInContextInternal("child", "coll", "").Return(nil).Once()
+		fx.expectMigrationDone()
+
+		// when
+		err := fx.runObjectContextMigration(context.Background(), testSpaceId, testWorkspaceId)
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("a relation link alone gives an object no context", func(t *testing.T) {
 		// given
 		fx := newFixture(t, model.ParticipantPermissions_Owner)
 		fx.addPage(t, "parent", objectCreatedAt-1000, myParticipantId)

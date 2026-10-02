@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -15,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/space"
 )
 
 const CName = "migration"
@@ -59,10 +61,15 @@ type service struct {
 	indexer        Indexer
 	chatRepository chatrepository.Service
 	accountService AccountService
+	objectGetter   cache.ObjectGetter
+	spaceService   space.Service
 	networkConfig  NetworkConfig
 	nodeStatus     nodestatus.NodeStatus
 	compCtx        context.Context
 	compCancel     context.CancelFunc
+
+	// newContextReader is swapped in tests, which have no objects or trees to read
+	newContextReader func(ctx context.Context, spaceId string) *contextReader
 }
 
 func New() Service {
@@ -79,6 +86,9 @@ func (s *service) Init(a *app.App) error {
 	s.indexer = app.MustComponent[Indexer](a)
 	s.chatRepository = app.MustComponent[chatrepository.Service](a)
 	s.accountService = app.MustComponent[AccountService](a)
+	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
+	s.spaceService = app.MustComponent[space.Service](a)
+	s.newContextReader = s.contextReaderFor
 	s.networkConfig = app.MustComponent[NetworkConfig](a)
 	s.nodeStatus = app.MustComponent[nodestatus.NodeStatus](a)
 	s.compCtx, s.compCancel = context.WithCancel(context.Background())
