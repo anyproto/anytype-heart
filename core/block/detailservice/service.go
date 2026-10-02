@@ -82,6 +82,10 @@ type Service interface {
 	// SetCreatedInContextIgnored detaches (or re-attaches) an object's lifecycle from its creation context.
 	// Written with ChangeTypeCreatedInContext so it syncs without bumping lastModifiedDate.
 	SetCreatedInContextIgnored(ctx context.Context, objectIds []string, ignored bool) error
+	// SetCreatedInContextInternal backfills the creation context of an object that has none, on behalf
+	// of the middleware (the object context migration). Written with ChangeTypeCreatedInContext so it
+	// syncs without bumping lastModifiedDate. Must never be reachable from an RPC.
+	SetCreatedInContextInternal(objectId, contextId, contextRef string) error
 }
 
 func New() Service {

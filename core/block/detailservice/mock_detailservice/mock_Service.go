@@ -678,6 +678,54 @@ func (_c *MockService_SetCreatedInContextIgnored_Call) RunAndReturn(run func(con
 	return _c
 }
 
+// SetCreatedInContextInternal provides a mock function with given fields: objectId, contextId, contextRef
+func (_m *MockService) SetCreatedInContextInternal(objectId string, contextId string, contextRef string) error {
+	ret := _m.Called(objectId, contextId, contextRef)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetCreatedInContextInternal")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string, string) error); ok {
+		r0 = rf(objectId, contextId, contextRef)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_SetCreatedInContextInternal_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetCreatedInContextInternal'
+type MockService_SetCreatedInContextInternal_Call struct {
+	*mock.Call
+}
+
+// SetCreatedInContextInternal is a helper method to define mock.On call
+//   - objectId string
+//   - contextId string
+//   - contextRef string
+func (_e *MockService_Expecter) SetCreatedInContextInternal(objectId interface{}, contextId interface{}, contextRef interface{}) *MockService_SetCreatedInContextInternal_Call {
+	return &MockService_SetCreatedInContextInternal_Call{Call: _e.mock.On("SetCreatedInContextInternal", objectId, contextId, contextRef)}
+}
+
+func (_c *MockService_SetCreatedInContextInternal_Call) Run(run func(objectId string, contextId string, contextRef string)) *MockService_SetCreatedInContextInternal_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_SetCreatedInContextInternal_Call) Return(_a0 error) *MockService_SetCreatedInContextInternal_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_SetCreatedInContextInternal_Call) RunAndReturn(run func(string, string, string) error) *MockService_SetCreatedInContextInternal_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetDetails provides a mock function with given fields: ctx, objectId, details
 func (_m *MockService) SetDetails(ctx session.Context, objectId string, details []domain.Detail) error {
 	ret := _m.Called(ctx, objectId, details)

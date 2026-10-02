@@ -782,3 +782,60 @@ func TestSetCreatedInContextIgnored_Reversible(t *testing.T) {
 
 	assert.False(t, spy.NewState().Details().GetBool(bundle.RelationKeyCreatedInContextIgnored))
 }
+
+func TestSetCreatedInContextInternal(t *testing.T) {
+	newSpy := func(t *testing.T, fx *fixture) *applySpy {
+		spy := &applySpy{SmartTest: smarttest.New("obj1")}
+		fx.getter.EXPECT().GetObject(mock.Anything, "obj1").Return(spy, nil)
+		return spy
+	}
+
+	t.Run("sets context and ref with non-user change type", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		spy := newSpy(t, fx)
+
+		// when
+		err := fx.SetCreatedInContextInternal("obj1", "page1", "block1")
+
+		// then
+		require.NoError(t, err)
+		details := spy.NewState().Details()
+		assert.Equal(t, "page1", details.GetString(bundle.RelationKeyCreatedInContext))
+		assert.Equal(t, "block1", details.GetString(bundle.RelationKeyCreatedInContextRef))
+		assert.Equal(t, domain.ChangeTypeCreatedInContext, spy.lastChangeType)
+	})
+
+	t.Run("empty ref is not written", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		spy := newSpy(t, fx)
+
+		// when
+		err := fx.SetCreatedInContextInternal("obj1", "page1", "")
+
+		// then
+		require.NoError(t, err)
+		details := spy.NewState().Details()
+		assert.Equal(t, "page1", details.GetString(bundle.RelationKeyCreatedInContext))
+		assert.False(t, details.Has(bundle.RelationKeyCreatedInContextRef))
+	})
+
+	t.Run("existing context is not overwritten", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		spy := newSpy(t, fx)
+		st := spy.NewState()
+		st.SetDetail(bundle.RelationKeyCreatedInContext, domain.String("page0"))
+		require.NoError(t, spy.SmartTest.Apply(st))
+
+		// when
+		err := fx.SetCreatedInContextInternal("obj1", "page1", "block1")
+
+		// then
+		require.ErrorIs(t, err, ErrCreatedInContextAlreadySet)
+		details := spy.NewState().Details()
+		assert.Equal(t, "page0", details.GetString(bundle.RelationKeyCreatedInContext))
+		assert.False(t, details.Has(bundle.RelationKeyCreatedInContextRef))
+	})
+}

@@ -36,6 +36,11 @@ type Indexer interface {
 	GetLastIndexTime(spaceId string) time.Time
 }
 
+// AccountService provides the current participant of a space
+type AccountService interface {
+	MyParticipantId(spaceId string) string
+}
+
 // NetworkConfig provides access to network mode configuration
 type NetworkConfig interface {
 	app.Component
@@ -53,6 +58,7 @@ type service struct {
 	detailsService detailservice.Service
 	indexer        Indexer
 	chatRepository chatrepository.Service
+	accountService AccountService
 	networkConfig  NetworkConfig
 	nodeStatus     nodestatus.NodeStatus
 	compCtx        context.Context
@@ -72,6 +78,7 @@ func (s *service) Init(a *app.App) error {
 	s.detailsService = app.MustComponent[detailservice.Service](a)
 	s.indexer = app.MustComponent[Indexer](a)
 	s.chatRepository = app.MustComponent[chatrepository.Service](a)
+	s.accountService = app.MustComponent[AccountService](a)
 	s.networkConfig = app.MustComponent[NetworkConfig](a)
 	s.nodeStatus = app.MustComponent[nodestatus.NodeStatus](a)
 	s.compCtx, s.compCancel = context.WithCancel(context.Background())
