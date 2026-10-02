@@ -11,9 +11,9 @@ Scope: part of the networkState component
   into one trailing run) and hands them to one serialized worker without
   blocking the caller
 - Runs the pipeline: pool Flush (bounded by flushTimeout; an abandoned Flush
-  may overlap a later one, which is safe with any-sync pool generations),
-  completes the bound wake generation (Flush invalidates every pre-flush peer
-  synchronously via the pool generation bump), then connectivity
+  may overlap a later one, which is safe with any-sync's cache-swap Flush),
+  completes the bound wake generation (Flush swaps the pool's caches
+  synchronously, so no pre-flush peer is handed out afterwards), then connectivity
   hooks, head-sync and the opened-objects refresh (bounded) when a Foreground
   transition asked for it
 - Logs wake/lifecycle-related runs at WARN (visible in user builds), plain
@@ -312,10 +312,10 @@ const (
 // flush runs pool.Flush bounded by flushTimeout and by Close (workCtx). Flush
 // runs on its own goroutine so even a Flush that ignores its context can't
 // wedge the worker. A timed-out Flush is abandoned and may keep running;
-// a later Flush may overlap it. That is safe with any-sync pool generations
-// (C.0): Flush bumps the generation synchronously, closes peers
-// asynchronously and removes only the instances it saw, so an old pass can't
-// tear down peers dialed after a newer flush.
+// a later Flush may overlap it. That is safe with any-sync's cache-swap
+// Flush: it publishes a fresh cache pair synchronously and closes the old
+// pair in the background, and an old close only touches its own pair, so it
+// can't tear down peers dialed after a newer flush.
 func (n *networkState) flush(gen int64) flushResult {
 	base := n.workCtx()
 	if base.Err() != nil {
@@ -345,9 +345,9 @@ func (n *networkState) flush(gen int64) flushResult {
 	}
 	n.stats.lastFlushDurationMs.Store(n.timeNow().Sub(start).Milliseconds())
 	if err != nil && !errors.Is(err, context.Canceled) {
-		// a failed or timed-out Flush still completes the generation: with
-		// pool generations (any-sync C.0) Flush invalidates every pre-flush
-		// peer synchronously, and retrying would only churn
+		// a failed or timed-out Flush still completes the generation: any-sync
+		// Flush swaps in fresh caches synchronously, so no pre-flush peer is
+		// handed out afterwards, and retrying would only churn
 		n.stats.flushErrors.Inc()
 		n.stats.lastFlushError.Store(err.Error())
 		log.Warn("flush pool on connectivity recovery failed or timed out", zap.Error(err), zap.Int64("wakeGen", gen))

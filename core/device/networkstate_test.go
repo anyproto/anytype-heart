@@ -913,7 +913,7 @@ func TestNetworkState_FlushBound(t *testing.T) {
 		assert.Contains(t, st.LastFlushError, "abandoned")
 		assert.Equal(t, base+1, fx.flushCalls.Load())
 	})
-	t.Run("a later Flush doesn't wait for an abandoned one (overlap is safe with pool generations)", func(t *testing.T) {
+	t.Run("a later Flush doesn't wait for an abandoned one (overlap is safe with the cache-swap Flush)", func(t *testing.T) {
 		fx := newNetworkStateFixture(t)
 		fx.SetNetworkState(model.DeviceNetworkType_WIFI, "w1")
 		base := fx.foregroundSettled()
