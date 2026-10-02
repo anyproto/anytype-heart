@@ -41,12 +41,11 @@ const (
 )
 
 // chatLine is one classified line: a heading carries its inline text, a
-// fence opener its marker run and indentation.
+// fence opener its marker run.
 type chatLine struct {
 	kind   chatLineKind
 	text   string
 	marker string
-	indent int
 }
 
 // chatBody is a message text parsed into the chat's stored form: content
@@ -170,30 +169,33 @@ func (b *chatBody) addText(tb *model.ChatMessageMessageBlockText) {
 	b.blocks = append(b.blocks, splitTextBlock(tb)...)
 }
 
-// addTable appends one paragraph per table row, its cells joined by " | ".
+// addTable appends one paragraph per table row, its cells joined by " | "
+// in column order. The import leaves an empty cell out of its row, so cells
+// are looked up by the editor's <row id>-<column id> cell ids, and a missing
+// one keeps its column empty.
 func (b *chatBody) addTable(byId map[string]*model.Block, table *model.Block) {
+	var columns, rows []string
 	for _, sectionId := range table.ChildrenIds {
-		section := byId[sectionId]
-		if section == nil {
-			continue
-		}
-		for _, rowId := range section.ChildrenIds {
-			row := byId[rowId]
-			if row == nil || row.GetTableRow() == nil {
-				continue
+		for _, id := range byId[sectionId].GetChildrenIds() {
+			switch {
+			case byId[id].GetTableColumn() != nil:
+				columns = append(columns, id)
+			case byId[id].GetTableRow() != nil:
+				rows = append(rows, id)
 			}
-			line := markedTextBuilder{sep: " | "}
-			for _, cellId := range row.ChildrenIds {
-				if cell := byId[cellId].GetText(); cell != nil {
-					line.add(cell.Text, cell.GetMarks().GetMarks())
-				}
-			}
-			b.addText(&model.ChatMessageMessageBlockText{
-				Text:  line.text.String(),
-				Style: model.BlockContentText_Paragraph,
-				Marks: line.marks,
-			})
 		}
+	}
+	for _, rowId := range rows {
+		line := markedTextBuilder{sep: " | "}
+		for _, columnId := range columns {
+			cell := byId[rowId+"-"+columnId].GetText()
+			line.add(cell.GetText(), cell.GetMarks().GetMarks())
+		}
+		b.addText(&model.ChatMessageMessageBlockText{
+			Text:  line.text.String(),
+			Style: model.BlockContentText_Paragraph,
+			Marks: line.marks,
+		})
 	}
 	b.warnings = append(b.warnings, v2model.Issue{
 		Path:    "/text",
@@ -237,14 +239,10 @@ func parseChatContent(md string) (string, []*model.BlockContentTextMark, error) 
 			out.add(text, headingMarks(text, marks))
 		case chatLineFence:
 			end := chatFenceEnd(lines, i+1, line.marker)
-			code := make([]string, 0, end-i-1)
-			for _, codeLine := range lines[i+1 : end] {
-				code = append(code, trimLeadingSpaces(codeLine, line.indent))
-			}
 			// an empty fence is dropped, as the desktop composer drops it
-			if joined := strings.Join(code, "\n"); strings.TrimSpace(joined) != "" {
-				out.add(joined, []*model.BlockContentTextMark{{
-					Range: &model.Range{From: 0, To: utf16Len(joined)},
+			if code := fenceCode(lines[i:min(end+1, len(lines))]); strings.TrimSpace(code) != "" {
+				out.add(code, []*model.BlockContentTextMark{{
+					Range: &model.Range{From: 0, To: utf16Len(code)},
 					Type:  model.BlockContentTextMark_Keyboard,
 				}})
 			}
@@ -257,33 +255,33 @@ func parseChatContent(md string) (string, []*model.BlockContentTextMark, error) 
 	return out.text.String(), out.marks, nil
 }
 
-// classifyChatLine asks the AnyBlock markdown parser what a line alone is.
-// Only a line starting with #, ` or ~ can be a heading or a fence opener, so
-// ordinary lines skip the parser.
+// classifyChatLine asks the AnyBlock markdown parser what a line alone is
+// (v2model.MarkdownLine, the classifier the read side escapes prose with).
 func classifyChatLine(line string) chatLine {
-	trimmed := strings.TrimLeft(line, " \t")
-	if trimmed == "" || !strings.ContainsRune("#`~", rune(trimmed[0])) {
-		return chatLine{}
-	}
-	run := anyblockjson.ParseMarkdownBlocks(line)
-	if len(run) != 1 {
-		return chatLine{}
-	}
-	var block struct {
-		Type string `json:"type"`
-		Text string `json:"text"`
-	}
-	if err := json.Unmarshal(run[0], &block); err != nil {
-		return chatLine{}
-	}
+	blockType, text := v2model.MarkdownLine(line)
 	switch {
-	case strings.HasPrefix(block.Type, "heading_"):
-		return chatLine{kind: chatLineHeading, text: block.Text}
-	case block.Type == "code":
-		marker := trimmed[:len(trimmed)-len(strings.TrimLeft(trimmed, trimmed[:1]))]
-		return chatLine{kind: chatLineFence, marker: marker, indent: len(line) - len(trimmed)}
+	case strings.HasPrefix(blockType, "heading_"):
+		return chatLine{kind: chatLineHeading, text: text}
+	case blockType == "code":
+		trimmed := strings.TrimLeft(line, " \t")
+		return chatLine{kind: chatLineFence, marker: trimmed[:len(trimmed)-len(strings.TrimLeft(trimmed, trimmed[:1]))]}
 	}
 	return chatLine{}
+}
+
+// fenceCode is the code of a fence, opener through closer (or the end): the
+// AnyBlock parser's own reading of those lines, indentation included.
+func fenceCode(lines []string) string {
+	for _, raw := range anyblockjson.ParseMarkdownBlocks(strings.Join(lines, "\n")) {
+		var block struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		}
+		if json.Unmarshal(raw, &block) == nil && block.Type == "code" {
+			return block.Text
+		}
+	}
+	return ""
 }
 
 // chatFenceEnd finds the line that closes a fence: at most three leading
@@ -317,14 +315,6 @@ func headingMarks(text string, marks []*model.BlockContentTextMark) []*model.Blo
 		}
 	}
 	return out
-}
-
-func trimLeadingSpaces(line string, n int) string {
-	i := 0
-	for i < n && i < len(line) && line[i] == ' ' {
-		i++
-	}
-	return line[i:]
 }
 
 func utf16Len(s string) int32 {

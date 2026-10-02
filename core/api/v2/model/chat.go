@@ -277,27 +277,64 @@ func chatTime(sec int64) string {
 	return time.Unix(sec, 0).UTC().Format(time.RFC3339)
 }
 
-// renderChatContent renders a message's content as §8 markup, except that a
-// multi-line code mark over whole lines — how a ``` fence is stored, by the
-// desktop composer and the API alike — reads back as a fence, which posts
-// back as the same mark. The fence outgrows any backtick run in the code.
+// renderChatContent renders a message's content as markdown that posts back
+// as the same content: §8 markup, except that a multi-line code mark over
+// whole lines — how a ``` fence is stored, by the desktop composer and the
+// API alike — reads back as a fence (the fence outgrows any backtick run in
+// the code), and prose a post would read as a heading or fence is escaped.
 func renderChatContent(text string, marks []*model.BlockContentTextMark) string {
 	units := textutil.StrToUTF16(text)
 	var out strings.Builder
 	cursor := int32(0)
 	for _, fence := range fencedCodeRanges(units, marks) {
-		out.WriteString(renderInlineRange(units, marks, cursor, fence.From))
+		out.WriteString(renderProseRange(units, marks, cursor, fence.From))
 		code := textutil.UTF16ToStr(units[fence.From:fence.To])
 		marker := codeFence(code)
 		out.WriteString(marker + "\n" + code + "\n" + marker)
 		cursor = fence.To
 	}
-	out.WriteString(renderInlineRange(units, marks, cursor, int32(len(units))))
+	out.WriteString(renderProseRange(units, marks, cursor, int32(len(units))))
 	return out.String()
 }
 
-// fencedCodeRanges picks the code marks that read back as fences: spanning
-// a newline, starting a line and ending one, in order, none overlapping.
+// renderProseRange renders units[from:to] as §8 markup with the lines a
+// space chat post would read as a heading or fence escaped.
+func renderProseRange(units []uint16, marks []*model.BlockContentTextMark, from, to int32) string {
+	rendered := renderInlineRange(units, marks, from, to)
+	return escapeProse(rendered, proseLineStarts(units, marks, from, to), spaceChatSyntax)
+}
+
+// proseLineStarts says, for each line of units[from:to], whether it starts a
+// line of prose: it starts a line of the whole text, and no code span covers
+// or opens at its start — a backslash there would be literal code, or would
+// break the span's delimiter.
+func proseLineStarts(units []uint16, marks []*model.BlockContentTextMark, from, to int32) []bool {
+	starts := []bool{isProseLineStart(units, marks, from)}
+	for i := from; i < to; i++ {
+		if units[i] == '\n' {
+			starts = append(starts, isProseLineStart(units, marks, i+1))
+		}
+	}
+	return starts
+}
+
+func isProseLineStart(units []uint16, marks []*model.BlockContentTextMark, at int32) bool {
+	if at > 0 && units[at-1] != '\n' {
+		return false
+	}
+	for _, mark := range marks {
+		if mark != nil && mark.Range != nil && mark.Type == model.BlockContentTextMark_Keyboard &&
+			mark.Range.From <= at && at < mark.Range.To {
+			return false
+		}
+	}
+	return true
+}
+
+// fencedCodeRanges picks the code marks that read back as fences: over
+// whole lines, and either spanning a newline or holding a run of two
+// backticks (inline, such code would need a ``` delimiter, which a post
+// reads as a fence opener); in order, none overlapping.
 func fencedCodeRanges(units []uint16, marks []*model.BlockContentTextMark) []model.Range {
 	var ranges []model.Range
 	for _, mark := range marks {
@@ -310,7 +347,8 @@ func fencedCodeRanges(units []uint16, marks []*model.BlockContentTextMark) []mod
 		}
 		startsLine := from == 0 || units[from-1] == '\n'
 		endsLine := to == int32(len(units)) || units[to] == '\n'
-		if startsLine && endsLine && slices.Contains(units[from:to], '\n') {
+		multiLine := slices.Contains(units[from:to], '\n')
+		if startsLine && endsLine && (multiLine || longestRun(textutil.UTF16ToStr(units[from:to]), '`') >= 2) {
 			ranges = append(ranges, model.Range{From: from, To: to})
 		}
 	}
@@ -406,6 +444,9 @@ func renderTextBlock(tb *model.ChatMessageMessageBlockText, number int) string {
 		marker := codeFence(tb.Text)
 		return marker + tb.Lang + "\n" + tb.Text + "\n" + marker
 	}
+	if tb.Style == model.BlockContentText_Paragraph {
+		return renderParagraph(tb)
+	}
 	text := anyblockjson.RenderInlineText(tb.Text, tb.Marks)
 	switch tb.Style {
 	case model.BlockContentText_Header1:
@@ -427,6 +468,18 @@ func renderTextBlock(tb *model.ChatMessageMessageBlockText, number int) string {
 		return "> " + strings.ReplaceAll(text, "\n", "\n> ")
 	}
 	return text
+}
+
+// renderParagraph renders a paragraph block with every line a post would
+// read as block syntax escaped — except the "---" paragraph, which is how
+// the desktop stores a divider and how a divider posts.
+func renderParagraph(tb *model.ChatMessageMessageBlockText) string {
+	if tb.Text == "---" && len(tb.Marks) == 0 {
+		return tb.Text
+	}
+	units := textutil.StrToUTF16(tb.Text)
+	starts := proseLineStarts(units, tb.Marks, 0, int32(len(units)))
+	return escapeProse(anyblockjson.RenderInlineText(tb.Text, tb.Marks), starts, func(string) bool { return true })
 }
 
 // codeFence is a backtick fence longer than any backtick run in the code,

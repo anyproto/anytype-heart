@@ -228,8 +228,9 @@ A space chat stores each message as one formatted text, so it keeps only
 the block syntax that text can show:
 
 - A `#` heading line becomes a bold line.
-- A fenced code block becomes a code block. Its language is dropped, and a
-  read returns it as a fence.
+- A fenced code block becomes code, and its language is dropped. Code over
+  several lines shows as a code block and reads back as a fence. A single
+  line shows as inline code.
 - Lists, quotes, and other block syntax stay literal.
 
 A discussion stores a message as blocks, so headings, list items,
@@ -237,6 +238,10 @@ checkboxes, quotes, and fenced code keep their style, with the code's
 language. Other lines become one paragraph each, and a `---` line is a
 divider. Nesting is flattened, and a table becomes one line per row with a
 warning. A read returns the markdown that posts the same blocks.
+
+In both kinds of chat, a read escapes text that would otherwise post as
+block syntax, such as a literal `# ` at the start of a line. Posting a
+read's `text` unchanged keeps the message as it is.
 
 ## Publish chat status
 

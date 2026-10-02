@@ -177,6 +177,54 @@ func TestV2SpaceChatMarkdown(t *testing.T) {
 		}, edited.Message.Marks)
 	})
 
+	t.Run("a tab-indented fence loses its indentation as in an object body", func(t *testing.T) {
+		// when
+		got := postToSpaceChat(t, "\t~~~\n\tone\n\ttwo\n~~~")
+
+		// then
+		assert.Equal(t, "one\ntwo", got.Text)
+		assert.Equal(t, []*model.BlockContentTextMark{chatMark(model.BlockContentTextMark_Keyboard, 0, 7, "")}, got.Marks)
+	})
+
+	t.Run("a text that parses to nothing is refused before the RPC, on a dry run too", func(t *testing.T) {
+		for _, dryRun := range []bool{true, false} {
+			// given: the strict mock fails the test on any middleware call
+			fx := newV2Fixture(t)
+			fx.addChat(t, testChatId, "Team chat", 1000)
+
+			// when
+			_, err := fx.AddChatMessage(context.Background(), testSpaceId, testChatId, v2model.AddChatMessageRequest{Text: "```\n```"}, dryRun)
+
+			// then
+			requireV2Code(t, err, v2model.CodeValidationFailed)
+		}
+	})
+
+	t.Run("escaped heading and fence syntax survives a read and a repost", func(t *testing.T) {
+		// given
+		first := postToSpaceChat(t, "\\# keep\nplain")
+		served := v2model.ChatMessageFromProto(&model.ChatMessage{Id: "msg1", Message: first}, v2model.ChatMessageOptions{SpaceId: testSpaceId})
+
+		// when
+		second := postToSpaceChat(t, served.Text)
+
+		// then
+		assert.Equal(t, "# keep\nplain", first.Text)
+		assert.Equal(t, first, second)
+	})
+
+	t.Run("a line of code holding a double backtick survives a read and a repost", func(t *testing.T) {
+		// given
+		first := postToSpaceChat(t, "x\n~~~\na`b``c\n~~~\ny")
+		served := v2model.ChatMessageFromProto(&model.ChatMessage{Id: "msg1", Message: first}, v2model.ChatMessageOptions{SpaceId: testSpaceId})
+
+		// when
+		second := postToSpaceChat(t, served.Text)
+
+		// then
+		assert.Equal(t, first, second)
+	})
+
 	t.Run("what the read serves posts back as the same message", func(t *testing.T) {
 		// given
 		first := postToSpaceChat(t, "# Plan\n```sh\nmake\nmake test\n```\nthen **ship**")
@@ -268,6 +316,37 @@ func TestV2DiscussionMarkdown(t *testing.T) {
 		require.Len(t, result.Warnings, 1)
 		assert.Equal(t, "/text", result.Warnings[0].Path)
 		assert.Contains(t, result.Warnings[0].Message, "table")
+	})
+
+	t.Run("an empty table cell keeps its column", func(t *testing.T) {
+		// when
+		got, _ := postToDiscussion(t, "| A | B | C |\n|---|---|---|\n| x |  | z |")
+
+		// then
+		assert.Equal(t, []*model.ChatMessageMessageBlock{
+			styledBlock(model.BlockContentText_Paragraph, "A | B | C"),
+			styledBlock(model.BlockContentText_Paragraph, "x |  | z"),
+		}, got)
+	})
+
+	t.Run("escaped block syntax survives a read and a repost as paragraphs", func(t *testing.T) {
+		// given
+		first, _ := postToDiscussion(t, "\\# keep\n\\- item\n\\> q\n1\\. one\n\\- - -")
+		served := v2model.ChatMessageFromProto(&model.ChatMessage{Id: "msg1", Message: &model.ChatMessageMessageContent{}, Blocks: first},
+			v2model.ChatMessageOptions{SpaceId: testSpaceId})
+
+		// when
+		second, _ := postToDiscussion(t, served.Text)
+
+		// then
+		assert.Equal(t, []*model.ChatMessageMessageBlock{
+			styledBlock(model.BlockContentText_Paragraph, "# keep"),
+			styledBlock(model.BlockContentText_Paragraph, "- item"),
+			styledBlock(model.BlockContentText_Paragraph, "> q"),
+			styledBlock(model.BlockContentText_Paragraph, "1. one"),
+			styledBlock(model.BlockContentText_Paragraph, "- - -"),
+		}, first)
+		assert.Equal(t, first, second)
 	})
 
 	t.Run("an empty heading and an empty fence leave no block", func(t *testing.T) {

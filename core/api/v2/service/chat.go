@@ -241,7 +241,7 @@ func (s *Service) AddChatMessage(ctx context.Context, spaceId, chatId string, re
 	if err != nil {
 		return nil, err
 	}
-	if err := v2ValidateChatBody(layout, body.blocks, len(attachments)); err != nil {
+	if err := v2ValidateChatBody(layout, body, len(attachments)); err != nil {
 		return nil, err
 	}
 	warnings := append(links.Warnings("/text"), body.warnings...)
@@ -301,7 +301,7 @@ func (s *Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageI
 		warnings = append(warnings, blocksEditWarnings(existing.Blocks)...)
 	}
 	content, blocks := body.content, body.blocks
-	if err := v2ValidateChatBody(layout, blocks, len(existing.Attachments)); err != nil {
+	if err := v2ValidateChatBody(layout, body, len(existing.Attachments)); err != nil {
 		return nil, err
 	}
 	if dryRun {
@@ -782,14 +782,19 @@ func v2ValidateChatTextLength(parsedText string) error {
 }
 
 // v2ValidateChatBody is the C9 guard for the one emptiness the store sees
-// and the request does not: in a blocks chat a text of newlines only
-// produces no block (parseDiscussionBody), and a message with no block and no
-// attachment is refused by chatmodel.Validate — so the dry run must refuse
+// and the request does not: a non-empty text can parse to nothing — in a
+// blocks chat a text of newlines only produces no block, and in either
+// chat an empty fence is dropped — and a message with no text, block or
+// attachment is refused by chatmodel.Validate, so the dry run must refuse
 // it too, rather than predict a 201 the real call turns into a 400.
-func v2ValidateChatBody(layout model.ObjectTypeLayout, blocks []*model.ChatMessageMessageBlock, attachments int) error {
-	if chatWritesBlocks(layout) && len(blocks) == 0 && attachments == 0 {
+func v2ValidateChatBody(layout model.ObjectTypeLayout, body *chatBody, attachments int) error {
+	empty := body.content.Text == ""
+	if chatWritesBlocks(layout) {
+		empty = len(body.blocks) == 0
+	}
+	if empty && attachments == 0 {
 		return v2model.ValidationFailed("a message needs text or attachments",
-			v2model.Issue{Path: "/text", Message: "the text has no non-empty line, and there are no attachments"})
+			v2model.Issue{Path: "/text", Message: "the text has no content once parsed, and there are no attachments"})
 	}
 	return nil
 }

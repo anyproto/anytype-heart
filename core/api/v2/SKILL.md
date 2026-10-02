@@ -243,8 +243,10 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   `next_before`); `?offset=` is rejected.
 - Message `text` is markdown both ways (mentions as
   `<mention object_id="…">`). In a space chat a `#` heading line posts as a
-  bold line and a ``` fence as a code block (read back as a fence, language
-  dropped); other block syntax stays literal. ≤8000 UTF-16 units; `attachments` = up to 32 object
+  bold line and a ``` fence as code (language dropped; several lines show as
+  a code block and read back as a fence, one line as inline code); other
+  block syntax stays literal. Reads escape literal block syntax (`\#`), so
+  echoing `text` back keeps the message. ≤8000 UTF-16 units; `attachments` = up to 32 object
   ids from `POST …/files`. `?reactions=full` adds who reacted.
 - Mark read: `POST …/chats/{id}/read` with `{"up_to": <order>,
   "last_state_id": <id>}` — **both** from the same GET, else nothing marks.
