@@ -12,13 +12,24 @@ Scope: global
 - Validates and registers any-names through name service
 - Triggers limits updates (file sync, multiplayer) when membership changes
 
+- V2: tracks per-resource (status, products) freshness (FRESH/STALE/NONE), last
+  success and last error; orders outcomes by fetch sequence and publishes
+  revisioned events, including a FRESH recovery event after an error
+- Exposes retained counters via debugstat (stats.go)
+
 ## Background Tasks
 - refreshController: polls payment node for membership/tiers changes (60s interval, 10s when forced)
 
 ## Documentation
 Cache invalidation: "force refresh" mode triggers aggressive polling for 30 minutes after
-user-initiated payment actions (pay button, manage subscription, finalize, redeem code).
+user-initiated payment actions (pay button, manage subscription, finalize, redeem code),
+and for up to 3 minutes after a manual refresh (MembershipV2GetStatus.forceRefreshSec,
+rate limited in refresh.go). Force admission never blocks on the polling loop.
 V1 vs V2: controlled by EnableMembershipV2 config flag set during AccountSelect/AccountCreate.
+V2 user calls are bounded (getStatusV2Budget, getProductsTimeout); with noCache a
+transient failure returns the cached data as STALE when it was ever fetched (v2state.go).
+Limits (coordinator status, file node usage) are refreshed by notifying their
+updaters; payments never waits on that work.
 */
 
 import (
@@ -28,6 +39,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"go.uber.org/zap"
 
 	ppclient "github.com/anyproto/any-sync/paymentservice/paymentserviceclient"
@@ -70,6 +82,7 @@ var (
 	ErrNoTiers               = errors.New("can not get tiers")
 	ErrNoTierFound           = errors.New("can not find requested tier")
 	ErrNameIsAlreadyReserved = errors.New("name is already reserved")
+	ErrInvalidForceRefresh   = errors.New("forceRefreshSec must not be negative")
 )
 
 type globalNamesUpdater interface {
@@ -181,17 +194,10 @@ type service struct {
 	multiplayerLimitsUpdater deletioncontroller.DeletionController
 	fileLimitsUpdater        filesync.FileSync
 	emailCollector           emailcollector.EmailCollector
-}
 
-type refreshController struct {
-	ctx           context.Context
-	cancel        context.CancelFunc
-	fetch         func(ctx context.Context, forceFetch bool) (bool, error)
-	interval      time.Duration
-	forceInterval time.Duration
-	forceCh       chan time.Duration
-	closeCh       chan struct{}
-	now           func() time.Time
+	v2          *v2State
+	stats       paymentsStats
+	statService debugstat.StatService
 }
 
 func (s *service) Name() (name string) {
@@ -213,6 +219,10 @@ func (s *service) Init(a *app.App) (err error) {
 	s.getSubscriptionLimiter = make(chan struct{}, 1)
 	s.getStatusV2Limiter = make(chan struct{}, 1)
 	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
+	s.v2 = newV2State()
+	if statService, err := app.GetComponent[debugstat.StatService](a); err == nil {
+		s.statService = statService
+	}
 
 	return nil
 }
@@ -238,25 +248,32 @@ func (s *service) Run(ctx context.Context) (err error) {
 		fetchFnV2 := func(baseCtx context.Context, forceFetch bool) (bool, error) {
 			fetchCtx, cancel := context.WithTimeout(baseCtx, networkTimeout2)
 			defer cancel()
-			changed, _, _, err := s.fetchAndUpdateV2(fetchCtx, forceFetch, true, true)
-			return changed, err
+			return s.refreshV2(fetchCtx, forceFetch)
 		}
 
 		s.refreshCtrlV2 = newRefreshController(s.componentCtx, fetchFnV2, time.Second*time.Duration(refreshIntervalSecs), forceRefreshInterval)
+		s.refreshCtrlV2.spaceForcedPolls = true
 		s.refreshCtrlV2.Start()
+	}
+	// registered after the controllers are set: ProvideStat reads them
+	if s.statService != nil {
+		s.statService.AddProvider(s)
 	}
 
 	return nil
 }
 
 func (s *service) Close(_ context.Context) (err error) {
+	if s.statService != nil {
+		s.statService.RemoveProvider(s)
+	}
+	// the controllers are stopped but kept: RPCs racing Close may still
+	// admit force intents, which is harmless after Stop
 	if s.refreshCtrl != nil {
 		s.refreshCtrl.Stop()
-		s.refreshCtrl = nil
 	}
 	if s.refreshCtrlV2 != nil {
 		s.refreshCtrlV2.Stop()
-		s.refreshCtrlV2 = nil
 	}
 	s.componentCtxCancel()
 	return nil
@@ -271,11 +288,21 @@ func (s *service) forceRefresh(duration time.Duration) {
 }
 
 // forceRefreshV2 performs more aggressive fetching of V2 subscription status.
+// It never blocks.
 func (s *service) forceRefreshV2(duration time.Duration) {
 	if s.refreshCtrlV2 == nil {
 		return
 	}
 	s.refreshCtrlV2.Force(duration)
+}
+
+// forceRefreshManualV2 asks for a manual forced poll after an explicit fetch
+// (the Refresh button). Rate limited in the controller; never blocks.
+func (s *service) forceRefreshManualV2(window time.Duration) bool {
+	if s.refreshCtrlV2 == nil {
+		return false
+	}
+	return s.refreshCtrlV2.AdmitManual(window)
 }
 
 func (s *service) fetchAndUpdate(ctx context.Context, forceIfNotExpired, fetchTiers, fetchMembership bool) (changed bool, tiers []*model.MembershipTierData, membership *model.Membership, err error) {
@@ -330,9 +357,7 @@ func (s *service) fetchAndUpdate(ctx context.Context, forceIfNotExpired, fetchTi
 		if cacheSetErr := s.cache.CacheSet(membership, tiers); cacheSetErr != nil {
 			log.Warn("periodic refresh: can not set to cache", zap.Error(cacheSetErr))
 		}
-		if limitsErr := s.updateLimits(ctx); limitsErr != nil {
-			log.Warn("periodic refresh: limits update failed", zap.Error(limitsErr))
-		}
+		s.notifyLimits()
 	}
 
 	if membership == nil {
@@ -350,97 +375,6 @@ func (s *service) fetchAndUpdate(ctx context.Context, forceIfNotExpired, fetchTi
 	}
 
 	return
-}
-
-func (s *service) fetchAndUpdateV2(ctx context.Context, forceIfNotExpired, fetchMembership, fetchProducts bool) (changed bool, membership *model.MembershipV2Data, products []*model.MembershipV2Product, err error) {
-	// skip running loop if we are in local-only mode
-	if s.cfg.GetNetworkMode() == pb.RpcAccount_LocalOnly {
-		// do not trace to log to prevent spamming
-		return false, nil, nil, nil
-	}
-
-	cachedData, cacheExpirationTime, cacheErr := s.cache.CacheV2Get()
-	cachedProducts, _, productsCacheErr := s.cache.CacheV2ProductsGet()
-	if cacheErr != nil {
-		log.Debug("periodic refresh: can not get V2 membership status from cache", zap.Error(cacheErr))
-	}
-	if productsCacheErr != nil {
-		log.Debug("periodic refresh: can not get V2 products from cache", zap.Error(productsCacheErr))
-	}
-	if !forceIfNotExpired && cacheExpirationTime.After(time.Now()) {
-		return false, cachedData, cachedProducts, nil
-	}
-	var errs []error
-	membership = cachedData
-	products = cachedProducts
-
-	if fetchProducts {
-		fetchedProducts, fetchErr := s.fetchV2Products(ctx)
-		if fetchErr != nil {
-			log.Warn("periodic refresh: V2 products update failed", zap.Error(fetchErr))
-			errs = append(errs, fetchErr)
-		} else {
-			if !productsV2Equal(cachedProducts, fetchedProducts) {
-				log.Warn("background refresh V2 products: products have changed, sending event", zap.Any("cachedProducts", cachedProducts), zap.Any("fetchedProducts", fetchedProducts))
-				s.sendMembershipV2ProductsUpdateEvent(fetchedProducts)
-				changed = true
-			}
-			products = fetchedProducts
-		}
-	}
-
-	if fetchMembership {
-		fetchedMembership, fetchErr := s.fetchV2Membership(ctx)
-		if fetchErr != nil {
-			log.Warn("periodic refresh: V2 subscription status update failed", zap.Error(fetchErr))
-			errs = append(errs, fetchErr)
-		} else {
-			// Compare V2 data - check if Products or NextInvoice changed
-			if !membershipV2DataEqual(cachedData, fetchedMembership) {
-				log.Warn("background refresh V2 membership: membership has changed, sending event", zap.Any("cachedData", cachedData), zap.Any("fetchedMembership", fetchedMembership))
-
-				s.sendMembershipV2UpdateEvent(fetchedMembership)
-				changed = true
-			}
-			membership = fetchedMembership
-		}
-	}
-
-	if changed {
-		s.updateCacheAndLimitsV2(ctx, membership, products)
-	}
-
-	if membership == nil {
-		membership = &model.MembershipV2Data{
-			Products:    []*model.MembershipV2PurchasedProduct{},
-			NextInvoice: nil,
-		}
-	}
-	if products == nil {
-		products = []*model.MembershipV2Product{}
-	}
-
-	if len(errs) > 0 {
-		err = errors.Join(errs...)
-	}
-
-	return
-}
-
-func (s *service) updateCacheAndLimitsV2(ctx context.Context, membership *model.MembershipV2Data, products []*model.MembershipV2Product) {
-	if membership != nil {
-		if cacheSetErr := s.cache.CacheV2Set(membership); cacheSetErr != nil {
-			log.Warn("periodic refresh: can not set V2 membership status to cache", zap.Error(cacheSetErr))
-		}
-	}
-	if products != nil {
-		if productsCacheSetErr := s.cache.CacheV2ProductsSet(products); productsCacheSetErr != nil {
-			log.Warn("periodic refresh: can not set V2 products to cache", zap.Error(productsCacheSetErr))
-		}
-	}
-	if limitsErr := s.updateLimits(ctx); limitsErr != nil {
-		log.Warn("periodic refresh: limits update failed", zap.Error(limitsErr))
-	}
 }
 
 func (s *service) sendMembershipUpdateEvent(membership *model.Membership) {
@@ -523,11 +457,6 @@ func (s *service) generateRequest() (*proto.GetSubscriptionRequestSigned, error)
 	}, nil
 }
 
-func (s *service) updateLimits(ctx context.Context) error {
-	s.multiplayerLimitsUpdater.UpdateCoordinatorStatus()
-	return s.fileLimitsUpdater.UpdateNodeUsage(ctx)
-}
-
 // fetchSubscriptionStatus performs network refresh of subscription status
 func (s *service) fetchMembership(ctx context.Context) (*model.Membership, error) {
 	// Acquire limiter to prevent concurrent requests
@@ -558,18 +487,9 @@ func (s *service) fetchMembership(ctx context.Context) (*model.Membership, error
 	return convertMembershipData(status), nil
 }
 
-// fetchV2Membership performs network refresh of V2 membership status
+// fetchV2Membership performs network refresh of V2 membership status.
+// Callers hold getStatusV2Limiter and bound ctx (fetchV2StatusAttempt).
 func (s *service) fetchV2Membership(ctx context.Context) (*model.MembershipV2Data, error) {
-	// Acquire limiter to prevent concurrent requests
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case s.getStatusV2Limiter <- struct{}{}:
-		defer func() {
-			<-s.getStatusV2Limiter
-		}()
-	}
-
 	// Make network request to PP node
 	in := proto.MembershipV2_GetStatusRequest{}
 
@@ -856,7 +776,7 @@ func (s *service) RegisterPaymentRequest(ctx context.Context, req *pb.RpcMembers
 		},
 	}
 
-	go s.forceRefresh(30 * time.Minute)
+	s.forceRefresh(30 * time.Minute)
 
 	return &out, nil
 }
@@ -897,7 +817,7 @@ func (s *service) GetPortalLink(ctx context.Context, req *pb.RpcMembershipGetPor
 		Code: pb.RpcMembershipGetPortalLinkUrlResponseError_NULL,
 	}
 
-	go s.forceRefresh(30 * time.Minute)
+	s.forceRefresh(30 * time.Minute)
 
 	return &out, nil
 }
@@ -1009,7 +929,7 @@ func (s *service) FinalizeSubscription(ctx context.Context, req *pb.RpcMembershi
 	s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(req.NsName, req.NsNameType))
 
 	// 2 - clear cache
-	go s.forceRefresh(30 * time.Minute)
+	s.forceRefresh(30 * time.Minute)
 
 	// return out
 	var out pb.RpcMembershipFinalizeResponse
@@ -1217,10 +1137,10 @@ func (s *service) CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedee
 		s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(nsName, nsNameType))
 	}
 
-	go s.forceRefresh(30 * time.Minute)
+	s.forceRefresh(30 * time.Minute)
 
 	// 2 - force refresh v2 to get updated membership status
-	go s.forceRefreshV2(30 * time.Minute)
+	s.forceRefreshV2(30 * time.Minute)
 
 	return &pb.RpcMembershipCodeRedeemResponse{
 		Error: &pb.RpcMembershipCodeRedeemResponseError{
@@ -1241,7 +1161,7 @@ func (s *service) V2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2Ge
 		return nil, err
 	}
 
-	go s.forceRefreshV2(30 * time.Minute)
+	s.forceRefreshV2(30 * time.Minute)
 
 	return &pb.RpcMembershipV2GetPortalLinkResponse{
 		Url: res.Url,
@@ -1252,69 +1172,87 @@ func (s *service) V2GetPortalLink(ctx context.Context, req *pb.RpcMembershipV2Ge
 	}, nil
 }
 
+// V2GetProducts returns the V2 products. Without noCache it reads the cache
+// only. With noCache it fetches within getProductsTimeout; on a transient
+// failure it returns the cached products as STALE if they were ever fetched,
+// otherwise the error. The response always carries FetchState, also together
+// with an error.
 func (s *service) V2GetProducts(ctx context.Context, req *pb.RpcMembershipV2GetProductsRequest) (*pb.RpcMembershipV2GetProductsResponse, error) {
 	if !s.cfg.EnableMembershipV2 {
-		return nil, ErrV2NotEnabled
+		return &pb.RpcMembershipV2GetProductsResponse{FetchState: NoneFetchState()}, ErrV2NotEnabled
 	}
 
-	// Get all products from cache (including background refresh if needed)
-	products, err := s.getAllV2Products(ctx, req)
-	if err != nil {
-		return nil, err
+	var r *v2Response
+	switch {
+	case s.cfg.GetNetworkMode() == pb.RpcAccount_LocalOnly:
+		r = s.v2None(v2Products)
+	case !req.NoCache:
+		r = s.v2CacheOnly(v2Products)
+	default:
+		res, _ := s.commitV2(ctx, []v2Result{s.fetchV2ProductsAttempt(ctx, originUser)}, true, false)
+		r = res[v2Products]
 	}
 
-	return &pb.RpcMembershipV2GetProductsResponse{
-		Products: products,
-		Error: &pb.RpcMembershipV2GetProductsResponseError{
-			Code: pb.RpcMembershipV2GetProductsResponseError_NULL,
-		},
-	}, nil
+	out := &pb.RpcMembershipV2GetProductsResponse{
+		Products:   r.products,
+		FetchState: r.state,
+	}
+	if r.err != nil {
+		return out, r.err
+	}
+	out.Error = &pb.RpcMembershipV2GetProductsResponseError{
+		Code: pb.RpcMembershipV2GetProductsResponseError_NULL,
+	}
+	return out, nil
 }
 
-// getAllV2Products returns products from cache ONLY
-// This method NEVER makes network calls and returns immediately
-// Background refresh happens via refreshSubscriptionStatusBackground()
-func (s *service) getAllV2Products(ctx context.Context, req *pb.RpcMembershipV2GetProductsRequest) ([]*model.MembershipV2Product, error) {
-	_, _, products, err := s.fetchAndUpdateV2(ctx, req.NoCache, false, req.NoCache)
-	if err != nil {
-		return nil, err
-	}
-
-	return products, nil
-}
-
-// V2GetStatus returns V2 subscription status from cache ONLY
-// This method NEVER makes network calls and returns immediately
-// Background refresh happens via refreshSubscriptionStatusBackground()
+// V2GetStatus returns the V2 membership status, with the same cache and
+// freshness semantics as V2GetProducts (budget: getStatusV2Budget, including
+// the wait for an in-flight status fetch).
+//
+// forceRefreshSec > 0 (manual Refresh) implies noCache and then asks the
+// refresh controller for a forced poll window, after a success or a transient
+// failure only. The admission is rate limited and never blocks.
 func (s *service) V2GetStatus(ctx context.Context, req *pb.RpcMembershipV2GetStatusRequest) (*pb.RpcMembershipV2GetStatusResponse, error) {
 	if !s.cfg.EnableMembershipV2 {
-		return nil, ErrV2NotEnabled
+		return &pb.RpcMembershipV2GetStatusResponse{FetchState: NoneFetchState()}, ErrV2NotEnabled
+	}
+	if req.ForceRefreshSec < 0 {
+		return &pb.RpcMembershipV2GetStatusResponse{FetchState: NoneFetchState()}, ErrInvalidForceRefresh
 	}
 
-	var (
-		membership *model.MembershipV2Data
-		err        error
-	)
-
-	_, membership, _, err = s.fetchAndUpdateV2(ctx, req.NoCache, req.NoCache, false)
-	if err != nil && req.NoCache && !errors.Is(err, cache.ErrCacheDbError) {
-		return nil, err
-	}
-	if membership == nil {
-		membership = &model.MembershipV2Data{
-			Products:    []*model.MembershipV2PurchasedProduct{},
-			NextInvoice: nil,
+	noCache := req.NoCache || req.ForceRefreshSec > 0
+	var r *v2Response
+	switch {
+	case s.cfg.GetNetworkMode() == pb.RpcAccount_LocalOnly:
+		r = s.v2None(v2Status)
+	case !noCache:
+		r = s.v2CacheOnly(v2Status)
+	default:
+		res, _ := s.commitV2(ctx, []v2Result{s.fetchV2StatusAttempt(ctx, originUser)}, true, false)
+		r = res[v2Status]
+		if req.ForceRefreshSec > 0 {
+			s.stats.manualRequests.Inc()
+			if ctx.Err() == nil && (r.err == nil || isTransientForCaller(ctx, r.err)) {
+				window := time.Duration(req.ForceRefreshSec) * time.Second
+				if s.forceRefreshManualV2(window) {
+					log.Info("membership v2: manual forced refresh admitted", zap.Duration("window", min(window, manualForceMaxWindow)))
+				}
+			}
 		}
 	}
 
-	status := &pb.RpcMembershipV2GetStatusResponse{
-		Data: membership,
-		Error: &pb.RpcMembershipV2GetStatusResponseError{
-			Code: pb.RpcMembershipV2GetStatusResponseError_NULL,
-		},
+	out := &pb.RpcMembershipV2GetStatusResponse{
+		Data:       r.status,
+		FetchState: r.state,
 	}
-
-	return status, nil
+	if r.err != nil {
+		return out, r.err
+	}
+	out.Error = &pb.RpcMembershipV2GetStatusResponseError{
+		Code: pb.RpcMembershipV2GetStatusResponseError_NULL,
+	}
+	return out, nil
 }
 
 func (s *service) v2CheckIfNameAvailInNS(ctx context.Context, req *pb.RpcMembershipV2AnyNameIsValidRequest) (*pb.RpcMembershipV2AnyNameIsValidResponse, error) {
@@ -1426,7 +1364,7 @@ func (s *service) V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2
 	}
 
 	// 2 - force refresh to get updated membership status
-	go s.forceRefreshV2(30 * time.Minute)
+	s.forceRefreshV2(30 * time.Minute)
 
 	// return out
 	var out pb.RpcMembershipV2AnyNameAllocateResponse
@@ -1494,22 +1432,6 @@ func (s *service) V2CartUpdate(ctx context.Context, req *pb.RpcMembershipV2CartU
 			Code: pb.RpcMembershipV2CartUpdateResponseError_NULL,
 		},
 	}, nil
-}
-
-func (s *service) sendMembershipV2UpdateEvent(membership *model.MembershipV2Data) {
-	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfMembershipV2Update{
-		MembershipV2Update: &pb.EventMembershipV2Update{
-			Data: membership,
-		},
-	}))
-}
-
-func (s *service) sendMembershipV2ProductsUpdateEvent(products []*model.MembershipV2Product) {
-	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfMembershipV2ProductsUpdate{
-		MembershipV2ProductsUpdate: &pb.EventMembershipV2ProductsUpdate{
-			Products: products,
-		},
-	}))
 }
 
 func (s *service) V2SubscribeToUpdates(ctx context.Context, req *pb.RpcMembershipV2SubscribeToUpdatesRequest) (*pb.RpcMembershipV2SubscribeToUpdatesResponse, error) {

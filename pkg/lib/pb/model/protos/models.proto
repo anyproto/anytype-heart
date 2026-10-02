@@ -1526,6 +1526,48 @@ message MembershipV2 {
         GooglePlay = 5;
     }
 
+    // Freshness of one membership resource (status or products) as served in
+    // MembershipV2 GetStatus/GetProducts responses and update events.
+    // The zero value is FRESH, so a message that never sets it keeps the
+    // pre-freshness meaning.
+    enum Freshness {
+        // data comes from a recent successful fetch from the payment node
+        FRESH = 0;
+        // data comes from an earlier successful fetch: the latest refresh
+        // failed, or the age of the cached data is unknown
+        STALE = 1;
+        // never fetched successfully: data is an empty placeholder and must be
+        // treated as unknown (not as "no membership")
+        NONE = 2;
+    }
+
+    // Class of the last failed refresh of a resource
+    enum RefreshError {
+        RefreshErrorNull = 0;
+        // transient: timeout, payment node unreachable, connection closed
+        RefreshErrorPaymentNode = 1;
+        // any other failure
+        RefreshErrorUnknown = 2;
+    }
+
+    // Orders published states of one resource. Apply a response or event only
+    // if its revision is newer than the one already applied. epoch is random
+    // and changes on every payments service start (account select or restart):
+    // reset ordering state when it changes.
+    message Revision {
+        uint64 epoch = 1;
+        uint64 counter = 2;
+    }
+
+    message FetchState {
+        Freshness freshness = 1;
+        // unix seconds of the last successful fetch, 0 if never or unknown
+        int64 lastSuccessfulFetchAt = 2;
+        // set while the latest refresh of the resource failed
+        RefreshError lastRefreshError = 3;
+        Revision revision = 4;
+    }
+
     enum Period {
         Unlimited = 0 [deprecated = true];
         Monthly = 1;

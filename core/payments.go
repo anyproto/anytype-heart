@@ -420,48 +420,82 @@ func (mw *Middleware) MembershipV2GetPortalLink(ctx context.Context, req *pb.Rpc
 	return out
 }
 
+// MembershipV2GetProducts keeps the service's response on errors and only sets
+// Error on it, so FetchState (freshness, revision) reaches the client with the
+// error. Errors before any outcome exists get explicit NONE metadata.
 func (mw *Middleware) MembershipV2GetProducts(ctx context.Context, req *pb.RpcMembershipV2GetProductsRequest) *pb.RpcMembershipV2GetProductsResponse {
-	ps := mustService[payments.Service](mw)
-	out, err := ps.V2GetProducts(ctx, req)
+	ps, err := getService[payments.Service](mw)
+	return membershipV2GetProducts(ctx, ps, err, req)
+}
+
+func membershipV2GetProducts(ctx context.Context, ps payments.Service, err error, req *pb.RpcMembershipV2GetProductsRequest) *pb.RpcMembershipV2GetProductsResponse {
+	var out *pb.RpcMembershipV2GetProductsResponse
+	if err == nil {
+		out, err = ps.V2GetProducts(ctx, req)
+	}
+	if out == nil {
+		out = &pb.RpcMembershipV2GetProductsResponse{}
+	}
+	if out.FetchState == nil {
+		out.FetchState = payments.NoneFetchState()
+	}
 
 	if err != nil {
 		code := mapErrorCode(err,
+			errToCode(ErrNotLoggedIn, pb.RpcMembershipV2GetProductsResponseError_NOT_LOGGED_IN),
 			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2GetProductsResponseError_NOT_LOGGED_IN),
 			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2GetProductsResponseError_NOT_LOGGED_IN),
 			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2GetProductsResponseError_PAYMENT_NODE_ERROR),
 			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2GetProductsResponseError_PAYMENT_NODE_ERROR),
 			errToCode(payments.ErrV2NotEnabled, pb.RpcMembershipV2GetProductsResponseError_V2_CALL_NOT_ENABLED),
 		)
-
-		return &pb.RpcMembershipV2GetProductsResponse{
-			Error: &pb.RpcMembershipV2GetProductsResponseError{
-				Code:        code,
-				Description: getErrorDescription(err),
-			},
+		if code == pb.RpcMembershipV2GetProductsResponseError_UNKNOWN_ERROR && payments.IsTransientError(err) {
+			code = pb.RpcMembershipV2GetProductsResponseError_PAYMENT_NODE_ERROR
+		}
+		out.Error = &pb.RpcMembershipV2GetProductsResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
 		}
 	}
 
 	return out
 }
 
+// MembershipV2GetStatus keeps the service's response on errors, see
+// MembershipV2GetProducts
 func (mw *Middleware) MembershipV2GetStatus(ctx context.Context, req *pb.RpcMembershipV2GetStatusRequest) *pb.RpcMembershipV2GetStatusResponse {
-	ps := mustService[payments.Service](mw)
-	out, err := ps.V2GetStatus(ctx, req)
+	ps, err := getService[payments.Service](mw)
+	return membershipV2GetStatus(ctx, ps, err, req)
+}
 
-	code := mapErrorCode(err,
-		errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2GetStatusResponseError_NOT_LOGGED_IN),
-		errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2GetStatusResponseError_NOT_LOGGED_IN),
-		errToCode(payments.ErrNoConnection, pb.RpcMembershipV2GetStatusResponseError_PAYMENT_NODE_ERROR),
-		errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2GetStatusResponseError_PAYMENT_NODE_ERROR),
-		errToCode(payments.ErrV2NotEnabled, pb.RpcMembershipV2GetStatusResponseError_V2_CALL_NOT_ENABLED),
-	)
+func membershipV2GetStatus(ctx context.Context, ps payments.Service, err error, req *pb.RpcMembershipV2GetStatusRequest) *pb.RpcMembershipV2GetStatusResponse {
+	var out *pb.RpcMembershipV2GetStatusResponse
+	if err == nil {
+		out, err = ps.V2GetStatus(ctx, req)
+	}
+	if out == nil {
+		out = &pb.RpcMembershipV2GetStatusResponse{}
+	}
+	if out.FetchState == nil {
+		out.FetchState = payments.NoneFetchState()
+	}
 
 	if err != nil {
-		return &pb.RpcMembershipV2GetStatusResponse{
-			Error: &pb.RpcMembershipV2GetStatusResponseError{
-				Code:        code,
-				Description: getErrorDescription(err),
-			},
+		code := mapErrorCode(err,
+			errToCode(ErrNotLoggedIn, pb.RpcMembershipV2GetStatusResponseError_NOT_LOGGED_IN),
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2GetStatusResponseError_NOT_LOGGED_IN),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2GetStatusResponseError_NOT_LOGGED_IN),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2GetStatusResponseError_PAYMENT_NODE_ERROR),
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2GetStatusResponseError_PAYMENT_NODE_ERROR),
+			errToCode(payments.ErrV2NotEnabled, pb.RpcMembershipV2GetStatusResponseError_V2_CALL_NOT_ENABLED),
+			errToCode(payments.ErrInvalidForceRefresh, pb.RpcMembershipV2GetStatusResponseError_BAD_INPUT),
+		)
+		if code == pb.RpcMembershipV2GetStatusResponseError_UNKNOWN_ERROR && payments.IsTransientError(err) {
+			code = pb.RpcMembershipV2GetStatusResponseError_PAYMENT_NODE_ERROR
+		}
+		out.Error = &pb.RpcMembershipV2GetStatusResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
 		}
 	}
 

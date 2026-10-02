@@ -484,6 +484,38 @@ func (_c *MockFileSync_OnStatusUpdated_Call) RunAndReturn(run func(filesync.Stat
 	return _c
 }
 
+// RequestNodeUsageUpdate provides a mock function with no fields
+func (_m *MockFileSync) RequestNodeUsageUpdate() {
+	_m.Called()
+}
+
+// MockFileSync_RequestNodeUsageUpdate_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RequestNodeUsageUpdate'
+type MockFileSync_RequestNodeUsageUpdate_Call struct {
+	*mock.Call
+}
+
+// RequestNodeUsageUpdate is a helper method to define mock.On call
+func (_e *MockFileSync_Expecter) RequestNodeUsageUpdate() *MockFileSync_RequestNodeUsageUpdate_Call {
+	return &MockFileSync_RequestNodeUsageUpdate_Call{Call: _e.mock.On("RequestNodeUsageUpdate")}
+}
+
+func (_c *MockFileSync_RequestNodeUsageUpdate_Call) Run(run func()) *MockFileSync_RequestNodeUsageUpdate_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockFileSync_RequestNodeUsageUpdate_Call) Return() *MockFileSync_RequestNodeUsageUpdate_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockFileSync_RequestNodeUsageUpdate_Call) RunAndReturn(run func()) *MockFileSync_RequestNodeUsageUpdate_Call {
+	_c.Run(run)
+	return _c
+}
+
 // Run provides a mock function with given fields: ctx
 func (_m *MockFileSync) Run(ctx context.Context) error {
 	ret := _m.Called(ctx)
@@ -615,52 +647,6 @@ func (_c *MockFileSync_SpaceStat_Call) Return(ss filesync.SpaceStat, err error) 
 }
 
 func (_c *MockFileSync_SpaceStat_Call) RunAndReturn(run func(context.Context, string) (filesync.SpaceStat, error)) *MockFileSync_SpaceStat_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// UpdateNodeUsage provides a mock function with given fields: ctx
-func (_m *MockFileSync) UpdateNodeUsage(ctx context.Context) error {
-	ret := _m.Called(ctx)
-
-	if len(ret) == 0 {
-		panic("no return value specified for UpdateNodeUsage")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
-		r0 = rf(ctx)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockFileSync_UpdateNodeUsage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateNodeUsage'
-type MockFileSync_UpdateNodeUsage_Call struct {
-	*mock.Call
-}
-
-// UpdateNodeUsage is a helper method to define mock.On call
-//   - ctx context.Context
-func (_e *MockFileSync_Expecter) UpdateNodeUsage(ctx interface{}) *MockFileSync_UpdateNodeUsage_Call {
-	return &MockFileSync_UpdateNodeUsage_Call{Call: _e.mock.On("UpdateNodeUsage", ctx)}
-}
-
-func (_c *MockFileSync_UpdateNodeUsage_Call) Run(run func(ctx context.Context)) *MockFileSync_UpdateNodeUsage_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
-	})
-	return _c
-}
-
-func (_c *MockFileSync_UpdateNodeUsage_Call) Return(_a0 error) *MockFileSync_UpdateNodeUsage_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockFileSync_UpdateNodeUsage_Call) RunAndReturn(run func(context.Context) error) *MockFileSync_UpdateNodeUsage_Call {
 	_c.Call.Return(run)
 	return _c
 }

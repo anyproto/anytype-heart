@@ -95,46 +95,62 @@ func (s *fileSync) runNodeUsageUpdater() {
 
 	s.precacheNodeUsage()
 
-	ticker := time.NewTicker(time.Second * 10)
+	ticker := time.NewTicker(nodeUsageInterval(false))
 	slowMode := false
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
-			cachedUsage, cachedUsageExists, _ := s.getCachedNodeUsage()
-			ctx, cancel := context.WithCancel(s.loopCtx)
-			_, err := s.getAndUpdateNodeUsage(ctx)
-			cancel()
-			if err != nil {
-				log.Warn("updater: can't update node usage", zap.Error(err))
-				// back off while the node is unreachable (e.g. device offline
-				// mid-upload); a successful update with active uploads flips
-				// back to the fast cadence below
-				if !slowMode {
-					ticker.Reset(time.Minute)
-					slowMode = true
-				}
-			} else {
-				updatedUsage, updatedUsageExists, _ := s.getCachedNodeUsage()
-				if cachedUsageExists && updatedUsageExists && cachedUsage.BytesLeft == updatedUsage.BytesLeft {
-					// looks like we don't have active uploads we should actively follow
-					// let's slow down the updates
-					if !slowMode {
-						ticker.Reset(time.Minute)
-						slowMode = true
-					}
-				} else {
-					// we have activity, or updated BytesLeft for the first time
-					// let's keep the updates frequent
-					if slowMode {
-						ticker.Reset(time.Second * 10)
-						slowMode = false
-					}
-				}
-			}
+		case <-s.nodeUsageUpdateCh:
 		case <-s.loopCtx.Done():
 			return
 		}
+		slowMode = switchNodeUsageCadence(ticker, slowMode, s.updateNodeUsageTick())
+	}
+}
+
+// switchNodeUsageCadence resets the ticker when the cadence changes
+func switchNodeUsageCadence(ticker interface{ Reset(time.Duration) }, slowMode, slow bool) bool {
+	if slow != slowMode {
+		ticker.Reset(nodeUsageInterval(slow))
+	}
+	return slow
+}
+
+// nodeUsageInterval is the updater cadence: fast while uploads move the
+// usage, slow when idle or the node is unreachable
+func nodeUsageInterval(slow bool) time.Duration {
+	if slow {
+		return time.Minute
+	}
+	return time.Second * 10
+}
+
+// updateNodeUsageTick refreshes the node usage and reports whether the
+// updater should run slowly: the node is unreachable (e.g. device offline
+// mid-upload) or the usage didn't move (no active uploads to follow)
+func (s *fileSync) updateNodeUsageTick() (slow bool) {
+	cachedUsage, cachedUsageExists, cachedErr := s.getCachedNodeUsage()
+	ctx, cancel := context.WithCancel(s.loopCtx)
+	_, err := s.getAndUpdateNodeUsage(ctx)
+	cancel()
+	if err != nil {
+		log.Warn("updater: can't update node usage", zap.Error(err))
+		return true
+	}
+	updatedUsage, updatedUsageExists, updatedErr := s.getCachedNodeUsage()
+	return cachedErr == nil && updatedErr == nil && cachedUsageExists && updatedUsageExists &&
+		cachedUsage.BytesLeft == updatedUsage.BytesLeft
+}
+
+// RequestNodeUsageUpdate wakes runNodeUsageUpdater for an early refresh, e.g.
+// after a membership change. It never blocks the caller, and requests made
+// while one is pending (or while an update is running) coalesce into one.
+// In local-only mode the updater doesn't run and the request is a no-op.
+func (s *fileSync) RequestNodeUsageUpdate() {
+	select {
+	case s.nodeUsageUpdateCh <- struct{}{}:
+	default:
 	}
 }
 
@@ -170,11 +186,6 @@ func (s *fileSync) NodeUsage(ctx context.Context) (NodeUsage, error) {
 		return s.getAndUpdateNodeUsage(ctx)
 	}
 	return usage, err
-}
-
-func (s *fileSync) UpdateNodeUsage(ctx context.Context) error {
-	_, err := s.getAndUpdateNodeUsage(ctx)
-	return err
 }
 
 func (s *fileSync) getCachedNodeUsage() (NodeUsage, bool, error) {

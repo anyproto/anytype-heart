@@ -13,7 +13,8 @@ Scope: global
 - Provide node/space usage statistics
 
 ## Background Tasks
-- nodeUsageUpdater: periodically fetches account usage from backup node (10s active, 1min idle) [runNodeUsageUpdater]
+- nodeUsageUpdater: periodically fetches account usage from backup node (10s active, 1min idle) [runNodeUsageUpdater];
+  RequestNodeUsageUpdate wakes it early (coalescing, non-blocking; used on membership changes)
 - uploader (x10): processes pending uploads from queue [runUploader]
 - batchUploader (x10): sends batched block upload requests to backup node [runBatchUploader]
 - requestsBatcher: batches small files together, splits large files across requests [requestsBatcher.run]
@@ -89,7 +90,9 @@ type FileSync interface {
 	MarkUploaded(objectId string) error
 	OnStatusUpdated(StatusCallback)
 	DeleteFile(objectId string, fileId domain.FullFileId) (err error)
-	UpdateNodeUsage(ctx context.Context) error
+	// RequestNodeUsageUpdate asks the node usage updater to refresh soon. It
+	// never blocks: requests made while one is pending coalesce into it.
+	RequestNodeUsageUpdate()
 	NodeUsage(ctx context.Context) (usage NodeUsage, err error)
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
 	DebugQueue(*http.Request) (*QueueInfo, error)
@@ -133,6 +136,8 @@ type fileSync struct {
 	nodeUsageStore keyvaluestore.Store[NodeUsage]
 	nodeUsageLock  sync.RWMutex
 	nodeUsage      *NodeUsage
+	// nodeUsageUpdateCh (capacity 1) wakes runNodeUsageUpdater
+	nodeUsageUpdateCh chan struct{}
 
 	limitManager    *spaceUsageManager
 	requestsBatcher *requestsBatcher
@@ -152,7 +157,7 @@ type spaceService interface {
 }
 
 func New() FileSync {
-	return &fileSync{closeWg: &sync.WaitGroup{}}
+	return &fileSync{closeWg: &sync.WaitGroup{}, nodeUsageUpdateCh: make(chan struct{}, 1)}
 }
 
 func (s *fileSync) Init(a *app.App) (err error) {
