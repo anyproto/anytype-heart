@@ -242,3 +242,39 @@ func DeleteObjectHandler(s *service.Service) gin.HandlerFunc {
 		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: *object})
 	}
 }
+
+// AddDiscussionHandler adds an inline discussion to an object
+//
+//	@Summary		Add a discussion to an object
+//	@Description	Creates an inline discussion for the object identified by the object ID and returns the chat id of the new discussion. Agents can then use this id as chat_id with the Chat endpoints to read and write the discussion's messages. Adding a discussion to an object that already has one fails.
+//	@Id				add_object_discussion
+//	@Tags			Objects
+//	@Produce		json
+//	@Param			Anytype-Version	header		string								true	"The version of the API to use"	default(2025-11-08)
+//	@Param			space_id		path		string								true	"The ID of the space in which the object exists; must be retrieved from ListSpaces endpoint"
+//	@Param			object_id		path		string								true	"The ID of the object to add the discussion to; must be retrieved from ListObjects, SearchSpace or GlobalSearch endpoints or obtained from response context"
+//	@Success		201				{object}	apimodel.ObjectDiscussionResponse	"The chat id of the newly created discussion"
+//	@Failure		401				{object}	util.UnauthorizedError				"Unauthorized"
+//	@Failure		404				{object}	util.NotFoundError					"Resource not found"
+//	@Failure		429				{object}	util.RateLimitError					"Rate limit exceeded"
+//	@Failure		500				{object}	util.ServerError					"Internal server error"
+//	@Security		bearerauth
+//	@Router			/v1/spaces/{space_id}/objects/{object_id}/discussion [post]
+func AddDiscussionHandler(s *service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		objectId := c.Param("object_id")
+
+		discussionId, err := s.AddDiscussion(c.Request.Context(), objectId)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(service.ErrFailedAddDiscussion, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToApiError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusCreated, apimodel.ObjectDiscussionResponse{DiscussionId: discussionId})
+	}
+}
