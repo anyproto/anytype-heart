@@ -422,13 +422,16 @@ func TestV2DiscussionIsAChatForTheMessageOperations(t *testing.T) {
 	})
 
 	t.Run("the loss warning counts every kind the text cannot express, exactly", func(t *testing.T) {
-		// given: two quotes (editor + message), a link, an embed, two styled
-		// text blocks, one paragraph and a nil entry
+		// given: two quotes (editor + message), a link, an embed, two text
+		// blocks in styles markdown has no syntax for, a heading and a code
+		// block it does (kept, not counted), one paragraph and a nil entry
 		existing := &model.ChatMessage{Id: "msg1", Message: &model.ChatMessageMessageContent{}, Blocks: []*model.ChatMessageMessageBlock{
 			{Content: &model.ChatMessageMessageBlockContentOfEditorQuote{EditorQuote: &model.ChatMessageMessageBlockEditorQuote{BlockId: "b1", Content: &model.ChatMessageMessageBlockText{Text: "q1"}}}},
 			{Content: &model.ChatMessageMessageBlockContentOfMessageQuote{MessageQuote: &model.ChatMessageMessageBlockMessageQuote{MessageId: "m0", ParticipantId: "p", Content: &model.ChatMessageMessageBlockText{Text: "q2"}}}},
 			{Content: &model.ChatMessageMessageBlockContentOfLink{Link: &model.ChatMessageMessageBlockLink{TargetObjectId: "file1"}}},
 			{Content: &model.ChatMessageMessageBlockContentOfEmbed{Embed: &model.ChatMessageMessageBlockEmbed{Text: "x^2"}}},
+			{Content: &model.ChatMessageMessageBlockContentOfText{Text: &model.ChatMessageMessageBlockText{Text: "note", Style: model.BlockContentText_Callout}}},
+			{Content: &model.ChatMessageMessageBlockContentOfText{Text: &model.ChatMessageMessageBlockText{Text: "fold", Style: model.BlockContentText_Toggle}}},
 			{Content: &model.ChatMessageMessageBlockContentOfText{Text: &model.ChatMessageMessageBlockText{Text: "Heading", Style: model.BlockContentText_Header1}}},
 			{Content: &model.ChatMessageMessageBlockContentOfText{Text: &model.ChatMessageMessageBlockText{Text: "code", Style: model.BlockContentText_Code}}},
 			{Content: &model.ChatMessageMessageBlockContentOfText{Text: &model.ChatMessageMessageBlockText{Text: "plain"}}},

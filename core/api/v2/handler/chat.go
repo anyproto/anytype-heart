@@ -1,7 +1,7 @@
 package v2handler
 
 // chat.go holds the chat handlers. Message text
-// is §8 inline markup in BOTH directions (the D′1 caveat applies verbatim:
+// is markdown in BOTH directions (the D′1 caveat applies verbatim:
 // find/replace-style specials mint real marks). C7 etag/If-Match does NOT
 // apply to chats — order ids and last_state_id are the stream's native
 // concurrency vocabulary; this is a deliberate, documented exemption like
@@ -153,7 +153,7 @@ func GetChatMessagesHandler(s *v2service.Service) gin.HandlerFunc {
 // AddChatMessageHandler sends a message
 //
 //	@Summary		Send a chat message
-//	@Description	The text is markup source, so `*`, `[` and a mention tag mint real marks; escape a literal one with a backslash. The cap is 8000 UTF-16 code units, where one emoji can cost two or more. Attachments are object ids, at most 32, and each one's kind is taken from the target's layout. In a discussion the text is stored as blocks, one per line; a line of exactly --- is a divider.
+//	@Description	The text is Markdown, formatted as described under Write chat messages. The cap is 8000 UTF-16 code units, where one emoji can cost two or more. Attachments are object ids, at most 32, and each one's kind is taken from the target's layout. In a discussion the text is stored as blocks.
 //	@Id				add_chat_message
 //	@Tags			Chat
 //	@Accept			json

@@ -74,6 +74,81 @@ func TestChatMessageFromProto(t *testing.T) {
 		assert.Equal(t, msg.Message.Marks[0].Range.To, marks[0].Range.To)
 	})
 
+	codeMessage := func(text string, from, to int32) *model.ChatMessage {
+		return &model.ChatMessage{Id: "msg1", Message: &model.ChatMessageMessageContent{
+			Text:  text,
+			Marks: []*model.BlockContentTextMark{{Range: &model.Range{From: from, To: to}, Type: model.BlockContentTextMark_Keyboard}},
+		}}
+	}
+
+	t.Run("a multi-line code mark over whole lines reads back as a fence", func(t *testing.T) {
+		// given: the shape the desktop composer (and the API) store for ``` fences
+		msg := codeMessage("Run:\nmake\nmake test\ndone", 5, 19)
+
+		// when
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
+
+		// then
+		assert.Equal(t, "Run:\n```\nmake\nmake test\n```\ndone", got.Text)
+	})
+
+	t.Run("a fence around code holding a backtick fence is longer than it", func(t *testing.T) {
+		// given
+		msg := codeMessage("```go\nx\n```", 0, 11)
+
+		// when
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
+
+		// then
+		assert.Equal(t, "````\n```go\nx\n```\n````", got.Text)
+	})
+
+	t.Run("a whole line of code holding a double backtick reads back as a fence", func(t *testing.T) {
+		// given: inline, it would need a ``` delimiter, which a post reads as a fence opener
+		msg := codeMessage("x\na`b``c\ny", 2, 8)
+
+		// when
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
+
+		// then
+		assert.Equal(t, "x\n```\na`b``c\n```\ny", got.Text)
+	})
+
+	t.Run("space chat prose that a post would read as a heading is escaped, a list is not", func(t *testing.T) {
+		// given
+		msg := &model.ChatMessage{Id: "msg1", Message: &model.ChatMessageMessageContent{Text: "# literal\n- item"}}
+
+		// when
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
+
+		// then
+		assert.Equal(t, "\\# literal\n- item", got.Text)
+	})
+
+	t.Run("a line inside a multi-line code span is not escaped", func(t *testing.T) {
+		// when
+		got := ChatMessageFromProto(codeMessage("see a\n# b", 4, 9), ChatMessageOptions{SpaceId: "space1"})
+
+		// then
+		assert.Equal(t, "see `a\n# b`", got.Text)
+	})
+
+	t.Run("a single-line code mark stays inline code", func(t *testing.T) {
+		// when
+		got := ChatMessageFromProto(codeMessage("x\ny", 2, 3), ChatMessageOptions{SpaceId: "space1"})
+
+		// then
+		assert.Equal(t, "x\n`y`", got.Text)
+	})
+
+	t.Run("a multi-line code mark that starts mid-line stays inline code", func(t *testing.T) {
+		// when
+		got := ChatMessageFromProto(codeMessage("see a\nb", 4, 7), ChatMessageOptions{SpaceId: "space1"})
+
+		// then
+		assert.Equal(t, "see `a\nb`", got.Text)
+	})
+
 	t.Run("mention marks render as §8 mention tags", func(t *testing.T) {
 		// given
 		msg := chatTestMessage()
@@ -205,6 +280,57 @@ func TestChatMessageFromProto(t *testing.T) {
 		assert.Equal(t, "**quoted** line\nthe quoted editor text", got.Text,
 			"text-bearing blocks render as §8 markup, newline-joined, in the text slot")
 		assert.Empty(t, got.BlocksText, "nothing is served twice")
+	})
+
+	t.Run("styled blocks read back as the markdown that posts them", func(t *testing.T) {
+		// given
+		block := func(style model.BlockContentTextStyle, text string) *model.ChatMessageMessageBlock {
+			return &model.ChatMessageMessageBlock{Content: &model.ChatMessageMessageBlockContentOfText{Text: &model.ChatMessageMessageBlockText{Text: text, Style: style}}}
+		}
+		done := block(model.BlockContentText_Checkbox, "done")
+		done.GetText().Checked = true
+		code := block(model.BlockContentText_Code, "x\n```\ny")
+		code.GetText().Lang = "md"
+		msg := chatTestMessage()
+		msg.Message = &model.ChatMessageMessageContent{}
+		msg.Blocks = []*model.ChatMessageMessageBlock{
+			block(model.BlockContentText_Header1, "One"),
+			block(model.BlockContentText_Header2, "Two"),
+			block(model.BlockContentText_Header3, "Three"),
+			block(model.BlockContentText_Marked, "item"),
+			block(model.BlockContentText_Numbered, "first"),
+			block(model.BlockContentText_Numbered, "second"),
+			done,
+			block(model.BlockContentText_Checkbox, "todo"),
+			block(model.BlockContentText_Quote, "said\nsaid more"),
+			code,
+			block(model.BlockContentText_Numbered, "again"),
+			block(model.BlockContentText_Paragraph, "---"),
+		}
+
+		// when
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
+
+		// then
+		assert.Equal(t, "# One\n## Two\n### Three\n- item\n1. first\n2. second\n- [x] done\n- [ ] todo\n"+
+			"> said\n> said more\n````md\nx\n```\ny\n````\n1. again\n---", got.Text)
+	})
+
+	t.Run("discussion prose that a post would read as block syntax is escaped, the divider is not", func(t *testing.T) {
+		// given
+		msg := chatTestMessage()
+		msg.Message = &model.ChatMessageMessageContent{}
+		for _, text := range []string{"# literal", "- item", "> q", "1. one", "- - -", "---"} {
+			msg.Blocks = append(msg.Blocks, &model.ChatMessageMessageBlock{Content: &model.ChatMessageMessageBlockContentOfText{
+				Text: &model.ChatMessageMessageBlockText{Text: text},
+			}})
+		}
+
+		// when
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
+
+		// then
+		assert.Equal(t, "\\# literal\n\\- item\n\\> q\n1\\. one\n\\- - -\n---", got.Text)
 	})
 
 	t.Run("a message with BOTH content and blocks keeps the blocks in blocks_text", func(t *testing.T) {

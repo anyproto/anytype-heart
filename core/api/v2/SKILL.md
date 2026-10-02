@@ -241,8 +241,12 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   `unread_mentions`, `last_state_id` — so "anything new?" is a `?limit=1`
   read. Cursors only (`?after=` walks forward; otherwise newest-first via
   `next_before`); `?offset=` is rejected.
-- Message `text` is inline markup both ways (mentions as
-  `<mention object_id="…">`); ≤8000 UTF-16 units; `attachments` = up to 32 object
+- Message `text` is markdown both ways (mentions as
+  `<mention object_id="…">`). In a space chat a `#` heading line posts as a
+  bold line and a ``` fence as code (language dropped; several lines show as
+  a code block and read back as a fence, one line as inline code); other
+  block syntax stays literal. Reads escape literal block syntax (`\#`), so
+  echoing `text` back keeps the message. ≤8000 UTF-16 units; `attachments` = up to 32 object
   ids from `POST …/files`. `?reactions=full` adds who reacted.
 - Mark read: `POST …/chats/{id}/read` with `{"up_to": <order>,
   "last_state_id": <id>}` — **both** from the same GET, else nothing marks.
@@ -256,9 +260,12 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   carries `discussion: "<id>"` when one exists; `POST …/objects/{id}/discussion`
   mints one (201, `created: true`) or returns the existing id (200). Use
   that id as the chat id on every route above; `reply_to` makes a threaded
-  reply. Same message body; a discussion stores the text as one paragraph
-  block per line (blank lines dropped, a `---` line is a divider) and reads
-  it back as `text`. Discussions are not in `GET …/chats`.
+  reply. Same message body; a discussion stores the markdown as blocks:
+  headings, list items, checkboxes, quotes and fenced code keep their style,
+  other lines become one paragraph each (blank lines dropped, a `---` line is
+  a divider, a table one line per row with a warning), nesting is flattened,
+  and a read returns the same markdown as `text`. Discussions are not in
+  `GET …/chats`.
 
 ## Conventions on every call
 
