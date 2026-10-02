@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/any-sync/net"
 	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/anyproto/any-sync/net/secureservice/handshake"
+	"github.com/anyproto/any-sync/net/transport"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -61,6 +62,7 @@ func TestClassify(t *testing.T) {
 		{"collection not found", anystore.ErrCollectionNotFound, want{pb.EventAccountRecovery_Unexpected, false}},
 		{"space missing outside the account context", spacesyncproto.ErrSpaceMissing, want{pb.EventAccountRecovery_Unexpected, true}},
 		{"unknown", errors.New("something"), want{pb.EventAccountRecovery_Unexpected, true}},
+		{"connection died under an RPC", fmt.Errorf("pull: %w", transport.NewConnClosedError(errors.New("session shutdown"))), want{pb.EventAccountRecovery_PeerUnreachable, true}},
 		{"wrapped", fmt.Errorf("init tech space: %w", coordinatorproto.ErrAccountIsDeleted), want{pb.EventAccountRecovery_AccountDeleted, false}},
 		{"joined dial errors: best member wins", errors.Join(timeoutErr{}, handshake.ErrIncompatibleVersion, &gonet.OpError{Op: "dial", Err: errors.New("refused")}), want{pb.EventAccountRecovery_IncompatibleVersion, false}},
 		{"joined dial errors: all transport", errors.Join(timeoutErr{}, &gonet.OpError{Op: "dial", Err: errors.New("refused")}), want{pb.EventAccountRecovery_PeerUnreachable, true}},
