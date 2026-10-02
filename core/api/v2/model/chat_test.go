@@ -252,6 +252,40 @@ func TestChatMessageFromProto(t *testing.T) {
 		assert.Empty(t, got.BlocksText, "nothing is served twice")
 	})
 
+	t.Run("styled blocks read back as the markdown that posts them", func(t *testing.T) {
+		// given
+		block := func(style model.BlockContentTextStyle, text string) *model.ChatMessageMessageBlock {
+			return &model.ChatMessageMessageBlock{Content: &model.ChatMessageMessageBlockContentOfText{Text: &model.ChatMessageMessageBlockText{Text: text, Style: style}}}
+		}
+		done := block(model.BlockContentText_Checkbox, "done")
+		done.GetText().Checked = true
+		code := block(model.BlockContentText_Code, "x\n```\ny")
+		code.GetText().Lang = "md"
+		msg := chatTestMessage()
+		msg.Message = &model.ChatMessageMessageContent{}
+		msg.Blocks = []*model.ChatMessageMessageBlock{
+			block(model.BlockContentText_Header1, "One"),
+			block(model.BlockContentText_Header2, "Two"),
+			block(model.BlockContentText_Header3, "Three"),
+			block(model.BlockContentText_Marked, "item"),
+			block(model.BlockContentText_Numbered, "first"),
+			block(model.BlockContentText_Numbered, "second"),
+			done,
+			block(model.BlockContentText_Checkbox, "todo"),
+			block(model.BlockContentText_Quote, "said\nsaid more"),
+			code,
+			block(model.BlockContentText_Numbered, "again"),
+			block(model.BlockContentText_Paragraph, "---"),
+		}
+
+		// when
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
+
+		// then
+		assert.Equal(t, "# One\n## Two\n### Three\n- item\n1. first\n2. second\n- [x] done\n- [ ] todo\n"+
+			"> said\n> said more\n````md\nx\n```\ny\n````\n1. again\n---", got.Text)
+	})
+
 	t.Run("a message with BOTH content and blocks keeps the blocks in blocks_text", func(t *testing.T) {
 		// given: a legacy desktop post — content text plus a quote block
 		msg := chatTestMessage()

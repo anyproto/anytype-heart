@@ -258,9 +258,12 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   carries `discussion: "<id>"` when one exists; `POST …/objects/{id}/discussion`
   mints one (201, `created: true`) or returns the existing id (200). Use
   that id as the chat id on every route above; `reply_to` makes a threaded
-  reply. Same message body; a discussion stores the text as one paragraph
-  block per line (blank lines dropped, a `---` line is a divider) and reads
-  it back as `text`. Discussions are not in `GET …/chats`.
+  reply. Same message body; a discussion stores the markdown as blocks:
+  headings, list items, checkboxes, quotes and fenced code keep their style,
+  other lines become one paragraph each (blank lines dropped, a `---` line is
+  a divider, a table one line per row with a warning), nesting is flattened,
+  and a read returns the same markdown as `text`. Discussions are not in
+  `GET …/chats`.
 
 ## Conventions on every call
 

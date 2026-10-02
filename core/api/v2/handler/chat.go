@@ -153,7 +153,7 @@ func GetChatMessagesHandler(s *v2service.Service) gin.HandlerFunc {
 // AddChatMessageHandler sends a message
 //
 //	@Summary		Send a chat message
-//	@Description	The text is Markdown, formatted as described under Write chat messages. The cap is 8000 UTF-16 code units, where one emoji can cost two or more. Attachments are object ids, at most 32, and each one's kind is taken from the target's layout. In a discussion the text is stored as blocks, one per line; a line of exactly --- is a divider.
+//	@Description	The text is Markdown, formatted as described under Write chat messages. The cap is 8000 UTF-16 code units, where one emoji can cost two or more. Attachments are object ids, at most 32, and each one's kind is taken from the target's layout. In a discussion the text is stored as blocks.
 //	@Id				add_chat_message
 //	@Tags			Chat
 //	@Accept			json

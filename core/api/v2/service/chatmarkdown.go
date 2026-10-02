@@ -1,21 +1,34 @@
 package v2service
 
-// chatmarkdown.go parses a space chat's message text. A space chat stores a
-// message as ONE text with marks, so of block markdown it can show only what
-// marks express: a heading line becomes a bold line, and a fenced code block
-// becomes a code mark over the code — the shape the desktop composer stores
-// for ``` fences and renders as a code block (the language has nowhere to
-// live and is dropped). Heading and fence-opener lines are recognized by the
-// AnyBlock markdown parser one line at a time, so they match what an object
-// body's markdown makes of them; everything else — lists, quotes, blank
-// lines — goes through the inline codec as before.
+// chatmarkdown.go parses a chat message's markdown into the form the chat
+// stores. A space chat stores a message as ONE text with marks, so of block
+// markdown it can show only what marks express: a heading line becomes a
+// bold line, and a fenced code block becomes a code mark over the code — the
+// shape the desktop composer stores for ``` fences and renders as a code
+// block (the language has nowhere to live and is dropped). Heading and
+// fence-opener lines are recognized by the AnyBlock markdown parser one line
+// at a time, so they match what an object body's markdown makes of them;
+// everything else — lists, quotes, blank lines — goes through the inline
+// codec as before.
+//
+// A discussion stores blocks, so its markdown goes through the AnyBlock
+// parser and fragment import whole, and each imported text block becomes a
+// chat text block of the same style: the shapes the desktop discussion
+// composer writes. Chat blocks are flat, so nesting is flattened; a divider
+// is the desktop's "---" paragraph, and a table, which has no chat form,
+// becomes one line per row with a warning.
 
 import (
 	"encoding/json"
+	"fmt"
+	"strconv"
 	"strings"
 
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	textblock "github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	textutil "github.com/anyproto/anytype-heart/util/text"
 )
 
@@ -36,20 +49,162 @@ type chatLine struct {
 	indent int
 }
 
-// parseChatText parses a message text for the chat's store: a space chat's
-// content takes headings and fences as marks, a discussion's blocks the
-// inline markup.
-func parseChatText(layout model.ObjectTypeLayout, md string) (string, []*model.BlockContentTextMark, error) {
+// chatBody is a message text parsed into the chat's stored form: content
+// for a space chat; for a discussion, blocks beside an EMPTY content object
+// (the store serializer dereferences the content unconditionally —
+// chatmodel.MarshalAnyenc — and the desktop's discussion composer writes the
+// same empty object).
+type chatBody struct {
+	content  *model.ChatMessageMessageContent
+	blocks   []*model.ChatMessageMessageBlock
+	warnings []v2model.Issue
+}
+
+// parseChatBody parses markdown for the chat's store.
+func parseChatBody(layout model.ObjectTypeLayout, md string) (*chatBody, error) {
 	if chatWritesBlocks(layout) {
-		return anyblockjson.ParseInlineText(md)
+		return parseDiscussionBody(md)
 	}
-	return parseChatContent(md)
+	text, marks, err := parseChatContent(md)
+	if err != nil {
+		return nil, err
+	}
+	return &chatBody{content: &model.ChatMessageMessageContent{
+		Text:  text,
+		Style: model.BlockContentText_Paragraph,
+		Marks: marks,
+	}}, nil
+}
+
+// text is what the message says, the text the length cap counts: the
+// content's text, or the blocks' texts newline-joined.
+func (b *chatBody) text() string {
+	if len(b.blocks) == 0 {
+		return b.content.Text
+	}
+	texts := make([]string, 0, len(b.blocks))
+	for _, block := range b.blocks {
+		texts = append(texts, block.GetText().GetText())
+	}
+	return strings.Join(texts, "\n")
+}
+
+// expandLinks expands the cross-space object links in every mark.
+func (b *chatBody) expandLinks(links *spaceLinkExpander) {
+	links.Marks(b.content.Marks)
+	for _, block := range b.blocks {
+		if tb := block.GetText(); tb != nil {
+			links.Marks(tb.Marks)
+		}
+	}
+}
+
+// parseDiscussionBody parses markdown into discussion blocks.
+func parseDiscussionBody(md string) (*chatBody, error) {
+	body := &chatBody{content: &model.ChatMessageMessageContent{Style: model.BlockContentText_Paragraph}}
+	run := anyblockjson.ParseMarkdownBlocks(md)
+	if len(run) == 0 {
+		return body, nil
+	}
+	next := 0
+	imported, topIds, err := anyblockjson.UnmarshalBlocks(run, anyblockjson.Options{GenerateId: func() string {
+		next++
+		return strconv.Itoa(next)
+	}})
+	if err != nil {
+		return nil, fmt.Errorf("import markdown blocks: %w", err)
+	}
+	byId := make(map[string]*model.Block, len(imported))
+	for _, block := range imported {
+		byId[block.Id] = block
+	}
+	for _, id := range topIds {
+		body.addBlock(byId, id)
+	}
+	return body, nil
+}
+
+// addBlock appends an imported block and its children, depth first.
+func (b *chatBody) addBlock(byId map[string]*model.Block, id string) {
+	block := byId[id]
+	if block == nil {
+		return
+	}
+	switch content := block.Content.(type) {
+	case *model.BlockContentOfText:
+		tb := &model.ChatMessageMessageBlockText{
+			Text:    content.Text.Text,
+			Style:   content.Text.Style,
+			Checked: content.Text.Checked,
+		}
+		if content.Text.Marks != nil {
+			tb.Marks = content.Text.Marks.Marks
+		}
+		if tb.Style == model.BlockContentText_Code {
+			tb.Lang = pbtypes.GetString(block.Fields, textblock.CodeLangFieldName)
+		}
+		b.addText(tb)
+	case *model.BlockContentOfDiv:
+		b.addText(&model.ChatMessageMessageBlockText{Text: "---", Style: model.BlockContentText_Paragraph})
+	case *model.BlockContentOfTable:
+		b.addTable(byId, block)
+		return
+	}
+	for _, child := range block.ChildrenIds {
+		b.addBlock(byId, child)
+	}
+}
+
+// addText appends a text block. The desktop discussion renderer shows no
+// break for a newline inside a block, so any block but code becomes one
+// block per line; empty blocks — an empty heading, an empty fence — are
+// dropped, as the desktop composer drops them.
+func (b *chatBody) addText(tb *model.ChatMessageMessageBlockText) {
+	if strings.TrimSpace(tb.Text) == "" {
+		return
+	}
+	if tb.Style == model.BlockContentText_Code {
+		b.blocks = append(b.blocks, chatTextBlock(tb))
+		return
+	}
+	b.blocks = append(b.blocks, splitTextBlock(tb)...)
+}
+
+// addTable appends one paragraph per table row, its cells joined by " | ".
+func (b *chatBody) addTable(byId map[string]*model.Block, table *model.Block) {
+	for _, sectionId := range table.ChildrenIds {
+		section := byId[sectionId]
+		if section == nil {
+			continue
+		}
+		for _, rowId := range section.ChildrenIds {
+			row := byId[rowId]
+			if row == nil || row.GetTableRow() == nil {
+				continue
+			}
+			line := markedTextBuilder{sep: " | "}
+			for _, cellId := range row.ChildrenIds {
+				if cell := byId[cellId].GetText(); cell != nil {
+					line.add(cell.Text, cell.GetMarks().GetMarks())
+				}
+			}
+			b.addText(&model.ChatMessageMessageBlockText{
+				Text:  line.text.String(),
+				Style: model.BlockContentText_Paragraph,
+				Marks: line.marks,
+			})
+		}
+	}
+	b.warnings = append(b.warnings, v2model.Issue{
+		Path:    "/text",
+		Message: "a chat message cannot hold a table: each row was posted as one line, its cells separated by |",
+	})
 }
 
 // parseChatContent parses markdown into the text and marks of a space chat
 // message's content.
 func parseChatContent(md string) (string, []*model.BlockContentTextMark, error) {
-	var out chatContentBuilder
+	out := markedTextBuilder{sep: "\n"}
 	var run []string
 	flush := func() error {
 		if run == nil {
@@ -59,7 +214,7 @@ func parseChatContent(md string) (string, []*model.BlockContentTextMark, error) 
 		if err != nil {
 			return err
 		}
-		out.appendLine(text, marks)
+		out.add(text, marks)
 		run = nil
 		return nil
 	}
@@ -79,7 +234,7 @@ func parseChatContent(md string) (string, []*model.BlockContentTextMark, error) 
 			if err != nil {
 				return "", nil, err
 			}
-			out.appendLine(text, headingMarks(text, marks))
+			out.add(text, headingMarks(text, marks))
 		case chatLineFence:
 			end := chatFenceEnd(lines, i+1, line.marker)
 			code := make([]string, 0, end-i-1)
@@ -88,7 +243,7 @@ func parseChatContent(md string) (string, []*model.BlockContentTextMark, error) 
 			}
 			// an empty fence is dropped, as the desktop composer drops it
 			if joined := strings.Join(code, "\n"); strings.TrimSpace(joined) != "" {
-				out.appendLine(joined, []*model.BlockContentTextMark{{
+				out.add(joined, []*model.BlockContentTextMark{{
 					Range: &model.Range{From: 0, To: utf16Len(joined)},
 					Type:  model.BlockContentTextMark_Keyboard,
 				}})
@@ -176,19 +331,20 @@ func utf16Len(s string) int32 {
 	return int32(len(textutil.StrToUTF16(s)))
 }
 
-// chatContentBuilder joins parsed lines with newlines, rebasing each line's
-// marks onto the joined text in UTF-16 units.
-type chatContentBuilder struct {
+// markedTextBuilder joins texts with a separator, rebasing each text's marks
+// onto the joined text in UTF-16 units.
+type markedTextBuilder struct {
+	sep     string
 	text    strings.Builder
 	units   int32
 	started bool
 	marks   []*model.BlockContentTextMark
 }
 
-func (b *chatContentBuilder) appendLine(text string, marks []*model.BlockContentTextMark) {
+func (b *markedTextBuilder) add(text string, marks []*model.BlockContentTextMark) {
 	if b.started {
-		b.text.WriteByte('\n')
-		b.units++
+		b.text.WriteString(b.sep)
+		b.units += utf16Len(b.sep)
 	}
 	b.started = true
 	for _, mark := range marks {

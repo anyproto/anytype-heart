@@ -34,7 +34,7 @@ import (
 
 // v2MarkupHint is the D′1 caveat, stated wherever message text fails to
 // parse: text is markdown SOURCE on both read and write.
-const v2MarkupHint = "message text is markdown source: *, [, ` and <mention> syntax mint real marks, and in a space chat a # heading line becomes a bold line and a ``` fence a code block; escape literal specials with a backslash"
+const v2MarkupHint = "message text is markdown source: *, [, ` and <mention> syntax mint real marks; a space chat turns a # heading line into a bold line and a ``` fence into a code block, a discussion keeps block syntax as styled blocks; escape literal specials with a backslash"
 
 // maxChatAttachments caps the attachment list per message — the bound the
 // chatMessage discovery schema advertises (maxItems), enforced here so the
@@ -213,11 +213,11 @@ func (s *Service) GetChatMessages(ctx context.Context, spaceId, chatId string, q
 //
 
 // AddChatMessage implements POST .../messages: text is markdown source
-// parsed for the chat's store (parseChatText; offset mark arrays never
+// parsed for the chat's store (parseChatBody; offset mark arrays never
 // cross the API); attachments are bare object ids with the kind inferred from
 // each target's layout. The parsed text is stored the way the chat's
-// layout stores it (chatMessageBody: content for a space chat, one text
-// block for a discussion). A dry run validates everything and sends nothing.
+// layout stores it (content for a space chat, text blocks for a
+// discussion). A dry run validates everything and sends nothing.
 func (s *Service) AddChatMessage(ctx context.Context, spaceId, chatId string, req v2model.AddChatMessageRequest, dryRun bool) (*v2model.ChatMessageResult, error) {
 	layout, err := s.ensureChatWrite(ctx, spaceId, chatId)
 	if err != nil {
@@ -227,40 +227,40 @@ func (s *Service) AddChatMessage(ctx context.Context, spaceId, chatId string, re
 		return nil, v2model.ValidationFailed("a message needs text or attachments",
 			v2model.Issue{Path: "/text", Message: "text and attachments are both empty"})
 	}
-	text, marks, err := parseChatText(layout, req.Text)
+	body, err := parseChatBody(layout, req.Text)
 	if err != nil {
-		return nil, v2model.ValidationFailed("message text does not parse as inline markup",
+		return nil, v2model.ValidationFailed("message text does not parse as markdown",
 			v2model.Issue{Path: "/text", Message: err.Error(), Hint: v2MarkupHint})
 	}
 	links := s.newSpaceLinkExpander(ctx)
-	links.Marks(marks)
-	if err := v2ValidateChatTextLength(text); err != nil {
+	body.expandLinks(links)
+	if err := v2ValidateChatTextLength(body.text()); err != nil {
 		return nil, err
 	}
 	attachments, err := s.resolveChatAttachments(spaceId, req.Attachments)
 	if err != nil {
 		return nil, err
 	}
-	content, blocks := chatMessageBody(layout, text, marks)
-	if err := v2ValidateChatBody(layout, blocks, len(attachments)); err != nil {
+	if err := v2ValidateChatBody(layout, body.blocks, len(attachments)); err != nil {
 		return nil, err
 	}
+	warnings := append(links.Warnings("/text"), body.warnings...)
 	if dryRun {
-		return &v2model.ChatMessageResult{DryRun: true, Warnings: links.Warnings("/text")}, nil
+		return &v2model.ChatMessageResult{DryRun: true, Warnings: warnings}, nil
 	}
 	resp := s.mw.ChatAddMessage(ctx, &pb.RpcChatAddMessageRequest{
 		ChatObjectId: chatId,
 		Message: &model.ChatMessage{
 			ReplyToMessageId: req.ReplyTo,
-			Message:          content,
-			Blocks:           blocks,
+			Message:          body.content,
+			Blocks:           body.blocks,
 			Attachments:      attachments,
 		},
 	})
 	if resp.Error != nil && resp.Error.Code != pb.RpcChatAddMessageResponseError_NULL {
 		return nil, v2ChatRpcError("add chat message", int32(resp.Error.Code), int32(pb.RpcChatAddMessageResponseError_BAD_INPUT), resp.Error.Description)
 	}
-	return &v2model.ChatMessageResult{Id: resp.MessageId, Warnings: links.Warnings("/text")}, nil
+	return &v2model.ChatMessageResult{Id: resp.MessageId, Warnings: warnings}, nil
 }
 
 // EditChatMessage implements PATCH .../messages/{message_id} as a text-only
@@ -269,38 +269,38 @@ func (s *Service) AddChatMessage(ctx context.Context, spaceId, chatId string, re
 // blocks}), so the service reads the message first and carries its style
 // and attachments through unchanged. In a content chat the blocks are
 // carried through too and the text lands in the content; in a blocks chat
-// (a discussion) the text REPLACES the blocks with one text block — the
-// same "every mark is re-derived from the text you send" rule, one level
-// up: a quote or link block the new text does not spell out is lost. A dry
+// (a discussion) the text REPLACES the blocks with the blocks it parses to —
+// the same "every mark is re-derived from the text you send" rule, one
+// level up: a quote or link block the new text does not spell out is lost. A dry
 // run stops after the existence check.
 func (s *Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageId string, req v2model.EditChatMessageRequest, dryRun bool) (*v2model.ChatMessageResult, error) {
 	layout, err := s.ensureChatWrite(ctx, spaceId, chatId)
 	if err != nil {
 		return nil, err
 	}
-	text, marks, err := parseChatText(layout, req.Text)
+	body, err := parseChatBody(layout, req.Text)
 	if err != nil {
-		return nil, v2model.ValidationFailed("message text does not parse as inline markup",
+		return nil, v2model.ValidationFailed("message text does not parse as markdown",
 			v2model.Issue{Path: "/text", Message: err.Error(), Hint: v2MarkupHint})
 	}
 	links := s.newSpaceLinkExpander(ctx)
-	links.Marks(marks)
-	if err := v2ValidateChatTextLength(text); err != nil {
+	body.expandLinks(links)
+	if err := v2ValidateChatTextLength(body.text()); err != nil {
 		return nil, err
 	}
 	existing, err := s.getChatMessageProto(ctx, chatId, messageId)
 	if err != nil {
 		return nil, err
 	}
-	if text == "" && len(existing.Attachments) == 0 {
+	if body.text() == "" && len(existing.Attachments) == 0 {
 		return nil, v2model.ValidationFailed("a message needs text or attachments",
 			v2model.Issue{Path: "/text", Message: "the edited text is empty and the message has no attachments"})
 	}
-	warnings := links.Warnings("/text")
+	warnings := append(links.Warnings("/text"), body.warnings...)
 	if chatWritesBlocks(layout) {
 		warnings = append(warnings, blocksEditWarnings(existing.Blocks)...)
 	}
-	content, blocks := chatMessageBody(layout, text, marks)
+	content, blocks := body.content, body.blocks
 	if err := v2ValidateChatBody(layout, blocks, len(existing.Attachments)); err != nil {
 		return nil, err
 	}
@@ -585,34 +585,20 @@ func chatWritesBlocks(layout model.ObjectTypeLayout) bool {
 	return layout == model.ObjectType_discussion
 }
 
-// chatMessageBody is the stored form of a parsed text: one paragraph
-// content for a content chat, or paragraph text blocks for a blocks chat.
-// Both are what the desktop renders for the respective store, and the
-// read side serves either as `text`. A blocks chat still carries an EMPTY
-// content object beside its blocks — the store serializer dereferences the
-// content unconditionally (chatmodel.MarshalAnyenc), and the desktop's
-// discussion composer writes the same empty object.
-func chatMessageBody(layout model.ObjectTypeLayout, text string, marks []*model.BlockContentTextMark) (*model.ChatMessageMessageContent, []*model.ChatMessageMessageBlock) {
-	if chatWritesBlocks(layout) {
-		return &model.ChatMessageMessageContent{Style: model.BlockContentText_Paragraph}, splitTextBlocks(text, marks)
-	}
-	return &model.ChatMessageMessageContent{
-		Text:  text,
-		Style: model.BlockContentText_Paragraph,
-		Marks: marks,
-	}, nil
+// chatTextBlock wraps a text block as a chat message block.
+func chatTextBlock(tb *model.ChatMessageMessageBlockText) *model.ChatMessageMessageBlock {
+	return &model.ChatMessageMessageBlock{Content: &model.ChatMessageMessageBlockContentOfText{Text: tb}}
 }
 
-// splitTextBlocks turns a parsed inline text into one paragraph block per
-// line, the shape the desktop's discussion composer writes (one part per
-// paragraph) and its renderer expects — a newline INSIDE a discussion block
-// is not rendered as a break there, unlike in a space chat. Empty lines
-// produce no block, so a blank-line paragraph break reads back as a single
-// newline; marks are clipped to the line they fall on, with their UTF-16
-// ranges rebased. An empty text yields no blocks (an attachments-only
-// message).
-func splitTextBlocks(text string, marks []*model.BlockContentTextMark) []*model.ChatMessageMessageBlock {
-	units := textutil.StrToUTF16(text)
+// splitTextBlock turns a text block into one block per line, the shape the
+// desktop's discussion composer writes (one part per paragraph) and its
+// renderer expects — a newline INSIDE a discussion block is not rendered as
+// a break there, unlike in a space chat. Every line keeps the block's style;
+// empty lines produce no block, so a blank-line paragraph break reads back
+// as a single newline; marks are clipped to the line they fall on, with
+// their UTF-16 ranges rebased.
+func splitTextBlock(tb *model.ChatMessageMessageBlockText) []*model.ChatMessageMessageBlock {
+	units := textutil.StrToUTF16(tb.Text)
 	var blocks []*model.ChatMessageMessageBlock
 	start := 0
 	for i := 0; i <= len(units); i++ {
@@ -620,13 +606,10 @@ func splitTextBlocks(text string, marks []*model.BlockContentTextMark) []*model.
 			continue
 		}
 		if i > start {
-			blocks = append(blocks, &model.ChatMessageMessageBlock{
-				Content: &model.ChatMessageMessageBlockContentOfText{Text: &model.ChatMessageMessageBlockText{
-					Text:  textutil.UTF16ToStr(units[start:i]),
-					Style: model.BlockContentText_Paragraph,
-					Marks: clipMarks(marks, int32(start), int32(i)),
-				}},
-			})
+			line := *tb
+			line.Text = textutil.UTF16ToStr(units[start:i])
+			line.Marks = clipMarks(tb.Marks, int32(start), int32(i))
+			blocks = append(blocks, chatTextBlock(&line))
 		}
 		start = i + 1
 	}
@@ -652,9 +635,24 @@ func clipMarks(marks []*model.BlockContentTextMark, from, to int32) []*model.Blo
 	return out
 }
 
+// markdownTextStyles are the text block styles a discussion's markdown
+// writes and reads back (blocksText), so an edit keeps them.
+var markdownTextStyles = map[model.BlockContentTextStyle]bool{
+	model.BlockContentText_Paragraph: true,
+	model.BlockContentText_Header1:   true,
+	model.BlockContentText_Header2:   true,
+	model.BlockContentText_Header3:   true,
+	model.BlockContentText_Quote:     true,
+	model.BlockContentText_Code:      true,
+	model.BlockContentText_Checkbox:  true,
+	model.BlockContentText_Marked:    true,
+	model.BlockContentText_Numbered:  true,
+}
+
 // blocksEditWarnings is the C6 warning for an edit that replaces a
-// discussion message's blocks with plain text: the blocks the text cannot
-// express — quotes, links, embeds, styled text — are dropped, and a caller
+// discussion message's blocks with the text's blocks: the blocks the text
+// cannot express — quotes, links, embeds, text in a style markdown has no
+// syntax for — are dropped, and a caller
 // who merely echoed the served `text` back would not know. Served on the
 // dry run and the receipt alike.
 func blocksEditWarnings(blocks []*model.ChatMessageMessageBlock) []v2model.Issue {
@@ -674,7 +672,7 @@ func blocksEditWarnings(blocks []*model.ChatMessageMessageBlock) []v2model.Issue
 			links++
 		case block.GetEmbed() != nil:
 			embeds++
-		case block.GetText() != nil && block.GetText().Style != model.BlockContentText_Paragraph:
+		case block.GetText() != nil && !markdownTextStyles[block.GetText().Style]:
 			styled++
 		}
 	}
@@ -785,7 +783,7 @@ func v2ValidateChatTextLength(parsedText string) error {
 
 // v2ValidateChatBody is the C9 guard for the one emptiness the store sees
 // and the request does not: in a blocks chat a text of newlines only
-// produces no block (splitTextBlocks), and a message with no block and no
+// produces no block (parseDiscussionBody), and a message with no block and no
 // attachment is refused by chatmodel.Validate — so the dry run must refuse
 // it too, rather than predict a 201 the real call turns into a 400.
 func v2ValidateChatBody(layout model.ObjectTypeLayout, blocks []*model.ChatMessageMessageBlock, attachments int) error {

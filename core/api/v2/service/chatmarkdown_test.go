@@ -189,3 +189,134 @@ func TestV2SpaceChatMarkdown(t *testing.T) {
 		assert.Equal(t, first, second)
 	})
 }
+
+// postToDiscussion posts text into a discussion and returns the blocks the
+// middleware received with the result.
+func postToDiscussion(t *testing.T, text string) ([]*model.ChatMessageMessageBlock, *v2model.ChatMessageResult) {
+	t.Helper()
+	fx := newV2Fixture(t)
+	fx.addDiscussion(t, testDiscussionId)
+	var sent *model.ChatMessage
+	fx.mwMock.EXPECT().ChatAddMessage(mock.Anything, mock.MatchedBy(func(req *pb.RpcChatAddMessageRequest) bool {
+		sent = req.Message
+		return true
+	})).Return(&pb.RpcChatAddMessageResponse{MessageId: "msgNew"})
+
+	got, err := fx.AddChatMessage(context.Background(), testSpaceId, testDiscussionId, v2model.AddChatMessageRequest{Text: text}, false)
+
+	require.NoError(t, err)
+	require.NotNil(t, sent)
+	require.NotNil(t, sent.Message, "an EMPTY content object rides beside the blocks")
+	assert.Empty(t, sent.Message.Text)
+	return sent.Blocks, got
+}
+
+func styledBlock(style model.BlockContentTextStyle, text string, marks ...*model.BlockContentTextMark) *model.ChatMessageMessageBlock {
+	return &model.ChatMessageMessageBlock{Content: &model.ChatMessageMessageBlockContentOfText{Text: &model.ChatMessageMessageBlockText{
+		Text: text, Style: style, Marks: marks,
+	}}}
+}
+
+func TestV2DiscussionMarkdown(t *testing.T) {
+	t.Run("block markdown becomes styled blocks, nesting flattened", func(t *testing.T) {
+		// given
+		text := "# Title\n- one\n  - nested\n1. first\n- [x] done\n> quoted\n```go\nx\ny\n```\n---\npara **b**"
+		checked := styledBlock(model.BlockContentText_Checkbox, "done")
+		checked.GetText().Checked = true
+		code := styledBlock(model.BlockContentText_Code, "x\ny")
+		code.GetText().Lang = "go"
+		want := []*model.ChatMessageMessageBlock{
+			styledBlock(model.BlockContentText_Header1, "Title"),
+			styledBlock(model.BlockContentText_Marked, "one"),
+			styledBlock(model.BlockContentText_Marked, "nested"),
+			styledBlock(model.BlockContentText_Numbered, "first"),
+			checked,
+			styledBlock(model.BlockContentText_Quote, "quoted"),
+			code,
+			styledBlock(model.BlockContentText_Paragraph, "---"),
+			styledBlock(model.BlockContentText_Paragraph, "para b", chatMark(model.BlockContentTextMark_Bold, 5, 6, "")),
+		}
+
+		// when
+		got, result := postToDiscussion(t, text)
+
+		// then
+		assert.Equal(t, want, got)
+		assert.Empty(t, result.Warnings)
+	})
+
+	t.Run("a multi-line quote becomes one quote block per line", func(t *testing.T) {
+		// when
+		got, _ := postToDiscussion(t, "> a\n> b")
+
+		// then
+		assert.Equal(t, []*model.ChatMessageMessageBlock{
+			styledBlock(model.BlockContentText_Quote, "a"),
+			styledBlock(model.BlockContentText_Quote, "b"),
+		}, got)
+	})
+
+	t.Run("a table becomes one line per row, with a warning", func(t *testing.T) {
+		// when
+		got, result := postToDiscussion(t, "| a | **b** |\n|---|---|\n| 1 | 2 |")
+
+		// then
+		assert.Equal(t, []*model.ChatMessageMessageBlock{
+			styledBlock(model.BlockContentText_Paragraph, "a | b", chatMark(model.BlockContentTextMark_Bold, 4, 5, "")),
+			styledBlock(model.BlockContentText_Paragraph, "1 | 2"),
+		}, got)
+		require.Len(t, result.Warnings, 1)
+		assert.Equal(t, "/text", result.Warnings[0].Path)
+		assert.Contains(t, result.Warnings[0].Message, "table")
+	})
+
+	t.Run("an empty heading and an empty fence leave no block", func(t *testing.T) {
+		// when
+		got, _ := postToDiscussion(t, "# \n```\n```\nok")
+
+		// then
+		assert.Equal(t, []*model.ChatMessageMessageBlock{styledBlock(model.BlockContentText_Paragraph, "ok")}, got)
+	})
+
+	t.Run("an edit keeps headings and code, so only inexpressible blocks are warned about", func(t *testing.T) {
+		// given
+		existing := &model.ChatMessage{Id: "msg1", Message: &model.ChatMessageMessageContent{}, Blocks: []*model.ChatMessageMessageBlock{
+			styledBlock(model.BlockContentText_Header1, "Heading"),
+			styledBlock(model.BlockContentText_Code, "code"),
+			styledBlock(model.BlockContentText_Callout, "note"),
+		}}
+		fx := newV2Fixture(t)
+		fx.addDiscussion(t, testDiscussionId)
+		fx.mwMock.EXPECT().ChatGetMessagesByIds(mock.Anything, mock.Anything).Return(&pb.RpcChatGetMessagesByIdsResponse{Messages: []*model.ChatMessage{existing}}).Once()
+		var edited *model.ChatMessage
+		fx.mwMock.EXPECT().ChatEditMessageContent(mock.Anything, mock.MatchedBy(func(req *pb.RpcChatEditMessageContentRequest) bool {
+			edited = req.EditedMessage
+			return true
+		})).Return(&pb.RpcChatEditMessageContentResponse{}).Once()
+
+		// when
+		got, err := fx.EditChatMessage(context.Background(), testSpaceId, testDiscussionId, "msg1", v2model.EditChatMessageRequest{Text: "## Update\n- item"}, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []*model.ChatMessageMessageBlock{
+			styledBlock(model.BlockContentText_Header2, "Update"),
+			styledBlock(model.BlockContentText_Marked, "item"),
+		}, edited.Blocks)
+		require.Len(t, got.Warnings, 1)
+		assert.Contains(t, got.Warnings[0].Message, "1 styled text block(s)")
+	})
+
+	t.Run("what the read serves posts back as the same blocks", func(t *testing.T) {
+		// given
+		first, _ := postToDiscussion(t, "# Title\n- one\n1. a\n2. b\n- [ ] todo\n> q\n```sh\nmake\n```\n---\nsee **this**\nand that")
+		served := v2model.ChatMessageFromProto(&model.ChatMessage{Id: "msg1", Message: &model.ChatMessageMessageContent{}, Blocks: first},
+			v2model.ChatMessageOptions{SpaceId: testSpaceId})
+
+		// when
+		second, _ := postToDiscussion(t, served.Text)
+
+		// then
+		assert.Equal(t, first, second)
+	})
+}

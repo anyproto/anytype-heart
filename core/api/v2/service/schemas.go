@@ -212,7 +212,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		// units, the STORE's cap) — advertising more turns schema-obedient
 		// callers into rejected requests; a drift test pins the two together
 		schema: `{"type":"object","additionalProperties":false,"properties":{` +
-			`"text":{"type":"string","maxLength":8000,"description":"markdown source: *, [, backtick and <mention object_id=\"…\"> mint real marks; in a space chat a # heading line becomes a bold line and a fence of three backticks a code block (its language is dropped), other block syntax stays literal; escape literal specials with a backslash; at most 8000 UTF-16 code units (an emoji counts 2+); required unless attachments are given"},` +
+			`"text":{"type":"string","maxLength":8000,"description":"markdown source: *, [, backtick and <mention object_id=\"…\"> mint real marks; in a space chat a # heading line becomes a bold line and a fence of three backticks a code block (its language is dropped), other block syntax stays literal; in a discussion headings, list items, checkboxes, quotes and fenced code become blocks of that style and a table one line per row; escape literal specials with a backslash; at most 8000 UTF-16 code units (an emoji counts 2+); required unless attachments are given"},` +
 			`"reply_to":{"type":"string","maxLength":256,"description":"message id being replied to"},` +
 			`"attachments":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":256},"description":"object ids, at most 32 (enforced); the kind is inferred from each target's layout (image → image, other file layouts → file, anything else → link)"}}}`,
 		example: `{"text":"can you **check** the doc?","attachments":["bafyreie6n5l5nkbjal37su54cha4coy"]}`,
@@ -220,7 +220,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 	"chatMessageEdit": {
 		endpoint: "PATCH /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}",
 		schema: `{"type":"object","additionalProperties":false,"required":["text"],"properties":{` +
-			`"text":{"type":"string","maxLength":8000,"description":"replacement markdown source, parsed as on post, at most 8000 UTF-16 code units; every mark is re-derived from this string (escape literal specials); the message's attachments, reply target and style are preserved, and so are its blocks in a space chat — in a discussion the text replaces the blocks (styles become paragraphs), and quotes or links the text cannot express are dropped with a warning"}}}`,
+			`"text":{"type":"string","maxLength":8000,"description":"replacement markdown source, parsed as on post, at most 8000 UTF-16 code units; every mark is re-derived from this string (escape literal specials); the message's attachments, reply target and style are preserved, and so are its blocks in a space chat — in a discussion the text replaces the blocks with the blocks it parses to, and quotes, links or styles the text cannot express are dropped with a warning"}}}`,
 		example: `{"text":"updated: can you **check** the doc?"}`,
 	},
 	"chatReaction": {

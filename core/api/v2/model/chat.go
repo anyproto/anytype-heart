@@ -9,6 +9,7 @@ package v2model
 // type.
 
 import (
+	"fmt"
 	"slices"
 	"sort"
 	"strings"
@@ -125,7 +126,8 @@ type DiscussionResult struct {
 
 // AddChatMessageRequest is the POST messages body. Text is markdown
 // SOURCE (the D′1 caveat applies: *, [ and mention syntax mint real marks,
-// and in a space chat so do heading lines and code fences).
+// in a space chat so do heading lines and code fences, and in a discussion
+// all block syntax becomes styled blocks).
 // Attachments are bare object ids — the attachment kind is inferred from
 // each target's layout (image → image, other file layouts → file, anything
 // else → link).
@@ -286,7 +288,7 @@ func renderChatContent(text string, marks []*model.BlockContentTextMark) string 
 	for _, fence := range fencedCodeRanges(units, marks) {
 		out.WriteString(renderInlineRange(units, marks, cursor, fence.From))
 		code := textutil.UTF16ToStr(units[fence.From:fence.To])
-		marker := strings.Repeat("`", max(3, longestRun(code, '`')+1))
+		marker := codeFence(code)
 		out.WriteString(marker + "\n" + code + "\n" + marker)
 		cursor = fence.To
 	}
@@ -356,11 +358,13 @@ func longestRun(s string, c rune) int {
 }
 
 // blocksText renders a message's text-bearing blocks (text blocks and the
-// contents of editor/message quotes) as §8 markup, newline-joined. Chat
-// messages composed of blocks (a discussion post, desktop quotes, rich
-// pastes) are valid with empty content (chatmodel.Validate) — without this
-// they would read back as empty messages. Link and embed blocks have no
-// text and stay invisible here.
+// contents of editor/message quotes) as markdown, newline-joined: a text
+// block's style becomes the line syntax that posts it back (# headings,
+// list items, checkboxes, > quotes, fenced code), and a run of numbered
+// items is numbered from 1. Chat messages composed of blocks (a discussion
+// post, desktop quotes, rich pastes) are valid with empty content
+// (chatmodel.Validate) — without this they would read back as empty
+// messages. Link and embed blocks have no text and stay invisible here.
 func blocksText(blocks []*model.ChatMessageMessageBlock) string {
 	var parts []string
 	appendText := func(tb *model.ChatMessageMessageBlockText) {
@@ -368,13 +372,21 @@ func blocksText(blocks []*model.ChatMessageMessageBlock) string {
 			parts = append(parts, anyblockjson.RenderInlineText(tb.Text, tb.Marks))
 		}
 	}
+	number := 0
 	for _, block := range blocks {
 		if block == nil {
 			continue
 		}
+		if tb := block.GetText(); tb != nil && tb.Style == model.BlockContentText_Numbered {
+			number++
+		} else {
+			number = 0
+		}
 		switch {
 		case block.GetText() != nil:
-			appendText(block.GetText())
+			if line := renderTextBlock(block.GetText(), number); line != "" {
+				parts = append(parts, line)
+			}
 		case block.GetEditorQuote() != nil:
 			appendText(block.GetEditorQuote().Content)
 		case block.GetMessageQuote() != nil:
@@ -382,6 +394,45 @@ func blocksText(blocks []*model.ChatMessageMessageBlock) string {
 		}
 	}
 	return strings.Join(parts, "\n")
+}
+
+// renderTextBlock renders one text block as markdown; number is its place
+// in a run of numbered items.
+func renderTextBlock(tb *model.ChatMessageMessageBlockText, number int) string {
+	if tb.Text == "" {
+		return ""
+	}
+	if tb.Style == model.BlockContentText_Code {
+		marker := codeFence(tb.Text)
+		return marker + tb.Lang + "\n" + tb.Text + "\n" + marker
+	}
+	text := anyblockjson.RenderInlineText(tb.Text, tb.Marks)
+	switch tb.Style {
+	case model.BlockContentText_Header1:
+		return "# " + text
+	case model.BlockContentText_Header2:
+		return "## " + text
+	case model.BlockContentText_Header3:
+		return "### " + text
+	case model.BlockContentText_Marked:
+		return "- " + text
+	case model.BlockContentText_Numbered:
+		return fmt.Sprintf("%d. %s", number, text)
+	case model.BlockContentText_Checkbox:
+		if tb.Checked {
+			return "- [x] " + text
+		}
+		return "- [ ] " + text
+	case model.BlockContentText_Quote:
+		return "> " + strings.ReplaceAll(text, "\n", "\n> ")
+	}
+	return text
+}
+
+// codeFence is a backtick fence longer than any backtick run in the code,
+// so the code cannot close it.
+func codeFence(code string) string {
+	return strings.Repeat("`", max(3, longestRun(code, '`')+1))
 }
 
 // reactionsFromProto compacts reactions to counts (always — the stable

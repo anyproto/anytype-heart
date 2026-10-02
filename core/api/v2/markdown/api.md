@@ -232,6 +232,12 @@ the block syntax that text can show:
   read returns it as a fence.
 - Lists, quotes, and other block syntax stay literal.
 
+A discussion stores a message as blocks, so headings, list items,
+checkboxes, quotes, and fenced code keep their style, with the code's
+language. Other lines become one paragraph each, and a `---` line is a
+divider. Nesting is flattened, and a table becomes one line per row with a
+warning. A read returns the markdown that posts the same blocks.
+
 ## Publish chat status
 
 `POST /v2/spaces/{space_id}/chats/{chat_id}/status` sends ephemeral activity
