@@ -381,8 +381,54 @@ func (s *State) changeBlockUpdate(update *pb.ChangeBlockUpdate) error {
 }
 
 func (s *State) changeBlockMove(move *pb.ChangeBlockMove) error {
+	// A concurrent change could have moved the target inside one of the moved blocks.
+	// Applying such a move would create a cycle detached from the root, and apply()
+	// would garbage-collect both subtrees. Skip the move instead: the previously
+	// applied concurrent move wins, deterministically on every device.
+	if s.isAnyAncestorOf(move.Ids, move.TargetId) {
+		return fmt.Errorf("move target %s is inside moved blocks", move.TargetId)
+	}
 	s.UnlinkAll(move.Ids)
-	return s.InsertTo(move.TargetId, move.Position, move.Ids...)
+	err := s.InsertTo(move.TargetId, move.Position, move.Ids...)
+	if err != nil {
+		// The target could have been removed by a concurrent change. The blocks are
+		// already unlinked, so without a fallback they would be garbage-collected by
+		// apply(). Reattach them to the end of the root instead of losing them.
+		existing := move.Ids[:0:0]
+		for _, id := range move.Ids {
+			if s.Exists(id) {
+				existing = append(existing, id)
+			}
+		}
+		if len(existing) == 0 {
+			return err
+		}
+		if fallbackErr := s.InsertTo("", model.Block_Inner, existing...); fallbackErr != nil {
+			return fmt.Errorf("reattach moved blocks to root: %w (original move error: %w)", fallbackErr, err)
+		}
+	}
+	return nil
+}
+
+// isAnyAncestorOf reports whether blockId or any of its ancestors is one of ids
+func (s *State) isAnyAncestorOf(ids []string, blockId string) bool {
+	visited := make(map[string]struct{})
+	cur := blockId
+	for cur != "" {
+		if slice.FindPos(ids, cur) != -1 {
+			return true
+		}
+		if _, ok := visited[cur]; ok {
+			return false
+		}
+		visited[cur] = struct{}{}
+		parent := s.PickParentOf(cur)
+		if parent == nil {
+			return false
+		}
+		cur = parent.Model().Id
+	}
+	return false
 }
 
 func (s *State) changeStoreKeySet(set *pb.ChangeStoreKeySet) error {
