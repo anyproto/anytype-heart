@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
@@ -151,6 +152,30 @@ func (c *Config) AutoDownloadSizeLimitMb() int64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.persisted.AutoDownloadSizeLimitMb
+}
+
+// LocalPeerTimeout returns the per-request timeout for fetching file blocks
+// from local peers. Falls back to the default when unset (0) or invalid.
+func (c *Config) LocalPeerTimeout() time.Duration {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	ms := c.persisted.LocalPeerTimeoutMs
+	if ms <= 0 {
+		ms = DefaultLocalPeerTimeoutMs
+	}
+	return time.Duration(ms) * time.Millisecond
+}
+
+// LocalPeerBanTtl returns how long an unreachable local peer is skipped
+// after a failed block fetch. Falls back to the default when unset (0) or invalid.
+func (c *Config) LocalPeerBanTtl() time.Duration {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	sec := c.persisted.LocalPeerBanTtlSec
+	if sec <= 0 {
+		sec = DefaultLocalPeerBanTtlSec
+	}
+	return time.Duration(sec) * time.Second
 }
 
 // Setters for persisted config fields (write to disk on change)

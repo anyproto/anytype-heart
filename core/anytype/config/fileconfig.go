@@ -10,6 +10,14 @@ import (
 
 var ErrInvalidConfigFormat = errors.New("failed to decode")
 
+// Defaults for local peer file-block fetching; they keep the previously
+// hardcoded behavior. Raise LocalPeerTimeoutMs on slow connections where one
+// second is not enough to fetch a block from a local peer.
+const (
+	DefaultLocalPeerTimeoutMs = 1000
+	DefaultLocalPeerBanTtlSec = 300
+)
+
 // PersistedConfig contains configuration that is persisted to config.json
 type PersistedConfig struct {
 	HostAddr                string `json:",omitempty"`
@@ -20,6 +28,8 @@ type PersistedConfig struct {
 	AutoDownloadFiles       bool   `json:",omitempty"`
 	AutoDownloadOnWifiOnly  bool   `json:",omitempty"`
 	AutoDownloadSizeLimitMb int64  `json:",omitempty"` // 0=no limit, >0=max file size in mebibytes
+	LocalPeerTimeoutMs      int    `json:",omitempty"` // per-request timeout for fetching file blocks from local peers; 0=DefaultLocalPeerTimeoutMs
+	LocalPeerBanTtlSec      int    `json:",omitempty"` // how long an unreachable local peer is skipped after a failed fetch; 0=DefaultLocalPeerBanTtlSec
 }
 
 // writeConfigSafe writes config to disk using atomic rename for crash safety.

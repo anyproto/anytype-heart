@@ -66,11 +66,12 @@ type RpcStore interface {
 	IterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error
 }
 
-const (
-	getManyWorkers   = 4
-	localPeerTimeout = time.Second
-	localPeerBanTTL  = 5 * time.Minute
-)
+const getManyWorkers = 4
+
+// The per-request timeout for local peers and the ban duration after a failed
+// fetch used to be constants here (1s / 5min). One second is too tight on
+// slow connections, so they are now configurable via config.json
+// (LocalPeerTimeoutMs / LocalPeerBanTtlSec).
 
 // reservedCallTimeout bounds a single doNodeReserved RPC. The reserved
 // sub-connection is shared and serialized by s.mu, so a stuck call would
@@ -86,6 +87,9 @@ type store struct {
 	pool      pool.Pool
 	peerStore peerstore.PeerStore
 
+	timeout time.Duration // per-request timeout for local peers
+	banTtl  time.Duration // how long a failed local peer is skipped
+
 	mu           sync.Mutex
 	reservedConn drpc.Conn
 
@@ -93,10 +97,12 @@ type store struct {
 	bannedLocalMap map[string]time.Time
 }
 
-func newStore(pool pool.Pool, peerStore peerstore.PeerStore) *store {
+func newStore(pool pool.Pool, peerStore peerstore.PeerStore, timeout, banTtl time.Duration) *store {
 	return &store{
 		pool:           pool,
 		peerStore:      peerStore,
+		timeout:        timeout,
+		banTtl:         banTtl,
 		bannedLocalMap: make(map[string]time.Time),
 	}
 }
@@ -104,7 +110,7 @@ func newStore(pool pool.Pool, peerStore peerstore.PeerStore) *store {
 func (s *store) banLocalPeer(peerId string) {
 	s.bannedMu.Lock()
 	defer s.bannedMu.Unlock()
-	s.bannedLocalMap[peerId] = time.Now().Add(localPeerBanTTL)
+	s.bannedLocalMap[peerId] = time.Now().Add(s.banTtl)
 }
 
 func (s *store) filterBannedPeers(peerIds []string) []string {
@@ -219,7 +225,7 @@ func (s *store) getFromLocalPeers(ctx context.Context, spaceId string, k cid.Cid
 	if len(localPeerIds) == 0 {
 		return nil, fmt.Errorf("no local peers available")
 	}
-	localCtx, cancel := context.WithTimeout(ctx, localPeerTimeout)
+	localCtx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 	p, err := s.pool.GetOneOf(localCtx, localPeerIds)
 	if err != nil {

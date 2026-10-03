@@ -290,6 +290,20 @@ func TestConfigGetters(t *testing.T) {
 	assert.False(t, cfg.AutoDownloadOnWifiOnly())
 }
 
+func TestLocalPeerGetters(t *testing.T) {
+	cfg := New(DisableFileConfig(true))
+
+	// unset values fall back to the defaults
+	assert.Equal(t, time.Duration(DefaultLocalPeerTimeoutMs)*time.Millisecond, cfg.LocalPeerTimeout())
+	assert.Equal(t, time.Duration(DefaultLocalPeerBanTtlSec)*time.Second, cfg.LocalPeerBanTtl())
+
+	// custom values are honored
+	cfg.persisted.LocalPeerTimeoutMs = 10000
+	cfg.persisted.LocalPeerBanTtlSec = 60
+	assert.Equal(t, 10*time.Second, cfg.LocalPeerTimeout())
+	assert.Equal(t, time.Minute, cfg.LocalPeerBanTtl())
+}
+
 func TestConfigDisableFileConfig(t *testing.T) {
 	t.Run("setters don't write when DisableFileConfig is true", func(t *testing.T) {
 		tmpDir := t.TempDir()
