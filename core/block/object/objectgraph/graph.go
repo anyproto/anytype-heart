@@ -46,6 +46,7 @@ var relationsEdgesSkipList = []domain.RelationKey{
 	bundle.RelationKeyLinks,
 	bundle.RelationKeySourceObject,
 	bundle.RelationKeyCreatedInContext,
+	bundle.RelationKeyNotificationSubscribers,
 }
 
 type Service interface {
