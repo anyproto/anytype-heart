@@ -2332,11 +2332,13 @@
     - [MembershipV2.CryptoCheckout](#anytype-model-MembershipV2-CryptoCheckout)
     - [MembershipV2.Data](#anytype-model-MembershipV2-Data)
     - [MembershipV2.Features](#anytype-model-MembershipV2-Features)
+    - [MembershipV2.FetchState](#anytype-model-MembershipV2-FetchState)
     - [MembershipV2.Invoice](#anytype-model-MembershipV2-Invoice)
     - [MembershipV2.Product](#anytype-model-MembershipV2-Product)
     - [MembershipV2.ProductStatus](#anytype-model-MembershipV2-ProductStatus)
     - [MembershipV2.PurchaseInfo](#anytype-model-MembershipV2-PurchaseInfo)
     - [MembershipV2.PurchasedProduct](#anytype-model-MembershipV2-PurchasedProduct)
+    - [MembershipV2.Revision](#anytype-model-MembershipV2-Revision)
     - [Metadata](#anytype-model-Metadata)
     - [Metadata.Payload](#anytype-model-Metadata-Payload)
     - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
@@ -2426,10 +2428,12 @@
     - [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod)
     - [Membership.Status](#anytype-model-Membership-Status)
     - [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType)
+    - [MembershipV2.Freshness](#anytype-model-MembershipV2-Freshness)
     - [MembershipV2.PaymentProvider](#anytype-model-MembershipV2-PaymentProvider)
     - [MembershipV2.Period](#anytype-model-MembershipV2-Period)
     - [MembershipV2.Platform](#anytype-model-MembershipV2-Platform)
     - [MembershipV2.ProductStatus.Status](#anytype-model-MembershipV2-ProductStatus-Status)
+    - [MembershipV2.RefreshError](#anytype-model-MembershipV2-RefreshError)
     - [NameserviceNameType](#anytype-model-NameserviceNameType)
     - [Notification.ActionType](#anytype-model-Notification-ActionType)
     - [Notification.Export.Code](#anytype-model-Notification-Export-Code)
@@ -16251,6 +16255,7 @@ before requesting a payment link and paying
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.MembershipV2.GetProducts.Response.Error](#anytype-Rpc-MembershipV2-GetProducts-Response-Error) |  |  |
 | products | [model.MembershipV2.Product](#anytype-model-MembershipV2-Product) | repeated |  |
+| fetchState | [model.MembershipV2.FetchState](#anytype-model-MembershipV2-FetchState) |  | always set, on errors too (NONE when nothing was ever fetched) |
 
 
 
@@ -16292,6 +16297,7 @@ before requesting a payment link and paying
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | noCache | [bool](#bool) |  | pass true to force the cache update by default this is false |
+| forceRefreshSec | [int32](#int32) |  | manual refresh (the Refresh button): if &gt; 0, implies noCache and then asks for a short forced poll of status and products, delivered as MembershipV2Update / ProductsUpdate events. 0 = no forced poll. The window is capped at 180s; at most one forced poll is admitted per 30s, further requests only fetch. Negative values are BAD_INPUT. |
 
 
 
@@ -16308,6 +16314,7 @@ before requesting a payment link and paying
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.MembershipV2.GetStatus.Response.Error](#anytype-Rpc-MembershipV2-GetStatus-Response-Error) |  |  |
 | data | [model.MembershipV2.Data](#anytype-model-MembershipV2-Data) |  |  |
+| fetchState | [model.MembershipV2.FetchState](#anytype-model-MembershipV2-FetchState) |  | always set, on errors too (NONE when nothing was ever fetched) |
 
 
 
@@ -34196,6 +34203,7 @@ engine.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | products | [model.MembershipV2.Product](#anytype-model-MembershipV2-Product) | repeated |  |
+| fetchState | [model.MembershipV2.FetchState](#anytype-model-MembershipV2-FetchState) |  | freshness, last successful fetch, last error and revision of the products |
 
 
 
@@ -34211,6 +34219,7 @@ engine.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | data | [model.MembershipV2.Data](#anytype-model-MembershipV2-Data) |  |  |
+| fetchState | [model.MembershipV2.FetchState](#anytype-model-MembershipV2-FetchState) |  | freshness, last successful fetch, last error and revision of the status |
 
 
 
@@ -37300,6 +37309,24 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-MembershipV2-FetchState"></a>
+
+### MembershipV2.FetchState
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| freshness | [MembershipV2.Freshness](#anytype-model-MembershipV2-Freshness) |  |  |
+| lastSuccessfulFetchAt | [int64](#int64) |  | unix seconds of the last successful fetch, 0 if never or unknown |
+| lastRefreshError | [MembershipV2.RefreshError](#anytype-model-MembershipV2-RefreshError) |  | set while the latest refresh of the resource failed |
+| revision | [MembershipV2.Revision](#anytype-model-MembershipV2-Revision) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-MembershipV2-Invoice"></a>
 
 ### MembershipV2.Invoice
@@ -37391,6 +37418,25 @@ if current user&#39;s top level product has isUpgradeable flag -&gt; show incent
 | product | [MembershipV2.Product](#anytype-model-MembershipV2-Product) |  |  |
 | purchaseInfo | [MembershipV2.PurchaseInfo](#anytype-model-MembershipV2-PurchaseInfo) |  |  |
 | productStatus | [MembershipV2.ProductStatus](#anytype-model-MembershipV2-ProductStatus) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-MembershipV2-Revision"></a>
+
+### MembershipV2.Revision
+Orders published states of one resource. Apply a response or event only
+if its revision is newer than the one already applied. epoch is random
+and changes on every payments service start (account select or restart):
+reset ordering state when it changes.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| epoch | [uint64](#uint64) |  |  |
+| counter | [uint64](#uint64) |  |  |
 
 
 
@@ -38874,6 +38920,22 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 
 
 
+<a name="anytype-model-MembershipV2-Freshness"></a>
+
+### MembershipV2.Freshness
+Freshness of one membership resource (status or products) as served in
+MembershipV2 GetStatus/GetProducts responses and update events.
+The zero value is FRESH, so a message that never sets it keeps the
+pre-freshness meaning.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| FRESH | 0 | data comes from a recent successful fetch from the payment node |
+| STALE | 1 | data comes from an earlier successful fetch: the latest refresh failed, or the age of the cached data is unknown |
+| NONE | 2 | never fetched successfully: data is an empty placeholder and must be treated as unknown (not as &#34;no membership&#34;) |
+
+
+
 <a name="anytype-model-MembershipV2-PaymentProvider"></a>
 
 ### MembershipV2.PaymentProvider
@@ -38931,6 +38993,19 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | StatusPending | 1 |  |
 | StatusActive | 2 |  |
 | StatusPendingRequiresAnyNameAllocation | 3 |  |
+
+
+
+<a name="anytype-model-MembershipV2-RefreshError"></a>
+
+### MembershipV2.RefreshError
+Class of the last failed refresh of a resource
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| RefreshErrorNull | 0 |  |
+| RefreshErrorPaymentNode | 1 | transient: timeout, payment node unreachable, connection closed |
+| RefreshErrorUnknown | 2 | any other failure |
 
 
 

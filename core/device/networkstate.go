@@ -8,21 +8,47 @@ Scope: global
 
 ## Responsibility
 - Tracks current network type (WiFi/Cellular/NotConnected) set by client
-- Tracks app foreground/background state transitions
+- Tracks app foreground/background state reported by the client
+  (AppSetDeviceState); the initial "unreported" state is kept distinct from
+  Background, and the background start is set only on a real transition.
+  CompStateAppClosingInitiated sets a closing flag: queued recoveries then
+  complete without flushing and skip hooks, head-sync and refresh
 - Notifies registered hooks when network type changes
-- Runs a connectivity-recovery pipeline (flush connection pool, notify
-  connectivity hooks, head-sync all spaces) whenever connectivity plausibly
-  changed: network type switch, interface address change, wake from sleep,
-  foreground resume after a long background
+- Runs a connectivity-recovery pipeline (recoveryworker.go: flush connection
+  pool, notify connectivity hooks, head-sync all spaces) whenever
+  connectivity plausibly changed: network type switch, interface address
+  change, process freeze (sleep/suspend), foreground resume after a long
+  background. Admission never blocks; the pipeline runs on one serialized
+  worker
+- Opened-objects refresh on a Foreground transition is asynchronous to
+  AppSetDeviceState when a recovery carries it (develop refreshed before the
+  RPC returned): it runs after the flush of
+  the job the transition enqueued, or right after the flush of a recovery
+  that is already running; otherwise inline in StateChange (as before), even
+  ahead of a merely queued flush
+- Freeze-aware wake recovery (GO-7556, wake.go): every observer calls one
+  locked observeGapLocked that opens a wake generation when the estimated
+  freeze exceeds the platform threshold; desktop recovers any uncovered
+  generation on its own (monitor fallback), mobile waits for the Foreground
+  report. The long-background transition recovery is suppressed only when a
+  wake generation observed since the last Foreground transition is covered
+  by a recovery still queued/running or completed < wakeCoverWindow ago
+- Mobile keeps the pre-GO-7556 flush budget: background duration on the
+  monotonic clock (as before) and the old 30s sleep threshold
 - Runs a background net monitor (netmonitor.go) so desktop gets recovery
-  signals without any client RPC: interface-address diffing + clock-jump
-  (sleep) detection
+  signals without any client RPC: interface-address diffing + the heartbeat
+  sampler
+- Exposes retained counters and the last wake/recovery result via debugstat
+  (networkstate_stats.go)
+- Known limits: a forward wall step > threshold on macOS/Linux is a false
+  wake (one flush); a backward wall step and a sleep inside the same sample
+  interval cancel out (the sleep is missed)
 */
 
 import (
 	"context"
 	"fmt"
-	"strings"
+	"runtime"
 	"sync"
 	"time"
 
@@ -90,25 +116,14 @@ const (
 	// recoverAfter gates the foreground-resume recovery: short app switches
 	// keep their connections, so flushing would only cause churn (GO-7302).
 	recoverAfter = time.Second * 15
-	// recoverySuppressWindow bounds how often the recovery pipeline can run.
-	// Signals arrive in bursts (wake fires the clock-jump detector, the
-	// interface diff and the client's foreground RPC within seconds); the
-	// first one runs immediately, the rest coalesce into at most one trailing
-	// run so fresh connections aren't torn down repeatedly. Deliberately NOT
-	// equal to netMonitorTickInterval: with equal values, an event observed
-	// exactly one tick after a recovery lands on the window boundary and
-	// leading-vs-coalesced is decided by sub-millisecond races.
-	recoverySuppressWindow = time.Second * 6
 )
 
 type networkState struct {
-	networkState          model.DeviceNetworkType
-	networkId             string
-	networkStateReported  bool
-	objectsRefresher      openedObjectRefresher
-	networkMu             sync.Mutex
-	lastDeviceState       domain.CompState
-	lastDeviceStateChange time.Time
+	networkState         model.DeviceNetworkType
+	networkId            string
+	networkStateReported bool
+	objectsRefresher     openedObjectRefresher
+	networkMu            sync.Mutex
 
 	onNetworkUpdateHooks []func(network model.DeviceNetworkType)
 	connectivityHooks    []func(online bool)
@@ -124,163 +139,154 @@ type networkState struct {
 	// snapshot string but a different generation, and the trailing run must
 	// fire then — the leading run acted while the link was down and its dials
 	// failed. Single writer (the monitor goroutine).
-	monitorGen      atomic.Int64
-	recoveryMu      sync.Mutex
-	lastRecoveryAt  time.Time
-	recoveryPending bool
-	pendingReason   string
-	pendingTimer    *time.Timer
-	closed          bool
+	monitorGen atomic.Int64
+
+	// recoveryMu guards the device state, the freeze detector, admission
+	// (suppression window, pending trailing run) and the recovery queue, so
+	// "observe gap, decide, enqueue" is one atomic step for every caller.
+	recoveryMu sync.Mutex
+	// device state reported via AppSetDeviceState; deviceStateReported
+	// distinguishes the initial unreported state from Background (both are
+	// the zero CompState).
+	lastDeviceState     domain.CompState
+	deviceStateReported bool
+	prevDeviceState     string
+	// closing is set by CompStateAppClosingInitiated (sent before app.Close)
+	// and by Close: queued recoveries then complete without flushing and skip
+	// hooks, head-sync and refresh, whose components may already be closing.
+	closing bool
+	// background start, set only on a real transition into Background
+	backgroundSinceWall time.Time
+	backgroundSinceMono time.Duration
+	// foregroundGenBase is the wake generation at the last Foreground
+	// transition; backgroundGenBase copies it when a background interval
+	// starts, so a wake the sampler saw shortly before a late Background
+	// report still counts as observed within that interval.
+	foregroundGenBase int64
+	backgroundGenBase int64
+	wake              wakeTracker
+
+	hasLastRecovery  bool
+	lastRecoveryMono time.Duration
+	recoveryPending  bool
+	pendingReason    string
+	pendingTrigger   string
+	pendingTimer     *time.Timer
+	closed           bool
 	// lastRecoveredFingerprint is the connectivity state the last recovery
 	// acted on; a trailing coalesced run with an identical fingerprint is a
-	// duplicate signal of the same physical event (wake fires the clock-jump
+	// duplicate signal of the same physical event (wake fires the freeze
 	// detector, the interface diff and the foreground RPC within seconds) and
-	// must not tear down the connections the leading run just re-established.
+	// must not tear down the connections the leading run just re-established
+	// — unless a wake generation is still uncompleted.
 	lastRecoveredFingerprint string
 
+	// serialized recovery worker
+	queuedJob    *recoveryJob
+	recoveryBusy bool
+	// refreshAfterRunning: a Foreground transition arrived while a recovery
+	// ran; the worker refreshes opened objects once that run finishes
+	refreshAfterRunning bool
+	workerKick          chan struct{}
+	workerDone          chan struct{}
+
 	monitor     *netMonitor
+	runCtx      context.Context
 	runCancel   context.CancelFunc
 	statService debugstat.StatService
 
 	stats recoveryStats
 
-	// test hooks; nil means the real thing (bare-struct construction in tests
-	// must stay safe, hence the nil-tolerant accessors below)
+	// mobile disables the desktop-only monitor fallback (iOS/Android recover
+	// on Foreground reports instead) and keeps mobile's pre-GO-7556 flush
+	// budget. monoCountsSleep selects the Windows freeze estimate (the
+	// monotonic clock includes sleep there).
+	mobile          bool
+	monoCountsSleep bool
+
+	testHooks
+}
+
+// testHooks are test-only overrides; the zero value means the real thing
+// (bare-struct construction in tests must stay safe, hence the nil-tolerant
+// accessors below).
+type testHooks struct {
 	now             func() time.Time
+	elapsed         func() time.Duration
 	scheduleAfter   func(d time.Duration, f func()) *time.Timer
 	monitorGetAddrs func() (addrs.InterfacesAddrs, error)
+	heartbeatEvery  time.Duration
+	flushBound      time.Duration
+	refreshBound    time.Duration
+	closeBound      time.Duration
+	// beforeFlushWait runs after Flush is started, before the worker waits
+	// for it (lets tests make the result and the deadline ready together)
+	beforeFlushWait func()
+	// manualDrive: Run starts neither the monitor goroutines nor the recovery
+	// worker; tests drive onHeartbeat, monitor.checkInterfaces and
+	// drainRecoveries themselves.
+	manualDrive bool
 }
-
-// recoveryStats counts how the recovery mechanism is exercised. Every update
-// is a single atomic op on an event-driven path (signals arrive at human
-// timescales — network switches, wakes, RPCs), and the JSON snapshot is built
-// only when the debug stat endpoint asks, so this adds no steady-state
-// overhead.
-type recoveryStats struct {
-	networkReports atomic.Int64
-	// networkReportsDuplicate counts no-op reports (same type and id). The
-	// ratio to networkReports shows the client's call pattern: near-100%
-	// duplicates is a healthy client reporting on every OS path callback as
-	// documented; 0 raw reports means the client isn't wired up at all.
-	networkReportsDuplicate atomic.Int64
-	foregroundEvents        atomic.Int64
-	backgroundEvents        atomic.Int64
-
-	signalsByType          atomic.Int64
-	signalsByPath          atomic.Int64
-	signalsByForeground    atomic.Int64
-	signalsByWake          atomic.Int64
-	signalsByIfaceLost     atomic.Int64
-	signalsByIfaceRegained atomic.Int64
-	signalsOther           atomic.Int64
-	signalsCoalesced       atomic.Int64
-
-	trailingRuns    atomic.Int64
-	trailingSkipped atomic.Int64
-
-	recoveries         atomic.Int64
-	recoveriesOffline  atomic.Int64
-	lastRecoveryUnix   atomic.Int64
-	lastRecoveryReason atomic.String
-}
-
-func (s *recoveryStats) countSignal(reason string) {
-	switch {
-	case strings.HasPrefix(reason, "network type"):
-		s.signalsByType.Inc()
-	case strings.HasPrefix(reason, "network path"):
-		s.signalsByPath.Inc()
-	case reason == "foreground resume":
-		s.signalsByForeground.Inc()
-	case strings.HasPrefix(reason, "wake from sleep"):
-		s.signalsByWake.Inc()
-	case strings.HasPrefix(reason, "interface addresses lost"):
-		s.signalsByIfaceLost.Inc()
-	case reason == "interface addresses regained":
-		s.signalsByIfaceRegained.Inc()
-	default:
-		s.signalsOther.Inc()
-	}
-}
-
-type networkStateStat struct {
-	NetworkType      string `json:"networkType"`
-	NetworkId        string `json:"networkId,omitempty"`
-	ReportedByClient bool   `json:"reportedByClient"`
-	LinkDown         bool   `json:"linkDown"`
-	MonitorSnapshot  string `json:"monitorSnapshot"`
-	MonitorGen       int64  `json:"monitorGeneration"`
-	Offline          bool   `json:"offline"`
-
-	NetworkReports          int64 `json:"networkReports"`
-	NetworkReportsDuplicate int64 `json:"networkReportsDuplicate"`
-	ForegroundEvents        int64 `json:"foregroundEvents"`
-	BackgroundEvents        int64 `json:"backgroundEvents"`
-
-	SignalsNetworkTypeChange int64 `json:"signalsNetworkTypeChange"`
-	SignalsNetworkPathChange int64 `json:"signalsNetworkPathChange"`
-	SignalsForegroundResume  int64 `json:"signalsForegroundResume"`
-	SignalsWakeFromSleep     int64 `json:"signalsWakeFromSleep"`
-	SignalsInterfaceLost     int64 `json:"signalsInterfaceLost"`
-	SignalsInterfaceRegained int64 `json:"signalsInterfaceRegained"`
-	SignalsOther             int64 `json:"signalsOther"`
-	SignalsCoalesced         int64 `json:"signalsCoalesced"`
-
-	TrailingRuns    int64 `json:"trailingRuns"`
-	TrailingSkipped int64 `json:"trailingSkipped"`
-
-	Recoveries         int64  `json:"recoveries"`
-	RecoveriesOffline  int64  `json:"recoveriesOffline"`
-	LastRecoveryUnix   int64  `json:"lastRecoveryUnix,omitempty"`
-	LastRecoveryReason string `json:"lastRecoveryReason,omitempty"`
-}
-
-func (n *networkState) ProvideStat() any {
-	n.networkMu.Lock()
-	state, id, reported := n.networkState, n.networkId, n.networkStateReported
-	n.networkMu.Unlock()
-	return networkStateStat{
-		NetworkType:      state.String(),
-		NetworkId:        id,
-		ReportedByClient: reported,
-		LinkDown:         n.linkDown.Load(),
-		MonitorSnapshot:  n.monitorSnapshot.Load(),
-		MonitorGen:       n.monitorGen.Load(),
-		Offline:          n.IsOffline(),
-
-		NetworkReports:          n.stats.networkReports.Load(),
-		NetworkReportsDuplicate: n.stats.networkReportsDuplicate.Load(),
-		ForegroundEvents:        n.stats.foregroundEvents.Load(),
-		BackgroundEvents:        n.stats.backgroundEvents.Load(),
-
-		SignalsNetworkTypeChange: n.stats.signalsByType.Load(),
-		SignalsNetworkPathChange: n.stats.signalsByPath.Load(),
-		SignalsForegroundResume:  n.stats.signalsByForeground.Load(),
-		SignalsWakeFromSleep:     n.stats.signalsByWake.Load(),
-		SignalsInterfaceLost:     n.stats.signalsByIfaceLost.Load(),
-		SignalsInterfaceRegained: n.stats.signalsByIfaceRegained.Load(),
-		SignalsOther:             n.stats.signalsOther.Load(),
-		SignalsCoalesced:         n.stats.signalsCoalesced.Load(),
-
-		TrailingRuns:    n.stats.trailingRuns.Load(),
-		TrailingSkipped: n.stats.trailingSkipped.Load(),
-
-		Recoveries:         n.stats.recoveries.Load(),
-		RecoveriesOffline:  n.stats.recoveriesOffline.Load(),
-		LastRecoveryUnix:   n.stats.lastRecoveryUnix.Load(),
-		LastRecoveryReason: n.stats.lastRecoveryReason.Load(),
-	}
-}
-
-func (n *networkState) StatId() string { return CName }
-
-func (n *networkState) StatType() string { return CName }
 
 func (n *networkState) timeNow() time.Time {
 	if n.now != nil {
 		return n.now()
 	}
 	return time.Now()
+}
+
+// wallNow is the wall clock without its monotonic reading.
+func (n *networkState) wallNow() time.Time {
+	return n.timeNow().Round(0)
+}
+
+// monoNow is the monotonic clock (pauses during sleep except on Windows).
+func (n *networkState) monoNow() time.Duration {
+	if n.elapsed != nil {
+		return n.elapsed()
+	}
+	return time.Since(monoEpoch)
+}
+
+func durationOr(d, def time.Duration) time.Duration {
+	if d > 0 {
+		return d
+	}
+	return def
+}
+
+func (n *networkState) heartbeatPeriod() time.Duration {
+	return durationOr(n.heartbeatEvery, heartbeatInterval)
+}
+func (n *networkState) flushTimeout() time.Duration { return durationOr(n.flushBound, flushTimeout) }
+func (n *networkState) refreshTimeout() time.Duration {
+	return durationOr(n.refreshBound, refreshTimeout)
+}
+func (n *networkState) closeTimeout() time.Duration { return durationOr(n.closeBound, closeTimeout) }
+
+// workCtx is cancelled by Close (Background before Run).
+func (n *networkState) workCtx() context.Context {
+	if n.runCtx != nil {
+		return n.runCtx
+	}
+	return context.Background()
+}
+
+// sleepAwareSince is the time elapsed since (wall, mono) as the larger of the
+// two deltas: the monotonic clock pauses during suspend on macOS, iOS, Linux
+// and Android, and a backward wall step must not shrink it below monotonic.
+func (n *networkState) sleepAwareSince(wall time.Time, mono time.Duration) time.Duration {
+	return max(n.wallNow().Sub(wall), n.monoNow()-mono)
+}
+
+// backgroundDuration: desktop counts sleep (max of both clocks); mobile keeps
+// the pre-GO-7556 monotonic measure, so a short device sleep while locked
+// doesn't add a flush (longer sleeps open a wake generation instead).
+func (n *networkState) backgroundDuration() time.Duration {
+	if n.mobile {
+		return n.monoNow() - n.backgroundSinceMono
+	}
+	return n.sleepAwareSince(n.backgroundSinceWall, n.backgroundSinceMono)
 }
 
 func (n *networkState) schedule(d time.Duration, f func()) *time.Timer {
@@ -291,36 +297,121 @@ func (n *networkState) schedule(d time.Duration, f func()) *time.Timer {
 }
 
 func (n *networkState) StateChange(state int) {
-	n.hookMu.Lock()
-	var (
-		curTime    = n.timeNow()
-		curState   = domain.CompState(state)
-		oldState   = n.lastDeviceState
-		timePassed = curTime.Sub(n.lastDeviceStateChange)
-	)
-	n.lastDeviceStateChange = curTime
-	n.lastDeviceState = curState
-	n.hookMu.Unlock()
-	if oldState != curState {
-		switch curState {
-		case domain.CompStateAppWentForeground:
-			n.stats.foregroundEvents.Inc()
-		case domain.CompStateAppWentBackground:
+	curState := domain.CompState(state)
+	if curState == domain.CompStateAppClosingInitiated {
+		n.recoveryMu.Lock()
+		n.closing = true
+		n.recoveryMu.Unlock()
+		return
+	}
+	if curState != domain.CompStateAppWentForeground && curState != domain.CompStateAppWentBackground {
+		return
+	}
+	n.recoveryMu.Lock()
+	newGen := n.observeGapLocked(observeSourceStateChange)
+	oldState, reported := n.lastDeviceState, n.deviceStateReported
+	if !reported || oldState != curState {
+		n.prevDeviceState = deviceStateName(oldState, reported)
+	}
+	n.lastDeviceState, n.deviceStateReported = curState, true
+
+	if curState == domain.CompStateAppWentBackground {
+		if !reported || oldState != domain.CompStateAppWentBackground {
+			// only a real change starts the background interval; duplicate
+			// Background reports must not reset it
 			n.stats.backgroundEvents.Inc()
+			n.backgroundSinceWall, n.backgroundSinceMono = n.wallNow(), n.monoNow()
+			n.backgroundGenBase = n.foregroundGenBase
+		} else {
+			n.stats.backgroundDuplicate.Inc()
+		}
+		// a late Background report can be the first to see the gap
+		n.desktopFallbackLocked(newGen)
+		n.recoveryMu.Unlock()
+		return
+	}
+
+	transitioned := !reported || oldState != domain.CompStateAppWentForeground
+	var backgroundedFor time.Duration
+	if transitioned {
+		n.stats.foregroundEvents.Inc()
+		if reported {
+			backgroundedFor = n.backgroundDuration()
+		} else {
+			// unreported -> Foreground (account start): today's single
+			// recovery, the initial state used to be the zero-value Background
+			backgroundedFor = time.Duration(1<<63 - 1)
+		}
+	} else {
+		n.stats.foregroundDuplicate.Inc()
+	}
+	longBackground := transitioned && backgroundedFor > recoverAfter
+	suppressed := false
+	if longBackground && n.coveredByRecentWakeRecoveryLocked() {
+		longBackground, suppressed = false, true
+		n.stats.foregroundSuppressed.Inc()
+	}
+	uncovered := n.wake.uncovered()
+	wakeGen := n.wake.observed
+	var trigger string
+	enqueued := false
+	switch {
+	case longBackground:
+		trigger = triggerTransition
+		enqueued = n.admitLocked("foreground resume", trigger, true)
+	case uncovered && transitioned:
+		trigger = triggerForegroundWake
+		enqueued = n.admitLocked("foreground resume (wake)", trigger, true)
+	case uncovered:
+		trigger = triggerDuplicateForeground
+		n.admitLocked("foreground resume (duplicateForeground)", trigger, false)
+	}
+	// Opened-objects refresh. A job this Foreground enqueued carries it (its
+	// flush runs first). Otherwise, if a recovery is running, it attaches to
+	// that run and goes out right after its flush (at most flushTimeout
+	// later). Otherwise it runs inline now, as before GO-7556 — even if a job
+	// is only queued: waiting behind a queued flush could be much later than
+	// before, so it costs one extra request round instead.
+	refreshNow := false
+	if transitioned && !enqueued {
+		if n.recoveryBusy {
+			n.refreshAfterRunning = true
+		} else {
+			refreshNow = true
 		}
 	}
-	if oldState != curState && curState == domain.CompStateAppWentForeground {
+	if transitioned {
+		n.foregroundGenBase = n.wake.observed
+	}
+	n.recoveryMu.Unlock()
+
+	if transitioned {
 		// Anchor log for measuring how fast per-space diffsync reacts to a wakeup (GO-7302).
-		log.Info("app went foreground", zap.Duration("backgroundedFor", timePassed))
-		if timePassed > recoverAfter {
-			n.triggerRecovery("foreground resume")
+		lvl := log.Info
+		if suppressed || trigger == triggerForegroundWake {
+			lvl = log.Warn // a wake decision: keep it visible in user builds
 		}
-		n.objectsRefresher.RefreshOpenedObjects(context.Background())
+		lvl("app went foreground",
+			zap.Duration("backgroundedFor", backgroundedFor),
+			zap.Bool("wasReported", reported),
+			zap.Int64("wakeGen", wakeGen),
+			zap.Bool("suppressedByWakeRecovery", suppressed),
+			zap.String("trigger", trigger),
+			zap.Bool("refreshInline", refreshNow))
+		if refreshNow {
+			n.objectsRefresher.RefreshOpenedObjects(context.Background())
+		}
+	} else if trigger != "" {
+		log.Warn("duplicateForeground with an uncovered wake", zap.Int64("wakeGen", wakeGen))
 	}
 }
 
 func New() NetworkState {
-	return &networkState{}
+	return &networkState{
+		mobile:          runtime.GOOS == "android" || runtime.GOOS == "ios",
+		monoCountsSleep: runtime.GOOS == "windows",
+		workerKick:      make(chan struct{}, 1),
+	}
 }
 
 func (n *networkState) Init(a *app.App) (err error) {
@@ -335,25 +426,59 @@ func (n *networkState) Init(a *app.App) (err error) {
 }
 
 func (n *networkState) Run(ctx context.Context) (err error) {
-	var runCtx context.Context
-	runCtx, n.runCancel = context.WithCancel(context.Background())
-	n.monitor = newNetMonitor(n.triggerRecovery, n.onMonitorSnapshot, n.monitorGetAddrs)
-	go n.monitor.run(runCtx)
+	n.runCtx, n.runCancel = context.WithCancel(context.Background())
+	n.monitor = newNetMonitor(n.triggerRecovery, n.onMonitorSnapshot, n.onHeartbeat, n.monitorGetAddrs)
+	n.monitor.heartbeatEvery = n.heartbeatPeriod()
+
+	n.recoveryMu.Lock()
+	n.observeGapLocked(observeSourceStart) // baseline for the first sample
+	if n.workerKick == nil {
+		n.workerKick = make(chan struct{}, 1)
+	}
+	if !n.manualDrive {
+		n.workerDone = make(chan struct{})
+	}
+	n.recoveryMu.Unlock()
+
+	if n.manualDrive {
+		n.monitor.checkInterfaces()
+		return
+	}
+	go n.runRecoveryWorker(n.runCtx)
+	go n.monitor.run(n.runCtx)
 	return
 }
 
 func (n *networkState) Close(ctx context.Context) (err error) {
 	n.recoveryMu.Lock()
 	n.closed = true
+	n.closing = true
 	if n.pendingTimer != nil {
 		n.pendingTimer.Stop()
 	}
+	// drop the queued job (the worker also refuses to start one once closed)
+	n.queuedJob = nil
+	done := n.workerDone
 	n.recoveryMu.Unlock()
 	if n.statService != nil {
 		n.statService.RemoveProvider(n)
 	}
 	if n.runCancel != nil {
+		// also cancels a running Flush and refresh
 		n.runCancel()
+	}
+	// wait (bounded) for a running recovery, so it doesn't touch the pool
+	// after it closes; never long enough to trip app.Close's stop deadline
+	if done != nil {
+		timer := time.NewTimer(n.closeTimeout())
+		defer timer.Stop()
+		select {
+		case <-done:
+		case <-ctx.Done():
+		case <-timer.C:
+			n.stats.closeWaitTimeouts.Inc()
+			log.Warn("network state close: recovery worker still running", zap.Duration("waited", n.closeTimeout()))
+		}
 	}
 	return
 }
@@ -397,11 +522,11 @@ func (n *networkState) SetNetworkState(networkState model.DeviceNetworkType, net
 	if first {
 		return
 	}
-	reason := "network type changed to " + networkState.String()
+	reason, trigger := "network type changed to "+networkState.String(), triggerNetworkType
 	if !typeChanged {
-		reason = "network path changed (same type " + networkState.String() + ")"
+		reason, trigger = "network path changed (same type "+networkState.String()+")", triggerNetworkPath
 	}
-	n.triggerRecovery(reason)
+	n.triggerRecovery(reason, trigger)
 }
 
 func (n *networkState) onMonitorSnapshot(key string, down bool) {
@@ -492,90 +617,5 @@ func (n *networkState) runConnectivityHooks(online bool) {
 	defer n.hookMu.Unlock()
 	for _, hook := range n.connectivityHooks {
 		hook(online)
-	}
-}
-
-// triggerRecovery runs the connectivity-recovery pipeline, leading-edge with a
-// suppression window: the first signal runs immediately; signals inside the
-// window coalesce into a single trailing run (a second real change right after
-// the first must not be lost, but fresh connections must not be flushed over
-// and over during an event burst).
-func (n *networkState) triggerRecovery(reason string) {
-	n.stats.countSignal(reason)
-	n.recoveryMu.Lock()
-	if n.closed {
-		n.recoveryMu.Unlock()
-		return
-	}
-	now := n.timeNow()
-	since := now.Sub(n.lastRecoveryAt)
-	if !n.lastRecoveryAt.IsZero() && since < recoverySuppressWindow {
-		n.stats.signalsCoalesced.Inc()
-		// remember the latest reason so the trailing run reports what actually
-		// coalesced last, not the first suppressed signal
-		n.pendingReason = reason
-		if !n.recoveryPending {
-			n.recoveryPending = true
-			n.pendingTimer = n.schedule(recoverySuppressWindow-since, n.runPendingRecovery)
-		}
-		n.recoveryMu.Unlock()
-		log.Info("connectivity recovery coalesced", zap.String("reason", reason))
-		return
-	}
-	n.lastRecoveryAt = now
-	n.recoveryMu.Unlock()
-	n.recover(reason)
-}
-
-func (n *networkState) runPendingRecovery() {
-	n.recoveryMu.Lock()
-	if n.closed {
-		n.recoveryMu.Unlock()
-		return
-	}
-	reason := n.pendingReason
-	lastFingerprint := n.lastRecoveredFingerprint
-	n.recoveryPending = false
-	n.lastRecoveryAt = n.timeNow()
-	n.recoveryMu.Unlock()
-	// A trailing run only makes sense when the network actually changed since
-	// the leading run (e.g. Wi-Fi->cellular right after a wake). Duplicate
-	// signals of the same physical event must not flush the connections the
-	// leading run just re-established.
-	if n.fingerprint() == lastFingerprint {
-		n.stats.trailingSkipped.Inc()
-		log.Info("connectivity recovery skipped: no network change since the last run",
-			zap.String("reason", reason))
-		return
-	}
-	n.stats.trailingRuns.Inc()
-	n.recover("coalesced: " + reason)
-}
-
-func (n *networkState) recover(reason string) {
-	n.recoveryMu.Lock()
-	n.lastRecoveredFingerprint = n.fingerprint()
-	n.recoveryMu.Unlock()
-	online := !n.IsOffline()
-	n.stats.recoveries.Inc()
-	if !online {
-		n.stats.recoveriesOffline.Inc()
-	}
-	n.stats.lastRecoveryUnix.Store(n.timeNow().Unix())
-	n.stats.lastRecoveryReason.Store(reason)
-	log.Info("connectivity recovery", zap.String("reason", reason), zap.Bool("online", online))
-	// Flush drops every pooled connection (closing the underlying sockets), so
-	// the next Get re-dials instead of serving a connection that died with the
-	// old network path. Flushing while offline is still right: it kills dead
-	// sockets that would otherwise block writers for the transport-timeout
-	// window.
-	if n.pool != nil {
-		if err := n.pool.Flush(context.Background()); err != nil {
-			log.Debug("flush pool on connectivity recovery", zap.Error(err))
-		}
-	}
-	n.runConnectivityHooks(online)
-	if online && n.spaceSyncer != nil {
-		n.spaceSyncer.SyncAllSpaceHeads()
 	}
 }

@@ -1398,8 +1398,16 @@ message Event {
   }
 
   message MembershipV2 {
-    message Update { anytype.model.MembershipV2.Data data = 1; }
-    message ProductsUpdate { repeated anytype.model.MembershipV2.Product products = 1; }
+    message Update {
+      anytype.model.MembershipV2.Data data = 1;
+      // freshness, last successful fetch, last error and revision of the status
+      anytype.model.MembershipV2.FetchState fetchState = 2;
+    }
+    message ProductsUpdate {
+      repeated anytype.model.MembershipV2.Product products = 1;
+      // freshness, last successful fetch, last error and revision of the products
+      anytype.model.MembershipV2.FetchState fetchState = 2;
+    }
   }
 
   message Notification {

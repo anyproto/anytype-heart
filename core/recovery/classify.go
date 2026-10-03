@@ -102,9 +102,14 @@ func classifyAccount(err error) *errInfo {
 }
 
 // isNetworkError covers transport-level failures that carry no sentinel: a
-// *net.OpError, or any net.Error reporting a timeout (which is how quic-go's
-// handshake and idle timeouts surface without a direct quic-go import).
+// *net.OpError, a connection that died under an RPC (any-sync reports it as
+// transport.ErrConnClosed, which matches net.ErrClosed), or any net.Error
+// reporting a timeout (which is how quic-go's handshake and idle timeouts
+// surface without a direct quic-go import).
 func isNetworkError(err error) bool {
+	if errors.Is(err, gonet.ErrClosed) {
+		return true
+	}
 	var opErr *gonet.OpError
 	if errors.As(err, &opErr) {
 		return true

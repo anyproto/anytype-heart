@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	gonet "net"
 	"sync"
 	"time"
 
@@ -90,7 +91,6 @@ type store struct {
 
 	bannedMu       sync.Mutex
 	bannedLocalMap map[string]time.Time
-
 }
 
 func newStore(pool pool.Pool, peerStore peerstore.PeerStore) *store {
@@ -227,7 +227,7 @@ func (s *store) getFromLocalPeers(ctx context.Context, spaceId string, k cid.Cid
 	}
 	data, err := s.getBlock(localCtx, p, spaceId, k, false)
 	if err != nil {
-		if errors.Is(err, net.ErrUnableToConnect) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		if errors.Is(err, net.ErrUnableToConnect) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) || errors.Is(err, gonet.ErrClosed) {
 			s.banLocalPeer(p.Id())
 		}
 		return nil, err

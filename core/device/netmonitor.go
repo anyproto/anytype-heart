@@ -11,14 +11,18 @@ Scope: global (part of the networkState component)
   - interface-address changes (Wi-Fi switch, VPN toggle, cable plug/unplug),
     diffed as IPv4 addresses + IPv6 /64 prefixes so IPv6 privacy-address
     rotation does not register as a change
-  - wake from sleep, via wall-vs-monotonic clock drift (the monotonic clock
-    pauses while the machine sleeps)
+  - process freezes (sleep/suspend): a dedicated heartbeat sampler that does
+    nothing but call onHeartbeat every heartbeatInterval; the gap between
+    consecutive clock samples is evaluated by networkState.observeGapLocked (see
+    wake.go), not here. The sampler runs on its own goroutine so a
+    suspend during interface enumeration (or slow recovery work) can neither
+    hide nor fake a gap
 - Tracks whether any usable (global unicast) interface address exists, feeding
   NetworkState.IsOffline so periodic dialers can back off while the interface
   is clearly down
 - On Android interface enumeration requires a client-injected getter
-  (net/addrs); without it the monitor silently degrades to clock-jump
-  detection only
+  (net/addrs); without it the monitor silently degrades to freeze detection
+  only
 */
 
 import (
@@ -38,49 +42,47 @@ import (
 
 const (
 	netMonitorTickInterval = time.Second * 5
-	// sleepJumpThreshold is how far wall time must outrun the monotonic clock
-	// between two ticks before we treat it as a wake from sleep. Short lid
-	// closes below it are covered by the transport keepalives.
-	sleepJumpThreshold = time.Second * 30
+	// heartbeatInterval is the clock-sampling period of the freeze detector.
+	heartbeatInterval = time.Second * 5
 )
 
 type netMonitor struct {
 	// onEvent receives a connectivity-change signal (feeds triggerRecovery).
-	onEvent func(reason string)
+	onEvent func(reason, trigger string)
 	// onSnapshot is called every tick with the current connectivity snapshot
 	// key (joined address identities, "" when unknown) and whether no usable
 	// address exists.
 	onSnapshot func(key string, down bool)
+	// onHeartbeat is called by the dedicated sampler goroutine every
+	// heartbeatInterval; it samples the clocks (networkState.onHeartbeat) and
+	// must never block.
+	onHeartbeat func()
+	// heartbeatEvery is the sampling period (heartbeatInterval; tests
+	// shorten it)
+	heartbeatEvery time.Duration
 
 	getAddrs func() (addrs.InterfacesAddrs, error)
-	nowWall  func() time.Time
-	elapsed  func() time.Duration
 
-	prevWall     time.Time
-	prevElapsed  time.Duration
 	prevSnapshot []string
 	snapshotInit bool
 	addrsErrOnce sync.Once
 }
 
-func newNetMonitor(onEvent func(reason string), onSnapshot func(key string, down bool), getAddrs func() (addrs.InterfacesAddrs, error)) *netMonitor {
+func newNetMonitor(onEvent func(reason, trigger string), onSnapshot func(key string, down bool), onHeartbeat func(), getAddrs func() (addrs.InterfacesAddrs, error)) *netMonitor {
 	if getAddrs == nil {
 		getAddrs = addrs.GetInterfacesAddrs
 	}
-	start := time.Now()
 	return &netMonitor{
-		onEvent:    onEvent,
-		onSnapshot: onSnapshot,
-		getAddrs:   getAddrs,
-		nowWall:    time.Now,
-		// time.Since uses the monotonic reading, which pauses during sleep.
-		elapsed: func() time.Duration { return time.Since(start) },
+		onEvent:        onEvent,
+		onSnapshot:     onSnapshot,
+		onHeartbeat:    onHeartbeat,
+		heartbeatEvery: heartbeatInterval,
+		getAddrs:       getAddrs,
 	}
 }
 
 func (m *netMonitor) run(ctx context.Context) {
-	m.prevWall = m.nowWall().Round(0)
-	m.prevElapsed = m.elapsed()
+	go m.runHeartbeat(ctx)
 	m.checkInterfaces()
 	ticker := time.NewTicker(netMonitorTickInterval)
 	defer ticker.Stop()
@@ -89,27 +91,35 @@ func (m *netMonitor) run(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			m.tick()
+			m.checkInterfaces()
 		}
 	}
 }
 
-func (m *netMonitor) tick() {
-	wall := m.nowWall().Round(0)
-	el := m.elapsed()
-	if gap := wall.Sub(m.prevWall) - (el - m.prevElapsed); gap > sleepJumpThreshold {
-		m.onEvent(fmt.Sprintf("wake from sleep (clock jump %s)", gap.Round(time.Second)))
+// runHeartbeat is the freeze-detector sampler. It is deliberately separate
+// from interface probing: getAddrs can be slow, and a suspend that lands in
+// the middle of it must still show up as a gap between two samples.
+func (m *netMonitor) runHeartbeat(ctx context.Context) {
+	if m.onHeartbeat == nil {
+		return
 	}
-	m.prevWall = wall
-	m.prevElapsed = el
-	m.checkInterfaces()
+	ticker := time.NewTicker(m.heartbeatEvery)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			m.onHeartbeat()
+		}
+	}
 }
 
 func (m *netMonitor) checkInterfaces() {
 	ifAddrs, err := m.getAddrs()
 	if err != nil {
 		// Android without an injected interface getter lands here; the RPC
-		// signals and the clock-jump detector still apply. Fail open: an
+		// signals and the freeze detector still apply. Fail open: an
 		// enumeration error means "unknown", and a stale linkDown=true must
 		// not wedge the device into offline behavior.
 		m.addrsErrOnce.Do(func() {
@@ -129,9 +139,12 @@ func (m *netMonitor) checkInterfaces() {
 	// keepalive catches it within seconds.
 	if m.snapshotInit {
 		if len(m.prevSnapshot) == 0 && len(snapshot) > 0 {
-			m.onEvent("interface addresses regained")
+			m.onEvent("interface addresses regained", triggerInterfaceRegained)
 		} else if lost := missingFrom(m.prevSnapshot, snapshot); len(lost) > 0 {
-			m.onEvent("interface addresses lost: " + strings.Join(lost, ","))
+			// addresses go to Debug only: recovery reasons can reach WARN
+			// logs that users attach to bug reports
+			log.Debug("net monitor: interface addresses lost", zap.Strings("addrs", lost))
+			m.onEvent(fmt.Sprintf("interface addresses lost (%d)", len(lost)), triggerInterfaceLost)
 		}
 	}
 	m.prevSnapshot = snapshot

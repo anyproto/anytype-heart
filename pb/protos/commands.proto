@@ -8955,6 +8955,9 @@ message Rpc {
 
                 repeated anytype.model.MembershipV2.Product products = 2;
 
+                // always set, on errors too (NONE when nothing was ever fetched)
+                anytype.model.MembershipV2.FetchState fetchState = 3;
+
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -8983,12 +8986,22 @@ message Rpc {
                 // pass true to force the cache update
                 // by default this is false
                 bool noCache = 1;
+
+                // manual refresh (the Refresh button): if > 0, implies noCache and
+                // then asks for a short forced poll of status and products, delivered
+                // as MembershipV2Update / ProductsUpdate events. 0 = no forced poll. The window is
+                // capped at 180s; at most one forced poll is admitted per 30s,
+                // further requests only fetch. Negative values are BAD_INPUT.
+                int32 forceRefreshSec = 2;
             }
 
             message Response {
                 Error error = 1;
 
                 anytype.model.MembershipV2.Data data = 2;
+
+                // always set, on errors too (NONE when nothing was ever fetched)
+                anytype.model.MembershipV2.FetchState fetchState = 3;
 
                 message Error {
                     Code code = 1;
