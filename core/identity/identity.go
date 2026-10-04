@@ -479,8 +479,28 @@ func (s *service) AddIdentityProfile(profile *model.IdentityProfile, key crypto.
 	return s.identityProfileCacheStore.Set(context.Background(), profile.Identity, encryptedProfileBytes)
 }
 
+// broadcastMyIdentityProfile is called when the own profile is loaded and on its every
+// change, so the cached entry of the own identity is always the current one
 func (s *service) broadcastMyIdentityProfile(identityProfile *model.IdentityProfile) {
+	if s.ownProfileSubscription.isLoaded() {
+		s.cacheMyIdentityProfile(identityProfile)
+	}
+
 	s.updateParticipants(identityProfile, nil)
+}
+
+// cacheMyIdentityProfile caches the current own profile. The icon encryption keys are added
+// for the receivers of one-to-one invites when they can be read.
+func (s *service) cacheMyIdentityProfile(identityProfile *model.IdentityProfile) {
+	profile, err := s.ownProfileSubscription.prepareOwnIdentityProfile()
+	if err != nil {
+		log.Error("cache own identity profile without the icon keys", zap.Error(err))
+		profile = identityProfile
+	}
+
+	s.lock.Lock()
+	s.identityProfileCache[profile.Identity] = profile
+	s.lock.Unlock()
 }
 
 func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) (profile *model.IdentityProfile, rawProfile []byte, err error) {
@@ -622,14 +642,11 @@ func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKe
 	return nil
 }
 
-// currentProfile returns the freshest known profile of the identity: the own profile
-// for the own identity, the in-memory cached one (always at least as fresh as the
-// persisted one), or the persisted one decrypted with the given key. Returns nil when
-// no profile is known yet. Must be called under s.lock.
+// currentProfile returns the freshest known profile of the identity: the in-memory
+// cached one (always at least as fresh as the persisted one; for the own identity it is
+// kept current by broadcastMyIdentityProfile), or the persisted one decrypted with the
+// given key. Returns nil when no profile is known yet. Must be called under s.lock.
 func (s *service) currentProfile(identity string, cachedProfile *identityrepoproto.DataWithIdentity, cachedGlobalName string, encryptionKey crypto.SymKey) *model.IdentityProfile {
-	if identity == s.myIdentity {
-		return s.ownProfileSubscription.prepareIdentityProfile()
-	}
 	if inMemory, ok := s.identityProfileCache[identity]; ok {
 		return inMemory
 	}
