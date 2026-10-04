@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -68,6 +69,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 						bundle.RelationKeyCreator.String():          pbtypes.String(mockedParticipantId),
 						bundle.RelationKeyLastOpenedDate.String():   pbtypes.Float64(0),
 						bundle.RelationKeySpaceId.String():          pbtypes.String(mockedSpaceId),
+						bundle.RelationKeyDiscussionId.String():     pbtypes.String(mockedDiscussionId),
 					},
 				},
 			},
@@ -93,6 +95,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 		require.Equal(t, mockedObjectId, objects[0].Id)
 		require.Equal(t, mockedObjectName, objects[0].Name)
 		require.Equal(t, mockedObjectSnippet, objects[0].Snippet)
+		require.Equal(t, mockedDiscussionId, objects[0].DiscussionId)
 		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.EmojiIcon{
 				Format: apimodel.IconFormatEmoji,
@@ -209,6 +212,7 @@ func TestObjectService_GetObject(t *testing.T) {
 									bundle.RelationKeyCreatedDate.String():      pbtypes.Float64(888888),
 									bundle.RelationKeyLastOpenedDate.String():   pbtypes.Float64(0),
 									bundle.RelationKeySpaceId.String():          pbtypes.String(mockedSpaceId),
+									bundle.RelationKeyDiscussionId.String():     pbtypes.String(mockedDiscussionId),
 								},
 							},
 						},
@@ -256,6 +260,7 @@ func TestObjectService_GetObject(t *testing.T) {
 		require.Equal(t, mockedObjectId, object.Id)
 		require.Equal(t, mockedObjectName, object.Name)
 		require.Equal(t, mockedObjectSnippet, object.Snippet)
+		require.Equal(t, mockedDiscussionId, object.DiscussionId)
 		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.EmojiIcon{
 				Format: apimodel.IconFormatEmoji,
@@ -306,6 +311,67 @@ func TestObjectService_GetObject(t *testing.T) {
 		// then
 		require.ErrorIs(t, err, ErrObjectNotFound)
 		require.Empty(t, object)
+	})
+}
+
+func TestObjectService_DiscussionIdSerialization(t *testing.T) {
+	t.Run("discussion id serialized when set", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+		details := &types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyId.String():           pbtypes.String(mockedObjectId),
+				bundle.RelationKeyName.String():         pbtypes.String(mockedObjectName),
+				bundle.RelationKeySpaceId.String():      pbtypes.String(mockedSpaceId),
+				bundle.RelationKeyDiscussionId.String(): pbtypes.String(mockedDiscussionId),
+			},
+		}
+
+		// when
+		object := fx.service.getObjectFromStruct(details)
+		objectWithBody := fx.service.getObjectWithBlocksFromStruct(details, "")
+
+		// then
+		require.Equal(t, mockedDiscussionId, object.DiscussionId)
+		require.Equal(t, mockedDiscussionId, objectWithBody.DiscussionId)
+
+		objectJson, err := json.Marshal(object)
+		require.NoError(t, err)
+		require.Contains(t, string(objectJson), `"discussion_id":"`+mockedDiscussionId+`"`)
+
+		objectWithBodyJson, err := json.Marshal(objectWithBody)
+		require.NoError(t, err)
+		require.Contains(t, string(objectWithBodyJson), `"discussion_id":"`+mockedDiscussionId+`"`)
+	})
+
+	t.Run("discussion id omitted when not set", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+		details := &types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyId.String():      pbtypes.String(mockedObjectId),
+				bundle.RelationKeyName.String():    pbtypes.String(mockedObjectName),
+				bundle.RelationKeySpaceId.String(): pbtypes.String(mockedSpaceId),
+			},
+		}
+
+		// when
+		object := fx.service.getObjectFromStruct(details)
+		objectWithBody := fx.service.getObjectWithBlocksFromStruct(details, "")
+
+		// then
+		require.Empty(t, object.DiscussionId)
+		require.Empty(t, objectWithBody.DiscussionId)
+
+		objectJson, err := json.Marshal(object)
+		require.NoError(t, err)
+		require.NotContains(t, string(objectJson), "discussion_id")
+
+		objectWithBodyJson, err := json.Marshal(objectWithBody)
+		require.NoError(t, err)
+		require.NotContains(t, string(objectWithBodyJson), "discussion_id")
 	})
 }
 

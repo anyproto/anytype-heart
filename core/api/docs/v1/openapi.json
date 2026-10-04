@@ -696,7 +696,7 @@
         "properties": {
           "emoji": {
             "description": "The emoji of the icon",
-            "example": "\ud83d\udcc4",
+            "example": "📄",
             "type": "string"
           },
           "format": {
@@ -2068,6 +2068,11 @@
             "example": false,
             "type": "boolean"
           },
+          "discussion_id": {
+            "description": "The id of the object's inline discussion (chat); absent if the object has no discussion. Use it as chat_id with the Chat endpoints to read and write discussion messages",
+            "example": "bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge",
+            "type": "string"
+          },
           "icon": {
             "$ref": "#/components/schemas/Icon"
           },
@@ -2144,6 +2149,11 @@
             "description": "Whether the object is archived",
             "example": false,
             "type": "boolean"
+          },
+          "discussion_id": {
+            "description": "The id of the object's inline discussion (chat); absent if the object has no discussion. Use it as chat_id with the Chat endpoints to read and write discussion messages",
+            "example": "bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge",
+            "type": "string"
           },
           "icon": {
             "$ref": "#/components/schemas/Icon"
@@ -2918,7 +2928,7 @@
       "ToggleReactionRequest": {
         "properties": {
           "emoji": {
-            "example": "\ud83d\udc4d",
+            "example": "👍",
             "type": "string"
           }
         },
@@ -3549,6 +3559,16 @@
           }
         },
         "type": "object"
+      },
+      "ObjectDiscussionResponse": {
+        "properties": {
+          "discussion_id": {
+            "description": "The chat id of the newly created inline discussion; use it as chat_id with the Chat endpoints",
+            "example": "bafyreictrp3obmnf6dwejy5o4p7bderaaia4bdg2psxbfzf44yya5uutge",
+            "type": "string"
+          }
+        },
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -3896,7 +3916,7 @@
         ]
       },
       "post": {
-        "description": "Creates a new space based on a supplied name and description in the JSON request body. The endpoint is subject to rate limiting and automatically applies default configurations such as generating a random icon and initializing the workspace with default settings (for example, a default dashboard or home page). On success, the new space\u2019s full metadata is returned, enabling the client to immediately switch context to the new internal.",
+        "description": "Creates a new space based on a supplied name and description in the JSON request body. The endpoint is subject to rate limiting and automatically applies default configurations such as generating a random icon and initializing the workspace with default settings (for example, a default dashboard or home page). On success, the new space’s full metadata is returned, enabling the client to immediately switch context to the new internal.",
         "operationId": "create_space",
         "parameters": [
           {
@@ -4062,7 +4082,7 @@
         ]
       },
       "patch": {
-        "description": "Updates the name or description of an existing space. The request body should contain the new name and/or description in JSON format. This endpoint is useful for renaming or rebranding a workspace without needing to recreate it. The updated space\u2019s metadata is returned in the response.",
+        "description": "Updates the name or description of an existing space. The request body should contain the new name and/or description in JSON format. This endpoint is useful for renaming or rebranding a workspace without needing to recreate it. The updated space’s metadata is returned in the response.",
         "operationId": "update_space",
         "parameters": [
           {
@@ -5501,7 +5521,7 @@
                 }
               }
             },
-            "description": "Forbidden \u2014 read-only space or no permission"
+            "description": "Forbidden — read-only space or no permission"
           },
           "404": {
             "content": {
@@ -5752,7 +5772,7 @@
     },
     "/v1/spaces/{space_id}/lists/{list_id}/objects": {
       "post": {
-        "description": "Adds one or more objects to a specific list (collection only) by submitting a JSON array of object IDs. Upon success, the endpoint returns a confirmation message. This endpoint is vital for building user interfaces that allow drag\u2011and\u2011drop or multi\u2011select additions to collections, enabling users to dynamically manage their collections without needing to modify the underlying object data.",
+        "description": "Adds one or more objects to a specific list (collection only) by submitting a JSON array of object IDs. Upon success, the endpoint returns a confirmation message. This endpoint is vital for building user interfaces that allow drag‑and‑drop or multi‑select additions to collections, enabling users to dynamically manage their collections without needing to modify the underlying object data.",
         "operationId": "add_list_objects",
         "parameters": [
           {
@@ -6290,7 +6310,7 @@
     },
     "/v1/spaces/{space_id}/members/{member_id}": {
       "get": {
-        "description": "Fetches detailed information about a single member within a space. The endpoint returns the member\u2019s identifier, name, icon, identity, global name, status and role. The member_id path parameter can be provided as either the member's ID (starting  with `_participant`) or the member's identity. This is useful for user profile pages, permission management, and displaying member-specific information in collaborative environments.",
+        "description": "Fetches detailed information about a single member within a space. The endpoint returns the member’s identifier, name, icon, identity, global name, status and role. The member_id path parameter can be provided as either the member's ID (starting  with `_participant`) or the member's identity. This is useful for user profile pages, permission management, and displaying member-specific information in collaborative environments.",
         "operationId": "get_member",
         "parameters": [
           {
@@ -6561,7 +6581,7 @@
     },
     "/v1/spaces/{space_id}/objects/{object_id}": {
       "delete": {
-        "description": "This endpoint \u201cdeletes\u201d an object by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the object\u2019s details after it has been archived. Proper error handling is in place for situations such as when the object isn\u2019t found or the deletion cannot be performed because of permission issues.",
+        "description": "This endpoint “deletes” an object by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the object’s details after it has been archived. Proper error handling is in place for situations such as when the object isn’t found or the deletion cannot be performed because of permission issues.",
         "operationId": "delete_object",
         "parameters": [
           {
@@ -7095,7 +7115,7 @@
     },
     "/v1/spaces/{space_id}/properties/{property_id}": {
       "delete": {
-        "description": "This endpoint \"deletes\" a property by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the property\u2019s details after it has been archived. Proper error handling is in place for situations such as when the property isn\u2019t found or the deletion cannot be performed because of permission issues.",
+        "description": "This endpoint \"deletes\" a property by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the property’s details after it has been archived. Proper error handling is in place for situations such as when the property isn’t found or the deletion cannot be performed because of permission issues.",
         "operationId": "delete_property",
         "parameters": [
           {
@@ -7210,7 +7230,7 @@
         ]
       },
       "get": {
-        "description": "Fetches detailed information about one specific property by its ID. This includes the property\u2019s unique identifier, name and format. This detailed view assists clients in showing property options to users and in guiding the user interface (such as displaying appropriate input fields or selection options).",
+        "description": "Fetches detailed information about one specific property by its ID. This includes the property’s unique identifier, name and format. This detailed view assists clients in showing property options to users and in guiding the user interface (such as displaying appropriate input fields or selection options).",
         "operationId": "get_property",
         "parameters": [
           {
@@ -7636,7 +7656,7 @@
     },
     "/v1/spaces/{space_id}/properties/{property_id}/tags/{tag_id}": {
       "delete": {
-        "description": "This endpoint \u201cdeletes\u201d a tag by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the tag\u2019s details after it has been archived. Proper error handling is in place for situations such as when the tag isn\u2019t found or the deletion cannot be performed because of permission issues.",
+        "description": "This endpoint “deletes” a tag by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the tag’s details after it has been archived. Proper error handling is in place for situations such as when the tag isn’t found or the deletion cannot be performed because of permission issues.",
         "operationId": "delete_tag",
         "parameters": [
           {
@@ -8011,7 +8031,7 @@
     },
     "/v1/spaces/{space_id}/search": {
       "post": {
-        "description": "Performs a search within a single space (specified by the `space_id` path parameter). Like the global search, it accepts pagination parameters and a JSON payload containing the search `query`, `types`, and sorting preferences. File-layout objects (file, image, video, audio, pdf) are excluded from results by default; to include them, list one of the file type keys (\"file\", \"image\", \"video\", \"audio\") in the `types` field. The search is limited to the provided space and returns a list of objects that match the query. This allows clients to implement space\u2011specific filtering without having to process extraneous results.",
+        "description": "Performs a search within a single space (specified by the `space_id` path parameter). Like the global search, it accepts pagination parameters and a JSON payload containing the search `query`, `types`, and sorting preferences. File-layout objects (file, image, video, audio, pdf) are excluded from results by default; to include them, list one of the file type keys (\"file\", \"image\", \"video\", \"audio\") in the `types` field. The search is limited to the provided space and returns a list of objects that match the query. This allows clients to implement space‑specific filtering without having to process extraneous results.",
         "operationId": "search_space",
         "parameters": [
           {
@@ -8293,7 +8313,7 @@
     },
     "/v1/spaces/{space_id}/types/{type_id}": {
       "delete": {
-        "description": "This endpoint \u201cdeletes\u201d an type by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the type\u2019s details after it has been archived. Proper error handling is in place for situations such as when the type isn\u2019t found or the deletion cannot be performed because of permission issues.",
+        "description": "This endpoint “deletes” an type by marking it as archived. The deletion process is performed safely and is subject to rate limiting. It returns the type’s details after it has been archived. Proper error handling is in place for situations such as when the type isn’t found or the deletion cannot be performed because of permission issues.",
         "operationId": "delete_type",
         "parameters": [
           {
@@ -8408,7 +8428,7 @@
         ]
       },
       "get": {
-        "description": "Fetches detailed information about one specific type by its ID. This includes the type\u2019s unique key, name, icon, and layout. This detailed view assists clients in understanding the expected structure and style for objects of that type and in guiding the user interface (such as displaying appropriate icons or layout hints).",
+        "description": "Fetches detailed information about one specific type by its ID. This includes the type’s unique key, name, icon, and layout. This detailed view assists clients in understanding the expected structure and style for objects of that type and in guiding the user interface (such as displaying appropriate icons or layout hints).",
         "operationId": "get_type",
         "parameters": [
           {
@@ -8631,7 +8651,7 @@
     },
     "/v1/spaces/{space_id}/types/{type_id}/templates": {
       "get": {
-        "description": "This endpoint returns a paginated list of templates that are associated with a specific type within a space. Templates provide pre\u2011configured structures for creating new objects. Each template record contains its identifier, name, and icon, so that clients can offer users a selection of templates when creating objects.\nSupports dynamic filtering via query parameters (e.g., ?name[contains]=invoice). See FilterCondition enum for available conditions.",
+        "description": "This endpoint returns a paginated list of templates that are associated with a specific type within a space. Templates provide pre‑configured structures for creating new objects. Each template record contains its identifier, name, and icon, so that clients can offer users a selection of templates when creating objects.\nSupports dynamic filtering via query parameters (e.g., ?name[contains]=invoice). See FilterCondition enum for available conditions.",
         "operationId": "list_templates",
         "parameters": [
           {
@@ -8727,7 +8747,7 @@
     },
     "/v1/spaces/{space_id}/types/{type_id}/templates/{template_id}": {
       "get": {
-        "description": "Fetches full details for one template associated with a particular type in a space. The response provides the template\u2019s identifier, name, icon, and any other relevant metadata. This endpoint is useful when a client needs to preview or apply a template to prefill object creation fields.",
+        "description": "Fetches full details for one template associated with a particular type in a space. The response provides the template’s identifier, name, icon, and any other relevant metadata. This endpoint is useful when a client needs to preview or apply a template to prefill object creation fields.",
         "operationId": "get_template",
         "parameters": [
           {
@@ -8828,6 +8848,103 @@
         "summary": "Get template",
         "tags": [
           "Templates"
+        ]
+      }
+    },
+    "/v1/spaces/{space_id}/objects/{object_id}/discussion": {
+      "post": {
+        "description": "Creates an inline discussion for the object identified by the object ID and returns the chat id of the new discussion. Agents can then use this id as chat_id with the Chat endpoints to read and write the discussion's messages. Adding a discussion to an object that already has one fails.",
+        "operationId": "add_object_discussion",
+        "parameters": [
+          {
+            "description": "The version of the API to use",
+            "in": "header",
+            "name": "Anytype-Version",
+            "required": true,
+            "schema": {
+              "default": "2025-11-08",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the space",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the object to add the discussion to; must be retrieved from ListObjects, SearchSpace or GlobalSearch endpoints or obtained from response context",
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ObjectDiscussionResponse"
+                }
+              }
+            },
+            "description": "The chat id of the newly created discussion"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RateLimitError"
+                }
+              }
+            },
+            "description": "Rate limit exceeded"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Add a discussion to an object",
+        "tags": [
+          "Object"
         ]
       }
     }
