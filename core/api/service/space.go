@@ -73,7 +73,7 @@ func (s *Service) ListSpaces(ctx context.Context, additionalFilters []*model.Blo
 				IncludeTime: true,
 			},
 		},
-		Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
+		Keys: []string{bundle.RelationKeyTargetSpaceId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconImage.String()},
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -85,7 +85,7 @@ func (s *Service) ListSpaces(ctx context.Context, additionalFilters []*model.Blo
 	spaces = make([]apimodel.Space, 0, len(paginatedRecords))
 
 	for _, record := range paginatedRecords {
-		workspace, err := s.getSpaceInfo(ctx, record.Fields[bundle.RelationKeyTargetSpaceId.String()].GetStringValue())
+		workspace, err := s.getSpaceInfo(ctx, record.Fields[bundle.RelationKeyTargetSpaceId.String()].GetStringValue(), record)
 		if err != nil {
 			return nil, 0, false, err
 		}
@@ -118,7 +118,7 @@ func (s *Service) GetSpace(ctx context.Context, spaceId string) (apimodel.Space,
 				Value:       pbtypes.IntList(int(model.SpaceStatus_Unknown), int(model.SpaceStatus_SpaceActive)),
 			},
 		},
-		Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
+		Keys: []string{bundle.RelationKeyTargetSpaceId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconImage.String()},
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -129,7 +129,7 @@ func (s *Service) GetSpace(ctx context.Context, spaceId string) (apimodel.Space,
 		return apimodel.Space{}, ErrWorkspaceNotFound
 	}
 
-	return s.getSpaceInfo(ctx, spaceId)
+	return s.getSpaceInfo(ctx, spaceId, resp.Records[0])
 }
 
 // CreateSpace creates a new space with the given name and returns the space info.
@@ -170,7 +170,7 @@ func (s *Service) CreateSpace(ctx context.Context, request apimodel.CreateSpaceR
 		}
 	}
 
-	return s.getSpaceInfo(ctx, resp.SpaceId)
+	return s.getSpaceInfo(ctx, resp.SpaceId, nil)
 }
 
 // UpdateSpace updates the space with the given ID using the provided request.
@@ -200,16 +200,11 @@ func (s *Service) UpdateSpace(ctx context.Context, spaceId string, request apimo
 		}
 	}
 
-	space, err := s.getSpaceInfo(ctx, spaceId)
-	if err != nil {
-		return apimodel.Space{}, err
-	}
-
-	return space, nil
+	return s.GetSpace(ctx, spaceId)
 }
 
 // getSpaceInfo returns the workspace info for the space with the given ID.
-func (s *Service) getSpaceInfo(ctx context.Context, spaceId string) (space apimodel.Space, err error) {
+func (s *Service) getSpaceInfo(ctx context.Context, spaceId string, spaceView *types.Struct) (space apimodel.Space, err error) {
 	workspaceResponse := s.mw.WorkspaceOpen(ctx, &pb.RpcWorkspaceOpenRequest{
 		SpaceId: spaceId,
 	})
@@ -234,8 +229,14 @@ func (s *Service) getSpaceInfo(ctx context.Context, spaceId string) (space apimo
 		spaceType = spacedomain.SpaceTypeRegular
 	}
 
-	name := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue()
-	icon := s.getIcon(spaceId, "", spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+	displayDetails := spaceResp.ObjectView.Details[0].Details
+	if spaceType == spacedomain.SpaceTypeOneToOne && spaceView != nil {
+		// The queried space view already contains the other participant's name and avatar.
+		displayDetails = spaceView
+	}
+
+	name := displayDetails.Fields[bundle.RelationKeyName.String()].GetStringValue()
+	icon := s.getIcon(spaceId, "", displayDetails.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 	description := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyDescription.String()].GetStringValue()
 
 	return apimodel.Space{
