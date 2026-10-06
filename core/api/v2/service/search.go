@@ -105,10 +105,7 @@ func (s *Service) SearchObjects(ctx context.Context, spaceId string, req v2model
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, nil, err
 	}
-	if err := validateSearchShape(req); err != nil {
-		return nil, 0, false, nil, err
-	}
-	plan, err := s.buildSearchPlan(spaceId, req, true, errKeysFor(ctx))
+	plan, err := s.planSpaceSearch(ctx, spaceId, req)
 	if err != nil {
 		return nil, 0, false, nil, err
 	}

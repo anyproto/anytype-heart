@@ -65,15 +65,16 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 	srv.registerTypeRoutes(v1, eventService, writeRateLimitMW)
 
 	apiv2.RegisterRoutes(router, apiv2.RouteDeps{
-		Service:        srv.v2Service,
-		CreateDisabled: srv.v2CreateDisabled,
-		EditDisabled:   srv.v2EditDisabled,
-		StreamDisabled: srv.v2StreamDisabled,
-		Auth:           srv.ensureAuthenticated(mw),
-		KeyScope:       ensureJsonApiScope(),
-		CacheInit:      srv.ensureCacheInitialized(),
-		TechSpaceId:    srv.techSpaceId,
-		WriteRateLimit: writeRateLimitMW,
+		Service:              srv.v2Service,
+		CreateDisabled:       srv.v2CreateDisabled,
+		EditDisabled:         srv.v2EditDisabled,
+		StreamDisabled:       srv.v2StreamDisabled,
+		SearchStreamDisabled: srv.v2SearchStreamDisabled,
+		Auth:                 srv.ensureAuthenticated(mw),
+		KeyScope:             ensureJsonApiScope(),
+		CacheInit:            srv.ensureCacheInitialized(),
+		TechSpaceId:          srv.techSpaceId,
+		WriteRateLimit:       writeRateLimitMW,
 		AnalyticsEvent: func(code string) gin.HandlerFunc {
 			return ensureAnalyticsEvent(code, eventService)
 		},

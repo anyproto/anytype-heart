@@ -44,6 +44,9 @@ type RouteDeps struct {
 	// StreamDisabled skips the chat message stream when no chat
 	// subscription dependency was provided.
 	StreamDisabled bool
+	// SearchStreamDisabled skips the search stream when no live search
+	// dependency was provided.
+	SearchStreamDisabled bool
 
 	// Auth is the shared bearer-token middleware (the same one /v1 uses).
 	Auth gin.HandlerFunc
@@ -223,6 +226,14 @@ func RegisterRoutes(router *gin.Engine, deps RouteDeps) {
 		deps.AnalyticsEvent("V2Search"),
 		v2handler.SearchObjectsHandler(deps.Service),
 	)
+	// the search stream is the same read, held open: no idempotency, no
+	// write rate limit, dry_run ignored
+	if !deps.SearchStreamDisabled {
+		v2.POST("/spaces/:space_id/search/stream",
+			deps.AnalyticsEvent("V2StreamSearch"),
+			v2handler.SearchStreamHandler(deps.Service),
+		)
+	}
 	v2.GET("/spaces/:space_id/queries/:query_id/objects",
 		deps.AnalyticsEvent("V2GetQueryObjects"),
 		v2handler.GetQueryObjectsHandler(deps.Service),

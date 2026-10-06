@@ -47,6 +47,16 @@ func newV2HandlerFixture(t *testing.T) *v2HandlerFixture {
 // that needs the chat subscription. Production passes it through V2Deps; the
 // fixture takes it the same way rather than mutating a built service.
 func newV2HandlerFixtureWithChatSub(t *testing.T, chatSub apicore.ChatSubscriptionService) *v2HandlerFixture {
+	return newV2HandlerFixtureWithStreams(t, chatSub, nil)
+}
+
+// newV2HandlerFixtureWithObjectSearch is newV2HandlerFixture for the search
+// stream, which needs the live search port.
+func newV2HandlerFixtureWithObjectSearch(t *testing.T, objectSearch apicore.ObjectSearchService) *v2HandlerFixture {
+	return newV2HandlerFixtureWithStreams(t, nil, objectSearch)
+}
+
+func newV2HandlerFixtureWithStreams(t *testing.T, chatSub apicore.ChatSubscriptionService, objectSearch apicore.ObjectSearchService) *v2HandlerFixture {
 	gin.SetMode(gin.TestMode)
 	mwMock := mock_apicore.NewMockClientCommands(t)
 	readerMock := mock_apicore.NewMockObjectReader(t)
@@ -92,7 +102,7 @@ func newV2HandlerFixtureWithChatSub(t *testing.T, chatSub apicore.ChatSubscripti
 		}).Maybe()
 	fileMock := mock_apicore.NewMockFileObjectService(t)
 	widgetsMock := mock_apicore.NewMockWidgets(t)
-	svc := v2service.NewService(mwMock, readerMock, creatorMock, mock_apicore.NewMockObjectMutator(t), nil, widgetsMock, chatSub, fileMock, store, objectstore.TestTechSpaceId, testAccountId)
+	svc := v2service.NewService(mwMock, readerMock, creatorMock, mock_apicore.NewMockObjectMutator(t), nil, widgetsMock, chatSub, objectSearch, fileMock, store, objectstore.TestTechSpaceId, testAccountId)
 	return &v2HandlerFixture{svc: svc, mwMock: mwMock, readerMock: readerMock, creatorMock: creatorMock, fileMock: fileMock, widgetsMock: widgetsMock, store: store, router: gin.New()}
 }
 

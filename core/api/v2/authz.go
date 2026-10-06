@@ -92,8 +92,8 @@ func routeKey(method, path string) string {
 // router.go so a diff of the two files reads side by side.
 //
 // The non-obvious verb calls, recorded:
-//   - POST /v2/validate and both search POSTs are READS: POST only because
-//     the request needs a body; nothing is persisted.
+//   - POST /v2/validate, both search POSTs and the search stream are READS:
+//     POST only because the request needs a body; nothing is persisted.
 //   - POST …/chats/:chat_id/read is a WRITE: it advances the synced read
 //     watermark that every device sees.
 //   - POST /v2/spaces is a write AND scoped-denied: even a readwrite grant
@@ -129,6 +129,7 @@ var v2RouteAuthz = map[string]RouteAuthz{
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/properties/:key/options"):            {Verb: RouteVerbRead},
 	routeKey(http.MethodPost, "/v2/search"):                                             {Verb: RouteVerbRead, Global: GlobalServiceFiltered},
 	routeKey(http.MethodPost, "/v2/spaces/:space_id/search"):                            {Verb: RouteVerbRead},
+	routeKey(http.MethodPost, "/v2/spaces/:space_id/search/stream"):                     {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/queries/:query_id/objects"):          {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/queries/:query_id/views"):            {Verb: RouteVerbRead},
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/collections/:collection_id/objects"): {Verb: RouteVerbRead},

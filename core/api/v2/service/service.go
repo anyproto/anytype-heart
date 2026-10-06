@@ -59,15 +59,22 @@ type Service struct {
 	// spaceChatStreams is the separate cap of the space-wide chat stream;
 	// see maxConcurrentSpaceChatStreams.
 	spaceChatStreams chatStreamSlots
+	// objectSearch backs the search stream. Nil means the stream route is
+	// not registered, so OpenSearchStream is never reached without it.
+	objectSearch apicore.ObjectSearchService
+	// searchStreams is the search stream's own cap; see
+	// maxConcurrentSearchStreams.
+	searchStreams chatStreamSlots
 }
 
 // NewService creates the API v2 service. creator may be nil when only the
 // read surface is served (the router skips the create routes then); mutator
 // may be nil when the edit surface is not served; provenance may be nil
-// (object DELETE then refuses everything — fail closed). accountId may be
-// empty (degraded placeholder substitution only).
-func NewService(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, provenance apicore.ObjectProvenance, widgets apicore.Widgets, chatSub apicore.ChatSubscriptionService, fileService apicore.FileObjectService, store objectstore.ObjectStore, techSpaceId, accountId string) *Service {
-	return &Service{fileService: fileService, mw: mw, reader: reader, creator: creator, mutator: mutator, provenance: provenance, widgets: widgets, chatSub: chatSub, store: store, techSpaceId: techSpaceId, accountId: accountId}
+// (object DELETE then refuses everything — fail closed). chatSub and
+// objectSearch may be nil when their streams are not served. accountId may
+// be empty (degraded placeholder substitution only).
+func NewService(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, provenance apicore.ObjectProvenance, widgets apicore.Widgets, chatSub apicore.ChatSubscriptionService, objectSearch apicore.ObjectSearchService, fileService apicore.FileObjectService, store objectstore.ObjectStore, techSpaceId, accountId string) *Service {
+	return &Service{fileService: fileService, mw: mw, reader: reader, creator: creator, mutator: mutator, provenance: provenance, widgets: widgets, chatSub: chatSub, objectSearch: objectSearch, store: store, techSpaceId: techSpaceId, accountId: accountId}
 }
 
 // ensureSpaceGranted is the space half of the service-level backstop of the

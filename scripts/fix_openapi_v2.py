@@ -300,7 +300,7 @@ SCHEMA_REQUIRED = {
 # swag emits application/json alongside the declared @Produce for a plain
 # string success, so the stream's 200 advertised a JSON body it never sends.
 # The route answers text/event-stream and nothing else.
-STREAM_OPERATIONS = {"stream_chat_messages", "stream_space_chats"}
+STREAM_OPERATIONS = {"stream_chat_messages", "stream_space_chats", "stream_space_search"}
 
 # Operations that answer 429 for a RESOURCE they cap rather than a rate they
 # throttle. Until the chat stream there was no such thing, so "declares 429"

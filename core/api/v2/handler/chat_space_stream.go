@@ -103,9 +103,17 @@ func parseSpaceChatStreamQuery(c *gin.Context) (v2service.SpaceChatStreamQuery, 
 // half a frame as the tail of the stream; the error ends the stream.
 func writeSpaceChatFrames(c *gin.Context, frames []apicore.SpaceChatFrame) error {
 	for _, frame := range frames {
-		if _, err := io.WriteString(c.Writer, "event: "+frame.Type+"\ndata: "+string(frame.Data)+"\n\n"); err != nil {
-			return fmt.Errorf("write %s event: %w", frame.Type, err)
+		if err := writeSSEEvent(c, frame.Type, frame.Data); err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+// writeSSEEvent writes one SSE event with no id in a single write.
+func writeSSEEvent(c *gin.Context, eventType string, data []byte) error {
+	if _, err := io.WriteString(c.Writer, "event: "+eventType+"\ndata: "+string(data)+"\n\n"); err != nil {
+		return fmt.Errorf("write %s event: %w", eventType, err)
 	}
 	return nil
 }

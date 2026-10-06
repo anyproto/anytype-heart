@@ -6821,6 +6821,102 @@
         ]
       }
     },
+    "/v2/spaces/{space_id}/search/stream": {
+      "post": {
+        "description": "The body is the space search request without `query`; nothing pages. Opens with an object_added per matching object and snapshot_complete, then object_added, object_updated (a carried field or the discussion changed) and object_removed (left the set, not necessarily deleted). Events carry no id: a reconnect is a fresh snapshot.",
+        "operationId": "stream_space_search",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Keepalive cadence in seconds",
+            "in": "query",
+            "name": "heartbeat",
+            "schema": {
+              "default": 30,
+              "maximum": 60,
+              "minimum": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequestDoc"
+              }
+            }
+          },
+          "description": "Search request",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Server-Sent Events stream"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Invalid request (validation_failed / ambiguous_input)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Space not found"
+          },
+          "429": {
+            "description": "Too many streams held at once; close one, retrying cannot succeed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Stream a space search",
+        "tags": [
+          "Search"
+        ]
+      }
+    },
     "/v2/spaces/{space_id}/templates": {
       "get": {
         "description": "`type` narrows the list to the templates of one type. Each row's id is what a create passes in `template`, and `default` marks the one a create of that type starts from on its own.",
