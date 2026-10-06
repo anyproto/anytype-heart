@@ -13,6 +13,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 
@@ -71,18 +72,7 @@ func (s *Service) ListChats(ctx context.Context, spaceId string, q ChatListQuery
 		return nil, 0, false, fmt.Errorf("list chats in space %s: chat state source is not configured", spaceId)
 	}
 	records, total, err := s.store.SpaceIndex(spaceId).QueryAndCount(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout,
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       domain.Int64List(util.LayoutsToIntArgs(util.ChatLayouts)),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsHidden,
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       domain.Bool(true),
-			},
-		},
+		Filters: chatListFilters(q.IncludeDiscussions),
 		Sorts: []database.SortRequest{{
 			RelationKey: bundle.RelationKeyLastModifiedDate,
 			Type:        model.BlockContentDataviewSort_Desc,
@@ -100,17 +90,76 @@ func (s *Service) ListChats(ctx context.Context, spaceId string, q ChatListQuery
 	}
 	rows := make([]v2model.ChatRow, 0, len(records))
 	for _, record := range records {
-		row := v2model.ChatRow{
-			Id:   record.Details.GetString(bundle.RelationKeyId),
-			Name: record.Details.GetString(bundle.RelationKeyName),
-			Kind: v2model.ChatKindChat,
-		}
+		row := chatRowOf(record)
 		if err := s.fillChatCounters(spaceId, &row); err != nil {
 			return nil, 0, false, err
 		}
 		rows = append(rows, row)
 	}
 	return rows, total, hasMore, nil
+}
+
+// chatListFilters is the list's store filter. Discussions are the parents that carry a
+// discussion id; a parent that is archived or deleted is not listed.
+func chatListFilters(includeDiscussions bool) []database.FilterRequest {
+	chats := database.FilterRequest{
+		RelationKey: bundle.RelationKeyResolvedLayout,
+		Condition:   model.BlockContentDataviewFilter_In,
+		Value:       domain.Int64List(util.LayoutsToIntArgs(util.ChatLayouts)),
+	}
+	notHidden := database.FilterRequest{
+		RelationKey: bundle.RelationKeyIsHidden,
+		Condition:   model.BlockContentDataviewFilter_NotEqual,
+		Value:       domain.Bool(true),
+	}
+	if !includeDiscussions {
+		return []database.FilterRequest{chats, notHidden}
+	}
+	discussionParents := database.FilterRequest{
+		Operator: model.BlockContentDataviewFilter_And,
+		NestedFilters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyDiscussionId,
+				Condition:   model.BlockContentDataviewFilter_NotEmpty,
+			},
+			{
+				RelationKey: bundle.RelationKeyIsArchived,
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       domain.Bool(true),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsDeleted,
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       domain.Bool(true),
+			},
+		},
+	}
+	return []database.FilterRequest{
+		{
+			Operator:      model.BlockContentDataviewFilter_Or,
+			NestedFilters: []database.FilterRequest{chats, discussionParents},
+		},
+		notHidden,
+	}
+}
+
+// chatRowOf maps one store record to a list row: a chat-layout object is a chat row; any
+// other record is an object carrying a discussion, listed under the discussion's id.
+func chatRowOf(record database.Record) v2model.ChatRow {
+	layout := model.ObjectTypeLayout(record.Details.GetInt64(bundle.RelationKeyResolvedLayout))
+	if slices.Contains(util.ChatLayouts, layout) {
+		return v2model.ChatRow{
+			Id:   record.Details.GetString(bundle.RelationKeyId),
+			Name: record.Details.GetString(bundle.RelationKeyName),
+			Kind: v2model.ChatKindChat,
+		}
+	}
+	return v2model.ChatRow{
+		Id:       record.Details.GetString(bundle.RelationKeyDiscussionId),
+		Name:     record.Details.GetString(bundle.RelationKeyName),
+		Kind:     v2model.ChatKindDiscussion,
+		ParentId: record.Details.GetString(bundle.RelationKeyId),
+	}
 }
 
 // fillChatCounters reads the row's chat state once and stores both counters on the row. An

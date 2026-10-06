@@ -155,6 +155,78 @@ func TestV2ListChats(t *testing.T) {
 		require.Error(t, err)
 	})
 
+	t.Run("include discussions adds one row per live parent, keyed by the discussion id", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addChat(t, "chatA", "Team chat", 1000)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:               domain.String("pageWithThread"),
+				bundle.RelationKeyName:             domain.String("Roadmap"),
+				bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyDiscussionId:     domain.String("disc1"),
+				bundle.RelationKeyLastModifiedDate: domain.Int64(3000),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("pageWithoutThread"),
+				bundle.RelationKeyName:           domain.String("Plain page"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+			{
+				bundle.RelationKeyId:               domain.String("archivedParent"),
+				bundle.RelationKeyName:             domain.String("Archived"),
+				bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyDiscussionId:     domain.String("disc2"),
+				bundle.RelationKeyIsArchived:       domain.Bool(true),
+				bundle.RelationKeyLastModifiedDate: domain.Int64(4000),
+			},
+			{
+				bundle.RelationKeyId:               domain.String("deletedParent"),
+				bundle.RelationKeyName:             domain.String("Deleted"),
+				bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyDiscussionId:     domain.String("disc3"),
+				bundle.RelationKeyIsDeleted:        domain.Bool(true),
+				bundle.RelationKeyLastModifiedDate: domain.Int64(5000),
+			},
+		})
+		fx.withChatStates(t, map[string][2]int32{"chatA": {0, 0}, "disc1": {2, 1}})
+		want := []v2model.ChatRow{
+			{Id: "disc1", Name: "Roadmap", Kind: v2model.ChatKindDiscussion, ParentId: "pageWithThread", UnreadMessages: 2, UnreadMentions: 1},
+			{Id: "chatA", Name: "Team chat", Kind: v2model.ChatKindChat},
+		}
+
+		// when
+		rows, total, hasMore, err := fx.ListChats(context.Background(), testSpaceId, ChatListQuery{IncludeDiscussions: true}, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, rows)
+		assert.Equal(t, 2, total)
+		assert.False(t, hasMore)
+	})
+
+	t.Run("discussions stay out of the default list", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addChat(t, "chatA", "Team chat", 1000)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("pageWithThread"),
+			bundle.RelationKeyName:           domain.String("Roadmap"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyDiscussionId:   domain.String("disc1"),
+		}})
+		fx.withChatStates(t, map[string][2]int32{"chatA": {0, 0}})
+
+		// when
+		rows, total, _, err := fx.ListChats(context.Background(), testSpaceId, ChatListQuery{}, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, rows, 1)
+		assert.Equal(t, "chatA", rows[0].Id)
+		assert.Equal(t, 1, total)
+	})
+
 	t.Run("pagination reports has_more with an honest total", func(t *testing.T) {
 		// given: THREE chats and limit=1 — the fetch reads limit+1 = 2
 		// records, so the banned v1 `total = len(fetched)` pattern would
