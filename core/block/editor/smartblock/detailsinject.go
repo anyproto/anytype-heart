@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -249,23 +250,30 @@ func (sb *smartBlock) deriveChatId(s *state.State) error {
 
 // resolveLayout adds resolvedLayout to local details of object. Priority:
 // layout restricted by sbType > layout > recommendedLayout from type > current resolvedLayout > basic (fallback)
-// resolveLayout also converts object from Note, i.e. adds Name and Title to state,
-// but only when the layout is actually known - never off the fallback guess.
-func (sb *smartBlock) resolveLayout(s *state.State) {
+//
+// It never touches blocks or the name: it runs on every load, apply and remote change, so a
+// conversion here is written by every device that loads the object, each from its own view of
+// the type. When a type's recommended layout changed, that made hundreds of members of a shared
+// space rewrite the same objects concurrently, back and forth. Blocks are brought in line with the
+// layout explicitly instead - see ConvertLayoutBlocks, and convertNewObjectLayoutBlocks for the
+// creation of an object.
+//
+// It returns the previous and the new resolved layout, and whether the new one is known rather
+// than guessed.
+func (sb *smartBlock) resolveLayout(s *state.State) (currentValue, newValue domain.Value, layoutIsKnown bool) {
 	if s.Details() == nil && s.LocalDetails() == nil {
 		return
 	}
 	var (
-		layoutValue  = s.Details().Get(bundle.RelationKeyLayout)
-		currentValue = s.LocalDetails().Get(bundle.RelationKeyResolvedLayout)
-		newValue     domain.Value
+		layoutValue = s.Details().Get(bundle.RelationKeyLayout)
 
 		sbTypeLayoutValue, hasStrictLayout = layoutPerSmartBlockType[sb.Type()]
 	)
+	currentValue = s.LocalDetails().Get(bundle.RelationKeyResolvedLayout)
 
 	if hasStrictLayout {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, domain.Int64(int64(sbTypeLayoutValue)))
-		return
+		return currentValue, domain.Value{}, false
 	}
 
 	if !currentValue.Ok() && layoutValue.Ok() {
@@ -275,7 +283,7 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 
 	typeDetails, err := sb.getTypeDetails(s)
 	valueInType := typeDetails.Get(bundle.RelationKeyRecommendedLayout)
-	layoutIsKnown := true
+	layoutIsKnown = true
 	if layoutValue.Ok() {
 		newValue = layoutValue
 	} else if valueInType.Ok() {
@@ -290,17 +298,53 @@ func (sb *smartBlock) resolveLayout(s *state.State) {
 	if newValue.Ok() {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyResolvedLayout, newValue)
 	}
+	return currentValue, newValue, layoutIsKnown
+}
 
-	if !layoutIsKnown {
-		// We don't know the real layout: the type object is most likely just not indexed
-		// yet, e.g. an object imported before its own type. Record a sane resolvedLayout
-		// so the object is not left without one, but never rewrite blocks or move the
-		// name in or out of details based on a guess - resolveLayout runs again once the
-		// type is available, and that is when converting is safe.
-		return
+// ConvertLayoutBlocks brings the blocks of the object in line with its layout, see
+// ConvertLayoutBlocksTo. It reports whether s was changed.
+//
+// Call it only on an explicit user action, such as opening the object: the change it makes is
+// derived from this device's view of the object type, and must not be repeated by every device
+// that merely loads the object. Only an authoritative layout is used - the layout detail or the
+// type's recommended layout - never a guess, a bundled type's default or the stored
+// resolvedLayout, any of which can disagree with what resolveLayout keeps for the object.
+func (sb *smartBlock) ConvertLayoutBlocks(s *state.State) bool {
+	if _, hasStrictLayout := layoutPerSmartBlockType[sb.Type()]; hasStrictLayout {
+		return false
 	}
+	layout, ok := sb.knownLayout(s)
+	if !ok {
+		return false
+	}
+	return ConvertLayoutBlocksTo(s, layout)
+}
 
-	convertLayoutBlocks(s, currentValue, newValue)
+func (sb *smartBlock) knownLayout(s *state.State) (model.ObjectTypeLayout, bool) {
+	if v, ok := s.Details().TryInt64(bundle.RelationKeyLayout); ok {
+		return model.ObjectTypeLayout(v), true // nolint:gosec
+	}
+	typeDetails, _ := sb.typeDetailsById(sb.currentTypeId(s))
+	if v, ok := typeDetails.TryInt64(bundle.RelationKeyRecommendedLayout); ok {
+		return model.ObjectTypeLayout(v), true // nolint:gosec
+	}
+	return 0, false
+}
+
+// currentTypeId is the id of the type the layout of s follows, taken from s itself: the type
+// detail in local details is only refreshed on Apply, so within an edit that changes the type
+// it still names the old one
+func (sb *smartBlock) currentTypeId(s *state.State) string {
+	key := s.ObjectTypeKey()
+	if key == bundle.TypeKeyTemplate {
+		return s.Details().GetString(bundle.RelationKeyTargetObjectType)
+	}
+	if key != "" {
+		if id, err := sb.space.GetTypeIdByKey(context.Background(), key); err == nil && id != "" {
+			return id
+		}
+	}
+	return s.LocalDetails().GetString(bundle.RelationKeyType)
 }
 
 // getFallbackLayoutValue is the last resort when neither the object nor its type tells us
@@ -326,35 +370,54 @@ func (sb *smartBlock) getFallbackLayoutValue(s *state.State) (value domain.Value
 	return domain.Int64(int64(model.ObjectType_basic)), false
 }
 
-func convertLayoutBlocks(st *state.State, oldLayout, newLayout domain.Value) {
-	if !newLayout.Ok() {
-		return
+// LayoutSourceChanged reports whether s changes what the object's layout is taken from, compared
+// to its parent state: its own layout detail, or the target type of a template. A write that does
+// is an explicit layout change, and its blocks should follow it - see ConvertLayoutBlocks.
+func LayoutSourceChanged(s *state.State) bool {
+	parent := s.ParentState()
+	if parent == nil {
+		return false
 	}
-	if oldLayout.Equal(newLayout) {
-		return
+	for _, key := range []domain.RelationKey{bundle.RelationKeyLayout, bundle.RelationKeyTargetObjectType} {
+		if !s.Details().Get(key).Equal(parent.Details().Get(key)) {
+			return true
+		}
 	}
-	if newLayout.Int64() != int64(model.ObjectType_note) {
-		if st.Exists(state.TitleBlockID) {
-			return
-		}
-		log.With("objectId", st.RootId()).Infof("convert layout: %s -> %s", oldLayout, newLayout)
-		templates := []template.StateTransformer{template.WithNameFromFirstBlock, template.WithTitle}
-		if st.Details().GetString(bundle.RelationKeyDescription) != "" {
-			templates = append(templates, template.WithDescription)
-		}
-		template.InitTemplate(st, templates...)
-	} else if newLayout.Int64() == int64(model.ObjectType_note) {
-		if !st.Exists(state.TitleBlockID) {
-			return
-		}
+	return false
+}
 
-		log.With("objectId", st.RootId()).Infof("convert layout: %s -> %s", oldLayout, newLayout)
+// ConvertLayoutBlocksTo converts the blocks of a page-layout object between the note form (no
+// title, the name lives in the first text block) and the titled form of the other page layouts,
+// whichever layout says. The decision is taken from the blocks alone, so the conversion is
+// idempotent: once the blocks match the layout it is a no-op. It reports whether s was changed.
+func ConvertLayoutBlocksTo(st *state.State, layout model.ObjectTypeLayout) bool {
+	if !converter.IsPageLayout(layout) {
+		return false
+	}
+	// a title block can be present in the state and yet hang from no parent, see WithTitle
+	hasTitle := st.Exists(state.TitleBlockID) && st.PickParentOf(state.TitleBlockID) != nil
+	if layout == model.ObjectType_note {
+		if !hasTitle {
+			return false
+		}
+		log.With("objectId", st.RootId()).Infof("convert layout blocks to %s", layout)
 		template.InitTemplate(st,
 			template.WithNameToFirstBlock,
 			template.WithNoTitle,
 			template.WithNoDescription,
 		)
+		return true
 	}
+	if hasTitle {
+		return false
+	}
+	log.With("objectId", st.RootId()).Infof("convert layout blocks to %s", layout)
+	templates := []template.StateTransformer{template.WithNameFromFirstBlock, template.WithTitle}
+	if st.Details().GetString(bundle.RelationKeyDescription) != "" {
+		templates = append(templates, template.WithDescription)
+	}
+	template.InitTemplate(st, templates...)
+	return true
 }
 
 func (sb *smartBlock) getTypeDetails(s *state.State) (*domain.Details, error) {
@@ -365,6 +428,10 @@ func (sb *smartBlock) getTypeDetails(s *state.State) (*domain.Details, error) {
 		typeObjectId = s.Details().GetString(bundle.RelationKeyTargetObjectType)
 	}
 
+	return sb.typeDetailsById(typeObjectId)
+}
+
+func (sb *smartBlock) typeDetailsById(typeObjectId string) (*domain.Details, error) {
 	if typeObjectId == "" {
 		return nil, fmt.Errorf("failed to find id of object type")
 	}
@@ -395,4 +462,39 @@ func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
 	} else if s.LocalDetails().GetBool(bundle.RelationKeyIsReadonly) {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(false))
 	}
+}
+
+// convertNewObjectLayoutBlocks shapes the blocks of an object that is being created to the layout
+// it resolves to: creation templates and imports rely on it for the title and description of
+// titled layouts, and to move the name into the first block for note. Creation is a single write
+// by the creating device, so unlike a load it cannot be repeated by every member of a space.
+// The behaviour is the conversion resolveLayout used to run on every init, kept as is.
+func convertNewObjectLayoutBlocks(st *state.State, oldLayout, newLayout domain.Value) {
+	if !newLayout.Ok() {
+		return
+	}
+	if oldLayout.Equal(newLayout) {
+		return
+	}
+	if newLayout.Int64() != int64(model.ObjectType_note) {
+		if st.Exists(state.TitleBlockID) {
+			return
+		}
+		log.With("objectId", st.RootId()).Infof("convert layout of new object: %s -> %s", oldLayout, newLayout)
+		templates := []template.StateTransformer{template.WithNameFromFirstBlock, template.WithTitle}
+		if st.Details().GetString(bundle.RelationKeyDescription) != "" {
+			templates = append(templates, template.WithDescription)
+		}
+		template.InitTemplate(st, templates...)
+		return
+	}
+	if !st.Exists(state.TitleBlockID) {
+		return
+	}
+	log.With("objectId", st.RootId()).Infof("convert layout of new object: %s -> %s", oldLayout, newLayout)
+	template.InitTemplate(st,
+		template.WithNameToFirstBlock,
+		template.WithNoTitle,
+		template.WithNoDescription,
+	)
 }

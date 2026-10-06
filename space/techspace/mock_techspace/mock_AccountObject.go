@@ -561,6 +561,52 @@ func (_c *MockAccountObject_CombinedDetails_Call) RunAndReturn(run func() *domai
 	return _c
 }
 
+// ConvertLayoutBlocks provides a mock function with given fields: s
+func (_m *MockAccountObject) ConvertLayoutBlocks(s *state.State) bool {
+	ret := _m.Called(s)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ConvertLayoutBlocks")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(*state.State) bool); ok {
+		r0 = rf(s)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockAccountObject_ConvertLayoutBlocks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ConvertLayoutBlocks'
+type MockAccountObject_ConvertLayoutBlocks_Call struct {
+	*mock.Call
+}
+
+// ConvertLayoutBlocks is a helper method to define mock.On call
+//   - s *state.State
+func (_e *MockAccountObject_Expecter) ConvertLayoutBlocks(s interface{}) *MockAccountObject_ConvertLayoutBlocks_Call {
+	return &MockAccountObject_ConvertLayoutBlocks_Call{Call: _e.mock.On("ConvertLayoutBlocks", s)}
+}
+
+func (_c *MockAccountObject_ConvertLayoutBlocks_Call) Run(run func(s *state.State)) *MockAccountObject_ConvertLayoutBlocks_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*state.State))
+	})
+	return _c
+}
+
+func (_c *MockAccountObject_ConvertLayoutBlocks_Call) Return(_a0 bool) *MockAccountObject_ConvertLayoutBlocks_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAccountObject_ConvertLayoutBlocks_Call) RunAndReturn(run func(*state.State) bool) *MockAccountObject_ConvertLayoutBlocks_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Details provides a mock function with no fields
 func (_m *MockAccountObject) Details() *domain.GenericMap[domain.RelationKey] {
 	ret := _m.Called()

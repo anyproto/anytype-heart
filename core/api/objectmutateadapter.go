@@ -80,6 +80,11 @@ func (a *objectMutateAdapter) MutateObject(ctx context.Context, spaceId string, 
 		if err := guardBundledRevision(sb, st); err != nil {
 			return err
 		}
+		if smartblock.LayoutSourceChanged(st) {
+			// the edit changed the object's layout (or a template's target type): its blocks
+			// follow in the same change, as for the app's ObjectSetDetails
+			sb.ConvertLayoutBlocks(st)
+		}
 		if err := sb.Apply(st); err != nil {
 			return fmt.Errorf("apply edit state: %w", err)
 		}

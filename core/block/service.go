@@ -280,6 +280,20 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 			ob.EnabledRelationAsDependentObjects()
 		}
 
+		// Opening is the only implicit point where blocks follow a changed layout (e.g. the type's
+		// recommended layout), written once by the device of the user who opened the object rather
+		// than by every device that loads it. It runs before this session registers, so the events
+		// reach the other sessions showing the object while this one gets the result from Show.
+		// Readers can't push the change, and Apply mutates the in-memory doc before pushing, so
+		// they are skipped up front.
+		if cst := ob.NewState(); ob.ConvertLayoutBlocks(cst) && !spc.IsReadOnly() {
+			// not a user edit: must not make the opener the object's last modifier
+			cst.SetChangeType(domain.ChangeTypeLayoutSync)
+			if convErr := ob.Apply(cst, smartblock.NoHistory, smartblock.NoRestrictions, smartblock.KeepInternalFlags); convErr != nil {
+				log.Error("convert layout blocks on open", zap.String("objectId", id.ObjectID), zap.Error(convErr))
+			}
+		}
+
 		ob.RegisterSession(sctx)
 
 		st := ob.NewState()

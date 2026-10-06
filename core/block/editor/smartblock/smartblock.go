@@ -72,6 +72,10 @@ const (
 	// "skip the block-level Edit restrictions" and is set by every details write, so gating on that
 	// one would exempt the whole details path.
 	NoSpaceConfigCheck
+	// ShapeNewObjectLayout shapes the blocks of the state to the layout it resolves to, as on
+	// creation (see convertNewObjectLayoutBlocks). Only for writes that put a whole new state in
+	// place on one device: object creation, import, version restore - never for loads.
+	ShapeNewObjectLayout
 )
 
 type Hook int
@@ -173,6 +177,8 @@ type SmartBlock interface {
 	ResetToVersion(s *state.State) (err error)
 	EnableLayouts()
 	EnabledRelationAsDependentObjects()
+	// ConvertLayoutBlocks brings blocks in line with the layout; explicit user actions only
+	ConvertLayoutBlocks(s *state.State) bool
 	AddHook(f HookCallback, events ...Hook)
 	AddHookOnce(id string, f HookCallback, events ...Hook)
 	CheckSubscriptions() (changed bool)
@@ -400,7 +406,10 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		return
 	}
 	sb.injectDerivedDetails(ctx.State, sb.SpaceID(), sb.Type())
-	sb.resolveLayout(ctx.State)
+	oldLayout, newLayout, layoutIsKnown := sb.resolveLayout(ctx.State)
+	if ctx.IsNewObject && layoutIsKnown {
+		convertNewObjectLayoutBlocks(ctx.State, oldLayout, newLayout)
+	}
 
 	sb.AddHook(sb.sendObjectCloseEvent, HookOnClose, HookOnBlockClose)
 	return
@@ -755,6 +764,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		notPushChanges          = false
 		allowApplyWithEmptyTree = false
 		noSpaceConfigCheck      = false
+		shapeNewObjectLayout    = false
 	)
 	for _, f := range flags {
 		switch f {
@@ -778,6 +788,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			allowApplyWithEmptyTree = true
 		case NoSpaceConfigCheck:
 			noSpaceConfigCheck = true
+		case ShapeNewObjectLayout:
+			shapeNewObjectLayout = true
 		}
 	}
 	if sb.ObjectTree != nil &&
@@ -799,7 +811,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	// Inject derived details to make sure we have consistent state.
 	// For example, we have to set ObjectTypeID into Type relation according to ObjectTypeKey from the state
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
-	sb.resolveLayout(s)
+	oldLayout, newLayout, layoutIsKnown := sb.resolveLayout(s)
+	if shapeNewObjectLayout && layoutIsKnown {
+		convertNewObjectLayoutBlocks(s, oldLayout, newLayout)
+	}
 
 	if hooks {
 		if err = sb.execHooks(HookBeforeApply, ApplyInfo{State: s}); err != nil {
@@ -1037,11 +1052,14 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			parentDetails = act.Details.Before
 		}
 		if e := sb.execHooks(HookAfterApply, ApplyInfo{
-			State:             sb.Doc.(*state.State),
-			ParentDetails:     parentDetails,
-			Events:            msgs,
-			Changes:           changes,
-			ApplyOtherObjects: true,
+			State:         sb.Doc.(*state.State),
+			ParentDetails: parentDetails,
+			Events:        msgs,
+			Changes:       changes,
+			// only a user's own edit, or its undo/redo, cascades to other objects: migrations,
+			// object init and layout syncs run on every device and must not each rewrite the
+			// objects of a type
+			ApplyOtherObjects: changeType == domain.ChangeTypeUserChange || changeType == domain.ChangeTypeHistoryOperation,
 		}); e != nil {
 			log.With("objectID", sb.Id()).Warnf("after apply execHooks error: %v", e)
 		}
@@ -1065,7 +1083,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
-	if err = sb.Apply(s, NoHistory, DoSnapshot, NoRestrictions); err != nil {
+	if err = sb.Apply(s, NoHistory, DoSnapshot, NoRestrictions, ShapeNewObjectLayout); err != nil {
 		return
 	}
 	if sb.undo != nil {

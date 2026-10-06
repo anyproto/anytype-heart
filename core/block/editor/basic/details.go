@@ -59,6 +59,11 @@ func (bs *basic) UpdateDetails(ctx session.Context, update func(current *domain.
 	if err = bs.addRelationLinks(s, newDetails.Keys()...); err != nil {
 		return err
 	}
+	if smartblock.LayoutSourceChanged(s) {
+		// the user changed the object's layout (or a template's target type): its blocks
+		// follow, in this same change
+		bs.ConvertLayoutBlocks(s)
+	}
 
 	flags := internalflag.NewFromState(s.ParentState())
 	if flags.Has(model.InternalFlag_editorDeleteEmpty) {
@@ -262,6 +267,12 @@ func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTyp
 }
 
 func (bs *basic) SetLayoutInState(s *state.State, toLayout model.ObjectTypeLayout, ignoreRestriction bool) (err error) {
+	// the converter assumes the blocks are in the shape of the current layout, which an object
+	// that nobody opened since its type's layout changed is not: bring them there first - also
+	// when the layout stays the same, since then this is the only repair. Only an authoritative
+	// layout is used: the stored resolvedLayout may be a guess, and converting to a guess can
+	// consume a paragraph for nothing
+	bs.ConvertLayoutBlocks(s)
 	fromLayout, _ := s.Layout()
 	if fromLayout == toLayout {
 		return nil

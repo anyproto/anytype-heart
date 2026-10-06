@@ -11,6 +11,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -110,7 +112,7 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 		require.NoError(t, obj2.SetDetails(nil, []domain.Detail{{
 			Key: bundle.RelationKeyLayout, Value: domain.Int64(int64(model.ObjectType_todo)),
 		}}, false))
-		obj4 := smarttest.New("obj4")
+		obj4 := newTitledObject(t, "obj4", "")
 		tmpl := smarttest.New("tmpl")
 		require.NoError(t, tmpl.SetDetails(nil, []domain.Detail{{
 			Key: bundle.RelationKeyLayout, Value: domain.Int64(int64(model.ObjectType_basic)),
@@ -389,6 +391,180 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 		assert.Equal(t, "Goodbye!", det2.GetString(bundle.RelationKeyName))
 	})
 
+	t.Run("loaded object leaving note -> blocks are converted and the change is pushed", func(t *testing.T) {
+		// given
+		fx := newFixture(t, typeId)
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("obj1"),
+			bundle.RelationKeyType:           domain.String(typeId),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_note),
+		}})
+		obj1 := newNoteObject(t, "obj1", "First line")
+		fx.space.EXPECT().DoLockedIfNotExists("obj1", mock.Anything).Return(ocache.ErrExists)
+		fx.space.EXPECT().Do("obj1", mock.Anything).RunAndReturn(func(_ string, f func(smartblock.SmartBlock) error) error {
+			return f(obj1)
+		})
+
+		// when
+		err := fx.SyncLayoutWithType(
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_note)},
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_todo)},
+			false, true, true,
+		)
+
+		// then
+		require.NoError(t, err)
+		assert.False(t, obj1.Results.IsStateAppendCalled)
+		assert.Len(t, obj1.Results.Applies, 1)
+		assert.Equal(t, "First line", obj1.Details().GetString(bundle.RelationKeyName))
+		assert.NotNil(t, obj1.Pick(template.TitleBlockId))
+	})
+
+	t.Run("object losing its layout override follows the type's new layout in the same change", func(t *testing.T) {
+		// given: the object pins the type's old layout, so the sync drops the pin
+		fx := newFixture(t, typeId)
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("obj1"),
+			bundle.RelationKeyType:           domain.String(typeId),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_basic),
+			bundle.RelationKeyLayout:         domain.Int64(model.ObjectType_basic),
+		}})
+		obj1 := newTitledObject(t, "obj1", "Hello")
+		require.NoError(t, obj1.SetDetails(nil, []domain.Detail{{
+			Key: bundle.RelationKeyLayout, Value: domain.Int64(model.ObjectType_basic),
+		}}, false))
+		obj1.Results = smarttest.Results{}
+		fx.space.EXPECT().Do("obj1", mock.Anything).RunAndReturn(func(_ string, f func(smartblock.SmartBlock) error) error {
+			return f(obj1)
+		})
+		fx.space.EXPECT().TryRemove("obj1").Return(true, nil)
+
+		// when
+		err := fx.SyncLayoutWithType(
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_basic)},
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_note)},
+			false, true, true,
+		)
+
+		// then
+		require.NoError(t, err)
+		assert.Len(t, obj1.Results.Applies, 1)
+		assert.False(t, obj1.Details().Has(bundle.RelationKeyLayout))
+		assert.Empty(t, obj1.Details().GetString(bundle.RelationKeyName))
+		assert.Nil(t, obj1.NewState().PickParentOf(template.TitleBlockId))
+	})
+
+	t.Run("object whose featured relations follow the type also follows its new layout", func(t *testing.T) {
+		// given: no layout override; the sync updates featured relations, which takes the branch
+		// that applies to the object directly
+		fx := newFixture(t, typeId)
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:                domain.String("obj1"),
+			bundle.RelationKeyType:              domain.String(typeId),
+			bundle.RelationKeyResolvedLayout:    domain.Int64(model.ObjectType_basic),
+			bundle.RelationKeyFeaturedRelations: domain.StringList([]string{bundle.RelationKeyType.String()}),
+		}})
+		obj1 := newTitledObject(t, "obj1", "Hello")
+		fx.space.EXPECT().Do("obj1", mock.Anything).RunAndReturn(func(_ string, f func(smartblock.SmartBlock) error) error {
+			return f(obj1)
+		})
+		fx.space.EXPECT().TryRemove("obj1").Return(true, nil)
+		fx.space.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, key domain.UniqueKey) (string, error) {
+			return key.Marshal(), nil
+		})
+
+		// when
+		err := fx.SyncLayoutWithType(
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_basic),
+				isFeaturedRelationsSet: true, featuredRelations: []string{bundle.RelationKeyType.URL()}},
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_note),
+				isFeaturedRelationsSet: true, featuredRelations: []string{bundle.RelationKeyTag.URL()}},
+			false, true, true,
+		)
+
+		// then
+		require.NoError(t, err)
+		assert.Len(t, obj1.Results.Applies, 1)
+		assert.Empty(t, obj1.Details().GetString(bundle.RelationKeyName))
+		assert.Nil(t, obj1.NewState().PickParentOf(template.TitleBlockId))
+	})
+
+	t.Run("object that changed since the query is not converted", func(t *testing.T) {
+		for _, tc := range []struct {
+			name   string
+			change func(st *state.State)
+		}{
+			{"layout pinned", func(st *state.State) {
+				st.SetDetail(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_basic))
+			}},
+			{"type changed", func(st *state.State) {
+				st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyPage.URL()))
+			}},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				// given: the store still lists the object as following the type, but under its
+				// lock it no longer does
+				fx := newFixture(t, typeId)
+				fx.store.AddObjects(t, spaceId, []objectstore.TestObject{{
+					bundle.RelationKeyId:             domain.String("obj1"),
+					bundle.RelationKeyType:           domain.String(typeId),
+					bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_basic),
+				}})
+				obj1 := newTitledObject(t, "obj1", "Hello")
+				st := obj1.NewState()
+				tc.change(st)
+				require.NoError(t, obj1.Apply(st, smartblock.NoRestrictions))
+				obj1.Results = smarttest.Results{}
+				fx.space.EXPECT().DoLockedIfNotExists("obj1", mock.Anything).Return(ocache.ErrExists)
+				fx.space.EXPECT().Do("obj1", mock.Anything).RunAndReturn(func(_ string, f func(smartblock.SmartBlock) error) error {
+					return f(obj1)
+				})
+
+				// when
+				err := fx.SyncLayoutWithType(
+					LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_basic)},
+					LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_note)},
+					false, true, true,
+				)
+
+				// then
+				require.NoError(t, err)
+				assert.Empty(t, obj1.Results.Applies)
+				assert.Equal(t, "Hello", obj1.Details().GetString(bundle.RelationKeyName))
+				assert.NotNil(t, obj1.NewState().PickParentOf(template.TitleBlockId))
+			})
+		}
+	})
+
+	t.Run("loaded object becoming note -> blocks are converted and the change is pushed", func(t *testing.T) {
+		// given
+		fx := newFixture(t, typeId)
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("obj1"),
+			bundle.RelationKeyType:           domain.String(typeId),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_basic),
+		}})
+		obj1 := newTitledObject(t, "obj1", "Hello")
+		fx.space.EXPECT().DoLockedIfNotExists("obj1", mock.Anything).Return(ocache.ErrExists)
+		fx.space.EXPECT().Do("obj1", mock.Anything).RunAndReturn(func(_ string, f func(smartblock.SmartBlock) error) error {
+			return f(obj1)
+		})
+
+		// when
+		err := fx.SyncLayoutWithType(
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_basic)},
+			LayoutState{isRecommendedLayoutSet: true, recommendedLayout: int64(model.ObjectType_note)},
+			false, true, true,
+		)
+
+		// then
+		require.NoError(t, err)
+		assert.False(t, obj1.Results.IsStateAppendCalled)
+		assert.Len(t, obj1.Results.Applies, 1)
+		assert.Empty(t, obj1.Details().GetString(bundle.RelationKeyName))
+		assert.Nil(t, obj1.NewState().PickParentOf(template.TitleBlockId))
+	})
+
 	t.Run("when forceUpdate is enabled -> all layout relations must be removed", func(t *testing.T) {
 		// given
 		fx := newFixture(t, typeId)
@@ -506,4 +682,34 @@ func TestObjectType_syncLayoutForObjectsAndTemplates(t *testing.T) {
 
 		assert.Equal(t, int64(model.ObjectType_basic), det1.GetInt64(bundle.RelationKeyResolvedLayout))
 	})
+}
+
+// testTypeId is the type every syncer test syncs
+var testTypeId = bundle.TypeKeyTask.URL()
+
+// newTitledObject returns a loaded object of testTypeId in the titled form of the page layouts.
+// Applies made while building it are cleared.
+func newTitledObject(t *testing.T, id, name string) *smarttest.SmartTest {
+	obj := smarttest.New(id)
+	st := obj.NewState()
+	st.SetLocalDetail(bundle.RelationKeyType, domain.String(testTypeId))
+	template.InitTemplate(st, template.WithTitle)
+	if name != "" {
+		st.SetDetail(bundle.RelationKeyName, domain.String(name))
+	}
+	require.NoError(t, obj.Apply(st, smartblock.NoRestrictions))
+	obj.Results = smarttest.Results{}
+	return obj
+}
+
+// newNoteObject returns a loaded object of testTypeId in the note form: no title, the name lives in
+// the first text block. Applies made while building it are cleared.
+func newNoteObject(t *testing.T, id, firstLine string) *smarttest.SmartTest {
+	obj := smarttest.New(id)
+	st := obj.NewState()
+	st.SetLocalDetail(bundle.RelationKeyType, domain.String(testTypeId))
+	template.InitTemplate(st, template.WithFirstTextBlockContent(firstLine))
+	require.NoError(t, obj.Apply(st, smartblock.NoRestrictions))
+	obj.Results = smarttest.Results{}
+	return obj
 }
