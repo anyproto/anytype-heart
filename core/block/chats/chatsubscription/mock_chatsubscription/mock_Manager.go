@@ -4,6 +4,7 @@ package mock_chatsubscription
 
 import (
 	chatmodel "github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	chatsubscription "github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -55,6 +56,40 @@ func (_c *MockManager_Add_Call) Return() *MockManager_Add_Call {
 }
 
 func (_c *MockManager_Add_Call) RunAndReturn(run func(string, *chatmodel.Message)) *MockManager_Add_Call {
+	_c.Run(run)
+	return _c
+}
+
+// AddObserver provides a mock function with given fields: id, fn
+func (_m *MockManager) AddObserver(id string, fn chatsubscription.ChatObserver) {
+	_m.Called(id, fn)
+}
+
+// MockManager_AddObserver_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddObserver'
+type MockManager_AddObserver_Call struct {
+	*mock.Call
+}
+
+// AddObserver is a helper method to define mock.On call
+//   - id string
+//   - fn chatsubscription.ChatObserver
+func (_e *MockManager_Expecter) AddObserver(id interface{}, fn interface{}) *MockManager_AddObserver_Call {
+	return &MockManager_AddObserver_Call{Call: _e.mock.On("AddObserver", id, fn)}
+}
+
+func (_c *MockManager_AddObserver_Call) Run(run func(id string, fn chatsubscription.ChatObserver)) *MockManager_AddObserver_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(chatsubscription.ChatObserver))
+	})
+	return _c
+}
+
+func (_c *MockManager_AddObserver_Call) Return() *MockManager_AddObserver_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockManager_AddObserver_Call) RunAndReturn(run func(string, chatsubscription.ChatObserver)) *MockManager_AddObserver_Call {
 	_c.Run(run)
 	return _c
 }
@@ -519,6 +554,39 @@ func (_c *MockManager_ReconcileChatState_Call) Return() *MockManager_ReconcileCh
 }
 
 func (_c *MockManager_ReconcileChatState_Call) RunAndReturn(run func()) *MockManager_ReconcileChatState_Call {
+	_c.Run(run)
+	return _c
+}
+
+// RemoveObserver provides a mock function with given fields: id
+func (_m *MockManager) RemoveObserver(id string) {
+	_m.Called(id)
+}
+
+// MockManager_RemoveObserver_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveObserver'
+type MockManager_RemoveObserver_Call struct {
+	*mock.Call
+}
+
+// RemoveObserver is a helper method to define mock.On call
+//   - id string
+func (_e *MockManager_Expecter) RemoveObserver(id interface{}) *MockManager_RemoveObserver_Call {
+	return &MockManager_RemoveObserver_Call{Call: _e.mock.On("RemoveObserver", id)}
+}
+
+func (_c *MockManager_RemoveObserver_Call) Run(run func(id string)) *MockManager_RemoveObserver_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockManager_RemoveObserver_Call) Return() *MockManager_RemoveObserver_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockManager_RemoveObserver_Call) RunAndReturn(run func(string)) *MockManager_RemoveObserver_Call {
 	_c.Run(run)
 	return _c
 }

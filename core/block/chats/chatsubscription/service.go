@@ -71,6 +71,10 @@ type Manager interface {
 	ReadReactions(newOrderId string, idsModified []string)
 	ForceReloadReactionState()
 	ReconcileChatState()
+	// AddObserver registers an observer of every change this manager applies
+	// (see ChatObserver); RemoveObserver unregisters it. Both are called under Lock.
+	AddObserver(id string, fn ChatObserver)
+	RemoveObserver(id string)
 }
 
 type Service interface {
