@@ -27,6 +27,13 @@ type ChatSubscriptionService interface {
 	OpenSpaceChats(ctx context.Context, req SpaceChatOpen) (SpaceChatSubscription, error)
 }
 
+// ObjectSearchService opens live searches over one space (objectsearch.go).
+type ObjectSearchService interface {
+	// OpenObjectSearch subscribes to the matching set and returns it with its
+	// opening snapshot. The caller closes the subscription.
+	OpenObjectSearch(ctx context.Context, req ObjectSearchOpen) (ObjectSearchSubscription, error)
+}
+
 type AccountService interface {
 	GetInfo(ctx context.Context) (*model.AccountInfo, error)
 }
