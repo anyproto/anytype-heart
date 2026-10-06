@@ -127,6 +127,13 @@ type storeObject struct {
 	// unreadCountersDone is closed when the worker returns; it stays open
 	// when no worker was started.
 	unreadCountersDone chan struct{}
+	// unreadCountersCtx is the worker's lifetime, derived from componentCtx:
+	// Close ends both, a TryClose that succeeded ends only the worker's.
+	// componentCtx must outlive an eviction: the seen-heads subscription is
+	// not removed when the object closes and still marks reads made on
+	// another device through markReadMessages, on componentCtx.
+	unreadCountersCtx    context.Context
+	unreadCountersCancel context.CancelFunc
 }
 
 type UnreadStats struct {
@@ -190,6 +197,7 @@ func New(
 	layout model.ObjectTypeLayout,
 ) StoreObject {
 	ctx, cancel := context.WithCancel(context.Background())
+	unreadCountersCtx, unreadCountersCancel := context.WithCancel(ctx)
 	bs := basic.NewBasic(sb, spaceIndex, layoutConverter, fileObjectService)
 	return &storeObject{
 		SmartBlock:              sb,
@@ -205,6 +213,8 @@ func New(
 		componentCtxCancel:      cancel,
 		unreadCountersTrigger:   make(chan struct{}, 1),
 		unreadCountersDone:      make(chan struct{}),
+		unreadCountersCtx:       unreadCountersCtx,
+		unreadCountersCancel:    unreadCountersCancel,
 		chatSubscriptionService: chatSubscriptionService,
 		DetailsSettable:         bs,
 		DetailsUpdatable:        bs,
@@ -413,12 +423,12 @@ func (s *storeObject) runUnreadCountersUpdater() {
 	defer close(s.unreadCountersDone)
 	for {
 		select {
-		case <-s.componentCtx.Done():
+		case <-s.unreadCountersCtx.Done():
 			return
 		case <-s.unreadCountersTrigger:
 			// select picks at random when both cases are ready: a closed
 			// object writes nothing
-			if s.componentCtx.Err() != nil {
+			if s.unreadCountersCtx.Err() != nil {
 				return
 			}
 			s.writeUnreadCounters()
@@ -684,8 +694,9 @@ func (s *storeObject) TryClose(objectTTL time.Duration) (res bool, err error) {
 	res, err = s.SmartBlock.TryClose(objectTTL)
 	if res {
 		// the cache does not call Close after a TryClose that succeeded:
-		// stop the components here, the unread counters worker among them
-		s.componentCtxCancel()
+		// stop the unread counters worker here. componentCtx stays alive for
+		// the seen-heads callbacks that outlive the object.
+		s.unreadCountersCancel()
 	}
 	return res, err
 }

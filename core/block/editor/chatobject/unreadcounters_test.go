@@ -197,6 +197,42 @@ func TestUnreadCountersWorkerLifetime(t *testing.T) {
 		requireWorkerStopped(t, fx)
 	})
 
+	t.Run("a chat the cache evicts through TryClose still applies reads synced from another device", func(t *testing.T) {
+		// given: the seen-heads subscription outlives the evicted object and still calls
+		// markReadMessages, which runs on the component context
+		ctx := context.Background()
+		fx := newFixture(t, withSpace(t, chatId), withEvictableSmartBlock())
+		fx.chatHandler.forceNotRead = true
+		fx.locked(t, func() error {
+			return fx.addMessages(ctx, givenSimpleMessage("hello"), givenSimpleMessage("again"))
+		})
+		unread, err := fx.repository.GetAllUnreadMessages(ctx, chatmodel.CounterTypeMessage)
+		require.NoError(t, err)
+		require.Len(t, unread, 2)
+		// TryClose declines while the worker holds the lock for a write; the cache's GC retries too
+		require.Eventually(t, func() bool {
+			closed, err := fx.TryClose(time.Minute)
+			return err == nil && closed
+		}, 10*time.Second, time.Millisecond)
+
+		// when: the read made on another device arrives as removed seen heads
+		var readErr error
+		fx.locked(t, func() error {
+			readErr = fx.markReadMessages(unread, chatmodel.CounterTypeMessage)
+			return nil
+		})
+
+		// then
+		require.NoError(t, readErr)
+		dbState, err := fx.repository.LoadChatState(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, int32(0), dbState.Messages.Counter, "the read flags are stored")
+		fx.subscription.Lock()
+		counter := fx.subscription.GetChatState().Messages.Counter
+		fx.subscription.Unlock()
+		assert.Equal(t, int32(0), counter, "the chat state follows")
+	})
+
 	t.Run("a chat the cache keeps open keeps its counters worker", func(t *testing.T) {
 		// given: smarttest's TryClose always declines, as a chat with an open session does
 		fx := newFixture(t, withSpace(t, chatId))
