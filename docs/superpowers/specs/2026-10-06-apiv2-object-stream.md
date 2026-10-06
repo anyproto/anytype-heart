@@ -87,8 +87,9 @@ Gaps A and B are accepted as-is (decided 2026-10-06).
 POST /v2/spaces/{space_id}/search/stream     # SSE; body = the existing v2 search request
 ```
 
-The body is the **existing space-search request** (`SearchRequest`: `type`, `query`, `filter` or
-`filters`, `sorts`, `fields`), with the same validation and canonicalisation as
+The body is the **existing space-search request** (`SearchRequest`: `type`, `filter` or
+`filters`, `sorts`, `fields`; **`query` is refused with a 400** because the subscription engine has no
+full-text matching), with the same validation and canonicalisation as
 `POST /v2/spaces/{space_id}/search`. This matches the gateway document
 (`MULTICHAT_RECOMMENDATION.md` §5: `POST /v2/spaces/{space_id}/search/stream`, "using the existing
 search request/filter model"); a POST body carries a filter tree that a query string cannot. The
@@ -102,10 +103,10 @@ apply (not a mutation).
 
 | event            | when                                                          | payload |
 |------------------|---------------------------------------------------------------|---------|
-| `object_added`   | in the opening snapshot, and when an object enters the set    | the search row shape (`ObjectRow`), `fields` applied |
-| `object_updated` | a carried field of a member changes                           | row |
-| `object_removed` | an object leaves the set (e.g. mentions read → count 0)       | `{id}` |
-| `snapshot_complete` | once, after the last opening `object_added`, also for an empty set | none |
+| `object_added`   | in the opening snapshot, and when an object enters the set    | `{type, space_id, object}` where `object` is the search row (`ObjectRow`, `fields` applied, `discussion` when present) |
+| `object_updated` | a carried field of a member changes (incl. `discussionId`)    | same shape as `object_added` |
+| `object_removed` | an object leaves the set (e.g. mentions read → count 0)       | `{type, space_id, object_id}` |
+| `snapshot_complete` | once, after the last opening `object_added`, also for an empty set | optional `warnings` (those POST search returns) |
 | heartbeat        | idle, as the chat stream                                       | SSE comment |
 
 Rows reuse the search renderer so a client parses one object shape for search and stream, with one
