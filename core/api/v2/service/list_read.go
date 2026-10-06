@@ -362,6 +362,8 @@ func (s *Service) validateListFields(spaceId string, fields []string, v errKeys)
 	}
 	acceptKeys := appendMissing(kc.withServedSpellings(sortedDistinct(stored)), "id", "name", "type")
 	acceptKeys = appendMissing(acceptKeys, kc.withServedSpellings(v2SystemQueryKeys)...)
+	// accepted, never listed (v2BundledQueryKeys)
+	acceptKeys = appendMissing(acceptKeys, kc.withServedSpellings(v2BundledQueryKeys)...)
 	refKeys := appendMissing(kc.referenceSpellings(sortedDistinct(stored), v), "id", "name", "type")
 	refKeys = appendMissing(refKeys, servedBundledSpellings(v2SystemQueryKeys, v)...)
 	// the file aliases are valid ?fields= keys when active (per space — a

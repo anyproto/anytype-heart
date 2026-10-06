@@ -29,6 +29,7 @@ import (
 	"regexp"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
@@ -50,6 +51,16 @@ import (
 // queries. Always part of the query-surface reference set — for search AND
 // for set filters/sorts.
 var v2SystemQueryKeys = []string{"createdDate", "lastModifiedDate", "creator", "lastOpenedDate"}
+
+// v2BundledQueryKeys are hidden bundled relations that queries may name
+// although no relation object exists for them in the space. Accepted in
+// filters, fields and sorts, in both spellings, but NOT advertised in
+// refusals' "known keys" or list_properties. They are the discussion-parent
+// counters: local details of the current account, written onto an object by
+// its discussion, absent on an object without one and never synced. The list
+// is explicit on purpose: a blanket "any bundled key" would expose every
+// internal relation to filters and sorts.
+var v2BundledQueryKeys = []string{"unreadMentionCount", "unreadMessageCount"}
 
 // SearchNarrowHint is the C10 truncation steering for search results.
 const SearchNarrowHint = "narrow with filter or query, or request the next offset"
@@ -263,6 +274,11 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	refKeys = appendMissing(refKeys, servedBundledSpellings(v2SystemQueryKeys, v)...)
 	refKeys = appendMissing(refKeys, "type")
 	acceptKeys = appendMissing(acceptKeys, "type")
+	// the hidden counters are accepted, never advertised: refKeys (what a
+	// refusal lists and suggests from) stays without them, and so does the
+	// set the filter string's refusals are worded over
+	advertisedKeys := append([]string(nil), acceptKeys...)
+	acceptKeys = appendMissing(acceptKeys, kc.withServedSpellings(v2BundledQueryKeys)...)
 	// The file aliases join the reference set when active (no real
 	// live property claims the spelling): mimeType/size are live in EVERY
 	// channel — fields, filters and sorts — translated to the backing store
@@ -271,9 +287,11 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	for alias := range aliases {
 		refKeys = appendMissing(refKeys, alias)
 		acceptKeys = appendMissing(acceptKeys, alias)
+		advertisedKeys = appendMissing(advertisedKeys, alias)
 	}
 	sort.Strings(refKeys)
 	sort.Strings(acceptKeys)
+	sort.Strings(advertisedKeys)
 	allowed := map[string]bool{}
 	for _, key := range acceptKeys {
 		allowed[key] = true
@@ -309,7 +327,7 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	filtersJSON := req.Filters
 	fromString := req.Filter != ""
 	if fromString {
-		parsed, err := filterstring.Parse(req.Filter, filterstring.Options{
+		parsed, err := parseSearchFilter(req.Filter, filterstring.Options{
 			KnownKeys:     acceptKeys,
 			ResolveFormat: formatName,
 			KnownOptions: func(key string) ([]string, bool) {
@@ -319,7 +337,7 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 				key, _ = kc.canon(key)
 				return s.propertyOptionNames(spaceId, key)
 			},
-		})
+		}, advertisedKeys)
 		if err != nil {
 			return nil, filterStringError(spaceId, err)
 		}
@@ -571,6 +589,41 @@ func (s *Service) propertyOptionNames(spaceId, key string) ([]string, bool) {
 	}
 	sort.Strings(names)
 	return names, true
+}
+
+// unknownFilterKeyPrefix opens the parser's verdict on a key outside its
+// reference set.
+const unknownFilterKeyPrefix = "unknown property key "
+
+// parseSearchFilter parses the compact filter string over the accept set. The
+// parser lists and suggests from the set it validates against, and that set
+// holds the accept-only v2BundledQueryKeys, so an unknown-key refusal is
+// worded again over the advertised keys: the offending key, alone, is checked
+// against them, which yields the parser's own message and did-you-mean. The
+// refusal keeps the original offset and token.
+func parseSearchFilter(filter string, opts filterstring.Options, advertised []string) (json.RawMessage, error) {
+	parsed, err := filterstring.Parse(filter, opts)
+	if err == nil {
+		return parsed, nil
+	}
+	var pe *filterstring.Error
+	if !errors.As(err, &pe) || !strings.HasPrefix(pe.Message, unknownFilterKeyPrefix) {
+		return nil, err
+	}
+	quoted, qErr := strconv.QuotedPrefix(strings.TrimPrefix(pe.Message, unknownFilterKeyPrefix))
+	if qErr != nil {
+		return nil, err
+	}
+	key, qErr := strconv.Unquote(quoted)
+	if qErr != nil {
+		return nil, err
+	}
+	_, reworded := filterstring.Parse(key, filterstring.Options{KnownKeys: advertised})
+	var re *filterstring.Error
+	if !errors.As(reworded, &re) || !strings.HasPrefix(re.Message, unknownFilterKeyPrefix) {
+		return nil, err
+	}
+	return nil, &filterstring.Error{Offset: pe.Offset, Token: pe.Token, Message: re.Message, Hint: re.Hint}
 }
 
 // filterNoOptionMessage is the parser's verdict on an unknown option name,

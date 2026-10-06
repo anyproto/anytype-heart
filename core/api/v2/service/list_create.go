@@ -123,10 +123,12 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 		// an unknown-key message that cannot explain itself
 		refKeys := appendMissing(append(kc.withServedSpellings(s.typePropertyKeys(spaceId, typeId)), "name", "type"), v2SystemQueryKeys...)
 		sort.Strings(refKeys)
-		parsed, err := filterstring.Parse(req.Filter, filterstring.Options{
-			KnownKeys:     refKeys,
+		// the hidden counters parse, but a refusal is worded without them
+		acceptKeys := appendMissing(append([]string(nil), refKeys...), kc.withServedSpellings(v2BundledQueryKeys)...)
+		parsed, err := parseSearchFilter(req.Filter, filterstring.Options{
+			KnownKeys:     acceptKeys,
 			ResolveFormat: canonFormatName(s.formatNameResolver(spaceId), kc),
-		})
+		}, refKeys)
 		if err != nil {
 			return nil, filterStringError(spaceId, err)
 		}
@@ -456,6 +458,10 @@ func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey
 	typeKeys := s.typePropertyKeys(spaceId, typeId)
 	allowed := map[string]bool{"name": true} // universal
 	for _, key := range v2SystemQueryKeys {
+		allowed[key] = true
+	}
+	// accepted, never listed: typeKeys below is what a refusal names
+	for _, key := range v2BundledQueryKeys {
 		allowed[key] = true
 	}
 	for _, key := range typeKeys {
