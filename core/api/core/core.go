@@ -16,6 +16,10 @@ import (
 type ChatSubscriptionService interface {
 	SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string, sink chan<- *pb.Event) ([]*model.ChatMessage, error)
 	Unsubscribe(chatObjectId string, subId string) error
+	// ChatState returns the unread counters the chat's state manager holds. It reads the
+	// chat's own repository and does NOT open the chat object, so it is safe to call per
+	// row of a list.
+	ChatState(spaceId, chatObjectId string) (*model.ChatState, error)
 }
 
 type AccountService interface {

@@ -24,6 +24,65 @@ func (_m *MockChatSubscriptionService) EXPECT() *MockChatSubscriptionService_Exp
 	return &MockChatSubscriptionService_Expecter{mock: &_m.Mock}
 }
 
+// ChatState provides a mock function with given fields: spaceId, chatObjectId
+func (_m *MockChatSubscriptionService) ChatState(spaceId string, chatObjectId string) (*model.ChatState, error) {
+	ret := _m.Called(spaceId, chatObjectId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ChatState")
+	}
+
+	var r0 *model.ChatState
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string) (*model.ChatState, error)); ok {
+		return rf(spaceId, chatObjectId)
+	}
+	if rf, ok := ret.Get(0).(func(string, string) *model.ChatState); ok {
+		r0 = rf(spaceId, chatObjectId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.ChatState)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(spaceId, chatObjectId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockChatSubscriptionService_ChatState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChatState'
+type MockChatSubscriptionService_ChatState_Call struct {
+	*mock.Call
+}
+
+// ChatState is a helper method to define mock.On call
+//   - spaceId string
+//   - chatObjectId string
+func (_e *MockChatSubscriptionService_Expecter) ChatState(spaceId interface{}, chatObjectId interface{}) *MockChatSubscriptionService_ChatState_Call {
+	return &MockChatSubscriptionService_ChatState_Call{Call: _e.mock.On("ChatState", spaceId, chatObjectId)}
+}
+
+func (_c *MockChatSubscriptionService_ChatState_Call) Run(run func(spaceId string, chatObjectId string)) *MockChatSubscriptionService_ChatState_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockChatSubscriptionService_ChatState_Call) Return(_a0 *model.ChatState, _a1 error) *MockChatSubscriptionService_ChatState_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockChatSubscriptionService_ChatState_Call) RunAndReturn(run func(string, string) (*model.ChatState, error)) *MockChatSubscriptionService_ChatState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SubscribeLastMessages provides a mock function with given fields: ctx, chatObjectId, limit, subId, sink
 func (_m *MockChatSubscriptionService) SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string, sink chan<- *pb.Event) ([]*model.ChatMessage, error) {
 	ret := _m.Called(ctx, chatObjectId, limit, subId, sink)
