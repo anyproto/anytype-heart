@@ -418,6 +418,7 @@ func (p *Persister) updateObject(sourceKey, objectId string, doc *state.State, r
 			}
 			template.InitTemplate(doc, template.WithDetail(bundle.RelationKeyRecommendedLayout, domain.Int64(int64(model.ObjectType_basic))))
 		}
+		keepCreationContext(sb.Details(), doc, p.rewrites)
 		if err := history.ResetToVersion(sb, doc); err != nil {
 			return fmt.Errorf("reset to imported state: %w", err)
 		}
@@ -448,6 +449,50 @@ func (p *Persister) updateObject(sourceKey, objectId string, doc *state.State, r
 		}
 	}
 	return outcome, nil
+}
+
+// UpdateTargets is optionally implemented by the RefResolver
+// (identity.Service): whether an object id is a pre-existing object this run
+// updates in place.
+type UpdateTargets interface {
+	IsUpdateTarget(objectId string) bool
+}
+
+// rewrites reports whether this run may replace objectId's body.
+func (p *Persister) rewrites(objectId string) bool {
+	targets, ok := p.refs.(UpdateTargets)
+	return ok && targets.IsUpdateTarget(objectId)
+}
+
+// keepCreationContext reconciles the creation context of a matched object
+// with the imported state that replaces it. Where an object was created, and
+// the user's choice to detach it from that context (createdInContextIgnored),
+// is the object's own history, and a non-empty ref is ownership object GC acts
+// on — an update must never grant ownership the object did not have, nor keep
+// a ref the update may invalidate:
+//
+//   - an existing context is kept. Its ref is kept too, unless this run may
+//     rewrite that parent (whatever parent the import now infers): the
+//     parent's body is replaced, so the old block id may name another block;
+//   - no existing context: the imported parent is kept as provenance only,
+//     without a ref;
+//   - an existing exemption is kept.
+func keepCreationContext(existing *domain.Details, doc *state.State, rewrites func(objectId string) bool) {
+	importedParent := doc.Details().GetString(bundle.RelationKeyCreatedInContext)
+	if parent := existing.GetString(bundle.RelationKeyCreatedInContext); parent != "" {
+		doc.SetDetail(bundle.RelationKeyCreatedInContext, domain.String(parent))
+		ref := existing.GetString(bundle.RelationKeyCreatedInContextRef)
+		if ref != "" && parent != importedParent && !rewrites(parent) {
+			doc.SetDetail(bundle.RelationKeyCreatedInContextRef, domain.String(ref))
+		} else {
+			doc.RemoveDetail(bundle.RelationKeyCreatedInContextRef)
+		}
+	} else {
+		doc.RemoveDetail(bundle.RelationKeyCreatedInContextRef)
+	}
+	if existing.GetBool(bundle.RelationKeyCreatedInContextIgnored) {
+		doc.SetDetail(bundle.RelationKeyCreatedInContextIgnored, domain.Bool(true))
+	}
 }
 
 func (p *Persister) installBundledDeps(ctx context.Context, o *importv2.Object, doc *state.State, report func(importv2.Issue)) {

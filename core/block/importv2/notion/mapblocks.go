@@ -624,6 +624,11 @@ func (c *Converter) mapChildEntity(ctx context.Context, mctx mapContext, block *
 			"A subpage could not be linked: it was not part of this import").About(payload.Title))
 		return []*mappedBlock{textBlock(block.Id, fmt.Sprintf("Unresolved link: %s", payload.Title))}, nil
 	}
+	if block.origId == "" {
+		// A synced-block duplicate's hoisted copy is never where the child
+		// lives: only the original's link is ownership evidence.
+		c.noteChildLink(mctx, targetId, block.Id)
+	}
 	return []*mappedBlock{{block: &model.Block{
 		Id: block.Id,
 		Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{

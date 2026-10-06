@@ -51,9 +51,11 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 	var yamlDetails []domain.Detail
 	var yamlLinks []*model.RelationLink
 	var collectionRefs []string
+	var frontMatterParents []string
 	isCollection := false
 	typeKey := bundle.TypeKeyPage.String()
 	if len(frontMatter) > 0 {
+		frontMatterParents = c.frontMatterParentsOf(entry.Name, frontMatter)
 		redirects := c.planRedirectsFor(path.Dir(entry.Name))
 		c.resolver.setPlanRedirects(redirects)
 		parsed, err := yaml.ParseYAMLFrontMatterWithResolverAndPath(frontMatter, c.resolver, path.Dir(entry.Name))
@@ -97,6 +99,7 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 		})
 		return c.emitPlaceholderPage(ctx, entry, sink)
 	}
+	stabilizeBlockIds(entry.Name, blocks)
 
 	title := pageTitleFromPath(entry.Name)
 	iconEmoji := ""
@@ -116,6 +119,7 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 	if c.propertiesAsBlockEnabled() {
 		blocks = append(propertyBlocks(yamlDetails), blocks...)
 	}
+	c.indexLinks(entry.Name, blocks)
 
 	object := &importv2.Object{
 		SourceKey: entry.Name,
@@ -129,6 +133,7 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 		IsRootCandidate: c.dirs == nil && isTopLevel(entry.Name),
 	}
 	c.stampCommonDetails(object, entry, title)
+	c.setCreatedInContext(entry.Name, frontMatterParents, object.Payload.Details)
 	if iconEmoji != "" {
 		object.Payload.Details.SetString(bundle.RelationKeyIconEmoji, iconEmoji)
 	}
@@ -267,6 +272,7 @@ func (c *Converter) emitPlaceholderPage(ctx context.Context, entry source.Entry,
 		IsRootCandidate: c.dirs == nil && isTopLevel(entry.Name),
 	}
 	c.stampCommonDetails(object, entry, pageTitleFromPath(entry.Name))
+	c.setCreatedInContext(entry.Name, nil, object.Payload.Details)
 	return sink.Object(ctx, object)
 }
 

@@ -136,6 +136,8 @@ func TestClaim(t *testing.T) {
 				// then
 				require.NoError(t, assignErr)
 				assert.Equal(t, tc.wantExisting, got.IsExisting)
+				assert.Equal(t, tc.wantExisting, fx.IsMatched("docs/page.md"))
+				assert.Equal(t, tc.wantExisting, fx.IsUpdateTarget(got.Id), "a matched object is one this run rewrites")
 			})
 		}
 	})

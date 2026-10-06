@@ -115,8 +115,46 @@ func (r *Resolver) resolveDetailValue(ctx context.Context, value string) (string
 	return id, nil
 }
 
+// rewriteCreatedInContext maps the source key a converter recorded as the
+// object's parent onto the parent's final id. Unlike other object-valued
+// details, a parent that does not resolve takes the pair with it: object GC
+// matches createdInContext by equality, so a leftover source key or the
+// missing-object marker would be a context no object can ever have.
+func (r *Resolver) rewriteCreatedInContext(ctx context.Context, st *state.State) error {
+	parent := st.Details().GetString(bundle.RelationKeyCreatedInContext)
+	if parent == "" {
+		st.RemoveDetail(bundle.RelationKeyCreatedInContext, bundle.RelationKeyCreatedInContextRef)
+		return nil
+	}
+	id, found, err := r.refs.ResolveRef(ctx, parent)
+	if err != nil && ctx.Err() != nil {
+		return fmt.Errorf("resolve created-in context %q: %w", parent, ctx.Err())
+	}
+	if err != nil || !found || id == st.RootId() {
+		st.RemoveDetail(bundle.RelationKeyCreatedInContext, bundle.RelationKeyCreatedInContextRef)
+		return nil
+	}
+	st.SetDetail(bundle.RelationKeyCreatedInContext, domain.String(id))
+	if matched, ok := r.refs.(MatchReporter); ok && matched.IsMatched(parent) {
+		// A matched parent is updated in place, and that update may never
+		// land (revision guard, a failed reset degrading to skipped): the
+		// imported link block the ref names is not guaranteed to exist. A
+		// ref is ownership object GC acts on, so it must not outrun its block.
+		st.RemoveDetail(bundle.RelationKeyCreatedInContextRef)
+	}
+	return nil
+}
+
+// MatchReporter is optionally implemented by the RefResolver
+// (identity.Service): whether a source key matched a pre-existing object.
+type MatchReporter interface {
+	IsMatched(sourceKey string) bool
+}
+
 func (r *Resolver) isObjectValued(st *state.State, key domain.RelationKey) bool {
-	if key == bundle.RelationKeyFeaturedRelations {
+	if key == bundle.RelationKeyFeaturedRelations || key == bundle.RelationKeyCreatedInContext {
+		// featuredRelations holds keys, not references; createdInContext is
+		// rewritten by rewriteCreatedInContext.
 		return false
 	}
 	if key == bundle.RelationKeyCoverId {

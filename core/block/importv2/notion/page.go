@@ -188,6 +188,7 @@ func (c *Converter) emitFetchedPage(ctx context.Context, f *fetchedPage, sink im
 		return err
 	}
 	tally.flush(stub.Id, sink)
+	c.setCreatedInContext(stub, details)
 
 	object := &importv2.Object{
 		SourceKey: stub.Id,
@@ -258,7 +259,8 @@ func (c *Converter) binEmptyRow(stub Entity, object *importv2.Object, sink impor
 	}
 	for key, value := range object.Payload.Details.Iterate() {
 		switch key {
-		case bundle.RelationKeySourceFilePath, bundle.RelationKeyCreatedDate, bundle.RelationKeyLastModifiedDate:
+		case bundle.RelationKeySourceFilePath, bundle.RelationKeyCreatedDate, bundle.RelationKeyLastModifiedDate,
+			bundle.RelationKeyCreatedInContext, bundle.RelationKeyCreatedInContextRef:
 			// Housekeeping the importer itself set; not the user's content.
 		default:
 			if !blankValue(value) {

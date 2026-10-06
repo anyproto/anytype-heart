@@ -504,6 +504,34 @@ func TestPersistUpdate(t *testing.T) {
 		assert.Equal(t, []string{"existingId"}, result.Uncovered)
 	})
 
+	t.Run("update keeps the object's own creation context and cleanup exemption", func(t *testing.T) {
+		// given — the user created the page in "userParent" and detached it
+		// from that context; the import would place it elsewhere
+		fx := newFixture(t)
+		existing := &resettingObject{SmartTest: smarttest.New("existingId")}
+		require.NoError(t, existing.SetDetails(nil, []domain.Detail{
+			{Key: bundle.RelationKeyCreatedInContext, Value: domain.String("userParent")},
+			{Key: bundle.RelationKeyCreatedInContextRef, Value: domain.String("userLink")},
+			{Key: bundle.RelationKeyCreatedInContextIgnored, Value: domain.Bool(true)},
+		}, false))
+		fx.objects.objects["existingId"] = existing
+		obj := pageObject("docs/page.md")
+		obj.Payload.Details.SetString(bundle.RelationKeyCreatedInContext, "importParent")
+		obj.Payload.Details.SetString(bundle.RelationKeyCreatedInContextRef, "importLink")
+
+		// when
+		outcome, err := fx.Persist(context.Background(), obj, Target{Id: "existingId", IsExisting: true}, fx.report)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, ActionUpdated, outcome.Action)
+		require.NotNil(t, existing.reset, "the update must reset the object to the imported state")
+		details := existing.reset.Details()
+		assert.Equal(t, "userParent", details.GetString(bundle.RelationKeyCreatedInContext))
+		assert.Equal(t, "userLink", details.GetString(bundle.RelationKeyCreatedInContextRef))
+		assert.True(t, details.GetBool(bundle.RelationKeyCreatedInContextIgnored))
+	})
+
 	t.Run("user-authored type is reused, never rewritten", func(t *testing.T) {
 		// given — an existing type with no import origin and no revision:
 		// the user made it in the UI
@@ -972,4 +1000,69 @@ func TestReconcileTypes(t *testing.T) {
 		// then
 		assert.Zero(t, reconciler.calls)
 	})
+}
+
+func TestKeepCreationContext(t *testing.T) {
+	imported := func() *state.State {
+		st := state.NewDoc("id", nil).(*state.State)
+		st.SetDetail(bundle.RelationKeyCreatedInContext, domain.String("importParent"))
+		st.SetDetail(bundle.RelationKeyCreatedInContextRef, domain.String("importLink"))
+		return st
+	}
+	contextOf := func(st *state.State) []any {
+		d := st.Details()
+		return []any{
+			d.GetString(bundle.RelationKeyCreatedInContext),
+			d.GetString(bundle.RelationKeyCreatedInContextRef),
+			d.GetBool(bundle.RelationKeyCreatedInContextIgnored),
+		}
+	}
+	existingWith := func(parent, ref string, ignored bool) *domain.Details {
+		d := domain.NewDetails()
+		if parent != "" {
+			d.SetString(bundle.RelationKeyCreatedInContext, parent)
+		}
+		if ref != "" {
+			d.SetString(bundle.RelationKeyCreatedInContextRef, ref)
+		}
+		if ignored {
+			d.SetBool(bundle.RelationKeyCreatedInContextIgnored, true)
+		}
+		return d
+	}
+
+	for _, tc := range []struct {
+		name     string
+		existing *domain.Details
+		want     []any
+	}{
+		{"another parent's context, ref and exemption survive", existingWith("userParent", "userLink", true), []any{"userParent", "userLink", true}},
+		{"a parent this run rewrites under any inferred parent loses the stale ref", existingWith("rewrittenParent", "oldLink", true), []any{"rewrittenParent", "", true}},
+		{"the parent this import rewrites keeps the context, not the stale ref", existingWith("importParent", "oldLink", false), []any{"importParent", "", false}},
+		{"no existing context: the imported parent is provenance only", existingWith("", "", false), []any{"importParent", "", false}},
+		{"no existing context but an exemption", existingWith("", "", true), []any{"importParent", "", true}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			doc := imported()
+
+			// when
+			keepCreationContext(tc.existing, doc, func(id string) bool { return id == "rewrittenParent" })
+
+			// then
+			assert.Equal(t, tc.want, contextOf(doc))
+		})
+	}
+}
+
+// resettingObject records the state an update resets it to (smarttest's own
+// ResetToVersion discards it).
+type resettingObject struct {
+	*smarttest.SmartTest
+	reset *state.State
+}
+
+func (o *resettingObject) ResetToVersion(s *state.State) error {
+	o.reset = s
+	return nil
 }

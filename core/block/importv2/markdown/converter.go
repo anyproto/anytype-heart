@@ -83,6 +83,17 @@ type Converter struct {
 	emittedOptions    map[string]bool   // option source key
 	emittedTypes      map[string]string // type name → type key
 	emittedFiles      map[string]bool   // file entry name
+	// Hierarchy state (hierarchy.go): every page linking a document, with
+	// its first linking block; the subdirectories each page links into (hub
+	// detection); resolved folder notes per directory ("" = none).
+	linksTo        map[string][]parentLink
+	linkedSubtrees map[string]map[string]bool
+	folderNotes    map[string]string
+	// chosenParents is each converted document's parent so far, for the
+	// cycle check; csvByDir maps `X` to the `X.csv` entry (any case).
+	chosenParents map[string]string
+	csvByDir      map[string]string
+	mdStems       map[string]string // markdown entry without extension → entry
 }
 
 // New builds a per-run converter instance (never shared between runs).
@@ -106,6 +117,10 @@ func New(src source.Source, params Params, factory importv2.CollectionFactory) *
 		emittedOptions:    map[string]bool{},
 		emittedTypes:      map[string]string{},
 		emittedFiles:      map[string]bool{},
+		linksTo:           map[string][]parentLink{},
+		linkedSubtrees:    map[string]map[string]bool{},
+		folderNotes:       map[string]string{},
+		chosenParents:     map[string]string{},
 	}
 }
 
@@ -205,7 +220,9 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 	if err := c.emitSchemaDefinitions(ctx, sink); err != nil {
 		return importv2.RootSpec{}, err
 	}
-	for _, entry := range c.mdEntries {
+	// Parents before children: a page records its links to documents below
+	// it, which become their createdInContext (hierarchy.go).
+	for _, entry := range c.conversionOrder(c.mdEntries) {
 		if err := c.convertPage(ctx, entry, sink); err != nil {
 			return importv2.RootSpec{}, err
 		}
@@ -248,6 +265,7 @@ func (c *Converter) convertCsvCollection(ctx context.Context, entry source.Entry
 	object.SourceKey = entry.Name
 	object.IsRootCandidate = isTopLevel(entry.Name)
 	c.stampCommonDetails(object, entry, title)
+	c.setCreatedInContext(entry.Name, nil, object.Payload.Details)
 	return sink.Object(ctx, object)
 }
 

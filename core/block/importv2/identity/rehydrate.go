@@ -58,6 +58,7 @@ func WithRehydrated(entries []RehydratedEntry, files []RehydratedFile) Option {
 				assigned:    record.Terminal,
 				reclaimable: record.Reclaimable,
 			}
+			s.noteMatchedLocked(record.ObjectId, mode)
 			if !record.Matched && len(record.PayloadRoot) > 0 && !record.Terminal {
 				s.payloads[record.ObjectId] = treestorage.TreeStorageCreatePayload{
 					RootRawChange: &treechangeproto.RawTreeChangeWithId{

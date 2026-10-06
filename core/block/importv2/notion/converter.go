@@ -101,6 +101,9 @@ type Converter struct {
 	// parallel prefetch workers.
 	syncedMu        sync.Mutex
 	syncedOriginals map[string]syncedEntry
+	// childLinks records, per child entity, the page and block that emitted
+	// its child_page/child_database link (hierarchy.go).
+	childLinks map[string][]childLink
 
 	// recoverBudget is how many claims recoverUnrecorded may still PROBE.
 	// A field rather than the bare constant so this suite can exercise the
@@ -168,6 +171,7 @@ func New(apiClient *client.Client, fetcher client.FileFetcher, factory importv2.
 		propertyScopes:        map[string]string{},
 		schemaFetches:         map[string]*schemaFetch{},
 		syncedOriginals:       map[string]syncedEntry{},
+		childLinks:            map[string][]childLink{},
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -229,10 +233,11 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 	// skipped above: rows converting in this incarnation need their property
 	// mappings in converter memory, and a schema re-fetch is ~1 request per
 	// data source.
-	pages := c.pages
+	pages := c.parentFirst(c.pages)
 	if c.skip != nil {
-		pages = make([]Entity, 0, len(c.pages))
-		for _, page := range c.pages {
+		all := pages
+		pages = make([]Entity, 0, len(all))
+		for _, page := range all {
 			if c.skipRecorded(page.Id) {
 				continue
 			}
@@ -240,15 +245,19 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 		}
 	}
 	fetched := c.prefetchPages(ctx, pages, sink)
+	order := newEmitOrder(pages)
 	for f := range fetched {
 		select {
 		case <-f.done:
 		case <-ctx.Done():
 			return importv2.RootSpec{}, ctx.Err()
 		}
-		if err := c.emitFetchedPage(ctx, f, sink); err != nil {
+		if err := c.emitInParentOrder(ctx, f, order, sink); err != nil {
 			return importv2.RootSpec{}, err
 		}
+	}
+	if err := c.flushDeferred(ctx, order, sink); err != nil {
+		return importv2.RootSpec{}, err
 	}
 	// Drain second-chance discoveries. The queue grows while it
 	// drains — a late page's blocks may reference further omitted children.

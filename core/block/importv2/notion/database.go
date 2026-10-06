@@ -136,6 +136,7 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 		object.Payload.Details.Set(key, value)
 	}
 	object.Payload.Details.SetString(bundle.RelationKeyName, database.title())
+	c.setCreatedInContext(stub, object.Payload.Details)
 	if description := plainText(database.Description); description != "" {
 		object.Payload.Details.SetString(bundle.RelationKeyDescription, description)
 	}

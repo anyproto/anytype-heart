@@ -60,6 +60,9 @@ func (r *Resolver) RewriteState(ctx context.Context, st *state.State, report fun
 	if err := r.rewriteBlocks(ctx, st, report); err != nil {
 		return err
 	}
+	if err := r.rewriteCreatedInContext(ctx, st); err != nil {
+		return err
+	}
 	if err := r.rewriteDetailValues(ctx, st, report); err != nil {
 		return err
 	}

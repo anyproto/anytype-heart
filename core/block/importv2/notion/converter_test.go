@@ -470,6 +470,214 @@ func assertUniqueBlockIds(t *testing.T, sink *recordingSink) {
 // Notion page brings in. Object GC reads those two fields to tell an owned
 // attachment from an orphan; a file without them can never be offered for
 // cleanup, whatever happens to the page it came from.
+// TestNotionCreatedInContext pins the Notion hierarchy carried into
+// createdInContext. The ref is only ever the link block the parent was
+// emitted with: object GC offers an object whose ref'd link is gone for
+// cleanup, so an inferred ref would put live content up for removal.
+func TestNotionCreatedInContext(t *testing.T) {
+	t.Run("scripted workspace", func(t *testing.T) {
+		sink, _, _ := runScripted(t)
+		for _, tc := range []struct {
+			name, sourceKey string
+			want            createdIn
+		}{
+			{"subpage linked from its parent page", "n1", createdIn{"p1", "n1"}},
+			{"block-parented page no imported page holds", "n2", createdIn{}},
+			{"database row: its collection, no ref", "p1", createdIn{"db1", ""}},
+			{"workspace page", "p2", createdIn{}},
+			{"workspace database", "db1", createdIn{}},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				assert.Equal(t, tc.want, createdInOf(t, sink, tc.sourceKey))
+			})
+		}
+	})
+
+	t.Run("children listed before their parent, nested in a toggle, or not linked", func(t *testing.T) {
+		// given — search returns the children first; P links C directly and
+		// T from inside a toggle; U names P as parent but P never links it
+		page := func(id, parent string) string {
+			return `{"object":"page","id":"` + id + `","parent":` + parent + `,
+				"properties":{"Name":{"type":"title","title":[{"plain_text":"` + id + `","type":"text"}]}}}`
+		}
+		search := `{"results":[` +
+			page("C", `{"type":"page_id","page_id":"P"}`) + `,` +
+			page("T", `{"type":"block_id","block_id":"tg1"}`) + `,` +
+			page("U", `{"type":"page_id","page_id":"P"}`) + `,` +
+			page("P", `{"type":"workspace","workspace":true}`) +
+			`],"has_more":false,"next_cursor":null}`
+		empty := `{"results":[],"has_more":false,"next_cursor":null}`
+		routes := map[string]string{
+			"GET /blocks/P/children": `{"results":[
+				{"id":"C","type":"child_page","has_children":false,"child_page":{"title":"C"}},
+				{"id":"tg1","type":"toggle","has_children":true,"toggle":{"rich_text":[{"plain_text":"more","type":"text"}]}}
+			],"has_more":false,"next_cursor":null}`,
+			"GET /blocks/tg1/children": `{"results":[
+				{"id":"T","type":"child_page","has_children":false,"child_page":{"title":"T"}}
+			],"has_more":false,"next_cursor":null}`,
+			"GET /blocks/C/children": empty,
+			"GET /blocks/T/children": empty,
+			"GET /blocks/U/children": empty,
+		}
+		for _, id := range []string{"P", "C", "T", "U"} {
+			routes["GET /pages/"+id] = `{"id":"` + id + `","archived":false,
+				"created_time":"2024-02-01T10:00:00.000Z","last_edited_time":"2024-02-02T10:00:00.000Z",
+				"properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"` + id + `","type":"text"}]}}}`
+		}
+
+		// when
+		sink := runWorkspace(t, search, routes)
+
+		// then
+		assert.Equal(t, createdIn{"P", "C"}, createdInOf(t, sink, "C"), "the parent converts first despite search order")
+		assert.Equal(t, createdIn{"P", "T"}, createdInOf(t, sink, "T"), "the page holding the toggle is the parent")
+		assert.Equal(t, createdIn{"P", ""}, createdInOf(t, sink, "U"), "no link, so no ref GC could act on")
+		assert.Equal(t, createdIn{}, createdInOf(t, sink, "P"))
+	})
+
+	t.Run("a toggle-nested page's own subpage, and a page that links the child without holding its block", func(t *testing.T) {
+		// given — search lists the deepest first. R holds toggle tg with P;
+		// P links its subpage C directly. Q converts before R (search order,
+		// same tier) and links S too, but S lives in R's toggle ts.
+		page := func(id, parent string) string {
+			return `{"object":"page","id":"` + id + `","parent":` + parent + `,
+				"properties":{"Name":{"type":"title","title":[{"plain_text":"` + id + `","type":"text"}]}}}`
+		}
+		search := `{"results":[` +
+			page("C", `{"type":"page_id","page_id":"P"}`) + `,` +
+			page("P", `{"type":"block_id","block_id":"tg"}`) + `,` +
+			page("S", `{"type":"block_id","block_id":"ts"}`) + `,` +
+			page("Q", `{"type":"workspace","workspace":true}`) + `,` +
+			page("R", `{"type":"workspace","workspace":true}`) +
+			`],"has_more":false,"next_cursor":null}`
+		empty := `{"results":[],"has_more":false,"next_cursor":null}`
+		childPage := func(id string) string {
+			return `{"id":"` + id + `","type":"child_page","has_children":false,"child_page":{"title":"` + id + `"}}`
+		}
+		toggle := func(id string) string {
+			return `{"id":"` + id + `","type":"toggle","has_children":true,"toggle":{"rich_text":[{"plain_text":"more","type":"text"}]}}`
+		}
+		list := func(items ...string) string {
+			return `{"results":[` + strings.Join(items, ",") + `],"has_more":false,"next_cursor":null}`
+		}
+		routes := map[string]string{
+			"GET /blocks/R/children":  list(toggle("tg"), toggle("ts")),
+			"GET /blocks/tg/children": list(childPage("P")),
+			"GET /blocks/ts/children": list(childPage("S")),
+			"GET /blocks/P/children":  list(childPage("C")),
+			"GET /blocks/Q/children":  list(childPage("S")),
+			"GET /blocks/C/children":  empty,
+			"GET /blocks/S/children":  empty,
+		}
+		for _, id := range []string{"R", "P", "C", "Q", "S"} {
+			routes["GET /pages/"+id] = `{"id":"` + id + `","archived":false,
+				"created_time":"2024-02-01T10:00:00.000Z","last_edited_time":"2024-02-02T10:00:00.000Z",
+				"properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"` + id + `","type":"text"}]}}}`
+		}
+
+		// when
+		sink := runWorkspace(t, search, routes)
+
+		// then
+		assert.Equal(t, createdIn{"R", "P"}, createdInOf(t, sink, "P"))
+		assert.Equal(t, createdIn{"P", "C"}, createdInOf(t, sink, "C"), "P converts before its own subpage")
+		assert.Equal(t, createdIn{"R", "S"}, createdInOf(t, sink, "S"), "Q's earlier link does not hold S's block")
+	})
+
+	t.Run("pages nested under blocks of block-nested pages, and a synced copy of the child", func(t *testing.T) {
+		// given — R holds toggle t1 with A; A holds toggle t2 with B (search
+		// lists B first). P holds the ORIGINAL synced block o with toggle t3
+		// holding C; Q, converting before P, shows a duplicate of o.
+		page := func(id, parent string) string {
+			return `{"object":"page","id":"` + id + `","parent":` + parent + `,
+				"properties":{"Name":{"type":"title","title":[{"plain_text":"` + id + `","type":"text"}]}}}`
+		}
+		search := `{"results":[` +
+			page("B", `{"type":"block_id","block_id":"t2"}`) + `,` +
+			page("A", `{"type":"block_id","block_id":"t1"}`) + `,` +
+			page("C", `{"type":"block_id","block_id":"t3"}`) + `,` +
+			page("Q", `{"type":"workspace","workspace":true}`) + `,` +
+			page("R", `{"type":"workspace","workspace":true}`) + `,` +
+			page("P", `{"type":"workspace","workspace":true}`) +
+			`],"has_more":false,"next_cursor":null}`
+		empty := `{"results":[],"has_more":false,"next_cursor":null}`
+		childPage := func(id string) string {
+			return `{"id":"` + id + `","type":"child_page","has_children":false,"child_page":{"title":"` + id + `"}}`
+		}
+		toggle := func(id string) string {
+			return `{"id":"` + id + `","type":"toggle","has_children":true,"toggle":{"rich_text":[{"plain_text":"more","type":"text"}]}}`
+		}
+		list := func(items ...string) string {
+			return `{"results":[` + strings.Join(items, ",") + `],"has_more":false,"next_cursor":null}`
+		}
+		routes := map[string]string{
+			"GET /blocks/R/children":  list(toggle("t1")),
+			"GET /blocks/t1/children": list(childPage("A")),
+			"GET /blocks/A/children":  list(toggle("t2")),
+			"GET /blocks/t2/children": list(childPage("B")),
+			"GET /blocks/B/children":  empty,
+			"GET /blocks/P/children":  list(`{"id":"o","type":"synced_block","has_children":true,"synced_block":{"synced_from":null}}`),
+			"GET /blocks/o/children":  list(toggle("t3")),
+			"GET /blocks/t3/children": list(childPage("C")),
+			"GET /blocks/Q/children":  list(`{"id":"d","type":"synced_block","has_children":false,"synced_block":{"synced_from":{"block_id":"o"}}}`),
+			"GET /blocks/C/children":  empty,
+		}
+		for _, id := range []string{"R", "A", "B", "P", "Q", "C"} {
+			routes["GET /pages/"+id] = `{"id":"` + id + `","archived":false,
+				"created_time":"2024-02-01T10:00:00.000Z","last_edited_time":"2024-02-02T10:00:00.000Z",
+				"properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"` + id + `","type":"text"}]}}}`
+		}
+
+		// when
+		sink := runWorkspace(t, search, routes)
+
+		// then
+		assert.Equal(t, createdIn{"R", "A"}, createdInOf(t, sink, "A"))
+		assert.Equal(t, createdIn{"A", "B"}, createdInOf(t, sink, "B"), "B waits until A has emitted its link")
+		assert.Equal(t, createdIn{"P", "C"}, createdInOf(t, sink, "C"), "the synced copy in Q is not where C lives")
+	})
+}
+
+type createdIn struct{ parent, ref string }
+
+func createdInOf(t *testing.T, sink *recordingSink, sourceKey string) createdIn {
+	t.Helper()
+	object := sink.byKey(sourceKey)
+	require.NotNil(t, object, "object %q must be emitted", sourceKey)
+	details := object.Payload.Details
+	return createdIn{details.GetString(bundle.RelationKeyCreatedInContext), details.GetString(bundle.RelationKeyCreatedInContextRef)}
+}
+
+// runWorkspace converts a minimal scripted workspace: one /search page and
+// exact-path GET routes; any other call fails the test.
+func runWorkspace(t *testing.T, search string, routes map[string]string) *recordingSink {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/search" {
+			fmt.Fprint(w, search)
+			return
+		}
+		if response, ok := routes[r.Method+" "+r.URL.Path]; ok {
+			fmt.Fprint(w, response)
+			return
+		}
+		t.Errorf("unexpected api call: %s %s", r.Method, r.URL.Path)
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+	apiClient := client.NewClient("token",
+		client.WithBaseURL(server.URL),
+		client.WithRateLimit(1000),
+		client.WithRetryPolicy(client.RetryPolicy{MaxAttempts: 1, BaseDelay: time.Millisecond, MaxDelay: time.Millisecond, TotalBudget: time.Second}),
+	)
+	converter := New(apiClient, client.NewFileFetcher(), stubFactory{}, t.TempDir())
+	require.NoError(t, converter.EnumerateIdentities(context.Background(), func(importv2.IdentityClaim) error { return nil }))
+	sink := &recordingSink{}
+	_, err := converter.Convert(context.Background(), sink)
+	require.NoError(t, err)
+	return sink
+}
+
 func TestNotionFileOwnership(t *testing.T) {
 	sink, _, _ := runScripted(t)
 
