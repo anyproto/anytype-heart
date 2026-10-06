@@ -1038,6 +1038,11 @@ components:
       type: object
     ObjectRow:
       properties:
+        discussion:
+          description: 'Search rows only: the object''s discussion (comment thread)
+            chat id, when it has one. Read and post through the chat routes with it
+            as chat_id.'
+          type: string
         id:
           type: string
         name:

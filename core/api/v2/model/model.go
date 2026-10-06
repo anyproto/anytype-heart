@@ -199,12 +199,15 @@ func NewListResponse[T any](data []T, total, offset, limit int, hasMore bool, na
 
 // ObjectRow is the C5 minimal list row: id, name, type (a type key) plus
 // requested property values. SpaceId is set only on global search rows —
-// the addressing info a follow-up space-scoped read needs.
+// the addressing info a follow-up space-scoped read needs. Discussion is set
+// only on search rows (space, global and the search stream), for an object
+// that has one, the way the object read serves it.
 type ObjectRow struct {
 	Id         string         `json:"id"`
 	Name       string         `json:"name"`
 	Type       string         `json:"type"`
 	SpaceId    string         `json:"space_id,omitempty"`
+	Discussion string         `json:"discussion,omitempty"` // Search rows only: the object's discussion (comment thread) chat id, when it has one. Read and post through the chat routes with it as chat_id.
 	Properties map[string]any `json:"properties,omitempty"`
 }
 

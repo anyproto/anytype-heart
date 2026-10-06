@@ -118,7 +118,7 @@ func (s *Service) SearchObjects(ctx context.Context, spaceId string, req v2model
 		return nil, 0, false, nil, err
 	}
 
-	builder, err := s.newObjectRowBuilder(spaceId, req.Fields)
+	builder, err := s.newSearchRowBuilder(spaceId, req.Fields)
 	if err != nil {
 		return nil, 0, false, nil, err
 	}
@@ -163,6 +163,23 @@ func (s *Service) runSearchQuery(spaceId string, plan *searchPlan, offset, limit
 		return nil, 0, fmt.Errorf("search space %s: %w", spaceId, err)
 	}
 	return records, total, nil
+}
+
+// searchRowDiscussionField is the `fields` spelling of a search row's own
+// discussion member. The member is served on every search row of an object
+// that has a discussion, so the field only has to be accepted; a live
+// property claiming the spelling wins and is served under properties.
+const searchRowDiscussionField = "discussion"
+
+// newSearchRowBuilder is the row builder of the search surface: the C5 row
+// plus the object's discussion member.
+func (s *Service) newSearchRowBuilder(spaceId string, fields []string) (*objectRowBuilder, error) {
+	builder, err := s.newObjectRowBuilder(spaceId, fields)
+	if err != nil {
+		return nil, err
+	}
+	builder.includeDiscussion = true
+	return builder, nil
 }
 
 // pageRecords slices one C10 page out of a full result set.
@@ -309,6 +326,8 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 			continue
 		} else if allowed[field] || allowed[canonical] {
 			continue
+		} else if field == searchRowDiscussionField {
+			continue // the row's own member, not a property
 		}
 		if strictFields {
 			issues = append(issues, unknownPropertyIssue(field, fmt.Sprintf("/fields/%d", i), refKeys, listHint, v))
@@ -1193,7 +1212,7 @@ func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchReq
 	for _, entry := range page {
 		builder, ok := builders[entry.spaceId]
 		if !ok {
-			if builder, err = s.newObjectRowBuilder(entry.spaceId, req.Fields); err != nil {
+			if builder, err = s.newSearchRowBuilder(entry.spaceId, req.Fields); err != nil {
 				return nil, 0, false, nil, err
 			}
 			builder.includeSpaceId = true
