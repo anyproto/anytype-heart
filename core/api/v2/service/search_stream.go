@@ -74,7 +74,7 @@ func (s *SearchStream) Close() {
 // refusal is a C6 error, returned before the stream's first byte.
 func (s *Service) OpenSearchStream(ctx context.Context, spaceId string, req v2model.SearchRequest) (*SearchStream, error) {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open search stream: %w", err)
 	}
 	if req.Query != "" {
 		return nil, v2model.ValidationFailed("the search stream takes no full-text query",
@@ -83,14 +83,14 @@ func (s *Service) OpenSearchStream(ctx context.Context, spaceId string, req v2mo
 	}
 	plan, err := s.planSpaceSearch(ctx, spaceId, req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open search stream: %w", err)
 	}
 	if s.objectSearch == nil {
 		return nil, fmt.Errorf("open search stream in %s: live search is not configured", spaceId)
 	}
 	render, err := s.newSearchStreamRenderer(spaceId, req.Fields)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("open search stream: %w", err)
 	}
 	release, ok := s.searchStreams.acquire(maxConcurrentSearchStreams)
 	if !ok {
@@ -136,9 +136,13 @@ func (s *Service) OpenSearchStream(ctx context.Context, spaceId string, req v2mo
 // was checked by the caller.
 func (s *Service) planSpaceSearch(ctx context.Context, spaceId string, req v2model.SearchRequest) (*searchPlan, error) {
 	if err := validateSearchShape(req); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("validate search shape: %w", err)
 	}
-	return s.buildSearchPlan(spaceId, req, true, errKeysFor(ctx))
+	plan, err := s.buildSearchPlan(spaceId, req, true, errKeysFor(ctx))
+	if err != nil {
+		return nil, fmt.Errorf("build search plan: %w", err)
+	}
+	return plan, nil
 }
 
 // searchStreamRenderer renders live search changes as search rows. A stream
@@ -157,7 +161,7 @@ type searchStreamRenderer struct {
 func (s *Service) newSearchStreamRenderer(spaceId string, fields []string) (*searchStreamRenderer, error) {
 	builder, err := s.newSearchRowBuilder(spaceId, fields)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("build search row renderer: %w", err)
 	}
 	return &searchStreamRenderer{s: s, spaceId: spaceId, fields: fields, builder: builder, fresh: true}, nil
 }

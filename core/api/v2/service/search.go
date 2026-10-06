@@ -622,22 +622,23 @@ func parseSearchFilter(filter string, opts filterstring.Options, advertised []st
 	if err == nil {
 		return parsed, nil
 	}
+	asParsed := fmt.Errorf("parse filter string: %w", err)
 	var pe *filterstring.Error
 	if !errors.As(err, &pe) || !strings.HasPrefix(pe.Message, unknownFilterKeyPrefix) {
-		return nil, err
+		return nil, asParsed
 	}
 	quoted, qErr := strconv.QuotedPrefix(strings.TrimPrefix(pe.Message, unknownFilterKeyPrefix))
 	if qErr != nil {
-		return nil, err
+		return nil, asParsed
 	}
 	key, qErr := strconv.Unquote(quoted)
 	if qErr != nil {
-		return nil, err
+		return nil, asParsed
 	}
 	_, reworded := filterstring.Parse(key, filterstring.Options{KnownKeys: advertised})
 	var re *filterstring.Error
 	if !errors.As(reworded, &re) || !strings.HasPrefix(re.Message, unknownFilterKeyPrefix) {
-		return nil, err
+		return nil, asParsed
 	}
 	return nil, &filterstring.Error{Offset: pe.Offset, Token: pe.Token, Message: re.Message, Hint: re.Hint}
 }
