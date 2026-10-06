@@ -27,6 +27,12 @@ const (
 	ChatKindDiscussion = "discussion"
 )
 
+// list_chats ?unread= values.
+const (
+	ChatUnreadMessages = "messages"
+	ChatUnreadMentions = "mentions"
+)
+
 // ChatRow is the C5 chat list row. The unread counters are the chat state
 // manager's, read per row without opening the chat. For a discussion, Id is the
 // discussion's own id (usable on every chat route) and ParentId the object it belongs to.

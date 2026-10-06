@@ -227,6 +227,70 @@ func TestV2ListChats(t *testing.T) {
 		assert.Equal(t, 1, total)
 	})
 
+	t.Run("unread=mentions keeps only rows with an unread mention, counts and pages after filtering", func(t *testing.T) {
+		// given: three chats; two carry a mention
+		fx := newV2Fixture(t)
+		fx.addChat(t, "chatC", "C", 3000)
+		fx.addChat(t, "chatB", "B", 2000)
+		fx.addChat(t, "chatA", "A", 1000)
+		fx.withChatStates(t, map[string][2]int32{"chatC": {5, 2}, "chatB": {9, 0}, "chatA": {1, 1}})
+		query := ChatListQuery{Unread: v2model.ChatUnreadMentions}
+		wantPage1 := []v2model.ChatRow{{Id: "chatC", Name: "C", Kind: v2model.ChatKindChat, UnreadMessages: 5, UnreadMentions: 2}}
+		wantPage2 := []v2model.ChatRow{{Id: "chatA", Name: "A", Kind: v2model.ChatKindChat, UnreadMessages: 1, UnreadMentions: 1}}
+
+		// when
+		page1, total1, more1, err1 := fx.ListChats(context.Background(), testSpaceId, query, 0, 1)
+		page2, total2, more2, err2 := fx.ListChats(context.Background(), testSpaceId, query, 1, 1)
+
+		// then
+		require.NoError(t, err1)
+		require.NoError(t, err2)
+		assert.Equal(t, wantPage1, page1)
+		assert.Equal(t, wantPage2, page2)
+		assert.Equal(t, 2, total1, "total counts rows after the unread filter")
+		assert.Equal(t, 2, total2)
+		assert.True(t, more1)
+		assert.False(t, more2)
+	})
+
+	t.Run("unread=messages keeps rows with unread messages and mentions alike", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addChat(t, "chatC", "C", 3000)
+		fx.addChat(t, "chatB", "B", 2000)
+		fx.addChat(t, "chatA", "A", 1000)
+		fx.withChatStates(t, map[string][2]int32{"chatC": {0, 1}, "chatB": {0, 0}, "chatA": {4, 0}})
+
+		// when
+		rows, total, _, err := fx.ListChats(context.Background(), testSpaceId, ChatListQuery{Unread: v2model.ChatUnreadMessages}, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, rows, 2)
+		assert.Equal(t, "chatC", rows[0].Id, "a mention-only row still counts as unread")
+		assert.Equal(t, "chatA", rows[1].Id)
+		assert.Equal(t, 2, total)
+	})
+
+	t.Run("each chat state is read once per request", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addChat(t, "chatA", "A", 1000)
+		sub := mock_apicore.NewMockChatSubscriptionService(t)
+		sub.EXPECT().ChatState(testSpaceId, "chatA").Return(&model.ChatState{
+			Messages: &model.ChatStateUnreadState{Counter: 1},
+		}, nil).Once()
+		fx.withChatSub(sub)
+
+		// when
+		rows, _, _, err := fx.ListChats(context.Background(), testSpaceId, ChatListQuery{Unread: v2model.ChatUnreadMessages}, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, rows, 1)
+		assert.Equal(t, 1, rows[0].UnreadMessages, "the filter and the row share one read")
+	})
+
 	t.Run("pagination reports has_more with an honest total", func(t *testing.T) {
 		// given: THREE chats and limit=1 — the fetch reads limit+1 = 2
 		// records, so the banned v1 `total = len(fetched)` pattern would

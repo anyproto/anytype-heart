@@ -71,16 +71,20 @@ func (s *Service) ListChats(ctx context.Context, spaceId string, q ChatListQuery
 	if s.chatSub == nil {
 		return nil, 0, false, fmt.Errorf("list chats in space %s: chat state source is not configured", spaceId)
 	}
-	records, total, err := s.store.SpaceIndex(spaceId).QueryAndCount(database.Query{
+	query := database.Query{
 		Filters: chatListFilters(q.IncludeDiscussions),
 		Sorts: []database.SortRequest{{
 			RelationKey: bundle.RelationKeyLastModifiedDate,
 			Type:        model.BlockContentDataviewSort_Desc,
 			IncludeTime: true,
 		}},
-		Offset: offset,
-		Limit:  limit + 1, // one extra record detects has_more without a second scan
-	})
+	}
+	if q.Unread != "" {
+		return s.listUnreadChats(spaceId, query, q.Unread, offset, limit)
+	}
+	query.Offset = offset
+	query.Limit = limit + 1 // one extra record detects has_more without a second scan
+	records, total, err := s.store.SpaceIndex(spaceId).QueryAndCount(query)
 	if err != nil {
 		return nil, 0, false, fmt.Errorf("query chats in space %s: %w", spaceId, err)
 	}
@@ -97,6 +101,38 @@ func (s *Service) ListChats(ctx context.Context, spaceId string, q ChatListQuery
 		rows = append(rows, row)
 	}
 	return rows, total, hasMore, nil
+}
+
+// listUnreadChats reads every row of the space's list once, keeps those with the requested
+// unread state, and pages the kept rows. A space holds few chats, so the full set is cheap;
+// each chat's state is read exactly once, so a row never contradicts the filter that kept it.
+// "messages" means anything unread: a row with only a mention still counts.
+func (s *Service) listUnreadChats(spaceId string, query database.Query, unread string, offset, limit int) ([]v2model.ChatRow, int, bool, error) {
+	records, err := s.store.SpaceIndex(spaceId).Query(query)
+	if err != nil {
+		return nil, 0, false, fmt.Errorf("query chats in space %s: %w", spaceId, err)
+	}
+	kept := make([]v2model.ChatRow, 0, len(records))
+	for _, record := range records {
+		row := chatRowOf(record)
+		if err := s.fillChatCounters(spaceId, &row); err != nil {
+			return nil, 0, false, err
+		}
+		if (unread == v2model.ChatUnreadMentions && row.UnreadMentions > 0) ||
+			(unread == v2model.ChatUnreadMessages && (row.UnreadMessages > 0 || row.UnreadMentions > 0)) {
+			kept = append(kept, row)
+		}
+	}
+	total := len(kept)
+	if offset >= total {
+		return []v2model.ChatRow{}, total, false, nil
+	}
+	end := offset + limit
+	hasMore := end < total
+	if end > total {
+		end = total
+	}
+	return kept[offset:end], total, hasMore, nil
 }
 
 // chatListFilters is the list's store filter. Discussions are the parents that carry a
