@@ -79,8 +79,8 @@ func (s *Service) ListChats(ctx context.Context, spaceId string, q ChatListQuery
 			IncludeTime: true,
 		}},
 	}
-	if q.Unread != "" {
-		return s.listUnreadChats(spaceId, query, q.Unread, offset, limit)
+	if q.Unread != "" || q.IncludeDiscussions {
+		return s.listScannedChats(spaceId, query, q, offset, limit)
 	}
 	query.Offset = offset
 	query.Limit = limit + 1 // one extra record detects has_more without a second scan
@@ -103,36 +103,101 @@ func (s *Service) ListChats(ctx context.Context, spaceId string, q ChatListQuery
 	return rows, total, hasMore, nil
 }
 
-// listUnreadChats reads every row of the space's list once, keeps those with the requested
-// unread state, and pages the kept rows. A space holds few chats, so the full set is cheap;
-// each chat's state is read exactly once, so a row never contradicts the filter that kept it.
-// "messages" means anything unread: a row with only a mention still counts.
-func (s *Service) listUnreadChats(spaceId string, query database.Query, unread string, offset, limit int) ([]v2model.ChatRow, int, bool, error) {
+// listScannedChats serves the queries the store cannot page by itself: a discussion row is
+// only servable when its discussion exists locally, and an unread filter is decided by the
+// counters. It reads the space's whole list (a space holds few chats), drops unservable
+// discussion rows, and pages what is left. Without an unread filter only the returned page
+// has its counters read; with one, each chat's state is read exactly once, so a row never
+// contradicts the filter that kept it. "messages" means anything unread: a row with only a
+// mention still counts.
+func (s *Service) listScannedChats(spaceId string, query database.Query, q ChatListQuery, offset, limit int) ([]v2model.ChatRow, int, bool, error) {
 	records, err := s.store.SpaceIndex(spaceId).Query(query)
 	if err != nil {
 		return nil, 0, false, fmt.Errorf("query chats in space %s: %w", spaceId, err)
 	}
-	kept := make([]v2model.ChatRow, 0, len(records))
-	for _, record := range records {
-		row := chatRowOf(record)
-		if err := s.fillChatCounters(spaceId, &row); err != nil {
+	rows, err := s.servableChatRows(spaceId, records)
+	if err != nil {
+		return nil, 0, false, err
+	}
+	if q.Unread == "" {
+		start, end, hasMore := pageBounds(len(rows), offset, limit)
+		page := rows[start:end]
+		for i := range page {
+			if err := s.fillChatCounters(spaceId, &page[i]); err != nil {
+				return nil, 0, false, err
+			}
+		}
+		return page, len(rows), hasMore, nil
+	}
+	kept := make([]v2model.ChatRow, 0, len(rows))
+	for i := range rows {
+		if err := s.fillChatCounters(spaceId, &rows[i]); err != nil {
 			return nil, 0, false, err
 		}
-		if (unread == v2model.ChatUnreadMentions && row.UnreadMentions > 0) ||
-			(unread == v2model.ChatUnreadMessages && (row.UnreadMessages > 0 || row.UnreadMentions > 0)) {
+		row := rows[i]
+		if (q.Unread == v2model.ChatUnreadMentions && row.UnreadMentions > 0) ||
+			(q.Unread == v2model.ChatUnreadMessages && (row.UnreadMessages > 0 || row.UnreadMentions > 0)) {
 			kept = append(kept, row)
 		}
 	}
-	total := len(kept)
+	start, end, hasMore := pageBounds(len(kept), offset, limit)
+	return kept[start:end], len(kept), hasMore, nil
+}
+
+// pageBounds clamps an offset/limit window to total rows.
+func pageBounds(total, offset, limit int) (start, end int, hasMore bool) {
 	if offset >= total {
-		return []v2model.ChatRow{}, total, false, nil
+		return total, total, false
 	}
-	end := offset + limit
-	hasMore := end < total
+	end = offset + limit
 	if end > total {
 		end = total
 	}
-	return kept[offset:end], total, hasMore, nil
+	return offset, end, end < total
+}
+
+// servableChatRows maps records to rows, dropping a discussion row whose discussion is not
+// in this space's store with the discussion layout. A parent can carry a discussion id
+// before the discussion tree has synced, or one that names nothing local; listing it would
+// hand out an id every chat route answers with 404, and reading its state would create a
+// state manager and repository for an unknown id.
+func (s *Service) servableChatRows(spaceId string, records []database.Record) ([]v2model.ChatRow, error) {
+	var discussionIds []string
+	for _, record := range records {
+		if row := chatRowOf(record); row.Kind == v2model.ChatKindDiscussion && row.Id != "" {
+			discussionIds = append(discussionIds, row.Id)
+		}
+	}
+	local := make(map[string]bool, len(discussionIds))
+	if len(discussionIds) > 0 {
+		found, err := s.store.SpaceIndex(spaceId).Query(database.Query{Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyId,
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.StringList(discussionIds),
+			},
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_discussion)),
+			},
+		}})
+		if err != nil {
+			return nil, fmt.Errorf("query discussions in space %s: %w", spaceId, err)
+		}
+		for _, record := range found {
+			local[record.Details.GetString(bundle.RelationKeyId)] = true
+		}
+	}
+	rows := make([]v2model.ChatRow, 0, len(records))
+	for _, record := range records {
+		row := chatRowOf(record)
+		if row.Kind == v2model.ChatKindDiscussion && !local[row.Id] {
+			continue
+		}
+		rows = append(rows, row)
+	}
+	return rows, nil
 }
 
 // chatListFilters is the list's store filter. Discussions are the parents that carry a
@@ -151,31 +216,32 @@ func chatListFilters(includeDiscussions bool) []database.FilterRequest {
 	if !includeDiscussions {
 		return []database.FilterRequest{chats, notHidden}
 	}
-	discussionParents := database.FilterRequest{
-		Operator: model.BlockContentDataviewFilter_And,
-		NestedFilters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyDiscussionId,
-				Condition:   model.BlockContentDataviewFilter_NotEmpty,
-			},
-			{
-				RelationKey: bundle.RelationKeyIsArchived,
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       domain.Bool(true),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsDeleted,
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       domain.Bool(true),
-			},
-		},
-	}
+	// archived/deleted sit beside the Or, not inside one branch: the store adds its implicit
+	// "not archived, not deleted" filters only when none is present at the top level or in
+	// the first nested group, so burying them in the discussion branch would switch the
+	// defaults off for the chat branch and list binned chats.
 	return []database.FilterRequest{
 		{
-			Operator:      model.BlockContentDataviewFilter_Or,
-			NestedFilters: []database.FilterRequest{chats, discussionParents},
+			Operator: model.BlockContentDataviewFilter_Or,
+			NestedFilters: []database.FilterRequest{
+				chats,
+				{
+					RelationKey: bundle.RelationKeyDiscussionId,
+					Condition:   model.BlockContentDataviewFilter_NotEmpty,
+				},
+			},
 		},
 		notHidden,
+		{
+			RelationKey: bundle.RelationKeyIsArchived,
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       domain.Bool(true),
+		},
+		{
+			RelationKey: bundle.RelationKeyIsDeleted,
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       domain.Bool(true),
+		},
 	}
 }
 
