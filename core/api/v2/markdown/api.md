@@ -297,6 +297,31 @@ window is unverified. The absence of this event does not guarantee a
 complete history: out-of-order additions or reindexing can create gaps the
 stream cannot detect. Re-read messages when you need certainty.
 
+## Watch every chat of a space
+
+`GET /v2/spaces/{space_id}/chats/stream` watches every chat and object
+discussion of a space over one Server-Sent Events connection. Pass
+`include=none` to leave discussions out.
+
+It opens with one `chat_added` event per chat, carrying the chat list row plus
+`last_state_id`, then `snapshot_complete`. Live events follow:
+
+- `chat_added`, `chat_updated`, and `chat_removed` as chats appear, change
+  name or parent, and leave
+- `state_updated` when unread counters change
+- `message_added`, `message_updated`, `message_deleted`, `reactions_updated`,
+  and `pinned_updated` for every chat
+
+Every event carries `space_id`, and every message event carries `chat_id`. A
+chat that appears after the opening is followed by its newest messages.
+
+Events carry no id and nothing replays. Keep the `state_id` of the newest
+message you processed in each chat. After a reconnect, for each chat whose
+`last_state_id` is ahead of that checkpoint, open the chat's message stream
+once with `Last-Event-ID` set to it. A message event can arrive twice, and
+rarely for a change that was rolled back: dedupe on the message id and confirm
+an unknown message with a read.
+
 ## Download files and icons
 
 Use `GET /v2/spaces/{space_id}/files/{file_id}/content` with a file id or the

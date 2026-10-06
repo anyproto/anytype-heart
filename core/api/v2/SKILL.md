@@ -272,7 +272,30 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   other lines become one paragraph each (blank lines dropped, a `---` line is
   a divider, a table one line per row with a warning), nesting is flattened,
   and a read returns the same markdown as `text`. Discussions are not in
-  `GET …/chats`.
+  `GET …/chats` unless you pass `?include=discussions`.
+- **Watch a whole space on one connection**: `GET …/chats/stream` (SSE;
+  discussions included by default, `?include=none` for chats only). Read
+  `chat_added` events until `snapshot_complete`: that is the space's chat set,
+  and a chat you were watching that is not in it is gone. Then live
+  `chat_added`/`chat_updated`/`chat_removed`, `state_updated` and
+  `message_*`/`reactions_updated`/`pinned_updated` events, each with
+  `space_id` and `chat_id` (message events also `kind`, `parent_id`). A chat
+  that appears later is followed by its newest messages.
+  - No event ids, no replay. Keep one checkpoint per chat: the highest
+    `message.state_id` you processed (never from `state_updated` or
+    `last_state_id`). After any reconnect, for each chat whose
+    `chat_added.last_state_id` is ahead of its checkpoint, catch up once with
+    `GET …/chats/{id}/messages/stream` and `Last-Event-ID: <checkpoint>`,
+    drain the replayed `message_added`, close; one at a time (those count
+    against the per-chat cap). `resync_required` there → re-read the chat.
+  - Dedupe on message id: an event can repeat, and rarely describe a change
+    that rolled back; confirm a message you did not hold with a read. Still
+    apply `message_updated`/`message_deleted` for messages you already hold.
+  - Edits, deletions and reactions during a gap are not recovered; re-read a
+    chat's recent messages after a gap if that matters.
+  - At most 16 space streams per process (429 `too_many_streams`, close one).
+    A 500 naming a chat means that chat's state failed to load; the space's
+    stream stays refused until the app restarts.
 
 ## Conventions on every call
 
@@ -343,8 +366,7 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   types/properties still use their own DELETE routes.
 - No file content extraction ("read this PDF") in the API. Download its
   bytes with `GET …/files/{file_id}/content` and process them in the client.
-- **No chat SSE stream** under /v2 and no per-chat message full-text
-  search (both v1 for now); poll `GET messages?limit=1` instead.
+- No per-chat message full-text search under /v2 (v1 for now).
 - `GET …/types/{key}/schema` is a 501 stub — compose from
   `GET …/types/{key}` + `…/properties/{key}/options`.
 - No option rename/recolor/delete under /v2 (v1 tags admin, Phase 8).
