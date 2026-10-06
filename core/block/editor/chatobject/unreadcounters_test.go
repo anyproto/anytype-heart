@@ -1,8 +1,10 @@
 package chatobject
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"runtime"
 	"slices"
 	"sync"
 	"testing"
@@ -197,42 +199,6 @@ func TestUnreadCountersWorkerLifetime(t *testing.T) {
 		requireWorkerStopped(t, fx)
 	})
 
-	t.Run("a chat the cache evicts through TryClose still applies reads synced from another device", func(t *testing.T) {
-		// given: the seen-heads subscription outlives the evicted object and still calls
-		// markReadMessages, which runs on the component context
-		ctx := context.Background()
-		fx := newFixture(t, withSpace(t, chatId), withEvictableSmartBlock())
-		fx.chatHandler.forceNotRead = true
-		fx.locked(t, func() error {
-			return fx.addMessages(ctx, givenSimpleMessage("hello"), givenSimpleMessage("again"))
-		})
-		unread, err := fx.repository.GetAllUnreadMessages(ctx, chatmodel.CounterTypeMessage)
-		require.NoError(t, err)
-		require.Len(t, unread, 2)
-		// TryClose declines while the worker holds the lock for a write; the cache's GC retries too
-		require.Eventually(t, func() bool {
-			closed, err := fx.TryClose(time.Minute)
-			return err == nil && closed
-		}, 10*time.Second, time.Millisecond)
-
-		// when: the read made on another device arrives as removed seen heads
-		var readErr error
-		fx.locked(t, func() error {
-			readErr = fx.markReadMessages(unread, chatmodel.CounterTypeMessage)
-			return nil
-		})
-
-		// then
-		require.NoError(t, readErr)
-		dbState, err := fx.repository.LoadChatState(ctx)
-		require.NoError(t, err)
-		assert.Equal(t, int32(0), dbState.Messages.Counter, "the read flags are stored")
-		fx.subscription.Lock()
-		counter := fx.subscription.GetChatState().Messages.Counter
-		fx.subscription.Unlock()
-		assert.Equal(t, int32(0), counter, "the chat state follows")
-	})
-
 	t.Run("a chat the cache keeps open keeps its counters worker", func(t *testing.T) {
 		// given: smarttest's TryClose always declines, as a chat with an open session does
 		fx := newFixture(t, withSpace(t, chatId))
@@ -250,6 +216,137 @@ func TestUnreadCountersWorkerLifetime(t *testing.T) {
 		// then
 		requireStoredUnreadCounters(t, fx.storeObject, unreadCounters{Stored: true, Messages: 1})
 	})
+}
+
+// An evicted chat's seen-heads subscription outlives the object
+// (core/block/source/sourceimpl/store.go) and keeps marking the reads made on another device, so
+// the stored counters must keep following after the worker stopped.
+func TestUnreadCountersAfterEviction(t *testing.T) {
+	ctx := context.Background()
+
+	for _, tc := range []struct {
+		name  string
+		given func(t *testing.T) (*fixture, smartblock.SmartBlock)
+	}{
+		{
+			name: "a chat without a parent",
+			given: func(t *testing.T) (*fixture, smartblock.SmartBlock) {
+				fx := newFixture(t, withSpace(t, chatId), withEvictableSmartBlock())
+				return fx, fx.storeObject
+			},
+		},
+		{
+			name: "a discussion",
+			given: func(t *testing.T) (*fixture, smartblock.SmartBlock) {
+				parent := smarttest.New("parentId")
+				fx := newFixture(t, asDiscussion("parentId"), withSpace(t, "spaceChatId", parent), withEvictableSmartBlock())
+				return fx, parent
+			},
+		},
+	} {
+		t.Run(tc.name+" stores the reads synced after its eviction", func(t *testing.T) {
+			// given: stored counters, then an eviction that stops the worker
+			fx, target := tc.given(t)
+			fx.chatHandler.forceNotRead = true
+			fx.locked(t, func() error {
+				return fx.addMessages(ctx, givenSimpleMessage("hello"), givenMessageWithMention("hello, me"))
+			})
+			requireStoredUnreadCounters(t, target, unreadCounters{Stored: true, Messages: 2, Mentions: 1})
+			fx.evict(t)
+
+			// when: the reads made on another device arrive as removed seen heads
+			fx.locked(t, func() error { return fx.markAllReadAsSynced(ctx) })
+
+			// then: the stored counters follow without reopening the chat, and no writer is left
+			requireStoredUnreadCounters(t, target, unreadCounters{Stored: true})
+			requireNoDetachedWriter(t)
+		})
+	}
+
+	t.Run("reads synced in a burst after the eviction converge to the final counters", func(t *testing.T) {
+		// given
+		fx := newFixture(t, withSpace(t, chatId), withEvictableSmartBlock())
+		fx.chatHandler.forceNotRead = true
+		const n = 10
+		for i := 0; i < n; i++ {
+			fx.locked(t, func() error {
+				return fx.addMessages(ctx, givenSimpleMessage(fmt.Sprintf("message %d", i+1)))
+			})
+		}
+		requireStoredUnreadCounters(t, fx.storeObject, unreadCounters{Stored: true, Messages: n})
+		fx.evict(t)
+		unread, err := fx.repository.GetAllUnreadMessages(ctx, chatmodel.CounterTypeMessage)
+		require.NoError(t, err)
+		require.Len(t, unread, n)
+
+		// when: the reads of all messages but one arrive one by one, concurrently
+		var wg sync.WaitGroup
+		for _, id := range unread[:n-1] {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				fx.Lock()
+				defer fx.Unlock()
+				assert.NoError(t, fx.markReadMessages([]string{id}, chatmodel.CounterTypeMessage))
+			}()
+		}
+		wg.Wait()
+
+		// then
+		requireStoredUnreadCounters(t, fx.storeObject, unreadCounters{Stored: true, Messages: 1})
+		requireNoDetachedWriter(t)
+	})
+
+	t.Run("a trigger after Close writes nothing", func(t *testing.T) {
+		// given
+		fx := newFixture(t, withSpace(t, chatId), withEvictableSmartBlock())
+		requireFinishedWrites(t, fx, 1)
+		require.NoError(t, fx.Close())
+		requireWorkerStopped(t, fx)
+
+		// when
+		fx.triggerUnreadCountersUpdate()
+
+		// then
+		assert.Never(t, func() bool { return fx.spaceObjects.finishedDos() > 1 }, 200*time.Millisecond, 5*time.Millisecond)
+		requireNoDetachedWriter(t)
+	})
+}
+
+// evict closes the chat as the cache's GC does: TryClose declines while the worker holds the
+// lock for a write and is retried, and the cache never calls Close after it succeeded.
+func (fx *fixture) evict(t *testing.T) {
+	t.Helper()
+	require.Eventually(t, func() bool {
+		closed, err := fx.TryClose(time.Minute)
+		return err == nil && closed
+	}, 10*time.Second, time.Millisecond)
+	requireWorkerStopped(t, fx)
+}
+
+// markAllReadAsSynced marks every unread message and mention read the way the seen-heads
+// callback does when reads made on another device arrive.
+func (fx *fixture) markAllReadAsSynced(ctx context.Context) error {
+	for _, counterType := range []chatmodel.CounterType{chatmodel.CounterTypeMessage, chatmodel.CounterTypeMention} {
+		ids, err := fx.repository.GetAllUnreadMessages(ctx, counterType)
+		if err != nil {
+			return fmt.Errorf("get unread messages: %w", err)
+		}
+		if err := fx.markReadMessages(ids, counterType); err != nil {
+			return fmt.Errorf("mark read messages: %w", err)
+		}
+	}
+	return nil
+}
+
+// requireNoDetachedWriter waits until no detached counters write goroutine is alive.
+func requireNoDetachedWriter(t *testing.T) {
+	t.Helper()
+	require.Eventually(t, func() bool {
+		buf := make([]byte, 1<<20)
+		n := runtime.Stack(buf, true)
+		return !bytes.Contains(buf[:n], []byte("runDetachedUnreadCounterWrites"))
+	}, 10*time.Second, time.Millisecond, "a detached unread counters writer is still running")
 }
 
 // requireWorkerStopped waits for the unread counters worker to return.

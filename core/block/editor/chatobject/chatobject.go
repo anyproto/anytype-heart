@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	anystore "github.com/anyproto/any-store"
@@ -134,7 +136,24 @@ type storeObject struct {
 	// another device through markReadMessages, on componentCtx.
 	unreadCountersCtx    context.Context
 	unreadCountersCancel context.CancelFunc
+	// unreadCountersMu orders a trigger against the worker's exit: a trigger
+	// signals the worker only while unreadCountersStopped is false, and the
+	// worker sets it and takes any trigger left in the channel under the same
+	// lock, so no trigger reaches a worker that is gone.
+	unreadCountersMu      sync.Mutex
+	unreadCountersStopped bool
+	// detachedWrites coalesces the writes made once the worker stopped
+	// (detachedWritesIdle, detachedWritesRunning, detachedWritesRerun).
+	detachedWrites atomic.Int32
 }
+
+// The states of storeObject.detachedWrites.
+const (
+	detachedWritesIdle int32 = iota
+	detachedWritesRunning
+	// detachedWritesRerun: running, and a trigger arrived during the write
+	detachedWritesRerun
+)
 
 type UnreadStats struct {
 	MessagesCount int      `json:"messagesCount"`
@@ -405,12 +424,21 @@ func (s *storeObject) onUpdate() {
 // triggerUnreadCountersUpdate signals the worker to write the latest unread
 // counters to the target. Non-blocking: if a write is already pending, the
 // trigger is dropped and the worker will pick up the freshest counter values
-// when it next runs. The callers hold the object lock; accepting a trigger
-// never waits for the worker.
+// when it next runs. Once the worker stopped (an eviction), the write goes to
+// writeUnreadCountersDetached instead. The callers hold the object lock;
+// accepting a trigger never waits for a write.
 func (s *storeObject) triggerUnreadCountersUpdate() {
-	select {
-	case s.unreadCountersTrigger <- struct{}{}:
-	default:
+	s.unreadCountersMu.Lock()
+	stopped := s.unreadCountersStopped
+	if !stopped {
+		select {
+		case s.unreadCountersTrigger <- struct{}{}:
+		default:
+		}
+	}
+	s.unreadCountersMu.Unlock()
+	if stopped {
+		s.writeUnreadCountersDetached()
 	}
 }
 
@@ -424,11 +452,13 @@ func (s *storeObject) runUnreadCountersUpdater() {
 	for {
 		select {
 		case <-s.unreadCountersCtx.Done():
+			s.stopUnreadCountersUpdater(false)
 			return
 		case <-s.unreadCountersTrigger:
-			// select picks at random when both cases are ready: a closed
-			// object writes nothing
+			// select picks at random when both cases are ready: the stopped
+			// worker writes nothing itself
 			if s.unreadCountersCtx.Err() != nil {
+				s.stopUnreadCountersUpdater(true)
 				return
 			}
 			s.writeUnreadCounters()
@@ -436,9 +466,70 @@ func (s *storeObject) runUnreadCountersUpdater() {
 	}
 }
 
+// stopUnreadCountersUpdater marks the worker stopped, so later triggers write
+// through writeUnreadCountersDetached, and hands that path the trigger the
+// worker did not serve (pending), or one still in the channel.
+func (s *storeObject) stopUnreadCountersUpdater(pending bool) {
+	s.unreadCountersMu.Lock()
+	s.unreadCountersStopped = true
+	select {
+	case <-s.unreadCountersTrigger:
+		pending = true
+	default:
+	}
+	s.unreadCountersMu.Unlock()
+	if pending {
+		s.writeUnreadCountersDetached()
+	}
+}
+
+// writeUnreadCountersDetached writes the counters after the worker stopped.
+// An evicted chat's seen-heads callbacks outlive the object
+// (core/block/source/sourceimpl/store.go) and keep moving the counters with
+// the reads made on another device, so the target must keep following. The
+// write runs on a short-lived goroutine, on componentCtx, through the same
+// writeUnreadCounters the worker uses, and never under the object lock.
+// Calls coalesce: at most one goroutine runs, and a call while it writes
+// makes it write once more, so the target converges to the latest values.
+// Nothing is written once Close cancelled componentCtx.
+func (s *storeObject) writeUnreadCountersDetached() {
+	if s.unreadCountersTarget == "" || s.componentCtx.Err() != nil {
+		return
+	}
+	for {
+		switch s.detachedWrites.Load() {
+		case detachedWritesIdle:
+			if s.detachedWrites.CompareAndSwap(detachedWritesIdle, detachedWritesRunning) {
+				go s.runDetachedUnreadCounterWrites()
+				return
+			}
+		case detachedWritesRunning:
+			if s.detachedWrites.CompareAndSwap(detachedWritesRunning, detachedWritesRerun) {
+				return
+			}
+		default:
+			return // a rerun is already requested
+		}
+	}
+}
+
+func (s *storeObject) runDetachedUnreadCounterWrites() {
+	for {
+		if s.componentCtx.Err() == nil {
+			s.writeUnreadCounters()
+		}
+		if s.detachedWrites.CompareAndSwap(detachedWritesRunning, detachedWritesIdle) {
+			return
+		}
+		// a trigger arrived during the write: write once more
+		s.detachedWrites.Store(detachedWritesRunning)
+	}
+}
+
 // writeUnreadCounters reads the current counters from the chat subscription
 // and writes them as local details onto the target. Called only from the
-// worker goroutine, so writes are serialized.
+// worker goroutine and, once it stopped, from the single detached writer, so
+// writes are serialized.
 //
 // The write goes through Space().Do even when the target is the chat itself:
 // the worker holds no lock when it calls Do, and the triggers, which fire
