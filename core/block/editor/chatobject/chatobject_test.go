@@ -67,13 +67,19 @@ func (a *accountServiceStub) Init(ap *app.App) error {
 }
 
 // stubTree satisfies objecttree.ObjectTree for tests.
-// Only GetChange is called (by markReadReactions); all other methods are unused and will panic if called.
+// Only GetChange (by markReadReactions) and Root (by a discussion's Init) are called; all other
+// methods are unused and will panic if called.
 type stubTree struct {
 	objecttree.ObjectTree
+	parentId string
 }
 
 func (s *stubTree) GetChange(string) (*objecttree.Change, error) {
 	return nil, fmt.Errorf("change not found")
+}
+
+func (s *stubTree) Root() *objecttree.Change {
+	return &objecttree.Change{ParentId: s.parentId}
 }
 
 type stubSeenHeadsCollector struct {
@@ -86,6 +92,7 @@ func (c *stubSeenHeadsCollector) collectSeenHeads(ctx context.Context, afterOrde
 
 type fixture struct {
 	*storeObject
+	sb                 *smarttest.SmartTest
 	source             *mock_source.MockStore
 	accountServiceStub *accountServiceStub
 	sourceCreator      string
@@ -93,6 +100,9 @@ type fixture struct {
 	events             []*pb.EventMessage
 	spaceIndex         spaceindex.Store
 	storeFixture       *objectstore.StoreFixture
+	// spaceObjects is what Space().Do reaches; set by withSpace, nil otherwise (the default
+	// smarttest space's Do does nothing).
+	spaceObjects *spaceObjects
 
 	generateOrderIdFunc func(tx *storestate.StoreStateTx) string
 	lastOrder           string
@@ -163,6 +173,7 @@ func newFixture(t *testing.T, opts ...fixtureOption) *fixture {
 
 	fx := &fixture{
 		storeObject:        rawObject,
+		sb:                 sb,
 		accountServiceStub: accountService,
 		sourceCreator:      testCreator,
 		eventSender:        eventSender,
@@ -225,12 +236,20 @@ func newFixture(t *testing.T, opts ...fixtureOption) *fixture {
 		opt(fx)
 	}
 
+	// Init runs under the object lock, as ObjectFactory.InitObject runs it: the unread counters
+	// worker it starts writes under the same lock.
+	fx.Lock()
 	err = object.Init(&smartblock.InitContext{
 		Ctx:    ctx,
 		Source: source,
 		Doc:    state.NewDoc(chatId, nil),
 	})
+	fx.Unlock()
 	require.NoError(t, err)
+	// Registered after the options, so it runs before the cleanups of the mocks they create.
+	t.Cleanup(func() {
+		_ = fx.Close()
+	})
 
 	rawObject.seenHeadsCollector = &stubSeenHeadsCollector{heads: []string{}}
 

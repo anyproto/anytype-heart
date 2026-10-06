@@ -113,12 +113,17 @@ type storeObject struct {
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
 
-	// parentUpdateTrigger coalesces requests to forward unread counters to the
-	// discussion's parent object. Buffered with capacity 1: triggers fired
-	// while a write is pending are dropped, and the worker re-reads the latest
-	// counters from the subscription before each write so the parent always
-	// converges to the most recent value.
-	parentUpdateTrigger chan struct{}
+	// unreadCountersTarget is the object that stores this chat's unread
+	// counters as local details: the parent for a discussion, the chat itself
+	// for every chat without a parent (the space chat and the other
+	// chatDerived chats). Set in Init; when it is empty no worker runs.
+	unreadCountersTarget string
+	// unreadCountersTrigger coalesces requests to write the unread counters
+	// to the target. Buffered with capacity 1: triggers fired while a write is
+	// pending are dropped, and the worker re-reads the latest counters from
+	// the subscription before each write so the target always converges to
+	// the most recent value.
+	unreadCountersTrigger chan struct{}
 }
 
 type UnreadStats struct {
@@ -195,7 +200,7 @@ func New(
 		reactionsCounterEpoch:   time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC).Unix(),
 		componentCtx:            ctx,
 		componentCtxCancel:      cancel,
-		parentUpdateTrigger:     make(chan struct{}, 1),
+		unreadCountersTrigger:   make(chan struct{}, 1),
 		chatSubscriptionService: chatSubscriptionService,
 		DetailsSettable:         bs,
 		DetailsUpdatable:        bs,
@@ -313,8 +318,12 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	s.seenHeadsCollector = newTreeSeenHeadsCollector(s.Tree())
 	s.statService.AddProvider(s)
 
+	s.unreadCountersTarget = s.Id()
 	if s.typeKey == bundle.TypeKeyDiscussion {
-		go s.runParentUnreadUpdater()
+		s.unreadCountersTarget = s.Tree().Root().ParentId
+	}
+	if s.unreadCountersTarget != "" {
+		go s.runUnreadCountersUpdater()
 	}
 
 	s.onInit(ctx)
@@ -343,7 +352,7 @@ func (s *storeObject) onInit(ctx *smartblock.InitContext) {
 	if ok && last != nil {
 		ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLastMessageDate, domain.Int64(last.CreatedAt))
 	}
-	s.triggerParentUnreadUpdate()
+	s.triggerUnreadCountersUpdate()
 }
 
 func (s *storeObject) onUpdate() {
@@ -373,52 +382,56 @@ func (s *storeObject) onUpdate() {
 	if ok && last != nil {
 		st.SetDetailAndBundledRelation(bundle.RelationKeyLastMessageDate, domain.Int64(last.CreatedAt))
 	}
-	s.triggerParentUnreadUpdate()
+	s.triggerUnreadCountersUpdate()
 	if err = s.Apply(st, smartblock.NotPushChanges); err != nil {
 		log.Error("onUpdate: apply derived details", zap.Error(err))
 	}
 }
 
-// triggerParentUnreadUpdate signals the per-discussion worker to forward the
-// latest unread counters to the parent object. Non-blocking: if a write is
-// already pending, the trigger is dropped and the worker will pick up the
-// freshest counter values when it next runs. No-op for non-discussion chats
-// (the space chat and other chatDerived objects do not project counters onto
-// a parent).
-func (s *storeObject) triggerParentUnreadUpdate() {
-	if s.typeKey != bundle.TypeKeyDiscussion {
-		return
-	}
+// triggerUnreadCountersUpdate signals the worker to write the latest unread
+// counters to the target. Non-blocking: if a write is already pending, the
+// trigger is dropped and the worker will pick up the freshest counter values
+// when it next runs. The callers hold the object lock; accepting a trigger
+// never waits for the worker.
+func (s *storeObject) triggerUnreadCountersUpdate() {
 	select {
-	case s.parentUpdateTrigger <- struct{}{}:
+	case s.unreadCountersTrigger <- struct{}{}:
 	default:
 	}
 }
 
-// runParentUnreadUpdater is the single worker that serializes parent unread
+// runUnreadCountersUpdater is the single worker that serializes the unread
 // counter writes. It guarantees ordering (only one write at a time) and that
-// the parent ends up with the latest counter values, since each iteration
-// re-reads the current chat state before writing.
-func (s *storeObject) runParentUnreadUpdater() {
+// the target ends up with the latest counter values, since each iteration
+// re-reads the current chat state before writing. It stops when the object
+// closes.
+func (s *storeObject) runUnreadCountersUpdater() {
 	for {
 		select {
 		case <-s.componentCtx.Done():
 			return
-		case <-s.parentUpdateTrigger:
-			s.writeUnreadCountersToParent()
+		case <-s.unreadCountersTrigger:
+			// select picks at random when both cases are ready: a closed
+			// object writes nothing
+			if s.componentCtx.Err() != nil {
+				return
+			}
+			s.writeUnreadCounters()
 		}
 	}
 }
 
-// writeUnreadCountersToParent reads the current counters from the chat
-// subscription and writes them as local details onto the discussion's parent
-// object. Called only from the worker goroutine, so writes are serialized.
-func (s *storeObject) writeUnreadCountersToParent() {
-	parentId := s.Tree().Root().ParentId
-	if parentId == "" {
-		return
-	}
-
+// writeUnreadCounters reads the current counters from the chat subscription
+// and writes them as local details onto the target. Called only from the
+// worker goroutine, so writes are serialized.
+//
+// The write goes through Space().Do even when the target is the chat itself:
+// the worker holds no lock when it calls Do, and the triggers, which fire
+// under the chat's lock, never wait for the worker, so locking the chat here
+// cannot deadlock. The object cache hands Do a live instance only: Do waits
+// out an Init in progress, and a chat that closed after the worker's last
+// check is loaded again rather than written while closed.
+func (s *storeObject) writeUnreadCounters() {
 	s.subscription.Lock()
 	chatState := s.subscription.GetChatState()
 	var messages, mentions int64
@@ -432,28 +445,40 @@ func (s *storeObject) writeUnreadCountersToParent() {
 	}
 	s.subscription.Unlock()
 
-	err := s.Space().Do(parentId, func(b smartblock.SmartBlock) error {
+	flags := []smartblock.ApplyFlag{smartblock.KeepInternalFlags}
+	if s.unreadCountersTarget == s.Id() {
+		// the chat's own state: the counters are local details, and nothing
+		// may reach the chat's store as a change other members receive
+		flags = append(flags, smartblock.NotPushChanges)
+	}
+	err := s.Space().Do(s.unreadCountersTarget, func(b smartblock.SmartBlock) error {
+		if b.IsDeleted() {
+			return nil
+		}
 		st := b.NewState()
 		st.SetLocalDetail(bundle.RelationKeyUnreadMessageCount, domain.Int64(messages))
 		st.SetLocalDetail(bundle.RelationKeyUnreadMentionCount, domain.Int64(mentions))
-		return b.Apply(st, smartblock.KeepInternalFlags)
+		if err := b.Apply(st, flags...); err != nil {
+			return fmt.Errorf("apply unread counters: %w", err)
+		}
+		return nil
 	})
 	if err != nil {
-		s.logParentUnreadError(err)
+		s.logUnreadCountersError(err)
 	}
 }
 
-// logParentUnreadError swallows expected errors that occur when the parent has
-// already been deleted, and logs everything else. Mirrors the error filtering
-// in core/block/editor/archive.go:logArchiveError.
-func (s *storeObject) logParentUnreadError(err error) {
+// logUnreadCountersError swallows expected errors that occur when the target
+// has already been deleted, and logs everything else. Mirrors the error
+// filtering in core/block/editor/archive.go:logArchiveError.
+func (s *storeObject) logUnreadCountersError(err error) {
 	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
 		return
 	}
 	if errors.Is(err, treestorage.ErrUnknownTreeId) {
 		return
 	}
-	log.Error("forward unread counters to parent", zap.Error(err))
+	log.Error("write unread counters", zap.String("targetId", s.unreadCountersTarget), zap.Error(err))
 }
 
 func (s *storeObject) GetMessageById(ctx context.Context, id string) (*chatmodel.Message, error) {
