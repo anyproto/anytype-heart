@@ -192,6 +192,7 @@ func streamChatRow(chat apicore.SpaceChat, state *model.ChatState) *v2model.Stre
 		Id:             chat.Id,
 		Name:           chat.Name,
 		Kind:           v2model.ChatKind(chat.Discussion),
+		IsMain:         chat.IsMain,
 		ParentId:       chat.ParentId,
 		UnreadMessages: int(state.GetMessages().GetCounter()),
 		UnreadMentions: int(state.GetMentions().GetCounter()),

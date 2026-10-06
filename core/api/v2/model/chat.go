@@ -37,9 +37,11 @@ const (
 // manager's, read per row without opening the chat. For a discussion, Id is the
 // discussion's own id (usable on every chat route) and ParentId the object it belongs to.
 type ChatRow struct {
-	Id             string `json:"id"`
-	Name           string `json:"name"`
-	Kind           string `json:"kind"`
+	Id   string `json:"id"`
+	Name string `json:"name"`
+	Kind string `json:"kind"`
+	// True for the space's main chat (the space chat every member shares); false for every other chat and for every discussion.
+	IsMain         bool   `json:"is_main"`
 	ParentId       string `json:"parent_id,omitempty"`
 	UnreadMessages int    `json:"unread_messages"`
 	UnreadMentions int    `json:"unread_mentions"`

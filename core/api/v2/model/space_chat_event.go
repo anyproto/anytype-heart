@@ -26,9 +26,11 @@ const (
 // StreamChatRow is the list_chats row plus the chat's last_state_id, as
 // chat_added and chat_updated carry it.
 type StreamChatRow struct {
-	Id             string `json:"id"`
-	Name           string `json:"name"`
-	Kind           string `json:"kind"`
+	Id   string `json:"id"`
+	Name string `json:"name"`
+	Kind string `json:"kind"`
+	// True for the space's main chat (the space chat every member shares); false for every other chat and for every discussion.
+	IsMain         bool   `json:"is_main"`
 	ParentId       string `json:"parent_id,omitempty"`
 	UnreadMessages int    `json:"unread_messages"`
 	UnreadMentions int    `json:"unread_mentions"`

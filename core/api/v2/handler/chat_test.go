@@ -268,6 +268,27 @@ func TestListChatsV2HandlerQueryPlumbing(t *testing.T) {
 		assert.Equal(t, want, got.Data)
 	})
 
+	t.Run("every row serves is_main, false included", func(t *testing.T) {
+		// given: the fixture chat carries no isMainChat detail
+		sub := mock_apicore.NewMockChatSubscriptionService(t)
+		sub.EXPECT().ChatState("space1", "chat1").Return(&model.ChatState{}, nil)
+		fx := chatListRouterFixture(t, sub)
+
+		// when
+		w := serveChat(fx, "GET", "/v2/spaces/space1/chats", "")
+
+		// then
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		var got struct {
+			Data []map[string]any `json:"data"`
+		}
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+		require.Len(t, got.Data, 1)
+		isMain, present := got.Data[0]["is_main"]
+		assert.True(t, present, "is_main is always present: %s", w.Body.String())
+		assert.Equal(t, false, isMain)
+	})
+
 	t.Run("unread=mentions drops a chat with no mention", func(t *testing.T) {
 		// given
 		sub := mock_apicore.NewMockChatSubscriptionService(t)

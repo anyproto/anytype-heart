@@ -208,6 +208,7 @@ func TestOpenSpaceChatStream(t *testing.T) {
 func TestSpaceChatRenderer(t *testing.T) {
 	discussion := apicore.SpaceChat{Id: "disc1", Name: "Plan", Discussion: true, ParentId: "page1"}
 	chat := apicore.SpaceChat{Id: "chat1", Name: "General"}
+	mainChat := apicore.SpaceChat{Id: "chatMain", Name: "General", IsMain: true}
 	state := &model.ChatState{
 		Messages:    &model.ChatStateUnreadState{Counter: 2},
 		Mentions:    &model.ChatStateUnreadState{Counter: 1},
@@ -236,6 +237,13 @@ func TestSpaceChatRenderer(t *testing.T) {
 			change: apicore.SpaceChatChange{Type: apicore.SpaceChatAdded, Chat: discussion, State: state},
 			want: v2model.SpaceChatEvent{Type: "chat_added", SpaceId: testSpaceId, Chat: &v2model.StreamChatRow{
 				Id: "disc1", Name: "Plan", Kind: "discussion", ParentId: "page1", UnreadMessages: 2, UnreadMentions: 1, LastStateId: "s9",
+			}},
+		},
+		{
+			name:   "chat_added marks the space's main chat",
+			change: apicore.SpaceChatChange{Type: apicore.SpaceChatAdded, Chat: mainChat, State: state},
+			want: v2model.SpaceChatEvent{Type: "chat_added", SpaceId: testSpaceId, Chat: &v2model.StreamChatRow{
+				Id: "chatMain", Name: "General", Kind: "chat", IsMain: true, UnreadMessages: 2, UnreadMentions: 1, LastStateId: "s9",
 			}},
 		},
 		{
@@ -295,6 +303,22 @@ func TestSpaceChatRenderer(t *testing.T) {
 			assert.Equal(t, tc.want, got)
 		})
 	}
+
+	t.Run("chat_added and chat_updated serve is_main, false included", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		for _, change := range []apicore.SpaceChatChange{
+			{Type: apicore.SpaceChatAdded, Chat: discussion, State: state},
+			{Type: apicore.SpaceChatUpdated, Chat: chat, State: state},
+		} {
+			// when
+			raw, _ := render(t, fx, change)
+
+			// then
+			assert.Contains(t, raw, `"is_main":false`)
+		}
+	})
 
 	t.Run("message_added carries the full message with its state id", func(t *testing.T) {
 		// given
