@@ -167,6 +167,80 @@ func TestUnreadCountersStoredAsDetails(t *testing.T) {
 	})
 }
 
+func TestUnreadCountersWorkerLifetime(t *testing.T) {
+	t.Run("closing the chat stops its counters worker", func(t *testing.T) {
+		// given
+		fx := newFixture(t, withSpace(t, chatId))
+		requireFinishedWrites(t, fx, 1)
+
+		// when
+		require.NoError(t, fx.Close())
+
+		// then: the worker is gone, and a trigger after the close neither blocks nor writes
+		requireWorkerStopped(t, fx)
+		fx.triggerUnreadCountersUpdate()
+		fx.triggerUnreadCountersUpdate()
+		assert.Equal(t, 1, fx.spaceObjects.finishedDos(), "nothing is written after the close")
+	})
+
+	t.Run("a chat the cache evicts through TryClose stops its counters worker", func(t *testing.T) {
+		// given: the cache does not call Close after a TryClose that succeeded
+		fx := newFixture(t, withSpace(t, chatId), withEvictableSmartBlock())
+		requireFinishedWrites(t, fx, 1)
+
+		// when
+		closed, err := fx.TryClose(time.Minute)
+
+		// then
+		require.NoError(t, err)
+		require.True(t, closed)
+		requireWorkerStopped(t, fx)
+	})
+
+	t.Run("a chat the cache keeps open keeps its counters worker", func(t *testing.T) {
+		// given: smarttest's TryClose always declines, as a chat with an open session does
+		fx := newFixture(t, withSpace(t, chatId))
+		requireFinishedWrites(t, fx, 1)
+
+		// when
+		closed, err := fx.TryClose(time.Minute)
+		require.NoError(t, err)
+		require.False(t, closed)
+		fx.chatHandler.forceNotRead = true
+		fx.locked(t, func() error {
+			return fx.addMessages(context.Background(), givenSimpleMessage("still open"))
+		})
+
+		// then
+		requireStoredUnreadCounters(t, fx.storeObject, unreadCounters{Stored: true, Messages: 1})
+	})
+}
+
+// requireWorkerStopped waits for the unread counters worker to return.
+func requireWorkerStopped(t *testing.T, fx *fixture) {
+	t.Helper()
+	select {
+	case <-fx.unreadCountersDone:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the unread counters worker is still running")
+	}
+}
+
+// evictableSmartTest lets the cache's TryClose succeed, which smarttest's never does.
+type evictableSmartTest struct {
+	*smarttest.SmartTest
+}
+
+func (e *evictableSmartTest) TryClose(time.Duration) (bool, error) {
+	return true, nil
+}
+
+func withEvictableSmartBlock() fixtureOption {
+	return func(fx *fixture) {
+		fx.storeObject.SmartBlock = &evictableSmartTest{SmartTest: fx.sb}
+	}
+}
+
 // unreadCounters is what an object stores as the two local details; Stored is false while
 // neither is set.
 type unreadCounters struct {

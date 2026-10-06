@@ -124,6 +124,9 @@ type storeObject struct {
 	// the subscription before each write so the target always converges to
 	// the most recent value.
 	unreadCountersTrigger chan struct{}
+	// unreadCountersDone is closed when the worker returns; it stays open
+	// when no worker was started.
+	unreadCountersDone chan struct{}
 }
 
 type UnreadStats struct {
@@ -201,6 +204,7 @@ func New(
 		componentCtx:            ctx,
 		componentCtxCancel:      cancel,
 		unreadCountersTrigger:   make(chan struct{}, 1),
+		unreadCountersDone:      make(chan struct{}),
 		chatSubscriptionService: chatSubscriptionService,
 		DetailsSettable:         bs,
 		DetailsUpdatable:        bs,
@@ -406,6 +410,7 @@ func (s *storeObject) triggerUnreadCountersUpdate() {
 // re-reads the current chat state before writing. It stops when the object
 // closes.
 func (s *storeObject) runUnreadCountersUpdater() {
+	defer close(s.unreadCountersDone)
 	for {
 		select {
 		case <-s.componentCtx.Done():
@@ -676,7 +681,13 @@ func (s *storeObject) TryClose(objectTTL time.Duration) (res bool, err error) {
 		return false, nil
 	}
 	s.statService.RemoveProvider(s)
-	return s.SmartBlock.TryClose(objectTTL)
+	res, err = s.SmartBlock.TryClose(objectTTL)
+	if res {
+		// the cache does not call Close after a TryClose that succeeded:
+		// stop the components here, the unread counters worker among them
+		s.componentCtxCancel()
+	}
+	return res, err
 }
 
 func (s *storeObject) Close() error {
