@@ -161,6 +161,10 @@
           "reply_to": {
             "type": "string"
           },
+          "state_id": {
+            "description": "Chat state id stamped once, when the message was stored locally; ids sort in that order. The message stream sends it as the event id, so it is the checkpoint a client resumes from (Last-Event-ID). An edit does not restamp it.",
+            "type": "string"
+          },
           "text": {
             "type": "string"
           }

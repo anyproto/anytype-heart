@@ -164,6 +164,7 @@ func TestChatStreamHandler(t *testing.T) {
 		assert.Contains(t, w.Header().Get("Content-Type"), "text/event-stream")
 		assert.Contains(t, body, "event: message_added")
 		assert.Contains(t, body, "id: s1")
+		assert.Contains(t, body, `"state_id":"s1"`, "the message body carries the same state id")
 		assert.Contains(t, body, `"text":"hello"`)
 	})
 

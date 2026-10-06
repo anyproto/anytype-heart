@@ -1514,6 +1514,11 @@ POST       /v2/spaces/{space_id}/objects/{object_id}/discussion   # the object's
   changes type. `at` and `edited_at` are RFC 3339 UTC strings, `edited_at`
   present only when the message was edited, and sync/read flags are
   deliberately absent from the DTO (`core/api/v2/model/chat.go:34`).
+- **Every message carries `state_id`** on REST reads and on both streams: the
+  chat state id stamped once when the message was stored locally, the same
+  value the per-chat stream sends as its SSE `id`. A client keeps the highest
+  one it processed as its checkpoint and resumes the per-chat stream from it
+  (`Last-Event-ID`). An edit does not restamp it.
 - **The chat surface is exempt from C7**: no chat response carries an `etag`
   and no chat mutation reads `If-Match`. Order ids and `last_state_id` are the
   chat's native concurrency vocabulary, and the exemption is documented at the

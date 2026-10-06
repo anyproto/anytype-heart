@@ -1,6 +1,7 @@
 package v2model
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -55,6 +56,21 @@ func TestChatMessageFromProto(t *testing.T) {
 		assert.Equal(t, "2024-06-03T09:00:00Z", got.At,
 			"dates are RFC 3339 UTC — the one date shape v2 uses everywhere (C2), not a unix epoch")
 		assert.Zero(t, got.EditedAt, "modifiedAt == createdAt means never edited")
+	})
+
+	t.Run("the message carries its state id, the checkpoint a stream resumes from", func(t *testing.T) {
+		// given
+		msg := chatTestMessage()
+		msg.StateId = "68f2a1"
+
+		// when
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
+
+		// then: the same value the per-chat stream sends as its SSE id
+		assert.Equal(t, "68f2a1", got.StateId)
+		raw, err := json.Marshal(got)
+		require.NoError(t, err)
+		assert.Contains(t, string(raw), `"state_id":"68f2a1"`)
 	})
 
 	t.Run("markup bridge round-trips: rendered text parses back to the same marks", func(t *testing.T) {
