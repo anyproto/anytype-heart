@@ -101,6 +101,9 @@ type Converter struct {
 	// parallel prefetch workers.
 	syncedMu        sync.Mutex
 	syncedOriginals map[string]syncedEntry
+	// pendingCollections are built collection objects held until the pages
+	// have emitted (database.go emitCollections).
+	pendingCollections []pendingCollection
 	// childLinks records, per child entity, the page and block that emitted
 	// its child_page/child_database link (hierarchy.go).
 	childLinks map[string][]childLink
@@ -259,6 +262,9 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 	if err := c.flushDeferred(ctx, order, sink); err != nil {
 		return importv2.RootSpec{}, err
 	}
+	if err := c.emitCollections(ctx, sink); err != nil {
+		return importv2.RootSpec{}, err
+	}
 	// Drain second-chance discoveries. The queue grows while it
 	// drains — a late page's blocks may reference further omitted children.
 	drained := 0
@@ -278,6 +284,10 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 		if err := c.drainPending(ctx, sink, &drained); err != nil {
 			return importv2.RootSpec{}, err
 		}
+	}
+	// Collections discovered late, after the pages that may hold them.
+	if err := c.emitCollections(ctx, sink); err != nil {
+		return importv2.RootSpec{}, err
 	}
 	return importv2.RootSpec{
 		CollectionName: rootCollectionName,

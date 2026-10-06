@@ -48,8 +48,7 @@ func (c *Converter) noteChildLink(mctx mapContext, childId, blockId string) {
 // convert first — see parentFirst). Without that evidence the pair keeps an
 // empty ref, which GC ignores: the parent page's blocks failed to fetch, a
 // database's second data source (its block links the first), a parent
-// recorded by an earlier incarnation of a resumed crawl, or a collection,
-// which converts before any page.
+// recorded by an earlier incarnation of a resumed crawl.
 func (c *Converter) setCreatedInContext(entity Entity, details *domain.Details) {
 	parentKey, ref := c.createdInContext(entity)
 	if parentKey == "" {

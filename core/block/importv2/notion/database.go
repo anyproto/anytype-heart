@@ -37,9 +37,12 @@ func (d *databaseObject) title() string {
 	return d.Name
 }
 
-// convertDatabase emits, in order: new relation definitions, their declared
-// options, then the collection object whose members are the data source's
-// pages (known from the pass-1 hierarchy).
+// convertDatabase emits, in order: new relation definitions and their
+// declared options, then queues the collection object whose members are the
+// data source's pages (known from the pass-1 hierarchy). The definitions must
+// precede the rows; the collection itself is emitted after the pages
+// (emitCollections), once the page holding it has emitted its child_database
+// link — the evidence its createdInContext ref is built from.
 func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink importv2.Sink) error {
 	sink.Item(importv2.DisplayText(stub.Title)) // §15 currentItem, see emitFetchedPage
 	fetch := c.schemaFetches[stub.Id]
@@ -136,7 +139,6 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 		object.Payload.Details.Set(key, value)
 	}
 	object.Payload.Details.SetString(bundle.RelationKeyName, database.title())
-	c.setCreatedInContext(stub, object.Payload.Details)
 	if description := plainText(database.Description); description != "" {
 		object.Payload.Details.SetString(bundle.RelationKeyDescription, description)
 	}
@@ -146,7 +148,28 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 		return err
 	}
 	wireDataview(object, schemaDefs)
-	return sink.Object(ctx, object)
+	c.pendingCollections = append(c.pendingCollections, pendingCollection{stub: stub, object: object})
+	return nil
+}
+
+// pendingCollection is a built collection object waiting for the pages.
+type pendingCollection struct {
+	stub   Entity
+	object *importv2.Object
+}
+
+// emitCollections emits the queued collection objects, each with the
+// createdInContext its location page's emitted link supports.
+func (c *Converter) emitCollections(ctx context.Context, sink importv2.Sink) error {
+	pending := c.pendingCollections
+	c.pendingCollections = nil
+	for _, collection := range pending {
+		c.setCreatedInContext(collection.stub, collection.object.Payload.Details)
+		if err := sink.Object(ctx, collection.object); err != nil {
+			return fmt.Errorf("emit collection: %w", err)
+		}
+	}
+	return nil
 }
 
 // suggestPageType records a bundled object type for the data source's rows

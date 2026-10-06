@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -650,7 +651,7 @@ func createdInOf(t *testing.T, sink *recordingSink, sourceKey string) createdIn 
 
 // runWorkspace converts a minimal scripted workspace: one /search page and
 // exact-path GET routes; any other call fails the test.
-func runWorkspace(t *testing.T, search string, routes map[string]string) *recordingSink {
+func runWorkspace(t *testing.T, search string, routes map[string]string, opts ...Option) *recordingSink {
 	t.Helper()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost && r.URL.Path == "/search" {
@@ -670,12 +671,74 @@ func runWorkspace(t *testing.T, search string, routes map[string]string) *record
 		client.WithRateLimit(1000),
 		client.WithRetryPolicy(client.RetryPolicy{MaxAttempts: 1, BaseDelay: time.Millisecond, MaxDelay: time.Millisecond, TotalBudget: time.Second}),
 	)
-	converter := New(apiClient, client.NewFileFetcher(), stubFactory{}, t.TempDir())
+	converter := New(apiClient, client.NewFileFetcher(), stubFactory{}, t.TempDir(), opts...)
 	require.NoError(t, converter.EnumerateIdentities(context.Background(), func(importv2.IdentityClaim) error { return nil }))
 	sink := &recordingSink{}
 	_, err := converter.Convert(context.Background(), sink)
 	require.NoError(t, err)
 	return sink
+}
+
+// TestNotionDatabaseCreatedInContext: a database inside a page is created in
+// that page through its child_database block — the collection converts after
+// the pages so that link exists. A database the plan turns into a type gets
+// no context, and neither do its rows: a type is not page content.
+func TestNotionDatabaseCreatedInContext(t *testing.T) {
+	// given — page P holds database D (data source DS) in a column; DS has row R
+	search := `{"results":[
+		{"object":"data_source","id":"DS","parent":{"type":"database_id","database_id":"D"},
+		 "database_parent":{"type":"block_id","block_id":"col"},
+		 "title":[{"plain_text":"Tasks","type":"text"}]},
+		{"object":"page","id":"R","parent":{"type":"data_source_id","data_source_id":"DS"},
+		 "properties":{"Name":{"type":"title","title":[{"plain_text":"R","type":"text"}]}}},
+		{"object":"page","id":"P","parent":{"type":"workspace","workspace":true},
+		 "properties":{"Name":{"type":"title","title":[{"plain_text":"P","type":"text"}]}}}
+	],"has_more":false,"next_cursor":null}`
+	routes := map[string]string{
+		"GET /data_sources/DS": `{"id":"DS","title":[{"plain_text":"Tasks","type":"text"}],
+			"created_time":"2024-01-01T10:00:00.000Z","last_edited_time":"2024-01-02T10:00:00.000Z",
+			"properties":{"Name":{"id":"title","type":"title","name":"Name"}}}`,
+		"GET /blocks/P/children": `{"results":[
+			{"id":"col","type":"toggle","has_children":true,"toggle":{"rich_text":[{"plain_text":"dbs","type":"text"}]}}
+		],"has_more":false,"next_cursor":null}`,
+		"GET /blocks/col/children": `{"results":[
+			{"id":"D","type":"child_database","has_children":false,"child_database":{"title":"Tasks"}}
+		],"has_more":false,"next_cursor":null}`,
+		"GET /blocks/R/children": `{"results":[],"has_more":false,"next_cursor":null}`,
+	}
+	for _, id := range []string{"P", "R"} {
+		routes["GET /pages/"+id] = `{"id":"` + id + `","archived":false,
+			"created_time":"2024-02-01T10:00:00.000Z","last_edited_time":"2024-02-02T10:00:00.000Z",
+			"properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"` + id + `","type":"text"}]}}}`
+	}
+
+	t.Run("a collection is created in the page holding its database block", func(t *testing.T) {
+		// when
+		sink := runWorkspace(t, search, routes)
+
+		// then
+		require.Equal(t, coresb.SmartBlockTypePage, sink.byKey("DS").SbType)
+		assert.Equal(t, createdIn{"P", "D"}, createdInOf(t, sink, "DS"), "the child_database block is the ref")
+		assert.Equal(t, createdIn{"DS", ""}, createdInOf(t, sink, "R"))
+	})
+
+	t.Run("a database planned into a type gets no context, nor do its rows", func(t *testing.T) {
+		// given
+		planner := schemaplan.PlannerFunc(func(_ context.Context, _ []schemaplan.ContainerSchema) (schemaplan.Plan, error) {
+			return schemaplan.Plan{
+				NewTypes:   []schemaplan.TypeDefinition{{Key: "task", Name: "Task", Layout: model.ObjectType_todo}},
+				Containers: map[string]schemaplan.ContainerPlan{"DS": {TypeKey: "task", Reason: "LLM plan"}},
+			}, nil
+		})
+
+		// when
+		sink := runWorkspace(t, search, routes, WithPlanner(planner))
+
+		// then
+		require.Equal(t, coresb.SmartBlockTypeObjectType, sink.byKey("DS").SbType)
+		assert.Equal(t, createdIn{}, createdInOf(t, sink, "DS"))
+		assert.Equal(t, createdIn{}, createdInOf(t, sink, "R"))
+	})
 }
 
 func TestNotionFileOwnership(t *testing.T) {
