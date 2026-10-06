@@ -59,7 +59,7 @@ func ListChatsHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		offset := c.GetInt(pagination.QueryParamOffset)
 		limit := c.GetInt(pagination.QueryParamLimit)
-		rows, total, hasMore, err := s.ListChats(c.Request.Context(), c.Param("space_id"), offset, limit)
+		rows, total, hasMore, err := s.ListChats(c.Request.Context(), c.Param("space_id"), v2service.ChatListQuery{}, offset, limit)
 		if err != nil {
 			RespondError(c, err)
 			return

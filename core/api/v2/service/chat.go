@@ -50,12 +50,25 @@ const defaultChatMessagesLimit = 25
 // ---- chat list + create ----
 //
 
-// ListChats returns C5 chat rows via a store query over the chat layouts —
-// NO chat opens (opening every chat is the GO-7302 startup cost; Q3 keeps
-// the list counter-free, per-chat state comes free on the messages read).
-func (s *Service) ListChats(ctx context.Context, spaceId string, offset, limit int) ([]v2model.ChatRow, int, bool, error) {
+// ChatListQuery narrows what ListChats returns. Include and Unread are validated by the
+// handler; the service trusts them.
+type ChatListQuery struct {
+	// IncludeDiscussions adds the space's object discussions to the list.
+	IncludeDiscussions bool
+	// Unread, when non-empty ("messages" or "mentions"), keeps only rows whose matching
+	// counter is above zero.
+	Unread string
+}
+
+// ListChats returns C5 chat rows from a store query over the chat layouts. The query opens
+// no chat; each returned row's unread counters come from the chat state manager
+// (apicore.ChatSubscriptionService.ChatState), which reads the chat's own repository.
+func (s *Service) ListChats(ctx context.Context, spaceId string, q ChatListQuery, offset, limit int) ([]v2model.ChatRow, int, bool, error) {
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, err
+	}
+	if s.chatSub == nil {
+		return nil, 0, false, fmt.Errorf("list chats in space %s: chat state source is not configured", spaceId)
 	}
 	records, total, err := s.store.SpaceIndex(spaceId).QueryAndCount(database.Query{
 		Filters: []database.FilterRequest{
@@ -87,12 +100,29 @@ func (s *Service) ListChats(ctx context.Context, spaceId string, offset, limit i
 	}
 	rows := make([]v2model.ChatRow, 0, len(records))
 	for _, record := range records {
-		rows = append(rows, v2model.ChatRow{
+		row := v2model.ChatRow{
 			Id:   record.Details.GetString(bundle.RelationKeyId),
 			Name: record.Details.GetString(bundle.RelationKeyName),
-		})
+			Kind: v2model.ChatKindChat,
+		}
+		if err := s.fillChatCounters(spaceId, &row); err != nil {
+			return nil, 0, false, err
+		}
+		rows = append(rows, row)
 	}
 	return rows, total, hasMore, nil
+}
+
+// fillChatCounters reads the row's chat state once and stores both counters on the row. An
+// unreadable state is an error: a silent zero reads as "nothing unread" to an agent.
+func (s *Service) fillChatCounters(spaceId string, row *v2model.ChatRow) error {
+	state, err := s.chatSub.ChatState(spaceId, row.Id)
+	if err != nil {
+		return fmt.Errorf("read chat state of %s: %w", row.Id, err)
+	}
+	row.UnreadMessages = int(state.GetMessages().GetCounter())
+	row.UnreadMentions = int(state.GetMentions().GetCounter())
+	return nil
 }
 
 // CreateChat implements POST /v2/spaces/{space_id}/chats: a thin ObjectCreate

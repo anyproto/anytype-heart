@@ -44,6 +44,20 @@ func (fx *v2Fixture) addChat(t *testing.T, id, name string, lastModified int64) 
 	}})
 }
 
+// withChatStates installs a chat-subscription mock answering ChatState for the given chats
+// (id -> {unread messages, unread mentions}). A chat not in the map gets no expectation, so
+// asking for it fails the test.
+func (fx *v2Fixture) withChatStates(t *testing.T, states map[string][2]int32) {
+	sub := mock_apicore.NewMockChatSubscriptionService(t)
+	for id, c := range states {
+		sub.EXPECT().ChatState(testSpaceId, id).Return(&model.ChatState{
+			Messages: &model.ChatStateUnreadState{Counter: c[0]},
+			Mentions: &model.ChatStateUnreadState{Counter: c[1]},
+		}, nil).Maybe()
+	}
+	fx.withChatSub(sub)
+}
+
 // addParticipant registers the participant object the author-name
 // enrichment resolves (deterministic id, store-backed — no subscriptions).
 func (fx *v2Fixture) addParticipant(t *testing.T, identity, name string) string {
@@ -79,10 +93,8 @@ func chatProtoMessage() *model.ChatMessage {
 }
 
 func TestV2ListChats(t *testing.T) {
-	t.Run("C5 rows via the store — no chat opens, hidden and non-chat excluded", func(t *testing.T) {
-		// given: the mock middleware has NO expectations — any RPC (a chat
-		// open, a subscription) would fail the test, which is the phase's
-		// no-chat-opens guarantee (GO-7302)
+	t.Run("rows carry the chat's unread counters, read without opening the chat", func(t *testing.T) {
+		// given: the middleware mock has no expectations, so a chat open fails the test
 		fx := newV2Fixture(t)
 		fx.addChat(t, "chatB", "Team chat", 2000)
 		fx.addChat(t, "chatA", "Old chat", 1000)
@@ -99,19 +111,48 @@ func TestV2ListChats(t *testing.T) {
 				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
 			},
 		})
+		fx.withChatStates(t, map[string][2]int32{"chatB": {3, 1}, "chatA": {0, 0}})
 		want := []v2model.ChatRow{
-			{Id: "chatB", Name: "Team chat"},
-			{Id: "chatA", Name: "Old chat"},
+			{Id: "chatB", Name: "Team chat", Kind: v2model.ChatKindChat, UnreadMessages: 3, UnreadMentions: 1},
+			{Id: "chatA", Name: "Old chat", Kind: v2model.ChatKindChat},
 		}
 
 		// when
-		rows, total, hasMore, err := fx.ListChats(context.Background(), testSpaceId, 0, 25)
+		rows, total, hasMore, err := fx.ListChats(context.Background(), testSpaceId, ChatListQuery{}, 0, 25)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, want, rows, "rows are {id,name}, newest-modified first — no type object, no counters (Q3)")
+		assert.Equal(t, want, rows)
 		assert.Equal(t, 2, total)
 		assert.False(t, hasMore)
+	})
+
+	t.Run("a chat whose state cannot be read fails the request and names the chat", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addChat(t, "chatA", "A", 1000)
+		sub := mock_apicore.NewMockChatSubscriptionService(t)
+		sub.EXPECT().ChatState(testSpaceId, "chatA").Return(nil, errors.New("no repository"))
+		fx.withChatSub(sub)
+
+		// when
+		_, _, _, err := fx.ListChats(context.Background(), testSpaceId, ChatListQuery{}, 0, 25)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "chatA")
+	})
+
+	t.Run("a missing chat subscription dependency is an error, not zero counters", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addChat(t, "chatA", "A", 1000)
+
+		// when
+		_, _, _, err := fx.ListChats(context.Background(), testSpaceId, ChatListQuery{}, 0, 25)
+
+		// then
+		require.Error(t, err)
 	})
 
 	t.Run("pagination reports has_more with an honest total", func(t *testing.T) {
@@ -123,9 +164,10 @@ func TestV2ListChats(t *testing.T) {
 		fx.addChat(t, "chatC", "C", 3000)
 		fx.addChat(t, "chatB", "B", 2000)
 		fx.addChat(t, "chatA", "A", 1000)
+		fx.withChatStates(t, map[string][2]int32{"chatC": {0, 0}})
 
 		// when
-		rows, total, hasMore, err := fx.ListChats(context.Background(), testSpaceId, 0, 1)
+		rows, total, hasMore, err := fx.ListChats(context.Background(), testSpaceId, ChatListQuery{}, 0, 1)
 
 		// then
 		require.NoError(t, err)
@@ -136,7 +178,7 @@ func TestV2ListChats(t *testing.T) {
 
 	t.Run("unknown space is a 404", func(t *testing.T) {
 		fx := newV2Fixture(t)
-		_, _, _, err := fx.ListChats(context.Background(), "nope", 0, 25)
+		_, _, _, err := fx.ListChats(context.Background(), "nope", ChatListQuery{}, 0, 25)
 		requireV2Code(t, err, v2model.CodeNotFound)
 	})
 }
