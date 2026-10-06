@@ -84,14 +84,19 @@ Gaps A and B are accepted as-is (decided 2026-10-06).
 ### 4.1 Route
 
 ```
-GET /v2/spaces/{space_id}/objects/stream
-    ?filter=…  |  ?filters=…     same grammar, validation and canonicalisation as v2 search
-    &fields=…                    property keys to carry on each row (as search)
-    &limit=…                     size of the opening snapshot (shared pagination bounds)
+POST /v2/spaces/{space_id}/search/stream     # SSE; body = the existing v2 search request
 ```
 
-One stream per space (the engine subscribes per space). Same bearer auth and read grant as
-search; the space must be in the key's grant before anything subscribes.
+The body is the **existing space-search request** (`SearchRequest`: `type`, `query`, `filter` or
+`filters`, `sorts`, `fields`), with the same validation and canonicalisation as
+`POST /v2/spaces/{space_id}/search`. This matches the gateway document
+(`MULTICHAT_RECOMMENDATION.md` §5: `POST /v2/spaces/{space_id}/search/stream`, "using the existing
+search request/filter model"); a POST body carries a filter tree that a query string cannot. The
+route does not page: the opening snapshot is the complete matching set. One stream per space
+(the engine subscribes per space). Same bearer auth and read grant as search, classified READ in
+authz (it mutates nothing); the space must be in the key's grant before anything subscribes. The
+`?heartbeat=` query parameter works as on the chat streams. Idempotency-Key and dry_run do not
+apply (not a mutation).
 
 ### 4.2 Events
 
@@ -100,7 +105,7 @@ search; the space must be in the key's grant before anything subscribes.
 | `object_added`   | in the opening snapshot, and when an object enters the set    | the search row shape (`ObjectRow`), `fields` applied |
 | `object_updated` | a carried field of a member changes                           | row |
 | `object_removed` | an object leaves the set (e.g. mentions read → count 0)       | `{id}` |
-| `resync_required`| producer dropped this reader for being slow                   | none |
+| `snapshot_complete` | once, after the last opening `object_added`, also for an empty set | none |
 | heartbeat        | idle, as the chat stream                                       | SSE comment |
 
 Rows reuse the search renderer so a client parses one object shape for search and stream, with one
@@ -112,8 +117,12 @@ does not reach object GET's separate `discussionId` handling, so it is added in 
 ### 4.3 No resume cursor
 
 Chat adds are resumable because chat state ids exist. A subscription has no equivalent.
-**A reconnect is always a fresh snapshot.** The route ignores `Last-Event-ID` and the doc
-says so in one sentence. Clients diff the snapshot against what they hold.
+**A reconnect is always a fresh snapshot** ending in `snapshot_complete`; objects the client holds
+that are absent from it have left the set. The route ignores `Last-Event-ID` and the doc says so in
+one sentence. No event carries an SSE `id`.
+
+A stream never disconnects its client on its own (localhost API): no slow-reader closes, no write
+deadlines, no auth re-check, no `resync_required`.
 
 ### 4.4 Service shape
 
@@ -130,16 +139,15 @@ released through `Close`, with the same panic-safe handoff pattern as `OpenChatS
   emits an update.
 - A forwarder goroutine drains the queue, translates
   `ObjectDetailsSet/Amend/Unset` and `SubscriptionAdd/Remove` into the events above, and
-  pushes into a **bounded** per-stream channel. If that channel fills, close the stream
-  after sending `resync_required` (same policy as the chat producer). The unbounded queue
-  absorbs bursts; the bounded channel is the one that can shed a slow client.
+  appends to the stream's own **unbounded** queue; a slow reader only costs memory and is never
+  disconnected.
 - `Close` calls `Unsubscribe(subId)` and logs a failure, as `ChatStream.Close` does.
 
 ### 4.5 Stream cap
 
 Reuse `maxConcurrentChatStreams` accounting but with a **separate counter** (`objectStreams`)
 so an agent holding many chat streams cannot starve discovery, and the reverse. Suggested
-cap: 64 objects streams process-wide, same `429 too_many_streams` envelope. The cap error
+cap: `maxConcurrentSearchStreams = 16` process-wide, same `429 too_many_streams` envelope. The cap error
 text names which kind of stream is full.
 
 ### 4.6 Vocabulary change (the fix for check 1)
@@ -172,7 +180,8 @@ var v2BundledQueryKeys = []string{"unreadMentionCount", "unreadMessageCount"}
 ### 4.7 Agent recipe the docs will carry
 
 ```
-GET /v2/spaces/{space_id}/objects/stream?filter=unread_mention_count>0&fields=name,discussion
+POST /v2/spaces/{space_id}/search/stream
+{"filter":"unread_mention_count > 0","fields":["name","discussion"]}
 ```
 
 The snapshot is every object with an unread mention; later `object_added` events are newly

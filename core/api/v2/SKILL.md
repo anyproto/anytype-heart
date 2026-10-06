@@ -287,7 +287,10 @@ read: no `Idempotency-Key`, `dry_run` ignored.
     `chat_added.last_state_id` is ahead of its checkpoint, catch up once with
     `GET …/chats/{id}/messages/stream` and `Last-Event-ID: <checkpoint>`,
     drain the replayed `message_added`, close; one at a time (those count
-    against the per-chat cap). `resync_required` there → re-read the chat.
+    against the per-chat cap). The replay covers the newest `limit` messages of
+    the chat (pass `limit=1000`); an older-order message that synced late and
+    fell outside that window is not recovered. `resync_required` there →
+    re-read the chat.
   - Dedupe on message id: an event can repeat, and rarely describe a change
     that rolled back; confirm a message you did not hold with a read. Still
     apply `message_updated`/`message_deleted` for messages you already hold.
