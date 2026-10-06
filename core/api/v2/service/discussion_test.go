@@ -590,9 +590,10 @@ func TestV2DiscussionIsAChatForTheMessageOperations(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
 		fx.addDiscussion(t, testDiscussionId)
+		fx.withChatStates(t, map[string][2]int32{testChatId: {0, 0}})
 
 		// when
-		rows, total, _, err := fx.ListChats(context.Background(), testSpaceId, 0, 25)
+		rows, total, _, err := fx.ListChats(context.Background(), testSpaceId, ChatListQuery{}, 0, 25)
 
 		// then
 		require.NoError(t, err)

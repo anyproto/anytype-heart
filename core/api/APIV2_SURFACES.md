@@ -231,7 +231,7 @@ for a capability the middleware does not have (Q7).
 > facts the plan could not see: `ChatReadReactions` ignores its order id
 > (`core/chats.go:325`) so the reactions read scope is all-or-nothing, and
 > the edit RPC replaces the whole message content so PATCH is a read-merge.
-> Q3 resolved (i) counter-free list; Q4 resolved counts-by-default. The SSE
+> Q3 first resolved (i) counter-free list, **superseded** (see the Q3 entry below); Q4 resolved counts-by-default. The SSE
 > stream and per-chat FT search remain on v1 until Phase 8, as planned.
 
 The one surface where "thin" still means design work. Read the machinery
@@ -286,7 +286,7 @@ validate-only; C7 etag/If-Match **does not apply** — order ids and
 a deliberate exemption like search's C8/C9 one):
 
 ```
-GET    /v2/spaces/{space_id}/chats                       # C5 rows {id,name} — store query, no chat opens
+GET    /v2/spaces/{space_id}/chats                       # C5 rows {id,name,kind,unread_messages,unread_mentions,parent_id?} — ?include=discussions &unread=messages|mentions; store query, counters from the chat state manager, no chat opens
 POST   /v2/spaces/{space_id}/chats                       # {name} → row (thin over ObjectCreate, v1 parity)
 GET    /v2/spaces/{space_id}/chats/{chat_id}/messages     # ?after=&before=&limit=25
 POST   /v2/spaces/{space_id}/chats/{chat_id}/messages     # {text, reply_to?, attachments?:[fileId…]} → {id}
@@ -321,7 +321,7 @@ The three reshapes that carry the phase:
   verbatim and is documented on the endpoint). Offset mark arrays never
   cross the API. `style` is dropped from the default read (it is
   `"paragraph"` in practice) and not accepted on write for now.
-- **C5 rows and compact reactions.** Chat rows are `{id,name}` (the chat
+- **C5 rows and compact reactions.** Chat rows are `{id,name,kind,unread_messages,unread_mentions}` plus `parent_id` on discussion rows (the chat
   *object* remains visible in object search — `chatDerived` is in
   `util.ObjectLayouts` — but its document body is empty: messages live in
   the chat store, not blocks). Reactions default to counts
@@ -331,9 +331,9 @@ The three reshapes that carry the phase:
 has no v2-convention delta worth re-mounting; harness-level consumers only)
 and per-chat FT search (`…/messages/search`). Both are candidates to move
 under /v2 unchanged (b) before the deprecation clock if the mixed-client rule
-(Q8) demands it. Deliberately absent: per-chat unread counters on the *list*
-— computing them means opening every chat, the exact cost GO-7302 removed
-from startup; see Q3.
+(Q8) demands it. List rows now carry per-chat unread counters, read per
+returned row from the chat state manager without opening the chat object;
+see Q3.
 
 ## 6. Residual v1 surfaces — nothing to build
 
@@ -451,12 +451,18 @@ token cost than the v1 flow, and a double-send retry is absorbed by C8.
   the per-type half. Recommendation: defer until the Phase-0 harness measures
   the wrapper's cold-start; build only if orientation calls dominate turns.
   This is the one candidate where "agent-shaped addition" is plausibly real.
-- **Q3 · Unread counters on the chat list — DECIDED (Phase 6, as
-  recommended): (i)**, the list stays counter-free; per-chat state is free
-  on the messages read (a `limit=1` poll), and computing list-wide counters
-  means opening every chat — the GO-7302 startup cost — on every poll.
-  (iii), the store-side counter aggregate, remains the only good-UX option
-  if list counters are ever demanded; it is middleware work, not API work.
+- **Q3 · Unread counters on the chat list — DECIDED (2026-10-06, reversing the
+  Phase 6 answer):** rows carry `unread_messages` and `unread_mentions`. The
+  counters come from the chat state manager
+  (`apicore.ChatSubscriptionService.ChatState` → `chatsubscription.GetManager`),
+  which reads the chat's own repository and does not load the chat object, so
+  the GO-7302 cost does not apply; the cost is one local count per returned
+  row, and the first read of a chat creates its manager. An unreadable state
+  fails the request (a silent zero would read as "nothing unread").
+  `?include=discussions` adds object discussions (row id = discussion id,
+  `parent_id` = the object); `?unread=messages|mentions` keeps rows with
+  unread state, applied after the counters are read, so `total` counts kept
+  rows. Spec: `docs/superpowers/specs/2026-10-06-apiv2-object-stream.md`.
 - **Q4 · Reactions default — DECIDED (Phase 6, as recommended):
   counts-by-default** (`{"👍":2}`); `?reactions=full` restores identity
   lists, carrying participant ids (one vocabulary with `author_id`, C2),
