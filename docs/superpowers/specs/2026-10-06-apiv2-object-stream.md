@@ -66,9 +66,10 @@ The engine side is fine (above), so the gap is the v2 validation vocabulary only
   therefore populates counters for discussions nobody opened. The values persist in the
   store after the object is evicted from the cache.
 - **Gap A, latency.** The counter appears when diffsync reaches the discussion. Priority
-  ordering puts `chatDerived` before `discussion` (`core/block/service.go:416`), so a new
-  discussion is the last class of tree to be pulled. "Newly appeared" means "after the next
-  sync cycle", not instant. The spec states this on the route.
+  ordering puts ordinary chats first, then discussions, then currently opened objects, then the
+  remaining trees (`core/block/service.go:435-449`, `treesyncer.go`). "Newly appeared" means "after
+  sync has pulled and applied the tree", with no promised bound: loading can fail or queue behind a
+  backlog. The spec states this on the route.
 - **Gap B, parent not yet local.** `writeUnreadCountersToParent` does
   `Space().Do(parentId, …)` and only logs on failure (`logParentUnreadError`). If the
   discussion loads before its parent has synced, that write fails and is retried only by the
@@ -102,7 +103,10 @@ search; the space must be in the key's grant before anything subscribes.
 | `resync_required`| producer dropped this reader for being slow                   | none |
 | heartbeat        | idle, as the chat stream                                       | SSE comment |
 
-Rows reuse the search renderer so a client parses one object shape for search and stream.
+Rows reuse the search renderer so a client parses one object shape for search and stream, with one
+addition made on search rows as well: an optional top-level `discussion` member (the discussion's
+chat id), as object GET already serves it. `ObjectRow` has no such member today and `fields=discussion`
+does not reach object GET's separate `discussionId` handling, so it is added in the shared renderer.
 `object_removed` means "left the set", not "was deleted"; the doc says so.
 
 ### 4.3 No resume cursor
@@ -119,7 +123,11 @@ released through `Close`, with the same panic-safe handoff pattern as `OpenChatS
 
 - `subscription.Service.Search` with `Internal: true`, a caller-provided **unbounded**
   `mb.New(0)` queue (the engine's contract: a full bounded queue stalls the space worker),
-  `NoDepSubscription: true`, `Keys` = the requested fields plus `id`.
+  `NoDepSubscription: true`, **`Limit: 0`** (an unsorted internal limit truncates the opening snapshot
+  while the engine tracks the whole set, and a sort turns the limit into a live window; a creator
+  watch needs the complete matching set), `Keys` = the requested fields plus `id`, `name`, `type`
+  and the backing `discussionId`, so the base row renders and a change to the discussion reference
+  emits an update.
 - A forwarder goroutine drains the queue, translates
   `ObjectDetailsSet/Amend/Unset` and `SubscriptionAdd/Remove` into the events above, and
   pushes into a **bounded** per-stream channel. If that channel fills, close the stream
