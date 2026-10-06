@@ -63,6 +63,7 @@ var operations = map[string]operation{
 	OpUpdateSpace:          {"PATCH", "/v2/spaces/{space_id}"},
 	OpListChats:            {"GET", "/v2/spaces/{space_id}/chats"},
 	OpCreateChat:           {"POST", "/v2/spaces/{space_id}/chats"},
+	OpStreamSpaceChats:     {"GET", "/v2/spaces/{space_id}/chats/stream"},
 	OpGetChatMessages:      {"GET", "/v2/spaces/{space_id}/chats/{chat_id}/messages"},
 	OpAddChatMessage:       {"POST", "/v2/spaces/{space_id}/chats/{chat_id}/messages"},
 	OpStreamChatMessages:   {"GET", "/v2/spaces/{space_id}/chats/{chat_id}/messages/stream"},
@@ -123,6 +124,7 @@ const (
 	OpUpdateSpace          = "update_space"
 	OpListChats            = "list_chats"
 	OpCreateChat           = "create_chat"
+	OpStreamSpaceChats     = "stream_space_chats"
 	OpGetChatMessages      = "get_chat_messages"
 	OpAddChatMessage       = "add_chat_message"
 	OpStreamChatMessages   = "stream_chat_messages"

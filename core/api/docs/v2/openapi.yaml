@@ -3014,6 +3014,78 @@ paths:
       summary: Publish chat status
       tags:
       - Chat
+  /v2/spaces/{space_id}/chats/stream:
+    get:
+      description: 'Opens with a chat_added event per chat, then snapshot_complete,
+        then live chat, state and message events for every chat. Events carry no id
+        and there is no replay: keep the state_id of the newest message per chat and
+        catch up a chat through its message stream with Last-Event-ID. A message event
+        can arrive twice; dedupe on its id.'
+      operationId: stream_space_chats
+      parameters:
+      - description: Space id
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: discussions adds object discussions; none streams chats only
+        in: query
+        name: include
+        schema:
+          default: discussions
+          enum:
+          - discussions
+          - none
+          type: string
+      - description: Keepalive cadence in seconds
+        in: query
+        name: heartbeat
+        schema:
+          default: 30
+          maximum: 60
+          minimum: 1
+          type: integer
+      responses:
+        "200":
+          content:
+            text/event-stream:
+              schema:
+                type: string
+          description: Server-Sent Events stream
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Unknown include value
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Space not found
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Too many streams held at once; close one, retrying cannot succeed
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: A chat of the space cannot be attached
+      security:
+      - bearerauth: []
+      summary: Stream a space's chats
+      tags:
+      - Chat
   /v2/spaces/{space_id}/collections:
     post:
       description: Item ids are checked against the space; an id that does not resolve

@@ -126,7 +126,7 @@ func (s *Service) OpenChatStream(ctx context.Context, spaceId, chatId string, q 
 	}
 	// the slot is taken BEFORE subscribing, so a refusal costs nothing, and
 	// released through Close's sync.Once, so it cannot be double-returned
-	release, ok := s.chatStreams.acquire()
+	release, ok := s.chatStreams.acquire(maxConcurrentChatStreams)
 	if !ok {
 		return nil, v2model.NewError(http.StatusTooManyRequests, v2model.CodeTooManyStreams,
 			fmt.Sprintf("this process already holds %d open chat streams", maxConcurrentChatStreams),
@@ -259,11 +259,12 @@ type chatStreamSlots struct {
 	open int
 }
 
-// acquire takes a slot, returning the release func and whether one was free.
-func (c *chatStreamSlots) acquire() (func(), bool) {
+// acquire takes a slot under the given cap, returning the release func and
+// whether one was free.
+func (c *chatStreamSlots) acquire(limit int) (func(), bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.open >= maxConcurrentChatStreams {
+	if c.open >= limit {
 		return nil, false
 	}
 	c.open++
