@@ -1,7 +1,8 @@
 # API v2 space-wide chat stream
 
-Status: revision 2 for review, 2026-10-06 (rev 1 was reviewed by four Codex lenses at xhigh; its
-findings were checked against the code and are folded in below). First Heart piece of the Hermes
+Status: revision 3, 2026-10-06 (rev 1 was reviewed by four Codex lenses at xhigh; findings were
+checked against the code; rev 3 applies the owner's simplifications: the API is localhost-only and
+a stream never disconnects the client on its own). First Heart piece of the Hermes
 gateway foundation (`../anytype-hermes/docs/MULTICHAT_RECOMMENDATION.md` §5). Builds on PR #3310
 (`list_chats` counters, `include=discussions`). Replaces the chat-stream parts of
 `2026-10-06-apiv2-object-stream.md`, which stays the spec for the search stream.
@@ -23,6 +24,9 @@ Decided with the user, 2026-10-06:
 - **Observer events are published immediately**, not staged until commit. A change that rolls
   back can reach the gateway; the gateway tolerates it (§3.1).
 - **Opening the stream fails if any chat in the space cannot attach** (§4).
+- **A stream never disconnects its client on its own** (localhost API): no slow-reader or overflow
+  closes, no write deadlines, no periodic authorization re-check, no `resync_required`/`error`
+  events. Rare cases (rollback, permanent init failure, access loss mid-stream) are accepted.
 
 ## 2. API
 
@@ -57,8 +61,6 @@ data: {"type":"message_added","space_id":"S","chat_id":"C","kind":"discussion","
 | `message_added`, `message_updated` | per message | `chat_id`, `kind`, `parent_id?`, `message` (full v2 message DTO **plus `state_id`**) |
 | `message_deleted` | per message | `chat_id`, `kind`, `parent_id?`, `message_id` |
 | `reactions_updated`, `pinned_updated` | as the per-chat stream | the per-chat payloads plus `chat_id` |
-| `resync_required` | this client was dropped (slow, or the hub overflowed) | `reason`; the stream then closes |
-| `error` | the stream ends for a reason other than the client leaving | C6 error object (`forbidden` when authorization is lost, `unavailable` when a chat can no longer attach); the stream then closes |
 
 `state_id` is added to the v2 message DTO (REST reads and both streams): it is the value the
 per-chat stream already uses as its SSE `id`.
@@ -126,17 +128,10 @@ bursts and late-synced messages. Acceptable for a preview, not for a feed.
   again at fan-out, so no event for an ineligible chat is delivered.
 - **Attach.** For each eligible chat: `GetManager`, `AddObserver`. Counters and `last_state_id`
   are read under the manager lock (`GetChatState` itself does not lock).
-- **Backlog and overload.** The hub queue has an event limit and a byte limit. On overflow the
-  hub stops accepting, closes every client with `resync_required{reason:"hub_overflow"}`, detaches
-  its producers and releases the backlog. A stalled converter is therefore handled separately from
-  a stalled client.
-- **Fan-out.** One goroutine drains the queue, converts once (message DTO and participant-name
-  lookups cached per space), applies each client's `include` predicate, and pushes to bounded
-  per-client buffers (1,024 events). A client whose buffer fills gets `resync_required{reason:
-  "slow_reader"}` and is closed.
-- **Transport.** Each write and flush has a deadline (`http.ResponseController.SetWriteDeadline`,
-  15 s), because a handler blocked on a non-reading socket never sees a closed channel. A client
-  that cannot accept the terminal frame is dropped without it; the frame is best effort.
+- **Fan-out.** One goroutine drains the hub queue, converts once (message DTO and participant-name
+  lookups cached per space), applies each client's `include` predicate, and appends to the client's
+  own unbounded queue. A slow reader only costs memory; it is never disconnected (localhost).
+  The writer goroutine of each client does the socket writes.
 - **Ordering.** Per chat, events keep manager order. None across chats.
 - **Reach.** A manager sees changes only while its chat object applies them. Messages arriving by
   sync load the object through the tree syncer (`GetTree` → `GetObject`), so they reach the
@@ -166,10 +161,6 @@ an overlap is a duplicate the gateway dedupes. Chats in the opening snapshot are
 ## 4. Limits and errors
 
 - Read grant and space grant are checked first. Refusals are C6 envelopes before the first byte.
-- **Authorization lifetime.** A stream re-checks, every 60 seconds and on a revocation signal where
-  one exists, that the key is still valid and the space still in its grant and live. On failure
-  the stream sends `error{forbidden}`, discards queued events, detaches, and closes. Downgrade to
-  reader keeps the read stream; losing read access ends it.
 - Separate process-wide cap, `maxConcurrentSpaceChatStreams = 16`, the same `429 too_many_streams`
   envelope, message naming the kind. Independent of the per-chat cap. The cap bounds concurrent
   watches, not retained managers: managers and repositories are not evicted, so visiting many
@@ -178,7 +169,7 @@ an overlap is a duplicate the gateway dedupes. Chats in the opening snapshot are
   initialization fails the open with a C6 `500` naming the chat id. A failed initialization is
   cached by `chatsubscription` until restart, so one bad chat blocks the stream for that space
   until then; this is accepted. A chat that becomes eligible after opening and fails to attach
-  ends the stream with `error{unavailable}`; the gateway reconnects and meets the same refusal.
+  is logged and skipped; the stream continues without it.
 - **Counters belong to the account Heart runs as.** Managers are initialized with the service's
   account identity, so unread counters are those of that account. Fine for a gateway running as
   the agent's own account; not for a multi-member engine. Multi-member counters are out of scope.
@@ -197,11 +188,11 @@ an overlap is a duplicate the gateway dedupes. Chats in the opening snapshot are
    per-chat stream: `GET …/chats/{chat_id}/messages/stream` with `Last-Event-ID: <checkpoint>`,
    drain the replayed `message_added` events and close. State ids are generated when a message is
    materialized locally and sort in that order, so a late-synced older message has a state id above
-   the checkpoint and is replayed. `resync_required` on that stream means the checkpoint is older
+   the checkpoint and is replayed. `resync_required` on that per-chat stream (an existing event of that route) means the checkpoint is older
    than the replay window; re-read the chat's history instead. Catch-up connections count against
    the per-chat cap (64), so run them sequentially.
 4. Process live events; dedupe on message id; persist the input before advancing the checkpoint.
-5. On any disconnect, `resync_required` or `error`, reconnect and repeat from step 2.
+5. On any disconnect, reconnect and repeat from step 2.
 
 Not recoverable after an outage: an **edit** (a first-mention edit leaves the state id unchanged,
 so step 3 does not trigger), a **deletion**, a **reaction** change, and a message that existed and
@@ -222,12 +213,8 @@ Fixture pattern and `want` structs per `CLAUDE.md`.
   was attached; eligibility join (archived parent removes the discussion, hidden chat excluded);
   per-client `include`; concurrent open and close, double release, generation ids, teardown joins
   workers and closes queues.
-- **Overload:** a stalled converter closes clients with `resync_required{hub_overflow}` and
-  releases the backlog; a stalled client closes with `slow_reader` and a blocked network write is
-  cut by the write deadline.
 - **Failure:** a manager that fails initialization fails the open with a C6 500 naming the chat;
-  later attach failure ends the stream with `error{unavailable}`.
-- **Authorization:** revoked key or removed space ends an open stream with `error{forbidden}`.
+  a chat that fails to attach after open is skipped and logged.
 - **Handler:** SSE framing and envelope, heartbeat query parameter, grant-first refusal, `include`
   validation, 429 cap independent of the per-chat cap.
 - **Integration (local API loop):** two accounts in a shared space; a mention from account B in a
@@ -252,5 +239,5 @@ Fixture pattern and `want` structs per `CLAUDE.md`.
   enqueue-only contract and a test.
 - The first stream on a large space pays manager-creation cost up front; managers are never
   evicted.
-- Authorization re-checks are periodic, so access loss is honored within about a minute unless a
-  revocation signal exists.
+- Access loss, a slow reader and a stalled converter are not handled by disconnecting (decided);
+  a stalled reader costs memory.
