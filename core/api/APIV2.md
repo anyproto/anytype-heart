@@ -1470,7 +1470,7 @@ Both are thin over the same server primitives; bulk work via scripts.
 ### Phase 6 — chat
 
 ```
-GET/POST   /v2/spaces/{space_id}/chats
+GET/POST   /v2/spaces/{space_id}/chats   # GET rows carry unread_messages/unread_mentions; ?include=discussions, ?unread=messages|mentions
 GET/POST   /v2/spaces/{space_id}/chats/{chat_id}/messages
 GET        /v2/spaces/{space_id}/chats/{chat_id}/messages/stream   # SSE, when enabled
 PATCH/DELETE /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}

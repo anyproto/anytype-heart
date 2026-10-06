@@ -557,8 +557,16 @@ components:
       properties:
         id:
           type: string
+        kind:
+          type: string
         name:
           type: string
+        parent_id:
+          type: string
+        unread_mentions:
+          type: integer
+        unread_messages:
+          type: integer
       type: object
     ChatState:
       properties:
@@ -2270,14 +2278,30 @@ paths:
       - Spaces
   /v2/spaces/{space_id}/chats:
     get:
-      description: A row carries no unread counters. Per-chat unread state comes back
-        with the messages read instead.
+      description: 'Every row carries `unread_messages` and `unread_mentions`, read
+        from the chat state without opening the chat. `include=discussions` adds the
+        space''s object discussions: a discussion row''s id is the discussion''s own
+        id (usable on every chat route) and `parent_id` is the object it belongs to.
+        `unread` keeps only rows with unread messages or unread mentions, and `total`
+        then counts the kept rows.'
       operationId: list_chats
       parameters:
       - description: Space id
         in: path
         name: space_id
         required: true
+        schema:
+          type: string
+      - description: discussions adds object discussions to the list; omitted lists
+          chats only
+        in: query
+        name: include
+        schema:
+          type: string
+      - description: messages keeps rows with unread messages; mentions keeps rows
+          with unread mentions
+        in: query
+        name: unread
         schema:
           type: string
       - description: Rows to skip
@@ -2300,7 +2324,11 @@ paths:
                 $ref: '#/components/schemas/ListResponse-ChatRow'
           description: Chat rows
         "400":
-          $ref: '#/components/responses/BadRequest'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Unknown include or unread value
         "401":
           $ref: '#/components/responses/Unauthorized'
         "403":

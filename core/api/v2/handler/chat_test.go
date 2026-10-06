@@ -17,6 +17,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
+	"github.com/anyproto/anytype-heart/core/api/core/mock_apicore"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/pb"
@@ -231,4 +233,76 @@ func TestChatBodyDecoding(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Contains(t, w.Body.String(), "text, reply_to, attachments")
 	})
+}
+
+func chatListRouterFixture(t *testing.T, sub apicore.ChatSubscriptionService) *v2HandlerFixture {
+	fx := newV2HandlerFixtureWithChatSub(t, sub)
+	fx.store.AddObjects(t, "space1", []objectstore.TestObject{{
+		bundle.RelationKeyId:             domain.String("chat1"),
+		bundle.RelationKeyName:           domain.String("Team chat"),
+		bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_chatDerived)),
+	}})
+	fx.router.Use(pagination.New(pagination.Config{DefaultPage: 0, DefaultPageSize: 25, MinPageSize: 1, MaxPageSize: 1000}))
+	fx.router.GET("/v2/spaces/:space_id/chats", ListChatsHandler(fx.svc))
+	return fx
+}
+
+func TestListChatsV2HandlerQueryPlumbing(t *testing.T) {
+	t.Run("rows serve both counters and the kind", func(t *testing.T) {
+		// given
+		sub := mock_apicore.NewMockChatSubscriptionService(t)
+		sub.EXPECT().ChatState("space1", "chat1").Return(&model.ChatState{
+			Messages: &model.ChatStateUnreadState{Counter: 4},
+			Mentions: &model.ChatStateUnreadState{Counter: 2},
+		}, nil)
+		fx := chatListRouterFixture(t, sub)
+
+		// when
+		w := serveChat(fx, "GET", "/v2/spaces/space1/chats", "")
+
+		// then
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		var got v2model.ListResponse[v2model.ChatRow]
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+		want := []v2model.ChatRow{{Id: "chat1", Name: "Team chat", Kind: "chat", UnreadMessages: 4, UnreadMentions: 2}}
+		assert.Equal(t, want, got.Data)
+	})
+
+	t.Run("unread=mentions drops a chat with no mention", func(t *testing.T) {
+		// given
+		sub := mock_apicore.NewMockChatSubscriptionService(t)
+		sub.EXPECT().ChatState("space1", "chat1").Return(&model.ChatState{
+			Messages: &model.ChatStateUnreadState{Counter: 4},
+		}, nil)
+		fx := chatListRouterFixture(t, sub)
+
+		// when
+		w := serveChat(fx, "GET", "/v2/spaces/space1/chats?unread=mentions", "")
+
+		// then
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		var got v2model.ListResponse[v2model.ChatRow]
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+		assert.Empty(t, got.Data)
+	})
+
+	for _, tc := range []struct{ name, query, param string }{
+		{"unknown unread value", "?unread=all", "unread"},
+		{"unknown include value", "?include=files", "include"},
+	} {
+		t.Run(tc.name+" is a 400 naming the parameter", func(t *testing.T) {
+			// given: no ChatState expectation, so a refused request reads nothing
+			fx := chatListRouterFixture(t, mock_apicore.NewMockChatSubscriptionService(t))
+
+			// when
+			w := serveChat(fx, "GET", "/v2/spaces/space1/chats"+tc.query, "")
+
+			// then
+			require.Equal(t, http.StatusBadRequest, w.Code)
+			var got v2model.Error
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+			require.Len(t, got.Issues, 1)
+			assert.Equal(t, tc.param, got.Issues[0].Path)
+		})
+	}
 }

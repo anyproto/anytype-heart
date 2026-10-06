@@ -44,22 +44,30 @@ func respondChatMutation(c *gin.Context, dryRun bool, createdStatus int, payload
 // ListChatsHandler lists the space's chats as C5 rows
 //
 //	@Summary		List chats
-//	@Description	A row carries no unread counters. Per-chat unread state comes back with the messages read instead.
+//	@Description	Every row carries `unread_messages` and `unread_mentions`, read from the chat state without opening the chat. `include=discussions` adds the space's object discussions: a discussion row's id is the discussion's own id (usable on every chat route) and `parent_id` is the object it belongs to. `unread` keeps only rows with unread messages or unread mentions, and `total` then counts the kept rows.
 //	@Id				list_chats
 //	@Tags			Chat
 //	@Produce		json
 //	@Param			space_id	path		string									true	"Space id"
+//	@Param			include		query		string									false	"discussions adds object discussions to the list; omitted lists chats only"
+//	@Param			unread		query		string									false	"messages keeps rows with unread messages; mentions keeps rows with unread mentions"
 //	@Param			offset		query		int										false	"Rows to skip"		default(0)
 //	@Param			limit		query		int										false	"Rows to return"	default(25)
 //	@Success		200			{object}	v2model.ListResponse[v2model.ChatRow]	"Chat rows"
+//	@Failure		400			{object}	v2model.Error							"Unknown include or unread value"
 //	@Failure		404			{object}	v2model.Error							"Space not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/chats [get]
 func ListChatsHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		query, err := parseChatListQuery(c)
+		if err != nil {
+			RespondError(c, err)
+			return
+		}
 		offset := c.GetInt(pagination.QueryParamOffset)
 		limit := c.GetInt(pagination.QueryParamLimit)
-		rows, total, hasMore, err := s.ListChats(c.Request.Context(), c.Param("space_id"), v2service.ChatListQuery{}, offset, limit)
+		rows, total, hasMore, err := s.ListChats(c.Request.Context(), c.Param("space_id"), query, offset, limit)
 		if err != nil {
 			RespondError(c, err)
 			return
@@ -67,6 +75,29 @@ func ListChatsHandler(s *v2service.Service) gin.HandlerFunc {
 		c.JSON(http.StatusOK, v2model.NewListResponse(rows, total, offset, limit, hasMore,
 			"request the next offset"))
 	}
+}
+
+// parseChatListQuery reads ?include= and ?unread=. Every refusal is a 400 naming the
+// parameter and the allowed values, before anything is read.
+func parseChatListQuery(c *gin.Context) (v2service.ChatListQuery, error) {
+	var q v2service.ChatListQuery
+	switch include := c.Query("include"); include {
+	case "":
+	case "discussions":
+		q.IncludeDiscussions = true
+	default:
+		return q, v2model.ValidationFailed("invalid include value",
+			v2model.Issue{Path: "include", Message: fmt.Sprintf("unknown value %q", include), Hint: "allowed: discussions"})
+	}
+	switch unread := c.Query("unread"); unread {
+	case "":
+	case v2model.ChatUnreadMessages, v2model.ChatUnreadMentions:
+		q.Unread = unread
+	default:
+		return q, v2model.ValidationFailed("invalid unread value",
+			v2model.Issue{Path: "unread", Message: fmt.Sprintf("unknown value %q", unread), Hint: "allowed: messages, mentions"})
+	}
+	return q, nil
 }
 
 // CreateChatHandler creates a chat
