@@ -26,9 +26,21 @@ type dirTree struct {
 	// children maps a dir to its immediate subdirs and document entries.
 	subdirs map[string][]string
 	files   map[string][]string
+	// parentOf maps a document entry or a directory page's source key to
+	// the directory page listing it and the link block doing so.
+	parentOf map[string]parentLink
+}
+
+// parentLink is a createdInContext pair in source-key form.
+type parentLink struct {
+	key string
+	ref string
 }
 
 func dirSourceKey(dir string) string { return "dir:" + dir }
+
+func dirLinkId(i int) string { return fmt.Sprintf("dirlink%d", i) }
+func docLinkId(i int) string { return fmt.Sprintf("doclink%d", i) }
 
 // buildDirTree derives the directory structure from the document listing
 // (md + csv entries, already in sorted walk order).
@@ -84,6 +96,18 @@ func buildDirTree(entries []source.Entry) *dirTree {
 	for _, files := range tree.files {
 		sort.Strings(files)
 	}
+	// The ids must match the link blocks emitDirectoryPages writes.
+	tree.parentOf = map[string]parentLink{}
+	for dir, subdirs := range tree.subdirs {
+		for i, subdir := range subdirs {
+			tree.parentOf[dirSourceKey(subdir)] = parentLink{key: dirSourceKey(dir), ref: dirLinkId(i)}
+		}
+	}
+	for dir, files := range tree.files {
+		for i, file := range files {
+			tree.parentOf[file] = parentLink{key: dirSourceKey(dir), ref: docLinkId(i)}
+		}
+	}
 	return tree
 }
 
@@ -133,7 +157,7 @@ func (c *Converter) emitDirectoryPages(ctx context.Context, sink importv2.Sink) 
 		blocks := make([]*model.Block, 0, len(c.dirs.subdirs[dir])+len(c.dirs.files[dir]))
 		for i, subdir := range c.dirs.subdirs[dir] {
 			blocks = append(blocks, &model.Block{
-				Id: fmt.Sprintf("dirlink%d", i),
+				Id: dirLinkId(i),
 				Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
 					TargetBlockId: dirSourceKey(subdir),
 					Style:         model.BlockContentLink_Page,
@@ -142,7 +166,7 @@ func (c *Converter) emitDirectoryPages(ctx context.Context, sink importv2.Sink) 
 		}
 		for i, file := range c.dirs.files[dir] {
 			blocks = append(blocks, &model.Block{
-				Id: fmt.Sprintf("doclink%d", i),
+				Id: docLinkId(i),
 				Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
 					TargetBlockId: file,
 					Style:         model.BlockContentLink_Page,
@@ -159,6 +183,10 @@ func (c *Converter) emitDirectoryPages(ctx context.Context, sink importv2.Sink) 
 			bundle.RelationKeyIconEmoji:      domain.String(directoryIcon),
 			bundle.RelationKeySourceFilePath: domain.String(sourcePathHash(dirSourceKey(dir))),
 		})
+		if parent, ok := c.dirs.parentOf[dirSourceKey(dir)]; ok {
+			details.SetString(bundle.RelationKeyCreatedInContext, parent.key)
+			details.SetString(bundle.RelationKeyCreatedInContextRef, parent.ref)
+		}
 		object := &importv2.Object{
 			SourceKey: dirSourceKey(dir),
 			SbType:    coresb.SmartBlockTypePage,

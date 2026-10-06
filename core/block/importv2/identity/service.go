@@ -118,9 +118,12 @@ type Service struct {
 	now            time.Time
 	ledger         ClaimLedger
 
-	mu       sync.RWMutex
-	entries  map[string]*entry
-	payloads map[string]treestorage.TreeStorageCreatePayload
+	mu      sync.RWMutex
+	entries map[string]*entry
+	// matchedIds holds the final ids of matched (pre-existing) objects:
+	// the objects this run updates in place.
+	matchedIds map[string]struct{}
+	payloads   map[string]treestorage.TreeStorageCreatePayload
 	// derived memoizes uniqueKey → assignment so a repeated definition
 	// converges to one object per run.
 	derived map[string]Assignment
@@ -191,6 +194,7 @@ func (s *Service) Claim(ctx context.Context, c importv2.IdentityClaim) error {
 	}
 	s.mu.Lock()
 	s.entries[c.SourceKey] = &entry{id: id, mode: mode, claimed: true}
+	s.noteMatchedLocked(id, mode)
 	s.mu.Unlock()
 	return s.ledgerClaim(ctx, c.SourceKey, id, mode == entryMatched)
 }
@@ -365,6 +369,7 @@ func (s *Service) uniqueKeyOf(o *importv2.Object) (domain.UniqueKey, error) {
 func (s *Service) register(sourceKey, id string, mode entryMode) {
 	s.mu.Lock()
 	s.entries[sourceKey] = &entry{id: id, mode: mode}
+	s.noteMatchedLocked(id, mode)
 	s.mu.Unlock()
 }
 
@@ -382,6 +387,34 @@ func (s *Service) Resolve(sourceKey string) (string, bool) {
 		return id, id != ""
 	}
 	return e.id, true
+}
+
+func (s *Service) noteMatchedLocked(id string, mode entryMode) {
+	if mode != entryMatched || id == "" {
+		return
+	}
+	if s.matchedIds == nil {
+		s.matchedIds = map[string]struct{}{}
+	}
+	s.matchedIds[id] = struct{}{}
+}
+
+// IsUpdateTarget reports whether objectId is a pre-existing object this run
+// matched and so may rewrite in place.
+func (s *Service) IsUpdateTarget(objectId string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	_, ok := s.matchedIds[objectId]
+	return ok
+}
+
+// IsMatched reports whether the source key was matched to an object that
+// existed before the run (updated in place rather than created).
+func (s *Service) IsMatched(sourceKey string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	e, ok := s.entries[sourceKey]
+	return ok && e.mode == entryMatched
 }
 
 // Ids returns final ids for the given source keys, skipping unresolved ones.

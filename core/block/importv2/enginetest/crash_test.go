@@ -317,20 +317,17 @@ func TestCrashResumeAtUpload(t *testing.T) {
 		assert.Equal(t, control.Dump(), fx.Dump())
 		assert.Equal(t, []string{contentHash([]byte("png-bytes"))}, fx.Uploader.Uploads,
 			"exactly one upload, of exactly the fixture bytes")
-		// The block id is the one field two runs may legitimately disagree
-		// on: anymark mints block ids with bson.NewObjectId (blocks_renderer),
-		// so a re-conversion produces fresh ones. Everything else — content,
-		// url, image kind, and the OWNING OBJECT — must match, and the ref
-		// must at least be present, since object GC ignores a context whose
-		// ref is empty.
+		// The markdown converter derives block ids from the page and the
+		// block's position, so a re-conversion reproduces the ref exactly:
+		// the resumed upload must present what the uninterrupted one did,
+		// ref included (object GC ignores a context whose ref is empty or
+		// names a block the owner does not have).
 		require.Len(t, fx.Uploader.Records, 1)
 		require.Len(t, control.Uploader.Records, 1)
 		resumedUpload := fx.Uploader.Records[0]
 		uninterruptedUpload := control.Uploader.Records[0]
 		assert.NotEmpty(t, resumedUpload.CreatedInContextRef,
 			"the resumed upload must still carry a ref")
-		resumedUpload.CreatedInContextRef = ""
-		uninterruptedUpload.CreatedInContextRef = ""
 		assert.Equal(t, uninterruptedUpload, resumedUpload,
 			"the resumed upload must present exactly what the uninterrupted one did")
 		assert.NotEmpty(t, resumedUpload.CreatedInContext,

@@ -22,6 +22,11 @@ type fakeRefs struct {
 	ids     map[string]string
 	failed  map[string]error
 	blocked map[string]chan string // file futures: wait until a value arrives
+	matched map[string]bool
+}
+
+func (f *fakeRefs) IsMatched(sourceKey string) bool {
+	return f.matched[sourceKey]
 }
 
 func (f *fakeRefs) ResolveRef(ctx context.Context, sourceKey string) (string, bool, error) {
@@ -289,5 +294,96 @@ func TestRewriteCollectionStore(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, []string{"idA"}, st.GetStoreSlice(template.CollectionStoreKey))
 		assert.Equal(t, []importv2.IssueCode{importv2.IssueMissingTarget}, c.codes())
+	})
+}
+
+func TestRewriteCreatedInContext(t *testing.T) {
+	createdIn := func(st *state.State) []string {
+		return []string{
+			st.Details().GetString(bundle.RelationKeyCreatedInContext),
+			st.Details().GetString(bundle.RelationKeyCreatedInContextRef),
+		}
+	}
+	withContext := func(parent, ref string) *state.State {
+		st := docWithBlocks()
+		st.SetDetail(bundle.RelationKeyCreatedInContext, domain.String(parent))
+		st.SetDetail(bundle.RelationKeyCreatedInContextRef, domain.String(ref))
+		return st
+	}
+
+	t.Run("parent source key resolves to its final id, ref kept", func(t *testing.T) {
+		// given
+		st := withContext("docs/parent.md", "link1")
+		r := newResolver(&fakeRefs{ids: map[string]string{"docs/parent.md": "idParent"}}, fakeKeys{})
+		c := &issueCollector{}
+
+		// when
+		err := r.RewriteState(context.Background(), st, c.report)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"idParent", "link1"}, createdIn(st))
+		assert.Empty(t, c.issues)
+	})
+
+	t.Run("parent outside the import drops the pair silently", func(t *testing.T) {
+		// given
+		st := withContext("docs/gone.md", "link1")
+		r := newResolver(&fakeRefs{}, fakeKeys{})
+		c := &issueCollector{}
+
+		// when
+		err := r.RewriteState(context.Background(), st, c.report)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"", ""}, createdIn(st))
+		assert.False(t, st.Details().Has(bundle.RelationKeyCreatedInContext))
+		assert.False(t, st.Details().Has(bundle.RelationKeyCreatedInContextRef))
+		assert.Empty(t, c.issues, "a lost context is not a missing reference the user can act on")
+	})
+
+	t.Run("parent that failed to resolve drops the pair instead of the missing marker", func(t *testing.T) {
+		// given
+		st := withContext("docs/broken.md", "")
+		r := newResolver(&fakeRefs{failed: map[string]error{"docs/broken.md": assert.AnError}}, fakeKeys{})
+
+		// when
+		err := r.RewriteState(context.Background(), st, (&issueCollector{}).report)
+
+		// then
+		require.NoError(t, err)
+		assert.False(t, st.Details().Has(bundle.RelationKeyCreatedInContext))
+	})
+
+	t.Run("a parent matched to an existing object keeps the context but not the ref", func(t *testing.T) {
+		// given — the existing parent is updated in place, and that update
+		// may not land, so its imported link block may never exist
+		st := withContext("docs/parent.md", "link1")
+		r := newResolver(&fakeRefs{
+			ids:     map[string]string{"docs/parent.md": "existingParent"},
+			matched: map[string]bool{"docs/parent.md": true},
+		}, fakeKeys{})
+
+		// when
+		err := r.RewriteState(context.Background(), st, (&issueCollector{}).report)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"existingParent", ""}, createdIn(st))
+		assert.False(t, st.Details().Has(bundle.RelationKeyCreatedInContextRef))
+	})
+
+	t.Run("an object is never its own context", func(t *testing.T) {
+		// given
+		st := withContext("docs/self.md", "link1")
+		r := newResolver(&fakeRefs{ids: map[string]string{"docs/self.md": "root"}}, fakeKeys{})
+
+		// when
+		err := r.RewriteState(context.Background(), st, (&issueCollector{}).report)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"", ""}, createdIn(st))
 	})
 }

@@ -168,6 +168,9 @@ var anytypeOwnedKeys = map[domain.RelationKey]struct{}{
 	bundle.RelationKeyLastModifiedBy: {},
 	bundle.RelationKeyLinks:          {},
 	bundle.RelationKeyBacklinks:      {},
+	// The import derives where an object was created from the tree it sits in.
+	bundle.RelationKeyCreatedInContext:    {},
+	bundle.RelationKeyCreatedInContextRef: {},
 }
 
 // reportOwnedKey says once per run that a file tried to set one of them.
