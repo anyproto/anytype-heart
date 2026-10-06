@@ -61,6 +61,7 @@ whether you may write. Ask this instead of discovering limits through 403s
 | Intent | Call |
 |---|---|
 | find objects | `POST …/{space_id}/search` (or `POST /v2/search` across spaces — rows then carry `space_id`). Search with filters; don't enumerate `GET …/objects` |
+| watch a search live (new objects, unread mentions) | `POST …/{space_id}/search/stream` — SSE, same body without `query`; see Query |
 | read one object | `GET …/objects/{id}` — start with `?outline=true` |
 | change property values | PATCH op `set_properties` — `add`/`remove` for list values, `set` for scalars |
 | complete a task object | `set_properties` (`"set":{"done":true}` or the status option) — a property, not a block edit |
@@ -99,7 +100,8 @@ whether you may write. Ask this instead of discovering limits through 403s
   unknown, re-read and use the fresh ids. `?ids=full` is the backup/export
   shape — the read to archive or clone from, not needed for editing.
 - List/search rows are minimal `{id, name, type}`; add columns with
-  `fields=` (property keys) instead of GETting each object.
+  `fields=` (property keys) instead of GETting each object. Search rows also
+  carry `discussion` (the object's comment-thread chat id) when it has one.
 - Every object read returns an `etag` (envelope + `ETag` header).
 
 ## Edit: PATCH ops
@@ -223,6 +225,34 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   pages, don't plan on the number.
 - Sorts: any property key, `{"property", "direction": "asc|desc"}`;
   default is `last_modified_date desc`.
+- `unread_mention_count` / `unread_message_count` are the unread counters an
+  object's discussion keeps on the object, for this account only. Filter,
+  sort or list them in `fields` (numbers); `GET …/properties` does not show
+  them. An object without a discussion has neither, so it never matches `> 0`.
+  Space chats keep no such counter: use `GET …/chats?unread=mentions`.
+- **Watch a search live**: `POST …/search/stream` (SSE), body = the search
+  body without `query` (refused: full text is not followed live), no paging.
+  Read `object_added` until `snapshot_complete`: that is the whole matching
+  set (`snapshot_complete.warnings` = the search's warnings). Then
+  `object_added` (entered the set), `object_updated` (a requested field, the
+  name, the type or `discussion` changed; carries the whole row) and
+  `object_removed` (`object_id` left the set; it may still exist). Rows are
+  search rows, `fields` applied. One stream per space.
+  - Mentions inbox: `{"filter":"unread_mention_count > 0","fields":["name","discussion"]}`.
+    Read the hit through `GET …/chats/{discussion}/messages`; marking it with
+    `POST …/chats/{discussion}/read` `scope:"mentions"` emits `object_removed`.
+    A new mention elsewhere arrives as `object_added`, once sync has loaded
+    that discussion (no promised latency).
+  - Objects you created and their discussions: take your member `id` from
+    `GET …/members/me`, then `{"filter":"creator = \"<member id>\"","fields":["discussion"]}`.
+    An object gaining its first discussion arrives as `object_updated` with
+    `discussion` set; follow that chat with the chat stream. Comments are chat
+    events, not search events.
+  - No event ids, `Last-Event-ID` ignored. After any reconnect you get a fresh
+    snapshot: diff it against what you hold, and anything absent left the set.
+  - At most 16 search streams per process (429 `too_many_streams`, close
+    one), separate from the chat stream caps. The stream never disconnects
+    you on its own.
 
 ## Chats
 

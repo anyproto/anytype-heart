@@ -192,6 +192,30 @@ func TestOpenSearchStream(t *testing.T) {
 		assert.Equal(t, want, (*opens)[0])
 	})
 
+	t.Run("the creator recipe compiles to a creator leaf on the member id", func(t *testing.T) {
+		// given: the agent's member id, as GET …/members/me serves it
+		fx := bundledKeysSetup(t)
+		opens, _ := fx.openingSearch(t)
+		memberId := domain.NewParticipantId(testSpaceId, testAccountId)
+		req := v2model.SearchRequest{Filter: `creator = "` + memberId + `"`, Fields: []string{"discussion"}}
+
+		// when
+		stream, err := fx.OpenSearchStream(ctx, testSpaceId, req)
+
+		// then
+		require.NoError(t, err)
+		defer stream.Close()
+		require.Len(t, *opens, 1)
+		filters := (*opens)[0].Filters
+		require.NotEmpty(t, filters)
+		assert.Equal(t, bundle.RelationKeyCreator, filters[0].RelationKey)
+		assert.Equal(t, memberId, filters[0].Value.String())
+		// and the same plan finds exactly the agent's object on POST search
+		rows, _, _, _, err := fx.SearchObjects(ctx, testSpaceId, req, 0, 25)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"chore1"}, rowIds(rows))
+	})
+
 	t.Run("a failing open is an error and returns the slot", func(t *testing.T) {
 		// given
 		fx := bundledKeysSetup(t)

@@ -131,7 +131,8 @@ document writes. Use `PATCH` operations to edit the object.
 
 List and search rows are compact: `id`, `name`, `type`, and the properties
 you request. They do not embed a type object. Request the fields you need
-instead of reading every object separately.
+instead of reading every object separately. A search row also carries
+`discussion`, the chat id of the object's comment thread, when it has one.
 
 Lists use `offset` and `limit`, with 25 rows by default. Responses include
 `total` and `has_more`, plus a narrowing hint when truncated. Chat messages
@@ -321,6 +322,34 @@ message you processed in each chat. After a reconnect, for each chat whose
 once with `Last-Event-ID` set to it. A message event can arrive twice, and
 rarely for a change that was rolled back: dedupe on the message id and confirm
 an unknown message with a read.
+
+## Watch a search
+
+`POST /v2/spaces/{space_id}/search/stream` holds a space search open over
+Server-Sent Events. The body is the search request without `query`, because
+full text is not followed live. Nothing pages: the opening set is complete.
+
+It opens with one `object_added` event per matching object, carrying its
+search row with the requested fields, then `snapshot_complete`, also for an
+empty set. The search's warnings ride `snapshot_complete`. Live events follow:
+
+- `object_added` when an object enters the set
+- `object_updated` with the whole row when a requested field, the name, the
+  type, or the object's discussion changes
+- `object_removed` with `object_id` when an object leaves the set, which does
+  not mean it was deleted
+
+Every event carries `space_id`. Events carry no id and nothing replays. After
+a reconnect the stream opens with a fresh snapshot, and an object you hold
+that is absent from it has left the set.
+
+`unread_mention_count` and `unread_message_count` can be filtered, sorted, and
+requested as fields, although the property list does not show them. An
+object's discussion writes them onto the object for this account only, so an
+object without a discussion has neither. For example,
+`{"filter":"unread_mention_count > 0","fields":["name","discussion"]}` watches
+every object whose discussion mentions you, and the object leaves the set once
+you mark those mentions read.
 
 ## Download files and icons
 
