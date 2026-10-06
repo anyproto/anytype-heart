@@ -75,7 +75,7 @@ func IsConversionAllowed(from, to model.ObjectTypeLayout) bool {
 	if from == to {
 		return true
 	}
-	if isPageLayout(from) && isPageLayout(to) {
+	if IsPageLayout(from) && IsPageLayout(to) {
 		return true
 	}
 	if from == model.ObjectType_set && to == model.ObjectType_collection {
@@ -84,7 +84,9 @@ func IsConversionAllowed(from, to model.ObjectTypeLayout) bool {
 	return false
 }
 
-func isPageLayout(layout model.ObjectTypeLayout) bool {
+// IsPageLayout reports whether layout is one of the page layouts a type's recommended
+// layout can move between: basic, todo, note, profile, bookmark.
+func IsPageLayout(layout model.ObjectTypeLayout) bool {
 	return slices.Contains([]model.ObjectTypeLayout{
 		model.ObjectType_basic,
 		model.ObjectType_todo,

@@ -7,9 +7,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -448,14 +450,11 @@ func TestResolveLayout(t *testing.T) {
 		// then
 		assert.Equal(t, int64(model.ObjectType_todo), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
 	})
-	t.Run("conversion from note adds Title and Name", func(t *testing.T) {
-		// given
+	t.Run("blocks are not converted, only resolvedLayout is set", func(t *testing.T) {
+		// given: a note-shaped object whose type now recommends todo
 		fx := newFixture(id, t)
 
-		st := state.NewDoc("id", map[string]simple.Block{
-			"id":   simple.New(&model.Block{Id: id, ChildrenIds: []string{state.HeaderLayoutID, "text"}}),
-			"text": simple.New(&model.Block{Id: "text", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "First note block"}}}),
-		}).NewState()
+		st := newNoteShapedState(id, "First note block")
 		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyTask.URL()))
 		st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_note))
 
@@ -469,61 +468,9 @@ func TestResolveLayout(t *testing.T) {
 
 		// then
 		assert.Equal(t, int64(model.ObjectType_todo), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
-		assert.Equal(t, "First note block", st.Details().GetString(bundle.RelationKeyName))
-		assert.NotNil(t, st.Pick(state.TitleBlockID))
-	})
-	t.Run("conversion from note adds Description if it is not empty", func(t *testing.T) {
-		// given
-		fx := newFixture(id, t)
-
-		st := state.NewDoc("id", map[string]simple.Block{
-			"id":   simple.New(&model.Block{Id: id, ChildrenIds: []string{state.HeaderLayoutID, "text"}}),
-			"text": simple.New(&model.Block{Id: "text", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "First note block"}}}),
-		}).NewState()
-		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyTask.URL()))
-		st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_note))
-		st.SetDetail(bundle.RelationKeyDescription, domain.String("description"))
-
-		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
-			bundle.RelationKeyId:                domain.String(bundle.TypeKeyTask.URL()),
-			bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_todo),
-		}})
-
-		// when
-		fx.resolveLayout(st)
-
-		// then
-		assert.Equal(t, int64(model.ObjectType_todo), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
-		assert.Equal(t, "First note block", st.Details().GetString(bundle.RelationKeyName))
-		assert.NotNil(t, st.Pick(state.TitleBlockID))
-		assert.NotNil(t, st.Pick(state.DescriptionBlockID))
-		require.True(t, st.Details().Has(bundle.RelationKeyFeaturedRelations))
-		assert.Contains(t, st.Details().GetStringList(bundle.RelationKeyFeaturedRelations), "description")
-	})
-	t.Run("conversion from note works on sb.Init", func(t *testing.T) {
-		// given
-		fx := newFixture(id, t)
-
-		st := state.NewDoc("id", map[string]simple.Block{
-			"id":   simple.New(&model.Block{Id: id, ChildrenIds: []string{state.HeaderLayoutID, "text"}}),
-			"text": simple.New(&model.Block{Id: "text", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "First note block"}}}),
-		}).NewState()
-		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyTask.URL()))
-		// ResolvedLayout is not set yet, because it is derived relation
-		// st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_note))
-
-		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
-			bundle.RelationKeyId:                domain.String(bundle.TypeKeyTask.URL()),
-			bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_todo),
-		}})
-
-		// when
-		fx.resolveLayout(st)
-
-		// then
-		assert.Equal(t, int64(model.ObjectType_todo), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
-		assert.Equal(t, "First note block", st.Details().GetString(bundle.RelationKeyName))
-		assert.NotNil(t, st.Pick(state.TitleBlockID))
+		assert.Empty(t, st.Details().GetString(bundle.RelationKeyName))
+		assert.Nil(t, st.Pick(state.TitleBlockID))
+		assert.Equal(t, []string{state.HeaderLayoutID, "text"}, st.Pick(id).Model().ChildrenIds)
 	})
 	t.Run("layout is taken from sbType", func(t *testing.T) {
 		// given
@@ -549,6 +496,7 @@ func TestGetFallbackLayout(t *testing.T) {
 
 		st := state.NewDoc(id, nil).NewState()
 		st.SetObjectTypeKey(bundle.TypeKeyTask)
+		fx.space.EXPECT().GetTypeIdByKey(mock.Anything, bundle.TypeKeyTask).Return(bundle.TypeKeyTask.URL(), nil).Maybe()
 
 		// when
 		v, layoutIsKnown := fx.getFallbackLayoutValue(st)
@@ -601,4 +549,260 @@ func TestGetFallbackLayout(t *testing.T) {
 		assert.Equal(t, domain.Int64(int64(model.ObjectType_basic)), v)
 		assert.False(t, layoutIsKnown, "layout of an unknown type is only a guess")
 	})
+}
+
+// newNoteShapedState builds the note form: no title block, the name lives in the first text block
+func newNoteShapedState(rootId, text string) *state.State {
+	return state.NewDoc(rootId, map[string]simple.Block{
+		rootId: simple.New(&model.Block{Id: rootId, ChildrenIds: []string{state.HeaderLayoutID, "text"}}),
+		"text": simple.New(&model.Block{Id: "text", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: text}}}),
+	}).NewState()
+}
+
+// newTitledState builds the titled form of the page layouts with the given name
+func newTitledState(rootId, name string) *state.State {
+	st := state.NewDoc(rootId, map[string]simple.Block{
+		rootId: simple.New(&model.Block{Id: rootId}),
+	}).NewState()
+	template.InitTemplate(st, template.WithTitle)
+	st.SetDetail(bundle.RelationKeyName, domain.String(name))
+	return st
+}
+
+func TestConvertLayoutBlocks(t *testing.T) {
+	const id = "id"
+	withTypeLayout := func(t *testing.T, fx *fixture, st *state.State, layout model.ObjectTypeLayout) {
+		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyTask.URL()))
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:                domain.String(bundle.TypeKeyTask.URL()),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(layout),
+		}})
+	}
+
+	t.Run("type leaves note -> name and title are added", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+		st := newNoteShapedState(id, "First note block")
+		withTypeLayout(t, fx, st, model.ObjectType_todo)
+
+		// when
+		converted := fx.ConvertLayoutBlocks(st)
+
+		// then
+		assert.True(t, converted)
+		assert.Equal(t, "First note block", st.Details().GetString(bundle.RelationKeyName))
+		assert.NotNil(t, st.PickParentOf(state.TitleBlockID))
+	})
+	t.Run("type leaves note with a description -> description is added", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+		st := newNoteShapedState(id, "First note block")
+		st.SetDetail(bundle.RelationKeyDescription, domain.String("description"))
+		withTypeLayout(t, fx, st, model.ObjectType_todo)
+
+		// when
+		converted := fx.ConvertLayoutBlocks(st)
+
+		// then
+		assert.True(t, converted)
+		assert.NotNil(t, st.Pick(state.DescriptionBlockID))
+		assert.Contains(t, st.Details().GetStringList(bundle.RelationKeyFeaturedRelations), bundle.RelationKeyDescription.String())
+	})
+	t.Run("type becomes note -> name moves into a text block and the title is removed", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+		st := newTitledState(id, "Hello")
+		withTypeLayout(t, fx, st, model.ObjectType_note)
+
+		// when
+		converted := fx.ConvertLayoutBlocks(st)
+
+		// then
+		assert.True(t, converted)
+		assert.Empty(t, st.Details().GetString(bundle.RelationKeyName))
+		assert.Nil(t, st.PickParentOf(state.TitleBlockID))
+		var texts []string
+		_ = st.Iterate(func(b simple.Block) bool {
+			if txt := b.Model().GetText(); txt != nil {
+				texts = append(texts, txt.Text)
+			}
+			return true
+		})
+		assert.Contains(t, texts, "Hello")
+	})
+	t.Run("converting twice -> second time is a no-op", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+		st := newTitledState(id, "Hello")
+		withTypeLayout(t, fx, st, model.ObjectType_note)
+		require.True(t, fx.ConvertLayoutBlocks(st))
+
+		// when
+		converted := fx.ConvertLayoutBlocks(st)
+
+		// then
+		assert.False(t, converted)
+	})
+	t.Run("layout detail wins over the type", func(t *testing.T) {
+		// given: the type (as this device sees it) says basic, the object pins note
+		fx := newFixture(id, t)
+		st := newNoteShapedState(id, "First note block")
+		st.SetDetail(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_note))
+		withTypeLayout(t, fx, st, model.ObjectType_basic)
+
+		// when
+		converted := fx.ConvertLayoutBlocks(st)
+
+		// then
+		assert.False(t, converted)
+		assert.Empty(t, st.Details().GetString(bundle.RelationKeyName))
+		assert.Nil(t, st.Pick(state.TitleBlockID))
+	})
+	t.Run("type is not indexed -> layout is a guess, nothing is converted", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+		st := newNoteShapedState(id, "First note block")
+		st.SetObjectTypeKey(domain.TypeKey("teamNote"))
+		fx.space.EXPECT().GetTypeIdByKey(mock.Anything, domain.TypeKey("teamNote")).Return("typeObjectId", nil).Maybe()
+		st.SetLocalDetail(bundle.RelationKeyType, domain.String("typeObjectId"))
+
+		// when
+		converted := fx.ConvertLayoutBlocks(st)
+
+		// then
+		assert.False(t, converted)
+		assert.Empty(t, st.Details().GetString(bundle.RelationKeyName))
+	})
+	t.Run("stored resolvedLayout alone is not used", func(t *testing.T) {
+		// given: no layout detail, no type - only a resolvedLayout that may itself be a guess
+		fx := newFixture(id, t)
+		st := newNoteShapedState(id, "First note block")
+		st.SetObjectTypeKey(domain.TypeKey("teamNote"))
+		fx.space.EXPECT().GetTypeIdByKey(mock.Anything, domain.TypeKey("teamNote")).Return("typeObjectId", nil).Maybe()
+		st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_basic))
+
+		// when
+		converted := fx.ConvertLayoutBlocks(st)
+
+		// then
+		assert.False(t, converted)
+	})
+	t.Run("bundled type is not indexed -> its default layout is not used", func(t *testing.T) {
+		// given: Task defaults to todo, but this space's Task may say otherwise and is not indexed
+		fx := newFixture(id, t)
+		st := newNoteShapedState(id, "First note block")
+		st.SetObjectTypeKey(bundle.TypeKeyTask)
+		fx.space.EXPECT().GetTypeIdByKey(mock.Anything, bundle.TypeKeyTask).Return(bundle.TypeKeyTask.URL(), nil).Maybe()
+		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyTask.URL()))
+		st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_note))
+
+		// when
+		converted := fx.ConvertLayoutBlocks(st)
+
+		// then
+		assert.False(t, converted)
+		assert.Empty(t, st.Details().GetString(bundle.RelationKeyName))
+	})
+	t.Run("template follows its target type", func(t *testing.T) {
+		// given: a titled template whose target type now recommends note
+		fx := newFixture(id, t)
+		st := newTitledState(id, "Hello")
+		st.SetObjectTypeKey(bundle.TypeKeyTemplate)
+		st.SetDetail(bundle.RelationKeyTargetObjectType, domain.String(bundle.TypeKeyTask.URL()))
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:                domain.String(bundle.TypeKeyTask.URL()),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_note),
+		}})
+
+		// when
+		converted := fx.ConvertLayoutBlocks(st)
+
+		// then
+		assert.True(t, converted)
+		assert.Empty(t, st.Details().GetString(bundle.RelationKeyName))
+	})
+	t.Run("type changed in this edit -> the new type's layout is used, not the stale type detail", func(t *testing.T) {
+		// given: the edit set the type key to Task (note); the type detail still names Page (basic)
+		fx := newFixture(id, t)
+		st := newTitledState(id, "Hello")
+		st.SetObjectTypeKey(bundle.TypeKeyTask)
+		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyPage.URL()))
+		fx.space.EXPECT().GetTypeIdByKey(mock.Anything, bundle.TypeKeyTask).Return(bundle.TypeKeyTask.URL(), nil).Maybe()
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:                domain.String(bundle.TypeKeyTask.URL()),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_note),
+		}, {
+			bundle.RelationKeyId:                domain.String(bundle.TypeKeyPage.URL()),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_basic),
+		}})
+
+		// when
+		converted := fx.ConvertLayoutBlocks(st)
+
+		// then
+		assert.True(t, converted)
+		assert.Empty(t, st.Details().GetString(bundle.RelationKeyName))
+	})
+	t.Run("non-page layout -> nothing is converted", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+		st := newNoteShapedState(id, "First note block")
+		withTypeLayout(t, fx, st, model.ObjectType_set)
+
+		// when
+		converted := fx.ConvertLayoutBlocks(st)
+
+		// then
+		assert.False(t, converted)
+		assert.Nil(t, st.Pick(state.TitleBlockID))
+	})
+	t.Run("smartblock type with a fixed layout -> nothing is converted", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+		fx.source.sbType = smartblock.SmartBlockTypeDate
+		st := newNoteShapedState(id, "First note block")
+		st.SetDetail(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_basic))
+
+		// when
+		converted := fx.ConvertLayoutBlocks(st)
+
+		// then
+		assert.False(t, converted)
+	})
+}
+
+func TestLayoutSourceChanged(t *testing.T) {
+	newChild := func() *state.State {
+		parent := state.NewDoc("id", nil).(*state.State)
+		parent.SetDetail(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_basic))
+		parent.SetDetail(bundle.RelationKeyTargetObjectType, domain.String("type1"))
+		return parent.NewState()
+	}
+	for _, tc := range []struct {
+		name   string
+		change func(st *state.State)
+		want   bool
+	}{
+		{"nothing changed", func(st *state.State) {}, false},
+		{"unrelated detail changed", func(st *state.State) { st.SetDetail(bundle.RelationKeyName, domain.String("x")) }, false},
+		{"layout changed", func(st *state.State) {
+			st.SetDetail(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_note))
+		}, true},
+		{"layout removed", func(st *state.State) { st.RemoveDetail(bundle.RelationKeyLayout) }, true},
+		{"template target type changed", func(st *state.State) {
+			st.SetDetail(bundle.RelationKeyTargetObjectType, domain.String("type2"))
+		}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			st := newChild()
+			tc.change(st)
+
+			// when
+			got := LayoutSourceChanged(st)
+
+			// then
+			assert.Equal(t, tc.want, got)
+		})
+	}
 }

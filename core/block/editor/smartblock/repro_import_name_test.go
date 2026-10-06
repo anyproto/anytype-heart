@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -80,6 +81,7 @@ func TestResolveLayoutOfObjectWithNotIndexedType(t *testing.T) {
 		fx := newFixture(id, t)
 		st := newStateWithTextBlock(id, "textBlock", "First line doubles as the title")
 		st.SetObjectTypeKey(domain.TypeKey("teamNote"))
+		fx.space.EXPECT().GetTypeIdByKey(mock.Anything, domain.TypeKey("teamNote")).Return("typeObjectId", nil).Maybe()
 		st.SetLocalDetail(bundle.RelationKeyType, domain.String("typeObjectId"))
 
 		// when
@@ -94,11 +96,12 @@ func TestResolveLayoutOfObjectWithNotIndexedType(t *testing.T) {
 			"text block was consumed on a guessed layout")
 	})
 
-	t.Run("known layout still converts blocks", func(t *testing.T) {
+	t.Run("known layout converts blocks on explicit conversion only", func(t *testing.T) {
 		// given: same object, but now the type is indexed and says basic
 		fx := newFixture(id, t)
 		st := newStateWithTextBlock(id, "textBlock", "First line doubles as the title")
 		st.SetObjectTypeKey(domain.TypeKey("teamNote"))
+		fx.space.EXPECT().GetTypeIdByKey(mock.Anything, domain.TypeKey("teamNote")).Return("typeObjectId", nil).Maybe()
 		st.SetLocalDetail(bundle.RelationKeyType, domain.String("typeObjectId"))
 		fx.lastDepDetails = map[string]*domain.Details{
 			"typeObjectId": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
@@ -109,7 +112,14 @@ func TestResolveLayoutOfObjectWithNotIndexedType(t *testing.T) {
 		// when
 		fx.resolveLayout(st)
 
+		// then: resolving the layout leaves the blocks alone
+		assert.Empty(t, st.Details().GetString(bundle.RelationKeyName))
+
+		// when
+		converted := fx.ConvertLayoutBlocks(st)
+
 		// then
+		assert.True(t, converted)
 		assert.Equal(t, "First line doubles as the title", st.Details().GetString(bundle.RelationKeyName))
 	})
 }

@@ -174,8 +174,14 @@ func (s *syncer) SyncLayoutWithType(oldLayout, newLayout LayoutState, forceUpdat
 				if changes.isFeaturedRelationsChanged {
 					st.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(changes.newFeaturedRelations))
 				}
+				if newLayout.isRecommendedLayoutSet && s.followsType(st) {
+					// without its own layout the object follows the type, so its blocks follow too -
+					// converted here, by the device that changed the type, see updateResolvedLayout
+					smartblock.ConvertLayoutBlocksTo(st, model.ObjectTypeLayout(newLayout.recommendedLayout)) // nolint:gosec
+				}
 				st.SetChangeType(domain.ChangeTypeLayoutSync)
-				return b.Apply(st)
+				// the conversion rewrites the children of the edit-restricted header: not a user edit of it
+				return b.Apply(st, smartblock.NoRestrictions)
 			})
 			if err != nil {
 				resultErr = errors.Join(resultErr, err)
@@ -260,17 +266,34 @@ func (s *syncer) updateResolvedLayout(id string, layout int64, addName, needAppl
 	}
 
 	return s.space.Do(id, func(b smartblock.SmartBlock) error {
-		if !addName {
-			// we can do StateAppend here, so resolvedLayout will be injected automatically
+		// this device changed the type, so it is the one to convert the blocks of the objects it
+		// has loaded - in both directions, pushed as a change. Objects that are not loaded are
+		// converted when someone opens them
+		st := b.NewState()
+		if !s.followsType(st) || !smartblock.ConvertLayoutBlocksTo(st, model.ObjectTypeLayout(layout)) { // nolint:gosec
+			// nothing to convert: StateAppend injects the new resolvedLayout
 			return b.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
 				return d.NewState(), nil, nil
 			})
 		}
-		st := b.NewState()
 		st.SetChangeType(domain.ChangeTypeLayoutSync)
-		// we need to call Apply to generate and push changes on Title and Name addition
-		return b.Apply(st, smartblock.KeepInternalFlags)
+		// the conversion rewrites the children of the edit-restricted header: not a user edit of it
+		return b.Apply(st, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	})
+}
+
+// followsType reports whether the object in st takes its layout from this syncer's type: it has
+// no layout of its own and is of the type (or, for a template, targets it). The objects come from
+// a store query run before their lock was taken, so this is checked again on the locked state
+// before converting: a layout pinned or a type changed in between must not be overridden.
+func (s *syncer) followsType(st *state.State) bool {
+	if st.Details().Has(bundle.RelationKeyLayout) {
+		return false
+	}
+	if st.ObjectTypeKey() == bundle.TypeKeyTemplate {
+		return st.Details().GetString(bundle.RelationKeyTargetObjectType) == s.typeId
+	}
+	return st.LocalDetails().GetString(bundle.RelationKeyType) == s.typeId
 }
 
 type layoutRelationsChanges struct {

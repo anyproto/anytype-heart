@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -168,6 +169,30 @@ func TestMutateObject(t *testing.T) {
 		assert.NotEmpty(t, heads)
 		assert.Equal(t, "edited", sb.Doc.(*state.State).Pick("p1").Model().GetText().Text,
 			"the child state landed on the live doc")
+	})
+
+	t.Run("setting the layout property converts the blocks in the same change", func(t *testing.T) {
+		// given: a titled object named "Hello". The header's edit restriction is dropped because the
+		// test double checks block restrictions on the applied state itself, while the real Apply
+		// checks the parent of a state taken from the doc, i.e. nothing
+		sb := smarttest.New("obj1")
+		st := sb.NewState()
+		template.InitTemplate(st, template.WithTitle)
+		st.Get(template.HeaderLayoutId).Model().Restrictions = nil
+		st.SetDetail(bundle.RelationKeyName, domain.String("Hello"))
+		require.NoError(t, sb.Apply(st, smartblock.NoRestrictions))
+		adapter := newObjectMutateAdapter(fakeGetter{sb: sb})
+
+		// when
+		_, err := adapter.MutateObject(ctx, "space1", "obj1", allAxes, func(edit apicore.ObjectEdit) error {
+			edit.State.SetDetail(bundle.RelationKeyLayout, domain.Int64(model.ObjectType_note))
+			return nil
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, sb.Details().GetString(bundle.RelationKeyName))
+		assert.Nil(t, sb.NewState().PickParentOf(template.TitleBlockId))
 	})
 
 	t.Run("an apply error commits nothing", func(t *testing.T) {

@@ -274,6 +274,9 @@ func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
 		flags := internalflag.NewFromState(orig)
 		flags.AddToState(ts)
 
+		// the template may still be in the shape of its type's previous layout
+		b.ConvertLayoutBlocks(ts)
+
 		// we provide KeepInternalFlags to allow further template applying and object type change
 		return b.Apply(ts, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 	})

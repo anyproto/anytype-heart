@@ -670,6 +670,52 @@ func (_c *MockStoreObject_CombinedDetails_Call) RunAndReturn(run func() *domain.
 	return _c
 }
 
+// ConvertLayoutBlocks provides a mock function with given fields: s
+func (_m *MockStoreObject) ConvertLayoutBlocks(s *state.State) bool {
+	ret := _m.Called(s)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ConvertLayoutBlocks")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(*state.State) bool); ok {
+		r0 = rf(s)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockStoreObject_ConvertLayoutBlocks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ConvertLayoutBlocks'
+type MockStoreObject_ConvertLayoutBlocks_Call struct {
+	*mock.Call
+}
+
+// ConvertLayoutBlocks is a helper method to define mock.On call
+//   - s *state.State
+func (_e *MockStoreObject_Expecter) ConvertLayoutBlocks(s interface{}) *MockStoreObject_ConvertLayoutBlocks_Call {
+	return &MockStoreObject_ConvertLayoutBlocks_Call{Call: _e.mock.On("ConvertLayoutBlocks", s)}
+}
+
+func (_c *MockStoreObject_ConvertLayoutBlocks_Call) Run(run func(s *state.State)) *MockStoreObject_ConvertLayoutBlocks_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*state.State))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_ConvertLayoutBlocks_Call) Return(_a0 bool) *MockStoreObject_ConvertLayoutBlocks_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStoreObject_ConvertLayoutBlocks_Call) RunAndReturn(run func(*state.State) bool) *MockStoreObject_ConvertLayoutBlocks_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DebugChanges provides a mock function with given fields: ctx
 func (_m *MockStoreObject) DebugChanges(ctx context.Context) ([]*anystoredebug.DebugChange, error) {
 	ret := _m.Called(ctx)

@@ -202,7 +202,8 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 	applyFlags := []smartblock.ApplyFlag{smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions,
 		smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions, smartblock.NoSpaceConfigCheck}
 	if initCtx.IsNewObject {
-		applyFlags = append(applyFlags, smartblock.AllowApplyWithEmptyTree)
+		// the creation migration may only now have given the object its type, and so its layout
+		applyFlags = append(applyFlags, smartblock.AllowApplyWithEmptyTree, smartblock.ShapeNewObjectLayout)
 	}
 	migration.RunMigrations(sb, initCtx)
 	initCtx.State.SetChangeType(domain.ChangeTypeObjectInit)
