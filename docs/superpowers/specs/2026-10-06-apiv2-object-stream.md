@@ -175,8 +175,8 @@ var v2BundledQueryKeys = []string{"unreadMentionCount", "unreadMessageCount"}
   without a relation entry. If it does not, serve it through the same bundle fallback.
 - The list is deliberately explicit, not "any bundled key": a blanket fallback would expose
   every internal relation to filters and sorts. Adding a key is a one-line, reviewed change.
-- Documented as **discussion-parent counters, current account, local**: meaningful only for
-  objects that have a discussion; absent otherwise; never synced to other members.
+- Documented as **chat or discussion-parent counters, current account, local**: meaningful only for
+  chats and objects that have a discussion; absent otherwise; never synced to other members.
 
 ### 4.7 Agent recipe the docs will carry
 

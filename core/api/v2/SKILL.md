@@ -225,11 +225,14 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   pages, don't plan on the number.
 - Sorts: any property key, `{"property", "direction": "asc|desc"}`;
   default is `last_modified_date desc`.
-- `unread_mention_count` / `unread_message_count` are the unread counters an
-  object's discussion keeps on the object, for this account only. Filter,
+- `unread_mention_count` / `unread_message_count` are unread counters for
+  this account only: a chat (the space chat and every other chat) keeps its
+  own, and an object's discussion keeps its counters on the object. Filter,
   sort or list them in `fields` (numbers); `GET …/properties` does not show
-  them. An object without a discussion has neither, so it never matches `> 0`.
-  Space chats keep no such counter: use `GET …/chats?unread=mentions`.
+  them. So `unread_mention_count > 0` in a search or the search stream finds
+  space chats and other chats as well as objects whose discussion mentions
+  you. An object that is neither a chat nor has a discussion has neither
+  counter, so it never matches `> 0`.
 - **Watch a search live**: `POST …/search/stream` (SSE), body = the search
   body without `query` (refused: full text is not followed live), no paging.
   Read `object_added` until `snapshot_complete`: that is the whole matching
@@ -239,10 +242,12 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   `object_removed` (`object_id` left the set; it may still exist). Rows are
   search rows, `fields` applied. One stream per space.
   - Mentions inbox: `{"filter":"unread_mention_count > 0","fields":["name","discussion"]}`.
-    Read the hit through `GET …/chats/{discussion}/messages`; marking it with
-    `POST …/chats/{discussion}/read` `scope:"mentions"` emits `object_removed`.
-    A new mention elsewhere arrives as `object_added`, once sync has loaded
-    that discussion (no promised latency).
+    A hit with `discussion` is an object: read it through
+    `GET …/chats/{discussion}/messages`. A hit without one is a chat: its row
+    `id` is the chat id. Marking it with `POST …/chats/{id}/read`
+    `scope:"mentions"` emits `object_removed`. A new mention elsewhere arrives
+    as `object_added`, once sync has loaded that chat or discussion (no
+    promised latency).
   - Objects you created and their discussions: take your member `id` from
     `GET …/members/me`, then `{"filter":"creator = \"<member id>\"","fields":["discussion"]}`.
     An object gaining its first discussion arrives as `object_updated` with
@@ -266,7 +271,9 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   finished, and let receivers expire status (ten seconds recommended).
   `?dry_run=true` does not publish; use a fresh `Idempotency-Key` per refresh.
 
-- `GET …/chats` rows carry `kind`, `unread_messages` and `unread_mentions`.
+- `GET …/chats` rows carry `kind`, `is_main`, `unread_messages` and
+  `unread_mentions`. `is_main` is true for the space's main chat (the space
+  chat every member shares) and false for every other chat and discussion.
   `?include=discussions` adds object discussions (row id = the discussion id,
   usable on every chat route; `parent_id` = the object) and
   `?unread=messages|mentions` keeps only rows with unread state. That is the
@@ -305,8 +312,9 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   `GET …/chats` unless you pass `?include=discussions`.
 - **Watch a whole space on one connection**: `GET …/chats/stream` (SSE;
   discussions included by default, `?include=none` for chats only). Read
-  `chat_added` events until `snapshot_complete`: that is the space's chat set,
-  and a chat you were watching that is not in it is gone. Then live
+  `chat_added` events until `snapshot_complete`: that is the space's chat set
+  (each `chat` is a `GET …/chats` row, `is_main` included, plus
+  `last_state_id`), and a chat you were watching that is not in it is gone. Then live
   `chat_added`/`chat_updated`/`chat_removed`, `state_updated` and
   `message_*`/`reactions_updated`/`pinned_updated` events, each with
   `space_id` and `chat_id` (message events also `kind`, `parent_id`). A chat

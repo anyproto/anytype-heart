@@ -1792,12 +1792,13 @@ info:
     that is absent from it has left the set.
 
     `unread_mention_count` and `unread_message_count` can be filtered, sorted, and
-    requested as fields, although the property list does not show them. An
-    object's discussion writes them onto the object for this account only, so an
-    object without a discussion has neither. For example,
+    requested as fields, although the property list does not show them. They are
+    this account's unread counters: a chat keeps its own, and an object's
+    discussion writes them onto the object, so an object that is neither a chat
+    nor has a discussion has neither. For example,
     `{"filter":"unread_mention_count > 0","fields":["name","discussion"]}` watches
-    every object whose discussion mentions you, and the object leaves the set once
-    you mark those mentions read.
+    every chat that mentions you and every object whose discussion does, and a hit
+    leaves the set once you mark those mentions read.
 
     ## Download files and icons
 
