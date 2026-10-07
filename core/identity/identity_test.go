@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -39,6 +40,7 @@ type fixture struct {
 	accountService    *mock_account.MockService
 	nsClient          *mock_nameserviceclient.MockAnyNsClientService
 	objectStore       *objectstore.StoreFixture
+	fileAclService    *mock_fileacl.MockService
 }
 
 const (
@@ -98,6 +100,7 @@ func newFixture(t *testing.T, testObserverPeriod time.Duration) *fixture {
 		coordinatorClient: identityRepoClient,
 		nsClient:          nsClient,
 		objectStore:       objectStore,
+		fileAclService:    fileAclService,
 	}
 	go fx.observeIdentitiesLoop()
 
@@ -327,6 +330,48 @@ func TestEncryptionKeyPersistence(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, wantKey.Equals(persisted))
 	})
+}
+
+// The one-to-one invite sender waits for the own profile with WaitProfileWithKey, so the
+// own identity has to be in the profile cache like any other one.
+func TestOwnProfileCache(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		iconKeys []*model.FileEncryptionKey
+		keysErr  error
+	}{
+		{"own profile is cached with the icon keys once its details are loaded", []*model.FileEncryptionKey{{Key: "key1"}}, nil},
+		{"own profile is cached without the icon keys when they cannot be read", nil, fmt.Errorf("no file keys")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fx := newFixture(t, time.Minute)
+			accKeys, err := accountdata.NewRandom()
+			require.NoError(t, err)
+			fx.myIdentity = accKeys.SignKey.GetPublic().Account()
+			fx.ownProfileSubscription.myIdentity = fx.myIdentity
+			fx.accountService.EXPECT().Keys().Return(accKeys)
+			fx.accountService.EXPECT().AccountID().Return(fx.myIdentity).Maybe()
+			fx.fileAclService.EXPECT().GetInfoForFileSharing(mock.Anything).Return("fileCid1", tc.iconKeys, tc.keysErr)
+			// every change of the own profile is also pushed to the identity repo in the background
+			fx.accountService.EXPECT().SignData(mock.Anything).Return(nil, nil).Maybe()
+			fx.spaceService.EXPECT().AccountMetadataSymKey().Return(crypto.NewAES()).Maybe()
+
+			// the global name can arrive from the naming service before the profile details
+			fx.ownProfileSubscription.handleGlobalNameUpdate(globalName)
+			assert.Nil(t, fx.getProfileFromCache(fx.myIdentity))
+
+			fx.ownProfileSubscription.handleOwnProfileDetails(domain.NewDetails().SetString(bundle.RelationKeyIconImage, "fileObjectId"))
+			// the cached profile follows its changes
+			fx.ownProfileSubscription.handleOwnProfileDetails(domain.NewDetails().SetString(bundle.RelationKeyName, "name2"))
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			profile, err := fx.WaitProfileWithKey(ctx, fx.myIdentity)
+			require.NoError(t, err)
+			assert.Equal(t, "name2", profile.IdentityProfile.Name)
+			assert.Equal(t, tc.iconKeys, profile.IdentityProfile.IconEncryptionKeys)
+		})
+	}
 }
 
 func TestObservers(t *testing.T) {

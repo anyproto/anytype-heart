@@ -255,6 +255,13 @@ func (s *ownProfileSubscription) prepareIdentityProfile() *model.IdentityProfile
 	}
 }
 
+// isLoaded reports whether the own profile details have been loaded
+func (s *ownProfileSubscription) isLoaded() bool {
+	s.detailsLock.Lock()
+	defer s.detailsLock.Unlock()
+	return s.gotDetails
+}
+
 func (s *ownProfileSubscription) pushProfileToIdentityRegistry(ctx context.Context) error {
 	identityProfile, err := s.prepareOwnIdentityProfile()
 	if err != nil {
