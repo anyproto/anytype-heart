@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -40,8 +41,21 @@ type ownSubscriptionFixture struct {
 }
 
 type testObserver struct {
-	lock     sync.Mutex
-	profiles []*model.IdentityProfile
+	lock      sync.Mutex
+	profiles  []*model.IdentityProfile
+	refreshes int
+}
+
+func (t *testObserver) refreshMyIdentityProfile() {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+	t.refreshes++
+}
+
+func (t *testObserver) refreshCount() int {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+	return t.refreshes
 }
 
 func (t *testObserver) broadcastMyIdentityProfile(identityProfile *model.IdentityProfile) {
@@ -195,6 +209,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 	})
 
 	t.Run("rewrite global name from channel signal", func(t *testing.T) {
+		// given
 		fx := newOwnSubscriptionFixture(t)
 		fx.accountService.EXPECT().AccountID().Return("identity1")
 		fx.spaceService.EXPECT().GetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
@@ -215,12 +230,27 @@ func TestOwnProfileSubscription(t *testing.T) {
 
 		time.Sleep(testBatchTimeout / 4)
 
+		// when
 		fx.updateGlobalName(newName)
-
 		time.Sleep(2 * testBatchTimeout)
 
-		got := fx.testObserver.listObservedProfiles()
+		// then the profile without a name is not pushed before the details are loaded
+		data, err := fx.identityRepoClient.IdentityRepoGet(context.Background(), []string{"identity1"}, []string{identityRepoDataKind})
+		require.NoError(t, err)
+		assert.Empty(t, data)
 
+		// when
+		fx.objectStoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:      domain.String(testProfileObjectId),
+				bundle.RelationKeySpaceId: domain.String("space1"),
+				bundle.RelationKeyName:    domain.String("John Doe"),
+			},
+		})
+		time.Sleep(2 * testBatchTimeout)
+
+		// then
+		got := fx.testObserver.listObservedProfiles()
 		// first we initialize globalName with the one from NS
 		want := []*model.IdentityProfile{
 			{
@@ -231,15 +261,20 @@ func TestOwnProfileSubscription(t *testing.T) {
 				Identity:   testIdentity,
 				GlobalName: newName,
 			},
+			{
+				Identity:   testIdentity,
+				Name:       "John Doe",
+				GlobalName: newName,
+			},
 		}
 		assert.Equal(t, want, got)
 
 		gotProfile := fx.getDataFromTestRepo(t, accountSymKey)
 		wantProfile := &model.IdentityProfile{
 			Identity:   testIdentity,
+			Name:       "John Doe",
 			GlobalName: newName,
 		}
-
 		assert.Equal(t, wantProfile, gotProfile)
 	})
 
@@ -349,6 +384,69 @@ func TestOwnProfileSubscription(t *testing.T) {
 			},
 		}
 		assert.Equal(t, wantProfile, gotProfile)
+	})
+}
+
+func TestPushRetry(t *testing.T) {
+	t.Run("failed push is retried until the icon keys can be read", func(t *testing.T) {
+		// given
+		fx := newOwnSubscriptionFixture(t)
+		fx.pushRetryMinDelay = testBatchTimeout / 4
+		fx.pushRetryMaxDelay = testBatchTimeout / 2
+		fx.accountService.EXPECT().AccountID().Return("identity1")
+		fx.spaceService.EXPECT().GetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
+		fx.techSpace.EXPECT().AccountObjectId().Return(testProfileObjectId, nil)
+		fx.spaceService.EXPECT().TechSpaceId().Return("space1")
+		accountSymKey := crypto.NewAES()
+		fx.spaceService.EXPECT().AccountMetadataSymKey().Return(accountSymKey)
+		fx.accountService.EXPECT().SignData(mock.Anything).RunAndReturn(func(data []byte) ([]byte, error) {
+			privKey, _, err := crypto.GenerateRandomEd25519KeyPair()
+			if err != nil {
+				return nil, err
+			}
+			return privKey.Sign(data)
+		})
+		keysReady := &atomic.Bool{}
+		fx.fileAclService.EXPECT().GetInfoForFileSharing(mock.Anything).RunAndReturn(func(string) (string, []*model.FileEncryptionKey, error) {
+			if !keysReady.Load() {
+				return "", nil, fmt.Errorf("no file keys")
+			}
+			return "fileCid1", []*model.FileEncryptionKey{{Path: "/0/original", Key: "key1"}}, nil
+		})
+		fx.objectStoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:        domain.String(testProfileObjectId),
+				bundle.RelationKeySpaceId:   domain.String("space1"),
+				bundle.RelationKeyName:      domain.String("John Doe"),
+				bundle.RelationKeyIconImage: domain.String("fileObjectId"),
+			},
+		})
+		wantProfile := &model.IdentityProfile{
+			Identity:           "identity1",
+			Name:               "John Doe",
+			IconCid:            "fileCid1",
+			IconEncryptionKeys: []*model.FileEncryptionKey{{Path: "/0/original", Key: "key1"}},
+			GlobalName:         globalName,
+		}
+
+		// when the details and then the global name are loaded, and both pushes fail
+		err := fx.run(context.Background())
+		require.NoError(t, err)
+		time.Sleep(3 * testBatchTimeout)
+
+		// then
+		data, err := fx.identityRepoClient.IdentityRepoGet(context.Background(), []string{"identity1"}, []string{identityRepoDataKind})
+		require.NoError(t, err)
+		assert.Empty(t, data)
+		assert.Zero(t, fx.testObserver.refreshCount())
+
+		// when the icon file arrives from another device
+		keysReady.Store(true)
+		time.Sleep(2 * testBatchTimeout)
+
+		// then
+		assert.Equal(t, wantProfile, fx.getDataFromTestRepo(t, accountSymKey))
+		assert.Equal(t, 1, fx.testObserver.refreshCount())
 	})
 }
 
