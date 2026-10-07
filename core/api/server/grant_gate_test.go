@@ -224,6 +224,27 @@ func TestV2SpaceGrantGate(t *testing.T) {
 		require.Contains(t, denied.Body.String(), `"space_not_granted"`)
 	})
 
+	t.Run("the search stream is a read, and the grant is checked before the handler", func(t *testing.T) {
+		// given
+		fx := newV2ServerFixture(t)
+		registerGrantTestSpace(t, fx, "spaceA", "Work")
+		registerGrantTestSpace(t, fx, "spaceB", "Personal")
+		grantedSession(fx, "readKey", readOnly("spaceA"))
+		fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
+		badBody := `{"filter":"no_such_property > 0"}`
+
+		// when: an invalid body answers the handler's own 400, which only a
+		// request the gate let through can reach
+		reached := serveWithKeyBody(fx, "POST", "/v2/spaces/spaceA/search/stream", "readKey", badBody)
+		denied := serveWithKeyBody(fx, "POST", "/v2/spaces/spaceB/search/stream", "readKey", badBody)
+
+		// then
+		require.Equal(t, http.StatusBadRequest, reached.Code, "a read-only key reaches the stream")
+		require.Contains(t, reached.Body.String(), "no_such_property")
+		require.Equal(t, http.StatusForbidden, denied.Code)
+		require.Contains(t, denied.Body.String(), `"space_not_granted"`)
+	})
+
 	t.Run("the tech space is denied unless explicitly granted", func(t *testing.T) {
 		// the gate runs BEFORE the v2 service's ensureSpace, which
 		// deliberately admits the tech space as an ordinary space id — so

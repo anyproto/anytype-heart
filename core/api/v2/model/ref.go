@@ -95,6 +95,7 @@ var operations = map[string]operation{
 	OpGetQueryObjects:      {"GET", "/v2/spaces/{space_id}/queries/{query_id}/objects"},
 	OpGetQueryViews:        {"GET", "/v2/spaces/{space_id}/queries/{query_id}/views"},
 	OpSearchSpace:          {"POST", "/v2/spaces/{space_id}/search"},
+	OpStreamSpaceSearch:    {"POST", "/v2/spaces/{space_id}/search/stream"},
 	OpListTemplates:        {"GET", "/v2/spaces/{space_id}/templates"},
 	OpCreateTemplate:       {"POST", "/v2/spaces/{space_id}/templates"},
 	OpListTypes:            {"GET", "/v2/spaces/{space_id}/types"},
@@ -156,6 +157,7 @@ const (
 	OpGetQueryObjects      = "get_query_objects"
 	OpGetQueryViews        = "get_query_views"
 	OpSearchSpace          = "search_space"
+	OpStreamSpaceSearch    = "stream_space_search"
 	OpListTemplates        = "list_templates"
 	OpCreateTemplate       = "create_template"
 	OpListTypes            = "list_types"

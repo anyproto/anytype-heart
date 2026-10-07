@@ -834,6 +834,9 @@ type objectRowBuilder struct {
 	aliases map[string]domain.RelationKey
 
 	includeSpaceId bool
+	// includeDiscussion serves the object's discussion id as the row's own
+	// member (search rows, as the object read serves it)
+	includeDiscussion bool
 }
 
 func (s *Service) newObjectRowBuilder(spaceId string, fields []string) (*objectRowBuilder, error) {
@@ -889,6 +892,9 @@ func (b *objectRowBuilder) row(record database.Record) v2model.ObjectRow {
 	}
 	if b.includeSpaceId {
 		row.SpaceId = b.spaceRef
+	}
+	if b.includeDiscussion {
+		row.Discussion = record.Details.GetString(bundle.RelationKeyDiscussionId)
 	}
 	if len(b.fields) > 0 {
 		values := map[string]any{}

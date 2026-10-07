@@ -76,6 +76,7 @@ type apiService struct {
 	eventService         apicore.EventService
 	crossSpaceSubService apicore.CrossSpaceSubscriptionService
 	chatSubService       apicore.ChatSubscriptionService
+	objectSearch         apicore.ObjectSearchService
 	fileObjectService    apicore.FileObjectService
 	objectReader         apicore.ObjectReader
 	objectCreator        apicore.ObjectCreator
@@ -132,11 +133,12 @@ func (s *apiService) Init(a *app.App) error {
 	// imports: v2 is HTTP plus logic over ports, which is what makes it
 	// testable against mock_apicore.
 	chatSubscriptions := a.MustComponent(chatsubscription.CName).(chatsubscription.Service)
+	subscriptions := app.MustComponent[subscription.Service](a)
 	s.chatSubService = &chatSubAdapter{
-		svc: chatSubscriptions,
-		spaceChats: newSpaceChatHubs(chatSubscriptions,
-			app.MustComponent[subscription.Service](a), app.MustComponent[chatrepository.Service](a)),
+		svc:        chatSubscriptions,
+		spaceChats: newSpaceChatHubs(chatSubscriptions, subscriptions, app.MustComponent[chatrepository.Service](a)),
 	}
+	s.objectSearch = newObjectSearchAdapter(subscriptions)
 	s.fileObjectService = a.MustComponent(fileobject.CName).(apicore.FileObjectService)
 	s.objectReader = newObjectReadAdapter(app.MustComponent[cache.ObjectGetterComponent](a))
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
@@ -235,7 +237,7 @@ func (s *apiService) bindLocked(listenAddr string) *pb.EventAccountJsonApiStatus
 		s.crossSpaceSubService,
 		s.chatSubService,
 		s.fileObjectService,
-		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, Widgets: s.widgets, ChatSub: s.chatSubService, Store: s.objectStore, AccountId: s.accountId()},
+		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, Widgets: s.widgets, ChatSub: s.chatSubService, ObjectSearch: s.objectSearch, Store: s.objectStore, AccountId: s.accountId()},
 		listenAddr,
 		server.OpenApiDocs{
 			V1YAML: openapiV1YAML,

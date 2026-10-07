@@ -59,7 +59,10 @@ type Server struct {
 	// v2StreamDisabled skips the chat message stream when no chat
 	// subscription dependency was provided.
 	v2StreamDisabled bool
-	chatSubSvc       apicore.ChatSubscriptionService
+	// v2SearchStreamDisabled skips the search stream when no live search
+	// dependency was provided.
+	v2SearchStreamDisabled bool
+	chatSubSvc             apicore.ChatSubscriptionService
 	// techSpaceId feeds the /v2 space-grant gate (RouteDeps.TechSpaceId) so
 	// the tech space stays excluded under allSpaces grants — the same id the
 	// v2 service holds for its ensureSpaceGranted backstop.
@@ -110,7 +113,10 @@ type V2Deps struct {
 	// is not registered at all — there is no useful degraded form of a
 	// subscription, unlike Provenance's fail-closed refusal.
 	ChatSub apicore.ChatSubscriptionService
-	Store   objectstore.ObjectStore
+	// ObjectSearch backs the search stream. With it nil the stream route is
+	// not registered, as with ChatSub.
+	ObjectSearch apicore.ObjectSearchService
+	Store        objectstore.ObjectStore
 	// AccountId is the caller's account identity, used by Phase 4's
 	// stored-view placeholder substitution (`_filter_template_2_` → the
 	// caller's participant id). Empty degrades the placeholder to a warning.
@@ -142,10 +148,11 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 		docs:        docs,
 	}
 	if v2Deps.Reader != nil && v2Deps.Store != nil {
-		s.v2Service = v2service.NewService(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Provenance, v2Deps.Widgets, v2Deps.ChatSub, fileObjectService, v2Deps.Store, techSpaceId, v2Deps.AccountId)
+		s.v2Service = v2service.NewService(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Provenance, v2Deps.Widgets, v2Deps.ChatSub, v2Deps.ObjectSearch, fileObjectService, v2Deps.Store, techSpaceId, v2Deps.AccountId)
 		s.v2CreateDisabled = v2Deps.Creator == nil
 		s.v2EditDisabled = v2Deps.Mutator == nil
 		s.v2StreamDisabled = v2Deps.ChatSub == nil
+		s.v2SearchStreamDisabled = v2Deps.ObjectSearch == nil
 	}
 	s.engine = s.NewRouter(mw, eventService, docs.V1YAML, docs.V1JSON)
 	s.KeyToToken = make(map[string]ApiSessionEntry)

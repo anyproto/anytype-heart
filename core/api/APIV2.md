@@ -1444,6 +1444,71 @@ Secondary example — programmatic composition (the structured array):
   default for small models; the array serves round-trip and programmatic
   composition (both ship — B2 only tunes steering, §4).
 - Sort by any property key. **[B3]** `resultFormat=rows` stays gated.
+- **Search rows carry `discussion`** (space search, global search and the
+  search stream): the object's discussion chat id from its `discussionId`
+  detail, as the object read serves it, absent when there is none.
+  `fields=discussion` is accepted and adds no property, unless a live property
+  claims the spelling, which is then served under `properties` as any field
+  is. A filter or sort on `discussion` stays an unknown property
+  (`core/api/v2/service/search.go`, `newSearchRowBuilder`).
+- **The discussion-parent counters are accept-only query keys**
+  (`v2BundledQueryKeys`: `unreadMentionCount`, `unreadMessageCount`, both
+  spellings). A discussion writes them onto its parent as local details of
+  the current account; no relation object exists for them, so the live
+  vocabulary alone refused them. They are accepted in search filters (both
+  forms), fields and sorts, in list reads' `fields` and in a query's filters
+  and sorts, served as numbers when listed in `fields` and absent from default
+  rows. They are never advertised: refusals list and suggest the advertised
+  keys only (the filter string's unknown-key refusal is worded again over that
+  set) and `list_properties` does not show them. Meaningful only for objects
+  that have a discussion; never synced to other members. The list is explicit:
+  a blanket "any bundled key" would expose every internal relation.
+
+**Search stream (`POST …/search/stream`)**
+
+Design: `docs/superpowers/specs/2026-10-06-apiv2-object-stream.md`.
+
+```
+POST /v2/spaces/{space_id}/search/stream   # SSE; body = the space search request; when enabled
+```
+
+- **The body is the space search request**, decoded strictly and compiled by
+  the same path as `POST …/search` (`planSpaceSearch`): the space and the
+  key's grant are checked first, then the body; every refusal, the 400s
+  included, is a C6 envelope before the first byte and before anything
+  subscribes. `query` is a 400 at `/query`: the subscription engine has no
+  full-text matching. Nothing pages: the opening snapshot is the complete
+  matching set. A READ (no idempotency, `dry_run` ignored); `?heartbeat=` as
+  on the chat streams (`core/api/v2/handler/search_stream.go`).
+- **Events**: one `object_added` per matching object (the search row,
+  `fields` applied, `discussion` included) in the request's sort order, then
+  `snapshot_complete` (also for an empty set; it carries the request's
+  `warnings`, as POST search returns them). Live: `object_added` (entered the
+  set), `object_updated` (a carried detail changed; the whole row) and
+  `object_removed` (`object_id`; left the set, not necessarily deleted). Every
+  event carries `space_id` and no SSE id. **No resume cursor**: a reconnect is
+  a fresh snapshot, `Last-Event-ID` is ignored, and an object a client holds
+  that is absent from it has left the set (`core/api/v2/model/search_stream_event.go`).
+- **Backend: one internal subscription per stream**
+  (`core/api/objectsearchadapter.go`): `Limit: 0` (an internal limit truncates
+  the snapshot, and with a sort it is a live window), `NoDepSubscription`, a
+  caller-owned unbounded queue, and `Keys` = the requested fields' stored keys
+  plus `id`, `name`, `type` and `discussionId`, so a change to the discussion
+  reference is an `object_updated`. A worker turns DetailsSet (the add; a
+  resend for a member is an update when it differs), Amend, Unset and Remove
+  into changes on the stream's own unbounded queue, copying details on write.
+  Close unsubscribes, closes the queue and joins the worker, once. Rows are
+  rendered with a builder rebuilt per drained batch, so a type or option that
+  appears after the open renders.
+- **The stream never disconnects its client** (localhost API): no slow-reader
+  close, no write deadline, no grant re-check, no `resync_required`. A slow
+  reader costs memory. Its own process cap, 16 streams, answers **429
+  `too_many_streams`** naming search streams, independent of both chat stream
+  caps (`core/api/v2/service/search_stream.go`).
+- Discovery latency is sync's: a counter appears when sync has loaded the
+  discussion, and a discussion loaded before its parent writes no counter
+  until its next message or read (design §3, gaps A and B, accepted). Space
+  chats project no counter at all.
 
 ### Phase 5 — the task-tool wrapper (CLI + skill + on-device manifest)
 
@@ -1816,7 +1881,7 @@ settled — R8) · B3 tabular result format · B4 wrapper-tool prompt/skill
 guidance.
 
 **Deferred**: cross-object batch · block-scoped preconditions · conflict
-rebase · events/subscriptions beyond the chat stream · core-profile strict
+rebase · events/subscriptions beyond the chat and search streams · core-profile strict
 schema · `?permanent=true` hard delete · individually addressable blocks
 inside table cells.
 
