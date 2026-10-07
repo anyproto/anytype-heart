@@ -286,7 +286,7 @@ validate-only; C7 etag/If-Match **does not apply** — order ids and
 a deliberate exemption like search's C8/C9 one):
 
 ```
-GET    /v2/spaces/{space_id}/chats                       # C5 rows {id,name,kind,unread_messages,unread_mentions,parent_id?} — ?include=discussions &unread=messages|mentions; store query, counters from the chat state manager, no chat opens
+GET    /v2/spaces/{space_id}/chats                       # C5 rows {id,name,kind,is_main,unread_messages,unread_mentions,parent_id?} — ?include=discussions &unread=messages|mentions; store query, counters from the chat state manager, no chat opens
 POST   /v2/spaces/{space_id}/chats                       # {name} → row (thin over ObjectCreate, v1 parity)
 GET    /v2/spaces/{space_id}/chats/{chat_id}/messages     # ?after=&before=&limit=25
 POST   /v2/spaces/{space_id}/chats/{chat_id}/messages     # {text, reply_to?, attachments?:[fileId…]} → {id}
@@ -321,7 +321,7 @@ The three reshapes that carry the phase:
   verbatim and is documented on the endpoint). Offset mark arrays never
   cross the API. `style` is dropped from the default read (it is
   `"paragraph"` in practice) and not accepted on write for now.
-- **C5 rows and compact reactions.** Chat rows are `{id,name,kind,unread_messages,unread_mentions}` plus `parent_id` on discussion rows (the chat
+- **C5 rows and compact reactions.** Chat rows are `{id,name,kind,is_main,unread_messages,unread_mentions}` plus `parent_id` on discussion rows (the chat
   *object* remains visible in object search — `chatDerived` is in
   `util.ObjectLayouts` — but its document body is empty: messages live in
   the chat store, not blocks). Reactions default to counts
@@ -463,6 +463,14 @@ token cost than the v1 flow, and a double-send retry is absorbed by C8.
   `parent_id` = the object); `?unread=messages|mentions` keeps rows with
   unread state, applied after the counters are read, so `total` counts kept
   rows. Spec: `docs/superpowers/specs/2026-10-06-apiv2-object-stream.md`.
+  Follow-up (2026-10-06): the same counters are also stored as local details,
+  on the chat itself for every chat without a parent (the space chat and
+  every other chat) and on the parent for a discussion, so
+  `unread_mention_count > 0` in a search or the search stream finds chats as
+  well as discussion parents; rows also carry `is_main`, true for the
+  space's main chat only. The list rows keep reading the counters from the
+  chat state manager. Spec:
+  `docs/superpowers/specs/2026-10-06-chat-counters-on-chat-object-followup.md`.
 - **Q4 · Reactions default — DECIDED (Phase 6, as recommended):
   counts-by-default** (`{"👍":2}`); `?reactions=full` restores identity
   lists, carrying participant ids (one vocabulary with `author_id`, C2),

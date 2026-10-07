@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // Search rows carry the object's discussion as their own top-level member,
@@ -95,6 +96,30 @@ func TestV2SearchRowDiscussion(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, want, rows)
+	})
+
+	t.Run("a chat keeps its own counters, so the counter filter finds it with no discussion", func(t *testing.T) {
+		// given: the space chat writes the counters onto itself, as every chat without a parent does
+		fx := bundledKeysSetup(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:                 domain.String("chatMain"),
+			bundle.RelationKeyName:               domain.String("General"),
+			bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_chatDerived)),
+			bundle.RelationKeyIsMainChat:         domain.Bool(true),
+			bundle.RelationKeyUnreadMentionCount: domain.Int64(1),
+			bundle.RelationKeyLastModifiedDate:   domain.Int64(6000),
+		}})
+		req := v2model.SearchRequest{Filter: "unread_mention_count > 0", Fields: []string{"discussion"}}
+		want := []string{"chatMain", "mentioned"}
+
+		// when
+		rows, _, _, _, err := fx.SearchObjects(ctx, testSpaceId, req, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, want, rowIds(rows))
+		assert.Empty(t, rows[0].Discussion, "a chat is its own hit: its row id is the chat id")
+		assert.Equal(t, "disc-mentioned", rows[1].Discussion)
 	})
 
 	t.Run("a filter on discussion is still an unknown property", func(t *testing.T) {

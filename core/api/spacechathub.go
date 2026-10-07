@@ -160,6 +160,7 @@ func (r *spaceChatHubs) leave(slot *spaceChatSlot, hub *spaceChatHub, client *sp
 type discoveredChat struct {
 	layout model.ObjectTypeLayout
 	name   string
+	isMain bool
 }
 
 // discoveredParent is a row of the discussion-parents subscription.
@@ -328,6 +329,7 @@ func (h *spaceChatHub) chatsRequest() subscription.SubscribeRequest {
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyResolvedLayout.String(),
 			bundle.RelationKeyName.String(),
+			bundle.RelationKeyIsMainChat.String(),
 		},
 		Filters: []database.FilterRequest{
 			{
@@ -473,6 +475,7 @@ func (h *spaceChatHub) setDetails(subId, id string, details *domain.Details) {
 			// nolint: gosec
 			layout: model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout)),
 			name:   details.GetString(bundle.RelationKeyName),
+			isMain: details.GetBool(bundle.RelationKeyIsMainChat),
 		}
 	case h.parentsSubId:
 		h.parents[id] = discoveredParent{
@@ -497,6 +500,8 @@ func (h *spaceChatHub) amendDetail(subId, id string, key domain.RelationKey, val
 			row.layout = model.ObjectTypeLayout(value.Int64())
 		case bundle.RelationKeyName:
 			row.name = value.String()
+		case bundle.RelationKeyIsMainChat:
+			row.isMain = value.Bool()
 		}
 		h.chatObjects[id] = row
 	case h.parentsSubId:
@@ -531,7 +536,7 @@ func (h *spaceChatHub) eligible() map[string]apicore.SpaceChat {
 	for id, chat := range h.chatObjects {
 		switch chat.layout {
 		case model.ObjectType_chatDerived:
-			out[id] = apicore.SpaceChat{Id: id, Name: chat.name}
+			out[id] = apicore.SpaceChat{Id: id, Name: chat.name, IsMain: chat.isMain}
 		case model.ObjectType_discussion:
 			parentId, ok := parentOf[id]
 			if !ok {

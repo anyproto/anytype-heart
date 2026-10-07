@@ -246,14 +246,16 @@ func chatListFilters(includeDiscussions bool) []database.FilterRequest {
 }
 
 // chatRowOf maps one store record to a list row: a chat-layout object is a chat row; any
-// other record is an object carrying a discussion, listed under the discussion's id.
+// other record is an object carrying a discussion, listed under the discussion's id. Only a
+// chat row can be the main chat, and only when it carries isMainChat.
 func chatRowOf(record database.Record) v2model.ChatRow {
 	layout := model.ObjectTypeLayout(record.Details.GetInt64(bundle.RelationKeyResolvedLayout))
 	if slices.Contains(util.ChatLayouts, layout) {
 		return v2model.ChatRow{
-			Id:   record.Details.GetString(bundle.RelationKeyId),
-			Name: record.Details.GetString(bundle.RelationKeyName),
-			Kind: v2model.ChatKindChat,
+			Id:     record.Details.GetString(bundle.RelationKeyId),
+			Name:   record.Details.GetString(bundle.RelationKeyName),
+			Kind:   v2model.ChatKindChat,
+			IsMain: record.Details.GetBool(bundle.RelationKeyIsMainChat),
 		}
 	}
 	return v2model.ChatRow{

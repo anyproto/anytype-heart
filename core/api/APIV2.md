@@ -1451,17 +1451,21 @@ Secondary example — programmatic composition (the structured array):
   claims the spelling, which is then served under `properties` as any field
   is. A filter or sort on `discussion` stays an unknown property
   (`core/api/v2/service/search.go`, `newSearchRowBuilder`).
-- **The discussion-parent counters are accept-only query keys**
+- **The chat and discussion-parent counters are accept-only query keys**
   (`v2BundledQueryKeys`: `unreadMentionCount`, `unreadMessageCount`, both
-  spellings). A discussion writes them onto its parent as local details of
-  the current account; no relation object exists for them, so the live
-  vocabulary alone refused them. They are accepted in search filters (both
+  spellings). Every chat without a parent (the space chat and every other
+  chat) writes them onto itself and a discussion writes them onto its parent,
+  as local details of the current account
+  (`core/block/editor/chatobject/chatobject.go`, `writeUnreadCounters`); no
+  relation object exists for them, so the live vocabulary alone refused
+  them. They are accepted in search filters (both
   forms), fields and sorts, in list reads' `fields` and in a query's filters
   and sorts, served as numbers when listed in `fields` and absent from default
   rows. They are never advertised: refusals list and suggest the advertised
   keys only (the filter string's unknown-key refusal is worded again over that
-  set) and `list_properties` does not show them. Meaningful only for objects
-  that have a discussion; never synced to other members. The list is explicit:
+  set) and `list_properties` does not show them. Meaningful only for chats
+  and for objects that have a discussion, so `unread_mention_count > 0` finds
+  both; never synced to other members. The list is explicit:
   a blanket "any bundled key" would expose every internal relation.
 
 **Search stream (`POST …/search/stream`)**
@@ -1535,7 +1539,7 @@ Both are thin over the same server primitives; bulk work via scripts.
 ### Phase 6 — chat
 
 ```
-GET/POST   /v2/spaces/{space_id}/chats   # GET rows carry unread_messages/unread_mentions; ?include=discussions, ?unread=messages|mentions
+GET/POST   /v2/spaces/{space_id}/chats   # GET rows carry is_main and unread_messages/unread_mentions; ?include=discussions, ?unread=messages|mentions
 GET/POST   /v2/spaces/{space_id}/chats/{chat_id}/messages
 GET        /v2/spaces/{space_id}/chats/stream   # SSE: every chat of the space; ?include=discussions|none, when enabled
 GET        /v2/spaces/{space_id}/chats/{chat_id}/messages/stream   # SSE, when enabled
@@ -1550,7 +1554,10 @@ POST       /v2/spaces/{space_id}/objects/{object_id}/discussion   # the object's
   400. `GET /chats` is a pure store query over the chat layouts — it opens no
   chat — and rows are the C5 pair `{id, name}`. `POST /chats` requires a
   non-empty name, because an unnamed chat is unaddressable in that row
-  (`core/api/v2/service/chat.go:56`).
+  (`core/api/v2/service/chat.go:56`). Every row also carries `is_main`, always
+  present (C2): true for the space's main chat, read from its `isMainChat`
+  detail; false for every other chat, a chat without the detail, and every
+  discussion (`chatRowOf`).
 - **The messages read** returns `{messages, state, message_count,
   lifetime_message_count, has_more, next_after?, next_before?}`.
   `message_count` is how many messages the chat HOLDS now (a deleted one
@@ -1741,8 +1748,8 @@ Design: `docs/superpowers/specs/2026-10-06-apiv2-space-chat-stream-design.md`.
   (`core/api/v2/handler/chat_space_stream.go`).
 - **It opens with a snapshot, not history**: one `chat_added` per chat (the
   `list_chats` row plus `last_state_id`), then `snapshot_complete`, also for an
-  empty space. Live events follow: `chat_added`, `chat_updated` (name or parent
-  mapping), `chat_removed` (deleted, archived, hidden, parent lost or archived),
+  empty space. Live events follow: `chat_added`, `chat_updated` (name, parent
+  mapping, or `is_main`), `chat_removed` (deleted, archived, hidden, parent lost or archived),
   `state_updated` (counters only, a watermark move is not an event), and
   `message_added`, `message_updated`, `message_deleted`, `reactions_updated`,
   `pinned_updated`. Every event carries `space_id`; message events carry

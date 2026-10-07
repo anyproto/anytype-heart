@@ -49,12 +49,15 @@ const (
 )
 
 // SpaceChat is one chat of a space as the hub sees it. For a discussion, Name
-// is its parent object's name and ParentId the parent's id.
+// is its parent object's name and ParentId the parent's id. IsMain marks the
+// space's main chat (its isMainChat detail); it is false for every other chat
+// and for every discussion.
 type SpaceChat struct {
 	Id         string
 	Name       string
 	Discussion bool
 	ParentId   string
+	IsMain     bool
 }
 
 // SpaceChatChange is one change the hub delivers, before rendering.

@@ -206,6 +206,42 @@ func TestV2ListChats(t *testing.T) {
 		assert.False(t, hasMore)
 	})
 
+	t.Run("is_main marks the space's main chat, and no other chat or discussion", func(t *testing.T) {
+		// given: the main chat carries isMainChat; another chat carries no such detail
+		fx := newV2Fixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:               domain.String("chatMain"),
+				bundle.RelationKeyName:             domain.String("General"),
+				bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_chatDerived)),
+				bundle.RelationKeyIsMainChat:       domain.Bool(true),
+				bundle.RelationKeyLastModifiedDate: domain.Int64(3000),
+			},
+			{
+				bundle.RelationKeyId:               domain.String("pageWithThread"),
+				bundle.RelationKeyName:             domain.String("Roadmap"),
+				bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyDiscussionId:     domain.String("disc1"),
+				bundle.RelationKeyLastModifiedDate: domain.Int64(2000),
+			},
+		})
+		fx.addChat(t, "chatOther", "Team chat", 1000)
+		fx.addDiscussion(t, "disc1")
+		fx.withChatStates(t, map[string][2]int32{"chatMain": {0, 0}, "chatOther": {0, 0}, "disc1": {0, 0}})
+		want := []v2model.ChatRow{
+			{Id: "chatMain", Name: "General", Kind: v2model.ChatKindChat, IsMain: true},
+			{Id: "disc1", Name: "Roadmap", Kind: v2model.ChatKindDiscussion, ParentId: "pageWithThread"},
+			{Id: "chatOther", Name: "Team chat", Kind: v2model.ChatKindChat},
+		}
+
+		// when
+		rows, _, _, err := fx.ListChats(context.Background(), testSpaceId, ChatListQuery{IncludeDiscussions: true}, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, rows)
+	})
+
 	t.Run("include discussions still hides archived and deleted chats", func(t *testing.T) {
 		// given: the discussion branch must not switch off the store's implicit
 		// archived/deleted filtering for the chat branch

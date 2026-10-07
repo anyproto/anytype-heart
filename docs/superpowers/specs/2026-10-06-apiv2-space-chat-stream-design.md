@@ -53,9 +53,9 @@ data: {"type":"message_added","space_id":"S","chat_id":"C","kind":"discussion","
 
 | type | when | fields besides `type`, `space_id` |
 |---|---|---|
-| `chat_added` | each chat in the opening snapshot; any chat that appears later | `chat` = the `list_chats` row (`id`, `name`, `kind`, `parent_id?`, `unread_messages`, `unread_mentions`) plus `last_state_id` |
+| `chat_added` | each chat in the opening snapshot; any chat that appears later | `chat` = the `list_chats` row (`id`, `name`, `kind`, `is_main`, `parent_id?`, `unread_messages`, `unread_mentions`) plus `last_state_id` |
 | `snapshot_complete` | once, after the last snapshot `chat_added`, also for an empty space | none |
-| `chat_updated` | name or parent mapping changes | `chat` as above |
+| `chat_updated` | name, parent mapping or `is_main` changes | `chat` as above |
 | `chat_removed` | the chat stops being eligible (deleted, archived, hidden, parent lost or archived) | `chat_id` |
 | `state_updated` | counters change | `chat_id`, `state` = `{unread_messages, unread_mentions, last_state_id}` |
 | `message_added`, `message_updated` | per message | `chat_id`, `kind`, `parent_id?`, `message` (full v2 message DTO **plus `state_id`**) |

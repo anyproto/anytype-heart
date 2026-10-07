@@ -238,6 +238,7 @@ type testFrame struct {
 	ChatId      string `json:"chat_id,omitempty"`
 	Name        string `json:"name,omitempty"`
 	Discussion  bool   `json:"discussion,omitempty"`
+	IsMain      bool   `json:"is_main,omitempty"`
 	ParentId    string `json:"parent_id,omitempty"`
 	MessageId   string `json:"message_id,omitempty"`
 	Text        string `json:"text,omitempty"`
@@ -264,6 +265,7 @@ func renderTestFrame(change apicore.SpaceChatChange) (apicore.SpaceChatFrame, er
 		ChatId:     change.Chat.Id,
 		Name:       change.Chat.Name,
 		Discussion: change.Chat.Discussion,
+		IsMain:     change.Chat.IsMain,
 		ParentId:   change.Chat.ParentId,
 		MessageId:  change.MessageId,
 	}
@@ -379,6 +381,31 @@ func TestSpaceChatHubSnapshot(t *testing.T) {
 		})
 		want := []testFrame{
 			{Type: "chat_added", ChatId: "chat1", Name: "General", Unread: 2, LastStateId: "state7"},
+			{Type: "chat_added", ChatId: "disc1", Name: "Plan", Discussion: true, ParentId: "page1"},
+			{Type: "snapshot_complete"},
+		}
+
+		// when
+		sub := fx.open(t, true)
+
+		// then
+		assert.Equal(t, want, decodeFrames(t, sub.Snapshot()))
+	})
+
+	t.Run("the space's main chat is marked, and no other chat", func(t *testing.T) {
+		// given
+		fx := newSpaceChatHubFixture(t)
+		mainChat := givenHubChat("chat1", "General")
+		mainChat[bundle.RelationKeyIsMainChat] = domain.Bool(true)
+		fx.store.AddObjects(t, hubSpaceId, []objectstore.TestObject{
+			mainChat,
+			givenHubChat("chat2", "Team"),
+			givenHubDiscussion("disc1"),
+			givenHubParent("page1", "Plan", "disc1"),
+		})
+		want := []testFrame{
+			{Type: "chat_added", ChatId: "chat1", Name: "General", IsMain: true},
+			{Type: "chat_added", ChatId: "chat2", Name: "Team"},
 			{Type: "chat_added", ChatId: "disc1", Name: "Plan", Discussion: true, ParentId: "page1"},
 			{Type: "snapshot_complete"},
 		}
@@ -571,6 +598,21 @@ func TestSpaceChatHubLive(t *testing.T) {
 		fx.addMessages(t, "disc1", givenHubMessage("late", "o5", "after removal"))
 		assert.Empty(t, settle(t, fx, sub, "chat1"))
 		assert.NotContains(t, fx.liveObservers(), "disc1/"+fx.hub().observerId, "a removed chat's observer is detached")
+	})
+
+	t.Run("a chat that becomes the main chat is updated", func(t *testing.T) {
+		// given: the space chat of a space created before isMainChat gets it on its next open
+		fx := newSpaceChatHubFixture(t)
+		fx.store.AddObjects(t, hubSpaceId, []objectstore.TestObject{givenHubChat("chat1", "General")})
+		sub := fx.open(t, true)
+		mainChat := givenHubChat("chat1", "General")
+		mainChat[bundle.RelationKeyIsMainChat] = domain.Bool(true)
+
+		// when
+		fx.store.AddObjects(t, hubSpaceId, []objectstore.TestObject{mainChat})
+
+		// then
+		assert.Equal(t, []testFrame{{Type: "chat_updated", ChatId: "chat1", Name: "General", IsMain: true}}, waitFrames(t, sub, 1))
 	})
 
 	t.Run("a chat that becomes hidden is removed", func(t *testing.T) {
