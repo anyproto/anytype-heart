@@ -236,6 +236,13 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   finished, and let receivers expire status (ten seconds recommended).
   `?dry_run=true` does not publish; use a fresh `Idempotency-Key` per refresh.
 
+- `GET …/chats` rows carry `kind`, `unread_messages` and `unread_mentions`.
+  `?include=discussions` adds object discussions (row id = the discussion id,
+  usable on every chat route; `parent_id` = the object) and
+  `?unread=messages|mentions` keeps only rows with unread state. That is the
+  inbox: one call per space finds every chat and discussion with an unread
+  mention. Read a hit with `…/messages`, clear it with `POST …/read`
+  `scope:"mentions"`.
 - `GET …/chats/{id}/messages` returns `{messages, state, message_count,
   has_more, next_before?, next_after?}`. `state` carries `unread_messages`,
   `unread_mentions`, `last_state_id` — so "anything new?" is a `?limit=1`

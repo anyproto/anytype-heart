@@ -36,3 +36,13 @@ func (a *chatSubAdapter) SubscribeLastMessages(ctx context.Context, chatObjectId
 func (a *chatSubAdapter) Unsubscribe(chatObjectId string, subId string) error {
 	return a.svc.Unsubscribe(chatObjectId, subId)
 }
+
+func (a *chatSubAdapter) ChatState(spaceId, chatObjectId string) (*model.ChatState, error) {
+	mngr, err := a.svc.GetManager(spaceId, chatObjectId)
+	if err != nil {
+		return nil, fmt.Errorf("get chat manager: %w", err)
+	}
+	mngr.Lock()
+	defer mngr.Unlock()
+	return mngr.GetChatState(), nil
+}

@@ -44,6 +44,20 @@ func (fx *v2Fixture) addChat(t *testing.T, id, name string, lastModified int64) 
 	}})
 }
 
+// withChatStates installs a chat-subscription mock answering ChatState for the given chats
+// (id -> {unread messages, unread mentions}). A chat not in the map gets no expectation, so
+// asking for it fails the test.
+func (fx *v2Fixture) withChatStates(t *testing.T, states map[string][2]int32) {
+	sub := mock_apicore.NewMockChatSubscriptionService(t)
+	for id, c := range states {
+		sub.EXPECT().ChatState(testSpaceId, id).Return(&model.ChatState{
+			Messages: &model.ChatStateUnreadState{Counter: c[0]},
+			Mentions: &model.ChatStateUnreadState{Counter: c[1]},
+		}, nil).Maybe()
+	}
+	fx.withChatSub(sub)
+}
+
 // addParticipant registers the participant object the author-name
 // enrichment resolves (deterministic id, store-backed — no subscriptions).
 func (fx *v2Fixture) addParticipant(t *testing.T, identity, name string) string {
@@ -79,10 +93,8 @@ func chatProtoMessage() *model.ChatMessage {
 }
 
 func TestV2ListChats(t *testing.T) {
-	t.Run("C5 rows via the store — no chat opens, hidden and non-chat excluded", func(t *testing.T) {
-		// given: the mock middleware has NO expectations — any RPC (a chat
-		// open, a subscription) would fail the test, which is the phase's
-		// no-chat-opens guarantee (GO-7302)
+	t.Run("rows carry the chat's unread counters, read without opening the chat", func(t *testing.T) {
+		// given: the middleware mock has no expectations, so a chat open fails the test
 		fx := newV2Fixture(t)
 		fx.addChat(t, "chatB", "Team chat", 2000)
 		fx.addChat(t, "chatA", "Old chat", 1000)
@@ -99,19 +111,259 @@ func TestV2ListChats(t *testing.T) {
 				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
 			},
 		})
+		fx.withChatStates(t, map[string][2]int32{"chatB": {3, 1}, "chatA": {0, 0}})
 		want := []v2model.ChatRow{
-			{Id: "chatB", Name: "Team chat"},
-			{Id: "chatA", Name: "Old chat"},
+			{Id: "chatB", Name: "Team chat", Kind: v2model.ChatKindChat, UnreadMessages: 3, UnreadMentions: 1},
+			{Id: "chatA", Name: "Old chat", Kind: v2model.ChatKindChat},
 		}
 
 		// when
-		rows, total, hasMore, err := fx.ListChats(context.Background(), testSpaceId, 0, 25)
+		rows, total, hasMore, err := fx.ListChats(context.Background(), testSpaceId, ChatListQuery{}, 0, 25)
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, want, rows, "rows are {id,name}, newest-modified first — no type object, no counters (Q3)")
+		assert.Equal(t, want, rows)
 		assert.Equal(t, 2, total)
 		assert.False(t, hasMore)
+	})
+
+	t.Run("a chat whose state cannot be read fails the request and names the chat", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addChat(t, "chatA", "A", 1000)
+		sub := mock_apicore.NewMockChatSubscriptionService(t)
+		sub.EXPECT().ChatState(testSpaceId, "chatA").Return(nil, errors.New("no repository"))
+		fx.withChatSub(sub)
+
+		// when
+		_, _, _, err := fx.ListChats(context.Background(), testSpaceId, ChatListQuery{}, 0, 25)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "chatA")
+	})
+
+	t.Run("a missing chat subscription dependency is an error, not zero counters", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addChat(t, "chatA", "A", 1000)
+
+		// when
+		_, _, _, err := fx.ListChats(context.Background(), testSpaceId, ChatListQuery{}, 0, 25)
+
+		// then
+		require.Error(t, err)
+	})
+
+	t.Run("include discussions adds one row per live parent, keyed by the discussion id", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addChat(t, "chatA", "Team chat", 1000)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:               domain.String("pageWithThread"),
+				bundle.RelationKeyName:             domain.String("Roadmap"),
+				bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyDiscussionId:     domain.String("disc1"),
+				bundle.RelationKeyLastModifiedDate: domain.Int64(3000),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("pageWithoutThread"),
+				bundle.RelationKeyName:           domain.String("Plain page"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+			{
+				bundle.RelationKeyId:               domain.String("archivedParent"),
+				bundle.RelationKeyName:             domain.String("Archived"),
+				bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyDiscussionId:     domain.String("disc2"),
+				bundle.RelationKeyIsArchived:       domain.Bool(true),
+				bundle.RelationKeyLastModifiedDate: domain.Int64(4000),
+			},
+			{
+				bundle.RelationKeyId:               domain.String("deletedParent"),
+				bundle.RelationKeyName:             domain.String("Deleted"),
+				bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyDiscussionId:     domain.String("disc3"),
+				bundle.RelationKeyIsDeleted:        domain.Bool(true),
+				bundle.RelationKeyLastModifiedDate: domain.Int64(5000),
+			},
+		})
+		fx.addDiscussion(t, "disc1")
+		fx.withChatStates(t, map[string][2]int32{"chatA": {0, 0}, "disc1": {2, 1}})
+		want := []v2model.ChatRow{
+			{Id: "disc1", Name: "Roadmap", Kind: v2model.ChatKindDiscussion, ParentId: "pageWithThread", UnreadMessages: 2, UnreadMentions: 1},
+			{Id: "chatA", Name: "Team chat", Kind: v2model.ChatKindChat},
+		}
+
+		// when
+		rows, total, hasMore, err := fx.ListChats(context.Background(), testSpaceId, ChatListQuery{IncludeDiscussions: true}, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, rows)
+		assert.Equal(t, 2, total)
+		assert.False(t, hasMore)
+	})
+
+	t.Run("include discussions still hides archived and deleted chats", func(t *testing.T) {
+		// given: the discussion branch must not switch off the store's implicit
+		// archived/deleted filtering for the chat branch
+		fx := newV2Fixture(t)
+		fx.addChat(t, "chatLive", "Live", 1000)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("chatArchived"),
+				bundle.RelationKeyName:           domain.String("Archived"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_chatDerived)),
+				bundle.RelationKeyIsArchived:     domain.Bool(true),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("chatDeleted"),
+				bundle.RelationKeyName:           domain.String("Deleted"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_chatDerived)),
+				bundle.RelationKeyIsDeleted:      domain.Bool(true),
+			},
+		})
+		fx.withChatStates(t, map[string][2]int32{"chatLive": {1, 1}})
+
+		for _, query := range []ChatListQuery{
+			{IncludeDiscussions: true},
+			{IncludeDiscussions: true, Unread: v2model.ChatUnreadMentions},
+		} {
+			// when
+			rows, total, _, err := fx.ListChats(context.Background(), testSpaceId, query, 0, 25)
+
+			// then
+			require.NoError(t, err)
+			require.Len(t, rows, 1, "query %+v", query)
+			assert.Equal(t, "chatLive", rows[0].Id)
+			assert.Equal(t, 1, total)
+		}
+	})
+
+	t.Run("a discussion id with no discussion in the space is not listed and never read", func(t *testing.T) {
+		// given: three parents whose discussionId resolves to nothing local; no ChatState
+		// expectation for them, so reading one fails the test
+		fx := newV2Fixture(t)
+		fx.addChat(t, "chatA", "Team chat", 1000)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:               domain.String("parentGhost"),
+				bundle.RelationKeyName:             domain.String("Ghost thread"),
+				bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyDiscussionId:     domain.String("ghost"),
+				bundle.RelationKeyLastModifiedDate: domain.Int64(3000),
+			},
+			{
+				bundle.RelationKeyId:               domain.String("parentOtherLayout"),
+				bundle.RelationKeyName:             domain.String("Points at a page"),
+				bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyDiscussionId:     domain.String("pageNotDiscussion"),
+				bundle.RelationKeyLastModifiedDate: domain.Int64(2000),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("pageNotDiscussion"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+		})
+		fx.withChatStates(t, map[string][2]int32{"chatA": {0, 0}})
+
+		// when
+		rows, total, hasMore, err := fx.ListChats(context.Background(), testSpaceId, ChatListQuery{IncludeDiscussions: true}, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, rows, 1)
+		assert.Equal(t, "chatA", rows[0].Id)
+		assert.Equal(t, 1, total, "total counts only rows that can be served")
+		assert.False(t, hasMore)
+	})
+
+	t.Run("discussions stay out of the default list", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addChat(t, "chatA", "Team chat", 1000)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("pageWithThread"),
+			bundle.RelationKeyName:           domain.String("Roadmap"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyDiscussionId:   domain.String("disc1"),
+		}})
+		fx.withChatStates(t, map[string][2]int32{"chatA": {0, 0}})
+
+		// when
+		rows, total, _, err := fx.ListChats(context.Background(), testSpaceId, ChatListQuery{}, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, rows, 1)
+		assert.Equal(t, "chatA", rows[0].Id)
+		assert.Equal(t, 1, total)
+	})
+
+	t.Run("unread=mentions keeps only rows with an unread mention, counts and pages after filtering", func(t *testing.T) {
+		// given: three chats; two carry a mention
+		fx := newV2Fixture(t)
+		fx.addChat(t, "chatC", "C", 3000)
+		fx.addChat(t, "chatB", "B", 2000)
+		fx.addChat(t, "chatA", "A", 1000)
+		fx.withChatStates(t, map[string][2]int32{"chatC": {5, 2}, "chatB": {9, 0}, "chatA": {1, 1}})
+		query := ChatListQuery{Unread: v2model.ChatUnreadMentions}
+		wantPage1 := []v2model.ChatRow{{Id: "chatC", Name: "C", Kind: v2model.ChatKindChat, UnreadMessages: 5, UnreadMentions: 2}}
+		wantPage2 := []v2model.ChatRow{{Id: "chatA", Name: "A", Kind: v2model.ChatKindChat, UnreadMessages: 1, UnreadMentions: 1}}
+
+		// when
+		page1, total1, more1, err1 := fx.ListChats(context.Background(), testSpaceId, query, 0, 1)
+		page2, total2, more2, err2 := fx.ListChats(context.Background(), testSpaceId, query, 1, 1)
+
+		// then
+		require.NoError(t, err1)
+		require.NoError(t, err2)
+		assert.Equal(t, wantPage1, page1)
+		assert.Equal(t, wantPage2, page2)
+		assert.Equal(t, 2, total1, "total counts rows after the unread filter")
+		assert.Equal(t, 2, total2)
+		assert.True(t, more1)
+		assert.False(t, more2)
+	})
+
+	t.Run("unread=messages keeps rows with unread messages and mentions alike", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addChat(t, "chatC", "C", 3000)
+		fx.addChat(t, "chatB", "B", 2000)
+		fx.addChat(t, "chatA", "A", 1000)
+		fx.withChatStates(t, map[string][2]int32{"chatC": {0, 1}, "chatB": {0, 0}, "chatA": {4, 0}})
+
+		// when
+		rows, total, _, err := fx.ListChats(context.Background(), testSpaceId, ChatListQuery{Unread: v2model.ChatUnreadMessages}, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, rows, 2)
+		assert.Equal(t, "chatC", rows[0].Id, "a mention-only row still counts as unread")
+		assert.Equal(t, "chatA", rows[1].Id)
+		assert.Equal(t, 2, total)
+	})
+
+	t.Run("each chat state is read once per request", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addChat(t, "chatA", "A", 1000)
+		sub := mock_apicore.NewMockChatSubscriptionService(t)
+		sub.EXPECT().ChatState(testSpaceId, "chatA").Return(&model.ChatState{
+			Messages: &model.ChatStateUnreadState{Counter: 1},
+		}, nil).Once()
+		fx.withChatSub(sub)
+
+		// when
+		rows, _, _, err := fx.ListChats(context.Background(), testSpaceId, ChatListQuery{Unread: v2model.ChatUnreadMessages}, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, rows, 1)
+		assert.Equal(t, 1, rows[0].UnreadMessages, "the filter and the row share one read")
 	})
 
 	t.Run("pagination reports has_more with an honest total", func(t *testing.T) {
@@ -123,9 +375,10 @@ func TestV2ListChats(t *testing.T) {
 		fx.addChat(t, "chatC", "C", 3000)
 		fx.addChat(t, "chatB", "B", 2000)
 		fx.addChat(t, "chatA", "A", 1000)
+		fx.withChatStates(t, map[string][2]int32{"chatC": {0, 0}})
 
 		// when
-		rows, total, hasMore, err := fx.ListChats(context.Background(), testSpaceId, 0, 1)
+		rows, total, hasMore, err := fx.ListChats(context.Background(), testSpaceId, ChatListQuery{}, 0, 1)
 
 		// then
 		require.NoError(t, err)
@@ -136,7 +389,7 @@ func TestV2ListChats(t *testing.T) {
 
 	t.Run("unknown space is a 404", func(t *testing.T) {
 		fx := newV2Fixture(t)
-		_, _, _, err := fx.ListChats(context.Background(), "nope", 0, 25)
+		_, _, _, err := fx.ListChats(context.Background(), "nope", ChatListQuery{}, 0, 25)
 		requireV2Code(t, err, v2model.CodeNotFound)
 	})
 }

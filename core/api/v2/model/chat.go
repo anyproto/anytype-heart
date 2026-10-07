@@ -21,12 +21,28 @@ import (
 	textutil "github.com/anyproto/anytype-heart/util/text"
 )
 
-// ChatRow is the C5 chat list row. Deliberately counter-free (Q3):
-// per-chat unread state comes free on the messages read, while computing
-// list-wide counters would open every chat — the GO-7302 startup cost.
+// Chat row kinds.
+const (
+	ChatKindChat       = "chat"
+	ChatKindDiscussion = "discussion"
+)
+
+// list_chats ?unread= values.
+const (
+	ChatUnreadMessages = "messages"
+	ChatUnreadMentions = "mentions"
+)
+
+// ChatRow is the C5 chat list row. The unread counters are the chat state
+// manager's, read per row without opening the chat. For a discussion, Id is the
+// discussion's own id (usable on every chat route) and ParentId the object it belongs to.
 type ChatRow struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
+	Id             string `json:"id"`
+	Name           string `json:"name"`
+	Kind           string `json:"kind"`
+	ParentId       string `json:"parent_id,omitempty"`
+	UnreadMessages int    `json:"unread_messages"`
+	UnreadMentions int    `json:"unread_mentions"`
 }
 
 // ChatMessage is one chat message. Text is §8 inline markup rendered by
