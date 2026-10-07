@@ -1472,6 +1472,7 @@ Both are thin over the same server primitives; bulk work via scripts.
 ```
 GET/POST   /v2/spaces/{space_id}/chats   # GET rows carry unread_messages/unread_mentions; ?include=discussions, ?unread=messages|mentions
 GET/POST   /v2/spaces/{space_id}/chats/{chat_id}/messages
+GET        /v2/spaces/{space_id}/chats/stream   # SSE: every chat of the space; ?include=discussions|none, when enabled
 GET        /v2/spaces/{space_id}/chats/{chat_id}/messages/stream   # SSE, when enabled
 PATCH/DELETE /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}
 POST       /v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}/reactions
@@ -1514,6 +1515,11 @@ POST       /v2/spaces/{space_id}/objects/{object_id}/discussion   # the object's
   changes type. `at` and `edited_at` are RFC 3339 UTC strings, `edited_at`
   present only when the message was edited, and sync/read flags are
   deliberately absent from the DTO (`core/api/v2/model/chat.go:34`).
+- **Every message carries `state_id`** on REST reads and on both streams: the
+  chat state id stamped once when the message was stored locally, the same
+  value the per-chat stream sends as its SSE `id`. A client keeps the highest
+  one it processed as its checkpoint and resumes the per-chat stream from it
+  (`Last-Event-ID`). An edit does not restamp it.
 - **The chat surface is exempt from C7**: no chat response carries an `etag`
   and no chat mutation reads `If-Match`. Order ids and `last_state_id` are the
   chat's native concurrency vocabulary, and the exemption is documented at the
@@ -1656,6 +1662,61 @@ POST       /v2/spaces/{space_id}/objects/{object_id}/discussion   # the object's
   close something instead. `pinned_updated` carries only the message id and
   the flag, never a message body, since the pinned message is commonly outside
   the subscription's window (`core/api/v2/service/chat_stream.go:128`).
+
+**Space-wide streaming (`GET …/chats/stream`)**
+
+Design: `docs/superpowers/specs/2026-10-06-apiv2-space-chat-stream-design.md`.
+
+- **One connection watches a whole space**: every chat and, unless
+  `?include=none`, every object discussion (`include` defaults to
+  `discussions` here; any other value is a 400 `validation_failed` naming
+  `include`). It is a **READ**; the space and the key's grant are checked
+  before anything subscribes, and every refusal is a C6 envelope before the
+  first byte. `?heartbeat=` is the per-chat stream's parameter
+  (`core/api/v2/handler/chat_space_stream.go`).
+- **It opens with a snapshot, not history**: one `chat_added` per chat (the
+  `list_chats` row plus `last_state_id`), then `snapshot_complete`, also for an
+  empty space. Live events follow: `chat_added`, `chat_updated` (name or parent
+  mapping), `chat_removed` (deleted, archived, hidden, parent lost or archived),
+  `state_updated` (counters only, a watermark move is not an event), and
+  `message_added`, `message_updated`, `message_deleted`, `reactions_updated`,
+  `pinned_updated`. Every event carries `space_id`; message events carry
+  `chat_id`, and added/updated/deleted also `kind` and `parent_id`. A chat that
+  appears after the snapshot is followed by its newest 50 messages as
+  `message_added`, read after its observer is attached, so a discussion's first
+  comment applied before discovery reached the hub is not lost
+  (`core/api/v2/model/space_chat_event.go`).
+- **No event ids, no replay, no `resync_required`.** Recovery is the
+  client's: one checkpoint per chat (the `state_id` of the newest message it
+  processed, never `state_updated` or `last_state_id`, because the state moves
+  before the message is added), and after a reconnect a one-shot per-chat
+  stream with `Last-Event-ID: <checkpoint>` for every chat whose
+  `last_state_id` is ahead of it. Edits, deletions and reactions made during a
+  gap are not recovered, as on the per-chat stream.
+- **Backend: a per-space hub over an observer on each chat's state manager**,
+  not the preview window, which evicts and drops bursts and late-synced
+  messages. Observers fire inside the manager's mutation paths, under its
+  lock and before commit, so a rolled-back change can reach the client:
+  message events are at-least-once hints, and a client dedupes on message id
+  and may confirm an unknown message with a read. Observers do not count
+  towards `IsActive`, so an observed chat stays evictable
+  (`core/block/chats/chatsubscription/observer.go`). The hub is created by the
+  first stream of a space and torn down by the last; it discovers chats through
+  two unlimited internal subscriptions (chat layouts, and objects carrying a
+  `discussionId`), renders each change once and appends it to every client's
+  own unbounded queue (`core/api/spacechathub.go`).
+- **The stream never disconnects its client** (localhost API): no slow-reader
+  close, no write deadline, no periodic grant re-check. A slow reader costs
+  memory. Its own process cap, 16 streams, answers **429 `too_many_streams`**,
+  independent of the per-chat cap (`core/api/v2/service/chat_space_stream.go`).
+- **Opening fails with a 500 naming the chat** when an eligible chat's state
+  manager failed to initialize; the failure is cached until restart, so the
+  space's stream stays refused until then (a client that does not receive
+  discussions is not refused for a broken discussion). A chat that becomes
+  eligible after opening and cannot attach is logged and skipped. Counters are
+  those of the account Heart runs as. The long part of an open (creating each
+  chat's state manager) happens before the status line, because it is what
+  decides the 500, so no keepalive is sent during it.
 
 ### Phase 7 — spaces
 

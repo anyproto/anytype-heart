@@ -20,6 +20,11 @@ type ChatSubscriptionService interface {
 	// chat's own repository and does NOT open the chat object, so it is safe to call per
 	// row of a list.
 	ChatState(spaceId, chatObjectId string) (*model.ChatState, error)
+	// OpenSpaceChats places one client on the space's chat hub (spacechats.go),
+	// creating the hub for the first client. It fails with a
+	// *SpaceChatAttachError when an eligible chat the client would receive
+	// cannot be attached.
+	OpenSpaceChats(ctx context.Context, req SpaceChatOpen) (SpaceChatSubscription, error)
 }
 
 type AccountService interface {

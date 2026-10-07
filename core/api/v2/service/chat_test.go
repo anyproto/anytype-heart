@@ -434,6 +434,26 @@ func TestV2CreateChat(t *testing.T) {
 }
 
 func TestV2GetChatMessages(t *testing.T) {
+	t.Run("each message carries its state id", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addChat(t, testChatId, "Team chat", 1000)
+		msg := chatProtoMessage()
+		msg.StateId = "state41"
+		fx.mwMock.EXPECT().ChatGetMessages(mock.Anything, mock.Anything).Return(&pb.RpcChatGetMessagesResponse{
+			Messages: []*model.ChatMessage{msg},
+		})
+
+		// when
+		got, err := fx.GetChatMessages(context.Background(), testSpaceId, testChatId, ChatMessagesQuery{Limit: 25})
+
+		// then: the same value the per-chat stream sends as its SSE id, so a
+		// client that read the history can resume a stream from it
+		require.NoError(t, err)
+		require.Len(t, got.Messages, 1)
+		assert.Equal(t, "state41", got.Messages[0].StateId)
+	})
+
 	t.Run("state and message_count pass through — the fields v1 dropped", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)

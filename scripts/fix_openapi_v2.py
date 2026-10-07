@@ -300,14 +300,14 @@ SCHEMA_REQUIRED = {
 # swag emits application/json alongside the declared @Produce for a plain
 # string success, so the stream's 200 advertised a JSON body it never sends.
 # The route answers text/event-stream and nothing else.
-STREAM_OPERATION = "stream_chat_messages"
+STREAM_OPERATIONS = {"stream_chat_messages", "stream_space_chats"}
 
 # Operations that answer 429 for a RESOURCE they cap rather than a rate they
 # throttle. Until the chat stream there was no such thing, so "declares 429"
 # and "goes through the shared write limiter" were the same set — and the
 # conformance test asserted it. A concurrency refusal is v2's own, so it
 # carries the C6 envelope, not the legacy shape the shared limiter uses.
-RESOURCE_LIMITED_OPERATIONS = {STREAM_OPERATION}
+RESOURCE_LIMITED_OPERATIONS = set(STREAM_OPERATIONS)
 
 FILE_OPERATIONS = {"download_file", "head_file"}
 
@@ -370,18 +370,22 @@ def apply_yaml_file_responses(lines: list[str]) -> list[str]:
 
 
 def apply_stream_content_type(doc: dict) -> None:
+    narrowed = set()
     for _, operation in operations(doc):
-        if operation["operationId"] != STREAM_OPERATION:
+        operation_id = operation["operationId"]
+        if operation_id not in STREAM_OPERATIONS:
             continue
         ok = operation.get("responses", {}).get("200")
         if ok is None or "content" not in ok:
-            raise ValueError(f"{STREAM_OPERATION} has no 200 content to narrow")
+            raise ValueError(f"{operation_id} has no 200 content to narrow")
         stream = ok["content"].get("text/event-stream")
         if stream is None:
-            raise ValueError(f"{STREAM_OPERATION} does not declare text/event-stream")
+            raise ValueError(f"{operation_id} does not declare text/event-stream")
         ok["content"] = {"text/event-stream": stream}
-        return
-    raise ValueError(f"response policy names a missing operation: {STREAM_OPERATION}")
+        narrowed.add(operation_id)
+    missing = STREAM_OPERATIONS - narrowed
+    if missing:
+        raise ValueError(f"response policy names missing operations: {sorted(missing)}")
 
 
 def apply_schema_required(doc: dict) -> None:
@@ -398,9 +402,10 @@ def apply_schema_required(doc: dict) -> None:
 
 def apply_yaml_stream_content_type(lines: list[str]) -> list[str]:
     """The YAML twin of apply_stream_content_type."""
-    for i, line in enumerate(lines):
-        if line.strip() != f"operationId: {STREAM_OPERATION}":
-            continue
+    for operation_id in sorted(STREAM_OPERATIONS):
+        i = next((j for j, line in enumerate(lines) if line.strip() == f"operationId: {operation_id}"), None)
+        if i is None:
+            raise ValueError(f"response policy names a missing YAML operation: {operation_id}")
         ok = next(j for j in range(i, len(lines)) if lines[j] == '        "200":\n')
         content = next(j for j in range(ok, len(lines)) if lines[j] == "          content:\n")
         json_at = next(j for j in range(content, len(lines)) if lines[j] == "            application/json:\n")
@@ -408,8 +413,7 @@ def apply_yaml_stream_content_type(lines: list[str]) -> list[str]:
         if json_at > stream_at:
             raise ValueError("unexpected media-type order under the stream 200")
         del lines[json_at:stream_at]
-        return lines
-    raise ValueError(f"response policy names a missing YAML operation: {STREAM_OPERATION}")
+    return lines
 
 
 def apply_yaml_schema_required(lines: list[str]) -> list[str]:

@@ -40,6 +40,9 @@ type subscriptionManager struct {
 
 	identityCache *expirable.LRU[string, *domain.Details]
 	subscriptions map[string]*subscription
+	// observers receive every change as it is applied (observer.go). They are
+	// not subscriptions: IsActive ignores them.
+	observers map[string]ChatObserver
 
 	chatStateOrder          int64
 	chatState               *model.ChatState
@@ -191,6 +194,9 @@ func (s *subscriptionManager) UpdateChatState(updater func(*model.ChatState) *mo
 	s.chatStateOrder++
 	s.chatState.Order = s.chatStateOrder
 	s.chatStateUpdated = true
+	if len(s.observers) > 0 {
+		s.notify(ChatChange{Kind: ChatChangeStateUpdated, State: copyChatState(s.chatState)})
+	}
 }
 
 func (s *subscriptionManager) UpdateMessageCount(delta int32) {
@@ -402,6 +408,7 @@ func (s *subscriptionManager) getIdentityDetails(identity string) (*domain.Detai
 }
 
 func (s *subscriptionManager) Add(prevOrderId string, message *chatmodel.Message) {
+	s.notifyMessage(ChatChangeMessageAdded, message)
 	if !s.canSend() {
 		return
 	}
@@ -437,6 +444,9 @@ func (s *subscriptionManager) ForceReloadReactionState() {
 }
 
 func (s *subscriptionManager) Delete(messageId string) {
+	if len(s.observers) > 0 {
+		s.notify(ChatChange{Kind: ChatChangeMessageDeleted, MessageId: messageId})
+	}
 	for _, sub := range s.subscriptions {
 		sub.state.applyDeleteMessage(messageId)
 	}
@@ -445,6 +455,7 @@ func (s *subscriptionManager) Delete(messageId string) {
 }
 
 func (s *subscriptionManager) UpdateFull(message *chatmodel.Message) {
+	s.notifyMessage(ChatChangeMessageUpdated, message)
 	if !s.canSend() {
 		return
 	}
@@ -455,6 +466,7 @@ func (s *subscriptionManager) UpdateFull(message *chatmodel.Message) {
 }
 
 func (s *subscriptionManager) UpdateReactions(message *chatmodel.Message) {
+	s.notifyMessage(ChatChangeReactionsUpdated, message)
 	if !s.canSend() {
 		return
 	}
@@ -465,6 +477,7 @@ func (s *subscriptionManager) UpdateReactions(message *chatmodel.Message) {
 }
 
 func (s *subscriptionManager) UpdatePinned(message *chatmodel.Message) {
+	s.notifyMessage(ChatChangePinnedUpdated, message)
 	if !s.canSend() {
 		return
 	}

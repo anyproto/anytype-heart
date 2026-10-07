@@ -279,6 +279,10 @@ func registerChatRoutes(v2 *gin.RouterGroup, deps RouteDeps, idempotencyMW gin.H
 		v2handler.GetChatMessagesHandler(deps.Service),
 	)
 	if !deps.StreamDisabled {
+		v2.GET("/spaces/:space_id/chats/stream",
+			deps.AnalyticsEvent("V2StreamSpaceChats"),
+			v2handler.SpaceChatStreamHandler(deps.Service),
+		)
 		v2.GET("/spaces/:space_id/chats/:chat_id/messages/stream",
 			deps.AnalyticsEvent("V2StreamChatMessages"),
 			v2handler.ChatStreamHandler(deps.Service),

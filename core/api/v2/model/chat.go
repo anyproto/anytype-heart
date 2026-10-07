@@ -60,7 +60,9 @@ type ChatRow struct {
 // desktop posts — so nothing is served twice and a blocks-only message,
 // the API's own discussion posts included, reads back as text.
 type ChatMessage struct {
-	Id          string              `json:"id"`
+	Id string `json:"id"`
+	// Chat state id stamped once, when the message was stored locally; ids sort in that order. The message stream sends it as the event id, so it is the checkpoint a client resumes from (Last-Event-ID). An edit does not restamp it.
+	StateId     string              `json:"state_id,omitempty"`
 	Order       string              `json:"order"`
 	Author      string              `json:"author,omitempty"`
 	AuthorId    string              `json:"author_id,omitempty"`
@@ -246,6 +248,7 @@ func ChatMessageFromProto(msg *model.ChatMessage, opts ChatMessageOptions) ChatM
 	}
 	out := ChatMessage{
 		Id:      msg.Id,
+		StateId: msg.StateId,
 		Order:   msg.OrderId,
 		At:      chatTime(msg.CreatedAt),
 		ReplyTo: msg.ReplyToMessageId,

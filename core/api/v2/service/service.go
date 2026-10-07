@@ -56,6 +56,9 @@ type Service struct {
 	// chatStreams caps how many streams are open at once; see
 	// maxConcurrentChatStreams.
 	chatStreams chatStreamSlots
+	// spaceChatStreams is the separate cap of the space-wide chat stream;
+	// see maxConcurrentSpaceChatStreams.
+	spaceChatStreams chatStreamSlots
 }
 
 // NewService creates the API v2 service. creator may be nil when only the

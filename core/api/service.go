@@ -17,11 +17,13 @@ import (
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/server"
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -129,7 +131,12 @@ func (s *apiService) Init(a *app.App) error {
 	// Keeping them here is also what keeps core/api/v2 free of heart-internal
 	// imports: v2 is HTTP plus logic over ports, which is what makes it
 	// testable against mock_apicore.
-	s.chatSubService = &chatSubAdapter{svc: a.MustComponent(chatsubscription.CName).(chatsubscription.Service)}
+	chatSubscriptions := a.MustComponent(chatsubscription.CName).(chatsubscription.Service)
+	s.chatSubService = &chatSubAdapter{
+		svc: chatSubscriptions,
+		spaceChats: newSpaceChatHubs(chatSubscriptions,
+			app.MustComponent[subscription.Service](a), app.MustComponent[chatrepository.Service](a)),
+	}
 	s.fileObjectService = a.MustComponent(fileobject.CName).(apicore.FileObjectService)
 	s.objectReader = newObjectReadAdapter(app.MustComponent[cache.ObjectGetterComponent](a))
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
