@@ -104,7 +104,7 @@ func TestExecutorAssemblesRequests(t *testing.T) {
 
 	t.Run("a mutation without a key gets one minted, reused across the client's retries", func(t *testing.T) {
 		ex, api := newExecutorFixture(t, stubResponse{503, `{}`}, stubResponse{201, `{"id":"new"}`})
-		result, err := ex.Run(context.Background(), "create_chat", map[string]any{"space_id": "s", "name": "General"})
+		result, err := ex.Run(context.Background(), "create_object", map[string]any{"space_id": "s", "type": "page", "name": "Welcome"})
 		require.NoError(t, err)
 		require.Len(t, api.requests, 2, "the 503 was retried")
 		first := api.requests[0].Header.Get("Idempotency-Key")
@@ -114,9 +114,9 @@ func TestExecutorAssemblesRequests(t *testing.T) {
 		assert.Equal(t, `{"id":"new"}`, result.Text)
 	})
 
-	t.Run("an explicit idempotency key is sent as given", func(t *testing.T) {
+	t.Run("an explicit idempotency key is sent as given on the reaction toggle", func(t *testing.T) {
 		ex, api := newExecutorFixture(t)
-		_, err := ex.Run(context.Background(), "create_chat", map[string]any{"space_id": "s", "name": "General", "idempotency_key": "mine"})
+		_, err := ex.Run(context.Background(), "toggle_chat_reaction", map[string]any{"space_id": "s", "chat_id": "c", "message_id": "m", "emoji": "👍", "idempotency_key": "mine"})
 		require.NoError(t, err)
 		assert.Equal(t, "mine", api.requests[0].Header.Get("Idempotency-Key"))
 	})
@@ -280,7 +280,7 @@ func TestPathArgumentsCannotChangeTheRoute(t *testing.T) {
 func TestIdempotencyKeyArgumentIsBounded(t *testing.T) {
 	for _, key := range []string{strings.Repeat("k", 256), "two words"} {
 		ex, api := newExecutorFixture(t)
-		_, err := ex.Run(context.Background(), "create_chat", map[string]any{"space_id": "s", "name": "x", "idempotency_key": key})
+		_, err := ex.Run(context.Background(), "toggle_chat_reaction", map[string]any{"space_id": "s", "chat_id": "c", "message_id": "m", "emoji": "👍", "idempotency_key": key})
 		var ae wrapper.ArgumentError
 		require.ErrorAs(t, err, &ae)
 		assert.Contains(t, err.Error(), "at most 255 visible ASCII characters")
@@ -288,13 +288,13 @@ func TestIdempotencyKeyArgumentIsBounded(t *testing.T) {
 	}
 }
 
-// TestRetryKeyIsAHeaderOnEveryWrite: an explicit retry key goes to the
-// header and never into the body — on a tool whose route documents the
-// header, one whose route does not, and an open-or-document body.
-func TestRetryKeyIsAHeaderOnEveryWrite(t *testing.T) {
+// TestRetryKeyIsRefusedWhereTheExecutorOwnsIt: on every other write the
+// argument is refused before anything is sent — on a strict body, an ops
+// envelope, and an open document body that would otherwise swallow it.
+func TestRetryKeyIsRefusedWhereTheExecutorOwnsIt(t *testing.T) {
 	cases := map[string]map[string]any{
 		"patch_object":  {"space_id": "s", "object_id": "o", "ops": []any{map[string]any{"op": "delete_block", "id": "b1"}}},
-		"create_object": {"space_id": "s", "type": "page", "name": "x"},
+		"create_object": {"space_id": "s", "formatVersion": "2.0", "blocks": []any{}},
 		"create_chat":   {"space_id": "s", "name": "x"},
 	}
 	for name, args := range cases {
@@ -302,11 +302,19 @@ func TestRetryKeyIsAHeaderOnEveryWrite(t *testing.T) {
 			ex, api := newExecutorFixture(t)
 			args["idempotency_key"] = "retry-1"
 			_, err := ex.Run(context.Background(), name, args)
-			require.NoError(t, err)
-			assert.Equal(t, "retry-1", api.requests[0].Header.Get("Idempotency-Key"))
-			assert.NotContains(t, api.requests[0].Body, "idempotency")
+			var ae wrapper.ArgumentError
+			require.ErrorAs(t, err, &ae)
+			assert.Contains(t, err.Error(), `does not take "idempotency_key"`)
+			assert.Empty(t, api.requests, "nothing was sent")
 		})
 	}
+	t.Run("the reaction toggle sends it as the header, never in the body", func(t *testing.T) {
+		ex, api := newExecutorFixture(t)
+		_, err := ex.Run(context.Background(), "toggle_chat_reaction", map[string]any{"space_id": "s", "chat_id": "c", "message_id": "m", "emoji": "👍", "idempotency_key": "retry-1"})
+		require.NoError(t, err)
+		assert.Equal(t, "retry-1", api.requests[0].Header.Get("Idempotency-Key"))
+		assert.NotContains(t, api.requests[0].Body, "idempotency")
+	})
 }
 
 // TestSuccessWarningsAreRespelled: a warning's repair names a route on the

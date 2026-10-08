@@ -71,7 +71,7 @@ run created, logs the wire) and gains a second upstream kind:
 
 Arms are guard settings, not heart settings:
 
-- `full`: `tools/list` forwarded as served — 50 tools, 68,280 bytes, the
+- `full`: `tools/list` forwarded as served — 50 tools, 62,025 bytes, the
   large schemas as `get_op_schema` / `get_schema` lookups (the npm bridge's
   shape, chosen on its 180-actor experiment: opaque 6/10 blind invalid
   writes, pointer 9/10 fetching first, typed 10/10).

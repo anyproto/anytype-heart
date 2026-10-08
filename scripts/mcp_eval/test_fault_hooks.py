@@ -132,6 +132,19 @@ class FaultHookTests(unittest.TestCase):
         self.assertTrue(self.guard.allowed_space("abcdef"))
         self.assertTrue(Guard(self.guard.path, self.guard.label).allowed_space("bafytestabcdef.key"))
 
+    def test_full_tier_reaction_records_the_callers_idempotency_key(self):
+        # on /mcp/full the toggle is the one tool exposing the retry key, as
+        # idempotency_key; the hook must match the flat call and keep the key
+        hooks = self.hooks(REACTION)
+        req = call("toggle_chat_reaction", {"space_id": "abcdef", "chat_id": "chat",
+                   "message_id": "message", "emoji": "👍", "idempotency_key": "stable-key"})
+        forwarded, ticket = self.prepare(hooks, req)
+        self.assertIsNotNone(ticket, "the full-tier toggle is the MCP-29 call")
+        response = result({"added": True})
+        self.assertIn("error", hooks.complete(ticket, response))
+        attempt = hooks.state["hooks"][REACTION]["attempts"][0]
+        self.assertEqual(attempt["caller_request_key"], "stable-key")
+
     def test_reaction_replay_same_key_reaches_upstream_without_second_fault(self):
         hooks = self.hooks(REACTION)
         req = reaction()

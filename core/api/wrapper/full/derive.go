@@ -135,6 +135,11 @@ func deriveTool(method, path string, op openAPIOperation, o overlay, components 
 		if err != nil {
 			return Tool{}, err
 		}
+		if arg.Wire == wrapper.IdempotencyKeyHeader && !o.CallerRetryKey {
+			// the executor mints the retry key itself; only a tool the
+			// overlay names lets the caller choose it
+			continue
+		}
 		schema, err := refs.schema(p.Schema)
 		if err != nil {
 			return Tool{}, fmt.Errorf("parameter %s: %w", p.Name, err)
@@ -151,9 +156,15 @@ func deriveTool(method, path string, op openAPIOperation, o overlay, components 
 		}
 		tool.Args = append(tool.Args, arg)
 	}
-	// every write takes a retry key, documented on the route or not: it is
-	// a header the executor owns, never a body member
-	if method != "get" && method != "head" {
+	// The executor mints a retry key for every write and reuses it across
+	// its own transport retries, so a model never needs one. The overlay
+	// names the tools where the caller must be able to choose it anyway:
+	// a call whose blind replay is not harmless (a toggle flips back). It
+	// is a header, never a body member.
+	if o.CallerRetryKey {
+		if method == "get" || method == "head" {
+			return Tool{}, fmt.Errorf("overlay gives a caller retry key to a read")
+		}
 		if _, ok := tool.Arg(idempotencyKeyArg); !ok {
 			tool.Args = append(tool.Args, Arg{Name: idempotencyKeyArg, In: ArgHeader, Wire: wrapper.IdempotencyKeyHeader})
 		}
@@ -264,7 +275,8 @@ func openOpsItems(body map[string]any) {
 	}
 }
 
-// idempotencyKeyArg is the reserved retry-key argument on every write.
+// idempotencyKeyArg is the caller's retry-key argument, on the tools the
+// overlay names (CallerRetryKey).
 const idempotencyKeyArg = "idempotency_key"
 
 // idempotencyKeySchema is the retry key's argument schema, bounded the way
@@ -275,7 +287,7 @@ func idempotencyKeySchema() map[string]any {
 		"minLength":   1,
 		"maxLength":   wrapper.MaxIdempotencyKeyLen,
 		"pattern":     "^[!-~]+$",
-		"description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
+		"description": "retry key: if this call fails or times out, send it again with the same value so it is not applied twice; one is made for you when omitted",
 	}
 }
 

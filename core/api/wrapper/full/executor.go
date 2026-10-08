@@ -203,6 +203,10 @@ func (e *Executor) assemble(tool Tool, args map[string]any) (wrapper.RawRequest,
 			}
 		case known:
 			body[arg.Wire] = value
+		case name == callerRetryKeyArg:
+			// the retry key is the executor's, except where the overlay hands
+			// it to the caller; an open body must not swallow it either
+			return req, fmt.Errorf("%s does not take %q — the retry key is managed for you; arguments: %s", tool.Name, name, strings.Join(argNames(tool), ", "))
 		case tool.HasBody && tool.OpenBody:
 			body[name] = value
 		default:
@@ -242,6 +246,9 @@ func (e *Executor) assemble(tool Tool, args map[string]any) (wrapper.RawRequest,
 func onePathSegment(s string) bool {
 	return s != "" && s != "." && s != ".." && !strings.Contains(s, "/")
 }
+
+// callerRetryKeyArg is the argument name the overlay can hand a caller.
+const callerRetryKeyArg = "idempotency_key"
 
 // mutates reports whether a method is a write the idempotency store keys.
 func mutates(method string) bool {

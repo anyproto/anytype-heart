@@ -54,6 +54,15 @@ def body(name, arguments):
     return arguments
 
 
+def caller_retry_key(arguments):
+    """The retry key the caller chose for a call, on either surface: the
+    bridge's `request_key` argument or full's `idempotency_key` (exposed on
+    toggle_chat_reaction only; everywhere else the server mints it)."""
+    if not isinstance(arguments, dict):
+        return None
+    return arguments.get("idempotency_key") or arguments.get("request_key")
+
+
 class Vocabulary:
     """Tool names and argument shapes of one surface, for callers that
     issue calls."""

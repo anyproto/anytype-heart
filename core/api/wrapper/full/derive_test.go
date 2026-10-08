@@ -109,7 +109,6 @@ func TestArgumentsPlaceEveryParameter(t *testing.T) {
 		"space_id":        {Name: "space_id", In: ArgPath, Wire: "space_id", Required: true},
 		"chat_id":         {Name: "chat_id", In: ArgPath, Wire: "chat_id", Required: true},
 		"dry_run":         {Name: "dry_run", In: ArgQuery, Wire: "dry_run"},
-		"idempotency_key": {Name: "idempotency_key", In: ArgHeader, Wire: "Idempotency-Key"},
 	}
 	for name, w := range want {
 		got, ok := tool.Arg(name)
@@ -155,20 +154,23 @@ func TestEveryArgumentNameIsLegal(t *testing.T) {
 	}
 }
 
-// TestEveryWriteTakesARetryKey: the retry key is a reserved argument on
-// every non-GET tool, documented on the route or not.
-func TestEveryWriteTakesARetryKey(t *testing.T) {
+// TestOnlyTheReactionToggleTakesARetryKey: the executor keys every write
+// itself, so the caller's retry key is exposed on exactly the tool whose
+// blind replay is not harmless — toggling a reaction twice removes it.
+func TestOnlyTheReactionToggleTakesARetryKey(t *testing.T) {
 	table := deriveReal(t)
+	var takers []string
 	for _, tool := range table.Tools {
-		arg, ok := tool.Arg(idempotencyKeyArg)
-		if tool.Method == "GET" {
-			assert.False(t, ok, "%s is a read", tool.Name)
-			continue
+		if arg, ok := tool.Arg(idempotencyKeyArg); ok {
+			takers = append(takers, tool.Name)
+			assert.Equal(t, ArgHeader, arg.In)
+			assert.Equal(t, wrapper.IdempotencyKeyHeader, arg.Wire)
 		}
-		require.True(t, ok, "%s is a write and takes a retry key", tool.Name)
-		assert.Equal(t, ArgHeader, arg.In)
-		assert.Equal(t, wrapper.IdempotencyKeyHeader, arg.Wire)
+		if tool.Name != "toggle_chat_reaction" {
+			assert.NotContains(t, string(tool.InputSchema), `"idempotency_key"`, "%s: not in its schema either", tool.Name)
+		}
 	}
+	assert.Equal(t, []string{"toggle_chat_reaction"}, takers)
 }
 
 // TestAtLeastOneBodyMemberSurvivesFlattening: a body's minProperties:1
@@ -365,9 +367,10 @@ func TestGoldenToolsList(t *testing.T) {
 // TestToolsListSizeCeiling guards the budget. The ceiling is a regression
 // guard set from the first measurement, not an acceptability claim.
 func TestToolsListSizeCeiling(t *testing.T) {
-	// 68,390 bytes measured for 50 tools with the large schemas served as
-	// lookups; the ceiling leaves about a tenth of headroom.
-	const ceiling = 75 << 10
+	// 62,135 bytes measured for 50 tools with the large schemas served as
+	// lookups and the retry key on the reaction toggle only; the ceiling
+	// leaves about a tenth of headroom.
+	const ceiling = 67 << 10
 	table := deriveReal(t)
 	got, err := table.ListJSON()
 	require.NoError(t, err)

@@ -104,9 +104,11 @@ open body carries a pointer that resolves.
   - query parameters (`dry_run`, `ids`, `create_missing_options`, `limit`, …);
   - header parameters in snake_case (`if_match`); `Anytype-Version` occurs
     only on excluded operations;
-  - **`idempotency_key` is reserved on every non-GET tool**, documented on
-    the route or not: a header argument bounded like the server bounds the
-    header (1–255 visible ASCII), never a body member;
+  - **`idempotency_key` is offered on `toggle_chat_reaction` only** (an
+    overlay allowlist): a header argument bounded like the server bounds
+    the header (1–255 visible ASCII), never a body member. Everywhere else
+    the executor owns the key (§4), and the route's documented header is
+    not offered;
   - the request body's top-level properties, required per the source schema.
     A member whose name is not a legal tool-argument key
     (`^[a-zA-Z0-9_.-]{1,64}$`, the Claude API's rule) is not offered — the
@@ -317,10 +319,16 @@ result budget on this delivery (same as stdio; `DefaultResultChars` = 0).
   warning's message and hint are re-spelled through its `see_also` like an
   error's (below), so a success-path repair names a tool, not a route.
 - **Idempotency**: the executor mints an `Idempotency-Key` for every
-  mutating call that did not supply `idempotency_key`, and the same key is
-  reused across the client's transport retries, as the curated Runner does
-  today. An explicit key is sent as given, after the same 1–255 visible
-  ASCII bound the v2 middleware now enforces for every REST caller.
+  mutating call and reuses it across the client's own transport retries,
+  as the curated Runner does, so a model never needs one. The caller may
+  choose the key only on `toggle_chat_reaction`: a toggle's blind replay
+  is not harmless — sent twice it removes the reaction — so a caller that
+  lost a response must be able to replay under the same key (scenario
+  MCP-29 depends on it). There an explicit key is sent as given, after the
+  same 1–255 visible ASCII bound the v2 middleware enforces for every REST
+  caller. On every other tool `idempotency_key` is refused pre-flight as an
+  argument the tool does not take — on an open document body too, which
+  would otherwise carry it into the body.
 - **Errors are in-band** (`isError: true`) carrying the C6 envelope's
   message, issues and hints. Transport failure of the in-process call (no
   account running) renders the "ask the user" tip `mcp.go` already has.
@@ -347,8 +355,9 @@ result budget on this delivery (same as stdio; `DefaultResultChars` = 0).
   are pinned;
 - every reference in every tool resolves in its own `$defs`; a dangling
   transitive component reference fails `Derive`;
-- every argument name is a legal tool-argument key; every write takes the
-  reserved retry key;
+- every argument name is a legal tool-argument key; exactly one tool,
+  `toggle_chat_reaction`, offers `idempotency_key`, and every other write
+  refuses it;
 - golden snapshot of the full `tools/list` (compact JSON of the result
   object, no JSON-RPC framing) checked in, `-update` refreshes;
 - each ops envelope's enum equals its channel's served op set exactly
@@ -380,11 +389,12 @@ idempotency key stable across a retried call.
 **Size**: the artifact is the compact `tools/list` result object. Measured
 on this branch: small 8,471 B, large 15,470 B. The npm bridge's v2 surface
 measured 45 tools / 59,269 B with an **untyped** `patch-object` body. The
-full tier measures **50 tools, 68,390 B** with the large schemas served as
+full tier measures **50 tools, 62,135 B** with the large schemas served as
 lookups (it was 257,156 B with them inlined). The largest tools are
 update_type 8.2 KB, create_query 7.9, create_object 5.2, create_type 4.9,
 update_widget and create_widget 2.9 each, patch_object 1.8, create_property
-1.6. The ceiling (75 KiB) is a regression guard, not evidence of
+1.6 (sizes before the retry key left 28 tools). The ceiling (67 KiB) is a
+regression guard, not evidence of
 acceptability; acceptability is the benchmark's job.
 
 **Benchmark** (acceptance, after implementation): the plant benchmark

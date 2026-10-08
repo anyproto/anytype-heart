@@ -22,7 +22,7 @@ import re
 import tempfile
 import time
 
-from tool_names import Vocabulary, body as call_body, is_bridge_name
+from tool_names import Vocabulary, body as call_body, caller_retry_key, is_bridge_name
 
 
 PROFILES = {
@@ -192,7 +192,7 @@ class FaultHooks:
             forwarded = deepcopy(forwarded)
             attempt = {"call_id": request["id"], "turn": config["current_turn"],
                        "at": time.time(), "original_request": deepcopy(request),
-                       "caller_request_key": args.get("request_key")}
+                       "caller_request_key": caller_retry_key(args)}
             if profile == "mcp27_atomic_patch_failure":
                 index = summary_op_index(args, config.get("stage_property_keys", []), name)
                 op = call_body(name, forwarded["params"]["arguments"])["ops"][index]

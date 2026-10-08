@@ -76,13 +76,6 @@
       "type": "array",
       "uniqueItems": false
      },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
-     },
      "ids": {
       "description": "How each row's space_id is spelled: compact (default) is the short space reference; full is the whole \u003ccid\u003e.\u003creplicationKey\u003e id, and the spelling to store outside this API",
       "type": "string"
@@ -159,13 +152,6 @@
       "description": "Validate the body without creating",
       "type": "boolean"
      },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
-     },
      "ids": {
       "description": "compact (default) is the short space reference; full is the whole \u003ccid\u003e.\u003creplicationKey\u003e id of the new space, and the spelling to store outside this API",
       "type": "string"
@@ -216,13 +202,6 @@
      "dry_run": {
       "description": "Validate and report without committing",
       "type": "boolean"
-     },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
      },
      "ids": {
       "description": "compact (default) is the short space reference; full is the whole \u003ccid\u003e.\u003creplicationKey\u003e id, and the spelling to store outside this API",
@@ -289,13 +268,6 @@
      "dry_run": {
       "description": "Validate and report without committing",
       "type": "boolean"
-     },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
      },
      "name": {
       "type": "string"
@@ -375,13 +347,6 @@
       "description": "Validate and report without committing",
       "type": "boolean"
      },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
-     },
      "reply_to": {
       "type": "string"
      },
@@ -413,13 +378,6 @@
      "dry_run": {
       "description": "Validate and report without committing",
       "type": "boolean"
-     },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
      },
      "message_id": {
       "description": "Message id",
@@ -456,13 +414,6 @@
      "dry_run": {
       "description": "Report what would be deleted, attachments included, without committing",
       "type": "boolean"
-     },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
      },
      "message_id": {
       "description": "Message id",
@@ -502,7 +453,7 @@
       "type": "string"
      },
      "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
+      "description": "retry key: if this call fails or times out, send it again with the same value so it is not applied twice; one is made for you when omitted",
       "maxLength": 255,
       "minLength": 1,
       "pattern": "^[!-~]+$",
@@ -539,13 +490,6 @@
      "dry_run": {
       "description": "Validate and report without committing",
       "type": "boolean"
-     },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
      },
      "last_state_id": {
       "type": "string"
@@ -590,13 +534,6 @@
       "description": "Validate without publishing",
       "type": "boolean"
      },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
-     },
      "space_id": {
       "description": "Space id",
       "type": "string"
@@ -623,13 +560,6 @@
      "dry_run": {
       "description": "Validate and report without committing",
       "type": "boolean"
-     },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
      },
      "items": {
       "items": {
@@ -743,13 +673,6 @@
      "dry_run": {
       "description": "Validate and report without committing",
       "type": "boolean"
-     },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
      },
      "name": {
       "description": "names the stored object; omit to keep the name the source gives",
@@ -866,7 +789,6 @@
       "properties": {
        "create_missing_options": {},
        "dry_run": {},
-       "idempotency_key": {},
        "markdown": {},
        "name": {},
        "properties": {},
@@ -883,7 +805,6 @@
       "properties": {
        "create_missing_options": {},
        "dry_run": {},
-       "idempotency_key": {},
        "space_id": {}
       }
      }
@@ -897,13 +818,6 @@
      "dry_run": {
       "description": "Validate and report without committing",
       "type": "boolean"
-     },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
      },
      "markdown": {
       "description": "markdown body parsed into blocks server-side, part of the same single create (dry runs validate it too); at most 2048 parsed blocks. Start it at the first section: a leading heading that repeats the name is dropped, and with no name a leading # heading becomes the name",
@@ -1326,13 +1240,6 @@
       "description": "Validate and report without committing",
       "type": "boolean"
      },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
-     },
      "ids": {
       "default": "compact",
       "description": "ID spelling in created_blocks and created_views",
@@ -1411,13 +1318,6 @@
       "description": "Probe deletability without writing",
       "type": "boolean"
      },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
-     },
      "object_id": {
       "description": "Object id",
       "type": "string"
@@ -1446,13 +1346,6 @@
      "dry_run": {
       "description": "Report whether the object has a discussion without creating one",
       "type": "boolean"
-     },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
      },
      "object_id": {
       "description": "Object id",
@@ -1526,13 +1419,6 @@
       ],
       "type": "string"
      },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
-     },
      "key": {
       "description": "the key the property is addressed by; derived from the name when omitted. Required to create another property under a display name the space already has",
       "maxLength": 256,
@@ -1588,13 +1474,6 @@
       "description": "Validate and report without committing",
       "type": "boolean"
      },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
-     },
      "key": {
       "description": "Property key",
       "type": "string"
@@ -1626,13 +1505,6 @@
      "dry_run": {
       "description": "Validate and report without committing",
       "type": "boolean"
-     },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
      },
      "key": {
       "description": "Property key",
@@ -1762,13 +1634,6 @@
       },
       "maxItems": 50,
       "type": "array"
-     },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
      },
      "name": {
       "maxLength": 4096,
@@ -2523,13 +2388,6 @@
       "type": "array",
       "uniqueItems": false
      },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
-     },
      "limit": {
       "default": 25,
       "description": "Items to return",
@@ -2616,13 +2474,6 @@
       "description": "Validate and report without committing",
       "type": "boolean"
      },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
-     },
      "space_id": {
       "description": "Space id",
       "type": "string"
@@ -2679,7 +2530,6 @@
        "default_view": {},
        "dry_run": {},
        "icon": {},
-       "idempotency_key": {},
        "layout": {},
        "name": {},
        "plural_name": {},
@@ -2695,7 +2545,6 @@
       "properties": {
        "create_missing_options": {},
        "dry_run": {},
-       "idempotency_key": {},
        "space_id": {}
       }
      }
@@ -2814,13 +2663,6 @@
        }
       },
       "type": "object"
-     },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
      },
      "layout": {
       "description": "the layout instances of this type get; basic unless you need another",
@@ -2972,7 +2814,6 @@
        "default_view": {},
        "dry_run": {},
        "icon": {},
-       "idempotency_key": {},
        "if_match": {},
        "layout": {},
        "name": {},
@@ -2989,7 +2830,6 @@
        "create_missing_options": {},
        "dry_run": {},
        "icon": {},
-       "idempotency_key": {},
        "if_match": {},
        "properties": {},
        "space_id": {},
@@ -3002,7 +2842,6 @@
       "properties": {
        "create_missing_options": {},
        "dry_run": {},
-       "idempotency_key": {},
        "if_match": {},
        "ops": {},
        "space_id": {},
@@ -3121,13 +2960,6 @@
        }
       },
       "type": "object"
-     },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
      },
      "if_match": {
       "description": "The etag the type must still carry",
@@ -3417,13 +3249,6 @@
       "description": "Validate and report without committing",
       "type": "boolean"
      },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
-     },
      "space_id": {
       "description": "Space id",
       "type": "string"
@@ -3524,13 +3349,6 @@
      "dry_run": {
       "description": "Validate and report without committing",
       "type": "boolean"
-     },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
      },
      "layout": {
       "description": "how the widget renders. Omitted on POST, the target's kind picks it: tree for a page, view for a query, collection or type, link for everything else. A layout the target cannot render is replaced with the one it can, with a warning",
@@ -3669,13 +3487,6 @@
       "description": "Validate and report without committing",
       "type": "boolean"
      },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
-     },
      "layout": {
       "description": "link, tree, list, compact_list or view. The layout and the limit are re-validated as a pair whenever either is sent: a layout the target cannot render is replaced with the one it can, with a warning, and a stored layout the target cannot render is replaced the same way on a limit change",
       "enum": [
@@ -3734,13 +3545,6 @@
       "description": "Report without removing",
       "type": "boolean"
      },
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
-     },
      "scope": {
       "description": "space or personal, when the target is in both",
       "type": "string"
@@ -3768,15 +3572,7 @@
    "name": "validate",
    "description": "Validate an AnyBlock document. Structure and format rules only. Nothing is resolved against a space, so option names and a type's property keys are not checked here. Findings come back as data: an invalid document is still a 200, carrying the issues, and a valid one carries empty lists. Body: an AnyBlock document of any kind, checked without being stored; its schema and a worked example come from get_schema with kind document.",
    "inputSchema": {
-    "properties": {
-     "idempotency_key": {
-      "description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
-      "maxLength": 255,
-      "minLength": 1,
-      "pattern": "^[!-~]+$",
-      "type": "string"
-     }
-    },
+    "properties": {},
     "type": "object"
    },
    "annotations": {

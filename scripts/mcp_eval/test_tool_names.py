@@ -6,7 +6,7 @@ import unittest
 
 from space_guard import Guard, prepare_call
 from fault_hooks import FaultHooks
-from tool_names import Vocabulary, body, capability, is_bridge_name
+from tool_names import Vocabulary, body, caller_retry_key, capability, is_bridge_name
 
 HERE = Path(__file__).resolve().parent
 GOLDEN = HERE.parents[1] / "core/api/wrapper/full/testdata/tools_list.golden.json"
@@ -56,6 +56,16 @@ class VocabularyTableTests(unittest.TestCase):
         self.assertEqual(ops, body("patch_object", {"space_id": "s", "ops": ops})["ops"])
         # a capability-only caller still finds a bridge body by its shape
         self.assertEqual(ops, body("patch_object", {"space_id": "s", "body": {"ops": ops}})["ops"])
+
+    def test_the_callers_retry_key_is_read_on_both_surfaces(self):
+        self.assertEqual("k1", caller_retry_key({"emoji": "x", "request_key": "k1"}))
+        self.assertEqual("k2", caller_retry_key({"emoji": "x", "idempotency_key": "k2"}))
+        self.assertIsNone(caller_retry_key({"emoji": "x"}))
+
+    def test_on_full_only_the_reaction_toggle_exposes_a_retry_key(self):
+        tools = json.loads(GOLDEN.read_text())["tools"]
+        self.assertEqual(["toggle_chat_reaction"],
+                         [t["name"] for t in tools if "idempotency_key" in t["inputSchema"].get("properties", {})])
 
     def test_no_full_tier_tool_takes_a_member_named_body(self):
         # the premise of body(): a nested body dict can only be the bridge's
