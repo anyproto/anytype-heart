@@ -15,6 +15,7 @@ import time
 import uuid
 
 from fault_hooks import FaultHooks
+from tool_names import capability
 
 
 SAFE_GLOBAL = {"auth_whoami", "list_spaces", "list_schemas", "get_schema",
@@ -30,7 +31,7 @@ update_property update_space update_type upload_file""".split())
 
 
 def normalized(name):
-    return name.removeprefix("mcp__anytype__").replace("-", "_").removeprefix("API_")
+    return capability(name)
 
 
 def documents(result):

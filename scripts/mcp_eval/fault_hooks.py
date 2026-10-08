@@ -22,6 +22,8 @@ import re
 import tempfile
 import time
 
+from tool_names import Vocabulary, body as call_body, is_bridge_name
+
 
 PROFILES = {
     "mcp14_welcome_timeout": ("MCP-14", 4),
@@ -87,10 +89,9 @@ def successful_commit(profile, response):
     return False
 
 
-def edited_stage_keys(args, stage_keys=()):
+def edited_stage_keys(args, stage_keys=(), name="patch_object"):
     """Return Stage identifiers used for Ready, including configured opaque IDs."""
-    body = args.get("body")
-    ops = body.get("ops") if isinstance(body, dict) else None
+    ops = call_body(name, args).get("ops")
     keys = []
     for op in ops if isinstance(ops, list) else []:
         if not isinstance(op, dict):
@@ -104,11 +105,10 @@ def edited_stage_keys(args, stage_keys=()):
     return list(dict.fromkeys(keys))
 
 
-def summary_op_index(args, stage_keys=()):
+def summary_op_index(args, stage_keys=(), name="patch_object"):
     """Conservatively recognize the requested Stage+summary atomic batch."""
-    body = args.get("body")
-    ops = body.get("ops") if isinstance(body, dict) else None
-    if not isinstance(ops, list) or len(ops) < 2 or not edited_stage_keys(args, stage_keys):
+    ops = call_body(name, args).get("ops")
+    if not isinstance(ops, list) or len(ops) < 2 or not edited_stage_keys(args, stage_keys, name):
         return None
     for index, op in enumerate(ops):
         if not isinstance(op, dict):
@@ -127,12 +127,11 @@ def eligible(profile, config, name, args):
     if args.get("dry_run"):
         return False
     if profile == "mcp14_welcome_timeout":
-        body = args.get("body")
-        properties = body.get("properties") if isinstance(body, dict) else None
+        properties = call_body(name, args).get("properties")
         return name == "create_object" and isinstance(properties, dict) and properties.get("name") == "Welcome"
     if profile == "mcp29_reaction_timeout":
         return name == "toggle_chat_reaction" and args.get("emoji") in ("👍", "👍\ufe0f")
-    return name == "patch_object" and summary_op_index(args, config.get("stage_property_keys", [])) is not None
+    return name == "patch_object" and summary_op_index(args, config.get("stage_property_keys", []), name) is not None
 
 
 class FaultHooks:
@@ -195,15 +194,15 @@ class FaultHooks:
                        "at": time.time(), "original_request": deepcopy(request),
                        "caller_request_key": args.get("request_key")}
             if profile == "mcp27_atomic_patch_failure":
-                index = summary_op_index(args, config.get("stage_property_keys", []))
-                op = forwarded["params"]["arguments"]["body"]["ops"][index]
+                index = summary_op_index(args, config.get("stage_property_keys", []), name)
+                op = call_body(name, forwarded["params"]["arguments"])["ops"][index]
                 op["id"] = INVALID_BLOCK_ID
                 # update_block accepts id OR match, never both. replace_text's
                 # find remains required text to replace, even when id is given.
                 if op.get("op") == "update_block":
                     op.pop("match", None)
                 attempt["mutated_op_index"] = index
-                attempt["stage_property_keys"] = edited_stage_keys(args, config.get("stage_property_keys", []))
+                attempt["stage_property_keys"] = edited_stage_keys(args, config.get("stage_property_keys", []), name)
             attempt["forwarded_request"] = deepcopy(forwarded)
             record["attempts"].append(attempt)
             record.update(consumed=True, phase="awaiting_upstream")
@@ -217,8 +216,9 @@ class FaultHooks:
             return
         attempt = self.state["hooks"][profile]["attempts"][-1]
         args = attempt["forwarded_request"]["params"]["arguments"]
-        reads = [("API-get-object", {"space_id": args["space_id"], "object_id": args["object_id"], "ids": "full"})]
-        reads += [("API-list-property-options", {"space_id": args["space_id"], "key": key})
+        vocab = Vocabulary("bridge" if is_bridge_name(attempt["forwarded_request"]["params"]["name"]) else "full")
+        reads = [(vocab.tool("get_object"), {"space_id": args["space_id"], "object_id": args["object_id"], "ids": "full"})]
+        reads += [(vocab.tool("list_property_options"), {"space_id": args["space_id"], "key": key})
                   for key in attempt["stage_property_keys"]]
         evidence = attempt.setdefault("atomicity_evidence", {}).setdefault(phase, [])
         for name, arguments in reads:

@@ -19,14 +19,15 @@ import re
 import stat
 import tempfile
 
+from tool_names import capability
+
 
 ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = ROOT / "docs/evals/anytype-mcp-v2/fixtures"
 NAMES = ("logo.png", "usage.txt")
 COMPLETE = "conversation_completed_pending_review"
 MAX_DOWNLOAD_BYTES = 16 * 1024 * 1024
-TOOLS = {"API-upload-file": "upload", "API_upload_file": "upload",
-         "API-download-file": "download", "API_download_file": "download"}
+TOOLS = {"upload_file": "upload", "download_file": "download"}
 
 
 def digest_file(path):
@@ -94,7 +95,7 @@ def wire_receipts(path):
                     pending.clear()
                 params = payload.get("params", {})
                 if payload.get("method") == "tools/call" and isinstance(params, dict):
-                    kind = TOOLS.get(params.get("name"))
+                    kind = TOOLS.get(capability(params.get("name")))
                     if kind:
                         pending[call_id] = (kind, params.get("arguments", {}), ref)
             elif direction == "from_upstream" and call_id in pending:

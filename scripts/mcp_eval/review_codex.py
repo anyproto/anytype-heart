@@ -17,6 +17,8 @@ import tempfile
 
 from run_codex import execute, read_events
 
+from tool_names import capability
+
 ROOT = Path(__file__).resolve().parents[2]
 SUITE = ROOT / "docs/evals/anytype-mcp-v2/scenarios.json"
 SCHEMA = Path(__file__).with_name("review-result.schema.json")
@@ -159,7 +161,7 @@ def redact_unrelated_discovery(bundle):
         for line in source["text"].splitlines():
             item = json.loads(line).get("item", {})
             if item.get("type") == "mcp_tool_call" and item.get("result"):
-                tool = item.get("tool", "").removeprefix("mcp__anytype__").replace("-", "_").removeprefix("API_").lower()
+                tool = capability(item.get("tool", ""))
                 calls.append((tool, item))
     def documents(result):
         for part in result.get("content", []):
@@ -267,7 +269,7 @@ def evidence_bundle(run, suite_path=SUITE):
     used_schemas = set(scenario.get("schemas", [])) | {"ops/" + x for x in scenario.get("ops", [])}
     event_results = set()
     def normalized(name):
-        return name.removeprefix("mcp__anytype__").replace("-", "_").removeprefix("API_").lower()
+        return capability(name)
     for event_path in run.glob("turn-*.events.jsonl"):
         for event in read_events(event_path):
             item = event.get("item", {})

@@ -27,9 +27,11 @@ import html
 import json
 import re
 
+from tool_names import capability
+
 
 def _name(name):
-    return name.removeprefix("mcp__anytype__").replace("-", "_").removeprefix("API_")
+    return capability(name)
 
 
 def _issue(out, category, code, **details):

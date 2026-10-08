@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from eval_fixtures import FixtureClient, concurrent_edit
 from snapshot_run import snapshot
+from tool_names import Vocabulary, capability
 
 
 def result(doc, etag=None):
@@ -29,10 +30,10 @@ class FixtureTests(unittest.TestCase):
     def test_missing_prepared_content_is_not_silently_repaired(self):
         class Client:
             space_id = "owned"
-            def call(inner, tool, args):
-                if tool == "API-search-space":
+            def call(inner, tool, args, body=None):
+                if capability(tool) == "search_space":
                     return result({"data": [{"id": "bug", "name": "Lost cursor"}]})
-                if tool == "API-get-object":
+                if capability(tool) == "get_object":
                     return result({"blocks": []}, '"etag"')
                 self.fail("fixture must not repair missing model content")
         with self.assertRaises(ValueError):
@@ -43,18 +44,18 @@ class FixtureTests(unittest.TestCase):
         class Client:
             space_id = "owned"
             edited = False
-            def call(inner, tool, args):
-                calls.append((tool, args))
-                if tool == "API-search-space":
+            def call(inner, tool, args, body=None):
+                calls.append((tool, Vocabulary("bridge").arguments(args, body)))
+                if capability(tool) == "search_space":
                     return result({"data": [{"id": "bug", "name": "Lost cursor"}]})
-                if tool == "API-patch-object":
+                if capability(tool) == "patch_object":
                     inner.edited = True
                     return result({"etag": "new"})
                 return result({"blocks": [{"id": "target", "type": "paragraph", "text":
                     "Cursor stays visible on mobile" if inner.edited else "Cursor stays visible"},
                     {"id": "keep", "type": "paragraph", "text": "Keep this"}]}, '"old"')
         concurrent_edit(Client())
-        mutation = next(args for tool, args in calls if tool == "API-patch-object")
+        mutation = next(args for tool, args in calls if capability(tool) == "patch_object")
         self.assertEqual(mutation["expected_etag"], '"old"')
         self.assertEqual(mutation["body"]["ops"], [{"op": "update_block", "id": "target",
                                                    "set": {"text": "Cursor stays visible on mobile"}}])

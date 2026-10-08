@@ -11,6 +11,8 @@ from pathlib import Path
 import re
 import sys
 
+from tool_names import capability
+
 DEFAULT_ROOT = Path("/private/tmp/anytype-mcp-eval-runs")
 SURFACE = Path(__file__).resolve().parents[2] / "docs/evals/anytype-mcp-v2/surface-snapshot.json"
 SCOPED = set("""add_chat_message create_chat create_collection create_object
@@ -59,7 +61,7 @@ def clean(value, key=""):
 
 
 def normalized(name):
-    return name.removeprefix("mcp__anytype__").replace("-", "_").removeprefix("API_").lower()
+    return capability(name)
 
 
 def text_objects(result):

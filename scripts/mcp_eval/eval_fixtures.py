@@ -11,6 +11,7 @@ import time
 
 from snapshot_run import Reader
 from space_guard import documents
+from tool_names import capability, vocabulary_for
 
 
 def write_json(path, value):
@@ -30,18 +31,25 @@ class FixtureClient(Reader):
     def __init__(self, run_dir, manifest, codex, upstream, evidence):
         self.space_id = owned_space(manifest)
         self.evidence = evidence
+        self.vocab = vocabulary_for(manifest)
         super().__init__(run_dir, manifest, codex, upstream,
                          trace_name="fixture-mcp-wire.jsonl", stderr_name="fixture.stderr.log")
 
-    def call(self, tool, arguments):
+    ALLOWED = {"search_space", "get_object", "patch_object", "delete_object",
+               "get_chat_messages", "get_member_me"}
+
+    def call(self, cap, arguments, body=None):
+        """Call capability `cap`; body members are nested or flattened as
+        this run's surface takes them."""
         if arguments.get("space_id") != self.space_id:
             raise ValueError("Fixture cannot address another space")
-        allowed = {"API-search-space", "API-get-object", "API-patch-object",
-                   "API-delete-object", "API-get-chat-messages", "API-get-member-me"}
-        if tool not in allowed:
+        cap = capability(cap)
+        if cap not in self.ALLOWED:
             raise ValueError("Fixture tool is not allowlisted")
-        if tool == "API-delete-object" and arguments.get("dry_run") is not True:
+        if cap == "delete_object" and arguments.get("dry_run") is not True:
             raise ValueError("Fixture may only preview object deletion")
+        arguments = self.vocab.arguments(arguments, body)
+        tool = self.vocab.tool(cap)
         result = self.request("tools/call", {"name": tool, "arguments": arguments})
         self.evidence.append({"tool": tool, "arguments": arguments, "result": result})
         return result
@@ -54,7 +62,7 @@ def checked_document(result):
 
 
 def exact_named_object(client, name):
-    result = checked_document(client.call("API-search-space", {
+    result = checked_document(client.call("search_space", {
         "space_id": client.space_id, "query": name, "limit": 100, "fields": ["name"]}))
     hits = [x for x in result.get("data", []) if x.get("name") == name or x.get("properties", {}).get("name") == name]
     if len(hits) != 1:
@@ -64,7 +72,7 @@ def exact_named_object(client, name):
 
 def concurrent_edit(client):
     object_id = exact_named_object(client, "Lost cursor")
-    before = client.call("API-get-object", {"space_id": client.space_id, "object_id": object_id, "ids": "full"})
+    before = client.call("get_object", {"space_id": client.space_id, "object_id": object_id, "ids": "full"})
     doc = checked_document(before)
     matches = [b for b in doc.get("blocks", []) if b.get("type") == "paragraph" and
                isinstance(b.get("text"), str) and b["text"].count("Cursor stays visible") == 1]
@@ -75,11 +83,10 @@ def concurrent_edit(client):
     if len(etags) != 1:
         raise ValueError("Fixture needs the actual object etag")
     new_text = matches[0]["text"].replace("Cursor stays visible", "Cursor stays visible on mobile", 1)
-    checked_document(client.call("API-patch-object", {
-        "space_id": client.space_id, "object_id": object_id, "expected_etag": etags[0],
-        "body": {"ops": [{"op": "update_block", "id": matches[0]["id"],
-                           "set": {"text": new_text}}]}}))
-    after = checked_document(client.call("API-get-object", {"space_id": client.space_id, "object_id": object_id, "ids": "full"}))
+    checked_document(client.call("patch_object", {
+        "space_id": client.space_id, "object_id": object_id, "expected_etag": etags[0]},
+        body={"ops": [{"op": "update_block", "id": matches[0]["id"], "set": {"text": new_text}}]}))
+    after = checked_document(client.call("get_object", {"space_id": client.space_id, "object_id": object_id, "ids": "full"}))
     if not any(b.get("id") == matches[0]["id"] and b.get("text") == new_text for b in after.get("blocks", [])):
         raise ValueError("Concurrent fixture edit was not verified")
 
@@ -133,16 +140,16 @@ def before_turn(run_dir, manifest, turn, codex, upstream):
                 object_id = exact_named_object(client, "Original lease notes")
                 if object_id != receipt.get("object_id"):
                     raise ValueError("Desktop fixture receipt does not match the observed object")
-                refusal = client.call("API-delete-object", {"space_id": client.space_id, "object_id": object_id, "dry_run": True})
+                refusal = client.call("delete_object", {"space_id": client.space_id, "object_id": object_id, "dry_run": True})
                 if not any(d.get("code") == "not_created_by_this_key" for d in documents(refusal)):
                     raise ValueError("Desktop object provenance refusal was not verified")
             else:
                 # Actual peer identity and unread invariants are reviewed from
                 # the supplied raw peer receipts plus this independent read.
-                current = checked_document(client.call("API-get-member-me", {"space_id": client.space_id}))
+                current = checked_document(client.call("get_member_me", {"space_id": client.space_id}))
                 if not receipt.get("peer_id") or receipt["peer_id"] == current.get("id"):
                     raise ValueError("A distinct actual peer identity is required")
-                page = checked_document(client.call("API-get-chat-messages", {
+                page = checked_document(client.call("get_chat_messages", {
                     "space_id": client.space_id, "chat_id": receipt["chat_id"], "limit": 100, "reactions": "full"}))
                 peers = [m for m in page.get("messages", []) if m.get("author_id") == receipt["peer_id"]]
                 expected = "Update 27" if kind == "peer_history" else "Update 28"

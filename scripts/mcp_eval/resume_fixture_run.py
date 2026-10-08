@@ -27,6 +27,8 @@ from fault_hooks import atomic_json
 from snapshot_run import snapshot
 from space_guard import documents
 
+from tool_names import capability
+
 
 FROZEN_SUITE = runner.ROOT / "docs/evals/anytype-mcp-v2/artifacts/luna-three-runs/spec/scenarios.json"
 BOUNDARIES = {("MCP-28", 7): "desktop_provenance",
@@ -134,7 +136,7 @@ def check_completed_events(path, session_id):
                 # This captured capability refusal is read-only and explicit;
                 # it cannot hide a committed write. Do not generalize to 5xx
                 # responses from writes, unknown tools, or transport errors.
-                schema_unavailable = item.get("tool") == "API-get-type-schema" and any(
+                schema_unavailable = capability(item.get("tool")) == "get_type_schema" and any(
                     d.get("status") == 501 and d.get("code") == "not_implemented" for d in failures)
                 require(known_refusal or schema_unavailable, f"Failed tool outcome is uncertain: {path}")
             calls.append((item["tool"], item.get("arguments", {})))
@@ -211,7 +213,7 @@ def validate(run_dir, suite_path=FROZEN_SUITE, *, own_lock=None):
             observed.append((payload["params"]["name"], payload["params"].get("arguments", {})))
         elif direction == "from_upstream" and payload.get("id") in pending:
             original = pending[payload["id"]]
-            if original["params"]["name"] == "API-create-space":
+            if capability(original["params"]["name"]) == "create_space":
                 created_owned_space |= any(d.get("id") == scope["spaces"][0]["full_id"]
                                            for d in documents(payload.get("result", {})))
         elif direction == "to_model":

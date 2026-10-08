@@ -8,6 +8,8 @@ from pathlib import Path
 from campaign_status import BASE, build
 from summarize_runs import call_records, error_info, is_failed, normalized
 
+from tool_names import body as call_body
+
 
 def main():
     campaign = BASE / "artifacts/luna-three-runs"
@@ -31,7 +33,7 @@ def main():
             if tool == "get_op_schema":
                 schema_calls["ops/" + args.get("op", "unknown")] += 1
             if tool == "patch_object":
-                body = args.get("body") or {}
+                body = call_body(tool, args)
                 for operation in body.get("ops", []) if isinstance(body, dict) else []:
                     if isinstance(operation, dict):
                         name = operation.get("op", "unknown")

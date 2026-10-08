@@ -8,6 +8,8 @@ from collections import Counter
 import json
 from pathlib import Path
 
+from tool_names import capability
+
 ROOT = Path(__file__).resolve().parents[2]
 EXPECTATIONS = ROOT / 'docs/evals/anytype-mcp-v2/final-query-expectations.json'
 DEFAULT_RUNS = Path('/private/tmp/anytype-mcp-eval-runs')
@@ -34,7 +36,7 @@ def content_json(result):
 def query_objects(reads):
     found = {}
     for i, read in enumerate(reads):
-        if read.get('tool') != 'API-get-object':
+        if capability(read.get('tool')) != 'get_object':
             continue
         for doc in content_json(read.get('result')):
             props = doc.get('properties', {})
@@ -50,7 +52,7 @@ def collect_pages(reads, query_id, view_id):
     pages = []
     for i, read in enumerate(reads):
         args = read.get('arguments', {})
-        if read.get('tool') != 'API-get-query-objects' or args.get('query_id') != query_id or args.get('view') != view_id:
+        if capability(read.get('tool')) != 'get_query_objects' or args.get('query_id') != query_id or args.get('view') != view_id:
             continue
         doc = next(content_json(read.get('result')), {})
         if not isinstance(doc.get('data'), list):

@@ -14,6 +14,7 @@ import subprocess
 import sys
 
 from space_guard import documents
+from tool_names import capability, vocabulary_for
 
 
 class Reader:
@@ -56,10 +57,12 @@ class Reader:
                     raise RuntimeError(response["error"])
                 return response["result"]
 
+    READ_ONLY = {"get_space", "get_object", "get_type", "search_space", "get_query_objects",
+                 "get_collection_objects", "get_chat_messages", "list_property_options"}
+
     def call(self, tool, arguments):
-        if tool not in {"API-get-space", "API-get-object", "API-get-type", "API-search-space",
-                        "API-get-query-objects", "API-get-collection-objects",
-                        "API-get-chat-messages", "API-list-property-options"}:
+        """Call a read-only tool, named in the run's surface's spelling."""
+        if capability(tool) not in self.READ_ONLY:
             raise ValueError("Reviewer tool is not read-only allowlisted")
         return self.request("tools/call", {"name": tool, "arguments": arguments})
 
@@ -91,14 +94,17 @@ def snapshot(run_dir, codex, upstream, *, output_path=None, allow_running=False)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     client = Reader(run_dir, manifest, codex, upstream)
 
-    def read(tool, **args):
+    vocab = vocabulary_for(manifest)
+
+    def read(cap, **args):
         args["space_id"] = space_id
+        tool = vocab.tool(cap)
         response = client.call(tool, args)
         output["reads"].append({"tool": tool, "arguments": args, "result": response})
         return next(documents(response), {})
 
     try:
-        read("API-get-space", ids="full")
+        read("get_space", ids="full")
         authored = {}
         types = set()
         calls = [json.loads(line) for line in (run_dir / "tool-calls.jsonl").read_text().splitlines()]
@@ -124,18 +130,19 @@ def snapshot(run_dir, codex, upstream, *, output_path=None, allow_running=False)
                 continue
             for receipt in documents(call.get("result") or {}):
                 object_id = receipt.get("id")
-                if call["tool"] == "API-create-type" and receipt.get("key"):
+                cap = capability(call["tool"])
+                if cap == "create_type" and receipt.get("key"):
                     types.add(receipt["key"])
-                if object_id and call["tool"] == "API-create-chat":
+                if object_id and cap == "create_chat":
                     chats.add(object_id)
-                if object_id and call["tool"] in {"API-create-object", "API-create-template",
-                                                  "API-create-query", "API-create-collection"}:
+                if object_id and cap in {"create_object", "create_template",
+                                         "create_query", "create_collection"}:
                     authored[object_id] = call["tool"]
         for type_key in sorted(types):
-            read("API-get-type", type=type_key, ids="full")
+            read("get_type", type=type_key, ids="full")
             offset = 0
             while True:
-                page = read("API-search-space", type=type_key, limit=100, offset=offset)
+                page = read("search_space", type=type_key, limit=100, offset=offset)
                 if not page.get("has_more"):
                     break
                 rows = page.get("data", [])
@@ -143,12 +150,12 @@ def snapshot(run_dir, codex, upstream, *, output_path=None, allow_running=False)
                     raise ValueError("Type inventory pagination reports more data without rows")
                 offset += len(rows)
         for object_id, creation in authored.items():
-            doc = read("API-get-object", object_id=object_id, ids="full")
+            doc = read("get_object", object_id=object_id, ids="full")
             # Generic create_object can also author a query/collection document.
             if doc.get("type") not in {"query", "collection"}:
                 continue
             is_query = doc.get("type") == "query"
-            tool = "API-get-query-objects" if is_query else "API-get-collection-objects"
+            tool = "get_query_objects" if is_query else "get_collection_objects"
             id_arg = "query_id" if is_query else "collection_id"
             views = [v for b in doc.get("blocks", []) for v in b.get("views", [])]
             # Membership/source results and every stored view are separate facts.
@@ -172,7 +179,7 @@ def snapshot(run_dir, codex, upstream, *, output_path=None, allow_running=False)
                 args = {"chat_id": chat_id, "limit": 100, "reactions": "full"}
                 if before:
                     args["before"] = before
-                page = read("API-get-chat-messages", **args)
+                page = read("get_chat_messages", **args)
                 if not page.get("has_more"):
                     break
                 cursor = page.get("next_before")
