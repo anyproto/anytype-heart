@@ -287,3 +287,24 @@ func TestIdempotencyKeyArgumentIsBounded(t *testing.T) {
 		assert.Empty(t, api.requests)
 	}
 }
+
+// TestRetryKeyIsAHeaderOnEveryWrite: an explicit retry key goes to the
+// header and never into the body — on a tool whose route documents the
+// header, one whose route does not, and an open-or-document body.
+func TestRetryKeyIsAHeaderOnEveryWrite(t *testing.T) {
+	cases := map[string]map[string]any{
+		"patch_object":  {"space_id": "s", "object_id": "o", "ops": []any{map[string]any{"op": "delete_block", "id": "b1"}}},
+		"create_object": {"space_id": "s", "type": "page", "name": "x"},
+		"create_chat":   {"space_id": "s", "name": "x"},
+	}
+	for name, args := range cases {
+		t.Run(name, func(t *testing.T) {
+			ex, api := newExecutorFixture(t)
+			args["idempotency_key"] = "retry-1"
+			_, err := ex.Run(context.Background(), name, args)
+			require.NoError(t, err)
+			assert.Equal(t, "retry-1", api.requests[0].Header.Get("Idempotency-Key"))
+			assert.NotContains(t, api.requests[0].Body, "idempotency")
+		})
+	}
+}

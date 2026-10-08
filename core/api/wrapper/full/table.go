@@ -31,6 +31,12 @@ type Inputs struct {
 	// the typed `ops` envelope on patch_object and update_type is built from
 	// them, one oneOf branch per op of the channel.
 	Ops map[string]OpSchema
+	// Kinds are served discovery schemas by kind (GET /v2/schemas/{kind}),
+	// for the bodies the document still leaves open: an AnyBlock document
+	// is too large for the document to splice into four operations, so it
+	// names the kind instead, and the table embeds it (BodyKinds lists
+	// which).
+	Kinds map[string]json.RawMessage
 }
 
 // OpSchema is one served op schema with the channels that accept the op.

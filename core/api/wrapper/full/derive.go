@@ -11,8 +11,11 @@ package full
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/anyproto/anytype-heart/core/api/wrapper"
 )
 
 // The document shapes this file reads. Anything else in the document is
@@ -100,7 +103,7 @@ func Derive(in Inputs) (*Table, error) {
 			table.Excluded[l.op.OperationId] = o.Exclude
 			continue
 		}
-		tool, err := deriveTool(l.method, l.path, l.op, o, doc.Components.Schemas, in.Ops)
+		tool, err := deriveTool(l.method, l.path, l.op, o, doc.Components.Schemas, in)
 		if err != nil {
 			return nil, fmt.Errorf("derive %s: %w", l.op.OperationId, err)
 		}
@@ -111,7 +114,7 @@ func Derive(in Inputs) (*Table, error) {
 }
 
 // deriveTool builds one tool.
-func deriveTool(method, path string, op openAPIOperation, o overlay, components map[string]json.RawMessage, served map[string]OpSchema) (Tool, error) {
+func deriveTool(method, path string, op openAPIOperation, o overlay, components map[string]json.RawMessage, in Inputs) (Tool, error) {
 	tool := Tool{
 		Name:        op.OperationId,
 		Method:      strings.ToUpper(method),
@@ -149,6 +152,14 @@ func deriveTool(method, path string, op openAPIOperation, o overlay, components 
 		}
 		tool.Args = append(tool.Args, arg)
 	}
+	// every write takes a retry key, documented on the route or not: it is
+	// a header the executor owns, never a body member
+	if method != "get" && method != "head" {
+		if _, ok := tool.Arg(idempotencyKeyArg); !ok {
+			tool.Args = append(tool.Args, Arg{Name: idempotencyKeyArg, In: ArgHeader, Wire: wrapper.IdempotencyKeyHeader})
+		}
+		props[idempotencyKeyArg] = idempotencyKeySchema()
+	}
 	paramNames := make([]string, 0, len(tool.Args))
 	for _, a := range tool.Args {
 		paramNames = append(paramNames, a.Name)
@@ -156,6 +167,7 @@ func deriveTool(method, path string, op openAPIOperation, o overlay, components 
 
 	// body
 	strict := true
+	renamesUsed := map[string]bool{}
 	if op.RequestBody != nil {
 		content, ok := op.RequestBody.Content[contentJSON]
 		if ok {
@@ -165,22 +177,34 @@ func deriveTool(method, path string, op openAPIOperation, o overlay, components 
 				return Tool{}, fmt.Errorf("request body: %w", err)
 			}
 			if o.OpsChannel != "" {
-				if err := typeOpsEnvelope(body, o.OpsChannel, served, defs, pending); err != nil {
+				if err := typeOpsEnvelope(body, o.OpsChannel, in.Ops, defs, pending); err != nil {
 					return Tool{}, fmt.Errorf("ops envelope: %w", err)
 				}
 			}
-			open, err := hoistBody(body, root, props, &required, &tool.Args, paramNames)
+			if o.BodyKind != "" {
+				body, err = embedOpaqueBody(body, o.BodyKind, in.Kinds, defs, pending)
+				if err != nil {
+					return Tool{}, fmt.Errorf("document body: %w", err)
+				}
+			}
+			h := hoister{root: root, props: props, required: &required, args: &tool.Args, paramNames: paramNames, renames: o.RenameBodyMember, used: renamesUsed}
+			open, err := h.hoist(body)
 			if err != nil {
 				return Tool{}, fmt.Errorf("request body: %w", err)
 			}
 			tool.OpenBody = open
 			strict = !open
-			if desc, _ := body["description"].(string); desc != "" && len(bodyProperties(body)) == 0 {
+			if desc, _ := body["description"].(string); desc != "" && len(bodyProperties(body)) == 0 && body["anyOf"] == nil {
 				// a document body: its shape is named, not listed
 				tool.Description += " Body: " + desc + "."
 			}
 		} else if len(op.RequestBody.Content) > 0 {
 			return Tool{}, fmt.Errorf("request body has no %s form", contentJSON)
+		}
+	}
+	for from := range o.RenameBodyMember {
+		if !renamesUsed[from] {
+			return Tool{}, fmt.Errorf("overlay renames body member %q, which the body does not have", from)
 		}
 	}
 
@@ -193,42 +217,27 @@ func deriveTool(method, path string, op openAPIOperation, o overlay, components 
 		required = remove(required, name)
 		tool.Args = removeArg(tool.Args, name)
 	}
-	for from, to := range o.RenameArg {
-		schema, ok := props[from]
-		if !ok {
-			return Tool{}, fmt.Errorf("overlay renames argument %q, which the tool does not have", from)
-		}
-		if _, taken := props[to]; taken {
-			return Tool{}, fmt.Errorf("overlay renames %q to %q, which the tool already has", from, to)
-		}
-		delete(props, from)
-		props[to] = schema
-		for i := range required {
-			if required[i] == from {
-				required[i] = to
-			}
-		}
-		for i := range tool.Args {
-			if tool.Args[i].Name == from {
-				tool.Args[i].Name = to
-			}
-		}
-	}
 
 	// assemble
-	for name, raw := range refs.collected() {
+	collected, err := refs.collected()
+	if err != nil {
+		return Tool{}, err
+	}
+	for name, raw := range collected {
 		if _, taken := defs[name]; taken {
 			return Tool{}, fmt.Errorf("$defs name %q is both a component and an op definition", name)
 		}
 		defs[name] = raw
 	}
+	// the arguments are attached before deduplication: the merge re-aims
+	// every reference under root, and embedded members live there
+	root["properties"] = props
 	if len(defs) > 0 {
 		if err := dedupeOpDefs(root, defs, pending); err != nil {
 			return Tool{}, err
 		}
 		root["$defs"] = defs
 	}
-	root["properties"] = props
 	if len(required) > 0 {
 		sort.Strings(required)
 		root["required"] = required
@@ -242,6 +251,21 @@ func deriveTool(method, path string, op openAPIOperation, o overlay, components 
 	}
 	tool.InputSchema = schema
 	return tool, nil
+}
+
+// idempotencyKeyArg is the reserved retry-key argument on every write.
+const idempotencyKeyArg = "idempotency_key"
+
+// idempotencyKeySchema is the retry key's argument schema, bounded the way
+// the server bounds the header.
+func idempotencyKeySchema() map[string]any {
+	return map[string]any{
+		"type":        "string",
+		"minLength":   1,
+		"maxLength":   wrapper.MaxIdempotencyKeyLen,
+		"pattern":     "^[!-~]+$",
+		"description": "retry key: send the same value to retry this exact call without applying it twice; one is made for you when omitted",
+	}
 }
 
 // describe renders the tool description: the overlay's, else the
@@ -285,73 +309,35 @@ func snakeCase(header string) string {
 	return strings.ToLower(strings.ReplaceAll(header, "-", "_"))
 }
 
-// hoistBody lifts a body schema onto the tool root: its members become
-// arguments beside the parameters. Returns whether the body is open —
-// takes members beyond the listed ones.
-//
-// A body with alternatives keeps them as root-level anyOf constraints over
-// the same flat arguments. The member schemas live once, on the root; each
-// branch keeps only what makes it an alternative — its membership
-// (properties reduced to markers, widened with the parameter arguments so
-// its own additionalProperties:false still decides which members belong
-// together: a flat type patch may not carry ops, an envelope may not carry
-// name), its required list and its description. A member two branches both
-// declare takes the first branch's schema on the root.
-func hoistBody(body, root map[string]any, props map[string]any, required *[]string, args *[]Arg, paramNames []string) (bool, error) {
-	if branches, ok := body["anyOf"].([]any); ok {
-		open := false
-		reduced := make([]any, 0, len(branches))
-		for _, raw := range branches {
-			branch, ok := raw.(map[string]any)
-			if !ok {
-				return false, fmt.Errorf("anyOf branch is not an object schema")
-			}
-			if err := addBodyMembers(branch, props, nil, args); err != nil {
-				return false, err
-			}
-			if isOpenObject(branch) {
-				open = true
-			}
-			markers := map[string]any{}
-			for name := range bodyProperties(branch) {
-				markers[name] = map[string]any{}
-			}
-			for _, name := range paramNames {
-				if _, collides := markers[name]; collides {
-					return false, fmt.Errorf("body member %q collides with a parameter of the same name — rename one in the overlay (RenameArg)", name)
-				}
-				markers[name] = map[string]any{}
-			}
-			constraint := map[string]any{"properties": markers}
-			for _, key := range []string{"required", "additionalProperties", "description", "allOf", "minProperties"} {
-				if v, ok := branch[key]; ok {
-					constraint[key] = v
-				}
-			}
-			reduced = append(reduced, constraint)
-		}
-		root["anyOf"] = reduced
-		if desc, _ := body["description"].(string); desc != "" {
-			root["description"] = desc
-		}
-		return open, nil
-	}
-	if err := addBodyMembers(body, props, required, args); err != nil {
-		return false, err
-	}
-	for _, key := range []string{"allOf", "oneOf", "not", "minProperties", "maxProperties"} {
-		if v, ok := body[key]; ok {
-			root[key] = v
-		}
-	}
-	return isOpenObject(body), nil
+// legalArgName is the argument-name shape every tool host accepts (the
+// Claude API's input_schema property keys); a body member spelled outside
+// it (a document's "$schema") is not offered as an argument.
+var legalArgName = regexp.MustCompile(`^[a-zA-Z0-9_.-]{1,64}$`)
+
+// hoister lifts a body schema onto the tool root: its members become
+// arguments beside the parameters.
+type hoister struct {
+	root       map[string]any
+	props      map[string]any
+	required   *[]string
+	args       *[]Arg
+	paramNames []string
+	// renames maps a body member (its wire name) to its argument name; used
+	// records which ones applied.
+	renames map[string]string
+	used    map[string]bool
 }
 
-// addBodyMembers adds a body object's properties as arguments. When
-// requiredOut is nil the branch's required list stays on the branch (an
-// alternative's requirement is not the tool's).
-func addBodyMembers(body map[string]any, props map[string]any, requiredOut *[]string, args *[]Arg) error {
-	bodyProps := bodyProperties(body)
+// member is one body member as an argument.
+type member struct {
+	name, wire string
+	schema     any
+	required   bool
+}
+
+// members lists a body object's members under their argument names,
+// refusing one that collides with a parameter.
+func (h hoister) members(body map[string]any) ([]member, error) {
 	bodyRequired := map[string]bool{}
 	if list, ok := body["required"].([]any); ok {
 		for _, r := range list {
@@ -360,22 +346,197 @@ func addBodyMembers(body map[string]any, props map[string]any, requiredOut *[]st
 			}
 		}
 	}
-	for _, name := range sortedKeys(bodyProps) {
-		if _, dup := props[name]; dup {
-			if a, isArg := findArg(*args, name); isArg && a.In != ArgBody {
-				return fmt.Errorf("body member %q collides with a parameter of the same name — rename one in the overlay (RenameArg)", name)
+	props := bodyProperties(body)
+	out := make([]member, 0, len(props))
+	for _, wire := range sortedKeys(props) {
+		name := wire
+		if to, ok := h.renames[wire]; ok {
+			name = to
+			h.used[wire] = true
+		}
+		if !legalArgName.MatchString(name) {
+			if bodyRequired[wire] {
+				return nil, fmt.Errorf("required body member %q is not a legal argument name — rename it in the overlay (RenameBodyMember)", wire)
 			}
-			// the same member on two branches: keep the first branch's
-			// schema, the branch constraint carries the difference
 			continue
 		}
-		props[name] = bodyProps[name]
-		*args = append(*args, Arg{Name: name, In: ArgBody, Wire: name, Required: requiredOut != nil && bodyRequired[name]})
-		if requiredOut != nil && bodyRequired[name] {
-			*requiredOut = append(*requiredOut, name)
+		if a, isArg := findArg(*h.args, name); isArg && a.In != ArgBody {
+			return nil, fmt.Errorf("body member %q collides with a parameter of the same name — rename it in the overlay (RenameBodyMember)", wire)
+		}
+		out = append(out, member{name: name, wire: wire, schema: props[wire], required: bodyRequired[wire]})
+	}
+	return out, nil
+}
+
+// addArg records a body member as an argument once.
+func (h hoister) addArg(m member, required bool) {
+	if _, ok := findArg(*h.args, m.name); ok {
+		return
+	}
+	*h.args = append(*h.args, Arg{Name: m.name, In: ArgBody, Wire: m.wire, Required: required})
+}
+
+// crossMember copies the constraints that name members (allOf, oneOf,
+// not) from a body to target. Renames would leave them naming wire names,
+// so a body that both renames and carries them is refused.
+func (h hoister) crossMember(body, target map[string]any) error {
+	for _, key := range []string{"allOf", "oneOf", "not"} {
+		v, ok := body[key]
+		if !ok {
+			continue
+		}
+		if len(h.renames) > 0 {
+			return fmt.Errorf("a body with %s cannot have its members renamed", key)
+		}
+		if key == "allOf" {
+			existing, _ := target["allOf"].([]any)
+			list, _ := v.([]any)
+			target["allOf"] = append(existing, list...)
+		} else {
+			target[key] = v
 		}
 	}
 	return nil
+}
+
+// atLeastOne turns a body's minProperties into a constraint on the
+// flattened arguments: the parameters are members of the flattened object
+// too, so a minProperties there would be met by a path argument alone.
+func atLeastOne(body map[string]any, ms []member, target map[string]any) error {
+	if _, ok := body["maxProperties"]; ok {
+		return fmt.Errorf("maxProperties on a body has no flattened equivalent")
+	}
+	v, ok := body["minProperties"]
+	if !ok {
+		return nil
+	}
+	if n, _ := v.(float64); n != 1 {
+		return fmt.Errorf("minProperties %v on a body has no flattened equivalent; only 1 is supported", v)
+	}
+	anyOf := make([]any, 0, len(ms))
+	for _, m := range ms {
+		anyOf = append(anyOf, map[string]any{"required": []string{m.name}})
+	}
+	existing, _ := target["allOf"].([]any)
+	target["allOf"] = append(existing, map[string]any{"anyOf": anyOf})
+	return nil
+}
+
+// hoist lifts body onto the root and reports whether it is open — takes
+// members beyond the listed ones.
+//
+// A body with alternatives keeps them as root-level anyOf constraints over
+// the same flat arguments. A member every branch spells the same way lives
+// once, on the root, and the branch keeps a marker; a member two branches
+// spell differently (a shortcut's properties map against a document's)
+// gets an unconstrained root entry and its real schema in each branch.
+// Each branch keeps its own required list and additionalProperties, widened
+// with the parameter names, so it still decides which members belong
+// together: a flat type patch may not carry ops, an envelope may not carry
+// name.
+func (h hoister) hoist(body map[string]any) (bool, error) {
+	branches, isAnyOf := body["anyOf"].([]any)
+	if !isAnyOf {
+		ms, err := h.members(body)
+		if err != nil {
+			return false, err
+		}
+		for _, m := range ms {
+			h.props[m.name] = m.schema
+			h.addArg(m, m.required)
+			if m.required {
+				*h.required = append(*h.required, m.name)
+			}
+		}
+		if err := h.crossMember(body, h.root); err != nil {
+			return false, err
+		}
+		if err := atLeastOne(body, ms, h.root); err != nil {
+			return false, err
+		}
+		return isOpenObject(body), nil
+	}
+
+	perBranch := make([][]member, len(branches))
+	spellings := map[string]map[string]bool{}
+	for i, raw := range branches {
+		branch, ok := raw.(map[string]any)
+		if !ok {
+			return false, fmt.Errorf("anyOf branch is not an object schema")
+		}
+		ms, err := h.members(branch)
+		if err != nil {
+			return false, err
+		}
+		perBranch[i] = ms
+		for _, m := range ms {
+			canonical, err := json.Marshal(m.schema)
+			if err != nil {
+				return false, fmt.Errorf("encode member %s: %w", m.name, err)
+			}
+			if spellings[m.name] == nil {
+				spellings[m.name] = map[string]bool{}
+			}
+			spellings[m.name][string(canonical)] = true
+		}
+	}
+	open := false
+	reduced := make([]any, 0, len(branches))
+	for i, raw := range branches {
+		branch := raw.(map[string]any)
+		if isOpenObject(branch) {
+			open = true
+		}
+		markers := map[string]any{}
+		var branchRequired []string
+		for _, m := range perBranch[i] {
+			if len(spellings[m.name]) > 1 {
+				markers[m.name] = m.schema
+				if _, ok := h.props[m.name]; !ok {
+					unconstrained := map[string]any{}
+					if sm, ok := m.schema.(map[string]any); ok {
+						if d, ok := sm["description"]; ok {
+							unconstrained["description"] = d
+						}
+					}
+					h.props[m.name] = unconstrained
+				}
+			} else {
+				markers[m.name] = map[string]any{}
+				if _, ok := h.props[m.name]; !ok {
+					h.props[m.name] = m.schema
+				}
+			}
+			h.addArg(m, false)
+			if m.required {
+				branchRequired = append(branchRequired, m.name)
+			}
+		}
+		for _, name := range h.paramNames {
+			markers[name] = map[string]any{}
+		}
+		constraint := map[string]any{"properties": markers}
+		if len(branchRequired) > 0 {
+			constraint["required"] = branchRequired
+		}
+		for _, key := range []string{"additionalProperties", "description"} {
+			if v, ok := branch[key]; ok {
+				constraint[key] = v
+			}
+		}
+		if err := h.crossMember(branch, constraint); err != nil {
+			return false, err
+		}
+		if err := atLeastOne(branch, perBranch[i], constraint); err != nil {
+			return false, err
+		}
+		reduced = append(reduced, constraint)
+	}
+	h.root["anyOf"] = reduced
+	if desc, _ := body["description"].(string); desc != "" {
+		h.root["description"] = desc
+	}
+	return open, nil
 }
 
 // bodyProperties returns a body schema's properties map, or nil.
@@ -509,28 +670,29 @@ func (c *refCollector) rewrite(node any) error {
 }
 
 // collected returns every referenced component, transitively, rewritten
-// the same way.
-func (c *refCollector) collected() map[string]any {
+// the same way. A component that does not decode, or that references one
+// the document lacks, fails the derivation — a dangling $ref in a served
+// tool schema is a host-side failure no test of the tool would see.
+func (c *refCollector) collected() (map[string]any, error) {
 	out := map[string]any{}
 	for {
 		progressed := false
-		for name := range c.needed {
+		for _, name := range sortedKeys(c.needed) {
 			if _, done := out[name]; done {
 				continue
 			}
 			var node any
 			if err := json.Unmarshal(c.components[name], &node); err != nil {
-				// the document is valid JSON by the time it is embedded;
-				// an unreadable component is a test-time failure elsewhere
-				out[name] = map[string]any{}
-				continue
+				return nil, fmt.Errorf("decode component %s: %w", name, err)
 			}
-			_ = c.rewrite(node)
+			if err := c.rewrite(node); err != nil {
+				return nil, fmt.Errorf("component %s: %w", name, err)
+			}
 			out[name] = node
 			progressed = true
 		}
 		if !progressed {
-			return out
+			return out, nil
 		}
 	}
 }
