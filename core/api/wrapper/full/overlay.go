@@ -18,6 +18,10 @@ type overlay struct {
 	Destructive bool
 	// Description replaces the document's description.
 	Description string
+	// CallerRetryKey exposes idempotency_key to the caller. The executor
+	// mints a key for every write anyway; this is for the call whose blind
+	// replay is not harmless — toggling a reaction twice removes it.
+	CallerRetryKey bool
 	// RenameBodyMember gives a body member (by its wire name) another
 	// argument name — the fix a body/parameter name collision names; the
 	// executor still sends it under its wire name. DropArg removes
@@ -47,6 +51,8 @@ var overlays = map[string]overlay{
 	"search_space":  {ReadOnly: true},
 	"search_global": {ReadOnly: true},
 	"validate":      {ReadOnly: true},
+
+	"toggle_chat_reaction": {CallerRetryKey: true},
 
 	"patch_object": {Destructive: true},
 	"update_type":  {Destructive: true},
