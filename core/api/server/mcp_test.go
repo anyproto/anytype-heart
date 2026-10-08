@@ -15,6 +15,10 @@ import (
 	"testing"
 	"time"
 
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+	"github.com/gogo/protobuf/types"
+
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -489,4 +493,30 @@ func TestMCPProtocolHeaderAndSessionsOnEveryMethod(t *testing.T) {
 	fx.Server.mcp.now = func() time.Time { return time.Now().Add(2 * (mcpSessionIdle + time.Minute)) }
 	w = fx.mcpDo(t, mcpCall{method: http.MethodDelete, tier: "small", key: "keyA", session: sid2})
 	assert.Equal(t, http.StatusNotFound, w.Code, "an idle session that was never swept is gone for DELETE")
+}
+
+// TestMCPFullRefusalNamesTheOpLookupAsATool: a bad op payload is refused by
+// the real service with a typed reference to the op's schema, and the full
+// tier renders that reference as the call to make — get_op_schema with its
+// op — never as a route. This is the lookup an open op body relies on.
+func TestMCPFullRefusalNamesTheOpLookupAsATool(t *testing.T) {
+	fx := mcpFixture(t)
+	registerGrantTestSpace(t, fx, spaceRefFullId, "Garden")
+	fx.readerMock.EXPECT().ReadObject(mock.Anything, spaceRefFullId, "bafyreiobject").Return(apicore.ObjectRead{
+		SbType: model.SmartBlockType_Page,
+		Snapshot: &model.SmartBlockSnapshotBase{
+			Details:     &types.Struct{Fields: map[string]*types.Value{"id": pbtypes.String("bafyreiobject"), "name": pbtypes.String("Doc")}},
+			ObjectTypes: []string{"ot-page"},
+			Blocks:      []*model.Block{{Id: "bafyreiobject", Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}},
+		},
+		Heads: []string{"h"},
+	}, nil).Maybe()
+	w := fx.mcpDo(t, mcpCall{tier: "full", key: "keyA", body: toolCall(t, 1, "patch_object", map[string]any{
+		"space_id": spaceRefFullId, "object_id": "bafyreiobject", "dry_run": true,
+		"ops": []any{map[string]any{"op": "insert_blocks", "markdown": "x", "no_such_member": 1}}})})
+	result := rpcResult(t, w)
+	require.Equal(t, true, result["isError"], "%v", result)
+	text := result["content"].([]any)[0].(map[string]any)["text"].(string)
+	assert.Contains(t, text, "`get_op_schema` with op: insert_blocks")
+	assert.NotRegexp(t, `(?:GET|POST|PATCH|PUT|DELETE) /v[0-9]+`, text)
 }

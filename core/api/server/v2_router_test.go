@@ -77,6 +77,7 @@ func newV2ServerFixture(t *testing.T) *fixture {
 		fileObjectMock:       fileObjectMock,
 		widgetsMock:          widgetsMock,
 		objectStore:          store,
+		readerMock:           readerMock,
 	}
 }
 
