@@ -8,7 +8,7 @@ import tempfile
 import threading
 import unittest
 
-from space_guard import apply_arm, opaque_ops, reachable_defs, compact_bytes
+from space_guard import apply_arm, inline_tool, reachable_defs, compact_bytes, OP_BRANCH
 
 HERE = Path(__file__).resolve().parent
 GOLDEN = HERE.parents[1] / "core/api/wrapper/full/testdata/tools_list.golden.json"
@@ -35,6 +35,10 @@ class StubMCP(BaseHTTPRequestHandler):
             result = StubMCP.tools
         elif method == "tools/call" and body["params"]["name"] == "create_space":
             result = {"content": [{"type": "text", "text": json.dumps({"id": SPACE})}]}
+        elif method == "tools/call" and body["params"]["name"] == "get_op_schema":
+            result = {"content": [{"type": "text", "text": json.dumps(served_op(body["params"]["arguments"]["op"]))}]}
+        elif method == "tools/call" and body["params"]["name"] == "get_schema":
+            result = {"content": [{"type": "text", "text": json.dumps(served_kind(body["params"]["arguments"]["kind"]))}]}
         else:
             result = {"content": [{"type": "text", "text": json.dumps({"echo": body["params"]})}]}
         data = json.dumps({"jsonrpc": "2.0", "id": body["id"], "result": result}).encode()
@@ -50,6 +54,49 @@ class StubMCP(BaseHTTPRequestHandler):
 
 def golden():
     return json.loads(GOLDEN.read_text())
+
+
+# Synthetic served schemas with the shapes that make inlining hard: a
+# definition name that means two different things on different ops
+# (`block`), one every op shares (`blockRef`), a document with a `$schema`
+# member, its own $defs, a cross-member allOf, and a `properties` member
+# spelled differently from the shortcut body's.
+NEW_CONTENT_OPS = {"insert_blocks", "insert_view"}
+
+
+def served_op(op):
+    block = {"type": "object", "additionalProperties": False,
+             "properties": {"type": {"type": "string"}, **({} if op in NEW_CONTENT_OPS else {"id": {"type": "string"}})}}
+    return {"kind": op, "example": {"op": op}, "schema": {
+        "type": "object", "additionalProperties": False, "required": ["op"],
+        "properties": {"op": {"const": op}, "target": {"$ref": "#/$defs/blockRef"},
+                       "blocks": {"type": "array", "items": {"$ref": "#/$defs/block"}}},
+        "$defs": {"block": block, "blockRef": {"type": "string", "maxLength": 64}}}}
+
+
+def served_kind(kind):
+    return {"kind": kind, "example": {"formatVersion": "2.0"}, "schema": {
+        "type": "object", "additionalProperties": False, "required": ["formatVersion"],
+        "properties": {"$schema": {"type": "string"}, "formatVersion": {"const": "2.0"},
+                       "properties": {"type": "object", "additionalProperties": {"$ref": "#/$defs/anyValue"}},
+                       "blocks": {"type": "array", "items": {"$ref": "#/$defs/" + kind + "Block"}}},
+        "allOf": [{"if": {"required": ["kind"]}, "then": {"required": ["blocks"]}}],
+        "$defs": {"anyValue": {"type": ["string", "number"]}, kind + "Block": {"type": "object"}}}}
+
+
+def dangling(schema):
+    refs = set()
+    def walk(node):
+        if isinstance(node, dict):
+            if isinstance(node.get("$ref"), str):
+                refs.add(node["$ref"].removeprefix("#/$defs/"))
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for v in node:
+                walk(v)
+    walk(schema)
+    return refs - set(schema.get("$defs", {}))
 
 
 class HttpUpstreamTests(unittest.TestCase):
@@ -105,46 +152,72 @@ class HttpUpstreamTests(unittest.TestCase):
         self.assertEqual({"arm": "full", "tool_count": len(golden()["tools"]), "served_bytes": compact_bytes(golden()),
                           "forwarded_bytes": compact_bytes(golden())}, stats)
 
-    def test_full_opaque_rewrites_only_the_two_envelopes(self):
-        responses, stats = self.run_guard("full-opaque", self.conversation())
+    def test_full_inline_fetches_each_lookup_once_and_inlines_it(self):
+        responses, stats = self.run_guard("full-inline", self.conversation())
         served = {t["name"]: t for t in golden()["tools"]}
-        forwarded = {t["name"]: t for t in responses[1]["result"]["tools"]}
-        self.assertEqual(list(served), list(forwarded))
-        for name, tool in served.items():
-            if name in ("patch_object", "update_type"):
-                continue
-            self.assertEqual(tool, forwarded[name], f"{name} is untouched")
-        self.assertLess(stats["forwarded_bytes"], stats["served_bytes"])
-        self.assertEqual("full-opaque", stats["arm"])
+        inlined = {t["name"]: t for t in responses[1]["result"]["tools"]}
+        self.assertEqual(list(served), list(inlined))
+        changed = {n for n in served if served[n] != inlined[n]}
+        self.assertEqual({"patch_object", "update_type", "create_object", "create_template", "create_type", "validate"}, changed)
+        for name, tool in inlined.items():
+            self.assertEqual(set(), dangling(tool["inputSchema"]), f"{name} has a dangling reference")
+        lookups = [s["body"]["params"] for s in StubMCP.seen
+                   if s["body"].get("method") == "tools/call" and s["body"]["params"]["name"] in ("get_op_schema", "get_schema")]
+        ops = [l["arguments"]["op"] for l in lookups if l["name"] == "get_op_schema"]
+        self.assertEqual(len(ops), len(set(ops)), "each op schema is fetched once")
+        self.assertEqual(18, len(ops), "15 object ops and 7 type ops, four shared")
+        self.assertEqual({"object", "template", "type_document", "document"},
+                         {l["arguments"]["kind"] for l in lookups if l["name"] == "get_schema"})
+        self.assertGreater(stats["forwarded_bytes"], stats["served_bytes"])
+        self.assertEqual("full-inline", stats["arm"])
+        wire = [json.loads(l) for l in (Path(self.tmp.name) / "wire.jsonl").read_text().splitlines()]
+        self.assertTrue(any(e["direction"] == "evaluator_to_upstream" for e in wire), "lookups are evaluator traffic")
+        self.assertFalse(any(e["direction"] == "to_model" and "evaluation-schema-" in json.dumps(e["payload"]) for e in wire))
 
 
-class OpaqueRewriteTests(unittest.TestCase):
-    def test_only_ops_items_change_and_dropped_defs_are_exactly_the_unreferenced(self):
-        for tool in golden()["tools"]:
-            if tool["name"] not in ("patch_object", "update_type"):
-                continue
-            before = tool["inputSchema"]
-            after = opaque_ops(before)
-            # only the ops items differ outside $defs
-            strip = lambda s: {k: v for k, v in s.items() if k != "$defs"}
-            b, a = json.loads(json.dumps(strip(before))), json.loads(json.dumps(strip(after)))
-            for holder in [b, *b.get("anyOf", [])]:
-                if "items" in holder.get("properties", {}).get("ops", {}):
-                    holder["properties"]["ops"]["items"] = {"type": "object"}
-            self.assertEqual(b, a, tool["name"])
-            # kept defs are exactly those still reachable, and every one of them is kept as served
-            kept = set(after.get("$defs", {}))
-            self.assertEqual(reachable_defs(after), kept)
-            self.assertTrue(kept < set(before["$defs"]), "the op definitions are gone")
-            for name in kept:
-                self.assertEqual(before["$defs"][name], after["$defs"][name])
-            self.assertFalse(any(n.startswith("op__") for n in kept))
+class InlineToolTests(unittest.TestCase):
+    def fetch(self, name, args):
+        return served_op(args["op"]) if name == "get_op_schema" else served_kind(args["kind"])
 
-    def test_an_arm_without_its_tools_is_refused(self):
+    def tool(self, name):
+        return next(t for t in golden()["tools"] if t["name"] == name)
+
+    def test_ops_become_a_oneof_with_definitions_namespaced_then_merged(self):
+        schema = inline_tool(self.tool("patch_object"), self.fetch)["inputSchema"]
+        enum = self.tool("patch_object")["inputSchema"]["properties"]["ops"]["items"]["properties"]["op"]["enum"]
+        branches = schema["properties"]["ops"]["items"]["oneOf"]
+        self.assertEqual(["#/$defs/" + OP_BRANCH + op for op in enum], [b["$ref"] for b in branches])
+        defs = schema["$defs"]
+        self.assertIn("blockRef", defs, "identical on every op: one plain definition")
+        self.assertEqual({"block__insert_blocks", "block__add_items"},
+                         {k for k in defs if k.startswith("block__")}, "two shapes of block, each named after the first op (alphabetically) that has it")
+        self.assertEqual(set(), dangling(schema))
+
+    def test_an_open_document_root_is_closed_over_its_kind(self):
+        schema = inline_tool(self.tool("create_template"), self.fetch)["inputSchema"]
+        self.assertFalse(schema["additionalProperties"])
+        self.assertIn("formatVersion", schema["properties"])
+        self.assertNotIn("$schema", schema["properties"])
+        self.assertIn("formatVersion", schema["required"])
+        self.assertIn("space_id", schema["required"], "the path argument stays required")
+        self.assertIn("anyValue", schema["$defs"])
+
+    def test_a_document_alternative_takes_its_kind_and_conflicts_move_into_branches(self):
+        served = self.tool("create_object")["inputSchema"]
+        schema = inline_tool(self.tool("create_object"), self.fetch)["inputSchema"]
+        shortcut, document = schema["anyOf"]
+        self.assertFalse(document["additionalProperties"])
+        self.assertIn("formatVersion", document["properties"])
+        self.assertEqual(served["properties"]["properties"], shortcut["properties"]["properties"],
+                         "the shortcut keeps its own properties schema")
+        self.assertNotIn("type", schema["properties"]["properties"], "the root no longer constrains a conflicting member")
+        self.assertEqual(set(), dangling(schema))
+
+    def test_unknown_arm_and_missing_fetch_are_refused(self):
         with self.assertRaises(ValueError):
-            apply_arm({"tools": [{"name": "list_spaces", "inputSchema": {}}]}, "full-opaque")
+            apply_arm(golden(), "full-opaque")
         with self.assertRaises(ValueError):
-            apply_arm(golden(), "bridge")
+            apply_arm(golden(), "full-inline")
 
 
 if __name__ == "__main__":

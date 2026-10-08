@@ -144,7 +144,12 @@ Reporting may attach `evaluator-corrections.json` from beside the matrix or revi
 the default; `run_codex.py` is an alias) or `--host claude` (`claude -p`). With
 `--upstream-url <api>/mcp/full` the guard reaches heart's full tool table over
 Streamable HTTP instead of the bridge, using the key in `ANYTYPE_API_KEY`;
-`--arm full-opaque` untypes the `ops` items of `patch_object` and `update_type`.
+Arms are guard settings. `--arm full` serves `tools/list` as heart does: the
+large schemas are lookups — an ops envelope names each op and points at
+`get_op_schema`, a document body is open and points at `get_schema` with its
+kind. `--arm full-inline` has the guard fetch every one of those lookups
+through the same upstream at `tools/list` time and inline them, so a run
+measures what serving the schemas inline would cost and buy.
 Tool names are read through `tool_names.py` on both surfaces.
 
 `run_campaign.py --output <dir outside the repo>` builds and boots a throwaway

@@ -3,7 +3,9 @@
 
 The upstream is a stdio MCP server (the bridge, configured in Codex) or
 heart's /mcp/full over Streamable HTTP; for the latter the arm decides
-whether tools/list is forwarded as served or with the ops items untyped.
+whether tools/list is forwarded as served — its large schemas are lookups
+the model makes with get_op_schema and get_schema — or with every lookup
+fetched by the guard and inlined.
 
 The model has no access to this process's credential configuration. Credentials
 are read from the existing Codex MCP configuration and passed only to upstream.
@@ -12,6 +14,7 @@ Run state and wire traces are evaluator-owned, outside the model's working dir.
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import sys
@@ -207,8 +210,10 @@ def make_upstream(args):
     return StdioUpstream(transport["command"], transport.get("args", []), env, transport.get("cwd"))
 
 
-ARMS = ("full", "full-opaque")
-OPAQUE_TOOLS = ("patch_object", "update_type")
+ARMS = ("full", "full-inline")
+KIND_POINTER = re.compile(r"\bget_schema with kind ([a-z_]+)\b")
+DEF_SEPARATOR = "__"
+OP_BRANCH = "op" + DEF_SEPARATOR
 
 
 def _refs(node, out):
@@ -238,42 +243,161 @@ def reachable_defs(schema):
     return seen
 
 
-def opaque_ops(schema):
-    """The full-opaque arm: every ops.items becomes {"type": "object"} and
-    the $defs only those items reached are dropped. Nothing else changes."""
+def _rename_refs(node, rename):
+    if isinstance(node, dict):
+        ref = node.get("$ref")
+        if isinstance(ref, str) and ref.startswith("#/$defs/"):
+            node["$ref"] = "#/$defs/" + rename(ref[len("#/$defs/"):])
+        for value in node.values():
+            _rename_refs(value, rename)
+    elif isinstance(node, list):
+        for value in node:
+            _rename_refs(value, rename)
+
+
+def _embed(prefix, schema, defs, pending):
+    """A served schema for embedding: its $defs move to the tool's under
+    names namespaced by prefix — the same name is a different shape in
+    different served schemas — and are queued for deduplication."""
     schema = json.loads(json.dumps(schema))
-    holders = [schema, *[b for b in schema.get("anyOf", []) if isinstance(b, dict)]]
-    changed = False
-    for holder in holders:
-        ops = holder.get("properties", {}).get("ops")
-        if isinstance(ops, dict) and "items" in ops:
-            ops["items"] = {"type": "object"}
-            changed = True
-    if not changed:
-        raise ValueError("no ops.items to make opaque")
-    if "$defs" in schema:
-        keep = reachable_defs(schema)
-        schema["$defs"] = {k: v for k, v in schema["$defs"].items() if k in keep}
-        if not schema["$defs"]:
-            del schema["$defs"]
+    own = schema.pop("$defs", {})
+    rename = lambda name: prefix + DEF_SEPARATOR + name
+    for name, definition in own.items():
+        _rename_refs(definition, rename)
+        defs[rename(name)] = definition
+        pending[rename(name)] = (prefix, name)
+    _rename_refs(schema, rename)
     return schema
 
 
-def apply_arm(result, arm):
-    """Rewrite a tools/list result for the arm."""
+def _dedupe(root, defs, pending):
+    """Merge namespaced definitions that are structurally identical, to a
+    fixpoint: one every embedding agrees on returns to its plain name; one
+    that differs keeps a name per shape, after the first prefix that has it."""
+    while pending:
+        by_base = {}
+        for key in sorted(pending):
+            prefix, base = pending[key]
+            canonical = json.dumps(defs[key], sort_keys=True)
+            variants = by_base.setdefault(base, [])
+            for variant in variants:
+                if variant["canonical"] == canonical:
+                    variant["keys"].append(key)
+                    variant["prefixes"].append(prefix)
+                    break
+            else:
+                variants.append({"canonical": canonical, "keys": [key], "prefixes": [prefix]})
+        rename, following = {}, {}
+        for base, variants in by_base.items():
+            plain_taken = base in defs and base not in pending
+            for variant in variants:
+                final = base
+                if len(variants) > 1 or plain_taken:
+                    final = base + DEF_SEPARATOR + sorted(variant["prefixes"])[0]
+                    following[final] = (sorted(variant["prefixes"])[0], base)
+                for key in variant["keys"]:
+                    rename[key] = final
+        changed = False
+        for old, new in rename.items():
+            if old == new:
+                continue
+            changed = True
+            defs.setdefault(new, defs[old])
+            del defs[old]
+        pending = following
+        if not changed:
+            return
+        mapping = lambda name: rename.get(name, name)
+        _rename_refs(root, mapping)
+        for definition in defs.values():
+            _rename_refs(definition, mapping)
+
+
+def _open(form):
+    return form.get("additionalProperties", True) is not False
+
+
+def inline_tool(tool, fetch):
+    """One tool with its lookups inlined: each ops envelope's items become a
+    oneOf over the ops' served schemas, and each open document form takes
+    its kind's served schema. fetch(tool, args) returns a served schema
+    entry ({"schema": …, "example": …})."""
+    schema = json.loads(json.dumps(tool["inputSchema"]))
+    defs, pending = dict(schema.pop("$defs", {})), {}
+    branches = [b for b in schema.get("anyOf", []) if isinstance(b, dict)]
+    changed = False
+    for holder in [schema, *branches]:
+        items = holder.get("properties", {}).get("ops", {}).get("items")
+        enum = (items or {}).get("properties", {}).get("op", {}).get("enum") if isinstance(items, dict) else None
+        if not enum:
+            continue
+        for op in enum:
+            key = OP_BRANCH + op
+            if key not in defs:
+                defs[key] = _embed(op, fetch("get_op_schema", {"op": op})["schema"], defs, pending)
+        holder["properties"]["ops"]["items"] = {"oneOf": [{"$ref": "#/$defs/" + OP_BRANCH + op} for op in enum]}
+        changed = True
+    if branches:
+        forms = [b for b in branches if _open(b)]
+    else:
+        forms = [schema] if _open(schema) else []
+    for form in forms:
+        where = form.get("description") or (tool.get("description", "") if form is schema else "")
+        match = KIND_POINTER.search(where)
+        if not match:
+            raise ValueError(f"{tool['name']}: an open body without a get_schema pointer")
+        kind = match.group(1)
+        document = _embed(kind, fetch("get_schema", {"kind": kind})["schema"], defs, pending)
+        members = {k: v for k, v in document.get("properties", {}).items() if k != "$schema"}
+        props = form.setdefault("properties", {})
+        for name, member in members.items():
+            if form is not schema and name in schema.get("properties", {}) and \
+                    json.dumps(schema["properties"][name], sort_keys=True) != json.dumps(member, sort_keys=True):
+                # spelled differently by another alternative: the root keeps
+                # it unconstrained and each alternative carries its own
+                original = schema["properties"][name]
+                for other in branches:
+                    if other is not form and other.get("properties", {}).get(name) == {}:
+                        other["properties"][name] = original
+                schema["properties"][name] = {k: v for k, v in original.items() if k == "description"}
+            props[name] = member
+        if document.get("required"):
+            form["required"] = sorted(set(form.get("required", [])) | set(document["required"]))
+        for key in ("allOf", "oneOf", "anyOf", "not"):
+            if key in document:
+                form.setdefault("allOf", []).append({key: document[key]})
+        form["additionalProperties"] = False
+        if form is not schema and "properties" in schema:
+            schema.pop("additionalProperties", None)
+        changed = True
+    if not changed:
+        return tool
+    _dedupe(schema, defs, pending)
+    keep = reachable_defs({**schema, "$defs": defs})
+    defs = {k: v for k, v in defs.items() if k in keep}
+    if defs:
+        schema["$defs"] = defs
+    return {**tool, "inputSchema": schema}
+
+
+def apply_arm(result, arm, fetch=None):
+    """Rewrite a tools/list result for the arm: full serves it as the
+    server does (large schemas are lookups); full-inline inlines every
+    lookup, fetched through fetch."""
     if arm == "full":
         return result
-    if arm != "full-opaque":
+    if arm != "full-inline":
         raise ValueError(f"unknown arm {arm!r}; arms: {', '.join(ARMS)}")
-    result = json.loads(json.dumps(result))
-    seen = set()
-    for tool in result.get("tools", []):
-        if tool.get("name") in OPAQUE_TOOLS:
-            tool["inputSchema"] = opaque_ops(tool["inputSchema"])
-            seen.add(tool["name"])
-    if seen != set(OPAQUE_TOOLS):
-        raise ValueError(f"full-opaque needs {OPAQUE_TOOLS} in tools/list; found {sorted(seen)}")
-    return result
+    if fetch is None:
+        raise ValueError("full-inline needs a way to fetch the served schemas")
+    cache = {}
+
+    def cached(name, args):
+        key = (name, json.dumps(args, sort_keys=True))
+        if key not in cache:
+            cache[key] = fetch(name, args)
+        return cache[key]
+    return {**result, "tools": [inline_tool(t, cached) for t in result.get("tools", [])]}
 
 
 def compact_bytes(value):
@@ -301,6 +425,29 @@ def serve(args):
         log("tools_list_stats", stats)
         if getattr(args, "stats", None):
             Path(args.stats).write_text(json.dumps(stats, indent=2) + "\n")
+
+    def served_schema(name, arguments):
+        """An evaluator lookup of a served schema (get_op_schema or
+        get_schema), never a model call; the arm inlines what it returns."""
+        if name not in {"get_op_schema", "get_schema"}:
+            raise ValueError("Schema lookup is not allowlisted")
+        request = {"jsonrpc": "2.0", "id": "evaluation-schema-" + uuid.uuid4().hex,
+                   "method": "tools/call", "params": {"name": name, "arguments": arguments}}
+        log("evaluator_to_upstream", request)
+        upstream.post(request)
+        while True:
+            response = upstream.next_message()
+            if response is None:
+                raise RuntimeError("Upstream MCP closed during a schema lookup")
+            log("evaluator_from_upstream", response)
+            if response.get("id") == request["id"]:
+                break
+            send(response)
+        result = response.get("result") or {}
+        entry = next(documents(result), None)
+        if result.get("isError") or not entry or "schema" not in entry:
+            raise RuntimeError(f"schema lookup {name} {arguments} failed: {json.dumps(response)[:500]}")
+        return entry
 
     def evaluator_probe(name, arguments):
         # These reads are evaluator-only evidence, never model calls. Recheck
@@ -360,7 +507,7 @@ def serve(args):
                 if response.get("id") == request["id"]:
                     result = response.get("result", {})
                     if request.get("method") == "tools/list" and isinstance(result, dict) and "tools" in result:
-                        rewritten = apply_arm(result, arm)
+                        rewritten = apply_arm(result, arm, served_schema)
                         record_tools_list(result, rewritten)
                         response = {**response, "result": rewritten}
                     if name == "create_space" and not call_args.get("dry_run") and not result.get("isError"):
@@ -384,7 +531,8 @@ def main():
     p.add_argument("--upstream-url", help="Streamable HTTP upstream instead, e.g. http://127.0.0.1:31009/mcp/full")
     p.add_argument("--upstream-key-env", default="ANYTYPE_API_KEY",
                    help="environment variable holding the HTTP upstream's bearer key (never on argv)")
-    p.add_argument("--arm", choices=ARMS, default="full", help="tools/list as served, or with ops items untyped")
+    p.add_argument("--arm", choices=ARMS, default="full",
+                   help="tools/list as served (large schemas are lookups), or with every lookup inlined")
     p.add_argument("--stats", help="write the served tools/list size and tool count here")
     p.add_argument("--codex", default="codex")
     p.add_argument("--hook-config", help="Evaluator-owned fault config; absent preserves baseline behavior")

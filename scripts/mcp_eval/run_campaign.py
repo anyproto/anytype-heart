@@ -82,14 +82,21 @@ class Heart:
     def mcp_url(self):
         return self.url + "/mcp/full"
 
+    def _post(self, message):
+        request = urllib.request.Request(self.mcp_url, data=json.dumps(message).encode(), method="POST", headers={
+            "Authorization": "Bearer " + self.key, "Content-Type": "application/json", "Accept": "application/json"})
+        with urllib.request.urlopen(request, timeout=60) as response:
+            return json.loads(response.read())
+
     def tools_list(self):
-        def post(message):
-            request = urllib.request.Request(self.mcp_url, data=json.dumps(message).encode(), method="POST", headers={
-                "Authorization": "Bearer " + self.key, "Content-Type": "application/json", "Accept": "application/json"})
-            with urllib.request.urlopen(request, timeout=60) as response:
-                return json.loads(response.read())
-        post({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18"}})
-        return post({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})["result"]
+        self._post({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18"}})
+        return self._post({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})["result"]
+
+    def served_schema(self, name, arguments):
+        """A served schema entry, for measuring the full-inline arm."""
+        result = self._post({"jsonrpc": "2.0", "id": 3, "method": "tools/call",
+                             "params": {"name": name, "arguments": arguments}})["result"]
+        return json.loads(result["content"][0]["text"])
 
     def stop(self):
         try:
@@ -131,7 +138,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--output", type=Path, required=True, help="campaign directory, outside the repository")
     p.add_argument("--hosts", nargs="+", choices=["claude", "codex"], default=["claude", "codex"])
-    p.add_argument("--arms", nargs="+", choices=["full", "full-opaque"], default=["full", "full-opaque"])
+    p.add_argument("--arms", nargs="+", choices=["full", "full-inline"], default=["full", "full-inline"])
     p.add_argument("--scenarios", nargs="+", default=["all"])
     p.add_argument("--repetitions", type=int, default=1)
     p.add_argument("--parallel", type=int, default=4)
@@ -171,7 +178,7 @@ def main():
     try:
         manifest["heart"] = {"api_url": heart.url, "account_id": heart.account_id}
         served = heart.tools_list()
-        manifest["tools_list"] = {arm: {"tools": len(served["tools"]), "bytes": compact_bytes(apply_arm(served, arm))}
+        manifest["tools_list"] = {arm: {"tools": len(served["tools"]), "bytes": compact_bytes(apply_arm(served, arm, heart.served_schema))}
                                   for arm in args.arms}
         env = {**os.environ, "ANYTYPE_API_KEY": heart.key}
         jobs = list(itertools.product(args.hosts, args.arms, selected, range(1, args.repetitions + 1)))
