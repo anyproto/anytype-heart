@@ -67,6 +67,38 @@ type apiRequest struct {
 	idempotencyKey string
 	// ifMatch, when set, adds the If-Match precondition (CLI advanced flag).
 	ifMatch string
+	// rawBody is a pre-encoded JSON body (the full table's executor builds
+	// its own); it takes precedence over body.
+	rawBody []byte
+	// headers are extra request headers (the full table's header
+	// arguments), set after the ones above so a caller cannot unset them.
+	headers http.Header
+}
+
+// RawRequest is one call to the server as the full tool table makes it:
+// everything already on the wire's terms. Body, when set, is sent as
+// application/json. IdempotencyKey marks a mutation and makes the request
+// retryable under the same key (C8 replay).
+type RawRequest struct {
+	Method         string
+	Path           string // already escaped
+	Query          url.Values
+	Headers        http.Header
+	Body           []byte
+	IdempotencyKey string
+}
+
+// DoRaw runs a RawRequest under the client's retry policy and returns the
+// status and body, whatever the status: the caller renders refusals.
+func (c *Client) DoRaw(ctx context.Context, r RawRequest) (int, []byte, error) {
+	return c.do(ctx, apiRequest{
+		method:         r.Method,
+		path:           r.Path,
+		query:          r.Query,
+		rawBody:        r.Body,
+		idempotencyKey: r.IdempotencyKey,
+		headers:        r.Headers,
+	})
 }
 
 // ToolError is a server-reported C6 error surfaced by a tool: the text is
@@ -127,7 +159,11 @@ func (c *Client) once(ctx context.Context, r apiRequest) (int, []byte, error) {
 		target += "?" + r.query.Encode()
 	}
 	var reader io.Reader
-	if r.body != nil {
+	hasBody := r.rawBody != nil || r.body != nil
+	switch {
+	case r.rawBody != nil:
+		reader = bytes.NewReader(r.rawBody)
+	case r.body != nil:
 		payload, err := json.Marshal(r.body)
 		if err != nil {
 			return 0, nil, fmt.Errorf("encode request body: %w", err)
@@ -138,7 +174,12 @@ func (c *Client) once(ctx context.Context, r apiRequest) (int, []byte, error) {
 	if err != nil {
 		return 0, nil, fmt.Errorf("build request: %w", err)
 	}
-	if r.body != nil {
+	for name, values := range r.headers {
+		for _, v := range values {
+			req.Header.Add(name, v)
+		}
+	}
+	if hasBody {
 		req.Header.Set("Content-Type", "application/json")
 	}
 	if c.APIKey != "" {
@@ -201,6 +242,14 @@ func decodeAPIError(status int, body []byte) error {
 		return &ToolError{Status: status, Text: fmt.Sprintf("server answered %d: %s", status, strings.TrimSpace(string(body)))}
 	}
 	return &ToolError{Status: status, Code: v2.Code, Message: v2.Message, Text: renderErrorText(v2.Message, v2.Issues), Issues: v2.Issues}
+}
+
+// RenderErrorText renders a C6 envelope as the one-string error the tool
+// surface serves: the message, then one indented line per issue with its
+// path, message and hint. Exported for the full table's executor, which
+// renders the same envelope with its own vocabulary.
+func RenderErrorText(message string, issues []v2model.Issue) string {
+	return renderErrorText(message, issues)
 }
 
 // renderErrorText renders a C6 envelope as the one-string error the tool
