@@ -1,6 +1,7 @@
 # A full wrapper inside heart — design
 
-Status: design agreed in conversation on 2026-09-18, not yet implemented.
+Status: design agreed 2026-09-18; amended 2026-10-08 after a four-lens
+review (security, MCP protocol, derivation, evidence). Not yet implemented.
 Supersedes the research brief `core/api/APIV2_WRAPPER_IN_HEART.md`.
 
 Branch base: `go-7383-apiv2-mobile-tool-bridge` (on develop `feb1ee1ad`).
@@ -13,9 +14,9 @@ An MCP server hosted by heart's local API server at `POST /mcp/{tier}`,
 - `small` and `large` serve the curated table in `core/api/wrapper`
   unchanged (14 tools today, flat arguments, handles, GBNF).
 - `full` is a **second table**, derived at runtime from the embedded v2
-  OpenAPI document plus the 17 served op schemas, covering every operation
-  not excluded by decision. It targets Sonnet-class models and replaces
-  what the external `anytype-mcp` npm bridge serves today.
+  OpenAPI document, the served discovery schemas and the served op schemas,
+  covering every operation not excluded by decision. It targets Sonnet-class
+  models and replaces what the external `anytype-mcp` npm bridge serves today.
 
 Decisions recorded from the brainstorm:
 
@@ -25,13 +26,18 @@ Decisions recorded from the brainstorm:
 | generation time | runtime, lazily on first `/mcp/full` use, `sync.Once` |
 | review artifact | golden snapshot test of the derived `tools/list` |
 | tier relation | two tables; `full` is not a superset mark on curated tools |
-| audience of full | Sonnet-class hosts (Claude Desktop, Claude Code, Cursor, VS Code) |
+| audience of full | Sonnet-class hosts with native HTTP MCP (Claude Code, Cursor, VS Code); Claude Desktop through a stdio shim |
 | base branch | mobile bridge branch, for `inproc.go` and `Host` |
+| sessions | required for small/large once issued; `full` is sessionless |
 
 Out of scope: growing the `large` tier for the 27B on-device target (stays
 the curated table's concern); the gomobile binding (keeps calling the
 curated `Host`, `ToolsManifest` keeps accepting `small|large` only); the
-legacy 2024-11-05 HTTP+SSE MCP transport.
+legacy 2024-11-05 HTTP+SSE MCP transport; browser-hosted MCP clients (no
+CORS headers are served, as today); cloud-side connectors (claude.ai custom
+connectors, ChatGPT connectors) — their MCP client runs on the vendor's
+servers and cannot reach a loopback endpoint without a tunnel, which would
+expose the local API to the internet and is a separate decision.
 
 ## 2. The full table: derivation and overlay
 
@@ -40,42 +46,86 @@ legacy 2024-11-05 HTTP+SSE MCP transport.
 New package `core/api/wrapper/full`. Entry point:
 
 ```go
-func Derive(doc []byte, opSchemas map[string]json.RawMessage) (*Table, error)
+func Derive(in Inputs) (*Table, error)
+
+type Inputs struct {
+    OpenAPI    []byte                      // the embedded v2 document
+    Kinds      map[string]json.RawMessage  // served discovery schemas, by kind (GET /v2/schemas/{kind})
+    Ops        map[string]OpSchema         // served op schemas, by op name (GET /v2/schemas/ops/{op})
+}
+type OpSchema struct { Schema json.RawMessage; Example json.RawMessage; Channels []string } // channels: object, type
 ```
 
-`doc` is the embedded v2 OpenAPI JSON (`openapiV2JSON` in package `api`),
-`opSchemas` the 17 served op schemas keyed by op name, obtained from
-`v2service.Service.SchemaOp`. Package `api` (the composition root) supplies
-both; `full` imports nothing heavier than `v2model`. Printing the full
-manifest from the CLI (`anytype tools --tier full`) is not required at
-launch; if added, it reads the document from disk and passes an empty op
-map, and the typed body then degrades to the document's own shape.
+**Three inputs, not one.** The OpenAPI document carries routes, path, query
+and header parameters, and the bodies of 12 operations. The other 10 request
+bodies are declared as bare `object` in the document on purpose — their
+swagger annotations point at the discovery catalog — so the body shapes of
+`create_object`, `patch_object`, `update_type`, `create_collection`,
+`create_property`, `update_property`, `create_query`, `create_template`,
+`create_type` and `validate` come from the served discovery schemas and op
+schemas, the same bytes a REST caller fetches. Package `api` (the
+composition root) supplies all three; `full` imports nothing heavier than
+`v2model`. There is no degraded mode: anything named `full` is built from
+complete inputs, and a CLI `tools --tier full` is out of scope.
+
+**Body source table.** A hand-written, test-pinned table maps each
+bare-body operationId to its body source:
+
+| operationId | body source |
+|---|---|
+| `create_object` | kind `object` |
+| `create_template` | kind `template` |
+| `create_type` | `oneOf` kind `type` (flat), kind `type_document` |
+| `update_type` | `oneOf` ops envelope (type channel), kind `type` fields — mutually exclusive, as the server enforces |
+| `patch_object` | ops envelope (object channel) |
+| `create_property`, `update_property` | kind `property`; `update_property` drops `key` and `format` (create-only) |
+| `create_query` | kind `query` |
+| `create_collection` | kind `collection` |
+| `validate` | kind `object` (the document to validate) |
+
+The test asserts the table covers exactly the operations whose document
+body has no properties, and that every kind it names exists in the catalog.
 
 ### 2.2 One tool per operation
 
-- **Name** = `operationId` (`patch_object`, `list_chats`). Identity with the
-  `v2model.Ref.Op`, so ref rendering on this tier is a lookup that
-  returns its input, and a third party moving off the npm bridge recognises
-  the surface.
+- **Name** = `operationId` (`patch_object`, `list_chats`). Identity with
+  `v2model.Ref.Op`, so ref rendering on this tier is a lookup that returns
+  its input, and a third party moving off the npm bridge recognises the
+  surface.
 - **Arguments**, all top-level, flat:
   - path parameters (`space_id`, `object_id`, …), required;
   - query parameters (`dry_run`, `ids`, `create_missing_options`, `limit`, …);
   - header parameters in snake_case (`idempotency_key`, `if_match`);
-    `Anytype-Version` is dropped by the overlay (server-filled);
-  - the request body's top-level properties, required per the document.
+    `Anytype-Version` occurs only on excluded operations;
+  - the request body's top-level properties (from the document or the body
+    source table), required per the source schema.
   - Verified against the current document: no body property collides with
-    a path/query name on any operation. A collision fails `Derive` with a
-    message naming the overlay rename that fixes it.
+    a path/query/header name on any operation. A collision fails `Derive`
+    with a message naming the overlay rename that fixes it.
 - **Body content type**: when an operation offers both `application/json`
   and `multipart/form-data`, derive from the JSON body and drop multipart.
   `upload_file` therefore takes `url` (required) and `name`.
 - **Schemas**: component schemas a tool references are copied into the tool
-  schema's `$defs` with `$ref` rewritten to `#/$defs/<name>`. No inlining,
-  no cycle handling needed (block schemas are recursive).
+  schema's `$defs` with `$ref` rewritten to `#/$defs/<name>`. Served op and
+  kind schemas carry their own `$defs` (`block`, `blockRef`, `anyValue`…)
+  and **the same name means different shapes on different ops**
+  (`insert_blocks` vs `replace_subtree` `block`). Each embedded schema's
+  defs are therefore namespaced (`<op>__block`) and every local ref
+  rewritten, then defs that are structurally identical are merged back under
+  one name. The measured difference is 71 KB deduplicated versus 96 KB
+  namespaced naively.
+- **Typed ops envelope**: `ops` is an array (1–512 items, the server's
+  bound) whose items are a `oneOf` over the channel's op schemas; `op` is a
+  required `const` per branch, which is a sufficient discriminator in JSON
+  Schema. `additionalProperties:false` and `required` are preserved per
+  branch. The object channel has 14 ops, the type channel 7, four view ops
+  on both.
 - **Description**: the operation's `summary`, then `description` if present.
   The document's prose is already under `core/api/openapiprose_test.go`.
-- **Annotations**: `readOnlyHint` for GET operations; `destructiveHint` for
-  DELETE.
+- **Annotations by semantics, not method**: `readOnlyHint` on GETs and on
+  `search_space`, `search_global`, `validate`; `destructiveHint` on DELETEs
+  and on `patch_object`/`update_type` (they can delete blocks and
+  properties). Hints are advisory; nothing enforces on them.
 - **Stateless**: no handles, no session store, no GBNF, no examples. The
   curated machinery is untouched.
 - **Operation inventory**: the conformance test diffs the derived names
@@ -90,8 +140,9 @@ A hand-written Go table keyed by operationId. Per entry it may:
 - **exclude** with a reason (the entry is the only way an operation can be
   absent);
 - **rewrite** the description;
-- **rename** or **drop** an argument;
-- **replace** an argument's schema.
+- **rename**, **drop** or **add** an argument;
+- **replace** an argument's schema;
+- **set** annotations.
 
 Launch contents:
 
@@ -100,17 +151,28 @@ Launch contents:
 | `auth_whoami`, `create_auth_challenge`, `create_api_key` | exclude | pairing/identity flows are the host's, not the model's |
 | `stream_chat_messages` | exclude | SSE; the in-process transport buffers whole responses |
 | `head_file`, `download_file` | exclude | binary/range responses have no text rendering; revisit with a use case |
-| `patch_object` | replace `ops.items` | typed `oneOf` over the 14 object op schemas, `op` as discriminator |
-| `update_type` | replace `ops.items` | typed `oneOf` over the type op schemas (add/remove/move_property + the view family) |
-| every op with `Anytype-Version` header | drop argument | server-filled |
+| `search_space`, `search_global`, `validate` | annotate read-only | POST reads |
+| `patch_object`, `update_type` | annotate destructive | ops can delete |
 
 Descriptions inside the `oneOf` branches come from the served op schemas
 verbatim at first; the size ceiling (§5) decides whether they are trimmed.
 
+**Document bugs are fixed in the document, not the overlay.** The review
+found places where the OpenAPI document disagrees with the server or the
+discovery schema; those are swagger fixes that land before or with this
+work, so the derived table inherits them: `dry_run` missing on
+`update_property`, `delete_property`, `delete_type`; `text` optional on
+`edit_chat_message` while the discovery schema requires it; `name` optional
+on `create_space`/`create_chat`; `emoji` optional on `toggle_chat_reaction`;
+`read_chat` scope enum unpublished. The overlay is for MCP-specific shape
+only.
+
 ### 2.4 Build and lifetime
 
 Built once per process on first `/mcp/full` use behind `sync.Once`; the
-error, if any, is retained and returned as a 500 naming it. The input is
+error, if any, is retained and returned as a 500 naming it. Only the
+immutable inputs, the derived table and that error live in the `Once`;
+clients, credentials and engine lookup stay per request. The inputs are
 constant, so a failure is a build defect the tests in §5 already catch, not
 a runtime condition to retry.
 
@@ -119,46 +181,71 @@ a runtime condition to retry.
 ### 3.1 Route and middleware
 
 `POST /mcp/:tier` registered in `core/api/server/router.go` beside `/v1`
-and `/v2`, under the same trusted-origin policy, `ensureAuthenticated`, and
-the v2 JSON-API scope gate. `GET` → 405 (no server push). `DELETE` with a
-session header ends that session. Unknown tier → 404 naming the three.
+and `/v2`, under the same trusted-origin policy and `ensureAuthenticated`.
+Outer authentication failures are HTTP 401/403 to the host, never an
+in-band tool error — the model cannot repair a key. `GET` → 405 (no server
+push). `DELETE` with a session header ends that session. Unknown tier → 404
+naming the three.
+
+**Limits before work.** Request body capped with `http.MaxBytesReader`
+(8 MiB, the stdio scanner's bound) before decoding; a deadline per call;
+the in-process response buffer capped (32 MiB, the client's own read
+bound); bounded concurrent calls per session (the Runner serialises) and a
+bounded wait queue. These are resource limits, distinct from model-facing
+result budgets.
 
 ### 3.2 Transport: Streamable HTTP, JSON only
 
+- Protocol revisions on HTTP: `2025-06-18` and `2025-11-25`. Chosen
+  explicitly for this delivery, not reused from the stdio map, because the
+  HTTP profile below refuses batches, which `2025-03-26` allowed. An
+  unsupported `MCP-Protocol-Version` header → 400. Newer revisions are
+  added only once their transport changes are reviewed.
 - One JSON-RPC message per POST, answered as `application/json`.
-- Notifications (`notifications/initialized`, …) → 202, empty body.
-- JSON arrays (batches) → `-32600`; the current protocol revision removed
-  batching and the stdio server never accepted it.
-- `MCP-Protocol-Version` request header accepted; version negotiation as in
-  `mcp.go` (`mcpSupportedVersions`).
-- The existing `MCPServer.dispatch` is transport-agnostic; the handler calls
-  it. No second protocol implementation.
-- `MCPServer` today holds a `*Runner`. It changes to hold an executor
-  interface — `Tools() []ToolDef` and `Run(ctx, name, args) (*Result, error)`
-  — satisfied by the curated Runner (per tier) and by the full table's
-  generic executor. One protocol loop, two tables.
+- **Classify before execute.** An exported entry point validates the
+  envelope (`jsonrpc`, id shape, method) and classifies request /
+  notification / response before anything runs. Notifications and
+  responses → 202, empty body; an id-less `tools/call` is a notification
+  and is **not** executed. Malformed envelopes → JSON-RPC error. The stdio
+  server moves onto the same entry point.
+- JSON arrays (batches) → `-32600`.
+- `MCPServer` holds an executor interface — `Tools() []ToolDef`,
+  `Instructions() string`, `Run(ctx, name, args) (*Result, error)` —
+  satisfied by the curated Runner (per tier) and by the full table's
+  generic executor. One protocol loop, two tables. `tools/call` results
+  carry `structuredContent` (the result's JSON) beside the text.
 
 ### 3.3 Caller's key, never the internal key
 
 Each session owns a `wrapper.Client` whose transport is the in-process one
 with the bearer taken from the `/mcp` request, so every inner `/v2` call is
 authenticated, scoped and grant-gated as the caller. `inproc.go` gains a
-constructor variant that leaves `Authorization` to the client; the mobile
-bridge keeps the forcing variant. The write rate limiter still keys on the
-stamped loopback address, shared with real loopback callers by design.
+constructor variant that leaves `Authorization` to the client and takes an
+**engine-only** resolver (no key); the mobile bridge keeps the forcing
+variant, and `ToolsHost` is not wired into `/mcp`. The internal key is
+accepted by the middleware on any transport, as it is on REST today; that
+stands, since holding it already means code execution in the process. The
+write rate limiter still keys on the stamped loopback address, shared with
+real loopback callers by design.
 
 ### 3.4 Sessions
 
-- `initialize` mints an `Mcp-Session-Id` and returns it in the header.
-- The header is **never required**. Resolution order: header if present,
-  else the caller's API key. A host that does not echo the header still
-  gets stable handles (one key belongs to one app); conforming hosts get
-  isolation between two hosts on one key.
-- One session = one `MCPServer` (its Runner + `MemoryStore`, tier fixed at
-  creation). Curated-tier handles behave exactly as over stdio. Full-tier
-  sessions hold no state but follow the same protocol.
-- Idle expiry and a session cap are constants with tests; an expired id
-  → 404 per spec, and the client re-initialises.
+- `initialize` on `small` or `large` mints an `Mcp-Session-Id`: 128 bits
+  from `crypto/rand`, bound to the API key that created it and to the tier.
+  Conforming clients echo it on every later request (the transport spec
+  requires it, and every SDK-based host does).
+- After `initialize`, a curated-tier request without the header → 400; an
+  unknown, expired, foreign-key or wrong-tier id → 404, and the client
+  re-initialises. Ownership mismatches are not distinguished from expiry.
+- `full` issues no session id and keeps no state; every call is
+  independent.
+- One session = one `MCPServer` (its Runner + `MemoryStore`). Handles per
+  session are capped; past the cap the oldest find's handles are dropped
+  and the next result says so. Idle expiry, a global session cap and a
+  per-key cap are constants with tests; admission is counted before
+  allocation; overflow refuses the new session with 429.
+- `DELETE` invalidates exactly that session; a concurrent call on it
+  finishes or fails, it never resurrects the session.
 
 ### 3.5 Instructions and budget
 
@@ -167,13 +254,31 @@ own short text: edits are op envelopes on `patch_object`/`update_type`,
 `get_op_schema` and `get_schema` exist for lookups, `dry_run` previews. No
 result budget on this delivery (same as stdio; `DefaultResultChars` = 0).
 
+### 3.6 Host attachment
+
+- **Claude Code, Cursor, VS Code**: native HTTP transport to
+  `http://127.0.0.1:<port>/mcp/full` with an `Authorization: Bearer` header.
+  A recipe per host is documented and tested against pinned host versions.
+- **Claude Desktop**: its local config is stdio-only and its connectors run
+  in Anthropic's cloud. Desktop attaches through a stdio shim that forwards
+  JSON-RPC to `/mcp/full`: `mcp-remote` with no code of ours, or
+  `anytype-mcp` reduced to that shim (it then stops generating tools from
+  the OpenAPI document). Which one ships is a packaging decision outside
+  this spec.
+- **ChatGPT and claude.ai connectors**: out of scope (see §1).
+
 ## 4. Results and errors on the full tier
 
 - **Results pass through**: response body verbatim as text content and as
   `structuredContent`. Success-path `warnings` and their hints reach the
   model unchanged.
+- **Idempotency**: the executor mints an `Idempotency-Key` for every
+  mutating call that did not supply `idempotency_key`, and the same key is
+  reused across the client's transport retries, as the curated Runner does
+  today. An explicit key is sent as given.
 - **Errors are in-band** (`isError: true`) carrying the C6 envelope's
-  message, issues and hints.
+  message, issues and hints. Transport failure of the in-process call (no
+  account running) renders the "ask the user" tip `mcp.go` already has.
 - **Hint rendering by lookup, no regex table**: each issue's `SeeAlso` ref
   renders as the tool name plus bound arguments; the ref's REST spelling
   (`Ref.String()`, which the prose contains verbatim by contract) is
@@ -187,52 +292,83 @@ result budget on this delivery (same as stdio; `DefaultResultChars` = 0).
   fallback never fires). The `restRoute` catch-all stays as the last pass
   on both, and its "nothing route-shaped survives" test runs over the full
   tier's output too.
-- Transport failure of the in-process call (no account running) and a
-  rejected key render as the two "ask the user" tips `mcp.go` already has.
 
 ## 5. Tests and measurement
 
 **Conformance** (`core/api/wrapper/full`):
 - every operationId in the document is derived or excluded with a reason;
-- golden snapshot of the full `tools/list` checked in, `-update` refreshes;
-- every `oneOf` branch of the typed ops body validates the op's own served
-  example;
+- the body source table covers exactly the bare-body operations and names
+  only kinds the catalog serves;
+- golden snapshot of the full `tools/list` (compact JSON of the result
+  object, no JSON-RPC framing) checked in, `-update` refreshes; the golden
+  is built from the **served** kind and op schemas, so a service-side schema
+  change without a document change still shows;
+- the ops `oneOf` has exactly the channel's op set (object 14, type 7) and
+  every branch validates the op's own served example **after embedding**,
+  i.e. against the assembled tool schema with rewritten refs; a negative
+  fixture per channel (unknown op, extra field, missing `op`) is rejected;
 - a body/path/query name collision fails `Derive` with the fixing rename
-  named.
+  named;
+- every overlay target exists (an overlay row for a vanished argument or
+  operation fails).
 
 **Handler** (`core/api/server`), table tests over the gin engine: auth
-required; scope gate applied; tier routing; notification → 202; batch
-refused; session by header and by key fallback; expiry and cap; inner calls
-carry the caller's bearer and not the internal key — mutation-verified by
-forcing the internal key in the variant constructor and watching the named
-test fail.
+required and 401 not in-band; tier routing; notification and id-less call
+→ 202 with nothing executed; batch refused; unsupported protocol version
+→ 400; session required after initialize on curated tiers, foreign-key and
+wrong-tier ids → 404, `full` sessionless; expiry, per-key and global caps,
+DELETE semantics; body limit; inner calls carry the caller's bearer and not
+the internal key — mutation-verified by forcing the internal key in the
+variant constructor and watching the named test fail.
 
 **Rendering**: served error envelopes with `see_also` (the schema-lookup,
 list and resend forms), one legacy envelope without it, and a success body
 with warnings; each asserts the model-visible text, and the route-shape
-guard runs over every rendered string.
+guard runs over every rendered string. Request-assembly tests: path
+escaping, query vs body separation, `if_match` as a header, minted
+idempotency key stable across a retried call.
 
-**Size**: pinned ceiling on `tools/list` bytes per tier, set from the first
-measurement. Baselines today: small 8,268 B, large 15,300 B; the npm
-bridge's v2 surface is 45 tools / 59,269 B with an **untyped** `patch-object`
-body. Expect full near 70 KB with the typed body.
+**Size**: the artifact is the compact `tools/list` result object. Measured
+on this branch: small 8,471 B, large 15,470 B. The npm bridge's v2 surface
+measured 45 tools / 59,269 B with an **untyped** `patch-object` body. The
+review's projection for full is 70,795 B with deduplicated defs. The
+ceiling is set after the first real measurement and is a regression guard,
+not evidence of acceptability; acceptability is the benchmark's job.
 
 **Benchmark** (acceptance, after implementation): the plant benchmark
-(`docs/evals/anytype-mcp-v2`) on `/mcp/full` and on the npm bridge against
-the same build, sonnet and haiku, three actors each, task list moved off the
-served example values. Prediction: full ≥ bridge on score; haiku's op-shape
-errors collapse once the op shape is in the tool schema rather than behind a
-lookup.
+(`docs/evals/anytype-mcp-v2`) with a task list moved off the served example
+values, sonnet and haiku, paired runs on the same build and fresh fixtures,
+isolated rate-limit state per actor. Arms:
+
+1. npm bridge (baseline, untyped `patch-object`);
+2. `/mcp/full` as specified;
+3. `/mcp/full` with the ops body made opaque — the ablation that isolates
+   the typed envelope, which is the central design claim;
+4. optionally per-op tools, which `cmd/apiv2eval`'s ops arm already builds.
+
+Pre-registered before the runs: the primary score, the per-category error
+counts (envelope/discriminator, locator, payload, semantic), first-attempt
+success per op, calls and tokens per completed task, time to first
+successful mutation. The typed body is expected to remove envelope and
+discriminator errors; it is not expected to remove locator or semantic
+errors, since the op schemas admit calls the server rejects (e.g.
+`update_block` without a locator). Three actors per arm is a pilot; the
+result stands only if the difference exceeds the run-to-run spread.
 
 ## 6. Evidence corrections to the research brief
 
 - The brief's "generated surface is what haiku met" was measured against a
-  bridge whose `patch-object` body is `{"type":"object","additionalProperties":true}`
-  — the model saw **no op shape at all**. That is the opaque-body case, not
-  the generated-with-typed-body case this design builds.
+  bridge whose `patch-object` input schema is
+  `{"type":"object","additionalProperties":true}` — the tool schema carried
+  no op shape. That is the opaque-body case, not the generated-with-typed-
+  body case this design builds. What it does not prove: that an inline
+  typed body beats per-op tools or a lookup; arm 3 and 4 above test that.
 - The mobile "C bridge" is a gomobile binding over an in-process HTTP
   transport; it bypasses the socket and the user-managed key, not the API
   middleware. Its internal key is full-scope and must not back `/mcp`.
+- The OpenAPI document is not the body contract for ten operations; the
+  discovery catalog is. Any derivation that reads only the document
+  produces tools without bodies for exactly the operations that matter.
 
 ## 7. Constraints carried over
 
