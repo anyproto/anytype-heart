@@ -122,14 +122,14 @@ def served_schemas(heart):
     return out
 
 
-def surface_snapshot(tools_list, schemas, arm, commit):
+def surface_snapshot(tools_list, schemas, arm, commit, served=None):
     """The surface one arm served, in the shape the review reads: the tool
     declarations as the model received them and every served schema."""
     return {"captured_date": datetime.now(timezone.utc).date().isoformat(), "source_commit": commit,
             "surface": "full", "arm": arm,
             "note": "Captured from a throwaway heart's /mcp/full: tools/list as this arm forwarded it, and every "
                     "schema get_schema and get_op_schema serve. Contains no account data.",
-            "tools": tools_list["tools"], "schemas": schemas}
+            "tools": tools_list["tools"], "served_tools": (served or tools_list)["tools"], "schemas": schemas}
 
 
 FINISHED = {"conversation_completed_pending_review", "stopped_at_requested_turn_limit"}
@@ -225,7 +225,7 @@ def main():
             manifest["tools_list"][arm] = {"tools": len(forwarded["tools"]), "served_bytes": compact_bytes(served),
                                            "bytes": compact_bytes(forwarded)}
             path = out / f"surface-snapshot-{arm}.json"
-            path.write_text(json.dumps(surface_snapshot(forwarded, schemas, arm, manifest["heart_commit"]),
+            path.write_text(json.dumps(surface_snapshot(forwarded, schemas, arm, manifest["heart_commit"], served),
                                        ensure_ascii=False, indent=2) + "\n")
             manifest["surface_snapshots"][arm] = {"path": str(path),
                                                   "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}

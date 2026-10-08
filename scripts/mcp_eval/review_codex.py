@@ -248,6 +248,30 @@ def response_signature(value):
     return json.dumps(value, sort_keys=True)
 
 
+def is_guard_schema_fetch(event):
+    """A schema lookup the evaluation guard made for the inline arm."""
+    payload = event.get("payload") or {}
+    return event.get("direction") in {"evaluator_to_upstream", "evaluator_from_upstream"} and \
+        str(payload.get("id", "")).startswith("evaluation-schema-")
+
+
+def served_tools_list_placeholder(run, manifest):
+    """What tools/list the model was served, without its payload: the same
+    fields for every arm, so the review compares behaviour, not bundle size."""
+    stats = manifest.get("tools_list") or {}
+    fetched = 0
+    wire = run / "mcp-wire.jsonl"
+    if wire.exists():
+        fetched = sum(1 for line in wire.read_text().splitlines()
+                      if is_guard_schema_fetch(json.loads(line)) and json.loads(line).get("direction") == "evaluator_to_upstream")
+    return {"surface": manifest.get("surface", "bridge"), "arm": manifest.get("arm"),
+            "tools": stats.get("tool_count"), "served_bytes": stats.get("served_bytes"),
+            "forwarded_bytes": stats.get("forwarded_bytes"), "schema_lookups_inlined_by_guard": fetched,
+            "note": "The tools/list result and the evaluation guard's own schema lookups are omitted from the "
+                    "wire evidence for every arm; the model's own calls, including its get_op_schema and "
+                    "get_schema calls, remain."}
+
+
 def evidence_bundle(run, suite_path=SUITE):
     manifest_path = run / "run.json"
     manifest = json.loads(manifest_path.read_text())
@@ -286,8 +310,17 @@ def evidence_bundle(run, suite_path=SUITE):
                     for key in ("kind", "schema", "type"):
                         if isinstance(args.get(key), str):
                             used_schemas.add(args[key])
-    selected_surface = {k: v for k, v in surface_data.items() if k not in {"tools", "schemas"}}
-    selected_surface.update(tools=[t for t in surface_data.get("tools", []) if normalized(t["name"]) in used_tools],
+    # Both arms are judged on the tool declarations as heart served them: an
+    # arm that inlines lookups does it in the guard, and its inlined schemas
+    # are the served schemas listed below — so the reviewer sees the same
+    # declarations whichever arm ran, and the arm is named, not re-sent.
+    declared = surface_data.get("served_tools", surface_data.get("tools", []))
+    selected_surface = {k: v for k, v in surface_data.items() if k not in {"tools", "served_tools", "schemas"}}
+    if surface_data.get("arm") == "full-inline":
+        selected_surface["arm_note"] = ("This run's tools/list carried every get_op_schema and get_schema lookup "
+                                        "inlined by the evaluation guard; the declarations below are as heart served "
+                                        "them, and the inlined schemas are the served schemas listed under schemas.")
+    selected_surface.update(tools=[t for t in declared if normalized(t["name"]) in used_tools],
                             schemas={k: v for k, v in surface_data.get("schemas", {}).items() if k in used_schemas})
     add("spec/selected-surface.json", json.dumps(selected_surface, ensure_ascii=False) + "\n", str(surface))
     # Explicit metadata projection prevents prior verdicts embedded in run.json anchoring the judge.
@@ -327,6 +360,11 @@ def evidence_bundle(run, suite_path=SUITE):
                 event = json.loads(line)
                 payload = event.get("payload", {})
                 direction = event.get("direction")
+                if is_guard_schema_fetch(event):
+                    # the guard's own lookups for the inline arm: evaluator
+                    # traffic the model never saw, summarized in
+                    # run/served-tools-list.json instead
+                    continue
                 if payload.get("method") == "tools/call":
                     params = payload.get("params", {})
                     signature = json.dumps({k: v for k, v in params.items() if k != "_meta"}, sort_keys=True)
@@ -352,6 +390,7 @@ def evidence_bundle(run, suite_path=SUITE):
             included = sorted(set(included))
         add("run/" + str(path.relative_to(run)), text, str(path), included)
         originals[str(path)] = digest(path.read_bytes())
+    add("run/served-tools-list.json", dump(served_tools_list_placeholder(run, manifest)), str(manifest_path))
     alias_snapshot_reads(sources)
     inventory = {"present": sorted(sources), "expected_turns": [t["turn"] for t in scenario["turns"]],
                  "delivered_turns": [t["turn"] for t in manifest.get("turns", [])],

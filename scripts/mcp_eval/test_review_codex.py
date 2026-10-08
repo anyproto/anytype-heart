@@ -595,3 +595,64 @@ class FullTierReviewInputsTest(unittest.TestCase):
             self.assertNotRegex(text, r"API[-_][a-z]", "no bridge-spelled tool name in the review inputs")
             run_fields = json.loads(bundle["sources"]["run/run.json"]["text"])
             self.assertEqual(("claude", "full", "full"), (run_fields["host"], run_fields["surface"], run_fields["arm"]))
+
+
+class ArmNeutralBundleTest(unittest.TestCase):
+    """The review compares behaviour across arms, so the inline arm's larger
+    tools/list and the guard's schema lookups must not reach the bundle; both
+    arms carry the same placeholder fields and the same served declarations."""
+
+    def make_run(self, root, arm, served, inlined, fetches):
+        snapshot = root / f"surface-snapshot-{arm}.json"
+        snapshot.write_text(json.dumps({"surface": "full", "arm": arm, "tools": inlined if arm == "full-inline" else served,
+                                        "served_tools": served, "schemas": {"ops/insert_blocks": {"kind": "insert_blocks"}}}))
+        run = root / f"run-{arm}"
+        run.mkdir()
+        (run / "run.json").write_text(json.dumps({
+            "scenario_id": "MCP-01", "label": run.name, "host": "codex", "surface": "full", "arm": arm,
+            "surface_snapshot": str(snapshot), "turns": [{"turn": 1, "user": "u"}],
+            "tools_list": {"arm": arm, "tool_count": 2, "served_bytes": 100,
+                           "forwarded_bytes": 900 if arm == "full-inline" else 100}}))
+        (run / "turn-01.prompt.txt").write_text("u\n")
+        call = {"type": "item.completed", "item": {"type": "mcp_tool_call", "tool": "patch_object",
+                "arguments": {"ops": []}, "result": {"content": [{"type": "text", "text": "{\"etag\":\"e\"}"}]}}}
+        (run / "turn-01.events.jsonl").write_text(json.dumps(call) + "\n")
+        wire = [{"direction": "to_model", "payload": {"jsonrpc": "2.0", "id": 2, "result": {"tools": inlined}}}]
+        for i in range(fetches):
+            rid = f"evaluation-schema-{i}"
+            wire.append({"direction": "evaluator_to_upstream", "payload": {"jsonrpc": "2.0", "id": rid, "method": "tools/call",
+                         "params": {"name": "get_op_schema", "arguments": {"op": f"op{i}"}}}})
+            wire.append({"direction": "evaluator_from_upstream", "payload": {"jsonrpc": "2.0", "id": rid,
+                         "result": {"content": [{"type": "text", "text": "x" * 5000}]}}})
+        (run / "mcp-wire.jsonl").write_text("".join(json.dumps(e) + "\n" for e in wire))
+        return run
+
+    def test_both_arms_get_the_same_shape_of_bundle(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            suite = root / "scenarios.json"
+            suite.write_text(json.dumps({"scenarios": [{"id": "MCP-01", "title": "T", "checks": ["x"], "tools": ["patch_object"],
+                                                        "ops": ["insert_blocks"], "turns": [{"turn": 1, "user": "u"}]}]}))
+            suite.with_name("HARNESS.md").write_text("h\n")
+            served = [{"name": "patch_object", "description": "d", "inputSchema": {"type": "object"}}]
+            inlined = [{"name": "patch_object", "description": "d", "inputSchema": {"type": "object", "pad": "y" * 20000}}]
+            full = review.evidence_bundle(self.make_run(root, "full", served, served, 0), suite)
+            inline = review.evidence_bundle(self.make_run(root, "full-inline", served, inlined, 6), suite)
+
+            pf = json.loads(full["sources"]["run/served-tools-list.json"]["text"])
+            pi = json.loads(inline["sources"]["run/served-tools-list.json"]["text"])
+            self.assertEqual(set(pf), set(pi), "the same placeholder fields for both arms")
+            self.assertEqual(("full", 100, 0), (pf["arm"], pf["forwarded_bytes"], pf["schema_lookups_inlined_by_guard"]))
+            self.assertEqual(("full-inline", 900, 6), (pi["arm"], pi["forwarded_bytes"], pi["schema_lookups_inlined_by_guard"]))
+
+            wire = inline["sources"]["run/mcp-wire.jsonl"]
+            kept = [wire["text"].splitlines()[n - 1] for n in wire["included_lines"]]
+            self.assertFalse(any("evaluation-schema-" in line for line in kept), "the guard's lookups are not evidence")
+            self.assertFalse(any('"tools"' in line for line in kept), "nor is the tools/list result")
+
+            sf = json.loads(full["sources"]["spec/selected-surface.json"]["text"])
+            si = json.loads(inline["sources"]["spec/selected-surface.json"]["text"])
+            self.assertEqual(sf["tools"], si["tools"], "both arms are judged on the served declarations")
+            self.assertIn("arm_note", si)
+            self.assertLess(len(review.prompt_for(inline)) - len(review.prompt_for(full)), 2000,
+                            "the arms' prompts differ by the arm fields, not by payload")
