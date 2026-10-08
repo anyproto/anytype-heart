@@ -142,6 +142,8 @@ func New(identityObservePeriod time.Duration, pushIdentityBatchTimeout time.Dura
 
 func (s *service) Init(a *app.App) (err error) {
 	s.accountService = app.MustComponent[account.Service](a)
+	// set before Run: the spaces start earlier and can register the own identity
+	s.myIdentity = s.accountService.AccountID()
 	s.identityRepoClient = app.MustComponent[identityRepoClient](a)
 	s.fileAclService = app.MustComponent[fileacl.Service](a)
 	s.namingService = app.MustComponent[nameserviceclient.AnyNsClientService](a)
@@ -185,8 +187,6 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
-	s.myIdentity = s.accountService.AccountID()
-
 	err = s.ownProfileSubscription.run(ctx)
 	if err != nil {
 		return err
@@ -506,10 +506,11 @@ func (s *service) cacheMyIdentityProfile(identityProfile *model.IdentityProfile)
 	s.lock.Unlock()
 }
 
-// refreshMyIdentityProfile is called after the own profile is pushed to the identity repo.
-// The cached profile can lack the icon keys when they were not available at the last change,
-// e.g. the icon file had not arrived from another device yet; the push succeeds only when
-// they are, so the cached profile and the participants are brought up to date here.
+// refreshMyIdentityProfile is called when the own profile is prepared for a push to the
+// identity repo. The cached profile can lack the icon keys when they were not available at
+// the last change, e.g. the icon file had not arrived from another device yet; the profile
+// is prepared only when they are, so the cached profile and the participants are brought up
+// to date here.
 func (s *service) refreshMyIdentityProfile() {
 	profile, err := s.ownProfileSubscription.prepareOwnIdentityProfile()
 	if err != nil {

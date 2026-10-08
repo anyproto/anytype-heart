@@ -84,6 +84,8 @@ func newFixture(t *testing.T, testObserverPeriod time.Duration) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, wallet))
 	a.Register(testutil.PrepareMock(ctx, a, nsClient))
 
+	// the own identity is set at Init; the tests of the own profile set their own one
+	accountService.EXPECT().AccountID().Return("ownIdentity").Once()
 	svc := New(testObserverPeriod, 1*time.Microsecond)
 	err = svc.Init(a)
 	t.Cleanup(func() {
@@ -428,7 +430,7 @@ func TestOwnProfileCache(t *testing.T) {
 			IconEncryptionKeys: []*model.FileEncryptionKey{{Path: "/0/original", Key: "key1"}},
 		}
 
-		// when the icon file arrives from another device and the profile is pushed
+		// when the icon file arrives from another device and the profile is prepared for a push
 		keysReady.Store(true)
 		fx.refreshMyIdentityProfile()
 

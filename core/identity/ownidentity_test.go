@@ -228,7 +228,9 @@ func TestOwnProfileSubscription(t *testing.T) {
 		err := fx.run(context.Background())
 		require.NoError(t, err)
 
-		time.Sleep(testBatchTimeout / 4)
+		require.Eventually(t, func() bool {
+			return len(fx.testObserver.listObservedProfiles()) == 1
+		}, time.Second, testBatchTimeout/10, "the global name from the naming service is not received")
 
 		// when
 		fx.updateGlobalName(newName)
@@ -402,13 +404,15 @@ func TestPushRetry(t *testing.T) {
 		fx.accountService.EXPECT().SignData(mock.Anything).RunAndReturn(func(data []byte) ([]byte, error) {
 			privKey, _, err := crypto.GenerateRandomEd25519KeyPair()
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("generate key pair: %w", err)
 			}
 			return privKey.Sign(data)
 		})
 		keysReady := &atomic.Bool{}
+		failedLookups := &atomic.Int32{}
 		fx.fileAclService.EXPECT().GetInfoForFileSharing(mock.Anything).RunAndReturn(func(string) (string, []*model.FileEncryptionKey, error) {
 			if !keysReady.Load() {
+				failedLookups.Add(1)
 				return "", nil, fmt.Errorf("no file keys")
 			}
 			return "fileCid1", []*model.FileEncryptionKey{{Path: "/0/original", Key: "key1"}}, nil
@@ -428,25 +432,66 @@ func TestPushRetry(t *testing.T) {
 			IconEncryptionKeys: []*model.FileEncryptionKey{{Path: "/0/original", Key: "key1"}},
 			GlobalName:         globalName,
 		}
+		pushedProfile := func() *model.IdentityProfile {
+			data, err := fx.identityRepoClient.IdentityRepoGet(context.Background(), []string{"identity1"}, []string{identityRepoDataKind})
+			if err != nil || len(data) == 0 {
+				return nil
+			}
+			profile, _, err := extractProfile(data[0], accountSymKey)
+			if err != nil {
+				return nil
+			}
+			return profile
+		}
 
-		// when the details and then the global name are loaded, and both pushes fail
+		// when the details and then the global name are loaded
 		err := fx.run(context.Background())
 		require.NoError(t, err)
-		time.Sleep(3 * testBatchTimeout)
+		require.Eventually(t, func() bool {
+			return len(fx.testObserver.listObservedProfiles()) == 2
+		}, time.Second, testBatchTimeout/10)
+		// and the push of the last change fails
+		failedBefore := failedLookups.Load()
+		require.Eventually(t, func() bool {
+			return failedLookups.Load() > failedBefore
+		}, time.Second, testBatchTimeout/10)
 
 		// then
-		data, err := fx.identityRepoClient.IdentityRepoGet(context.Background(), []string{"identity1"}, []string{identityRepoDataKind})
-		require.NoError(t, err)
-		assert.Empty(t, data)
+		assert.Nil(t, pushedProfile())
 		assert.Zero(t, fx.testObserver.refreshCount())
 
 		// when the icon file arrives from another device
 		keysReady.Store(true)
+
+		// then
+		require.Eventually(t, func() bool {
+			return wantProfile.Equal(pushedProfile())
+		}, 2*time.Second, testBatchTimeout/10)
+		assert.Equal(t, 1, fx.testObserver.refreshCount())
+	})
+
+	t.Run("pending retry is stopped on close", func(t *testing.T) {
+		// given
+		fx := newOwnSubscriptionFixture(t)
+		fx.pushRetryMinDelay = testBatchTimeout / 4
+		fx.myIdentity = fx.accountService.AccountID()
+		lookups := &atomic.Int32{}
+		fx.fileAclService.EXPECT().GetInfoForFileSharing(mock.Anything).RunAndReturn(func(string) (string, []*model.FileEncryptionKey, error) {
+			lookups.Add(1)
+			return "", nil, fmt.Errorf("no file keys")
+		})
+
+		// when the details are loaded, and the push fails: one lookup resolves the icon, one prepares the push
+		fx.handleOwnProfileDetails(domain.NewDetails().SetString(bundle.RelationKeyIconImage, "fileObjectId"))
+		require.Eventually(t, func() bool {
+			return lookups.Load() >= 2
+		}, time.Second, testBatchTimeout/10)
+		fx.close()
+		lookupsAtClose := lookups.Load()
 		time.Sleep(2 * testBatchTimeout)
 
 		// then
-		assert.Equal(t, wantProfile, fx.getDataFromTestRepo(t, accountSymKey))
-		assert.Equal(t, 1, fx.testObserver.refreshCount())
+		assert.Equal(t, lookupsAtClose, lookups.Load())
 	})
 }
 

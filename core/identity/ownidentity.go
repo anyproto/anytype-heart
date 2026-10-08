@@ -57,6 +57,7 @@ type ownProfileSubscription struct {
 	gotDetails  bool
 	details     *domain.Details // save details to batch update operation
 
+	pushRunLock              sync.Mutex // serializes pushes, so the last one pushes the latest profile
 	pushLock                 sync.Mutex
 	pushIdentityTimer        *time.Timer // timer for batching
 	pushIdentityBatchTimeout time.Duration
@@ -64,7 +65,7 @@ type ownProfileSubscription struct {
 	pushRetryDelay           time.Duration
 	pushRetryMinDelay        time.Duration
 	pushRetryMaxDelay        time.Duration
-	pushedCh                 chan struct{} // signals a successful push to the run loop
+	profilePreparedCh        chan struct{} // signals the run loop that the profile with the icon keys was prepared
 
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
@@ -96,7 +97,7 @@ func newOwnProfileSubscription(
 		pushIdentityBatchTimeout:     pushIdentityBatchTimeout,
 		pushRetryMinDelay:            pushRetryMinDelay,
 		pushRetryMaxDelay:            pushRetryMaxDelay,
-		pushedCh:                     make(chan struct{}, 1),
+		profilePreparedCh:            make(chan struct{}, 1),
 		componentCtx:                 componentCtx,
 		componentCtxCancel:           componentCtxCancel,
 		identityGlobalNameCacheStore: identityGlobalNameCacheStore,
@@ -155,7 +156,7 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 			case globalName := <-s.globalNameUpdatedCh:
 				s.handleGlobalNameUpdate(globalName)
 
-			case <-s.pushedCh:
+			case <-s.profilePreparedCh:
 				s.observerService.refreshMyIdentityProfile()
 			}
 		}
@@ -166,6 +167,12 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 
 func (s *ownProfileSubscription) close() {
 	s.componentCtxCancel()
+
+	s.pushLock.Lock()
+	defer s.pushLock.Unlock()
+	if s.pushIdentityTimer != nil {
+		s.pushIdentityTimer.Stop()
+	}
 }
 
 func (s *ownProfileSubscription) enqueuePush() {
@@ -184,31 +191,40 @@ func (s *ownProfileSubscription) enqueuePush() {
 // delay until it succeeds or a newer change is enqueued: e.g. the keys of the icon file can
 // arrive from another device after the profile details, and nothing else would push again.
 func (s *ownProfileSubscription) push() {
+	s.pushRunLock.Lock()
+	defer s.pushRunLock.Unlock()
+	if s.componentCtx.Err() != nil {
+		return
+	}
 	s.pushLock.Lock()
 	generation := s.pushGeneration
 	s.pushLock.Unlock()
 
-	err := s.pushProfileToIdentityRegistry(s.componentCtx)
-	if err == nil {
-		select {
-		case s.pushedCh <- struct{}{}:
-		default:
-		}
-		return
-	}
+	profile, err := s.prepareOwnIdentityProfile()
 	if errors.Is(err, errOwnProfileNotLoaded) {
 		// the profile is pushed once its details are loaded
 		return
 	}
-	if s.componentCtx.Err() != nil {
+	if err != nil {
+		err = fmt.Errorf("prepare own identity profile: %w", err)
+	} else {
+		// the cached own profile may lack the icon keys that are readable now; it is refreshed
+		// even if the upload below fails
+		select {
+		case s.profilePreparedCh <- struct{}{}:
+		default:
+		}
+		err = s.pushProfileToIdentityRegistry(s.componentCtx, profile)
+	}
+	if err == nil || s.componentCtx.Err() != nil {
 		return
 	}
 	log.Error("push profile to identity registry", zap.Error(err))
 
 	s.pushLock.Lock()
 	defer s.pushLock.Unlock()
-	if generation != s.pushGeneration {
-		// a newer change is already scheduled
+	if generation != s.pushGeneration || s.componentCtx.Err() != nil {
+		// a newer change is already scheduled, or the component is closed
 		return
 	}
 	s.pushRetryDelay = min(max(2*s.pushRetryDelay, s.pushRetryMinDelay), s.pushRetryMaxDelay)
@@ -317,11 +333,7 @@ func (s *ownProfileSubscription) isLoaded() bool {
 	return s.gotDetails
 }
 
-func (s *ownProfileSubscription) pushProfileToIdentityRegistry(ctx context.Context) error {
-	identityProfile, err := s.prepareOwnIdentityProfile()
-	if err != nil {
-		return fmt.Errorf("prepare own identity profile: %w", err)
-	}
+func (s *ownProfileSubscription) pushProfileToIdentityRegistry(ctx context.Context, identityProfile *model.IdentityProfile) error {
 	encryptedIdentityProfileBytes, err := proto.Marshal(identityProfile)
 	if err != nil {
 		return fmt.Errorf("marshal identity profile: %w", err)
