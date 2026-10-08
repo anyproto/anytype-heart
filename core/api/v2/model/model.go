@@ -248,7 +248,7 @@ type Space struct {
 
 // CreateSpaceRequest is the POST /v2/spaces body.
 type CreateSpaceRequest struct {
-	Name        string `json:"name"`
+	Name        string `json:"name" binding:"required"`
 	Description string `json:"description,omitempty"`
 }
 

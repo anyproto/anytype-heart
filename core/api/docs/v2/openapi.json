@@ -228,6 +228,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "emoji"
+        ],
         "type": "object"
       },
       "ChatReactionResult": {
@@ -254,6 +257,11 @@
             "type": "string"
           },
           "scope": {
+            "enum": [
+              "messages",
+              "mentions",
+              "reactions"
+            ],
             "type": "string"
           },
           "up_to": {
@@ -351,6 +359,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "name"
+        ],
         "type": "object"
       },
       "CreateResult": {
@@ -419,6 +430,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "name"
+        ],
         "type": "object"
       },
       "CreatedOption": {
@@ -478,9 +492,13 @@
       "EditChatMessageRequest": {
         "properties": {
           "text": {
+            "description": "The new text, required so an omitted member cannot clear the message by accident; an empty string clears it on purpose.",
             "type": "string"
           }
         },
+        "required": [
+          "text"
+        ],
         "type": "object"
       },
       "EditResult": {
