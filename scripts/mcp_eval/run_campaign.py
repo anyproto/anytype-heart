@@ -187,7 +187,8 @@ def main():
         manifest["finished_at"] = datetime.now(timezone.utc).isoformat()
         (out / "campaign.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
     print(f"campaign: {out / 'campaign.json'}", flush=True)
-    return 0 if all(r["status"] == "conversation_completed_pending_review" for r in manifest["runs"]) else 1
+    finished = {"conversation_completed_pending_review", "stopped_at_requested_turn_limit"}
+    return 0 if all(r["status"] in finished for r in manifest["runs"]) else 1
 
 
 if __name__ == "__main__":

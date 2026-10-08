@@ -35,6 +35,17 @@ class ErrorCategoryTests(unittest.TestCase):
         self.assertEqual("envelope", error_category(failed(text='patch_object does not take "body" — arguments: …')))
         self.assertEqual("rate_limit", error_category({"status": "failed", "error": {"data": {"http_status": 429}}, "result": {}}))
 
+    def test_the_full_tiers_rendered_refusals_are_categorized(self):
+        # verbatim shapes from the first dry run against /mcp/full
+        fields = failed(text='unknown property keys\n  /fields/3: unknown property key "properties" — known property keys: active, added_date')
+        include = failed(text='invalid include value\n  include: unknown value "collection_items" (allowed: properties, blocks)')
+        op = failed(text='unknown op\n  /ops/0: unknown op "set" (send one of set_properties, update_block)')
+        block = failed(text='edit refused\n  /ops/0/id: no block with id "b9"')
+        self.assertEqual("payload", error_category(fields))
+        self.assertEqual("payload", error_category(include))
+        self.assertEqual("envelope", error_category(op))
+        self.assertEqual("locator", error_category(block))
+
 
 def write_run(root, name, host, arm, status, usage, calls, tools_list_bytes=None):
     run = root / name

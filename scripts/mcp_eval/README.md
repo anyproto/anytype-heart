@@ -137,3 +137,22 @@ python3 scripts/mcp_eval/audit_judgments.py
 ```
 
 Reporting may attach `evaluator-corrections.json` from beside the matrix or review output. Entries must match both the scenario and a reviewed run ID; their authority, policy, source hashes, and addendum hash remain visible. This does not rewrite raw judgments, grades, pass flags, or coverage. The current campaign uses this addendum because its frozen reference catalogue omitted `update_type.expected_etag` and `update_type.dry_run`, although all actor-visible manifests exposed them. Future campaigns should compare the reference catalogue with runtime manifests before freezing judge inputs. Do not regenerate this campaign's active or completed inputs to hide that discrepancy.
+
+## Hosts, /mcp/full and campaigns
+
+`run_scenario.py` drives a scenario through a host: `--host codex` (`codex exec`,
+the default; `run_codex.py` is an alias) or `--host claude` (`claude -p`). With
+`--upstream-url <api>/mcp/full` the guard reaches heart's full tool table over
+Streamable HTTP instead of the bridge, using the key in `ANYTYPE_API_KEY`;
+`--arm full-opaque` untypes the `ops` items of `patch_object` and `update_type`.
+Tool names are read through `tool_names.py` on both surfaces.
+
+`run_campaign.py --output <dir outside the repo>` builds and boots a throwaway
+heart (`cmd/evalheart`), runs hosts × arms × scenarios × repetitions with bounded
+parallelism, snapshots each run, tears the heart down and writes `campaign.json`.
+`summarize_runs.py --by-host-arm` writes the host × arm breakdown.
+
+The Claude invocation is pinned in `hosts.py` (`CLAUDE_FLAGS`) and proven by
+`test_hosts.py` against a stub Messages API: the model is offered the guard's
+tools only, they are pre-approved, and no user settings, hooks, skills or
+auto-memory reach the request.

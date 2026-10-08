@@ -261,6 +261,9 @@ def error_category(call):
     if status == 429 or code in ("rate_limit_exceeded", "too_many_streams") or "HTTP 429" in text \
             or "Too Many Requests" in text or (err.get("data") or {}).get("http_status") == 429:
         return "rate_limit"
+    if not envelope:
+        envelope = rendered_envelope(result)
+        code, status = envelope.get("code"), envelope.get("status")
     issues = envelope.get("issues") or []
     paths = [i.get("path", "") for i in issues if isinstance(i, dict)]
     message = (envelope.get("message") or "") + " " + " ".join(i.get("message", "") for i in issues if isinstance(i, dict))
@@ -278,6 +281,26 @@ def error_category(call):
     if isinstance(status, int) and 400 <= status < 500:
         return "semantic"
     return "other"
+
+
+_RENDERED_ISSUE = re.compile(r"^  (?:(?P<path>[^:\s][^:]*): )?(?P<message>.+?)(?: \((?P<hint>.*)\))?$")
+
+
+def rendered_envelope(result):
+    """The /mcp/full error text as an envelope. The full tier renders a C6
+    refusal as prose — the message, then one indented "path: message (hint)"
+    line per issue — so a reader that looks only for JSON sees nothing."""
+    text = "\n".join(p.get("text", "") for p in (result or {}).get("content", []) or []
+                     if isinstance(p, dict) and p.get("type") == "text")
+    lines = text.split("\n")
+    if len(lines) < 2 or not lines[1].startswith("  "):
+        return {}
+    issues = []
+    for line in lines[1:]:
+        m = _RENDERED_ISSUE.match(line)
+        if m:
+            issues.append({"path": m.group("path") or "", "message": m.group("message")})
+    return {"message": lines[0], "issues": issues, "code": "validation_failed"} if issues else {}
 
 
 def rate_limit_refusals(run):
