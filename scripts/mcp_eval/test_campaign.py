@@ -5,7 +5,7 @@ import sys
 import tempfile
 import unittest
 
-from run_campaign import ROOT, scenario_set_hash
+from run_campaign import ROOT, run_with_retry, scenario_set_hash
 from summarize_runs import breakdown_markdown, error_category, host_arm_breakdown, rate_limit_refusals
 
 
@@ -90,6 +90,32 @@ class BreakdownTests(unittest.TestCase):
 
 
 class CampaignTests(unittest.TestCase):
+    def test_an_unfinished_run_is_retried_once_and_both_are_kept(self):
+        calls = []
+
+        def fake(job, args, heart, runs_dir, env, attempt=1):
+            calls.append(attempt)
+            return {"status": "runtime_failed" if attempt == 1 else "conversation_completed_pending_review", "attempt": attempt}
+        result = run_with_retry(("claude", "full", "MCP-01", 1), None, None, None, None, run=fake)
+        self.assertEqual([1, 2], calls)
+        self.assertEqual(2, result["attempt"])
+        self.assertEqual("runtime_failed", result["retry_of"]["status"])
+
+        calls.clear()
+        def failing(job, args, heart, runs_dir, env, attempt=1):
+            calls.append(attempt)
+            return {"status": "runtime_failed", "attempt": attempt}
+        result = run_with_retry(("claude", "full", "MCP-01", 1), None, None, None, None, run=failing)
+        self.assertEqual([1, 2], calls, "retried once, not again")
+        self.assertEqual("runtime_failed", result["status"])
+
+        calls.clear()
+        def ok(job, args, heart, runs_dir, env, attempt=1):
+            calls.append(attempt)
+            return {"status": "conversation_completed_pending_review"}
+        run_with_retry(("claude", "full", "MCP-01", 1), None, None, None, None, run=ok)
+        self.assertEqual([1], calls, "a finished run is not retried")
+
     def test_scenario_set_hash_is_order_and_spelling_stable(self):
         a = [{"id": "MCP-01", "turns": [1, 2]}]
         self.assertEqual(scenario_set_hash(a), scenario_set_hash(json.loads(json.dumps(a, indent=4))))

@@ -132,9 +132,26 @@ def surface_snapshot(tools_list, schemas, arm, commit):
             "tools": tools_list["tools"], "schemas": schemas}
 
 
-def run_one(job, args, heart, runs_dir, env):
+FINISHED = {"conversation_completed_pending_review", "stopped_at_requested_turn_limit"}
+
+
+def run_with_retry(job, args, heart, runs_dir, env, run=None):
+    """One run, retried once when it did not finish (a host or transport
+    failure, not a model mistake: those finish with errors on record). Both
+    attempts are kept; the result names the retry and the first attempt."""
+    run = run or run_one
+    first = run(job, args, heart, runs_dir, env)
+    if first["status"] in FINISHED:
+        return first
+    second = run(job, args, heart, runs_dir, env, attempt=2)
+    second["retry_of"] = first
+    return second
+
+
+def run_one(job, args, heart, runs_dir, env, attempt=1):
     host, arm, scenario, rep = job
-    label = f"eval-{host}-{arm}-r{rep}-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{scenario.lower()}"
+    suffix = "" if attempt == 1 else f"-a{attempt}"
+    label = f"eval-{host}-{arm}-r{rep}{suffix}-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{scenario.lower()}"
     cmd = [sys.executable, str(HERE / "run_scenario.py"), "--host", host, "--scenario", scenario,
            "--model", args.models[host], "--output", str(runs_dir), "--label", label,
            "--upstream-url", heart.mcp_url, "--arm", arm, "--turn-timeout", str(args.turn_timeout),
@@ -216,9 +233,10 @@ def main():
         env = {**os.environ, "ANYTYPE_API_KEY": heart.key}
         jobs = list(itertools.product(args.hosts, args.arms, selected, range(1, args.repetitions + 1)))
         with ThreadPoolExecutor(max_workers=max(1, args.parallel)) as pool:
-            for result in pool.map(lambda job: run_one(job, args, heart, runs_dir, env), jobs):
+            for result in pool.map(lambda job: run_with_retry(job, args, heart, runs_dir, env), jobs):
                 manifest["runs"].append(result)
-                print(f"{result['host']} {result['arm']} {result['scenario_id']} r{result['repetition']}: "
+                retried = " (retried)" if result.get("retry_of") else ""
+                print(f"{result['host']} {result['arm']} {result['scenario_id']} r{result['repetition']}{retried}: "
                       f"{result['status']} ({result['tool_calls']} calls, {result['tool_errors']} errors, "
                       f"{result['rate_limit_refusals']} rate-limited)", flush=True)
                 (out / "campaign.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
@@ -227,8 +245,7 @@ def main():
         manifest["finished_at"] = datetime.now(timezone.utc).isoformat()
         (out / "campaign.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n")
     print(f"campaign: {out / 'campaign.json'}", flush=True)
-    finished = {"conversation_completed_pending_review", "stopped_at_requested_turn_limit"}
-    return 0 if all(r["status"] in finished for r in manifest["runs"]) else 1
+    return 0 if all(r["status"] in FINISHED for r in manifest["runs"]) else 1
 
 
 if __name__ == "__main__":
