@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	v2service "github.com/anyproto/anytype-heart/core/api/v2/service"
+	"github.com/anyproto/anytype-heart/core/api/wrapper/full"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -67,6 +68,9 @@ type Server struct {
 	// the tech space stays excluded under allSpaces grants — the same id the
 	// v2 service holds for its ensureSpaceGranted backstop.
 	techSpaceId string
+	// fullTable is V2Deps.FullTable; mcp holds the /mcp/{tier} sessions.
+	fullTable func() (*full.Table, error)
+	mcp       *mcpSessions
 	// docs holds both generated OpenAPI documents. NewRouter still takes v1's
 	// bytes as parameters (its signature is what the route-conformance tests
 	// call), so only the v2 pair is read from here.
@@ -117,6 +121,10 @@ type V2Deps struct {
 	// not registered, as with ChatSub.
 	ObjectSearch apicore.ObjectSearchService
 	Store        objectstore.ObjectStore
+	// FullTable supplies the full tool table the /mcp/full route serves
+	// (derived once per process by the composition root). With it nil the
+	// route still registers and refuses full-tier calls (fail closed).
+	FullTable func() (*full.Table, error)
 	// AccountId is the caller's account identity, used by Phase 4's
 	// stored-view placeholder substitution (`_filter_template_2_` → the
 	// caller's participant id). Empty degrades the placeholder to a warning.
@@ -146,6 +154,8 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 		chatSubSvc:  chatSubSvc,
 		techSpaceId: techSpaceId,
 		docs:        docs,
+		fullTable:   v2Deps.FullTable,
+		mcp:         newMCPSessions(),
 	}
 	if v2Deps.Reader != nil && v2Deps.Store != nil {
 		s.v2Service = v2service.NewService(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Provenance, v2Deps.Widgets, v2Deps.ChatSub, v2Deps.ObjectSearch, fileObjectService, v2Deps.Store, techSpaceId, v2Deps.AccountId)

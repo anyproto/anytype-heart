@@ -30,6 +30,11 @@ const (
 	TierSmall Tier = "small"
 	// TierLarge is the ~20B tier: the full task-tool set.
 	TierLarge Tier = "large"
+	// TierFull names the second table (core/api/wrapper/full), served by
+	// the API server's /mcp/full route to capable models. It is not a
+	// subset of the curated table: ToolsForTier never takes it, and
+	// ParseTier (the CLI's flag) does not accept it.
+	TierFull Tier = "full"
 )
 
 // ParseTier maps a flag value to a Tier with steering.

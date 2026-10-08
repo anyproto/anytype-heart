@@ -65,7 +65,7 @@ func newV2ServerFixture(t *testing.T) *fixture {
 	accountMock.On("GetInfo", mock.Anything).Return(&model.AccountInfo{TechSpaceId: mockedTechSpaceId}, nil).Once()
 
 	server := NewServer(mwMock, accountMock, eventMock, crossSpaceSubService, chatSubService, fileObjectMock,
-		V2Deps{Reader: readerMock, Creator: creatorMock, Mutator: mutatorMock, Widgets: widgetsMock, ChatSub: chatSubService, ObjectSearch: objectSearchMock, Store: store}, mockedListenAddr, OpenApiDocs{})
+		V2Deps{Reader: readerMock, Creator: creatorMock, Mutator: mutatorMock, Widgets: widgetsMock, ChatSub: chatSubService, ObjectSearch: objectSearchMock, Store: store, FullTable: testFullTable(t)}, mockedListenAddr, OpenApiDocs{})
 
 	return &fixture{
 		Server:               server,
