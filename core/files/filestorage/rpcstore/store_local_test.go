@@ -3,6 +3,7 @@ package rpcstore
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"slices"
 	"sync"
@@ -80,6 +81,7 @@ type fakePool struct {
 	getCalls      []getCall
 	pickCalls     []pickCall
 	getOneOfCalls int
+	seen          []*fakePeer
 }
 
 func newFakePool(node peer.Peer) *fakePool {
@@ -99,7 +101,29 @@ func (p *fakePool) Get(ctx context.Context, id string) (peer.Peer, error) {
 	if fn == nil {
 		return nil, net.ErrUnableToConnect
 	}
-	return fn(ctx)
+	pr, err := fn(ctx)
+	p.track(pr)
+	return pr, err
+}
+
+// track remembers every fake peer handed out, so the fixture can check their
+// lease invariants at the end of the test
+func (p *fakePool) track(pr peer.Peer) {
+	fp, ok := pr.(*fakePeer)
+	if !ok || fp == nil {
+		return
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if !slices.Contains(p.seen, fp) {
+		p.seen = append(p.seen, fp)
+	}
+}
+
+func (p *fakePool) seenPeers() []*fakePeer {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return slices.Clone(p.seen)
 }
 
 func (p *fakePool) Pick(ctx context.Context, id string) (peer.Peer, error) {
@@ -110,7 +134,9 @@ func (p *fakePool) Pick(ctx context.Context, id string) (peer.Peer, error) {
 	if fn == nil {
 		return nil, ocache.ErrNotExists
 	}
-	return fn(ctx)
+	pr, err := fn(ctx)
+	p.track(pr)
+	return pr, err
 }
 
 func (p *fakePool) GetOneOf(ctx context.Context, peerIds []string) (peer.Peer, error) {
@@ -121,6 +147,7 @@ func (p *fakePool) GetOneOf(ctx context.Context, peerIds []string) (peer.Peer, e
 	if node == nil {
 		return nil, net.ErrUnableToConnect
 	}
+	p.track(node)
 	return node, nil
 }
 
@@ -164,32 +191,50 @@ type releaseRec struct {
 	pooled bool
 }
 
-// fakePeer models any-sync peer's sub-conn reuse: ReleaseDrpcConn re-pools a
-// conn only when the release ctx is live and the conn is not closed
-// (peer.checkReleased); otherwise the conn is closed (closeAsync) and dropped.
-// AcquireDrpcConn hands out a pooled conn before asking acquire for a new one.
+// fakePeer models any-sync peer's sub-conn leasing (net/peer/peer.go):
+// AcquireDrpcConn hands out a pooled conn before asking acquire for a new
+// one, discards closed idle conns instead of handing them out, and never
+// leases one conn twice at a time; ReleaseDrpcConn re-pools a conn only when
+// the release ctx is live, the conn is not closed and it has no unfinished
+// call (checkReleased's Unblocked wait); otherwise it closes it (closeAsync)
+// and drops it. Breaches of these invariants by the code under test are
+// recorded as violations and fail the test in the fixture's cleanup.
 type fakePeer struct {
 	id      string
 	acquire func(ctx context.Context) (drpc.Conn, error)
+	closed  atomic.Bool
 
-	mu       sync.Mutex
-	acquires int
-	releases []releaseRec
-	idle     []drpc.Conn
+	mu         sync.Mutex
+	acquires   int
+	releases   []releaseRec
+	idle       []drpc.Conn
+	leased     map[drpc.Conn]bool
+	violations []string
 }
 
 func newFakePeer(id string, acquire func(ctx context.Context) (drpc.Conn, error)) *fakePeer {
-	return &fakePeer{id: id, acquire: acquire}
+	return &fakePeer{id: id, acquire: acquire, leased: map[drpc.Conn]bool{}}
 }
 
-// peerWithConn is a peer that hands out the same conn on every acquire
+// peerWithConn is a peer whose only conn is conn: a second lease while it is
+// out, or a lease after it was closed, fails like a real peer whose conn
+// could not be opened
 func peerWithConn(id string, conn drpc.Conn) *fakePeer {
 	return newFakePeer(id, func(context.Context) (drpc.Conn, error) { return conn, nil })
 }
 
+func isConnClosed(conn drpc.Conn) bool {
+	select {
+	case <-conn.Closed():
+		return true
+	default:
+		return false
+	}
+}
+
 func (p *fakePeer) Id() string               { return p.id }
 func (p *fakePeer) Context() context.Context { return context.Background() }
-func (p *fakePeer) IsClosed() bool           { return false }
+func (p *fakePeer) IsClosed() bool           { return p.closed.Load() }
 func (p *fakePeer) CloseChan() <-chan struct{} {
 	return nil
 }
@@ -199,29 +244,50 @@ func (p *fakePeer) Close() error                         { return nil }
 func (p *fakePeer) AcquireDrpcConn(ctx context.Context) (drpc.Conn, error) {
 	p.mu.Lock()
 	p.acquires++
-	if n := len(p.idle); n > 0 {
+	for len(p.idle) > 0 {
+		n := len(p.idle)
 		conn := p.idle[n-1]
 		p.idle = p.idle[:n-1]
+		if isConnClosed(conn) {
+			continue // peer.acquireDrpcConn drops a closed inactive conn
+		}
+		p.leased[conn] = true
 		p.mu.Unlock()
 		return conn, nil
 	}
 	p.mu.Unlock()
-	return p.acquire(ctx)
+	conn, err := p.acquire(ctx)
+	if err != nil {
+		return nil, err
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if isConnClosed(conn) {
+		return nil, errors.New("fake peer: open sub-conn: closed")
+	}
+	if p.leased[conn] {
+		return nil, errors.New("fake peer: open sub-conn: conn already leased")
+	}
+	p.leased[conn] = true
+	return conn, nil
 }
 
 func (p *fakePeer) ReleaseDrpcConn(ctx context.Context, conn drpc.Conn) {
-	closed := false
-	select {
-	case <-conn.Closed():
-		closed = true
-	default:
+	closed := isConnClosed(conn)
+	busy := false
+	if ic, ok := conn.(interface{ inflightCalls() int32 }); ok {
+		busy = ic.inflightCalls() > 0
 	}
-	pooled := ctx.Err() == nil && !closed
+	pooled := ctx.Err() == nil && !closed && !busy
 	if !pooled && !closed {
 		_ = conn.Close()
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	if !p.leased[conn] {
+		p.violations = append(p.violations, "release of a conn that is not leased")
+	}
+	delete(p.leased, conn)
 	p.releases = append(p.releases, releaseRec{conn: conn, err: ctx.Err(), cause: context.Cause(ctx), pooled: pooled})
 	if pooled {
 		p.idle = append(p.idle, conn)
@@ -237,6 +303,12 @@ func (p *fakePeer) DoDrpc(ctx context.Context, do func(conn drpc.Conn) error) er
 	return do(conn)
 }
 
+func (p *fakePeer) violationsList() []string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return slices.Clone(p.violations)
+}
+
 func (p *fakePeer) stats() (acquires int, releases []releaseRec) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -247,9 +319,14 @@ func (p *fakePeer) stats() (acquires int, releases []releaseRec) {
 // ctx, channels or timers.
 type blockScript func(ctx context.Context) ([]byte, error)
 
-// plainConn is a drpc.Conn without BytesRead
+// plainConn is a drpc.Conn without BytesRead. Invoke checks the request
+// like the serving side would (rpchandler.BlockGet casts the CID) and fails on
+// a closed conn like drpc does.
 type plainConn struct {
 	script blockScript
+	// allowWait accepts Wait: true (the node path); a local fetch must not
+	// ask the peer to wait for a block it does not have
+	allowWait bool
 
 	invokes  atomic.Int32
 	inflight atomic.Int32
@@ -260,17 +337,42 @@ type plainConn struct {
 
 	mu          sync.Mutex
 	cancelledAt []time.Time // fake-time stamps of invokes that ended with a done ctx
+	requests    []*fileproto.BlockGetRequest
 }
 
 func newPlainConn(script blockScript) *plainConn {
 	return &plainConn{script: script, closed: make(chan struct{})}
 }
 
+func (c *plainConn) inflightCalls() int32 { return c.inflight.Load() }
+
+func (c *plainConn) checkRequest(req *fileproto.BlockGetRequest) error {
+	if req.SpaceId != testSpaceId {
+		return fmt.Errorf("fake conn: unexpected space id %q", req.SpaceId)
+	}
+	if _, err := cid.Cast(req.Cid); err != nil {
+		return fmt.Errorf("fake conn: cast cid: %w", err)
+	}
+	if req.Wait && !c.allowWait {
+		return errors.New("fake conn: local fetch must not wait")
+	}
+	return nil
+}
+
 func (c *plainConn) Invoke(ctx context.Context, _ string, _ drpc.Encoding, in, out drpc.Message) error {
+	if isConnClosed(c) {
+		return drpc.ClosedError.New("connection closed")
+	}
 	c.invokes.Add(1)
 	c.inflight.Add(1)
 	defer c.inflight.Add(-1)
 	req := in.(*fileproto.BlockGetRequest)
+	c.mu.Lock()
+	c.requests = append(c.requests, req)
+	c.mu.Unlock()
+	if err := c.checkRequest(req); err != nil {
+		return err
+	}
 	data, err := c.script(ctx)
 	if ctx.Err() != nil {
 		c.mu.Lock()
@@ -282,6 +384,12 @@ func (c *plainConn) Invoke(ctx context.Context, _ string, _ drpc.Encoding, in, o
 	}
 	*out.(*fileproto.BlockGetResponse) = fileproto.BlockGetResponse{Cid: req.Cid, Data: data}
 	return nil
+}
+
+func (c *plainConn) requestsSeen() []*fileproto.BlockGetRequest {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return slices.Clone(c.requests)
 }
 
 func (c *plainConn) NewStream(context.Context, string, drpc.Encoding) (drpc.Stream, error) {
@@ -375,25 +483,50 @@ type localFixture struct {
 	pool      *fakePool
 	peerStore *fakePeerStore
 	node      *fakePeer
-	nodeConn  *plainConn
 	nodeData  []byte
 	// baseCtx is cancelled in t.Cleanup so an operation a failed test left
 	// behind unwinds instead of tripping the bubble's deadlock detector
 	baseCtx context.Context
+
+	nodeMu     sync.Mutex
+	nodeScript blockScript
+	nodeConns  []*plainConn
 }
 
 func newLocalFixture(t *testing.T, localIds ...string) *localFixture {
 	t.Helper()
 	nodeData := []byte("from-node")
-	nodeConn := newPlainConn(answer(nodeData))
-	node := peerWithConn(testNodeId, nodeConn)
-	pool := newFakePool(node)
-	ps := &fakePeerStore{local: localIds, nodes: []string{testNodeId}}
-	s := newStore(pool, ps)
-	s.shuffleLocalPeers = func([]string) {} // deterministic candidate order
+	fx := &localFixture{nodeData: nodeData, nodeScript: answer(nodeData)}
+	// one conn per lease, like a real node peer under concurrent GetMany
+	// workers
+	fx.node = newFakePeer(testNodeId, func(context.Context) (drpc.Conn, error) {
+		fx.nodeMu.Lock()
+		defer fx.nodeMu.Unlock()
+		c := newPlainConn(fx.nodeScript)
+		c.allowWait = true
+		fx.nodeConns = append(fx.nodeConns, c)
+		return c, nil
+	})
+	fx.pool = newFakePool(fx.node)
+	fx.peerStore = &fakePeerStore{local: localIds, nodes: []string{testNodeId}}
+	fx.store = newStore(fx.pool, fx.peerStore)
+	fx.shuffleLocalPeers = func([]string) {} // deterministic candidate order
 	baseCtx, cancel := context.WithCancel(context.Background())
+	fx.baseCtx = baseCtx
 	t.Cleanup(cancel)
-	return &localFixture{store: s, pool: pool, peerStore: ps, node: node, nodeConn: nodeConn, nodeData: nodeData, baseCtx: baseCtx}
+	t.Cleanup(func() {
+		for _, p := range fx.pool.seenPeers() {
+			assert.Empty(t, p.violationsList(), "lease violations on peer %s", p.id)
+		}
+	})
+	return fx
+}
+
+// setNodeScript changes what the node's conns opened from now on do
+func (fx *localFixture) setNodeScript(script blockScript) {
+	fx.nodeMu.Lock()
+	defer fx.nodeMu.Unlock()
+	fx.nodeScript = script
 }
 
 func (fx *localFixture) ctx() context.Context {
@@ -472,6 +605,9 @@ func TestLocalPeer_SlowButProgressingFetchCompletes(t *testing.T) {
 		fx.requireNotStruck(t, testLocalA)
 		assert.Equal(t, 0, fx.pool.nodeCalls())
 		assert.Greater(t, conn.polls.Load(), int32(1), "watchdog must poll the counter")
+		reqs := conn.requestsSeen()
+		require.Len(t, reqs, 1)
+		assert.Equal(t, &fileproto.BlockGetRequest{SpaceId: testSpaceId, Cid: testCid("a").Bytes()}, reqs[0])
 		_, releases := local.stats()
 		require.Len(t, releases, 1)
 		assert.NoError(t, releases[0].err, "Release must see a live ctx so the conn is re-pooled")
@@ -824,6 +960,13 @@ func TestLocalPeer_ConnectFailureClassification(t *testing.T) {
 			wantB: true,
 		},
 		{
+			name: "acquire DeadlineExceeded with our ctx alive does not strike",
+			acquireA: func(context.Context) (drpc.Conn, error) {
+				return nil, context.DeadlineExceeded
+			},
+			wantB: true,
+		},
+		{
 			name: "acquire ErrConnClosed does not strike",
 			acquireA: func(context.Context) (drpc.Conn, error) {
 				return nil, transport.ErrConnClosed
@@ -1047,6 +1190,20 @@ func TestLocalPeer_BanBackoff(t *testing.T) {
 			assert.Equal(t, time.Now().Add(20*time.Second), b.until)
 		})
 	})
+	t.Run("a failure late in an active ban neither escalates nor extends it", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			fx := newLocalFixture(t, testLocalA)
+			start := time.Now()
+			fx.strikeLocalPeer(testLocalA, "test", errX)
+			time.Sleep(localPeerBanMin - time.Second)
+
+			fx.strikeLocalPeer(testLocalA, "test", errX)
+
+			b, _ := fx.banOf(testLocalA)
+			want := localPeerBan{until: start.Add(localPeerBanMin), strikes: 1}
+			assert.Equal(t, want, b)
+		})
+	})
 	t.Run("each failure after expiry doubles up to the cap", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			fx := newLocalFixture(t, testLocalA)
@@ -1250,6 +1407,11 @@ func TestLocalPeer_GetManyCancelWhileWorkersHoldBlocks(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			fx := newLocalFixture(t, testLocalA)
 			gate := make(chan struct{})
+			var gateOnce sync.Once
+			release := func() { gateOnce.Do(func() { close(gate) }) }
+			// a failed check below must still let the workers finish, or the
+			// bubble panics on deadlock instead of reporting the failure
+			defer release()
 			factory := &connFactory{make: func(int) *progressConn {
 				c := newProgressConn(0)
 				// ignores ctx on purpose: the fetch completes after the cancel
@@ -1279,7 +1441,7 @@ func TestLocalPeer_GetManyCancelWhileWorkersHoldBlocks(t *testing.T) {
 				t.Fatal("unexpected block before the workers were released")
 			default:
 			}
-			close(gate)
+			release()
 
 			// must not panic; the channel closes only once every worker returned
 			collect(t, ch, time.Second)
@@ -1445,7 +1607,13 @@ func TestWatchFetchProgress_LateTickDoesNotBackdateProgress(t *testing.T) {
 		stop := watchFetchProgress(ctx, conn, cancel)
 		defer stop()
 
-		<-ctx.Done()
+		// the ticker keeps fake time moving, so a watchdog that never cancels
+		// would not trip the bubble's deadlock detector: bound the wait
+		select {
+		case <-ctx.Done():
+		case <-time.After(30 * time.Second):
+			t.Fatal("the watchdog did not cancel within 30 s of fake time")
+		}
 
 		since := time.Since(start)
 		progressSeen := 4500 * time.Millisecond
@@ -1579,4 +1747,340 @@ func TestLocalPeer_ConnReuse(t *testing.T) {
 			})
 		})
 	}
+}
+
+// ---- review round 2 ----
+
+func TestLocalPeer_AcquireFailureOfAClosedPeer(t *testing.T) {
+	// pool.Flush closing the yamux session while AcquireDrpcConn waits for the
+	// proto handshake answer surfaces as a raw io.EOF, not ErrConnClosed; with
+	// the peer closed and our connect budget alive it says nothing about the
+	// remote
+	cases := []struct {
+		name       string
+		acquire    func(p *fakePeer) func(ctx context.Context) (drpc.Conn, error)
+		wantStrike bool
+	}{
+		{
+			name: "io.EOF from a peer closed during acquire does not strike",
+			acquire: func(p *fakePeer) func(ctx context.Context) (drpc.Conn, error) {
+				return func(context.Context) (drpc.Conn, error) {
+					p.closed.Store(true)
+					return nil, io.EOF
+				}
+			},
+		},
+		{
+			name: "io.EOF from an open peer strikes",
+			acquire: func(p *fakePeer) func(ctx context.Context) (drpc.Conn, error) {
+				return func(context.Context) (drpc.Conn, error) { return nil, io.EOF }
+			},
+			wantStrike: true,
+		},
+		{
+			name: "connect budget expiring strikes even when the peer is closed",
+			acquire: func(p *fakePeer) func(ctx context.Context) (drpc.Conn, error) {
+				return func(ctx context.Context) (drpc.Conn, error) {
+					<-ctx.Done()
+					p.closed.Store(true)
+					return nil, io.EOF
+				}
+			},
+			wantStrike: true,
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				fx := newLocalFixture(t, testLocalA, testLocalB)
+				want := []byte("from-B")
+				connB := newProgressConn(0)
+				connB.script = answer(want)
+				peerA := newFakePeer(testLocalA, nil)
+				peerA.acquire = tc.acquire(peerA)
+				fx.pool.gets[testLocalA] = immediateGet(peerA)
+				fx.pool.gets[testLocalB] = immediateGet(peerWithConn(testLocalB, connB))
+
+				got := runBounded(t, 7*time.Second, func() ([]byte, error) {
+					return fx.getFromLocalPeers(fx.ctx(), testSpaceId, testCid("a"))
+				})
+
+				require.NoError(t, got.err)
+				assert.Equal(t, want, got.data)
+				if tc.wantStrike {
+					fx.requireStruck(t, testLocalA, 1)
+				} else {
+					fx.requireNotStruck(t, testLocalA)
+				}
+				fx.requireNotStruck(t, testLocalB)
+			})
+		})
+	}
+}
+
+func TestWatchFetchProgress_StaleSampleDoesNotStall(t *testing.T) {
+	// The watchdog is descheduled between reading the counter and reading
+	// the clock while bytes keep arriving: the stale, unchanged count must
+	// not be compared against the fresh time.
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithCancelCause(context.Background())
+		defer cancel(nil)
+		start := time.Now()
+		// one byte at 0.5 s, nothing until 2.5 s, then a byte every 500 ms
+		bytesAt := func(now time.Time) int64 {
+			elapsed := now.Sub(start)
+			switch {
+			case elapsed < 500*time.Millisecond:
+				return 0
+			case elapsed < 2500*time.Millisecond:
+				return 1
+			default:
+				return int64(elapsed / (500 * time.Millisecond))
+			}
+		}
+		conn := &pollScriptConn{plainConn: newPlainConn(nil)}
+		conn.poll = func(n int32) int64 {
+			sample := bytesAt(time.Now())
+			if n == 3 {
+				// the 2 s tick samples 1 (unchanged since the 1 s tick) and is
+				// descheduled until 7 s, past the 5 s window, while bytes arrive
+				time.Sleep(localPeerStallTimeout)
+			}
+			return sample
+		}
+		stop := watchFetchProgress(ctx, conn, cancel)
+
+		time.Sleep(15 * time.Second)
+		stop()
+
+		assert.NoError(t, ctx.Err(), "a progressing fetch was cancelled on a stale sample")
+		assert.Greater(t, conn.n.Load(), int32(3), "the watchdog must keep polling after the stale sample")
+	})
+}
+
+func TestWatchFetchProgress_StopEndsTheFallbackTimer(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithCancelCause(context.Background())
+		defer cancel(nil)
+		stop := watchFetchProgress(ctx, newPlainConn(nil), cancel)
+		time.Sleep(time.Second)
+		start := time.Now()
+
+		stop()
+
+		assert.Equal(t, time.Duration(0), time.Since(start), "stop must not wait out the fallback timer")
+		time.Sleep(localPeerFetchFallbackTimeout + localPeerStallCheckInterval)
+		assert.NoError(t, ctx.Err(), "a stopped fallback timer must never cancel")
+	})
+}
+
+func TestLocalPeer_SuccessfulFetchWithoutCounterStopsTheFallbackTimer(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		fx := newLocalFixture(t, testLocalA)
+		want := []byte("from-local")
+		conn := newPlainConn(answer(want))
+		local := peerWithConn(testLocalA, conn)
+		fx.pool.gets[testLocalA] = immediateGet(local)
+		start := time.Now()
+
+		got := runBounded(t, time.Second, func() ([]byte, error) {
+			return fx.getFromLocalPeers(fx.ctx(), testSpaceId, testCid("a"))
+		})
+
+		require.NoError(t, got.err)
+		assert.Equal(t, want, got.data)
+		assert.Equal(t, time.Duration(0), time.Since(start))
+		time.Sleep(localPeerFetchFallbackTimeout + localPeerStallCheckInterval)
+		_, releases := local.stats()
+		require.Len(t, releases, 1)
+		assert.True(t, releases[0].pooled, "the conn must be re-pooled")
+		assert.Equal(t, int32(0), conn.closes.Load(), "nothing may cancel or close the conn later")
+		assert.Empty(t, conn.cancellations())
+	})
+}
+
+func TestLocalPeer_NonStrikingErrorsKeepStrikeHistory(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		fx := newLocalFixture(t, testLocalA)
+		errX := errors.New("x")
+		// two strikes, both bans expired
+		fx.strikeLocalPeer(testLocalA, "test", errX)
+		time.Sleep(localPeerBanMin + time.Millisecond)
+		fx.strikeLocalPeer(testLocalA, "test", errX)
+		time.Sleep(2*localPeerBanMin + time.Millisecond)
+		seeded, _ := fx.banOf(testLocalA)
+		require.Equal(t, 2, seeded.strikes)
+
+		const (
+			stepNotFound = iota
+			stepCallerCancel
+			stepEOF
+		)
+		var step atomic.Int32
+		script := func(ctx context.Context) ([]byte, error) {
+			switch step.Load() {
+			case stepNotFound:
+				return nil, drpcerr.WithCode(errors.New("remote: CID not found"), rpcerr.Code(fileprotoerr.ErrCIDNotFound))
+			case stepCallerCancel:
+				<-ctx.Done()
+				return nil, ctx.Err()
+			default:
+				return nil, io.EOF
+			}
+		}
+		factory := &connFactory{make: func(int) *progressConn {
+			c := newProgressConn(0)
+			c.script = script
+			return c
+		}}
+		fx.pool.gets[testLocalA] = immediateGet(newFakePeer(testLocalA, factory.acquire))
+
+		// an application error: the peer answered
+		got := runBounded(t, time.Second, func() ([]byte, error) {
+			return fx.getFromLocalPeers(fx.ctx(), testSpaceId, testCid("a"))
+		})
+		require.ErrorIs(t, got.err, format.ErrNotFound{})
+		b, _ := fx.banOf(testLocalA)
+		assert.Equal(t, seeded, b, "an application error must not touch the strike history")
+
+		// the caller ends the fetch
+		step.Store(stepCallerCancel)
+		ctx, cancel := context.WithCancel(fx.ctx())
+		time.AfterFunc(time.Second, cancel)
+		got = runBounded(t, 3*time.Second, func() ([]byte, error) {
+			return fx.getFromLocalPeers(ctx, testSpaceId, testCid("b"))
+		})
+		cancel()
+		require.ErrorIs(t, got.err, context.Canceled)
+		b, _ = fx.banOf(testLocalA)
+		assert.Equal(t, seeded, b, "a caller cancellation must not touch the strike history")
+
+		// the next real failure is the third strike
+		step.Store(stepEOF)
+		got = runBounded(t, time.Second, func() ([]byte, error) {
+			return fx.getFromLocalPeers(fx.ctx(), testSpaceId, testCid("c"))
+		})
+		require.ErrorIs(t, got.err, io.EOF)
+		b, _ = fx.banOf(testLocalA)
+		want := localPeerBan{until: time.Now().Add(4 * localPeerBanMin), strikes: 3}
+		assert.Equal(t, want, b)
+	})
+}
+
+func TestLocalPeer_NodeFallbackIsNotBoundedByLocalBudgets(t *testing.T) {
+	// the node fetch runs under the caller's ctx only: a node answer slower
+	// than every local budget must still arrive
+	const nodeLatency = 20 * time.Second
+	newSlowNodeFixture := func(t *testing.T) *localFixture {
+		fx := newLocalFixture(t, testLocalA)
+		fx.pool.gets[testLocalA] = func(context.Context) (peer.Peer, error) {
+			return nil, errors.New("dial tcp: connection refused")
+		}
+		fx.setNodeScript(func(ctx context.Context) ([]byte, error) {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(nodeLatency):
+				return fx.nodeData, nil
+			}
+		})
+		return fx
+	}
+	t.Run("Get", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			fx := newSlowNodeFixture(t)
+			ctx, cancel := context.WithTimeout(fx.ctx(), time.Minute)
+			defer cancel()
+			start := time.Now()
+
+			got := runBounded(t, 2*nodeLatency, func() ([]byte, error) {
+				b, err := fx.Get(ctx, testCid("a"))
+				if err != nil {
+					return nil, err
+				}
+				return b.RawData(), nil
+			})
+
+			require.NoError(t, got.err)
+			assert.Equal(t, fx.nodeData, got.data)
+			assert.Equal(t, nodeLatency, time.Since(start))
+		})
+	})
+	t.Run("GetMany", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			fx := newSlowNodeFixture(t)
+			ctx, cancel := context.WithTimeout(fx.ctx(), time.Minute)
+			defer cancel()
+			cids := []cid.Cid{testCid("a"), testCid("b"), testCid("c")}
+
+			got := collect(t, fx.GetMany(ctx, cids), 2*nodeLatency)
+
+			require.Len(t, got, len(cids))
+			for _, b := range got {
+				assert.Equal(t, fx.nodeData, b.RawData())
+			}
+		})
+	})
+}
+
+func TestLocalPeer_CallerCancelCoincidingWithAStallDoesNotStrike(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		fx := newLocalFixture(t, testLocalA)
+		ctx, cancel := context.WithCancel(fx.ctx())
+		defer cancel()
+		conn := newProgressConn(0)
+		// the caller gives up right as the watchdog decides the stall: by the
+		// time the fetch returns, the caller's ctx is done too
+		conn.script = func(fetchCtx context.Context) ([]byte, error) {
+			<-fetchCtx.Done()
+			cancel()
+			return nil, fetchCtx.Err()
+		}
+		fx.pool.gets[testLocalA] = immediateGet(peerWithConn(testLocalA, conn))
+
+		got := runBounded(t, 7*time.Second, func() ([]byte, error) {
+			return fx.getFromLocalPeers(ctx, testSpaceId, testCid("a"))
+		})
+
+		require.ErrorIs(t, got.err, errLocalPeerStalled, "the watchdog decided first")
+		fx.requireNotStruck(t, testLocalA)
+	})
+}
+
+func TestLocalPeer_CandidateOrderIsShuffled(t *testing.T) {
+	t.Run("connect uses the shuffled order", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			fx := newLocalFixture(t, testLocalA, testLocalB)
+			var shuffled [][]string
+			fx.shuffleLocalPeers = func(ids []string) {
+				shuffled = append(shuffled, slices.Clone(ids))
+				slices.Reverse(ids)
+			}
+			want := []byte("from-B")
+			connA, connB := newProgressConn(0), newProgressConn(0)
+			connA.script = answer([]byte("from-A"))
+			connB.script = answer(want)
+			fx.pool.gets[testLocalA] = immediateGet(peerWithConn(testLocalA, connA))
+			fx.pool.gets[testLocalB] = immediateGet(peerWithConn(testLocalB, connB))
+
+			got := runBounded(t, time.Second, func() ([]byte, error) {
+				return fx.getFromLocalPeers(fx.ctx(), testSpaceId, testCid("a"))
+			})
+
+			require.NoError(t, got.err)
+			assert.Equal(t, want, got.data)
+			assert.Equal(t, [][]string{{testLocalA, testLocalB}}, shuffled)
+			assert.Empty(t, fx.pool.getCallsFor(testLocalA), "A comes second after the shuffle")
+		})
+	})
+	t.Run("the default shuffle permutes", func(t *testing.T) {
+		s := newStore(nil, nil)
+		seen := map[string]bool{}
+		for i := 0; i < 200 && len(seen) < 2; i++ {
+			ids := []string{testLocalA, testLocalB}
+			s.shuffleLocalPeers(ids)
+			seen[ids[0]] = true
+		}
+		assert.Len(t, seen, 2, "both peers must come first sometimes")
+	})
 }

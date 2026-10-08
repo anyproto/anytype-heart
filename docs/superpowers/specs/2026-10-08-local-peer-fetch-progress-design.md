@@ -270,8 +270,18 @@ ctx (caller)
    | `connectCtx` deadline hit (slow dial, limiter wait, slow open) | yes  | yes                 |
    | `context.Canceled` or `context.DeadlineExceeded` with `connectCtx` alive (another caller's aborted shared load, returned by `ocache.Get` once its `maxLoadRetries` are spent, `ocache.go:218-235`) | no | yes |
    | `transport.ErrConnClosed` from **Acquire** (peer closed under us: Flush, gc) | no | yes |
+   | any other **Acquire** error with `p.IsClosed()` and `connectCtx` alive (Flush closed the yamux session while the proto handshake waited for its answer: yamux returns a raw `io.EOF`, `net/transport/yamux/conn.go:213-216`, and `openDrpcConn` passes the handshake error through, `peer.go:491-493`) | no | yes |
    | `transport.ErrConnClosed` from `pool.Get` (the dial's conn died during setup) | yes | yes |
    | anything else (dial refused/unreachable, handshake error, open error) | yes | yes |
+
+   Order of the checks: caller ctx done → no strike; `ocache.ErrClosed` → no strike;
+   `connectCtx` expired → strike (even if the peer is closed by then: the budget ran
+   out first); ctx errors → no strike; from Acquire, `ErrConnClosed` or
+   `p.IsClosed()` → no strike; else strike. `IsClosed()` is true before yamux fails
+   the session's streams (`Session.Close` sets `shutdown` before closing them), so the
+   check is not racy against the `io.EOF`. A remote that ends the session during the
+   handshake also leaves the peer closed and is not struck either; the next `pool.Get`
+   redials, and a peer that is really gone fails that dial and is struck there.
 
    Trade-off of the `DeadlineExceeded` row: an any-sync internal timeout shorter than
    the 5 s budget that surfaces as `DeadlineExceeded` with our ctx alive no longer
@@ -367,13 +377,14 @@ func watchFetchProgress(ctx context.Context, conn drpc.Conn, cancel context.Canc
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
+				// clock reads, not the tick's value: see below
+				before := time.Now()          // read BEFORE the counter: the stall check
 				cur := br.BytesRead()
-				now := time.Now() // not the tick's value: see below
 				if cur != last {
-					last, lastProgress = cur, now
+					last, lastProgress = cur, time.Now() // read AFTER: the progress stamp
 					continue
 				}
-				if now.Sub(lastProgress) >= localPeerStallTimeout {
+				if before.Sub(lastProgress) >= localPeerStallTimeout {
 					stall()
 					return
 				}
@@ -401,12 +412,27 @@ load, `cancel` is idempotent.
 Timestamps: a `time.Ticker` delivers the time the tick was **scheduled**
 (`time/sleep.go` `sendTime`), so a tick received late (process suspended, goroutine
 starved, a slow `BytesRead`) carries a past time. Stamping progress with it backdates
-`lastProgress` and the following ticks can cancel a progressing fetch. Both the progress
-stamp and the stall comparison use `time.Now()` taken after `BytesRead`.
+`lastProgress` and the following ticks can cancel a progressing fetch. So both times
+are clock reads, ordered around the counter read:
 
-Granularity: a stall is detected between `localPeerStallTimeout` and
-`localPeerStallTimeout + localPeerStallCheckInterval` after the last counted byte (on
-yamux: after the last complete 64 KiB frame).
+- the stall comparison uses `before`, read **before** `BytesRead`: the count is no
+  older than `before`, so a goroutine descheduled between the two reads cannot pair a
+  stale, unchanged count with a later time (≥ 5 s of descheduling while bytes arrive
+  would otherwise be a false stall and a strike);
+- the progress stamp uses a time read **after** `BytesRead`: the counted bytes arrived
+  no later than that, so the stamp can only postpone a stall, never bring one forward.
+  Stamping with `before` instead would backdate the stamp by however long the read was
+  held up after sampling.
+
+Bound: progress is noticed only at the next tick, and the stall checks run on the tick
+cadence against a stamp taken after that tick's read. A stall is therefore detected
+between `localPeerStallTimeout` and `localPeerStallTimeout +
+2 × localPeerStallCheckInterval` (≈ 7 s with the defaults) after the last counted byte
+(on yamux: after the last complete 64 KiB frame), plus scheduling delay. Under
+`synctest`, where clock reads around an instant poll are equal, the observed bound is
+one interval (tests 2 and 3 assert that); with a real clock the stamp lands just after
+the tick and the check at exactly `stall` later can miss by that ε, costing a second
+interval. No timer redesign: a 1-2 s slack on a 5 s policy window does not matter.
 
 ### `getFromLocalPeers`
 
@@ -549,6 +575,7 @@ For every test: how the fixture fails if the implementation is wrong.
     `Get` with a timeout. Kept outside synctest (real goroutines, real timers).
 
 20. **review round 1 additions** — see "Implementation review (round 1)".
+21. **review round 2 additions** — see "Implementation review (round 2)".
 
 Mutation checks before committing: watchdog never cancels (3, 4, 19 fail); drop the
 `ctx.Err() == nil` guard (5, 13 fail); strike the whole list on dial failure (6 fails);
@@ -569,8 +596,8 @@ remove `wg.Wait` (18 fails under `-race`).
   `ErrConnClosed` → strike → 10 s ban. Accepted: one short ban per recovery.
 - **Fallback-to-node latency.** Worst case before the node is tried: 5 s × the number of
   unbanned local candidates (each slow candidate gets its own connect budget) plus the
-  fetch (5-6 s stall, 30 s on a conn without a counter); today: 1 s. With two stale
-  peers and a third that stalls that is 10 s + 6 s. Each `GetMany` worker can pay it
+  fetch (5-7 s stall, 30 s on a conn without a counter); today: 1 s. With two stale
+  peers and a third that stalls that is 10 s + 7 s. Each `GetMany` worker can pay it
   once per ban period; the strikes ban each candidate, so the next call skips them.
   With the backoff a dead peer settles at one such episode per 5 min. No overall
   budget is added: a single LAN peer is the normal case.
@@ -691,3 +718,72 @@ Mutations checked red: tick value as timestamp; strike escalation during a ban;
 without the `stopped` check; `defer conn.Close()` before Release; watchdog without its
 `ctx.Done()` cases; fetch-phase `Canceled`/`DeadlineExceeded` removed; `shift < 3` cap;
 `GetMany` close without `wg.Wait()`.
+
+## Implementation review (round 2)
+
+Four Codex reviews of ba36284c9, code findings verified against any-sync v0.13.7. Fixed
+in one follow-up commit; each behaviour fix was test-first (new test red for the
+stated reason, then green).
+
+Code:
+
+1. **Acquire-phase local closure struck a healthy peer** — `pool.Flush` closing the
+   yamux session while `AcquireDrpcConn` waits for the proto handshake answer returns
+   a raw `io.EOF` (not `transport.ErrConnClosed`), which was struck. The classifier now
+   takes the acquired peer: from Acquire, with `connectCtx` alive, `p.IsClosed()` means
+   not evidence (connect table above). `connectCtx` expiry still strikes. Tests: Acquire
+   returns `io.EOF` after closing the fake peer → no strike; the same error from an open
+   peer → strike; budget expired, then peer closed → strike. A real-yamux variant was
+   not added: closing the session exactly while the handshake waits needs a hook in the
+   `rpctest` server's handshake, which any-sync does not expose, and a timing-based
+   close would land on the `IsClosed()` fast path (`ErrConnClosed`) or after the
+   handshake most of the time, so the test would neither be deterministic nor reach
+   the `io.EOF` path.
+2. **Stale counter sample paired with a fresh clock** — the watchdog read `BytesRead`
+   then `time.Now()`; descheduled ≥ 5 s in between while bytes arrived, it compared an
+   unchanged stale count with the late time. Now `before` is read first and used for the
+   stall check; the progress stamp is read after the counter (justified under Watchdog
+   mechanics). Test: the poll samples an unchanged count at 2 s and returns it at 7 s
+   while bytes keep arriving → no cancel over 15 s.
+3. **Stall bound** — the documented 5-6 s was the `synctest` bound; with a real clock it
+   is up to stall + 2 ticks (≈ 7 s). Spec and code comment corrected; no redesign.
+
+Tests (each listed mutation passed the suite before and fails it now):
+
+4. Active-ban extension — strike at 0 s, strike again at 9 s of the 10 s ban: the ban
+   still ends at 10 s with one strike (mutation: `until = now + localPeerBanMin` during
+   an active ban).
+5. Non-striking errors keep history — two expired strikes, then a `CID not found` and a
+   caller cancellation leave the entry untouched, and the next `io.EOF` bans for 40 s
+   (mutation: `resetLocalPeer` in the non-striking branch).
+6. Requests are checked — the fake conn validates `SpaceId`, a castable `Cid` and
+   `Wait == false` on local conns, one test asserts the full request, and the `rpctest`
+   integration test now starts with a **successful** real local fetch whose request is
+   checked at the handler; the test server casts the CID like `rpcHandler.BlockGet`
+   (mutation: `Cid: nil` in the local request).
+7. Node fallback timeout isolation — a ctx-aware node answer taking 20 s, caller
+   deadline 1 min, through `Get` and `GetMany` (mutation: 5 s timeout around the node
+   fallback).
+8. Fakes no more permissive than any-sync — exclusive leases (a conn already leased, or
+   closed, is not handed out), closed idle conns are discarded, Release re-pools only a
+   live-ctx, open, idle (no call in flight: the `Unblocked` check) conn, `Invoke` on a
+   closed conn fails with `drpc.ClosedError`, Release of an unleased conn is a violation
+   checked in the fixture cleanup for every peer the pool handed out, and the node hands
+   out a separate conn per lease. No existing test relied on the removed behaviour; the
+   fixture's single shared node conn (`nodeConn`) was replaced by the per-lease
+   factory.
+9. Bounded harnesses — the late-tick test waits on `ctx.Done()` against a 30 s
+   fake-time limit; the `GetMany` close-order test releases its gate in a `defer`, so a
+   failed check reports cleanly instead of panicking on bubble deadlock (both checked
+   by breaking the code/test and seeing a clean failure).
+10. New rows — Acquire `DeadlineExceeded` with `connectCtx` alive → no strike; a
+    successful fetch on a conn without a counter returns at once, re-pools the conn and
+    nothing cancels it after the fallback cap (watchdog-level and store-level); a caller
+    cancel arriving with the stall decision → stall error, no strike; candidate order
+    comes from the shuffle hook (reversing hook → B dialed first, A never), and the
+    default shuffle produces both orders.
+
+Mutations checked red: revert fix 1; revert fix 2 (clock read after the counter for
+the stall check); the four mutations of items 4-7; no shuffle call; fallback select
+without `done`; fetch strike without the caller-ctx guard; Acquire `DeadlineExceeded`
+striking.

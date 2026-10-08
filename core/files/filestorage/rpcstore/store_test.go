@@ -175,9 +175,10 @@ func TestStore_doNodeReserved_TimeoutUnblocksMutex(t *testing.T) {
 }
 
 // TestStore_LocalPeerStallOverRealDrpc runs the local peer path over a real
-// drpc connection (rpctest, net.Pipe): it proves that the conn any-sync hands
-// out exposes BytesRead (so the watchdog is armed in production, not the
-// fallback cap), that a silent handler is cut by the stall window, that the
+// drpc connection (rpctest, yamux over net.Pipe): it proves that the conn
+// any-sync hands out exposes BytesRead (so the watchdog is armed in
+// production, not the fallback cap), that a well-formed request is served by
+// the local peer, that a silent handler is cut by the stall window, that the
 // peer is struck and that Get then falls back to the node.
 func TestStore_LocalPeerStallOverRealDrpc(t *testing.T) {
 	prevStall, prevTick := localPeerStallTimeout, localPeerStallCheckInterval
@@ -213,11 +214,40 @@ func TestStore_LocalPeerStallOverRealDrpc(t *testing.T) {
 	p.ReleaseDrpcConn(ctx, conn)
 	require.True(t, hasCounter, "any-sync sub-conn must expose BytesRead")
 
-	// the first BlockGet (the local peer's) never answers; later ones do
+	spaceCtx := fileblockstore.CtxWithSpaceId(ctx, "spaceA")
+	type result struct {
+		data []byte
+		err  error
+	}
+
+	// a healthy local fetch: the request reaches the handler intact
+	var seen []*fileproto.BlockGetRequest
+	var seenMu sync.Mutex
+	fx.serv.setBlockGetHook(func(_ context.Context, req *fileproto.BlockGetRequest) error {
+		seenMu.Lock()
+		defer seenMu.Unlock()
+		seen = append(seen, req)
+		return nil
+	})
+	data, err := fx.store.getFromLocalPeers(spaceCtx, "spaceA", b.Cid())
+	require.NoError(t, err)
+	assert.Equal(t, b.RawData(), data)
+	seenMu.Lock()
+	require.Len(t, seen, 1)
+	assert.Equal(t, "spaceA", seen[0].SpaceId)
+	assert.Equal(t, b.Cid().Bytes(), seen[0].Cid)
+	assert.False(t, seen[0].Wait)
+	seenMu.Unlock()
+	fx.store.bannedMu.Lock()
+	_, struck := fx.store.bannedLocalMap[localPeerId]
+	fx.store.bannedMu.Unlock()
+	require.False(t, struck)
+
+	// the next BlockGet (the local peer's) never answers; later ones do
 	release := make(chan struct{})
 	t.Cleanup(func() { close(release) })
 	var calls atomic.Int32
-	fx.serv.setBlockGetHook(func(ctx context.Context) error {
+	fx.serv.setBlockGetHook(func(ctx context.Context, _ *fileproto.BlockGetRequest) error {
 		if calls.Add(1) > 1 {
 			return nil
 		}
@@ -229,11 +259,6 @@ func TestStore_LocalPeerStallOverRealDrpc(t *testing.T) {
 		}
 	})
 
-	spaceCtx := fileblockstore.CtxWithSpaceId(ctx, "spaceA")
-	type result struct {
-		data []byte
-		err  error
-	}
 	res := make(chan result, 1)
 	start := time.Now()
 	go func() {
@@ -340,7 +365,7 @@ type testServer struct {
 	// Always read/write under mu — races trip -race otherwise.
 	spaceInfoHook func(ctx context.Context) error
 	// blockGetHook, if set, runs at the start of BlockGet (outside mu).
-	blockGetHook func(ctx context.Context) error
+	blockGetHook func(ctx context.Context, req *fileproto.BlockGetRequest) error
 }
 
 func (t *testServer) setSpaceInfoHook(f func(ctx context.Context) error) {
@@ -349,7 +374,7 @@ func (t *testServer) setSpaceInfoHook(f func(ctx context.Context) error) {
 	t.spaceInfoHook = f
 }
 
-func (t *testServer) setBlockGetHook(f func(ctx context.Context) error) {
+func (t *testServer) setBlockGetHook(f func(ctx context.Context, req *fileproto.BlockGetRequest) error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.blockGetHook = f
@@ -376,9 +401,13 @@ func (t *testServer) BlockGet(ctx context.Context, req *fileproto.BlockGetReques
 	hook := t.blockGetHook
 	t.mu.Unlock()
 	if hook != nil {
-		if err = hook(ctx); err != nil {
+		if err = hook(ctx, req); err != nil {
 			return nil, err
 		}
+	}
+	// like the peer-side handler (filestorage rpcHandler.BlockGet)
+	if _, err = cid.Cast(req.Cid); err != nil {
+		return nil, fmt.Errorf("cast cid: %w", err)
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()

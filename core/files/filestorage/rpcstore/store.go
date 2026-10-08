@@ -385,14 +385,14 @@ func (s *store) connectOneLocalPeer(ctx context.Context, id string) (peer.Peer, 
 	defer cancel()
 	p, err := s.pool.Get(connectCtx, id)
 	if err != nil {
-		if s.isLocalPeerConnectFailure(ctx, connectCtx, err, false) {
+		if s.isLocalPeerConnectFailure(ctx, connectCtx, err, nil) {
 			s.strikeLocalPeer(id, "dial", err)
 		}
 		return nil, nil, fmt.Errorf("dial local peer: %w", err)
 	}
 	conn, err := p.AcquireDrpcConn(connectCtx)
 	if err != nil {
-		if s.isLocalPeerConnectFailure(ctx, connectCtx, err, true) {
+		if s.isLocalPeerConnectFailure(ctx, connectCtx, err, p) {
 			s.strikeLocalPeer(id, "acquire", err)
 		}
 		return nil, nil, fmt.Errorf("acquire local peer conn: %w", err)
@@ -400,15 +400,17 @@ func (s *store) connectOneLocalPeer(ctx context.Context, id string) (peer.Peer, 
 	return p, conn, nil
 }
 
-// isLocalPeerConnectFailure says whether a pool.Get (acquire false) or
-// AcquireDrpcConn (acquire true) error is evidence against the peer.
+// isLocalPeerConnectFailure says whether a pool.Get error (acquired nil) or
+// an AcquireDrpcConn error on acquired is evidence against the peer.
 //
 // Not evidence: the caller's own ctx ending; the pool closing
 // (ocache.ErrClosed); a ctx error while our connect ctx is still alive, which
 // is another caller's shared dial being aborted (ocache.Get retries those
 // only maxLoadRetries times and then returns the owner's error, Canceled or
-// DeadlineExceeded); and, from Acquire only, a peer object closed locally
-// (transport.ErrConnClosed: pool Flush or gc; the next Get redials). From
+// DeadlineExceeded); and, from Acquire only, a peer object that is closed
+// (pool Flush or gc; the next Get redials): transport.ErrConnClosed, or any
+// error with acquired.IsClosed(), because a yamux session closed while the
+// proto handshake waits for its answer surfaces as a raw io.EOF. From
 // pool.Get, ErrConnClosed is a dial whose conn died during setup: evidence.
 //
 // Evidence: our connect budget expiring (slow dial, limiter wait, slow open)
@@ -419,7 +421,7 @@ func (s *store) connectOneLocalPeer(ctx context.Context, id string) (peer.Peer, 
 // heart's DialTimeoutSec is 10 s, above the 5 s budget, so a real slow dial
 // outlasts connectCtx and is struck by the branch above; if an internal
 // timeout were shorter, every call would still be bounded by it.
-func (s *store) isLocalPeerConnectFailure(ctx, connectCtx context.Context, err error, acquire bool) bool {
+func (s *store) isLocalPeerConnectFailure(ctx, connectCtx context.Context, err error, acquired peer.Peer) bool {
 	if ctx.Err() != nil || errors.Is(err, ocache.ErrClosed) {
 		return false
 	}
@@ -429,7 +431,7 @@ func (s *store) isLocalPeerConnectFailure(ctx, connectCtx context.Context, err e
 	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return false
 	}
-	if acquire && errors.Is(err, transport.ErrConnClosed) {
+	if acquired != nil && (errors.Is(err, transport.ErrConnClosed) || acquired.IsClosed()) {
 		return false
 	}
 	return true
@@ -480,11 +482,14 @@ func (s *store) fetchBlockFromLocalPeer(ctx context.Context, p peer.Peer, conn d
 }
 
 // watchFetchProgress cancels ctx with errLocalPeerStalled when conn stops
-// receiving bytes for localPeerStallTimeout (checked every
-// localPeerStallCheckInterval), or after localPeerFetchFallbackTimeout when
-// conn has no byte counter. Once stop has begun no stall cancel can happen: a
-// decision taken concurrently is dropped. stop joins the goroutine and is safe
-// to call more than once.
+// receiving bytes for localPeerStallTimeout, or after
+// localPeerFetchFallbackTimeout when conn has no byte counter. The counter is
+// polled every localPeerStallCheckInterval, so the cancel comes between
+// localPeerStallTimeout and localPeerStallTimeout plus two intervals after the
+// last counted byte (one interval to notice it, up to one more because both
+// the progress stamp and the stall checks follow the tick cadence). Once stop
+// has begun no stall cancel can happen: a decision taken concurrently is
+// dropped. stop joins the goroutine and is safe to call more than once.
 func watchFetchProgress(ctx context.Context, conn drpc.Conn, cancel context.CancelCauseFunc) (stop func()) {
 	done := make(chan struct{})
 	exited := make(chan struct{})
@@ -524,16 +529,22 @@ func watchFetchProgress(ctx context.Context, conn drpc.Conn, cancel context.Canc
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				// not the tick's value: a ticker delivers the time the tick was
-				// scheduled, which after a suspension or starvation is in the
-				// past and would backdate the progress stamp
+				// Clock reads, not the tick's value: a ticker delivers the time
+				// the tick was scheduled, which after a suspension or starvation
+				// is in the past and would backdate the progress stamp.
+				// The stall check uses a time read BEFORE the counter: the count
+				// is no older than that, so a goroutine descheduled after the
+				// read cannot pair a stale count with a later time. Progress is
+				// stamped with a time read AFTER the counter: the bytes counted
+				// arrived no later than that, so the stamp can only postpone a
+				// stall, never bring one forward.
+				before := time.Now()
 				cur := counter.BytesRead()
-				now := time.Now()
 				if cur != last {
-					last, lastProgress = cur, now
+					last, lastProgress = cur, time.Now()
 					continue
 				}
-				if now.Sub(lastProgress) >= localPeerStallTimeout {
+				if before.Sub(lastProgress) >= localPeerStallTimeout {
 					stall()
 					return
 				}
