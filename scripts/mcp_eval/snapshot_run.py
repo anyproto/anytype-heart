@@ -22,14 +22,14 @@ class Reader:
                  stderr_name="reviewer.stderr.log"):
         self.serial = 0
         self.stderr = open(run_dir / stderr_name, "a")
-        self.proc = subprocess.Popen([
-            sys.executable, str(Path(__file__).with_name("space_guard.py")),
-            "--state", str(run_dir / "scope.json"),
-            "--trace", str(run_dir / trace_name),
-            "--run-label", manifest["label"], "--codex", codex,
-            "--upstream", upstream,
-        ], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.stderr,
-           text=True, bufsize=1)
+        from run_scenario import guard_args
+        # the same upstream the run used: the bridge, or /mcp/full with the
+        # run's arm (the key comes from this process's environment)
+        args = guard_args(run_dir, manifest["label"], codex, upstream,
+                          upstream_url=manifest.get("upstream_url"), arm=manifest.get("arm") or "full",
+                          trace_name=trace_name)
+        self.proc = subprocess.Popen([sys.executable, *args], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                     stderr=self.stderr, text=True, bufsize=1)
         self.selector = selectors.DefaultSelector()
         self.selector.register(self.proc.stdout, selectors.EVENT_READ)
         self.request("initialize", {

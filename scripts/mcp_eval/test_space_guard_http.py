@@ -30,7 +30,7 @@ class StubMCP(BaseHTTPRequestHandler):
             return
         method = body.get("method")
         if method == "initialize":
-            result = {"protocolVersion": "2025-06-18", "capabilities": {"tools": {}}, "serverInfo": {"name": "stub"}}
+            result = {"protocolVersion": "2025-06-18", "capabilities": {"tools": {}}, "serverInfo": {"name": "stub", "version": "1"}}
         elif method == "tools/list":
             result = StubMCP.tools
         elif method == "tools/call" and body["params"]["name"] == "create_space":
