@@ -945,22 +945,27 @@ func (s *dsObjectStore) QueryByIdsAndSubscribeForChanges(ids []string, sub datab
 		err = fmt.Errorf("subscription func is nil")
 		return
 	}
+	// subscribe before querying: a change committed after the query and published before the
+	// subscription is added would be lost. A change in between is both in the records and on
+	// the subscription, which subscribers handle as any repeated update.
 	sub.Subscribe(ids)
+	s.lock.Lock()
+	existed := s.addSubscriptionIfNotExists(sub)
+	s.lock.Unlock()
+
 	records, err = s.QueryByIds(ids)
 	if err != nil {
 		// can mean only the datastore is already closed, so we can resign and return
 		log.Errorf("QueryByIdsAndSubscribeForChanges failed to query ids: %v", err)
-		return nil, nil, err
+		if !existed {
+			s.removeSubscription(sub)
+		}
+		return nil, nil, fmt.Errorf("query by ids: %w", err)
 	}
 
 	closeFunc = func() {
 		s.closeAndRemoveSubscription(sub)
 	}
-
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	s.addSubscriptionIfNotExists(sub)
 	return
 }
 

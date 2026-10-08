@@ -160,7 +160,17 @@ func (s *dsObjectStore) closeAndRemoveSubscription(subscription database.Subscri
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	subscription.Close()
+	s.removeSubscriptionLocked(subscription)
+}
 
+func (s *dsObjectStore) removeSubscription(subscription database.Subscription) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.removeSubscriptionLocked(subscription)
+}
+
+// unsafe, use under mutex
+func (s *dsObjectStore) removeSubscriptionLocked(subscription database.Subscription) {
 	for i, sub := range s.subscriptions {
 		if sub == subscription {
 			s.subscriptions = append(s.subscriptions[:i], s.subscriptions[i+1:]...)
