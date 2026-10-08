@@ -27,8 +27,10 @@ type fixture struct {
 	crossSpaceSubService *mock_apicore.MockCrossSpaceSubscriptionService
 	chatSubService       *mock_apicore.MockChatSubscriptionService
 	fileObjectMock       *mock_apicore.MockFileObjectService
-	// objectStore is set by the v2 fixture only (nil on the plain fixture).
+	// objectStore and readerMock are set by the v2 fixture only (nil on the
+	// plain fixture).
 	objectStore *objectstore.StoreFixture
+	readerMock  *mock_apicore.MockObjectReader
 }
 
 func newFixture(t *testing.T) *fixture {

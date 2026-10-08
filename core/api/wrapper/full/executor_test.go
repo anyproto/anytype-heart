@@ -343,3 +343,21 @@ func TestSuccessWarningsAreRespelled(t *testing.T) {
 		assert.Equal(t, body, result.Text)
 	})
 }
+
+// TestOpenDocumentBodiesPassThrough: a document body the tool does not
+// list — its shape is a get_schema lookup — reaches the server as sent.
+func TestOpenDocumentBodiesPassThrough(t *testing.T) {
+	ex, api := newExecutorFixture(t)
+	doc := map[string]any{"formatVersion": "2.0", "kind": "template", "template_for": "task",
+		"properties": map[string]any{"name": "Weekly"}, "blocks": []any{map[string]any{"type": "paragraph", "text": "x"}}}
+	args := map[string]any{"space_id": "s"}
+	for k, v := range doc {
+		args[k] = v
+	}
+	_, err := ex.Run(context.Background(), "create_template", args)
+	require.NoError(t, err)
+	want, err := json.Marshal(doc)
+	require.NoError(t, err)
+	assert.JSONEq(t, string(want), api.requests[0].Body)
+	assert.Equal(t, "/v2/spaces/s/templates", api.requests[0].Path)
+}
