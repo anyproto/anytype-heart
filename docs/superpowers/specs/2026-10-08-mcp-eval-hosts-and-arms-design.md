@@ -10,7 +10,7 @@ in line is its 257 KB `tools/list`).
 |---|---|
 | hosts | Claude Code headless (`claude -p`) and Codex CLI (`codex exec`) — real hosts, so host behaviour such as deferred tool loading is part of what is measured |
 | scoring | the existing scenarios (32, incl. MCP-31 `set_type`, MCP-32 discussions) with the existing LLM review pipeline |
-| arms | `full` (`/mcp/full` as built) and `full-opaque` (the same table with the `ops` items untyped) |
+| arms | `full` (`/mcp/full` as built: the large schemas are lookups) and `full-inline` (the same table with every lookup fetched and inlined by the guard) |
 | heart | one headless heart per campaign via `cmd/apiv2eval/heartboot`, built from this branch, throwaway account |
 | home | extend `scripts/mcp_eval` — it already has turn delivery, the space guard, wire logs, snapshots and review |
 
@@ -71,11 +71,18 @@ run created, logs the wire) and gains a second upstream kind:
 
 Arms are guard settings, not heart settings:
 
-- `full`: `tools/list` forwarded as served.
-- `full-opaque`: the guard rewrites `patch_object` and `update_type`
-  so `ops.items` is `{"type":"object"}` and drops the `$defs` only those
-  items referenced. Everything else is byte-identical. Heart ships no
-  ablation switch.
+- `full`: `tools/list` forwarded as served — 50 tools, 68,280 bytes, the
+  large schemas as `get_op_schema` / `get_schema` lookups (the npm bridge's
+  shape, chosen on its 180-actor experiment: opaque 6/10 blind invalid
+  writes, pointer 9/10 fetching first, typed 10/10).
+- `full-inline`: when `tools/list` arrives, the guard calls `get_op_schema`
+  for every op in an envelope's enum and `get_schema` for every kind an
+  open body points at — through the same upstream, as evaluator traffic on
+  the wire log, each fetched once — and inlines them: the envelope items
+  become a `oneOf` over the ops' schemas, an open document form takes its
+  kind's schema and closes, a member two alternatives spell differently
+  moves into the alternatives, and definitions are namespaced then merged.
+  Heart ships no switch; the lookups are what it serves.
 
 The guard records the served `tools/list` bytes and tool count per run.
 
@@ -121,8 +128,12 @@ host × arm breakdown:
 - first-attempt success per tool;
 - served `tools/list` bytes.
 
-The opaque arm is the comparison the design rests on: the typed envelope is
-expected to cut envelope/discriminator errors, and nothing else.
+The inline arm prices the lookups: against a real heart it forwards
+241,524 bytes for the same 50 tools (all 50 inlined schemas compile, and
+every op and document example the service serves validates in place). It
+is expected to remove the envelope and payload-shape errors a skipped
+lookup causes, and nothing else; the question is whether that is worth
+3.5 times the bytes.
 
 ## 7. Tests
 
@@ -130,7 +141,7 @@ expected to cut envelope/discriminator errors, and nothing else.
 - Host driver smoke tests (§3) against a stub MCP server, skipped when the
   CLI is not installed.
 - Guard: HTTP upstream against a stub HTTP MCP server (bearer sent, no
-  session header, JSON response), opaque rewrite (only the two `ops.items`
+  session header, JSON response), inline rewrite (only the six lookup tools
   change; dropped defs are exactly the unreferenced ones), space pinning
   with full-tier flat arguments.
 - Vocabulary table: no bridge-shaped literal outside it.
