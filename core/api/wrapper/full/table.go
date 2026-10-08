@@ -9,9 +9,10 @@
 // and no grammar — the curated machinery stays where it is.
 //
 // Nothing in this package reaches the server or the service layer: Derive
-// takes bytes and returns a table. The composition root (package api)
-// supplies the embedded document and the op schemas the v2 service serves,
-// so the table cannot drift from what a REST caller is told.
+// takes the embedded document and returns a table, so the table cannot
+// drift from what a REST caller is told. The large schemas — each op's
+// members, the AnyBlock documents — are lookups the model makes with
+// get_op_schema and get_schema, as the npm bridge serves them.
 package full
 
 import (
@@ -23,27 +24,13 @@ import (
 // Inputs is what Derive builds the table from.
 type Inputs struct {
 	// OpenAPI is the v2 document (core/api/docs/v2/openapi.json). Its
-	// request bodies are the body contract: the composition in
-	// core/api/v2/service/openapibodies.go has already spliced the served
-	// discovery schemas into it.
+	// request bodies are the body contract: core/api/v2/service's
+	// openapibodies.go has spliced the small discovery schemas into it, and
+	// left the large ones — each op's members, the AnyBlock document forms —
+	// as lookups: an ops envelope types an op by name and points at
+	// get_op_schema, a document body is open and points at get_schema with
+	// its kind. The table serves them as the document does.
 	OpenAPI []byte
-	// Ops are the served op schemas by op name (v2service.ServedOpSchemas):
-	// the typed `ops` envelope on patch_object and update_type is built from
-	// them, one oneOf branch per op of the channel.
-	Ops map[string]OpSchema
-	// Kinds are served discovery schemas by kind (GET /v2/schemas/{kind}),
-	// for the bodies the document still leaves open: an AnyBlock document
-	// is too large for the document to splice into four operations, so it
-	// names the kind instead, and the table embeds it (BodyKinds lists
-	// which).
-	Kinds map[string]json.RawMessage
-}
-
-// OpSchema is one served op schema with the channels that accept the op.
-type OpSchema struct {
-	Schema   json.RawMessage
-	Example  json.RawMessage
-	Channels []string
 }
 
 // ArgIn says where an argument goes on the wire.

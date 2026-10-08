@@ -103,7 +103,7 @@ func Derive(in Inputs) (*Table, error) {
 			table.Excluded[l.op.OperationId] = o.Exclude
 			continue
 		}
-		tool, err := deriveTool(l.method, l.path, l.op, o, doc.Components.Schemas, in)
+		tool, err := deriveTool(l.method, l.path, l.op, o, doc.Components.Schemas)
 		if err != nil {
 			return nil, fmt.Errorf("derive %s: %w", l.op.OperationId, err)
 		}
@@ -114,7 +114,7 @@ func Derive(in Inputs) (*Table, error) {
 }
 
 // deriveTool builds one tool.
-func deriveTool(method, path string, op openAPIOperation, o overlay, components map[string]json.RawMessage, in Inputs) (Tool, error) {
+func deriveTool(method, path string, op openAPIOperation, o overlay, components map[string]json.RawMessage) (Tool, error) {
 	tool := Tool{
 		Name:        op.OperationId,
 		Method:      strings.ToUpper(method),
@@ -127,7 +127,6 @@ func deriveTool(method, path string, op openAPIOperation, o overlay, components 
 	props := map[string]any{}
 	var required []string
 	defs := map[string]any{}
-	pending := map[string]opDef{}
 	refs := newRefCollector(components)
 
 	// parameters
@@ -176,17 +175,7 @@ func deriveTool(method, path string, op openAPIOperation, o overlay, components 
 			if err != nil {
 				return Tool{}, fmt.Errorf("request body: %w", err)
 			}
-			if o.OpsChannel != "" {
-				if err := typeOpsEnvelope(body, o.OpsChannel, in.Ops, defs, pending); err != nil {
-					return Tool{}, fmt.Errorf("ops envelope: %w", err)
-				}
-			}
-			if o.BodyKind != "" {
-				body, err = embedOpaqueBody(body, o.BodyKind, in.Kinds, defs, pending)
-				if err != nil {
-					return Tool{}, fmt.Errorf("document body: %w", err)
-				}
-			}
+			openOpsItems(body)
 			h := hoister{root: root, props: props, required: &required, args: &tool.Args, paramNames: paramNames, renames: o.RenameBodyMember, used: renamesUsed}
 			open, err := h.hoist(body)
 			if err != nil {
@@ -229,13 +218,8 @@ func deriveTool(method, path string, op openAPIOperation, o overlay, components 
 		}
 		defs[name] = raw
 	}
-	// the arguments are attached before deduplication: the merge re-aims
-	// every reference under root, and embedded members live there
 	root["properties"] = props
 	if len(defs) > 0 {
-		if err := dedupeOpDefs(root, defs, pending); err != nil {
-			return Tool{}, err
-		}
 		root["$defs"] = defs
 	}
 	if len(required) > 0 {
@@ -251,6 +235,33 @@ func deriveTool(method, path string, op openAPIOperation, o overlay, components 
 	}
 	tool.InputSchema = schema
 	return tool, nil
+}
+
+// openOpsItems makes an ops envelope's items explicitly open. The document
+// types an op by its name alone — the op enum — and points at
+// get_op_schema for its members, so an item takes members beyond op; the
+// schema says so instead of leaving it to a host's default, the way the
+// npm bridge serves it.
+func openOpsItems(body map[string]any) {
+	holders := []map[string]any{body}
+	if branches, ok := body["anyOf"].([]any); ok {
+		for _, b := range branches {
+			if m, ok := b.(map[string]any); ok {
+				holders = append(holders, m)
+			}
+		}
+	}
+	for _, holder := range holders {
+		props, _ := holder["properties"].(map[string]any)
+		ops, _ := props["ops"].(map[string]any)
+		items, _ := ops["items"].(map[string]any)
+		if items == nil {
+			continue
+		}
+		if _, set := items["additionalProperties"]; !set {
+			items["additionalProperties"] = true
+		}
+	}
 }
 
 // idempotencyKeyArg is the reserved retry-key argument on every write.
