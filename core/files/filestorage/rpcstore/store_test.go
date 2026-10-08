@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
@@ -171,6 +173,78 @@ func TestStore_doNodeReserved_TimeoutUnblocksMutex(t *testing.T) {
 	}
 }
 
+// TestStore_LocalPeerStallOverRealDrpc runs the local peer path over a real
+// drpc connection (rpctest, net.Pipe): it proves that the conn any-sync hands
+// out exposes BytesRead (so the watchdog is armed in production, not the
+// fallback cap), that a silent handler is cut by the stall window, that the
+// peer is struck and that Get then falls back to the node.
+func TestStore_LocalPeerStallOverRealDrpc(t *testing.T) {
+	prevStall, prevTick := localPeerStallTimeout, localPeerStallCheckInterval
+	localPeerStallTimeout, localPeerStallCheckInterval = 200*time.Millisecond, 50*time.Millisecond
+	t.Cleanup(func() { localPeerStallTimeout, localPeerStallCheckInterval = prevStall, prevTick })
+
+	fx := newFixture(t)
+	defer fx.Finish(t)
+	const localPeerId = "local-peer"
+	fx.store.peerStore.UpdateLocalPeer(localPeerId, []string{"spaceA"})
+	b := blocks.NewBlock([]byte("payload"))
+	require.NoError(t, fx.AddToFile(ctx, "spaceA", "fileA", []blocks.Block{b}))
+
+	// the real conn must carry the counter
+	p, err := fx.store.pool.Get(ctx, localPeerId)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = p.Close() })
+	conn, err := p.AcquireDrpcConn(ctx)
+	require.NoError(t, err)
+	_, hasCounter := conn.(bytesReader)
+	p.ReleaseDrpcConn(ctx, conn)
+	require.True(t, hasCounter, "any-sync sub-conn must expose BytesRead")
+
+	// the first BlockGet (the local peer's) never answers; later ones do
+	release := make(chan struct{})
+	t.Cleanup(func() { close(release) })
+	var calls atomic.Int32
+	fx.serv.setBlockGetHook(func(ctx context.Context) error {
+		if calls.Add(1) > 1 {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-release:
+			return nil
+		}
+	})
+
+	spaceCtx := fileblockstore.CtxWithSpaceId(ctx, "spaceA")
+	type result struct {
+		data []byte
+		err  error
+	}
+	res := make(chan result, 1)
+	start := time.Now()
+	go func() {
+		data, err := fx.store.getFromLocalPeers(spaceCtx, "spaceA", b.Cid())
+		res <- result{data, err}
+	}()
+	select {
+	case r := <-res:
+		require.ErrorIs(t, r.err, errLocalPeerStalled)
+		assert.Less(t, time.Since(start), 3*time.Second)
+	case <-time.After(5 * time.Second):
+		t.Fatal("silent local fetch was not cancelled")
+	}
+	fx.store.bannedMu.Lock()
+	ban, struck := fx.store.bannedLocalMap[localPeerId]
+	fx.store.bannedMu.Unlock()
+	require.True(t, struck)
+	assert.Equal(t, 1, ban.strikes)
+
+	got, err := fx.Get(spaceCtx, b.Cid())
+	require.NoError(t, err)
+	assert.Equal(t, b.RawData(), got.RawData())
+}
+
 func TestStore_AddAsync(t *testing.T) {
 	fx := newFixture(t)
 	defer fx.Finish(t)
@@ -245,12 +319,20 @@ type testServer struct {
 	// to simulate a hung server (block until ctx is canceled).
 	// Always read/write under mu — races trip -race otherwise.
 	spaceInfoHook func(ctx context.Context) error
+	// blockGetHook, if set, runs at the start of BlockGet (outside mu).
+	blockGetHook func(ctx context.Context) error
 }
 
 func (t *testServer) setSpaceInfoHook(f func(ctx context.Context) error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.spaceInfoHook = f
+}
+
+func (t *testServer) setBlockGetHook(f func(ctx context.Context) error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.blockGetHook = f
 }
 
 func (t *testServer) BlockPushMany(ctx2 context.Context, request *fileproto.BlockPushManyRequest) (*fileproto.Ok, error) {
@@ -270,6 +352,14 @@ func (t *testServer) SpaceLimitSet(ctx context.Context, request *fileproto.Space
 }
 
 func (t *testServer) BlockGet(ctx context.Context, req *fileproto.BlockGetRequest) (resp *fileproto.BlockGetResponse, err error) {
+	t.mu.Lock()
+	hook := t.blockGetHook
+	t.mu.Unlock()
+	if hook != nil {
+		if err = hook(ctx); err != nil {
+			return nil, err
+		}
+	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if data, ok := t.data[string(req.Cid)]; ok {
