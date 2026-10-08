@@ -611,3 +611,42 @@ func v2AllOpNames() []string {
 	}
 	return all
 }
+
+// The op channels, as the names a reader of ServedOpSchemas sees.
+const (
+	OpChannelObject = "object"
+	OpChannelType   = "type"
+)
+
+// ServedOp is one op schema as the discovery surface serves it, with the
+// channels (the PATCH endpoints) that accept the op.
+type ServedOp struct {
+	Schema   json.RawMessage
+	Example  json.RawMessage
+	Channels []string
+}
+
+// ServedOpSchemas returns every op schema in its served (normalized) form,
+// keyed by op name, with the channel membership the endpoint line encodes.
+// It is the op input of the full tool table (core/api/wrapper/full): the
+// same bytes GET /v2/schemas/ops/{op} serves, so a tool built from them
+// cannot drift from the discovery surface.
+func ServedOpSchemas() (map[string]ServedOp, error) {
+	out := make(map[string]ServedOp, len(v2OpSchemas))
+	for _, op := range v2AllOpNames() {
+		entry := v2OpSchemas[op]
+		schema, err := strictDiscoverySchema(json.RawMessage(entry.schema))
+		if err != nil {
+			return nil, fmt.Errorf("normalize op schema %q: %w", op, err)
+		}
+		var channels []string
+		if slices.Contains(v2OpNames, op) {
+			channels = append(channels, OpChannelObject)
+		}
+		if slices.Contains(v2TypeOpNames, op) {
+			channels = append(channels, OpChannelType)
+		}
+		out[op] = ServedOp{Schema: schema, Example: json.RawMessage(entry.example), Channels: channels}
+	}
+	return out, nil
+}
