@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -83,6 +84,8 @@ func newFixture(t *testing.T, testObserverPeriod time.Duration) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, wallet))
 	a.Register(testutil.PrepareMock(ctx, a, nsClient))
 
+	// the own identity is set at Init; the tests of the own profile set their own one
+	accountService.EXPECT().AccountID().Return("ownIdentity").Once()
 	svc := New(testObserverPeriod, 1*time.Microsecond)
 	err = svc.Init(a)
 	t.Cleanup(func() {
@@ -332,46 +335,142 @@ func TestEncryptionKeyPersistence(t *testing.T) {
 	})
 }
 
+// newOwnProfileFixture sets up the fixture for the own identity. The icon keys can be read
+// once keysReady is set; every change of the own profile is also pushed to the identity repo
+// in the background.
+func newOwnProfileFixture(t *testing.T, keysReady *atomic.Bool) *fixture {
+	fx := newFixture(t, time.Minute)
+	accKeys, err := accountdata.NewRandom()
+	require.NoError(t, err)
+	fx.myIdentity = accKeys.SignKey.GetPublic().Account()
+	fx.ownProfileSubscription.myIdentity = fx.myIdentity
+	fx.accountService.EXPECT().Keys().Return(accKeys).Maybe()
+	fx.accountService.EXPECT().AccountID().Return(fx.myIdentity).Maybe()
+	fx.accountService.EXPECT().SignData(mock.Anything).Return(nil, nil).Maybe()
+	fx.spaceService.EXPECT().AccountMetadataSymKey().Return(crypto.NewAES()).Maybe()
+	fx.fileAclService.EXPECT().GetInfoForFileSharing(mock.Anything).RunAndReturn(func(string) (string, []*model.FileEncryptionKey, error) {
+		if !keysReady.Load() {
+			return "", nil, fmt.Errorf("no file keys")
+		}
+		return "fileCid1", []*model.FileEncryptionKey{{Path: "/0/original", Key: "key1"}}, nil
+	}).Maybe()
+	return fx
+}
+
+func (fx *fixture) waitOwnProfile(t *testing.T) *model.IdentityProfile {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	profile, err := fx.WaitProfileWithKey(ctx, fx.myIdentity)
+	require.NoError(t, err)
+	return profile.IdentityProfile
+}
+
 // The one-to-one invite sender waits for the own profile with WaitProfileWithKey, so the
 // own identity has to be in the profile cache like any other one.
 func TestOwnProfileCache(t *testing.T) {
-	for _, tc := range []struct {
-		name     string
-		iconKeys []*model.FileEncryptionKey
-		keysErr  error
-	}{
-		{"own profile is cached with the icon keys once its details are loaded", []*model.FileEncryptionKey{{Key: "key1"}}, nil},
-		{"own profile is cached without the icon keys when they cannot be read", nil, fmt.Errorf("no file keys")},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			fx := newFixture(t, time.Minute)
-			accKeys, err := accountdata.NewRandom()
-			require.NoError(t, err)
-			fx.myIdentity = accKeys.SignKey.GetPublic().Account()
-			fx.ownProfileSubscription.myIdentity = fx.myIdentity
-			fx.accountService.EXPECT().Keys().Return(accKeys)
-			fx.accountService.EXPECT().AccountID().Return(fx.myIdentity).Maybe()
-			fx.fileAclService.EXPECT().GetInfoForFileSharing(mock.Anything).Return("fileCid1", tc.iconKeys, tc.keysErr)
-			// every change of the own profile is also pushed to the identity repo in the background
-			fx.accountService.EXPECT().SignData(mock.Anything).Return(nil, nil).Maybe()
-			fx.spaceService.EXPECT().AccountMetadataSymKey().Return(crypto.NewAES()).Maybe()
+	t.Run("own profile is cached with the icon keys once its details are loaded", func(t *testing.T) {
+		// given
+		keysReady := &atomic.Bool{}
+		keysReady.Store(true)
+		fx := newOwnProfileFixture(t, keysReady)
+		want := &model.IdentityProfile{
+			Identity:           fx.myIdentity,
+			Name:               "name2",
+			IconCid:            "fileCid1",
+			IconEncryptionKeys: []*model.FileEncryptionKey{{Path: "/0/original", Key: "key1"}},
+			GlobalName:         globalName,
+		}
 
-			// the global name can arrive from the naming service before the profile details
-			fx.ownProfileSubscription.handleGlobalNameUpdate(globalName)
-			assert.Nil(t, fx.getProfileFromCache(fx.myIdentity))
+		// when the global name arrives from the naming service before the profile details
+		fx.ownProfileSubscription.handleGlobalNameUpdate(globalName)
 
-			fx.ownProfileSubscription.handleOwnProfileDetails(domain.NewDetails().SetString(bundle.RelationKeyIconImage, "fileObjectId"))
-			// the cached profile follows its changes
-			fx.ownProfileSubscription.handleOwnProfileDetails(domain.NewDetails().SetString(bundle.RelationKeyName, "name2"))
+		// then
+		assert.Nil(t, fx.getProfileFromCache(fx.myIdentity))
 
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			defer cancel()
-			profile, err := fx.WaitProfileWithKey(ctx, fx.myIdentity)
-			require.NoError(t, err)
-			assert.Equal(t, "name2", profile.IdentityProfile.Name)
-			assert.Equal(t, tc.iconKeys, profile.IdentityProfile.IconEncryptionKeys)
-		})
-	}
+		// when
+		fx.ownProfileSubscription.handleOwnProfileDetails(domain.NewDetails().SetString(bundle.RelationKeyIconImage, "fileObjectId"))
+		fx.ownProfileSubscription.handleOwnProfileDetails(domain.NewDetails().SetString(bundle.RelationKeyName, "name2"))
+
+		// then the cached profile follows its changes
+		assert.Equal(t, want, fx.waitOwnProfile(t))
+	})
+
+	t.Run("own profile is cached without the icon keys when they cannot be read", func(t *testing.T) {
+		// given
+		fx := newOwnProfileFixture(t, &atomic.Bool{})
+		want := &model.IdentityProfile{
+			Identity: fx.myIdentity,
+			Name:     "name1",
+			IconCid:  "fileObjectId",
+		}
+
+		// when
+		fx.ownProfileSubscription.handleOwnProfileDetails(domain.NewDetails().
+			SetString(bundle.RelationKeyName, "name1").
+			SetString(bundle.RelationKeyIconImage, "fileObjectId"))
+
+		// then
+		assert.Equal(t, want, fx.waitOwnProfile(t))
+	})
+
+	t.Run("own profile gets the icon keys on refresh once they can be read", func(t *testing.T) {
+		// given
+		keysReady := &atomic.Bool{}
+		fx := newOwnProfileFixture(t, keysReady)
+		spaceId := "space1"
+		fx.addParticipant(t, spaceId, fx.myIdentity)
+		require.NoError(t, fx.RegisterIdentity(spaceId, fx.myIdentity, nil))
+		fx.ownProfileSubscription.handleOwnProfileDetails(domain.NewDetails().
+			SetString(bundle.RelationKeyName, "name1").
+			SetString(bundle.RelationKeyIconImage, "fileObjectId"))
+		want := &model.IdentityProfile{
+			Identity:           fx.myIdentity,
+			Name:               "name1",
+			IconCid:            "fileCid1",
+			IconEncryptionKeys: []*model.FileEncryptionKey{{Path: "/0/original", Key: "key1"}},
+		}
+
+		// when the icon file arrives from another device and the profile is prepared for a push
+		keysReady.Store(true)
+		fx.refreshMyIdentityProfile()
+
+		// then
+		assert.Equal(t, want, fx.waitOwnProfile(t))
+		assert.Equal(t, "fileCid1", fx.participantDetails(t, spaceId, fx.myIdentity).GetString(bundle.RelationKeyIconImage))
+	})
+
+	t.Run("persisted own profile is not used before the details are loaded", func(t *testing.T) {
+		// given a profile without a name pushed by an older version before the details were loaded
+		keysReady := &atomic.Bool{}
+		keysReady.Store(true)
+		fx := newOwnProfileFixture(t, keysReady)
+		spaceId := "space1"
+		_, myKey, err := domain.DeriveAccountMetadata(fx.accountService.Keys().SignKey)
+		require.NoError(t, err)
+		persisted := marshalProfile(t, &model.IdentityProfile{Identity: fx.myIdentity, GlobalName: globalName}, myKey)
+		require.NoError(t, fx.identityProfileCacheStore.Set(context.Background(), fx.myIdentity, persisted))
+		fx.addParticipant(t, spaceId, fx.myIdentity)
+		want := &model.IdentityProfile{
+			Identity:   fx.myIdentity,
+			Name:       "name1",
+			GlobalName: globalName,
+		}
+
+		// when
+		require.NoError(t, fx.RegisterIdentity(spaceId, fx.myIdentity, nil))
+		fx.ownProfileSubscription.handleGlobalNameUpdate(globalName)
+
+		// then
+		assert.Nil(t, fx.getProfileFromCache(fx.myIdentity))
+		assert.Empty(t, fx.participantDetails(t, spaceId, fx.myIdentity).GetString(bundle.RelationKeyGlobalName))
+
+		// when
+		fx.ownProfileSubscription.handleOwnProfileDetails(domain.NewDetails().SetString(bundle.RelationKeyName, "name1"))
+
+		// then
+		assert.Equal(t, want, fx.waitOwnProfile(t))
+		assert.Equal(t, "name1", fx.participantDetails(t, spaceId, fx.myIdentity).GetString(bundle.RelationKeyName))
+	})
 }
 
 func TestObservers(t *testing.T) {

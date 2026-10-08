@@ -142,6 +142,8 @@ func New(identityObservePeriod time.Duration, pushIdentityBatchTimeout time.Dura
 
 func (s *service) Init(a *app.App) (err error) {
 	s.accountService = app.MustComponent[account.Service](a)
+	// set before Run: the spaces start earlier and can register the own identity
+	s.myIdentity = s.accountService.AccountID()
 	s.identityRepoClient = app.MustComponent[identityRepoClient](a)
 	s.fileAclService = app.MustComponent[fileacl.Service](a)
 	s.namingService = app.MustComponent[nameserviceclient.AnyNsClientService](a)
@@ -185,8 +187,6 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
-	s.myIdentity = s.accountService.AccountID()
-
 	err = s.ownProfileSubscription.run(ctx)
 	if err != nil {
 		return err
@@ -480,12 +480,15 @@ func (s *service) AddIdentityProfile(profile *model.IdentityProfile, key crypto.
 }
 
 // broadcastMyIdentityProfile is called when the own profile is loaded and on its every
-// change, so the cached entry of the own identity is always the current one
+// change, so the cached entry of the own identity is always the current one. Nothing is
+// published before the profile details are loaded: the global name can arrive from the
+// naming service first, and a profile without a name must not reach the participants or
+// an invite.
 func (s *service) broadcastMyIdentityProfile(identityProfile *model.IdentityProfile) {
-	if s.ownProfileSubscription.isLoaded() {
-		s.cacheMyIdentityProfile(identityProfile)
+	if !s.ownProfileSubscription.isLoaded() {
+		return
 	}
-
+	s.cacheMyIdentityProfile(identityProfile)
 	s.updateParticipants(identityProfile, nil)
 }
 
@@ -501,6 +504,30 @@ func (s *service) cacheMyIdentityProfile(identityProfile *model.IdentityProfile)
 	s.lock.Lock()
 	s.identityProfileCache[profile.Identity] = profile
 	s.lock.Unlock()
+}
+
+// refreshMyIdentityProfile is called when the own profile is prepared for a push to the
+// identity repo. The cached profile can lack the icon keys when they were not available at
+// the last change, e.g. the icon file had not arrived from another device yet; the profile
+// is prepared only when they are, so the cached profile and the participants are brought up
+// to date here.
+func (s *service) refreshMyIdentityProfile() {
+	profile, err := s.ownProfileSubscription.prepareOwnIdentityProfile()
+	if err != nil {
+		log.Error("refresh own identity profile", zap.Error(err))
+		return
+	}
+
+	s.lock.Lock()
+	cached := s.identityProfileCache[profile.Identity]
+	if cached.Equal(profile) {
+		s.lock.Unlock()
+		return
+	}
+	s.identityProfileCache[profile.Identity] = profile
+	s.lock.Unlock()
+
+	s.updateParticipants(profile, nil)
 }
 
 func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) (profile *model.IdentityProfile, rawProfile []byte, err error) {
@@ -644,11 +671,17 @@ func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKe
 
 // currentProfile returns the freshest known profile of the identity: the in-memory
 // cached one (always at least as fresh as the persisted one; for the own identity it is
-// kept current by broadcastMyIdentityProfile), or the persisted one decrypted with the
-// given key. Returns nil when no profile is known yet. Must be called under s.lock.
+// kept current by broadcastMyIdentityProfile), or, for other identities, the persisted one
+// decrypted with the given key. Returns nil when no profile is known yet. Must be called
+// under s.lock.
 func (s *service) currentProfile(identity string, cachedProfile *identityrepoproto.DataWithIdentity, cachedGlobalName string, encryptionKey crypto.SymKey) *model.IdentityProfile {
 	if inMemory, ok := s.identityProfileCache[identity]; ok {
 		return inMemory
+	}
+	// the persisted own profile can be older than the profile details or be pushed before
+	// they were loaded; the own profile is cached by broadcastMyIdentityProfile once they are
+	if identity == s.myIdentity {
+		return nil
 	}
 	if cachedProfile == nil {
 		return nil

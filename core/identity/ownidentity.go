@@ -2,6 +2,7 @@ package identity
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -27,7 +28,15 @@ import (
 
 type observerService interface {
 	broadcastMyIdentityProfile(identityProfile *model.IdentityProfile)
+	refreshMyIdentityProfile()
 }
+
+const (
+	pushRetryMinDelay = 10 * time.Second
+	pushRetryMaxDelay = 10 * time.Minute
+)
+
+var errOwnProfileNotLoaded = errors.New("own profile details are not loaded")
 
 type ownProfileSubscription struct {
 	spaceService                 space.Service
@@ -48,8 +57,15 @@ type ownProfileSubscription struct {
 	gotDetails  bool
 	details     *domain.Details // save details to batch update operation
 
+	pushRunLock              sync.Mutex // serializes pushes, so the last one pushes the latest profile
+	pushLock                 sync.Mutex
 	pushIdentityTimer        *time.Timer // timer for batching
 	pushIdentityBatchTimeout time.Duration
+	pushGeneration           int // incremented on every enqueued push
+	pushRetryDelay           time.Duration
+	pushRetryMinDelay        time.Duration
+	pushRetryMaxDelay        time.Duration
+	profilePreparedCh        chan struct{} // signals the run loop that the profile with the icon keys was prepared
 
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
@@ -79,6 +95,9 @@ func newOwnProfileSubscription(
 		globalNameUpdatedCh:          make(chan string),
 		gotDetailsCh:                 make(chan struct{}),
 		pushIdentityBatchTimeout:     pushIdentityBatchTimeout,
+		pushRetryMinDelay:            pushRetryMinDelay,
+		pushRetryMaxDelay:            pushRetryMaxDelay,
+		profilePreparedCh:            make(chan struct{}, 1),
 		componentCtx:                 componentCtx,
 		componentCtxCancel:           componentCtxCancel,
 		identityGlobalNameCacheStore: identityGlobalNameCacheStore,
@@ -136,6 +155,9 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 
 			case globalName := <-s.globalNameUpdatedCh:
 				s.handleGlobalNameUpdate(globalName)
+
+			case <-s.profilePreparedCh:
+				s.observerService.refreshMyIdentityProfile()
 			}
 		}
 	}()
@@ -145,19 +167,68 @@ func (s *ownProfileSubscription) run(ctx context.Context) (err error) {
 
 func (s *ownProfileSubscription) close() {
 	s.componentCtxCancel()
+
+	s.pushLock.Lock()
+	defer s.pushLock.Unlock()
+	if s.pushIdentityTimer != nil {
+		s.pushIdentityTimer.Stop()
+	}
 }
 
 func (s *ownProfileSubscription) enqueuePush() {
+	s.pushLock.Lock()
+	defer s.pushLock.Unlock()
+	s.pushGeneration++
+	s.pushRetryDelay = 0
 	if s.pushIdentityTimer == nil {
-		s.pushIdentityTimer = time.AfterFunc(0, func() {
-			pushErr := s.pushProfileToIdentityRegistry(s.componentCtx)
-			if pushErr != nil {
-				log.Error("push profile to identity registry", zap.Error(pushErr))
-			}
-		})
+		s.pushIdentityTimer = time.AfterFunc(0, s.push)
 	} else {
 		s.pushIdentityTimer.Reset(s.pushIdentityBatchTimeout)
 	}
+}
+
+// push pushes the own profile to the identity repo. A failed push is retried with a growing
+// delay until it succeeds or a newer change is enqueued: e.g. the keys of the icon file can
+// arrive from another device after the profile details, and nothing else would push again.
+func (s *ownProfileSubscription) push() {
+	s.pushRunLock.Lock()
+	defer s.pushRunLock.Unlock()
+	if s.componentCtx.Err() != nil {
+		return
+	}
+	s.pushLock.Lock()
+	generation := s.pushGeneration
+	s.pushLock.Unlock()
+
+	profile, err := s.prepareOwnIdentityProfile()
+	if errors.Is(err, errOwnProfileNotLoaded) {
+		// the profile is pushed once its details are loaded
+		return
+	}
+	if err != nil {
+		err = fmt.Errorf("prepare own identity profile: %w", err)
+	} else {
+		// the cached own profile may lack the icon keys that are readable now; it is refreshed
+		// even if the upload below fails
+		select {
+		case s.profilePreparedCh <- struct{}{}:
+		default:
+		}
+		err = s.pushProfileToIdentityRegistry(s.componentCtx, profile)
+	}
+	if err == nil || s.componentCtx.Err() != nil {
+		return
+	}
+	log.Error("push profile to identity registry", zap.Error(err))
+
+	s.pushLock.Lock()
+	defer s.pushLock.Unlock()
+	if generation != s.pushGeneration || s.componentCtx.Err() != nil {
+		// a newer change is already scheduled, or the component is closed
+		return
+	}
+	s.pushRetryDelay = min(max(2*s.pushRetryDelay, s.pushRetryMinDelay), s.pushRetryMaxDelay)
+	s.pushIdentityTimer.Reset(s.pushRetryDelay)
 }
 
 func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *domain.Details) {
@@ -262,11 +333,7 @@ func (s *ownProfileSubscription) isLoaded() bool {
 	return s.gotDetails
 }
 
-func (s *ownProfileSubscription) pushProfileToIdentityRegistry(ctx context.Context) error {
-	identityProfile, err := s.prepareOwnIdentityProfile()
-	if err != nil {
-		return fmt.Errorf("prepare own identity profile: %w", err)
-	}
+func (s *ownProfileSubscription) pushProfileToIdentityRegistry(ctx context.Context, identityProfile *model.IdentityProfile) error {
 	encryptedIdentityProfileBytes, err := proto.Marshal(identityProfile)
 	if err != nil {
 		return fmt.Errorf("marshal identity profile: %w", err)
@@ -297,9 +364,16 @@ func (s *ownProfileSubscription) pushProfileToIdentityRegistry(ctx context.Conte
 	return s.identityProfileCacheStore.Set(context.Background(), identityProfile.Identity, encryptedIdentityProfileBytes)
 }
 
+// prepareOwnIdentityProfile returns the own profile as it is pushed to the identity repo, with
+// the icon encryption keys. It returns errOwnProfileNotLoaded until the profile details are
+// loaded: the global name can arrive first, and a profile without a name must not overwrite
+// the pushed one.
 func (s *ownProfileSubscription) prepareOwnIdentityProfile() (*model.IdentityProfile, error) {
 	s.detailsLock.Lock()
 	defer s.detailsLock.Unlock()
+	if !s.gotDetails {
+		return nil, errOwnProfileNotLoaded
+	}
 
 	iconImageObjectId := s.details.GetString(bundle.RelationKeyIconImage)
 	iconCid, iconEncryptionKeys, err := s.prepareIconImageInfo(iconImageObjectId)
