@@ -32,7 +32,7 @@ RAW_FILES = {"scope.json", "mcp-wire.jsonl", "final-state.json", "reviewer-snaps
              "reviewer-mcp-wire.jsonl", "hook-state.json", "hook-config.json",
              "fixture-evidence.json", "chat-verification.json", "file-byte-verification.json"}
 RUN_FIELDS = """scenario_id model reasoning label workspace started_at turns status hook hook_status replicate
-isolation surface_variation session_id tool_call_count tool_counts tool_errors owned_spaces
+isolation surface_variation host host_version surface arm session_id tool_call_count tool_counts tool_errors owned_spaces
 skipped_turns repetition repeat_index batch_id completed_at snapshot_status snapshot_error""".split()
 INSTRUCTIONS = """You are an independent Anytype MCP evaluator. Judge exactly this captured run,
 using only the supplied offline evidence. Do not call tools, browse, or contact Anytype.
@@ -263,13 +263,17 @@ def evidence_bundle(run, suite_path=SUITE):
     add("spec/scenario.json", dump(scenario), str(suite_path))
     harness = suite_path.with_name("HARNESS.md")
     add("spec/HARNESS.md", harness.read_text(), str(harness))
-    surface = suite_path.with_name("surface-snapshot.json")
+    # a run against heart's /mcp/full records the campaign's own snapshot of
+    # the surface its arm served; older bridge runs use the suite's
+    surface = Path(manifest["surface_snapshot"]) if manifest.get("surface_snapshot") \
+        else suite_path.with_name("surface-snapshot.json")
     surface_data = json.loads(surface.read_text())
-    used_tools = set(scenario.get("tools", []))
-    used_schemas = set(scenario.get("schemas", [])) | {"ops/" + x for x in scenario.get("ops", [])}
-    event_results = set()
     def normalized(name):
         return capability(name)
+    # the scenario lists tools in the bridge's spelling; match by capability
+    used_tools = {normalized(t) for t in scenario.get("tools", [])}
+    used_schemas = set(scenario.get("schemas", [])) | {"ops/" + x for x in scenario.get("ops", [])}
+    event_results = set()
     for event_path in run.glob("turn-*.events.jsonl"):
         for event in read_events(event_path):
             item = event.get("item", {})

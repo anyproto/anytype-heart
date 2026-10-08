@@ -549,3 +549,49 @@ class ReviewTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FullTierReviewInputsTest(unittest.TestCase):
+    """A run against /mcp/full is reviewed against the surface its arm was
+    served — the campaign's snapshot — not the bridge's."""
+
+    def test_review_inputs_carry_full_tier_names_and_no_bridge_names(self):
+        golden = Path(__file__).resolve().parents[2] / "core/api/wrapper/full/testdata/tools_list.golden.json"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            suite = root / "scenarios.json"
+            suite.write_text(json.dumps({"scenarios": [{"id": "MCP-01", "title": "T", "checks": ["x"],
+                                                        "tools": ["create_space"], "ops": ["insert_blocks"],
+                                                        "turns": [{"turn": 1, "user": "u"}]}]}))
+            suite.with_name("HARNESS.md").write_text("h\n")
+            # the bridge's snapshot is there too, and must not be read
+            suite.with_name("surface-snapshot.json").write_text(json.dumps({"tools": [
+                {"name": "mcp__anytype__API_patch_object", "description": "bridge"}], "schemas": {}}))
+            snapshot = root / "surface-snapshot-full.json"
+            snapshot.write_text(json.dumps({"surface": "full", "arm": "full",
+                                            "tools": json.loads(golden.read_text())["tools"],
+                                            "schemas": {"ops/insert_blocks": {"kind": "insert_blocks", "schema": {}},
+                                                        "object": {"kind": "object", "schema": {}}}}))
+            run = root / "run-full"
+            run.mkdir()
+            (run / "run.json").write_text(json.dumps({
+                "scenario_id": "MCP-01", "label": "run-full", "host": "claude", "surface": "full", "arm": "full",
+                "surface_snapshot": str(snapshot), "turns": [{"turn": 1, "user": "u"}]}))
+            (run / "turn-01.prompt.txt").write_text("u\n")
+            events = [{"type": "item.completed", "item": {"type": "mcp_tool_call", "tool": tool, "arguments": args,
+                                                           "result": {"content": [{"type": "text", "text": "{}"}]}}}
+                      for tool, args in [("patch_object", {"space_id": "s", "object_id": "o", "ops": []}),
+                                         ("get_schema", {"kind": "object"})]]
+            (run / "turn-01.events.jsonl").write_text("".join(json.dumps(e) + "\n" for e in events))
+
+            bundle = review.evidence_bundle(run, suite)
+
+            surface = json.loads(bundle["sources"]["spec/selected-surface.json"]["text"])
+            names = sorted(t["name"] for t in surface["tools"])
+            self.assertEqual(["create_space", "get_schema", "patch_object"], names)
+            self.assertEqual({"ops/insert_blocks", "object"}, set(surface["schemas"]))
+            self.assertEqual(str(snapshot), bundle["sources"]["spec/selected-surface.json"]["original"])
+            text = json.dumps(bundle)
+            self.assertNotRegex(text, r"API[-_][a-z]", "no bridge-spelled tool name in the review inputs")
+            run_fields = json.loads(bundle["sources"]["run/run.json"]["text"])
+            self.assertEqual(("claude", "full", "full"), (run_fields["host"], run_fields["surface"], run_fields["arm"]))

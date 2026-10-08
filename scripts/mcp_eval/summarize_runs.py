@@ -408,7 +408,12 @@ def main():
         s = summarize(d); summaries.append(s)
         (a.output / f"{s['run_id']}.json").write_text(json.dumps(s, ensure_ascii=False, indent=2) + "\n")
         (a.output / f"{s['run_id']}.md").write_text(markdown(s))
-    declared = load_json(SURFACE) or {}  # the bridge's surface; absent in this checkout
+    # the surface the runs were served: a campaign's own snapshot when the
+    # runs recorded one (/mcp/full), else the bridge's
+    snapshot = next(((load_json(d / "run.json") or {}).get("surface_snapshot") for d in dirs
+                     if (load_json(d / "run.json") or {}).get("surface_snapshot")), None)
+    surface_path = Path(snapshot) if snapshot else SURFACE
+    declared = load_json(surface_path) or {}
     declared_tools = [x.get("name") for x in declared.get("tools", []) if x.get("name")]
     attempted_counts = Counter()
     successful_counts = Counter()
@@ -424,7 +429,7 @@ def main():
                           "successful": successful_counts[normalized(name)]}
     coverage_summary = {"declared_tools": len(declared_tools), "attempted_tools": sum(v["attempted"] > 0 for v in coverage.values()),
                         "successful_tools": sum(v["successful"] > 0 for v in coverage.values()), "tools": coverage,
-                        "source": str(SURFACE)}
+                        "source": str(surface_path)}
     (a.output / "summary.json").write_text(json.dumps({"runs": summaries, "tool_coverage": coverage_summary}, ensure_ascii=False, indent=2) + "\n")
     index = ["# Anytype MCP trace summaries", "", "Runner status records delivery of the conversation; the review outcome assesses its result. This index includes diagnostic launches, which must be excluded from benchmark totals.", "", "| Run | Review outcome | Runner status | Hook | Calls | Errors | Scope audit |", "| --- | --- | --- | --- | ---: | ---: | --- |"]
     index += [f"| [{s['run_id']}]({s['run_id']}.md) | `{s['independent_verdict'].get('outcome', 'pending')}` | `{s['completion']['status']}` | `{s['hook_status'] or 'none'}` | {s['tool_calls']['total']} | {len(s['failed_calls'])} | `{s['scope_audit']['status']}` |" for s in summaries]

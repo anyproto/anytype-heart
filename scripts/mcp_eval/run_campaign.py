@@ -109,13 +109,36 @@ class Heart:
         return {"exit_code": self.proc.returncode, "account_directory_removed": not Path(self.data_dir).exists()}
 
 
+def served_schemas(heart):
+    """Every schema the surface serves through a lookup: each kind
+    get_schema serves and each op get_op_schema serves, keyed the way the
+    bridge's snapshot keys them (kind, ops/<op>)."""
+    index = heart.served_schema("list_schemas", {})
+    out = {}
+    for row in index.get("kinds", []):
+        out[row["kind"]] = heart.served_schema("get_schema", {"kind": row["kind"]})
+    for row in index.get("ops", []):
+        out["ops/" + row["kind"]] = heart.served_schema("get_op_schema", {"op": row["kind"]})
+    return out
+
+
+def surface_snapshot(tools_list, schemas, arm, commit):
+    """The surface one arm served, in the shape the review reads: the tool
+    declarations as the model received them and every served schema."""
+    return {"captured_date": datetime.now(timezone.utc).date().isoformat(), "source_commit": commit,
+            "surface": "full", "arm": arm,
+            "note": "Captured from a throwaway heart's /mcp/full: tools/list as this arm forwarded it, and every "
+                    "schema get_schema and get_op_schema serve. Contains no account data.",
+            "tools": tools_list["tools"], "schemas": schemas}
+
+
 def run_one(job, args, heart, runs_dir, env):
     host, arm, scenario, rep = job
     label = f"eval-{host}-{arm}-r{rep}-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{scenario.lower()}"
     cmd = [sys.executable, str(HERE / "run_scenario.py"), "--host", host, "--scenario", scenario,
            "--model", args.models[host], "--output", str(runs_dir), "--label", label,
            "--upstream-url", heart.mcp_url, "--arm", arm, "--turn-timeout", str(args.turn_timeout),
-           "--final-snapshot"]
+           "--final-snapshot", "--surface-snapshot", args.surface_snapshots[arm]]
     if host == "codex":
         cmd += ["--reasoning", args.codex_reasoning]
     if args.max_turns:
@@ -178,8 +201,18 @@ def main():
     try:
         manifest["heart"] = {"api_url": heart.url, "account_id": heart.account_id}
         served = heart.tools_list()
-        manifest["tools_list"] = {arm: {"tools": len(served["tools"]), "bytes": compact_bytes(apply_arm(served, arm, heart.served_schema))}
-                                  for arm in args.arms}
+        manifest["tools_list"], manifest["surface_snapshots"] = {}, {}
+        schemas = served_schemas(heart)
+        for arm in args.arms:
+            forwarded = apply_arm(served, arm, heart.served_schema)
+            manifest["tools_list"][arm] = {"tools": len(forwarded["tools"]), "served_bytes": compact_bytes(served),
+                                           "bytes": compact_bytes(forwarded)}
+            path = out / f"surface-snapshot-{arm}.json"
+            path.write_text(json.dumps(surface_snapshot(forwarded, schemas, arm, manifest["heart_commit"]),
+                                       ensure_ascii=False, indent=2) + "\n")
+            manifest["surface_snapshots"][arm] = {"path": str(path),
+                                                  "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+        args.surface_snapshots = {arm: v["path"] for arm, v in manifest["surface_snapshots"].items()}
         env = {**os.environ, "ANYTYPE_API_KEY": heart.key}
         jobs = list(itertools.product(args.hosts, args.arms, selected, range(1, args.repetitions + 1)))
         with ThreadPoolExecutor(max_workers=max(1, args.parallel)) as pool:

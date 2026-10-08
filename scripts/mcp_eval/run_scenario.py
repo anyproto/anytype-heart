@@ -183,6 +183,7 @@ def run(args):
                     "surface": "full" if args.upstream_url else "bridge",
                     "arm": args.arm if args.upstream_url else None,
                     "upstream_url": args.upstream_url,
+                    "surface_snapshot": str(args.surface_snapshot.resolve()) if args.surface_snapshot else None,
                     "label": label, "workspace": str(workspace),
                     "started_at": stamp, "turns": [], "status": "running",
                     "replicate": args.replicate, "runner_pid": os.getpid(),
@@ -276,6 +277,8 @@ def parser(default_host="codex"):
     p.add_argument("--upstream", default="anytype", help="the bridge: a stdio server configured in Codex")
     p.add_argument("--upstream-url", help="heart's /mcp/full instead of the bridge; key in ANYTYPE_API_KEY")
     p.add_argument("--arm", choices=["full", "full-inline"], default="full")
+    p.add_argument("--surface-snapshot", type=Path,
+                   help="the campaign's snapshot of the surface this arm serves, for review")
     p.add_argument("--turn-timeout", type=int, default=600)
     p.add_argument("--max-turns", type=int)
     p.add_argument("--replicate", type=int, choices=[1, 2, 3])
