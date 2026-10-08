@@ -436,3 +436,76 @@ func TestMCPFullTableFailureIs500AndDerivedOnce(t *testing.T) {
 	}
 	assert.Equal(t, 1, calls)
 }
+
+// TestMCPCuratedStructuredContent: the curated tiers serve their machine
+// shape as structuredContent too, always an object.
+func TestMCPCuratedStructuredContent(t *testing.T) {
+	fx := mcpFixture(t)
+	registerGrantTestSpace(t, fx, spaceRefFullId, "Garden")
+	w := fx.mcpDo(t, mcpCall{tier: "large", key: "keyA", body: rpcLine(t, 1, "initialize", nil)})
+	sid := w.Header().Get(mcpSessionHeader)
+	require.NotEmpty(t, sid)
+	for _, tc := range []struct {
+		tool string
+		args map[string]any
+	}{
+		{"spaces", nil},
+		{"find", map[string]any{"space": spaceRefFullId, "query": "plant"}},
+	} {
+		t.Run(tc.tool, func(t *testing.T) {
+			w := fx.mcpDo(t, mcpCall{tier: "large", key: "keyA", session: sid, body: toolCall(t, 2, tc.tool, tc.args)})
+			result := rpcResult(t, w)
+			structuredContent, ok := result["structuredContent"].(map[string]any)
+			require.True(t, ok, "structuredContent is an object: %v", result)
+			assert.NotEmpty(t, structuredContent)
+		})
+	}
+}
+
+// TestMCPFullToolsListIsTheTable: the HTTP tools/list is exactly the
+// derived table's listing.
+func TestMCPFullToolsListIsTheTable(t *testing.T) {
+	fx := mcpFixture(t)
+	w := fx.mcpDo(t, mcpCall{tier: "full", key: "keyA", body: rpcLine(t, 1, "tools/list", nil)})
+	require.Equal(t, http.StatusOK, w.Code)
+	var resp struct {
+		Result json.RawMessage `json:"result"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	table, err := testFullTable(t)()
+	require.NoError(t, err)
+	want, err := table.ListJSON()
+	require.NoError(t, err)
+	assert.JSONEq(t, string(want), string(resp.Result))
+}
+
+// TestMCPProtocolHeaderAndSessionsOnEveryMethod: DELETE and GET check the
+// protocol version too; a GET naming a session that is not live is told so
+// before the 405; an idle session that was never swept is gone for DELETE.
+func TestMCPProtocolHeaderAndSessionsOnEveryMethod(t *testing.T) {
+	fx := mcpFixture(t)
+	bad := map[string]string{mcpProtocolHeader: "1999-01-01"}
+	w := fx.mcpDo(t, mcpCall{method: http.MethodDelete, tier: "small", key: "keyA", session: "x", headers: bad})
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	w = fx.mcpDo(t, mcpCall{method: http.MethodGet, tier: "small", key: "keyA", headers: bad})
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	w = fx.mcpDo(t, mcpCall{method: http.MethodGet, tier: "small", key: "keyA", session: strings.Repeat("0", 32)})
+	assert.Equal(t, http.StatusNotFound, w.Code, "an unknown session is a 404 before the 405")
+
+	w = fx.mcpDo(t, mcpCall{tier: "small", key: "keyA", body: rpcLine(t, 1, "initialize", nil)})
+	sid := w.Header().Get(mcpSessionHeader)
+	require.NotEmpty(t, sid)
+	w = fx.mcpDo(t, mcpCall{method: http.MethodGet, tier: "small", key: "keyA", session: sid})
+	assert.Equal(t, http.StatusMethodNotAllowed, w.Code, "a live session gets the 405")
+
+	fx.Server.mcp.now = func() time.Time { return time.Now().Add(mcpSessionIdle + time.Minute) }
+	defer func() { fx.Server.mcp.now = time.Now }()
+	w = fx.mcpDo(t, mcpCall{method: http.MethodGet, tier: "small", key: "keyA", session: sid})
+	assert.Equal(t, http.StatusNotFound, w.Code, "an expired session is a 404 for GET")
+	w = fx.mcpDo(t, mcpCall{tier: "small", key: "keyA", body: rpcLine(t, 1, "initialize", nil)})
+	sid2 := w.Header().Get(mcpSessionHeader)
+	fx.Server.mcp.now = func() time.Time { return time.Now().Add(2 * (mcpSessionIdle + time.Minute)) }
+	w = fx.mcpDo(t, mcpCall{method: http.MethodDelete, tier: "small", key: "keyA", session: sid2})
+	assert.Equal(t, http.StatusNotFound, w.Code, "an idle session that was never swept is gone for DELETE")
+}

@@ -459,3 +459,46 @@ func TestMCPHandleMessageClassifies(t *testing.T) {
 		assert.True(t, server.SupportsProtocolVersion("2025-06-18"))
 	})
 }
+
+// TestMCPEnvelopeValidation: valid JSON with the wrong shape is an invalid
+// request answered under its own id; a response carrying both result and
+// error is refused; bad initialize params and any tools/list cursor are
+// invalid params.
+func TestMCPEnvelopeValidation(t *testing.T) {
+	fx := newFixture(t)
+	server := NewMCPServer(fx.Runner, TierSmall)
+	ctx := context.Background()
+	for _, tc := range []struct {
+		name, raw string
+		code      int
+		id        string
+	}{
+		{"a method of the wrong type", `{"jsonrpc":"2.0","id":4,"method":5}`, mcpInvalidRequest, "4"},
+		{"params of the wrong type keep the id readable", `{"jsonrpc":"2.0","id":"a","method":"ping","params":"x"}`, mcpInvalidRequest, `"a"`},
+		{"not an object", `"hello"`, mcpInvalidRequest, "null"},
+		{"result and error together", `{"jsonrpc":"2.0","id":2,"result":{},"error":{"code":1,"message":"x"}}`, mcpInvalidRequest, "2"},
+		{"bad initialize params", `{"jsonrpc":"2.0","id":5,"method":"initialize","params":{"protocolVersion":7}}`, mcpInvalidParams, "5"},
+		{"a tools/list cursor", `{"jsonrpc":"2.0","id":6,"method":"tools/list","params":{"cursor":"next"}}`, mcpInvalidParams, "6"},
+		{"bad tools/list params", `{"jsonrpc":"2.0","id":7,"method":"tools/list","params":{"cursor":1}}`, mcpInvalidParams, "7"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			handled := server.HandleMessage(ctx, []byte(tc.raw))
+			require.NotNil(t, handled.Response)
+			require.NotNil(t, handled.Response.Error, "%v", handled.Response)
+			assert.Equal(t, tc.code, handled.Response.Error.Code)
+			assert.Equal(t, tc.id, string(handled.Response.ID))
+		})
+	}
+	t.Run("not JSON stays a parse error", func(t *testing.T) {
+		handled := server.HandleMessage(ctx, []byte(`{"jsonrpc":`))
+		assert.Equal(t, mcpParseError, handled.Response.Error.Code)
+	})
+}
+
+func TestStructuredContentIsAlwaysAnObject(t *testing.T) {
+	assert.JSONEq(t, `{"a":1}`, string(structured(json.RawMessage(`{"a":1}`))))
+	assert.JSONEq(t, `{"result":[1,2]}`, string(structured(json.RawMessage(`[1,2]`))))
+	assert.JSONEq(t, `{"result":[{"n":1}]}`, string(structured([]map[string]int{{"n": 1}})))
+	assert.Nil(t, structured(nil))
+	assert.Nil(t, structured(json.RawMessage(`null`)))
+}
