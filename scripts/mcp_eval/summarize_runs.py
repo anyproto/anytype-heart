@@ -236,11 +236,145 @@ def markdown(s):
     return "\n".join(lines)
 
 
+#
+# ---- host × arm breakdown (spec §6) ----
+#
+
+# The categories an error response falls in. Heuristic and documented as
+# such: they read the error envelope a tool returned, the guard's refusal
+# code, or the HTTP status the guard recorded for an upstream refusal.
+ERROR_CATEGORIES = ("guard_refusal", "rate_limit", "envelope", "locator", "payload", "semantic", "other")
+_LOCATOR_PATH = re.compile(r"^/ops/\d+/(id|match|after|before|inside|table_id|row|col|view|block)$")
+_OPS_PATH = re.compile(r"^/ops(/\d+)?(/op)?$")
+
+
+def error_category(call):
+    """The category of a failed call's error (spec §6)."""
+    result = call.get("result") or {}
+    docs = list(text_objects(result))
+    text = json.dumps(result, ensure_ascii=False)
+    envelope = next((d for d in docs if "code" in d or "status" in d), {})
+    code, status = envelope.get("code"), envelope.get("status")
+    err = call.get("error") or {}
+    if code == "evaluation_space_guard":
+        return "guard_refusal"
+    if status == 429 or code in ("rate_limit_exceeded", "too_many_streams") or "HTTP 429" in text \
+            or "Too Many Requests" in text or (err.get("data") or {}).get("http_status") == 429:
+        return "rate_limit"
+    issues = envelope.get("issues") or []
+    paths = [i.get("path", "") for i in issues if isinstance(i, dict)]
+    message = (envelope.get("message") or "") + " " + " ".join(i.get("message", "") for i in issues if isinstance(i, dict))
+    if not envelope:
+        # no server envelope: a pre-flight refusal of the call's shape
+        if re.search(r"does not take|needs \"|takes an id|takes a scalar|takes a string|unknown tool", text):
+            return "envelope"
+        return "other"
+    if any(_OPS_PATH.match(p) for p in paths) or re.search(r"\bunknown op\b|\bop\b.*(missing|required)|discriminator", message):
+        return "envelope"
+    if any(_LOCATOR_PATH.match(p) for p in paths) or re.search(r"no block|block .*not found|matches no block|matched \d+ blocks", message):
+        return "locator"
+    if code == "validation_failed" or status == 400:
+        return "payload"
+    if isinstance(status, int) and 400 <= status < 500:
+        return "semantic"
+    return "other"
+
+
+def rate_limit_refusals(run):
+    """Calls refused by the shared write limiter, counted apart from model
+    errors: the limiter is a property of the campaign, not of the model."""
+    return sum(1 for call in call_records(run) if is_failed(call) and error_category(call) == "rate_limit")
+
+
+def _usage_totals(turns):
+    totals = Counter()
+    for t in turns:
+        u = t.get("usage") or {}
+        totals["input_tokens"] += u.get("input_tokens", 0) or 0
+        totals["output_tokens"] += u.get("output_tokens", 0) or 0
+        totals["cache_read_tokens"] += u.get("cached_input_tokens", 0) or 0
+    return totals
+
+
+def host_arm_breakdown(dirs):
+    """Group runs by (host, arm) and report what spec §6 asks for."""
+    groups = {}
+    for run in dirs:
+        manifest = load_json(run / "run.json") or {}
+        key = (manifest.get("host", "codex"), manifest.get("arm") or "bridge")
+        g = groups.setdefault(key, {"runs": 0, "completed_runs": 0, "turns": 0, "tokens": Counter(),
+                                    "tokens_completed_runs": Counter(), "calls": 0, "errors": Counter(),
+                                    "first_attempts": Counter(), "first_successes": Counter(),
+                                    "tools_list_bytes": set(), "review": {}})
+        g["runs"] += 1
+        turns = manifest.get("turns", [])
+        g["turns"] += len(turns)
+        usage = _usage_totals(turns)
+        g["tokens"].update(usage)
+        if manifest.get("status") == "conversation_completed_pending_review":
+            g["completed_runs"] += 1
+            g["tokens_completed_runs"].update(usage)
+        if (manifest.get("tools_list") or {}).get("forwarded_bytes"):
+            g["tools_list_bytes"].add(manifest["tools_list"]["forwarded_bytes"])
+        failed_in_turn = set()
+        for call in call_records(run):
+            g["calls"] += 1
+            tool = normalized(call.get("tool", ""))
+            failed = is_failed(call)
+            if failed:
+                g["errors"][error_category(call)] += 1
+            # a first attempt is a call not preceded, in its turn, by a
+            # failed call of the same tool
+            if (call.get("turn"), tool) not in failed_in_turn:
+                g["first_attempts"][tool] += 1
+                g["first_successes"][tool] += not failed
+            if failed:
+                failed_in_turn.add((call.get("turn"), tool))
+        review = load_json(run / "reviewer-result.json")
+        if review:
+            for dimension, score in (review.get("scores") or {}).items():
+                g["review"].setdefault(manifest.get("scenario_id"), {})[dimension] = score
+    out = []
+    for (host, arm), g in sorted(groups.items()):
+        out.append({
+            "host": host, "arm": arm, "runs": g["runs"], "completed_runs": g["completed_runs"],
+            "tokens": dict(g["tokens"]),
+            "tokens_per_turn": {k: round(v / g["turns"], 1) for k, v in g["tokens"].items()} if g["turns"] else {},
+            "tokens_per_completed_scenario": {k: round(v / g["completed_runs"], 1) for k, v in g["tokens_completed_runs"].items()} if g["completed_runs"] else {},
+            "calls": g["calls"], "errors_by_category": {c: g["errors"][c] for c in ERROR_CATEGORIES},
+            "first_attempt_success": {t: {"attempts": g["first_attempts"][t], "successes": g["first_successes"][t]}
+                                      for t in sorted(g["first_attempts"])},
+            "tools_list_bytes": sorted(g["tools_list_bytes"]),
+            "review_scores_by_scenario": g["review"],
+        })
+    return out
+
+
+def breakdown_markdown(rows):
+    lines = ["# Host × arm breakdown", "",
+             "Error categories are heuristic (summarize_runs.error_category); rate-limit refusals are the campaign's, not the model's.", "",
+             "| Host | Arm | Runs | Completed | Calls | In tok/turn | Out tok/turn | Cache read/turn | " + " | ".join(ERROR_CATEGORIES) + " | tools/list bytes |",
+             "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | " + " | ".join("---:" for _ in ERROR_CATEGORIES) + " | --- |"]
+    for r in rows:
+        t = r["tokens_per_turn"]
+        lines.append(f"| {r['host']} | {r['arm']} | {r['runs']} | {r['completed_runs']} | {r['calls']} | "
+                     f"{t.get('input_tokens', 0)} | {t.get('output_tokens', 0)} | {t.get('cache_read_tokens', 0)} | "
+                     + " | ".join(str(r["errors_by_category"][c]) for c in ERROR_CATEGORIES)
+                     + f" | {', '.join(map(str, r['tools_list_bytes'])) or '—'} |")
+    lines += ["", "## First-attempt success per tool", ""]
+    for r in rows:
+        lines += [f"### {r['host']} / {r['arm']}", "", "| Tool | First attempts | Succeeded |", "| --- | ---: | ---: |"]
+        lines += [f"| `{tool}` | {v['attempts']} | {v['successes']} |" for tool, v in r["first_attempt_success"].items()]
+        lines.append("")
+    return "\n".join(lines) + "\n"
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--runs", type=Path, default=DEFAULT_ROOT)
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("run", nargs="*", help="run directory names (default: all run-* directories)")
+    p.add_argument("--by-host-arm", action="store_true", help="also write the host × arm breakdown")
     a = p.parse_args()
     dirs = [a.runs / x for x in a.run] if a.run else sorted(x for x in a.runs.iterdir() if x.is_dir() and (x / "run.json").exists())
     a.output.mkdir(parents=True, exist_ok=True)
@@ -251,7 +385,7 @@ def main():
         s = summarize(d); summaries.append(s)
         (a.output / f"{s['run_id']}.json").write_text(json.dumps(s, ensure_ascii=False, indent=2) + "\n")
         (a.output / f"{s['run_id']}.md").write_text(markdown(s))
-    declared = load_json(SURFACE) or {}
+    declared = load_json(SURFACE) or {}  # the bridge's surface; absent in this checkout
     declared_tools = [x.get("name") for x in declared.get("tools", []) if x.get("name")]
     attempted_counts = Counter()
     successful_counts = Counter()
@@ -274,6 +408,10 @@ def main():
     index += ["", f"Measured API coverage ({coverage_summary['declared_tools']} declared): {coverage_summary['attempted_tools']} attempted; {coverage_summary['successful_tools']} successful.", "", "| API tool | Attempted | Successful |", "| --- | ---: | ---: |"]
     index += [f"| `{name}` | {v['attempted']} | {v['successful']} |" for name, v in coverage.items()]
     (a.output / "index.md").write_text("\n".join(index) + "\n")
+    if a.by_host_arm:
+        rows = host_arm_breakdown(dirs)
+        (a.output / "host-arm.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2) + "\n")
+        (a.output / "host-arm.md").write_text(breakdown_markdown(rows))
     print(f"summarized {len(summaries)} run(s) into {a.output}")
 
 

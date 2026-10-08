@@ -249,7 +249,7 @@ def run(args):
         else:
             manifest["status"] = "conversation_completed_pending_review"
         save_report(run_dir, manifest)
-        if args.snapshot_after_turn and len(manifest["owned_spaces"]) == 1:
+        if (args.snapshot_after_turn or args.final_snapshot) and len(manifest["owned_spaces"]) == 1:
             from snapshot_run import snapshot
             try:
                 snapshot(run_dir, codex, args.upstream)
@@ -280,6 +280,7 @@ def parser(default_host="codex"):
     p.add_argument("--max-turns", type=int)
     p.add_argument("--replicate", type=int, choices=[1, 2, 3])
     p.add_argument("--snapshot-after-turn", action="store_true")
+    p.add_argument("--final-snapshot", action="store_true", help="snapshot the final state only")
     p.add_argument("--with-hooks", action="store_true")
     return p
 
