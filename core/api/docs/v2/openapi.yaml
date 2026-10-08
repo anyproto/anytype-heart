@@ -521,6 +521,8 @@ components:
       properties:
         emoji:
           type: string
+      required:
+      - emoji
       type: object
     ChatReactionResult:
       properties:
@@ -539,6 +541,10 @@ components:
         last_state_id:
           type: string
         scope:
+          enum:
+          - messages
+          - mentions
+          - reactions
           type: string
         up_to:
           type: string
@@ -602,6 +608,8 @@ components:
       properties:
         name:
           type: string
+      required:
+      - name
       type: object
     CreateResult:
       properties:
@@ -651,6 +659,8 @@ components:
           type: string
         name:
           type: string
+      required:
+      - name
       type: object
     CreatedOption:
       properties:
@@ -693,7 +703,11 @@ components:
     EditChatMessageRequest:
       properties:
         text:
+          description: The new text, required so an omitted member cannot clear the
+            message by accident; an empty string clears it on purpose.
           type: string
+      required:
+      - text
       type: object
     EditResult:
       properties:

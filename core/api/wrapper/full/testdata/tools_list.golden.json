@@ -164,6 +164,9 @@
       "type": "string"
      }
     },
+    "required": [
+     "name"
+    ],
     "type": "object"
    }
   },
@@ -287,6 +290,7 @@
      }
     },
     "required": [
+     "name",
      "space_id"
     ],
     "type": "object"
@@ -404,13 +408,15 @@
       "type": "string"
      },
      "text": {
+      "description": "The new text, required so an omitted member cannot clear the message by accident; an empty string clears it on purpose.",
       "type": "string"
      }
     },
     "required": [
      "chat_id",
      "message_id",
-     "space_id"
+     "space_id",
+     "text"
     ],
     "type": "object"
    }
@@ -485,6 +491,7 @@
     },
     "required": [
      "chat_id",
+     "emoji",
      "message_id",
      "space_id"
     ],
@@ -513,6 +520,11 @@
       "type": "string"
      },
      "scope": {
+      "enum": [
+       "messages",
+       "mentions",
+       "reactions"
+      ],
       "type": "string"
      },
      "space_id": {
