@@ -47,28 +47,93 @@ func typeOpsEnvelope(body map[string]any, channel string, served map[string]OpSc
 	envelope := targets[0]
 	branches := make([]any, 0, len(ops))
 	for _, op := range ops {
-		var schema map[string]any
-		if err := json.Unmarshal(served[op].Schema, &schema); err != nil {
-			return fmt.Errorf("decode op schema %q: %w", op, err)
-		}
-		if opDefs, ok := schema["$defs"].(map[string]any); ok {
-			delete(schema, "$defs")
-			for name, def := range opDefs {
-				defs[op+opDefSeparator+name] = def
-				pending[op+opDefSeparator+name] = opDef{op: op, base: name}
-			}
-		}
-		rewriteRefs(schema, func(name string) string { return op + opDefSeparator + name })
-		for name := range defs {
-			if strings.HasPrefix(name, op+opDefSeparator) {
-				rewriteRefs(defs[name], func(n string) string { return op + opDefSeparator + n })
-			}
+		schema, err := embedServed(op, served[op].Schema, defs, pending)
+		if err != nil {
+			return fmt.Errorf("op schema %q: %w", op, err)
 		}
 		defs[opBranchPrefix+op] = schema
 		branches = append(branches, map[string]any{"$ref": defsRefPrefix + opBranchPrefix + op})
 	}
 	envelope["items"] = map[string]any{"oneOf": branches}
 	return nil
+}
+
+// embedServed decodes one served schema for embedding in a tool: its own
+// $defs move to the tool's under names namespaced by prefix (the same
+// definition name means different shapes in different served schemas), its
+// references are re-aimed at them, and each is registered for
+// deduplication.
+func embedServed(prefix string, raw json.RawMessage, defs map[string]any, pending map[string]opDef) (map[string]any, error) {
+	var schema map[string]any
+	if err := json.Unmarshal(raw, &schema); err != nil {
+		return nil, fmt.Errorf("decode served schema: %w", err)
+	}
+	rename := func(name string) string { return prefix + opDefSeparator + name }
+	if own, ok := schema["$defs"].(map[string]any); ok {
+		delete(schema, "$defs")
+		for name, def := range own {
+			rewriteRefs(def, rename)
+			defs[rename(name)] = def
+			pending[rename(name)] = opDef{op: prefix, base: name}
+		}
+	}
+	rewriteRefs(schema, rename)
+	return schema, nil
+}
+
+// embedOpaqueBody replaces the open document form of body — the body
+// itself, or its one anyOf branch with no listed members — with the
+// served schema of kind.
+func embedOpaqueBody(body map[string]any, kind string, kinds map[string]json.RawMessage, defs map[string]any, pending map[string]opDef) (map[string]any, error) {
+	raw, ok := kinds[kind]
+	if !ok {
+		return nil, fmt.Errorf("no served schema for kind %q in the inputs", kind)
+	}
+	embed := func(pointer map[string]any) (map[string]any, error) {
+		schema, err := embedServed(kind, raw, defs, pending)
+		if err != nil {
+			return nil, fmt.Errorf("kind %q: %w", kind, err)
+		}
+		if desc, _ := pointer["description"].(string); desc != "" {
+			// the pointer named where the shape was; it is here now
+			if i := strings.Index(desc, "; its schema"); i >= 0 {
+				desc = desc[:i]
+			}
+			schema["description"] = desc
+		}
+		delete(schema, "$schema")
+		return schema, nil
+	}
+	if isOpaque(body) {
+		return embed(body)
+	}
+	branches, _ := body["anyOf"].([]any)
+	found := -1
+	for i, b := range branches {
+		if m, ok := b.(map[string]any); ok && isOpaque(m) {
+			if found >= 0 {
+				return nil, fmt.Errorf("more than one open document form in the body")
+			}
+			found = i
+		}
+	}
+	if found < 0 {
+		return nil, fmt.Errorf("the body has no open document form for kind %q to fill", kind)
+	}
+	schema, err := embed(branches[found].(map[string]any))
+	if err != nil {
+		return nil, err
+	}
+	branches[found] = schema
+	return body, nil
+}
+
+// isOpaque reports whether a body schema is an open object that lists no
+// members: a document form named rather than described.
+func isOpaque(schema map[string]any) bool {
+	_, hasProps := schema["properties"]
+	_, hasAnyOf := schema["anyOf"]
+	return !hasProps && !hasAnyOf && isOpenObject(schema)
 }
 
 // channelOps lists the ops a channel accepts, in served order.

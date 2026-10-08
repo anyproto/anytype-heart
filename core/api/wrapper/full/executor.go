@@ -118,7 +118,9 @@ func (e *Executor) assemble(tool Tool, args map[string]any) (wrapper.RawRequest,
 			} else {
 				req.Headers.Set(arg.Wire, s)
 			}
-		case known || (tool.HasBody && tool.OpenBody):
+		case known:
+			body[arg.Wire] = value
+		case tool.HasBody && tool.OpenBody:
 			body[name] = value
 		default:
 			return req, fmt.Errorf("%s does not take %q — arguments: %s", tool.Name, name, strings.Join(argNames(tool), ", "))

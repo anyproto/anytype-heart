@@ -310,6 +310,23 @@ func (s *Service) SchemaKind(kind string) (v2model.SchemaEntry, error) {
 	return schemaKind(kind)
 }
 
+// ServedKindSchema returns one discovery kind's schema in its served form —
+// the bytes GET /v2/schemas/{kind} serves — for the full tool table's
+// document bodies.
+func ServedKindSchema(kind string) (json.RawMessage, error) {
+	entry, err := schemaKind(kind)
+	if err != nil {
+		return nil, fmt.Errorf("schema kind %s: %w", kind, err)
+	}
+	return entry.Schema, nil
+}
+
+// ServedKindEntry returns one discovery kind's whole served entry, example
+// included.
+func ServedKindEntry(kind string) (v2model.SchemaEntry, error) {
+	return schemaKind(kind)
+}
+
 // schemaKind is the served entry for a kind, a package function so the
 // OpenAPI body composition (openapibodies.go) can run without a service.
 func schemaKind(kind string) (v2model.SchemaEntry, error) {

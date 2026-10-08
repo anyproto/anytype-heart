@@ -2,6 +2,7 @@ package full
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	v2service "github.com/anyproto/anytype-heart/core/api/v2/service"
+	"github.com/anyproto/anytype-heart/core/api/wrapper"
 )
 
 var update = flag.Bool("update", false, "rewrite the golden tools list")
@@ -35,7 +37,13 @@ func realInputs(t *testing.T) Inputs {
 	for op, s := range served {
 		ops[op] = OpSchema{Schema: s.Schema, Example: s.Example, Channels: s.Channels}
 	}
-	return Inputs{OpenAPI: doc, Ops: ops}
+	kinds := map[string]json.RawMessage{}
+	for _, kind := range BodyKinds() {
+		schema, err := v2service.ServedKindSchema(kind)
+		require.NoError(t, err)
+		kinds[kind] = schema
+	}
+	return Inputs{OpenAPI: doc, Ops: ops, Kinds: kinds}
 }
 
 func deriveReal(t *testing.T) *Table {
@@ -91,21 +99,14 @@ func TestOverlayTargetsExist(t *testing.T) {
 // cannot be flattened; the error names the overlay rename that fixes it.
 // The real document has no such member, so one is injected.
 func TestBodyParameterCollisionFails(t *testing.T) {
-	in := realInputs(t)
-	var doc map[string]any
-	require.NoError(t, json.Unmarshal(in.OpenAPI, &doc))
-	component := doc["components"].(map[string]any)["schemas"].(map[string]any)["CreateChatRequest"].(map[string]any)
-	component["properties"].(map[string]any)["space_id"] = map[string]any{"type": "string"}
-	mutated, err := json.Marshal(doc)
-	require.NoError(t, err)
-	in.OpenAPI = mutated
+	in := injectChatBodyMember(t, realInputs(t))
 
-	_, err = Derive(in)
+	_, err := Derive(in)
 
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "create_chat")
 	assert.Contains(t, err.Error(), `"space_id"`)
-	assert.Contains(t, err.Error(), "RenameArg")
+	assert.Contains(t, err.Error(), "RenameBodyMember")
 }
 
 // TestArgumentsPlaceEveryParameter: path parameters are required
@@ -150,23 +151,188 @@ func TestArgumentsPlaceEveryParameter(t *testing.T) {
 	assert.False(t, *schema.AdditionalProperties)
 }
 
-// TestDocumentBodiesStayOpen: a body that is an AnyBlock document has no
-// listed members and admits any; the description names where the shape is.
-func TestDocumentBodiesStayOpen(t *testing.T) {
+// TestNoBodyIsOpaque: every body lists its members — the document forms
+// the OpenAPI document leaves as a pointer to get_schema are filled from
+// the served kinds — so a caller never meets a body it has to look up.
+func TestNoBodyIsOpaque(t *testing.T) {
 	table := deriveReal(t)
-	for _, name := range []string{"create_template", "validate", "create_object", "create_type"} {
-		tool, ok := table.Tool(name)
-		require.True(t, ok, name)
-		assert.True(t, tool.OpenBody, "%s takes a document form", name)
-		var root struct {
-			AdditionalProperties *bool `json:"additionalProperties"`
+	var opaque []string
+	for _, tool := range table.Tools {
+		if tool.OpenBody {
+			opaque = append(opaque, tool.Name)
 		}
-		require.NoError(t, json.Unmarshal(tool.InputSchema, &root))
-		assert.Nil(t, root.AdditionalProperties, "%s root must not refuse document members", name)
 	}
-	tool, _ := table.Tool("create_template")
-	assert.Contains(t, tool.Description, "Body:")
-	assert.Contains(t, tool.Description, "get_schema")
+	assert.Empty(t, opaque, "tools whose body still admits unlisted members")
+}
+
+// TestDocumentBodiesAreEmbedded: each embedded kind's own served example
+// validates in the assembled tool schema, and a member the document does
+// not have is refused.
+func TestDocumentBodiesAreEmbedded(t *testing.T) {
+	in := realInputs(t)
+	table, err := Derive(in)
+	require.NoError(t, err)
+	cases := map[string]struct {
+		kind string
+		args map[string]any
+	}{
+		"create_object":   {"object", map[string]any{"space_id": "s"}},
+		"create_template": {"template", map[string]any{"space_id": "s"}},
+		"create_type":     {"type_document", map[string]any{"space_id": "s"}},
+		"validate":        {"document", map[string]any{}},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			tool, ok := table.Tool(name)
+			require.True(t, ok)
+			compiled := compile(t, tool.InputSchema)
+			example := servedKindExample(t, tc.kind)
+			assert.NoError(t, validate(t, compiled, withArgs(tc.args, example)), "the %s kind's served example", tc.kind)
+			assert.Error(t, validate(t, compiled, withArgs(tc.args, withArgs(example, map[string]any{"no_such_member": 1}))), "an unknown member is refused")
+			_, schemaArg := tool.Arg("$schema")
+			assert.False(t, schemaArg, "$schema is not a legal argument name")
+		})
+	}
+}
+
+// TestEveryArgumentNameIsLegal: tool hosts accept property keys matching
+// ^[a-zA-Z0-9_.-]{1,64}$ only.
+func TestEveryArgumentNameIsLegal(t *testing.T) {
+	table := deriveReal(t)
+	for _, tool := range table.Tools {
+		var schema struct {
+			Properties map[string]any `json:"properties"`
+		}
+		require.NoError(t, json.Unmarshal(tool.InputSchema, &schema))
+		for name := range schema.Properties {
+			assert.Regexp(t, legalArgName, name, "%s.%s", tool.Name, name)
+		}
+	}
+}
+
+// servedKindExample is the example the discovery surface serves for kind.
+func servedKindExample(t *testing.T, kind string) map[string]any {
+	t.Helper()
+	entry, err := v2service.ServedKindEntry(kind)
+	require.NoError(t, err)
+	var example map[string]any
+	require.NoError(t, json.Unmarshal(entry.Example, &example))
+	return example
+}
+
+// TestEveryWriteTakesARetryKey: the retry key is a reserved argument on
+// every non-GET tool, documented on the route or not.
+func TestEveryWriteTakesARetryKey(t *testing.T) {
+	table := deriveReal(t)
+	for _, tool := range table.Tools {
+		arg, ok := tool.Arg(idempotencyKeyArg)
+		if tool.Method == "GET" {
+			assert.False(t, ok, "%s is a read", tool.Name)
+			continue
+		}
+		require.True(t, ok, "%s is a write and takes a retry key", tool.Name)
+		assert.Equal(t, ArgHeader, arg.In)
+		assert.Equal(t, wrapper.IdempotencyKeyHeader, arg.Wire)
+	}
+}
+
+// TestAtLeastOneBodyMemberSurvivesFlattening: a body's minProperties:1
+// would be met by a path argument once flattened, so it becomes "one of
+// the body members is present".
+func TestAtLeastOneBodyMemberSurvivesFlattening(t *testing.T) {
+	table := deriveReal(t)
+	tool, ok := table.Tool("update_widget")
+	require.True(t, ok)
+	compiled := compile(t, tool.InputSchema)
+	assert.Error(t, validate(t, compiled, map[string]any{"space_id": "s", "widget_id": "w"}), "path arguments alone are not a patch")
+	assert.Error(t, validate(t, compiled, map[string]any{"space_id": "s", "widget_id": "w", "scope": "space"}), "a query argument is not a body member either")
+	assert.NoError(t, validate(t, compiled, map[string]any{"space_id": "s", "widget_id": "w", "limit": 6}))
+	assert.NotContains(t, string(tool.InputSchema), `"minProperties":1,"properties"`)
+}
+
+// TestARenameRepairsACollision: a body member spelled like a parameter is
+// fixed by renaming the member; the tool shows the new name and the call
+// sends the wire name.
+func TestARenameRepairsACollision(t *testing.T) {
+	ex, api := newExecutorFixture(t)
+	in := injectChatBodyMember(t, realInputs(t))
+	prev, had := overlays["create_chat"]
+	overlays["create_chat"] = overlay{RenameBodyMember: map[string]string{"space_id": "body_space_id"}}
+	defer func() {
+		if had {
+			overlays["create_chat"] = prev
+		} else {
+			delete(overlays, "create_chat")
+		}
+	}()
+	table, err := Derive(in)
+	require.NoError(t, err)
+	tool, ok := table.Tool("create_chat")
+	require.True(t, ok)
+	arg, ok := tool.Arg("body_space_id")
+	require.True(t, ok)
+	assert.Equal(t, Arg{Name: "body_space_id", In: ArgBody, Wire: "space_id"}, arg)
+
+	ex.table = table
+	_, err = ex.Run(context.Background(), "create_chat", map[string]any{"space_id": "s", "name": "x", "body_space_id": "inner"})
+	require.NoError(t, err)
+	assert.Equal(t, "/v2/spaces/s/chats", api.requests[0].Path)
+	assert.JSONEq(t, `{"name":"x","space_id":"inner"}`, api.requests[0].Body)
+
+	t.Run("a rename of a member the body lacks is overlay rot", func(t *testing.T) {
+		overlays["create_chat"] = overlay{RenameBodyMember: map[string]string{"no_such_member": "x"}}
+		_, err := Derive(realInputs(t))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), `"no_such_member"`)
+	})
+}
+
+// injectChatBodyMember adds a space_id member to CreateChatRequest.
+func injectChatBodyMember(t *testing.T, in Inputs) Inputs {
+	t.Helper()
+	var doc map[string]any
+	require.NoError(t, json.Unmarshal(in.OpenAPI, &doc))
+	component := doc["components"].(map[string]any)["schemas"].(map[string]any)["CreateChatRequest"].(map[string]any)
+	component["properties"].(map[string]any)["space_id"] = map[string]any{"type": "string"}
+	mutated, err := json.Marshal(doc)
+	require.NoError(t, err)
+	in.OpenAPI = mutated
+	return in
+}
+
+// TestADanglingTransitiveReferenceFails: a component that references one
+// the document lacks fails the derivation instead of serving a $ref no
+// host can resolve.
+func TestADanglingTransitiveReferenceFails(t *testing.T) {
+	in := realInputs(t)
+	var doc map[string]any
+	require.NoError(t, json.Unmarshal(in.OpenAPI, &doc))
+	schemas := doc["components"].(map[string]any)["schemas"].(map[string]any)
+	schemas["Intermediate"] = map[string]any{"type": "object", "properties": map[string]any{"x": map[string]any{"$ref": "#/components/schemas/NoSuchComponent"}}}
+	schemas["CreateChatRequest"].(map[string]any)["properties"].(map[string]any)["extra"] = map[string]any{"$ref": "#/components/schemas/Intermediate"}
+	mutated, err := json.Marshal(doc)
+	require.NoError(t, err)
+	in.OpenAPI = mutated
+
+	_, err = Derive(in)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "Intermediate")
+	assert.Contains(t, err.Error(), `"NoSuchComponent"`)
+}
+
+// TestLazyDerivesOnce: a failed derivation is kept, not retried.
+func TestLazyDerivesOnce(t *testing.T) {
+	calls := 0
+	lazy := NewLazy(func() (*Table, error) {
+		calls++
+		return nil, fmt.Errorf("broken input")
+	})
+	_, err1 := lazy.Get()
+	_, err2 := lazy.Get()
+	require.Error(t, err1)
+	assert.Equal(t, err1, err2)
+	assert.Equal(t, 1, calls)
 }
 
 // TestUploadFileTakesTheJSONForm: with both JSON and multipart bodies, the
@@ -359,9 +525,10 @@ func TestGoldenToolsList(t *testing.T) {
 // TestToolsListSizeCeiling guards the budget. The ceiling is a regression
 // guard set from the first measurement, not an acceptability claim.
 func TestToolsListSizeCeiling(t *testing.T) {
-	// 110,938 bytes measured on 2026-10-08 for 50 tools; the ceiling leaves
-	// a tenth of headroom.
-	const ceiling = 120 << 10
+	// 257,156 bytes measured for 50 tools once the four document bodies were
+	// embedded (each AnyBlock kind is 19 to 50 KB); the ceiling leaves a
+	// tenth of headroom.
+	const ceiling = 280 << 10
 	table := deriveReal(t)
 	got, err := table.ListJSON()
 	require.NoError(t, err)
@@ -419,3 +586,20 @@ func allRefs(t *testing.T, schema json.RawMessage) []string {
 }
 
 var _ = fmt.Sprintf
+
+// TestNoToolHasADanglingReference: every $ref in every tool resolves in
+// that tool's own $defs.
+func TestNoToolHasADanglingReference(t *testing.T) {
+	table := deriveReal(t)
+	for _, tool := range table.Tools {
+		var schema struct {
+			Defs map[string]json.RawMessage `json:"$defs"`
+		}
+		require.NoError(t, json.Unmarshal(tool.InputSchema, &schema))
+		for _, ref := range allRefs(t, tool.InputSchema) {
+			_, ok := schema.Defs[strings.TrimPrefix(ref, defsRefPrefix)]
+			assert.True(t, ok, "%s: dangling %s", tool.Name, ref)
+		}
+		compile(t, tool.InputSchema)
+	}
+}

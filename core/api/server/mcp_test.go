@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -50,7 +51,16 @@ func testFullTable(t *testing.T) func() (*full.Table, error) {
 			for op, s := range served {
 				ops[op] = full.OpSchema{Schema: s.Schema, Example: s.Example, Channels: s.Channels}
 			}
-			testTable, testTableErr = full.Derive(full.Inputs{OpenAPI: doc, Ops: ops})
+			kinds := map[string]json.RawMessage{}
+			for _, kind := range full.BodyKinds() {
+				schema, err := v2service.ServedKindSchema(kind)
+				if err != nil {
+					testTableErr = err
+					return
+				}
+				kinds[kind] = schema
+			}
+			testTable, testTableErr = full.Derive(full.Inputs{OpenAPI: doc, Ops: ops, Kinds: kinds})
 		})
 		return testTable, testTableErr
 	}
@@ -408,4 +418,21 @@ func TestInProcessTransportHonoursTheDeadline(t *testing.T) {
 		require.ErrorIs(t, err, context.Canceled)
 		assert.False(t, reached)
 	})
+}
+
+// TestMCPFullTableFailureIs500AndDerivedOnce: a derivation failure is a
+// defect, answered 500, and not retried per request.
+func TestMCPFullTableFailureIs500AndDerivedOnce(t *testing.T) {
+	fx := mcpFixture(t)
+	calls := 0
+	fx.Server.fullTable = full.NewLazy(func() (*full.Table, error) {
+		calls++
+		return nil, errors.New("derive: broken input")
+	}).Get
+	for i := 0; i < 2; i++ {
+		w := fx.mcpDo(t, mcpCall{tier: "full", key: "keyA", body: rpcLine(t, 1, "tools/list", nil)})
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Contains(t, w.Body.String(), "broken input")
+	}
+	assert.Equal(t, 1, calls)
 }
