@@ -308,3 +308,38 @@ func TestRetryKeyIsAHeaderOnEveryWrite(t *testing.T) {
 		})
 	}
 }
+
+// TestSuccessWarningsAreRespelled: a warning's repair names a route on the
+// REST surface; the full tier re-spells it as the tool, and leaves every
+// other byte of the body as the server wrote it. The warning is built the
+// way create_query builds its no-filter warning.
+func TestSuccessWarningsAreRespelled(t *testing.T) {
+	warning := v2model.Issue{
+		Path:    "/filter",
+		Message: `the query has no filter beyond its type: it lists every live object of type "plant"`,
+	}.Hintf("narrow it with filter, the compact string (grammar on %s), or with filters", v2model.RefGetSchema("filters"))
+	encoded, err := json.Marshal([]v2model.Issue{warning})
+	require.NoError(t, err)
+	require.Regexp(t, restRouteShape, string(encoded), "the server's warning names a route")
+	prefix := `{"id":"bafyquery","dry_run":false, "warnings": `
+	suffix := `,"created":{"views":[{"id":"v1"}]}}`
+	ex, _ := newExecutorFixture(t, stubResponse{200, prefix + string(encoded) + suffix})
+
+	result, err := ex.Run(context.Background(), "create_query", map[string]any{"space_id": "s", "name": "Plants", "type": "plant"})
+
+	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(result.Text, prefix), "bytes before the warnings are untouched")
+	assert.True(t, strings.HasSuffix(result.Text, suffix), "bytes after the warnings are untouched")
+	assert.NotRegexp(t, restRouteShape, result.Text, "nothing route-shaped survives")
+	assert.Contains(t, result.Text, "grammar on `get_schema` with kind: filters")
+	assert.NotContains(t, result.Text, "see_also")
+	assert.JSONEq(t, result.Text, string(result.JSON.(json.RawMessage)))
+
+	t.Run("a body without warnings is byte-identical", func(t *testing.T) {
+		body := `{"data":[], "total":0}`
+		ex, _ := newExecutorFixture(t, stubResponse{200, body})
+		result, err := ex.Run(context.Background(), "list_spaces", nil)
+		require.NoError(t, err)
+		assert.Equal(t, body, result.Text)
+	})
+}

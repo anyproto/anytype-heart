@@ -175,6 +175,28 @@ func TestChatMutationDryRunPlumbing(t *testing.T) {
 		assert.Contains(t, w.Body.String(), `"dry_run":true`)
 	})
 
+	t.Run("PATCH message without text is refused, never read as clearing it", func(t *testing.T) {
+		fx := chatRouterFixture(t)
+		w := serveChat(fx, "PATCH", "/v2/spaces/space1/chats/chat1/messages/msg1", `{}`)
+		require.Equal(t, http.StatusBadRequest, w.Code)
+		var env v2model.Error
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &env))
+		require.Len(t, env.Issues, 1)
+		assert.Equal(t, "/text", env.Issues[0].Path)
+	})
+
+	t.Run("PATCH message with an explicit empty text reaches the service's own rule", func(t *testing.T) {
+		// the handler admits it; the service refuses an empty text only
+		// when the message has no attachments, which this one does not
+		fx := chatRouterFixture(t)
+		fx.mwMock.EXPECT().ChatGetMessagesByIds(mock.Anything, mock.Anything).
+			Return(&pb.RpcChatGetMessagesByIdsResponse{Messages: []*model.ChatMessage{chatHandlerTestMessage()}})
+		w := serveChat(fx, "PATCH", "/v2/spaces/space1/chats/chat1/messages/msg1?dry_run=true", `{"text":""}`)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "needs text or attachments")
+		assert.NotContains(t, w.Body.String(), "names no text")
+	})
+
 	t.Run("DELETE message with dry_run deletes nothing", func(t *testing.T) {
 		fx := chatRouterFixture(t)
 		fx.mwMock.EXPECT().ChatGetMessagesByIds(mock.Anything, mock.Anything).

@@ -235,10 +235,21 @@ func AddChatMessageHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Router			/v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id} [patch]
 func EditChatMessageHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req v2model.EditChatMessageRequest
-		if !decodeChatBody(c, &req, "the edit body takes text") {
+		// text is decoded as present-or-absent: an absent member must be
+		// refused, not read as an empty text that clears the message
+		var body struct {
+			Text *string `json:"text"`
+		}
+		if !decodeChatBody(c, &body, "the edit body takes text") {
 			return
 		}
+		if body.Text == nil {
+			RespondError(c, v2model.ValidationFailed("the edit names no text",
+				v2model.Issue{Path: "/text", Message: "text is required: leaving it out would clear the message"}.
+					WithHint(v2model.Plain(`send the new text; an empty string clears it, which a message with attachments allows`))))
+			return
+		}
+		req := v2model.EditChatMessageRequest{Text: *body.Text}
 		result, err := s.EditChatMessage(c.Request.Context(), c.Param("space_id"), c.Param("chat_id"), c.Param("message_id"), req, isV2DryRun(c))
 		if err != nil {
 			RespondError(c, err)

@@ -136,9 +136,9 @@ type mcpContent struct {
 // form beside it when the tool has one, and tool failures in-band
 // (isError) so the model sees the repair tip.
 type mcpCallResult struct {
-	Content           []mcpContent `json:"content"`
-	StructuredContent any          `json:"structuredContent,omitempty"`
-	IsError           bool         `json:"isError,omitempty"`
+	Content           []mcpContent    `json:"content"`
+	StructuredContent json.RawMessage `json:"structuredContent,omitempty"`
+	IsError           bool            `json:"isError,omitempty"`
 }
 
 // MCPServer serves an Executor over the MCP protocol.
@@ -292,18 +292,41 @@ func parseMessage(raw []byte) (Handled, *mcpMessage) {
 		// sends it; refusing beats half-implementing
 		return invalid(mcpInvalidRequest, "JSON-RPC batching is not supported — send one message at a time")
 	}
+	if !json.Valid(raw) {
+		return invalid(mcpParseError, "parse JSON-RPC message: not valid JSON")
+	}
+	// valid JSON from here: a wrong shape is an invalid request, answered
+	// under the message's own id when it has a usable one
+	var members map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &members); err != nil {
+		return invalid(mcpInvalidRequest, "a JSON-RPC message is an object")
+	}
+	invalidFor := func(message string) (Handled, *mcpMessage) {
+		h, _ := invalid(mcpInvalidRequest, message)
+		if id, ok := members["id"]; ok && validRequestId(id) {
+			h.Response.ID = id
+		}
+		return h, nil
+	}
 	var msg mcpMessage
 	if err := json.Unmarshal(raw, &msg); err != nil {
-		return invalid(mcpParseError, fmt.Sprintf("parse JSON-RPC message: %v", err))
+		return invalidFor(fmt.Sprintf("a member has the wrong type: %v", err))
 	}
 	if msg.JSONRPC != "2.0" {
-		return invalid(mcpInvalidRequest, `jsonrpc must be "2.0"`)
+		return invalidFor(`jsonrpc must be "2.0"`)
+	}
+	if p := strings.TrimSpace(string(msg.Params)); p != "" && p[0] != '{' && p[0] != '[' {
+		return invalidFor("params is an object or an array")
 	}
 	if msg.Method == "" {
-		if len(msg.Result) > 0 || len(msg.Error) > 0 {
+		hasResult, hasError := len(msg.Result) > 0, len(msg.Error) > 0
+		switch {
+		case hasResult && hasError:
+			return invalidFor("a response carries result or error, not both")
+		case hasResult || hasError:
 			return Handled{Kind: MessageResponse}, &msg
 		}
-		return invalid(mcpInvalidRequest, "a request names a method")
+		return invalidFor("a request names a method")
 	}
 	if len(msg.ID) == 0 {
 		return Handled{Kind: MessageNotification, Method: msg.Method}, &msg
@@ -361,11 +384,11 @@ func validRequestId(id json.RawMessage) bool {
 func (s *MCPServer) dispatch(ctx context.Context, msg *mcpMessage) (any, *RPCError) {
 	switch msg.Method {
 	case "initialize":
-		return s.handleInitialize(msg.Params), nil
+		return s.handleInitialize(msg.Params)
 	case "ping":
 		return struct{}{}, nil
 	case "tools/list":
-		return map[string]any{"tools": s.tools}, nil
+		return s.handleToolsList(msg.Params)
 	case "tools/call":
 		return s.handleToolsCall(ctx, msg.Params)
 	default:
@@ -376,11 +399,15 @@ func (s *MCPServer) dispatch(ctx context.Context, msg *mcpMessage) (any, *RPCErr
 // handleInitialize negotiates the protocol version (echo a known requested
 // version, else answer with ours) and serves the executor's instructions —
 // the workflow steering a model needs before its first call.
-func (s *MCPServer) handleInitialize(params json.RawMessage) any {
+func (s *MCPServer) handleInitialize(params json.RawMessage) (any, *RPCError) {
 	var p struct {
 		ProtocolVersion string `json:"protocolVersion"`
 	}
-	_ = json.Unmarshal(params, &p)
+	if len(params) > 0 && string(params) != "null" {
+		if err := json.Unmarshal(params, &p); err != nil {
+			return nil, &RPCError{Code: mcpInvalidParams, Message: fmt.Sprintf("initialize params: %v", err)}
+		}
+	}
 	version := s.latest
 	if s.versions[p.ProtocolVersion] {
 		version = p.ProtocolVersion
@@ -390,7 +417,24 @@ func (s *MCPServer) handleInitialize(params json.RawMessage) any {
 		"capabilities":    map[string]any{"tools": struct{}{}},
 		"serverInfo":      map[string]any{"name": "anytype", "version": "1"},
 		"instructions":    s.exec.Instructions(),
+	}, nil
+}
+
+// handleToolsList serves the whole table. It is never paginated, so no
+// cursor this server issued exists: one sent is refused, not ignored.
+func (s *MCPServer) handleToolsList(params json.RawMessage) (any, *RPCError) {
+	var p struct {
+		Cursor *string `json:"cursor"`
 	}
+	if len(params) > 0 && string(params) != "null" {
+		if err := json.Unmarshal(params, &p); err != nil {
+			return nil, &RPCError{Code: mcpInvalidParams, Message: fmt.Sprintf("tools/list params: %v", err)}
+		}
+	}
+	if p.Cursor != nil {
+		return nil, &RPCError{Code: mcpInvalidParams, Message: "unknown cursor — tools/list returns every tool at once and issues none"}
+	}
+	return map[string]any{"tools": s.tools}, nil
 }
 
 // mcpInstructions renders a curated tier's workflow steering (the SKILL.md
@@ -452,10 +496,38 @@ func (s *MCPServer) handleToolsCall(ctx context.Context, params json.RawMessage)
 		}, nil
 	}
 	out := mcpCallResult{Content: []mcpContent{{Type: "text", Text: result.Text}}}
-	if raw, ok := result.JSON.(json.RawMessage); ok && len(raw) > 0 {
-		out.StructuredContent = raw
-	}
+	out.StructuredContent = structured(result.JSON)
 	return out, nil
+}
+
+// structured renders a result's machine shape as MCP structuredContent,
+// which must be a JSON object: an object passes as is, anything else is
+// wrapped as {"result": …}. A shape that does not encode is left out — the
+// text channel still carries the answer.
+func structured(v any) json.RawMessage {
+	if v == nil {
+		return nil
+	}
+	raw, ok := v.(json.RawMessage)
+	if !ok {
+		encoded, err := json.Marshal(v)
+		if err != nil {
+			return nil
+		}
+		raw = encoded
+	}
+	trimmed := strings.TrimSpace(string(raw))
+	if trimmed == "" || trimmed == "null" {
+		return nil
+	}
+	if strings.HasPrefix(trimmed, "{") {
+		return json.RawMessage(trimmed)
+	}
+	wrapped, err := json.Marshal(map[string]json.RawMessage{"result": json.RawMessage(trimmed)})
+	if err != nil {
+		return nil
+	}
+	return wrapped
 }
 
 // toolList renders the served tool names for steering text.

@@ -11,6 +11,7 @@ package full
 // arguments.
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -83,7 +84,89 @@ func (e *Executor) Run(ctx context.Context, name string, args map[string]any) (*
 	if len(body) == 0 {
 		return &wrapper.Result{Text: "ok"}, nil
 	}
+	body = respellWarnings(body)
 	return &wrapper.Result{Text: string(body), JSON: json.RawMessage(body)}, nil
+}
+
+// respellWarnings re-spells the routes in a success body's top-level
+// warnings — the repair a warning names is a route on the REST surface and
+// a tool here — and leaves every other byte of the body as the server
+// wrote it. A body without warnings, or one this cannot read, is returned
+// unchanged.
+func respellWarnings(body []byte) []byte {
+	start, end, ok := topLevelMember(body, "warnings")
+	if !ok {
+		return body
+	}
+	var warnings []map[string]json.RawMessage
+	if err := json.Unmarshal(body[start:end], &warnings); err != nil {
+		return body
+	}
+	changed := false
+	for _, w := range warnings {
+		var refs []v2model.Ref
+		if raw, ok := w["see_also"]; ok {
+			_ = json.Unmarshal(raw, &refs)
+			delete(w, "see_also")
+			changed = true
+		}
+		for _, field := range []string{"message", "hint"} {
+			raw, ok := w[field]
+			if !ok {
+				continue
+			}
+			var text string
+			if err := json.Unmarshal(raw, &text); err != nil {
+				continue
+			}
+			fieldRefs := refs
+			if field == "message" {
+				fieldRefs = nil // references are the hint's, by contract
+			}
+			if respelled := wrapper.RespellRefs(text, fieldRefs, Spelling); respelled != text {
+				if encoded, err := json.Marshal(respelled); err == nil {
+					w[field] = encoded
+					changed = true
+				}
+			}
+		}
+	}
+	if !changed {
+		return body
+	}
+	encoded, err := json.Marshal(warnings)
+	if err != nil {
+		return body
+	}
+	out := make([]byte, 0, len(body)-(end-start)+len(encoded))
+	out = append(out, body[:start]...)
+	out = append(out, encoded...)
+	return append(out, body[end:]...)
+}
+
+// topLevelMember finds the byte span of one member's value in a JSON
+// object, without re-encoding anything around it.
+func topLevelMember(body []byte, name string) (int, int, bool) {
+	dec := json.NewDecoder(bytes.NewReader(body))
+	if tok, err := dec.Token(); err != nil || tok != json.Delim('{') {
+		return 0, 0, false
+	}
+	for dec.More() {
+		tok, err := dec.Token()
+		if err != nil {
+			return 0, 0, false
+		}
+		key, _ := tok.(string)
+		var value json.RawMessage
+		if err := dec.Decode(&value); err != nil {
+			return 0, 0, false
+		}
+		if key == name {
+			end := int(dec.InputOffset())
+			return end - len(value), end, true
+		}
+	}
+	return 0, 0, false
 }
 
 // assemble places the arguments on the wire.
