@@ -576,6 +576,7 @@ For every test: how the fixture fails if the implementation is wrong.
 
 20. **review round 1 additions** — see "Implementation review (round 1)".
 21. **review round 2 additions** — see "Implementation review (round 2)".
+22. **review round 3 additions** — see "Implementation review (round 3)".
 
 Mutation checks before committing: watchdog never cancels (3, 4, 19 fail); drop the
 `ctx.Err() == nil` guard (5, 13 fail); strike the whole list on dial failure (6 fails);
@@ -787,3 +788,25 @@ Mutations checked red: revert fix 1; revert fix 2 (clock read after the counter 
 the stall check); the four mutations of items 4-7; no shuffle call; fallback select
 without `done`; fetch strike without the caller-ctx guard; Acquire `DeadlineExceeded`
 striking.
+
+## Implementation review (round 3)
+
+A third Codex review of 191749470 found no production defects; `store.go` is unchanged.
+It found three test gaps, closed test-only (each named mutation passed the suite before
+and fails it now):
+
+1. Peer closure: the fake peer's `Close` closes its sub-conns (in-flight calls fail),
+   refuses later leases and is counted; the fixture fails any test in which the store
+   closed a peer, the mixed `GetMany` test asserts the peer stays open and its healthy
+   conns stay open, active and are re-pooled, and the `rpctest` test asserts the real
+   local peer is not closed and serves a local fetch after the stall (mutation:
+   `p.Close()` in the stall branch).
+2. Wait flag: with `ContextWithWaitAvailable`, a local success sends `Wait == false`
+   and the node fallback through `Get` and `GetMany` sends `Wait == true` (`false`
+   without the flag) (mutations: local request sends `IsWaitWhenAvailable(ctx)`; node
+   request forces `false`).
+3. Connect exemptions keep history: after two expired strikes, a caller cancel during
+   dial, `ocache.ErrClosed`, foreign `Canceled`/`DeadlineExceeded` from dial and from
+   Acquire, Acquire `ErrConnClosed` and Acquire on a locally closed peer leave the entry
+   unchanged, and the next refused dial bans for 40 s with three strikes (mutation:
+   `resetLocalPeer` on a non-striking dial, Acquire or `ocache.ErrClosed` failure).

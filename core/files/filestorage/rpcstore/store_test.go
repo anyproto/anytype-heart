@@ -277,12 +277,24 @@ func TestStore_LocalPeerStallOverRealDrpc(t *testing.T) {
 	fx.store.bannedMu.Unlock()
 	require.True(t, struck)
 	assert.Equal(t, 1, ban.strikes)
+	// the stall cuts one sub-conn, not the peer
+	assert.False(t, localPeer.IsClosed(), "a stalled fetch must not close the local peer")
 
 	getCtx, cancel := context.WithTimeout(spaceCtx, 5*time.Second)
 	defer cancel()
 	got, err := fx.Get(getCtx, b.Cid())
 	require.NoError(t, err)
 	assert.Equal(t, b.RawData(), got.RawData())
+
+	// once the ban is lifted the same peer serves the next local fetch
+	fx.store.resetLocalPeer(localPeerId)
+	data, err = fx.store.getFromLocalPeers(getCtx, "spaceA", b.Cid())
+	require.NoError(t, err)
+	assert.Equal(t, b.RawData(), data)
+	p, err = fx.store.pool.Get(ctx, localPeerId)
+	require.NoError(t, err)
+	assert.Same(t, localPeer, p, "the local peer must not have been replaced")
+	assert.False(t, localPeer.IsClosed())
 }
 
 func TestStore_AddAsync(t *testing.T) {
