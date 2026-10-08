@@ -60,6 +60,10 @@ class CodexHost:
         self.run_dir, self.workspace, self.model, self.timeout = run_dir, workspace, model, timeout
         self.codex = executable or codex
         self.flags = configurations(run_dir, label, codex, upstream, with_hooks, upstream_url, arm, reasoning)
+        # Codex reports a resumed thread's usage cumulatively (measured in the
+        # first dry campaign: input and output grow monotonically across
+        # turns); the per-turn usage is the difference from the last turn
+        self.cumulative = None
 
     def version(self):
         return _version(self.codex)
@@ -79,7 +83,10 @@ class CodexHost:
         for e in events:
             if e.get("type") == "thread.started":
                 session_id = e["thread_id"]
-        usage = next((e.get("usage") for e in reversed(events) if e.get("type") == "turn.completed"), None)
+        cumulative = next((e.get("usage") for e in reversed(events) if e.get("type") == "turn.completed"), None)
+        usage = per_turn_usage(cumulative, self.cumulative if session_id else None)
+        if cumulative is not None:
+            self.cumulative = cumulative
         calls = [e["item"] for e in events if e.get("type") == "item.completed"
                  and e.get("item", {}).get("type") == "mcp_tool_call"]
         infra = next(("approval refused by policy" for e in events
@@ -88,7 +95,18 @@ class CodexHost:
                           exit_code=result["exit_code"], timeout=result["timeout"],
                           duration_seconds=result["duration_seconds"],
                           final_text=final.read_text() if final.exists() else "",
-                          usage=usage, usage_detail=usage, tool_calls=calls, infrastructure_error=infra)
+                          usage=usage, usage_detail={"thread_cumulative": cumulative}, tool_calls=calls,
+                          infrastructure_error=infra)
+
+
+def per_turn_usage(cumulative, previous):
+    """One turn's usage from a thread's cumulative counts and the previous
+    turn's."""
+    if cumulative is None:
+        return None
+    if not previous:
+        return dict(cumulative)
+    return {k: v - previous.get(k, 0) if isinstance(v, (int, float)) else v for k, v in cumulative.items()}
 
 
 # The pinned Claude Code invocation. Each flag is load-bearing, and

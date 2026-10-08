@@ -166,6 +166,18 @@ class NormalizeClaudeTests(unittest.TestCase):
 
 
 
+class CodexUsageTests(unittest.TestCase):
+    def test_per_turn_usage_is_the_difference_of_the_threads_cumulative_counts(self):
+        from hosts import per_turn_usage
+        # the first dry campaign's turns 3 and 4, verbatim
+        turn3 = {"input_tokens": 1078696, "cached_input_tokens": 990464, "output_tokens": 5337}
+        turn4 = {"input_tokens": 1337286, "cached_input_tokens": 1241344, "output_tokens": 5953}
+        self.assertEqual({"input_tokens": 258590, "cached_input_tokens": 250880, "output_tokens": 616},
+                         per_turn_usage(turn4, turn3))
+        self.assertEqual(turn3, per_turn_usage(turn3, None), "a first turn is its own usage")
+        self.assertIsNone(per_turn_usage(None, turn3))
+
+
 class CodexHostConfigTests(unittest.TestCase):
     def test_the_http_upstream_reaches_the_guard_without_its_key_on_argv(self):
         from hosts import CodexHost
