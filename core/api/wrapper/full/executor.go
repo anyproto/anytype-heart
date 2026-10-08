@@ -41,7 +41,16 @@ func NewExecutor(client *wrapper.Client, table *Table) *Executor {
 }
 
 // Tools lists the table for tools/list.
-func (e *Executor) Tools() []ListEntry { return e.table.List() }
+func (e *Executor) Tools() []wrapper.ToolListing {
+	out := make([]wrapper.ToolListing, 0, len(e.table.Tools))
+	for _, t := range e.table.Tools {
+		out = append(out, wrapper.ToolListing{Name: t.Name, Description: t.Description, InputSchema: t.InputSchema, ReadOnly: t.ReadOnly, Destructive: t.Destructive})
+	}
+	return out
+}
+
+// the loop's contract, checked at compile time
+var _ wrapper.Executor = (*Executor)(nil)
 
 // Instructions is the full tier's initialize text (spec §3.5).
 func (e *Executor) Instructions() string { return Instructions }

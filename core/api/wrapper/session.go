@@ -78,10 +78,25 @@ func (s *Session) registerHandle(space string, h Handle) int {
 		s.Space = space
 		s.Handles = nil
 	}
-	h.N = len(s.Handles) + 1
+	h.N = 1
+	if n := len(s.Handles); n > 0 {
+		h.N = s.Handles[n-1].N + 1
+	}
+	if len(s.Handles) >= maxHandles {
+		// a bound on what one session can hold (a list read registers
+		// every row, and a long-lived session reads many): the oldest
+		// numbers stop resolving, the newer ones keep the numbers they
+		// were served with
+		s.Handles = append([]Handle(nil), s.Handles[len(s.Handles)-maxHandles/2:]...)
+	}
 	s.Handles = append(s.Handles, h)
 	return h.N
 }
+
+// maxHandles bounds a session's handle list; past it the oldest half is
+// dropped. Four thousand is far beyond what any conversation addresses and
+// keeps the serialized session under a megabyte.
+const maxHandles = 4096
 
 // handleFor reports the number an object already carries in the working
 // space, if any. It is the inverse of handle(): the id-taking side asks
