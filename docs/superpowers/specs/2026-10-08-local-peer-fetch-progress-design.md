@@ -49,9 +49,13 @@ Connecting:
 - `pool.Get` (`pool.go:332-382`): fast path for a live peer, else an ocache load that
   dials. The load runs under the first caller's ctx; concurrent waiters retry up to
   `maxLoadRetries = 3` times if that load is aborted and otherwise receive the aborted
-  load's error although their own ctx is alive (`app/ocache/ocache.go:178,218-235`).
-  `pool.lookup` returns `ocache.ErrClosed` when the pool is closing or the pair was
-  swapped under a cancelled caller (`pool.go:182-204`).
+  load's error although their own ctx is alive (`app/ocache/ocache.go:178,218-235`);
+  that error can be `context.Canceled` or `context.DeadlineExceeded` (the owner's
+  connect budget). `pool.lookup` (`pool.go:182-204`) returns `ocache.ErrClosed` only
+  when the pool itself is closed (the pair is cancelled and still current while the
+  caller's ctx is alive); when a Flush swapped the pair under a caller whose ctx is
+  done it returns that ctx's error (`pool.go:202-203`), and otherwise it retries on
+  the new pair.
 - `pool.Pick` (`pool.go:754-770`): `fast` path for a live peer; otherwise `lookup` →
   `ocache.Pick` → `entry.waitLoad(ctx)` which **waits for an in-flight load**
   (`ocache.go:239-252`, `app/ocache/entry.go:81-100`). `waitLoad` returns a completed
@@ -173,9 +177,10 @@ var (
 	// localPeerFetchFallbackTimeout bounds a fetch on a conn without BytesRead
 	// (tests, foreign peer implementations): 1 MiB at ~300 kbit/s.
 	localPeerFetchFallbackTimeout = 30 * time.Second
-	// localPeerBanMin is the first ban; each consecutive strike doubles it up to
-	// localPeerBanMax. A successful fetch, or localPeerBanMax of quiet after a
-	// ban expired, resets the strike count.
+	// localPeerBanMin is the first ban; every strike after the previous ban
+	// expired doubles it up to localPeerBanMax (failures during an active ban do
+	// not escalate). A successful fetch, or localPeerBanMax of quiet after a ban
+	// expired, resets the strike count.
 	localPeerBanMin = 10 * time.Second
 	localPeerBanMax = 5 * time.Minute
 )
@@ -215,9 +220,22 @@ type localPeerBan struct {
 bannedLocalMap map[string]localPeerBan
 ```
 
-- `strikeLocalPeer(id, reason)`: if `now > until + localPeerBanMax` reset `strikes`;
-  `strikes++`; `until = now + min(localPeerBanMin << (strikes-1), localPeerBanMax)`;
-  one `log.Info` per strike with peerId, phase, reason, strikes, ban duration.
+- `strikeLocalPeer(id, reason)`:
+  ```
+  if now < until: debug log, return          // same outage: no escalation, no extension
+  if strikes > 0 && now > until + localPeerBanMax: strikes = 0
+  strikes++
+  until = now + min(localPeerBanMin << (strikes-1), localPeerBanMax)
+  log.Info(peerId, phase, reason, strikes, ban duration)
+  ```
+  Failures during an active ban are the same outage seen by concurrent callers (four
+  `GetMany` workers cut by one `pool.Flush`, or stalled on one dead link); counting
+  each would turn one outage into 10 → 20 → 40 → 80 s. Only a failure after the ban
+  expired escalates:
+
+  | strike (each after the previous ban expired) | 1 | 2 | 3 | 4 | 5 | 6+ |
+  |---|---|---|---|---|---|---|
+  | ban | 10 s | 20 s | 40 s | 80 s | 160 s | 300 s (cap) |
 - `filterBannedPeers`: skip ids whose `until` is in the future; expired entries are
   kept (the strike count survives expiry).
 - `resetLocalPeer(id)`: delete the entry after a successful fetch.
@@ -248,14 +266,23 @@ ctx (caller)
 
    | connect-phase error                                          | strike | continue to next id |
    |--------------------------------------------------------------|--------|---------------------|
-   | `ocache.ErrClosed` (pool closing / pair swapped)             | no     | no, return error    |
+   | `ocache.ErrClosed` (pool closed)                             | no     | no, return error    |
    | `connectCtx` deadline hit (slow dial, limiter wait, slow open) | yes  | yes                 |
-   | `context.Canceled` with `connectCtx` alive (another caller's aborted shared load, `ocache.go:231`) | no | yes |
-   | `transport.ErrConnClosed` from Acquire (peer closed under us: Flush, gc) | no | yes |
+   | `context.Canceled` or `context.DeadlineExceeded` with `connectCtx` alive (another caller's aborted shared load, returned by `ocache.Get` once its `maxLoadRetries` are spent, `ocache.go:218-235`) | no | yes |
+   | `transport.ErrConnClosed` from **Acquire** (peer closed under us: Flush, gc) | no | yes |
+   | `transport.ErrConnClosed` from `pool.Get` (the dial's conn died during setup) | yes | yes |
    | anything else (dial refused/unreachable, handshake error, open error) | yes | yes |
 
-5. All candidates failed → `fmt.Errorf("connect local peer: %w", net.ErrUnableToConnect)`
-   (plus the last error, joined).
+   Trade-off of the `DeadlineExceeded` row: an any-sync internal timeout shorter than
+   the 5 s budget that surfaces as `DeadlineExceeded` with our ctx alive no longer
+   strikes. Today the internal dial timeout is `DialTimeoutSec = 10 s`, so a slow or
+   stale dial outlasts our `connectCtx` and is struck through the second row; were an
+   internal timeout shorter, each call would still be bounded by it, only without the
+   ban.
+
+5. All candidates failed → `fmt.Errorf("connect local peer: %w",
+   errors.Join(net.ErrUnableToConnect, lastErr))`: both `net.ErrUnableToConnect` and the
+   last candidate's error stay reachable through `errors.Is`.
 
 ### Fetch phase: `fetchBlockFromLocalPeer(ctx, p, conn, spaceId, k)`
 
@@ -272,7 +299,9 @@ if err != nil {
 		return nil, fmt.Errorf("local peer block get: %w", errLocalPeerStalled)
 	}
 	err = rpcerr.Unwrap(err)
-	if errors.Is(err, fileprotoerr.ErrCIDNotFound) { return nil, format.ErrNotFound{Cid: k} }
+	if errors.Is(err, fileprotoerr.ErrCIDNotFound) {
+		return nil, fmt.Errorf("local peer block get: %w", format.ErrNotFound{Cid: k})
+	}
 	return nil, fmt.Errorf("local peer block get: %w", err)
 }
 return resp.Data, nil
@@ -301,9 +330,19 @@ var errLocalPeerStalled = errors.New("local peer fetch stalled: no bytes receive
 type bytesReader interface{ BytesRead() int64 }
 
 // watchFetchProgress cancels ctx with errLocalPeerStalled when conn stops
-// receiving bytes. stop joins the goroutine; safe to call more than once.
+// receiving bytes. Once stop has begun no stall cancel can happen. stop joins
+// the goroutine; safe to call more than once.
 func watchFetchProgress(ctx context.Context, conn drpc.Conn, cancel context.CancelCauseFunc) (stop func()) {
 	done, exited := make(chan struct{}), make(chan struct{})
+	var mu sync.Mutex
+	var stopped bool
+	stall := func() {
+		mu.Lock()
+		defer mu.Unlock()
+		if !stopped {
+			cancel(errLocalPeerStalled)
+		}
+	}
 	br, hasCounter := conn.(bytesReader)
 	go func() {
 		defer close(exited)
@@ -314,7 +353,7 @@ func watchFetchProgress(ctx context.Context, conn drpc.Conn, cancel context.Canc
 			case <-done:
 			case <-ctx.Done():
 			case <-t.C:
-				cancel(errLocalPeerStalled)
+				stall()
 			}
 			return
 		}
@@ -327,13 +366,15 @@ func watchFetchProgress(ctx context.Context, conn drpc.Conn, cancel context.Canc
 				return
 			case <-ctx.Done():
 				return
-			case now := <-ticker.C:
-				if cur := br.BytesRead(); cur != last {
+			case <-ticker.C:
+				cur := br.BytesRead()
+				now := time.Now() // not the tick's value: see below
+				if cur != last {
 					last, lastProgress = cur, now
 					continue
 				}
 				if now.Sub(lastProgress) >= localPeerStallTimeout {
-					cancel(errLocalPeerStalled)
+					stall()
 					return
 				}
 			}
@@ -341,6 +382,9 @@ func watchFetchProgress(ctx context.Context, conn drpc.Conn, cancel context.Canc
 	}()
 	var once sync.Once
 	return func() {
+		mu.Lock()
+		stopped = true
+		mu.Unlock()
 		once.Do(func() { close(done) })
 		<-exited
 	}
@@ -348,9 +392,17 @@ func watchFetchProgress(ctx context.Context, conn drpc.Conn, cancel context.Canc
 ```
 
 Lifetime: one goroutine per fetch; it exits on `stop()`, on `ctx.Done()` (caller or
-itself), and `stop()` blocks until it has exited, so after `stop()` returns nothing can
-cancel `fetchCtx` any more. No shared mutable state: `last`/`lastProgress` are
-goroutine-local, `BytesRead` is an atomic load, `cancel` is idempotent.
+itself), and `stop()` blocks until it has exited. `stop()` first sets `stopped` under
+the same mutex the stall decision takes, so a decision racing `stop()` (a poll in flight
+at the threshold while the RPC completes) is dropped: once `stop()` has begun nothing
+cancels `fetchCtx`. `last`/`lastProgress` are goroutine-local, `BytesRead` is an atomic
+load, `cancel` is idempotent.
+
+Timestamps: a `time.Ticker` delivers the time the tick was **scheduled**
+(`time/sleep.go` `sendTime`), so a tick received late (process suspended, goroutine
+starved, a slow `BytesRead`) carries a past time. Stamping progress with it backdates
+`lastProgress` and the following ticks can cancel a progressing fetch. Both the progress
+stamp and the stall comparison use `time.Now()` taken after `BytesRead`.
 
 Granularity: a stall is detected between `localPeerStallTimeout` and
 `localPeerStallTimeout + localPeerStallCheckInterval` after the last counted byte (on
@@ -360,7 +412,7 @@ yamux: after the last complete 64 KiB frame).
 
 ```go
 ids := s.filterBannedPeers(s.peerStore.LocalPeerIds(spaceId))
-if len(ids) == 0 { return nil, errNoLocalPeers }
+if len(ids) == 0 { return nil, fmt.Errorf("get from local peers: %w", errNoLocalPeers) }
 p, conn, err := s.connectLocalPeer(ctx, ids)      // strikes inside, per candidate
 if err != nil { return nil, err }
 data, err := s.fetchBlockFromLocalPeer(ctx, p, conn, spaceId, k)
@@ -374,7 +426,10 @@ return data, nil
 
 `Get`/`GetMany` keep "local first, then node"; when the local attempt fails and the node
 is tried, the local error is logged at debug level with the cid so a slow open can be
-explained from logs. The returned error stays the node's (callers match on it).
+explained from logs. The log is suppressed for `errNoLocalPeers` (every local peer is
+absent or banned): that is the normal state without LAN peers and would log once per
+block; the strike that caused a ban was already logged. The returned error stays the
+node's (callers match on it); local-phase errors never reach callers.
 
 ### `GetMany` fix
 
@@ -384,7 +439,11 @@ path, so no worker can send on a closed channel.
 ### Error wrapping
 
 All new error returns use `fmt.Errorf("<operation>: %w", err)`; the sentinel stays
-reachable through `%w`.
+reachable through `%w`. This includes `errNoLocalPeers` (matched with `errors.Is` in
+`getLocalThenNode`) and the local `format.ErrNotFound{Cid: k}` (`format.IsNotFound` is
+`errors.Is(err, ErrNotFound{})` and `ErrNotFound` has an `Is` method, so wrapping is
+transparent; besides, local errors are only logged). `getBlock` for the node still
+returns the bare `format.ErrNotFound` from inside `DoDrpc`: unchanged code.
 
 ## Not changed
 
@@ -460,15 +519,18 @@ For every test: how the fixture fails if the implementation is wrong.
 14. **fetch: `io.EOF` and `net.ErrClosed` strike; a coded application error does
     not** — the coded error is built with `rpcerr`'s registered code for
     `ErrCIDNotFound` so removing `rpcerr.Unwrap` fails the `format.ErrNotFound` match.
-15. **ban backoff** — two strikes → 10 s then 20 s; expiry keeps the strike count (third
-    strike after expiry → 40 s); success resets; `localPeerBanMax` of quiet after expiry
-    resets; cap at 5 min after 6 strikes.
+15. **ban backoff** — four concurrent strikes → one strike, 10 s; expiry keeps the
+    strike count; a failure after expiry → 20 s; strikes 1..7 each after expiry → 10, 20,
+    40, 80, 160, 300, 300 s; success resets; `localPeerBanMax` of quiet after expiry
+    resets.
 16. **GetMany: four workers, four conns** — 8 cids, 4 distinct silent conns, node
     fine. After `synctest.Wait()` exactly 4 local Invokes are in flight; after the stall
     all 8 blocks arrive, the channel closes, exactly 4 local Invokes happened in total
     (the ban is visible to the remaining workers), acquires == releases.
-17. **GetMany: mixed** — one conn silent, three progressing. Only the silent one is
-    cancelled; all 8 blocks arrive. Fails if progress is shared across conns.
+17. **GetMany: mixed** — one conn silent, three progressing for 8 s. At 6 s the silent
+    conn has been cancelled in [5 s, 6 s] while the three healthy transfers are still in
+    flight and uncancelled; they then complete. Fails if progress is shared across
+    conns.
 18. **GetMany: cancel while a worker holds a block** — 6 cids, the first worker's send
     is gated; cancel the ctx while the dispatcher waits for a slot; release the worker.
     Expect no panic and the channel closed only after all workers returned. Fails on the
@@ -480,8 +542,13 @@ For every test: how the fixture fails if the implementation is wrong.
     `AcquireDrpcConn` satisfies `bytesReader` (fails the day any-sync stops promoting
     `BytesRead`), that `getFromLocalPeers` returns `errLocalPeerStalled` within a
     real-time bound, that the peer is struck, and that `Get` then succeeds via the node
-    (the second `BlockGet` call is not blocked). Peers are closed in cleanup. Kept
-    outside synctest (real goroutines, real timers).
+    (the second `BlockGet` call is not blocked). The `rpctest` pool dials a fresh,
+    untracked peer for every unknown id and its `Close` is a no-op, so the test dials
+    the local and node peers itself, registers them with `AddPeer` (the fetch then uses
+    the probed peer, asserted with `Same`), closes them in cleanup and bounds the final
+    `Get` with a timeout. Kept outside synctest (real goroutines, real timers).
+
+20. **review round 1 additions** — see "Implementation review (round 1)".
 
 Mutation checks before committing: watchdog never cancels (3, 4, 19 fail); drop the
 `ctx.Err() == nil` guard (5, 13 fail); strike the whole list on dial failure (6 fails);
@@ -500,9 +567,13 @@ remove `wg.Wait` (18 fails under `-race`).
   is used once another subsystem connects it. Accepted; mDNS peers share one host.
 - **Flush during a fetch.** `pool.Flush` on wake closes the peer under the RPC →
   `ErrConnClosed` → strike → 10 s ban. Accepted: one short ban per recovery.
-- **Fallback-to-node latency.** First block after a ban expiry: up to 5 s connect + 5-6 s
-  stall before the node is tried (today: 1 s). Each `GetMany` worker pays it once per
-  ban period. With the backoff a dead peer settles at one such episode per 5 min.
+- **Fallback-to-node latency.** Worst case before the node is tried: 5 s × the number of
+  unbanned local candidates (each slow candidate gets its own connect budget) plus the
+  fetch (5-6 s stall, 30 s on a conn without a counter); today: 1 s. With two stale
+  peers and a third that stalls that is 10 s + 6 s. Each `GetMany` worker can pay it
+  once per ban period; the strikes ban each candidate, so the next call skips them.
+  With the backoff a dead peer settles at one such episode per 5 min. No overall
+  budget is added: a single LAN peer is the normal case.
 - **Cancel ≠ return.** After the watchdog cancels, `Invoke` normally returns at once,
   but a request write blocked on a congested yamux send queue can hold it up to 10 s.
 - **ocache single-flight abort.** A 5 s connect budget cancels a shared load; other
@@ -566,9 +637,57 @@ Rejected:
   The fakes need per-call ctx-deadline capture, Release-time snapshots and scripted
   blocking; hand-written is shorter and clearer here.
 - **Real-transport throttled 1 MiB tests with Snappy on/off** (lens 2). Heart does not
-  negotiate Snappy, and the `rpctest` fixture is `net.Pipe` without flow control, so a
-  throttled transport test would test the fake, not yamux. The yamux behaviour is
-  documented from source instead.
-- **Run the integration test inside synctest** was never planned; lens 4's yamux
-  timer-pool argument does not apply (`rpctest` is `net.Pipe`, no yamux) but the test
-  stays real-time anyway.
+  negotiate Snappy, and throttling `net.Pipe` under the `rpctest` yamux session would
+  test the throttle, not the field transport. The yamux behaviour is documented from
+  source instead.
+- **Run the integration test inside synctest** was never planned. (Correction: the
+  first version of this section said `rpctest` has no yamux. It does:
+  `rpctest/peer.go` builds peers with `multiconntest.MultiConnPair`, a yamux session
+  over `net.Pipe`, so lens 4's yamux timer-pool argument does apply; that is one more
+  reason the test stays real-time.)
+
+## Implementation review (round 1)
+
+Four Codex reviews of e4d4627f2, each finding verified against the code (any-sync
+v0.13.7) before acting. All fixed in one follow-up commit:
+
+1. **Stale tick timestamp** — the watchdog stamped progress with the ticker's scheduled
+   time; a late tick backdated it and a progressing fetch could be cut. Now `time.Now()`
+   after `BytesRead`. Test: a poll held up 3.5 s makes the 2 s tick arrive at 4.5 s with
+   progress; the stall must come at 10 s, not 7 s.
+2. **Concurrent strikes escalated one outage** — four `GetMany` workers failing together
+   gave 10 → 80 s. Strikes during an active ban are now ignored (no escalation, no
+   extension). Tests: four concurrent strikes → 10 s, failure after expiry → 20 s; the
+   four-worker stall test asserts one strike.
+3. **Foreign shared-load `DeadlineExceeded` struck a healthy peer** — `ocache.Get`
+   returns the owner's error after `maxLoadRetries`. With our `connectCtx` alive,
+   `DeadlineExceeded` is now treated like `Canceled` (trade-off in the connect table).
+4. **`ErrConnClosed` exemption is phase-aware** — Acquire only; from `pool.Get` it
+   strikes. Tested from both origins.
+5. **Watchdog/stop race** — the stall decision and `stop()` are serialised by a mutex
+   and a `stopped` flag. Test: a poll in flight at exactly the threshold while `stop()`
+   runs must not cancel.
+6. Mixed `GetMany` test: healthy transfers run 8 s, past the silent conn's window, and
+   are asserted active when it is cut.
+7. Fakes model sub-conn reuse (`ReleaseDrpcConn` re-pools only with a live ctx and an
+   open conn; otherwise closes) and record closes. Test: a successful fetch's conn is
+   reused unclosed; a stalled or caller-cancelled one is closed and not reused.
+8. Integration test registers and closes its peers, bounds the final `Get`; the
+   `GetMany` drain is bounded by a fake-time limit.
+9. Caller-cancel watchdog test asserts polling stopped (and no stall cancel at the
+   window or the fallback cap) **before** `stop()`, for both branches.
+10. All-candidates-failed test: two distinct errors, both `net.ErrUnableToConnect` and
+    the last one reachable.
+11. New rows: fetch-phase `Canceled`/`DeadlineExceeded` with a live caller ctx strike;
+    backoff 10..300 s per strike; caller cancel during Acquire does not strike;
+    successive slow candidates each get a fresh 5 s budget.
+12. `GetMany` close-order test asserts the result channel is still open before the
+    workers are released (deterministic, no reliance on the panic).
+13. Fallback latency, `rpctest` yamux, fallback-log suppression, error wrapping and
+    `pool.lookup` corrected in this document.
+
+Mutations checked red: tick value as timestamp; strike escalation during a ban;
+`DeadlineExceeded` not exempt; `ErrConnClosed` exempt from both phases; stall cancel
+without the `stopped` check; `defer conn.Close()` before Release; watchdog without its
+`ctx.Done()` cases; fetch-phase `Canceled`/`DeadlineExceeded` removed; `shift < 3` cap;
+`GetMany` close without `wg.Wait()`.

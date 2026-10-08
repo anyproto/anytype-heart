@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
+	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/rpc/rpctest"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
@@ -186,14 +187,26 @@ func TestStore_LocalPeerStallOverRealDrpc(t *testing.T) {
 	fx := newFixture(t)
 	defer fx.Finish(t)
 	const localPeerId = "local-peer"
+	// rpctest's pool dials a fresh, untracked peer on every Get of an unknown
+	// id and never closes it: register real peers so every call below goes
+	// through them, and close them at the end
+	addPeer := func(id string) peer.Peer {
+		p, err := fx.rserv.Dial(id)
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = p.Close() })
+		require.NoError(t, fx.store.pool.AddPeer(ctx, p))
+		return p
+	}
+	localPeer := addPeer(localPeerId)
+	addPeer(fx.filePeers[0]) // GetOneOf returns the first registered id
 	fx.store.peerStore.UpdateLocalPeer(localPeerId, []string{"spaceA"})
 	b := blocks.NewBlock([]byte("payload"))
 	require.NoError(t, fx.AddToFile(ctx, "spaceA", "fileA", []blocks.Block{b}))
 
-	// the real conn must carry the counter
+	// the conn of the peer the fetch will use must carry the counter
 	p, err := fx.store.pool.Get(ctx, localPeerId)
 	require.NoError(t, err)
-	t.Cleanup(func() { _ = p.Close() })
+	require.Same(t, localPeer, p, "the fetch must use the registered peer")
 	conn, err := p.AcquireDrpcConn(ctx)
 	require.NoError(t, err)
 	_, hasCounter := conn.(bytesReader)
@@ -240,7 +253,9 @@ func TestStore_LocalPeerStallOverRealDrpc(t *testing.T) {
 	require.True(t, struck)
 	assert.Equal(t, 1, ban.strikes)
 
-	got, err := fx.Get(spaceCtx, b.Cid())
+	getCtx, cancel := context.WithTimeout(spaceCtx, 5*time.Second)
+	defer cancel()
+	got, err := fx.Get(getCtx, b.Cid())
 	require.NoError(t, err)
 	assert.Equal(t, b.RawData(), got.RawData())
 }
@@ -277,7 +292,9 @@ func newFixture(t *testing.T) *fixture {
 	for i := 0; i < 11; i++ {
 		filePeers = append(filePeers, fmt.Sprint(i))
 	}
+	fx.filePeers = filePeers
 	rserv := rpctest.NewTestServer()
+	fx.rserv = rserv
 	require.NoError(t, fileproto.DRPCRegisterFile(rserv.Mux, fx.serv))
 
 	fx.nodeConf.EXPECT().Name().Return(nodeconf.CName).AnyTimes()
@@ -303,6 +320,9 @@ type fixture struct {
 	serv     *testServer
 	ctrl     *gomock.Controller
 	nodeConf *mock_nodeconf.MockService
+	// rserv dials peers served by serv
+	rserv     *rpctest.TestServer
+	filePeers []string
 }
 
 func (fx *fixture) Finish(t *testing.T) {
