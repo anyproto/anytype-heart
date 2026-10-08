@@ -4,7 +4,10 @@ Status: design agreed 2026-09-18; amended 2026-10-08 after a four-lens
 review (security, MCP protocol, derivation, evidence). Not yet implemented.
 Supersedes the research brief `core/api/APIV2_WRAPPER_IN_HEART.md`.
 
-Branch base: `go-7383-apiv2-mobile-tool-bridge` (on develop `feb1ee1ad`).
+Branch base: develop `4028f830c`. The mobile tool bridge branch
+(`go-7383-apiv2-mobile-tool-bridge`, unmerged) carries an in-process HTTP
+transport; this branch writes its own (§3.3) and the bridge branch adopts
+it when it merges.
 
 ## 1. What is being built
 
@@ -27,7 +30,7 @@ Decisions recorded from the brainstorm:
 | review artifact | golden snapshot test of the derived `tools/list` |
 | tier relation | two tables; `full` is not a superset mark on curated tools |
 | audience of full | Sonnet-class hosts with native HTTP MCP (Claude Code, Cursor, VS Code); Claude Desktop through a stdio shim |
-| base branch | mobile bridge branch, for `inproc.go` and `Host` |
+| base branch | fresh develop; the in-process transport is written here |
 | sessions | required for small/large once issued; `full` is sessionless |
 
 Out of scope: growing the `large` tier for the 27B on-device target (stays
@@ -217,16 +220,19 @@ result budgets.
 
 ### 3.3 Caller's key, never the internal key
 
-Each session owns a `wrapper.Client` whose transport is the in-process one
-with the bearer taken from the `/mcp` request, so every inner `/v2` call is
-authenticated, scoped and grant-gated as the caller. `inproc.go` gains a
-constructor variant that leaves `Authorization` to the client and takes an
-**engine-only** resolver (no key); the mobile bridge keeps the forcing
-variant, and `ToolsHost` is not wired into `/mcp`. The internal key is
-accepted by the middleware on any transport, as it is on REST today; that
-stands, since holding it already means code execution in the process. The
-write rate limiter still keys on the stamped loopback address, shared with
-real loopback callers by design.
+Each session owns a `wrapper.Client` whose transport is **in-process**: an
+`http.RoundTripper` (`core/api/server/inproc.go`) that clones the request,
+stamps `RemoteAddr` as loopback, and calls the gin engine's `ServeHTTP`
+into a buffered response — no listener, no socket, every middleware runs
+unchanged. Its resolver is **engine-only** and returns the current engine
+per request (a rebuilt engine after `ReassignAddress` is picked up without
+rebuilding the transport); it never supplies a bearer. The client sends the
+bearer taken from the `/mcp` request, so every inner `/v2` call is
+authenticated, scoped and grant-gated as the caller. The write rate limiter
+keys on the stamped loopback address, shared with real loopback callers by
+design. The mobile bridge branch's variant of this transport forces a
+per-process internal key; when it merges it builds on this file and keeps
+that forcing as a second constructor, never wired into `/mcp`.
 
 ### 3.4 Sessions
 
@@ -363,9 +369,10 @@ result stands only if the difference exceeds the run-to-run spread.
   no op shape. That is the opaque-body case, not the generated-with-typed-
   body case this design builds. What it does not prove: that an inline
   typed body beats per-op tools or a lookup; arm 3 and 4 above test that.
-- The mobile "C bridge" is a gomobile binding over an in-process HTTP
-  transport; it bypasses the socket and the user-managed key, not the API
-  middleware. Its internal key is full-scope and must not back `/mcp`.
+- The mobile "C bridge" (unmerged branch) is a gomobile binding over an
+  in-process HTTP transport; it bypasses the socket and the user-managed
+  key, not the API middleware. Its internal key is full-scope and must not
+  back `/mcp`.
 - The OpenAPI document is not the body contract for ten operations; the
   discovery catalog is. Any derivation that reads only the document
   produces tools without bodies for exactly the operations that matter.
