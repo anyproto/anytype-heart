@@ -90,6 +90,7 @@ const (
 	mcpInvalidRequest = -32600
 	mcpMethodNotFound = -32601
 	mcpInvalidParams  = -32602
+	mcpInternalError  = -32603
 )
 
 // ToolListing is one tools/list entry as an Executor publishes it.
@@ -271,15 +272,20 @@ type Handled struct {
 	Response *Response
 }
 
-// HandleMessage classifies one JSON-RPC message and dispatches it only if
-// it is a request. The classification is the safety property every
-// framing relies on: an id-less tools/call is a notification and runs
-// nothing; a batch, a wrong jsonrpc member or a malformed id is refused
-// before any method is looked at.
-func (s *MCPServer) HandleMessage(ctx context.Context, raw []byte) Handled {
+// ClassifyMessage validates one JSON-RPC message and says what it is,
+// running nothing: the framing decides what to admit (a session, a slot)
+// from this before any method is dispatched. Response is set only for an
+// invalid message — the error to answer with.
+func ClassifyMessage(raw []byte) Handled {
+	h, _ := parseMessage(raw)
+	return h
+}
+
+// parseMessage is ClassifyMessage plus the decoded message for dispatch.
+func parseMessage(raw []byte) (Handled, *mcpMessage) {
 	raw = []byte(strings.TrimSpace(string(raw)))
-	invalid := func(code int, message string) Handled {
-		return Handled{Kind: MessageInvalid, Response: &Response{JSONRPC: "2.0", ID: json.RawMessage("null"), Error: &RPCError{Code: code, Message: message}}}
+	invalid := func(code int, message string) (Handled, *mcpMessage) {
+		return Handled{Kind: MessageInvalid, Response: &Response{JSONRPC: "2.0", ID: json.RawMessage("null"), Error: &RPCError{Code: code, Message: message}}}, nil
 	}
 	if len(raw) > 0 && raw[0] == '[' {
 		// JSON-RPC batching was removed in MCP 2025-06-18 and no known host
@@ -295,24 +301,44 @@ func (s *MCPServer) HandleMessage(ctx context.Context, raw []byte) Handled {
 	}
 	if msg.Method == "" {
 		if len(msg.Result) > 0 || len(msg.Error) > 0 {
-			return Handled{Kind: MessageResponse}
+			return Handled{Kind: MessageResponse}, &msg
 		}
 		return invalid(mcpInvalidRequest, "a request names a method")
 	}
 	if len(msg.ID) == 0 {
-		return Handled{Kind: MessageNotification, Method: msg.Method}
+		return Handled{Kind: MessageNotification, Method: msg.Method}, &msg
 	}
 	if !validRequestId(msg.ID) {
 		return invalid(mcpInvalidRequest, "id must be a string or a number")
 	}
+	return Handled{Kind: MessageRequest, Method: msg.Method}, &msg
+}
+
+// HandleMessage classifies one JSON-RPC message and dispatches it only if
+// it is a request. The classification is the safety property every
+// framing relies on: an id-less tools/call is a notification and runs
+// nothing; a batch, a wrong jsonrpc member or a malformed id is refused
+// before any method is looked at. A request whose context has already
+// ended is answered with an error and not run.
+func (s *MCPServer) HandleMessage(ctx context.Context, raw []byte) Handled {
+	handled, msg := parseMessage(raw)
+	if handled.Kind != MessageRequest {
+		return handled
+	}
 	resp := &Response{JSONRPC: "2.0", ID: msg.ID}
-	result, rpcErr := s.dispatch(ctx, &msg)
+	if err := ctx.Err(); err != nil {
+		resp.Error = &RPCError{Code: mcpInternalError, Message: fmt.Sprintf("the request ended before it ran: %v", err)}
+		handled.Response = resp
+		return handled
+	}
+	result, rpcErr := s.dispatch(ctx, msg)
 	if rpcErr != nil {
 		resp.Error = rpcErr
 	} else {
 		resp.Result = result
 	}
-	return Handled{Kind: MessageRequest, Method: msg.Method, Response: resp}
+	handled.Response = resp
+	return handled
 }
 
 // validRequestId accepts a JSON string or number; MCP forbids null and

@@ -18,7 +18,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -51,6 +50,9 @@ const (
 	mcpMaxQueue = 8
 	// mcpCallTimeout bounds one tool call end to end.
 	mcpCallTimeout = 60 * time.Second
+	// mcpMaxCallsPerKey bounds the calls one key has in flight across all
+	// tiers and sessions, taken before the body is read.
+	mcpMaxCallsPerKey = 8
 )
 
 // mcpProtocolVersions are the revisions the HTTP delivery answers, oldest
@@ -60,7 +62,8 @@ const (
 var mcpProtocolVersions = []string{"2025-06-18", "2025-11-25"}
 
 // mcpSession is one curated-tier conversation: its MCP loop over a Runner
-// whose client carries the key that opened it.
+// whose client carries the key that opened it. A reserved session (server
+// still nil) counts against the caps but resolves for nobody.
 type mcpSession struct {
 	id       string
 	key      string
@@ -71,25 +74,48 @@ type mcpSession struct {
 	slots chan struct{}
 }
 
-// mcpSessions is the session table.
+// mcpSessions is the session table and the per-key call gates.
 type mcpSessions struct {
 	mu        sync.Mutex
 	byId      map[string]*mcpSession
+	gates     map[string]chan struct{}
 	now       func() time.Time
 	idle      time.Duration
 	maxTotal  int
 	maxPerKey int
+	callsPer  int
 }
 
 func newMCPSessions() *mcpSessions {
-	return &mcpSessions{byId: map[string]*mcpSession{}, now: time.Now, idle: mcpSessionIdle, maxTotal: mcpMaxSessions, maxPerKey: mcpMaxSessionsPerKey}
+	return &mcpSessions{byId: map[string]*mcpSession{}, gates: map[string]chan struct{}{}, now: time.Now,
+		idle: mcpSessionIdle, maxTotal: mcpMaxSessions, maxPerKey: mcpMaxSessionsPerKey, callsPer: mcpMaxCallsPerKey}
 }
 
 var errMCPSessionCap = errors.New("too many MCP sessions")
 
-// mint admits a new session for key on tier, or refuses at a cap. Expired
-// sessions are swept first so a cap is counted over live ones.
-func (m *mcpSessions) mint(key string, tier wrapper.Tier, server *wrapper.MCPServer) (*mcpSession, error) {
+// admit takes one of the key's call slots without waiting, before anything
+// about the request is read; the returned release gives it back.
+func (m *mcpSessions) admit(key string) (func(), bool) {
+	m.mu.Lock()
+	gate, ok := m.gates[key]
+	if !ok {
+		gate = make(chan struct{}, m.callsPer)
+		m.gates[key] = gate
+	}
+	m.mu.Unlock()
+	select {
+	case gate <- struct{}{}:
+		return func() { <-gate }, true
+	default:
+		return nil, false
+	}
+}
+
+// reserve admits a new session for key on tier, or refuses at a cap,
+// before anything is built for it. Expired sessions are swept first so a
+// cap is counted over live ones. The caller fills the server in (ready) or
+// gives the reservation back (release).
+func (m *mcpSessions) reserve(key string, tier wrapper.Tier) (*mcpSession, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	now := m.now()
@@ -110,15 +136,30 @@ func (m *mcpSessions) mint(key string, tier wrapper.Tier, server *wrapper.MCPSer
 	if _, err := rand.Read(b[:]); err != nil {
 		return nil, fmt.Errorf("mint session id: %w", err)
 	}
-	s := &mcpSession{id: hex.EncodeToString(b[:]), key: key, tier: tier, server: server, lastUsed: now, slots: make(chan struct{}, mcpMaxQueue)}
+	s := &mcpSession{id: hex.EncodeToString(b[:]), key: key, tier: tier, lastUsed: now, slots: make(chan struct{}, mcpMaxQueue)}
 	m.byId[s.id] = s
 	return s, nil
 }
 
-// lookup returns the live session id belongs to, if key opened it on tier.
-// A foreign key, another tier and an expired or unknown id are one answer:
-// the caller learns nothing about sessions that are not its own.
-func (m *mcpSessions) lookup(id, key string, tier wrapper.Tier) (*mcpSession, bool) {
+// ready makes a reserved session usable.
+func (m *mcpSessions) ready(s *mcpSession, server *wrapper.MCPServer) {
+	m.mu.Lock()
+	s.server = server
+	m.mu.Unlock()
+}
+
+// release gives a reservation back.
+func (m *mcpSessions) release(s *mcpSession) {
+	m.mu.Lock()
+	delete(m.byId, s.id)
+	m.mu.Unlock()
+}
+
+// live returns the session id names if key opened it on tier and it has
+// not idled out. A foreign key, another tier, a reservation and an expired
+// or unknown id are one answer: the caller learns nothing about sessions
+// that are not its own. touch refreshes the idle clock.
+func (m *mcpSessions) live(id, key string, tier wrapper.Tier, touch bool) (*mcpSession, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	s, ok := m.byId[id]
@@ -130,22 +171,23 @@ func (m *mcpSessions) lookup(id, key string, tier wrapper.Tier) (*mcpSession, bo
 		delete(m.byId, id)
 		return nil, false
 	}
-	if s.key != key || s.tier != tier {
+	if s.key != key || s.tier != tier || s.server == nil {
 		return nil, false
 	}
-	s.lastUsed = now
+	if touch {
+		s.lastUsed = now
+	}
 	return s, true
 }
 
-// end removes a session the key owns on the tier.
+// end removes a live session the key owns on the tier.
 func (m *mcpSessions) end(id, key string, tier wrapper.Tier) bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	s, ok := m.byId[id]
-	if !ok || s.key != key || s.tier != tier {
+	if _, ok := m.live(id, key, tier, false); !ok {
 		return false
 	}
+	m.mu.Lock()
 	delete(m.byId, id)
+	m.mu.Unlock()
 	return true
 }
 
@@ -159,11 +201,7 @@ func (srv *Server) registerMCPRoutes(router *gin.Engine, mw apicore.ClientComman
 	group.Use(ensureJsonApiScope())
 	group.POST("/:tier", srv.handleMCPPost)
 	group.DELETE("/:tier", srv.handleMCPDelete)
-	group.GET("/:tier", func(c *gin.Context) {
-		c.Header("Allow", "POST, DELETE")
-		c.AbortWithStatusJSON(http.StatusMethodNotAllowed, util.CodeToApiError(http.StatusMethodNotAllowed,
-			"the MCP endpoint takes POST (one JSON-RPC message) and DELETE (end the session); it pushes nothing, so there is no GET stream"))
-	})
+	group.GET("/:tier", srv.handleMCPGet)
 }
 
 // servedTier parses the route's tier; the CLI's ParseTier does not know
@@ -198,13 +236,17 @@ func (srv *Server) resolveEngine() (http.Handler, error) {
 	return srv.engine, nil
 }
 
+// errNoFullTable is the composition gap: this server was built without the
+// full table.
+var errNoFullTable = errors.New("the full tool table is not available on this server")
+
 // mcpServerFor builds the MCP loop for one tier over the caller's client.
 func (srv *Server) mcpServerFor(tier wrapper.Tier, bearer string) (*wrapper.MCPServer, error) {
 	client := srv.inProcessClient(bearer)
 	var server *wrapper.MCPServer
 	if tier == wrapper.TierFull {
 		if srv.fullTable == nil {
-			return nil, errors.New("the full tool table is not available on this server")
+			return nil, errNoFullTable
 		}
 		table, err := srv.fullTable()
 		if err != nil {
@@ -218,36 +260,117 @@ func (srv *Server) mcpServerFor(tier wrapper.Tier, bearer string) (*wrapper.MCPS
 	return server, nil
 }
 
-// handleMCPPost serves one message.
-func (srv *Server) handleMCPPost(c *gin.Context) {
+// mcpRefuse answers an HTTP-level refusal in the shared error shape.
+func mcpRefuse(c *gin.Context, status int, message string) {
+	c.AbortWithStatusJSON(status, util.CodeToApiError(status, message))
+}
+
+// mcpPreamble checks what every method shares: the tier and the protocol
+// version header. It answers the refusal itself and reports whether to go
+// on.
+func mcpPreamble(c *gin.Context) (wrapper.Tier, bool) {
 	tier, ok := servedTier(c.Param("tier"))
 	if !ok {
-		c.AbortWithStatusJSON(http.StatusNotFound, util.CodeToApiError(http.StatusNotFound,
-			fmt.Sprintf("unknown MCP tier %q — tiers: %s, %s, %s", c.Param("tier"), wrapper.TierSmall, wrapper.TierLarge, wrapper.TierFull)))
-		return
+		mcpRefuse(c, http.StatusNotFound,
+			fmt.Sprintf("unknown MCP tier %q — tiers: %s, %s, %s", c.Param("tier"), wrapper.TierSmall, wrapper.TierLarge, wrapper.TierFull))
+		return "", false
 	}
 	if v := c.GetHeader(mcpProtocolHeader); v != "" && !supportedMCPVersion(v) {
-		c.AbortWithStatusJSON(http.StatusBadRequest, util.CodeToApiError(http.StatusBadRequest,
-			fmt.Sprintf("unsupported %s %q — this server speaks %s", mcpProtocolHeader, v, strings.Join(mcpProtocolVersions, ", "))))
+		mcpRefuse(c, http.StatusBadRequest,
+			fmt.Sprintf("unsupported %s %q — this server speaks %s", mcpProtocolHeader, v, strings.Join(mcpProtocolVersions, ", ")))
+		return "", false
+	}
+	return tier, true
+}
+
+// errBodyTimeout is a request body that did not arrive in time.
+var errBodyTimeout = errors.New("request body read timed out")
+
+// readBodyWithin reads at most limit bytes within d. The read deadline is
+// set on the connection where the server supports it; the timer is the
+// backstop that ends the wait regardless.
+func readBodyWithin(c *gin.Context, limit int64, d time.Duration) ([]byte, error) {
+	_ = http.NewResponseController(c.Writer).SetReadDeadline(time.Now().Add(d))
+	body := http.MaxBytesReader(c.Writer, c.Request.Body, limit)
+	type read struct {
+		data []byte
+		err  error
+	}
+	done := make(chan read, 1)
+	go func() {
+		data, err := io.ReadAll(body)
+		done <- read{data, err}
+	}()
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case r := <-done:
+		return r.data, r.err
+	case <-timer.C:
+		return nil, errBodyTimeout
+	}
+}
+
+// mcpBodyTimeout bounds how long one message may take to arrive.
+var mcpBodyTimeout = 10 * time.Second
+
+// handleMCPPost serves one message. The order is the admission contract:
+// the key's call slot is taken before the body is read; the message is
+// classified before anything is built for it; a session is reserved
+// against the caps before its runner exists; and the slot is given back
+// only when every handler the call started has returned.
+func (srv *Server) handleMCPPost(c *gin.Context) {
+	tier, ok := mcpPreamble(c)
+	if !ok {
 		return
 	}
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, wrapper.MCPMaxMessageBytes)
-	body, err := io.ReadAll(c.Request.Body)
+	bearer := bearerOf(c)
+	releaseKey, ok := srv.mcp.admit(bearer)
+	if !ok {
+		mcpRefuse(c, http.StatusTooManyRequests,
+			fmt.Sprintf("too many MCP calls in flight for this key (at most %d) — wait for one to finish", srv.mcp.callsPer))
+		return
+	}
+	var releases []func()
+	releases = append(releases, releaseKey)
+	lease := NewCallLease(func() {
+		for _, r := range releases {
+			r()
+		}
+	})
+	defer lease.Done()
+
+	body, err := readBodyWithin(c, wrapper.MCPMaxMessageBytes, mcpBodyTimeout)
 	if err != nil {
 		var tooLarge *http.MaxBytesError
-		if errors.As(err, &tooLarge) {
-			c.AbortWithStatusJSON(http.StatusRequestEntityTooLarge, util.CodeToApiError(http.StatusRequestEntityTooLarge,
-				fmt.Sprintf("one MCP message may be at most %d bytes", wrapper.MCPMaxMessageBytes)))
-			return
+		switch {
+		case errors.As(err, &tooLarge):
+			mcpRefuse(c, http.StatusRequestEntityTooLarge, fmt.Sprintf("one MCP message may be at most %d bytes", wrapper.MCPMaxMessageBytes))
+		case errors.Is(err, errBodyTimeout):
+			mcpRefuse(c, http.StatusRequestTimeout, fmt.Sprintf("the message did not arrive within %s", mcpBodyTimeout))
+		default:
+			mcpRefuse(c, http.StatusBadRequest, "read request body: "+err.Error())
 		}
-		c.AbortWithStatusJSON(http.StatusBadRequest, util.CodeToApiError(http.StatusBadRequest, "read request body: "+err.Error()))
 		return
 	}
-	var peek struct {
-		Method string `json:"method"`
+
+	classified := wrapper.ClassifyMessage(body)
+	switch classified.Kind {
+	case wrapper.MessageInvalid:
+		c.JSON(http.StatusBadRequest, classified.Response)
+		return
+	case wrapper.MessageNotification, wrapper.MessageResponse:
+		// acknowledged, run nothing; a curated-tier notification that names
+		// a session must still name a live one of the caller's
+		if id := c.GetHeader(mcpSessionHeader); id != "" && tier != wrapper.TierFull {
+			if _, ok := srv.mcp.live(id, bearer, tier, true); !ok {
+				mcpRefuse(c, http.StatusNotFound, "unknown or expired MCP session — start a new one with initialize")
+				return
+			}
+		}
+		c.Status(http.StatusAccepted)
+		return
 	}
-	_ = json.Unmarshal(body, &peek)
-	bearer := bearerOf(c)
 
 	var server *wrapper.MCPServer
 	var session *mcpSession
@@ -256,80 +379,103 @@ func (srv *Server) handleMCPPost(c *gin.Context) {
 		// stateless: one loop per request, nothing kept
 		server, err = srv.mcpServerFor(tier, bearer)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusServiceUnavailable, util.CodeToApiError(http.StatusServiceUnavailable, err.Error()))
+			mcpBuildFailed(c, err)
 			return
 		}
 	case c.GetHeader(mcpSessionHeader) != "":
-		session, ok = srv.mcp.lookup(c.GetHeader(mcpSessionHeader), bearer, tier)
+		session, ok = srv.mcp.live(c.GetHeader(mcpSessionHeader), bearer, tier, true)
 		if !ok {
-			c.AbortWithStatusJSON(http.StatusNotFound, util.CodeToApiError(http.StatusNotFound,
-				"unknown or expired MCP session — start a new one with initialize and no "+mcpSessionHeader))
+			mcpRefuse(c, http.StatusNotFound,
+				"unknown or expired MCP session — start a new one with initialize and no "+mcpSessionHeader)
 			return
 		}
 		server = session.server
-	case peek.Method == "initialize":
-		server, err = srv.mcpServerFor(tier, bearer)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusServiceUnavailable, util.CodeToApiError(http.StatusServiceUnavailable, err.Error()))
-			return
-		}
-		session, err = srv.mcp.mint(bearer, tier, server)
+	case classified.Method == "initialize":
+		session, err = srv.mcp.reserve(bearer, tier)
 		if err != nil {
 			if errors.Is(err, errMCPSessionCap) {
-				c.AbortWithStatusJSON(http.StatusTooManyRequests, util.CodeToApiError(http.StatusTooManyRequests,
-					"too many MCP sessions for this key or this server — end one (DELETE with its "+mcpSessionHeader+") or wait for one to expire"))
+				mcpRefuse(c, http.StatusTooManyRequests,
+					"too many MCP sessions for this key or this server — end one (DELETE with its "+mcpSessionHeader+") or wait for one to expire")
 				return
 			}
-			c.AbortWithStatusJSON(http.StatusInternalServerError, util.CodeToApiError(http.StatusInternalServerError, err.Error()))
+			mcpRefuse(c, http.StatusInternalServerError, err.Error())
 			return
 		}
+		server, err = srv.mcpServerFor(tier, bearer)
+		if err != nil {
+			srv.mcp.release(session)
+			mcpBuildFailed(c, err)
+			return
+		}
+		srv.mcp.ready(session, server)
 	default:
-		c.AbortWithStatusJSON(http.StatusBadRequest, util.CodeToApiError(http.StatusBadRequest,
-			mcpSessionHeader+" is required on the "+string(tier)+" tier after initialize — send initialize first and echo the id it returns"))
+		mcpRefuse(c, http.StatusBadRequest,
+			mcpSessionHeader+" is required on the "+string(tier)+" tier after initialize — send initialize first and echo the id it returns")
 		return
 	}
 
 	if session != nil {
 		select {
 		case session.slots <- struct{}{}:
-			defer func() { <-session.slots }()
+			releases = append(releases, func() { <-session.slots })
 		default:
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, util.CodeToApiError(http.StatusTooManyRequests,
-				fmt.Sprintf("too many calls queued on this MCP session (at most %d) — wait for one to finish", mcpMaxQueue)))
+			mcpRefuse(c, http.StatusTooManyRequests,
+				fmt.Sprintf("too many calls queued on this MCP session (at most %d) — wait for one to finish", mcpMaxQueue))
 			return
 		}
 	}
-	ctx, cancel := context.WithTimeout(c.Request.Context(), mcpCallTimeout)
+	ctx, cancel := context.WithTimeout(WithCallLease(c.Request.Context(), lease), mcpCallTimeout)
 	defer cancel()
 	handled := server.HandleMessage(ctx, body)
 	if session != nil && handled.Kind == wrapper.MessageRequest && handled.Method == "initialize" {
 		c.Header(mcpSessionHeader, session.id)
 	}
-	switch handled.Kind {
-	case wrapper.MessageInvalid:
-		c.JSON(http.StatusBadRequest, handled.Response)
-	case wrapper.MessageRequest:
-		c.JSON(http.StatusOK, handled.Response)
-	default:
-		c.Status(http.StatusAccepted)
+	c.JSON(http.StatusOK, handled.Response)
+}
+
+// mcpBuildFailed answers a failure to build the tier's loop: a missing
+// table is a composition gap (503), a derivation failure a defect (500).
+func mcpBuildFailed(c *gin.Context, err error) {
+	if errors.Is(err, errNoFullTable) {
+		mcpRefuse(c, http.StatusServiceUnavailable, err.Error())
+		return
 	}
+	mcpRefuse(c, http.StatusInternalServerError, err.Error())
+}
+
+// handleMCPGet: this delivery pushes nothing, so there is no stream to
+// open — but a GET naming a session that is not live is told so first, the
+// way every other method is.
+func (srv *Server) handleMCPGet(c *gin.Context) {
+	tier, ok := mcpPreamble(c)
+	if !ok {
+		return
+	}
+	if id := c.GetHeader(mcpSessionHeader); id != "" {
+		if _, ok := srv.mcp.live(id, bearerOf(c), tier, false); !ok {
+			mcpRefuse(c, http.StatusNotFound, "unknown or expired MCP session")
+			return
+		}
+	}
+	c.Header("Allow", "POST, DELETE")
+	mcpRefuse(c, http.StatusMethodNotAllowed,
+		"the MCP endpoint takes POST (one JSON-RPC message) and DELETE (end the session); it pushes nothing, so there is no GET stream")
 }
 
 // handleMCPDelete ends a curated-tier session.
 func (srv *Server) handleMCPDelete(c *gin.Context) {
-	tier, ok := servedTier(c.Param("tier"))
+	tier, ok := mcpPreamble(c)
 	if !ok {
-		c.AbortWithStatusJSON(http.StatusNotFound, util.CodeToApiError(http.StatusNotFound, fmt.Sprintf("unknown MCP tier %q", c.Param("tier"))))
 		return
 	}
 	id := c.GetHeader(mcpSessionHeader)
 	if tier == wrapper.TierFull || id == "" {
-		c.AbortWithStatusJSON(http.StatusBadRequest, util.CodeToApiError(http.StatusBadRequest,
-			"DELETE ends a small or large tier session named by "+mcpSessionHeader+"; the full tier keeps none"))
+		mcpRefuse(c, http.StatusBadRequest,
+			"DELETE ends a small or large tier session named by "+mcpSessionHeader+"; the full tier keeps none")
 		return
 	}
 	if !srv.mcp.end(id, bearerOf(c), tier) {
-		c.AbortWithStatusJSON(http.StatusNotFound, util.CodeToApiError(http.StatusNotFound, "unknown or expired MCP session"))
+		mcpRefuse(c, http.StatusNotFound, "unknown or expired MCP session")
 		return
 	}
 	c.Status(http.StatusNoContent)

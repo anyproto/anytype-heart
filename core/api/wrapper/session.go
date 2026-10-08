@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+	"unicode/utf8"
 )
 
 // Handle is one enumerated find result.
@@ -62,6 +63,9 @@ type Session struct {
 	Me map[string]string `json:"me,omitempty"`
 	// LastWrite is the idempotency reuse record.
 	LastWrite *LastWrite `json:"lastWrite,omitempty"`
+	// dropped notes handles evicted during the current call (makeRoom), for
+	// that call's result; never persisted.
+	dropped string
 }
 
 // registerHandle makes an object addressable without a find, and returns
@@ -78,25 +82,84 @@ func (s *Session) registerHandle(space string, h Handle) int {
 		s.Space = space
 		s.Handles = nil
 	}
+	s.makeRoom(space, 1)
 	h.N = 1
 	if n := len(s.Handles); n > 0 {
 		h.N = s.Handles[n-1].N + 1
 	}
-	if len(s.Handles) >= maxHandles {
-		// a bound on what one session can hold (a list read registers
-		// every row, and a long-lived session reads many): the oldest
-		// numbers stop resolving, the newer ones keep the numbers they
-		// were served with
-		s.Handles = append([]Handle(nil), s.Handles[len(s.Handles)-maxHandles/2:]...)
-	}
+	h.Name = storedName(h.Name)
 	s.Handles = append(s.Handles, h)
 	return h.N
 }
 
-// maxHandles bounds a session's handle list; past it the oldest half is
-// dropped. Four thousand is far beyond what any conversation addresses and
-// keeps the serialized session under a megabyte.
-const maxHandles = 4096
+// makeRoom drops the oldest handles of the working space when n more would
+// pass maxHandles, and records the dropped range for the call's result. A
+// caller registering several handles at once (a list read: the list and
+// its rows) makes room for all of them BEFORE registering any, so nothing
+// it then advertises — its own handle included — can be dropped by its own
+// registrations.
+func (s *Session) makeRoom(space string, n int) {
+	if s.Space != space || len(s.Handles)+n <= maxHandles {
+		return
+	}
+	keep := maxHandles / 2
+	if keep+n > maxHandles {
+		keep = maxHandles - n
+	}
+	if keep < 0 {
+		keep = 0
+	}
+	if keep > len(s.Handles) {
+		keep = len(s.Handles)
+	}
+	dropped := s.Handles[:len(s.Handles)-keep]
+	if len(dropped) == 0 {
+		return
+	}
+	note := fmt.Sprintf("handles %d–%d were dropped to keep the session bounded; run find again to address those objects", dropped[0].N, dropped[len(dropped)-1].N)
+	if s.dropped != "" {
+		note = s.dropped + "; " + note
+	}
+	s.dropped = note
+	s.Handles = append([]Handle(nil), s.Handles[len(s.Handles)-keep:]...)
+}
+
+// takeDropped returns and clears the note of handles dropped during this
+// call.
+func (s *Session) takeDropped() string {
+	note := s.dropped
+	s.dropped = ""
+	return note
+}
+
+// maxStoredNameRunes bounds the name a handle keeps: it is a label for the
+// caller to recognise, never an address, and a session holds thousands.
+const maxStoredNameRunes = 256
+
+// storedName truncates a handle's name to what a session keeps.
+func storedName(name string) string {
+	if utf8.RuneCountInString(name) <= maxStoredNameRunes {
+		return name
+	}
+	return string([]rune(name)[:maxStoredNameRunes])
+}
+
+// storedHandles copies handles with their names cut to what a session
+// keeps; the caller's slice (which the result displays) is untouched.
+func storedHandles(handles []Handle) []Handle {
+	out := make([]Handle, len(handles))
+	for i, h := range handles {
+		h.Name = storedName(h.Name)
+		out[i] = h
+	}
+	return out
+}
+
+// maxHandles bounds a session's handle list; past it the oldest are
+// dropped (makeRoom). Four thousand is far beyond what any conversation
+// addresses and keeps a session's memory bounded. A variable so tests can
+// reach the boundary.
+var maxHandles = 4096
 
 // handleFor reports the number an object already carries in the working
 // space, if any. It is the inverse of handle(): the id-taking side asks

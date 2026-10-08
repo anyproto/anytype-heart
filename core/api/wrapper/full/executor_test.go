@@ -73,7 +73,7 @@ func TestExecutorAssemblesRequests(t *testing.T) {
 		ex, api := newExecutorFixture(t)
 		_, err := ex.Run(context.Background(), "patch_object", map[string]any{
 			"space_id":  "bafyreiabc.28y6mgnwgodt7",
-			"object_id": "obj/1",
+			"object_id": "obj 1",
 			"dry_run":   true,
 			"if_match":  `"etag-1"`,
 			"ops":       []any{map[string]any{"op": "set_properties", "set": map[string]any{"done": true}}},
@@ -82,7 +82,7 @@ func TestExecutorAssemblesRequests(t *testing.T) {
 		require.Len(t, api.requests, 1)
 		got := api.requests[0]
 		assert.Equal(t, http.MethodPatch, got.Method)
-		assert.Equal(t, "/v2/spaces/bafyreiabc.28y6mgnwgodt7/objects/obj%2F1", got.Path)
+		assert.Equal(t, "/v2/spaces/bafyreiabc.28y6mgnwgodt7/objects/obj%201", got.Path)
 		assert.Equal(t, "dry_run=true", got.RawQuery)
 		assert.Equal(t, `"etag-1"`, got.Header.Get("If-Match"))
 		assert.Equal(t, "Bearer caller-key", got.Header.Get("Authorization"))
@@ -247,4 +247,43 @@ func TestSpelling(t *testing.T) {
 	assert.Equal(t, "`list_spaces`", Spelling(v2model.RefListSpaces()))
 	assert.Equal(t, "`get_object` with object_id: o, outline: true, space_id: s", Spelling(v2model.RefGetObject("s", "o").With("outline", "true")))
 	assert.Equal(t, "this call again with dry_run: true", Spelling(v2model.Resend("dry_run", "true")))
+}
+
+// TestPathArgumentsCannotChangeTheRoute: gin routes on the decoded path, so
+// an escaped slash in a path argument would land on another route —
+// including the excluded stream and download routes. Every path argument
+// is one segment.
+func TestPathArgumentsCannotChangeTheRoute(t *testing.T) {
+	cases := []struct {
+		tool string
+		args map[string]any
+	}{
+		{"get_space", map[string]any{"space_id": "s/chats/c/messages/stream"}},
+		{"get_object", map[string]any{"space_id": "s", "object_id": "../files/f/content"}},
+		{"list_chats", map[string]any{"space_id": "s/chats/stream"}},
+		{"get_object", map[string]any{"space_id": "s", "object_id": ".."}},
+		{"get_object", map[string]any{"space_id": "s", "object_id": "."}},
+		{"get_object", map[string]any{"space_id": "s", "object_id": ""}},
+	}
+	for _, tc := range cases {
+		ex, api := newExecutorFixture(t)
+		_, err := ex.Run(context.Background(), tc.tool, tc.args)
+		var ae wrapper.ArgumentError
+		require.ErrorAs(t, err, &ae, "%s %v", tc.tool, tc.args)
+		assert.Contains(t, err.Error(), "one path segment")
+		assert.Empty(t, api.requests, "nothing reached the server for %v", tc.args)
+	}
+}
+
+// TestIdempotencyKeyArgumentIsBounded: the executor applies the server's
+// bound before sending.
+func TestIdempotencyKeyArgumentIsBounded(t *testing.T) {
+	for _, key := range []string{strings.Repeat("k", 256), "two words"} {
+		ex, api := newExecutorFixture(t)
+		_, err := ex.Run(context.Background(), "create_chat", map[string]any{"space_id": "s", "name": "x", "idempotency_key": key})
+		var ae wrapper.ArgumentError
+		require.ErrorAs(t, err, &ae)
+		assert.Contains(t, err.Error(), "at most 255 visible ASCII characters")
+		assert.Empty(t, api.requests)
+	}
 }

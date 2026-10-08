@@ -1,16 +1,20 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -302,4 +306,106 @@ func TestMCPInnerCallsCarryTheCallersKey(t *testing.T) {
 	require.NoError(t, err)
 	defer resp.Body.Close()
 	assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+}
+
+// TestMCPSessionsAreMintedOnlyForAValidInitializeRequest: an initialize
+// notification and a malformed initialize allocate nothing, so neither can
+// fill the key's session cap.
+func TestMCPSessionsAreMintedOnlyForAValidInitializeRequest(t *testing.T) {
+	fx := mcpFixture(t)
+	for i := 0; i < mcpMaxSessionsPerKey+1; i++ {
+		w := fx.mcpDo(t, mcpCall{tier: "small", key: "keyA", body: rpcLine(t, nil, "initialize", map[string]any{"protocolVersion": "2025-06-18"})})
+		require.Equal(t, http.StatusAccepted, w.Code)
+		assert.Empty(t, w.Header().Get(mcpSessionHeader))
+		w = fx.mcpDo(t, mcpCall{tier: "small", key: "keyA", body: `{"jsonrpc":"2.0","id":null,"method":"initialize"}`})
+		require.Equal(t, http.StatusBadRequest, w.Code)
+	}
+	fx.Server.mcp.mu.Lock()
+	held := len(fx.Server.mcp.byId)
+	fx.Server.mcp.mu.Unlock()
+	assert.Zero(t, held, "nothing was reserved")
+	w := fx.mcpDo(t, mcpCall{tier: "small", key: "keyA", body: rpcLine(t, 1, "initialize", nil)})
+	assert.Equal(t, http.StatusOK, w.Code, "the key is not locked out")
+	assert.NotEmpty(t, w.Header().Get(mcpSessionHeader))
+}
+
+// TestMCPAdmissionBeforeTheBody: a key's call slots are taken before the
+// body is read — on every tier — and a body that does not arrive in time
+// is refused instead of holding a slot.
+func TestMCPAdmissionBeforeTheBody(t *testing.T) {
+	t.Run("a key at its call limit is refused before its body is read, full tier included", func(t *testing.T) {
+		fx := mcpFixture(t)
+		fx.Server.mcp.callsPer = 1
+		release, ok := fx.Server.mcp.admit("keyB")
+		require.True(t, ok)
+		w := fx.mcpDo(t, mcpCall{tier: "full", key: "keyB", body: rpcLine(t, 1, "tools/list", nil)})
+		assert.Equal(t, http.StatusTooManyRequests, w.Code)
+		release()
+		w = fx.mcpDo(t, mcpCall{tier: "full", key: "keyB", body: rpcLine(t, 1, "tools/list", nil)})
+		assert.Equal(t, http.StatusOK, w.Code, "the slot came back")
+	})
+	t.Run("a slow body is refused with 408 and its slot returned", func(t *testing.T) {
+		fx := mcpFixture(t)
+		prev := mcpBodyTimeout
+		mcpBodyTimeout = 50 * time.Millisecond
+		defer func() { mcpBodyTimeout = prev }()
+		fx.Server.mcp.callsPer = 1
+		pr, pw := io.Pipe()
+		defer pw.Close()
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/mcp/full", pr)
+		req.Host = localApiHost
+		req.Header.Set("Authorization", "Bearer keyA")
+		fx.Engine().ServeHTTP(w, req)
+		assert.Equal(t, http.StatusRequestTimeout, w.Code)
+		release, ok := fx.Server.mcp.admit("keyA")
+		assert.True(t, ok, "the timed-out request gave its slot back")
+		if ok {
+			release()
+		}
+	})
+}
+
+// TestInProcessTransportHonoursTheDeadline: a blocked inner handler does
+// not hold the caller past its deadline, and the admission lease is
+// released once — when the handler actually returns, not before.
+func TestInProcessTransportHonoursTheDeadline(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	unblock := make(chan struct{})
+	engine := gin.New()
+	engine.GET("/block", func(c *gin.Context) {
+		<-unblock
+		c.Status(http.StatusOK)
+	})
+	client := inProcessClient(func() (http.Handler, error) { return engine, nil })
+	var releases atomic.Int32
+	lease := NewCallLease(func() { releases.Add(1) })
+	ctx, cancel := context.WithTimeout(WithCallLease(context.Background(), lease), 30*time.Millisecond)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, InProcessBaseURL+"/block", nil)
+	require.NoError(t, err)
+
+	_, err = client.Do(req)
+
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	lease.Done() // the caller's own hold ends with its request
+	assert.Zero(t, releases.Load(), "the inner handler still runs, so the slot is still held")
+	close(unblock)
+	require.Eventually(t, func() bool { return releases.Load() == 1 }, time.Second, 5*time.Millisecond)
+	time.Sleep(20 * time.Millisecond)
+	assert.Equal(t, int32(1), releases.Load(), "released exactly once")
+
+	t.Run("an already-ended context never reaches the engine", func(t *testing.T) {
+		reached := false
+		engine := gin.New()
+		engine.GET("/x", func(c *gin.Context) { reached = true })
+		client := inProcessClient(func() (http.Handler, error) { return engine, nil })
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, InProcessBaseURL+"/x", nil)
+		require.NoError(t, err)
+		_, err = client.Do(req)
+		require.ErrorIs(t, err, context.Canceled)
+		assert.False(t, reached)
+	})
 }

@@ -387,3 +387,59 @@ func TestRenderFilterString(t *testing.T) {
 		}
 	})
 }
+
+// TestHandleEvictionAtTheCap: a list read that needs room makes it BEFORE
+// registering, so every number it advertises resolves — its own handle
+// included, re-registered when the eviction took the old one — and the
+// result names the range that was dropped.
+func TestHandleEvictionAtTheCap(t *testing.T) {
+	// given: a cap of 4, three handles held, the collection among the oldest
+	prev := maxHandles
+	maxHandles = 4
+	defer func() { maxHandles = prev }()
+	fx := newFixture(t)
+	fx.seedSession("space1",
+		Handle{N: 1, Id: "bafyother", Name: "Something else"},
+		Handle{N: 2, Id: "bafycoll", Name: "Reading list", Type: "collection"},
+		Handle{N: 3, Id: "bafythird", Name: "Third"})
+	fx.stub("GET /v2/spaces/space1/objects/bafycoll", 200, testCollectionDoc)
+	fx.stub("GET /v2/spaces/space1/types", 200, testListTypesBody)
+	fx.stub("GET /v2/spaces/space1/collections/bafycoll/objects", 200, searchResponse(2, false,
+		v2model.ObjectRow{Id: "bafybook1", Name: "Dune", Type: "book"},
+		v2model.ObjectRow{Id: "bafybook2", Name: "Solaris", Type: "book"}))
+
+	// when
+	result, err := fx.Run(context.Background(), "read", map[string]any{"object": "2"})
+
+	// then
+	require.NoError(t, err)
+	assert.Contains(t, result.Text, "Reading list (handle 4) — a Collection")
+	assert.Contains(t, result.Text, "5. Dune (Book)")
+	assert.Contains(t, result.Text, "6. Solaris (Book)")
+	assert.Contains(t, result.Text, "note: handles 1–2 were dropped to keep the session bounded")
+	session, err := fx.store.Load()
+	require.NoError(t, err)
+	require.Len(t, session.Handles, 4)
+	for n, id := range map[int]string{3: "bafythird", 4: "bafycoll", 5: "bafybook1", 6: "bafybook2"} {
+		h, ok := session.handle(n)
+		require.True(t, ok, "handle %d is advertised and must resolve", n)
+		assert.Equal(t, id, h.Id)
+	}
+	_, ok := session.handle(1)
+	assert.False(t, ok)
+
+	// the note is the dropping call's only: the next call does not repeat it
+	fx.stub("GET /v2/spaces", 200, `{"data":[],"total":0,"offset":0,"limit":25,"has_more":false}`)
+	next, err := fx.Run(context.Background(), "spaces", nil)
+	require.NoError(t, err)
+	assert.NotContains(t, next.Text, "dropped")
+}
+
+func TestStoredHandleNamesAreBounded(t *testing.T) {
+	s := &Session{}
+	long := strings.Repeat("я", 300)
+	n := s.registerHandle("space1", Handle{Id: "o", Name: long})
+	h, ok := s.handle(n)
+	require.True(t, ok)
+	assert.Equal(t, 256, len([]rune(h.Name)))
+}
