@@ -16,15 +16,8 @@ type overlay struct {
 	// delete.
 	ReadOnly    bool
 	Destructive bool
-	// OpsChannel names the op channel whose served schemas type the
-	// operation's `ops` envelope.
-	OpsChannel string
 	// Description replaces the document's description.
 	Description string
-	// BodyKind names the served discovery kind whose schema replaces the
-	// body's open document form (the one the document leaves as a pointer
-	// to get_schema), so the tool lists the document's members.
-	BodyKind string
 	// RenameBodyMember gives a body member (by its wire name) another
 	// argument name — the fix a body/parameter name collision names; the
 	// executor still sends it under its wire name. DropArg removes
@@ -53,24 +46,8 @@ var overlays = map[string]overlay{
 
 	"search_space":  {ReadOnly: true},
 	"search_global": {ReadOnly: true},
-	"validate":      {ReadOnly: true, BodyKind: "document"},
+	"validate":      {ReadOnly: true},
 
-	"create_object":   {BodyKind: "object"},
-	"create_template": {BodyKind: "template"},
-	"create_type":     {BodyKind: "type_document"},
-
-	"patch_object": {Destructive: true, OpsChannel: "object"},
-	"update_type":  {Destructive: true, OpsChannel: "type"},
-}
-
-// BodyKinds lists the discovery kinds the overlay embeds, sorted: the
-// kinds a caller of Derive must supply in Inputs.Kinds.
-func BodyKinds() []string {
-	seen := map[string]bool{}
-	for _, o := range overlays {
-		if o.BodyKind != "" {
-			seen[o.BodyKind] = true
-		}
-	}
-	return sortedKeys(seen)
+	"patch_object": {Destructive: true},
+	"update_type":  {Destructive: true},
 }

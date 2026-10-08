@@ -20,7 +20,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	v2service "github.com/anyproto/anytype-heart/core/api/v2/service"
 	"github.com/anyproto/anytype-heart/core/api/wrapper/full"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -42,25 +41,7 @@ func testFullTable(t *testing.T) func() (*full.Table, error) {
 				testTableErr = err
 				return
 			}
-			served, err := v2service.ServedOpSchemas()
-			if err != nil {
-				testTableErr = err
-				return
-			}
-			ops := make(map[string]full.OpSchema, len(served))
-			for op, s := range served {
-				ops[op] = full.OpSchema{Schema: s.Schema, Example: s.Example, Channels: s.Channels}
-			}
-			kinds := map[string]json.RawMessage{}
-			for _, kind := range full.BodyKinds() {
-				schema, err := v2service.ServedKindSchema(kind)
-				if err != nil {
-					testTableErr = err
-					return
-				}
-				kinds[kind] = schema
-			}
-			testTable, testTableErr = full.Derive(full.Inputs{OpenAPI: doc, Ops: ops, Kinds: kinds})
+			testTable, testTableErr = full.Derive(full.Inputs{OpenAPI: doc})
 		})
 		return testTable, testTableErr
 	}
