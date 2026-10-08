@@ -95,8 +95,8 @@ func (e *Executor) assemble(tool Tool, args map[string]any) (wrapper.RawRequest,
 		switch {
 		case known && arg.In == ArgPath:
 			s, ok := scalar(value)
-			if !ok || s == "" {
-				return req, fmt.Errorf("%s: %q takes a non-empty string", tool.Name, name)
+			if !ok || !onePathSegment(s) {
+				return req, fmt.Errorf("%s: %q takes an id, one path segment — not empty, not . or .., and no /", tool.Name, name)
 			}
 			req.Path = strings.ReplaceAll(req.Path, "{"+arg.Wire+"}", url.PathEscape(s))
 		case known && arg.In == ArgQuery:
@@ -110,7 +110,10 @@ func (e *Executor) assemble(tool Tool, args map[string]any) (wrapper.RawRequest,
 			if !ok {
 				return req, fmt.Errorf("%s: %q takes a string", tool.Name, name)
 			}
-			if arg.Wire == "Idempotency-Key" {
+			if arg.Wire == wrapper.IdempotencyKeyHeader {
+				if !wrapper.ValidIdempotencyKey(s) {
+					return req, fmt.Errorf("%s: %q takes at most %d visible ASCII characters", tool.Name, name, wrapper.MaxIdempotencyKeyLen)
+				}
 				req.IdempotencyKey = s
 			} else {
 				req.Headers.Set(arg.Wire, s)
@@ -146,6 +149,13 @@ func (e *Executor) assemble(tool Tool, args map[string]any) (wrapper.RawRequest,
 		req.IdempotencyKey = key
 	}
 	return req, nil
+}
+
+// onePathSegment reports whether s can fill one path parameter without
+// changing the route: gin routes on the decoded path, so an escaped slash
+// would still split the segment, and . or .. would be resolved away.
+func onePathSegment(s string) bool {
+	return s != "" && s != "." && s != ".." && !strings.Contains(s, "/")
 }
 
 // mutates reports whether a method is a write the idempotency store keys.

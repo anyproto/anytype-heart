@@ -350,3 +350,34 @@ func TestPrepareValuesIsOrderDeterministic(t *testing.T) {
 			"the alphabetically first offending key, every run")
 	}
 }
+
+// TestRunnerWaitHonoursTheDeadline: a call waiting behind another gives up
+// when its context ends instead of queueing forever.
+func TestRunnerWaitHonoursTheDeadline(t *testing.T) {
+	fx := newFixture(t)
+	fx.Runner.turn <- struct{}{} // a call in progress
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	_, err := fx.Run(ctx, "spaces", nil)
+	require.ErrorIs(t, err, context.DeadlineExceeded)
+	<-fx.Runner.turn
+
+	ended, cancelNow := context.WithCancel(context.Background())
+	cancelNow()
+	_, err = fx.Run(ended, "spaces", nil)
+	require.ErrorIs(t, err, context.Canceled)
+	assert.Empty(t, fx.requests, "nothing ran")
+}
+
+// TestHandleMessageRefusesAnEndedContext: a request whose context ended
+// before dispatch is answered and not run.
+func TestHandleMessageRefusesAnEndedContext(t *testing.T) {
+	fx := newFixture(t)
+	server := NewMCPServer(fx.Runner, TierSmall)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	handled := server.HandleMessage(ctx, []byte(call(t, 1, "spaces", nil)))
+	require.NotNil(t, handled.Response.Error)
+	assert.Equal(t, mcpInternalError, handled.Response.Error.Code)
+	assert.Empty(t, fx.requests)
+}

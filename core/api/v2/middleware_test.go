@@ -658,3 +658,42 @@ func TestV2InvalidLimitAnswersInTheC6Envelope(t *testing.T) {
 		})
 	}
 }
+
+// TestIdempotencyKeyIsBounded: the replay store is keyed on the key string,
+// so an oversized or non-printable key is refused before anything is
+// stored, with a C6 issue on the header.
+func TestIdempotencyKeyIsBounded(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	store := newIdempotencyStore(8)
+	calls := 0
+	router := gin.New()
+	router.POST("/v2/spaces/:space_id/things", ensureIdempotency(store), func(c *gin.Context) {
+		calls++
+		c.JSON(http.StatusCreated, gin.H{"call": calls})
+	})
+	post := func(key string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(http.MethodPost, "/v2/spaces/space1/things", strings.NewReader(`{}`))
+		req.Header.Set(IdempotencyKeyHeader, key)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		return w
+	}
+	for name, key := range map[string]string{
+		"256 bytes":   strings.Repeat("k", 256),
+		"a space":     "two words",
+		"a non-ASCII": "ключ",
+		"a tab":       "a\tb",
+	} {
+		t.Run(name, func(t *testing.T) {
+			w := post(key)
+			require.Equal(t, http.StatusBadRequest, w.Code)
+			var env v2model.Error
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &env))
+			assert.Equal(t, v2model.CodeValidationFailed, env.Code)
+			require.Len(t, env.Issues, 1)
+			assert.Equal(t, IdempotencyKeyHeader, env.Issues[0].Path)
+		})
+	}
+	assert.Zero(t, calls, "a refused key reaches no handler")
+	assert.Equal(t, http.StatusCreated, post(strings.Repeat("k", 255)).Code, "255 visible characters is the bound")
+}

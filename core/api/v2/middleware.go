@@ -55,6 +55,26 @@ type storedResult struct {
 	body        []byte
 }
 
+// maxIdempotencyKeyLen bounds an Idempotency-Key. The store is keyed on the
+// key string and holds idempotencyMaxEntries of them, so an unbounded key is
+// an unbounded allocation per entry. The wrapper applies the same bound
+// before it sends (core/api/wrapper.ValidIdempotencyKey).
+const maxIdempotencyKeyLen = 255
+
+// validIdempotencyKey reports whether key is 1..255 visible ASCII
+// characters (0x21–0x7E).
+func validIdempotencyKey(key string) bool {
+	if key == "" || len(key) > maxIdempotencyKeyLen {
+		return false
+	}
+	for i := 0; i < len(key); i++ {
+		if key[i] < 0x21 || key[i] > 0x7e {
+			return false
+		}
+	}
+	return true
+}
+
 // idempotencyStore is the in-process C8 store: (credential, space,
 // Idempotency-Key) →
 // (body-hash, stored result), bounded LRU.
@@ -221,6 +241,12 @@ func ensureIdempotency(store *idempotencyStore) gin.HandlerFunc {
 		}
 		if key == "" {
 			c.Next()
+			return
+		}
+		if !validIdempotencyKey(key) {
+			respondV2Error(c, v2model.ValidationFailed("the Idempotency-Key header is not a usable key",
+				v2model.Issue{Path: IdempotencyKeyHeader, Message: fmt.Sprintf("a key is 1 to %d visible ASCII characters; this one is %d bytes", maxIdempotencyKeyLen, len(key)),
+					Hint: "send a short random token, such as a UUID, and reuse it only when retrying the same request"}))
 			return
 		}
 

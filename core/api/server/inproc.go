@@ -20,10 +20,12 @@ package server
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 )
 
 // InProcessBaseURL is the base URL a client over the in-process transport
@@ -65,18 +67,53 @@ type inProcessTransport struct {
 // RoundTrip serves req in-process. The request is cloned before being
 // handed to the engine (a RoundTripper must not modify its argument). The
 // Authorization header is passed through exactly as the client set it.
+//
+// The engine runs on its own goroutine so the request's context can end
+// the wait: a caller whose deadline passes gets the context's error back
+// while the handler finishes on its own. A CallLease on the context is
+// held until the handler actually returns, so whatever admission the
+// lease stands for is not given back while the work it admitted still
+// runs.
 func (t *inProcessTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	ctx := req.Context()
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("in-process api: %w", err)
+	}
 	handler, err := t.resolve()
 	if err != nil {
 		return nil, fmt.Errorf("in-process api: %w", err)
 	}
-	served := req.Clone(req.Context())
+	served := req.Clone(ctx)
 	served.RemoteAddr = inProcessRemoteAddr
 	if served.Body == nil {
 		served.Body = http.NoBody
 	}
 	rec := &bufferedResponse{header: http.Header{}, limit: InProcessMaxResponseBytes}
-	handler.ServeHTTP(rec, served)
+	lease := callLeaseFrom(ctx)
+	if lease != nil {
+		lease.hold()
+	}
+	finished := make(chan struct{})
+	go func() {
+		defer close(finished)
+		if lease != nil {
+			defer lease.Done()
+		}
+		defer func() {
+			if p := recover(); p != nil {
+				rec.panicked = fmt.Errorf("in-process handler panicked: %v", p)
+			}
+		}()
+		handler.ServeHTTP(rec, served)
+	}()
+	select {
+	case <-finished:
+	case <-ctx.Done():
+		return nil, fmt.Errorf("in-process api: %w", ctx.Err())
+	}
+	if rec.panicked != nil {
+		return nil, rec.panicked
+	}
 	if rec.overflow {
 		return nil, fmt.Errorf("in-process api: %w", ErrInProcessResponseTooLarge)
 	}
@@ -95,10 +132,59 @@ func (t *inProcessTransport) RoundTrip(req *http.Request) (*http.Response, error
 	}, nil
 }
 
+// CallLease is held by everything one admitted call started: the /mcp
+// handler holds it for the request, the in-process transport adds a hold
+// for every inner handler it launches. The release runs once, when the
+// last hold ends — so a caller that gave up on a deadline does not free
+// its admission slot while its inner handler is still running.
+type CallLease struct {
+	mu      sync.Mutex
+	holds   int
+	release func()
+}
+
+// NewCallLease starts a lease with one hold, the caller's.
+func NewCallLease(release func()) *CallLease {
+	return &CallLease{holds: 1, release: release}
+}
+
+func (l *CallLease) hold() {
+	l.mu.Lock()
+	l.holds++
+	l.mu.Unlock()
+}
+
+// Done ends one hold; the last one runs the release.
+func (l *CallLease) Done() {
+	l.mu.Lock()
+	l.holds--
+	var release func()
+	if l.holds == 0 {
+		release, l.release = l.release, nil
+	}
+	l.mu.Unlock()
+	if release != nil {
+		release()
+	}
+}
+
+type callLeaseKey struct{}
+
+// WithCallLease carries a lease on ctx for the transport to find.
+func WithCallLease(ctx context.Context, l *CallLease) context.Context {
+	return context.WithValue(ctx, callLeaseKey{}, l)
+}
+
+func callLeaseFrom(ctx context.Context) *CallLease {
+	l, _ := ctx.Value(callLeaseKey{}).(*CallLease)
+	return l
+}
+
 // bufferedResponse is the http.ResponseWriter the engine writes into:
 // headers, one status, the whole body up to limit. Flush is a no-op — a
 // buffered writer cannot stream, and this transport does not claim to.
 type bufferedResponse struct {
+	panicked error
 	header   http.Header
 	code     int
 	body     bytes.Buffer

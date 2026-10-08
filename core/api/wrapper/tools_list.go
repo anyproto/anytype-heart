@@ -289,6 +289,12 @@ func (r *Runner) readList(ctx context.Context, session *Session, spaceId, object
 	}
 
 	def := r.listDefinitionOf(ctx, spaceId, found)
+	// room for the list and every row BEFORE any is registered, so no
+	// number this read advertises — its own included — is dropped by its
+	// own registrations
+	if session.Space == spaceId {
+		session.makeRoom(spaceId, 1+len(rows))
+	}
 	selfHandle, ok := session.handleFor(spaceId, objectId)
 	if !ok {
 		selfHandle = session.registerHandle(spaceId, Handle{Id: objectId, Name: def.Name, Type: string(found.kind)})
