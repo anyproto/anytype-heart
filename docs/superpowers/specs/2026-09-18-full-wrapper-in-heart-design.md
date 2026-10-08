@@ -53,37 +53,45 @@ New package `core/api/wrapper/full`. Entry point:
 func Derive(in Inputs) (*Table, error)
 
 type Inputs struct {
-    OpenAPI []byte                     // the embedded v2 document
-    Ops     map[string]OpSchema        // served op schemas, by op name (GET /v2/schemas/ops/{op})
-    Kinds   map[string]json.RawMessage // served discovery schemas, for the bodies still open (GET /v2/schemas/{kind})
+    OpenAPI []byte // the embedded v2 document
 }
-type OpSchema struct { Schema json.RawMessage; Example json.RawMessage; Channels []string } // channels: object, type
 ```
 
-**The document is the body contract for most operations.** swag emits a
-bare `object` for every body whose shape lives in a served discovery schema
-rather than a Go struct, and `core/api/v2/service/openapibodies.go`
-composes those bodies from the served schemas at `make openapi` time;
-`scripts/fix_openapi_v2.py` splices them into the document and
-`core/api/openapibodies_test.go` pins the splice. Small kinds are spliced
-whole (property, collection, query with its structured filters, widget,
-the flat type body, update_property's `{name}`). Two shapes are not:
+**The document is the body contract, and its large schemas are lookups.**
+swag emits a bare `object` for every body whose shape lives in a served
+discovery schema rather than a Go struct, and
+`core/api/v2/service/openapibodies.go` composes those bodies from the served
+schemas at `make openapi` time; `scripts/fix_openapi_v2.py` splices them
+into the document and `core/api/openapibodies_test.go` pins the splice.
+Small kinds are spliced whole (property, collection, query with its
+structured filters, widget, the flat type body, update_property's
+`{name}`). Two shapes are served as lookups instead, and the table serves
+them exactly so — the same shapes the npm bridge (anytype-mcp 2.0.1)
+serves:
 
-- the **ops envelopes** on `patch_object` and `update_type` publish the op
-  vocabulary as an enum and leave each op's members to its own schema —
-  `Ops` fills them (§2.2);
+- the **ops envelopes** on `patch_object` and `update_type` type each op
+  by name only — the channel's op enum, 15 object ops and 7 type ops — with
+  the item's members open (`additionalProperties: true`, set explicitly
+  as the bridge does) and a description pointing at `get_op_schema` with
+  the op's name;
 - the **AnyBlock document forms** — `create_object`'s and `create_type`'s
-  document branches, `create_template`, `validate` — are open objects whose
-  description names the kind, because the document schema is 19 to 50 KB
-  and the OpenAPI document would carry four copies. `Kinds` fills exactly
-  these, chosen by the overlay's `BodyKind` (`object`, `type_document`,
-  `template`, `document`); `full.BodyKinds()` tells the caller which kinds
-  to supply.
+  document branches, `create_template`, `validate` — are open bodies whose
+  description points at `get_schema` with the exact kind (`object`,
+  `type_document`, `template`, `document`).
 
-Package `api` (the composition root) supplies all three; `full` imports
-only `v2model` and `wrapper`. There is no degraded mode: anything named
-`full` is built from complete inputs, and a CLI `tools --tier full` is out
-of scope. A test pins that no tool in the table has an opaque body.
+**Why lookups, not inline schemas.** Inlining them cost 208 of 255 KB of
+`tools/list` (validate 49, create_object 41, create_template 36,
+patch_object 32, update_type 25, create_type 24), and the bridge measured
+the trade in a 180-actor haiku experiment: an opaque body with no pointer
+drew 6 of 10 blind invalid writes; an open body with a pointer description
+had 9 of 10 fetch the schema first; a fully typed body, 10 of 10. The
+pointer recovers almost all of typing's benefit for a fifth of the bytes,
+and hosts load tools on demand themselves. `update_type`'s document
+alternative is a small partial document and stays inline, as served.
+
+`full` imports only `v2model` and `wrapper`, and the document is its only
+input. A CLI `tools --tier full` is out of scope. A test pins that every
+open body carries a pointer that resolves.
 
 ### 2.2 One tool per operation
 
@@ -118,21 +126,15 @@ of scope. A test pins that no tool in the table has an opaque body.
   and `multipart/form-data`, derive from the JSON body and drop multipart.
   `upload_file` therefore takes `url` (required) and `name`.
 - **Schemas**: component schemas a tool references are copied into the tool
-  schema's `$defs` with `$ref` rewritten to `#/$defs/<name>`. Served op and
-  kind schemas carry their own `$defs` (`block`, `blockRef`, `anyValue`…)
-  and **the same name means different shapes on different ops**
-  (`insert_blocks` vs `replace_subtree` `block`). Each embedded schema's
-  defs are therefore namespaced (`<op>__block`) and every local ref
-  rewritten, then defs that are structurally identical are merged back under
-  one name, to a fixpoint (a definition merges once the ones it references
-  have). The same holds for embedded kinds. Within one tool only: each tool
+  schema's `$defs` with `$ref` rewritten to `#/$defs/<name>`; each tool
   carries its own `$defs`.
-- **Typed ops envelope**: `ops` is an array (1–512 items, the server's
-  bound) whose items are a `oneOf` over the channel's op schemas; `op` is a
-  required `const` per branch, which is a sufficient discriminator in JSON
-  Schema. `additionalProperties:false` and `required` are preserved per
-  branch. The object channel has 15 ops (including `set_type`), the type
-  channel 7, four view ops on both — 18 distinct.
+- **Ops envelope as a lookup**: `ops` is an array (1–512 items, the
+  server's bound) whose items require `op` from the channel's enum and are
+  otherwise open; the description points at `get_op_schema`. The object
+  channel has 15 ops (including `set_type`), the type channel 7, four view
+  ops on both — 18 distinct. A payload the server refuses comes back with
+  its typed reference rendered as `` `get_op_schema` with op: <op> `` (§4),
+  so the lookup is also the repair.
 - **Alternative bodies** (`create_object`, `create_type`, `update_type`)
   stay root-level `anyOf` constraints over the same flat arguments. A
   member every branch spells alike lives once on the root; one two branches
@@ -173,13 +175,9 @@ Launch contents:
 | `stream_chat_messages`, `stream_space_chats`, `stream_space_search` | exclude | SSE; the in-process transport buffers whole responses |
 | `head_file`, `download_file` | exclude | binary/range responses have no text rendering; revisit with a use case |
 | `search_space`, `search_global`, `validate` | annotate read-only | POST reads |
-| `patch_object`, `update_type` | annotate destructive; type the ops envelope | ops can delete |
-| `create_object`, `create_type`, `create_template`, `validate` | `BodyKind` | embed the document form (§2.1) |
+| `patch_object`, `update_type` | annotate destructive | ops can delete |
 
 58 operations in the document, 8 excluded, 50 tools.
-
-Descriptions inside the `oneOf` branches come from the served op schemas
-verbatim at first; the size ceiling (§5) decides whether they are trimmed.
 
 **Document bugs are fixed in the document, not the overlay.** The review
 found places where the OpenAPI document disagrees with the server or the
@@ -344,20 +342,20 @@ result budget on this delivery (same as stdio; `DefaultResultChars` = 0).
 
 **Conformance** (`core/api/wrapper/full`):
 - every operationId in the document is derived or excluded with a reason;
-- no tool has an opaque body; each embedded kind's served example validates
-  in the assembled tool schema and an unknown member is refused;
+- every open body carries a pointer to `get_schema` with a kind the service
+  serves, and `get_schema` is a tool of the table; the four pointed kinds
+  are pinned;
 - every reference in every tool resolves in its own `$defs`; a dangling
   transitive component reference fails `Derive`;
 - every argument name is a legal tool-argument key; every write takes the
   reserved retry key;
 - golden snapshot of the full `tools/list` (compact JSON of the result
-  object, no JSON-RPC framing) checked in, `-update` refreshes; the golden
-  is built from the **served** kind and op schemas, so a service-side schema
-  change without a document change still shows;
-- the ops `oneOf` has exactly the channel's op set (object 15, type 7) and
-  every branch validates the op's own served example **after embedding**,
-  i.e. against the assembled tool schema with rewritten refs; a negative
-  fixture per channel (unknown op, extra field, missing `op`) is rejected;
+  object, no JSON-RPC framing) checked in, `-update` refreshes;
+- each ops envelope's enum equals its channel's served op set exactly
+  (object 15, type 7), its items are open with `op` required, and its
+  pointer names a tool of the table; `get_op_schema` takes `op`;
+- through the real engine, a bad op payload's refusal renders as the
+  `get_op_schema` call, never a route;
 - a body/path/query name collision fails `Derive` with the fixing rename
   named;
 - every overlay target exists (an overlay row for a vanished argument or
@@ -382,13 +380,12 @@ idempotency key stable across a retried call.
 **Size**: the artifact is the compact `tools/list` result object. Measured
 on this branch: small 8,471 B, large 15,470 B. The npm bridge's v2 surface
 measured 45 tools / 59,269 B with an **untyped** `patch-object` body. The
-full tier measures **50 tools, 257,156 B**: 110,938 B before the four
-document bodies were embedded, so those four account for well over half.
-Each tool carries its own `$defs`, so the document schema is paid per
-tool; a host that loads tools on demand pays it only for the tool it uses.
-The ceiling (280 KiB) is a regression guard, not evidence of
-acceptability; acceptability is the benchmark's job, and the four document
-bodies are the first place to look if the measured cost is too high.
+full tier measures **50 tools, 68,390 B** with the large schemas served as
+lookups (it was 257,156 B with them inlined). The largest tools are
+update_type 8.2 KB, create_query 7.9, create_object 5.2, create_type 4.9,
+update_widget and create_widget 2.9 each, patch_object 1.8, create_property
+1.6. The ceiling (75 KiB) is a regression guard, not evidence of
+acceptability; acceptability is the benchmark's job.
 
 **Benchmark** (acceptance, after implementation): the plant benchmark
 (`docs/evals/anytype-mcp-v2`) with a task list moved off the served example
@@ -397,17 +394,18 @@ isolated rate-limit state per actor. Arms:
 
 1. npm bridge (baseline, untyped `patch-object`);
 2. `/mcp/full` as specified;
-3. `/mcp/full` with the ops body made opaque — the ablation that isolates
-   the typed envelope, which is the central design claim;
+3. `/mcp/full` with every lookup inlined (the eval guard's `full-inline`
+   arm) — the ablation that prices the lookups against inline schemas;
 4. optionally per-op tools, which `cmd/apiv2eval`'s ops arm already builds.
 
 Pre-registered before the runs: the primary score, the per-category error
 counts (envelope/discriminator, locator, payload, semantic), first-attempt
 success per op, calls and tokens per completed task, time to first
-successful mutation. The typed body is expected to remove envelope and
-discriminator errors; it is not expected to remove locator or semantic
-errors, since the op schemas admit calls the server rejects (e.g.
-`update_block` without a locator). Three actors per arm is a pilot; the
+successful mutation. Inlining is expected to remove the remaining
+envelope and payload-shape errors at roughly 3.5 times the `tools/list`
+bytes; it is not expected to remove locator or semantic errors, since the
+op schemas admit calls the server rejects (e.g. `update_block` without a
+locator). Three actors per arm is a pilot; the
 result stands only if the difference exceeds the run-to-run spread.
 
 ## 6. Evidence corrections to the research brief
@@ -416,8 +414,10 @@ result stands only if the difference exceeds the run-to-run spread.
   bridge whose `patch-object` input schema is
   `{"type":"object","additionalProperties":true}` — the tool schema carried
   no op shape. That is the opaque-body case, not the generated-with-typed-
-  body case this design builds. What it does not prove: that an inline
-  typed body beats per-op tools or a lookup; arm 3 and 4 above test that.
+  body case. A later 180-actor experiment on the bridge separated the
+  cases: opaque with no pointer 6/10 blind invalid writes, open with a
+  pointer 9/10 fetching the schema first, fully typed 10/10 — which is why
+  the table serves pointers.
 - The mobile "C bridge" (unmerged branch) is a gomobile binding over an
   in-process HTTP transport; it bypasses the socket and the user-managed
   key, not the API middleware. Its internal key is full-scope and must not
