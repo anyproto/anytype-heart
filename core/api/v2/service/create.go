@@ -1009,6 +1009,10 @@ func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, enve
 	// a template must name its target type — the editor derives the layout
 	// from it (SPEC §2 template_for); enforced on both endpoints
 	if envelope.Type == string(bundle.TypeKeyTemplate) && envelope.TemplateFor == "" {
+		if _, nested := envelope.Properties["template_for"]; nested {
+			return v2model.ValidationFailed("template_for is required",
+				v2model.Issue{Path: "/properties/template_for", Message: "template_for is a top-level member beside properties, not a property: move it up a level"})
+		}
 		return v2model.ValidationFailed("template_for is required",
 			v2model.Issue{Path: "/template_for", Message: "a template document names its target type key"}.Hintf("list keys with %s", v2model.RefListTypes(spaceId)))
 	}

@@ -30,8 +30,8 @@ func respondV2Edit(c *gin.Context, result *v2model.EditResult) {
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id				path		string				true	"Space id"
-//	@Param			object_id				path		string				true	"Object id"
+//	@Param			space_id				path		string				true	"Space id, from list_spaces"
+//	@Param			object_id				path		string				true	"Object id, from search_space or list_objects"
 //	@Param			If-Match				header		string				false	"The etag the object must still carry"
 //	@Param			dry_run					query		bool				false	"Validate and report without committing"
 //	@Param			ids						query		string				false	"ID spelling in created_blocks and created_views"	Enums(compact,full)	default(compact)
@@ -66,8 +66,8 @@ func PatchObjectHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id				delete_object
 //	@Tags			Objects
 //	@Produce		json
-//	@Param			space_id	path		string					true	"Space id"
-//	@Param			object_id	path		string					true	"Object id"
+//	@Param			space_id	path		string					true	"Space id, from list_spaces"
+//	@Param			object_id	path		string					true	"Object id, from search_space or list_objects"
 //	@Param			dry_run		query		bool					false	"Probe deletability without writing"
 //	@Success		200			{object}	v2model.CreateResult	"Archived object, or the dry-run verdict. Deleting again is a 200 carrying a warning."
 //	@Failure		400			{object}	v2model.Error			"A type or a property: use their own delete routes"

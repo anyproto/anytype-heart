@@ -2096,7 +2096,7 @@ paths:
                   - filters
               properties:
                 fields:
-                  description: property keys to include per row, as an array such as ["status","due_date"]; the list reads take the same keys as one comma-separated string
+                  description: property keys to include per row, as an array such as ["status","due_date"]; the list reads take the same array
                   items:
                     type: string
                   type: array
@@ -2280,7 +2280,7 @@ paths:
         still joining is a 404.
       operationId: get_space
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -2322,7 +2322,7 @@ paths:
         writable through this API.
       operationId: update_space
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -2396,7 +2396,7 @@ paths:
         then counts the kept rows.'
       operationId: list_chats
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -2459,7 +2459,7 @@ paths:
         document edit cannot reach them.
       operationId: create_chat
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -2528,13 +2528,13 @@ paths:
         every message ever posted. `offset` is refused.'
       operationId: get_chat_messages
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat object id
+      - description: Chat object id, from list_chats
         in: path
         name: chat_id
         required: true
@@ -2597,13 +2597,13 @@ paths:
         layout. In a discussion the text is stored as blocks.
       operationId: add_chat_message
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat object id
+      - description: Chat object id, from list_chats
         in: path
         name: chat_id
         required: true
@@ -2675,19 +2675,19 @@ paths:
         does not exist is a 404 on the dry run too.
       operationId: delete_chat_message
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat object id
+      - description: Chat object id, from list_chats
         in: path
         name: chat_id
         required: true
         schema:
           type: string
-      - description: Message id
+      - description: Message id, from get_chat_messages
         in: path
         name: message_id
         required: true
@@ -2740,19 +2740,19 @@ paths:
         style does in a space chat. Editing another member's message is a 403.
       operationId: edit_chat_message
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat object id
+      - description: Chat object id, from list_chats
         in: path
         name: chat_id
         required: true
         schema:
           type: string
-      - description: Message id
+      - description: Message id, from get_chat_messages
         in: path
         name: message_id
         required: true
@@ -2817,19 +2817,19 @@ paths:
         says so in `warnings`.'
       operationId: toggle_chat_reaction
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat object id
+      - description: Chat object id, from list_chats
         in: path
         name: chat_id
         required: true
         schema:
           type: string
-      - description: Message id
+      - description: Message id, from get_chat_messages
         in: path
         name: message_id
         required: true
@@ -2895,13 +2895,13 @@ paths:
         id a resume is measured against.
       operationId: stream_chat_messages
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat id
+      - description: Chat id, from list_chats
         in: path
         name: chat_id
         required: true
@@ -2967,13 +2967,13 @@ paths:
         move when it could be read back.'
       operationId: read_chat
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat object id
+      - description: Chat object id, from list_chats
         in: path
         name: chat_id
         required: true
@@ -3039,13 +3039,13 @@ paths:
         receivers expire it. Success acknowledges acceptance, not delivery.
       operationId: publish_chat_status
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat or discussion id
+      - description: Chat or discussion id, from list_chats
         in: path
         name: chat_id
         required: true
@@ -3127,7 +3127,7 @@ paths:
         can arrive twice; dedupe on its id.'
       operationId: stream_space_chats
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -3196,7 +3196,7 @@ paths:
         there is refused rather than dropped.
       operationId: create_collection
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -3272,13 +3272,13 @@ paths:
         apply only when view names it.
       operationId: get_collection_objects
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Collection object id
+      - description: Collection object id, from search_space
         in: path
         name: collection_id
         required: true
@@ -3290,11 +3290,14 @@ paths:
         name: view
         schema:
           type: string
-      - description: Comma-separated property keys to include per row
+      - description: Property keys to include per row, as an array of strings
         in: query
         name: fields
         schema:
-          type: string
+          items:
+            type: string
+          type: array
+        style: form
       - description: Items to skip
         in: query
         name: offset
@@ -3339,13 +3342,13 @@ paths:
     get:
       operationId: get_collection_views
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Collection object id
+      - description: Collection object id, from search_space
         in: path
         name: collection_id
         required: true
@@ -3399,7 +3402,7 @@ paths:
         back is the one file blocks, image blocks and icon_image values reference.'
       operationId: upload_file
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -3478,7 +3481,7 @@ paths:
         requests are supported.
       operationId: download_file
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -3632,7 +3635,7 @@ paths:
         the same ids as file download.
       operationId: head_file
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -3722,7 +3725,7 @@ paths:
     get:
       operationId: list_members
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -3770,7 +3773,7 @@ paths:
         is no member id to send.
       operationId: get_member_me
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -3804,17 +3807,20 @@ paths:
     get:
       operationId: list_objects
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Comma-separated property keys to include per row
+      - description: Property keys to include per row, as an array of strings
         in: query
         name: fields
         schema:
-          type: string
+          items:
+            type: string
+          type: array
+        style: form
       - description: Items to skip
         in: query
         name: offset
@@ -3864,7 +3870,7 @@ paths:
         applies.
       operationId: create_object
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -3947,6 +3953,8 @@ paths:
                       type: object
                     query_source:
                       type: object
+                  required:
+                    - formatVersion
                   type: object
               description: the shortcut body, or a full AnyBlock document; formatVersion or blocks picks the document form
         description: The shortcut body, or an AnyBlock object document
@@ -3995,13 +4003,13 @@ paths:
         a 403.
       operationId: delete_object
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Object id
+      - description: Object id, from search_space or list_objects
         in: path
         name: object_id
         required: true
@@ -4051,13 +4059,13 @@ paths:
         be sent back.
       operationId: get_object
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Object id
+      - description: Object id, from search_space or list_objects
         in: path
         name: object_id
         required: true
@@ -4129,13 +4137,13 @@ paths:
         with `ids=full`.
       operationId: patch_object
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Object id
+      - description: Object id, from search_space or list_objects
         in: path
         name: object_id
         required: true
@@ -4254,13 +4262,13 @@ paths:
         hold one.'
       operationId: create_discussion
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Object id
+      - description: Object id, from search_space or list_objects
         in: path
         name: object_id
         required: true
@@ -4319,7 +4327,7 @@ paths:
     get:
       operationId: list_properties
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -4367,7 +4375,7 @@ paths:
         another property with that name; the response carries a warning.'
       operationId: create_property
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -4468,13 +4476,13 @@ paths:
     delete:
       operationId: delete_property
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Property key
+      - description: Property key, from list_properties
         in: path
         name: key
         required: true
@@ -4519,13 +4527,13 @@ paths:
         and its format is fixed once it exists.
       operationId: update_property
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Property key
+      - description: Property key, from list_properties
         in: path
         name: key
         required: true
@@ -4589,13 +4597,13 @@ paths:
     get:
       operationId: list_property_options
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Property key
+      - description: Property key, from list_properties
         in: path
         name: key
         required: true
@@ -4648,7 +4656,7 @@ paths:
         query runs over; a key that type does not carry is refused.
       operationId: create_query
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -4930,13 +4938,13 @@ paths:
         rather than a silently empty result.
       operationId: get_query_objects
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Query object id
+      - description: Query object id, from search_space
         in: path
         name: query_id
         required: true
@@ -4948,11 +4956,14 @@ paths:
         name: view
         schema:
           type: string
-      - description: Comma-separated property keys to include per row
+      - description: Property keys to include per row, as an array of strings
         in: query
         name: fields
         schema:
-          type: string
+          items:
+            type: string
+          type: array
+        style: form
       - description: Items to skip
         in: query
         name: offset
@@ -4997,13 +5008,13 @@ paths:
     get:
       operationId: get_query_views
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Query object id
+      - description: Query object id, from search_space
         in: path
         name: query_id
         required: true
@@ -5057,7 +5068,7 @@ paths:
         in the query string and a `limit` or `offset` in the body is refused.'
       operationId: search_space
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -5089,7 +5100,7 @@ paths:
                   - filters
               properties:
                 fields:
-                  description: property keys to include per row, as an array such as ["status","due_date"]; the list reads take the same keys as one comma-separated string
+                  description: property keys to include per row, as an array such as ["status","due_date"]; the list reads take the same array
                   items:
                     type: string
                   type: array
@@ -5172,7 +5183,7 @@ paths:
         id: a reconnect is a fresh snapshot.'
       operationId: stream_space_search
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -5200,7 +5211,7 @@ paths:
                   - filters
               properties:
                 fields:
-                  description: property keys to include per row, as an array such as ["status","due_date"]; the list reads take the same keys as one comma-separated string
+                  description: property keys to include per row, as an array such as ["status","due_date"]; the list reads take the same array
                   items:
                     type: string
                   type: array
@@ -5287,7 +5298,7 @@ paths:
         of that type starts from on its own.'
       operationId: list_templates
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -5344,7 +5355,7 @@ paths:
         of.'
       operationId: create_template
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -5384,6 +5395,12 @@ paths:
                   type: object
                 query_source:
                   type: object
+                template_for:
+                  description: 'Templates only: the target type. In a bundle it is the derived id `type-<internal_key>`; a display name or the legacy `ot-<key>` is accepted on input.'
+                  type: string
+              required:
+                - formatVersion
+                - template_for
               type: object
         description: AnyBlock template document
         required: true
@@ -5425,7 +5442,7 @@ paths:
     get:
       operationId: list_types
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -5474,7 +5491,7 @@ paths:
         `type_settings` picks the document form.
       operationId: create_type
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -5669,6 +5686,8 @@ paths:
                       type: object
                     type_settings:
                       type: object
+                  required:
+                    - formatVersion
                   type: object
               description: the flat type body, or the interchange document with kind object_type
         description: The flat type body, or the type as an AnyBlock document
@@ -5711,13 +5730,13 @@ paths:
     delete:
       operationId: delete_type
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Type key
+      - description: Type key, from list_types
         in: path
         name: type
         required: true
@@ -5760,13 +5779,13 @@ paths:
     get:
       operationId: get_type
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Type key
+      - description: Type key, from list_types
         in: path
         name: type
         required: true
@@ -5816,13 +5835,13 @@ paths:
         name: If-Match
         schema:
           type: string
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Type key
+      - description: Type key, from list_types
         in: path
         name: type
         required: true
@@ -6226,7 +6245,7 @@ paths:
         _bin; an object id is served as it is.'
       operationId: list_widgets
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -6285,7 +6304,7 @@ paths:
         list, is replaced with the app''s fallback and reported in warnings.'
       operationId: create_widget
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
@@ -6415,13 +6434,14 @@ paths:
         the sidebar holds in both scopes needs `scope`.
       operationId: delete_widget
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Widget id, or the id of the object the widget points at
+      - description: Widget id from list_widgets, or the id of the object the widget
+          points at
         in: path
         name: widget_id
         required: true
@@ -6482,13 +6502,14 @@ paths:
         object.'
       operationId: update_widget
       parameters:
-      - description: Space id
+      - description: Space id, from list_spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Widget id, or the id of the object the widget points at
+      - description: Widget id from list_widgets, or the id of the object the widget
+          points at
         in: path
         name: widget_id
         required: true
@@ -6649,6 +6670,8 @@ paths:
                   type: object
                 uninstalled:
                   const: true
+              required:
+                - formatVersion
               type: object
         description: Document to validate
         required: true

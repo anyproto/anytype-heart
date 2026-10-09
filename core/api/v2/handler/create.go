@@ -93,7 +93,7 @@ func respondV2Create(c *gin.Context, result *v2model.CreateResult, createdStatus
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id				path		string					true	"Space id"
+//	@Param			space_id				path		string					true	"Space id, from list_spaces"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
 //	@Param			body					body		object					true	"The shortcut body, or an AnyBlock object document"
@@ -124,7 +124,7 @@ func CreateObjectHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Templates
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id				path		string					true	"Space id"
+//	@Param			space_id				path		string					true	"Space id, from list_spaces"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
 //	@Param			body					body		object					true	"AnyBlock template document"
@@ -155,7 +155,7 @@ func CreateTemplateHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Types
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id				path		string					true	"Space id"
+//	@Param			space_id				path		string					true	"Space id, from list_spaces"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
 //	@Param			body					body		object					true	"The flat type body, or the type as an AnyBlock document"
@@ -187,8 +187,8 @@ func CreateTypeHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Types
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id				path		string					true	"Space id"
-//	@Param			type					path		string					true	"Type key"
+//	@Param			space_id				path		string					true	"Space id, from list_spaces"
+//	@Param			type					path		string					true	"Type key, from list_types"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
 //	@Param			body					body		object					true	"The fields of the type to change, or an ops envelope"
@@ -217,8 +217,8 @@ func UpdateTypeHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id			delete_type
 //	@Tags		Types
 //	@Produce	json
-//	@Param		space_id	path		string					true	"Space id"
-//	@Param		type		path		string					true	"Type key"
+//	@Param		space_id	path		string					true	"Space id, from list_spaces"
+//	@Param		type		path		string					true	"Type key, from list_types"
 //	@Param		dry_run		query		bool					false	"Validate and report without committing"
 //	@Success	200			{object}	v2model.CreateResult	"Archived type"
 //	@Failure	404			{object}	v2model.Error			"No live type with this key. A type that is already deleted is a 404 too, not a second delete."
@@ -243,7 +243,7 @@ func DeleteTypeHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Properties
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id	path		string					true	"Space id"
+//	@Param			space_id	path		string					true	"Space id, from list_spaces"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
 //	@Param			body		body		object					true	"Property to create"
 //	@Success		201			{object}	v2model.CreateResult	"Created property id + key"
@@ -276,8 +276,8 @@ func CreatePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Properties
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id	path		string					true	"Space id"
-//	@Param			key			path		string					true	"Property key"
+//	@Param			space_id	path		string					true	"Space id, from list_spaces"
+//	@Param			key			path		string					true	"Property key, from list_properties"
 //	@Param			body		body		object					true	"The new display name"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
 //	@Success		200			{object}	v2model.CreateResult	"Updated property"
@@ -309,8 +309,8 @@ func UpdatePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id			delete_property
 //	@Tags		Properties
 //	@Produce	json
-//	@Param		space_id	path		string					true	"Space id"
-//	@Param		key			path		string					true	"Property key"
+//	@Param		space_id	path		string					true	"Space id, from list_spaces"
+//	@Param		key			path		string					true	"Property key, from list_properties"
 //	@Param		dry_run		query		bool					false	"Validate and report without committing"
 //	@Success	200			{object}	v2model.CreateResult	"Archived property"
 //	@Failure	404			{object}	v2model.Error			"No live property with this key. A property that is already deleted is a 404 too, not a second delete."
@@ -335,7 +335,7 @@ func DeletePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Lists
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id				path		string					true	"Space id"
+//	@Param			space_id				path		string					true	"Space id, from list_spaces"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
 //	@Param			body					body		object					true	"Query to create"
@@ -369,7 +369,7 @@ func CreateQueryHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Lists
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id	path		string					true	"Space id"
+//	@Param			space_id	path		string					true	"Space id, from list_spaces"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
 //	@Param			body		body		object					true	"Collection to create"
 //	@Success		201			{object}	v2model.CreateResult	"Created collection id"
@@ -402,7 +402,7 @@ func CreateCollectionHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Files
 //	@Accept			multipart/form-data,json
 //	@Produce		json
-//	@Param			space_id	path		string						true	"Space id"
+//	@Param			space_id	path		string						true	"Space id, from list_spaces"
 //	@Param			dry_run		query		bool						false	"Validate and report without committing"
 //	@Param			file		formData	file						false	"File bytes for the multipart form"
 //	@Param			request		body		v2model.UploadFileRequest	false	"URL source for the JSON form"

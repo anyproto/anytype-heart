@@ -316,7 +316,7 @@ func (c *openAPIBodyComposer) searchBody() (json.RawMessage, error) {
 			"fields": map[string]any{
 				"type":        "array",
 				"items":       map[string]any{"type": "string"},
-				"description": `property keys to include per row, as an array such as ["status","due_date"]; the list reads take the same keys as one comma-separated string`,
+				"description": `property keys to include per row, as an array such as ["status","due_date"]; the list reads take the same array`,
 			},
 		},
 		"not": map[string]any{"required": []string{"filter", "filters"}, "properties": map[string]any{"filter": map[string]any{"minLength": 1}}},
@@ -339,16 +339,20 @@ func (c *openAPIBodyComposer) literal(schema string) (json.RawMessage, error) {
 // kind alone (see kindSkeleton): with no member typed, a host's model sent
 // blocks and properties as strings holding JSON.
 func (c *openAPIBodyComposer) pointer(kind, what string) (json.RawMessage, error) {
-	skeleton, err := kindSkeleton(kind)
+	skeleton, required, err := kindSkeleton(kind)
 	if err != nil {
 		return nil, err
 	}
-	out, err := json.Marshal(map[string]any{
+	body := map[string]any{
 		"type":                 "object",
 		"description":          what + "; its schema and a worked example come from " + v2model.OpGetSchema + " with kind " + kind,
 		"properties":           skeleton,
 		"additionalProperties": true,
-	})
+	}
+	if len(required) > 0 {
+		body["required"] = required
+	}
+	out, err := json.Marshal(body)
 	if err != nil {
 		return nil, fmt.Errorf("encode pointer body for kind %q: %w", kind, err)
 	}
@@ -364,17 +368,22 @@ const maxSkeletonEnum = 4
 // array or a fixed value, each reduced to that JSON kind (and its const or
 // enum): enough for a caller to send the right shapes, nothing the lookup
 // does not repeat in full. Output-only members are left out.
-func kindSkeleton(kind string) (map[string]any, error) {
+//
+// A required member of another kind (a template's template_for string) is
+// listed with its type and description and returned in required: left to
+// the lookup, a host's model put it under properties.
+func kindSkeleton(kind string) (map[string]any, []string, error) {
 	entry, err := schemaKind(kind)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var root struct {
 		Properties map[string]map[string]any `json:"properties"`
 		Defs       map[string]map[string]any `json:"$defs"`
+		Required   []string                  `json:"required"`
 	}
 	if err := json.Unmarshal(entry.Schema, &root); err != nil {
-		return nil, fmt.Errorf("decode served schema %q: %w", kind, err)
+		return nil, nil, fmt.Errorf("decode served schema %q: %w", kind, err)
 	}
 	resolve := func(member map[string]any) map[string]any {
 		if ref, ok := member["$ref"].(string); ok {
@@ -410,7 +419,26 @@ func kindSkeleton(kind string) (map[string]any, error) {
 			skeleton[name] = map[string]any{"type": "array", "items": items}
 		}
 	}
-	return skeleton, nil
+	var required []string
+	for _, name := range root.Required {
+		member, ok := root.Properties[name]
+		if !ok {
+			continue
+		}
+		required = append(required, name)
+		if _, done := skeleton[name]; done {
+			continue
+		}
+		listed := map[string]any{}
+		if t, ok := resolve(member)["type"]; ok {
+			listed["type"] = t
+		}
+		if d, ok := member["description"].(string); ok && d != "" {
+			listed["description"] = d
+		}
+		skeleton[name] = listed
+	}
+	return skeleton, required, nil
 }
 
 // envelope is `{"ops":[…]}` with the op vocabulary closed and each op's

@@ -23,7 +23,7 @@ import (
 //	@Tags			Search
 //	@Accept			json
 //	@Produce		text/event-stream
-//	@Param			space_id	path		string			true	"Space id"
+//	@Param			space_id	path		string			true	"Space id, from list_spaces"
 //	@Param			request		body		object			true	"Search request"
 //	@Param			heartbeat	query		int				false	"Keepalive cadence in seconds"	default(30)	minimum(1)	maximum(60)
 //	@Success		200			{string}	string			"Server-Sent Events stream"

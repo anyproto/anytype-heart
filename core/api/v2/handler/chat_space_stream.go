@@ -25,7 +25,7 @@ import (
 //	@Id				stream_space_chats
 //	@Tags			Chat
 //	@Produce		text/event-stream
-//	@Param			space_id	path		string			true	"Space id"
+//	@Param			space_id	path		string			true	"Space id, from list_spaces"
 //	@Param			include		query		string			false	"discussions adds object discussions; none streams chats only"	Enums(discussions, none)	default(discussions)
 //	@Param			heartbeat	query		int				false	"Keepalive cadence in seconds"									default(30)					minimum(1)	maximum(60)
 //	@Success		200			{string}	string			"Server-Sent Events stream"
