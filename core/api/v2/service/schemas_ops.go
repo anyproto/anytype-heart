@@ -414,7 +414,7 @@ var v2OpSchemas = map[string]v2SchemaKind{
 	"set_properties": {
 		endpoint: v2OpsEndpoint,
 		schema: opSchema("set_properties", nil,
-			`"set":{"type":"object","maxProperties":128,"additionalProperties":{"type":["string","number","boolean","array","null"],"maxLength":1048576,"maxItems":2048,"items":{"type":["string","number","boolean","null"],"maxLength":4096}},"description":"property key → value. ` + apiV2PropertyValues + `; presence is meaningful — an empty array means present-but-empty; unknown select option names are created"}`,
+			`"set":{"type":"object","maxProperties":128,"additionalProperties":{"type":["string","number","boolean","array","null"],"maxLength":1048576,"maxItems":2048,"items":{"type":["string","number","boolean","null"],"maxLength":4096}},"description":"property key → value. `+apiV2PropertyValues+`; presence is meaningful — an empty array means present-but-empty; unknown select option names are created"}`,
 			`"unset":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":256},"description":"property keys to remove"}`,
 			`"add":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only (select, multi_select, objects, files): append entries without rewriting the array — existing entries are never duplicated; unknown option NAMES are created"}`,
 			`"remove":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only: delete matching entries — absent entries (and absent keys) are a no-op; a key may appear in only one of set/unset/add/remove"}`),
