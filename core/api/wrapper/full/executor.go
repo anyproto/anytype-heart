@@ -224,6 +224,9 @@ func (e *Executor) assemble(tool Tool, args map[string]any) (wrapper.RawRequest,
 	}
 	for _, a := range tool.Args {
 		if _, present := args[a.Name]; a.Required && !present {
+			if desc := argDescription(tool, a.Name); desc != "" {
+				return req, fmt.Errorf("%s needs %q — %s", tool.Name, a.Name, desc)
+			}
 			return req, fmt.Errorf("%s needs %q", tool.Name, a.Name)
 		}
 	}
@@ -303,6 +306,21 @@ func scalarList(v any) ([]string, bool) {
 		out = append(out, s)
 	}
 	return out, true
+}
+
+// argDescription is an argument's description in the tool's schema, which
+// a refusal for the missing argument repeats: the model asked to resend
+// it gets what the argument means, not only its name.
+func argDescription(tool Tool, name string) string {
+	var schema struct {
+		Properties map[string]struct {
+			Description string `json:"description"`
+		} `json:"properties"`
+	}
+	if err := json.Unmarshal(tool.InputSchema, &schema); err != nil {
+		return ""
+	}
+	return schema.Properties[name].Description
 }
 
 func argNames(tool Tool) []string {
