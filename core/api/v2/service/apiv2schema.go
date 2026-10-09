@@ -87,8 +87,44 @@ var apiV2DocumentSchema = sync.OnceValue(func() []byte {
 	if err != nil {
 		return trimmed
 	}
-	return widened
+	optional, err := formatVersionOptional(widened)
+	if err != nil {
+		return widened
+	}
+	return optional
 })
+
+// apiV2ValidateSchema is the format's own schema with formatVersion
+// optional, computed once; a failure serves it unchanged.
+var apiV2ValidateSchema = sync.OnceValue(func() []byte {
+	optional, err := formatVersionOptional(anyblockjson.SchemaJSON())
+	if err != nil {
+		return anyblockjson.SchemaJSON()
+	}
+	return optional
+})
+
+// formatVersionOptional takes formatVersion out of a document schema's
+// required list: every write assumes the current format when the member is
+// absent (assumeCurrentFormat), so a caller is not asked for it. It stays
+// declared, since an export pasted back carries it.
+func formatVersionOptional(raw []byte) ([]byte, error) {
+	var root map[string]any
+	if err := json.Unmarshal(raw, &root); err != nil {
+		return nil, fmt.Errorf("decode document schema: %w", err)
+	}
+	setOrDelete(root, "required", withoutExcluded(root["required"], map[string]bool{"formatVersion": true}))
+	if props, ok := root["properties"].(map[string]any); ok {
+		if member, ok := props["formatVersion"].(map[string]any); ok {
+			member["description"] = "optional on a write: omitted, the current version is assumed"
+		}
+	}
+	out, err := json.Marshal(root)
+	if err != nil {
+		return nil, fmt.Errorf("encode document schema: %w", err)
+	}
+	return out, nil
+}
 
 // addAPIMembers declares the API's own root members on a document schema.
 func addAPIMembers(raw []byte, added map[string]map[string]any) ([]byte, error) {
@@ -229,7 +265,7 @@ type apiV2KindNarrowing struct {
 	kinds []string
 	// drop are root members the operation refuses or ignores
 	drop []string
-	// require are root members the operation demands beyond formatVersion
+	// require are root members the operation demands
 	require []string
 	// add are root members the OPERATION takes that the document format does
 	// not have: a create directive, lifted out of the body before the
@@ -295,8 +331,9 @@ func apiV2KindSchema(kind string) []byte {
 	if kind == apiV2ValidateKind {
 		// what POST /v2/validate checks is the format's own schema, legends
 		// and all (anyblockjson.Validate); the trimmed schema describes what
-		// a create accepts, which is narrower
-		return anyblockjson.SchemaJSON()
+		// a create accepts, which is narrower. Its formatVersion is optional
+		// as everywhere: the endpoint assumes the current one.
+		return apiV2ValidateSchema()
 	}
 	if cached, ok := apiV2KindSchemas.Load(kind); ok {
 		return cached.([]byte)

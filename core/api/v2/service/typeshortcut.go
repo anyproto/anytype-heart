@@ -57,8 +57,8 @@ var typeShortcutKeys = map[string]bool{
 }
 
 // isTypeDocument is the discriminator. It answers on any member only the
-// interchange document has, NOT on formatVersion alone: this endpoint has
-// always accepted a document that omits it, and a body carrying type_settings
+// interchange document has, formatVersion among them though no caller is
+// asked for it (an absent one means the current format), and a body carrying type_settings
 // or a `properties` map is unambiguously the document however it is spelled.
 //
 // `properties` decides by its JSON type. A map is the document's slot of
@@ -120,7 +120,7 @@ func typeShortcutDocument(fields map[string]json.RawMessage) (map[string]json.Ra
 				v2model.Issue{
 					Path:    "/" + key,
 					Message: fmt.Sprintf("unknown key %q", key),
-					Hint:    "the flat body takes name, plural_name, icon, layout, api_key, default_view, default_template, property_definitions — or send a full AnyBlock document by including \"formatVersion\":\"2.0\"",
+					Hint:    "the flat body takes name, plural_name, icon, layout, api_key, default_view, default_template, property_definitions — or send a full AnyBlock document, its definition under type_settings",
 				})
 		}
 	}

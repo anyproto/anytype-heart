@@ -199,7 +199,10 @@ func TestV2Schemas(t *testing.T) {
 		for _, kind := range []string{"object", "type_document", "template"} {
 			entry, err := fx.SchemaKind(kind)
 			require.NoError(t, err)
-			assert.NoError(t, anyblockjson.Validate(entry.Example), "example of kind %s", kind)
+			// an example omits formatVersion, which every write assumes
+			example, err := withCurrentFormat(entry.Example)
+			require.NoError(t, err)
+			assert.NoError(t, anyblockjson.Validate(example), "example of kind %s", kind)
 		}
 	})
 

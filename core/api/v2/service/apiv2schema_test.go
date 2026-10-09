@@ -239,8 +239,11 @@ func TestAPIV2KindSchemasAreNarrowedToWhatTheOperationAccepts(t *testing.T) {
 	})
 
 	t.Run("a document valid under a narrowed schema is valid AnyBlock JSON", func(t *testing.T) {
+		// once the write path assumes the current formatVersion
 		for _, doc := range []json.RawMessage{object.Example, template.Example, typeDocument.Example} {
-			assert.NoError(t, anyblockjson.Validate(doc))
+			withVersion, err := withCurrentFormat(doc)
+			require.NoError(t, err)
+			assert.NoError(t, anyblockjson.Validate(withVersion))
 		}
 	})
 

@@ -19,6 +19,12 @@ import (
 // error — the generate → validate → repair loop consumes them as data.
 func (s *Service) ValidateDocument(data []byte) v2model.ValidateResponse {
 	resp := v2model.ValidateResponse{Issues: []v2model.Issue{}, Warnings: []v2model.Issue{}}
+	// a caller writes the current format: an absent formatVersion means it,
+	// as on every create. A body that is not an object is the validator's
+	// to report.
+	if defaulted, err := withCurrentFormat(data); err == nil {
+		data = defaulted
+	}
 	err := anyblockjson.Validate(data)
 	if err == nil {
 		return resp

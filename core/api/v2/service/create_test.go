@@ -270,7 +270,7 @@ func TestV2CreateObjectShortcut(t *testing.T) {
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/title", apiErr.Issues[0].Path)
-		assert.Contains(t, apiErr.Issues[0].Hint, `"formatVersion":"2.0"`)
+		assert.Contains(t, apiErr.Issues[0].Hint, "send the full document form")
 	})
 
 	t.Run("missing type is rejected", func(t *testing.T) {

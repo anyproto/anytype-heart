@@ -88,7 +88,7 @@ func respondV2Create(c *gin.Context, result *v2model.CreateResult, createdStatus
 // CreateObjectHandler creates an object from an AnyBlock document or the shortcut
 //
 //	@Summary		Create an object
-//	@Description	A select value naming an option the property does not hold is refused unless `create_missing_options=true` is set. An unknown type or property key is rejected either way. The body is a full AnyBlock document or the shortcut {type, name, properties, markdown}; `formatVersion` or `blocks` picks the document form. `template` starts the object from one; absent, the type's `default_template` applies.
+//	@Description	A select value naming an option the property does not hold is refused unless `create_missing_options=true` is set. An unknown type or property key is rejected. The body is a full AnyBlock document or the shortcut {type, name, properties, markdown}; a document-only member such as `blocks` picks the document. `template` starts the object from one; absent, the type's `default_template` applies.
 //	@Id				create_object
 //	@Tags			Objects
 //	@Accept			json
@@ -150,7 +150,7 @@ func CreateTemplateHandler(s *v2service.Service) gin.HandlerFunc {
 // CreateTypeHandler creates a type from a kind:"object_type" document
 //
 //	@Summary		Create a type
-//	@Description	A `property_definitions` entry naming a property that does not exist creates it alongside the type. The body is either the flat type body or an AnyBlock document with kind "object_type"; `formatVersion`, `kind` or `type_settings` picks the document form.
+//	@Description	A `property_definitions` entry naming a property that does not exist creates it alongside the type. The body is either the flat type body or an AnyBlock document with kind "object_type"; `kind` or `type_settings` picks the document form.
 //	@Id				create_type
 //	@Tags			Types
 //	@Accept			json
