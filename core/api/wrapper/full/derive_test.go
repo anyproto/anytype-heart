@@ -543,7 +543,18 @@ func TestOpEnvelopesAreLookups(t *testing.T) {
 			getOp, _ := table.Tool("get_op_schema")
 			_, takesOp := getOp.Arg("op")
 			assert.True(t, takesOp, "get_op_schema takes the op name as op")
+			// a model reads the description first: it lists the ops and
+			// says their members are a lookup
+			assert.Contains(t, tool.Description, "Ops: "+strings.Join(ops.Items.Properties.Op.Enum, ", ")+".")
+			assert.Contains(t, tool.Description, "get_op_schema")
 		})
+	}
+	// the bodies with a document form beside a shortcut name its lookup in
+	// the description too
+	for name, kind := range map[string]string{"create_object": "object", "create_type": "type_document"} {
+		tool, ok := table.Tool(name)
+		require.True(t, ok)
+		assert.Contains(t, tool.Description, "get_schema with kind "+kind, name)
 	}
 	if channels := map[string]int{}; true {
 		for _, s := range served {
