@@ -23,13 +23,13 @@ import (
 //	@Tags			Search
 //	@Accept			json
 //	@Produce		text/event-stream
-//	@Param			space_id	path		string						true	"Space id"
-//	@Param			request		body		v2model.SearchRequestDoc	true	"Search request"
-//	@Param			heartbeat	query		int							false	"Keepalive cadence in seconds"	default(30)	minimum(1)	maximum(60)
-//	@Success		200			{string}	string						"Server-Sent Events stream"
-//	@Failure		400			{object}	v2model.Error				"Invalid request (validation_failed / ambiguous_input)"
-//	@Failure		404			{object}	v2model.Error				"Space not found"
-//	@Failure		429			{object}	v2model.Error				"Too many streams held at once"
+//	@Param			space_id	path		string			true	"Space id"
+//	@Param			request		body		object			true	"Search request"
+//	@Param			heartbeat	query		int				false	"Keepalive cadence in seconds"	default(30)	minimum(1)	maximum(60)
+//	@Success		200			{string}	string			"Server-Sent Events stream"
+//	@Failure		400			{object}	v2model.Error	"Invalid request (validation_failed / ambiguous_input)"
+//	@Failure		404			{object}	v2model.Error	"Space not found"
+//	@Failure		429			{object}	v2model.Error	"Too many streams held at once"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/search/stream [post]
 func SearchStreamHandler(s *v2service.Service) gin.HandlerFunc {

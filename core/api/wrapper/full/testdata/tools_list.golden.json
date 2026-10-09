@@ -57,24 +57,37 @@
    "description": "Search objects across spaces. Type keys and option names resolve per space; unresolved spaces produce warnings. Searches loaded spaces using query as full text over names and indexed content. total is a lower bound when clipped; use has_more to request further pages. Warnings report loading or unavailable stores. Each row carries space_id.",
    "inputSchema": {
     "additionalProperties": false,
+    "not": {
+     "properties": {
+      "filter": {
+       "minLength": 1
+      }
+     },
+     "required": [
+      "filter",
+      "filters"
+     ]
+    },
     "properties": {
      "fields": {
+      "description": "property keys to include per row, as an array such as [\"status\",\"due_date\"]; the list reads take the same keys as one comma-separated string",
       "items": {
        "type": "string"
       },
-      "type": "array",
-      "uniqueItems": false
+      "type": "array"
      },
      "filter": {
+      "description": "compact filter string (grammar on kind filters), an alternative to the structured filters array; a body sends at most one of the two",
+      "maxLength": 4096,
       "type": "string"
      },
      "filters": {
+      "description": "structured filter nodes (schema kind filters), an alternative to the compact filter string; a body sends at most one of the two",
       "items": {
-       "additionalProperties": {},
-       "type": "object"
+       "$ref": "#/$defs/FilterNode"
       },
-      "type": "array",
-      "uniqueItems": false
+      "maxItems": 50,
+      "type": "array"
      },
      "ids": {
       "description": "How each row's space_id is spelled: compact (default) is the short space reference; full is the whole \u003ccid\u003e.\u003creplicationKey\u003e id, and the spelling to store outside this API",
@@ -91,22 +104,139 @@
       "type": "integer"
      },
      "query": {
-      "description": "Full-text query over object names and indexed content.",
+      "description": "full-text query over object names and indexed content",
       "type": "string"
      },
      "sorts": {
       "items": {
-       "additionalProperties": {},
+       "additionalProperties": false,
+       "properties": {
+        "direction": {
+         "enum": [
+          "asc",
+          "desc"
+         ],
+         "type": "string"
+        },
+        "empty_placement": {
+         "enum": [
+          "start",
+          "end"
+         ],
+         "type": "string"
+        },
+        "property": {
+         "maxLength": 256,
+         "type": "string"
+        }
+       },
+       "required": [
+        "property"
+       ],
        "type": "object"
       },
-      "type": "array",
-      "uniqueItems": false
+      "maxItems": 10,
+      "type": "array"
      },
      "type": {
+      "description": "a type key: only objects of this type",
+      "maxLength": 256,
       "type": "string"
      }
     },
-    "type": "object"
+    "type": "object",
+    "$defs": {
+     "FilterNode": {
+      "oneOf": [
+       {
+        "additionalProperties": false,
+        "properties": {
+         "filters": {
+          "items": {
+           "$ref": "#/$defs/FilterNode"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "type": "array"
+         },
+         "operator": {
+          "enum": [
+           "and",
+           "or"
+          ],
+          "type": "string"
+         }
+        },
+        "required": [
+         "operator",
+         "filters"
+        ],
+        "type": "object"
+       },
+       {
+        "additionalProperties": false,
+        "properties": {
+         "condition": {
+          "enum": [
+           "equal",
+           "not_equal",
+           "greater",
+           "less",
+           "greater_or_equal",
+           "less_or_equal",
+           "contains",
+           "not_contains",
+           "in",
+           "not_in",
+           "empty",
+           "not_empty",
+           "all_in",
+           "not_all_in",
+           "exact_in",
+           "not_exact_in",
+           "exists"
+          ],
+          "type": "string"
+         },
+         "date_preset": {
+          "enum": [
+           "yesterday",
+           "today",
+           "tomorrow",
+           "last_week",
+           "current_week",
+           "next_week",
+           "last_month",
+           "current_month",
+           "next_month",
+           "number_of_days_ago",
+           "number_of_days_now",
+           "last_year",
+           "current_year",
+           "next_year"
+          ],
+          "type": "string"
+         },
+         "include_time": {
+          "type": "boolean"
+         },
+         "property": {
+          "maxLength": 256,
+          "type": "string"
+         },
+         "value": {
+          "description": "leaf value. A select or multi_select takes option names, never ids. A date takes unix seconds; where the filter is stored (a query's views, update_view) it also takes a date string such as 2026-08-01 or 2026-08-01T09:00:00Z, converted on write, while search takes a date string only in the compact filter string"
+         }
+        },
+        "required": [
+         "property",
+         "condition"
+        ],
+        "type": "object"
+       }
+      ]
+     }
+    }
    },
    "annotations": {
     "readOnlyHint": true
@@ -2413,24 +2543,37 @@
    "description": "Search objects in a space. `filter` and `filters` are two spellings of the same thing, the compact string and the structured array; sending both is refused. This is a read carried by POST because the query needs a body, so pagination stays in the query string and a `limit` or `offset` in the body is refused.",
    "inputSchema": {
     "additionalProperties": false,
+    "not": {
+     "properties": {
+      "filter": {
+       "minLength": 1
+      }
+     },
+     "required": [
+      "filter",
+      "filters"
+     ]
+    },
     "properties": {
      "fields": {
+      "description": "property keys to include per row, as an array such as [\"status\",\"due_date\"]; the list reads take the same keys as one comma-separated string",
       "items": {
        "type": "string"
       },
-      "type": "array",
-      "uniqueItems": false
+      "type": "array"
      },
      "filter": {
+      "description": "compact filter string (grammar on kind filters), an alternative to the structured filters array; a body sends at most one of the two",
+      "maxLength": 4096,
       "type": "string"
      },
      "filters": {
+      "description": "structured filter nodes (schema kind filters), an alternative to the compact filter string; a body sends at most one of the two",
       "items": {
-       "additionalProperties": {},
-       "type": "object"
+       "$ref": "#/$defs/FilterNode"
       },
-      "type": "array",
-      "uniqueItems": false
+      "maxItems": 50,
+      "type": "array"
      },
      "limit": {
       "default": 25,
@@ -2443,29 +2586,146 @@
       "type": "integer"
      },
      "query": {
-      "description": "Full-text query over object names and indexed content.",
+      "description": "full-text query over object names and indexed content",
       "type": "string"
      },
      "sorts": {
       "items": {
-       "additionalProperties": {},
+       "additionalProperties": false,
+       "properties": {
+        "direction": {
+         "enum": [
+          "asc",
+          "desc"
+         ],
+         "type": "string"
+        },
+        "empty_placement": {
+         "enum": [
+          "start",
+          "end"
+         ],
+         "type": "string"
+        },
+        "property": {
+         "maxLength": 256,
+         "type": "string"
+        }
+       },
+       "required": [
+        "property"
+       ],
        "type": "object"
       },
-      "type": "array",
-      "uniqueItems": false
+      "maxItems": 10,
+      "type": "array"
      },
      "space_id": {
       "description": "Space id",
       "type": "string"
      },
      "type": {
+      "description": "a type key: only objects of this type",
+      "maxLength": 256,
       "type": "string"
      }
     },
     "required": [
      "space_id"
     ],
-    "type": "object"
+    "type": "object",
+    "$defs": {
+     "FilterNode": {
+      "oneOf": [
+       {
+        "additionalProperties": false,
+        "properties": {
+         "filters": {
+          "items": {
+           "$ref": "#/$defs/FilterNode"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "type": "array"
+         },
+         "operator": {
+          "enum": [
+           "and",
+           "or"
+          ],
+          "type": "string"
+         }
+        },
+        "required": [
+         "operator",
+         "filters"
+        ],
+        "type": "object"
+       },
+       {
+        "additionalProperties": false,
+        "properties": {
+         "condition": {
+          "enum": [
+           "equal",
+           "not_equal",
+           "greater",
+           "less",
+           "greater_or_equal",
+           "less_or_equal",
+           "contains",
+           "not_contains",
+           "in",
+           "not_in",
+           "empty",
+           "not_empty",
+           "all_in",
+           "not_all_in",
+           "exact_in",
+           "not_exact_in",
+           "exists"
+          ],
+          "type": "string"
+         },
+         "date_preset": {
+          "enum": [
+           "yesterday",
+           "today",
+           "tomorrow",
+           "last_week",
+           "current_week",
+           "next_week",
+           "last_month",
+           "current_month",
+           "next_month",
+           "number_of_days_ago",
+           "number_of_days_now",
+           "last_year",
+           "current_year",
+           "next_year"
+          ],
+          "type": "string"
+         },
+         "include_time": {
+          "type": "boolean"
+         },
+         "property": {
+          "maxLength": 256,
+          "type": "string"
+         },
+         "value": {
+          "description": "leaf value. A select or multi_select takes option names, never ids. A date takes unix seconds; where the filter is stored (a query's views, update_view) it also takes a date string such as 2026-08-01 or 2026-08-01T09:00:00Z, converted on write, while search takes a date string only in the compact filter string"
+         }
+        },
+        "required": [
+         "property",
+         "condition"
+        ],
+        "type": "object"
+       }
+      ]
+     }
+    }
    },
    "annotations": {
     "readOnlyHint": true

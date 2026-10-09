@@ -78,6 +78,9 @@ var openAPIBodyRecipes = map[string]func(c *openAPIBodyComposer) (json.RawMessag
 			return nil
 		})
 	},
+	v2model.OpSearchSpace:       func(c *openAPIBodyComposer) (json.RawMessage, error) { return c.searchBody() },
+	v2model.OpSearchGlobal:      func(c *openAPIBodyComposer) (json.RawMessage, error) { return c.searchBody() },
+	v2model.OpStreamSpaceSearch: func(c *openAPIBodyComposer) (json.RawMessage, error) { return c.searchBody() },
 	v2model.OpCreateType: func(c *openAPIBodyComposer) (json.RawMessage, error) {
 		return c.anyOf("the flat type body, or the interchange document with kind object_type",
 			func() (json.RawMessage, error) {
@@ -273,6 +276,51 @@ func (c *openAPIBodyComposer) typePatchDocument() (json.RawMessage, error) {
 		return nil, fmt.Errorf("encode type patch document: %w", err)
 	}
 	return out, nil
+}
+
+// searchBody is the search request (v2model.SearchRequest): the query's
+// type, filter channels and sorts, the very members create_query takes, so a
+// caller writes a search and a saved query alike, plus the full-text query
+// and the row fields.
+func (c *openAPIBodyComposer) searchBody() (json.RawMessage, error) {
+	filters, err := c.kind("filters")
+	if err != nil {
+		return nil, fmt.Errorf("compose filters member: %w", err)
+	}
+	query, err := c.kind("query")
+	if err != nil {
+		return nil, fmt.Errorf("compose query members: %w", err)
+	}
+	var filtersNode, queryRoot map[string]any
+	if err := json.Unmarshal(filters, &filtersNode); err != nil {
+		return nil, fmt.Errorf("decode filters kind: %w", err)
+	}
+	if err := json.Unmarshal(query, &queryRoot); err != nil {
+		return nil, fmt.Errorf("decode query kind: %w", err)
+	}
+	members := queryRoot["properties"].(map[string]any)
+	filtersNode["description"] = "structured filter nodes (schema kind filters), an alternative to the compact filter string; a body sends at most one of the two"
+	filter := members["filter"].(map[string]any)
+	filter["description"] = "compact filter string (grammar on kind filters), an alternative to the structured filters array; a body sends at most one of the two"
+	typ := members["type"].(map[string]any)
+	typ["description"] = "a type key: only objects of this type"
+	return json.Marshal(map[string]any{
+		"type":                 "object",
+		"additionalProperties": false,
+		"properties": map[string]any{
+			"query":   map[string]any{"type": "string", "description": "full-text query over object names and indexed content"},
+			"type":    typ,
+			"filter":  filter,
+			"filters": filtersNode,
+			"sorts":   members["sorts"],
+			"fields": map[string]any{
+				"type":        "array",
+				"items":       map[string]any{"type": "string"},
+				"description": `property keys to include per row, as an array such as ["status","due_date"]; the list reads take the same keys as one comma-separated string`,
+			},
+		},
+		"not": map[string]any{"required": []string{"filter", "filters"}, "properties": map[string]any{"filter": map[string]any{"minLength": 1}}},
+	})
 }
 
 // literal is a hand-written body, validated as JSON.

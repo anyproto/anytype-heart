@@ -568,21 +568,6 @@ type SearchRequest struct {
 	Fields  []string        `json:"fields,omitempty"`
 }
 
-// SearchRequestDoc mirrors SearchRequest for the OpenAPI document ONLY (the
-// search annotations reference it): swag cannot resolve json.RawMessage and
-// its v3 parser panics on swaggertype:"array,…", so the §6.2 array fields
-// are documented through this twin instead. Wire shape is identical. A unit
-// test pins the twin's JSON field set to SearchRequest's so the two cannot
-// drift.
-type SearchRequestDoc struct {
-	Query   string           `json:"query,omitempty"` // Full-text query over object names and indexed content.
-	Type    string           `json:"type,omitempty"`
-	Filter  string           `json:"filter,omitempty"`
-	Filters []map[string]any `json:"filters,omitempty"`
-	Sorts   []map[string]any `json:"sorts,omitempty"`
-	Fields  []string         `json:"fields,omitempty"`
-}
-
 //
 // ---- edit surface ----
 //

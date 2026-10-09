@@ -3,6 +3,8 @@ package v2service
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -60,6 +62,10 @@ func TestOpenAPIBodiesAcceptTheServedExamples(t *testing.T) {
 		{v2model.OpValidate, []string{v2SchemaKinds["object"].example, v2SchemaKinds["type_document"].example}},
 		{v2model.OpPatchObject, []string{`{"ops":[` + v2OpSchemas["set_properties"].example + `,` + v2OpSchemas["insert_blocks"].example + `]}`}},
 		{v2model.OpCreateWidget, []string{v2SchemaKinds["widget"].example, `{"target":"obj1","scope":"space","layout":"view","limit":10,"view_id":"v1","after":"_favorite"}`}},
+		{v2model.OpSearchSpace, []string{`{}`, `{"query":"roadmap","type":"task","filter":"status = \"Done\"","sorts":[{"property":"due_date","direction":"asc"}],"fields":["status","due_date"]}`,
+			`{"filters":[{"property":"status","condition":"in","value":["Done"]}]}`}},
+		{v2model.OpSearchGlobal, []string{`{"query":"roadmap","fields":["status"]}`}},
+		{v2model.OpStreamSpaceSearch, []string{`{"query":"roadmap"}`}},
 		{v2model.OpUpdateWidget, []string{`{"layout":"compact_list"}`, `{"limit":30,"position":"first"}`, `{"view_id":""}`}},
 	}
 	seen := map[string]bool{}
@@ -209,4 +215,30 @@ func TestKindSkeletonTypesTheContainers(t *testing.T) {
 	skeleton, err = kindSkeleton(apiV2ValidateKind)
 	require.NoError(t, err)
 	assert.NotContains(t, skeleton, "kind", "a long enum is the lookup's to list")
+}
+
+// TestSearchBodyIsTheSearchRequest: the published search body names
+// exactly the members the handler decodes, so the document cannot advertise
+// a member the strict decoder refuses or hide one it takes.
+func TestSearchBodyIsTheSearchRequest(t *testing.T) {
+	var want []string
+	typ := reflect.TypeOf(v2model.SearchRequest{})
+	for i := 0; i < typ.NumField(); i++ {
+		name, _, _ := strings.Cut(typ.Field(i).Tag.Get("json"), ",")
+		want = append(want, name)
+	}
+	sort.Strings(want)
+
+	raw, err := (&openAPIBodyComposer{components: map[string]json.RawMessage{}}).searchBody()
+	require.NoError(t, err)
+	var body struct {
+		Properties map[string]json.RawMessage `json:"properties"`
+	}
+	require.NoError(t, json.Unmarshal(raw, &body))
+	var got []string
+	for name := range body.Properties {
+		got = append(got, name)
+	}
+	sort.Strings(got)
+	assert.Equal(t, want, got)
 }
