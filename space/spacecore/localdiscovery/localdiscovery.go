@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	gonet "net"
-	"net/netip"
 	"slices"
 	"strconv"
 	"sync"
@@ -64,7 +63,9 @@ type zeroconfDiscovery struct {
 	own  []ownAddr // every ipv4 address with its subnet, then the link-local ones
 	// linkLocal describes the interfaces without IPv4 that discovery runs on
 	// over IPv6 link-local (see linkLocalOnly); empty means IPv4 only.
-	linkLocal   linkLocalIfaces
+	linkLocal linkLocalIfaces
+	// discoveries serializes PeerDiscovered per peer (see peerDiscoveries)
+	discoveries peerDiscoveries
 	manualStart bool
 	started     bool
 	notifier    Notifier
@@ -377,7 +378,7 @@ func (l *zeroconfDiscovery) readAnswers(closeWait *sync.WaitGroup, ch chan *zero
 		}
 		l.m.Lock()
 		l.interfacesAddrs.SortIPsLikeInterfaces(entry.AddrIPv4)
-		portAddrs := peerAddrs(entry, l.linkLocal.zones, ownIPv4Nets(l.own))
+		portAddrs := peerAddrs(entry, l.linkLocal.zones)
 		if len(portAddrs) == 0 {
 			// only link-local addresses from another link: nothing to dial,
 			// and an empty list would wipe the peer's known addresses
@@ -393,7 +394,7 @@ func (l *zeroconfDiscovery) readAnswers(closeWait *sync.WaitGroup, ch chan *zero
 		if l.notifier != nil {
 			own := newOwnAddresses(l.own, l.port)
 			// explicitly use componentCtx, instead of queryCtx here, because we don't want to interrupt the peer connection if we refreshed interfaces and restarted service
-			go l.notifier.PeerDiscovered(l.componentCtx, peer, own)
+			l.discoveries.notify(l.componentCtx, l.notifier, peer, own)
 		}
 		l.m.Unlock()
 	}
@@ -402,25 +403,15 @@ func (l *zeroconfDiscovery) readAnswers(closeWait *sync.WaitGroup, ch chan *zero
 // peerAddrs is the dial list for a discovered peer. Its link-local addresses
 // count only when received on one of our interfaces without IPv4 (zones): a
 // peer on our IPv4 links is reached over IPv4. Every LAN address is yamux, so
-// this order is the dial order, and all addresses share one dial budget:
-// IPv4 on one of our subnets (ownNets) goes first, so a peer on Wi-Fi never
-// waits for a link-local attempt; then link-local; then any other IPv4, which
-// may hang on a route the cable doesn't have. Without link-local addresses
-// the IPv4 order is untouched.
-func peerAddrs(entry *zeroconf.ServiceEntry, zones map[string]struct{}, ownNets []netip.Prefix) []string {
+// this order is the dial order, and all addresses share one dial budget.
+// Link-local goes first: the peer answered over a cable that leads straight
+// to it, while an IPv4 address of it may be stale (its Wi-Fi went off) and
+// hang until the budget is gone. A cable that was unplugged fails at once
+// (its zone names no interface). Without link-local the IPv4 order is
+// untouched.
+func peerAddrs(entry *zeroconf.ServiceEntry, zones map[string]struct{}) []string {
 	port := strconv.Itoa(entry.Port)
-	all := make([]string, 0, len(entry.AddrIPv4))
-	var onLink, linkLocal, other []string
-	for _, a := range entry.AddrIPv4 {
-		hostPort := gonet.JoinHostPort(a.String(), port)
-		all = append(all, hostPort)
-		ip, ok := netip.AddrFromSlice(a)
-		if ok && slices.ContainsFunc(ownNets, func(n netip.Prefix) bool { return n.Contains(ip.Unmap()) }) {
-			onLink = append(onLink, hostPort)
-		} else {
-			other = append(other, hostPort)
-		}
-	}
+	var addrs []string
 	for _, a := range entry.AddrIPv6Zoned {
 		if !a.IsLinkLocalUnicast() {
 			continue
@@ -429,25 +420,14 @@ func peerAddrs(entry *zeroconf.ServiceEntry, zones map[string]struct{}, ownNets 
 			continue
 		}
 		hostPort := gonet.JoinHostPort(a.String(), port)
-		if !slices.Contains(linkLocal, hostPort) {
-			linkLocal = append(linkLocal, hostPort)
+		if !slices.Contains(addrs, hostPort) {
+			addrs = append(addrs, hostPort)
 		}
 	}
-	if len(linkLocal) == 0 {
-		return all
+	for _, a := range entry.AddrIPv4 {
+		addrs = append(addrs, gonet.JoinHostPort(a.String(), port))
 	}
-	return slices.Concat(onLink, linkLocal, other)
-}
-
-// ownIPv4Nets are the subnets of our IPv4 addresses.
-func ownIPv4Nets(own []ownAddr) []netip.Prefix {
-	var nets []netip.Prefix
-	for _, a := range own {
-		if !a.linkLocal {
-			nets = append(nets, a.net)
-		}
-	}
-	return nets
+	return addrs
 }
 
 func (l *zeroconfDiscovery) browse(ctx context.Context, closeWait *sync.WaitGroup, ifaces []gonet.Interface, linkLocal linkLocalIfaces, ch chan *zeroconf.ServiceEntry) {

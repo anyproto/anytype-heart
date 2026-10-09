@@ -2,6 +2,7 @@ package localdiscovery
 
 import (
 	"net/netip"
+	"regexp"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/net/addrs"
@@ -20,9 +21,12 @@ import (
 var linkLocalPrefixes = map[string][]string{
 	"darwin":  {"en", "bridge"},
 	"ios":     {"en", "bridge"},
-	"linux":   {"en", "eth", "wl", "usb", "thunderbolt", "br", "bond"},
+	"linux":   {"en", "em", "eth", "wl", "usb", "thunderbolt", "br", "bond"},
 	"android": {"wlan", "eth", "rndis", "usb"},
 }
+
+// biosdevnamePCI is the Linux biosdevname name of a PCI card port: p1p1.
+var biosdevnamePCI = regexp.MustCompile(`^p[0-9]+p[0-9]+`)
 
 // linkLocalCandidate reports whether an interface of this kind may be used
 // over IPv6 link-local.
@@ -32,7 +36,7 @@ func linkLocalCandidate(goos, iface string) bool {
 			return true
 		}
 	}
-	return false
+	return goos == "linux" && biosdevnamePCI.MatchString(iface)
 }
 
 // linkLocalOnly returns the IPv6 link-local addresses of an interface that has

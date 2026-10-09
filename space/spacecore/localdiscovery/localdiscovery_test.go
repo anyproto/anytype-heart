@@ -330,7 +330,6 @@ func TestPeerAddrs(t *testing.T) {
 		[]ownAddr{{iface: "en16", net: netip.MustParsePrefix("fe80::a886:c6ff:febd:f923/64"), linkLocal: true}},
 		[]gonet.Interface{{Index: 4, Name: "en0"}, {Index: 31, Name: "en16"}},
 	).zones
-	ownNets := []netip.Prefix{netip.MustParsePrefix("192.168.1.10/24")}
 
 	for _, tc := range []struct {
 		name  string
@@ -338,25 +337,16 @@ func TestPeerAddrs(t *testing.T) {
 		want  []string
 	}{
 		{
-			name: "ipv4 on our subnet, then link-local on a link without ipv4",
+			name: "link-local on a link without ipv4 goes before ipv4",
 			entry: &zeroconf.ServiceEntry{
 				Port:     62654,
-				AddrIPv4: []gonet.IP{gonet.ParseIP("192.168.1.62")},
+				AddrIPv4: []gonet.IP{gonet.ParseIP("192.168.1.62"), gonet.ParseIP("10.20.9.9")},
 				AddrIPv6Zoned: []netip.Addr{
-					netip.MustParseAddr("fe80::a886:c6ff:febd:f9dc%en16"),
 					netip.MustParseAddr("2a0d:5600::62"),
+					netip.MustParseAddr("fe80::a886:c6ff:febd:f9dc%en16"),
 				},
 			},
-			want: []string{"192.168.1.62:62654", "[fe80::a886:c6ff:febd:f9dc%en16]:62654"},
-		},
-		{
-			name: "ipv4 off our subnets goes after link-local",
-			entry: &zeroconf.ServiceEntry{
-				Port:          4006,
-				AddrIPv4:      []gonet.IP{gonet.ParseIP("10.20.9.9"), gonet.ParseIP("192.168.1.62")},
-				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62%en16")},
-			},
-			want: []string{"192.168.1.62:4006", "[fe80::62%en16]:4006", "10.20.9.9:4006"},
+			want: []string{"[fe80::a886:c6ff:febd:f9dc%en16]:62654", "192.168.1.62:62654", "10.20.9.9:62654"},
 		},
 		{
 			name: "without link-local the ipv4 order is untouched",
@@ -389,11 +379,11 @@ func TestPeerAddrs(t *testing.T) {
 				Port:          4006,
 				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62")},
 			},
-			want: []string{},
+			want: nil,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.want, peerAddrs(tc.entry, zones, ownNets))
+			assert.Equal(t, tc.want, peerAddrs(tc.entry, zones))
 		})
 	}
 }
