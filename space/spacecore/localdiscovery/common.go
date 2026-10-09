@@ -6,6 +6,7 @@ import (
 	gonet "net"
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
@@ -48,6 +49,18 @@ type Notifier interface {
 	PeerDiscovered(ctx context.Context, peer DiscoveredPeer, own OwnAddresses)
 }
 
+// discoveryBase is the state both implementations share: the discovery
+// possibility reported to hooks (recovery tracker, p2p status) and the last
+// enumerated interface addresses. Guarded by the embedding type's own mutex
+// for interfacesAddrs; hookMu guards the hooks.
+type discoveryBase struct {
+	interfacesAddrs addrs.InterfacesAddrs
+
+	hookMu    sync.Mutex
+	hookState DiscoveryPossibility
+	hooks     []HookCallback
+}
+
 type LocalDiscovery interface {
 	SetNotifier(Notifier)
 	Start() error // Start the local discovery. Used when automatic start is disabled.
@@ -76,7 +89,7 @@ func filterMulticastInterfaces(ifaces []addrs.NetInterfaceWithAddrCache) []addrs
 	return filtered
 }
 
-func (l *localDiscovery) getDiscoveryPossibility(newAddrs addrs.InterfacesAddrs) DiscoveryPossibility {
+func (l *discoveryBase) getDiscoveryPossibility(newAddrs addrs.InterfacesAddrs) DiscoveryPossibility {
 	// some sophisticated logic for ios, because of possible Local Network Restrictions
 	var err error
 	// we can extend it later to check on another platforms
@@ -122,13 +135,13 @@ func (l *localDiscovery) getDiscoveryPossibility(newAddrs addrs.InterfacesAddrs)
 	return DiscoveryNoInterfaces
 }
 
-func (l *localDiscovery) discoveryPossibilitySetState(state DiscoveryPossibility) {
+func (l *discoveryBase) discoveryPossibilitySetState(state DiscoveryPossibility) {
 	l.discoveryPossibilitySwapState(func(_ DiscoveryPossibility) DiscoveryPossibility {
 		return state
 	})
 }
 
-func (l *localDiscovery) discoveryPossibilitySwapState(f func(currentState DiscoveryPossibility) DiscoveryPossibility) {
+func (l *discoveryBase) discoveryPossibilitySwapState(f func(currentState DiscoveryPossibility) DiscoveryPossibility) {
 	l.hookMu.Lock()
 	defer l.hookMu.Unlock()
 	newState := f(l.hookState)
@@ -142,13 +155,13 @@ func (l *localDiscovery) discoveryPossibilitySwapState(f func(currentState Disco
 	}
 }
 
-func (l *localDiscovery) RegisterDiscoveryPossibilityHook(hook func(state DiscoveryPossibility)) {
+func (l *discoveryBase) RegisterDiscoveryPossibilityHook(hook func(state DiscoveryPossibility)) {
 	l.hookMu.Lock()
 	defer l.hookMu.Unlock()
 	l.hooks = append(l.hooks, hook)
 }
 
-func (l *localDiscovery) getAddresses() (ipv4, ipv6 []gonet.IP) {
+func (l *discoveryBase) getAddresses() (ipv4, ipv6 []gonet.IP) {
 	for i := range l.interfacesAddrs.Interfaces {
 		for _, addr := range l.interfacesAddrs.Interfaces[i].GetAddr() {
 			ip, ok := addrs.AddrToIP(addr)

@@ -96,7 +96,7 @@ func TestLocalDiscovery_checkAddrs(t *testing.T) {
 		f := newFixture(t)
 
 		// when
-		ld := f.LocalDiscovery.(*localDiscovery)
+		ld := f.LocalDiscovery.(*zeroconfDiscovery)
 		ld.port = 6789
 		err := ld.refreshInterfaces(context.Background())
 
@@ -108,7 +108,7 @@ func TestLocalDiscovery_checkAddrs(t *testing.T) {
 		f := newFixture(t)
 
 		// when
-		ld := f.LocalDiscovery.(*localDiscovery)
+		ld := f.LocalDiscovery.(*zeroconfDiscovery)
 		var hookCalled atomic.Int64
 		ld.RegisterDiscoveryPossibilityHook(func(state DiscoveryPossibility) {
 			hookCalled.Store(int64(state))
@@ -135,7 +135,7 @@ func TestLocalDiscovery_networkStateHookDoesNotBlockOnSlowRefresh(t *testing.T) 
 	err := f.Start()
 	assert.Nil(t, err)
 
-	ld := f.LocalDiscovery.(*localDiscovery)
+	ld := f.LocalDiscovery.(*zeroconfDiscovery)
 	ld.refreshMu.Lock()
 
 	// when: the device reports a network change (this call happens on the
@@ -161,7 +161,7 @@ func TestLocalDiscovery_refreshRetriesFailedServerStart(t *testing.T) {
 	// rejected by RegisterProxy), simulating a transient start failure
 	f := newFixture(t)
 	f.clientServer.EXPECT().ServerStarted().Return(true).Maybe()
-	ld := f.LocalDiscovery.(*localDiscovery)
+	ld := f.LocalDiscovery.(*zeroconfDiscovery)
 	ld.port = 0
 	err := ld.refreshInterfaces(context.Background())
 	assert.Error(t, err)
@@ -183,7 +183,7 @@ func TestLocalDiscovery_refreshKeepsServerOnEnumerationError(t *testing.T) {
 	// given: a healthy running server
 	f := newFixture(t)
 	f.clientServer.EXPECT().ServerStarted().Return(true).Maybe()
-	ld := f.LocalDiscovery.(*localDiscovery)
+	ld := f.LocalDiscovery.(*zeroconfDiscovery)
 	ld.port = 6789
 	err := ld.refreshInterfaces(context.Background())
 	assert.Nil(t, err)
@@ -217,7 +217,7 @@ func TestLocalDiscovery_refreshSurvivesStuckQueryGoroutine(t *testing.T) {
 
 	f := newFixture(t)
 	f.clientServer.EXPECT().ServerStarted().Return(true).Maybe()
-	ld := f.LocalDiscovery.(*localDiscovery)
+	ld := f.LocalDiscovery.(*zeroconfDiscovery)
 	ld.port = 6789
 	err := ld.refreshInterfaces(context.Background())
 	assert.Nil(t, err)
@@ -256,7 +256,7 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		f.LocalDiscovery.SetNotifier(notifier)
 
 		// when
-		ld := f.LocalDiscovery.(*localDiscovery)
+		ld := f.LocalDiscovery.(*zeroconfDiscovery)
 		peerUpdate := make(chan *zeroconf.ServiceEntry)
 		closeWait := &sync.WaitGroup{}
 		closeWait.Add(1)
@@ -280,7 +280,7 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		f.clientServer.EXPECT().Port().Return(6789).Maybe()
 
 		// when
-		ld := f.LocalDiscovery.(*localDiscovery)
+		ld := f.LocalDiscovery.(*zeroconfDiscovery)
 		peerUpdate := make(chan *zeroconf.ServiceEntry)
 
 		notifier := NewMockNotifier(t)
