@@ -428,4 +428,8 @@ func TestInterfaceIds(t *testing.T) {
 	assert.NotEqual(t, base, interfaceIds("darwin", set(42, []gonet.Addr{wifiV4, wifiLL}, []gonet.Addr{cableLL}, nil)), "the cable came back under a new index")
 	assert.NotEqual(t, base, interfaceIds("darwin", set(31, []gonet.Addr{wifiLL}, []gonet.Addr{wifiV4, cableLL}, nil)), "the IPv4 address moved to the cable")
 	assert.Equal(t, base, interfaceIds("darwin", set(31, []gonet.Addr{wifiV4, wifiLL}, []gonet.Addr{cableLL}, []gonet.Addr{ipNet("fe80::9/64")})), "a tunnel's addresses are not read")
+
+	cableUp := set(31, []gonet.Addr{wifiV4, wifiLL}, []gonet.Addr{cableLL}, nil)
+	cableUp[1].Flags = gonet.FlagUp | gonet.FlagMulticast
+	assert.NotEqual(t, base, interfaceIds("darwin", cableUp), "the cable came up with the same name, index and address")
 }

@@ -336,13 +336,13 @@ func (s *service) expireInboundLinkLocal(peerId string, remembered *inboundLinkL
 	if !ok || !slices.Contains(installed, remembered.hostPort) {
 		return
 	}
+	rest := slices.DeleteFunc(slices.Clone(installed), func(a string) bool { return a == remembered.hostPort })
 	var restored []string
 	for _, a := range discovered {
-		if isLinkLocalAddr(a) && !slices.Contains(installed, a) {
+		if isLinkLocalAddr(a) && !slices.Contains(rest, a) {
 			restored = append(restored, a)
 		}
 	}
-	rest := slices.DeleteFunc(slices.Clone(installed), func(a string) bool { return a == remembered.hostPort })
 	s.setLocalPeerAddrs(peerId, append(restored, rest...))
 }
 

@@ -452,7 +452,7 @@ func (l *zeroconfDiscovery) browse(ctx context.Context, closeWait *sync.WaitGrou
 	}
 }
 
-// interfaceIds lists the interfaces as name#index, and the addresses held by
+// interfaceIds lists the interfaces as name#index with their flags, and the addresses held by
 // each one that may be used over link-local (see linkLocalCandidate), sorted.
 // Only those few interfaces have their addresses read here; the rest keep
 // relying on the flat address list.
@@ -460,8 +460,11 @@ func interfaceIds(goos string, ifaces []addrs.NetInterfaceWithAddrCache) []strin
 	ids := make([]string, 0, len(ifaces))
 	for i := range ifaces {
 		iface := &ifaces[i]
+		// the flags filterMulticastInterfaces reads: a cable coming up
+		// keeps its name, index and address
+		flags := iface.Flags & (gonet.FlagUp | gonet.FlagMulticast | gonet.FlagLoopback)
 		id := iface.Name + "#" + strconv.Itoa(iface.Index)
-		ids = append(ids, id)
+		ids = append(ids, id+" "+flags.String())
 		if !linkLocalCandidate(goos, iface.Name) {
 			continue
 		}

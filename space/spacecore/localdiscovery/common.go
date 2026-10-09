@@ -6,6 +6,7 @@ import (
 	gonet "net"
 	"net/netip"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -140,22 +141,23 @@ func (l *discoveryBase) getDiscoveryPossibility(newAddrs addrs.InterfacesAddrs) 
 			}
 		}
 	}
-	if err == nil {
-		// an IPv6-only link (a cable, Wi-Fi off) is enough for discovery
-		for i := range interfaces {
-			iface := &interfaces[i]
-			for _, ip := range linkLocalOnly(runtime.GOOS, iface) {
-				if !checkSelfConnect {
-					return DiscoveryPossible
-				}
-				zoned := ip.WithZone(iface.Name).String()
-				err = testSelfConnection(zoned)
-				if err == nil {
-					return DiscoveryPossible
-				}
-				log.Warn(fmt.Sprintf("self connection via %s to %s failed: %v", iface.Name, zoned, err))
-				break
+	// an IPv6-only link (a cable, Wi-Fi off) is enough for discovery, also
+	// when an IPv4 self-connect failed (an interface going away)
+	for i := range interfaces {
+		iface := &interfaces[i]
+		for _, ip := range linkLocalOnly(runtime.GOOS, iface) {
+			if !checkSelfConnect {
+				return DiscoveryPossible
 			}
+			// zoned by index: a name goes through Go's interface cache,
+			// which can be stale right after a cable is plugged in
+			zoned := ip.WithZone(strconv.Itoa(iface.Index)).String()
+			err = testSelfConnection(zoned)
+			if err == nil {
+				return DiscoveryPossible
+			}
+			log.Warn(fmt.Sprintf("self connection via %s to %s failed: %v", iface.Name, zoned, err))
+			break
 		}
 	}
 	if err != nil {
