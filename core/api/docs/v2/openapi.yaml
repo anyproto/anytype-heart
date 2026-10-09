@@ -1154,33 +1154,6 @@ components:
         url:
           type: string
       type: object
-    SearchRequestDoc:
-      properties:
-        fields:
-          items:
-            type: string
-          type: array
-          uniqueItems: false
-        filter:
-          type: string
-        filters:
-          items:
-            additionalProperties: {}
-            type: object
-          type: array
-          uniqueItems: false
-        query:
-          description: Full-text query over object names and indexed content.
-          type: string
-        sorts:
-          items:
-            additionalProperties: {}
-            type: object
-          type: array
-          uniqueItems: false
-        type:
-          type: string
-      type: object
     SideEffects:
       properties:
         options:
@@ -2113,7 +2086,60 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SearchRequestDoc'
+              additionalProperties: false
+              not:
+                properties:
+                  filter:
+                    minLength: 1
+                required:
+                  - filter
+                  - filters
+              properties:
+                fields:
+                  description: property keys to include per row, as an array such as ["status","due_date"]; the list reads take the same keys as one comma-separated string
+                  items:
+                    type: string
+                  type: array
+                filter:
+                  description: compact filter string (grammar on kind filters), an alternative to the structured filters array; a body sends at most one of the two
+                  maxLength: 4096
+                  type: string
+                filters:
+                  description: structured filter nodes (schema kind filters), an alternative to the compact filter string; a body sends at most one of the two
+                  items:
+                    $ref: '#/components/schemas/FilterNode'
+                  maxItems: 50
+                  type: array
+                query:
+                  description: full-text query over object names and indexed content
+                  type: string
+                sorts:
+                  items:
+                    additionalProperties: false
+                    properties:
+                      direction:
+                        enum:
+                          - asc
+                          - desc
+                        type: string
+                      empty_placement:
+                        enum:
+                          - start
+                          - end
+                        type: string
+                      property:
+                        maxLength: 256
+                        type: string
+                    required:
+                      - property
+                    type: object
+                  maxItems: 10
+                  type: array
+                type:
+                  description: 'a type key: only objects of this type'
+                  maxLength: 256
+                  type: string
+              type: object
         description: Search request
         required: true
       responses:
@@ -5053,7 +5079,60 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SearchRequestDoc'
+              additionalProperties: false
+              not:
+                properties:
+                  filter:
+                    minLength: 1
+                required:
+                  - filter
+                  - filters
+              properties:
+                fields:
+                  description: property keys to include per row, as an array such as ["status","due_date"]; the list reads take the same keys as one comma-separated string
+                  items:
+                    type: string
+                  type: array
+                filter:
+                  description: compact filter string (grammar on kind filters), an alternative to the structured filters array; a body sends at most one of the two
+                  maxLength: 4096
+                  type: string
+                filters:
+                  description: structured filter nodes (schema kind filters), an alternative to the compact filter string; a body sends at most one of the two
+                  items:
+                    $ref: '#/components/schemas/FilterNode'
+                  maxItems: 50
+                  type: array
+                query:
+                  description: full-text query over object names and indexed content
+                  type: string
+                sorts:
+                  items:
+                    additionalProperties: false
+                    properties:
+                      direction:
+                        enum:
+                          - asc
+                          - desc
+                        type: string
+                      empty_placement:
+                        enum:
+                          - start
+                          - end
+                        type: string
+                      property:
+                        maxLength: 256
+                        type: string
+                    required:
+                      - property
+                    type: object
+                  maxItems: 10
+                  type: array
+                type:
+                  description: 'a type key: only objects of this type'
+                  maxLength: 256
+                  type: string
+              type: object
         description: Search request
         required: true
       responses:
@@ -5111,7 +5190,60 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SearchRequestDoc'
+              additionalProperties: false
+              not:
+                properties:
+                  filter:
+                    minLength: 1
+                required:
+                  - filter
+                  - filters
+              properties:
+                fields:
+                  description: property keys to include per row, as an array such as ["status","due_date"]; the list reads take the same keys as one comma-separated string
+                  items:
+                    type: string
+                  type: array
+                filter:
+                  description: compact filter string (grammar on kind filters), an alternative to the structured filters array; a body sends at most one of the two
+                  maxLength: 4096
+                  type: string
+                filters:
+                  description: structured filter nodes (schema kind filters), an alternative to the compact filter string; a body sends at most one of the two
+                  items:
+                    $ref: '#/components/schemas/FilterNode'
+                  maxItems: 50
+                  type: array
+                query:
+                  description: full-text query over object names and indexed content
+                  type: string
+                sorts:
+                  items:
+                    additionalProperties: false
+                    properties:
+                      direction:
+                        enum:
+                          - asc
+                          - desc
+                        type: string
+                      empty_placement:
+                        enum:
+                          - start
+                          - end
+                        type: string
+                      property:
+                        maxLength: 256
+                        type: string
+                    required:
+                      - property
+                    type: object
+                  maxItems: 10
+                  type: array
+                type:
+                  description: 'a type key: only objects of this type'
+                  maxLength: 256
+                  type: string
+              type: object
         description: Search request
         required: true
       responses:

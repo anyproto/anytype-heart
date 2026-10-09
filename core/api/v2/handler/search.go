@@ -90,7 +90,7 @@ func unknownFieldName(err error) (string, bool) {
 //	@Accept			json
 //	@Produce		json
 //	@Param			space_id	path		string									true	"Space id"
-//	@Param			request		body		v2model.SearchRequestDoc				true	"Search request"
+//	@Param			request		body		object									true	"Search request"
 //	@Param			offset		query		int										false	"Items to skip"		default(0)
 //	@Param			limit		query		int										false	"Items to return"	default(25)
 //	@Success		200			{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows"
@@ -129,7 +129,7 @@ func SearchObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Search
 //	@Accept			json
 //	@Produce		json
-//	@Param			request	body		v2model.SearchRequestDoc				true	"Search request"
+//	@Param			request	body		object									true	"Search request"
 //	@Param			offset	query		int										false	"Items to skip"		default(0)
 //	@Param			limit	query		int										false	"Items to return"	default(25)
 //	@Param			ids		query		string									false	"How each row's space_id is spelled: compact (default) is the short space reference; full is the whole <cid>.<replicationKey> id, and the spelling to store outside this API"
