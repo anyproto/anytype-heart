@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"go.uber.org/zap"
 	"storj.io/drpc"
@@ -216,23 +217,59 @@ func (s *service) forgetPeerIPs(peerId string) {
 	delete(s.inboundLinkLocal, peerId)
 }
 
+// inboundLinkLocalTTL bounds how long an inbound link-local address outlives
+// the connection it came from without a newer one: the AAAA TTL heart's
+// responder announces, so it never lingers longer than a discovered one.
+const inboundLinkLocalTTL = 2 * time.Minute
+
+// inboundLinkLocal is the link-local address a peer last connected from.
+type inboundLinkLocal struct {
+	hostPort string
+	at       time.Time
+}
+
+// now is a seam for tests.
+var timeNow = time.Now
+
 func (s *service) rememberInboundLinkLocal(peerId, hostPort string) {
 	s.ownMu.Lock()
 	defer s.ownMu.Unlock()
 	if s.inboundLinkLocal == nil {
-		s.inboundLinkLocal = map[string]string{}
+		s.inboundLinkLocal = map[string]inboundLinkLocal{}
 	}
-	s.inboundLinkLocal[peerId] = hostPort
+	s.inboundLinkLocal[peerId] = inboundLinkLocal{hostPort: hostPort, at: timeNow()}
 }
 
-// interfaceExists is a seam for tests.
-var interfaceExists = func(zone string) bool {
-	if index, err := strconv.Atoi(zone); err == nil {
-		_, err = net.InterfaceByIndex(index)
-		return err == nil
+func (s *service) forgetInboundLinkLocal(peerId string) {
+	s.ownMu.Lock()
+	defer s.ownMu.Unlock()
+	delete(s.inboundLinkLocal, peerId)
+}
+
+// linkLocalUsable reports whether the interface a zone names is up and has
+// no IPv4 address: link-local is only used on such a link (GO-7581). A var
+// so tests can stub it.
+var linkLocalUsable = func(zone string) bool {
+	var (
+		iface *net.Interface
+		err   error
+	)
+	if index, errAtoi := strconv.Atoi(zone); errAtoi == nil {
+		iface, err = net.InterfaceByIndex(index)
+	} else {
+		iface, err = net.InterfaceByName(zone)
 	}
-	_, err := net.InterfaceByName(zone)
-	return err == nil
+	if err != nil || iface.Flags&net.FlagUp == 0 {
+		return false
+	}
+	addrs, err := iface.Addrs()
+	if err != nil {
+		return false
+	}
+	return !slices.ContainsFunc(addrs, func(a net.Addr) bool {
+		ipNet, ok := a.(*net.IPNet)
+		return ok && ipNet.IP.To4() != nil
+	})
 }
 
 // withInboundLinkLocal puts the link-local address the peer last connected
@@ -240,24 +277,26 @@ var interfaceExists = func(zone string) bool {
 // A phone's native discovery resolves IPv4 only, so over a cable it finds
 // nothing usable (or an IPv4 address the cable can't reach); without this
 // it would replace the one address that works, recorded by recordLocalPeer.
-// The address is dropped once its interface is gone (the cable unplugged).
+// The address is dropped once it is older than inboundLinkLocalTTL, its
+// interface is gone, down or has gained IPv4, or the peer connected to us
+// another way (recordLocalPeer).
 func (s *service) withInboundLinkLocal(peerId string, addrs []string) []string {
 	s.ownMu.Lock()
-	hostPort, ok := s.inboundLinkLocal[peerId]
+	remembered, ok := s.inboundLinkLocal[peerId]
 	s.ownMu.Unlock()
 	if !ok || slices.ContainsFunc(addrs, isLinkLocalAddr) {
 		return addrs
 	}
-	ip, _ := hostIP(hostPort)
-	if !interfaceExists(ip.Zone()) {
+	ip, _ := hostIP(remembered.hostPort)
+	if timeNow().Sub(remembered.at) > inboundLinkLocalTTL || !linkLocalUsable(ip.Zone()) {
 		s.ownMu.Lock()
-		if s.inboundLinkLocal[peerId] == hostPort {
+		if s.inboundLinkLocal[peerId] == remembered {
 			delete(s.inboundLinkLocal, peerId)
 		}
 		s.ownMu.Unlock()
 		return addrs
 	}
-	return append([]string{hostPort}, addrs...)
+	return append([]string{remembered.hostPort}, addrs...)
 }
 
 func isLinkLocalAddr(hostPort string) bool {

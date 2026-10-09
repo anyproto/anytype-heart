@@ -113,7 +113,7 @@ type service struct {
 	// inboundLinkLocal is the IPv6 link-local address a LAN peer last
 	// connected to us from (GO-7581), kept across discoveries that carry
 	// none; guarded by ownMu
-	inboundLinkLocal map[string]string
+	inboundLinkLocal map[string]inboundLinkLocal
 	// exchangeFn is the outbound handshake with one peer (shared spaces, and
 	// whether the result is a v2 proof); a seam for tests
 	exchangeFn func(ctx context.Context, peerId string, own *localdiscovery.OwnAddresses) (shared []string, proof bool, err error)

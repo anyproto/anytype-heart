@@ -74,6 +74,9 @@ func (s *service) recordLocalPeer(ctx context.Context, peerId string, localServe
 			portAddrs = append(portAddrs, hostPort)
 			if ip.IsLinkLocalUnicast() && ip.Zone() != "" {
 				s.rememberInboundLinkLocal(peerId, hostPort)
+			} else {
+				// the peer reached us another way: that path works now
+				s.forgetInboundLinkLocal(peerId)
 			}
 		}
 	}

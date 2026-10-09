@@ -2,13 +2,17 @@ package spacecore
 
 import (
 	"context"
+	"net"
 	"net/netip"
 	"slices"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/any-sync/commonspace/clientspaceproto"
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
@@ -160,23 +164,34 @@ func TestRecordLocalPeer(t *testing.T) {
 }
 
 func TestWithInboundLinkLocal(t *testing.T) {
-	stubInterfaces := func(t *testing.T, present ...string) {
-		orig := interfaceExists
-		t.Cleanup(func() { interfaceExists = orig })
-		interfaceExists = func(zone string) bool { return slices.Contains(present, zone) }
+	stubLinks := func(t *testing.T, usable ...string) {
+		orig := linkLocalUsable
+		t.Cleanup(func() { linkLocalUsable = orig })
+		linkLocalUsable = func(zone string) bool { return slices.Contains(usable, zone) }
+	}
+	clock := func(t *testing.T) *time.Time {
+		at := time.Date(2026, 10, 9, 18, 0, 0, 0, time.UTC)
+		orig := timeNow
+		t.Cleanup(func() { timeNow = orig })
+		timeNow = func() time.Time { return at }
+		return &at
+	}
+	record := func(s *service, connAddr string) {
+		ctx := peer.CtxWithPeerAddr(context.Background(), connAddr)
+		s.recordLocalPeer(ctx, "mac", &clientspaceproto.LocalServer{Ips: []string{"192.168.139.3"}, Port: 4006}, nil, false)
 	}
 	inbound := func(t *testing.T) *service {
 		s, _, _ := newAccountPeersService(t, nil, nil)
 		s.peerService = &recordingPeerService{}
-		ctx := peer.CtxWithPeerAddr(context.Background(), "yamux://[fe80::1%en2]:51234")
-		s.recordLocalPeer(ctx, "mac", &clientspaceproto.LocalServer{Ips: []string{"192.168.139.3"}, Port: 4006}, nil, false)
+		record(s, "yamux://[fe80::1%en2]:51234")
 		return s
 	}
 
 	t.Run("an IPv4-only discovery keeps the inbound link-local in front", func(t *testing.T) {
 		// given: the Mac connected over the cable, then native discovery
 		// resolved only an IPv4 address the cable can't reach
-		stubInterfaces(t, "en2")
+		clock(t)
+		stubLinks(t, "en2")
 		s := inbound(t)
 
 		// when
@@ -187,23 +202,26 @@ func TestWithInboundLinkLocal(t *testing.T) {
 	})
 
 	t.Run("a discovery that found nothing still has the cable", func(t *testing.T) {
-		stubInterfaces(t, "en2")
+		clock(t)
+		stubLinks(t, "en2")
 		s := inbound(t)
 
 		assert.Equal(t, []string{"[fe80::1%en2]:4006"}, s.withInboundLinkLocal("mac", nil))
 	})
 
 	t.Run("a discovery with its own link-local wins", func(t *testing.T) {
-		stubInterfaces(t, "en2")
+		clock(t)
+		stubLinks(t, "en2")
 		s := inbound(t)
 		addrs := []string{"[fe80::2%en2]:4006"}
 
 		assert.Equal(t, addrs, s.withInboundLinkLocal("mac", addrs))
 	})
 
-	t.Run("an unplugged cable is forgotten", func(t *testing.T) {
-		// given
-		stubInterfaces(t)
+	t.Run("an unusable link is forgotten", func(t *testing.T) {
+		// given: unplugged, down, or the interface gained IPv4
+		clock(t)
+		stubLinks(t)
 		s := inbound(t)
 
 		// when
@@ -214,13 +232,53 @@ func TestWithInboundLinkLocal(t *testing.T) {
 		assert.Empty(t, s.inboundLinkLocal)
 	})
 
-	t.Run("an IPv4 inbound connection remembers nothing", func(t *testing.T) {
-		stubInterfaces(t, "en2")
-		s, _, _ := newAccountPeersService(t, nil, nil)
-		s.peerService = &recordingPeerService{}
-		ctx := peer.CtxWithPeerAddr(context.Background(), "yamux://192.168.1.62:51234")
-		s.recordLocalPeer(ctx, "mac", &clientspaceproto.LocalServer{Port: 4006}, nil, false)
+	t.Run("it expires without a newer connection", func(t *testing.T) {
+		// given
+		at := clock(t)
+		stubLinks(t, "en2")
+		s := inbound(t)
 
+		// when
+		*at = at.Add(inboundLinkLocalTTL + time.Second)
+
+		// then
+		assert.Equal(t, []string{"192.168.139.3:4006"}, s.withInboundLinkLocal("mac", []string{"192.168.139.3:4006"}))
+	})
+
+	t.Run("a newer connection renews it", func(t *testing.T) {
+		at := clock(t)
+		stubLinks(t, "en2")
+		s := inbound(t)
+		*at = at.Add(inboundLinkLocalTTL)
+		record(s, "yamux://[fe80::1%en2]:51235")
+		*at = at.Add(time.Minute)
+
+		assert.Equal(t, []string{"[fe80::1%en2]:4006"}, s.withInboundLinkLocal("mac", nil))
+	})
+
+	t.Run("an IPv4 connection supersedes it", func(t *testing.T) {
+		// given
+		clock(t)
+		stubLinks(t, "en2")
+		s := inbound(t)
+
+		// when: the peer came back over Wi-Fi
+		record(s, "yamux://192.168.1.62:51234")
+
+		// then
 		assert.Equal(t, []string{"192.168.1.62:4006"}, s.withInboundLinkLocal("mac", []string{"192.168.1.62:4006"}))
 	})
+}
+
+func TestLinkLocalUsable(t *testing.T) {
+	// the loopback interface is up and has IPv4
+	ifaces, err := net.Interfaces()
+	require.NoError(t, err)
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagLoopback != 0 && iface.Flags&net.FlagUp != 0 {
+			assert.False(t, linkLocalUsable(iface.Name), "an interface with IPv4")
+			assert.False(t, linkLocalUsable(strconv.Itoa(iface.Index)), "the same by index")
+		}
+	}
+	assert.False(t, linkLocalUsable("nonexistent0"))
 }
