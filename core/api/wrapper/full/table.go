@@ -31,6 +31,11 @@ type Inputs struct {
 	// get_op_schema, a document body is open and points at get_schema with
 	// its kind. The table serves them as the document does.
 	OpenAPI []byte
+	// OpMembers is each op's members as the op list in a tool description
+	// shows them — required ones bare, optional ones marked ?, see
+	// OpMembers — keyed by op name. Nil leaves the list bare; set, every op
+	// an envelope names must be in it.
+	OpMembers map[string][]string
 }
 
 // ArgIn says where an argument goes on the wire.
