@@ -10,6 +10,12 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// getsockoptInt is a seam: a test injects a socket error no real listener
+// can be made to carry.
+var getsockoptInt = defaultGetsockoptInt
+
+var defaultGetsockoptInt = unix.GetsockoptInt
+
 // probeSocket reads the listening socket's pending error. iOS sets EBADF on a
 // socket it defuncted (XNU sodefunct); a healthy listener reports 0. SO_ERROR
 // is read-and-clear, so a caller must act on the first failure.
@@ -25,7 +31,7 @@ func probeSocket(lis net.Listener) error {
 	var soErr int
 	var getErr error
 	if err = rc.Control(func(fd uintptr) {
-		soErr, getErr = unix.GetsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_ERROR)
+		soErr, getErr = getsockoptInt(int(fd), unix.SOL_SOCKET, unix.SO_ERROR)
 	}); err != nil {
 		return fmt.Errorf("control: %w", err)
 	}

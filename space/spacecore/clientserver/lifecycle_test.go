@@ -129,29 +129,6 @@ func TestListenerLifecycle(t *testing.T) {
 		})
 	})
 
-	t.Run("a Background during a slow rebind wins: the new socket is closed, not installed", func(t *testing.T) {
-		synctest.Test(t, func(t *testing.T) {
-			// given: the rebind is stuck in listen
-			fx := newLifecycleFixture(t)
-			fx.start(t)
-			fx.listenGate = make(chan struct{})
-			fx.StateChange(int(domain.CompStateAppWentBackground))
-			fx.StateChange(int(domain.CompStateAppWentForeground))
-			synctest.Wait()
-
-			// when: the app goes to background again while binding, and
-			// StateChange must not wait for the stuck worker
-			fx.StateChange(int(domain.CompStateAppWentBackground))
-			close(fx.listenGate)
-			synctest.Wait()
-
-			// then
-			require.NotNil(t, fx.lastBound())
-			assert.True(t, fx.lastBound().isClosed())
-			assert.Nil(t, fx.current())
-		})
-	})
-
 	t.Run("a duplicate Foreground with a healthy socket does nothing", func(t *testing.T) {
 		synctest.Test(t, func(t *testing.T) {
 			// given
@@ -191,6 +168,105 @@ func TestListenerLifecycle(t *testing.T) {
 			assert.Equal(t, []int{testLanPort, testLanPort, testLanPort}, fx.ports())
 			require.NotNil(t, fx.lastBound())
 			assert.Same(t, fx.lastBound(), fx.current())
+		})
+	})
+
+	t.Run("retries back off up to the cap, still on the saved port", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			// given: nine failures, past the end of the backoff table
+			fx := newLifecycleFixture(t)
+			fx.start(t)
+			for range 9 {
+				fx.listenErrs = append(fx.listenErrs, syscall.EADDRINUSE)
+			}
+			fx.StateChange(int(domain.CompStateAppWentBackground))
+			start := time.Now()
+
+			// when
+			fx.StateChange(int(domain.CompStateAppWentForeground))
+			synctest.Wait()
+			// 50+100+200+400 ms + 1+2+5+5+5 s, then the tenth attempt binds
+			time.Sleep(18750 * time.Millisecond)
+			synctest.Wait()
+
+			// then
+			assert.Len(t, fx.ports(), 10)
+			for _, port := range fx.ports() {
+				assert.Equal(t, testLanPort, port)
+			}
+			require.NotNil(t, fx.lastBound())
+			assert.Same(t, fx.lastBound(), fx.current())
+			assert.Equal(t, 18750*time.Millisecond, time.Since(start))
+		})
+	})
+
+	t.Run("a Background during a backoff wait stops the retries", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			// given: the first bind fails, the worker waits 50 ms
+			fx := newLifecycleFixture(t)
+			fx.start(t)
+			fx.listenErrs = []error{syscall.EADDRINUSE}
+			fx.StateChange(int(domain.CompStateAppWentBackground))
+			fx.StateChange(int(domain.CompStateAppWentForeground))
+			synctest.Wait()
+
+			// when
+			fx.StateChange(int(domain.CompStateAppWentBackground))
+			time.Sleep(10 * time.Second)
+			synctest.Wait()
+
+			// then
+			assert.Len(t, fx.ports(), 1)
+			assert.Nil(t, fx.current())
+		})
+	})
+
+	t.Run("a Foreground during a long backoff wait retries at once", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			// given: six failures, so the worker is in a 2 s wait
+			fx := newLifecycleFixture(t)
+			fx.start(t)
+			for range 6 {
+				fx.listenErrs = append(fx.listenErrs, syscall.EADDRINUSE)
+			}
+			fx.StateChange(int(domain.CompStateAppWentBackground))
+			fx.StateChange(int(domain.CompStateAppWentForeground))
+			synctest.Wait()
+			time.Sleep(1750 * time.Millisecond) // 50+100+200+400+1000 ms: five failures
+			synctest.Wait()
+			time.Sleep(time.Millisecond)
+			synctest.Wait()
+			require.Len(t, fx.ports(), 6, "precondition: the sixth attempt failed and a 2 s wait began")
+
+			// when: Background and Foreground again, the port is free now
+			fx.StateChange(int(domain.CompStateAppWentBackground))
+			fx.StateChange(int(domain.CompStateAppWentForeground))
+			synctest.Wait()
+
+			// then: no waiting for the old timer
+			assert.Len(t, fx.ports(), 7)
+			assert.Same(t, fx.lastBound(), fx.current())
+		})
+	})
+
+	t.Run("Close during a backoff wait stops the worker and closes the listener", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			// given
+			fx := newLifecycleFixture(t)
+			fx.startLifecycle()
+			synctest.Wait()
+			fx.listenErrs = []error{syscall.EADDRINUSE}
+			fx.StateChange(int(domain.CompStateAppWentBackground))
+			fx.StateChange(int(domain.CompStateAppWentForeground))
+			synctest.Wait()
+
+			// when
+			require.NoError(t, fx.Close(context.Background()))
+
+			// then
+			assert.Len(t, fx.ports(), 1)
+			_, err := fx.lan.Accept()
+			assert.ErrorIs(t, err, net.ErrClosed)
 		})
 	})
 
@@ -298,5 +374,101 @@ func TestStartServerPersistFailure(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, fx.ServerStarted())
 		require.Len(t, fx.yamux.listeners, 1)
+	})
+}
+
+// The bind holds lc.mu, which does not block durably inside synctest, so the
+// contention cases run in real time.
+func TestListenerLifecycleContention(t *testing.T) {
+	t.Run("a Background while a socket is already bound waits for it and closes it", func(t *testing.T) {
+		// given: listen has created the socket but not returned yet
+		fx := newLifecycleFixture(t)
+		bound := make(chan *fakeListener, 1)
+		release := make(chan struct{})
+		var releaseOnce sync.Once
+		releaseBind := func() { releaseOnce.Do(func() { close(release) }) }
+		// a failing assertion must not leave the worker stuck in listen,
+		// or the cleanup that stops it would hang
+		t.Cleanup(releaseBind)
+		fx.lc.listen = func(int) (net.Listener, error) {
+			lis := newFakeListener()
+			bound <- lis
+			<-release
+			return lis, nil
+		}
+		fx.startLifecycle()
+		t.Cleanup(func() {
+			releaseBind()
+			fx.stopLifecycle()
+		})
+		fx.StateChange(int(domain.CompStateAppWentBackground))
+		fx.StateChange(int(domain.CompStateAppWentForeground))
+		live := <-bound
+
+		// when
+		backgroundDone := make(chan struct{})
+		go func() {
+			fx.StateChange(int(domain.CompStateAppWentBackground))
+			close(backgroundDone)
+		}()
+
+		// then: Background cannot return while that socket is live
+		select {
+		case <-backgroundDone:
+			t.Fatal("Background returned while a bound socket was not yet installed")
+		case <-time.After(50 * time.Millisecond):
+		}
+		releaseBind()
+		<-backgroundDone
+		assert.True(t, live.isClosed(), "the socket bound during Background must be closed when it returns")
+		assert.Nil(t, fx.current())
+	})
+
+	t.Run("Close during an in-flight bind leaves no socket open", func(t *testing.T) {
+		// given
+		fx := newLifecycleFixture(t)
+		bound := make(chan *fakeListener, 1)
+		release := make(chan struct{})
+		var releaseOnce sync.Once
+		releaseBind := func() { releaseOnce.Do(func() { close(release) }) }
+		// a failing assertion must not leave the worker stuck in listen,
+		// or the cleanup that stops it would hang
+		t.Cleanup(releaseBind)
+		fx.lc.listen = func(int) (net.Listener, error) {
+			lis := newFakeListener()
+			bound <- lis
+			<-release
+			return lis, nil
+		}
+		fx.startLifecycle()
+		fx.StateChange(int(domain.CompStateAppWentBackground))
+		fx.StateChange(int(domain.CompStateAppWentForeground))
+		live := <-bound
+
+		// when
+		closeDone := make(chan error, 1)
+		go func() { closeDone <- fx.Close(context.Background()) }()
+		releaseBind()
+
+		// then
+		require.NoError(t, <-closeDone)
+		assert.True(t, live.isClosed())
+	})
+}
+
+func TestRebindAfterClose(t *testing.T) {
+	t.Run("a socket bound after the listener closed is closed, not leaked", func(t *testing.T) {
+		// given
+		fx := newLifecycleFixture(t)
+		require.NoError(t, fx.lan.Close())
+
+		// when
+		bound, err := fx.rebindOnce()
+
+		// then
+		require.NoError(t, err)
+		assert.False(t, bound)
+		require.NotNil(t, fx.lastBound())
+		assert.True(t, fx.lastBound().isClosed())
 	})
 }

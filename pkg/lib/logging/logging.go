@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/initialparams"
 )
 
-const DefaultLogLevels = "common.commonspace.headsync=INFO;core.block.editor.spaceview=INFO;anytype-app=INFO;anytype-core-account=INFO;*=WARN"
+const DefaultLogLevels = "common.commonspace.headsync=INFO;core.block.editor.spaceview=INFO;anytype-app=INFO;anytype-core-account=INFO;client.space.clientserver=INFO;*=WARN"
 const lumberjackScheme = "lumberjack"
 
 var DefaultCfg = logger.Config{

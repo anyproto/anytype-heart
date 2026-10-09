@@ -211,5 +211,10 @@ func (s *clientServer) listenPort(ctx context.Context, tryPort int) (port int, e
 
 func (s *clientServer) Close(_ context.Context) (err error) {
 	s.stopLifecycle()
+	if s.lan != nil {
+		// after the worker stopped, so no rebind can install past it; yamux
+		// closes it again on its own Close, which is a no-op
+		_ = s.lan.Close()
+	}
 	return nil
 }

@@ -1,6 +1,6 @@
 # iOS LAN listener lifecycle: close on background, rebind on the same port
 
-Date: 2026-10-09. Ticket: GO-7577. Status: implemented (revised after 3 Codex review lenses); on-device acceptance pending.
+Date: 2026-10-09. Ticket: GO-7577. Status: implemented; spec revised after 3 Codex lenses, implementation after a 4-lens review round; on-device acceptance pending.
 Companion: `2026-10-09-ios-native-mdns-design.md` (GO-7576). Discovery moves to the system DNS-SD in the app, so this spec only covers the TCP listener. **Both must ship in the same app release**: native mDNS advertises the port this spec keeps alive.
 
 ## Problem
@@ -29,7 +29,7 @@ Apple's guidance (TN2277; Quinn): close listeners before the app can be suspende
 
 1. After a foreground transition, an iPhone accepts LAN connections within ~1 s, **on the same port as before**.
 2. While the app is backgrounded, LAN peers get an immediate refusal for new connections instead of a TLS-handshake hang.
-3. A listener that dies without a lifecycle event is detected and rebound while the app is in the foreground. This covers a missed Background and a suspension inside a background task. Goal 3 covers only states in which heart's goroutines run, that is, while not suspended.
+3. A listener that dies without a lifecycle event is detected and rebound while the app is in the foreground. This covers a missed Background and a suspension inside a background task. Goal 3 covers only states in which heart's goroutines run, that is, while not suspended. A **missed Foreground** after a delivered Background is not recoverable here: the recorded state stays background, and a timer can't tell continued background execution from a lost event. The listener then waits for the next Foreground, the same as the HTTP gateway.
 
 ## Non-goals
 
@@ -52,7 +52,7 @@ All of it lives in `space/spacecore/clientserver`. No any-sync change is needed:
 2. Call `conn, err := inner.Accept()`.
 3. **Success:** re-check under the mutex. If the outer listener is closed, or `gen` changed (a pause or rebind happened meanwhile), close `conn` and loop back to step 1, or return `net.ErrClosed` if closed. Otherwise return `conn`. A connection accepted by an obsolete socket is never handed to yamux.
 4. **Error:**
-   - **Outer listener closed:** return `net.ErrClosed`. yamux's loop then exits; it logs at ERROR because it compares with `!=`, which is harmless.
+   - **Outer listener closed:** return the bare `net.ErrClosed`. yamux's loop then exits and logs "listener closed" at INFO.
    - **`gen` changed** (intentional pause or rebind): loop back to step 1.
    - **Temporary error** (`net.Error.Temporary()`): return it. yamux sleeps 1 s and retries, as today.
    - **Anything else, on the current `gen`:** the socket died, for example EBADF from a defunct listener with a queued connection. Mark it dead and close it (`inner = nil`, `gen++`), send a non-blocking rebind request to the worker, and loop back to step 1.
@@ -61,10 +61,13 @@ All of it lives in `space/spacecore/clientserver`. No any-sync change is needed:
 
 **`pause()`** closes `inner` and sets it to nil, then `gen++`. Go's `Close` is synchronous and wakes a goroutine parked in `Accept` (`pd.evict`), so this also releases a goroutine stuck on a defunct fd.
 
-**`rebind()`** binds the saved port and nothing else:
-1. Close any old `inner` first. While the old fd is open, its defunct PCB stays referenced, and the new bind can fail with EADDRINUSE.
-2. `net.Listen("tcp", ":"+savedPort)` through an injectable `listen` func. On error, return it; the worker retries with backoff.
-3. Under the mutex: if the outer listener was closed meanwhile, close the new listener and return `net.ErrClosed`. Otherwise install it with `gen++` and `Broadcast`.
+**Rebinding** is the worker's `rebindOnce`. It runs **entirely under the lifecycle mutex `lc.mu`** (the one Background takes):
+1. If the desired state is background, do nothing.
+2. Close any old `inner` first. While the old fd is open, its defunct PCB stays referenced, and the new bind can fail with EADDRINUSE.
+3. Bind the saved port with `net.Listen("tcp", ":"+savedPort)` through an injectable `listen` func.
+4. Install the socket with `install`. If the outer listener was closed meanwhile, `install` refuses and the new socket is closed.
+
+A Background therefore either runs before the bind and is seen in step 1, or waits until the new socket is installed and then closes it. A live socket that is not installed never exists while Background returns. The bind is a local syscall, so Background waits microseconds at most. (Review round 1 found the earlier bind-outside-the-lock version could leave a live, untracked socket across a suspension.)
 
 **`probe()`** reports whether the current socket is healthy. It calls `inner.(syscall.Conn).SyscallConn().Control` with `getsockopt(SOL_SOCKET, SO_ERROR)`. A non-zero error, or no inner listener, means dead. SO_ERROR is read-and-clear, so the caller rebinds on the first failure.
 
@@ -84,11 +87,13 @@ The platform gate is a field (`lifecycle bool`, set from `runtime.GOOS == "ios"`
 
 **Worker goroutine** (started in `Run` when `lifecycle` is on):
 - It acts on the **latest** desired state, using a generation number so a stale kick can't undo a newer Background. Before installing a rebound socket it re-checks `desired == foreground`. If the app went to background meanwhile, it closes the new socket instead.
-- **Rebind retries:** 50, 100, 200, 400 ms, then 1, 2, 5 s, capped at 5 s, for as long as the desired state is foreground and the port isn't bound. Each failure is logged at WARN with the errno. The port never changes at runtime (D2).
+- **Rebind retries:** 50, 100, 200, 400 ms, then 1, 2, 5 s, capped at 5 s, for as long as the desired state is foreground and the port isn't bound. The port never changes at runtime (D2).
+  - **Interrupting the wait:** a new lifecycle signal (Foreground, Background, or a dead socket) interrupts the backoff wait. The worker acts on it at once and starts the backoff over from 50 ms.
+  - **Logging failures:** at WARN, on the first attempt and then about once a minute while the failure persists.
 - **Watchdog:** every 20 s while desired ≠ background, it calls `probe()` and rebinds on failure. The worker also takes a rebind request from `Accept` (§1, step 4).
 - **Initial state:** nothing has been reported yet, and Background is enum zero, so the worker starts as "foreground" with the watchdog active.
 
-`Close` stops the worker and closes the `lanListener`.
+`clientServer.Close` stops the worker first, then closes the `lanListener`. No rebind can install past it, and yamux's later Close of the same wrapper is a no-op.
 
 ### 3. Startup fix: a bound listener must count as started
 
@@ -150,13 +155,26 @@ Today `startServer` returns an error when **persisting** the port fails (`storag
 3. **Background:** while locked, connects get **refused** immediately, not a handshake timeout.
 4. **Real sync, not just lanprobe:** Mac desktop app and iPhone share a space. Lock and unlock the iPhone, then edit an object on the Mac and open an attached file on the iPhone; both sync over LAN with the node blocked or offline. lanprobe's fake exchanges prove reachability, not sync.
 5. **Stress:** 10 lock/unlock cycles. The port is never stuck refused in the foreground, and it never changes.
-6. **Missed lifecycle event:** a debug toggle drops the Foreground RPC. The watchdog restores the listener within 20 s.
+6. **Missed Background:** a debug toggle drops **both** lifecycle RPCs around one lock, so the recorded state stays foreground. After unlock, the watchdog finds the defunct socket (WARN `lan listener socket found dead`) and rebinds within 20 s. That line, with its errno, is also the on-device proof that the SO_ERROR probe works. A dropped Foreground alone is not recoverable by design (see Goal 3).
+
+## Observability
+
+- **INFO, visible in user builds** (`client.space.clientserver=INFO` was added to `logging.DefaultLogLevels`):
+  - `lan listener paused for background`;
+  - `lan listener rebinding`;
+  - `lan listener rebound`, with the attempt count and how long it took.
+
+  That's about two lines per lock cycle, enough to tell a missing transition from a successful rebind.
+- **WARN:**
+  - `lan listener socket found dead` (the probe or Accept found a dead socket without a pause of ours);
+  - `lan listener socket died` (from Accept);
+  - `lan listener rebind failed` (rate-limited).
 
 ## Rollout
 
 1. **Diagnostic build** (iOS, no pause): log `probe()` on every Foreground for a few lock cycles. Confirm SO_ERROR reports EBADF for a defunct listener. Otherwise switch to the self-dial fallback.
 2. **Heart PR:** `lanListener`, the iOS lifecycle worker, the startup fix and tests.
-3. **Ship in the same app release as GO-7576 Part B** (the anytype-swift native mDNS).
+3. **Ship in the same app release as GO-7576 Part B** (the anytype-swift native mDNS). If this heart change ships first, iOS keeps its zeroconf fallback. That responder is still dead after a suspension, so this fix alone helps only peers that already know the address. It is still strictly better than today's permanently dead listener, never worse.
 4. **On-device acceptance** as above.
 
 ## Open questions

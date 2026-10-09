@@ -1,13 +1,11 @@
 package clientserver
 
 import (
-	"errors"
 	"net"
 	"sync"
 	"syscall"
 	"testing"
 	"testing/synctest"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -253,6 +251,76 @@ func TestLanListener(t *testing.T) {
 		})
 	})
 
+	t.Run("a connection accepted after a pause is closed and Accept keeps waiting", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			// given: Accept is blocked on a socket that ignores close
+			first := newFakeListener()
+			first.ignoreClose = true
+			l := newLanListener(first, make(chan struct{}, 1))
+			res := acceptAsync(l)
+			synctest.Wait()
+
+			// when: paused (Background), and the old socket still delivers
+			l.pause()
+			stale := &fakeConn{}
+			first.conns <- stale
+			synctest.Wait()
+
+			// then
+			assert.True(t, stale.isClosed(), "a connection from before the pause must not reach yamux")
+			assert.Len(t, res, 0)
+			require.NoError(t, l.Close())
+			assert.ErrorIs(t, (<-res).err, net.ErrClosed)
+		})
+	})
+
+	t.Run("an error from a superseded socket does not drop its replacement", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			// given
+			first := newFakeListener()
+			first.ignoreClose = true
+			dead := make(chan struct{}, 1)
+			l := newLanListener(first, dead)
+			res := acceptAsync(l)
+			synctest.Wait()
+			second := newFakeListener()
+			require.NoError(t, l.install(second))
+
+			// when: the old socket fails after it was replaced
+			first.errs <- &net.OpError{Op: "accept", Err: syscall.EBADF}
+			synctest.Wait()
+
+			// then
+			assert.Len(t, dead, 0, "an obsolete error must not request a rebind")
+			assert.False(t, second.isClosed())
+			want := &fakeConn{}
+			second.conns <- want
+			got := <-res
+			require.NoError(t, got.err)
+			assert.Same(t, want, got.conn)
+		})
+	})
+
+	t.Run("a connection accepted after Close is closed", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			// given
+			first := newFakeListener()
+			first.ignoreClose = true
+			l := newLanListener(first, make(chan struct{}, 1))
+			res := acceptAsync(l)
+			synctest.Wait()
+
+			// when
+			require.NoError(t, l.Close())
+			stale := &fakeConn{}
+			first.conns <- stale
+
+			// then
+			assert.ErrorIs(t, (<-res).err, net.ErrClosed)
+			assert.True(t, stale.isClosed())
+		})
+	})
+
 	t.Run("install after Close is refused", func(t *testing.T) {
 		// given
 		l := newLanListener(newFakeListener(), make(chan struct{}, 1))
@@ -263,72 +331,5 @@ func TestLanListener(t *testing.T) {
 
 		// then
 		assert.ErrorIs(t, err, net.ErrClosed)
-	})
-}
-
-// Real sockets do not block durably inside synctest, so these run outside it.
-func TestLanListenerRealSockets(t *testing.T) {
-	t.Run("pause refuses new connections and rebind serves the same port", func(t *testing.T) {
-		// given
-		first, err := net.Listen("tcp", "127.0.0.1:0")
-		require.NoError(t, err)
-		addr := first.Addr().String()
-		l := newLanListener(first, make(chan struct{}, 1))
-		t.Cleanup(func() { _ = l.Close() })
-		go func() {
-			for {
-				conn, err := l.Accept()
-				if err != nil {
-					return
-				}
-				_ = conn.Close()
-			}
-		}()
-
-		// when
-		l.pause()
-
-		// then
-		_, err = net.DialTimeout("tcp", addr, time.Second)
-		require.Error(t, err, "a paused listener must refuse")
-
-		// when
-		next, err := net.Listen("tcp", addr)
-		require.NoError(t, err, "the same port must be free right after pause")
-		require.NoError(t, l.install(next))
-
-		// then
-		conn, err := net.DialTimeout("tcp", addr, time.Second)
-		require.NoError(t, err)
-		_ = conn.Close()
-	})
-
-	t.Run("a healthy socket passes the probe", func(t *testing.T) {
-		// given
-		lis, err := net.Listen("tcp", "127.0.0.1:0")
-		require.NoError(t, err)
-		l := newLanListener(lis, make(chan struct{}, 1))
-		t.Cleanup(func() { _ = l.Close() })
-
-		// when
-		err = l.probe()
-
-		// then
-		assert.NoError(t, err)
-	})
-
-	t.Run("a closed socket fails the probe", func(t *testing.T) {
-		// given
-		lis, err := net.Listen("tcp", "127.0.0.1:0")
-		require.NoError(t, err)
-		l := newLanListener(lis, make(chan struct{}, 1))
-		_ = lis.Close() // closed behind the wrapper's back
-
-		// when
-		err = l.probe()
-
-		// then
-		assert.Error(t, err)
-		assert.False(t, errors.Is(err, errNoListener))
 	})
 }

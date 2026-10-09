@@ -2,6 +2,7 @@ package clientserver
 
 import (
 	"context"
+	"errors"
 	"net"
 	"strconv"
 	"sync"
@@ -146,63 +147,72 @@ func (s *clientServer) lifecycleWorker(ctx context.Context, done chan struct{}) 
 // reconcile brings the socket in line with the desired state: paused in the
 // background, bound and healthy in the foreground.
 func (s *clientServer) reconcile(ctx context.Context) {
-	if s.isBackground(true) {
+	s.lc.mu.Lock()
+	if s.lc.desired == desiredBackground {
+		s.lan.pause() // idempotent; covers a Background seen before start
+		s.lc.mu.Unlock()
 		return
 	}
+	s.lc.mu.Unlock()
+
 	probeErr := s.lc.probe()
 	if probeErr == nil {
 		return
 	}
-	log.Info("lan listener needs rebind", zap.Int("port", s.port), zap.Error(probeErr))
+	if errors.Is(probeErr, errNoListener) {
+		// paused by us or dropped by Accept: the normal foreground path
+		log.Info("lan listener rebinding", zap.Int("port", s.port))
+	} else {
+		// found dead without a pause of ours: on iOS a socket defuncted
+		// while no Background arrived; the evidence the probe works
+		log.Warn("lan listener socket found dead", zap.Int("port", s.port), zap.Error(probeErr))
+	}
 	start := time.Now()
 	for attempt := 0; ; attempt++ {
-		// close the old socket first: while a defunct fd stays open its PCB
-		// keeps the port referenced and the new bind fails
-		s.lan.pause()
-		next, err := s.lc.listen(s.port)
-		if err == nil {
-			s.installRebound(next, attempt, start)
+		bound, err := s.rebindOnce()
+		if bound || err == nil {
+			if bound {
+				log.Info("lan listener rebound", zap.Int("port", s.port), zap.Int("attempts", attempt+1), zap.Duration("took", time.Since(start)))
+			}
 			return
 		}
-		log.Warn("lan listener rebind failed", zap.Int("port", s.port), zap.Int("attempt", attempt+1), zap.Error(err))
+		// once at the start, then about once a minute while it persists
+		if attempt == 0 || attempt%12 == 0 {
+			log.Warn("lan listener rebind failed", zap.Int("port", s.port), zap.Int("attempt", attempt+1), zap.Error(err))
+		}
 		select {
 		case <-ctx.Done():
 			return
+		case <-s.lc.kickChan():
+			// a new Foreground (or Background) arrived: act on it now and
+			// start the backoff over
+			attempt = -1
 		case <-time.After(s.lc.backoff[min(attempt, len(s.lc.backoff)-1)]):
 		}
-		if s.isBackground(false) {
-			return
-		}
 	}
 }
 
-func (s *clientServer) installRebound(next net.Listener, attempt int, start time.Time) {
-	s.lc.mu.Lock()
-	if s.lc.desired != desiredForeground {
-		// a Background arrived while binding: it already paused, keep it so
-		s.lc.mu.Unlock()
-		_ = next.Close()
-		return
-	}
-	err := s.lan.install(next)
-	s.lc.mu.Unlock()
-	if err != nil {
-		_ = next.Close()
-		return
-	}
-	log.Info("lan listener rebound", zap.Int("port", s.port), zap.Int("attempts", attempt+1), zap.Duration("took", time.Since(start)))
-}
-
-// isBackground reports the desired state; with pause set it also makes sure
-// the socket is closed, which is idempotent.
-func (s *clientServer) isBackground(pause bool) bool {
+// rebindOnce binds the saved port and installs the socket, all under lc.mu:
+// a Background either runs before (and this sees it) or waits until the new
+// socket is installed and then closes it. The bind is a local syscall, so
+// StateChange waits for microseconds at most. bound=false with err=nil means
+// there is nothing to do (background, or the listener was closed).
+func (s *clientServer) rebindOnce() (bound bool, err error) {
 	s.lc.mu.Lock()
 	defer s.lc.mu.Unlock()
-	if s.lc.desired != desiredBackground {
-		return false
+	if s.lc.desired == desiredBackground {
+		return false, nil
 	}
-	if pause {
-		s.lan.pause()
+	// close the old socket first: while a defunct fd stays open its PCB
+	// keeps the port referenced and the new bind fails
+	s.lan.pause()
+	next, err := s.lc.listen(s.port)
+	if err != nil {
+		return false, err
 	}
-	return true
+	if err = s.lan.install(next); err != nil {
+		_ = next.Close()
+		return false, nil
+	}
+	return true, nil
 }
