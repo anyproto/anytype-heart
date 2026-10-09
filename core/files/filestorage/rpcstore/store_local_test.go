@@ -1084,13 +1084,14 @@ func TestLocalPeer_ConnectDialAndAcquireShareOneBudget(t *testing.T) {
 			<-ctx.Done()
 			return nil, ctx.Err()
 		})
-		// the dial of A succeeds after 3 s; the acquire must then get only the
-		// remaining 2 s, not a fresh 5 s
+		// the dial of A succeeds after 60% of the budget; the acquire must
+		// then get only the remaining 40%, not a fresh budget
+		dialTook := localPeerConnectTimeout * 3 / 5
 		fx.pool.gets[testLocalA] = func(ctx context.Context) (peer.Peer, error) {
 			select {
 			case <-ctx.Done():
 				return nil, ctx.Err()
-			case <-time.After(3 * time.Second):
+			case <-time.After(dialTook):
 				return peerA, nil
 			}
 		}

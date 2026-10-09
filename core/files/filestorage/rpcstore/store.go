@@ -79,7 +79,15 @@ var (
 	// localPeerConnectTimeout bounds one attempt to get a usable sub-conn to
 	// one local peer: pool lookup/dial (TCP or QUIC + secure handshake) plus
 	// sub-conn open + proto handshake. One budget for both stages.
-	localPeerConnectTimeout = 5 * time.Second
+	//
+	// 2s: on a LAN an awake peer connects in well under 0.5s (measured
+	// 2026-10-09: TCP 1-115ms, handshake 4-815ms). The budget only fails a
+	// peer whose radio is still waking (Android TCP 2.9s right after unlock):
+	// that costs one strike, the node serves the block, the retry after the
+	// ban succeeds. The budget is shared across the peer's addresses, so a
+	// dead address listed first still eats it; heart lists same-subnet ones
+	// first.
+	localPeerConnectTimeout = 2 * time.Second
 	// localPeerStallTimeout: a fetch is cancelled when the sub-conn's
 	// BytesRead has not advanced for this long. On yamux the counter moves in
 	// 64 KiB drpc frames, so this is also a ~105 kbit/s throughput floor.

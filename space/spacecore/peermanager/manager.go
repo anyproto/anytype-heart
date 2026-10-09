@@ -73,7 +73,12 @@ const (
 	// in ocache with both ctx.Done() and the loaded entry ready, so it is
 	// dropped on a coin flip. In LocalOnly mode there are no nodes at all and
 	// these peers are the only sync path, so that eviction costs sync outright.
-	localPeerDialTimeout = time.Second * 5
+	//
+	// 2s, the same LAN budget as rpcstore's localPeerConnectTimeout: awake
+	// LAN peers connect in well under 0.5s (measured 2026-10-09); a phone
+	// still waking its radio can miss it and is evicted until its next mDNS
+	// discovery or inbound exchange re-adds it.
+	localPeerDialTimeout = time.Second * 2
 )
 
 type NodeStatus interface {

@@ -186,12 +186,14 @@ var (
 )
 ```
 
-Why one 5 s connect budget: on a LAN a healthy connect completes in well under a
-second; the bound only decides how long a *stale* mDNS entry costs. Today that cost is
-1 s per block but the peer is never banned, so every block pays it. With 5 s and a ban
-the cost is paid once per ban period. 5 s leaves headroom for a phone whose Wi-Fi radio
-has to leave power-save (hundreds of ms per round trip under load) and for the open
-limiter. It is below the 10 s per-address transport timeout, which means a peer whose
+Why one 2 s connect budget (was 5 s; shortened 2026-10-09 after real-device lanprobe
+measurements): on a LAN a healthy connect completes in well under a second (measured:
+TCP 1-115 ms, secure handshake 4-815 ms); the bound only decides how long a *stale* mDNS
+entry costs. Today that cost is 1 s per block but the peer is never banned, so every
+block pays it. With a budget and a ban the cost is paid once per ban period. 2 s misses
+only a phone whose Wi-Fi radio is still leaving power-save (one Android connect took
+2.9 s right after unlock): that costs one strike while the node serves the block, and the
+retry after the 10 s ban succeeds. It is below the 10 s per-address transport timeout, which means a peer whose
 *first* address is blackholed while a later one works cannot be connected from this
 path; for mDNS peers every address is the same host, so that case means the host is
 gone. Other subsystems dial with longer budgets and the connected peer is then picked
@@ -258,7 +260,7 @@ ctx (caller)
    candidate list. This relies on `pool.fast` ignoring ctx and `entry.waitLoad`
    returning at once under a done ctx (verified above); it is the only way to get
    `getIfActive`'s "all fast paths before any wait" behaviour through the public API.
-3. For each candidate id: `connectCtx` (5 s); `p, err := pool.Get(connectCtx, id)`
+3. For each candidate id: `connectCtx` (2 s); `p, err := pool.Get(connectCtx, id)`
    (fast path for the picked one); then `conn, err := p.AcquireDrpcConn(connectCtx)`;
    cancel `connectCtx` (does not affect the conn). Success → return.
 4. Failure classification (only with the caller's `ctx.Err() == nil`; otherwise return
@@ -284,7 +286,7 @@ ctx (caller)
    redials, and a peer that is really gone fails that dial and is struck there.
 
    Trade-off of the `DeadlineExceeded` row: an any-sync internal timeout shorter than
-   the 5 s budget that surfaces as `DeadlineExceeded` with our ctx alive no longer
+   the 2 s budget that surfaces as `DeadlineExceeded` with our ctx alive no longer
    strikes. Today the internal dial timeout is `DialTimeoutSec = 10 s`, so a slow or
    stale dial outlasts our `connectCtx` and is struck through the second row; were an
    internal timeout shorter, each call would still be bounded by it, only without the
@@ -534,8 +536,8 @@ For every test: how the fixture fails if the implementation is wrong.
 10. **connect: immediate dial error strikes** — A's `Get` returns a transport error at
     once. Expect A struck, B used.
 11. **connect: acquire timeout strikes, zero releases** — `AcquireDrpcConn` blocks until
-    ctx. Expect strike, deadline on the acquire ctx within the same 5 s budget as the
-    dial (the test's `Get` consumes 3 s first, so the acquire ctx must expire at 5 s,
+    ctx. Expect strike, deadline on the acquire ctx within the same connect budget as the
+    dial (the test's `Get` consumes 60% of it first, so the acquire ctx must expire at the budget,
     not 8 s), no Release call. Fails if two budgets are used or the acquire is unbounded.
 12. **connect: `ErrConnClosed` from acquire does not strike** and the next candidate is
     used.
