@@ -2004,7 +2004,7 @@ Every scenario creates its own space, custom types, linked records, queries, a c
 
 ### User turn 6
 
-> Show all six objects in the space, their current types, status properties, and which are in the This sprint collection.
+> Show all five records in the space, their current types, status properties, and which are in the This sprint collection.
 
 ### User turn 7
 
@@ -2014,7 +2014,7 @@ Every scenario creates its own space, custom types, linked records, queries, a c
 
 **Final-state and behavior checks**
 
-- Exactly 2 People, 3 Features, and 2 Bugs in the final space.
+- Exactly 2 People, 2 Features, and 1 Bug in the final space.
 - API rate limiting is type Bug with Priority Medium and Owner Bob preserved.
 - Search timeout issue is type Feature with Priority High, Status Backlog, Owner Alice preserved.
 - High priority work contains exactly Dark mode UI and Search timeout issue.
