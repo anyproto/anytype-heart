@@ -2605,6 +2605,10 @@ func (a *v2StateApplier) applyItems(op opItems, opPath string) error {
 // (v2NewContentOps — the one set the served schema reads too, §8.30) the run
 // carries no id slots at all: they are refused as not part of the op rather
 // than resolved.
+// payloadRelativeIndent is a payload block's depth member: levels below where
+// the run lands.
+const payloadRelativeIndent = "relative_indent"
+
 func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field, op string) ([]map[string]any, error) {
 	if len(raws) == 0 {
 		return nil, v2model.ValidationFailed("blocks must not be empty",
@@ -2640,28 +2644,42 @@ func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field,
 		if err := walkPayloadIdSlots(block, path, visit); err != nil {
 			return nil, err
 		}
+		// a run's depth is relative_indent, relative to where it lands; indent
+		// is a document's absolute depth, and one slot holding both was
+		// the trap: a caller copied a nested block's read depth into a run
+		// inserted after it
+		// the markdown channel's parsed run is the server's own, relative
+		// from 0 already and spelled the format's way
+		depth := payloadRelativeIndent
+		if field == "markdown" {
+			depth = "indent"
+		}
+		if _, absolute := block["indent"]; absolute && depth != "indent" {
+			return nil, v2model.ValidationFailed("a payload block takes relative_indent, not indent",
+				v2model.Issue{Path: path + ".indent", Message: "in a payload the depth is relative_indent, relative to where the run lands (0 = the anchor's level); indent is a document's absolute depth — rename it, and give the first block 0"})
+		}
 		rel := 0
-		if v, hasIndent := block["indent"]; hasIndent {
+		if v, hasIndent := block[depth]; hasIndent {
 			f, isNum := jsonFloat64(v)
 			if !isNum || f != float64(int(f)) || f < 0 {
-				return nil, v2model.ValidationFailed("invalid payload indent",
-					v2model.Issue{Path: path + ".indent", Message: "indent must be a non-negative integer, relative to the insertion level (0 = the anchor's level; for inside, 0 = the container's child level)"})
+				return nil, v2model.ValidationFailed("invalid relative_indent",
+					v2model.Issue{Path: path + "." + payloadRelativeIndent, Message: "relative_indent must be a non-negative integer, relative to where the run lands (0 = the anchor's level; for inside, 0 = the container's child level)"})
 			}
 			rel = int(f)
+			delete(block, depth)
 		}
 		if j == 0 && rel != 0 {
-			return nil, v2model.ValidationFailed("the first payload block's indent must be 0",
-				v2model.Issue{Path: path + ".indent", Message: fmt.Sprintf("indent %d on the first block — payload indents are relative: 0 is the insertion level", rel)})
+			return nil, v2model.ValidationFailed("the first payload block's relative_indent must be 0",
+				v2model.Issue{Path: path + "." + payloadRelativeIndent, Message: fmt.Sprintf("relative_indent %d on the first block — 0 is the level the run lands at, the anchor's own", rel)})
 		}
 		if rel > prev+1 {
-			return nil, v2model.ValidationFailed("payload indents must be monotonic",
-				v2model.Issue{Path: path + ".indent", Message: fmt.Sprintf("indent %d follows indent %d — a block can be at most one level deeper than its predecessor", rel, prev)})
+			return nil, v2model.ValidationFailed("payload relative_indents must be monotonic",
+				v2model.Issue{Path: path + "." + payloadRelativeIndent, Message: fmt.Sprintf("relative_indent %d follows relative_indent %d — a block can be at most one level deeper than its predecessor", rel, prev)})
 		}
 		prev = rel
+		// the run below is the format's flat shape, which spells depth indent
 		if rel > 0 {
 			block["indent"] = float64(rel)
-		} else {
-			delete(block, "indent")
 		}
 		run = append(run, block)
 	}
