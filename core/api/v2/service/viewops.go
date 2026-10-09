@@ -391,7 +391,7 @@ func (a *v2StateApplier) canonicalViewKey(input string) (string, []string) {
 	if err != nil {
 		return input, nil // the load error surfaces in validateViewKeys
 	}
-	entry, ok, ambiguous := a.s.resolvePropertyInput(input, entries)
+	entry, ok, ambiguous := a.s.resolvePropertyInputIn(input, entries, a.viewScope())
 	if len(ambiguous) > 0 {
 		return input, ambiguous
 	}
@@ -426,7 +426,7 @@ func (a *v2StateApplier) viewFormatName() func(string) (string, bool) {
 		if err != nil {
 			return "", false
 		}
-		entry, ok, ambiguous := a.s.resolvePropertyInput(key, entries)
+		entry, ok, ambiguous := a.s.resolvePropertyInputIn(key, entries, a.viewScope())
 		if !ok || len(ambiguous) > 0 || entry.Key == "" {
 			return "", false
 		}
@@ -1423,4 +1423,14 @@ func (a *v2StateApplier) mintViewId(views []any) string {
 			return id
 		}
 	}
+}
+
+// viewScope is the property scope of a view slot: the type the set queries,
+// when it queries exactly one (resolvePropertyInputIn).
+func (a *v2StateApplier) viewScope() map[string]bool {
+	setOf := a.st.Details().GetStringList(bundle.RelationKeySetOf)
+	if len(setOf) != 1 {
+		return nil
+	}
+	return a.s.typePropertyScope(a.spaceId, setOf[0])
 }

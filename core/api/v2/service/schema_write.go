@@ -1578,8 +1578,9 @@ func (s *Service) propertyDeleteWarnings(spaceId string, entry propertyEntry, se
 func builtInPropertyHint(holder slugHolder) string {
 	if holder.Kind != "bundled property" || builtInReadOnly(holder.Key) {
 		// nothing to offer: a read-only built-in property takes no writes,
-		// so a type listing it would not help
-		return fmt.Sprintf("key %q is reserved by the built-in property %q — pick a different key", holder.Key, holder.Name)
+		// so a type listing it would not help. An installed one's holder
+		// carries its stored key; the caller speaks the derived slug
+		return fmt.Sprintf("key %q is reserved by the built-in property %q — pick a different key", bundle.ApiSlug(holder.Key), holder.Name)
 	}
 	return fmt.Sprintf("key %q belongs to the built-in property %q (format %s): to use it, name it in a type's property_definitions without a format; for a property of your own, pick a different key",
 		holder.Key, holder.Name, anyblockjson.FormatName(holder.Format))

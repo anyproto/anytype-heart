@@ -791,6 +791,7 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	// 3. Unmarshal with create-missing resolvers (SPEC §3/§2a); on a dry run
 	// the resolvers only record would-be creations
 	resolvers := s.newCreatingResolvers(ctx, spaceId, opts.dryRun, opts.createMissingOptions)
+	resolvers.scope = s.typeKeyPropertyScope(spaceId, envelope.Type)
 	_, snapshot, err := anyblockjson.Unmarshal(body, resolvers.Options())
 	if err != nil {
 		return nil, mapUnmarshalError(body, err, "object")

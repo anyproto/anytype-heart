@@ -67,9 +67,11 @@ func mintRelationSlug(t *testing.T, f *fixture, name, key string) string {
 func TestMintApiObjectKey_UnionCheck(t *testing.T) {
 	t.Run("a name colliding with a bundled derived slug is disambiguated", func(t *testing.T) {
 		// given — the §7.5a-6 headline: "Due Date" slugs to due_date, which
-		// is exactly bundled dueDate's derived slug. Nothing is stored for
-		// it in the space, so ONLY the bundled arm can catch this.
+		// is exactly the installed bundled dueDate's derived slug
 		f := newFixture(t)
+		f.objectStore.AddObjects(t, apiKeySpaceId, []objectstore.TestObject{
+			relationRecord("rel-dd", "dueDate", ""),
+		})
 		want := "due_date_2"
 
 		// when
@@ -79,7 +81,15 @@ func TestMintApiObjectKey_UnionCheck(t *testing.T) {
 		assert.Equal(t, want, got)
 	})
 
-	t.Run("the bundled arm sees uninstalled bundled keys too", func(t *testing.T) {
+	t.Run("an uninstalled bundled relation yields its slug", func(t *testing.T) {
+		// given — dueDate is not installed: it holds nothing here until it
+		// is (bundle.RelationKeepsApiSlug)
+		f := newFixture(t)
+
+		assert.Equal(t, "due_date", mintRelationSlug(t, f, "Due Date", ""))
+	})
+
+	t.Run("the bundled arm sees uninstalled reserved keys too", func(t *testing.T) {
 		f := newFixture(t)
 		// the space holds nothing at all; the derived table is the authority
 		assert.Equal(t, "media_artist_url_2", mintRelationSlug(t, f, "Media artist URL", ""))
@@ -110,11 +120,12 @@ func TestMintApiObjectKey_UnionCheck(t *testing.T) {
 	t.Run("the walk keeps going while spellings are taken", func(t *testing.T) {
 		f := newFixture(t)
 		f.objectStore.AddObjects(t, apiKeySpaceId, []objectstore.TestObject{
+			relationRecord("rel0", "priority", ""),
 			relationRecord("rel1", "68b1c0aa4e1f0d0011223344", "priority_2"),
 			relationRecord("rel2", "68b1c0aa4e1f0d0011223355", "priority_3"),
 		})
 
-		// bundled `priority` holds the bare spelling, rel1/rel2 the next two
+		// installed bundled `priority` holds the bare spelling, rel1/rel2 the next two
 		assert.Equal(t, "priority_4", mintRelationSlug(t, f, "Priority", ""))
 	})
 
@@ -160,6 +171,9 @@ func TestMintApiObjectKey_UnionCheck(t *testing.T) {
 		// given — v1 POST /properties sets apiObjectKey itself; the mint is
 		// the last gate before the store
 		f := newFixture(t)
+		f.objectStore.AddObjects(t, apiKeySpaceId, []objectstore.TestObject{
+			relationRecord("rel-dd", "dueDate", ""),
+		})
 		object := domain.NewDetails()
 		object.SetString(bundle.RelationKeyName, "Anything")
 		object.SetString(bundle.RelationKeyApiObjectKey, "due_date")
@@ -179,8 +193,11 @@ func TestMintApiObjectKey_UnionCheck(t *testing.T) {
 // helper: revert the ensureUniqueApiObjectKey call in createRelation and the
 // created relation stores the shadowing `due_date` again.
 func TestCreateRelation_MintsUniqueApiObjectKey(t *testing.T) {
-	// given
+	// given: the space has the bundled dueDate installed
 	f := newFixture(t)
+	f.objectStore.AddObjects(t, apiKeySpaceId, []objectstore.TestObject{
+		relationRecord("rel-dd", "dueDate", ""),
+	})
 	f.spaceService.EXPECT().Get(mock.Anything, apiKeySpaceId).Return(f.spc, nil)
 	f.spc.EXPECT().Id().Return(apiKeySpaceId).Maybe()
 	f.spc.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).RunAndReturn(

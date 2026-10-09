@@ -1452,7 +1452,7 @@ func (a *v2StateApplier) canonicalizeSetPropertyKeys(op *opSetProperties, opPath
 				return stored, nil
 			}
 		}
-		entry, ok, ambiguous := a.s.resolvePropertyInput(key, entries)
+		entry, ok, ambiguous := a.s.resolvePropertyInputIn(key, entries, a.resolvers.scope)
 		if len(ambiguous) > 0 {
 			return "", ambiguousKeyError("property key", key, path, ambiguous)
 		}

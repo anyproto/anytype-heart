@@ -28,6 +28,9 @@ type keyCanon struct {
 	// no live entry answers to (one bounded query, and only on that path)
 	removed       []propertyEntry
 	removedLoaded bool
+	// scope is the request's type, when it names one: its listed property
+	// ids settle a term two properties answer to (resolvePropertyInputIn)
+	scope map[string]bool
 }
 
 func (s *Service) newKeyCanon(spaceId string) (*keyCanon, error) {
@@ -55,7 +58,7 @@ func (k *keyCanon) canon(input string) (string, []string) {
 			return stored, nil
 		}
 	}
-	entry, ok, ambiguous := k.s.resolvePropertyInput(input, k.entries)
+	entry, ok, ambiguous := k.s.resolvePropertyInputIn(input, k.entries, k.scope)
 	if len(ambiguous) > 0 {
 		return input, ambiguous
 	}

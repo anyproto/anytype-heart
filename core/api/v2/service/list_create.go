@@ -117,6 +117,7 @@ func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.C
 	if err != nil {
 		return nil, err
 	}
+	kc.scope = s.typePropertyScope(spaceId, typeId)
 	if req.Filter != "" {
 		// "type" joins the reference set only so the discovery-served grammar
 		// example (`type IN (…)`) parses to a targeted error below instead of

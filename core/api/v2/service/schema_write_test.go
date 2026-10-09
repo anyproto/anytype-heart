@@ -558,18 +558,37 @@ func TestV2CreateProperty(t *testing.T) {
 		assert.Empty(t, issue.SeeAlso)
 	})
 
-	t.Run("a writable built-in property's key says how to use the property", func(t *testing.T) {
-		// given: priority is bundled and writable, and a type's field list
-		// installs it
+	t.Run("a built-in property the space has not installed leaves its key free", func(t *testing.T) {
+		// given: priority is bundled, and this space never installed it
 		fx := newV2Fixture(t)
 
 		// when
+		result, err := fx.CreateProperty(context.Background(), testSpaceId,
+			v2model.CreatePropertyRequest{Key: "priority", Name: "Priority", Format: "select"}, true)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Created.Properties, 1)
+		assert.Equal(t, "priority", result.Created.Properties[0].Key)
+	})
+
+	t.Run("an installed built-in property's key stays its own", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("rel-priority"),
+			bundle.RelationKeyRelationKey:    domain.String("priority"),
+			bundle.RelationKeyName:           domain.String("Priority"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_number)),
+		})
+
+		// when
 		_, err := fx.CreateProperty(context.Background(), testSpaceId,
-			v2model.CreatePropertyRequest{Key: "priority", Name: "Priority", Format: "select"}, false)
+			v2model.CreatePropertyRequest{Key: "priority", Name: "Level", Format: "select"}, false)
 
 		// then
 		issue := v2Err(t, err).Issues[0]
-		assert.Equal(t, `key "priority" belongs to the built-in property "Priority" (format number): to use it, name it in a type's property_definitions without a format; for a property of your own, pick a different key`, issue.Hint)
+		assert.Equal(t, `key "priority" is reserved by the built-in property "Priority" — pick a different key`, issue.Hint)
 	})
 
 	t.Run("dry run reports without creating", func(t *testing.T) {

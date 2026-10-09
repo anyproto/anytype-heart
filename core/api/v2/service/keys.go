@@ -227,43 +227,150 @@ func (s *Service) liveTypes(spaceId string) ([]typeEntry, error) {
 // guess (the git rule); a full miss returns ok=false and the caller's R9
 // machinery owns the refusal. A resolved bundled term that is not installed
 // in the space has Id == "" — address routes require an installed entry,
-// existence checks do not.
+// existence checks do not. A built-in the space has not installed yields
+// its spelling to a live property of the space's own (dormantBundledProperty).
 func (s *Service) resolvePropertyInput(input string, entries []propertyEntry) (propertyEntry, bool, []string) {
+	return s.resolvePropertyInputIn(input, entries, nil)
+}
+
+// resolvePropertyInputIn is resolvePropertyInput with a type in view: scope
+// holds the ids of the properties the type lists (typePropertyScope). When
+// the chain finds several candidates, the one the type lists wins, so a
+// space holding both a property of its own and the built-in under one
+// spelling answers each object by its type. With no type, or with none or
+// several of the candidates listed, the term stays ambiguous.
+func (s *Service) resolvePropertyInputIn(input string, entries []propertyEntry, scope map[string]bool) (propertyEntry, bool, []string) {
+	entry, ok, candidates := resolvePropertyChain(input, entries)
+	if len(candidates) == 0 {
+		return entry, ok, nil
+	}
+	var listed []propertyEntry
+	for _, candidate := range candidates {
+		if candidate.entry.Id != "" && scope[candidate.entry.Id] {
+			listed = append(listed, candidate.entry)
+		}
+	}
+	if len(listed) == 1 {
+		return listed[0], true, nil
+	}
+	out := make([]string, 0, len(candidates))
+	for _, candidate := range candidates {
+		out = append(out, candidate.desc)
+	}
+	return propertyEntry{}, false, out
+}
+
+// typePropertyScope is the set of property ids a type lists, across its four
+// lists: the tie-break resolvePropertyInputIn applies to an object of that
+// type. A type the store does not hold lists nothing.
+func (s *Service) typePropertyScope(spaceId, typeId string) map[string]bool {
+	if typeId == "" {
+		return nil
+	}
+	details, err := s.store.SpaceIndex(spaceId).GetDetails(typeId)
+	if err != nil || details == nil {
+		return nil
+	}
+	scope := map[string]bool{}
+	for _, listKey := range typeRecommendedListKeys {
+		for _, id := range details.GetStringList(listKey) {
+			scope[id] = true
+		}
+	}
+	return scope
+}
+
+// typeKeyPropertyScope is typePropertyScope by the type's stored key.
+func (s *Service) typeKeyPropertyScope(spaceId, typeKey string) map[string]bool {
+	entries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return nil
+	}
+	for _, entry := range entries {
+		if entry.Key == typeKey {
+			return s.typePropertyScope(spaceId, entry.Id)
+		}
+	}
+	return nil
+}
+
+// propertyCandidate is one holder of an ambiguous term, with the words the
+// refusal names it by.
+type propertyCandidate struct {
+	entry propertyEntry
+	desc  string
+}
+
+func liveCandidates(entries []propertyEntry) []propertyCandidate {
+	descs := describePropertyEntries(entries)
+	out := make([]propertyCandidate, 0, len(entries))
+	for i, entry := range entries {
+		out = append(out, propertyCandidate{entry: entry, desc: descs[i]})
+	}
+	return out
+}
+
+// bundledCandidate is the built-in holder of a term: its live entry when
+// installed (so a type listing it can pick it), described as the bundled
+// property either way.
+func bundledCandidate(key string, entries []propertyEntry) propertyCandidate {
+	rel := bundle.MustGetRelation(domain.RelationKey(key))
+	return propertyCandidate{
+		entry: bundledPropertyCandidate(key, entries),
+		desc:  fmt.Sprintf("the bundled %q (key %s)", rel.Name, key),
+	}
+}
+
+// visibleSlugHolders are the live visible entries answering to slug, other
+// than the one stored under except.
+func visibleSlugHolders(slug, except string, entries []propertyEntry) []propertyEntry {
+	var out []propertyEntry
+	for _, entry := range entries {
+		if !entry.Hidden && entry.Slug != "" && entry.Slug == slug && entry.Key != except {
+			out = append(out, entry)
+		}
+	}
+	return out
+}
+
+func resolvePropertyChain(input string, entries []propertyEntry) (propertyEntry, bool, []propertyCandidate) {
+	keyTaken, slugHolders := servedPropertyKeySets(entries)
 	// 1: exact stored key (hidden included — the stored key is always an
 	// address)
 	for _, entry := range entries {
-		if entry.Key == input {
-			return entry, true, nil
+		if entry.Key != input {
+			continue
 		}
+		// a built-in installed after a property of the space's own took
+		// its spelling (a library type brought it in, an older peer synced
+		// it): the stored key alone no longer says which of the two is meant
+		if !entry.Hidden && bundle.HasRelation(domain.RelationKey(input)) {
+			if others := visibleSlugHolders(input, input, entries); len(others) > 0 {
+				return propertyEntry{}, false, append(liveCandidates(others), bundledCandidate(input, entries))
+			}
+		}
+		return entry, true, nil
 	}
 	// 2: exact live slug — two visible holders is the loud ambiguity
-	var slugMatches []propertyEntry
-	for _, entry := range entries {
-		if !entry.Hidden && entry.Slug != "" && entry.Slug == input {
-			slugMatches = append(slugMatches, entry)
-		}
-	}
+	slugMatches := visibleSlugHolders(input, "", entries)
 	if len(slugMatches) == 1 {
-		if shadowed, ok := shadowedBundledProperty(input, slugMatches[0].Key); ok {
-			return propertyEntry{}, false, append(describePropertyEntries(slugMatches), shadowed)
+		// a live holder of a bundled spelling neither silently wins over an
+		// installed or reserved built-in nor silently loses to it; a dormant
+		// one has yielded the spelling
+		if key, ok := bundle.RelationKeyByApiSlug(input); ok && string(key) != slugMatches[0].Key && !dormantBundledProperty(string(key), keyTaken) {
+			return propertyEntry{}, false, append(liveCandidates(slugMatches), bundledCandidate(string(key), entries))
 		}
 		return slugMatches[0], true, nil
 	}
 	if len(slugMatches) > 1 {
-		return propertyEntry{}, false, describePropertyEntries(slugMatches)
+		return propertyEntry{}, false, liveCandidates(slugMatches)
 	}
 	// 3: the bundled vocabulary (exact key, then the derived table)
 	if rel, err := bundle.PickRelation(domain.RelationKey(input)); err == nil {
 		return propertyEntry{Key: input, Name: rel.Name, Format: rel.Format}, true, nil
 	}
 	if key, ok := bundle.RelationKeyByApiSlug(input); ok {
-		for _, entry := range entries {
-			if entry.Key == string(key) {
-				return entry, true, nil
-			}
-		}
-		rel := bundle.MustGetRelation(key)
-		return propertyEntry{Key: string(key), Name: rel.Name, Format: rel.Format}, true, nil
+		return bundledPropertyCandidate(string(key), entries), true, nil
 	}
 	// 4: the fold layer — exact has failed everywhere, so a single folded
 	// candidate is the intended forgiveness and several are a loud 400
@@ -282,7 +389,7 @@ func (s *Service) resolvePropertyInput(input string, entries []propertyEntry) (p
 		}
 	}
 	for _, key := range bundle.RelationKeysByApiFold(input) {
-		if seen[string(key)] {
+		if seen[string(key)] || yieldedBundledProperty(string(key), keyTaken, slugHolders) {
 			continue
 		}
 		// a hidden internal key is reached by its exact stored key only
@@ -301,7 +408,7 @@ func (s *Service) resolvePropertyInput(input string, entries []propertyEntry) (p
 		return candidates[0], true, nil
 	}
 	if len(candidates) > 1 {
-		return propertyEntry{}, false, describePropertyEntries(candidates)
+		return propertyEntry{}, false, liveCandidates(candidates)
 	}
 	// 5: display names — an agent reading "Due date" from
 	// a ?keys=name body must be able to use it on every channel. Names join
@@ -323,15 +430,15 @@ func (s *Service) resolvePropertyInput(input string, entries []propertyEntry) (p
 		}
 	}
 	if len(nameMatches) > 1 {
-		return propertyEntry{}, false, describePropertyEntries(nameMatches)
+		return propertyEntry{}, false, liveCandidates(nameMatches)
 	}
 	if len(nameMatches) == 1 {
 		// the slug step's no-shadowing discipline, on names: a live visible
 		// holder of a bundled NAME neither silently wins over the bundled
 		// binding nor silently loses to it — the input is ambiguous, refused
 		// with both holders named (wrong-and-silent becomes actionable)
-		if shadowed, ok := shadowedBundledPropertyName(nfcInput, nameMatches[0].Key); ok {
-			return propertyEntry{}, false, append(describePropertyEntries(nameMatches), shadowed)
+		if key, ok := anyblockjson.BundledPropertyKeyByName(nfcInput); ok && key != nameMatches[0].Key && !yieldedBundledProperty(key, keyTaken, slugHolders) {
+			return propertyEntry{}, false, append(liveCandidates(nameMatches), bundledCandidate(key, entries))
 		}
 		return nameMatches[0], true, nil
 	}
@@ -339,7 +446,7 @@ func (s *Service) resolvePropertyInput(input string, entries []propertyEntry) (p
 	// the installed entry wins where present (a renamed installed bundled
 	// property still answers to its bundled name WITH its Id, exactly as the
 	// bundled slug does at step 3)
-	if key, ok := anyblockjson.BundledPropertyKeyByName(nfcInput); ok {
+	if key, ok := anyblockjson.BundledPropertyKeyByName(nfcInput); ok && !yieldedBundledProperty(key, keyTaken, slugHolders) {
 		return bundledPropertyCandidate(key, entries), true, nil
 	}
 	// 5b: the format's fold (FoldKeyTerm — case, `_`/`-`, whitespace,
@@ -361,7 +468,7 @@ func (s *Service) resolvePropertyInput(input string, entries []propertyEntry) (p
 		}
 	}
 	for _, key := range anyblockjson.BundledPropertyKeysByFold(input) {
-		if nameSeen[key] {
+		if nameSeen[key] || yieldedBundledProperty(key, keyTaken, slugHolders) {
 			continue
 		}
 		nameSeen[key] = true
@@ -371,9 +478,34 @@ func (s *Service) resolvePropertyInput(input string, entries []propertyEntry) (p
 		return nameCandidates[0], true, nil
 	}
 	if len(nameCandidates) > 1 {
-		return propertyEntry{}, false, describePropertyEntries(nameCandidates)
+		return propertyEntry{}, false, liveCandidates(nameCandidates)
 	}
 	return propertyEntry{}, false, nil
+}
+
+// dormantBundledProperty reports whether a built-in property has no claim
+// on its key in this space: it is not installed here (keyTaken is the live
+// stored-key set), and it is not the app's own machinery or record keeping,
+// which every space carries. A dormant key is free for a property of the
+// space's own, and once one takes it, the built-in yields its spellings
+// (yieldedBundledProperty). Installing the built-in later ends the yield:
+// the term turns ambiguous, settled by an object's type
+// (resolvePropertyInputIn).
+func dormantBundledProperty(key string, keyTaken map[string]bool) bool {
+	relKey := domain.RelationKey(key)
+	if !bundle.HasRelation(relKey) || keyTaken[key] || bundle.RelationKeepsApiSlug(relKey) || internalPropertyKeys[key] {
+		return false
+	}
+	return !builtInReadOnly(bundle.ApiSlug(key))
+}
+
+// yieldedBundledProperty reports whether a dormant built-in's spelling is
+// held by a live property of the space's own, which then answers to it alone.
+func yieldedBundledProperty(key string, keyTaken map[string]bool, slugHolders map[string][]string) bool {
+	if !dormantBundledProperty(key, keyTaken) {
+		return false
+	}
+	return len(slugHolders[key]) > 0 || len(slugHolders[bundle.ApiSlug(key)]) > 0
 }
 
 // resolveTypeInput is resolvePropertyInput for the type namespace.
@@ -549,21 +681,11 @@ func shadowedBundledType(input, matchedKey string) (string, bool) {
 	return fmt.Sprintf("the bundled %q (key %s)", bundle.MustGetType(key).Name, key), true
 }
 
-// shadowedBundledPropertyName is shadowedBundledProperty on the NAME table
-// (chain step 5a): only a name the bundled table itself binds to a DIFFERENT
-// key shadows anything — a bundled property answering to its own name is not
-// a shadow, and an ambiguous bundled name binds nobody (the table refuses it
-// at build time), so it cannot shadow either.
-func shadowedBundledPropertyName(name, matchedKey string) (string, bool) {
-	key, ok := anyblockjson.BundledPropertyKeyByName(name)
-	if !ok || key == matchedKey {
-		return "", false
-	}
-	rel := bundle.MustGetRelation(domain.RelationKey(key))
-	return fmt.Sprintf("the bundled %q (key %s)", rel.Name, key), true
-}
-
-// shadowedBundledTypeName is shadowedBundledPropertyName for types.
+// shadowedBundledTypeName is the type namespace's name shadow (chain step
+// 5a): only a name the bundled table itself binds to a DIFFERENT key shadows
+// anything — a bundled type answering to its own name is not a shadow, and
+// an ambiguous bundled name binds nobody (the table refuses it at build
+// time), so it cannot shadow either.
 func shadowedBundledTypeName(name, matchedKey string) (string, bool) {
 	key, ok := anyblockjson.BundledTypeKeyByName(name)
 	if !ok || key == matchedKey {
@@ -691,6 +813,9 @@ func (s *Service) propertySlugConflict(slug string, entries []propertyEntry) (sl
 		return slugHolder{}, false
 	}
 	if entry.Id == "" {
+		if keyTaken, _ := servedPropertyKeySets(entries); dormantBundledProperty(entry.Key, keyTaken) {
+			return slugHolder{}, false // not installed here: the key is free (dormantBundledProperty)
+		}
 		return slugHolder{Kind: "bundled property", Key: bundle.ApiSlug(entry.Key), Name: entry.Name, Format: entry.Format}, true
 	}
 	return slugHolder{Kind: "property", Key: entry.Key, Name: entry.Name}, true
@@ -798,8 +923,15 @@ func servedTypeKeySets(entries []typeEntry) (keys map[string]bool, slugHolders m
 // revealed the clash, so a listing advertised `due_date` for a squatter and
 // the very next request to /properties/due_date 400'd.
 func servedKey(storedKey, slug string, keyTaken map[string]bool, slugHolders map[string][]string) string {
+	// a dormant built-in has yielded its spelling (dormantBundledProperty)
+	shadowed := func(input, matchedKey string) (string, bool) {
+		if key, ok := bundle.RelationKeyByApiSlug(input); ok && dormantBundledProperty(string(key), keyTaken) {
+			return "", false
+		}
+		return shadowedBundledProperty(input, matchedKey)
+	}
 	return servedKeyOf(storedKey, slug, keyTaken, slugHolders,
-		bundle.HasRelation(domain.RelationKey(storedKey)), shadowedBundledProperty, bundle.ApiSlug)
+		bundle.HasRelation(domain.RelationKey(storedKey)), shadowed, bundle.ApiSlug)
 }
 
 // servedTypeKeyOf is servedKey for the type namespace (its bundled tests are
@@ -1143,6 +1275,9 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 	changed := false
 
 	var typeEntries []typeEntry
+	// the object's type settles a term two properties answer to
+	// (resolvePropertyInputIn)
+	var scope map[string]bool
 	for _, field := range []string{"type", "template_for"} {
 		raw, ok := fields[field]
 		if !ok {
@@ -1163,6 +1298,9 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 		}
 		if len(ambiguous) > 0 {
 			return nil, nil, ambiguousKeyError("type key", term, "/"+field, ambiguous)
+		}
+		if ok && field == "type" {
+			scope = s.typePropertyScope(spaceId, entry.Id)
 		}
 		if ok && entry.Key != term {
 			if fields[field], err = rawJSON(entry.Key); err != nil {
@@ -1210,7 +1348,7 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 					renames[key] = stored
 					continue
 				}
-				entry, ok, ambiguous := s.resolvePropertyInput(key, propEntries)
+				entry, ok, ambiguous := s.resolvePropertyInputIn(key, propEntries, scope)
 				if len(ambiguous) > 0 {
 					return nil, nil, ambiguousKeyError("property key", key, "/properties/"+key, ambiguous)
 				}

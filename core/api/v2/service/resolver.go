@@ -70,6 +70,10 @@ type creatingResolvers struct {
 	liveEntries     []propertyEntry
 	livePropsErr    error
 	livePropsLoaded bool
+	// scope is the ids of the properties the object's type lists, which
+	// settle a key two properties answer to (resolvePropertyInputIn); nil
+	// when no type is in view
+	scope map[string]bool
 	// mintedSlugs are the slugs THIS request already minted (doc key by
 	// slug): the live snapshot predates them, so without this a document
 	// declaring two spellings of one key minted both (review cause 4)
@@ -669,7 +673,7 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 		r.errs = append(r.errs, err)
 		return "", false
 	}
-	entry, ok, ambiguous := r.svc.resolvePropertyInput(docKey, entries)
+	entry, ok, ambiguous := r.svc.resolvePropertyInputIn(docKey, entries, r.scope)
 	if len(ambiguous) > 0 {
 		r.errs = append(r.errs, fmt.Errorf("property key %q is ambiguous — held by %s; address the intended property by its listed key", docKey, strings.Join(ambiguous, " and ")))
 		return "", false
@@ -877,7 +881,7 @@ func (r *creatingResolvers) PropertyStoredKey(docKey string) (string, bool) {
 		r.errs = append(r.errs, err)
 		return "", false
 	}
-	entry, ok, ambiguous := r.svc.resolvePropertyInput(docKey, entries)
+	entry, ok, ambiguous := r.svc.resolvePropertyInputIn(docKey, entries, r.scope)
 	if len(ambiguous) > 0 || !ok || entry.Key == "" {
 		return "", false
 	}
@@ -930,7 +934,7 @@ func (r *creatingResolvers) canonicalPropertyKey(key string) string {
 	if err != nil {
 		return key
 	}
-	entry, ok, ambiguous := r.svc.resolvePropertyInput(key, entries)
+	entry, ok, ambiguous := r.svc.resolvePropertyInputIn(key, entries, r.scope)
 	if len(ambiguous) > 0 || !ok {
 		return key
 	}
