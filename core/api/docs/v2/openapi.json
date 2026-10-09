@@ -6359,7 +6359,7 @@
                     "type": "array"
                   },
                   "type": {
-                    "description": "the queried type's key",
+                    "description": "the key of the one type the query covers",
                     "maxLength": 256,
                     "type": "string"
                   },
