@@ -716,7 +716,7 @@ func TestUnknownOpMemberNamesTheMembers(t *testing.T) {
 		apiErr := v2Err(t, err)
 		require.NotEmpty(t, apiErr.Issues)
 		issue := apiErr.Issues[0]
-		assert.True(t, strings.HasSuffix(issue.Path, "/zz_probe"), "the path names the member: %q", issue.Path)
+		assert.True(t, strings.HasSuffix(issue.Path, ".zz_probe"), "the path names the member: %q", issue.Path)
 		m := takes.FindStringSubmatch(issue.Message)
 		require.NotNil(t, m, "the refusal names the members: %q", issue.Message)
 		assert.Equal(t, op, m[1])
@@ -795,4 +795,40 @@ func publishedOpMembers(t *testing.T, raw json.RawMessage) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// TestOpMemberTypeMismatchSpeaksJSON: a member sent as the wrong JSON kind
+// is refused in JSON terms at its own path, never with the Go type the
+// decoder fills.
+func TestOpMemberTypeMismatchSpeaksJSON(t *testing.T) {
+	ctx := context.Background()
+	for name, tc := range map[string]struct {
+		op, wantPath, wantMessage, wantHint string
+	}{
+		"columns as an array": {
+			op:          `{"op":"update_view","view":"v1","columns":[{"property":"name"}]}`,
+			wantPath:    "ops[0].columns",
+			wantMessage: `"columns" is an object, not an array`,
+			wantHint:    "columns is keyed by property key",
+		},
+		"items as a string": {
+			op:          `{"op":"add_items","items":"obj2"}`,
+			wantPath:    "ops[0].items",
+			wantMessage: `"items" is an array, not a string`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			fx := newV2Fixture(t)
+			fx.expectMutate(editRead(t, editBaseDoc))
+			_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(tc.op), "", false, true)
+			require.Error(t, err)
+			issue := v2Err(t, err).Issues[0]
+			assert.Equal(t, tc.wantPath, issue.Path)
+			assert.Equal(t, tc.wantMessage, issue.Message)
+			assert.NotContains(t, issue.Message, "Go struct")
+			if tc.wantHint != "" {
+				assert.Contains(t, issue.Hint, tc.wantHint)
+			}
+		})
+	}
 }

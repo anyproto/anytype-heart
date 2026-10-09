@@ -11,6 +11,7 @@ package v2service
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"reflect"
@@ -490,8 +491,16 @@ func decodeStrictOp(raw json.RawMessage, opName, opPath string, v any) error {
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
 		issue := v2model.Issue{Path: opPath, Message: err.Error()}
-		if field, ok := unknownJSONField(err); ok {
-			issue.Path = opPath + "/" + field
+		var typeErr *json.UnmarshalTypeError
+		if errors.As(err, &typeErr) && typeErr.Field != "" {
+			issue.Path = opPath + "." + typeErr.Field
+			issue.Message = fmt.Sprintf("%q is %s, not %s", typeErr.Field, jsonKindOf(typeErr.Type), withArticle(typeErr.Value))
+			if hint, ok := opFieldHints[opName+"."+typeErr.Field]; ok {
+				return v2model.ValidationFailed(fmt.Sprintf("invalid %s op", opName),
+					issue.Hintf("%s; %s for the op's schema and example", hint, v2model.RefGetOpSchema(opName)))
+			}
+		} else if field, ok := unknownJSONField(err); ok {
+			issue.Path = opPath + "." + field
 			issue.Message = fmt.Sprintf("unknown key %q — %s takes %s", field, opName, strings.Join(opMembers(v), ", "))
 			if hint, ok := opFieldHints[opName+"."+field]; ok {
 				return v2model.ValidationFailed(fmt.Sprintf("invalid %s op", opName),
@@ -509,6 +518,52 @@ func decodeStrictOp(raw json.RawMessage, opName, opPath string, v any) error {
 var opFieldHints = map[string]string{
 	// create_object and the document both carry values under properties
 	"set_properties.properties": `values to write go under set: {"op":"set_properties","set":{"<key>":<value>}}`,
+	// a read lists columns; a view op edits them by property key
+	"update_view.columns": `columns is keyed by property key: {"<key>":{"hidden":false,"width":180}}`,
+	"insert_view.columns": `columns is keyed by property key: {"<key>":{"hidden":false,"width":180}}`,
+}
+
+// jsonKindOf names the JSON kind a Go type decodes from, with its article.
+func jsonKindOf(t reflect.Type) string {
+	for t != nil && t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	if t == nil {
+		return "a value"
+	}
+	switch t.Kind() {
+	case reflect.Map, reflect.Struct:
+		return "an object"
+	case reflect.Slice, reflect.Array:
+		if t.Elem().Kind() == reflect.Uint8 {
+			// json.RawMessage and friends take any value
+			return "a value"
+		}
+		return "an array"
+	case reflect.String:
+		return "a string"
+	case reflect.Bool:
+		return "a boolean"
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return "an integer"
+	case reflect.Float32, reflect.Float64:
+		return "a number"
+	}
+	return "a value"
+}
+
+// withArticle reads encoding/json's kind of the sent value ("array",
+// "number 1.5", "string") as a phrase.
+func withArticle(value string) string {
+	kind, _, _ := strings.Cut(value, " ")
+	switch kind {
+	case "array", "object":
+		return "an " + kind
+	case "":
+		return "this value"
+	}
+	return "a " + kind
 }
 
 // unknownJSONField extracts the field name from encoding/json's
