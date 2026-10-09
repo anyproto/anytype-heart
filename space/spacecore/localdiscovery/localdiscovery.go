@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	gonet "net"
+	"net/netip"
 	"slices"
 	"strconv"
 	"sync"
@@ -345,6 +346,7 @@ func (l *zeroconfDiscovery) startServer() (err error) {
 		ifaces,
 		zeroconf.TTL(3600), // big ttl because we don't have re-broadcasting
 		zeroconf.ServerSelectIPTraffic(l.linkLocal.ipTraffic()),
+		zeroconf.ServerSelectIPv6Ifaces(l.linkLocal.indexes...),
 		zeroconf.ServerLinkLocalIPv6(l.linkLocal.indexes...),
 		zeroconf.WriteTimeout(time.Second*3),
 	)
@@ -360,10 +362,10 @@ func (l *zeroconfDiscovery) startQuerying(ctx context.Context) {
 	// snapshot the interfaces under l.m instead of letting browse read the
 	// field unlocked later, racing with the next refresh
 	ifaces := l.interfacesAddrs.NetInterfaces()
-	ipTraffic := l.linkLocal.ipTraffic()
+	linkLocal := l.linkLocal
 
 	go l.readAnswers(closeWait, listenCh)
-	go l.browse(ctx, closeWait, ifaces, ipTraffic, listenCh)
+	go l.browse(ctx, closeWait, ifaces, linkLocal, listenCh)
 }
 
 func (l *zeroconfDiscovery) readAnswers(closeWait *sync.WaitGroup, ch chan *zeroconf.ServiceEntry) {
@@ -375,7 +377,14 @@ func (l *zeroconfDiscovery) readAnswers(closeWait *sync.WaitGroup, ch chan *zero
 		}
 		l.m.Lock()
 		l.interfacesAddrs.SortIPsLikeInterfaces(entry.AddrIPv4)
-		portAddrs := peerAddrs(entry, l.linkLocal.zones)
+		portAddrs := peerAddrs(entry, l.linkLocal.zones, ownIPv4Nets(l.own))
+		if len(portAddrs) == 0 {
+			// only link-local addresses from another link: nothing to dial,
+			// and an empty list would wipe the peer's known addresses
+			l.m.Unlock()
+			log.Debug("discovered peer without usable addresses", zap.String("peerId", entry.Instance))
+			continue
+		}
 		peer := DiscoveredPeer{
 			Addrs:  portAddrs,
 			PeerId: entry.Instance,
@@ -390,17 +399,27 @@ func (l *zeroconfDiscovery) readAnswers(closeWait *sync.WaitGroup, ch chan *zero
 	}
 }
 
-// peerAddrs is the dial list for a discovered peer: its IPv4 addresses, then
-// its link-local addresses received on one of our interfaces without IPv4
-// (zones). A link-local address received on any other interface is left out:
-// the peer is reachable over IPv4 there. Every LAN address is yamux, so this
-// order is the dial order, and a peer on Wi-Fi never waits for a link-local
-// attempt.
-func peerAddrs(entry *zeroconf.ServiceEntry, zones map[string]struct{}) []string {
+// peerAddrs is the dial list for a discovered peer. Its link-local addresses
+// count only when received on one of our interfaces without IPv4 (zones): a
+// peer on our IPv4 links is reached over IPv4. Every LAN address is yamux, so
+// this order is the dial order, and all addresses share one dial budget:
+// IPv4 on one of our subnets (ownNets) goes first, so a peer on Wi-Fi never
+// waits for a link-local attempt; then link-local; then any other IPv4, which
+// may hang on a route the cable doesn't have. Without link-local addresses
+// the IPv4 order is untouched.
+func peerAddrs(entry *zeroconf.ServiceEntry, zones map[string]struct{}, ownNets []netip.Prefix) []string {
 	port := strconv.Itoa(entry.Port)
-	var addrs []string
+	all := make([]string, 0, len(entry.AddrIPv4))
+	var onLink, linkLocal, other []string
 	for _, a := range entry.AddrIPv4 {
-		addrs = append(addrs, gonet.JoinHostPort(a.String(), port))
+		hostPort := gonet.JoinHostPort(a.String(), port)
+		all = append(all, hostPort)
+		ip, ok := netip.AddrFromSlice(a)
+		if ok && slices.ContainsFunc(ownNets, func(n netip.Prefix) bool { return n.Contains(ip.Unmap()) }) {
+			onLink = append(onLink, hostPort)
+		} else {
+			other = append(other, hostPort)
+		}
 	}
 	for _, a := range entry.AddrIPv6Zoned {
 		if !a.IsLinkLocalUnicast() {
@@ -410,19 +429,34 @@ func peerAddrs(entry *zeroconf.ServiceEntry, zones map[string]struct{}) []string
 			continue
 		}
 		hostPort := gonet.JoinHostPort(a.String(), port)
-		if !slices.Contains(addrs, hostPort) {
-			addrs = append(addrs, hostPort)
+		if !slices.Contains(linkLocal, hostPort) {
+			linkLocal = append(linkLocal, hostPort)
 		}
 	}
-	return addrs
+	if len(linkLocal) == 0 {
+		return all
+	}
+	return slices.Concat(onLink, linkLocal, other)
 }
 
-func (l *zeroconfDiscovery) browse(ctx context.Context, closeWait *sync.WaitGroup, ifaces []gonet.Interface, ipTraffic zeroconf.IPType, ch chan *zeroconf.ServiceEntry) {
+// ownIPv4Nets are the subnets of our IPv4 addresses.
+func ownIPv4Nets(own []ownAddr) []netip.Prefix {
+	var nets []netip.Prefix
+	for _, a := range own {
+		if !a.linkLocal {
+			nets = append(nets, a.net)
+		}
+	}
+	return nets
+}
+
+func (l *zeroconfDiscovery) browse(ctx context.Context, closeWait *sync.WaitGroup, ifaces []gonet.Interface, linkLocal linkLocalIfaces, ch chan *zeroconf.ServiceEntry) {
 	defer closeWait.Done()
 	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch,
 		zeroconf.ClientWriteTimeout(time.Second*3),
 		zeroconf.SelectIfaces(ifaces),
-		zeroconf.SelectIPTraffic(ipTraffic)); err != nil {
+		zeroconf.SelectIPv6Ifaces(linkLocal.indexes...),
+		zeroconf.SelectIPTraffic(linkLocal.ipTraffic())); err != nil {
 		log.Error("browsing failed", zap.Error(err))
 	}
 }

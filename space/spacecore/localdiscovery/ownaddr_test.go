@@ -136,7 +136,7 @@ func TestOwnIPv4(t *testing.T) {
 		}
 
 		// when
-		got := newOwnAddresses(ownIPv4("ios", ifaces), 4006)
+		got := newOwnAddresses(ownAddrs("ios", ifaces), 4006)
 
 		// then
 		assert.Equal(t, want, got)
@@ -160,7 +160,7 @@ func TestOwnIPv4(t *testing.T) {
 		}
 
 		// when
-		got := newOwnAddresses(ownIPv4("darwin", ifaces), 4006)
+		got := newOwnAddresses(ownAddrs("darwin", ifaces), 4006)
 
 		// then
 		assert.Equal(t, want, got)
@@ -174,7 +174,7 @@ func TestOwnIPv4(t *testing.T) {
 		}
 
 		// when
-		got := newOwnAddresses(ownIPv4("ios", ifaces), 4006)
+		got := newOwnAddresses(ownAddrs("ios", ifaces), 4006)
 
 		// then
 		assert.Empty(t, got.Addrs)
@@ -190,8 +190,8 @@ func TestOwnIPv4(t *testing.T) {
 		want := OwnAddresses{Addrs: []string{"192.168.1.10"}, Nets: prefixes("192.168.1.10/24"), Port: 4006}
 
 		// when
-		gotDesktop := newOwnAddresses(ownIPv4("linux", ifaces), 4006)
-		gotIOS := newOwnAddresses(ownIPv4("ios", ifaces), 4006)
+		gotDesktop := newOwnAddresses(ownAddrs("linux", ifaces), 4006)
+		gotIOS := newOwnAddresses(ownAddrs("ios", ifaces), 4006)
 
 		// then
 		assert.Equal(t, want, gotDesktop)
@@ -222,10 +222,11 @@ func TestOwnAddrsLinkLocal(t *testing.T) {
 	})
 
 	t.Run("a cable alone still leaves Addrs and Nets empty", func(t *testing.T) {
-		// given
-		ifaces := addrs.InterfacesAddrs{Interfaces: []addrs.NetInterfaceWithAddrCache{
-			iface("en16", "fe80::a886:c6ff:febd:f923/64"),
-		}}
+		// given: the flat list holds what the interface filter dropped
+		ifaces := addrs.InterfacesAddrs{
+			Interfaces: []addrs.NetInterfaceWithAddrCache{iface("en16", "fe80::a886:c6ff:febd:f923/64")},
+			Addrs:      []net.Addr{ipNet("127.0.0.1/8"), ipNet("10.8.0.2/24"), ipNet("fe80::a886:c6ff:febd:f923/64")},
+		}
 
 		// when
 		got := ownAddrs("darwin", ifaces)
@@ -270,6 +271,9 @@ func TestLinkLocalCandidate(t *testing.T) {
 		{"linux", "enp0s31f6", true},
 		{"linux", "eth0", true},
 		{"linux", "wlp2s0", true},
+		{"linux", "thunderbolt0", true},
+		{"linux", "br0", true},
+		{"linux", "bond0", true},
 		{"linux", "veth1a2b3c", false},
 		{"linux", "docker0", false},
 		{"linux", "tailscale0", false},

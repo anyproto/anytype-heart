@@ -290,25 +290,28 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		assert.Nil(t, err)
 
 		expectedPeer := DiscoveredPeer{
+			Addrs:  []string{"192.168.1.62:4006"},
 			PeerId: accountKeys.PeerId,
 		}
 		var called = make(chan struct{})
 		notifier.EXPECT().PeerDiscovered(mock.Anything, expectedPeer, mock.Anything).Run(func(ctx context.Context, peer DiscoveredPeer, own OwnAddresses) {
 			close(called)
-		})
-
-		notifier.EXPECT().PeerDiscovered(mock.Anything, DiscoveredPeer{
-			PeerId: accountKeys.PeerId,
-		}, mock.Anything).Return()
+		}).Once()
 		ld.SetNotifier(notifier)
 
 		closeWait := &sync.WaitGroup{}
 		closeWait.Add(1)
 		go func() {
+			// an entry with nothing to dial is skipped
 			peerUpdate <- &zeroconf.ServiceEntry{
-				ServiceRecord: zeroconf.ServiceRecord{
-					Instance: accountKeys.PeerId,
-				},
+				ServiceRecord: zeroconf.ServiceRecord{Instance: accountKeys.PeerId},
+				Port:          4006,
+				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62%en0")},
+			}
+			peerUpdate <- &zeroconf.ServiceEntry{
+				ServiceRecord: zeroconf.ServiceRecord{Instance: accountKeys.PeerId},
+				Port:          4006,
+				AddrIPv4:      []gonet.IP{gonet.ParseIP("192.168.1.62")},
 			}
 			close(peerUpdate)
 		}()
@@ -327,6 +330,7 @@ func TestPeerAddrs(t *testing.T) {
 		[]ownAddr{{iface: "en16", net: netip.MustParsePrefix("fe80::a886:c6ff:febd:f923/64"), linkLocal: true}},
 		[]gonet.Interface{{Index: 4, Name: "en0"}, {Index: 31, Name: "en16"}},
 	).zones
+	ownNets := []netip.Prefix{netip.MustParsePrefix("192.168.1.10/24")}
 
 	for _, tc := range []struct {
 		name  string
@@ -334,7 +338,7 @@ func TestPeerAddrs(t *testing.T) {
 		want  []string
 	}{
 		{
-			name: "link-local on a link without ipv4 goes after ipv4",
+			name: "ipv4 on our subnet, then link-local on a link without ipv4",
 			entry: &zeroconf.ServiceEntry{
 				Port:     62654,
 				AddrIPv4: []gonet.IP{gonet.ParseIP("192.168.1.62")},
@@ -344,6 +348,23 @@ func TestPeerAddrs(t *testing.T) {
 				},
 			},
 			want: []string{"192.168.1.62:62654", "[fe80::a886:c6ff:febd:f9dc%en16]:62654"},
+		},
+		{
+			name: "ipv4 off our subnets goes after link-local",
+			entry: &zeroconf.ServiceEntry{
+				Port:          4006,
+				AddrIPv4:      []gonet.IP{gonet.ParseIP("10.20.9.9"), gonet.ParseIP("192.168.1.62")},
+				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62%en16")},
+			},
+			want: []string{"192.168.1.62:4006", "[fe80::62%en16]:4006", "10.20.9.9:4006"},
+		},
+		{
+			name: "without link-local the ipv4 order is untouched",
+			entry: &zeroconf.ServiceEntry{
+				Port:     4006,
+				AddrIPv4: []gonet.IP{gonet.ParseIP("10.20.9.9"), gonet.ParseIP("192.168.1.62")},
+			},
+			want: []string{"10.20.9.9:4006", "192.168.1.62:4006"},
 		},
 		{
 			name: "a decimal zone of the same interface is accepted",
@@ -368,11 +389,11 @@ func TestPeerAddrs(t *testing.T) {
 				Port:          4006,
 				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62")},
 			},
-			want: nil,
+			want: []string{},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.want, peerAddrs(tc.entry, zones))
+			assert.Equal(t, tc.want, peerAddrs(tc.entry, zones, ownNets))
 		})
 	}
 }

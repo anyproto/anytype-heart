@@ -20,7 +20,7 @@ import (
 var linkLocalPrefixes = map[string][]string{
 	"darwin":  {"en", "bridge"},
 	"ios":     {"en", "bridge"},
-	"linux":   {"en", "eth", "wl", "usb"},
+	"linux":   {"en", "eth", "wl", "usb", "thunderbolt", "br", "bond"},
 	"android": {"wlan", "eth", "rndis", "usb"},
 }
 

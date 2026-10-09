@@ -77,6 +77,15 @@ This is what makes one discovery direction enough. In phase 1 the Mac discovers 
 
 Also check `peerIPsOf`/`hostIP`: a zoned address parses fine and simply never matches an IPv4 subnet in `OwnAddresses.For` (a zoned `netip.Addr` never matches a prefix), so the Mac's `LocalServer` to the iPhone falls back to its advertised IPv4 list. That's harmless: those fail fast while Wi-Fi is off, and the iPhone dials the recorded link-local address first anyway.
 
+### 5. As built (after review round 1)
+
+- IPv6 mDNS runs only on the link-local-only interfaces (`ServerSelectIPv6Ifaces`, `SelectIPv6Ifaces` in the fork); every other interface stays IPv4-only, byte for byte.
+- The fork's browser merges addresses from answers on different interfaces and re-delivers the entry when the union grows, instead of keeping the first answer for the whole TTL. An entry with nothing usable is not passed on.
+- Dial order: IPv4 on one of our subnets, then link-local, then other IPv4. Without a link-local address the IPv4 order is unchanged.
+- With a link-local-only interface present, own IPv4 comes from the interfaces only; the flat-list fallback (which holds loopback and tunnels) is skipped.
+- iOS checks a link-local-only `en*` with a zoned self-connect, like it checks IPv4.
+- Accepted limit: any-sync's `PreferQuic` ranks a yamux address it classifies as local (link-local) ahead of a yamux address it doesn't (a LAN on public IPv4). It only matters with a public-IPv4 LAN and a cable at the same time; fixing it belongs in any-sync.
+
 ## Phase 2 (separate PRs)
 
 - **Swift** (`anytype-swift`): the address lookup also asks for `kDNSServiceProtocol_IPv6`, but reports a link-local address only for an interface where no IPv4 showed up for that peer. Format it as `fe80::…%<if_indextoname(interfaceIndex)>`. The bridge needs no change. This lets the iPhone discover the Mac too, so either side can start the exchange.
@@ -97,7 +106,7 @@ Unit (fork):
 - receive path: a packet carrying an AAAA, delivered with `IfIndex` = N, yields an entry whose zoned address has interface N's name as its zone.
 
 On device (the setup from 2026-10-09):
-1. iPhone (any build with #3317) plus a Mac running heart from this branch, joined by a cable, Wi-Fi off on both, Bluetooth off on the phone.
+1. iPhone and Mac both running heart from this branch (the iPhone needs the `recordLocalPeer` zone fix to keep the Mac's link-local address), joined by a cable, Wi-Fi off on both, Bluetooth off on the phone.
 2. Mac log: `own lan addresses` lists `en16 fe80::… link-local`. `dns-sd -B _anytype._tcp` lists the Mac's service on `en16`.
 3. Mac log: the iPhone discovered with `[fe80::…%en16]:62654`, and an outbound exchange succeeds.
 4. iPhone log: `updated local peer` for the Mac lists a `[fe80::…%en…]` address first.

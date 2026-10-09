@@ -140,17 +140,27 @@ func (l *discoveryBase) getDiscoveryPossibility(newAddrs addrs.InterfacesAddrs) 
 			}
 		}
 	}
+	if err == nil {
+		// an IPv6-only link (a cable, Wi-Fi off) is enough for discovery
+		for i := range interfaces {
+			iface := &interfaces[i]
+			for _, ip := range linkLocalOnly(runtime.GOOS, iface) {
+				if !checkSelfConnect {
+					return DiscoveryPossible
+				}
+				zoned := ip.WithZone(iface.Name).String()
+				err = testSelfConnection(zoned)
+				if err == nil {
+					return DiscoveryPossible
+				}
+				log.Warn(fmt.Sprintf("self connection via %s to %s failed: %v", iface.Name, zoned, err))
+				break
+			}
+		}
+	}
 	if err != nil {
 		// todo: double check network state provided by the client?
 		return DiscoveryLocalNetworkRestricted
-	}
-	if !checkSelfConnect {
-		// an IPv6-only link (a cable, Wi-Fi off) is enough for discovery
-		for i := range interfaces {
-			if len(linkLocalOnly(runtime.GOOS, &interfaces[i])) > 0 {
-				return DiscoveryPossible
-			}
-		}
 	}
 	return DiscoveryNoInterfaces
 }
