@@ -35,6 +35,7 @@ const (
 	reasonPairing = "pairing and key minting are the host's flow, not the model's"
 	reasonStream  = "a server-sent event stream; the in-process transport buffers responses whole"
 	reasonBinary  = "a binary or range response with no text rendering"
+	reasonStatus  = "an ephemeral typing or presence signal for a live client UI, not an agent action"
 )
 
 // overlays is the table, keyed by operationId.
@@ -47,12 +48,17 @@ var overlays = map[string]overlay{
 	"stream_space_search":   {Exclude: reasonStream},
 	"head_file":             {Exclude: reasonBinary},
 	"download_file":         {Exclude: reasonBinary},
+	"publish_chat_status":   {Exclude: reasonStatus},
 
 	"search_space":  {ReadOnly: true},
 	"search_global": {ReadOnly: true},
 	"validate":      {ReadOnly: true},
 
 	"toggle_chat_reaction": {CallerRetryKey: true},
+
+	// the document's form also offers multipart with a local file, which
+	// the in-process transport does not send: the tool takes the url form
+	"upload_file": {Description: "Upload a file. Stores a file fetched from a URL in the space. A source that refuses the fetch, or a URL that cannot be fetched, is a 400 naming /url. The id that comes back is the one file blocks, image blocks and icon_image values reference."},
 
 	"patch_object": {Destructive: true},
 	"update_type":  {Destructive: true},

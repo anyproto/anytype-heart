@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -185,4 +186,21 @@ func TestGetCollectionObjectsHandler(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, w.Code)
 		assert.Contains(t, w.Body.String(), `unknown property key \"bogus\"`)
 	})
+}
+
+func TestListFieldsParam(t *testing.T) {
+	for _, tc := range []struct {
+		name, query string
+		want        []string
+	}{
+		{"comma-separated", "fields=status,%20due_date", []string{"status", "due_date"}},
+		{"repeated, as the document's exploded array sends it", "fields=status&fields=due_date", []string{"status", "due_date"}},
+		{"absent", "", nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			c.Request = httptest.NewRequest(http.MethodGet, "/x?"+tc.query, nil)
+			assert.Equal(t, tc.want, listFieldsParam(c))
+		})
+	}
 }

@@ -46,6 +46,8 @@ type openAPIParameter struct {
 	Required    bool            `json:"required"`
 	Description string          `json:"description"`
 	Schema      json.RawMessage `json:"schema"`
+	Style       string          `json:"style"`
+	Explode     *bool           `json:"explode"`
 }
 
 const (
@@ -194,8 +196,10 @@ func deriveTool(method, path string, op openAPIOperation, o overlay, components 
 			}
 			tool.OpenBody = open
 			strict = !open
-			if desc, _ := body["description"].(string); desc != "" && open && body["anyOf"] == nil {
-				// a document body: its shape is named, not listed
+			if desc, _ := body["description"].(string); desc != "" && body["anyOf"] == nil {
+				// an open body is a document, its shape named, not listed;
+				// a closed body's description carries rules its members do
+				// not (which members a POST needs, a payload budget)
 				tool.Description += " Body: " + desc + "."
 			} else if kinds := documentKinds(body); len(kinds) > 0 {
 				tool.Description += " The document form's schema and a worked example come from get_schema with kind " + strings.Join(kinds, " or ") + "; the other forms need no lookup."
@@ -426,7 +430,18 @@ func parameterArg(p openAPIParameter) (Arg, error) {
 	case "path":
 		return Arg{Name: p.Name, In: ArgPath, Wire: p.Name, Required: true}, nil
 	case "query":
-		return Arg{Name: p.Name, In: ArgQuery, Wire: p.Name, Required: p.Required}, nil
+		var schema struct {
+			Type string `json:"type"`
+		}
+		if len(p.Schema) > 0 {
+			if err := json.Unmarshal(p.Schema, &schema); err != nil {
+				return Arg{}, fmt.Errorf("parameter %s schema: %w", p.Name, err)
+			}
+		}
+		if schema.Type == "array" && (p.Style != "" && p.Style != "form" || p.Explode != nil && !*p.Explode) {
+			return Arg{}, fmt.Errorf("parameter %s is an array this table cannot place: only style form, exploded (the parameter repeated per item)", p.Name)
+		}
+		return Arg{Name: p.Name, In: ArgQuery, Wire: p.Name, Required: p.Required, List: schema.Type == "array"}, nil
 	case "header":
 		return Arg{Name: snakeCase(p.Name), In: ArgHeader, Wire: p.Name, Required: p.Required}, nil
 	default:

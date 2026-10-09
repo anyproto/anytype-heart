@@ -102,6 +102,13 @@ func TestExecutorAssemblesRequests(t *testing.T) {
 		assert.Empty(t, got.Header.Get("Idempotency-Key"))
 	})
 
+	t.Run("an array query argument repeats the parameter per item", func(t *testing.T) {
+		ex, api := newExecutorFixture(t)
+		_, err := ex.Run(context.Background(), "list_objects", map[string]any{"space_id": "s", "fields": []any{"status", "due_date"}})
+		require.NoError(t, err)
+		assert.Equal(t, "fields=status&fields=due_date", api.requests[0].RawQuery)
+	})
+
 	t.Run("a mutation without a key gets one minted, reused across the client's retries", func(t *testing.T) {
 		ex, api := newExecutorFixture(t, stubResponse{503, `{}`}, stubResponse{201, `{"id":"new"}`})
 		result, err := ex.Run(context.Background(), "create_object", map[string]any{"space_id": "s", "type": "page", "name": "Welcome"})
@@ -140,6 +147,7 @@ func TestExecutorRefusesShapeMistakes(t *testing.T) {
 		{"unknown argument on a strict body", "create_chat", map[string]any{"space_id": "s", "name": "x", "colour": "red"}, `create_chat does not take "colour" — arguments: `},
 		{"missing path argument", "get_object", map[string]any{"object_id": "o"}, `get_object needs "space_id"`},
 		{"missing required body member", "upload_file", map[string]any{"space_id": "s"}, `upload_file needs "url"`},
+		{"string for an array query argument", "list_objects", map[string]any{"space_id": "s", "fields": "status,due_date"}, `list_objects: "fields" takes an array of strings`},
 		{"body on a bodiless operation", "list_spaces", map[string]any{"name": "x"}, `list_spaces does not take "name"`},
 	}
 	for _, tc := range cases {

@@ -183,6 +183,14 @@ func (e *Executor) assemble(tool Tool, args map[string]any) (wrapper.RawRequest,
 				return req, fmt.Errorf("%s: %q takes an id, one path segment — not empty, not . or .., and no /", tool.Name, name)
 			}
 			req.Path = strings.ReplaceAll(req.Path, "{"+arg.Wire+"}", url.PathEscape(s))
+		case known && arg.In == ArgQuery && arg.List:
+			items, ok := scalarList(value)
+			if !ok {
+				return req, fmt.Errorf("%s: %q takes an array of strings, such as [\"status\",\"due_date\"]", tool.Name, name)
+			}
+			for _, s := range items {
+				req.Query.Add(arg.Wire, s)
+			}
 		case known && arg.In == ArgQuery:
 			s, ok := scalar(value)
 			if !ok {
@@ -277,6 +285,24 @@ func scalar(v any) (string, bool) {
 		return x.String(), true
 	}
 	return "", false
+}
+
+// scalarList renders an array argument's items for a query parameter the
+// document declares as an exploded array, one value per item.
+func scalarList(v any) ([]string, bool) {
+	items, ok := v.([]any)
+	if !ok {
+		return nil, false
+	}
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		s, ok := scalar(item)
+		if !ok {
+			return nil, false
+		}
+		out = append(out, s)
+	}
+	return out, true
 }
 
 func argNames(tool Tool) []string {

@@ -27,7 +27,7 @@ const maxSpaceRequestBody = 1 << 20 // 1 MiB
 //	@Id				get_space
 //	@Tags			Spaces
 //	@Produce		json
-//	@Param			space_id	path		string			true	"Space id"
+//	@Param			space_id	path		string			true	"Space id, from list_spaces"
 //	@Param			ids			query		string			false	"compact (default) is the short space reference; full is the whole <cid>.<replicationKey> id, and the spelling to store outside this API"
 //	@Success		200			{object}	v2model.Space	"The space row"
 //	@Failure		404			{object}	v2model.Error	"Space not found"
@@ -88,7 +88,7 @@ func CreateSpaceHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Spaces
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id		path		string						true	"Space id"
+//	@Param			space_id		path		string						true	"Space id, from list_spaces"
 //	@Param			dry_run			query		bool						false	"Validate and report without committing"
 //	@Param			ids				query		string						false	"compact (default) is the short space reference; full is the whole <cid>.<replicationKey> id, and the spelling to store outside this API"
 //	@Param			Idempotency-Key	header		string						false	"Replay guard: the same key with the same body replays the stored response"

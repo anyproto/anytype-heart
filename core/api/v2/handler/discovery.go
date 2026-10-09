@@ -45,7 +45,7 @@ func ListSpacesHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id			list_members
 //	@Tags		Members
 //	@Produce	json
-//	@Param		space_id	path		string									true	"Space id"
+//	@Param		space_id	path		string									true	"Space id, from list_spaces"
 //	@Param		offset		query		int										false	"Items to skip"		default(0)
 //	@Param		limit		query		int										false	"Items to return"	default(25)
 //	@Success	200			{object}	v2model.ListResponse[v2model.MemberRow]	"Minimal member rows"
@@ -73,7 +73,7 @@ func ListMembersHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id				get_member_me
 //	@Tags			Members
 //	@Produce		json
-//	@Param			space_id	path		string				true	"Space id"
+//	@Param			space_id	path		string				true	"Space id, from list_spaces"
 //	@Success		200			{object}	v2model.MemberRow	"The caller's member row"
 //	@Failure		404			{object}	v2model.Error		"Space not found, or no account identity"
 //	@Security		bearerauth
@@ -95,7 +95,7 @@ func GetMemberMeHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id			list_types
 //	@Tags		Types
 //	@Produce	json
-//	@Param		space_id	path		string									true	"Space id"
+//	@Param		space_id	path		string									true	"Space id, from list_spaces"
 //	@Param		offset		query		int										false	"Items to skip"		default(0)
 //	@Param		limit		query		int										false	"Items to return"	default(25)
 //	@Success	200			{object}	v2model.ListResponse[v2model.TypeRow]	"Type rows"
@@ -122,8 +122,8 @@ func ListTypesHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id			get_type
 //	@Tags		Types
 //	@Produce	json
-//	@Param		space_id	path		string			true	"Space id"
-//	@Param		type		path		string			true	"Type key"
+//	@Param		space_id	path		string			true	"Space id, from list_spaces"
+//	@Param		type		path		string			true	"Type key, from list_types"
 //	@Param		ids			query		string			false	"compact (default) is the edit shape, with short labels for minted view and block ids; full is the export shape, with full ids"
 //	@Success	200			{object}	map[string]any	"The kind:objectType AnyBlock document + etag"
 //	@Failure	404			{object}	v2model.Error	"Type not found"
@@ -148,7 +148,7 @@ func GetTypeHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id			list_properties
 //	@Tags		Properties
 //	@Produce	json
-//	@Param		space_id	path		string										true	"Space id"
+//	@Param		space_id	path		string										true	"Space id, from list_spaces"
 //	@Param		offset		query		int											false	"Items to skip"		default(0)
 //	@Param		limit		query		int											false	"Items to return"	default(25)
 //	@Success	200			{object}	v2model.ListResponse[v2model.PropertyRow]	"Property rows"
@@ -176,7 +176,7 @@ func ListPropertiesHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id				list_templates
 //	@Tags			Templates
 //	@Produce		json
-//	@Param			space_id	path		string										true	"Space id"
+//	@Param			space_id	path		string										true	"Space id, from list_spaces"
 //	@Param			type		query		string										false	"Type key: list only the templates that start an object of this type"
 //	@Param			offset		query		int											false	"Items to skip"		default(0)
 //	@Param			limit		query		int											false	"Items to return"	default(25)
@@ -205,8 +205,8 @@ func ListTemplatesHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id			list_property_options
 //	@Tags		Properties
 //	@Produce	json
-//	@Param		space_id	path		string									true	"Space id"
-//	@Param		key			path		string									true	"Property key"
+//	@Param		space_id	path		string									true	"Space id, from list_spaces"
+//	@Param		key			path		string									true	"Property key, from list_properties"
 //	@Param		prefix		query		string									false	"Case-insensitive name prefix filter"
 //	@Param		offset		query		int										false	"Items to skip"		default(0)
 //	@Param		limit		query		int										false	"Items to return"	default(25)

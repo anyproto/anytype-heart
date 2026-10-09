@@ -89,7 +89,7 @@ func unknownFieldName(err error) (string, bool) {
 //	@Tags			Search
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id	path		string									true	"Space id"
+//	@Param			space_id	path		string									true	"Space id, from list_spaces"
 //	@Param			request		body		object									true	"Search request"
 //	@Param			offset		query		int										false	"Items to skip"		default(0)
 //	@Param			limit		query		int										false	"Items to return"	default(25)

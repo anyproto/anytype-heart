@@ -60,6 +60,10 @@ type Arg struct {
 	// header, or the body member.
 	Wire     string
 	Required bool
+	// List marks a query parameter declared as an array: the caller sends
+	// an array and the wire repeats the parameter per item (style form,
+	// exploded — the OpenAPI default for a query array).
+	List bool
 }
 
 // Tool is one derived tool.

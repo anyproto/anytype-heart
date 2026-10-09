@@ -199,7 +199,7 @@ func TestOpenAPIBodiesNameOperationsByOpId(t *testing.T) {
 func TestKindSkeletonTypesTheContainers(t *testing.T) {
 	for _, kind := range []string{"object", "template", "type_document", apiV2ValidateKind} {
 		t.Run(kind, func(t *testing.T) {
-			skeleton, err := kindSkeleton(kind)
+			skeleton, _, err := kindSkeleton(kind)
 			require.NoError(t, err)
 			assert.Equal(t, map[string]any{"const": "2.0"}, skeleton["formatVersion"])
 			assert.Equal(t, map[string]any{"type": "object"}, skeleton["properties"])
@@ -209,10 +209,12 @@ func TestKindSkeletonTypesTheContainers(t *testing.T) {
 			assert.NotContains(t, skeleton, "store", "an output-only member is left out")
 		})
 	}
-	skeleton, err := kindSkeleton("template")
+	skeleton, required, err := kindSkeleton("template")
 	require.NoError(t, err)
 	assert.Equal(t, map[string]any{"const": "template"}, skeleton["kind"])
-	skeleton, err = kindSkeleton(apiV2ValidateKind)
+	assert.Contains(t, required, "template_for", "a required member is listed, not left to the lookup")
+	assert.Equal(t, "string", skeleton["template_for"].(map[string]any)["type"])
+	skeleton, _, err = kindSkeleton(apiV2ValidateKind)
 	require.NoError(t, err)
 	assert.NotContains(t, skeleton, "kind", "a long enum is the lookup's to list")
 }

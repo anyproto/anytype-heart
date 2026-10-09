@@ -18,7 +18,8 @@ import (
 // listFieldsParam parses the shared fields= query param (C5 row expansion).
 func listFieldsParam(c *gin.Context) []string {
 	var fields []string
-	if raw := c.Query("fields"); raw != "" {
+	// the document declares csv; a repeated fields= is accepted too
+	for _, raw := range c.QueryArray("fields") {
 		for _, f := range strings.Split(raw, ",") {
 			if f = strings.TrimSpace(f); f != "" {
 				fields = append(fields, f)
@@ -35,12 +36,12 @@ func listFieldsParam(c *gin.Context) []string {
 //	@Id				get_query_objects
 //	@Tags			Lists
 //	@Produce		json
-//	@Param			space_id	path		string									true	"Space id"
-//	@Param			query_id	path		string									true	"Query object id"
+//	@Param			space_id	path		string									true	"Space id, from list_spaces"
+//	@Param			query_id	path		string									true	"Query object id, from search_space"
 //	@Param			view		query		string									false	"Stored view id (exact or unique suffix). Omitted, the query's first view applies."
-//	@Param			fields		query		string									false	"Comma-separated property keys to include per row"
-//	@Param			offset		query		int										false	"Items to skip"		default(0)
-//	@Param			limit		query		int										false	"Items to return"	default(25)
+//	@Param			fields		query		[]string								false	"Property keys to include per row, as an array of strings"	collectionFormat(csv)
+//	@Param			offset		query		int										false	"Items to skip"												default(0)
+//	@Param			limit		query		int										false	"Items to return"											default(25)
 //	@Success		200			{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows"
 //	@Failure		400			{object}	v2model.Error							"Wrong-layout target or invalid params"
 //	@Failure		404			{object}	v2model.Error							"Space, query or view not found"
@@ -68,8 +69,8 @@ func GetQueryObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id			get_query_views
 //	@Tags		Lists
 //	@Produce	json
-//	@Param		space_id	path		string										true	"Space id"
-//	@Param		query_id	path		string										true	"Query object id"
+//	@Param		space_id	path		string										true	"Space id, from list_spaces"
+//	@Param		query_id	path		string										true	"Query object id, from search_space"
 //	@Param		offset		query		int											false	"Items to skip"		default(0)
 //	@Param		limit		query		int											false	"Items to return"	default(25)
 //	@Success	200			{object}	v2model.ListResponse[v2model.ViewObject]	"The stored views, with their sorts, filters and columns"
@@ -99,12 +100,12 @@ func GetQueryViewsHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id				get_collection_objects
 //	@Tags			Lists
 //	@Produce		json
-//	@Param			space_id		path		string									true	"Space id"
-//	@Param			collection_id	path		string									true	"Collection object id"
+//	@Param			space_id		path		string									true	"Space id, from list_spaces"
+//	@Param			collection_id	path		string									true	"Collection object id, from search_space"
 //	@Param			view			query		string									false	"Stored view id (exact or unique suffix). Omitted, no view applies and the whole membership is returned."
-//	@Param			fields			query		string									false	"Comma-separated property keys to include per row"
-//	@Param			offset			query		int										false	"Items to skip"		default(0)
-//	@Param			limit			query		int										false	"Items to return"	default(25)
+//	@Param			fields			query		[]string								false	"Property keys to include per row, as an array of strings"	collectionFormat(csv)
+//	@Param			offset			query		int										false	"Items to skip"												default(0)
+//	@Param			limit			query		int										false	"Items to return"											default(25)
 //	@Success		200				{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows"
 //	@Failure		400				{object}	v2model.Error							"Wrong-layout target or invalid params"
 //	@Failure		404				{object}	v2model.Error							"Space, collection or view not found"
@@ -132,8 +133,8 @@ func GetCollectionObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id			get_collection_views
 //	@Tags		Lists
 //	@Produce	json
-//	@Param		space_id		path		string										true	"Space id"
-//	@Param		collection_id	path		string										true	"Collection object id"
+//	@Param		space_id		path		string										true	"Space id, from list_spaces"
+//	@Param		collection_id	path		string										true	"Collection object id, from search_space"
 //	@Param		offset			query		int											false	"Items to skip"		default(0)
 //	@Param		limit			query		int											false	"Items to return"	default(25)
 //	@Success	200				{object}	v2model.ListResponse[v2model.ViewObject]	"The stored views, with their sorts, filters and columns"

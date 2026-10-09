@@ -51,7 +51,7 @@ func decodeWidgetBody(c *gin.Context, into any, hint v2model.Hint) bool {
 //	@Id				list_widgets
 //	@Tags			Widgets
 //	@Produce		json
-//	@Param			space_id	path		string									true	"Space id"
+//	@Param			space_id	path		string									true	"Space id, from list_spaces"
 //	@Param			scope		query		string									false	"space or personal; omitted lists both"
 //	@Param			offset		query		int										false	"Items to skip"		default(0)
 //	@Param			limit		query		int										false	"Items to return"	default(25)
@@ -83,7 +83,7 @@ func ListWidgetsHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Widgets
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id		path		string					true	"Space id"
+//	@Param			space_id		path		string					true	"Space id, from list_spaces"
 //	@Param			dry_run			query		bool					false	"Validate and report without committing"
 //	@Param			Idempotency-Key	header		string					false	"Replay guard: the same key with the same body replays the stored response"
 //	@Param			body			body		object					true	"Widget to create"
@@ -116,8 +116,8 @@ func CreateWidgetHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Widgets
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id		path		string					true	"Space id"
-//	@Param			widget_id		path		string					true	"Widget id, or the id of the object the widget points at"
+//	@Param			space_id		path		string					true	"Space id, from list_spaces"
+//	@Param			widget_id		path		string					true	"Widget id from list_widgets, or the id of the object the widget points at"
 //	@Param			scope			query		string					false	"space or personal, when the target is in both"
 //	@Param			dry_run			query		bool					false	"Validate and report without committing"
 //	@Param			Idempotency-Key	header		string					false	"Replay guard: the same key with the same body replays the stored response"
@@ -151,8 +151,8 @@ func UpdateWidgetHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id				delete_widget
 //	@Tags			Widgets
 //	@Produce		json
-//	@Param			space_id		path		string					true	"Space id"
-//	@Param			widget_id		path		string					true	"Widget id, or the id of the object the widget points at"
+//	@Param			space_id		path		string					true	"Space id, from list_spaces"
+//	@Param			widget_id		path		string					true	"Widget id from list_widgets, or the id of the object the widget points at"
 //	@Param			scope			query		string					false	"space or personal, when the target is in both"
 //	@Param			dry_run			query		bool					false	"Report without removing"
 //	@Param			Idempotency-Key	header		string					false	"Replay guard: the same key replays the stored response"

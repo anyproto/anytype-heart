@@ -51,8 +51,8 @@ func parseHeartbeatSeconds(c *gin.Context) time.Duration {
 //	@Id				stream_chat_messages
 //	@Tags			Chat
 //	@Produce		text/event-stream
-//	@Param			space_id		path		string			true	"Space id"
-//	@Param			chat_id			path		string			true	"Chat id"
+//	@Param			space_id		path		string			true	"Space id, from list_spaces"
+//	@Param			chat_id			path		string			true	"Chat id, from list_chats"
 //	@Param			limit			query		int				false	"Messages in the opening window"	default(25)	minimum(1)	maximum(1000)
 //	@Param			heartbeat		query		int				false	"Keepalive cadence in seconds"		default(30)	minimum(1)	maximum(60)
 //	@Param			Last-Event-ID	header		string			false	"Resume from this chat state id"

@@ -2373,7 +2373,7 @@
                 },
                 "properties": {
                   "fields": {
-                    "description": "property keys to include per row, as an array such as [\"status\",\"due_date\"]; the list reads take the same keys as one comma-separated string",
+                    "description": "property keys to include per row, as an array such as [\"status\",\"due_date\"]; the list reads take the same array",
                     "items": {
                       "type": "string"
                     },
@@ -2646,7 +2646,7 @@
         "operationId": "get_space",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -2709,7 +2709,7 @@
         "operationId": "update_space",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -2817,7 +2817,7 @@
         "operationId": "list_chats",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -2913,7 +2913,7 @@
         "operationId": "create_chat",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3016,7 +3016,7 @@
         "operationId": "stream_space_chats",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3124,7 +3124,7 @@
         "operationId": "get_chat_messages",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3133,7 +3133,7 @@
             }
           },
           {
-            "description": "Chat object id",
+            "description": "Chat object id, from list_chats",
             "in": "path",
             "name": "chat_id",
             "required": true,
@@ -3228,7 +3228,7 @@
         "operationId": "add_chat_message",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3237,7 +3237,7 @@
             }
           },
           {
-            "description": "Chat object id",
+            "description": "Chat object id, from list_chats",
             "in": "path",
             "name": "chat_id",
             "required": true,
@@ -3347,7 +3347,7 @@
         "operationId": "stream_chat_messages",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3356,7 +3356,7 @@
             }
           },
           {
-            "description": "Chat id",
+            "description": "Chat id, from list_chats",
             "in": "path",
             "name": "chat_id",
             "required": true,
@@ -3453,7 +3453,7 @@
         "operationId": "delete_chat_message",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3462,7 +3462,7 @@
             }
           },
           {
-            "description": "Chat object id",
+            "description": "Chat object id, from list_chats",
             "in": "path",
             "name": "chat_id",
             "required": true,
@@ -3471,7 +3471,7 @@
             }
           },
           {
-            "description": "Message id",
+            "description": "Message id, from get_chat_messages",
             "in": "path",
             "name": "message_id",
             "required": true,
@@ -3548,7 +3548,7 @@
         "operationId": "edit_chat_message",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3557,7 +3557,7 @@
             }
           },
           {
-            "description": "Chat object id",
+            "description": "Chat object id, from list_chats",
             "in": "path",
             "name": "chat_id",
             "required": true,
@@ -3566,7 +3566,7 @@
             }
           },
           {
-            "description": "Message id",
+            "description": "Message id, from get_chat_messages",
             "in": "path",
             "name": "message_id",
             "required": true,
@@ -3666,7 +3666,7 @@
         "operationId": "toggle_chat_reaction",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3675,7 +3675,7 @@
             }
           },
           {
-            "description": "Chat object id",
+            "description": "Chat object id, from list_chats",
             "in": "path",
             "name": "chat_id",
             "required": true,
@@ -3684,7 +3684,7 @@
             }
           },
           {
-            "description": "Message id",
+            "description": "Message id, from get_chat_messages",
             "in": "path",
             "name": "message_id",
             "required": true,
@@ -3784,7 +3784,7 @@
         "operationId": "read_chat",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3793,7 +3793,7 @@
             }
           },
           {
-            "description": "Chat object id",
+            "description": "Chat object id, from list_chats",
             "in": "path",
             "name": "chat_id",
             "required": true,
@@ -3893,7 +3893,7 @@
         "operationId": "publish_chat_status",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -3902,7 +3902,7 @@
             }
           },
           {
-            "description": "Chat or discussion id",
+            "description": "Chat or discussion id, from list_chats",
             "in": "path",
             "name": "chat_id",
             "required": true,
@@ -4023,7 +4023,7 @@
         "operationId": "create_collection",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -4137,7 +4137,7 @@
         "operationId": "get_collection_objects",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -4146,7 +4146,7 @@
             }
           },
           {
-            "description": "Collection object id",
+            "description": "Collection object id, from search_space",
             "in": "path",
             "name": "collection_id",
             "required": true,
@@ -4163,12 +4163,16 @@
             }
           },
           {
-            "description": "Comma-separated property keys to include per row",
+            "description": "Property keys to include per row, as an array of strings",
             "in": "query",
             "name": "fields",
             "schema": {
-              "type": "string"
-            }
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "form"
           },
           {
             "description": "Items to skip",
@@ -4243,7 +4247,7 @@
         "operationId": "get_collection_views",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -4252,7 +4256,7 @@
             }
           },
           {
-            "description": "Collection object id",
+            "description": "Collection object id, from search_space",
             "in": "path",
             "name": "collection_id",
             "required": true,
@@ -4334,7 +4338,7 @@
         "operationId": "upload_file",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -4458,7 +4462,7 @@
         "operationId": "download_file",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -4698,7 +4702,7 @@
         "operationId": "head_file",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -4840,7 +4844,7 @@
         "operationId": "list_members",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -4915,7 +4919,7 @@
         "operationId": "get_member_me",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -4971,7 +4975,7 @@
         "operationId": "list_objects",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -4980,12 +4984,16 @@
             }
           },
           {
-            "description": "Comma-separated property keys to include per row",
+            "description": "Property keys to include per row, as an array of strings",
             "in": "query",
             "name": "fields",
             "schema": {
-              "type": "string"
-            }
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "form"
           },
           {
             "description": "Items to skip",
@@ -5059,7 +5067,7 @@
         "operationId": "create_object",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -5175,6 +5183,9 @@
                         "type": "object"
                       }
                     },
+                    "required": [
+                      "formatVersion"
+                    ],
                     "type": "object"
                   }
                 ],
@@ -5249,7 +5260,7 @@
         "operationId": "delete_object",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -5258,7 +5269,7 @@
             }
           },
           {
-            "description": "Object id",
+            "description": "Object id, from search_space or list_objects",
             "in": "path",
             "name": "object_id",
             "required": true,
@@ -5334,7 +5345,7 @@
         "operationId": "get_object",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -5343,7 +5354,7 @@
             }
           },
           {
-            "description": "Object id",
+            "description": "Object id, from search_space or list_objects",
             "in": "path",
             "name": "object_id",
             "required": true,
@@ -5446,7 +5457,7 @@
         "operationId": "patch_object",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -5455,7 +5466,7 @@
             }
           },
           {
-            "description": "Object id",
+            "description": "Object id, from search_space or list_objects",
             "in": "path",
             "name": "object_id",
             "required": true,
@@ -5623,7 +5634,7 @@
         "operationId": "create_discussion",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -5632,7 +5643,7 @@
             }
           },
           {
-            "description": "Object id",
+            "description": "Object id, from search_space or list_objects",
             "in": "path",
             "name": "object_id",
             "required": true,
@@ -5727,7 +5738,7 @@
         "operationId": "list_properties",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -5800,7 +5811,7 @@
         "operationId": "create_property",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -5949,7 +5960,7 @@
         "operationId": "delete_property",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -5958,7 +5969,7 @@
             }
           },
           {
-            "description": "Property key",
+            "description": "Property key, from list_properties",
             "in": "path",
             "name": "key",
             "required": true,
@@ -6027,7 +6038,7 @@
         "operationId": "update_property",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -6036,7 +6047,7 @@
             }
           },
           {
-            "description": "Property key",
+            "description": "Property key, from list_properties",
             "in": "path",
             "name": "key",
             "required": true,
@@ -6138,7 +6149,7 @@
         "operationId": "list_property_options",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -6147,7 +6158,7 @@
             }
           },
           {
-            "description": "Property key",
+            "description": "Property key, from list_properties",
             "in": "path",
             "name": "key",
             "required": true,
@@ -6230,7 +6241,7 @@
         "operationId": "create_query",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -6632,7 +6643,7 @@
         "operationId": "get_query_objects",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -6641,7 +6652,7 @@
             }
           },
           {
-            "description": "Query object id",
+            "description": "Query object id, from search_space",
             "in": "path",
             "name": "query_id",
             "required": true,
@@ -6658,12 +6669,16 @@
             }
           },
           {
-            "description": "Comma-separated property keys to include per row",
+            "description": "Property keys to include per row, as an array of strings",
             "in": "query",
             "name": "fields",
             "schema": {
-              "type": "string"
-            }
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "style": "form"
           },
           {
             "description": "Items to skip",
@@ -6738,7 +6753,7 @@
         "operationId": "get_query_views",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -6747,7 +6762,7 @@
             }
           },
           {
-            "description": "Query object id",
+            "description": "Query object id, from search_space",
             "in": "path",
             "name": "query_id",
             "required": true,
@@ -6829,7 +6844,7 @@
         "operationId": "search_space",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -6874,7 +6889,7 @@
                 },
                 "properties": {
                   "fields": {
-                    "description": "property keys to include per row, as an array such as [\"status\",\"due_date\"]; the list reads take the same keys as one comma-separated string",
+                    "description": "property keys to include per row, as an array such as [\"status\",\"due_date\"]; the list reads take the same array",
                     "items": {
                       "type": "string"
                     },
@@ -6996,7 +7011,7 @@
         "operationId": "stream_space_search",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -7034,7 +7049,7 @@
                 },
                 "properties": {
                   "fields": {
-                    "description": "property keys to include per row, as an array such as [\"status\",\"due_date\"]; the list reads take the same keys as one comma-separated string",
+                    "description": "property keys to include per row, as an array such as [\"status\",\"due_date\"]; the list reads take the same array",
                     "items": {
                       "type": "string"
                     },
@@ -7166,7 +7181,7 @@
         "operationId": "list_templates",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -7254,7 +7269,7 @@
         "operationId": "create_template",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -7309,8 +7324,16 @@
                   },
                   "query_source": {
                     "type": "object"
+                  },
+                  "template_for": {
+                    "description": "Templates only: the target type. In a bundle it is the derived id `type-<internal_key>`; a display name or the legacy `ot-<key>` is accepted on input.",
+                    "type": "string"
                   }
                 },
+                "required": [
+                  "formatVersion",
+                  "template_for"
+                ],
                 "type": "object"
               }
             }
@@ -7381,7 +7404,7 @@
         "operationId": "list_types",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -7454,7 +7477,7 @@
         "operationId": "create_type",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -7717,6 +7740,9 @@
                         "type": "object"
                       }
                     },
+                    "required": [
+                      "formatVersion"
+                    ],
                     "type": "object"
                   }
                 ],
@@ -7790,7 +7816,7 @@
         "operationId": "delete_type",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -7799,7 +7825,7 @@
             }
           },
           {
-            "description": "Type key",
+            "description": "Type key, from list_types",
             "in": "path",
             "name": "type",
             "required": true,
@@ -7867,7 +7893,7 @@
         "operationId": "get_type",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -7876,7 +7902,7 @@
             }
           },
           {
-            "description": "Type key",
+            "description": "Type key, from list_types",
             "in": "path",
             "name": "type",
             "required": true,
@@ -7948,7 +7974,7 @@
             }
           },
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -7957,7 +7983,7 @@
             }
           },
           {
-            "description": "Type key",
+            "description": "Type key, from list_types",
             "in": "path",
             "name": "type",
             "required": true,
@@ -8510,7 +8536,7 @@
         "operationId": "list_widgets",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -8598,7 +8624,7 @@
         "operationId": "create_widget",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -8789,7 +8815,7 @@
         "operationId": "delete_widget",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -8798,7 +8824,7 @@
             }
           },
           {
-            "description": "Widget id, or the id of the object the widget points at",
+            "description": "Widget id from list_widgets, or the id of the object the widget points at",
             "in": "path",
             "name": "widget_id",
             "required": true,
@@ -8890,7 +8916,7 @@
         "operationId": "update_widget",
         "parameters": [
           {
-            "description": "Space id",
+            "description": "Space id, from list_spaces",
             "in": "path",
             "name": "space_id",
             "required": true,
@@ -8899,7 +8925,7 @@
             }
           },
           {
-            "description": "Widget id, or the id of the object the widget points at",
+            "description": "Widget id from list_widgets, or the id of the object the widget points at",
             "in": "path",
             "name": "widget_id",
             "required": true,
@@ -9136,6 +9162,9 @@
                     "const": true
                   }
                 },
+                "required": [
+                  "formatVersion"
+                ],
                 "type": "object"
               }
             }

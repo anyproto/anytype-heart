@@ -2,7 +2,6 @@ package v2handler
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -18,8 +17,8 @@ import (
 //	@Id				get_object
 //	@Tags			Objects
 //	@Produce		json
-//	@Param			space_id	path		string			true	"Space id"
-//	@Param			object_id	path		string			true	"Object id"
+//	@Param			space_id	path		string			true	"Space id, from list_spaces"
+//	@Param			object_id	path		string			true	"Object id, from search_space or list_objects"
 //	@Param			include		query		string			false	"Subset of properties,blocks (default both)"
 //	@Param			outline		query		bool			false	"Return the outline instead of full blocks: every block's indent/id/type plus its text truncated to 80 runes"
 //	@Param			block		query		string			false	"Return only this block's subtree"
@@ -55,10 +54,10 @@ func GetObjectHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id			list_objects
 //	@Tags		Objects
 //	@Produce	json
-//	@Param		space_id	path		string									true	"Space id"
-//	@Param		fields		query		string									false	"Comma-separated property keys to include per row"
-//	@Param		offset		query		int										false	"Items to skip"		default(0)
-//	@Param		limit		query		int										false	"Items to return"	default(25)
+//	@Param		space_id	path		string									true	"Space id, from list_spaces"
+//	@Param		fields		query		[]string								false	"Property keys to include per row, as an array of strings"	collectionFormat(csv)
+//	@Param		offset		query		int										false	"Items to skip"												default(0)
+//	@Param		limit		query		int										false	"Items to return"											default(25)
 //	@Success	200			{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows"
 //	@Failure	400			{object}	v2model.Error							"Invalid fields query"
 //	@Failure	404			{object}	v2model.Error							"Space not found or unavailable"
@@ -69,14 +68,7 @@ func ListObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 		offset := c.GetInt(pagination.QueryParamOffset)
 		limit := c.GetInt(pagination.QueryParamLimit)
 
-		var fields []string
-		if raw := c.Query("fields"); raw != "" {
-			for _, f := range strings.Split(raw, ",") {
-				if f = strings.TrimSpace(f); f != "" {
-					fields = append(fields, f)
-				}
-			}
-		}
+		fields := listFieldsParam(c)
 
 		rows, total, hasMore, err := s.ListObjects(c.Request.Context(), c.Param("space_id"), fields, offset, limit)
 		if err != nil {

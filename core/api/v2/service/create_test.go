@@ -578,6 +578,21 @@ func TestV2CreateTemplate(t *testing.T) {
 		assert.Equal(t, "/template_for", apiErr.Issues[0].Path)
 	})
 
+	t.Run("templateFor under properties names the level it belongs at", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateTemplate(context.Background(), testSpaceId,
+			[]byte(`{"formatVersion":"2.0","type":"template","properties":{"name":"Weekly","template_for":"task"}}`), false, true)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/properties/template_for", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "top-level member beside properties")
+	})
+
 	t.Run("explicit non-template type is not overwritten by the endpoint default", func(t *testing.T) {
 		fx := newV2Fixture(t)
 
