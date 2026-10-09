@@ -2,6 +2,7 @@ package addrs
 
 import (
 	"net"
+	"net/netip"
 	"sort"
 	"testing"
 
@@ -20,7 +21,7 @@ func TestGetAddrCachesIntoSliceElement(t *testing.T) {
 	wrapped := WrapInterfaces(ifaces)
 	for i := range wrapped {
 		first := wrapped[i].GetAddr()
-		if wrapped[i].cachedAddrs == nil && wrapped[i].cachedErr == nil {
+		if !wrapped[i].loaded {
 			t.Fatalf("GetAddr did not cache the result for %s", wrapped[i].Name)
 		}
 		second := wrapped[i].GetAddr()
@@ -42,9 +43,66 @@ func TestFindInterfacePosByIPPopulatesCache(t *testing.T) {
 	// TEST-NET-1 address: matches no local interface, so the scan visits all
 	ia.findInterfacePosByIP(net.ParseIP("192.0.2.1"))
 	for i := range ia.Interfaces {
-		if ia.Interfaces[i].cachedAddrs == nil && ia.Interfaces[i].cachedErr == nil {
+		if !ia.Interfaces[i].loaded {
 			t.Fatalf("scan did not populate the addr cache for %s", ia.Interfaces[i].Name)
 		}
+	}
+}
+
+func TestInterfaceAddrFamilies(t *testing.T) {
+	ipNet := func(cidr string) net.Addr {
+		ip, n, err := net.ParseCIDR(cidr)
+		require.NoError(t, err)
+		n.IP = ip
+		return n
+	}
+	ipv4 := ipNet("192.168.1.10/24")
+	linkLocal := ipNet("fe80::a886:c6ff:febd:f923/64")
+	global := ipNet("2a0d:5600:24:1::10/64")
+	ula := ipNet("fdf0:1:2:3::10/64")
+	mappedV4 := &net.IPNet{IP: net.ParseIP("10.0.0.5"), Mask: net.CIDRMask(120, 128)}
+
+	for _, tc := range []struct {
+		name          string
+		addrs         []net.Addr
+		wantAddr      []net.Addr
+		wantLinkLocal []netip.Addr
+	}{
+		{
+			name:          "both families: ipv4 in GetAddr, link-local in its sibling",
+			addrs:         []net.Addr{linkLocal, ipv4, global},
+			wantAddr:      []net.Addr{ipv4},
+			wantLinkLocal: []netip.Addr{netip.MustParseAddr("fe80::a886:c6ff:febd:f923")},
+		},
+		{
+			name:          "ipv6 only: GetAddr is empty, link-local is kept",
+			addrs:         []net.Addr{global, ula, linkLocal},
+			wantAddr:      []net.Addr{},
+			wantLinkLocal: []netip.Addr{netip.MustParseAddr("fe80::a886:c6ff:febd:f923")},
+		},
+		{
+			name:     "global and ULA are never link-local",
+			addrs:    []net.Addr{global, ula},
+			wantAddr: []net.Addr{},
+		},
+		{
+			name:     "an ipv4 address in the 16-byte form stays ipv4",
+			addrs:    []net.Addr{mappedV4},
+			wantAddr: []net.Addr{mappedV4},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			iface := WrapInterfaceWithAddrs(net.Interface{Name: "en16"}, tc.addrs)
+
+			// when
+			gotAddr := iface.GetAddr()
+			gotLinkLocal := iface.GetLinkLocalIPv6()
+
+			// then
+			assert.Equal(t, tc.wantAddr, gotAddr)
+			assert.Equal(t, tc.wantLinkLocal, gotLinkLocal)
+		})
 	}
 }
 

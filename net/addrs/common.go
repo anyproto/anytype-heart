@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 	"net"
+	"net/netip"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -29,7 +30,9 @@ type InterfaceAddr struct {
 
 type NetInterfaceWithAddrCache struct {
 	net.Interface
-	cachedAddrs []net.Addr // ipv4 addresses
+	loaded      bool
+	cachedAddrs []net.Addr   // ipv4 addresses
+	linkLocal   []netip.Addr // ipv6 link-local addresses, without a zone
 	cachedErr   error
 }
 type InterfacesAddrs struct {
@@ -47,7 +50,7 @@ func WrapInterface(iface net.Interface) NetInterfaceWithAddrCache {
 // platforms (and tests) where net.Interface.Addrs cannot be called.
 func WrapInterfaceWithAddrs(iface net.Interface, addrs []net.Addr) NetInterfaceWithAddrCache {
 	wrapped := WrapInterface(iface)
-	wrapped.cachedAddrs = addrs
+	wrapped.setAddrs(addrs)
 	return wrapped
 }
 
@@ -76,26 +79,53 @@ func AddrToIP(addr net.Addr) (net.IP, bool) {
 // The pointer receiver is essential: with a value receiver the result is
 // cached into a copy and every call re-runs the underlying syscalls.
 func (i *NetInterfaceWithAddrCache) GetAddr() []net.Addr {
-	if i.cachedAddrs != nil {
-		return i.cachedAddrs
+	i.load()
+	return i.cachedAddrs
+}
+
+// GetLinkLocalIPv6 returns the interface's IPv6 link-local unicast addresses
+// (fe80::/10), without a zone, cached like GetAddr. Global and ULA addresses
+// are never included.
+func (i *NetInterfaceWithAddrCache) GetLinkLocalIPv6() []netip.Addr {
+	i.load()
+	return i.linkLocal
+}
+
+func (i *NetInterfaceWithAddrCache) load() {
+	if i.loaded {
+		return
 	}
-	if i.cachedErr != nil {
-		return nil
+	addrs, err := i.Interface.Addrs()
+	if err != nil {
+		log.Warn("interface GetAddr error: %v", err)
+		i.loaded, i.cachedErr = true, err
+		return
 	}
-	i.cachedAddrs, i.cachedErr = i.Interface.Addrs()
-	if i.cachedErr != nil {
-		log.Warn("interface GetAddr error: %v", i.cachedErr)
-	}
-	// filter-out ipv6
-	i.cachedAddrs = slice.Filter(i.cachedAddrs, func(addr net.Addr) bool {
-		if ip, ok := AddrToIP(addr); ok {
-			if ip.To4() == nil {
-				return false
+	i.setAddrs(addrs)
+}
+
+// setAddrs splits the interface's addresses into the ipv4 list and the ipv6
+// link-local list; any other ipv6 address is dropped.
+func (i *NetInterfaceWithAddrCache) setAddrs(addrs []net.Addr) {
+	i.loaded = true
+	i.cachedAddrs = make([]net.Addr, 0, len(addrs))
+	i.linkLocal = nil
+	for _, addr := range addrs {
+		ip, ok := AddrToIP(addr)
+		if !ok {
+			i.cachedAddrs = append(i.cachedAddrs, addr)
+			continue
+		}
+		if ip.To4() != nil {
+			i.cachedAddrs = append(i.cachedAddrs, addr)
+			continue
+		}
+		if ip.IsLinkLocalUnicast() {
+			if a, ok := netip.AddrFromSlice(ip); ok {
+				i.linkLocal = append(i.linkLocal, a)
 			}
 		}
-		return true
-	})
-	return i.cachedAddrs
+	}
 }
 
 func NetAddrsEqualUnordered(a, b []net.Addr) bool {
