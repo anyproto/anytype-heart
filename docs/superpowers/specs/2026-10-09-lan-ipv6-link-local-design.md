@@ -36,7 +36,7 @@ What already handles link-local correctly, verified in code: the bridge builds a
 
 ## Non-goals
 
-- Global and ULA IPv6 (`2a0d:…`, `fdf0:…`): they rotate, there are several per interface, and every LAN we target has IPv4. Revisit only for an IPv6-only network.
+- Global and ULA IPv6 (`2a0d:…`, `fdf0:…`): they rotate and there are several per interface. An IPv6-only LAN needs none of them: its interfaces have no IPv4, so the link-local rule applies to them, and mDNS (`ff02::fb`) never leaves the link, so every peer it finds is reachable over link-local. They would matter only for peers on another subnet, which mDNS cannot find either.
 - IPv6 in `LocalServer.Ips`. A zone names the *receiver's* interface, which the sender cannot know; the receiver gets the working address from the inbound connection instead (see Design §4).
 - IPv6 on interfaces that also have IPv4.
 - Phase 2 (below) in this ticket's first PR.
@@ -108,7 +108,7 @@ On device (the setup from 2026-10-09):
 ## Risks
 
 - **Windows**: `golang.org/x/net/ipv6` control messages are not implemented on Windows, so the receiving interface is unknown and no zone can be attached. Skip link-local on Windows (log once) rather than guessing a zone.
-- **macOS virtual interfaces** with IPv6 only (`anpi*`, `ap1`, `llw0`, `awdl0`) would start being advertised on and browsed. `awdl0`/`llw0` are AWDL (peer-to-peer Wi-Fi); `anpi*` are internal. Exclude `awdl*`, `llw*`, `anpi*` and `ap*` by name on darwin, and check `ifconfig` on a test Mac for others before shipping.
+- **Virtual interfaces** with IPv6 only would start being advertised on and browsed. A Mac has many: `anpi*`, `ap1`, `llw0`, `awdl0`, and several `utun*` (VPN and system tunnels, all `MULTICAST` with a link-local address). Linux has `veth*`, `docker*` and VPN tunnels. Implemented as an allowlist by interface name for link-local-only use: darwin/iOS `en*`, `bridge*`; Linux `en*`, `eth*`, `wl*`, `usb*`; Android `wlan*`, `eth*`, `rndis*`, `usb*`; nothing on Windows.
 - **More mDNS traffic**: IPv6 multicast is added on every kept interface. Measure query and answer counts on a busy LAN; the existing `refreshInterfaces` rebuild path is unchanged.
 - **Zone names change** when interfaces are renumbered (cable re-plugged). The next discovery or inbound connection replaces the address list (`SetPeerAddrs` replaces), and GO-7579's rediscovery path will clear stale entries.
 

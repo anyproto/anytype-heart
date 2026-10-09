@@ -81,13 +81,19 @@ type NetworkStateService interface {
 // Also filters out loopback interfaces to make less mess.
 // Please note: this call do a number of underlying syscalls to get addrs for each interface, but they will be cached after first call.
 func filterMulticastInterfaces(ifaces []addrs.NetInterfaceWithAddrCache) []addrs.NetInterfaceWithAddrCache {
+	return filterMulticastInterfacesFor(runtime.GOOS, ifaces)
+}
+
+// filterMulticastInterfacesFor keeps an interface with an IPv4 address, and
+// one without IPv4 that has an IPv6 link-local address (see linkLocalOnly).
+func filterMulticastInterfacesFor(goos string, ifaces []addrs.NetInterfaceWithAddrCache) []addrs.NetInterfaceWithAddrCache {
 	filtered := make([]addrs.NetInterfaceWithAddrCache, 0, len(ifaces))
 	// iterate by index so GetAddr caches into the elements; the kept copies
 	// carry the populated cache with them
 	for i := range ifaces {
 		iface := &ifaces[i]
 		if iface.Flags&gonet.FlagUp != 0 && iface.Flags&gonet.FlagMulticast != 0 && iface.Flags&gonet.FlagLoopback == 0 {
-			if len(iface.GetAddr()) > 0 {
+			if len(iface.GetAddr()) > 0 || len(linkLocalOnly(goos, iface)) > 0 {
 				filtered = append(filtered, ifaces[i])
 			}
 		}
@@ -137,6 +143,14 @@ func (l *discoveryBase) getDiscoveryPossibility(newAddrs addrs.InterfacesAddrs) 
 	if err != nil {
 		// todo: double check network state provided by the client?
 		return DiscoveryLocalNetworkRestricted
+	}
+	if !checkSelfConnect {
+		// an IPv6-only link (a cable, Wi-Fi off) is enough for discovery
+		for i := range interfaces {
+			if len(linkLocalOnly(runtime.GOOS, &interfaces[i])) > 0 {
+				return DiscoveryPossible
+			}
+		}
 	}
 	return DiscoveryNoInterfaces
 }

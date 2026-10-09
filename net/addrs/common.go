@@ -33,7 +33,6 @@ type NetInterfaceWithAddrCache struct {
 	loaded      bool
 	cachedAddrs []net.Addr   // ipv4 addresses
 	linkLocal   []netip.Addr // ipv6 link-local addresses, without a zone
-	cachedErr   error
 }
 type InterfacesAddrs struct {
 	Interfaces []NetInterfaceWithAddrCache
@@ -95,10 +94,11 @@ func (i *NetInterfaceWithAddrCache) load() {
 	if i.loaded {
 		return
 	}
-	addrs, err := i.Interface.Addrs()
+	addrs, err := i.Addrs()
 	if err != nil {
 		log.Warn("interface GetAddr error: %v", err)
-		i.loaded, i.cachedErr = true, err
+		// an interface that cannot be listed stays empty, as before
+		i.loaded = true
 		return
 	}
 	i.setAddrs(addrs)

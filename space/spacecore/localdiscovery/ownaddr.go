@@ -89,20 +89,36 @@ func ipv4Prefix(addr gonet.Addr) (netip.Prefix, bool) {
 	return netip.PrefixFrom(netip.AddrFrom4([4]byte(ip4)), ones), true
 }
 
-// ownAddr is one IPv4 address of this device with its interface subnet.
-// advertised says whether it goes into the list a peer gets when none of our
-// subnets contains it.
+// ownAddr is one address of this device with its interface subnet: an IPv4
+// address, or the IPv6 link-local address of an interface without IPv4
+// (linkLocal). advertised says whether it goes into the list a peer gets when
+// none of our subnets contains it. A link-local address is neither advertised
+// nor matchable: a zone names the receiver's interface, which we cannot know,
+// so it only ever travels in the mDNS records sent on its own link.
 type ownAddr struct {
 	iface      string
 	net        netip.Prefix
 	matchable  bool
 	advertised bool
+	linkLocal  bool
 }
 
-// ownIPv4 lists this device's IPv4 addresses with their subnets, in interface
-// order. Called under the embedding type's mutex.
-func (l *discoveryBase) ownIPv4() []ownAddr {
-	return ownIPv4(runtime.GOOS, l.interfacesAddrs)
+// ownAddrs lists this device's IPv4 addresses with their subnets, in
+// interface order, followed by the link-local addresses of the interfaces
+// that have no IPv4. Called under the embedding type's mutex.
+func (l *discoveryBase) ownAddrs() []ownAddr {
+	return ownAddrs(runtime.GOOS, l.interfacesAddrs)
+}
+
+func ownAddrs(goos string, ifaces addrs.InterfacesAddrs) []ownAddr {
+	own := ownIPv4(goos, ifaces)
+	for i := range ifaces.Interfaces {
+		iface := &ifaces.Interfaces[i]
+		for _, ip := range linkLocalOnly(goos, iface) {
+			own = append(own, ownAddr{iface: iface.Name, net: netip.PrefixFrom(ip, 64), linkLocal: true})
+		}
+	}
+	return own
 }
 
 func ownIPv4(goos string, ifaces addrs.InterfacesAddrs) []ownAddr {
@@ -175,6 +191,8 @@ func logOwnAddresses(list []ownAddr) {
 	for _, a := range list {
 		verdict := "dropped"
 		switch {
+		case a.linkLocal:
+			verdict = "link-local"
 		case a.advertised:
 			verdict = "advertised"
 		case a.matchable:

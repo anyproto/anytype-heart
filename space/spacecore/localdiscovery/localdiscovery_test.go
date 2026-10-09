@@ -5,6 +5,8 @@ package localdiscovery
 import (
 	"context"
 	"fmt"
+	gonet "net"
+	"net/netip"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -317,5 +319,76 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Errorf("peer discovery did not call peer update")
 		}
+	})
+}
+
+func TestPeerAddrs(t *testing.T) {
+	zones := newLinkLocalIfaces(
+		[]ownAddr{{iface: "en16", net: netip.MustParsePrefix("fe80::a886:c6ff:febd:f923/64"), linkLocal: true}},
+		[]gonet.Interface{{Index: 4, Name: "en0"}, {Index: 31, Name: "en16"}},
+	).zones
+
+	for _, tc := range []struct {
+		name  string
+		entry *zeroconf.ServiceEntry
+		want  []string
+	}{
+		{
+			name: "link-local on a link without ipv4 goes after ipv4",
+			entry: &zeroconf.ServiceEntry{
+				Port:     62654,
+				AddrIPv4: []gonet.IP{gonet.ParseIP("192.168.1.62")},
+				AddrIPv6Zoned: []netip.Addr{
+					netip.MustParseAddr("fe80::a886:c6ff:febd:f9dc%en16"),
+					netip.MustParseAddr("2a0d:5600::62"),
+				},
+			},
+			want: []string{"192.168.1.62:62654", "[fe80::a886:c6ff:febd:f9dc%en16]:62654"},
+		},
+		{
+			name: "a decimal zone of the same interface is accepted",
+			entry: &zeroconf.ServiceEntry{
+				Port:          62654,
+				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::a886:c6ff:febd:f9dc%31")},
+			},
+			want: []string{"[fe80::a886:c6ff:febd:f9dc%31]:62654"},
+		},
+		{
+			name: "link-local received on an ipv4 interface is left out",
+			entry: &zeroconf.ServiceEntry{
+				Port:          4006,
+				AddrIPv4:      []gonet.IP{gonet.ParseIP("192.168.1.62")},
+				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62%en0")},
+			},
+			want: []string{"192.168.1.62:4006"},
+		},
+		{
+			name: "an unzoned link-local is left out",
+			entry: &zeroconf.ServiceEntry{
+				Port:          4006,
+				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62")},
+			},
+			want: nil,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, peerAddrs(tc.entry, zones))
+		})
+	}
+}
+
+func TestLinkLocalIfacesIPTraffic(t *testing.T) {
+	t.Run("ipv4 only without a link-local interface", func(t *testing.T) {
+		ll := newLinkLocalIfaces([]ownAddr{{iface: "en0", net: netip.MustParsePrefix("192.168.1.10/24")}}, []gonet.Interface{{Index: 4, Name: "en0"}})
+		assert.Equal(t, zeroconf.IPv4, ll.ipTraffic())
+		assert.Empty(t, ll.indexes)
+	})
+	t.Run("both families with one", func(t *testing.T) {
+		ll := newLinkLocalIfaces(
+			[]ownAddr{{iface: "en16", net: netip.MustParsePrefix("fe80::1/64"), linkLocal: true}},
+			[]gonet.Interface{{Index: 4, Name: "en0"}, {Index: 31, Name: "en16"}},
+		)
+		assert.Equal(t, zeroconf.IPType(zeroconf.IPv4AndIPv6), ll.ipTraffic())
+		assert.Equal(t, []int{31}, ll.indexes)
 	})
 }
