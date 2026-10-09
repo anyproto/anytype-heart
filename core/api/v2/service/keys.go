@@ -669,6 +669,9 @@ type slugHolder struct {
 	Kind string // "bundled property", "property", "bundled type", "type"
 	Key  string // the holder's public key (bundled slug or stored key/slug)
 	Name string
+	// Format is a bundled holder's, for the refusal to say what the
+	// built-in property would hold
+	Format model.RelationFormat
 }
 
 // propertySlugConflict runs the §7.5a-6 union collision check for a
@@ -688,7 +691,7 @@ func (s *Service) propertySlugConflict(slug string, entries []propertyEntry) (sl
 		return slugHolder{}, false
 	}
 	if entry.Id == "" {
-		return slugHolder{Kind: "bundled property", Key: bundle.ApiSlug(entry.Key), Name: entry.Name}, true
+		return slugHolder{Kind: "bundled property", Key: bundle.ApiSlug(entry.Key), Name: entry.Name, Format: entry.Format}, true
 	}
 	return slugHolder{Kind: "property", Key: entry.Key, Name: entry.Name}, true
 }

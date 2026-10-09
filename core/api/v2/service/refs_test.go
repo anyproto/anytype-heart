@@ -46,3 +46,14 @@ func TestPropertyNotFoundInventoryDoesNotOverpromisePublicList(t *testing.T) {
 	assert.Contains(t, closeMatch.Message, "did you mean repair_property_")
 	assert.NotContains(t, closeMatch.Message, "hidden addressable properties", "a concrete suggestion wins over the fallback")
 }
+
+// TestPropertyNotFoundNamesAnUninstalledBuiltIn: a built-in property the
+// space has not installed is not an unknown key — the refusal names the
+// property and how it gets installed.
+func TestPropertyNotFoundNamesAnUninstalledBuiltIn(t *testing.T) {
+	fx := newV2Fixture(t)
+
+	apiErr := v2Err(t, fx.propertyNotFoundError(testSpaceId, "priority", errKeys{}))
+
+	assert.Equal(t, fmt.Sprintf(`property "priority" is the built-in property "Priority" (format number), not installed in space %q: a type's property_definitions naming it installs it`, testSpaceId), apiErr.Message)
+}

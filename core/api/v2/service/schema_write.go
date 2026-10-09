@@ -1340,7 +1340,7 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 				// a built-in property, installed or not: an update by its key
 				// is refused (read-only) or 404s (not installed), so neither
 				// repair above can be followed — the key is simply reserved
-				hint = v2model.Plain(fmt.Sprintf("key %q is reserved by the built-in property %q — pick a different key", holder.Key, holder.Name))
+				hint = v2model.Plain(builtInPropertyHint(holder))
 			}
 			return nil, v2model.ValidationFailed("property key already exists",
 				v2model.Issue{Path: path,
@@ -1570,4 +1570,31 @@ func (s *Service) propertyDeleteWarnings(spaceId string, entry propertyEntry, se
 		}
 	}
 	return issues
+}
+
+// builtInPropertyHint is the repair for a key a built-in property holds:
+// use that property, which a type's field list installs, or mint one under
+// a key of the caller's own.
+func builtInPropertyHint(holder slugHolder) string {
+	if holder.Kind != "bundled property" || builtInReadOnly(holder.Key) {
+		// nothing to offer: a read-only built-in property takes no writes,
+		// so a type listing it would not help
+		return fmt.Sprintf("key %q is reserved by the built-in property %q — pick a different key", holder.Key, holder.Name)
+	}
+	return fmt.Sprintf("key %q belongs to the built-in property %q (format %s): to use it, name it in a type's property_definitions without a format; for a property of your own, pick a different key",
+		holder.Key, holder.Name, anyblockjson.FormatName(holder.Format))
+}
+
+// builtInReadOnly reports whether a built-in property, by its API key,
+// takes no writes: the system's own record keeping.
+func builtInReadOnly(apiKey string) bool {
+	if v2model.IsOutputOnlyProperty(apiKey) {
+		return true
+	}
+	stored, ok := bundle.RelationKeyByApiSlug(apiKey)
+	if !ok {
+		return false
+	}
+	rel, err := bundle.GetRelation(stored)
+	return err == nil && rel != nil && rel.ReadOnly
 }
