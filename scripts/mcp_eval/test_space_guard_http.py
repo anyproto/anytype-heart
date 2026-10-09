@@ -208,7 +208,7 @@ class InlineToolTests(unittest.TestCase):
         shortcut, document = schema["anyOf"]
         self.assertFalse(document["additionalProperties"])
         self.assertIn("formatVersion", document["properties"])
-        self.assertEqual(served["properties"]["properties"], shortcut["properties"]["properties"],
+        self.assertEqual(served["anyOf"][0]["properties"]["properties"], shortcut["properties"]["properties"],
                          "the shortcut keeps its own properties schema")
         self.assertNotIn("type", schema["properties"]["properties"], "the root no longer constrains a conflicting member")
         self.assertEqual(set(), dangling(schema))

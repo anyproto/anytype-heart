@@ -1,8 +1,9 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
-from space_guard import Guard, documents
+from space_guard import SAFE_GLOBAL, SCOPED, Guard, documents
 
 
 class GuardTests(unittest.TestCase):
@@ -32,6 +33,21 @@ class GuardTests(unittest.TestCase):
         resumed = Guard(self.path, "eval-luna-01")
         self.assertTrue(resumed.allowed_space("abcdef"))
         self.assertIsNotNone(resumed.check("API-create-space", {"name": "eval-luna-01 — Duplicate"}))
+
+    def test_every_served_space_tool_is_scoped(self):
+        # the full tier's golden tools/list: a space tool missing from SCOPED
+        # is refused as unknown, and the run reads that as the tool missing
+        golden = Path(__file__).resolve().parents[2] / "core/api/wrapper/full/testdata/tools_list.golden.json"
+        listing = json.loads(golden.read_text())
+        tools = listing.get("tools", listing) if isinstance(listing, dict) else listing
+        for tool in tools:
+            if tool["name"] == "create_space":
+                continue
+            with self.subTest(tool=tool["name"]):
+                if "space_id" in (tool["inputSchema"].get("required") or []):
+                    self.assertIn(tool["name"], SCOPED)
+                else:
+                    self.assertIn(tool["name"], SAFE_GLOBAL)
 
     def test_unknown_tools_and_missing_scope_fail_closed(self):
         self.assertIsNotNone(self.guard.check("API-delete-space", {}))

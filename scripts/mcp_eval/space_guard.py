@@ -29,8 +29,9 @@ from tool_names import capability
 
 SAFE_GLOBAL = {"auth_whoami", "list_spaces", "list_schemas", "get_schema",
                "get_op_schema", "validate", "search_global"}
-SCOPED = set("""add_chat_message create_chat create_collection create_object
-create_property create_query create_template create_type delete_chat_message
+SCOPED = set("""add_chat_message create_chat create_collection create_discussion create_object
+create_property create_query create_template create_type create_widget delete_chat_message delete_widget
+list_templates list_widgets publish_chat_status update_widget
 delete_object delete_property delete_type download_file edit_chat_message
 get_chat_messages get_collection_objects get_collection_views get_member_me
 get_object get_query_objects get_query_views get_space get_type get_type_schema
