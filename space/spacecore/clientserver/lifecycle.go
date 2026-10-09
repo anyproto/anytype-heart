@@ -206,8 +206,11 @@ func (s *clientServer) reconcile(ctx context.Context) {
 	switch probeErr := s.lc.probe(); {
 	case force:
 		// back from a background that did not pause: the socket may have
-		// been defuncted during a suspension, whatever the probe says
-		log.Info("lan listener rebinding after background", zap.Int("port", s.port))
+		// been defuncted during a suspension, whatever the probe says. The
+		// probe result is logged anyway: on a device it shows whether
+		// SO_ERROR detects a defunct listener (probe=<nil> after a
+		// suspension means it does not)
+		log.Info("lan listener rebinding after background", zap.Int("port", s.port), zap.NamedError("probe", probeErr))
 	case probeErr == nil:
 		return
 	case errors.Is(probeErr, errNoListener):
