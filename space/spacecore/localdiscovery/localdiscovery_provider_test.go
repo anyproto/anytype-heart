@@ -4,10 +4,13 @@ import (
 	"context"
 	"testing"
 
+	"github.com/anyproto/any-sync/util/periodicsync"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/net/addrs"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
 )
 
 type stubNotifierProvider struct{}
@@ -98,5 +101,38 @@ func TestProviderDiscovery_PolicyDenied(t *testing.T) {
 
 		// then
 		assert.Empty(t, *states)
+	})
+}
+
+type pausingClientServer struct {
+	clientserver.ClientServer
+	pause bool
+}
+
+func (p *pausingClientServer) ServerStarted() bool               { return true }
+func (p *pausingClientServer) Port() int                         { return 4006 }
+func (p *pausingClientServer) SetPauseOnBackground(enabled bool) { p.pause = enabled }
+
+type stubNetworkState struct{}
+
+func (stubNetworkState) RegisterHook(func(model.DeviceNetworkType)) {}
+
+func TestProviderDiscovery_Start(t *testing.T) {
+	t.Run("native discovery lets the LAN port pause on background", func(t *testing.T) {
+		// given
+		SetNotifierProvider(stubNotifierProvider{})
+		t.Cleanup(func() { SetNotifierProvider(nil) })
+		server := &pausingClientServer{}
+		l := newProvider()
+		l.drpcServer = server
+		l.networkState = stubNetworkState{}
+		l.periodicCheck = periodicsync.NewPeriodicSync(3600, 0, func(context.Context) error { return nil }, log)
+		t.Cleanup(l.periodicCheck.Close)
+
+		// when
+		require.NoError(t, l.Start())
+
+		// then
+		assert.True(t, server.pause)
 	})
 }

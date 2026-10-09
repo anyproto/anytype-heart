@@ -59,6 +59,12 @@ func getNotifierProvider() NotifierProvider {
 	return notifierProvider
 }
 
+// backgroundPauser is implemented by clientserver once its iOS listener
+// lifecycle exists (GO-7577); asserted so this compiles either way.
+type backgroundPauser interface {
+	SetPauseOnBackground(enabled bool)
+}
+
 // dnsServicePolicyDenied is kDNSServiceErr_PolicyDenied: the user denied (or
 // has not yet answered) the iOS Local Network permission.
 const dnsServicePolicyDenied = -65570
@@ -169,6 +175,11 @@ func (l *providerDiscovery) Start() (err error) {
 		return
 	}
 	provider.Provide(l, l.drpcServer.Port(), l.peerId, serviceName)
+	// the platform withdraws our registration on background, so the LAN port
+	// may close with it (GO-7577; a no-op where the listener has no lifecycle)
+	if pauser, ok := l.drpcServer.(backgroundPauser); ok {
+		pauser.SetPauseOnBackground(true)
+	}
 	l.networkState.RegisterHook(func(_ model.DeviceNetworkType) {
 		_ = l.refreshInterfaces(context.Background())
 	})
