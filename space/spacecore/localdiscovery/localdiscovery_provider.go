@@ -170,7 +170,9 @@ func (l *providerDiscovery) Start() (err error) {
 		pauser.SetPauseOnBackground(true)
 	}
 	l.networkState.RegisterHook(func(_ model.DeviceNetworkType) {
-		_ = l.refreshInterfaces(context.Background())
+		if err := l.refreshInterfaces(context.Background()); err != nil {
+			log.Warn("refresh interfaces on network change", zap.Error(err))
+		}
 	})
 
 	l.port = l.drpcServer.Port()
