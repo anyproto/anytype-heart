@@ -286,15 +286,83 @@ func (c *openAPIBodyComposer) literal(schema string) (json.RawMessage, error) {
 // pointer is an open object whose description names the discovery schema to
 // read first. The vocabulary is the operation id, which every wrapper
 // re-spells into its own tool name (the same rule as a hint's see_also).
+//
+// The object stays open, but its container members are declared by JSON
+// kind alone (see kindSkeleton): with no member typed, a host's model sent
+// blocks and properties as strings holding JSON.
 func (c *openAPIBodyComposer) pointer(kind, what string) (json.RawMessage, error) {
+	skeleton, err := kindSkeleton(kind)
+	if err != nil {
+		return nil, err
+	}
 	out, err := json.Marshal(map[string]any{
-		"type":        "object",
-		"description": what + "; its schema and a worked example come from " + v2model.OpGetSchema + " with kind " + kind,
+		"type":                 "object",
+		"description":          what + "; its schema and a worked example come from " + v2model.OpGetSchema + " with kind " + kind,
+		"properties":           skeleton,
+		"additionalProperties": true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("encode pointer body for kind %q: %w", kind, err)
 	}
 	return out, nil
+}
+
+// maxSkeletonEnum bounds the enums a skeleton repeats: a short one tells the
+// caller the value to send, a long one (the generic document's every kind)
+// is the lookup's to list.
+const maxSkeletonEnum = 4
+
+// kindSkeleton is a served kind's top-level members that hold an object, an
+// array or a fixed value, each reduced to that JSON kind (and its const or
+// enum): enough for a caller to send the right shapes, nothing the lookup
+// does not repeat in full. Output-only members are left out.
+func kindSkeleton(kind string) (map[string]any, error) {
+	entry, err := schemaKind(kind)
+	if err != nil {
+		return nil, err
+	}
+	var root struct {
+		Properties map[string]map[string]any `json:"properties"`
+		Defs       map[string]map[string]any `json:"$defs"`
+	}
+	if err := json.Unmarshal(entry.Schema, &root); err != nil {
+		return nil, fmt.Errorf("decode served schema %q: %w", kind, err)
+	}
+	resolve := func(member map[string]any) map[string]any {
+		if ref, ok := member["$ref"].(string); ok {
+			if def, ok := root.Defs[strings.TrimPrefix(ref, "#/$defs/")]; ok {
+				return def
+			}
+		}
+		return member
+	}
+	skeleton := map[string]any{}
+	for name, member := range root.Properties {
+		if out, _ := member["x-output-only"].(bool); out {
+			continue
+		}
+		if v, ok := member["const"]; ok {
+			skeleton[name] = map[string]any{"const": v}
+			continue
+		}
+		if v, ok := member["enum"].([]any); ok && len(v) <= maxSkeletonEnum {
+			skeleton[name] = map[string]any{"enum": v}
+			continue
+		}
+		switch resolve(member)["type"] {
+		case "object":
+			skeleton[name] = map[string]any{"type": "object"}
+		case "array":
+			items := map[string]any{}
+			if it, ok := member["items"].(map[string]any); ok {
+				if t, ok := resolve(it)["type"]; ok {
+					items["type"] = t
+				}
+			}
+			skeleton[name] = map[string]any{"type": "array", "items": items}
+		}
+	}
+	return skeleton, nil
 }
 
 // envelope is `{"ops":[…]}` with the op vocabulary closed and each op's

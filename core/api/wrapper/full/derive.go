@@ -194,7 +194,7 @@ func deriveTool(method, path string, op openAPIOperation, o overlay, components 
 			}
 			tool.OpenBody = open
 			strict = !open
-			if desc, _ := body["description"].(string); desc != "" && len(bodyProperties(body)) == 0 && body["anyOf"] == nil {
+			if desc, _ := body["description"].(string); desc != "" && open && body["anyOf"] == nil {
 				// a document body: its shape is named, not listed
 				tool.Description += " Body: " + desc + "."
 			} else if kinds := documentKinds(body); len(kinds) > 0 {

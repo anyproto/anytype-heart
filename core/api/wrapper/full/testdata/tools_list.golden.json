@@ -791,7 +791,25 @@
        "dry_run": {},
        "markdown": {},
        "name": {},
-       "properties": {},
+       "properties": {
+        "additionalProperties": {
+         "items": {
+          "$ref": "#/$defs/AnyValue"
+         },
+         "maxItems": 2048,
+         "maxLength": 1048576,
+         "type": [
+          "string",
+          "number",
+          "boolean",
+          "array",
+          "null"
+         ]
+        },
+        "description": "property key → value. A list-shaped key takes an array of option names or object ids; a date takes a date string such as 2026-08-01 or 2026-08-01T09:30:00Z rather than unix seconds",
+        "maxProperties": 128,
+        "type": "object"
+       },
        "space_id": {},
        "template": {},
        "type": {}
@@ -801,16 +819,42 @@
       ]
      },
      {
+      "additionalProperties": true,
       "description": "a full AnyBlock document: formatVersion 2.0, properties, and blocks in preorder. It takes the shortcut's template member too; its schema and a worked example come from get_schema with kind object",
       "properties": {
+       "blocks": {},
+       "collection_items": {},
+       "cover": {},
        "create_missing_options": {},
        "dry_run": {},
+       "formatVersion": {},
+       "icon": {},
+       "kind": {},
+       "properties": {
+        "type": "object"
+       },
+       "query_source": {},
        "space_id": {}
       }
      }
     ],
     "description": "the shortcut body, or a full AnyBlock document; formatVersion or blocks picks the document form",
     "properties": {
+     "blocks": {
+      "items": {
+       "type": "object"
+      },
+      "type": "array"
+     },
+     "collection_items": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     },
+     "cover": {
+      "type": "object"
+     },
      "create_missing_options": {
       "description": "Create select options for names the property does not hold yet (default false: an unmatched name is refused)",
       "type": "boolean"
@@ -818,6 +862,18 @@
      "dry_run": {
       "description": "Validate and report without committing",
       "type": "boolean"
+     },
+     "formatVersion": {
+      "const": "2.0"
+     },
+     "icon": {
+      "type": "object"
+     },
+     "kind": {
+      "enum": [
+       "page",
+       "template"
+      ]
      },
      "markdown": {
       "description": "markdown body parsed into blocks server-side, part of the same single create (dry runs validate it too); at most 2048 parsed blocks. Start it at the first section: a leading heading that repeats the name is dropped, and with no name a leading # heading becomes the name",
@@ -830,22 +886,9 @@
       "type": "string"
      },
      "properties": {
-      "additionalProperties": {
-       "items": {
-        "$ref": "#/$defs/AnyValue"
-       },
-       "maxItems": 2048,
-       "maxLength": 1048576,
-       "type": [
-        "string",
-        "number",
-        "boolean",
-        "array",
-        "null"
-       ]
-      },
-      "description": "property key → value. A list-shaped key takes an array of option names or object ids; a date takes a date string such as 2026-08-01 or 2026-08-01T09:30:00Z rather than unix seconds",
-      "maxProperties": 128,
+      "description": "property key → value. A list-shaped key takes an array of option names or object ids; a date takes a date string such as 2026-08-01 or 2026-08-01T09:30:00Z rather than unix seconds"
+     },
+     "query_source": {
       "type": "object"
      },
      "space_id": {
@@ -2467,6 +2510,15 @@
    "description": "Create a template. `template_for` names the type key this template starts an object of. Body: the template as an AnyBlock document: formatVersion 2.0, kind template, template_for naming the type; its schema and a worked example come from get_schema with kind template.",
    "inputSchema": {
     "properties": {
+     "blocks": {
+      "items": {
+       "type": "object"
+      },
+      "type": "array"
+     },
+     "cover": {
+      "type": "object"
+     },
      "create_missing_options": {
       "description": "Create select options for names the property does not hold yet (default false: an unmatched name is refused)",
       "type": "boolean"
@@ -2474,6 +2526,21 @@
      "dry_run": {
       "description": "Validate and report without committing",
       "type": "boolean"
+     },
+     "formatVersion": {
+      "const": "2.0"
+     },
+     "icon": {
+      "type": "object"
+     },
+     "kind": {
+      "const": "template"
+     },
+     "properties": {
+      "type": "object"
+     },
+     "query_source": {
+      "type": "object"
      },
      "space_id": {
       "description": "Space id",
@@ -2530,7 +2597,88 @@
        "default_template": {},
        "default_view": {},
        "dry_run": {},
-       "icon": {},
+       "icon": {
+        "additionalProperties": false,
+        "description": "give format plus its own member: emoji, name or file",
+        "oneOf": [
+         {
+          "properties": {
+           "format": {
+            "const": "emoji"
+           }
+          },
+          "required": [
+           "format",
+           "emoji"
+          ]
+         },
+         {
+          "properties": {
+           "format": {
+            "const": "icon"
+           }
+          },
+          "required": [
+           "format",
+           "name"
+          ]
+         },
+         {
+          "properties": {
+           "format": {
+            "const": "file"
+           }
+          },
+          "required": [
+           "format",
+           "file"
+          ]
+         }
+        ],
+        "properties": {
+         "color": {
+          "enum": [
+           "grey",
+           "yellow",
+           "orange",
+           "red",
+           "pink",
+           "purple",
+           "blue",
+           "ice",
+           "teal",
+           "lime"
+          ],
+          "type": "string"
+         },
+         "emoji": {
+          "maxLength": 32,
+          "minLength": 1,
+          "type": "string"
+         },
+         "file": {
+          "description": "id of an image object in this space, with format file",
+          "maxLength": 4096,
+          "minLength": 1,
+          "type": "string"
+         },
+         "format": {
+          "enum": [
+           "emoji",
+           "icon",
+           "file"
+          ],
+          "type": "string"
+         },
+         "name": {
+          "description": "a built-in icon name, with format icon",
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+         }
+        },
+        "type": "object"
+       },
        "layout": {},
        "name": {},
        "plural_name": {},
@@ -2542,11 +2690,20 @@
       ]
      },
      {
+      "additionalProperties": true,
       "description": "the type as an AnyBlock document: formatVersion 2.0, kind object_type, the definition under type_settings; its schema and a worked example come from get_schema with kind type_document",
       "properties": {
+       "cover": {},
        "create_missing_options": {},
        "dry_run": {},
-       "space_id": {}
+       "formatVersion": {},
+       "icon": {
+        "type": "object"
+       },
+       "kind": {},
+       "properties": {},
+       "space_id": {},
+       "type_settings": {}
       }
      }
     ],
@@ -2557,6 +2714,9 @@
       "maxLength": 256,
       "pattern": "^[a-zA-Z0-9_]+$",
       "type": "string"
+     },
+     "cover": {
+      "type": "object"
      },
      "create_missing_options": {
       "description": "Create select options for names the property does not hold yet (default false: an unmatched name is refused)",
@@ -2583,87 +2743,14 @@
       "description": "Validate and report without committing",
       "type": "boolean"
      },
+     "formatVersion": {
+      "const": "2.0"
+     },
      "icon": {
-      "additionalProperties": false,
-      "description": "give format plus its own member: emoji, name or file",
-      "oneOf": [
-       {
-        "properties": {
-         "format": {
-          "const": "emoji"
-         }
-        },
-        "required": [
-         "format",
-         "emoji"
-        ]
-       },
-       {
-        "properties": {
-         "format": {
-          "const": "icon"
-         }
-        },
-        "required": [
-         "format",
-         "name"
-        ]
-       },
-       {
-        "properties": {
-         "format": {
-          "const": "file"
-         }
-        },
-        "required": [
-         "format",
-         "file"
-        ]
-       }
-      ],
-      "properties": {
-       "color": {
-        "enum": [
-         "grey",
-         "yellow",
-         "orange",
-         "red",
-         "pink",
-         "purple",
-         "blue",
-         "ice",
-         "teal",
-         "lime"
-        ],
-        "type": "string"
-       },
-       "emoji": {
-        "maxLength": 32,
-        "minLength": 1,
-        "type": "string"
-       },
-       "file": {
-        "description": "id of an image object in this space, with format file",
-        "maxLength": 4096,
-        "minLength": 1,
-        "type": "string"
-       },
-       "format": {
-        "enum": [
-         "emoji",
-         "icon",
-         "file"
-        ],
-        "type": "string"
-       },
-       "name": {
-        "description": "a built-in icon name, with format icon",
-        "maxLength": 256,
-        "minLength": 1,
-        "type": "string"
-       }
-      },
-      "type": "object"
+      "description": "give format plus its own member: emoji, name or file"
+     },
+     "kind": {
+      "const": "object_type"
      },
      "layout": {
       "description": "the layout instances of this type get; basic unless you need another",
@@ -2687,6 +2774,9 @@
      "plural_name": {
       "maxLength": 4096,
       "type": "string"
+     },
+     "properties": {
+      "type": "object"
      },
      "property_definitions": {
       "description": "the type's whole field list; an unknown name mints a property. On PATCH it replaces the list, so to change one field send an ops envelope with add_property to update_type instead, and to rename a property send {name} to update_property",
@@ -2763,6 +2853,9 @@
      "space_id": {
       "description": "Space id",
       "type": "string"
+     },
+     "type_settings": {
+      "type": "object"
      }
     },
     "required": [
@@ -3573,7 +3666,50 @@
    "name": "validate",
    "description": "Validate an AnyBlock document. Structure and format rules only. Nothing is resolved against a space, so option names and a type's property keys are not checked here. Findings come back as data: an invalid document is still a 200, carrying the issues, and a valid one carries empty lists. Body: an AnyBlock document of any kind, checked without being stored; its schema and a worked example come from get_schema with kind document.",
    "inputSchema": {
-    "properties": {},
+    "properties": {
+     "blocks": {
+      "items": {
+       "type": "object"
+      },
+      "type": "array"
+     },
+     "collection_items": {
+      "items": {
+       "type": "string"
+      },
+      "type": "array"
+     },
+     "cover": {
+      "type": "object"
+     },
+     "formatVersion": {
+      "const": "2.0"
+     },
+     "icon": {
+      "type": "object"
+     },
+     "option_ids": {
+      "type": "object"
+     },
+     "properties": {
+      "type": "object"
+     },
+     "property_internal_keys": {
+      "type": "object"
+     },
+     "property_settings": {
+      "type": "object"
+     },
+     "query_source": {
+      "type": "object"
+     },
+     "type_settings": {
+      "type": "object"
+     },
+     "uninstalled": {
+      "const": true
+     }
+    },
     "type": "object"
    },
    "annotations": {
