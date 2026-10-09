@@ -90,7 +90,7 @@ var openAPIBodyRecipes = map[string]func(c *openAPIBodyComposer) (json.RawMessag
 				})
 			},
 			func() (json.RawMessage, error) {
-				return c.pointer("type_document", "the type as an AnyBlock document: formatVersion 2.0, kind object_type, the definition under type_settings")
+				return c.pointer("type_document", "the type as an AnyBlock document: kind object_type, the definition under type_settings")
 			})
 	},
 	v2model.OpUpdateType: func(c *openAPIBodyComposer) (json.RawMessage, error) {
@@ -110,14 +110,14 @@ var openAPIBodyRecipes = map[string]func(c *openAPIBodyComposer) (json.RawMessag
 			})
 	},
 	v2model.OpCreateObject: func(c *openAPIBodyComposer) (json.RawMessage, error) {
-		return c.anyOf("the shortcut body, or a full AnyBlock document; formatVersion or blocks picks the document form",
+		return c.anyOf("the shortcut body, or a full AnyBlock document; a member only the document has, such as blocks, picks the document form",
 			func() (json.RawMessage, error) { return c.kind("shortcut") },
 			func() (json.RawMessage, error) {
-				return c.pointer("object", "a full AnyBlock document: formatVersion 2.0, properties, and blocks in preorder. It takes the shortcut's template member too")
+				return c.pointer("object", "a full AnyBlock document: properties, and blocks in preorder. It takes the shortcut's template member too")
 			})
 	},
 	v2model.OpCreateTemplate: func(c *openAPIBodyComposer) (json.RawMessage, error) {
-		return c.pointer("template", "the template as an AnyBlock document: formatVersion 2.0, kind template, template_for naming the type")
+		return c.pointer("template", "the template as an AnyBlock document: kind template, template_for naming the type")
 	},
 	v2model.OpValidate: func(c *openAPIBodyComposer) (json.RawMessage, error) {
 		return c.pointer(apiV2ValidateKind, "an AnyBlock document of any kind, checked without being stored")
@@ -395,7 +395,8 @@ func kindSkeleton(kind string) (map[string]any, []string, error) {
 	}
 	skeleton := map[string]any{}
 	for name, member := range root.Properties {
-		if out, _ := member["x-output-only"].(bool); out {
+		if out, _ := member["x-output-only"].(bool); out || name == "formatVersion" {
+			// formatVersion is assumed on a write, never asked for
 			continue
 		}
 		if v, ok := member["const"]; ok {

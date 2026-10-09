@@ -81,7 +81,7 @@ func TestV2TypeFlatBody(t *testing.T) {
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/colour", apiErr.Issues[0].Path)
-		assert.Contains(t, apiErr.Issues[0].Hint, "formatVersion")
+		assert.Contains(t, apiErr.Issues[0].Hint, "send a full AnyBlock document")
 	})
 
 	t.Run("the same flat body patches an existing type", func(t *testing.T) {

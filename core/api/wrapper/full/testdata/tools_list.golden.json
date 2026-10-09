@@ -883,7 +883,7 @@
   },
   {
    "name": "create_object",
-   "description": "Create an object. A select value naming an option the property does not hold is refused unless `create_missing_options=true` is set. An unknown type or property key is rejected either way. The body is a full AnyBlock document or the shortcut {type, name, properties, markdown}; `formatVersion` or `blocks` picks the document form. `template` starts the object from one; absent, the type's `default_template` applies. The document form's schema and a worked example come from get_schema with kind object; the other forms need no lookup.",
+   "description": "Create an object. A select value naming an option the property does not hold is refused unless `create_missing_options=true` is set. An unknown type or property key is rejected. The body is a full AnyBlock document or the shortcut {type, name, properties, markdown}; a document-only member such as `blocks` picks the document. `template` starts the object from one; absent, the type's `default_template` applies. The document form's schema and a worked example come from get_schema with kind object; the other forms need no lookup.",
    "inputSchema": {
     "anyOf": [
      {
@@ -922,14 +922,13 @@
      },
      {
       "additionalProperties": true,
-      "description": "a full AnyBlock document: formatVersion 2.0, properties, and blocks in preorder. It takes the shortcut's template member too; its schema and a worked example come from get_schema with kind object",
+      "description": "a full AnyBlock document: properties, and blocks in preorder. It takes the shortcut's template member too; its schema and a worked example come from get_schema with kind object",
       "properties": {
        "blocks": {},
        "collection_items": {},
        "cover": {},
        "create_missing_options": {},
        "dry_run": {},
-       "formatVersion": {},
        "icon": {},
        "kind": {},
        "properties": {
@@ -937,13 +936,10 @@
        },
        "query_source": {},
        "space_id": {}
-      },
-      "required": [
-       "formatVersion"
-      ]
+      }
      }
     ],
-    "description": "the shortcut body, or a full AnyBlock document; formatVersion or blocks picks the document form",
+    "description": "the shortcut body, or a full AnyBlock document; a member only the document has, such as blocks, picks the document form",
     "properties": {
      "blocks": {
       "items": {
@@ -967,9 +963,6 @@
      "dry_run": {
       "description": "Validate and report without committing",
       "type": "boolean"
-     },
-     "formatVersion": {
-      "const": "2.0"
      },
      "icon": {
       "type": "object"
@@ -2745,7 +2738,7 @@
   },
   {
    "name": "create_template",
-   "description": "Create a template. `template_for` names the type key this template starts an object of. Body: the template as an AnyBlock document: formatVersion 2.0, kind template, template_for naming the type; its schema and a worked example come from get_schema with kind template.",
+   "description": "Create a template. `template_for` names the type key this template starts an object of. Body: the template as an AnyBlock document: kind template, template_for naming the type; its schema and a worked example come from get_schema with kind template.",
    "inputSchema": {
     "properties": {
      "blocks": {
@@ -2764,9 +2757,6 @@
      "dry_run": {
       "description": "Validate and report without committing",
       "type": "boolean"
-     },
-     "formatVersion": {
-      "const": "2.0"
      },
      "icon": {
       "type": "object"
@@ -2790,7 +2780,6 @@
      }
     },
     "required": [
-     "formatVersion",
      "space_id",
      "template_for"
     ],
@@ -2829,7 +2818,7 @@
   },
   {
    "name": "create_type",
-   "description": "Create a type. A `property_definitions` entry naming a property that does not exist creates it alongside the type. The body is either the flat type body or an AnyBlock document with kind \"object_type\"; `formatVersion`, `kind` or `type_settings` picks the document form. The document form's schema and a worked example come from get_schema with kind type_document; the other forms need no lookup.",
+   "description": "Create a type. A `property_definitions` entry naming a property that does not exist creates it alongside the type. The body is either the flat type body or an AnyBlock document with kind \"object_type\"; `kind` or `type_settings` picks the document form. The document form's schema and a worked example come from get_schema with kind type_document; the other forms need no lookup.",
    "inputSchema": {
     "anyOf": [
      {
@@ -2935,12 +2924,11 @@
      },
      {
       "additionalProperties": true,
-      "description": "the type as an AnyBlock document: formatVersion 2.0, kind object_type, the definition under type_settings; its schema and a worked example come from get_schema with kind type_document",
+      "description": "the type as an AnyBlock document: kind object_type, the definition under type_settings; its schema and a worked example come from get_schema with kind type_document",
       "properties": {
        "cover": {},
        "create_missing_options": {},
        "dry_run": {},
-       "formatVersion": {},
        "icon": {
         "type": "object"
        },
@@ -2948,10 +2936,7 @@
        "properties": {},
        "space_id": {},
        "type_settings": {}
-      },
-      "required": [
-       "formatVersion"
-      ]
+      }
      }
     ],
     "description": "the flat type body, or the interchange document with kind object_type",
@@ -2989,9 +2974,6 @@
      "dry_run": {
       "description": "Validate and report without committing",
       "type": "boolean"
-     },
-     "formatVersion": {
-      "const": "2.0"
      },
      "icon": {
       "description": "give format plus its own member: emoji, name or file"
@@ -3929,9 +3911,6 @@
      "cover": {
       "type": "object"
      },
-     "formatVersion": {
-      "const": "2.0"
-     },
      "icon": {
       "type": "object"
      },
@@ -3957,9 +3936,6 @@
       "const": true
      }
     },
-    "required": [
-     "formatVersion"
-    ],
     "type": "object"
    },
    "annotations": {

@@ -5063,7 +5063,7 @@
         ]
       },
       "post": {
-        "description": "A select value naming an option the property does not hold is refused unless `create_missing_options=true` is set. An unknown type or property key is rejected either way. The body is a full AnyBlock document or the shortcut {type, name, properties, markdown}; `formatVersion` or `blocks` picks the document form. `template` starts the object from one; absent, the type's `default_template` applies.",
+        "description": "A select value naming an option the property does not hold is refused unless `create_missing_options=true` is set. An unknown type or property key is rejected. The body is a full AnyBlock document or the shortcut {type, name, properties, markdown}; a document-only member such as `blocks` picks the document. `template` starts the object from one; absent, the type's `default_template` applies.",
         "operationId": "create_object",
         "parameters": [
           {
@@ -5147,7 +5147,7 @@
                   },
                   {
                     "additionalProperties": true,
-                    "description": "a full AnyBlock document: formatVersion 2.0, properties, and blocks in preorder. It takes the shortcut's template member too; its schema and a worked example come from get_schema with kind object",
+                    "description": "a full AnyBlock document: properties, and blocks in preorder. It takes the shortcut's template member too; its schema and a worked example come from get_schema with kind object",
                     "properties": {
                       "blocks": {
                         "items": {
@@ -5163,9 +5163,6 @@
                       },
                       "cover": {
                         "type": "object"
-                      },
-                      "formatVersion": {
-                        "const": "2.0"
                       },
                       "icon": {
                         "type": "object"
@@ -5183,13 +5180,10 @@
                         "type": "object"
                       }
                     },
-                    "required": [
-                      "formatVersion"
-                    ],
                     "type": "object"
                   }
                 ],
-                "description": "the shortcut body, or a full AnyBlock document; formatVersion or blocks picks the document form"
+                "description": "the shortcut body, or a full AnyBlock document; a member only the document has, such as blocks, picks the document form"
               }
             }
           },
@@ -7299,7 +7293,7 @@
             "application/json": {
               "schema": {
                 "additionalProperties": true,
-                "description": "the template as an AnyBlock document: formatVersion 2.0, kind template, template_for naming the type; its schema and a worked example come from get_schema with kind template",
+                "description": "the template as an AnyBlock document: kind template, template_for naming the type; its schema and a worked example come from get_schema with kind template",
                 "properties": {
                   "blocks": {
                     "items": {
@@ -7309,9 +7303,6 @@
                   },
                   "cover": {
                     "type": "object"
-                  },
-                  "formatVersion": {
-                    "const": "2.0"
                   },
                   "icon": {
                     "type": "object"
@@ -7331,7 +7322,6 @@
                   }
                 },
                 "required": [
-                  "formatVersion",
                   "template_for"
                 ],
                 "type": "object"
@@ -7473,7 +7463,7 @@
         ]
       },
       "post": {
-        "description": "A `property_definitions` entry naming a property that does not exist creates it alongside the type. The body is either the flat type body or an AnyBlock document with kind \"object_type\"; `formatVersion`, `kind` or `type_settings` picks the document form.",
+        "description": "A `property_definitions` entry naming a property that does not exist creates it alongside the type. The body is either the flat type body or an AnyBlock document with kind \"object_type\"; `kind` or `type_settings` picks the document form.",
         "operationId": "create_type",
         "parameters": [
           {
@@ -7719,13 +7709,10 @@
                   },
                   {
                     "additionalProperties": true,
-                    "description": "the type as an AnyBlock document: formatVersion 2.0, kind object_type, the definition under type_settings; its schema and a worked example come from get_schema with kind type_document",
+                    "description": "the type as an AnyBlock document: kind object_type, the definition under type_settings; its schema and a worked example come from get_schema with kind type_document",
                     "properties": {
                       "cover": {
                         "type": "object"
-                      },
-                      "formatVersion": {
-                        "const": "2.0"
                       },
                       "icon": {
                         "type": "object"
@@ -7740,9 +7727,6 @@
                         "type": "object"
                       }
                     },
-                    "required": [
-                      "formatVersion"
-                    ],
                     "type": "object"
                   }
                 ],
@@ -9134,9 +9118,6 @@
                   "cover": {
                     "type": "object"
                   },
-                  "formatVersion": {
-                    "const": "2.0"
-                  },
                   "icon": {
                     "type": "object"
                   },
@@ -9162,9 +9143,6 @@
                     "const": true
                   }
                 },
-                "required": [
-                  "formatVersion"
-                ],
                 "type": "object"
               }
             }

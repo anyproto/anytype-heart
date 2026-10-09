@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
@@ -69,8 +70,8 @@ func (e docEnvelope) propertyDefinitions() json.RawMessage {
 }
 
 // v2ObjectShortcut is the R7 shortcut body: {type, name, properties,
-// markdown}. Any other top-level key means the caller meant a full document
-// and forgot formatVersion/blocks — rejected with steering.
+// markdown}. A member only the document has picks the full document form;
+// a key neither takes is refused here.
 type v2ObjectShortcut struct {
 	Type       string                     `json:"type"`
 	Name       string                     `json:"name"`
@@ -133,13 +134,43 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, body []byte,
 		honourTemplates:      true,
 	}
 
-	// §8/R7 discriminator: presence of formatVersion or blocks ⇒ full document
-	_, hasVersion := fields["formatVersion"]
-	_, hasBlocks := fields["blocks"]
-	if hasVersion || hasBlocks {
+	// §8/R7 discriminator: a member only the document has (blocks, kind,
+	// formatVersion, cover…) picks the full document; a key neither form
+	// takes stays with the shortcut, whose refusal lists its four members
+	if hasDocumentOnlyMember(fields) {
 		return s.createFromDocument(ctx, spaceId, body, opts)
 	}
 	return s.createFromShortcut(ctx, spaceId, fields, opts)
+}
+
+// documentOnlyMembers are the object document's root members the shortcut
+// does not take, read from the served schema so the two cannot drift.
+var documentOnlyMembers = sync.OnceValue(func() map[string]bool {
+	var root struct {
+		Properties map[string]json.RawMessage `json:"properties"`
+	}
+	members := map[string]bool{"formatVersion": true, "blocks": true}
+	if err := json.Unmarshal(apiV2KindSchema("object"), &root); err != nil {
+		return members
+	}
+	for name := range root.Properties {
+		if !shortcutKeys[name] {
+			members[name] = true
+		}
+	}
+	return members
+})
+
+// hasDocumentOnlyMember reports whether a create body carries a member only
+// the full document form takes.
+func hasDocumentOnlyMember(fields map[string]json.RawMessage) bool {
+	only := documentOnlyMembers()
+	for key := range fields {
+		if only[key] {
+			return true
+		}
+	}
+	return false
 }
 
 // liftTemplate takes the `template` member off a create body and reports
@@ -215,8 +246,7 @@ func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields
 				v2model.Issue{
 					Path:    "/" + key,
 					Message: fmt.Sprintf("unknown key %q — the shortcut accepts type, name, properties, markdown", key),
-					Hint:    "to send a full AnyBlock document, include \"formatVersion\":\"2.0\"",
-				})
+				}.Hintf("for blocks, an icon or a cover, send the full document form; %s shows it", v2model.RefGetSchema("object")))
 		}
 	}
 	raw, err := encodeEnvelope(fields)
@@ -611,6 +641,38 @@ func normalizeCreateBody(body []byte) ([]byte, error) {
 	return encodeEnvelope(fields)
 }
 
+// withCurrentFormat is assumeCurrentFormat on an encoded body; a body that
+// is not an object is returned as is, for validation to report.
+func withCurrentFormat(body []byte) ([]byte, error) {
+	fields, err := parseEnvelope(body)
+	if err != nil {
+		return body, nil
+	}
+	if _, ok := fields["formatVersion"]; ok {
+		return body, nil
+	}
+	if err := assumeCurrentFormat(fields); err != nil {
+		return nil, err
+	}
+	return encodeEnvelope(fields)
+}
+
+// assumeCurrentFormat fills in formatVersion when a document omits it. An
+// API caller writes the current format, so the version is not something it
+// is asked for: the member stays legal (an export pasted back carries it,
+// and a wrong value is still refused), only its absence now means current.
+func assumeCurrentFormat(fields map[string]json.RawMessage) error {
+	if _, ok := fields["formatVersion"]; ok {
+		return nil
+	}
+	raw, err := rawJSON(anyblockjson.FormatVersion)
+	if err != nil {
+		return err
+	}
+	fields["formatVersion"] = raw
+	return nil
+}
+
 // docLocalIds collects the doc-local ids a flat AnyBlock document carries
 // explicitly, in document order and deduplicated — the create path's view of
 // the id domain compact relabeling covers. The walk itself is
@@ -658,6 +720,11 @@ func (s *Service) createFromDocument(ctx context.Context, spaceId string, body [
 	// 400ing on its own etag
 	body, err := normalizeCreateBody(body)
 	if err != nil {
+		return nil, err
+	}
+	// 0a. the body is a document by here (the shortcut and the endpoints
+	// that compose one have decided), so an absent version means current
+	if body, err = withCurrentFormat(body); err != nil {
 		return nil, err
 	}
 

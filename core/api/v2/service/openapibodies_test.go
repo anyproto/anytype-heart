@@ -201,7 +201,7 @@ func TestKindSkeletonTypesTheContainers(t *testing.T) {
 		t.Run(kind, func(t *testing.T) {
 			skeleton, _, err := kindSkeleton(kind)
 			require.NoError(t, err)
-			assert.Equal(t, map[string]any{"const": "2.0"}, skeleton["formatVersion"])
+			assert.NotContains(t, skeleton, "formatVersion", "the version is assumed, never asked for")
 			assert.Equal(t, map[string]any{"type": "object"}, skeleton["properties"])
 			if kind != "type_document" {
 				assert.Equal(t, map[string]any{"type": "array", "items": map[string]any{"type": "object"}}, skeleton["blocks"])

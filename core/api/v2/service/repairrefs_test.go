@@ -35,17 +35,13 @@ func TestV2RepairReferences(t *testing.T) {
 		return fx
 	}
 
-	t.Run("a missing formatVersion names the one legal value and the schema", func(t *testing.T) {
+	t.Run("a missing formatVersion is the current one", func(t *testing.T) {
 		fx := setup(t)
 
 		_, err := fx.CreateObject(context.Background(), testSpaceId,
 			[]byte(`{"type":"chore","properties":{"name":"X"},"blocks":[{"type":"paragraph","text":"hi"}]}`), true, true)
 
-		issue := issueAt(t, err, "/formatVersion")
-		assert.Equal(t, "formatVersion is required", issue.Message)
-		assert.Contains(t, issue.Hint, `include "formatVersion":"2.0"`)
-		assert.Contains(t, issue.Hint, v2model.RefGetSchema("object").String())
-		assert.Equal(t, []v2model.Ref{v2model.RefGetSchema("object")}, issue.SeeAlso)
+		require.NoError(t, err)
 	})
 
 	t.Run("a formatVersion of the wrong shape names the literal too", func(t *testing.T) {
@@ -55,7 +51,7 @@ func TestV2RepairReferences(t *testing.T) {
 			[]byte(`{"formatVersion":2,"type":"chore","properties":{"name":"X"}}`), true, true)
 
 		issue := issueAt(t, err, "/formatVersion")
-		assert.Contains(t, issue.Hint, `include "formatVersion":"2.0"`)
+		assert.Contains(t, issue.Hint, `omit formatVersion (the current version is assumed) or send "2.0"`)
 		assert.Equal(t, []v2model.Ref{v2model.RefGetSchema("object")}, issue.SeeAlso)
 	})
 
@@ -167,12 +163,12 @@ func TestV2RepairReferences(t *testing.T) {
 		// (a type document with blocks is valid here and refused on create)
 		fx := setup(t)
 
-		resp := fx.ValidateDocument([]byte(`{"blocks":[{"type":"paragraph","text":"hi"}]}`))
+		resp := fx.ValidateDocument([]byte(`{"formatVersion":2,"blocks":[{"type":"paragraph","text":"hi"}]}`))
 
 		require.Len(t, resp.Issues, 1)
 		assert.Equal(t, []v2model.Ref{v2model.RefGetSchema("document")}, resp.Issues[0].SeeAlso)
 
-		typed := fx.ValidateDocument([]byte(`{"kind":"object_type","properties":{"name":"Plant"}}`))
+		typed := fx.ValidateDocument([]byte(`{"formatVersion":2,"kind":"object_type","properties":{"name":"Plant"}}`))
 		require.NotEmpty(t, typed.Issues)
 		assert.Equal(t, []v2model.Ref{v2model.RefGetSchema("document")}, typed.Issues[0].SeeAlso)
 	})
