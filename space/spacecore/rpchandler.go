@@ -70,7 +70,11 @@ func (s *service) recordLocalPeer(ctx context.Context, peerId string, localServe
 		// dialer's ephemeral source port, nothing listens on it. hostIP keeps
 		// a link-local zone, which url.Parse rejects.
 		if ip, ok := hostIP(peerAddr); ok {
-			portAddrs = append(portAddrs, net.JoinHostPort(ip.String(), strconv.Itoa(int(localServer.Port))))
+			hostPort := net.JoinHostPort(ip.String(), strconv.Itoa(int(localServer.Port)))
+			portAddrs = append(portAddrs, hostPort)
+			if ip.IsLinkLocalUnicast() && ip.Zone() != "" {
+				s.rememberInboundLinkLocal(peerId, hostPort)
+			}
 		}
 	}
 

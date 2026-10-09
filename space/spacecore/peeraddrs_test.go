@@ -3,6 +3,7 @@ package spacecore
 import (
 	"context"
 	"net/netip"
+	"slices"
 	"testing"
 
 	"github.com/anyproto/any-sync/net/peer"
@@ -156,4 +157,70 @@ func TestRecordLocalPeer(t *testing.T) {
 			assert.Equal(t, tc.want, ps.addrs["p1"])
 		})
 	}
+}
+
+func TestWithInboundLinkLocal(t *testing.T) {
+	stubInterfaces := func(t *testing.T, present ...string) {
+		orig := interfaceExists
+		t.Cleanup(func() { interfaceExists = orig })
+		interfaceExists = func(zone string) bool { return slices.Contains(present, zone) }
+	}
+	inbound := func(t *testing.T) *service {
+		s, _, _ := newAccountPeersService(t, nil, nil)
+		s.peerService = &recordingPeerService{}
+		ctx := peer.CtxWithPeerAddr(context.Background(), "yamux://[fe80::1%en2]:51234")
+		s.recordLocalPeer(ctx, "mac", &clientspaceproto.LocalServer{Ips: []string{"192.168.139.3"}, Port: 4006}, nil, false)
+		return s
+	}
+
+	t.Run("an IPv4-only discovery keeps the inbound link-local in front", func(t *testing.T) {
+		// given: the Mac connected over the cable, then native discovery
+		// resolved only an IPv4 address the cable can't reach
+		stubInterfaces(t, "en2")
+		s := inbound(t)
+
+		// when
+		got := s.withInboundLinkLocal("mac", []string{"192.168.139.3:4006"})
+
+		// then
+		assert.Equal(t, []string{"[fe80::1%en2]:4006", "192.168.139.3:4006"}, got)
+	})
+
+	t.Run("a discovery that found nothing still has the cable", func(t *testing.T) {
+		stubInterfaces(t, "en2")
+		s := inbound(t)
+
+		assert.Equal(t, []string{"[fe80::1%en2]:4006"}, s.withInboundLinkLocal("mac", nil))
+	})
+
+	t.Run("a discovery with its own link-local wins", func(t *testing.T) {
+		stubInterfaces(t, "en2")
+		s := inbound(t)
+		addrs := []string{"[fe80::2%en2]:4006"}
+
+		assert.Equal(t, addrs, s.withInboundLinkLocal("mac", addrs))
+	})
+
+	t.Run("an unplugged cable is forgotten", func(t *testing.T) {
+		// given
+		stubInterfaces(t)
+		s := inbound(t)
+
+		// when
+		got := s.withInboundLinkLocal("mac", []string{"192.168.139.3:4006"})
+
+		// then
+		assert.Equal(t, []string{"192.168.139.3:4006"}, got)
+		assert.Empty(t, s.inboundLinkLocal)
+	})
+
+	t.Run("an IPv4 inbound connection remembers nothing", func(t *testing.T) {
+		stubInterfaces(t, "en2")
+		s, _, _ := newAccountPeersService(t, nil, nil)
+		s.peerService = &recordingPeerService{}
+		ctx := peer.CtxWithPeerAddr(context.Background(), "yamux://192.168.1.62:51234")
+		s.recordLocalPeer(ctx, "mac", &clientspaceproto.LocalServer{Port: 4006}, nil, false)
+
+		assert.Equal(t, []string{"192.168.1.62:4006"}, s.withInboundLinkLocal("mac", []string{"192.168.1.62:4006"}))
+	})
 }

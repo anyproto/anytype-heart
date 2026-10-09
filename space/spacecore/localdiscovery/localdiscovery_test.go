@@ -405,12 +405,27 @@ func TestLinkLocalIfacesIPTraffic(t *testing.T) {
 }
 
 func TestInterfaceIds(t *testing.T) {
-	wrap := func(index int, name string) addrs.NetInterfaceWithAddrCache {
-		return addrs.WrapInterface(gonet.Interface{Index: index, Name: name})
+	ipNet := func(cidr string) gonet.Addr {
+		ip, n, err := gonet.ParseCIDR(cidr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		n.IP = ip
+		return n
 	}
+	wifiV4, wifiLL, cableLL := ipNet("192.168.1.10/24"), ipNet("fe80::1/64"), ipNet("fe80::a886:c6ff:febd:f923/64")
+	set := func(cableIndex int, wifi, cable, tunnel []gonet.Addr) []addrs.NetInterfaceWithAddrCache {
+		return []addrs.NetInterfaceWithAddrCache{
+			addrs.WrapInterfaceWithAddrs(gonet.Interface{Index: 4, Name: "en0"}, wifi),
+			addrs.WrapInterfaceWithAddrs(gonet.Interface{Index: cableIndex, Name: "en16"}, cable),
+			addrs.WrapInterfaceWithAddrs(gonet.Interface{Index: 20, Name: "utun0"}, tunnel),
+		}
+	}
+	base := interfaceIds("darwin", set(31, []gonet.Addr{wifiV4, wifiLL}, []gonet.Addr{cableLL}, nil))
 
-	got := interfaceIds([]addrs.NetInterfaceWithAddrCache{wrap(31, "en16"), wrap(4, "en0")})
-
-	assert.Equal(t, []string{"en0#4", "en16#31"}, got)
-	assert.NotEqual(t, got, interfaceIds([]addrs.NetInterfaceWithAddrCache{wrap(42, "en16"), wrap(4, "en0")}))
+	// then
+	assert.Equal(t, base, interfaceIds("darwin", set(31, []gonet.Addr{wifiV4, wifiLL}, []gonet.Addr{cableLL}, nil)))
+	assert.NotEqual(t, base, interfaceIds("darwin", set(42, []gonet.Addr{wifiV4, wifiLL}, []gonet.Addr{cableLL}, nil)), "the cable came back under a new index")
+	assert.NotEqual(t, base, interfaceIds("darwin", set(31, []gonet.Addr{wifiLL}, []gonet.Addr{wifiV4, cableLL}, nil)), "the IPv4 address moved to the cable")
+	assert.Equal(t, base, interfaceIds("darwin", set(31, []gonet.Addr{wifiV4, wifiLL}, []gonet.Addr{cableLL}, []gonet.Addr{ipNet("fe80::9/64")})), "a tunnel's addresses are not read")
 }

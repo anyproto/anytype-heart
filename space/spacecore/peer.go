@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/netip"
 	"slices"
+	"strconv"
 	"strings"
 
 	"go.uber.org/zap"
@@ -57,7 +58,7 @@ func (s *service) PeerDiscovered(ctx context.Context, discovered localdiscovery.
 	if s.peerDiscoveryObserver != nil {
 		s.peerDiscoveryObserver.OnLocalPeerDiscovered(discovered.PeerId, discovered.Addrs)
 	}
-	s.setLocalPeerAddrs(discovered.PeerId, discovered.Addrs)
+	s.setLocalPeerAddrs(discovered.PeerId, s.withInboundLinkLocal(discovered.PeerId, discovered.Addrs))
 	s.rememberOwn(own)
 	shared, proof, err := s.exchangeOutbound(ctx, discovered.PeerId, &own)
 	if err != nil {
@@ -212,6 +213,56 @@ func (s *service) forgetPeerIPs(peerId string) {
 	s.ownMu.Lock()
 	defer s.ownMu.Unlock()
 	delete(s.peerIPs, peerId)
+	delete(s.inboundLinkLocal, peerId)
+}
+
+func (s *service) rememberInboundLinkLocal(peerId, hostPort string) {
+	s.ownMu.Lock()
+	defer s.ownMu.Unlock()
+	if s.inboundLinkLocal == nil {
+		s.inboundLinkLocal = map[string]string{}
+	}
+	s.inboundLinkLocal[peerId] = hostPort
+}
+
+// interfaceExists is a seam for tests.
+var interfaceExists = func(zone string) bool {
+	if index, err := strconv.Atoi(zone); err == nil {
+		_, err = net.InterfaceByIndex(index)
+		return err == nil
+	}
+	_, err := net.InterfaceByName(zone)
+	return err == nil
+}
+
+// withInboundLinkLocal puts the link-local address the peer last connected
+// from in front of addrs when addrs has no link-local address of its own.
+// A phone's native discovery resolves IPv4 only, so over a cable it finds
+// nothing usable (or an IPv4 address the cable can't reach); without this
+// it would replace the one address that works, recorded by recordLocalPeer.
+// The address is dropped once its interface is gone (the cable unplugged).
+func (s *service) withInboundLinkLocal(peerId string, addrs []string) []string {
+	s.ownMu.Lock()
+	hostPort, ok := s.inboundLinkLocal[peerId]
+	s.ownMu.Unlock()
+	if !ok || slices.ContainsFunc(addrs, isLinkLocalAddr) {
+		return addrs
+	}
+	ip, _ := hostIP(hostPort)
+	if !interfaceExists(ip.Zone()) {
+		s.ownMu.Lock()
+		if s.inboundLinkLocal[peerId] == hostPort {
+			delete(s.inboundLinkLocal, peerId)
+		}
+		s.ownMu.Unlock()
+		return addrs
+	}
+	return append([]string{hostPort}, addrs...)
+}
+
+func isLinkLocalAddr(hostPort string) bool {
+	ip, ok := hostIP(hostPort)
+	return ok && ip.IsLinkLocalUnicast()
 }
 
 // hostIP extracts the IP from "ip:port" or a transport URL such as

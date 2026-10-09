@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	gonet "net"
+	"runtime"
 	"slices"
 	"strconv"
 	"sync"
@@ -231,9 +232,11 @@ func (l *zeroconfDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 		return fmt.Errorf("get interfaces addrs: %w", err)
 	}
 	// the flat list misses an interface that came back under a new index
-	// with the same addresses (a cable plugged in again), so compare the
-	// interface identities too
-	ifaceIds := interfaceIds(newAddrs.Interfaces)
+	// with the same addresses (a cable plugged in again), and an address
+	// moving between interfaces (which changes the link-local selection),
+	// so compare the interface identities and, for the interfaces that may
+	// be used over link-local, which addresses each holds
+	ifaceIds := interfaceIds(runtime.GOOS, newAddrs.Interfaces)
 	if addrs.NetAddrsEqualUnordered(l.interfacesAddrs.Addrs, newAddrs.Addrs) && slices.Equal(l.ifaceIds, ifaceIds) {
 		// this optimization allows to save syscalls to get addrs for every iface
 		// also we may receive a new ip address on the existing interface
@@ -449,11 +452,25 @@ func (l *zeroconfDiscovery) browse(ctx context.Context, closeWait *sync.WaitGrou
 	}
 }
 
-// interfaceIds lists the interfaces as name#index, sorted.
-func interfaceIds(ifaces []addrs.NetInterfaceWithAddrCache) []string {
+// interfaceIds lists the interfaces as name#index, and the addresses held by
+// each one that may be used over link-local (see linkLocalCandidate), sorted.
+// Only those few interfaces have their addresses read here; the rest keep
+// relying on the flat address list.
+func interfaceIds(goos string, ifaces []addrs.NetInterfaceWithAddrCache) []string {
 	ids := make([]string, 0, len(ifaces))
-	for _, iface := range ifaces {
-		ids = append(ids, iface.Name+"#"+strconv.Itoa(iface.Index))
+	for i := range ifaces {
+		iface := &ifaces[i]
+		id := iface.Name + "#" + strconv.Itoa(iface.Index)
+		ids = append(ids, id)
+		if !linkLocalCandidate(goos, iface.Name) {
+			continue
+		}
+		for _, addr := range iface.GetAddr() {
+			ids = append(ids, id+" "+addr.String())
+		}
+		for _, addr := range iface.GetLinkLocalIPv6() {
+			ids = append(ids, id+" "+addr.String())
+		}
 	}
 	slices.Sort(ids)
 	return ids
