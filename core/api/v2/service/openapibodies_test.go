@@ -186,3 +186,27 @@ func TestOpenAPIBodiesNameOperationsByOpId(t *testing.T) {
 	assert.NotContains(t, typeEnvelope, "none is applied")
 	assert.Contains(t, envelope, fmt.Sprintf(`"maxItems":%d`, v2MaxOpsPerPatch))
 }
+
+// TestKindSkeletonTypesTheContainers: a document body served as a lookup
+// still says which members are objects and arrays, so a caller does not
+// send blocks or properties as strings holding JSON.
+func TestKindSkeletonTypesTheContainers(t *testing.T) {
+	for _, kind := range []string{"object", "template", "type_document", apiV2ValidateKind} {
+		t.Run(kind, func(t *testing.T) {
+			skeleton, err := kindSkeleton(kind)
+			require.NoError(t, err)
+			assert.Equal(t, map[string]any{"const": "2.0"}, skeleton["formatVersion"])
+			assert.Equal(t, map[string]any{"type": "object"}, skeleton["properties"])
+			if kind != "type_document" {
+				assert.Equal(t, map[string]any{"type": "array", "items": map[string]any{"type": "object"}}, skeleton["blocks"])
+			}
+			assert.NotContains(t, skeleton, "store", "an output-only member is left out")
+		})
+	}
+	skeleton, err := kindSkeleton("template")
+	require.NoError(t, err)
+	assert.Equal(t, map[string]any{"const": "template"}, skeleton["kind"])
+	skeleton, err = kindSkeleton(apiV2ValidateKind)
+	require.NoError(t, err)
+	assert.NotContains(t, skeleton, "kind", "a long enum is the lookup's to list")
+}

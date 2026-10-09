@@ -5102,7 +5102,43 @@
                     "type": "object"
                   },
                   {
+                    "additionalProperties": true,
                     "description": "a full AnyBlock document: formatVersion 2.0, properties, and blocks in preorder. It takes the shortcut's template member too; its schema and a worked example come from get_schema with kind object",
+                    "properties": {
+                      "blocks": {
+                        "items": {
+                          "type": "object"
+                        },
+                        "type": "array"
+                      },
+                      "collection_items": {
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "cover": {
+                        "type": "object"
+                      },
+                      "formatVersion": {
+                        "const": "2.0"
+                      },
+                      "icon": {
+                        "type": "object"
+                      },
+                      "kind": {
+                        "enum": [
+                          "page",
+                          "template"
+                        ]
+                      },
+                      "properties": {
+                        "type": "object"
+                      },
+                      "query_source": {
+                        "type": "object"
+                      }
+                    },
                     "type": "object"
                   }
                 ],
@@ -7063,7 +7099,34 @@
           "content": {
             "application/json": {
               "schema": {
+                "additionalProperties": true,
                 "description": "the template as an AnyBlock document: formatVersion 2.0, kind template, template_for naming the type; its schema and a worked example come from get_schema with kind template",
+                "properties": {
+                  "blocks": {
+                    "items": {
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "cover": {
+                    "type": "object"
+                  },
+                  "formatVersion": {
+                    "const": "2.0"
+                  },
+                  "icon": {
+                    "type": "object"
+                  },
+                  "kind": {
+                    "const": "template"
+                  },
+                  "properties": {
+                    "type": "object"
+                  },
+                  "query_source": {
+                    "type": "object"
+                  }
+                },
                 "type": "object"
               }
             }
@@ -7448,7 +7511,28 @@
                     "type": "object"
                   },
                   {
+                    "additionalProperties": true,
                     "description": "the type as an AnyBlock document: formatVersion 2.0, kind object_type, the definition under type_settings; its schema and a worked example come from get_schema with kind type_document",
+                    "properties": {
+                      "cover": {
+                        "type": "object"
+                      },
+                      "formatVersion": {
+                        "const": "2.0"
+                      },
+                      "icon": {
+                        "type": "object"
+                      },
+                      "kind": {
+                        "const": "object_type"
+                      },
+                      "properties": {
+                        "type": "object"
+                      },
+                      "type_settings": {
+                        "type": "object"
+                      }
+                    },
                     "type": "object"
                   }
                 ],
@@ -8822,7 +8906,52 @@
           "content": {
             "application/json": {
               "schema": {
+                "additionalProperties": true,
                 "description": "an AnyBlock document of any kind, checked without being stored; its schema and a worked example come from get_schema with kind document",
+                "properties": {
+                  "blocks": {
+                    "items": {
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "collection_items": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "cover": {
+                    "type": "object"
+                  },
+                  "formatVersion": {
+                    "const": "2.0"
+                  },
+                  "icon": {
+                    "type": "object"
+                  },
+                  "option_ids": {
+                    "type": "object"
+                  },
+                  "properties": {
+                    "type": "object"
+                  },
+                  "property_internal_keys": {
+                    "type": "object"
+                  },
+                  "property_settings": {
+                    "type": "object"
+                  },
+                  "query_source": {
+                    "type": "object"
+                  },
+                  "type_settings": {
+                    "type": "object"
+                  },
+                  "uninstalled": {
+                    "const": true
+                  }
+                },
                 "type": "object"
               }
             }
