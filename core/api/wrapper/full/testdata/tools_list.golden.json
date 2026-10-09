@@ -781,7 +781,7 @@
   },
   {
    "name": "create_object",
-   "description": "Create an object. A select value naming an option the property does not hold is refused unless `create_missing_options=true` is set. An unknown type or property key is rejected either way. The body is a full AnyBlock document or the shortcut {type, name, properties, markdown}; `formatVersion` or `blocks` picks the document form. `template` starts the object from one; absent, the type's `default_template` applies.",
+   "description": "Create an object. A select value naming an option the property does not hold is refused unless `create_missing_options=true` is set. An unknown type or property key is rejected either way. The body is a full AnyBlock document or the shortcut {type, name, properties, markdown}; `formatVersion` or `blocks` picks the document form. `template` starts the object from one; absent, the type's `default_template` applies. The document form's schema and a worked example come from get_schema with kind object; the other forms need no lookup.",
    "inputSchema": {
     "anyOf": [
      {
@@ -1228,7 +1228,7 @@
   },
   {
    "name": "patch_object",
-   "description": "Update an object. Applies ops in order as one atomic edit. A failed op or invalid result leaves the object unchanged. Text locators must match exactly one block. New block and view IDs are returned by payload position in `created_blocks` and `created_views`, compact by default or full with `ids=full`.",
+   "description": "Update an object. Applies ops in order as one atomic edit. A failed op or invalid result leaves the object unchanged. Text locators must match exactly one block. New block and view IDs are returned by payload position in `created_blocks` and `created_views`, compact by default or full with `ids=full`. Ops: set_properties, set_type, update_block, replace_subtree, insert_blocks, move_block, delete_block, replace_text, set_cell, update_view, insert_view, move_view, delete_view, add_items, remove_items. Their members are not in this schema: get_op_schema with an op's name serves them and a worked example, so call it before first using an op.",
    "inputSchema": {
     "additionalProperties": false,
     "properties": {
@@ -2517,7 +2517,7 @@
   },
   {
    "name": "create_type",
-   "description": "Create a type. A `property_definitions` entry naming a property that does not exist creates it alongside the type. The body is either the flat type body or an AnyBlock document with kind \"object_type\"; `formatVersion`, `kind` or `type_settings` picks the document form.",
+   "description": "Create a type. A `property_definitions` entry naming a property that does not exist creates it alongside the type. The body is either the flat type body or an AnyBlock document with kind \"object_type\"; `formatVersion`, `kind` or `type_settings` picks the document form. The document form's schema and a worked example come from get_schema with kind type_document; the other forms need no lookup.",
    "inputSchema": {
     "anyOf": [
      {
@@ -2801,7 +2801,7 @@
   },
   {
    "name": "update_type",
-   "description": "Update a type. Takes an ops envelope or the type body. Ops add, remove and reorder one property at a time; a removal also drops its column from the views, except any view that groups, covers, sorts or filters by it. In the body, `property_definitions` replaces the whole field list rather than adding to it, and names under `removed` whatever that detached. `api_key` is create-only.",
+   "description": "Update a type. Takes an ops envelope or the type body. Ops add, remove and reorder one property at a time; a removal also drops its column from the views, except any view that groups, covers, sorts or filters by it. In the body, `property_definitions` replaces the whole field list rather than adding to it, and names under `removed` whatever that detached. `api_key` is create-only. Ops: add_property, remove_property, move_property, insert_view, update_view, move_view, delete_view. Their members are not in this schema: get_op_schema with an op's name serves them and a worked example, so call it before first using an op.",
    "inputSchema": {
     "additionalProperties": false,
     "anyOf": [

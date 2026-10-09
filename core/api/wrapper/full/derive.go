@@ -197,6 +197,11 @@ func deriveTool(method, path string, op openAPIOperation, o overlay, components 
 			if desc, _ := body["description"].(string); desc != "" && len(bodyProperties(body)) == 0 && body["anyOf"] == nil {
 				// a document body: its shape is named, not listed
 				tool.Description += " Body: " + desc + "."
+			} else if kinds := documentKinds(body); len(kinds) > 0 {
+				tool.Description += " The document form's schema and a worked example come from get_schema with kind " + strings.Join(kinds, " or ") + "; the other forms need no lookup."
+			}
+			if names := opNames(body); len(names) > 0 {
+				tool.Description += " Ops: " + strings.Join(names, ", ") + ". Their members are not in this schema: get_op_schema with an op's name serves them and a worked example, so call it before first using an op."
 			}
 		} else if len(op.RequestBody.Content) > 0 {
 			return Tool{}, fmt.Errorf("request body has no %s form", contentJSON)
@@ -254,15 +259,7 @@ func deriveTool(method, path string, op openAPIOperation, o overlay, components 
 // schema says so instead of leaving it to a host's default, the way the
 // npm bridge serves it.
 func openOpsItems(body map[string]any) {
-	holders := []map[string]any{body}
-	if branches, ok := body["anyOf"].([]any); ok {
-		for _, b := range branches {
-			if m, ok := b.(map[string]any); ok {
-				holders = append(holders, m)
-			}
-		}
-	}
-	for _, holder := range holders {
+	for _, holder := range bodyBranches(body) {
 		props, _ := holder["properties"].(map[string]any)
 		ops, _ := props["ops"].(map[string]any)
 		items, _ := ops["items"].(map[string]any)
@@ -273,6 +270,63 @@ func openOpsItems(body map[string]any) {
 			items["additionalProperties"] = true
 		}
 	}
+}
+
+// opNames is an ops envelope's op enum, in the document's order, for the
+// description: the schema types an item by its op name alone, and a model
+// reads the description before it reads a nested item schema.
+func opNames(body map[string]any) []string {
+	for _, holder := range bodyBranches(body) {
+		props, _ := holder["properties"].(map[string]any)
+		ops, _ := props["ops"].(map[string]any)
+		items, _ := ops["items"].(map[string]any)
+		itemProps, _ := items["properties"].(map[string]any)
+		op, _ := itemProps["op"].(map[string]any)
+		enum, _ := op["enum"].([]any)
+		var names []string
+		for _, v := range enum {
+			if name, ok := v.(string); ok {
+				names = append(names, name)
+			}
+		}
+		if len(names) > 0 {
+			return names
+		}
+	}
+	return nil
+}
+
+// documentKindPointer is how a body branch names its get_schema lookup.
+var documentKindPointer = regexp.MustCompile(`get_schema with kind (\w+)`)
+
+// documentKinds is the get_schema kinds the body's document branches point
+// at, lifted into the description for the same reason as opNames.
+func documentKinds(body map[string]any) []string {
+	var kinds []string
+	seen := map[string]bool{}
+	for _, holder := range bodyBranches(body)[1:] {
+		desc, _ := holder["description"].(string)
+		for _, m := range documentKindPointer.FindAllStringSubmatch(desc, -1) {
+			if !seen[m[1]] {
+				seen[m[1]] = true
+				kinds = append(kinds, m[1])
+			}
+		}
+	}
+	return kinds
+}
+
+// bodyBranches is the body followed by its anyOf branches.
+func bodyBranches(body map[string]any) []map[string]any {
+	holders := []map[string]any{body}
+	if branches, ok := body["anyOf"].([]any); ok {
+		for _, b := range branches {
+			if m, ok := b.(map[string]any); ok {
+				holders = append(holders, m)
+			}
+		}
+	}
+	return holders
 }
 
 // idempotencyKeyArg is the caller's retry-key argument, on the tools the
