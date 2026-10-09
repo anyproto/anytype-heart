@@ -385,6 +385,13 @@ func (s *Service) planAddProperty(plan *typeOpsPlan, raw json.RawMessage, opPath
 	if len(ambiguous) > 0 {
 		return ambiguousKeyError(v.propertyWord(), op.Property, opPath+".property", ambiguous)
 	}
+	if resolved && hiddenInternalProperty(entry.Key) && (entry.Id == "" || plan.findById(entry.Id) == nil) {
+		return v2model.ValidationFailed("internal property",
+			v2model.Issue{Path: opPath + ".property",
+				Message: fmt.Sprintf("%s is an internal property the app maintains on its own; a type does not list it",
+					internalPropertyTerm(op.Property, entry.Key)),
+				Hint: "to add a property of your own, give it a name no internal property uses"})
+	}
 	declared, formatKnown := anyblockjson.FormatByName(op.Format)
 	if op.Format != "" && !formatKnown {
 		return v2model.ValidationFailed("unknown property format",
