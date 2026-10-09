@@ -60,7 +60,7 @@ const v2ViewOpsEndpoints = v2OpsEndpoint + " · " + v2TypeOpsEndpoint
 // share, split only so the id slot can sit in its historical position. The
 // full inventory is SPEC §5 — served as GET /v2/schemas/object; these defs
 // cover the fields a generated edit realistically touches.
-const v2OpBlockIndentProp = `"indent":{"type":"integer","minimum":0,"maximum":32,"description":"relative: 0 = the anchor's level (after/before/replace_subtree) or the container's child level (inside)"}`
+const v2OpBlockIndentProp = `"indent":{"type":"integer","minimum":0,"maximum":32,"description":"relative, default 0: 0 = the anchor's level (after/before/replace_subtree) or the container's child level (inside), so a block inserted after a nested block takes indent 0, not that block's own depth"}`
 
 // v2OpBlockIdProp is the EXISTING-content id slot.
 const v2OpBlockIdProp = `"id":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$","description":"optional; names an existing block of this object (full id or unique suffix), keeping its identity. Omit it to author new content: the server mints one into created_blocks. An unknown id is refused."}`
@@ -444,8 +444,8 @@ var v2OpSchemas = map[string]v2SchemaKind{
 	"insert_blocks": {
 		endpoint: v2OpsEndpoint,
 		schema: opSchema("insert_blocks", nil,
-			`"after":{"$ref":"#/$defs/blockRef","description":"insert after this block's subtree, at its level"}`,
-			`"before":{"$ref":"#/$defs/blockRef","description":"insert before this block, at its level"}`,
+			`"after":{"$ref":"#/$defs/blockRef","description":"insert after this block's subtree, at its level: indent 0 there, however deep it sits"}`,
+			`"before":{"$ref":"#/$defs/blockRef","description":"insert before this block, at its level: indent 0 there"}`,
 			`"inside":{"$ref":"#/$defs/blockRef","description":"insert as children of this block"}`,
 			`"position":{"type":"string","enum":["first","last"],"description":"which end to insert at: of the inside container, or of the document itself when no targeting field is given. Refused with after/before. first goes to the start, last appends (the default either way)."}`,
 			`"blocks":{"type":"array","minItems":1,"maxItems":256,"items":{"$ref":"#/$defs/block"},"description":"at most one of after/before/inside targets the run — omit all three to insert at the end of the document (position:first for the start; both work on an empty object); indent 0 = the insertion level"}`,
