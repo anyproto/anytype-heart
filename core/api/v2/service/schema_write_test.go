@@ -558,6 +558,20 @@ func TestV2CreateProperty(t *testing.T) {
 		assert.Empty(t, issue.SeeAlso)
 	})
 
+	t.Run("a writable built-in property's key says how to use the property", func(t *testing.T) {
+		// given: priority is bundled and writable, and a type's field list
+		// installs it
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateProperty(context.Background(), testSpaceId,
+			v2model.CreatePropertyRequest{Key: "priority", Name: "Priority", Format: "select"}, false)
+
+		// then
+		issue := v2Err(t, err).Issues[0]
+		assert.Equal(t, `key "priority" belongs to the built-in property "Priority" (format number): to use it, name it in a type's property_definitions without a format; for a property of your own, pick a different key`, issue.Hint)
+	})
+
 	t.Run("dry run reports without creating", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)

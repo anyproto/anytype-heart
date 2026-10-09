@@ -17,6 +17,7 @@ import (
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/storeresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -185,6 +186,14 @@ func (s *Service) typeNotFoundError(spaceId, typeKey string, v errKeys) error {
 // propertyNotFoundError is typeNotFoundError's sibling for property-KEY
 // routes (options listing, PATCH/DELETE properties/{key}).
 func (s *Service) propertyNotFoundError(spaceId, propertyKey string, v errKeys) error {
+	// a built-in property the space has not installed: the key is right,
+	// the property is just not here yet
+	if entries, err := s.liveProperties(spaceId); err == nil {
+		if entry, ok, _ := s.resolvePropertyInput(propertyKey, entries); ok && entry.Id == "" {
+			return v2model.NotFound(fmt.Sprintf("property %q is the built-in property %q (format %s), not installed in space %q: a type's property_definitions naming it installs it",
+				propertyKey, entry.Name, anyblockjson.FormatName(entry.Format), spaceId))
+		}
+	}
 	return notFoundWithKeys(
 		fmt.Sprintf("property %q not found in space %q", propertyKey, spaceId),
 		"key", propertyKey, v.propertiesWord(), s.knownPropertyKeys(spaceId, v),
