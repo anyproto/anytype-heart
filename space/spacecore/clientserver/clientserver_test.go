@@ -24,9 +24,13 @@ func newFixture(t *testing.T) *fixture {
 	yamuxStub := &yamuxStub{}
 	quicStub := &quicStub{}
 	s := New().(*clientServer)
+	// platform-independent by default; lifecycle tests opt in explicitly
+	s.lifecycle = false
 	s.yamux = yamuxStub
 	s.quic = quicStub
 	t.Cleanup(yamuxStub.closeAll)
+	// registered after closeAll, so it runs first: stops a lifecycle worker
+	t.Cleanup(func() { _ = s.Close(context.Background()) })
 	return &fixture{
 		clientServer: s,
 		yamux:        yamuxStub,
