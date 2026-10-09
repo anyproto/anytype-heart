@@ -1,12 +1,15 @@
 package spacecore
 
 import (
+	"context"
 	"net/netip"
 	"testing"
 
+	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/any-sync/commonspace/clientspaceproto"
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 )
 
@@ -32,6 +35,8 @@ func TestHostIP(t *testing.T) {
 		{"192.168.1.5:4006", netip.MustParseAddr("192.168.1.5"), true},
 		{"yamux://192.168.1.5:51234", netip.MustParseAddr("192.168.1.5"), true},
 		{"[::ffff:192.168.1.5]:4006", netip.MustParseAddr("192.168.1.5"), true},
+		{"yamux://[fe80::1%en16]:51234", netip.MustParseAddr("fe80::1%en16"), true},
+		{"[fe80::a886:c6ff:febd:f9dc%31]:62654", netip.MustParseAddr("fe80::a886:c6ff:febd:f9dc%31"), true},
 		{"", netip.Addr{}, false},
 		{"192.168.1.5", netip.Addr{}, false},
 		{"host.local:4006", netip.Addr{}, false},
@@ -104,4 +109,51 @@ func TestLocalPeerAddrs(t *testing.T) {
 		assert.Empty(t, s.peerIPsOf("p1", ""))
 		assert.Equal(t, own.Addrs, localServerOf(own, s.peerIPsOf("p1", "")).Ips)
 	})
+}
+
+func TestRecordLocalPeer(t *testing.T) {
+	localServer := &clientspaceproto.LocalServer{Ips: []string{"192.168.1.62"}, Port: 4006}
+
+	for _, tc := range []struct {
+		name     string
+		connAddr string
+		want     []string
+	}{
+		{
+			name:     "the connection address goes first with the advertised port",
+			connAddr: "yamux://10.20.9.9:51234",
+			want:     []string{"yamux://10.20.9.9:4006", "yamux://192.168.1.62:4006"},
+		},
+		{
+			name:     "a link-local connection address keeps its zone",
+			connAddr: "yamux://[fe80::1%en16]:51234",
+			want:     []string{"yamux://[fe80::1%en16]:4006", "yamux://192.168.1.62:4006"},
+		},
+		{
+			name:     "an advertised address equal to the connection is not repeated",
+			connAddr: "yamux://192.168.1.62:51234",
+			want:     []string{"yamux://192.168.1.62:4006"},
+		},
+		{
+			name: "no connection address leaves the advertised list",
+			want: []string{"yamux://192.168.1.62:4006"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			s, _, _ := newAccountPeersService(t, nil, nil)
+			ps := &recordingPeerService{}
+			s.peerService = ps
+			ctx := context.Background()
+			if tc.connAddr != "" {
+				ctx = peer.CtxWithPeerAddr(ctx, tc.connAddr)
+			}
+
+			// when
+			s.recordLocalPeer(ctx, "p1", localServer, []string{"s1"}, false)
+
+			// then
+			assert.Equal(t, tc.want, ps.addrs["p1"])
+		})
+	}
 }

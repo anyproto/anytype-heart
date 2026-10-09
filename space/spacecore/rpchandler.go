@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/url"
 	"slices"
 	"strconv"
 
@@ -68,9 +67,10 @@ func (s *service) recordLocalPeer(ctx context.Context, peerId string, localServe
 	if peerAddr != "" {
 		// prioritize the address the remote peer connected us from — but
 		// with its advertised listening port: the port in peerAddr is the
-		// dialer's ephemeral source port, nothing listens on it
-		if u, errParse := url.Parse(peerAddr); errParse == nil && u.Hostname() != "" {
-			portAddrs = append(portAddrs, net.JoinHostPort(u.Hostname(), strconv.Itoa(int(localServer.Port))))
+		// dialer's ephemeral source port, nothing listens on it. hostIP keeps
+		// a link-local zone, which url.Parse rejects.
+		if ip, ok := hostIP(peerAddr); ok {
+			portAddrs = append(portAddrs, net.JoinHostPort(ip.String(), strconv.Itoa(int(localServer.Port))))
 		}
 	}
 
