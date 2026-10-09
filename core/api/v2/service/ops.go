@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
@@ -481,18 +482,82 @@ type opItems struct {
 }
 
 // decodeStrictOp decodes one op body into its typed struct, rejecting
-// unknown fields with a schema pointer.
+// unknown fields with a schema pointer. An unknown field is refused by name
+// with the members the op does take, so the caller can fix the call without
+// a schema lookup.
 func decodeStrictOp(raw json.RawMessage, opName, opPath string, v any) error {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
+		issue := v2model.Issue{Path: opPath, Message: err.Error()}
+		if field, ok := unknownJSONField(err); ok {
+			issue.Path = opPath + "/" + field
+			issue.Message = fmt.Sprintf("unknown key %q — %s takes %s", field, opName, strings.Join(opMembers(v), ", "))
+			if hint, ok := opFieldHints[opName+"."+field]; ok {
+				return v2model.ValidationFailed(fmt.Sprintf("invalid %s op", opName),
+					issue.Hintf("%s; %s for the op's schema and example", hint, v2model.RefGetOpSchema(opName)))
+			}
+		}
 		return v2model.ValidationFailed(fmt.Sprintf("invalid %s op", opName),
-			v2model.Issue{
-				Path:    opPath,
-				Message: err.Error(),
-			}.Hintf("%s for the op's schema and example", v2model.RefGetOpSchema(opName)))
+			issue.Hintf("%s for the op's schema and example", v2model.RefGetOpSchema(opName)))
 	}
 	return nil
+}
+
+// opFieldHints says where a member a caller reaches for by habit goes
+// instead, keyed op.field.
+var opFieldHints = map[string]string{
+	// create_object and the document both carry values under properties
+	"set_properties.properties": `values to write go under set: {"op":"set_properties","set":{"<key>":<value>}}`,
+}
+
+// unknownJSONField extracts the field name from encoding/json's
+// unknown-field error text (the decoder exposes no typed error for it).
+func unknownJSONField(err error) (string, bool) {
+	const marker = `unknown field "`
+	msg := err.Error()
+	idx := strings.Index(msg, marker)
+	if idx < 0 {
+		return "", false
+	}
+	rest := msg[idx+len(marker):]
+	end := strings.Index(rest, `"`)
+	if end < 0 {
+		return "", false
+	}
+	return rest[:end], true
+}
+
+// opMembers lists an op struct's JSON members in declaration order, op
+// itself left out: the members a refusal offers in place of an unknown one.
+func opMembers(v any) []string {
+	t := reflect.TypeOf(v)
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return nil
+	}
+	var members []string
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		if f.Anonymous {
+			members = append(members, opMembers(reflect.New(f.Type).Interface())...)
+			continue
+		}
+		if !f.IsExported() {
+			continue
+		}
+		name, _, _ := strings.Cut(f.Tag.Get("json"), ",")
+		if name == "-" || name == "op" {
+			continue
+		}
+		if name == "" {
+			name = f.Name
+		}
+		members = append(members, name)
+	}
+	return members
 }
 
 func decodeJSONUseNumber(raw []byte, v any) error {
