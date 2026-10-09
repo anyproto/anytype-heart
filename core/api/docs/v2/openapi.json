@@ -5370,7 +5370,7 @@
         ]
       },
       "patch": {
-        "description": "Applies ops in order as one atomic edit. A failed op or invalid result leaves the object unchanged. Text locators must match exactly one block. New block and view IDs are returned by payload position in `created_blocks` and `created_views`, compact by default or full with `ids=full`.",
+        "description": "Edits in place, keeping the id and links; to change the type, use set_type rather than recreating the object. Applies ops in order as one atomic edit. A failed op or invalid result leaves the object unchanged. Text locators must match exactly one block. New block and view IDs are returned by payload position in `created_blocks` and `created_views`, compact by default or full with `ids=full`.",
         "operationId": "patch_object",
         "parameters": [
           {
