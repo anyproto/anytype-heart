@@ -117,6 +117,9 @@ type service struct {
 	// localAddrs is each LAN peer's installed address list ("ip:port");
 	// guarded by ownMu
 	localAddrs map[string][]string
+	// discoveredAddrs is each LAN peer's latest discovery list; guarded by
+	// ownMu
+	discoveredAddrs map[string][]string
 	// localAddrsMu serializes installing a LAN peer's address list, from
 	// discovery and from an inbound exchange; never held across an RPC
 	localAddrsMu sync.Mutex

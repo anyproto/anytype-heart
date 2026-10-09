@@ -307,12 +307,50 @@ func TestInboundLinkLocalExpiresFromTheInstalledList(t *testing.T) {
 		assert.Equal(t, []string{"yamux://[fe80::1%en2]:4006", "yamux://192.168.139.3:4006"}, ps.addrs["mac"])
 	})
 
+	t.Run("a live link-local connection renews it", func(t *testing.T) {
+		origLive := liveLinkLocalConn
+		t.Cleanup(func() { liveLinkLocalConn = origLive })
+		liveLinkLocalConn = func(*service, string) bool { return true }
+		n := len(expire)
+
+		expire[n-1]()
+
+		assert.Equal(t, []string{"yamux://[fe80::1%en2]:4006", "yamux://192.168.139.3:4006"}, ps.addrs["mac"])
+		require.Len(t, expire, n+1, "re-armed")
+	})
+
 	t.Run("unrenewed: it leaves the installed list", func(t *testing.T) {
 		expire[len(expire)-1]()
 
 		assert.Equal(t, []string{"yamux://192.168.139.3:4006"}, ps.addrs["mac"])
 		assert.Empty(t, s.inboundLinkLocal)
 	})
+}
+
+func TestInboundLinkLocalExpiryRestoresTheDiscoveredRoute(t *testing.T) {
+	// given: the Mac discovered the phone over the cable (zone by index),
+	// then the phone's exchange installed the same route zoned by name
+	var expire []func()
+	origAfter := afterFunc
+	t.Cleanup(func() { afterFunc = origAfter })
+	afterFunc = func(d time.Duration, f func()) *time.Timer {
+		expire = append(expire, f)
+		return time.NewTimer(time.Hour)
+	}
+	s, _, _ := newAccountPeersService(t, nil, nil)
+	ps := &recordingPeerService{}
+	s.peerService = ps
+	s.rememberDiscovered("phone", []string{"[fe80::62%31]:4006"})
+	s.setLocalPeerAddrs("phone", []string{"[fe80::62%31]:4006"})
+	ctx := peer.CtxWithPeerAddr(context.Background(), "yamux://[fe80::62%en16]:51234")
+	s.recordLocalPeer(ctx, "phone", &clientspaceproto.LocalServer{Port: 4006}, nil, false)
+	require.Equal(t, []string{"yamux://[fe80::62%en16]:4006"}, ps.addrs["phone"])
+
+	// when: two minutes without an exchange or a live connection
+	expire[len(expire)-1]()
+
+	// then: the discovered route is back, not an empty list
+	assert.Equal(t, []string{"yamux://[fe80::62%31]:4006"}, ps.addrs["phone"])
 }
 
 func TestLinkLocalUsable(t *testing.T) {
