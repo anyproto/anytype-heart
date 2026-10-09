@@ -60,7 +60,7 @@ func (e *Executor) Instructions() string { return Instructions }
 // tools carry their own shapes.
 const Instructions = "Anytype tools over the local API, one per operation. " +
 	"Edits are op envelopes: patch_object and update_type take ops, a list of {op, …} entries applied in order. " +
-	"An op's members are not in the tool schema: call get_op_schema with the op name before first using an op. " +
+	"Each op's members are listed in the tool's description; get_op_schema with the op name serves their value shapes and a worked example. " +
 	"get_schema serves a full document kind's schema with a worked example (object, type_document, template, document); the shortcut bodies need no lookup. " +
 	"dry_run: true previews any write and reports what it would change. " +
 	"Every error says how to fix the call — follow it and retry once."

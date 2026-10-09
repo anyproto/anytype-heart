@@ -32,7 +32,15 @@ func realInputs(t *testing.T) Inputs {
 	t.Helper()
 	doc, err := os.ReadFile(filepath.Join("..", "..", "docs", "v2", "openapi.json"))
 	require.NoError(t, err)
-	return Inputs{OpenAPI: doc}
+	served, err := v2service.ServedOpSchemas()
+	require.NoError(t, err)
+	members := map[string][]string{}
+	for name, op := range served {
+		m, err := OpMembers(op.Schema)
+		require.NoError(t, err, name)
+		members[name] = m
+	}
+	return Inputs{OpenAPI: doc, OpMembers: members}
 }
 
 func deriveReal(t *testing.T) *Table {
@@ -106,9 +114,9 @@ func TestArgumentsPlaceEveryParameter(t *testing.T) {
 	tool, ok := table.Tool("add_chat_message")
 	require.True(t, ok)
 	want := map[string]Arg{
-		"space_id":        {Name: "space_id", In: ArgPath, Wire: "space_id", Required: true},
-		"chat_id":         {Name: "chat_id", In: ArgPath, Wire: "chat_id", Required: true},
-		"dry_run":         {Name: "dry_run", In: ArgQuery, Wire: "dry_run"},
+		"space_id": {Name: "space_id", In: ArgPath, Wire: "space_id", Required: true},
+		"chat_id":  {Name: "chat_id", In: ArgPath, Wire: "chat_id", Required: true},
+		"dry_run":  {Name: "dry_run", In: ArgQuery, Wire: "dry_run"},
 	}
 	for name, w := range want {
 		got, ok := tool.Arg(name)
@@ -493,6 +501,17 @@ func TestEveryOpenBodyPointsAtALookupThatResolves(t *testing.T) {
 		"create_type": "type_document", "validate": "document"}, pointed)
 }
 
+// TestOpMembers: required members first in the schema's order, then the
+// optional ones sorted and marked, op left out.
+func TestOpMembers(t *testing.T) {
+	got, err := OpMembers(json.RawMessage(`{"properties":{"op":{},"view":{},"block":{},"set":{},"columns":{}},"required":["op","view"]}`))
+	require.NoError(t, err)
+	assert.Equal(t, []string{"view", "block?", "columns?", "set?"}, got)
+
+	_, err = OpMembers(json.RawMessage(`{"properties":{"op":{}},"required":["op","view"]}`))
+	assert.Error(t, err, "a required member the schema does not define")
+}
+
 // TestOpEnvelopesAreLookups: each ops envelope types an op by name only —
 // the enum is exactly the channel's served op set — leaves the members
 // open, and points at get_op_schema, which serves every op in the enum.
@@ -545,7 +564,11 @@ func TestOpEnvelopesAreLookups(t *testing.T) {
 			assert.True(t, takesOp, "get_op_schema takes the op name as op")
 			// a model reads the description first: it lists the ops and
 			// says their members are a lookup
-			assert.Contains(t, tool.Description, "Ops: "+strings.Join(ops.Items.Properties.Op.Enum, ", ")+".")
+			for _, op := range ops.Items.Properties.Op.Enum {
+				m, err := OpMembers(served[op].Schema)
+				require.NoError(t, err)
+				assert.Contains(t, tool.Description, op+"{"+strings.Join(m, ", ")+"}")
+			}
 			assert.Contains(t, tool.Description, "get_op_schema")
 		})
 	}

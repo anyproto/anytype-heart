@@ -8,6 +8,7 @@ package api
 import (
 	"fmt"
 
+	v2service "github.com/anyproto/anytype-heart/core/api/v2/service"
 	"github.com/anyproto/anytype-heart/core/api/wrapper/full"
 )
 
@@ -22,9 +23,31 @@ func FullTable() (*full.Table, error) {
 }
 
 func deriveFullTable() (*full.Table, error) {
-	table, err := full.Derive(full.Inputs{OpenAPI: openapiV2JSON})
+	members, err := fullOpMembers()
+	if err != nil {
+		return nil, fmt.Errorf("derive full tool table: %w", err)
+	}
+	table, err := full.Derive(full.Inputs{OpenAPI: openapiV2JSON, OpMembers: members})
 	if err != nil {
 		return nil, fmt.Errorf("derive full tool table: %w", err)
 	}
 	return table, nil
+}
+
+// fullOpMembers is each served op's members, for the op lists the edit
+// tools' descriptions carry.
+func fullOpMembers() (map[string][]string, error) {
+	served, err := v2service.ServedOpSchemas()
+	if err != nil {
+		return nil, fmt.Errorf("served op schemas: %w", err)
+	}
+	members := make(map[string][]string, len(served))
+	for name, op := range served {
+		m, err := full.OpMembers(op.Schema)
+		if err != nil {
+			return nil, fmt.Errorf("op %q: %w", name, err)
+		}
+		members[name] = m
+	}
+	return members, nil
 }

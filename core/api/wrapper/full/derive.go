@@ -103,7 +103,7 @@ func Derive(in Inputs) (*Table, error) {
 			table.Excluded[l.op.OperationId] = o.Exclude
 			continue
 		}
-		tool, err := deriveTool(l.method, l.path, l.op, o, doc.Components.Schemas)
+		tool, err := deriveTool(l.method, l.path, l.op, o, doc.Components.Schemas, in.OpMembers)
 		if err != nil {
 			return nil, fmt.Errorf("derive %s: %w", l.op.OperationId, err)
 		}
@@ -114,7 +114,7 @@ func Derive(in Inputs) (*Table, error) {
 }
 
 // deriveTool builds one tool.
-func deriveTool(method, path string, op openAPIOperation, o overlay, components map[string]json.RawMessage) (Tool, error) {
+func deriveTool(method, path string, op openAPIOperation, o overlay, components map[string]json.RawMessage, opMembers map[string][]string) (Tool, error) {
 	tool := Tool{
 		Name:        op.OperationId,
 		Method:      strings.ToUpper(method),
@@ -201,7 +201,11 @@ func deriveTool(method, path string, op openAPIOperation, o overlay, components 
 				tool.Description += " The document form's schema and a worked example come from get_schema with kind " + strings.Join(kinds, " or ") + "; the other forms need no lookup."
 			}
 			if names := opNames(body); len(names) > 0 {
-				tool.Description += " Ops: " + strings.Join(names, ", ") + ". Their members are not in this schema: get_op_schema with an op's name serves them and a worked example, so call it before first using an op."
+				list, err := renderOps(names, opMembers)
+				if err != nil {
+					return Tool{}, err
+				}
+				tool.Description += " " + list
 			}
 		} else if len(op.RequestBody.Content) > 0 {
 			return Tool{}, fmt.Errorf("request body has no %s form", contentJSON)
@@ -294,6 +298,56 @@ func opNames(body map[string]any) []string {
 		}
 	}
 	return nil
+}
+
+// renderOps is the op list a tool description carries: each op with its
+// members when they are known, and where their value shapes come from.
+func renderOps(names []string, members map[string][]string) (string, error) {
+	if members == nil {
+		return "Ops: " + strings.Join(names, ", ") + ". Their members are not in this schema: get_op_schema with an op's name serves them and a worked example, so call it before first using an op.", nil
+	}
+	parts := make([]string, 0, len(names))
+	for _, name := range names {
+		m, ok := members[name]
+		if !ok {
+			return "", fmt.Errorf("op %q has no members", name)
+		}
+		parts = append(parts, name+"{"+strings.Join(m, ", ")+"}")
+	}
+	return "Ops and their members, ? marking an optional one: " + strings.Join(parts, ", ") + ". get_op_schema with an op's name serves the members' value shapes and a worked example; call it before first using an op whose shapes you do not know.", nil
+}
+
+// OpMembers renders an op schema's members for the op list: required ones
+// first, in the schema's order, then the optional ones sorted and marked ?,
+// op itself left out.
+func OpMembers(schema json.RawMessage) ([]string, error) {
+	var s struct {
+		Properties map[string]json.RawMessage `json:"properties"`
+		Required   []string                   `json:"required"`
+	}
+	if err := json.Unmarshal(schema, &s); err != nil {
+		return nil, fmt.Errorf("decode op schema: %w", err)
+	}
+	required := map[string]bool{}
+	var out []string
+	for _, name := range s.Required {
+		if name == "op" {
+			continue
+		}
+		if _, ok := s.Properties[name]; !ok {
+			return nil, fmt.Errorf("required member %q is not a property", name)
+		}
+		required[name] = true
+		out = append(out, name)
+	}
+	var optional []string
+	for name := range s.Properties {
+		if name != "op" && !required[name] {
+			optional = append(optional, name+"?")
+		}
+	}
+	sort.Strings(optional)
+	return append(out, optional...), nil
 }
 
 // documentKindPointer is how a body branch names its get_schema lookup.
