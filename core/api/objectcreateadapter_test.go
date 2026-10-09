@@ -258,6 +258,31 @@ func TestCreateObjectFromSnapshotTemplate(t *testing.T) {
 		assert.Equal(t, int64(model.ObjectOrigin_api), created.Details().GetInt64(bundle.RelationKeyOrigin))
 	})
 
+	t.Run("an unnamed document keeps its first block: it gets an empty title, not a name taken from it", func(t *testing.T) {
+		// given
+		fx := newCreateAdapterFixture(t)
+		snapshot := memoSnapshot()
+		snapshot.Details = &types.Struct{Fields: map[string]*types.Value{}}
+		snapshot.Blocks[1].Content = &model.BlockContentOfText{Text: &model.BlockContentText{Text: "Context", Style: model.BlockContentText_Header2}}
+		var created *state.State
+		fx.creator.EXPECT().CreateSmartBlockFromStateInSpace(mock.Anything, mock.Anything, []domain.TypeKey{"memo"}, mock.Anything).
+			RunAndReturn(func(_ context.Context, _ clientspace.Space, _ []domain.TypeKey, st *state.State) (string, *domain.Details, error) {
+				created = st
+				return "obj1", nil, nil
+			})
+
+		// when
+		_, err := fx.CreateObjectFromSnapshot(context.Background(), "space1", snapshot, "")
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, created)
+		require.True(t, created.Exists(state.TitleBlockID), "the title block the layout conversion checks for")
+		assert.Empty(t, created.Pick(state.TitleBlockID).Model().GetText().GetText())
+		assert.Contains(t, created.Pick(created.RootId()).Model().ChildrenIds, "p1", "the heading stays a block")
+		assert.Empty(t, created.Details().GetString(bundle.RelationKeyName))
+	})
+
 	t.Run("a template id builds the base state and the document lands on top", func(t *testing.T) {
 		// given
 		fx := newCreateAdapterFixture(t)
