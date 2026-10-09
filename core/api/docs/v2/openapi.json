@@ -5081,6 +5081,7 @@
                             "null"
                           ]
                         },
+                        "description": "property key \u2192 value. A list-shaped key takes an array of option names or object ids; a date takes a date string such as 2026-08-01 or 2026-08-01T09:30:00Z rather than unix seconds",
                         "maxProperties": 128,
                         "type": "object"
                       },
