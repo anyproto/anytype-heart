@@ -4403,13 +4403,15 @@
         "In progress or investigating contains Dark mode UI only.",
         "This sprint collection contains Dark mode UI and Search timeout issue (formerly Bug, now Feature).",
         "Object links to Person are preserved through type conversion.",
-        "Type changes do not affect collection membership."
+        "Type changes do not affect collection membership.",
+        "Each live query covers one type (a product rule): a request spanning Features and Bugs is met by one query per type, or by a property-sourced set filtered on both types, with the limit stated. Claiming a single cross-type query that does not exist fails this check."
       ],
       "pitfalls": [
         "Assuming set_type requires re-entering all properties.",
         "Confusing type conversion with object deletion and recreation.",
         "Breaking object references when changing types.",
-        "Forgetting that Status is different between Feature and Bug types."
+        "Forgetting that Status is different between Feature and Bug types.",
+        "Promising a single cross-type query instead of explaining that a query covers one type."
       ],
       "tools": [
         "create_collection",

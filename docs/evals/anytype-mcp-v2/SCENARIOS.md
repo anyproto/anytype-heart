@@ -2022,6 +2022,7 @@ Every scenario creates its own space, custom types, linked records, queries, a c
 - This sprint collection contains Dark mode UI and Search timeout issue (formerly Bug, now Feature).
 - Object links to Person are preserved through type conversion.
 - Type changes do not affect collection membership.
+- Each live query covers one type (a product rule): a request spanning Features and Bugs is met by one query per type, or by a property-sourced set filtered on both types, with the limit stated. Claiming a single cross-type query that does not exist fails this check.
 
 **Pitfalls to look for in tool calls**
 
@@ -2029,6 +2030,7 @@ Every scenario creates its own space, custom types, linked records, queries, a c
 - Confusing type conversion with object deletion and recreation.
 - Breaking object references when changing types.
 - Forgetting that Status is different between Feature and Bug types.
+- Promising a single cross-type query instead of explaining that a query covers one type.
 
 **Expected tools:** `create_collection`, `create_object`, `create_query`, `create_space`, `create_type`, `get_collection_objects`, `get_object`, `get_query_objects`, `list_types`, `patch_object`, `search_space`.
 
