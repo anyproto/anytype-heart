@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"slices"
+	"sort"
 	"strings"
 	"testing"
 
@@ -376,7 +378,7 @@ func TestMatchLocatorIsPublishedExactlyWhereItWorks(t *testing.T) {
 			apiErr := v2Err(t, err)
 			rejectedTheField := false
 			for _, issue := range apiErr.Issues {
-				if strings.Contains(issue.Message, `unknown field "match"`) {
+				if strings.Contains(issue.Message, `unknown key "match"`) {
 					rejectedTheField = true
 				}
 			}
@@ -695,4 +697,102 @@ func TestV2OpEnvelopeIsReachable(t *testing.T) {
 		assert.Equal(t, "/if_match", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Hint, "If-Match")
 	})
+}
+
+// TestUnknownOpMemberNamesTheMembers: an op carrying a member it does not
+// take is refused with that member's path and the members the op does take
+// — the same set its served schema publishes — so a caller fixes the call
+// from the refusal alone.
+func TestUnknownOpMemberNamesTheMembers(t *testing.T) {
+	ctx := context.Background()
+	schemas := newV2Fixture(t)
+	takes := regexp.MustCompile(`^unknown key "zz_probe" — (\w+) takes (.+)$`)
+
+	probe := func(t *testing.T, op string, err error) {
+		t.Helper()
+		entry, schemaErr := schemas.SchemaOp(op)
+		require.NoError(t, schemaErr)
+		require.Error(t, err)
+		apiErr := v2Err(t, err)
+		require.NotEmpty(t, apiErr.Issues)
+		issue := apiErr.Issues[0]
+		assert.True(t, strings.HasSuffix(issue.Path, "/zz_probe"), "the path names the member: %q", issue.Path)
+		m := takes.FindStringSubmatch(issue.Message)
+		require.NotNil(t, m, "the refusal names the members: %q", issue.Message)
+		assert.Equal(t, op, m[1])
+		got := strings.Split(m[2], ", ")
+		sort.Strings(got)
+		assert.Equal(t, publishedOpMembers(t, entry.Schema), got, "the refusal offers what the schema publishes")
+		assert.Contains(t, issue.SeeAlso, v2model.RefGetOpSchema(op))
+	}
+
+	for _, op := range v2OpNames {
+		t.Run(op, func(t *testing.T) {
+			fx := newV2Fixture(t)
+			if op == "set_type" {
+				// refused by the pre-lock strict decode, before the mutator
+				fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(editRead(t, editBaseDoc), nil)
+			} else {
+				fx.expectMutate(editRead(t, editBaseDoc))
+			}
+			_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+				patchBody(fmt.Sprintf(`{"op":%q,"zz_probe":1}`, op)), "", false, true)
+			probe(t, op, err)
+		})
+	}
+	for _, op := range v2TypeOpNames {
+		if slices.Contains(v2OpNames, op) {
+			continue
+		}
+		t.Run(op, func(t *testing.T) {
+			fx := newTypeOpsFixture(t)
+			fx.captureTypeDetails()
+			fx.expectTypeViewEdit(typeReadWithViews(viewWithColumns("viewAll1", "All", "name")))
+			_, err := fx.UpdateType(ctx, testSpaceId, "plant", "", opsBody(fmt.Sprintf(`{"op":%q,"zz_probe":1}`, op)), false, false)
+			probe(t, op, err)
+		})
+	}
+
+	t.Run("set_properties says where values go", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"set_properties","properties":{"status":"Done"}}`), "", false, true)
+		require.Error(t, err)
+		issue := v2Err(t, err).Issues[0]
+		assert.Equal(t, `unknown key "properties" — set_properties takes set, unset, add, remove`, issue.Message)
+		assert.Contains(t, issue.Hint, `values to write go under set`)
+	})
+}
+
+// publishedOpMembers is the members an op schema publishes beside op,
+// across its top-level branches, sorted.
+func publishedOpMembers(t *testing.T, raw json.RawMessage) []string {
+	t.Helper()
+	var schema map[string]any
+	require.NoError(t, json.Unmarshal(raw, &schema))
+	seen := map[string]bool{}
+	collect := func(node map[string]any) {
+		props, _ := node["properties"].(map[string]any)
+		for name := range props {
+			if name != "op" {
+				seen[name] = true
+			}
+		}
+	}
+	collect(schema)
+	for _, key := range []string{"anyOf", "oneOf", "allOf"} {
+		branches, _ := schema[key].([]any)
+		for _, b := range branches {
+			if m, ok := b.(map[string]any); ok {
+				collect(m)
+			}
+		}
+	}
+	var out []string
+	for name := range seen {
+		out = append(out, name)
+	}
+	sort.Strings(out)
+	return out
 }
