@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/netip"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -106,6 +107,9 @@ type service struct {
 	reexchange    *reexchanger
 	ownMu         sync.Mutex
 	lastOwn       *localdiscovery.OwnAddresses
+	// peerIPs is each LAN peer's last known addresses, so an exchange can
+	// tell it only our addresses on its subnets (GO-7580); guarded by ownMu
+	peerIPs map[string][]netip.Addr
 	// exchangeFn is the outbound handshake with one peer (shared spaces, and
 	// whether the result is a v2 proof); a seam for tests
 	exchangeFn func(ctx context.Context, peerId string, own *localdiscovery.OwnAddresses) (shared []string, proof bool, err error)
@@ -156,6 +160,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.peerStore.AddObserver(func(peerId string, _, _ []string, removed bool) {
 		if removed {
 			s.forgetLocalPeer(peerId)
+			s.forgetPeerIPs(peerId)
 		}
 	})
 	s.spaceCache = ocache.New(

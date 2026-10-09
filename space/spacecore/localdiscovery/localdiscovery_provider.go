@@ -3,8 +3,6 @@ package localdiscovery
 import (
 	"context"
 	"fmt"
-	gonet "net"
-	"strings"
 	"sync"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -89,28 +87,18 @@ type providerDiscovery struct {
 	policyDenied bool
 }
 
-func (l *providerDiscovery) PeerDiscovered(ctx context.Context, peer DiscoveredPeer, own OwnAddresses) {
+func (l *providerDiscovery) PeerDiscovered(ctx context.Context, peer DiscoveredPeer, _ OwnAddresses) {
 	log.Debug("discovered peer", zap.String("peerId", peer.PeerId), zap.Strings("addrs", peer.Addrs))
 	if peer.PeerId == l.peerId {
 		return
 	}
 
-	var ips []string
 	l.m.Lock()
-	v4addresses, _ := l.getAddresses()
+	own := newOwnAddresses(l.ownIPv4(), l.port)
 	l.m.Unlock()
 	l.clearPolicyDenied()
-	for _, addr := range v4addresses {
-		ip := strings.Split(addr.String(), "/")[0]
-		if gonet.ParseIP(ip).To4() != nil {
-			ips = append(ips, ip)
-		}
-	}
 	if l.notifier != nil {
-		l.notifier.PeerDiscovered(ctx, peer, OwnAddresses{
-			Addrs: ips,
-			Port:  l.port,
-		})
+		l.notifier.PeerDiscovered(ctx, peer, own)
 	}
 }
 
@@ -155,6 +143,7 @@ func (l *providerDiscovery) refreshInterfaces(_ context.Context) error {
 
 	newAddrs.Interfaces = filterMulticastInterfaces(newAddrs.Interfaces)
 	l.interfacesAddrs = newAddrs
+	logOwnAddresses(l.ownIPv4())
 	state := l.getDiscoveryPossibility(newAddrs)
 	if l.policyDenied {
 		// an interface change does not lift a platform permission denial;

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	gonet "net"
+	"net/netip"
 	"runtime"
 	"strings"
 	"sync"
@@ -40,8 +41,13 @@ type DiscoveredPeer struct {
 	PeerId string
 }
 
+// OwnAddresses is this device's listening endpoint as a LAN peer should dial
+// it. Addrs is the advertised list; Nets is every own address with its
+// interface subnet, advertised or not, for the per-peer match in For. Nets is
+// empty when the producer does not know the subnets.
 type OwnAddresses struct {
 	Addrs []string
+	Nets  []netip.Prefix
 	Port  int
 }
 
@@ -159,35 +165,4 @@ func (l *discoveryBase) RegisterDiscoveryPossibilityHook(hook func(state Discove
 	l.hookMu.Lock()
 	defer l.hookMu.Unlock()
 	l.hooks = append(l.hooks, hook)
-}
-
-func (l *discoveryBase) getAddresses() (ipv4, ipv6 []gonet.IP) {
-	for i := range l.interfacesAddrs.Interfaces {
-		for _, addr := range l.interfacesAddrs.Interfaces[i].GetAddr() {
-			ip, ok := addrs.AddrToIP(addr)
-			if !ok {
-				continue
-			}
-			if ip.To4() != nil {
-				ipv4 = append(ipv4, ip)
-			} else {
-				ipv6 = append(ipv6, ip)
-			}
-		}
-	}
-
-	if len(ipv4) == 0 {
-		// fallback in case we have no ipv4 addresses from interfaces
-		for _, addr := range l.interfacesAddrs.Addrs {
-			ip := strings.Split(addr.String(), "/")[0]
-			ipVal := gonet.ParseIP(ip)
-			if ipVal.To4() != nil {
-				ipv4 = append(ipv4, ipVal)
-			} else {
-				ipv6 = append(ipv6, ipVal)
-			}
-		}
-		l.interfacesAddrs.SortIPsLikeInterfaces(ipv4)
-	}
-	return
 }

@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	gonet "net"
-	"slices"
 	"sync"
 	"time"
 
@@ -60,6 +59,7 @@ type zeroconfDiscovery struct {
 
 	ipv4        []string
 	ipv6        []string
+	own         []ownAddr // every ipv4 address with its subnet
 	manualStart bool
 	started     bool
 	notifier    Notifier
@@ -292,11 +292,10 @@ func (l *zeroconfDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 }
 
 func (l *zeroconfDiscovery) startServer() (err error) {
-	l.ipv4 = l.ipv4[:0]
-	ipv4, _ := l.getAddresses() // ignore ipv6 for now
-	for _, ip := range ipv4 {
-		l.ipv4 = append(l.ipv4, ip.String())
-	}
+	// ipv6 is ignored for now
+	l.own = l.ownIPv4()
+	logOwnAddresses(l.own)
+	l.ipv4 = newOwnAddresses(l.own, l.port).Addrs
 	log.Info("starting mdns server", zap.Strings("ips", l.ipv4), zap.Int("port", l.port), zap.String("peerId", l.peerId))
 	l.server, err = zeroconf.RegisterProxy(
 		l.peerId,
@@ -347,12 +346,9 @@ func (l *zeroconfDiscovery) readAnswers(closeWait *sync.WaitGroup, ch chan *zero
 		}
 		log.Debug("discovered peer", zap.Strings("addrs", portAddrs), zap.String("peerId", peer.PeerId))
 		if l.notifier != nil {
-			addrs := slices.Clone(l.ipv4)
+			own := newOwnAddresses(l.own, l.port)
 			// explicitly use componentCtx, instead of queryCtx here, because we don't want to interrupt the peer connection if we refreshed interfaces and restarted service
-			go l.notifier.PeerDiscovered(l.componentCtx, peer, OwnAddresses{
-				Addrs: addrs,
-				Port:  l.port,
-			})
+			go l.notifier.PeerDiscovered(l.componentCtx, peer, own)
 		}
 		l.m.Unlock()
 	}
@@ -384,8 +380,5 @@ func waitWithTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 }
 
 func (l *zeroconfDiscovery) GetOwnAddresses() OwnAddresses {
-	return OwnAddresses{
-		Addrs: l.ipv4,
-		Port:  l.port,
-	}
+	return newOwnAddresses(l.own, l.port)
 }
