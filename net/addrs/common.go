@@ -128,21 +128,22 @@ func (i *NetInterfaceWithAddrCache) setAddrs(addrs []net.Addr) {
 	}
 }
 
+// NetAddrsEqualUnordered reports whether a and b hold the same addresses,
+// duplicates included, in any order.
 func NetAddrsEqualUnordered(a, b []net.Addr) bool {
 	if len(a) != len(b) {
 		return false
 	}
+	counts := make(map[string]int, len(a))
 	for _, addr := range a {
-		found := false
-		for _, addr2 := range b {
-			if addr.String() == addr2.String() {
-				found = true
-				break
-			}
-		}
-		if !found {
+		counts[addr.String()]++
+	}
+	for _, addr := range b {
+		key := addr.String()
+		if counts[key] == 0 {
 			return false
 		}
+		counts[key]--
 	}
 	return true
 }
@@ -333,9 +334,20 @@ func (i InterfacesAddrs) NetInterfaces() []net.Interface {
 	return s
 }
 
+// getStrings describes the interfaces with their index and the addresses
+// each one holds, so a renumbered interface (a cable plugged in again) or
+// an address moving between interfaces counts as a change.
 func getStrings(i InterfacesAddrs) (allStrings []string) {
-	for _, i := range i.Interfaces {
-		allStrings = append(allStrings, i.Name)
+	for pos := range i.Interfaces {
+		iface := &i.Interfaces[pos]
+		id := iface.Name + "#" + strconv.Itoa(iface.Index)
+		allStrings = append(allStrings, id)
+		for _, addr := range iface.GetAddr() {
+			allStrings = append(allStrings, id+" "+addr.String())
+		}
+		for _, addr := range iface.GetLinkLocalIPv6() {
+			allStrings = append(allStrings, id+" "+addr.String())
+		}
 	}
 	for _, i := range i.Addrs {
 		allStrings = append(allStrings, i.String())

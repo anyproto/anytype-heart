@@ -195,3 +195,33 @@ func TestInterfaceSorterSorting(t *testing.T) {
 	// Assert the sorted order matches the expected order
 	assert.Equal(t, expected, interfaces, "The interfaces should be sorted correctly according to priority.")
 }
+
+func TestNetAddrsEqualUnordered(t *testing.T) {
+	a := func(s string) net.Addr { return &net.IPAddr{IP: net.ParseIP(s)} }
+	wifi, x, y := a("192.168.1.10"), a("fe80::1"), a("fe80::2")
+
+	assert.True(t, NetAddrsEqualUnordered([]net.Addr{wifi, x}, []net.Addr{x, wifi}))
+	assert.False(t, NetAddrsEqualUnordered([]net.Addr{wifi, x, x}, []net.Addr{wifi, x, y}), "a duplicate must not stand in for a new address")
+	assert.False(t, NetAddrsEqualUnordered([]net.Addr{wifi, x, y}, []net.Addr{wifi, x, x}))
+	assert.True(t, NetAddrsEqualUnordered([]net.Addr{x, x}, []net.Addr{x, x}))
+}
+
+func TestInterfacesAddrsEqual(t *testing.T) {
+	ll := &net.IPNet{IP: net.ParseIP("fe80::a886:c6ff:febd:f923"), Mask: net.CIDRMask(64, 128)}
+	wifi := &net.IPNet{IP: net.ParseIP("192.168.1.10").To4(), Mask: net.CIDRMask(24, 32)}
+	set := func(cableIndex int, cableName string, cableAddrs, wifiAddrs []net.Addr) InterfacesAddrs {
+		return InterfacesAddrs{
+			Interfaces: []NetInterfaceWithAddrCache{
+				WrapInterfaceWithAddrs(net.Interface{Index: 4, Name: "en0"}, wifiAddrs),
+				WrapInterfaceWithAddrs(net.Interface{Index: cableIndex, Name: cableName}, cableAddrs),
+			},
+			Addrs: []net.Addr{wifi, ll},
+		}
+	}
+	base := set(31, "en16", []net.Addr{ll}, []net.Addr{wifi})
+
+	assert.True(t, base.Equal(set(31, "en16", []net.Addr{ll}, []net.Addr{wifi})))
+	assert.False(t, base.Equal(set(42, "en16", []net.Addr{ll}, []net.Addr{wifi})), "the cable came back under a new index")
+	assert.False(t, base.Equal(set(42, "en17", []net.Addr{ll}, []net.Addr{wifi})), "the cable came back under a new name")
+	assert.False(t, base.Equal(set(31, "en16", nil, []net.Addr{wifi, ll})), "the address moved to another interface")
+}

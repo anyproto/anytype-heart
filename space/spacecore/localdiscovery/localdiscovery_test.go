@@ -403,3 +403,14 @@ func TestLinkLocalIfacesIPTraffic(t *testing.T) {
 		assert.Equal(t, []int{31}, ll.indexes)
 	})
 }
+
+func TestInterfaceIds(t *testing.T) {
+	wrap := func(index int, name string) addrs.NetInterfaceWithAddrCache {
+		return addrs.WrapInterface(gonet.Interface{Index: index, Name: name})
+	}
+
+	got := interfaceIds([]addrs.NetInterfaceWithAddrCache{wrap(31, "en16"), wrap(4, "en0")})
+
+	assert.Equal(t, []string{"en0#4", "en16#31"}, got)
+	assert.NotEqual(t, got, interfaceIds([]addrs.NetInterfaceWithAddrCache{wrap(42, "en16"), wrap(4, "en0")}))
+}

@@ -64,6 +64,9 @@ type zeroconfDiscovery struct {
 	// linkLocal describes the interfaces without IPv4 that discovery runs on
 	// over IPv6 link-local (see linkLocalOnly); empty means IPv4 only.
 	linkLocal linkLocalIfaces
+	// ifaceIds identifies every interface of the last enumeration, see
+	// interfaceIds
+	ifaceIds []string
 	// discoveries serializes PeerDiscovered per peer (see peerDiscoveries)
 	discoveries peerDiscoveries
 	manualStart bool
@@ -227,7 +230,11 @@ func (l *zeroconfDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 		l.m.Unlock()
 		return fmt.Errorf("get interfaces addrs: %w", err)
 	}
-	if addrs.NetAddrsEqualUnordered(l.interfacesAddrs.Addrs, newAddrs.Addrs) {
+	// the flat list misses an interface that came back under a new index
+	// with the same addresses (a cable plugged in again), so compare the
+	// interface identities too
+	ifaceIds := interfaceIds(newAddrs.Interfaces)
+	if addrs.NetAddrsEqualUnordered(l.interfacesAddrs.Addrs, newAddrs.Addrs) && slices.Equal(l.ifaceIds, ifaceIds) {
 		// this optimization allows to save syscalls to get addrs for every iface
 		// also we may receive a new ip address on the existing interface
 		l.discoveryPossibilitySwapState(func(currentState DiscoveryPossibility) DiscoveryPossibility {
@@ -241,6 +248,7 @@ func (l *zeroconfDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 		return
 	}
 
+	l.ifaceIds = ifaceIds
 	newAddrs.Interfaces = filterMulticastInterfaces(newAddrs.Interfaces)
 	newAddrs.SortInterfacesWithPriority(interfacesSortPriority)
 	l.discoveryPossibilitySetState(l.getDiscoveryPossibility(newAddrs))
@@ -439,6 +447,16 @@ func (l *zeroconfDiscovery) browse(ctx context.Context, closeWait *sync.WaitGrou
 		zeroconf.SelectIPTraffic(linkLocal.ipTraffic())); err != nil {
 		log.Error("browsing failed", zap.Error(err))
 	}
+}
+
+// interfaceIds lists the interfaces as name#index, sorted.
+func interfaceIds(ifaces []addrs.NetInterfaceWithAddrCache) []string {
+	ids := make([]string, 0, len(ifaces))
+	for _, iface := range ifaces {
+		ids = append(ids, iface.Name+"#"+strconv.Itoa(iface.Index))
+	}
+	slices.Sort(ids)
+	return ids
 }
 
 // waitWithTimeout waits for wg up to timeout; false means the wait timed out.
