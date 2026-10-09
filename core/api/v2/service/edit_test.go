@@ -481,7 +481,7 @@ func TestPatchObject(t *testing.T) {
 
 		// when
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","after":"blockHeading1","blocks":[{"type":"checkbox","text":"todo"},{"indent":1,"type":"paragraph","text":"note"}]}`), "", false, true)
+			patchBody(`{"op":"insert_blocks","after":"blockHeading1","blocks":[{"type":"checkbox","text":"todo"},{"relative_indent":1,"type":"paragraph","text":"note"}]}`), "", false, true)
 
 		// then
 		require.NoError(t, err)
@@ -552,7 +552,7 @@ func TestPatchObject(t *testing.T) {
 
 		// when: no after/before/inside — root-append, with a nested payload
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","blocks":[{"type":"paragraph","text":"appended"},{"indent":1,"type":"paragraph","text":"nested"}]}`), "", false, true)
+			patchBody(`{"op":"insert_blocks","blocks":[{"type":"paragraph","text":"appended"},{"relative_indent":1,"type":"paragraph","text":"nested"}]}`), "", false, true)
 
 		// then
 		require.NoError(t, err)
@@ -612,7 +612,7 @@ func TestPatchObject(t *testing.T) {
 		// when: the direction that used to require reading the document first
 		// just to learn the id of the block to sit before
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"insert_blocks","position":"first","blocks":[{"type":"heading_2","text":"Summary"},{"indent":1,"type":"paragraph","text":"note"}]}`), "", false, true)
+			patchBody(`{"op":"insert_blocks","position":"first","blocks":[{"type":"heading_2","text":"Summary"},{"relative_indent":1,"type":"paragraph","text":"note"}]}`), "", false, true)
 
 		// then
 		require.NoError(t, err)
@@ -943,7 +943,7 @@ func TestPatchObject(t *testing.T) {
 			{
 				name:     "nested insert payload",
 				doc:      editEmptyDoc,
-				op:       `{"op":"insert_blocks","blocks":[{"type":"image"},{"indent":1,"type":"paragraph","text":"new child"}]}`,
+				op:       `{"op":"insert_blocks","blocks":[{"type":"image"},{"relative_indent":1,"type":"paragraph","text":"new child"}]}`,
 				wantPath: "ops[0].blocks[1]",
 			},
 			{
@@ -982,18 +982,33 @@ func TestPatchObject(t *testing.T) {
 		}
 	})
 
+	t.Run("a payload block's absolute indent is refused, naming relative_indent", func(t *testing.T) {
+		// a read's indent is the depth from the root; copied into a run it
+		// placed the block one level too deep (eval MCP-15, every run)
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insert_blocks","after":"blockParent1","blocks":[{"indent":1,"type":"paragraph","text":"a"}]}`), "", false, true)
+
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "ops[0].blocks[0].indent", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "in a payload the depth is relative_indent")
+	})
+
 	t.Run("payload monotonicity violation names both indents", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_subtree","id":"blockParent1","blocks":[{"type":"paragraph","text":"a"},{"indent":2,"type":"paragraph","text":"b"}]}`), "", false, true)
+			patchBody(`{"op":"replace_subtree","id":"blockParent1","blocks":[{"type":"paragraph","text":"a"},{"relative_indent":2,"type":"paragraph","text":"b"}]}`), "", false, true)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, "monotonic")
 		require.Len(t, apiErr.Issues, 1)
-		assert.Equal(t, "ops[0].blocks[1].indent", apiErr.Issues[0].Path)
-		assert.Contains(t, apiErr.Issues[0].Message, "indent 2 follows indent 0")
+		assert.Equal(t, "ops[0].blocks[1].relative_indent", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "relative_indent 2 follows relative_indent 0")
 	})
 
 	t.Run("replace_subtree swaps block and descendants", func(t *testing.T) {
@@ -1001,7 +1016,7 @@ func TestPatchObject(t *testing.T) {
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replace_subtree","id":"blockParent1","blocks":[{"type":"bulleted_list_item","text":"a"},{"indent":1,"type":"paragraph","text":"b"}]}`), "", false, true)
+			patchBody(`{"op":"replace_subtree","id":"blockParent1","blocks":[{"type":"bulleted_list_item","text":"a"},{"relative_indent":1,"type":"paragraph","text":"b"}]}`), "", false, true)
 
 		require.NoError(t, err)
 		assert.Equal(t, v2model.DiffStats{BlocksAdded: 2, BlocksRemoved: 2}, result.DiffStats)

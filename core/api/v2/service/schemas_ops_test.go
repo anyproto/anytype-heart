@@ -242,7 +242,7 @@ func TestSchemaOp(t *testing.T) {
 			require.NoError(t, err, op)
 
 			for name := range opBlockDefProps(t, entry) {
-				if name == "indent" || name == "id" {
+				if name == payloadRelativeIndent || name == "id" {
 					continue // op-payload addressing, not a block attribute
 				}
 				assert.True(t, anyblockjson.KnownBlockProperty(name),

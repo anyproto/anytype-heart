@@ -56,11 +56,11 @@ const v2ViewOpsEndpoints = v2OpsEndpoint + " · " + v2TypeOpsEndpoint
 // constrained decoder); there the runtime guard is the instrument, and the
 // descriptions say so rather than implying the schema covers it.
 //
-// v2OpBlockIndentProp and v2OpBlockCommonProps are the fields both shapes
+// v2OpBlockRelativeIndentProp and v2OpBlockCommonProps are the fields both shapes
 // share, split only so the id slot can sit in its historical position. The
 // full inventory is SPEC §5 — served as GET /v2/schemas/object; these defs
 // cover the fields a generated edit realistically touches.
-const v2OpBlockIndentProp = `"indent":{"type":"integer","minimum":0,"maximum":32,"description":"relative, default 0: 0 = the anchor's level (after/before/replace_subtree) or the container's child level (inside), so a block inserted after a nested block takes indent 0, not that block's own depth"}`
+const v2OpBlockRelativeIndentProp = `"relative_indent":{"type":"integer","minimum":0,"maximum":32,"description":"levels below where the run lands, default 0: 0 is the anchor's level (after/before/replace_subtree) or the container's child level (inside), so the first block is always 0 and each later one at most one deeper than the one before. Not a read's indent, which is the absolute depth"}`
 
 // v2OpBlockIdProp is the EXISTING-content id slot.
 const v2OpBlockIdProp = `"id":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$","description":"optional; names an existing block of this object (full id or unique suffix), keeping its identity. Omit it to author new content: the server mints one into created_blocks. An unknown id is refused."}`
@@ -149,7 +149,7 @@ func opTableProps(withId bool) string {
 // no-op instead of a rename.
 var v2OpBlockDef = `{"type":"object","additionalProperties":false,"required":["type"],` +
 	`"description":"a flat AnyBlock block; the full field inventory is schema kind object",` +
-	`"properties":{` + v2OpBlockIndentProp + `,` + v2OpBlockIdProp + `,` + v2OpBlockCommonProps + `,` + opTableProps(true) + `}}`
+	`"properties":{` + v2OpBlockRelativeIndentProp + `,` + v2OpBlockIdProp + `,` + v2OpBlockCommonProps + `,` + opTableProps(true) + `}}`
 
 // v2OpNewBlockDef is the NEW-content payload block (insert_blocks): no id
 // slot anywhere the schema reaches — not on the block, not on its row or
@@ -158,7 +158,7 @@ var v2OpBlockDef = `{"type":"object","additionalProperties":false,"required":["t
 // authored by the view-family ops and by update_block's untyped `set`.
 var v2OpNewBlockDef = `{"type":"object","additionalProperties":false,"required":["type"],` +
 	`"description":"a flat AnyBlock block to create. No id slot here or on its rows and columns: the server mints every id into created_blocks, keyed by payload path. Full fields: schema kind object.",` +
-	`"properties":{` + v2OpBlockIndentProp + `,` + v2OpBlockCommonProps + `,` + opTableProps(false) + `}}`
+	`"properties":{` + v2OpBlockRelativeIndentProp + `,` + v2OpBlockCommonProps + `,` + opTableProps(false) + `}}`
 
 // v2BlockRefDef is a block reference: full id (canonical) or unique suffix.
 const v2BlockRefDef = `{"type":"string","minLength":1,"maxLength":64,"description":"a block id — full (canonical) or a unique suffix"}`
@@ -438,17 +438,17 @@ var v2OpSchemas = map[string]v2SchemaKind{
 		endpoint: v2OpsEndpoint,
 		schema: opSchema("replace_subtree", []string{"id", "blocks"},
 			`"id":{"$ref":"#/$defs/blockRef"}`,
-			`"blocks":{"type":"array","minItems":1,"maxItems":256,"items":{"$ref":"#/$defs/block"},"description":"replaces the block AND its descendants; indent 0 = the replaced block's level"}`),
-		example: `{"op":"replace_subtree","id":"b7","blocks":[{"type":"bulleted_list_item","text":"a"},{"indent":1,"type":"paragraph","text":"b"}]}`,
+			`"blocks":{"type":"array","minItems":1,"maxItems":256,"items":{"$ref":"#/$defs/block"},"description":"replaces the block AND its descendants; relative_indent 0 = the replaced block's level"}`),
+		example: `{"op":"replace_subtree","id":"b7","blocks":[{"type":"bulleted_list_item","text":"a"},{"relative_indent":1,"type":"paragraph","text":"b"}]}`,
 	},
 	"insert_blocks": {
 		endpoint: v2OpsEndpoint,
 		schema: opSchema("insert_blocks", nil,
-			`"after":{"$ref":"#/$defs/blockRef","description":"insert after this block's subtree, at its level: indent 0 there, however deep it sits"}`,
-			`"before":{"$ref":"#/$defs/blockRef","description":"insert before this block, at its level: indent 0 there"}`,
+			`"after":{"$ref":"#/$defs/blockRef","description":"insert after this block's subtree, at its level"}`,
+			`"before":{"$ref":"#/$defs/blockRef","description":"insert before this block, at its level"}`,
 			`"inside":{"$ref":"#/$defs/blockRef","description":"insert as children of this block"}`,
 			`"position":{"type":"string","enum":["first","last"],"description":"which end to insert at: of the inside container, or of the document itself when no targeting field is given. Refused with after/before. first goes to the start, last appends (the default either way)."}`,
-			`"blocks":{"type":"array","minItems":1,"maxItems":256,"items":{"$ref":"#/$defs/block"},"description":"at most one of after/before/inside targets the run — omit all three to insert at the end of the document (position:first for the start; both work on an empty object); indent 0 = the insertion level"}`,
+			`"blocks":{"type":"array","minItems":1,"maxItems":256,"items":{"$ref":"#/$defs/block"},"description":"at most one of after/before/inside targets the run — omit all three to insert at the end of the document (position:first for the start; both work on an empty object); relative_indent 0 = the insertion level"}`,
 			`"markdown":{"type":"string","minLength":1,"maxLength":1048576,"description":"alternative to blocks; give exactly one. Parsed into flat blocks (headings, lists, checkboxes, fences, quotes, dividers, tables), at most 256. created_blocks keys read ops[i].markdown[j]."}`),
 		example: `{"op":"insert_blocks","after":"b3","markdown":"- [ ] todo"}`,
 	},
