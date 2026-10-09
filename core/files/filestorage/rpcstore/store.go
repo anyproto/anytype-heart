@@ -5,10 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	gonet "net"
 	"sync"
 	"time"
 
+	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
@@ -16,6 +18,7 @@ import (
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/pool"
 	"github.com/anyproto/any-sync/net/rpc/rpcerr"
+	"github.com/anyproto/any-sync/net/transport"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
@@ -66,11 +69,59 @@ type RpcStore interface {
 	IterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error
 }
 
-const (
-	getManyWorkers   = 4
-	localPeerTimeout = time.Second
-	localPeerBanTTL  = 5 * time.Minute
+const getManyWorkers = 4
+
+// Local peer (p2p) block fetching. See
+// docs/superpowers/specs/2026-10-08-local-peer-fetch-progress-design.md.
+//
+// var (not const) so the real-transport integration test can shorten them.
+var (
+	// localPeerConnectTimeout bounds one attempt to get a usable sub-conn to
+	// one local peer: pool lookup/dial (TCP or QUIC + secure handshake) plus
+	// sub-conn open + proto handshake. One budget for both stages.
+	//
+	// 2s: on a LAN an awake peer connects in well under 0.5s (measured
+	// 2026-10-09: TCP 1-115ms, handshake 4-815ms). The budget only fails a
+	// peer whose radio is still waking (Android TCP 2.9s right after unlock):
+	// that costs one strike, the node serves the block, the retry after the
+	// ban succeeds. The budget is shared across the peer's addresses, so a
+	// dead address listed first still eats it; heart lists same-subnet ones
+	// first.
+	localPeerConnectTimeout = 2 * time.Second
+	// localPeerStallTimeout: a fetch is cancelled when the sub-conn's
+	// BytesRead has not advanced for this long. On yamux the counter moves in
+	// 64 KiB drpc frames, so this is also a ~105 kbit/s throughput floor.
+	localPeerStallTimeout = 5 * time.Second
+	// localPeerStallCheckInterval is the watchdog tick.
+	localPeerStallCheckInterval = time.Second
+	// localPeerFetchFallbackTimeout bounds a fetch on a conn that does not
+	// expose BytesRead (foreign peer implementations): 1 MiB at ~300 kbit/s.
+	localPeerFetchFallbackTimeout = 30 * time.Second
+	// localPeerBanMin is the first ban; every strike after the previous ban
+	// expired doubles it up to localPeerBanMax (failures during an active ban
+	// are the same outage and do not escalate). A successful fetch, or
+	// localPeerBanMax of quiet after a ban expired, resets the strike count.
+	localPeerBanMin = 10 * time.Second
+	localPeerBanMax = 5 * time.Minute
 )
+
+var (
+	errNoLocalPeers = errors.New("no local peers available")
+	// errLocalPeerStalled is the cause the watchdog cancels a fetch with.
+	errLocalPeerStalled = errors.New("local peer fetch stalled: no bytes received")
+)
+
+// localPeerBan is the backoff state of one local peer
+type localPeerBan struct {
+	until   time.Time
+	strikes int
+}
+
+// bytesReader is what any-sync's sub-conn (net/peer subConn, which embeds
+// connutil.LastUsageConn) exposes: raw bytes read from the sub-stream.
+type bytesReader interface {
+	BytesRead() int64
+}
 
 // reservedCallTimeout bounds a single doNodeReserved RPC. The reserved
 // sub-connection is shared and serialized by s.mu, so a stuck call would
@@ -90,34 +141,77 @@ type store struct {
 	reservedConn drpc.Conn
 
 	bannedMu       sync.Mutex
-	bannedLocalMap map[string]time.Time
+	bannedLocalMap map[string]localPeerBan
+
+	// shuffleLocalPeers randomises the candidate order (pool.GetOneOf
+	// parity); tests replace it with a no-op
+	shuffleLocalPeers func(ids []string)
 }
 
 func newStore(pool pool.Pool, peerStore peerstore.PeerStore) *store {
 	return &store{
 		pool:           pool,
 		peerStore:      peerStore,
-		bannedLocalMap: make(map[string]time.Time),
+		bannedLocalMap: make(map[string]localPeerBan),
+		shuffleLocalPeers: func(ids []string) {
+			rand.Shuffle(len(ids), func(i, j int) { ids[i], ids[j] = ids[j], ids[i] })
+		},
 	}
 }
 
-func (s *store) banLocalPeer(peerId string) {
+// strikeLocalPeer records a failure that is evidence against the peer and
+// bans it with exponential backoff. Failures while a ban is active neither
+// escalate nor extend it: they are the same outage seen by concurrent callers
+// (four GetMany workers cut by one pool.Flush, or stalled on one dead link).
+func (s *store) strikeLocalPeer(peerId, phase string, cause error) {
 	s.bannedMu.Lock()
 	defer s.bannedMu.Unlock()
-	s.bannedLocalMap[peerId] = time.Now().Add(localPeerBanTTL)
+	now := time.Now()
+	ban := s.bannedLocalMap[peerId]
+	if now.Before(ban.until) {
+		log.Debug("local peer failure during an active ban",
+			zap.String("peerId", peerId),
+			zap.String("phase", phase),
+			zap.Int("strikes", ban.strikes),
+			zap.Error(cause))
+		return
+	}
+	if ban.strikes > 0 && now.After(ban.until.Add(localPeerBanMax)) {
+		// quiet for a whole max period after the last ban expired: start over
+		ban.strikes = 0
+	}
+	ban.strikes++
+	dur := localPeerBanMax
+	if shift := ban.strikes - 1; shift < 10 && localPeerBanMin<<shift < localPeerBanMax {
+		dur = localPeerBanMin << shift
+	}
+	ban.until = now.Add(dur)
+	s.bannedLocalMap[peerId] = ban
+	log.Info("local peer struck, banning",
+		zap.String("peerId", peerId),
+		zap.String("phase", phase),
+		zap.Int("strikes", ban.strikes),
+		zap.Duration("ban", dur),
+		zap.Error(cause))
 }
 
+// resetLocalPeer forgets a peer's strikes after a successful fetch
+func (s *store) resetLocalPeer(peerId string) {
+	s.bannedMu.Lock()
+	defer s.bannedMu.Unlock()
+	delete(s.bannedLocalMap, peerId)
+}
+
+// filterBannedPeers drops the peers whose ban is active. Expired entries are
+// kept: the strike count must survive expiry for the backoff to grow.
 func (s *store) filterBannedPeers(peerIds []string) []string {
 	s.bannedMu.Lock()
 	defer s.bannedMu.Unlock()
 	now := time.Now()
 	result := make([]string, 0, len(peerIds))
 	for _, id := range peerIds {
-		if banUntil, ok := s.bannedLocalMap[id]; ok {
-			if now.Before(banUntil) {
-				continue
-			}
-			delete(s.bannedLocalMap, id)
+		if ban, ok := s.bannedLocalMap[id]; ok && now.Before(ban.until) {
+			continue
 		}
 		result = append(result, id)
 	}
@@ -204,35 +298,275 @@ func (s *store) resetReservedConnLocked() {
 // Get retrieves a block, trying local peers first then falling back to the node peer.
 func (s *store) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
 	spaceId := fileblockstore.CtxGetSpaceId(ctx)
-	data, err := s.getFromLocalPeers(ctx, spaceId, k)
-	if err != nil {
-		data, err = s.getFromNodePeer(ctx, spaceId, k)
-	}
+	data, err := s.getLocalThenNode(ctx, spaceId, k)
 	if err != nil {
 		return nil, err
 	}
 	return blocks.NewBlockWithCid(data, k)
 }
 
+func (s *store) getLocalThenNode(ctx context.Context, spaceId string, k cid.Cid) ([]byte, error) {
+	data, err := s.getFromLocalPeers(ctx, spaceId, k)
+	if err == nil {
+		return data, nil
+	}
+	// no fallback log when every local peer is absent or banned: that is the
+	// normal state without LAN peers and would log once per block
+	if !errors.Is(err, errNoLocalPeers) {
+		log.Debug("local peer block get failed, trying node", zap.String("cid", k.String()), zap.Error(err))
+	}
+	return s.getFromNodePeer(ctx, spaceId, k)
+}
+
+// getFromLocalPeers fetches a block from a local (LAN) peer. Only connecting
+// is bounded by a timeout; the fetch itself runs under the caller's ctx and
+// is cancelled by a watchdog when no bytes arrive for localPeerStallTimeout.
+// Failures that say something about the peer strike it (see
+// connectLocalPeer and isLocalPeerFetchFailure); a caller that ends the
+// call never does.
 func (s *store) getFromLocalPeers(ctx context.Context, spaceId string, k cid.Cid) ([]byte, error) {
 	localPeerIds := s.filterBannedPeers(s.peerStore.LocalPeerIds(spaceId))
 	if len(localPeerIds) == 0 {
-		return nil, fmt.Errorf("no local peers available")
+		return nil, fmt.Errorf("get from local peers: %w", errNoLocalPeers)
 	}
-	localCtx, cancel := context.WithTimeout(ctx, localPeerTimeout)
-	defer cancel()
-	p, err := s.pool.GetOneOf(localCtx, localPeerIds)
+	p, conn, err := s.connectLocalPeer(ctx, localPeerIds)
 	if err != nil {
-		return nil, fmt.Errorf("get local peer: %w", err)
+		return nil, err
 	}
-	data, err := s.getBlock(localCtx, p, spaceId, k, false)
+	data, err := s.fetchBlockFromLocalPeer(ctx, p, conn, spaceId, k)
 	if err != nil {
-		if errors.Is(err, net.ErrUnableToConnect) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) || errors.Is(err, gonet.ErrClosed) {
-			s.banLocalPeer(p.Id())
+		if ctx.Err() == nil && isLocalPeerFetchFailure(err) {
+			s.strikeLocalPeer(p.Id(), "fetch", err)
 		}
 		return nil, err
 	}
+	s.resetLocalPeer(p.Id())
 	return data, nil
+}
+
+// connectLocalPeer returns a peer and an acquired sub-conn for one of ids.
+// Already-connected peers are preferred through a non-blocking probe; then
+// every candidate gets one localPeerConnectTimeout budget for pool lookup/dial
+// plus sub-conn acquisition. Candidates whose failure is evidence against them
+// are struck; the caller's own ctx ending, the pool closing, another caller's
+// aborted shared dial and a peer closed locally are not.
+func (s *store) connectLocalPeer(ctx context.Context, ids []string) (peer.Peer, drpc.Conn, error) {
+	candidates := make([]string, len(ids))
+	copy(candidates, ids)
+	s.shuffleLocalPeers(candidates)
+
+	// Non-blocking scan: pool.Pick serves a live peer from its fast path
+	// without looking at ctx, and for an entry still being dialed by someone
+	// else ocache's waitLoad returns at once under a done ctx instead of
+	// waiting out that dial. A found peer still goes through the bounded
+	// acquire below.
+	probeCtx, cancelProbe := context.WithCancel(ctx)
+	cancelProbe()
+	for i, id := range candidates {
+		if p, err := s.pool.Pick(probeCtx, id); err == nil && p != nil && !p.IsClosed() {
+			candidates[0], candidates[i] = candidates[i], candidates[0]
+			break
+		}
+	}
+
+	var lastErr error
+	for _, id := range candidates {
+		p, conn, err := s.connectOneLocalPeer(ctx, id)
+		if err == nil {
+			return p, conn, nil
+		}
+		if ctx.Err() != nil {
+			return nil, nil, fmt.Errorf("connect local peer: %w", ctx.Err())
+		}
+		if errors.Is(err, ocache.ErrClosed) {
+			return nil, nil, fmt.Errorf("connect local peer: %w", err)
+		}
+		lastErr = err
+	}
+	return nil, nil, fmt.Errorf("connect local peer: %w", errors.Join(net.ErrUnableToConnect, lastErr))
+}
+
+// connectOneLocalPeer gets a peer and a sub-conn under one connect budget and
+// strikes the peer when the failure is evidence against it.
+func (s *store) connectOneLocalPeer(ctx context.Context, id string) (peer.Peer, drpc.Conn, error) {
+	connectCtx, cancel := context.WithTimeout(ctx, localPeerConnectTimeout)
+	defer cancel()
+	p, err := s.pool.Get(connectCtx, id)
+	if err != nil {
+		if s.isLocalPeerConnectFailure(ctx, connectCtx, err, nil) {
+			s.strikeLocalPeer(id, "dial", err)
+		}
+		return nil, nil, fmt.Errorf("dial local peer: %w", err)
+	}
+	conn, err := p.AcquireDrpcConn(connectCtx)
+	if err != nil {
+		if s.isLocalPeerConnectFailure(ctx, connectCtx, err, p) {
+			s.strikeLocalPeer(id, "acquire", err)
+		}
+		return nil, nil, fmt.Errorf("acquire local peer conn: %w", err)
+	}
+	return p, conn, nil
+}
+
+// isLocalPeerConnectFailure says whether a pool.Get error (acquired nil) or
+// an AcquireDrpcConn error on acquired is evidence against the peer.
+//
+// Not evidence: the caller's own ctx ending; the pool closing
+// (ocache.ErrClosed); a ctx error while our connect ctx is still alive, which
+// is another caller's shared dial being aborted (ocache.Get retries those
+// only maxLoadRetries times and then returns the owner's error, Canceled or
+// DeadlineExceeded); and, from Acquire only, a peer object that is closed
+// (pool Flush or gc; the next Get redials): transport.ErrConnClosed, or any
+// error with acquired.IsClosed(), because a yamux session closed while the
+// proto handshake waits for its answer surfaces as a raw io.EOF. From
+// pool.Get, ErrConnClosed is a dial whose conn died during setup: evidence.
+//
+// Evidence: our connect budget expiring (slow dial, limiter wait, slow open)
+// and every real dial/handshake/open error.
+//
+// Trade-off: an any-sync internal timeout shorter than localPeerConnectTimeout
+// that surfaces as DeadlineExceeded with our ctx alive no longer strikes. The
+// heart's DialTimeoutSec is 10 s, above the 5 s budget, so a real slow dial
+// outlasts connectCtx and is struck by the branch above; if an internal
+// timeout were shorter, every call would still be bounded by it.
+func (s *store) isLocalPeerConnectFailure(ctx, connectCtx context.Context, err error, acquired peer.Peer) bool {
+	if ctx.Err() != nil || errors.Is(err, ocache.ErrClosed) {
+		return false
+	}
+	if connectCtx.Err() != nil {
+		return true
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	if acquired != nil && (errors.Is(err, transport.ErrConnClosed) || acquired.IsClosed()) {
+		return false
+	}
+	return true
+}
+
+// isLocalPeerFetchFailure says whether a BlockGet error, with the caller's
+// ctx still alive, is evidence against the peer: the watchdog cancelled it,
+// the sub-conn ended under the RPC (net.ErrClosed, which transport's
+// ErrConnClosed unwraps to, or drpc's context stand-ins for a transport EOF),
+// or the peer closed the stream without a response (io.EOF). Application
+// errors mean the peer answered.
+func isLocalPeerFetchFailure(err error) bool {
+	return errors.Is(err, errLocalPeerStalled) ||
+		errors.Is(err, gonet.ErrClosed) ||
+		errors.Is(err, context.Canceled) ||
+		errors.Is(err, context.DeadlineExceeded) ||
+		errors.Is(err, io.EOF)
+}
+
+// fetchBlockFromLocalPeer runs BlockGet on an acquired sub-conn under the
+// caller's ctx, with a watchdog that cancels the RPC when the conn stops
+// receiving bytes, and releases the conn. The ctx handed to ReleaseDrpcConn
+// is the one the RPC ran under: when it is done the sub-conn's transport has
+// been terminated by drpc and the peer must not re-pool it.
+func (s *store) fetchBlockFromLocalPeer(ctx context.Context, p peer.Peer, conn drpc.Conn, spaceId string, k cid.Cid) ([]byte, error) {
+	fetchCtx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
+	defer p.ReleaseDrpcConn(fetchCtx, conn)
+	stop := watchFetchProgress(fetchCtx, conn, cancel)
+	defer stop()
+	resp, err := fileproto.NewDRPCFileClient(conn).BlockGet(fetchCtx, &fileproto.BlockGetRequest{
+		SpaceId: spaceId,
+		Cid:     k.Bytes(),
+	})
+	// join the watchdog before reading the cause and before the release
+	stop()
+	if err != nil {
+		if cause := context.Cause(fetchCtx); errors.Is(cause, errLocalPeerStalled) {
+			return nil, fmt.Errorf("local peer block get: %w", errLocalPeerStalled)
+		}
+		err = rpcerr.Unwrap(err)
+		if errors.Is(err, fileprotoerr.ErrCIDNotFound) {
+			return nil, fmt.Errorf("local peer block get: %w", format.ErrNotFound{Cid: k})
+		}
+		return nil, fmt.Errorf("local peer block get: %w", err)
+	}
+	return resp.Data, nil
+}
+
+// watchFetchProgress cancels ctx with errLocalPeerStalled when conn stops
+// receiving bytes for localPeerStallTimeout, or after
+// localPeerFetchFallbackTimeout when conn has no byte counter. The counter is
+// polled every localPeerStallCheckInterval, so the cancel comes between
+// localPeerStallTimeout and localPeerStallTimeout plus two intervals after the
+// last counted byte (one interval to notice it, up to one more because both
+// the progress stamp and the stall checks follow the tick cadence). Once stop
+// has begun no stall cancel can happen: a decision taken concurrently is
+// dropped. stop joins the goroutine and is safe to call more than once.
+func watchFetchProgress(ctx context.Context, conn drpc.Conn, cancel context.CancelCauseFunc) (stop func()) {
+	done := make(chan struct{})
+	exited := make(chan struct{})
+	var (
+		mu      sync.Mutex
+		stopped bool
+	)
+	stall := func() {
+		mu.Lock()
+		defer mu.Unlock()
+		if !stopped {
+			cancel(errLocalPeerStalled)
+		}
+	}
+	counter, hasCounter := conn.(bytesReader)
+	go func() {
+		defer close(exited)
+		if !hasCounter {
+			timer := time.NewTimer(localPeerFetchFallbackTimeout)
+			defer timer.Stop()
+			select {
+			case <-done:
+			case <-ctx.Done():
+			case <-timer.C:
+				stall()
+			}
+			return
+		}
+		ticker := time.NewTicker(localPeerStallCheckInterval)
+		defer ticker.Stop()
+		last := counter.BytesRead()
+		lastProgress := time.Now()
+		for {
+			select {
+			case <-done:
+				return
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				// Clock reads, not the tick's value: a ticker delivers the time
+				// the tick was scheduled, which after a suspension or starvation
+				// is in the past and would backdate the progress stamp.
+				// The stall check uses a time read BEFORE the counter: the count
+				// is no older than that, so a goroutine descheduled after the
+				// read cannot pair a stale count with a later time. Progress is
+				// stamped with a time read AFTER the counter: the bytes counted
+				// arrived no later than that, so the stamp can only postpone a
+				// stall, never bring one forward.
+				before := time.Now()
+				cur := counter.BytesRead()
+				if cur != last {
+					last, lastProgress = cur, time.Now()
+					continue
+				}
+				if before.Sub(lastProgress) >= localPeerStallTimeout {
+					stall()
+					return
+				}
+			}
+		}
+	}()
+	var once sync.Once
+	return func() {
+		mu.Lock()
+		stopped = true
+		mu.Unlock()
+		once.Do(func() { close(done) })
+		<-exited
+	}
 }
 
 func (s *store) getFromNodePeer(ctx context.Context, spaceId string, k cid.Cid) ([]byte, error) {
@@ -269,9 +603,14 @@ func (s *store) getBlock(ctx context.Context, p peer.Peer, spaceId string, k cid
 func (s *store) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
 	resultCh := make(chan blocks.Block, len(ks))
 	go func() {
-		defer close(resultCh)
 		spaceId := fileblockstore.CtxGetSpaceId(ctx)
 		var wg sync.WaitGroup
+		// close only once every launched worker has returned: a worker that
+		// finishes after a cancel must not find the channel closed
+		defer func() {
+			wg.Wait()
+			close(resultCh)
+		}()
 		sem := make(chan struct{}, getManyWorkers)
 		for _, k := range ks {
 			wg.Add(1)
@@ -286,10 +625,7 @@ func (s *store) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
 					<-sem
 					wg.Done()
 				}()
-				data, err := s.getFromLocalPeers(ctx, spaceId, k)
-				if err != nil {
-					data, err = s.getFromNodePeer(ctx, spaceId, k)
-				}
+				data, err := s.getLocalThenNode(ctx, spaceId, k)
 				if err != nil {
 					log.Info("get many: block error", zap.String("cid", k.String()), zap.Error(err))
 					return
@@ -305,7 +641,6 @@ func (s *store) GetMany(ctx context.Context, ks []cid.Cid) <-chan blocks.Block {
 				}
 			}(k)
 		}
-		wg.Wait()
 	}()
 	return resultCh
 }

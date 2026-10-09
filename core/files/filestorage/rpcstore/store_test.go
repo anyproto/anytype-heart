@@ -6,14 +6,17 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
+	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/rpc/rpctest"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
@@ -171,6 +174,129 @@ func TestStore_doNodeReserved_TimeoutUnblocksMutex(t *testing.T) {
 	}
 }
 
+// TestStore_LocalPeerStallOverRealDrpc runs the local peer path over a real
+// drpc connection (rpctest, yamux over net.Pipe): it proves that the conn
+// any-sync hands out exposes BytesRead (so the watchdog is armed in
+// production, not the fallback cap), that a well-formed request is served by
+// the local peer, that a silent handler is cut by the stall window, that the
+// peer is struck and that Get then falls back to the node.
+func TestStore_LocalPeerStallOverRealDrpc(t *testing.T) {
+	prevStall, prevTick := localPeerStallTimeout, localPeerStallCheckInterval
+	localPeerStallTimeout, localPeerStallCheckInterval = 200*time.Millisecond, 50*time.Millisecond
+	t.Cleanup(func() { localPeerStallTimeout, localPeerStallCheckInterval = prevStall, prevTick })
+
+	fx := newFixture(t)
+	defer fx.Finish(t)
+	const localPeerId = "local-peer"
+	// rpctest's pool dials a fresh, untracked peer on every Get of an unknown
+	// id and never closes it: register real peers so every call below goes
+	// through them, and close them at the end
+	addPeer := func(id string) peer.Peer {
+		p, err := fx.rserv.Dial(id)
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = p.Close() })
+		require.NoError(t, fx.store.pool.AddPeer(ctx, p))
+		return p
+	}
+	localPeer := addPeer(localPeerId)
+	addPeer(fx.filePeers[0]) // GetOneOf returns the first registered id
+	fx.store.peerStore.UpdateLocalPeer(localPeerId, []string{"spaceA"})
+	b := blocks.NewBlock([]byte("payload"))
+	require.NoError(t, fx.AddToFile(ctx, "spaceA", "fileA", []blocks.Block{b}))
+
+	// the conn of the peer the fetch will use must carry the counter
+	p, err := fx.store.pool.Get(ctx, localPeerId)
+	require.NoError(t, err)
+	require.Same(t, localPeer, p, "the fetch must use the registered peer")
+	conn, err := p.AcquireDrpcConn(ctx)
+	require.NoError(t, err)
+	_, hasCounter := conn.(bytesReader)
+	p.ReleaseDrpcConn(ctx, conn)
+	require.True(t, hasCounter, "any-sync sub-conn must expose BytesRead")
+
+	spaceCtx := fileblockstore.CtxWithSpaceId(ctx, "spaceA")
+	type result struct {
+		data []byte
+		err  error
+	}
+
+	// a healthy local fetch: the request reaches the handler intact
+	var seen []*fileproto.BlockGetRequest
+	var seenMu sync.Mutex
+	fx.serv.setBlockGetHook(func(_ context.Context, req *fileproto.BlockGetRequest) error {
+		seenMu.Lock()
+		defer seenMu.Unlock()
+		seen = append(seen, req)
+		return nil
+	})
+	data, err := fx.store.getFromLocalPeers(spaceCtx, "spaceA", b.Cid())
+	require.NoError(t, err)
+	assert.Equal(t, b.RawData(), data)
+	seenMu.Lock()
+	require.Len(t, seen, 1)
+	assert.Equal(t, "spaceA", seen[0].SpaceId)
+	assert.Equal(t, b.Cid().Bytes(), seen[0].Cid)
+	assert.False(t, seen[0].Wait)
+	seenMu.Unlock()
+	fx.store.bannedMu.Lock()
+	_, struck := fx.store.bannedLocalMap[localPeerId]
+	fx.store.bannedMu.Unlock()
+	require.False(t, struck)
+
+	// the next BlockGet (the local peer's) never answers; later ones do
+	release := make(chan struct{})
+	t.Cleanup(func() { close(release) })
+	var calls atomic.Int32
+	fx.serv.setBlockGetHook(func(ctx context.Context, _ *fileproto.BlockGetRequest) error {
+		if calls.Add(1) > 1 {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-release:
+			return nil
+		}
+	})
+
+	res := make(chan result, 1)
+	start := time.Now()
+	go func() {
+		data, err := fx.store.getFromLocalPeers(spaceCtx, "spaceA", b.Cid())
+		res <- result{data, err}
+	}()
+	select {
+	case r := <-res:
+		require.ErrorIs(t, r.err, errLocalPeerStalled)
+		assert.Less(t, time.Since(start), 3*time.Second)
+	case <-time.After(5 * time.Second):
+		t.Fatal("silent local fetch was not cancelled")
+	}
+	fx.store.bannedMu.Lock()
+	ban, struck := fx.store.bannedLocalMap[localPeerId]
+	fx.store.bannedMu.Unlock()
+	require.True(t, struck)
+	assert.Equal(t, 1, ban.strikes)
+	// the stall cuts one sub-conn, not the peer
+	assert.False(t, localPeer.IsClosed(), "a stalled fetch must not close the local peer")
+
+	getCtx, cancel := context.WithTimeout(spaceCtx, 5*time.Second)
+	defer cancel()
+	got, err := fx.Get(getCtx, b.Cid())
+	require.NoError(t, err)
+	assert.Equal(t, b.RawData(), got.RawData())
+
+	// once the ban is lifted the same peer serves the next local fetch
+	fx.store.resetLocalPeer(localPeerId)
+	data, err = fx.store.getFromLocalPeers(getCtx, "spaceA", b.Cid())
+	require.NoError(t, err)
+	assert.Equal(t, b.RawData(), data)
+	p, err = fx.store.pool.Get(ctx, localPeerId)
+	require.NoError(t, err)
+	assert.Same(t, localPeer, p, "the local peer must not have been replaced")
+	assert.False(t, localPeer.IsClosed())
+}
+
 func TestStore_AddAsync(t *testing.T) {
 	fx := newFixture(t)
 	defer fx.Finish(t)
@@ -203,7 +329,9 @@ func newFixture(t *testing.T) *fixture {
 	for i := 0; i < 11; i++ {
 		filePeers = append(filePeers, fmt.Sprint(i))
 	}
+	fx.filePeers = filePeers
 	rserv := rpctest.NewTestServer()
+	fx.rserv = rserv
 	require.NoError(t, fileproto.DRPCRegisterFile(rserv.Mux, fx.serv))
 
 	fx.nodeConf.EXPECT().Name().Return(nodeconf.CName).AnyTimes()
@@ -229,6 +357,9 @@ type fixture struct {
 	serv     *testServer
 	ctrl     *gomock.Controller
 	nodeConf *mock_nodeconf.MockService
+	// rserv dials peers served by serv
+	rserv     *rpctest.TestServer
+	filePeers []string
 }
 
 func (fx *fixture) Finish(t *testing.T) {
@@ -245,12 +376,20 @@ type testServer struct {
 	// to simulate a hung server (block until ctx is canceled).
 	// Always read/write under mu — races trip -race otherwise.
 	spaceInfoHook func(ctx context.Context) error
+	// blockGetHook, if set, runs at the start of BlockGet (outside mu).
+	blockGetHook func(ctx context.Context, req *fileproto.BlockGetRequest) error
 }
 
 func (t *testServer) setSpaceInfoHook(f func(ctx context.Context) error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.spaceInfoHook = f
+}
+
+func (t *testServer) setBlockGetHook(f func(ctx context.Context, req *fileproto.BlockGetRequest) error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.blockGetHook = f
 }
 
 func (t *testServer) BlockPushMany(ctx2 context.Context, request *fileproto.BlockPushManyRequest) (*fileproto.Ok, error) {
@@ -270,6 +409,18 @@ func (t *testServer) SpaceLimitSet(ctx context.Context, request *fileproto.Space
 }
 
 func (t *testServer) BlockGet(ctx context.Context, req *fileproto.BlockGetRequest) (resp *fileproto.BlockGetResponse, err error) {
+	t.mu.Lock()
+	hook := t.blockGetHook
+	t.mu.Unlock()
+	if hook != nil {
+		if err = hook(ctx, req); err != nil {
+			return nil, err
+		}
+	}
+	// like the peer-side handler (filestorage rpcHandler.BlockGet)
+	if _, err = cid.Cast(req.Cid); err != nil {
+		return nil, fmt.Errorf("cast cid: %w", err)
+	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	if data, ok := t.data[string(req.Cid)]; ok {
