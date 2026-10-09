@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -30,7 +31,11 @@ var ErrNoPortAssigned = errors.New("no port assigned to the server")
 const listenAttempts = 4
 
 func New() ClientServer {
-	return &clientServer{}
+	return &clientServer{
+		// iOS defuncts the app's sockets on suspension; elsewhere the listener
+		// survives and keeps today's behavior (see lifecycle.go)
+		lifecycle: runtime.GOOS == "ios",
+	}
 }
 
 type ClientServer interface {
@@ -63,6 +68,12 @@ type clientServer struct {
 	port          int
 	storage       keyvaluestore.Store[int]
 	serverStarted bool
+
+	// lifecycle enables the iOS listener lifecycle: close on Background,
+	// rebind the same port on Foreground, probe as a safety net
+	lifecycle bool
+	lan       *lanListener
+	lc        listenerLifecycle
 }
 
 func (s *clientServer) Init(a *app.App) (err error) {
@@ -83,6 +94,9 @@ func (s *clientServer) Run(ctx context.Context) error {
 		log.WarnCtx(ctx, "failed to start local p2p server", zap.Error(err))
 	} else {
 		s.serverStarted = true
+		if s.lifecycle {
+			s.startLifecycle()
+		}
 	}
 	return nil
 }
@@ -92,7 +106,9 @@ func (s *clientServer) Port() int {
 }
 
 func (s *clientServer) startServer(ctx context.Context) (err error) {
-	s.storage = keyvaluestore.NewJsonFromCollection[int](s.provider.GetSystemCollection())
+	if s.storage == nil {
+		s.storage = keyvaluestore.NewJsonFromCollection[int](s.provider.GetSystemCollection())
+	}
 
 	oldPort, err := s.storage.Get(ctx, anystoreprovider.SystemKeys.PortKey())
 	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
@@ -105,7 +121,13 @@ func (s *clientServer) startServer(ctx context.Context) (err error) {
 	if oldPort == s.port {
 		return nil
 	}
-	return s.storage.Set(ctx, anystoreprovider.SystemKeys.PortKey(), s.port)
+	if err = s.storage.Set(ctx, anystoreprovider.SystemKeys.PortKey(), s.port); err != nil {
+		// the listeners are bound and serving: failing here would report the
+		// server as not started and keep local discovery off; the port may
+		// only change on the next launch
+		log.WarnCtx(ctx, "persist local p2p port", zap.Int("port", s.port), zap.Error(err))
+	}
+	return nil
 }
 
 func (s *clientServer) parsePort(addr string) (int, error) {
@@ -174,10 +196,20 @@ func (s *clientServer) listenPort(ctx context.Context, tryPort int) (port int, e
 	// yamux.Run. Component registration order guarantees it: yamux is
 	// registered before clientserver, and this is only called from Run. It is
 	// also the last step of an attempt, so a failed attempt never registers.
+	if s.lifecycle {
+		// registered once; its socket is replaced across suspensions
+		lan := newLanListener(list, s.lc.kickChan())
+		s.lc.mu.Lock()
+		s.lan = lan
+		s.lc.mu.Unlock()
+		s.yamux.AddListener(lan)
+		return port, nil
+	}
 	s.yamux.AddListener(list)
 	return port, nil
 }
 
 func (s *clientServer) Close(_ context.Context) (err error) {
+	s.stopLifecycle()
 	return nil
 }
