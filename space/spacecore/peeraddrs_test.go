@@ -256,6 +256,16 @@ func TestWithInboundLinkLocal(t *testing.T) {
 		assert.Equal(t, []string{"[fe80::1%en2]:4006"}, s.withInboundLinkLocal("mac", nil))
 	})
 
+	t.Run("an IPv4 link-local discovery does not displace it", func(t *testing.T) {
+		clock(t)
+		stubLinks(t, "en2")
+		s := inbound(t)
+
+		got := s.withInboundLinkLocal("mac", []string{"169.254.10.20:4006"})
+
+		assert.Equal(t, []string{"[fe80::1%en2]:4006", "169.254.10.20:4006"}, got)
+	})
+
 	t.Run("an IPv4 connection supersedes it", func(t *testing.T) {
 		// given
 		clock(t)

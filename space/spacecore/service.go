@@ -114,6 +114,9 @@ type service struct {
 	// connected to us from (GO-7581), kept across discoveries that carry
 	// none; guarded by ownMu
 	inboundLinkLocal map[string]inboundLinkLocal
+	// localAddrsMu serializes installing a LAN peer's address list, from
+	// discovery and from an inbound exchange; never held across an RPC
+	localAddrsMu sync.Mutex
 	// exchangeFn is the outbound handshake with one peer (shared spaces, and
 	// whether the result is a v2 proof); a seam for tests
 	exchangeFn func(ctx context.Context, peerId string, own *localdiscovery.OwnAddresses) (shared []string, proof bool, err error)

@@ -59,7 +59,11 @@ func (s *service) PeerDiscovered(ctx context.Context, discovered localdiscovery.
 	if s.peerDiscoveryObserver != nil {
 		s.peerDiscoveryObserver.OnLocalPeerDiscovered(discovered.PeerId, discovered.Addrs)
 	}
+	// under localAddrsMu: an inbound connection recorded between reading
+	// the remembered link-local and installing the list must not be lost
+	s.localAddrsMu.Lock()
 	s.setLocalPeerAddrs(discovered.PeerId, s.withInboundLinkLocal(discovered.PeerId, discovered.Addrs))
+	s.localAddrsMu.Unlock()
 	s.rememberOwn(own)
 	shared, proof, err := s.exchangeOutbound(ctx, discovered.PeerId, &own)
 	if err != nil {
@@ -247,8 +251,8 @@ func (s *service) forgetInboundLinkLocal(peerId string) {
 }
 
 // linkLocalUsable reports whether the interface a zone names is up and has
-// no IPv4 address: link-local is only used on such a link (GO-7581). A var
-// so tests can stub it.
+// no routable IPv4 address: link-local is only used on such a link
+// (GO-7581). A var so tests can stub it.
 var linkLocalUsable = func(zone string) bool {
 	var (
 		iface *net.Interface
@@ -266,9 +270,12 @@ var linkLocalUsable = func(zone string) bool {
 	if err != nil {
 		return false
 	}
+	// a self-assigned 169.254/16 address doesn't count: the iPhone's cable
+	// interface may carry one while the Mac's has no IPv4 at all, and then
+	// link-local is the only path between them
 	return !slices.ContainsFunc(addrs, func(a net.Addr) bool {
 		ipNet, ok := a.(*net.IPNet)
-		return ok && ipNet.IP.To4() != nil
+		return ok && ipNet.IP.To4() != nil && !ipNet.IP.IsLinkLocalUnicast()
 	})
 }
 
@@ -299,9 +306,11 @@ func (s *service) withInboundLinkLocal(peerId string, addrs []string) []string {
 	return append([]string{remembered.hostPort}, addrs...)
 }
 
+// isLinkLocalAddr reports whether hostPort is a dialable IPv6 link-local
+// address; an IPv4 link-local one (169.254/16) is just another IPv4 address.
 func isLinkLocalAddr(hostPort string) bool {
 	ip, ok := hostIP(hostPort)
-	return ok && ip.IsLinkLocalUnicast()
+	return ok && ip.Is6() && ip.IsLinkLocalUnicast() && ip.Zone() != ""
 }
 
 // hostIP extracts the IP from "ip:port" or a transport URL such as

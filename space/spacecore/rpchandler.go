@@ -63,7 +63,9 @@ func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceprot
 func (s *service) recordLocalPeer(ctx context.Context, peerId string, localServer *clientspaceproto.LocalServer, spaceIds []string, proof bool) {
 	var portAddrs []string
 	peerAddr := peer.CtxPeerAddr(ctx)
-
+	// see PeerDiscovered: the remembered link-local and the installed
+	// list change together
+	s.localAddrsMu.Lock()
 	if peerAddr != "" {
 		// prioritize the address the remote peer connected us from — but
 		// with its advertised listening port: the port in peerAddr is the
@@ -89,6 +91,7 @@ func (s *service) recordLocalPeer(ctx context.Context, peerId string, localServe
 		portAddrs = append(portAddrs, addr)
 	}
 	s.setLocalPeerAddrs(peerId, portAddrs)
+	s.localAddrsMu.Unlock()
 	s.publishLocalPeer(peerId, spaceIds, proof, directionInbound)
 	log.Info("updated local peer", zap.Strings("ips", portAddrs), zap.String("peerId", peerId), zap.Strings("spaceIds", spaceIds))
 }
