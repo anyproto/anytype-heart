@@ -3,6 +3,10 @@ package spacecore
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/netip"
+	"slices"
+	"strings"
 
 	"go.uber.org/zap"
 	"storj.io/drpc"
@@ -53,7 +57,7 @@ func (s *service) PeerDiscovered(ctx context.Context, discovered localdiscovery.
 	if s.peerDiscoveryObserver != nil {
 		s.peerDiscoveryObserver.OnLocalPeerDiscovered(discovered.PeerId, discovered.Addrs)
 	}
-	s.peerService.SetPeerAddrs(discovered.PeerId, s.addSchema(discovered.Addrs))
+	s.setLocalPeerAddrs(discovered.PeerId, discovered.Addrs)
 	s.rememberOwn(own)
 	shared, proof, err := s.exchangeOutbound(ctx, discovered.PeerId, &own)
 	if err != nil {
@@ -80,7 +84,7 @@ func (s *service) exchangeOutbound(ctx context.Context, peerId string, own *loca
 	}
 	var localServer *clientspaceproto.LocalServer
 	if own != nil {
-		localServer = localServerOf(*own)
+		localServer = localServerOf(*own, s.peerIPsOf(peerId, peer.CtxPeerAddr(unaryPeer.Context())))
 	}
 	shared, err = s.spaceExchangeV2(ctx, unaryPeer, peerId, allIds, localServer)
 	if err != nil {
@@ -146,10 +150,11 @@ func (s *service) spaceExchangeV1(ctx context.Context, unaryPeer peer.Peer, allI
 	return resp.SpaceIds, nil
 }
 
-// localServerOf describes this device's listening endpoint to a LAN peer.
-func localServerOf(own localdiscovery.OwnAddresses) *clientspaceproto.LocalServer {
+// localServerOf describes this device's listening endpoint to a LAN peer
+// known at peerIPs.
+func localServerOf(own localdiscovery.OwnAddresses, peerIPs []netip.Addr) *clientspaceproto.LocalServer {
 	return &clientspaceproto.LocalServer{
-		Ips: own.Addrs,
+		Ips: own.For(peerIPs),
 		// our own drpc listener port, so always within uint16
 		Port: int32(own.Port), // #nosec G115
 	}
@@ -170,4 +175,58 @@ func (s *service) addSchema(addrs []string) (res []string) {
 		res = append(res, transport.Yamux+"://"+addr)
 	}
 	return res
+}
+
+// setLocalPeerAddrs makes hostPorts ("ip:port") the addresses a LAN peer is
+// dialed at, and remembers its IPs for the subnet match in localServerOf.
+func (s *service) setLocalPeerAddrs(peerId string, hostPorts []string) {
+	ips := make([]netip.Addr, 0, len(hostPorts))
+	for _, hostPort := range hostPorts {
+		if ip, ok := hostIP(hostPort); ok {
+			ips = append(ips, ip)
+		}
+	}
+	s.ownMu.Lock()
+	if s.peerIPs == nil {
+		s.peerIPs = map[string][]netip.Addr{}
+	}
+	s.peerIPs[peerId] = ips
+	s.ownMu.Unlock()
+	// addSchema pins the transport for local peers (yamux); see its comment
+	s.peerService.SetPeerAddrs(peerId, s.addSchema(hostPorts))
+}
+
+// peerIPsOf is the peer's known addresses plus the one the live connection
+// to it uses (connAddr, from peer.CtxPeerAddr; empty when unknown).
+func (s *service) peerIPsOf(peerId, connAddr string) []netip.Addr {
+	s.ownMu.Lock()
+	ips := slices.Clone(s.peerIPs[peerId])
+	s.ownMu.Unlock()
+	if ip, ok := hostIP(connAddr); ok && !slices.Contains(ips, ip) {
+		ips = append(ips, ip)
+	}
+	return ips
+}
+
+func (s *service) forgetPeerIPs(peerId string) {
+	s.ownMu.Lock()
+	defer s.ownMu.Unlock()
+	delete(s.peerIPs, peerId)
+}
+
+// hostIP extracts the IP from "ip:port" or a transport URL such as
+// "yamux://ip:port".
+func hostIP(addr string) (netip.Addr, bool) {
+	if _, rest, found := strings.Cut(addr, "://"); found {
+		addr = rest
+	}
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return netip.Addr{}, false
+	}
+	ip, err := netip.ParseAddr(host)
+	if err != nil {
+		return netip.Addr{}, false
+	}
+	return ip.Unmap(), true
 }

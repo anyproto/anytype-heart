@@ -141,7 +141,9 @@ func (p *peerStore) AllLocalPeers() []string {
 func (p *peerStore) LocalPeerIds(spaceId string) []string {
 	p.Lock()
 	defer p.Unlock()
-	return p.localPeerIdsBySpace[spaceId]
+	// a copy, as in AllLocalPeers: removing a peer from the space discards it
+	// from this very slice in place while callers still iterate the result
+	return slices.Clone(p.localPeerIdsBySpace[spaceId])
 }
 
 func (p *peerStore) RemoveLocalPeer(peerId string) {
