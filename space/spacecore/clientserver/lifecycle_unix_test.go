@@ -6,8 +6,10 @@ import (
 	"context"
 	"net"
 	"strconv"
+	"sync/atomic"
 	"syscall"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -21,6 +23,7 @@ func TestRunLifecycleWiring(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		fx.lifecycle = true
+		fx.SetPauseOnBackground(true)
 		fx.storage = failingSetStore{}
 
 		// when
@@ -47,6 +50,7 @@ func TestRunLifecycleWiring(t *testing.T) {
 	t.Run("with the lifecycle off, yamux gets the raw socket and state changes do nothing", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
+		fx.lifecycle = false
 		fx.storage = failingSetStore{}
 
 		// when
@@ -61,5 +65,51 @@ func TestRunLifecycleWiring(t *testing.T) {
 		conn, err := net.DialTimeout("tcp", "127.0.0.1:"+strconv.Itoa(fx.Port()), time.Second)
 		require.NoError(t, err)
 		_ = conn.Close()
+	})
+}
+
+// syscallFakeListener is a fake socket the production probe can inspect:
+// probeSocket reaches getsockoptInt through it, which the test scripts.
+type syscallFakeListener struct {
+	*fakeListener
+}
+
+func (syscallFakeListener) SyscallConn() (syscall.RawConn, error) { return fakeRawConn{}, nil }
+
+type fakeRawConn struct{}
+
+func (fakeRawConn) Control(f func(fd uintptr)) error  { f(3); return nil }
+func (fakeRawConn) Read(func(fd uintptr) bool) error  { return nil }
+func (fakeRawConn) Write(func(fd uintptr) bool) error { return nil }
+
+func TestWatchdogProductionProbe(t *testing.T) {
+	t.Run("the default watchdog finds a socket error through the real probe and rebinds", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			// given: production probe and interval; the socket reports EBADF,
+			// as iOS sets on a defuncted socket
+			inner := syscallFakeListener{newFakeListener()}
+			fx := &lifecycleFixture{
+				clientServer: &clientServer{lifecycle: true, port: testLanPort},
+				first:        inner.fakeListener,
+			}
+			fx.lan = newLanListener(inner, fx.lc.kickChan())
+			fx.lc.listen = fx.listen
+			var soErr atomic.Int64
+			getsockoptInt = func(int, int, int) (int, error) { return int(soErr.Swap(0)), nil }
+			t.Cleanup(func() { getsockoptInt = defaultGetsockoptInt })
+			fx.startLifecycle()
+			t.Cleanup(fx.stopLifecycle)
+			synctest.Wait()
+
+			// when
+			soErr.Store(int64(syscall.EBADF))
+			time.Sleep(20 * time.Second) // the specified interval, not the constant
+			synctest.Wait()
+			require.Equal(t, []int{testLanPort}, fx.ports(), "the watchdog must probe within 20 s")
+
+			// then
+			assert.Equal(t, []int{testLanPort}, fx.ports())
+			assert.Same(t, fx.lastBound(), fx.current())
+		})
 	})
 }

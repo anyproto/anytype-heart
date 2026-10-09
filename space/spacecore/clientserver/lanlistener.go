@@ -129,12 +129,22 @@ func (l *lanListener) install(next net.Listener) error {
 // probe reports whether the current socket is healthy; see probeSocket.
 func (l *lanListener) probe() error {
 	l.mu.Lock()
-	inner := l.inner
+	inner, closed := l.inner, l.closed
 	l.mu.Unlock()
+	if closed {
+		return net.ErrClosed
+	}
 	if inner == nil {
 		return errNoListener
 	}
 	return probeSocket(inner)
+}
+
+// isClosed reports whether Close ended the listener for good.
+func (l *lanListener) isClosed() bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.closed
 }
 
 func (l *lanListener) Close() error {

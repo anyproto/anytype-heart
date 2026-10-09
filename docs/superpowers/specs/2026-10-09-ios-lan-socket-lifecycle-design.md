@@ -1,6 +1,6 @@
 # iOS LAN listener lifecycle: close on background, rebind on the same port
 
-Date: 2026-10-09. Ticket: GO-7577. Status: implemented; spec revised after 3 Codex lenses, implementation after a 4-lens review round; on-device acceptance pending.
+Date: 2026-10-09. Ticket: GO-7577. Status: implemented; spec revised after 3 Codex lenses, implementation after two 4-lens review rounds; on-device acceptance pending.
 Companion: `2026-10-09-ios-native-mdns-design.md` (GO-7576). Discovery moves to the system DNS-SD in the app, so this spec only covers the TCP listener. **Both must ship in the same app release**: native mDNS advertises the port this spec keeps alive.
 
 ## Problem
@@ -28,7 +28,7 @@ Apple's guidance (TN2277; Quinn): close listeners before the app can be suspende
 ## Goals
 
 1. After a foreground transition, an iPhone accepts LAN connections within ~1 s, **on the same port as before**.
-2. While the app is backgrounded, LAN peers get an immediate refusal for new connections instead of a TLS-handshake hang.
+2. While the app is backgrounded **and discovery runs natively (GO-7576)**, LAN peers get an immediate refusal for new connections instead of a TLS-handshake hang.
 3. A listener that dies without a lifecycle event is detected and rebound while the app is in the foreground. This covers a missed Background and a suspension inside a background task. Goal 3 covers only states in which heart's goroutines run, that is, while not suspended. A **missed Foreground** after a delivered Background is not recoverable here: the recorded state stays background, and a timer can't tell continued background execution from a lost event. The listener then waits for the next Foreground, the same as the HTTP gateway.
 
 ## Non-goals
@@ -79,17 +79,26 @@ Whether a defunct listener reports EBADF here comes from XNU source and **is ver
 
 The platform gate is a field (`lifecycle bool`, set from `runtime.GOOS == "ios"` in `New`), so tests can enable it on a Mac. With the gate off, `clientServer` behaves exactly as today, except for the startup fix in §3.
 
-**`StateChange(state int)`** makes `clientServer` an `app.ComponentStatable`. `App.SetDeviceState` calls every component synchronously under `app.mu.RLock`, so the handler must not block on the network:
+**Pausing is a policy, `SetPauseOnBackground(bool)`, and it is off by default** (review round 2, P1). In heart's zeroconf fallback, the iPhone keeps advertising the port with a 1 h TTL. A dial that a paused port refuses during a short background, with no suspension, makes the peer's peermanager drop the iPhone. Zeroconf then reports the iPhone only once, so nothing re-adds it after foreground. The native discovery path (GO-7576) turns pausing on, because it withdraws its own Bonjour registration on background: Apple's "stop the listener and its registration together". The setter is found by type assertion, so the `ClientServer` interface doesn't change.
 
-- **Background:** call `lanListener.pause()` **synchronously** and set `desired = background`. Closing a TCP listener does no network I/O and takes microseconds. So when the `AppSetDeviceState(BACKGROUND)` RPC returns to the app, the port is already closed, and teardown cannot be lost to suspension. Ideally the iOS app still wraps the RPC in `beginBackgroundTask` (Q1), but correctness doesn't depend on it.
-- **Foreground:** set `desired = foreground` and kick the worker through a coalescing channel with buffer 1. The worker rebinds if the listener is paused or dead, or if `probe()` fails.
+**`StateChange(state int)`** makes `clientServer` an `app.ComponentStatable`. `App.SetDeviceState` calls every component synchronously under `app.mu.RLock`, so the handler does no network I/O:
+
+- **Background:**
+  - *Pausing on:* set `desired = background` and call `lanListener.pause()` **synchronously** under `lc.mu`. When the `AppSetDeviceState(BACKGROUND)` RPC returns to the app, the port is already closed, so teardown cannot be lost to suspension.
+  - *Pausing off:* record that a Background happened; the socket stays up.
+  - *Either way:* signal the worker, which wakes it from a backoff wait.
+  - Ideally the iOS app still wraps the RPC in `beginBackgroundTask` (Q1), but correctness doesn't depend on it.
+- **Foreground:** set `desired = foreground` and signal the worker through a coalescing channel with buffer 1. If a non-pausing Background preceded it, the worker **rebinds unconditionally**: the socket may have been defuncted during a suspension, whatever the probe says. Otherwise it rebinds only if the socket is paused or dead, or if `probe()` fails.
 - **ClosingInitiated:** ignored; `Close` handles shutdown.
+
+**Waiting on a bind.** The worker holds `lc.mu` across the bind, which is local syscalls only and doesn't wait on the network. So a state handler that arrives during a bind waits for that bind to finish. That's the price of never having a live, uninstalled socket while Background returns.
 
 **Worker goroutine** (started in `Run` when `lifecycle` is on):
 - It acts on the **latest** desired state, using a generation number so a stale kick can't undo a newer Background. Before installing a rebound socket it re-checks `desired == foreground`. If the app went to background meanwhile, it closes the new socket instead.
 - **Rebind retries:** 50, 100, 200, 400 ms, then 1, 2, 5 s, capped at 5 s, for as long as the desired state is foreground and the port isn't bound. The port never changes at runtime (D2).
-  - **Interrupting the wait:** a new lifecycle signal (Foreground, Background, or a dead socket) interrupts the backoff wait. The worker acts on it at once and starts the backoff over from 50 ms.
-  - **Logging failures:** at WARN, on the first attempt and then about once a minute while the failure persists.
+  - **Interrupting the wait:** a new lifecycle signal (Foreground, Background, or a dead socket) interrupts the backoff wait. The worker acts on it at once and starts the backoff over from 50 ms. A Background with pausing on ends the retries.
+  - **Logging failures:** at WARN, on the first failure and then at most once a minute while it persists. The rate limit keeps counting across kicks.
+- **Closed listener:** once the `lanListener` is closed, the worker never binds again. Watchdog ticks and kicks are no-ops.
 - **Watchdog:** every 20 s while desired ≠ background, it calls `probe()` and rebinds on failure. The worker also takes a rebind request from `Accept` (§1, step 4).
 - **Initial state:** nothing has been reported yet, and Background is enum zero, so the worker starts as "foreground" with the watchdog active.
 
@@ -103,7 +112,7 @@ Today `startServer` returns an error when **persisting** the port fails (`storag
 
 ### Decisions
 
-- **D1. Close on background, not only rebind on foreground.** This follows Apple's guidance, deterministically releases the parked goroutine, and gives peers an immediate RST instead of the 5 s TLS hang lanprobe measured. The cost: an app backgrounded but not yet suspended (holding a background task or playing audio) can't accept new LAN connections. That's accepted, since serving can't be relied on once suspension is possible.
+- **D1. Close on background, not only rebind on foreground — when discovery is native.** Pausing is enabled by GO-7576's native path. In the zeroconf fallback it would make peers drop the iPhone (see §2), so there the socket stays up and is rebound on the next Foreground. This follows Apple's guidance, deterministically releases the parked goroutine, and gives peers an immediate RST instead of the 5 s TLS hang lanprobe measured. The cost: an app backgrounded but not yet suspended (holding a background task or playing audio) can't accept new LAN connections. That's accepted, since serving can't be relied on once suspension is possible.
 - **D2. Same port only; no runtime fallback to a random port.** Every consumer has the port cached and none of them watch it:
   - the native-mDNS registration (`observer.port()`, set once in `Provide`);
   - Android NSD;
@@ -138,7 +147,7 @@ Today `startServer` returns an error when **persisting** the port fails (`storag
   - A duplicate Foreground with a healthy listener does nothing.
   - Rebind retries back off and never pick another port.
   - A probe failure (injected) rebinds.
-  - `StateChange` returns while the worker is blocked in `listen`.
+  - A Background that arrives during a bind waits for it, then closes the new socket (real time, outside synctest: a goroutine blocked on a mutex never counts as idle there).
   - With the gate off: no worker, no `StateChange` effect.
 - **Startup:** a failing persistence still sets `ServerStarted()==true`.
 
@@ -160,7 +169,8 @@ Today `startServer` returns an error when **persisting** the port fails (`storag
 ## Observability
 
 - **INFO, visible in user builds** (`client.space.clientserver=INFO` was added to `logging.DefaultLogLevels`):
-  - `lan listener paused for background`;
+  - `lan listener paused for background` (pausing on);
+  - `lan listener rebinding after background` (pausing off);
   - `lan listener rebinding`;
   - `lan listener rebound`, with the attempt count and how long it took.
 
@@ -174,7 +184,7 @@ Today `startServer` returns an error when **persisting** the port fails (`storag
 
 1. **Diagnostic build** (iOS, no pause): log `probe()` on every Foreground for a few lock cycles. Confirm SO_ERROR reports EBADF for a defunct listener. Otherwise switch to the self-dial fallback.
 2. **Heart PR:** `lanListener`, the iOS lifecycle worker, the startup fix and tests.
-3. **Ship in the same app release as GO-7576 Part B** (the anytype-swift native mDNS). If this heart change ships first, iOS keeps its zeroconf fallback. That responder is still dead after a suspension, so this fix alone helps only peers that already know the address. It is still strictly better than today's permanently dead listener, never worse.
+3. **Ship with GO-7576.** GO-7576's native provider path calls `SetPauseOnBackground(true)`, found by type assertion so either PR can merge first. Without native discovery, pausing stays off. iOS then keeps today's live socket through short backgrounds, and gains a forced same-port rebind on every Foreground after a Background. That makes it strictly better than today's permanently dead listener after a suspension.
 4. **On-device acceptance** as above.
 
 ## Open questions
