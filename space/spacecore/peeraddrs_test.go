@@ -280,6 +280,41 @@ func TestWithInboundLinkLocal(t *testing.T) {
 	})
 }
 
+func TestInboundLinkLocalExpiresFromTheInstalledList(t *testing.T) {
+	// given: the timer is captured instead of armed
+	var expire []func()
+	origAfter := afterFunc
+	t.Cleanup(func() { afterFunc = origAfter })
+	afterFunc = func(d time.Duration, f func()) *time.Timer {
+		expire = append(expire, f)
+		return time.NewTimer(time.Hour)
+	}
+	origUsable := linkLocalUsable
+	t.Cleanup(func() { linkLocalUsable = origUsable })
+	linkLocalUsable = func(string) bool { return true }
+	s, _, _ := newAccountPeersService(t, nil, nil)
+	ps := &recordingPeerService{}
+	s.peerService = ps
+	ctx := peer.CtxWithPeerAddr(context.Background(), "yamux://[fe80::1%en2]:51234")
+	s.recordLocalPeer(ctx, "mac", &clientspaceproto.LocalServer{Ips: []string{"192.168.139.3"}, Port: 4006}, nil, false)
+	require.Equal(t, []string{"yamux://[fe80::1%en2]:4006", "yamux://192.168.139.3:4006"}, ps.addrs["mac"])
+
+	t.Run("renewed: the old timer does nothing", func(t *testing.T) {
+		s.recordLocalPeer(ctx, "mac", &clientspaceproto.LocalServer{Ips: []string{"192.168.139.3"}, Port: 4006}, nil, false)
+
+		expire[0]()
+
+		assert.Equal(t, []string{"yamux://[fe80::1%en2]:4006", "yamux://192.168.139.3:4006"}, ps.addrs["mac"])
+	})
+
+	t.Run("unrenewed: it leaves the installed list", func(t *testing.T) {
+		expire[len(expire)-1]()
+
+		assert.Equal(t, []string{"yamux://192.168.139.3:4006"}, ps.addrs["mac"])
+		assert.Empty(t, s.inboundLinkLocal)
+	})
+}
+
 func TestLinkLocalUsable(t *testing.T) {
 	// the loopback interface is up and has IPv4
 	ifaces, err := net.Interfaces()
@@ -291,4 +326,24 @@ func TestLinkLocalUsable(t *testing.T) {
 		}
 	}
 	assert.False(t, linkLocalUsable("nonexistent0"))
+
+	// an up interface with no IPv4 at all, if this machine has one
+	// (utun*, awdl0 on a Mac)
+	for _, iface := range ifaces {
+		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+		addrs, err := iface.Addrs()
+		if err != nil || len(addrs) == 0 {
+			continue
+		}
+		if !slices.ContainsFunc(addrs, func(a net.Addr) bool {
+			ipNet, ok := a.(*net.IPNet)
+			return ok && ipNet.IP.To4() != nil
+		}) {
+			assert.True(t, linkLocalUsable(iface.Name), iface.Name)
+			assert.True(t, linkLocalUsable(strconv.Itoa(iface.Index)), iface.Name)
+			return
+		}
+	}
 }

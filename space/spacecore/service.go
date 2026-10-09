@@ -113,7 +113,10 @@ type service struct {
 	// inboundLinkLocal is the IPv6 link-local address a LAN peer last
 	// connected to us from (GO-7581), kept across discoveries that carry
 	// none; guarded by ownMu
-	inboundLinkLocal map[string]inboundLinkLocal
+	inboundLinkLocal map[string]*inboundLinkLocal
+	// localAddrs is each LAN peer's installed address list ("ip:port");
+	// guarded by ownMu
+	localAddrs map[string][]string
 	// localAddrsMu serializes installing a LAN peer's address list, from
 	// discovery and from an inbound exchange; never held across an RPC
 	localAddrsMu sync.Mutex
