@@ -43,6 +43,14 @@ func WrapInterface(iface net.Interface) NetInterfaceWithAddrCache {
 	}
 }
 
+// WrapInterfaceWithAddrs wraps iface with its addresses already known, for
+// platforms (and tests) where net.Interface.Addrs cannot be called.
+func WrapInterfaceWithAddrs(iface net.Interface, addrs []net.Addr) NetInterfaceWithAddrCache {
+	wrapped := WrapInterface(iface)
+	wrapped.cachedAddrs = addrs
+	return wrapped
+}
+
 func WrapInterfaces(ifaces []net.Interface) []NetInterfaceWithAddrCache {
 	var m = make([]NetInterfaceWithAddrCache, 0, len(ifaces))
 	for i := range ifaces {

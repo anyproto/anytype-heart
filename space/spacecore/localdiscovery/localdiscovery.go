@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	gonet "net"
-	"slices"
 	"sync"
 	"time"
 
@@ -35,7 +34,12 @@ var queryStopTimeout = 5 * time.Second
 // getInterfacesAddrs is a seam for tests to inject enumeration failures.
 var getInterfacesAddrs = addrs.GetInterfacesAddrs
 
-type localDiscovery struct {
+// zeroconfDiscovery runs heart's own mDNS responder and browser (our zeroconf
+// fork). Desktop always uses it; iOS falls back to it when the app installed no
+// native DiscoveryProxy (see newForInstalledProvider).
+type zeroconfDiscovery struct {
+	discoveryBase
+
 	server *zeroconf.Server
 	peerId string
 	port   int
@@ -48,14 +52,14 @@ type localDiscovery struct {
 	// A fresh WaitGroup per generation (created in startQuerying, under l.m):
 	// reusing one value across generations raced Close's Wait against the
 	// refresh reassigning it.
-	closeWait       *sync.WaitGroup
-	interfacesAddrs addrs.InterfacesAddrs
-	periodicCheck   periodicsync.PeriodicSync
-	drpcServer      clientserver.ClientServer
-	nodeConf        nodeconf.Configuration
+	closeWait     *sync.WaitGroup
+	periodicCheck periodicsync.PeriodicSync
+	drpcServer    clientserver.ClientServer
+	nodeConf      nodeconf.Configuration
 
 	ipv4        []string
 	ipv6        []string
+	own         []ownAddr // every ipv4 address with its subnet
 	manualStart bool
 	started     bool
 	notifier    Notifier
@@ -65,21 +69,18 @@ type localDiscovery struct {
 	// for the refreshWorker goroutine
 	refreshTrigger chan struct{}
 
-	hookMu       sync.Mutex
-	hookState    DiscoveryPossibility
-	hooks        []HookCallback
 	networkState NetworkStateService
 }
 
-func New() LocalDiscovery {
-	return &localDiscovery{hooks: make([]HookCallback, 0)}
+func newZeroconf() *zeroconfDiscovery {
+	return &zeroconfDiscovery{}
 }
 
-func (l *localDiscovery) SetNotifier(notifier Notifier) {
+func (l *zeroconfDiscovery) SetNotifier(notifier Notifier) {
 	l.notifier = notifier
 }
 
-func (l *localDiscovery) Init(a *app.App) (err error) {
+func (l *zeroconfDiscovery) Init(a *app.App) (err error) {
 	l.manualStart = a.MustComponent(config.CName).(*config.Config).DontStartLocalNetworkSyncAutomatically
 	l.nodeConf = a.MustComponent(config.CName).(*config.Config).GetNodeConf()
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
@@ -91,7 +92,7 @@ func (l *localDiscovery) Init(a *app.App) (err error) {
 	return
 }
 
-func (l *localDiscovery) Run(ctx context.Context) (err error) {
+func (l *zeroconfDiscovery) Run(ctx context.Context) (err error) {
 	if l.manualStart && len(l.nodeConf.Nodes) > 0 {
 		// let's wait for the explicit command to enable local discovery
 		return
@@ -100,7 +101,7 @@ func (l *localDiscovery) Run(ctx context.Context) (err error) {
 	return l.Start()
 }
 
-func (l *localDiscovery) Start() (err error) {
+func (l *zeroconfDiscovery) Start() (err error) {
 	if !l.drpcServer.ServerStarted() {
 		l.discoveryPossibilitySetState(DiscoveryNoInterfaces)
 		return
@@ -121,11 +122,11 @@ func (l *localDiscovery) Start() (err error) {
 	return
 }
 
-func (l *localDiscovery) Name() (name string) {
+func (l *zeroconfDiscovery) Name() (name string) {
 	return CName
 }
 
-func (l *localDiscovery) Close(ctx context.Context) (err error) {
+func (l *zeroconfDiscovery) Close(ctx context.Context) (err error) {
 	l.componentCtxCancel()
 	l.periodicCheck.Close() // safe to close if not started
 
@@ -182,7 +183,7 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 // packets with write deadlines, self-connect probing), and this hook is
 // invoked synchronously from the DeviceNetworkStateSet RPC under networkMu,
 // so it must not block.
-func (l *localDiscovery) onNetworkStateChanged() {
+func (l *zeroconfDiscovery) onNetworkStateChanged() {
 	l.m.Lock()
 	l.interfacesAddrs = addrs.InterfacesAddrs{}
 	l.m.Unlock()
@@ -193,7 +194,7 @@ func (l *localDiscovery) onNetworkStateChanged() {
 	}
 }
 
-func (l *localDiscovery) refreshWorker() {
+func (l *zeroconfDiscovery) refreshWorker() {
 	for {
 		select {
 		case <-l.componentCtx.Done():
@@ -206,7 +207,7 @@ func (l *localDiscovery) refreshWorker() {
 	}
 }
 
-func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
+func (l *zeroconfDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 	// refreshMu serializes the whole refresh so the periodic check and the
 	// network-change hook can't interleave a rebuild while l.m is released below.
 	l.refreshMu.Lock()
@@ -290,12 +291,11 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 	return
 }
 
-func (l *localDiscovery) startServer() (err error) {
-	l.ipv4 = l.ipv4[:0]
-	ipv4, _ := l.getAddresses() // ignore ipv6 for now
-	for _, ip := range ipv4 {
-		l.ipv4 = append(l.ipv4, ip.String())
-	}
+func (l *zeroconfDiscovery) startServer() (err error) {
+	// ipv6 is ignored for now
+	l.own = l.ownIPv4()
+	logOwnAddresses(l.own)
+	l.ipv4 = newOwnAddresses(l.own, l.port).Addrs
 	log.Info("starting mdns server", zap.Strings("ips", l.ipv4), zap.Int("port", l.port), zap.String("peerId", l.peerId))
 	l.server, err = zeroconf.RegisterProxy(
 		l.peerId,
@@ -314,7 +314,7 @@ func (l *localDiscovery) startServer() (err error) {
 }
 
 // startQuerying is called under l.m.
-func (l *localDiscovery) startQuerying(ctx context.Context) {
+func (l *zeroconfDiscovery) startQuerying(ctx context.Context) {
 	closeWait := &sync.WaitGroup{}
 	closeWait.Add(2)
 	l.closeWait = closeWait
@@ -327,7 +327,7 @@ func (l *localDiscovery) startQuerying(ctx context.Context) {
 	go l.browse(ctx, closeWait, ifaces, listenCh)
 }
 
-func (l *localDiscovery) readAnswers(closeWait *sync.WaitGroup, ch chan *zeroconf.ServiceEntry) {
+func (l *zeroconfDiscovery) readAnswers(closeWait *sync.WaitGroup, ch chan *zeroconf.ServiceEntry) {
 	defer closeWait.Done()
 	for entry := range ch {
 		if entry.Instance == l.peerId {
@@ -346,18 +346,15 @@ func (l *localDiscovery) readAnswers(closeWait *sync.WaitGroup, ch chan *zerocon
 		}
 		log.Debug("discovered peer", zap.Strings("addrs", portAddrs), zap.String("peerId", peer.PeerId))
 		if l.notifier != nil {
-			addrs := slices.Clone(l.ipv4)
+			own := newOwnAddresses(l.own, l.port)
 			// explicitly use componentCtx, instead of queryCtx here, because we don't want to interrupt the peer connection if we refreshed interfaces and restarted service
-			go l.notifier.PeerDiscovered(l.componentCtx, peer, OwnAddresses{
-				Addrs: addrs,
-				Port:  l.port,
-			})
+			go l.notifier.PeerDiscovered(l.componentCtx, peer, own)
 		}
 		l.m.Unlock()
 	}
 }
 
-func (l *localDiscovery) browse(ctx context.Context, closeWait *sync.WaitGroup, ifaces []gonet.Interface, ch chan *zeroconf.ServiceEntry) {
+func (l *zeroconfDiscovery) browse(ctx context.Context, closeWait *sync.WaitGroup, ifaces []gonet.Interface, ch chan *zeroconf.ServiceEntry) {
 	defer closeWait.Done()
 	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch,
 		zeroconf.ClientWriteTimeout(time.Second*3),
@@ -382,9 +379,6 @@ func waitWithTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
 	}
 }
 
-func (l *localDiscovery) GetOwnAddresses() OwnAddresses {
-	return OwnAddresses{
-		Addrs: l.ipv4,
-		Port:  l.port,
-	}
+func (l *zeroconfDiscovery) GetOwnAddresses() OwnAddresses {
+	return newOwnAddresses(l.own, l.port)
 }

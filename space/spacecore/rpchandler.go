@@ -81,11 +81,9 @@ func (s *service) recordLocalPeer(ctx context.Context, peerId string, localServe
 		}
 		portAddrs = append(portAddrs, addr)
 	}
-	// addSchema pins the transport for local peers (yamux); see its comment
-	addrsWithSchema := s.addSchema(portAddrs)
-	s.peerService.SetPeerAddrs(peerId, addrsWithSchema)
+	s.setLocalPeerAddrs(peerId, portAddrs)
 	s.publishLocalPeer(peerId, spaceIds, proof, directionInbound)
-	log.Info("updated local peer", zap.Strings("ips", addrsWithSchema), zap.String("peerId", peerId), zap.Strings("spaceIds", spaceIds))
+	log.Info("updated local peer", zap.Strings("ips", portAddrs), zap.String("peerId", peerId), zap.Strings("spaceIds", spaceIds))
 }
 
 // SpaceExchangeV2 is the inbound side of the token handshake: compute this
