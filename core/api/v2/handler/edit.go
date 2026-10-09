@@ -25,7 +25,7 @@ func respondV2Edit(c *gin.Context, result *v2model.EditResult) {
 // PatchObjectHandler applies a batch of edit ops atomically
 //
 //	@Summary		Update an object
-//	@Description	Applies ops in order as one atomic edit. A failed op or invalid result leaves the object unchanged. Text locators must match exactly one block. New block and view IDs are returned by payload position in `created_blocks` and `created_views`, compact by default or full with `ids=full`.
+//	@Description	Edits in place, keeping the id and links; to change the type, use set_type rather than recreating the object. Applies ops in order as one atomic edit. A failed op or invalid result leaves the object unchanged. Text locators must match exactly one block. New block and view IDs are returned by payload position in `created_blocks` and `created_views`, compact by default or full with `ids=full`.
 //	@Id				patch_object
 //	@Tags			Objects
 //	@Accept			json
