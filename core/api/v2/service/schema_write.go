@@ -280,6 +280,20 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 		}
 	}
 
+	// app machinery leaves the list before Unmarshal can resolve or install
+	// it; the envelope is re-read so the option and recommended-list steps
+	// below see the same list
+	body, dropped, err := s.dropHiddenInternalDefinitionsFromBody(spaceId, body)
+	if err != nil {
+		return nil, err
+	}
+	if len(dropped) > 0 {
+		envelope = docEnvelope{}
+		if err := json.Unmarshal(body, &envelope); err != nil {
+			return nil, v2model.ValidationFailed("decode document envelope: " + err.Error())
+		}
+	}
+
 	// Unmarshal rebuilds the four recommended-relation lists from
 	// typeProperties, creating missing properties through the resolver
 	resolvers := s.newCreatingResolvers(ctx, spaceId, dryRun, createMissingOptions)
@@ -305,7 +319,7 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, body []byte, d
 		}
 	}
 
-	result = &v2model.CreateResult{Key: slug, Created: resolvers.created()}
+	result = &v2model.CreateResult{Key: slug, Created: resolvers.created(), Warnings: dropped}
 	if dryRun {
 		result.DryRun = true
 		return result, nil
@@ -530,6 +544,120 @@ func (s *Service) validateTypePropertyFormats(spaceId string, props []anyblockjs
 		}
 	}
 	return nil
+}
+
+// internalPropertyKeys is the format's internal set: export strips these
+// keys and every object write refuses them.
+var internalPropertyKeys = anyblockjson.InternalPropertyKeys()
+
+// hiddenInternalProperty reports whether a key is internal AND hidden — app
+// machinery no one sees (`_score`, `syncStatus`, `id`), which the app keeps
+// on its own and no type lists. A visible internal key is different:
+// "Created by" or "Links" in a type's lists is where the app shows it, so
+// placing one is a real request.
+func hiddenInternalProperty(key string) bool {
+	if !internalPropertyKeys[key] {
+		return false
+	}
+	rel, err := bundle.PickRelation(domain.RelationKey(key))
+	return err == nil && rel.Hidden
+}
+
+// dropHiddenInternalDefinitions removes the property_definitions entries that
+// name a hidden internal property, with a warning for each. The entry would
+// put app machinery on the type's lists, and any object write naming it is
+// refused anyway; the caller's other entries go through as sent. An entry
+// the type already lists (listedIds, the echo baseline) is kept: the bundled
+// template type carries templateIsBundled, and a read echoed back must not
+// detach it. defs and the returned indexes line up with the array the
+// caller sent.
+func (s *Service) dropHiddenInternalDefinitions(spaceId string, defs []anyblockjson.TypeProperty, path string, listedIds map[string]bool) (kept []int, warnings []v2model.Issue, err error) {
+	var entries []propertyEntry
+	for i, tp := range defs {
+		// the codec's own identity order (identityForResolution): the
+		// spelling, then the stored key, then the NFC name
+		term := tp.Property
+		if term == "" {
+			term = tp.InternalKey
+		}
+		if term == "" {
+			term = norm.NFC.String(tp.Name)
+		}
+		if term == "" {
+			kept = append(kept, i)
+			continue
+		}
+		if entries == nil {
+			if entries, err = s.liveProperties(spaceId); err != nil {
+				return nil, nil, fmt.Errorf("list properties: %w", err)
+			}
+		}
+		entry, ok, _ := s.resolvePropertyInput(term, entries)
+		if !ok || !hiddenInternalProperty(entry.Key) || (entry.Id != "" && listedIds[entry.Id]) {
+			kept = append(kept, i)
+			continue
+		}
+		warnings = append(warnings, v2model.Issue{
+			Path: fmt.Sprintf("%s/%d", path, i),
+			Message: fmt.Sprintf("%s is an internal property the app maintains on its own; a type does not list it, so the entry was dropped",
+				internalPropertyTerm(term, entry.Key)),
+			Hint: "to add a property of your own, give it a name no internal property uses",
+		})
+	}
+	return kept, warnings, nil
+}
+
+// internalPropertyTerm names what the caller wrote, and the stored key it
+// resolved to when that is a different spelling.
+func internalPropertyTerm(term, key string) string {
+	if term == key {
+		return fmt.Sprintf("%q", term)
+	}
+	return fmt.Sprintf("%q (%s)", term, key)
+}
+
+// dropHiddenInternalDefinitionsFromBody is dropHiddenInternalDefinitions on a
+// type document: the dropped entries leave the raw array, so the codec never
+// resolves (or installs) them, and the kept ones travel byte-for-byte.
+func (s *Service) dropHiddenInternalDefinitionsFromBody(spaceId string, body []byte) ([]byte, []v2model.Issue, error) {
+	fields, err := parseEnvelope(body)
+	if err != nil {
+		return nil, nil, err
+	}
+	settings := map[string]json.RawMessage{}
+	if raw, ok := fields["type_settings"]; !ok || json.Unmarshal(raw, &settings) != nil {
+		return body, nil, nil
+	}
+	var rawDefs []json.RawMessage
+	if raw, ok := settings["property_definitions"]; !ok || json.Unmarshal(raw, &rawDefs) != nil {
+		return body, nil, nil
+	}
+	defs := make([]anyblockjson.TypeProperty, len(rawDefs))
+	for i, raw := range rawDefs {
+		if err := json.Unmarshal(raw, &defs[i]); err != nil {
+			// validation already passed this document; an entry it cannot
+			// decode is not one this filter can judge
+			return body, nil, nil
+		}
+	}
+	kept, warnings, err := s.dropHiddenInternalDefinitions(spaceId, defs, "/type_settings/property_definitions", nil)
+	if err != nil || len(warnings) == 0 {
+		return body, nil, err
+	}
+	keptDefs := make([]json.RawMessage, 0, len(kept))
+	for _, i := range kept {
+		keptDefs = append(keptDefs, rawDefs[i])
+	}
+	if settings["property_definitions"], err = rawJSON(keptDefs); err != nil {
+		return nil, nil, err
+	}
+	if fields["type_settings"], err = rawJSON(settings); err != nil {
+		return nil, nil, err
+	}
+	if body, err = encodeEnvelope(fields); err != nil {
+		return nil, nil, err
+	}
+	return body, warnings, nil
 }
 
 // storedDetailKey maps a wire property key to its stored spelling through
@@ -771,6 +899,7 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 	// every property added, none for one removed — and a replaced list must
 	// do the same, or the type is half-updated behind a 200
 	var addedIds, removedKeys []string
+	var droppedDefs []v2model.Issue
 	if defs := patch.propertyDefinitions(); defs != nil {
 		// the echo baseline (§8.41): entries this type ALREADY references
 		// resolve as identities even when their relation is removed — the
@@ -792,6 +921,18 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 		if err := s.guardDeclaredOptions(spaceId, *defs,
 			"/type_settings/property_definitions", createMissingOptions); err != nil {
 			return nil, err
+		}
+		keptIdx, dropped, err := s.dropHiddenInternalDefinitions(spaceId, *defs, "/type_settings/property_definitions", detachedBefore)
+		if err != nil {
+			return nil, err
+		}
+		if len(dropped) > 0 {
+			keptDefs := make([]anyblockjson.TypeProperty, 0, len(keptIdx))
+			for _, i := range keptIdx {
+				keptDefs = append(keptDefs, (*defs)[i])
+			}
+			*defs = keptDefs
+			droppedDefs = dropped
 		}
 		lists, err := anyblockjson.BuildRecommendedLists(*defs, resolvers.Options())
 		if err != nil {
@@ -835,7 +976,7 @@ func (s *Service) UpdateType(ctx context.Context, spaceId, typeKey, ifMatch stri
 		}
 	}
 
-	result = &v2model.CreateResult{Id: typeId, Key: typeKey, Created: resolvers.created()}
+	result = &v2model.CreateResult{Id: typeId, Key: typeKey, Created: resolvers.created(), Warnings: droppedDefs}
 	// a replaced list detaches whatever it omitted. Report it in BOTH channels:
 	// `removed` so a client can act on it, and a warning so a human reading the
 	// response sees it without knowing to look for a new field. A dry run says

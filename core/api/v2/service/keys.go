@@ -285,6 +285,14 @@ func (s *Service) resolvePropertyInput(input string, entries []propertyEntry) (p
 		if seen[string(key)] {
 			continue
 		}
+		// a hidden internal key is reached by its exact stored key only
+		// (steps 1 and 3): "Score" folds onto `_score`, and binding a
+		// caller's own property to fulltext machinery is never the
+		// forgiveness this layer means. id stays, as the format keeps its
+		// name: its refusal names the envelope member to use.
+		if key != bundle.RelationKeyId && hiddenInternalProperty(string(key)) {
+			continue
+		}
 		seen[string(key)] = true
 		rel := bundle.MustGetRelation(key)
 		candidates = append(candidates, propertyEntry{Key: string(key), Name: rel.Name, Format: rel.Format})
