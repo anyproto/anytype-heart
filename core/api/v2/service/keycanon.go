@@ -250,6 +250,18 @@ func (k *keyCanon) rewriteViews(views []any, path string) error {
 			}
 			view["group_by"] = canonical
 		}
+		// a board's cover and a timeline's end are property slots too
+		for _, slot := range []string{"cover_property", "end_property"} {
+			prop, ok := view[slot].(string)
+			if !ok || prop == "" {
+				continue
+			}
+			canonical, err := k.canonOrErr(prop, prefix+"/"+slot)
+			if err != nil {
+				return err
+			}
+			view[slot] = canonical
+		}
 		if sorts, ok := view["sorts"].([]any); ok {
 			if err := k.rewriteSorts(sorts, prefix+"/sorts"); err != nil {
 				return err
@@ -285,8 +297,10 @@ func (k *keyCanon) canonicalizeRawChannel(raw json.RawMessage, kind, path string
 	if len(raw) == 0 {
 		return raw, nil
 	}
+	// numbers keep their spelling (json.Number): a float64 round trip would
+	// round an integer past 2^53 the codec would otherwise refuse
 	var decoded []any
-	if err := json.Unmarshal(raw, &decoded); err != nil {
+	if err := decodeJSONUseNumber(raw, &decoded); err != nil {
 		return raw, nil // shape errors belong to the channel's own decoder
 	}
 	var err error

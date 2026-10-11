@@ -202,6 +202,32 @@ func TestV2BlockKeySlotsOnAnInstalledBuiltInKey(t *testing.T) {
 		assert.Equal(t, []string{ownKey}, viewSortKeys((*captured).Blocks))
 	})
 
+	t.Run("a created query's cover and end bind the property its queried type lists", func(t *testing.T) {
+		// given
+		fx := newSpace(t)
+		captured := fx.expectCreate("obj-new")
+		fx.expectEtagRead("obj-new")
+
+		// when
+		_, err := fx.CreateObject(ctx, testSpaceId, []byte(`{"formatVersion":"2.0","type":"set",
+			"properties":{"name":"Features"},"query_source":{"types":["feature"]},
+			"blocks":[{"id":"dataview","type":"dataview","views":[{"id":"view1","name":"Gallery","type":"gallery",
+				"cover_property":"priority","end_property":"priority"}]}]}`), false, true)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, *captured)
+		var cover, end []string
+		for _, b := range (*captured).Blocks {
+			for _, view := range b.GetDataview().GetViews() {
+				cover = append(cover, view.GetCoverRelationKey())
+				end = append(end, view.GetEndRelationKey())
+			}
+		}
+		assert.Equal(t, []string{ownKey}, cover)
+		assert.Equal(t, []string{ownKey}, end)
+	})
+
 	t.Run("an inserted dataview sorts by the property its source type lists", func(t *testing.T) {
 		// given
 		fx := newSpace(t)
@@ -385,4 +411,24 @@ func TestV2TypedSearchSortsOnAnInstalledBuiltInKey(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, plan.sorts)
 	assert.Equal(t, domain.RelationKey(ownKey), plan.sorts[0].RelationKey)
+}
+
+// TestV2SearchSortsKeepIntegerSpelling: canonicalizing the sort slots must not
+// round a number through float64 — an integer past 2^53 in custom_order is the
+// codec's to refuse, not ours to silently round.
+func TestV2SearchSortsKeepIntegerSpelling(t *testing.T) {
+	// given
+	fx := searchSetup(t)
+
+	// when
+	_, err := fx.buildSearchPlan(testSpaceId, v2model.SearchRequest{
+		Sorts: json.RawMessage(`[{"property":"severity","direction":"custom","custom_order":[9007199254740993]}]`),
+	}, true, errKeys{})
+
+	// then
+	require.Error(t, err)
+	var apiErr *v2model.Error
+	require.ErrorAs(t, err, &apiErr)
+	require.NotEmpty(t, apiErr.Issues)
+	assert.Equal(t, "/sorts/0/custom_order/0", apiErr.Issues[0].Path)
 }
