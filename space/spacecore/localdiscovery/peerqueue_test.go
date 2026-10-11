@@ -42,12 +42,12 @@ func TestPeerDiscoveriesRunsOnePerPeerAndKeepsTheLatest(t *testing.T) {
 	n := &blockingNotifier{release: make(chan struct{}), first: make(chan struct{})}
 	var d peerDiscoveries
 	ctx := context.Background()
-	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Addrs: []string{"192.168.1.62:4006"}}, OwnAddresses{})
+	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Addrs: []string{"192.168.1.62:4006"}}, OwnAddresses{}, false)
 	<-n.first
 
 	// when: two more arrive meanwhile
-	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Addrs: []string{"stale"}}, OwnAddresses{})
-	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Addrs: []string{"[fe80::62%en16]:4006", "192.168.1.62:4006"}}, OwnAddresses{})
+	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Addrs: []string{"stale"}}, OwnAddresses{}, false)
+	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Addrs: []string{"[fe80::62%en16]:4006", "192.168.1.62:4006"}}, OwnAddresses{}, false)
 	close(n.release)
 
 	// then: one at a time, the parked stale one skipped
@@ -67,13 +67,13 @@ func TestPeerDiscoveriesKeepsTheLatestPerSource(t *testing.T) {
 	n := &blockingNotifier{release: make(chan struct{}), first: make(chan struct{})}
 	var d peerDiscoveries
 	ctx := context.Background()
-	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Addrs: []string{"192.168.1.62:4006"}}, OwnAddresses{})
+	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Addrs: []string{"192.168.1.62:4006"}}, OwnAddresses{}, false)
 	<-n.first
 
 	// when: a base and a cable discovery are parked, then a newer base one
-	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Addrs: []string{"192.168.1.63:4006"}}, OwnAddresses{})
-	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Link: "31", Addrs: []string{"[fe80::62%31]:4006"}}, OwnAddresses{})
-	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Addrs: []string{"192.168.1.64:4006"}}, OwnAddresses{})
+	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Addrs: []string{"192.168.1.63:4006"}}, OwnAddresses{}, false)
+	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Link: "31", Addrs: []string{"[fe80::62%31]:4006"}}, OwnAddresses{}, false)
+	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Addrs: []string{"192.168.1.64:4006"}}, OwnAddresses{}, false)
 	close(n.release)
 
 	// then: both sources run, in arrival order, the base one at its newest
@@ -94,13 +94,13 @@ func TestPeerDiscoveriesKeepsEachCable(t *testing.T) {
 	n := &blockingNotifier{release: make(chan struct{}), first: make(chan struct{})}
 	var d peerDiscoveries
 	ctx := context.Background()
-	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Addrs: []string{"192.168.1.62:4006"}}, OwnAddresses{})
+	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Addrs: []string{"192.168.1.62:4006"}}, OwnAddresses{}, false)
 	<-n.first
 
 	// when: two cables are parked, then a newer answer from the first
-	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Link: "31", Addrs: []string{"[fe80::62%31]:4006"}}, OwnAddresses{})
-	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Link: "32", Addrs: []string{"[fe80::62%32]:4006"}}, OwnAddresses{})
-	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Link: "31", Addrs: []string{"[fe80::63%31]:4006"}}, OwnAddresses{})
+	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Link: "31", Addrs: []string{"[fe80::62%31]:4006"}}, OwnAddresses{}, false)
+	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Link: "32", Addrs: []string{"[fe80::62%32]:4006"}}, OwnAddresses{}, false)
+	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Link: "31", Addrs: []string{"[fe80::63%31]:4006"}}, OwnAddresses{}, false)
 	close(n.release)
 
 	// then

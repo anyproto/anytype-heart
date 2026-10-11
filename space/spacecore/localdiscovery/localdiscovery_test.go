@@ -457,6 +457,46 @@ func TestReadAnswersDispatch(t *testing.T) {
 		close(n.release)
 	})
 
+	t.Run("a discovery parked behind a cable one stays parked when the cable goes away", func(t *testing.T) {
+		// given: a cable discovery of peer2 runs, an older base one is parked
+		f := newFixture(t)
+		ld := f.LocalDiscovery.(*zeroconfDiscovery)
+		ld.linkLocal = newLinkLocalIfaces(
+			[]ownAddr{{iface: "en16", net: netip.MustParsePrefix("fe80::1/64"), linkLocal: true}},
+			[]gonet.Interface{{Index: 31, Name: "en16"}},
+		)
+		n := &blockingNotifier{release: make(chan struct{}), first: make(chan struct{})}
+		ld.SetNotifier(n)
+		cable := make(chan *zeroconf.ServiceEntry, 1)
+		cable <- &zeroconf.ServiceEntry{
+			ServiceRecord: zeroconf.ServiceRecord{Instance: "peer2"},
+			Port:          4006,
+			LinkIndex:     31,
+			AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62%31")},
+		}
+		close(cable)
+		closeWait := &sync.WaitGroup{}
+		closeWait.Add(1)
+		ld.readAnswers(closeWait, cable)
+		<-n.first
+		deliver(t, ld, "192.168.1.62")
+
+		// when: the cable is gone, and a newer base discovery arrives
+		ld.linkLocal = linkLocalIfaces{}
+		deliver(t, ld, "192.168.1.63")
+		close(n.release)
+
+		// then: it took the parked one's place, the older one never runs
+		assert.Eventually(t, func() bool {
+			ld.discoveries.mu.Lock()
+			defer ld.discoveries.mu.Unlock()
+			return len(ld.discoveries.inflight) == 0
+		}, 2*time.Second, 10*time.Millisecond)
+		n.mu.Lock()
+		defer n.mu.Unlock()
+		assert.Equal(t, [][]string{{"[fe80::62%31]:4006"}, {"192.168.1.63:4006"}}, n.got)
+	})
+
 	t.Run("with a cable a peer's discoveries run one at a time", func(t *testing.T) {
 		// given
 		f := newFixture(t)

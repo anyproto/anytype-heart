@@ -36,7 +36,8 @@ type localAddrsFixture struct {
 	usable  map[string]string // zone -> decimal index of a usable interface
 	live    []netip.Addr      // the link-local addresses pooled connections run over
 	lookups int
-	picks   int // liveLinkLocalAddrs calls
+	picks   int        // liveLinkLocalAddrs calls
+	dialed  [][]string // the list installed when each stubbed exchange started
 }
 
 func newLocalAddrsFixture(t *testing.T) *localAddrsFixture {

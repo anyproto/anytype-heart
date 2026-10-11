@@ -407,12 +407,8 @@ func (l *zeroconfDiscovery) readAnswers(closeWait *sync.WaitGroup, ch chan *zero
 		if l.notifier != nil {
 			own := newOwnAddresses(l.own, l.port)
 			// explicitly use componentCtx, instead of queryCtx here, because we don't want to interrupt the peer connection if we refreshed interfaces and restarted service
-			if len(l.linkLocal.indexes) == 0 {
-				// no cable: each discovery runs at once, as on develop
-				go l.notifier.PeerDiscovered(l.componentCtx, peer, own)
-			} else {
-				l.discoveries.notify(l.componentCtx, l.notifier, peer, own)
-			}
+			// without a cable each discovery runs at once, as on develop
+			l.discoveries.notify(l.componentCtx, l.notifier, peer, own, len(l.linkLocal.indexes) == 0)
 		}
 		l.m.Unlock()
 	}

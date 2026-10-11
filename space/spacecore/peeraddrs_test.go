@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/netip"
+	"slices"
 	"testing"
 
 	"github.com/anyproto/any-sync/net/peer"
@@ -160,12 +161,13 @@ func TestRecordLocalPeer(t *testing.T) {
 // (success once they run out), and none may run under localAddrsMu.
 func (f *localAddrsFixture) stubExchange(t *testing.T, errs ...error) *int {
 	calls := 0
-	f.exchangeFn = func(context.Context, string, *localdiscovery.OwnAddresses) ([]string, bool, error) {
+	f.exchangeFn = func(_ context.Context, peerId string, _ *localdiscovery.OwnAddresses) ([]string, bool, error) {
 		if !f.localAddrsMu.TryLock() {
 			t.Error("the exchange runs under localAddrsMu")
 		} else {
 			f.localAddrsMu.Unlock()
 		}
+		f.dialed = append(f.dialed, slices.Clone(f.installed(peerId)))
 		calls++
 		if len(errs) > 0 {
 			err := errs[0]
@@ -220,8 +222,10 @@ func TestPeerDiscoveredSources(t *testing.T) {
 			f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
 		}
 
-		// then
+		// then: each exchange, the failed first one too, dials the cable
 		assert.Equal(t, 3, *calls)
+		cable := []string{"yamux://[fe80::62%31]:4006"}
+		assert.Equal(t, [][]string{cable, cable, cable}, f.dialed)
 	})
 
 	t.Run("a base discovery always exchanges, as on develop", func(t *testing.T) {
@@ -276,6 +280,7 @@ func TestPeerDiscoveredSources(t *testing.T) {
 			assert.Equal(t, step.want, f.installed("p1"), "step %d", i)
 		}
 		assert.Equal(t, 3, *calls, "every discovery exchanges")
+		assert.Equal(t, [][]string{steps[0].want, steps[1].want, steps[3].want}, f.dialed, "over the list it just installed")
 		assert.Zero(t, f.lookups, "no interface looked up")
 		assert.Zero(t, f.picks, "no pool asked")
 		assert.Empty(t, f.timers, "no route armed")
