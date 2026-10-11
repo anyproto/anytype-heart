@@ -75,19 +75,8 @@ func newLocalAddrsFixture(t *testing.T) *localAddrsFixture {
 		f.picks++
 		return f.live
 	}
+	f.stubExchange(t)
 	return f
-}
-
-// discover installs a discovery's list the way PeerDiscovered does.
-func (f *localAddrsFixture) discover(peerId, link string, hostPorts ...string) {
-	f.localAddrsMu.Lock()
-	defer f.localAddrsMu.Unlock()
-	if link == "" {
-		f.setBaseAddrs(peerId, hostPorts)
-	} else {
-		f.setRoute(peerId, routeMDNS+link, hostPorts)
-	}
-	f.installLocalAddrs(peerId)
 }
 
 func (f *localAddrsFixture) inbound(peerId, connAddr string, ips ...string) {
@@ -161,10 +150,10 @@ func TestLocalPeerAddrsStore(t *testing.T) {
 	t.Run("a Wi-Fi discovery keeps the cable route", func(t *testing.T) {
 		// given
 		f := newLocalAddrsFixture(t)
-		f.discover("phone", "31", "[fe80::62%31]:4006")
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
 
 		// when
-		f.discover("phone", "", "192.168.1.62:4006")
+		f.peerDiscovered("phone", "", "192.168.1.62:4006")
 
 		// then
 		assert.Equal(t, []string{"yamux://[fe80::62%31]:4006", "yamux://192.168.1.62:4006"}, f.installed("phone"))
@@ -173,10 +162,10 @@ func TestLocalPeerAddrsStore(t *testing.T) {
 	t.Run("a cable discovery keeps the Wi-Fi list", func(t *testing.T) {
 		// given
 		f := newLocalAddrsFixture(t)
-		f.discover("phone", "", "192.168.1.62:4006")
+		f.peerDiscovered("phone", "", "192.168.1.62:4006")
 
 		// when
-		f.discover("phone", "31", "[fe80::62%31]:4006")
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
 
 		// then
 		assert.Equal(t, []string{"yamux://[fe80::62%31]:4006", "yamux://192.168.1.62:4006"}, f.installed("phone"))
@@ -185,11 +174,11 @@ func TestLocalPeerAddrsStore(t *testing.T) {
 	t.Run("an unplugged cable leaves the list at the next install", func(t *testing.T) {
 		// given
 		f := newLocalAddrsFixture(t)
-		f.discover("phone", "31", "[fe80::62%31]:4006")
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
 		delete(f.usable, "31")
 
 		// when
-		f.discover("phone", "", "192.168.1.62:4006")
+		f.peerDiscovered("phone", "", "192.168.1.62:4006")
 
 		// then
 		assert.Equal(t, []string{"yamux://192.168.1.62:4006"}, f.installed("phone"))
@@ -198,8 +187,8 @@ func TestLocalPeerAddrsStore(t *testing.T) {
 	t.Run("an expired route leaves the list", func(t *testing.T) {
 		// given
 		f := newLocalAddrsFixture(t)
-		f.discover("phone", "", "192.168.1.62:4006")
-		f.discover("phone", "31", "[fe80::62%31]:4006")
+		f.peerDiscovered("phone", "", "192.168.1.62:4006")
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
 		require.Len(t, f.timers, 1)
 		assert.Equal(t, linkRouteTTL, f.timers[0].d)
 
@@ -213,7 +202,7 @@ func TestLocalPeerAddrsStore(t *testing.T) {
 	t.Run("a live connection over the route renews it", func(t *testing.T) {
 		// given
 		f := newLocalAddrsFixture(t)
-		f.discover("phone", "31", "[fe80::62%31]:4006")
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
 		f.live = []netip.Addr{netip.MustParseAddr("fe80::62%31")}
 
 		// when
@@ -231,8 +220,8 @@ func TestLocalPeerAddrsStore(t *testing.T) {
 	t.Run("a live connection over another cable does not renew it", func(t *testing.T) {
 		// given: the phone answers on 31 from an old address, syncs over 32
 		f := newLocalAddrsFixture(t)
-		f.discover("phone", "31", "[fe80::62%31]:4006")
-		f.discover("phone", "32", "[fe80::62%32]:4006")
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
+		f.peerDiscovered("phone", "32", "[fe80::62%32]:4006")
 		f.live = []netip.Addr{netip.MustParseAddr("fe80::62%32")}
 
 		// when
@@ -247,7 +236,7 @@ func TestLocalPeerAddrsStore(t *testing.T) {
 		// given: the phone came in from fe80::62, now answers as fe80::63
 		f := newLocalAddrsFixture(t)
 		f.inbound("phone", "yamux://[fe80::62%en16]:51234")
-		f.discover("phone", "31", "[fe80::63%31]:4006")
+		f.peerDiscovered("phone", "31", "[fe80::63%31]:4006")
 		f.live = []netip.Addr{netip.MustParseAddr("fe80::63%31")}
 
 		// when: the inbound route reaches its deadline
@@ -261,8 +250,8 @@ func TestLocalPeerAddrsStore(t *testing.T) {
 	t.Run("a renewed route over an interface no longer usable leaves the list", func(t *testing.T) {
 		// given: the cable interface got routable IPv4 meanwhile
 		f := newLocalAddrsFixture(t)
-		f.discover("phone", "", "192.168.1.62:4006")
-		f.discover("phone", "31", "[fe80::62%31]:4006")
+		f.peerDiscovered("phone", "", "192.168.1.62:4006")
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
 		f.live = []netip.Addr{netip.MustParseAddr("fe80::62%31")}
 		delete(f.usable, "31")
 
@@ -276,7 +265,7 @@ func TestLocalPeerAddrsStore(t *testing.T) {
 	t.Run("the pool is asked without the lock", func(t *testing.T) {
 		// given
 		f := newLocalAddrsFixture(t)
-		f.discover("phone", "31", "[fe80::62%31]:4006")
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
 		var locked bool
 		liveLinkLocalAddrs = func(s *service, _ string) []netip.Addr {
 			if locked = !s.localAddrsMu.TryLock(); !locked {
@@ -295,8 +284,8 @@ func TestLocalPeerAddrsStore(t *testing.T) {
 	t.Run("a renewed route ignores its old timer", func(t *testing.T) {
 		// given: the cable answered again
 		f := newLocalAddrsFixture(t)
-		f.discover("phone", "31", "[fe80::62%31]:4006")
-		f.discover("phone", "31", "[fe80::62%31]:4006")
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
 		require.Len(t, f.timers, 2)
 
 		// when
@@ -311,15 +300,15 @@ func TestLocalPeerAddrsStore(t *testing.T) {
 	t.Run("a forgotten peer drops its routes and timers, and the routes leave the list", func(t *testing.T) {
 		// given
 		f := newLocalAddrsFixture(t)
-		f.discover("phone", "", "192.168.1.62:4006")
-		f.discover("phone", "31", "[fe80::62%31]:4006")
+		f.peerDiscovered("phone", "", "192.168.1.62:4006")
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
 
 		// when: the peer manager gave up on it
 		f.forgetPeerIPs("phone")
 
-		// then
+		// then: the Wi-Fi list stays for the next discovery
 		assert.False(t, f.timers[0].timer.Stop(), "the timer was stopped")
-		assert.Empty(t, f.localPeers)
+		assert.Equal(t, &localPeerAddrs{base: []string{"192.168.1.62:4006"}, routes: map[string]*linkRoute{}}, f.localPeers["phone"])
 		assert.Equal(t, []string{"yamux://192.168.1.62:4006"}, f.installed("phone"))
 		f.timers[0].fire()
 		assert.Len(t, f.timers, 1, "nothing armed for a forgotten peer")
@@ -328,7 +317,7 @@ func TestLocalPeerAddrsStore(t *testing.T) {
 	t.Run("a forgotten peer without routes keeps its list, as on develop", func(t *testing.T) {
 		// given
 		f := newLocalAddrsFixture(t)
-		f.discover("phone", "", "192.168.1.62:4006")
+		f.peerDiscovered("phone", "", "192.168.1.62:4006")
 		f.peers.addrs["phone"] = []string{"sentinel"}
 
 		// when
@@ -341,10 +330,10 @@ func TestLocalPeerAddrsStore(t *testing.T) {
 	t.Run("closing stops every route, and nothing is installed after", func(t *testing.T) {
 		// given
 		f := newLocalAddrsFixture(t)
-		calls := f.stubExchange(t)
 		f.componentCtx, f.componentCtxCancel = context.WithCancel(context.Background())
 		f.spaceCache = ocache.New(func(context.Context, string) (ocache.Object, error) { return nil, errors.New("none") })
-		f.discover("phone", "31", "[fe80::62%31]:4006")
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
+		calls := f.stubExchange(t)
 		f.live = []netip.Addr{netip.MustParseAddr("fe80::62%31")}
 		before := f.installed("phone")
 
@@ -371,7 +360,7 @@ func TestRecordLocalPeerRoutes(t *testing.T) {
 		f.inbound("mac", "yamux://[fe80::1%en16]:51234", "192.168.139.3")
 
 		// when: native discovery resolved only an IPv4 address
-		f.discover("mac", "", "192.168.139.3:4006")
+		f.peerDiscovered("mac", "", "192.168.139.3:4006")
 
 		// then: zoned by index, as every route
 		assert.Equal(t, []string{"yamux://[fe80::1%31]:4006", "yamux://192.168.139.3:4006"}, f.installed("mac"))
@@ -381,7 +370,7 @@ func TestRecordLocalPeerRoutes(t *testing.T) {
 		f := newLocalAddrsFixture(t)
 		f.inbound("mac", "yamux://[fe80::1%en16]:51234")
 
-		f.discover("mac", "")
+		f.peerDiscovered("mac", "")
 
 		assert.Equal(t, []string{"yamux://[fe80::1%31]:4006"}, f.installed("mac"))
 	})
@@ -402,7 +391,7 @@ func TestRecordLocalPeerRoutes(t *testing.T) {
 	t.Run("the same cable from mDNS and inbound is one address, and each expires on its own", func(t *testing.T) {
 		// given: discovered over the cable by index, then connected over it by name
 		f := newLocalAddrsFixture(t)
-		f.discover("phone", "31", "[fe80::62%31]:4006")
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
 		f.inbound("phone", "yamux://[fe80::62%en16]:51234")
 		require.Equal(t, []string{"yamux://[fe80::62%31]:4006"}, f.installed("phone"))
 
@@ -422,7 +411,7 @@ func TestInboundRouteZone(t *testing.T) {
 
 		// when: 31 is gone, and a new cable came up as en16 at 42
 		f.usable = map[string]string{"en16": "42", "42": "42"}
-		f.discover("mac", "", "192.168.139.3:4006")
+		f.peerDiscovered("mac", "", "192.168.139.3:4006")
 
 		// then
 		assert.Equal(t, []string{"yamux://192.168.139.3:4006"}, f.installed("mac"))

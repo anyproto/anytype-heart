@@ -113,18 +113,20 @@ func (s *service) installLocalAddrs(peerId string) []string {
 	return installed
 }
 
-// forgetLocalPeerAddrs drops everything known about the peer's addresses.
-// Its route addresses leave the installed list, as no timer would take them
-// out any more; a peer without routes keeps its list, as on develop.
+// forgetLocalPeerAddrs drops the peer's routes and installs its base list
+// again: no timer would take the route addresses out any more. The base list
+// stays for the next discovery, as a cable may answer long before IPv4 mDNS
+// repeats the peer. A peer without routes keeps its list, as on develop.
 func (s *service) forgetLocalPeerAddrs(peerId string) {
 	p, ok := s.localPeers[peerId]
-	if !ok {
+	if !ok || len(p.routes) == 0 {
 		return
 	}
-	if len(p.routes) > 0 {
-		s.setLocalPeerAddrs(peerId, p.base)
+	for source, route := range p.routes {
+		route.expiry.Stop()
+		delete(p.routes, source)
 	}
-	s.dropLocalPeer(peerId)
+	s.setLocalPeerAddrs(peerId, p.base)
 }
 
 // dropLocalPeer stops the peer's route timers and drops its entry.

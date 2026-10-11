@@ -49,6 +49,10 @@ func (d *peerDiscoveries) notify(ctx context.Context, notifier Notifier, peer Di
 		return
 	}
 	if direct {
+		// not tracked: a cable coming up while this runs may queue a
+		// discovery that races it. That takes this call still before its
+		// install, or an IPv4 dial already failing; the next cable answer
+		// (two to three minutes) puts things right.
 		d.mu.Unlock()
 		go notifier.PeerDiscovered(ctx, peer, own)
 		return

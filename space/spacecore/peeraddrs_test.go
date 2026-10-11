@@ -199,6 +199,36 @@ func TestPeerDiscoveredSources(t *testing.T) {
 		assert.Equal(t, []string{"yamux://[fe80::62%31]:4006", "yamux://192.168.1.62:4006"}, f.installed("phone"))
 	})
 
+	t.Run("a cable discovery keeps the Wi-Fi list, and its expiry leaves it", func(t *testing.T) {
+		// given
+		f := newLocalAddrsFixture(t)
+		f.peerDiscovered("phone", "", "192.168.1.62:4006")
+
+		// when
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
+		f.timers[0].fire()
+
+		// then
+		assert.Equal(t, []string{"yamux://[fe80::62%31]:4006", "yamux://192.168.1.62:4006"}, f.dialed[1], "when the cable exchange started")
+		assert.Equal(t, []string{"yamux://192.168.1.62:4006"}, f.installed("phone"))
+	})
+
+	t.Run("a forgotten cable peer keeps its Wi-Fi list for the next cable answer", func(t *testing.T) {
+		// given: the peer manager gave up on the phone
+		f := newLocalAddrsFixture(t)
+		f.peerDiscovered("phone", "", "192.168.1.62:4006")
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
+		f.forgetPeerIPs("phone")
+
+		// when: the cable answers again, then its route expires
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
+		require.Len(t, f.timers, 2)
+		f.timers[1].fire()
+
+		// then: IPv4 mDNS may not repeat the peer for an hour
+		assert.Equal(t, []string{"yamux://192.168.1.62:4006"}, f.installed("phone"))
+	})
+
 	t.Run("duplicate base addresses go in as develop installs them", func(t *testing.T) {
 		// given
 		f := newLocalAddrsFixture(t)
