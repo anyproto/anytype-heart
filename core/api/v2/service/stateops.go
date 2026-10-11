@@ -1623,6 +1623,11 @@ func (a *v2StateApplier) applyUpdateBlock(op opUpdateBlock, opPath string) error
 		}
 		merged[key] = value
 	}
+	// the caller's key slots resolve against the object's type (property
+	// blocks) and the queried type (dataviews), as a fragment's do
+	if err := a.s.newBlockKeys(a.spaceId, a.resolvers.scope, a.viewScope()).rewriteSet(merged, keys, opPath+".set"); err != nil {
+		return err
+	}
 	fullId := blockId(block)
 	raw, err := json.Marshal(merged)
 	if err != nil {

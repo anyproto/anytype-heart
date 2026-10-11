@@ -124,7 +124,71 @@ func (b *blockKeys) rewriteBlock(block map[string]any, path string) error {
 		}
 	}
 	if children, ok := block["children"].([]any); ok {
-		return b.rewrite(children, path+"/children")
+		if err := b.rewrite(children, path+"/children"); err != nil {
+			return err
+		}
+	}
+	return b.rewriteCells(block, path)
+}
+
+// rewriteCells walks a table's cells: a cell is a string, null, one block
+// object, or a run of flat blocks (§6.1), and any of those blocks can be a
+// property block.
+func (b *blockKeys) rewriteCells(block map[string]any, path string) error {
+	rows, ok := block["rows"].([]any)
+	if !ok {
+		return nil
+	}
+	for r, rawRow := range rows {
+		row, ok := rawRow.(map[string]any)
+		if !ok {
+			continue
+		}
+		cells, ok := row["cells"].([]any)
+		if !ok {
+			continue
+		}
+		for c, rawCell := range cells {
+			cellPath := fmt.Sprintf("%s/rows/%d/cells/%d", path, r, c)
+			switch cell := rawCell.(type) {
+			case map[string]any:
+				if err := b.rewriteBlock(cell, cellPath); err != nil {
+					return err
+				}
+			case []any:
+				if err := b.rewrite(cell, cellPath); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// rewriteSet resolves the key slots of an update_block merge that the caller
+// set, and only those: the block's live members already carry the bindings
+// they were stored with, and re-resolving an untouched slot could move it.
+// The merged block lends its type and its source members, so a dataview's
+// scope is the one it will have after the merge.
+func (b *blockKeys) rewriteSet(merged map[string]any, set []string, path string) error {
+	part := map[string]any{}
+	for _, member := range []string{"type", "source", "object_id"} {
+		if v, ok := merged[member]; ok {
+			part[member] = v
+		}
+	}
+	for _, member := range set {
+		if v, ok := merged[member]; ok {
+			part[member] = v
+		}
+	}
+	if err := b.rewriteBlock(part, path); err != nil {
+		return err
+	}
+	for _, member := range set {
+		if v, ok := part[member]; ok {
+			merged[member] = v
+		}
 	}
 	return nil
 }

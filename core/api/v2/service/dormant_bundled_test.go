@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -16,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // TestV2OwnPropertyOnAnInstalledBuiltInKey covers a space that made its own
@@ -219,6 +221,57 @@ func TestV2BlockKeySlotsOnAnInstalledBuiltInKey(t *testing.T) {
 			return true
 		})
 		assert.Equal(t, []string{ownKey}, viewSortKeys(blocks))
+	})
+
+	relationKeys := func(st *state.State) []string {
+		var keys []string
+		st.Iterate(func(b simple.Block) bool {
+			if rel := b.Model().GetRelation(); rel != nil {
+				keys = append(keys, rel.Key)
+			}
+			return true
+		})
+		return keys
+	}
+	const featureDoc = `{"formatVersion":"2.0","id":"obj1","type":"feature","properties":{"name":"Doc"},` +
+		`"blocks":[{"id":"blockProp1","type":"property","property":"name"}]}`
+	// the read a Feature object comes back as: its type detail is the type's id
+	featureRead := func(t *testing.T) apicore.ObjectRead {
+		read := editRead(t, featureDoc)
+		read.Snapshot.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String("type-feature")
+		return read
+	}
+
+	t.Run("update_block retargets a property block to the property its type lists", func(t *testing.T) {
+		// given
+		fx := newSpace(t)
+		committed := fx.expectMutateState(featureRead(t), nil)
+
+		// when
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"update_block","id":"blockProp1","set":{"property":"priority"}}`), "", false, true)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, *committed)
+		assert.Equal(t, []string{ownKey}, relationKeys(*committed))
+	})
+
+	t.Run("property blocks in table cells bind the property the type lists", func(t *testing.T) {
+		// given
+		fx := newSpace(t)
+		committed := fx.expectMutateState(featureRead(t), nil)
+
+		// when: one cell holds a block object, the other a run of flat blocks
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insert_blocks","blocks":[{"type":"table","columns":[{},{}],"rows":[{"cells":[`+
+				`{"type":"property","property":"priority"},`+
+				`[{"type":"paragraph","text":"root"},{"indent":1,"type":"property","property":"priority"}]]}]}]}`), "", false, true)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, *committed)
+		assert.Equal(t, []string{"name", ownKey, ownKey}, relationKeys(*committed))
 	})
 }
 
