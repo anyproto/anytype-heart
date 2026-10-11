@@ -74,11 +74,16 @@ func (s *service) recordLocalPeer(ctx context.Context, peerId string, localServe
 		// dialer's ephemeral source port, nothing listens on it. hostIP keeps
 		// a link-local zone, which url.Parse rejects.
 		if ip, ok := hostIP(peerAddr); ok {
-			hostPort := net.JoinHostPort(ip.String(), strconv.Itoa(int(localServer.Port)))
-			if isLinkLocalAddr(hostPort) {
-				inbound = hostPort
-			} else {
+			port := strconv.Itoa(int(localServer.Port))
+			hostPort := net.JoinHostPort(ip.String(), port)
+			if !isLinkLocalAddr(hostPort) {
 				portAddrs = append(portAddrs, hostPort)
+			} else if index, ok := linkLocalZone(ip.Zone()); ok {
+				// the zone names the receiving interface: resolved to its
+				// index now, so the route never moves to a cable that
+				// takes the name later. A zone that names no usable
+				// interface admits no route.
+				inbound = net.JoinHostPort(ip.WithZone(index).String(), port)
 			}
 		}
 	}
@@ -93,6 +98,10 @@ func (s *service) recordLocalPeer(ctx context.Context, peerId string, localServe
 	// with discovery, under one lock: neither may overwrite the other's
 	// newer list
 	s.localAddrsMu.Lock()
+	if s.localAddrsClosed {
+		s.localAddrsMu.Unlock()
+		return
+	}
 	s.setBaseAddrs(peerId, portAddrs)
 	if inbound != "" {
 		s.setRoute(peerId, routeInbound, []string{inbound})

@@ -389,9 +389,9 @@ func (l *zeroconfDiscovery) readAnswers(closeWait *sync.WaitGroup, ch chan *zero
 		l.m.Lock()
 		l.interfacesAddrs.SortIPsLikeInterfaces(entry.AddrIPv4)
 		portAddrs := peerAddrs(entry, l.linkLocal.zones)
-		if len(portAddrs) == 0 {
-			// nothing to dial (a cable entry from another link, an entry
-			// without IPv4), and an empty list would wipe the known one
+		if entry.LinkIndex != 0 && len(portAddrs) == 0 {
+			// a cable entry from a link that is not ours: nothing to add.
+			// A base entry goes even without IPv4, as on develop.
 			l.m.Unlock()
 			log.Debug("discovered peer without usable addresses", zap.String("peerId", entry.Instance))
 			continue

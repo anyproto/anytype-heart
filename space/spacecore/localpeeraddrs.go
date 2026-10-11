@@ -1,12 +1,16 @@
 package spacecore
 
 import (
+	"context"
 	"maps"
 	"net"
 	"net/netip"
 	"slices"
 	"strconv"
 	"time"
+
+	"github.com/anyproto/any-sync/net/peer"
+	"github.com/anyproto/any-sync/net/pool"
 
 	"github.com/anyproto/anytype-heart/net/addrs"
 )
@@ -40,9 +44,20 @@ type localPeerAddrs struct {
 	exchanged []string
 }
 
+// linkRoute is one source's addresses, each "[ip%index]:port" with the
+// decimal index of the interface it was proven on.
 type linkRoute struct {
 	hostPorts []string
 	expiry    *time.Timer
+}
+
+// carries reports whether a live connection runs over one of the route's
+// addresses (live as liveLinkLocalAddrs lists them).
+func (r *linkRoute) carries(live []netip.Addr) bool {
+	return slices.ContainsFunc(r.hostPorts, func(hostPort string) bool {
+		ip, ok := hostIP(hostPort)
+		return ok && slices.Contains(live, ip)
+	})
 }
 
 // afterFunc is a seam for tests.
@@ -93,7 +108,10 @@ func (s *service) dropRoute(peerId, source string) {
 // installLocalAddrs makes the composed list the peer's dial list.
 func (s *service) installLocalAddrs(peerId string) []string {
 	p := s.localPeer(peerId)
-	installed := composeAddrs(p.routes, p.base, linkLocalZone)
+	installed := composeAddrs(p.routes, p.base, func(index string) bool {
+		_, ok := linkLocalZone(index)
+		return ok
+	})
 	s.setLocalPeerAddrs(peerId, installed)
 	return installed
 }
@@ -125,57 +143,106 @@ func (s *service) forgetLocalPeerAddrs(peerId string) {
 	delete(s.localPeers, peerId)
 }
 
+// closeLocalPeerAddrs stops every route on service close; nothing is
+// installed or armed after it.
+func (s *service) closeLocalPeerAddrs() {
+	s.localAddrsMu.Lock()
+	defer s.localAddrsMu.Unlock()
+	s.localAddrsClosed = true
+	for peerId := range s.localPeers {
+		s.forgetLocalPeerAddrs(peerId)
+	}
+}
+
 // expireRoute runs when a route went linkRouteTTL without being renewed. A
-// live link-local connection to the peer renews it: a cable in use needs no
-// new answer or exchange. Otherwise the route leaves the installed list.
+// live connection over one of its addresses renews it: a cable in use needs
+// no new answer or exchange. Otherwise the route leaves. Either way the list
+// is composed again, so a route whose interface became unusable leaves by
+// its deadline.
 func (s *service) expireRoute(peerId, source string, route *linkRoute) {
-	// asked before taking localAddrsMu: Pick may wait on the pool
-	live := liveLinkLocalConn(s, peerId)
+	// asked before taking localAddrsMu: Pick may wait on the pool, and a
+	// zone name is looked up in the interface list
+	live := liveLinkLocalAddrs(s, peerId)
 	s.localAddrsMu.Lock()
 	defer s.localAddrsMu.Unlock()
 	p, ok := s.localPeers[peerId]
 	if !ok || p.routes[source] != route {
-		// renewed, dropped or forgotten meanwhile
+		// renewed, dropped, forgotten or closed meanwhile
 		return
 	}
-	if live {
+	if route.carries(live) {
 		route.expiry = afterFunc(linkRouteTTL, func() { s.expireRoute(peerId, source, route) })
-		return
+	} else {
+		delete(p.routes, source)
 	}
-	delete(p.routes, source)
 	s.installLocalAddrs(peerId)
+}
+
+// liveLinkLocalAddrs lists the IPv6 link-local addresses the pooled
+// connections to the peer run over, zoned by the decimal index of a usable
+// interface, without dialing. Called outside localAddrsMu. A var so tests
+// can stub it.
+var liveLinkLocalAddrs = pooledLinkLocalAddrs
+
+func pooledLinkLocalAddrs(s *service, peerId string) []netip.Addr {
+	if s.poolManager == nil {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	var live []netip.Addr
+	for _, p := range []pool.Pool{s.poolManager.UnaryPeerPool(), s.poolManager.StreamPeerPool()} {
+		pr, err := p.Pick(ctx, peerId)
+		if err != nil {
+			continue
+		}
+		addr := peer.CtxPeerAddr(pr.Context())
+		if !isLinkLocalAddr(addr) {
+			continue
+		}
+		// the connection's zone is the name Go gave its interface index
+		// when it was set up; resolved here, while the connection is live
+		ip, _ := hostIP(addr)
+		index, ok := linkLocalZone(ip.Zone())
+		if !ok {
+			continue
+		}
+		if ip = ip.WithZone(index); !slices.Contains(live, ip) {
+			live = append(live, ip)
+		}
+	}
+	return live
 }
 
 // composeAddrs is the dial list: the inbound route (the path the peer itself
 // last used), then the cable routes by source, then the base list, each
-// address once. A route address goes in zoned with the decimal index of its
-// interface (zone, see linkLocalZone): the same cable named by an inbound
-// connection and numbered by mDNS is then one address, and a name is not
-// looked up again at dial time through Go's zone cache, which can be stale
-// for a minute after a cable is plugged back in. A route whose interface is
-// gone, down or has routable IPv4 now is left out. Without a route the base
-// list goes as it is, as on develop, and no interface is looked up.
-func composeAddrs(routes map[string]*linkRoute, base []string, zone func(string) (string, bool)) []string {
+// address once. A route address is zoned with the decimal index of the
+// interface it was proven on; it is left out once usable says that interface
+// is gone, down or has routable IPv4. A zone name is never looked up here: a
+// name taken over by another cable would move the route there. Without a
+// route the base list goes as it is, as on develop, and no interface is
+// looked up.
+func composeAddrs(routes map[string]*linkRoute, base []string, usable func(index string) bool) []string {
 	if len(routes) == 0 {
 		return slices.Clone(base)
 	}
 	// "inbound" sorts before every "mdns:" source
 	sources := slices.Sorted(maps.Keys(routes))
-	// one lookup per zone: each goes through the interface list
-	indexes := map[string]string{}
-	usable := func(z string) (string, bool) {
-		index, ok := indexes[z]
-		if !ok {
-			index, _ = zone(z)
-			indexes[z] = index
+	// one lookup per interface: each goes through the interface list
+	checked := map[string]bool{}
+	usableOnce := func(index string) bool {
+		ok, seen := checked[index]
+		if !seen {
+			ok = usable(index)
+			checked[index] = ok
 		}
-		return index, index != ""
+		return ok
 	}
 	var res []string
 	for _, source := range sources {
 		for _, hostPort := range routes[source].hostPorts {
-			if addr, ok := routeAddr(hostPort, usable); ok && !slices.Contains(res, addr) {
-				res = append(res, addr)
+			if routeUsable(hostPort, usableOnce) && !slices.Contains(res, hostPort) {
+				res = append(res, hostPort)
 			}
 		}
 	}
@@ -187,22 +254,15 @@ func composeAddrs(routes map[string]*linkRoute, base []string, zone func(string)
 	return res
 }
 
-// routeAddr is a route address as "[ip%index]:port"; ok is false when its
-// zone names no usable interface.
-func routeAddr(hostPort string, zone func(string) (string, bool)) (string, bool) {
-	host, port, err := net.SplitHostPort(hostPort)
-	if err != nil {
-		return "", false
-	}
-	ip, err := netip.ParseAddr(host)
-	if err != nil {
-		return "", false
-	}
-	index, ok := zone(ip.Zone())
+// routeUsable reports whether a route address is zoned with the decimal index
+// of a usable interface.
+func routeUsable(hostPort string, usable func(index string) bool) bool {
+	ip, ok := hostIP(hostPort)
 	if !ok {
-		return "", false
+		return false
 	}
-	return net.JoinHostPort(ip.WithZone(index).String(), port), true
+	index, err := strconv.Atoi(ip.Zone())
+	return err == nil && strconv.Itoa(index) == ip.Zone() && usable(ip.Zone())
 }
 
 // linkLocalZone resolves a zone (an interface name or decimal index) to the

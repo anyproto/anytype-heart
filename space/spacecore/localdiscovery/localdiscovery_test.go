@@ -312,6 +312,60 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 			t.Fatal("the cable entry was not reported")
 		}
 	})
+	for _, tc := range []struct {
+		name  string
+		entry *zeroconf.ServiceEntry
+		want  []string
+	}{
+		{
+			name: "a base entry goes as on develop, in interface order",
+			entry: &zeroconf.ServiceEntry{
+				Port:     4006,
+				AddrIPv4: []gonet.IP{gonet.ParseIP("172.16.0.9"), gonet.ParseIP("10.0.0.62"), gonet.ParseIP("192.168.1.62")},
+			},
+			want: []string{"192.168.1.62:4006", "10.0.0.62:4006", "172.16.0.9:4006"},
+		},
+		{
+			name: "a base entry without IPv4 still goes, as on develop",
+			entry: &zeroconf.ServiceEntry{
+				Port:          4006,
+				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62%4")},
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given: Wi-Fi on 192.168.1.0/24, then Ethernet on 10.0.0.0/8
+			f := newFixture(t)
+			ld := f.LocalDiscovery.(*zeroconfDiscovery)
+			ld.interfacesAddrs = addrs.InterfacesAddrs{Interfaces: []addrs.NetInterfaceWithAddrCache{
+				addrs.WrapInterfaceWithAddrs(gonet.Interface{Index: 4, Name: "en0"}, []gonet.Addr{ipNet("192.168.1.10/24")}),
+				addrs.WrapInterfaceWithAddrs(gonet.Interface{Index: 5, Name: "en1"}, []gonet.Addr{ipNet("10.0.0.5/8")}),
+			}}
+			notifier := NewMockNotifier(t)
+			called := make(chan struct{})
+			want := DiscoveredPeer{PeerId: "peer2", Addrs: tc.want}
+			notifier.EXPECT().PeerDiscovered(mock.Anything, want, mock.Anything).Run(func(context.Context, DiscoveredPeer, OwnAddresses) {
+				close(called)
+			}).Once()
+			ld.SetNotifier(notifier)
+			tc.entry.ServiceRecord = zeroconf.ServiceRecord{Instance: "peer2"}
+			entries := make(chan *zeroconf.ServiceEntry, 1)
+			entries <- tc.entry
+			close(entries)
+			closeWait := &sync.WaitGroup{}
+			closeWait.Add(1)
+
+			// when
+			ld.readAnswers(closeWait, entries)
+
+			// then
+			select {
+			case <-called:
+			case <-time.After(5 * time.Second):
+				t.Fatal("not reported")
+			}
+		})
+	}
 	t.Run("readAnswers - send peer update to notifier", func(t *testing.T) {
 		// given
 		f := newFixture(t)
@@ -339,11 +393,12 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		closeWait := &sync.WaitGroup{}
 		closeWait.Add(1)
 		go func() {
-			// an entry with nothing to dial is skipped
+			// a cable entry with nothing to dial (another link) is skipped
 			peerUpdate <- &zeroconf.ServiceEntry{
 				ServiceRecord: zeroconf.ServiceRecord{Instance: accountKeys.PeerId},
 				Port:          4006,
-				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62%en0")},
+				LinkIndex:     4,
+				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62%4")},
 			}
 			peerUpdate <- &zeroconf.ServiceEntry{
 				ServiceRecord: zeroconf.ServiceRecord{Instance: accountKeys.PeerId},

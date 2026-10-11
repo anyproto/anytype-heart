@@ -2,14 +2,21 @@ package spacecore
 
 import (
 	"context"
+	"errors"
 	"net"
+	"net/netip"
 	"testing"
 	"time"
 
+	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/clientspaceproto"
 	"github.com/anyproto/any-sync/net/peer"
+	"github.com/anyproto/any-sync/net/peer/mock_peer"
+	"github.com/anyproto/any-sync/net/pool"
+	"github.com/anyproto/any-sync/net/pool/mock_pool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/net/addrs"
 )
@@ -27,8 +34,9 @@ type localAddrsFixture struct {
 	peers   *recordingPeerService
 	timers  []*armedTimer
 	usable  map[string]string // zone -> decimal index of a usable interface
-	live    bool
+	live    []netip.Addr      // the link-local addresses pooled connections run over
 	lookups int
+	picks   int // liveLinkLocalAddrs calls
 }
 
 func newLocalAddrsFixture(t *testing.T) *localAddrsFixture {
@@ -40,9 +48,9 @@ func newLocalAddrsFixture(t *testing.T) *localAddrsFixture {
 		usable:  map[string]string{"31": "31", "en16": "31", "32": "32"},
 	}
 	s.peerService = f.peers
-	origAfter, origZone, origLive := afterFunc, linkLocalZone, liveLinkLocalConn
+	origAfter, origZone, origLive := afterFunc, linkLocalZone, liveLinkLocalAddrs
 	t.Cleanup(func() {
-		afterFunc, linkLocalZone, liveLinkLocalConn = origAfter, origZone, origLive
+		afterFunc, linkLocalZone, liveLinkLocalAddrs = origAfter, origZone, origLive
 		for _, a := range f.timers {
 			a.timer.Stop()
 		}
@@ -57,7 +65,15 @@ func newLocalAddrsFixture(t *testing.T) *localAddrsFixture {
 		index, ok := f.usable[zone]
 		return index, ok
 	}
-	liveLinkLocalConn = func(*service, string) bool { return f.live }
+	liveLinkLocalAddrs = func(s *service, _ string) []netip.Addr {
+		if !s.localAddrsMu.TryLock() {
+			t.Error("the pool is asked under localAddrsMu")
+		} else {
+			s.localAddrsMu.Unlock()
+		}
+		f.picks++
+		return f.live
+	}
 	return f
 }
 
@@ -83,20 +99,16 @@ func (f *localAddrsFixture) installed(peerId string) []string {
 }
 
 func TestComposeAddrs(t *testing.T) {
-	zones := map[string]string{"31": "31", "en16": "31", "32": "32", "en17": "32"}
-	zone := func(z string) (string, bool) {
-		index, ok := zones[z]
-		return index, ok
-	}
+	usable := func(index string) bool { return index == "31" || index == "32" }
 
 	t.Run("without a route the base list goes as it is", func(t *testing.T) {
 		// given
 		base := []string{"192.168.1.63:4006", "10.0.0.5:4006", "192.168.1.63:4006"}
 
 		// when
-		got := composeAddrs(nil, base, func(string) (string, bool) {
+		got := composeAddrs(nil, base, func(string) bool {
 			t.Fatal("no interface lookup without a route")
-			return "", false
+			return false
 		})
 
 		// then
@@ -104,18 +116,18 @@ func TestComposeAddrs(t *testing.T) {
 	})
 
 	t.Run("the inbound route, then the cable routes, then the base list, each address once", func(t *testing.T) {
-		// given: the inbound route names cable 32, the second mDNS address
-		// on cable 31 is the one inbound came from
+		// given: the inbound route came over cable 32, which mdns:31 also
+		// lists
 		routes := map[string]*linkRoute{
 			routeMDNS + "32": {hostPorts: []string{"[fe80::2%32]:4006"}},
-			routeInbound:     {hostPorts: []string{"[fe80::3%en17]:4006"}},
+			routeInbound:     {hostPorts: []string{"[fe80::3%32]:4006"}},
 			routeMDNS + "31": {hostPorts: []string{"[fe80::1%31]:4006", "[fe80::3%32]:4006"}},
 		}
 		base := []string{"192.168.1.5:4006", "[fe80::2%32]:4006"}
 		want := []string{"[fe80::3%32]:4006", "[fe80::1%31]:4006", "[fe80::2%32]:4006", "192.168.1.5:4006"}
 
 		// when
-		got := composeAddrs(routes, base, zone)
+		got := composeAddrs(routes, base, usable)
 
 		// then
 		assert.Equal(t, want, got)
@@ -126,7 +138,18 @@ func TestComposeAddrs(t *testing.T) {
 		routes := map[string]*linkRoute{routeMDNS + "33": {hostPorts: []string{"[fe80::3%33]:4006"}}}
 
 		// when
-		got := composeAddrs(routes, []string{"192.168.1.5:4006"}, zone)
+		got := composeAddrs(routes, []string{"192.168.1.5:4006"}, usable)
+
+		// then
+		assert.Equal(t, []string{"192.168.1.5:4006"}, got)
+	})
+
+	t.Run("a route zoned by name is left out, never looked up", func(t *testing.T) {
+		// given: a name may be taken over by another cable
+		routes := map[string]*linkRoute{routeInbound: {hostPorts: []string{"[fe80::1%en16]:4006"}}}
+
+		// when
+		got := composeAddrs(routes, []string{"192.168.1.5:4006"}, func(string) bool { return true })
 
 		// then
 		assert.Equal(t, []string{"192.168.1.5:4006"}, got)
@@ -186,11 +209,11 @@ func TestLocalPeerAddrsStore(t *testing.T) {
 		assert.Equal(t, []string{"yamux://192.168.1.62:4006"}, f.installed("phone"))
 	})
 
-	t.Run("a live link-local connection renews the route", func(t *testing.T) {
+	t.Run("a live connection over the route renews it", func(t *testing.T) {
 		// given
 		f := newLocalAddrsFixture(t)
 		f.discover("phone", "31", "[fe80::62%31]:4006")
-		f.live = true
+		f.live = []netip.Addr{netip.MustParseAddr("fe80::62%31")}
 
 		// when
 		f.timers[0].fire()
@@ -199,9 +222,39 @@ func TestLocalPeerAddrsStore(t *testing.T) {
 		assert.Equal(t, []string{"yamux://[fe80::62%31]:4006"}, f.installed("phone"))
 		require.Len(t, f.timers, 2)
 		assert.Equal(t, linkRouteTTL, f.timers[1].d)
-		f.live = false
+		f.live = nil
 		f.timers[1].fire()
 		assert.Empty(t, f.installed("phone"))
+	})
+
+	t.Run("a live connection over another cable does not renew it", func(t *testing.T) {
+		// given: the phone answers on 31 from an old address, syncs over 32
+		f := newLocalAddrsFixture(t)
+		f.discover("phone", "31", "[fe80::62%31]:4006")
+		f.discover("phone", "32", "[fe80::62%32]:4006")
+		f.live = []netip.Addr{netip.MustParseAddr("fe80::62%32")}
+
+		// when
+		f.timers[0].fire()
+
+		// then
+		assert.Equal(t, []string{"yamux://[fe80::62%32]:4006"}, f.installed("phone"))
+		assert.Len(t, f.timers, 2, "not armed again")
+	})
+
+	t.Run("a renewed route over an interface no longer usable leaves the list", func(t *testing.T) {
+		// given: the cable interface got routable IPv4 meanwhile
+		f := newLocalAddrsFixture(t)
+		f.discover("phone", "", "192.168.1.62:4006")
+		f.discover("phone", "31", "[fe80::62%31]:4006")
+		f.live = []netip.Addr{netip.MustParseAddr("fe80::62%31")}
+		delete(f.usable, "31")
+
+		// when
+		f.timers[0].fire()
+
+		// then
+		assert.Equal(t, []string{"yamux://192.168.1.62:4006"}, f.installed("phone"))
 	})
 
 	t.Run("the pool is asked without the lock", func(t *testing.T) {
@@ -209,11 +262,11 @@ func TestLocalPeerAddrsStore(t *testing.T) {
 		f := newLocalAddrsFixture(t)
 		f.discover("phone", "31", "[fe80::62%31]:4006")
 		var locked bool
-		liveLinkLocalConn = func(s *service, _ string) bool {
+		liveLinkLocalAddrs = func(s *service, _ string) []netip.Addr {
 			if locked = !s.localAddrsMu.TryLock(); !locked {
 				s.localAddrsMu.Unlock()
 			}
-			return false
+			return nil
 		}
 
 		// when
@@ -252,6 +305,31 @@ func TestLocalPeerAddrsStore(t *testing.T) {
 		assert.Empty(t, f.localPeers)
 		f.timers[0].fire()
 		assert.Len(t, f.timers, 1, "nothing armed for a forgotten peer")
+	})
+
+	t.Run("closing stops every route, and nothing is installed after", func(t *testing.T) {
+		// given
+		f := newLocalAddrsFixture(t)
+		calls := f.stubExchange(t)
+		f.componentCtx, f.componentCtxCancel = context.WithCancel(context.Background())
+		f.spaceCache = ocache.New(func(context.Context, string) (ocache.Object, error) { return nil, errors.New("none") })
+		f.discover("phone", "31", "[fe80::62%31]:4006")
+		f.live = []netip.Addr{netip.MustParseAddr("fe80::62%31")}
+		before := f.installed("phone")
+
+		// when
+		require.NoError(t, f.Close(context.Background()))
+		f.timers[0].fire()
+		f.peerDiscovered("phone", "", "192.168.1.62:4006")
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
+		f.inbound("phone", "yamux://[fe80::62%en16]:51234", "192.168.1.62")
+
+		// then
+		assert.False(t, f.timers[0].timer.Stop(), "the timer was stopped")
+		assert.Len(t, f.timers, 1, "nothing armed")
+		assert.Equal(t, before, f.installed("phone"))
+		assert.Zero(t, *calls, "no exchange")
+		assert.Empty(t, f.localPeers)
 	})
 }
 
@@ -303,6 +381,83 @@ func TestRecordLocalPeerRoutes(t *testing.T) {
 		// then: the mDNS route still holds it
 		assert.Equal(t, []string{"yamux://[fe80::62%31]:4006"}, f.installed("phone"))
 	})
+}
+
+func TestInboundRouteZone(t *testing.T) {
+	t.Run("the route keeps its cable when the name moves to another", func(t *testing.T) {
+		// given: connected over en16, index 31
+		f := newLocalAddrsFixture(t)
+		f.inbound("mac", "yamux://[fe80::1%en16]:51234")
+
+		// when: 31 is gone, and a new cable came up as en16 at 42
+		f.usable = map[string]string{"en16": "42", "42": "42"}
+		f.discover("mac", "", "192.168.139.3:4006")
+
+		// then
+		assert.Equal(t, []string{"yamux://192.168.139.3:4006"}, f.installed("mac"))
+	})
+
+	t.Run("a zone that names no usable interface admits no route", func(t *testing.T) {
+		// given: an inbound route from before
+		f := newLocalAddrsFixture(t)
+		f.inbound("mac", "yamux://[fe80::1%en16]:51234")
+		delete(f.usable, "en16")
+
+		// when
+		f.inbound("mac", "yamux://[fe80::1%en16]:51235", "192.168.139.3")
+
+		// then: neither the new nor the old one
+		assert.Equal(t, []string{"yamux://192.168.139.3:4006"}, f.installed("mac"))
+		assert.Len(t, f.timers, 1)
+		assert.False(t, f.timers[0].timer.Stop(), "the old route was dropped")
+	})
+}
+
+// fakePools serves the two pools liveLinkLocalAddrs reads.
+type fakePools struct{ unary, stream pool.Pool }
+
+func (p fakePools) UnaryPeerPool() pool.Pool  { return p.unary }
+func (p fakePools) StreamPeerPool() pool.Pool { return p.stream }
+
+func TestPooledLinkLocalAddrs(t *testing.T) {
+	connected := func(ctrl *gomock.Controller, addr string) peer.Peer {
+		pr := mock_peer.NewMockPeer(ctrl)
+		pr.EXPECT().Context().Return(peer.CtxWithPeerAddr(context.Background(), addr)).AnyTimes()
+		return pr
+	}
+	missing := errors.New("no connection")
+	for _, tc := range []struct {
+		name          string
+		unary, stream string // the pooled connection's address, "" when none
+		want          []netip.Addr
+	}{
+		{name: "a link-local connection, zoned by index", unary: "yamux://[fe80::62%en16]:51234", want: []netip.Addr{netip.MustParseAddr("fe80::62%31")}},
+		{name: "an IPv4 connection does not count", unary: "yamux://192.168.1.62:4006", stream: "yamux://[fe80::63%31]:4006", want: []netip.Addr{netip.MustParseAddr("fe80::63%31")}},
+		{name: "the same address in both pools once", unary: "yamux://[fe80::62%31]:4006", stream: "yamux://[fe80::62%en16]:4006", want: []netip.Addr{netip.MustParseAddr("fe80::62%31")}},
+		{name: "no connection"},
+		{name: "a connection over an unusable interface does not count", unary: "yamux://[fe80::62%en18]:4006"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given: pools that only Pick, never dial
+			f := newLocalAddrsFixture(t)
+			ctrl := gomock.NewController(t)
+			pools := fakePools{unary: mock_pool.NewMockPool(ctrl), stream: mock_pool.NewMockPool(ctrl)}
+			for p, addr := range map[*mock_pool.MockPool]string{pools.unary.(*mock_pool.MockPool): tc.unary, pools.stream.(*mock_pool.MockPool): tc.stream} {
+				if addr == "" {
+					p.EXPECT().Pick(gomock.Any(), "phone").Return(nil, missing)
+				} else {
+					p.EXPECT().Pick(gomock.Any(), "phone").Return(connected(ctrl, addr), nil)
+				}
+			}
+			f.poolManager = pools
+
+			// when
+			got := pooledLinkLocalAddrs(f.service, "phone")
+
+			// then
+			assert.Equal(t, tc.want, got)
+		})
+	}
 }
 
 func TestUsableLinkZone(t *testing.T) {

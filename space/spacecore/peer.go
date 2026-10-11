@@ -7,7 +7,6 @@ import (
 	"net/netip"
 	"slices"
 	"strings"
-	"time"
 
 	"go.uber.org/zap"
 	"storj.io/drpc"
@@ -16,7 +15,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/clientspaceproto"
 	"github.com/anyproto/any-sync/net/peer"
-	"github.com/anyproto/any-sync/net/pool"
 	"github.com/anyproto/any-sync/net/transport"
 
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
@@ -59,17 +57,29 @@ func (s *service) PeerDiscovered(ctx context.Context, discovered localdiscovery.
 	if s.peerDiscoveryObserver != nil {
 		s.peerDiscoveryObserver.OnLocalPeerDiscovered(discovered.PeerId, discovered.Addrs)
 	}
+	var live []netip.Addr
+	if discovered.Link != "" {
+		// outside localAddrsMu: Pick may wait on the pool
+		live = liveLinkLocalAddrs(s, discovered.PeerId)
+	}
 	s.localAddrsMu.Lock()
+	if s.localAddrsClosed {
+		s.localAddrsMu.Unlock()
+		return
+	}
 	if discovered.Link == "" {
 		s.setBaseAddrs(discovered.PeerId, discovered.Addrs)
 	} else {
 		s.setRoute(discovered.PeerId, routeMDNS+discovered.Link, discovered.Addrs)
 	}
 	installed := s.installLocalAddrs(discovered.PeerId)
-	// a cable answer comes again every two minutes or so: once an exchange
-	// over this very list succeeded, it has nothing new to tell. A base
-	// discovery always exchanges, as on develop.
-	skip := discovered.Link != "" && s.exchangedWith(discovered.PeerId, installed)
+	// a cable answer comes again every two minutes or so. While a link-local
+	// connection to the peer is up and an exchange over this very list
+	// succeeded, it has nothing new to tell. Without a connection the
+	// exchange dials, and so teaches the peer our address on the cable again
+	// (its inbound route to us expires with the connection). A base discovery
+	// always exchanges, as on develop.
+	skip := discovered.Link != "" && len(live) > 0 && s.exchangedWith(discovered.PeerId, installed)
 	s.localAddrsMu.Unlock()
 	s.rememberOwn(own)
 	if skip {
@@ -238,22 +248,6 @@ func (s *service) forgetPeerIPs(peerId string) {
 	s.ownMu.Lock()
 	defer s.ownMu.Unlock()
 	delete(s.peerIPs, peerId)
-}
-
-// liveLinkLocalConn reports whether we hold a connection to the peer over an
-// IPv6 link-local address, without dialing. A var so tests can stub it.
-var liveLinkLocalConn = func(s *service, peerId string) bool {
-	if s.poolManager == nil {
-		return false
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	for _, p := range []pool.Pool{s.poolManager.UnaryPeerPool(), s.poolManager.StreamPeerPool()} {
-		if pr, err := p.Pick(ctx, peerId); err == nil && isLinkLocalAddr(peer.CtxPeerAddr(pr.Context())) {
-			return true
-		}
-	}
-	return false
 }
 
 // isLinkLocalAddr reports whether hostPort is a dialable IPv6 link-local

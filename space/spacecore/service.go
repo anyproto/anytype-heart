@@ -116,6 +116,8 @@ type service struct {
 	localAddrsMu sync.Mutex
 	// localPeers is where each LAN peer's dial list comes from (GO-7581)
 	localPeers map[string]*localPeerAddrs
+	// localAddrsClosed: the service closed, nothing is installed any more
+	localAddrsClosed bool
 	// exchangeFn is the outbound handshake with one peer (shared spaces, and
 	// whether the result is a v2 proof); a seam for tests
 	exchangeFn func(ctx context.Context, peerId string, own *localdiscovery.OwnAddresses) (shared []string, proof bool, err error)
@@ -392,6 +394,7 @@ func (s *service) Close(ctx context.Context) (err error) {
 	if s.reexchange != nil {
 		s.reexchange.close()
 	}
+	s.closeLocalPeerAddrs()
 	return s.spaceCache.Close()
 }
 
