@@ -521,6 +521,8 @@ components:
       properties:
         emoji:
           type: string
+      required:
+      - emoji
       type: object
     ChatReactionResult:
       properties:
@@ -539,6 +541,10 @@ components:
         last_state_id:
           type: string
         scope:
+          enum:
+          - messages
+          - mentions
+          - reactions
           type: string
         up_to:
           type: string
@@ -602,6 +608,8 @@ components:
       properties:
         name:
           type: string
+      required:
+      - name
       type: object
     CreateResult:
       properties:
@@ -651,6 +659,8 @@ components:
           type: string
         name:
           type: string
+      required:
+      - name
       type: object
     CreatedOption:
       properties:
@@ -693,7 +703,11 @@ components:
     EditChatMessageRequest:
       properties:
         text:
+          description: The new text, required so an omitted member cannot clear the
+            message by accident; an empty string clears it on purpose.
           type: string
+      required:
+      - text
       type: object
     EditResult:
       properties:
@@ -1138,33 +1152,6 @@ components:
         kind:
           type: string
         url:
-          type: string
-      type: object
-    SearchRequestDoc:
-      properties:
-        fields:
-          items:
-            type: string
-          type: array
-          uniqueItems: false
-        filter:
-          type: string
-        filters:
-          items:
-            additionalProperties: {}
-            type: object
-          type: array
-          uniqueItems: false
-        query:
-          description: Full-text query over object names and indexed content.
-          type: string
-        sorts:
-          items:
-            additionalProperties: {}
-            type: object
-          type: array
-          uniqueItems: false
-        type:
           type: string
       type: object
     SideEffects:
@@ -1999,7 +1986,7 @@ paths:
     get:
       operationId: get_schema
       parameters:
-      - description: Schema kind, as listed by list_schemas
+      - description: Schema kind, as listed by GET /v2/schemas
         in: path
         name: kind
         required: true
@@ -2035,9 +2022,9 @@ paths:
         `ops` array, not a whole request body.
       operationId: get_op_schema
       parameters:
-      - description: 'Op name: set_properties, update_block, replace_subtree, insert_blocks,
-          move_block, delete_block, replace_text, set_cell, update_view, insert_view,
-          move_view, delete_view, add_items, remove_items'
+      - description: 'Op name: set_properties, set_type, update_block, replace_subtree,
+          insert_blocks, move_block, delete_block, replace_text, set_cell, update_view,
+          insert_view, move_view, delete_view, add_items, remove_items'
         in: path
         name: op
         required: true
@@ -2099,7 +2086,60 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SearchRequestDoc'
+              additionalProperties: false
+              not:
+                properties:
+                  filter:
+                    minLength: 1
+                required:
+                  - filter
+                  - filters
+              properties:
+                fields:
+                  description: property keys to include per row, as an array such as ["status","due_date"]; the list reads take the same array
+                  items:
+                    type: string
+                  type: array
+                filter:
+                  description: compact filter string (grammar on kind filters), an alternative to the structured filters array; a body sends at most one of the two
+                  maxLength: 4096
+                  type: string
+                filters:
+                  description: structured filter nodes (schema kind filters), an alternative to the compact filter string; a body sends at most one of the two
+                  items:
+                    $ref: '#/components/schemas/FilterNode'
+                  maxItems: 50
+                  type: array
+                query:
+                  description: full-text query over object names and indexed content
+                  type: string
+                sorts:
+                  items:
+                    additionalProperties: false
+                    properties:
+                      direction:
+                        enum:
+                          - asc
+                          - desc
+                        type: string
+                      empty_placement:
+                        enum:
+                          - start
+                          - end
+                        type: string
+                      property:
+                        maxLength: 256
+                        type: string
+                    required:
+                      - property
+                    type: object
+                  maxItems: 10
+                  type: array
+                type:
+                  description: 'a type key: only objects of this type'
+                  maxLength: 256
+                  type: string
+              type: object
         description: Search request
         required: true
       responses:
@@ -2240,7 +2280,7 @@ paths:
         still joining is a 404.
       operationId: get_space
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -2282,7 +2322,7 @@ paths:
         writable through this API.
       operationId: update_space
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -2356,7 +2396,7 @@ paths:
         then counts the kept rows.'
       operationId: list_chats
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -2419,7 +2459,7 @@ paths:
         document edit cannot reach them.
       operationId: create_chat
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -2488,13 +2528,13 @@ paths:
         every message ever posted. `offset` is refused.'
       operationId: get_chat_messages
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat object id
+      - description: Chat object id, from GET /v2/spaces/{space_id}/chats
         in: path
         name: chat_id
         required: true
@@ -2557,13 +2597,13 @@ paths:
         layout. In a discussion the text is stored as blocks.
       operationId: add_chat_message
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat object id
+      - description: Chat object id, from GET /v2/spaces/{space_id}/chats
         in: path
         name: chat_id
         required: true
@@ -2635,19 +2675,19 @@ paths:
         does not exist is a 404 on the dry run too.
       operationId: delete_chat_message
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat object id
+      - description: Chat object id, from GET /v2/spaces/{space_id}/chats
         in: path
         name: chat_id
         required: true
         schema:
           type: string
-      - description: Message id
+      - description: Message id, from GET /v2/spaces/{space_id}/chats/{chat_id}/messages
         in: path
         name: message_id
         required: true
@@ -2700,19 +2740,19 @@ paths:
         style does in a space chat. Editing another member's message is a 403.
       operationId: edit_chat_message
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat object id
+      - description: Chat object id, from GET /v2/spaces/{space_id}/chats
         in: path
         name: chat_id
         required: true
         schema:
           type: string
-      - description: Message id
+      - description: Message id, from GET /v2/spaces/{space_id}/chats/{chat_id}/messages
         in: path
         name: message_id
         required: true
@@ -2777,19 +2817,19 @@ paths:
         says so in `warnings`.'
       operationId: toggle_chat_reaction
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat object id
+      - description: Chat object id, from GET /v2/spaces/{space_id}/chats
         in: path
         name: chat_id
         required: true
         schema:
           type: string
-      - description: Message id
+      - description: Message id, from GET /v2/spaces/{space_id}/chats/{chat_id}/messages
         in: path
         name: message_id
         required: true
@@ -2855,13 +2895,13 @@ paths:
         id a resume is measured against.
       operationId: stream_chat_messages
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat id
+      - description: Chat id, from GET /v2/spaces/{space_id}/chats
         in: path
         name: chat_id
         required: true
@@ -2927,13 +2967,13 @@ paths:
         move when it could be read back.'
       operationId: read_chat
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat object id
+      - description: Chat object id, from GET /v2/spaces/{space_id}/chats
         in: path
         name: chat_id
         required: true
@@ -2999,13 +3039,13 @@ paths:
         receivers expire it. Success acknowledges acceptance, not delivery.
       operationId: publish_chat_status
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat or discussion id
+      - description: Chat or discussion id, from GET /v2/spaces/{space_id}/chats
         in: path
         name: chat_id
         required: true
@@ -3087,7 +3127,7 @@ paths:
         can arrive twice; dedupe on its id.'
       operationId: stream_space_chats
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -3156,7 +3196,7 @@ paths:
         there is refused rather than dropped.
       operationId: create_collection
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -3232,13 +3272,13 @@ paths:
         apply only when view names it.
       operationId: get_collection_objects
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Collection object id
+      - description: Collection object id, from POST /v2/spaces/{space_id}/search
         in: path
         name: collection_id
         required: true
@@ -3250,11 +3290,14 @@ paths:
         name: view
         schema:
           type: string
-      - description: Comma-separated property keys to include per row
+      - description: Property keys to include per row, as an array of strings
         in: query
         name: fields
         schema:
-          type: string
+          items:
+            type: string
+          type: array
+        style: form
       - description: Items to skip
         in: query
         name: offset
@@ -3299,13 +3342,13 @@ paths:
     get:
       operationId: get_collection_views
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Collection object id
+      - description: Collection object id, from POST /v2/spaces/{space_id}/search
         in: path
         name: collection_id
         required: true
@@ -3359,7 +3402,7 @@ paths:
         back is the one file blocks, image blocks and icon_image values reference.'
       operationId: upload_file
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -3438,7 +3481,7 @@ paths:
         requests are supported.
       operationId: download_file
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -3592,7 +3635,7 @@ paths:
         the same ids as file download.
       operationId: head_file
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -3682,7 +3725,7 @@ paths:
     get:
       operationId: list_members
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -3730,7 +3773,7 @@ paths:
         is no member id to send.
       operationId: get_member_me
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -3764,17 +3807,20 @@ paths:
     get:
       operationId: list_objects
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Comma-separated property keys to include per row
+      - description: Property keys to include per row, as an array of strings
         in: query
         name: fields
         schema:
-          type: string
+          items:
+            type: string
+          type: array
+        style: form
       - description: Items to skip
         in: query
         name: offset
@@ -3818,13 +3864,13 @@ paths:
     post:
       description: A select value naming an option the property does not hold is refused
         unless `create_missing_options=true` is set. An unknown type or property key
-        is rejected either way. The body is a full AnyBlock document or the shortcut
-        {type, name, properties, markdown}; `formatVersion` or `blocks` picks the
-        document form. `template` starts the object from one; absent, the type's `default_template`
+        is rejected. The body is a full AnyBlock document or the shortcut {type, name,
+        properties, markdown}; a document-only member such as `blocks` picks the document.
+        `template` starts the object from one; absent, the type's `default_template`
         applies.
       operationId: create_object
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -3868,6 +3914,7 @@ paths:
                           - boolean
                           - array
                           - "null"
+                      description: property key → value. A list-shaped key takes an array of option names or object ids; a date takes a date string such as 2026-08-01 or 2026-08-01T09:30:00Z rather than unix seconds
                       maxProperties: 128
                       type: object
                     template:
@@ -3881,9 +3928,31 @@ paths:
                   required:
                     - type
                   type: object
-                - description: 'a full AnyBlock document: formatVersion 2.0, properties, and blocks in preorder. It takes the shortcut''s template member too; its schema and a worked example come from get_schema with kind object'
+                - additionalProperties: true
+                  description: 'a full AnyBlock document: properties, and blocks in preorder. It takes the shortcut''s template member too; its schema and a worked example come from GET /v2/schemas/object'
+                  properties:
+                    blocks:
+                      items:
+                        type: object
+                      type: array
+                    collection_items:
+                      items:
+                        type: string
+                      type: array
+                    cover:
+                      type: object
+                    icon:
+                      type: object
+                    kind:
+                      enum:
+                        - page
+                        - template
+                    properties:
+                      type: object
+                    query_source:
+                      type: object
                   type: object
-              description: the shortcut body, or a full AnyBlock document; formatVersion or blocks picks the document form
+              description: the shortcut body, or a full AnyBlock document; a member only the document has, such as blocks, picks the document form
         description: The shortcut body, or an AnyBlock object document
         required: true
       responses:
@@ -3930,13 +3999,13 @@ paths:
         a 403.
       operationId: delete_object
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Object id
+      - description: Object id, from POST /v2/spaces/{space_id}/search or GET /v2/spaces/{space_id}/objects
         in: path
         name: object_id
         required: true
@@ -3986,13 +4055,13 @@ paths:
         be sent back.
       operationId: get_object
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Object id
+      - description: Object id, from POST /v2/spaces/{space_id}/search or GET /v2/spaces/{space_id}/objects
         in: path
         name: object_id
         required: true
@@ -4056,19 +4125,21 @@ paths:
       tags:
       - Objects
     patch:
-      description: Applies ops in order as one atomic edit. A failed op or invalid
-        result leaves the object unchanged. Text locators must match exactly one block.
-        New block and view IDs are returned by payload position in `created_blocks`
-        and `created_views`, compact by default or full with `ids=full`.
+      description: Edits in place, keeping the id and links; to change the type, use
+        set_type rather than recreating the object. Applies ops in order as one atomic
+        edit. A failed op or invalid result leaves the object unchanged. Text locators
+        must match exactly one block. New block and view IDs are returned by payload
+        position in `created_blocks` and `created_views`, compact by default or full
+        with `ids=full`.
       operationId: patch_object
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Object id
+      - description: Object id, from POST /v2/spaces/{space_id}/search or GET /v2/spaces/{space_id}/objects
         in: path
         name: object_id
         required: true
@@ -4106,7 +4177,7 @@ paths:
               additionalProperties: false
               properties:
                 ops:
-                  description: applied in order as one edit, and if any one is refused none is applied. Each op's members, schema and example come from get_op_schema with its op name
+                  description: applied in order as one edit, and if any one is refused none is applied. Each op's members, schema and example come from GET /v2/schemas/ops/{op} with its op name
                   items:
                     properties:
                       op:
@@ -4187,13 +4258,13 @@ paths:
         hold one.'
       operationId: create_discussion
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Object id
+      - description: Object id, from POST /v2/spaces/{space_id}/search or GET /v2/spaces/{space_id}/objects
         in: path
         name: object_id
         required: true
@@ -4252,7 +4323,7 @@ paths:
     get:
       operationId: list_properties
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -4300,7 +4371,7 @@ paths:
         another property with that name; the response carries a warning.'
       operationId: create_property
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -4401,13 +4472,13 @@ paths:
     delete:
       operationId: delete_property
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Property key
+      - description: Property key, from GET /v2/spaces/{space_id}/properties
         in: path
         name: key
         required: true
@@ -4452,13 +4523,13 @@ paths:
         and its format is fixed once it exists.
       operationId: update_property
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Property key
+      - description: Property key, from GET /v2/spaces/{space_id}/properties
         in: path
         name: key
         required: true
@@ -4522,13 +4593,13 @@ paths:
     get:
       operationId: list_property_options
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Property key
+      - description: Property key, from GET /v2/spaces/{space_id}/properties
         in: path
         name: key
         required: true
@@ -4581,7 +4652,7 @@ paths:
         query runs over; a key that type does not carry is refused.
       operationId: create_query
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -4663,7 +4734,7 @@ paths:
                   maxItems: 10
                   type: array
                 type:
-                  description: the queried type's key
+                  description: the key of the one type the query covers
                   maxLength: 256
                   type: string
                 views:
@@ -4863,13 +4934,13 @@ paths:
         rather than a silently empty result.
       operationId: get_query_objects
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Query object id
+      - description: Query object id, from POST /v2/spaces/{space_id}/search
         in: path
         name: query_id
         required: true
@@ -4881,11 +4952,14 @@ paths:
         name: view
         schema:
           type: string
-      - description: Comma-separated property keys to include per row
+      - description: Property keys to include per row, as an array of strings
         in: query
         name: fields
         schema:
-          type: string
+          items:
+            type: string
+          type: array
+        style: form
       - description: Items to skip
         in: query
         name: offset
@@ -4930,13 +5004,13 @@ paths:
     get:
       operationId: get_query_views
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Query object id
+      - description: Query object id, from POST /v2/spaces/{space_id}/search
         in: path
         name: query_id
         required: true
@@ -4990,7 +5064,7 @@ paths:
         in the query string and a `limit` or `offset` in the body is refused.'
       operationId: search_space
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -5012,7 +5086,60 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SearchRequestDoc'
+              additionalProperties: false
+              not:
+                properties:
+                  filter:
+                    minLength: 1
+                required:
+                  - filter
+                  - filters
+              properties:
+                fields:
+                  description: property keys to include per row, as an array such as ["status","due_date"]; the list reads take the same array
+                  items:
+                    type: string
+                  type: array
+                filter:
+                  description: compact filter string (grammar on kind filters), an alternative to the structured filters array; a body sends at most one of the two
+                  maxLength: 4096
+                  type: string
+                filters:
+                  description: structured filter nodes (schema kind filters), an alternative to the compact filter string; a body sends at most one of the two
+                  items:
+                    $ref: '#/components/schemas/FilterNode'
+                  maxItems: 50
+                  type: array
+                query:
+                  description: full-text query over object names and indexed content
+                  type: string
+                sorts:
+                  items:
+                    additionalProperties: false
+                    properties:
+                      direction:
+                        enum:
+                          - asc
+                          - desc
+                        type: string
+                      empty_placement:
+                        enum:
+                          - start
+                          - end
+                        type: string
+                      property:
+                        maxLength: 256
+                        type: string
+                    required:
+                      - property
+                    type: object
+                  maxItems: 10
+                  type: array
+                type:
+                  description: 'a type key: only objects of this type'
+                  maxLength: 256
+                  type: string
+              type: object
         description: Search request
         required: true
       responses:
@@ -5052,7 +5179,7 @@ paths:
         id: a reconnect is a fresh snapshot.'
       operationId: stream_space_search
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -5070,7 +5197,60 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SearchRequestDoc'
+              additionalProperties: false
+              not:
+                properties:
+                  filter:
+                    minLength: 1
+                required:
+                  - filter
+                  - filters
+              properties:
+                fields:
+                  description: property keys to include per row, as an array such as ["status","due_date"]; the list reads take the same array
+                  items:
+                    type: string
+                  type: array
+                filter:
+                  description: compact filter string (grammar on kind filters), an alternative to the structured filters array; a body sends at most one of the two
+                  maxLength: 4096
+                  type: string
+                filters:
+                  description: structured filter nodes (schema kind filters), an alternative to the compact filter string; a body sends at most one of the two
+                  items:
+                    $ref: '#/components/schemas/FilterNode'
+                  maxItems: 50
+                  type: array
+                query:
+                  description: full-text query over object names and indexed content
+                  type: string
+                sorts:
+                  items:
+                    additionalProperties: false
+                    properties:
+                      direction:
+                        enum:
+                          - asc
+                          - desc
+                        type: string
+                      empty_placement:
+                        enum:
+                          - start
+                          - end
+                        type: string
+                      property:
+                        maxLength: 256
+                        type: string
+                    required:
+                      - property
+                    type: object
+                  maxItems: 10
+                  type: array
+                type:
+                  description: 'a type key: only objects of this type'
+                  maxLength: 256
+                  type: string
+              type: object
         description: Search request
         required: true
       responses:
@@ -5114,7 +5294,7 @@ paths:
         of that type starts from on its own.'
       operationId: list_templates
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -5171,7 +5351,7 @@ paths:
         of.'
       operationId: create_template
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -5192,7 +5372,28 @@ paths:
         content:
           application/json:
             schema:
-              description: 'the template as an AnyBlock document: formatVersion 2.0, kind template, template_for naming the type; its schema and a worked example come from get_schema with kind template'
+              additionalProperties: true
+              description: 'the template as an AnyBlock document: kind template, template_for naming the type; its schema and a worked example come from GET /v2/schemas/template'
+              properties:
+                blocks:
+                  items:
+                    type: object
+                  type: array
+                cover:
+                  type: object
+                icon:
+                  type: object
+                kind:
+                  const: template
+                properties:
+                  type: object
+                query_source:
+                  type: object
+                template_for:
+                  description: 'Templates only: the target type. In a bundle it is the derived id `type-<internal_key>`; a display name or the legacy `ot-<key>` is accepted on input.'
+                  type: string
+              required:
+                - template_for
               type: object
         description: AnyBlock template document
         required: true
@@ -5234,7 +5435,7 @@ paths:
     get:
       operationId: list_types
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -5279,11 +5480,11 @@ paths:
     post:
       description: A `property_definitions` entry naming a property that does not
         exist creates it alongside the type. The body is either the flat type body
-        or an AnyBlock document with kind "object_type"; `formatVersion`, `kind` or
-        `type_settings` picks the document form.
+        or an AnyBlock document with kind "object_type"; `kind` or `type_settings`
+        picks the document form.
       operationId: create_type
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -5463,7 +5664,19 @@ paths:
                   required:
                     - name
                   type: object
-                - description: 'the type as an AnyBlock document: formatVersion 2.0, kind object_type, the definition under type_settings; its schema and a worked example come from get_schema with kind type_document'
+                - additionalProperties: true
+                  description: 'the type as an AnyBlock document: kind object_type, the definition under type_settings; its schema and a worked example come from GET /v2/schemas/type_document'
+                  properties:
+                    cover:
+                      type: object
+                    icon:
+                      type: object
+                    kind:
+                      const: object_type
+                    properties:
+                      type: object
+                    type_settings:
+                      type: object
                   type: object
               description: the flat type body, or the interchange document with kind object_type
         description: The flat type body, or the type as an AnyBlock document
@@ -5506,13 +5719,13 @@ paths:
     delete:
       operationId: delete_type
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Type key
+      - description: Type key, from GET /v2/spaces/{space_id}/types
         in: path
         name: type
         required: true
@@ -5555,13 +5768,13 @@ paths:
     get:
       operationId: get_type
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Type key
+      - description: Type key, from GET /v2/spaces/{space_id}/types
         in: path
         name: type
         required: true
@@ -5611,13 +5824,13 @@ paths:
         name: If-Match
         schema:
           type: string
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Type key
+      - description: Type key, from GET /v2/spaces/{space_id}/types
         in: path
         name: type
         required: true
@@ -5958,7 +6171,7 @@ paths:
                 - additionalProperties: false
                   properties:
                     ops:
-                      description: 'planned and refused whole before any write, then written in order: property ops first, view ops after, and a view op refused leaves the written property lists in place. Each op''s members, schema and example come from get_op_schema with its op name'
+                      description: 'planned and refused whole before any write, then written in order: property ops first, view ops after, and a view op refused leaves the written property lists in place. Each op''s members, schema and example come from GET /v2/schemas/ops/{op} with its op name'
                       items:
                         properties:
                           op:
@@ -6021,7 +6234,7 @@ paths:
         _bin; an object id is served as it is.'
       operationId: list_widgets
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -6080,7 +6293,7 @@ paths:
         list, is replaced with the app''s fallback and reported in warnings.'
       operationId: create_widget
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -6210,13 +6423,14 @@ paths:
         the sidebar holds in both scopes needs `scope`.
       operationId: delete_widget
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Widget id, or the id of the object the widget points at
+      - description: Widget id from GET /v2/spaces/{space_id}/widgets, or the id of
+          the object the widget points at
         in: path
         name: widget_id
         required: true
@@ -6277,13 +6491,14 @@ paths:
         object.'
       operationId: update_widget
       parameters:
-      - description: Space id
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Widget id, or the id of the object the widget points at
+      - description: Widget id from GET /v2/spaces/{space_id}/widgets, or the id of
+          the object the widget points at
         in: path
         name: widget_id
         required: true
@@ -6413,7 +6628,35 @@ paths:
         content:
           application/json:
             schema:
-              description: an AnyBlock document of any kind, checked without being stored; its schema and a worked example come from get_schema with kind document
+              additionalProperties: true
+              description: an AnyBlock document of any kind, checked without being stored; its schema and a worked example come from GET /v2/schemas/document
+              properties:
+                blocks:
+                  items:
+                    type: object
+                  type: array
+                collection_items:
+                  items:
+                    type: string
+                  type: array
+                cover:
+                  type: object
+                icon:
+                  type: object
+                option_ids:
+                  type: object
+                properties:
+                  type: object
+                property_internal_keys:
+                  type: object
+                property_settings:
+                  type: object
+                query_source:
+                  type: object
+                type_settings:
+                  type: object
+                uninstalled:
+                  const: true
               type: object
         description: Document to validate
         required: true

@@ -226,6 +226,7 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 
 	// rules 1 + 2: the reference key set
 	var refKeys []string
+	var typeScope map[string]bool
 	if req.Type != "" {
 		// live lookup, slug-aware: a corpse type is not a query scope — the
 		// did-you-mean steers to live keys (§7.5-2 corpse policy)
@@ -244,6 +245,7 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 			return nil, s.unknownTypeKeyError(spaceId, req.Type, "/type", v)
 		}
 		typeId := entry.Id
+		typeScope = s.typePropertyScope(spaceId, typeId)
 		refKeys = append(s.typePropertyKeys(spaceId, typeId), "name")
 		// rule 6: the top-level type composes by AND with any type filter
 		plan.filters = append(plan.filters, database.FilterRequest{
@@ -265,6 +267,7 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 	if err != nil {
 		return nil, err
 	}
+	kc.scope = typeScope
 	if req.Type == "" {
 		// no type scope: the whole space's STORED keys are the base set
 		// (withServedSpellings widens them below)
@@ -428,9 +431,17 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 		if len(issues) > 0 {
 			return nil, v2model.ValidationFailed(fmt.Sprintf("unknown %s", v.propertiesWord()), issues...)
 		}
+		// canonicalize the sort slots BEFORE the codec, exactly as the filters
+		// are: the codec's vocabulary knows no type scope, so a slug two
+		// properties answer to would otherwise bind whichever one the
+		// bundled table names, whatever the type lists
+		sortsJSON, err := kc.canonicalizeRawChannel(req.Sorts, "sorts", "/sorts")
+		if err != nil {
+			return nil, err
+		}
 		sortOpts := reads.Options()
 		sortOpts.Keys = readKeys
-		modelSorts, err := anyblockjson.UnmarshalSorts(req.Sorts, sortOpts)
+		modelSorts, err := anyblockjson.UnmarshalSorts(sortsJSON, sortOpts)
 		if err != nil {
 			return nil, mapFilterCodecError(err, false)
 		}

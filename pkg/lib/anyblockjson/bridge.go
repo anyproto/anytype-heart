@@ -67,6 +67,7 @@ var (
 	BundledPropertyKeysByFold = codec.BundledPropertyKeysByFold
 	BundledTypeKeyByName      = codec.BundledTypeKeyByName
 	BundledTypeKeysByFold     = codec.BundledTypeKeysByFold
+	InternalPropertyKeys      = codec.InternalPropertyKeys
 	DisambiguatedKeySpelling  = codec.DisambiguatedKeySpelling
 	PropertyLabel             = codec.PropertyLabel
 	TypeLabel                 = codec.TypeLabel

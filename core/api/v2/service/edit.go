@@ -188,6 +188,7 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 	if err := checkEditPreconditions(cur.SbType, cur.Heads, ifMatch); err != nil {
 		return nil, err
 	}
+	resolvers.scope = s.objectPropertyScope(spaceId, cur)
 	// the object's own restrictions, from the same read — so a dry run reaches
 	// the same verdict as the real edit rather than reporting a success the
 	// adapter would refuse (review C′3). Per-op, not per-request: a set and a
@@ -304,6 +305,7 @@ func (s *Service) guardCreateMissing(ctx context.Context, spaceId, objectId stri
 	// preview what that run would create, and a probe with a different answer
 	// previews a different request
 	probe := s.newCreatingResolvers(ctx, spaceId, true, createMissingOptions)
+	probe.scope = s.objectPropertyScope(spaceId, cur)
 	s.prewarmCreateMissing(ops, probe)
 	if err := probe.err(); err != nil {
 		return err
@@ -602,4 +604,13 @@ func checkEditPreconditions(sbType model.SmartBlockType, heads []string, ifMatch
 		return v2model.EtagMismatch(ComputeEtag(heads))
 	}
 	return nil
+}
+
+// objectPropertyScope is the property scope of an object's own keys: the ids
+// its type lists (resolvePropertyInputIn).
+func (s *Service) objectPropertyScope(spaceId string, cur apicore.ObjectRead) map[string]bool {
+	if cur.Snapshot == nil {
+		return nil
+	}
+	return s.typePropertyScope(spaceId, pbtypes.GetString(cur.Snapshot.Details, bundle.RelationKeyType.String()))
 }

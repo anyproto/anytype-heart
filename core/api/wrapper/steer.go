@@ -384,20 +384,32 @@ func respellSpans(s string, spans map[string]string) string {
 	return b.String()
 }
 
-// deRestText re-spells the references in s: each reference's REST rendering
-// becomes its tool spelling — the outline read's rendering extends the
-// plain read's, and the longer wins — and the prose between the renderings
-// falls to restRoute.
-func deRestText(s string, refs []v2model.Ref) string {
+// Vocabulary spells one typed reference for a tool surface: the curated
+// tiers map an operation to the task tool that covers it (toolSpelling),
+// the full table to the tool that IS the operation.
+type Vocabulary func(ref v2model.Ref) string
+
+// RespellRefs re-spells the references in s through vocab: each
+// reference's REST rendering (Ref.String, which the prose carries verbatim
+// by contract) becomes its tool spelling — the outline read's rendering
+// extends the plain read's, and the longer wins — and the prose between the
+// renderings falls to the catch-all, so nothing route-shaped survives on
+// any tool surface.
+func RespellRefs(s string, refs []v2model.Ref, vocab Vocabulary) string {
 	spans := make(map[string]string, len(refs))
 	for _, ref := range refs {
 		if rest := ref.String(); rest != "" {
 			if _, seen := spans[rest]; !seen {
-				spans[rest] = toolSpelling(ref)
+				spans[rest] = vocab(ref)
 			}
 		}
 	}
 	return respellSpans(s, spans)
+}
+
+// deRestText re-spells the references in s in the curated vocabulary.
+func deRestText(s string, refs []v2model.Ref) string {
+	return RespellRefs(s, refs, toolSpelling)
 }
 
 // deRestIssue re-spells one issue's hint by its own references and drops

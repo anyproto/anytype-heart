@@ -36,6 +36,7 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 
 	srv.registerDocumentationRoutes(router, openapiYAML, openapiJSON)
 	srv.registerAuthRoutes(router)
+	srv.registerMCPRoutes(router, mw)
 
 	paginator := createPaginationMiddleware()
 	writeRateLimitMW := createRateLimitMiddleware()

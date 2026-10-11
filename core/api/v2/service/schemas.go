@@ -64,14 +64,14 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		// published example needed ?create_missing_options=true and was
 		// refused at default settings. The `property` kind is where the option
 		// vocabulary is demonstrated, and there it needs no flag.
-		example: `{"formatVersion":"2.0","type":"task","properties":{"name":"Prepare the Q3 report","due_date":"2026-08-01T00:00:00Z"},"blocks":[{"type":"heading_2","text":"Steps"},{"type":"checkbox","text":"Collect the numbers"},{"indent":1,"type":"paragraph","text":"Ask **finance** first"}]}`,
+		example: `{"type":"task","properties":{"name":"Prepare the Q3 report","due_date":"2026-08-01T00:00:00Z"},"blocks":[{"type":"heading_2","text":"Steps"},{"type":"checkbox","text":"Collect the numbers"},{"indent":1,"type":"paragraph","text":"Ask **finance** first"}]}`,
 	},
 	"shortcut": {
 		endpoint: "POST /v2/spaces/{space_id}/objects",
 		schema: `{"type":"object","additionalProperties":false,"required":["type"],"properties":{` +
 			`"type":{"type":"string","maxLength":256,"description":"type key, e.g. page or task"},` +
 			`"name":{"type":"string","maxLength":4096,"description":"display name. The object displays it above its body, so a markdown body that repeats it as a heading shows it twice"},` +
-			`"properties":{"type":"object","maxProperties":128,"additionalProperties":{"type":["string","number","boolean","array","null"]}},` +
+			`"properties":{"type":"object","maxProperties":128,"additionalProperties":{"type":["string","number","boolean","array","null"]},"description":"property key → value. ` + apiV2PropertyValues + `"},` +
 			`"markdown":{"type":"string","maxLength":1048576,"description":"markdown body parsed into blocks server-side, part of the same single create (dry runs validate it too); at most 2048 parsed blocks. Start it at the first section: a leading heading that repeats the name is dropped, and with no name a leading # heading becomes the name"},` +
 			`"template":` + apiV2TemplateMember + `}}`,
 		example: `{"type":"task","name":"Buy milk","properties":{"due_date":"2026-08-01T00:00:00Z"},"markdown":"- [ ] oat\n- [ ] whole"}`,
@@ -131,18 +131,18 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		// into `type_settings`. The key is `plant`, not the `task` this example
 		// carried before — `task` is a bundled type, so the endpoint refused
 		// its own published example with "type key is reserved".
-		example: `{"formatVersion":"2.0","kind":"object_type","icon":{"format":"emoji","emoji":"🌱"},"properties":{"name":"Plant"},"type_settings":{"api_key":"plant","layout":"basic","plural_name":"Plants","property_definitions":[{"property":"Location","format":"select"},{"property":"Watered","format":"date","section":"featured"}]}}`,
+		example: `{"kind":"object_type","icon":{"format":"emoji","emoji":"🌱"},"properties":{"name":"Plant"},"type_settings":{"api_key":"plant","layout":"basic","plural_name":"Plants","property_definitions":[{"property":"Location","format":"select"},{"property":"Watered","format":"date","section":"featured"}]}}`,
 	},
 	// the document schema unnarrowed: what POST /v2/validate checks, a
 	// document of any kind. The create kinds (object, template,
 	// type_document) each serve it narrowed to what their endpoint accepts.
 	"document": {
 		endpoint: "POST /v2/validate",
-		example:  `{"formatVersion":"2.0","kind":"object_type","properties":{"name":"Plant"},"type_settings":{"api_key":"plant","layout":"basic"}}`,
+		example:  `{"kind":"object_type","properties":{"name":"Plant"},"type_settings":{"api_key":"plant","layout":"basic"}}`,
 	},
 	"template": {
 		endpoint: "POST /v2/spaces/{space_id}/templates",
-		example:  `{"formatVersion":"2.0","kind":"template","type":"template","template_for":"task","properties":{"name":"Weekly task"},"blocks":[{"type":"heading_2","text":"Checklist"},{"type":"checkbox","text":"First step"}]}`,
+		example:  `{"kind":"template","type":"template","template_for":"task","properties":{"name":"Weekly task"},"blocks":[{"type":"heading_2","text":"Checklist"},{"type":"checkbox","text":"First step"}]}`,
 	},
 	"property": {
 		endpoint: "POST /v2/spaces/{space_id}/properties",
@@ -161,7 +161,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		endpoint: "POST /v2/spaces/{space_id}/queries",
 		schema: `{"type":"object","additionalProperties":false,"required":["name","type"],"properties":{` +
 			`"name":{"type":"string","maxLength":4096},` +
-			`"type":{"type":"string","maxLength":256,"description":"the queried type's key"},` +
+			`"type":{"type":"string","maxLength":256,"description":"the key of the one type the query covers"},` +
 			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays simple to decode; see kind filters"},` +
 			`"sorts":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
 			`"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc"]},"empty_placement":{"type":"string","enum":["start","end"]}}}},` +
@@ -307,6 +307,23 @@ func (s *Service) SchemaIndex() v2model.SchemaIndex {
 
 // SchemaKind implements GET /v2/schemas/{kind}.
 func (s *Service) SchemaKind(kind string) (v2model.SchemaEntry, error) {
+	return schemaKind(kind)
+}
+
+// ServedKindSchema returns one discovery kind's schema in its served form —
+// the bytes GET /v2/schemas/{kind} serves — for the full tool table's
+// document bodies.
+func ServedKindSchema(kind string) (json.RawMessage, error) {
+	entry, err := schemaKind(kind)
+	if err != nil {
+		return nil, fmt.Errorf("schema kind %s: %w", kind, err)
+	}
+	return entry.Schema, nil
+}
+
+// ServedKindEntry returns one discovery kind's whole served entry, example
+// included.
+func ServedKindEntry(kind string) (v2model.SchemaEntry, error) {
 	return schemaKind(kind)
 }
 

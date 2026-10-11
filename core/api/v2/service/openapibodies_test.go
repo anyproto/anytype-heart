@@ -3,6 +3,8 @@ package v2service
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -60,6 +62,10 @@ func TestOpenAPIBodiesAcceptTheServedExamples(t *testing.T) {
 		{v2model.OpValidate, []string{v2SchemaKinds["object"].example, v2SchemaKinds["type_document"].example}},
 		{v2model.OpPatchObject, []string{`{"ops":[` + v2OpSchemas["set_properties"].example + `,` + v2OpSchemas["insert_blocks"].example + `]}`}},
 		{v2model.OpCreateWidget, []string{v2SchemaKinds["widget"].example, `{"target":"obj1","scope":"space","layout":"view","limit":10,"view_id":"v1","after":"_favorite"}`}},
+		{v2model.OpSearchSpace, []string{`{}`, `{"query":"roadmap","type":"task","filter":"status = \"Done\"","sorts":[{"property":"due_date","direction":"asc"}],"fields":["status","due_date"]}`,
+			`{"filters":[{"property":"status","condition":"in","value":["Done"]}]}`}},
+		{v2model.OpSearchGlobal, []string{`{"query":"roadmap","fields":["status"]}`}},
+		{v2model.OpStreamSpaceSearch, []string{`{"query":"roadmap"}`}},
 		{v2model.OpUpdateWidget, []string{`{"layout":"compact_list"}`, `{"limit":30,"position":"first"}`, `{"view_id":""}`}},
 	}
 	seen := map[string]bool{}
@@ -164,19 +170,24 @@ func TestOpenAPIBodiesHoistDefsIntoComponents(t *testing.T) {
 	assert.Contains(t, string(composed.Bodies[v2model.OpCreateQuery]), `"#/components/schemas/AnyValue"`)
 }
 
-func TestOpenAPIBodiesNameOperationsByOpId(t *testing.T) {
+// TestOpenAPIBodiesNameOperationsByRoute: the document is read over HTTP, so
+// a body names the operation it points at by route; /mcp/full re-spells the
+// route as the tool (wrapper/full routes.go).
+func TestOpenAPIBodiesNameOperationsByRoute(t *testing.T) {
 	composed, err := ComposeOpenAPIBodies()
 	require.NoError(t, err)
 	for op, body := range composed.Bodies {
 		text := string(body)
-		assert.NotContains(t, text, "/v2/", "%s spells a route", op)
 		assert.NotContains(t, text, "—", "%s carries an em dash the document prose rules refuse", op)
+		for _, id := range []string{v2model.OpGetSchema, v2model.OpGetOpSchema} {
+			assert.NotContains(t, text, id+" with", "%s names an operation by its operationId", op)
+		}
 	}
 	pointer := string(composed.Bodies[v2model.OpCreateTemplate])
-	assert.True(t, strings.Contains(pointer, v2model.OpGetSchema+" with kind template"), pointer)
-	assert.Contains(t, string(composed.Bodies[v2model.OpValidate]), v2model.OpGetSchema+" with kind document", "validate checks any kind, so it points at the unnarrowed schema")
+	assert.True(t, strings.Contains(pointer, "come from "+v2model.RefGetSchema("template").String()), pointer)
+	assert.Contains(t, string(composed.Bodies[v2model.OpValidate]), "come from "+v2model.RefGetSchema("document").String(), "validate checks any kind, so it points at the unnarrowed schema")
 	envelope := string(composed.Bodies[v2model.OpPatchObject])
-	assert.True(t, strings.Contains(envelope, v2model.OpGetOpSchema), envelope)
+	assert.True(t, strings.Contains(envelope, "come from "+v2model.RefGetOpSchema("").String()+" with its op name"), envelope)
 	assert.Contains(t, envelope, "none is applied", "the object channel is atomic")
 	// the union's document branch is open by design, so the flat branch's
 	// requirement is asserted on its text
@@ -185,4 +196,56 @@ func TestOpenAPIBodiesNameOperationsByOpId(t *testing.T) {
 	assert.Contains(t, typeEnvelope, "leaves the written property lists in place", "the type channel is not, and says so")
 	assert.NotContains(t, typeEnvelope, "none is applied")
 	assert.Contains(t, envelope, fmt.Sprintf(`"maxItems":%d`, v2MaxOpsPerPatch))
+}
+
+// TestKindSkeletonTypesTheContainers: a document body served as a lookup
+// still says which members are objects and arrays, so a caller does not
+// send blocks or properties as strings holding JSON.
+func TestKindSkeletonTypesTheContainers(t *testing.T) {
+	for _, kind := range []string{"object", "template", "type_document", apiV2ValidateKind} {
+		t.Run(kind, func(t *testing.T) {
+			skeleton, _, err := kindSkeleton(kind)
+			require.NoError(t, err)
+			assert.NotContains(t, skeleton, "formatVersion", "the version is assumed, never asked for")
+			assert.Equal(t, map[string]any{"type": "object"}, skeleton["properties"])
+			if kind != "type_document" {
+				assert.Equal(t, map[string]any{"type": "array", "items": map[string]any{"type": "object"}}, skeleton["blocks"])
+			}
+			assert.NotContains(t, skeleton, "store", "an output-only member is left out")
+		})
+	}
+	skeleton, required, err := kindSkeleton("template")
+	require.NoError(t, err)
+	assert.Equal(t, map[string]any{"const": "template"}, skeleton["kind"])
+	assert.Contains(t, required, "template_for", "a required member is listed, not left to the lookup")
+	assert.Equal(t, "string", skeleton["template_for"].(map[string]any)["type"])
+	skeleton, _, err = kindSkeleton(apiV2ValidateKind)
+	require.NoError(t, err)
+	assert.NotContains(t, skeleton, "kind", "a long enum is the lookup's to list")
+}
+
+// TestSearchBodyIsTheSearchRequest: the published search body names
+// exactly the members the handler decodes, so the document cannot advertise
+// a member the strict decoder refuses or hide one it takes.
+func TestSearchBodyIsTheSearchRequest(t *testing.T) {
+	var want []string
+	typ := reflect.TypeOf(v2model.SearchRequest{})
+	for i := 0; i < typ.NumField(); i++ {
+		name, _, _ := strings.Cut(typ.Field(i).Tag.Get("json"), ",")
+		want = append(want, name)
+	}
+	sort.Strings(want)
+
+	raw, err := (&openAPIBodyComposer{components: map[string]json.RawMessage{}}).searchBody()
+	require.NoError(t, err)
+	var body struct {
+		Properties map[string]json.RawMessage `json:"properties"`
+	}
+	require.NoError(t, json.Unmarshal(raw, &body))
+	var got []string
+	for name := range body.Properties {
+		got = append(got, name)
+	}
+	sort.Strings(got)
+	assert.Equal(t, want, got)
 }

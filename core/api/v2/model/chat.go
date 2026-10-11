@@ -122,7 +122,7 @@ type ChatMessagesResponse struct {
 
 // CreateChatRequest is the POST chats body.
 type CreateChatRequest struct {
-	Name string `json:"name"`
+	Name string `json:"name" binding:"required"`
 }
 
 // ChatResult is the POST chats response: the created chat as a C5 row.
@@ -160,7 +160,8 @@ type AddChatMessageRequest struct {
 // EditChatMessageRequest is the PATCH message body: a text-only merge —
 // the message's attachments, reply target and style are preserved.
 type EditChatMessageRequest struct {
-	Text string `json:"text"`
+	// The new text, required so an omitted member cannot clear the message by accident; an empty string clears it on purpose.
+	Text string `json:"text" binding:"required"`
 }
 
 // ChatMessageResult is the mutation response for message create/edit/
@@ -173,7 +174,7 @@ type ChatMessageResult struct {
 
 // ChatReactionRequest is the POST reactions body.
 type ChatReactionRequest struct {
-	Emoji string `json:"emoji"`
+	Emoji string `json:"emoji" binding:"required"`
 }
 
 // ChatReactionResult reports the toggle outcome. On a dry run, Added is
@@ -198,7 +199,7 @@ type ChatReactionResult struct {
 type ChatReadRequest struct {
 	UpTo        string `json:"up_to,omitempty"`
 	LastStateId string `json:"last_state_id,omitempty"`
-	Scope       string `json:"scope,omitempty"`
+	Scope       string `json:"scope,omitempty" enums:"messages,mentions,reactions"`
 }
 
 // ChatReadResult acknowledges a read watermark move.

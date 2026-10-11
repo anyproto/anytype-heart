@@ -54,6 +54,18 @@ func IsSystemRelation(relationKey domain.RelationKey) bool {
 	return ok
 }
 
+// RelationKeepsApiSlug reports whether a bundled relation holds its key and
+// derived api slug in a space that has not installed it: the system's own
+// relations, read-only record keeping and hidden machinery. Any other bundled
+// relation yields both to a relation of the space's own until it is installed.
+func RelationKeepsApiSlug(key domain.RelationKey) bool {
+	rel, ok := relations[key]
+	if !ok {
+		return false
+	}
+	return IsSystemRelation(key) || rel.ReadOnly || rel.Hidden
+}
+
 func IsInternalType(typeKey domain.TypeKey) bool {
 	_, ok := internalTypesTypesMap[typeKey]
 	return ok

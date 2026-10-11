@@ -298,33 +298,43 @@ func TestV2ListingsServeBundledSlugs(t *testing.T) {
 	})
 }
 
-// TestV2ServedKeyRefusesAShadowedSlug is the third guard, alone. The subtest
-// above only asserted the BUNDLED row, which the slugHolders guard already
-// covered; with the bundled relation NOT INSTALLED there is no bundled row at
-// all and nothing in the space reveals the clash — so the listing served
-// `due_date` for the squatter and the very next GET /properties/due_date
-// answered 400 ambiguous. Revert the shadowed() call in servedKeyOf (keys.go)
-// and this fails.
+// TestV2ServedKeyRefusesAShadowedSlug is the third guard, alone. With the
+// bundled relation INSTALLED, the squatter's slug is contested: the listing
+// must not serve `due_date` for it, or the very next GET /properties/due_date
+// answers 400 ambiguous. Not installed, the built-in has yielded the slug
+// (dormantBundledProperty) and the squatter owns it. Revert the shadowed()
+// call in servedKeyOf (keys.go) and the first subtest fails.
 func TestV2ServedKeyRefusesAShadowedSlug(t *testing.T) {
-	t.Run("a property slug the bundled table resolves elsewhere is not served", func(t *testing.T) {
-		// given: the bundled dueDate is NOT installed in this space
-		fx := slugSpaceFixture(t)
-		fx.addRelation(t, testSpaceId, objectstore.TestObject{
-			bundle.RelationKeyId:           domain.String("rel-squatter"),
-			bundle.RelationKeyRelationKey:  domain.String("6a7663db61fab21cd4b9e107"),
-			bundle.RelationKeyApiObjectKey: domain.String("due_date"),
-			bundle.RelationKeyName:         domain.String("Due Date"),
-		})
-
-		// when
+	squatter := objectstore.TestObject{
+		bundle.RelationKeyId:           domain.String("rel-squatter"),
+		bundle.RelationKeyRelationKey:  domain.String("6a7663db61fab21cd4b9e107"),
+		bundle.RelationKeyApiObjectKey: domain.String("due_date"),
+		bundle.RelationKeyName:         domain.String("Due Date"),
+	}
+	servedNames := func(t *testing.T, fx *v2Fixture) map[string]string {
 		rows, _, _, err := fx.ListProperties(context.Background(), testSpaceId, 0, 25)
-
-		// then
 		require.NoError(t, err)
 		served := map[string]string{}
 		for _, row := range rows {
 			served[row.Name] = row.Key
 		}
+		return served
+	}
+
+	t.Run("a property slug an installed bundled property also answers to is not served", func(t *testing.T) {
+		// given
+		fx := slugSpaceFixture(t)
+		fx.addRelation(t, testSpaceId, squatter)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:          domain.String("rel-duedate"),
+			bundle.RelationKeyRelationKey: domain.String("dueDate"),
+			bundle.RelationKeyName:        domain.String("Due date"),
+		})
+
+		// when
+		served := servedNames(t, fx)
+
+		// then
 		assert.Equal(t, "6a7663db61fab21cd4b9e107", served["Due Date"],
 			"an address the listing serves must resolve back to the row it labels")
 
@@ -336,6 +346,24 @@ func TestV2ServedKeyRefusesAShadowedSlug(t *testing.T) {
 		assert.False(t, ok)
 		assert.NotEmpty(t, ambiguous)
 		entry, ok, ambiguous := fx.resolvePropertyInput(served["Due Date"], entries)
+		require.True(t, ok, "the served address resolves")
+		assert.Empty(t, ambiguous)
+		assert.Equal(t, "rel-squatter", entry.Id)
+	})
+
+	t.Run("a property slug a dormant bundled property yielded is served", func(t *testing.T) {
+		// given: the bundled dueDate is NOT installed in this space
+		fx := slugSpaceFixture(t)
+		fx.addRelation(t, testSpaceId, squatter)
+
+		// when
+		served := servedNames(t, fx)
+
+		// then
+		assert.Equal(t, "due_date", served["Due Date"])
+		entries, err := fx.liveProperties(testSpaceId)
+		require.NoError(t, err)
+		entry, ok, ambiguous := fx.resolvePropertyInput("due_date", entries)
 		require.True(t, ok, "the served address resolves")
 		assert.Empty(t, ambiguous)
 		assert.Equal(t, "rel-squatter", entry.Id)
@@ -362,9 +390,10 @@ func TestV2ServedKeyRefusesAShadowedSlug(t *testing.T) {
 }
 
 // TestV2ShadowedBundledSlugIsLoud is the 1.2 floor: a pre-existing shadow
-// used to resolve silently to the squatter. Revert the shadowedBundled*
-// branches in keys.go and this passes with the WRONG entity instead of
-// refusing.
+// of an INSTALLED built-in used to resolve silently to the squatter. Revert
+// the bundled-candidate branches in keys.go and this passes with the WRONG
+// entity instead of refusing. An object's type settles it: the candidate the
+// type lists wins (resolvePropertyInputIn).
 func TestV2ShadowedBundledSlugIsLoud(t *testing.T) {
 	// given
 	fx := slugSpaceFixture(t)
@@ -374,17 +403,39 @@ func TestV2ShadowedBundledSlugIsLoud(t *testing.T) {
 		bundle.RelationKeyApiObjectKey: domain.String("due_date"),
 		bundle.RelationKeyName:         domain.String("Due Date"),
 	})
+	fx.addRelation(t, testSpaceId, objectstore.TestObject{
+		bundle.RelationKeyId:          domain.String("rel-duedate"),
+		bundle.RelationKeyRelationKey: domain.String("dueDate"),
+		bundle.RelationKeyName:        domain.String("Due date"),
+	})
 	entries, err := fx.liveProperties(testSpaceId)
 	require.NoError(t, err)
 
-	// when
-	_, ok, ambiguous := fx.resolvePropertyInput("due_date", entries)
+	t.Run("without a type the term is ambiguous", func(t *testing.T) {
+		_, ok, ambiguous := fx.resolvePropertyInput("due_date", entries)
 
-	// then
-	assert.False(t, ok, "a shadowed bundled slug must never resolve by store order")
-	require.Len(t, ambiguous, 2)
-	assert.Contains(t, ambiguous[0], "6a7663db61fab21cd4b9e107", "the squatter, addressable by its stored key")
-	assert.Contains(t, ambiguous[1], "dueDate", "and the bundled property it shadows")
+		assert.False(t, ok, "a shadowed bundled slug must never resolve by store order")
+		require.Len(t, ambiguous, 2)
+		assert.Contains(t, ambiguous[0], "6a7663db61fab21cd4b9e107", "the squatter, addressable by its stored key")
+		assert.Contains(t, ambiguous[1], "dueDate", "and the bundled property it shadows")
+	})
+
+	t.Run("the property the type lists wins", func(t *testing.T) {
+		for scopeId, want := range map[string]string{"rel-squatter": "6a7663db61fab21cd4b9e107", "rel-duedate": "dueDate"} {
+			entry, ok, ambiguous := fx.resolvePropertyInputIn("due_date", entries, map[string]bool{scopeId: true})
+
+			require.True(t, ok, scopeId)
+			assert.Empty(t, ambiguous)
+			assert.Equal(t, want, entry.Key)
+		}
+	})
+
+	t.Run("a type listing both leaves it ambiguous", func(t *testing.T) {
+		_, ok, ambiguous := fx.resolvePropertyInputIn("due_date", entries, map[string]bool{"rel-squatter": true, "rel-duedate": true})
+
+		assert.False(t, ok)
+		assert.Len(t, ambiguous, 2)
+	})
 }
 
 // TestV2ShadowedBundledTypeIsLoud is the same floor in the TYPE namespace,

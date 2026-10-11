@@ -88,12 +88,12 @@ func respondV2Create(c *gin.Context, result *v2model.CreateResult, createdStatus
 // CreateObjectHandler creates an object from an AnyBlock document or the shortcut
 //
 //	@Summary		Create an object
-//	@Description	A select value naming an option the property does not hold is refused unless `create_missing_options=true` is set. An unknown type or property key is rejected either way. The body is a full AnyBlock document or the shortcut {type, name, properties, markdown}; `formatVersion` or `blocks` picks the document form. `template` starts the object from one; absent, the type's `default_template` applies.
+//	@Description	A select value naming an option the property does not hold is refused unless `create_missing_options=true` is set. An unknown type or property key is rejected. The body is a full AnyBlock document or the shortcut {type, name, properties, markdown}; a document-only member such as `blocks` picks the document. `template` starts the object from one; absent, the type's `default_template` applies.
 //	@Id				create_object
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id				path		string					true	"Space id"
+//	@Param			space_id				path		string					true	"Space id, from GET /v2/spaces"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
 //	@Param			body					body		object					true	"The shortcut body, or an AnyBlock object document"
@@ -124,7 +124,7 @@ func CreateObjectHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Templates
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id				path		string					true	"Space id"
+//	@Param			space_id				path		string					true	"Space id, from GET /v2/spaces"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
 //	@Param			body					body		object					true	"AnyBlock template document"
@@ -150,12 +150,12 @@ func CreateTemplateHandler(s *v2service.Service) gin.HandlerFunc {
 // CreateTypeHandler creates a type from a kind:"object_type" document
 //
 //	@Summary		Create a type
-//	@Description	A `property_definitions` entry naming a property that does not exist creates it alongside the type. The body is either the flat type body or an AnyBlock document with kind "object_type"; `formatVersion`, `kind` or `type_settings` picks the document form.
+//	@Description	A `property_definitions` entry naming a property that does not exist creates it alongside the type. The body is either the flat type body or an AnyBlock document with kind "object_type"; `kind` or `type_settings` picks the document form.
 //	@Id				create_type
 //	@Tags			Types
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id				path		string					true	"Space id"
+//	@Param			space_id				path		string					true	"Space id, from GET /v2/spaces"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
 //	@Param			body					body		object					true	"The flat type body, or the type as an AnyBlock document"
@@ -187,8 +187,8 @@ func CreateTypeHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Types
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id				path		string					true	"Space id"
-//	@Param			type					path		string					true	"Type key"
+//	@Param			space_id				path		string					true	"Space id, from GET /v2/spaces"
+//	@Param			type					path		string					true	"Type key, from GET /v2/spaces/{space_id}/types"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
 //	@Param			body					body		object					true	"The fields of the type to change, or an ops envelope"
@@ -217,8 +217,8 @@ func UpdateTypeHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id			delete_type
 //	@Tags		Types
 //	@Produce	json
-//	@Param		space_id	path		string					true	"Space id"
-//	@Param		type		path		string					true	"Type key"
+//	@Param		space_id	path		string					true	"Space id, from GET /v2/spaces"
+//	@Param		type		path		string					true	"Type key, from GET /v2/spaces/{space_id}/types"
 //	@Param		dry_run		query		bool					false	"Validate and report without committing"
 //	@Success	200			{object}	v2model.CreateResult	"Archived type"
 //	@Failure	404			{object}	v2model.Error			"No live type with this key. A type that is already deleted is a 404 too, not a second delete."
@@ -243,7 +243,7 @@ func DeleteTypeHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Properties
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id	path		string					true	"Space id"
+//	@Param			space_id	path		string					true	"Space id, from GET /v2/spaces"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
 //	@Param			body		body		object					true	"Property to create"
 //	@Success		201			{object}	v2model.CreateResult	"Created property id + key"
@@ -276,8 +276,8 @@ func CreatePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Properties
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id	path		string					true	"Space id"
-//	@Param			key			path		string					true	"Property key"
+//	@Param			space_id	path		string					true	"Space id, from GET /v2/spaces"
+//	@Param			key			path		string					true	"Property key, from GET /v2/spaces/{space_id}/properties"
 //	@Param			body		body		object					true	"The new display name"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
 //	@Success		200			{object}	v2model.CreateResult	"Updated property"
@@ -309,8 +309,8 @@ func UpdatePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id			delete_property
 //	@Tags		Properties
 //	@Produce	json
-//	@Param		space_id	path		string					true	"Space id"
-//	@Param		key			path		string					true	"Property key"
+//	@Param		space_id	path		string					true	"Space id, from GET /v2/spaces"
+//	@Param		key			path		string					true	"Property key, from GET /v2/spaces/{space_id}/properties"
 //	@Param		dry_run		query		bool					false	"Validate and report without committing"
 //	@Success	200			{object}	v2model.CreateResult	"Archived property"
 //	@Failure	404			{object}	v2model.Error			"No live property with this key. A property that is already deleted is a 404 too, not a second delete."
@@ -335,7 +335,7 @@ func DeletePropertyHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Lists
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id				path		string					true	"Space id"
+//	@Param			space_id				path		string					true	"Space id, from GET /v2/spaces"
 //	@Param			dry_run					query		bool					false	"Validate and report without committing"
 //	@Param			create_missing_options	query		bool					false	"Create select options for names the property does not hold yet (default false: an unmatched name is refused)"
 //	@Param			body					body		object					true	"Query to create"
@@ -369,7 +369,7 @@ func CreateQueryHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Lists
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id	path		string					true	"Space id"
+//	@Param			space_id	path		string					true	"Space id, from GET /v2/spaces"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
 //	@Param			body		body		object					true	"Collection to create"
 //	@Success		201			{object}	v2model.CreateResult	"Created collection id"
@@ -402,7 +402,7 @@ func CreateCollectionHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Files
 //	@Accept			multipart/form-data,json
 //	@Produce		json
-//	@Param			space_id	path		string						true	"Space id"
+//	@Param			space_id	path		string						true	"Space id, from GET /v2/spaces"
 //	@Param			dry_run		query		bool						false	"Validate and report without committing"
 //	@Param			file		formData	file						false	"File bytes for the multipart form"
 //	@Param			request		body		v2model.UploadFileRequest	false	"URL source for the JSON form"
@@ -536,7 +536,7 @@ func SchemaIndexHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id			get_schema
 //	@Tags		Schemas
 //	@Produce	json
-//	@Param		kind	path		string				true	"Schema kind, as listed by list_schemas"
+//	@Param		kind	path		string				true	"Schema kind, as listed by GET /v2/schemas"
 //	@Success	200		{object}	v2model.SchemaEntry	"Schema + example"
 //	@Failure	404		{object}	v2model.Error		"Unknown kind"
 //	@Security	bearerauth
@@ -559,7 +559,7 @@ func SchemaKindHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id				get_op_schema
 //	@Tags			Schemas
 //	@Produce		json
-//	@Param			op	path		string				true	"Op name: set_properties, update_block, replace_subtree, insert_blocks, move_block, delete_block, replace_text, set_cell, update_view, insert_view, move_view, delete_view, add_items, remove_items"
+//	@Param			op	path		string				true	"Op name: set_properties, set_type, update_block, replace_subtree, insert_blocks, move_block, delete_block, replace_text, set_cell, update_view, insert_view, move_view, delete_view, add_items, remove_items"
 //	@Success		200	{object}	v2model.SchemaEntry	"Schema + example"
 //	@Failure		404	{object}	v2model.Error		"Unknown op"
 //	@Security		bearerauth

@@ -30,6 +30,7 @@ import (
 	"unicode/utf8"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -391,7 +392,7 @@ func (a *v2StateApplier) canonicalViewKey(input string) (string, []string) {
 	if err != nil {
 		return input, nil // the load error surfaces in validateViewKeys
 	}
-	entry, ok, ambiguous := a.s.resolvePropertyInput(input, entries)
+	entry, ok, ambiguous := a.s.resolvePropertyInputIn(input, entries, a.viewScope())
 	if len(ambiguous) > 0 {
 		return input, ambiguous
 	}
@@ -409,6 +410,17 @@ func (a *v2StateApplier) canonicalViewKey(input string) (string, []string) {
 func (a *v2StateApplier) viewFormatName() func(string) (string, bool) {
 	base := a.s.formatNameResolver(a.spaceId)
 	return func(key string) (string, bool) {
+		// a built-in's key the space's own property answers to (a dormant
+		// built-in yields it) takes that property's format, not the
+		// built-in's
+		if bundle.HasRelation(domain.RelationKey(key)) {
+			if entries, err := a.propEntries(); err == nil {
+				entry, ok, ambiguous := a.s.resolvePropertyInputIn(key, entries, a.viewScope())
+				if ok && len(ambiguous) == 0 && entry.Key != "" && entry.Key != key {
+					return base(entry.Key)
+				}
+			}
+		}
 		if format, ok := base(key); ok {
 			return format, true
 		}
@@ -426,7 +438,7 @@ func (a *v2StateApplier) viewFormatName() func(string) (string, bool) {
 		if err != nil {
 			return "", false
 		}
-		entry, ok, ambiguous := a.s.resolvePropertyInput(key, entries)
+		entry, ok, ambiguous := a.s.resolvePropertyInputIn(key, entries, a.viewScope())
 		if !ok || len(ambiguous) > 0 || entry.Key == "" {
 			return "", false
 		}
@@ -1423,4 +1435,14 @@ func (a *v2StateApplier) mintViewId(views []any) string {
 			return id
 		}
 	}
+}
+
+// viewScope is the property scope of a view slot: the type the set queries,
+// when it queries exactly one (resolvePropertyInputIn).
+func (a *v2StateApplier) viewScope() map[string]bool {
+	setOf := a.st.Details().GetStringList(bundle.RelationKeySetOf)
+	if len(setOf) != 1 {
+		return nil
+	}
+	return a.s.typePropertyScope(a.spaceId, setOf[0])
 }

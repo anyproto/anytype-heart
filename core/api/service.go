@@ -237,7 +237,7 @@ func (s *apiService) bindLocked(listenAddr string) *pb.EventAccountJsonApiStatus
 		s.crossSpaceSubService,
 		s.chatSubService,
 		s.fileObjectService,
-		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, Widgets: s.widgets, ChatSub: s.chatSubService, ObjectSearch: s.objectSearch, Store: s.objectStore, AccountId: s.accountId()},
+		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, Widgets: s.widgets, ChatSub: s.chatSubService, ObjectSearch: s.objectSearch, Store: s.objectStore, FullTable: FullTable, AccountId: s.accountId()},
 		listenAddr,
 		server.OpenApiDocs{
 			V1YAML: openapiV1YAML,

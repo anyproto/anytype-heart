@@ -25,13 +25,13 @@ func respondV2Edit(c *gin.Context, result *v2model.EditResult) {
 // PatchObjectHandler applies a batch of edit ops atomically
 //
 //	@Summary		Update an object
-//	@Description	Applies ops in order as one atomic edit. A failed op or invalid result leaves the object unchanged. Text locators must match exactly one block. New block and view IDs are returned by payload position in `created_blocks` and `created_views`, compact by default or full with `ids=full`.
+//	@Description	Edits in place, keeping the id and links; to change the type, use set_type rather than recreating the object. Applies ops in order as one atomic edit. A failed op or invalid result leaves the object unchanged. Text locators must match exactly one block. New block and view IDs are returned by payload position in `created_blocks` and `created_views`, compact by default or full with `ids=full`.
 //	@Id				patch_object
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id				path		string				true	"Space id"
-//	@Param			object_id				path		string				true	"Object id"
+//	@Param			space_id				path		string				true	"Space id, from GET /v2/spaces"
+//	@Param			object_id				path		string				true	"Object id, from POST /v2/spaces/{space_id}/search or GET /v2/spaces/{space_id}/objects"
 //	@Param			If-Match				header		string				false	"The etag the object must still carry"
 //	@Param			dry_run					query		bool				false	"Validate and report without committing"
 //	@Param			ids						query		string				false	"ID spelling in created_blocks and created_views"	Enums(compact,full)	default(compact)
@@ -66,8 +66,8 @@ func PatchObjectHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id				delete_object
 //	@Tags			Objects
 //	@Produce		json
-//	@Param			space_id	path		string					true	"Space id"
-//	@Param			object_id	path		string					true	"Object id"
+//	@Param			space_id	path		string					true	"Space id, from GET /v2/spaces"
+//	@Param			object_id	path		string					true	"Object id, from POST /v2/spaces/{space_id}/search or GET /v2/spaces/{space_id}/objects"
 //	@Param			dry_run		query		bool					false	"Probe deletability without writing"
 //	@Success		200			{object}	v2model.CreateResult	"Archived object, or the dry-run verdict. Deleting again is a 200 carrying a warning."
 //	@Failure		400			{object}	v2model.Error			"A type or a property: use their own delete routes"

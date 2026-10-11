@@ -125,13 +125,36 @@ func TestApiKeyVocab(t *testing.T) {
 		assert.Equal(t, "bsonAwareKey", key)
 	})
 
+	t.Run("a dormant bundled slug belongs to the space's own property", func(t *testing.T) {
+		// given: bundled dueDate is not installed, so it has yielded due_date
+		fx := newV2Fixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:           domain.String("rel-own"),
+			bundle.RelationKeyRelationKey:  domain.String("bsonOwnKey"),
+			bundle.RelationKeyApiObjectKey: domain.String("due_date"),
+			bundle.RelationKeyName:         domain.String("Due Date"),
+		})
+		v := fx.apiKeys(testSpaceId, storeresolver.New(fx.store.SpaceIndex(testSpaceId)))
+
+		assert.Equal(t, "due_date", v.PropertySlug("bsonOwnKey"))
+		key, ok := v.PropertyKey("due_date")
+		assert.True(t, ok)
+		assert.Equal(t, "bsonOwnKey", key)
+	})
+
 	t.Run("a squatted bundled slug neither emits nor resolves to the bundled key", func(t *testing.T) {
+		// given: bundled dueDate is installed beside the squatter
 		fx := newV2Fixture(t)
 		fx.addRelation(t, testSpaceId, objectstore.TestObject{
 			bundle.RelationKeyId:           domain.String("rel-squat"),
 			bundle.RelationKeyRelationKey:  domain.String("bsonSquatKey"),
 			bundle.RelationKeyApiObjectKey: domain.String("due_date"),
 			bundle.RelationKeyName:         domain.String("Squatter"),
+		})
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:          domain.String("rel-duedate"),
+			bundle.RelationKeyRelationKey: domain.String("dueDate"),
+			bundle.RelationKeyName:        domain.String("Due date"),
 		})
 		v := fx.apiKeys(testSpaceId, storeresolver.New(fx.store.SpaceIndex(testSpaceId)))
 

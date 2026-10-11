@@ -94,10 +94,22 @@ func (n apiKeyNamespace) taken(name, owner string) bool {
 		}
 		return name != owner && bundle.HasObjectTypeByKey(domain.TypeKey(name))
 	}
-	if key, ok := bundle.RelationKeyByApiSlug(name); ok && string(key) != owner {
+	// a bundled relation holds its derived slug once installed (its stored
+	// key is in the namespace, its slug usually is not); not installed, it
+	// holds nothing unless it keeps its slug everywhere
+	// (bundle.RelationKeepsApiSlug)
+	if key, ok := bundle.RelationKeyByApiSlug(name); ok && string(key) != owner && n.holdsBundled(key) {
 		return true
 	}
-	return name != owner && bundle.HasRelation(domain.RelationKey(name))
+	return name != owner && n.holdsBundled(domain.RelationKey(name))
+}
+
+func (n apiKeyNamespace) holdsBundled(key domain.RelationKey) bool {
+	if !bundle.HasRelation(key) {
+		return false
+	}
+	_, installed := n.holder[string(key)]
+	return installed || bundle.RelationKeepsApiSlug(key)
 }
 
 // occupy records name as held by key unless it is already held.

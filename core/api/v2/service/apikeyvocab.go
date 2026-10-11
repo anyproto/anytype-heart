@@ -398,17 +398,25 @@ func (v *apiKeyVocab) TypePropertyKeys(typeKey string) []string {
 }
 
 func (v *apiKeyVocab) PropertyTermFacts(term string) anyblockjson.KeyTermFacts {
-	if bundle.HasRelation(domain.RelationKey(term)) {
+	if bundle.HasRelation(domain.RelationKey(term)) && !v.yieldedBundled(term) {
 		// v2's chain resolves an exact bundled stored key in every space,
 		// installed or not (resolvePropertyInput step 3) — so `coverType`
 		// in a filter is a real address, never the phantom-key warning the
-		// importer raises for a term nobody's vocabulary knows.
+		// importer raises for a term nobody's vocabulary knows. A built-in
+		// the space never installed is the exception once a property of the
+		// space's own holds its spelling: the term is then that property's.
 		return anyblockjson.KeyTermFacts{LiveStoredKey: true}
 	}
 	if v.scoped == nil {
 		return anyblockjson.KeyTermFacts{}
 	}
 	return v.scoped.PropertyTermFacts(term)
+}
+
+// yieldedBundled reports whether term is a dormant built-in's key that a
+// live property of the space's own answers to (yieldedBundledProperty).
+func (v *apiKeyVocab) yieldedBundled(term string) bool {
+	return v.ensure() && yieldedBundledProperty(term, v.propKeyTaken, v.propSlugHolders)
 }
 
 func (v *apiKeyVocab) TypeTermFacts(term string) anyblockjson.KeyTermFacts {

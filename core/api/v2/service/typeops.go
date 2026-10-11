@@ -112,6 +112,18 @@ type typeListEntry struct {
 }
 
 // typeOpsPlan is the whole batch decided before anything is written.
+// scope is the ids the type lists, which settle a term two properties
+// answer to (resolvePropertyInputIn).
+func (p *typeOpsPlan) scope() map[string]bool {
+	ids := make(map[string]bool, len(p.list))
+	for _, entry := range p.list {
+		if entry.id != "" {
+			ids[entry.id] = true
+		}
+	}
+	return ids
+}
+
 type typeOpsPlan struct {
 	// spaceId is the space the type lives in, for the hints a refusal names.
 	spaceId string
@@ -381,9 +393,16 @@ func (s *Service) planAddProperty(plan *typeOpsPlan, raw json.RawMessage, opPath
 		return err
 	}
 
-	entry, resolved, ambiguous := s.resolvePropertyInput(op.Property, entries)
+	entry, resolved, ambiguous := s.resolvePropertyInputIn(op.Property, entries, plan.scope())
 	if len(ambiguous) > 0 {
 		return ambiguousKeyError(v.propertyWord(), op.Property, opPath+".property", ambiguous)
+	}
+	if resolved && hiddenInternalProperty(entry.Key) && (entry.Id == "" || plan.findById(entry.Id) == nil) {
+		return v2model.ValidationFailed("internal property",
+			v2model.Issue{Path: opPath + ".property",
+				Message: fmt.Sprintf("%s is an internal property the app maintains on its own; a type does not list it",
+					internalPropertyTerm(op.Property, entry.Key)),
+				Hint: "to add a property of your own, give it a name no internal property uses"})
 	}
 	declared, formatKnown := anyblockjson.FormatByName(op.Format)
 	if op.Format != "" && !formatKnown {
@@ -583,7 +602,7 @@ func (s *Service) targetListEntry(plan *typeOpsPlan, term, opPath string, entrie
 		return nil, v2model.ValidationFailed("this op needs a property",
 			v2model.Issue{Path: opPath + ".property", Message: "name the property this op applies to"})
 	}
-	entry, resolved, ambiguous := s.resolvePropertyInput(term, entries)
+	entry, resolved, ambiguous := s.resolvePropertyInputIn(term, entries, plan.scope())
 	if len(ambiguous) > 0 {
 		return nil, ambiguousKeyError(v.propertyWord(), term, opPath+".property", ambiguous)
 	}

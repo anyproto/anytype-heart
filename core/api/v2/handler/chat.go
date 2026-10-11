@@ -48,7 +48,7 @@ func respondChatMutation(c *gin.Context, dryRun bool, createdStatus int, payload
 //	@Id				list_chats
 //	@Tags			Chat
 //	@Produce		json
-//	@Param			space_id	path		string									true	"Space id"
+//	@Param			space_id	path		string									true	"Space id, from GET /v2/spaces"
 //	@Param			include		query		string									false	"discussions adds object discussions to the list; omitted lists chats only"
 //	@Param			unread		query		string									false	"messages keeps rows with unread messages; mentions keeps rows with unread mentions"
 //	@Param			offset		query		int										false	"Rows to skip"		default(0)
@@ -108,7 +108,7 @@ func parseChatListQuery(c *gin.Context) (v2service.ChatListQuery, error) {
 //	@Tags			Chat
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id		path		string						true	"Space id"
+//	@Param			space_id		path		string						true	"Space id, from GET /v2/spaces"
 //	@Param			dry_run			query		bool						false	"Validate and report without committing"
 //	@Param			Idempotency-Key	header		string						false	"Replay guard: the same key with the same body replays the stored response"
 //	@Param			request			body		v2model.CreateChatRequest	true	"The chat to create"
@@ -138,8 +138,8 @@ func CreateChatHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id				get_chat_messages
 //	@Tags			Chat
 //	@Produce		json
-//	@Param			space_id	path		string							true	"Space id"
-//	@Param			chat_id		path		string							true	"Chat object id"
+//	@Param			space_id	path		string							true	"Space id, from GET /v2/spaces"
+//	@Param			chat_id		path		string							true	"Chat object id, from GET /v2/spaces/{space_id}/chats"
 //	@Param			after		query		string							false	"Return messages after this order id (exclusive)"
 //	@Param			before		query		string							false	"Return messages before this order id (exclusive)"
 //	@Param			limit		query		int								false	"Messages to return"	default(25)
@@ -189,8 +189,8 @@ func GetChatMessagesHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Chat
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id		path		string							true	"Space id"
-//	@Param			chat_id			path		string							true	"Chat object id"
+//	@Param			space_id		path		string							true	"Space id, from GET /v2/spaces"
+//	@Param			chat_id			path		string							true	"Chat object id, from GET /v2/spaces/{space_id}/chats"
 //	@Param			dry_run			query		bool							false	"Validate and report without committing"
 //	@Param			Idempotency-Key	header		string							false	"Replay guard: the same key with the same body replays the stored response"
 //	@Param			request			body		v2model.AddChatMessageRequest	true	"The message to send"
@@ -222,9 +222,9 @@ func AddChatMessageHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Chat
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id		path		string							true	"Space id"
-//	@Param			chat_id			path		string							true	"Chat object id"
-//	@Param			message_id		path		string							true	"Message id"
+//	@Param			space_id		path		string							true	"Space id, from GET /v2/spaces"
+//	@Param			chat_id			path		string							true	"Chat object id, from GET /v2/spaces/{space_id}/chats"
+//	@Param			message_id		path		string							true	"Message id, from GET /v2/spaces/{space_id}/chats/{chat_id}/messages"
 //	@Param			dry_run			query		bool							false	"Validate and report without committing"
 //	@Param			Idempotency-Key	header		string							false	"Replay guard: the same key with the same body replays the stored response"
 //	@Param			request			body		v2model.EditChatMessageRequest	true	"The replacement text"
@@ -235,10 +235,21 @@ func AddChatMessageHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Router			/v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id} [patch]
 func EditChatMessageHandler(s *v2service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req v2model.EditChatMessageRequest
-		if !decodeChatBody(c, &req, "the edit body takes text") {
+		// text is decoded as present-or-absent: an absent member must be
+		// refused, not read as an empty text that clears the message
+		var body struct {
+			Text *string `json:"text"`
+		}
+		if !decodeChatBody(c, &body, "the edit body takes text") {
 			return
 		}
+		if body.Text == nil {
+			RespondError(c, v2model.ValidationFailed("the edit names no text",
+				v2model.Issue{Path: "/text", Message: "text is required: leaving it out would clear the message"}.
+					WithHint(v2model.Plain(`send the new text; an empty string clears it, which a message with attachments allows`))))
+			return
+		}
+		req := v2model.EditChatMessageRequest{Text: *body.Text}
 		result, err := s.EditChatMessage(c.Request.Context(), c.Param("space_id"), c.Param("chat_id"), c.Param("message_id"), req, isV2DryRun(c))
 		if err != nil {
 			RespondError(c, err)
@@ -255,9 +266,9 @@ func EditChatMessageHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id				delete_chat_message
 //	@Tags			Chat
 //	@Produce		json
-//	@Param			space_id		path		string						true	"Space id"
-//	@Param			chat_id			path		string						true	"Chat object id"
-//	@Param			message_id		path		string						true	"Message id"
+//	@Param			space_id		path		string						true	"Space id, from GET /v2/spaces"
+//	@Param			chat_id			path		string						true	"Chat object id, from GET /v2/spaces/{space_id}/chats"
+//	@Param			message_id		path		string						true	"Message id, from GET /v2/spaces/{space_id}/chats/{chat_id}/messages"
 //	@Param			dry_run			query		bool						false	"Report what would be deleted, attachments included, without committing"
 //	@Param			Idempotency-Key	header		string						false	"Replay guard: the same key with the same body replays the stored response"
 //	@Success		200				{object}	v2model.ChatMessageResult	"Deleted message id"
@@ -283,9 +294,9 @@ func DeleteChatMessageHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Chat
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id		path		string						true	"Space id"
-//	@Param			chat_id			path		string						true	"Chat object id"
-//	@Param			message_id		path		string						true	"Message id"
+//	@Param			space_id		path		string						true	"Space id, from GET /v2/spaces"
+//	@Param			chat_id			path		string						true	"Chat object id, from GET /v2/spaces/{space_id}/chats"
+//	@Param			message_id		path		string						true	"Message id, from GET /v2/spaces/{space_id}/chats/{chat_id}/messages"
 //	@Param			dry_run			query		bool						false	"Report the would-be outcome without committing"
 //	@Param			Idempotency-Key	header		string						false	"Replay guard: the same key with the same body replays the stored response"
 //	@Param			request			body		v2model.ChatReactionRequest	true	"The emoji to toggle"
@@ -317,8 +328,8 @@ func ToggleChatReactionHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Tags			Chat
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id		path		string					true	"Space id"
-//	@Param			chat_id			path		string					true	"Chat object id"
+//	@Param			space_id		path		string					true	"Space id, from GET /v2/spaces"
+//	@Param			chat_id			path		string					true	"Chat object id, from GET /v2/spaces/{space_id}/chats"
 //	@Param			dry_run			query		bool					false	"Validate and report without committing"
 //	@Param			Idempotency-Key	header		string					false	"Replay guard: the same key with the same body replays the stored response"
 //	@Param			request			body		v2model.ChatReadRequest	true	"The watermark move"

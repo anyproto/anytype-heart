@@ -202,7 +202,7 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 			JSON: findResult{Total: resp.Total, HasMore: resp.HasMore, Listing: true, Rows: rows},
 		}, nil
 	}
-	session.Handles = handles
+	session.Handles = storedHandles(handles)
 
 	var b strings.Builder
 	for _, h := range handles {

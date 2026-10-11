@@ -394,3 +394,111 @@ func TestMCPSessionStateSpansCalls(t *testing.T) {
 	sent := fx.sent("GET /v2/spaces/space1/objects/bafyobj2")
 	require.Len(t, sent, 1, "handle 2 resolved to the second find result")
 }
+
+// TestMCPHandleMessageClassifies: the classification runs before any
+// method is looked at — an id-less tools/call is a notification and
+// executes nothing, a client response is acknowledged, and a malformed
+// envelope is refused with the JSON-RPC error that names the defect.
+func TestMCPHandleMessageClassifies(t *testing.T) {
+	fx := newFixture(t)
+	fx.stub("GET /v2/spaces", 200, `{"data":[{"id":"bafyspace1","name":"Work"}],"total":1,"offset":0,"limit":25,"has_more":false}`)
+	server := NewMCPServer(fx.Runner, TierSmall)
+	ctx := context.Background()
+
+	t.Run("an id-less tools/call is a notification and is not executed", func(t *testing.T) {
+		before := len(fx.requests)
+		handled := server.HandleMessage(ctx, []byte(`{"jsonrpc":"2.0","method":"tools/call","params":{"name":"spaces"}}`))
+		assert.Equal(t, MessageNotification, handled.Kind)
+		assert.Equal(t, "tools/call", handled.Method)
+		assert.Nil(t, handled.Response)
+		assert.Equal(t, before, len(fx.requests), "nothing reached the API")
+	})
+
+	t.Run("a request with an id is dispatched", func(t *testing.T) {
+		handled := server.HandleMessage(ctx, []byte(call(t, 7, "spaces", nil)))
+		assert.Equal(t, MessageRequest, handled.Kind)
+		require.NotNil(t, handled.Response)
+		assert.Equal(t, "7", string(handled.Response.ID))
+		assert.Nil(t, handled.Response.Error)
+	})
+
+	t.Run("a client response is acknowledged", func(t *testing.T) {
+		handled := server.HandleMessage(ctx, []byte(`{"jsonrpc":"2.0","id":3,"result":{}}`))
+		assert.Equal(t, MessageResponse, handled.Kind)
+		assert.Nil(t, handled.Response)
+	})
+
+	for _, tc := range []struct {
+		name, raw string
+		code      int
+		want      string
+	}{
+		{"a batch", `[{"jsonrpc":"2.0","id":1,"method":"ping"}]`, mcpInvalidRequest, "batching"},
+		{"not JSON", `{`, mcpParseError, "parse"},
+		{"wrong jsonrpc", `{"jsonrpc":"1.0","id":1,"method":"ping"}`, mcpInvalidRequest, `"2.0"`},
+		{"null id", `{"jsonrpc":"2.0","id":null,"method":"ping"}`, mcpInvalidRequest, "id must be"},
+		{"object id", `{"jsonrpc":"2.0","id":{"a":1},"method":"ping"}`, mcpInvalidRequest, "id must be"},
+		{"no method", `{"jsonrpc":"2.0","id":1}`, mcpInvalidRequest, "names a method"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			handled := server.HandleMessage(ctx, []byte(tc.raw))
+			assert.Equal(t, MessageInvalid, handled.Kind)
+			require.NotNil(t, handled.Response)
+			require.NotNil(t, handled.Response.Error)
+			assert.Equal(t, tc.code, handled.Response.Error.Code)
+			assert.Contains(t, handled.Response.Error.Message, tc.want)
+		})
+	}
+
+	t.Run("pinned protocol versions answer the latest to an unknown request", func(t *testing.T) {
+		server.SetProtocolVersions("2025-06-18", "2025-11-25")
+		handled := server.HandleMessage(ctx, []byte(rpc(t, 1, "initialize", map[string]any{"protocolVersion": "2024-11-05"})))
+		result := handled.Response.Result.(map[string]any)
+		assert.Equal(t, "2025-11-25", result["protocolVersion"])
+		assert.False(t, server.SupportsProtocolVersion("2024-11-05"))
+		assert.True(t, server.SupportsProtocolVersion("2025-06-18"))
+	})
+}
+
+// TestMCPEnvelopeValidation: valid JSON with the wrong shape is an invalid
+// request answered under its own id; a response carrying both result and
+// error is refused; bad initialize params and any tools/list cursor are
+// invalid params.
+func TestMCPEnvelopeValidation(t *testing.T) {
+	fx := newFixture(t)
+	server := NewMCPServer(fx.Runner, TierSmall)
+	ctx := context.Background()
+	for _, tc := range []struct {
+		name, raw string
+		code      int
+		id        string
+	}{
+		{"a method of the wrong type", `{"jsonrpc":"2.0","id":4,"method":5}`, mcpInvalidRequest, "4"},
+		{"params of the wrong type keep the id readable", `{"jsonrpc":"2.0","id":"a","method":"ping","params":"x"}`, mcpInvalidRequest, `"a"`},
+		{"not an object", `"hello"`, mcpInvalidRequest, "null"},
+		{"result and error together", `{"jsonrpc":"2.0","id":2,"result":{},"error":{"code":1,"message":"x"}}`, mcpInvalidRequest, "2"},
+		{"bad initialize params", `{"jsonrpc":"2.0","id":5,"method":"initialize","params":{"protocolVersion":7}}`, mcpInvalidParams, "5"},
+		{"a tools/list cursor", `{"jsonrpc":"2.0","id":6,"method":"tools/list","params":{"cursor":"next"}}`, mcpInvalidParams, "6"},
+		{"bad tools/list params", `{"jsonrpc":"2.0","id":7,"method":"tools/list","params":{"cursor":1}}`, mcpInvalidParams, "7"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			handled := server.HandleMessage(ctx, []byte(tc.raw))
+			require.NotNil(t, handled.Response)
+			require.NotNil(t, handled.Response.Error, "%v", handled.Response)
+			assert.Equal(t, tc.code, handled.Response.Error.Code)
+			assert.Equal(t, tc.id, string(handled.Response.ID))
+		})
+	}
+	t.Run("not JSON stays a parse error", func(t *testing.T) {
+		handled := server.HandleMessage(ctx, []byte(`{"jsonrpc":`))
+		assert.Equal(t, mcpParseError, handled.Response.Error.Code)
+	})
+}
+
+func TestStructuredContentIsAlwaysAnObject(t *testing.T) {
+	assert.JSONEq(t, `{"a":1}`, string(structured(json.RawMessage(`{"a":1}`))))
+	assert.JSONEq(t, `{"result":[1,2]}`, string(structured(json.RawMessage(`[1,2]`))))
+	assert.JSONEq(t, `{"result":[{"n":1}]}`, string(structured([]map[string]int{{"n": 1}})))
+	assert.Nil(t, structured(nil))
+	assert.Nil(t, structured(json.RawMessage(`null`)))
+}

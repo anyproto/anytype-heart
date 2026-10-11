@@ -34,23 +34,36 @@ func v2ErrWithIssue(t *testing.T, err error) *v2model.Error {
 	return apiErr
 }
 
+// installDueDate installs the bundled dueDate in the test space.
+func installDueDate(t *testing.T, fx *v2Fixture) {
+	fx.addRelation(t, testSpaceId, objectstore.TestObject{
+		bundle.RelationKeyId:             domain.String("rel-duedate"),
+		bundle.RelationKeyRelationKey:    domain.String("dueDate"),
+		bundle.RelationKeyName:           domain.String("Due date"),
+		bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_date)),
+	})
+}
+
 func TestV2PropertyMintCollisionCheck(t *testing.T) {
-	t.Run("a caller key cannot shadow a bundled slug", func(t *testing.T) {
-		// given: "due_date" is bundled dueDate's derived slug. Before the
-		// union check, propertyKeyExists("due_date") missed (the store has
-		// dueDate, the bundle has dueDate) and the create pinned due_date as
-		// a stored relation key — shadowing the bundled slug forever.
+	t.Run("a caller key cannot shadow an installed bundled slug", func(t *testing.T) {
+		// given: "due_date" is bundled dueDate's derived slug, and the space
+		// has dueDate installed. Before the union check,
+		// propertyKeyExists("due_date") missed (the store has dueDate, the
+		// bundle has dueDate) and the create pinned due_date as a stored
+		// relation key — shadowing the bundled slug forever.
 		fx := newV2Fixture(t)
+		installDueDate(t, fx)
 
 		// when
 		_, err := fx.CreateProperty(context.Background(), testSpaceId,
 			v2model.CreatePropertyRequest{Key: "due_date", Name: "My due date", Format: "date"}, false)
 
-		// then: loud refusal naming the bundled holder — no create RPC
+		// then: loud refusal naming the built-in holder — no create RPC
 		apiErr := v2ErrWithIssue(t, err)
 		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		require.NotEmpty(t, apiErr.Issues)
-		assert.Contains(t, apiErr.Issues[0].Message, "bundled property")
+		assert.Contains(t, apiErr.Issues[0].Message, `taken by property "Due date"`)
+		assert.Contains(t, apiErr.Issues[0].Hint, `"due_date" is reserved by the built-in property`)
 	})
 
 	t.Run("normalization makes camel and snake collide", func(t *testing.T) {
@@ -79,11 +92,41 @@ func TestV2PropertyMintCollisionCheck(t *testing.T) {
 		v2ErrWithIssue(t, err)
 	})
 
+	t.Run("a dormant bundled key is free", func(t *testing.T) {
+		// given: dueDate is not installed, so it has no claim on due_date
+		// here (dormantBundledProperty)
+		fx := newV2Fixture(t)
+
+		// when
+		result, err := fx.CreateProperty(context.Background(), testSpaceId,
+			v2model.CreatePropertyRequest{Key: "due_date", Name: "My due date", Format: "text"}, true)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, result.Created.Properties, 1)
+		assert.Equal(t, "due_date", result.Created.Properties[0].Key)
+	})
+
+	t.Run("a built-in the app keeps everywhere stays reserved", func(t *testing.T) {
+		// given: creator is record keeping, held in every space
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateProperty(context.Background(), testSpaceId,
+			v2model.CreatePropertyRequest{Key: "creator", Name: "Author", Format: "text"}, true)
+
+		// then
+		apiErr := v2ErrWithIssue(t, err)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Contains(t, apiErr.Issues[0].Message, "bundled property")
+	})
+
 	t.Run("a name-derived slug is guarded too", func(t *testing.T) {
 		// no key given: the slug derives from the name and the union check
-		// still runs — a property NAMED "Due date" steers to bundled
+		// still runs — a property NAMED "Due date" steers to the installed
 		// due_date instead of silently minting a shadowing slug
 		fx := newV2Fixture(t)
+		installDueDate(t, fx)
 
 		_, err := fx.CreateProperty(context.Background(), testSpaceId,
 			v2model.CreatePropertyRequest{Name: "Due date", Format: "date"}, false)

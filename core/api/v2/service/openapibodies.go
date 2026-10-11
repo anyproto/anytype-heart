@@ -78,6 +78,9 @@ var openAPIBodyRecipes = map[string]func(c *openAPIBodyComposer) (json.RawMessag
 			return nil
 		})
 	},
+	v2model.OpSearchSpace:       func(c *openAPIBodyComposer) (json.RawMessage, error) { return c.searchBody() },
+	v2model.OpSearchGlobal:      func(c *openAPIBodyComposer) (json.RawMessage, error) { return c.searchBody() },
+	v2model.OpStreamSpaceSearch: func(c *openAPIBodyComposer) (json.RawMessage, error) { return c.searchBody() },
 	v2model.OpCreateType: func(c *openAPIBodyComposer) (json.RawMessage, error) {
 		return c.anyOf("the flat type body, or the interchange document with kind object_type",
 			func() (json.RawMessage, error) {
@@ -87,7 +90,7 @@ var openAPIBodyRecipes = map[string]func(c *openAPIBodyComposer) (json.RawMessag
 				})
 			},
 			func() (json.RawMessage, error) {
-				return c.pointer("type_document", "the type as an AnyBlock document: formatVersion 2.0, kind object_type, the definition under type_settings")
+				return c.pointer("type_document", "the type as an AnyBlock document: kind object_type, the definition under type_settings")
 			})
 	},
 	v2model.OpUpdateType: func(c *openAPIBodyComposer) (json.RawMessage, error) {
@@ -107,14 +110,14 @@ var openAPIBodyRecipes = map[string]func(c *openAPIBodyComposer) (json.RawMessag
 			})
 	},
 	v2model.OpCreateObject: func(c *openAPIBodyComposer) (json.RawMessage, error) {
-		return c.anyOf("the shortcut body, or a full AnyBlock document; formatVersion or blocks picks the document form",
+		return c.anyOf("the shortcut body, or a full AnyBlock document; a member only the document has, such as blocks, picks the document form",
 			func() (json.RawMessage, error) { return c.kind("shortcut") },
 			func() (json.RawMessage, error) {
-				return c.pointer("object", "a full AnyBlock document: formatVersion 2.0, properties, and blocks in preorder. It takes the shortcut's template member too")
+				return c.pointer("object", "a full AnyBlock document: properties, and blocks in preorder. It takes the shortcut's template member too")
 			})
 	},
 	v2model.OpCreateTemplate: func(c *openAPIBodyComposer) (json.RawMessage, error) {
-		return c.pointer("template", "the template as an AnyBlock document: formatVersion 2.0, kind template, template_for naming the type")
+		return c.pointer("template", "the template as an AnyBlock document: kind template, template_for naming the type")
 	},
 	v2model.OpValidate: func(c *openAPIBodyComposer) (json.RawMessage, error) {
 		return c.pointer(apiV2ValidateKind, "an AnyBlock document of any kind, checked without being stored")
@@ -275,6 +278,51 @@ func (c *openAPIBodyComposer) typePatchDocument() (json.RawMessage, error) {
 	return out, nil
 }
 
+// searchBody is the search request (v2model.SearchRequest): the query's
+// type, filter channels and sorts, the very members create_query takes, so a
+// caller writes a search and a saved query alike, plus the full-text query
+// and the row fields.
+func (c *openAPIBodyComposer) searchBody() (json.RawMessage, error) {
+	filters, err := c.kind("filters")
+	if err != nil {
+		return nil, fmt.Errorf("compose filters member: %w", err)
+	}
+	query, err := c.kind("query")
+	if err != nil {
+		return nil, fmt.Errorf("compose query members: %w", err)
+	}
+	var filtersNode, queryRoot map[string]any
+	if err := json.Unmarshal(filters, &filtersNode); err != nil {
+		return nil, fmt.Errorf("decode filters kind: %w", err)
+	}
+	if err := json.Unmarshal(query, &queryRoot); err != nil {
+		return nil, fmt.Errorf("decode query kind: %w", err)
+	}
+	members := queryRoot["properties"].(map[string]any)
+	filtersNode["description"] = "structured filter nodes (schema kind filters), an alternative to the compact filter string; a body sends at most one of the two"
+	filter := members["filter"].(map[string]any)
+	filter["description"] = "compact filter string (grammar on kind filters), an alternative to the structured filters array; a body sends at most one of the two"
+	typ := members["type"].(map[string]any)
+	typ["description"] = "a type key: only objects of this type"
+	return json.Marshal(map[string]any{
+		"type":                 "object",
+		"additionalProperties": false,
+		"properties": map[string]any{
+			"query":   map[string]any{"type": "string", "description": "full-text query over object names and indexed content"},
+			"type":    typ,
+			"filter":  filter,
+			"filters": filtersNode,
+			"sorts":   members["sorts"],
+			"fields": map[string]any{
+				"type":        "array",
+				"items":       map[string]any{"type": "string"},
+				"description": `property keys to include per row, as an array such as ["status","due_date"]; the list reads take the same array`,
+			},
+		},
+		"not": map[string]any{"required": []string{"filter", "filters"}, "properties": map[string]any{"filter": map[string]any{"minLength": 1}}},
+	})
+}
+
 // literal is a hand-written body, validated as JSON.
 func (c *openAPIBodyComposer) literal(schema string) (json.RawMessage, error) {
 	if !json.Valid([]byte(schema)) {
@@ -286,15 +334,112 @@ func (c *openAPIBodyComposer) literal(schema string) (json.RawMessage, error) {
 // pointer is an open object whose description names the discovery schema to
 // read first. The vocabulary is the operation id, which every wrapper
 // re-spells into its own tool name (the same rule as a hint's see_also).
+//
+// The object stays open, but its container members are declared by JSON
+// kind alone (see kindSkeleton): with no member typed, a host's model sent
+// blocks and properties as strings holding JSON.
 func (c *openAPIBodyComposer) pointer(kind, what string) (json.RawMessage, error) {
-	out, err := json.Marshal(map[string]any{
-		"type":        "object",
-		"description": what + "; its schema and a worked example come from " + v2model.OpGetSchema + " with kind " + kind,
-	})
+	skeleton, required, err := kindSkeleton(kind)
+	if err != nil {
+		return nil, err
+	}
+	body := map[string]any{
+		"type":                 "object",
+		"description":          what + "; its schema and a worked example come from " + v2model.RefGetSchema(kind).String(),
+		"properties":           skeleton,
+		"additionalProperties": true,
+	}
+	if len(required) > 0 {
+		body["required"] = required
+	}
+	out, err := json.Marshal(body)
 	if err != nil {
 		return nil, fmt.Errorf("encode pointer body for kind %q: %w", kind, err)
 	}
 	return out, nil
+}
+
+// maxSkeletonEnum bounds the enums a skeleton repeats: a short one tells the
+// caller the value to send, a long one (the generic document's every kind)
+// is the lookup's to list.
+const maxSkeletonEnum = 4
+
+// kindSkeleton is a served kind's top-level members that hold an object, an
+// array or a fixed value, each reduced to that JSON kind (and its const or
+// enum): enough for a caller to send the right shapes, nothing the lookup
+// does not repeat in full. Output-only members are left out.
+//
+// A required member of another kind (a template's template_for string) is
+// listed with its type and description and returned in required: left to
+// the lookup, a host's model put it under properties.
+func kindSkeleton(kind string) (map[string]any, []string, error) {
+	entry, err := schemaKind(kind)
+	if err != nil {
+		return nil, nil, err
+	}
+	var root struct {
+		Properties map[string]map[string]any `json:"properties"`
+		Defs       map[string]map[string]any `json:"$defs"`
+		Required   []string                  `json:"required"`
+	}
+	if err := json.Unmarshal(entry.Schema, &root); err != nil {
+		return nil, nil, fmt.Errorf("decode served schema %q: %w", kind, err)
+	}
+	resolve := func(member map[string]any) map[string]any {
+		if ref, ok := member["$ref"].(string); ok {
+			if def, ok := root.Defs[strings.TrimPrefix(ref, "#/$defs/")]; ok {
+				return def
+			}
+		}
+		return member
+	}
+	skeleton := map[string]any{}
+	for name, member := range root.Properties {
+		if out, _ := member["x-output-only"].(bool); out || name == "formatVersion" {
+			// formatVersion is assumed on a write, never asked for
+			continue
+		}
+		if v, ok := member["const"]; ok {
+			skeleton[name] = map[string]any{"const": v}
+			continue
+		}
+		if v, ok := member["enum"].([]any); ok && len(v) <= maxSkeletonEnum {
+			skeleton[name] = map[string]any{"enum": v}
+			continue
+		}
+		switch resolve(member)["type"] {
+		case "object":
+			skeleton[name] = map[string]any{"type": "object"}
+		case "array":
+			items := map[string]any{}
+			if it, ok := member["items"].(map[string]any); ok {
+				if t, ok := resolve(it)["type"]; ok {
+					items["type"] = t
+				}
+			}
+			skeleton[name] = map[string]any{"type": "array", "items": items}
+		}
+	}
+	var required []string
+	for _, name := range root.Required {
+		member, ok := root.Properties[name]
+		if !ok {
+			continue
+		}
+		required = append(required, name)
+		if _, done := skeleton[name]; done {
+			continue
+		}
+		listed := map[string]any{}
+		if t, ok := resolve(member)["type"]; ok {
+			listed["type"] = t
+		}
+		if d, ok := member["description"].(string); ok && d != "" {
+			listed["description"] = d
+		}
+		skeleton[name] = listed
+	}
+	return skeleton, required, nil
 }
 
 // envelope is `{"ops":[…]}` with the op vocabulary closed and each op's
@@ -312,7 +457,7 @@ func (c *openAPIBodyComposer) envelope(opNames []string, order string) (json.Raw
 				"type":        "array",
 				"minItems":    1,
 				"maxItems":    v2MaxOpsPerPatch,
-				"description": order + ". Each op's members, schema and example come from " + v2model.OpGetOpSchema + " with its op name",
+				"description": order + ". Each op's members, schema and example come from " + v2model.RefGetOpSchema("").String() + " with its op name",
 				"items": map[string]any{
 					"type":     "object",
 					"required": []string{"op"},

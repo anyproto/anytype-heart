@@ -19,8 +19,9 @@ import (
 // same finding: a verdict that names the fault but not the fix costs the
 // caller a round trip per fault, and the fix was one literal away.
 
-// formatVersionRequired is the one legal value, spelled once.
-var formatVersionRequired = fmt.Sprintf(`include "formatVersion":%q`, anyblockjson.FormatVersion)
+// formatVersionRequired is the repair for a wrong formatVersion: the one
+// legal value, spelled once, or no member at all.
+var formatVersionRequired = fmt.Sprintf(`omit formatVersion (the current version is assumed) or send %q`, anyblockjson.FormatVersion)
 
 // missingMemberIssue matches the validator's "missing property 'x'" verdict.
 var missingMemberIssue = regexp.MustCompile(`^missing property '([^']+)'$`)

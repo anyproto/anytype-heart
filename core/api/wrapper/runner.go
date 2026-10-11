@@ -18,7 +18,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
@@ -49,16 +48,18 @@ type Runner struct {
 	// only move the refusal from the client to the server.
 	AllowNewOptions bool
 
-	// mu serializes Run: the long-lived delivery shares one Runner across
+	// turn serializes Run: the long-lived delivery shares one Runner across
 	// concurrent tool calls, and a tool call is a session read-modify-write.
-	mu sync.Mutex
+	// A one-slot channel rather than a mutex so a caller whose deadline
+	// passes while it waits gives up instead of queueing forever.
+	turn chan struct{}
 
 	now func() time.Time
 }
 
 // NewRunner builds a runner over a client and a session store.
 func NewRunner(client *Client, store Store) *Runner {
-	return &Runner{client: client, store: store, now: time.Now}
+	return &Runner{client: client, store: store, now: time.Now, turn: make(chan struct{}, 1)}
 }
 
 // executors maps tool names to implementations. A test asserts this map and
@@ -95,14 +96,24 @@ func (r *Runner) Run(ctx context.Context, tool string, args map[string]any) (*Re
 	if err := validateArgs(def, args); err != nil {
 		return nil, err
 	}
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("run %s: %w", tool, err)
+	}
+	select {
+	case r.turn <- struct{}{}:
+		defer func() { <-r.turn }()
+	case <-ctx.Done():
+		return nil, fmt.Errorf("run %s: waiting for the previous call: %w", tool, ctx.Err())
+	}
 	session, err := r.store.Load()
 	if err != nil {
 		return nil, fmt.Errorf("load session: %w", err)
 	}
 	result, err := exec(r, ctx, session, args)
 	err = r.steerError(ctx, def, session, args, err)
+	if dropped := session.takeDropped(); dropped != "" && err == nil && result != nil {
+		result.Text += "\nnote: " + dropped
+	}
 	// the session is saved on BOTH paths: a failed mutation has already
 	// minted its Idempotency-Key (Session.LastWrite), and dropping it is
 	// exactly the double-apply the reuse window exists to prevent — the

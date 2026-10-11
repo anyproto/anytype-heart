@@ -1,15 +1,16 @@
 name: Mirror Changes to any-block
 
+# A release carries the protos the format is pinned to, so any-block follows
+# releases only: a nightly, a release candidate or a develop merge would hand
+# it a schema no released heart writes. A tag push has no path filter
+# (GitHub evaluates none for tags); the job pushes nothing when any-block
+# already matches.
 on:
   push:
-    paths:
-      - 'pkg/lib/pb/model/protos/models.proto'
-      - 'pkg/lib/pb/model/protos/export_report.proto'
-      - 'pb/protos/changes.proto'
-      - 'pb/protos/events.proto'
-      - 'pb/protos/snapshot.proto'
-    branches:
-      - main
+    tags:
+      - 'v*.*.*'
+      - '!v*-nightly*'
+      - '!v*-rc*'
   workflow_dispatch:
 
 jobs:
@@ -92,5 +93,5 @@ jobs:
           exit 0
         fi
         git commit -m "Update proto files" \
-          -m "Mirrored from anytype-heart ${GITHUB_SHA}. Run 'go generate ./format/v1 ./codec/anyblockjson' in any-block to refresh the JSON Schemas and Go bindings."
+          -m "Mirrored from anytype-heart ${GITHUB_REF_NAME} (${GITHUB_SHA}). Run 'go generate ./format/v1 ./codec/anyblockjson' in any-block to refresh the JSON Schemas and Go bindings."
         git push origin main

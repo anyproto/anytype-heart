@@ -20,7 +20,16 @@ var (
 	v1ProtoImport   = regexp.MustCompile(`"(?:[^"]*/)?(models|events|changes|snapshot)\.proto"`)
 )
 
+// anyBlockProtoCheckEnv opts into the canonical-source comparison. It is a
+// manual check (the "AnyBlock proto check" workflow), not part of every test
+// run: any-block takes Heart's protos on release, so between releases Heart is
+// ahead of the pinned module by design, and a PR cannot make the two agree.
+const anyBlockProtoCheckEnv = "ANYBLOCK_PROTO_CHECK"
+
 func TestV1ProtosMatchAnyBlockCanonicalSources(t *testing.T) {
+	if os.Getenv(anyBlockProtoCheckEnv) == "" {
+		t.Skipf("set %s=1 to compare against the pinned any-block protos", anyBlockProtoCheckEnv)
+	}
 	heartRoot := repositoryRoot(t)
 	anyBlockRoot := moduleRoot(t, heartRoot, anyBlockModule)
 

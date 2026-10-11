@@ -83,6 +83,11 @@ func (a *objectCreateAdapter) CreateObjectFromSnapshot(ctx context.Context, spac
 	// created — and so it is never offered to the template service as one of
 	// the document's own details (a template state strips origin on purpose)
 	createState.SetDetail(bundle.RelationKeyOrigin, domain.Int64(int64(model.ObjectOrigin_api)))
+	if templateId == "" {
+		// a template's state arrives shaped by the template service, its
+		// title block included where the layout has one
+		keepUnnamedDocumentWhole(createState)
+	}
 
 	id, _, err := a.creator.CreateSmartBlockFromStateInSpace(ctx, spc, typeKeys, createState)
 	if err != nil {
@@ -90,6 +95,23 @@ func (a *objectCreateAdapter) CreateObjectFromSnapshot(ctx context.Context, spac
 	}
 	outcome.Id = id
 	return outcome, nil
+}
+
+// keepUnnamedDocumentWhole gives a document created without a name the
+// title block its layout renders the name in, empty. A new object without
+// one is shaped by the editor's layout conversion, which takes the first
+// text block of any style as the name and deletes it
+// (template.WithNameFromFirstBlock) — right for an import or a note turning
+// into a page, wrong for a document a caller sent block by block: its first
+// heading vanished into the name of a template created without one. A name
+// the caller wants from markdown is the API's to lift, with a notice
+// (v2service.liftMarkdownTitle); a document's blocks stay as sent. A note
+// drops the block again, as it drops every title.
+func keepUnnamedDocumentWhole(st *state.State) {
+	if st.Details().GetString(bundle.RelationKeyName) != "" || st.Exists(state.TitleBlockID) {
+		return
+	}
+	editortemplate.InitTemplate(st, editortemplate.WithTitle)
 }
 
 // applyTemplate rebases the document on the state the template produces.
