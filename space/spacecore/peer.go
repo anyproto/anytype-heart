@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/netip"
 	"slices"
-	"strconv"
 	"strings"
 	"time"
 
@@ -20,7 +19,6 @@ import (
 	"github.com/anyproto/any-sync/net/pool"
 	"github.com/anyproto/any-sync/net/transport"
 
-	"github.com/anyproto/anytype-heart/net/addrs"
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 )
 
@@ -61,11 +59,9 @@ func (s *service) PeerDiscovered(ctx context.Context, discovered localdiscovery.
 	if s.peerDiscoveryObserver != nil {
 		s.peerDiscoveryObserver.OnLocalPeerDiscovered(discovered.PeerId, discovered.Addrs)
 	}
-	// under localAddrsMu: an inbound connection recorded between reading
-	// the remembered link-local and installing the list must not be lost
 	s.localAddrsMu.Lock()
-	s.rememberDiscovered(discovered.PeerId, discovered.Addrs)
-	s.setLocalPeerAddrs(discovered.PeerId, s.withInboundLinkLocal(discovered.PeerId, discovered.Addrs))
+	s.setBaseAddrs(discovered.PeerId, discovered.Addrs)
+	s.installLocalAddrs(discovered.PeerId)
 	s.localAddrsMu.Unlock()
 	s.rememberOwn(own)
 	shared, proof, err := s.exchangeOutbound(ctx, discovered.PeerId, &own)
@@ -199,11 +195,7 @@ func (s *service) setLocalPeerAddrs(peerId string, hostPorts []string) {
 	if s.peerIPs == nil {
 		s.peerIPs = map[string][]netip.Addr{}
 	}
-	if s.localAddrs == nil {
-		s.localAddrs = map[string][]string{}
-	}
 	s.peerIPs[peerId] = ips
-	s.localAddrs[peerId] = slices.Clone(hostPorts)
 	s.ownMu.Unlock()
 	// addSchema pins the transport for local peers (yamux); see its comment
 	s.peerService.SetPeerAddrs(peerId, s.addSchema(hostPorts))
@@ -222,70 +214,12 @@ func (s *service) peerIPsOf(peerId, connAddr string) []netip.Addr {
 }
 
 func (s *service) forgetPeerIPs(peerId string) {
+	s.localAddrsMu.Lock()
+	s.forgetLocalPeerAddrs(peerId)
+	s.localAddrsMu.Unlock()
 	s.ownMu.Lock()
 	defer s.ownMu.Unlock()
 	delete(s.peerIPs, peerId)
-	delete(s.localAddrs, peerId)
-	delete(s.discoveredAddrs, peerId)
-	s.dropInboundLinkLocalLocked(peerId)
-}
-
-// inboundLinkLocalTTL bounds how long an inbound link-local address outlives
-// the connection it came from without a newer one: the AAAA TTL heart's
-// responder announces, so it never lingers longer than a discovered one.
-const inboundLinkLocalTTL = 2 * time.Minute
-
-// inboundLinkLocal is the link-local address a peer last connected from.
-// expiry takes it out of the installed address list when it isn't renewed.
-type inboundLinkLocal struct {
-	hostPort string
-	at       time.Time
-	expiry   *time.Timer
-}
-
-// timeNow and afterFunc are seams for tests.
-var (
-	timeNow   = time.Now
-	afterFunc = time.AfterFunc
-)
-
-// rememberInboundLinkLocal is called under localAddrsMu.
-func (s *service) rememberInboundLinkLocal(peerId, hostPort string) {
-	s.ownMu.Lock()
-	defer s.ownMu.Unlock()
-	if s.inboundLinkLocal == nil {
-		s.inboundLinkLocal = map[string]*inboundLinkLocal{}
-	}
-	s.dropInboundLinkLocalLocked(peerId)
-	remembered := &inboundLinkLocal{hostPort: hostPort, at: timeNow()}
-	remembered.expiry = afterFunc(inboundLinkLocalTTL, func() { s.expireInboundLinkLocal(peerId, remembered) })
-	s.inboundLinkLocal[peerId] = remembered
-}
-
-// forgetInboundLinkLocal is called under localAddrsMu.
-func (s *service) forgetInboundLinkLocal(peerId string) {
-	s.ownMu.Lock()
-	defer s.ownMu.Unlock()
-	s.dropInboundLinkLocalLocked(peerId)
-}
-
-func (s *service) dropInboundLinkLocalLocked(peerId string) {
-	if remembered, ok := s.inboundLinkLocal[peerId]; ok {
-		remembered.expiry.Stop()
-		delete(s.inboundLinkLocal, peerId)
-	}
-}
-
-// rememberDiscovered keeps the latest discovery list of a peer: discovery
-// reports a peer again only when its addresses change, so this is still
-// what discovery says when a remembered inbound address expires.
-func (s *service) rememberDiscovered(peerId string, addrs []string) {
-	s.ownMu.Lock()
-	defer s.ownMu.Unlock()
-	if s.discoveredAddrs == nil {
-		s.discoveredAddrs = map[string][]string{}
-	}
-	s.discoveredAddrs[peerId] = slices.Clone(addrs)
 }
 
 // liveLinkLocalConn reports whether we hold a connection to the peer over an
@@ -302,104 +236,6 @@ var liveLinkLocalConn = func(s *service, peerId string) bool {
 		}
 	}
 	return false
-}
-
-// expireInboundLinkLocal runs when a remembered address went unrenewed for
-// inboundLinkLocalTTL. A live link-local connection to the peer renews it:
-// exchanges, the only other renewal, run on discovery and on space list
-// changes, not while a cable simply stays in use. Otherwise it leaves the
-// installed list, not only the next discovery's, so it can't keep taking
-// the dial budget first; the link-local addresses discovery last reported
-// (the same route, perhaps zoned by index instead of name) take its place.
-func (s *service) expireInboundLinkLocal(peerId string, remembered *inboundLinkLocal) {
-	s.localAddrsMu.Lock()
-	defer s.localAddrsMu.Unlock()
-	s.ownMu.Lock()
-	current := s.inboundLinkLocal[peerId]
-	s.ownMu.Unlock()
-	if current != remembered {
-		// renewed or forgotten meanwhile
-		return
-	}
-	if liveLinkLocalConn(s, peerId) {
-		s.ownMu.Lock()
-		remembered.at = timeNow()
-		remembered.expiry = afterFunc(inboundLinkLocalTTL, func() { s.expireInboundLinkLocal(peerId, remembered) })
-		s.ownMu.Unlock()
-		return
-	}
-	s.ownMu.Lock()
-	delete(s.inboundLinkLocal, peerId)
-	installed, ok := s.localAddrs[peerId]
-	discovered := slices.Clone(s.discoveredAddrs[peerId])
-	s.ownMu.Unlock()
-	if !ok || !slices.Contains(installed, remembered.hostPort) {
-		return
-	}
-	rest := slices.DeleteFunc(slices.Clone(installed), func(a string) bool { return a == remembered.hostPort })
-	var restored []string
-	for _, a := range discovered {
-		if isLinkLocalAddr(a) && !slices.Contains(rest, a) {
-			restored = append(restored, a)
-		}
-	}
-	s.setLocalPeerAddrs(peerId, append(restored, rest...))
-}
-
-// linkLocalUsable reports whether the interface a zone names (by name or
-// decimal index) is up and has no routable IPv4 address: link-local is only
-// used on such a link (GO-7581). It goes through addrs, which on Android
-// asks the app (netlink is closed to apps there). A var so tests can stub it.
-var linkLocalUsable = func(zone string) bool {
-	ifaces, err := addrs.GetInterfacesAddrs()
-	if err != nil {
-		return false
-	}
-	index, errAtoi := strconv.Atoi(zone)
-	for i := range ifaces.Interfaces {
-		iface := &ifaces.Interfaces[i]
-		if iface.Name != zone && (errAtoi != nil || iface.Index != index) {
-			continue
-		}
-		return iface.Flags&net.FlagUp != 0 && !addrs.HasRoutableIPv4(iface)
-	}
-	return false
-}
-
-// withInboundLinkLocal puts the link-local address the peer last connected
-// from in front of addrs when addrs has no link-local address of its own.
-// A phone's native discovery resolves IPv4 only, so over a cable it finds
-// nothing usable (or an IPv4 address the cable can't reach); without this
-// it would replace the one address that works, recorded by recordLocalPeer.
-// The address is dropped once it is older than inboundLinkLocalTTL and no
-// link-local connection to the peer is live, its interface is gone, down or
-// has gained routable IPv4, or the peer connected to us another way
-// (recordLocalPeer).
-func (s *service) withInboundLinkLocal(peerId string, addrs []string) []string {
-	s.ownMu.Lock()
-	remembered, ok := s.inboundLinkLocal[peerId]
-	var (
-		hostPort string
-		at       time.Time
-	)
-	if ok {
-		hostPort, at = remembered.hostPort, remembered.at
-	}
-	s.ownMu.Unlock()
-	if !ok || slices.ContainsFunc(addrs, isLinkLocalAddr) {
-		return addrs
-	}
-	ip, _ := hostIP(hostPort)
-	expired := timeNow().Sub(at) > inboundLinkLocalTTL && !liveLinkLocalConn(s, peerId)
-	if expired || !linkLocalUsable(ip.Zone()) {
-		s.ownMu.Lock()
-		if s.inboundLinkLocal[peerId] == remembered {
-			s.dropInboundLinkLocalLocked(peerId)
-		}
-		s.ownMu.Unlock()
-		return addrs
-	}
-	return append([]string{hostPort}, addrs...)
 }
 
 // isLinkLocalAddr reports whether hostPort is a dialable IPv6 link-local

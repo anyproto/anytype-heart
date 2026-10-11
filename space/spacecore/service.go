@@ -110,19 +110,12 @@ type service struct {
 	// peerIPs is each LAN peer's last known addresses, so an exchange can
 	// tell it only our addresses on its subnets (GO-7580); guarded by ownMu
 	peerIPs map[string][]netip.Addr
-	// inboundLinkLocal is the IPv6 link-local address a LAN peer last
-	// connected to us from (GO-7581), kept across discoveries that carry
-	// none; guarded by ownMu
-	inboundLinkLocal map[string]*inboundLinkLocal
-	// localAddrs is each LAN peer's installed address list ("ip:port");
-	// guarded by ownMu
-	localAddrs map[string][]string
-	// discoveredAddrs is each LAN peer's latest discovery list; guarded by
-	// ownMu
-	discoveredAddrs map[string][]string
-	// localAddrsMu serializes installing a LAN peer's address list, from
-	// discovery and from an inbound exchange; never held across an RPC
+	// localAddrsMu guards localPeers and serializes installing a LAN peer's
+	// address list, from discovery, an inbound exchange and route expiry;
+	// taken before ownMu, never held across an RPC or a pool call
 	localAddrsMu sync.Mutex
+	// localPeers is where each LAN peer's dial list comes from (GO-7581)
+	localPeers map[string]*localPeerAddrs
 	// exchangeFn is the outbound handshake with one peer (shared spaces, and
 	// whether the result is a v2 proof); a seam for tests
 	exchangeFn func(ctx context.Context, peerId string, own *localdiscovery.OwnAddresses) (shared []string, proof bool, err error)
