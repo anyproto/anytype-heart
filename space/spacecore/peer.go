@@ -57,11 +57,6 @@ func (s *service) PeerDiscovered(ctx context.Context, discovered localdiscovery.
 	if s.peerDiscoveryObserver != nil {
 		s.peerDiscoveryObserver.OnLocalPeerDiscovered(discovered.PeerId, discovered.Addrs)
 	}
-	var live []netip.Addr
-	if discovered.Link != "" {
-		// outside localAddrsMu: Pick may wait on the pool
-		live = liveLinkLocalAddrs(s, discovered.PeerId)
-	}
 	s.localAddrsMu.Lock()
 	if s.localAddrsClosed {
 		s.localAddrsMu.Unlock()
@@ -72,27 +67,14 @@ func (s *service) PeerDiscovered(ctx context.Context, discovered localdiscovery.
 	} else {
 		s.setRoute(discovered.PeerId, routeMDNS+discovered.Link, discovered.Addrs)
 	}
-	installed := s.installLocalAddrs(discovered.PeerId)
-	// a cable answer comes again every two minutes or so. While a link-local
-	// connection to the peer is up and an exchange over this very list
-	// succeeded, it has nothing new to tell. Without a connection the
-	// exchange dials, and so teaches the peer our address on the cable again
-	// (its inbound route to us expires with the connection). A base discovery
-	// always exchanges, as on develop.
-	skip := discovered.Link != "" && len(live) > 0 && s.exchangedWith(discovered.PeerId, installed)
+	s.installLocalAddrs(discovered.PeerId)
 	s.localAddrsMu.Unlock()
 	s.rememberOwn(own)
-	if skip {
-		return
-	}
+	// every discovery exchanges, as on develop. A cable answers again every
+	// two to three minutes, so a cable peer is exchanged with at that pace,
+	// which also teaches a restarted peer, or one whose route to us
+	// expired, our address on the cable again
 	shared, proof, err := s.exchangeFn(ctx, discovered.PeerId, &own)
-	s.localAddrsMu.Lock()
-	if err != nil {
-		// the next cable answer tries again: the peer may not listen yet
-		installed = nil
-	}
-	s.markExchanged(discovered.PeerId, installed)
-	s.localAddrsMu.Unlock()
 	if err != nil {
 		return
 	}

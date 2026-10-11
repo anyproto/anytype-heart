@@ -12,7 +12,9 @@ import (
 // runs is parked. Discoveries from different sources (the base list, each
 // cable, see DiscoveredPeer.Link) are all kept and run in arrival order; a
 // newer one from the same source replaces the parked one in place (as the
-// app bridge's discoveryObserver keeps only the latest).
+// app bridge's discoveryObserver keeps only the latest). Used only while a
+// cable is selected; without one each discovery runs at once, as on develop
+// (see readAnswers).
 type peerDiscoveries struct {
 	mu       sync.Mutex
 	inflight map[string]*pendingDiscovery

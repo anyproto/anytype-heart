@@ -242,6 +242,21 @@ func TestLocalPeerAddrsStore(t *testing.T) {
 		assert.Len(t, f.timers, 2, "not armed again")
 	})
 
+	t.Run("a live connection to another address on the same cable does not renew it", func(t *testing.T) {
+		// given: the phone came in from fe80::62, now answers as fe80::63
+		f := newLocalAddrsFixture(t)
+		f.inbound("phone", "yamux://[fe80::62%en16]:51234")
+		f.discover("phone", "31", "[fe80::63%31]:4006")
+		f.live = []netip.Addr{netip.MustParseAddr("fe80::63%31")}
+
+		// when: the inbound route reaches its deadline
+		f.timers[0].fire()
+
+		// then
+		assert.Equal(t, []string{"yamux://[fe80::63%31]:4006"}, f.installed("phone"))
+		assert.Len(t, f.timers, 2, "not armed again")
+	})
+
 	t.Run("a renewed route over an interface no longer usable leaves the list", func(t *testing.T) {
 		// given: the cable interface got routable IPv4 meanwhile
 		f := newLocalAddrsFixture(t)
@@ -292,19 +307,34 @@ func TestLocalPeerAddrsStore(t *testing.T) {
 		assert.Len(t, f.timers, 2)
 	})
 
-	t.Run("a forgotten peer drops its routes and timers", func(t *testing.T) {
+	t.Run("a forgotten peer drops its routes and timers, and the routes leave the list", func(t *testing.T) {
 		// given
 		f := newLocalAddrsFixture(t)
+		f.discover("phone", "", "192.168.1.62:4006")
 		f.discover("phone", "31", "[fe80::62%31]:4006")
 
-		// when
+		// when: the peer manager gave up on it
 		f.forgetPeerIPs("phone")
 
 		// then
 		assert.False(t, f.timers[0].timer.Stop(), "the timer was stopped")
 		assert.Empty(t, f.localPeers)
+		assert.Equal(t, []string{"yamux://192.168.1.62:4006"}, f.installed("phone"))
 		f.timers[0].fire()
 		assert.Len(t, f.timers, 1, "nothing armed for a forgotten peer")
+	})
+
+	t.Run("a forgotten peer without routes keeps its list, as on develop", func(t *testing.T) {
+		// given
+		f := newLocalAddrsFixture(t)
+		f.discover("phone", "", "192.168.1.62:4006")
+		f.peers.addrs["phone"] = []string{"sentinel"}
+
+		// when
+		f.forgetPeerIPs("phone")
+
+		// then: not installed again
+		assert.Equal(t, []string{"sentinel"}, f.installed("phone"))
 	})
 
 	t.Run("closing stops every route, and nothing is installed after", func(t *testing.T) {

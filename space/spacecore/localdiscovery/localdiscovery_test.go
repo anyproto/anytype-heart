@@ -19,6 +19,7 @@ import (
 	"github.com/libp2p/zeroconf/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -414,6 +415,76 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		case <-time.After(5 * time.Second):
 			t.Errorf("peer discovery did not call peer update")
 		}
+	})
+}
+
+func TestReadAnswersDispatch(t *testing.T) {
+	deliver := func(t *testing.T, ld *zeroconfDiscovery, ips ...string) {
+		t.Helper()
+		entries := make(chan *zeroconf.ServiceEntry, len(ips))
+		for _, ip := range ips {
+			entries <- &zeroconf.ServiceEntry{
+				ServiceRecord: zeroconf.ServiceRecord{Instance: "peer2"},
+				Port:          4006,
+				AddrIPv4:      []gonet.IP{gonet.ParseIP(ip)},
+			}
+		}
+		close(entries)
+		closeWait := &sync.WaitGroup{}
+		closeWait.Add(1)
+		ld.readAnswers(closeWait, entries)
+	}
+
+	t.Run("without a cable each discovery runs at once, as on develop", func(t *testing.T) {
+		// given: the first exchange with peer2 hangs
+		f := newFixture(t)
+		ld := f.LocalDiscovery.(*zeroconfDiscovery)
+		n := &blockingNotifier{release: make(chan struct{}), first: make(chan struct{})}
+		ld.SetNotifier(n)
+
+		// when
+		deliver(t, ld, "192.168.1.62", "192.168.1.63", "192.168.1.64")
+
+		// then: all three reach the notifier while the first still runs
+		assert.Eventually(t, func() bool {
+			n.mu.Lock()
+			defer n.mu.Unlock()
+			return len(n.got) == 3
+		}, 2*time.Second, 10*time.Millisecond)
+		n.mu.Lock()
+		assert.ElementsMatch(t, [][]string{{"192.168.1.62:4006"}, {"192.168.1.63:4006"}, {"192.168.1.64:4006"}}, n.got)
+		n.mu.Unlock()
+		close(n.release)
+	})
+
+	t.Run("with a cable a peer's discoveries run one at a time", func(t *testing.T) {
+		// given
+		f := newFixture(t)
+		ld := f.LocalDiscovery.(*zeroconfDiscovery)
+		ld.linkLocal = newLinkLocalIfaces(
+			[]ownAddr{{iface: "en16", net: netip.MustParsePrefix("fe80::1/64"), linkLocal: true}},
+			[]gonet.Interface{{Index: 31, Name: "en16"}},
+		)
+		n := &blockingNotifier{release: make(chan struct{}), first: make(chan struct{})}
+		ld.SetNotifier(n)
+
+		// when
+		deliver(t, ld, "192.168.1.62", "192.168.1.63", "192.168.1.64")
+
+		// then: the rest waits for the first, the latest base list next
+		<-n.first
+		ld.discoveries.mu.Lock()
+		pending := ld.discoveries.inflight["peer2"]
+		ld.discoveries.mu.Unlock()
+		require.NotNil(t, pending, "queued")
+		require.Len(t, pending.next, 1)
+		assert.Equal(t, []string{"192.168.1.64:4006"}, pending.next[0].peer.Addrs)
+		close(n.release)
+		assert.Eventually(t, func() bool {
+			n.mu.Lock()
+			defer n.mu.Unlock()
+			return len(n.got) == 2
+		}, 2*time.Second, 10*time.Millisecond)
 	})
 }
 

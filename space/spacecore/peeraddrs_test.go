@@ -197,74 +197,6 @@ func TestPeerDiscoveredSources(t *testing.T) {
 		assert.Equal(t, []string{"yamux://[fe80::62%31]:4006", "yamux://192.168.1.62:4006"}, f.installed("phone"))
 	})
 
-	t.Run("a repeated cable discovery does not exchange again while a link-local connection is up", func(t *testing.T) {
-		// given
-		f := newLocalAddrsFixture(t)
-		calls := f.stubExchange(t)
-		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
-		f.live = []netip.Addr{netip.MustParseAddr("fe80::62%31")}
-
-		// when
-		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
-
-		// then
-		assert.Equal(t, 1, *calls)
-	})
-
-	t.Run("a failed exchange is retried on the next cable discovery", func(t *testing.T) {
-		// given: the phone did not listen yet; a connection is up later
-		f := newLocalAddrsFixture(t)
-		calls := f.stubExchange(t, errors.New("connection refused"))
-		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
-		f.live = []netip.Addr{netip.MustParseAddr("fe80::62%31")}
-
-		// when
-		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
-		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
-
-		// then: retried once, then done
-		assert.Equal(t, 2, *calls)
-	})
-
-	t.Run("a list that changed during the exchange is exchanged over again", func(t *testing.T) {
-		// given: the phone connects to us over Wi-Fi meanwhile
-		f := newLocalAddrsFixture(t)
-		calls := f.stubExchange(t)
-		exchange := f.exchangeFn
-		f.exchangeFn = func(ctx context.Context, peerId string, own *localdiscovery.OwnAddresses) ([]string, bool, error) {
-			if *calls == 0 {
-				f.inbound("phone", "yamux://192.168.1.62:51234")
-			}
-			return exchange(ctx, peerId, own)
-		}
-		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
-		f.live = []netip.Addr{netip.MustParseAddr("fe80::62%31")}
-
-		// when
-		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
-
-		// then
-		assert.Equal(t, 2, *calls)
-	})
-
-	t.Run("without a link-local connection a cable discovery exchanges again", func(t *testing.T) {
-		// given: our exchange taught the phone our cable address, then the
-		// connection closed and the phone's route to us expired
-		f := newLocalAddrsFixture(t)
-		calls := f.stubExchange(t)
-		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
-		f.live = []netip.Addr{netip.MustParseAddr("fe80::62%31")}
-		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
-		require.Equal(t, 1, *calls)
-		f.live = nil
-
-		// when: the cable answers again, unchanged
-		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
-
-		// then: dialed again, which teaches the phone our address again
-		assert.Equal(t, 2, *calls)
-	})
-
 	t.Run("duplicate base addresses go in as develop installs them", func(t *testing.T) {
 		// given
 		f := newLocalAddrsFixture(t)
@@ -277,21 +209,19 @@ func TestPeerDiscoveredSources(t *testing.T) {
 		assert.Equal(t, []string{"yamux://192.168.1.62:4006", "yamux://192.168.1.62:4006"}, f.installed("p1"))
 	})
 
-	t.Run("a peer forgotten during the exchange stays forgotten", func(t *testing.T) {
-		// given: the peer store drops the phone while we exchange
+	t.Run("every cable discovery exchanges, after a failure too", func(t *testing.T) {
+		// given: the phone did not listen yet; later a cable connection is up
 		f := newLocalAddrsFixture(t)
-		f.stubExchange(t)
-		exchange := f.exchangeFn
-		f.exchangeFn = func(ctx context.Context, peerId string, own *localdiscovery.OwnAddresses) ([]string, bool, error) {
-			f.forgetPeerIPs(peerId)
-			return exchange(ctx, peerId, own)
+		calls := f.stubExchange(t, errors.New("connection refused"))
+		f.live = []netip.Addr{netip.MustParseAddr("fe80::62%31")}
+
+		// when: the cable answers three times, unchanged
+		for range 3 {
+			f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
 		}
 
-		// when
-		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
-
 		// then
-		assert.Empty(t, f.localPeers)
+		assert.Equal(t, 3, *calls)
 	})
 
 	t.Run("a base discovery always exchanges, as on develop", func(t *testing.T) {

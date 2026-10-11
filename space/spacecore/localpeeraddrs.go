@@ -39,9 +39,6 @@ const linkRouteTTL = 4 * time.Minute
 type localPeerAddrs struct {
 	base   []string
 	routes map[string]*linkRoute
-	// exchanged is the installed list at the last outbound exchange, when it
-	// succeeded; nil otherwise
-	exchanged []string
 }
 
 // linkRoute is one source's addresses, each "[ip%index]:port" with the
@@ -116,28 +113,23 @@ func (s *service) installLocalAddrs(peerId string) []string {
 	return installed
 }
 
-// exchangedWith reports whether the last outbound exchange with the peer
-// succeeded over exactly the installed list.
-func (s *service) exchangedWith(peerId string, installed []string) bool {
-	p, ok := s.localPeers[peerId]
-	return ok && slices.Equal(p.exchanged, installed)
-}
-
-// markExchanged records the list an outbound exchange ran over, nil when it
-// failed. A peer forgotten meanwhile stays forgotten.
-func (s *service) markExchanged(peerId string, installed []string) {
-	if p, ok := s.localPeers[peerId]; ok {
-		p.exchanged = slices.Clone(installed)
-	}
-}
-
 // forgetLocalPeerAddrs drops everything known about the peer's addresses.
+// Its route addresses leave the installed list, as no timer would take them
+// out any more; a peer without routes keeps its list, as on develop.
 func (s *service) forgetLocalPeerAddrs(peerId string) {
 	p, ok := s.localPeers[peerId]
 	if !ok {
 		return
 	}
-	for _, route := range p.routes {
+	if len(p.routes) > 0 {
+		s.setLocalPeerAddrs(peerId, p.base)
+	}
+	s.dropLocalPeer(peerId)
+}
+
+// dropLocalPeer stops the peer's route timers and drops its entry.
+func (s *service) dropLocalPeer(peerId string) {
+	for _, route := range s.localPeers[peerId].routes {
 		route.expiry.Stop()
 	}
 	delete(s.localPeers, peerId)
@@ -150,7 +142,7 @@ func (s *service) closeLocalPeerAddrs() {
 	defer s.localAddrsMu.Unlock()
 	s.localAddrsClosed = true
 	for peerId := range s.localPeers {
-		s.forgetLocalPeerAddrs(peerId)
+		s.dropLocalPeer(peerId)
 	}
 }
 
@@ -182,6 +174,12 @@ func (s *service) expireRoute(peerId, source string, route *linkRoute) {
 // connections to the peer run over, zoned by the decimal index of a usable
 // interface, without dialing. Called outside localAddrsMu. A var so tests
 // can stub it.
+//
+// Pick returns the incoming connection first, and the pool lists no other:
+// a live outgoing cable connection hidden behind an incoming one does not
+// renew its route. The peer is then dialed over the rest of its list (the
+// incoming connection itself stays in use), and the next cable discovery
+// puts the route back.
 var liveLinkLocalAddrs = pooledLinkLocalAddrs
 
 func pooledLinkLocalAddrs(s *service, peerId string) []netip.Addr {
