@@ -286,6 +286,22 @@ func TestPeerDiscoveredSources(t *testing.T) {
 		assert.Equal(t, []string{"yamux://[fe80::62%31]:4006", "yamux://192.168.1.62:4006"}, f.installed("phone"))
 	})
 
+	t.Run("without a cable an empty discovery empties the list and still exchanges, as on develop", func(t *testing.T) {
+		// given
+		f := newLocalAddrsFixture(t)
+		f.usable = nil
+		calls := f.stubExchange(t)
+		f.peerDiscovered("p1", "", "192.168.1.62:4006")
+
+		// when: an answer without IPv4
+		f.peerDiscovered("p1", "")
+
+		// then
+		assert.Equal(t, []string{}, f.installed("p1"))
+		assert.Equal(t, 2, *calls)
+		assert.Equal(t, [][]string{{"yamux://192.168.1.62:4006"}, {}}, f.dialed)
+	})
+
 	t.Run("without a cable the list and the exchanges are develop's", func(t *testing.T) {
 		// given: no link-local-only interface, so no cable discovery either
 		f := newLocalAddrsFixture(t)
