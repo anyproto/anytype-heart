@@ -35,6 +35,9 @@ const linkRouteTTL = 4 * time.Minute
 type localPeerAddrs struct {
 	base   []string
 	routes map[string]*linkRoute
+	// exchanged is the installed list at the last outbound exchange, when it
+	// succeeded; nil otherwise
+	exchanged []string
 }
 
 type linkRoute struct {
@@ -93,6 +96,21 @@ func (s *service) installLocalAddrs(peerId string) []string {
 	installed := composeAddrs(p.routes, p.base, linkLocalZone)
 	s.setLocalPeerAddrs(peerId, installed)
 	return installed
+}
+
+// exchangedWith reports whether the last outbound exchange with the peer
+// succeeded over exactly the installed list.
+func (s *service) exchangedWith(peerId string, installed []string) bool {
+	p, ok := s.localPeers[peerId]
+	return ok && slices.Equal(p.exchanged, installed)
+}
+
+// markExchanged records the list an outbound exchange ran over, nil when it
+// failed. A peer forgotten meanwhile stays forgotten.
+func (s *service) markExchanged(peerId string, installed []string) {
+	if p, ok := s.localPeers[peerId]; ok {
+		p.exchanged = slices.Clone(installed)
+	}
 }
 
 // forgetLocalPeerAddrs drops everything known about the peer's addresses.

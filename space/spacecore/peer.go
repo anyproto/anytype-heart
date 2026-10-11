@@ -60,11 +60,29 @@ func (s *service) PeerDiscovered(ctx context.Context, discovered localdiscovery.
 		s.peerDiscoveryObserver.OnLocalPeerDiscovered(discovered.PeerId, discovered.Addrs)
 	}
 	s.localAddrsMu.Lock()
-	s.setBaseAddrs(discovered.PeerId, discovered.Addrs)
-	s.installLocalAddrs(discovered.PeerId)
+	if discovered.Link == "" {
+		s.setBaseAddrs(discovered.PeerId, discovered.Addrs)
+	} else {
+		s.setRoute(discovered.PeerId, routeMDNS+discovered.Link, discovered.Addrs)
+	}
+	installed := s.installLocalAddrs(discovered.PeerId)
+	// a cable answer comes again every two minutes or so: once an exchange
+	// over this very list succeeded, it has nothing new to tell. A base
+	// discovery always exchanges, as on develop.
+	skip := discovered.Link != "" && s.exchangedWith(discovered.PeerId, installed)
 	s.localAddrsMu.Unlock()
 	s.rememberOwn(own)
-	shared, proof, err := s.exchangeOutbound(ctx, discovered.PeerId, &own)
+	if skip {
+		return
+	}
+	shared, proof, err := s.exchangeFn(ctx, discovered.PeerId, &own)
+	s.localAddrsMu.Lock()
+	if err != nil {
+		// the next cable answer tries again: the peer may not listen yet
+		installed = nil
+	}
+	s.markExchanged(discovered.PeerId, installed)
+	s.localAddrsMu.Unlock()
 	if err != nil {
 		return
 	}
