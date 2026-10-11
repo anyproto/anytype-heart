@@ -358,8 +358,7 @@ func (l *zeroconfDiscovery) startServer() (err error) {
 		ifaces,
 		zeroconf.TTL(3600), // big ttl because we don't have re-broadcasting
 		zeroconf.ServerSelectIPTraffic(l.linkLocal.ipTraffic()),
-		zeroconf.ServerSelectIPv6Ifaces(l.linkLocal.indexes...),
-		zeroconf.ServerLinkLocalIPv6(l.linkLocal.indexes...),
+		zeroconf.ServerLinkLocalIPv6(l.linkLocal.indexes...), // IPv6 runs only on these interfaces
 		zeroconf.WriteTimeout(time.Second*3),
 	)
 	return
