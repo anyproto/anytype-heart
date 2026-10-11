@@ -398,7 +398,7 @@ regression guard, not evidence of
 acceptability; acceptability is the benchmark's job.
 
 **Benchmark** (acceptance, after implementation): the plant benchmark
-(`docs/evals/anytype-mcp-v2`) with a task list moved off the served example
+(`docs/evals/anytype-mcp-v2` in anyproto/anytype-mcp-eval) with a task list moved off the served example
 values, sonnet and haiku, paired runs on the same build and fresh fixtures,
 isolated rate-limit state per actor. Arms:
 

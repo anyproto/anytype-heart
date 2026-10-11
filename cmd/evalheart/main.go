@@ -1,5 +1,5 @@
 // Command evalheart boots a headless heart on a throwaway account for the
-// MCP scenario campaign (scripts/mcp_eval/run_campaign.py): it builds this
+// MCP scenario campaign (run_campaign.py in anyproto/anytype-mcp-eval): it builds this
 // tree's cmd/grpcserver through heartboot, creates an empty local account,
 // mints a JSON-API key, prints one JSON line — the API URL, the key, the
 // account id, the data and log paths — and then waits. SIGTERM, SIGINT or
