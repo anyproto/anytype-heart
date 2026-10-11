@@ -1,0 +1,33 @@
+name: AnyBlock proto check
+
+# Compares Heart's v1 protos with the ones in the any-block version go.mod
+# pins (pkg/lib/anyblockjson/v1_proto_compat_test.go). Manual: any-block takes
+# Heart's protos on release (mirror-any-block.yml), so between releases Heart
+# is ahead of the pin by design. Run it after bumping any-block, or before a
+# release, to see what still differs.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  proto-check:
+    runs-on: ubuntu-latest
+    env:
+      GOPRIVATE: github.com/anyproto
+      GOTOOLCHAIN: local
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          check-latest: true
+      - name: git config
+        run: git config --global url.https://${{ secrets.ANYTYPE_PAT }}@github.com/.insteadOf https://github.com/
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Compare protos with the pinned any-block
+        env:
+          ANYBLOCK_PROTO_CHECK: '1'
+        run: go test ./pkg/lib/anyblockjson -run 'TestV1ProtosMatchAnyBlockCanonicalSources' -count=1 -v
