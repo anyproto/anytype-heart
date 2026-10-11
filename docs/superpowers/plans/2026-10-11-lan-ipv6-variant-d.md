@@ -4,7 +4,19 @@
 
 **Goal:** Replace the zeroconf fork's cross-link address cache (`merge.go`) with per-link deliveries, and do the union of addresses in heart, so IPv4 browsing is develop's code again and one heart mechanism can later serve the native (phase 2) discovery too.
 
-**Architecture:** The fork browser keeps develop's per-instance, once-per-TTL dedup for every packet from the IPv4 socket. A packet from the IPv6 socket on a selected (cable) interface is deduped separately per instance and interface, re-delivered at most every 120 s, and marked with that interface (`ServiceEntry.LinkIndex`). Heart keeps per peer a *base* list (what develop installs: the latest IPv4/native discovery or inbound exchange, last writer wins) plus *proven link-local routes* (`inbound`, `mdns:<zone>`) with expiry, and installs `routes first, then base`. With no routes the installed list is exactly the base list, as on develop.
+**Architecture:** The fork browser keeps develop's per-instance, once-per-TTL dedup for every packet from the IPv4 socket. A packet from the IPv6 socket on a selected (cable) interface is deduped separately per instance and interface, re-delivered at most every 120 s, and marked with that interface (`ServiceEntry.LinkIndex`). Heart keeps per peer a *base* list (what develop installs: the latest IPv4/native discovery or inbound exchange, last writer wins) plus *proven link-local routes* (`inbound`, `mdns:<index>`) with expiry, and installs `routes first, then base`. With no routes the installed list is exactly the base list, as on develop.
+
+> **Superseded during review (2026-10-11).** The code differs from the original steps in these review-driven points; Tasks 4 and 5 below are updated to match.
+> - No exchange skip: every discovery, base or cable, runs the outbound exchange (no `exchanged`, `markExchanged`, `exchangedWith`).
+> - No connection tracking: route renewal asks the pool's `Pick` only.
+> - An inbound route's zone is resolved to its decimal index when the route is admitted; a zone name is never looked up again.
+> - A route is renewed only by a live connection over one of its own addresses (IP and index).
+> - Forgetting a peer drops its routes and keeps its base list.
+> - Without a cable, discoveries are dispatched at once, as on develop; the per-source queue is used only with one.
+> - Close clears the store.
+> - Fork: a lookup delivers a received packet whole (only the caller's cancellation cuts a send short).
+> - Fork: a cable delivery needs a link-local address (an A-only answer takes no slot).
+> - Also: base discoveries carry IPv4 only; the inbound link-local address is a route, not part of the base list; `linkLocalUsable` became `linkLocalZone`.
 
 **Tech Stack:** Go, github.com/miekg/dns, golang.org/x/net/ipv4/ipv6, any-sync peer pool, testify.
 
@@ -220,79 +232,74 @@ Run: `cd /Users/roman/anytype/zeroconf_lanipv6 && go test -race -run 'TestMainlo
 ### Task 4: Heart — per-source address store
 
 **Files:**
-- Create: `space/spacecore/localpeeraddrs.go` (store, compose, expiry)
-- Modify: `space/spacecore/peer.go` (PeerDiscovered, remove `withInboundLinkLocal`, `rememberDiscovered`, `expireInboundLinkLocal`, `inboundLinkLocal` type and helpers; keep `setLocalPeerAddrs`, `linkLocalUsable`, `liveLinkLocalConn`, `isLinkLocalAddr`, `hostIP`)
-- Modify: `space/spacecore/rpchandler.go` (recordLocalPeer)
-- Modify: `space/spacecore/service.go` (fields)
-- Test: `space/spacecore/localpeeraddrs_test.go` (replaces `TestWithInboundLinkLocal`, `TestInboundLinkLocalExpires*` in `peeraddrs_test.go`)
+- Create: `space/spacecore/localpeeraddrs.go` (store, compose, expiry, zone check, live connections)
+- Modify: `space/spacecore/peer.go` (remove `withInboundLinkLocal`, `rememberDiscovered`, `expireInboundLinkLocal`, `liveLinkLocalConn`, `linkLocalUsable`, the `inboundLinkLocal` type and helpers; keep `setLocalPeerAddrs`, `isLinkLocalAddr`, `hostIP`)
+- Modify: `space/spacecore/rpchandler.go` (`recordLocalPeer`)
+- Modify: `space/spacecore/service.go` (fields, `Close`)
+- Test: `space/spacecore/localpeeraddrs_test.go` (replaces `TestWithInboundLinkLocal`, `TestInboundLinkLocalExpires*`, `TestLinkLocalUsable`)
 
 **Interfaces:**
-- Consumes: `DiscoveredPeer.Link` (Task 2), `linkLocalUsable(zone string) bool`, `liveLinkLocalConn(s *service, peerId string) bool`, `setLocalPeerAddrs(peerId string, hostPorts []string)`, `timeNow`, `afterFunc`.
-- Produces (all called under `s.localAddrsMu`):
-  - `func (s *service) setBaseAddrs(peerId string, hostPorts []string) (installed []string)`
-  - `func (s *service) setRoute(peerId, source string, hostPorts []string) (installed []string, changed bool)`
-  - `func (s *service) dropRoute(peerId, source string)`
-  - `func (s *service) markExchanged(peerId string, installed []string)` / `func (s *service) exchangedWith(peerId string, installed []string) bool`
-  - sources: `routeInbound = "inbound"`, `"mdns:" + zone`.
+- Consumes: `DiscoveredPeer.Link` (Task 2), `addrs.HasRoutableIPv4` (Task 3), `setLocalPeerAddrs(peerId string, hostPorts []string)`.
+- Produces (called under `s.localAddrsMu` unless noted):
+  - `func (s *service) setBaseAddrs(peerId string, hostPorts []string)`, `setRoute(peerId, source string, hostPorts []string)`, `dropRoute(peerId, source string)`: change the store only.
+  - `func (s *service) installLocalAddrs(peerId string) []string`: composes and installs, once per event.
+  - `func (s *service) forgetLocalPeerAddrs(peerId string)`: drops the routes and installs the base list again, which stays; a peer without routes is left as is.
+  - `func (s *service) closeLocalPeerAddrs()`: on `Close`, stops every route; nothing is installed after it.
+  - `expireRoute` (timer callback, takes the lock itself).
+  - `var linkLocalZone func(zone string) (index string, ok bool)` (name or index to the decimal index of an up interface without routable IPv4) over `usableLinkZone`; `var liveLinkLocalAddrs func(s *service, peerId string) []netip.Addr` over `pooledLinkLocalAddrs` (unary and stream `Pick`, no dial; link-local only, zones resolved to indexes). Both called outside the lock.
+  - sources: `routeInbound = "inbound"`, `routeMDNS + index`.
 
 Store, in `localpeeraddrs.go`:
 
 ```go
-// localPeerAddrs is what we know about how to dial one LAN peer (GO-7581).
-// base is the list develop installed: the latest IPv4 or native discovery,
-// or the latest inbound exchange, whichever came last. routes are link-local
-// addresses proven on a cable (the peer answered or connected over it), one
-// per source, each expiring unless renewed. The installed list is the
-// routes, then base: with no route it is exactly base.
+// localPeerAddrs is what we know about how to dial one LAN peer.
 type localPeerAddrs struct {
-	base      []string
-	routes    map[string]*linkRoute
-	exchanged []string // the installed list at the last successful outbound exchange
+	base   []string
+	routes map[string]*linkRoute
 }
 
+// linkRoute is one source's addresses, each "[ip%index]:port" with the
+// decimal index of the interface it was proven on.
 type linkRoute struct {
 	hostPorts []string
-	zone      string
-	at        time.Time
 	expiry    *time.Timer
 }
 
-// linkRouteTTL: a cable delivery repeats at least every 120 s while the
-// peer answers (the fork's linkRedelivery, queries ≤60 s apart), and an
-// inbound route is renewed by each exchange; two missed rounds end it.
 const linkRouteTTL = 4 * time.Minute
 ```
 
 Compose (pure, unit-tested on its own):
 
 ```go
-// composeAddrs orders the dial list: inbound route, then cable routes by
-// source name, then base; each address once. Routes whose zone is not
-// usable (interface gone, down, or now with routable IPv4) are left out.
-func composeAddrs(routes map[string]*linkRoute, base []string, usable func(zone string) bool) []string
+// composeAddrs is the dial list: the inbound route, then the cable routes by
+// source, then the base list, each address once. A route address counts
+// only when its zone is the decimal index of a usable interface; a zone name
+// is never looked up here. Without routes: the base list as it is, and no
+// interface lookup.
+func composeAddrs(routes map[string]*linkRoute, base []string, usable func(index string) bool) []string
 ```
 
-Expiry: the timer callback calls `liveLinkLocalConn` **before** taking `localAddrsMu` (Fable: don't hold the lock across `pool.Pick`), then under the lock checks the route is still the same pointer; live → renew (`at`, new timer); not live → delete the route and re-install `composeAddrs` if it differs from `localAddrs[peerId]`.
+Expiry: the timer callback calls `liveLinkLocalAddrs` **before** taking `localAddrsMu`, then under the lock checks the route is still the same pointer. A live address that is one of the route's (IP and index) re-arms it; otherwise the route is deleted. The list is composed and installed again either way. `Pick` prefers the incoming connection, so a live outgoing cable connection behind an incoming one does not renew; the next cable answer puts the route back.
 
-- [ ] **Step 1: Failing tests** in `localpeeraddrs_test.go` (fixture: `service` with stubbed `setLocalPeerAddrs` capture via the existing `peerService` mock pattern used in `peeraddrs_test.go`; stub `timeNow`, `afterFunc` returning a controllable fake timer, `linkLocalUsable`, `liveLinkLocalConn`):
-  - `composeAddrs`: no routes → base unchanged (same order, same elements); inbound + `mdns:31` + base with a duplicate → `[inbound, mdns, base-without-dup]`; unusable zone dropped.
-  - "a Wi-Fi discovery keeps the cable route": setRoute(`mdns:31`, fe80) then setBaseAddrs([192.168.1.5]) → installed `[fe80…%31, 192.168.1.5]`. (Review Focus 1)
-  - "a cable discovery keeps the Wi-Fi base": reverse order, same result. (Review Focus 1)
-  - "an unplugged cable leaves at compose time": `linkLocalUsable` false → installed is base only. (Review Focus 3)
-  - "expiry without a live connection removes the route and reinstalls base"; "a live link-local connection renews it" (fire the fake timer, assert a new timer and unchanged list). (Review Focus 3, 4)
-  - "an old timer after renewal does nothing".
-  - "forgetPeerIPs clears routes and stops timers".
-- [ ] **Step 2: Run, expect FAIL.** `go test -race ./space/spacecore/ -run 'Compose|Route|LocalPeer'`
-- [ ] **Step 3: Implement** the store; `service.go`: replace `inboundLinkLocal`, `localAddrs`? — keep `localAddrs` (installed list, used by expiry), replace `inboundLinkLocal` and `discoveredAddrs` with `localPeers map[string]*localPeerAddrs` (guarded by ownMu). `forgetPeerIPs` deletes `localPeers[peerId]` after stopping its timers.
+- [ ] **Step 1: Failing tests** in `localpeeraddrs_test.go` (fixture: the service with a recording `peerService`, `afterFunc` capturing timers to fire by hand, stubbed `linkLocalZone` and `liveLinkLocalAddrs`, a default succeeding exchange; every case goes through `PeerDiscovered`/`recordLocalPeer`):
+  - `composeAddrs`: no routes → base unchanged, no lookup; inbound + `mdns:31` + `mdns:32` + base with duplicates → inbound, cable routes, base, each once; unusable index dropped; a name-zoned route dropped without a lookup.
+  - Review Focus 1: a Wi-Fi discovery keeps the cable route, and a cable discovery keeps the Wi-Fi list.
+  - Review Focus 3: an unplugged cable leaves the list at the next install; an expired route leaves it.
+  - Review Focus 4: a live connection over the route renews it; one over another cable, or to another address on the same cable, does not; a renewed route over an interface no longer usable leaves the list. The pool is asked without the lock.
+  - An old timer after renewal does nothing; forgetting a peer drops its routes and keeps its base list; a forgotten peer without routes keeps its installed list; Close stops every route and nothing is installed after it.
+  - `recordLocalPeer`: an IPv4-only discovery keeps the inbound route in front; an IPv4 connection drops it; the same cable from mDNS (index) and inbound (name) is one address; the route keeps its cable when the name moves to another interface; a zone naming no usable interface admits no route.
+  - `pooledLinkLocalAddrs` with gomock pools (`Pick` only): a link-local connection zoned by index, IPv4 ignored, one address once, no connection, an unusable zone.
+- [ ] **Step 2: Run, expect FAIL.** `go test -race ./space/spacecore/ -run 'Compose|LocalPeer|RecordLocalPeer|InboundRoute|PooledLinkLocal|UsableLinkZone'`
+- [ ] **Step 3: Implement** the store; `service.go`: replace `inboundLinkLocal`, `localAddrs` and `discoveredAddrs` with `localPeers map[string]*localPeerAddrs` and `localAddrsClosed`, both guarded by `localAddrsMu` (taken before `ownMu`). `recordLocalPeer`: an IPv4 connection address goes first in the base list; a zoned link-local one, resolved to its decimal index with `linkLocalZone` outside the lock, becomes the inbound route (no route when it names no usable interface), otherwise `dropRoute(peerId, routeInbound)`. `forgetPeerIPs` calls `forgetLocalPeerAddrs`; `Close` calls `closeLocalPeerAddrs`.
 - [ ] **Step 4: Run, expect PASS.**
 - [ ] **Step 5: Commit:** `GO-7581 Keep LAN peer addresses per source in heart`
 
-### Task 5: Heart — wire discovery and inbound into the store
+### Task 5: Heart — wire discovery into the store
 
 **Files:**
 - Modify: `space/spacecore/peer.go` (`PeerDiscovered`)
-- Modify: `space/spacecore/rpchandler.go` (`recordLocalPeer`)
-- Test: `space/spacecore/peeraddrs_test.go` (`TestRecordLocalPeer` stays green; new `TestPeerDiscoveredSources`)
+- Modify: `space/spacecore/localdiscovery/localdiscovery.go`, `peerqueue.go` (dispatch)
+- Test: `space/spacecore/peeraddrs_test.go` (`TestRecordLocalPeer` stays green; new `TestPeerDiscoveredSources`), `localdiscovery_test.go` (`TestReadAnswersDispatch`)
 
 **Interfaces:**
 - Consumes: Task 4's store API, `DiscoveredPeer.Link`.
@@ -301,39 +308,42 @@ Expiry: the timer callback calls `liveLinkLocalConn` **before** taking `localAdd
 
 ```go
 s.localAddrsMu.Lock()
-var installed []string
-if discovered.Link == "" {
-	installed = s.setBaseAddrs(discovered.PeerId, discovered.Addrs)
-} else {
-	installed, _ = s.setRoute(discovered.PeerId, "mdns:"+discovered.Link, discovered.Addrs)
-}
-skip := discovered.Link != "" && s.exchangedWith(discovered.PeerId, installed)
-s.localAddrsMu.Unlock()
-s.rememberOwn(own)
-if skip {
-	// a cable answer repeats every 120 s; the exchange already ran
-	// over this exact list
+if s.localAddrsClosed {
+	s.localAddrsMu.Unlock()
 	return
 }
-shared, proof, err := s.exchangeOutbound(ctx, discovered.PeerId, &own)
+if discovered.Link == "" {
+	s.setBaseAddrs(discovered.PeerId, discovered.Addrs)
+} else {
+	s.setRoute(discovered.PeerId, routeMDNS+discovered.Link, discovered.Addrs)
+}
+s.installLocalAddrs(discovered.PeerId)
+s.localAddrsMu.Unlock()
+s.rememberOwn(own)
+// every discovery exchanges, as on develop. A cable answers again every
+// two to three minutes, so a cable peer is exchanged with at that pace,
+// which also teaches a restarted peer, or one whose route to us expired,
+// our address on the cable again
+shared, proof, err := s.exchangeFn(ctx, discovered.PeerId, &own)
 if err != nil {
 	return
 }
-s.localAddrsMu.Lock()
-s.markExchanged(discovered.PeerId, installed)
-s.localAddrsMu.Unlock()
+s.publishLocalPeer(discovered.PeerId, shared, proof, directionOutbound)
 ```
 
-A base discovery always exchanges, as on develop (goal 3). `recordLocalPeer`: `portAddrs` (connection address first, then LocalServer ips) goes to `setBaseAddrs`; when the connection address is a zoned link-local, also `setRoute(peerId, routeInbound, [thatHostPort])`, else `dropRoute(peerId, routeInbound)`.
+Dispatch (`readAnswers` → `peerDiscoveries.notify(..., direct)`, `direct` when no link-local interface is selected): under the queue's mutex, a peer with work queued parks the discovery (replacing a parked one of the same source); otherwise `direct` runs it at once, as on develop, and a cable selected queues it.
 
-- [ ] **Step 1: Failing tests** (`TestPeerDiscoveredSources`, with `exchangeFn` stubbed and counting calls):
-  - "a repeated cable discovery does not exchange again": two `PeerDiscovered{Link: "31"}` with the same addrs → one exchange.
-  - "a failed exchange is retried on the next cable discovery": stub returns an error the first time → two exchanges. (Review Focus 2)
-  - "a base discovery always exchanges": two identical `Link: ""` discoveries → two exchanges (develop behavior).
-  - "an inbound IPv4 exchange keeps the cable route from mDNS but drops the inbound route".
+- [ ] **Step 1: Failing tests** (`TestPeerDiscoveredSources`, with `exchangeFn` stubbed, counting calls and recording the installed list each call starts with):
+  - "every cable discovery exchanges, after a failure too": three identical cable discoveries, the first exchange failing → three exchanges, each over the installed cable route. (Review Focus 2)
+  - "a base discovery always exchanges, as on develop".
+  - "a cable discovery keeps the Wi-Fi list, and its expiry leaves it"; "a Wi-Fi discovery keeps the cable route". (Review Focus 1)
+  - "a forgotten cable peer keeps its Wi-Fi list for the next cable answer".
+  - "an inbound IPv4 exchange keeps the cable route from mDNS but drops the inbound one".
+  - "without a cable the list and the exchanges are develop's" (installed list after each step, the list each exchange started with, no interface lookup, no pool call, no timer), "an empty discovery empties the list and still exchanges", "duplicate base addresses go in as develop installs them". (Goal 3)
+  - `TestReadAnswersDispatch`: without a cable, three deliveries reach the notifier while the first still runs; with a cable, they run one at a time; a discovery parked behind a cable one stays parked when the cable goes away.
 - [ ] **Step 2: Run, expect FAIL.**
-- [ ] **Step 3: Implement** as above; delete the now-unused helpers from `peer.go` and their old tests in `peeraddrs_test.go` (their behaviors are re-covered in Task 4's tests).
-- [ ] **Step 4: Run the full heart verification suite and the iOS vet** (Global Constraints). Expect PASS.
+- [ ] **Step 3: Implement** as above.
+- [ ] **Step 4: Run the full heart verification suite** (Global Constraints). Expect PASS.
 - [ ] **Step 5: Commit:** `GO-7581 Install LAN peer addresses from the per-source store`
 
 ### Task 6: Spec, handoff and memory
