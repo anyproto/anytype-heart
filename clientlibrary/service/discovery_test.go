@@ -118,6 +118,7 @@ func TestDiscoveryObserver(t *testing.T) {
 			require.Len(t, calls, 1)
 			assert.Equal(t, want, calls[0].peer.Addrs)
 			assert.Equal(t, "peer2", calls[0].peer.PeerId)
+			assert.Empty(t, calls[0].peer.Link, "a native discovery is a base list")
 		})
 	})
 

@@ -390,8 +390,8 @@ func (l *zeroconfDiscovery) readAnswers(closeWait *sync.WaitGroup, ch chan *zero
 		l.interfacesAddrs.SortIPsLikeInterfaces(entry.AddrIPv4)
 		portAddrs := peerAddrs(entry, l.linkLocal.zones)
 		if len(portAddrs) == 0 {
-			// only link-local addresses from another link: nothing to dial,
-			// and an empty list would wipe the peer's known addresses
+			// nothing to dial (a cable entry from another link, an entry
+			// without IPv4), and an empty list would wipe the known one
 			l.m.Unlock()
 			log.Debug("discovered peer without usable addresses", zap.String("peerId", entry.Instance))
 			continue
@@ -400,7 +400,10 @@ func (l *zeroconfDiscovery) readAnswers(closeWait *sync.WaitGroup, ch chan *zero
 			Addrs:  portAddrs,
 			PeerId: entry.Instance,
 		}
-		log.Debug("discovered peer", zap.Strings("addrs", portAddrs), zap.String("peerId", peer.PeerId))
+		if entry.LinkIndex != 0 {
+			peer.Link = strconv.Itoa(entry.LinkIndex)
+		}
+		log.Debug("discovered peer", zap.Strings("addrs", portAddrs), zap.String("peerId", peer.PeerId), zap.String("link", peer.Link))
 		if l.notifier != nil {
 			own := newOwnAddresses(l.own, l.port)
 			// explicitly use componentCtx, instead of queryCtx here, because we don't want to interrupt the peer connection if we refreshed interfaces and restarted service
@@ -410,18 +413,21 @@ func (l *zeroconfDiscovery) readAnswers(closeWait *sync.WaitGroup, ch chan *zero
 	}
 }
 
-// peerAddrs is the dial list for a discovered peer. Its link-local addresses
-// count only when received on one of our interfaces without IPv4 (zones): a
-// peer on our IPv4 links is reached over IPv4. Every LAN address is yamux, so
-// this order is the dial order, and all addresses share one dial budget.
-// Link-local goes first: the peer answered over a cable that leads straight
-// to it, while an IPv4 address of it may be stale (its Wi-Fi went off) and
-// hang until the budget is gone. A cable that was unplugged fails at once
-// (its zone names no interface). Without link-local the IPv4 order is
-// untouched.
+// peerAddrs is the address list a discovered peer is reported with. An entry
+// the browser delivered for one cable (LinkIndex) yields only its link-local
+// addresses on that cable, and only when it is one of our interfaces without
+// IPv4 (zones): spacecore keeps such a route next to the peer's other
+// addresses. Any other entry yields its IPv4 addresses, as on develop, and
+// replaces the peer's list.
 func peerAddrs(entry *zeroconf.ServiceEntry, zones map[string]struct{}) []string {
 	port := strconv.Itoa(entry.Port)
 	var addrs []string
+	if entry.LinkIndex == 0 {
+		for _, a := range entry.AddrIPv4 {
+			addrs = append(addrs, gonet.JoinHostPort(a.String(), port))
+		}
+		return addrs
+	}
 	for _, a := range entry.AddrIPv6Zoned {
 		if !a.IsLinkLocalUnicast() {
 			continue
@@ -433,9 +439,6 @@ func peerAddrs(entry *zeroconf.ServiceEntry, zones map[string]struct{}) []string
 		if !slices.Contains(addrs, hostPort) {
 			addrs = append(addrs, hostPort)
 		}
-	}
-	for _, a := range entry.AddrIPv4 {
-		addrs = append(addrs, gonet.JoinHostPort(a.String(), port))
 	}
 	return addrs
 }

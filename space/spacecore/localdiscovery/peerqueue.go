@@ -2,22 +2,24 @@ package localdiscovery
 
 import (
 	"context"
+	"slices"
 	"sync"
 )
 
-// peerDiscoveries runs PeerDiscovered for one peer at a time. A browser may
-// deliver a peer again when an answer on another link adds an address; run
-// concurrently, the older call could replace the newer addresses, or share
-// the newer call's dial of the older ones. A discovery that arrives while one
-// runs is parked, and only the latest one runs next (as in the app bridge's
-// discoveryObserver).
+// peerDiscoveries runs PeerDiscovered for one peer at a time: run
+// concurrently, an older call could replace newer addresses, or share the
+// newer call's dial of the older ones. A discovery that arrives while one
+// runs is parked. Discoveries from different sources (the base list, each
+// cable, see DiscoveredPeer.Link) are all kept and run in arrival order; a
+// newer one from the same source replaces the parked one in place (as the
+// app bridge's discoveryObserver keeps only the latest).
 type peerDiscoveries struct {
 	mu       sync.Mutex
 	inflight map[string]*pendingDiscovery
 }
 
 type pendingDiscovery struct {
-	next *queuedDiscovery
+	next []queuedDiscovery
 }
 
 type queuedDiscovery struct {
@@ -32,7 +34,12 @@ func (d *peerDiscoveries) notify(ctx context.Context, notifier Notifier, peer Di
 		d.inflight = map[string]*pendingDiscovery{}
 	}
 	if pending, ok := d.inflight[peer.PeerId]; ok {
-		pending.next = &queuedDiscovery{peer: peer, own: own}
+		q := queuedDiscovery{peer: peer, own: own}
+		if i := slices.IndexFunc(pending.next, func(p queuedDiscovery) bool { return p.peer.Link == peer.Link }); i >= 0 {
+			pending.next[i] = q
+		} else {
+			pending.next = append(pending.next, q)
+		}
 		d.mu.Unlock()
 		return
 	}
@@ -46,12 +53,13 @@ func (d *peerDiscoveries) run(ctx context.Context, notifier Notifier, q queuedDi
 		notifier.PeerDiscovered(ctx, q.peer, q.own)
 		d.mu.Lock()
 		pending := d.inflight[q.peer.PeerId]
-		if pending.next == nil || ctx.Err() != nil {
+		if len(pending.next) == 0 || ctx.Err() != nil {
 			delete(d.inflight, q.peer.PeerId)
 			d.mu.Unlock()
 			return
 		}
-		q, pending.next = *pending.next, nil
+		q = pending.next[0]
+		pending.next = pending.next[1:]
 		d.mu.Unlock()
 	}
 }

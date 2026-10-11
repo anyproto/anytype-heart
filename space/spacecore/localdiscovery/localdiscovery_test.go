@@ -275,6 +275,43 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		// then
 		notifier.AssertNotCalled(t, "PeerDiscovered")
 	})
+	t.Run("a cable entry is reported with its link", func(t *testing.T) {
+		// given: en16 (index 31) is a link-local-only interface
+		f := newFixture(t)
+		ld := f.LocalDiscovery.(*zeroconfDiscovery)
+		ld.linkLocal = newLinkLocalIfaces(
+			[]ownAddr{{iface: "en16", net: netip.MustParsePrefix("fe80::1/64"), linkLocal: true}},
+			[]gonet.Interface{{Index: 31, Name: "en16"}},
+		)
+		notifier := NewMockNotifier(t)
+		want := DiscoveredPeer{PeerId: "phone", Link: "31", Addrs: []string{"[fe80::62%31]:4006"}}
+		called := make(chan struct{})
+		notifier.EXPECT().PeerDiscovered(mock.Anything, want, mock.Anything).Run(func(context.Context, DiscoveredPeer, OwnAddresses) {
+			close(called)
+		}).Once()
+		ld.SetNotifier(notifier)
+		entries := make(chan *zeroconf.ServiceEntry, 1)
+		entries <- &zeroconf.ServiceEntry{
+			ServiceRecord: zeroconf.ServiceRecord{Instance: "phone"},
+			Port:          4006,
+			LinkIndex:     31,
+			AddrIPv4:      []gonet.IP{gonet.ParseIP("169.254.10.20")},
+			AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62%31")},
+		}
+		close(entries)
+		closeWait := &sync.WaitGroup{}
+		closeWait.Add(1)
+
+		// when
+		ld.readAnswers(closeWait, entries)
+
+		// then
+		select {
+		case <-called:
+		case <-time.After(5 * time.Second):
+			t.Fatal("the cable entry was not reported")
+		}
+	})
 	t.Run("readAnswers - send peer update to notifier", func(t *testing.T) {
 		// given
 		f := newFixture(t)
@@ -337,46 +374,41 @@ func TestPeerAddrs(t *testing.T) {
 		want  []string
 	}{
 		{
-			name: "link-local on a link without ipv4 goes before ipv4",
+			name: "a cable entry has only its link-local addresses",
 			entry: &zeroconf.ServiceEntry{
-				Port:     62654,
-				AddrIPv4: []gonet.IP{gonet.ParseIP("192.168.1.62"), gonet.ParseIP("10.20.9.9")},
+				Port:      62654,
+				LinkIndex: 31,
+				AddrIPv4:  []gonet.IP{gonet.ParseIP("192.168.1.62")},
 				AddrIPv6Zoned: []netip.Addr{
 					netip.MustParseAddr("2a0d:5600::62"),
-					netip.MustParseAddr("fe80::a886:c6ff:febd:f9dc%en16"),
+					netip.MustParseAddr("fe80::a886:c6ff:febd:f9dc%31"),
 				},
-			},
-			want: []string{"[fe80::a886:c6ff:febd:f9dc%en16]:62654", "192.168.1.62:62654", "10.20.9.9:62654"},
-		},
-		{
-			name: "without link-local the ipv4 order is untouched",
-			entry: &zeroconf.ServiceEntry{
-				Port:     4006,
-				AddrIPv4: []gonet.IP{gonet.ParseIP("10.20.9.9"), gonet.ParseIP("192.168.1.62")},
-			},
-			want: []string{"10.20.9.9:4006", "192.168.1.62:4006"},
-		},
-		{
-			name: "a decimal zone of the same interface is accepted",
-			entry: &zeroconf.ServiceEntry{
-				Port:          62654,
-				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::a886:c6ff:febd:f9dc%31")},
 			},
 			want: []string{"[fe80::a886:c6ff:febd:f9dc%31]:62654"},
 		},
 		{
-			name: "link-local received on an ipv4 interface is left out",
+			name: "a cable entry from a link that is not ours has nothing",
 			entry: &zeroconf.ServiceEntry{
 				Port:          4006,
-				AddrIPv4:      []gonet.IP{gonet.ParseIP("192.168.1.62")},
-				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62%en0")},
+				LinkIndex:     4,
+				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62%4")},
 			},
-			want: []string{"192.168.1.62:4006"},
+			want: nil,
+		},
+		{
+			name: "an entry for no link has its ipv4 addresses in order, as on develop",
+			entry: &zeroconf.ServiceEntry{
+				Port:          4006,
+				AddrIPv4:      []gonet.IP{gonet.ParseIP("10.20.9.9"), gonet.ParseIP("192.168.1.62")},
+				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::a886:c6ff:febd:f9dc%31")},
+			},
+			want: []string{"10.20.9.9:4006", "192.168.1.62:4006"},
 		},
 		{
 			name: "an unzoned link-local is left out",
 			entry: &zeroconf.ServiceEntry{
 				Port:          4006,
+				LinkIndex:     31,
 				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62")},
 			},
 			want: nil,

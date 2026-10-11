@@ -40,6 +40,11 @@ type HookCallback func(state DiscoveryPossibility)
 type DiscoveredPeer struct {
 	Addrs  []string
 	PeerId string
+	// Link is empty for a discovery that replaces the peer's address list
+	// (IPv4 mDNS, the app's native discovery). Otherwise it is the decimal
+	// index of the cable interface the peer answered on, and Addrs holds
+	// only its link-local addresses there (GO-7581).
+	Link string
 }
 
 // OwnAddresses is this device's listening endpoint as a LAN peer should dial

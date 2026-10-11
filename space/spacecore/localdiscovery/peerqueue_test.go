@@ -59,3 +59,30 @@ func TestPeerDiscoveriesRunsOnePerPeerAndKeepsTheLatest(t *testing.T) {
 	assert.Equal(t, [][]string{{"192.168.1.62:4006"}, {"[fe80::62%en16]:4006", "192.168.1.62:4006"}}, n.got)
 	assert.Equal(t, 1, n.maxRun)
 }
+
+func TestPeerDiscoveriesKeepsTheLatestPerSource(t *testing.T) {
+	// given: a discovery of p1 still running
+	n := &blockingNotifier{release: make(chan struct{}), first: make(chan struct{})}
+	var d peerDiscoveries
+	ctx := context.Background()
+	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Addrs: []string{"192.168.1.62:4006"}}, OwnAddresses{})
+	<-n.first
+
+	// when: a base and a cable discovery are parked, then a newer base one
+	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Addrs: []string{"192.168.1.63:4006"}}, OwnAddresses{})
+	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Link: "31", Addrs: []string{"[fe80::62%31]:4006"}}, OwnAddresses{})
+	d.notify(ctx, n, DiscoveredPeer{PeerId: "p1", Addrs: []string{"192.168.1.64:4006"}}, OwnAddresses{})
+	close(n.release)
+
+	// then: both sources run, in arrival order, the base one at its newest
+	assert.Eventually(t, func() bool {
+		d.mu.Lock()
+		defer d.mu.Unlock()
+		return len(d.inflight) == 0
+	}, time.Second, 10*time.Millisecond)
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	want := [][]string{{"192.168.1.62:4006"}, {"192.168.1.64:4006"}, {"[fe80::62%31]:4006"}}
+	assert.Equal(t, want, n.got)
+	assert.Equal(t, 1, n.maxRun)
+}
