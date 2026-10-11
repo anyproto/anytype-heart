@@ -345,7 +345,7 @@ func (c *openAPIBodyComposer) pointer(kind, what string) (json.RawMessage, error
 	}
 	body := map[string]any{
 		"type":                 "object",
-		"description":          what + "; its schema and a worked example come from " + v2model.OpGetSchema + " with kind " + kind,
+		"description":          what + "; its schema and a worked example come from " + v2model.RefGetSchema(kind).String(),
 		"properties":           skeleton,
 		"additionalProperties": true,
 	}
@@ -457,7 +457,7 @@ func (c *openAPIBodyComposer) envelope(opNames []string, order string) (json.Raw
 				"type":        "array",
 				"minItems":    1,
 				"maxItems":    v2MaxOpsPerPatch,
-				"description": order + ". Each op's members, schema and example come from " + v2model.OpGetOpSchema + " with its op name",
+				"description": order + ". Each op's members, schema and example come from " + v2model.RefGetOpSchema("").String() + " with its op name",
 				"items": map[string]any{
 					"type":     "object",
 					"required": []string{"op"},

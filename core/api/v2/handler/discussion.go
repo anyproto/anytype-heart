@@ -15,8 +15,8 @@ import (
 //	@Id				create_discussion
 //	@Tags			Chat
 //	@Produce		json
-//	@Param			space_id		path		string						true	"Space id, from list_spaces"
-//	@Param			object_id		path		string						true	"Object id, from search_space or list_objects"
+//	@Param			space_id		path		string						true	"Space id, from GET /v2/spaces"
+//	@Param			object_id		path		string						true	"Object id, from POST /v2/spaces/{space_id}/search or GET /v2/spaces/{space_id}/objects"
 //	@Param			dry_run			query		bool						false	"Report whether the object has a discussion without creating one"
 //	@Param			Idempotency-Key	header		string						false	"Replay guard: the same key with the same body replays the stored response"
 //	@Success		201				{object}	v2model.DiscussionResult	"Discussion created"

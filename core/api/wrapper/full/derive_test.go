@@ -443,11 +443,11 @@ func TestNoToolHasADanglingReference(t *testing.T) {
 	}
 }
 
-// pointer finds a lookup in served prose: "<tool> with kind <kind>" or
-// "<tool> with its op name".
+// pointer finds a lookup in served prose, spelled as the full tier spells a
+// reference: "`<tool>` with kind: <kind>" or "`<tool>` with its op name".
 var (
-	kindPointer = regexp.MustCompile(`\b([a-z_]+) with kind ([a-z_]+)\b`)
-	opPointer   = regexp.MustCompile(`\b([a-z_]+) with its op name\b`)
+	kindPointer = regexp.MustCompile("`([a-z_]+)` with kind: ([a-z_]+)\\b")
+	opPointer   = regexp.MustCompile("`([a-z_]+)` with its op name\\b")
 )
 
 // openForms returns the parts of a tool's input schema that admit members
@@ -579,7 +579,7 @@ func TestOpEnvelopesAreLookups(t *testing.T) {
 	for name, kind := range map[string]string{"create_object": "object", "create_type": "type_document"} {
 		tool, ok := table.Tool(name)
 		require.True(t, ok)
-		assert.Contains(t, tool.Description, "get_schema with kind "+kind, name)
+		assert.Contains(t, tool.Description, "`get_schema` with kind: "+kind, name)
 	}
 	if channels := map[string]int{}; true {
 		for _, s := range served {

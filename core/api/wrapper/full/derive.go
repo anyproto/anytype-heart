@@ -15,6 +15,7 @@ import (
 	"sort"
 	"strings"
 
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/api/wrapper"
 )
 
@@ -98,6 +99,14 @@ func Derive(in Inputs) (*Table, error) {
 		}
 	}
 
+	// prose names an operation by its route; a tool caller gets the tool
+	speller := newRouteSpeller()
+	for _, l := range ops {
+		if overlays[l.op.OperationId].Exclude == "" {
+			speller.add(l.op.OperationId, l.method, l.path)
+		}
+	}
+
 	table := &Table{Excluded: map[string]string{}}
 	for _, l := range ops {
 		o := overlays[l.op.OperationId]
@@ -105,7 +114,7 @@ func Derive(in Inputs) (*Table, error) {
 			table.Excluded[l.op.OperationId] = o.Exclude
 			continue
 		}
-		tool, err := deriveTool(l.method, l.path, l.op, o, doc.Components.Schemas, in.OpMembers)
+		tool, err := deriveTool(l.method, l.path, l.op, o, doc.Components.Schemas, in.OpMembers, speller)
 		if err != nil {
 			return nil, fmt.Errorf("derive %s: %w", l.op.OperationId, err)
 		}
@@ -116,7 +125,7 @@ func Derive(in Inputs) (*Table, error) {
 }
 
 // deriveTool builds one tool.
-func deriveTool(method, path string, op openAPIOperation, o overlay, components map[string]json.RawMessage, opMembers map[string][]string) (Tool, error) {
+func deriveTool(method, path string, op openAPIOperation, o overlay, components map[string]json.RawMessage, opMembers map[string][]string, speller *routeSpeller) (Tool, error) {
 	tool := Tool{
 		Name:        op.OperationId,
 		Method:      strings.ToUpper(method),
@@ -201,8 +210,12 @@ func deriveTool(method, path string, op openAPIOperation, o overlay, components 
 				// a closed body's description carries rules its members do
 				// not (which members a POST needs, a payload budget)
 				tool.Description += " Body: " + desc + "."
-			} else if kinds := documentKinds(body); len(kinds) > 0 {
-				tool.Description += " The document form's schema and a worked example come from get_schema with kind " + strings.Join(kinds, " or ") + "; the other forms need no lookup."
+			} else if kinds := documentKinds(body, speller); len(kinds) > 0 {
+				lookups := make([]string, len(kinds))
+				for i, kind := range kinds {
+					lookups[i] = Spelling(v2model.Ref{Op: v2model.OpGetSchema, Params: map[string]string{"kind": kind}})
+				}
+				tool.Description += " The document form's schema and a worked example come from " + strings.Join(lookups, " or ") + "; the other forms need no lookup."
 			}
 			if names := opNames(body); len(names) > 0 {
 				list, err := renderOps(names, opMembers)
@@ -253,6 +266,8 @@ func deriveTool(method, path string, op openAPIOperation, o overlay, components 
 	if strict {
 		root["additionalProperties"] = false
 	}
+	speller.respellSchema(root)
+	tool.Description = speller.respell(tool.Description)
 	schema, err := marshalDefsLast(root)
 	if err != nil {
 		return Tool{}, fmt.Errorf("encode input schema: %w", err)
@@ -354,20 +369,23 @@ func OpMembers(schema json.RawMessage) ([]string, error) {
 	return append(out, optional...), nil
 }
 
-// documentKindPointer is how a body branch names its get_schema lookup.
-var documentKindPointer = regexp.MustCompile(`get_schema with kind (\w+)`)
-
 // documentKinds is the get_schema kinds the body's document branches point
-// at, lifted into the description for the same reason as opNames.
-func documentKinds(body map[string]any) []string {
+// at, lifted into the description for the same reason as opNames. A branch
+// names its lookup by route (GET /v2/schemas/object), read through the same
+// speller that re-spells it, so the wording around it does not matter.
+func documentKinds(body map[string]any, speller *routeSpeller) []string {
 	var kinds []string
 	seen := map[string]bool{}
 	for _, holder := range bodyBranches(body)[1:] {
 		desc, _ := holder["description"].(string)
-		for _, m := range documentKindPointer.FindAllStringSubmatch(desc, -1) {
-			if !seen[m[1]] {
-				seen[m[1]] = true
-				kinds = append(kinds, m[1])
+		for _, ref := range speller.refs(desc) {
+			kind := ref.Params["kind"]
+			if ref.Op != v2model.OpGetSchema || kind == "" {
+				continue
+			}
+			if !seen[kind] {
+				seen[kind] = true
+				kinds = append(kinds, kind)
 			}
 		}
 	}

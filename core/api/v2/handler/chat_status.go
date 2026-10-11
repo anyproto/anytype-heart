@@ -21,8 +21,8 @@ import (
 //	@Tags			Chat
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id		path		string						true	"Space id, from list_spaces"
-//	@Param			chat_id			path		string						true	"Chat or discussion id, from list_chats"
+//	@Param			space_id		path		string						true	"Space id, from GET /v2/spaces"
+//	@Param			chat_id			path		string						true	"Chat or discussion id, from GET /v2/spaces/{space_id}/chats"
 //	@Param			status			body		object						false	"Optional text and arbitrary JSON data; clients localize the default typing label"
 //	@Param			dry_run			query		bool						false	"Validate without publishing"
 //	@Param			Idempotency-Key	header		string						false	"Unique key for this update; a reused key replays the response without publishing again"

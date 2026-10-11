@@ -170,19 +170,24 @@ func TestOpenAPIBodiesHoistDefsIntoComponents(t *testing.T) {
 	assert.Contains(t, string(composed.Bodies[v2model.OpCreateQuery]), `"#/components/schemas/AnyValue"`)
 }
 
-func TestOpenAPIBodiesNameOperationsByOpId(t *testing.T) {
+// TestOpenAPIBodiesNameOperationsByRoute: the document is read over HTTP, so
+// a body names the operation it points at by route; /mcp/full re-spells the
+// route as the tool (wrapper/full routes.go).
+func TestOpenAPIBodiesNameOperationsByRoute(t *testing.T) {
 	composed, err := ComposeOpenAPIBodies()
 	require.NoError(t, err)
 	for op, body := range composed.Bodies {
 		text := string(body)
-		assert.NotContains(t, text, "/v2/", "%s spells a route", op)
 		assert.NotContains(t, text, "—", "%s carries an em dash the document prose rules refuse", op)
+		for _, id := range []string{v2model.OpGetSchema, v2model.OpGetOpSchema} {
+			assert.NotContains(t, text, id+" with", "%s names an operation by its operationId", op)
+		}
 	}
 	pointer := string(composed.Bodies[v2model.OpCreateTemplate])
-	assert.True(t, strings.Contains(pointer, v2model.OpGetSchema+" with kind template"), pointer)
-	assert.Contains(t, string(composed.Bodies[v2model.OpValidate]), v2model.OpGetSchema+" with kind document", "validate checks any kind, so it points at the unnarrowed schema")
+	assert.True(t, strings.Contains(pointer, "come from "+v2model.RefGetSchema("template").String()), pointer)
+	assert.Contains(t, string(composed.Bodies[v2model.OpValidate]), "come from "+v2model.RefGetSchema("document").String(), "validate checks any kind, so it points at the unnarrowed schema")
 	envelope := string(composed.Bodies[v2model.OpPatchObject])
-	assert.True(t, strings.Contains(envelope, v2model.OpGetOpSchema), envelope)
+	assert.True(t, strings.Contains(envelope, "come from "+v2model.RefGetOpSchema("").String()+" with its op name"), envelope)
 	assert.Contains(t, envelope, "none is applied", "the object channel is atomic")
 	// the union's document branch is open by design, so the flat branch's
 	// requirement is asserted on its text

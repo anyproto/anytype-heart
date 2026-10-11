@@ -39,7 +39,7 @@
     "additionalProperties": false,
     "properties": {
      "kind": {
-      "description": "Schema kind, as listed by list_schemas",
+      "description": "Schema kind, as listed by `list_schemas`",
       "type": "string"
      }
     },
@@ -307,7 +307,7 @@
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -341,7 +341,7 @@
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -372,7 +372,7 @@
       "type": "integer"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      },
      "unread": {
@@ -403,7 +403,7 @@
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -429,7 +429,7 @@
       "type": "string"
      },
      "chat_id": {
-      "description": "Chat object id, from list_chats",
+      "description": "Chat object id, from `list_chats`",
       "type": "string"
      },
      "limit": {
@@ -442,7 +442,7 @@
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -470,7 +470,7 @@
       "uniqueItems": false
      },
      "chat_id": {
-      "description": "Chat object id, from list_chats",
+      "description": "Chat object id, from `list_chats`",
       "type": "string"
      },
      "dry_run": {
@@ -481,7 +481,7 @@
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      },
      "text": {
@@ -502,7 +502,7 @@
     "additionalProperties": false,
     "properties": {
      "chat_id": {
-      "description": "Chat object id, from list_chats",
+      "description": "Chat object id, from `list_chats`",
       "type": "string"
      },
      "dry_run": {
@@ -510,11 +510,11 @@
       "type": "boolean"
      },
      "message_id": {
-      "description": "Message id, from get_chat_messages",
+      "description": "Message id, from `get_chat_messages`",
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      },
      "text": {
@@ -538,7 +538,7 @@
     "additionalProperties": false,
     "properties": {
      "chat_id": {
-      "description": "Chat object id, from list_chats",
+      "description": "Chat object id, from `list_chats`",
       "type": "string"
      },
      "dry_run": {
@@ -546,11 +546,11 @@
       "type": "boolean"
      },
      "message_id": {
-      "description": "Message id, from get_chat_messages",
+      "description": "Message id, from `get_chat_messages`",
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -572,7 +572,7 @@
     "additionalProperties": false,
     "properties": {
      "chat_id": {
-      "description": "Chat object id, from list_chats",
+      "description": "Chat object id, from `list_chats`",
       "type": "string"
      },
      "dry_run": {
@@ -590,11 +590,11 @@
       "type": "string"
      },
      "message_id": {
-      "description": "Message id, from get_chat_messages",
+      "description": "Message id, from `get_chat_messages`",
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -614,7 +614,7 @@
     "additionalProperties": false,
     "properties": {
      "chat_id": {
-      "description": "Chat object id, from list_chats",
+      "description": "Chat object id, from `list_chats`",
       "type": "string"
      },
      "dry_run": {
@@ -633,7 +633,7 @@
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      },
      "up_to": {
@@ -671,7 +671,7 @@
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -689,7 +689,7 @@
     "additionalProperties": false,
     "properties": {
      "collection_id": {
-      "description": "Collection object id, from search_space",
+      "description": "Collection object id, from `search_space`",
       "type": "string"
      },
      "fields": {
@@ -710,7 +710,7 @@
       "type": "integer"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      },
      "view": {
@@ -735,7 +735,7 @@
     "additionalProperties": false,
     "properties": {
      "collection_id": {
-      "description": "Collection object id, from search_space",
+      "description": "Collection object id, from `search_space`",
       "type": "string"
      },
      "limit": {
@@ -749,7 +749,7 @@
       "type": "integer"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -779,7 +779,7 @@
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      },
      "url": {
@@ -811,7 +811,7 @@
       "type": "integer"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -831,7 +831,7 @@
     "additionalProperties": false,
     "properties": {
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -868,7 +868,7 @@
       "type": "integer"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -883,7 +883,7 @@
   },
   {
    "name": "create_object",
-   "description": "Create an object. A select value naming an option the property does not hold is refused unless `create_missing_options=true` is set. An unknown type or property key is rejected. The body is a full AnyBlock document or the shortcut {type, name, properties, markdown}; a document-only member such as `blocks` picks the document. `template` starts the object from one; absent, the type's `default_template` applies. The document form's schema and a worked example come from get_schema with kind object; the other forms need no lookup.",
+   "description": "Create an object. A select value naming an option the property does not hold is refused unless `create_missing_options=true` is set. An unknown type or property key is rejected. The body is a full AnyBlock document or the shortcut {type, name, properties, markdown}; a document-only member such as `blocks` picks the document. `template` starts the object from one; absent, the type's `default_template` applies. The document form's schema and a worked example come from `get_schema` with kind: object; the other forms need no lookup.",
    "inputSchema": {
     "anyOf": [
      {
@@ -922,7 +922,7 @@
      },
      {
       "additionalProperties": true,
-      "description": "a full AnyBlock document: properties, and blocks in preorder. It takes the shortcut's template member too; its schema and a worked example come from get_schema with kind object",
+      "description": "a full AnyBlock document: properties, and blocks in preorder. It takes the shortcut's template member too; its schema and a worked example come from `get_schema` with kind: object",
       "properties": {
        "blocks": {},
        "collection_items": {},
@@ -990,7 +990,7 @@
       "type": "object"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      },
      "template": {
@@ -1346,7 +1346,7 @@
       "type": "string"
      },
      "object_id": {
-      "description": "Object id, from search_space or list_objects",
+      "description": "Object id, from `search_space` or `list_objects`",
       "type": "string"
      },
      "outline": {
@@ -1354,7 +1354,7 @@
       "type": "boolean"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -1396,11 +1396,11 @@
       "type": "string"
      },
      "object_id": {
-      "description": "Object id, from search_space or list_objects",
+      "description": "Object id, from `search_space` or `list_objects`",
       "type": "string"
      },
      "ops": {
-      "description": "applied in order as one edit, and if any one is refused none is applied. Each op's members, schema and example come from get_op_schema with its op name",
+      "description": "applied in order as one edit, and if any one is refused none is applied. Each op's members, schema and example come from `get_op_schema` with its op name",
       "items": {
        "additionalProperties": true,
        "properties": {
@@ -1435,7 +1435,7 @@
       "type": "array"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -1461,11 +1461,11 @@
       "type": "boolean"
      },
      "object_id": {
-      "description": "Object id, from search_space or list_objects",
+      "description": "Object id, from `search_space` or `list_objects`",
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -1490,11 +1490,11 @@
       "type": "boolean"
      },
      "object_id": {
-      "description": "Object id, from search_space or list_objects",
+      "description": "Object id, from `search_space` or `list_objects`",
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -1522,7 +1522,7 @@
       "type": "integer"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -1594,7 +1594,7 @@
       "type": "array"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -1617,7 +1617,7 @@
       "type": "boolean"
      },
      "key": {
-      "description": "Property key, from list_properties",
+      "description": "Property key, from `list_properties`",
       "type": "string"
      },
      "name": {
@@ -1626,7 +1626,7 @@
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -1649,11 +1649,11 @@
       "type": "boolean"
      },
      "key": {
-      "description": "Property key, from list_properties",
+      "description": "Property key, from `list_properties`",
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -1674,7 +1674,7 @@
     "additionalProperties": false,
     "properties": {
      "key": {
-      "description": "Property key, from list_properties",
+      "description": "Property key, from `list_properties`",
       "type": "string"
      },
      "limit": {
@@ -1692,7 +1692,7 @@
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -1813,7 +1813,7 @@
       "type": "array"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      },
      "type": {
@@ -2452,11 +2452,11 @@
       "type": "integer"
      },
      "query_id": {
-      "description": "Query object id, from search_space",
+      "description": "Query object id, from `search_space`",
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      },
      "view": {
@@ -2491,11 +2491,11 @@
       "type": "integer"
      },
      "query_id": {
-      "description": "Query object id, from search_space",
+      "description": "Query object id, from `search_space`",
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -2592,7 +2592,7 @@
       "type": "array"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      },
      "type": {
@@ -2719,7 +2719,7 @@
       "type": "integer"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      },
      "type": {
@@ -2738,7 +2738,7 @@
   },
   {
    "name": "create_template",
-   "description": "Create a template. `template_for` names the type key this template starts an object of. Body: the template as an AnyBlock document: kind template, template_for naming the type; its schema and a worked example come from get_schema with kind template.",
+   "description": "Create a template. `template_for` names the type key this template starts an object of. Body: the template as an AnyBlock document: kind template, template_for naming the type; its schema and a worked example come from `get_schema` with kind: template.",
    "inputSchema": {
     "properties": {
      "blocks": {
@@ -2771,7 +2771,7 @@
       "type": "object"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      },
      "template_for": {
@@ -2803,7 +2803,7 @@
       "type": "integer"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -2818,7 +2818,7 @@
   },
   {
    "name": "create_type",
-   "description": "Create a type. A `property_definitions` entry naming a property that does not exist creates it alongside the type. The body is either the flat type body or an AnyBlock document with kind \"object_type\"; `kind` or `type_settings` picks the document form. The document form's schema and a worked example come from get_schema with kind type_document; the other forms need no lookup.",
+   "description": "Create a type. A `property_definitions` entry naming a property that does not exist creates it alongside the type. The body is either the flat type body or an AnyBlock document with kind \"object_type\"; `kind` or `type_settings` picks the document form. The document form's schema and a worked example come from `get_schema` with kind: type_document; the other forms need no lookup.",
    "inputSchema": {
     "anyOf": [
      {
@@ -2924,7 +2924,7 @@
      },
      {
       "additionalProperties": true,
-      "description": "the type as an AnyBlock document: kind object_type, the definition under type_settings; its schema and a worked example come from get_schema with kind type_document",
+      "description": "the type as an AnyBlock document: kind object_type, the definition under type_settings; its schema and a worked example come from `get_schema` with kind: type_document",
       "properties": {
        "cover": {},
        "create_missing_options": {},
@@ -3080,7 +3080,7 @@
       "type": "array"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      },
      "type_settings": {
@@ -3104,11 +3104,11 @@
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      },
      "type": {
-      "description": "Type key, from list_types",
+      "description": "Type key, from `list_types`",
       "type": "string"
      }
     },
@@ -3308,7 +3308,7 @@
       "type": "string"
      },
      "ops": {
-      "description": "planned and refused whole before any write, then written in order: property ops first, view ops after, and a view op refused leaves the written property lists in place. Each op's members, schema and example come from get_op_schema with its op name",
+      "description": "planned and refused whole before any write, then written in order: property ops first, view ops after, and a view op refused leaves the written property lists in place. Each op's members, schema and example come from `get_op_schema` with its op name",
       "items": {
        "additionalProperties": true,
        "properties": {
@@ -3432,11 +3432,11 @@
       "type": "array"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      },
      "type": {
-      "description": "Type key, from list_types",
+      "description": "Type key, from `list_types`",
       "type": "string"
      },
      "type_settings": {
@@ -3573,11 +3573,11 @@
       "type": "boolean"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      },
      "type": {
-      "description": "Type key, from list_types",
+      "description": "Type key, from `list_types`",
       "type": "string"
      }
     },
@@ -3612,7 +3612,7 @@
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      }
     },
@@ -3705,7 +3705,7 @@
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      },
      "target": {
@@ -3838,7 +3838,7 @@
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      },
      "view_id": {
@@ -3847,7 +3847,7 @@
       "type": "string"
      },
      "widget_id": {
-      "description": "Widget id from list_widgets, or the id of the object the widget points at",
+      "description": "Widget id from `list_widgets`, or the id of the object the widget points at",
       "type": "string"
      }
     },
@@ -3873,11 +3873,11 @@
       "type": "string"
      },
      "space_id": {
-      "description": "Space id, from list_spaces",
+      "description": "Space id, from `list_spaces`",
       "type": "string"
      },
      "widget_id": {
-      "description": "Widget id from list_widgets, or the id of the object the widget points at",
+      "description": "Widget id from `list_widgets`, or the id of the object the widget points at",
       "type": "string"
      }
     },
@@ -3893,7 +3893,7 @@
   },
   {
    "name": "validate",
-   "description": "Validate an AnyBlock document. Structure and format rules only. Nothing is resolved against a space, so option names and a type's property keys are not checked here. Findings come back as data: an invalid document is still a 200, carrying the issues, and a valid one carries empty lists. Body: an AnyBlock document of any kind, checked without being stored; its schema and a worked example come from get_schema with kind document.",
+   "description": "Validate an AnyBlock document. Structure and format rules only. Nothing is resolved against a space, so option names and a type's property keys are not checked here. Findings come back as data: an invalid document is still a 200, carrying the issues, and a valid one carries empty lists. Body: an AnyBlock document of any kind, checked without being stored; its schema and a worked example come from `get_schema` with kind: document.",
    "inputSchema": {
     "properties": {
      "blocks": {

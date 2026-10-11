@@ -36,8 +36,8 @@ func listFieldsParam(c *gin.Context) []string {
 //	@Id				get_query_objects
 //	@Tags			Lists
 //	@Produce		json
-//	@Param			space_id	path		string									true	"Space id, from list_spaces"
-//	@Param			query_id	path		string									true	"Query object id, from search_space"
+//	@Param			space_id	path		string									true	"Space id, from GET /v2/spaces"
+//	@Param			query_id	path		string									true	"Query object id, from POST /v2/spaces/{space_id}/search"
 //	@Param			view		query		string									false	"Stored view id (exact or unique suffix). Omitted, the query's first view applies."
 //	@Param			fields		query		[]string								false	"Property keys to include per row, as an array of strings"	collectionFormat(csv)
 //	@Param			offset		query		int										false	"Items to skip"												default(0)
@@ -69,8 +69,8 @@ func GetQueryObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id			get_query_views
 //	@Tags		Lists
 //	@Produce	json
-//	@Param		space_id	path		string										true	"Space id, from list_spaces"
-//	@Param		query_id	path		string										true	"Query object id, from search_space"
+//	@Param		space_id	path		string										true	"Space id, from GET /v2/spaces"
+//	@Param		query_id	path		string										true	"Query object id, from POST /v2/spaces/{space_id}/search"
 //	@Param		offset		query		int											false	"Items to skip"		default(0)
 //	@Param		limit		query		int											false	"Items to return"	default(25)
 //	@Success	200			{object}	v2model.ListResponse[v2model.ViewObject]	"The stored views, with their sorts, filters and columns"
@@ -100,8 +100,8 @@ func GetQueryViewsHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id				get_collection_objects
 //	@Tags			Lists
 //	@Produce		json
-//	@Param			space_id		path		string									true	"Space id, from list_spaces"
-//	@Param			collection_id	path		string									true	"Collection object id, from search_space"
+//	@Param			space_id		path		string									true	"Space id, from GET /v2/spaces"
+//	@Param			collection_id	path		string									true	"Collection object id, from POST /v2/spaces/{space_id}/search"
 //	@Param			view			query		string									false	"Stored view id (exact or unique suffix). Omitted, no view applies and the whole membership is returned."
 //	@Param			fields			query		[]string								false	"Property keys to include per row, as an array of strings"	collectionFormat(csv)
 //	@Param			offset			query		int										false	"Items to skip"												default(0)
@@ -133,8 +133,8 @@ func GetCollectionObjectsHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id			get_collection_views
 //	@Tags		Lists
 //	@Produce	json
-//	@Param		space_id		path		string										true	"Space id, from list_spaces"
-//	@Param		collection_id	path		string										true	"Collection object id, from search_space"
+//	@Param		space_id		path		string										true	"Space id, from GET /v2/spaces"
+//	@Param		collection_id	path		string										true	"Collection object id, from POST /v2/spaces/{space_id}/search"
 //	@Param		offset			query		int											false	"Items to skip"		default(0)
 //	@Param		limit			query		int											false	"Items to return"	default(25)
 //	@Success	200				{object}	v2model.ListResponse[v2model.ViewObject]	"The stored views, with their sorts, filters and columns"

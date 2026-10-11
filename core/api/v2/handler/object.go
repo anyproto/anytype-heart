@@ -17,8 +17,8 @@ import (
 //	@Id				get_object
 //	@Tags			Objects
 //	@Produce		json
-//	@Param			space_id	path		string			true	"Space id, from list_spaces"
-//	@Param			object_id	path		string			true	"Object id, from search_space or list_objects"
+//	@Param			space_id	path		string			true	"Space id, from GET /v2/spaces"
+//	@Param			object_id	path		string			true	"Object id, from POST /v2/spaces/{space_id}/search or GET /v2/spaces/{space_id}/objects"
 //	@Param			include		query		string			false	"Subset of properties,blocks (default both)"
 //	@Param			outline		query		bool			false	"Return the outline instead of full blocks: every block's indent/id/type plus its text truncated to 80 runes"
 //	@Param			block		query		string			false	"Return only this block's subtree"
@@ -54,7 +54,7 @@ func GetObjectHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Id			list_objects
 //	@Tags		Objects
 //	@Produce	json
-//	@Param		space_id	path		string									true	"Space id, from list_spaces"
+//	@Param		space_id	path		string									true	"Space id, from GET /v2/spaces"
 //	@Param		fields		query		[]string								false	"Property keys to include per row, as an array of strings"	collectionFormat(csv)
 //	@Param		offset		query		int										false	"Items to skip"												default(0)
 //	@Param		limit		query		int										false	"Items to return"											default(25)

@@ -1986,7 +1986,7 @@ paths:
     get:
       operationId: get_schema
       parameters:
-      - description: Schema kind, as listed by list_schemas
+      - description: Schema kind, as listed by GET /v2/schemas
         in: path
         name: kind
         required: true
@@ -2280,7 +2280,7 @@ paths:
         still joining is a 404.
       operationId: get_space
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -2322,7 +2322,7 @@ paths:
         writable through this API.
       operationId: update_space
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -2396,7 +2396,7 @@ paths:
         then counts the kept rows.'
       operationId: list_chats
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -2459,7 +2459,7 @@ paths:
         document edit cannot reach them.
       operationId: create_chat
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -2528,13 +2528,13 @@ paths:
         every message ever posted. `offset` is refused.'
       operationId: get_chat_messages
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat object id, from list_chats
+      - description: Chat object id, from GET /v2/spaces/{space_id}/chats
         in: path
         name: chat_id
         required: true
@@ -2597,13 +2597,13 @@ paths:
         layout. In a discussion the text is stored as blocks.
       operationId: add_chat_message
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat object id, from list_chats
+      - description: Chat object id, from GET /v2/spaces/{space_id}/chats
         in: path
         name: chat_id
         required: true
@@ -2675,19 +2675,19 @@ paths:
         does not exist is a 404 on the dry run too.
       operationId: delete_chat_message
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat object id, from list_chats
+      - description: Chat object id, from GET /v2/spaces/{space_id}/chats
         in: path
         name: chat_id
         required: true
         schema:
           type: string
-      - description: Message id, from get_chat_messages
+      - description: Message id, from GET /v2/spaces/{space_id}/chats/{chat_id}/messages
         in: path
         name: message_id
         required: true
@@ -2740,19 +2740,19 @@ paths:
         style does in a space chat. Editing another member's message is a 403.
       operationId: edit_chat_message
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat object id, from list_chats
+      - description: Chat object id, from GET /v2/spaces/{space_id}/chats
         in: path
         name: chat_id
         required: true
         schema:
           type: string
-      - description: Message id, from get_chat_messages
+      - description: Message id, from GET /v2/spaces/{space_id}/chats/{chat_id}/messages
         in: path
         name: message_id
         required: true
@@ -2817,19 +2817,19 @@ paths:
         says so in `warnings`.'
       operationId: toggle_chat_reaction
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat object id, from list_chats
+      - description: Chat object id, from GET /v2/spaces/{space_id}/chats
         in: path
         name: chat_id
         required: true
         schema:
           type: string
-      - description: Message id, from get_chat_messages
+      - description: Message id, from GET /v2/spaces/{space_id}/chats/{chat_id}/messages
         in: path
         name: message_id
         required: true
@@ -2895,13 +2895,13 @@ paths:
         id a resume is measured against.
       operationId: stream_chat_messages
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat id, from list_chats
+      - description: Chat id, from GET /v2/spaces/{space_id}/chats
         in: path
         name: chat_id
         required: true
@@ -2967,13 +2967,13 @@ paths:
         move when it could be read back.'
       operationId: read_chat
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat object id, from list_chats
+      - description: Chat object id, from GET /v2/spaces/{space_id}/chats
         in: path
         name: chat_id
         required: true
@@ -3039,13 +3039,13 @@ paths:
         receivers expire it. Success acknowledges acceptance, not delivery.
       operationId: publish_chat_status
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Chat or discussion id, from list_chats
+      - description: Chat or discussion id, from GET /v2/spaces/{space_id}/chats
         in: path
         name: chat_id
         required: true
@@ -3127,7 +3127,7 @@ paths:
         can arrive twice; dedupe on its id.'
       operationId: stream_space_chats
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -3196,7 +3196,7 @@ paths:
         there is refused rather than dropped.
       operationId: create_collection
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -3272,13 +3272,13 @@ paths:
         apply only when view names it.
       operationId: get_collection_objects
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Collection object id, from search_space
+      - description: Collection object id, from POST /v2/spaces/{space_id}/search
         in: path
         name: collection_id
         required: true
@@ -3342,13 +3342,13 @@ paths:
     get:
       operationId: get_collection_views
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Collection object id, from search_space
+      - description: Collection object id, from POST /v2/spaces/{space_id}/search
         in: path
         name: collection_id
         required: true
@@ -3402,7 +3402,7 @@ paths:
         back is the one file blocks, image blocks and icon_image values reference.'
       operationId: upload_file
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -3481,7 +3481,7 @@ paths:
         requests are supported.
       operationId: download_file
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -3635,7 +3635,7 @@ paths:
         the same ids as file download.
       operationId: head_file
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -3725,7 +3725,7 @@ paths:
     get:
       operationId: list_members
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -3773,7 +3773,7 @@ paths:
         is no member id to send.
       operationId: get_member_me
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -3807,7 +3807,7 @@ paths:
     get:
       operationId: list_objects
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -3870,7 +3870,7 @@ paths:
         applies.
       operationId: create_object
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -3929,7 +3929,7 @@ paths:
                     - type
                   type: object
                 - additionalProperties: true
-                  description: 'a full AnyBlock document: properties, and blocks in preorder. It takes the shortcut''s template member too; its schema and a worked example come from get_schema with kind object'
+                  description: 'a full AnyBlock document: properties, and blocks in preorder. It takes the shortcut''s template member too; its schema and a worked example come from GET /v2/schemas/object'
                   properties:
                     blocks:
                       items:
@@ -3999,13 +3999,13 @@ paths:
         a 403.
       operationId: delete_object
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Object id, from search_space or list_objects
+      - description: Object id, from POST /v2/spaces/{space_id}/search or GET /v2/spaces/{space_id}/objects
         in: path
         name: object_id
         required: true
@@ -4055,13 +4055,13 @@ paths:
         be sent back.
       operationId: get_object
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Object id, from search_space or list_objects
+      - description: Object id, from POST /v2/spaces/{space_id}/search or GET /v2/spaces/{space_id}/objects
         in: path
         name: object_id
         required: true
@@ -4133,13 +4133,13 @@ paths:
         with `ids=full`.
       operationId: patch_object
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Object id, from search_space or list_objects
+      - description: Object id, from POST /v2/spaces/{space_id}/search or GET /v2/spaces/{space_id}/objects
         in: path
         name: object_id
         required: true
@@ -4177,7 +4177,7 @@ paths:
               additionalProperties: false
               properties:
                 ops:
-                  description: applied in order as one edit, and if any one is refused none is applied. Each op's members, schema and example come from get_op_schema with its op name
+                  description: applied in order as one edit, and if any one is refused none is applied. Each op's members, schema and example come from GET /v2/schemas/ops/{op} with its op name
                   items:
                     properties:
                       op:
@@ -4258,13 +4258,13 @@ paths:
         hold one.'
       operationId: create_discussion
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Object id, from search_space or list_objects
+      - description: Object id, from POST /v2/spaces/{space_id}/search or GET /v2/spaces/{space_id}/objects
         in: path
         name: object_id
         required: true
@@ -4323,7 +4323,7 @@ paths:
     get:
       operationId: list_properties
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -4371,7 +4371,7 @@ paths:
         another property with that name; the response carries a warning.'
       operationId: create_property
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -4472,13 +4472,13 @@ paths:
     delete:
       operationId: delete_property
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Property key, from list_properties
+      - description: Property key, from GET /v2/spaces/{space_id}/properties
         in: path
         name: key
         required: true
@@ -4523,13 +4523,13 @@ paths:
         and its format is fixed once it exists.
       operationId: update_property
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Property key, from list_properties
+      - description: Property key, from GET /v2/spaces/{space_id}/properties
         in: path
         name: key
         required: true
@@ -4593,13 +4593,13 @@ paths:
     get:
       operationId: list_property_options
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Property key, from list_properties
+      - description: Property key, from GET /v2/spaces/{space_id}/properties
         in: path
         name: key
         required: true
@@ -4652,7 +4652,7 @@ paths:
         query runs over; a key that type does not carry is refused.
       operationId: create_query
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -4934,13 +4934,13 @@ paths:
         rather than a silently empty result.
       operationId: get_query_objects
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Query object id, from search_space
+      - description: Query object id, from POST /v2/spaces/{space_id}/search
         in: path
         name: query_id
         required: true
@@ -5004,13 +5004,13 @@ paths:
     get:
       operationId: get_query_views
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Query object id, from search_space
+      - description: Query object id, from POST /v2/spaces/{space_id}/search
         in: path
         name: query_id
         required: true
@@ -5064,7 +5064,7 @@ paths:
         in the query string and a `limit` or `offset` in the body is refused.'
       operationId: search_space
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -5179,7 +5179,7 @@ paths:
         id: a reconnect is a fresh snapshot.'
       operationId: stream_space_search
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -5294,7 +5294,7 @@ paths:
         of that type starts from on its own.'
       operationId: list_templates
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -5351,7 +5351,7 @@ paths:
         of.'
       operationId: create_template
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -5373,7 +5373,7 @@ paths:
           application/json:
             schema:
               additionalProperties: true
-              description: 'the template as an AnyBlock document: kind template, template_for naming the type; its schema and a worked example come from get_schema with kind template'
+              description: 'the template as an AnyBlock document: kind template, template_for naming the type; its schema and a worked example come from GET /v2/schemas/template'
               properties:
                 blocks:
                   items:
@@ -5435,7 +5435,7 @@ paths:
     get:
       operationId: list_types
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -5484,7 +5484,7 @@ paths:
         picks the document form.
       operationId: create_type
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -5665,7 +5665,7 @@ paths:
                     - name
                   type: object
                 - additionalProperties: true
-                  description: 'the type as an AnyBlock document: kind object_type, the definition under type_settings; its schema and a worked example come from get_schema with kind type_document'
+                  description: 'the type as an AnyBlock document: kind object_type, the definition under type_settings; its schema and a worked example come from GET /v2/schemas/type_document'
                   properties:
                     cover:
                       type: object
@@ -5719,13 +5719,13 @@ paths:
     delete:
       operationId: delete_type
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Type key, from list_types
+      - description: Type key, from GET /v2/spaces/{space_id}/types
         in: path
         name: type
         required: true
@@ -5768,13 +5768,13 @@ paths:
     get:
       operationId: get_type
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Type key, from list_types
+      - description: Type key, from GET /v2/spaces/{space_id}/types
         in: path
         name: type
         required: true
@@ -5824,13 +5824,13 @@ paths:
         name: If-Match
         schema:
           type: string
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Type key, from list_types
+      - description: Type key, from GET /v2/spaces/{space_id}/types
         in: path
         name: type
         required: true
@@ -6171,7 +6171,7 @@ paths:
                 - additionalProperties: false
                   properties:
                     ops:
-                      description: 'planned and refused whole before any write, then written in order: property ops first, view ops after, and a view op refused leaves the written property lists in place. Each op''s members, schema and example come from get_op_schema with its op name'
+                      description: 'planned and refused whole before any write, then written in order: property ops first, view ops after, and a view op refused leaves the written property lists in place. Each op''s members, schema and example come from GET /v2/schemas/ops/{op} with its op name'
                       items:
                         properties:
                           op:
@@ -6234,7 +6234,7 @@ paths:
         _bin; an object id is served as it is.'
       operationId: list_widgets
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -6293,7 +6293,7 @@ paths:
         list, is replaced with the app''s fallback and reported in warnings.'
       operationId: create_widget
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
@@ -6423,14 +6423,14 @@ paths:
         the sidebar holds in both scopes needs `scope`.
       operationId: delete_widget
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Widget id from list_widgets, or the id of the object the widget
-          points at
+      - description: Widget id from GET /v2/spaces/{space_id}/widgets, or the id of
+          the object the widget points at
         in: path
         name: widget_id
         required: true
@@ -6491,14 +6491,14 @@ paths:
         object.'
       operationId: update_widget
       parameters:
-      - description: Space id, from list_spaces
+      - description: Space id, from GET /v2/spaces
         in: path
         name: space_id
         required: true
         schema:
           type: string
-      - description: Widget id from list_widgets, or the id of the object the widget
-          points at
+      - description: Widget id from GET /v2/spaces/{space_id}/widgets, or the id of
+          the object the widget points at
         in: path
         name: widget_id
         required: true
@@ -6629,7 +6629,7 @@ paths:
           application/json:
             schema:
               additionalProperties: true
-              description: an AnyBlock document of any kind, checked without being stored; its schema and a worked example come from get_schema with kind document
+              description: an AnyBlock document of any kind, checked without being stored; its schema and a worked example come from GET /v2/schemas/document
               properties:
                 blocks:
                   items:
