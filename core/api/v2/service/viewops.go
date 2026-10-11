@@ -30,6 +30,7 @@ import (
 	"unicode/utf8"
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -409,6 +410,17 @@ func (a *v2StateApplier) canonicalViewKey(input string) (string, []string) {
 func (a *v2StateApplier) viewFormatName() func(string) (string, bool) {
 	base := a.s.formatNameResolver(a.spaceId)
 	return func(key string) (string, bool) {
+		// a built-in's key the space's own property answers to (a dormant
+		// built-in yields it) takes that property's format, not the
+		// built-in's
+		if bundle.HasRelation(domain.RelationKey(key)) {
+			if entries, err := a.propEntries(); err == nil {
+				entry, ok, ambiguous := a.s.resolvePropertyInputIn(key, entries, a.viewScope())
+				if ok && len(ambiguous) == 0 && entry.Key != "" && entry.Key != key {
+					return base(entry.Key)
+				}
+			}
+		}
 		if format, ok := base(key); ok {
 			return format, true
 		}

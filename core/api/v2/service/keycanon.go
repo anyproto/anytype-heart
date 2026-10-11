@@ -310,17 +310,21 @@ func (k *keyCanon) canonicalizeRawChannel(raw json.RawMessage, kind, path string
 
 // canonFormatName wraps a format-name resolver with canonicalization, so a
 // served slug's format resolves during filter parsing/validation exactly as
-// the stored spelling's does.
+// the stored spelling's does. The key resolves first: a spelling that names
+// the space's own property must not take the format of a built-in that merely
+// shares it (a dormant `priority` is a number, the space's own may be a date).
 func canonFormatName(base func(string) (string, bool), kc *keyCanon) func(string) (string, bool) {
 	return func(key string) (string, bool) {
-		if name, ok := base(key); ok {
-			return name, ok
-		}
 		canonical, ambiguous := kc.canon(key)
-		if len(ambiguous) > 0 || canonical == key {
+		if len(ambiguous) > 0 {
 			return "", false
 		}
-		return base(canonical)
+		if canonical != key {
+			if name, ok := base(canonical); ok {
+				return name, ok
+			}
+		}
+		return base(key)
 	}
 }
 
