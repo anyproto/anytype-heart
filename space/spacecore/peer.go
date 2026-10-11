@@ -361,16 +361,7 @@ var linkLocalUsable = func(zone string) bool {
 		if iface.Name != zone && (errAtoi != nil || iface.Index != index) {
 			continue
 		}
-		if iface.Flags&net.FlagUp == 0 {
-			return false
-		}
-		// a self-assigned 169.254/16 address doesn't count: the iPhone's
-		// cable interface may carry one while the Mac's has no IPv4 at
-		// all, and then link-local is the only path between them
-		return !slices.ContainsFunc(iface.GetAddr(), func(a net.Addr) bool {
-			ip, ok := addrs.AddrToIP(a)
-			return ok && ip.To4() != nil && !ip.IsLinkLocalUnicast()
-		})
+		return iface.Flags&net.FlagUp != 0 && !addrs.HasRoutableIPv4(iface)
 	}
 	return false
 }

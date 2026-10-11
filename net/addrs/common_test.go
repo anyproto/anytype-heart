@@ -106,6 +106,37 @@ func TestInterfaceAddrFamilies(t *testing.T) {
 	}
 }
 
+func TestHasRoutableIPv4(t *testing.T) {
+	ipNet := func(cidr string) net.Addr {
+		ip, n, err := net.ParseCIDR(cidr)
+		require.NoError(t, err)
+		n.IP = ip
+		return n
+	}
+	for _, tc := range []struct {
+		name  string
+		addrs []net.Addr
+		want  bool
+	}{
+		{"a LAN address", []net.Addr{ipNet("192.168.1.10/24")}, true},
+		{"a self-assigned address alone", []net.Addr{ipNet("169.254.10.2/16")}, false},
+		{"a self-assigned address beside a LAN one", []net.Addr{ipNet("169.254.10.2/16"), ipNet("10.0.0.5/8")}, true},
+		{"link-local IPv6 only", []net.Addr{ipNet("fe80::1/64")}, false},
+		{"no address", nil, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			iface := WrapInterfaceWithAddrs(net.Interface{Name: "en5"}, tc.addrs)
+
+			// when
+			got := HasRoutableIPv4(&iface)
+
+			// then
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
 func Test_parseInterfaceName(t *testing.T) {
 	type args struct {
 		name string

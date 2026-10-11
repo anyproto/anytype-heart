@@ -254,6 +254,45 @@ func TestOwnAddrsLinkLocal(t *testing.T) {
 	})
 }
 
+func TestLinkLocalOnly(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		iface addrs.NetInterfaceWithAddrCache
+		want  []netip.Addr
+	}{
+		{
+			name:  "a self-assigned IPv4 does not hide the cable",
+			iface: iface("en5", "169.254.10.2/16", "fe80::1/64"),
+			want:  []netip.Addr{netip.MustParseAddr("fe80::1")},
+		},
+		{
+			name:  "a routable IPv4 does",
+			iface: iface("en5", "192.168.2.2/24", "fe80::1/64"),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, linkLocalOnly("darwin", &tc.iface))
+		})
+	}
+
+	t.Run("a cable with a self-assigned IPv4 keeps that address too", func(t *testing.T) {
+		// given
+		ifaces := addrs.InterfacesAddrs{Interfaces: []addrs.NetInterfaceWithAddrCache{
+			iface("en5", "169.254.10.2/16", "fe80::1/64"),
+		}}
+		want := []ownAddr{
+			{iface: "en5", net: netip.MustParsePrefix("169.254.10.2/16"), matchable: true, advertised: true},
+			{iface: "en5", net: netip.MustParsePrefix("fe80::1/64"), linkLocal: true},
+		}
+
+		// when
+		got := ownAddrs("darwin", ifaces)
+
+		// then
+		assert.Equal(t, want, got)
+	})
+}
+
 func TestLinkLocalCandidate(t *testing.T) {
 	for _, tc := range []struct {
 		goos, iface string

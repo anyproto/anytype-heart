@@ -40,9 +40,11 @@ func linkLocalCandidate(goos, iface string) bool {
 }
 
 // linkLocalOnly returns the IPv6 link-local addresses of an interface that has
-// no IPv4 address and may carry LAN traffic; nil for any other interface.
+// no routable IPv4 address (a self-assigned 169.254/16 one doesn't count, see
+// addrs.HasRoutableIPv4) and may carry LAN traffic; nil for any other
+// interface.
 func linkLocalOnly(goos string, iface *addrs.NetInterfaceWithAddrCache) []netip.Addr {
-	if len(iface.GetAddr()) > 0 || !linkLocalCandidate(goos, iface.Name) {
+	if addrs.HasRoutableIPv4(iface) || !linkLocalCandidate(goos, iface.Name) {
 		return nil
 	}
 	return iface.GetLinkLocalIPv6()

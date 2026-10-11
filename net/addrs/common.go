@@ -128,6 +128,19 @@ func (i *NetInterfaceWithAddrCache) setAddrs(addrs []net.Addr) {
 	}
 }
 
+// HasRoutableIPv4 reports whether the interface holds an IPv4 address outside
+// 169.254/16. A self-assigned address doesn't count: a phone's cable
+// interface may carry one while the Mac's has no IPv4 at all, and then IPv6
+// link-local is the only path between them (GO-7581).
+func HasRoutableIPv4(iface *NetInterfaceWithAddrCache) bool {
+	for _, addr := range iface.GetAddr() {
+		if ip, ok := AddrToIP(addr); ok && ip.To4() != nil && !ip.IsLinkLocalUnicast() {
+			return true
+		}
+	}
+	return false
+}
+
 // NetAddrsEqualUnordered reports whether a and b hold the same addresses,
 // duplicates included, in any order.
 func NetAddrsEqualUnordered(a, b []net.Addr) bool {
