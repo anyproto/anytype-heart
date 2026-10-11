@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -160,6 +161,25 @@ func (a *chatSubAdapter) SubscribeLastMessages(ctx context.Context, chatObjectId
 
 func (a *chatSubAdapter) Unsubscribe(chatObjectId, subId string) error {
 	return a.svc.Unsubscribe(chatObjectId, subId)
+}
+
+func (a *chatSubAdapter) ChatState(spaceId, chatObjectId string) (*model.ChatState, error) {
+	mngr, err := a.svc.GetManager(spaceId, chatObjectId)
+	if err != nil {
+		return nil, fmt.Errorf("get chat manager: %w", err)
+	}
+	mngr.Lock()
+	defer mngr.Unlock()
+	return mngr.GetChatState(), nil
+}
+
+// The space chat hub and object search streams are not wired in this fixture.
+func (a *chatSubAdapter) OpenSpaceChats(ctx context.Context, req apicore.SpaceChatOpen) (apicore.SpaceChatSubscription, error) {
+	return nil, errors.New("open space chats: not configured in the integration fixture")
+}
+
+func (a *chatSubAdapter) OpenObjectSearch(ctx context.Context, req apicore.ObjectSearchOpen) (apicore.ObjectSearchSubscription, error) {
+	return nil, errors.New("open object search: not configured in the integration fixture")
 }
 
 // doJSON issues an authenticated JSON request, decodes the response into out
