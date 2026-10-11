@@ -431,9 +431,17 @@ func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, str
 		if len(issues) > 0 {
 			return nil, v2model.ValidationFailed(fmt.Sprintf("unknown %s", v.propertiesWord()), issues...)
 		}
+		// canonicalize the sort slots BEFORE the codec, exactly as the filters
+		// are: the codec's vocabulary knows no type scope, so a slug two
+		// properties answer to would otherwise bind whichever one the
+		// bundled table names, whatever the type lists
+		sortsJSON, err := kc.canonicalizeRawChannel(req.Sorts, "sorts", "/sorts")
+		if err != nil {
+			return nil, err
+		}
 		sortOpts := reads.Options()
 		sortOpts.Keys = readKeys
-		modelSorts, err := anyblockjson.UnmarshalSorts(req.Sorts, sortOpts)
+		modelSorts, err := anyblockjson.UnmarshalSorts(sortsJSON, sortOpts)
 		if err != nil {
 			return nil, mapFilterCodecError(err, false)
 		}

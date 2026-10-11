@@ -1381,11 +1381,38 @@ func (s *Service) canonicalizeDocumentKeys(spaceId string, body []byte) ([]byte,
 		}
 	}
 
+	if raw, ok := fields["blocks"]; ok {
+		blocks := s.newBlockKeys(spaceId, scope, s.querySourceScope(spaceId, fields["query_source"]))
+		rewritten, err := blocks.rewriteRaw(raw, "/blocks")
+		if err != nil {
+			return nil, nil, err
+		}
+		if blocks.changed {
+			fields["blocks"] = rewritten
+			changed = true
+		}
+	}
+
 	if !changed {
 		return body, spellings, nil
 	}
 	body, err = encodeEnvelope(fields)
 	return body, spellings, err
+}
+
+// querySourceScope is the property scope of a document's `query_source` when
+// it queries exactly one type.
+func (s *Service) querySourceScope(spaceId string, raw json.RawMessage) map[string]bool {
+	if len(raw) == 0 {
+		return nil
+	}
+	var source struct {
+		Types []string `json:"types"`
+	}
+	if err := json.Unmarshal(raw, &source); err != nil || len(source.Types) != 1 {
+		return nil
+	}
+	return s.newBlockKeys(spaceId, nil, nil).dataviewScope(map[string]any{"source": []any{source.Types[0]}})
 }
 
 // sortedDistinct returns the sorted distinct non-empty values.

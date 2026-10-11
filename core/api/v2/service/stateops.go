@@ -977,6 +977,11 @@ func rootTarget(doc *v2EditDoc, pos string, skipFrom, skipEnd int) (anchorId str
 // fragmentBlocks converts a decoded payload run (relative indents, minted
 // ids) into model blocks via the fragment import.
 func (a *v2StateApplier) fragmentBlocks(base string, run []map[string]any) ([]*model.Block, []string, error) {
+	// key slots resolve against the object's type (property blocks) and the
+	// queried type (dataviews) before the codec, which knows neither
+	if err := a.s.newBlockKeys(a.spaceId, a.resolvers.scope, a.viewScope()).rewriteMaps(run, base); err != nil {
+		return nil, nil, err
+	}
 	raws := make([]json.RawMessage, len(run))
 	for j, block := range run {
 		raw, err := json.Marshal(block)

@@ -10,6 +10,7 @@ import (
 
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -115,6 +116,110 @@ func TestV2OwnPropertyOnAnInstalledBuiltInKey(t *testing.T) {
 		assert.Empty(t, ambiguous)
 		assert.Equal(t, ownKey, got)
 	})
+
+}
+
+// TestV2BlockKeySlotsOnAnInstalledBuiltInKey: the key slots blocks carry — a
+// property block, a query's views — settle a key two properties answer to by
+// the type they describe, not by the codec's preference for the built-in.
+func TestV2BlockKeySlotsOnAnInstalledBuiltInKey(t *testing.T) {
+	const ownKey = "6a7663db61fab21cd4b9e304"
+	ctx := context.Background()
+	newSpace := func(t *testing.T) *v2Fixture {
+		fx := slugSpaceFixture(t)
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("rel-own-priority"),
+			bundle.RelationKeyRelationKey:    domain.String(ownKey),
+			bundle.RelationKeyApiObjectKey:   domain.String("priority"),
+			bundle.RelationKeyName:           domain.String("Rank"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+		})
+		fx.addRelation(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("rel-priority"),
+			bundle.RelationKeyRelationKey:    domain.String("priority"),
+			bundle.RelationKeyName:           domain.String("Priority"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_number)),
+		})
+		fx.addType(t, testSpaceId, objectstore.TestObject{
+			bundle.RelationKeyId:                   domain.String("type-feature"),
+			bundle.RelationKeyUniqueKey:            domain.String("ot-feature"),
+			bundle.RelationKeyName:                 domain.String("Feature"),
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-own-priority"}),
+		})
+		return fx
+	}
+	viewSortKeys := func(blocks []*model.Block) []string {
+		var keys []string
+		for _, b := range blocks {
+			for _, view := range b.GetDataview().GetViews() {
+				for _, sort := range view.Sorts {
+					keys = append(keys, sort.RelationKey)
+				}
+			}
+		}
+		return keys
+	}
+
+	t.Run("a created object's property block binds the property its type lists", func(t *testing.T) {
+		// given
+		fx := newSpace(t)
+		captured := fx.expectCreate("obj-new")
+		fx.expectEtagRead("obj-new")
+
+		// when
+		_, err := fx.CreateObject(ctx, testSpaceId, []byte(`{"formatVersion":"2.0","type":"feature",
+			"properties":{"name":"Ship it"},"blocks":[{"type":"property","property":"priority"}]}`), false, true)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, *captured)
+		var keys []string
+		for _, b := range (*captured).Blocks {
+			if rel := b.GetRelation(); rel != nil {
+				keys = append(keys, rel.Key)
+			}
+		}
+		assert.Equal(t, []string{ownKey}, keys)
+	})
+
+	t.Run("a created query's views sort by the property its queried type lists", func(t *testing.T) {
+		// given
+		fx := newSpace(t)
+		captured := fx.expectCreate("obj-new")
+		fx.expectEtagRead("obj-new")
+
+		// when
+		_, err := fx.CreateObject(ctx, testSpaceId, []byte(`{"formatVersion":"2.0","type":"set",
+			"properties":{"name":"Features"},"query_source":{"types":["feature"]},
+			"blocks":[{"id":"dataview","type":"dataview","views":[{"id":"view1","name":"All",
+				"sorts":[{"property":"priority","direction":"asc"}]}]}]}`), false, true)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, *captured)
+		assert.Equal(t, []string{ownKey}, viewSortKeys((*captured).Blocks))
+	})
+
+	t.Run("an inserted dataview sorts by the property its source type lists", func(t *testing.T) {
+		// given
+		fx := newSpace(t)
+		committed := fx.expectMutateState(editRead(t, editBaseDoc), nil)
+
+		// when
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insert_blocks","blocks":[{"type":"dataview","source":["feature"],
+				"views":[{"name":"All","sorts":[{"property":"priority","direction":"asc"}]}]}]}`), "", false, true)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, *committed)
+		var blocks []*model.Block
+		(*committed).Iterate(func(b simple.Block) bool {
+			blocks = append(blocks, b.Model())
+			return true
+		})
+		assert.Equal(t, []string{ownKey}, viewSortKeys(blocks))
+	})
 }
 
 // TestV2OwnPropertyOnADormantBuiltInKey covers a space that made its own
@@ -188,4 +293,43 @@ func TestV2OwnPropertyOnADormantBuiltInKey(t *testing.T) {
 		assert.Equal(t, ownKey, dv.Views[0].Filters[0].RelationKey)
 		assert.Equal(t, float64(1782864000), dv.Views[0].Filters[0].Value.GetNumberValue(), "2026-07-01T00:00:00Z")
 	})
+}
+
+// TestV2TypedSearchSortsOnAnInstalledBuiltInKey: a sort on `due_date` in a
+// search over a type listing the space's own due_date must not be rewritten to
+// the installed built-in dueDate on the way through the codec.
+func TestV2TypedSearchSortsOnAnInstalledBuiltInKey(t *testing.T) {
+	// given
+	const ownKey = "6a7663db61fab21cd4b9e303"
+	fx := slugSpaceFixture(t)
+	fx.addRelation(t, testSpaceId, objectstore.TestObject{
+		bundle.RelationKeyId:             domain.String("rel-own-due"),
+		bundle.RelationKeyRelationKey:    domain.String(ownKey),
+		bundle.RelationKeyApiObjectKey:   domain.String("due_date"),
+		bundle.RelationKeyName:           domain.String("Ship by"),
+		bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_date)),
+	})
+	fx.addRelation(t, testSpaceId, objectstore.TestObject{
+		bundle.RelationKeyId:             domain.String("rel-due"),
+		bundle.RelationKeyRelationKey:    domain.String("dueDate"),
+		bundle.RelationKeyName:           domain.String("Due date"),
+		bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_date)),
+	})
+	fx.addType(t, testSpaceId, objectstore.TestObject{
+		bundle.RelationKeyId:                   domain.String("type-feature"),
+		bundle.RelationKeyUniqueKey:            domain.String("ot-feature"),
+		bundle.RelationKeyName:                 domain.String("Feature"),
+		bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-own-due"}),
+	})
+
+	// when
+	plan, err := fx.buildSearchPlan(testSpaceId, v2model.SearchRequest{
+		Type:  "feature",
+		Sorts: json.RawMessage(`[{"property":"due_date","direction":"asc"}]`),
+	}, true, errKeys{})
+
+	// then
+	require.NoError(t, err)
+	require.NotEmpty(t, plan.sorts)
+	assert.Equal(t, domain.RelationKey(ownKey), plan.sorts[0].RelationKey)
 }
