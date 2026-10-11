@@ -60,7 +60,7 @@ Variant D, neither A nor B: the fork delivers each cable on its own (develop's b
 
 Why not B:
 - "Every answer is complete" does not hold for iOS: its responder announces each interface's own AAAA only on that interface, as RFC 6762 §6.2 requires (all addresses valid on the sending interface, none that are not). B's step 1 would break that rule on our side as well.
-- The mixed Wi-Fi + cable case can deadlock, each side waiting for an address only the other can teach it.
+- The mixed Wi-Fi + cable case gets stuck when the phone turns Wi-Fi off: B puts indirectly learned link-local after IPv4, so each side dials the dead Wi-Fi IPv4 first, which uses the whole 2 s budget, and never reaches the cable. Recovery waits for the browser entry to expire (the iOS TTL, about 75 min).
 - A wrong-link candidate costs the whole dial budget, measured:
 
 | Dial target | Result |
