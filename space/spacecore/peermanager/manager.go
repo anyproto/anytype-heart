@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -116,6 +117,23 @@ type clientPeerManager struct {
 	streamPool                streampool.StreamPool
 	headSync                  headsync.HeadSync
 	diffKickRunning           atomic.Bool
+	// nodePeer and localPeers are the two sources responsiblePeers is composed
+	// of (under the mutex): the latest node verdict, nil after a failed lookup,
+	// and what the local pass has found. Each publishes on its own, so neither
+	// waits for the other (see fetchResponsiblePeers).
+	nodePeer   peer.Peer
+	localPeers []peer.Peer
+	// nodeLookupRunning keeps one node lookup in flight at a time: a fetch that
+	// finds it set runs only the local pass. nodeLookupDone receives a signal
+	// after each lookup, so the manage loop re-arms its cadence from the verdict.
+	// rebuildGen counts rebuild signals; each lookup compares it with the value
+	// it saw at its start (see refetchAfterLookup).
+	nodeLookupRunning atomic.Bool
+	nodeLookupDone    chan struct{}
+	rebuildGen        atomic.Uint64
+	// lookupReleased, when set (tests only), runs right after a lookup releases
+	// the slot, before refetchAfterLookup
+	lookupReleased func()
 	// consecutiveFetchFailures counts failed node lookups since the last
 	// success or rebuild signal. A rebuild signal resets it so every fresh
 	// connectivity event gets its own fast-retry window, even when the
@@ -136,6 +154,7 @@ func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.responsibleNodeIdsUpdated.Store(time.Now())
 	n.ctx, n.ctxCancel = context.WithCancel(context.Background())
 	n.rebuildResponsiblePeers = make(chan struct{}, 1)
+	n.nodeLookupDone = make(chan struct{}, 1)
 	n.watchingPeers = make(map[string]struct{})
 	n.availableResponsiblePeers = make(chan struct{})
 	n.nodeStatus = app.MustComponent[NodeStatus](a)
@@ -181,6 +200,14 @@ func (n *clientPeerManager) Run(ctx context.Context) (err error) {
 // failures must not slow the retries that follow.
 func (n *clientPeerManager) signalRebuild() {
 	n.consecutiveFetchFailures.Store(0)
+	n.rebuildGen.Inc()
+	n.signalFetch()
+}
+
+// signalFetch requests an immediate re-fetch without opening a fast-retry
+// window: a served peer closing or a LAN peer joining the space says nothing
+// about whether connectivity changed.
+func (n *clientPeerManager) signalFetch() {
 	select {
 	case n.rebuildResponsiblePeers <- struct{}{}:
 	default:
@@ -311,11 +338,30 @@ func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context) (peer
 func (n *clientPeerManager) manageResponsiblePeers() {
 	for {
 		n.fetchResponsiblePeers()
-		select {
-		case <-time.After(n.nextCheckInterval()):
-		case <-n.rebuildResponsiblePeers:
-		case <-n.ctx.Done():
+		if !n.waitNextFetch() {
 			return
+		}
+	}
+}
+
+// waitNextFetch blocks until the next fetch is due, the cadence timer firing
+// or a fetch being signalled, and reports false once the manager is closed. A
+// node verdict landing meanwhile re-arms the timer: the verdict decides the
+// cadence, and counting it from the verdict keeps "retry 5s after a failed
+// lookup" what it was when the loop itself waited the lookup out.
+func (n *clientPeerManager) waitNextFetch() bool {
+	timer := time.NewTimer(n.nextCheckInterval())
+	defer timer.Stop()
+	for {
+		select {
+		case <-timer.C:
+			return true
+		case <-n.rebuildResponsiblePeers:
+			return true
+		case <-n.nodeLookupDone:
+			timer.Reset(n.nextCheckInterval())
+		case <-n.ctx.Done():
+			return false
 		}
 	}
 }
@@ -339,8 +385,77 @@ func (n *clientPeerManager) nextCheckInterval() time.Duration {
 	return responsiblePeersCheckInterval
 }
 
+// fetchResponsiblePeers refreshes both sources of the served list at once: the
+// node lookup on its own goroutine, the local pass here. Sequencing them, in
+// either order, stalls one behind the other. Node first left every space
+// without its reachable cable peer for 20-70s after an interface loss cut the
+// internet: the walk blocked in DNS while the peer's live connection sat in
+// the pool. Local first would hold a healthy node behind stale mDNS entries
+// after a switch to cellular (GO-7379).
 func (n *clientPeerManager) fetchResponsiblePeers() {
-	var peers []peer.Peer
+	n.startNodeLookup()
+	n.fetchLocalPeers()
+}
+
+// startNodeLookup runs a node lookup in the background, unless one is already
+// in flight: the pool would single-flight the dial anyway, but each waiter
+// would hold a goroutine and could apply a stale verdict over a fresher one.
+func (n *clientPeerManager) startNodeLookup() {
+	if !n.nodeLookupRunning.CompareAndSwap(false, true) {
+		return
+	}
+	// read before the dial: every rebuild counted so far is behind this lookup
+	startGen := n.rebuildGen.Load()
+	go func() {
+		defer func() {
+			n.nodeLookupRunning.Store(false)
+			if n.lookupReleased != nil {
+				n.lookupReleased()
+			}
+			n.refetchAfterLookup(startGen)
+			select {
+			case n.nodeLookupDone <- struct{}{}:
+			default:
+			}
+		}()
+		n.lookupNode()
+	}()
+}
+
+// refetchAfterLookup asks for another fetch when the verdict just applied may
+// already be out of date. A fetch requested meanwhile found the lookup in
+// flight and ran only the local pass, so the space would otherwise wait for
+// the next tick (5s-2min):
+//   - a rebuild was signalled since this lookup started (startGen): a node
+//     reachable again would wait for the fast retry, where the synchronous
+//     loop took the pending rebuild at once;
+//   - the node it served is closed already: closed on arrival (a flush raced
+//     the lookup), it was never published, so no watcher reports it; closed
+//     while the lookup was finishing, its watcher's fetch was spent.
+//
+// It runs after the slot is released and consumes nothing, so lookups whose
+// tails overlap cannot take each other's requests: a lookup holding the slot
+// when this fetch lands runs the same check when it ends, against what it saw
+// at its own start. Plain fetch signals and cadence ticks are not replayed:
+// after a long offline walk they would start another at once. At most once
+// per lookup, and the next one replaces the node, so a closed node cannot spin
+// the loop.
+func (n *clientPeerManager) refetchAfterLookup(startGen uint64) {
+	if n.ctx.Err() != nil {
+		return
+	}
+	n.Lock()
+	closed := n.nodePeer != nil && n.nodePeer.IsClosed()
+	n.Unlock()
+	if closed || n.rebuildGen.Load() != startGen {
+		n.signalFetch()
+	}
+}
+
+// lookupNode finds one responsible node connection and serves it, or serves
+// none after a failure: GetOneOf returns a live connection before dialing, so
+// a failure means there is none.
+func (n *clientPeerManager) lookupNode() {
 	prevStatus := n.nodeStatus.GetNodeStatus(n.spaceId)
 	// Deliberately unbounded, as it was before GO-7379. GetOneOf walks every
 	// responsible node x every scheme x every address, and each attempt is
@@ -350,12 +465,17 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 	// single address that accepts UDP and never replies then consumes it all
 	// and the yamux fallback is never attempted, which cost self-hosted users
 	// sync entirely. See GO-7410 for the layered fix that lets a bound be
-	// reintroduced safely.
+	// reintroduced safely. Nothing waits for the walk: the local peers are
+	// served meanwhile.
 	p, err := n.p.pool.GetOneOf(n.ctx, n.getNodeIds())
+	if n.ctx.Err() != nil {
+		// closed meanwhile
+		return
+	}
 	if err == nil {
 		n.consecutiveFetchFailures.Store(0)
-		peers = []peer.Peer{p}
 		n.nodeStatus.SetNodesStatus(n.spaceId, nodestatus.Online)
+		n.setNodePeer(p)
 		if prevStatus == nodestatus.ConnectionError {
 			// Node connection just recovered. Head-update broadcasts attempted
 			// while offline were dropped (bounded by broadcastPeerFindDeadline),
@@ -371,44 +491,108 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 		n.consecutiveFetchFailures.Inc()
 		log.Info("can't get node peers", zap.Error(err))
 		n.nodeStatus.SetNodesStatus(n.spaceId, nodestatus.ConnectionError)
+		n.setNodePeer(nil)
 	}
 	n.spaceSyncService.Refresh(n.spaceId)
-	if len(peers) > 0 {
-		// Publish the node connection before touching local peers: the
-		// head-sync sweep and broadcasts wait on this list, and the local
-		// dials below can burn seconds on stale mDNS entries after a network
-		// switch (observed in the field: all managers parked behind one dial
-		// to a Wi-Fi-era local peer unroutable from cellular, while a healthy
-		// node connection sat idle until the fetch finished).
-		n.publishResponsiblePeers(peers)
-	}
+}
+
+// fetchLocalPeers connects the space's local (mDNS) peers and serves each one
+// the moment it lands; a peer already connected, inbound or outbound, comes
+// from the pool without a dial. Peers the pass has not reached yet stay served
+// until it ends, and then the list becomes exactly what it found. Each dial is
+// bounded separately, so one stale entry costs only its own budget: on failure
+// the stale peer is removed, so a Wi-Fi-era entry costs at most one bounded
+// attempt after the switch instead of an unbounded dial chain per cycle.
+func (n *clientPeerManager) fetchLocalPeers() {
 	peerIds := n.peerStore.LocalPeerIds(n.spaceId)
-	if len(peerIds) > 0 {
-		// Bound each dial separately, so one stale entry costs only its own
-		// budget: on failure the stale peer is removed, so a Wi-Fi-era entry
-		// costs at most one bounded attempt after the switch instead of an
-		// unbounded dial chain per cycle.
-		for _, peerId := range peerIds {
-			localCtx, cancelLocal := context.WithTimeout(n.ctx, localPeerDialTimeout)
-			p, err := n.p.pool.Get(localCtx, peerId)
-			cancelLocal()
-			if err != nil {
-				n.peerStore.RemoveLocalPeer(peerId)
-				log.Warn("failed to get local from net pool", zap.String("peerId", peerId), zap.Error(err))
-				continue
+	peers := make([]peer.Peer, 0, len(peerIds))
+	for _, peerId := range peerIds {
+		p, err := n.getLocalPeer(peerId)
+		if err != nil {
+			if n.ctx.Err() != nil {
+				// closing: the failure says nothing about the peer, and the
+				// store is shared by every space
+				return
 			}
+			n.peerStore.RemoveLocalPeer(peerId)
+			log.Warn("failed to get local from net pool", zap.String("peerId", peerId), zap.Error(err))
+			continue
+		}
+		peers = append(peers, p)
+		n.serveLocalPeer(p)
+	}
+	n.setLocalPeers(peers)
+}
+
+// getLocalPeer connects a local peer within one bounded budget. A failed dial
+// is checked against the connections already in the pool before it counts:
+// after a flush the dial races the peer's own reconnect, and the pool does not
+// hand an inbound connection to a dial already under way, so a peer that
+// connected to us meanwhile would be evicted with a live connection.
+func (n *clientPeerManager) getLocalPeer(peerId string) (peer.Peer, error) {
+	ctx, cancel := context.WithTimeout(n.ctx, localPeerDialTimeout)
+	defer cancel()
+	p, err := n.p.pool.Get(ctx, peerId)
+	if err == nil {
+		return p, nil
+	}
+	if n.ctx.Err() == nil {
+		// Pick never dials, and it shares the dial's budget
+		if p, pickErr := n.p.pool.Pick(ctx, peerId); pickErr == nil {
+			return p, nil
+		}
+	}
+	return nil, fmt.Errorf("get local peer: %w", err)
+}
+
+func (n *clientPeerManager) setNodePeer(p peer.Peer) {
+	n.Lock()
+	defer n.Unlock()
+	n.nodePeer = p
+	n.publishLocked()
+}
+
+// serveLocalPeer serves p in place of the entry with its id, or in addition.
+func (n *clientPeerManager) serveLocalPeer(p peer.Peer) {
+	n.Lock()
+	defer n.Unlock()
+	if i := slices.IndexFunc(n.localPeers, func(lp peer.Peer) bool { return lp.Id() == p.Id() }); i >= 0 {
+		n.localPeers[i] = p
+	} else {
+		n.localPeers = append(n.localPeers, p)
+	}
+	n.publishLocked()
+	if p.IsClosed() {
+		// closed before it could be served (the peer reconnecting): publishing
+		// left it out, so no watcher reports it; the next pass, right after
+		// this one, gets the new connection
+		n.signalFetch()
+	}
+}
+
+func (n *clientPeerManager) setLocalPeers(peers []peer.Peer) {
+	n.Lock()
+	defer n.Unlock()
+	n.localPeers = peers
+	n.publishLocked()
+}
+
+// publishLocked composes the served list from the live peers of its two
+// sources, swaps it in and wakes the waiters; safe to call any number of times
+// (watchers are registered once per peer). A source keeps a closed peer until
+// its next result, e.g. the node until a lookup started after a flush returns;
+// composing it in would hand it a fresh watcher, which would find it closed
+// and signal yet another fetch, and wake the waiters with nothing to serve.
+func (n *clientPeerManager) publishLocked() {
+	peers := make([]peer.Peer, 0, 1+len(n.localPeers))
+	if n.nodePeer != nil && !n.nodePeer.IsClosed() {
+		peers = append(peers, n.nodePeer)
+	}
+	for _, p := range n.localPeers {
+		if !p.IsClosed() {
 			peers = append(peers, p)
 		}
 	}
-	n.publishResponsiblePeers(peers)
-}
-
-// publishResponsiblePeers swaps the served list and wakes the waiters; safe to
-// call more than once per fetch (watchers are registered once per peer).
-func (n *clientPeerManager) publishResponsiblePeers(peers []peer.Peer) {
-	n.Lock()
-	defer n.Unlock()
-
 	for _, p := range peers {
 		if _, ok := n.watchingPeers[p.Id()]; !ok {
 			n.watchingPeers[p.Id()] = struct{}{}
@@ -445,21 +629,19 @@ func (n *clientPeerManager) kickDiffSyncOnReconnect() {
 	}()
 }
 
+// watchPeer signals a fetch once p closes. Its id is released first: the fetch
+// may serve a new connection to the same peer at once, and that one must get
+// a watcher of its own.
 func (n *clientPeerManager) watchPeer(p peer.Peer) {
-	defer func() {
-		n.Lock()
-		defer n.Unlock()
-		delete(n.watchingPeers, p.Id())
-	}()
-
 	select {
 	case <-p.CloseChan():
-		select {
-		case n.rebuildResponsiblePeers <- struct{}{}:
-		default:
-		}
 	case <-n.ctx.Done():
-		return
+	}
+	n.Lock()
+	delete(n.watchingPeers, p.Id())
+	n.Unlock()
+	if n.ctx.Err() == nil {
+		n.signalFetch()
 	}
 }
 
