@@ -21,6 +21,9 @@ type DeleteMode uint
 const (
 	DeleteModeDelete DeleteMode = iota
 	DeleteModeMark
+	// DeleteModeKeep: the handler already rewrote the document inside the apply transaction
+	// (for example into a tombstone); the document stays as the handler left it.
+	DeleteModeKeep
 )
 
 type ModifyMode uint
