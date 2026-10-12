@@ -183,6 +183,10 @@ func (s *Service) ToggleChatReaction(ctx context.Context, chatId, messageId, emo
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcChatToggleMessageReactionResponseError_NULL {
+		if resp.Error.Code == pb.RpcChatToggleMessageReactionResponseError_BAD_INPUT {
+			// e.g. a reaction to a deleted discussion comment
+			return false, fmt.Errorf("%w: %s", ErrInvalidChatMessage, resp.Error.Description)
+		}
 		return false, ErrFailedToggleReaction
 	}
 

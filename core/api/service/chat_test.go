@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -368,6 +369,52 @@ func TestChatService_ToggleChatReaction(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.True(t, added)
+	})
+
+	t.Run("a reaction the middleware refuses as bad input is an invalid message, not a failure", func(t *testing.T) {
+		// given: a reaction to a deleted discussion comment
+		ctx := context.Background()
+		fx := newFixture(t)
+		fx.mwMock.EXPECT().ChatToggleMessageReaction(ctx, mock.Anything).Return(&pb.RpcChatToggleMessageReactionResponse{
+			Error: &pb.RpcChatToggleMessageReactionResponseError{
+				Code:        pb.RpcChatToggleMessageReactionResponseError_BAD_INPUT,
+				Description: "check message: message is deleted",
+			},
+		})
+
+		// when
+		_, err := fx.service.ToggleChatReaction(ctx, mockedChatId, mockedMessageId, "👍")
+
+		// then
+		require.ErrorIs(t, err, ErrInvalidChatMessage)
+		assert.Contains(t, err.Error(), "message is deleted")
+	})
+}
+
+func TestDeletedChatMessageConversion(t *testing.T) {
+	t.Run("a deleted discussion comment carries deleted", func(t *testing.T) {
+		// given
+		protoMsg := &model.ChatMessage{
+			Id: "msg1", OrderId: "order1", Creator: "user1", ReplyToMessageId: "msg0",
+			Message:   &model.ChatMessageMessageContent{},
+			Reactions: &model.ChatMessageReactions{},
+			Deleted:   true,
+		}
+
+		// when
+		got := apimodel.ChatMessageFromProto(protoMsg)
+
+		// then
+		assert.True(t, got.Deleted)
+		raw, err := json.Marshal(got)
+		require.NoError(t, err)
+		assert.Contains(t, string(raw), `"deleted":true`)
+	})
+
+	t.Run("a live message carries no deleted member", func(t *testing.T) {
+		raw, err := json.Marshal(apimodel.ChatMessageFromProto(&model.ChatMessage{Id: "msg1"}))
+		require.NoError(t, err)
+		assert.NotContains(t, string(raw), "deleted")
 	})
 }
 
