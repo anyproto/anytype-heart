@@ -121,20 +121,12 @@ because `IsCurrentUserMentioned` finds the tombstone's `creator`, whatever the o
 reply and the delete (with hard delete it depended on the order). New local replies to a
 tombstone are refused by the RPC (section 4).
 
-This holds for replies that causally follow their parent's create, which is every reply this
-heart produces. A reply whose author never had the parent (possible through the API, which
+This holds for replies that causally follow their parent's create and are applied in a later
+transaction than the parent (see "Accepted limitations" for replies replayed together with
+their parent). A reply whose author never had the parent (possible through the API, which
 does not check that `reply_to` exists) can be applied before the parent on one device and
 after it on another, and is a mention on only the second; that exists today and is not
 addressed here.
-
-It also needs a fix to an existing bug (included in this change): `IsCurrentUserMentioned`
-looks the parent up through `repository.GetMessagesByIds`, which opens its own read
-transaction (any-store `db.ReadTx` takes a separate read connection) and so cannot see
-documents written earlier in the same apply transaction. A full replay is one transaction, so
-on a reindex or a new device every reply to the user's message that is replayed together with
-it gets `hasMention=false`, while an incrementally synced device marks it. `BeforeCreate` will
-pass a message getter that reads the chats collection through the apply transaction's context
-(`coll.FindId(ctx, id)`), so the lookup sees the parent (or its tombstone) whatever the batch.
 
 ### 3. Counters, events, last-message date
 
@@ -333,7 +325,7 @@ Checked 2026-10-12 against desktop (`anytype-ts` origin/develop d965ea2), iOS
 
 ## Accepted limitations
 
-Both exist today for every create and delete; this change inherits them and does not fix them.
+All three exist today; this change inherits them and does not fix them.
 
 - **Side effects before commit.** Handler hooks run before the apply transaction commits:
   subscription windows and observers see the change, and the full-text queue (another
@@ -348,6 +340,15 @@ Both exist today for every create and delete; this change inherits them and does
   message is not stored on that device while the replay watermark moves past it. A later
   modify or delete of that message finds nothing. The tombstone path does not repeat this: its
   queue failure is only logged.
+- **Reply mentions lost when a reply is applied together with its parent** (found during
+  review, file separately; decided 2026-10-12 to keep it out of this change).
+  `IsCurrentUserMentioned` looks the parent up through `repository.GetMessagesByIds`, which
+  opens its own read transaction (any-store `db.ReadTx` takes a separate read connection) and
+  cannot see documents written earlier in the same apply transaction. A full replay (a new
+  device, a discussion reindex) or a sync batch carrying both therefore stores
+  `hasMention=false` on a reply to the user's message, while a device that had the parent
+  committed earlier marks it. The reply still counts as an unread message. The fix is a getter
+  that reads through the apply transaction's context (`coll.FindId(ctx, id)`).
 
 ## Out of scope
 
@@ -373,9 +374,7 @@ author.
   - space chats still hard-delete;
   - a reaction applied after a space-chat hard delete creates no document (upsert regression);
   - a concurrent reply to a deleted comment still counts as a mention of its author, both when
-    the reply is applied before the delete and after it;
-  - a full replay of "my message P, someone's reply R" in one transaction marks R as a mention
-    (today it does not), and so does the same replay with P deleted;
+    the reply is applied before the delete and after it (parent committed earlier);
   - a tombstone write failure aborts the apply (`ErrCritical`): the store keeps the live
     message and the replay watermark does not advance.
 - Counters:
