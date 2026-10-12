@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/pool"
@@ -128,6 +129,7 @@ func Test_fetchResponsiblePeers(t *testing.T) {
 		// when
 		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
 		f.pool.EXPECT().Get(gomock.Any(), "peerId").Return(nil, fmt.Errorf("error"))
+		f.pool.EXPECT().Pick(gomock.Any(), "peerId").Return(nil, ocache.ErrNotExists)
 		f.updater.EXPECT().Refresh(spaceId)
 		f.fetchAndWaitNode(t)
 	})
@@ -627,6 +629,7 @@ func Test_fetchResponsiblePeers_nodePublishedBeforeLocalDials(t *testing.T) {
 			}
 			return nil, fmt.Errorf("unroutable from cellular")
 		})
+	f.pool.EXPECT().Pick(gomock.Any(), "staleWifiPeer").Return(nil, ocache.ErrNotExists)
 
 	fetchDone := make(chan struct{})
 	go func() {
@@ -671,6 +674,7 @@ func Test_fetchResponsiblePeers_boundsEachLocalDialSeparately(t *testing.T) {
 			<-ctx.Done()
 			return nil, ctx.Err()
 		})
+	f.pool.EXPECT().Pick(gomock.Any(), "stalePeer").Return(nil, ocache.ErrNotExists)
 	// the healthy peer behind it must still get a full budget of its own
 	f.pool.EXPECT().Get(gomock.Any(), "healthyPeer").DoAndReturn(
 		func(ctx context.Context, id string) (peer.Peer, error) {
@@ -828,6 +832,7 @@ func Test_fetchLocalPeers_unreachedPeersStayServed(t *testing.T) {
 			<-releaseDial
 			return nil, context.DeadlineExceeded
 		})
+	f.pool.EXPECT().Pick(gomock.Any(), "stalePeer").Return(nil, ocache.ErrNotExists)
 	f.pool.EXPECT().Get(gomock.Any(), "peerB").Return(peerB, nil)
 	want := []string{"peerA", "peerB"}
 
@@ -855,6 +860,31 @@ func Test_fetchLocalPeers_unreachedPeersStayServed(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, want, peerIds(peers))
 	assert.Equal(t, want, f.store.LocalPeerIds(spaceId), "only the stale peer may be evicted")
+}
+
+// After a flush the local pass dials a LAN peer while the peer reconnects to
+// us; the pool does not hand the inbound connection to the dial under way. A
+// failed dial must not evict a peer the pool holds a live connection to: the
+// pass serves that connection instead.
+func Test_fetchLocalPeers_servesPeerThatConnectedDuringFailedDial(t *testing.T) {
+	// given
+	spaceId := "spaceId"
+	f := newFixtureManager(t, spaceId)
+	f.store.UpdateLocalPeer("cablePeer", []string{spaceId})
+	inbound := newTestPeer("cablePeer")
+	f.pool.EXPECT().Get(gomock.Any(), "cablePeer").Return(nil, fmt.Errorf("dial tcp: i/o timeout"))
+	f.pool.EXPECT().Pick(gomock.Any(), "cablePeer").Return(inbound, nil)
+	want := []string{"cablePeer"}
+
+	// when
+	f.cm.fetchLocalPeers()
+
+	// then
+	ctx := context.WithValue(context.Background(), ContextPeerFindDeadlineKey, time.Now().Add(time.Second))
+	peers, err := f.cm.GetResponsiblePeers(ctx)
+	require.NoError(t, err, "the inbound connection must be served")
+	assert.Equal(t, want, peerIds(peers))
+	assert.Equal(t, want, f.store.LocalPeerIds(spaceId), "a peer with a live connection must not be evicted")
 }
 
 // Closing the manager mid-fetch fails every pool call with the manager's own

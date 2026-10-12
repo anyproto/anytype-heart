@@ -464,9 +464,7 @@ func (n *clientPeerManager) fetchLocalPeers() {
 	peerIds := n.peerStore.LocalPeerIds(n.spaceId)
 	peers := make([]peer.Peer, 0, len(peerIds))
 	for _, peerId := range peerIds {
-		localCtx, cancelLocal := context.WithTimeout(n.ctx, localPeerDialTimeout)
-		p, err := n.p.pool.Get(localCtx, peerId)
-		cancelLocal()
+		p, err := n.getLocalPeer(peerId)
 		if err != nil {
 			if n.ctx.Err() != nil {
 				// closing: the failure says nothing about the peer, and the
@@ -481,6 +479,27 @@ func (n *clientPeerManager) fetchLocalPeers() {
 		n.serveLocalPeer(p)
 	}
 	n.setLocalPeers(peers)
+}
+
+// getLocalPeer connects a local peer within one bounded budget. A failed dial
+// is checked against the connections already in the pool before it counts:
+// after a flush the dial races the peer's own reconnect, and the pool does not
+// hand an inbound connection to a dial already under way, so a peer that
+// connected to us meanwhile would be evicted with a live connection.
+func (n *clientPeerManager) getLocalPeer(peerId string) (peer.Peer, error) {
+	ctx, cancel := context.WithTimeout(n.ctx, localPeerDialTimeout)
+	defer cancel()
+	p, err := n.p.pool.Get(ctx, peerId)
+	if err == nil {
+		return p, nil
+	}
+	if n.ctx.Err() == nil {
+		// Pick never dials, and it shares the dial's budget
+		if p, pickErr := n.p.pool.Pick(ctx, peerId); pickErr == nil {
+			return p, nil
+		}
+	}
+	return nil, fmt.Errorf("get local peer: %w", err)
 }
 
 func (n *clientPeerManager) setNodePeer(p peer.Peer) {
