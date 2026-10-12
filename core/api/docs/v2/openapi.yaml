@@ -508,7 +508,8 @@ components:
           description: Messages ever posted, deleted ones included
           type: integer
         message_count:
-          description: Messages the chat holds now; a deleted message leaves it
+          description: Live messages in the chat; a deleted one isn't counted, even
+            a discussion comment that stays in messages as deleted
           type: integer
         messages:
           items:

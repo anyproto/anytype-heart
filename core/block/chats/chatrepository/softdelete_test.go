@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/query"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -156,19 +155,14 @@ func TestTombstoneQueriesUseIndexes(t *testing.T) {
 	require.NoError(t, anystorehelper.AddIndexes(ctx, fx.repo.collection, chatCollectionIndexes))
 
 	t.Run("tombstone count", func(t *testing.T) {
-		assert.True(t, indexUsed(t, fx.repo.collection.Find(filterDeleted), chatmodel.DeletedKey))
+		assert.True(t, indexUsed(t, fx.repo.deletedMessagesQuery(), chatmodel.DeletedKey))
 	})
 
 	t.Run("live messages by creator", func(t *testing.T) {
-		q := fx.repo.collection.Find(query.And{
-			query.Key{Path: []string{chatmodel.CreatorKey}, Filter: query.NewComp(query.CompOpEq, "alice")},
-			filterNotDeleted,
-		}).Sort(descOrder).Limit(10)
-		assert.True(t, indexUsed(t, q, chatmodel.CreatorKey+",_o.id"))
+		assert.True(t, indexUsed(t, fx.repo.lastLiveMessagesByCreatorQuery("alice", 10), chatmodel.CreatorKey+",_o.id"))
 	})
 
 	t.Run("newest live messages", func(t *testing.T) {
-		q := fx.repo.collection.Find(filterNotDeleted).Sort(descOrder).Limit(10)
-		assert.True(t, indexUsed(t, q, "_o.id"))
+		assert.True(t, indexUsed(t, fx.repo.lastLiveMessagesQuery(10), "_o.id"))
 	})
 }

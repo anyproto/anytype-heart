@@ -188,6 +188,31 @@ func TestGetLastMessageSkipsTombstones(t *testing.T) {
 		assert.Equal(t, "a", got.Id)
 	})
 
+	t.Run("past a window that holds only tombstones", func(t *testing.T) {
+		// given: the live message is older than the window, which holds only tombstones
+		ctx := context.Background()
+		fx := newFixture(t)
+		repo, err := fx.repo.Repository(testSpaceId, "chatId1")
+		require.NoError(t, err)
+		require.NoError(t, repo.AddTestMessage(ctx, givenSimpleMessage("a", "live", "o1")))
+		require.NoError(t, repo.AddTestMessage(ctx, tombstoneOf(givenSimpleMessage("b", "deleted", "o2"))))
+		require.NoError(t, repo.AddTestMessage(ctx, tombstoneOf(givenSimpleMessage("c", "deleted", "o3"))))
+		mngr, err := fx.GetManager(testSpaceId, "chatId1")
+		require.NoError(t, err)
+		_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{ChatObjectId: "chatId1", SubId: "sub", Limit: 2})
+		require.NoError(t, err)
+		mngr.Lock()
+		defer mngr.Unlock()
+
+		// when
+		got, ok, err := mngr.GetLastMessage()
+
+		// then
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, "a", got.Id)
+	})
+
 	t.Run("when every message is deleted", func(t *testing.T) {
 		// given
 		_, mngr := windowFixture(t,

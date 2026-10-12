@@ -354,7 +354,7 @@ func (s *repository) CountMessages(ctx context.Context) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("count all messages: %w", err)
 	}
-	deleted, err := s.collection.Find(filterDeleted).Count(ctx)
+	deleted, err := s.deletedMessagesQuery().Count(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("count deleted messages: %w", err)
 	}
@@ -788,8 +788,32 @@ func (s *repository) GetLastMessages(ctx context.Context, limit uint) ([]*chatmo
 }
 
 func (s *repository) GetLastLiveMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error) {
-	qry := s.collection.Find(filterNotDeleted).Sort(descOrder).Limit(limit)
-	return s.queryMessages(ctx, qry)
+	return s.queryMessages(ctx, s.lastLiveMessagesQuery(limit))
+}
+
+// The queries below are built in one place so the tests explain exactly what runs: each must
+// keep its index (repository_test / softdelete_test).
+
+// deletedMessagesQuery reads the tombstones through the sparse `deleted` index.
+func (s *repository) deletedMessagesQuery() anystore.Query {
+	return s.collection.Find(filterDeleted)
+}
+
+// lastLiveMessagesQuery walks the order index from the newest end, skipping tombstones.
+func (s *repository) lastLiveMessagesQuery(limit uint) anystore.Query {
+	return s.collection.Find(filterNotDeleted).Sort(descOrder).Limit(limit)
+}
+
+// lastLiveMessagesByCreatorQuery walks the (creator, order) index from the newest end,
+// skipping tombstones.
+func (s *repository) lastLiveMessagesByCreatorQuery(creator string, limit uint) anystore.Query {
+	return s.collection.Find(query.And{
+		query.Key{
+			Path:   []string{chatmodel.CreatorKey},
+			Filter: query.NewComp(query.CompOpEq, creator),
+		},
+		filterNotDeleted,
+	}).Sort(descOrder).Limit(limit)
 }
 
 func (s *repository) GetLastMessagesByCreators(ctx context.Context, creators []string, limit uint) ([]*chatmodel.Message, error) {
@@ -809,14 +833,7 @@ func (s *repository) GetLastMessagesByCreators(ctx context.Context, creators []s
 		}
 		unique[creator] = struct{}{}
 
-		qry := s.collection.Find(query.And{
-			query.Key{
-				Path:   []string{chatmodel.CreatorKey},
-				Filter: query.NewComp(query.CompOpEq, creator),
-			},
-			filterNotDeleted,
-		}).Sort(descOrder).Limit(limit)
-		messages, err := s.queryMessages(ctx, qry)
+		messages, err := s.queryMessages(ctx, s.lastLiveMessagesByCreatorQuery(creator, limit))
 		if err != nil {
 			return nil, fmt.Errorf("query creator messages: %w", err)
 		}

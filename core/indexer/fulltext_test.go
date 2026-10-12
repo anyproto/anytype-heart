@@ -883,6 +883,34 @@ func TestPrepareSearchDocs_ChatObject(t *testing.T) {
 		assert.Contains(t, docs[1].Text, "Test message")
 	})
 
+	t.Run("a full backfill does not index a deleted discussion comment", func(t *testing.T) {
+		// given
+		indexerFx := newFixture(t)
+		repo, err := indexerFx.chatRepository.Repository(spaceId, chatId)
+		require.NoError(t, err)
+		require.NoError(t, repo.AddTestMessage(context.Background(), &chatmodel.Message{
+			ChatMessage: &model.ChatMessage{Id: "msgLive", Message: &model.ChatMessageMessageContent{Text: "Hello world"}, OrderId: "o1"},
+		}))
+		deleted := &chatmodel.Message{
+			ChatMessage: &model.ChatMessage{Id: "msgDeleted", Message: &model.ChatMessageMessageContent{Text: "gone"}, OrderId: "o2"},
+		}
+		deleted.MakeTombstone()
+		require.NoError(t, repo.AddTestMessage(context.Background(), deleted))
+
+		// when
+		var docs []ftsearch.SearchDoc
+		_, _, err = indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{
+			ObjectId:   chatId,
+			SpaceId:    spaceId,
+			MsgOrderId: objectstore.FtAllOrderId,
+		}, collectDocs(&docs))
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, docs, 1)
+		assert.Equal(t, chatId+"/m/msgLive", docs[0].Id)
+	})
+
 	t.Run("messages by orderId", func(t *testing.T) {
 		// given
 		indexerFx := newFixture(t)

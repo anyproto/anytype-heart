@@ -114,7 +114,7 @@ type ChatState struct {
 type ChatMessagesResponse struct {
 	Messages []ChatMessage `json:"messages"`
 	State    *ChatState    `json:"state,omitempty"`
-	// Messages the chat holds now; a deleted message leaves it
+	// Live messages in the chat; a deleted one isn't counted, even a discussion comment that stays in messages as deleted
 	MessageCount int `json:"message_count"`
 	// Messages ever posted, deleted ones included
 	LifetimeMessageCount int    `json:"lifetime_message_count"`

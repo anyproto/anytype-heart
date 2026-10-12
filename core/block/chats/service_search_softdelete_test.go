@@ -66,37 +66,30 @@ func TestService_SearchSkipsDeletedComments(t *testing.T) {
 		assert.Equal(t, "msgLive", results[0].MessageId)
 	})
 
-	for _, creators := range [][]string{nil, {"A5alice"}} {
-		t.Run("browse returns older live messages past newer deleted ones, creators "+creatorsLabel(creators), func(t *testing.T) {
-			// given
-			fx := newFx(t)
-			fx.chatRepoService.repos = map[string]chatrepository.Repository{
-				chatId: &fakeChatRepository{lastMessages: []*chatmodel.Message{
-					tombstone("msgNewest", "A5alice", 300),
-					tombstone("msgNewer", "A5alice", 200),
-					live("msgOld", "A5alice", 100),
-				}},
-			}
-			fx.start(t)
+	// Browse with creators reads GetLastMessagesByCreators, which is live-only in the repository
+	// itself (chatrepository softdelete_test); only the creatorless read is chosen here.
+	t.Run("browse without creators reads live messages only", func(t *testing.T) {
+		// given: the fake's GetLastMessages keeps tombstones like the real one; only the
+		// live-only read skips them
+		fx := newFx(t)
+		fx.chatRepoService.repos = map[string]chatrepository.Repository{
+			chatId: &fakeChatRepository{lastMessages: []*chatmodel.Message{
+				tombstone("msgNewest", "A5alice", 300),
+				tombstone("msgNewer", "A5alice", 200),
+				live("msgOld", "A5alice", 100),
+			}},
+		}
+		fx.start(t)
 
-			// when
-			results, err := fx.Search(context.Background(), &pb.RpcChatSearchRequest{
-				SpaceId:  spaceId,
-				Creators: creators,
-				Limit:    1,
-			})
-
-			// then
-			require.NoError(t, err)
-			require.Len(t, results, 1)
-			assert.Equal(t, "msgOld", results[0].MessageId)
+		// when
+		results, err := fx.Search(context.Background(), &pb.RpcChatSearchRequest{
+			SpaceId: spaceId,
+			Limit:   1,
 		})
-	}
-}
 
-func creatorsLabel(creators []string) string {
-	if len(creators) == 0 {
-		return "none"
-	}
-	return "set"
+		// then
+		require.NoError(t, err)
+		require.Len(t, results, 1)
+		assert.Equal(t, "msgOld", results[0].MessageId)
+	})
 }
