@@ -6,6 +6,7 @@ import (
 	"net"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -96,14 +97,14 @@ func Test_fetchResponsiblePeers(t *testing.T) {
 		f := newFixtureManager(t, spaceId)
 		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("failed"))
 		f.updater.EXPECT().Refresh(spaceId)
-		f.cm.fetchResponsiblePeers()
+		f.fetchAndWaitNode(t)
 		require.Equal(t, f.cm.nodeStatus.GetNodeStatus("spaceId"), nodestatus.ConnectionError)
 	})
 	t.Run("no local peers", func(t *testing.T) {
 		f := newFixtureManager(t, spaceId)
 		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
 		f.updater.EXPECT().Refresh(spaceId)
-		f.cm.fetchResponsiblePeers()
+		f.fetchAndWaitNode(t)
 		require.Equal(t, f.cm.nodeStatus.GetNodeStatus("spaceId"), nodestatus.Online)
 	})
 	t.Run("local peers connected", func(t *testing.T) {
@@ -115,7 +116,7 @@ func Test_fetchResponsiblePeers(t *testing.T) {
 		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
 		f.pool.EXPECT().Get(gomock.Any(), "peerId").Return(newTestPeer("id1"), nil)
 		f.updater.EXPECT().Refresh(spaceId)
-		f.cm.fetchResponsiblePeers()
+		f.fetchAndWaitNode(t)
 
 	})
 	t.Run("local peer not connected", func(t *testing.T) {
@@ -127,7 +128,7 @@ func Test_fetchResponsiblePeers(t *testing.T) {
 		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
 		f.pool.EXPECT().Get(gomock.Any(), "peerId").Return(nil, fmt.Errorf("error"))
 		f.updater.EXPECT().Refresh(spaceId)
-		f.cm.fetchResponsiblePeers()
+		f.fetchAndWaitNode(t)
 	})
 }
 
@@ -284,6 +285,7 @@ func newFixtureManager(t *testing.T, spaceId string) *fixture {
 		spaceId:                   spaceId,
 		peerStore:                 store,
 		watchingPeers:             map[string]struct{}{},
+		nodeLookupDone:            make(chan struct{}, 1),
 		ctx:                       context.Background(),
 		nodeStatus:                ns,
 		spaceSyncService:          updater,
@@ -296,6 +298,23 @@ func newFixtureManager(t *testing.T, spaceId string) *fixture {
 		conf:             conf,
 		updater:          updater,
 		peerToPeerStatus: peerToPeerStatus,
+	}
+}
+
+// fetchAndWaitNode runs one fetch and waits for its node verdict, which lands
+// on a goroutine of its own.
+func (f *fixture) fetchAndWaitNode(t *testing.T) {
+	t.Helper()
+	f.cm.fetchResponsiblePeers()
+	f.waitNodeVerdict(t)
+}
+
+func (f *fixture) waitNodeVerdict(t *testing.T) {
+	t.Helper()
+	select {
+	case <-f.cm.nodeLookupDone:
+	case <-time.After(time.Second * 5):
+		t.Fatal("node lookup must complete")
 	}
 }
 
@@ -405,7 +424,7 @@ func Test_fetchResponsiblePeers_reconnectKick(t *testing.T) {
 		f.cm.nodeStatus.SetNodesStatus(spaceId, nodestatus.ConnectionError)
 		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
 		f.updater.EXPECT().Refresh(spaceId)
-		f.cm.fetchResponsiblePeers()
+		f.fetchAndWaitNode(t)
 		assert.True(t, waitKick(t, hs), "reconnect must kick an immediate diff round")
 	})
 	t.Run("already online: no kick", func(t *testing.T) {
@@ -415,7 +434,7 @@ func Test_fetchResponsiblePeers_reconnectKick(t *testing.T) {
 		f.cm.nodeStatus.SetNodesStatus(spaceId, nodestatus.Online)
 		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
 		f.updater.EXPECT().Refresh(spaceId)
-		f.cm.fetchResponsiblePeers()
+		f.fetchAndWaitNode(t)
 		select {
 		case <-hs.kicked:
 			t.Fatal("steady online state must not kick diff rounds")
@@ -429,7 +448,7 @@ func Test_fetchResponsiblePeers_reconnectKick(t *testing.T) {
 		f.cm.nodeStatus.SetNodesStatus(spaceId, nodestatus.ConnectionError)
 		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("offline"))
 		f.updater.EXPECT().Refresh(spaceId)
-		f.cm.fetchResponsiblePeers()
+		f.fetchAndWaitNode(t)
 		select {
 		case <-hs.kicked:
 			t.Fatal("no kick while the node is still unreachable")
@@ -571,7 +590,7 @@ func Test_fetchResponsiblePeers_nodeLookupIsNotTruncated(t *testing.T) {
 			assert.False(t, ok, "node lookup must not carry a deadline: it truncates the address walk before the yamux fallback")
 			return newTestPeer("id"), nil
 		})
-	f.cm.fetchResponsiblePeers()
+	f.fetchAndWaitNode(t)
 }
 
 func Test_fetchResponsiblePeers_nodePublishedBeforeLocalDials(t *testing.T) {
@@ -618,6 +637,7 @@ func Test_fetchResponsiblePeers_nodePublishedBeforeLocalDials(t *testing.T) {
 	}
 	// the failed local dial must evict the stale peer
 	assert.Empty(t, f.store.LocalPeerIds(spaceId), "stale local peer must be removed after a failed bounded dial")
+	f.waitNodeVerdict(t)
 }
 
 // Local (mDNS) dials are bounded PER DIAL, not by one budget shared across the
@@ -648,11 +668,250 @@ func Test_fetchResponsiblePeers_boundsEachLocalDialSeparately(t *testing.T) {
 			return newTestPeer("healthyPeer"), nil
 		})
 
-	f.cm.fetchResponsiblePeers()
+	f.fetchAndWaitNode(t)
 
 	peers, err := f.cm.GetResponsiblePeers(context.Background())
 	require.NoError(t, err)
 	require.Len(t, peers, 2, "node and healthy local peer must both be served")
 	assert.Equal(t, []string{"healthyPeer"}, f.store.LocalPeerIds(spaceId),
 		"only the stale peer may be evicted")
+}
+
+// The field failure (2026-10-12, GO-7581 device test): after an interface loss
+// cut the internet the node walk blocked for 20-70s while the cable peer's
+// live connection sat in the pool. The local pass must serve it without
+// waiting for the node verdict.
+func Test_fetchResponsiblePeers_localPeersServedWhileNodeLookupBlocks(t *testing.T) {
+	// given
+	spaceId := "spaceId"
+	f := newFixtureManager(t, spaceId)
+	f.store.UpdateLocalPeer("cablePeer", []string{spaceId})
+	f.updater.EXPECT().Refresh(spaceId)
+	releaseNode := make(chan struct{})
+	f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, ids []string) (peer.Peer, error) {
+			<-releaseNode
+			return nil, fmt.Errorf("unable to connect")
+		})
+	// an already-connected peer: the pool serves it without a dial
+	f.pool.EXPECT().Get(gomock.Any(), "cablePeer").Return(newTestPeer("cablePeer"), nil)
+	want := []string{"cablePeer"}
+
+	// when
+	fetchDone := make(chan struct{})
+	go func() {
+		defer close(fetchDone)
+		f.cm.fetchResponsiblePeers()
+	}()
+
+	// then: while the node walk is parked, the cable peer is served
+	ctx := context.WithValue(context.Background(), ContextPeerFindDeadlineKey, time.Now().Add(time.Second))
+	peers, err := f.cm.GetResponsiblePeers(ctx)
+	close(releaseNode)
+	require.NoError(t, err, "local peer must be served while the node walk is in flight")
+	assert.Equal(t, want, peerIds(peers))
+
+	// and the failed node verdict does not take it away
+	f.waitNodeVerdict(t)
+	<-fetchDone
+	peers, err = f.cm.GetResponsiblePeers(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, want, peerIds(peers))
+	assert.Equal(t, nodestatus.ConnectionError, f.cm.nodeStatus.GetNodeStatus(spaceId))
+}
+
+// A fetch while a node lookup is in flight (cadence tick, LAN signal,
+// connectivity signal) runs only the local pass: lookups never stack.
+func Test_fetchResponsiblePeers_nodeLookupSingleFlight(t *testing.T) {
+	// given
+	spaceId := "spaceId"
+	f := newFixtureManager(t, spaceId)
+	f.store.UpdateLocalPeer("localPeer", []string{spaceId})
+	f.updater.EXPECT().Refresh(spaceId).Times(2)
+	releaseNode := make(chan struct{})
+	f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, ids []string) (peer.Peer, error) {
+			<-releaseNode
+			return newTestPeer("node"), nil
+		})
+	// one local pass per fetch
+	f.pool.EXPECT().Get(gomock.Any(), "localPeer").Times(4).Return(newTestPeer("localPeer"), nil)
+
+	// when
+	f.cm.fetchResponsiblePeers()
+	f.cm.fetchResponsiblePeers()
+	f.cm.fetchResponsiblePeers()
+	close(releaseNode)
+	f.waitNodeVerdict(t)
+
+	// then
+	peers, err := f.cm.GetResponsiblePeers(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, []string{"node", "localPeer"}, peerIds(peers))
+
+	// the lookup is over: the next fetch starts a new one
+	f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("node"), nil)
+	f.fetchAndWaitNode(t)
+}
+
+// A failed lookup drops the node from the list but keeps the local peers, and
+// a later success adds it back: the two sources are independent.
+func Test_fetchResponsiblePeers_nodeVerdictAndLocalPassAreIndependent(t *testing.T) {
+	spaceId := "spaceId"
+	f := newFixtureManager(t, spaceId)
+	f.store.UpdateLocalPeer("localPeer", []string{spaceId})
+	f.updater.EXPECT().Refresh(spaceId).Times(3)
+	f.pool.EXPECT().Get(gomock.Any(), "localPeer").Times(3).Return(newTestPeer("localPeer"), nil)
+
+	for _, tc := range []struct {
+		name         string
+		nodeErr      error
+		wantPeers    []string
+		wantFailures int32
+	}{
+		{name: "node found", wantPeers: []string{"node", "localPeer"}},
+		{name: "node lost", nodeErr: fmt.Errorf("unable to connect"), wantPeers: []string{"localPeer"}, wantFailures: 1},
+		{name: "node back", wantPeers: []string{"node", "localPeer"}},
+	} {
+		// given
+		if tc.nodeErr != nil {
+			f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(nil, tc.nodeErr)
+		} else {
+			f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("node"), nil)
+		}
+
+		// when
+		f.fetchAndWaitNode(t)
+
+		// then
+		peers, err := f.cm.GetResponsiblePeers(context.Background())
+		require.NoError(t, err, tc.name)
+		assert.Equal(t, tc.wantPeers, peerIds(peers), tc.name)
+		assert.Equal(t, tc.wantFailures, f.cm.consecutiveFetchFailures.Load(), tc.name)
+	}
+}
+
+// A pass serves each local peer as it lands without dropping the ones it has
+// not reached yet: a stale entry burning its dial budget must not hide the
+// healthy peers listed after it.
+func Test_fetchLocalPeers_unreachedPeersStayServed(t *testing.T) {
+	// given: the previous pass served three peers; the middle one's
+	// connection died with the old network
+	spaceId := "spaceId"
+	f := newFixtureManager(t, spaceId)
+	peerA, stale, peerB := newTestPeer("peerA"), newTestPeer("stalePeer"), newTestPeer("peerB")
+	for _, p := range []*testPeer{peerA, stale, peerB} {
+		f.store.UpdateLocalPeer(p.Id(), []string{spaceId})
+	}
+	f.cm.setLocalPeers([]peer.Peer{peerA, stale, peerB})
+	require.NoError(t, stale.Close())
+
+	dialStarted := make(chan struct{})
+	releaseDial := make(chan struct{})
+	f.pool.EXPECT().Get(gomock.Any(), "peerA").Return(peerA, nil)
+	f.pool.EXPECT().Get(gomock.Any(), "stalePeer").DoAndReturn(
+		func(ctx context.Context, id string) (peer.Peer, error) {
+			close(dialStarted)
+			<-releaseDial
+			return nil, context.DeadlineExceeded
+		})
+	f.pool.EXPECT().Get(gomock.Any(), "peerB").Return(peerB, nil)
+	want := []string{"peerA", "peerB"}
+
+	// when
+	passDone := make(chan struct{})
+	go func() {
+		defer close(passDone)
+		f.cm.fetchLocalPeers()
+	}()
+	<-dialStarted
+
+	// then: peerB, not reached yet, is still served
+	peers, err := f.cm.GetResponsiblePeers(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, want, peerIds(peers))
+
+	// and after the pass the list is exactly what it found
+	close(releaseDial)
+	select {
+	case <-passDone:
+	case <-time.After(time.Second * 5):
+		t.Fatal("the local pass must finish")
+	}
+	peers, err = f.cm.GetResponsiblePeers(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, want, peerIds(peers))
+	assert.Equal(t, want, f.store.LocalPeerIds(spaceId), "only the stale peer may be evicted")
+}
+
+// Closing the manager mid-fetch fails every pool call with the manager's own
+// cancellation; that must not evict the LAN peers from the store, which is
+// shared by every space.
+func Test_fetchLocalPeers_noEvictionWhenClosing(t *testing.T) {
+	// given
+	spaceId := "spaceId"
+	f := newFixtureManager(t, spaceId)
+	f.store.UpdateLocalPeer("localPeer", []string{spaceId})
+	ctx, cancel := context.WithCancel(context.Background())
+	f.cm.ctx = ctx
+	cancel()
+	f.pool.EXPECT().Get(gomock.Any(), "localPeer").DoAndReturn(
+		func(ctx context.Context, id string) (peer.Peer, error) {
+			return nil, ctx.Err()
+		})
+
+	// when
+	f.cm.fetchLocalPeers()
+
+	// then
+	assert.Equal(t, []string{"localPeer"}, f.store.LocalPeerIds(spaceId), "a closing manager must not evict local peers")
+}
+
+// The node verdict decides the cadence. With the lookup off the loop, a failed
+// verdict landing while the loop waits re-arms the timer, so the retry comes
+// 5s after the failure, as when the loop waited the lookup out, and not at the
+// 20s tick armed before it.
+func Test_manageResponsiblePeers_retryCountsFromNodeVerdict(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		// given
+		spaceId := "spaceId"
+		f := newFixtureManager(t, spaceId)
+		f.cm.ctx, f.cm.ctxCancel = context.WithCancel(context.Background())
+		f.updater.EXPECT().Refresh(spaceId).Times(2)
+		start := time.Now()
+		lookupStarts := make(chan time.Duration, 2)
+		gomock.InOrder(
+			f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(ctx context.Context, ids []string) (peer.Peer, error) {
+					lookupStarts <- time.Since(start)
+					// an offline walk outlasting the tick armed while online
+					time.Sleep(30 * time.Second)
+					return nil, fmt.Errorf("unable to connect")
+				}),
+			f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).DoAndReturn(
+				func(ctx context.Context, ids []string) (peer.Peer, error) {
+					lookupStarts <- time.Since(start)
+					return newTestPeer("node"), nil
+				}),
+		)
+		want := []time.Duration{0, 35 * time.Second}
+
+		// when
+		go f.cm.manageResponsiblePeers()
+		got := []time.Duration{<-lookupStarts, <-lookupStarts}
+		synctest.Wait()
+		f.cm.ctxCancel()
+
+		// then
+		assert.Equal(t, want, got, "the 20s tick must not start a second lookup; the retry must come 5s after the 30s verdict")
+		assert.Equal(t, nodestatus.Online, f.cm.nodeStatus.GetNodeStatus(spaceId))
+	})
+}
+
+func peerIds(peers []peer.Peer) []string {
+	ids := make([]string, 0, len(peers))
+	for _, p := range peers {
+		ids = append(ids, p.Id())
+	}
+	return ids
 }
