@@ -117,9 +117,27 @@ func (f *fakeChatRepository) GetLastMessages(ctx context.Context, limit uint) ([
 	return f.lastMessages, nil
 }
 
+// GetLastLiveMessages mirrors the repository: lastMessages without tombstones.
+func (f *fakeChatRepository) GetLastLiveMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error) {
+	live := make([]*chatmodel.Message, 0, len(f.lastMessages))
+	for _, message := range f.lastMessages {
+		if !message.Deleted {
+			live = append(live, message)
+		}
+	}
+	if int(limit) < len(live) {
+		return live[:limit], nil
+	}
+	return live, nil
+}
+
+// GetLastMessagesByCreators mirrors the repository: live messages only.
 func (f *fakeChatRepository) GetLastMessagesByCreators(ctx context.Context, creators []string, limit uint) ([]*chatmodel.Message, error) {
 	filtered := make([]*chatmodel.Message, 0, len(f.lastMessages))
 	for _, message := range f.lastMessages {
+		if message.Deleted {
+			continue
+		}
 		for _, creator := range creators {
 			if message.Creator == creator {
 				filtered = append(filtered, message)
