@@ -109,6 +109,8 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 	}
 	msg.CreatedAt = ch.Change.Timestamp
 	msg.Creator = ch.Change.Creator
+	// only a Delete op makes a tombstone (BeforeDelete); a create never arrives deleted
+	msg.Deleted = false
 	if d.forceNotRead {
 		msg.Read = false
 		msg.MentionRead = false

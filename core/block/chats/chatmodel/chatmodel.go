@@ -50,6 +50,7 @@ const (
 	OrderKey                   = "_o"
 	SyncedKey                  = "synced"
 	PinnedKey                  = "pinned"
+	DeletedKey                 = "deleted"
 	ReactionUnreadChangeIdsKey = "rUnreadChIds"
 	ReactionUnreadOrderIdKey   = "rUnreadOrdId"
 )
@@ -162,6 +163,26 @@ func (m *Message) pickOrderId() string {
 		}
 	}
 	return minOrderId
+}
+
+// MakeTombstone turns the message into the soft-deleted form a discussion keeps for a
+// deleted comment: identity, author, creation time, reply target and position stay, so
+// replies keep their thread; content, attachments, blocks, reactions and the pin go. A
+// tombstone is never unread and never a mention. ModifiedAt is cleared because clients
+// label any message carrying it as edited.
+func (m *Message) MakeTombstone() {
+	m.Deleted = true
+	m.Message = &model.ChatMessageMessageContent{}
+	m.Attachments = nil
+	m.ChatMessage.Blocks = nil
+	m.Reactions = &model.ChatMessageReactions{}
+	m.ModifiedAt = 0
+	m.Pinned = false
+	m.Read = true
+	m.MentionRead = true
+	m.HasMention = false
+	m.UnreadReaction = false
+	m.UnreadReactionIds = nil
 }
 
 type MessagesGetter interface {
@@ -470,6 +491,12 @@ func (m *Message) MarshalAnyenc(marshalTo *anyenc.Value, arena *anyenc.Arena) {
 	} else {
 		marshalTo.Del(PinnedKey)
 	}
+	if m.Deleted {
+		// like Pinned: only tombstones carry the key, so its sparse index holds only them
+		marshalTo.Set(DeletedKey, arena.NewTrue())
+	} else {
+		marshalTo.Del(DeletedKey)
+	}
 
 	m.MarshalUnreadReactionIds(marshalTo, arena)
 }
@@ -568,6 +595,7 @@ func (m *messageUnmarshaller) toModel() (*Message, error) {
 			Synced:           m.val.GetBool(SyncedKey),
 			HasMention:       m.val.GetBool(HasMentionKey),
 			Pinned:           m.val.GetBool(PinnedKey),
+			Deleted:          m.val.GetBool(DeletedKey),
 			UnreadReaction:   len(unreadReactionIds) > 0 || m.val.GetString(ReactionUnreadOrderIdKey) != "",
 		},
 		UnreadReactionIds: unreadReactionIds,

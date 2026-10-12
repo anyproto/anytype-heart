@@ -1744,6 +1744,12 @@ message ChatMessage {
     bool pinned = 15;
     bool unreadReaction = 16;
     repeated MessageBlock blocks = 17;  // Ordered list of content blocks
+    // deleted marks a soft-deleted discussion comment (a tombstone). It keeps id, orderId,
+    // creator, createdAt and replyToMessageId, so replies keep their thread; message,
+    // attachments, blocks and reactions are empty and modifiedAt is 0. Only discussions
+    // produce it; a deleted space-chat message is removed and announced with Event.Chat.Delete.
+    // A tombstone can't be edited, reacted to, pinned or replied to.
+    bool deleted = 18;
 
     message MessageContent {
         string text = 1;      // The text content of the message part
