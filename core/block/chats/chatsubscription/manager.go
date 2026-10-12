@@ -216,17 +216,22 @@ func (s *subscriptionManager) ForceSendingChatState() {
 	s.messageCountUpdated = true
 }
 
+// GetLastMessage returns the newest live message: a tombstone (a deleted discussion comment) is
+// not one.
 func (s *subscriptionManager) GetLastMessage() (*model.ChatMessage, bool, error) {
 	// get the last message from any subscription. It works because we don't have offsets for subscriptions, so
 	// it's guaranteed for the last message in a subscription to be the last message in a set of all messages.
+	// A window can hold only tombstones, or end with them: then the newest live message may be
+	// older than the window, and the repository answers.
 	for _, sub := range s.subscriptions {
-		last := sub.state.messages.Back()
-		if last != nil {
-			return proto.Clone(last.Value.(*stateEntry).msg).(*model.ChatMessage), true, nil
+		for it := sub.state.messages.Back(); it != nil; it = it.Prev() {
+			if msg := it.Value.(*stateEntry).msg; !msg.Deleted {
+				return proto.Clone(msg).(*model.ChatMessage), true, nil
+			}
 		}
 	}
 
-	msgs, err := s.repository.GetLastMessages(s.componentCtx, 1)
+	msgs, err := s.repository.GetLastLiveMessages(s.componentCtx, 1)
 	if err != nil {
 		return nil, false, fmt.Errorf("get last message from repository: %w", err)
 	}

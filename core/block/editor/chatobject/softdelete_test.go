@@ -600,6 +600,53 @@ func TestDiscussionDeleteEvents(t *testing.T) {
 	})
 }
 
+func TestSubscriptionsHoldTombstones(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("a new subscription gets the deleted post and its reply", func(t *testing.T) {
+		// given
+		fx := newFixture(t, asDiscussion("parentId"))
+		post := fx.createAs(t, alice, givenSimpleMessage("post"))
+		reply := fx.createAs(t, bob, &chatmodel.Message{ChatMessage: &model.ChatMessage{
+			ReplyToMessageId: post,
+			Message:          &model.ChatMessageMessageContent{Text: "reply"},
+		}})
+		fx.pushAs(t, alice, deleteBuilder(post))
+
+		// when
+		resp, err := fx.chatSubscriptionService.SubscribeLastMessages(ctx, subscribeRequest(fx))
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, resp.Messages, 2)
+		assert.Equal(t, post, resp.Messages[0].Id)
+		assert.True(t, resp.Messages[0].Deleted)
+		assert.Equal(t, reply, resp.Messages[1].Id)
+		assert.Equal(t, post, resp.Messages[1].ReplyToMessageId)
+	})
+
+	t.Run("a new message is placed after the newest tombstone", func(t *testing.T) {
+		// given
+		fx := newFixture(t, asDiscussion("parentId"))
+		deleted := fx.createAs(t, alice, givenSimpleMessage("first"))
+		fx.pushAs(t, alice, deleteBuilder(deleted))
+		subscribeForEvents(t, fx)
+		fx.events = nil
+
+		// when
+		added := fx.createAs(t, bob, givenSimpleMessage("second"))
+
+		// then
+		var afterOrderId string
+		for _, ev := range fx.events {
+			if add := ev.GetChatAdd(); add != nil && add.Id == added {
+				afterOrderId = add.AfterOrderId
+			}
+		}
+		assert.Equal(t, fx.getMessage(t, deleted).OrderId, afterOrderId)
+	})
+}
+
 // failingCollection refuses every update, as a full disk would.
 type failingCollection struct {
 	anystore.Collection

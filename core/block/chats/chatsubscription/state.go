@@ -99,6 +99,7 @@ func (s *messagesState) applyAddMessage(msgId string, msg *model.ChatMessage, pr
 				s.messages.RemoveFront()
 
 				delete(s.messagesByIds, first.msg.Id)
+				s.keepEvictedEvents(first)
 				s.add(msgId, msg, prevOrderId, addEvent)
 			}
 		}
@@ -117,6 +118,24 @@ func (s *messagesState) add(msgId string, msg *model.ChatMessage, prevOrderId st
 	}
 	s.messagesByIds[msgId] = entry
 	s.messages.Set(msgId, entry)
+}
+
+// keepEvictedEvents keeps the unflushed events of an entry the window just evicted: the client
+// still holds that message and must learn of an update or a tombstone that came in the same
+// batch. An entry whose Add is unflushed is dropped as it is: the client never had the message,
+// and it is now outside its window.
+func (s *messagesState) keepEvictedEvents(entry *stateEntry) {
+	if len(entry.events) == 0 || slices.Contains(entry.events, eventActionAdd) {
+		return
+	}
+	if pending, ok := s.outOfWindowEvents[entry.msg.Id]; ok {
+		pending.msg = entry.msg
+		for _, action := range entry.events {
+			pending.addEvent(action)
+		}
+		return
+	}
+	s.outOfWindowEvents[entry.msg.Id] = entry
 }
 
 func (s *messagesState) applyDeleteMessage(id string) {
