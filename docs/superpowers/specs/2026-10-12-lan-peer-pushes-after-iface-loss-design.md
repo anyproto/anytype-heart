@@ -140,8 +140,10 @@ getLocalPeer(id):                          // one 2s budget for both calls
 setNodePeer(p) / setLocalPeers(peers): under n.Mutex, store, then publishLocked()
 serveLocalPeer(p): under n.Mutex, replace the entry with p's id or append; publishLocked()
                    (peers the pass has not reached yet stay served until it ends)
-publishLocked(): list = [nodePeer?] + localPeers; start watchPeer once per id; swap responsiblePeers;
-                 close availableResponsiblePeers if len>0   (= old publishResponsiblePeers, composed)
+setNodePeer / serveLocalPeer: if p is closed already, signalFetch() once (no watcher will report it)
+publishLocked(): list = [nodePeer?] + localPeers, live peers only; start watchPeer once per id;
+                 swap responsiblePeers; close availableResponsiblePeers if len>0
+                 (= old publishResponsiblePeers, composed)
 signalFetch(): the non-blocking channel send without resetting consecutiveFetchFailures
                (used by watchPeer and by 2.2); signalRebuild() = reset counter + signalFetch()
 watchPeer(p): wait for close or ctx; release p's id in watchingPeers; then signalFetch() unless closed
@@ -175,8 +177,14 @@ Properties kept, explicitly:
 - **Mobile** — same code; one extra goroutine per manager while a lookup is in flight (the loop
   goroutine stays, parked in its select; the CAS prevents stacking); one timer per wait, as before.
 - **Flush races** — a lookup started before a `Flush` returns a peer from the *current* pair
-  (`pool.lookup` retries on swap); if it is closed by publish time, `GetResponsiblePeers` filters it and
-  `watchPeer` signals a fetch, as today.
+  (`pool.lookup` retries on swap); if it is closed by publish time it is left out of the list and its
+  setter signals one fetch, standing in for the watcher that signalled it on develop.
+- **Closed peers are never published.** A source keeps its last peer until its next result, so after a
+  flush the closed node stays in `nodePeer` until the replacement lookup returns (20–70 s offline).
+  Composing it in would give it a fresh watcher on every local pass, which would find it closed at once
+  and signal another fetch: a tight loop until the verdict, with waiters woken for nothing. Its own
+  watcher signals the one fetch its closure needs; `GetResponsiblePeers` still filters peers that close
+  after publishing.
 
 ### 2.2 Serve a LAN peer the moment it joins a space (complement, small)
 
@@ -272,17 +280,27 @@ New:
    managers of spaces newly joined (first join, added space, return after eviction), nothing for an
    unchanged list, a left space or a removal; does not reset `consecutiveFetchFailures`; counts
    `localPeerSignals`.
-7. `Test_fetchLocalPeers_unreachedPeersStayServed` — previous pass served `[peerA, stalePeer, peerB]`;
-   while the new pass is parked on `stalePeer`, `peerB` is still served; afterwards the list and the
-   store hold `[peerA, peerB]`.
+7. `Test_fetchLocalPeers_servesPeersAsTheyLand` — `peerA` newly found, previous pass served
+   `[stalePeer (closed), peerB]`; while the new pass is parked on `stalePeer`, both `peerA` (found) and
+   `peerB` (not reached yet) are served; afterwards the list and the store hold `[peerA, peerB]`.
 8. `Test_fetchLocalPeers_servesPeerThatConnectedDuringFailedDial` — `Get` fails, `Pick` returns the
    inbound connection: it is served and the peer stays in the store.
 9. `Test_watchPeer_reconnectedPeerIsWatched` — no fetch signal while the manager mutex is held (the
    watcher releases its slot first); a reconnected instance with the same id then gets its own watcher.
 10. `peerstore.TestUpdateLocalPeerKeepsObserverListsIntact` — a list handed to an observer is not
     reordered by the next update.
+11. `peerstore.TestUpdateLocalPeerDoesNotTakeOwnershipOfInput` — the caller's slice keeps its order, and
+    reusing it reaches neither the observers' lists nor what `RemoveLocalPeer` cleans up.
+12. `Test_manageResponsiblePeers_closedNodeCostsOnePass` — the real loop on fake time, with no LAN peers
+    and with a live cable peer: the served node closes while its replacement lookup walks on; exactly
+    one pass follows, the closed node is not served, and the next pass comes on the 20 s tick. A store
+    that counts passes stops the manager past 10, so a regression fails instead of spinning.
+13. `Test_fetchResponsiblePeers_nodeClosedOnArrivalRefetches` — a lookup returns an already-closed node:
+    it is not served and one fetch is requested.
+14. `Test_lookupNode_resultAfterCloseIsVoid` — a node result that lands after `Close` leaves the status,
+    the served list, `Refresh` and the reconnect kick alone.
 
-Each test that pins a fix (1, 2, 4, 5, 7–10) was checked to fail with that fix reverted.
+Each test that pins a fix (1, 2, 4, 5, 7–14) was checked to fail with that fix reverted.
 
 ## 5. On-device check
 
@@ -339,3 +357,5 @@ Regression checks (one run each):
 - `watchPeer` releases its id before signalling (§2.1); `getLocalPeer` picks before evicting (§6).
 - The peer store no longer sorts lists in place (§2.2).
 - The observer computes the joined spaces once, before taking the provider lock.
+- `publishLocked` composes only live peers (§2.1 "Closed peers are never published"); the prototype
+  republished a retained closed node on every local pass and spun the fetch loop until the verdict.
