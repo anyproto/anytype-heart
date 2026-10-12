@@ -88,7 +88,7 @@ fit: it replaces the document with `{id, _d}` and overwrites `_o`.)
 
 | Incoming op | Space chat | Discussion |
 |---|---|---|
-| `Delete`, live message | Hard delete, as today | Permission check as today (author, or Owner/Admin at the change's ACL head); rewrite to the tombstone with `coll.UpdateId` on the transaction context; `subscription.SoftDelete` (section 3); queue the full-text delete; return `DeleteModeKeep` |
+| `Delete`, live message | Hard delete, as today | Permission check as today (author, or Owner/Admin at the change's ACL head); rewrite to the tombstone with `coll.UpdateId` on the transaction context (a write failure is wrapped in `ErrCritical`, like `applyDelete` wraps `DeleteId` failures, so the apply aborts and the replay watermark does not move past the change); `subscription.SoftDelete` (section 3); queue the full-text delete (a queue failure is logged, as today); return `DeleteModeKeep` |
 | `Delete`, tombstone | n/a | No-op: no permission check, no event, no index work; `DeleteModeKeep` |
 | `Delete`, missing document | No-op, as today | No-op, as today |
 | `Modify` (content, reactions, pinned) on a tombstone | n/a | Dropped in `UpgradeKeyModifier` (`return v, false, nil`) before the inner modifier runs |
@@ -100,6 +100,20 @@ delete (the delete and every modify causally descend from the create, and both f
 and the incremental `GetAfterAddSeq` walk iterate in `orderId` order). A modify concurrent
 with the delete may be applied before or after it: before, the tombstone overwrites its
 effect; after, the guard drops it. Delete wins either way, on every device.
+
+The guarantee is about the logical message (`deleted`, content, reactions, pinned, creator,
+reply target, position). Stored metadata already differs per device (`stateId`, `synced`, the
+read flags), and the `_o` sub-orders a tombstone keeps can differ by apply order: an edit
+applied before the delete leaves its `_o.content`, one applied after is dropped. Nothing reads
+`_o` sub-orders of a tombstone (the full-text iterator skips tombstones), so tests compare the
+logical message, not raw documents.
+
+The causal premise holds for changes this heart produces, because the RPC guards (section 4)
+never push a modify or delete for a message that is not stored locally. A change from an older
+writer that names a message its author never had (possible today through API v1, which pushes
+a delete for any id) is not causally after the create; it is a no-op on a device that applies
+it before the create and effective on one that applies it after. That divergence exists today
+with hard delete and is not addressed here.
 
 Replies: a reply that was written concurrently with the delete always applies (refusing a
 create at apply time would diverge). It counts as a mention of the deleted comment's author,
@@ -117,11 +131,17 @@ are refused by the RPC (section 4).
 - `readMessagesModifier` skips `deleted` documents when setting `read=false`, so
   `ChatUnreadMessages` (mark-unread) cannot resurrect one. `readMentionsModifier` already
   skips `hasMention=false`.
-- The tombstone path sets `needReloadState`, as `Delete` does today. After the commit `Flush`
+- The tombstone path adjusts the in-memory state at once, from the document it replaces:
+  `Messages.Counter--` if it was unread, `Mentions.Counter--` if it was an unread mention,
+  `messageCount--`. Without this, a read callback that flushes before the post-commit reload
+  (seen heads that arrived before the changes, `markReadMessages` → `Flush(false)`) would
+  publish a count still inflated by the deleted message.
+- It also sets `needReloadState`, as `Delete` does today. After the commit `Flush(true)`
   reloads `ChatState` (both counters, oldest order ids, `lastStateId`,
-  `unreadReactionOrderId`) and the message count from the repository; the parent's unread
-  counter worker then runs as usual. Deleting an unread comment on one device clears the
-  badge on the others once the `Delete` op syncs, because each builds the tombstone itself.
+  `unreadReactionOrderId`) and the message count from the repository, which corrects the
+  oldest-unread order ids and anything the deltas missed; the parent's unread counter worker
+  then runs as usual. Deleting an unread comment on one device clears the badge on the others
+  once the `Delete` op syncs, because each builds the tombstone itself.
 
 **`messageCount`** (`Event.Chat.UpdateMessageCount`, documented as non-deleted messages):
 `CountMessages` = count(all) − count(`deleted == true`), the second through the sparse index.
@@ -137,8 +157,15 @@ are refused by the RPC (section 4).
   `deleted: true`, the same shape reads return;
 - sets `needReloadState` (state and count events follow after the commit).
 
+One exception, from event coalescing: a message created and deleted before the window flushes
+(both in one apply batch) reaches the window as a single `Event.Chat.Add` carrying the
+tombstone, because an entry's Add takes priority over its Update (`state.go` events buffer).
+A client that never saw the message still learns of it, already deleted. Observers, which are
+called per change, get Added then Updated.
+
 Space chats keep `Event.Chat.Delete`. `GetPrevOrderId` keeps seeing tombstones, which is
-right: add events position new messages relative to entries clients hold.
+right because every window holds them (section 5): add events position new messages relative
+to entries clients hold.
 
 **Last-message date.** `subscriptionManager.GetLastMessage` (feeds `lastMessageDate`) skips
 tombstones: it walks the window back from its end, and its repository fallback reads only
@@ -149,20 +176,37 @@ only from a local `AddMessage`. Neither changes.
 
 ### 4. RPC guards
 
-Local guards for new operations, in `storeObject`, under the object lock. New exported
-sentinels in `chatobject`, alongside `ErrModifyForeignMessage`:
-`ErrMessageDeleted = errors.New("message is deleted")` and
-`ErrReplyToDeletedMessage = errors.New("can't reply to a deleted message")`. The RPC layer
-maps both to `BAD_INPUT`.
+Local guards for new operations, in `storeObject`, under the object lock, before anything is
+pushed. New exported sentinels in `chatobject`, alongside `ErrModifyForeignMessage`:
+`ErrMessageDeleted = errors.New("message is deleted")`,
+`ErrReplyToDeletedMessage = errors.New("can't reply to a deleted message")` and
+`ErrMessageNotFound = errors.New("message not found")`. The RPC layer maps all three to
+`BAD_INPUT`.
 
-| RPC on a tombstone | Result |
-|---|---|
-| `ChatEditMessageContent` | `ErrMessageDeleted` |
-| `ChatToggleMessageReaction` | `ErrMessageDeleted` |
-| `ChatPinMessages` (`SetMessagePinned`) | `ErrMessageDeleted` |
-| `ChatAddMessage` whose `replyToMessageId` is a tombstone | `ErrReplyToDeletedMessage`; a target that does not exist keeps today's behavior (no check) |
-| `ChatDeleteMessage` | Success without pushing a change (Android and desktop offer a second delete) |
-| `ChatGetMessages`, `ChatGetMessagesByIds`, `ChatSubscribeLastMessages` | Return tombstones in place, `deleted: true` |
+The guards apply to every chat, not only discussions, because the target must exist locally
+before a change naming it is pushed. With update-only modifies, an edit, reaction or pin for a
+message that is not stored would otherwise push a change that applies as a no-op and report
+success; and a change naming a message its author never had is not causally after the
+message's create (section 2).
+
+| RPC | Target missing locally | Target is a tombstone |
+|---|---|---|
+| `ChatEditMessageContent` | `ErrMessageNotFound` | `ErrMessageDeleted` |
+| `ChatToggleMessageReaction` | `ErrMessageNotFound` | `ErrMessageDeleted` |
+| `ChatPinMessages` (`SetMessagePinned`) | `ErrMessageNotFound` | `ErrMessageDeleted` |
+| `ChatDeleteMessage` | Success, nothing pushed (today a change is pushed) | Success, nothing pushed (Android and desktop offer a second delete) |
+| `ChatAddMessage` with `replyToMessageId` | No check, as today | `ErrReplyToDeletedMessage` |
+
+- `ChatPinMessages` takes several ids and today pushes one change per id. It checks every
+  target first and pushes nothing if any is refused, so a refusal never follows a partial pin.
+- The reply check runs before `PushStoreChange`, so a refused reply sends no push notification
+  and touches no attachment's `createdInContext`.
+- `ChatGetMessages`, `ChatGetMessagesByIds` and `ChatSubscribeLastMessages` return tombstones in
+  place, `deleted: true`.
+- `ChatDeleteMessage`'s file cleanup is unchanged: it reads the message's attachments and link
+  targets before deleting and runs the object GC on them (`core/block/chats/service.go`
+  `DeleteMessage`), so a discussion comment's own files are removed as today while its row
+  stays. A repeat delete reads an empty tombstone and cleans nothing.
 
 The guards are a backstop for clients and the API; the apply-time rules in section 2 are what
 make remote changes safe.
@@ -174,41 +218,70 @@ make remote changes safe.
   re-index `BeforeModify` queues for a modify the guard then drops. The indexer applies deletes
   after the streamed upserts of a batch, so a tombstone cannot come back.
 - `ChatSearch`: hydrating full-text hits drops tombstones (as a stale hit for a hard-deleted
-  message is dropped today). Browse mode (no query; `GetLastMessages` /
-  `GetLastMessagesByCreators`) reads only live messages; the creator index must still serve
-  the creator query (pinned by the repository's index tests).
+  message is dropped today). Browse mode (no query) reads only live messages; the creator
+  index must still serve the creator query (pinned by the repository's index tests).
+
+Which reads include tombstones is a per-caller decision, not a property of the repository:
+
+| Read | Tombstones | Callers |
+|---|---|---|
+| `GetLastMessages` | Included (unchanged) | subscription windows (`chatsubscription/service.go`, hence the per-chat SSE stream via `chatsubadapter.go`), the space-stream backfill (`spacechathub.go`) |
+| `GetMessages`, `GetMessagesByIds`, `GetPrevOrderId` | Included (unchanged) | client and API reads, add-event positioning |
+| New live-only latest read (`GetLastLiveMessages`) | Excluded | `ChatSearch` browse without creators, `subscriptionManager.GetLastMessage` fallback |
+| `GetLastMessagesByCreators` | Excluded (its only caller is `ChatSearch` browse) | `ChatSearch` browse with creators |
+
+A window or backfill that dropped tombstones would lose the thread anchor of replies to a
+deleted comment, and a later add would name an `afterOrderId` the client never received.
 
 ### 6. API
 
 **v2.**
 
-- `v2model.ChatMessage` gains `Deleted bool \`json:"deleted,omitempty"\`` (present only on
-  tombstones; a tombstone has no text, blocks, attachments, reactions or `edited_at`).
-- `get_chat_messages` serves tombstones in place. `ChatMessagesResponse.MessageCount`'s
-  comment changes from "a deleted one is gone from it" to: a deleted space-chat message is
-  gone; a deleted discussion comment stays in `messages` with `deleted: true` and is not
-  counted. `lifetime_message_count` is unchanged.
+- `v2model.ChatMessage` gains `Deleted bool \`json:"deleted,omitempty"\``, present only on
+  tombstones. The exact served tombstone is `id`, `state_id`, `order`, `author`, `author_id`,
+  `at`, `reply_to` (when set), `"text": ""` (the member is always serialized, as today) and
+  `"deleted": true`; no `edited_at`, `blocks_text`, `attachments`, `reactions`, `reacted_by`
+  or `pinned`.
+- `get_chat_messages` serves tombstones in place. Both descriptions of the count change:
+  `ChatMessagesResponse.MessageCount`'s comment ("a deleted one is gone from it") and the
+  `get_chat_messages` handler's description of `message_count` (`core/api/v2/handler/chat.go`)
+  now say a deleted space-chat message is gone, while a deleted discussion comment stays in
+  `messages` with `deleted: true` and is not counted. `lifetime_message_count` is unchanged.
+  The full wrapper's golden tool list (`core/api/wrapper/full/testdata/tools_list.golden.json`)
+  carries that description and is regenerated with it.
 - `edit_chat_message`, `toggle_chat_reaction`, `delete_chat_message` on a tombstone: **404**
   "message … was deleted", from the existing existence check `getChatMessageProto`, before
   the RPC and on dry runs. Delete keeps today's 404 for an already-deleted message.
 - `add_chat_message` whose `reply_to` is a tombstone: **400**, an issue on `reply_to`,
   checked before the dry run. A `reply_to` that does not exist keeps today's behavior.
+- A delete can land between those prechecks and the RPC. `v2ChatRpcError` therefore matches
+  the new sentinels by description BEFORE its generic `BAD_INPUT` → 400 branch, the way it
+  already matches the foreign-message sentinels: `ErrMessageDeleted` and `ErrMessageNotFound`
+  → 404, `ErrReplyToDeletedMessage` → 400 with the issue on `reply_to`. A delete that races
+  another delete succeeds (the RPC is idempotent).
+- `delete_chat_message`'s dry-run warnings about attachments and link targets are unchanged.
 - All these statuses are already declared on those ops; the response inventory
   (`openapi_responses_test.go`, 377 pairs) does not change. `make openapi` regenerates the
-  document; the `deleted` description fits the served-prose budget.
-- Both SSE streams report a deletion as `message_updated` with `deleted: true` (section 3).
+  document; the new and changed descriptions fit the served-prose budget tests.
+- Both SSE streams report a deletion as `message_updated` with `deleted: true`, except the
+  coalesced case in section 3 (`message_added` carrying the tombstone).
 
 **v1.** `core/api/model.ChatMessage` gains `deleted` (`omitempty`), set by its converter and
-its event conversion. Mutations on a tombstone hit the heart refusals and v1's usual error
-mapping. Nothing else in v1 changes.
+its event conversion. Add and edit already map `BAD_INPUT` to 400; the reaction path collapses
+every RPC error into `ErrFailedToggleReaction` (HTTP 500), so it gains the same `BAD_INPUT` →
+400 mapping. A v1 delete of a missing or deleted message still returns 200 (now without
+pushing a change). Nothing else in v1 changes.
 
 ## Compatibility
 
 Checked 2026-10-12 against desktop (`anytype-ts` origin/develop d965ea2), iOS
 (`anytype-swift` origin/develop 301f619677) and Android (`anytype-kotlin` origin/main).
 
-- **Old apps never see an empty message.** Their bundled heart applies the same `Delete` op as
-  a hard delete, exactly as today (including today's hidden subtrees).
+- **The new deletion path sends old apps nothing new.** Their bundled heart applies the same
+  `Delete` op as a hard delete, exactly as today (including today's hidden subtrees). One
+  existing exception stays: an old heart applies modifies as upserts, so a reaction or pin
+  made while the comment was live and received after its delete re-creates a contentless
+  stub there, as it does today. The update-only fix protects new hearts only.
 - **New heart, UI not yet updated** — the only case a tombstone reaches an unaware UI. All
   three render a discussion tombstone as a comment with avatar, author and date and no body;
   none crash. Replies stay attached under it.
@@ -219,6 +292,24 @@ Checked 2026-10-12 against desktop (`anytype-ts` origin/develop d965ea2), iOS
   - Desktop routes `chatUpdate` for comments by `replyToMessageId` and copies only
     `{content, attachments, reactions}` (`dispatcher.ts:1312-1340`); it will not pick up
     `deleted` without a change.
+
+## Accepted limitations
+
+Both exist today for every create and delete; this change inherits them and does not fix them.
+
+- **Side effects before commit.** Handler hooks run before the apply transaction commits:
+  subscription windows and observers see the change, and the full-text queue (another
+  database) is written. If the transaction then rolls back (for example, any-sync fails to
+  persist the change after it was applied to the store), a window keeps showing the tombstone
+  and the message is missing from search although the store still has it live. Reopening the
+  chat rebuilds the window; a later edit or a reindex restores search. Commit-scoped
+  subscription events would be their own project.
+- **A create skipped on a full-text queue failure** (found during review, file separately):
+  `BeforeCreate` returns a plain error when `AddChatMessageToIndexQueue` fails
+  (`chathandler.go:145`), and `applyChangeSet` logs and skips non-critical errors, so the
+  message is not stored on that device while the replay watermark moves past it. A later
+  modify or delete of that message finds nothing. The tombstone path does not repeat this: its
+  queue failure is only logged.
 
 ## Out of scope
 
@@ -243,16 +334,29 @@ author.
   - a full replay of create + delete builds the tombstone;
   - space chats still hard-delete;
   - a reaction applied after a space-chat hard delete creates no document (upsert regression);
-  - a concurrent reply to a deleted comment still counts as a mention of its author.
-- Counters: deleting an unread message, an unread mention, and an unread reply-to-me from
-  another author clears the counters; mark-unread skips tombstones; `messageCount` excludes
-  them; unread reactions on a deleted comment are cleared from the state.
-- Repository: `CountMessages`, `IterateMessagesForIndexing` and the live-message reads exclude
-  tombstones, with index-usage checks.
-- Subscription: a discussion delete emits `Event.Chat.Update` (not `Delete`) and observers get
-  `ChatChangeMessageUpdated`; `GetLastMessage` skips tombstones in the window and in the
-  fallback.
-- RPC guards: edit, reaction, pin and reply refused; repeat delete pushes nothing.
+  - a concurrent reply to a deleted comment still counts as a mention of its author;
+  - a tombstone write failure aborts the apply (`ErrCritical`): the store keeps the live
+    message and the replay watermark does not advance.
+- Counters:
+  - deleting an unread message, an unread mention, and an unread reply-to-me from another
+    author clears the counters; mark-unread skips tombstones; `messageCount` excludes them;
+    unread reactions on a deleted comment are cleared from the state;
+  - seen heads that arrive before the changes, then one batch with create A, create B, delete
+    A: no flushed state ever reports A as unread or counted.
+- Repository: `CountMessages`, `IterateMessagesForIndexing` and the live-only reads exclude
+  tombstones, `GetLastMessages` includes them, with index-usage checks.
+- Subscription:
+  - a discussion delete emits `Event.Chat.Update` (not `Delete`) and observers get
+    `ChatChangeMessageUpdated`; out-of-window too;
+  - create and delete in one batch emit one Add carrying the tombstone;
+  - reopening a subscription after deleting post P keeps P (tombstone) and its reply R; an
+    all-tombstone window; an add after a newest tombstone names it as `afterOrderId`;
+  - `GetLastMessage` skips tombstones in the window and in the fallback.
+- RPC guards: edit, reaction, pin and reply on a tombstone refused; edit, reaction and pin on a
+  missing message refused; delete of a missing or deleted message pushes nothing; a pin batch
+  with a tombstone first, middle or last pushes nothing; a refused reply sends no push.
 - Indexer: a tombstone is not re-added by a backfill.
-- API v2: the read shape; 404 on edit/reaction/delete of a tombstone; 400 on `reply_to` a
-  tombstone, including dry runs.
+- API v2: the exact served tombstone (REST and both SSE streams); 404 on edit, reaction and
+  delete of a tombstone, including dry runs and the race through `v2ChatRpcError`; 400 with the
+  `reply_to` issue, including the race; delete warnings unchanged.
+- API v1: the `deleted` field; reaction on a tombstone → 400.
