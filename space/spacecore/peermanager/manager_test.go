@@ -285,6 +285,7 @@ func newFixtureManager(t *testing.T, spaceId string) *fixture {
 		spaceId:                   spaceId,
 		peerStore:                 store,
 		watchingPeers:             map[string]struct{}{},
+		rebuildResponsiblePeers:   make(chan struct{}, 1),
 		nodeLookupDone:            make(chan struct{}, 1),
 		ctx:                       context.Background(),
 		nodeStatus:                ns,
@@ -315,6 +316,15 @@ func (f *fixture) waitNodeVerdict(t *testing.T) {
 	case <-f.cm.nodeLookupDone:
 	case <-time.After(time.Second * 5):
 		t.Fatal("node lookup must complete")
+	}
+}
+
+func (f *fixture) waitFetchSignal(t *testing.T) {
+	t.Helper()
+	select {
+	case <-f.cm.rebuildResponsiblePeers:
+	case <-time.After(time.Second * 5):
+		t.Fatal("a fetch must be signalled")
 	}
 }
 
@@ -906,6 +916,38 @@ func Test_manageResponsiblePeers_retryCountsFromNodeVerdict(t *testing.T) {
 		assert.Equal(t, want, got, "the 20s tick must not start a second lookup; the retry must come 5s after the 30s verdict")
 		assert.Equal(t, nodestatus.Online, f.cm.nodeStatus.GetNodeStatus(spaceId))
 	})
+}
+
+// A peer that closes releases its watch slot before it signals the fetch: the
+// fetch may serve a new connection to the same peer at once (an inbound
+// reconnect is already in the pool), and that connection must be watched too,
+// or its own close goes unnoticed until the next cadence tick.
+func Test_watchPeer_reconnectedPeerIsWatched(t *testing.T) {
+	// given
+	spaceId := "spaceId"
+	f := newFixtureManager(t, spaceId)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	f.cm.ctx = ctx
+	old := newTestPeer("lanPeer")
+	f.cm.serveLocalPeer(old)
+
+	// when: the connection closes while a publish holds the manager
+	f.cm.Lock()
+	require.NoError(t, old.Close())
+	select {
+	case <-f.cm.rebuildResponsiblePeers:
+		t.Fatal("the fetch must not be signalled before the watch slot is released")
+	case <-time.After(time.Millisecond * 100):
+	}
+	f.cm.Unlock()
+	f.waitFetchSignal(t)
+	reconnected := newTestPeer("lanPeer")
+	f.cm.serveLocalPeer(reconnected)
+	require.NoError(t, reconnected.Close())
+
+	// then
+	f.waitFetchSignal(t)
 }
 
 func peerIds(peers []peer.Peer) []string {

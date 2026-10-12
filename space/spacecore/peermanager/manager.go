@@ -554,18 +554,19 @@ func (n *clientPeerManager) kickDiffSyncOnReconnect() {
 	}()
 }
 
+// watchPeer signals a fetch once p closes. Its id is released first: the fetch
+// may serve a new connection to the same peer at once, and that one must get
+// a watcher of its own.
 func (n *clientPeerManager) watchPeer(p peer.Peer) {
-	defer func() {
-		n.Lock()
-		defer n.Unlock()
-		delete(n.watchingPeers, p.Id())
-	}()
-
 	select {
 	case <-p.CloseChan():
-		n.signalFetch()
 	case <-n.ctx.Done():
-		return
+	}
+	n.Lock()
+	delete(n.watchingPeers, p.Id())
+	n.Unlock()
+	if n.ctx.Err() == nil {
+		n.signalFetch()
 	}
 }
 
