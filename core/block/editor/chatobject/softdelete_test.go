@@ -647,6 +647,154 @@ func TestSubscriptionsHoldTombstones(t *testing.T) {
 	})
 }
 
+func TestGuardsRefuseDeletedAndMissingTargets(t *testing.T) {
+	ctx := context.Background()
+	// given a discussion with a live message of mine and a deleted one
+	newFx := func(t *testing.T) (fx *fixture, live, deleted string) {
+		fx = newFixture(t, asDiscussion("parentId"))
+		var err error
+		live, err = fx.AddMessage(ctx, nil, givenSimpleMessage("live"))
+		require.NoError(t, err)
+		deleted, err = fx.AddMessage(ctx, nil, givenSimpleMessage("deleted"))
+		require.NoError(t, err)
+		require.NoError(t, fx.DeleteMessage(ctx, deleted))
+		return fx, live, deleted
+	}
+	const missing = "missingMessageId"
+
+	targets := map[string]struct {
+		id      func(live, deleted string) string
+		wantErr error
+	}{
+		"a deleted message": {id: func(_, deleted string) string { return deleted }, wantErr: ErrMessageDeleted},
+		"a missing message": {id: func(string, string) string { return missing }, wantErr: ErrMessageNotFound},
+	}
+	for name, target := range targets {
+		t.Run("edit of "+name, func(t *testing.T) {
+			fx, live, deleted := newFx(t)
+			pushed := len(fx.appliedChangeSets)
+
+			err := fx.EditMessage(ctx, target.id(live, deleted), givenSimpleMessage("edited"))
+
+			require.ErrorIs(t, err, target.wantErr)
+			assert.Len(t, fx.appliedChangeSets, pushed, "nothing is pushed")
+		})
+
+		t.Run("reaction to "+name, func(t *testing.T) {
+			fx, live, deleted := newFx(t)
+			pushed := len(fx.appliedChangeSets)
+
+			_, err := fx.ToggleMessageReaction(ctx, target.id(live, deleted), "👍")
+
+			require.ErrorIs(t, err, target.wantErr)
+			assert.Len(t, fx.appliedChangeSets, pushed, "nothing is pushed")
+		})
+
+		t.Run("pin of "+name, func(t *testing.T) {
+			fx, live, deleted := newFx(t)
+			pushed := len(fx.appliedChangeSets)
+
+			err := fx.SetMessagesPinned(ctx, []string{target.id(live, deleted)}, true)
+
+			require.ErrorIs(t, err, target.wantErr)
+			assert.Len(t, fx.appliedChangeSets, pushed, "nothing is pushed")
+		})
+
+		t.Run("delete of "+name+" succeeds without a change", func(t *testing.T) {
+			fx, live, deleted := newFx(t)
+			pushed := len(fx.appliedChangeSets)
+
+			err := fx.DeleteMessage(ctx, target.id(live, deleted))
+
+			require.NoError(t, err)
+			assert.Len(t, fx.appliedChangeSets, pushed, "nothing is pushed")
+		})
+	}
+
+	t.Run("a pin batch with a deleted message pins nothing", func(t *testing.T) {
+		for position := 0; position < 3; position++ {
+			// given
+			fx, live, deleted := newFx(t)
+			other, err := fx.AddMessage(ctx, nil, givenSimpleMessage("other"))
+			require.NoError(t, err)
+			batch := []string{live, other}
+			batch = append(batch[:position], append([]string{deleted}, batch[position:]...)...)
+			pushed := len(fx.appliedChangeSets)
+
+			// when
+			err = fx.SetMessagesPinned(ctx, batch, true)
+
+			// then
+			require.ErrorIs(t, err, ErrMessageDeleted, "deleted message at position %d", position)
+			assert.Len(t, fx.appliedChangeSets, pushed, "nothing is pushed (deleted message at position %d)", position)
+			assert.False(t, fx.getMessage(t, live).Pinned)
+			assert.False(t, fx.getMessage(t, other).Pinned)
+		}
+	})
+
+	t.Run("a pin batch of live messages pins them all", func(t *testing.T) {
+		// given
+		fx, live, _ := newFx(t)
+		other, err := fx.AddMessage(ctx, nil, givenSimpleMessage("other"))
+		require.NoError(t, err)
+
+		// when
+		err = fx.SetMessagesPinned(ctx, []string{live, other}, true)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, fx.getMessage(t, live).Pinned)
+		assert.True(t, fx.getMessage(t, other).Pinned)
+	})
+
+	t.Run("a reply to a deleted message is refused", func(t *testing.T) {
+		// given
+		fx, _, deleted := newFx(t)
+		pushed := len(fx.appliedChangeSets)
+		reply := givenSimpleMessage("reply")
+		reply.ReplyToMessageId = deleted
+
+		// when
+		_, err := fx.AddMessage(ctx, nil, reply)
+
+		// then
+		require.ErrorIs(t, err, ErrReplyToDeletedMessage)
+		assert.Len(t, fx.appliedChangeSets, pushed, "nothing is pushed")
+	})
+
+	t.Run("a reply to a live or unknown message is accepted", func(t *testing.T) {
+		for _, to := range []string{"live", missing} {
+			// given
+			fx, live, _ := newFx(t)
+			reply := givenSimpleMessage("reply")
+			reply.ReplyToMessageId = map[string]string{"live": live, missing: missing}[to]
+
+			// when
+			_, err := fx.AddMessage(ctx, nil, reply)
+
+			// then
+			require.NoError(t, err, to)
+		}
+	})
+
+	t.Run("edit, reaction and pin of a live message still work", func(t *testing.T) {
+		// given
+		fx, live, _ := newFx(t)
+
+		// when
+		require.NoError(t, fx.EditMessage(ctx, live, givenSimpleMessage("edited")))
+		_, err := fx.ToggleMessageReaction(ctx, live, "👍")
+		require.NoError(t, err)
+		require.NoError(t, fx.SetMessagesPinned(ctx, []string{live}, true))
+
+		// then
+		got := fx.getMessage(t, live)
+		assert.Equal(t, "edited", got.Message.Text)
+		assert.Contains(t, got.Reactions.Reactions, "👍")
+		assert.True(t, got.Pinned)
+	})
+}
+
 // failingCollection refuses every update, as a full disk would.
 type failingCollection struct {
 	anystore.Collection

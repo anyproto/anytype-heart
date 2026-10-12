@@ -68,7 +68,9 @@ type StoreObject interface {
 	MarkReadMessages(ctx context.Context, req ReadMessagesRequest) (markedCount int, err error)
 	MarkReadReactions(ctx context.Context) error
 	MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) error
-	SetMessagePinned(ctx context.Context, messageId string, pinned bool) error
+	// SetMessagesPinned pins or unpins the messages. It checks every target
+	// first and pushes nothing if one is refused.
+	SetMessagesPinned(ctx context.Context, messageIds []string, pinned bool) error
 	GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error)
 
 	AddNotificationSubscriber(ctx context.Context, identity string) error
@@ -631,10 +633,36 @@ func (s *storeObject) GetMessages(ctx context.Context, req chatrepository.GetMes
 	}, nil
 }
 
+// liveMessage returns the stored message a change is about to name. It refuses a message that
+// is not stored locally (a change naming it would not follow its create) and a deleted one.
+func (s *storeObject) liveMessage(ctx context.Context, messageId string) (*chatmodel.Message, error) {
+	msgs, err := s.repository.GetMessagesByIds(ctx, []string{messageId})
+	if err != nil {
+		return nil, fmt.Errorf("get message: %w", err)
+	}
+	if len(msgs) == 0 {
+		return nil, ErrMessageNotFound
+	}
+	if msgs[0].Deleted {
+		return nil, ErrMessageDeleted
+	}
+	return msgs[0], nil
+}
+
 func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context, message *chatmodel.Message) (string, error) {
 	err := message.Validate()
 	if err != nil {
 		return "", fmt.Errorf("validate: %w", err)
+	}
+	if message.ReplyToMessageId != "" {
+		// a reply target that isn't stored here is not checked, as before
+		replyTo, err := s.repository.GetMessagesByIds(ctx, []string{message.ReplyToMessageId})
+		if err != nil {
+			return "", fmt.Errorf("get reply target: %w", err)
+		}
+		if len(replyTo) == 1 && replyTo[0].Deleted {
+			return "", ErrReplyToDeletedMessage
+		}
 	}
 	arena := s.arenaPool.Get()
 	defer func() {
@@ -690,9 +718,18 @@ func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context
 }
 
 func (s *storeObject) DeleteMessage(ctx context.Context, messageId string) error {
+	_, err := s.liveMessage(ctx, messageId)
+	if errors.Is(err, ErrMessageNotFound) || errors.Is(err, ErrMessageDeleted) {
+		// nothing to delete here, and a delete of a message this device doesn't hold would not
+		// follow its create: succeed without a change
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("check message: %w", err)
+	}
 	builder := storestate.Builder{}
 	builder.Delete(CollectionName, messageId)
-	_, err := s.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
+	_, err = s.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
 		Changes: builder.ChangeSet,
 		State:   s.store,
 		Time:    time.Now(),
@@ -707,6 +744,9 @@ func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMess
 	err := newMessage.Validate()
 	if err != nil {
 		return fmt.Errorf("validate: %w", err)
+	}
+	if _, err = s.liveMessage(ctx, messageId); err != nil {
+		return fmt.Errorf("check message: %w", err)
 	}
 
 	arena := s.arenaPool.Get()
@@ -735,6 +775,9 @@ func (s *storeObject) EditMessage(ctx context.Context, messageId string, newMess
 }
 
 func (s *storeObject) ToggleMessageReaction(ctx context.Context, messageId string, emoji string) (bool, error) {
+	if _, err := s.liveMessage(ctx, messageId); err != nil {
+		return false, fmt.Errorf("check message: %w", err)
+	}
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
@@ -833,7 +876,23 @@ func (s *storeObject) HandleSyncStatusUpdate(heads []string, status domain.Objec
 	}
 }
 
-func (s *storeObject) SetMessagePinned(ctx context.Context, messageId string, pinned bool) error {
+func (s *storeObject) SetMessagesPinned(ctx context.Context, messageIds []string, pinned bool) error {
+	// each message is its own change: check them all first, so a refusal never follows a
+	// partial pin
+	for _, messageId := range messageIds {
+		if _, err := s.liveMessage(ctx, messageId); err != nil {
+			return fmt.Errorf("check message %s: %w", messageId, err)
+		}
+	}
+	for _, messageId := range messageIds {
+		if err := s.setMessagePinned(ctx, messageId, pinned); err != nil {
+			return fmt.Errorf("set pinned status %v of message %s: %w", pinned, messageId, err)
+		}
+	}
+	return nil
+}
+
+func (s *storeObject) setMessagePinned(ctx context.Context, messageId string, pinned bool) error {
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()

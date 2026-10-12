@@ -38,6 +38,15 @@ var (
 	// ErrDeleteForeignMessage refuses deleting another member's message
 	// without moderation rights (the DELETE path, BeforeDelete).
 	ErrDeleteForeignMessage = errors.New("can't delete not own message")
+	// ErrMessageDeleted refuses an edit, reaction or pin of a deleted
+	// discussion comment (a tombstone).
+	ErrMessageDeleted = errors.New("message is deleted")
+	// ErrReplyToDeletedMessage refuses a new reply to a deleted discussion
+	// comment. Replies that already exist keep their thread.
+	ErrReplyToDeletedMessage = errors.New("can't reply to a deleted message")
+	// ErrMessageNotFound refuses an edit, reaction or pin of a message that is
+	// not stored locally: a change naming it would not follow its create.
+	ErrMessageNotFound = errors.New("message not found")
 )
 
 type ChatHandler struct {

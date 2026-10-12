@@ -1787,7 +1787,7 @@ func TestService_PinMessages(t *testing.T) {
 		mockChat := mock_chatobject.NewMockStoreObject(t)
 		mockChat.EXPECT().Lock().Return()
 		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(nil)
+		mockChat.EXPECT().SetMessagesPinned(mock.Anything, []string{"msg1"}, true).Return(nil)
 
 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
 
@@ -1814,9 +1814,7 @@ func TestService_PinMessages(t *testing.T) {
 		mockChat := mock_chatobject.NewMockStoreObject(t)
 		mockChat.EXPECT().Lock().Return()
 		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(nil)
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg2", true).Return(nil)
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg3", true).Return(nil)
+		mockChat.EXPECT().SetMessagesPinned(mock.Anything, []string{"msg1", "msg2", "msg3"}, true).Return(nil)
 
 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
 
@@ -1843,7 +1841,7 @@ func TestService_PinMessages(t *testing.T) {
 		mockChat := mock_chatobject.NewMockStoreObject(t)
 		mockChat.EXPECT().Lock().Return()
 		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(fmt.Errorf("message not found"))
+		mockChat.EXPECT().SetMessagesPinned(mock.Anything, []string{"msg1"}, true).Return(fmt.Errorf("message not found"))
 
 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
 
@@ -1872,7 +1870,7 @@ func TestService_UnpinMessages(t *testing.T) {
 		mockChat := mock_chatobject.NewMockStoreObject(t)
 		mockChat.EXPECT().Lock().Return()
 		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg2", false).Return(nil)
+		mockChat.EXPECT().SetMessagesPinned(mock.Anything, []string{"msg2"}, false).Return(nil)
 
 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
 
