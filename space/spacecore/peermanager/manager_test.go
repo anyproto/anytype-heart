@@ -889,27 +889,67 @@ func Test_fetchLocalPeers_servesPeerThatConnectedDuringFailedDial(t *testing.T) 
 	assert.Equal(t, want, f.store.LocalPeerIds(spaceId), "a peer with a live connection must not be evicted")
 }
 
-// Closing the manager mid-fetch fails every pool call with the manager's own
-// cancellation; that must not evict the LAN peers from the store, which is
-// shared by every space.
-func Test_fetchLocalPeers_noEvictionWhenClosing(t *testing.T) {
+// Closing the manager while a local dial is in flight fails the dial with the
+// manager's own cancellation. That says nothing about the peer, and the store
+// is shared by every space: closing space A must not evict the phone for B.
+func Test_fetchLocalPeers_noEvictionWhenClosedMidDial(t *testing.T) {
 	// given
-	spaceId := "spaceId"
+	spaceId := "spaceA"
 	f := newFixtureManager(t, spaceId)
-	f.store.UpdateLocalPeer("localPeer", []string{spaceId})
-	ctx, cancel := context.WithCancel(context.Background())
-	f.cm.ctx = ctx
-	cancel()
-	f.pool.EXPECT().Get(gomock.Any(), "localPeer").DoAndReturn(
+	f.cm.ctx, f.cm.ctxCancel = context.WithCancel(context.Background())
+	f.store.UpdateLocalPeer("phone", []string{"spaceA", "spaceB"})
+	dialStarted := make(chan struct{})
+	f.pool.EXPECT().Get(gomock.Any(), "phone").DoAndReturn(
 		func(ctx context.Context, id string) (peer.Peer, error) {
+			close(dialStarted)
+			<-ctx.Done()
 			return nil, ctx.Err()
 		})
+	f.peerToPeerStatus.EXPECT().UnregisterSpace(spaceId)
 
 	// when
+	passDone := make(chan struct{})
+	go func() {
+		defer close(passDone)
+		f.cm.fetchLocalPeers()
+	}()
+	<-dialStarted
+	require.NoError(t, f.cm.Close(context.Background()))
+	select {
+	case <-passDone:
+	case <-time.After(time.Second * 5):
+		t.Fatal("the local pass must end on close")
+	}
+
+	// then
+	assert.Equal(t, []string{"phone"}, f.store.LocalPeerIds("spaceA"), "a closing manager must not evict local peers")
+	assert.Equal(t, []string{"phone"}, f.store.LocalPeerIds("spaceB"), "nor take them from the other spaces")
+}
+
+// A still-connected peer that leaves this space, its last one here, must stop
+// being served here on the next pass: an empty pass clears the list too.
+func Test_fetchLocalPeers_peerLeavingTheSpaceIsNoLongerServed(t *testing.T) {
+	// given: the phone is served in A
+	spaceId := "spaceA"
+	f := newFixtureManager(t, spaceId)
+	phone := newTestPeer("phone")
+	f.store.UpdateLocalPeer("phone", []string{"spaceA", "spaceB"})
+	f.pool.EXPECT().Get(gomock.Any(), "phone").Return(phone, nil)
+	f.cm.fetchLocalPeers()
+	peers, err := f.cm.GetResponsiblePeers(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, []string{"phone"}, peerIds(peers))
+
+	// when: it now shares only B
+	f.store.UpdateLocalPeer("phone", []string{"spaceB"})
 	f.cm.fetchLocalPeers()
 
 	// then
-	assert.Equal(t, []string{"localPeer"}, f.store.LocalPeerIds(spaceId), "a closing manager must not evict local peers")
+	f.cm.Lock()
+	served := peerIds(f.cm.responsiblePeers)
+	f.cm.Unlock()
+	assert.Equal(t, []string{}, served)
+	assert.False(t, phone.IsClosed(), "the connection itself is still up")
 }
 
 // The node lookup outlives Close until GetOneOf returns (a cgo DNS resolve does
