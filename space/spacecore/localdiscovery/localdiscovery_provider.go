@@ -94,7 +94,7 @@ func (l *providerDiscovery) PeerDiscovered(ctx context.Context, peer DiscoveredP
 	}
 
 	l.m.Lock()
-	own := newOwnAddresses(l.ownIPv4(), l.port)
+	own := newOwnAddresses(l.ownAddrs(), l.port)
 	l.m.Unlock()
 	l.clearPolicyDenied()
 	if l.notifier != nil {
@@ -143,7 +143,7 @@ func (l *providerDiscovery) refreshInterfaces(_ context.Context) error {
 
 	newAddrs.Interfaces = filterMulticastInterfaces(newAddrs.Interfaces)
 	l.interfacesAddrs = newAddrs
-	logOwnAddresses(l.ownIPv4())
+	logOwnAddresses(l.ownAddrs())
 	state := l.getDiscoveryPossibility(newAddrs)
 	if l.policyDenied {
 		// an interface change does not lift a platform permission denial;

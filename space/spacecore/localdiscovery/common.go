@@ -6,6 +6,7 @@ import (
 	gonet "net"
 	"net/netip"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -39,6 +40,11 @@ type HookCallback func(state DiscoveryPossibility)
 type DiscoveredPeer struct {
 	Addrs  []string
 	PeerId string
+	// Link is empty for a discovery that replaces the peer's address list
+	// (IPv4 mDNS, the app's native discovery). Otherwise it is the decimal
+	// index of the cable interface the peer answered on, and Addrs holds
+	// only its link-local addresses there (GO-7581).
+	Link string
 }
 
 // OwnAddresses is this device's listening endpoint as a LAN peer should dial
@@ -81,13 +87,19 @@ type NetworkStateService interface {
 // Also filters out loopback interfaces to make less mess.
 // Please note: this call do a number of underlying syscalls to get addrs for each interface, but they will be cached after first call.
 func filterMulticastInterfaces(ifaces []addrs.NetInterfaceWithAddrCache) []addrs.NetInterfaceWithAddrCache {
+	return filterMulticastInterfacesFor(runtime.GOOS, ifaces)
+}
+
+// filterMulticastInterfacesFor keeps an interface with an IPv4 address, and
+// one without IPv4 that has an IPv6 link-local address (see linkLocalOnly).
+func filterMulticastInterfacesFor(goos string, ifaces []addrs.NetInterfaceWithAddrCache) []addrs.NetInterfaceWithAddrCache {
 	filtered := make([]addrs.NetInterfaceWithAddrCache, 0, len(ifaces))
 	// iterate by index so GetAddr caches into the elements; the kept copies
 	// carry the populated cache with them
 	for i := range ifaces {
 		iface := &ifaces[i]
 		if iface.Flags&gonet.FlagUp != 0 && iface.Flags&gonet.FlagMulticast != 0 && iface.Flags&gonet.FlagLoopback == 0 {
-			if len(iface.GetAddr()) > 0 {
+			if len(iface.GetAddr()) > 0 || len(linkLocalOnly(goos, iface)) > 0 {
 				filtered = append(filtered, ifaces[i])
 			}
 		}
@@ -132,6 +144,25 @@ func (l *discoveryBase) getDiscoveryPossibility(newAddrs addrs.InterfacesAddrs) 
 				}
 				break
 			}
+		}
+	}
+	// an IPv6-only link (a cable, Wi-Fi off) is enough for discovery, also
+	// when an IPv4 self-connect failed (an interface going away)
+	for i := range interfaces {
+		iface := &interfaces[i]
+		for _, ip := range linkLocalOnly(runtime.GOOS, iface) {
+			if !checkSelfConnect {
+				return DiscoveryPossible
+			}
+			// zoned by index: a name goes through Go's interface cache,
+			// which can be stale right after a cable is plugged in
+			zoned := ip.WithZone(strconv.Itoa(iface.Index)).String()
+			err = testSelfConnection(zoned)
+			if err == nil {
+				return DiscoveryPossible
+			}
+			log.Warn(fmt.Sprintf("self connection via %s to %s failed: %v", iface.Name, zoned, err))
+			break
 		}
 	}
 	if err != nil {

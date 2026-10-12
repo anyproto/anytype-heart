@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"fmt"
 	"net"
+	"net/netip"
 	"regexp"
 	"runtime"
 	"strconv"
@@ -29,8 +30,9 @@ type InterfaceAddr struct {
 
 type NetInterfaceWithAddrCache struct {
 	net.Interface
-	cachedAddrs []net.Addr // ipv4 addresses
-	cachedErr   error
+	loaded      bool
+	cachedAddrs []net.Addr   // ipv4 addresses
+	linkLocal   []netip.Addr // ipv6 link-local addresses, without a zone
 }
 type InterfacesAddrs struct {
 	Interfaces []NetInterfaceWithAddrCache
@@ -47,7 +49,7 @@ func WrapInterface(iface net.Interface) NetInterfaceWithAddrCache {
 // platforms (and tests) where net.Interface.Addrs cannot be called.
 func WrapInterfaceWithAddrs(iface net.Interface, addrs []net.Addr) NetInterfaceWithAddrCache {
 	wrapped := WrapInterface(iface)
-	wrapped.cachedAddrs = addrs
+	wrapped.setAddrs(addrs)
 	return wrapped
 }
 
@@ -76,43 +78,85 @@ func AddrToIP(addr net.Addr) (net.IP, bool) {
 // The pointer receiver is essential: with a value receiver the result is
 // cached into a copy and every call re-runs the underlying syscalls.
 func (i *NetInterfaceWithAddrCache) GetAddr() []net.Addr {
-	if i.cachedAddrs != nil {
-		return i.cachedAddrs
-	}
-	if i.cachedErr != nil {
-		return nil
-	}
-	i.cachedAddrs, i.cachedErr = i.Interface.Addrs()
-	if i.cachedErr != nil {
-		log.Warn("interface GetAddr error: %v", i.cachedErr)
-	}
-	// filter-out ipv6
-	i.cachedAddrs = slice.Filter(i.cachedAddrs, func(addr net.Addr) bool {
-		if ip, ok := AddrToIP(addr); ok {
-			if ip.To4() == nil {
-				return false
-			}
-		}
-		return true
-	})
+	i.load()
 	return i.cachedAddrs
 }
 
+// GetLinkLocalIPv6 returns the interface's IPv6 link-local unicast addresses
+// (fe80::/10), without a zone, cached like GetAddr. Global and ULA addresses
+// are never included.
+func (i *NetInterfaceWithAddrCache) GetLinkLocalIPv6() []netip.Addr {
+	i.load()
+	return i.linkLocal
+}
+
+func (i *NetInterfaceWithAddrCache) load() {
+	if i.loaded {
+		return
+	}
+	addrs, err := i.Addrs()
+	if err != nil {
+		log.Warn("interface GetAddr error: %v", err)
+		// an interface that cannot be listed stays empty, as before
+		i.loaded = true
+		return
+	}
+	i.setAddrs(addrs)
+}
+
+// setAddrs splits the interface's addresses into the ipv4 list and the ipv6
+// link-local list; any other ipv6 address is dropped.
+func (i *NetInterfaceWithAddrCache) setAddrs(addrs []net.Addr) {
+	i.loaded = true
+	i.cachedAddrs = make([]net.Addr, 0, len(addrs))
+	i.linkLocal = nil
+	for _, addr := range addrs {
+		ip, ok := AddrToIP(addr)
+		if !ok {
+			i.cachedAddrs = append(i.cachedAddrs, addr)
+			continue
+		}
+		if ip.To4() != nil {
+			i.cachedAddrs = append(i.cachedAddrs, addr)
+			continue
+		}
+		if ip.IsLinkLocalUnicast() {
+			if a, ok := netip.AddrFromSlice(ip); ok {
+				i.linkLocal = append(i.linkLocal, a)
+			}
+		}
+	}
+}
+
+// HasRoutableIPv4 reports whether the interface holds an IPv4 address outside
+// 169.254/16. A self-assigned address doesn't count: a phone's cable
+// interface may carry one while the Mac's has no IPv4 at all, and then IPv6
+// link-local is the only path between them (GO-7581).
+func HasRoutableIPv4(iface *NetInterfaceWithAddrCache) bool {
+	for _, addr := range iface.GetAddr() {
+		if ip, ok := AddrToIP(addr); ok && ip.To4() != nil && !ip.IsLinkLocalUnicast() {
+			return true
+		}
+	}
+	return false
+}
+
+// NetAddrsEqualUnordered reports whether a and b hold the same addresses,
+// duplicates included, in any order.
 func NetAddrsEqualUnordered(a, b []net.Addr) bool {
 	if len(a) != len(b) {
 		return false
 	}
+	counts := make(map[string]int, len(a))
 	for _, addr := range a {
-		found := false
-		for _, addr2 := range b {
-			if addr.String() == addr2.String() {
-				found = true
-				break
-			}
-		}
-		if !found {
+		counts[addr.String()]++
+	}
+	for _, addr := range b {
+		key := addr.String()
+		if counts[key] == 0 {
 			return false
 		}
+		counts[key]--
 	}
 	return true
 }
@@ -303,9 +347,20 @@ func (i InterfacesAddrs) NetInterfaces() []net.Interface {
 	return s
 }
 
+// getStrings describes the interfaces with their index and the addresses
+// each one holds, so a renumbered interface (a cable plugged in again) or
+// an address moving between interfaces counts as a change.
 func getStrings(i InterfacesAddrs) (allStrings []string) {
-	for _, i := range i.Interfaces {
-		allStrings = append(allStrings, i.Name)
+	for pos := range i.Interfaces {
+		iface := &i.Interfaces[pos]
+		id := iface.Name + "#" + strconv.Itoa(iface.Index)
+		allStrings = append(allStrings, id)
+		for _, addr := range iface.GetAddr() {
+			allStrings = append(allStrings, id+" "+addr.String())
+		}
+		for _, addr := range iface.GetLinkLocalIPv6() {
+			allStrings = append(allStrings, id+" "+addr.String())
+		}
 	}
 	for _, i := range i.Addrs {
 		allStrings = append(allStrings, i.String())

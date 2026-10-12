@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/url"
 	"slices"
 	"strconv"
 
@@ -62,15 +61,30 @@ func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceprot
 // it shares with us, so subsequent syncing dials it directly. proof says
 // whether spaceIds came out of a v2 token exchange (a v1 list is plaintext).
 func (s *service) recordLocalPeer(ctx context.Context, peerId string, localServer *clientspaceproto.LocalServer, spaceIds []string, proof bool) {
-	var portAddrs []string
-	peerAddr := peer.CtxPeerAddr(ctx)
-
-	if peerAddr != "" {
+	var (
+		portAddrs []string
+		// inbound is the IPv6 link-local address the peer connected from:
+		// a route rather than part of the base list, so it leaves the dial
+		// list with its cable (see composeAddrs)
+		inbound string
+	)
+	if peerAddr := peer.CtxPeerAddr(ctx); peerAddr != "" {
 		// prioritize the address the remote peer connected us from — but
 		// with its advertised listening port: the port in peerAddr is the
-		// dialer's ephemeral source port, nothing listens on it
-		if u, errParse := url.Parse(peerAddr); errParse == nil && u.Hostname() != "" {
-			portAddrs = append(portAddrs, net.JoinHostPort(u.Hostname(), strconv.Itoa(int(localServer.Port))))
+		// dialer's ephemeral source port, nothing listens on it. hostIP keeps
+		// a link-local zone, which url.Parse rejects.
+		if ip, ok := hostIP(peerAddr); ok {
+			port := strconv.Itoa(int(localServer.Port))
+			hostPort := net.JoinHostPort(ip.String(), port)
+			if !isLinkLocalAddr(hostPort) {
+				portAddrs = append(portAddrs, hostPort)
+			} else if index, ok := linkLocalZone(ip.Zone()); ok {
+				// the zone names the receiving interface: resolved to its
+				// index now, so the route never moves to a cable that
+				// takes the name later. A zone that names no usable
+				// interface admits no route.
+				inbound = net.JoinHostPort(ip.WithZone(index).String(), port)
+			}
 		}
 	}
 
@@ -81,9 +95,24 @@ func (s *service) recordLocalPeer(ctx context.Context, peerId string, localServe
 		}
 		portAddrs = append(portAddrs, addr)
 	}
-	s.setLocalPeerAddrs(peerId, portAddrs)
+	// with discovery, under one lock: neither may overwrite the other's
+	// newer list
+	s.localAddrsMu.Lock()
+	if s.localAddrsClosed {
+		s.localAddrsMu.Unlock()
+		return
+	}
+	s.setBaseAddrs(peerId, portAddrs)
+	if inbound != "" {
+		s.setRoute(peerId, routeInbound, []string{inbound})
+	} else {
+		// the peer reached us another way: that path works now
+		s.dropRoute(peerId, routeInbound)
+	}
+	installed := s.installLocalAddrs(peerId)
+	s.localAddrsMu.Unlock()
 	s.publishLocalPeer(peerId, spaceIds, proof, directionInbound)
-	log.Info("updated local peer", zap.Strings("ips", portAddrs), zap.String("peerId", peerId), zap.Strings("spaceIds", spaceIds))
+	log.Info("updated local peer", zap.Strings("ips", installed), zap.String("peerId", peerId), zap.Strings("spaceIds", spaceIds))
 }
 
 // SpaceExchangeV2 is the inbound side of the token handshake: compute this

@@ -110,6 +110,14 @@ type service struct {
 	// peerIPs is each LAN peer's last known addresses, so an exchange can
 	// tell it only our addresses on its subnets (GO-7580); guarded by ownMu
 	peerIPs map[string][]netip.Addr
+	// localAddrsMu guards localPeers and serializes installing a LAN peer's
+	// address list, from discovery, an inbound exchange and route expiry;
+	// taken before ownMu, never held across an RPC or a pool call
+	localAddrsMu sync.Mutex
+	// localPeers is where each LAN peer's dial list comes from (GO-7581)
+	localPeers map[string]*localPeerAddrs
+	// localAddrsClosed: the service closed, nothing is installed any more
+	localAddrsClosed bool
 	// exchangeFn is the outbound handshake with one peer (shared spaces, and
 	// whether the result is a v2 proof); a seam for tests
 	exchangeFn func(ctx context.Context, peerId string, own *localdiscovery.OwnAddresses) (shared []string, proof bool, err error)
@@ -386,6 +394,7 @@ func (s *service) Close(ctx context.Context) (err error) {
 	if s.reexchange != nil {
 		s.reexchange.close()
 	}
+	s.closeLocalPeerAddrs()
 	return s.spaceCache.Close()
 }
 

@@ -3,6 +3,7 @@ package localdiscovery
 import (
 	"net"
 	"net/netip"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,10 @@ func ipNet(cidr string) *net.IPNet {
 	if err != nil {
 		panic(err)
 	}
-	n.IP = ip.To4()
+	if ip4 := ip.To4(); ip4 != nil {
+		ip = ip4
+	}
+	n.IP = ip
 	return n
 }
 
@@ -132,7 +136,7 @@ func TestOwnIPv4(t *testing.T) {
 		}
 
 		// when
-		got := newOwnAddresses(ownIPv4("ios", ifaces), 4006)
+		got := newOwnAddresses(ownAddrs("ios", ifaces), 4006)
 
 		// then
 		assert.Equal(t, want, got)
@@ -156,7 +160,7 @@ func TestOwnIPv4(t *testing.T) {
 		}
 
 		// when
-		got := newOwnAddresses(ownIPv4("darwin", ifaces), 4006)
+		got := newOwnAddresses(ownAddrs("darwin", ifaces), 4006)
 
 		// then
 		assert.Equal(t, want, got)
@@ -170,7 +174,7 @@ func TestOwnIPv4(t *testing.T) {
 		}
 
 		// when
-		got := newOwnAddresses(ownIPv4("ios", ifaces), 4006)
+		got := newOwnAddresses(ownAddrs("ios", ifaces), 4006)
 
 		// then
 		assert.Empty(t, got.Addrs)
@@ -186,13 +190,169 @@ func TestOwnIPv4(t *testing.T) {
 		want := OwnAddresses{Addrs: []string{"192.168.1.10"}, Nets: prefixes("192.168.1.10/24"), Port: 4006}
 
 		// when
-		gotDesktop := newOwnAddresses(ownIPv4("linux", ifaces), 4006)
-		gotIOS := newOwnAddresses(ownIPv4("ios", ifaces), 4006)
+		gotDesktop := newOwnAddresses(ownAddrs("linux", ifaces), 4006)
+		gotIOS := newOwnAddresses(ownAddrs("ios", ifaces), 4006)
 
 		// then
 		assert.Equal(t, want, gotDesktop)
 		assert.Equal(t, OwnAddresses{Port: 4006}, gotIOS, "the flat list has no interface names, so nothing qualifies on iOS")
 	})
+}
+
+func TestOwnAddrsLinkLocal(t *testing.T) {
+	t.Run("an ipv6-only interface yields a link-local entry outside Addrs and Nets", func(t *testing.T) {
+		// given: Wi-Fi plus a cable to a phone that carries only link-local
+		ifaces := addrs.InterfacesAddrs{Interfaces: []addrs.NetInterfaceWithAddrCache{
+			iface("en0", "192.168.1.10/24", "fe80::1c57:dcff:fe84:9d64/64", "2a0d:5600::10/64"),
+			iface("en16", "fe80::a886:c6ff:febd:f923/64"),
+		}}
+		want := []ownAddr{
+			{iface: "en0", net: netip.MustParsePrefix("192.168.1.10/24"), matchable: true, advertised: true},
+			{iface: "en16", net: netip.MustParsePrefix("fe80::a886:c6ff:febd:f923/64"), linkLocal: true},
+		}
+
+		// when
+		got := ownAddrs("darwin", ifaces)
+
+		// then
+		assert.Equal(t, want, got)
+		own := newOwnAddresses(got, 4006)
+		assert.Equal(t, []string{"192.168.1.10"}, own.Addrs)
+		assert.Equal(t, prefixes("192.168.1.10/24"), own.Nets)
+	})
+
+	t.Run("a cable alone still leaves Addrs and Nets empty", func(t *testing.T) {
+		// given: the flat list holds what the interface filter dropped
+		ifaces := addrs.InterfacesAddrs{
+			Interfaces: []addrs.NetInterfaceWithAddrCache{iface("en16", "fe80::a886:c6ff:febd:f923/64")},
+			Addrs:      []net.Addr{ipNet("127.0.0.1/8"), ipNet("10.8.0.2/24"), ipNet("fe80::a886:c6ff:febd:f923/64")},
+		}
+
+		// when
+		got := ownAddrs("darwin", ifaces)
+
+		// then
+		assert.Equal(t, []ownAddr{{iface: "en16", net: netip.MustParsePrefix("fe80::a886:c6ff:febd:f923/64"), linkLocal: true}}, got)
+		assert.Equal(t, OwnAddresses{Port: 4006}, newOwnAddresses(got, 4006))
+	})
+
+	t.Run("tunnels and windows never yield link-local", func(t *testing.T) {
+		// given
+		ifaces := addrs.InterfacesAddrs{Interfaces: []addrs.NetInterfaceWithAddrCache{
+			iface("utun0", "fe80::f962:71b6:cc79:75c/64"),
+			iface("awdl0", "fe80::e8f0:84ff:fe9b:e431/64"),
+			iface("Ethernet 2", "fe80::5/64"),
+		}}
+
+		// when
+		gotDarwin := ownAddrs("darwin", ifaces)
+		gotWindows := ownAddrs("windows", ifaces)
+
+		// then
+		assert.Empty(t, gotDarwin)
+		assert.Empty(t, gotWindows)
+	})
+}
+
+func TestLinkLocalOnly(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		iface addrs.NetInterfaceWithAddrCache
+		want  []netip.Addr
+	}{
+		{
+			name:  "a self-assigned IPv4 does not hide the cable",
+			iface: iface("en5", "169.254.10.2/16", "fe80::1/64"),
+			want:  []netip.Addr{netip.MustParseAddr("fe80::1")},
+		},
+		{
+			name:  "a routable IPv4 does",
+			iface: iface("en5", "192.168.2.2/24", "fe80::1/64"),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, linkLocalOnly("darwin", &tc.iface))
+		})
+	}
+
+	t.Run("a cable with a self-assigned IPv4 keeps that address too", func(t *testing.T) {
+		// given
+		ifaces := addrs.InterfacesAddrs{Interfaces: []addrs.NetInterfaceWithAddrCache{
+			iface("en5", "169.254.10.2/16", "fe80::1/64"),
+		}}
+		want := []ownAddr{
+			{iface: "en5", net: netip.MustParsePrefix("169.254.10.2/16"), matchable: true, advertised: true},
+			{iface: "en5", net: netip.MustParsePrefix("fe80::1/64"), linkLocal: true},
+		}
+
+		// when
+		got := ownAddrs("darwin", ifaces)
+
+		// then
+		assert.Equal(t, want, got)
+	})
+}
+
+func TestLinkLocalCandidate(t *testing.T) {
+	for _, tc := range []struct {
+		goos, iface string
+		want        bool
+	}{
+		{"darwin", "en16", true},
+		{"darwin", "bridge0", true},
+		{"darwin", "utun3", false},
+		{"darwin", "awdl0", false},
+		{"darwin", "llw0", false},
+		{"darwin", "anpi0", false},
+		{"darwin", "ap1", false},
+		{"ios", "en2", true},
+		{"ios", "pdp_ip0", false},
+		{"linux", "enp0s31f6", true},
+		{"linux", "eth0", true},
+		{"linux", "wlp2s0", true},
+		{"linux", "thunderbolt0", true},
+		{"linux", "br0", true},
+		{"linux", "bond0", true},
+		{"linux", "em1", true},
+		{"linux", "p1p1", true},
+		{"linux", "ppp0", false},
+		{"linux", "veth1a2b3c", false},
+		{"linux", "docker0", false},
+		{"linux", "tailscale0", false},
+		{"windows", "Ethernet", false},
+	} {
+		t.Run(tc.goos+" "+tc.iface, func(t *testing.T) {
+			assert.Equal(t, tc.want, linkLocalCandidate(tc.goos, tc.iface))
+		})
+	}
+}
+
+func TestFilterMulticastInterfaces(t *testing.T) {
+	// given
+	up := net.FlagUp | net.FlagMulticast
+	withFlags := func(i addrs.NetInterfaceWithAddrCache, flags net.Flags) addrs.NetInterfaceWithAddrCache {
+		i.Flags = flags
+		return i
+	}
+	ifaces := []addrs.NetInterfaceWithAddrCache{
+		withFlags(iface("en0", "192.168.1.10/24", "fe80::1/64"), up),
+		withFlags(iface("en16", "fe80::a886:c6ff:febd:f923/64"), up),
+		withFlags(iface("en13"), up),
+		withFlags(iface("en17", "2a0d:5600::10/64"), up),
+		withFlags(iface("utun0", "fe80::f962:71b6:cc79:75c/64"), up),
+		withFlags(iface("lo0", "127.0.0.1/8", "fe80::1/64"), up|net.FlagLoopback),
+		withFlags(iface("en18", "fe80::7/64"), net.FlagUp),
+	}
+
+	// when
+	got := filterMulticastInterfacesFor("darwin", ifaces)
+
+	// then
+	names := make([]string, 0, len(got))
+	for _, i := range got {
+		names = append(names, i.Name)
+	}
+	assert.Equal(t, []string{"en0", "en16"}, names)
 }
 
 func TestOwnAddressesFor(t *testing.T) {
@@ -234,4 +394,19 @@ func TestOwnAddressesFor(t *testing.T) {
 		plain := OwnAddresses{Addrs: []string{"192.168.1.10"}, Port: 4006}
 		assert.Equal(t, []string{"192.168.1.10"}, plain.For(peer("10.0.0.1")))
 	})
+}
+
+func TestDiscoveryPossibilityOverLinkLocal(t *testing.T) {
+	if !linkLocalCandidate(runtime.GOOS, "en16") || runtime.GOOS == "ios" {
+		t.Skip("no link-local discovery on " + runtime.GOOS)
+	}
+	l := &discoveryBase{}
+
+	// given: a cable alone, no ipv4 anywhere
+	cableOnly := addrs.InterfacesAddrs{Interfaces: []addrs.NetInterfaceWithAddrCache{iface("en16", "fe80::a886:c6ff:febd:f923/64")}}
+	nothing := addrs.InterfacesAddrs{Interfaces: []addrs.NetInterfaceWithAddrCache{iface("en16")}}
+
+	// then
+	assert.Equal(t, DiscoveryPossible, l.getDiscoveryPossibility(cableOnly))
+	assert.Equal(t, DiscoveryNoInterfaces, l.getDiscoveryPossibility(nothing))
 }

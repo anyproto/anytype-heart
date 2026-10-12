@@ -1,12 +1,18 @@
 package spacecore
 
 import (
+	"context"
+	"errors"
 	"net/netip"
+	"slices"
 	"testing"
 
+	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/any-sync/commonspace/clientspaceproto"
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 )
 
@@ -32,6 +38,8 @@ func TestHostIP(t *testing.T) {
 		{"192.168.1.5:4006", netip.MustParseAddr("192.168.1.5"), true},
 		{"yamux://192.168.1.5:51234", netip.MustParseAddr("192.168.1.5"), true},
 		{"[::ffff:192.168.1.5]:4006", netip.MustParseAddr("192.168.1.5"), true},
+		{"yamux://[fe80::1%en16]:51234", netip.MustParseAddr("fe80::1%en16"), true},
+		{"[fe80::a886:c6ff:febd:f9dc%31]:62654", netip.MustParseAddr("fe80::a886:c6ff:febd:f9dc%31"), true},
 		{"", netip.Addr{}, false},
 		{"192.168.1.5", netip.Addr{}, false},
 		{"host.local:4006", netip.Addr{}, false},
@@ -103,5 +111,224 @@ func TestLocalPeerAddrs(t *testing.T) {
 		// then
 		assert.Empty(t, s.peerIPsOf("p1", ""))
 		assert.Equal(t, own.Addrs, localServerOf(own, s.peerIPsOf("p1", "")).Ips)
+	})
+}
+
+func TestRecordLocalPeer(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		connAddr string
+		want     []string
+	}{
+		{
+			name:     "the connection address goes first with the advertised port",
+			connAddr: "yamux://10.20.9.9:51234",
+			want:     []string{"yamux://10.20.9.9:4006", "yamux://192.168.1.62:4006"},
+		},
+		{
+			name:     "a link-local connection address goes first, zoned by index",
+			connAddr: "yamux://[fe80::1%en16]:51234",
+			want:     []string{"yamux://[fe80::1%31]:4006", "yamux://192.168.1.62:4006"},
+		},
+		{
+			name:     "an advertised address equal to the connection is not repeated",
+			connAddr: "yamux://192.168.1.62:51234",
+			want:     []string{"yamux://192.168.1.62:4006"},
+		},
+		{
+			name: "no connection address leaves the advertised list",
+			want: []string{"yamux://192.168.1.62:4006"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			f := newLocalAddrsFixture(t)
+			ctx := context.Background()
+			if tc.connAddr != "" {
+				ctx = peer.CtxWithPeerAddr(ctx, tc.connAddr)
+			}
+
+			// when
+			f.recordLocalPeer(ctx, "p1", &clientspaceproto.LocalServer{Ips: []string{"192.168.1.62"}, Port: 4006}, []string{"s1"}, false)
+
+			// then
+			assert.Equal(t, tc.want, f.installed("p1"))
+		})
+	}
+}
+
+// stubExchange stubs the outbound exchange: each call takes the next error
+// (success once they run out), and none may run under localAddrsMu.
+func (f *localAddrsFixture) stubExchange(t *testing.T, errs ...error) *int {
+	calls := 0
+	f.exchangeFn = func(_ context.Context, peerId string, _ *localdiscovery.OwnAddresses) ([]string, bool, error) {
+		if !f.localAddrsMu.TryLock() {
+			t.Error("the exchange runs under localAddrsMu")
+		} else {
+			f.localAddrsMu.Unlock()
+		}
+		f.dialed = append(f.dialed, slices.Clone(f.installed(peerId)))
+		calls++
+		if len(errs) > 0 {
+			err := errs[0]
+			errs = errs[1:]
+			if err != nil {
+				return nil, false, err
+			}
+		}
+		return []string{"s1"}, false, nil
+	}
+	return &calls
+}
+
+func (f *localAddrsFixture) peerDiscovered(peerId, link string, hostPorts ...string) {
+	f.PeerDiscovered(context.Background(), localdiscovery.DiscoveredPeer{PeerId: peerId, Link: link, Addrs: hostPorts}, localdiscovery.OwnAddresses{Port: 4006})
+}
+
+func TestPeerDiscoveredSources(t *testing.T) {
+	t.Run("a Wi-Fi discovery keeps the cable route", func(t *testing.T) {
+		// given
+		f := newLocalAddrsFixture(t)
+		f.stubExchange(t)
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
+
+		// when
+		f.peerDiscovered("phone", "", "192.168.1.62:4006")
+
+		// then
+		assert.Equal(t, []string{"yamux://[fe80::62%31]:4006", "yamux://192.168.1.62:4006"}, f.installed("phone"))
+	})
+
+	t.Run("a cable discovery keeps the Wi-Fi list, and its expiry leaves it", func(t *testing.T) {
+		// given
+		f := newLocalAddrsFixture(t)
+		f.peerDiscovered("phone", "", "192.168.1.62:4006")
+
+		// when
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
+		f.timers[0].fire()
+
+		// then
+		assert.Equal(t, []string{"yamux://[fe80::62%31]:4006", "yamux://192.168.1.62:4006"}, f.dialed[1], "when the cable exchange started")
+		assert.Equal(t, []string{"yamux://192.168.1.62:4006"}, f.installed("phone"))
+	})
+
+	t.Run("a forgotten cable peer keeps its Wi-Fi list for the next cable answer", func(t *testing.T) {
+		// given: the peer manager gave up on the phone
+		f := newLocalAddrsFixture(t)
+		f.peerDiscovered("phone", "", "192.168.1.62:4006")
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
+		f.forgetPeerIPs("phone")
+
+		// when: the cable answers again, then its route expires
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
+		require.Len(t, f.timers, 2)
+		f.timers[1].fire()
+
+		// then: IPv4 mDNS may not repeat the peer for an hour
+		assert.Equal(t, []string{"yamux://192.168.1.62:4006"}, f.installed("phone"))
+	})
+
+	t.Run("duplicate base addresses go in as develop installs them", func(t *testing.T) {
+		// given
+		f := newLocalAddrsFixture(t)
+		f.stubExchange(t)
+
+		// when
+		f.peerDiscovered("p1", "", "192.168.1.62:4006", "192.168.1.62:4006")
+
+		// then
+		assert.Equal(t, []string{"yamux://192.168.1.62:4006", "yamux://192.168.1.62:4006"}, f.installed("p1"))
+	})
+
+	t.Run("every cable discovery exchanges, after a failure too", func(t *testing.T) {
+		// given: the phone did not listen yet; later a cable connection is up
+		f := newLocalAddrsFixture(t)
+		calls := f.stubExchange(t, errors.New("connection refused"))
+		f.live = []netip.Addr{netip.MustParseAddr("fe80::62%31")}
+
+		// when: the cable answers three times, unchanged
+		for range 3 {
+			f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
+		}
+
+		// then: each exchange, the failed first one too, dials the cable
+		assert.Equal(t, 3, *calls)
+		cable := []string{"yamux://[fe80::62%31]:4006"}
+		assert.Equal(t, [][]string{cable, cable, cable}, f.dialed)
+	})
+
+	t.Run("a base discovery always exchanges, as on develop", func(t *testing.T) {
+		// given
+		f := newLocalAddrsFixture(t)
+		calls := f.stubExchange(t)
+		f.peerDiscovered("phone", "", "192.168.1.62:4006")
+
+		// when
+		f.peerDiscovered("phone", "", "192.168.1.62:4006")
+
+		// then
+		assert.Equal(t, 2, *calls)
+	})
+
+	t.Run("an inbound IPv4 exchange keeps the cable route from mDNS but drops the inbound one", func(t *testing.T) {
+		// given: discovered over the cable, then connected over it
+		f := newLocalAddrsFixture(t)
+		f.stubExchange(t)
+		f.peerDiscovered("phone", "31", "[fe80::62%31]:4006")
+		f.inbound("phone", "yamux://[fe80::63%en16]:51234")
+		require.Equal(t, []string{"yamux://[fe80::63%31]:4006", "yamux://[fe80::62%31]:4006"}, f.installed("phone"))
+
+		// when: it connects over Wi-Fi
+		f.inbound("phone", "yamux://192.168.1.62:51234", "192.168.1.62")
+
+		// then
+		assert.Equal(t, []string{"yamux://[fe80::62%31]:4006", "yamux://192.168.1.62:4006"}, f.installed("phone"))
+	})
+
+	t.Run("without a cable an empty discovery empties the list and still exchanges, as on develop", func(t *testing.T) {
+		// given
+		f := newLocalAddrsFixture(t)
+		f.usable = nil
+		calls := f.stubExchange(t)
+		f.peerDiscovered("p1", "", "192.168.1.62:4006")
+
+		// when: an answer without IPv4
+		f.peerDiscovered("p1", "")
+
+		// then
+		assert.Equal(t, []string{}, f.installed("p1"))
+		assert.Equal(t, 2, *calls)
+		assert.Equal(t, [][]string{{"yamux://192.168.1.62:4006"}, {}}, f.dialed)
+	})
+
+	t.Run("without a cable the list and the exchanges are develop's", func(t *testing.T) {
+		// given: no link-local-only interface, so no cable discovery either
+		f := newLocalAddrsFixture(t)
+		f.usable = nil
+		calls := f.stubExchange(t)
+		steps := []struct {
+			do   func()
+			want []string
+		}{
+			{func() { f.peerDiscovered("p1", "", "192.168.1.62:4006", "10.0.0.5:4006") }, []string{"yamux://192.168.1.62:4006", "yamux://10.0.0.5:4006"}},
+			{func() { f.peerDiscovered("p1", "", "192.168.1.62:4006", "10.0.0.5:4006") }, []string{"yamux://192.168.1.62:4006", "yamux://10.0.0.5:4006"}},
+			{func() { f.inbound("p1", "yamux://192.168.1.70:51234", "192.168.1.62", "192.168.1.70") }, []string{"yamux://192.168.1.70:4006", "yamux://192.168.1.62:4006"}},
+			{func() { f.peerDiscovered("p1", "", "10.0.0.5:4006") }, []string{"yamux://10.0.0.5:4006"}},
+			{func() { f.inbound("p1", "") }, []string{}},
+		}
+
+		for i, step := range steps {
+			// when
+			step.do()
+
+			// then: the latest list exactly, last writer wins
+			assert.Equal(t, step.want, f.installed("p1"), "step %d", i)
+		}
+		assert.Equal(t, 3, *calls, "every discovery exchanges")
+		assert.Equal(t, [][]string{steps[0].want, steps[1].want, steps[3].want}, f.dialed, "over the list it just installed")
+		assert.Zero(t, f.lookups, "no interface looked up")
+		assert.Zero(t, f.picks, "no pool asked")
+		assert.Empty(t, f.timers, "no route armed")
 	})
 }

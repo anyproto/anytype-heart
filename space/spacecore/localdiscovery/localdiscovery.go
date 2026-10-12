@@ -7,6 +7,9 @@ import (
 	"context"
 	"fmt"
 	gonet "net"
+	"runtime"
+	"slices"
+	"strconv"
 	"sync"
 	"time"
 
@@ -57,9 +60,16 @@ type zeroconfDiscovery struct {
 	drpcServer    clientserver.ClientServer
 	nodeConf      nodeconf.Configuration
 
-	ipv4        []string
-	ipv6        []string
-	own         []ownAddr // every ipv4 address with its subnet
+	ipv4 []string
+	own  []ownAddr // every ipv4 address with its subnet, then the link-local ones
+	// linkLocal describes the interfaces without IPv4 that discovery runs on
+	// over IPv6 link-local (see linkLocalOnly); empty means IPv4 only.
+	linkLocal linkLocalIfaces
+	// ifaceIds identifies every interface of the last enumeration, see
+	// interfaceIds
+	ifaceIds []string
+	// discoveries serializes PeerDiscovered per peer (see peerDiscoveries)
+	discoveries peerDiscoveries
 	manualStart bool
 	started     bool
 	notifier    Notifier
@@ -221,7 +231,13 @@ func (l *zeroconfDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 		l.m.Unlock()
 		return fmt.Errorf("get interfaces addrs: %w", err)
 	}
-	if addrs.NetAddrsEqualUnordered(l.interfacesAddrs.Addrs, newAddrs.Addrs) {
+	// the flat list misses an interface that came back under a new index
+	// with the same addresses (a cable plugged in again), and an address
+	// moving between interfaces (which changes the link-local selection),
+	// so compare the interface identities and, for the interfaces that may
+	// be used over link-local, which addresses each holds
+	ifaceIds := interfaceIds(runtime.GOOS, newAddrs.Interfaces)
+	if addrs.NetAddrsEqualUnordered(l.interfacesAddrs.Addrs, newAddrs.Addrs) && slices.Equal(l.ifaceIds, ifaceIds) {
 		// this optimization allows to save syscalls to get addrs for every iface
 		// also we may receive a new ip address on the existing interface
 		l.discoveryPossibilitySwapState(func(currentState DiscoveryPossibility) DiscoveryPossibility {
@@ -235,6 +251,7 @@ func (l *zeroconfDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 		return
 	}
 
+	l.ifaceIds = ifaceIds
 	newAddrs.Interfaces = filterMulticastInterfaces(newAddrs.Interfaces)
 	newAddrs.SortInterfacesWithPriority(interfacesSortPriority)
 	l.discoveryPossibilitySetState(l.getDiscoveryPossibility(newAddrs))
@@ -291,23 +308,57 @@ func (l *zeroconfDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 	return
 }
 
+// linkLocalIfaces is the set of interfaces discovery uses over IPv6
+// link-local, by index and by zone.
+type linkLocalIfaces struct {
+	indexes []int
+	zones   map[string]struct{} // interface names and decimal indexes
+}
+
+func newLinkLocalIfaces(own []ownAddr, ifaces []gonet.Interface) linkLocalIfaces {
+	var res linkLocalIfaces
+	for _, iface := range ifaces {
+		if !slices.ContainsFunc(own, func(a ownAddr) bool { return a.linkLocal && a.iface == iface.Name }) {
+			continue
+		}
+		if res.zones == nil {
+			res.zones = map[string]struct{}{}
+		}
+		res.indexes = append(res.indexes, iface.Index)
+		res.zones[iface.Name] = struct{}{}
+		res.zones[strconv.Itoa(iface.Index)] = struct{}{}
+	}
+	return res
+}
+
+// ipTraffic keeps mDNS IPv4-only unless some interface has nothing else.
+func (ll linkLocalIfaces) ipTraffic() zeroconf.IPType {
+	if len(ll.indexes) == 0 {
+		return zeroconf.IPv4
+	}
+	return zeroconf.IPv4AndIPv6
+}
+
 func (l *zeroconfDiscovery) startServer() (err error) {
-	// ipv6 is ignored for now
-	l.own = l.ownIPv4()
+	l.own = l.ownAddrs()
 	logOwnAddresses(l.own)
 	l.ipv4 = newOwnAddresses(l.own, l.port).Addrs
-	log.Info("starting mdns server", zap.Strings("ips", l.ipv4), zap.Int("port", l.port), zap.String("peerId", l.peerId))
+	ifaces := l.interfacesAddrs.NetInterfaces()
+	l.linkLocal = newLinkLocalIfaces(l.own, ifaces)
+	log.Info("starting mdns server", zap.Strings("ips", l.ipv4), zap.Int("port", l.port), zap.String("peerId", l.peerId),
+		zap.Ints("linkLocalIfaces", l.linkLocal.indexes))
 	l.server, err = zeroconf.RegisterProxy(
 		l.peerId,
 		serviceName,
 		mdnsDomain,
 		l.port,
 		l.peerId,
-		l.ipv4, // do not include ipv6 addresses, because they are disabled
+		l.ipv4, // ipv6 link-local is added per interface, see ServerLinkLocalIPv6
 		nil,
-		l.interfacesAddrs.NetInterfaces(),
+		ifaces,
 		zeroconf.TTL(3600), // big ttl because we don't have re-broadcasting
-		zeroconf.ServerSelectIPTraffic(zeroconf.IPv4), // disable ipv6 for now
+		zeroconf.ServerSelectIPTraffic(l.linkLocal.ipTraffic()),
+		zeroconf.ServerLinkLocalIPv6(l.linkLocal.indexes...), // IPv6 runs only on these interfaces
 		zeroconf.WriteTimeout(time.Second*3),
 	)
 	return
@@ -322,9 +373,10 @@ func (l *zeroconfDiscovery) startQuerying(ctx context.Context) {
 	// snapshot the interfaces under l.m instead of letting browse read the
 	// field unlocked later, racing with the next refresh
 	ifaces := l.interfacesAddrs.NetInterfaces()
+	linkLocal := l.linkLocal
 
 	go l.readAnswers(closeWait, listenCh)
-	go l.browse(ctx, closeWait, ifaces, listenCh)
+	go l.browse(ctx, closeWait, ifaces, linkLocal, listenCh)
 }
 
 func (l *zeroconfDiscovery) readAnswers(closeWait *sync.WaitGroup, ch chan *zeroconf.ServiceEntry) {
@@ -334,34 +386,100 @@ func (l *zeroconfDiscovery) readAnswers(closeWait *sync.WaitGroup, ch chan *zero
 			log.Debug("discovered self")
 			continue
 		}
-		var portAddrs []string
 		l.m.Lock()
 		l.interfacesAddrs.SortIPsLikeInterfaces(entry.AddrIPv4)
-		for _, a := range entry.AddrIPv4 {
-			portAddrs = append(portAddrs, fmt.Sprintf("%s:%d", a.String(), entry.Port))
+		portAddrs := peerAddrs(entry, l.linkLocal.zones)
+		if entry.LinkIndex != 0 && len(portAddrs) == 0 {
+			// a cable entry from a link that is not ours: nothing to add.
+			// A base entry goes even without IPv4, as on develop.
+			l.m.Unlock()
+			log.Debug("discovered peer without usable addresses", zap.String("peerId", entry.Instance))
+			continue
 		}
 		peer := DiscoveredPeer{
 			Addrs:  portAddrs,
 			PeerId: entry.Instance,
 		}
-		log.Debug("discovered peer", zap.Strings("addrs", portAddrs), zap.String("peerId", peer.PeerId))
+		if entry.LinkIndex != 0 {
+			peer.Link = strconv.Itoa(entry.LinkIndex)
+		}
+		log.Debug("discovered peer", zap.Strings("addrs", portAddrs), zap.String("peerId", peer.PeerId), zap.String("link", peer.Link))
 		if l.notifier != nil {
 			own := newOwnAddresses(l.own, l.port)
 			// explicitly use componentCtx, instead of queryCtx here, because we don't want to interrupt the peer connection if we refreshed interfaces and restarted service
-			go l.notifier.PeerDiscovered(l.componentCtx, peer, own)
+			// without a cable each discovery runs at once, as on develop
+			l.discoveries.notify(l.componentCtx, l.notifier, peer, own, len(l.linkLocal.indexes) == 0)
 		}
 		l.m.Unlock()
 	}
 }
 
-func (l *zeroconfDiscovery) browse(ctx context.Context, closeWait *sync.WaitGroup, ifaces []gonet.Interface, ch chan *zeroconf.ServiceEntry) {
+// peerAddrs is the address list a discovered peer is reported with. An entry
+// the browser delivered for one cable (LinkIndex) yields only its link-local
+// addresses on that cable, and only when it is one of our interfaces without
+// IPv4 (zones): spacecore keeps such a route next to the peer's other
+// addresses. Any other entry yields its IPv4 addresses, as on develop, and
+// replaces the peer's list.
+func peerAddrs(entry *zeroconf.ServiceEntry, zones map[string]struct{}) []string {
+	port := strconv.Itoa(entry.Port)
+	var addrs []string
+	if entry.LinkIndex == 0 {
+		for _, a := range entry.AddrIPv4 {
+			addrs = append(addrs, gonet.JoinHostPort(a.String(), port))
+		}
+		return addrs
+	}
+	for _, a := range entry.AddrIPv6Zoned {
+		if !a.IsLinkLocalUnicast() {
+			continue
+		}
+		if _, ok := zones[a.Zone()]; !ok {
+			continue
+		}
+		hostPort := gonet.JoinHostPort(a.String(), port)
+		if !slices.Contains(addrs, hostPort) {
+			addrs = append(addrs, hostPort)
+		}
+	}
+	return addrs
+}
+
+func (l *zeroconfDiscovery) browse(ctx context.Context, closeWait *sync.WaitGroup, ifaces []gonet.Interface, linkLocal linkLocalIfaces, ch chan *zeroconf.ServiceEntry) {
 	defer closeWait.Done()
 	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch,
 		zeroconf.ClientWriteTimeout(time.Second*3),
 		zeroconf.SelectIfaces(ifaces),
-		zeroconf.SelectIPTraffic(zeroconf.IPv4)); err != nil {
+		zeroconf.SelectIPv6Ifaces(linkLocal.indexes...),
+		zeroconf.SelectIPTraffic(linkLocal.ipTraffic())); err != nil {
 		log.Error("browsing failed", zap.Error(err))
 	}
+}
+
+// interfaceIds lists the interfaces as name#index with their flags, and the addresses held by
+// each one that may be used over link-local (see linkLocalCandidate), sorted.
+// Only those few interfaces have their addresses read here; the rest keep
+// relying on the flat address list.
+func interfaceIds(goos string, ifaces []addrs.NetInterfaceWithAddrCache) []string {
+	ids := make([]string, 0, len(ifaces))
+	for i := range ifaces {
+		iface := &ifaces[i]
+		// the flags filterMulticastInterfaces reads: a cable coming up
+		// keeps its name, index and address
+		flags := iface.Flags & (gonet.FlagUp | gonet.FlagMulticast | gonet.FlagLoopback)
+		id := iface.Name + "#" + strconv.Itoa(iface.Index)
+		ids = append(ids, id+" "+flags.String())
+		if !linkLocalCandidate(goos, iface.Name) {
+			continue
+		}
+		for _, addr := range iface.GetAddr() {
+			ids = append(ids, id+" "+addr.String())
+		}
+		for _, addr := range iface.GetLinkLocalIPv6() {
+			ids = append(ids, id+" "+addr.String())
+		}
+	}
+	slices.Sort(ids)
+	return ids
 }
 
 // waitWithTimeout waits for wg up to timeout; false means the wait timed out.

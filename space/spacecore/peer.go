@@ -57,9 +57,24 @@ func (s *service) PeerDiscovered(ctx context.Context, discovered localdiscovery.
 	if s.peerDiscoveryObserver != nil {
 		s.peerDiscoveryObserver.OnLocalPeerDiscovered(discovered.PeerId, discovered.Addrs)
 	}
-	s.setLocalPeerAddrs(discovered.PeerId, discovered.Addrs)
+	s.localAddrsMu.Lock()
+	if s.localAddrsClosed {
+		s.localAddrsMu.Unlock()
+		return
+	}
+	if discovered.Link == "" {
+		s.setBaseAddrs(discovered.PeerId, discovered.Addrs)
+	} else {
+		s.setRoute(discovered.PeerId, routeMDNS+discovered.Link, discovered.Addrs)
+	}
+	s.installLocalAddrs(discovered.PeerId)
+	s.localAddrsMu.Unlock()
 	s.rememberOwn(own)
-	shared, proof, err := s.exchangeOutbound(ctx, discovered.PeerId, &own)
+	// every discovery exchanges, as on develop. A cable answers again every
+	// two to three minutes, so a cable peer is exchanged with at that pace,
+	// which also teaches a restarted peer, or one whose route to us
+	// expired, our address on the cable again
+	shared, proof, err := s.exchangeFn(ctx, discovered.PeerId, &own)
 	if err != nil {
 		return
 	}
@@ -209,9 +224,19 @@ func (s *service) peerIPsOf(peerId, connAddr string) []netip.Addr {
 }
 
 func (s *service) forgetPeerIPs(peerId string) {
+	s.localAddrsMu.Lock()
+	s.forgetLocalPeerAddrs(peerId)
+	s.localAddrsMu.Unlock()
 	s.ownMu.Lock()
 	defer s.ownMu.Unlock()
 	delete(s.peerIPs, peerId)
+}
+
+// isLinkLocalAddr reports whether hostPort is a dialable IPv6 link-local
+// address; an IPv4 link-local one (169.254/16) is just another IPv4 address.
+func isLinkLocalAddr(hostPort string) bool {
+	ip, ok := hostIP(hostPort)
+	return ok && ip.Is6() && ip.IsLinkLocalUnicast() && ip.Zone() != ""
 }
 
 // hostIP extracts the IP from "ip:port" or a transport URL such as
