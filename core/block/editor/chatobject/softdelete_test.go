@@ -579,6 +579,78 @@ func TestDiscussionDeleteEvents(t *testing.T) {
 		assert.True(t, changes[0].Message.Deleted)
 	})
 
+	t.Run("a create and its delete in one batch reach the window as one add carrying the tombstone", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t, asDiscussion("parentId"))
+		subscribeForEvents(t, fx)
+		var kinds []chatsubscription.ChatChangeKind
+		fx.subscription.Lock()
+		fx.subscription.AddObserver("test", func(change chatsubscription.ChatChange) {
+			if change.Kind != chatsubscription.ChatChangeStateUpdated {
+				kinds = append(kinds, change.Kind)
+			}
+		})
+		fx.subscription.Unlock()
+		fx.events = nil
+		create := &storestate.Builder{}
+		arena := &anyenc.Arena{}
+		obj := arena.NewObject()
+		givenSimpleMessage("hello").MarshalAnyenc(obj, arena)
+		require.NoError(t, create.Create(CollectionName, storestate.IdFromChange, obj))
+		id := bson.NewObjectId().Hex()
+
+		// when
+		tx, err := fx.store.NewTx(ctx)
+		require.NoError(t, err)
+		for _, cs := range []storestate.ChangeSet{
+			{Id: id, Order: fx.generateOrderId(tx), Creator: bob, Changes: create.ChangeSet},
+			{Id: bson.NewObjectId().Hex(), Order: fx.generateOrderId(tx), Creator: bob, Changes: deleteBuilder(id).ChangeSet},
+		} {
+			require.NoError(t, tx.ApplyChangeSetReturnAllErrors(cs))
+		}
+		require.NoError(t, tx.Commit())
+		fx.onUpdate()
+
+		// then
+		var added []*model.ChatMessage
+		for _, ev := range fx.events {
+			assert.Nil(t, ev.GetChatUpdate(), "the add already carries the tombstone")
+			if add := ev.GetChatAdd(); add != nil {
+				added = append(added, add.Message)
+			}
+		}
+		require.Len(t, added, 1)
+		assert.True(t, added[0].Deleted)
+		assert.Equal(t, []chatsubscription.ChatChangeKind{chatsubscription.ChatChangeMessageAdded, chatsubscription.ChatChangeMessageUpdated}, kinds)
+	})
+
+	t.Run("a delete outside the window still sends the tombstone", func(t *testing.T) {
+		// given
+		fx := newFixture(t, asDiscussion("parentId"))
+		older := fx.createAs(t, bob, givenSimpleMessage("older"))
+		fx.createAs(t, bob, givenSimpleMessage("newer"))
+		req := subscribeRequest(fx)
+		req.Limit = 1
+		_, err := fx.chatSubscriptionService.SubscribeLastMessages(context.Background(), req)
+		require.NoError(t, err)
+		fx.events = nil
+
+		// when
+		fx.pushAs(t, bob, deleteBuilder(older))
+
+		// then
+		var updated []*model.ChatMessage
+		for _, ev := range fx.events {
+			if upd := ev.GetChatUpdate(); upd != nil {
+				updated = append(updated, upd.Message)
+			}
+		}
+		require.Len(t, updated, 1)
+		assert.Equal(t, older, updated[0].Id)
+		assert.True(t, updated[0].Deleted)
+	})
+
 	t.Run("a space chat delete still sends a delete", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
