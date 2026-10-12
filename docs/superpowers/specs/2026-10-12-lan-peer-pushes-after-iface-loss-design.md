@@ -110,13 +110,14 @@ fetchResponsiblePeers():
 
 startNodeLookup():
     if !nodeLookupRunning.CompareAndSwap(false, true) { return }
+    rebuiltDuringLookup.Store(false)       // this lookup dials after every rebuild so far
     go func() {
-        defer func() { nodeLookupRunning.Store(false); refetchIfNodeClosed(); non-blocking send on nodeLookupDone }()
+        defer func() { nodeLookupRunning.Store(false); refetchAfterLookup(); non-blocking send on nodeLookupDone }()
         lookupNode()
     }()
 
-refetchIfNodeClosed():                     // once per lookup, never after Close
-    if the node this lookup served is closed by now { signalFetch() }   // can start a new lookup now
+refetchAfterLookup():                      // once per lookup, never after Close; can start a new lookup now
+    if rebuiltDuringLookup.Swap(false) || the node this lookup served is closed by now { signalFetch() }
 
 lookupNode():                              // the old node half of fetchResponsiblePeers, verbatim logic
     prev := nodeStatus.GetNodeStatus(spaceId)
@@ -148,7 +149,8 @@ publishLocked(): list = [nodePeer?] + localPeers, live peers only; start watchPe
                  swap responsiblePeers; close availableResponsiblePeers if len>0
                  (= old publishResponsiblePeers, composed)
 signalFetch(): the non-blocking channel send without resetting consecutiveFetchFailures
-               (used by watchPeer and by 2.2); signalRebuild() = reset counter + signalFetch()
+               (used by watchPeer and by 2.2)
+signalRebuild(): reset counter; rebuiltDuringLookup.Store(true); signalFetch()
 watchPeer(p): wait for close or ctx; release p's id in watchingPeers; then signalFetch() unless closed
               (released first: the fetch may serve a reconnected peer at once, and it needs a watcher)
 ```
@@ -158,9 +160,14 @@ walk, so "retry 5 s after a failed lookup" counts from the failure. With the loo
 timer would otherwise have been armed with the pre-verdict cadence (20 s) and the fast retry would slip
 by up to 20 s. Re-arming from the verdict reproduces today's cadence exactly (test
 `Test_manageResponsiblePeers_retryCountsFromNodeVerdict`, on fake time under `testing/synctest`).
-A connectivity signal that arrives while a lookup is in flight does not need a second lookup after it:
-the flush that precedes every connectivity hook cancels the old pool pair, and `pool.lookup` restarts
-the in-flight walk on the new pair, so its verdict is already post-change. A fetch woken while a lookup is in flight runs only the local
+A connectivity rebuild that arrives while a lookup is in flight finds the single-flight slot taken and
+runs only the local pass. If the walk is still inside `GetOneOf`, the flush that precedes every
+connectivity hook cancels the old pool pair and `pool.lookup` restarts the walk on the new pair, so
+the verdict is post-change. But a lookup that has already returned and is still applying its verdict
+(e.g. paused in `Refresh`) holds a pre-change result; without a replay a node reachable again waits for
+the 5 s fast retry. So every rebuild sets `rebuiltDuringLookup`, a lookup clears it as it starts, and a
+lookup that finds it set when it ends signals one fetch (`refetchAfterLookup`). Only rebuilds count:
+replaying plain fetch signals or cadence ticks would follow a long offline walk with another at once. A fetch woken while a lookup is in flight runs only the local
 pass (cheap: `Get` on a connected peer is the fast path; stale peers were evicted on first failure).
 
 Properties kept, explicitly:
@@ -181,7 +188,7 @@ Properties kept, explicitly:
   goroutine stays, parked in its select; the CAS prevents stacking); one timer per wait, as before.
 - **Flush races** — a lookup started before a `Flush` returns a peer from the *current* pair
   (`pool.lookup` retries on swap); if it is closed by publish time it is left out of the list, and the
-  lookup, once it has released the single-flight slot, signals one fetch (`refetchIfNodeClosed`),
+  lookup, once it has released the single-flight slot, signals one fetch (`refetchAfterLookup`),
   standing in for the watcher that signalled it on develop. The same check covers a node that closes
   before the lookup has finished: its watcher's fetch found the lookup still in flight and ran only the
   local pass. Signalling from the setter instead loses the retry whenever the loop takes the signal
@@ -311,8 +318,13 @@ New:
 15. `Test_manageResponsiblePeers_closedLocalPeerIsFetchedAgainAtOnce` — the LAN twin, with the node
     lookup still walking: a connection closed by the time the pass serves it triggers another pass at
     once, which serves the new connection.
+16. `Test_manageResponsiblePeers_rebuildDuringLookupIsReplayed` — the real loop on fake time, a failed
+    lookup held in `Refresh`: a rebuild signalled meanwhile starts the replacement lookup at 0 s, a
+    plain fetch signal does not; afterwards a rebuild while idle costs exactly one lookup.
+17. `Test_fetchLocalPeers_pickSharesTheDialBudget` — on fake time, `Get` and `Pick` of a stale peer both
+    block until their ctx is done: the pass ends, with the healthy peer behind it served, at exactly 2 s.
 
-Each test that pins a fix (1, 2, 4, 5, 7–15) was checked to fail with that fix reverted.
+Each test that pins a fix (1, 2, 4, 5, 7–17) was checked to fail with that fix reverted.
 
 ## 5. On-device check
 
