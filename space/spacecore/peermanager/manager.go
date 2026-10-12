@@ -507,6 +507,7 @@ func (n *clientPeerManager) setNodePeer(p peer.Peer) {
 	defer n.Unlock()
 	n.nodePeer = p
 	n.publishLocked()
+	n.refetchIfClosed(p)
 }
 
 // serveLocalPeer serves p in place of the entry with its id, or in addition.
@@ -519,6 +520,16 @@ func (n *clientPeerManager) serveLocalPeer(p peer.Peer) {
 		n.localPeers = append(n.localPeers, p)
 	}
 	n.publishLocked()
+	n.refetchIfClosed(p)
+}
+
+// refetchIfClosed asks for another fetch when a source has just produced a
+// peer that is closed already (a flush raced the lookup): publishing leaves it
+// out, so no watcher will ever report that closure.
+func (n *clientPeerManager) refetchIfClosed(p peer.Peer) {
+	if p != nil && p.IsClosed() {
+		n.signalFetch()
+	}
 }
 
 func (n *clientPeerManager) setLocalPeers(peers []peer.Peer) {
@@ -528,15 +539,22 @@ func (n *clientPeerManager) setLocalPeers(peers []peer.Peer) {
 	n.publishLocked()
 }
 
-// publishLocked composes the served list from its two sources, swaps it in and
-// wakes the waiters; safe to call any number of times (watchers are registered
-// once per peer).
+// publishLocked composes the served list from the live peers of its two
+// sources, swaps it in and wakes the waiters; safe to call any number of times
+// (watchers are registered once per peer). A source keeps a closed peer until
+// its next result, e.g. the node until a lookup started after a flush returns;
+// composing it in would hand it a fresh watcher, which would find it closed
+// and signal yet another fetch, and wake the waiters with nothing to serve.
 func (n *clientPeerManager) publishLocked() {
 	peers := make([]peer.Peer, 0, 1+len(n.localPeers))
-	if n.nodePeer != nil {
+	if n.nodePeer != nil && !n.nodePeer.IsClosed() {
 		peers = append(peers, n.nodePeer)
 	}
-	peers = append(peers, n.localPeers...)
+	for _, p := range n.localPeers {
+		if !p.IsClosed() {
+			peers = append(peers, p)
+		}
+	}
 	for _, p := range peers {
 		if _, ok := n.watchingPeers[p.Id()]; !ok {
 			n.watchingPeers[p.Id()] = struct{}{}

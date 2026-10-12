@@ -951,6 +951,105 @@ func Test_manageResponsiblePeers_retryCountsFromNodeVerdict(t *testing.T) {
 	})
 }
 
+// After a flush closes the served node, its watcher signals one fetch. While
+// the replacement lookup still walks (20-70s offline), that fetch must not
+// serve the closed node again: a fresh watcher would find it closed at once
+// and signal another fetch, spinning the loop until the verdict lands.
+func Test_manageResponsiblePeers_closedNodeCostsOnePass(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		localPeers []string
+		wantServed []string
+	}{
+		{name: "no LAN peers", wantServed: []string{}},
+		{name: "live cable peer", localPeers: []string{"cablePeer"}, wantServed: []string{"cablePeer"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				// given: the node served before the flush, and a replacement
+				// lookup that walks on for the rest of the test
+				spaceId := "spaceId"
+				f := newFixtureManager(t, spaceId)
+				f.cm.ctx, f.cm.ctxCancel = context.WithCancel(context.Background())
+				store := &passCountingStore{PeerStore: f.store, limit: 10, stop: f.cm.ctxCancel}
+				f.cm.peerStore = store
+				for _, id := range tc.localPeers {
+					f.store.UpdateLocalPeer(id, []string{spaceId})
+					f.pool.EXPECT().Get(gomock.Any(), id).Return(newTestPeer(id), nil).AnyTimes()
+				}
+				f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).DoAndReturn(
+					func(ctx context.Context, ids []string) (peer.Peer, error) {
+						<-ctx.Done()
+						return nil, ctx.Err()
+					})
+				node := newTestPeer("node")
+				f.cm.setNodePeer(node)
+				go f.cm.manageResponsiblePeers()
+				synctest.Wait()
+				require.Equal(t, int32(1), store.passes.Load())
+
+				// when: the flush closes the node
+				require.NoError(t, node.Close())
+				synctest.Wait()
+
+				// then: one pass for the closure, then idle until the cadence tick
+				assert.Equal(t, int32(2), store.passes.Load(), "a closed node must cost one pass, not a loop")
+				f.cm.Lock()
+				served := peerIds(f.cm.responsiblePeers)
+				f.cm.Unlock()
+				assert.Equal(t, tc.wantServed, served, "a closed peer must not be served")
+				time.Sleep(responsiblePeersCheckInterval)
+				synctest.Wait()
+				assert.Equal(t, int32(3), store.passes.Load(), "the next pass comes on the cadence tick")
+				f.cm.ctxCancel()
+			})
+		})
+	}
+}
+
+// A lookup that returns a node closed before it could be served (a flush raced
+// it) leaves it out of the list and asks for another fetch at once, as the
+// watcher a served node gets would have: nothing else reports that closure.
+func Test_fetchResponsiblePeers_nodeClosedOnArrivalRefetches(t *testing.T) {
+	// given
+	spaceId := "spaceId"
+	f := newFixtureManager(t, spaceId)
+	closedNode := newTestPeer("node")
+	require.NoError(t, closedNode.Close())
+	f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(closedNode, nil)
+	f.updater.EXPECT().Refresh(spaceId)
+
+	// when
+	f.fetchAndWaitNode(t)
+
+	// then
+	f.cm.Lock()
+	served := peerIds(f.cm.responsiblePeers)
+	f.cm.Unlock()
+	assert.Equal(t, []string{}, served)
+	select {
+	case <-f.cm.rebuildResponsiblePeers:
+	default:
+		t.Fatal("a node closed on arrival must request another fetch")
+	}
+}
+
+// passCountingStore counts local passes and stops the manager past limit, so a
+// fetch storm fails the test instead of spinning the synctest bubble forever.
+type passCountingStore struct {
+	peerstore.PeerStore
+	passes atomic.Int32
+	limit  int32
+	stop   context.CancelFunc
+}
+
+func (s *passCountingStore) LocalPeerIds(spaceId string) []string {
+	if s.passes.Inc() > s.limit {
+		s.stop()
+	}
+	return s.PeerStore.LocalPeerIds(spaceId)
+}
+
 // A peer that closes releases its watch slot before it signals the fetch: the
 // fetch may serve a new connection to the same peer at once (an inbound
 // reconnect is already in the pool), and that connection must be watched too,
