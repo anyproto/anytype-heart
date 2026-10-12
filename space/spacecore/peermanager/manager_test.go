@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"slices"
 	"sync"
 	"testing"
 	"testing/synctest"
@@ -1051,31 +1052,108 @@ func Test_manageResponsiblePeers_closedNodeCostsOnePass(t *testing.T) {
 	}
 }
 
-// A lookup that returns a node closed before it could be served (a flush raced
-// it) leaves it out of the list and asks for another fetch at once, as the
-// watcher a served node gets would have: nothing else reports that closure.
-func Test_fetchResponsiblePeers_nodeClosedOnArrivalRefetches(t *testing.T) {
-	// given
-	spaceId := "spaceId"
-	f := newFixtureManager(t, spaceId)
-	closedNode := newTestPeer("node")
-	require.NoError(t, closedNode.Close())
-	f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(closedNode, nil)
-	f.updater.EXPECT().Refresh(spaceId)
+// A node that is closed when its lookup returns (a flush raced it), or that
+// closes before the lookup has finished, must be looked up again at once. The
+// fetch its closure asks for can land while the lookup still holds the
+// single-flight slot (here: held in Refresh) and then runs only the local
+// pass, so the space would stay without a node until the 20s tick.
+func Test_manageResponsiblePeers_closedNodeIsLookedUpAgainAtOnce(t *testing.T) {
+	for _, tc := range []struct {
+		name            string
+		closedOnArrival bool
+	}{
+		{name: "closed on arrival", closedOnArrival: true},
+		{name: "closes before the lookup finishes"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				// given
+				spaceId := "spaceId"
+				f := newFixtureManager(t, spaceId)
+				f.cm.ctx, f.cm.ctxCancel = context.WithCancel(context.Background())
+				first, replacement := newTestPeer("node"), newTestPeer("node")
+				if tc.closedOnArrival {
+					require.NoError(t, first.Close())
+				}
+				start := time.Now()
+				lookupStarts := make(chan time.Duration, 3)
+				gomock.InOrder(
+					f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).DoAndReturn(
+						func(ctx context.Context, ids []string) (peer.Peer, error) {
+							lookupStarts <- time.Since(start)
+							return first, nil
+						}),
+					f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).DoAndReturn(
+						func(ctx context.Context, ids []string) (peer.Peer, error) {
+							lookupStarts <- time.Since(start)
+							return replacement, nil
+						}),
+				)
+				releaseRefresh := make(chan struct{})
+				f.updater.EXPECT().Refresh(spaceId).Run(func(string) { <-releaseRefresh }).Once()
+				f.updater.EXPECT().Refresh(spaceId).Once()
+				go f.cm.manageResponsiblePeers()
+				synctest.Wait()
+				if !tc.closedOnArrival {
+					require.NoError(t, first.Close())
+					synctest.Wait()
+				}
 
-	// when
-	f.fetchAndWaitNode(t)
+				// when: the first lookup finishes
+				close(releaseRefresh)
+				synctest.Wait()
 
-	// then
-	f.cm.Lock()
-	served := peerIds(f.cm.responsiblePeers)
-	f.cm.Unlock()
-	assert.Equal(t, []string{}, served)
-	select {
-	case <-f.cm.rebuildResponsiblePeers:
-	default:
-		t.Fatal("a node closed on arrival must request another fetch")
+				// then
+				var got []time.Duration
+				for len(lookupStarts) > 0 {
+					got = append(got, <-lookupStarts)
+				}
+				assert.Equal(t, []time.Duration{0, 0}, got, "the replacement lookup must start at once, not on the 20s tick")
+				f.cm.Lock()
+				served := slices.Clone(f.cm.responsiblePeers)
+				f.cm.Unlock()
+				require.Len(t, served, 1)
+				assert.Same(t, replacement, served[0])
+				f.cm.ctxCancel()
+			})
+		})
 	}
+}
+
+// The LAN twin: a connection that is closed by the time the pass serves it
+// (the peer reconnecting) is left out and asks for another pass at once, which
+// serves the new connection, while the node lookup walks on.
+func Test_manageResponsiblePeers_closedLocalPeerIsFetchedAgainAtOnce(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		// given
+		spaceId := "spaceId"
+		f := newFixtureManager(t, spaceId)
+		f.cm.ctx, f.cm.ctxCancel = context.WithCancel(context.Background())
+		f.store.UpdateLocalPeer("cablePeer", []string{spaceId})
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).DoAndReturn(
+			func(ctx context.Context, ids []string) (peer.Peer, error) {
+				<-ctx.Done()
+				return nil, ctx.Err()
+			})
+		closedConn, replacement := newTestPeer("cablePeer"), newTestPeer("cablePeer")
+		require.NoError(t, closedConn.Close())
+		gomock.InOrder(
+			f.pool.EXPECT().Get(gomock.Any(), "cablePeer").Return(closedConn, nil),
+			f.pool.EXPECT().Get(gomock.Any(), "cablePeer").Return(replacement, nil),
+		)
+
+		// when
+		go f.cm.manageResponsiblePeers()
+		synctest.Wait()
+
+		// then: served without waiting for the 20s tick
+		f.cm.Lock()
+		served := slices.Clone(f.cm.responsiblePeers)
+		f.cm.Unlock()
+		require.Len(t, served, 1)
+		assert.Same(t, replacement, served[0])
+		f.cm.ctxCancel()
+	})
 }
 
 // passCountingStore counts local passes and stops the manager past limit, so a

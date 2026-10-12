@@ -400,6 +400,7 @@ func (n *clientPeerManager) startNodeLookup() {
 	go func() {
 		defer func() {
 			n.nodeLookupRunning.Store(false)
+			n.refetchIfNodeClosed()
 			select {
 			case n.nodeLookupDone <- struct{}{}:
 			default:
@@ -407,6 +408,25 @@ func (n *clientPeerManager) startNodeLookup() {
 		}()
 		n.lookupNode()
 	}()
+}
+
+// refetchIfNodeClosed asks for another fetch, now that it can start a lookup,
+// when the node this lookup served is closed already. Closed on arrival (a
+// flush raced the lookup), it was never published, so no watcher reports it;
+// closed while the lookup was finishing, its watcher's fetch found the lookup
+// still in flight and ran only the local pass. Either way the space would wait
+// for the next tick without a node. At most once per lookup, and the next one
+// replaces the node, so a closed node cannot spin the loop.
+func (n *clientPeerManager) refetchIfNodeClosed() {
+	if n.ctx.Err() != nil {
+		return
+	}
+	n.Lock()
+	closed := n.nodePeer != nil && n.nodePeer.IsClosed()
+	n.Unlock()
+	if closed {
+		n.signalFetch()
+	}
 }
 
 // lookupNode finds one responsible node connection and serves it, or serves
@@ -507,7 +527,6 @@ func (n *clientPeerManager) setNodePeer(p peer.Peer) {
 	defer n.Unlock()
 	n.nodePeer = p
 	n.publishLocked()
-	n.refetchIfClosed(p)
 }
 
 // serveLocalPeer serves p in place of the entry with its id, or in addition.
@@ -520,14 +539,10 @@ func (n *clientPeerManager) serveLocalPeer(p peer.Peer) {
 		n.localPeers = append(n.localPeers, p)
 	}
 	n.publishLocked()
-	n.refetchIfClosed(p)
-}
-
-// refetchIfClosed asks for another fetch when a source has just produced a
-// peer that is closed already (a flush raced the lookup): publishing leaves it
-// out, so no watcher will ever report that closure.
-func (n *clientPeerManager) refetchIfClosed(p peer.Peer) {
-	if p != nil && p.IsClosed() {
+	if p.IsClosed() {
+		// closed before it could be served (the peer reconnecting): publishing
+		// left it out, so no watcher reports it; the next pass, right after
+		// this one, gets the new connection
 		n.signalFetch()
 	}
 }
