@@ -1,10 +1,9 @@
 # Design: LAN peer unreachable for 20–60 s after an interface loss
 
-Date: 2026-10-12. Follows the handoff `peerlist-stall-handoff.md` (same directory).
-Code: `/Users/roman/anytype/anytype-heart_lanipv6` (files unchanged from develop) and any-sync v0.13.7.
-A working prototype of the fix, with the tests below passing 3× under `-race`, is in
-`peerlist-stall-prototype.patch` (same directory; made against a scratch copy, neither
-repository was touched). It is a starting point for the PR, not the PR.
+Date: 2026-10-12. Ticket GO-7583. Follows an investigation handoff (not in the repository).
+Code: develop at a1d14db00 and any-sync v0.13.7.
+Implemented on branch `go-7583-lan-peer-pushes-after-iface-loss`. A prototype patch preceded it;
+the implementation departs from it where §7 says, and the sections below describe what was built.
 
 ## 1. Root cause (verified against the code and the dumps)
 
@@ -81,28 +80,28 @@ the two latest results. No ordering between them, so neither waits for the other
   dial lands, while the stale entries burn their 2 s budgets on the loop — same guarantee as today's
   "node first", without the reverse dependency.
 
-Changed functions (all in `manager.go`; prototype in the patch):
+Changed functions (all in `manager.go`):
 
 ```
 type clientPeerManager struct {
     ...
     nodePeer   peer.Peer     // latest node verdict, nil after a failed lookup   (under n.Mutex)
-    localPeers []peer.Peer   // latest local pass                               (under n.Mutex)
+    localPeers []peer.Peer   // what the local pass has found                   (under n.Mutex)
     nodeLookupRunning atomic.Bool      // one lookup in flight at a time
     nodeLookupDone    chan struct{}    // cap 1; one signal per completed lookup
-    timeAfter func(time.Duration) <-chan time.Time   // time.After, injectable
 }
 
-Init: nodeLookupDone = make(chan struct{}, 1); timeAfter = time.After
+Init: nodeLookupDone = make(chan struct{}, 1)
 
 manageResponsiblePeers():
     for { fetchResponsiblePeers(); if !waitNextFetch() { return } }
 
 waitNextFetch() bool:                      // replaces the inline select
+    timer := time.NewTimer(nextCheckInterval()); defer timer.Stop()
     for { select {
-        case <-after(nextCheckInterval()): return true
+        case <-timer.C:                    return true
         case <-rebuildResponsiblePeers:    return true
-        case <-nodeLookupDone:             continue   // re-arm: the verdict decides the cadence
+        case <-nodeLookupDone:             timer.Reset(nextCheckInterval())   // the verdict decides the cadence
         case <-ctx.Done():                 return false } }
 
 fetchResponsiblePeers():
@@ -127,24 +126,36 @@ lookupNode():                              // the old node half of fetchResponsi
 fetchLocalPeers():                         // the old local half, plus incremental publish and the close guard
     ids := peerStore.LocalPeerIds(spaceId); peers := nil
     for id in ids:
-        p, err := pool.Get(ctx with localPeerDialTimeout, id)
+        p, err := getLocalPeer(id)
         if err != nil { if n.ctx.Err() != nil { return }   // closing: do not evict from the shared store
                         peerStore.RemoveLocalPeer(id); warn; continue }
-        peers = append(peers, p); setLocalPeers(peers)      // publish each success as it lands
-    setLocalPeers(peers)                                     // an empty pass clears peers that are gone
+        peers = append(peers, p); serveLocalPeer(p)         // serve each success as it lands
+    setLocalPeers(peers)                                     // the list becomes exactly what the pass found
+
+getLocalPeer(id):                          // one 2s budget for both calls
+    p, err := pool.Get(ctx, id); if err == nil { return p }
+    if !closing { if p, ok := pool.Pick(ctx, id) { return p } }   // connected in during the failed dial
+    return wrapped err
 
 setNodePeer(p) / setLocalPeers(peers): under n.Mutex, store, then publishLocked()
+serveLocalPeer(p): under n.Mutex, replace the entry with p's id or append; publishLocked()
+                   (peers the pass has not reached yet stay served until it ends)
 publishLocked(): list = [nodePeer?] + localPeers; start watchPeer once per id; swap responsiblePeers;
                  close availableResponsiblePeers if len>0   (= old publishResponsiblePeers, composed)
 signalFetch(): the non-blocking channel send without resetting consecutiveFetchFailures
                (used by watchPeer and by 2.2); signalRebuild() = reset counter + signalFetch()
+watchPeer(p): wait for close or ctx; release p's id in watchingPeers; then signalFetch() unless closed
+              (released first: the fetch may serve a reconnected peer at once, and it needs a watcher)
 ```
 
 Why the re-arm on `nodeLookupDone` matters: today the loop evaluates `nextCheckInterval()` *after* the
 walk, so "retry 5 s after a failed lookup" counts from the failure. With the lookup off the loop the
 timer would otherwise have been armed with the pre-verdict cadence (20 s) and the fast retry would slip
 by up to 20 s. Re-arming from the verdict reproduces today's cadence exactly (test
-`Test_waitNextFetch_rearmsOnNodeVerdict`). A fetch woken while a lookup is in flight runs only the local
+`Test_manageResponsiblePeers_retryCountsFromNodeVerdict`, on fake time under `testing/synctest`).
+A connectivity signal that arrives while a lookup is in flight does not need a second lookup after it:
+the flush that precedes every connectivity hook cancels the old pool pair, and `pool.lookup` restarts
+the in-flight walk on the new pair, so its verdict is already post-change. A fetch woken while a lookup is in flight runs only the local
 pass (cheap: `Get` on a connected peer is the fast path; stale peers were evicted on first failure).
 
 Properties kept, explicitly:
@@ -161,8 +172,8 @@ Properties kept, explicitly:
 - **Offline cadence** — `nextCheckInterval` untouched (2 min offline without LAN peers, 20 s with,
   5 s×3 fast retry); a lookup that fails fast (LocalOnly: empty node ids) signals immediately and the
   loop re-arms with the same values as today.
-- **Mobile** — same code; goroutine count unchanged (the lookup goroutine replaces the loop goroutine
-  parked in the same place; the CAS prevents stacking); no new timers while idle.
+- **Mobile** — same code; one extra goroutine per manager while a lookup is in flight (the loop
+  goroutine stays, parked in its select; the CAS prevents stacking); one timer per wait, as before.
 - **Flush races** — a lookup started before a `Flush` returns a peer from the *current* pair
   (`pool.lookup` retries on swap); if it is closed by publish time, `GetResponsiblePeers` filters it and
   `watchPeer` signals a fetch, as today.
@@ -186,6 +197,15 @@ store notifies only on a real change (`UpdateLocalPeer` early-returns on an equa
 cable re-exchanges of GO-7581 cost nothing. With 2.1 the signalled fetch serves the new connection at
 once. Without 2.1 this signal would be useless in the observed stall (the loop was inside the walk), which
 is why candidate 4 alone is rejected below.
+
+Note that in the observed incident the iPhone's post-flush exchange republished the same 77 spaces, so
+the observer does not fire there; 2.1 alone serves it. The observer matters when a peer is new to a
+space or returns after an eviction.
+
+Observers read the `before`/`after` lists outside the store lock, and `UpdateLocalPeer` used to sort the
+stored list in place for its equality check: a data race with every observer still reading the previous
+update's list (reproduced under `-race`). The store now sorts a copy of the caller's list once on entry,
+stores it and hands it to the observers, so a stored list is never reordered.
 
 ### 2.3 Not in this PR: stop broadcasts parking the shared workers (follow-up ticket)
 
@@ -221,22 +241,23 @@ no head-of-line blocking across spaces.
   (`net.DefaultResolver.LookupIPAddr(ctx, host)` instead of `net.ResolveUDPAddr`) is a cheap, worthwhile
   follow-up on its own: today a bounded dial cannot stop inside the resolve.
 
-## 4. Tests (deterministic: gomock pool, channels for timing, injected `timeAfter`; no network)
+## 4. Tests (deterministic: gomock pool, channels for timing, `testing/synctest` for the cadence; no network)
 
-All in `space/spacecore/peermanager/manager_test.go`; the prototype patch contains them, passing 3×
-under `-race` (`go test -p 1 -count=3 -race ./space/spacecore/peermanager/`).
+In `space/spacecore/peermanager/manager_test.go` unless named otherwise; all pass 3× under `-race`
+(`go test -p 1 -count=3 -race ./space/spacecore/peermanager/ ./space/spacecore/peerstore/`).
 
-Fixture changes: `nodeLookupDone: make(chan struct{}, 1)`; helpers `fetchAndWaitNode(t)` (fetch, then wait on
-`nodeLookupDone`) and `waitNodeVerdict(t)`. Existing tests that asserted right after a synchronous
-`fetchResponsiblePeers()` now call `fetchAndWaitNode(t)`; the two GO-7379 regression tests keep their
-shape (the node-before-stale-local one adds a `waitNodeVerdict` at the end so the mocked `Refresh` is
-accounted for).
+Fixture changes: `nodeLookupDone` and `rebuildResponsiblePeers` channels; helpers `fetchAndWaitNode(t)`
+(fetch, then wait on `nodeLookupDone`), `waitNodeVerdict(t)` and `waitFetchSignal(t)`. Existing tests
+that asserted right after a synchronous `fetchResponsiblePeers()` now call `fetchAndWaitNode(t)`; the
+two GO-7379 regression tests keep their shape (the node-before-stale-local one adds a `waitNodeVerdict`
+at the end so the mocked `Refresh` is accounted for). Every failing local `Get` now also expects a
+`Pick` (§6).
 
 New:
 1. `Test_fetchResponsiblePeers_localPeersServedWhileNodeLookupBlocks` — the field failure: `GetOneOf`
    parks on a channel; `Get("cablePeer")` returns at once; `GetResponsiblePeers` with a 1 s deadline
    returns `[cablePeer]` while the walk is parked; after the walk fails the list still holds the local
-   peer and the node status is `ConnectionError`.
+   peer and the node status is `ConnectionError`. Against develop's node-first order it fails in 1 s.
 2. `Test_fetchResponsiblePeers_nodeLookupSingleFlight` — three fetches while a lookup is parked →
    `GetOneOf` called once, `Get` three times (one local pass per fetch); after the verdict the next fetch
    starts a new lookup.
@@ -244,11 +265,24 @@ New:
    failure → `[local]` (failures=1); success → `[node, local]` (failures=0).
 4. `Test_fetchLocalPeers_noEvictionWhenClosing` — cancelled manager ctx, `Get` returns `ctx.Err()`,
    the store still lists the peer.
-5. `Test_waitNextFetch_rearmsOnNodeVerdict` — fake `timeAfter` records armed durations: 20 s armed while
-   Online; a failed verdict on `nodeLookupDone` re-arms 5 s; the stale 20 s timer firing is ignored; the
-   5 s one wakes the loop; ctx cancel returns false.
-6. `Test_provider_onLocalPeerUpdated` — signals only the managers of spaces newly joined, ignores
-   removals, does not reset `consecutiveFetchFailures`, counts `localPeerSignals`.
+5. `Test_manageResponsiblePeers_retryCountsFromNodeVerdict` — the real loop on fake time: a 30 s
+   failing walk started while Online; the 20 s tick starts no second lookup; the retry starts at 35 s
+   (5 s after the verdict), not 40 s.
+6. `Test_provider_onLocalPeerUpdated` — through `provider.Init` and the real store: signals only the
+   managers of spaces newly joined (first join, added space, return after eviction), nothing for an
+   unchanged list, a left space or a removal; does not reset `consecutiveFetchFailures`; counts
+   `localPeerSignals`.
+7. `Test_fetchLocalPeers_unreachedPeersStayServed` — previous pass served `[peerA, stalePeer, peerB]`;
+   while the new pass is parked on `stalePeer`, `peerB` is still served; afterwards the list and the
+   store hold `[peerA, peerB]`.
+8. `Test_fetchLocalPeers_servesPeerThatConnectedDuringFailedDial` — `Get` fails, `Pick` returns the
+   inbound connection: it is served and the peer stays in the store.
+9. `Test_watchPeer_reconnectedPeerIsWatched` — no fetch signal while the manager mutex is held (the
+   watcher releases its slot first); a reconnected instance with the same id then gets its own watcher.
+10. `peerstore.TestUpdateLocalPeerKeepsObserverListsIntact` — a list handed to an observer is not
+    reordered by the next update.
+
+Each test that pins a fix (1, 2, 4, 5, 7–10) was checked to fail with that fix reverted.
 
 ## 5. On-device check
 
@@ -263,7 +297,8 @@ Expect, relative to `net interfaces configuration changed` (the flush):
   spaces shared with the iPhone (a handful for unshared spaces with local edits is expected);
 - no `headsync periodic call error … context deadline exceeded` burst at +60 s for shared spaces;
 - `can't get node peers` still appears 20 s+ later, in waves — unchanged and expected;
-- debugstat `peermanager`: `localPeerSignals` > 0 after the iPhone's inbound exchange; `managers` = loaded spaces.
+- debugstat `peermanager`: `managers` = loaded spaces; `localPeerSignals` grows only when a peer joins a
+  space (first discovery, return after an eviction), not on a re-exchange with the same list.
 Then Wi-Fi back on: node status Online, `reconnectDiffKicks` increments, nothing dropped.
 
 Regression checks (one run each):
@@ -283,12 +318,24 @@ Regression checks (one run each):
 - The lookup goroutine outlives `Close` until `GetOneOf` returns (the pool honours `n.ctx`; the cgo
   resolve does not, but the pool returns without it). Same as the loop goroutine today. The
   `n.ctx.Err()` guard keeps a post-close verdict from touching status/peers.
-- `time.After` leaves one timer per re-arm until it fires (bounded, ≤ 2 min, same pattern as develop);
-  switch to `NewTimer`+`Stop` if that bothers anyone.
 - `set responsible peers` (Debug) fires once per local success now; harmless.
 - An unbounded `GetOneOf` from another call site (`GetNodePeers`, rpcstore, subscribeclient) still parks
   behind the single-flight dial exactly as before; out of scope.
+- The pass a flush triggers now dials a LAN peer while that peer is still reconnecting to us, and the
+  pool does not hand an inbound connection to a dial already under way. A failed dial is therefore
+  checked with `pool.Pick` (never dials, same 2 s budget) before the peer is evicted; otherwise a peer
+  whose listener is dead (GO-7577) but which reconnected inbound would be evicted with a live
+  connection and, its exchange already done, stay out until the next one.
 - A back-to-back flush inside the 2 s local budget can still make a healthy LAN peer's `Get` fail with
-  `DeadlineExceeded` and evict it — pre-existing; 2.2 brings it back on the peer's next exchange.
-- No any-sync change, no bump, no proto change. Commit as GO-xxxx (new issue) on top of develop; the
-  files are identical on develop and the GO-7581 branch.
+  `DeadlineExceeded` and evict it if it has not reconnected yet; 2.2 brings it back on its next exchange.
+- No any-sync change, no bump, no proto change.
+
+## 7. Departures from the prototype
+
+- No injectable `timeAfter`: `waitNextFetch` keeps one `time.Timer` and `Reset`s it on a verdict, and
+  the cadence test runs the real loop on fake time (`testing/synctest`, already used in rpcstore).
+- The local pass replaces or adds peers by id as they land instead of publishing the prefix of its
+  successes, which hid the peers it had not reached yet behind a stale entry's 2 s dial.
+- `watchPeer` releases its id before signalling (§2.1); `getLocalPeer` picks before evicting (§6).
+- The peer store no longer sorts lists in place (§2.2).
+- The observer computes the joined spaces once, before taking the provider lock.
