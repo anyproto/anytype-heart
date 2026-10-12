@@ -111,9 +111,12 @@ fetchResponsiblePeers():
 startNodeLookup():
     if !nodeLookupRunning.CompareAndSwap(false, true) { return }
     go func() {
-        defer func() { nodeLookupRunning.Store(false); non-blocking send on nodeLookupDone }()
+        defer func() { nodeLookupRunning.Store(false); refetchIfNodeClosed(); non-blocking send on nodeLookupDone }()
         lookupNode()
     }()
+
+refetchIfNodeClosed():                     // once per lookup, never after Close
+    if the node this lookup served is closed by now { signalFetch() }   // can start a new lookup now
 
 lookupNode():                              // the old node half of fetchResponsiblePeers, verbatim logic
     prev := nodeStatus.GetNodeStatus(spaceId)
@@ -140,7 +143,7 @@ getLocalPeer(id):                          // one 2s budget for both calls
 setNodePeer(p) / setLocalPeers(peers): under n.Mutex, store, then publishLocked()
 serveLocalPeer(p): under n.Mutex, replace the entry with p's id or append; publishLocked()
                    (peers the pass has not reached yet stay served until it ends)
-setNodePeer / serveLocalPeer: if p is closed already, signalFetch() once (no watcher will report it)
+serveLocalPeer: if p is closed already, signalFetch() once (no watcher will report it)
 publishLocked(): list = [nodePeer?] + localPeers, live peers only; start watchPeer once per id;
                  swap responsiblePeers; close availableResponsiblePeers if len>0
                  (= old publishResponsiblePeers, composed)
@@ -177,8 +180,13 @@ Properties kept, explicitly:
 - **Mobile** — same code; one extra goroutine per manager while a lookup is in flight (the loop
   goroutine stays, parked in its select; the CAS prevents stacking); one timer per wait, as before.
 - **Flush races** — a lookup started before a `Flush` returns a peer from the *current* pair
-  (`pool.lookup` retries on swap); if it is closed by publish time it is left out of the list and its
-  setter signals one fetch, standing in for the watcher that signalled it on develop.
+  (`pool.lookup` retries on swap); if it is closed by publish time it is left out of the list, and the
+  lookup, once it has released the single-flight slot, signals one fetch (`refetchIfNodeClosed`),
+  standing in for the watcher that signalled it on develop. The same check covers a node that closes
+  before the lookup has finished: its watcher's fetch found the lookup still in flight and ran only the
+  local pass. Signalling from the setter instead loses the retry whenever the loop takes the signal
+  first (e.g. the lookup is paused in `Refresh`), leaving a space without LAN peers nodeless until the
+  next tick (20 s online, 2 min offline); develop's synchronous loop could not take it early.
 - **Closed peers are never published.** A source keeps its last peer until its next result, so after a
   flush the closed node stays in `nodePeer` until the replacement lookup returns (20–70 s offline).
   Composing it in would give it a fresh watcher on every local pass, which would find it closed at once
@@ -295,12 +303,16 @@ New:
     and with a live cable peer: the served node closes while its replacement lookup walks on; exactly
     one pass follows, the closed node is not served, and the next pass comes on the 20 s tick. A store
     that counts passes stops the manager past 10, so a regression fails instead of spinning.
-13. `Test_fetchResponsiblePeers_nodeClosedOnArrivalRefetches` — a lookup returns an already-closed node:
-    it is not served and one fetch is requested.
+13. `Test_manageResponsiblePeers_closedNodeIsLookedUpAgainAtOnce` — the real loop on fake time, the
+    first lookup held in `Refresh`; its node is closed on arrival, or closes before the lookup finishes:
+    the replacement lookup starts at once (not at 20 s) and its node is served.
 14. `Test_lookupNode_resultAfterCloseIsVoid` — a node result that lands after `Close` leaves the status,
     the served list, `Refresh` and the reconnect kick alone.
+15. `Test_manageResponsiblePeers_closedLocalPeerIsFetchedAgainAtOnce` — the LAN twin, with the node
+    lookup still walking: a connection closed by the time the pass serves it triggers another pass at
+    once, which serves the new connection.
 
-Each test that pins a fix (1, 2, 4, 5, 7–14) was checked to fail with that fix reverted.
+Each test that pins a fix (1, 2, 4, 5, 7–15) was checked to fail with that fix reverted.
 
 ## 5. On-device check
 
