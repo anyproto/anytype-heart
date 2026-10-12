@@ -73,6 +73,11 @@ func (p *peerStore) AddObserver(observer Observer) {
 }
 
 func (p *peerStore) UpdateLocalPeer(peerId string, spaceIds []string) {
+	// A sorted copy, stored as is and handed to the observers. They read it
+	// after the lock is released, so a stored list is never reordered: the
+	// next update compares against it as it is.
+	spaceIds = slices.Clone(spaceIds)
+	slices.Sort(spaceIds)
 	notify := true
 	p.Lock()
 	var (
@@ -91,8 +96,6 @@ func (p *peerStore) UpdateLocalPeer(peerId string, spaceIds []string) {
 		}
 	}()
 	if oldIds, ok = p.spacesByLocalPeerIds[peerId]; ok {
-		slices.Sort(oldIds)
-		slices.Sort(spaceIds)
 		if slices.Equal(oldIds, spaceIds) {
 			notify = false
 			return

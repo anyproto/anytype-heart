@@ -1,6 +1,7 @@
 package peerstore
 
 import (
+	"slices"
 	"sync"
 	"testing"
 
@@ -81,4 +82,27 @@ func TestLocalPeerIdsNoAlias(t *testing.T) {
 	require.NotEmpty(t, got)
 	got[0] = "mutated"
 	assert.NotContains(t, p.LocalPeerIds("s1"), "mutated")
+}
+
+// TestUpdateLocalPeerKeepsObserverListsIntact pins that an update does not
+// reorder a list it handed to the observers earlier. They read it after the
+// lock is released, and the next update for the same peer sorted it in place
+// for its comparison: a data race with every observer still reading it.
+func TestUpdateLocalPeerKeepsObserverListsIntact(t *testing.T) {
+	// given
+	p := New().(*peerStore)
+	var got []string
+	p.AddObserver(func(_ string, _, after []string, _ bool) {
+		if got == nil {
+			got = after
+		}
+	})
+	p.UpdateLocalPeer("a", []string{"s2", "s1"})
+	want := slices.Clone(got)
+
+	// when
+	p.UpdateLocalPeer("a", []string{"s3"})
+
+	// then
+	assert.Equal(t, want, got)
 }
