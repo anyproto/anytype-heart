@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func tombstoneOf(msg *chatmodel.Message) *chatmodel.Message {
@@ -121,20 +122,63 @@ func TestEvictionKeepsPendingEvents(t *testing.T) {
 		}
 	})
 
-	t.Run("an unflushed add of an evicted message is dropped", func(t *testing.T) {
+	t.Run("a kept update carries the status the batch left", func(t *testing.T) {
+		// A status change after the eviction can't send its own event (status events are
+		// in-window only), but the full message a kept update carries must still show it.
+		for _, status := range []struct {
+			name  string
+			set   func(mngr Manager, value bool)
+			field func(msg *model.ChatMessage) bool
+		}{
+			{"reaction read", func(m Manager, v bool) { m.UpdateReactionReadStatus("a", v) }, func(msg *model.ChatMessage) bool { return msg.UnreadReaction }},
+			{"message read", func(m Manager, v bool) { m.(*subscriptionManager).updateMessageRead([]string{"a"}, v) }, func(msg *model.ChatMessage) bool { return msg.Read }},
+		} {
+			t.Run(status.name, func(t *testing.T) {
+				// given
+				a := givenSimpleMessage("a", "first", "o1")
+				b := givenSimpleMessage("b", "second", "o2")
+				fx, mngr := windowFixture(t, a, b)
+				mngr.Lock()
+				defer mngr.Unlock()
+
+				// when: a is edited and its status set, c evicts a, the status is cleared again
+				mngr.UpdateFull(givenSimpleMessage("a", "edited", "o1"))
+				status.set(mngr, true)
+				mngr.Add("o2", givenSimpleMessage("c", "third", "o3"))
+				status.set(mngr, false)
+				mngr.Flush(false)
+
+				// then
+				var updated []*model.ChatMessage
+				for _, ev := range fx.eventMessages() {
+					if upd := ev.GetChatUpdate(); upd != nil && upd.Id == "a" {
+						updated = append(updated, upd.Message)
+					}
+				}
+				require.Len(t, updated, 1)
+				assert.Equal(t, "edited", updated[0].Message.Text)
+				assert.False(t, status.field(updated[0]))
+			})
+		}
+	})
+
+	t.Run("an evicted message whose add is unflushed sends nothing, updates included", func(t *testing.T) {
 		// given
 		a := givenSimpleMessage("a", "first", "o1")
 		b := givenSimpleMessage("b", "second", "o3")
 		fx, mngr := windowFixture(t, a, b)
 		mngr.Lock()
 		defer mngr.Unlock()
+		c := givenSimpleMessage("c", "between", "o2")
 
-		// when: c lands between a and b and evicts a; d then evicts c before any flush
-		mngr.Add("o1", givenSimpleMessage("c", "between", "o2"))
+		// when: c lands between a and b and evicts a, is deleted, then d evicts c, all before
+		// any flush
+		mngr.Add("o1", c)
+		mngr.SoftDelete(c, tombstoneOf(c))
 		mngr.Add("o3", givenSimpleMessage("d", "newest", "o4"))
 		mngr.Flush(false)
 
-		// then
+		// then: the client never had c, so it learns of neither its add nor its tombstone
 		var added []string
 		for _, ev := range fx.eventMessages() {
 			if add := ev.GetChatAdd(); add != nil {
