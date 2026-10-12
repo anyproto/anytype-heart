@@ -117,9 +117,24 @@ with hard delete and is not addressed here.
 
 Replies: a reply that was written concurrently with the delete always applies (refusing a
 create at apply time would diverge). It counts as a mention of the deleted comment's author,
-because `IsCurrentUserMentioned` finds the tombstone's `creator` — on every device, whatever
-the apply order (with hard delete it depended on the order). New local replies to a tombstone
-are refused by the RPC (section 4).
+because `IsCurrentUserMentioned` finds the tombstone's `creator`, whatever the order of the
+reply and the delete (with hard delete it depended on the order). New local replies to a
+tombstone are refused by the RPC (section 4).
+
+This holds for replies that causally follow their parent's create, which is every reply this
+heart produces. A reply whose author never had the parent (possible through the API, which
+does not check that `reply_to` exists) can be applied before the parent on one device and
+after it on another, and is a mention on only the second; that exists today and is not
+addressed here.
+
+It also needs a fix to an existing bug (included in this change): `IsCurrentUserMentioned`
+looks the parent up through `repository.GetMessagesByIds`, which opens its own read
+transaction (any-store `db.ReadTx` takes a separate read connection) and so cannot see
+documents written earlier in the same apply transaction. A full replay is one transaction, so
+on a reindex or a new device every reply to the user's message that is replayed together with
+it gets `hasMention=false`, while an incrementally synced device marks it. `BeforeCreate` will
+pass a message getter that reads the chats collection through the apply transaction's context
+(`coll.FindId(ctx, id)`), so the lookup sees the parent (or its tombstone) whatever the batch.
 
 ### 3. Counters, events, last-message date
 
@@ -157,11 +172,22 @@ are refused by the RPC (section 4).
   `deleted: true`, the same shape reads return;
 - sets `needReloadState` (state and count events follow after the commit).
 
-One exception, from event coalescing: a message created and deleted before the window flushes
-(both in one apply batch) reaches the window as a single `Event.Chat.Add` carrying the
-tombstone, because an entry's Add takes priority over its Update (`state.go` events buffer).
-A client that never saw the message still learns of it, already deleted. Observers, which are
-called per change, get Added then Updated.
+One exception, from event coalescing in subscription windows: a message created and deleted
+before the window flushes (both in one apply batch) reaches the window as a single
+`Event.Chat.Add` carrying the tombstone, because an entry's Add takes priority over its Update
+(`state.go` events buffer). A client that never saw the message still learns of it, already
+deleted. Observers are called per change and do not coalesce: they get Added (live message)
+then Updated (tombstone).
+
+Window eviction must not lose the tombstone. When a window is full, an add of a newer message
+evicts the oldest entry (`messagesState.applyAddMessage` → `RemoveFront`), and its pending
+events are dropped with it. Today a hard delete survives this because deletes are buffered
+separately (`deleteIds`), but a tombstone is an Update on the entry: one batch with "delete A,
+create C" in a full window would evict A before the flush, and the client would keep A's
+original content. Eviction therefore moves an evicted entry's pending events other than Add
+into `outOfWindowEvents`, which `appendEventsTo` already flushes (an unflushed Add is dropped as
+today: the client never had the message and it is now outside its window). This also stops the
+same loss for pending edits, reactions and pins, which exists today.
 
 Space chats keep `Event.Chat.Delete`. `GetPrevOrderId` keeps seeing tombstones, which is
 right because every window holds them (section 5): add events position new messages relative
@@ -238,8 +264,9 @@ deleted comment, and a later add would name an `afterOrderId` the client never r
 **v2.**
 
 - `v2model.ChatMessage` gains `Deleted bool \`json:"deleted,omitempty"\``, present only on
-  tombstones. The exact served tombstone is `id`, `state_id`, `order`, `author`, `author_id`,
-  `at`, `reply_to` (when set), `"text": ""` (the member is always serialized, as today) and
+  tombstones. The exact served tombstone is `id`, `state_id`, `order`, `author_id`, `at`,
+  `author` and `reply_to` under their existing omission rules (`author` only when the
+  participant name resolves), `"text": ""` (the member is always serialized, as today) and
   `"deleted": true`; no `edited_at`, `blocks_text`, `attachments`, `reactions`, `reacted_by`
   or `pinned`.
 - `get_chat_messages` serves tombstones in place. Both descriptions of the count change:
@@ -263,8 +290,13 @@ deleted comment, and a later add would name an `afterOrderId` the client never r
 - All these statuses are already declared on those ops; the response inventory
   (`openapi_responses_test.go`, 377 pairs) does not change. `make openapi` regenerates the
   document; the new and changed descriptions fit the served-prose budget tests.
-- Both SSE streams report a deletion as `message_updated` with `deleted: true`, except the
-  coalesced case in section 3 (`message_added` carrying the tombstone).
+- Both SSE streams report a deletion of a message they already announced as
+  `message_updated` with `deleted: true`. They differ when the create and the delete arrive in
+  one batch (section 3): the per-chat stream, fed by a subscription window, emits one
+  `message_added` carrying the tombstone; the space stream, fed by observers, emits
+  `message_added` with the live message, then `message_updated` with the tombstone. Opening a
+  stream (window snapshot, space-stream backfill) announces existing tombstones as
+  `message_added` with `deleted: true`.
 
 **v1.** `core/api/model.ChatMessage` gains `deleted` (`omitempty`), set by its converter and
 its event conversion. Add and edit already map `BAD_INPUT` to 400; the reaction path collapses
@@ -282,6 +314,12 @@ Checked 2026-10-12 against desktop (`anytype-ts` origin/develop d965ea2), iOS
   existing exception stays: an old heart applies modifies as upserts, so a reaction or pin
   made while the comment was live and received after its delete re-creates a contentless
   stub there, as it does today. The update-only fix protects new hearts only.
+- **Downgrade on the same profile is not covered** (decided 2026-10-12: document, do not bump
+  `ForceReindexDiscussionsCounter`). The guarantee above holds for devices whose stores were
+  built by the heart that reads them. If a profile a new heart already wrote tombstones into is
+  reopened by an older heart, the tombstones stay (the `Delete` ops are behind the replay
+  watermark and are not re-applied) and the older heart shows them as comments with author and
+  date and no body, until something rebuilds that discussion's store.
 - **New heart, UI not yet updated** — the only case a tombstone reaches an unaware UI. All
   three render a discussion tombstone as a comment with avatar, author and date and no body;
   none crash. Replies stay attached under it.
@@ -334,7 +372,10 @@ author.
   - a full replay of create + delete builds the tombstone;
   - space chats still hard-delete;
   - a reaction applied after a space-chat hard delete creates no document (upsert regression);
-  - a concurrent reply to a deleted comment still counts as a mention of its author;
+  - a concurrent reply to a deleted comment still counts as a mention of its author, both when
+    the reply is applied before the delete and after it;
+  - a full replay of "my message P, someone's reply R" in one transaction marks R as a mention
+    (today it does not), and so does the same replay with P deleted;
   - a tombstone write failure aborts the apply (`ErrCritical`): the store keeps the live
     message and the replay watermark does not advance.
 - Counters:
@@ -348,7 +389,10 @@ author.
 - Subscription:
   - a discussion delete emits `Event.Chat.Update` (not `Delete`) and observers get
     `ChatChangeMessageUpdated`; out-of-window too;
-  - create and delete in one batch emit one Add carrying the tombstone;
+  - create and delete in one batch emit one Add carrying the tombstone in a window, and Added
+    then Updated to observers;
+  - in a full window, "delete A, create C" in one batch still delivers A's tombstone (through
+    `outOfWindowEvents`), and so does a pending edit of A;
   - reopening a subscription after deleting post P keeps P (tombstone) and its reply R; an
     all-tombstone window; an add after a newest tombstone names it as `afterOrderId`;
   - `GetLastMessage` skips tombstones in the window and in the fallback.
@@ -356,7 +400,11 @@ author.
   missing message refused; delete of a missing or deleted message pushes nothing; a pin batch
   with a tombstone first, middle or last pushes nothing; a refused reply sends no push.
 - Indexer: a tombstone is not re-added by a backfill.
-- API v2: the exact served tombstone (REST and both SSE streams); 404 on edit, reaction and
+- `ChatSearch` (service level): a stale full-text hit whose message is now a tombstone is
+  dropped with its highlight; browse without creators and browse with creators skip tombstones
+  and return older live messages when the newest rows are tombstones.
+- API v2: the exact served tombstone (REST and both SSE streams, author resolved and not), and
+  the two streams' event sequences for a create and delete in one batch; 404 on edit, reaction and
   delete of a tombstone, including dry runs and the race through `v2ChatRpcError`; 400 with the
   `reply_to` issue, including the race; delete warnings unchanged.
 - API v1: the `deleted` field; reaction on a tombstone → 400.
