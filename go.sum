@@ -80,8 +80,8 @@ github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c h1:GicoaTUyB2
 github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c/go.mod h1:S1GPSBCYCIhmVNfcth17y2zZtQT6wzkzgwUve0VDWWA=
 github.com/anyproto/tantivy-go v1.0.6 h1:8FI8otTeq5OFXK7Fw7vwG2vrwW1R1Yvcbiy4rO4YfoQ=
 github.com/anyproto/tantivy-go v1.0.6/go.mod h1:LtipOpRjGtcYMGcop6gQN7rVl1Pc6BlIs9BTMqeWMsk=
-github.com/anyproto/zeroconf/v2 v2.2.1-0.20261011124941-8da8b5670d0d h1:Ckwpk1JfPTLTkEfiD4LNYpFOHbqFcdBFOgFtSun9Vxg=
-github.com/anyproto/zeroconf/v2 v2.2.1-0.20261011124941-8da8b5670d0d/go.mod h1:2KV4b7s+6Jfu0HM826dXIAh2Ln5EXcnpt/cW1TWFWBo=
+github.com/anyproto/zeroconf/v2 v2.2.1-0.20261012094456-27dfb04e233b h1:GG/Ce6M15BZ34zhr1osMe+dgQQmxIC2zgCjrtp2QyqM=
+github.com/anyproto/zeroconf/v2 v2.2.1-0.20261012094456-27dfb04e233b/go.mod h1:2KV4b7s+6Jfu0HM826dXIAh2Ln5EXcnpt/cW1TWFWBo=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
 github.com/apache/thrift v0.13.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
 github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e/go.mod h1:3U/XgcO3hCbHZ8TKRvWD2dDTCfh9M9ya+I9JpbB7O8o=
