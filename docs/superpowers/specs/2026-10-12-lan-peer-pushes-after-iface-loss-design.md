@@ -340,8 +340,11 @@ New:
     the other space it shares.
 20. `Test_fetchLocalPeers_peerLeavingTheSpaceIsNoLongerServed` — a still-connected peer leaves its last
     space in this manager: the next (empty) pass stops serving it.
+21. `Test_peerManager_retryCountsFromTheVerdictAfterProductionInit` — the cadence through
+    `provider.NewPeerManager`, `Init` and `Run` instead of the fixture: a lookup failing at 1 s is retried
+    at 6 s; without `Init` allocating `nodeLookupDone` it is retried at 20 s.
 
-Each test that pins a fix (1, 2, 4, 5, 7–20) was checked to fail with that fix reverted.
+Each test that pins a fix (1, 2, 4, 5, 7–21) was checked to fail with that fix reverted.
 
 ## 5. On-device check
 

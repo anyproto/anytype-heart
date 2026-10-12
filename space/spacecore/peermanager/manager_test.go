@@ -16,6 +16,8 @@ import (
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/pool"
 	"github.com/anyproto/any-sync/net/pool/mock_pool"
+	"github.com/anyproto/any-sync/net/streampool"
+	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1326,6 +1328,78 @@ func Test_fetchLocalPeers_pickSharesTheDialBudget(t *testing.T) {
 		assert.Equal(t, []string{"healthyPeer"}, peerIds(peers))
 	})
 }
+
+// The cadence through the production path (provider.NewPeerManager, Init, Run)
+// rather than the fixture, which allocates the manager's channels itself: a
+// lookup failing at 1s must be retried at 6s, 5s after its verdict, not at the
+// 20s tick armed before it.
+func Test_peerManager_retryCountsFromTheVerdictAfterProductionInit(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		// given: a manager built the way the space service builds one
+		spaceId := "spaceId"
+		ctrl := gomock.NewController(t)
+		pool := mock_pool.NewMockPool(ctrl)
+		conf := mock_nodeconf.NewMockService(ctrl)
+		conf.EXPECT().Name().Return(nodeconf.CName).AnyTimes()
+		conf.EXPECT().NodeIds(spaceId).Return([]string{"nodeId"}).AnyTimes()
+		store := peerstore.New()
+		updater := mock_peermanager.NewMockUpdater(t)
+		updater.EXPECT().Name().Return("updater").Maybe()
+		updater.EXPECT().Refresh(spaceId).Times(2)
+		a := &app.App{}
+		a.Register(conf).
+			Register(store).
+			Register(nodestatus.NewNodeStatus()).
+			Register(streamPoolStub{}).
+			Register(updater).
+			Register(p2pStatusStub{})
+		require.NoError(t, store.Init(a))
+		p := &provider{pool: pool, peerStore: store, managers: map[*clientPeerManager]struct{}{}}
+		pm, err := p.NewPeerManager(context.Background(), spaceId)
+		require.NoError(t, err)
+		cm := pm.(*clientPeerManager)
+		require.NoError(t, cm.Init(a))
+
+		start := time.Now()
+		lookupStarts := make(chan time.Duration, 2)
+		gomock.InOrder(
+			pool.EXPECT().GetOneOf(gomock.Any(), []string{"nodeId"}).DoAndReturn(
+				func(ctx context.Context, ids []string) (peer.Peer, error) {
+					lookupStarts <- time.Since(start)
+					time.Sleep(time.Second)
+					return nil, fmt.Errorf("unable to connect")
+				}),
+			pool.EXPECT().GetOneOf(gomock.Any(), []string{"nodeId"}).DoAndReturn(
+				func(ctx context.Context, ids []string) (peer.Peer, error) {
+					lookupStarts <- time.Since(start)
+					return newTestPeer("node"), nil
+				}),
+		)
+		want := []time.Duration{0, 6 * time.Second}
+
+		// when
+		require.NoError(t, cm.Run(context.Background()))
+		got := []time.Duration{<-lookupStarts, <-lookupStarts}
+		synctest.Wait()
+
+		// then
+		assert.Equal(t, want, got, "the retry must count 5s from the failed verdict")
+		require.NoError(t, cm.Close(context.Background()))
+	})
+}
+
+// streamPoolStub stands in for the stream pool component, which Init only
+// looks up; any other call panics on the nil interface.
+type streamPoolStub struct{ streampool.StreamPool }
+
+func (streamPoolStub) Name() string { return streampool.CName }
+
+type p2pStatusStub struct{}
+
+func (p2pStatusStub) Init(*app.App) error    { return nil }
+func (p2pStatusStub) Name() string           { return "p2pStatusStub" }
+func (p2pStatusStub) RegisterSpace(string)   {}
+func (p2pStatusStub) UnregisterSpace(string) {}
 
 // The LAN twin: a connection that is closed by the time the pass serves it
 // (the peer reconnecting) is left out and asks for another pass at once, which
