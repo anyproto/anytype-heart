@@ -302,6 +302,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		myParticipantId:       myParticipantId,
 		aclList:               storeSource.AclList(),
 		reactionsCounterEpoch: s.reactionsCounterEpoch,
+		softDelete:            s.typeKey == bundle.TypeKeyDiscussion,
 	}
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler, storestate.DefaultHandler{Name: EditorCollectionName, ModifyMode: storestate.ModifyModeUpsert})

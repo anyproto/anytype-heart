@@ -624,6 +624,40 @@ func (_c *MockManager_SetSessionContext_Call) RunAndReturn(run func(session.Cont
 	return _c
 }
 
+// SoftDelete provides a mock function with given fields: previous, tombstone
+func (_m *MockManager) SoftDelete(previous *chatmodel.Message, tombstone *chatmodel.Message) {
+	_m.Called(previous, tombstone)
+}
+
+// MockManager_SoftDelete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SoftDelete'
+type MockManager_SoftDelete_Call struct {
+	*mock.Call
+}
+
+// SoftDelete is a helper method to define mock.On call
+//   - previous *chatmodel.Message
+//   - tombstone *chatmodel.Message
+func (_e *MockManager_Expecter) SoftDelete(previous interface{}, tombstone interface{}) *MockManager_SoftDelete_Call {
+	return &MockManager_SoftDelete_Call{Call: _e.mock.On("SoftDelete", previous, tombstone)}
+}
+
+func (_c *MockManager_SoftDelete_Call) Run(run func(previous *chatmodel.Message, tombstone *chatmodel.Message)) *MockManager_SoftDelete_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*chatmodel.Message), args[1].(*chatmodel.Message))
+	})
+	return _c
+}
+
+func (_c *MockManager_SoftDelete_Call) Return() *MockManager_SoftDelete_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockManager_SoftDelete_Call) RunAndReturn(run func(*chatmodel.Message, *chatmodel.Message)) *MockManager_SoftDelete_Call {
+	_c.Run(run)
+	return _c
+}
+
 // Unlock provides a mock function with no fields
 func (_m *MockManager) Unlock() {
 	_m.Called()

@@ -454,6 +454,32 @@ func (s *subscriptionManager) Delete(messageId string) {
 	s.needReloadState = true
 }
 
+// SoftDelete replaces a message with its tombstone (a soft-deleted discussion comment). Windows
+// get an update carrying the tombstone, so the message keeps its place on clients; observers get
+// ChatChangeMessageUpdated. The counters drop the message at once, from previous (the message
+// as stored before): a read callback that flushes before the post-commit reload must not
+// publish counts that still include it. The reload after the commit then corrects the
+// oldest-unread order ids.
+func (s *subscriptionManager) SoftDelete(previous, tombstone *chatmodel.Message) {
+	unreadMessage := !previous.Read
+	unreadMention := previous.HasMention && !previous.MentionRead
+	if unreadMessage || unreadMention {
+		s.UpdateChatState(func(state *model.ChatState) *model.ChatState {
+			if unreadMessage && state.Messages.Counter > 0 {
+				state.Messages.Counter--
+			}
+			if unreadMention && state.Mentions.Counter > 0 {
+				state.Mentions.Counter--
+			}
+			return state
+		})
+	}
+	s.UpdateMessageCount(-1)
+	s.UpdateFull(tombstone)
+	// We can't reload chat state here because the change hasn't been committed yet
+	s.needReloadState = true
+}
+
 func (s *subscriptionManager) UpdateFull(message *chatmodel.Message) {
 	s.notifyMessage(ChatChangeMessageUpdated, message)
 	if !s.canSend() {

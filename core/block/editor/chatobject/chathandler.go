@@ -52,6 +52,9 @@ type ChatHandler struct {
 	aclList list.AclList
 	// reactionsCounterEpoch is the unix timestamp after which reactions counters are tracked
 	reactionsCounterEpoch int64
+	// softDelete makes a Delete op leave a tombstone instead of removing the message. Set for
+	// discussions, where replies point at the message they answer and must keep their thread.
+	softDelete bool
 	// forceNotRead forces handler to mark all messages as not read. It's useful for unit testing
 	forceNotRead bool
 }
@@ -186,7 +189,9 @@ func (d *ChatHandler) BeforeModify(ctx context.Context, ch storestate.ChangeOp) 
 	if err = d.indexerStore.AddChatMessageToIndexQueue(context.Background(), d.chatFullId, ch.Change.Order); err != nil {
 		return 0, fmt.Errorf("add chat message to full text index queue: %w", err)
 	}
-	return storestate.ModifyModeUpsert, nil
+	// Update, not upsert: a message's modifies always follow its create, so a modify that finds
+	// no message is about one that was deleted, and must not re-create it as a stub.
+	return storestate.ModifyModeUpdate, nil
 }
 
 func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) (mode storestate.DeleteMode, err error) {
@@ -209,20 +214,53 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 	if err != nil {
 		return storestate.DeleteModeDelete, fmt.Errorf("unmarshal message: %w", err)
 	}
+	if message.Deleted {
+		// already a tombstone: nothing changes, whoever deletes it again
+		return storestate.DeleteModeKeep, nil
+	}
 	if message.Creator != ch.Change.Creator && !d.canModerateAt(ch.Change.Creator, ch.Change.AclHeadId) {
 		return storestate.DeleteModeDelete, ErrDeleteForeignMessage
 	}
 
-	d.subscription.Lock()
-	defer d.subscription.Unlock()
-	d.subscription.Delete(messageId)
+	mode = storestate.DeleteModeDelete
+	if d.softDelete {
+		tombstone := message.Clone()
+		tombstone.MakeTombstone()
+		if err = writeTombstone(ctx, coll, messageId, tombstone); err != nil {
+			return storestate.DeleteModeKeep, err
+		}
+		mode = storestate.DeleteModeKeep
+
+		d.subscription.Lock()
+		d.subscription.SoftDelete(message, tombstone)
+		d.subscription.Unlock()
+	} else {
+		d.subscription.Lock()
+		d.subscription.Delete(messageId)
+		d.subscription.Unlock()
+	}
 
 	if err = d.indexerStore.AddChatMessageDeleteToIndexQueue(context.Background(), d.chatFullId, messageId); err != nil {
 		log.With(zap.String("chatId", d.chatFullId.ObjectID), zap.String("messageId", messageId), zap.Error(err)).
 			Error("failed to add message to fulltext delete queue")
 	}
 
-	return storestate.DeleteModeDelete, nil
+	return mode, nil
+}
+
+// writeTombstone replaces the stored message with its tombstone inside the apply transaction.
+// The order object (_o) is left as it is, so the message keeps its position. A failure aborts
+// the apply (ErrCritical) like a failed hard delete does, so the replay watermark does not move
+// past a delete that was not materialized.
+func writeTombstone(ctx context.Context, coll anystore.Collection, messageId string, tombstone *chatmodel.Message) error {
+	_, err := coll.UpdateId(ctx, messageId, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+		tombstone.MarshalAnyenc(v, a)
+		return v, true, nil
+	}))
+	if err != nil {
+		return errors.Join(storestate.ErrCritical, fmt.Errorf("write tombstone: %w", err))
+	}
+	return nil
 }
 
 func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModify, mod query.Modifier) query.Modifier {
@@ -232,6 +270,12 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 		}
 
 		path := key.KeyPath[0]
+
+		if v.GetBool(chatmodel.DeletedKey) {
+			// A tombstone is final: an edit, reaction or pin concurrent with the delete and
+			// applied after it is dropped, so delete wins whatever the apply order.
+			return v, false, nil
+		}
 
 		// Capture old reactions state BEFORE modification (for new-reaction detection).
 		var oldReactions *model.ChatMessageReactions

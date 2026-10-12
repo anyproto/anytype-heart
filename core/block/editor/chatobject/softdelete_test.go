@@ -2,32 +2,104 @@ package chatobject
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/query"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
-	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// pushAs applies the builder's changes as one change set authored by creator, the way a change
-// from another member arrives.
+const (
+	alice = "alice"
+	bob   = "bob"
+)
+
+// push applies the builder's changes as one change set authored by creator at the given ACL
+// head, the way a change from another member arrives, and runs the post-commit update.
+func (fx *fixture) push(creator, aclHeadId string, builder *storestate.Builder) (string, error) {
+	ctx := context.Background()
+	tx, err := fx.store.NewTx(ctx)
+	if err != nil {
+		return "", fmt.Errorf("new tx: %w", err)
+	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
+	changeSet := storestate.ChangeSet{
+		Id:        bson.NewObjectId().Hex(),
+		Order:     fx.generateOrderId(tx),
+		Changes:   builder.ChangeSet,
+		Creator:   creator,
+		AclHeadId: aclHeadId,
+		Timestamp: time.Now().Unix(),
+	}
+	if err = tx.ApplyChangeSetReturnAllErrors(changeSet); err != nil {
+		return "", fmt.Errorf("apply change set: %w", err)
+	}
+	if err = tx.Commit(); err != nil {
+		return "", fmt.Errorf("commit: %w", err)
+	}
+	fx.appliedChangeSets = append(fx.appliedChangeSets, changeSet)
+	fx.onUpdate()
+	return changeSet.Id, nil
+}
+
 func (fx *fixture) pushAs(t *testing.T, creator string, builder *storestate.Builder) string {
 	t.Helper()
-	prev := fx.sourceCreator
-	fx.sourceCreator = creator
-	defer func() { fx.sourceCreator = prev }()
-	id, err := fx.applyToStore(context.Background(), source.PushStoreChangeParams{
-		Changes: builder.ChangeSet,
-		State:   fx.store,
-		Time:    time.Now(),
-	})
+	id, err := fx.push(creator, "", builder)
 	require.NoError(t, err)
 	return id
+}
+
+func (fx *fixture) createAs(t *testing.T, creator string, msg *chatmodel.Message) string {
+	t.Helper()
+	arena := &anyenc.Arena{}
+	obj := arena.NewObject()
+	msg.MarshalAnyenc(obj, arena)
+	builder := &storestate.Builder{}
+	require.NoError(t, builder.Create(CollectionName, storestate.IdFromChange, obj))
+	return fx.pushAs(t, creator, builder)
+}
+
+func deleteBuilder(messageId string) *storestate.Builder {
+	builder := &storestate.Builder{}
+	builder.Delete(CollectionName, messageId)
+	return builder
+}
+
+func editBuilder(t *testing.T, messageId, text string) *storestate.Builder {
+	arena := &anyenc.Arena{}
+	obj := arena.NewObject()
+	givenSimpleMessage(text).MarshalAnyenc(obj, arena)
+	builder := &storestate.Builder{}
+	require.NoError(t, builder.Modify(CollectionName, messageId, []string{chatmodel.ContentKey}, pb.ModifyOp_Set, obj.Get(chatmodel.ContentKey)))
+	return builder
+}
+
+func reactBuilder(t *testing.T, messageId, emoji, identity string) *storestate.Builder {
+	builder := &storestate.Builder{}
+	require.NoError(t, builder.Modify(CollectionName, messageId, []string{chatmodel.ReactionsKey, emoji}, pb.ModifyOp_AddToSet, (&anyenc.Arena{}).NewString(identity)))
+	return builder
+}
+
+func pinBuilder(t *testing.T, messageId string) *storestate.Builder {
+	builder := &storestate.Builder{}
+	require.NoError(t, builder.Modify(CollectionName, messageId, []string{chatmodel.PinnedKey}, pb.ModifyOp_Set, (&anyenc.Arena{}).NewTrue()))
+	return builder
 }
 
 func (fx *fixture) getMessage(t *testing.T, id string) *chatmodel.Message {
@@ -38,20 +110,41 @@ func (fx *fixture) getMessage(t *testing.T, id string) *chatmodel.Message {
 	return msgs[0]
 }
 
+func (fx *fixture) messageCount(t *testing.T) int32 {
+	t.Helper()
+	resp, err := fx.GetMessages(context.Background(), chatrepositoryGetAll)
+	require.NoError(t, err)
+	return resp.MessageCount
+}
+
+// wantTombstone is the stored form of a deleted comment: what the reader sees.
+func wantTombstone(got *chatmodel.Message, creator, replyTo string) *model.ChatMessage {
+	return &model.ChatMessage{
+		Id:               got.Id,
+		OrderId:          got.OrderId,
+		Creator:          creator,
+		CreatedAt:        got.CreatedAt,
+		StateId:          got.StateId,
+		ReplyToMessageId: replyTo,
+		Message:          &model.ChatMessageMessageContent{Marks: []*model.BlockContentTextMark{}},
+		Attachments:      []*model.ChatMessageAttachment{},
+		Reactions:        &model.ChatMessageReactions{},
+		Read:             true,
+		MentionRead:      true,
+		Synced:           got.Synced,
+		Deleted:          true,
+	}
+}
+
 func TestCreateNeverArrivesDeleted(t *testing.T) {
 	t.Run("a create carrying deleted is stored as a live message", func(t *testing.T) {
 		// given
 		fx := newFixture(t, asDiscussion("parentId"))
 		msg := givenSimpleMessage("hello")
 		msg.Deleted = true
-		arena := &anyenc.Arena{}
-		obj := arena.NewObject()
-		msg.MarshalAnyenc(obj, arena)
-		builder := &storestate.Builder{}
-		require.NoError(t, builder.Create(CollectionName, storestate.IdFromChange, obj))
 
 		// when
-		id := fx.pushAs(t, "alice", builder)
+		id := fx.createAs(t, alice, msg)
 
 		// then
 		got := fx.getMessage(t, id)
@@ -74,4 +167,466 @@ func TestCreateNeverArrivesDeleted(t *testing.T) {
 		pushed := fx.appliedChangeSets[len(fx.appliedChangeSets)-1].Changes[0].GetCreate().GetValue()
 		assert.NotContains(t, pushed, chatmodel.DeletedKey)
 	})
+}
+
+func TestDiscussionDeleteLeavesTombstone(t *testing.T) {
+	t.Run("the deleted comment keeps its author, time, reply target and place", func(t *testing.T) {
+		// given
+		fx := newFixture(t, asDiscussion("parentId"))
+		msg := givenComplexMessage()
+		msg.ChatMessage.Blocks = []*model.ChatMessageMessageBlock{{Content: &model.ChatMessageMessageBlockContentOfText{
+			Text: &model.ChatMessageMessageBlockText{Text: "block text"},
+		}}}
+		id := fx.createAs(t, alice, msg)
+		fx.pushAs(t, alice, editBuilder(t, id, "edited"))
+		fx.pushAs(t, alice, pinBuilder(t, id))
+
+		// when
+		fx.pushAs(t, alice, deleteBuilder(id))
+
+		// then
+		got := fx.getMessage(t, id)
+		assert.Equal(t, wantTombstone(got, alice, "replyToMessageId1"), got.ChatMessage)
+		assert.NotZero(t, got.CreatedAt)
+		assert.NotEmpty(t, got.OrderId)
+		resp, err := fx.GetMessages(context.Background(), chatrepositoryGetAll)
+		require.NoError(t, err)
+		require.Len(t, resp.Messages, 1, "the tombstone stays in the list")
+		assert.Equal(t, int32(0), resp.MessageCount)
+		pinned, err := fx.GetPinnedMessages(context.Background())
+		require.NoError(t, err)
+		assert.Empty(t, pinned)
+	})
+
+	t.Run("the fulltext index drops the deleted comment", func(t *testing.T) {
+		// given
+		fx := newFixture(t, asDiscussion("parentId"))
+		id := fx.createAs(t, alice, givenSimpleMessage("hello"))
+
+		// when
+		fx.pushAs(t, alice, deleteBuilder(id))
+
+		// then
+		queued, err := fx.storeFixture.ListIdsFromFullTextQueue([]string{testSpaceId}, 0)
+		require.NoError(t, err)
+		require.Len(t, queued, 1)
+		assert.Equal(t, []string{id}, queued[0].DeletedMsgIds)
+	})
+
+	t.Run("a space chat delete still removes the message", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		id := fx.createAs(t, alice, givenSimpleMessage("hello"))
+
+		// when
+		fx.pushAs(t, alice, deleteBuilder(id))
+
+		// then
+		msgs, err := fx.GetMessagesByIds(context.Background(), []string{id})
+		require.NoError(t, err)
+		assert.Empty(t, msgs)
+	})
+
+	t.Run("a writer can't delete someone else's comment", func(t *testing.T) {
+		// given
+		fx := newFixture(t, asDiscussion("parentId"))
+		id := fx.createAs(t, alice, givenSimpleMessage("hello"))
+
+		// when
+		_, err := fx.push(bob, "", deleteBuilder(id))
+
+		// then
+		require.ErrorIs(t, err, ErrDeleteForeignMessage)
+		got := fx.getMessage(t, id)
+		assert.False(t, got.Deleted)
+		assert.Equal(t, "hello", got.Message.Text)
+	})
+
+	t.Run("an Owner or Admin can delete someone else's comment", func(t *testing.T) {
+		// given
+		exec := list.NewAclExecutor("space")
+		for _, cmd := range []string{"a.init::a", "a.invite::invId", "adm.join::invId", "a.approve::adm,adm", "writer.join::invId", "a.approve::writer,rw"} {
+			require.NoError(t, exec.Execute(cmd), cmd)
+		}
+		acl := exec.ActualAccounts()["a"].Acl
+		admin := exec.ActualAccounts()["adm"].Keys.SignKey.GetPublic().Account()
+		writer := exec.ActualAccounts()["writer"].Keys.SignKey.GetPublic().Account()
+		fx := newFixture(t, asDiscussion("parentId"))
+		fx.chatHandler.aclList = acl
+		id := fx.createAs(t, writer, givenSimpleMessage("hello"))
+
+		// when
+		_, err := fx.push(admin, acl.Head().Id, deleteBuilder(id))
+
+		// then
+		require.NoError(t, err)
+		got := fx.getMessage(t, id)
+		assert.Equal(t, wantTombstone(got, writer, ""), got.ChatMessage)
+	})
+
+	t.Run("a second delete changes nothing", func(t *testing.T) {
+		// given
+		fx := newFixture(t, asDiscussion("parentId"))
+		id := fx.createAs(t, alice, givenSimpleMessage("hello"))
+		fx.pushAs(t, alice, deleteBuilder(id))
+		before := fx.getMessage(t, id)
+		subscribeForEvents(t, fx)
+		fx.events = nil
+
+		// when
+		fx.pushAs(t, bob, deleteBuilder(id))
+
+		// then
+		assert.Equal(t, before, fx.getMessage(t, id))
+		for _, ev := range fx.events {
+			assert.Nil(t, ev.GetChatUpdate(), "no event for a message that is already deleted")
+			assert.Nil(t, ev.GetChatDelete())
+		}
+	})
+}
+
+// subscribeForEvents opens a subscription so the manager sends window events to fx.events.
+func subscribeForEvents(t *testing.T, fx *fixture) {
+	t.Helper()
+	_, err := fx.chatSubscriptionService.SubscribeLastMessages(context.Background(), subscribeRequest(fx))
+	require.NoError(t, err)
+}
+
+func TestDeleteWinsOverConcurrentModifies(t *testing.T) {
+	modifies := map[string]func(t *testing.T, id string) (string, *storestate.Builder){
+		"an edit":    func(t *testing.T, id string) (string, *storestate.Builder) { return alice, editBuilder(t, id, "edited") },
+		"a reaction": func(t *testing.T, id string) (string, *storestate.Builder) { return bob, reactBuilder(t, id, "👍", bob) },
+		"a pin":      func(t *testing.T, id string) (string, *storestate.Builder) { return alice, pinBuilder(t, id) },
+	}
+	for name, modify := range modifies {
+		t.Run(name+" applied after the delete is dropped", func(t *testing.T) {
+			// given
+			fx := newFixture(t, asDiscussion("parentId"))
+			id := fx.createAs(t, alice, givenSimpleMessage("hello"))
+			fx.pushAs(t, alice, deleteBuilder(id))
+			creator, builder := modify(t, id)
+
+			// when
+			fx.pushAs(t, creator, builder)
+
+			// then
+			got := fx.getMessage(t, id)
+			assert.Equal(t, wantTombstone(got, alice, ""), got.ChatMessage)
+		})
+
+		t.Run(name+" applied before the delete is cleared", func(t *testing.T) {
+			// given
+			fx := newFixture(t, asDiscussion("parentId"))
+			id := fx.createAs(t, alice, givenSimpleMessage("hello"))
+			creator, builder := modify(t, id)
+			fx.pushAs(t, creator, builder)
+
+			// when
+			fx.pushAs(t, alice, deleteBuilder(id))
+
+			// then
+			got := fx.getMessage(t, id)
+			assert.Equal(t, wantTombstone(got, alice, ""), got.ChatMessage)
+		})
+	}
+}
+
+func TestReplayBuildsTombstone(t *testing.T) {
+	// given
+	ctx := context.Background()
+	fx := newFixture(t, asDiscussion("parentId"))
+	id := fx.createAs(t, alice, givenSimpleMessage("hello"))
+	replyId := fx.createAs(t, bob, &chatmodel.Message{ChatMessage: &model.ChatMessage{
+		ReplyToMessageId: id,
+		Message:          &model.ChatMessageMessageContent{Text: "reply"},
+	}})
+	fx.pushAs(t, alice, deleteBuilder(id))
+	coll, err := fx.store.Collection(ctx, CollectionName)
+	require.NoError(t, err)
+	for _, docId := range []string{id, replyId} {
+		require.NoError(t, coll.DeleteId(ctx, docId))
+	}
+
+	// when
+	require.NoError(t, fx.replayStoredChanges(ctx))
+
+	// then
+	got := fx.getMessage(t, id)
+	assert.Equal(t, wantTombstone(got, alice, ""), got.ChatMessage)
+	assert.Equal(t, "reply", fx.getMessage(t, replyId).Message.Text)
+}
+
+func TestModifyOfMissingMessageCreatesNothing(t *testing.T) {
+	// given
+	fx := newFixture(t)
+	id := fx.createAs(t, alice, givenSimpleMessage("hello"))
+	fx.pushAs(t, alice, deleteBuilder(id))
+
+	// when
+	fx.pushAs(t, bob, reactBuilder(t, id, "👍", bob))
+	fx.pushAs(t, alice, pinBuilder(t, id))
+
+	// then
+	msgs, err := fx.GetMessagesByIds(context.Background(), []string{id})
+	require.NoError(t, err)
+	assert.Empty(t, msgs, "a modify of a deleted message must not re-create it")
+	count, err := fx.repository.CountMessages(context.Background())
+	require.NoError(t, err)
+	assert.Zero(t, count)
+}
+
+func TestReplyToDeletedCommentIsMention(t *testing.T) {
+	for _, replyFirst := range []bool{false, true} {
+		t.Run(fmt.Sprintf("reply applied before the delete: %v", replyFirst), func(t *testing.T) {
+			// given
+			fx := newFixture(t, asDiscussion("parentId"))
+			id, err := fx.AddMessage(context.Background(), nil, givenSimpleMessage("mine"))
+			require.NoError(t, err)
+			reply := &chatmodel.Message{ChatMessage: &model.ChatMessage{
+				ReplyToMessageId: id,
+				Message:          &model.ChatMessageMessageContent{Text: "reply"},
+			}}
+
+			// when
+			var replyId string
+			if replyFirst {
+				replyId = fx.createAs(t, bob, reply)
+				fx.pushAs(t, testCreator, deleteBuilder(id))
+			} else {
+				fx.pushAs(t, testCreator, deleteBuilder(id))
+				replyId = fx.createAs(t, bob, reply)
+			}
+
+			// then
+			assert.True(t, fx.getMessage(t, replyId).HasMention)
+			assert.Equal(t, int32(1), fx.subscription.GetChatState().Mentions.Counter)
+		})
+	}
+}
+
+func TestDeletedCommentLeavesTheCounters(t *testing.T) {
+	ctx := context.Background()
+	reply := func(to string) *chatmodel.Message {
+		return &chatmodel.Message{ChatMessage: &model.ChatMessage{
+			ReplyToMessageId: to,
+			Message:          &model.ChatMessageMessageContent{Text: "reply"},
+		}}
+	}
+
+	t.Run("an unread message", func(t *testing.T) {
+		// given
+		fx := newFixture(t, asDiscussion("parentId"))
+		id := fx.createAs(t, bob, givenSimpleMessage("hello"))
+		require.Equal(t, int32(1), fx.subscription.GetChatState().Messages.Counter)
+
+		// when
+		fx.pushAs(t, bob, deleteBuilder(id))
+
+		// then
+		assert.Equal(t, int32(0), fx.subscription.GetChatState().Messages.Counter)
+		assert.Equal(t, int32(0), fx.messageCount(t))
+	})
+
+	t.Run("an unread mention", func(t *testing.T) {
+		// given
+		fx := newFixture(t, asDiscussion("parentId"))
+		id := fx.createAs(t, bob, givenMessageWithMention("@me"))
+		require.Equal(t, int32(1), fx.subscription.GetChatState().Mentions.Counter)
+
+		// when
+		fx.pushAs(t, bob, deleteBuilder(id))
+
+		// then
+		assert.Equal(t, int32(0), fx.subscription.GetChatState().Mentions.Counter)
+	})
+
+	t.Run("an unread reply to my message", func(t *testing.T) {
+		// given
+		fx := newFixture(t, asDiscussion("parentId"))
+		mine, err := fx.AddMessage(ctx, nil, givenSimpleMessage("mine"))
+		require.NoError(t, err)
+		replyId := fx.createAs(t, bob, reply(mine))
+		require.Equal(t, int32(1), fx.subscription.GetChatState().Mentions.Counter)
+
+		// when
+		fx.pushAs(t, bob, deleteBuilder(replyId))
+
+		// then
+		assert.Equal(t, int32(0), fx.subscription.GetChatState().Mentions.Counter)
+		assert.Equal(t, int32(0), fx.subscription.GetChatState().Messages.Counter)
+	})
+
+	t.Run("unread reactions on my deleted message", func(t *testing.T) {
+		// given
+		fx := newFixture(t, asDiscussion("parentId"), withReactionsCounterEpoch(0))
+		mine, err := fx.AddMessage(ctx, nil, givenSimpleMessage("mine"))
+		require.NoError(t, err)
+		fx.pushAs(t, bob, reactBuilder(t, mine, "👍", bob))
+		require.NotEmpty(t, fx.subscription.GetChatState().UnreadReactionOrderId)
+
+		// when
+		fx.pushAs(t, testCreator, deleteBuilder(mine))
+
+		// then
+		assert.Empty(t, fx.subscription.GetChatState().UnreadReactionOrderId)
+	})
+
+	t.Run("marking the chat unread leaves the tombstone read", func(t *testing.T) {
+		// given
+		fx := newFixture(t, asDiscussion("parentId"))
+		first := fx.createAs(t, bob, givenSimpleMessage("first"))
+		fx.createAs(t, bob, givenSimpleMessage("second"))
+		require.NoError(t, fx.readAll(ctx))
+		fx.pushAs(t, bob, deleteBuilder(first))
+
+		// when
+		require.NoError(t, fx.MarkMessagesAsUnread(ctx, "", chatmodel.CounterTypeMessage))
+
+		// then
+		assert.True(t, fx.getMessage(t, first).Read)
+		assert.Equal(t, int32(1), fx.subscription.GetChatState().Messages.Counter)
+	})
+
+	t.Run("no flushed state counts a message deleted in the batch that created it", func(t *testing.T) {
+		// Seen heads can arrive before the changes they name: a read callback then flushes
+		// right after the commit, before the post-commit reload. The deleted message must
+		// already be out of the counters by then.
+		// given
+		fx := newFixture(t, asDiscussion("parentId"))
+		subscribeForEvents(t, fx)
+		tx, err := fx.store.NewTx(ctx)
+		require.NoError(t, err)
+		createA, createB := &storestate.Builder{}, &storestate.Builder{}
+		for _, b := range []*storestate.Builder{createA, createB} {
+			arena := &anyenc.Arena{}
+			obj := arena.NewObject()
+			givenSimpleMessage("hello").MarshalAnyenc(obj, arena)
+			require.NoError(t, b.Create(CollectionName, storestate.IdFromChange, obj))
+		}
+		idA, idB := bson.NewObjectId().Hex(), bson.NewObjectId().Hex()
+		for _, cs := range []storestate.ChangeSet{
+			{Id: idA, Order: fx.generateOrderId(tx), Creator: bob, Changes: createA.ChangeSet},
+			{Id: idB, Order: fx.generateOrderId(tx), Creator: bob, Changes: createB.ChangeSet},
+			{Id: bson.NewObjectId().Hex(), Order: fx.generateOrderId(tx), Creator: bob, Changes: deleteBuilder(idA).ChangeSet},
+		} {
+			require.NoError(t, tx.ApplyChangeSetReturnAllErrors(cs))
+		}
+		require.NoError(t, tx.Commit())
+		fx.events = nil
+
+		// when
+		require.NoError(t, fx.markReadMessages([]string{idB}, chatmodel.CounterTypeMessage))
+		fx.onUpdate()
+
+		// then
+		var states int
+		for _, ev := range fx.events {
+			if st := ev.GetChatStateUpdate(); st != nil {
+				states++
+				assert.Equal(t, int32(0), st.State.Messages.Counter, "A is deleted and B is read")
+			}
+			if count := ev.GetChatUpdateMessageCount(); count != nil {
+				assert.Equal(t, int32(1), count.MessageCount)
+			}
+		}
+		assert.NotZero(t, states)
+	})
+}
+
+func TestDiscussionDeleteEvents(t *testing.T) {
+	t.Run("the tombstone is sent as an update", func(t *testing.T) {
+		// given
+		fx := newFixture(t, asDiscussion("parentId"))
+		subscribeForEvents(t, fx)
+		id := fx.createAs(t, bob, givenSimpleMessage("hello"))
+		fx.events = nil
+
+		// when
+		fx.pushAs(t, bob, deleteBuilder(id))
+
+		// then
+		var updated *model.ChatMessage
+		for _, ev := range fx.events {
+			assert.Nil(t, ev.GetChatDelete())
+			if upd := ev.GetChatUpdate(); upd != nil {
+				updated = upd.Message
+			}
+		}
+		require.NotNil(t, updated)
+		assert.True(t, updated.Deleted)
+		assert.Empty(t, updated.Message.Text)
+	})
+
+	t.Run("observers see an update carrying the tombstone", func(t *testing.T) {
+		// given
+		fx := newFixture(t, asDiscussion("parentId"))
+		id := fx.createAs(t, bob, givenSimpleMessage("hello"))
+		var changes []chatsubscription.ChatChange
+		fx.subscription.Lock()
+		fx.subscription.AddObserver("test", func(change chatsubscription.ChatChange) {
+			if change.Kind != chatsubscription.ChatChangeStateUpdated {
+				changes = append(changes, change)
+			}
+		})
+		fx.subscription.Unlock()
+
+		// when
+		fx.pushAs(t, bob, deleteBuilder(id))
+
+		// then
+		require.Len(t, changes, 1)
+		assert.Equal(t, chatsubscription.ChatChangeMessageUpdated, changes[0].Kind)
+		assert.True(t, changes[0].Message.Deleted)
+	})
+
+	t.Run("a space chat delete still sends a delete", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		subscribeForEvents(t, fx)
+		id := fx.createAs(t, bob, givenSimpleMessage("hello"))
+		fx.events = nil
+
+		// when
+		fx.pushAs(t, bob, deleteBuilder(id))
+
+		// then
+		var deleted []string
+		for _, ev := range fx.events {
+			if del := ev.GetChatDelete(); del != nil {
+				deleted = append(deleted, del.Id)
+			}
+		}
+		assert.Equal(t, []string{id}, deleted)
+	})
+}
+
+// failingCollection refuses every update, as a full disk would.
+type failingCollection struct {
+	anystore.Collection
+}
+
+func (failingCollection) UpdateId(ctx context.Context, id any, mod query.Modifier) (anystore.ModifyResult, error) {
+	return anystore.ModifyResult{}, errors.New("disk is full")
+}
+
+func TestTombstoneWriteFailureIsCritical(t *testing.T) {
+	// given
+	tombstone := givenSimpleMessage("hello")
+	tombstone.MakeTombstone()
+
+	// when
+	err := writeTombstone(context.Background(), failingCollection{}, "msg1", tombstone)
+
+	// then
+	require.ErrorIs(t, err, storestate.ErrCritical, "a failed tombstone write must abort the apply, not be skipped")
+}
+
+var chatrepositoryGetAll = chatrepository.GetMessagesRequest{Limit: 1000}
+
+func subscribeRequest(fx *fixture) chatsubscription.SubscribeLastMessagesRequest {
+	return chatsubscription.SubscribeLastMessagesRequest{
+		ChatObjectId: fx.Id(),
+		SubId:        "sub",
+		Limit:        100,
+	}
 }
