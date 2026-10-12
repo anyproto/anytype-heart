@@ -277,6 +277,7 @@ func TestV2DiscussionIsAChatForTheMessageOperations(t *testing.T) {
 		// odd one out in the thread
 		fx := newV2Fixture(t)
 		fx.addDiscussion(t, testDiscussionId)
+		fx.withExistingMessage(chatProtoMessage()) // the reply target is live
 		var sent *model.ChatMessage
 		fx.mwMock.EXPECT().ChatAddMessage(mock.Anything, mock.MatchedBy(func(req *pb.RpcChatAddMessageRequest) bool {
 			sent = req.Message

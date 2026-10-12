@@ -971,3 +971,113 @@ func TestMarshalUnmarshalUnreadReactionIds(t *testing.T) {
 		assert.True(t, got.UnreadReaction)
 	})
 }
+
+func TestDeletedRoundTrip(t *testing.T) {
+	t.Run("deleted is stored only when true", func(t *testing.T) {
+		// given
+		arena := &anyenc.Arena{}
+		val := arena.NewObject()
+		deleted := &Message{ChatMessage: &model.ChatMessage{
+			Id:      "msg1",
+			Message: &model.ChatMessageMessageContent{},
+			Deleted: true,
+		}}
+
+		// when
+		deleted.MarshalAnyenc(val, arena)
+		got, err := UnmarshalMessage(val)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, got.Deleted)
+		assert.True(t, val.GetBool(DeletedKey))
+	})
+
+	t.Run("a false deleted removes the stored key", func(t *testing.T) {
+		// given
+		arena := &anyenc.Arena{}
+		val := arena.NewObject()
+		val.Set(DeletedKey, arena.NewTrue())
+		live := &Message{ChatMessage: &model.ChatMessage{
+			Id:      "msg1",
+			Message: &model.ChatMessageMessageContent{Text: "text"},
+		}}
+
+		// when
+		live.MarshalAnyenc(val, arena)
+		got, err := UnmarshalMessage(val)
+
+		// then
+		require.NoError(t, err)
+		assert.False(t, got.Deleted)
+		assert.Nil(t, val.Get(DeletedKey))
+	})
+}
+
+func TestMakeTombstone(t *testing.T) {
+	// given
+	arena := &anyenc.Arena{}
+	val := arena.NewObject()
+	orders := arena.NewObject()
+	orders.Set("id", arena.NewString("orderA"))
+	orders.Set("content", arena.NewString("orderB"))
+	val.Set(OrderKey, orders)
+
+	msg := &Message{
+		ChatMessage: &model.ChatMessage{
+			Id:               "msg1",
+			Creator:          "alice",
+			CreatedAt:        100,
+			ModifiedAt:       200,
+			StateId:          "state1",
+			ReplyToMessageId: "parent",
+			Message: &model.ChatMessageMessageContent{
+				Text:  "secret",
+				Style: model.BlockContentText_Quote,
+				Marks: []*model.BlockContentTextMark{{Range: &model.Range{From: 0, To: 3}, Type: model.BlockContentTextMark_Bold}},
+			},
+			Attachments: []*model.ChatMessageAttachment{{Target: "file1", Type: model.ChatMessageAttachment_FILE}},
+			Blocks: []*model.ChatMessageMessageBlock{{Content: &model.ChatMessageMessageBlockContentOfText{
+				Text: &model.ChatMessageMessageBlockText{Text: "secret block"},
+			}}},
+			Reactions: &model.ChatMessageReactions{Reactions: map[string]*model.ChatMessageReactionsIdentityList{
+				"👍": {Ids: []string{"bob"}},
+			}},
+			HasMention: true,
+			Synced:     true,
+			Pinned:     true,
+		},
+	}
+	msg.AddUnreadReaction("👍", "bob", ReactionChangeEntry{ChangeId: "change1", OrderId: "orderC"})
+	msg.MarshalAnyenc(val, arena)
+
+	want := &model.ChatMessage{
+		Id:               "msg1",
+		OrderId:          "orderA",
+		Creator:          "alice",
+		CreatedAt:        100,
+		StateId:          "state1",
+		ReplyToMessageId: "parent",
+		Message:          &model.ChatMessageMessageContent{Marks: []*model.BlockContentTextMark{}},
+		Attachments:      []*model.ChatMessageAttachment{},
+		Reactions:        &model.ChatMessageReactions{},
+		Read:             true,
+		MentionRead:      true,
+		Synced:           true,
+		Deleted:          true,
+	}
+
+	// when
+	msg.MakeTombstone()
+	msg.MarshalAnyenc(val, arena)
+	got, err := UnmarshalMessage(val)
+
+	// then
+	require.NoError(t, err)
+	assert.Equal(t, want, got.ChatMessage)
+	assert.Nil(t, got.UnreadReactionIds)
+	assert.Nil(t, val.Get(PinnedKey))
+	assert.Nil(t, val.Get(ReactionUnreadChangeIdsKey))
+	assert.Nil(t, val.Get(ReactionUnreadOrderIdKey))
+	assert.Equal(t, "orderB", val.GetString(OrderKey, "content"), "the order object is left as it was")
+}

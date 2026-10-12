@@ -9,6 +9,7 @@ import (
 	"time"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -394,6 +395,51 @@ type captureHandler struct {
 func (h *captureHandler) BeforeCreate(ctx context.Context, ch ChangeOp) error {
 	h.last = ch
 	return h.DefaultHandler.BeforeCreate(ctx, ch)
+}
+
+// keepHandler rewrites the document itself on delete and keeps it, as a handler that leaves a
+// tombstone does.
+type keepHandler struct {
+	DefaultHandler
+}
+
+func (h *keepHandler) BeforeDelete(ctx context.Context, ch ChangeOp) (DeleteMode, error) {
+	coll, err := ch.State.Collection(ctx, h.Name)
+	if err != nil {
+		return DeleteModeKeep, err
+	}
+	_, err = coll.UpdateId(ctx, ch.Change.Change.GetDelete().GetDocumentId(), query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+		v.Set("deleted", a.NewTrue())
+		return v, true, nil
+	}))
+	return DeleteModeKeep, err
+}
+
+func TestApplyDelete_KeepMode(t *testing.T) {
+	// given
+	fx := newFixture(t, "objId", &keepHandler{DefaultHandler: DefaultHandler{Name: "testColl"}})
+	tx, err := fx.NewTx(ctx)
+	require.NoError(t, err)
+	build := &Builder{}
+	require.NoError(t, build.Create("testColl", "1", `{"key":"value"}`))
+	require.NoError(t, tx.ApplyChangeSet(ChangeSet{Id: "1", Order: "1", Changes: build.ChangeSet}))
+	require.NoError(t, tx.Commit())
+
+	// when
+	tx, err = fx.NewTx(ctx)
+	require.NoError(t, err)
+	build = &Builder{}
+	build.Delete("testColl", "1")
+	require.NoError(t, tx.ApplyChangeSetReturnAllErrors(ChangeSet{Id: "2", Order: "2", Changes: build.ChangeSet}))
+	require.NoError(t, tx.Commit())
+
+	// then
+	coll, err := fx.Collection(ctx, "testColl")
+	require.NoError(t, err)
+	doc, err := coll.FindId(ctx, "1")
+	require.NoError(t, err)
+	assert.Equal(t, "value", doc.Value().GetString("key"))
+	assert.True(t, doc.Value().GetBool("deleted"))
 }
 
 func TestApplyChangeSet_AclHeadIdPlumbing(t *testing.T) {

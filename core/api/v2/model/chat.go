@@ -77,6 +77,8 @@ type ChatMessage struct {
 	ReactedBy   map[string][]string `json:"reacted_by,omitempty"`
 	Attachments []ChatAttachment    `json:"attachments,omitempty"`
 	Pinned      bool                `json:"pinned,omitempty"`
+	// A deleted discussion comment, kept so its replies keep their thread: author, at and reply_to stay, text is empty. It can't be edited, reacted to or replied to.
+	Deleted bool `json:"deleted,omitempty"`
 }
 
 // ChatAttachment is one message attachment: the target object id and its
@@ -103,7 +105,8 @@ type ChatState struct {
 // at zero extra cost. A poll is a limit=1 read of this
 // shape. Cursor-paged (after/before order ids), not C10 offset pagination.
 // MessageCount is the number of messages the chat HOLDS (a deleted one is
-// gone from it), not the size of the requested range; LifetimeMessageCount
+// not counted: a space chat drops it, a discussion keeps it in Messages as
+// deleted), not the size of the requested range; LifetimeMessageCount
 // counts every message ever posted, deleted ones included. HasMore says
 // more messages exist inside the requested bounds, and NextAfter/NextBefore
 // carry the boundary order id to continue from — forward walks (?after
@@ -111,7 +114,7 @@ type ChatState struct {
 type ChatMessagesResponse struct {
 	Messages []ChatMessage `json:"messages"`
 	State    *ChatState    `json:"state,omitempty"`
-	// Messages the chat holds now; a deleted message leaves it
+	// Live messages in the chat; a deleted one isn't counted, even a discussion comment that stays in messages as deleted
 	MessageCount int `json:"message_count"`
 	// Messages ever posted, deleted ones included
 	LifetimeMessageCount int    `json:"lifetime_message_count"`
@@ -256,6 +259,7 @@ func ChatMessageFromProto(msg *model.ChatMessage, opts ChatMessageOptions) ChatM
 		At:      chatTime(msg.CreatedAt),
 		ReplyTo: msg.ReplyToMessageId,
 		Pinned:  msg.Pinned,
+		Deleted: msg.Deleted,
 	}
 	if msg.ModifiedAt != 0 && msg.ModifiedAt != msg.CreatedAt {
 		out.EditedAt = chatTime(msg.ModifiedAt)

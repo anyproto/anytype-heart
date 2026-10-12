@@ -216,17 +216,22 @@ func (s *subscriptionManager) ForceSendingChatState() {
 	s.messageCountUpdated = true
 }
 
+// GetLastMessage returns the newest live message: a tombstone (a deleted discussion comment) is
+// not one.
 func (s *subscriptionManager) GetLastMessage() (*model.ChatMessage, bool, error) {
 	// get the last message from any subscription. It works because we don't have offsets for subscriptions, so
 	// it's guaranteed for the last message in a subscription to be the last message in a set of all messages.
+	// A window can hold only tombstones, or end with them: then the newest live message may be
+	// older than the window, and the repository answers.
 	for _, sub := range s.subscriptions {
-		last := sub.state.messages.Back()
-		if last != nil {
-			return proto.Clone(last.Value.(*stateEntry).msg).(*model.ChatMessage), true, nil
+		for it := sub.state.messages.Back(); it != nil; it = it.Prev() {
+			if msg := it.Value.(*stateEntry).msg; !msg.Deleted {
+				return proto.Clone(msg).(*model.ChatMessage), true, nil
+			}
 		}
 	}
 
-	msgs, err := s.repository.GetLastMessages(s.componentCtx, 1)
+	msgs, err := s.repository.GetLastLiveMessages(s.componentCtx, 1)
 	if err != nil {
 		return nil, false, fmt.Errorf("get last message from repository: %w", err)
 	}
@@ -451,6 +456,32 @@ func (s *subscriptionManager) Delete(messageId string) {
 		sub.state.applyDeleteMessage(messageId)
 	}
 	// We can't reload chat state here because Delete operation hasn't been commited yet
+	s.needReloadState = true
+}
+
+// SoftDelete replaces a message with its tombstone (a soft-deleted discussion comment). Windows
+// get an update carrying the tombstone, so the message keeps its place on clients; observers get
+// ChatChangeMessageUpdated. The counters drop the message at once, from previous (the message
+// as stored before): a read callback that flushes before the post-commit reload must not
+// publish counts that still include it. The reload after the commit then corrects the
+// oldest-unread order ids.
+func (s *subscriptionManager) SoftDelete(previous, tombstone *chatmodel.Message) {
+	unreadMessage := !previous.Read
+	unreadMention := previous.HasMention && !previous.MentionRead
+	if unreadMessage || unreadMention {
+		s.UpdateChatState(func(state *model.ChatState) *model.ChatState {
+			if unreadMessage && state.Messages.Counter > 0 {
+				state.Messages.Counter--
+			}
+			if unreadMention && state.Mentions.Counter > 0 {
+				state.Mentions.Counter--
+			}
+			return state
+		})
+	}
+	s.UpdateMessageCount(-1)
+	s.UpdateFull(tombstone)
+	// We can't reload chat state here because the change hasn't been committed yet
 	s.needReloadState = true
 }
 

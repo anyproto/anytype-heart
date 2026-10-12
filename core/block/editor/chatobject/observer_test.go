@@ -72,7 +72,7 @@ func TestManagerObserverThroughChatObject(t *testing.T) {
 		require.NoError(t, fx.EditMessage(ctx, messageId, givenSimpleMessage("hello, edited")))
 		_, err = fx.ToggleMessageReaction(ctx, messageId, "👍")
 		require.NoError(t, err)
-		require.NoError(t, fx.SetMessagePinned(ctx, messageId, true))
+		require.NoError(t, fx.SetMessagesPinned(ctx, []string{messageId}, true))
 		require.NoError(t, fx.DeleteMessage(ctx, messageId))
 
 		// then

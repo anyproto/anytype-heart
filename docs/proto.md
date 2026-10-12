@@ -36664,6 +36664,7 @@ Used to decode block meta only, without the content itself
 | pinned | [bool](#bool) |  |  |
 | unreadReaction | [bool](#bool) |  |  |
 | blocks | [ChatMessage.MessageBlock](#anytype-model-ChatMessage-MessageBlock) | repeated | Ordered list of content blocks |
+| deleted | [bool](#bool) |  | deleted marks a soft-deleted discussion comment (a tombstone). It keeps id, orderId, creator, createdAt and replyToMessageId, so replies keep their thread; message, attachments, blocks and reactions are empty and modifiedAt is 0. Only discussions produce it; a deleted space-chat message is removed and announced with Event.Chat.Delete. A tombstone can&#39;t be edited, reacted to, pinned or replied to. |
 
 
 

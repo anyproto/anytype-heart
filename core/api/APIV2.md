@@ -1561,7 +1561,8 @@ POST       /v2/spaces/{space_id}/objects/{object_id}/discussion   # the object's
 - **The messages read** returns `{messages, state, message_count,
   lifetime_message_count, has_more, next_after?, next_before?}`.
   `message_count` is how many messages the chat HOLDS now (a deleted one
-  leaves it) and `lifetime_message_count` counts every message ever posted;
+  leaves it; a deleted discussion comment stays in `messages` as a tombstone
+  but is not counted) and `lifetime_message_count` counts every message ever posted;
   neither is the size of the requested range. `has_more` says more messages
   exist inside the requested bounds and is detected by fetching limit+1.
   Messages are always served ascending by order id whichever way the range was
@@ -1683,7 +1684,19 @@ POST       /v2/spaces/{space_id}/objects/{object_id}/discussion   # the object's
   content unconditionally, and the desktop discussion renderer shows no
   break for a newline inside a block; marks are clipped per line) —
   through `chatWritesBlocks`, the one switch to flip when space chats move
-  to blocks in the desktop (the stated plan). A text of newlines only makes
+  to blocks in the desktop (the stated plan). **A deleted discussion comment
+  stays as a tombstone** (GO-7167, design in
+  `docs/superpowers/specs/2026-10-12-discussion-soft-delete-design.md`): the
+  middleware keeps the message in place so replies keep their thread, and
+  the API serves it as `{id, state_id, order, author?, author_id, at,
+  reply_to?, text: "", deleted: true}`. Edit, reaction and delete of a
+  tombstone are a 404 and a reply to one a 400 on `reply_to`, dry runs
+  included, from the service's own check and, when a delete lands between
+  that check and the RPC, from the middleware's refusals mapped in
+  `v2ChatRpcError`. Both streams report the delete as `message_updated`
+  carrying the tombstone, except that the per-chat stream sends one
+  `message_added` carrying it when the create and the delete arrive in one
+  batch. A space chat delete still removes the message. A text of newlines only makes
   no block and is refused on the dry run as on the real call; a line of
   exactly `---` is what the desktop renders as a divider. A delete's
   warning names link-block targets beside attachments, since a desktop

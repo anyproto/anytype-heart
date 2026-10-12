@@ -117,9 +117,27 @@ func (f *fakeChatRepository) GetLastMessages(ctx context.Context, limit uint) ([
 	return f.lastMessages, nil
 }
 
+// GetLastLiveMessages mirrors the repository: lastMessages without tombstones.
+func (f *fakeChatRepository) GetLastLiveMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error) {
+	live := make([]*chatmodel.Message, 0, len(f.lastMessages))
+	for _, message := range f.lastMessages {
+		if !message.Deleted {
+			live = append(live, message)
+		}
+	}
+	if int(limit) < len(live) {
+		return live[:limit], nil
+	}
+	return live, nil
+}
+
+// GetLastMessagesByCreators mirrors the repository: live messages only.
 func (f *fakeChatRepository) GetLastMessagesByCreators(ctx context.Context, creators []string, limit uint) ([]*chatmodel.Message, error) {
 	filtered := make([]*chatmodel.Message, 0, len(f.lastMessages))
 	for _, message := range f.lastMessages {
+		if message.Deleted {
+			continue
+		}
 		for _, creator := range creators {
 			if message.Creator == creator {
 				filtered = append(filtered, message)
@@ -1787,7 +1805,7 @@ func TestService_PinMessages(t *testing.T) {
 		mockChat := mock_chatobject.NewMockStoreObject(t)
 		mockChat.EXPECT().Lock().Return()
 		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(nil)
+		mockChat.EXPECT().SetMessagesPinned(mock.Anything, []string{"msg1"}, true).Return(nil)
 
 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
 
@@ -1814,9 +1832,7 @@ func TestService_PinMessages(t *testing.T) {
 		mockChat := mock_chatobject.NewMockStoreObject(t)
 		mockChat.EXPECT().Lock().Return()
 		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(nil)
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg2", true).Return(nil)
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg3", true).Return(nil)
+		mockChat.EXPECT().SetMessagesPinned(mock.Anything, []string{"msg1", "msg2", "msg3"}, true).Return(nil)
 
 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
 
@@ -1843,7 +1859,7 @@ func TestService_PinMessages(t *testing.T) {
 		mockChat := mock_chatobject.NewMockStoreObject(t)
 		mockChat.EXPECT().Lock().Return()
 		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(fmt.Errorf("message not found"))
+		mockChat.EXPECT().SetMessagesPinned(mock.Anything, []string{"msg1"}, true).Return(fmt.Errorf("message not found"))
 
 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
 
@@ -1872,7 +1888,7 @@ func TestService_UnpinMessages(t *testing.T) {
 		mockChat := mock_chatobject.NewMockStoreObject(t)
 		mockChat.EXPECT().Lock().Return()
 		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg2", false).Return(nil)
+		mockChat.EXPECT().SetMessagesPinned(mock.Anything, []string{"msg2"}, false).Return(nil)
 
 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
 

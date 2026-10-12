@@ -131,6 +131,11 @@
             "example": "Alice",
             "type": "string"
           },
+          "deleted": {
+            "description": "A deleted discussion comment, kept so its replies keep their thread: creator, created_at and reply_to_message_id stay, the content is empty. It can't be edited, reacted to or replied to.",
+            "example": false,
+            "type": "boolean"
+          },
           "id": {
             "example": "msg-abc123",
             "type": "string"

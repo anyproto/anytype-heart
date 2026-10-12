@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 )
 
@@ -53,6 +54,16 @@ func TestErrorCodeMappingUniversalBadInput(t *testing.T) {
 
 	assert.Equal(t, testCode(universalBadInputCode), mapper(idresolver.ErrEmptyObjectId))
 	assert.Equal(t, testCode(universalBadInputCode), mapper(fmt.Errorf("wrap: %w", idresolver.ErrEmptyObjectId)))
+}
+
+func TestErrorCodeMappingChatMessageRefusals(t *testing.T) {
+	mapper := func(err error) testCode {
+		return mapErrorCode[testCode](err)
+	}
+
+	for _, err := range []error{chatobject.ErrMessageDeleted, chatobject.ErrReplyToDeletedMessage, chatobject.ErrMessageNotFound} {
+		assert.Equal(t, testCode(universalBadInputCode), mapper(fmt.Errorf("check message: %w", err)), err.Error())
+	}
 }
 
 func TestErrorCodeMappingWithPayload(t *testing.T) {

@@ -62,6 +62,7 @@ type Manager interface {
 	GetMessageCount() int32
 	Add(prevOrderId string, message *chatmodel.Message)
 	Delete(messageId string)
+	SoftDelete(previous, tombstone *chatmodel.Message)
 	ForceSendingChatState()
 	Flush(reloadStateIfNeeded bool)
 	ReadMessages(newOldestOrderId string, idsModified []string, counterType chatmodel.CounterType)

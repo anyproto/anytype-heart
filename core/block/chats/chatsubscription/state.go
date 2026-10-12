@@ -99,6 +99,7 @@ func (s *messagesState) applyAddMessage(msgId string, msg *model.ChatMessage, pr
 				s.messages.RemoveFront()
 
 				delete(s.messagesByIds, first.msg.Id)
+				s.keepEvictedEvents(first)
 				s.add(msgId, msg, prevOrderId, addEvent)
 			}
 		}
@@ -117,6 +118,35 @@ func (s *messagesState) add(msgId string, msg *model.ChatMessage, prevOrderId st
 	}
 	s.messagesByIds[msgId] = entry
 	s.messages.Set(msgId, entry)
+}
+
+// keepEvictedEvents keeps the unflushed updates of an entry the window just evicted: the client
+// still holds that message and must learn of an edit, a tombstone, a reaction or a pin that came
+// in the same batch. Only those kinds are kept, because only they have an out-of-window path
+// that later changes in the batch keep current (updateOutOfWindowEvent); a status event (read,
+// mention read, synced, reaction read) is in-window only, and a kept one could go stale. An entry
+// whose Add is unflushed is dropped as it is: the client never had the message, and it is now
+// outside its window.
+func (s *messagesState) keepEvictedEvents(entry *stateEntry) {
+	if slices.Contains(entry.events, eventActionAdd) {
+		return
+	}
+	var kept []eventAction
+	for _, action := range entry.events {
+		switch action {
+		case eventActionUpdate, eventActionUpdateReactions, eventActionMessagePinned:
+			kept = append(kept, action)
+		}
+	}
+	if len(kept) == 0 {
+		return
+	}
+	s.updateOutOfWindowEvent(entry.msg.Id, func(pending *stateEntry) {
+		pending.msg = entry.msg
+		for _, action := range kept {
+			pending.addEvent(action)
+		}
+	})
 }
 
 func (s *messagesState) applyDeleteMessage(id string) {
@@ -139,12 +169,24 @@ func (s *messagesState) applyUpdate(msgId string, msg *model.ChatMessage) {
 	}
 }
 
+// refreshOutOfWindowStatus keeps the full message a pending out-of-window update carries in step
+// with a status change. Status events are in-window only, so the change sends no event of its
+// own, but that message is still sent and must not show a value the batch already changed. A
+// stub entry (reactions or pin only) carries no full message and is left alone.
+func (s *messagesState) refreshOutOfWindowStatus(msgId string, set func(msg *model.ChatMessage)) {
+	if pending, ok := s.outOfWindowEvents[msgId]; ok && slices.Contains(pending.events, eventActionUpdate) {
+		set(pending.msg)
+	}
+}
+
 func (s *messagesState) applyUpdateMentionReadStatus(msgIds []string, isRead bool) {
 	for _, id := range msgIds {
 		prev, ok := s.messagesByIds[id]
 		if ok {
 			prev.msg.MentionRead = isRead
 			prev.addEvent(eventActionMentionRead)
+		} else {
+			s.refreshOutOfWindowStatus(id, func(msg *model.ChatMessage) { msg.MentionRead = isRead })
 		}
 	}
 }
@@ -155,6 +197,8 @@ func (s *messagesState) applyUpdateMessageReadStatus(msgIds []string, isRead boo
 		if ok {
 			prev.msg.Read = isRead
 			prev.addEvent(eventActionMessageRead)
+		} else {
+			s.refreshOutOfWindowStatus(id, func(msg *model.ChatMessage) { msg.Read = isRead })
 		}
 	}
 }
@@ -204,6 +248,8 @@ func (s *messagesState) applyUpdateReactionReadStatus(msgIds []string, isUnread 
 		if ok {
 			prev.msg.UnreadReaction = isUnread
 			prev.addEvent(eventActionReactionRead)
+		} else {
+			s.refreshOutOfWindowStatus(id, func(msg *model.ChatMessage) { msg.UnreadReaction = isUnread })
 		}
 	}
 }
@@ -214,6 +260,8 @@ func (s *messagesState) applyUpdateMessageSyncStatus(msgIds []string, isSynced b
 		if ok {
 			prev.msg.Synced = isSynced
 			prev.addEvent(eventActionMessageSynced)
+		} else {
+			s.refreshOutOfWindowStatus(id, func(msg *model.ChatMessage) { msg.Synced = isSynced })
 		}
 	}
 }

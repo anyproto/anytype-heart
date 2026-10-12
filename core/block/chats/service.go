@@ -964,6 +964,10 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 			if docMatch == nil {
 				continue
 			}
+			if message.Deleted {
+				// a stale hit: the comment was deleted after it was indexed
+				continue
+			}
 			if creatorSet != nil {
 				if _, ok := creatorSet[message.Creator]; !ok {
 					continue
@@ -1101,11 +1105,12 @@ func (s *service) browseLastMessages(ctx context.Context, req *pb.RpcChatSearchR
 			}
 			return nil, fmt.Errorf("chat repository: %w", err)
 		}
+		// live messages only: a deleted comment is not a search result
 		var messages []*chatmodel.Message
 		if len(req.Creators) > 0 {
 			messages, err = repo.GetLastMessagesByCreators(ctx, req.Creators, uint(candidatesPerChat))
 		} else {
-			messages, err = repo.GetLastMessages(ctx, uint(candidatesPerChat))
+			messages, err = repo.GetLastLiveMessages(ctx, uint(candidatesPerChat))
 		}
 		if err != nil {
 			if req.ChatId == "" {
@@ -1266,10 +1271,8 @@ func (s *service) ReadAll(ctx context.Context) error {
 
 func (s *service) PinMessages(ctx context.Context, chatObjectId string, messageIds []string, pinned bool) error {
 	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
-		for _, msgId := range messageIds {
-			if err := sb.SetMessagePinned(ctx, msgId, pinned); err != nil {
-				return fmt.Errorf("failed to set pinned status %v to message: %w", pinned, err)
-			}
+		if err := sb.SetMessagesPinned(ctx, messageIds, pinned); err != nil {
+			return fmt.Errorf("set pinned status: %w", err)
 		}
 		return nil
 	})

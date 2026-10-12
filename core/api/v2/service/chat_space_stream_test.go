@@ -320,6 +320,26 @@ func TestSpaceChatRenderer(t *testing.T) {
 		}
 	})
 
+	t.Run("a deleted discussion comment is a message_updated carrying the tombstone", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		change := apicore.SpaceChatChange{Type: apicore.SpaceChatMessageUpdated, Chat: discussion, MessageId: "m1",
+			Message: &model.ChatMessage{Id: "m1", OrderId: "o1", StateId: "s5", Creator: testIdentity,
+				ReplyToMessageId: "m0", Message: &model.ChatMessageMessageContent{}, Reactions: &model.ChatMessageReactions{},
+				Deleted: true}}
+
+		// when
+		raw, got := render(t, fx, change)
+
+		// then
+		assert.Equal(t, "message_updated", got.Type)
+		require.NotNil(t, got.Message)
+		assert.True(t, got.Message.Deleted)
+		assert.Equal(t, "m0", got.Message.ReplyTo)
+		assert.Contains(t, raw, `"deleted":true`)
+		assert.Contains(t, raw, `"text":""`)
+	})
+
 	t.Run("message_added carries the full message with its state id", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)

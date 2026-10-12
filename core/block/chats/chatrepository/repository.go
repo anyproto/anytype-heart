@@ -113,6 +113,8 @@ var chatCollectionIndexes = []anystore.IndexInfo{
 	// serves GetLastMessagesByCreators: creator Eq + order walk with early
 	// exit (measured ~80µs vs a 25-45ms full-collection scan at 50k msgs)
 	{Fields: []string{chatmodel.CreatorKey, "_o.id"}},
+	// only tombstones carry the field: counting them (CountMessages) reads just them
+	{Fields: []string{chatmodel.DeletedKey}, Sparse: true},
 }
 
 func (s *service) Repository(spaceId, chatObjectId string) (Repository, error) {
@@ -214,9 +216,15 @@ type Repository interface {
 	GetMessages(ctx context.Context, req GetMessagesRequest) ([]*chatmodel.Message, error)
 	HasMyReaction(ctx context.Context, myIdentity string, messageId string, emoji string) (bool, error)
 	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error)
+	// GetLastMessages returns the newest messages, tombstones included: it seeds
+	// subscription windows and stream backfills, which must hold a deleted
+	// comment so its replies keep their thread.
 	GetLastMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error)
-	// GetLastMessagesByCreators returns the newest messages authored by any of
-	// the given identities (exact match), in ascending order like
+	// GetLastLiveMessages is GetLastMessages without tombstones, for readers
+	// that want messages only (search browse, the last-message date).
+	GetLastLiveMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error)
+	// GetLastMessagesByCreators returns the newest live messages authored by
+	// any of the given identities (exact match), in ascending order like
 	// GetLastMessages
 	GetLastMessagesByCreators(ctx context.Context, creators []string, limit uint) ([]*chatmodel.Message, error)
 	SetSyncedByMaxOrderId(ctx context.Context, maxOrderId string) ([]string, error)
@@ -339,8 +347,18 @@ func (s *repository) LoadChatState(ctx context.Context) (*model.ChatState, error
 	}, nil
 }
 
+// CountMessages returns the number of live messages: tombstones (soft-deleted discussion
+// comments) stay in the collection but are not counted.
 func (s *repository) CountMessages(ctx context.Context) (int, error) {
-	return s.collection.Find(nil).Count(ctx)
+	total, err := s.collection.Find(nil).Count(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("count all messages: %w", err)
+	}
+	deleted, err := s.deletedMessagesQuery().Count(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("count deleted messages: %w", err)
+	}
+	return total - deleted, nil
 }
 
 // CountMessagesLifetime returns the number of distinct messages ever added to
@@ -547,13 +565,17 @@ func (s *repository) GetAllUnreadMessages(ctx context.Context, counterType chatm
 }
 
 func (s *repository) IterateMessagesForIndexing(ctx context.Context, afterOrderId string, proc func(msg *chatmodel.Message) error) error {
-	var filter query.Filter
+	// a tombstone has nothing to index; its search doc is removed through the delete queue
+	var filter query.Filter = filterNotDeleted
 	if afterOrderId != "" {
 		// _o.id is the creation order, _o.content the last content-edit order:
 		// both new and edited messages need reindexing
-		filter = query.Or{
-			query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
-			query.Key{Path: []string{chatmodel.OrderKey, "content"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
+		filter = query.And{
+			query.Or{
+				query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
+				query.Key{Path: []string{chatmodel.OrderKey, "content"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
+			},
+			filterNotDeleted,
 		}
 	}
 	iter, err := s.collection.Find(filter).Sort(ascOrder).Iter(ctx)
@@ -765,6 +787,35 @@ func (s *repository) GetLastMessages(ctx context.Context, limit uint) ([]*chatmo
 	return s.queryMessages(ctx, qry)
 }
 
+func (s *repository) GetLastLiveMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error) {
+	return s.queryMessages(ctx, s.lastLiveMessagesQuery(limit))
+}
+
+// The queries below are built in one place so the tests explain exactly what runs: each must
+// keep its index (repository_test / softdelete_test).
+
+// deletedMessagesQuery reads the tombstones through the sparse `deleted` index.
+func (s *repository) deletedMessagesQuery() anystore.Query {
+	return s.collection.Find(filterDeleted)
+}
+
+// lastLiveMessagesQuery walks the order index from the newest end, skipping tombstones.
+func (s *repository) lastLiveMessagesQuery(limit uint) anystore.Query {
+	return s.collection.Find(filterNotDeleted).Sort(descOrder).Limit(limit)
+}
+
+// lastLiveMessagesByCreatorQuery walks the (creator, order) index from the newest end,
+// skipping tombstones.
+func (s *repository) lastLiveMessagesByCreatorQuery(creator string, limit uint) anystore.Query {
+	return s.collection.Find(query.And{
+		query.Key{
+			Path:   []string{chatmodel.CreatorKey},
+			Filter: query.NewComp(query.CompOpEq, creator),
+		},
+		filterNotDeleted,
+	}).Sort(descOrder).Limit(limit)
+}
+
 func (s *repository) GetLastMessagesByCreators(ctx context.Context, creators []string, limit uint) ([]*chatmodel.Message, error) {
 	// one indexed query per creator: an Eq filter walks the compound
 	// (creator, _o.id) index with early exit at the limit, while an In filter
@@ -782,11 +833,7 @@ func (s *repository) GetLastMessagesByCreators(ctx context.Context, creators []s
 		}
 		unique[creator] = struct{}{}
 
-		qry := s.collection.Find(query.Key{
-			Path:   []string{chatmodel.CreatorKey},
-			Filter: query.NewComp(query.CompOpEq, creator),
-		}).Sort(descOrder).Limit(limit)
-		messages, err := s.queryMessages(ctx, qry)
+		messages, err := s.queryMessages(ctx, s.lastLiveMessagesByCreatorQuery(creator, limit))
 		if err != nil {
 			return nil, fmt.Errorf("query creator messages: %w", err)
 		}

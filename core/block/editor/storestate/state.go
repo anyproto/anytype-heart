@@ -322,6 +322,8 @@ func (ss *StoreState) applyDelete(ctx context.Context, ch Change) (err error) {
 		return errors.Join(ErrCritical, fmt.Errorf("get collection: %w", err))
 	}
 	switch mode {
+	case DeleteModeKeep:
+		return nil
 	case DeleteModeMark:
 		payload := ss.newDeleteMark(del.DocumentId)
 		fillRootOrder(ss.arena, payload, ch.Order)

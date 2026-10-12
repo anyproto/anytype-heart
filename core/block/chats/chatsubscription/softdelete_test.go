@@ -1,0 +1,275 @@
+package chatsubscription
+
+import (
+	"context"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+)
+
+func tombstoneOf(msg *chatmodel.Message) *chatmodel.Message {
+	tombstone := msg.Clone()
+	tombstone.MakeTombstone()
+	return tombstone
+}
+
+// windowFixture opens a manager whose subscription window (limit 2) holds a and b.
+func windowFixture(t *testing.T, a, b *chatmodel.Message) (*fixture, Manager) {
+	t.Helper()
+	ctx := context.Background()
+	fx := newFixture(t)
+	repo, err := fx.repo.Repository(testSpaceId, "chatId1")
+	require.NoError(t, err)
+	require.NoError(t, repo.AddTestMessage(ctx, a))
+	require.NoError(t, repo.AddTestMessage(ctx, b))
+	mngr, err := fx.GetManager(testSpaceId, "chatId1")
+	require.NoError(t, err)
+	_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{ChatObjectId: "chatId1", SubId: "sub", Limit: 2})
+	require.NoError(t, err)
+	return fx, mngr
+}
+
+func (fx *fixture) eventMessages() []*pb.EventMessage {
+	fx.lock.Lock()
+	defer fx.lock.Unlock()
+	var out []*pb.EventMessage
+	for _, ev := range fx.events {
+		out = append(out, ev.Messages...)
+	}
+	return out
+}
+
+func TestEvictionKeepsPendingEvents(t *testing.T) {
+	t.Run("a tombstone update survives the eviction of its message", func(t *testing.T) {
+		// given
+		a := givenSimpleMessage("a", "first", "o1")
+		b := givenSimpleMessage("b", "second", "o2")
+		fx, mngr := windowFixture(t, a, b)
+		mngr.Lock()
+		defer mngr.Unlock()
+
+		// when: one batch deletes a, then adds c, which pushes a out of the full window
+		mngr.SoftDelete(a, tombstoneOf(a))
+		mngr.Add("o2", givenSimpleMessage("c", "third", "o3"))
+		mngr.Flush(false)
+
+		// then
+		var updated, added []string
+		for _, ev := range fx.eventMessages() {
+			if upd := ev.GetChatUpdate(); upd != nil {
+				updated = append(updated, upd.Id)
+				assert.True(t, upd.Message.Deleted)
+			}
+			if add := ev.GetChatAdd(); add != nil {
+				added = append(added, add.Id)
+			}
+		}
+		assert.Equal(t, []string{"a"}, updated)
+		assert.Equal(t, []string{"c"}, added)
+	})
+
+	t.Run("an edit survives the eviction of its message", func(t *testing.T) {
+		// given
+		a := givenSimpleMessage("a", "first", "o1")
+		b := givenSimpleMessage("b", "second", "o2")
+		fx, mngr := windowFixture(t, a, b)
+		mngr.Lock()
+		defer mngr.Unlock()
+		edited := givenSimpleMessage("a", "edited", "o1")
+
+		// when
+		mngr.UpdateFull(edited)
+		mngr.Add("o2", givenSimpleMessage("c", "third", "o3"))
+		mngr.Flush(false)
+
+		// then
+		var updatedText []string
+		for _, ev := range fx.eventMessages() {
+			if upd := ev.GetChatUpdate(); upd != nil {
+				updatedText = append(updatedText, upd.Message.Message.Text)
+			}
+		}
+		assert.Equal(t, []string{"edited"}, updatedText)
+	})
+
+	t.Run("a status event of an evicted message is not sent stale", func(t *testing.T) {
+		// Status events (read, mention read, synced, reaction read) exist only for in-window
+		// messages: a later status change of an evicted one can't reach a kept event, so
+		// keeping it would send a value storage no longer holds.
+		// given
+		a := givenSimpleMessage("a", "first", "o1")
+		b := givenSimpleMessage("b", "second", "o2")
+		fx, mngr := windowFixture(t, a, b)
+		mngr.Lock()
+		defer mngr.Unlock()
+
+		// when: a reaction to a is added, c evicts a, the reaction is removed again
+		mngr.UpdateReactionReadStatus("a", true)
+		mngr.Add("o2", givenSimpleMessage("c", "third", "o3"))
+		mngr.UpdateReactionReadStatus("a", false)
+		mngr.Flush(false)
+
+		// then
+		for _, ev := range fx.eventMessages() {
+			if st := ev.GetChatUpdateReactionReadStatus(); st != nil {
+				assert.NotContains(t, st.Ids, "a")
+			}
+		}
+	})
+
+	t.Run("a kept update carries the status the batch left", func(t *testing.T) {
+		// A status change after the eviction can't send its own event (status events are
+		// in-window only), but the full message a kept update carries must still show it.
+		for _, status := range []struct {
+			name  string
+			set   func(mngr Manager, value bool)
+			field func(msg *model.ChatMessage) bool
+		}{
+			{"reaction read", func(m Manager, v bool) { m.UpdateReactionReadStatus("a", v) }, func(msg *model.ChatMessage) bool { return msg.UnreadReaction }},
+			{"message read", func(m Manager, v bool) { m.(*subscriptionManager).updateMessageRead([]string{"a"}, v) }, func(msg *model.ChatMessage) bool { return msg.Read }},
+		} {
+			t.Run(status.name, func(t *testing.T) {
+				// given
+				a := givenSimpleMessage("a", "first", "o1")
+				b := givenSimpleMessage("b", "second", "o2")
+				fx, mngr := windowFixture(t, a, b)
+				mngr.Lock()
+				defer mngr.Unlock()
+
+				// when: a is edited and its status set, c evicts a, the status is cleared again
+				mngr.UpdateFull(givenSimpleMessage("a", "edited", "o1"))
+				status.set(mngr, true)
+				mngr.Add("o2", givenSimpleMessage("c", "third", "o3"))
+				status.set(mngr, false)
+				mngr.Flush(false)
+
+				// then
+				var updated []*model.ChatMessage
+				for _, ev := range fx.eventMessages() {
+					if upd := ev.GetChatUpdate(); upd != nil && upd.Id == "a" {
+						updated = append(updated, upd.Message)
+					}
+				}
+				require.Len(t, updated, 1)
+				assert.Equal(t, "edited", updated[0].Message.Text)
+				assert.False(t, status.field(updated[0]))
+			})
+		}
+	})
+
+	t.Run("an evicted message whose add is unflushed sends nothing, updates included", func(t *testing.T) {
+		// given
+		a := givenSimpleMessage("a", "first", "o1")
+		b := givenSimpleMessage("b", "second", "o3")
+		fx, mngr := windowFixture(t, a, b)
+		mngr.Lock()
+		defer mngr.Unlock()
+		c := givenSimpleMessage("c", "between", "o2")
+
+		// when: c lands between a and b and evicts a, is deleted, then d evicts c, all before
+		// any flush
+		mngr.Add("o1", c)
+		mngr.SoftDelete(c, tombstoneOf(c))
+		mngr.Add("o3", givenSimpleMessage("d", "newest", "o4"))
+		mngr.Flush(false)
+
+		// then: the client never had c, so it learns of neither its add nor its tombstone
+		var added []string
+		for _, ev := range fx.eventMessages() {
+			if add := ev.GetChatAdd(); add != nil {
+				added = append(added, add.Id)
+			}
+			if upd := ev.GetChatUpdate(); upd != nil {
+				assert.NotEqual(t, "c", upd.Id)
+			}
+		}
+		assert.Equal(t, []string{"d"}, added)
+	})
+}
+
+func TestGetLastMessageSkipsTombstones(t *testing.T) {
+	t.Run("in the subscription window", func(t *testing.T) {
+		// given
+		live := givenSimpleMessage("a", "live", "o1")
+		deleted := tombstoneOf(givenSimpleMessage("b", "deleted", "o2"))
+		_, mngr := windowFixture(t, live, deleted)
+		mngr.Lock()
+		defer mngr.Unlock()
+
+		// when
+		got, ok, err := mngr.GetLastMessage()
+
+		// then
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, "a", got.Id)
+	})
+
+	t.Run("in the repository fallback", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+		repo, err := fx.repo.Repository(testSpaceId, "chatId1")
+		require.NoError(t, err)
+		require.NoError(t, repo.AddTestMessage(ctx, givenSimpleMessage("a", "live", "o1")))
+		require.NoError(t, repo.AddTestMessage(ctx, tombstoneOf(givenSimpleMessage("b", "deleted", "o2"))))
+		mngr, err := fx.GetManager(testSpaceId, "chatId1")
+		require.NoError(t, err)
+		mngr.Lock()
+		defer mngr.Unlock()
+
+		// when
+		got, ok, err := mngr.GetLastMessage()
+
+		// then
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, "a", got.Id)
+	})
+
+	t.Run("past a window that holds only tombstones", func(t *testing.T) {
+		// given: the live message is older than the window, which holds only tombstones
+		ctx := context.Background()
+		fx := newFixture(t)
+		repo, err := fx.repo.Repository(testSpaceId, "chatId1")
+		require.NoError(t, err)
+		require.NoError(t, repo.AddTestMessage(ctx, givenSimpleMessage("a", "live", "o1")))
+		require.NoError(t, repo.AddTestMessage(ctx, tombstoneOf(givenSimpleMessage("b", "deleted", "o2"))))
+		require.NoError(t, repo.AddTestMessage(ctx, tombstoneOf(givenSimpleMessage("c", "deleted", "o3"))))
+		mngr, err := fx.GetManager(testSpaceId, "chatId1")
+		require.NoError(t, err)
+		_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{ChatObjectId: "chatId1", SubId: "sub", Limit: 2})
+		require.NoError(t, err)
+		mngr.Lock()
+		defer mngr.Unlock()
+
+		// when
+		got, ok, err := mngr.GetLastMessage()
+
+		// then
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, "a", got.Id)
+	})
+
+	t.Run("when every message is deleted", func(t *testing.T) {
+		// given
+		_, mngr := windowFixture(t,
+			tombstoneOf(givenSimpleMessage("a", "deleted", "o1")),
+			tombstoneOf(givenSimpleMessage("b", "deleted", "o2")))
+		mngr.Lock()
+		defer mngr.Unlock()
+
+		// when
+		_, ok, err := mngr.GetLastMessage()
+
+		// then
+		require.NoError(t, err)
+		assert.False(t, ok)
+	})
+}
