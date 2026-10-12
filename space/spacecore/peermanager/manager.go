@@ -126,12 +126,14 @@ type clientPeerManager struct {
 	// nodeLookupRunning keeps one node lookup in flight at a time: a fetch that
 	// finds it set runs only the local pass. nodeLookupDone receives a signal
 	// after each lookup, so the manage loop re-arms its cadence from the verdict.
-	// rebuiltDuringLookup is set by every rebuild signal and cleared as a lookup
-	// starts; a lookup that finds it set again when it ends may hold a verdict
-	// from before the change (see refetchAfterLookup).
-	nodeLookupRunning   atomic.Bool
-	nodeLookupDone      chan struct{}
-	rebuiltDuringLookup atomic.Bool
+	// rebuildGen counts rebuild signals; each lookup compares it with the value
+	// it saw at its start (see refetchAfterLookup).
+	nodeLookupRunning atomic.Bool
+	nodeLookupDone    chan struct{}
+	rebuildGen        atomic.Uint64
+	// lookupReleased, when set (tests only), runs right after a lookup releases
+	// the slot, before refetchAfterLookup
+	lookupReleased func()
 	// consecutiveFetchFailures counts failed node lookups since the last
 	// success or rebuild signal. A rebuild signal resets it so every fresh
 	// connectivity event gets its own fast-retry window, even when the
@@ -198,7 +200,7 @@ func (n *clientPeerManager) Run(ctx context.Context) (err error) {
 // failures must not slow the retries that follow.
 func (n *clientPeerManager) signalRebuild() {
 	n.consecutiveFetchFailures.Store(0)
-	n.rebuiltDuringLookup.Store(true)
+	n.rebuildGen.Inc()
 	n.signalFetch()
 }
 
@@ -402,12 +404,15 @@ func (n *clientPeerManager) startNodeLookup() {
 	if !n.nodeLookupRunning.CompareAndSwap(false, true) {
 		return
 	}
-	// this lookup dials after every rebuild signalled so far
-	n.rebuiltDuringLookup.Store(false)
+	// read before the dial: every rebuild counted so far is behind this lookup
+	startGen := n.rebuildGen.Load()
 	go func() {
 		defer func() {
 			n.nodeLookupRunning.Store(false)
-			n.refetchAfterLookup()
+			if n.lookupReleased != nil {
+				n.lookupReleased()
+			}
+			n.refetchAfterLookup(startGen)
 			select {
 			case n.nodeLookupDone <- struct{}{}:
 			default:
@@ -417,29 +422,32 @@ func (n *clientPeerManager) startNodeLookup() {
 	}()
 }
 
-// refetchAfterLookup asks for another fetch, now that it can start a lookup,
-// when the verdict just applied may already be out of date. A fetch requested
-// meanwhile found the lookup in flight and ran only the local pass, so without
-// this the space would wait for the next tick (5s-2min):
-//   - a rebuild was signalled while the lookup ran, e.g. after it failed and
-//     before it let go: the reachable node waited for the fast retry, where the
-//     synchronous loop took the pending rebuild at once;
+// refetchAfterLookup asks for another fetch when the verdict just applied may
+// already be out of date. A fetch requested meanwhile found the lookup in
+// flight and ran only the local pass, so the space would otherwise wait for
+// the next tick (5s-2min):
+//   - a rebuild was signalled since this lookup started (startGen): a node
+//     reachable again would wait for the fast retry, where the synchronous
+//     loop took the pending rebuild at once;
 //   - the node it served is closed already: closed on arrival (a flush raced
 //     the lookup), it was never published, so no watcher reports it; closed
 //     while the lookup was finishing, its watcher's fetch was spent.
 //
-// Plain fetch signals and cadence ticks are not replayed: after a long offline
-// walk they would start another at once. At most once per lookup, and the next
-// one replaces the node, so a closed node cannot spin the loop.
-func (n *clientPeerManager) refetchAfterLookup() {
-	rebuilt := n.rebuiltDuringLookup.Swap(false)
+// It runs after the slot is released and consumes nothing, so lookups whose
+// tails overlap cannot take each other's requests: a lookup holding the slot
+// when this fetch lands runs the same check when it ends, against what it saw
+// at its own start. Plain fetch signals and cadence ticks are not replayed:
+// after a long offline walk they would start another at once. At most once
+// per lookup, and the next one replaces the node, so a closed node cannot spin
+// the loop.
+func (n *clientPeerManager) refetchAfterLookup(startGen uint64) {
 	if n.ctx.Err() != nil {
 		return
 	}
 	n.Lock()
 	closed := n.nodePeer != nil && n.nodePeer.IsClosed()
 	n.Unlock()
-	if rebuilt || closed {
+	if closed || n.rebuildGen.Load() != startGen {
 		n.signalFetch()
 	}
 }

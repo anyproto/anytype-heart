@@ -1184,6 +1184,67 @@ func Test_manageResponsiblePeers_rebuildDuringLookupIsReplayed(t *testing.T) {
 	}
 }
 
+// Lookup tails can overlap: lookup A releases the slot and, before it checks
+// its verdict, a fetch starts lookup B, which fails and sits in Refresh while
+// a rebuild is signalled (its fetch finds B in flight). Whatever A does in its
+// tail, B must still replay that rebuild when it lets go, or the node, reachable
+// again, waits for the 5s retry.
+func Test_manageResponsiblePeers_overlappingLookupTailsKeepTheRebuild(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		// given: lookup A is paused between releasing the slot and its check
+		spaceId := "spaceId"
+		f := newFixtureManager(t, spaceId)
+		f.cm.ctx, f.cm.ctxCancel = context.WithCancel(context.Background())
+		start := time.Now()
+		lookupStarts := make(chan time.Duration, 8)
+		var lookups atomic.Int32
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).DoAndReturn(
+			func(ctx context.Context, ids []string) (peer.Peer, error) {
+				lookupStarts <- time.Since(start)
+				if lookups.Inc() <= 2 {
+					return nil, fmt.Errorf("unable to connect")
+				}
+				return newTestPeer("node"), nil
+			}).AnyTimes()
+		releaseRefreshB := make(chan struct{})
+		var refreshes atomic.Int32
+		f.updater.EXPECT().Refresh(spaceId).Run(func(string) {
+			if refreshes.Inc() == 2 {
+				<-releaseRefreshB
+			}
+		})
+		releaseTailA := make(chan struct{})
+		var tails atomic.Int32
+		f.cm.lookupReleased = func() {
+			if tails.Inc() == 1 {
+				<-releaseTailA
+			}
+		}
+		go f.cm.manageResponsiblePeers()
+		synctest.Wait()
+
+		// when: a fetch starts lookup B, which fails and is held in Refresh
+		f.cm.signalFetch()
+		synctest.Wait()
+		// a rebuild lands while B holds the slot
+		f.cm.signalRebuild()
+		synctest.Wait()
+		// A finishes its tail, then B finishes
+		close(releaseTailA)
+		synctest.Wait()
+		close(releaseRefreshB)
+		synctest.Wait()
+
+		// then: the rebuild starts a third lookup at once
+		var got []time.Duration
+		for len(lookupStarts) > 0 {
+			got = append(got, <-lookupStarts)
+		}
+		assert.Equal(t, []time.Duration{0, 0, 0}, got, "lookup starts")
+		f.cm.ctxCancel()
+	})
+}
+
 // The Pick after a failed dial shares the dial's budget. ocache.Pick waits on
 // a loading entry (another space's dial of the same peer), so given a budget
 // of its own, or the manager ctx, one stale peer would hold the whole pass,
