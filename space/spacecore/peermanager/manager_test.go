@@ -808,19 +808,19 @@ func Test_fetchResponsiblePeers_nodeVerdictAndLocalPassAreIndependent(t *testing
 	}
 }
 
-// A pass serves each local peer as it lands without dropping the ones it has
-// not reached yet: a stale entry burning its dial budget must not hide the
-// healthy peers listed after it.
-func Test_fetchLocalPeers_unreachedPeersStayServed(t *testing.T) {
-	// given: the previous pass served three peers; the middle one's
-	// connection died with the old network
+// A pass serves each local peer the moment it lands and keeps serving the
+// ones it has not reached yet: a stale entry burning its dial budget must
+// neither hold back the peers found before it nor hide the ones listed after.
+func Test_fetchLocalPeers_servesPeersAsTheyLand(t *testing.T) {
+	// given: peerA was just discovered; the previous pass served peerB and a
+	// peer whose connection died with the old network
 	spaceId := "spaceId"
 	f := newFixtureManager(t, spaceId)
 	peerA, stale, peerB := newTestPeer("peerA"), newTestPeer("stalePeer"), newTestPeer("peerB")
 	for _, p := range []*testPeer{peerA, stale, peerB} {
 		f.store.UpdateLocalPeer(p.Id(), []string{spaceId})
 	}
-	f.cm.setLocalPeers([]peer.Peer{peerA, stale, peerB})
+	f.cm.setLocalPeers([]peer.Peer{stale, peerB})
 	require.NoError(t, stale.Close())
 
 	dialStarted := make(chan struct{})
@@ -844,10 +844,11 @@ func Test_fetchLocalPeers_unreachedPeersStayServed(t *testing.T) {
 	}()
 	<-dialStarted
 
-	// then: peerB, not reached yet, is still served
+	// then: while the pass is parked on the stale peer
 	peers, err := f.cm.GetResponsiblePeers(context.Background())
 	require.NoError(t, err)
-	assert.Equal(t, want, peerIds(peers))
+	assert.Contains(t, peerIds(peers), "peerA", "a peer the pass has found must be served at once")
+	assert.Contains(t, peerIds(peers), "peerB", "a peer the pass has not reached yet must stay served")
 
 	// and after the pass the list is exactly what it found
 	close(releaseDial)
@@ -908,6 +909,49 @@ func Test_fetchLocalPeers_noEvictionWhenClosing(t *testing.T) {
 
 	// then
 	assert.Equal(t, []string{"localPeer"}, f.store.LocalPeerIds(spaceId), "a closing manager must not evict local peers")
+}
+
+// The node lookup outlives Close until GetOneOf returns (a cgo DNS resolve does
+// not honour the ctx). A result that lands after Close is void: no status
+// change, no served node, no sync-status refresh, no reconnect kick.
+func Test_lookupNode_resultAfterCloseIsVoid(t *testing.T) {
+	// given: a lookup in flight while the node is unreachable
+	spaceId := "spaceId"
+	f := newFixtureManager(t, spaceId)
+	f.cm.ctx, f.cm.ctxCancel = context.WithCancel(context.Background())
+	f.cm.nodeStatus.SetNodesStatus(spaceId, nodestatus.ConnectionError)
+	hs := &headSyncStub{kicked: make(chan struct{}, 1)}
+	f.cm.headSync = hs
+	lookupStarted := make(chan struct{})
+	releaseNode := make(chan struct{})
+	f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, ids []string) (peer.Peer, error) {
+			close(lookupStarted)
+			<-releaseNode
+			return newTestPeer("node"), nil
+		})
+	f.peerToPeerStatus.EXPECT().UnregisterSpace(spaceId)
+	// no Refresh expected: the mock fails the test on an unexpected call
+	f.cm.startNodeLookup()
+	<-lookupStarted
+
+	// when: the manager closes, then the walk returns a node
+	require.NoError(t, f.cm.Close(context.Background()))
+	close(releaseNode)
+	f.waitNodeVerdict(t)
+
+	// then
+	assert.Equal(t, nodestatus.ConnectionError, f.cm.nodeStatus.GetNodeStatus(spaceId))
+	f.cm.Lock()
+	assert.Nil(t, f.cm.nodePeer)
+	assert.Empty(t, f.cm.responsiblePeers)
+	f.cm.Unlock()
+	select {
+	case <-hs.kicked:
+		t.Fatal("a closed manager must not kick a diff round")
+	default:
+	}
+	assert.Equal(t, int64(0), f.cm.p.stats.reconnectDiffKicks.Load())
 }
 
 // The node verdict decides the cadence. With the lookup off the loop, a failed
