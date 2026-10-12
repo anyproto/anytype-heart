@@ -117,23 +117,36 @@ func (fx *fixture) messageCount(t *testing.T) int32 {
 	return resp.MessageCount
 }
 
-// wantTombstone is the stored form of a deleted comment: what the reader sees.
-func wantTombstone(got *chatmodel.Message, creator, replyTo string) *model.ChatMessage {
+// wantTombstone is the stored form of a deleted comment, built from the message as it was
+// before the delete: its id, author, time, reply target, place and sync flag stay.
+func wantTombstone(before *chatmodel.Message) *model.ChatMessage {
 	return &model.ChatMessage{
-		Id:               got.Id,
-		OrderId:          got.OrderId,
-		Creator:          creator,
-		CreatedAt:        got.CreatedAt,
-		StateId:          got.StateId,
-		ReplyToMessageId: replyTo,
+		Id:               before.Id,
+		OrderId:          before.OrderId,
+		Creator:          before.Creator,
+		CreatedAt:        before.CreatedAt,
+		StateId:          before.StateId,
+		ReplyToMessageId: before.ReplyToMessageId,
 		Message:          &model.ChatMessageMessageContent{Marks: []*model.BlockContentTextMark{}},
 		Attachments:      []*model.ChatMessageAttachment{},
 		Reactions:        &model.ChatMessageReactions{},
 		Read:             true,
 		MentionRead:      true,
-		Synced:           got.Synced,
+		Synced:           before.Synced,
 		Deleted:          true,
 	}
+}
+
+// rawOrders is the stored order object (_o) of a message: the delete must leave it untouched.
+func (fx *fixture) rawOrders(t *testing.T, id string) string {
+	t.Helper()
+	coll, err := fx.store.Collection(context.Background(), CollectionName)
+	require.NoError(t, err)
+	doc, err := coll.FindId(context.Background(), id)
+	require.NoError(t, err)
+	orders := doc.Value().Get(chatmodel.OrderKey)
+	require.NotNil(t, orders)
+	return orders.String()
 }
 
 func TestCreateNeverArrivesDeleted(t *testing.T) {
@@ -180,15 +193,18 @@ func TestDiscussionDeleteLeavesTombstone(t *testing.T) {
 		id := fx.createAs(t, alice, msg)
 		fx.pushAs(t, alice, editBuilder(t, id, "edited"))
 		fx.pushAs(t, alice, pinBuilder(t, id))
+		before := fx.getMessage(t, id)
+		ordersBefore := fx.rawOrders(t, id)
+		require.Equal(t, "replyToMessageId1", before.ReplyToMessageId)
+		require.NotZero(t, before.CreatedAt)
 
 		// when
 		fx.pushAs(t, alice, deleteBuilder(id))
 
 		// then
 		got := fx.getMessage(t, id)
-		assert.Equal(t, wantTombstone(got, alice, "replyToMessageId1"), got.ChatMessage)
-		assert.NotZero(t, got.CreatedAt)
-		assert.NotEmpty(t, got.OrderId)
+		assert.Equal(t, wantTombstone(before), got.ChatMessage)
+		assert.Equal(t, ordersBefore, fx.rawOrders(t, id))
 		resp, err := fx.GetMessages(context.Background(), chatrepositoryGetAll)
 		require.NoError(t, err)
 		require.Len(t, resp.Messages, 1, "the tombstone stays in the list")
@@ -242,27 +258,29 @@ func TestDiscussionDeleteLeavesTombstone(t *testing.T) {
 		assert.Equal(t, "hello", got.Message.Text)
 	})
 
-	t.Run("an Owner or Admin can delete someone else's comment", func(t *testing.T) {
-		// given
-		exec := list.NewAclExecutor("space")
-		for _, cmd := range []string{"a.init::a", "a.invite::invId", "adm.join::invId", "a.approve::adm,adm", "writer.join::invId", "a.approve::writer,rw"} {
-			require.NoError(t, exec.Execute(cmd), cmd)
-		}
-		acl := exec.ActualAccounts()["a"].Acl
-		admin := exec.ActualAccounts()["adm"].Keys.SignKey.GetPublic().Account()
-		writer := exec.ActualAccounts()["writer"].Keys.SignKey.GetPublic().Account()
-		fx := newFixture(t, asDiscussion("parentId"))
-		fx.chatHandler.aclList = acl
-		id := fx.createAs(t, writer, givenSimpleMessage("hello"))
+	for _, moderator := range []string{"a", "adm"} {
+		t.Run("a moderator can delete someone else's comment: "+map[string]string{"a": "Owner", "adm": "Admin"}[moderator], func(t *testing.T) {
+			// given
+			exec := list.NewAclExecutor("space")
+			for _, cmd := range []string{"a.init::a", "a.invite::invId", "adm.join::invId", "a.approve::adm,adm", "writer.join::invId", "a.approve::writer,rw"} {
+				require.NoError(t, exec.Execute(cmd), cmd)
+			}
+			acl := exec.ActualAccounts()["a"].Acl
+			deleter := exec.ActualAccounts()[moderator].Keys.SignKey.GetPublic().Account()
+			writer := exec.ActualAccounts()["writer"].Keys.SignKey.GetPublic().Account()
+			fx := newFixture(t, asDiscussion("parentId"))
+			fx.chatHandler.aclList = acl
+			id := fx.createAs(t, writer, givenSimpleMessage("hello"))
+			before := fx.getMessage(t, id)
 
-		// when
-		_, err := fx.push(admin, acl.Head().Id, deleteBuilder(id))
+			// when
+			_, err := fx.push(deleter, acl.Head().Id, deleteBuilder(id))
 
-		// then
-		require.NoError(t, err)
-		got := fx.getMessage(t, id)
-		assert.Equal(t, wantTombstone(got, writer, ""), got.ChatMessage)
-	})
+			// then
+			require.NoError(t, err)
+			assert.Equal(t, wantTombstone(before), fx.getMessage(t, id).ChatMessage)
+		})
+	}
 
 	t.Run("a second delete changes nothing", func(t *testing.T) {
 		// given
@@ -272,6 +290,13 @@ func TestDiscussionDeleteLeavesTombstone(t *testing.T) {
 		before := fx.getMessage(t, id)
 		subscribeForEvents(t, fx)
 		fx.events = nil
+		require.NoError(t, fx.storeFixture.ClearFullTextQueue([]string{testSpaceId}))
+		var observed []chatsubscription.ChatChange
+		fx.subscription.Lock()
+		fx.subscription.AddObserver("test", func(change chatsubscription.ChatChange) {
+			observed = append(observed, change)
+		})
+		fx.subscription.Unlock()
 
 		// when
 		fx.pushAs(t, bob, deleteBuilder(id))
@@ -281,6 +306,14 @@ func TestDiscussionDeleteLeavesTombstone(t *testing.T) {
 		for _, ev := range fx.events {
 			assert.Nil(t, ev.GetChatUpdate(), "no event for a message that is already deleted")
 			assert.Nil(t, ev.GetChatDelete())
+		}
+		for _, change := range observed {
+			assert.Equal(t, chatsubscription.ChatChangeStateUpdated, change.Kind, "observers see no message change")
+		}
+		queued, err := fx.storeFixture.ListIdsFromFullTextQueue([]string{testSpaceId}, 0)
+		require.NoError(t, err)
+		for _, entry := range queued {
+			assert.Empty(t, entry.DeletedMsgIds, "no fulltext work for a message that is already deleted")
 		}
 	})
 }
@@ -303,6 +336,8 @@ func TestDeleteWinsOverConcurrentModifies(t *testing.T) {
 			// given
 			fx := newFixture(t, asDiscussion("parentId"))
 			id := fx.createAs(t, alice, givenSimpleMessage("hello"))
+			before := fx.getMessage(t, id)
+			ordersBefore := fx.rawOrders(t, id)
 			fx.pushAs(t, alice, deleteBuilder(id))
 			creator, builder := modify(t, id)
 
@@ -310,8 +345,8 @@ func TestDeleteWinsOverConcurrentModifies(t *testing.T) {
 			fx.pushAs(t, creator, builder)
 
 			// then
-			got := fx.getMessage(t, id)
-			assert.Equal(t, wantTombstone(got, alice, ""), got.ChatMessage)
+			assert.Equal(t, wantTombstone(before), fx.getMessage(t, id).ChatMessage)
+			assert.Equal(t, ordersBefore, fx.rawOrders(t, id), "the dropped modify leaves no order behind")
 		})
 
 		t.Run(name+" applied before the delete is cleared", func(t *testing.T) {
@@ -320,13 +355,13 @@ func TestDeleteWinsOverConcurrentModifies(t *testing.T) {
 			id := fx.createAs(t, alice, givenSimpleMessage("hello"))
 			creator, builder := modify(t, id)
 			fx.pushAs(t, creator, builder)
+			before := fx.getMessage(t, id)
 
 			// when
 			fx.pushAs(t, alice, deleteBuilder(id))
 
 			// then
-			got := fx.getMessage(t, id)
-			assert.Equal(t, wantTombstone(got, alice, ""), got.ChatMessage)
+			assert.Equal(t, wantTombstone(before), fx.getMessage(t, id).ChatMessage)
 		})
 	}
 }
@@ -340,6 +375,7 @@ func TestReplayBuildsTombstone(t *testing.T) {
 		ReplyToMessageId: id,
 		Message:          &model.ChatMessageMessageContent{Text: "reply"},
 	}})
+	before := fx.getMessage(t, id)
 	fx.pushAs(t, alice, deleteBuilder(id))
 	coll, err := fx.store.Collection(ctx, CollectionName)
 	require.NoError(t, err)
@@ -352,7 +388,9 @@ func TestReplayBuildsTombstone(t *testing.T) {
 
 	// then
 	got := fx.getMessage(t, id)
-	assert.Equal(t, wantTombstone(got, alice, ""), got.ChatMessage)
+	want := wantTombstone(before)
+	want.StateId = got.StateId // a store stamps its own state id when it stores a create
+	assert.Equal(t, want, got.ChatMessage)
 	assert.Equal(t, "reply", fx.getMessage(t, replyId).Message.Text)
 }
 
@@ -496,11 +534,15 @@ func TestDeletedCommentLeavesTheCounters(t *testing.T) {
 		subscribeForEvents(t, fx)
 		tx, err := fx.store.NewTx(ctx)
 		require.NoError(t, err)
+		// A mentions me, so it is both an unread message and an unread mention
 		createA, createB := &storestate.Builder{}, &storestate.Builder{}
-		for _, b := range []*storestate.Builder{createA, createB} {
+		for b, msg := range map[*storestate.Builder]*chatmodel.Message{
+			createA: givenMessageWithMention("@me"),
+			createB: givenSimpleMessage("hello"),
+		} {
 			arena := &anyenc.Arena{}
 			obj := arena.NewObject()
-			givenSimpleMessage("hello").MarshalAnyenc(obj, arena)
+			msg.MarshalAnyenc(obj, arena)
 			require.NoError(t, b.Create(CollectionName, storestate.IdFromChange, obj))
 		}
 		idA, idB := bson.NewObjectId().Hex(), bson.NewObjectId().Hex()
@@ -524,6 +566,7 @@ func TestDeletedCommentLeavesTheCounters(t *testing.T) {
 			if st := ev.GetChatStateUpdate(); st != nil {
 				states++
 				assert.Equal(t, int32(0), st.State.Messages.Counter, "A is deleted and B is read")
+				assert.Equal(t, int32(0), st.State.Mentions.Counter, "A, the mention, is deleted")
 			}
 			if count := ev.GetChatUpdateMessageCount(); count != nil {
 				assert.Equal(t, int32(1), count.MessageCount)
