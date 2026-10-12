@@ -126,8 +126,12 @@ type clientPeerManager struct {
 	// nodeLookupRunning keeps one node lookup in flight at a time: a fetch that
 	// finds it set runs only the local pass. nodeLookupDone receives a signal
 	// after each lookup, so the manage loop re-arms its cadence from the verdict.
-	nodeLookupRunning atomic.Bool
-	nodeLookupDone    chan struct{}
+	// rebuiltDuringLookup is set by every rebuild signal and cleared as a lookup
+	// starts; a lookup that finds it set again when it ends may hold a verdict
+	// from before the change (see refetchAfterLookup).
+	nodeLookupRunning   atomic.Bool
+	nodeLookupDone      chan struct{}
+	rebuiltDuringLookup atomic.Bool
 	// consecutiveFetchFailures counts failed node lookups since the last
 	// success or rebuild signal. A rebuild signal resets it so every fresh
 	// connectivity event gets its own fast-retry window, even when the
@@ -194,6 +198,7 @@ func (n *clientPeerManager) Run(ctx context.Context) (err error) {
 // failures must not slow the retries that follow.
 func (n *clientPeerManager) signalRebuild() {
 	n.consecutiveFetchFailures.Store(0)
+	n.rebuiltDuringLookup.Store(true)
 	n.signalFetch()
 }
 
@@ -397,10 +402,12 @@ func (n *clientPeerManager) startNodeLookup() {
 	if !n.nodeLookupRunning.CompareAndSwap(false, true) {
 		return
 	}
+	// this lookup dials after every rebuild signalled so far
+	n.rebuiltDuringLookup.Store(false)
 	go func() {
 		defer func() {
 			n.nodeLookupRunning.Store(false)
-			n.refetchIfNodeClosed()
+			n.refetchAfterLookup()
 			select {
 			case n.nodeLookupDone <- struct{}{}:
 			default:
@@ -410,21 +417,29 @@ func (n *clientPeerManager) startNodeLookup() {
 	}()
 }
 
-// refetchIfNodeClosed asks for another fetch, now that it can start a lookup,
-// when the node this lookup served is closed already. Closed on arrival (a
-// flush raced the lookup), it was never published, so no watcher reports it;
-// closed while the lookup was finishing, its watcher's fetch found the lookup
-// still in flight and ran only the local pass. Either way the space would wait
-// for the next tick without a node. At most once per lookup, and the next one
-// replaces the node, so a closed node cannot spin the loop.
-func (n *clientPeerManager) refetchIfNodeClosed() {
+// refetchAfterLookup asks for another fetch, now that it can start a lookup,
+// when the verdict just applied may already be out of date. A fetch requested
+// meanwhile found the lookup in flight and ran only the local pass, so without
+// this the space would wait for the next tick (5s-2min):
+//   - a rebuild was signalled while the lookup ran, e.g. after it failed and
+//     before it let go: the reachable node waited for the fast retry, where the
+//     synchronous loop took the pending rebuild at once;
+//   - the node it served is closed already: closed on arrival (a flush raced
+//     the lookup), it was never published, so no watcher reports it; closed
+//     while the lookup was finishing, its watcher's fetch was spent.
+//
+// Plain fetch signals and cadence ticks are not replayed: after a long offline
+// walk they would start another at once. At most once per lookup, and the next
+// one replaces the node, so a closed node cannot spin the loop.
+func (n *clientPeerManager) refetchAfterLookup() {
+	rebuilt := n.rebuiltDuringLookup.Swap(false)
 	if n.ctx.Err() != nil {
 		return
 	}
 	n.Lock()
 	closed := n.nodePeer != nil && n.nodePeer.IsClosed()
 	n.Unlock()
-	if closed {
+	if rebuilt || closed {
 		n.signalFetch()
 	}
 }

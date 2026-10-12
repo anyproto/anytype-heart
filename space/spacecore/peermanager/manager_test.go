@@ -1120,6 +1120,112 @@ func Test_manageResponsiblePeers_closedNodeIsLookedUpAgainAtOnce(t *testing.T) {
 	}
 }
 
+// A connectivity rebuild that lands while a lookup still holds the
+// single-flight slot (here: held in Refresh after a failure) finds the lookup
+// in flight and runs only the local pass; the verdict predates the change, so
+// the lookup must replay the rebuild once it lets go, as the synchronous loop
+// did, instead of leaving a reachable node to the 5s retry. Plain fetch
+// signals are not replayed (a long offline walk would otherwise be followed by
+// another at once), and a rebuild while no lookup runs costs one lookup.
+func Test_manageResponsiblePeers_rebuildDuringLookupIsReplayed(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		signal func(cm *clientPeerManager)
+		want   []time.Duration
+	}{
+		{name: "rebuild", signal: (*clientPeerManager).signalRebuild, want: []time.Duration{0, 0}},
+		{name: "plain fetch signal", signal: (*clientPeerManager).signalFetch, want: []time.Duration{0}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				// given: the first lookup failed and is held in Refresh
+				spaceId := "spaceId"
+				f := newFixtureManager(t, spaceId)
+				f.cm.ctx, f.cm.ctxCancel = context.WithCancel(context.Background())
+				start := time.Now()
+				lookupStarts := make(chan time.Duration, 8)
+				var lookups atomic.Int32
+				f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).DoAndReturn(
+					func(ctx context.Context, ids []string) (peer.Peer, error) {
+						lookupStarts <- time.Since(start)
+						if lookups.Inc() == 1 {
+							return nil, fmt.Errorf("unable to connect")
+						}
+						return newTestPeer("node"), nil
+					}).AnyTimes()
+				releaseRefresh := make(chan struct{})
+				f.updater.EXPECT().Refresh(spaceId).Run(func(string) { <-releaseRefresh }).Once()
+				f.updater.EXPECT().Refresh(spaceId).Maybe()
+				drain := func() (got []time.Duration) {
+					for len(lookupStarts) > 0 {
+						got = append(got, <-lookupStarts)
+					}
+					return got
+				}
+				go f.cm.manageResponsiblePeers()
+				synctest.Wait()
+				tc.signal(f.cm)
+				synctest.Wait()
+
+				// when: the first lookup finishes
+				close(releaseRefresh)
+				synctest.Wait()
+
+				// then
+				assert.Equal(t, tc.want, drain(), "lookup starts")
+
+				// and a rebuild while no lookup runs costs exactly one
+				f.cm.signalRebuild()
+				synctest.Wait()
+				assert.Equal(t, []time.Duration{0}, drain(), "a rebuild while idle must cost one lookup")
+				f.cm.ctxCancel()
+			})
+		})
+	}
+}
+
+// The Pick after a failed dial shares the dial's budget. ocache.Pick waits on
+// a loading entry (another space's dial of the same peer), so given a budget
+// of its own, or the manager ctx, one stale peer would hold the whole pass,
+// and every peer behind it, far past its 2s.
+func Test_fetchLocalPeers_pickSharesTheDialBudget(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		// given
+		spaceId := "spaceId"
+		f := newFixtureManager(t, spaceId)
+		f.cm.ctx, f.cm.ctxCancel = context.WithCancel(context.Background())
+		defer f.cm.ctxCancel()
+		f.store.UpdateLocalPeer("stalePeer", []string{spaceId})
+		f.store.UpdateLocalPeer("healthyPeer", []string{spaceId})
+		untilDone := func(ctx context.Context, id string) (peer.Peer, error) {
+			<-ctx.Done()
+			return nil, ctx.Err()
+		}
+		f.pool.EXPECT().Get(gomock.Any(), "stalePeer").DoAndReturn(untilDone)
+		f.pool.EXPECT().Pick(gomock.Any(), "stalePeer").DoAndReturn(untilDone)
+		f.pool.EXPECT().Get(gomock.Any(), "healthyPeer").Return(newTestPeer("healthyPeer"), nil)
+		start := time.Now()
+
+		// when
+		passDone := make(chan time.Duration, 1)
+		go func() {
+			f.cm.fetchLocalPeers()
+			passDone <- time.Since(start)
+		}()
+
+		// then
+		select {
+		case got := <-passDone:
+			assert.Equal(t, localPeerDialTimeout, got, "the stale peer must cost one 2s budget, Pick included")
+		case <-time.After(time.Minute):
+			t.Fatal("the local pass must not wait on Pick past the dial budget")
+		}
+		peers, err := f.cm.GetResponsiblePeers(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, []string{"healthyPeer"}, peerIds(peers))
+	})
+}
+
 // The LAN twin: a connection that is closed by the time the pass serves it
 // (the peer reconnecting) is left out and asks for another pass at once, which
 // serves the new connection, while the node lookup walks on.
