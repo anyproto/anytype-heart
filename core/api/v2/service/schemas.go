@@ -233,6 +233,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		endpoint: "POST /v2/spaces/{space_id}/chats/{chat_id}/status",
 		schema: `{"type":"object","additionalProperties":false,"description":"ephemeral activity; the encoded JSON payload must fit in 65508 bytes, including field names and escaping","properties":{` +
 			`"text":{"type":"string","maxLength":65497,"description":"optional display text; empty or omitted is left out of the pubsub payload so receivers can show a localized typing label; JSON escaping and data consume the same byte budget"},` +
+			`"reply_to":{"type":"string","maxLength":256,"description":"optional id of the message the activity answers; in a discussion, clients show the activity in that message's thread, or at the discussion level when it is omitted. Not checked against the chat"},` +
 			`"data":{"description":"optional arbitrary JSON value: object, array, string, number, boolean or null"}}}`,
 		example: `{"text":"Searching documentation","data":{"tool_call":"web_search"}}`,
 	},

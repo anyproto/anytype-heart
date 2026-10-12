@@ -259,6 +259,13 @@ wire, allowing clients to show their localized typing label. `data` is optional
 and accepts any JSON value, including arrays, scalars, and null. The encoded
 JSON payload, including field names and escaping, must fit in 65,508 bytes.
 
+`reply_to` is the optional id of the message the activity answers, up to 256
+bytes. In a discussion, clients show the activity in that message's thread; any
+message of the thread works, as for a reply. Without it, or when the client
+does not have that message, the activity shows at the discussion level. Send
+the same `reply_to` you will give the reply. It is published as given, not
+checked against the chat.
+
 Success is `200 {}` and means the update was accepted for publication. The
 Space's pubsub topic is `status/<chat_id>`; subscribers receive
 `Event.Pubsub.Message` with the verified sender identity. Status is neither

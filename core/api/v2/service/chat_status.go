@@ -16,6 +16,13 @@ func (s *Service) PublishChatStatus(ctx context.Context, spaceId, chatId string,
 	if _, err := s.ensureChatWrite(ctx, spaceId, chatId); err != nil {
 		return nil, err
 	}
+	if len(req.ReplyTo) > v2model.MaxChatStatusReplyTo {
+		return nil, v2model.ValidationFailed("reply_to is too long", v2model.Issue{
+			Path:    "/reply_to",
+			Message: fmt.Sprintf("reply_to is %d bytes — the cap is %d", len(req.ReplyTo), v2model.MaxChatStatusReplyTo),
+			Hint:    "send the id of the message being answered",
+		})
+	}
 	payload, err := json.Marshal(req)
 	if err != nil {
 		return nil, v2model.ValidationFailed("invalid status data",
