@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/peer"
+	"github.com/anyproto/any-sync/net/pool"
 	"github.com/anyproto/any-sync/net/pool/mock_pool"
 	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
 	"github.com/stretchr/testify/assert"
@@ -548,6 +549,7 @@ func Test_provider_ProvideStat(t *testing.T) {
 	p.onConnectivityChange(false)
 	p.stats.reconnectDiffKicks.Inc()
 	p.stats.closedPeersFiltered.Add(3)
+	p.stats.localPeerSignals.Add(2)
 
 	st := p.ProvideStat().(providerStat)
 	assert.Equal(t, 2, st.Managers)
@@ -556,6 +558,7 @@ func Test_provider_ProvideStat(t *testing.T) {
 	assert.Equal(t, int64(4), st.RebuildSignals, "one signal per manager per event")
 	assert.Equal(t, int64(1), st.ReconnectDiffKicks)
 	assert.Equal(t, int64(3), st.ClosedPeersFiltered)
+	assert.Equal(t, int64(2), st.LocalPeerSignals)
 }
 
 func Test_nextCheckInterval_fastRetryAfterFailure(t *testing.T) {
@@ -948,6 +951,58 @@ func Test_watchPeer_reconnectedPeerIsWatched(t *testing.T) {
 
 	// then
 	f.waitFetchSignal(t)
+}
+
+// A LAN peer joining a space signals that space's manager, so the peer is
+// served now rather than at the next cadence tick. Only a real change does:
+// the store drops an unchanged list, and removals are the managers' own doing.
+func Test_provider_onLocalPeerUpdated(t *testing.T) {
+	// given
+	ctrl := gomock.NewController(t)
+	poolService := mock_pool.NewMockService(ctrl)
+	poolService.EXPECT().Name().Return(pool.CName).AnyTimes()
+	store := peerstore.New()
+	a := &app.App{}
+	a.Register(store)
+	a.Register(poolService)
+	p := New().(*provider)
+	require.NoError(t, p.Init(a))
+	cmA := &clientPeerManager{spaceId: "A", rebuildResponsiblePeers: make(chan struct{}, 1)}
+	cmB := &clientPeerManager{spaceId: "B", rebuildResponsiblePeers: make(chan struct{}, 1)}
+	p.registerManager(cmA)
+	p.registerManager(cmB)
+	cmA.consecutiveFetchFailures.Store(fastRetryMaxAttempts + 1)
+	signalled := func() (spaceIds []string) {
+		for _, cm := range []*clientPeerManager{cmA, cmB} {
+			select {
+			case <-cm.rebuildResponsiblePeers:
+				spaceIds = append(spaceIds, cm.spaceId)
+			default:
+			}
+		}
+		return spaceIds
+	}
+
+	for _, tc := range []struct {
+		name   string
+		update func()
+		want   []string
+	}{
+		{name: "joins A", update: func() { store.UpdateLocalPeer("peer", []string{"A"}) }, want: []string{"A"}},
+		{name: "unchanged list", update: func() { store.UpdateLocalPeer("peer", []string{"A"}) }},
+		{name: "joins B too", update: func() { store.UpdateLocalPeer("peer", []string{"A", "B"}) }, want: []string{"B"}},
+		{name: "leaves A", update: func() { store.UpdateLocalPeer("peer", []string{"B"}) }},
+		{name: "evicted", update: func() { store.RemoveLocalPeer("peer") }},
+		{name: "back after eviction", update: func() { store.UpdateLocalPeer("peer", []string{"A", "B"}) }, want: []string{"A", "B"}},
+	} {
+		// when
+		tc.update()
+
+		// then
+		assert.Equal(t, tc.want, signalled(), tc.name)
+	}
+	assert.Equal(t, fastRetryMaxAttempts+1, int(cmA.consecutiveFetchFailures.Load()), "a LAN event opens no fast-retry window")
+	assert.Equal(t, int64(4), p.stats.localPeerSignals.Load())
 }
 
 func peerIds(peers []peer.Peer) []string {

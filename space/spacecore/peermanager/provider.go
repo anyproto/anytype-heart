@@ -13,10 +13,13 @@ Scope: global
   connectivity recovery (network switch, wake, interface change) it signals an
   immediate responsible-peers rebuild; while the device is known offline the
   managers stretch their re-dial cadence
+- Signals a re-fetch to the managers of the spaces a local (LAN) peer joins,
+  so its connection is served without waiting for the next cadence tick
 */
 
 import (
 	"context"
+	"slices"
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
@@ -24,6 +27,7 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/net/pool"
+	"github.com/samber/lo"
 	"go.uber.org/atomic"
 
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
@@ -70,6 +74,7 @@ type providerStats struct {
 	rebuildSignals      atomic.Int64
 	reconnectDiffKicks  atomic.Int64
 	closedPeersFiltered atomic.Int64
+	localPeerSignals    atomic.Int64
 }
 
 type providerStat struct {
@@ -79,6 +84,7 @@ type providerStat struct {
 	RebuildSignals      int64 `json:"rebuildSignals"`
 	ReconnectDiffKicks  int64 `json:"reconnectDiffKicks"`
 	ClosedPeersFiltered int64 `json:"closedPeersFiltered"`
+	LocalPeerSignals    int64 `json:"localPeerSignals"`
 }
 
 func (p *provider) ProvideStat() any {
@@ -92,6 +98,7 @@ func (p *provider) ProvideStat() any {
 		RebuildSignals:      p.stats.rebuildSignals.Load(),
 		ReconnectDiffKicks:  p.stats.reconnectDiffKicks.Load(),
 		ClosedPeersFiltered: p.stats.closedPeersFiltered.Load(),
+		LocalPeerSignals:    p.stats.localPeerSignals.Load(),
 	}
 }
 
@@ -104,6 +111,7 @@ func (p *provider) Init(a *app.App) (err error) {
 	poolService := a.MustComponent(pool.CName).(pool.Service)
 	p.pool = poolService
 	p.managers = make(map[*clientPeerManager]struct{})
+	p.peerStore.AddObserver(p.onLocalPeerUpdated)
 	// optional: absent in some test apps
 	if c := a.Component(DeviceNetworkStateCName); c != nil {
 		if nc, ok := c.(networkConnectivity); ok {
@@ -135,6 +143,31 @@ func (p *provider) onConnectivityChange(online bool) {
 	p.stats.rebuildSignals.Add(int64(len(p.managers)))
 	for m := range p.managers {
 		m.signalRebuild()
+	}
+}
+
+// onLocalPeerUpdated signals a fetch to the managers of the spaces a local peer
+// has just joined (an mDNS discovery, an inbound space exchange, a return
+// after eviction), so their local pass serves it now instead of at the next
+// cadence tick (up to 20s). The store notifies only on a real change, so
+// periodic re-exchanges with an unchanged list cost nothing. Removals are
+// ignored: only a manager's own failed dial removes a peer, and a connection
+// that closes signals its own fetch through watchPeer.
+func (p *provider) onLocalPeerUpdated(_ string, before, after []string, removed bool) {
+	if removed {
+		return
+	}
+	_, joined := lo.Difference(before, after)
+	if len(joined) == 0 {
+		return
+	}
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	for m := range p.managers {
+		if slices.Contains(joined, m.spaceId) {
+			p.stats.localPeerSignals.Inc()
+			m.signalFetch()
+		}
 	}
 }
 
