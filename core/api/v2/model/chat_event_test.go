@@ -53,6 +53,27 @@ func TestChatEventFromProto(t *testing.T) {
 		assert.Equal(t, "edited", ev.Message.Text)
 	})
 
+	t.Run("a deleted discussion comment arrives as an update carrying the tombstone", func(t *testing.T) {
+		ev := ChatEventFromProto(&pb.EventMessage{
+			Value: &pb.EventMessageValueOfChatUpdate{ChatUpdate: &pb.EventChatUpdate{
+				Id: "m1",
+				Message: &model.ChatMessage{
+					Id: "m1", OrderId: "o1", Creator: "identityA", ReplyToMessageId: "m0",
+					Message:   &model.ChatMessageMessageContent{},
+					Reactions: &model.ChatMessageReactions{},
+					Deleted:   true,
+				},
+			}},
+		}, opts)
+
+		require.NotNil(t, ev)
+		assert.Equal(t, ChatEventMessageUpdated, ev.Type)
+		require.NotNil(t, ev.Message)
+		assert.True(t, ev.Message.Deleted)
+		assert.Empty(t, ev.Message.Text)
+		assert.Equal(t, "m0", ev.Message.ReplyTo)
+	})
+
 	t.Run("a deletion names the message and carries no body", func(t *testing.T) {
 		ev := ChatEventFromProto(&pb.EventMessage{
 			Value: &pb.EventMessageValueOfChatDelete{ChatDelete: &pb.EventChatDelete{Id: "m1"}},

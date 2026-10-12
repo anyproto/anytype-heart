@@ -452,6 +452,11 @@ components:
           type: string
         blocks_text:
           type: string
+        deleted:
+          description: 'A deleted discussion comment, kept so its replies keep their
+            thread: author, at and reply_to stay, text is empty. It can''t be edited,
+            reacted to or replied to.'
+          type: boolean
         edited_at:
           type: string
         id:
@@ -2524,8 +2529,8 @@ paths:
       description: '`after` alone walks forward, oldest first, continuing from `next_after`.
         Every other query is anchored at the newest end and walks backward from `next_before`.
         Both bounds are exclusive; messages are always ascending. `message_count`
-        is the number of messages the chat holds now; `lifetime_message_count` counts
-        every message ever posted. `offset` is refused.'
+        counts the live messages (a deleted comment stays, as `deleted`); `lifetime_message_count`
+        counts every message ever posted. `offset` is refused.'
       operationId: get_chat_messages
       parameters:
       - description: Space id, from GET /v2/spaces

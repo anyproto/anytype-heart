@@ -427,6 +427,17 @@ func (s *Service) AddChatMessage(ctx context.Context, spaceId, chatId string, re
 	if err := v2ValidateChatBody(layout, body, len(attachments)); err != nil {
 		return nil, err
 	}
+	if req.ReplyTo != "" {
+		// a reply target this chat does not hold is sent as before; a deleted one is refused,
+		// on dry runs too
+		replyTo, err := s.findChatMessageProto(ctx, chatId, req.ReplyTo)
+		if err != nil {
+			return nil, err
+		}
+		if replyTo != nil && replyTo.Deleted {
+			return nil, v2DeletedReplyTarget("add chat message", req.ReplyTo)
+		}
+	}
 	warnings := append(links.Warnings("/text"), body.warnings...)
 	if dryRun {
 		return &v2model.ChatMessageResult{DryRun: true, Warnings: warnings}, nil
@@ -932,9 +943,26 @@ func (s *Service) resolveChatAttachments(spaceId string, ids []string) ([]*model
 	return attachments, nil
 }
 
-// getChatMessageProto fetches one message by id (existence checks, the edit
-// merge and the dry-run reaction probe).
+// getChatMessageProto fetches one message an edit, a delete or a reaction is
+// about (existence checks, the edit merge and the dry-run reaction probe). A
+// deleted discussion comment is answered like a missing message: it stays
+// readable, but nothing changes it any more.
 func (s *Service) getChatMessageProto(ctx context.Context, chatId, messageId string) (*model.ChatMessage, error) {
+	msg, err := s.findChatMessageProto(ctx, chatId, messageId)
+	if err != nil {
+		return nil, err
+	}
+	if msg == nil {
+		return nil, v2model.NotFound(fmt.Sprintf("message %q not found in chat %q", messageId, chatId))
+	}
+	if msg.Deleted {
+		return nil, v2model.NotFound(fmt.Sprintf("message %q in chat %q was deleted; it can't be edited, reacted to or deleted again", messageId, chatId))
+	}
+	return msg, nil
+}
+
+// findChatMessageProto reads one message by id; nil when the chat holds no such message.
+func (s *Service) findChatMessageProto(ctx context.Context, chatId, messageId string) (*model.ChatMessage, error) {
 	resp := s.mw.ChatGetMessagesByIds(ctx, &pb.RpcChatGetMessagesByIdsRequest{
 		ChatObjectId: chatId,
 		MessageIds:   []string{messageId},
@@ -942,10 +970,19 @@ func (s *Service) getChatMessageProto(ctx context.Context, chatId, messageId str
 	if resp.Error != nil && resp.Error.Code != pb.RpcChatGetMessagesByIdsResponseError_NULL {
 		return nil, v2ChatRpcError("get chat message", int32(resp.Error.Code), int32(pb.RpcChatGetMessagesByIdsResponseError_BAD_INPUT), resp.Error.Description)
 	}
-	if len(resp.Messages) == 0 || resp.Messages[0] == nil {
-		return nil, v2model.NotFound(fmt.Sprintf("message %q not found in chat %q", messageId, chatId))
+	if len(resp.Messages) == 0 {
+		return nil, nil
 	}
 	return resp.Messages[0], nil
+}
+
+// v2DeletedReplyTarget is the refusal of a reply to a deleted discussion comment.
+func v2DeletedReplyTarget(op, replyTo string) error {
+	return v2model.ValidationFailed(fmt.Sprintf("%s: reply_to names a deleted message", op), v2model.Issue{
+		Path:    "/reply_to",
+		Message: fmt.Sprintf("message %q was deleted; new replies to it are refused", replyTo),
+		Hint:    "reply to its post or to another reply in the thread",
+	})
 }
 
 // v2ValidateChatTextLength enforces the store's message-text cap
@@ -1028,6 +1065,18 @@ func v2ChatDeleteWarnings(msg *model.ChatMessage) []v2model.Issue {
 // and a future "validate:"-wrapped rendering must not downgrade a permanent
 // 403 to a 400.
 func v2ChatRpcError(op string, code, badInputCode int32, description string) error {
+	// The deleted-message refusals arrive as BAD_INPUT. They answer what the
+	// service's own pre-RPC check answers, for a delete that landed between that
+	// check and the RPC: a deleted or missing target is a 404, a reply to a
+	// deleted message a 400 on reply_to.
+	switch {
+	case strings.Contains(description, chatobject.ErrReplyToDeletedMessage.Error()):
+		return v2model.ValidationFailed(fmt.Sprintf("%s: reply_to names a deleted message", op),
+			v2model.Issue{Path: "/reply_to", Message: description, Hint: "reply to its post or to another reply in the thread"})
+	case strings.Contains(description, chatobject.ErrMessageDeleted.Error()),
+		strings.Contains(description, chatobject.ErrMessageNotFound.Error()):
+		return v2model.NotFound(fmt.Sprintf("%s: %s", op, description))
+	}
 	if code == badInputCode {
 		return v2model.ValidationFailed(fmt.Sprintf("%s: invalid input", op),
 			v2model.Issue{Message: description})

@@ -639,6 +639,7 @@ func TestV2AddChatMessage(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.withExistingMessage(chatProtoMessage()) // the reply target is live
 		fx.mwMock.EXPECT().ChatAddMessage(mock.Anything, mock.MatchedBy(func(req *pb.RpcChatAddMessageRequest) bool {
 			msg := req.Message
 			return req.ChatObjectId == testChatId &&
