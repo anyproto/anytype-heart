@@ -120,22 +120,33 @@ func (s *messagesState) add(msgId string, msg *model.ChatMessage, prevOrderId st
 	s.messages.Set(msgId, entry)
 }
 
-// keepEvictedEvents keeps the unflushed events of an entry the window just evicted: the client
-// still holds that message and must learn of an update or a tombstone that came in the same
-// batch. An entry whose Add is unflushed is dropped as it is: the client never had the message,
-// and it is now outside its window.
+// keepEvictedEvents keeps the unflushed updates of an entry the window just evicted: the client
+// still holds that message and must learn of an edit, a tombstone, a reaction or a pin that came
+// in the same batch. Only those kinds are kept, because only they have an out-of-window path
+// that later changes in the batch keep current (updateOutOfWindowEvent); a status event (read,
+// mention read, synced, reaction read) is in-window only, and a kept one could go stale. An entry
+// whose Add is unflushed is dropped as it is: the client never had the message, and it is now
+// outside its window.
 func (s *messagesState) keepEvictedEvents(entry *stateEntry) {
-	if len(entry.events) == 0 || slices.Contains(entry.events, eventActionAdd) {
+	if slices.Contains(entry.events, eventActionAdd) {
 		return
 	}
-	if pending, ok := s.outOfWindowEvents[entry.msg.Id]; ok {
+	var kept []eventAction
+	for _, action := range entry.events {
+		switch action {
+		case eventActionUpdate, eventActionUpdateReactions, eventActionMessagePinned:
+			kept = append(kept, action)
+		}
+	}
+	if len(kept) == 0 {
+		return
+	}
+	s.updateOutOfWindowEvent(entry.msg.Id, func(pending *stateEntry) {
 		pending.msg = entry.msg
-		for _, action := range entry.events {
+		for _, action := range kept {
 			pending.addEvent(action)
 		}
-		return
-	}
-	s.outOfWindowEvents[entry.msg.Id] = entry
+	})
 }
 
 func (s *messagesState) applyDeleteMessage(id string) {

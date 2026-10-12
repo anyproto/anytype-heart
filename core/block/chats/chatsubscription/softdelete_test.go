@@ -96,6 +96,31 @@ func TestEvictionKeepsPendingEvents(t *testing.T) {
 		assert.Equal(t, []string{"edited"}, updatedText)
 	})
 
+	t.Run("a status event of an evicted message is not sent stale", func(t *testing.T) {
+		// Status events (read, mention read, synced, reaction read) exist only for in-window
+		// messages: a later status change of an evicted one can't reach a kept event, so
+		// keeping it would send a value storage no longer holds.
+		// given
+		a := givenSimpleMessage("a", "first", "o1")
+		b := givenSimpleMessage("b", "second", "o2")
+		fx, mngr := windowFixture(t, a, b)
+		mngr.Lock()
+		defer mngr.Unlock()
+
+		// when: a reaction to a is added, c evicts a, the reaction is removed again
+		mngr.UpdateReactionReadStatus("a", true)
+		mngr.Add("o2", givenSimpleMessage("c", "third", "o3"))
+		mngr.UpdateReactionReadStatus("a", false)
+		mngr.Flush(false)
+
+		// then
+		for _, ev := range fx.eventMessages() {
+			if st := ev.GetChatUpdateReactionReadStatus(); st != nil {
+				assert.NotContains(t, st.Ids, "a")
+			}
+		}
+	})
+
 	t.Run("an unflushed add of an evicted message is dropped", func(t *testing.T) {
 		// given
 		a := givenSimpleMessage("a", "first", "o1")
