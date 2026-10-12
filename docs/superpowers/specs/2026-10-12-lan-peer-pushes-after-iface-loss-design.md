@@ -89,6 +89,7 @@ type clientPeerManager struct {
     localPeers []peer.Peer   // what the local pass has found                   (under n.Mutex)
     nodeLookupRunning atomic.Bool      // one lookup in flight at a time
     nodeLookupDone    chan struct{}    // cap 1; one signal per completed lookup
+    rebuildGen        atomic.Uint64    // bumped by every signalRebuild
 }
 
 Init: nodeLookupDone = make(chan struct{}, 1)
@@ -110,14 +111,14 @@ fetchResponsiblePeers():
 
 startNodeLookup():
     if !nodeLookupRunning.CompareAndSwap(false, true) { return }
-    rebuiltDuringLookup.Store(false)       // this lookup dials after every rebuild so far
+    startGen := rebuildGen.Load()          // every rebuild counted so far is behind this lookup
     go func() {
-        defer func() { nodeLookupRunning.Store(false); refetchAfterLookup(); non-blocking send on nodeLookupDone }()
+        defer func() { nodeLookupRunning.Store(false); refetchAfterLookup(startGen); non-blocking send on nodeLookupDone }()
         lookupNode()
     }()
 
-refetchAfterLookup():                      // once per lookup, never after Close; can start a new lookup now
-    if rebuiltDuringLookup.Swap(false) || the node this lookup served is closed by now { signalFetch() }
+refetchAfterLookup(startGen):              // once per lookup, never after Close; can start a new lookup now
+    if rebuildGen.Load() != startGen || the node now served is closed { signalFetch() }
 
 lookupNode():                              // the old node half of fetchResponsiblePeers, verbatim logic
     prev := nodeStatus.GetNodeStatus(spaceId)
@@ -150,7 +151,7 @@ publishLocked(): list = [nodePeer?] + localPeers, live peers only; start watchPe
                  (= old publishResponsiblePeers, composed)
 signalFetch(): the non-blocking channel send without resetting consecutiveFetchFailures
                (used by watchPeer and by 2.2)
-signalRebuild(): reset counter; rebuiltDuringLookup.Store(true); signalFetch()
+signalRebuild(): reset counter; rebuildGen.Inc(); signalFetch()
 watchPeer(p): wait for close or ctx; release p's id in watchingPeers; then signalFetch() unless closed
               (released first: the fetch may serve a reconnected peer at once, and it needs a watcher)
 ```
@@ -165,9 +166,17 @@ runs only the local pass. If the walk is still inside `GetOneOf`, the flush that
 connectivity hook cancels the old pool pair and `pool.lookup` restarts the walk on the new pair, so
 the verdict is post-change. But a lookup that has already returned and is still applying its verdict
 (e.g. paused in `Refresh`) holds a pre-change result; without a replay a node reachable again waits for
-the 5 s fast retry. So every rebuild sets `rebuiltDuringLookup`, a lookup clears it as it starts, and a
-lookup that finds it set when it ends signals one fetch (`refetchAfterLookup`). Only rebuilds count:
-replaying plain fetch signals or cadence ticks would follow a long offline walk with another at once. A fetch woken while a lookup is in flight runs only the local
+the 5 s fast retry. So every rebuild bumps `rebuildGen`, each lookup reads it when it takes the slot,
+and a lookup that finds it moved when it ends signals one fetch (`refetchAfterLookup`). Only rebuilds
+count: replaying plain fetch signals or cadence ticks would follow a long offline walk with another at
+once.
+
+Why the hand-off is race-free: every lookup runs its check *after* releasing the slot, and decides only
+from what it saw at its own start; nothing shared is consumed. Whoever holds the slot when the fetch it
+signals lands started after that release, and runs the same check when it ends, against its own start.
+So no rebuild and no closed node seen by one lookup can be lost to another, however their tails
+overlap. (A consumable flag, the first version, failed this: an older lookup paused between release
+and check consumed its successor's flag.) A fetch woken while a lookup is in flight runs only the local
 pass (cheap: `Get` on a connected peer is the fast path; stale peers were evicted on first failure).
 
 Properties kept, explicitly:
@@ -287,7 +296,7 @@ New:
 3. `Test_fetchResponsiblePeers_nodeVerdictAndLocalPassAreIndependent` — success → `[node, local]`;
    failure → `[local]` (failures=1); success → `[node, local]` (failures=0).
 4. `Test_fetchLocalPeers_noEvictionWhenClosing` — cancelled manager ctx, `Get` returns `ctx.Err()`,
-   the store still lists the peer.
+   the store still lists the peer. Superseded by 19.
 5. `Test_manageResponsiblePeers_retryCountsFromNodeVerdict` — the real loop on fake time: a 30 s
    failing walk started while Online; the 20 s tick starts no second lookup; the retry starts at 35 s
    (5 s after the verdict), not 40 s.
@@ -323,8 +332,16 @@ New:
     plain fetch signal does not; afterwards a rebuild while idle costs exactly one lookup.
 17. `Test_fetchLocalPeers_pickSharesTheDialBudget` — on fake time, `Get` and `Pick` of a stale peer both
     block until their ctx is done: the pass ends, with the healthy peer behind it served, at exactly 2 s.
+18. `Test_manageResponsiblePeers_overlappingLookupTailsKeepTheRebuild` — a test hook pauses lookup A
+    between releasing the slot and its check; a fetch starts B, which fails and is held in `Refresh`; a
+    rebuild lands; A then B finish: the third lookup starts at 0 s. The consumable-flag protocol fails it.
+19. `Test_fetchLocalPeers_noEvictionWhenClosedMidDial` (replaces the close-before-the-pass version) — the
+    manager closes while the phone's dial is in flight: the phone stays listed for this space and for
+    the other space it shares.
+20. `Test_fetchLocalPeers_peerLeavingTheSpaceIsNoLongerServed` — a still-connected peer leaves its last
+    space in this manager: the next (empty) pass stops serving it.
 
-Each test that pins a fix (1, 2, 4, 5, 7–17) was checked to fail with that fix reverted.
+Each test that pins a fix (1, 2, 4, 5, 7–20) was checked to fail with that fix reverted.
 
 ## 5. On-device check
 
