@@ -46,7 +46,7 @@ func TestOpenAPIBodiesAcceptTheServedExamples(t *testing.T) {
 		op       string
 		examples []string
 	}{
-		{v2model.OpPublishChatStatus, []string{v2SchemaKinds["chatStatus"].example, `{}`, `{"text":""}`, `{"data":[1,true,null]}`, `{"data":9007199254740993}`, `{"data":"running"}`, `{"data":false}`, `{"data":null}`}},
+		{v2model.OpPublishChatStatus, []string{v2SchemaKinds["chatStatus"].example, `{}`, `{"text":"Reading","reply_to":"msg1","data":{"tool_call_id":"call_1"}}`, `{"text":""}`, `{"data":[1,true,null]}`, `{"data":9007199254740993}`, `{"data":"running"}`, `{"data":false}`, `{"data":null}`}},
 		{v2model.OpCreateProperty, []string{v2SchemaKinds["property"].example}},
 		{v2model.OpUpdateProperty, []string{`{"name":"Priority"}`, `{"name":""}`}},
 		{v2model.OpCreateQuery, []string{v2SchemaKinds["query"].example,

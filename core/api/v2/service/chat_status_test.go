@@ -33,6 +33,8 @@ func TestPublishChatStatusPayload(t *testing.T) {
 		{"string", v2model.ChatStatusRequest{Data: json.RawMessage(`"running"`)}, `{"data":"running"}`},
 		{"boolean", v2model.ChatStatusRequest{Data: json.RawMessage(`false`)}, `{"data":false}`},
 		{"null", v2model.ChatStatusRequest{Data: json.RawMessage(`null`)}, `{"data":null}`},
+		{"reply_to", v2model.ChatStatusRequest{Text: "Reading", ReplyTo: "msg1", Data: json.RawMessage(`{"tool_call_id":"call_1"}`)}, `{"text":"Reading","reply_to":"msg1","data":{"tool_call_id":"call_1"}}`},
+		{"reply_to only", v2model.ChatStatusRequest{ReplyTo: "msg1"}, `{"reply_to":"msg1"}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fx := newV2Fixture(t)
@@ -75,6 +77,16 @@ func TestPublishChatStatusValidationAndDryRun(t *testing.T) {
 	require.NoError(t, err)
 	_, err = fx.PublishChatStatus(context.Background(), testSpaceId, testChatId, v2model.ChatStatusRequest{Text: text + "x"}, false)
 	requireV2Code(t, err, v2model.CodeRequestTooLarge)
+	// reply_to shares the payload budget with text and data.
+	_, err = fx.PublishChatStatus(context.Background(), testSpaceId, testChatId, v2model.ChatStatusRequest{Text: text, ReplyTo: "m"}, false)
+	requireV2Code(t, err, v2model.CodeRequestTooLarge)
+	for _, dryRun := range []bool{false, true} {
+		_, err = fx.PublishChatStatus(context.Background(), testSpaceId, testChatId, v2model.ChatStatusRequest{ReplyTo: strings.Repeat("m", v2model.MaxChatStatusReplyTo+1)}, dryRun)
+		requireV2Code(t, err, v2model.CodeValidationFailed)
+	}
+	fx.mwMock.EXPECT().PubsubPublish(mock.Anything, mock.Anything).Return(&pb.RpcPubsubPublishResponse{}).Once()
+	_, err = fx.PublishChatStatus(context.Background(), testSpaceId, testChatId, v2model.ChatStatusRequest{ReplyTo: strings.Repeat("m", v2model.MaxChatStatusReplyTo)}, false)
+	require.NoError(t, err)
 }
 
 func TestPublishChatStatusScope(t *testing.T) {

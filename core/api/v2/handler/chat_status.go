@@ -16,14 +16,14 @@ import (
 // PublishChatStatusHandler publishes ephemeral chat activity.
 //
 //	@Summary		Publish chat status
-//	@Description	Publishes encrypted ephemeral JSON on status/<chat_id>. Empty text is omitted so clients can show localized typing. data accepts any JSON value. The encoded payload is limited to 65,508 bytes. Status is not stored or replayed; receivers expire it. Success acknowledges acceptance, not delivery.
+//	@Description	Publishes encrypted ephemeral JSON on status/<chat_id>. Empty text is omitted so clients can show localized typing. reply_to names the message it answers, for discussion threads. data accepts any JSON value. The encoded payload is limited to 65,508 bytes. Status is not stored or replayed; receivers expire it. Success acknowledges acceptance, not delivery.
 //	@Id				publish_chat_status
 //	@Tags			Chat
 //	@Accept			json
 //	@Produce		json
 //	@Param			space_id		path		string						true	"Space id, from GET /v2/spaces"
 //	@Param			chat_id			path		string						true	"Chat or discussion id, from GET /v2/spaces/{space_id}/chats"
-//	@Param			status			body		object						false	"Optional text and arbitrary JSON data; clients localize the default typing label"
+//	@Param			status			body		object						false	"Optional text, reply_to and arbitrary JSON data; clients localize the default typing label"
 //	@Param			dry_run			query		bool						false	"Validate without publishing"
 //	@Param			Idempotency-Key	header		string						false	"Unique key for this update; a reused key replays the response without publishing again"
 //	@Success		200				{object}	v2model.ChatStatusResult	"Status accepted, or validated on a dry run"
@@ -69,7 +69,7 @@ func decodeChatStatus(r io.Reader) (req v2model.ChatStatusRequest, err error) {
 	dec := json.NewDecoder(bytes.NewReader(body))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&req); err != nil {
-		issue := v2model.Issue{Message: err.Error(), Hint: "send optional text and data; omit text for a localized typing label"}
+		issue := v2model.Issue{Message: err.Error(), Hint: "send optional text, reply_to and data; omit text for a localized typing label"}
 		if field, ok := unknownFieldName(err); ok {
 			issue.Path = "/" + field
 		}

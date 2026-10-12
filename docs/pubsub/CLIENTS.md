@@ -67,7 +67,7 @@ Rules for new topics:
 ### Chat activity: `status/<chat_id>`
 
 API v2 exposes `POST /v2/spaces/{space_id}/chats/{chat_id}/status` for clients
-and agents. Its payload is JSON with optional `text` and `data`:
+and agents. Its payload is JSON with optional `text`, `reply_to` and `data`:
 
 ```json
 {"text":"Searching documentation","data":{"tool_call":"web_search"}}
@@ -77,6 +77,12 @@ An empty request or `{"text":""}` publishes `{}`. The receiving client
 supplies its localized typing label when text is absent. `data` accepts any
 JSON value; it is not restricted to objects. A nonempty `text` is plain display
 text, not markup. Sender identity comes from the verified pubsub event.
+
+`reply_to` is the id of the message the activity answers. A discussion client
+shows the activity in the thread of that message (any message of the thread,
+resolved to its top-level post as for a reply) and at the discussion level when
+`reply_to` is absent or names a message it has not loaded. It is not checked
+against the chat. Chat clients may ignore it.
 
 Subscribe to the exact topic in the same Space. These events have no history
 and do not appear in API v2's chat-message SSE stream. A successful status POST
@@ -106,6 +112,12 @@ JSON payload (UTF-8):
 { "sessionId": "9f2c1a0e", "blockId": "bafy...", "active": true }
 ```
 
+In a discussion (`typing/<discussionId>`), a reply composer adds `replyTo`:
+
+```json
+{ "sessionId": "9f2c1a0e", "replyTo": "bafy...", "active": true }
+```
+
 - `sessionId` — random id generated once per app run (e.g. 8 hex bytes). Keys
   the entry together with the verified `identity`; also your echo filter. A
   fresh id per run means a crashed session never blocks its successor — the
@@ -118,6 +130,10 @@ JSON payload (UTF-8):
   at-most-once, so the lock is advisory UX, not mutual exclusion.
 - `active` — `true` = typing/holding focus (refresh), `false` = stopped/left
   (clear me).
+- `replyTo` — optional, discussions only: the message the sender is replying
+  to, with the same thread resolution as status `reply_to`. Absent means the
+  discussion's main composer. Receivers that ignore it show the typing at the
+  discussion level.
 
 Receiver state: `objectId → (identity, sessionId) → {blockId, lastSeen}` where
 `lastSeen` is **receiver-local receipt time** (immune to sender clock skew —

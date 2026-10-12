@@ -1700,6 +1700,13 @@ info:
     and accepts any JSON value, including arrays, scalars, and null. The encoded
     JSON payload, including field names and escaping, must fit in 65,508 bytes.
 
+    `reply_to` is the optional id of the message the activity answers, up to 256
+    bytes. In a discussion, clients show the activity in that message's thread; any
+    message of the thread works, as for a reply. Without it, or when the client
+    does not have that message, the activity shows at the discussion level. Send
+    the same `reply_to` you will give the reply. It is published as given, not
+    checked against the chat.
+
     Success is `200 {}` and means the update was accepted for publication. The
     Space's pubsub topic is `status/<chat_id>`; subscribers receive
     `Event.Pubsub.Message` with the verified sender identity. Status is neither
@@ -3040,9 +3047,10 @@ paths:
   /v2/spaces/{space_id}/chats/{chat_id}/status:
     post:
       description: Publishes encrypted ephemeral JSON on status/<chat_id>. Empty text
-        is omitted so clients can show localized typing. data accepts any JSON value.
-        The encoded payload is limited to 65,508 bytes. Status is not stored or replayed;
-        receivers expire it. Success acknowledges acceptance, not delivery.
+        is omitted so clients can show localized typing. reply_to names the message
+        it answers, for discussion threads. data accepts any JSON value. The encoded
+        payload is limited to 65,508 bytes. Status is not stored or replayed; receivers
+        expire it. Success acknowledges acceptance, not delivery.
       operationId: publish_chat_status
       parameters:
       - description: Space id, from GET /v2/spaces
@@ -3077,13 +3085,17 @@ paths:
               properties:
                 data:
                   description: 'optional arbitrary JSON value: object, array, string, number, boolean or null'
+                reply_to:
+                  description: optional id of the message the activity answers; in a discussion, clients show the activity in that message's thread, or at the discussion level when it is omitted. Not checked against the chat
+                  maxLength: 256
+                  type: string
                 text:
                   description: optional display text; empty or omitted is left out of the pubsub payload so receivers can show a localized typing label; JSON escaping and data consume the same byte budget
                   maxLength: 65497
                   type: string
               type: object
-        description: Optional text and arbitrary JSON data; clients localize the default
-          typing label
+        description: Optional text, reply_to and arbitrary JSON data; clients localize
+          the default typing label
       responses:
         "200":
           content:
