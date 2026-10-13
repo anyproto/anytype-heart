@@ -49,7 +49,6 @@ func listedIds(req *pb.RpcObjectCreateObjectTypeRequest) []string {
 
 func TestV2HiddenInternalProperties(t *testing.T) {
 	t.Run("a caller's Score is a new property, not the fulltext score", func(t *testing.T) {
-		t.Skip("waits on the any-block bump that unnames hidden internal keys (GO-7578, #3318)")
 		// given
 		fx := newV2Fixture(t)
 		fx.mwMock.EXPECT().ObjectCreateRelation(mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectCreateRelationRequest) bool {
@@ -209,7 +208,6 @@ func TestV2HiddenInternalProperties(t *testing.T) {
 	})
 
 	t.Run("the fold no longer reaches a hidden internal key", func(t *testing.T) {
-		t.Skip("waits on the any-block bump that unnames hidden internal keys (GO-7578, #3318)")
 		// given
 		fx := newV2Fixture(t)
 		entries, err := fx.liveProperties(testSpaceId)
