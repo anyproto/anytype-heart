@@ -5,8 +5,10 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
+	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -408,10 +410,7 @@ func (s *State) normalizeDetails() {
 // normalizeRecommendedRelations normalizes recommended relations of Type on state build level, because
 // these lists mustn't contain similar values, but could be updated by multiple clients independently
 func (s *State) normalizeRecommendedRelations() {
-	details := s.details
-	if details == nil && s.parent != nil {
-		details = s.parent.details
-	}
+	details := s.Details()
 	if details == nil {
 		return
 	}
@@ -420,10 +419,16 @@ func (s *State) normalizeRecommendedRelations() {
 	recFeatRelations := details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)
 	recHiddenRelations := details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations)
 
-	recHiddenRelations = slice.RemoveN(recHiddenRelations, recFeatRelations...)
-	recHiddenRelations = slice.RemoveN(recHiddenRelations, recRelations...)
-	recRelations = slice.RemoveN(recRelations, recFeatRelations...)
+	normalizedHidden := slice.RemoveN(recHiddenRelations, recFeatRelations...)
+	normalizedHidden = slice.RemoveN(normalizedHidden, recRelations...)
+	normalizedRec := slice.RemoveN(recRelations, recFeatRelations...)
 
-	details.SetStringList(bundle.RelationKeyRecommendedRelations, recRelations)
-	details.SetStringList(bundle.RelationKeyRecommendedHiddenRelations, recHiddenRelations)
+	// write through SetDetail to keep copy-on-write semantics: when details are
+	// inherited, the committed parent state must not be modified in place
+	if !slices.Equal(normalizedRec, recRelations) {
+		s.SetDetail(bundle.RelationKeyRecommendedRelations, domain.StringList(normalizedRec))
+	}
+	if !slices.Equal(normalizedHidden, recHiddenRelations) {
+		s.SetDetail(bundle.RelationKeyRecommendedHiddenRelations, domain.StringList(normalizedHidden))
+	}
 }

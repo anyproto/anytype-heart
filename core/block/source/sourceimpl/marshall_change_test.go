@@ -57,6 +57,30 @@ func TestNewUnmarshalTreeChange(t *testing.T) {
 	assert.Nil(t, res2.(*pb.Change).Snapshot)
 }
 
+func TestNewUnmarshalTreeChange_KeepsSnapshotForSnapshotChanges(t *testing.T) {
+	// A snapshot change can arrive in an append batch where another change gets
+	// converted first. The unmarshalled result is cached as Change.Model and the raw
+	// data is discarded by objecttree, so if the snapshot is stripped here, a later
+	// in-memory tree reduce that makes this change the root leaves BuildState with
+	// a nil snapshot, and the object cannot be rebuilt until it is reopened.
+
+	// given
+	first, firstDataType, err := MarshalChange(changeWithSmallTextUpdate())
+	require.NoError(t, err)
+	snap, snapDataType, err := MarshalChange(changeWithBigSnapshot())
+	require.NoError(t, err)
+	unmarshalF := NewUnmarshalTreeChange()
+
+	// when: a regular change is converted first, then the snapshot change
+	_, err = unmarshalF(&objecttree.Change{DataType: firstDataType}, first)
+	require.NoError(t, err)
+	res, err := unmarshalF(&objecttree.Change{IsSnapshot: true, DataType: snapDataType}, snap)
+	require.NoError(t, err)
+
+	// then: the snapshot data must survive unmarshalling
+	assert.NotNil(t, res.(*pb.Change).Snapshot)
+}
+
 func TestUnmarshallChange(t *testing.T) {
 	invalidDataType := "invalid"
 
