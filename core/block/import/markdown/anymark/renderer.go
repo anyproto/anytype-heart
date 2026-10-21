@@ -139,6 +139,16 @@ func (r *Renderer) renderFencedCodeBlock(_ util.BufWriter,
 	entering bool) (ast.WalkStatus, error) {
 	n := node.(*ast.FencedCodeBlock)
 	language := string(n.Language(source))
+
+	// The md exporters serialize Mermaid diagrams as ```mermaid fences; parse
+	// them back into Latex blocks so the client renders them as diagrams.
+	if language == "mermaid" {
+		if entering {
+			r.AddLatexBlock(fencedCodeText(source, n), model.BlockContentLatex_Mermaid)
+		}
+		return ast.WalkSkipChildren, nil
+	}
+
 	var fields *types.Struct
 	if language != "" {
 		fields = &types.Struct{Fields: map[string]*types.Value{"lang": pbtypes.String(language)}}
@@ -150,6 +160,17 @@ func (r *Renderer) renderFencedCodeBlock(_ util.BufWriter,
 		r.openTextBlockWithStyle(entering, model.BlockContentText_Code, nil)
 	}
 	return ast.WalkContinue, nil
+}
+
+// fencedCodeText returns the raw code lines of a fenced code block without
+// the trailing newline.
+func fencedCodeText(source []byte, n *ast.FencedCodeBlock) string {
+	var sb strings.Builder
+	for i := 0; i < n.Lines().Len(); i++ {
+		segment := n.Lines().At(i)
+		sb.WriteString(Unescape(string(segment.Value(source))))
+	}
+	return strings.TrimRight(sb.String(), "\n")
 }
 
 func (r *Renderer) renderHTMLBlock(_ util.BufWriter,
@@ -697,6 +718,22 @@ func IsUrl(raw string) bool {
 	return false
 }
 
+// parseAnytypeObjectLink extracts the objectId from an anytype://object link
+// of the form anytype://object?objectId=<id>&spaceId=<id>, as emitted by the
+// md exporters. Matching is deliberately lenient about the query order and
+// additional params.
+func parseAnytypeObjectLink(raw string) (objectID string, ok bool) {
+	u, err := url.Parse(raw)
+	if err != nil || u.Scheme != "anytype" || u.Hostname() != "object" {
+		return "", false
+	}
+	id := u.Query().Get("objectId")
+	if id == "" {
+		return "", false
+	}
+	return id, true
+}
+
 func isASCIIAlpha(s string) bool {
 	for _, r := range s {
 		if !unicode.IsLetter(r) || r > unicode.MaxASCII {
@@ -779,7 +816,15 @@ func (r *Renderer) renderLink(_ util.BufWriter,
 			linkPath = string(destination)
 		}
 
-		if !IsUrl(linkPath) {
+		// The md exporters serialize Mention/Object marks as anytype://object
+		// links (see core/block/export/writer.go); parse them back into Mention
+		// marks so FillSmartIds registers the link in the object graph.
+		markType := model.BlockContentTextMark_Link
+		param := linkPath
+		if objectID, ok := parseAnytypeObjectLink(linkPath); ok {
+			markType = model.BlockContentTextMark_Mention
+			param = objectID
+		} else if !IsUrl(linkPath) {
 			// Treat as a file path if no URL scheme
 			linkPath = filepath.Join(r.GetBaseFilepath(), linkPath)
 			ext := filepath.Ext(linkPath)
@@ -790,14 +835,15 @@ func (r *Renderer) renderLink(_ util.BufWriter,
 			if ext == "" || strings.Contains(ext, " ") {
 				linkPath += ".md" // Default to .md if no extension is provided
 			}
+			param = linkPath
 		}
 
 		to := int32(text.UTF16RuneCountString(r.GetText()))
 
 		r.AddMark(model.BlockContentTextMark{
 			Range: &model.Range{From: int32(r.GetMarkStart()), To: to},
-			Type:  model.BlockContentTextMark_Link,
-			Param: linkPath,
+			Type:  markType,
+			Param: param,
 		})
 	}
 	return ast.WalkContinue, nil
