@@ -234,6 +234,8 @@ func (p *importProcessor) initConversionFields(converterResponse *common.Respons
 	}
 	p.converterResponse = converterResponse
 	p.errors = errors
+	p.oldIDToNew = make(map[string]string, len(converterResponse.Snapshots))
+	p.seedExistingSpaceObjects()
 	p.oldIDToNew = make(map[string]string, len(converterResponse.Snapshots)+len(converterResponse.KeptIDs))
 	// a converter's kept ids (a bundle's declared-deleted targets, SPEC §2c)
 	// map to themselves before any object is created, so every creation-time
@@ -245,6 +247,16 @@ func (p *importProcessor) initConversionFields(converterResponse *common.Respons
 	p.createPayloads = make(map[string]treestorage.TreeStorageCreatePayload, len(converterResponse.Snapshots))
 	p.relationKeysToFormat = make(map[domain.RelationKey]int32, len(converterResponse.Snapshots))
 	return nil
+}
+
+func (p *importProcessor) seedExistingSpaceObjects() {
+	ids, err := p.deps.objectStore.SpaceIndex(p.request.SpaceId).ListIds()
+	if err != nil {
+		return
+	}
+	for _, id := range ids {
+		p.oldIDToNew[id] = id
+	}
 }
 
 func (p *importProcessor) createObjects(ctx context.Context) (map[string]*domain.Details, string) {
