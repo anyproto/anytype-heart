@@ -465,7 +465,12 @@ func (s *Service) getMarkdownExport(ctx context.Context, spaceId string, objectI
 
 		markdown := resp.Result
 
-		if len(markdown) > 0 && markdown[0] == '#' {
+		// The export opens with the object's title as a heading, which the API returns
+		// separately as `name`, so it is dropped here to avoid repeating it. A note has no
+		// title block, so its export opens with the body: dropping the first line there
+		// eats the user's own heading, and eats the whole response when the body is just
+		// one heading.
+		if layout != model.ObjectType_note && len(markdown) > 0 && markdown[0] == '#' {
 			for i := 0; i < len(markdown); i++ {
 				if markdown[i] == '\n' {
 					if i+1 < len(markdown) && markdown[i+1] == '\n' {

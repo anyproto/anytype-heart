@@ -44,6 +44,13 @@ func (s *service) getFileVariantBySourceChecksum(ctx context.Context, mill strin
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(options),
 			},
+			{
+				// A deleted file's blocks may be gone from the node, so its
+				// DAG must not be reused
+				RelationKey: bundle.RelationKeyIsDeleted,
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       domain.Bool(true),
+			},
 		},
 		Limit: 1,
 	})
@@ -88,6 +95,13 @@ func (s *service) getFileVariantByChecksum(ctx context.Context, mill string, var
 				RelationKey: bundle.RelationKeyFileVariantChecksums,
 				Condition:   model.BlockContentDataviewFilter_Equal,
 				Value:       domain.String(variantChecksum),
+			},
+			{
+				// A deleted file's blocks may be gone from the node, so its
+				// DAG must not be reused
+				RelationKey: bundle.RelationKeyIsDeleted,
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       domain.Bool(true),
 			},
 		},
 		Limit: 1,

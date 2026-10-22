@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "0df340fee18663c4f1584c3116f1da177ae6fcdf96a2493e15c6ca81b7aa50c5"
+const RelationChecksum = "71001c404294aa631e6656584c2f9f1f73d99abc2fb15c7c4018ebf1dc81dcdb"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -43,6 +43,7 @@ const (
 	RelationKeyLayoutAlign                          domain.RelationKey = "layoutAlign"
 	RelationKeyStatus                               domain.RelationKey = "status"
 	RelationKeyIsHidden                             domain.RelationKey = "isHidden"
+	RelationKeyIsDraft                              domain.RelationKey = "isDraft"
 	RelationKeyIsHiddenDiscovery                    domain.RelationKey = "isHiddenDiscovery"
 	RelationKeyMediaArtistName                      domain.RelationKey = "mediaArtistName"
 	RelationKeyEmail                                domain.RelationKey = "email"
@@ -131,6 +132,7 @@ const (
 	RelationKeyGuestKey                             domain.RelationKey = "guestKey"
 	RelationKeyParticipantPermissions               domain.RelationKey = "participantPermissions"
 	RelationKeySpaceInvitePermissions               domain.RelationKey = "spaceInvitePermissions"
+	RelationKeySpaceInviteHeldByOwner               domain.RelationKey = "spaceInviteHeldByOwner"
 	RelationKeyIdentity                             domain.RelationKey = "identity"
 	RelationKeyParticipantStatus                    domain.RelationKey = "participantStatus"
 	RelationKeyMyParticipantStatus                  domain.RelationKey = "myParticipantStatus"
@@ -143,6 +145,7 @@ const (
 	RelationKeyImageKind                            domain.RelationKey = "imageKind"
 	RelationKeyCreatedInContext                     domain.RelationKey = "createdInContext"
 	RelationKeyCreatedInContextRef                  domain.RelationKey = "createdInContextRef"
+	RelationKeyCreatedInContextIgnored              domain.RelationKey = "createdInContextIgnored"
 	RelationKeyImportType                           domain.RelationKey = "importType"
 	RelationKeyGlobalName                           domain.RelationKey = "globalName"
 	RelationKeySyncStatus                           domain.RelationKey = "syncStatus"
@@ -203,6 +206,10 @@ const (
 	RelationKeySpaceType                            domain.RelationKey = "spaceType"
 	RelationKeyHomepage                             domain.RelationKey = "homepage"
 	RelationKeyTemplatePlaceholders                 domain.RelationKey = "templatePlaceholders"
+	RelationKeyDeletedBy                            domain.RelationKey = "deletedBy"
+	RelationKeyDeletedDate                          domain.RelationKey = "deletedDate"
+	RelationKeyDeletionChangeId                     domain.RelationKey = "deletionChangeId"
+	RelationKeyDeletedSnapshot                      domain.RelationKey = "deletedSnapshot"
 )
 
 var (
@@ -338,9 +345,10 @@ var (
 			Id:               "_braudioGenre",
 			Key:              "audioGenre",
 			MaxCount:         1,
-			Name:             "Genre",
+			Name:             "Audio genre",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyAudioLyrics: {
@@ -548,6 +556,20 @@ var (
 			Revision:         1,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyCreatedInContextIgnored: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Ignore this object's createdInContext link: it is excluded from cleanup suggestions and from automatic context-driven archival",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brcreatedInContextIgnored",
+			Key:              "createdInContextIgnored",
+			MaxCount:         1,
+			Name:             "Created in context ignored",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyCreatedInContextRef: {
 
 			DataSource:       model.Relation_details,
@@ -616,6 +638,64 @@ var (
 			MaxCount:         1,
 			Name:             "Default view type",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDeletedBy: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Human who permanently deleted this object",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brdeletedBy",
+			Key:              "deletedBy",
+			MaxCount:         1,
+			Name:             "Deleted by",
+			ObjectTypes:      []string{TypePrefix + "participant"},
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDeletedDate: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Date when the object was permanently deleted",
+			Format:           model.RelationFormat_date,
+			Hidden:           true,
+			Id:               "_brdeletedDate",
+			IncludeTime:      true,
+			Key:              "deletedDate",
+			MaxCount:         1,
+			Name:             "Deletion date",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDeletedSnapshot: {
+
+			DataSource:       model.Relation_local,
+			Description:      "What the object was, captured when it was deleted. Nested so its keys stay out of the objectstore indexes",
+			Format:           model.RelationFormat_map,
+			Hidden:           true,
+			Id:               "_brdeletedSnapshot",
+			Key:              "deletedSnapshot",
+			MaxCount:         1,
+			Name:             "Deleted object snapshot",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDeletionChangeId: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Id of the space settings tree change that deleted this object. Objects deleted in one operation share it",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brdeletionChangeId",
+			Key:              "deletionChangeId",
+			MaxCount:         1,
+			Name:             "Deletion change id",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -707,10 +787,11 @@ var (
 			Hidden:           true,
 			Id:               "_brfeaturedRelations",
 			Key:              "featuredRelations",
-			Name:             "Featured Relations",
+			Name:             "Featured properties",
 			ObjectTypes:      []string{TypePrefix + "relation"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyFileAvailableOffline: {
@@ -991,9 +1072,10 @@ var (
 			Id:               "_brheaderRelationsLayout",
 			Key:              "headerRelationsLayout",
 			MaxCount:         1,
-			Name:             "Header relations layout",
+			Name:             "Header properties layout",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyHeightInPixels: {
@@ -1214,6 +1296,20 @@ var (
 			MaxCount:         1,
 			Name:             "Is deleted",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIsDraft: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Specify if object is a draft created by a client and not yet finalized",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brisDraft",
+			Key:              "isDraft",
+			MaxCount:         1,
+			Name:             "Is draft",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -1810,10 +1906,11 @@ var (
 			Hidden:           true,
 			Id:               "_brrecommendedFeaturedRelations",
 			Key:              "recommendedFeaturedRelations",
-			Name:             "Recommended featured relations",
+			Name:             "Recommended featured properties",
 			ObjectTypes:      []string{TypePrefix + "relation"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyRecommendedFileRelations: {
@@ -1824,10 +1921,11 @@ var (
 			Hidden:           true,
 			Id:               "_brrecommendedFileRelations",
 			Key:              "recommendedFileRelations",
-			Name:             "Recommended file relations",
+			Name:             "Recommended file properties",
 			ObjectTypes:      []string{TypePrefix + "relation"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyRecommendedHiddenRelations: {
@@ -1838,10 +1936,11 @@ var (
 			Hidden:           true,
 			Id:               "_brrecommendedHiddenRelations",
 			Key:              "recommendedHiddenRelations",
-			Name:             "Recommended hidden relations",
+			Name:             "Recommended hidden properties",
 			ObjectTypes:      []string{TypePrefix + "relation"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyRecommendedLayout: {
@@ -1866,10 +1965,11 @@ var (
 			Hidden:           true,
 			Id:               "_brrecommendedRelations",
 			Key:              "recommendedRelations",
-			Name:             "Recommended relations",
+			Name:             "Recommended properties",
 			ObjectTypes:      []string{TypePrefix + "relation"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyRelationDefaultValue: {
@@ -1922,9 +2022,10 @@ var (
 			Hidden:           true,
 			Id:               "_brrelationFormatObjectTypes",
 			Key:              "relationFormatObjectTypes",
-			Name:             "Relation's target object types",
+			Name:             "Property's target object types",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyRelationKey: {
@@ -1936,9 +2037,10 @@ var (
 			Id:               "_brrelationKey",
 			Key:              "relationKey",
 			MaxCount:         1,
-			Name:             "Relation key",
+			Name:             "Property key",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyRelationMaxCount: {
@@ -1965,9 +2067,10 @@ var (
 			Id:               "_brrelationOptionColor",
 			Key:              "relationOptionColor",
 			MaxCount:         1,
-			Name:             "Relation option color",
+			Name:             "Property option color",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyRelationReadonlyValue: {
@@ -1979,9 +2082,10 @@ var (
 			Id:               "_brrelationReadonlyValue",
 			Key:              "relationReadonlyValue",
 			MaxCount:         1,
-			Name:             "Relation value is readonly",
+			Name:             "Property value is readonly",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyReleasedYear: {
@@ -2270,6 +2374,20 @@ var (
 			Key:              "spaceInviteGuestFileKey",
 			MaxCount:         1,
 			Name:             "Guest user invite file key",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceInviteHeldByOwner: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Set when the space invite is kept in the owner's account instead of the space, so that only the owner can share it",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brspaceInviteHeldByOwner",
+			Key:              "spaceInviteHeldByOwner",
+			MaxCount:         1,
+			Name:             "Invite is held by the space owner",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

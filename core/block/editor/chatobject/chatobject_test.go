@@ -31,8 +31,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -67,13 +67,19 @@ func (a *accountServiceStub) Init(ap *app.App) error {
 }
 
 // stubTree satisfies objecttree.ObjectTree for tests.
-// Only GetChange is called (by markReadReactions); all other methods are unused and will panic if called.
+// Only GetChange (by markReadReactions) and Root (by a discussion's Init) are called; all other
+// methods are unused and will panic if called.
 type stubTree struct {
 	objecttree.ObjectTree
+	parentId string
 }
 
 func (s *stubTree) GetChange(string) (*objecttree.Change, error) {
 	return nil, fmt.Errorf("change not found")
+}
+
+func (s *stubTree) Root() *objecttree.Change {
+	return &objecttree.Change{ParentId: s.parentId}
 }
 
 type stubSeenHeadsCollector struct {
@@ -86,6 +92,7 @@ func (c *stubSeenHeadsCollector) collectSeenHeads(ctx context.Context, afterOrde
 
 type fixture struct {
 	*storeObject
+	sb                 *smarttest.SmartTest
 	source             *mock_source.MockStore
 	accountServiceStub *accountServiceStub
 	sourceCreator      string
@@ -93,9 +100,17 @@ type fixture struct {
 	events             []*pb.EventMessage
 	spaceIndex         spaceindex.Store
 	storeFixture       *objectstore.StoreFixture
+	// spaceObjects is what Space().Do reaches; set by withSpace, nil otherwise (the default
+	// smarttest space's Do does nothing).
+	spaceObjects *spaceObjects
 
 	generateOrderIdFunc func(tx *storestate.StoreStateTx) string
 	lastOrder           string
+
+	// appliedChangeSets records every change set committed through applyToStore so a
+	// test can faithfully re-drive the store's replay (as storeApply does on reopen)
+	// without needing a real object tree.
+	appliedChangeSets []storestate.ChangeSet
 }
 
 const (
@@ -158,6 +173,7 @@ func newFixture(t *testing.T, opts ...fixtureOption) *fixture {
 
 	fx := &fixture{
 		storeObject:        rawObject,
+		sb:                 sb,
 		accountServiceStub: accountService,
 		sourceCreator:      testCreator,
 		eventSender:        eventSender,
@@ -220,12 +236,20 @@ func newFixture(t *testing.T, opts ...fixtureOption) *fixture {
 		opt(fx)
 	}
 
+	// Init runs under the object lock, as ObjectFactory.InitObject runs it: the unread counters
+	// worker it starts writes under the same lock.
+	fx.Lock()
 	err = object.Init(&smartblock.InitContext{
 		Ctx:    ctx,
 		Source: source,
 		Doc:    state.NewDoc(chatId, nil),
 	})
+	fx.Unlock()
 	require.NoError(t, err)
+	// Registered after the options, so it runs before the cleanups of the mocks they create.
+	t.Cleanup(func() {
+		_ = fx.Close()
+	})
 
 	rawObject.seenHeadsCollector = &stubSeenHeadsCollector{heads: []string{}}
 
@@ -233,6 +257,22 @@ func newFixture(t *testing.T, opts ...fixtureOption) *fixture {
 }
 
 func TestAddMessage(t *testing.T) {
+	t.Run("a validation failure carries the validate: prefix", func(t *testing.T) {
+		// core/api/v2 classifies chat validation refusals to a 400 by
+		// matching this prefix (the "validate: %w" wraps in chatobject.go) —
+		// rewording it would silently degrade those 400s to retry-looping
+		// 500s, so the prefix is pinned here at the producer
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		inputMessage := givenComplexMessage()
+		inputMessage.Message.Text = strings.Repeat("a", chatmodel.MaxMessageLength+1)
+
+		_, err := fx.AddMessage(ctx, nil, inputMessage)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "validate:")
+	})
+
 	t.Run("add own messages", func(t *testing.T) {
 		ctx := context.Background()
 		sessionCtx := session.NewContext()
@@ -450,6 +490,8 @@ func TestEditMessage(t *testing.T) {
 
 		err = fx.EditMessage(ctx, messageId, editedMessage)
 		require.Error(t, err)
+		assert.Contains(t, err.Error(), ErrModifyForeignMessage.Error(),
+			"core/api/v2 classifies the RPC description on this sentinel's text — the edit path must keep producing it")
 
 		// Check that nothing is changed
 		messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
@@ -495,6 +537,8 @@ func TestDeleteMessage(t *testing.T) {
 
 		err = fx.DeleteMessage(ctx, messageId)
 		require.Error(t, err)
+		assert.Contains(t, err.Error(), ErrDeleteForeignMessage.Error(),
+			"core/api/v2 classifies the RPC description on this sentinel's text — the delete path must keep producing it")
 
 		// Check that message is not deleted
 		fx.sourceCreator = testCreator
@@ -607,13 +651,14 @@ func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChan
 		_ = tx.Rollback()
 	}()
 	order := fx.generateOrderId(tx)
-	err = tx.ApplyChangeSetReturnAllErrors(storestate.ChangeSet{
+	changeSet := storestate.ChangeSet{
 		Id:        changeId,
 		Order:     order,
 		Changes:   params.Changes,
 		Creator:   fx.sourceCreator,
 		Timestamp: params.Time.Unix(),
-	})
+	}
+	err = tx.ApplyChangeSetReturnAllErrors(changeSet)
 	if err != nil {
 		return "", fmt.Errorf("apply change set: %w", err)
 	}
@@ -621,6 +666,7 @@ func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChan
 	if err != nil {
 		return "", err
 	}
+	fx.appliedChangeSets = append(fx.appliedChangeSets, changeSet)
 	fx.onUpdate()
 	return changeId, nil
 }

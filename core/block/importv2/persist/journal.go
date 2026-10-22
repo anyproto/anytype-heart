@@ -1,0 +1,310 @@
+package persist
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"sync"
+	"time"
+
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
+
+	"github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/domain"
+)
+
+// ledgerWriteTimeout bounds one detached effect write. Measured cost is
+// sub-millisecond; the timeout only guards a pathological disk.
+const ledgerWriteTimeout = 10 * time.Second
+
+// EffectLedger is the durable write-through seam behind the journal,
+// implemented by runstore.Store. Every effect is recorded here as it
+// happens so a crash keeps the run compensable.
+type EffectLedger interface {
+	RecordCreated(ctx context.Context, sourceKey, objectId string) error
+	RecordUpdated(ctx context.Context, sourceKey, objectId string) error
+	RecordFile(ctx context.Context, sourceKey, objectId string, preExisting bool) error
+	// RecordCreateIntent is the derived-class write-ahead record (review
+	// Class C): derived objects have no pass-1 claim, so without it a
+	// create torn between the tree write and its effect row left no proof
+	// at all — unhealable, uncompensable, silently hollow.
+	RecordCreateIntent(ctx context.Context, sourceKey, objectId string) error
+	// RecordDerivedMatched resolves a derived intent whose create collided
+	// with a PRE-EXISTING tree (deterministic id, made by an earlier
+	// import): the row leaves the heal-proof and delete sets — intent is
+	// not ownership for deterministic ids.
+	RecordDerivedMatched(ctx context.Context, sourceKey, objectId string) error
+}
+
+// Journal records every effect of a run, in order, for compensation.
+// Safe for concurrent worker use. With a ledger attached, effects
+// additionally write through to durable storage; a ledger failure is
+// returned as a fatal issue (a run that cannot journal must not
+// keep creating objects) while the in-memory record is kept, so in-process
+// compensation still covers the effect that just happened — on ABORT paths
+// only: under a shutdown suspend, compensation is
+// deliberately skipped, so an effect whose detached write failed
+// (disk-full-shaped) is covered by neither record — one object per crash,
+// the same magnitude as the post-upload window, disclosed rather than
+// closed.
+type Journal struct {
+	ledger EffectLedger // nil => volatile (tests, sync callers)
+
+	mu      sync.Mutex
+	created []string
+	// ownedFiles are file objects the run's uploads brought into existence;
+	// matchedFiles pre-dated the run (a content-deduped upload returned an
+	// existing object) and are never compensation-deleted. The
+	// classification happens at upload time — it cannot be reconstructed at
+	// compensation time, when the run's own objects may already be indexed.
+	ownedFiles   []string
+	matchedFiles []string
+	updated      []string
+}
+
+func NewJournal() *Journal {
+	return &Journal{}
+}
+
+func NewJournalWithLedger(ledger EffectLedger) *Journal {
+	return &Journal{ledger: ledger}
+}
+
+// Record methods deliberately take no context: the effect has already
+// happened in the user's space, so its record must be written even — and
+// especially — when the run context is already dead (shutdown is exactly
+// when the next start's sweep will compensate FROM this ledger). Writes run
+// on a detached, time-bounded context instead.
+
+func (j *Journal) CreatedObject(sourceKey, id string) error {
+	j.mu.Lock()
+	j.created = append(j.created, id)
+	j.mu.Unlock()
+	if j.ledger == nil {
+		return nil
+	}
+	return j.record(func(ctx context.Context) error {
+		return j.ledger.RecordCreated(ctx, sourceKey, id)
+	})
+}
+
+// CreatedFile records an upload outcome; preExisting marks a content-dedup
+// hit on an object that already lived in the space.
+func (j *Journal) CreatedFile(sourceKey, id string, preExisting bool) error {
+	j.mu.Lock()
+	if preExisting {
+		j.matchedFiles = append(j.matchedFiles, id)
+	} else {
+		j.ownedFiles = append(j.ownedFiles, id)
+	}
+	j.mu.Unlock()
+	if j.ledger == nil {
+		return nil
+	}
+	return j.record(func(ctx context.Context) error {
+		return j.ledger.RecordFile(ctx, sourceKey, id, preExisting)
+	})
+}
+
+// CreateIntent records a derived-class create's write-ahead intent —
+// durable only (an intent is not an effect: the in-memory journal records
+// nothing until the create actually happens). No-op in volatile mode.
+func (j *Journal) CreateIntent(sourceKey, id string) error {
+	if j.ledger == nil {
+		return nil
+	}
+	return j.record(func(ctx context.Context) error {
+		return j.ledger.RecordCreateIntent(ctx, sourceKey, id)
+	})
+}
+
+// SkippedExisting resolves a derived create intent against a pre-existing
+// tree — durable only, no in-memory effect (nothing was done to the
+// object; the record exists so the intent stops reading as ownership).
+func (j *Journal) SkippedExisting(sourceKey, id string) error {
+	if j.ledger == nil {
+		return nil
+	}
+	return j.record(func(ctx context.Context) error {
+		return j.ledger.RecordDerivedMatched(ctx, sourceKey, id)
+	})
+}
+
+func (j *Journal) UpdatedObject(sourceKey, id string) error {
+	j.mu.Lock()
+	j.updated = append(j.updated, id)
+	j.mu.Unlock()
+	if j.ledger == nil {
+		return nil
+	}
+	return j.record(func(ctx context.Context) error {
+		return j.ledger.RecordUpdated(ctx, sourceKey, id)
+	})
+}
+
+// record runs one ledger write on its own bounded context, detached from
+// any run cancellation.
+func (j *Journal) record(write func(ctx context.Context) error) error {
+	ctx, cancel := context.WithTimeout(context.Background(), ledgerWriteTimeout)
+	defer cancel()
+	return ledgerIssue(write(ctx))
+}
+
+func (j *Journal) Updated() []string {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	return append([]string(nil), j.updated...)
+}
+
+// IsEmpty reports a journal with no recorded (or seeded) effects at all —
+// nothing created, uploaded, or updated by any incarnation. The engine's
+// compensation short-circuit reads it: an abort during passes 1–2 has
+// nothing to undo, and skipping the zero-delete cleanup also
+// skips the durable compensating marker that would otherwise scrub the
+// manifest's crawl request and burn the dir's crawl-resumable state.
+func (j *Journal) IsEmpty() bool {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	return len(j.created) == 0 && len(j.ownedFiles) == 0 &&
+		len(j.matchedFiles) == 0 && len(j.updated) == 0
+}
+
+// Seed pre-loads the journal with previous incarnations' effects (read
+// from the durable ledger) so IN-PROCESS compensation of a resumed run
+// covers every incarnation, not only its own — one compensation rule,
+// whichever process runs it. Slices are OLDEST-FIRST (Compensate reverses
+// append order into newest-first). Call once, at construction, before any
+// run activity; re-recorded ids (a healed create re-journals the id its
+// claim seeded) are deduplicated by CompensateIds.
+func (j *Journal) Seed(created, ownedFiles, updated []string) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.created = append(j.created, created...)
+	j.ownedFiles = append(j.ownedFiles, ownedFiles...)
+	j.updated = append(j.updated, updated...)
+}
+
+// ledgerIssue wraps a durable-write failure as a fatal store issue: the
+// single abort predicate then stops the run regardless of mode.
+func ledgerIssue(err error) error {
+	if err == nil {
+		return nil
+	}
+	return importv2.Fatal(importv2.IssueStoreError, fmt.Errorf("journal effect: %w", err))
+}
+
+// CompensationResult reports what the abort cleanup achieved. Updated
+// objects are deliberately not restored (postponed by design decision —
+// docs/ImportV2Design.md): they are listed so the result can say so.
+type CompensationResult struct {
+	// Compensated counts deletes actually performed; AlreadyGone counts
+	// targets that no longer existed (split per review P2: a resumed
+	// cancel walks every pass-1 claim, and folding thousands of not-found
+	// probes into Compensated inflated the telemetry — the retry-safety
+	// semantics are unchanged, both outcomes are success, neither leaks).
+	Compensated int
+	AlreadyGone int
+	Leaked      int
+	Uncovered   []string // updated objects, reported not rolled back
+	Issues      []importv2.Issue
+}
+
+// Compensate deletes every object and file the run brought into existence,
+// newest first. Pre-existing (deduped) file objects are never touched —
+// deleting a user's file because an aborted import happened to reference it
+// is the one unrecoverable outcome. (An inbound-link check cannot arbitrate
+// this: the run's own just-deleted referencers linger in the index, so it
+// would both leak owned files and still depend on index freshness.)
+// Runs on its own context so user cancellation doesn't abort the cleanup.
+func (j *Journal) Compensate(ctx context.Context, objects ObjectAccess) CompensationResult {
+	j.mu.Lock()
+	created := newestFirst(j.created)
+	owned := newestFirst(j.ownedFiles)
+	updated := append([]string(nil), j.updated...)
+	j.mu.Unlock()
+	return CompensateIds(ctx, objects, created, owned, updated)
+}
+
+func newestFirst(ids []string) []string {
+	reversed := make([]string, 0, len(ids))
+	for i := len(ids) - 1; i >= 0; i-- {
+		reversed = append(reversed, ids[i])
+	}
+	return reversed
+}
+
+// CompensateIds is the one compensation implementation, shared by the
+// in-process journal and the startup sweep's crash path. Ids
+// are expected newest-first (runstore.CompensationInputs' order). An
+// already-gone object counts as compensated, not leaked: compensation must
+// be idempotent so a crash mid-cleanup can simply re-run it.
+// Duplicate ids are deleted once (their first — newest — occurrence): a
+// seeded journal and the live incarnation legitimately both know an id
+// (the claim seeded it, the heal re-journaled it), and displaced synthetic
+// ledger rows can repeat one.
+func CompensateIds(ctx context.Context, objects ObjectAccess, created, ownedFiles, updated []string) CompensationResult {
+	result := CompensationResult{Uncovered: updated}
+	remaining := dedupe(append(append([]string(nil), created...), ownedFiles...))
+	for i, id := range remaining {
+		// A3: the context is a real bound between deletes (each individual
+		// DeleteObject still has no ctx — pre-existing seam limitation).
+		// Everything not reached is leaked, loudly, so the run dir is kept
+		// and the next start retries.
+		if err := ctx.Err(); err != nil {
+			left := len(remaining) - i
+			result.Leaked += left
+			result.Issues = append(result.Issues, importv2.Issue{
+				Severity: importv2.SeverityWarning,
+				Code:     importv2.IssueStoreError,
+				Message:  fmt.Sprintf("compensation interrupted with %d deletes remaining", left),
+				Err:      err,
+			})
+			return result
+		}
+		deleteOne(id, objects, &result)
+	}
+	return result
+}
+
+func dedupe(ids []string) []string {
+	seen := make(map[string]struct{}, len(ids))
+	out := ids[:0]
+	for _, id := range ids {
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		seen[id] = struct{}{}
+		out = append(out, id)
+	}
+	return out
+}
+
+func deleteOne(id string, objects ObjectAccess, result *CompensationResult) {
+	err := objects.DeleteObject(id)
+	if err == nil {
+		result.Compensated++
+		return
+	}
+	if isAlreadyGone(err) {
+		result.AlreadyGone++
+		return
+	}
+	result.Leaked++
+	result.Issues = append(result.Issues, importv2.Issue{
+		Severity: importv2.SeverityWarning,
+		Code:     importv2.IssueStoreError,
+		ObjectId: id,
+		Message:  "compensation: delete created object",
+		Err:      fmt.Errorf("delete %s: %w", id, err),
+	})
+}
+
+// isAlreadyGone recognizes the delete-path shapes of "this object does not
+// exist": an id that was never indexed (resolver miss), a tree the space
+// does not know, or a tree already deleted by a previous compensation pass.
+func isAlreadyGone(err error) bool {
+	return errors.Is(err, domain.ErrObjectNotFound) ||
+		errors.Is(err, treestorage.ErrUnknownTreeId) ||
+		errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted)
+}

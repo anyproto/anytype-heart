@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -30,7 +31,7 @@ func handleConnection(conn net.Conn) error {
 }
 
 func startServer(ip string) (listener net.Listener, port int, err error) {
-	listener, err = net.Listen("tcp", ip+":0")
+	listener, err = net.Listen("tcp", net.JoinHostPort(ip, "0"))
 	if err != nil {
 		return nil, 0, fmt.Errorf("error starting server: %w", err)
 	}
@@ -41,7 +42,7 @@ func startServer(ip string) (listener net.Listener, port int, err error) {
 }
 
 func sendMessage(ip string, port int, message string) error {
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", ip, port), 3*time.Second)
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort(ip, strconv.Itoa(port)), 3*time.Second)
 	if err != nil {
 		return fmt.Errorf("error connecting: %w", err)
 	}

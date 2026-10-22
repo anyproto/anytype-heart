@@ -167,7 +167,14 @@ func (or ObjectRestrictions) Remove(restrictions ...model.RestrictionsObjectRest
 	return or
 }
 
-func getObjectRestrictions(rh RestrictionHolder) (r ObjectRestrictions) {
+func getObjectRestrictions(rh RestrictionHolder) ObjectRestrictions {
+	return applyMemberPolicy(baseObjectRestrictions(rh), rh)
+}
+
+// baseObjectRestrictions are the restrictions an object carries by its own nature, before the
+// space ACL has any say. Several branches return shared package-level maps - never mutate the
+// result, copy it first.
+func baseObjectRestrictions(rh RestrictionHolder) (r ObjectRestrictions) {
 	uk := rh.UniqueKey()
 	if uk != nil && uk.InternalKey() != "" {
 		return getRestrictionsForUniqueKey(uk)

@@ -40,7 +40,7 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 )
 
-var log = logging.Logger(CName).Desugar()
+var log = logging.LoggerNotSugared(CName)
 
 const CName = "core.subscription.crossspacesub"
 

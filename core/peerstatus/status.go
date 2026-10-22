@@ -179,6 +179,14 @@ func (p *p2pStatus) setNotPossibleStatus(state localdiscovery.DiscoveryPossibili
 // RegisterSpace registers spaceId to be monitored for p2p status changes
 // must be called only when p2pStatus is Running
 func (p *p2pStatus) RegisterSpace(spaceId string) {
+	// Mark the space as registered before triggering a refresh. Only registered
+	// spaces are tracked and broadcast; processSpaceStatusUpdate ignores everything
+	// else. This is the single place where a monitored space is created.
+	p.Lock()
+	if _, ok := p.spaceIds[spaceId]; !ok {
+		p.spaceIds[spaceId] = &spaceStatus{status: Unknown}
+	}
+	p.Unlock()
 	select {
 	case <-p.ctx.Done():
 		return
@@ -233,21 +241,17 @@ func (p *p2pStatus) refreshSpaces(spaceIds []string) error {
 	return nil
 }
 
-// updateSpaceP2PStatus updates status for specific spaceId and sends event if status changed
+// processSpaceStatusUpdate updates status for specific spaceId and sends event if status changed.
+// spaceIds that were never registered via RegisterSpace are ignored: peers discovered on the local
+// network (e.g. via mDNS) advertise all of their own spaces, and those flow in through the peerStore
+// observer. Broadcasting p2pStatusUpdate for them would leak status for spaces this account is not a
+// member of, so we only ever refresh spaces this account explicitly registered.
 func (p *p2pStatus) processSpaceStatusUpdate(spaceId string) {
 	p.Lock()
 	defer p.Unlock()
-	var (
-		currentStatus *spaceStatus
-		ok            bool
-	)
-	if currentStatus, ok = p.spaceIds[spaceId]; !ok {
-		currentStatus = &spaceStatus{
-			status:           Unknown,
-			connectionsCount: 0,
-		}
-
-		p.spaceIds[spaceId] = currentStatus
+	currentStatus, ok := p.spaceIds[spaceId]
+	if !ok {
+		return
 	}
 	connectionCount := p.countOpenConnections(spaceId)
 	newStatus := p.getResultStatus(p.p2pLastState, connectionCount)

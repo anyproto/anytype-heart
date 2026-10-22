@@ -264,7 +264,8 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 			Format: model.RelationFormat_object,
 		})
 		objectIDs := DependentObjectIDs(st, converter, fetcher, Flags{Details: true})
-		assert.Len(t, objectIDs, 1)
+		// the 4 single-value relations above + the backlink
+		assert.Len(t, objectIDs, 5)
 		assert.Contains(t, objectIDs, "link1")
 	})
 	t.Run("skip backlinks", func(t *testing.T) {
@@ -275,7 +276,8 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 			Format: model.RelationFormat_object,
 		})
 		objectIDs := DependentObjectIDs(st, converter, fetcher, Flags{Details: true, NoBackLinks: true})
-		assert.Len(t, objectIDs, 0)
+		assert.Len(t, objectIDs, 4)
+		assert.NotContains(t, objectIDs, "link1")
 	})
 }
 
@@ -468,4 +470,56 @@ func TestDependentObjectIDsPerSpace(t *testing.T) {
 	assert.Len(t, ids[spc1], 9)
 	assert.Len(t, ids[spc2], 3)
 	assert.Len(t, ids[spc3], 2)
+}
+
+func TestState_DepSmartIdsSingleValueRelations(t *testing.T) {
+	// given
+	newState := func() *state.State {
+		s := state.NewDoc("fileObj", nil).(*state.State)
+		s.SetDetail(bundle.RelationKeyCreatedInContext, domain.String("chatObjId"))
+		s.SetDetail(bundle.RelationKeyCreatedInContextRef, domain.String("messageId"))
+		return s
+	}
+	converter := &fakeConverter{}
+	fetcher := setupFetcher(t, pbtypes.RelationLinks{})
+	// the flags smartblock.dependentSmartIds passes
+	depFlags := Flags{Blocks: true, Details: true, Types: true, CreatorModifierWorkspace: true}
+
+	t.Run("createdInContext is a dependency", func(t *testing.T) {
+		// when
+		ids := DependentObjectIDs(newState(), converter, fetcher, depFlags)
+
+		// then: the ref is a shorttext locator, never an object
+		assert.Equal(t, []string{"chatObjId"}, ids)
+	})
+
+	t.Run("excluded relations are not dependencies", func(t *testing.T) {
+		// given
+		s := newState()
+		s.SetDetail(bundle.RelationKeyIconImage, domain.String("iconImageObjId"))
+		s.SetDetail(bundle.RelationKeySourceObject, domain.String("sourceObjId"))
+		s.SetDetail(bundle.RelationKeyChatId, domain.String("chatIdObjId"))
+		s.SetDetail(bundle.RelationKeySpaceId, domain.String("spaceObjId"))
+		want := []string{"chatObjId"}
+
+		// when
+		got := DependentObjectIDs(s, converter, fetcher, depFlags)
+
+		// then
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("createdInContext is skipped for the links detail", func(t *testing.T) {
+		// given: injectLinksDetails skips system relations, and createdInContext is one
+		linkFlags := Flags{
+			Blocks: true, Details: true, DataviewBlockOnlyTarget: true,
+			NoSystemRelations: true, NoHiddenBundledRelations: true, RoundDateIdsToDay: true,
+		}
+
+		// when
+		ids := DependentObjectIDs(newState(), converter, fetcher, linkFlags)
+
+		// then
+		assert.Empty(t, ids)
+	})
 }

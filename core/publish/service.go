@@ -37,6 +37,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/export"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/pb"
@@ -233,6 +234,16 @@ func (s *service) applyInviteLink(ctx context.Context, spaceId string, snapshot 
 	}
 	if err != nil {
 		return err
+	}
+	if inviteInfo.InviteFileCid == "" {
+		// the invite is held by the space owner and this is not their device: there is no link to publish
+		return nil
+	}
+	if !domain.ShareableWithinSpace(inviteInfo.InviteType, inviteInfo.Permissions) {
+		// a published page is public. An invite anyone can join with, that grants more than read access,
+		// must not be embedded into it: everyone who opened the page would be a writer in the space,
+		// without approval. A request-to-join or reader link is safe to publish
+		return nil
 	}
 	snapshot.Meta.InviteLink = fmt.Sprintf(s.limitsConfig.InviteLinkUrlTemplate, inviteInfo.InviteFileCid, inviteInfo.InviteFileKey)
 	return nil

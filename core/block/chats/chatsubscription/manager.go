@@ -40,6 +40,9 @@ type subscriptionManager struct {
 
 	identityCache *expirable.LRU[string, *domain.Details]
 	subscriptions map[string]*subscription
+	// observers receive every change as it is applied (observer.go). They are
+	// not subscriptions: IsActive ignores them.
+	observers map[string]ChatObserver
 
 	chatStateOrder          int64
 	chatState               *model.ChatState
@@ -144,11 +147,56 @@ func (s *subscriptionManager) GetChatState() *model.ChatState {
 	return copyChatState(s.chatState)
 }
 
+// ReconcileChatState re-derives the ChatState and message count from the repository — the
+// persisted read-flags are the source of truth — and replaces the in-memory copies only when
+// they diverged. The in-memory counters can drift from the DB: a change replayed over an
+// already-stored message bumps them before the insert is ignored with ErrDocExists, and an
+// apply error rolls the DB back after they were already bumped. Managers are also cached
+// across object reopens, so drift survives until something reloads. Called under Lock on
+// object open, before the first flush, so clients never observe drifted values.
+func (s *subscriptionManager) ReconcileChatState() {
+	dbState, err := s.repository.LoadChatState(s.componentCtx)
+	if err != nil {
+		log.Error("reconcile chat state: load from repository", zap.Error(err))
+		return
+	}
+	if !chatStateValuesEqual(s.chatState, dbState) {
+		s.UpdateChatState(func(*model.ChatState) *model.ChatState {
+			return dbState
+		})
+	}
+	count, err := s.repository.CountMessages(s.componentCtx)
+	if err != nil {
+		log.Error("reconcile chat state: count messages", zap.Error(err))
+		return
+	}
+	if int32(count) != s.messageCount {
+		s.messageCount = int32(count)
+		s.messageCountUpdated = true
+	}
+}
+
+// chatStateValuesEqual compares everything clients consume (counters and watermarks),
+// ignoring the local event-ordering field Order.
+func chatStateValuesEqual(a, b *model.ChatState) bool {
+	return unreadStateEqual(a.GetMessages(), b.GetMessages()) &&
+		unreadStateEqual(a.GetMentions(), b.GetMentions()) &&
+		a.GetLastStateId() == b.GetLastStateId() &&
+		a.GetUnreadReactionOrderId() == b.GetUnreadReactionOrderId()
+}
+
+func unreadStateEqual(a, b *model.ChatStateUnreadState) bool {
+	return a.GetOldestOrderId() == b.GetOldestOrderId() && a.GetCounter() == b.GetCounter()
+}
+
 func (s *subscriptionManager) UpdateChatState(updater func(*model.ChatState) *model.ChatState) {
 	s.chatState = updater(s.chatState)
 	s.chatStateOrder++
 	s.chatState.Order = s.chatStateOrder
 	s.chatStateUpdated = true
+	if len(s.observers) > 0 {
+		s.notify(ChatChange{Kind: ChatChangeStateUpdated, State: copyChatState(s.chatState)})
+	}
 }
 
 func (s *subscriptionManager) UpdateMessageCount(delta int32) {
@@ -168,17 +216,22 @@ func (s *subscriptionManager) ForceSendingChatState() {
 	s.messageCountUpdated = true
 }
 
+// GetLastMessage returns the newest live message: a tombstone (a deleted discussion comment) is
+// not one.
 func (s *subscriptionManager) GetLastMessage() (*model.ChatMessage, bool, error) {
 	// get the last message from any subscription. It works because we don't have offsets for subscriptions, so
 	// it's guaranteed for the last message in a subscription to be the last message in a set of all messages.
+	// A window can hold only tombstones, or end with them: then the newest live message may be
+	// older than the window, and the repository answers.
 	for _, sub := range s.subscriptions {
-		last := sub.state.messages.Back()
-		if last != nil {
-			return proto.Clone(last.Value.(*stateEntry).msg).(*model.ChatMessage), true, nil
+		for it := sub.state.messages.Back(); it != nil; it = it.Prev() {
+			if msg := it.Value.(*stateEntry).msg; !msg.Deleted {
+				return proto.Clone(msg).(*model.ChatMessage), true, nil
+			}
 		}
 	}
 
-	msgs, err := s.repository.GetLastMessages(s.componentCtx, 1)
+	msgs, err := s.repository.GetLastLiveMessages(s.componentCtx, 1)
 	if err != nil {
 		return nil, false, fmt.Errorf("get last message from repository: %w", err)
 	}
@@ -360,6 +413,7 @@ func (s *subscriptionManager) getIdentityDetails(identity string) (*domain.Detai
 }
 
 func (s *subscriptionManager) Add(prevOrderId string, message *chatmodel.Message) {
+	s.notifyMessage(ChatChangeMessageAdded, message)
 	if !s.canSend() {
 		return
 	}
@@ -395,6 +449,9 @@ func (s *subscriptionManager) ForceReloadReactionState() {
 }
 
 func (s *subscriptionManager) Delete(messageId string) {
+	if len(s.observers) > 0 {
+		s.notify(ChatChange{Kind: ChatChangeMessageDeleted, MessageId: messageId})
+	}
 	for _, sub := range s.subscriptions {
 		sub.state.applyDeleteMessage(messageId)
 	}
@@ -402,7 +459,34 @@ func (s *subscriptionManager) Delete(messageId string) {
 	s.needReloadState = true
 }
 
+// SoftDelete replaces a message with its tombstone (a soft-deleted discussion comment). Windows
+// get an update carrying the tombstone, so the message keeps its place on clients; observers get
+// ChatChangeMessageUpdated. The counters drop the message at once, from previous (the message
+// as stored before): a read callback that flushes before the post-commit reload must not
+// publish counts that still include it. The reload after the commit then corrects the
+// oldest-unread order ids.
+func (s *subscriptionManager) SoftDelete(previous, tombstone *chatmodel.Message) {
+	unreadMessage := !previous.Read
+	unreadMention := previous.HasMention && !previous.MentionRead
+	if unreadMessage || unreadMention {
+		s.UpdateChatState(func(state *model.ChatState) *model.ChatState {
+			if unreadMessage && state.Messages.Counter > 0 {
+				state.Messages.Counter--
+			}
+			if unreadMention && state.Mentions.Counter > 0 {
+				state.Mentions.Counter--
+			}
+			return state
+		})
+	}
+	s.UpdateMessageCount(-1)
+	s.UpdateFull(tombstone)
+	// We can't reload chat state here because the change hasn't been committed yet
+	s.needReloadState = true
+}
+
 func (s *subscriptionManager) UpdateFull(message *chatmodel.Message) {
+	s.notifyMessage(ChatChangeMessageUpdated, message)
 	if !s.canSend() {
 		return
 	}
@@ -413,6 +497,7 @@ func (s *subscriptionManager) UpdateFull(message *chatmodel.Message) {
 }
 
 func (s *subscriptionManager) UpdateReactions(message *chatmodel.Message) {
+	s.notifyMessage(ChatChangeReactionsUpdated, message)
 	if !s.canSend() {
 		return
 	}
@@ -423,6 +508,7 @@ func (s *subscriptionManager) UpdateReactions(message *chatmodel.Message) {
 }
 
 func (s *subscriptionManager) UpdatePinned(message *chatmodel.Message) {
+	s.notifyMessage(ChatChangePinnedUpdated, message)
 	if !s.canSend() {
 		return
 	}

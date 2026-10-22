@@ -1,0 +1,208 @@
+package runstore
+
+import (
+	"bytes"
+	"context"
+	"fmt"
+	"slices"
+
+	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/query"
+)
+
+const (
+	collPayloads  = "payloads"
+	collIssues    = "issues"
+	statusClaimed = "claimed"
+)
+
+// ClaimRecord is one pass-1 identity decision, durably recorded:
+// the minted id doubles as write-ahead
+// intent — any minted id in the ledger that exists in the space is
+// attributable to this run from claim time — and the retained create
+// payload is what makes a later pass-3 restart mint nothing.
+type ClaimRecord struct {
+	SourceKey    string
+	ObjectId     string
+	Matched      bool
+	PayloadRoot  []byte // RawTreeChangeWithId proto; nil for matched claims
+	PayloadHeads []string
+}
+
+// RecordClaims writes one batch in a single transaction (batched
+// because an unflushed batch's loss is harmless — no side effects exist at
+// claim time; measured 3-4x over per-claim commits).
+func (s *Store) RecordClaims(ctx context.Context, claims []ClaimRecord) error {
+	if len(claims) == 0 {
+		return nil
+	}
+	return s.withWriteTx(ctx, func(txCtx context.Context) error {
+		return s.recordClaimsInTx(txCtx, claims)
+	})
+}
+
+func (s *Store) recordClaimsInTx(txCtx context.Context, claims []ClaimRecord) error {
+	for _, claim := range claims {
+		mode := modeMinted
+		if claim.Matched {
+			mode = modeMatched
+		}
+		rank := int(s.rank.Add(1))
+		// E1: never a blind upsert — an existing row (an effect, or an
+		// earlier claim) is kept in full: a claim must not downgrade a
+		// persisted status, and a DIFFERENT id must not vanish (the
+		// incoming id is preserved under a synthetic key instead).
+		var displacedId string
+		_, upErr := s.entries.UpsertId(txCtx, claim.SourceKey, query.ModifyFunc(
+			func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+				if existingId := string(v.GetStringBytes("objectId")); existingId != "" {
+					if existingId != claim.ObjectId {
+						displacedId = claim.ObjectId
+					}
+					return v, false, nil
+				}
+				v.Set("objectId", a.NewString(claim.ObjectId))
+				v.Set("mode", a.NewString(mode))
+				v.Set("status", a.NewString(statusClaimed))
+				v.Set("rank", a.NewNumberInt(rank))
+				v.Set("incarnation", a.NewNumberInt(s.currentIncarnation()))
+				if s.materializeStarted.Load() {
+					// A claim recorded after materialization began is a
+					// finalize-stage claim (root collection, report page): it
+					// has no spool row, so a restart re-claims it fresh
+					// instead of reconciling it against the replay.
+					v.Set("late", a.NewBool(true))
+				}
+				return v, true, nil
+			}))
+		if upErr != nil {
+			return fmt.Errorf("claim %q: %w", claim.SourceKey, upErr)
+		}
+		if displacedId != "" {
+			log.With("sourceKey", claim.SourceKey, "displaced", displacedId).
+				Errorf("claim conflicts with an existing ledger id — preserving both")
+			if err := s.recordSyntheticEntry(txCtx, claim.SourceKey, syntheticRow{
+				objectId: displacedId, mode: mode, status: statusClaimed,
+				late: s.materializeStarted.Load(),
+			}); err != nil {
+				return fmt.Errorf("claim %q synthetic: %w", claim.SourceKey, err)
+			}
+		}
+		if !claim.Matched && len(claim.PayloadRoot) > 0 {
+			if err := s.placePayload(txCtx, claim); err != nil {
+				return fmt.Errorf("payload %q: %w", claim.ObjectId, err)
+			}
+		}
+	}
+	return nil
+}
+
+// placePayload writes one write-ahead create payload, keyed by objectId,
+// under the occupancy rule: the FIRST record wins entirely.
+// The minted id is the hash of the root bytes, so a differing re-record
+// under one id is an identity violation upstream — logged loudly, never
+// silently preferred; an identical re-record is an idempotent no-op.
+func (s *Store) placePayload(ctx context.Context, claim ClaimRecord) error {
+	conflicting := false
+	_, err := s.payloads.UpsertId(ctx, claim.ObjectId, query.ModifyFunc(
+		func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+			if existing := v.GetBytes("root"); len(existing) > 0 {
+				conflicting = !bytes.Equal(existing, claim.PayloadRoot) ||
+					!slices.Equal(readHeads(v), claim.PayloadHeads)
+				return v, false, nil
+			}
+			v.Set("root", a.NewBinary(claim.PayloadRoot))
+			heads := a.NewArray()
+			for i, head := range claim.PayloadHeads {
+				heads.SetArrayItem(i, a.NewString(head))
+			}
+			v.Set("heads", heads)
+			return v, true, nil
+		}))
+	if err != nil {
+		return err
+	}
+	if conflicting {
+		log.With("objectId", claim.ObjectId, "sourceKey", claim.SourceKey).
+			Errorf("conflicting create payload re-recorded under one object id — keeping the first record")
+	}
+	return nil
+}
+
+func readHeads(v *anyenc.Value) []string {
+	rows := v.GetArray("heads")
+	heads := make([]string, 0, len(rows))
+	for _, row := range rows {
+		heads = append(heads, string(row.GetStringBytes()))
+	}
+	return heads
+}
+
+// IssueRecord is one durable issue-ledger row: pass-2 issues must survive to
+// pass 3's report page. Flattened strings — the wire Issue's
+// error chain does not round-trip and does not need to.
+type IssueRecord struct {
+	Severity  int
+	Code      string
+	SourceKey string
+	ObjectId  string
+	Subject   string
+	Count     int
+	Message   string
+	Error     string
+}
+
+// AppendIssue appends one row in arrival order, capped by the caller (the
+// adapter enforces IssueCap, mirroring the in-memory ledger).
+func (s *Store) AppendIssue(ctx context.Context, rec IssueRecord) error {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
+	arena := s.arenas.Get()
+	defer func() {
+		arena.Reset()
+		s.arenas.Put(arena)
+	}()
+	row := arena.NewObject()
+	row.Set("id", arena.NewString(fmt.Sprintf("%012d", s.issueSeq.Add(1))))
+	row.Set("severity", arena.NewNumberInt(rec.Severity))
+	row.Set("code", arena.NewString(rec.Code))
+	row.Set("sourceKey", arena.NewString(rec.SourceKey))
+	row.Set("objectId", arena.NewString(rec.ObjectId))
+	row.Set("subject", arena.NewString(rec.Subject))
+	row.Set("count", arena.NewNumberInt(rec.Count))
+	row.Set("message", arena.NewString(rec.Message))
+	row.Set("error", arena.NewString(rec.Error))
+	return s.issues.UpsertOne(ctx, row)
+}
+
+// ReadIssues returns the durable issue ledger in arrival order.
+func (s *Store) ReadIssues(ctx context.Context) ([]IssueRecord, error) {
+	ctx, opDone := opCtx(ctx)
+	defer opDone()
+
+	iter, err := s.issues.Find(nil).Sort("id").Iter(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("iterate issues: %w", err)
+	}
+	defer iter.Close()
+	var records []IssueRecord
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, fmt.Errorf("read issue doc: %w", err)
+		}
+		v := doc.Value()
+		records = append(records, IssueRecord{
+			Severity:  v.GetInt("severity"),
+			Code:      string(v.GetStringBytes("code")),
+			SourceKey: string(v.GetStringBytes("sourceKey")),
+			ObjectId:  string(v.GetStringBytes("objectId")),
+			Subject:   string(v.GetStringBytes("subject")),
+			Count:     v.GetInt("count"),
+			Message:   string(v.GetStringBytes("message")),
+			Error:     string(v.GetStringBytes("error")),
+		})
+	}
+	return records, nil
+}

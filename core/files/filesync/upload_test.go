@@ -210,7 +210,12 @@ func TestFileSync_AddFile(t *testing.T) {
 	})
 }
 
-func TestFileSync_AddFile_SkipWhenNotLocal(t *testing.T) {
+func TestFileSync_AddFile_QueuedWhenNotLocal(t *testing.T) {
+	// A file object may legitimately reference blocks that were never written
+	// locally (e.g. import dedup reused a fileId uploaded from another space or
+	// device). Such files must still be queued: the uploader confirms sync
+	// against the node. Here the blocks exist nowhere, so the item must park in
+	// MissingBlocks instead of being silently dropped.
 	fx := newFixture(t, 1024*1024*1024)
 	defer fx.Finish(t)
 
@@ -223,14 +228,9 @@ func TestFileSync_AddFile_SkipWhenNotLocal(t *testing.T) {
 	err := fx.AddFile(req)
 	require.NoError(t, err)
 
-	timeoutCtx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
-	_, err = fx.queue.GetNext(timeoutCtx, filequeue.GetNextRequest[FileInfo]{
-		Subscribe:   true,
-		StoreFilter: filterByState(FileStatePendingUpload),
-		Filter:      func(info FileInfo) bool { return info.FileId == nonExistentFileId },
-	})
-	assert.Error(t, err, "file without local blocks should not be queued")
+	it := fx.waitItemState(t, "objectId1", FileStateMissingBlocks, 5*time.Second)
+	assert.Equal(t, nonExistentFileId, it.FileId)
+	assert.True(t, it.ScheduledAt.After(time.Now()), "missing-blocks item must be scheduled for a future retry")
 }
 
 func TestFileSync_MarkUploaded(t *testing.T) {

@@ -312,6 +312,7 @@ func ToggleChatReactionHandler(s *service.Service) gin.HandlerFunc {
 
 		_, err := s.ToggleChatReaction(c.Request.Context(), chatId, messageId, req.Emoji)
 		code := util.MapErrorCode(err,
+			util.ErrToCode(service.ErrInvalidChatMessage, http.StatusBadRequest),
 			util.ErrToCode(service.ErrFailedToggleReaction, http.StatusInternalServerError),
 		)
 

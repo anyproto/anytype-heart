@@ -99,7 +99,8 @@ func TestAuthService_SolveChallengeForToken(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		require.Equal(t, mockedAppKey, apiKey)
+		require.Equal(t, mockedAppKey, apiKey.ApiKey)
+		require.Nil(t, apiKey.Grant)
 
 	})
 

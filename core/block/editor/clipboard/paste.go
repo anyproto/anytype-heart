@@ -3,6 +3,7 @@ package clipboard
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/samber/lo"
@@ -32,6 +33,15 @@ type pasteCtrl struct {
 	caretPos  int32
 	uploadArr []pb.RpcBlockUploadRequest
 	blockIds  []string
+
+	// formerly-empty focused block that got paste content written in place;
+	// forked to a fresh id at the end of Exec (see forkFilledEmptyBlock)
+	filledEmptyBlockId string
+
+	// children of the dropped first pasted block, to be re-parented onto the focused
+	// block that took its place once they are in the document (see adoptPastedChildren)
+	adoptedChildIds []string
+	adoptParentId   string
 }
 
 type pasteMode struct {
@@ -72,12 +82,44 @@ func (p *pasteCtrl) Exec(req *pb.RpcBlockPasteRequest) (err error) {
 	if err = p.insertUnderSelection(); err != nil {
 		return
 	}
+	if err = p.adoptPastedChildren(); err != nil {
+		return
+	}
 	if p.mode.removeSelection {
 		p.removeSelection()
+	}
+	if err = p.forkFilledEmptyBlock(); err != nil {
+		return
 	}
 	p.normalize()
 	p.processFiles()
 	return
+}
+
+// forkFilledEmptyBlock re-creates a formerly-empty block that paste filled in
+// place under a fresh id. An empty block is a shared LWW register: its id is
+// known to all peers, so concurrent first-writes into it clobber each other.
+// A fresh id turns the concurrent case into two independent creates — both
+// texts survive the merge. The new id is prepended to blockIds so the client
+// re-targets focus from the replaced block.
+func (p *pasteCtrl) forkFilledEmptyBlock() (err error) {
+	if p.filledEmptyBlockId == "" {
+		return nil
+	}
+	old := p.s.Pick(p.filledEmptyBlockId)
+	if old == nil {
+		return nil
+	}
+	m := old.Copy().Model()
+	m.Id = ""
+	forked := simple.New(m)
+	p.s.Add(forked)
+	if err = p.s.InsertTo(p.filledEmptyBlockId, model.Block_Top, forked.Model().Id); err != nil {
+		return fmt.Errorf("insert forked block: %w", err)
+	}
+	p.s.Unlink(p.filledEmptyBlockId)
+	p.blockIds = append([]string{forked.Model().Id}, p.blockIds...)
+	return nil
 }
 
 // configure determines the paste mode based on the request parameters:
@@ -266,17 +308,103 @@ func (p *pasteCtrl) singleRange() (err error) {
 	}
 	if selText.GetText() == "" {
 		p.mode.removeSelection = true
-		if wasEmpty && firstPasteText != nil {
+		// Reusing the focused block silently flattens the first pasted block: only text
+		// and marks are carried over, so style, checked, colors, code language and
+		// children stay behind. Skip the reuse for a block that holds nothing a user put
+		// there and drop it instead, so the paste blocks land untouched. removeSelection
+		// unlinks it, so GO-7311's promise that no stray empty paragraph is left above
+		// the pasted content still holds.
+		//
+		// Anything the user did set keeps the old behaviour — in particular a style of
+		// its own, which is the GO-6615 "Keep target toggle block" intent.
+		if wasEmpty && firstPasteText != nil && !isDisposablePlaceholder(selText) {
 			p.mode.removeSelection = false
-			// Reuse the empty focused block for the first paste line instead of
-			// leaving it as a stray empty paragraph above the pasted content.
-			// Reverts the multi-block carve-out from GO-6615 "Keep target toggle
-			// block"; the single-block toggle case is handled by intoBlock mode.
 			selText.SetText(firstPasteText.GetText(), firstPasteText.Model().GetText().Marks)
+			if err = p.rehomeFirstPasteChildren(selText, firstPasteText); err != nil {
+				return
+			}
 			p.ps.Unlink(firstPasteText.Model().Id)
+			// an empty block's id is shared with peers — fork it (never a
+			// required block here: those returned earlier)
+			p.filledEmptyBlockId = targetId
 		}
+		// Either way the focused block is gone by the end of Exec: dropped by
+		// removeSelection, or forked to a fresh id and unlinked. A position inside it
+		// addresses a block that is no longer there, and Android takes any caretPosition
+		// >= 0 in preference to blockIds, so it would pin the caret to the dead id.
+		// intoBlock reports the caret through blockIds the same way.
+		p.caretPos = -1
 	}
 	return
+}
+
+// rehomeFirstPasteChildren keeps the subtree of the first pasted block alive when the block
+// itself is dropped in favour of the reused focused block. State.Unlink only removes an id
+// from its parent's ChildrenIds: the subtree stays in the paste state but stops being
+// reachable from its root, so insertUnderSelection, which walks the tree, never moves it into
+// the document and the nested content is silently lost.
+//
+// Re-attaching the children to the paste root in the place their parent held is enough on its
+// own: they then land in the document as blocks following the reused one. When the reused
+// block's style can own children they are re-parented onto it afterwards, once
+// insertUnderSelection has put them in the document — see adoptPastedChildren.
+func (p *pasteCtrl) rehomeFirstPasteChildren(selText, firstPasteText text.Block) error {
+	childIds := append([]string(nil), firstPasteText.Model().ChildrenIds...)
+	if len(childIds) == 0 {
+		return nil
+	}
+	for _, id := range childIds {
+		p.ps.Unlink(id)
+	}
+	if err := p.ps.InsertTo(firstPasteText.Model().Id, model.Block_Bottom, childIds...); err != nil {
+		return fmt.Errorf("re-attach children of the first pasted block: %w", err)
+	}
+	if text.CanHaveChildren(selText.Model().GetText().GetStyle()) {
+		p.adoptedChildIds = childIds
+		p.adoptParentId = selText.Model().Id
+	}
+	return nil
+}
+
+// adoptPastedChildren re-parents the children of the dropped first pasted block onto the
+// focused block that took its place, which insertUnderSelection has just left as their
+// preceding sibling. A style that cannot own children keeps them there instead.
+//
+// They go in front of the children the focused block already had, which GO-7513 keeps alive:
+// the caret sat in its text, above everything nested under it, and pasted content belongs
+// where the caret was. This also keeps the pasted subtree contiguous.
+func (p *pasteCtrl) adoptPastedChildren() error {
+	if len(p.adoptedChildIds) == 0 {
+		return nil
+	}
+	for _, id := range p.adoptedChildIds {
+		p.s.Unlink(id)
+	}
+	if err := p.s.InsertTo(p.adoptParentId, model.Block_InnerFirst, p.adoptedChildIds...); err != nil {
+		return fmt.Errorf("re-parent pasted children onto the reused block: %w", err)
+	}
+	return nil
+}
+
+// isDisposablePlaceholder reports whether a focused text block holds nothing a user put
+// there, so that paste can drop it instead of reusing it for the first pasted line.
+//
+// text.Block.IsEmpty covers the text itself plus marks, style, checked state, both colors,
+// both icon fields and both alignments. Three things it does not cover matter just as much
+// here: children, because unlinking a block orphans its whole subtree and the state apply
+// then deletes it; Fields, which carries a code block's language and survives a style change
+// back to Paragraph; and Restrictions, because dropping the block instead of writing to it
+// would slip past the restriction check that a write would have failed.
+func isDisposablePlaceholder(b text.Block) bool {
+	m := b.Model()
+	return b.IsEmpty() &&
+		len(m.ChildrenIds) == 0 &&
+		len(m.Fields.GetFields()) == 0 &&
+		!hasRestrictions(m.Restrictions)
+}
+
+func hasRestrictions(r *model.BlockRestrictions) bool {
+	return r != nil && (r.Read || r.Edit || r.Remove || r.Drag || r.DropOn)
 }
 
 // intoBlock handles pasting a single text block into the focused block inline.
@@ -292,8 +420,16 @@ func (p *pasteCtrl) intoBlock() (err error) {
 	if firstSelText == nil || firstPasteText == nil {
 		return
 	}
+	wasEmpty := firstSelText.GetText() == "" && !state.IsRequiredBlockId(firstSelText.Model().Id)
 	p.caretPos, err = firstSelText.RangeTextPaste(p.selRange.From, p.selRange.To, firstPasteText.Model(), p.mode.intoBlockCopyStyle)
 	p.ps.Unlink(firstPasteText.Model().Id)
+	if err == nil && wasEmpty {
+		// an empty block's id is shared with peers — fork it. The caret is
+		// reported through blockIds instead of a position in the (replaced)
+		// focused block.
+		p.filledEmptyBlockId = firstSelText.Model().Id
+		p.caretPos = -1
+	}
 	return
 }
 

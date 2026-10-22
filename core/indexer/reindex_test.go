@@ -3,6 +3,7 @@ package indexer
 import (
 	"context"
 	"testing"
+	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
@@ -738,6 +739,142 @@ func TestReindexOutdatedObjects(t *testing.T) {
 		require.NoError(t, err)
 		assert.Zero(t, total)
 		assert.Zero(t, success)
+	})
+}
+
+func TestReindexOutdatedConcurrencyLimit(t *testing.T) {
+	// each mock space has one never-indexed object whose space.Do blocks on
+	// proceed, so a space's outdated pass stays "running" until released
+	newBlockedSpace := func(t *testing.T, spaceId string, started chan<- string, proceed <-chan struct{}) *mock_space.MockSpace {
+		ctrl := gomock.NewController(t)
+		headStorage := mock_headstorage.NewMockHeadStorage(ctrl)
+		headStorage.EXPECT().IterateEntries(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().DoAndReturn(
+			func(_ context.Context, _ headstorage.IterOpts, iter headstorage.EntryIterator) error {
+				_, err := iter(headstorage.HeadsEntry{Id: spaceId + "/obj", Heads: []string{"head"}, CommonSnapshot: "cs"})
+				return err
+			})
+		stateStorage := mock_statestorage.NewMockStateStorage(ctrl)
+		stateStorage.EXPECT().SettingsId().AnyTimes().Return("settingsId")
+		storage := mock_anystorage.NewMockClientSpaceStorage(t)
+		storage.EXPECT().HeadStorage().Return(headStorage).Maybe()
+		storage.EXPECT().StateStorage().Return(stateStorage).Maybe()
+
+		spc := mock_space.NewMockSpace(t)
+		spc.EXPECT().Id().Return(spaceId).Maybe()
+		spc.EXPECT().Storage().Return(storage).Maybe()
+		spc.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{}).Maybe()
+		spc.EXPECT().FilterNotExists(mock.Anything).Return(nil).Maybe()
+		spc.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(string, func(smartblock.SmartBlock) error) error {
+			started <- spaceId
+			<-proceed
+			return nil
+		}).Maybe()
+		return spc
+	}
+
+	t.Run("at most width spaces run the outdated pass concurrently", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.reindexLimiter = newReindexLimiter(2, nil)
+		started := make(chan string, 9)
+		proceed := make(chan struct{})
+		defer close(proceed)
+
+		for _, spaceId := range []string{"space1", "space2", "space3"} {
+			checksums := fx.getLatestChecksums(false)
+			require.NoError(t, fx.store.SaveChecksums(spaceId, &checksums))
+
+			// when
+			require.NoError(t, fx.ReindexSpace(newBlockedSpace(t, spaceId, started, proceed)))
+		}
+
+		// then
+		for i := 0; i < 2; i++ {
+			select {
+			case <-started:
+			case <-time.After(2 * time.Second):
+				t.Fatalf("only %d outdated passes started, expected 2", i)
+			}
+		}
+		select {
+		case spaceId := <-started:
+			t.Fatalf("%s started an outdated pass beyond the concurrency limit", spaceId)
+		case <-time.After(150 * time.Millisecond):
+		}
+	})
+
+	t.Run("queued space starts once a slot frees", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.reindexLimiter = newReindexLimiter(2, nil)
+		started := make(chan string, 9)
+		proceed := make(chan struct{})
+
+		for _, spaceId := range []string{"space1", "space2", "space3"} {
+			checksums := fx.getLatestChecksums(false)
+			require.NoError(t, fx.store.SaveChecksums(spaceId, &checksums))
+			require.NoError(t, fx.ReindexSpace(newBlockedSpace(t, spaceId, started, proceed)))
+		}
+		for i := 0; i < 2; i++ {
+			select {
+			case <-started:
+			case <-time.After(2 * time.Second):
+				t.Fatalf("only %d outdated passes started, expected 2", i)
+			}
+		}
+
+		// when
+		close(proceed)
+
+		// then
+		select {
+		case <-started:
+		case <-time.After(2 * time.Second):
+			t.Fatal("queued space never started after a slot freed")
+		}
+	})
+
+	t.Run("freed slot goes to the space the user has opened, not the earlier waiter", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.reindexLimiter = newReindexLimiter(1, func() map[string]struct{} {
+			return map[string]struct{}{"spaceOpened": {}}
+		})
+		started := make(chan string, 9)
+		proceedRunning := make(chan struct{})
+		proceedRest := make(chan struct{})
+		defer close(proceedRest)
+
+		for _, spaceId := range []string{"spaceRunning", "spaceBackground", "spaceOpened"} {
+			checksums := fx.getLatestChecksums(false)
+			require.NoError(t, fx.store.SaveChecksums(spaceId, &checksums))
+		}
+
+		// spaceRunning takes the only slot
+		require.NoError(t, fx.ReindexSpace(newBlockedSpace(t, "spaceRunning", started, proceedRunning)))
+		select {
+		case spaceId := <-started:
+			require.Equal(t, "spaceRunning", spaceId)
+		case <-time.After(2 * time.Second):
+			t.Fatal("first space never started")
+		}
+
+		// the background space queues before the opened one
+		require.NoError(t, fx.ReindexSpace(newBlockedSpace(t, "spaceBackground", started, proceedRest)))
+		require.Eventually(t, func() bool { return fx.reindexLimiter.waitingCount() == 1 }, 2*time.Second, 5*time.Millisecond)
+		require.NoError(t, fx.ReindexSpace(newBlockedSpace(t, "spaceOpened", started, proceedRest)))
+		require.Eventually(t, func() bool { return fx.reindexLimiter.waitingCount() == 2 }, 2*time.Second, 5*time.Millisecond)
+
+		// when the running pass finishes
+		close(proceedRunning)
+
+		// then
+		select {
+		case spaceId := <-started:
+			assert.Equal(t, "spaceOpened", spaceId)
+		case <-time.After(2 * time.Second):
+			t.Fatal("no queued space started after the slot freed")
+		}
 	})
 }
 

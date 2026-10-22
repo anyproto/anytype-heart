@@ -54,6 +54,12 @@ func NewVirtualSpace(spaceId string, deps VirtualSpaceDeps) *VirtualSpace {
 	return vs
 }
 
+// IsReadOnly is always true: a virtual space has no ACL to ask, and the embedded space's check
+// would dereference it
+func (vs *VirtualSpace) IsReadOnly() bool {
+	return true
+}
+
 func (vs *VirtualSpace) GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error) {
 	return vs.RelationPrefix + key.String(), nil
 }

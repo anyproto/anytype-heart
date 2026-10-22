@@ -51,5 +51,6 @@ func givenFileInfo() FileInfo {
 			testCid2:                           {},
 			testCid3:                           {},
 		},
+		MissingBlocksRetries: 2,
 	}
 }

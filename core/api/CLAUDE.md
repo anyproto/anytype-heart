@@ -24,10 +24,19 @@ make test-deps
 # Generate OpenAPI documentation
 make openapi
 
-# Documentation generated in core/api/docs/
-# - openapi.yaml
-# - openapi.json
+# One document per API version:
+# - core/api/docs/v1/openapi.{yaml,json}   (from core/api, v2 excluded)
+# - core/api/docs/v2/openapi.{yaml,json}   (from core/api/v2)
+# Served at /v1/docs/openapi.*, /v2/docs/openapi.*, and /docs/openapi.* (= v2)
 ```
+
+The v2 Introduction is authored in `core/api/v2/markdown/api.md`. Keep the
+shared API behavior there; `core/api/v2/doc.go` holds metadata and references
+it with `@description.markdown`. `make openapi` passes the Markdown directory
+to swag. The OpenAPI 3 parser in swag v2.0.0-rc4 drops this value, so
+`scripts/fix_openapi_v2.py` injects the same source into both generated formats,
+preserving headings, tables, and code blocks in `info.description`.
+Do not edit the generated OpenAPI description directly.
 
 ## Architecture Overview
 
@@ -55,6 +64,39 @@ The API follows a clean layered architecture:
 4. **Core Interfaces** (`/core/`) - External dependencies
    - Defines interfaces for middleware interaction
    - Keeps API decoupled from implementation
+
+#### API v2 lives in its own tree
+
+`/handler/`, `/service/` and `/model/` above are **v1 only**. API v2 has the
+same three layers under `/v2/`:
+
+```
+core/api/
+  core/  util/  pagination/   SHARED by both versions
+  server/                     the one gin engine, auth, rate limit, analytics
+  handler/ service/ model/    v1
+  v2/                         package apiv2 — router.go, middleware.go, doc.go
+    handler/                  package v2handler
+    service/                  package v2service
+    model/                    package v2model
+  docs/v1/  docs/v2/          the two generated documents (data only)
+  wrapper/                    the v2 task-tool wrapper
+```
+
+v2 shares **nothing** with v1 at the type level, and the package split is what
+makes that a compile error rather than a convention. Dependencies point one
+way: `server` → `v2`, never back. `server` hands v2 the shared middleware
+through `apiv2.RouteDeps`; v2 owns its own routes, its C8 idempotency and C9
+dry-run middleware, and its C10 pagination defaults.
+
+v2 model types carry **no `V2` prefix** — the package qualifier carries the
+version (`v2model.Error`, `v2model.ListResponse[v2model.ObjectRow]`), and each
+version gets its own OpenAPI document, so schema names cannot collide.
+
+The three object adapters and `chatsubadapter.go` stay in package `api`: that
+package is the composition root (the only one that touches `*app.App` and
+heart-internal services), and what they produce are implementations of the
+SHARED `apicore` ports.
 
 ### Key Patterns
 
@@ -231,7 +273,7 @@ Request processing order:
 1. Define request/response models in `/model/`
 2. Add service method in `/service/`
 3. Create handler in `/handler/`
-4. Add route in `/server/routes.go`
+4. Add route in `/server/router.go` (v1) or `/v2/router.go` (v2)
 5. Write tests for both service and handler
 6. Update OpenAPI annotations
 7. Run `make openapi` to regenerate docs
@@ -249,3 +291,22 @@ Request processing order:
 3. Verify authentication token validity
 4. Use integration tests for end-to-end validation
 5. Check rate limiting configuration
+## Where the design is written down
+
+- `APIV2.md` — the v2 specification. Start here.
+- `APIV2_PLAN.md` — outstanding work and the decisions still waiting on a human.
+- `APIV2_SURFACES.md` — what `/v1` serves that `/v2` does not yet, and the decisions about it.
+- `APIV2_ADDRESSING.md` — the identifier layer: how a type or property is named, minted and resolved.
+- `APIV2_VOCABULARY.md` — slugs on the wire, names at the edge, ids in reference slots.
+- `APIV2_TOKENS.md` — the measured token review the served shapes were chosen from.
+- `APIV2_TYPED_HINTS.md` — how repair hints name operations instead of spelling HTTP routes.
+- `APIV2_TYPE_OPS.md` — the incremental type-edit op channel.
+- `APIV2_OBJECT_DELETE.md` — creator provenance and the own-output delete rule.
+- `APIV2_WIDGETS.md` — the sidebar widget surface: the desktop's rules mirrored, the two roots, what is re-checked under the lock.
+- `v2/markdown/api.md` — the **published** API introduction. A test pins it; run `make openapi` after
+  editing it.
+
+Eval rounds and surface-review reports are not kept in the repo. They are archived at
+`../anytype-heart-docs/core/api/` along with an unapplied Swagger prose patch; see the MANIFEST there.
+Their findings were never re-triaged against current code, so treat one as a lead to verify, not as a
+known-open bug.

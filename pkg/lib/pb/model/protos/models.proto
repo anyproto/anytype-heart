@@ -3,6 +3,7 @@ package anytype.model;
 option go_package = "pkg/lib/pb/model";
 
 import "google/protobuf/struct.proto";
+import "pkg/lib/pb/model/protos/export_report.proto";
 
 message SmartBlockSnapshotBase {
     repeated Block blocks = 1;
@@ -99,6 +100,7 @@ message Search {
             string highlight = 4; // truncated text with highlights
             repeated Range highlightRanges = 5; // ranges of the highlight in the text (using utf-16 runes)
             ChatMessage message = 6;
+            string spaceId = 7; // space the chat belongs to; set in all search scopes
         }
     }
 
@@ -731,14 +733,34 @@ message Account {
             string appName = 2; // either from process or specified manually when creating
             string appKey = 4;
             int64 createdAt = 5;
-            int64 expireAt = 6;
+            int64 expireAt = 6; // unix timestamp in seconds after which the key stops authenticating; 0 means the key never expires
             LocalApiScope scope = 7;
             bool isActive = 8;
+            AppGrant grant = 9; // unset means an unscoped (legacy) key; only JsonAPI-scope keys may carry one
         }
         enum LocalApiScope {
             Limited = 0; // Used in WebClipper; AccountSelect(to be deprecated), ObjectSearch, ObjectShow, ObjectCreate, ObjectCreateFromURL, BlockPreview, BlockPaste, BroadcastPayloadEvent
             JsonAPI = 1; // JSON API only, no direct grpc api calls allowed
             Full = 2; // Full access, not available via LocalLink
+        }
+        message AppGrant {
+            // spaceIds are the spaces the key may touch; empty only when
+            // allSpaces is set — exactly one of the two must be present
+            repeated string spaceIds = 1;
+            Perm perm = 2;
+            // allSpaces grants every space in the account, including spaces
+            // created after the grant was made (dynamic — GitHub's "All
+            // repositories" semantics). The JSON API still excludes the tech
+            // space; reaching it requires listing it explicitly in spaceIds.
+            bool allSpaces = 3;
+            // Perm is nested so its Go constants (AccountAuthAppGrant_Read) can
+            // never be misread as the key scopes (AccountAuth_JsonAPI et al.) —
+            // grant verbs and key scopes are unrelated enums about different
+            // authorization layers.
+            enum Perm {
+                Read = 0; // the zero value is the narrowest permission, so an unset perm never widens
+                ReadWrite = 1;
+            }
         }
     }
 
@@ -1148,11 +1170,18 @@ message Notification {
         string spaceId = 4;
         string name = 5;
         string spaceName = 6;
+        // id of the import report page listing per-object issues; empty when the run was clean (importv2)
+        string reportObjectId = 7;
+        // number of issues recorded during the run, for "imported with N issues" UI (importv2)
+        int64 issuesCount = 8;
     }
 
     message Export {
         Code errorCode = 2;
         model.Export.Format exportType = 3;
+        ExportReport report = 4;
+        // Selected destination directory for this local export.
+        string path = 5;
         enum Code {
             NULL = 0;
             UNKNOWN_ERROR = 1;
@@ -1231,6 +1260,11 @@ message Export {
         DOT = 3;
         SVG = 4;
         GRAPH_JSON = 5;
+        // AnyBlockV2 is the native AnyBlock v2 bundle (pkg/lib/anyblockjson
+        // format/v2/SPEC.md): a directory of `<id>.anyblock.json` documents beside an
+        // index.json and properties.json. Additive — existing values keep
+        // their numbers, so a client that does not know it is unaffected.
+        AnyBlockV2 = 6;
     }
 }
 
@@ -1492,6 +1526,48 @@ message MembershipV2 {
         GooglePlay = 5;
     }
 
+    // Freshness of one membership resource (status or products) as served in
+    // MembershipV2 GetStatus/GetProducts responses and update events.
+    // The zero value is FRESH, so a message that never sets it keeps the
+    // pre-freshness meaning.
+    enum Freshness {
+        // data comes from a recent successful fetch from the payment node
+        FRESH = 0;
+        // data comes from an earlier successful fetch: the latest refresh
+        // failed, or the age of the cached data is unknown
+        STALE = 1;
+        // never fetched successfully: data is an empty placeholder and must be
+        // treated as unknown (not as "no membership")
+        NONE = 2;
+    }
+
+    // Class of the last failed refresh of a resource
+    enum RefreshError {
+        RefreshErrorNull = 0;
+        // transient: timeout, payment node unreachable, connection closed
+        RefreshErrorPaymentNode = 1;
+        // any other failure
+        RefreshErrorUnknown = 2;
+    }
+
+    // Orders published states of one resource. Apply a response or event only
+    // if its revision is newer than the one already applied. epoch is random
+    // and changes on every payments service start (account select or restart):
+    // reset ordering state when it changes.
+    message Revision {
+        uint64 epoch = 1;
+        uint64 counter = 2;
+    }
+
+    message FetchState {
+        Freshness freshness = 1;
+        // unix seconds of the last successful fetch, 0 if never or unknown
+        int64 lastSuccessfulFetchAt = 2;
+        // set while the latest refresh of the resource failed
+        RefreshError lastRefreshError = 3;
+        Revision revision = 4;
+    }
+
     enum Period {
         Unlimited = 0 [deprecated = true];
         Monthly = 1;
@@ -1668,6 +1744,12 @@ message ChatMessage {
     bool pinned = 15;
     bool unreadReaction = 16;
     repeated MessageBlock blocks = 17;  // Ordered list of content blocks
+    // deleted marks a soft-deleted discussion comment (a tombstone). It keeps id, orderId,
+    // creator, createdAt and replyToMessageId, so replies keep their thread; message,
+    // attachments, blocks and reactions are empty and modifiedAt is 0. Only discussions
+    // produce it; a deleted space-chat message is removed and announced with Event.Chat.Delete.
+    // A tombstone can't be edited, reacted to, pinned or replied to.
+    bool deleted = 18;
 
     message MessageContent {
         string text = 1;      // The text content of the message part

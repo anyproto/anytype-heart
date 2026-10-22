@@ -6,7 +6,10 @@ package localdiscovery
 import (
 	"context"
 	"fmt"
+	gonet "net"
+	"runtime"
 	"slices"
+	"strconv"
 	"sync"
 	"time"
 
@@ -27,7 +30,19 @@ type Hook int
 
 var interfacesSortPriority = []string{"wlan", "wl", "en", "eth", "tun", "tap", "utun", "lo"}
 
-type localDiscovery struct {
+// queryStopTimeout bounds how long a refresh waits for the previous
+// generation's query goroutines to stop. A var so tests can shorten it.
+var queryStopTimeout = 5 * time.Second
+
+// getInterfacesAddrs is a seam for tests to inject enumeration failures.
+var getInterfacesAddrs = addrs.GetInterfacesAddrs
+
+// zeroconfDiscovery runs heart's own mDNS responder and browser (our zeroconf
+// fork). Desktop always uses it; iOS falls back to it when the app installed no
+// native DiscoveryProxy (see newForInstalledProvider).
+type zeroconfDiscovery struct {
+	discoveryBase
+
 	server *zeroconf.Server
 	peerId string
 	port   int
@@ -36,34 +51,46 @@ type localDiscovery struct {
 	componentCtxCancel context.CancelFunc
 	queryCtx           context.Context
 	queryCtxCancel     context.CancelFunc
-	closeWait          sync.WaitGroup
-	interfacesAddrs    addrs.InterfacesAddrs
-	periodicCheck      periodicsync.PeriodicSync
-	drpcServer         clientserver.ClientServer
-	nodeConf           nodeconf.Configuration
+	// closeWait tracks the query goroutines of the current server generation.
+	// A fresh WaitGroup per generation (created in startQuerying, under l.m):
+	// reusing one value across generations raced Close's Wait against the
+	// refresh reassigning it.
+	closeWait     *sync.WaitGroup
+	periodicCheck periodicsync.PeriodicSync
+	drpcServer    clientserver.ClientServer
+	nodeConf      nodeconf.Configuration
 
-	ipv4        []string
-	ipv6        []string
+	ipv4 []string
+	own  []ownAddr // every ipv4 address with its subnet, then the link-local ones
+	// linkLocal describes the interfaces without IPv4 that discovery runs on
+	// over IPv6 link-local (see linkLocalOnly); empty means IPv4 only.
+	linkLocal linkLocalIfaces
+	// ifaceIds identifies every interface of the last enumeration, see
+	// interfaceIds
+	ifaceIds []string
+	// discoveries serializes PeerDiscovered per peer (see peerDiscoveries)
+	discoveries peerDiscoveries
 	manualStart bool
 	started     bool
 	notifier    Notifier
 	m           sync.Mutex
+	refreshMu   sync.Mutex // serializes refreshInterfaces so l.m can be released across the server teardown
+	// refreshTrigger (buffered 1) coalesces network-change refresh requests
+	// for the refreshWorker goroutine
+	refreshTrigger chan struct{}
 
-	hookMu       sync.Mutex
-	hookState    DiscoveryPossibility
-	hooks        []HookCallback
 	networkState NetworkStateService
 }
 
-func New() LocalDiscovery {
-	return &localDiscovery{hooks: make([]HookCallback, 0)}
+func newZeroconf() *zeroconfDiscovery {
+	return &zeroconfDiscovery{}
 }
 
-func (l *localDiscovery) SetNotifier(notifier Notifier) {
+func (l *zeroconfDiscovery) SetNotifier(notifier Notifier) {
 	l.notifier = notifier
 }
 
-func (l *localDiscovery) Init(a *app.App) (err error) {
+func (l *zeroconfDiscovery) Init(a *app.App) (err error) {
 	l.manualStart = a.MustComponent(config.CName).(*config.Config).DontStartLocalNetworkSyncAutomatically
 	l.nodeConf = a.MustComponent(config.CName).(*config.Config).GetNodeConf()
 	l.peerId = a.MustComponent(accountservice.CName).(accountservice.Service).Account().PeerId
@@ -71,10 +98,11 @@ func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.drpcServer = app.MustComponent[clientserver.ClientServer](a)
 	l.networkState = app.MustComponent[NetworkStateService](a)
 	l.componentCtx, l.componentCtxCancel = context.WithCancel(context.Background())
+	l.refreshTrigger = make(chan struct{}, 1)
 	return
 }
 
-func (l *localDiscovery) Run(ctx context.Context) (err error) {
+func (l *zeroconfDiscovery) Run(ctx context.Context) (err error) {
 	if l.manualStart && len(l.nodeConf.Nodes) > 0 {
 		// let's wait for the explicit command to enable local discovery
 		return
@@ -83,7 +111,7 @@ func (l *localDiscovery) Run(ctx context.Context) (err error) {
 	return l.Start()
 }
 
-func (l *localDiscovery) Start() (err error) {
+func (l *zeroconfDiscovery) Start() (err error) {
 	if !l.drpcServer.ServerStarted() {
 		l.discoveryPossibilitySetState(DiscoveryNoInterfaces)
 		return
@@ -95,22 +123,20 @@ func (l *localDiscovery) Start() (err error) {
 	}
 	l.started = true
 	l.networkState.RegisterHook(func(_ model.DeviceNetworkType) {
-		err = l.refreshInterfaces(l.componentCtx)
-		if err != nil {
-			log.Warn("refreshing interfaces on networkState failed", zap.Error(err))
-		}
+		l.onNetworkStateChanged()
 	})
+	go l.refreshWorker()
 
 	l.port = l.drpcServer.Port()
 	l.periodicCheck.Run()
 	return
 }
 
-func (l *localDiscovery) Name() (name string) {
+func (l *zeroconfDiscovery) Name() (name string) {
 	return CName
 }
 
-func (l *localDiscovery) Close(ctx context.Context) (err error) {
+func (l *zeroconfDiscovery) Close(ctx context.Context) (err error) {
 	l.componentCtxCancel()
 	l.periodicCheck.Close() // safe to close if not started
 
@@ -124,6 +150,7 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 		return
 	}
 	server := l.server
+	closeWait := l.closeWait
 	l.m.Unlock()
 
 	if server != nil {
@@ -131,7 +158,9 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 		shutdownFinished := make(chan struct{})
 		go func() {
 			server.Shutdown()
-			l.closeWait.Wait()
+			if closeWait != nil {
+				closeWait.Wait()
+			}
 			close(shutdownFinished)
 			spent := time.Since(start)
 			if spent.Milliseconds() > 500 {
@@ -150,11 +179,65 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
+// onNetworkStateChanged is called when the device network type changes (e.g.
+// cellular -> wifi, or plugging the phone into a Mac by cable). After such a
+// transition the previous mDNS socket is usually dead — iOS leaves it in
+// ENOTCONN — yet its interface addresses can look unchanged, so refreshInterfaces
+// would skip the rebuild and the recv loop would keep hitting the dead socket
+// (throttled by the backoff, but never recovering). We clear the cached
+// addresses to force a full teardown + rebuild on the fresh interface. Network
+// type is intentionally ignored: we can't tell wifi from a USB-cable LAN here,
+// and both should keep discovery running.
+//
+// The rebuild itself runs on refreshWorker: it can take seconds (goodbye
+// packets with write deadlines, self-connect probing), and this hook is
+// invoked synchronously from the DeviceNetworkStateSet RPC under networkMu,
+// so it must not block.
+func (l *zeroconfDiscovery) onNetworkStateChanged() {
 	l.m.Lock()
-	defer l.m.Unlock()
-	newAddrs, err := addrs.GetInterfacesAddrs()
-	if addrs.NetAddrsEqualUnordered(l.interfacesAddrs.Addrs, newAddrs.Addrs) {
+	l.interfacesAddrs = addrs.InterfacesAddrs{}
+	l.m.Unlock()
+	select {
+	case l.refreshTrigger <- struct{}{}:
+	default:
+		// a refresh is already pending; it will pick up the cleared state
+	}
+}
+
+func (l *zeroconfDiscovery) refreshWorker() {
+	for {
+		select {
+		case <-l.componentCtx.Done():
+			return
+		case <-l.refreshTrigger:
+			if err := l.refreshInterfaces(l.componentCtx); err != nil {
+				log.Warn("refreshing interfaces on network change failed", zap.Error(err))
+			}
+		}
+	}
+}
+
+func (l *zeroconfDiscovery) refreshInterfaces(ctx context.Context) (err error) {
+	// refreshMu serializes the whole refresh so the periodic check and the
+	// network-change hook can't interleave a rebuild while l.m is released below.
+	l.refreshMu.Lock()
+	defer l.refreshMu.Unlock()
+
+	l.m.Lock()
+	newAddrs, err := getInterfacesAddrs()
+	if err != nil {
+		// a transient enumeration failure must not be treated as "no
+		// interfaces": that would tear the running server down
+		l.m.Unlock()
+		return fmt.Errorf("get interfaces addrs: %w", err)
+	}
+	// the flat list misses an interface that came back under a new index
+	// with the same addresses (a cable plugged in again), and an address
+	// moving between interfaces (which changes the link-local selection),
+	// so compare the interface identities and, for the interfaces that may
+	// be used over link-local, which addresses each holds
+	ifaceIds := interfaceIds(runtime.GOOS, newAddrs.Interfaces)
+	if addrs.NetAddrsEqualUnordered(l.interfacesAddrs.Addrs, newAddrs.Addrs) && slices.Equal(l.ifaceIds, ifaceIds) {
 		// this optimization allows to save syscalls to get addrs for every iface
 		// also we may receive a new ip address on the existing interface
 		l.discoveryPossibilitySwapState(func(currentState DiscoveryPossibility) DiscoveryPossibility {
@@ -164,9 +247,11 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 			// do the check only if we are in restricted state, just in case it was disabled
 			return l.getDiscoveryPossibility(newAddrs)
 		})
+		l.m.Unlock()
 		return
 	}
 
+	l.ifaceIds = ifaceIds
 	newAddrs.Interfaces = filterMulticastInterfaces(newAddrs.Interfaces)
 	newAddrs.SortInterfacesWithPriority(interfacesSortPriority)
 	l.discoveryPossibilitySetState(l.getDiscoveryPossibility(newAddrs))
@@ -174,17 +259,34 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 	if newAddrs.Equal(l.interfacesAddrs) && l.server != nil {
 		// we do additional check after we filter and sort multicast interfaces
 		// so this equal check is more precise
+		l.m.Unlock()
 		return
 	}
 	log.With(zap.Strings("ifaces", newAddrs.InterfaceNames())).Info("net interfaces configuration changed")
 	l.interfacesAddrs = newAddrs
-	if l.server != nil {
+	server := l.server
+	closeWait := l.closeWait
+	l.server = nil
+	if server != nil {
 		l.queryCtxCancel()
-		l.server.Shutdown()
-		l.closeWait.Wait()
-		l.closeWait = sync.WaitGroup{}
-		l.server = nil
 	}
+	l.m.Unlock()
+
+	// Tear the old server down WITHOUT holding l.m: Shutdown + closeWait.Wait can
+	// block on readAnswers, which itself needs l.m — holding it here deadlocks
+	// (this mirrors Close). refreshMu keeps concurrent refreshes out of this window.
+	if server != nil {
+		server.Shutdown()
+		if closeWait != nil && !waitWithTimeout(closeWait, queryStopTimeout) {
+			// A stuck goroutine must not wedge every future refresh (and the
+			// networkState hooks behind it); log and rebuild on a fresh
+			// generation instead.
+			log.Error("zeroconf query goroutines did not stop in time, proceeding with rebuild")
+		}
+	}
+
+	l.m.Lock()
+	defer l.m.Unlock()
 	if len(l.interfacesAddrs.Interfaces) == 0 {
 		return nil
 	}
@@ -196,6 +298,9 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 	}
 	l.queryCtx, l.queryCtxCancel = context.WithCancel(l.componentCtx)
 	if err = l.startServer(); err != nil {
+		// the addr snapshot was already committed above; clear it so the next
+		// periodic tick does not see "unchanged" and skip the retry forever
+		l.interfacesAddrs = addrs.InterfacesAddrs{}
 		return fmt.Errorf("starting mdns server: %w", err)
 	}
 	l.startQuerying(l.queryCtx)
@@ -203,80 +308,195 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 	return
 }
 
-func (l *localDiscovery) startServer() (err error) {
-	l.ipv4 = l.ipv4[:0]
-	ipv4, _ := l.getAddresses() // ignore ipv6 for now
-	for _, ip := range ipv4 {
-		l.ipv4 = append(l.ipv4, ip.String())
+// linkLocalIfaces is the set of interfaces discovery uses over IPv6
+// link-local, by index and by zone.
+type linkLocalIfaces struct {
+	indexes []int
+	zones   map[string]struct{} // interface names and decimal indexes
+}
+
+func newLinkLocalIfaces(own []ownAddr, ifaces []gonet.Interface) linkLocalIfaces {
+	var res linkLocalIfaces
+	for _, iface := range ifaces {
+		if !slices.ContainsFunc(own, func(a ownAddr) bool { return a.linkLocal && a.iface == iface.Name }) {
+			continue
+		}
+		if res.zones == nil {
+			res.zones = map[string]struct{}{}
+		}
+		res.indexes = append(res.indexes, iface.Index)
+		res.zones[iface.Name] = struct{}{}
+		res.zones[strconv.Itoa(iface.Index)] = struct{}{}
 	}
-	log.Info("starting mdns server", zap.Strings("ips", l.ipv4), zap.Int("port", l.port), zap.String("peerId", l.peerId))
+	return res
+}
+
+// ipTraffic keeps mDNS IPv4-only unless some interface has nothing else.
+func (ll linkLocalIfaces) ipTraffic() zeroconf.IPType {
+	if len(ll.indexes) == 0 {
+		return zeroconf.IPv4
+	}
+	return zeroconf.IPv4AndIPv6
+}
+
+func (l *zeroconfDiscovery) startServer() (err error) {
+	l.own = l.ownAddrs()
+	logOwnAddresses(l.own)
+	l.ipv4 = newOwnAddresses(l.own, l.port).Addrs
+	ifaces := l.interfacesAddrs.NetInterfaces()
+	l.linkLocal = newLinkLocalIfaces(l.own, ifaces)
+	log.Info("starting mdns server", zap.Strings("ips", l.ipv4), zap.Int("port", l.port), zap.String("peerId", l.peerId),
+		zap.Ints("linkLocalIfaces", l.linkLocal.indexes))
 	l.server, err = zeroconf.RegisterProxy(
 		l.peerId,
 		serviceName,
 		mdnsDomain,
 		l.port,
 		l.peerId,
-		l.ipv4, // do not include ipv6 addresses, because they are disabled
+		l.ipv4, // ipv6 link-local is added per interface, see ServerLinkLocalIPv6
 		nil,
-		l.interfacesAddrs.NetInterfaces(),
-		zeroconf.TTL(3600),                            // big ttl because we don't have re-broadcasting
-		zeroconf.ServerSelectIPTraffic(zeroconf.IPv4), // disable ipv6 for now
+		ifaces,
+		zeroconf.TTL(3600), // big ttl because we don't have re-broadcasting
+		zeroconf.ServerSelectIPTraffic(l.linkLocal.ipTraffic()),
+		zeroconf.ServerLinkLocalIPv6(l.linkLocal.indexes...), // IPv6 runs only on these interfaces
 		zeroconf.WriteTimeout(time.Second*3),
 	)
 	return
 }
 
-func (l *localDiscovery) startQuerying(ctx context.Context) {
-	l.closeWait.Add(2)
+// startQuerying is called under l.m.
+func (l *zeroconfDiscovery) startQuerying(ctx context.Context) {
+	closeWait := &sync.WaitGroup{}
+	closeWait.Add(2)
+	l.closeWait = closeWait
 	listenCh := make(chan *zeroconf.ServiceEntry, 10)
+	// snapshot the interfaces under l.m instead of letting browse read the
+	// field unlocked later, racing with the next refresh
+	ifaces := l.interfacesAddrs.NetInterfaces()
+	linkLocal := l.linkLocal
 
-	go l.readAnswers(listenCh)
-	go l.browse(ctx, listenCh)
+	go l.readAnswers(closeWait, listenCh)
+	go l.browse(ctx, closeWait, ifaces, linkLocal, listenCh)
 }
 
-func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
-	defer l.closeWait.Done()
+func (l *zeroconfDiscovery) readAnswers(closeWait *sync.WaitGroup, ch chan *zeroconf.ServiceEntry) {
+	defer closeWait.Done()
 	for entry := range ch {
 		if entry.Instance == l.peerId {
 			log.Debug("discovered self")
 			continue
 		}
-		var portAddrs []string
 		l.m.Lock()
 		l.interfacesAddrs.SortIPsLikeInterfaces(entry.AddrIPv4)
-		for _, a := range entry.AddrIPv4 {
-			portAddrs = append(portAddrs, fmt.Sprintf("%s:%d", a.String(), entry.Port))
+		portAddrs := peerAddrs(entry, l.linkLocal.zones)
+		if entry.LinkIndex != 0 && len(portAddrs) == 0 {
+			// a cable entry from a link that is not ours: nothing to add.
+			// A base entry goes even without IPv4, as on develop.
+			l.m.Unlock()
+			log.Debug("discovered peer without usable addresses", zap.String("peerId", entry.Instance))
+			continue
 		}
 		peer := DiscoveredPeer{
 			Addrs:  portAddrs,
 			PeerId: entry.Instance,
 		}
-		log.Debug("discovered peer", zap.Strings("addrs", portAddrs), zap.String("peerId", peer.PeerId))
+		if entry.LinkIndex != 0 {
+			peer.Link = strconv.Itoa(entry.LinkIndex)
+		}
+		log.Debug("discovered peer", zap.Strings("addrs", portAddrs), zap.String("peerId", peer.PeerId), zap.String("link", peer.Link))
 		if l.notifier != nil {
-			addrs := slices.Clone(l.ipv4)
+			own := newOwnAddresses(l.own, l.port)
 			// explicitly use componentCtx, instead of queryCtx here, because we don't want to interrupt the peer connection if we refreshed interfaces and restarted service
-			go l.notifier.PeerDiscovered(l.componentCtx, peer, OwnAddresses{
-				Addrs: addrs,
-				Port:  l.port,
-			})
+			// without a cable each discovery runs at once, as on develop
+			l.discoveries.notify(l.componentCtx, l.notifier, peer, own, len(l.linkLocal.indexes) == 0)
 		}
 		l.m.Unlock()
 	}
 }
 
-func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEntry) {
-	defer l.closeWait.Done()
+// peerAddrs is the address list a discovered peer is reported with. An entry
+// the browser delivered for one cable (LinkIndex) yields only its link-local
+// addresses on that cable, and only when it is one of our interfaces without
+// IPv4 (zones): spacecore keeps such a route next to the peer's other
+// addresses. Any other entry yields its IPv4 addresses, as on develop, and
+// replaces the peer's list.
+func peerAddrs(entry *zeroconf.ServiceEntry, zones map[string]struct{}) []string {
+	port := strconv.Itoa(entry.Port)
+	var addrs []string
+	if entry.LinkIndex == 0 {
+		for _, a := range entry.AddrIPv4 {
+			addrs = append(addrs, gonet.JoinHostPort(a.String(), port))
+		}
+		return addrs
+	}
+	for _, a := range entry.AddrIPv6Zoned {
+		if !a.IsLinkLocalUnicast() {
+			continue
+		}
+		if _, ok := zones[a.Zone()]; !ok {
+			continue
+		}
+		hostPort := gonet.JoinHostPort(a.String(), port)
+		if !slices.Contains(addrs, hostPort) {
+			addrs = append(addrs, hostPort)
+		}
+	}
+	return addrs
+}
+
+func (l *zeroconfDiscovery) browse(ctx context.Context, closeWait *sync.WaitGroup, ifaces []gonet.Interface, linkLocal linkLocalIfaces, ch chan *zeroconf.ServiceEntry) {
+	defer closeWait.Done()
 	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch,
 		zeroconf.ClientWriteTimeout(time.Second*3),
-		zeroconf.SelectIfaces(l.interfacesAddrs.NetInterfaces()),
-		zeroconf.SelectIPTraffic(zeroconf.IPv4)); err != nil {
+		zeroconf.SelectIfaces(ifaces),
+		zeroconf.SelectIPv6Ifaces(linkLocal.indexes...),
+		zeroconf.SelectIPTraffic(linkLocal.ipTraffic())); err != nil {
 		log.Error("browsing failed", zap.Error(err))
 	}
 }
 
-func (l *localDiscovery) GetOwnAddresses() OwnAddresses {
-	return OwnAddresses{
-		Addrs: l.ipv4,
-		Port:  l.port,
+// interfaceIds lists the interfaces as name#index with their flags, and the addresses held by
+// each one that may be used over link-local (see linkLocalCandidate), sorted.
+// Only those few interfaces have their addresses read here; the rest keep
+// relying on the flat address list.
+func interfaceIds(goos string, ifaces []addrs.NetInterfaceWithAddrCache) []string {
+	ids := make([]string, 0, len(ifaces))
+	for i := range ifaces {
+		iface := &ifaces[i]
+		// the flags filterMulticastInterfaces reads: a cable coming up
+		// keeps its name, index and address
+		flags := iface.Flags & (gonet.FlagUp | gonet.FlagMulticast | gonet.FlagLoopback)
+		id := iface.Name + "#" + strconv.Itoa(iface.Index)
+		ids = append(ids, id+" "+flags.String())
+		if !linkLocalCandidate(goos, iface.Name) {
+			continue
+		}
+		for _, addr := range iface.GetAddr() {
+			ids = append(ids, id+" "+addr.String())
+		}
+		for _, addr := range iface.GetLinkLocalIPv6() {
+			ids = append(ids, id+" "+addr.String())
+		}
 	}
+	slices.Sort(ids)
+	return ids
+}
+
+// waitWithTimeout waits for wg up to timeout; false means the wait timed out.
+func waitWithTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return true
+	case <-time.After(timeout):
+		return false
+	}
+}
+
+func (l *zeroconfDiscovery) GetOwnAddresses() OwnAddresses {
+	return newOwnAddresses(l.own, l.port)
 }

@@ -1,0 +1,1309 @@
+package v2service
+
+// search.go implements the query surface:
+// POST /v2/spaces/{space_id}/search and POST /v2/search (global). Both filter
+// forms — the compact string (SPEC §6.2.1, parsed by anyblockjson/
+// filterstring) and the structured array — land on ONE internal tree via
+// anyblockjson.UnmarshalFilters. Space search queries the store directly;
+// global search uses ObjectCrossSpaceSearch with full-text, resolved property
+// filters, and sorts. Search is a read: no idempotency, dry_run ignored.
+//
+// The validation and resolution rules are:
+//  1. key scope — a top-level type narrows keys to the type's recommended
+//     set (+ name); otherwise the space's property keys; per space on global
+//  2. the system-key allowlist (createdDate, lastModifiedDate, creator,
+//     lastOpenedDate) always joins the reference set
+//  3. option names resolve READ-ONLY — a query never creates the option it
+//     names; unresolved → did-you-mean, never a silent no-match
+//  4. global search groups spaces with the same resolved query, merges by
+//     the requested sort, and reports lower-bound totals from lookahead
+//  5. the unguarded-date-comparison hazard rides the C6 warnings channel
+//  6. `type` is a filterable pseudo-key; the top-level `type` composes by AND
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"reflect"
+	"regexp"
+	"slices"
+	"sort"
+	"strconv"
+	"strings"
+
+	"github.com/gogo/protobuf/types"
+
+	"github.com/anyproto/anytype-heart/core/api/util"
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/storeresolver"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+)
+
+// v2SystemQueryKeys is the system-key allowlist: §3-output-only/system
+// keys that appear in no type's recommended lists yet back bread-and-butter
+// queries. Always part of the query-surface reference set — for search AND
+// for set filters/sorts.
+var v2SystemQueryKeys = []string{"createdDate", "lastModifiedDate", "creator", "lastOpenedDate"}
+
+// v2BundledQueryKeys are hidden bundled relations that queries may name
+// although no relation object exists for them in the space. Accepted in
+// filters, fields and sorts, in both spellings, but NOT advertised in
+// refusals' "known keys" or list_properties. They are the discussion-parent
+// counters: local details of the current account, written onto an object by
+// its discussion, absent on an object without one and never synced. The list
+// is explicit on purpose: a blanket "any bundled key" would expose every
+// internal relation to filters and sorts.
+var v2BundledQueryKeys = []string{"unreadMentionCount", "unreadMessageCount"}
+
+// SearchNarrowHint is the C10 truncation steering for search results.
+const SearchNarrowHint = "narrow with filter or query, or request the next offset"
+
+// maxGlobalSearchOffset bounds how deep the global merge pages: each resolved
+// query group materializes up to offset+limit+1 records, so an unbounded
+// offset lets one request decode the whole account into memory. Deeper
+// enumeration belongs on the space-scoped search, which pushes offset/limit
+// into the store.
+const maxGlobalSearchOffset = 2000
+
+// searchPlan is one space's compiled query: the translated filter tree, the
+// effective sort list (shared with the global merge comparator), and the
+// warning-grade findings gathered on the way.
+type searchPlan struct {
+	textQuery string
+	filters   []database.FilterRequest
+	sorts     []database.SortRequest
+	warnings  []v2model.Issue
+	// includeFileLayouts widens the base row scope to ObjectAndFileLayouts.
+	// It is set when the type channel names a file layout:
+	// file type — top-level type or a positive (=, IN) type filter leaf —
+	// reproducing v1's prepareBaseFilters(includeFileLayouts) opt-in without
+	// a new parameter. Without it a pure-v2 agent could upload a file and
+	// never find it again (file layouts are excluded from ObjectLayouts).
+	includeFileLayouts bool
+}
+
+// validateSearchShape applies the request-shape rules that do not depend on
+// a space: the filter/filters mutual exclusion (C6).
+func validateSearchShape(req v2model.SearchRequest) error {
+	if req.Filter != "" && len(req.Filters) > 0 {
+		return v2model.AmbiguousInput("provide filter or filters, not both",
+			v2model.Issue{Path: "/filter", Message: "conflicts with filters"},
+			v2model.Issue{Path: "/filters", Message: "conflicts with filter"})
+	}
+	return nil
+}
+
+// SearchObjects implements POST /v2/spaces/{space_id}/search.
+func (s *Service) SearchObjects(ctx context.Context, spaceId string, req v2model.SearchRequest, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
+	if err := s.ensureSpace(ctx, spaceId); err != nil {
+		return nil, 0, false, nil, err
+	}
+	plan, err := s.planSpaceSearch(ctx, spaceId, req)
+	if err != nil {
+		return nil, 0, false, nil, err
+	}
+
+	records, total, err := s.runSearchQuery(spaceId, plan, offset, limit)
+	if err != nil {
+		return nil, 0, false, nil, err
+	}
+
+	builder, err := s.newSearchRowBuilder(spaceId, req.Fields)
+	if err != nil {
+		return nil, 0, false, nil, err
+	}
+	rows := make([]v2model.ObjectRow, 0, len(records))
+	for _, record := range records {
+		rows = append(rows, builder.row(record))
+	}
+	return rows, total, offset+len(records) < total, plan.warnings, nil
+}
+
+// runSearchQuery executes one space's plan with C10 pagination. Full-text
+// queries push the requested page into the store as Limit = offset+limit+1
+// so the engine's candidate-budget escalation sees it (with Limit 0 the
+// budget froze at the 100-doc floor and every full-text search silently
+// capped at ~100 matches, ending pagination at page 4); the one extra
+// record distinguishes an exhausted result from a clipped one, so the
+// returned total is exact when the store had fewer matches and a lower
+// bound (offset+limit+1 → has_more true) when it clipped — honest steering
+// either way, within the engine's documented candidate budget.
+func (s *Service) runSearchQuery(spaceId string, plan *searchPlan, offset, limit int) ([]database.Record, int, error) {
+	index := s.store.SpaceIndex(spaceId)
+	if plan.textQuery != "" {
+		all, err := index.Query(database.Query{
+			SpaceId:   spaceId,
+			TextQuery: plan.textQuery,
+			Filters:   plan.filters,
+			Sorts:     plan.sorts,
+			Limit:     offset + limit + 1,
+		})
+		if err != nil {
+			return nil, 0, fmt.Errorf("search space %s: %w", spaceId, err)
+		}
+		return pageRecords(all, offset, limit), len(all), nil
+	}
+	records, total, err := index.QueryAndCount(database.Query{
+		Filters: plan.filters,
+		Sorts:   plan.sorts,
+		Offset:  offset,
+		Limit:   limit,
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("search space %s: %w", spaceId, err)
+	}
+	return records, total, nil
+}
+
+// searchRowDiscussionField is the `fields` spelling of a search row's own
+// discussion member. The member is served on every search row of an object
+// that has a discussion, so the field only has to be accepted; a live
+// property claiming the spelling wins and is served under properties.
+const searchRowDiscussionField = "discussion"
+
+// newSearchRowBuilder is the row builder of the search surface: the C5 row
+// plus the object's discussion member.
+func (s *Service) newSearchRowBuilder(spaceId string, fields []string) (*objectRowBuilder, error) {
+	builder, err := s.newObjectRowBuilder(spaceId, fields)
+	if err != nil {
+		return nil, err
+	}
+	builder.includeDiscussion = true
+	return builder, nil
+}
+
+// pageRecords slices one C10 page out of a full result set.
+func pageRecords(records []database.Record, offset, limit int) []database.Record {
+	if offset >= len(records) {
+		return nil
+	}
+	end := offset + limit
+	if limit <= 0 || end > len(records) {
+		end = len(records)
+	}
+	return records[offset:end]
+}
+
+//
+// ---- plan building ----
+//
+
+// buildSearchPlan compiles the request against one space: reference-set
+// validation (rules 1–2), both filter forms onto one tree, read-only option
+// resolution (rule 3), the type pseudo-key (rule 6), and the effective sort
+// list. Every failure is a C6 error with path-addressed issues.
+//
+// strictFields picks how an unknown `fields` entry is handled. fields is a
+// DISPLAY concern, not scope: on the space-scoped search a 400 with
+// did-you-mean is the right repair signal (strict), but on the global
+// fan-out a hard error would silently drop the whole space from results
+// and total — a column request must never narrow the search — so the
+// global caller passes lenient and the key degrades to a per-space warning.
+func (s *Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, strictFields bool, v errKeys) (*searchPlan, error) {
+	plan := &searchPlan{textQuery: req.Query}
+	index := s.store.SpaceIndex(spaceId)
+	reads := storeresolver.New(index)
+	// D3: filters/sorts accept both vocabularies — the slug table widens
+	// the resolver's chain (lazy; a bare text query never loads it)
+	readKeys := s.apiKeys(spaceId, reads)
+
+	// the reference sets are only consulted by fields/filters/sorts (and the
+	// type scope); the commonest global call — a bare full-text query — must
+	// not pay a full relation-listing store query per space for nothing
+	needRefs := req.Type != "" || len(req.Fields) > 0 || req.Filter != "" || len(req.Filters) > 0 || len(req.Sorts) > 0
+	if !needRefs {
+		plan.sorts = defaultSearchSorts(plan.textQuery, nil)
+		plan.filters = appendBaseRowScope(plan.filters, false)
+		return plan, nil
+	}
+
+	// rules 1 + 2: the reference key set
+	var refKeys []string
+	var typeScope map[string]bool
+	if req.Type != "" {
+		// live lookup, slug-aware: a corpse type is not a query scope — the
+		// did-you-mean steers to live keys (§7.5-2 corpse policy)
+		typeEntries, err := s.liveTypes(spaceId)
+		if err != nil {
+			return nil, err
+		}
+		entry, ok, ambiguous, err := s.resolveTypeInput(spaceId, req.Type, typeEntries)
+		if err != nil {
+			return nil, err
+		}
+		if len(ambiguous) > 0 {
+			return nil, ambiguousKeyError(v.typeWord(), req.Type, "/type", ambiguous)
+		}
+		if !ok || entry.Id == "" {
+			return nil, s.unknownTypeKeyError(spaceId, req.Type, "/type", v)
+		}
+		typeId := entry.Id
+		typeScope = s.typePropertyScope(spaceId, typeId)
+		refKeys = append(s.typePropertyKeys(spaceId, typeId), "name")
+		// rule 6: the top-level type composes by AND with any type filter
+		plan.filters = append(plan.filters, database.FilterRequest{
+			RelationKey: bundle.RelationKeyType,
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       domain.StringList([]string{typeId}),
+		})
+		// A top-level file type widens the row scope
+		// (entry.Key — the canonical spelling — in case a slug named it)
+		if util.IsFileTypeKey(entry.Key) {
+			plan.includeFileLayouts = true
+		}
+	}
+	// kc canonicalizes every concrete property input of this request through
+	// the one chain (file aliases + §7.5a-5): the listings advertise served
+	// spellings, so the query channels must accept them and translate to the
+	// stored keys the store binds (review cause 3)
+	kc, err := s.newKeyCanon(spaceId)
+	if err != nil {
+		return nil, err
+	}
+	kc.scope = typeScope
+	if req.Type == "" {
+		// no type scope: the whole space's STORED keys are the base set
+		// (withServedSpellings widens them below)
+		stored := make([]string, 0, len(kc.entries))
+		for _, entry := range kc.entries {
+			stored = append(stored, entry.Key)
+		}
+		refKeys = sortedDistinct(stored)
+	}
+	// membership accepts BOTH spellings (stored keys stay valid — GET
+	// documents still emit them); candidate lists speak the served spelling
+	// only (never advertise what a channel rejects)
+	acceptKeys := kc.withServedSpellings(refKeys)
+	// the reference list a refusal shows speaks the request's vocabulary
+	// (?keys — §4.3); acceptance stays vocabulary-wide (D3) either way
+	refKeys = kc.referenceSpellings(refKeys, v)
+	// the system keys join in BOTH spellings on the accept side and in the
+	// served one on the reference side (R3-f: list_properties served
+	// last_opened_date while this refused it and listed lastOpenedDate)
+	acceptKeys = appendMissing(acceptKeys, kc.withServedSpellings(v2SystemQueryKeys)...)
+	refKeys = appendMissing(refKeys, servedBundledSpellings(v2SystemQueryKeys, v)...)
+	refKeys = appendMissing(refKeys, "type")
+	acceptKeys = appendMissing(acceptKeys, "type")
+	// the hidden counters are accepted, never advertised: refKeys (what a
+	// refusal lists and suggests from) stays without them, and so does the
+	// set the filter string's refusals are worded over
+	advertisedKeys := append([]string(nil), acceptKeys...)
+	acceptKeys = appendMissing(acceptKeys, kc.withServedSpellings(v2BundledQueryKeys)...)
+	// The file aliases join the reference set when active (no real
+	// live property claims the spelling): mimeType/size are live in EVERY
+	// channel — fields, filters and sorts — translated to the backing store
+	// relation, so the one advertised spelling works everywhere (C2)
+	aliases := kc.aliases
+	for alias := range aliases {
+		refKeys = appendMissing(refKeys, alias)
+		acceptKeys = appendMissing(acceptKeys, alias)
+		advertisedKeys = appendMissing(advertisedKeys, alias)
+	}
+	sort.Strings(refKeys)
+	sort.Strings(acceptKeys)
+	sort.Strings(advertisedKeys)
+	allowed := map[string]bool{}
+	for _, key := range acceptKeys {
+		allowed[key] = true
+	}
+
+	formatName := canonFormatName(aliasedFormatName(s.formatNameResolver(spaceId), aliases), kc)
+	listHint := v2model.Hintf("list keys with %s", v2model.RefListProperties(spaceId))
+
+	// rule 1 covers field keys too — hard on the space search, warning-grade
+	// on the global fan-out (see the strictFields contract above)
+	var issues []v2model.Issue
+	for i, field := range req.Fields {
+		if canonical, ambiguous := kc.canon(field); len(ambiguous) > 0 {
+			issues = append(issues, ambiguousInputIssue(v.propertyWord(), field, fmt.Sprintf("/fields/%d", i), ambiguous))
+			continue
+		} else if allowed[field] || allowed[canonical] {
+			continue
+		} else if field == searchRowDiscussionField {
+			continue // the row's own member, not a property
+		}
+		if strictFields {
+			issues = append(issues, unknownPropertyIssue(field, fmt.Sprintf("/fields/%d", i), refKeys, listHint, v))
+		} else {
+			plan.warnings = append(plan.warnings, v2model.Issue{
+				Path:    fmt.Sprintf("/fields/%d", i),
+				Message: fmt.Sprintf("field %q is not a property of space %q — omitted from those rows", field, spaceId),
+			})
+		}
+	}
+	if len(issues) > 0 {
+		return nil, v2model.ValidationFailed(fmt.Sprintf("unknown %s", v.propertiesWord()), issues...)
+	}
+
+	// both filter forms → one structured tree
+	filtersJSON := req.Filters
+	fromString := req.Filter != ""
+	if fromString {
+		parsed, err := parseSearchFilter(req.Filter, filterstring.Options{
+			KnownKeys:     acceptKeys,
+			ResolveFormat: formatName,
+			KnownOptions: func(key string) ([]string, bool) {
+				// ok=false when the store could not list the options: the
+				// check is skipped rather than asserting "no such option"
+				// about data the code never saw
+				key, _ = kc.canon(key)
+				return s.propertyOptionNames(spaceId, key)
+			},
+		}, advertisedKeys)
+		if err != nil {
+			return nil, filterStringError(spaceId, err)
+		}
+		filtersJSON = parsed
+	}
+	// the filter tree as the caller spelled it, kept beside the canonical one:
+	// a canonicalized leaf carries the STORED key, which for a space-minted
+	// property is a 24-hex id the caller never sent and cannot look up, so the
+	// validation below reads the leaves as sent and resolves the stored key
+	// only where the semantics need it (round-six R6-7)
+	spelledFilters := filtersJSON
+	if len(filtersJSON) > 0 {
+		// canonicalize every property leaf to its stored spelling BEFORE
+		// validation and the store query — a served slug in a filter would
+		// otherwise bind a RelationKey the store never matches, silently
+		canonical, err := kc.canonicalizeRawChannel(filtersJSON, "filters", filterFieldPath(fromString))
+		if err != nil {
+			return nil, err
+		}
+		filtersJSON = canonical
+	}
+	if !fromString && len(spelledFilters) > 0 {
+		// the parser validated the string form with offsets; the structured
+		// form gets the same checks path-addressed (rules 1 + 3)
+		if err := s.validateStructuredFilters(spaceId, spelledFilters, allowed, refKeys, formatName, listHint, v, kc); err != nil {
+			return nil, err
+		}
+	}
+
+	if len(filtersJSON) > 0 {
+		opts := reads.Options()
+		opts.Keys = readKeys
+		opts.OnWarning = func(iss anyblockjson.Issue) {
+			path := iss.Path
+			if fromString {
+				path = "/filter" // the string form has no /filters array to address
+			}
+			plan.warnings = append(plan.warnings, v2model.Issue{Path: path, Message: iss.Message})
+		}
+		modelFilters, err := anyblockjson.UnmarshalFilters(filtersJSON, opts)
+		if err != nil {
+			return nil, mapFilterCodecError(err, fromString)
+		}
+		namedFileType, err := s.resolveTypeLeaves(spaceId, modelFilters, filterFieldPath(fromString), v)
+		if err != nil {
+			return nil, err
+		}
+		if namedFileType {
+			plan.includeFileLayouts = true
+		}
+		rewriteAliasLeaves(modelFilters, aliases)
+		plan.filters = append(plan.filters, database.FiltersFromProto(modelFilters)...)
+	}
+
+	// sorts: any property key (rule 1 scopes it; v1's closed enum is gone)
+	if len(req.Sorts) > 0 {
+		var probes []sortProbe
+		if err := json.Unmarshal(req.Sorts, &probes); err != nil {
+			return nil, v2model.ValidationFailed("invalid sorts",
+				v2model.Issue{Path: "/sorts", Message: err.Error(), Hint: "sorts is an array of sort objects"})
+		}
+		for i, probe := range probes {
+			if probe.Property == "" {
+				continue
+			}
+			if canonical, ambiguous := kc.canon(probe.Property); len(ambiguous) > 0 {
+				issues = append(issues, ambiguousInputIssue(v.propertyWord(), probe.Property, fmt.Sprintf("/sorts/%d/property", i), ambiguous))
+			} else if !allowed[probe.Property] && !allowed[canonical] {
+				issues = append(issues, unknownPropertyIssue(probe.Property, fmt.Sprintf("/sorts/%d/property", i), refKeys, listHint, v))
+			}
+		}
+		if len(issues) > 0 {
+			return nil, v2model.ValidationFailed(fmt.Sprintf("unknown %s", v.propertiesWord()), issues...)
+		}
+		// canonicalize the sort slots BEFORE the codec, exactly as the filters
+		// are: the codec's vocabulary knows no type scope, so a slug two
+		// properties answer to would otherwise bind whichever one the
+		// bundled table names, whatever the type lists
+		sortsJSON, err := kc.canonicalizeRawChannel(req.Sorts, "sorts", "/sorts")
+		if err != nil {
+			return nil, err
+		}
+		sortOpts := reads.Options()
+		sortOpts.Keys = readKeys
+		modelSorts, err := anyblockjson.UnmarshalSorts(sortsJSON, sortOpts)
+		if err != nil {
+			return nil, mapFilterCodecError(err, false)
+		}
+		plan.sorts = database.SortsFromProto(modelSorts)
+		// every spelling translates in the sort channel too (file aliases +
+		// served slugs — C2: the one advertised spelling works everywhere)
+		for i := range plan.sorts {
+			if canonical, ambiguous := kc.canon(string(plan.sorts[i].RelationKey)); len(ambiguous) == 0 {
+				plan.sorts[i].RelationKey = domain.RelationKey(canonical)
+			}
+		}
+		// a date sort the request left includeTime-less defaults to second
+		// granularity, matching the default lastModifiedDate sort. Without
+		// this the granularity depended on whether the engine appended the
+		// full-text tiebreak: a single date sort got seconds via the store's
+		// isSingleDateSort compensation, the same sort + `query` got days.
+		for i := range plan.sorts {
+			if i >= len(probes) || probes[i].IncludeTime != nil || plan.sorts[i].IncludeTime {
+				continue
+			}
+			if name, ok := formatName(string(plan.sorts[i].RelationKey)); ok && name == "date" {
+				plan.sorts[i].IncludeTime = true
+			}
+		}
+	}
+
+	plan.sorts = defaultSearchSorts(plan.textQuery, plan.sorts)
+	plan.filters = appendBaseRowScope(plan.filters, plan.includeFileLayouts)
+	return plan, nil
+}
+
+// defaultSearchSorts builds the effective sort list — shared with the global
+// merge comparator. Full-text with explicit sorts gets a relevance tiebreak
+// appended, which also keeps the engine from prepending its own score sort;
+// full-text without sorts is pure relevance; no query and no sorts falls
+// back to newest-modified first (the ListObjects default).
+func defaultSearchSorts(textQuery string, sorts []database.SortRequest) []database.SortRequest {
+	if textQuery != "" {
+		if !hasScoreSort(sorts) {
+			sorts = append(sorts, database.SortRequest{
+				RelationKey: bundle.RelationKey_final_score,
+				Type:        model.BlockContentDataviewSort_Desc,
+			})
+		}
+		return sorts
+	}
+	if len(sorts) == 0 {
+		return []database.SortRequest{{
+			RelationKey: bundle.RelationKeyLastModifiedDate,
+			Type:        model.BlockContentDataviewSort_Desc,
+			IncludeTime: true,
+		}}
+	}
+	return sorts
+}
+
+// appendBaseRowScope appends the base row scope (ListObjects parity): object
+// layouts, no templates, no hidden objects; archived/deleted are excluded by
+// the store's defaults. includeFileLayouts is the file-query opt-in (a file
+// type named in the type channel): it widens the layout list to
+// ObjectAndFileLayouts, mirroring v1's prepareBaseFilters.
+func appendBaseRowScope(filters []database.FilterRequest, includeFileLayouts bool) []database.FilterRequest {
+	layouts := util.ObjectLayouts
+	if includeFileLayouts {
+		layouts = util.ObjectAndFileLayouts
+	}
+	return append(filters,
+		database.FilterRequest{
+			RelationKey: bundle.RelationKeyResolvedLayout,
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       domain.Int64List(util.LayoutsToIntArgs(layouts)),
+		},
+		database.FilterRequest{
+			RelationKey: "type.uniqueKey",
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       domain.String(bundle.TypeKeyTemplate.URL()),
+		},
+		database.FilterRequest{
+			RelationKey: bundle.RelationKeyIsHidden,
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       domain.Bool(true),
+		},
+	)
+}
+
+// hasScoreSort reports whether the sort list already orders by relevance.
+func hasScoreSort(sorts []database.SortRequest) bool {
+	for _, s := range sorts {
+		if s.RelationKey == bundle.RelationKey_score || s.RelationKey == bundle.RelationKey_final_score {
+			return true
+		}
+	}
+	return false
+}
+
+// appendMissing appends the entries not already present.
+func appendMissing(keys []string, add ...string) []string {
+	seen := map[string]bool{}
+	for _, k := range keys {
+		seen[k] = true
+	}
+	for _, k := range add {
+		if !seen[k] {
+			seen[k] = true
+			keys = append(keys, k)
+		}
+	}
+	return keys
+}
+
+// formatNameResolver resolves a property key to its §3 format name over one
+// space (bundle first, then the store).
+func (s *Service) formatNameResolver(spaceId string) func(key string) (string, bool) {
+	resolve := storeFormatResolver(s, spaceId)
+	return func(key string) (string, bool) {
+		if f, ok := resolve(domain.RelationKey(key)); ok {
+			return anyblockjson.FormatName(f), true
+		}
+		return "", false
+	}
+}
+
+// aliasedFormatName resolves an active file alias to its backing relation's
+// format before the base lookup — `size > 5` must get number semantics from
+// sizeInBytes, not an unknown-key miss.
+func aliasedFormatName(base func(string) (string, bool), aliases map[string]domain.RelationKey) func(string) (string, bool) {
+	if len(aliases) == 0 {
+		return base
+	}
+	return func(key string) (string, bool) {
+		if backing, ok := aliases[key]; ok {
+			key = string(backing)
+		}
+		return base(key)
+	}
+}
+
+// rewriteAliasLeaves rewrites filter leaves on an active file alias to the
+// backing store relation — the store query only knows fileMimeType and
+// sizeInBytes; the caller speaks mimeType and size.
+func rewriteAliasLeaves(filters []*model.BlockContentDataviewFilter, aliases map[string]domain.RelationKey) {
+	if len(aliases) == 0 {
+		return
+	}
+	for _, f := range filters {
+		if f == nil {
+			continue
+		}
+		if len(f.NestedFilters) > 0 {
+			rewriteAliasLeaves(f.NestedFilters, aliases)
+		}
+		if backing, ok := aliases[f.RelationKey]; ok {
+			f.RelationKey = string(backing)
+		}
+	}
+}
+
+// propertyOptionNames lists a select/multiSelect property's existing option
+// names (read-only — rule 3). ok is false when the store lookup failed —
+// callers must then SKIP the option check instead of reporting a confident
+// "no such option" about data the code never actually listed.
+func (s *Service) propertyOptionNames(spaceId, key string) ([]string, bool) {
+	options, err := s.store.SpaceIndex(spaceId).ListRelationOptions(domain.RelationKey(key))
+	if err != nil {
+		return nil, false
+	}
+	names := make([]string, 0, len(options))
+	for _, option := range options {
+		if option != nil && option.Text != "" {
+			names = append(names, option.Text)
+		}
+	}
+	sort.Strings(names)
+	return names, true
+}
+
+// unknownFilterKeyPrefix opens the parser's verdict on a key outside its
+// reference set.
+const unknownFilterKeyPrefix = "unknown property key "
+
+// parseSearchFilter parses the compact filter string over the accept set. The
+// parser lists and suggests from the set it validates against, and that set
+// holds the accept-only v2BundledQueryKeys, so an unknown-key refusal is
+// worded again over the advertised keys: the offending key, alone, is checked
+// against them, which yields the parser's own message and did-you-mean. The
+// refusal keeps the original offset and token.
+func parseSearchFilter(filter string, opts filterstring.Options, advertised []string) (json.RawMessage, error) {
+	parsed, err := filterstring.Parse(filter, opts)
+	if err == nil {
+		return parsed, nil
+	}
+	asParsed := fmt.Errorf("parse filter string: %w", err)
+	var pe *filterstring.Error
+	if !errors.As(err, &pe) || !strings.HasPrefix(pe.Message, unknownFilterKeyPrefix) {
+		return nil, asParsed
+	}
+	quoted, qErr := strconv.QuotedPrefix(strings.TrimPrefix(pe.Message, unknownFilterKeyPrefix))
+	if qErr != nil {
+		return nil, asParsed
+	}
+	key, qErr := strconv.Unquote(quoted)
+	if qErr != nil {
+		return nil, asParsed
+	}
+	_, reworded := filterstring.Parse(key, filterstring.Options{KnownKeys: advertised})
+	var re *filterstring.Error
+	if !errors.As(reworded, &re) || !strings.HasPrefix(re.Message, unknownFilterKeyPrefix) {
+		return nil, asParsed
+	}
+	return nil, &filterstring.Error{Offset: pe.Offset, Token: pe.Token, Message: re.Message, Hint: re.Hint}
+}
+
+// filterNoOptionMessage is the parser's verdict on an unknown option name,
+// with the property it belongs to.
+var filterNoOptionMessage = regexp.MustCompile(`^property "([^"]+)" has no option named`)
+
+// filterStringError maps a filterstring parse error to the C6 shape: one
+// issue at /filter carrying the offset-addressed message and a hint with the
+// reference the fault calls for (F6). The parser is a library that knows no
+// space and no operation table — it composes a did-you-mean and spells a
+// raw route for the fallback — so the hint is re-composed here: an unknown
+// key points at the property list, an unknown option name at the option
+// list, and every other parse error at the grammar.
+func filterStringError(spaceId string, err error) error {
+	var pe *filterstring.Error
+	if !errors.As(err, &pe) {
+		return v2model.ValidationFailed("invalid filter",
+			v2model.Issue{Path: "/filter", Message: err.Error()})
+	}
+	where := fmt.Sprintf("near %q", pe.Token)
+	if pe.Token == "" {
+		where = "at end of input"
+	}
+	issue := v2model.Issue{
+		Path:    "/filter",
+		Message: fmt.Sprintf("parse error at offset %d %s: %s", pe.Offset, where, pe.Message),
+	}
+	var repair v2model.Hint
+	switch {
+	case strings.HasPrefix(pe.Message, "unknown property key"):
+		repair = v2model.Hintf("list keys with %s", v2model.RefListProperties(spaceId))
+	case filterNoOptionMessage.MatchString(pe.Message):
+		key := filterNoOptionMessage.FindStringSubmatch(pe.Message)[1]
+		repair = v2model.Hintf("list them with %s", v2model.RefListPropertyOptions(spaceId, key))
+	default:
+		repair = v2model.Hintf("the compact filter grammar is on %s", v2model.RefGetSchema("filters"))
+	}
+	guess, steer := pe.Hint, ""
+	if !strings.HasPrefix(guess, "did you mean") {
+		// the parser's own fallback is a raw route the surface does not
+		// serve; its steering sentences (a key the compact form cannot
+		// spell, the value grammar) are kept
+		guess, steer = "", pe.Hint
+		if strings.HasPrefix(steer, "list them with GET ") {
+			steer = ""
+		}
+	} else if before, after, found := strings.Cut(guess, "? — "); found {
+		guess, steer = before+"?", after
+	}
+	text := repair.Text
+	if guess != "" {
+		text = guess + " — if not, " + text
+	}
+	if steer != "" {
+		text = steer + " — " + text
+	}
+	return v2model.ValidationFailed("invalid filter", issue.WithHint(v2model.Hint{Text: text, Refs: repair.Refs}))
+}
+
+// mapFilterCodecError converts anyblockjson.ValidationError issues from the
+// filter/sort codec into the C6 shape. fromString remaps the codec's
+// /filters paths onto the /filter request field.
+func mapFilterCodecError(err error, fromString bool) error {
+	var ve *anyblockjson.ValidationError
+	if !errors.As(err, &ve) {
+		return v2model.ValidationFailed("invalid filters",
+			v2model.Issue{Path: "/filters", Message: err.Error()})
+	}
+	issues := make([]v2model.Issue, 0, len(ve.Issues))
+	for _, iss := range ve.Issues {
+		path := iss.Path
+		if fromString {
+			path = "/filter"
+		}
+		issues = append(issues, v2model.Issue{Path: path, Message: iss.Message}.
+			Hintf("the filter node shape is on %s", v2model.RefGetSchema("filters")))
+	}
+	return v2model.ValidationFailed("invalid filters", issues...)
+}
+
+// filterFieldPath names the request field errors should address for the
+// active filter form.
+func filterFieldPath(fromString bool) string {
+	if fromString {
+		return "/filter"
+	}
+	return "/filters"
+}
+
+// searchFilterNode decodes the structured form just deep enough for
+// path-addressed validation.
+type searchFilterNode struct {
+	Operator   string             `json:"operator"`
+	Filters    []searchFilterNode `json:"filters"`
+	Property   string             `json:"property"`
+	Condition  string             `json:"condition"`
+	Value      any                `json:"value"`
+	DatePreset string             `json:"date_preset"`
+}
+
+// isGroup reports whether the node is shaped like a group. A node carrying
+// BOTH group and leaf fields is ambiguous and rejected by
+// validateFilterStructure before anything asks this.
+func (n searchFilterNode) isGroup() bool { return n.Operator != "" || len(n.Filters) > 0 }
+
+// hasLeafFields reports whether the node carries any leaf-only field.
+func (n searchFilterNode) hasLeafFields() bool {
+	return n.Property != "" || n.Condition != "" || n.Value != nil || n.DatePreset != ""
+}
+
+// validateFilterStructure enforces the SHAPE of the §6.2 filter tree — the
+// structure the served `filters` schema already describes as a two-armed
+// oneOf, which nothing enforced (surface review M3). Every violation below
+// used to degrade into MATCH EVERYTHING, silently and with no warning, which
+// inverts the surface's central promise ("unresolved → did-you-mean, never a
+// silent no-match") in the most damaging possible direction:
+//
+//   - a node carrying both arms, e.g. {"operator":"and","property":"severity",
+//     "condition":"equal","value":"High"} — both the codec and the semantic
+//     gate treat it as a GROUP, ignore the leaf fields entirely, and emit an
+//     AND with no children. An empty AND is true.
+//   - a group with an empty `filters` array — the same empty AND, reached
+//     directly.
+//   - a leaf with no condition, e.g. {"property":"severity","value":"High"},
+//     which a typo'd key ("conditon") also produces. It reaches the store as
+//     Condition_None and database.FiltersFromProto DROPS it.
+//
+// This is the ONE input channel with no GBNF grammar (a documented C13
+// exception, the tree being recursive), so it is exactly where a small model
+// is most likely to emit these shapes. It runs on the query path AND on
+// POST /queries, where a malformed filter would otherwise be persisted into
+// the query's dataview and match everything for good.
+func validateFilterStructure(nodes []searchFilterNode, path string) []v2model.Issue {
+	var issues []v2model.Issue
+	for i, node := range nodes {
+		nodePath := fmt.Sprintf("%s/%d", path, i)
+		switch {
+		case node.isGroup() && node.hasLeafFields():
+			issues = append(issues, v2model.Issue{
+				Path:    nodePath,
+				Message: "a filter node is either a group (operator + filters) or a leaf (property + condition), not both",
+				Hint: `to combine conditions write {"operator":"and","filters":[{"property":"…","condition":"…","value":…}]}; ` +
+					`a node with both is read as an empty group, which matches everything`,
+			})
+		case node.isGroup() && len(node.Filters) == 0:
+			issues = append(issues, v2model.Issue{
+				Path:    nodePath + "/filters",
+				Message: fmt.Sprintf("group %q has no filters", node.Operator),
+				Hint:    "an empty group matches every object — remove it, or give it at least one leaf",
+			})
+		case node.isGroup():
+			issues = append(issues, validateFilterStructure(node.Filters, nodePath+"/filters")...)
+		case node.Condition == "":
+			// the codec reports a missing property separately; a leaf that
+			// names one but no condition is the typo case
+			if node.Property != "" {
+				issues = append(issues, v2model.Issue{
+					Path:    nodePath + "/condition",
+					Message: fmt.Sprintf("filter on %q has no condition", node.Property),
+				}.Hintf("a leaf needs a condition (equal, not_equal, contains, in, empty, …); "+
+					"without one the filter is dropped and every object matches — the node shape is on %s", v2model.RefGetSchema("filters")))
+			}
+		}
+	}
+	return issues
+}
+
+// decodeFilterNodes decodes the §6.2 array and checks its shape. Both v2
+// entry points that accept the structured form go through here.
+func decodeFilterNodes(raw json.RawMessage, path string) ([]searchFilterNode, error) {
+	var nodes []searchFilterNode
+	if err := json.Unmarshal(raw, &nodes); err != nil {
+		return nil, v2model.ValidationFailed("invalid filters",
+			v2model.Issue{Path: path, Message: err.Error(), Hint: "filters is an array of filter nodes"})
+	}
+	if issues := validateFilterStructure(nodes, path); len(issues) > 0 {
+		return nil, v2model.ValidationFailed("invalid filter structure", issues...)
+	}
+	return nodes, nil
+}
+
+// validateStructuredFilters applies rules 1 (key scope) and 3 (read-only
+// option names) to the structured filters array, path-addressed with
+// did-you-mean — the same checks the string form gets offset-addressed from
+// the parser.
+//
+// raw is the filters array AS THE CALLER SENT IT, not the canonicalized tree
+// the store query runs on, so every message below quotes the spelling that
+// leaf carried; kc resolves each leaf's stored key for the three lookups that
+// need the store's own spelling. The spelling belongs to the LEAF and can
+// belong to nothing wider: two leaves may name one property differently.
+func (s *Service) validateStructuredFilters(spaceId string, raw json.RawMessage, allowed map[string]bool, refKeys []string, formatName func(string) (string, bool), listHint v2model.Hint, v errKeys, kc *keyCanon) error {
+	nodes, err := decodeFilterNodes(raw, "/filters")
+	if err != nil {
+		return err
+	}
+	var issues []v2model.Issue
+	var walk func(nodes []searchFilterNode, path string)
+	walk = func(nodes []searchFilterNode, path string) {
+		for i, node := range nodes {
+			nodePath := fmt.Sprintf("%s/%d", path, i)
+			// a node carrying both arms was rejected above, so this branch is
+			// now unambiguous
+			if node.isGroup() {
+				walk(node.Filters, nodePath+"/filters")
+				continue
+			}
+			if node.Property == "" {
+				continue // the codec reports the missing key
+			}
+			canonical := kc.canonKey(node.Property)
+			if !allowed[canonical] {
+				issues = append(issues, unknownPropertyIssue(node.Property, nodePath+"/property", refKeys, listHint, v))
+				continue
+			}
+			format, formatKnown := formatName(canonical)
+			// a date property takes unix seconds in the structured form
+			// (SPEC §6.2) — an RFC 3339 string would survive to the store,
+			// compare string-against-int64 and silently match nothing (or,
+			// through the quick-option day-range transform, everything).
+			// The string form converts RFC 3339 at parse time; here the
+			// mistake is rejected with the conversion spelled out.
+			if formatKnown && format == "date" {
+				for _, value := range stringValues(node.Value) {
+					issue := v2model.Issue{Path: nodePath + "/value"}
+					sec, isDate := filterstring.ParseDate(value)
+					if isDate {
+						issue.Message = fmt.Sprintf("property %q is a date — the structured form takes unix seconds (%d), not %q", node.Property, sec, value)
+					} else {
+						issue.Message = fmt.Sprintf("property %q is a date — the structured form takes unix seconds, and %q is not a date", node.Property, value)
+					}
+					issue.Hint = dateValueRepair(node.Property, value, sec, isDate)
+					issues = append(issues, issue)
+				}
+			}
+			// rule 3: option names resolve read-only — never a silent no-match
+			if formatKnown && (format == "select" || format == "multi_select") {
+				names, ok := s.propertyOptionNames(spaceId, canonical)
+				if !ok {
+					continue // the store could not list the options — no check
+				}
+				for _, value := range stringValues(node.Value) {
+					if !containsString(names, value) {
+						issues = append(issues, v2model.Issue{
+							Path:    nodePath + "/value",
+							Message: fmt.Sprintf("property %q has no option named %q — a query never creates options", node.Property, value),
+						}.WithHint(didYouMean(value, names, v2model.Hintf("list them with %s", v2model.RefListPropertyOptions(spaceId, node.Property)))))
+					}
+				}
+			}
+		}
+	}
+	walk(nodes, "/filters")
+	if len(issues) > 0 {
+		return v2model.ValidationFailed("invalid filters", issues...)
+	}
+	return nil
+}
+
+// dateValueRepair is the hint beside a date refusal in the structured form.
+// The compact example is offered only where the caller can paste it back and
+// have it parse: the grammar's `key` production is a bare identifier
+// (filterstring.IsBareKey), so a display name like "Close date" — a spelling
+// §7.5a accepts — has no compact form at all, and a value that is no date has
+// no compact literal either. An example the parser rejects at the first space
+// costs a whole round trip to find out about, which is worse than no example.
+// Everything offered carries the caller's own spelling, so the repair is
+// written in the vocabulary the request was.
+func dateValueRepair(spelling, value string, sec int64, isDate bool) string {
+	switch {
+	case isDate && filterstring.IsBareKey(spelling):
+		return fmt.Sprintf(`RFC 3339 dates belong to the compact filter string, e.g. "filter": "%s > \"%s\"" — or use a datePreset`, spelling, value)
+	case isDate:
+		return fmt.Sprintf(`the structured form takes unix seconds — send "value": %d for %q, or use a datePreset`, sec, spelling)
+	default:
+		return fmt.Sprintf("the structured form takes unix seconds for %q — or use a datePreset for a named window", spelling)
+	}
+}
+
+// stringValues extracts the string entries of a filter value (bare string or
+// list).
+func stringValues(v any) []string {
+	switch x := v.(type) {
+	case string:
+		return []string{x}
+	case []any:
+		var out []string
+		for _, e := range x {
+			if s, ok := e.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	return nil
+}
+
+func containsString(list []string, s string) bool {
+	for _, e := range list {
+		if e == s {
+			return true
+		}
+	}
+	return false
+}
+
+// resolveTypeLeaves resolves the `type` pseudo-key (rule 6): filter leaves
+// on `type` carry type KEYS, resolved to the space's type object ids like
+// any reference; unknown keys get the R9 did-you-mean. The returned bool
+// reports whether a POSITIVE leaf named a file type, the file-layout opt-in
+// trigger. Positive is decided by EXCLUSION: any
+// condition except the negated family (!=, NOT IN, notAllIn, notExactIn,
+// notContains) asks for the type rather than ruling it out — the review
+// caught `allIn` (the compact string's HAS ALL) silently returning zero
+// file rows under the earlier =/IN allowlist. Negated leaves exclude a
+// type, so they never widen the scope.
+func (s *Service) resolveTypeLeaves(spaceId string, filters []*model.BlockContentDataviewFilter, path string, v errKeys) (namedFileType bool, err error) {
+	// one live snapshot for every leaf of this tree — chain-resolved and
+	// corpse-aware like the top-level type scope (review cause 2: the same
+	// spelling worked at top level and 400'd one level down, and a
+	// UI-deleted type was a usable query scope)
+	typeEntries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return false, err
+	}
+	return s.resolveTypeLeavesIn(spaceId, filters, path, typeEntries, v)
+}
+
+func (s *Service) resolveTypeLeavesIn(spaceId string, filters []*model.BlockContentDataviewFilter, path string, typeEntries []typeEntry, v errKeys) (namedFileType bool, err error) {
+	for _, f := range filters {
+		if f == nil {
+			continue
+		}
+		if len(f.NestedFilters) > 0 {
+			nested, err := s.resolveTypeLeavesIn(spaceId, f.NestedFilters, path, typeEntries, v)
+			if err != nil {
+				return false, err
+			}
+			namedFileType = namedFileType || nested
+			continue
+		}
+		if f.RelationKey != bundle.RelationKeyType.String() || f.Value == nil {
+			continue
+		}
+		positive := !negatedFilterConditions[f.Condition]
+		resolve := func(key string) (string, error) {
+			entry, ok, ambiguous, err := s.resolveTypeInput(spaceId, key, typeEntries)
+			if err != nil {
+				return "", err
+			}
+			if len(ambiguous) > 0 {
+				return "", ambiguousKeyError(v.typeWord(), key, path, ambiguous)
+			}
+			if !ok || entry.Id == "" {
+				return "", s.unknownTypeKeyError(spaceId, key, path, v)
+			}
+			if positive && util.IsFileTypeKey(entry.Key) {
+				namedFileType = true
+			}
+			return entry.Id, nil
+		}
+		switch kind := f.Value.GetKind().(type) {
+		case *types.Value_StringValue:
+			id, err := resolve(kind.StringValue)
+			if err != nil {
+				return false, err
+			}
+			f.Value = &types.Value{Kind: &types.Value_StringValue{StringValue: id}}
+		case *types.Value_ListValue:
+			for i, entry := range kind.ListValue.Values {
+				name := entry.GetStringValue()
+				if name == "" {
+					continue
+				}
+				id, err := resolve(name)
+				if err != nil {
+					return false, err
+				}
+				kind.ListValue.Values[i] = &types.Value{Kind: &types.Value_StringValue{StringValue: id}}
+			}
+		}
+	}
+	return namedFileType, nil
+}
+
+// negatedFilterConditions is the condition family that EXCLUDES the named
+// value — the only leaves that never trigger the file-layout opt-in. Kept
+// as a set (not an =/IN allowlist) so a new positive condition widens by
+// default instead of silently returning zero file rows.
+var negatedFilterConditions = map[model.BlockContentDataviewFilterCondition]bool{
+	model.BlockContentDataviewFilter_NotEqual:   true,
+	model.BlockContentDataviewFilter_NotIn:      true,
+	model.BlockContentDataviewFilter_NotAllIn:   true,
+	model.BlockContentDataviewFilter_NotExactIn: true,
+	model.BlockContentDataviewFilter_NotLike:    true,
+}
+
+//
+// ---- global search (rule 4) ----
+//
+
+// spaceRef is one queryable space: the full id (what the store is keyed
+// by), the §8.35 short reference served on its rows — the full id again
+// under `?ids=full` (§8.36) — and a display name for warnings.
+type spaceRef struct {
+	id    string
+	short string
+	name  string
+}
+
+// spaceRefs enumerates the account's spaces from the tech space's views,
+// filtered to the live ones (isLiveSpaceView — the predicate shared with
+// the v2 spaces list and GET-one). Global search further restricts these
+// refs to opened stores before resolving properties.
+//
+// The ctx grant intersects the INPUT set here, before any per-space work —
+// not the output rows: a non-granted space must never enter the fan-out
+// loop, where a per-space failure or warning would disclose that it exists.
+func (s *Service) spaceRefs(ctx context.Context) ([]spaceRef, error) {
+	rows, err := s.liveSpaceRows(ctx)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]string, len(rows))
+	for i, row := range rows {
+		ids[i] = row.Id
+	}
+	served := s.servedSpaceRefs(ctx, ids)
+	var out []spaceRef
+	for _, row := range rows {
+		name := row.Name
+		if name == "" {
+			name = row.Id
+		}
+		short := row.Id
+		if s, ok := served[row.Id]; ok {
+			short = s
+		}
+		out = append(out, spaceRef{id: row.Id, short: short, name: name})
+	}
+	return out, nil
+}
+
+// globalRecord is one merged result with its origin space.
+type globalRecord struct {
+	spaceId string
+	record  database.Record
+	sorts   []database.SortRequest
+}
+
+// GlobalSearchObjects resolves names per space, then uses one-shot cross-space
+// search. Spaces with the same resolved filters and sorts share a query, so full-text
+// normally runs once across the account. total is a lower bound when clipped.
+func (s *Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchRequest, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
+	if err := validateSearchShape(req); err != nil {
+		return nil, 0, false, nil, err
+	}
+	if offset > maxGlobalSearchOffset {
+		return nil, 0, false, nil, v2model.ValidationFailed(
+			fmt.Sprintf("global search pages at most %d rows deep", maxGlobalSearchOffset),
+			v2model.Issue{
+				Path:    "offset",
+				Message: fmt.Sprintf("offset %d exceeds the global-search maximum of %d", offset, maxGlobalSearchOffset),
+			}.Hintf("narrow with filter, type or query, or search one space at a time with %s", v2model.NewRef(v2model.OpSearchSpace)))
+	}
+	spaces, err := s.spaceRefs(ctx)
+	if err != nil {
+		return nil, 0, false, nil, err
+	}
+
+	var (
+		merged   []globalRecord
+		total    int
+		warnings []v2model.Issue
+		firstErr error
+		resolved int
+	)
+	type queryGroup struct {
+		spaceIds []string
+		filters  []database.FilterRequest
+		sorts    []database.SortRequest
+	}
+	var groups []*queryGroup
+	need := offset + limit
+	opened := s.store.OpenedSpaceIds()
+	hasUnloadedSpaces := false
+	for _, space := range spaces {
+		if !slices.Contains(opened, space.id) {
+			hasUnloadedSpaces = true
+			warnings = append(warnings, incompleteSearchIssue())
+			continue
+		}
+
+		// rule 4: type keys and option names resolve inside each space's loop
+		// iteration; a reference that resolves in only some spaces queries
+		// those and warns about the rest. Fields are lenient here — a display
+		// column a space lacks must not remove that space from scope/total.
+		plan, err := s.buildSearchPlan(space.id, req, false, errKeysFor(ctx))
+		if err != nil {
+			var v2Err *v2model.Error
+			if errors.As(err, &v2Err) && v2Err.Status < 500 {
+				if firstErr == nil {
+					firstErr = err
+				}
+				warnings = append(warnings, v2model.Issue{
+					Message: fmt.Sprintf("space %q was skipped: %s", space.name, firstIssueMessage(v2Err)),
+				})
+				continue
+			}
+			return nil, 0, false, nil, err
+		}
+		resolved++
+		var group *queryGroup
+		for _, existing := range groups {
+			if reflect.DeepEqual(existing.sorts, plan.sorts) && reflect.DeepEqual(existing.filters, plan.filters) {
+				group = existing
+				break
+			}
+		}
+		if group == nil {
+			group = &queryGroup{sorts: plan.sorts, filters: plan.filters}
+			groups = append(groups, group)
+		}
+		group.spaceIds = append(group.spaceIds, space.id)
+		warnings = append(warnings, plan.warnings...)
+	}
+	if resolved == 0 && firstErr != nil && !hasUnloadedSpaces {
+		// the request resolved nowhere — the per-space error is the answer,
+		// not an empty result
+		return nil, 0, false, nil, firstErr
+	}
+	for _, group := range groups {
+		resp := s.mw.ObjectCrossSpaceSearch(ctx, &pb.RpcObjectCrossSpaceSearchRequest{
+			SpaceIds: group.spaceIds,
+			FullText: req.Query,
+			Filters:  database.FiltersToProto(group.filters),
+			Sorts:    database.SortsToProto(group.sorts),
+			Limit:    int32(need + 1), // nolint: gosec
+		})
+		if resp.Error != nil && resp.Error.Code != pb.RpcObjectCrossSpaceSearchResponseError_NULL {
+			return nil, 0, false, nil, fmt.Errorf("cross-space search: %s", resp.Error.Description)
+		}
+		if !resp.AllStoresLoaded {
+			warnings = append(warnings, incompleteSearchIssue())
+		}
+		total += len(resp.Records)
+		for _, record := range resp.Records {
+			details := domain.NewDetailsFromProto(record)
+			merged = append(merged, globalRecord{spaceId: details.GetString(bundle.RelationKeySpaceId), record: database.Record{Details: details}, sorts: group.sorts})
+		}
+	}
+	warnings = dedupeIssues(warnings)
+	if len(groups) > 1 {
+		sortGlobalRecords(merged)
+	}
+	page := merged[minInt(offset, len(merged)):minInt(need, len(merged))]
+
+	// the row's space_id field is served in the §8.35 short form, minted over
+	// the SAME visible set the fan-out ran on — a global-search row is the
+	// one place an agent learns a space id it did not itself name
+	shortRefs := map[string]string{}
+	for _, space := range spaces {
+		shortRefs[space.id] = space.short
+	}
+	builders := map[string]*objectRowBuilder{}
+	rows := make([]v2model.ObjectRow, 0, len(page))
+	for _, entry := range page {
+		builder, ok := builders[entry.spaceId]
+		if !ok {
+			if builder, err = s.newSearchRowBuilder(entry.spaceId, req.Fields); err != nil {
+				return nil, 0, false, nil, err
+			}
+			builder.includeSpaceId = true
+			if short, found := shortRefs[entry.spaceId]; found {
+				builder.spaceRef = short
+			}
+			builders[entry.spaceId] = builder
+		}
+		rows = append(rows, builder.row(entry.record))
+	}
+	return rows, total, need < total, warnings, nil
+}
+
+func incompleteSearchIssue() v2model.Issue {
+	return v2model.Issue{Message: "Search results are incomplete because some space stores are still loading or unavailable.", Hint: "Retry later for a complete view."}
+}
+
+// firstIssueMessage picks the most specific message of a C6 error for the
+// per-space skip warning.
+func firstIssueMessage(err *v2model.Error) string {
+	if len(err.Issues) > 0 {
+		return err.Issues[0].Message
+	}
+	return err.Message
+}
+
+// dedupeIssues drops repeated (path, message) pairs — per-space loops
+// produce the same warning once per space.
+func dedupeIssues(issues []v2model.Issue) []v2model.Issue {
+	seen := map[string]bool{}
+	out := issues[:0]
+	for _, iss := range issues {
+		key := iss.Path + "\x00" + iss.Message
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, iss)
+	}
+	return out
+}
+
+// sortGlobalRecords merges per-space results by the effective sort list.
+// The comparator approximates the store's ordering (no locale collation);
+// ties break by space id then object id for determinism.
+func sortGlobalRecords(records []globalRecord) {
+	sort.SliceStable(records, func(i, j int) bool {
+		a, b := records[i], records[j]
+		for pos, srt := range a.sorts {
+			av := a.record.Details.Get(srt.RelationKey)
+			bv := b.record.Details.Get(b.sorts[pos].RelationKey)
+			comp := av.Compare(bv)
+			if comp == 0 {
+				continue
+			}
+			if srt.Type == model.BlockContentDataviewSort_Desc {
+				return comp > 0
+			}
+			return comp < 0
+		}
+		if a.spaceId != b.spaceId {
+			return a.spaceId < b.spaceId
+		}
+		return a.record.Details.GetString(bundle.RelationKeyId) < b.record.Details.GetString(bundle.RelationKeyId)
+	})
+}
+
+// servedBundledSpellings spells bundled keys the way the surface serves
+// them: the derived slug, or the bundled display name under ?keys=name.
+func servedBundledSpellings(keys []string, v errKeys) []string {
+	out := make([]string, 0, len(keys))
+	for _, key := range keys {
+		spelling := key
+		if bundle.HasRelation(domain.RelationKey(key)) {
+			spelling = bundle.ApiSlug(key)
+			if v.names {
+				if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil && rel.Name != "" {
+					spelling = rel.Name
+				}
+			}
+		}
+		out = append(out, spelling)
+	}
+	return out
+}

@@ -32,6 +32,11 @@ func (s *service) createObjectType(ctx context.Context, space clientspace.Space,
 		objectKey = uniqueKey.InternalKey()
 	}
 	injectApiObjectKey(object, objectKey)
+	if err := s.ensureUniqueApiObjectKey(space.Id(), object, objectKey, apiKeyKindType); err != nil {
+		// see createRelation: an unreadable namespace degrades the mint, it
+		// does not fail the create
+		log.With("spaceID", space.Id()).Errorf("failed to check api key uniqueness: %v", err)
+	}
 
 	if !object.Has(bundle.RelationKeyRecommendedLayout) {
 		object.SetInt64(bundle.RelationKeyRecommendedLayout, int64(model.ObjectType_basic))

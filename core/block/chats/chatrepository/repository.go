@@ -32,6 +32,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -45,6 +46,8 @@ const (
 	descOrder   = "-_o.id"
 	ascOrder    = "_o.id"
 	descStateId = "-stateId"
+
+	messageHistorySchemaVersionId = "$message-history-v1"
 )
 
 type Service interface {
@@ -97,6 +100,23 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
+// chatCollectionIndexes is package-level so tests can build a collection with exactly the indexes
+// production has, and assert the queries below still reach them.
+//
+// The sparse ones are only usable by a filter that guarantees the field is present and non-null:
+// since any-store v1.0.2 the planner refuses a sparse index for anything weaker, $exists included
+// (it also matches an explicit null, which the index skips). See filterReactionUnread.
+var chatCollectionIndexes = []anystore.IndexInfo{
+	{Fields: []string{"_o.id"}},
+	{Fields: []string{chatmodel.PinnedKey}, Sparse: true},
+	{Fields: []string{chatmodel.ReactionUnreadOrderIdKey}, Sparse: true},
+	// serves GetLastMessagesByCreators: creator Eq + order walk with early
+	// exit (measured ~80µs vs a 25-45ms full-collection scan at 50k msgs)
+	{Fields: []string{chatmodel.CreatorKey, "_o.id"}},
+	// only tombstones carry the field: counting them (CountMessages) reads just them
+	{Fields: []string{chatmodel.DeletedKey}, Sparse: true},
+}
+
 func (s *service) Repository(spaceId, chatObjectId string) (Repository, error) {
 	s.lock.RLock()
 	repo, ok := s.cache[chatObjectId]
@@ -137,18 +157,29 @@ func (s *service) getOrInitRepository(spaceId, chatObjectId string) (Repository,
 	if err != nil {
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
+	historyCollectionName := chatObjectId + "chatMessageHistory"
+	historyCollection, err := crdtDb.OpenCollection(s.componentCtx, historyCollectionName)
+	if errors.Is(err, anystore.ErrCollectionNotFound) {
+		historyCollection, err = crdtDb.CreateCollection(s.componentCtx, historyCollectionName)
+		if err != nil {
+			return nil, fmt.Errorf("create message history collection: %w", err)
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get message history collection: %w", err)
+	}
 
-	if err = anystorehelper.AddIndexes(s.componentCtx, collection, []anystore.IndexInfo{
-		{Fields: []string{"_o.id"}},
-		{Fields: []string{chatmodel.PinnedKey}, Sparse: true},
-		{Fields: []string{chatmodel.ReactionUnreadOrderIdKey}, Sparse: true},
-	}); err != nil {
+	if err = anystorehelper.AddIndexes(s.componentCtx, collection, chatCollectionIndexes); err != nil {
 		return nil, fmt.Errorf("ensure indexes: %w", err)
 	}
 
 	repo := &repository{
-		collection: collection,
-		arenaPool:  s.arenaPool,
+		collection:        collection,
+		historyCollection: historyCollection,
+		arenaPool:         s.arenaPool,
+	}
+	if err = repo.ensureMessageHistory(s.componentCtx, crdtDb, chatObjectId); err != nil {
+		return nil, fmt.Errorf("initialize message history: %w", err)
 	}
 
 	s.cache[chatObjectId] = repo
@@ -170,16 +201,32 @@ type Repository interface {
 	GetPrevOrderId(ctx context.Context, orderId string) (string, error)
 	LoadChatState(ctx context.Context) (*model.ChatState, error)
 	CountMessages(ctx context.Context) (int, error)
+	CountMessagesLifetime(ctx context.Context) (int, error)
+	RecordMessage(ctx context.Context, messageId string) (bool, error)
 	GetOldestOrderId(ctx context.Context, counterType chatmodel.CounterType) (string, error)
 	GetReadMessagesAfter(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) ([]string, error)
 	GetUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) ([]string, error)
 	GetAllUnreadMessages(ctx context.Context, counterType chatmodel.CounterType) ([]string, error)
-	GetMessagesForIndexing(ctx context.Context, afterOrderId string) ([]*chatmodel.Message, error)
+	// IterateMessagesForIndexing streams messages created or edited at or after
+	// afterOrderId to proc one at a time; an empty afterOrderId streams the whole
+	// history. Nothing is materialized, so callers can index arbitrarily large
+	// chats with bounded memory.
+	IterateMessagesForIndexing(ctx context.Context, afterOrderId string, proc func(msg *chatmodel.Message) error) error
 	SetReadFlag(ctx context.Context, chatObjectId string, msgIds []string, counterType chatmodel.CounterType, value bool) ([]string, error)
 	GetMessages(ctx context.Context, req GetMessagesRequest) ([]*chatmodel.Message, error)
 	HasMyReaction(ctx context.Context, myIdentity string, messageId string, emoji string) (bool, error)
 	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error)
+	// GetLastMessages returns the newest messages, tombstones included: it seeds
+	// subscription windows and stream backfills, which must hold a deleted
+	// comment so its replies keep their thread.
 	GetLastMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error)
+	// GetLastLiveMessages is GetLastMessages without tombstones, for readers
+	// that want messages only (search browse, the last-message date).
+	GetLastLiveMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error)
+	// GetLastMessagesByCreators returns the newest live messages authored by
+	// any of the given identities (exact match), in ascending order like
+	// GetLastMessages
+	GetLastMessagesByCreators(ctx context.Context, creators []string, limit uint) ([]*chatmodel.Message, error)
 	SetSyncedByMaxOrderId(ctx context.Context, maxOrderId string) ([]string, error)
 	// GetAllMessageAttachments returns attachment info from all messages, optionally filtered by afterOrderId.
 	GetAllMessageAttachments(ctx context.Context, afterOrderId string) ([]MessageAttachmentInfo, error)
@@ -191,8 +238,9 @@ type Repository interface {
 }
 
 type repository struct {
-	collection anystore.Collection
-	arenaPool  *anyenc.ArenaPool
+	collection        anystore.Collection
+	historyCollection anystore.Collection
+	arenaPool         *anyenc.ArenaPool
 }
 
 func (s *repository) AddTestMessage(ctx context.Context, msg *chatmodel.Message) error {
@@ -206,6 +254,9 @@ func (s *repository) AddTestMessage(ctx context.Context, msg *chatmodel.Message)
 	orderObj.Set("id", arena.NewString(msg.OrderId))
 	val.Set(chatmodel.OrderKey, orderObj)
 
+	if _, err := s.RecordMessage(ctx, msg.Id); err != nil {
+		return err
+	}
 	return s.collection.Insert(ctx, val)
 }
 
@@ -296,8 +347,93 @@ func (s *repository) LoadChatState(ctx context.Context) (*model.ChatState, error
 	}, nil
 }
 
+// CountMessages returns the number of live messages: tombstones (soft-deleted discussion
+// comments) stay in the collection but are not counted.
 func (s *repository) CountMessages(ctx context.Context) (int, error) {
-	return s.collection.Find(nil).Count(ctx)
+	total, err := s.collection.Find(nil).Count(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("count all messages: %w", err)
+	}
+	deleted, err := s.deletedMessagesQuery().Count(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("count deleted messages: %w", err)
+	}
+	return total - deleted, nil
+}
+
+// CountMessagesLifetime returns the number of distinct messages ever added to
+// the chat. Deletion removes the live message document but deliberately keeps
+// its history record, so API message_count does not move backwards.
+func (s *repository) CountMessagesLifetime(ctx context.Context) (int, error) {
+	return s.historyCollection.Find(query.Key{
+		Path:   []string{"id"},
+		Filter: query.NewComp(query.CompOpNe, messageHistorySchemaVersionId),
+	}).Count(ctx)
+}
+
+// RecordMessage records one message identity in the append-only local history
+// index. The index is rebuilt deterministically when chat changes are replayed;
+// using the message id makes replays idempotent.
+func (s *repository) RecordMessage(ctx context.Context, messageId string) (bool, error) {
+	return s.recordMessageHistoryId(ctx, messageId)
+}
+
+func (s *repository) recordMessageHistoryId(ctx context.Context, messageId string) (bool, error) {
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+	doc := arena.NewObject()
+	doc.Set("id", arena.NewString(messageId))
+	if err := s.historyCollection.Insert(ctx, doc); err != nil {
+		if errors.Is(err, anystore.ErrDocExists) {
+			return false, nil
+		}
+		return false, fmt.Errorf("record message history: %w", err)
+	}
+	return true, nil
+}
+
+// ensureMessageHistory seeds live messages, invalidates the incremental replay
+// watermark exactly once, then writes its version marker. The next object open
+// consequently replays the complete tree and recovers pre-migration messages
+// that were already deleted. If initialization crashes before the marker, the
+// whole idempotent migration runs again.
+func (s *repository) ensureMessageHistory(ctx context.Context, db anystore.DB, chatObjectId string) error {
+	if _, err := s.historyCollection.FindId(ctx, messageHistorySchemaVersionId); err == nil {
+		return nil
+	} else if !errors.Is(err, anystore.ErrDocNotFound) {
+		return fmt.Errorf("read schema marker: %w", err)
+	}
+	if err := storestate.ResetReplayState(ctx, db, chatObjectId); err != nil {
+		return fmt.Errorf("reset full replay marker: %w", err)
+	}
+	if err := s.seedMessageHistory(ctx); err != nil {
+		return err
+	}
+	if _, err := s.recordMessageHistoryId(ctx, messageHistorySchemaVersionId); err != nil {
+		return fmt.Errorf("write schema marker: %w", err)
+	}
+	return nil
+}
+
+func (s *repository) seedMessageHistory(ctx context.Context) error {
+	iter, err := s.collection.Find(nil).Iter(ctx)
+	if err != nil {
+		return fmt.Errorf("iterate live messages: %w", err)
+	}
+	defer iter.Close()
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return fmt.Errorf("read live message: %w", err)
+		}
+		if _, err = s.RecordMessage(ctx, doc.Value().GetString("id")); err != nil {
+			return err
+		}
+	}
+	return iter.Err()
 }
 
 func (s *repository) loadChatStateByType(ctx context.Context, counterType chatmodel.CounterType) (*model.ChatStateUnreadState, error) {
@@ -428,13 +564,40 @@ func (s *repository) GetAllUnreadMessages(ctx context.Context, counterType chatm
 	return msgIds, iter.Err()
 }
 
-func (s *repository) GetMessagesForIndexing(ctx context.Context, afterOrderId string) ([]*chatmodel.Message, error) {
-	qry := s.collection.Find(query.Or{
-		query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
-		query.Key{Path: []string{chatmodel.OrderKey, "content"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
-	})
+func (s *repository) IterateMessagesForIndexing(ctx context.Context, afterOrderId string, proc func(msg *chatmodel.Message) error) error {
+	// a tombstone has nothing to index; its search doc is removed through the delete queue
+	var filter query.Filter = filterNotDeleted
+	if afterOrderId != "" {
+		// _o.id is the creation order, _o.content the last content-edit order:
+		// both new and edited messages need reindexing
+		filter = query.And{
+			query.Or{
+				query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
+				query.Key{Path: []string{chatmodel.OrderKey, "content"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
+			},
+			filterNotDeleted,
+		}
+	}
+	iter, err := s.collection.Find(filter).Sort(ascOrder).Iter(ctx)
+	if err != nil {
+		return fmt.Errorf("init iterator: %w", err)
+	}
+	defer iter.Close()
 
-	return s.queryMessages(ctx, qry)
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return fmt.Errorf("get doc: %w", err)
+		}
+		msg, err := chatmodel.UnmarshalMessage(doc.Value())
+		if err != nil {
+			return fmt.Errorf("unmarshal message: %w", err)
+		}
+		if err = proc(msg); err != nil {
+			return fmt.Errorf("process message: %w", err)
+		}
+	}
+	return iter.Err()
 }
 
 func (r *repository) SetReadFlag(ctx context.Context, chatObjectId string, msgIds []string, counterType chatmodel.CounterType, value bool) ([]string, error) {
@@ -622,6 +785,71 @@ func (s *repository) GetMessagesByIds(ctx context.Context, messageIds []string) 
 func (s *repository) GetLastMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error) {
 	qry := s.collection.Find(nil).Sort(descOrder).Limit(limit)
 	return s.queryMessages(ctx, qry)
+}
+
+func (s *repository) GetLastLiveMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error) {
+	return s.queryMessages(ctx, s.lastLiveMessagesQuery(limit))
+}
+
+// The queries below are built in one place so the tests explain exactly what runs: each must
+// keep its index (repository_test / softdelete_test).
+
+// deletedMessagesQuery reads the tombstones through the sparse `deleted` index.
+func (s *repository) deletedMessagesQuery() anystore.Query {
+	return s.collection.Find(filterDeleted)
+}
+
+// lastLiveMessagesQuery walks the order index from the newest end, skipping tombstones.
+func (s *repository) lastLiveMessagesQuery(limit uint) anystore.Query {
+	return s.collection.Find(filterNotDeleted).Sort(descOrder).Limit(limit)
+}
+
+// lastLiveMessagesByCreatorQuery walks the (creator, order) index from the newest end,
+// skipping tombstones.
+func (s *repository) lastLiveMessagesByCreatorQuery(creator string, limit uint) anystore.Query {
+	return s.collection.Find(query.And{
+		query.Key{
+			Path:   []string{chatmodel.CreatorKey},
+			Filter: query.NewComp(query.CompOpEq, creator),
+		},
+		filterNotDeleted,
+	}).Sort(descOrder).Limit(limit)
+}
+
+func (s *repository) GetLastMessagesByCreators(ctx context.Context, creators []string, limit uint) ([]*chatmodel.Message, error) {
+	// one indexed query per creator: an Eq filter walks the compound
+	// (creator, _o.id) index with early exit at the limit, while an In filter
+	// makes the planner fall back to a full-collection scan (measured 35ms vs
+	// 80µs per creator at 50k messages). The per-creator newest-limit sets
+	// are a superset of the combined newest-limit set, merged below.
+	unique := make(map[string]struct{}, len(creators))
+	var all []*chatmodel.Message
+	for _, creator := range creators {
+		if creator == "" {
+			continue
+		}
+		if _, ok := unique[creator]; ok {
+			continue
+		}
+		unique[creator] = struct{}{}
+
+		messages, err := s.queryMessages(ctx, s.lastLiveMessagesByCreatorQuery(creator, limit))
+		if err != nil {
+			return nil, fmt.Errorf("query creator messages: %w", err)
+		}
+		all = append(all, messages...)
+	}
+	if len(unique) > 1 {
+		// keep the GetLastMessages contract: newest `limit` selected,
+		// returned in ascending order
+		sort.Slice(all, func(i, j int) bool {
+			return all[i].OrderId < all[j].OrderId
+		})
+		if uint(len(all)) > limit {
+			all = all[uint(len(all))-limit:]
+		}
+	}
+	return all, nil
 }
 
 func (s *repository) GetAllMessageAttachments(ctx context.Context, afterOrderId string) ([]MessageAttachmentInfo, error) {

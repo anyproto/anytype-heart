@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schemas.anytype.io/anyblock/2.0/object.schema.json",
+  "formatVersion": "2.0",
+  "id": "bafyreinotebook",
+  "type": "Page",
+  "type_internal_key": "page",
+  "icon": {
+    "format": "emoji",
+    "emoji": "📓"
+  },
+  "properties": {
+    "Name": "Notebook",
+    "Created by": "participant-A11111111111111111111111111111111111111111111111",
+    "Creation date": "2026-03-01T09:00:00Z",
+    "Origin": "usecase",
+    "Resolved layout": "basic"
+  },
+  "blocks": [
+    {
+      "id": "n1",
+      "type": "paragraph",
+      "text": "Where the field notes are kept."
+    },
+    {
+      "id": "n2",
+      "type": "link",
+      "object_id": "bafyreiridgenote"
+    }
+  ]
+}

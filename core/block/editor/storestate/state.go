@@ -138,6 +138,21 @@ func (ss *StoreState) dropOldChangeOrders(ctx context.Context) {
 	_ = coll.Drop(ctx)
 }
 
+// ResetReplayState makes the next store-tree open replay the complete change
+// history. It is used by derived-index migrations that need events older than
+// the incremental add-sequence watermark. Deleting only this object's metadata
+// leaves its materialized collections intact; replay handlers are idempotent.
+func ResetReplayState(ctx context.Context, db anystore.DB, objectId string) error {
+	meta, err := db.Collection(ctx, CollMeta)
+	if err != nil {
+		return err
+	}
+	if err = meta.DeleteId(ctx, objectId); errors.Is(err, anystore.ErrDocNotFound) {
+		return nil
+	}
+	return err
+}
+
 func (ss *StoreState) NewTx(ctx context.Context) (*StoreStateTx, error) {
 	tx, err := ss.db.WriteTx(ctx)
 	if err != nil {
@@ -307,6 +322,8 @@ func (ss *StoreState) applyDelete(ctx context.Context, ch Change) (err error) {
 		return errors.Join(ErrCritical, fmt.Errorf("get collection: %w", err))
 	}
 	switch mode {
+	case DeleteModeKeep:
+		return nil
 	case DeleteModeMark:
 		payload := ss.newDeleteMark(del.DocumentId)
 		fillRootOrder(ss.arena, payload, ch.Order)

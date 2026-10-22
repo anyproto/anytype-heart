@@ -113,11 +113,12 @@ func unmarshalChange(treeChange *objecttree.Change, data []byte, needSnapshot bo
 	} else {
 		noSnapshotChange := change.(*pb.ChangeNoSnapshot)
 		return &pb.Change{
-			Content:    noSnapshotChange.Content,
-			FileKeys:   noSnapshotChange.FileKeys,
-			Timestamp:  noSnapshotChange.Timestamp,
-			Version:    noSnapshotChange.Version,
-			ChangeType: noSnapshotChange.ChangeType,
+			Content:         noSnapshotChange.Content,
+			FileKeys:        noSnapshotChange.FileKeys,
+			Timestamp:       noSnapshotChange.Timestamp,
+			Version:         noSnapshotChange.Version,
+			ChangeType:      noSnapshotChange.ChangeType,
+			IntegrationName: noSnapshotChange.IntegrationName,
 		}, nil
 	}
 }
@@ -433,9 +434,10 @@ func (s *treeSource) PushChange(params source.PushChangeParams) (id string, err 
 
 func (s *treeSource) buildChange(params source.PushChangeParams) (c *pb.Change) {
 	c = &pb.Change{
-		Timestamp:  params.Time.Unix(),
-		Version:    params.State.MigrationVersion(),
-		ChangeType: params.ChangeType.Raw(),
+		Timestamp:       params.Time.Unix(),
+		Version:         params.State.MigrationVersion(),
+		ChangeType:      params.ChangeType.Raw(),
+		IntegrationName: params.IntegrationName,
 	}
 	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
@@ -614,6 +616,14 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 		st = initState
 		startId = st.ChangeId()
 	}
+	// the replay-scoped parent index makes PickParentOf/UnlinkAll O(1) during
+	// change application (it no-ops on layered states, i.e. the incremental
+	// initState path); it must be off again before normalization runs
+	defer func() {
+		if st != nil {
+			st.DisableParentIndex()
+		}
+	}()
 
 	// todo: can we avoid unmarshaling here? we already had this data
 	sbt, uniqueKeyInternalKey, err := typeprovider.GetTypeAndKeyFromRoot(ot.Header())
@@ -638,6 +648,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 				} else {
 					st = state.NewDoc(ot.Id(), nil).(*state.State)
 				}
+				st.EnableParentIndex()
 				st.SetChangeId(change.Id)
 				return true
 			}
@@ -658,6 +669,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 					if iterErr != nil {
 						return false
 					}
+					st.EnableParentIndex()
 				} else {
 					st = st.NewState()
 				}

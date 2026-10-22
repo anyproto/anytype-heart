@@ -81,6 +81,15 @@ type PriorityProvider interface {
 	ReleasePriorityIds(spaceId string)
 }
 
+// HeadSyncObserver receives the outcome of every head-sync diff round. It
+// exists for the recovery status tracker (core.recovery), which consumes it
+// for the TECH SPACE ONLY: the tech space's diff against a responsible node is
+// how the SpaceView set is known to be complete. Regular spaces finalize on
+// their load result, never on sync. Optional, resolved like PriorityProvider.
+type HeadSyncObserver interface {
+	OnHeadSync(spaceId, peerId string, missing []string, responsible bool)
+}
+
 type treeSyncer struct {
 	sync.Mutex
 	mainCtx            context.Context
@@ -100,6 +109,7 @@ type treeSyncer struct {
 	syncedTreeRemover  SyncedTreeRemover
 	syncDetailsUpdater SyncDetailsUpdater
 	priority           PriorityProvider
+	headSync           HeadSyncObserver
 }
 
 func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
@@ -135,6 +145,10 @@ func (t *treeSyncer) Init(a *app.App) (err error) {
 	// optional: head-sync ordering hook (GO-7302). Absent -> diff order kept.
 	if pp, err := app.GetComponent[PriorityProvider](a); err == nil {
 		t.priority = pp
+	}
+	// optional: the recovery status tracker's tech-space completeness gate
+	if observer, err := app.GetComponent[HeadSyncObserver](a); err == nil {
+		t.headSync = observer
 	}
 	return nil
 }
@@ -203,10 +217,15 @@ func (t *treeSyncer) SyncAll(ctx context.Context, p peer.Peer, existing, missing
 	if t.priority != nil {
 		headIds = prioritizeFront(existing, t.priority.GetPriorityIds(t.spaceId))
 	}
-	t.Lock()
-	defer t.Unlock()
 	peerId := p.Id()
 	isResponsible := slices.Contains(t.nodeConf.NodeIds(t.spaceId), peerId)
+	if t.headSync != nil {
+		// before the lock: the observer is fast and lock-free, and a status
+		// surface must never sit inside a head-sync round's critical section
+		t.headSync.OnHeadSync(t.spaceId, peerId, missing, isResponsible)
+	}
+	t.Lock()
+	defer t.Unlock()
 	t.sendSyncEvents(lo.Filter(existing, func(id string, index int) bool {
 		return id != t.spaceSettingsId
 	}), missing, isResponsible)

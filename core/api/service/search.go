@@ -3,9 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"sort"
-
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/api/filter"
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
@@ -24,16 +21,22 @@ var (
 )
 
 // GlobalSearch retrieves a paginated list of objects from all spaces that match the search parameters.
-func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchRequest, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
+func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchRequest, offset int, limit int) (objects []apimodel.Object, total int, hasMore, allStoresLoaded bool, err error) {
 	spaceIds, err := s.GetAllSpaceIds(ctx)
 	if err != nil {
-		return nil, 0, false, ErrFailedGetAllSpaceIds
+		return nil, 0, false, false, ErrFailedGetAllSpaceIds
 	}
 
-	queryFilters := s.prepareQueryFilter(request.Query)
-	sorts, criterionToSortAfter := s.prepareSorts(request.Sort)
-
-	var combinedRecords []*types.Struct
+	sorts, _ := s.prepareSorts(request.Sort)
+	if request.Query != "" {
+		// Preserve the requested order, with relevance as the tiebreaker.
+		sorts = append(sorts, &model.BlockContentDataviewSort{
+			RelationKey: bundle.RelationKey_final_score.String(),
+			Type:        model.BlockContentDataviewSort_Desc,
+		})
+	}
+	var spaceFilters []*model.BlockContentDataviewFilter
+	var querySpaceIds []string
 	for _, spaceId := range spaceIds {
 		// Resolve template and type IDs per spaceId, as they are unique per spaceId
 		templateFilter := s.prepareTemplateFilter()
@@ -50,59 +53,45 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 			validator := filter.NewValidator(s)
 			advFilter, err := filter.BuildExpressionFilters(ctx, request.Filters, validator, spaceId)
 			if err != nil {
-				return nil, 0, false, ErrFailedBuildFilters
+				return nil, 0, false, false, ErrFailedBuildFilters
 			}
 			if advFilter != nil {
 				expressionFilters = []*model.BlockContentDataviewFilter{advFilter}
 			}
 		}
 
-		filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, templateFilter, queryFilters, typeFilters, expressionFilters)
+		filters := s.combineFilters(model.BlockContentDataviewFilter_And, baseFilters, templateFilter, typeFilters, expressionFilters)
 
-		objResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
-			SpaceId: spaceId,
-			Filters: filters,
-			Sorts:   sorts,
-			Limit:   int32(offset + limit), // nolint: gosec
+		filters = append(filters, &model.BlockContentDataviewFilter{
+			RelationKey: bundle.RelationKeySpaceId.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(spaceId),
 		})
-
-		if objResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-			return nil, 0, false, ErrFailedSearchObjects
-		}
-
-		for _, record := range objResp.Records {
-			combinedRecords = append(combinedRecords, record)
-		}
+		spaceFilters = append(spaceFilters, s.combineFilters(model.BlockContentDataviewFilter_And, filters)...)
+		querySpaceIds = append(querySpaceIds, spaceId)
 	}
-
-	// Directly sort the raw records by extracting the sort field in the comparator.
-	sort.SliceStable(combinedRecords, func(i, j int) bool {
-		if criterionToSortAfter == bundle.RelationKeyName.String() {
-			nameI := combinedRecords[i].Fields[bundle.RelationKeyName.String()].GetStringValue()
-			nameJ := combinedRecords[j].Fields[bundle.RelationKeyName.String()].GetStringValue()
-			if sorts[0].Type == model.BlockContentDataviewSort_Asc {
-				return nameI < nameJ
-			}
-			return nameI > nameJ
-		} else {
-			numI := combinedRecords[i].Fields[criterionToSortAfter].GetNumberValue()
-			numJ := combinedRecords[j].Fields[criterionToSortAfter].GetNumberValue()
-			if sorts[0].Type == model.BlockContentDataviewSort_Asc {
-				return numI < numJ
-			}
-			return numI > numJ
-		}
+	if len(spaceFilters) == 0 {
+		return []apimodel.Object{}, 0, false, true, nil
+	}
+	resp := s.mw.ObjectCrossSpaceSearch(ctx, &pb.RpcObjectCrossSpaceSearchRequest{
+		SpaceIds: querySpaceIds,
+		Filters:  s.combineFilters(model.BlockContentDataviewFilter_Or, spaceFilters),
+		Sorts:    sorts,
+		FullText: request.Query,
+		Limit:    int32(offset + limit + 1), // nolint: gosec
 	})
-
-	total = len(combinedRecords)
-	paginatedRecords, hasMore := pagination.Paginate(combinedRecords, offset, limit)
-
-	results := make([]apimodel.Object, 0, len(paginatedRecords))
-	for _, record := range paginatedRecords {
+	if resp.Error != nil && resp.Error.Code != pb.RpcObjectCrossSpaceSearchResponseError_NULL {
+		return nil, 0, false, false, ErrFailedSearchObjects
+	}
+	// The one-shot search has no count. Keep one lookahead row so total is
+	// a lower bound when clipped, and has_more still guides pagination.
+	total = len(resp.Records)
+	page, hasMore := pagination.Paginate(resp.Records, offset, limit)
+	results := make([]apimodel.Object, 0, len(page))
+	for _, record := range page {
 		results = append(results, s.getObjectFromStruct(record))
 	}
-
-	return results, total, hasMore, nil
+	return results, total, hasMore, resp.AllStoresLoaded, nil
 }
 
 // Search retrieves a paginated list of objects from a specific space that match the search parameters.

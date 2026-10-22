@@ -41,7 +41,7 @@ func TestBatchDeleteObjectsDeletesAllDocsOfObject(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, int(count), "all docs of obj1 should be deleted, only obj2's doc should remain")
 
-	results, err := ft.Search("space1", "apple", 0)
+	results, err := ft.Search("space1", "apple", 0, true)
 	require.NoError(t, err)
 	assert.Empty(t, results, "deleted object must not be searchable")
 }
@@ -127,7 +127,7 @@ func TestSearchReturnsAllMatches(t *testing.T) {
 	_, err := batcher.Finish()
 	require.NoError(t, err)
 
-	results, err := ft.Search("space1", "apple", docsCount)
+	results, err := ft.Search("space1", "apple", docsCount, true)
 	require.NoError(t, err)
 	assert.Len(t, results, docsCount, "all matching docs should be returned (or the limit must be caller-controlled)")
 }

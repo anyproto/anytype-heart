@@ -46,7 +46,7 @@ type (
 	}
 
 	objectArchiver interface {
-		SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool) error
+		SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool, skipCascade bool) error
 	}
 )
 

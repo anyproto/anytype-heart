@@ -32,7 +32,9 @@ func Test_ValidateTokenNotValid(t *testing.T) {
 }
 
 func Test_ValidateTokenSuccess(t *testing.T) {
-	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/users/me", r.URL.Path)
+	}))
 
 	defer s.Close()
 	c := client.NewClient()
@@ -44,6 +46,33 @@ func Test_ValidateTokenSuccess(t *testing.T) {
 
 	errCode, err := tv.Validate(context.TODO(), "123123")
 	assert.Equal(t, errCode, pb.RpcObjectImportNotionValidateTokenResponseError_NULL)
+	assert.Equal(t, nil, err)
+}
+
+// Test_ValidateTokenWithoutUserCapability mimics a real Notion integration
+// whose User Capabilities are "No user information": /users 403s with
+// restricted_resource, /users/me still returns the bot user. The probe must
+// pass, because the importer needs read-content, not read-user.
+func Test_ValidateTokenWithoutUserCapability(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/users/me" {
+			w.WriteHeader(http.StatusForbidden)
+			w.Write([]byte(`{"object":"error","status":403,"code":"restricted_resource","message":"Insufficient permissions for this endpoint."}`))
+			return
+		}
+		w.Write([]byte(`{"object":"user","id":"bot-id","type":"bot","name":"Anytype"}`))
+	}))
+
+	defer s.Close()
+	c := client.NewClient()
+	c.BasePath = s.URL
+
+	p := NewPingService(c)
+	tv := NewTokenValidator()
+	tv.ping = p
+
+	errCode, err := tv.Validate(context.TODO(), "123123")
+	assert.Equal(t, pb.RpcObjectImportNotionValidateTokenResponseError_NULL, errCode)
 	assert.Equal(t, nil, err)
 }
 

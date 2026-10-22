@@ -178,6 +178,8 @@ func (p *importProcessor) handleBuiltinConverterImport(ctx context.Context) *Imp
 
 	if resultErr != nil {
 		rootCollectionID = ""
+	} else {
+		p.tombstoneKeptIDs(ctx)
 	}
 
 	p.response.RootCollectionId = rootCollectionID
@@ -186,6 +188,41 @@ func (p *importProcessor) handleBuiltinConverterImport(ctx context.Context) *Imp
 	p.response.Err = resultErr
 
 	return p.response
+}
+
+// tombstoneKeptIDs gives every kept id (common.Response.KeptIDs) a
+// tombstone in the destination when the space has no row for it, so a link
+// to an object the SOURCE deleted restores as a link to a deleted object —
+// rendered as such, and classified as deleted again by a later export —
+// rather than as "not found". A live row is left alone: restoring into the
+// space the backup came from re-links the reference. An existing tombstone
+// needs nothing.
+//
+// This writes the store's tombstone only; it is not entered in the synced
+// deletion log, which refuses an id with no local tree, so another device
+// does not see it and a full reindex drops it — after which the reference
+// degrades to absent, exactly the state it would have had without this.
+func (p *importProcessor) tombstoneKeptIDs(ctx context.Context) {
+	if len(p.converterResponse.KeptIDs) == 0 {
+		return
+	}
+	index := p.deps.objectStore.SpaceIndex(p.request.SpaceId)
+	for _, id := range p.converterResponse.KeptIDs {
+		if ctx.Err() != nil {
+			return
+		}
+		details, err := index.GetDetails(id)
+		if err != nil {
+			log.With(zap.String("objectId", id)).Warnf("kept id: read details: %v", err)
+			continue
+		}
+		if details.Len() > 0 {
+			continue
+		}
+		if err := index.DeleteObject(id); err != nil {
+			log.With(zap.String("objectId", id)).Warnf("kept id: write tombstone: %v", err)
+		}
+	}
 }
 
 func (p *importProcessor) initConversionFields(converterResponse *common.Response, errors *common.ConvertError) error {
@@ -199,6 +236,14 @@ func (p *importProcessor) initConversionFields(converterResponse *common.Respons
 	p.errors = errors
 	p.oldIDToNew = make(map[string]string, len(converterResponse.Snapshots))
 	p.seedExistingSpaceObjects()
+	p.oldIDToNew = make(map[string]string, len(converterResponse.Snapshots)+len(converterResponse.KeptIDs))
+	// a converter's kept ids (a bundle's declared-deleted targets, SPEC §2c)
+	// map to themselves before any object is created, so every creation-time
+	// rewrite keeps them instead of writing the missing-object sentinel; a
+	// snapshot that carries one of these ids overrides the seed below
+	for _, id := range converterResponse.KeptIDs {
+		p.oldIDToNew[id] = id
+	}
 	p.createPayloads = make(map[string]treestorage.TreeStorageCreatePayload, len(converterResponse.Snapshots))
 	p.relationKeysToFormat = make(map[domain.RelationKey]int32, len(converterResponse.Snapshots))
 	return nil
@@ -219,10 +264,6 @@ func (p *importProcessor) createObjects(ctx context.Context) (map[string]*domain
 		return nil, ""
 	}
 
-	workerCount := workerPoolSize
-	if len(p.converterResponse.Snapshots) < workerCount {
-		workerCount = 1
-	}
 	dataObject := creator.NewDataObject(
 		ctx,
 		p.oldIDToNew,
@@ -231,17 +272,64 @@ func (p *importProcessor) createObjects(ctx context.Context) (map[string]*domain
 		p.request.Origin,
 		p.request.SpaceId,
 	)
-	pool := workerpool.NewPool(workerCount)
 
 	p.request.Progress.SetProgressMessage("Create objects")
 
-	go p.addWork(pool)
-	go pool.Start(dataObject)
+	// Schema objects go first, as a separate batch: an object created before its own type
+	// is in the object store cannot resolve its layout from that type, and would fall back
+	// to a guessed one. Draining the batch before starting the next is what makes the type
+	// observable, so these cannot be merely enqueued first.
+	schema, rest := splitSchemaSnapshots(p.converterResponse.Snapshots)
 
-	details := p.readResults(pool)
+	details := make(map[string]*domain.Details, len(p.converterResponse.Snapshots))
+	for _, batch := range [][]*common.Snapshot{schema, rest} {
+		if len(batch) == 0 {
+			continue
+		}
+		batchDetails := p.createObjectsBatch(dataObject, batch)
+		if batchDetails == nil {
+			// batch was cancelled, or failed under ALL_OR_NOTHING - either way the
+			// remaining batches must not run, matching the old single-pool behaviour
+			return nil, ""
+		}
+		for id, d := range batchDetails {
+			details[id] = d
+		}
+	}
+
 	rootCollectionID := p.oldIDToNew[p.converterResponse.RootObjectID]
 
 	return details, rootCollectionID
+}
+
+// splitSchemaSnapshots separates the snapshots that other objects derive their own
+// details from - object types and relations - from the rest, preserving relative order.
+func splitSchemaSnapshots(snapshots []*common.Snapshot) (schema, rest []*common.Snapshot) {
+	for _, snapshot := range snapshots {
+		switch snapshot.Snapshot.SbType {
+		case smartblock.SmartBlockTypeObjectType, smartblock.SmartBlockTypeRelation, smartblock.SmartBlockTypeRelationOption:
+			schema = append(schema, snapshot)
+		default:
+			rest = append(rest, snapshot)
+		}
+	}
+	return schema, rest
+}
+
+// createObjectsBatch runs a batch to completion, returning nil if it was cancelled or, under
+// ALL_OR_NOTHING, aborted by a failed object. Draining it is what makes the objects it created
+// observable to the next batch: Apply indexes synchronously, so a result here means committed.
+func (p *importProcessor) createObjectsBatch(dataObject *creator.DataObject, snapshots []*common.Snapshot) map[string]*domain.Details {
+	// Scale to the batch, not down to a single worker: batches are smaller than the whole
+	// import, and dropping to one worker would serialize every archive with fewer snapshots
+	// than the pool size.
+	workerCount := min(workerPoolSize, len(snapshots))
+	pool := workerpool.NewPool(workerCount)
+
+	go p.addWork(snapshots, pool)
+	go pool.Start(dataObject)
+
+	return p.readResults(pool)
 }
 
 func (p *importProcessor) assignIdsToAllObjects(ctx context.Context) error {
@@ -369,8 +457,8 @@ func (p *importProcessor) preloadFileKeys(snapshot *common.Snapshot) error {
 	return nil
 }
 
-func (p *importProcessor) addWork(pool *workerpool.WorkerPool) {
-	for _, snapshot := range p.converterResponse.Snapshots {
+func (p *importProcessor) addWork(snapshots []*common.Snapshot, pool *workerpool.WorkerPool) {
+	for _, snapshot := range snapshots {
 		t := creator.NewTask(snapshot, p.deps.objectCreator)
 		stop := pool.AddWork(t)
 		if stop {

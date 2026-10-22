@@ -1,0 +1,59 @@
+{
+  "$schema": "https://schemas.anytype.io/anyblock/2.0/object.schema.json",
+  "formatVersion": "2.0",
+  "kind": "object_type",
+  "id": "type-page",
+  "type": "Type",
+  "type_internal_key": "objectType",
+  "internal_key": "page",
+  "icon": {
+    "format": "icon",
+    "name": "document",
+    "color": "ice"
+  },
+  "properties": {
+    "Name": "Page",
+    "Created by": "participant-A11111111111111111111111111111111111111111111111",
+    "Creation date": "2026-03-01T09:00:00Z",
+    "Origin": "usecase"
+  },
+  "type_settings": {
+    "layout": "basic",
+    "api_key": "page",
+    "plural_name": "Pages",
+    "property_definitions": [
+      {
+        "property": "Object type",
+        "internal_key": "type",
+        "name": "Object type",
+        "format": "objects",
+        "object_types": [
+          "type-objectType"
+        ],
+        "section": "featured"
+      },
+      {
+        "property": "Tag",
+        "internal_key": "tag",
+        "name": "Tag",
+        "format": "multi_select",
+        "section": "featured"
+      },
+      {
+        "property": "Creation date",
+        "internal_key": "createdDate",
+        "name": "Creation date",
+        "format": "date"
+      },
+      {
+        "property": "Created by",
+        "internal_key": "creator",
+        "name": "Created by",
+        "format": "objects",
+        "object_types": [
+          "type-participant"
+        ]
+      }
+    ]
+  }
+}

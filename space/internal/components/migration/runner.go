@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
+	"github.com/anyproto/anytype-heart/space/internal/components/migration/apiobjectkey"
 	"github.com/anyproto/anytype-heart/space/internal/components/migration/readonlyfixer"
 	"github.com/anyproto/anytype-heart/space/internal/components/migration/systemobjectreviser"
 	"github.com/anyproto/anytype-heart/space/internal/components/spaceloader"
@@ -94,6 +95,7 @@ func (r *Runner) runMigrations() {
 	migrations := []Migration{
 		systemobjectreviser.Migration{},
 		readonlyfixer.Migration{},
+		apiobjectkey.Migration{},
 	}
 
 	if err := r.run(migrations...); err != nil {

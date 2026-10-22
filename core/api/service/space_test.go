@@ -1,6 +1,7 @@
 package service
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -19,6 +20,53 @@ import (
 const (
 	iconImage = "bafyreialsgoyflf3etjm3parzurivyaukzivwortf32b4twnlwpwocsrri"
 )
+
+func TestSpaceService_GetSpace_OneToOne(t *testing.T) {
+	fx := newFixture(t)
+	fx.mwMock.On("WorkspaceOpen", mock.Anything, &pb.RpcWorkspaceOpenRequest{
+		SpaceId: "one-to-one-space-id",
+	}).Return(&pb.RpcWorkspaceOpenResponse{
+		Info: &model.AccountInfo{
+			WorkspaceObjectId: "workspace-object-id",
+		},
+		Error: &pb.RpcWorkspaceOpenResponseError{Code: pb.RpcWorkspaceOpenResponseError_NULL},
+	}).Once()
+	fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+		SpaceId:  "one-to-one-space-id",
+		ObjectId: "workspace-object-id",
+	}).Return(&pb.RpcObjectShowResponse{
+		ObjectView: &model.ObjectView{Details: []*model.ObjectViewDetailsSet{{
+			Details: &types.Struct{Fields: map[string]*types.Value{
+				bundle.RelationKeyName.String():        pbtypes.String("My Name"),
+				bundle.RelationKeyIconImage.String():   pbtypes.String("my-avatar"),
+				bundle.RelationKeyDescription.String(): pbtypes.String("Workspace description"),
+				bundle.RelationKeySpaceType.String():   pbtypes.Int64(int64(model.SpaceType_SpaceTypeOneToOne)),
+			}},
+		}}},
+		Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+	}).Once()
+	fx.mwMock.On("ObjectSearch", mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectSearchRequest) bool {
+		return req.SpaceId == techSpaceId && slices.Contains(req.Keys, bundle.RelationKeyName.String()) &&
+			slices.Contains(req.Keys, bundle.RelationKeyIconImage.String())
+	})).Return(&pb.RpcObjectSearchResponse{
+		Records: []*types.Struct{{Fields: map[string]*types.Value{
+			bundle.RelationKeyTargetSpaceId.String(): pbtypes.String("one-to-one-space-id"),
+			bundle.RelationKeyName.String():          pbtypes.String("Other Person"),
+			bundle.RelationKeyIconImage.String():     pbtypes.String(iconImage),
+		}}},
+		Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+	}).Once()
+
+	space, err := fx.service.GetSpace(nil, "one-to-one-space-id")
+
+	require.NoError(t, err)
+	require.Equal(t, "Other Person", space.Name)
+	require.Equal(t, "Workspace description", space.Description)
+	require.Equal(t, &apimodel.Icon{WrappedIcon: apimodel.FileIcon{
+		Format: apimodel.IconFormatFile,
+		File:   apiBaseUrl + "/v1/spaces/one-to-one-space-id/files/" + iconImage,
+	}}, space.Icon)
+}
 
 func TestSpaceService_ListSpaces(t *testing.T) {
 	t.Run("successful retrieval of spaces", func(t *testing.T) {
@@ -61,12 +109,14 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 					IncludeTime: true,
 				},
 			},
-			Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
+			Keys: []string{bundle.RelationKeyTargetSpaceId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconImage.String()},
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
 						bundle.RelationKeyTargetSpaceId.String(): pbtypes.String("another-space-id"),
+						bundle.RelationKeyName.String():          pbtypes.String("Other Person"),
+						bundle.RelationKeyIconImage.String():     pbtypes.String("other-avatar"),
 					},
 				},
 				{
@@ -96,7 +146,8 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 					{
 						Details: &types.Struct{
 							Fields: map[string]*types.Value{
-								bundle.RelationKeyName.String():        pbtypes.String("Another Workspace"),
+								bundle.RelationKeyName.String():        pbtypes.String("My Name"),
+								bundle.RelationKeySpaceType.String():   pbtypes.Int64(int64(model.SpaceType_SpaceTypeOneToOne)),
 								bundle.RelationKeyIconImage.String():   pbtypes.String(iconImage),
 								bundle.RelationKeyDescription.String(): pbtypes.String("desc1"),
 							},
@@ -143,9 +194,13 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, spaces, 2)
 
-		require.Equal(t, "Another Workspace", spaces[0].Name)
+		require.Equal(t, "Other Person", spaces[0].Name)
 		require.Equal(t, "another-space-id", spaces[0].Id)
 		require.Equal(t, "desc1", spaces[0].Description)
+		require.Equal(t, &apimodel.Icon{WrappedIcon: apimodel.FileIcon{
+			Format: apimodel.IconFormatFile,
+			File:   apiBaseUrl + "/v1/spaces/another-space-id/files/other-avatar",
+		}}, spaces[0].Icon)
 		require.Equal(t, "gateway-url-1", spaces[0].GatewayUrl)
 		require.Equal(t, "network-id-1", spaces[0].NetworkId)
 
@@ -243,6 +298,8 @@ func TestSpaceService_GetSpace(t *testing.T) {
 			},
 			Keys: []string{
 				bundle.RelationKeyTargetSpaceId.String(),
+				bundle.RelationKeyName.String(),
+				bundle.RelationKeyIconImage.String(),
 			},
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
@@ -325,7 +382,7 @@ func TestSpaceService_GetSpace(t *testing.T) {
 					Value:       pbtypes.IntList(int(model.SpaceStatus_Unknown), int(model.SpaceStatus_SpaceActive)),
 				},
 			},
-			Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
+			Keys: []string{bundle.RelationKeyTargetSpaceId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconImage.String()},
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{},
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
@@ -362,7 +419,7 @@ func TestSpaceService_GetSpace(t *testing.T) {
 					Value:       pbtypes.IntList(int(model.SpaceStatus_Unknown), int(model.SpaceStatus_SpaceActive)),
 				},
 			},
-			Keys: []string{bundle.RelationKeyTargetSpaceId.String()},
+			Keys: []string{bundle.RelationKeyTargetSpaceId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconImage.String()},
 		}).Return(&pb.RpcObjectSearchResponse{
 			Records: []*types.Struct{
 				{

@@ -211,6 +211,60 @@ func TestState_ChangesCreate_StoreSlice(t *testing.T) {
 	}
 }
 
+func TestState_ChangesCreate_ConcurrentReplaceFirstBlock(t *testing.T) {
+	newTextModel := func(id, txt string) *model.Block {
+		return &model.Block{
+			Id:      id,
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: txt}},
+		}
+	}
+	mkDoc := func() Doc {
+		return NewDoc("root", map[string]simple.Block{
+			"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{"e"}}),
+			"e":    simple.New(newTextModel("e", "")),
+		})
+	}
+	replace := func(t *testing.T, d Doc, newId, text string) []*pb.ChangeContent {
+		s := d.NewState()
+		s.Add(simple.New(newTextModel(newId, text)))
+		require.NoError(t, s.InsertTo("e", model.Block_Replace, newId))
+		_, _, err := ApplyState("", s, true)
+		require.NoError(t, err)
+		return d.(*State).GetChanges()
+	}
+
+	// given: two users concurrently replace the same first (empty) block
+	chA := replace(t, mkDoc(), "a1", "foo")
+	chB := replace(t, mkDoc(), "b1", "bar")
+
+	// then: no create may anchor on the replaced block — the concurrent change
+	// removes it, and a create targeting a missing id is dropped on replay
+	for _, chs := range [][]*pb.ChangeContent{chA, chB} {
+		for _, ch := range chs {
+			if create := ch.GetBlockCreate(); create != nil {
+				assert.NotEqual(t, "e", create.TargetId)
+			}
+		}
+	}
+
+	// and: replaying both changes in either order keeps both users' blocks
+	for name, order := range map[string][2][]*pb.ChangeContent{
+		"a then b": {chA, chB},
+		"b then a": {chB, chA},
+	} {
+		t.Run(name, func(t *testing.T) {
+			peer := mkDoc()
+			ps := peer.NewState()
+			ps.ApplyChangeIgnoreErr(order[0]...)
+			ps.ApplyChangeIgnoreErr(order[1]...)
+			_, _, err := ApplyState("", ps, true)
+			require.NoError(t, err)
+			assert.ElementsMatch(t, []string{"a1", "b1"}, peer.(*State).Pick("root").Model().ChildrenIds)
+			assert.Nil(t, peer.(*State).Pick("e"))
+		})
+	}
+}
+
 func TestState_ChangesCreate_MoveAdd_Wrap(t *testing.T) {
 	d := NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{"a", "b"}}),

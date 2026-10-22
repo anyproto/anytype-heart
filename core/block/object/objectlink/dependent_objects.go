@@ -3,6 +3,7 @@ package objectlink
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -184,6 +185,34 @@ func collectIdsFromTypes(s *state.State, converter KeyToIDConverter) (ids []stri
 	return ids
 }
 
+// relationsExcludedFromDeps lists object/file-format relations whose value must never be collected
+// as a dependent object. Three kinds live here:
+//   - references outside this space's graph (spaceId, sourceObject pointing at a bundled or
+//     marketplace object, identityProfileLink);
+//   - infrastructure pointers the client never renders as a chip (chatId, discussionId,
+//     spaceDashboardId, targetObjectType, defaultTypeId, defaultTemplateId);
+//   - file ids rendered straight from the id rather than from the file object's record
+//     (iconImage, coverId, picture).
+//
+// The list only guards the generic relation-value walk at the bottom of collectIdsFromDetail. The
+// explicit branches above it (creator/lastModifiedBy behind CreatorModifierWorkspace, and coverId's
+// CID check) keep their own behaviour — coverId is listed here so the generic walk never picks it
+// up, not to disable that branch.
+var relationsExcludedFromDeps = []domain.RelationKey{
+	bundle.RelationKeySpaceId,
+	bundle.RelationKeySourceObject,
+	bundle.RelationKeyIdentityProfileLink,
+	bundle.RelationKeyChatId,
+	bundle.RelationKeyDiscussionId,
+	bundle.RelationKeySpaceDashboardId,
+	bundle.RelationKeyTargetObjectType,
+	bundle.RelationKeyDefaultTypeId,
+	bundle.RelationKeyDefaultTemplateId,
+	bundle.RelationKeyIconImage,
+	bundle.RelationKeyCoverId,
+	bundle.RelationKeyPicture,
+}
+
 func collectIdsFromDetail(rel *model.RelationLink, det *domain.Details, flags Flags) (ids []string) {
 	if flags.NoSystemRelations {
 		if rel.Format != model.RelationFormat_object || bundle.IsSystemRelation(domain.RelationKey(rel.Key)) {
@@ -247,8 +276,14 @@ func collectIdsFromDetail(rel *model.RelationLink, det *domain.Details, flags Fl
 		return
 	}
 
-	// add all object relation values as dependents
-	for _, targetID := range det.GetStringList(domain.RelationKey(rel.Key)) {
+	if slices.Contains(relationsExcludedFromDeps, domain.RelationKey(rel.Key)) {
+		return
+	}
+
+	// add all object relation values as dependents. WrapToStringList, not GetStringList: a
+	// maxCount=1 relation (createdInContext, and every single-value object/tag/status relation)
+	// holds a plain string, which GetStringList silently reports as no value at all.
+	for _, targetID := range det.WrapToStringList(domain.RelationKey(rel.Key)) {
 		if targetID != "" {
 			ids = append(ids, targetID)
 		}

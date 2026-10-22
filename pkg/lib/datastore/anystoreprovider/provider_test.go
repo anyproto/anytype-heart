@@ -7,7 +7,9 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
+	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -178,4 +180,59 @@ func TestDeleteSpaceData_ConcurrentReopen(t *testing.T) {
 	require.NoError(t, p.DeleteSpaceData(spaceId))
 	close(stop)
 	wg.Wait()
+}
+
+// slowDB wraps a real anystore.DB but makes Flush ignore the context and grind for a fixed
+// time, emulating an SQLite checkpoint that does not honor sqlite3_interrupt (GO-7393).
+type slowDB struct {
+	anystore.DB
+	flushDuration time.Duration
+}
+
+func (s *slowDB) Flush(ctx context.Context, idle time.Duration, mode anystore.FlushMode) error {
+	time.Sleep(s.flushDuration)
+	return nil
+}
+
+func TestFlushBoundedWait(t *testing.T) {
+	t.Run("returns within timeout plus slack even if a db flush stalls", func(t *testing.T) {
+		// given
+		p := newTestProvider(t)
+		db, err := p.GetSpaceIndexDb("space1")
+		require.NoError(t, err)
+		stallFor := 10 * time.Second
+		p.spaceIndexDbsLock.Lock()
+		p.spaceIndexDbs["space1"] = &slowDB{DB: db, flushDuration: stallFor}
+		p.spaceIndexDbsLock.Unlock()
+		timeout := 100 * time.Millisecond
+
+		// when
+		start := time.Now()
+		p.Flush(timeout, true, anystore.FlushModeCheckpointPassive)
+		elapsed := time.Since(start)
+
+		// then
+		assert.Less(t, elapsed, stallFor, "Flush must not wait for the stalled db")
+		assert.Less(t, elapsed, timeout+flushWaitSlack+time.Second, "Flush must return within timeout+slack")
+		// the stalled flush is still running, so a new flush must be refused until it finishes
+		assert.True(t, p.dbsAreFlushing.Load())
+
+		// restore the real db so provider.Close does not race the sleeping goroutine
+		p.spaceIndexDbsLock.Lock()
+		p.spaceIndexDbs["space1"] = db
+		p.spaceIndexDbsLock.Unlock()
+	})
+
+	t.Run("fast flush returns promptly and resets the flushing flag", func(t *testing.T) {
+		// given
+		p := newTestProvider(t)
+		_, err := p.GetSpaceIndexDb("space1")
+		require.NoError(t, err)
+
+		// when
+		p.Flush(time.Second*10, true, anystore.FlushModeFsync)
+
+		// then
+		assert.Eventually(t, func() bool { return !p.dbsAreFlushing.Load() }, time.Second, 10*time.Millisecond)
+	})
 }

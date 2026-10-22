@@ -11,5 +11,6 @@ const (
 )
 
 // MigrationObjectContextVersion is the version of the object context migration.
-// Bump this to force re-migration if issues are found or we started to migrate all objects.
-const MigrationObjectContextVersion = 10
+// Bump this to force re-migration if issues are found or the migration scope grows.
+// 11: objects are migrated besides files.
+const MigrationObjectContextVersion = 11

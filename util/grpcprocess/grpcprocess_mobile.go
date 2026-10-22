@@ -21,6 +21,11 @@ func FromContext(ctx context.Context) (*ProcessInfo, bool) {
 	return nil, false
 }
 
+// WithProcessInfo is a no-op on mobile, where processes are not inspectable.
+func WithProcessInfo(ctx context.Context, _ *ProcessInfo) context.Context {
+	return ctx
+}
+
 // ProcessInfoInterceptor returns an interceptor that *only* runs for the
 // gRPC methods listed in allowedMethods (exact match on info.FullMethod).
 func ProcessInfoInterceptor(allowedMethods ...string) grpc.UnaryServerInterceptor {

@@ -73,6 +73,8 @@ type Config struct {
 	JsonApiListenAddr                      string           `json:",omitempty"` // empty means disabled
 	EnableMembershipV2                     bool             `json:",omitempty"` // optional, default is false
 	PreferredSpaceId                       string           `json:",omitempty"` // optional, set from accountSelect; enables client-driven lazy multi-space loading for this space
+	ImportV2Markdown                       bool             `json:",omitempty"` // route Markdown/Obsidian imports through the v2 engine, DEFAULT TRUE (kill switch: ANYTYPE_IMPORTV2MARKDOWN=false)
+	ImportV2Notion                         bool             `json:",omitempty"` // route Notion imports through the v2 engine, DEFAULT TRUE (kill switch: ANYTYPE_IMPORTV2NOTION=false)
 
 	RepoPath    string
 	AnalyticsId string
@@ -119,6 +121,14 @@ func (c *Config) HostAddr() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.persisted.HostAddr
+}
+
+// GatewayAddr returns the address the gateway bound on the previous run, if any. Reusing it keeps
+// client-side caches keyed by the gateway URL valid across restarts.
+func (c *Config) GatewayAddr() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.persisted.GatewayAddr
 }
 
 // AutoDownloadFiles returns whether auto download is enabled.
@@ -198,6 +208,17 @@ func (c *Config) SetHostAddr(addr string) error {
 	return c.writeLocked()
 }
 
+// SetGatewayAddr sets the gateway address and writes to disk if changed.
+func (c *Config) SetGatewayAddr(addr string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.persisted.GatewayAddr == addr {
+		return nil
+	}
+	c.persisted.GatewayAddr = addr
+	return c.writeLocked()
+}
+
 // SetAutoDownloadSettings sets auto download settings and writes to disk if changed.
 func (c *Config) SetAutoDownloadSettings(enabled, wifiOnly bool) error {
 	c.mu.Lock()
@@ -243,6 +264,13 @@ const (
 var DefaultConfig = Config{
 	LocalServerAddr: ":0",
 	DS:              clientds.DefaultConfig,
+	// Markdown, Obsidian and Notion imports run on the v2 engine. Setting
+	// ANYTYPE_IMPORTV2MARKDOWN=false / ANYTYPE_IMPORTV2NOTION=false routes
+	// them back to v1 — envconfig applies an explicit "false" over these
+	// defaults, and the persisted config file cannot touch them (it
+	// unmarshals into PersistedConfig, not Config).
+	ImportV2Markdown: true,
+	ImportV2Notion:   true,
 }
 
 func WithNewAccount(isNewAccount bool) func(*Config) {
@@ -304,8 +332,10 @@ type quicPreferenceSetter interface {
 
 func New(options ...func(*Config)) *Config {
 	cfg := &Config{
-		LocalServerAddr: DefaultConfig.LocalServerAddr,
-		DS:              DefaultConfig.DS,
+		LocalServerAddr:  DefaultConfig.LocalServerAddr,
+		DS:               DefaultConfig.DS,
+		ImportV2Markdown: DefaultConfig.ImportV2Markdown,
+		ImportV2Notion:   DefaultConfig.ImportV2Notion,
 	}
 	for _, opt := range options {
 		opt(cfg)
@@ -320,7 +350,13 @@ func (c *Config) Init(a *app.App) (err error) {
 	}
 	if !c.PeferYamuxTransport {
 		// PeferYamuxTransport is false by default and used only in case client has some problems with QUIC
-		app.MustComponent[quicPreferenceSetter](a).PreferQuic(true)
+		setter := app.MustComponent[quicPreferenceSetter](a)
+		setter.PreferQuic(true)
+		// Auto-demoting peers to yamux-first when their QUIC connections keep
+		// dying under DPI-style degradation (GO-7467) is driven by whether the
+		// net.quicdemotion app component was registered at bootstrap — see
+		// transportpenalty.DisableEnv there. There is nothing left to enable
+		// here: peerservice picks the component up itself.
 	}
 	// check if sqlite db exists
 	if _, err2 := os.Stat(filepath.Join(repoPath, SpaceStoreSqlitePath)); err2 == nil {
@@ -632,6 +668,11 @@ func (c *Config) GetYamux() yamux.Config {
 		ListenAddrs:     []string{},
 		WriteTimeoutSec: 10,
 		DialTimeoutSec:  10,
+		// Keepalive ping every 10s (any-sync leaves the hashicorp/yamux 30s
+		// default when this is 0): a silently dead TCP conn (sleep, network
+		// switch, NAT reset) is detected in <=20s (ping interval + 10s pong
+		// wait) instead of 30-40s.
+		KeepAlivePeriodSec: 10,
 	}
 }
 
@@ -641,6 +682,11 @@ func (c *Config) GetQuic() quic.Config {
 		WriteTimeoutSec:   10,
 		InitialPacketSize: 1200,
 		DialTimeoutSec:    10,
+		// PING every 10s (default 25s): keeps NAT bindings fresh so QUIC
+		// survives more network transitions via passive rebinding. Note the
+		// 30s quic-go idle timeout (not configurable through any-sync yet)
+		// still bounds silent-death detection.
+		KeepAlivePeriodSec: 10,
 	}
 }
 

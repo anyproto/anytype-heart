@@ -1,0 +1,1298 @@
+package v2service
+
+// create.go implements the object create surface:
+// POST /v2/spaces/{space_id}/objects (full AnyBlock document or the
+// {type, name, properties, markdown} shortcut — discriminated per §8/R7 on
+// the presence of formatVersion/blocks) and POST .../templates. The create path is
+// snapshot-based: anyblockjson.Unmarshal → apicore.ObjectCreator (one change
+// set), with create-missing resolvers (resolver.go) and the referential
+// validation layer (refs.go) in front.
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
+
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+
+	"github.com/gogo/protobuf/types"
+)
+
+// docEnvelope is the light envelope decode used for referential validation
+// before Unmarshal runs (no side effects yet at that point).
+type docEnvelope struct {
+	Kind        string                     `json:"kind"`
+	Type        string                     `json:"type"`
+	TemplateFor string                     `json:"template_for"`
+	Properties  map[string]json.RawMessage `json:"properties"`
+	// TypeSettings is the §2a gated subtree of a TYPE document. The envelope
+	// `key` and the top-level `type_properties` array both moved in here —
+	// `key` as `api_key` (it was always the apiObjectKey slug) and the array
+	// as `property_definitions`. Only the two members this package's own
+	// logic reads are modelled: the rest reach the store through
+	// anyblockjson.Unmarshal and the snapshot, never through this struct.
+	TypeSettings *typeSettingsEnvelope `json:"type_settings"`
+	Items        []string              `json:"collection_items"`
+}
+
+// typeSettingsEnvelope is the slice of §2a's type_settings the API's own
+// identity and validation layers read.
+type typeSettingsEnvelope struct {
+	ApiKey              string          `json:"api_key"`
+	PropertyDefinitions json.RawMessage `json:"property_definitions"`
+}
+
+// apiKey is the caller's proposed api slug, nil-safe.
+func (e docEnvelope) apiKey() string {
+	if e.TypeSettings == nil {
+		return ""
+	}
+	return e.TypeSettings.ApiKey
+}
+
+// propertyDefinitions is the §2a property-definition array, nil-safe.
+func (e docEnvelope) propertyDefinitions() json.RawMessage {
+	if e.TypeSettings == nil {
+		return nil
+	}
+	return e.TypeSettings.PropertyDefinitions
+}
+
+// v2ObjectShortcut is the R7 shortcut body: {type, name, properties,
+// markdown}. A member only the document has picks the full document form;
+// a key neither takes is refused here.
+type v2ObjectShortcut struct {
+	Type       string                     `json:"type"`
+	Name       string                     `json:"name"`
+	Properties map[string]json.RawMessage `json:"properties"`
+	Markdown   string                     `json:"markdown"`
+}
+
+// shortcutKeys gates the shortcut body. `template` is absent on purpose: it
+// is lifted out of the body before the discriminator runs (liftTemplate), so
+// by the time this gate is reached no create body has one, whichever form it
+// was sent in.
+var shortcutKeys = map[string]bool{"type": true, "name": true, "properties": true, "markdown": true}
+
+// docCreateOptions parameterizes the shared document create path.
+type docCreateOptions struct {
+	dryRun          bool
+	requireTemplate bool // POST /templates: template_for is mandatory
+	// createMissingOptions is the request's ?create_missing_options=true consent, carried
+	// to the resolver that would otherwise mint a select option for a name
+	// that matches nothing.
+	createMissingOptions bool
+	// template is the create body's `template` member, lifted before
+	// validation: a template id, the word none, or empty for absent.
+	// honourTemplates gates the whole mechanism — the type's default template
+	// included — to POST /objects.
+	//
+	// The other document creates are excluded because their document is
+	// composed by the server, not by the caller: a query and a collection are
+	// built around a dataview this endpoint generates, and dropping a
+	// template's blocks into one would blend two structures nobody asked to
+	// merge. A type of theirs that carries a default template still honours it
+	// through POST /objects, which is where a caller creates an instance.
+	template        string
+	honourTemplates bool
+}
+
+// CreateObject implements POST /v2/spaces/{space_id}/objects.
+func (s *Service) CreateObject(ctx context.Context, spaceId string, body []byte, dryRun, createMissingOptions bool) (*v2model.CreateResult, error) {
+	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
+		return nil, err
+	}
+	fields, err := parseEnvelope(body)
+	if err != nil {
+		return nil, v2model.ValidationFailed("request body is not a JSON object",
+			v2model.Issue{Message: err.Error()})
+	}
+	template, lifted, err := liftTemplate(fields)
+	if err != nil {
+		return nil, err
+	}
+	if lifted {
+		if body, err = encodeEnvelope(fields); err != nil {
+			return nil, err
+		}
+	}
+	opts := docCreateOptions{
+		dryRun:               dryRun,
+		createMissingOptions: createMissingOptions,
+		template:             template,
+		honourTemplates:      true,
+	}
+
+	// §8/R7 discriminator: a member only the document has (blocks, kind,
+	// formatVersion, cover…) picks the full document; a key neither form
+	// takes stays with the shortcut, whose refusal lists its four members
+	if hasDocumentOnlyMember(fields) {
+		return s.createFromDocument(ctx, spaceId, body, opts)
+	}
+	return s.createFromShortcut(ctx, spaceId, fields, opts)
+}
+
+// documentOnlyMembers are the object document's root members the shortcut
+// does not take, read from the served schema so the two cannot drift.
+var documentOnlyMembers = sync.OnceValue(func() map[string]bool {
+	var root struct {
+		Properties map[string]json.RawMessage `json:"properties"`
+	}
+	members := map[string]bool{"formatVersion": true, "blocks": true}
+	if err := json.Unmarshal(apiV2KindSchema("object"), &root); err != nil {
+		return members
+	}
+	for name := range root.Properties {
+		if !shortcutKeys[name] {
+			members[name] = true
+		}
+	}
+	return members
+})
+
+// hasDocumentOnlyMember reports whether a create body carries a member only
+// the full document form takes.
+func hasDocumentOnlyMember(fields map[string]json.RawMessage) bool {
+	only := documentOnlyMembers()
+	for key := range fields {
+		if only[key] {
+			return true
+		}
+	}
+	return false
+}
+
+// liftTemplate takes the `template` member off a create body and reports
+// whether it was there. It is a create DIRECTIVE, not document content: an
+// object does not store which template it came from, a read never serves the
+// member back, and the interchange document is a closed set that would refuse
+// it outright. So it is lifted here, before the shortcut gate and before the
+// format validation, and the same member works in both body forms — the same
+// seam `etag` and `warnings` take on their way in (normalizeCreateBody).
+func liftTemplate(fields map[string]json.RawMessage) (string, bool, error) {
+	raw, ok := fields["template"]
+	if !ok {
+		return "", false, nil
+	}
+	delete(fields, "template")
+	var template string
+	if err := json.Unmarshal(raw, &template); err != nil {
+		return "", true, v2model.ValidationFailed("invalid template",
+			v2model.Issue{Path: "/template", Message: "expected the id of a template object, or \"none\""})
+	}
+	return template, true, nil
+}
+
+// CreateTemplate implements POST /v2/spaces/{space_id}/templates: an AnyBlock
+// document with template_for, routed through the generic object-create path
+// (no create-from-body template RPC exists).
+//
+// The endpoint IS the kind, exactly as POST /types is: a template must now
+// say `kind: "template"` (the type "template" stopped carrying that meaning
+// on its own), and requiring a caller to restate what the URL already said
+// is the trap C2 exists to avoid. Injected here rather than defaulted deeper
+// so the whole create path below sees a document that is already complete.
+func (s *Service) CreateTemplate(ctx context.Context, spaceId string, body []byte, dryRun, createMissingOptions bool) (*v2model.CreateResult, error) {
+	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
+		return nil, err
+	}
+	fields, err := parseEnvelope(body)
+	if err != nil {
+		return nil, v2model.ValidationFailed("request body is not a JSON object",
+			v2model.Issue{Message: err.Error()})
+	}
+	changed := false
+	if _, ok := fields["kind"]; !ok {
+		if fields["kind"], err = rawJSON("template"); err != nil {
+			return nil, err
+		}
+		changed = true
+	}
+	if _, ok := fields["type"]; !ok {
+		if fields["type"], err = rawJSON(string(bundle.TypeKeyTemplate)); err != nil {
+			return nil, err
+		}
+		changed = true
+	}
+	if changed {
+		if body, err = encodeEnvelope(fields); err != nil {
+			return nil, err
+		}
+	}
+	return s.createFromDocument(ctx, spaceId, body, docCreateOptions{dryRun: dryRun, requireTemplate: true, createMissingOptions: createMissingOptions})
+}
+
+// createFromShortcut synthesizes an AnyBlock document from the shortcut
+// shape and reuses the full-document path. markdown is parsed into flat
+// blocks server-side (anyblockjson.ParseMarkdownBlocks)
+// and rides the same single-change-set create as an explicit blocks array —
+// dry runs validate it, no half-built object on failure, and the C8 result
+// cache replays it safely (the §7.2 two-change-set caveats are gone).
+func (s *Service) createFromShortcut(ctx context.Context, spaceId string, fields map[string]json.RawMessage, opts docCreateOptions) (*v2model.CreateResult, error) {
+	for key := range fields {
+		if !shortcutKeys[key] {
+			return nil, v2model.ValidationFailed("unknown field in create shortcut",
+				v2model.Issue{
+					Path:    "/" + key,
+					Message: fmt.Sprintf("unknown key %q — the shortcut accepts type, name, properties, markdown", key),
+				}.Hintf("for blocks, an icon or a cover, send the full document form; %s shows it", v2model.RefGetSchema("object")))
+		}
+	}
+	raw, err := encodeEnvelope(fields)
+	if err != nil {
+		return nil, err
+	}
+	var shortcut v2ObjectShortcut
+	if err := json.Unmarshal(raw, &shortcut); err != nil {
+		return nil, v2model.ValidationFailed("decode create shortcut: " + err.Error())
+	}
+	if shortcut.Type == "" {
+		return nil, v2model.ValidationFailed("type is required",
+			v2model.Issue{Path: "/type", Message: "the shortcut needs a type key"}.Hintf("list keys with %s", v2model.RefListTypes(spaceId)))
+	}
+
+	doc := map[string]json.RawMessage{}
+	if doc["formatVersion"], err = rawJSON(anyblockjson.FormatVersion); err != nil {
+		return nil, err
+	}
+	if doc["type"], err = rawJSON(shortcut.Type); err != nil {
+		return nil, err
+	}
+	properties := shortcut.Properties
+	if properties == nil {
+		properties = map[string]json.RawMessage{}
+	}
+	// the shortcut takes a name either way, and both spellings reach the same
+	// detail
+	facts := s.inspectShortcutProperties(spaceId, properties)
+	name := shortcut.Name
+	if name == "" {
+		name = facts.nameValue
+	}
+
+	var run []json.RawMessage
+	if shortcut.Markdown != "" {
+		exceeded := false
+		run, exceeded = anyblockjson.ParseMarkdownBlocksLimit(shortcut.Markdown, v2MaxCreateMarkdownBlocks)
+		if exceeded {
+			return nil, v2model.ValidationFailed("markdown produced too many blocks",
+				v2model.Issue{Path: "/markdown", Message: fmt.Sprintf(
+					"the markdown parses to more than %d blocks — the create limit is %d; create with a shorter body and add the rest with PATCH insert_blocks",
+					v2MaxCreateMarkdownBlocks, v2MaxCreateMarkdownBlocks)})
+		}
+		if len(run) == 0 {
+			// same contract as the insert_blocks markdown channel — a silent
+			// empty object teaches the caller nothing (C6)
+			return nil, v2model.ValidationFailed("markdown produced no blocks",
+				v2model.Issue{Path: "/markdown", Message: "the markdown body contains no content — give at least one non-blank line, or omit markdown"})
+		}
+	}
+	// the leading heading is the title, not the first paragraph of the body
+	promotable := name == "" && !facts.blocked
+	run, promoted, titleNotice := s.liftMarkdownTitle(spaceId, shortcut.Type, run, name, promotable)
+	droppedLeadingBlocks := 0
+	if titleNotice != nil {
+		droppedLeadingBlocks = 1
+	}
+
+	switch {
+	case promoted != name:
+		// a PROMOTED name goes under the caller's own spelling of the name
+		// property when they sent one (an empty `Name` beside a new `name`
+		// is two spellings of one property, which the format refuses), and
+		// under `name` when they sent none
+		key := facts.nameKey
+		if key == "" {
+			key = bundle.RelationKeyName.String()
+		}
+		if properties[key], err = rawJSON(promoted); err != nil {
+			return nil, err
+		}
+		name = promoted
+	case shortcut.Name != "":
+		if properties["name"], err = rawJSON(shortcut.Name); err != nil {
+			return nil, err
+		}
+	}
+	if len(properties) > 0 {
+		if doc["properties"], err = rawJSON(properties); err != nil {
+			return nil, err
+		}
+	}
+	markdownBlocks := false
+	if len(run) > 0 {
+		if doc["blocks"], err = rawJSON(run); err != nil {
+			return nil, err
+		}
+		markdownBlocks = true
+	}
+	docJSON, err := encodeEnvelope(doc)
+	if err != nil {
+		return nil, err
+	}
+
+	// the whole option set travels, dryRun included. Dropping
+	// createMissingOptions here once made ?create_missing_options=true inert
+	// for the SHORTCUT body — the shape an agent actually sends — while the
+	// document body honoured it, so the same flag worked or not depending on
+	// which form the caller picked; passing the struct is what keeps a new
+	// option from repeating that.
+	result, err := s.createFromDocument(ctx, spaceId, docJSON, opts)
+	if err != nil && markdownBlocks {
+		// the blocks array is synthetic here — readdress its issues to the
+		// markdown channel the caller actually sent (C6), counting from the
+		// caller's first parsed block rather than from the first one kept
+		err = rebaseMarkdownCreateError(err, droppedLeadingBlocks)
+	}
+	if err == nil && titleNotice != nil {
+		result.Warnings = append(result.Warnings, *titleNotice)
+	}
+	return result, err
+}
+
+// markdownHeading is the parsed shape of one markdown block, enough to ask
+// whether it is a top-of-document heading.
+type markdownHeading struct {
+	Type   string `json:"type"`
+	Text   string `json:"text"`
+	Indent int    `json:"indent"`
+}
+
+// headingStyles are the block types a title-shaped first line parses to.
+var headingStyles = map[string]bool{"heading_1": true, "heading_2": true, "heading_3": true}
+
+// liftMarkdownTitle applies the rule this product already has everywhere else
+// a markdown document arrives: the leading heading is the object's TITLE, not
+// the first line of its body. The markdown importer does exactly this
+// (markdown.extractTitleAndEmojiFromBlock), which is why a file imported from
+// disk shows its name once and an object created through this API showed it
+// twice — a name plus a heading repeating it is the shape a model reaches for
+// by default.
+//
+// Two cases, one rule:
+//
+//   - the heading repeats the name the request set: it is dropped, because an
+//     object renders its name as its title and the block only duplicates it;
+//   - the request set NO name and the document opens with a `heading_1`: the
+//     heading becomes the name and is dropped, so the object is named instead
+//     of being an untitled document whose first line is its title.
+//
+// A `heading_2` or `heading_3` is enough to be a DUPLICATE (a model that
+// restates the name does not always pick the same level) but not enough to
+// become one: promoting a subheading to the object's name would invent a
+// title out of a section.
+//
+// promotable is false when the caller said anything that makes the object's
+// name or layout theirs to decide: a name in any spelling, or a layout, which
+// is what the note exemption below is read from.
+//
+// It returns the blocks to keep, the name to use and the notice to attach,
+// nil when nothing was touched.
+func (s *Service) liftMarkdownTitle(spaceId, typeTerm string, run []json.RawMessage, name string, promotable bool) ([]json.RawMessage, string, *v2model.Issue) {
+	if len(run) == 0 {
+		return run, name, nil
+	}
+	var first markdownHeading
+	if err := json.Unmarshal(run[0], &first); err != nil || first.Indent != 0 || !headingStyles[first.Type] {
+		return run, name, nil
+	}
+	// the heading's text is markdown, not plain text: `# **Title**` parses to
+	// a block whose text carries the emphasis for the format to resolve into
+	// marks. A name is a plain detail and cannot, so the comparison and the
+	// promotion both take the rendered text — which also lets `**Title**`
+	// match a name of "Title", as a reader would expect.
+	heading, marks, err := anyblockjson.ParseInlineText(first.Text)
+	if err != nil {
+		heading = first.Text
+	}
+	heading = strings.TrimSpace(heading)
+	if heading == "" {
+		return run, name, nil
+	}
+	// a heading whose text carries a LINK, a mention or an object reference
+	// is not a restatement of the name: its rendering matches, and its
+	// content does not. Removing it would take the target with it, and a
+	// promoted name could not carry one — a detail holds text, not marks.
+	// Styling marks are another matter: dropping a bold duplicate loses the
+	// bold of a line that was never going to be shown.
+	for _, mark := range marks {
+		if targetCarryingMarks[mark.GetType()] {
+			return run, name, nil
+		}
+	}
+	// a heading that owns nested content cannot be removed on its own: the
+	// blocks under it would keep an indentation with nothing above them, and
+	// the document would be refused. Left whole, it is a duplicate title and
+	// nothing worse.
+	if len(run) > 1 {
+		var second markdownHeading
+		if err := json.Unmarshal(run[1], &second); err != nil || second.Indent > 0 {
+			return run, name, nil
+		}
+	}
+	switch {
+	case name != "" && heading == strings.TrimSpace(name):
+		return run[1:], name, &v2model.Issue{
+			Path:    "/markdown[0]",
+			Message: "the first heading repeated the object's name and was dropped",
+			Hint:    "an object shows its name as its title, so a heading that restates it appears twice",
+		}
+	case promotable && first.Type == "heading_1" && s.typeShowsNameAsTitle(spaceId, typeTerm):
+		return run[1:], heading, &v2model.Issue{
+			Path:    "/markdown[0]",
+			Message: fmt.Sprintf("the first heading became the object's name: %q", heading),
+			Hint:    "an object shows its name as its title; send name to choose it yourself",
+		}
+	}
+	return run, name, nil
+}
+
+// targetCarryingMarks are the inline marks that hold something the text does
+// not: a destination, an object, a mentioned id. A heading carrying one is
+// left alone by the title rule.
+var targetCarryingMarks = map[model.BlockContentTextMarkType]bool{
+	model.BlockContentTextMark_Link:    true,
+	model.BlockContentTextMark_Object:  true,
+	model.BlockContentTextMark_Mention: true,
+	model.BlockContentTextMark_Emoji:   true,
+}
+
+// shortcutPropertyFacts is what the title rule needs to know about the
+// properties the caller sent. The two answers it holds are NOT the same
+// question, and conflating them dropped a heading that was never a duplicate:
+//
+//   - nameKey/nameValue is what the object will actually be CALLED, so only a
+//     key that resolves to the name property can supply it. A space that keys
+//     some relation of its own `Name` sends that value to its own property,
+//     and comparing a heading against it would delete a heading that repeats
+//     nothing;
+//   - blocked is whether a promotion may ADD `name`, which the FORMAT decides:
+//     it folds separators, case and spacing together and refuses a document
+//     carrying two spellings of one property, so any folding key blocks the
+//     promotion whatever this space resolves it to.
+type shortcutPropertyFacts struct {
+	nameKey   string // the caller's own spelling of the name property
+	nameValue string // the value under it
+	blocked   bool   // a promotion must not add `name`
+}
+
+// inspectShortcutProperties resolves the caller's property keys the way every
+// other channel does, rather than matching the word "name" by folding it.
+// Both answers gate a rule that can change the body: a name the caller SENT
+// is never replaced, and a layout they chose makes the type's recommended one
+// the wrong thing to read.
+//
+// A store failure falls back to the fold. It is the weaker test, and losing
+// the rule entirely on a store hiccup would be the worse trade.
+func (s *Service) inspectShortcutProperties(spaceId string, properties map[string]json.RawMessage) shortcutPropertyFacts {
+	var facts shortcutPropertyFacts
+	if len(properties) == 0 {
+		return facts
+	}
+	nameFold := anyblockjson.FoldKeyTerm(bundle.RelationKeyName.String())
+	layoutFold := anyblockjson.FoldKeyTerm(bundle.RelationKeyLayout.String())
+	entries, err := s.liveProperties(spaceId)
+	for key, raw := range properties {
+		fold := anyblockjson.FoldKeyTerm(key)
+		resolved := ""
+		if err == nil {
+			if entry, ok, ambiguous := s.resolvePropertyInput(key, entries); ok && len(ambiguous) == 0 {
+				resolved = entry.Key
+			}
+		} else if fold == nameFold {
+			// the resolution is unavailable; the fold is the best answer
+			// left, and losing the rule entirely on a store hiccup is worse
+			resolved = bundle.RelationKeyName.String()
+		}
+		if fold == layoutFold || resolved == bundle.RelationKeyLayout.String() {
+			// the caller chose the layout, so the type's recommended one is
+			// no longer what this object will be
+			facts.blocked = true
+			continue
+		}
+		if resolved == bundle.RelationKeyName.String() {
+			facts.nameKey = key
+			var value string
+			if json.Unmarshal(raw, &value) != nil {
+				// unreadable here, but the caller's: never replaced
+				facts.blocked = true
+				continue
+			}
+			facts.nameValue = value
+			if value != "" {
+				facts.blocked = true
+			}
+			continue
+		}
+		if fold == nameFold {
+			// it folds onto `name` without being it, so adding `name` beside
+			// it would make a document the format refuses
+			facts.blocked = true
+		}
+	}
+	return facts
+}
+
+// typeShowsNameAsTitle reports whether objects of this type render their name
+// as a title — true for every layout but the NOTE, which has no title and
+// turns its name back into the first block of its body
+// (template.WithNameToFirstBlock). Promoting a heading there would move the
+// caller's line below any template content, strip it of its heading style and
+// leave the object with no name at all, while the response claimed one.
+//
+// Unknown answers true: the type gate owns an unresolvable type, and the
+// duplicate-dropping half of the rule is right for a note either way.
+func (s *Service) typeShowsNameAsTitle(spaceId, typeTerm string) bool {
+	entries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return true
+	}
+	entry, ok, ambiguous, err := s.resolveTypeInput(spaceId, typeTerm, entries)
+	if err != nil || !ok || len(ambiguous) > 0 {
+		return true
+	}
+	if entry.Id == "" {
+		// a bundled type this space has not installed yet: the create
+		// installs it, so the layout that will apply is the bundle's
+		bundled, bundleErr := bundle.GetType(domain.TypeKey(entry.Key))
+		if bundleErr != nil {
+			return true
+		}
+		return bundled.Layout != model.ObjectType_note
+	}
+	objectType, err := s.store.SpaceIndex(spaceId).GetObjectType(entry.Id)
+	if err != nil {
+		return true
+	}
+	return objectType.Layout != model.ObjectType_note
+}
+
+// v2MaxCreateMarkdownBlocks caps how many blocks a create shortcut's markdown
+// body may parse to. Wider than the per-op insert_blocks cap (a whole document
+// vs one insertion) but still a hard bound: the byte-bounded markdown channel
+// would otherwise reach hundreds of thousands of blocks in one change set.
+const v2MaxCreateMarkdownBlocks = 2048
+
+// rebaseMarkdownCreateError rewrites /blocks/<j>… issue paths onto
+// /markdown[<j>]… — the create-shortcut caller sent markdown, never a blocks
+// array, so a path into the synthesized document is unactionable (C6). j is
+// the parsed block position, the same convention the insert_blocks op's
+// created_blocks keys document.
+//
+// dropped is how many parsed blocks were taken off the FRONT before the
+// document was synthesized (liftMarkdownTitle removes the leading heading),
+// and it is added back: without it every path after a lifted title would
+// address the block before the one that actually failed.
+func rebaseMarkdownCreateError(err error, dropped int) error {
+	var v2Err *v2model.Error
+	if !errors.As(err, &v2Err) {
+		return err
+	}
+	position := func(idx string) string {
+		parsed, convErr := strconv.Atoi(idx)
+		if convErr != nil {
+			return idx
+		}
+		return strconv.Itoa(parsed + dropped)
+	}
+	for i := range v2Err.Issues {
+		rest, ok := strings.CutPrefix(v2Err.Issues[i].Path, "/blocks/")
+		if !ok {
+			continue
+		}
+		if idx, tail, found := strings.Cut(rest, "/"); found {
+			v2Err.Issues[i].Path = fmt.Sprintf("/markdown[%s]/%s", position(idx), tail)
+		} else {
+			v2Err.Issues[i].Path = fmt.Sprintf("/markdown[%s]", position(rest))
+		}
+	}
+	return v2Err
+}
+
+// normalizeCreateBody strips the v2 read-envelope additions (etag,
+// warnings, discussion) so "read a document, create a copy" works from every GET shape,
+// and refuses the partial ?block= subtree marker — a subtree is not a
+// document.
+func normalizeCreateBody(body []byte) ([]byte, error) {
+	fields, err := parseEnvelope(body)
+	if err != nil {
+		return nil, v2model.ValidationFailed("request body is not a JSON object",
+			v2model.Issue{Message: err.Error()})
+	}
+	if _, partial := fields["subtree"]; partial {
+		return nil, v2model.ValidationFailed("this body is a partial subtree read (a read with the block parameter), not a whole document",
+			v2model.Issue{Path: "/subtree", Message: "an object cannot be created from a subtree read — it is a fragment of another document"}.
+				Hintf("read the source object whole with %s, without the block parameter, for a complete document", v2model.NewRef(v2model.OpGetObject).With("ids", "full")))
+	}
+	delete(fields, "etag") // C7: concurrency lives in headers, never in create bodies
+	delete(fields, "warnings")
+	delete(fields, "discussion") // a live fact about the SOURCE object; a copy starts without one
+	return encodeEnvelope(fields)
+}
+
+// withCurrentFormat is assumeCurrentFormat on an encoded body; a body that
+// is not an object is returned as is, for validation to report.
+func withCurrentFormat(body []byte) ([]byte, error) {
+	fields, err := parseEnvelope(body)
+	if err != nil {
+		return body, nil
+	}
+	if _, ok := fields["formatVersion"]; ok {
+		return body, nil
+	}
+	if err := assumeCurrentFormat(fields); err != nil {
+		return nil, err
+	}
+	return encodeEnvelope(fields)
+}
+
+// assumeCurrentFormat fills in formatVersion when a document omits it. An
+// API caller writes the current format, so the version is not something it
+// is asked for: the member stays legal (an export pasted back carries it,
+// and a wrong value is still refused), only its absence now means current.
+func assumeCurrentFormat(fields map[string]json.RawMessage) error {
+	if _, ok := fields["formatVersion"]; ok {
+		return nil
+	}
+	raw, err := rawJSON(anyblockjson.FormatVersion)
+	if err != nil {
+		return err
+	}
+	fields["formatVersion"] = raw
+	return nil
+}
+
+// docLocalIds collects the doc-local ids a flat AnyBlock document carries
+// explicitly, in document order and deduplicated — the create path's view of
+// the id domain compact relabeling covers. The walk itself is
+// v2EditDoc.localIds (ops.go), shared with the PATCH payload resolver so the
+// two guards cannot drift into covering different slots. A body that is not
+// decodable yields nil (later validation owns that failure).
+func docLocalIds(doc []byte) []string {
+	parsed, err := parseEditDoc(doc)
+	if err != nil {
+		return nil
+	}
+	return parsed.localIds()
+}
+
+// warnLabelShapedIds flags a create body whose local ids look like the
+// default read's compact labels (5 lowercase-hex chars). Adopting them is
+// legal — the new object has no other holders of those ids — but almost
+// never intended: the clone's stored ids become the labels, and the
+// source's real ids are one query parameter away. A warning, not a
+// refusal: with no owned-id baseline to check against, a 5-hex authored id
+// is indistinguishable from a label, and a clone of a document that truly
+// owns such ids (they never relabel, so its export carries them verbatim)
+// must keep working.
+func warnLabelShapedIds(body []byte) []v2model.Issue {
+	var labelLike []string
+	for _, id := range docLocalIds(body) {
+		if anyblockjson.IsCompactLabelShaped(id) {
+			labelLike = append(labelLike, strconv.Quote(id))
+		}
+	}
+	if len(labelLike) == 0 {
+		return nil
+	}
+	return []v2model.Issue{v2model.Issue{
+		Path:    "/blocks",
+		Message: fmt.Sprintf("ids %s look like compact labels from a default read and were adopted as this object's real ids", strings.Join(labelLike, ", ")),
+	}.Hintf("to clone with the source's real ids, read it with %s; to mint fresh ids, omit them", v2model.NewRef(v2model.OpGetObject).With("ids", "full"))}
+}
+
+// createFromDocument is the shared full-document create path: structural
+// validation → referential validation → Unmarshal with create-missing
+// resolvers → snapshot create (one change set) → etag read-back.
+func (s *Service) createFromDocument(ctx context.Context, spaceId string, body []byte, opts docCreateOptions) (*v2model.CreateResult, error) {
+	// 0. envelope normalization: a pasted read body creates a copy instead of
+	// 400ing on its own etag
+	body, err := normalizeCreateBody(body)
+	if err != nil {
+		return nil, err
+	}
+	// 0a. the body is a document by here (the shortcut and the endpoints
+	// that compose one have decided), so an absent version means current
+	if body, err = withCurrentFormat(body); err != nil {
+		return nil, err
+	}
+
+	// 1. structural + format-semantic validation (no side effects)
+	if err := s.rejectInvalidDocument(body, "object"); err != nil {
+		return nil, err
+	}
+
+	// 1a. canonicalize addressing terms (§7.5a-5): api-key slugs in the
+	// envelope's type/templateFor and in the properties map resolve to
+	// their stored spellings before validation and import; the spelling map
+	// keeps refusal paths addressed to the request as sent
+	body, spellings, err := s.canonicalizeDocumentKeys(spaceId, body)
+	if err != nil {
+		return nil, err
+	}
+
+	var envelope docEnvelope
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return nil, v2model.ValidationFailed("decode document envelope: " + err.Error())
+	}
+	if envelope.Type == "" {
+		// absent type defaults to page on create (agent-friendly; SPEC §2
+		// leaves it absent only for legacy/system objects); on the templates
+		// endpoint the default is the template type itself
+		envelope.Type = string(bundle.TypeKeyPage)
+		if opts.requireTemplate {
+			envelope.Type = string(bundle.TypeKeyTemplate)
+		}
+		var err error
+		fields, err := parseEnvelope(body)
+		if err != nil {
+			return nil, err
+		}
+		if fields["type"], err = rawJSON(envelope.Type); err != nil {
+			return nil, err
+		}
+		if body, err = encodeEnvelope(fields); err != nil {
+			return nil, err
+		}
+	}
+
+	// 2. referential validation (R9) — reject before anything is created
+	if err := s.validateDocumentRefs(ctx, spaceId, &envelope, opts, spellings); err != nil {
+		return nil, err
+	}
+
+	// 2a. which template the object starts from. Resolved HERE, before the
+	// create-missing resolvers run: on a real create those mint select
+	// options as a side effect, and a template refusal after that point
+	// would leave a caller's space holding options for an object that was
+	// never created.
+	var (
+		appliedTemplate  *v2model.AppliedTemplate
+		templateWarnings []v2model.Issue
+	)
+	if opts.honourTemplates {
+		appliedTemplate, templateWarnings, err = s.resolveDocumentTemplate(ctx, spaceId, &envelope, opts.template)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// 3. Unmarshal with create-missing resolvers (SPEC §3/§2a); on a dry run
+	// the resolvers only record would-be creations
+	resolvers := s.newCreatingResolvers(ctx, spaceId, opts.dryRun, opts.createMissingOptions)
+	resolvers.scope = s.typeKeyPropertyScope(spaceId, envelope.Type)
+	_, snapshot, err := anyblockjson.Unmarshal(body, resolvers.Options())
+	if err != nil {
+		return nil, mapUnmarshalError(body, err, "object")
+	}
+	if err := resolvers.err(); err != nil {
+		return nil, fmt.Errorf("resolve document references: %w", err)
+	}
+	links := s.newSpaceLinkExpander(ctx)
+	links.Blocks(snapshot.Blocks)
+
+	// The importer needs the stored type key, but every v2 response speaks the
+	// stable API vocabulary. In particular, a custom type slug is rewritten to
+	// its BSON key during canonicalization above and must not leak here.
+	result := &v2model.CreateResult{Type: resolvers.keys.TypeSlug(envelope.Type), Created: resolvers.created()}
+	// what the object starts from, on dry runs too: a dry run that did not
+	// name the template would be silent about the one part of the outcome
+	// the request did not state
+	result.Template = appliedTemplate
+	if appliedTemplate != nil {
+		// the request's own content goes AFTER the template's, so an object
+		// created this way holds blocks the request never sent. Said here, on
+		// dry runs too, because the alternative is a caller reading the object
+		// back to discover it — the snapshot is the request's own blocks, so
+		// this is knowable without building the template.
+		appliedTemplate.Combined = countRequestBlocks(snapshot) > 0
+	}
+	// the label-adoption tell rides real runs and dry runs alike (C9)
+	result.Warnings = warnLabelShapedIds(body)
+	result.Warnings = append(result.Warnings, templateWarnings...)
+	// a cross-space object link whose space reference could not be expanded
+	result.Warnings = append(result.Warnings, links.Warnings("/blocks")...)
+	// F16: a value on a property the type does not list, said at create as
+	// on set_properties (the object takes the key here for the first time)
+	if typeKeys := s.typeListedKeys(spaceId, envelope.Type); typeKeys != nil {
+		for _, key := range sortedKeys(envelope.Properties) {
+			if typeKeys[key] || !offTypeCandidate(key) {
+				continue
+			}
+			spelling := key
+			if original, ok := spellings[key]; ok {
+				spelling = original
+			}
+			result.Warnings = append(result.Warnings, offTypePropertyIssue(spelling, result.Type, "/properties/"+spelling))
+		}
+	}
+	if opts.dryRun {
+		result.DryRun = true
+		return result, nil
+	}
+
+	// 4. template target: templateFor (a type key) becomes the
+	// targetObjectType detail (a type object id) the editor resolves
+	// layout from
+	if envelope.Type == string(bundle.TypeKeyTemplate) && envelope.TemplateFor != "" {
+		targetId, err := s.creator.TypeIdByKey(ctx, spaceId, domain.TypeKey(envelope.TemplateFor))
+		if err != nil {
+			return nil, fmt.Errorf("resolve template target type %q: %w", envelope.TemplateFor, err)
+		}
+		if snapshot.Details == nil {
+			snapshot.Details = &types.Struct{Fields: map[string]*types.Value{}}
+		}
+		snapshot.Details.Fields[bundle.RelationKeyTargetObjectType.String()] = pbtypes.String(targetId)
+	}
+
+	// 5. create — the whole document as the object's initial state, on top of
+	// the template's when one applies
+	created, err := s.creator.CreateObjectFromSnapshot(ctx, spaceId, snapshot, appliedTemplate.GetId())
+	if errors.Is(err, apicore.ErrTemplateUnavailable) {
+		// the template passed every check this layer can make and then could
+		// not be loaded — deleted between the two, in the usual case. Who
+		// chose it decides what that means: the caller's choice is refused,
+		// the type's is dropped with a warning rather than failing a create
+		// over a setting the caller never touched.
+		if appliedTemplate.GetSource() == templateSourceRequest {
+			return nil, v2model.ValidationFailed("the template cannot be applied",
+				v2model.Issue{Path: "/template", Message: fmt.Sprintf(
+					"template %q could not be loaded — it was most likely deleted while this request was in flight", appliedTemplate.GetId())}.
+					Hintf("list the templates of this type with %s", v2model.RefListTemplates(spaceId).With("type", result.Type)))
+		}
+		result.Warnings = append(result.Warnings, v2model.Issue{
+			Path: "/type",
+			Message: fmt.Sprintf("the default template of type %q was not applied: template %q could not be loaded",
+				result.Type, appliedTemplate.GetId()),
+		}.Hintf("point default_template at a live template, or clear it, with %s", v2model.RefUpdateType(spaceId, result.Type)))
+		result.Template = nil
+		created, err = s.creator.CreateObjectFromSnapshot(ctx, spaceId, snapshot, "")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("create object in space %s: %w", spaceId, err)
+	}
+	result.Id = created.Id
+	if result.Template != nil {
+		// what the template put in the object, which the caller did not send
+		// and would otherwise have to read the object back to see. A pointer
+		// because zero is a real answer here — a template can carry nothing
+		// but its header — and absent has to keep meaning "not known", which
+		// is what a dry run leaves it as.
+		blocks := created.TemplateBlocks
+		result.Template.BlocksAdded = &blocks
+	}
+
+	// 6. etag read-back (best effort — the create already succeeded)
+	if read, err := s.reader.ReadObject(ctx, spaceId, created.Id); err == nil {
+		result.Etag = ComputeEtag(read.Heads)
+	} else {
+		result.Warnings = append(result.Warnings, v2model.Issue{
+			Message: "created, but the etag read-back failed — GET the object for its etag",
+		})
+	}
+	return result, nil
+}
+
+// countRequestBlocks counts the blocks the request's own document carries,
+// which is every block of the create snapshot but its root.
+func countRequestBlocks(snapshot *model.SmartBlockSnapshotBase) int {
+	if snapshot == nil {
+		return 0
+	}
+	var count int
+	for _, block := range snapshot.Blocks {
+		if block.GetSmartblock() == nil {
+			count++
+		}
+	}
+	return count
+}
+
+// rejectInvalidDocument maps AnyBlock validation failures onto the C6
+// contract: path-addressed validation_failed, or version_unsupported when
+// the document was produced by a newer format version (§8: on create an
+// unparseable formatVersion must fail the write).
+//
+// A create body is held to the full grammar, not the authoring subset: a
+// document read back from GET carries an etag, an id, warnings and block ids,
+// and pasting one straight into POST has to keep creating a copy rather than
+// demanding the caller hand-strip envelope fields. Those members are inert
+// here — the create path strips them.
+//
+// The LEGENDS are not inert, which is why they are refused separately below:
+// `property_internal_keys` rebinds a spelling to any stored key it names, so
+// {"properties":{"Foo":"bar"},"property_internal_keys":{"Foo":"description"}}
+// writes into the bundled description property instead of minting Foo. An
+// export writes a legend to preserve a space's own bindings; a caller creating
+// from nothing has no bindings to preserve, and the authoring subset excludes
+// both legends for that reason.
+func (s *Service) rejectInvalidDocument(body []byte, kind string) error {
+	if err := rejectExportLegends(body); err != nil {
+		return err
+	}
+	if err := rejectTypeInternalKey(body); err != nil {
+		return err
+	}
+	if err := rejectMisplacedPropertyArray(body); err != nil {
+		return err
+	}
+	err := anyblockjson.Validate(body)
+	if err == nil {
+		return nil
+	}
+	return mapUnmarshalError(body, err, kind)
+}
+
+// exportLegends are the root members that bind a document's spellings to a
+// space's stored keys. They are an export's record of bindings that already
+// existed; on create there is nothing to record, and honouring one lets a
+// caller aim a property value at a stored key it never named in `properties`.
+var exportLegends = []struct{ member, rebinds string }{
+	{"property_internal_keys", "property spelling"},
+	{"option_ids", "select option name"},
+}
+
+// rejectExportLegends refuses a legend on a create body, before the format
+// validation, so the verdict names the member rather than a schema keyword.
+func rejectExportLegends(body []byte) error {
+	var root map[string]json.RawMessage
+	if err := json.Unmarshal(body, &root); err != nil {
+		return nil // malformed JSON is the format validation's verdict to give
+	}
+	issues := make([]v2model.Issue, 0, len(exportLegends))
+	for _, legend := range exportLegends {
+		if _, present := root[legend.member]; !present {
+			continue
+		}
+		issues = append(issues, v2model.Issue{
+			Path: "/" + legend.member,
+			Message: fmt.Sprintf(
+				"%s is an export legend, not an authoring member: it rebinds every %s in this document to the stored key it names",
+				legend.member, legend.rebinds),
+			Hint: "drop it — write the spelling you want in `properties` and the server resolves or mints the key",
+		})
+	}
+	if len(issues) == 0 {
+		return nil
+	}
+	return v2model.ValidationFailed("the document carries export legends", issues...)
+}
+
+// rejectTypeInternalKey refuses the stored-key twin of the envelope `type`.
+//
+// It is one of the members this API excludes from the document it serves and
+// publishes (apiV2ExcludedMembers), and excluding it from the SCHEMA was not
+// enough: the format's own validation still accepts it, and on import it wins
+// over `type`. Everything this endpoint decides — the type gate, the
+// restricted-type refusal, the removed-type check, the property keys it holds
+// the document to, the type the result reports, and which template applies —
+// reads `type`, so a body carrying both is validated as one type and created
+// as another. Refusing is the fix rather than honouring it: a caller of this
+// surface addresses a type by the api key `type` already carries.
+func rejectTypeInternalKey(body []byte) error {
+	var root map[string]json.RawMessage
+	if err := json.Unmarshal(body, &root); err != nil {
+		return nil // malformed JSON is the format validation's verdict to give
+	}
+	if _, present := root["type_internal_key"]; !present {
+		return nil
+	}
+	return v2model.ValidationFailed("the document carries a stored type key",
+		v2model.Issue{
+			Path:    "/type_internal_key",
+			Message: "type_internal_key is an export member, and on import it overrides type",
+			Hint:    "drop it — name the type in `type`",
+		})
+}
+
+// mapUnmarshalError converts anyblockjson validation errors into C6 errors.
+// mapUnmarshalError is the C6 shape of a format error. kind names the
+// schema that documents the whole document ("object", "type"), or is empty
+// for a fragment, and steers the repairs documentIssues attaches.
+func mapUnmarshalError(body []byte, err error, kind string) error {
+	var validationErr *anyblockjson.ValidationError
+	if !errors.As(err, &validationErr) {
+		return v2model.ValidationFailed("invalid AnyBlock document", v2model.Issue{Message: err.Error()})
+	}
+	if validationErr.NewerFormat {
+		docVersion, _, ok := anyblockjson.DetectFormat(body)
+		if !ok {
+			docVersion = "unknown"
+		}
+		return v2model.VersionUnsupported(docVersion, anyblockjson.FormatVersion)
+	}
+	return v2model.ValidationFailed("the document failed AnyBlock validation", documentIssues(kind, validationErr.Issues)...)
+}
+
+// documentCreateKinds are the document kinds POST objects and POST templates
+// create: an instance (kind omitted or page) or a template. The discovery
+// schema for kind object closes its kind vocabulary to this same set
+// (apiV2KindNarrowings), so the two cannot drift.
+var documentCreateKinds = map[string]bool{"": true, "page": true, "template": true}
+
+// validateDocumentRefs is the R9 layer for object creates: kind and type
+// gating, template target, items-on-collections, and property-key existence
+// in the properties map (reject with did-you-mean — creating properties from
+// a possibly hallucinated key is reserved for typeProperties and
+// POST /properties). spellings maps canonicalized keys back to the caller's
+// own spelling (canonicalizeDocumentKeys), so refusals address the request
+// that was actually sent.
+func (s *Service) validateDocumentRefs(ctx context.Context, spaceId string, envelope *docEnvelope, opts docCreateOptions, spellings map[string]string) error {
+	// the refusals below speak the request's key vocabulary (?keys — §4.3)
+	v := errKeysFor(ctx)
+	switch {
+	case documentCreateKinds[envelope.Kind]:
+	case envelope.Kind == "object_type":
+		return v2model.ValidationFailed("type documents are created via their own endpoint",
+			v2model.Issue{Path: "/kind", Message: "kind \"object_type\" is not accepted here"}.Hintf("create it with %s", v2model.RefCreateType(spaceId)))
+	default:
+		return v2model.ValidationFailed("unsupported document kind",
+			v2model.Issue{Path: "/kind", Message: fmt.Sprintf("kind %q cannot be created through the API", envelope.Kind), Hint: "omit kind (page) or use type \"template\""})
+	}
+	// §2a's identity slots (`type_settings`, and the envelope `key` that
+	// preceded it) are refused by the format itself, path-addressed and on
+	// every kind — including the forged-identity case this layer used to
+	// guard. One statement of the rule, in the validator.
+
+	if opts.requireTemplate {
+		if envelope.Type == "" {
+			envelope.Type = string(bundle.TypeKeyTemplate)
+		}
+		if envelope.Type != string(bundle.TypeKeyTemplate) {
+			return v2model.ValidationFailed("not a template document",
+				v2model.Issue{Path: "/type", Message: fmt.Sprintf("expected type \"template\", got %q", envelope.Type)})
+		}
+	}
+	// a template must name its target type — the editor derives the layout
+	// from it (SPEC §2 template_for); enforced on both endpoints
+	if envelope.Type == string(bundle.TypeKeyTemplate) && envelope.TemplateFor == "" {
+		if _, nested := envelope.Properties["template_for"]; nested {
+			return v2model.ValidationFailed("template_for is required",
+				v2model.Issue{Path: "/properties/template_for", Message: "template_for is a top-level member beside properties, not a property: move it up a level"})
+		}
+		return v2model.ValidationFailed("template_for is required",
+			v2model.Issue{Path: "/template_for", Message: "a template document names its target type key"}.Hintf("list keys with %s", v2model.RefListTypes(spaceId)))
+	}
+
+	if envelope.Type != "" && envelope.Type != string(bundle.TypeKeyTemplate) {
+		if !s.typeKeyExists(spaceId, envelope.Type) {
+			return s.unknownTypeKeyError(spaceId, envelope.Type, "/type", v)
+		}
+		if err := rejectRestrictedType(envelope.Type); err != nil {
+			return err
+		}
+		// the bundled table answers for a type key forever, so existence alone
+		// cannot see that this SPACE removed the type — without this check a
+		// create landed a new object in a type whose route 404s, and a
+		// reinstall lit it back up (§8.41; the type twin of the property
+		// refusal below)
+		if err := s.refuseRemovedType(ctx, spaceId, envelope.Type, docSpelling(spellings, envelope.Type), "/type"); err != nil {
+			return err
+		}
+	}
+	if envelope.TemplateFor != "" {
+		if !s.typeKeyExists(spaceId, envelope.TemplateFor) {
+			return s.unknownTypeKeyError(spaceId, envelope.TemplateFor, "/template_for", v)
+		}
+		if err := s.refuseRemovedType(ctx, spaceId, envelope.TemplateFor, docSpelling(spellings, envelope.TemplateFor), "/template_for"); err != nil {
+			return err
+		}
+	}
+
+	// SPEC §2: collection_items requires a collection document.
+	if len(envelope.Items) > 0 && envelope.Type != string(bundle.TypeKeyCollection) {
+		return v2model.ValidationFailed("items on a non-collection document",
+			v2model.Issue{Path: "/collection_items", Message: fmt.Sprintf("collection_items requires type \"collection\", got %q", envelope.Type)}.Hintf("create a collection with %s", v2model.RefCreateCollection(spaceId)))
+	}
+
+	// property keys must exist — did-you-mean, never silent create (R9)
+	return s.validatePropertyKeys(ctx, spaceId, envelope.Properties, spellings)
+}
+
+// refuseRemovedType is the type-namespace removal gate for one canonicalized
+// type slot (§8.41). Fails closed on any probe error: an unverifiable
+// removal set must not read as "nothing was removed".
+// spelledAs is the caller's own spelling of typeKey: canonicalization has
+// already replaced it (`query` becomes the bundled `set`, a custom slug
+// becomes its 24-hex stored key), and an error must quote what the caller
+// wrote, never a key they never sent (F11).
+func (s *Service) refuseRemovedType(ctx context.Context, spaceId, typeKey, spelledAs, path string) error {
+	if spelledAs == "" {
+		spelledAs = typeKey
+	}
+	entries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return err
+	}
+	// the same typed 500 the custom-type resolution boundary answers: the
+	// removal set could not be read, the request was not wrong
+	removed, err := s.bundledTypeRemovalSet(spaceId)
+	if err != nil {
+		return unverifiableTypeError(spelledAs, spaceId, err)
+	}
+	isRemoved, err := s.bundledTypeRemoved(ctx, spaceId, entries, removed, typeKey)
+	if err != nil {
+		return unverifiableTypeError(spelledAs, spaceId, err)
+	}
+	if isRemoved {
+		v := errKeysFor(ctx)
+		return v2model.ValidationFailed(fmt.Sprintf("removed %s", v.typeWord()), removedTypeIssue(spaceId, typeKey, path, v))
+	}
+	return nil
+}
+
+// validatePropertyKeys is the R9 unknown-property loop over a document's
+// properties map. One primed live set for the whole loop (§7.5a-2), failing
+// closed on a load error.
+//
+// A LIVE property passes as an address. A key no live property claims but
+// SOME relation object still holds — a UI-deleted or archived one, a
+// "corpse" — passes as a round-trip tolerance
+// (propertyKeyHeldByAnyRelation): an object holding values of such a
+// relation exports that key, and create is the channel a read body is
+// pasted into ("a pasted read body creates a copy", §3(b)). Refusing it
+// would make the advertised clone loop fail on a document the API itself
+// served, and would do so with a did-you-mean pointing at some unrelated
+// live key that happens to be spelled nearby — moving a value onto the
+// wrong property is worse than carrying a dormant one. The tolerance is a
+// bare existence probe BY DESIGN — it cannot, and does not claim to,
+// distinguish a pasted clone from a freshly authored value (see
+// propertyKeyHeldByAnyRelation for why no provenance signal is worth its
+// cost on a key that resolves nowhere).
+//
+// This tolerance is not create-specific special pleading: PATCH has the
+// same escape by another route (stateops.go checkKey passes any key already
+// present on the document). Both say the same thing — a document may keep a
+// value it legitimately already carries; neither is an ADDRESS, because
+// neither channel will resolve a corpse key to a property object.
+//
+// The ONE key class the tolerance does not cover is a BUNDLED relation this
+// space removed (removedPropertyIssue; §8.41 widened "removed" from
+// uninstalled to archived too, and to a tombstone an older build left): bundle.
+// HasRelation answers for it forever, so without the explicit check a
+// create lands new data on a property the user deleted, and the reinstall
+// lights it back up.
+//
+// spellings maps a canonicalized key back to the caller's spelling —
+// refusal paths must address the request as sent, not the rewrite
+// (§8.41-10).
+func (s *Service) validatePropertyKeys(ctx context.Context, spaceId string, props map[string]json.RawMessage, spellings map[string]string) error {
+	if len(props) == 0 {
+		return nil
+	}
+	entries, err := s.liveProperties(spaceId)
+	if err != nil {
+		return err
+	}
+	spelledAs := func(key string) string {
+		if original, ok := spellings[key]; ok {
+			return original
+		}
+		return key
+	}
+	v := errKeysFor(ctx)
+	var issues []v2model.Issue
+	var removedCount int
+	var known []string
+	// primed lazily and at most once (§7.5a-2), and only when a key reaches
+	// the bundled arm at all
+	var removedBundled map[string]bool
+	for _, key := range sortedKeys(props) {
+		if propertyKeyExistsIn(entries, key) {
+			if !propertyKeyInstalledIn(entries, key) {
+				if removedBundled == nil {
+					if removedBundled, err = s.bundledRemovalSet(spaceId); err != nil {
+						return err
+					}
+				}
+				isRemoved, err := s.bundledPropertyRemoved(ctx, spaceId, entries, removedBundled, key)
+				if err != nil {
+					return err
+				}
+				if isRemoved {
+					issues = append(issues, removedPropertyIssue(spaceId, key, spelledAs(key), "/properties/"+spelledAs(key), v))
+					removedCount++
+				}
+			}
+			continue
+		}
+		// a pasted read body creates a copy (cause3_test.go, §8.29): a key
+		// SOME relation object holds — a removed one included — is carried,
+		// under the stored key the read's slug canonicalized to. Create is
+		// the channel a read body is pasted into; the closed channel for a
+		// removed property is set_properties (stateops.go checkKey).
+		if s.propertyKeyHeldByAnyRelation(ctx, spaceId, key) {
+			continue
+		}
+		// a REMOVED space-minted property nothing holds any more (its corpse
+		// row, by its slug): refused as removed, which is what happened to
+		// it, rather than as unknown
+		if entry, removed := s.removedCustomProperty(spaceId, key); removed {
+			issues = append(issues, removedCustomPropertyIssue(spaceId, entry, spelledAs(key), "/properties/"+spelledAs(key), v))
+			removedCount++
+			continue
+		}
+		if known == nil {
+			known = knownPropertyKeysIn(entries, v)
+		}
+		issues = append(issues, unknownPropertyIssue(key, "/properties/"+spelledAs(key), known, propertyListHint(spaceId), v))
+	}
+	if len(issues) > 0 {
+		// the envelope names what actually happened: "unknown" on a key the
+		// space knows and removed is a lie the issue text then contradicts
+		switch {
+		case removedCount == len(issues):
+			return v2model.ValidationFailed(fmt.Sprintf("removed %s", v.propertiesWord()), issues...)
+		case removedCount > 0:
+			return v2model.ValidationFailed(fmt.Sprintf("unknown and removed %s", v.propertiesWord()), issues...)
+		}
+		return v2model.ValidationFailed(fmt.Sprintf("unknown %s", v.propertiesWord()), issues...)
+	}
+	return nil
+}
+
+// rejectRestrictedType blocks creation of system-managed types through the
+// generic object path (mirrors createObjectInSpace's guards).
+func rejectRestrictedType(typeKey string) error {
+	key := domain.TypeKey(typeKey)
+	if t, err := bundle.GetType(key); err == nil && t.RestrictObjectCreation {
+		return v2model.ValidationFailed("this type cannot be created through the API",
+			v2model.Issue{Path: "/type", Message: fmt.Sprintf("creation of %q objects is restricted", typeKey)})
+	}
+	switch key {
+	case bundle.TypeKeyFile, bundle.TypeKeyImage, bundle.TypeKeyAudio, bundle.TypeKeyVideo:
+		return v2model.ValidationFailed("file objects are created by upload",
+			v2model.Issue{Path: "/type", Message: fmt.Sprintf("%q objects come from file uploads", typeKey)}.Hintf("upload one with %s", v2model.NewRef(v2model.OpUploadFile)))
+	}
+	return nil
+}
+
+// sortedKeys returns the map's keys in deterministic order.
+func sortedKeys[V any](m map[string]V) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// docSpelling is the caller's original spelling of a canonicalized key, the
+// key itself when canonicalization left it alone.
+func docSpelling(spellings map[string]string, key string) string {
+	if original, ok := spellings[key]; ok {
+		return original
+	}
+	return key
+}

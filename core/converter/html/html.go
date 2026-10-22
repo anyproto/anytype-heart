@@ -21,7 +21,7 @@ import (
 	utf16 "github.com/anyproto/anytype-heart/util/text"
 )
 
-var log = logging.Logger("html-converter").Desugar()
+var log = logging.LoggerNotSugared("html-converter")
 
 func NewHTMLConverter(s *state.State, fileObjectService fileobject.Service) *HTML {
 	return &HTML{

@@ -91,6 +91,19 @@ func TestChange(t *testing.T) {
 	)
 }
 
+func TestChangeAnonymizesTheIntegrationName(t *testing.T) {
+	// the raw, user-chosen API-key name (§8.44). A non-ASCII name is the
+	// discriminating fixture: an ASCII-only one could pass a check that
+	// only handled the common case, and an empty one could pass a no-op.
+	in := &pb.Change{IntegrationName: "Café Desktop 🙂"}
+	out := Change(in)
+	assert.NotEqual(t, in.IntegrationName, out.IntegrationName)
+	assert.NotEmpty(t, out.IntegrationName)
+
+	// absent stays absent — "no name recorded" must not become a fake one
+	assert.Empty(t, Change(&pb.Change{}).IntegrationName)
+}
+
 func TestText(t *testing.T) {
 	in := "Some string with ютф. Symbols? http://123.com"
 	out := Text(in)

@@ -47,6 +47,10 @@ func (s *invalidStore) Query(q database.Query) (records []database.Record, err e
 	return nil, s.err
 }
 
+func (s *invalidStore) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string, withInjections bool) ([]database.Record, error) {
+	return nil, s.err
+}
+
 func (s *invalidStore) QueryRaw(f *database.Filters, limit int, offset int) (records []database.Record, err error) {
 	return nil, s.err
 }
@@ -181,6 +185,18 @@ func (s *invalidStore) SetActiveViews(objectId string, views map[string]string) 
 
 func (s *invalidStore) GetActiveViews(objectId string) (map[string]string, error) {
 	return nil, s.err
+}
+
+func (s *invalidStore) CountRaw(f *database.Filters) (int, error) {
+	return 0, s.err
+}
+
+func (s *invalidStore) GetDeletionAuditMark() (string, error) {
+	return "", s.err
+}
+
+func (s *invalidStore) SetDeletionAuditMark(heads string) error {
+	return s.err
 }
 
 func (s *invalidStore) GetRelationLink(key string) (*model.RelationLink, error) {

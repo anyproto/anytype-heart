@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
+	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -21,6 +22,9 @@ const universalBadInputCode int32 = 2
 var universalBadInputErrors = []error{
 	idresolver.ErrEmptyObjectId,
 	detailservice.ErrHomepageChangeRestricted,
+	chatobject.ErrMessageDeleted,
+	chatobject.ErrReplyToDeletedMessage,
+	chatobject.ErrMessageNotFound,
 }
 
 func (mw *Middleware) getResponseEvent(ctx session.Context) *pb.ResponseEvent {

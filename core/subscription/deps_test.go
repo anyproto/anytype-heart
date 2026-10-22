@@ -104,6 +104,48 @@ func TestDependencies(t *testing.T) {
 		assert.Equal(t, bundle.RelationKeyName.String(), amend.Details[0].Key)
 	})
 
+	t.Run("strip-by-default keys are stripped from deps even when the parent requests them", func(t *testing.T) {
+		fx := newEngineFixture(t)
+		alice := givenPerson("alice", "Alice")
+		alice[bundle.RelationKeySyncStatus] = domain.Int64(1)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenAssigneeRelation(),
+			alice,
+			givenTask("task1", "fix bug", "alice"),
+		})
+
+		// parent explicitly lists syncStatus for its own rows
+		req := givenDepRequest()
+		req.Keys = append(req.Keys, bundle.RelationKeySyncStatus.String())
+		resp, err := fx.Search(req)
+		require.NoError(t, err)
+
+		// the dependency snapshot for alice must NOT carry syncStatus
+		require.Len(t, resp.Dependencies, 1)
+		assert.Equal(t, "alice", resp.Dependencies[0].GetString(bundle.RelationKeyId))
+		_, hasSync := resp.Dependencies[0].TryGet(bundle.RelationKeySyncStatus)
+		assert.False(t, hasSync, "dep snapshot leaked syncStatus")
+
+		// a syncStatus-only change to the dependency emits nothing
+		aliceSync := givenPerson("alice", "Alice")
+		aliceSync[bundle.RelationKeySyncStatus] = domain.Int64(2)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{aliceSync})
+		assertNoMessages(t, resp.Output)
+
+		// a real (requested, non-stripped) change still arrives, without sync keys
+		aliceRenamed := givenPerson("alice", "Alice Renamed")
+		aliceRenamed[bundle.RelationKeySyncStatus] = domain.Int64(3)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{aliceRenamed})
+		msgs := waitMessages(t, resp.Output, 1)
+		require.Len(t, msgs, 1)
+		amend := msgs[0].GetObjectDetailsAmend()
+		require.NotNil(t, amend)
+		assert.Equal(t, "alice", amend.Id)
+		assert.Equal(t, []string{"dep-parent/dep"}, amend.SubIds)
+		require.Len(t, amend.Details, 1)
+		assert.Equal(t, bundle.RelationKeyName.String(), amend.Details[0].Key)
+	})
+
 	t.Run("changing a member's dep value swaps the tracked dependency", func(t *testing.T) {
 		fx := newEngineFixture(t)
 		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
@@ -204,6 +246,90 @@ func TestDependencies(t *testing.T) {
 			}
 		}
 		require.NoError(t, fx.Unsubscribe("dep-parent"))
+	})
+
+	t.Run("status options referenced by members are delivered as deps", func(t *testing.T) {
+		fx := newEngineFixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenStatusRelation(),
+			givenStatusOption("opt-a", "Alpha"),
+			givenStatusOption("opt-b", "Beta"),
+			{
+				bundle.RelationKeyId:             domain.String("t1"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_todo)),
+				statusKey:                        domain.String("opt-a"),
+			},
+		})
+
+		req := givenDepRequest()
+		req.SubId = "status-dep-parent"
+		// name is what the chip renders; clients list it alongside the column
+		req.Keys = []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), statusKey}
+		resp, err := fx.Search(req)
+		require.NoError(t, err)
+
+		// the client renders the chip from the option's name/color, so the
+		// referenced option must arrive as a dependency
+		require.Len(t, resp.Records, 1)
+		require.Len(t, resp.Dependencies, 1)
+		assert.Equal(t, "opt-a", resp.Dependencies[0].GetString(bundle.RelationKeyId))
+
+		// renaming the option must reach the client under the dep subId
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenStatusOption("opt-a", "Alpha Renamed"),
+		})
+		msgs := waitMessages(t, resp.Output, 1)
+		require.Len(t, msgs, 1)
+		amend := msgs[0].GetObjectDetailsAmend()
+		require.NotNil(t, amend)
+		assert.Equal(t, "opt-a", amend.Id)
+		assert.Equal(t, []string{"status-dep-parent/dep"}, amend.SubIds)
+	})
+
+	t.Run("tag options referenced by members are delivered as deps", func(t *testing.T) {
+		fx := newEngineFixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenTagRelation(),
+			givenTagOption("urgent"),
+			givenTagOption("later"),
+			givenTagOption("unused"),
+			givenTaggedTask("t1", "urgent", "later"),
+		})
+
+		req := givenDepRequest()
+		req.SubId = "tag-dep-parent"
+		req.Keys = []string{bundle.RelationKeyId.String(), tagKey}
+		resp, err := fx.Search(req)
+		require.NoError(t, err)
+
+		// every option in the multi-select value, and nothing else
+		require.Len(t, resp.Records, 1)
+		require.Len(t, resp.Dependencies, 2)
+		assert.ElementsMatch(t, []string{"urgent", "later"}, recordIds(resp.Dependencies))
+	})
+
+	t.Run("tag options used as filter values are tracked as deps", func(t *testing.T) {
+		fx := newEngineFixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenTagRelation(),
+			givenTagOption("urgent"),
+		})
+
+		req := givenDepRequest()
+		req.SubId = "tag-filter-parent"
+		req.Keys = []string{bundle.RelationKeyId.String()}
+		req.Filters = append(req.Filters, database.FilterRequest{
+			RelationKey: tagKey,
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       domain.StringList([]string{"urgent"}),
+		})
+		resp, err := fx.Search(req)
+		require.NoError(t, err)
+
+		// the client renders the filter chip's name, so the option must arrive
+		// even though no member references it
+		require.Len(t, resp.Dependencies, 1)
+		assert.Equal(t, "urgent", resp.Dependencies[0].GetString(bundle.RelationKeyId))
 	})
 
 	t.Run("renaming the status option you sort by reorders the parent", func(t *testing.T) {

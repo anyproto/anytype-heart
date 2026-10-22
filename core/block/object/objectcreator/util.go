@@ -7,26 +7,42 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gosimple/unidecode"
-	"github.com/iancoleman/strcase"
 )
 
 // injectApiObjectKey sets a value for ApiObjectKey relation in priority:
 // - User-provided ApiObjectKey
 // - Key from relationKey/uniqueKey
-// - Transliterated Name relation
+// - Name relation, transliterated
+//
+// The derived value is MINTED, not merely snake-cased. What is stored here is
+// the spelling callers address the object by, and the api promises that
+// spelling is snake_case — but snake-casing leaves every character it does not
+// understand in place. Measured over a 38,123-object account, 27 of 1,530
+// stored api keys sit outside the advertised grammar `^[a-zA-Z0-9_]+$`: the
+// name `Lists [in work]` had minted `lists_[in_work]`, `Manual export &
+// import` had minted `manual_export_&_import`, and `➡️ Medium` had minted
+// `[?]_medium`, the emoji arriving as unidecode's literal `[?]`.
+//
+// Nothing is stored when the mint comes back empty — a name of only emoji, a
+// key of only punctuation. An object with no derivable slug is addressed by
+// its internal key, which is a real address; an empty apiObjectKey is not.
 func injectApiObjectKey(object *domain.Details, key string) {
-	if strings.TrimSpace(object.GetString(bundle.RelationKeyApiObjectKey)) == "" {
-		if key == "" {
-			key = transliterate(object.GetString(bundle.RelationKeyName))
-		}
-		key = strcase.ToSnake(key)
-		object.SetString(bundle.RelationKeyApiObjectKey, key)
+	if strings.TrimSpace(object.GetString(bundle.RelationKeyApiObjectKey)) != "" {
+		return
 	}
-}
-
-func transliterate(in string) string {
-	return unidecode.Unidecode(strings.TrimSpace(in))
+	var slug string
+	if key == "" {
+		slug = bundle.MintApiSlugFromName(object.GetString(bundle.RelationKeyName))
+	} else {
+		// no transliteration on this arm: the key already IS an internal key,
+		// and the api derives a slug from a stored key with the same
+		// transform, so transliterating one side would make the two disagree.
+		slug = bundle.MintApiSlug(key)
+	}
+	if slug == "" {
+		return
+	}
+	object.SetString(bundle.RelationKeyApiObjectKey, slug)
 }
 
 func getUniqueKeyOrGenerate(sbType coresb.SmartBlockType, details *domain.Details) (uk domain.UniqueKey, wasGenerated bool, err error) {

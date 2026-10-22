@@ -42,6 +42,12 @@ func (s *service) createRelation(ctx context.Context, space clientspace.Space, d
 	key := domain.RelationKey(details.GetString(bundle.RelationKeyRelationKey))
 
 	injectApiObjectKey(object, key.String())
+	if err := s.ensureUniqueApiObjectKey(space.Id(), object, key.String(), apiKeyKindRelation); err != nil {
+		// a namespace we could not read is not a reason to fail the user's
+		// create; the slug may need repair and v2's ambiguity-loud lookups
+		// are the standing backstop (apikey.go)
+		log.With("spaceID", space.Id()).Errorf("failed to check api key uniqueness: %v", err)
+	}
 
 	if key == "" {
 		key = domain.RelationKey(bson.NewObjectId().Hex())

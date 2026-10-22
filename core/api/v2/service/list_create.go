@@ -1,0 +1,686 @@
+package v2service
+
+// list_create.go implements POST queries and POST collections. Queries follow
+// §8/R10: ObjectCreateSet takes no filters, so the query
+// is built as one AnyBlock document whose initial state carries a fully-
+// formed dataview block — one change set, honestly atomic — reusing the
+// generic create path. Collections use the AnyBlock items import path.
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"sort"
+	"strings"
+
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+)
+
+// dataviewBlockId is the block id the query/collection editors expect their
+// dataview under (template.DataviewBlockId) — a fresh id would make the
+// editor add a second, default dataview at first open.
+const dataviewBlockId = "dataview"
+
+// CreateQuery implements POST /v2/spaces/{space_id}/queries.
+func (s *Service) CreateQuery(ctx context.Context, spaceId string, req v2model.CreateQueryRequest, dryRun, createMissingOptions bool) (*v2model.CreateResult, error) {
+	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
+		return nil, err
+	}
+	if req.Name == "" {
+		return nil, v2model.ValidationFailed("name is required",
+			v2model.Issue{Path: "/name", Message: "a query needs a name"})
+	}
+	if req.Type == "" {
+		return nil, v2model.ValidationFailed("type is required",
+			v2model.Issue{Path: "/type", Message: "a query runs over one type — name its key"}.Hintf("list keys with %s", v2model.RefListTypes(spaceId)))
+	}
+	// the bounds the query kind advertises (M6): field lengths and the
+	// sorts/views item caps
+	if err := validateV2FieldLength("/name", req.Name, maxV2NameLength); err != nil {
+		return nil, err
+	}
+	if err := validateV2FieldLength("/type", req.Type, maxV2KeyLength); err != nil {
+		return nil, err
+	}
+	if err := validateV2FieldLength("/filter", req.Filter, maxV2FilterLength); err != nil {
+		return nil, err
+	}
+	if err := validateV2ArrayCount("/sorts", req.Sorts, maxV2QuerySorts); err != nil {
+		return nil, err
+	}
+	if err := validateV2ArrayCount("/views", req.Views, maxV2QueryViews); err != nil {
+		return nil, err
+	}
+	// C6: filter and filters are mutually exclusive; both → ambiguous_input
+	if req.Filter != "" && len(req.Filters) > 0 {
+		return nil, v2model.AmbiguousInput("provide filter or filters, not both",
+			v2model.Issue{Path: "/filter", Message: "conflicts with filters"},
+			v2model.Issue{Path: "/filters", Message: "conflicts with filter"})
+	}
+	if len(req.Views) > 0 && (req.Filter != "" || len(req.Filters) > 0 || len(req.Sorts) > 0) {
+		return nil, v2model.AmbiguousInput("provide views or top-level filter/filters/sorts, not both",
+			v2model.Issue{Path: "/views", Message: "views carry their own filters and sorts"}.
+				Hintf("move the top-level filter and sorts into a view, or drop views — %s lists a view's members", v2model.RefGetSchema("query")))
+	}
+
+	// the queried type must exist in the space — its property keys are the
+	// R9 reference set for the filters. Live lookup, slug-aware: a query over
+	// a UI-deleted type would be a query over a corpse (§7.5-2 corpse policy).
+	typeEntries, err := s.liveTypes(spaceId)
+	if err != nil {
+		return nil, err
+	}
+	entry, ok, ambiguous, err := s.resolveTypeInput(spaceId, req.Type, typeEntries)
+	if err != nil {
+		return nil, err
+	}
+	if len(ambiguous) > 0 {
+		return nil, ambiguousKeyError("type key", req.Type, "/type", ambiguous)
+	}
+	if !ok || entry.Id == "" {
+		// a bundled key resolving with no live install may be one this space
+		// REMOVED — say that, not "unknown" with a did-you-mean (§8.41-10);
+		// the refusal itself predates §8.41 (a query requires an installed
+		// type either way)
+		if ok && entry.Id == "" {
+			if err := s.refuseRemovedType(ctx, spaceId, entry.Key, req.Type, "/type"); err != nil {
+				return nil, err
+			}
+		}
+		return nil, s.unknownTypeKeyError(spaceId, req.Type, "/type", errKeysFor(ctx))
+	}
+	typeId := entry.Id
+	// downstream builders derive `ot-` URLs from the type term — hand them
+	// the canonical internal key, not the caller's slug spelling; refusals
+	// keep addressing the type as the caller spelled it
+	callerType := req.Type
+	req.Type = entry.Key
+
+	// the compact filter string (SPEC §6.2.1) parses to the structured array
+	// through the same reference set the structured form is validated
+	// against; the query document stores the structured array (export keeps
+	// writing it — the document field `filter` stays reserved post-v1).
+	// Option names are deliberately NOT parse-validated here: a query create
+	// is a WRITE, where select option names create-missing (R9/§8.1) — unlike
+	// the read-only search path.
+	// kc canonicalizes the request's property spellings (served slugs →
+	// stored keys) — the query DOCUMENT persists these keys, and a served
+	// spelling landing in a dataview filter would bind a RelationKey the
+	// store never matches, silently (review cause 3)
+	kc, err := s.newKeyCanon(spaceId)
+	if err != nil {
+		return nil, err
+	}
+	kc.scope = s.typePropertyScope(spaceId, typeId)
+	if req.Filter != "" {
+		// "type" joins the reference set only so the discovery-served grammar
+		// example (`type IN (…)`) parses to a targeted error below instead of
+		// an unknown-key message that cannot explain itself
+		refKeys := appendMissing(append(kc.withServedSpellings(s.typePropertyKeys(spaceId, typeId)), "name", "type"), v2SystemQueryKeys...)
+		sort.Strings(refKeys)
+		// the hidden counters parse, but a refusal is worded without them
+		acceptKeys := appendMissing(append([]string(nil), refKeys...), kc.withServedSpellings(v2BundledQueryKeys)...)
+		parsed, err := parseSearchFilter(req.Filter, filterstring.Options{
+			KnownKeys:     acceptKeys,
+			ResolveFormat: canonFormatName(s.formatNameResolver(spaceId), kc),
+		}, refKeys)
+		if err != nil {
+			return nil, filterStringError(spaceId, err)
+		}
+		req.Filter = ""
+		req.Filters = parsed
+	}
+	// a date leaf stores unix seconds whatever spelling the caller sent
+	// (R6-1: a string survived to the store and the view matched nothing);
+	// before canonicalization, so a refusal names the property as sent
+	formatName := canonFormatName(s.formatNameResolver(spaceId), kc)
+	if req.Filters, err = convertRawDateFilters(req.Filters, "/filters", formatName); err != nil {
+		return nil, err
+	}
+	if req.Views, err = convertRawViewDateFilters(req.Views, formatName); err != nil {
+		return nil, err
+	}
+	// the channels as the caller spelled them, kept beside the canonicalized
+	// ones the query DOCUMENT stores: a canonicalized leaf carries the stored
+	// key, which for a space-minted property is a 24-hex id the caller never
+	// sent and cannot look up, so every refusal below reads its property from
+	// here (round-six R6-7)
+	spelled := req
+	if req.Filters, err = kc.canonicalizeRawChannel(req.Filters, "filters", "/filters"); err != nil {
+		return nil, err
+	}
+	if req.Sorts, err = kc.canonicalizeRawChannel(req.Sorts, "sorts", "/sorts"); err != nil {
+		return nil, err
+	}
+	if req.Views, err = kc.canonicalizeRawChannel(req.Views, "views", "/views"); err != nil {
+		return nil, err
+	}
+	// M3: the same structural gate the search path runs. A query persists its
+	// filter, so a match-everything shape here is not a bad query — it is a
+	// query that quietly contains the whole space, for good. (The string form
+	// above cannot produce these shapes; the parser emits a condition on
+	// every leaf and never a childless group.) It reads the leaves as sent:
+	// canonicalization cannot change a node's SHAPE, only its property
+	// spelling, and the refusal names that property.
+	if len(spelled.Filters) > 0 {
+		if _, err := decodeFilterNodes(spelled.Filters, "/filters"); err != nil {
+			return nil, err
+		}
+	}
+
+	// R9 referential validation: every property key the view addresses must
+	// be one the type actually recommends
+	referenced, err := collectViewPropertyKeys(spelled, kc.canonKey)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.validateViewKeys(ctx, spaceId, typeId, callerType, referenced); err != nil {
+		return nil, err
+	}
+
+	doc, err := s.buildQueryDocument(spaceId, typeId, req, referenced)
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.createFromDocument(ctx, spaceId, doc, docCreateOptions{dryRun: dryRun, createMissingOptions: createMissingOptions})
+	if err != nil {
+		return nil, queryDocumentError(err, len(req.Views) > 0)
+	}
+	// F16: a query with no filter anywhere lists every object of the type —
+	// created under a predicate name ("Plants needing frequent watering")
+	// that is a query that quietly contains the whole type, for good
+	if rawArrayLen(req.Filters) == 0 && !viewsCarryFilters(req.Views) {
+		issue := v2model.Issue{
+			Path:    "/filter",
+			Message: fmt.Sprintf("the query has no filter beyond its type: it lists every live object of type %q", callerType),
+		}.Hintf("narrow it with filter, the compact string (grammar on %s), or with filters", v2model.RefGetSchema("filters"))
+		if len(req.Views) > 0 {
+			// a top-level filter is refused beside views: the repair is theirs
+			issue = v2model.Issue{Path: "/views", Message: issue.Message}.
+				Hintf("give a view filters, the nodes %s documents", v2model.RefGetSchema("filters"))
+		}
+		result.Warnings = append(result.Warnings, issue)
+	}
+	return result, nil
+}
+
+// rawArrayLen is the element count of a raw JSON array, 0 for anything else.
+func rawArrayLen(raw json.RawMessage) int {
+	var items []json.RawMessage
+	if len(raw) == 0 || json.Unmarshal(raw, &items) != nil {
+		return 0
+	}
+	return len(items)
+}
+
+// viewsCarryFilters reports whether any requested view filters.
+func viewsCarryFilters(raw json.RawMessage) bool {
+	if len(raw) == 0 {
+		return false
+	}
+	var views []viewProbe
+	if json.Unmarshal(raw, &views) != nil {
+		return false
+	}
+	for _, view := range views {
+		if len(view.Filters) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// queryDocumentError re-addresses a refusal of the document CreateQuery
+// built onto the request the caller sent: the views they wrote at /views
+// were reported at /blocks/0/views, a path nothing in the request has, and
+// the shape they take is the query kind's (F17). When the caller sent no
+// views, the one view in the document is the default built from their
+// top-level sorts and filters, and a fault in it is theirs at that level.
+func queryDocumentError(err error, explicitViews bool) error {
+	var v2Err *v2model.Error
+	if !errors.As(err, &v2Err) {
+		return err
+	}
+	for i := range v2Err.Issues {
+		rest, ok := strings.CutPrefix(v2Err.Issues[i].Path, "/blocks/0/views")
+		if !ok {
+			continue
+		}
+		message := v2Err.Issues[i].Message
+		if explicitViews {
+			v2Err.Issues[i] = v2model.Issue{Path: "/views" + rest, Message: message}.
+				Hintf("a view's members are listed on %s — the fields the insert_view op takes (%s)",
+					v2model.RefGetSchema("query"), v2model.RefGetOpSchema("insert_view"))
+			continue
+		}
+		path := strings.TrimPrefix(rest, "/0")
+		v2Err.Issues[i] = v2model.Issue{Path: path, Message: message}.
+			Hintf("the query's members are listed on %s", v2model.RefGetSchema("query"))
+	}
+	return v2Err
+}
+
+// CreateCollection implements POST /v2/spaces/{space_id}/collections: the
+// AnyBlock collection_items import path builds the collection store.
+func (s *Service) CreateCollection(ctx context.Context, spaceId string, req v2model.CreateCollectionRequest, dryRun bool) (*v2model.CreateResult, error) {
+	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
+		return nil, err
+	}
+	if req.Name == "" {
+		return nil, v2model.ValidationFailed("name is required",
+			v2model.Issue{Path: "/name", Message: "a collection needs a name"})
+	}
+	if err := validateV2FieldLength("/name", req.Name, maxV2NameLength); err != nil {
+		return nil, err
+	}
+	// the advertised items cap (M6) — checked BEFORE the per-item store
+	// lookups, so an oversized list costs nothing
+	if len(req.Items) > maxV2CollectionItems {
+		return nil, v2model.ValidationFailed("too many items",
+			v2model.Issue{Path: "/items",
+				Message: fmt.Sprintf("%d items — the cap is %d (the advertised maxItems)", len(req.Items), maxV2CollectionItems),
+				Hint:    "create the collection with the first items, then add the rest with the add_items PATCH op"})
+	}
+
+	// referential validation: items must be existing objects in the space
+	var issues []v2model.Issue
+	index := s.store.SpaceIndex(spaceId)
+	for i, itemId := range req.Items {
+		details, err := index.GetDetails(itemId)
+		if err != nil || details.GetString(bundle.RelationKeyId) == "" {
+			issues = append(issues, v2model.Issue{
+				Path:    fmt.Sprintf("/items/%d", i),
+				Message: fmt.Sprintf("object %q not found in space %q", itemId, spaceId),
+			}.Hintf("items are full object ids — find them with %s", v2model.RefListObjects(spaceId)))
+		}
+	}
+	if len(issues) > 0 {
+		return nil, v2model.ValidationFailed("unknown collection items", issues...)
+	}
+
+	fields := map[string]json.RawMessage{}
+	var err error
+	if fields["formatVersion"], err = rawJSON(anyblockjson.FormatVersion); err != nil {
+		return nil, err
+	}
+	if fields["type"], err = rawJSON(string(bundle.TypeKeyCollection)); err != nil {
+		return nil, err
+	}
+	if fields["properties"], err = rawJSON(map[string]string{"name": req.Name}); err != nil {
+		return nil, err
+	}
+	if len(req.Items) > 0 {
+		if fields["collection_items"], err = rawJSON(req.Items); err != nil {
+			return nil, err
+		}
+	}
+	doc, err := encodeEnvelope(fields)
+	if err != nil {
+		return nil, err
+	}
+	// a collection body is {name, items}: object ids, no property values, so
+	// no select name can reach the resolver and no consent is meaningful
+	result, err := s.createFromDocument(ctx, spaceId, doc, docCreateOptions{dryRun: dryRun})
+	if err != nil {
+		return nil, err
+	}
+	// the receipt says how many members landed, zero included (F19: no
+	// caller ever verified a collection's membership, because nothing
+	// echoed it)
+	count := len(req.Items)
+	result.Items = &count
+	return result, nil
+}
+
+// viewKeyRef is one property reference inside the requested views: the stored
+// key it resolves to, the spelling the caller wrote it as, and its JSON path
+// for error addressing. The two spellings are kept apart per REFERENCE, never
+// per request: one request may name one property several ways, and a refusal
+// that quotes another occurrence's spelling names something the caller can
+// neither recognize nor repair.
+type viewKeyRef struct {
+	key     string
+	spelled string
+	path    string
+}
+
+// filterNodeProbe decodes the §6.2 filter tree just deep enough to collect
+// property keys.
+type filterNodeProbe struct {
+	Property string            `json:"property"`
+	Filters  []filterNodeProbe `json:"filters"`
+}
+
+type sortProbe struct {
+	Property string `json:"property"`
+	// IncludeTime distinguishes "omitted" from an explicit false — the
+	// search path defaults date sorts to second granularity only when the
+	// request did not decide (search.go).
+	IncludeTime *bool `json:"include_time"`
+	// CustomOrder is probed by the view ops for the advertised maxItems
+	// bound (viewops.go).
+	CustomOrder []json.RawMessage `json:"custom_order"`
+}
+
+type viewProbe struct {
+	GroupBy string            `json:"group_by"`
+	Sorts   []sortProbe       `json:"sorts"`
+	Filters []filterNodeProbe `json:"filters"`
+	Columns []sortProbe       `json:"columns"` // columns carry `property` too
+}
+
+// collectViewPropertyKeys gathers every property key the request's filters,
+// sorts and views address, each with its JSON path. req carries the caller's
+// own spellings and canon resolves each one to the stored key the validation
+// and the stored document need.
+func collectViewPropertyKeys(req v2model.CreateQueryRequest, canon func(string) string) ([]viewKeyRef, error) {
+	var refs []viewKeyRef
+	if len(req.Filters) > 0 {
+		var nodes []filterNodeProbe
+		if err := json.Unmarshal(req.Filters, &nodes); err != nil {
+			return nil, v2model.ValidationFailed("invalid filters",
+				v2model.Issue{Path: "/filters", Message: err.Error(), Hint: "filters is an array of filter nodes"})
+		}
+		collectFilterKeys(nodes, "/filters", canon, &refs)
+	}
+	if len(req.Sorts) > 0 {
+		var sorts []sortProbe
+		if err := json.Unmarshal(req.Sorts, &sorts); err != nil {
+			return nil, v2model.ValidationFailed("invalid sorts",
+				v2model.Issue{Path: "/sorts", Message: err.Error(), Hint: "sorts is an array of sort objects"})
+		}
+		for i, sort := range sorts {
+			if sort.Property != "" {
+				refs = append(refs, viewKeyRef{key: canon(sort.Property), spelled: sort.Property, path: fmt.Sprintf("/sorts/%d/property", i)})
+			}
+		}
+	}
+	if len(req.Views) > 0 {
+		var views []viewProbe
+		if err := json.Unmarshal(req.Views, &views); err != nil {
+			return nil, v2model.ValidationFailed("invalid views",
+				v2model.Issue{Path: "/views", Message: err.Error(), Hint: "views is an array of view objects"})
+		}
+		for i, view := range views {
+			prefix := fmt.Sprintf("/views/%d", i)
+			if view.GroupBy != "" {
+				refs = append(refs, viewKeyRef{key: canon(view.GroupBy), spelled: view.GroupBy, path: prefix + "/groupBy"})
+			}
+			for j, sort := range view.Sorts {
+				if sort.Property != "" {
+					refs = append(refs, viewKeyRef{key: canon(sort.Property), spelled: sort.Property, path: fmt.Sprintf("%s/sorts/%d/property", prefix, j)})
+				}
+			}
+			for j, column := range view.Columns {
+				if column.Property != "" {
+					refs = append(refs, viewKeyRef{key: canon(column.Property), spelled: column.Property, path: fmt.Sprintf("%s/columns/%d/property", prefix, j)})
+				}
+			}
+			collectFilterKeys(view.Filters, prefix+"/filters", canon, &refs)
+		}
+	}
+	return refs, nil
+}
+
+func collectFilterKeys(nodes []filterNodeProbe, path string, canon func(string) string, refs *[]viewKeyRef) {
+	for i, node := range nodes {
+		nodePath := fmt.Sprintf("%s/%d", path, i)
+		if node.Property != "" {
+			*refs = append(*refs, viewKeyRef{key: canon(node.Property), spelled: node.Property, path: nodePath + "/property"})
+		}
+		collectFilterKeys(node.Filters, nodePath+"/filters", canon, refs)
+	}
+}
+
+// validateViewKeys rejects filter/sort/view property keys the type lacks —
+// the R9 error lists the type's actual keys. The system-key
+// allowlist (createdDate, lastModifiedDate, creator, lastOpenedDate) is
+// always part of the reference set: those keys appear in no type's
+// recommended lists yet back bread-and-butter queries (rule 2 — the
+// widening of the shipped R9 queries rule).
+//
+// Membership in the type's recommended lists is NOT enough on its own: the
+// lists are resolved by id and nothing strips a deleted relation from them,
+// so after any UI delete the default state is a type still recommending the
+// corpse — and a NEW query filtering or sorting on it would persist a query
+// against a property the user removed (§8.41). The removal gate runs after
+// the membership pass for exactly that row.
+func (s *Service) validateViewKeys(ctx context.Context, spaceId, typeId, typeKey string, refs []viewKeyRef) error {
+	v := errKeysFor(ctx)
+	if len(refs) == 0 {
+		return nil
+	}
+	typeKeys := s.typePropertyKeys(spaceId, typeId)
+	allowed := map[string]bool{"name": true} // universal
+	for _, key := range v2SystemQueryKeys {
+		allowed[key] = true
+	}
+	// accepted, never listed: typeKeys below is what a refusal names
+	for _, key := range v2BundledQueryKeys {
+		allowed[key] = true
+	}
+	for _, key := range typeKeys {
+		allowed[key] = true
+	}
+	// inputs arrive canonicalized (CreateQuery's kc rewrite); the candidate
+	// list must speak the SERVED spelling — never advertise what the
+	// channel rejects (review cause 3)
+	entries, entriesErr := s.liveProperties(spaceId)
+	if entriesErr == nil {
+		kc := &keyCanon{s: s, spaceId: spaceId, entries: entries}
+		typeKeys = kc.servedSpellings(typeKeys)
+	}
+	// the bundled-removal set, primed lazily and only when an allowed key is
+	// not live-installed (§7.5a-2)
+	var removedBundled map[string]bool
+	var issues []v2model.Issue
+	for _, ref := range refs {
+		if allowed[ref.key] {
+			if entriesErr == nil && bundle.HasRelation(domain.RelationKey(ref.key)) && !propertyKeyInstalledIn(entries, ref.key) {
+				if removedBundled == nil {
+					var err error
+					if removedBundled, err = s.bundledRemovalSet(spaceId); err != nil {
+						return err
+					}
+				}
+				isRemoved, err := s.bundledPropertyRemoved(ctx, spaceId, entries, removedBundled, ref.key)
+				if err != nil {
+					return err
+				}
+				if isRemoved {
+					issues = append(issues, removedPropertyIssue(spaceId, ref.key, ref.spelled, ref.path, v))
+					continue
+				}
+			}
+			continue
+		}
+		if ref.key == "type" {
+			// the search surface takes `type` as a pseudo-key; a query carries
+			// its scope in setOf already, so the leaf is redundant here — say
+			// that instead of "unknown property"
+			issues = append(issues, v2model.Issue{
+				Path:    ref.path,
+				Message: fmt.Sprintf("a query is already scoped to type %q — drop the type filter", typeKey),
+			}.Hintf("to query across types use %s, where type is a filterable pseudo-key", v2model.RefSearchSpace(spaceId)))
+			continue
+		}
+		issues = append(issues, v2model.Issue{
+			Path:    ref.path,
+			Message: fmt.Sprintf("type %q has no property %q — %s", typeKey, ref.spelled, listKnown(v.propertiesWord()+" of the type", typeKeys)),
+		}.WithHint(didYouMean(ref.spelled, typeKeys, v2model.Hintf("inspect the type with %s", v2model.RefGetType(spaceId, typeKey)))))
+	}
+	if len(issues) > 0 {
+		return v2model.ValidationFailed(fmt.Sprintf("the view addresses properties type %q does not have", typeKey), issues...)
+	}
+	return nil
+}
+
+// querySourceMember is the root member a query states its source in (§6.2).
+// Named once because three places need it to agree: the document this file
+// builds, the applier's C11 loss guard (a classification warning arrives on
+// "/"+querySourceMember), and the wrapper's list-source reader.
+const querySourceMember = "query_source"
+
+// buildQueryDocument synthesizes the query's AnyBlock document: the name in
+// properties, the source in the root `query_source` group, and one dataview
+// block (id "dataview") carrying the views — the §8/R10 initial-state
+// construction.
+//
+// The source is a ROOT member, not a property. The format promoted it out of
+// the stored `setOf` detail and now refuses the flat spelling
+// unconditionally (§6.2), because inside `properties` a query source is a
+// value in the generic bag and the published schema can say nothing about
+// it — not its shape, not what an element means — while the slot really does
+// hold two different kinds of thing, type ids AND property ids, under one
+// grammar. Two lists say which is which.
+//
+// The entry is the type's KEY, not its object id: `query_source.types` is a
+// type-KEY slot, spelled the way `template_for` and every `object_types` is.
+// Handing it a store id would not be a harmless alias — a store id shaped
+// like `type-<something>` parses as a derived id and inverts to the wrong
+// key.
+func (s *Service) buildQueryDocument(spaceId, typeId string, req v2model.CreateQueryRequest, referenced []viewKeyRef) ([]byte, error) {
+	fields := map[string]json.RawMessage{}
+	var err error
+	if fields["formatVersion"], err = rawJSON(anyblockjson.FormatVersion); err != nil {
+		return nil, err
+	}
+	if fields["type"], err = rawJSON(string(bundle.TypeKeySet)); err != nil {
+		return nil, err
+	}
+	if fields["properties"], err = rawJSON(map[string]any{"name": req.Name}); err != nil {
+		return nil, err
+	}
+	// req.Type is the canonical stored key by here (CreateQuery rewrites it
+	// to entry.Key), which is what a type-KEY slot takes
+	if fields[querySourceMember], err = rawJSON(map[string]any{"types": []string{req.Type}}); err != nil {
+		return nil, err
+	}
+
+	views := req.Views
+	if len(views) == 0 {
+		view := map[string]any{"name": "All"}
+		if len(req.Filters) > 0 {
+			view["filters"] = req.Filters
+		}
+		if len(req.Sorts) > 0 {
+			view["sorts"] = req.Sorts
+		}
+		if views, err = json.Marshal([]any{view}); err != nil {
+			return nil, fmt.Errorf("encode default view: %w", err)
+		}
+	}
+
+	dataview := map[string]any{
+		"id":         dataviewBlockId,
+		"type":       "dataview",
+		"properties": s.dataviewProperties(spaceId, referenced),
+		"views":      views,
+	}
+	if fields["blocks"], err = rawJSON([]any{dataview}); err != nil {
+		return nil, err
+	}
+	return encodeEnvelope(fields)
+}
+
+// dataviewProperties lists the dataview's available properties ({key,
+// format}, §6.2): name plus every referenced key, formats resolved from the
+// space (falling back to text).
+func (s *Service) dataviewProperties(spaceId string, referenced []viewKeyRef) []map[string]string {
+	resolve := storeFormatResolver(s, spaceId)
+	keys := []string{"name"}
+	seen := map[string]bool{"name": true}
+	for _, ref := range referenced {
+		if !seen[ref.key] {
+			seen[ref.key] = true
+			keys = append(keys, ref.key)
+		}
+	}
+	out := make([]map[string]string, 0, len(keys))
+	for _, key := range keys {
+		// the format vocabulary has a single text name: the stored
+		// longtext/shorttext split folds into "text" (§3), so `name` resolves
+		// through the same path as every other key
+		format := "text"
+		if f, ok := resolve(domain.RelationKey(key)); ok {
+			if name := anyblockjson.FormatName(f); name != "" {
+				format = name
+			}
+		}
+		// §2e: a dataview property entry names its property by the
+		// document-facing SPELLING under `property` (the member `key` used to
+		// mean both this and the stored id, and the split gave each its own
+		// name). The entry has no stored-key member at all —
+		// `dataviewProperty` is {property, format}, additionalProperties
+		// false — and the §3 chain resolves an exact stored key here anyway.
+		out = append(out, map[string]string{"property": key, "format": format})
+	}
+	return out
+}
+
+// storeFormatResolver builds a bundle-aware format resolver over the space.
+func storeFormatResolver(s *Service, spaceId string) anyblockjson.FormatResolver {
+	// read-only: this resolver answers formats and never writes, so the
+	// option-creation consent is irrelevant and denied on principle
+	reads := s.newCreatingResolvers(context.Background(), spaceId, true, false)
+	return func(key domain.RelationKey) (format model.RelationFormat, ok bool) {
+		if rel, err := bundle.GetRelation(key); err == nil {
+			return rel.Format, true
+		}
+		return reads.ResolveFormat(key)
+	}
+}
+
+// convertRawDateFilters is convertDateFilterValues over a raw filters array;
+// an empty array passes through untouched.
+func convertRawDateFilters(raw json.RawMessage, base string, formatName func(string) (string, bool)) (json.RawMessage, error) {
+	if rawArrayLen(raw) == 0 {
+		return raw, nil
+	}
+	var nodes []any
+	if err := json.Unmarshal(raw, &nodes); err != nil {
+		return raw, nil // the shape gate reports it
+	}
+	if issues := convertDateFilterValues(nodes, base, pointerFilterPath, formatName); len(issues) > 0 {
+		return nil, v2model.ValidationFailed("invalid filters", issues...)
+	}
+	out, err := json.Marshal(nodes)
+	if err != nil {
+		return nil, fmt.Errorf("encode filters: %w", err)
+	}
+	return out, nil
+}
+
+// convertRawViewDateFilters runs convertRawDateFilters over each view's
+// filters, path-addressed under /views.
+func convertRawViewDateFilters(raw json.RawMessage, formatName func(string) (string, bool)) (json.RawMessage, error) {
+	if len(raw) == 0 {
+		return raw, nil
+	}
+	var views []map[string]any
+	if err := json.Unmarshal(raw, &views); err != nil {
+		return raw, nil // the codec reports the shape
+	}
+	var issues []v2model.Issue
+	for i, view := range views {
+		nodes, ok := view["filters"].([]any)
+		if !ok || len(nodes) == 0 {
+			continue
+		}
+		issues = append(issues, convertDateFilterValues(nodes, fmt.Sprintf("/views/%d/filters", i), pointerFilterPath, formatName)...)
+	}
+	if len(issues) > 0 {
+		return nil, v2model.ValidationFailed("invalid filters", issues...)
+	}
+	out, err := json.Marshal(views)
+	if err != nil {
+		return nil, fmt.Errorf("encode views: %w", err)
+	}
+	return out, nil
+}

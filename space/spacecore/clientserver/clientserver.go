@@ -3,32 +3,39 @@ package clientserver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
+	"runtime"
 	"strconv"
 	"strings"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/net/transport"
 	"github.com/anyproto/any-sync/net/transport/quic"
+	"github.com/anyproto/any-sync/net/transport/yamux"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 )
 
-const (
-	CName           = "client.space.clientserver"
-	PreferredSchema = transport.Quic
-)
+const CName = "client.space.clientserver"
 
 var log = logger.NewNamed(CName)
 
 var ErrNoPortAssigned = errors.New("no port assigned to the server")
 
+// listenAttempts bounds retries when the UDP side of a freshly reserved port
+// turns out to be occupied: first try the saved port, then ephemeral ports.
+const listenAttempts = 4
+
 func New() ClientServer {
-	return &clientServer{}
+	return &clientServer{
+		// iOS defuncts the app's sockets on suspension; elsewhere the listener
+		// survives and keeps today's behavior (see lifecycle.go)
+		lifecycle: runtime.GOOS == "ios",
+	}
 }
 
 type ClientServer interface {
@@ -37,21 +44,42 @@ type ClientServer interface {
 	ServerStarted() bool
 }
 
-type DbProvider interface {
-	GetCommonDb() anystore.DB
+// udpListener is the part of quic.Quic used here; narrowed for tests.
+type udpListener interface {
+	ListenAddrs(ctx context.Context, addrs ...string) ([]net.Addr, error)
 }
 
+// tcpListenerRegistry is the part of yamux.Yamux used here; narrowed for tests.
+type tcpListenerRegistry interface {
+	AddListener(lis net.Listener)
+}
+
+// keep the narrowed interfaces in sync with any-sync at compile time, so an
+// upstream API change fails the build instead of panicking in Init
+var (
+	_ udpListener         = (quic.Quic)(nil)
+	_ tcpListenerRegistry = (yamux.Yamux)(nil)
+)
+
 type clientServer struct {
-	quic          quic.Quic
+	quic          udpListener
+	yamux         tcpListenerRegistry
 	provider      anystoreprovider.Provider
 	port          int
 	storage       keyvaluestore.Store[int]
 	serverStarted bool
+
+	// lifecycle enables the iOS listener lifecycle: close on Background,
+	// rebind the same port on Foreground, probe as a safety net
+	lifecycle bool
+	lan       *lanListener
+	lc        listenerLifecycle
 }
 
 func (s *clientServer) Init(a *app.App) (err error) {
 	s.provider = app.MustComponent[anystoreprovider.Provider](a)
-	s.quic = a.MustComponent(quic.CName).(quic.Quic)
+	s.quic = a.MustComponent(quic.CName).(udpListener)
+	s.yamux = a.MustComponent(yamux.CName).(tcpListenerRegistry)
 	return nil
 }
 
@@ -61,9 +89,14 @@ func (s *clientServer) Name() (name string) {
 
 func (s *clientServer) Run(ctx context.Context) error {
 	if err := s.startServer(ctx); err != nil {
-		log.InfoCtx(ctx, "failed to start drpc server", zap.Error(err))
+		// the app stays up without local P2P, but both local listeners are
+		// missing — warn, don't bury it at info
+		log.WarnCtx(ctx, "failed to start local p2p server", zap.Error(err))
 	} else {
 		s.serverStarted = true
+		if s.lifecycle {
+			s.startLifecycle()
+		}
 	}
 	return nil
 }
@@ -73,20 +106,28 @@ func (s *clientServer) Port() int {
 }
 
 func (s *clientServer) startServer(ctx context.Context) (err error) {
-	s.storage = keyvaluestore.NewJsonFromCollection[int](s.provider.GetSystemCollection())
+	if s.storage == nil {
+		s.storage = keyvaluestore.NewJsonFromCollection[int](s.provider.GetSystemCollection())
+	}
 
 	oldPort, err := s.storage.Get(ctx, anystoreprovider.SystemKeys.PortKey())
 	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
-		return
+		return fmt.Errorf("get saved port: %w", err)
 	}
-	s.port, err = s.listenQuic(ctx, oldPort)
+	s.port, err = s.listen(ctx, oldPort)
 	if err != nil {
-		return
+		return fmt.Errorf("bind local listeners: %w", err)
 	}
 	if oldPort == s.port {
 		return nil
 	}
-	return s.storage.Set(ctx, anystoreprovider.SystemKeys.PortKey(), s.port)
+	if err = s.storage.Set(ctx, anystoreprovider.SystemKeys.PortKey(), s.port); err != nil {
+		// the listeners are bound and serving: failing here would report the
+		// server as not started and keep local discovery off; the port may
+		// only change on the next launch
+		log.WarnCtx(ctx, "persist local p2p port", zap.Int("port", s.port), zap.Error(err))
+	}
+	return nil
 }
 
 func (s *clientServer) parsePort(addr string) (int, error) {
@@ -113,24 +154,67 @@ func (s *clientServer) prepareListener(port int) (net.Listener, error) {
 	return net.Listen("tcp", ":")
 }
 
-func (s *clientServer) listenQuic(ctx context.Context, savedPort int) (port int, err error) {
-	// trying to listen to old port or get new one
-	list, err := s.prepareListener(savedPort)
+// listen binds both local transports on one shared port: TCP for yamux and
+// UDP for QUIC. The TCP listener doubles as the port reservation. A free TCP
+// port does not guarantee a free UDP port, so on a UDP bind failure the
+// reservation is dropped and another port is tried.
+func (s *clientServer) listen(ctx context.Context, savedPort int) (port int, err error) {
+	tryPort := savedPort
+	for i := 0; i < listenAttempts; i++ {
+		port, err = s.listenPort(ctx, tryPort)
+		if err == nil {
+			return port, nil
+		}
+		tryPort = 0
+	}
+	return 0, err
+}
+
+func (s *clientServer) listenPort(ctx context.Context, tryPort int) (port int, err error) {
+	list, err := s.prepareListener(tryPort)
 	if err != nil {
-		return
+		return 0, fmt.Errorf("listen tcp: %w", err)
 	}
 	port, err = s.parsePort(list.Addr().String())
 	if err != nil {
-		return
+		_ = list.Close()
+		return 0, fmt.Errorf("parse tcp listener port: %w", err)
 	}
-	_ = list.Close()
 	addrs, err := s.quic.ListenAddrs(ctx, "0.0.0.0:"+strconv.Itoa(port))
 	if err != nil {
-		return
+		_ = list.Close()
+		return 0, fmt.Errorf("listen udp on port %d: %w", port, err)
 	}
-	return s.parsePort(addrs[0].String())
+	port, err = s.parsePort(addrs[0].String())
+	if err != nil {
+		_ = list.Close()
+		return 0, fmt.Errorf("parse udp listener port: %w", err)
+	}
+	// Hand the TCP listener to the yamux transport so local peers can dial us
+	// over TCP as well. AddListener starts the accept loop itself, and
+	// yamux.Run starts one per registered listener — so this must run after
+	// yamux.Run. Component registration order guarantees it: yamux is
+	// registered before clientserver, and this is only called from Run. It is
+	// also the last step of an attempt, so a failed attempt never registers.
+	if s.lifecycle {
+		// registered once; its socket is replaced across suspensions
+		lan := newLanListener(list, s.lc.kickChan())
+		s.lc.mu.Lock()
+		s.lan = lan
+		s.lc.mu.Unlock()
+		s.yamux.AddListener(lan)
+		return port, nil
+	}
+	s.yamux.AddListener(list)
+	return port, nil
 }
 
 func (s *clientServer) Close(_ context.Context) (err error) {
+	s.stopLifecycle()
+	if s.lan != nil {
+		// after the worker stopped, so no rebind can install past it; yamux
+		// closes it again on its own Close, which is a no-op
+		_ = s.lan.Close()
+	}
 	return nil
 }

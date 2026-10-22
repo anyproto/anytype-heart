@@ -13,11 +13,13 @@ Scope: global
 - Provide node/space usage statistics
 
 ## Background Tasks
-- nodeUsageUpdater: periodically fetches account usage from backup node (10s active, 1min idle) [runNodeUsageUpdater]
+- nodeUsageUpdater: periodically fetches account usage from backup node (10s active, 1min idle) [runNodeUsageUpdater];
+  RequestNodeUsageUpdate wakes it early (coalescing, non-blocking; used on membership changes)
 - uploader (x10): processes pending uploads from queue [runUploader]
 - batchUploader (x10): sends batched block upload requests to backup node [runBatchUploader]
 - requestsBatcher: batches small files together, splits large files across requests [requestsBatcher.run]
 - limitedUploader: retries uploads when space becomes available [runLimitedUploader]
+- missingBlocksRetrier: retries files whose blocks were found neither locally nor on the node [runMissingBlocksRetrier]
 - deleter: processes pending deletions from queue [runDeleter]
 - spaceUsage (per space): periodically updates per-space limits from backup node [spaceUsage.update]
 
@@ -26,16 +28,24 @@ Scope: global
 
 ## Documentation
 File states: PendingUpload -> Uploading -> Done (or Limited if quota exceeded)
+                          -> MissingBlocks (blocks found neither locally nor on node; retried with backoff)
                           -> PendingDeletion -> Deleted
 
 Upload flow:
-1. AddFile enqueues file with PendingUpload state
-2. Uploader checks block availability on node (which blocks need upload vs bind)
+1. AddFile enqueues file with PendingUpload state. The file's blocks are not
+   required to exist locally: a file object may reference a fileId whose
+   blocks live only on the file node (e.g. import dedup reused a fileId
+   uploaded from another space or device).
+2. Uploader enumerates the file's cids without fetching leaf data (structural
+   nodes are read locally with a fallback to the node) and checks their
+   availability on the node: blocks the node already has are bound, the rest
+   are uploaded from the local store.
 3. Allocates space in local limit tracker
-4. Walks DAG and batches blocks via requestsBatcher
+4. Binds cids, then batches locally-present blocks via requestsBatcher
 5. batchUploader sends BlockPushMany requests to node
 6. On completion, marks file as Done; on limit error, marks as Limited
 
+A file whose bytes are already on the node reaches Done with zero uploads.
 Limited files are retried when spaceUsageManager detects more free space available.
 */
 
@@ -80,7 +90,9 @@ type FileSync interface {
 	MarkUploaded(objectId string) error
 	OnStatusUpdated(StatusCallback)
 	DeleteFile(objectId string, fileId domain.FullFileId) (err error)
-	UpdateNodeUsage(ctx context.Context) error
+	// RequestNodeUsageUpdate asks the node usage updater to refresh soon. It
+	// never blocks: requests made while one is pending coalesce into it.
+	RequestNodeUsageUpdate()
 	NodeUsage(ctx context.Context) (usage NodeUsage, err error)
 	SpaceStat(ctx context.Context, spaceId string) (ss SpaceStat, err error)
 	DebugQueue(*http.Request) (*QueueInfo, error)
@@ -124,6 +136,8 @@ type fileSync struct {
 	nodeUsageStore keyvaluestore.Store[NodeUsage]
 	nodeUsageLock  sync.RWMutex
 	nodeUsage      *NodeUsage
+	// nodeUsageUpdateCh (capacity 1) wakes runNodeUsageUpdater
+	nodeUsageUpdateCh chan struct{}
 
 	limitManager    *spaceUsageManager
 	requestsBatcher *requestsBatcher
@@ -143,7 +157,7 @@ type spaceService interface {
 }
 
 func New() FileSync {
-	return &fileSync{closeWg: &sync.WaitGroup{}}
+	return &fileSync{closeWg: &sync.WaitGroup{}, nodeUsageUpdateCh: make(chan struct{}, 1)}
 }
 
 func (s *fileSync) Init(a *app.App) (err error) {
@@ -226,6 +240,8 @@ func (s *fileSync) Run(ctx context.Context) error {
 	for range 10 {
 		go s.runUploader(s.loopCtx)
 	}
+
+	go s.runMissingBlocksRetrier(s.loopCtx)
 
 	go s.runLimitedUploader(s.loopCtx)
 

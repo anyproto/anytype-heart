@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -37,9 +38,20 @@ type wallet struct {
 	lang          string
 	deviceKeyPath string
 
-	accountKey    crypto.PrivKey
-	deviceKey     crypto.PrivKey
-	masterKey     crypto.PrivKey
+	// appLinkMu serializes app-link file mutations against each other and
+	// against reads. Without it, UpdateAppLinkGrant racing RevokeAppLink can
+	// resurrect a revoked key: the update opens the file, the revoke unlinks
+	// it and sweeps the sessions, then the update renames its rewrite back
+	// into place — a fully valid record for a key the user was told is gone.
+	// Writers exclude each other and readers; a revoke that wins makes the
+	// in-flight update fail with ErrAppLinkNotFound. Readers take the shared
+	// side so an open read handle can never collide with a writer's rename
+	// (a hard failure on Windows, which opens files without delete sharing).
+	appLinkMu sync.RWMutex
+
+	accountKey crypto.PrivKey
+	deviceKey  crypto.PrivKey
+	masterKey  crypto.PrivKey
 	// this key is used to sign ethereum transactions
 	// and use Any Naming Service
 	ethereumKey ecdsa.PrivateKey
@@ -185,8 +197,8 @@ func NewWithAccountRepo(rootPath string, derivationResult crypto.DerivationResul
 		rootPath:      rootPath,
 		repoPath:      repoPath,
 		lang:          lang,
-		masterKey:  derivationResult.MasterKey,
-		accountKey: derivationResult.Identity,
+		masterKey:     derivationResult.MasterKey,
+		accountKey:    derivationResult.Identity,
 		deviceKeyPath: filepath.Join(repoPath, keyFileDevice),
 		ethereumKey:   derivationResult.EthereumIdentity,
 	}
@@ -218,7 +230,8 @@ type Wallet interface {
 	GetAccountEthAddress() EthAddress
 
 	ReadAppLink(appKey string) (*AppLinkInfo, error)
-	PersistAppLink(name string, scope model.AccountAuthLocalApiScope) (appInfo *AppLinkInfo, err error)
+	PersistAppLink(name string, scope model.AccountAuthLocalApiScope, expireAt int64, grant *AppLinkGrant) (appInfo *AppLinkInfo, err error)
+	UpdateAppLinkGrant(appHash string, grant *AppLinkGrant) error
 	ListAppLinks() ([]*AppLinkInfo, error)
 	RevokeAppLink(appHash string) error
 

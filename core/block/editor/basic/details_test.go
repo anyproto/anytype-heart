@@ -8,7 +8,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -192,7 +194,6 @@ func TestBasic_UpdateDetails(t *testing.T) {
 	})
 }
 
-
 func TestBasic_SetObjectTypesInState(t *testing.T) {
 	t.Run("no error", func(t *testing.T) {
 		// given
@@ -303,5 +304,102 @@ func TestBasic_SetObjectTypesInState(t *testing.T) {
 		assert.False(t, s.Details().Has(bundle.RelationKeyLayout))
 		assert.False(t, s.Details().Has(bundle.RelationKeyLayoutAlign))
 		assert.Len(t, s.Details().GetStringList(bundle.RelationKeyFeaturedRelations), 1)
+	})
+}
+
+// shapeObject puts the fixture's object in the given block shape, with the given stored resolvedLayout
+func (f *basicFixture) shapeObject(t *testing.T, resolved model.ObjectTypeLayout, shape ...template.StateTransformer) {
+	st := f.sb.NewState()
+	template.InitTemplate(st, shape...)
+	st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(resolved))
+	require.NoError(t, f.sb.Apply(st, smartblock.NoRestrictions))
+}
+
+func TestBasic_LayoutChangeConvertsBlocks(t *testing.T) {
+	t.Run("setting the layout detail to note converts a titled object in the same change", func(t *testing.T) {
+		// given
+		f := newBasicFixture(t)
+		f.shapeObject(t, model.ObjectType_basic, template.WithTitle, template.WithDetailName("Hello"))
+
+		// when
+		err := f.basic.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyLayout, Value: domain.Int64(model.ObjectType_note)}}, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, f.sb.Details().GetString(bundle.RelationKeyName))
+		assert.Nil(t, f.sb.NewState().PickParentOf(template.TitleBlockId))
+	})
+
+	t.Run("type change of an object still in note shape promotes its first line to the name", func(t *testing.T) {
+		// given: the type left note while nobody opened the object, so resolvedLayout already says
+		// basic but the blocks are still in note shape
+		f := newBasicFixture(t)
+		f.shapeObject(t, model.ObjectType_basic, template.WithFirstTextBlockContent("Meeting"))
+		f.sb.TypeLayouts = map[domain.TypeKey]model.ObjectTypeLayout{bundle.TypeKeyTask: model.ObjectType_todo}
+		f.store.AddObjects(t, []objectstore.TestObject{{
+			bundle.RelationKeySpaceId:           domain.String(spaceId),
+			bundle.RelationKeyId:                domain.String("ot-task"),
+			bundle.RelationKeyUniqueKey:         domain.String("ot-task"),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(int64(model.ObjectType_todo)),
+		}})
+		s := f.sb.NewState()
+
+		// when
+		err := f.basic.SetObjectTypesInState(s, []domain.TypeKey{bundle.TypeKeyTask}, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "Meeting", s.Details().GetString(bundle.RelationKeyName))
+		assert.NotNil(t, s.PickParentOf(template.TitleBlockId))
+	})
+
+	t.Run("type change from a guessed layout keeps the first paragraph", func(t *testing.T) {
+		// given: the old type is unknown, so resolvedLayout basic is only a guess; the blocks are in
+		// note shape with a nested first paragraph, and the new type is note
+		f := newBasicFixture(t)
+		f.shapeObject(t, model.ObjectType_basic, template.WithFirstTextBlockContent("Meeting"))
+		st := f.sb.NewState()
+		first := st.Pick(st.RootId()).Model().ChildrenIds[0]
+		f.sb.TypeLayouts = map[domain.TypeKey]model.ObjectTypeLayout{bundle.TypeKeyNote: model.ObjectType_note}
+		f.store.AddObjects(t, []objectstore.TestObject{{
+			bundle.RelationKeySpaceId:           domain.String(spaceId),
+			bundle.RelationKeyId:                domain.String("ot-note"),
+			bundle.RelationKeyUniqueKey:         domain.String("ot-note"),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(int64(model.ObjectType_note)),
+		}})
+		s := f.sb.NewState()
+
+		// when
+		err := f.basic.SetObjectTypesInState(s, []domain.TypeKey{bundle.TypeKeyNote}, false)
+
+		// then
+		require.NoError(t, err)
+		// consuming the paragraph only unlinks it, so check it is still in the tree
+		require.NotNil(t, s.PickParentOf(first), "the first paragraph was consumed")
+		assert.Equal(t, "Meeting", s.Pick(first).Model().GetText().Text)
+		assert.Empty(t, s.Details().GetString(bundle.RelationKeyName))
+	})
+
+	t.Run("type change keeping the layout still repairs an object in note shape", func(t *testing.T) {
+		// given: resolvedLayout already says basic, the blocks are still in note shape, and the new
+		// type is basic too - the layout does not change, so the converter has nothing to do
+		f := newBasicFixture(t)
+		f.shapeObject(t, model.ObjectType_basic, template.WithFirstTextBlockContent("Meeting"))
+		f.sb.TypeLayouts = map[domain.TypeKey]model.ObjectTypeLayout{bundle.TypeKeyPage: model.ObjectType_basic}
+		f.store.AddObjects(t, []objectstore.TestObject{{
+			bundle.RelationKeySpaceId:           domain.String(spaceId),
+			bundle.RelationKeyId:                domain.String("ot-page"),
+			bundle.RelationKeyUniqueKey:         domain.String("ot-page"),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}})
+		s := f.sb.NewState()
+
+		// when
+		err := f.basic.SetObjectTypesInState(s, []domain.TypeKey{bundle.TypeKeyPage}, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "Meeting", s.Details().GetString(bundle.RelationKeyName))
+		assert.NotNil(t, s.PickParentOf(template.TitleBlockId))
 	})
 }

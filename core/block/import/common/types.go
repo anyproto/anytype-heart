@@ -142,6 +142,12 @@ type Response struct {
 	RootObjectID         string
 	RootObjectWidgetType model.BlockContentWidgetLayout
 	TypesCreated         []domain.TypeKey
+	// KeptIDs are referenced ids the converter has decided to keep VERBATIM
+	// rather than remap or rewrite to the missing-object sentinel: the ids an
+	// AnyBlock bundle declares its source space DELETED (SPEC §2c). The
+	// creation stage maps each to itself and writes a tombstone for it, so a
+	// link to a deleted object restores as a link to a deleted object.
+	KeptIDs []string
 }
 
 type SnapshotContext struct {

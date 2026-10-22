@@ -36,6 +36,16 @@ func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *commo
 		}
 	}
 
+	// AnyBlock v2 carries remote metadata in FileInfo, including when the
+	// document represents a legacy file and its document ID is not the blob CID.
+	if info := sn.Snapshot.Data.FileInfo; info != nil && info.FileId != "" {
+		fileId = info.FileId
+		filesKeys = make(map[string]string, len(info.EncryptionKeys))
+		for _, key := range info.EncryptionKeys {
+			filesKeys[key.Path] = key.Key
+		}
+	}
+
 	filePath := sn.Snapshot.Data.Details.GetString(bundle.RelationKeySource)
 	if filePath != "" {
 		fileObjectId, err := uploadFile(ctx, f.blockService, spaceId, filePath, origin, filesKeys, sn.Snapshot.Data.Details)

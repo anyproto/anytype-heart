@@ -1228,6 +1228,17 @@ func (s dummySourceService) DetailsFromIdBasedSource(id domain.FullID) (*domain.
 	return makeDetails(s.objectToReturn), nil
 }
 
+// updatingSourceService changes an object while QueryByIds reads a virtual one
+type updatingSourceService struct {
+	dummySourceService
+	update func()
+}
+
+func (s updatingSourceService) DetailsFromIdBasedSource(id domain.FullID) (*domain.Details, error) {
+	s.update()
+	return s.dummySourceService.DetailsFromIdBasedSource(id)
+}
+
 func TestQueryById(t *testing.T) {
 	t.Run("no ids", func(t *testing.T) {
 		s := NewStoreFixture(t)
@@ -1322,6 +1333,41 @@ func TestQueryByIdAndSubscribeForChanges(t *testing.T) {
 			case <-time.After(10 * time.Millisecond):
 				require.Fail(t, "update has not been received")
 			}
+		}
+	})
+}
+
+func TestQueryByIdAndSubscribeForChangesDuringQuery(t *testing.T) {
+	t.Run("a change made during the query is received", func(t *testing.T) {
+		// given
+		s := NewStoreFixture(t)
+		obj1 := makeObjectWithName("id1", "name1")
+		s.AddObjects(t, []TestObject{obj1})
+		// the date object is not indexable, so it is read from the source service after id1
+		dateId := addr.DatePrefix + "01_02_2005"
+		s.sourceService = updatingSourceService{
+			dummySourceService: dummySourceService{objectToReturn: makeObjectWithName(dateId, "date")},
+			update: func() {
+				err := s.UpdateObjectDetails(context.Background(), "id1", makeDetails(makeObjectWithName("id1", "name2")))
+				require.NoError(t, err)
+			},
+		}
+		recordsCh := make(chan *domain.Details)
+		sub := database.NewSubscription(nil, recordsCh)
+
+		// when
+		recs, closeSub, err := s.QueryByIdsAndSubscribeForChanges([]string{"id1", dateId}, sub)
+		require.NoError(t, err)
+		defer closeSub()
+
+		// then
+		require.Len(t, recs, 2)
+		assert.Equal(t, "name1", recs[0].Details.GetString(bundle.RelationKeyName))
+		select {
+		case rec := <-recordsCh:
+			assert.Equal(t, "name2", rec.GetString(bundle.RelationKeyName))
+		case <-time.After(time.Second):
+			require.Fail(t, "the change made during the query has not been received")
 		}
 	})
 }

@@ -5,8 +5,11 @@ package mock_apicore
 import (
 	context "context"
 
-	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
+
 	mock "github.com/stretchr/testify/mock"
+
+	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 
 	pb "github.com/anyproto/anytype-heart/pb"
 )
@@ -22,6 +25,124 @@ type MockChatSubscriptionService_Expecter struct {
 
 func (_m *MockChatSubscriptionService) EXPECT() *MockChatSubscriptionService_Expecter {
 	return &MockChatSubscriptionService_Expecter{mock: &_m.Mock}
+}
+
+// ChatState provides a mock function with given fields: spaceId, chatObjectId
+func (_m *MockChatSubscriptionService) ChatState(spaceId string, chatObjectId string) (*model.ChatState, error) {
+	ret := _m.Called(spaceId, chatObjectId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ChatState")
+	}
+
+	var r0 *model.ChatState
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, string) (*model.ChatState, error)); ok {
+		return rf(spaceId, chatObjectId)
+	}
+	if rf, ok := ret.Get(0).(func(string, string) *model.ChatState); ok {
+		r0 = rf(spaceId, chatObjectId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*model.ChatState)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = rf(spaceId, chatObjectId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockChatSubscriptionService_ChatState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChatState'
+type MockChatSubscriptionService_ChatState_Call struct {
+	*mock.Call
+}
+
+// ChatState is a helper method to define mock.On call
+//   - spaceId string
+//   - chatObjectId string
+func (_e *MockChatSubscriptionService_Expecter) ChatState(spaceId interface{}, chatObjectId interface{}) *MockChatSubscriptionService_ChatState_Call {
+	return &MockChatSubscriptionService_ChatState_Call{Call: _e.mock.On("ChatState", spaceId, chatObjectId)}
+}
+
+func (_c *MockChatSubscriptionService_ChatState_Call) Run(run func(spaceId string, chatObjectId string)) *MockChatSubscriptionService_ChatState_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockChatSubscriptionService_ChatState_Call) Return(_a0 *model.ChatState, _a1 error) *MockChatSubscriptionService_ChatState_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockChatSubscriptionService_ChatState_Call) RunAndReturn(run func(string, string) (*model.ChatState, error)) *MockChatSubscriptionService_ChatState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// OpenSpaceChats provides a mock function with given fields: ctx, req
+func (_m *MockChatSubscriptionService) OpenSpaceChats(ctx context.Context, req apicore.SpaceChatOpen) (apicore.SpaceChatSubscription, error) {
+	ret := _m.Called(ctx, req)
+
+	if len(ret) == 0 {
+		panic("no return value specified for OpenSpaceChats")
+	}
+
+	var r0 apicore.SpaceChatSubscription
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, apicore.SpaceChatOpen) (apicore.SpaceChatSubscription, error)); ok {
+		return rf(ctx, req)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, apicore.SpaceChatOpen) apicore.SpaceChatSubscription); ok {
+		r0 = rf(ctx, req)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(apicore.SpaceChatSubscription)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, apicore.SpaceChatOpen) error); ok {
+		r1 = rf(ctx, req)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockChatSubscriptionService_OpenSpaceChats_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'OpenSpaceChats'
+type MockChatSubscriptionService_OpenSpaceChats_Call struct {
+	*mock.Call
+}
+
+// OpenSpaceChats is a helper method to define mock.On call
+//   - ctx context.Context
+//   - req apicore.SpaceChatOpen
+func (_e *MockChatSubscriptionService_Expecter) OpenSpaceChats(ctx interface{}, req interface{}) *MockChatSubscriptionService_OpenSpaceChats_Call {
+	return &MockChatSubscriptionService_OpenSpaceChats_Call{Call: _e.mock.On("OpenSpaceChats", ctx, req)}
+}
+
+func (_c *MockChatSubscriptionService_OpenSpaceChats_Call) Run(run func(ctx context.Context, req apicore.SpaceChatOpen)) *MockChatSubscriptionService_OpenSpaceChats_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(apicore.SpaceChatOpen))
+	})
+	return _c
+}
+
+func (_c *MockChatSubscriptionService_OpenSpaceChats_Call) Return(_a0 apicore.SpaceChatSubscription, _a1 error) *MockChatSubscriptionService_OpenSpaceChats_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockChatSubscriptionService_OpenSpaceChats_Call) RunAndReturn(run func(context.Context, apicore.SpaceChatOpen) (apicore.SpaceChatSubscription, error)) *MockChatSubscriptionService_OpenSpaceChats_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // SubscribeLastMessages provides a mock function with given fields: ctx, chatObjectId, limit, subId, sink

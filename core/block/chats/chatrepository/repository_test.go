@@ -8,10 +8,13 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/query"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -20,12 +23,16 @@ type fixture struct {
 	db   anystore.DB
 }
 
-func newFixture(t *testing.T) *fixture {
+func newFixture(t testing.TB) *fixture {
 	ctx := context.Background()
 	db, err := anystore.Open(ctx, filepath.Join(t.TempDir(), "store.db"), nil)
 	require.NoError(t, err)
 
 	coll, err := db.CreateCollection(ctx, "testchats")
+	require.NoError(t, err)
+	historyColl, err := db.CreateCollection(ctx, "testchatMessageHistory")
+	require.NoError(t, err)
+	_, err = db.CreateCollection(ctx, storestate.CollMeta)
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
@@ -34,8 +41,9 @@ func newFixture(t *testing.T) *fixture {
 
 	return &fixture{
 		repo: &repository{
-			collection: coll,
-			arenaPool:  &anyenc.ArenaPool{},
+			collection:        coll,
+			historyCollection: historyColl,
+			arenaPool:         &anyenc.ArenaPool{},
 		},
 		db: db,
 	}
@@ -99,6 +107,115 @@ func (f *fixture) addMessageWithUnreadReactions(t *testing.T, id, orderId string
 	require.NoError(t, err)
 }
 
+// addMessageWithOrders inserts a message with an explicit _o order object so
+// tests can model a content edit whose order differs from the creation order.
+func (f *fixture) addMessageWithOrders(t *testing.T, id, orderId, contentOrderId string) {
+	t.Helper()
+	arena := &anyenc.Arena{}
+	msg := &chatmodel.Message{
+		ChatMessage: &model.ChatMessage{
+			Id:      id,
+			OrderId: orderId,
+			Message: &model.ChatMessageMessageContent{
+				Text: "test",
+			},
+		},
+	}
+	val := arena.NewObject()
+	msg.MarshalAnyenc(val, arena)
+
+	orderObj := arena.NewObject()
+	orderObj.Set("id", arena.NewString(orderId))
+	if contentOrderId != "" {
+		orderObj.Set("content", arena.NewString(contentOrderId))
+	}
+	val.Set(chatmodel.OrderKey, orderObj)
+
+	err := f.repo.collection.Insert(context.Background(), val)
+	require.NoError(t, err)
+}
+
+func TestIterateMessagesForIndexing(t *testing.T) {
+	collectIds := func(fx *fixture, afterOrderId string) ([]string, error) {
+		var ids []string
+		err := fx.repo.IterateMessagesForIndexing(context.Background(), afterOrderId, func(msg *chatmodel.Message) error {
+			ids = append(ids, msg.Id)
+			return nil
+		})
+		return ids, err
+	}
+
+	t.Run("all messages when afterOrderId is empty", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		want := make([]string, 0, 5)
+		for i := 1; i <= 5; i++ {
+			id := fmt.Sprintf("msg%d", i)
+			fx.addMessage(t, id, fmt.Sprintf("o%d", i), false, false, false)
+			want = append(want, id)
+		}
+
+		// when
+		got, err := collectIds(fx, "")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("messages at or after afterOrderId", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		for i := 1; i <= 5; i++ {
+			fx.addMessage(t, fmt.Sprintf("msg%d", i), fmt.Sprintf("o%d", i), false, false, false)
+		}
+		want := []string{"msg3", "msg4", "msg5"}
+
+		// when
+		got, err := collectIds(fx, "o3")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("message with older order id but newer content edit is included", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.addMessageWithOrders(t, "msgEdited", "o1", "o9")
+		fx.addMessageWithOrders(t, "msgOld", "o2", "")
+		fx.addMessageWithOrders(t, "msgNew", "o5", "")
+		want := []string{"msgEdited", "msgNew"}
+
+		// when
+		got, err := collectIds(fx, "o4")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("proc error stops iteration and propagates", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		for i := 1; i <= 3; i++ {
+			fx.addMessage(t, fmt.Sprintf("msg%d", i), fmt.Sprintf("o%d", i), false, false, false)
+		}
+		wantErr := fmt.Errorf("sink failed")
+
+		// when
+		var seen int
+		err := fx.repo.IterateMessagesForIndexing(context.Background(), "", func(msg *chatmodel.Message) error {
+			seen++
+			return wantErr
+		})
+
+		// then
+		require.ErrorIs(t, err, wantErr)
+		assert.Equal(t, 1, seen)
+	})
+}
+
 func TestCountMessages(t *testing.T) {
 	t.Run("zero on empty collection", func(t *testing.T) {
 		fx := newFixture(t)
@@ -122,6 +239,59 @@ func TestCountMessages(t *testing.T) {
 		// sanity: pre-existing unread counter still reflects only unread
 		assert.Equal(t, int32(1), state.Messages.Counter)
 	})
+}
+
+func TestCountMessagesLifetime(t *testing.T) {
+	fx := newFixture(t)
+	fx.addMessage(t, "msg1", "order1", true, false, false)
+	fx.addMessage(t, "msg2", "order2", true, false, false)
+
+	recorded, err := fx.repo.RecordMessage(context.Background(), "msg2")
+	require.NoError(t, err)
+	assert.False(t, recorded, "replaying a create is idempotent")
+	require.NoError(t, fx.repo.collection.DeleteId(context.Background(), "msg1"))
+
+	live, err := fx.repo.CountMessages(context.Background())
+	require.NoError(t, err)
+	lifetime, err := fx.repo.CountMessagesLifetime(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, 1, live)
+	assert.Equal(t, 2, lifetime, "deleting a live document must not decrement the lifetime total")
+}
+
+func TestEnsureMessageHistoryForcesOneFullReplay(t *testing.T) {
+	ctx := context.Background()
+	fx := newFixture(t)
+	fx.addMessage(t, "msg1", "order1", true, false, false)
+	require.NoError(t, fx.repo.historyCollection.DeleteId(ctx, "msg1"), "simulate a pre-history-index message")
+
+	meta, err := fx.db.Collection(ctx, storestate.CollMeta)
+	require.NoError(t, err)
+	arena := &anyenc.Arena{}
+	metaDoc := arena.NewObject()
+	metaDoc.Set("id", arena.NewString("chat1"))
+	metaDoc.Set("q", arena.NewNumberInt(42))
+	metaDoc.Set("r", arena.NewTrue())
+	require.NoError(t, meta.Insert(ctx, metaDoc))
+
+	require.NoError(t, fx.repo.ensureMessageHistory(ctx, fx.db, "chat1"))
+	_, err = meta.FindId(ctx, "chat1")
+	assert.ErrorIs(t, err, anystore.ErrDocNotFound, "the next open must replay the full tree, not the incremental tail")
+	lifetime, err := fx.repo.CountMessagesLifetime(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, 1, lifetime, "the schema marker is not counted as a message")
+
+	// Once versioned, initialization is idempotent and does not keep forcing
+	// expensive full replays on every repository open.
+	arena.Reset()
+	metaDoc = arena.NewObject()
+	metaDoc.Set("id", arena.NewString("chat1"))
+	metaDoc.Set("q", arena.NewNumberInt(43))
+	metaDoc.Set("r", arena.NewTrue())
+	require.NoError(t, meta.Insert(ctx, metaDoc))
+	require.NoError(t, fx.repo.ensureMessageHistory(ctx, fx.db, "chat1"))
+	_, err = meta.FindId(ctx, "chat1")
+	require.NoError(t, err, "the version marker prevents a second replay reset")
 }
 
 func TestSetReadFlag(t *testing.T) {
@@ -207,7 +377,7 @@ func TestSetReadFlag(t *testing.T) {
 
 		assert.Equal(t, []string{"msg1"}, modified)
 		assert.True(t, fx.getMessage(t, "msg1").MentionRead)
-		assert.True(t, fx.getMessage(t, "msg2").MentionRead) // was already true
+		assert.True(t, fx.getMessage(t, "msg2").MentionRead)  // was already true
 		assert.False(t, fx.getMessage(t, "msg3").MentionRead) // no mention, not modified
 	})
 
@@ -334,7 +504,7 @@ func TestClearUnreadReactions(t *testing.T) {
 		fx := newFixture(t)
 		// Message has two reactions with different order IDs
 		fx.addMessageWithUnreadReactions(t, "msg1", "order2", map[string]map[string]chatmodel.ReactionChangeEntry{
-			"👍": {"user1": {ChangeId: "ch1", OrderId: "order1"}},
+			"👍":  {"user1": {ChangeId: "ch1", OrderId: "order1"}},
 			"❤️": {"user2": {ChangeId: "ch2", OrderId: "order3"}},
 		})
 
@@ -392,5 +562,103 @@ func TestClearUnreadReactions(t *testing.T) {
 			id := fmt.Sprintf("msg%03d", i)
 			assert.False(t, fx.getMessage(t, id).UnreadReaction, id)
 		}
+	})
+}
+
+func TestGetLastMessagesByCreators(t *testing.T) {
+	// given
+	fx := newFixture(t)
+	ctx := context.Background()
+	addMsg := func(id, orderId, creator string) {
+		require.NoError(t, fx.repo.AddTestMessage(ctx, &chatmodel.Message{
+			ChatMessage: &model.ChatMessage{
+				Id:      id,
+				OrderId: orderId,
+				Creator: creator,
+				Message: &model.ChatMessageMessageContent{Text: "test"},
+			},
+		}))
+	}
+	// identities are case-sensitive: A5alice vs a5alice are different authors
+	addMsg("msg1", "o1", "A5alice")
+	addMsg("msg2", "o2", "B7bob")
+	addMsg("msg3", "o3", "A5alice")
+	addMsg("msg4", "o4", "a5alice")
+
+	t.Run("single creator: newest selected, ascending order like GetLastMessages", func(t *testing.T) {
+		// when
+		got, err := fx.repo.GetLastMessagesByCreators(ctx, []string{"A5alice"}, 10)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, got, 2)
+		assert.Equal(t, "msg1", got[0].Id)
+		assert.Equal(t, "msg3", got[1].Id)
+	})
+
+	t.Run("multiple creators with limit selects the newest", func(t *testing.T) {
+		// when: limit 2 must keep the newest two of alice+bob (msg2, msg3)
+		got, err := fx.repo.GetLastMessagesByCreators(ctx, []string{"A5alice", "B7bob"}, 2)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, got, 2)
+		assert.Equal(t, "msg2", got[0].Id)
+		assert.Equal(t, "msg3", got[1].Id)
+	})
+
+	t.Run("unknown creator returns empty", func(t *testing.T) {
+		// when
+		got, err := fx.repo.GetLastMessagesByCreators(ctx, []string{"nobody"}, 10)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+}
+
+// reactionUnreadOrderId carries a sparse index, and since any-store v1.0.2 the planner only lets a
+// sparse index serve a predicate that guarantees the field is present and non-null (GO-7510).
+// $exists does not qualify — it also matches an explicit null, which the index skips — so writing
+// filterReactionUnread as query.Exists{} silently turns all three of these into full collection
+// scans (measured 300-700x on a 50k-message collection) while returning identical results.
+func TestFilterReactionUnreadUsesTheSparseIndex(t *testing.T) {
+	newIndexedFixture := func(t *testing.T) *fixture {
+		fx := newFixture(t)
+		require.NoError(t, anystorehelper.AddIndexes(context.Background(), fx.repo.collection, chatCollectionIndexes))
+		return fx
+	}
+	indexUsed := func(t *testing.T, fx *fixture, q anystore.Query) bool {
+		t.Helper()
+		explain, err := q.Explain(context.Background())
+		require.NoError(t, err)
+		for _, idx := range explain.Indexes {
+			if idx.Name == chatmodel.ReactionUnreadOrderIdKey && idx.Used {
+				return true
+			}
+		}
+		t.Logf("plan: %s", explain.Sql)
+		return false
+	}
+
+	t.Run("GetNewestUnreadReactionOrderId — filter and sort", func(t *testing.T) {
+		fx := newIndexedFixture(t)
+		q := fx.repo.collection.Find(filterReactionUnread).
+			Sort("-" + chatmodel.ReactionUnreadOrderIdKey).Limit(1)
+		assert.True(t, indexUsed(t, fx, q))
+	})
+
+	t.Run("GetAllUnreadReactionChangeIds — filter only", func(t *testing.T) {
+		fx := newIndexedFixture(t)
+		assert.True(t, indexUsed(t, fx, fx.repo.collection.Find(filterReactionUnread)))
+	})
+
+	t.Run("ClearUnreadReactions — filter bounded by maxOrderId", func(t *testing.T) {
+		fx := newIndexedFixture(t)
+		filter := query.And{
+			filterReactionUnread,
+			query.Key{Path: []string{chatmodel.ReactionUnreadOrderIdKey}, Filter: query.NewComp(query.CompOpLte, "ord")},
+		}
+		assert.True(t, indexUsed(t, fx, fx.repo.collection.Find(filter).Limit(100)))
 	})
 }

@@ -10,15 +10,19 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // objectGCCallRecorder records calls to ArchiveOrphansOnLinksRemoval and RestoreOrphansOnLinksAdded
 // via buffered channels so goroutine timing works in tests.
 type objectGCCallRecorder struct {
-	removedCh  chan linksRemovalCall
-	restoredCh chan linksRestoredCall
+	removedCh          chan linksRemovalCall
+	restoredCh         chan linksRestoredCall
+	candidatesToReturn []string // orphan candidates ArchiveOrphansOnLinksRemoval returns
 }
 
 type linksRemovalCall struct {
@@ -41,19 +45,23 @@ func newObjectGCCallRecorder() *objectGCCallRecorder {
 	}
 }
 
-func (r *objectGCCallRecorder) Init(_ *app.App) error                                  { return nil }
-func (r *objectGCCallRecorder) Name() string                                            { return "test-objectgc" }
-func (r *objectGCCallRecorder) Run(_ context.Context) error                             { return nil }
-func (r *objectGCCallRecorder) Close(_ context.Context) error                           { return nil }
-func (r *objectGCCallRecorder) CheckObjectsOnObjectArchived(_, _ string, _ bool) ([]string, error) {
-	return nil, nil
+func (r *objectGCCallRecorder) Init(_ *app.App) error         { return nil }
+func (r *objectGCCallRecorder) Name() string                  { return "test-objectgc" }
+func (r *objectGCCallRecorder) Run(_ context.Context) error   { return nil }
+func (r *objectGCCallRecorder) Close(_ context.Context) error { return nil }
+func (r *objectGCCallRecorder) CheckObjectsOnObjectArchived(_, _ string, _ bool) (objectgc.OrphanCandidates, error) {
+	return objectgc.OrphanCandidates{}, nil
 }
-func (r *objectGCCallRecorder) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, _ []string) ([]string, error) {
+func (r *objectGCCallRecorder) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, _ []string) (objectgc.OrphanCandidates, error) {
 	r.removedCh <- linksRemovalCall{spaceId: spaceId, contextId: contextId, links: removedLinks, skipBin: skipBin}
-	return nil, nil
+	return objectgc.OrphanCandidates{Candidates: r.candidatesToReturn}, nil
 }
 func (r *objectGCCallRecorder) RestoreOrphansOnLinksAdded(spaceId, contextId string, addedLinks []string) ([]string, error) {
 	r.restoredCh <- linksRestoredCall{spaceId: spaceId, contextId: contextId, links: addedLinks}
+	return nil, nil
+}
+
+func (r *objectGCCallRecorder) ListOrphans(spaceId string) ([]objectgc.OrphanItem, error) {
 	return nil, nil
 }
 
@@ -140,4 +148,33 @@ func TestSmartBlock_ObjectGC_LinksRemoved_TriggersGC(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("timeout: ArchiveOrphansOnLinksRemoval was not called")
 	}
+}
+
+// TestPerformGCOnLinksRemoval_EmitsCleanupSuggestion verifies that orphan-object candidates from a
+// link removal are appended to the session as a CleanupSuggestion event (trigger=linkRemoval).
+func TestPerformGCOnLinksRemoval_EmitsCleanupSuggestion(t *testing.T) {
+	objectId := "root"
+	fx := newFixture(objectId, t)
+	fx.init(t, []*model.Block{{Id: objectId}})
+
+	recorder := newObjectGCCallRecorder()
+	recorder.candidatesToReturn = []string{"orphanObj"}
+	fx.objectGC = recorder
+
+	sctx := session.NewContext()
+
+	// when: GC runs on link removal with a session context (called synchronously)
+	fx.performGCOnLinksRemoval(sctx, testSpaceId, objectId, []string{"file1"})
+
+	// then: a CleanupSuggestion message (trigger=linkRemoval) was appended to the session
+	var found *pb.EventObjectCleanupSuggestion
+	for _, m := range sctx.GetMessages() {
+		if v, ok := m.Value.(*pb.EventMessageValueOfObjectCleanupSuggestion); ok {
+			found = v.ObjectCleanupSuggestion
+		}
+	}
+	require.NotNil(t, found)
+	assert.Equal(t, objectId, found.ContextId)
+	assert.Equal(t, pb.EventObjectCleanupSuggestion_linkRemoval, found.Trigger)
+	assert.ElementsMatch(t, []string{"orphanObj"}, found.ObjectIds)
 }

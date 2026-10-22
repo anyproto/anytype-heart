@@ -16,7 +16,13 @@ import (
 // GetDetails returns empty struct without errors in case details are not found
 // todo: get rid of this or change the name method!
 func (s *dsObjectStore) GetDetails(id string) (*domain.Details, error) {
-	doc, err := s.objects.FindId(s.componentCtx, id)
+	return s.getDetails(s.componentCtx, id)
+}
+
+// getDetails is GetDetails under a caller-provided context. Pass a tx-bearing context to read the
+// object within an open write tx.
+func (s *dsObjectStore) getDetails(ctx context.Context, id string) (*domain.Details, error) {
+	doc, err := s.objects.FindId(ctx, id)
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return domain.NewDetails(), nil
 	}

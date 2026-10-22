@@ -54,6 +54,11 @@
     - [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request)
     - [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response)
     - [Rpc.AI.Autofill.Response.Error](#anytype-Rpc-AI-Autofill-Response-Error)
+    - [Rpc.AI.ListModels](#anytype-Rpc-AI-ListModels)
+    - [Rpc.AI.ListModels.Model](#anytype-Rpc-AI-ListModels-Model)
+    - [Rpc.AI.ListModels.Request](#anytype-Rpc-AI-ListModels-Request)
+    - [Rpc.AI.ListModels.Response](#anytype-Rpc-AI-ListModels-Response)
+    - [Rpc.AI.ListModels.Response.Error](#anytype-Rpc-AI-ListModels-Response-Error)
     - [Rpc.AI.ListSummary](#anytype-Rpc-AI-ListSummary)
     - [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request)
     - [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response)
@@ -97,6 +102,10 @@
     - [Rpc.Account.GetConfig.Get](#anytype-Rpc-Account-GetConfig-Get)
     - [Rpc.Account.GetConfig.Get.Request](#anytype-Rpc-Account-GetConfig-Get-Request)
     - [Rpc.Account.LocalLink](#anytype-Rpc-Account-LocalLink)
+    - [Rpc.Account.LocalLink.ApproveChallenge](#anytype-Rpc-Account-LocalLink-ApproveChallenge)
+    - [Rpc.Account.LocalLink.ApproveChallenge.Request](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Request)
+    - [Rpc.Account.LocalLink.ApproveChallenge.Response](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Response)
+    - [Rpc.Account.LocalLink.ApproveChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Response-Error)
     - [Rpc.Account.LocalLink.CreateApp](#anytype-Rpc-Account-LocalLink-CreateApp)
     - [Rpc.Account.LocalLink.CreateApp.Request](#anytype-Rpc-Account-LocalLink-CreateApp-Request)
     - [Rpc.Account.LocalLink.CreateApp.Response](#anytype-Rpc-Account-LocalLink-CreateApp-Response)
@@ -117,6 +126,10 @@
     - [Rpc.Account.LocalLink.SolveChallenge.Request](#anytype-Rpc-Account-LocalLink-SolveChallenge-Request)
     - [Rpc.Account.LocalLink.SolveChallenge.Response](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response)
     - [Rpc.Account.LocalLink.SolveChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error)
+    - [Rpc.Account.LocalLink.UpdateApp](#anytype-Rpc-Account-LocalLink-UpdateApp)
+    - [Rpc.Account.LocalLink.UpdateApp.Request](#anytype-Rpc-Account-LocalLink-UpdateApp-Request)
+    - [Rpc.Account.LocalLink.UpdateApp.Response](#anytype-Rpc-Account-LocalLink-UpdateApp-Response)
+    - [Rpc.Account.LocalLink.UpdateApp.Response.Error](#anytype-Rpc-Account-LocalLink-UpdateApp-Response-Error)
     - [Rpc.Account.Migrate](#anytype-Rpc-Account-Migrate)
     - [Rpc.Account.Migrate.Request](#anytype-Rpc-Account-Migrate-Request)
     - [Rpc.Account.Migrate.Response](#anytype-Rpc-Account-Migrate-Response)
@@ -141,6 +154,10 @@
     - [Rpc.Account.RecoverFromLegacyExport.Request](#anytype-Rpc-Account-RecoverFromLegacyExport-Request)
     - [Rpc.Account.RecoverFromLegacyExport.Response](#anytype-Rpc-Account-RecoverFromLegacyExport-Response)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error)
+    - [Rpc.Account.RecoveryState](#anytype-Rpc-Account-RecoveryState)
+    - [Rpc.Account.RecoveryState.Request](#anytype-Rpc-Account-RecoveryState-Request)
+    - [Rpc.Account.RecoveryState.Response](#anytype-Rpc-Account-RecoveryState-Response)
+    - [Rpc.Account.RecoveryState.Response.Error](#anytype-Rpc-Account-RecoveryState-Response-Error)
     - [Rpc.Account.RevertDeletion](#anytype-Rpc-Account-RevertDeletion)
     - [Rpc.Account.RevertDeletion.Request](#anytype-Rpc-Account-RevertDeletion-Request)
     - [Rpc.Account.RevertDeletion.Response](#anytype-Rpc-Account-RevertDeletion-Response)
@@ -971,6 +988,15 @@
     - [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request)
     - [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response)
     - [Rpc.Object.ChatAdd.Response.Error](#anytype-Rpc-Object-ChatAdd-Response-Error)
+    - [Rpc.Object.CleanupSuggestionIgnore](#anytype-Rpc-Object-CleanupSuggestionIgnore)
+    - [Rpc.Object.CleanupSuggestionIgnore.Request](#anytype-Rpc-Object-CleanupSuggestionIgnore-Request)
+    - [Rpc.Object.CleanupSuggestionIgnore.Response](#anytype-Rpc-Object-CleanupSuggestionIgnore-Response)
+    - [Rpc.Object.CleanupSuggestionIgnore.Response.Error](#anytype-Rpc-Object-CleanupSuggestionIgnore-Response-Error)
+    - [Rpc.Object.CleanupSuggestions](#anytype-Rpc-Object-CleanupSuggestions)
+    - [Rpc.Object.CleanupSuggestions.Request](#anytype-Rpc-Object-CleanupSuggestions-Request)
+    - [Rpc.Object.CleanupSuggestions.Response](#anytype-Rpc-Object-CleanupSuggestions-Response)
+    - [Rpc.Object.CleanupSuggestions.Response.Error](#anytype-Rpc-Object-CleanupSuggestions-Response-Error)
+    - [Rpc.Object.CleanupSuggestions.Response.Item](#anytype-Rpc-Object-CleanupSuggestions-Response-Item)
     - [Rpc.Object.Close](#anytype-Rpc-Object-Close)
     - [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request)
     - [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response)
@@ -1003,6 +1029,10 @@
     - [Rpc.Object.CreateSet.Request](#anytype-Rpc-Object-CreateSet-Request)
     - [Rpc.Object.CreateSet.Response](#anytype-Rpc-Object-CreateSet-Response)
     - [Rpc.Object.CreateSet.Response.Error](#anytype-Rpc-Object-CreateSet-Response-Error)
+    - [Rpc.Object.CrossSpaceSearch](#anytype-Rpc-Object-CrossSpaceSearch)
+    - [Rpc.Object.CrossSpaceSearch.Request](#anytype-Rpc-Object-CrossSpaceSearch-Request)
+    - [Rpc.Object.CrossSpaceSearch.Response](#anytype-Rpc-Object-CrossSpaceSearch-Response)
+    - [Rpc.Object.CrossSpaceSearch.Response.Error](#anytype-Rpc-Object-CrossSpaceSearch-Response-Error)
     - [Rpc.Object.CrossSpaceSearchSubscribe](#anytype-Rpc-Object-CrossSpaceSearchSubscribe)
     - [Rpc.Object.CrossSpaceSearchSubscribe.Request](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Request)
     - [Rpc.Object.CrossSpaceSearchSubscribe.Response](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response)
@@ -1015,6 +1045,10 @@
     - [Rpc.Object.DateByTimestamp.Request](#anytype-Rpc-Object-DateByTimestamp-Request)
     - [Rpc.Object.DateByTimestamp.Response](#anytype-Rpc-Object-DateByTimestamp-Response)
     - [Rpc.Object.DateByTimestamp.Response.Error](#anytype-Rpc-Object-DateByTimestamp-Response-Error)
+    - [Rpc.Object.DeletionAudit](#anytype-Rpc-Object-DeletionAudit)
+    - [Rpc.Object.DeletionAudit.Request](#anytype-Rpc-Object-DeletionAudit-Request)
+    - [Rpc.Object.DeletionAudit.Response](#anytype-Rpc-Object-DeletionAudit-Response)
+    - [Rpc.Object.DeletionAudit.Response.Error](#anytype-Rpc-Object-DeletionAudit-Response-Error)
     - [Rpc.Object.DiscussionAdd](#anytype-Rpc-Object-DiscussionAdd)
     - [Rpc.Object.DiscussionAdd.Request](#anytype-Rpc-Object-DiscussionAdd-Request)
     - [Rpc.Object.DiscussionAdd.Response](#anytype-Rpc-Object-DiscussionAdd-Response)
@@ -1043,6 +1077,7 @@
     - [Rpc.Object.Import.Notion.ValidateToken.Response](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response)
     - [Rpc.Object.Import.Notion.ValidateToken.Response.Error](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response-Error)
     - [Rpc.Object.Import.Request](#anytype-Rpc-Object-Import-Request)
+    - [Rpc.Object.Import.Request.AIParams](#anytype-Rpc-Object-Import-Request-AIParams)
     - [Rpc.Object.Import.Request.BookmarksParams](#anytype-Rpc-Object-Import-Request-BookmarksParams)
     - [Rpc.Object.Import.Request.CsvParams](#anytype-Rpc-Object-Import-Request-CsvParams)
     - [Rpc.Object.Import.Request.HtmlParams](#anytype-Rpc-Object-Import-Request-HtmlParams)
@@ -1062,6 +1097,15 @@
     - [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request)
     - [Rpc.Object.ImportList.Response](#anytype-Rpc-Object-ImportList-Response)
     - [Rpc.Object.ImportList.Response.Error](#anytype-Rpc-Object-ImportList-Response-Error)
+    - [Rpc.Object.ImportRunList](#anytype-Rpc-Object-ImportRunList)
+    - [Rpc.Object.ImportRunList.Request](#anytype-Rpc-Object-ImportRunList-Request)
+    - [Rpc.Object.ImportRunList.Response](#anytype-Rpc-Object-ImportRunList-Response)
+    - [Rpc.Object.ImportRunList.Response.Error](#anytype-Rpc-Object-ImportRunList-Response-Error)
+    - [Rpc.Object.ImportRunStatus](#anytype-Rpc-Object-ImportRunStatus)
+    - [Rpc.Object.ImportRunStatus.Request](#anytype-Rpc-Object-ImportRunStatus-Request)
+    - [Rpc.Object.ImportRunStatus.Response](#anytype-Rpc-Object-ImportRunStatus-Response)
+    - [Rpc.Object.ImportRunStatus.Response.Error](#anytype-Rpc-Object-ImportRunStatus-Response-Error)
+    - [Rpc.Object.ImportRunStatus.Run](#anytype-Rpc-Object-ImportRunStatus-Run)
     - [Rpc.Object.ImportUseCase](#anytype-Rpc-Object-ImportUseCase)
     - [Rpc.Object.ImportUseCase.Request](#anytype-Rpc-Object-ImportUseCase-Request)
     - [Rpc.Object.ImportUseCase.Response](#anytype-Rpc-Object-ImportUseCase-Response)
@@ -1229,6 +1273,15 @@
     - [Rpc.ObjectType.ListConflictingRelations.Request](#anytype-Rpc-ObjectType-ListConflictingRelations-Request)
     - [Rpc.ObjectType.ListConflictingRelations.Response](#anytype-Rpc-ObjectType-ListConflictingRelations-Response)
     - [Rpc.ObjectType.ListConflictingRelations.Response.Error](#anytype-Rpc-ObjectType-ListConflictingRelations-Response-Error)
+    - [Rpc.ObjectType.Property](#anytype-Rpc-ObjectType-Property)
+    - [Rpc.ObjectType.Property.Add](#anytype-Rpc-ObjectType-Property-Add)
+    - [Rpc.ObjectType.Property.Add.Request](#anytype-Rpc-ObjectType-Property-Add-Request)
+    - [Rpc.ObjectType.Property.Add.Response](#anytype-Rpc-ObjectType-Property-Add-Response)
+    - [Rpc.ObjectType.Property.Add.Response.Error](#anytype-Rpc-ObjectType-Property-Add-Response-Error)
+    - [Rpc.ObjectType.Property.Remove](#anytype-Rpc-ObjectType-Property-Remove)
+    - [Rpc.ObjectType.Property.Remove.Request](#anytype-Rpc-ObjectType-Property-Remove-Request)
+    - [Rpc.ObjectType.Property.Remove.Response](#anytype-Rpc-ObjectType-Property-Remove-Response)
+    - [Rpc.ObjectType.Property.Remove.Response.Error](#anytype-Rpc-ObjectType-Property-Remove-Response-Error)
     - [Rpc.ObjectType.Recommended](#anytype-Rpc-ObjectType-Recommended)
     - [Rpc.ObjectType.Recommended.FeaturedRelationsSet](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet)
     - [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Request)
@@ -1238,15 +1291,6 @@
     - [Rpc.ObjectType.Recommended.RelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Request)
     - [Rpc.ObjectType.Recommended.RelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response)
     - [Rpc.ObjectType.Recommended.RelationsSet.Response.Error](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response-Error)
-    - [Rpc.ObjectType.Relation](#anytype-Rpc-ObjectType-Relation)
-    - [Rpc.ObjectType.Relation.Add](#anytype-Rpc-ObjectType-Relation-Add)
-    - [Rpc.ObjectType.Relation.Add.Request](#anytype-Rpc-ObjectType-Relation-Add-Request)
-    - [Rpc.ObjectType.Relation.Add.Response](#anytype-Rpc-ObjectType-Relation-Add-Response)
-    - [Rpc.ObjectType.Relation.Add.Response.Error](#anytype-Rpc-ObjectType-Relation-Add-Response-Error)
-    - [Rpc.ObjectType.Relation.Remove](#anytype-Rpc-ObjectType-Relation-Remove)
-    - [Rpc.ObjectType.Relation.Remove.Request](#anytype-Rpc-ObjectType-Relation-Remove-Request)
-    - [Rpc.ObjectType.Relation.Remove.Response](#anytype-Rpc-ObjectType-Relation-Remove-Response)
-    - [Rpc.ObjectType.Relation.Remove.Response.Error](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error)
     - [Rpc.ObjectType.ResolveLayoutConflicts](#anytype-Rpc-ObjectType-ResolveLayoutConflicts)
     - [Rpc.ObjectType.ResolveLayoutConflicts.Request](#anytype-Rpc-ObjectType-ResolveLayoutConflicts-Request)
     - [Rpc.ObjectType.ResolveLayoutConflicts.Response](#anytype-Rpc-ObjectType-ResolveLayoutConflicts-Response)
@@ -1290,6 +1334,19 @@
     - [Rpc.Publishing.ResolveUri.Request](#anytype-Rpc-Publishing-ResolveUri-Request)
     - [Rpc.Publishing.ResolveUri.Response](#anytype-Rpc-Publishing-ResolveUri-Response)
     - [Rpc.Publishing.ResolveUri.Response.Error](#anytype-Rpc-Publishing-ResolveUri-Response-Error)
+    - [Rpc.Pubsub](#anytype-Rpc-Pubsub)
+    - [Rpc.Pubsub.Publish](#anytype-Rpc-Pubsub-Publish)
+    - [Rpc.Pubsub.Publish.Request](#anytype-Rpc-Pubsub-Publish-Request)
+    - [Rpc.Pubsub.Publish.Response](#anytype-Rpc-Pubsub-Publish-Response)
+    - [Rpc.Pubsub.Publish.Response.Error](#anytype-Rpc-Pubsub-Publish-Response-Error)
+    - [Rpc.Pubsub.Subscribe](#anytype-Rpc-Pubsub-Subscribe)
+    - [Rpc.Pubsub.Subscribe.Request](#anytype-Rpc-Pubsub-Subscribe-Request)
+    - [Rpc.Pubsub.Subscribe.Response](#anytype-Rpc-Pubsub-Subscribe-Response)
+    - [Rpc.Pubsub.Subscribe.Response.Error](#anytype-Rpc-Pubsub-Subscribe-Response-Error)
+    - [Rpc.Pubsub.Unsubscribe](#anytype-Rpc-Pubsub-Unsubscribe)
+    - [Rpc.Pubsub.Unsubscribe.Request](#anytype-Rpc-Pubsub-Unsubscribe-Request)
+    - [Rpc.Pubsub.Unsubscribe.Response](#anytype-Rpc-Pubsub-Unsubscribe-Response)
+    - [Rpc.Pubsub.Unsubscribe.Response.Error](#anytype-Rpc-Pubsub-Unsubscribe-Response-Error)
     - [Rpc.PushNotification](#anytype-Rpc-PushNotification)
     - [Rpc.PushNotification.RegisterToken](#anytype-Rpc-PushNotification-RegisterToken)
     - [Rpc.PushNotification.RegisterToken.Request](#anytype-Rpc-PushNotification-RegisterToken-Request)
@@ -1517,6 +1574,7 @@
   
     - [Rpc.AI.Autofill.Request.AutofillMode](#anytype-Rpc-AI-Autofill-Request-AutofillMode)
     - [Rpc.AI.Autofill.Response.Error.Code](#anytype-Rpc-AI-Autofill-Response-Error-Code)
+    - [Rpc.AI.ListModels.Response.Error.Code](#anytype-Rpc-AI-ListModels-Response-Error-Code)
     - [Rpc.AI.ListSummary.Response.Error.Code](#anytype-Rpc-AI-ListSummary-Response-Error-Code)
     - [Rpc.AI.ObjectCreateFromUrl.Response.Error.Code](#anytype-Rpc-AI-ObjectCreateFromUrl-Response-Error-Code)
     - [Rpc.AI.Provider](#anytype-Rpc-AI-Provider)
@@ -1530,11 +1588,13 @@
     - [Rpc.Account.Create.Response.Error.Code](#anytype-Rpc-Account-Create-Response-Error-Code)
     - [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code)
     - [Rpc.Account.EnableLocalNetworkSync.Response.Error.Code](#anytype-Rpc-Account-EnableLocalNetworkSync-Response-Error-Code)
+    - [Rpc.Account.LocalLink.ApproveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Response-Error-Code)
     - [Rpc.Account.LocalLink.CreateApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-CreateApp-Response-Error-Code)
     - [Rpc.Account.LocalLink.ListApps.Response.Error.Code](#anytype-Rpc-Account-LocalLink-ListApps-Response-Error-Code)
     - [Rpc.Account.LocalLink.NewChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-NewChallenge-Response-Error-Code)
     - [Rpc.Account.LocalLink.RevokeApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-RevokeApp-Response-Error-Code)
     - [Rpc.Account.LocalLink.SolveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error-Code)
+    - [Rpc.Account.LocalLink.UpdateApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-UpdateApp-Response-Error-Code)
     - [Rpc.Account.Migrate.Response.Error.Code](#anytype-Rpc-Account-Migrate-Response-Error-Code)
     - [Rpc.Account.MigrateCancel.Response.Error.Code](#anytype-Rpc-Account-MigrateCancel-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
@@ -1542,6 +1602,7 @@
     - [Rpc.Account.PreloadRemainingSpaces.Response.Error.Code](#anytype-Rpc-Account-PreloadRemainingSpaces-Response-Error-Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype-Rpc-Account-Recover-Response-Error-Code)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code)
+    - [Rpc.Account.RecoveryState.Response.Error.Code](#anytype-Rpc-Account-RecoveryState-Response-Error-Code)
     - [Rpc.Account.RevertDeletion.Response.Error.Code](#anytype-Rpc-Account-RevertDeletion-Response-Error-Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype-Rpc-Account-Select-Response-Error-Code)
     - [Rpc.Account.Stop.Response.Error.Code](#anytype-Rpc-Account-Stop-Response-Error-Code)
@@ -1745,6 +1806,9 @@
     - [Rpc.Object.ApplyTemplate.Response.Error.Code](#anytype-Rpc-Object-ApplyTemplate-Response-Error-Code)
     - [Rpc.Object.BookmarkFetch.Response.Error.Code](#anytype-Rpc-Object-BookmarkFetch-Response-Error-Code)
     - [Rpc.Object.ChatAdd.Response.Error.Code](#anytype-Rpc-Object-ChatAdd-Response-Error-Code)
+    - [Rpc.Object.CleanupSuggestionIgnore.Response.Error.Code](#anytype-Rpc-Object-CleanupSuggestionIgnore-Response-Error-Code)
+    - [Rpc.Object.CleanupSuggestions.Response.Error.Code](#anytype-Rpc-Object-CleanupSuggestions-Response-Error-Code)
+    - [Rpc.Object.CleanupSuggestions.Response.Item.Reason](#anytype-Rpc-Object-CleanupSuggestions-Response-Item-Reason)
     - [Rpc.Object.Close.Response.Error.Code](#anytype-Rpc-Object-Close-Response-Error-Code)
     - [Rpc.Object.Create.Response.Error.Code](#anytype-Rpc-Object-Create-Response-Error-Code)
     - [Rpc.Object.CreateBookmark.Response.Error.Code](#anytype-Rpc-Object-CreateBookmark-Response-Error-Code)
@@ -1753,9 +1817,11 @@
     - [Rpc.Object.CreateRelation.Response.Error.Code](#anytype-Rpc-Object-CreateRelation-Response-Error-Code)
     - [Rpc.Object.CreateRelationOption.Response.Error.Code](#anytype-Rpc-Object-CreateRelationOption-Response-Error-Code)
     - [Rpc.Object.CreateSet.Response.Error.Code](#anytype-Rpc-Object-CreateSet-Response-Error-Code)
+    - [Rpc.Object.CrossSpaceSearch.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearch-Response-Error-Code)
     - [Rpc.Object.CrossSpaceSearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error-Code)
     - [Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error-Code)
     - [Rpc.Object.DateByTimestamp.Response.Error.Code](#anytype-Rpc-Object-DateByTimestamp-Response-Error-Code)
+    - [Rpc.Object.DeletionAudit.Response.Error.Code](#anytype-Rpc-Object-DeletionAudit-Response-Error-Code)
     - [Rpc.Object.DiscussionAdd.Response.Error.Code](#anytype-Rpc-Object-DiscussionAdd-Response-Error-Code)
     - [Rpc.Object.Duplicate.Response.Error.Code](#anytype-Rpc-Object-Duplicate-Response-Error-Code)
     - [Rpc.Object.Export.Response.Error.Code](#anytype-Rpc-Object-Export-Response-Error-Code)
@@ -1770,6 +1836,8 @@
     - [Rpc.Object.ImportExperience.Response.Error.Code](#anytype-Rpc-Object-ImportExperience-Response-Error-Code)
     - [Rpc.Object.ImportList.ImportResponse.Type](#anytype-Rpc-Object-ImportList-ImportResponse-Type)
     - [Rpc.Object.ImportList.Response.Error.Code](#anytype-Rpc-Object-ImportList-Response-Error-Code)
+    - [Rpc.Object.ImportRunList.Response.Error.Code](#anytype-Rpc-Object-ImportRunList-Response-Error-Code)
+    - [Rpc.Object.ImportRunStatus.Response.Error.Code](#anytype-Rpc-Object-ImportRunStatus-Response-Error-Code)
     - [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase)
     - [Rpc.Object.ImportUseCase.Response.Error.Code](#anytype-Rpc-Object-ImportUseCase-Response-Error-Code)
     - [Rpc.Object.ListDelete.Response.Error.Code](#anytype-Rpc-Object-ListDelete-Response-Error-Code)
@@ -1811,10 +1879,11 @@
     - [Rpc.ObjectRelation.ListAvailable.Response.Error.Code](#anytype-Rpc-ObjectRelation-ListAvailable-Response-Error-Code)
     - [Rpc.ObjectRelation.RemoveFeatured.Response.Error.Code](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response-Error-Code)
     - [Rpc.ObjectType.ListConflictingRelations.Response.Error.Code](#anytype-Rpc-ObjectType-ListConflictingRelations-Response-Error-Code)
+    - [Rpc.ObjectType.Property.Add.Request.Section](#anytype-Rpc-ObjectType-Property-Add-Request-Section)
+    - [Rpc.ObjectType.Property.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Property-Add-Response-Error-Code)
+    - [Rpc.ObjectType.Property.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Property-Remove-Response-Error-Code)
     - [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response.Error.Code](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response-Error-Code)
     - [Rpc.ObjectType.Recommended.RelationsSet.Response.Error.Code](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response-Error-Code)
-    - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code)
-    - [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code)
     - [Rpc.ObjectType.ResolveLayoutConflicts.Response.Error.Code](#anytype-Rpc-ObjectType-ResolveLayoutConflicts-Response-Error-Code)
     - [Rpc.ObjectType.SetOrder.Response.Error.Code](#anytype-Rpc-ObjectType-SetOrder-Response-Error-Code)
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype-Rpc-Process-Cancel-Response-Error-Code)
@@ -1826,6 +1895,9 @@
     - [Rpc.Publishing.PublishStatus](#anytype-Rpc-Publishing-PublishStatus)
     - [Rpc.Publishing.Remove.Response.Error.Code](#anytype-Rpc-Publishing-Remove-Response-Error-Code)
     - [Rpc.Publishing.ResolveUri.Response.Error.Code](#anytype-Rpc-Publishing-ResolveUri-Response-Error-Code)
+    - [Rpc.Pubsub.Publish.Response.Error.Code](#anytype-Rpc-Pubsub-Publish-Response-Error-Code)
+    - [Rpc.Pubsub.Subscribe.Response.Error.Code](#anytype-Rpc-Pubsub-Subscribe-Response-Error-Code)
+    - [Rpc.Pubsub.Unsubscribe.Response.Error.Code](#anytype-Rpc-Pubsub-Unsubscribe-Response-Error-Code)
     - [Rpc.PushNotification.Mode](#anytype-Rpc-PushNotification-Mode)
     - [Rpc.PushNotification.RegisterToken.Platform](#anytype-Rpc-PushNotification-RegisterToken-Platform)
     - [Rpc.PushNotification.RegisterToken.Response.Error.Code](#anytype-Rpc-PushNotification-RegisterToken-Response-Error-Code)
@@ -1888,9 +1960,32 @@
     - [Event.Account.Config](#anytype-Event-Account-Config)
     - [Event.Account.Config.Update](#anytype-Event-Account-Config-Update)
     - [Event.Account.Details](#anytype-Event-Account-Details)
-    - [Event.Account.LinkChallenge](#anytype-Event-Account-LinkChallenge)
-    - [Event.Account.LinkChallenge.ClientInfo](#anytype-Event-Account-LinkChallenge-ClientInfo)
-    - [Event.Account.LinkChallengeHide](#anytype-Event-Account-LinkChallengeHide)
+    - [Event.Account.JsonApiStatus](#anytype-Event-Account-JsonApiStatus)
+    - [Event.Account.LinkApprovalHide](#anytype-Event-Account-LinkApprovalHide)
+    - [Event.Account.LinkApprovalRequest](#anytype-Event-Account-LinkApprovalRequest)
+    - [Event.Account.LinkApprovalRequest.ClientInfo](#anytype-Event-Account-LinkApprovalRequest-ClientInfo)
+    - [Event.Account.Recovery](#anytype-Event-Account-Recovery)
+    - [Event.Account.Recovery.AccountFetchError](#anytype-Event-Account-Recovery-AccountFetchError)
+    - [Event.Account.Recovery.AccountFetchStarted](#anytype-Event-Account-Recovery-AccountFetchStarted)
+    - [Event.Account.Recovery.AccountReady](#anytype-Event-Account-Recovery-AccountReady)
+    - [Event.Account.Recovery.DialFailed](#anytype-Event-Account-Recovery-DialFailed)
+    - [Event.Account.Recovery.DialStarted](#anytype-Event-Account-Recovery-DialStarted)
+    - [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo)
+    - [Event.Account.Recovery.Finished](#anytype-Event-Account-Recovery-Finished)
+    - [Event.Account.Recovery.LocalDiscoveryState](#anytype-Event-Account-Recovery-LocalDiscoveryState)
+    - [Event.Account.Recovery.LocalPeersStateChanged](#anytype-Event-Account-Recovery-LocalPeersStateChanged)
+    - [Event.Account.Recovery.PeerConnected](#anytype-Event-Account-Recovery-PeerConnected)
+    - [Event.Account.Recovery.PeerDisconnected](#anytype-Event-Account-Recovery-PeerDisconnected)
+    - [Event.Account.Recovery.PeerDiscovered](#anytype-Event-Account-Recovery-PeerDiscovered)
+    - [Event.Account.Recovery.PeerSpaceExchange](#anytype-Event-Account-Recovery-PeerSpaceExchange)
+    - [Event.Account.Recovery.PhaseChanged](#anytype-Event-Account-Recovery-PhaseChanged)
+    - [Event.Account.Recovery.Snapshot](#anytype-Event-Account-Recovery-Snapshot)
+    - [Event.Account.Recovery.Snapshot.Peer](#anytype-Event-Account-Recovery-Snapshot-Peer)
+    - [Event.Account.Recovery.Snapshot.Space](#anytype-Event-Account-Recovery-Snapshot-Space)
+    - [Event.Account.Recovery.SpaceDiscovered](#anytype-Event-Account-Recovery-SpaceDiscovered)
+    - [Event.Account.Recovery.SpaceStateChanged](#anytype-Event-Account-Recovery-SpaceStateChanged)
+    - [Event.Account.Recovery.Started](#anytype-Event-Account-Recovery-Started)
+    - [Event.Account.Recovery.Update](#anytype-Event-Account-Recovery-Update)
     - [Event.Account.Show](#anytype-Event-Account-Show)
     - [Event.Account.Update](#anytype-Event-Account-Update)
     - [Event.Block](#anytype-Event-Block)
@@ -2042,6 +2137,7 @@
     - [Event.File.SpaceUsage](#anytype-Event-File-SpaceUsage)
     - [Event.Import](#anytype-Event-Import)
     - [Event.Import.Finish](#anytype-Event-Import-Finish)
+    - [Event.Import.Statistic](#anytype-Event-Import-Statistic)
     - [Event.Membership](#anytype-Event-Membership)
     - [Event.Membership.TiersUpdate](#anytype-Event-Membership-TiersUpdate)
     - [Event.Membership.Update](#anytype-Event-Membership-Update)
@@ -2055,6 +2151,7 @@
     - [Event.Object](#anytype-Event-Object)
     - [Event.Object.AutoArchive](#anytype-Event-Object-AutoArchive)
     - [Event.Object.AutoRestore](#anytype-Event-Object-AutoRestore)
+    - [Event.Object.CleanupSuggestion](#anytype-Event-Object-CleanupSuggestion)
     - [Event.Object.Close](#anytype-Event-Object-Close)
     - [Event.Object.Details](#anytype-Event-Object-Details)
     - [Event.Object.Details.Amend](#anytype-Event-Object-Details-Amend)
@@ -2082,6 +2179,8 @@
     - [Event.Process.Done](#anytype-Event-Process-Done)
     - [Event.Process.New](#anytype-Event-Process-New)
     - [Event.Process.Update](#anytype-Event-Process-Update)
+    - [Event.Pubsub](#anytype-Event-Pubsub)
+    - [Event.Pubsub.Message](#anytype-Event-Pubsub-Message)
     - [Event.Space](#anytype-Event-Space)
     - [Event.Space.SyncStatus](#anytype-Event-Space-SyncStatus)
     - [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update)
@@ -2109,7 +2208,20 @@
     - [Model.Process.SaveFile](#anytype-Model-Process-SaveFile)
     - [ResponseEvent](#anytype-ResponseEvent)
   
+    - [Event.Account.Recovery.Direction](#anytype-Event-Account-Recovery-Direction)
+    - [Event.Account.Recovery.DiscoveryState](#anytype-Event-Account-Recovery-DiscoveryState)
+    - [Event.Account.Recovery.ErrorClass](#anytype-Event-Account-Recovery-ErrorClass)
+    - [Event.Account.Recovery.LocalPeersState](#anytype-Event-Account-Recovery-LocalPeersState)
+    - [Event.Account.Recovery.Mode](#anytype-Event-Account-Recovery-Mode)
+    - [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind)
+    - [Event.Account.Recovery.Phase](#anytype-Event-Account-Recovery-Phase)
+    - [Event.Account.Recovery.SpaceKind](#anytype-Event-Account-Recovery-SpaceKind)
+    - [Event.Account.Recovery.SpaceState](#anytype-Event-Account-Recovery-SpaceState)
     - [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation)
+    - [Event.Import.Statistic.CancelEffect](#anytype-Event-Import-Statistic-CancelEffect)
+    - [Event.Import.Statistic.Phase](#anytype-Event-Import-Statistic-Phase)
+    - [Event.Import.Statistic.State](#anytype-Event-Import-Statistic-State)
+    - [Event.Object.CleanupSuggestion.Trigger](#anytype-Event-Object-CleanupSuggestion-Trigger)
     - [Event.P2PStatus.Status](#anytype-Event-P2PStatus-Status)
     - [Event.Space.Network](#anytype-Event-Space-Network)
     - [Event.Space.Status](#anytype-Event-Space-Status)
@@ -2121,6 +2233,13 @@
     - [Profile](#anytype-Profile)
     - [SnapshotWithType](#anytype-SnapshotWithType)
     - [WidgetBlock](#anytype-WidgetBlock)
+  
+- [pkg/lib/pb/model/protos/export_report.proto](#pkg_lib_pb_model_protos_export_report-proto)
+    - [ExportReport](#anytype-model-ExportReport)
+    - [ExportReport.Issue](#anytype-model-ExportReport-Issue)
+  
+    - [ExportReport.Issue.Severity](#anytype-model-ExportReport-Issue-Severity)
+    - [ExportReport.Status](#anytype-model-ExportReport-Status)
   
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg_lib_pb_model_protos_localstore-proto)
     - [ObjectDetails](#anytype-model-ObjectDetails)
@@ -2135,6 +2254,7 @@
 - [pkg/lib/pb/model/protos/models.proto](#pkg_lib_pb_model_protos_models-proto)
     - [Account](#anytype-model-Account)
     - [Account.Auth](#anytype-model-Account-Auth)
+    - [Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant)
     - [Account.Auth.AppInfo](#anytype-model-Account-Auth-AppInfo)
     - [Account.Config](#anytype-model-Account-Config)
     - [Account.Info](#anytype-model-Account-Info)
@@ -2212,11 +2332,13 @@
     - [MembershipV2.CryptoCheckout](#anytype-model-MembershipV2-CryptoCheckout)
     - [MembershipV2.Data](#anytype-model-MembershipV2-Data)
     - [MembershipV2.Features](#anytype-model-MembershipV2-Features)
+    - [MembershipV2.FetchState](#anytype-model-MembershipV2-FetchState)
     - [MembershipV2.Invoice](#anytype-model-MembershipV2-Invoice)
     - [MembershipV2.Product](#anytype-model-MembershipV2-Product)
     - [MembershipV2.ProductStatus](#anytype-model-MembershipV2-ProductStatus)
     - [MembershipV2.PurchaseInfo](#anytype-model-MembershipV2-PurchaseInfo)
     - [MembershipV2.PurchasedProduct](#anytype-model-MembershipV2-PurchasedProduct)
+    - [MembershipV2.Revision](#anytype-model-MembershipV2-Revision)
     - [Metadata](#anytype-model-Metadata)
     - [Metadata.Payload](#anytype-model-Metadata-Payload)
     - [Metadata.Payload.IdentityPayload](#anytype-model-Metadata-Payload-IdentityPayload)
@@ -2260,6 +2382,7 @@
     - [SmartBlockSnapshotBase](#anytype-model-SmartBlockSnapshotBase)
     - [SpaceObjectHeader](#anytype-model-SpaceObjectHeader)
   
+    - [Account.Auth.AppGrant.Perm](#anytype-model-Account-Auth-AppGrant-Perm)
     - [Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope)
     - [Account.StatusType](#anytype-model-Account-StatusType)
     - [Block.Align](#anytype-model-Block-Align)
@@ -2305,10 +2428,12 @@
     - [Membership.PaymentMethod](#anytype-model-Membership-PaymentMethod)
     - [Membership.Status](#anytype-model-Membership-Status)
     - [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType)
+    - [MembershipV2.Freshness](#anytype-model-MembershipV2-Freshness)
     - [MembershipV2.PaymentProvider](#anytype-model-MembershipV2-PaymentProvider)
     - [MembershipV2.Period](#anytype-model-MembershipV2-Period)
     - [MembershipV2.Platform](#anytype-model-MembershipV2-Platform)
     - [MembershipV2.ProductStatus.Status](#anytype-model-MembershipV2-ProductStatus-Status)
+    - [MembershipV2.RefreshError](#anytype-model-MembershipV2-RefreshError)
     - [NameserviceNameType](#anytype-model-NameserviceNameType)
     - [Notification.ActionType](#anytype-model-Notification-ActionType)
     - [Notification.Export.Code](#anytype-model-Notification-Export-Code)
@@ -2365,9 +2490,11 @@
 | WalletCreate | [Rpc.Wallet.Create.Request](#anytype-Rpc-Wallet-Create-Request) | [Rpc.Wallet.Create.Response](#anytype-Rpc-Wallet-Create-Response) | Wallet *** |
 | WalletRecover | [Rpc.Wallet.Recover.Request](#anytype-Rpc-Wallet-Recover-Request) | [Rpc.Wallet.Recover.Response](#anytype-Rpc-Wallet-Recover-Response) |  |
 | WalletConvert | [Rpc.Wallet.Convert.Request](#anytype-Rpc-Wallet-Convert-Request) | [Rpc.Wallet.Convert.Response](#anytype-Rpc-Wallet-Convert-Response) |  |
-| AccountLocalLinkNewChallenge | [Rpc.Account.LocalLink.NewChallenge.Request](#anytype-Rpc-Account-LocalLink-NewChallenge-Request) | [Rpc.Account.LocalLink.NewChallenge.Response](#anytype-Rpc-Account-LocalLink-NewChallenge-Response) |  |
+| AccountLocalLinkNewChallenge | [Rpc.Account.LocalLink.NewChallenge.Request](#anytype-Rpc-Account-LocalLink-NewChallenge-Request) | [Rpc.Account.LocalLink.NewChallenge.Response](#anytype-Rpc-Account-LocalLink-NewChallenge-Response) | deprecated: pairing a gRPC ClientCommands session via the local-link challenge flow is being removed. Integrations should authenticate through the JSON API instead. Kept working for now (still callable without the local-API shared secret) until existing clients migrate. |
 | AccountLocalLinkSolveChallenge | [Rpc.Account.LocalLink.SolveChallenge.Request](#anytype-Rpc-Account-LocalLink-SolveChallenge-Request) | [Rpc.Account.LocalLink.SolveChallenge.Response](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response) |  |
+| AccountLocalLinkApproveChallenge | [Rpc.Account.LocalLink.ApproveChallenge.Request](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Request) | [Rpc.Account.LocalLink.ApproveChallenge.Response](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Response) |  |
 | AccountLocalLinkCreateApp | [Rpc.Account.LocalLink.CreateApp.Request](#anytype-Rpc-Account-LocalLink-CreateApp-Request) | [Rpc.Account.LocalLink.CreateApp.Response](#anytype-Rpc-Account-LocalLink-CreateApp-Response) |  |
+| AccountLocalLinkUpdateApp | [Rpc.Account.LocalLink.UpdateApp.Request](#anytype-Rpc-Account-LocalLink-UpdateApp-Request) | [Rpc.Account.LocalLink.UpdateApp.Response](#anytype-Rpc-Account-LocalLink-UpdateApp-Response) |  |
 | AccountLocalLinkListApps | [Rpc.Account.LocalLink.ListApps.Request](#anytype-Rpc-Account-LocalLink-ListApps-Request) | [Rpc.Account.LocalLink.ListApps.Response](#anytype-Rpc-Account-LocalLink-ListApps-Response) |  |
 | AccountLocalLinkRevokeApp | [Rpc.Account.LocalLink.RevokeApp.Request](#anytype-Rpc-Account-LocalLink-RevokeApp-Request) | [Rpc.Account.LocalLink.RevokeApp.Response](#anytype-Rpc-Account-LocalLink-RevokeApp-Response) |  |
 | WalletCreateSession | [Rpc.Wallet.CreateSession.Request](#anytype-Rpc-Wallet-CreateSession-Request) | [Rpc.Wallet.CreateSession.Response](#anytype-Rpc-Wallet-CreateSession-Response) |  |
@@ -2389,6 +2516,7 @@
 | AccountCreate | [Rpc.Account.Create.Request](#anytype-Rpc-Account-Create-Request) | [Rpc.Account.Create.Response](#anytype-Rpc-Account-Create-Response) |  |
 | AccountDelete | [Rpc.Account.Delete.Request](#anytype-Rpc-Account-Delete-Request) | [Rpc.Account.Delete.Response](#anytype-Rpc-Account-Delete-Response) |  |
 | AccountPreloadRemainingSpaces | [Rpc.Account.PreloadRemainingSpaces.Request](#anytype-Rpc-Account-PreloadRemainingSpaces-Request) | [Rpc.Account.PreloadRemainingSpaces.Response](#anytype-Rpc-Account-PreloadRemainingSpaces-Response) |  |
+| AccountRecoveryState | [Rpc.Account.RecoveryState.Request](#anytype-Rpc-Account-RecoveryState-Request) | [Rpc.Account.RecoveryState.Response](#anytype-Rpc-Account-RecoveryState-Response) |  |
 | AccountRevertDeletion | [Rpc.Account.RevertDeletion.Request](#anytype-Rpc-Account-RevertDeletion-Request) | [Rpc.Account.RevertDeletion.Response](#anytype-Rpc-Account-RevertDeletion-Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype-Rpc-Account-Select-Request) | [Rpc.Account.Select.Response](#anytype-Rpc-Account-Select-Response) |  |
 | AccountEnableLocalNetworkSync | [Rpc.Account.EnableLocalNetworkSync.Request](#anytype-Rpc-Account-EnableLocalNetworkSync-Request) | [Rpc.Account.EnableLocalNetworkSync.Response](#anytype-Rpc-Account-EnableLocalNetworkSync-Response) |  |
@@ -2436,6 +2564,7 @@
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request) | [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response) |  |
 | ObjectSearchWithMeta | [Rpc.Object.SearchWithMeta.Request](#anytype-Rpc-Object-SearchWithMeta-Request) | [Rpc.Object.SearchWithMeta.Response](#anytype-Rpc-Object-SearchWithMeta-Response) |  |
 | ObjectSearchSubscribe | [Rpc.Object.SearchSubscribe.Request](#anytype-Rpc-Object-SearchSubscribe-Request) | [Rpc.Object.SearchSubscribe.Response](#anytype-Rpc-Object-SearchSubscribe-Response) |  |
+| ObjectCrossSpaceSearch | [Rpc.Object.CrossSpaceSearch.Request](#anytype-Rpc-Object-CrossSpaceSearch-Request) | [Rpc.Object.CrossSpaceSearch.Response](#anytype-Rpc-Object-CrossSpaceSearch-Response) |  |
 | ObjectCrossSpaceSearchSubscribe | [Rpc.Object.CrossSpaceSearchSubscribe.Request](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Request) | [Rpc.Object.CrossSpaceSearchSubscribe.Response](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response) |  |
 | ObjectCrossSpaceSearchUnsubscribe | [Rpc.Object.CrossSpaceSearchUnsubscribe.Request](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Request) | [Rpc.Object.CrossSpaceSearchUnsubscribe.Response](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response) |  |
 | ObjectSubscribeIds | [Rpc.Object.SubscribeIds.Request](#anytype-Rpc-Object-SubscribeIds-Request) | [Rpc.Object.SubscribeIds.Response](#anytype-Rpc-Object-SubscribeIds-Response) |  |
@@ -2452,6 +2581,9 @@
 | ObjectListDuplicate | [Rpc.Object.ListDuplicate.Request](#anytype-Rpc-Object-ListDuplicate-Request) | [Rpc.Object.ListDuplicate.Response](#anytype-Rpc-Object-ListDuplicate-Response) |  |
 | ObjectListDelete | [Rpc.Object.ListDelete.Request](#anytype-Rpc-Object-ListDelete-Request) | [Rpc.Object.ListDelete.Response](#anytype-Rpc-Object-ListDelete-Response) |  |
 | ObjectListSetIsArchived | [Rpc.Object.ListSetIsArchived.Request](#anytype-Rpc-Object-ListSetIsArchived-Request) | [Rpc.Object.ListSetIsArchived.Response](#anytype-Rpc-Object-ListSetIsArchived-Response) |  |
+| ObjectCleanupSuggestions | [Rpc.Object.CleanupSuggestions.Request](#anytype-Rpc-Object-CleanupSuggestions-Request) | [Rpc.Object.CleanupSuggestions.Response](#anytype-Rpc-Object-CleanupSuggestions-Response) |  |
+| ObjectCleanupSuggestionIgnore | [Rpc.Object.CleanupSuggestionIgnore.Request](#anytype-Rpc-Object-CleanupSuggestionIgnore-Request) | [Rpc.Object.CleanupSuggestionIgnore.Response](#anytype-Rpc-Object-CleanupSuggestionIgnore-Response) |  |
+| ObjectDeletionAudit | [Rpc.Object.DeletionAudit.Request](#anytype-Rpc-Object-DeletionAudit-Request) | [Rpc.Object.DeletionAudit.Response](#anytype-Rpc-Object-DeletionAudit-Response) |  |
 | ObjectListSetIsFavorite | [Rpc.Object.ListSetIsFavorite.Request](#anytype-Rpc-Object-ListSetIsFavorite-Request) | [Rpc.Object.ListSetIsFavorite.Response](#anytype-Rpc-Object-ListSetIsFavorite-Response) |  |
 | ObjectListSetObjectType | [Rpc.Object.ListSetObjectType.Request](#anytype-Rpc-Object-ListSetObjectType-Request) | [Rpc.Object.ListSetObjectType.Response](#anytype-Rpc-Object-ListSetObjectType-Response) |  |
 | ObjectListSetDetails | [Rpc.Object.ListSetDetails.Request](#anytype-Rpc-Object-ListSetDetails-Request) | [Rpc.Object.ListSetDetails.Response](#anytype-Rpc-Object-ListSetDetails-Response) |  |
@@ -2468,6 +2600,8 @@
 | ObjectImport | [Rpc.Object.Import.Request](#anytype-Rpc-Object-Import-Request) | [Rpc.Object.Import.Response](#anytype-Rpc-Object-Import-Response) |  |
 | ObjectImportList | [Rpc.Object.ImportList.Request](#anytype-Rpc-Object-ImportList-Request) | [Rpc.Object.ImportList.Response](#anytype-Rpc-Object-ImportList-Response) |  |
 | ObjectImportNotionValidateToken | [Rpc.Object.Import.Notion.ValidateToken.Request](#anytype-Rpc-Object-Import-Notion-ValidateToken-Request) | [Rpc.Object.Import.Notion.ValidateToken.Response](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response) |  |
+| ObjectImportRunStatus | [Rpc.Object.ImportRunStatus.Request](#anytype-Rpc-Object-ImportRunStatus-Request) | [Rpc.Object.ImportRunStatus.Response](#anytype-Rpc-Object-ImportRunStatus-Response) |  |
+| ObjectImportRunList | [Rpc.Object.ImportRunList.Request](#anytype-Rpc-Object-ImportRunList-Request) | [Rpc.Object.ImportRunList.Response](#anytype-Rpc-Object-ImportRunList-Response) |  |
 | ObjectImportUseCase | [Rpc.Object.ImportUseCase.Request](#anytype-Rpc-Object-ImportUseCase-Request) | [Rpc.Object.ImportUseCase.Response](#anytype-Rpc-Object-ImportUseCase-Response) |  |
 | ObjectImportExperience | [Rpc.Object.ImportExperience.Request](#anytype-Rpc-Object-ImportExperience-Request) | [Rpc.Object.ImportExperience.Response](#anytype-Rpc-Object-ImportExperience-Response) |  |
 | ObjectDateByTimestamp | [Rpc.Object.DateByTimestamp.Request](#anytype-Rpc-Object-DateByTimestamp-Request) | [Rpc.Object.DateByTimestamp.Response](#anytype-Rpc-Object-DateByTimestamp-Response) |  |
@@ -2486,10 +2620,10 @@
 | ObjectRelationRemoveFeatured | [Rpc.ObjectRelation.RemoveFeatured.Request](#anytype-Rpc-ObjectRelation-RemoveFeatured-Request) | [Rpc.ObjectRelation.RemoveFeatured.Response](#anytype-Rpc-ObjectRelation-RemoveFeatured-Response) |  |
 | ObjectRelationListAvailable | [Rpc.ObjectRelation.ListAvailable.Request](#anytype-Rpc-ObjectRelation-ListAvailable-Request) | [Rpc.ObjectRelation.ListAvailable.Response](#anytype-Rpc-ObjectRelation-ListAvailable-Response) |  |
 | ObjectCreateObjectType | [Rpc.Object.CreateObjectType.Request](#anytype-Rpc-Object-CreateObjectType-Request) | [Rpc.Object.CreateObjectType.Response](#anytype-Rpc-Object-CreateObjectType-Response) | ObjectType commands *** |
-| ObjectTypeRelationAdd | [Rpc.ObjectType.Relation.Add.Request](#anytype-Rpc-ObjectType-Relation-Add-Request) | [Rpc.ObjectType.Relation.Add.Response](#anytype-Rpc-ObjectType-Relation-Add-Response) |  |
-| ObjectTypeRelationRemove | [Rpc.ObjectType.Relation.Remove.Request](#anytype-Rpc-ObjectType-Relation-Remove-Request) | [Rpc.ObjectType.Relation.Remove.Response](#anytype-Rpc-ObjectType-Relation-Remove-Response) |  |
-| ObjectTypeRecommendedRelationsSet | [Rpc.ObjectType.Recommended.RelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Request) | [Rpc.ObjectType.Recommended.RelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response) |  |
-| ObjectTypeRecommendedFeaturedRelationsSet | [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Request) | [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response) |  |
+| ObjectTypePropertyAdd | [Rpc.ObjectType.Property.Add.Request](#anytype-Rpc-ObjectType-Property-Add-Request) | [Rpc.ObjectType.Property.Add.Response](#anytype-Rpc-ObjectType-Property-Add-Response) |  |
+| ObjectTypePropertyRemove | [Rpc.ObjectType.Property.Remove.Request](#anytype-Rpc-ObjectType-Property-Remove-Request) | [Rpc.ObjectType.Property.Remove.Response](#anytype-Rpc-ObjectType-Property-Remove-Response) |  |
+| ObjectTypeRecommendedRelationsSet | [Rpc.ObjectType.Recommended.RelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Request) | [Rpc.ObjectType.Recommended.RelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response) | Deprecated: use ObjectTypePropertyAdd / ObjectTypePropertyRemove. |
+| ObjectTypeRecommendedFeaturedRelationsSet | [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Request) | [Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response](#anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response) | Deprecated: use ObjectTypePropertyAdd / ObjectTypePropertyRemove. |
 | ObjectTypeListConflictingRelations | [Rpc.ObjectType.ListConflictingRelations.Request](#anytype-Rpc-ObjectType-ListConflictingRelations-Request) | [Rpc.ObjectType.ListConflictingRelations.Response](#anytype-Rpc-ObjectType-ListConflictingRelations-Response) |  |
 | ObjectTypeResolveLayoutConflicts | [Rpc.ObjectType.ResolveLayoutConflicts.Request](#anytype-Rpc-ObjectType-ResolveLayoutConflicts-Request) | [Rpc.ObjectType.ResolveLayoutConflicts.Response](#anytype-Rpc-ObjectType-ResolveLayoutConflicts-Response) |  |
 | ObjectTypeSetOrder | [Rpc.ObjectType.SetOrder.Request](#anytype-Rpc-ObjectType-SetOrder-Request) | [Rpc.ObjectType.SetOrder.Response](#anytype-Rpc-ObjectType-SetOrder-Response) |  |
@@ -2689,6 +2823,10 @@
 | AIAutofill | [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request) | [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response) |  |
 | AIListSummary | [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request) | [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response) |  |
 | AIObjectCreateFromUrl | [Rpc.AI.ObjectCreateFromUrl.Request](#anytype-Rpc-AI-ObjectCreateFromUrl-Request) | [Rpc.AI.ObjectCreateFromUrl.Response](#anytype-Rpc-AI-ObjectCreateFromUrl-Response) |  |
+| AIListModels | [Rpc.AI.ListModels.Request](#anytype-Rpc-AI-ListModels-Request) | [Rpc.AI.ListModels.Response](#anytype-Rpc-AI-ListModels-Response) |  |
+| PubsubPublish | [Rpc.Pubsub.Publish.Request](#anytype-Rpc-Pubsub-Publish-Request) | [Rpc.Pubsub.Publish.Response](#anytype-Rpc-Pubsub-Publish-Response) | Pubsub — ephemeral space-scoped publish/subscribe (see Rpc.Pubsub) |
+| PubsubSubscribe | [Rpc.Pubsub.Subscribe.Request](#anytype-Rpc-Pubsub-Subscribe-Request) | [Rpc.Pubsub.Subscribe.Response](#anytype-Rpc-Pubsub-Subscribe-Response) |  |
+| PubsubUnsubscribe | [Rpc.Pubsub.Unsubscribe.Request](#anytype-Rpc-Pubsub-Unsubscribe-Request) | [Rpc.Pubsub.Unsubscribe.Response](#anytype-Rpc-Pubsub-Unsubscribe-Response) |  |
 | PushNotificationRegisterToken | [Rpc.PushNotification.RegisterToken.Request](#anytype-Rpc-PushNotification-RegisterToken-Request) | [Rpc.PushNotification.RegisterToken.Response](#anytype-Rpc-PushNotification-RegisterToken-Response) | Push |
 | PushNotificationSetSpaceMode | [Rpc.PushNotification.SetSpaceMode.Request](#anytype-Rpc-PushNotification-SetSpaceMode-Request) | [Rpc.PushNotification.SetSpaceMode.Response](#anytype-Rpc-PushNotification-SetSpaceMode-Response) |  |
 | PushNotificationSetForceModeIds | [Rpc.PushNotification.SetForceModeIds.Request](#anytype-Rpc-PushNotification-SetForceModeIds-Request) | [Rpc.PushNotification.SetForceModeIds.Response](#anytype-Rpc-PushNotification-SetForceModeIds-Response) |  |
@@ -2719,6 +2857,7 @@ the element of change tree used to store and internal apply smartBlock history
 | timestamp | [int64](#int64) |  | creation timestamp |
 | version | [uint32](#uint32) |  | version of business logic |
 | changeType | [uint32](#uint32) |  | business-level type of change applied to object |
+| integrationName | [string](#string) |  | integrationName is the RAW app name of the paired API key that authored this change — exactly as the app link recorded it, never normalized (normalization is many-to-one and lossy; the DELETE ownership rule compares this value exactly). Stamped by heart from the authenticated session — never accepted from a request. Bounded at key issuance (domain.MaxIntegrationNameLen). Empty for changes not authored through an API key. |
 
 
 
@@ -3199,6 +3338,7 @@ the element of change tree used to store and internal apply smartBlock history
 | timestamp | [int64](#int64) |  | creation timestamp |
 | version | [uint32](#uint32) |  | version of business logic |
 | changeType | [uint32](#uint32) |  | business-level type of change applied to object |
+| integrationName | [string](#string) |  | integrationName mirrors Change.integrationName (the two messages share wire numbers by design; 1/2/5 are historical — do not reuse). |
 
 
 
@@ -3421,6 +3561,97 @@ Response – message from a middleware.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.AI.Autofill.Response.Error.Code](#anytype-Rpc-AI-Autofill-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListModels"></a>
+
+### Rpc.AI.ListModels
+ListModels validates a provider config (base URL &#43; token) and
+returns the models it offers. A successful response already proves
+the endpoint is reachable and the token works, so there is no
+separate &#34;validate&#34; RPC: the model list IS the validation result,
+and the Error codes below (ENDPOINT_NOT_REACHABLE, AUTH_REQUIRED,
+...) tell the caller what to fix.
+
+config.model is ignored: at this point the caller does not know
+which model to use yet.
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListModels-Model"></a>
+
+### Rpc.AI.ListModels.Model
+Model is one catalog entry, trimmed to what a client-side model
+picker needs: an id to send back as ProviderConfig.model, plus
+whatever attribution the provider gives alongside it.
+
+For OPENAI the list is pre-filtered to models usable for chat
+completions (see FilterChatModels in core/ai/llmclient). For
+every other provider it is returned as-is: OLLAMA, LMSTUDIO and
+LLAMACPP only ever list what the user chose to pull/load onto
+that server, so there is nothing irrelevant to filter out, and
+no capability field to filter by even if there were (see
+FilterChatModels&#39; doc comment for the evidence).
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| ownedBy | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListModels-Request"></a>
+
+### Rpc.AI.ListModels.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| config | [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListModels-Response"></a>
+
+### Rpc.AI.ListModels.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.AI.ListModels.Response.Error](#anytype-Rpc-AI-ListModels-Response-Error) |  |  |
+| models | [Rpc.AI.ListModels.Model](#anytype-Rpc-AI-ListModels-Model) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-AI-ListModels-Response-Error"></a>
+
+### Rpc.AI.ListModels.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.AI.ListModels.Response.Error.Code](#anytype-Rpc-AI-ListModels-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -3671,6 +3902,7 @@ Response – message from a middleware.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| status | [Event.Account.JsonApiStatus](#anytype-Event-Account-JsonApiStatus) |  | the bind outcome, same type the accountJsonApiStatus event carries; nil only when listenAddr == &#34;&#34; (disabling) or error.code != NULL |
 | error | [Rpc.Account.ChangeJsonApiAddr.Response.Error](#anytype-Rpc-Account-ChangeJsonApiAddr-Response-Error) |  |  |
 
 
@@ -4039,6 +4271,77 @@ TODO: Remove this request if we do not need it, GO-1926
 
 
 
+<a name="anytype-Rpc-Account-LocalLink-ApproveChallenge"></a>
+
+### Rpc.Account.LocalLink.ApproveChallenge
+ApproveChallenge is the user&#39;s decision on a pending challenge.
+It is the only call that mints the code, and it answers the
+caller rather than broadcasting, so the code never reaches
+sessions other than the one that approved.
+
+The pending challenge is addressed by the caller it came from,
+which is what the prompt showed the user. Only one challenge can
+be pending per caller, so the pair is unambiguous, and it is the
+durable identity a future &#34;always allow&#34; would key on.
+
+Desktop UI only: it must never be listed in noAuthMethods or
+limitedScopeMethods, so authorization admits full scope alone.
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ApproveChallenge-Request"></a>
+
+### Rpc.Account.LocalLink.ApproveChallenge.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| processPath | [string](#string) |  | both taken verbatim from the ClientInfo of the LinkApprovalRequest event being answered; either may be empty |
+| origin | [string](#string) |  |  |
+| allow | [bool](#bool) |  |  |
+| grant | [model.Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant) |  | the user&#39;s grant decision, persisted verbatim into the app link on solve. Required when allow is true and the challenge scope is JsonAPI, forbidden otherwise — BAD_INPUT either way around. Ignored when allow is false. |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ApproveChallenge-Response"></a>
+
+### Rpc.Account.LocalLink.ApproveChallenge.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.LocalLink.ApproveChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Response-Error) |  |  |
+| challenge | [string](#string) |  | the 4-digit code; empty when allow is false |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ApproveChallenge-Response-Error"></a>
+
+### Rpc.Account.LocalLink.ApproveChallenge.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.LocalLink.ApproveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-ApproveChallenge-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Account-LocalLink-CreateApp"></a>
 
 ### Rpc.Account.LocalLink.CreateApp
@@ -4151,7 +4454,8 @@ TODO: Remove this request if we do not need it, GO-1926
 <a name="anytype-Rpc-Account-LocalLink-NewChallenge"></a>
 
 ### Rpc.Account.LocalLink.NewChallenge
-
+deprecated: pairing a gRPC session via the local-link challenge
+is being removed; authenticate through the JSON API instead.
 
 
 
@@ -4168,6 +4472,7 @@ TODO: Remove this request if we do not need it, GO-1926
 | ----- | ---- | ----- | ----------- |
 | appName | [string](#string) |  | just for info, not secure to rely on |
 | scope | [model.Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  |  |
+| requestedPerm | [model.Account.Auth.AppGrant.Perm](#anytype-model-Account-Auth-AppGrant-Perm) |  | the permission the app declares it needs. It pre-fills the approval prompt&#39;s permission control and is never a ceiling — the human approving decides. Read is the zero value, so &#34;asked for read&#34; and &#34;asked for nothing&#34; are indistinguishable by design (both render the safe default). |
 
 
 
@@ -4299,6 +4604,7 @@ TODO: Remove this request if we do not need it, GO-1926
 | error | [Rpc.Account.LocalLink.SolveChallenge.Response.Error](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error) |  |  |
 | sessionToken | [string](#string) |  | ephemeral token for the session |
 | appKey | [string](#string) |  | persistent key, that can be used to restore session via CreateSession |
+| grant | [model.Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant) |  | the user&#39;s approved grant persisted with the app key; unset for an unscoped key |
 
 
 
@@ -4314,6 +4620,63 @@ TODO: Remove this request if we do not need it, GO-1926
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.LocalLink.SolveChallenge.Response.Error.Code](#anytype-Rpc-Account-LocalLink-SolveChallenge-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-UpdateApp"></a>
+
+### Rpc.Account.LocalLink.UpdateApp
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-UpdateApp-Request"></a>
+
+### Rpc.Account.LocalLink.UpdateApp.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| appHash | [string](#string) |  |  |
+| grant | [model.Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant) |  | the new grant; unset clears the scoping (widen-requires-re-consent is the caller&#39;s contract) |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-UpdateApp-Response"></a>
+
+### Rpc.Account.LocalLink.UpdateApp.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.LocalLink.UpdateApp.Response.Error](#anytype-Rpc-Account-LocalLink-UpdateApp-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-UpdateApp-Response-Error"></a>
+
+### Rpc.Account.LocalLink.UpdateApp.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.LocalLink.UpdateApp.Response.Error.Code](#anytype-Rpc-Account-LocalLink-UpdateApp-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -4649,6 +5012,64 @@ Middleware-to-front-end response to an account recover request, that can contain
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RecoveryState"></a>
+
+### Rpc.Account.RecoveryState
+RecoveryState serves the folded account start-up status
+(Event.Account.Recovery.Snapshot) from the same state the
+Event.Account.Recovery.Update stream is emitted from. Lock-free with
+respect to AccountSelect, so it can be called while that RPC blocks,
+and total: call it whenever you like. Before any run it returns the
+idle snapshot (runId empty, phase NotStarted); ACCOUNT_IS_NOT_RUNNING
+is kept for wire compatibility and is never returned.
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RecoveryState-Request"></a>
+
+### Rpc.Account.RecoveryState.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RecoveryState-Response"></a>
+
+### Rpc.Account.RecoveryState.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.RecoveryState.Response.Error](#anytype-Rpc-Account-RecoveryState-Response-Error) |  |  |
+| snapshot | [Event.Account.Recovery.Snapshot](#anytype-Event-Account-Recovery-Snapshot) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-RecoveryState-Response-Error"></a>
+
+### Rpc.Account.RecoveryState.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.RecoveryState.Response.Error.Code](#anytype-Rpc-Account-RecoveryState-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11352,6 +11773,7 @@ Get marks list in the selected range in text block.
 | messages | [model.ChatMessage](#anytype-model-ChatMessage) | repeated |  |
 | chatState | [model.ChatState](#anytype-model-ChatState) |  |  |
 | messageCount | [int32](#int32) |  | Total number of non-deleted messages in the chat |
+| lifetimeMessageCount | [int32](#int32) |  | Total number of messages added since the chat was created, including deleted messages |
 
 
 
@@ -11734,12 +12156,13 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| spaceId | [string](#string) |  |  |
-| chatId | [string](#string) |  |  |
-| sorts | [model.Search.Message.Sort](#anytype-model-Search-Message-Sort) | repeated |  |
-| fullText | [string](#string) |  |  |
+| spaceId | [string](#string) |  | empty spaceId means all spaces (usually combined with empty chatId) |
+| chatId | [string](#string) |  | empty chatId means all chats in spaceId; results carry chatId/spaceId per message |
+| sorts | [model.Search.Message.Sort](#anytype-model-Search-Message-Sort) | repeated | Note: ORDER_ID sort is only meaningful within a single chat |
+| fullText | [string](#string) |  | empty fullText browses the latest messages in scope (default sort CREATED_AT desc); non-empty fullText is a relevance search (default sort SCORE desc) |
 | offset | [int32](#int32) |  |  |
 | limit | [int32](#int32) |  |  |
+| creators | [string](#string) | repeated | (optional) restrict to messages authored by these identities; empty = all authors |
 
 
 
@@ -12711,9 +13134,10 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| durationInSeconds | [int32](#int32) |  | 0 = save heap snapshot only; &gt;0 = run full profiler (CPU, heap, trace, goroutines) for this many seconds |
+| durationInSeconds | [int32](#int32) |  | 0 = save heap snapshot only; &gt;0 = run timed profiler (CPU, heap, goroutines) for this many seconds. Set includeTrace to also capture the runtime execution trace. |
 | reason | [Rpc.Debug.RunProfiler.Request.Reason](#anytype-Rpc-Debug-RunProfiler-Request-Reason) |  |  |
 | reasonDesc | [string](#string) |  | Optional free-form description to attach to the profile |
+| includeTrace | [bool](#bool) |  | Also capture the runtime execution trace (runtime/trace). Off by default: it is the heaviest artifact in both archive size and runtime overhead. Only applies when durationInSeconds &gt; 0. |
 
 
 
@@ -13195,6 +13619,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | deviceNetworkType | [model.DeviceNetworkType](#anytype-model-DeviceNetworkType) |  |  |
+| networkId | [string](#string) |  | opaque identity of the current network path as reported by the OS (iOS: NWPath interfaces/gateway digest; Android: Network#getNetworkHandle()). When it changes while the type stays the same (Wi-Fi to Wi-Fi switch, cellular re-attach) the middleware still resets connections and re-syncs. Optional: empty means unknown, only type transitions are used then. |
 
 
 
@@ -15830,6 +16255,7 @@ before requesting a payment link and paying
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.MembershipV2.GetProducts.Response.Error](#anytype-Rpc-MembershipV2-GetProducts-Response-Error) |  |  |
 | products | [model.MembershipV2.Product](#anytype-model-MembershipV2-Product) | repeated |  |
+| fetchState | [model.MembershipV2.FetchState](#anytype-model-MembershipV2-FetchState) |  | always set, on errors too (NONE when nothing was ever fetched) |
 
 
 
@@ -15871,6 +16297,7 @@ before requesting a payment link and paying
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | noCache | [bool](#bool) |  | pass true to force the cache update by default this is false |
+| forceRefreshSec | [int32](#int32) |  | manual refresh (the Refresh button): if &gt; 0, implies noCache and then asks for a short forced poll of status and products, delivered as MembershipV2Update / ProductsUpdate events. 0 = no forced poll. The window is capped at 180s; at most one forced poll is admitted per 30s, further requests only fetch. Negative values are BAD_INPUT. |
 
 
 
@@ -15887,6 +16314,7 @@ before requesting a payment link and paying
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.MembershipV2.GetStatus.Response.Error](#anytype-Rpc-MembershipV2-GetStatus-Response-Error) |  |  |
 | data | [model.MembershipV2.Data](#anytype-model-MembershipV2-Data) |  |  |
+| fetchState | [model.MembershipV2.FetchState](#anytype-model-MembershipV2-FetchState) |  | always set, on errors too (NONE when nothing was ever fetched) |
 
 
 
@@ -16710,6 +17138,138 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-CleanupSuggestionIgnore"></a>
+
+### Rpc.Object.CleanupSuggestionIgnore
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestionIgnore-Request"></a>
+
+### Rpc.Object.CleanupSuggestionIgnore.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectIds | [string](#string) | repeated |  |
+| ignored | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestionIgnore-Response"></a>
+
+### Rpc.Object.CleanupSuggestionIgnore.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.CleanupSuggestionIgnore.Response.Error](#anytype-Rpc-Object-CleanupSuggestionIgnore-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestionIgnore-Response-Error"></a>
+
+### Rpc.Object.CleanupSuggestionIgnore.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.CleanupSuggestionIgnore.Response.Error.Code](#anytype-Rpc-Object-CleanupSuggestionIgnore-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions"></a>
+
+### Rpc.Object.CleanupSuggestions
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions-Request"></a>
+
+### Rpc.Object.CleanupSuggestions.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| keys | [string](#string) | repeated | relation keys to return; empty =&gt; a default set. id, createdInContext and resolvedLayout are always included. |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions-Response"></a>
+
+### Rpc.Object.CleanupSuggestions.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.CleanupSuggestions.Response.Error](#anytype-Rpc-Object-CleanupSuggestions-Response-Error) |  |  |
+| items | [Rpc.Object.CleanupSuggestions.Response.Item](#anytype-Rpc-Object-CleanupSuggestions-Response-Item) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions-Response-Error"></a>
+
+### Rpc.Object.CleanupSuggestions.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.CleanupSuggestions.Response.Error.Code](#anytype-Rpc-Object-CleanupSuggestions-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions-Response-Item"></a>
+
+### Rpc.Object.CleanupSuggestions.Response.Item
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| isRoot | [bool](#bool) |  | true for forest roots (createdInContext parent is outside the orphan set) |
+| reason | [Rpc.Object.CleanupSuggestions.Response.Item.Reason](#anytype-Rpc-Object-CleanupSuggestions-Response-Item-Reason) |  | set on roots only; none for descendants |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-Close"></a>
 
 ### Rpc.Object.Close
@@ -17201,6 +17761,76 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-CrossSpaceSearch"></a>
+
+### Rpc.Object.CrossSpaceSearch
+one-shot cross-space search, no subscription overhead. Queries the
+spaces whose object stores are loaded at the moment of the call —
+stores load sequentially on app start, so early calls can see a
+partial space set; the response reports it via allStoresLoaded.
+Tech-space and marketplace objects are excluded. No total is
+returned. fullText uses the detailed matching of
+ObjectSearchWithMeta (not ObjectSearch&#39;s name-prefix mode).
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearch-Request"></a>
+
+### Rpc.Object.CrossSpaceSearch.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filters | [model.Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter) | repeated |  |
+| sorts | [model.Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort) | repeated | empty sorts: fullText queries default to relevance order, browse queries (empty fullText) to lastModifiedDate desc |
+| fullText | [string](#string) |  |  |
+| offset | [int32](#int32) |  | offset and limit apply to the merged cross-space result. Always set a limit: an unlimited request materializes every space in full |
+| limit | [int32](#int32) |  |  |
+| keys | [string](#string) | repeated | keys to return in records; empty = all |
+| spaceIds | [string](#string) | repeated | Optional allowlist applied before querying stores. Empty means all user spaces; callers with no access must not query. |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearch-Response"></a>
+
+### Rpc.Object.CrossSpaceSearch.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.CrossSpaceSearch.Response.Error](#anytype-Rpc-Object-CrossSpaceSearch-Response-Error) |  |  |
+| records | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
+| allStoresLoaded | [bool](#bool) |  | false = records are a partial view: the sequential per-space store warm-up had not finished when the query ran, or a space&#39;s store failed and was skipped. Retry later for the complete view, or use ObjectCrossSpaceSearchSubscribe, which streams later-loading spaces as they open. |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CrossSpaceSearch-Response-Error"></a>
+
+### Rpc.Object.CrossSpaceSearch.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.CrossSpaceSearch.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearch-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-CrossSpaceSearchSubscribe"></a>
 
 ### Rpc.Object.CrossSpaceSearchSubscribe
@@ -17381,6 +18011,74 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-DeletionAudit"></a>
+
+### Rpc.Object.DeletionAudit
+DeletionAudit lists what was removed from a space, newest first, with who created and who
+removed each one.
+
+Records come in two kinds, told apart by isUninstalled:
+ - absent: an object destroyed outright. Its tree is gone, so it has no name, and
+   creation-side keys are present only if it was deleted by a build that preserves them.
+ - true: a type, property, relation option or template that was uninstalled. Reversible,
+   tree intact, name and sourceObject still readable.
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DeletionAudit-Request"></a>
+
+### Rpc.Object.DeletionAudit.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| keys | [string](#string) | repeated | relation keys to return; empty =&gt; a default audit set. id, deletedBy, deletedDate and isUninstalled are always included. |
+| offset | [int32](#int32) |  |  |
+| limit | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DeletionAudit-Response"></a>
+
+### Rpc.Object.DeletionAudit.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.DeletionAudit.Response.Error](#anytype-Rpc-Object-DeletionAudit-Response-Error) |  |  |
+| records | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
+| total | [int64](#int64) |  | total number of deleted objects in the space, ignoring limit/offset |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DeletionAudit-Response-Error"></a>
+
+### Rpc.Object.DeletionAudit.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.DeletionAudit.Response.Error.Code](#anytype-Rpc-Object-DeletionAudit-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-DiscussionAdd"></a>
 
 ### Rpc.Object.DiscussionAdd
@@ -17533,6 +18231,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | error | [Rpc.Object.Export.Response.Error](#anytype-Rpc-Object-Export-Response-Error) |  |  |
 | result | [string](#string) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| report | [model.ExportReport](#anytype-model-ExportReport) |  |  |
 
 
 
@@ -17806,6 +18505,23 @@ DEPRECATED, GO-1926 |
 | noProgress | [bool](#bool) |  |  |
 | isMigration | [bool](#bool) |  |  |
 | isNewSpace | [bool](#bool) |  |  |
+| aiParams | [Rpc.Object.Import.Request.AIParams](#anytype-Rpc-Object-Import-Request-AIParams) |  | optional BYOK LLM enrichment of the imported structure (importv2); absent = feature off, import runs with built-in rules only |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Import-Request-AIParams"></a>
+
+### Rpc.Object.Import.Request.AIParams
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| config | [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig) |  | OpenAI-compatible provider; feature is off when endpoint and model are empty |
+| includeContentSamples | [bool](#bool) |  | allow sample property values and page titles in the analysis prompt (default: schema only) |
 
 
 
@@ -18104,6 +18820,142 @@ DEPRECATED, GO-1926 |
 
 
 
+<a name="anytype-Rpc-Object-ImportRunList"></a>
+
+### Rpc.Object.ImportRunList
+ImportRunList enumerates every known importv2 run — live ones and
+dormant run dirs. A sibling RPC rather than an empty-id overload
+of ImportRunStatus by design.
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunList-Request"></a>
+
+### Rpc.Object.ImportRunList.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunList-Response"></a>
+
+### Rpc.Object.ImportRunList.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ImportRunList.Response.Error](#anytype-Rpc-Object-ImportRunList-Response-Error) |  |  |
+| runs | [Rpc.Object.ImportRunStatus.Run](#anytype-Rpc-Object-ImportRunStatus-Run) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunList-Response-Error"></a>
+
+### Rpc.Object.ImportRunList.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ImportRunList.Response.Error.Code](#anytype-Rpc-Object-ImportRunList-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunStatus"></a>
+
+### Rpc.Object.ImportRunStatus
+ImportRunStatus reports one importv2 run by its durable importId
+(returned nowhere yet client-side; discover via ImportRunList).
+Live runs are served from the running engine&#39;s surface; dormant
+runs — a crashed process&#39;s dir awaiting the sweep, a suspended
+run — are served from the manifest and the ledger alone, which is
+what makes the poll restart-proof (a server-side
+operator polls job state instead of holding a session stream open
+across sidecar restarts).
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunStatus-Request"></a>
+
+### Rpc.Object.ImportRunStatus.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| importId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunStatus-Response"></a>
+
+### Rpc.Object.ImportRunStatus.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ImportRunStatus.Response.Error](#anytype-Rpc-Object-ImportRunStatus-Response-Error) |  |  |
+| run | [Rpc.Object.ImportRunStatus.Run](#anytype-Rpc-Object-ImportRunStatus-Run) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunStatus-Response-Error"></a>
+
+### Rpc.Object.ImportRunStatus.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ImportRunStatus.Response.Error.Code](#anytype-Rpc-Object-ImportRunStatus-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ImportRunStatus-Run"></a>
+
+### Rpc.Object.ImportRunStatus.Run
+Run pairs the statistic payload with the durable lifecycle
+state and liveness.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [Event.Import.Statistic](#anytype-Event-Import-Statistic) |  |  |
+| manifestState | [string](#string) |  | the manifest lifecycle state (running | fetched | materializing | suspended | compensating | completed | failed) |
+| live | [bool](#bool) |  | an engine in this process is running it right now |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-ImportUseCase"></a>
 
 ### Rpc.Object.ImportUseCase
@@ -18343,6 +19195,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | path | [string](#string) |  |  |
 | succeed | [int32](#int32) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| report | [model.ExportReport](#anytype-model-ExportReport) |  |  |
 
 
 
@@ -18534,6 +19387,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | ----- | ---- | ----- | ----------- |
 | objectIds | [string](#string) | repeated |  |
 | isArchived | [bool](#bool) |  |  |
+| skipCascade | [bool](#bool) |  | when true, skip the orphan cascade entirely (see SetIsArchived.Request). |
 
 
 
@@ -19383,6 +20237,7 @@ DEPRECATED, GO-1926 |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | isArchived | [bool](#bool) |  |  |
+| skipCascade | [bool](#bool) |  | when true, skip the orphan cascade entirely (no file auto-archive, no CleanupSuggestion event). Used by the client when archiving objects the user confirmed in the popup, to avoid re-prompting. |
 
 
 
@@ -20575,6 +21430,140 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-ObjectType-Property"></a>
+
+### Rpc.ObjectType.Property
+Property keeps a type&#39;s property lists, its dataview relationLinks and
+its views consistent in one apply, so the client no longer has to do
+it lazily in three calls.
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Add"></a>
+
+### Rpc.ObjectType.Property.Add
+
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Add-Request"></a>
+
+### Rpc.ObjectType.Property.Add.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectTypeId | [string](#string) |  |  |
+| key | [string](#string) |  | an existing property key; empty means &#34;mint one&#34; from name &#43; format |
+| name | [string](#string) |  | required when key is empty |
+| format | [model.RelationFormat](#anytype-model-RelationFormat) |  | required when key is empty |
+| section | [Rpc.ObjectType.Property.Add.Request.Section](#anytype-Rpc-ObjectType-Property-Add-Request-Section) |  |  |
+| enableInViews | [bool](#bool) |  | the isVisible the new column gets in every view |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Add-Response"></a>
+
+### Rpc.ObjectType.Property.Add.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectType.Property.Add.Response.Error](#anytype-Rpc-ObjectType-Property-Add-Response-Error) |  |  |
+| key | [string](#string) |  | the resolved-or-minted property key |
+| propertyId | [string](#string) |  | the relation object&#39;s id |
+| viewIds | [string](#string) | repeated | the views that gained a column |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Add-Response-Error"></a>
+
+### Rpc.ObjectType.Property.Add.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectType.Property.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Property-Add-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Remove"></a>
+
+### Rpc.ObjectType.Property.Remove
+
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Remove-Request"></a>
+
+### Rpc.ObjectType.Property.Remove.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectTypeId | [string](#string) |  |  |
+| key | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Remove-Response"></a>
+
+### Rpc.ObjectType.Property.Remove.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectType.Property.Remove.Response.Error](#anytype-Rpc-ObjectType-Property-Remove-Response-Error) |  |  |
+| inUseViewIds | [string](#string) | repeated | the views left untouched because they group, sort or filter by the property |
+
+
+
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Remove-Response-Error"></a>
+
+### Rpc.ObjectType.Property.Remove.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectType.Property.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Property-Remove-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-ObjectType-Recommended"></a>
 
 ### Rpc.ObjectType.Recommended
@@ -20588,7 +21577,10 @@ Available undo/redo operations
 <a name="anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet"></a>
 
 ### Rpc.ObjectType.Recommended.FeaturedRelationsSet
-
+Deprecated: replaces the whole list and touches neither the
+dataview relationLinks nor the views, so a caller must do its own
+read-modify-write and the type is left half-consistent. Use
+ObjectTypePropertyAdd / ObjectTypePropertyRemove instead.
 
 
 
@@ -20645,7 +21637,10 @@ Available undo/redo operations
 <a name="anytype-Rpc-ObjectType-Recommended-RelationsSet"></a>
 
 ### Rpc.ObjectType.Recommended.RelationsSet
-
+Deprecated: replaces the whole list and touches neither the
+dataview relationLinks nor the views, so a caller must do its own
+read-modify-write and the type is left half-consistent. Use
+ObjectTypePropertyAdd / ObjectTypePropertyRemove instead.
 
 
 
@@ -20692,131 +21687,6 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.ObjectType.Recommended.RelationsSet.Response.Error.Code](#anytype-Rpc-ObjectType-Recommended-RelationsSet-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation"></a>
-
-### Rpc.ObjectType.Relation
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Add"></a>
-
-### Rpc.ObjectType.Relation.Add
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Add-Request"></a>
-
-### Rpc.ObjectType.Relation.Add.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectTypeUrl | [string](#string) |  |  |
-| relationKeys | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Add-Response"></a>
-
-### Rpc.ObjectType.Relation.Add.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.ObjectType.Relation.Add.Response.Error](#anytype-Rpc-ObjectType-Relation-Add-Response-Error) |  |  |
-| relations | [model.Relation](#anytype-model-Relation) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Add-Response-Error"></a>
-
-### Rpc.ObjectType.Relation.Add.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Remove"></a>
-
-### Rpc.ObjectType.Relation.Remove
-
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Remove-Request"></a>
-
-### Rpc.ObjectType.Relation.Remove.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectTypeUrl | [string](#string) |  |  |
-| relationKeys | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Remove-Response"></a>
-
-### Rpc.ObjectType.Relation.Remove.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.ObjectType.Relation.Remove.Response.Error](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Remove-Response-Error"></a>
-
-### Rpc.ObjectType.Relation.Remove.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.ObjectType.Relation.Remove.Response.Error.Code](#anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -21421,6 +22291,204 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Publishing.ResolveUri.Response.Error.Code](#anytype-Rpc-Publishing-ResolveUri-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub"></a>
+
+### Rpc.Pubsub
+Pubsub is an ephemeral, fire-and-forget, at-most-once publish/subscribe
+channel scoped to a space. Messages are end-to-end encrypted with the
+space&#39;s current ACL read key (the same key encrypting object changes) and
+signed with the sender&#39;s account key. Nothing is persisted: subscribers
+only receive messages published while they are subscribed.
+Received messages are delivered as Event.Pubsub.Message on the event stream.
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Publish"></a>
+
+### Rpc.Pubsub.Publish
+Publish sends one message to a fully-qualified topic within a space.
+Topics are &#39;/&#39;-separated hierarchies (max 16 segments, 256 bytes,
+no leading &#39;/&#39;, no &#39;*&#39; or &#39;&gt;&#39; characters). Topics with the reserved
+prefix &#34;acc/&#34; are publishable only by the account whose id equals the
+topic&#39;s last segment (spoof-proof per-account channels).
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Publish-Request"></a>
+
+### Rpc.Pubsub.Publish.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| topic | [string](#string) |  | fully-qualified topic, wildcards not allowed |
+| payload | [bytes](#bytes) |  | app payload; encrypted before leaving the device |
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Publish-Response"></a>
+
+### Rpc.Pubsub.Publish.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Pubsub.Publish.Response.Error](#anytype-Rpc-Pubsub-Publish-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Publish-Response-Error"></a>
+
+### Rpc.Pubsub.Publish.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Pubsub.Publish.Response.Error.Code](#anytype-Rpc-Pubsub-Publish-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Subscribe"></a>
+
+### Rpc.Pubsub.Subscribe
+Subscribe registers interest in topic patterns within a space under a
+subscription id. Patterns may use NATS-style wildcards: &#39;*&#39; matches
+exactly one segment (&#34;chat/*/typing&#34;), &#39;&gt;&#39; matches one-or-more
+trailing segments (&#34;chat/&gt;&#34;, tail position only). Matching messages
+arrive as Event.Pubsub.Message carrying the matched subIds.
+Subscribing an existing subId replaces its pattern set.
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Subscribe-Request"></a>
+
+### Rpc.Pubsub.Subscribe.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| topics | [string](#string) | repeated | concrete topics or wildcard patterns |
+| subId | [string](#string) |  | client-chosen id; generated when empty |
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Subscribe-Response"></a>
+
+### Rpc.Pubsub.Subscribe.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Pubsub.Subscribe.Response.Error](#anytype-Rpc-Pubsub-Subscribe-Response-Error) |  |  |
+| subId | [string](#string) |  | echoes the request subId or the generated one |
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Subscribe-Response-Error"></a>
+
+### Rpc.Pubsub.Subscribe.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Pubsub.Subscribe.Response.Error.Code](#anytype-Rpc-Pubsub-Subscribe-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Unsubscribe"></a>
+
+### Rpc.Pubsub.Unsubscribe
+Unsubscribe drops the subscription and withdraws interest in patterns
+no other subscription uses.
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Unsubscribe-Request"></a>
+
+### Rpc.Pubsub.Unsubscribe.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| subId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Unsubscribe-Response"></a>
+
+### Rpc.Pubsub.Unsubscribe.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Pubsub.Unsubscribe.Response.Error](#anytype-Rpc-Pubsub-Unsubscribe-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Unsubscribe-Response-Error"></a>
+
+### Rpc.Pubsub.Unsubscribe.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Pubsub.Unsubscribe.Response.Error.Code](#anytype-Rpc-Pubsub-Unsubscribe-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -22196,6 +23264,7 @@ Available undo/redo operations
 | spaceId | [string](#string) |  |  |
 | inviteType | [model.InviteType](#anytype-model-InviteType) |  |  |
 | permissions | [model.ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+| shareWithinSpace | [bool](#bool) |  | shareWithinSpace stores the invite in the space itself, so that every member can share it. Otherwise the invite is kept in the owner&#39;s account and only the owner can share it. |
 
 
 
@@ -22275,6 +23344,7 @@ Available undo/redo operations
 | inviteFileKey | [string](#string) |  |  |
 | inviteType | [model.InviteType](#anytype-model-InviteType) |  |  |
 | permissions | [model.ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+| heldByOwner | [bool](#bool) |  | heldByOwner is set when the invite is kept in the owner&#39;s account. Members get it with an empty inviteCid and inviteFileKey: only the owner can share the link. |
 
 
 
@@ -23890,6 +24960,12 @@ Middleware-to-front-end response, that can contain mnemonic of a created account
 | token | [string](#string) |  |  |
 | appToken | [string](#string) |  | in case of mnemonic auth, need to be persisted by client |
 | accountId | [string](#string) |  | temp, should be replaced with AccountInfo message |
+| accountScope | [model.Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  | scope of the session; for appKey auth it is the app link&#39;s scope |
+| appName | [string](#string) |  | for appKey auth, the app name recorded when the app link was created |
+| appExpireAt | [int64](#int64) |  | for appKey auth, the app link&#39;s expiration unix timestamp; 0 means the key never expires |
+| grant | [model.Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant) |  | for appKey auth, the app link&#39;s grant; unset means an unscoped key |
+| appHash | [string](#string) |  | for appKey auth, the app link&#39;s identity (the hash ListApps and RevokeApp use) |
+| appCreatedAt | [int64](#int64) |  | for appKey auth, the app link&#39;s creation unix timestamp; 0 means unknown (pre-hash-era link) |
 
 
 
@@ -24666,6 +25742,23 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-AI-ListModels-Response-Error-Code"></a>
+
+### Rpc.AI.ListModels.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| RATE_LIMIT_EXCEEDED | 100 |  |
+| ENDPOINT_NOT_REACHABLE | 101 |  |
+| MODEL_NOT_FOUND | 102 |  |
+| AUTH_REQUIRED | 103 | ... |
+
+
+
 <a name="anytype-Rpc-AI-ListSummary-Response-Error-Code"></a>
 
 ### Rpc.AI.ListSummary.Response.Error.Code
@@ -24874,6 +25967,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_WRITE_CONFIG | 105 |  |
 | FAILED_TO_CREATE_LOCAL_REPO | 106 |  |
 | ACCOUNT_CREATION_IS_CANCELED | 107 |  |
+| ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
 | CONFIG_FILE_NOT_FOUND | 200 |  |
 | CONFIG_FILE_INVALID | 201 |  |
 | CONFIG_FILE_NETWORK_ID_MISMATCH | 202 |  |
@@ -24906,6 +26000,21 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | ACCOUNT_IS_NOT_RUNNING | 4 |  |
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-ApproveChallenge-Response-Error-Code"></a>
+
+### Rpc.Account.LocalLink.ApproveChallenge.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
+| NO_PENDING_CHALLENGE | 102 | nothing pending for this caller: never requested, already decided, or expired |
 
 
 
@@ -24981,6 +26090,22 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | INVALID_CHALLENGE_ID | 102 |  |
 | CHALLENGE_ATTEMPTS_EXCEEDED | 103 |  |
 | INCORRECT_ANSWER | 104 |  |
+| CHALLENGE_NOT_APPROVED | 105 | the user has not approved this challenge yet, so no code exists to compare against |
+
+
+
+<a name="anytype-Rpc-Account-LocalLink-UpdateApp-Response-Error-Code"></a>
+
+### Rpc.Account.LocalLink.UpdateApp.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_FOUND | 3 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
 
 
 
@@ -24997,6 +26122,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ACCOUNT_NOT_FOUND | 101 |  |
 | CANCELED | 102 |  |
 | NOT_ENOUGH_FREE_SPACE | 103 | TODO: [storage] Add specific error codes for migration problems |
+| ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
 
 
 
@@ -25084,6 +26210,21 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | DIFFERENT_ACCOUNT | 3 |  |
+| ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
+
+
+
+<a name="anytype-Rpc-Account-RecoveryState-Response-Error-Code"></a>
+
+### Rpc.Account.RecoveryState.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 | No error |
+| UNKNOWN_ERROR | 1 | Any other errors |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
 
 
 
@@ -27889,6 +29030,46 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-CleanupSuggestionIgnore-Response-Error-Code"></a>
+
+### Rpc.Object.CleanupSuggestionIgnore.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions-Response-Error-Code"></a>
+
+### Rpc.Object.CleanupSuggestions.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions-Response-Item-Reason"></a>
+
+### Rpc.Object.CleanupSuggestions.Response.Item.Reason
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| none | 0 |  |
+| contextArchived | 1 |  |
+| contextDeleted | 2 |  |
+| contextUnlinked | 3 |  |
+
+
+
 <a name="anytype-Rpc-Object-Close-Response-Error-Code"></a>
 
 ### Rpc.Object.Close.Response.Error.Code
@@ -27994,6 +29175,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-CrossSpaceSearch-Response-Error-Code"></a>
+
+### Rpc.Object.CrossSpaceSearch.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error-Code"></a>
 
 ### Rpc.Object.CrossSpaceSearchSubscribe.Response.Error.Code
@@ -28023,6 +29217,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Object-DateByTimestamp-Response-Error-Code"></a>
 
 ### Rpc.Object.DateByTimestamp.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Object-DeletionAudit-Response-Error-Code"></a>
+
+### Rpc.Object.DeletionAudit.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -28222,6 +29429,33 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | INTERNAL_ERROR | 3 |  |
+
+
+
+<a name="anytype-Rpc-Object-ImportRunList-Response-Error-Code"></a>
+
+### Rpc.Object.ImportRunList.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Object-ImportRunStatus-Response-Error-Code"></a>
+
+### Rpc.Object.ImportRunStatus.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_FOUND | 3 |  |
 
 
 
@@ -28772,6 +30006,51 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-ObjectType-Property-Add-Request-Section"></a>
+
+### Rpc.ObjectType.Property.Add.Request.Section
+Which of the type&#39;s recommended lists the property joins.
+The fourth list, recommendedFileRelations, is absent by
+design: it is derived from a fixed set of file-metadata
+keys on the four file types, and a value written there is
+overwritten the next time those types are revised.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Recommended | 0 |  |
+| Featured | 1 |  |
+| Hidden | 2 |  |
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Add-Response-Error-Code"></a>
+
+### Rpc.ObjectType.Property.Add.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| READONLY_OBJECT_TYPE | 3 | ... |
+
+
+
+<a name="anytype-Rpc-ObjectType-Property-Remove-Response-Error-Code"></a>
+
+### Rpc.ObjectType.Property.Remove.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| READONLY_OBJECT_TYPE | 3 | ... |
+
+
+
 <a name="anytype-Rpc-ObjectType-Recommended-FeaturedRelationsSet-Response-Error-Code"></a>
 
 ### Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response.Error.Code
@@ -28789,34 +30068,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-ObjectType-Recommended-RelationsSet-Response-Error-Code"></a>
 
 ### Rpc.ObjectType.Recommended.RelationsSet.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| READONLY_OBJECT_TYPE | 3 | ... |
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Add-Response-Error-Code"></a>
-
-### Rpc.ObjectType.Relation.Add.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| READONLY_OBJECT_TYPE | 3 | ... |
-
-
-
-<a name="anytype-Rpc-ObjectType-Relation-Remove-Response-Error-Code"></a>
-
-### Rpc.ObjectType.Relation.Remove.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -28977,6 +30228,45 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | NO_SUCH_URI | 101 |  |
+
+
+
+<a name="anytype-Rpc-Pubsub-Publish-Response-Error-Code"></a>
+
+### Rpc.Pubsub.Publish.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | malformed topic, oversized payload, not a topic owner |
+
+
+
+<a name="anytype-Rpc-Pubsub-Subscribe-Response-Error-Code"></a>
+
+### Rpc.Pubsub.Subscribe.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | malformed pattern or too many patterns |
+
+
+
+<a name="anytype-Rpc-Pubsub-Unsubscribe-Response-Error-Code"></a>
+
+### Rpc.Pubsub.Unsubscribe.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | unknown subId |
 
 
 
@@ -29173,6 +30463,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
 | INCORRECT_PERMISSIONS | 105 |  |
+| INVITE_NOT_SHAREABLE | 107 | the invite is shared within the space and these permissions are above read access: whoever holds such a link is in the space, and every member holds it |
 
 
 
@@ -29191,6 +30482,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | REQUEST_FAILED | 103 |  |
 | LIMIT_REACHED | 104 |  |
 | NOT_SHAREABLE | 105 |  |
+| INVITE_ALREADY_SHARED | 106 | the current invite is already shared within the space and cannot be taken back into the owner&#39;s account: revoke it and generate a new one |
+| INVITE_NOT_SHAREABLE | 107 | an invite anyone can join with cannot be shared within the space: whoever holds such a link is in, so it stays in the owner&#39;s account and is theirs alone to hand out |
 
 
 
@@ -29630,6 +30923,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | APP_TOKEN_NOT_FOUND_IN_THE_CURRENT_ACCOUNT | 101 | means the client logged into another account or the account directory has been cleaned |
+| APP_TOKEN_EXPIRED | 102 | the app link&#39;s expireAt has passed; the key must be re-issued |
 
 
 
@@ -29876,26 +31170,71 @@ corresponding front-end.
 
 
 
-<a name="anytype-Event-Account-LinkChallenge"></a>
+<a name="anytype-Event-Account-JsonApiStatus"></a>
 
-### Event.Account.LinkChallenge
-
+### Event.Account.JsonApiStatus
+JsonApiStatus reports the outcome of one bind attempt for the local
+JSON API server (core/api). Broadcast after the initial bind at
+AccountSelect/AccountCreate and after every AccountChangeJsonApiAddr,
+whichever session triggered it. Not emitted when the server is
+disabled (an empty listen address). AccountChangeJsonApiAddr&#39;s
+response carries this exact same message as `status`, so the event
+and the RPC response are never two schemas to keep in sync.
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| challenge | [string](#string) |  |  |
-| clientInfo | [Event.Account.LinkChallenge.ClientInfo](#anytype-Event-Account-LinkChallenge-ClientInfo) |  |  |
+| success | [bool](#bool) |  |  |
+| listenAddr | [string](#string) |  | the effective, OS-confirmed bound address on success; the requested address on failure, since nothing bound |
+| error | [string](#string) |  | raw OS error text — debug/log only, never shown to the user verbatim; empty when success = true |
+
+
+
+
+
+
+<a name="anytype-Event-Account-LinkApprovalHide"></a>
+
+### Event.Account.LinkApprovalHide
+LinkApprovalHide takes a pending prompt off screen once it is answered,
+denied or expired. Identified by the caller, since a request that was
+never approved never had a code.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| clientInfo | [Event.Account.LinkApprovalRequest.ClientInfo](#anytype-Event-Account-LinkApprovalRequest-ClientInfo) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-LinkApprovalRequest"></a>
+
+### Event.Account.LinkApprovalRequest
+LinkApprovalRequest asks the user to approve a local-link pairing. It
+names who is asking and nothing else: the 4-digit code does not exist
+yet and is never broadcast. The user&#39;s answer goes back through
+AccountLocalLinkApproveChallenge, which mints the code and returns it to
+that one caller. Replaces the former LinkChallenge event, which carried
+the code to every session.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| clientInfo | [Event.Account.LinkApprovalRequest.ClientInfo](#anytype-Event-Account-LinkApprovalRequest-ClientInfo) |  |  |
 | scope | [model.Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  |  |
+| requestedPerm | [model.Account.Auth.AppGrant.Perm](#anytype-model-Account-Auth-AppGrant-Perm) |  | the permission the app claims to need; pre-fills the prompt&#39;s permission control. Untrusted like `name`, and never a ceiling — the human approving decides. Read is the zero value, so a read claim is indistinguishable from no claim (both render the safe default). |
 
 
 
 
 
 
-<a name="anytype-Event-Account-LinkChallenge-ClientInfo"></a>
+<a name="anytype-Event-Account-LinkApprovalRequest-ClientInfo"></a>
 
-### Event.Account.LinkChallenge.ClientInfo
+### Event.Account.LinkApprovalRequest.ClientInfo
 
 
 
@@ -29905,21 +31244,445 @@ corresponding front-end.
 | processPath | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 | signatureVerified | [bool](#bool) |  |  |
+| origin | [string](#string) |  | origin of the browser caller that asked for the challenge, e.g. &#34;chrome-extension://&lt;id&gt;&#34; or &#34;http://localhost:3000&#34;. Empty for native clients, which send no Origin header. Taken from the header the browser sets, never from the request body, so it names the caller even when `name` is arbitrary. Show it to the user: it is the only attributable part of a pairing request. |
 
 
 
 
 
 
-<a name="anytype-Event-Account-LinkChallengeHide"></a>
+<a name="anytype-Event-Account-Recovery"></a>
 
-### Event.Account.LinkChallengeHide
+### Event.Account.Recovery
+Recovery is the account start-up status stream (GO-7471): a
+recovery-scoped, monotonic event log covering every app open, from the
+first millisecond of AccountSelect until every space has published its
+load result. Rpc.Account.RecoveryState serves the folded Snapshot from
+the same state, so push and pull cannot drift. Clients apply Updates
+with the same runId and id == last&#43;1; on a gap or a new runId they
+re-pull the snapshot. Every payload is a level, never a delta.
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-AccountFetchError"></a>
+
+### Event.Account.Recovery.AccountFetchError
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| challenge | [string](#string) |  | verify code before hiding to protect from MITM attacks |
+| peerId | [string](#string) |  |  |
+| error | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  |  |
+| attempt | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-AccountFetchStarted"></a>
+
+### Event.Account.Recovery.AccountFetchStarted
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| peerId | [string](#string) |  | empty = waiting for a peer |
+| attempt | [int32](#int32) |  | pull rounds started; a new round means &#34;still trying&#34; |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-AccountReady"></a>
+
+### Event.Account.Recovery.AccountReady
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| durationMs | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-DialFailed"></a>
+
+### Event.Account.Recovery.DialFailed
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind) |  |  |
+| nodeTypes | [string](#string) | repeated |  |
+| error | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  |  |
+| attempt | [int32](#int32) |  | dials observed since the last Connected |
+| durationMs | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-DialStarted"></a>
+
+### Event.Account.Recovery.DialStarted
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind) |  |  |
+| nodeTypes | [string](#string) | repeated | nodeconf node types, e.g. coordinator, tree, file |
+| addrsCount | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-ErrorInfo"></a>
+
+### Event.Account.Recovery.ErrorInfo
+ErrorInfo (not &#34;Error&#34;: enum values and nested messages share the
+enclosing scope, and SpaceState.Error already takes that name)
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| class | [Event.Account.Recovery.ErrorClass](#anytype-Event-Account-Recovery-ErrorClass) |  |  |
+| retryable | [bool](#bool) |  |  |
+| debugMessage | [string](#string) |  | raw error text for logs/diagnostics; clients may log it, must never headline it |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-Finished"></a>
+
+### Event.Account.Recovery.Finished
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spacesTotal | [int32](#int32) |  |  |
+| spacesLoaded | [int32](#int32) |  |  |
+| spacesFailed | [int32](#int32) |  |  |
+| totalDurationMs | [int64](#int64) |  |  |
+| viewsConfirmed | [bool](#bool) |  | true: the SpaceView set was confirmed against the network (&#34;no more spaces to download&#34;); false: the completeness gate opened on its stall bound and no completeness claim may be made — keep relying on the SpaceView subscription for spaces that appear later |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-LocalDiscoveryState"></a>
+
+### Event.Account.Recovery.LocalDiscoveryState
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| state | [Event.Account.Recovery.DiscoveryState](#anytype-Event-Account-Recovery-DiscoveryState) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-LocalPeersStateChanged"></a>
+
+### Event.Account.Recovery.LocalPeersStateChanged
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| state | [Event.Account.Recovery.LocalPeersState](#anytype-Event-Account-Recovery-LocalPeersState) |  |  |
+| fromState | [Event.Account.Recovery.LocalPeersState](#anytype-Event-Account-Recovery-LocalPeersState) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-PeerConnected"></a>
+
+### Event.Account.Recovery.PeerConnected
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind) |  |  |
+| nodeTypes | [string](#string) | repeated |  |
+| direction | [Event.Account.Recovery.Direction](#anytype-Event-Account-Recovery-Direction) |  |  |
+| addr | [string](#string) |  | display only; never compare across directions |
+| transport | [string](#string) |  | scheme as any-sync reports it: quic, yamux, ... |
+| protoVersion | [uint32](#uint32) |  |  |
+| durationMs | [int64](#int64) |  | 0 = unknown (inbound) |
+| openConnections | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-PeerDisconnected"></a>
+
+### Event.Account.Recovery.PeerDisconnected
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind) |  |  |
+| openConnections | [int32](#int32) |  |  |
+| nodeTypes | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-PeerDiscovered"></a>
+
+### Event.Account.Recovery.PeerDiscovered
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| addrs | [string](#string) | repeated | display only |
+| kind | [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind) |  |  |
+| nodeTypes | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-PeerSpaceExchange"></a>
+
+### Event.Account.Recovery.PeerSpaceExchange
+PeerSpaceExchange reports what the space exchange with a LAN peer
+said — a fact, not a verdict: whether the peer holds this account&#39;s
+tech space and how many spaces it shares. exchanged=false means no
+answer is known (the peer was dropped from the peer store).
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| exchanged | [bool](#bool) |  |  |
+| hasAccountSpace | [bool](#bool) |  |  |
+| sharedSpaceCount | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-PhaseChanged"></a>
+
+### Event.Account.Recovery.PhaseChanged
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| phase | [Event.Account.Recovery.Phase](#anytype-Event-Account-Recovery-Phase) |  |  |
+| fromPhase | [Event.Account.Recovery.Phase](#anytype-Event-Account-Recovery-Phase) |  |  |
+| previousPhaseDurationMs | [int64](#int64) |  |  |
+| error | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  | set for WaitingForNetwork and Failed |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-Snapshot"></a>
+
+### Event.Account.Recovery.Snapshot
+Folded state. Served by Rpc.Account.RecoveryState and pushed once to
+each new session. The RPC is total: before any run it returns the
+idle snapshot (runId empty, phase NotStarted) rather than an error.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| runId | [string](#string) |  | empty: no run has begun, ignore the rest |
+| lastEventId | [int64](#int64) |  |  |
+| mode | [Event.Account.Recovery.Mode](#anytype-Event-Account-Recovery-Mode) |  |  |
+| networkId | [string](#string) |  |  |
+| startedAtMs | [int64](#int64) |  |  |
+| phase | [Event.Account.Recovery.Phase](#anytype-Event-Account-Recovery-Phase) |  |  |
+| phaseStartedAtMs | [int64](#int64) |  |  |
+| done | [bool](#bool) |  |  |
+| error | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  | account-level only |
+| discovery | [Event.Account.Recovery.DiscoveryState](#anytype-Event-Account-Recovery-DiscoveryState) |  |  |
+| accountFetchStarted | [bool](#bool) |  |  |
+| accountReady | [bool](#bool) |  |  |
+| peers | [Event.Account.Recovery.Snapshot.Peer](#anytype-Event-Account-Recovery-Snapshot-Peer) | repeated |  |
+| spaces | [Event.Account.Recovery.Snapshot.Space](#anytype-Event-Account-Recovery-Snapshot-Space) | repeated |  |
+| spacesTotal | [int32](#int32) |  |  |
+| spacesLoaded | [int32](#int32) |  |  |
+| spacesFailed | [int32](#int32) |  |  |
+| viewsConfirmed | [bool](#bool) |  | meaningful once done; see Finished |
+| accountFetchAttempt | [int32](#int32) |  |  |
+| accountFetchError | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  | last failed pull; cleared at AccountReady |
+| localPeers | [Event.Account.Recovery.LocalPeersState](#anytype-Event-Account-Recovery-LocalPeersState) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-Snapshot-Peer"></a>
+
+### Event.Account.Recovery.Snapshot.Peer
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| peerId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.PeerKind](#anytype-Event-Account-Recovery-PeerKind) |  |  |
+| nodeTypes | [string](#string) | repeated |  |
+| openConnections | [int32](#int32) |  |  |
+| transport | [string](#string) |  |  |
+| protoVersion | [uint32](#uint32) |  |  |
+| dialAttempts | [int32](#int32) |  |  |
+| lastError | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  |  |
+| discoveredLocally | [bool](#bool) |  |  |
+| exchanged | [bool](#bool) |  | a space exchange answered; the two fields below apply |
+| hasAccountSpace | [bool](#bool) |  |  |
+| sharedSpaceCount | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-Snapshot-Space"></a>
+
+### Event.Account.Recovery.Snapshot.Space
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| spaceViewId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.SpaceKind](#anytype-Event-Account-Recovery-SpaceKind) |  |  |
+| state | [Event.Account.Recovery.SpaceState](#anytype-Event-Account-Recovery-SpaceState) |  |  |
+| error | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  |  |
+| attempt | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-SpaceDiscovered"></a>
+
+### Event.Account.Recovery.SpaceDiscovered
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| spaceViewId | [string](#string) |  |  |
+| kind | [Event.Account.Recovery.SpaceKind](#anytype-Event-Account-Recovery-SpaceKind) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-SpaceStateChanged"></a>
+
+### Event.Account.Recovery.SpaceStateChanged
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| state | [Event.Account.Recovery.SpaceState](#anytype-Event-Account-Recovery-SpaceState) |  |  |
+| fromState | [Event.Account.Recovery.SpaceState](#anytype-Event-Account-Recovery-SpaceState) |  |  |
+| error | [Event.Account.Recovery.ErrorInfo](#anytype-Event-Account-Recovery-ErrorInfo) |  |  |
+| attempt | [int32](#int32) |  | pull attempts, a level |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-Started"></a>
+
+### Event.Account.Recovery.Started
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| mode | [Event.Account.Recovery.Mode](#anytype-Event-Account-Recovery-Mode) |  |  |
+| networkId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Account-Recovery-Update"></a>
+
+### Event.Account.Recovery.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| runId | [string](#string) |  | random per run; a change means &#34;new run, reset&#34; |
+| id | [int64](#int64) |  | monotonic within runId, starts at 1; gap =&gt; re-pull |
+| timestampMs | [int64](#int64) |  | unix ms |
+| started | [Event.Account.Recovery.Started](#anytype-Event-Account-Recovery-Started) |  |  |
+| phaseChanged | [Event.Account.Recovery.PhaseChanged](#anytype-Event-Account-Recovery-PhaseChanged) |  |  |
+| localDiscoveryState | [Event.Account.Recovery.LocalDiscoveryState](#anytype-Event-Account-Recovery-LocalDiscoveryState) |  |  |
+| peerDiscovered | [Event.Account.Recovery.PeerDiscovered](#anytype-Event-Account-Recovery-PeerDiscovered) |  |  |
+| dialStarted | [Event.Account.Recovery.DialStarted](#anytype-Event-Account-Recovery-DialStarted) |  |  |
+| peerConnected | [Event.Account.Recovery.PeerConnected](#anytype-Event-Account-Recovery-PeerConnected) |  |  |
+| dialFailed | [Event.Account.Recovery.DialFailed](#anytype-Event-Account-Recovery-DialFailed) |  |  |
+| peerDisconnected | [Event.Account.Recovery.PeerDisconnected](#anytype-Event-Account-Recovery-PeerDisconnected) |  |  |
+| accountFetchStarted | [Event.Account.Recovery.AccountFetchStarted](#anytype-Event-Account-Recovery-AccountFetchStarted) |  |  |
+| accountFetchError | [Event.Account.Recovery.AccountFetchError](#anytype-Event-Account-Recovery-AccountFetchError) |  |  |
+| accountReady | [Event.Account.Recovery.AccountReady](#anytype-Event-Account-Recovery-AccountReady) |  |  |
+| spaceDiscovered | [Event.Account.Recovery.SpaceDiscovered](#anytype-Event-Account-Recovery-SpaceDiscovered) |  |  |
+| spaceStateChanged | [Event.Account.Recovery.SpaceStateChanged](#anytype-Event-Account-Recovery-SpaceStateChanged) |  |  |
+| finished | [Event.Account.Recovery.Finished](#anytype-Event-Account-Recovery-Finished) |  |  |
+| snapshot | [Event.Account.Recovery.Snapshot](#anytype-Event-Account-Recovery-Snapshot) |  | sent only to a newly attached session: snapshot-on-subscribe |
+| peerSpaceExchange | [Event.Account.Recovery.PeerSpaceExchange](#anytype-Event-Account-Recovery-PeerSpaceExchange) |  |  |
+| localPeersStateChanged | [Event.Account.Recovery.LocalPeersStateChanged](#anytype-Event-Account-Recovery-LocalPeersStateChanged) |  |  |
 
 
 
@@ -32327,6 +34090,54 @@ response already carries the path.
 | rootCollectionID | [string](#string) |  |  |
 | objectsCount | [int64](#int64) |  |  |
 | importType | [model.Import.Type](#anytype-model-Import-Type) |  |  |
+| reportObjectId | [string](#string) |  | id of the import report page listing per-object issues; empty when the run was clean (importv2) |
+| issuesCount | [int64](#int64) |  | number of issues recorded during the run (importv2) |
+
+
+
+
+
+
+<a name="anytype-Event-Import-Statistic"></a>
+
+### Event.Import.Statistic
+Statistic is the structured progress surface of one importv2 run:
+per-phase counters — deliberately NO blended overall percentage
+(fetching is rate-limit-bound at ~1.5 items/s, creating runs at
+persist speed: any blended bar crawls for an hour and then leaps) —
+plus the three-state running/throttled/retrying model: rate limiting
+is normal operation, not an error. The same message is served by
+ObjectImportRunStatus/ObjectImportRunList for runs with no live
+engine.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| importId | [string](#string) |  | the durable run id; stable across restarts |
+| processId | [string](#string) |  | correlates with the legacy progress process |
+| importType | [model.Import.Type](#anytype-model-Import-Type) |  |  |
+| phase | [Event.Import.Statistic.Phase](#anytype-Event-Import-Statistic-Phase) |  |  |
+| phaseStartedAt | [int64](#int64) |  | unix ms; clients show elapsed without their own clock |
+| totalsKnown | [bool](#bool) |  | false while the total is indeterminate (a cursor-chained scan has no total until it ends): render a count-up, never a fake bar |
+| pagesTotal | [int64](#int64) |  | pages and files are SEPARATE counters: 500 small files and one huge one behave nothing alike |
+| pagesDone | [int64](#int64) |  |  |
+| filesTotal | [int64](#int64) |  |  |
+| filesDone | [int64](#int64) |  |  |
+| bytesTotal | [int64](#int64) |  | files only; 0 = unknown |
+| bytesDone | [int64](#int64) |  |  |
+| state | [Event.Import.Statistic.State](#anytype-Event-Import-Statistic-State) |  |  |
+| resumesInMs | [int64](#int64) |  | Throttled: when the rate-limit window reopens |
+| attempt | [int32](#int32) |  | Retrying: attempt N... |
+| attemptsMax | [int32](#int32) |  | ...of M |
+| errorMessage | [string](#string) |  | Error only |
+| itemsPerSecond | [double](#double) |  | recent-window rate, per phase |
+| estimatedRemainingMs | [int64](#int64) |  | 0 = unknown; honest computation only |
+| cancelEffect | [Event.Import.Statistic.CancelEffect](#anytype-Event-Import-Statistic-CancelEffect) |  |  |
+| objectsCreated | [int64](#int64) |  | for phrasing &#34;stop and remove the N objects created&#34; |
+| safeToClose | [bool](#bool) |  | closing now loses nothing (resume exists for the current phase) |
+| warningCount | [int64](#int64) |  | live issue counts — abort a bad import at minute 20, not minute 110 |
+| errorCount | [int64](#int64) |  |  |
+| currentItem | [string](#string) |  | &#34;Fetching: Q3 Planning&#34; — the strongest not-stuck signal. USER CONTENT: displayable, never loggable. |
 
 
 
@@ -32392,6 +34203,7 @@ response already carries the path.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | products | [model.MembershipV2.Product](#anytype-model-MembershipV2-Product) | repeated |  |
+| fetchState | [model.MembershipV2.FetchState](#anytype-model-MembershipV2-FetchState) |  | freshness, last successful fetch, last error and revision of the products |
 
 
 
@@ -32407,6 +34219,7 @@ response already carries the path.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | data | [model.MembershipV2.Data](#anytype-model-MembershipV2-Data) |  |  |
+| fetchState | [model.MembershipV2.FetchState](#anytype-model-MembershipV2-FetchState) |  | freshness, last successful fetch, last error and revision of the status |
 
 
 
@@ -32426,8 +34239,10 @@ response already carries the path.
 | accountDetails | [Event.Account.Details](#anytype-Event-Account-Details) |  |  |
 | accountConfigUpdate | [Event.Account.Config.Update](#anytype-Event-Account-Config-Update) |  |  |
 | accountUpdate | [Event.Account.Update](#anytype-Event-Account-Update) |  |  |
-| accountLinkChallenge | [Event.Account.LinkChallenge](#anytype-Event-Account-LinkChallenge) |  |  |
-| accountLinkChallengeHide | [Event.Account.LinkChallengeHide](#anytype-Event-Account-LinkChallengeHide) |  |  |
+| accountLinkApprovalRequest | [Event.Account.LinkApprovalRequest](#anytype-Event-Account-LinkApprovalRequest) |  |  |
+| accountLinkApprovalHide | [Event.Account.LinkApprovalHide](#anytype-Event-Account-LinkApprovalHide) |  |  |
+| accountRecoveryUpdate | [Event.Account.Recovery.Update](#anytype-Event-Account-Recovery-Update) |  |  |
+| accountJsonApiStatus | [Event.Account.JsonApiStatus](#anytype-Event-Account-JsonApiStatus) |  |  |
 | objectDetailsSet | [Event.Object.Details.Set](#anytype-Event-Object-Details-Set) |  |  |
 | objectDetailsAmend | [Event.Object.Details.Amend](#anytype-Event-Object-Details-Amend) |  |  |
 | objectDetailsUnset | [Event.Object.Details.Unset](#anytype-Event-Object-Details-Unset) |  |  |
@@ -32506,12 +34321,15 @@ received to update per-message mention read status (if needed |
 | chatUpdateReactionReadStatus | [Event.Chat.UpdateReactionReadStatus](#anytype-Event-Chat-UpdateReactionReadStatus) |  |  |
 | objectAutoArchive | [Event.Object.AutoArchive](#anytype-Event-Object-AutoArchive) |  |  |
 | objectAutoRestore | [Event.Object.AutoRestore](#anytype-Event-Object-AutoRestore) |  |  |
+| objectCleanupSuggestion | [Event.Object.CleanupSuggestion](#anytype-Event-Object-CleanupSuggestion) |  |  |
 | debugProfileCreated | [Event.Debug.ProfileCreated](#anytype-Event-Debug-ProfileCreated) |  |  |
 | chatUpdateMessageCount | [Event.Chat.UpdateMessageCount](#anytype-Event-Chat-UpdateMessageCount) |  | received whenever the total number of non-deleted messages in |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed |
 | membershipV2Update | [Event.MembershipV2.Update](#anytype-Event-MembershipV2-Update) |  |  |
 | membershipV2ProductsUpdate | [Event.MembershipV2.ProductsUpdate](#anytype-Event-MembershipV2-ProductsUpdate) |  |  |
+| importStatistic | [Event.Import.Statistic](#anytype-Event-Import-Statistic) |  |  |
+| pubsubMessage | [Event.Pubsub.Message](#anytype-Event-Pubsub-Message) |  |  |
 
 
 
@@ -32592,6 +34410,23 @@ received to update per-message mention read status (if needed |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | objectIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Object-CleanupSuggestion"></a>
+
+### Event.Object.CleanupSuggestion
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectIds | [string](#string) | repeated | orphan ids (objects at any level &#43; files at level &gt;= 2) created within contextId |
+| contextId | [string](#string) |  | the object that was archived / deleted / had a link removed |
+| trigger | [Event.Object.CleanupSuggestion.Trigger](#anytype-Event-Object-CleanupSuggestion-Trigger) |  |  |
 
 
 
@@ -32991,6 +34826,37 @@ Removes document from subscription
 
 
 
+<a name="anytype-Event-Pubsub"></a>
+
+### Event.Pubsub
+
+
+
+
+
+
+
+<a name="anytype-Event-Pubsub-Message"></a>
+
+### Event.Pubsub.Message
+Message is one decrypted, signature-verified pub/sub message received on
+a topic matching at least one active Rpc.Pubsub.Subscribe subscription.
+The space is carried by Event.Message.spaceId. Delivery is ephemeral,
+at-most-once: messages published while not subscribed are never seen.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| topic | [string](#string) |  | topic is the concrete &#39;/&#39;-separated topic the message was published to |
+| payload | [bytes](#bytes) |  | payload is the application payload, decrypted with the space read key |
+| identity | [string](#string) |  | identity is the signature-verified account id of the sender; a client also receives its own published messages back (local echo) |
+| subIds | [string](#string) | repeated | subIds are the local subscription ids whose pattern matched the topic |
+
+
+
+
+
+
 <a name="anytype-Event-Space"></a>
 
 ### Event.Space
@@ -33375,6 +35241,153 @@ scenario: Precondition: user A and user B opened the same block
  
 
 
+<a name="anytype-Event-Account-Recovery-Direction"></a>
+
+### Event.Account.Recovery.Direction
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Outbound | 0 |  |
+| Inbound | 1 |  |
+
+
+
+<a name="anytype-Event-Account-Recovery-DiscoveryState"></a>
+
+### Event.Account.Recovery.DiscoveryState
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Possible | 0 |  |
+| NoInterfaces | 1 |  |
+| Restricted | 2 |  |
+
+
+
+<a name="anytype-Event-Account-Recovery-ErrorClass"></a>
+
+### Event.Account.Recovery.ErrorClass
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| None | 0 |  |
+| NoNetwork | 1 |  |
+| PeerUnreachable | 2 |  |
+| IncompatibleVersion | 3 |  |
+| NotAuthorized | 4 |  |
+| SpaceDeleted | 5 |  |
+| AccountDeleted | 6 |  |
+| AccountNotFound | 7 |  |
+| RateLimited | 8 |  |
+| StorageLimit | 9 | reserved, no producer yet |
+| Unexpected | 10 |  |
+
+
+
+<a name="anytype-Event-Account-Recovery-LocalPeersState"></a>
+
+### Event.Account.Recovery.LocalPeersState
+LocalPeersState is the fold&#39;s headline for the LAN layer, derived from
+every LocalPeer&#39;s dial state and space-exchange answer. The negative
+verdict surfaces only once every connected LAN peer has answered and
+none holds the account; one positive answer flips it at once.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NoLocalPeers | 0 |  |
+| LocalPeersConnecting | 1 | discovered, dialing, or connected and awaiting the exchange |
+| LocalPeersUnreachable | 2 | every discovered peer failed to connect |
+| AccountNotOnLocalPeers | 3 | every connected peer answered: it does not hold the account |
+| AccountOnLocalPeer | 4 | at least one peer holds the account&#39;s tech space |
+
+
+
+<a name="anytype-Event-Account-Recovery-Mode"></a>
+
+### Event.Account.Recovery.Mode
+ModeUnknown is the zero value and is never emitted: an unset field
+must not read as a cold recovery, the worse failure direction.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| ModeUnknown | 0 |  |
+| ColdRecovery | 1 | fresh device: the account repo did not exist |
+| WarmStart | 2 | the repo existed |
+| NewAccount | 3 | account creation paths |
+
+
+
+<a name="anytype-Event-Account-Recovery-PeerKind"></a>
+
+### Event.Account.Recovery.PeerKind
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| LocalPeer | 0 |  |
+| NetworkNode | 1 |  |
+
+
+
+<a name="anytype-Event-Account-Recovery-Phase"></a>
+
+### Event.Account.Recovery.Phase
+NOT monotone: the phase is derived from the run&#39;s current condition
+and moves back when that condition regresses (losing the last node
+connection mid-fetch goes FetchingAccount -&gt; Connecting; the
+WaitingForNetwork overlay returns to the phase it interrupted).
+Clients must render the phase last received rather than dropping
+backward transitions. Only Done and Failed are terminal.
+Phases may be skipped (a warm start never enters FetchingAccount);
+clients must accept any forward jump.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| LookingForPeers | 0 |  |
+| Connecting | 1 |  |
+| FetchingAccount | 2 |  |
+| LoadingSpaces | 3 |  |
+| Done | 4 |  |
+| WaitingForNetwork | 5 | calm, auto-retrying resting state; not an error screen |
+| Failed | 6 | account-level fatal; AccountSelect itself failed |
+| NotStarted | 7 | NotStarted is the idle snapshot&#39;s phase: no recovery run has begun in this process (Snapshot.runId is empty). A new number on purpose: the zero value would read as LookingForPeers before anything happens. |
+
+
+
+<a name="anytype-Event-Account-Recovery-SpaceKind"></a>
+
+### Event.Account.Recovery.SpaceKind
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Regular | 0 |  |
+| Tech | 1 |  |
+
+
+
+<a name="anytype-Event-Account-Recovery-SpaceState"></a>
+
+### Event.Account.Recovery.SpaceState
+Loaded = the space controller published LocalStatusOk: mandatory
+objects fetched, tree sync started. Object-level progress after that
+is on Event.Space.SyncStatus.Update.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Queued | 0 |  |
+| Pulling | 1 |  |
+| Loading | 2 |  |
+| Loaded | 3 |  |
+| Error | 4 |  |
+| Removed | 5 | Removed: the space left this run (deleted or removed while recovering); drop it from the list, it is excluded from counters |
+| Stalled | 6 | Stalled: the run settled around this space but it never published a load result. Not terminal — the load may still complete, and the state will change again if it does — so Finished does not fire while a space is stalled. Render it as a determinate stall with a retry (&#34;79 of 80 loaded, 1 stalled&#34;), never as ongoing progress. |
+
+
+
 <a name="anytype-Event-Block-Dataview-SliceOperation"></a>
 
 ### Event.Block.Dataview.SliceOperation
@@ -33387,6 +35400,60 @@ scenario: Precondition: user A and user B opened the same block
 | SliceOperationMove | 2 |  |
 | SliceOperationRemove | 3 |  |
 | SliceOperationReplace | 4 |  |
+
+
+
+<a name="anytype-Event-Import-Statistic-CancelEffect"></a>
+
+### Event.Import.Statistic.CancelEffect
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NothingToUndo | 0 | passes 1-2: nothing has entered the space yet |
+| RemovesCreated | 1 | pass 3 onward: cancel deletes what was created |
+
+
+
+<a name="anytype-Event-Import-Statistic-Phase"></a>
+
+### Event.Import.Statistic.Phase
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Scanning | 0 |  |
+| Analyzing | 1 |  |
+| Fetching | 2 |  |
+| Creating | 3 |  |
+| Finalizing | 4 |  |
+
+
+
+<a name="anytype-Event-Import-Statistic-State"></a>
+
+### Event.Import.Statistic.State
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Running | 0 |  |
+| Throttled | 1 | expected and calm; carries resumesInMs |
+| Retrying | 2 | transient failure under backoff |
+| Error | 3 | something is actually wrong |
+
+
+
+<a name="anytype-Event-Object-CleanupSuggestion-Trigger"></a>
+
+### Event.Object.CleanupSuggestion.Trigger
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| archive | 0 |  |
+| delete | 1 |  |
+| linkRemoval | 2 |  |
 
 
 
@@ -33547,6 +35614,88 @@ scenario: Precondition: user A and user B opened the same block
 
 
  
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="pkg_lib_pb_model_protos_export_report-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## pkg/lib/pb/model/protos/export_report.proto
+
+
+
+<a name="anytype-model-ExportReport"></a>
+
+### ExportReport
+Diagnostics shared by all export formats. A completed export can contain
+issues without failing the RPC; clients should inspect status and issues.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [ExportReport.Status](#anytype-model-ExportReport-Status) |  |  |
+| succeed | [int32](#int32) |  | Objects accounted for, including objects represented in bundle metadata. |
+| objectErrors | [int32](#int32) |  |  |
+| fileErrors | [int32](#int32) |  | File contents that could not be exported; their objects may still succeed. |
+| issues | [ExportReport.Issue](#anytype-model-ExportReport-Issue) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-ExportReport-Issue"></a>
+
+### ExportReport.Issue
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  | Empty for an issue affecting the export as a whole. |
+| severity | [ExportReport.Issue.Severity](#anytype-model-ExportReport-Issue-Severity) |  |  |
+| code | [string](#string) |  | Stable diagnostic code, supplied by the exporter when available. |
+| path | [string](#string) |  | Field path for validation issues, or relative path of an export file. |
+| message | [string](#string) |  |  |
+
+
+
+
+
+ 
+
+
+<a name="anytype-model-ExportReport-Issue-Severity"></a>
+
+### ExportReport.Issue.Severity
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| WARNING | 0 |  |
+| ERROR | 1 |  |
+| INFO | 2 | Non-blocking format notes; do not make the export partial. |
+
+
+
+<a name="anytype-model-ExportReport-Status"></a>
+
+### ExportReport.Status
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SUCCESS | 0 |  |
+| PARTIAL | 1 | Output was produced, but errors were reported. Warnings alone remain successful. |
+| FAILED | 2 |  |
+| CANCELED | 3 |  |
+
 
  
 
@@ -33760,6 +35909,23 @@ Contains basic information about a user account
 
 
 
+<a name="anytype-model-Account-Auth-AppGrant"></a>
+
+### Account.Auth.AppGrant
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceIds | [string](#string) | repeated | spaceIds are the spaces the key may touch; empty only when allSpaces is set — exactly one of the two must be present |
+| perm | [Account.Auth.AppGrant.Perm](#anytype-model-Account-Auth-AppGrant-Perm) |  |  |
+| allSpaces | [bool](#bool) |  | allSpaces grants every space in the account, including spaces created after the grant was made (dynamic — GitHub&#39;s &#34;All repositories&#34; semantics). The JSON API still excludes the tech space; reaching it requires listing it explicitly in spaceIds. |
+
+
+
+
+
+
 <a name="anytype-model-Account-Auth-AppInfo"></a>
 
 ### Account.Auth.AppInfo
@@ -33772,9 +35938,10 @@ Contains basic information about a user account
 | appName | [string](#string) |  | either from process or specified manually when creating |
 | appKey | [string](#string) |  |  |
 | createdAt | [int64](#int64) |  |  |
-| expireAt | [int64](#int64) |  |  |
+| expireAt | [int64](#int64) |  | unix timestamp in seconds after which the key stops authenticating; 0 means the key never expires |
 | scope | [Account.Auth.LocalApiScope](#anytype-model-Account-Auth-LocalApiScope) |  |  |
 | isActive | [bool](#bool) |  |  |
+| grant | [Account.Auth.AppGrant](#anytype-model-Account-Auth-AppGrant) |  | unset means an unscoped (legacy) key; only JsonAPI-scope keys may carry one |
 
 
 
@@ -34497,6 +36664,7 @@ Used to decode block meta only, without the content itself
 | pinned | [bool](#bool) |  |  |
 | unreadReaction | [bool](#bool) |  |  |
 | blocks | [ChatMessage.MessageBlock](#anytype-model-ChatMessage-MessageBlock) | repeated | Ordered list of content blocks |
+| deleted | [bool](#bool) |  | deleted marks a soft-deleted discussion comment (a tombstone). It keeps id, orderId, creator, createdAt and replyToMessageId, so replies keep their thread; message, attachments, blocks and reactions are empty and modifiedAt is 0. Only discussions produce it; a deleted space-chat message is removed and announced with Event.Chat.Delete. A tombstone can&#39;t be edited, reacted to, pinned or replied to. |
 
 
 
@@ -35142,6 +37310,24 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-MembershipV2-FetchState"></a>
+
+### MembershipV2.FetchState
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| freshness | [MembershipV2.Freshness](#anytype-model-MembershipV2-Freshness) |  |  |
+| lastSuccessfulFetchAt | [int64](#int64) |  | unix seconds of the last successful fetch, 0 if never or unknown |
+| lastRefreshError | [MembershipV2.RefreshError](#anytype-model-MembershipV2-RefreshError) |  | set while the latest refresh of the resource failed |
+| revision | [MembershipV2.Revision](#anytype-model-MembershipV2-Revision) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-MembershipV2-Invoice"></a>
 
 ### MembershipV2.Invoice
@@ -35239,6 +37425,25 @@ if current user&#39;s top level product has isUpgradeable flag -&gt; show incent
 
 
 
+<a name="anytype-model-MembershipV2-Revision"></a>
+
+### MembershipV2.Revision
+Orders published states of one resource. Apply a response or event only
+if its revision is newer than the one already applied. epoch is random
+and changes on every payments service start (account select or restart):
+reset ordering state when it changes.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| epoch | [uint64](#uint64) |  |  |
+| counter | [uint64](#uint64) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Metadata"></a>
 
 ### Metadata
@@ -35319,6 +37524,8 @@ if current user&#39;s top level product has isUpgradeable flag -&gt; show incent
 | ----- | ---- | ----- | ----------- |
 | errorCode | [Notification.Export.Code](#anytype-model-Notification-Export-Code) |  |  |
 | exportType | [Export.Format](#anytype-model-Export-Format) |  |  |
+| report | [ExportReport](#anytype-model-ExportReport) |  |  |
+| path | [string](#string) |  | Selected destination directory for this local export. |
 
 
 
@@ -35358,6 +37565,8 @@ if current user&#39;s top level product has isUpgradeable flag -&gt; show incent
 | spaceId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 | spaceName | [string](#string) |  |  |
+| reportObjectId | [string](#string) |  | id of the import report page listing per-object issues; empty when the run was clean (importv2) |
+| issuesCount | [int64](#int64) |  | number of issues recorded during the run, for &#34;imported with N issues&#34; UI (importv2) |
 
 
 
@@ -35877,6 +38086,7 @@ stored |
 | highlight | [string](#string) |  | truncated text with highlights |
 | highlightRanges | [Range](#anytype-model-Range) | repeated | ranges of the highlight in the text (using utf-16 runes) |
 | message | [ChatMessage](#anytype-model-ChatMessage) |  |  |
+| spaceId | [string](#string) |  | space the chat belongs to; set in all search scopes |
 
 
 
@@ -35975,6 +38185,21 @@ stored |
 
 
  
+
+
+<a name="anytype-model-Account-Auth-AppGrant-Perm"></a>
+
+### Account.Auth.AppGrant.Perm
+Perm is nested so its Go constants (AccountAuthAppGrant_Read) can
+never be misread as the key scopes (AccountAuth_JsonAPI et al.) —
+grant verbs and key scopes are unrelated enums about different
+authorization layers.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Read | 0 | the zero value is the narrowest permission, so an unset perm never widens |
+| ReadWrite | 1 |  |
+
 
 
 <a name="anytype-model-Account-Auth-LocalApiScope"></a>
@@ -36522,6 +38747,7 @@ stored |
 | DOT | 3 |  |
 | SVG | 4 |  |
 | GRAPH_JSON | 5 |  |
+| AnyBlockV2 | 6 | AnyBlockV2 is the native AnyBlock v2 bundle (pkg/lib/anyblockjson format/v2/SPEC.md): a directory of `&lt;id&gt;.anyblock.json` documents beside an index.json and properties.json. Additive — existing values keep their numbers, so a client that does not know it is unaffected. |
 
 
 
@@ -36695,6 +38921,22 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 
 
 
+<a name="anytype-model-MembershipV2-Freshness"></a>
+
+### MembershipV2.Freshness
+Freshness of one membership resource (status or products) as served in
+MembershipV2 GetStatus/GetProducts responses and update events.
+The zero value is FRESH, so a message that never sets it keeps the
+pre-freshness meaning.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| FRESH | 0 | data comes from a recent successful fetch from the payment node |
+| STALE | 1 | data comes from an earlier successful fetch: the latest refresh failed, or the age of the cached data is unknown |
+| NONE | 2 | never fetched successfully: data is an empty placeholder and must be treated as unknown (not as &#34;no membership&#34;) |
+
+
+
 <a name="anytype-model-MembershipV2-PaymentProvider"></a>
 
 ### MembershipV2.PaymentProvider
@@ -36752,6 +38994,19 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | StatusPending | 1 |  |
 | StatusActive | 2 |  |
 | StatusPendingRequiresAnyNameAllocation | 3 |  |
+
+
+
+<a name="anytype-model-MembershipV2-RefreshError"></a>
+
+### MembershipV2.RefreshError
+Class of the last failed refresh of a resource
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| RefreshErrorNull | 0 |  |
+| RefreshErrorPaymentNode | 1 | transient: timeout, payment node unreachable, connection closed |
+| RefreshErrorUnknown | 2 | any other failure |
 
 
 

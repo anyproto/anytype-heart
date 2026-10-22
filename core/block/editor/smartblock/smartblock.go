@@ -67,6 +67,15 @@ const (
 	IgnoreNoPermissions
 	NotPushChanges // Used only for read-only actions like InitObject or OpenObject
 	AllowApplyWithEmptyTree
+	// NoSpaceConfigCheck waives checkSpaceConfigLock for a write that is not a user edit but still
+	// carries the default change type. Deliberately separate from NoRestrictions, which only means
+	// "skip the block-level Edit restrictions" and is set by every details write, so gating on that
+	// one would exempt the whole details path.
+	NoSpaceConfigCheck
+	// ShapeNewObjectLayout shapes the blocks of the state to the layout it resolves to, as on
+	// creation (see convertNewObjectLayoutBlocks). Only for writes that put a whole new state in
+	// place on one device: object creation, import, version restore - never for loads.
+	ShapeNewObjectLayout
 )
 
 type Hook int
@@ -134,6 +143,7 @@ type Space interface {
 
 	IsPersonal() bool
 	IsOneToOne() bool
+	CanManageSpace() bool
 	SpaceType() spacedomain.SpaceType
 
 	Do(objectId string, apply func(sb SmartBlock) error) error
@@ -167,11 +177,14 @@ type SmartBlock interface {
 	ResetToVersion(s *state.State) (err error)
 	EnableLayouts()
 	EnabledRelationAsDependentObjects()
+	// ConvertLayoutBlocks brings blocks in line with the layout; explicit user actions only
+	ConvertLayoutBlocks(s *state.State) bool
 	AddHook(f HookCallback, events ...Hook)
 	AddHookOnce(id string, f HookCallback, events ...Hook)
 	CheckSubscriptions() (changed bool)
 	GetDocInfo() DocInfo
 	Restrictions() restriction.Restrictions
+	MemberPolicy() restriction.MemberPolicy
 	ObjectClose(ctx session.Context)
 	ObjectCloseAllSessions()
 
@@ -250,6 +263,8 @@ type smartBlock struct {
 	source               source.Source
 	lastDepDetails       map[string]*domain.Details
 	restrictions         restriction.Restrictions
+	treeCreatorOnce      sync.Once
+	treeCreatorId        string
 	isDeleted            bool
 	enableLayouts        bool
 
@@ -331,6 +346,11 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	sb.undo = undo.NewHistory(0)
 	sb.restrictions = restriction.GetRestrictions(sb)
+	if hasIdentityDetails(sb.Type()) {
+		// registered here rather than in the Page/ObjectType editors so that it holds for every
+		// writer reaching Apply, including the ones that never go through an editor method
+		sb.AddHook(sb.preserveIdentityDetails, HookBeforeApply)
+	}
 	if ctx.State != nil {
 		// need to store file keys in case we have some new files in the state
 		sb.storeFileKeys(ctx.State)
@@ -369,13 +389,27 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	ctx.State.AddBundledRelationLinks(relKeys...)
 	if ctx.IsNewObject && ctx.State != nil {
 		source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex, sb.formatFetcher).Migrate(ctx.State)
+		// Creation provenance (APIV2_OBJECT_DELETE.md §11.4): when the request
+		// ctx carries an API session's raw app name, stamp it on the
+		// CREATION state only — the creating Apply copies it onto the first
+		// content change (source.PushChangeParams.IntegrationName), which is
+		// what the DELETE ownership check later reads. The value is per-apply
+		// by construction (state.State does not propagate it), so a later
+		// edit on this device — IsNewObject false, or a fresh NewState —
+		// carries no stamp.
+		if name := domain.IntegrationNameFromCtx(ctx.Ctx); name != "" {
+			ctx.State.SetIntegrationName(name)
+		}
 	}
 
 	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
 	}
 	sb.injectDerivedDetails(ctx.State, sb.SpaceID(), sb.Type())
-	sb.resolveLayout(ctx.State)
+	oldLayout, newLayout, layoutIsKnown := sb.resolveLayout(ctx.State)
+	if ctx.IsNewObject && layoutIsKnown {
+		convertNewObjectLayoutBlocks(ctx.State, oldLayout, newLayout)
+	}
 
 	sb.AddHook(sb.sendObjectCloseEvent, HookOnClose, HookOnBlockClose)
 	return
@@ -430,6 +464,74 @@ func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
 
 func (sb *smartBlock) Restrictions() restriction.Restrictions {
 	return sb.restrictions
+}
+
+// treeCreator is the participant id of the account that SIGNED this object's tree root, or "" when
+// the root carries no identity: derived trees in shared spaces are built by DeriveTree, which emits
+// an unsigned root, and non-tree sources have no header at all.
+//
+// Deliberately not read from the creator detail. That detail is derived, so it lives in LOCAL
+// details, and nothing on the details write path rejects a write to it - ObjectSetDetails can point
+// it at another participant and injectCreationInfo will keep the forged value on every later load.
+// The root header is signed and the object id is its hash, so it cannot be restated.
+func (sb *smartBlock) treeCreator() string {
+	sb.treeCreatorOnce.Do(func() {
+		if sb.ObjectTree == nil {
+			return
+		}
+		header := sb.ObjectTree.UnmarshalledHeader()
+		if header == nil || header.Identity == nil {
+			return
+		}
+		sb.treeCreatorId = domain.NewParticipantId(sb.SpaceID(), header.Identity.Account())
+	})
+	return sb.treeCreatorId
+}
+
+// checkSpaceConfigLock refuses a user change to space configuration - the workspace, the widgets,
+// the space chat, and the system types and properties - from an account that is neither the space
+// owner nor an admin.
+//
+// It sits in Apply rather than in the RPC handlers because the write paths are far too many to
+// guard one by one: Restrictions_Blocks is checked at five call sites and silently ignored by block
+// deletion, every widget RPC and all of stext, and Restrictions_Details is checked at none. Apply
+// is the one place every write to a tree passes through, so it also covers the RPCs added next.
+//
+// Inside pushChange specifically, so it only ever sees a write that would reach the tree. Apply is
+// called constantly with nothing to say - object init, migrations that find nothing to migrate,
+// local-details-only writes, reconcilers that decide no reconciling is needed - and all of those
+// return before pushChange. Refusing them would turn a harmless no-op into an error on paths like
+// Workspaces.Init. It also puts this refusal in the same place as the reader's
+// ErrInsufficientPermissions, which PushChange already raises from here.
+//
+// The change type is what keeps this safe for the automated writers. Every one of them stamps its
+// own type - SystemObjectReviserMigration, ApiObjectKeyBackfill, LayoutSync, ObjectInit,
+// ObjectReinstall, OrderOperation - so a reviser pass or a migration on a plain member's device is
+// untouched, while anything reaching an object through an editor is refused. The few internal
+// writers that carry the default change type opt out with NoSpaceConfigCheck.
+func (sb *smartBlock) checkSpaceConfigLock(changeType domain.ChangeType) error {
+	if changeType != domain.ChangeTypeUserChange {
+		return nil
+	}
+	policy := sb.MemberPolicy()
+	if !policy.LockSpaceConfig || !restriction.IsSpaceConfigObject(sb, policy) {
+		return nil
+	}
+	return fmt.Errorf("%w: space configuration can only be changed by the space owner or an admin", restriction.ErrRestricted)
+}
+
+// MemberPolicy reports what the space ACL says about the caller for this object. The owner, admins
+// and both members of a one-to-one space get the zero value, which adds no restrictions at all.
+func (sb *smartBlock) MemberPolicy() restriction.MemberPolicy {
+	if sb.space == nil || sb.space.CanManageSpace() {
+		return restriction.MemberPolicy{}
+	}
+	creator := sb.treeCreator()
+	return restriction.MemberPolicy{
+		LockSpaceConfig:   true,
+		LockForeignDelete: creator != "" && creator != sb.currentParticipantId,
+		WorkspaceId:       sb.space.DerivedIDs().Workspace,
+	}
 }
 
 func (sb *smartBlock) Show() (*model.ObjectView, error) {
@@ -506,9 +608,16 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 	})
 
 	for _, rec := range records {
+		recId := rec.Details.GetString(bundle.RelationKeyId)
+		recDetails := rec.Details
+		if recId != sb.Id() {
+			// strip dependents only; a self-reference (rare) keeps full details,
+			// matching the self entry added above and the onMetaChange self branch
+			recDetails = rec.Details.CopyWithoutKeys(bundle.DefaultStrippedKeys...)
+		}
 		details = append(details, &model.ObjectViewDetailsSet{
-			Id:      rec.Details.GetString(bundle.RelationKeyId),
-			Details: rec.Details.ToProto(),
+			Id:      recId,
+			Details: recDetails.ToProto(),
 		})
 	}
 	go sb.metaListener(recordsCh)
@@ -568,6 +677,12 @@ func (sb *smartBlock) onMetaChange(details *domain.Details) {
 		return
 	}
 	id := details.GetString(bundle.RelationKeyId)
+	if id != sb.Id() {
+		// dependents never carry strip-by-default keys (sync/usage churn);
+		// strip before diffing/storing so a later change to those keys produces
+		// an empty diff and no event for the client
+		details = details.CopyWithoutKeys(bundle.DefaultStrippedKeys...)
+	}
 	var msgs []*pb.EventMessage
 	if v, exists := sb.lastDepDetails[id]; exists {
 		diff, keysToUnset := domain.StructDiff(v, details)
@@ -648,6 +763,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		ignoreNoPermissions     = false
 		notPushChanges          = false
 		allowApplyWithEmptyTree = false
+		noSpaceConfigCheck      = false
+		shapeNewObjectLayout    = false
 	)
 	for _, f := range flags {
 		switch f {
@@ -669,6 +786,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			notPushChanges = true
 		case AllowApplyWithEmptyTree:
 			allowApplyWithEmptyTree = true
+		case NoSpaceConfigCheck:
+			noSpaceConfigCheck = true
+		case ShapeNewObjectLayout:
+			shapeNewObjectLayout = true
 		}
 	}
 	if sb.ObjectTree != nil &&
@@ -690,7 +811,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	// Inject derived details to make sure we have consistent state.
 	// For example, we have to set ObjectTypeID into Type relation according to ObjectTypeKey from the state
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
-	sb.resolveLayout(s)
+	oldLayout, newLayout, layoutIsKnown := sb.resolveLayout(s)
+	if shapeNewObjectLayout && layoutIsKnown {
+		convertNewObjectLayoutBlocks(s, oldLayout, newLayout)
+	}
 
 	if hooks {
 		if err = sb.execHooks(HookBeforeApply, ApplyInfo{State: s}); err != nil {
@@ -726,7 +850,18 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		migrationVersionUpdated = true
 		parent                  = s.ParentState()
 		changeType              = s.GetChangeType()
+		// captured from the INCOMING state before ApplyState merges it away:
+		// the doc state never carries the integration name, so only the apply
+		// whose own state was stamped (the creating one) pushes it
+		integrationName = s.IntegrationName()
 	)
+	// consume the stamp AT capture (review F6): one stamped push per stamped
+	// state is a structural guarantee, not a caller invariant. Without this
+	// line the state object keeps the name after it becomes the doc, and
+	// applying the same stamped state twice pushes the value twice —
+	// InitObject applies once today, but attribution will widen the fill
+	// sites, and a caller-count invariant does not survive that.
+	s.SetIntegrationName("")
 
 	if parent != nil {
 		migrationVersionUpdated = s.MigrationVersion() != parent.MigrationVersion()
@@ -780,6 +915,11 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		if notPushChanges {
 			return nil
 		}
+		if !noSpaceConfigCheck {
+			if err := sb.checkSpaceConfigLock(changeType); err != nil {
+				return err
+			}
+		}
 		if !sb.source.ReadOnly() && changeType == domain.ChangeTypeUserChange {
 			// We can set details directly in object's state, they'll be indexed correctly
 			st.SetLastModified(lastModified.Unix(), sb.currentParticipantId)
@@ -800,6 +940,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			FileChangedHashes: getChangedFileHashes(s, fileDetailsKeysFiltered, act),
 			DoSnapshot:        doSnapshot,
 			ChangeType:        changeType,
+			IntegrationName:   integrationName,
 		}
 		changeId, err = sb.source.PushChange(pushChangeParams)
 		// For read-only mode
@@ -911,11 +1052,14 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			parentDetails = act.Details.Before
 		}
 		if e := sb.execHooks(HookAfterApply, ApplyInfo{
-			State:             sb.Doc.(*state.State),
-			ParentDetails:     parentDetails,
-			Events:            msgs,
-			Changes:           changes,
-			ApplyOtherObjects: true,
+			State:         sb.Doc.(*state.State),
+			ParentDetails: parentDetails,
+			Events:        msgs,
+			Changes:       changes,
+			// only a user's own edit, or its undo/redo, cascades to other objects: migrations,
+			// object init and layout syncs run on every device and must not each rewrite the
+			// objects of a type
+			ApplyOtherObjects: changeType == domain.ChangeTypeUserChange || changeType == domain.ChangeTypeHistoryOperation,
 		}); e != nil {
 			log.With("objectID", sb.Id()).Warnf("after apply execHooks error: %v", e)
 		}
@@ -939,7 +1083,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
-	if err = sb.Apply(s, NoHistory, DoSnapshot, NoRestrictions); err != nil {
+	if err = sb.Apply(s, NoHistory, DoSnapshot, NoRestrictions, ShapeNewObjectLayout); err != nil {
 		return
 	}
 	if sb.undo != nil {
@@ -1491,6 +1635,17 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 			})
 		}
 
+		// A bookmark block points at its bookmark object via TargetObjectId. Without this
+		// the bookmark object gets no backlink from the containing page and objectgc
+		// misclassifies it as an orphan (GO-7377).
+		if bm := blockModel.GetBookmark(); bm != nil && bm.TargetObjectId != "" && bm.TargetObjectId != objectId && !linkSet[bm.TargetObjectId] {
+			linkSet[bm.TargetObjectId] = true
+			outgoingLinks = append(outgoingLinks, OutgoingLink{
+				TargetID:      bm.TargetObjectId,
+				SourceBlockID: blockModel.Id,
+			})
+		}
+
 		if text := blockModel.GetText(); text != nil && text.Marks != nil {
 			// Extract mentions and inline-object marks from text marks. Object marks
 			// (e.g. @page references) are semantically equivalent to mentions for the
@@ -1649,17 +1804,35 @@ func (sb *smartBlock) performGCOnLinksRemoval(sctx session.Context, spaceId, con
 	if len(removedLinks) == 0 {
 		return
 	}
-	archivedIds, err := sb.objectGC.ArchiveOrphansOnLinksRemoval(spaceId, contextId, removedLinks, false, nil)
+	res, err := sb.objectGC.ArchiveOrphansOnLinksRemoval(spaceId, contextId, removedLinks, false, nil)
 	if err != nil {
 		log.With("objectId", contextId).Errorf("object gc on links removal failed: %v", err)
 	}
-	if sctx != nil && len(archivedIds) > 0 {
+	if sctx != nil {
 		msgs := sctx.GetMessages()
-		msgs = append(msgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfObjectAutoArchive{
-				ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: archivedIds},
-			},
-		})
-		sctx.SetMessages(contextId, msgs)
+		changed := false
+		if len(res.Files) > 0 {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectAutoArchive{
+					ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: res.Files},
+				},
+			})
+			changed = true
+		}
+		if len(res.Candidates) > 0 {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectCleanupSuggestion{
+					ObjectCleanupSuggestion: &pb.EventObjectCleanupSuggestion{
+						ObjectIds: res.Candidates,
+						ContextId: contextId,
+						Trigger:   pb.EventObjectCleanupSuggestion_linkRemoval,
+					},
+				},
+			})
+			changed = true
+		}
+		if changed {
+			sctx.SetMessages(contextId, msgs)
+		}
 	}
 }

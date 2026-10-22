@@ -1,0 +1,354 @@
+package v2handler
+
+// chat.go holds the chat handlers. Message text
+// is markdown in BOTH directions (the D′1 caveat applies verbatim:
+// find/replace-style specials mint real marks). C7 etag/If-Match does NOT
+// apply to chats — order ids and last_state_id are the stream's native
+// concurrency vocabulary; this is a deliberate, documented exemption like
+// search's C8/C9 one. All mutations honor Idempotency-Key (C8) and
+// ?dry_run=true (C9).
+
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+
+	"github.com/anyproto/anytype-heart/core/api/pagination"
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+	v2service "github.com/anyproto/anytype-heart/core/api/v2/service"
+)
+
+// maxChatRequestBody caps chat mutation bodies. A message is text (≤ the
+// middleware's message-length cap) plus a bounded attachment list — 1 MiB
+// is orders of magnitude above any legitimate body.
+const maxChatRequestBody = 1 << 20 // 1 MiB
+
+// decodeChatBody decodes a chat request body strictly (unknown fields are
+// 400s with the field named — C13's spirit at the request layer, matching
+// search). A false return means the error response was already written.
+func decodeChatBody(c *gin.Context, into any, hint string) bool {
+	return decodeStrictJSONBody(c, into, v2model.Plain(hint), maxChatRequestBody, "chat")
+}
+
+// respondChatMutation writes a chat mutation result: createdStatus on a real
+// mutation, 200 on dry runs.
+func respondChatMutation(c *gin.Context, dryRun bool, createdStatus int, payload any) {
+	status := createdStatus
+	if dryRun {
+		status = http.StatusOK
+	}
+	c.JSON(status, payload)
+}
+
+// ListChatsHandler lists the space's chats as C5 rows
+//
+//	@Summary		List chats
+//	@Description	Every row carries `unread_messages` and `unread_mentions`, read from the chat state without opening the chat. `include=discussions` adds the space's object discussions: a discussion row's id is the discussion's own id (usable on every chat route) and `parent_id` is the object it belongs to. `unread` keeps only rows with unread messages or unread mentions, and `total` then counts the kept rows.
+//	@Id				list_chats
+//	@Tags			Chat
+//	@Produce		json
+//	@Param			space_id	path		string									true	"Space id, from GET /v2/spaces"
+//	@Param			include		query		string									false	"discussions adds object discussions to the list; omitted lists chats only"
+//	@Param			unread		query		string									false	"messages keeps rows with unread messages; mentions keeps rows with unread mentions"
+//	@Param			offset		query		int										false	"Rows to skip"		default(0)
+//	@Param			limit		query		int										false	"Rows to return"	default(25)
+//	@Success		200			{object}	v2model.ListResponse[v2model.ChatRow]	"Chat rows"
+//	@Failure		400			{object}	v2model.Error							"Unknown include or unread value"
+//	@Failure		404			{object}	v2model.Error							"Space not found"
+//	@Security		bearerauth
+//	@Router			/v2/spaces/{space_id}/chats [get]
+func ListChatsHandler(s *v2service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		query, err := parseChatListQuery(c)
+		if err != nil {
+			RespondError(c, err)
+			return
+		}
+		offset := c.GetInt(pagination.QueryParamOffset)
+		limit := c.GetInt(pagination.QueryParamLimit)
+		rows, total, hasMore, err := s.ListChats(c.Request.Context(), c.Param("space_id"), query, offset, limit)
+		if err != nil {
+			RespondError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, v2model.NewListResponse(rows, total, offset, limit, hasMore,
+			"request the next offset"))
+	}
+}
+
+// parseChatListQuery reads ?include= and ?unread=. Every refusal is a 400 naming the
+// parameter and the allowed values, before anything is read.
+func parseChatListQuery(c *gin.Context) (v2service.ChatListQuery, error) {
+	var q v2service.ChatListQuery
+	switch include := c.Query("include"); include {
+	case "":
+	case "discussions":
+		q.IncludeDiscussions = true
+	default:
+		return q, v2model.ValidationFailed("invalid include value",
+			v2model.Issue{Path: "include", Message: fmt.Sprintf("unknown value %q", include), Hint: "allowed: discussions"})
+	}
+	switch unread := c.Query("unread"); unread {
+	case "":
+	case v2model.ChatUnreadMessages, v2model.ChatUnreadMentions:
+		q.Unread = unread
+	default:
+		return q, v2model.ValidationFailed("invalid unread value",
+			v2model.Issue{Path: "unread", Message: fmt.Sprintf("unknown value %q", unread), Hint: "allowed: messages, mentions"})
+	}
+	return q, nil
+}
+
+// CreateChatHandler creates a chat
+//
+//	@Summary		Create a chat
+//	@Description	Messages are not blocks. Add them through the messages route; a document edit cannot reach them.
+//	@Id				create_chat
+//	@Tags			Chat
+//	@Accept			json
+//	@Produce		json
+//	@Param			space_id		path		string						true	"Space id, from GET /v2/spaces"
+//	@Param			dry_run			query		bool						false	"Validate and report without committing"
+//	@Param			Idempotency-Key	header		string						false	"Replay guard: the same key with the same body replays the stored response"
+//	@Param			request			body		v2model.CreateChatRequest	true	"The chat to create"
+//	@Success		201				{object}	v2model.ChatResult			"Created chat row"
+//	@Failure		400				{object}	v2model.Error				"Validation failure"
+//	@Security		bearerauth
+//	@Router			/v2/spaces/{space_id}/chats [post]
+func CreateChatHandler(s *v2service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req v2model.CreateChatRequest
+		if !decodeChatBody(c, &req, "the chat body takes name") {
+			return
+		}
+		result, err := s.CreateChat(c.Request.Context(), c.Param("space_id"), req, isV2DryRun(c))
+		if err != nil {
+			RespondError(c, err)
+			return
+		}
+		respondChatMutation(c, result.DryRun, http.StatusCreated, result)
+	}
+}
+
+// GetChatMessagesHandler reads messages with the state passthrough
+//
+//	@Summary		List chat messages
+//	@Description	`after` alone walks forward, oldest first, continuing from `next_after`. Every other query is anchored at the newest end and walks backward from `next_before`. Both bounds are exclusive; messages are always ascending. `message_count` counts the live messages (a deleted comment stays, as `deleted`); `lifetime_message_count` counts every message ever posted. `offset` is refused.
+//	@Id				get_chat_messages
+//	@Tags			Chat
+//	@Produce		json
+//	@Param			space_id	path		string							true	"Space id, from GET /v2/spaces"
+//	@Param			chat_id		path		string							true	"Chat object id, from GET /v2/spaces/{space_id}/chats"
+//	@Param			after		query		string							false	"Return messages after this order id (exclusive)"
+//	@Param			before		query		string							false	"Return messages before this order id (exclusive)"
+//	@Param			limit		query		int								false	"Messages to return"	default(25)
+//	@Param			reactions	query		string							false	"counts (default) returns the emoji counts; full adds the participant ids behind each count"
+//	@Success		200			{object}	v2model.ChatMessagesResponse	"Messages + state + message_count"
+//	@Failure		400			{object}	v2model.Error					"Not a chat, or invalid params"
+//	@Failure		404			{object}	v2model.Error					"Chat not found"
+//	@Security		bearerauth
+//	@Router			/v2/spaces/{space_id}/chats/{chat_id}/messages [get]
+func GetChatMessagesHandler(s *v2service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if c.Query("offset") != "" {
+			RespondError(c, v2model.ValidationFailed("offset does not apply to the messages read",
+				v2model.Issue{Path: "offset", Message: "messages are cursor-paged"}.
+					Hintf("page with %s or %s, using order ids from a previous read", v2model.Resend("after", "<order_id>"), v2model.Resend("before", "<order_id>"))))
+			return
+		}
+		fullReactions := false
+		switch c.Query("reactions") {
+		case "", v2model.ReactionsCounts:
+		case v2model.ReactionsFull:
+			fullReactions = true
+		default:
+			RespondError(c, v2model.ValidationFailed("invalid reactions value",
+				v2model.Issue{Path: "reactions", Message: fmt.Sprintf("unknown value %q", c.Query("reactions")), Hint: "allowed: counts, full"}))
+			return
+		}
+		result, err := s.GetChatMessages(c.Request.Context(), c.Param("space_id"), c.Param("chat_id"), v2service.ChatMessagesQuery{
+			After:         c.Query("after"),
+			Before:        c.Query("before"),
+			Limit:         c.GetInt(pagination.QueryParamLimit),
+			FullReactions: fullReactions,
+		})
+		if err != nil {
+			RespondError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, result)
+	}
+}
+
+// AddChatMessageHandler sends a message
+//
+//	@Summary		Send a chat message
+//	@Description	The text is Markdown, formatted as described under Write chat messages. The cap is 8000 UTF-16 code units, where one emoji can cost two or more. Attachments are object ids, at most 32, and each one's kind is taken from the target's layout. In a discussion the text is stored as blocks.
+//	@Id				add_chat_message
+//	@Tags			Chat
+//	@Accept			json
+//	@Produce		json
+//	@Param			space_id		path		string							true	"Space id, from GET /v2/spaces"
+//	@Param			chat_id			path		string							true	"Chat object id, from GET /v2/spaces/{space_id}/chats"
+//	@Param			dry_run			query		bool							false	"Validate and report without committing"
+//	@Param			Idempotency-Key	header		string							false	"Replay guard: the same key with the same body replays the stored response"
+//	@Param			request			body		v2model.AddChatMessageRequest	true	"The message to send"
+//	@Success		201				{object}	v2model.ChatMessageResult		"Created message id"
+//	@Failure		400				{object}	v2model.Error					"Validation failure"
+//	@Failure		404				{object}	v2model.Error					"Chat not found"
+//	@Security		bearerauth
+//	@Router			/v2/spaces/{space_id}/chats/{chat_id}/messages [post]
+func AddChatMessageHandler(s *v2service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req v2model.AddChatMessageRequest
+		if !decodeChatBody(c, &req, "the message body takes text, reply_to, attachments") {
+			return
+		}
+		result, err := s.AddChatMessage(c.Request.Context(), c.Param("space_id"), c.Param("chat_id"), req, isV2DryRun(c))
+		if err != nil {
+			RespondError(c, err)
+			return
+		}
+		respondChatMutation(c, result.DryRun, http.StatusCreated, result)
+	}
+}
+
+// EditChatMessageHandler edits a message's text
+//
+//	@Summary		Update chat message text
+//	@Description	Every mark is re-derived from the text you send, so a mark the old text carried and the new text does not spell out is lost; in a discussion the text replaces the message's blocks the same way, and dropped quotes or links are named in `warnings`. Attachments and the reply target survive; the style does in a space chat. Editing another member's message is a 403.
+//	@Id				edit_chat_message
+//	@Tags			Chat
+//	@Accept			json
+//	@Produce		json
+//	@Param			space_id		path		string							true	"Space id, from GET /v2/spaces"
+//	@Param			chat_id			path		string							true	"Chat object id, from GET /v2/spaces/{space_id}/chats"
+//	@Param			message_id		path		string							true	"Message id, from GET /v2/spaces/{space_id}/chats/{chat_id}/messages"
+//	@Param			dry_run			query		bool							false	"Validate and report without committing"
+//	@Param			Idempotency-Key	header		string							false	"Replay guard: the same key with the same body replays the stored response"
+//	@Param			request			body		v2model.EditChatMessageRequest	true	"The replacement text"
+//	@Success		200				{object}	v2model.ChatMessageResult		"Edited message id"
+//	@Failure		400				{object}	v2model.Error					"Validation failure"
+//	@Failure		404				{object}	v2model.Error					"Chat or message not found"
+//	@Security		bearerauth
+//	@Router			/v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id} [patch]
+func EditChatMessageHandler(s *v2service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// text is decoded as present-or-absent: an absent member must be
+		// refused, not read as an empty text that clears the message
+		var body struct {
+			Text *string `json:"text"`
+		}
+		if !decodeChatBody(c, &body, "the edit body takes text") {
+			return
+		}
+		if body.Text == nil {
+			RespondError(c, v2model.ValidationFailed("the edit names no text",
+				v2model.Issue{Path: "/text", Message: "text is required: leaving it out would clear the message"}.
+					WithHint(v2model.Plain(`send the new text; an empty string clears it, which a message with attachments allows`))))
+			return
+		}
+		req := v2model.EditChatMessageRequest{Text: *body.Text}
+		result, err := s.EditChatMessage(c.Request.Context(), c.Param("space_id"), c.Param("chat_id"), c.Param("message_id"), req, isV2DryRun(c))
+		if err != nil {
+			RespondError(c, err)
+			return
+		}
+		respondChatMutation(c, result.DryRun, http.StatusOK, result)
+	}
+}
+
+// DeleteChatMessageHandler deletes a message
+//
+//	@Summary		Delete a chat message
+//	@Description	An attachment whose only reference was this message is erased for good afterwards, not moved to Bin. The response names those ids in `warnings`, and a dry run reports the same list without deleting anything. A message that does not exist is a 404 on the dry run too.
+//	@Id				delete_chat_message
+//	@Tags			Chat
+//	@Produce		json
+//	@Param			space_id		path		string						true	"Space id, from GET /v2/spaces"
+//	@Param			chat_id			path		string						true	"Chat object id, from GET /v2/spaces/{space_id}/chats"
+//	@Param			message_id		path		string						true	"Message id, from GET /v2/spaces/{space_id}/chats/{chat_id}/messages"
+//	@Param			dry_run			query		bool						false	"Report what would be deleted, attachments included, without committing"
+//	@Param			Idempotency-Key	header		string						false	"Replay guard: the same key with the same body replays the stored response"
+//	@Success		200				{object}	v2model.ChatMessageResult	"Deleted message id"
+//	@Failure		404				{object}	v2model.Error				"Chat or message not found"
+//	@Security		bearerauth
+//	@Router			/v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id} [delete]
+func DeleteChatMessageHandler(s *v2service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		result, err := s.DeleteChatMessage(c.Request.Context(), c.Param("space_id"), c.Param("chat_id"), c.Param("message_id"), isV2DryRun(c))
+		if err != nil {
+			RespondError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, result)
+	}
+}
+
+// ToggleChatReactionHandler toggles a reaction
+//
+//	@Summary		Toggle a chat reaction
+//	@Description	`added` says which way the toggle went. A dry run predicts it, but when there is no account identity to predict with it omits the field and says so in `warnings`.
+//	@Id				toggle_chat_reaction
+//	@Tags			Chat
+//	@Accept			json
+//	@Produce		json
+//	@Param			space_id		path		string						true	"Space id, from GET /v2/spaces"
+//	@Param			chat_id			path		string						true	"Chat object id, from GET /v2/spaces/{space_id}/chats"
+//	@Param			message_id		path		string						true	"Message id, from GET /v2/spaces/{space_id}/chats/{chat_id}/messages"
+//	@Param			dry_run			query		bool						false	"Report the would-be outcome without committing"
+//	@Param			Idempotency-Key	header		string						false	"Replay guard: the same key with the same body replays the stored response"
+//	@Param			request			body		v2model.ChatReactionRequest	true	"The emoji to toggle"
+//	@Success		200				{object}	v2model.ChatReactionResult	"Toggle outcome"
+//	@Failure		400				{object}	v2model.Error				"Validation failure"
+//	@Failure		404				{object}	v2model.Error				"Chat or message not found"
+//	@Security		bearerauth
+//	@Router			/v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}/reactions [post]
+func ToggleChatReactionHandler(s *v2service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req v2model.ChatReactionRequest
+		if !decodeChatBody(c, &req, "the reaction body takes emoji") {
+			return
+		}
+		result, err := s.ToggleChatReaction(c.Request.Context(), c.Param("space_id"), c.Param("chat_id"), c.Param("message_id"), req, isV2DryRun(c))
+		if err != nil {
+			RespondError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, result)
+	}
+}
+
+// ReadChatHandler moves the read watermark
+//
+//	@Summary		Mark chat activity as read
+//	@Description	`up_to` is inclusive; it and `last_state_id` come from one messages read: the newest order and the state's id. An empty value would silently mark nothing, so both are required. Later messages stay unread. The reactions scope takes neither field. The receipt carries the chat's state after the move when it could be read back.
+//	@Id				read_chat
+//	@Tags			Chat
+//	@Accept			json
+//	@Produce		json
+//	@Param			space_id		path		string					true	"Space id, from GET /v2/spaces"
+//	@Param			chat_id			path		string					true	"Chat object id, from GET /v2/spaces/{space_id}/chats"
+//	@Param			dry_run			query		bool					false	"Validate and report without committing"
+//	@Param			Idempotency-Key	header		string					false	"Replay guard: the same key with the same body replays the stored response"
+//	@Param			request			body		v2model.ChatReadRequest	true	"The watermark move"
+//	@Success		200				{object}	v2model.ChatReadResult	"Watermark moved"
+//	@Failure		400				{object}	v2model.Error			"Validation failure"
+//	@Failure		404				{object}	v2model.Error			"Chat not found"
+//	@Security		bearerauth
+//	@Router			/v2/spaces/{space_id}/chats/{chat_id}/read [post]
+func ReadChatHandler(s *v2service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var req v2model.ChatReadRequest
+		if !decodeChatBody(c, &req, "the read body takes up_to, last_state_id, scope") {
+			return
+		}
+		result, err := s.ReadChat(c.Request.Context(), c.Param("space_id"), c.Param("chat_id"), req, isV2DryRun(c))
+		if err != nil {
+			RespondError(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, result)
+	}
+}

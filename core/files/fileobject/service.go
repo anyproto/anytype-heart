@@ -218,7 +218,7 @@ func (s *service) Run(_ context.Context) error {
 }
 
 type objectArchiver interface {
-	SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool) error
+	SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool, skipCascade bool) error
 }
 
 func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) error {
@@ -249,7 +249,7 @@ func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) er
 		for _, record := range records {
 			ids = append(ids, record.Details.GetString(bundle.RelationKeyId))
 		}
-		if err = s.objectArchiver.SetListIsArchived(nil, ctx, ids, true); err != nil {
+		if err = s.objectArchiver.SetListIsArchived(nil, ctx, ids, true, false); err != nil {
 			return err
 		}
 	}
@@ -269,6 +269,11 @@ func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 				RelationKey: bundle.RelationKeyFileBackupStatus,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       domain.Int64(int64(filesyncstatus.Synced)),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsDeleted,
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       domain.Bool(true),
 			},
 		},
 	})

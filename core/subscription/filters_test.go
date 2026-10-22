@@ -83,6 +83,36 @@ func TestSourceResolution(t *testing.T) {
 		assert.ElementsMatch(t, []string{"o1", "o2"}, recordIds(resp.Records))
 	})
 
+	// GO-7404: a relation source means "has this property", not "has a value in
+	// it" — filtering the empty ones out breaks `Property → is empty` views
+	t.Run("relation source keeps objects holding the property with an empty value", func(t *testing.T) {
+		fx := newEngineFixture(t)
+		givenObjects(fx)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("o4"),
+				"assignee":                       domain.StringList([]string{}),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("o5"),
+				"assignee":                       domain.String(""),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+		})
+
+		resp, err := fx.Search(SubscribeRequest{
+			SpaceId:           testSpaceId,
+			SubId:             "source-empty",
+			Internal:          true,
+			NoDepSubscription: true,
+			Keys:              []string{bundle.RelationKeyId.String()},
+			Source:            []string{"rel-assignee"},
+		})
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"o2", "o4", "o5"}, recordIds(resp.Records))
+	})
+
 	t.Run("unresolvable source errors instead of widening to the space", func(t *testing.T) {
 		fx := newEngineFixture(t)
 		givenObjects(fx)

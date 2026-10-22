@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/detailservice/mock_detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject/mock_chatobject"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -67,6 +68,9 @@ func (s *accountServiceDummy) Init(a *app.App) error {
 
 type chatRepoServiceDummy struct {
 	repo chatrepository.Repository
+	// repos, when set, routes by chatObjectId and fails on unknown chats —
+	// multi-chat search tests use it to assert which chats are hydrated
+	repos map[string]chatrepository.Repository
 }
 
 func (s *chatRepoServiceDummy) Name() string                    { return "chatRepoServiceDummy" }
@@ -74,6 +78,13 @@ func (s *chatRepoServiceDummy) Init(a *app.App) error           { return nil }
 func (s *chatRepoServiceDummy) Run(ctx context.Context) error   { return nil }
 func (s *chatRepoServiceDummy) Close(ctx context.Context) error { return nil }
 func (s *chatRepoServiceDummy) Repository(spaceId, chatObjectId string) (chatrepository.Repository, error) {
+	if s.repos != nil {
+		repo, ok := s.repos[chatObjectId]
+		if !ok {
+			return nil, fmt.Errorf("unexpected chat %s", chatObjectId)
+		}
+		return repo, nil
+	}
 	return s.repo, nil
 }
 
@@ -82,8 +93,10 @@ func (s *chatRepoServiceDummy) Repository(spaceId, chatObjectId string) (chatrep
 // stubs (calling an unimplemented one panics, surfacing accidental coverage gaps).
 type fakeChatRepository struct {
 	chatrepository.Repository
-	pinned        []*chatmodel.Message
-	messagesByIds []*chatmodel.Message
+	pinned          []*chatmodel.Message
+	messagesByIds   []*chatmodel.Message
+	messagesByIdsFn func(messageIds []string) ([]*chatmodel.Message, error)
+	lastMessages    []*chatmodel.Message
 }
 
 func (f *fakeChatRepository) GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error) {
@@ -91,7 +104,51 @@ func (f *fakeChatRepository) GetPinnedMessages(ctx context.Context) ([]*chatmode
 }
 
 func (f *fakeChatRepository) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error) {
+	if f.messagesByIdsFn != nil {
+		return f.messagesByIdsFn(messageIds)
+	}
 	return f.messagesByIds, nil
+}
+
+func (f *fakeChatRepository) GetLastMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error) {
+	if int(limit) < len(f.lastMessages) {
+		return f.lastMessages[:limit], nil
+	}
+	return f.lastMessages, nil
+}
+
+// GetLastLiveMessages mirrors the repository: lastMessages without tombstones.
+func (f *fakeChatRepository) GetLastLiveMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error) {
+	live := make([]*chatmodel.Message, 0, len(f.lastMessages))
+	for _, message := range f.lastMessages {
+		if !message.Deleted {
+			live = append(live, message)
+		}
+	}
+	if int(limit) < len(live) {
+		return live[:limit], nil
+	}
+	return live, nil
+}
+
+// GetLastMessagesByCreators mirrors the repository: live messages only.
+func (f *fakeChatRepository) GetLastMessagesByCreators(ctx context.Context, creators []string, limit uint) ([]*chatmodel.Message, error) {
+	filtered := make([]*chatmodel.Message, 0, len(f.lastMessages))
+	for _, message := range f.lastMessages {
+		if message.Deleted {
+			continue
+		}
+		for _, creator := range creators {
+			if message.Creator == creator {
+				filtered = append(filtered, message)
+				break
+			}
+		}
+	}
+	if int(limit) < len(filtered) {
+		return filtered[:limit], nil
+	}
+	return filtered, nil
 }
 
 type fileGCDummy struct{}
@@ -100,13 +157,17 @@ func (s *fileGCDummy) Name() string                    { return "fileGCDummy" }
 func (s *fileGCDummy) Init(a *app.App) error           { return nil }
 func (s *fileGCDummy) Run(ctx context.Context) error   { return nil }
 func (s *fileGCDummy) Close(ctx context.Context) error { return nil }
-func (s *fileGCDummy) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) ([]string, error) {
-	return nil, nil
+func (s *fileGCDummy) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) (objectgc.OrphanCandidates, error) {
+	return objectgc.OrphanCandidates{}, nil
 }
-func (s *fileGCDummy) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) ([]string, error) {
-	return nil, nil
+func (s *fileGCDummy) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) (objectgc.OrphanCandidates, error) {
+	return objectgc.OrphanCandidates{}, nil
 }
 func (s *fileGCDummy) RestoreOrphansOnLinksAdded(spaceId, contextId string, addedLinks []string) ([]string, error) {
+	return nil, nil
+}
+
+func (s *fileGCDummy) ListOrphans(spaceId string) ([]objectgc.OrphanItem, error) {
 	return nil, nil
 }
 
@@ -1085,7 +1146,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "file", mock.Anything).Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "file", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 11.11,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1108,10 +1169,7 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			assert.Len(t, ids, 2)
 			assert.Contains(t, ids, "msg1")
 			assert.Contains(t, ids, "msg2")
@@ -1119,8 +1177,7 @@ func TestService_Search(t *testing.T) {
 				{ChatMessage: &model.ChatMessage{Id: "msg1"}},
 				{ChatMessage: &model.ChatMessage{Id: "msg2"}},
 			}, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1147,7 +1204,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "test", mock.Anything).Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "test", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 10.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1180,17 +1237,13 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
 				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{Id: id}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1217,7 +1270,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "query", mock.Anything).Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "query", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 10.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1250,17 +1303,13 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
 				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{Id: id}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1300,19 +1349,15 @@ func TestService_Search(t *testing.T) {
 				},
 			})
 		}
-		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "text", mock.Anything).Return(ftResults, nil)
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "text", mock.Anything, mock.Anything).Return(ftResults, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
 				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{Id: id}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1342,7 +1387,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "search", mock.Anything).Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "search", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 5.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1375,17 +1420,13 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
 				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{Id: id}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1420,7 +1461,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "msg", mock.Anything).Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "msg", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 5.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1444,10 +1485,7 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
 				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{
@@ -1456,8 +1494,7 @@ func TestService_Search(t *testing.T) {
 				}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1492,7 +1529,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "text", mock.Anything).Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "text", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 5.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1516,10 +1553,7 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
 				timestamp := int64(1000 + i) // msg1=1000, msg2=1001, msg3=1002
@@ -1529,8 +1563,7 @@ func TestService_Search(t *testing.T) {
 				}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1565,7 +1598,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "test", mock.Anything).Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "test", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 5.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1589,10 +1622,7 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			orderMap := map[string]string{
 				"msg1": "order_002",
 				"msg2": "order_001",
@@ -1606,8 +1636,7 @@ func TestService_Search(t *testing.T) {
 				}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1647,7 +1676,7 @@ func TestService_Search(t *testing.T) {
 		}, nil).Maybe()
 
 		// FTSearch returns results from multiple chats
-		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "query", mock.Anything).Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "query", mock.Anything, mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 10.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1671,10 +1700,7 @@ func TestService_Search(t *testing.T) {
 			},
 		}, nil)
 
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIdsFn: func(ids []string) ([]*chatmodel.Message, error) {
 			// Should only receive msg1 and msg3, not msg2 (different chat)
 			assert.Len(t, ids, 2)
 			assert.Contains(t, ids, "msg1")
@@ -1686,8 +1712,7 @@ func TestService_Search(t *testing.T) {
 				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{Id: id}}
 			}
 			return messages, nil
-		})
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		}}
 
 		fx.start(t)
 
@@ -1712,7 +1737,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "error", mock.Anything).Return(nil, fmt.Errorf("search index error"))
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "error", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("search index error"))
 
 		fx.start(t)
 
@@ -1729,7 +1754,7 @@ func TestService_Search(t *testing.T) {
 		assert.Contains(t, err.Error(), "search ft")
 	})
 
-	t.Run("empty query returns empty results", func(t *testing.T) {
+	t.Run("empty query browses the chat's last messages, no FT involved", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		ctx := context.Background()
@@ -1738,13 +1763,12 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "", mock.Anything).Return([]*ftsearch.DocumentMatch{}, nil)
-
-		mockChatObj := mock_chatobject.NewMockStoreObject(t)
-		mockChatObj.EXPECT().Lock().Return()
-		mockChatObj.EXPECT().Unlock().Return()
-		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, []string{}).Return([]*chatmodel.Message{}, nil)
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
+		// no ftSearch expectation: browse must not query the index
+		fx.chatRepoService.repo = &fakeChatRepository{lastMessages: []*chatmodel.Message{
+			{ChatMessage: &model.ChatMessage{Id: "msgNew", CreatedAt: 300}},
+			{ChatMessage: &model.ChatMessage{Id: "msgMid", CreatedAt: 200}},
+			{ChatMessage: &model.ChatMessage{Id: "msgOld", CreatedAt: 100}},
+		}}
 
 		fx.start(t)
 
@@ -1757,7 +1781,12 @@ func TestService_Search(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Empty(t, results)
+		require.Len(t, results, 3)
+		got := []string{results[0].MessageId, results[1].MessageId, results[2].MessageId}
+		// default browse order: CREATED_AT desc
+		assert.Equal(t, []string{"msgNew", "msgMid", "msgOld"}, got)
+		assert.Equal(t, chatId, results[0].ChatId)
+		assert.Equal(t, spaceId, results[0].SpaceId)
 	})
 }
 
@@ -1776,7 +1805,7 @@ func TestService_PinMessages(t *testing.T) {
 		mockChat := mock_chatobject.NewMockStoreObject(t)
 		mockChat.EXPECT().Lock().Return()
 		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(nil)
+		mockChat.EXPECT().SetMessagesPinned(mock.Anything, []string{"msg1"}, true).Return(nil)
 
 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
 
@@ -1803,9 +1832,7 @@ func TestService_PinMessages(t *testing.T) {
 		mockChat := mock_chatobject.NewMockStoreObject(t)
 		mockChat.EXPECT().Lock().Return()
 		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(nil)
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg2", true).Return(nil)
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg3", true).Return(nil)
+		mockChat.EXPECT().SetMessagesPinned(mock.Anything, []string{"msg1", "msg2", "msg3"}, true).Return(nil)
 
 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
 
@@ -1832,7 +1859,7 @@ func TestService_PinMessages(t *testing.T) {
 		mockChat := mock_chatobject.NewMockStoreObject(t)
 		mockChat.EXPECT().Lock().Return()
 		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(fmt.Errorf("message not found"))
+		mockChat.EXPECT().SetMessagesPinned(mock.Anything, []string{"msg1"}, true).Return(fmt.Errorf("message not found"))
 
 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
 
@@ -1861,7 +1888,7 @@ func TestService_UnpinMessages(t *testing.T) {
 		mockChat := mock_chatobject.NewMockStoreObject(t)
 		mockChat.EXPECT().Lock().Return()
 		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg2", false).Return(nil)
+		mockChat.EXPECT().SetMessagesPinned(mock.Anything, []string{"msg2"}, false).Return(nil)
 
 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
 

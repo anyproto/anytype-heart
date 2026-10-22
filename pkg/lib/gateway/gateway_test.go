@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -80,27 +81,60 @@ func TestGetImage(t *testing.T) {
 	})
 }
 
+// fakeConfig stands in for the config component, which is the gateway's only interest in it:
+// somewhere to remember the port between runs.
+type fakeConfig struct {
+	mu   sync.Mutex
+	addr string
+}
+
+func (c *fakeConfig) Init(a *app.App) error { return nil }
+
+func (c *fakeConfig) Name() string { return "config" }
+
+func (c *fakeConfig) GatewayAddr() string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.addr
+}
+
+func (c *fakeConfig) SetGatewayAddr(addr string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.addr = addr
+	return nil
+}
+
 type fixture struct {
 	*gateway
+	config            *fakeConfig
 	fileService       *mock_files.MockService
 	fileObjectService *mock_fileobject.MockService
 }
 
 func newFixture(t *testing.T) *fixture {
+	// the well-known port is busy as often as not on a developer machine, and a test that binds it
+	// would fight the running app, so every fixture gets its own
+	return newFixtureWithConfig(t, &fakeConfig{}, portOf(t, freeAddr(t)))
+}
+
+func newFixtureWithConfig(t *testing.T, cfg *fakeConfig, wellKnownPort int) *fixture {
 	a := new(app.App)
 
 	fileService := mock_files.NewMockService(t)
 	fileObjectService := mock_fileobject.NewMockService(t)
 	fileDownloader := mock_filedownloader.NewMockService(t)
 	gw := New().(*gateway)
+	gw.wellKnownPort = wellKnownPort
 
 	ctx := context.Background()
 	a.Register(testutil.PrepareMock(ctx, a, fileService))
 	a.Register(testutil.PrepareMock(ctx, a, fileObjectService))
 	a.Register(testutil.PrepareMock(ctx, a, fileDownloader))
+	a.Register(cfg)
 	a.Register(gw)
 	err := a.Start(ctx)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	t.Cleanup(func() {
 		err := gw.Close(ctx)
@@ -109,6 +143,7 @@ func newFixture(t *testing.T) *fixture {
 
 	return &fixture{
 		gateway:           gw,
+		config:            cfg,
 		fileService:       fileService,
 		fileObjectService: fileObjectService,
 	}

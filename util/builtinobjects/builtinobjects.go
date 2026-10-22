@@ -228,8 +228,13 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceId
 		if err != nil {
 			log.Warnf("failed to get profile object: %v", err)
 		}
+		// isBundle: true — this branch only runs for isNewSpace, so the
+		// profile's name and icon are this space's own identity, not an
+		// overwrite of one the user already chose (setWorkspaceSettings skips
+		// both under isBundle=false, which is why an experience-installed
+		// space always lost its avatar; see AnyBlock v2 §2c)
 		// TODO: GO-2627 Home page handling should be moved to importer
-		b.setWorkspaceSettings(profile, spaceId, false)
+		b.setWorkspaceSettings(profile, spaceId, true)
 		removeFunc()
 	} else if importFormat == model.Import_Markdown {
 		// try to read manifest.json from archive

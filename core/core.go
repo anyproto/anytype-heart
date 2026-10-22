@@ -126,3 +126,12 @@ func (mw *Middleware) SaveGoroutinesStack(path string) (err error) {
 	}
 	return utildebug.SaveStackToRepo(path, true)
 }
+
+// SetLocalAPISecret registers the per-launch secret the parent process
+// delivered over our stdin pipe. Calling it turns on the local API gate: the
+// account-bootstrap RPCs then require the value as request metadata, so a
+// caller that reached the port without being our parent cannot mint itself a
+// session. It is called once, from cmd/grpcserver, before the server serves.
+func (mw *Middleware) SetLocalAPISecret(secret string) {
+	mw.applicationService.SetLocalAPISecret(secret)
+}

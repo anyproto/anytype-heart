@@ -30,6 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
+	bb "github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -1160,6 +1161,68 @@ func TestHistory_Show(t *testing.T) {
 		assert.NotNil(t, view)
 		assert.NotNil(t, version)
 	})
+}
+
+func TestHistory_buildDetailsStripsDependents(t *testing.T) {
+	spaceID := "spaceID"
+	rootId := "root1"
+	depId := "dep1"
+
+	store := objectstore.NewStoreFixture(t)
+	store.AddObjects(t, spaceID, []objectstore.TestObject{{
+		bundle.RelationKeyId:         domain.String(depId),
+		bundle.RelationKeySpaceId:    domain.String(spaceID),
+		bundle.RelationKeyName:       domain.String("Dep"),
+		bundle.RelationKeySyncStatus: domain.Int64(1),
+		bundle.RelationKeySyncDate:   domain.Int64(999),
+	}})
+
+	resolver := mock_idresolver.NewMockResolver(t)
+	resolver.EXPECT().ResolveSpaceID(mock.Anything).Return(spaceID, nil).Maybe()
+	fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
+	fetcher.EXPECT().GetRelationFormatByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ string, key domain.RelationKey) (model.RelationFormat, error) {
+		rel, err := bundle.GetRelation(key)
+		if err != nil {
+			return 0, err
+		}
+		return rel.Format, nil
+	}).Maybe()
+
+	space := mock_clientspace.NewMockSpace(t)
+	space.EXPECT().Id().Return(spaceID).Maybe()
+
+	h := &history{objectStore: store, resolver: resolver, formatFetcher: fetcher}
+
+	root := bb.Root(bb.ID(rootId), bb.Children(bb.Link(depId)))
+	st := state.NewDoc(rootId, root.BuildMap()).NewState()
+	st.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyId:         domain.String(rootId),
+		bundle.RelationKeySpaceId:    domain.String(spaceID),
+		bundle.RelationKeyName:       domain.String("Root"),
+		bundle.RelationKeySyncStatus: domain.Int64(1),
+	}))
+
+	details, err := h.buildDetails(st, space)
+	require.NoError(t, err)
+
+	dep := findHistoryViewDetails(t, details, depId)
+	assert.Contains(t, dep.Fields, bundle.RelationKeyName.String())
+	assert.NotContains(t, dep.Fields, bundle.RelationKeySyncStatus.String())
+	assert.NotContains(t, dep.Fields, bundle.RelationKeySyncDate.String())
+
+	rootView := findHistoryViewDetails(t, details, rootId)
+	assert.Contains(t, rootView.Fields, bundle.RelationKeySyncStatus.String())
+}
+
+func findHistoryViewDetails(t *testing.T, set []*model.ObjectViewDetailsSet, id string) *types.Struct {
+	t.Helper()
+	for _, d := range set {
+		if d.Id == id {
+			return d.Details
+		}
+	}
+	t.Fatalf("ObjectViewDetailsSet for %s not found", id)
+	return nil
 }
 
 type historyFixture struct {

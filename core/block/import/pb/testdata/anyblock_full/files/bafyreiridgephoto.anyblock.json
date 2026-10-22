@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schemas.anytype.io/anyblock/2.0/object.schema.json",
+  "formatVersion": "2.0",
+  "kind": "file_object",
+  "id": "bafyreiridgephoto",
+  "type": "Image",
+  "type_internal_key": "image",
+  "icon": {
+    "format": "file",
+    "file": "bafyreiridgephoto"
+  },
+  "properties": {
+    "Name": "ridge.png",
+    "Created by": "participant-A11111111111111111111111111111111111111111111111",
+    "Creation date": "2026-03-14T07:44:00Z",
+    "Origin": "usecase",
+    "Resolved layout": "image",
+    "File extension": "png",
+    "Mime type": "image/png",
+    "Size": 73
+  },
+  "blocks": [
+    {
+      "id": "file",
+      "type": "image",
+      "object_id": "bafyreiridgephoto",
+      "name": "ridge.png",
+      "mime_type": "image/png",
+      "size": 73
+    }
+  ]
+}

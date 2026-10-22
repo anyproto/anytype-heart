@@ -38,7 +38,7 @@ import (
 
 const CName = "core.files.fileoffloader"
 
-var log = logging.Logger(CName).Desugar()
+var log = logging.LoggerNotSugared(CName)
 
 type Service interface {
 	app.Component

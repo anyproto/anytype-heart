@@ -20,6 +20,7 @@ Flush order: space stores first (critical data), then objectstore (can be reinde
 import (
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"go.uber.org/zap"
 
@@ -34,7 +35,7 @@ const CName = "durability"
 var log = logging.LoggerNotSugared(CName)
 
 type Flusher interface {
-	Flush(timeout time.Duration, waitPending bool)
+	Flush(timeout time.Duration, waitPending bool, mode anystore.FlushMode)
 }
 
 type durability struct {
@@ -62,16 +63,20 @@ func (s *durability) StateChange(state int) {
 		// waitPending=false because we need to do best effort without locking the app closing
 		// db component will perform final flush on closing after all writes are done
 		// flush space stores first, because others we can reindex without data loss
-		s.spaceCore.Flush(time.Second*3, false)
-		s.anystoreProvider.Flush(time.Second*3, false)
+		s.spaceCore.Flush(time.Second*3, false, anystore.FlushModeCheckpointPassive)
+		s.anystoreProvider.Flush(time.Second*3, false, anystore.FlushModeCheckpointPassive)
 	case domain.CompStateAppWentBackground:
-		// we need to wait here because on mobile when app goes to background
-		// when app goes to background(or hibernat on desktop) we need to be fast, but make sure we wait and have extended timeout in case of slow device and a huge WAL
+		// Blocking: iOS may suspend us right after this RPC returns, so committed data must be
+		// power-safe before we let the call finish.
+		// Fsync mode syncs the WAL only (sufficient at synchronous=normal) instead of a passive
+		// checkpoint: background filesystem I/O is throttled on iOS and a checkpoint of every open
+		// DB can grind for minutes without honoring the context (see GO-7393). WAL space
+		// reclamation stays on the idle auto-flush and wal_autocheckpoint paths.
 		start := time.Now()
-		s.spaceCore.Flush(time.Second*10, true)
+		s.spaceCore.Flush(time.Second*10, true, anystore.FlushModeFsync)
 		spaceCoreSpent := time.Since(start)
 		start = time.Now()
-		s.anystoreProvider.Flush(time.Second*10, true)
+		s.anystoreProvider.Flush(time.Second*10, true, anystore.FlushModeFsync)
 		anystoreSpent := time.Since(start)
 		if spaceCoreSpent+anystoreSpent > time.Second {
 			log.With(zap.Int64("spaceCoreSpentMs", spaceCoreSpent.Milliseconds()), zap.Int64("anystoreSpentMs", anystoreSpent.Milliseconds())).Warn("flushing took too long")

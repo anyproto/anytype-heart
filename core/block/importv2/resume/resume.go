@@ -1,0 +1,499 @@
+// Package resume glues the durable run store onto the engine and identity
+// seams — ONE implementation of the durable wiring (claim ledger, issue
+// recorder) and of the pass-3 restart's rehydration, shared
+// by the adapter, the startup sweep and the test harnesses. Three review
+// rounds of this work were consumed by rules fixed in one package and left
+// broken in a sibling; this package exists so the restart rules cannot
+// fork.
+package resume
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"sync/atomic"
+	"time"
+
+	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/block/importv2/engine"
+	"github.com/anyproto/anytype-heart/core/block/importv2/identity"
+	"github.com/anyproto/anytype-heart/core/block/importv2/persist"
+	"github.com/anyproto/anytype-heart/core/block/importv2/report"
+	"github.com/anyproto/anytype-heart/core/block/importv2/runstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+)
+
+var log = logging.Logger("import-v2-resume")
+
+// State is everything a pass-3 restart rehydrates from a run dir: the
+// identity seeds, the engine's resume inputs, and the heal set. It is a
+// pure function of the store — no source, no network, no token.
+type State struct {
+	Manifest runstore.Manifest
+	// SpoolCount is the replay's row count (progress total for the resumed
+	// incarnation).
+	SpoolCount int
+	// FilesDone counts completed uploads (the files-ledger rows) — the
+	// status surface's separate file counter.
+	FilesDone int64
+	// ClaimsTotal counts pass-1 identity claims: the FETCHING phase's
+	// denominator ("claims count / spool rows"). It is the ledger
+	// twin of the engine's per-claim Discovered(KindPage) during SCANNING,
+	// and it is what makes a mid-crawl poll say "812 of 9,650" instead of
+	// reporting a materialize counter that has not started moving.
+	ClaimsTotal int64
+	// PagesDone counts materialized MINTED objects: the page counter,
+	// derived-class definitions and files excluded. It is the ledger twin of
+	// the engine's run.countObject classification — the two must agree, or
+	// the same field means one thing pushed and another polled. Finalize-
+	// stage rows (root collection, report page) are excluded for the same
+	// reason the spool census cannot see them: they were never spooled, so
+	// counting them would push done past total.
+	PagesDone int64
+	// Engine seeds engine.Resume.
+	Engine engine.ResumeState
+
+	identityEntries []identity.RehydratedEntry
+	identityFiles   []identity.RehydratedFile
+	healKeys        map[string]struct{}
+	healDerived     map[string]struct{}
+	compensation    runstore.CompensationInputs
+}
+
+// IdentityOption seeds a fresh identity.Service with the rehydrated index.
+func (st *State) IdentityOption() identity.Option {
+	return identity.WithRehydrated(st.identityEntries, st.identityFiles)
+}
+
+// SeedJournal pre-loads the resumed incarnation's journal with the
+// ledger's compensation view, so IN-PROCESS compensation (a user cancel on
+// the resumed run, a fatal under ALL_OR_NOTHING) covers every incarnation
+// — the one compensation rule, in-process and sweep alike. Without it a
+// resumed abort deleted only its own objects, reported Leaked: 0, and the
+// dir — the only record of the rest — was dropped as settled.
+func (st *State) SeedJournal(j *persist.Journal) {
+	// CompensationInputs is newest-first; the journal appends in effect
+	// order and reverses at Compensate — seed oldest-first so the merged
+	// order stays newest-first overall.
+	j.Seed(reverse(st.compensation.Created), reverse(st.compensation.OwnedFiles), st.compensation.Updated)
+}
+
+func reverse(ids []string) []string {
+	out := make([]string, 0, len(ids))
+	for i := len(ids) - 1; i >= 0; i-- {
+		out = append(out, ids[i])
+	}
+	return out
+}
+
+// Heal is the persister's resumed-incarnation ErrTreeExists policy
+// (persist.SetResumeHeal): true exactly for keys whose ledger row proves an
+// interrupted create by this run — CLASS-GUARDED (review Class C): minted
+// proof heals only minted-class creates, derived intent proof only
+// derived-class ones, so cross-class key reuse can never turn proof into a
+// ResetToVersion of a pre-existing user object.
+func (st *State) Heal() func(sourceKey string, derived bool) bool {
+	return func(sourceKey string, derived bool) bool {
+		if derived {
+			_, ok := st.healDerived[sourceKey]
+			return ok
+		}
+		_, ok := st.healKeys[sourceKey]
+		return ok
+	}
+}
+
+// Load reads a run dir's ledger into a restart seed. Strict by design: a
+// row Load cannot classify fails the resume (the sweep's attempt cap then
+// routes the run to compensation) rather than silently replaying wrong.
+func Load(ctx context.Context, store *runstore.Store) (*State, error) {
+	manifest, err := store.Manifest(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("read manifest: %w", err)
+	}
+	if manifest.SchemaVersion != runstore.SchemaVersion {
+		// The belt behind the sweep's resumable() gate: resume only
+		// within a version — a cross-version load would interpret old rows
+		// under new rules. Any caller landing here routes the dir to the
+		// compensate-only path its version is promised.
+		return nil, fmt.Errorf("run schema v%d cannot be resumed by a v%d binary (compensation only)",
+			manifest.SchemaVersion, runstore.SchemaVersion)
+	}
+	rootSpec, _, err := store.ReadRootSpec(ctx)
+	if err != nil {
+		return nil, err
+	}
+	spool, err := store.Spool(ctx)
+	if err != nil {
+		return nil, err
+	}
+	spoolKeys, spoolCount, err := spool.SourceKeys(ctx)
+	if err != nil {
+		return nil, err
+	}
+	entries, err := store.ReadEntries(ctx)
+	if err != nil {
+		return nil, err
+	}
+	files, err := store.ReadFiles(ctx)
+	if err != nil {
+		return nil, err
+	}
+	issueRecords, err := store.ReadIssues(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// The ledger's compensation view seeds the resumed journal (SeedJournal)
+	// — read here so the seed is part of the same load, not a second scan at
+	// abort time.
+	compensation, err := store.CompensationInputs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	st := &State{
+		Manifest:     manifest,
+		SpoolCount:   spoolCount,
+		healKeys:     map[string]struct{}{},
+		healDerived:  map[string]struct{}{},
+		compensation: compensation,
+	}
+	skip := map[string]struct{}{}
+	var created, updated int64
+	var rootCandidateId string
+	rootCandidateRank := -1
+	var reportId string
+	for _, entry := range entries {
+		if entry.Synthetic {
+			// A displaced-id preservation row (identity conflict upstream):
+			// it can have no spool row by construction, so rehydrating it
+			// would strand a phantom claim in reconciliation, and letting it
+			// into the inference or the counters re-classifies a conflict as
+			// content. It exists for compensation alone — CompensationInputs
+			// reads it separately (review Class B).
+			continue
+		}
+		if entry.Derived {
+			// A derived-class row: no pass-1 claim, no payload, never
+			// identity-rehydrated — the replay re-derives it (deterministic
+			// derivation or dedup). Terminal rows count and skip-list as
+			// usual (the sink exempts derived rows by TYPE regardless);
+			// a non-terminal row is the torn-create window and becomes heal
+			// proof for its class.
+			if entry.Terminal {
+				skip[entry.SourceKey] = struct{}{}
+				switch entry.Action {
+				case "created":
+					created++
+				case "updated":
+					updated++
+				}
+			} else {
+				st.healDerived[entry.SourceKey] = struct{}{}
+			}
+			continue
+		}
+		_, inSpool := spoolKeys[entry.SourceKey]
+		if entry.Late && !inSpool {
+			// A finalize-stage row (root collection, report page): it has no
+			// spool row to reconcile against and is never re-claimed.
+			if !entry.Terminal {
+				// The interrupted finalize claim is dropped: the resumed
+				// finalize re-claims — often the SAME key (the date suffix
+				// has minute granularity), which displaces this abandoned id
+				// into a synthetic row. Either way the minted id stays in
+				// the ledger, delete-tolerated if the run later aborts.
+				continue
+			}
+			switch {
+			case entry.SourceKey == report.SourceKey:
+				reportId = entry.ObjectId
+			case !entry.Matched && entry.Rank > rootCandidateRank:
+				// The root collection is the highest-rank late minted row
+				// (finalize runs last; the report row is excluded by key).
+				rootCandidateId = entry.ObjectId
+				rootCandidateRank = entry.Rank
+			}
+			continue
+		}
+		// Past the synthetic, derived and finalize-stage branches: what is
+		// left is a pass-1 (or second-chance) claim, which is exactly the
+		// fetching denominator.
+		st.ClaimsTotal++
+		if !entry.Matched && !entry.Terminal && len(entry.PayloadRoot) == 0 {
+			// A minted claim without its payload cannot be replayed — the id
+			// is the hash of exactly those bytes, and re-minting would break
+			// every spooled reference. RecordClaims writes both in one tx,
+			// so this shape is corruption: fail the resume loudly (the
+			// sweep's attempt cap then routes the run to compensation).
+			return nil, fmt.Errorf("minted claim %q has no create payload; the run cannot be resumed", entry.SourceKey)
+		}
+		st.identityEntries = append(st.identityEntries, identity.RehydratedEntry{
+			SourceKey:    entry.SourceKey,
+			ObjectId:     entry.ObjectId,
+			Matched:      entry.Matched,
+			Terminal:     entry.Terminal,
+			PayloadRoot:  entry.PayloadRoot,
+			PayloadHeads: entry.PayloadHeads,
+		})
+		if entry.Terminal {
+			skip[entry.SourceKey] = struct{}{}
+			st.PagesDone++
+			switch entry.Action {
+			case "created":
+				created++
+			case "updated":
+				updated++
+			}
+			continue
+		}
+		if !entry.Matched {
+			st.healKeys[entry.SourceKey] = struct{}{}
+		}
+	}
+	for _, file := range files {
+		if file.Synthetic {
+			continue // compensation-only (see the entries twin above)
+		}
+		st.identityFiles = append(st.identityFiles, identity.RehydratedFile{
+			SourceKey: file.SourceKey,
+			ObjectId:  file.ObjectId,
+		})
+		skip[file.SourceKey] = struct{}{}
+		created++ // persistFile reports every completed upload as created
+		st.FilesDone++
+	}
+
+	issues := rehydrateIssues(issueRecords)
+
+	st.Engine = engine.ResumeState{
+		RootSpec:         rootSpec,
+		ConverterName:    manifest.Converter,
+		SkipKeys:         skip,
+		RootCollectionId: rootCandidateId,
+		ReportObjectId:   reportId,
+		Created:          created,
+		Updated:          updated,
+		Issues:           issues,
+	}
+	return st, nil
+}
+
+// rehydrateIssues converts durable issue records into a resumed run's seed
+// — ONE rule for both resume classes. FATAL-severity records are dropped: a
+// fatal aborted its own incarnation, so on a run that nevertheless resumes
+// it is lifecycle history — the suspend's cancelled fatal, a transient
+// crawl failure (rate-limit exhaustion, network down) whose dir was kept
+// for retry — never content. It must not reach the resumed run's report as
+// if an object had a problem. (Generalizes the original cancelled-only
+// filter: every fatal that can coexist with a resumable dir is by
+// construction the abort that made the dir dormant.)
+func rehydrateIssues(records []runstore.IssueRecord) []importv2.Issue {
+	issues := make([]importv2.Issue, 0, len(records))
+	for _, record := range records {
+		if importv2.Severity(record.Severity) >= importv2.SeverityFatal {
+			continue
+		}
+		issue := importv2.Issue{
+			Severity:  importv2.Severity(record.Severity),
+			Code:      importv2.IssueCode(record.Code),
+			SourceKey: record.SourceKey,
+			ObjectId:  record.ObjectId,
+			Subject:   record.Subject,
+			Count:     record.Count,
+			Message:   record.Message,
+		}
+		if record.Error != "" {
+			issue.Err = errors.New(record.Error)
+		}
+		issues = append(issues, issue)
+	}
+	return issues
+}
+
+// CrawlState is everything a pass-2 crawl restart rehydrates
+// from a run dir: the reclaimable identity seeds, the spool census, the
+// recorded plan, and the manifest whose Request blob rebuilds the converter.
+type CrawlState struct {
+	Manifest runstore.Manifest
+	// PlanJSON is the recorded structure plan; nil when the crawl died
+	// before the plan phase completed — nothing was spooled then, so
+	// replanning from scratch is safe (schemaplan.Reuse).
+	PlanJSON []byte
+	// Engine seeds engine.ResumeCrawl.
+	Engine engine.CrawlResumeState
+
+	identityEntries []identity.RehydratedEntry
+}
+
+// IdentityOption seeds a fresh identity.Service with the prior claims,
+// reclaimable: the resumed pass 1 re-enumerates the live source and its
+// claims are reuses of the recorded decisions.
+func (st *CrawlState) IdentityOption() identity.Option {
+	return identity.WithRehydrated(st.identityEntries, nil)
+}
+
+// LoadCrawl reads a mid-crawl run dir into a restart seed. Strict by design,
+// like Load: a ledger that contradicts its own manifest (effect rows without
+// the materialize marker) or a claim without its payload fails the resume
+// loudly — the sweep's attempt cap then routes the dir to compensation —
+// rather than replaying wrong.
+func LoadCrawl(ctx context.Context, store *runstore.Store) (*CrawlState, error) {
+	manifest, err := store.Manifest(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("read manifest: %w", err)
+	}
+	if manifest.SchemaVersion != runstore.SchemaVersion {
+		// The same belt as Load: resume only within a version.
+		return nil, fmt.Errorf("run schema v%d cannot be resumed by a v%d binary (compensation only)",
+			manifest.SchemaVersion, runstore.SchemaVersion)
+	}
+	if manifest.MaterializeStarted {
+		// The two resume classes are disjoint by the sticky marker; crossing
+		// them would rehydrate effect rows as reclaimable claims.
+		return nil, fmt.Errorf("run has begun materializing; the crawl loader does not apply")
+	}
+	spool, err := store.Spool(ctx)
+	if err != nil {
+		return nil, err
+	}
+	spooledKeys, _, err := spool.SourceKeys(ctx)
+	if err != nil {
+		return nil, err
+	}
+	entries, err := store.ReadEntries(ctx)
+	if err != nil {
+		return nil, err
+	}
+	files, err := store.ReadFiles(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(files) > 0 {
+		return nil, fmt.Errorf("crawl-phase run carries %d file-effect rows; the ledger contradicts its own manifest", len(files))
+	}
+	issueRecords, err := store.ReadIssues(ctx)
+	if err != nil {
+		return nil, err
+	}
+	planJSON, err := store.ReadPlanJSON(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	st := &CrawlState{Manifest: manifest, PlanJSON: planJSON}
+	st.Engine = engine.CrawlResumeState{
+		SpooledKeys: make(map[string]struct{}, len(spooledKeys)),
+		PriorClaims: map[string]struct{}{},
+		Issues:      rehydrateIssues(issueRecords),
+	}
+	for key := range spooledKeys {
+		st.Engine.SpooledKeys[key] = struct{}{}
+	}
+	for _, entry := range entries {
+		if entry.Synthetic {
+			continue // displaced-id preservation, compensation-only
+		}
+		if entry.Derived || entry.Late || entry.Terminal {
+			return nil, fmt.Errorf("claim %q carries effect state in a crawl-phase run; the ledger contradicts its own manifest", entry.SourceKey)
+		}
+		if !entry.Matched && len(entry.PayloadRoot) == 0 {
+			// The Load sibling rule: the id is the hash of exactly those
+			// bytes, and RecordClaims writes both in one tx — this shape is
+			// corruption.
+			return nil, fmt.Errorf("minted claim %q has no create payload; the run cannot be resumed", entry.SourceKey)
+		}
+		st.identityEntries = append(st.identityEntries, identity.RehydratedEntry{
+			SourceKey:    entry.SourceKey,
+			ObjectId:     entry.ObjectId,
+			Matched:      entry.Matched,
+			PayloadRoot:  entry.PayloadRoot,
+			PayloadHeads: entry.PayloadHeads,
+			Reclaimable:  true,
+		})
+		st.Engine.PriorClaims[entry.SourceKey] = struct{}{}
+	}
+	// The claim/spool cross-check (review P0-D): a page-class spool row is
+	// written only AFTER its claim flushed (the spool sink's write-ahead
+	// rule), so a row without its claim is corruption — and replaying it
+	// would fail the whole resumed import at pass 3 ('object was not claimed
+	// in pass 1'), after the re-crawl spent its requests. Derived-class rows
+	// (re-derived by the replay) and file rows (futures, never claimed) are
+	// exactly the classes the replay serves without a claim.
+	for key, sbType := range spooledKeys {
+		if importv2.IsDerivedClass(sbType) || importv2.IsFileClass(sbType) {
+			continue
+		}
+		if _, claimed := st.Engine.PriorClaims[key]; !claimed {
+			return nil, fmt.Errorf("spooled object %q has no claim row; the run cannot be resumed", key)
+		}
+	}
+	return st, nil
+}
+
+// ledgerWriteTimeout bounds one detached durable write (the P0-1 rule:
+// intent and issues must land even when the run context is dying).
+const ledgerWriteTimeout = 10 * time.Second
+
+// claimLedger adapts identity's claim records onto the run store.
+type claimLedger struct {
+	store *runstore.Store
+}
+
+func (l *claimLedger) RecordClaims(ctx context.Context, claims []identity.ClaimLedgerRecord) error {
+	// Intent must land even when the run context is dying: detach, bounded.
+	ctx, cancel := context.WithTimeout(context.Background(), ledgerWriteTimeout)
+	defer cancel()
+	records := make([]runstore.ClaimRecord, 0, len(claims))
+	for _, claim := range claims {
+		records = append(records, runstore.ClaimRecord{
+			SourceKey:    claim.SourceKey,
+			ObjectId:     claim.ObjectId,
+			Matched:      claim.Matched,
+			PayloadRoot:  claim.PayloadRoot,
+			PayloadHeads: claim.PayloadHeads,
+		})
+	}
+	return l.store.RecordClaims(ctx, records)
+}
+
+// ClaimLedgerOption wires the durable claim ledger into an identity
+// service.
+func ClaimLedgerOption(store *runstore.Store) identity.Option {
+	return identity.WithClaimLedger(&claimLedger{store: store})
+}
+
+// IssueRecorder returns the engine's OnIssue hook writing every retained
+// issue to the durable ledger (pass-2 issues must survive to the pass-3
+// report), capped like the in-memory list. Errors degrade to
+// a log line: an issue-ledger problem must never abort a run that is
+// otherwise fine.
+func IssueRecorder(store *runstore.Store) func(importv2.Issue) {
+	var count atomic.Int64
+	return func(issue importv2.Issue) {
+		if count.Add(1) > importv2.IssueCap {
+			return
+		}
+		record := runstore.IssueRecord{
+			Severity:  int(issue.Severity),
+			Code:      string(issue.Code),
+			SourceKey: issue.SourceKey,
+			ObjectId:  issue.ObjectId,
+			Subject:   issue.Subject,
+			Count:     issue.Count,
+			Message:   issue.Message,
+		}
+		if issue.Err != nil {
+			record.Error = issue.Err.Error()
+		}
+		// Detached AND bounded (review Class G): this runs on worker and
+		// converter goroutines, so an unbounded write on a stalled disk
+		// would park them beyond Close's reach — the same P0-1 discipline
+		// as the claim ledger two functions up.
+		ctx, cancel := context.WithTimeout(context.Background(), ledgerWriteTimeout)
+		defer cancel()
+		if err := store.AppendIssue(ctx, record); err != nil {
+			log.Errorf("append issue to run ledger: %s", err)
+		}
+	}
+}

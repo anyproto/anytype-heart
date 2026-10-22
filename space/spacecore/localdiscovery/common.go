@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	gonet "net"
+	"net/netip"
 	"runtime"
+	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
@@ -13,7 +16,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/net/addrs"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 const (
@@ -38,15 +40,37 @@ type HookCallback func(state DiscoveryPossibility)
 type DiscoveredPeer struct {
 	Addrs  []string
 	PeerId string
+	// Link is empty for a discovery that replaces the peer's address list
+	// (IPv4 mDNS, the app's native discovery). Otherwise it is the decimal
+	// index of the cable interface the peer answered on, and Addrs holds
+	// only its link-local addresses there (GO-7581).
+	Link string
 }
 
+// OwnAddresses is this device's listening endpoint as a LAN peer should dial
+// it. Addrs is the advertised list; Nets is every own address with its
+// interface subnet, advertised or not, for the per-peer match in For. Nets is
+// empty when the producer does not know the subnets.
 type OwnAddresses struct {
 	Addrs []string
+	Nets  []netip.Prefix
 	Port  int
 }
 
 type Notifier interface {
 	PeerDiscovered(ctx context.Context, peer DiscoveredPeer, own OwnAddresses)
+}
+
+// discoveryBase is the state both implementations share: the discovery
+// possibility reported to hooks (recovery tracker, p2p status) and the last
+// enumerated interface addresses. Guarded by the embedding type's own mutex
+// for interfacesAddrs; hookMu guards the hooks.
+type discoveryBase struct {
+	interfacesAddrs addrs.InterfacesAddrs
+
+	hookMu    sync.Mutex
+	hookState DiscoveryPossibility
+	hooks     []HookCallback
 }
 
 type LocalDiscovery interface {
@@ -63,23 +87,34 @@ type NetworkStateService interface {
 // Also filters out loopback interfaces to make less mess.
 // Please note: this call do a number of underlying syscalls to get addrs for each interface, but they will be cached after first call.
 func filterMulticastInterfaces(ifaces []addrs.NetInterfaceWithAddrCache) []addrs.NetInterfaceWithAddrCache {
-	return slice.Filter(ifaces, func(iface addrs.NetInterfaceWithAddrCache) bool {
-		if iface.Flags&gonet.FlagUp != 0 && iface.Flags&gonet.FlagMulticast != 0 && iface.Flags&gonet.FlagLoopback == 0 {
-			if len(iface.GetAddr()) > 0 {
-				return true
-			}
-		}
-		return false
-	})
+	return filterMulticastInterfacesFor(runtime.GOOS, ifaces)
 }
 
-func (l *localDiscovery) getDiscoveryPossibility(newAddrs addrs.InterfacesAddrs) DiscoveryPossibility {
+// filterMulticastInterfacesFor keeps an interface with an IPv4 address, and
+// one without IPv4 that has an IPv6 link-local address (see linkLocalOnly).
+func filterMulticastInterfacesFor(goos string, ifaces []addrs.NetInterfaceWithAddrCache) []addrs.NetInterfaceWithAddrCache {
+	filtered := make([]addrs.NetInterfaceWithAddrCache, 0, len(ifaces))
+	// iterate by index so GetAddr caches into the elements; the kept copies
+	// carry the populated cache with them
+	for i := range ifaces {
+		iface := &ifaces[i]
+		if iface.Flags&gonet.FlagUp != 0 && iface.Flags&gonet.FlagMulticast != 0 && iface.Flags&gonet.FlagLoopback == 0 {
+			if len(iface.GetAddr()) > 0 || len(linkLocalOnly(goos, iface)) > 0 {
+				filtered = append(filtered, ifaces[i])
+			}
+		}
+	}
+	return filtered
+}
+
+func (l *discoveryBase) getDiscoveryPossibility(newAddrs addrs.InterfacesAddrs) DiscoveryPossibility {
 	// some sophisticated logic for ios, because of possible Local Network Restrictions
 	var err error
 	// we can extend it later to check on another platforms
 	var checkSelfConnect = runtime.GOOS == "ios"
 	interfaces := newAddrs.Interfaces
-	for _, iface := range interfaces {
+	for i := range interfaces {
+		iface := &interfaces[i]
 		if runtime.GOOS == "ios" {
 			// on ios we have to check only en interfaces
 			if !strings.HasPrefix(iface.Name, "en") {
@@ -111,6 +146,25 @@ func (l *localDiscovery) getDiscoveryPossibility(newAddrs addrs.InterfacesAddrs)
 			}
 		}
 	}
+	// an IPv6-only link (a cable, Wi-Fi off) is enough for discovery, also
+	// when an IPv4 self-connect failed (an interface going away)
+	for i := range interfaces {
+		iface := &interfaces[i]
+		for _, ip := range linkLocalOnly(runtime.GOOS, iface) {
+			if !checkSelfConnect {
+				return DiscoveryPossible
+			}
+			// zoned by index: a name goes through Go's interface cache,
+			// which can be stale right after a cable is plugged in
+			zoned := ip.WithZone(strconv.Itoa(iface.Index)).String()
+			err = testSelfConnection(zoned)
+			if err == nil {
+				return DiscoveryPossible
+			}
+			log.Warn(fmt.Sprintf("self connection via %s to %s failed: %v", iface.Name, zoned, err))
+			break
+		}
+	}
 	if err != nil {
 		// todo: double check network state provided by the client?
 		return DiscoveryLocalNetworkRestricted
@@ -118,13 +172,13 @@ func (l *localDiscovery) getDiscoveryPossibility(newAddrs addrs.InterfacesAddrs)
 	return DiscoveryNoInterfaces
 }
 
-func (l *localDiscovery) discoveryPossibilitySetState(state DiscoveryPossibility) {
+func (l *discoveryBase) discoveryPossibilitySetState(state DiscoveryPossibility) {
 	l.discoveryPossibilitySwapState(func(_ DiscoveryPossibility) DiscoveryPossibility {
 		return state
 	})
 }
 
-func (l *localDiscovery) discoveryPossibilitySwapState(f func(currentState DiscoveryPossibility) DiscoveryPossibility) {
+func (l *discoveryBase) discoveryPossibilitySwapState(f func(currentState DiscoveryPossibility) DiscoveryPossibility) {
 	l.hookMu.Lock()
 	defer l.hookMu.Unlock()
 	newState := f(l.hookState)
@@ -138,39 +192,8 @@ func (l *localDiscovery) discoveryPossibilitySwapState(f func(currentState Disco
 	}
 }
 
-func (l *localDiscovery) RegisterDiscoveryPossibilityHook(hook func(state DiscoveryPossibility)) {
+func (l *discoveryBase) RegisterDiscoveryPossibilityHook(hook func(state DiscoveryPossibility)) {
 	l.hookMu.Lock()
 	defer l.hookMu.Unlock()
 	l.hooks = append(l.hooks, hook)
-}
-
-func (l *localDiscovery) getAddresses() (ipv4, ipv6 []gonet.IP) {
-	for _, iface := range l.interfacesAddrs.Interfaces {
-		for _, addr := range iface.GetAddr() {
-			ip, ok := addrs.AddrToIP(addr)
-			if !ok {
-				continue
-			}
-			if ip.To4() != nil {
-				ipv4 = append(ipv4, ip)
-			} else {
-				ipv6 = append(ipv6, ip)
-			}
-		}
-	}
-
-	if len(ipv4) == 0 {
-		// fallback in case we have no ipv4 addresses from interfaces
-		for _, addr := range l.interfacesAddrs.Addrs {
-			ip := strings.Split(addr.String(), "/")[0]
-			ipVal := gonet.ParseIP(ip)
-			if ipVal.To4() != nil {
-				ipv4 = append(ipv4, ipVal)
-			} else {
-				ipv6 = append(ipv6, ipVal)
-			}
-		}
-		l.interfacesAddrs.SortIPsLikeInterfaces(ipv4)
-	}
-	return
 }

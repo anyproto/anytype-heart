@@ -1,0 +1,374 @@
+package wrapper
+
+// describe's option-listing mode: the only route to the option names of a
+// select the type does not name (the "also settable" rows carry no options,
+// because loading them would cost one request per property on every
+// describe), and the way past the inline preview's ellipsis.
+
+import (
+	"context"
+	"fmt"
+	"strings"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
+)
+
+// stubSpaceProperties queues the space's property listing.
+func stubSpaceProperties(fx *fixture, rows ...string) {
+	fx.stub("GET /v2/spaces/space1/properties", 200,
+		fmt.Sprintf(`{"data":[%s],"has_more":false}`, strings.Join(rows, ",")))
+}
+
+func propRow(key, name, format string) string {
+	return fmt.Sprintf(`{"key":%q,"name":%q,"format":%q}`, key, name, format)
+}
+
+func optionsBody(hasMore bool, names ...string) string {
+	rows := make([]string, 0, len(names))
+	for _, n := range names {
+		rows = append(rows, fmt.Sprintf(`{"name":%q}`, n))
+	}
+	return fmt.Sprintf(`{"data":[%s],"has_more":%t}`, strings.Join(rows, ","), hasMore)
+}
+
+func TestDescribeOptions(t *testing.T) {
+	t.Run("lists a property the type does not name", func(t *testing.T) {
+		// given — Region is a space property, not one of the type's
+		fx := newFixture(t)
+		stubSpaceProperties(fx, propRow("region", "Region", "select"))
+		fx.stub("GET /v2/spaces/space1/properties/region/options", 200,
+			optionsBody(false, "North", "South", "East"))
+		want := "Region: select(North, South, East)"
+
+		// when
+		got, err := fx.Run(context.Background(), "describe", map[string]any{
+			"space": "space1", "type": "Task", "options": "Region"})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, got.Text)
+	})
+
+	t.Run("a truncated listing names the move that narrows it", func(t *testing.T) {
+		// given — the ellipsis this mode exists to resolve must not return
+		fx := newFixture(t)
+		stubSpaceProperties(fx, propRow("region", "Region", "select"))
+		fx.stub("GET /v2/spaces/space1/properties/region/options", 200,
+			optionsBody(true, "Alpha", "Beta"))
+
+		// when
+		got, err := fx.Run(context.Background(), "describe", map[string]any{
+			"space": "space1", "type": "Task", "options": "Region"})
+
+		// then
+		require.NoError(t, err)
+		assert.Contains(t, got.Text, "starting_with")
+		assert.NotContains(t, got.Text, "…", "a dead-end ellipsis is what this mode replaces")
+	})
+
+	t.Run("starting_with reaches the route's prefix search", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		stubSpaceProperties(fx, propRow("region", "Region", "select"))
+		fx.stub("GET /v2/spaces/space1/properties/region/options", 200,
+			optionsBody(false, "North"))
+
+		// when
+		_, err := fx.Run(context.Background(), "describe", map[string]any{
+			"space": "space1", "type": "Task", "options": "Region", "starting_with": "Nor"})
+
+		// then
+		require.NoError(t, err)
+		sent := fx.sent("GET /v2/spaces/space1/properties/region/options")
+		require.Len(t, sent, 1)
+		assert.Equal(t, "Nor", sent[0].Query.Get("prefix"))
+	})
+
+	t.Run("the property is addressed by name, the route by key", func(t *testing.T) {
+		// given — the surface teaches names (D5); the route takes api keys
+		fx := newFixture(t)
+		stubSpaceProperties(fx, propRow("region_code", "Region", "select"))
+		fx.stub("GET /v2/spaces/space1/properties/region_code/options", 200,
+			optionsBody(false, "North"))
+
+		// when
+		got, err := fx.Run(context.Background(), "describe", map[string]any{
+			"space": "space1", "type": "Task", "options": "Region"})
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, strings.HasPrefix(got.Text, "Region:"), "got %q", got.Text)
+	})
+
+	t.Run("a non-select is refused by name, saying what it holds", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		stubSpaceProperties(fx, propRow("cook_time", "Cook time", "number"))
+
+		// when
+		_, err := fx.Run(context.Background(), "describe", map[string]any{
+			"space": "space1", "type": "Task", "options": "Cook time"})
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), `"Cook time" holds number`)
+	})
+
+	t.Run("a property the listing hides is read by its exact key", func(t *testing.T) {
+		// given: the property listing excludes hidden properties, but a
+		// write's refusal names the hidden property's exact key and points
+		// here — the options read is tried by that key before refusing
+		fx := newFixture(t)
+		stubSpaceProperties(fx, propRow("region", "Region", "select"))
+		fx.stub("GET /v2/spaces/space1/properties/hidden_status/options", 200, optionsBody(false, "Open", "Closed"))
+
+		// when
+		result, err := fx.Run(context.Background(), "describe", map[string]any{
+			"space": "space1", "type": "Task", "options": "hidden_status"})
+
+		// then
+		require.NoError(t, err)
+		assert.Contains(t, result.Text, "hidden_status: options(Open, Closed)")
+	})
+
+	t.Run("an unknown property points back at describe", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		stubSpaceProperties(fx, propRow("region", "Region", "select"))
+
+		// when
+		_, err := fx.Run(context.Background(), "describe", map[string]any{
+			"space": "space1", "type": "Task", "options": "Regoin"})
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no property named")
+		assert.Contains(t, err.Error(), "describe")
+	})
+
+	t.Run("an empty option list is said plainly, not as an empty listing", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		stubSpaceProperties(fx, propRow("region", "Region", "select"))
+		fx.stub("GET /v2/spaces/space1/properties/region/options", 200, optionsBody(false))
+
+		// when
+		got, err := fx.Run(context.Background(), "describe", map[string]any{
+			"space": "space1", "type": "Task", "options": "Region", "starting_with": "Zz"})
+
+		// then
+		require.NoError(t, err)
+		assert.Contains(t, got.Text, `no option starting with "Zz"`)
+	})
+
+	t.Run("without options describe still describes the type", func(t *testing.T) {
+		// given — the mode must not capture the ordinary call
+		fx := newFixture(t)
+		fx.stub("GET /v2/spaces/space1/types/Task", 404,
+			`{"status":404,"code":"not_found","message":"no such type"}`)
+
+		// when
+		_, err := fx.Run(context.Background(), "describe", map[string]any{
+			"space": "space1", "type": "Task"})
+
+		// then — it reached the type route, not the option route
+		require.Error(t, err)
+		assert.NotEmpty(t, fx.sent("GET /v2/spaces/space1/types/Task"))
+	})
+}
+
+// TestDescribeRowsTranscribeIntoCreateType is the assertion §8.48 claimed
+// and did not have. The surface tells the model "each row is written the way
+// create_type takes a property", so every row describe prints must parse as
+// a create_type property spec. It did not: a truncated option list printed
+// `Status: select(Backlog, Done, …)`, which parsed as an option literally
+// named "…", and a failed option listing printed the caveat inside the row,
+// which parsed as a format named `select  — options could not be listed…`.
+func TestDescribeRowsTranscribeIntoCreateType(t *testing.T) {
+	// given — one plain select, one truncated, one whose options failed
+	fx := newFixture(t)
+	fx.stub("GET /v2/spaces/space1/types/task", 200,
+		`{"formatVersion":"2.0","kind":"object_type","properties":{"name":"Task"},"type_settings":{"api_key":"task","property_definitions":[`+
+			`{"property":"stage","name":"Stage","format":"select"},`+
+			`{"property":"tag","name":"Tag","format":"multi_select"},`+
+			`{"property":"status","name":"Status","format":"select"},`+
+			`{"property":"cook_time","name":"Cook time","format":"number"}]}}`)
+	fx.stub("GET /v2/spaces/space1/properties/stage/options", 200, optionsBody(false, "Draft", "Live"))
+	fx.stub("GET /v2/spaces/space1/properties/tag/options", 200, optionsBody(true, "Alpha", "Beta"))
+	fx.stub("GET /v2/spaces/space1/properties/status/options", 503, `oops`)
+	fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse(
+		v2model.PropertyRow{Key: "stage", Name: "Stage", Format: "select"},
+		v2model.PropertyRow{Key: "tag", Name: "Tag", Format: "multi_select"},
+		v2model.PropertyRow{Key: "status", Name: "Status", Format: "select"},
+		v2model.PropertyRow{Key: "cook_time", Name: "Cook time", Format: "number"},
+	))
+
+	// when
+	result, err := fx.Run(context.Background(), "describe", map[string]any{"space": "space1", "type": "task"})
+	require.NoError(t, err)
+
+	// then — every indented row parses, and says back what it said
+	var rows []string
+	for _, line := range strings.Split(result.Text, "\n") {
+		if !strings.HasPrefix(line, "  ") {
+			continue
+		}
+		row := strings.TrimSpace(line)
+		rows = append(rows, row)
+
+		parsed, err := parseTypeProperties(row)
+		require.NoErrorf(t, err, "describe printed a row create_type cannot parse: %q", row)
+		require.Lenf(t, parsed, 1, "row %q parsed as %d properties", row, len(parsed))
+		assert.Equalf(t, strings.SplitN(row, ":", 2)[0], parsed[0].Name, "row %q lost its name", row)
+		for _, opt := range parsed[0].Options {
+			assert.NotContainsf(t, opt, "…", "row %q yielded an ellipsis as an option name", row)
+			assert.NotContainsf(t, opt, "could not be listed", "row %q yielded prose as an option name", row)
+		}
+	}
+	require.NotEmpty(t, rows)
+
+	// and the whole property block transcribes as ONE create_type argument
+	joined := strings.Join(rows, ", ")
+	all, err := parseTypeProperties(joined)
+	require.NoErrorf(t, err, "joining describe's rows is not a valid properties argument: %q", joined)
+	assert.Len(t, all, len(rows))
+}
+
+// TestCreateTypeRefusesAnUnaddressableMintedProperty covers the one outcome
+// where the server succeeds and the tool still must stop: POST /properties
+// returns an empty key. That is authoritative (storedApiKeyOf — the internal
+// key is then the only address), not a glitch, and typeDocument would fall
+// back to spelling the property by NAME, which can bind a different relation
+// than the one just minted.
+func TestCreateTypeRefusesAnUnaddressableMintedProperty(t *testing.T) {
+	// given
+	fx := newFixture(t)
+	fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
+	fx.stub("POST /v2/spaces/space1/types", 200, `{"key":"t","dry_run":true}`)
+	fx.stub("POST /v2/spaces/space1/properties", 201, `{"key":"","name":"★"}`)
+
+	// when
+	_, err := fx.Run(context.Background(), "create_type", map[string]any{
+		"space": "space1", "name": "Thing", "properties": "★: select(A, B)"})
+
+	// then — refused, the residue named, and no type created
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no key for it")
+	assert.Contains(t, err.Error(), "these properties WERE created and remain in the space: ★")
+	assert.Len(t, fx.sent("POST /v2/spaces/space1/types"), 1, "the dry run only")
+}
+
+// TestCreateTypePreflightPrefixFollowsTheStatus: "check the type name and
+// formats" repairs a 4xx of the caller's own making; a server error from
+// the pre-flight (the space's index could not be read) is nothing the name
+// or formats can repair, and the prefix then says only that nothing ran.
+func TestCreateTypePreflightPrefixFollowsTheStatus(t *testing.T) {
+	t.Run("a validation refusal gets the input-repair prefix", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
+		fx.stub("POST /v2/spaces/space1/types", 400, `{"status":400,"code":"validation_failed","message":"type name already exists","issues":[]}`)
+
+		_, err := fx.Run(context.Background(), "create_type", map[string]any{"space": "space1", "name": "Thing"})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "check the type name and formats")
+	})
+
+	t.Run("a server error gets a neutral prefix", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
+		fx.stub("POST /v2/spaces/space1/types", 500, `{"status":500,"code":"internal_error","message":"could not verify type \"thing\" in space \"space1\" — retry","issues":[{"message":"the space's index could not be read"}]}`)
+
+		_, err := fx.Run(context.Background(), "create_type", map[string]any{"space": "space1", "name": "Thing"})
+
+		require.Error(t, err)
+		assert.NotContains(t, err.Error(), "check the type name and formats")
+		assert.Contains(t, err.Error(), "the pre-flight failed")
+		assert.Contains(t, err.Error(), "nothing was created")
+		assert.Contains(t, err.Error(), "could not verify type")
+	})
+
+	t.Run("an undecodable reply gets the neutral prefix, whatever its status — the pre-flight could not be completed, and nothing was created", func(t *testing.T) {
+		for name, status := range map[string]int{"a 200 that is not JSON": 200, "a 400 that is not JSON": 400} {
+			t.Run(name, func(t *testing.T) {
+				fx := newFixture(t)
+				fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
+				fx.stub("POST /v2/spaces/space1/types", status, `not json`)
+
+				_, err := fx.Run(context.Background(), "create_type", map[string]any{"space": "space1", "name": "Thing"})
+
+				require.Error(t, err)
+				assert.NotContains(t, err.Error(), "check the type name and formats")
+				assert.Contains(t, err.Error(), "the pre-flight failed")
+			})
+		}
+	})
+
+	t.Run("a 4xx that is not a validation refusal gets the neutral prefix", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.stub("GET /v2/spaces/space1/properties", 200, propertiesResponse())
+		fx.stub("POST /v2/spaces/space1/types", 403, `{"status":403,"code":"write_not_granted","message":"this key cannot write to space \"space1\"","issues":[]}`)
+
+		_, err := fx.Run(context.Background(), "create_type", map[string]any{"space": "space1", "name": "Thing"})
+
+		require.Error(t, err)
+		assert.NotContains(t, err.Error(), "check the type name and formats")
+		assert.Contains(t, err.Error(), "the pre-flight failed")
+		assert.Contains(t, err.Error(), "cannot write")
+	})
+}
+
+// TestObjectArgRefusalShowsTheShape covers the message that cost a model
+// eight turns and 43k tokens. It had found both objects and picked the right
+// property, then sent `set: "Linked Projects: 2"` — a string. The refusal
+// named the required TYPE and showed no shape, so the model permuted the
+// string six times (quoting the value, underscoring the key, dropping the
+// quotes) and never tried JSON. A refusal that cannot be acted on is a
+// refusal that will be retried verbatim.
+func TestObjectArgRefusalShowsTheShape(t *testing.T) {
+	t.Run("a Key: value string is converted, not just rejected", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+
+		// when
+		_, err := fx.Run(context.Background(), "set_properties", map[string]any{
+			"space": "space1", "object": "1", "set": "Linked Projects: Fijezogo project"})
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), `{"Linked Projects":"Fijezogo project"}`,
+			"the repair must show the caller's OWN content in the right shape")
+		assert.Contains(t, err.Error(), "not a string", "and name what was wrong with what they sent")
+	})
+
+	t.Run("a quoted value survives the conversion", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+
+		// when
+		_, err := fx.Run(context.Background(), "set_properties", map[string]any{
+			"space": "space1", "object": "1", "set": `Status: "In Progress"`})
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), `{"Status":"In Progress"}`)
+	})
+
+	t.Run("a shapeless value falls back to the tool's own example", func(t *testing.T) {
+		// given — nothing to convert, so show what right looks like
+		fx := newFixture(t)
+
+		// when
+		_, err := fx.Run(context.Background(), "set_properties", map[string]any{
+			"space": "space1", "object": "1", "set": 42})
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not a number")
+		assert.Regexp(t, `e\.g\. "set": \{.+\}`, err.Error(), "the published example must be shown")
+	})
+}

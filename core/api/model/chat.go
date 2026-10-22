@@ -17,6 +17,7 @@ type ChatMessage struct {
 	Attachments      []ChatAttachment    `json:"attachments"`
 	Reactions        map[string][]string `json:"reactions"`
 	Pinned           bool                `json:"pinned"`
+	Deleted          bool                `json:"deleted,omitempty" example:"false"` // A deleted discussion comment, kept so its replies keep their thread: creator, created_at and reply_to_message_id stay, the content is empty. It can't be edited, reacted to or replied to.
 }
 
 type ChatMessageContent struct {
@@ -139,6 +140,7 @@ func ChatMessageFromProto(msg *model.ChatMessage) ChatMessage {
 		Attachments:      chatAttachmentsFromProto(msg.Attachments),
 		Reactions:        chatReactionsFromProto(msg.Reactions),
 		Pinned:           msg.Pinned,
+		Deleted:          msg.Deleted,
 	}
 
 	if cm.Attachments == nil {

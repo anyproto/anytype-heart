@@ -388,3 +388,24 @@ func TestUpdateLinksToObjects(t *testing.T) {
 		assert.Equal(t, newTypeId, st.Get(dataviewBlockId).Model().GetDataview().GetViews()[0].GetDefaultObjectTypeId())
 	})
 }
+
+// A bookmark block whose object is not in the import — an absent reference
+// the export kept verbatim (AnyBlock SPEC §9) — is restored as a URL-only
+// bookmark: the target is cleared, and the bookmark syncer then fetches the
+// object again from the URL, which is the most a restore can recover. It
+// used to log an error and leave the stale id in place.
+func TestHandleBookmarkBlock_AnAbsentObjectBecomesAUrlOnlyBookmark(t *testing.T) {
+	block := &model.Block{Id: "test", Content: &model.BlockContentOfBookmark{Bookmark: &model.BlockContentBookmark{
+		Url: "https://anytype.io", TargetObjectId: "bafyreigone",
+	}}}
+	rootBlock := &model.Block{Id: "root", ChildrenIds: []string{"test"},
+		Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}
+	simpleBlock := simple.New(block)
+	st := state.NewDoc("root", map[string]simple.Block{"test": simpleBlock, "root": simple.New(rootBlock)}).(*state.State)
+
+	handleBookmarkBlock(map[string]string{}, simpleBlock, st)
+
+	got := st.Pick("test").Model().GetBookmark()
+	assert.Empty(t, got.TargetObjectId, "cleared, so the syncer rebuilds the object from the URL")
+	assert.Equal(t, "https://anytype.io", got.Url)
+}

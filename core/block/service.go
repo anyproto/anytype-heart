@@ -28,6 +28,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"sync"
 	"time"
 
@@ -52,6 +53,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
+	"github.com/anyproto/anytype-heart/core/block/object/payloadcreator"
 	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
@@ -137,6 +139,7 @@ type Service struct {
 	resolver             idresolver.Resolver
 	spaceService         space.Service
 	tempDirProvider      core.TempDirProvider
+	downloadScopeDir     string
 	builtinObjectService builtinObjects
 	fileObjectService    fileobject.Service
 	detailsService       detailservice.Service
@@ -191,6 +194,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.fileUploaderService = app.MustComponent[fileuploader.Service](a)
 	s.fileOffloader = app.MustComponent[fileoffloader.Service](a)
 	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
+	s.downloadScopeDir = downloadScopeForGOOS(runtime.GOOS, s.tempDirProvider.TempDir())
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
 	s.accountService = app.MustComponent[account.Service](a)
@@ -274,6 +278,20 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 	err = spc.Do(id.ObjectID, func(ob smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
 			ob.EnabledRelationAsDependentObjects()
+		}
+
+		// Opening is the only implicit point where blocks follow a changed layout (e.g. the type's
+		// recommended layout), written once by the device of the user who opened the object rather
+		// than by every device that loads it. It runs before this session registers, so the events
+		// reach the other sessions showing the object while this one gets the result from Show.
+		// Readers can't push the change, and Apply mutates the in-memory doc before pushing, so
+		// they are skipped up front.
+		if cst := ob.NewState(); ob.ConvertLayoutBlocks(cst) && !spc.IsReadOnly() {
+			// not a user edit: must not make the opener the object's last modifier
+			cst.SetChangeType(domain.ChangeTypeLayoutSync)
+			if convErr := ob.Apply(cst, smartblock.NoHistory, smartblock.NoRestrictions, smartblock.KeepInternalFlags); convErr != nil {
+				log.Error("convert layout blocks on open", zap.String("objectId", id.ObjectID), zap.Error(convErr))
+			}
 		}
 
 		ob.RegisterSession(sctx)
@@ -593,7 +611,9 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string, addAnalytic
 		st.SetLocalDetail(bundle.RelationKeyChatId, domain.String(chatId))
 		st.SetDetail(bundle.RelationKeyHasChat, domain.Bool(true))
 
-		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
+		// space bootstrap, not a user edit: every member runs it, including plain writers
+		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.KeepInternalFlags,
+			smartblock.IgnoreNoPermissions, smartblock.NoSpaceConfigCheck)
 	})
 	if err != nil {
 		return fmt.Errorf("apply chatId to workspace: %w", err)
@@ -611,7 +631,27 @@ func (s *Service) ObjectAddDiscussion(ctx context.Context, objectId string) (dis
 		return "", fmt.Errorf("get space: %w", err)
 	}
 	discussionId, err = s.objectCreator.AddDiscussionDerivedObject(ctx, spc, objectId)
-	if err != nil {
+	if errors.Is(err, treestorage.ErrTreeExists) {
+		// the tree is derived from the parent id, so it already existing
+		// means an earlier attempt — this device before a crash, or another
+		// device concurrently — created it; recover the id and finish the
+		// link below instead of refusing every retry forever
+		//
+		// The derivation must match the create's exactly: createDiscussion
+		// derives WITH the parent id (WithParentId → DeriveTreeObject), and
+		// in a shared space the parent id is hashed into the root, so
+		// DeriveObjectID — key only — would name a different tree and link
+		// the parent to a discussion that does not exist.
+		uk, ukErr := domain.NewUniqueKey(coresb.SmartBlockTypeDiscussionObject, objectId)
+		if ukErr != nil {
+			return "", fmt.Errorf("derive existing discussion key: %w", ukErr)
+		}
+		payload, deriveErr := spc.DeriveTreePayload(ctx, payloadcreator.PayloadDerivationParams{Key: uk, ParentId: objectId})
+		if deriveErr != nil {
+			return "", fmt.Errorf("derive existing discussion id: %w", deriveErr)
+		}
+		discussionId = payload.RootRawChange.Id
+	} else if err != nil {
 		return "", fmt.Errorf("add discussion derived object: %w", err)
 	}
 

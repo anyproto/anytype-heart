@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ethereum/go-ethereum/common"
@@ -30,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/payments/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/deletioncontroller/mock_deletioncontroller"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -59,8 +62,9 @@ func (u *mockGlobalNamesUpdater) Name() string {
 }
 
 type fixture struct {
-	a                        *app.App
-	ctrl                     *gomock.Controller
+	a    *app.App
+	ctrl *gomock.Controller
+	// cache is the mock cache; nil with withRealCache
 	cache                    *mock_cache.MockCacheService
 	ppclient                 *mock_ppclient.MockAnyPpClientService
 	ppclient2                *mock_ppclient2.MockAnyPpClientServiceV2
@@ -71,19 +75,108 @@ type fixture struct {
 	fileLimitsUpdater        *mock_filesync.MockFileSync
 	ns                       *mock_nameservice.MockService
 	emailCollector           *mock_emailcollector.MockEmailCollector
+	events                   *eventRecorder
+	limitsNotifications      atomic.Int32
 
 	*service
 }
 
-func newFixture(t *testing.T) *fixture {
+type fixtureConfig struct {
+	v2 bool
+	// realCacheDir: use the DB-backed cache in this directory
+	realCacheDir string
+	statService  *fakeStatService
+}
+
+// withStatService registers a debugstat service
+func withStatService(f *fakeStatService) fixtureOption {
+	return func(c *fixtureConfig) { c.statService = f }
+}
+
+// fakeStatService records registered providers
+type fakeStatService struct {
+	debugstat.StatService
+	mu        sync.Mutex
+	providers map[debugstat.StatProvider]bool
+}
+
+func (f *fakeStatService) Name() string                { return debugstat.CName }
+func (f *fakeStatService) Init(*app.App) error         { return nil }
+func (f *fakeStatService) Run(context.Context) error   { return nil }
+func (f *fakeStatService) Close(context.Context) error { return nil }
+func (f *fakeStatService) AddProvider(p debugstat.StatProvider) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.providers == nil {
+		f.providers = map[debugstat.StatProvider]bool{}
+	}
+	f.providers[p] = true
+}
+func (f *fakeStatService) RemoveProvider(p debugstat.StatProvider) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	delete(f.providers, p)
+}
+func (f *fakeStatService) has(p debugstat.StatProvider) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.providers[p]
+}
+
+type fixtureOption func(*fixtureConfig)
+
+// withV2 enables membership V2 before the app starts, as AccountSelect does
+func withV2() fixtureOption {
+	return func(c *fixtureConfig) { c.v2 = true }
+}
+
+// withRealCache uses the DB-backed cache in dir (reuse dir to "restart")
+func withRealCache(dir string) fixtureOption {
+	return func(c *fixtureConfig) { c.realCacheDir = dir }
+}
+
+// eventRecorder records every broadcast event, so tests can assert the exact
+// sequence
+type eventRecorder struct {
+	mu     sync.Mutex
+	events []*pb.EventMessage
+}
+
+func (r *eventRecorder) add(e *pb.Event) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.events = append(r.events, e.Messages...)
+}
+
+func (r *eventRecorder) all() []*pb.EventMessage {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]*pb.EventMessage(nil), r.events...)
+}
+
+func newFixture(t *testing.T, opts ...fixtureOption) *fixture {
+	var cfg fixtureConfig
+	for _, o := range opts {
+		o(&cfg)
+	}
 	fx := &fixture{
 		a:                 new(app.App),
 		ctrl:              gomock.NewController(t),
 		service:           New().(*service),
 		identitiesUpdater: &mockGlobalNamesUpdater{},
+		events:            &eventRecorder{},
 	}
 
-	fx.cache = mock_cache.NewMockCacheService(t)
+	var cacheComponent app.Component
+	if cfg.realCacheDir != "" {
+		dbProvider, err := anystoreprovider.NewInPath(cfg.realCacheDir)
+		require.NoError(t, err)
+		fx.a.Register(dbProvider)
+		cacheComponent = cache.New()
+	} else {
+		fx.cache = mock_cache.NewMockCacheService(t)
+		cacheComponent = testutil.PrepareMock(ctx, fx.a, fx.cache)
+	}
 	fx.ppclient = mock_ppclient.NewMockAnyPpClientService(fx.ctrl)
 	fx.ppclient2 = mock_ppclient2.NewMockAnyPpClientServiceV2(fx.ctrl)
 	fx.wallet = mock_wallet.NewMockWallet(t)
@@ -111,11 +204,17 @@ func newFixture(t *testing.T) *fixture {
 	fx.wallet.EXPECT().GetAccountPrivkey().Return(decodedSignKey).Maybe()
 	fx.wallet.EXPECT().RepoPath().Return(t.TempDir())
 
-	fx.eventSender.EXPECT().Broadcast(mock.AnythingOfType("*pb.Event")).Maybe()
+	fx.eventSender.EXPECT().Broadcast(mock.AnythingOfType("*pb.Event")).Run(fx.events.add).Maybe()
+	// limits are refreshed by non-blocking notifications only
+	fx.multiplayerLimitsUpdater.EXPECT().UpdateCoordinatorStatus().Run(func() { fx.limitsNotifications.Add(1) }).Maybe()
+	fx.fileLimitsUpdater.EXPECT().RequestNodeUsageUpdate().Maybe()
 
 	refreshIntervalSecs = 0
+	if cfg.statService != nil {
+		fx.a.Register(cfg.statService)
+	}
 	fx.a.Register(fx.service).
-		Register(testutil.PrepareMock(ctx, fx.a, fx.cache)).
+		Register(cacheComponent).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.ppclient)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.ppclient2)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.wallet)).
@@ -125,7 +224,7 @@ func newFixture(t *testing.T) *fixture {
 		Register(testutil.PrepareMock(ctx, fx.a, fx.multiplayerLimitsUpdater)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.fileLimitsUpdater)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.ns)).
-		Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true})
+		Register(&config.Config{DisableFileConfig: true, NetworkMode: pb.RpcAccount_DefaultConfig, PeferYamuxTransport: true, EnableMembershipV2: cfg.v2})
 
 	require.NoError(t, fx.a.Start(ctx))
 
@@ -215,11 +314,12 @@ func TestFetchAndUpdateMembership(t *testing.T) {
 		}
 		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).Return(networkStatus, nil)
 		fx.cache.EXPECT().CacheSet(mock.AnythingOfType("*model.Membership"), mock.Anything).Return(nil)
-		fx.expectLimitsUpdated()
 
 		changed, _, membership, err := fx.service.fetchAndUpdate(ctx, true, false, true)
 		assert.NoError(t, err)
 		assert.True(t, changed)
+		// limits are refreshed through a non-blocking notification
+		assert.Equal(t, int32(1), fx.limitsNotifications.Load())
 		assert.Equal(t, uint32(psp.SubscriptionTier_TierExplorer), membership.Tier)
 		assert.Equal(t, model.Membership_StatusActive, membership.Status)
 	})
@@ -273,9 +373,25 @@ func TestFetchAndUpdateMembership(t *testing.T) {
 	})
 }
 
-func (fx *fixture) expectLimitsUpdated() {
-	fx.multiplayerLimitsUpdater.EXPECT().UpdateCoordinatorStatus().Return()
-	fx.fileLimitsUpdater.EXPECT().UpdateNodeUsage(mock.Anything).Return(nil)
+// expectForcedRefresh expects the V1 status fetch of the forced refresh that
+// purchase calls start in the background, and reports when it ran
+func expectForcedRefresh(fx *fixture) chan struct{} {
+	refreshed := make(chan struct{})
+	fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(context.Context, *psp.GetSubscriptionRequestSigned) (*psp.GetSubscriptionResponse, error) {
+			close(refreshed)
+			return &psp.GetSubscriptionResponse{PaymentMethod: psp.PaymentMethod_MethodNone}, nil
+		})
+	return refreshed
+}
+
+func waitForcedRefresh(t *testing.T, refreshed chan struct{}) {
+	t.Helper()
+	select {
+	case <-refreshed:
+	case <-time.After(10 * time.Second):
+		t.Fatal("forced background refresh didn't run")
+	}
 }
 
 func TestRegisterPaymentRequest(t *testing.T) {
@@ -331,11 +447,11 @@ func TestRegisterPaymentRequest(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(&model.Membership{}, []*model.MembershipTierData{{}}, time.Now().Add(time.Hour), nil)
 		// despite of being not expired, we refresh
 		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).Return(&psp.GetTiersResponse{Tiers: []*psp.TierData{{}}}, nil)
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).Return(&psp.GetSubscriptionResponse{PaymentMethod: psp.PaymentMethod_MethodNone}, nil)
+		refreshed := expectForcedRefresh(fx)
 
 		resp, err := fx.RegisterPaymentRequest(ctx, req)
 		assert.NoError(t, err)
-		time.Sleep(time.Millisecond * 50)
+		waitForcedRefresh(t, refreshed)
 		assert.Equal(t, "https://xxxx.com", resp.PaymentUrl)
 		assert.Equal(t, "killbillingid", resp.BillingId)
 	})
@@ -374,13 +490,13 @@ func TestGetPortalURL(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(&model.Membership{}, []*model.MembershipTierData{{}}, time.Now().Add(time.Hour), nil)
 		// despite of being not expired, we refresh
 		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).Return(&psp.GetTiersResponse{Tiers: []*psp.TierData{{}}}, nil)
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).Return(&psp.GetSubscriptionResponse{PaymentMethod: psp.PaymentMethod_MethodNone}, nil)
+		refreshed := expectForcedRefresh(fx)
 
 		// Call the function being tested
 		resp, err := fx.GetPortalLink(ctx, req)
 		assert.NoError(t, err)
 		assert.Equal(t, "https://xxxx.com", resp.PortalUrl)
-		time.Sleep(time.Millisecond * 50)
+		waitForcedRefresh(t, refreshed)
 	})
 }
 
@@ -516,12 +632,12 @@ func TestFinalizeSubscription(t *testing.T) {
 		fx.cache.EXPECT().CacheGet().Return(&model.Membership{}, []*model.MembershipTierData{{}}, time.Now().Add(time.Hour), nil)
 		// despite of being not expired, we refresh
 		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).Return(&psp.GetTiersResponse{Tiers: []*psp.TierData{{}}}, nil)
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).Return(&psp.GetSubscriptionResponse{PaymentMethod: psp.PaymentMethod_MethodNone}, nil)
+		refreshed := expectForcedRefresh(fx)
 
 		// Call the function being tested
 		_, err := fx.FinalizeSubscription(ctx, req)
 		assert.NoError(t, err)
-		time.Sleep(time.Millisecond * 50)
+		waitForcedRefresh(t, refreshed)
 	})
 }
 
@@ -769,7 +885,7 @@ func TestCodeRedeemUpdatesGlobalNameOnlyWhenNsNameProvided(t *testing.T) {
 		// background forceRefresh started by CodeRedeem
 		fx.cache.EXPECT().CacheGet().Return(&model.Membership{}, []*model.MembershipTierData{{}}, time.Now().Add(time.Hour), nil)
 		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).Return(&psp.GetTiersResponse{Tiers: []*psp.TierData{{}}}, nil)
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).Return(&psp.GetSubscriptionResponse{PaymentMethod: psp.PaymentMethod_MethodNone}, nil)
+		refreshed := expectForcedRefresh(fx)
 
 		// no extra expectations on cache/ppclient for background refresh; those calls are guarded by goroutines
 
@@ -781,7 +897,7 @@ func TestCodeRedeemUpdatesGlobalNameOnlyWhenNsNameProvided(t *testing.T) {
 
 		require.NoError(t, err)
 		require.NotNil(t, resp)
-		time.Sleep(50 * time.Millisecond)
+		waitForcedRefresh(t, refreshed)
 		assert.Equal(t, 1, fx.identitiesUpdater.callCount)
 		assert.NotEmpty(t, fx.identitiesUpdater.lastGlobalName)
 	})
@@ -800,7 +916,7 @@ func TestCodeRedeemUpdatesGlobalNameOnlyWhenNsNameProvided(t *testing.T) {
 		// background forceRefresh started by CodeRedeem
 		fx.cache.EXPECT().CacheGet().Return(&model.Membership{}, []*model.MembershipTierData{{}}, time.Now().Add(time.Hour), nil)
 		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).Return(&psp.GetTiersResponse{Tiers: []*psp.TierData{{}}}, nil)
-		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).Return(&psp.GetSubscriptionResponse{PaymentMethod: psp.PaymentMethod_MethodNone}, nil)
+		refreshed := expectForcedRefresh(fx)
 
 		resp, err := fx.CodeRedeem(ctx, &pb.RpcMembershipCodeRedeemRequest{
 			Code:       code,
@@ -810,7 +926,7 @@ func TestCodeRedeemUpdatesGlobalNameOnlyWhenNsNameProvided(t *testing.T) {
 
 		require.NoError(t, err)
 		require.NotNil(t, resp)
-		time.Sleep(50 * time.Millisecond)
+		waitForcedRefresh(t, refreshed)
 		assert.Equal(t, 0, fx.identitiesUpdater.callCount)
 	})
 }

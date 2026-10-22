@@ -1,9 +1,13 @@
 package util
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
 func TestToPropertyApiKey(t *testing.T) {
@@ -242,6 +246,96 @@ func TestEdgeCases(t *testing.T) {
 		// Prefix should be case-sensitive
 		assert.Equal(t, "opt_color", ToTagApiKey("OPT-color"))
 		assert.Equal(t, "opt_color", ToTagApiKey("Opt-color"))
+	})
+}
+
+// MintApiObjectKey is the mint for a key an API CALLER supplied. The fixtures
+// are the shapes measured in a 38,123-object account, where 27 of 1,530
+// stored api keys sat outside the key grammar the api advertises.
+func TestMintApiObjectKey(t *testing.T) {
+	tests := []struct {
+		name     string
+		key      string
+		expected string
+		ok       bool
+	}{
+		{
+			name:     "already a key",
+			key:      "my_custom_key",
+			expected: "my_custom_key",
+			ok:       true,
+		},
+		{
+			name:     "spelled with spaces",
+			key:      "due date",
+			expected: "due_date",
+			ok:       true,
+		},
+		{
+			name:     "brackets are dropped, not stored",
+			key:      "Lists [in work]",
+			expected: "lists_in_work",
+			ok:       true,
+		},
+		{
+			name:     "ampersand is dropped, not stored",
+			key:      "Manual export & import",
+			expected: "manual_export_import",
+			ok:       true,
+		},
+		{
+			name:     "an emoji is dropped and the word beside it survives",
+			key:      "➡️ Medium",
+			expected: "medium",
+			ok:       true,
+		},
+		{
+			name:     "surrounding whitespace never reaches the key",
+			key:      "  spaced key  ",
+			expected: "spaced_key",
+			ok:       true,
+		},
+		{
+			name:     "a key of only emoji mints nothing",
+			key:      "➡️",
+			expected: "",
+			ok:       false,
+		},
+		{
+			name:     "a key of only punctuation mints nothing",
+			key:      "!!!",
+			expected: "",
+			ok:       false,
+		},
+		{
+			name: "a key in a script the grammar has no letters for mints nothing",
+			// unlike a display name, a supplied key is not transliterated:
+			// answering "Задача" with "zadacha" would name the property
+			// something its author never wrote, so the caller is told instead
+			key:      "Задача",
+			expected: "",
+			ok:       false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, ok := MintApiObjectKey(tt.key)
+			assert.Equal(t, tt.expected, result)
+			assert.Equal(t, tt.ok, ok)
+		})
+	}
+
+	t.Run("length is bounded", func(t *testing.T) {
+		result, ok := MintApiObjectKey(strings.Repeat("k", 300))
+		assert.True(t, ok)
+		assert.Len(t, result, bundle.MaxApiSlugLen)
+	})
+
+	t.Run("the refusal is bad input, carrying the key the caller sent", func(t *testing.T) {
+		err := ErrInvalidApiObjectKey("property", "➡️")
+		require.ErrorIs(t, err, ErrBad)
+		assert.Contains(t, err.Error(), `property key "➡️"`)
 	})
 }
 

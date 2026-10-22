@@ -11,14 +11,25 @@ var (
 	filterReadTrue  = query.Key{Path: []string{chatmodel.ReadKey}, Filter: query.NewComp(query.CompOpEq, true)}
 	filterReadFalse = query.Not{Filter: filterReadTrue}
 
-	filterHasMention        = query.Key{Path: []string{chatmodel.HasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)}
-	filterMentionReadTrue   = query.And{filterHasMention, query.Key{Path: []string{chatmodel.MentionReadKey}, Filter: query.NewComp(query.CompOpEq, true)}}
-	filterMentionReadFalse  = query.And{filterHasMention, query.Key{Path: []string{chatmodel.MentionReadKey}, Filter: query.NewComp(query.CompOpEq, false)}}
+	filterHasMention       = query.Key{Path: []string{chatmodel.HasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)}
+	filterMentionReadTrue  = query.And{filterHasMention, query.Key{Path: []string{chatmodel.MentionReadKey}, Filter: query.NewComp(query.CompOpEq, true)}}
+	filterMentionReadFalse = query.And{filterHasMention, query.Key{Path: []string{chatmodel.MentionReadKey}, Filter: query.NewComp(query.CompOpEq, false)}}
+
+	// filterDeleted matches tombstones (soft-deleted discussion comments). It is an Eq on true,
+	// which guarantees the field is present, so it can use the sparse `deleted` index.
+	filterDeleted = query.Key{Path: []string{chatmodel.DeletedKey}, Filter: query.NewComp(query.CompOpEq, true)}
+	// filterNotDeleted keeps live messages. It is only ever a residual filter: it gives the
+	// planner no index bounds, so the query's other predicate or its sort picks the index.
+	filterNotDeleted = query.Not{Filter: filterDeleted}
 
 	filterSyncedTrue  = query.Key{Path: []string{chatmodel.SyncedKey}, Filter: query.NewComp(query.CompOpEq, true)}
 	filterSyncedFalse = query.Not{Filter: filterSyncedTrue}
 
-	filterReactionUnread = query.Key{Path: []string{chatmodel.ReactionUnreadOrderIdKey}, Filter: query.Exists{}}
+	// $ne null, not $exists: a sparse index stores no entry for a field that is missing or null, so
+	// since any-store v1.0.2 only a predicate excluding both lets the planner use it. $exists also
+	// matches an explicit null, so it degrades this to a full collection scan. reactionUnreadOrderId
+	// is only ever written as an order-id string, so the narrower match is equivalent here.
+	filterReactionUnread = query.Key{Path: []string{chatmodel.ReactionUnreadOrderIdKey}, Filter: query.NewComp(query.CompOpNe, nil)}
 )
 
 type readHandler interface {
@@ -101,6 +112,10 @@ type readMessagesModifier struct {
 }
 
 func (m *readMessagesModifier) Modify(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
+	if !m.value && v.GetBool(chatmodel.DeletedKey) {
+		// a tombstone is never unread: marking unread must not count it again
+		return v, false, nil
+	}
 	if v.GetBool(chatmodel.ReadKey) != m.value {
 		v.Set(chatmodel.ReadKey, arenaNewBool(a, m.value))
 		m.modifiedIds = append(m.modifiedIds, v.GetString("id"))

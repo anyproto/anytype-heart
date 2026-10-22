@@ -171,6 +171,13 @@ func (s *State) moveFromSide(target, parent simple.Block, pos model.BlockPositio
 }
 
 func (s *State) wrapToRow(opId string, parent, b simple.Block) (row simple.Block, err error) {
+	// b is legitimately re-parented into the fresh column below: hand its
+	// index entry over first, otherwise the column's assert sees a conflict
+	// and flags b permanently ambiguous, which poisons chain verification for
+	// b's entire subtree
+	if s.parentIdx != nil {
+		s.parentIdx.remove(b.Model().Id, parent.Model().Id)
+	}
 	column := s.addNewBlockAndWrapToColumn(opId, b)
 	row = s.addNewColumnToRow(opId, column)
 	pos := slice.FindPos(parent.Model().ChildrenIds, b.Model().Id)
@@ -179,6 +186,9 @@ func (s *State) wrapToRow(opId string, parent, b simple.Block) (row simple.Block
 	}
 	// do not need to remove from cache
 	parent.Model().ChildrenIds[pos] = row.Model().Id
+	// in-place slot write bypasses the children helpers — keep the parent
+	// index aware of the row's placement
+	s.assertParentIds(parent.Model().Id, row.Model().Id)
 	return
 }
 
@@ -188,23 +198,32 @@ func (s *State) setChildrenIds(parent *model.Block, childrenIds []string) {
 
 // do not use this method outside of normalization
 func (s *State) SetChildrenIds(parent *model.Block, childrenIds []string) {
+	// callers (normalization, table editor) replace lists wholesale, often on
+	// blocks the state doesn't own — unsafe for the parent index
+	s.DisableParentIndex()
 	s.setChildrenIds(parent, childrenIds)
 }
 
 func (s *State) removeChildren(parent *model.Block, childrenId string) {
 	parent.ChildrenIds = slice.RemoveMut(parent.ChildrenIds, childrenId)
+	if s.parentIdx != nil {
+		s.parentIdx.remove(childrenId, parent.Id)
+	}
 }
 
 func (s *State) prependChildrenIds(block *model.Block, ids ...string) {
 	s.setChildrenIds(block, append(block.ChildrenIds, ids...))
+	s.assertParentIds(block.Id, ids...)
 }
 
 func (s *State) appendChildrenIds(block *model.Block, ids ...string) {
 	s.setChildrenIds(block, append(ids, block.ChildrenIds...))
+	s.assertParentIds(block.Id, ids...)
 }
 
 func (s *State) insertChildrenIds(block *model.Block, pos int, ids ...string) {
 	s.setChildrenIds(block, slice.Insert(block.ChildrenIds, pos, ids...))
+	s.assertParentIds(block.Id, ids...)
 }
 
 func (s *State) addNewColumn(opId string, ids []string) simple.Block {
@@ -272,7 +291,13 @@ func (s *State) insertReplace(target simple.Block, targetParentM *model.Block, t
 			}
 		}
 		if !idsIsChild && canInheritChildren {
-			s.setChildrenIds(id0Block.Model(), target.Model().ChildrenIds)
+			// copy: the target is unlinked below but stays alive in the blocks
+			// map; sharing the slice header would let later mutations of one
+			// list corrupt the other
+			inherited := make([]string, len(target.Model().ChildrenIds))
+			copy(inherited, target.Model().ChildrenIds)
+			s.setChildrenIds(id0Block.Model(), inherited)
+			s.assertParentIds(id0Block.Model().Id, inherited...)
 		}
 	}
 	s.insertChildrenIds(targetParentM, pos, ids...)

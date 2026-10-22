@@ -18,7 +18,14 @@ const (
 
 	DefaultWidgetAll            = "allObjects"
 	DefaultWidgetRecentlyOpened = "recentOpen"
-	widgetWrapperBlockSuffix    = "-wrapper" // in case blockId is specifically provided to avoid bad tree merges
+
+	// The chat and bin widgets are minted by the clients (anytype-ts spells
+	// them through its widgetId table); the ids reach the heart only inside
+	// stored widget objects, which is why no heart-side code creates them.
+	DefaultWidgetChat = "chat"
+	DefaultWidgetBin  = "bin"
+
+	widgetWrapperBlockSuffix = "-wrapper" // in case blockId is specifically provided to avoid bad tree merges
 
 )
 
@@ -54,9 +61,22 @@ func FillImportFlags(link *model.BlockContentLink, widgetFlags *ImportWidgetFlag
 	return builtinWidget
 }
 
+// IsPredefinedWidgetTargetId reports whether targetID names a built-in
+// listing rather than an object — the whole inventory a widget link can
+// carry, not just the four this function used to know.
+//
+// The gap was not cosmetic. common.handleLinkBlock leaves a link target
+// alone only when this function knows it; anything else it cannot resolve
+// becomes addr.MissingObject, and WidgetObject.Init then strips the link and
+// its now-empty wrapper. allObjects is created by WidgetObject's own
+// migration 3, chat and bin by the clients — so importing an app export
+// silently lost exactly those widgets, with a log line as the only trace.
+// Measured over a 77-space account: 33 of 218 widget links name a listing,
+// and 29 of those named one this function did not know.
 func IsPredefinedWidgetTargetId(targetID string) bool {
 	switch targetID {
-	case DefaultWidgetFavorite, DefaultWidgetSet, DefaultWidgetRecentlyEdited, DefaultWidgetCollection:
+	case DefaultWidgetFavorite, DefaultWidgetSet, DefaultWidgetRecentlyEdited, DefaultWidgetCollection,
+		DefaultWidgetAll, DefaultWidgetRecentlyOpened, DefaultWidgetChat, DefaultWidgetBin:
 		return true
 	default:
 		return false

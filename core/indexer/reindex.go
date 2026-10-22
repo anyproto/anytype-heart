@@ -52,9 +52,15 @@ const (
 
 	ForceReindexDeletedObjectsCounter int32 = 1
 
-	ForceReindexParticipantsCounter  int32 = 1
-	ForceReindexChatsCounter         int32 = 7
-	ForceReindexChatsFulltextCounter int32 = 1
+	ForceReindexParticipantsCounter int32 = 1
+	ForceReindexChatsCounter        int32 = 7
+	// Bumped to 2: the initial chat-message fulltext backfill (counter 1) could
+	// silently index only a recent suffix of each chat — an incoming "_all"
+	// reindex entry lost to a pending real order id in the queue merge (fixed in
+	// AddChatMessageToIndexQueue). Re-run the now-correct backfill once.
+	// Bumped to 3 (GO-6758): re-run the full chat-message backfill on the new
+	// streamed reindex path so histories missed by earlier builds are recovered.
+	ForceReindexChatsFulltextCounter int32 = 3
 	ForceReindexDiscussionsCounter   int32 = 1
 
 	// ForceFTRecheckCounter triggers a lightweight FT consistency check
@@ -69,7 +75,10 @@ const (
 	// reindexes objects asynchronously and continue reindex after app F
 	// Bumped to 4 for GO-7237: collection members, inline dataview embeds, and Object-marks
 	// are now indexed as outgoing links — existing objects need a one-shot reindex pass.
-	ForceInvalidateObjectsIndexCounter int32 = 4
+	// Bumped to 5 for GO-7377: bookmark blocks are now indexed as outgoing links, so
+	// existing pages must be reindexed to restore the missing page→bookmark backlinks
+	// (which otherwise make bookmark objects look like orphans in objectgc).
+	ForceInvalidateObjectsIndexCounter int32 = 5
 )
 
 type allDeletedIdsProvider interface {
@@ -228,12 +237,17 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		// this may happen e.g. if the app got closed in the middle of object updates processing
 		// So here we reindexOutdatedObjects which compare the last indexed heads hash with the actual one
 		go func() {
+			waitStart := time.Now()
+			if !i.reindexLimiter.acquire(i.runCtx, space.Id()) {
+				return
+			}
+			defer i.reindexLimiter.release()
 			start := time.Now()
 			total, success, err := i.reindexOutdatedObjects(ctx, space)
 			if err != nil {
 				log.Errorf("reindex outdated failed: %s", err)
 			}
-			l := log.With(zap.String("space", space.Id()), zap.Int("total", total), zap.Int("succeed", success), zap.Int("spentMs", int(time.Since(start).Milliseconds())))
+			l := log.With(zap.String("space", space.Id()), zap.Int("total", total), zap.Int("succeed", success), zap.Int("spentMs", int(time.Since(start).Milliseconds())), zap.Int("waitedMs", int(start.Sub(waitStart).Milliseconds())))
 			if success != total {
 				l.Errorf("reindex outdated partially failed")
 			} else if total != 0 {
@@ -489,7 +503,9 @@ func (i *indexer) reindexDiscussions(ctx context.Context, space clientspace.Spac
 }
 
 func (i *indexer) reindexChatMessagesFulltext(ctx context.Context, space clientspace.Space) error {
-	ids, err := i.getIdsForTypes(space, coresb.SmartBlockTypeChatDerivedObject)
+	// Both chatDerived (space chats) and discussion (object chats) use the chat
+	// editor and store messages identically, so both must be backfilled.
+	ids, err := i.getIdsForTypes(space, coresb.SmartBlockTypeChatDerivedObject, coresb.SmartBlockTypeDiscussionObject)
 	if err != nil {
 		return err
 	}
@@ -556,7 +572,7 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 	}
 
 	if len(ids) > 0 {
-		fmt.Printf("### addSyncDetails: backfilling sync details for %d objects in space %s\n", len(ids), space.Id())
+		log.Infof("addSyncDetails: backfilling sync details for %d objects in space %s", len(ids), space.Id())
 	}
 
 	for start := 0; start < len(ids); start += addSyncDetailsBatchSize {

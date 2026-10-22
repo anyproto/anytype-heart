@@ -56,6 +56,7 @@ type SmartTest struct {
 	id               string
 	hist             undo.History
 	TestRestrictions restriction.Restrictions
+	TestMemberPolicy restriction.MemberPolicy
 	App              *app.App
 	objectTree       objecttree.ObjectTree
 	isDeleted        bool
@@ -67,6 +68,10 @@ type SmartTest struct {
 	hooksOnce map[string]struct{}
 	sbType    coresb.SmartBlockType
 	spaceId   string
+
+	// TypeLayouts is the recommended layout of each type, as ConvertLayoutBlocks looks it up by
+	// the state's type key; unset types are unknown
+	TypeLayouts map[domain.TypeKey]model.ObjectTypeLayout
 }
 
 func (st *SmartTest) SpaceID() string { return st.spaceId }
@@ -128,6 +133,10 @@ func (s *stubSpace) IsOneToOne() bool {
 	return false
 }
 
+func (s *stubSpace) CanManageSpace() bool {
+	return true
+}
+
 func (s *stubSpace) SpaceType() spacedomain.SpaceType {
 	return spacedomain.SpaceTypeRegular
 }
@@ -145,6 +154,18 @@ func (st *SmartTest) Space() smartblock.Space {
 
 func (st *SmartTest) EnabledRelationAsDependentObjects() {
 	return
+}
+
+// ConvertLayoutBlocks converts to the object's own layout detail, else to the layout TypeLayouts
+// gives the state's type key - the same priority as the real smartblock, without the store
+func (st *SmartTest) ConvertLayoutBlocks(s *state.State) bool {
+	if layout, ok := s.Details().TryInt64(bundle.RelationKeyLayout); ok {
+		return smartblock.ConvertLayoutBlocksTo(s, model.ObjectTypeLayout(layout)) // nolint:gosec
+	}
+	if layout, ok := st.TypeLayouts[s.ObjectTypeKey()]; ok {
+		return smartblock.ConvertLayoutBlocksTo(s, layout)
+	}
+	return false
 }
 
 func (st *SmartTest) IsLocked() bool {
@@ -191,6 +212,12 @@ func (st *SmartTest) SetTree(tree objecttree.ObjectTree) {
 
 func (st *SmartTest) Restrictions() restriction.Restrictions {
 	return st.TestRestrictions
+}
+
+// MemberPolicy returns TestMemberPolicy, zero by default: tests that do not care about space
+// membership keep the restrictions the object carries by its own nature.
+func (st *SmartTest) MemberPolicy() restriction.MemberPolicy {
+	return st.TestMemberPolicy
 }
 
 func (st *SmartTest) GetDocInfo() smartblock.DocInfo {

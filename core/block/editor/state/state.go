@@ -117,13 +117,20 @@ type State struct {
 	changeId          string
 	changes           []*pb.ChangeContent
 	changeType        domain.ChangeType // business-level type of the latest change that is applied to state
-	fileInfo          FileInfo
-	fileKeys          []pb.ChangeFileKeys // Deprecated
-	details           *domain.Details
-	localDetails      *domain.Details
-	relationLinks     pbtypes.RelationLinks
-	notifications     map[string]*model.Notification
-	deviceStore       map[string]*model.DeviceInfo
+	// integrationName is the raw API-integration app name to stamp on the
+	// change this state produces (APIV2_OBJECT_DELETE.md §5/§11.4 — never
+	// normalized). STRICTLY per-apply, like changeType: deliberately NOT
+	// propagated by NewStateCtx, Copy or apply — a later edit on this device
+	// must not inherit the stamp, or every local change would be
+	// misattributed and the DELETE ownership gate would silently widen.
+	integrationName string
+	fileInfo        FileInfo
+	fileKeys        []pb.ChangeFileKeys // Deprecated
+	details         *domain.Details
+	localDetails    *domain.Details
+	relationLinks   pbtypes.RelationLinks
+	notifications   map[string]*model.Notification
+	deviceStore     map[string]*model.DeviceInfo
 
 	migrationVersion uint32
 
@@ -135,6 +142,11 @@ type State struct {
 	noObjectType   bool
 
 	changesStructureIgnoreIds []string
+
+	// replay-only childId→parentId index; see parentindex.go. Deliberately not
+	// propagated by NewState/Copy — it is only sound on the single-layer
+	// replay state inside BuildState.
+	parentIdx *parentIndex
 
 	stringBuf []string
 
@@ -269,6 +281,7 @@ func (s *State) Add(b simple.Block) (ok bool) {
 		s.blocks[id] = b
 		s.blockInit(b)
 		s.setChildrenIds(b.Model(), b.Model().ChildrenIds)
+		s.assertParentIds(id, b.Model().ChildrenIds...)
 		return true
 	}
 	return false
@@ -279,6 +292,7 @@ func (s *State) Set(b simple.Block) {
 		s.Add(b)
 	} else {
 		s.setChildrenIds(b.Model(), b.Model().ChildrenIds)
+		s.assertParentIds(b.Model().Id, b.Model().ChildrenIds...)
 		s.blocks[b.Model().Id] = b
 		s.blockInit(b)
 	}
@@ -346,6 +360,28 @@ func (s *State) Unlink(blockId string) (ok bool) {
 func (s *State) UnlinkAll(ids []string) {
 	if len(ids) == 0 {
 		return
+	}
+	if s.parentIdx != nil {
+		// resolve parents through the index; ids it can't answer for keep the
+		// tree-scan path below
+		var missed []string
+		for _, id := range ids {
+			p, ok := s.lookupParent(id)
+			if !ok {
+				missed = append(missed, id)
+				continue
+			}
+			parent := s.Get(p.Model().Id)
+			if parent == nil {
+				missed = append(missed, id)
+				continue
+			}
+			s.removeChildren(parent.Model(), id)
+		}
+		if len(missed) == 0 {
+			return
+		}
+		ids = missed
 	}
 	if len(ids) == 1 {
 		s.Unlink(ids[0])
@@ -423,6 +459,9 @@ func (s *State) HasParent(id, parentId string) bool {
 }
 
 func (s *State) PickParentOf(id string) (res simple.Block) {
+	if p, ok := s.lookupParent(id); ok {
+		return p
+	}
 	s.Iterate(func(b simple.Block) bool {
 		if slice.FindPos(b.Model().ChildrenIds, id) != -1 {
 			res = b
@@ -1939,6 +1978,19 @@ func (s *State) SetOriginalCreatedTimestamp(ts int64) {
 
 func (s *State) SetChangeType(changeType domain.ChangeType) {
 	s.changeType = changeType
+}
+
+// SetIntegrationName marks this state's change as authored via the API
+// integration with this raw app name (the session's AppName, verbatim).
+// Per-apply only — see the field comment; derived states never inherit it.
+func (s *State) SetIntegrationName(name string) {
+	s.integrationName = name
+}
+
+// IntegrationName returns the raw integration app name to stamp on this
+// state's change, or "" (no stamp).
+func (s *State) IntegrationName() string {
+	return s.integrationName
 }
 
 func (s *State) GetChangeType() (changeType domain.ChangeType) {

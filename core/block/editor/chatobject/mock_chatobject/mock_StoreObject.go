@@ -685,6 +685,52 @@ func (_c *MockStoreObject_CombinedDetails_Call) RunAndReturn(run func() *domain.
 	return _c
 }
 
+// ConvertLayoutBlocks provides a mock function with given fields: s
+func (_m *MockStoreObject) ConvertLayoutBlocks(s *state.State) bool {
+	ret := _m.Called(s)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ConvertLayoutBlocks")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(*state.State) bool); ok {
+		r0 = rf(s)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockStoreObject_ConvertLayoutBlocks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ConvertLayoutBlocks'
+type MockStoreObject_ConvertLayoutBlocks_Call struct {
+	*mock.Call
+}
+
+// ConvertLayoutBlocks is a helper method to define mock.On call
+//   - s *state.State
+func (_e *MockStoreObject_Expecter) ConvertLayoutBlocks(s interface{}) *MockStoreObject_ConvertLayoutBlocks_Call {
+	return &MockStoreObject_ConvertLayoutBlocks_Call{Call: _e.mock.On("ConvertLayoutBlocks", s)}
+}
+
+func (_c *MockStoreObject_ConvertLayoutBlocks_Call) Run(run func(s *state.State)) *MockStoreObject_ConvertLayoutBlocks_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*state.State))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_ConvertLayoutBlocks_Call) Return(_a0 bool) *MockStoreObject_ConvertLayoutBlocks_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStoreObject_ConvertLayoutBlocks_Call) RunAndReturn(run func(*state.State) bool) *MockStoreObject_ConvertLayoutBlocks_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DebugChanges provides a mock function with given fields: ctx
 func (_m *MockStoreObject) DebugChanges(ctx context.Context) ([]*anystoredebug.DebugChange, error) {
 	ret := _m.Called(ctx)
@@ -1869,6 +1915,51 @@ func (_c *MockStoreObject_MarkReadReactions_Call) RunAndReturn(run func(context.
 	return _c
 }
 
+// MemberPolicy provides a mock function with no fields
+func (_m *MockStoreObject) MemberPolicy() restriction.MemberPolicy {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for MemberPolicy")
+	}
+
+	var r0 restriction.MemberPolicy
+	if rf, ok := ret.Get(0).(func() restriction.MemberPolicy); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(restriction.MemberPolicy)
+	}
+
+	return r0
+}
+
+// MockStoreObject_MemberPolicy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MemberPolicy'
+type MockStoreObject_MemberPolicy_Call struct {
+	*mock.Call
+}
+
+// MemberPolicy is a helper method to define mock.On call
+func (_e *MockStoreObject_Expecter) MemberPolicy() *MockStoreObject_MemberPolicy_Call {
+	return &MockStoreObject_MemberPolicy_Call{Call: _e.mock.On("MemberPolicy")}
+}
+
+func (_c *MockStoreObject_MemberPolicy_Call) Run(run func()) *MockStoreObject_MemberPolicy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_MemberPolicy_Call) Return(_a0 restriction.MemberPolicy) *MockStoreObject_MemberPolicy_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStoreObject_MemberPolicy_Call) RunAndReturn(run func() restriction.MemberPolicy) *MockStoreObject_MemberPolicy_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewState provides a mock function with no fields
 func (_m *MockStoreObject) NewState() *state.State {
 	ret := _m.Called()
@@ -2623,17 +2714,17 @@ func (_c *MockStoreObject_SetLocker_Call) RunAndReturn(run func(smartblock.Locke
 	return _c
 }
 
-// SetMessagePinned provides a mock function with given fields: ctx, messageId, pinned
-func (_m *MockStoreObject) SetMessagePinned(ctx context.Context, messageId string, pinned bool) error {
-	ret := _m.Called(ctx, messageId, pinned)
+// SetMessagesPinned provides a mock function with given fields: ctx, messageIds, pinned
+func (_m *MockStoreObject) SetMessagesPinned(ctx context.Context, messageIds []string, pinned bool) error {
+	ret := _m.Called(ctx, messageIds, pinned)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SetMessagePinned")
+		panic("no return value specified for SetMessagesPinned")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, bool) error); ok {
-		r0 = rf(ctx, messageId, pinned)
+	if rf, ok := ret.Get(0).(func(context.Context, []string, bool) error); ok {
+		r0 = rf(ctx, messageIds, pinned)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -2641,32 +2732,32 @@ func (_m *MockStoreObject) SetMessagePinned(ctx context.Context, messageId strin
 	return r0
 }
 
-// MockStoreObject_SetMessagePinned_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetMessagePinned'
-type MockStoreObject_SetMessagePinned_Call struct {
+// MockStoreObject_SetMessagesPinned_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetMessagesPinned'
+type MockStoreObject_SetMessagesPinned_Call struct {
 	*mock.Call
 }
 
-// SetMessagePinned is a helper method to define mock.On call
+// SetMessagesPinned is a helper method to define mock.On call
 //   - ctx context.Context
-//   - messageId string
+//   - messageIds []string
 //   - pinned bool
-func (_e *MockStoreObject_Expecter) SetMessagePinned(ctx interface{}, messageId interface{}, pinned interface{}) *MockStoreObject_SetMessagePinned_Call {
-	return &MockStoreObject_SetMessagePinned_Call{Call: _e.mock.On("SetMessagePinned", ctx, messageId, pinned)}
+func (_e *MockStoreObject_Expecter) SetMessagesPinned(ctx interface{}, messageIds interface{}, pinned interface{}) *MockStoreObject_SetMessagesPinned_Call {
+	return &MockStoreObject_SetMessagesPinned_Call{Call: _e.mock.On("SetMessagesPinned", ctx, messageIds, pinned)}
 }
 
-func (_c *MockStoreObject_SetMessagePinned_Call) Run(run func(ctx context.Context, messageId string, pinned bool)) *MockStoreObject_SetMessagePinned_Call {
+func (_c *MockStoreObject_SetMessagesPinned_Call) Run(run func(ctx context.Context, messageIds []string, pinned bool)) *MockStoreObject_SetMessagesPinned_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(bool))
+		run(args[0].(context.Context), args[1].([]string), args[2].(bool))
 	})
 	return _c
 }
 
-func (_c *MockStoreObject_SetMessagePinned_Call) Return(_a0 error) *MockStoreObject_SetMessagePinned_Call {
+func (_c *MockStoreObject_SetMessagesPinned_Call) Return(_a0 error) *MockStoreObject_SetMessagesPinned_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockStoreObject_SetMessagePinned_Call) RunAndReturn(run func(context.Context, string, bool) error) *MockStoreObject_SetMessagePinned_Call {
+func (_c *MockStoreObject_SetMessagesPinned_Call) RunAndReturn(run func(context.Context, []string, bool) error) *MockStoreObject_SetMessagesPinned_Call {
 	_c.Call.Return(run)
 	return _c
 }

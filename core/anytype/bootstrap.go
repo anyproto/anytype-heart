@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
+	anysyncpubsub "github.com/anyproto/any-sync/commonspace/pubsub"
 	anysyncinboxclient "github.com/anyproto/any-sync/coordinator/inboxclient"
 
 	"github.com/anyproto/any-sync/coordinator/nodeconfsource"
@@ -18,6 +19,7 @@ import (
 	"github.com/anyproto/any-sync/metric"
 	"github.com/anyproto/any-sync/net/peerservice"
 	"github.com/anyproto/any-sync/net/pool"
+	"github.com/anyproto/any-sync/net/quicdemotion"
 	"github.com/anyproto/any-sync/net/rpc/debugserver"
 	"github.com/anyproto/any-sync/net/rpc/server"
 	"github.com/anyproto/any-sync/net/secureservice"
@@ -49,16 +51,19 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/dataviewservice"
+	"github.com/anyproto/anytype-heart/core/block/deletionaudit"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
+	importv2adapter "github.com/anyproto/anytype-heart/core/block/importv2/adapter"
 	"github.com/anyproto/anytype-heart/core/block/object/idderiver/idderiverimpl"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/block/object/treemanager"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/block/personalfavorites"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
@@ -72,7 +77,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/core/files/filedownloader"
-	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/filespaceusage"
@@ -87,6 +91,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/inbox/inboxclient"
 	"github.com/anyproto/anytype-heart/core/inbox/inboxservice"
 	"github.com/anyproto/anytype-heart/core/indexer"
+	"github.com/anyproto/anytype-heart/core/invitecleanup"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/invitestore"
 	"github.com/anyproto/anytype-heart/core/kanban"
@@ -99,6 +104,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/payments/emailcollector"
 	"github.com/anyproto/anytype-heart/core/peerstatus"
 	"github.com/anyproto/anytype-heart/core/publish"
+	"github.com/anyproto/anytype-heart/core/pubsub"
 	"github.com/anyproto/anytype-heart/core/pushnotification"
 	"github.com/anyproto/anytype-heart/core/pushnotification/pushclient"
 	"github.com/anyproto/anytype-heart/core/relationutils/formatfetcher"
@@ -112,6 +118,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/syncstatus/syncsubscriptions"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/net/peerobservermux"
+	"github.com/anyproto/anytype-heart/net/transportpenalty"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/clientds"
@@ -234,6 +242,10 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		a.Register(c)
 	}
 
+	// the pubsub engine takes its client-side deps (crypto, membership, peers)
+	// from the heart-side component, resolved lazily after Init
+	pubsubService := pubsub.New()
+
 	a.
 		// profiler is registered early so its Init wires the event sender
 		// before any storage component runs its own Init — storage corruption
@@ -254,13 +266,27 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nodeconfstore.New()).
 		Register(nodeconf.New()).
 		Register(syncqueues.New()).
+		// the single peerobserver slot, as a fan-out: the recovery status
+		// tracker registers with it at Init, diagnostics can later
 		Register(peerstore.New()).
+		Register(peerobservermux.New()).
 		Register(storage.New()).
 		Register(secureservice.New()).
 		Register(metric.New()).
 		Register(server.New()).
 		Register(debugserver.New()).
-		Register(pool.New()).
+		Register(pool.New())
+
+	if os.Getenv(transportpenalty.DisableEnv) != "0" {
+		// quicdemotion is a standalone app component (any-sync net/quicdemotion):
+		// registering it is what enables auto-demoting peers to yamux-first
+		// when their QUIC connections keep dying under DPI-style degradation
+		// (GO-7467). peerservice picks it up itself in its own Init, so it
+		// must be registered before peerservice's Init runs.
+		a.Register(quicdemotion.New())
+	}
+
+	a.
 		Register(peerservice.New()).
 		Register(yamux.New()).
 		Register(quic.New()).
@@ -276,8 +302,12 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(spacecore.New()).
 		Register(idresolver.New(200*time.Millisecond, 2*time.Second)).
 		Register(device.New()).
+		Register(transportpenalty.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
+		Register(anysyncpubsub.New(pubsubService.EngineDeps())).
+		// Cancel accepted publishes before the engine waits for its workers.
+		Register(pubsubService).
 		Register(typeprovider.New()).
 		Register(fileuploader.New()).
 		Register(rpcstore.New()).
@@ -298,6 +328,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(idderiverimpl.New()).
 		Register(deletioncontroller.New()).
 		Register(invitestore.New()).
+		Register(invitecleanup.New()).
 		Register(filesync.New()).
 		Register(reconciler.New()).
 		Register(fileobject.New()).
@@ -314,6 +345,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(block.New()).
 		Register(detailservice.New()).
 		Register(objectgc.New()).
+		Register(deletionaudit.New()).
 		Register(dataviewservice.New()).
 		Register(migration.New()).
 		Register(indexer.New()).
@@ -333,6 +365,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(gallery.New()).
 		Register(bookmark.New()).
 		Register(importer.New()).
+		Register(importv2adapter.New()).
 		Register(decorator.New()).
 		Register(objectcreator.NewCreator()).
 		Register(kanban.New()).

@@ -73,7 +73,7 @@ func GetInterfacesAddrs() (addrs InterfacesAddrs, err error) {
 			})
 		}
 		// inject cached addresses, because we can't get them from net.Interface's Addrs() on android
-		ifaceWrapped.cachedAddrs = ifaceAddrs
+		ifaceWrapped.setAddrs(ifaceAddrs)
 		addrs.Addrs = append(addrs.Addrs, ifaceAddrs...)
 		addrs.Interfaces = append(addrs.Interfaces, ifaceWrapped)
 	}

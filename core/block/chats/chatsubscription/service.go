@@ -45,7 +45,7 @@ import (
 
 const CName = "chatsubscription"
 
-var log = logging.Logger(CName).Desugar()
+var log = logging.LoggerNotSugared(CName)
 
 type Manager interface {
 	sync.Locker
@@ -62,6 +62,7 @@ type Manager interface {
 	GetMessageCount() int32
 	Add(prevOrderId string, message *chatmodel.Message)
 	Delete(messageId string)
+	SoftDelete(previous, tombstone *chatmodel.Message)
 	ForceSendingChatState()
 	Flush(reloadStateIfNeeded bool)
 	ReadMessages(newOldestOrderId string, idsModified []string, counterType chatmodel.CounterType)
@@ -70,6 +71,11 @@ type Manager interface {
 	UpdateReactionReadStatus(msgId string, unread bool)
 	ReadReactions(newOrderId string, idsModified []string)
 	ForceReloadReactionState()
+	ReconcileChatState()
+	// AddObserver registers an observer of every change this manager applies
+	// (see ChatObserver); RemoveObserver unregisters it. Both are called under Lock.
+	AddObserver(id string, fn ChatObserver)
+	RemoveObserver(id string)
 }
 
 type Service interface {

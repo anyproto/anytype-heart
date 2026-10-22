@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -41,9 +42,17 @@ import (
 )
 
 const (
-	CName    = "fts"
-	ftsDir   = "fts"
-	ftsDir2  = "fts_tantivy"
+	CName   = "fts"
+	ftsDir  = "fts"
+	ftsDir2 = "fts_tantivy"
+	// ftsVer names the on-disk index directory. A bump throws every user's
+	// index away and rebuilds it from the object store, so it is reserved for
+	// changes that make an existing index unusable by design. The schema is
+	// pinned by TestSchemaPinned: tantivy refuses to open an index whose
+	// stored schema differs from the requested one, and Run recovers from
+	// that by quarantining and rebuilding only the affected index (releases
+	// up to v0.47.2 wrote a seven-field schema under this same version; from
+	// v0.48.0 the four chat message fields are part of it).
 	ftsVer   = "16"
 	docLimit = 10000
 
@@ -69,9 +78,30 @@ const (
 	tokenizerId  = "SimpleIdTokenizer"
 )
 
+// schemaFieldNames is the field order of the schema built in Run; an index
+// whose meta.json lists a different set or order cannot be opened by tantivy
+var schemaFieldNames = []string{
+	fieldId, fieldIdRaw, fieldSpace, fieldTitle, fieldTitleZh, fieldText, fieldTextZh,
+	fieldAuthor, fieldOrderId, fieldMessageId, fieldTimestamp,
+}
+
+// schemaMismatchMarker is the stable part of tantivy's error when an index
+// exists with a different schema ("Schema error: 'An index exists but the
+// schema does not match.'"); tantivy-go exposes the error as text only. A
+// variable so tests can prove the meta.json fallback works without it.
+var schemaMismatchMarker = "schema does not match"
+
+const (
+	schemaRecoveryTantivyError    = "tantivy-error"
+	schemaRecoveryMetaNames       = "meta-names"
+	schemaRecoveryMetaUndecodable = "meta-undecodable"
+)
+
 var (
 	log                    = logging.Logger("ftsearch")
 	ErrAppClosingInitiated = errors.New("app closing initiated")
+	ErrIndexInUse          = errors.New("tantivy index is locked by another process")
+	ErrSchemaMismatch      = errors.New("tantivy index schema does not match")
 )
 
 type FTSearch interface {
@@ -83,11 +113,17 @@ type FTSearch interface {
 	// "objectId/m/messageId"; bare-id documents are deleted as well)
 	BatchDeleteObjects(ids []string) (err error)
 	// Search returns up to limit best-scoring doc matches (limit <= 0 means
-	// the default of 100). The limit applies to docs, not objects.
-	Search(spaceId string, query string, limit int) (results []*DocumentMatch, err error)
-	// SearchChat searches only the chat's message documents ("chatId/m/...")
-	// so messages don't compete with the rest of the space for the limit
-	SearchChat(spaceId string, chatId string, query string, limit int) (results []*DocumentMatch, err error)
+	// the default of 100). The limit applies to docs, not objects. Highlight
+	// generation costs up to ~130µs per matched doc with large stored text and
+	// is pure waste for record-only responses — pass withHighlights=false
+	// unless the caller returns highlight fragments to the client.
+	Search(spaceId string, query string, limit int, withHighlights bool) (results []*DocumentMatch, err error)
+	// SearchChat searches only message documents ("chatId/m/...") so messages
+	// don't compete with the rest of the space for the limit. Empty chatId
+	// searches messages of all chats; empty spaceId searches all spaces.
+	// Non-empty creators restrict to messages authored by those identities
+	// (exact match), scoping the candidate budget to their messages.
+	SearchChat(spaceId string, chatId string, query string, creators []string, limit int) (results []*DocumentMatch, err error)
 	// NamePrefixSearch special prefix case search
 	NamePrefixSearch(spaceId string, query string, limit int) (results []*DocumentMatch, err error)
 	ListByIdPrefix(prefix string) (ids []string, err error)
@@ -123,6 +159,7 @@ type Highlight struct {
 type DocumentMatch struct {
 	Score     float64
 	ID        string
+	SpaceId   string
 	Fragments map[string]*Highlight
 	Fields    map[string]any
 }
@@ -138,6 +175,9 @@ type ftSearch struct {
 	lang                tantivy.Language
 	appClosingInitiated atomic.Bool
 	startupReport       *tantivycheck.ConsistencyReport
+	// schemaRecovery records which check made Run rebuild an incompatible
+	// index ("" when it opened as is); for tests and diagnostics
+	schemaRecovery string
 }
 
 func (f *ftSearch) LastDbState() (uint64, error) {
@@ -291,15 +331,36 @@ func (f *ftSearch) Name() (name string) {
 
 func (f *ftSearch) Run(context.Context) error {
 	report, err := tantivycheck.Check(f.ftsPath)
+	metaUndecodable := errors.Is(err, tantivycheck.ErrMetaUndecodable)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			log.Warnf("tantivy index checking failed: %v", err)
 		}
 	}
 	f.startupReport = &report
+	if report.WriterLockPresent || report.MetaLockPresent {
+		return ErrIndexInUse
+	}
+	// Quarantined copies hold nothing worth keeping once this run has
+	// decided their fate (rebuilt, or unopenable either way), so sweep them
+	// on every exit, including copies an interrupted earlier start left
+	// behind. The goroutine may outlive Close; a concurrent account removal
+	// deleting the same paths is tolerated by os.RemoveAll.
+	// TODO: replace this fire-and-forget goroutine with a proper async
+	// cleanup (tracked by the component lifecycle, cancellable on Close,
+	// throttled so it does not compete with startup I/O).
+	defer func() { go f.removeQuarantinedIndexes() }()
+	var quarantinePath string
+	if len(report.MissingSegments) > 0 || len(report.MissingDelFiles) > 0 {
+		quarantinePath, err = f.quarantineCorruptIndex()
+		if err != nil {
+			return err
+		}
+		f.startupReport = &tantivycheck.ConsistencyReport{Rebuilt: true, ReportTime: time.Now()}
+	}
 	if !report.IsOk() {
 		var gcErr error
-		if len(report.ExtraDelFiles) > 0 || len(report.ExtraSegments) > 0 {
+		if quarantinePath == "" && (len(report.ExtraDelFiles) > 0 || len(report.ExtraSegments) > 0) {
 			gcErr = report.GCExtraFiles()
 		}
 		log.With("missingSegments", len(report.MissingSegments)).
@@ -314,7 +375,7 @@ func (f *ftSearch) Run(context.Context) error {
 			With("newestSegmentModTime", report.NewestSegmentModTime.Unix()).
 			With("metaJsonModTime", report.MetaJsonModTime.Unix()).
 			With("gcErr", gcErr).
-			Warnf("tantivy index is inconsistent state, cleaning extra files")
+			Warnf("tantivy index was inconsistent during startup")
 	}
 
 	builder, err := tantivy.NewSchemaBuilder()
@@ -459,8 +520,27 @@ func (f *ftSearch) Run(context.Context) error {
 		return err
 	}
 	index, err := f.tryToBuildSchema(schema)
+	if err != nil && quarantinePath == "" {
+		// An index written with a different schema (e.g. by a release with
+		// fewer fields) or whose meta.json is no longer valid JSON cannot be
+		// opened by tantivy. It is derived data: quarantine it and start from
+		// an empty one, the indexer rebuilds it from the object store (ftInit
+		// sees an empty index). The rebuild is only ever triggered by a
+		// failed open, so a healthy index can never be thrown away; lock,
+		// permission and I/O errors are not recovered.
+		f.schemaRecovery = unopenableIndexReason(err, report.SchemaFieldNames, metaUndecodable)
+		if f.schemaRecovery != "" {
+			log.With("recovery", f.schemaRecovery).With("onDisk", report.SchemaFieldNames).
+				Warnf("tantivy index schema mismatch, rebuilding: %v", err)
+			if _, err = f.quarantineCorruptIndex(); err != nil {
+				return err
+			}
+			f.startupReport = &tantivycheck.ConsistencyReport{Rebuilt: true, ReportTime: time.Now()}
+			index, err = f.tryToBuildSchema(schema)
+		}
+	}
 	if err != nil {
-		return err
+		return fmt.Errorf("open tantivy index: %w", err)
 	}
 	f.index = index
 	f.parserPool = &fastjson.ParserPool{}
@@ -496,16 +576,80 @@ func (f *ftSearch) Run(context.Context) error {
 	return nil
 }
 
+const quarantineSuffix = ".corrupt-"
+
+// quarantineCorruptIndex moves the whole index root aside so a fresh index
+// can be created in its place; nothing is deleted until the replacement
+// index has been opened (see removeQuarantinedIndexes)
+func (f *ftSearch) quarantineCorruptIndex() (string, error) {
+	if !strings.HasSuffix(f.rootPath, ftsDir2) {
+		return "", fmt.Errorf("refusing to quarantine unexpected path %s", f.rootPath)
+	}
+	quarantinePath := fmt.Sprintf("%s%s%d", f.rootPath, quarantineSuffix, time.Now().UnixNano())
+	if err := os.Rename(f.rootPath, quarantinePath); err != nil {
+		return "", fmt.Errorf("quarantine corrupt tantivy index: %w", err)
+	}
+	log.Warnf("quarantined corrupt tantivy index at %s", quarantinePath)
+	return quarantinePath, nil
+}
+
+// removeQuarantinedIndexes deletes every quarantined copy next to the index
+// root, including ones an earlier start left behind (killed during removal,
+// or a failed rebuild). A plain directory listing is used rather than a glob
+// so metacharacters in the account path cannot widen the match.
+func (f *ftSearch) removeQuarantinedIndexes() {
+	if !strings.HasSuffix(f.rootPath, ftsDir2) {
+		return
+	}
+	parent := filepath.Dir(f.rootPath)
+	entries, err := os.ReadDir(parent)
+	if err != nil {
+		log.Warnf("list quarantined tantivy indexes: %v", err)
+		return
+	}
+	prefix := filepath.Base(f.rootPath) + quarantineSuffix
+	for _, entry := range entries {
+		if !entry.IsDir() || !strings.HasPrefix(entry.Name(), prefix) {
+			continue
+		}
+		path := filepath.Join(parent, entry.Name())
+		if removeErr := os.RemoveAll(path); removeErr != nil {
+			log.Warnf("failed to remove quarantined tantivy index %s: %v", path, removeErr)
+		}
+	}
+}
+
 func (f *ftSearch) tryToBuildSchema(schema *tantivy.Schema) (*tantivy.TantivyContext, error) {
 	index, err := tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
-	if err != nil {
-		log.Warnf("recovering from error: %v", err)
-		if strings.HasSuffix(f.rootPath, ftsDir2) {
-			_ = os.RemoveAll(f.rootPath)
-		}
-		return tantivy.NewTantivyContextWithSchema(f.ftsPath, schema)
+	if err != nil && isSchemaMismatchError(err) {
+		return nil, fmt.Errorf("%w: %w", ErrSchemaMismatch, err)
 	}
 	return index, err
+}
+
+// isSchemaMismatchError reports whether tantivy refused to open an existing
+// index because its stored schema differs from the requested one
+func isSchemaMismatchError(err error) bool {
+	return strings.Contains(strings.ToLower(err.Error()), schemaMismatchMarker)
+}
+
+// unopenableIndexReason classifies a failed open as one the index can be
+// rebuilt from: tantivy's own schema verdict first, then the field names
+// recorded in meta.json as a backstop should the error text ever change,
+// then a meta.json that is not valid JSON (detected locally, never from
+// tantivy's generic corruption/I/O text). Empty means the failure must
+// propagate.
+func unopenableIndexReason(openErr error, onDiskFieldNames []string, metaUndecodable bool) string {
+	if errors.Is(openErr, ErrSchemaMismatch) {
+		return schemaRecoveryTantivyError
+	}
+	if len(onDiskFieldNames) > 0 && !slices.Equal(onDiskFieldNames, schemaFieldNames) {
+		return schemaRecoveryMetaNames
+	}
+	if metaUndecodable {
+		return schemaRecoveryMetaUndecodable
+	}
+	return ""
 }
 
 func (f *ftSearch) Index(doc SearchDoc) error {
@@ -567,18 +711,54 @@ func (f *ftSearch) NamePrefixSearch(spaceId, query string, limit int) ([]*Docume
 	return f.performSearch(spaceId, query, limit, false, f.buildObjectQuery)
 }
 
-func (f *ftSearch) Search(spaceId, query string, limit int) ([]*DocumentMatch, error) {
-	return f.performSearch(spaceId, query, limit, true, f.buildDetailedQuery)
+func (f *ftSearch) Search(spaceId, query string, limit int, withHighlights bool) ([]*DocumentMatch, error) {
+	return f.performSearch(spaceId, query, limit, withHighlights, f.buildDetailedQuery)
 }
 
-func (f *ftSearch) SearchChat(spaceId, chatId, query string, limit int) ([]*DocumentMatch, error) {
+func (f *ftSearch) SearchChat(spaceId, chatId, query string, creators []string, limit int) ([]*DocumentMatch, error) {
 	return f.performSearch(spaceId, query, limit, true, func(qb *tantivy.QueryBuilder, query string) {
+		// restrict to the given authors: the Author field is raw-indexed, so
+		// term queries match the exact identity string. Scoping here rather
+		// than post-filtering keeps the candidate budget on the requested
+		// authors' messages. Boost 0 keeps the clause out of BM25 scoring.
+		authors := make([]string, 0, len(creators))
+		for _, creator := range creators {
+			// an empty term would compile to a match-nothing clause
+			if creator != "" {
+				authors = append(authors, creator)
+			}
+		}
+		if len(authors) == 1 {
+			qb.Query(tantivy.Must, fieldAuthor, authors[0], tantivy.TermQuery, 0.0)
+		} else if len(authors) > 1 {
+			nested := qb.NestedBuilder()
+			for _, author := range authors {
+				nested.Query(tantivy.Should, fieldAuthor, author, tantivy.TermQuery, 0.0)
+			}
+			qb.BooleanQuery(tantivy.Must, nested, 0.0)
+		}
 		if chatId != "" {
 			// restrict to the chat's message docs ("chatId/m/msgId") via a phrase
 			// match on the tokenized id field. A prefix query on IdRaw would
 			// silently truncate: prefix expansion is capped at ~50 terms per
 			// segment. Boost 0 keeps the clause out of BM25 scoring.
 			qb.Query(tantivy.Must, fieldId, chatId+"/m", tantivy.PhraseQuery, 0.0)
+		} else {
+			// all message docs: every "chatId/m/msgId" id contains the token "m"
+			// (the id tokenizer has no stopword filter) while object/relation/block
+			// doc ids tokenize to longer alphanumeric tokens. An exists-query on
+			// the MessageId field is not expressible in tantivy-go, so the token is
+			// the message-doc marker; callers drop the rare false positive via
+			// path.HasMessage(). Boost 0 keeps the clause out of BM25 scoring.
+			//
+			// Index efficiency: the Must intersection is driven by the rarer text
+			// postings and only seeks into the "m" posting list via block skip
+			// lists, so cost scales with text matches, not with total messages.
+			// The per-chat phrase clause above walks the same "m" postings (plus
+			// position checks); a dedicated doc-type field would have an identical
+			// posting-list profile while requiring an index-version bump + full
+			// reindex.
+			qb.Query(tantivy.Must, fieldId, "m", tantivy.TermQuery, 0.0)
 		}
 		f.buildDetailedQuery(qb, query)
 	})
@@ -595,7 +775,12 @@ func (f *ftSearch) performSearch(spaceId, query string, limit int, withHighlight
 
 	qb := tantivy.NewQueryBuilder()
 	if len(spaceId) != 0 {
-		qb.Query(tantivy.Must, fieldSpace, spaceId, tantivy.TermQuery, 1.0)
+		// boost 0 keeps the scope clause out of BM25 scoring: the space term's
+		// IDF depends on the space's share of the index, so at boost 1 it
+		// added a per-space additive bias (larger for smaller spaces) that
+		// made scores incomparable across spaces. Within one space the term
+		// contributed a constant, so per-space ranking is unchanged.
+		qb.Query(tantivy.Must, fieldSpace, spaceId, tantivy.TermQuery, 0.0)
 	}
 
 	buildQueryFunc(qb, query)
@@ -622,6 +807,7 @@ func (f *ftSearch) performSearch(spaceId, query string, limit int, withHighlight
 			return parseSearchResult(json, p)
 		},
 		fieldId,
+		fieldSpace,
 	)
 }
 
@@ -706,8 +892,11 @@ func parseSearchResult(json string, parser *fastjson.Parser) (*DocumentMatch, er
 	}
 
 	return &DocumentMatch{
-		Score:     value.GetFloat64(score),
-		ID:        string(value.GetStringBytes(fieldId)),
+		Score: value.GetFloat64(score),
+		ID:    string(value.GetStringBytes(fieldId)),
+		// the doc's stored space field: lets cross-space searches attribute
+		// hits without extra lookups
+		SpaceId:   string(value.GetStringBytes(fieldSpace)),
 		Fragments: fragments,
 	}, nil
 }

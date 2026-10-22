@@ -109,6 +109,9 @@ func (a *aclObjectManager) StatType() string {
 }
 
 func (a *aclObjectManager) UpdateAcl(aclList list.AclList) {
+	// drop the cached CanManageSpace verdict: a permission change here is exactly what the object
+	// restrictions have to start reflecting
+	a.sp.OnAclUpdated()
 	err := a.processAcl()
 	if err != nil {
 		log.Error("UpdateAcl: error processing acl", zap.Error(err))
@@ -270,7 +273,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 		})
 	}
 
-	err = a.processStates(states, upToDate, aclState.Identity())
+	err = a.processStates(states, upToDate, aclState.Identity(), aclState.IsOneToOne())
 
 	if err != nil {
 		return
@@ -359,9 +362,13 @@ func (a *aclObjectManager) findJoinedDate(acl syncacl.SyncAcl) (int64, error) {
 	return joinedRecord.Timestamp, nil
 }
 
-func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey) (err error) {
+// processStates is always reached from processAcl, which runs with this space's ACL lock held -
+// the write lock when any-sync drives it through UpdateAcl, the read lock at startup - so
+// isOneToOne comes from the state the caller already holds. Reading it back through the space
+// would take the ACL read lock and deadlock the space either way (GO-7525).
+func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bool, myIdentity crypto.PubKey, isOneToOne bool) (err error) {
 	for _, state := range states {
-		if a.sp.IsOneToOne() && state.Permissions.IsOwner() {
+		if isOneToOne && state.Permissions.IsOwner() {
 			// we don't wont derived owner to be in participants
 			continue
 		}
@@ -379,7 +386,7 @@ func (a *aclObjectManager) processStates(states []list.AccountState, upToDate bo
 		if err != nil {
 			return err
 		}
-		err = a.participantWatcher.WatchParticipant(a.ctx, a.sp, state)
+		err = a.participantWatcher.WatchParticipant(a.ctx, a.sp, state, isOneToOne)
 		if err != nil {
 			return err
 		}

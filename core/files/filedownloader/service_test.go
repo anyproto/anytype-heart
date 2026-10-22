@@ -1,6 +1,7 @@
 package filedownloader
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sync"
@@ -8,7 +9,9 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -111,6 +114,76 @@ func findSizeFilter(filters []database.FilterRequest) (domain.Value, bool) {
 		}
 	}
 	return domain.Value{}, false
+}
+
+func TestCacheFileRootBlockCheck(t *testing.T) {
+	fx := newServiceFixture(t)
+
+	// Replace the warmer with an observable one so we can tell whether a
+	// warm-up was actually scheduled.
+	downloadCh := make(chan domain.FileId, 4)
+	fx.cacheWarmer = newCacheWarmer(fx.ctx, 10, 20, time.Minute,
+		func(ctx context.Context, spaceId string, fileCid domain.FileId, blocksLimit int) error {
+			downloadCh <- fileCid
+			return nil
+		})
+	go fx.cacheWarmer.run()
+	go fx.cacheWarmer.runWorker()
+
+	t.Run("skips warm-up when root block already cached", func(t *testing.T) {
+		ctx := fileblockstore.CtxWithSpaceId(context.Background(), "space1")
+		node, err := fx.commonFile.AddFile(ctx, bytes.NewReader([]byte("already cached file")))
+		require.NoError(t, err)
+		cachedFileId := domain.FileId(node.Cid().String())
+
+		fx.CacheFile("space1", cachedFileId)
+
+		select {
+		case got := <-downloadCh:
+			t.Fatalf("expected warm-up to be skipped, but download ran for %s", got)
+		case <-time.After(200 * time.Millisecond):
+		}
+	})
+
+	t.Run("warms up when root block is missing", func(t *testing.T) {
+		absentCid := blocks.NewBlock([]byte("never stored in the blockstore")).Cid()
+		missingFileId := domain.FileId(absentCid.String())
+
+		fx.CacheFile("space1", missingFileId)
+
+		select {
+		case got := <-downloadCh:
+			assert.Equal(t, missingFileId, got)
+		case <-time.After(2 * time.Second):
+			t.Fatal("expected warm-up to run for a missing root block")
+		}
+	})
+
+	t.Run("reports skipped, enqueued and warmed-up counters", func(t *testing.T) {
+		want := stat{SkippedFiles: 1, EnqueuedFiles: 1, WarmedUpFiles: 1}
+		assert.Eventually(t, func() bool {
+			return fx.ProvideStat() == want
+		}, 2*time.Second, 10*time.Millisecond)
+	})
+}
+
+func TestCacheWarmerCancelBeforeStart(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// No worker is started, so the enqueued task stays queued and is cancelled
+	// before its warm-up can begin.
+	w := newCacheWarmer(ctx, 10, 10, time.Minute, func(context.Context, string, domain.FileId, int) error {
+		return nil
+	})
+	go w.run()
+
+	w.enqueue("space1", "file1")
+	w.cancelTask("file1")
+
+	assert.Eventually(t, func() bool {
+		return w.cancelledBeforeStart.Load() == 1 && w.warmedUp.Load() == 0
+	}, time.Second, 10*time.Millisecond)
 }
 
 func TestManger(t *testing.T) {

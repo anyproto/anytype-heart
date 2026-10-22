@@ -382,7 +382,7 @@ func (si *SchemaImporter) GetRelationFormat(objectTypeName, key string) model.Re
 			}
 		}
 	}
-	return model.RelationFormat_shorttext
+	return model.RelationFormat_longtext
 }
 
 // ResolveOptionValue converts option name to option ID for a given relation

@@ -169,7 +169,7 @@ func normalizeKeys(keys []string) []domain.RelationKey {
 
 // resolveSources translates Source entries (setOf semantics) into a filter:
 // object-type sources become `type In [...]`, relation sources become
-// `relationKey NotEmpty`, OR-combined. Each entry is tried as a unique key
+// `relationKey Exists`, OR-combined. Each entry is tried as a unique key
 // first (the JSON API sends `ot-…` unique keys), then as a type object id,
 // then as a relation id — the same resolution order dataview uses.
 func resolveSources(idx spaceindex.Store, source []string) ([]database.FilterRequest, error) {
@@ -223,9 +223,12 @@ func resolveSources(idx spaceindex.Store, source []string) ([]database.FilterReq
 		})
 	}
 	for _, key := range relationKeys {
+		// Exists, not NotEmpty: setOf means "carries this property", so an
+		// object holding it with an empty value still belongs to the set —
+		// NotEmpty here also starved `Property → is empty` views (GO-7404)
 		alternatives = append(alternatives, database.FilterRequest{
 			RelationKey: domain.RelationKey(key),
-			Condition:   model.BlockContentDataviewFilter_NotEmpty,
+			Condition:   model.BlockContentDataviewFilter_Exists,
 		})
 	}
 	switch len(alternatives) {

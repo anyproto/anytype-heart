@@ -14,8 +14,10 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
+	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/anytype-publish-server/publishclient/publishapi"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
@@ -757,6 +759,15 @@ func prepareSpaceService(t *testing.T, isPersonal bool, includeSpaceInfo bool) (
 	return spaceService, nil
 }
 
+type exportObjectGetter struct {
+	*mock_cache.MockObjectGetterComponent
+}
+
+func (g *exportObjectGetter) TryRemoveFromCache(ctx context.Context, objectId string) (bool, error) {
+	args := g.Called(ctx, objectId)
+	return args.Bool(0), args.Error(1)
+}
+
 func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space.MockService, includeSpaceInfo bool) export.Export {
 	storeFixture := objectstore.NewStoreFixture(t)
 	objectTypeUniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, objectTypeId)
@@ -847,8 +858,10 @@ func prepareExporter(t *testing.T, objectTypeId string, spaceService *mock_space
 	mockSender := mock_event.NewMockSender(t)
 	a.Register(storeFixture)
 	a.Register(testutil.PrepareMock(context.Background(), a, mockSender))
-	a.Register(testutil.PrepareMock(context.Background(), a, objectGetter))
+	testutil.PrepareMock(context.Background(), a, objectGetter)
+	a.Register(&exportObjectGetter{objectGetter})
 	a.Register(process.New())
+	a.Register(nodeconf.New())
 	a.Register(testutil.PrepareMock(context.Background(), a, spaceService))
 	a.Register(testutil.PrepareMock(context.Background(), a, mock_typeprovider.NewMockSmartBlockTypeProvider(t)))
 	a.Register(testutil.PrepareMock(context.Background(), a, mock_files.NewMockService(t)))
@@ -998,8 +1011,10 @@ func prepareExporterWithFile(t *testing.T, objectTypeId string, spaceService *mo
 	ctx := context.Background()
 	a.Register(storeFixture)
 	a.Register(testutil.PrepareMock(ctx, a, mockSender))
-	a.Register(testutil.PrepareMock(ctx, a, objectGetter))
+	testutil.PrepareMock(ctx, a, objectGetter)
+	a.Register(&exportObjectGetter{objectGetter})
 	a.Register(process.New())
+	a.Register(nodeconf.New())
 	a.Register(testutil.PrepareMock(ctx, a, spaceService))
 	a.Register(testutil.PrepareMock(ctx, a, mock_typeprovider.NewMockSmartBlockTypeProvider(t)))
 	a.Register(testutil.PrepareMock(ctx, a, mock_account.NewMockService(t)))
@@ -1060,4 +1075,45 @@ func createNamedStore(ctx context.Context, t testing.TB, name string) anystore.D
 		DB:   db,
 		Path: path,
 	}
+}
+
+func TestService_applyInviteLink(t *testing.T) {
+	newService := func(t *testing.T, info domain.InviteInfo) *service {
+		inviteService := mock_inviteservice.NewMockInviteService(t)
+		inviteService.EXPECT().GetCurrent(mock.Anything, "spaceId").Return(info, nil)
+		return &service{inviteService: inviteService, limitsConfig: testLimitsConfig}
+	}
+	link := func(info domain.InviteInfo) string {
+		return fmt.Sprintf(testLimitsConfig.InviteLinkUrlTemplate, info.InviteFileCid, info.InviteFileKey)
+	}
+
+	t.Run("a request-to-join invite is published", func(t *testing.T) {
+		info := domain.InviteInfo{InviteFileCid: "cid", InviteFileKey: "key", InviteType: domain.InviteTypeDefault}
+		snapshot := &PublishingUberSnapshot{}
+		require.NoError(t, newService(t, info).applyInviteLink(context.Background(), "spaceId", snapshot, true))
+		require.Equal(t, link(info), snapshot.Meta.InviteLink)
+	})
+
+	t.Run("an anyone-can-join reader invite is published", func(t *testing.T) {
+		info := domain.InviteInfo{InviteFileCid: "cid", InviteFileKey: "key", InviteType: domain.InviteTypeAnyone, Permissions: list.AclPermissionsReader}
+		snapshot := &PublishingUberSnapshot{}
+		require.NoError(t, newService(t, info).applyInviteLink(context.Background(), "spaceId", snapshot, true))
+		require.Equal(t, link(info), snapshot.Meta.InviteLink)
+	})
+
+	t.Run("an anyone-can-join writer invite is not published", func(t *testing.T) {
+		// a public page must not carry a no-approval writer link: anyone who opened it would be in the
+		// space as a writer
+		info := domain.InviteInfo{InviteFileCid: "cid", InviteFileKey: "key", InviteType: domain.InviteTypeAnyone, Permissions: list.AclPermissionsWriter}
+		snapshot := &PublishingUberSnapshot{}
+		require.NoError(t, newService(t, info).applyInviteLink(context.Background(), "spaceId", snapshot, true))
+		require.Empty(t, snapshot.Meta.InviteLink)
+	})
+
+	t.Run("an owner-held invite on a member device is not published", func(t *testing.T) {
+		info := domain.InviteInfo{HeldByOwner: true}
+		snapshot := &PublishingUberSnapshot{}
+		require.NoError(t, newService(t, info).applyInviteLink(context.Background(), "spaceId", snapshot, true))
+		require.Empty(t, snapshot.Meta.InviteLink)
+	})
 }

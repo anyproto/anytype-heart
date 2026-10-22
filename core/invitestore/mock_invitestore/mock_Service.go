@@ -318,9 +318,9 @@ func (_c *MockService_Run_Call) RunAndReturn(run func(context.Context) error) *M
 	return _c
 }
 
-// StoreInvite provides a mock function with given fields: ctx, invite
-func (_m *MockService) StoreInvite(ctx context.Context, invite *model.Invite) (cid.Cid, crypto.SymKey, error) {
-	ret := _m.Called(ctx, invite)
+// StoreInvite provides a mock function with given fields: ctx, spaceId, inviteKey, invite
+func (_m *MockService) StoreInvite(ctx context.Context, spaceId string, inviteKey crypto.PubKey, invite *model.Invite) (cid.Cid, crypto.SymKey, error) {
+	ret := _m.Called(ctx, spaceId, inviteKey, invite)
 
 	if len(ret) == 0 {
 		panic("no return value specified for StoreInvite")
@@ -329,25 +329,25 @@ func (_m *MockService) StoreInvite(ctx context.Context, invite *model.Invite) (c
 	var r0 cid.Cid
 	var r1 crypto.SymKey
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, *model.Invite) (cid.Cid, crypto.SymKey, error)); ok {
-		return rf(ctx, invite)
+	if rf, ok := ret.Get(0).(func(context.Context, string, crypto.PubKey, *model.Invite) (cid.Cid, crypto.SymKey, error)); ok {
+		return rf(ctx, spaceId, inviteKey, invite)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *model.Invite) cid.Cid); ok {
-		r0 = rf(ctx, invite)
+	if rf, ok := ret.Get(0).(func(context.Context, string, crypto.PubKey, *model.Invite) cid.Cid); ok {
+		r0 = rf(ctx, spaceId, inviteKey, invite)
 	} else {
 		r0 = ret.Get(0).(cid.Cid)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *model.Invite) crypto.SymKey); ok {
-		r1 = rf(ctx, invite)
+	if rf, ok := ret.Get(1).(func(context.Context, string, crypto.PubKey, *model.Invite) crypto.SymKey); ok {
+		r1 = rf(ctx, spaceId, inviteKey, invite)
 	} else {
 		if ret.Get(1) != nil {
 			r1 = ret.Get(1).(crypto.SymKey)
 		}
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, *model.Invite) error); ok {
-		r2 = rf(ctx, invite)
+	if rf, ok := ret.Get(2).(func(context.Context, string, crypto.PubKey, *model.Invite) error); ok {
+		r2 = rf(ctx, spaceId, inviteKey, invite)
 	} else {
 		r2 = ret.Error(2)
 	}
@@ -362,14 +362,16 @@ type MockService_StoreInvite_Call struct {
 
 // StoreInvite is a helper method to define mock.On call
 //   - ctx context.Context
+//   - spaceId string
+//   - inviteKey crypto.PubKey
 //   - invite *model.Invite
-func (_e *MockService_Expecter) StoreInvite(ctx interface{}, invite interface{}) *MockService_StoreInvite_Call {
-	return &MockService_StoreInvite_Call{Call: _e.mock.On("StoreInvite", ctx, invite)}
+func (_e *MockService_Expecter) StoreInvite(ctx interface{}, spaceId interface{}, inviteKey interface{}, invite interface{}) *MockService_StoreInvite_Call {
+	return &MockService_StoreInvite_Call{Call: _e.mock.On("StoreInvite", ctx, spaceId, inviteKey, invite)}
 }
 
-func (_c *MockService_StoreInvite_Call) Run(run func(ctx context.Context, invite *model.Invite)) *MockService_StoreInvite_Call {
+func (_c *MockService_StoreInvite_Call) Run(run func(ctx context.Context, spaceId string, inviteKey crypto.PubKey, invite *model.Invite)) *MockService_StoreInvite_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*model.Invite))
+		run(args[0].(context.Context), args[1].(string), args[2].(crypto.PubKey), args[3].(*model.Invite))
 	})
 	return _c
 }
@@ -379,7 +381,7 @@ func (_c *MockService_StoreInvite_Call) Return(id cid.Cid, key crypto.SymKey, er
 	return _c
 }
 
-func (_c *MockService_StoreInvite_Call) RunAndReturn(run func(context.Context, *model.Invite) (cid.Cid, crypto.SymKey, error)) *MockService_StoreInvite_Call {
+func (_c *MockService_StoreInvite_Call) RunAndReturn(run func(context.Context, string, crypto.PubKey, *model.Invite) (cid.Cid, crypto.SymKey, error)) *MockService_StoreInvite_Call {
 	_c.Call.Return(run)
 	return _c
 }

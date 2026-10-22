@@ -1,0 +1,44 @@
+{
+  "$schema": "https://schemas.anytype.io/anyblock/2.0/object.schema.json",
+  "formatVersion": "2.0",
+  "kind": "object_type",
+  "id": "type-fieldnote",
+  "type": "Type",
+  "type_internal_key": "objectType",
+  "internal_key": "fieldnote",
+  "icon": {
+    "format": "emoji",
+    "emoji": "🪶"
+  },
+  "properties": {
+    "Name": "Field note",
+    "Created by": "participant-A11111111111111111111111111111111111111111111111",
+    "Creation date": "2026-03-01T09:00:00Z",
+    "Origin": "usecase"
+  },
+  "type_settings": {
+    "layout": "basic",
+    "plural_name": "Field notes",
+    "property_definitions": [
+      {
+        "property": "0f1e2d3c4b5a69788796a5b4",
+        "internal_key": "0f1e2d3c4b5a69788796a5b4",
+        "name": "Weather",
+        "format": "select",
+        "section": "featured"
+      },
+      {
+        "property": "1a2b3c4d5e6f708192a3b4c5",
+        "internal_key": "1a2b3c4d5e6f708192a3b4c5",
+        "name": "Related notes",
+        "format": "objects"
+      },
+      {
+        "property": "Creation date",
+        "internal_key": "createdDate",
+        "name": "Creation date",
+        "format": "date"
+      }
+    ]
+  }
+}

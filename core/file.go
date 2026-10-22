@@ -279,11 +279,22 @@ func (mw *Middleware) FileAutoDownloadSetLimit(ctx context.Context, req *pb.RpcF
 
 func (mw *Middleware) FileCacheDownload(ctx context.Context, req *pb.RpcFileCacheDownloadRequest) *pb.RpcFileCacheDownloadResponse {
 	handle := func() error {
-		file, err := mustService[fileobject.Service](mw).GetFileData(ctx, req.FileObjectId)
+		fileObjectService := mustService[fileobject.Service](mw)
+		// Fast path: resolve the file id from the indexed object store without
+		// opening the smartblock. CacheFile then skips the warm-up entirely when
+		// the file is already cached locally.
+		fullId, err := fileObjectService.GetFileIdFromObject(req.FileObjectId)
 		if err != nil {
-			return fmt.Errorf("get file data: %w", err)
+			// The file id could not be read from the index — the object is not
+			// indexed yet, or its file id relation is still empty mid-upload. Fall
+			// back to loading the file data, which also warms up the object itself.
+			file, err := fileObjectService.GetFileData(ctx, req.FileObjectId)
+			if err != nil {
+				return fmt.Errorf("get file data: %w", err)
+			}
+			fullId = domain.FullFileId{SpaceId: file.SpaceId(), FileId: file.FileId()}
 		}
-		mustService[filedownloader.Service](mw).CacheFile(file.SpaceId(), file.FileId())
+		mustService[filedownloader.Service](mw).CacheFile(fullId.SpaceId, fullId.FileId)
 		return nil
 	}
 	err := handle()

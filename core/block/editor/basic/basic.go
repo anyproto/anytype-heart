@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
 	"github.com/anyproto/anytype-heart/core/block/simple/embed"
 	relationblock "github.com/anyproto/anytype-heart/core/block/simple/relation"
+	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	templateSvc "github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
@@ -610,15 +611,8 @@ func (bs *basic) DescriptionHide(ctx session.Context) error {
 	return bs.Apply(s, smartblock.NoRestrictions)
 }
 
+// canHaveChildren moved to the text package, next to the styles it is about, when paste
+// needed the same answer. One list, so the two cannot drift apart.
 func canHaveChildren(style model.BlockContentTextStyle) bool {
-	return style == model.BlockContentText_Paragraph ||
-		style == model.BlockContentText_Quote ||
-		style == model.BlockContentText_Checkbox ||
-		style == model.BlockContentText_Marked ||
-		style == model.BlockContentText_Numbered ||
-		style == model.BlockContentText_Toggle ||
-		style == model.BlockContentText_Callout ||
-		style == model.BlockContentText_ToggleHeader1 ||
-		style == model.BlockContentText_ToggleHeader2 ||
-		style == model.BlockContentText_ToggleHeader3
+	return text.CanHaveChildren(style)
 }

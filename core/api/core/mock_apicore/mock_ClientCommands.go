@@ -757,6 +757,55 @@ func (_c *MockClientCommands_FileUpload_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
+// ObjectAddDiscussion provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) ObjectAddDiscussion(_a0 context.Context, _a1 *pb.RpcObjectDiscussionAddRequest) *pb.RpcObjectDiscussionAddResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ObjectAddDiscussion")
+	}
+
+	var r0 *pb.RpcObjectDiscussionAddResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectDiscussionAddRequest) *pb.RpcObjectDiscussionAddResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcObjectDiscussionAddResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_ObjectAddDiscussion_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectAddDiscussion'
+type MockClientCommands_ObjectAddDiscussion_Call struct {
+	*mock.Call
+}
+
+// ObjectAddDiscussion is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcObjectDiscussionAddRequest
+func (_e *MockClientCommands_Expecter) ObjectAddDiscussion(_a0 interface{}, _a1 interface{}) *MockClientCommands_ObjectAddDiscussion_Call {
+	return &MockClientCommands_ObjectAddDiscussion_Call{Call: _e.mock.On("ObjectAddDiscussion", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_ObjectAddDiscussion_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcObjectDiscussionAddRequest)) *MockClientCommands_ObjectAddDiscussion_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcObjectDiscussionAddRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectAddDiscussion_Call) Return(_a0 *pb.RpcObjectDiscussionAddResponse) *MockClientCommands_ObjectAddDiscussion_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectAddDiscussion_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectDiscussionAddRequest) *pb.RpcObjectDiscussionAddResponse) *MockClientCommands_ObjectAddDiscussion_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ObjectCollectionAdd provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommands) ObjectCollectionAdd(_a0 context.Context, _a1 *pb.RpcObjectCollectionAddRequest) *pb.RpcObjectCollectionAddResponse {
 	ret := _m.Called(_a0, _a1)
@@ -1100,6 +1149,55 @@ func (_c *MockClientCommands_ObjectCreateRelationOption_Call) RunAndReturn(run f
 	return _c
 }
 
+// ObjectCrossSpaceSearch provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) ObjectCrossSpaceSearch(_a0 context.Context, _a1 *pb.RpcObjectCrossSpaceSearchRequest) *pb.RpcObjectCrossSpaceSearchResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ObjectCrossSpaceSearch")
+	}
+
+	var r0 *pb.RpcObjectCrossSpaceSearchResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectCrossSpaceSearchRequest) *pb.RpcObjectCrossSpaceSearchResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcObjectCrossSpaceSearchResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_ObjectCrossSpaceSearch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectCrossSpaceSearch'
+type MockClientCommands_ObjectCrossSpaceSearch_Call struct {
+	*mock.Call
+}
+
+// ObjectCrossSpaceSearch is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcObjectCrossSpaceSearchRequest
+func (_e *MockClientCommands_Expecter) ObjectCrossSpaceSearch(_a0 interface{}, _a1 interface{}) *MockClientCommands_ObjectCrossSpaceSearch_Call {
+	return &MockClientCommands_ObjectCrossSpaceSearch_Call{Call: _e.mock.On("ObjectCrossSpaceSearch", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_ObjectCrossSpaceSearch_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcObjectCrossSpaceSearchRequest)) *MockClientCommands_ObjectCrossSpaceSearch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcObjectCrossSpaceSearchRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectCrossSpaceSearch_Call) Return(_a0 *pb.RpcObjectCrossSpaceSearchResponse) *MockClientCommands_ObjectCrossSpaceSearch_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectCrossSpaceSearch_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectCrossSpaceSearchRequest) *pb.RpcObjectCrossSpaceSearchResponse) *MockClientCommands_ObjectCrossSpaceSearch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ObjectExport provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommands) ObjectExport(_a0 context.Context, _a1 *pb.RpcObjectExportRequest) *pb.RpcObjectExportResponse {
 	ret := _m.Called(_a0, _a1)
@@ -1194,6 +1292,55 @@ func (_c *MockClientCommands_ObjectListDelete_Call) Return(_a0 *pb.RpcObjectList
 }
 
 func (_c *MockClientCommands_ObjectListDelete_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectListDeleteRequest) *pb.RpcObjectListDeleteResponse) *MockClientCommands_ObjectListDelete_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ObjectListSetIsFavorite provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) ObjectListSetIsFavorite(_a0 context.Context, _a1 *pb.RpcObjectListSetIsFavoriteRequest) *pb.RpcObjectListSetIsFavoriteResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ObjectListSetIsFavorite")
+	}
+
+	var r0 *pb.RpcObjectListSetIsFavoriteResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectListSetIsFavoriteRequest) *pb.RpcObjectListSetIsFavoriteResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcObjectListSetIsFavoriteResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_ObjectListSetIsFavorite_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectListSetIsFavorite'
+type MockClientCommands_ObjectListSetIsFavorite_Call struct {
+	*mock.Call
+}
+
+// ObjectListSetIsFavorite is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcObjectListSetIsFavoriteRequest
+func (_e *MockClientCommands_Expecter) ObjectListSetIsFavorite(_a0 interface{}, _a1 interface{}) *MockClientCommands_ObjectListSetIsFavorite_Call {
+	return &MockClientCommands_ObjectListSetIsFavorite_Call{Call: _e.mock.On("ObjectListSetIsFavorite", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_ObjectListSetIsFavorite_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcObjectListSetIsFavoriteRequest)) *MockClientCommands_ObjectListSetIsFavorite_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcObjectListSetIsFavoriteRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectListSetIsFavorite_Call) Return(_a0 *pb.RpcObjectListSetIsFavoriteResponse) *MockClientCommands_ObjectListSetIsFavorite_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectListSetIsFavorite_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectListSetIsFavoriteRequest) *pb.RpcObjectListSetIsFavoriteResponse) *MockClientCommands_ObjectListSetIsFavorite_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1586,6 +1733,55 @@ func (_c *MockClientCommands_ObjectShow_Call) Return(_a0 *pb.RpcObjectShowRespon
 }
 
 func (_c *MockClientCommands_ObjectShow_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectShowRequest) *pb.RpcObjectShowResponse) *MockClientCommands_ObjectShow_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PubsubPublish provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) PubsubPublish(_a0 context.Context, _a1 *pb.RpcPubsubPublishRequest) *pb.RpcPubsubPublishResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PubsubPublish")
+	}
+
+	var r0 *pb.RpcPubsubPublishResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcPubsubPublishRequest) *pb.RpcPubsubPublishResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcPubsubPublishResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_PubsubPublish_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PubsubPublish'
+type MockClientCommands_PubsubPublish_Call struct {
+	*mock.Call
+}
+
+// PubsubPublish is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcPubsubPublishRequest
+func (_e *MockClientCommands_Expecter) PubsubPublish(_a0 interface{}, _a1 interface{}) *MockClientCommands_PubsubPublish_Call {
+	return &MockClientCommands_PubsubPublish_Call{Call: _e.mock.On("PubsubPublish", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_PubsubPublish_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcPubsubPublishRequest)) *MockClientCommands_PubsubPublish_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcPubsubPublishRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_PubsubPublish_Call) Return(_a0 *pb.RpcPubsubPublishResponse) *MockClientCommands_PubsubPublish_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_PubsubPublish_Call) RunAndReturn(run func(context.Context, *pb.RpcPubsubPublishRequest) *pb.RpcPubsubPublishResponse) *MockClientCommands_PubsubPublish_Call {
 	_c.Call.Return(run)
 	return _c
 }

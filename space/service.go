@@ -42,6 +42,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -58,6 +59,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -168,13 +170,54 @@ type service struct {
 	repKey                 uint64
 	spaceLoaderListener    aclobjectmanager.SpaceLoaderListener
 	watcher                *spaceWatcher
+	recovery               recoveryObserver // optional; nil when the tracker is not registered
 
 	mu        sync.Mutex
 	ctx       context.Context // use ctx for the long operations within the lifecycle of the service, excluding Run
 	ctxCancel context.CancelFunc
 	isClosing atomic.Bool
 
+	syncAllMu      sync.Mutex
+	syncAllRunning bool
+	syncAllPending bool
+	openedObjects  openedObjectsProvider
+
 	firstCreatedSpaceId string
+}
+
+// BlockServiceCName mirrors core/block.CName: the block service imports this
+// package, so the sweep's opened-objects source is looked up by name via the
+// minimal interface below. A drift test in core/block keeps them in sync.
+const BlockServiceCName = "block-service"
+
+// openedObjectsProvider is the part of the block service the head-sync sweep
+// needs to know which spaces the user is currently looking at.
+type openedObjectsProvider interface {
+	GetOpenedObjects() []lo.Entry[string, string]
+}
+
+// recoveryCName mirrors core/recovery.CName: the account start-up status
+// tracker lives above this package, so it is looked up by name. A drift test
+// keeps the two equal.
+const recoveryCName = "core.recovery"
+
+// recoveryObserver is the part of the recovery status tracker this package
+// feeds: which space is the account's (before the pull starts) and when the
+// tech space is ready (the "UI may start" milestone).
+type recoveryObserver interface {
+	OnTechSpaceId(id string)
+	OnAccountReady()
+	// OnSpaceView is every SpaceView status the tech-space subscription
+	// delivers; deleted covers accountStatus Deleted/Removing and remote
+	// Deleted, computed here so the tracker needs no spaceinfo import
+	OnSpaceView(spaceId, spaceViewId string, deleted bool)
+	// OnSpaceViewInactive is a SpaceView whose space this service will never
+	// run a spaceloader for, so no load result is ever coming for it
+	OnSpaceViewInactive(spaceId, spaceViewId string)
+	// OnSpaceViewsInitial is the watcher's first pass over the local
+	// SpaceViews; the tracker's completeness gate cannot open before every
+	// one of them has been delivered through OnSpaceView
+	OnSpaceViewsInitial(spaceViewIds []string)
 }
 
 func (s *service) Delete(ctx context.Context, id string) (err error) {
@@ -205,6 +248,10 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceLoaderListener = app.MustComponent[aclobjectmanager.SpaceLoaderListener](a)
 	s.identityService = app.MustComponent[dependencies.IdentityService](a)
 	s.inboxSender = app.MustComponent[inboxservice.Sender](a)
+	// optional (absent in tests): sweep priority source
+	if c := a.Component(BlockServiceCName); c != nil {
+		s.openedObjects, _ = c.(openedObjectsProvider)
+	}
 	s.waiting = make(map[string]controllerWaiter)
 	s.deferredStatuses = make(map[string]spaceViewStatus)
 	s.preferredSpaceId = s.config.PreferredSpaceId
@@ -217,6 +264,14 @@ func (s *service) Init(a *app.App) (err error) {
 	s.techSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacedomain.SpaceTypeTech)
 	if err != nil {
 		return
+	}
+	// optional (absent in tests): the recovery status tracker must know the
+	// tech space id before Run pulls it
+	if c := a.Component(recoveryCName); c != nil {
+		s.recovery, _ = c.(recoveryObserver)
+	}
+	if s.recovery != nil {
+		s.recovery.OnTechSpaceId(s.techSpaceId)
 	}
 	accountMetadata, metadataSymKey, err := domain.DeriveAccountMetadata(s.accountService.Account().SignKey)
 	if err != nil {
@@ -432,6 +487,7 @@ func (s *service) onSpaceStatusUpdated(spaceStatus spaceViewStatus) {
 		// we want the updates for each space view to be synchronous
 		spaceStatus.mx.Lock()
 		defer spaceStatus.mx.Unlock()
+		s.notifySpaceView(spaceStatus)
 		if spaceStatus.remoteStatus == spaceinfo.RemoteStatusDeleted && spaceStatus.accountStatus != spaceinfo.AccountStatusDeleted {
 			if spaceStatus.localStatus == spaceinfo.LocalStatusOk {
 				s.sendNotification(spaceStatus.spaceId)
@@ -449,6 +505,35 @@ func (s *service) onSpaceStatusUpdated(spaceStatus spaceViewStatus) {
 		s.maybeReleaseOnPreferredBroken(spaceStatus)
 		s.decideAndApplySpaceStatus(spaceStatus)
 	}()
+}
+
+// notifySpaceView is the SpaceDiscovered producer: the SpaceView subscription
+// is the only source of discovery (a space pushed by a LAN peer produces no
+// pull events), so it runs before any branching in onSpaceStatusUpdated.
+func (s *service) notifySpaceView(status spaceViewStatus) {
+	if s.recovery == nil {
+		return
+	}
+	deleted := status.accountStatus == spaceinfo.AccountStatusDeleted ||
+		status.accountStatus == spaceinfo.AccountStatusRemoving ||
+		status.remoteStatus == spaceinfo.RemoteStatusDeleted
+	// A joining space dispatches to mode.ModeJoining (see shareablespace's
+	// updateStatus), which builds a joiner and never a spaceloader: no load
+	// result will ever arrive, so the tracker must not wait for one.
+	if !deleted && status.accountStatus == spaceinfo.AccountStatusJoining {
+		s.recovery.OnSpaceViewInactive(status.spaceId, status.spaceViewId)
+		return
+	}
+	s.recovery.OnSpaceView(status.spaceId, status.spaceViewId, deleted)
+}
+
+// onInitialSpaceViews forwards the watcher's first pass. It runs inside
+// watcher.Run, i.e. before StartSync and therefore before any tech-space diff
+// can reach the tracker.
+func (s *service) onInitialSpaceViews(spaceViewIds []string) {
+	if s.recovery != nil {
+		s.recovery.OnSpaceViewsInitial(spaceViewIds)
+	}
 }
 
 // maybeReleaseOnPreferredBroken implements the B3-accepted dynamic fallback:
@@ -808,8 +893,36 @@ func (s *service) SyncAllSpaceHeads() {
 	if s.isClosing.Load() {
 		return
 	}
-	ids := s.AllLoadedSpaceIds()
-	go func() {
+	// Coalesce overlapping sweeps: recovery signals can burst (wake fires the
+	// clock-jump detector, the interface diff and the foreground RPC within
+	// seconds) and a sweep can park up to 1min on peer-find deadlines while
+	// offline. One running sweep plus at most one queued rerun keeps the
+	// behavior (a request arriving mid-sweep still gets a full fresh sweep)
+	// without stacking N_spaces goroutines per signal.
+	s.syncAllMu.Lock()
+	if s.syncAllRunning {
+		s.syncAllPending = true
+		s.syncAllMu.Unlock()
+		return
+	}
+	s.syncAllRunning = true
+	s.syncAllMu.Unlock()
+	go s.runSyncAllSpaceHeads()
+}
+
+// syncAllHeadsPeerFindDeadline bounds each sweep worker's wait for responsible
+// peers. It must be short: workers hold semaphore slots while waiting, and
+// after a network switch the spaces whose node dial is stuck must not block
+// the slots from spaces whose node is already reachable (observed in the
+// field: all 10 workers parked behind one slow cellular dial). Stragglers are
+// covered by the per-space reconnect diff-kick and the fast retry cadence.
+const syncAllHeadsPeerFindDeadline = time.Second * 15
+
+func (s *service) runSyncAllSpaceHeads() {
+	for {
+		// The user-visible spaces must not wait behind dozens of background
+		// spaces: sweep spaces with currently-open objects first.
+		ids := orderSpacesOpenedFirst(s.AllLoadedSpaceIds(), s.openedSpaceIds())
 		sem := make(chan struct{}, syncAllHeadsParallelism)
 		var wg sync.WaitGroup
 		for _, id := range ids {
@@ -825,13 +938,61 @@ func (s *service) SyncAllSpaceHeads() {
 					}
 					return
 				}
-				if err := sp.CommonSpace().SyncHeads(s.ctx); err != nil && s.ctx.Err() == nil {
-					log.Warn("sync all space heads: sync heads", zap.String("spaceId", id), zap.Error(err))
+				ctx := context.WithValue(s.ctx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(syncAllHeadsPeerFindDeadline))
+				if err := sp.CommonSpace().SyncHeads(ctx); err != nil && s.ctx.Err() == nil {
+					if errors.Is(err, peermanager.ErrPeerFindDeadlineExceeded) {
+						// expected while offline; one warn per loaded space per
+						// sweep is pure noise on large accounts
+						log.Debug("sync all space heads: no peers", zap.String("spaceId", id))
+					} else {
+						log.Warn("sync all space heads: sync heads", zap.String("spaceId", id), zap.Error(err))
+					}
 				}
 			}()
 		}
 		wg.Wait()
-	}()
+
+		s.syncAllMu.Lock()
+		if s.syncAllPending && !s.isClosing.Load() && s.ctx.Err() == nil {
+			s.syncAllPending = false
+			s.syncAllMu.Unlock()
+			continue
+		}
+		s.syncAllRunning = false
+		s.syncAllMu.Unlock()
+		return
+	}
+}
+
+// openedSpaceIds returns the set of spaces with currently-open objects; empty
+// when the block service is unavailable (tests).
+func (s *service) openedSpaceIds() map[string]struct{} {
+	if s.openedObjects == nil {
+		return nil
+	}
+	opened := map[string]struct{}{}
+	for _, entry := range s.openedObjects.GetOpenedObjects() {
+		opened[entry.Value] = struct{}{}
+	}
+	return opened
+}
+
+// orderSpacesOpenedFirst moves the spaces from the opened set to the front,
+// keeping the relative order stable within both groups.
+func orderSpacesOpenedFirst(ids []string, opened map[string]struct{}) []string {
+	if len(opened) == 0 {
+		return ids
+	}
+	ordered := make([]string, 0, len(ids))
+	var rest []string
+	for _, id := range ids {
+		if _, ok := opened[id]; ok {
+			ordered = append(ordered, id)
+		} else {
+			rest = append(rest, id)
+		}
+	}
+	return append(ordered, rest...)
 }
 
 func (s *service) TechSpaceId() string {

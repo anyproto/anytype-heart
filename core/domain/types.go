@@ -36,6 +36,9 @@ func MarshalTypeKeys(typeKeys []TypeKey) []string {
 
 type ChangeType uint32
 
+// APPEND ONLY. These values are serialized as pb.Change.ChangeType (a raw uint32) into CRDT changes
+// that are persisted and synced to peers. Inserting or reordering a constant silently reinterprets
+// every change already written with a later value. Only ever add to the end.
 const (
 	ChangeTypeUserChange ChangeType = iota
 	ChangeTypeHistoryOperation
@@ -48,6 +51,8 @@ const (
 	ChangeTypeIndexing
 	ChangeTypeSystemObjectReviserMigration
 	ChangeTypeDescriptionToggle
+	ChangeTypeCreatedInContext
+	ChangeTypeApiObjectKeyBackfill
 )
 
 func (c ChangeType) String() string {
@@ -74,6 +79,10 @@ func (c ChangeType) String() string {
 		return "SystemObjectReviserMigration"
 	case ChangeTypeDescriptionToggle:
 		return "DescriptionToggle"
+	case ChangeTypeCreatedInContext:
+		return "CreatedInContext"
+	case ChangeTypeApiObjectKeyBackfill:
+		return "ApiObjectKeyBackfill"
 	default:
 		return "Unknown"
 	}

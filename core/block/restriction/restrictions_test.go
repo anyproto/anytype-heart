@@ -18,6 +18,7 @@ type restrictionHolder struct {
 	uniqueKey    domain.UniqueKey
 	layout       model.ObjectTypeLayout
 	localDetails *domain.Details
+	memberPolicy MemberPolicy
 }
 
 func (rh *restrictionHolder) Type() smartblock.SmartBlockType {
@@ -34,6 +35,10 @@ func (rh *restrictionHolder) UniqueKey() domain.UniqueKey {
 
 func (rh *restrictionHolder) LocalDetails() *domain.Details {
 	return rh.localDetails
+}
+
+func (rh *restrictionHolder) MemberPolicy() MemberPolicy {
+	return rh.memberPolicy
 }
 
 func givenObjectType(typeKey domain.TypeKey) RestrictionHolder {

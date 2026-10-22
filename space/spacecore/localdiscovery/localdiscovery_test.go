@@ -1,7 +1,13 @@
+//go:build !android
+
 package localdiscovery
 
 import (
 	"context"
+	"fmt"
+	gonet "net"
+	"net/netip"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -13,11 +19,14 @@ import (
 	"github.com/libp2p/zeroconf/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/device/mock_device"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/net/addrs"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver/mock_clientserver"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
@@ -90,7 +99,7 @@ func TestLocalDiscovery_checkAddrs(t *testing.T) {
 		f := newFixture(t)
 
 		// when
-		ld := f.LocalDiscovery.(*localDiscovery)
+		ld := f.LocalDiscovery.(*zeroconfDiscovery)
 		ld.port = 6789
 		err := ld.refreshInterfaces(context.Background())
 
@@ -102,7 +111,7 @@ func TestLocalDiscovery_checkAddrs(t *testing.T) {
 		f := newFixture(t)
 
 		// when
-		ld := f.LocalDiscovery.(*localDiscovery)
+		ld := f.LocalDiscovery.(*zeroconfDiscovery)
 		var hookCalled atomic.Int64
 		ld.RegisterDiscoveryPossibilityHook(func(state DiscoveryPossibility) {
 			hookCalled.Store(int64(state))
@@ -116,6 +125,132 @@ func TestLocalDiscovery_checkAddrs(t *testing.T) {
 	})
 }
 
+func TestLocalDiscovery_networkStateHookDoesNotBlockOnSlowRefresh(t *testing.T) {
+	// given: a started discovery whose refresh pipeline is busy
+	// (refreshMu held simulates an in-flight teardown/rebuild)
+	f := newFixture(t)
+	f.clientServer.EXPECT().ServerStarted().Return(true)
+	f.clientServer.EXPECT().Port().Return(6789)
+	var hook func(model.DeviceNetworkType)
+	f.deviceService.EXPECT().RegisterHook(mock.Anything).Run(func(h func(model.DeviceNetworkType)) {
+		hook = h
+	}).Return()
+	err := f.Start()
+	assert.Nil(t, err)
+
+	ld := f.LocalDiscovery.(*zeroconfDiscovery)
+	ld.refreshMu.Lock()
+
+	// when: the device reports a network change (this call happens on the
+	// DeviceNetworkStateSet RPC path and must stay fast)
+	done := make(chan struct{})
+	go func() {
+		hook(model.DeviceNetworkType_CELLULAR)
+		close(done)
+	}()
+
+	// then
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("network-state hook blocked behind an in-flight refresh")
+	}
+	ld.refreshMu.Unlock()
+	assert.Nil(t, f.Close(context.Background()))
+}
+
+func TestLocalDiscovery_refreshRetriesFailedServerStart(t *testing.T) {
+	// given: the first refresh fails to start the mdns server (port 0 is
+	// rejected by RegisterProxy), simulating a transient start failure
+	f := newFixture(t)
+	f.clientServer.EXPECT().ServerStarted().Return(true).Maybe()
+	ld := f.LocalDiscovery.(*zeroconfDiscovery)
+	ld.port = 0
+	err := ld.refreshInterfaces(context.Background())
+	assert.Error(t, err)
+
+	// when: the failure condition is gone but the addresses are unchanged
+	ld.port = 6789
+	err = ld.refreshInterfaces(context.Background())
+
+	// then: the next tick must retry instead of treating the state as done
+	assert.Nil(t, err)
+	ld.m.Lock()
+	server := ld.server
+	ld.m.Unlock()
+	assert.NotNil(t, server, "failed server start was never retried")
+	assert.Nil(t, f.Close(context.Background()))
+}
+
+func TestLocalDiscovery_refreshKeepsServerOnEnumerationError(t *testing.T) {
+	// given: a healthy running server
+	f := newFixture(t)
+	f.clientServer.EXPECT().ServerStarted().Return(true).Maybe()
+	ld := f.LocalDiscovery.(*zeroconfDiscovery)
+	ld.port = 6789
+	err := ld.refreshInterfaces(context.Background())
+	assert.Nil(t, err)
+	ld.m.Lock()
+	assert.NotNil(t, ld.server)
+	ld.m.Unlock()
+
+	// when: interface enumeration fails transiently
+	origGetter := getInterfacesAddrs
+	getInterfacesAddrs = func() (addrs.InterfacesAddrs, error) {
+		return addrs.InterfacesAddrs{}, fmt.Errorf("transient enumeration failure")
+	}
+	t.Cleanup(func() { getInterfacesAddrs = origGetter })
+	err = ld.refreshInterfaces(context.Background())
+
+	// then: the error is surfaced and the running server is not torn down
+	assert.Error(t, err)
+	ld.m.Lock()
+	server := ld.server
+	ld.m.Unlock()
+	assert.NotNil(t, server, "transient enumeration error must not tear down the server")
+	getInterfacesAddrs = origGetter
+	assert.Nil(t, f.Close(context.Background()))
+}
+
+func TestLocalDiscovery_refreshSurvivesStuckQueryGoroutine(t *testing.T) {
+	// given
+	origTimeout := queryStopTimeout
+	queryStopTimeout = 200 * time.Millisecond
+	t.Cleanup(func() { queryStopTimeout = origTimeout })
+
+	f := newFixture(t)
+	f.clientServer.EXPECT().ServerStarted().Return(true).Maybe()
+	ld := f.LocalDiscovery.(*zeroconfDiscovery)
+	ld.port = 6789
+	err := ld.refreshInterfaces(context.Background())
+	assert.Nil(t, err)
+
+	// simulate a query goroutine of the current generation that never exits
+	// (e.g. an entries channel that is never closed), and clear the cached
+	// addresses to force a full teardown + rebuild like a network change does
+	ld.m.Lock()
+	ld.closeWait.Add(1)
+	ld.interfacesAddrs = addrs.InterfacesAddrs{}
+	ld.m.Unlock()
+
+	// when: a forced rebuild tears the current generation down
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		if err := ld.refreshInterfaces(context.Background()); err != nil {
+			t.Error(err)
+		}
+	}()
+
+	// then: the refresh must not wedge on the stuck goroutine
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("refreshInterfaces wedged on a stuck query goroutine")
+	}
+	assert.Nil(t, f.Close(context.Background()))
+}
+
 func TestLocalDiscovery_readAnswers(t *testing.T) {
 	t.Run("readAnswers - send peer update for itself", func(t *testing.T) {
 		// given
@@ -124,10 +259,11 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		f.LocalDiscovery.SetNotifier(notifier)
 
 		// when
-		ld := f.LocalDiscovery.(*localDiscovery)
+		ld := f.LocalDiscovery.(*zeroconfDiscovery)
 		peerUpdate := make(chan *zeroconf.ServiceEntry)
+		closeWait := &sync.WaitGroup{}
+		closeWait.Add(1)
 		go func() {
-			ld.closeWait.Add(1)
 			peerUpdate <- &zeroconf.ServiceEntry{
 				ServiceRecord: zeroconf.ServiceRecord{
 					Instance: ld.peerId,
@@ -135,11 +271,102 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 			}
 			close(peerUpdate)
 		}()
-		ld.readAnswers(peerUpdate)
+		ld.readAnswers(closeWait, peerUpdate)
 
 		// then
 		notifier.AssertNotCalled(t, "PeerDiscovered")
 	})
+	t.Run("a cable entry is reported with its link", func(t *testing.T) {
+		// given: en16 (index 31) is a link-local-only interface
+		f := newFixture(t)
+		ld := f.LocalDiscovery.(*zeroconfDiscovery)
+		ld.linkLocal = newLinkLocalIfaces(
+			[]ownAddr{{iface: "en16", net: netip.MustParsePrefix("fe80::1/64"), linkLocal: true}},
+			[]gonet.Interface{{Index: 31, Name: "en16"}},
+		)
+		notifier := NewMockNotifier(t)
+		want := DiscoveredPeer{PeerId: "phone", Link: "31", Addrs: []string{"[fe80::62%31]:4006"}}
+		called := make(chan struct{})
+		notifier.EXPECT().PeerDiscovered(mock.Anything, want, mock.Anything).Run(func(context.Context, DiscoveredPeer, OwnAddresses) {
+			close(called)
+		}).Once()
+		ld.SetNotifier(notifier)
+		entries := make(chan *zeroconf.ServiceEntry, 1)
+		entries <- &zeroconf.ServiceEntry{
+			ServiceRecord: zeroconf.ServiceRecord{Instance: "phone"},
+			Port:          4006,
+			LinkIndex:     31,
+			AddrIPv4:      []gonet.IP{gonet.ParseIP("169.254.10.20")},
+			AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62%31")},
+		}
+		close(entries)
+		closeWait := &sync.WaitGroup{}
+		closeWait.Add(1)
+
+		// when
+		ld.readAnswers(closeWait, entries)
+
+		// then
+		select {
+		case <-called:
+		case <-time.After(5 * time.Second):
+			t.Fatal("the cable entry was not reported")
+		}
+	})
+	for _, tc := range []struct {
+		name  string
+		entry *zeroconf.ServiceEntry
+		want  []string
+	}{
+		{
+			name: "a base entry goes as on develop, in interface order",
+			entry: &zeroconf.ServiceEntry{
+				Port:     4006,
+				AddrIPv4: []gonet.IP{gonet.ParseIP("172.16.0.9"), gonet.ParseIP("10.0.0.62"), gonet.ParseIP("192.168.1.62")},
+			},
+			want: []string{"192.168.1.62:4006", "10.0.0.62:4006", "172.16.0.9:4006"},
+		},
+		{
+			name: "a base entry without IPv4 still goes, as on develop",
+			entry: &zeroconf.ServiceEntry{
+				Port:          4006,
+				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62%4")},
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given: Wi-Fi on 192.168.1.0/24, then Ethernet on 10.0.0.0/8
+			f := newFixture(t)
+			ld := f.LocalDiscovery.(*zeroconfDiscovery)
+			ld.interfacesAddrs = addrs.InterfacesAddrs{Interfaces: []addrs.NetInterfaceWithAddrCache{
+				addrs.WrapInterfaceWithAddrs(gonet.Interface{Index: 4, Name: "en0"}, []gonet.Addr{ipNet("192.168.1.10/24")}),
+				addrs.WrapInterfaceWithAddrs(gonet.Interface{Index: 5, Name: "en1"}, []gonet.Addr{ipNet("10.0.0.5/8")}),
+			}}
+			notifier := NewMockNotifier(t)
+			called := make(chan struct{})
+			want := DiscoveredPeer{PeerId: "peer2", Addrs: tc.want}
+			notifier.EXPECT().PeerDiscovered(mock.Anything, want, mock.Anything).Run(func(context.Context, DiscoveredPeer, OwnAddresses) {
+				close(called)
+			}).Once()
+			ld.SetNotifier(notifier)
+			tc.entry.ServiceRecord = zeroconf.ServiceRecord{Instance: "peer2"}
+			entries := make(chan *zeroconf.ServiceEntry, 1)
+			entries <- tc.entry
+			close(entries)
+			closeWait := &sync.WaitGroup{}
+			closeWait.Add(1)
+
+			// when
+			ld.readAnswers(closeWait, entries)
+
+			// then
+			select {
+			case <-called:
+			case <-time.After(5 * time.Second):
+				t.Fatal("not reported")
+			}
+		})
+	}
 	t.Run("readAnswers - send peer update to notifier", func(t *testing.T) {
 		// given
 		f := newFixture(t)
@@ -147,7 +374,7 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		f.clientServer.EXPECT().Port().Return(6789).Maybe()
 
 		// when
-		ld := f.LocalDiscovery.(*localDiscovery)
+		ld := f.LocalDiscovery.(*zeroconfDiscovery)
 		peerUpdate := make(chan *zeroconf.ServiceEntry)
 
 		notifier := NewMockNotifier(t)
@@ -155,28 +382,33 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		assert.Nil(t, err)
 
 		expectedPeer := DiscoveredPeer{
+			Addrs:  []string{"192.168.1.62:4006"},
 			PeerId: accountKeys.PeerId,
 		}
 		var called = make(chan struct{})
 		notifier.EXPECT().PeerDiscovered(mock.Anything, expectedPeer, mock.Anything).Run(func(ctx context.Context, peer DiscoveredPeer, own OwnAddresses) {
 			close(called)
-		})
-
-		notifier.EXPECT().PeerDiscovered(mock.Anything, DiscoveredPeer{
-			PeerId: accountKeys.PeerId,
-		}, mock.Anything).Return()
+		}).Once()
 		ld.SetNotifier(notifier)
 
+		closeWait := &sync.WaitGroup{}
+		closeWait.Add(1)
 		go func() {
-			ld.closeWait.Add(1)
+			// a cable entry with nothing to dial (another link) is skipped
 			peerUpdate <- &zeroconf.ServiceEntry{
-				ServiceRecord: zeroconf.ServiceRecord{
-					Instance: accountKeys.PeerId,
-				},
+				ServiceRecord: zeroconf.ServiceRecord{Instance: accountKeys.PeerId},
+				Port:          4006,
+				LinkIndex:     4,
+				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62%4")},
+			}
+			peerUpdate <- &zeroconf.ServiceEntry{
+				ServiceRecord: zeroconf.ServiceRecord{Instance: accountKeys.PeerId},
+				Port:          4006,
+				AddrIPv4:      []gonet.IP{gonet.ParseIP("192.168.1.62")},
 			}
 			close(peerUpdate)
 		}()
-		ld.readAnswers(peerUpdate)
+		ld.readAnswers(closeWait, peerUpdate)
 
 		select {
 		case <-called:
@@ -184,4 +416,218 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 			t.Errorf("peer discovery did not call peer update")
 		}
 	})
+}
+
+func TestReadAnswersDispatch(t *testing.T) {
+	deliver := func(t *testing.T, ld *zeroconfDiscovery, ips ...string) {
+		t.Helper()
+		entries := make(chan *zeroconf.ServiceEntry, len(ips))
+		for _, ip := range ips {
+			entries <- &zeroconf.ServiceEntry{
+				ServiceRecord: zeroconf.ServiceRecord{Instance: "peer2"},
+				Port:          4006,
+				AddrIPv4:      []gonet.IP{gonet.ParseIP(ip)},
+			}
+		}
+		close(entries)
+		closeWait := &sync.WaitGroup{}
+		closeWait.Add(1)
+		ld.readAnswers(closeWait, entries)
+	}
+
+	t.Run("without a cable each discovery runs at once, as on develop", func(t *testing.T) {
+		// given: the first exchange with peer2 hangs
+		f := newFixture(t)
+		ld := f.LocalDiscovery.(*zeroconfDiscovery)
+		n := &blockingNotifier{release: make(chan struct{}), first: make(chan struct{})}
+		ld.SetNotifier(n)
+
+		// when
+		deliver(t, ld, "192.168.1.62", "192.168.1.63", "192.168.1.64")
+
+		// then: all three reach the notifier while the first still runs
+		assert.Eventually(t, func() bool {
+			n.mu.Lock()
+			defer n.mu.Unlock()
+			return len(n.got) == 3
+		}, 2*time.Second, 10*time.Millisecond)
+		n.mu.Lock()
+		assert.ElementsMatch(t, [][]string{{"192.168.1.62:4006"}, {"192.168.1.63:4006"}, {"192.168.1.64:4006"}}, n.got)
+		n.mu.Unlock()
+		close(n.release)
+	})
+
+	t.Run("a discovery parked behind a cable one stays parked when the cable goes away", func(t *testing.T) {
+		// given: a cable discovery of peer2 runs, an older base one is parked
+		f := newFixture(t)
+		ld := f.LocalDiscovery.(*zeroconfDiscovery)
+		ld.linkLocal = newLinkLocalIfaces(
+			[]ownAddr{{iface: "en16", net: netip.MustParsePrefix("fe80::1/64"), linkLocal: true}},
+			[]gonet.Interface{{Index: 31, Name: "en16"}},
+		)
+		n := &blockingNotifier{release: make(chan struct{}), first: make(chan struct{})}
+		ld.SetNotifier(n)
+		cable := make(chan *zeroconf.ServiceEntry, 1)
+		cable <- &zeroconf.ServiceEntry{
+			ServiceRecord: zeroconf.ServiceRecord{Instance: "peer2"},
+			Port:          4006,
+			LinkIndex:     31,
+			AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62%31")},
+		}
+		close(cable)
+		closeWait := &sync.WaitGroup{}
+		closeWait.Add(1)
+		ld.readAnswers(closeWait, cable)
+		<-n.first
+		deliver(t, ld, "192.168.1.62")
+
+		// when: the cable is gone, and a newer base discovery arrives
+		ld.linkLocal = linkLocalIfaces{}
+		deliver(t, ld, "192.168.1.63")
+		close(n.release)
+
+		// then: it took the parked one's place, the older one never runs
+		assert.Eventually(t, func() bool {
+			ld.discoveries.mu.Lock()
+			defer ld.discoveries.mu.Unlock()
+			return len(ld.discoveries.inflight) == 0
+		}, 2*time.Second, 10*time.Millisecond)
+		n.mu.Lock()
+		defer n.mu.Unlock()
+		assert.Equal(t, [][]string{{"[fe80::62%31]:4006"}, {"192.168.1.63:4006"}}, n.got)
+	})
+
+	t.Run("with a cable a peer's discoveries run one at a time", func(t *testing.T) {
+		// given
+		f := newFixture(t)
+		ld := f.LocalDiscovery.(*zeroconfDiscovery)
+		ld.linkLocal = newLinkLocalIfaces(
+			[]ownAddr{{iface: "en16", net: netip.MustParsePrefix("fe80::1/64"), linkLocal: true}},
+			[]gonet.Interface{{Index: 31, Name: "en16"}},
+		)
+		n := &blockingNotifier{release: make(chan struct{}), first: make(chan struct{})}
+		ld.SetNotifier(n)
+
+		// when
+		deliver(t, ld, "192.168.1.62", "192.168.1.63", "192.168.1.64")
+
+		// then: the rest waits for the first, the latest base list next
+		<-n.first
+		ld.discoveries.mu.Lock()
+		pending := ld.discoveries.inflight["peer2"]
+		ld.discoveries.mu.Unlock()
+		require.NotNil(t, pending, "queued")
+		require.Len(t, pending.next, 1)
+		assert.Equal(t, []string{"192.168.1.64:4006"}, pending.next[0].peer.Addrs)
+		close(n.release)
+		assert.Eventually(t, func() bool {
+			n.mu.Lock()
+			defer n.mu.Unlock()
+			return len(n.got) == 2
+		}, 2*time.Second, 10*time.Millisecond)
+	})
+}
+
+func TestPeerAddrs(t *testing.T) {
+	zones := newLinkLocalIfaces(
+		[]ownAddr{{iface: "en16", net: netip.MustParsePrefix("fe80::a886:c6ff:febd:f923/64"), linkLocal: true}},
+		[]gonet.Interface{{Index: 4, Name: "en0"}, {Index: 31, Name: "en16"}},
+	).zones
+
+	for _, tc := range []struct {
+		name  string
+		entry *zeroconf.ServiceEntry
+		want  []string
+	}{
+		{
+			name: "a cable entry has only its link-local addresses",
+			entry: &zeroconf.ServiceEntry{
+				Port:      62654,
+				LinkIndex: 31,
+				AddrIPv4:  []gonet.IP{gonet.ParseIP("192.168.1.62")},
+				AddrIPv6Zoned: []netip.Addr{
+					netip.MustParseAddr("2a0d:5600::62"),
+					netip.MustParseAddr("fe80::a886:c6ff:febd:f9dc%31"),
+				},
+			},
+			want: []string{"[fe80::a886:c6ff:febd:f9dc%31]:62654"},
+		},
+		{
+			name: "a cable entry from a link that is not ours has nothing",
+			entry: &zeroconf.ServiceEntry{
+				Port:          4006,
+				LinkIndex:     4,
+				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62%4")},
+			},
+			want: nil,
+		},
+		{
+			name: "an entry for no link has its ipv4 addresses in order, as on develop",
+			entry: &zeroconf.ServiceEntry{
+				Port:          4006,
+				AddrIPv4:      []gonet.IP{gonet.ParseIP("10.20.9.9"), gonet.ParseIP("192.168.1.62")},
+				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::a886:c6ff:febd:f9dc%31")},
+			},
+			want: []string{"10.20.9.9:4006", "192.168.1.62:4006"},
+		},
+		{
+			name: "an unzoned link-local is left out",
+			entry: &zeroconf.ServiceEntry{
+				Port:          4006,
+				LinkIndex:     31,
+				AddrIPv6Zoned: []netip.Addr{netip.MustParseAddr("fe80::62")},
+			},
+			want: nil,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, peerAddrs(tc.entry, zones))
+		})
+	}
+}
+
+func TestLinkLocalIfacesIPTraffic(t *testing.T) {
+	t.Run("ipv4 only without a link-local interface", func(t *testing.T) {
+		ll := newLinkLocalIfaces([]ownAddr{{iface: "en0", net: netip.MustParsePrefix("192.168.1.10/24")}}, []gonet.Interface{{Index: 4, Name: "en0"}})
+		assert.Equal(t, zeroconf.IPv4, ll.ipTraffic())
+		assert.Empty(t, ll.indexes)
+	})
+	t.Run("both families with one", func(t *testing.T) {
+		ll := newLinkLocalIfaces(
+			[]ownAddr{{iface: "en16", net: netip.MustParsePrefix("fe80::1/64"), linkLocal: true}},
+			[]gonet.Interface{{Index: 4, Name: "en0"}, {Index: 31, Name: "en16"}},
+		)
+		assert.Equal(t, zeroconf.IPType(zeroconf.IPv4AndIPv6), ll.ipTraffic())
+		assert.Equal(t, []int{31}, ll.indexes)
+	})
+}
+
+func TestInterfaceIds(t *testing.T) {
+	ipNet := func(cidr string) gonet.Addr {
+		ip, n, err := gonet.ParseCIDR(cidr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		n.IP = ip
+		return n
+	}
+	wifiV4, wifiLL, cableLL := ipNet("192.168.1.10/24"), ipNet("fe80::1/64"), ipNet("fe80::a886:c6ff:febd:f923/64")
+	set := func(cableIndex int, wifi, cable, tunnel []gonet.Addr) []addrs.NetInterfaceWithAddrCache {
+		return []addrs.NetInterfaceWithAddrCache{
+			addrs.WrapInterfaceWithAddrs(gonet.Interface{Index: 4, Name: "en0"}, wifi),
+			addrs.WrapInterfaceWithAddrs(gonet.Interface{Index: cableIndex, Name: "en16"}, cable),
+			addrs.WrapInterfaceWithAddrs(gonet.Interface{Index: 20, Name: "utun0"}, tunnel),
+		}
+	}
+	base := interfaceIds("darwin", set(31, []gonet.Addr{wifiV4, wifiLL}, []gonet.Addr{cableLL}, nil))
+
+	// then
+	assert.Equal(t, base, interfaceIds("darwin", set(31, []gonet.Addr{wifiV4, wifiLL}, []gonet.Addr{cableLL}, nil)))
+	assert.NotEqual(t, base, interfaceIds("darwin", set(42, []gonet.Addr{wifiV4, wifiLL}, []gonet.Addr{cableLL}, nil)), "the cable came back under a new index")
+	assert.NotEqual(t, base, interfaceIds("darwin", set(31, []gonet.Addr{wifiLL}, []gonet.Addr{wifiV4, cableLL}, nil)), "the IPv4 address moved to the cable")
+	assert.Equal(t, base, interfaceIds("darwin", set(31, []gonet.Addr{wifiV4, wifiLL}, []gonet.Addr{cableLL}, []gonet.Addr{ipNet("fe80::9/64")})), "a tunnel's addresses are not read")
+
+	cableUp := set(31, []gonet.Addr{wifiV4, wifiLL}, []gonet.Addr{cableLL}, nil)
+	cableUp[1].Flags = gonet.FlagUp | gonet.FlagMulticast
+	assert.NotEqual(t, base, interfaceIds("darwin", cableUp), "the cable came up with the same name, index and address")
 }

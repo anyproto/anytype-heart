@@ -14,6 +14,7 @@ package tantivycheck
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -55,6 +56,15 @@ type ConsistencyReport struct {
 	WriterLockPresent bool // true if .tantivy-writer.lock exists and is locked
 	MetaLockPresent   bool // true if .tantivy-meta.lock exists and is locked
 
+	// SchemaFieldNames lists the schema fields recorded in meta.json, in
+	// field-id order; empty when meta.json could not be decoded
+	SchemaFieldNames []string
+
+	// Rebuilt is set by the owner when the checked index was thrown away and
+	// replaced by an empty one during startup; the rest of the report then
+	// describes a directory that no longer exists
+	Rebuilt bool
+
 	// Informational counters
 	TotalSegmentsInMeta         int
 	UniqueSegmentPrefixesOnDisk int
@@ -68,23 +78,41 @@ type ConsistencyReport struct {
 	ReportTime           time.Time
 }
 
+// ErrMetaUndecodable is returned by Check when meta.json was read but is not
+// valid JSON: the index cannot be opened by tantivy no matter what. It is
+// deliberately distinct from read errors (permissions, I/O), which may be
+// transient and must not be treated as corruption.
+var ErrMetaUndecodable = errors.New("meta.json cannot be decoded")
+
 // Check runs the consistency test against dir and returns a report.
 //
-// It fails with an error if meta.json is absent or can’t be decoded.
+// It fails with an error if meta.json is absent or can’t be decoded; the
+// lock flags are still populated in that case, so callers can refuse to
+// touch an index another process holds even when its meta.json is damaged.
 func Check(dir string) (ConsistencyReport, error) {
+	// Check lock files using TryLock instead of just file existence
+	locks := ConsistencyReport{
+		WriterLockPresent: isLocked(filepath.Join(dir, ".tantivy-writer.lock")),
+		MetaLockPresent:   isLocked(filepath.Join(dir, ".tantivy-meta.lock")),
+	}
+
 	// ---------------------------------------------------------------------
 	// 1) Parse meta.json
 	// ---------------------------------------------------------------------
 	metaPath := filepath.Join(dir, "meta.json")
 	meta, err := readMeta(metaPath)
 	if err != nil {
-		return ConsistencyReport{}, err
+		return locks, err
 	}
 	metaStat, err := os.Stat(metaPath)
 	if err != nil {
-		return ConsistencyReport{}, fmt.Errorf("stat meta.json: %w", err)
+		return locks, fmt.Errorf("stat meta.json: %w", err)
 	}
 	metaModTime := metaStat.ModTime()
+	schemaFieldNames := make([]string, 0, len(meta.Schema))
+	for _, field := range meta.Schema {
+		schemaFieldNames = append(schemaFieldNames, field.Name)
+	}
 
 	// Build metaSegments:  32-hex-id (no dashes) → expected opstamp (nil if none)
 	metaSegments := make(map[string]*uint64, len(meta.Segments))
@@ -106,10 +134,6 @@ func Check(dir string) (ConsistencyReport, error) {
 	// Segment file timestamp tracking
 	var newestModTime, oldestModTime time.Time
 	var newestFile, oldestFile string
-
-	// Check lock files using TryLock instead of just file existence
-	writerLockPresent := isLocked(filepath.Join(dir, ".tantivy-writer.lock"))
-	metaLockPresent := isLocked(filepath.Join(dir, ".tantivy-meta.lock"))
 
 	err = filepath.WalkDir(dir, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
@@ -147,7 +171,7 @@ func Check(dir string) (ConsistencyReport, error) {
 		return nil
 	})
 	if err != nil {
-		return ConsistencyReport{}, fmt.Errorf("scanning directory: %w", err)
+		return locks, fmt.Errorf("scanning directory: %w", err)
 	}
 
 	// ---------------------------------------------------------------------
@@ -203,8 +227,9 @@ func Check(dir string) (ConsistencyReport, error) {
 		MissingDelFiles:             missingDelFiles,
 		ExtraSegments:               extraSegments,
 		ExtraDelFiles:               extraDelFiles,
-		WriterLockPresent:           writerLockPresent,
-		MetaLockPresent:             metaLockPresent,
+		WriterLockPresent:           locks.WriterLockPresent,
+		MetaLockPresent:             locks.MetaLockPresent,
+		SchemaFieldNames:            schemaFieldNames,
 		TotalSegmentsInMeta:         len(metaSegments),
 		UniqueSegmentPrefixesOnDisk: len(segmentPrefixesDisk),
 		MetaJsonModTime:             metaModTime,
@@ -272,6 +297,9 @@ func (r *ConsistencyReport) GCExtraFiles() error {
 
 // metaFile mirrors only the parts of meta.json we need.
 type metaFile struct {
+	Schema []struct {
+		Name string `json:"name"`
+	} `json:"schema"`
 	Segments []struct {
 		SegmentID string `json:"segment_id"`
 		Deletes   *struct {
@@ -287,7 +315,7 @@ func readMeta(path string) (*metaFile, error) {
 	}
 	var m metaFile
 	if err := json.Unmarshal(b, &m); err != nil {
-		return nil, fmt.Errorf("decoding meta.json: %w", err)
+		return nil, fmt.Errorf("%w: %w", ErrMetaUndecodable, err)
 	}
 	return &m, nil
 }

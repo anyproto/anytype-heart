@@ -54,6 +54,18 @@ func IsSystemRelation(relationKey domain.RelationKey) bool {
 	return ok
 }
 
+// RelationKeepsApiSlug reports whether a bundled relation holds its key and
+// derived api slug in a space that has not installed it: the system's own
+// relations, read-only record keeping and hidden machinery. Any other bundled
+// relation yields both to a relation of the space's own until it is installed.
+func RelationKeepsApiSlug(key domain.RelationKey) bool {
+	rel, ok := relations[key]
+	if !ok {
+		return false
+	}
+	return IsSystemRelation(key) || rel.ReadOnly || rel.Hidden
+}
+
 func IsInternalType(typeKey domain.TypeKey) bool {
 	_, ok := internalTypesTypesMap[typeKey]
 	return ok
@@ -69,6 +81,14 @@ var LocalAndDerivedRelationKeys []domain.RelationKey
 var ErrNotFound = fmt.Errorf("not found")
 
 func init() {
+	// extras must join the bundle before the key lists below are derived from it. This is the only
+	// init in the package, so ordering against the generated relations map is guaranteed: package
+	// level vars are initialized before any init runs.
+	if paths := extraRelationsPaths(); len(paths) > 0 {
+		if err := loadExtraRelations(paths, relations); err != nil {
+			panic(fmt.Errorf("%s: %w", envExtraRelations, err))
+		}
+	}
 	for _, r := range relations {
 		if r.DataSource == model.Relation_account || r.DataSource == model.Relation_local {
 			LocalRelationsKeys = append(LocalRelationsKeys, domain.RelationKey(r.Key))
@@ -249,4 +269,16 @@ func RelationKeyFromID(id string) (domain.RelationKey, error) {
 	}
 
 	return "", fmt.Errorf("invalid type url: no prefix found")
+}
+
+// ListRelationsKeys returns every bundled relation key, in map order — the
+// relation half of ListTypesKeys, for callers that build their own tables
+// over the whole bundled population (sort before deriving anything
+// order-sensitive).
+func ListRelationsKeys() []domain.RelationKey {
+	keys := make([]domain.RelationKey, 0, len(relations))
+	for k := range relations {
+		keys = append(keys, k)
+	}
+	return keys
 }

@@ -3,26 +3,17 @@
 package mock_techspace
 
 import (
-	domain "github.com/anyproto/anytype-heart/core/domain"
-	coresmartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-
-	mock "github.com/stretchr/testify/mock"
-
-	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-
 	objecttree "github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
-
-	pb "github.com/anyproto/anytype-heart/pb"
-
-	restriction "github.com/anyproto/anytype-heart/core/block/restriction"
-
-	session "github.com/anyproto/anytype-heart/core/session"
-
-	simple "github.com/anyproto/anytype-heart/core/block/simple"
-
 	smartblock "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-
 	state "github.com/anyproto/anytype-heart/core/block/editor/state"
+	restriction "github.com/anyproto/anytype-heart/core/block/restriction"
+	simple "github.com/anyproto/anytype-heart/core/block/simple"
+	domain "github.com/anyproto/anytype-heart/core/domain"
+	session "github.com/anyproto/anytype-heart/core/session"
+	pb "github.com/anyproto/anytype-heart/pb"
+	coresmartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	mock "github.com/stretchr/testify/mock"
 
 	time "time"
 
@@ -566,6 +557,52 @@ func (_c *MockAccountObject_CombinedDetails_Call) Return(_a0 *domain.GenericMap[
 }
 
 func (_c *MockAccountObject_CombinedDetails_Call) RunAndReturn(run func() *domain.GenericMap[domain.RelationKey]) *MockAccountObject_CombinedDetails_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ConvertLayoutBlocks provides a mock function with given fields: s
+func (_m *MockAccountObject) ConvertLayoutBlocks(s *state.State) bool {
+	ret := _m.Called(s)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ConvertLayoutBlocks")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func(*state.State) bool); ok {
+		r0 = rf(s)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockAccountObject_ConvertLayoutBlocks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ConvertLayoutBlocks'
+type MockAccountObject_ConvertLayoutBlocks_Call struct {
+	*mock.Call
+}
+
+// ConvertLayoutBlocks is a helper method to define mock.On call
+//   - s *state.State
+func (_e *MockAccountObject_Expecter) ConvertLayoutBlocks(s interface{}) *MockAccountObject_ConvertLayoutBlocks_Call {
+	return &MockAccountObject_ConvertLayoutBlocks_Call{Call: _e.mock.On("ConvertLayoutBlocks", s)}
+}
+
+func (_c *MockAccountObject_ConvertLayoutBlocks_Call) Run(run func(s *state.State)) *MockAccountObject_ConvertLayoutBlocks_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*state.State))
+	})
+	return _c
+}
+
+func (_c *MockAccountObject_ConvertLayoutBlocks_Call) Return(_a0 bool) *MockAccountObject_ConvertLayoutBlocks_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAccountObject_ConvertLayoutBlocks_Call) RunAndReturn(run func(*state.State) bool) *MockAccountObject_ConvertLayoutBlocks_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1343,6 +1380,51 @@ func (_c *MockAccountObject_Lock_Call) Return() *MockAccountObject_Lock_Call {
 
 func (_c *MockAccountObject_Lock_Call) RunAndReturn(run func()) *MockAccountObject_Lock_Call {
 	_c.Run(run)
+	return _c
+}
+
+// MemberPolicy provides a mock function with no fields
+func (_m *MockAccountObject) MemberPolicy() restriction.MemberPolicy {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for MemberPolicy")
+	}
+
+	var r0 restriction.MemberPolicy
+	if rf, ok := ret.Get(0).(func() restriction.MemberPolicy); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(restriction.MemberPolicy)
+	}
+
+	return r0
+}
+
+// MockAccountObject_MemberPolicy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MemberPolicy'
+type MockAccountObject_MemberPolicy_Call struct {
+	*mock.Call
+}
+
+// MemberPolicy is a helper method to define mock.On call
+func (_e *MockAccountObject_Expecter) MemberPolicy() *MockAccountObject_MemberPolicy_Call {
+	return &MockAccountObject_MemberPolicy_Call{Call: _e.mock.On("MemberPolicy")}
+}
+
+func (_c *MockAccountObject_MemberPolicy_Call) Run(run func()) *MockAccountObject_MemberPolicy_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockAccountObject_MemberPolicy_Call) Return(_a0 restriction.MemberPolicy) *MockAccountObject_MemberPolicy_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAccountObject_MemberPolicy_Call) RunAndReturn(run func() restriction.MemberPolicy) *MockAccountObject_MemberPolicy_Call {
+	_c.Call.Return(run)
 	return _c
 }
 

@@ -12,7 +12,9 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	"github.com/anyproto/anytype-heart/core/application/accountdirlock"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
 var (
@@ -21,10 +23,21 @@ var (
 )
 
 func (s *Service) AccountMigrate(ctx context.Context, req *pb.RpcAccountMigrateRequest) error {
-	if s.rootPath == "" {
-		s.rootPath = req.RootPath
+	if err := s.validateAccountID(req.Id); err != nil {
+		return err
 	}
-	return s.migrationManager.getOrCreateMigration(req.RootPath, req.Id, req.FulltextPrimaryLanguage).wait()
+	rootPath := req.RootPath
+	if rootPath == "" {
+		rootPath = s.rootPath
+	}
+	if s.rootPath == "" {
+		s.rootPath = rootPath
+	}
+	migration, err := s.migrationManager.getOrCreateMigration(rootPath, req.Id, req.FulltextPrimaryLanguage)
+	if err != nil {
+		return err
+	}
+	return migration.wait()
 }
 
 func (s *Service) AccountMigrateCancel(ctx context.Context, req *pb.RpcAccountMigrateCancelRequest) error {
@@ -36,27 +49,37 @@ func (s *Service) AccountMigrateCancel(ctx context.Context, req *pb.RpcAccountMi
 	return nil
 }
 
-func (s *Service) migrate(ctx context.Context, id, lang string) error {
+func (s *Service) migrate(ctx context.Context, rootPath, id, lang string) (err error) {
 	if s.derivedKeys == nil {
 		return ErrWalletNotInitialized
 	}
-	if _, err := os.Stat(filepath.Join(s.rootPath, id)); err != nil {
+	if _, err := os.Stat(filepath.Join(rootPath, id)); err != nil {
 		if os.IsNotExist(err) {
 			return ErrAccountNotFound
 		}
 		return err
 	}
+	lease, err := accountdirlock.Acquire(ctx, rootPath, id, vcs.GetVCSInfo().Version())
+	if err != nil {
+		if errors.Is(err, accountdirlock.ErrLocked) {
+			return errors.Join(ErrAnotherProcessIsRunning, err)
+		}
+		return err
+	}
+	defer func() {
+		err = errors.Join(err, lease.Release())
+	}()
 	cfg := anytype.BootstrapConfig(false, "")
 	cfg.PeferYamuxTransport = true
 	cfg.DisableNetworkIdCheck = true
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(s.rootPath, *s.derivedKeys, lang),
+		anytype.BootstrapWallet(rootPath, *s.derivedKeys, lang),
 		s.eventSender,
 	}
 	a := &app.App{}
 	anytype.BootstrapMigration(a, comps...)
-	err := a.Start(ctx)
+	err = a.Start(ctx)
 	if err != nil {
 		return err
 	}
@@ -71,25 +94,29 @@ type migration struct {
 	cancel     context.CancelFunc
 	manager    *migrationManager
 	err        error
+	key        string
+	rootPath   string
 	id         string
 	done       chan struct{}
 	lang       string
 }
 
-func newMigration(m *migrationManager, id, lang string) *migration {
+func newMigration(m *migrationManager, key, rootPath, id, lang string) *migration {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &migration{
-		ctx:     ctx,
-		cancel:  cancel,
-		done:    make(chan struct{}),
-		id:      id,
-		lang:    lang,
-		manager: m,
+		ctx:      ctx,
+		cancel:   cancel,
+		done:     make(chan struct{}),
+		key:      key,
+		rootPath: rootPath,
+		id:       id,
+		lang:     lang,
+		manager:  m,
 	}
 }
 
-func newSuccessfulMigration(manager *migrationManager, id, lang string) *migration {
-	m := newMigration(manager, id, lang)
+func newSuccessfulMigration(manager *migrationManager, key, rootPath, id, lang string) *migration {
+	m := newMigration(manager, key, rootPath, id, lang)
 	m.setFinished(nil, false)
 	return m
 }
@@ -101,7 +128,7 @@ func (m *migration) setFinished(err error, notify bool) {
 	m.err = err
 	close(m.done)
 	if notify {
-		m.manager.setMigrationRunning(m.id, false)
+		m.manager.setMigrationRunning(m.key, false)
 	}
 }
 
@@ -115,7 +142,7 @@ func (m *migration) cancelMigration() {
 
 func (m *migration) wait() error {
 	m.mx.Lock()
-	if !m.manager.setMigrationRunning(m.id, true) {
+	if !m.manager.setMigrationRunning(m.key, true) {
 		m.mx.Unlock()
 		return ErrMigrationRunning
 	}
@@ -127,7 +154,7 @@ func (m *migration) wait() error {
 		return m.err
 	}
 	m.mx.Unlock()
-	err := m.manager.service.migrate(m.ctx, m.id, m.lang)
+	err := m.manager.service.migrate(m.ctx, m.rootPath, m.id, m.lang)
 	if err != nil {
 		m.setFinished(err, true)
 		return err
@@ -161,17 +188,17 @@ func newMigrationManager(s *Service) *migrationManager {
 	}
 }
 
-func (m *migrationManager) setMigrationRunning(id string, isRunning bool) bool {
+func (m *migrationManager) setMigrationRunning(key string, isRunning bool) bool {
 	m.Lock()
 	defer m.Unlock()
-	if (m.runningMigration != "" && m.runningMigration != id) && isRunning {
+	if (m.runningMigration != "" && m.runningMigration != key) && isRunning {
 		return false
 	}
 	if m.runningMigration == "" && !isRunning {
 		panic("migration is not running")
 	}
 	if isRunning {
-		m.runningMigration = id
+		m.runningMigration = key
 	} else {
 		m.runningMigration = ""
 	}
@@ -184,32 +211,45 @@ func (m *migrationManager) isRunning() bool {
 	return m.runningMigration != ""
 }
 
-func (m *migrationManager) getOrCreateMigration(rootPath, id, lang string) *migration {
+func (m *migrationManager) getOrCreateMigration(rootPath, id, lang string) (*migration, error) {
+	canonicalRoot, err := accountdirlock.CanonicalRootPath(rootPath)
+	if err != nil {
+		return nil, errors.Join(accountdirlock.ErrUnavailable, err)
+	}
+	key := canonicalRoot + "\x00" + id
 	m.Lock()
 	defer m.Unlock()
 	if m.migrations == nil {
 		m.migrations = make(map[string]*migration)
 	}
-	if m.migrations[id] == nil {
-		sqlitePath := filepath.Join(rootPath, id, config.SpaceStoreSqlitePath)
-		baderPath := filepath.Join(rootPath, id, config.SpaceStoreBadgerPath)
+	if m.migrations[key] == nil {
+		sqlitePath := filepath.Join(canonicalRoot, id, config.SpaceStoreSqlitePath)
+		baderPath := filepath.Join(canonicalRoot, id, config.SpaceStoreBadgerPath)
 		if anyPathExists([]string{sqlitePath, baderPath}) {
-			m.migrations[id] = newMigration(m, id, lang)
+			m.migrations[key] = newMigration(m, key, canonicalRoot, id, lang)
 		} else {
-			m.migrations[id] = newSuccessfulMigration(m, id, lang)
+			m.migrations[key] = newSuccessfulMigration(m, key, canonicalRoot, id, lang)
 		}
 	}
-	if m.migrations[id].finished() && !m.migrations[id].successful() {
+	if m.migrations[key].finished() && !m.migrations[key].successful() {
 		// resetting migration
-		m.migrations[id] = newMigration(m, id, lang)
+		m.migrations[key] = newMigration(m, key, canonicalRoot, id, lang)
 	}
-	return m.migrations[id]
+	return m.migrations[key], nil
 }
 
 func (m *migrationManager) getMigration(id string) *migration {
 	m.Lock()
 	defer m.Unlock()
-	return m.migrations[id]
+	if running := m.migrations[m.runningMigration]; running != nil && running.id == id {
+		return running
+	}
+	for _, migration := range m.migrations {
+		if migration.id == id {
+			return migration
+		}
+	}
+	return nil
 }
 
 func anyPathExists(paths []string) bool {

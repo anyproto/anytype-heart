@@ -814,6 +814,146 @@ func TestService_DeleteTag(t *testing.T) {
 	})
 }
 
+// The key a caller supplies is MINTED before it is stored: what lands in
+// apiObjectKey is the address every later request must use, and snake-casing
+// alone leaves punctuation in place. Measured over a 38,123-object account,
+// 27 of 1,530 stored api keys sat outside the key grammar the api
+// advertises — all but four of them on options like these.
+func TestService_Tag_KeyIsMinted(t *testing.T) {
+	propertyShow := func(fx *fixture) {
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: mockedPropertyId,
+		}).Return(&pb.RpcObjectShowResponse{
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+			ObjectView: &model.ObjectView{
+				Details: []*model.ObjectViewDetailsSet{
+					{
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyUniqueKey.String():   pbtypes.String("unique-key"),
+								bundle.RelationKeyRelationKey.String(): pbtypes.String(mockedPropertyKey),
+							},
+						},
+					},
+				},
+			},
+		}).Once()
+	}
+
+	t.Run("a key outside the grammar is converted, and the response says so", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+		propertyShow(fx)
+
+		request := apimodel.CreateTagRequest{
+			Key:   "➡️ Medium",
+			Name:  "➡️ Medium",
+			Color: apimodel.ColorBlue,
+		}
+		want := "medium"
+
+		fx.mwMock.On("ObjectCreateRelationOption", mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectCreateRelationOptionRequest) bool {
+			return req.SpaceId == mockedSpaceId &&
+				req.Details.Fields[bundle.RelationKeyApiObjectKey.String()].GetStringValue() == want
+		})).Return(&pb.RpcObjectCreateRelationOptionResponse{
+			Error:    &pb.RpcObjectCreateRelationOptionResponseError{Code: pb.RpcObjectCreateRelationOptionResponseError_NULL},
+			ObjectId: "new-tag-id",
+		}).Once()
+
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: "new-tag-id",
+		}).Return(&pb.RpcObjectShowResponse{
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+			ObjectView: &model.ObjectView{
+				Details: []*model.ObjectViewDetailsSet{
+					{
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyId.String():                  pbtypes.String("new-tag-id"),
+								bundle.RelationKeyName.String():                pbtypes.String("➡️ Medium"),
+								bundle.RelationKeyUniqueKey.String():           pbtypes.String("unique_new_tag"),
+								bundle.RelationKeyApiObjectKey.String():        pbtypes.String(want),
+								bundle.RelationKeyRelationOptionColor.String(): pbtypes.String("blue"),
+							},
+						},
+					},
+				},
+			},
+		}).Once()
+
+		// when
+		tag, err := fx.service.CreateTag(ctx, mockedSpaceId, mockedPropertyId, request)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, tag.Key, "the caller is told the key it must address")
+	})
+
+	t.Run("a key with nothing the grammar admits is refused on create", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+		propertyShow(fx)
+
+		request := apimodel.CreateTagRequest{
+			Key:   "➡️",
+			Name:  "Medium",
+			Color: apimodel.ColorBlue,
+		}
+
+		// when
+		tag, err := fx.service.CreateTag(ctx, mockedSpaceId, mockedPropertyId, request)
+
+		// then
+		require.ErrorIs(t, err, util.ErrBad)
+		assert.Nil(t, tag)
+	})
+
+	t.Run("a key with nothing the grammar admits is refused on update", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+
+		newKey := "!!!"
+		request := apimodel.UpdateTagRequest{Key: &newKey}
+
+		fx.mwMock.On("ObjectShow", mock.Anything, &pb.RpcObjectShowRequest{
+			SpaceId:  mockedSpaceId,
+			ObjectId: mockedTagId,
+		}).Return(&pb.RpcObjectShowResponse{
+			Error: &pb.RpcObjectShowResponseError{Code: pb.RpcObjectShowResponseError_NULL},
+			ObjectView: &model.ObjectView{
+				Details: []*model.ObjectViewDetailsSet{
+					{
+						Details: &types.Struct{
+							Fields: map[string]*types.Value{
+								bundle.RelationKeyId.String():                  pbtypes.String(mockedTagId),
+								bundle.RelationKeyName.String():                pbtypes.String(mockedTagName),
+								bundle.RelationKeyUniqueKey.String():           pbtypes.String(mockedTagUniqueKey),
+								bundle.RelationKeyApiObjectKey.String():        pbtypes.String("old_key"),
+								bundle.RelationKeyRelationOptionColor.String(): pbtypes.String(mockedTagColor),
+							},
+						},
+					},
+				},
+			},
+		}).Once()
+
+		// when
+		tag, err := fx.service.UpdateTag(ctx, mockedSpaceId, mockedPropertyId, mockedTagId, request)
+
+		// then
+		require.ErrorIs(t, err, util.ErrBad)
+		assert.Nil(t, tag)
+	})
+}
+
 func TestService_getTagFromStruct(t *testing.T) {
 	fx := newFixture(t)
 

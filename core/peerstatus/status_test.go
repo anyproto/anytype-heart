@@ -393,6 +393,30 @@ func TestP2pStatus_UnregisterSpace(t *testing.T) {
 	})
 }
 
+func TestP2pStatus_IgnoreUnregisteredSpace(t *testing.T) {
+	t.Run("peer advertising a space this account has not registered is ignored", func(t *testing.T) {
+		// given: only "spaceId" is registered (by the fixture)
+		f := newFixture(t, "spaceId", pb.EventP2PStatus_NotConnected, 1)
+
+		// when: a peer discovered on the LAN (e.g. via mDNS) advertises a space this
+		// account does not have. The strict mock sender fails the test if any Broadcast
+		// is sent for "otherSpaceId".
+		f.store.UpdateLocalPeer("strangerPeer", []string{"otherSpaceId"})
+
+		// then: the unregistered space is neither tracked nor broadcast
+		time.Sleep(time.Millisecond * 300)
+		f.p2pStatus.Lock()
+		_, tracked := f.p2pStatus.spaceIds["otherSpaceId"]
+		trackedLen := len(f.p2pStatus.spaceIds)
+		f.p2pStatus.Unlock()
+
+		assert.False(t, tracked, "unregistered space must not be tracked")
+		assert.Equal(t, 1, trackedLen, "only the registered space should remain tracked")
+
+		f.Close(nil)
+	})
+}
+
 func newFixture(t *testing.T, spaceId string, initialStatus pb.EventP2PStatusStatus, deviceCount int) *fixture {
 	ctrl := gomock.NewController(t)
 	sender := mock_event.NewMockSender(t)

@@ -58,7 +58,12 @@ var log = logger.NewNamed(CName)
 
 type ParticipantWatcher interface {
 	app.ComponentRunnable
-	WatchParticipant(ctx context.Context, space clientspace.Space, accState list.AccountState) error
+	// WatchParticipant registers a participant's identity for tracking. isOneToOne is passed in
+	// by the caller rather than read from the space: this runs inside aclobjectmanager's ACL
+	// processing, which holds that space's ACL lock - the write lock when any-sync drives it
+	// through the UpdateAcl callback, the read lock when the component processes the ACL at
+	// startup. Reading the ACL back through the space deadlocks the space either way (GO-7525).
+	WatchParticipant(ctx context.Context, space clientspace.Space, accState list.AccountState, isOneToOne bool) error
 	UpdateParticipantFromAclState(ctx context.Context, space clientspace.Space, accState list.AccountState) error
 	// WatchPersistedParticipants registers all participant identities found in the
 	// space's object index for identity tracking, using previously persisted
@@ -143,7 +148,7 @@ func (p *participantWatcher) getOneToOneKey(space clientspace.Space, state list.
 	return
 
 }
-func (p *participantWatcher) WatchParticipant(ctx context.Context, space clientspace.Space, state list.AccountState) (err error) {
+func (p *participantWatcher) WatchParticipant(ctx context.Context, space clientspace.Space, state list.AccountState, isOneToOne bool) (err error) {
 	p.mx.Lock()
 	defer p.mx.Unlock()
 	accKey := state.PubKey.Account()
@@ -152,7 +157,7 @@ func (p *participantWatcher) WatchParticipant(ctx context.Context, space clients
 	}
 	var key crypto.SymKey
 
-	if space.IsOneToOne() {
+	if isOneToOne {
 		key, err = p.getOneToOneKey(space, state)
 	} else {
 		key, err = getSymKey(state.RequestMetadata)
@@ -216,9 +221,14 @@ func (p *participantWatcher) modifyParticipant(ctx context.Context, space client
 // buildBaseDetails returns the details every participant record must carry; they are
 // written once on record creation (parity with the former smartblock Init + template).
 func (p *participantWatcher) buildBaseDetails(ctx context.Context, space clientspace.Space, id string) (*domain.Details, error) {
-	typeId, err := space.GetTypeIdByKey(ctx, bundle.TypeKeyParticipant)
-	if err != nil {
-		return nil, fmt.Errorf("get participant type id: %w", err)
+	// Read the id the space already derived at load time instead of deriving it here. Deriving
+	// takes the ACL read lock in the personal space (DeriveTreePayload picks CreateTree there, and
+	// any-sync's CreateObjectTreeRoot reads the acl head under RLock), and this runs inside the
+	// UpdateAcl callback with that lock already held - GO-7525. Missing is reported rather than
+	// re-derived: a fallback here would silently be the deadlock again.
+	typeId := space.DerivedIDs().SystemTypes[bundle.TypeKeyParticipant]
+	if typeId == "" {
+		return nil, fmt.Errorf("no derived participant type id for space %s", space.Id())
 	}
 	details := domain.NewDetails()
 	details.SetString(bundle.RelationKeyId, id)
