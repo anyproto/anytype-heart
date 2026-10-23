@@ -46,7 +46,7 @@ jobs:
     outputs:
       changed: ${{ steps.diff_check.outputs.changed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - run: git fetch --tags --force --prune
@@ -81,7 +81,7 @@ jobs:
       tag_name: ${{ steps.release_info.outputs.tag_name }}
     steps:
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: '1.26'
           check-latest: true
@@ -97,7 +97,7 @@ jobs:
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -105,7 +105,7 @@ jobs:
         run: make install-brew-and-node-deps
 
       - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1.6.0
+        uses: maxim-lobanov/setup-xcode@v1.7.0
         with:
           xcode-version: '16.2'
 
@@ -231,7 +231,7 @@ jobs:
 
       - name: Release
         id: release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -245,7 +245,7 @@ jobs:
 
       - name: Get release info
         id: release_info
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const release_id = Number(`${{ steps.release.outputs.id }}`);
@@ -282,7 +282,7 @@ jobs:
             -d "{\"event_type\": \"test-release\", \"client_payload\": {\"version\": \"${{ needs.build.outputs.tag_name }}\"}}"
 
       - name: Notify Telegram (workflow result)
-        uses: appleboy/telegram-action@v1.0.1
+        uses: appleboy/telegram-action@v1.1.1
         with:
           to: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && secrets.TELEGRAM_CHAT_ID_ALERTS || secrets.TELEGRAM_CHAT_ID_RELEASE_TRAIN }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}

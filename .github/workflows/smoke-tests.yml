@@ -20,13 +20,13 @@ jobs:
         run: echo "${{ secrets.ANY_SYNC_NETWORK_STAGE1 }}" > config.yml
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: '1.26'
           check-latest: true
 
       - name: Clone anytype-heart with specified branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: mw/anytype-heart
 
@@ -34,7 +34,7 @@ jobs:
         run: cd mw/anytype-heart && make setup
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'npm'
