@@ -253,6 +253,7 @@ func (f *File) IsEmpty() bool {
 }
 
 func DetectTypeByMIME(name, mime string) model.BlockContentFileType {
+	mime = mill.FixMIMEByExt(name, mime)
 	if filepath.Ext(name) == constant.SvgExt {
 		return model.BlockContentFile_Image
 	}
