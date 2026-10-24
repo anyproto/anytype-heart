@@ -106,6 +106,18 @@ func TestDetectTypeByMIME(t *testing.T) {
 			expected: model.BlockContentFile_Audio,
 		},
 		{
+			name:     "M4A sniffed as video/mp4",
+			fileName: "song.m4a",
+			mime:     "video/mp4",
+			expected: model.BlockContentFile_Audio,
+		},
+		{
+			name:     "M4B sniffed as video/mp4",
+			fileName: "book.m4b",
+			mime:     "video/mp4",
+			expected: model.BlockContentFile_Audio,
+		},
+		{
 			name:     "PDF document",
 			fileName: "document.pdf",
 			mime:     "application/pdf",
