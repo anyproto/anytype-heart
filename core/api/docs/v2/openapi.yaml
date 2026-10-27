@@ -32,6 +32,12 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
       description: The space does not exist, or is not available (deleted, left, or still joining)
+    Gone:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: The object this path addresses was deleted permanently (object_deleted); nothing restores it
     RequestTooLarge:
       content:
         application/json:
@@ -646,6 +652,10 @@ components:
         key:
           description: identity key (types, properties)
           type: string
+        permanent:
+          description: True when a delete removes the object for good instead of moving
+            it to the Bin, or would on a dry run.
+          type: boolean
         removed:
           $ref: '#/components/schemas/SideEffects'
         template:
@@ -1626,11 +1636,17 @@ info:
     Resource bodies reject unknown fields with `400` and name the offending
     field. Document bodies are capped at 10 MiB; structured bodies at 1 MiB.
 
-    Deleting an object, type, or property archives it in Bin, where the Anytype
-    app can restore it. Object deletion is limited by creator provenance; see
-    the [delete operation](https://developers.anytype.io/docs/reference/v2/delete-object)
-    for its requirements. Deleting a chat message, including any attachment
-    cleanup that follows, is not an archive.
+    Deleting an object, type, or property archives it in Bin. The
+    [restore operation](https://developers.anytype.io/docs/reference/v2/restore-object)
+    brings an archived object back; types and properties are restored in the
+    Anytype app. An archived object cannot be edited until it is restored. With
+    `permanent=true`, the
+    [delete operation](https://developers.anytype.io/docs/reference/v2/delete-object)
+    removes an object for good, but only one the calling key created. From then
+    on, a request that addresses the object answers `410` with code
+    `object_deleted`, and nothing restores it; a `404` means no object has that
+    id. A retry under the same `Idempotency-Key` still returns the first answer. Deleting a chat message, including any attachment cleanup that follows,
+    is not an archive.
 
     ## Errors and warnings
 
@@ -2598,6 +2614,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Chat not found
+        "410":
+          $ref: '#/components/responses/Gone'
       security:
       - bearerauth: []
       summary: List chat messages
@@ -2671,6 +2689,8 @@ paths:
           description: Chat not found
         "409":
           $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
         "413":
           $ref: '#/components/responses/RequestTooLarge'
         "429":
@@ -2738,6 +2758,8 @@ paths:
           description: Chat or message not found
         "409":
           $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
         "429":
           $ref: '#/components/responses/RateLimited'
       security:
@@ -2814,6 +2836,8 @@ paths:
           description: Chat or message not found
         "409":
           $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
         "413":
           $ref: '#/components/responses/RequestTooLarge'
         "429":
@@ -2891,6 +2915,8 @@ paths:
           description: Chat or message not found
         "409":
           $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
         "413":
           $ref: '#/components/responses/RequestTooLarge'
         "429":
@@ -2960,6 +2986,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Space or chat not found
+        "410":
+          $ref: '#/components/responses/Gone'
         "429":
           content:
             application/json:
@@ -3035,6 +3063,8 @@ paths:
           description: Chat not found
         "409":
           $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
         "413":
           $ref: '#/components/responses/RequestTooLarge'
         "429":
@@ -3121,6 +3151,8 @@ paths:
           description: Space or chat not found
         "409":
           $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
         "413":
           $ref: '#/components/responses/RequestTooLarge'
         "429":
@@ -3351,6 +3383,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Space, collection or view not found
+        "410":
+          $ref: '#/components/responses/Gone'
       security:
       - bearerauth: []
       summary: List collection objects
@@ -3407,6 +3441,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Space or collection not found
+        "410":
+          $ref: '#/components/responses/Gone'
       security:
       - bearerauth: []
       summary: List collection views
@@ -3620,6 +3656,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: File or icon not found in this space
+        "410":
+          $ref: '#/components/responses/Gone'
         "412":
           content:
             application/json:
@@ -3722,6 +3760,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: File or icon not found in this space
+        "410":
+          $ref: '#/components/responses/Gone'
         "412":
           content:
             application/json:
@@ -4009,12 +4049,12 @@ paths:
       - Objects
   /v2/spaces/{space_id}/objects/{object_id}:
     delete:
-      description: Only objects this key created can be deleted. The creator is recorded
-        at creation time and never added later, so objects made in the app, imported,
-        made by another member, or made before this route shipped are refused for
-        good. System objects are a 403 as well. A dry run reports the verdict without
-        the checks that run at archive time, so a deletable verdict can still meet
-        a 403.
+      description: Moves the object to the Bin; restore_object or the app brings it
+        back. Any user content the key can write can be archived; the receipt says
+        if this key may delete it for good. permanent=true does that, archived or
+        not, only for what this key created, with no other member's changes and no
+        discussion; a file must be unused by other objects (chat attachments unchecked).
+        Dry runs skip in-write checks.
       operationId: delete_object
       parameters:
       - description: Space id, from GET /v2/spaces
@@ -4029,6 +4069,11 @@ paths:
         required: true
         schema:
           type: string
+      - description: Delete for good instead of moving to the Bin (default false)
+        in: query
+        name: permanent
+        schema:
+          type: boolean
       - description: Probe deletability without writing
         in: query
         name: dry_run
@@ -4040,14 +4085,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CreateResult'
-          description: Archived object, or the dry-run verdict. Deleting again is
-            a 200 carrying a warning.
+          description: Archived or permanently deleted object, or the dry-run verdict.
+            Archiving again is a 200 carrying a warning.
         "400":
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-          description: 'A type or a property: use their own delete routes'
+          description: A type or a property (use their own delete routes), skip_bin,
+            or an invalid permanent value
         "401":
           $ref: '#/components/responses/Unauthorized'
         "403":
@@ -4060,6 +4106,8 @@ paths:
           description: Object or space not found
         "409":
           $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
         "429":
           $ref: '#/components/responses/RateLimited'
       security:
@@ -4137,6 +4185,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Object or space not found
+        "410":
+          $ref: '#/components/responses/Gone'
       security:
       - bearerauth: []
       summary: Get an object
@@ -4252,6 +4302,8 @@ paths:
           description: Object, space, or referenced block not found
         "409":
           $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
         "422":
           content:
             application/json:
@@ -4330,6 +4382,8 @@ paths:
           description: Object or space not found
         "409":
           $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
         "429":
           $ref: '#/components/responses/RateLimited'
       security:
@@ -4337,6 +4391,65 @@ paths:
       summary: Start an object's discussion
       tags:
       - Chat
+  /v2/spaces/{space_id}/objects/{object_id}/restore:
+    post:
+      description: Moves an archived object out of the Bin. Any user content the key
+        can write can be restored, whoever archived it. Restoring an object that is
+        not archived is a 200 carrying a warning. Types and properties are restored
+        in the Anytype app.
+      operationId: restore_object
+      parameters:
+      - description: Space id, from GET /v2/spaces
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: Object id, such as the one a delete_object receipt returned
+        in: path
+        name: object_id
+        required: true
+        schema:
+          type: string
+      - description: Check the restore without writing
+        in: query
+        name: dry_run
+        schema:
+          type: boolean
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateResult'
+          description: Restored object, or the dry-run verdict
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: A type, a property or a tag option
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Object or space not found
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
+        "429":
+          $ref: '#/components/responses/RateLimited'
+      security:
+      - bearerauth: []
+      summary: Restore an object
+      tags:
+      - Objects
   /v2/spaces/{space_id}/properties:
     get:
       operationId: list_properties
@@ -5013,6 +5126,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Space, query or view not found
+        "410":
+          $ref: '#/components/responses/Gone'
       security:
       - bearerauth: []
       summary: List query results
@@ -5069,6 +5184,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Space or query not found
+        "410":
+          $ref: '#/components/responses/Gone'
       security:
       - bearerauth: []
       summary: List query views

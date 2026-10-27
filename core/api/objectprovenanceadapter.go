@@ -33,11 +33,14 @@ import (
 //     owns that exclusion;
 //  3. the key clause: the FIRST non-root change, in tree order, must carry
 //     the same identity, and its pb.Change.IntegrationName is the recorded
-//     provenance (the raw app name, served verbatim — the caller compares).
+//     provenance (the raw app name, served verbatim — the caller compares);
+//  4. the co-author scan: any change signed by another identity means
+//     another member edited the object.
 //
 // Cost: one full-history read of one tree from local storage — the same
 // class as opening that object's version history, on a human-scale,
-// write-rate-limited DELETE endpoint.
+// write-rate-limited DELETE endpoint. Only the first content change is
+// decrypted; the co-author scan reads signed headers alone.
 type objectProvenanceAdapter struct {
 	spaces  space.Service
 	account accountIdProvider
@@ -54,19 +57,19 @@ func newObjectProvenanceAdapter(spaces space.Service, account accountIdProvider)
 	return &objectProvenanceAdapter{spaces: spaces, account: account}
 }
 
-func (a *objectProvenanceAdapter) CreatorProvenance(ctx context.Context, spaceId string, objectId string) (accountMatch bool, integrationName string, err error) {
+func (a *objectProvenanceAdapter) CreatorProvenance(ctx context.Context, spaceId string, objectId string) (apicore.Provenance, error) {
 	spc, err := a.spaces.Get(ctx, spaceId)
 	if err != nil {
-		return false, "", fmt.Errorf("get space %s: %w", spaceId, err)
+		return apicore.Provenance{}, fmt.Errorf("get space %s: %w", spaceId, err)
 	}
 	treeBuilder := spc.TreeBuilder()
 	if treeBuilder == nil {
-		return false, "", fmt.Errorf("space %s has no tree builder", spaceId)
+		return apicore.Provenance{}, fmt.Errorf("space %s has no tree builder", spaceId)
 	}
 	// empty opts = the full history: root and first change guaranteed present
 	ht, err := treeBuilder.BuildHistoryTree(ctx, objectId, objecttreebuilder.HistoryTreeOpts{})
 	if err != nil {
-		return false, "", fmt.Errorf("build history tree for %s: %w", objectId, err)
+		return apicore.Provenance{}, fmt.Errorf("build history tree for %s: %w", objectId, err)
 	}
 	return creatorProvenanceFromTree(ht, a.account.AccountID())
 }
@@ -84,7 +87,7 @@ type provenanceTree interface {
 // Every ambiguity resolves toward "no provenance" — the caller refuses on
 // anything short of a full match, so the safe direction here is empty, not
 // guessed.
-func creatorProvenanceFromTree(tree provenanceTree, ownAccount string) (accountMatch bool, integrationName string, err error) {
+func creatorProvenanceFromTree(tree provenanceTree, ownAccount string) (apicore.Provenance, error) {
 	root := tree.UnmarshalledHeader()
 	if root == nil || root.Identity == nil || ownAccount == "" || root.Identity.Account() != ownAccount {
 		// other members' objects and UNSIGNED derived roots: the root clause
@@ -92,7 +95,7 @@ func creatorProvenanceFromTree(tree provenanceTree, ownAccount string) (accountM
 		// shapes (personal-space derives, FileObjects everywhere) pass this
 		// clause — see the header note; the caller's allowlist excludes the
 		// system ones.
-		return false, "", nil
+		return apicore.Provenance{}, nil
 	}
 
 	// take the FIRST non-root change in tree order; the same convert version
@@ -106,21 +109,37 @@ func creatorProvenanceFromTree(tree provenanceTree, ownAccount string) (accountM
 		return false
 	})
 	if iterErr != nil {
-		return false, "", fmt.Errorf("iterate history tree %s: %w", tree.Id(), iterErr)
+		return apicore.Provenance{}, fmt.Errorf("iterate history tree %s: %w", tree.Id(), iterErr)
 	}
+	// the co-author scan walks every change with no convert, so nothing is
+	// decrypted: the signing identity is on the validated header. A change
+	// with no identity counts as foreign — fail closed, the caller refuses.
+	editedByOthers := false
+	iterErr = tree.IterateRoot(nil, func(change *objecttree.Change) bool {
+		if change.Identity == nil || change.Identity.Account() != ownAccount {
+			editedByOthers = true
+			return false
+		}
+		return true
+	})
+	if iterErr != nil {
+		return apicore.Provenance{}, fmt.Errorf("scan history tree %s: %w", tree.Id(), iterErr)
+	}
+	owned := apicore.Provenance{AccountMatch: true, EditedByOthers: editedByOthers}
 	if first == nil {
 		// no content change yet (the §10 creation-race window): the account
 		// owns the tree but nothing records a key — fail-closed as "no stamp"
-		return true, "", nil
+		return owned, nil
 	}
 	if first.Identity == nil || first.Identity.Account() != ownAccount {
 		// first content change signed by someone else (same-account other
 		// device cannot happen — but fail closed rather than reason about it)
-		return true, "", nil
+		return owned, nil
 	}
 	model, ok := first.Model.(*pb.Change)
 	if !ok || model == nil {
-		return true, "", nil
+		return owned, nil
 	}
-	return true, model.IntegrationName, nil
+	owned.IntegrationName = model.IntegrationName
+	return owned, nil
 }

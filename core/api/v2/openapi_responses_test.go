@@ -106,7 +106,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	var jsonDoc responseContractDocument
 	require.NoError(t, json.Unmarshal(jsonBody, &jsonDoc))
 	jsonOperations := responseContractOperations(t, jsonDoc)
-	require.Len(t, jsonOperations, 58)
+	require.Len(t, jsonOperations, 59)
 
 	yamlBody, err := os.ReadFile("../docs/v2/openapi.yaml")
 	require.NoError(t, err)
@@ -161,7 +161,30 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 		}
 	}
 
-	for _, component := range []string{"BadRequest", "Unauthorized", "Forbidden", "Conflict", "NotFound", "RequestTooLarge", "RateLimited"} {
+	// 410 object_deleted is derived from the path the same way: exactly the
+	// operations addressing an object by id declare it (§0.1 of
+	// APIV2_OBJECT_DELETE.md)
+	objectParams := []string{"{object_id}", "{collection_id}", "{query_id}", "{chat_id}", "{file_id}"}
+	for path, pathItem := range jsonDoc.Paths {
+		addresses := false
+		for _, param := range objectParams {
+			addresses = addresses || strings.Contains(path, param)
+		}
+		for method, operation := range pathItem {
+			if operation.OperationId == "" {
+				continue
+			}
+			if addresses {
+				assert.Contains(t, operation.Responses, "410",
+					"%s %s addresses an object by id, so it can answer 410", strings.ToUpper(method), path)
+			} else {
+				assert.NotContains(t, operation.Responses, "410",
+					"%s %s addresses no object by id, so it cannot answer 410", strings.ToUpper(method), path)
+			}
+		}
+	}
+
+	for _, component := range []string{"BadRequest", "Unauthorized", "Forbidden", "Conflict", "NotFound", "Gone", "RequestTooLarge", "RateLimited"} {
 		assert.Contains(t, jsonDoc.Components.Responses, component)
 		assert.Contains(t, yamlDoc.Components.Responses, component)
 	}
@@ -200,7 +223,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	for _, operation := range jsonOperations {
 		pairCount += len(operation.Responses)
 	}
-	assert.Equal(t, 377, pairCount, "the checked-in response inventory changes only deliberately")
+	assert.Equal(t, 403, pairCount, "the checked-in response inventory changes only deliberately")
 
 	dryRunCreates := stringSet(
 		"add_chat_message", "create_chat", "create_collection", "create_object", "create_property",
@@ -209,7 +232,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	idempotent := stringSet(
 		"validate", "create_space", "update_space", "create_object", "create_template", "create_type",
 		"update_type", "delete_type", "create_property", "update_property", "delete_property", "create_query",
-		"create_collection", "upload_file", "patch_object", "delete_object", "create_chat", "add_chat_message",
+		"create_collection", "upload_file", "patch_object", "delete_object", "restore_object", "create_chat", "add_chat_message",
 		"edit_chat_message", "delete_chat_message", "toggle_chat_reaction", "read_chat",
 		"publish_chat_status",
 		"create_widget", "update_widget", "delete_widget",

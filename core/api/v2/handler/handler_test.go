@@ -60,6 +60,8 @@ func newV2HandlerFixtureWithStreams(t *testing.T, chatSub apicore.ChatSubscripti
 	gin.SetMode(gin.TestMode)
 	mwMock := mock_apicore.NewMockClientCommands(t)
 	readerMock := mock_apicore.NewMockObjectReader(t)
+	// nothing is deleted for good unless a test says so
+	readerMock.EXPECT().IsDeleted(mock.Anything, mock.Anything, mock.Anything).Return(false, nil).Maybe()
 	store := objectstore.NewStoreFixture(t)
 	require.NoError(t, store.WaitStoresLoaded(context.Background()))
 	store.SpaceIndex("space1")

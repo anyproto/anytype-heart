@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -87,87 +88,139 @@ func TestCreatorProvenanceFromTree(t *testing.T) {
 		// the ALLOW fixture — the only shape that may serve a name. It can
 		// fail three independent ways: root clause broken, first-change pick
 		// broken, or the wire field dropped in the convert path.
-		match, key, err := creatorProvenanceFromTree(
+		want := apicore.Provenance{AccountMatch: true, IntegrationName: "Claude Desktop"}
+
+		got, err := creatorProvenanceFromTree(
 			tree(ownKey, contentChange(t, "c1", ownKey, "Claude Desktop")), ownAccount)
+
 		require.NoError(t, err)
-		assert.True(t, match)
-		assert.Equal(t, "Claude Desktop", key)
+		assert.Equal(t, want, got)
 	})
 
 	t.Run("own root, unstamped first change (legacy shape) → no name", func(t *testing.T) {
 		// the fixture HAS a full history with a first change — so a refusal
 		// for key=="" is distinguishable from 'the check is broken': the same
 		// fixture with a stamp (above) serves it
-		match, key, err := creatorProvenanceFromTree(
+		want := apicore.Provenance{AccountMatch: true}
+
+		got, err := creatorProvenanceFromTree(
 			tree(ownKey, contentChange(t, "c1", ownKey, "")), ownAccount)
+
 		require.NoError(t, err)
-		assert.True(t, match)
-		assert.Equal(t, "", key)
+		assert.Equal(t, want, got)
 	})
 
 	t.Run("a name recorded under ANOTHER key's name is served verbatim", func(t *testing.T) {
 		// the service compares; the read must not — a read that 'helpfully'
 		// blanked foreign names would break the §9.5 message naming them
-		match, key, err := creatorProvenanceFromTree(
+		want := apicore.Provenance{AccountMatch: true, IntegrationName: "Linear"}
+
+		got, err := creatorProvenanceFromTree(
 			tree(ownKey, contentChange(t, "c1", ownKey, "Linear")), ownAccount)
+
 		require.NoError(t, err)
-		assert.True(t, match)
-		assert.Equal(t, "Linear", key)
+		assert.Equal(t, want, got)
 	})
 
 	t.Run("derived root (no identity) → no account match", func(t *testing.T) {
 		// types/properties/chats: BuildDerivedRoot emits no identity; the
 		// stamp on their creating change must NOT rescue them here
-		match, key, err := creatorProvenanceFromTree(
+		got, err := creatorProvenanceFromTree(
 			tree(nil, contentChange(t, "c1", ownKey, "Claude Desktop")), ownAccount)
+
 		require.NoError(t, err)
-		assert.False(t, match)
-		assert.Equal(t, "", key)
+		assert.Equal(t, apicore.Provenance{}, got)
 	})
 
 	t.Run("another member's root → no account match, name not served", func(t *testing.T) {
 		// their tree can carry any name string (§6: it is just a string) —
 		// clause 1 is what makes that unusable
-		match, key, err := creatorProvenanceFromTree(
+		got, err := creatorProvenanceFromTree(
 			tree(otherKey, contentChange(t, "c1", otherKey, "Claude Desktop")), ownAccount)
+
 		require.NoError(t, err)
-		assert.False(t, match)
-		assert.Equal(t, "", key)
+		assert.Equal(t, apicore.Provenance{}, got)
 	})
 
-	t.Run("first change signed by a different identity → no name", func(t *testing.T) {
+	t.Run("first change signed by a different identity → no name, edited by others", func(t *testing.T) {
 		// §10-3: the key clause requires the first change's identity to equal
-		// the root's; a foreign-signed first change contributes nothing
-		match, key, err := creatorProvenanceFromTree(
+		// the root's; a foreign-signed first change contributes nothing — and
+		// it is another member's edit
+		want := apicore.Provenance{AccountMatch: true, EditedByOthers: true}
+
+		got, err := creatorProvenanceFromTree(
 			tree(ownKey, contentChange(t, "c1", otherKey, "Claude Desktop")), ownAccount)
+
 		require.NoError(t, err)
-		assert.True(t, match)
-		assert.Equal(t, "", key)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("a later change by another member → name kept, edited by others", func(t *testing.T) {
+		// the co-author scan reads past the first change: an object this key
+		// created and another member then edited keeps its provenance, and
+		// says so
+		want := apicore.Provenance{AccountMatch: true, IntegrationName: "Claude Desktop", EditedByOthers: true}
+
+		got, err := creatorProvenanceFromTree(
+			tree(ownKey,
+				contentChange(t, "c1", ownKey, "Claude Desktop"),
+				contentChange(t, "c2", ownKey, ""),
+				contentChange(t, "c3", otherKey, "")), ownAccount)
+
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("later changes all by this account → not edited by others", func(t *testing.T) {
+		want := apicore.Provenance{AccountMatch: true, IntegrationName: "Claude Desktop"}
+
+		got, err := creatorProvenanceFromTree(
+			tree(ownKey,
+				contentChange(t, "c1", ownKey, "Claude Desktop"),
+				contentChange(t, "c2", ownKey, "")), ownAccount)
+
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("a change with no identity counts as another member's", func(t *testing.T) {
+		// fail closed: an unsigned change is never proof of sole authorship
+		unsigned := contentChange(t, "c2", ownKey, "")
+		unsigned.Identity = nil
+		want := apicore.Provenance{AccountMatch: true, IntegrationName: "Claude Desktop", EditedByOthers: true}
+
+		got, err := creatorProvenanceFromTree(
+			tree(ownKey, contentChange(t, "c1", ownKey, "Claude Desktop"), unsigned), ownAccount)
+
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
 	})
 
 	t.Run("root only, no content change yet → no name", func(t *testing.T) {
 		// the §10 creation-race edge: owned, but nothing records a key
-		match, key, err := creatorProvenanceFromTree(tree(ownKey), ownAccount)
+		got, err := creatorProvenanceFromTree(tree(ownKey), ownAccount)
+
 		require.NoError(t, err)
-		assert.True(t, match)
-		assert.Equal(t, "", key)
+		assert.Equal(t, apicore.Provenance{AccountMatch: true}, got)
 	})
 
 	t.Run("empty own account → no match ever", func(t *testing.T) {
-		match, key, err := creatorProvenanceFromTree(
+		got, err := creatorProvenanceFromTree(
 			tree(ownKey, contentChange(t, "c1", ownKey, "Claude Desktop")), "")
+
 		require.NoError(t, err)
-		assert.False(t, match)
-		assert.Equal(t, "", key)
+		assert.Equal(t, apicore.Provenance{}, got)
 	})
 
 	t.Run("iteration failure → error out, never a verdict", func(t *testing.T) {
 		// fail-closed in the error direction: the caller must see err and
-		// refuse; a (false, "", nil) here would be indistinguishable from a
+		// refuse; a zero Provenance here would be indistinguishable from a
 		// legitimate 'not yours'
 		broken := tree(ownKey)
 		broken.iterErr = errors.New("storage failure")
-		_, _, err := creatorProvenanceFromTree(broken, ownAccount)
+
+		_, err := creatorProvenanceFromTree(broken, ownAccount)
+
 		require.Error(t, err)
 	})
 }

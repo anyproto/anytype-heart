@@ -713,7 +713,13 @@ func (s *Service) ensureChat(ctx context.Context, spaceId, chatId string) (model
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return 0, err
 	}
+	if err := s.ensureNotDeleted(ctx, spaceId, chatId); err != nil {
+		return 0, err
+	}
 	details, err := s.store.SpaceIndex(spaceId).GetDetails(chatId)
+	if err == nil && deletedRow(details) {
+		return 0, v2model.ObjectDeleted(spaceId, chatId)
+	}
 	if err != nil || details.Len() == 0 {
 		return 0, v2model.NotFound(fmt.Sprintf("chat %q not found in space %q", chatId, spaceId),
 			v2model.Issue{Path: "chat_id", Message: "no chat or discussion has this id"}.

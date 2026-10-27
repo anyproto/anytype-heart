@@ -23,6 +23,122 @@ func (_m *MockObjectReader) EXPECT() *MockObjectReader_Expecter {
 	return &MockObjectReader_Expecter{mock: &_m.Mock}
 }
 
+// InBin provides a mock function with given fields: ctx, spaceId, objectId
+func (_m *MockObjectReader) InBin(ctx context.Context, spaceId string, objectId string) (bool, error) {
+	ret := _m.Called(ctx, spaceId, objectId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for InBin")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (bool, error)); ok {
+		return rf(ctx, spaceId, objectId)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) bool); ok {
+		r0 = rf(ctx, spaceId, objectId)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, spaceId, objectId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockObjectReader_InBin_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'InBin'
+type MockObjectReader_InBin_Call struct {
+	*mock.Call
+}
+
+// InBin is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+//   - objectId string
+func (_e *MockObjectReader_Expecter) InBin(ctx interface{}, spaceId interface{}, objectId interface{}) *MockObjectReader_InBin_Call {
+	return &MockObjectReader_InBin_Call{Call: _e.mock.On("InBin", ctx, spaceId, objectId)}
+}
+
+func (_c *MockObjectReader_InBin_Call) Run(run func(ctx context.Context, spaceId string, objectId string)) *MockObjectReader_InBin_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectReader_InBin_Call) Return(_a0 bool, _a1 error) *MockObjectReader_InBin_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockObjectReader_InBin_Call) RunAndReturn(run func(context.Context, string, string) (bool, error)) *MockObjectReader_InBin_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// IsDeleted provides a mock function with given fields: ctx, spaceId, objectId
+func (_m *MockObjectReader) IsDeleted(ctx context.Context, spaceId string, objectId string) (bool, error) {
+	ret := _m.Called(ctx, spaceId, objectId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsDeleted")
+	}
+
+	var r0 bool
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (bool, error)); ok {
+		return rf(ctx, spaceId, objectId)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) bool); ok {
+		r0 = rf(ctx, spaceId, objectId)
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, spaceId, objectId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockObjectReader_IsDeleted_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsDeleted'
+type MockObjectReader_IsDeleted_Call struct {
+	*mock.Call
+}
+
+// IsDeleted is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+//   - objectId string
+func (_e *MockObjectReader_Expecter) IsDeleted(ctx interface{}, spaceId interface{}, objectId interface{}) *MockObjectReader_IsDeleted_Call {
+	return &MockObjectReader_IsDeleted_Call{Call: _e.mock.On("IsDeleted", ctx, spaceId, objectId)}
+}
+
+func (_c *MockObjectReader_IsDeleted_Call) Run(run func(ctx context.Context, spaceId string, objectId string)) *MockObjectReader_IsDeleted_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockObjectReader_IsDeleted_Call) Return(_a0 bool, _a1 error) *MockObjectReader_IsDeleted_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockObjectReader_IsDeleted_Call) RunAndReturn(run func(context.Context, string, string) (bool, error)) *MockObjectReader_IsDeleted_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ReadObject provides a mock function with given fields: ctx, spaceId, objectId
 func (_m *MockObjectReader) ReadObject(ctx context.Context, spaceId string, objectId string) (apicore.ObjectRead, error) {
 	ret := _m.Called(ctx, spaceId, objectId)

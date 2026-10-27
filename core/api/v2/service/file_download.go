@@ -27,6 +27,11 @@ func (s *Service) GetFileContent(ctx context.Context, spaceId, fileId string, wi
 			return nil, v2model.NotFound("file or icon not found in this space")
 		}
 	} else {
+		// the deletion mark is per space, so it can only confirm a file this
+		// space had — the binding check below still decides for every other
+		if err := s.ensureNotDeleted(ctx, spaceId, fileId); err != nil {
+			return nil, err
+		}
 		// Use the same object-to-space binding the file service resolves.
 		// A caller-supplied space in the URL alone proves nothing about the file.
 		actualSpaceId, err := s.store.GetSpaceId(fileId)

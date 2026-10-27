@@ -140,7 +140,7 @@ func (s *apiService) Init(a *app.App) error {
 	}
 	s.objectSearch = newObjectSearchAdapter(subscriptions)
 	s.fileObjectService = a.MustComponent(fileobject.CName).(apicore.FileObjectService)
-	s.objectReader = newObjectReadAdapter(app.MustComponent[cache.ObjectGetterComponent](a))
+	s.objectReader = newObjectReadAdapter(app.MustComponent[cache.ObjectGetterComponent](a), app.MustComponent[space.Service](a))
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.objectCreator = newObjectCreateAdapter(app.MustComponent[objectcreator.Service](a), app.MustComponent[space.Service](a),
 		app.MustComponent[template.Service](a), s.objectStore)

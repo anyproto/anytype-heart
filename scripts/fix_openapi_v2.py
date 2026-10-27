@@ -15,6 +15,16 @@ from copy import deepcopy
 SHARED_AUTH_PATHS = ("/auth/challenges", "/auth/api_keys")
 SHARED_AUTH_OPERATIONS = {"create_auth_challenge", "create_api_key"}
 
+# The path parameters that address an object by id. A route carrying one
+# answers 410 object_deleted when that object was deleted for good
+# (APIV2_OBJECT_DELETE.md §0.1); derived from the path, like the 404 rule, so
+# a route added later is covered without a list of operations to maintain.
+OBJECT_ID_PARAMS = ("{object_id}", "{collection_id}", "{query_id}", "{chat_id}", "{file_id}")
+
+
+def addresses_object(path: str) -> bool:
+    return any(param in path for param in OBJECT_ID_PARAMS)
+
 
 def fix_shared_auth_grant(directory: pathlib.Path) -> None:
     """Describe the always-present, nullable approval echo before copying it to v2."""
@@ -140,6 +150,7 @@ IDEMPOTENT_OPERATIONS = {
     "upload_file",
     "patch_object",
     "delete_object",
+    "restore_object",
     "create_chat",
     "add_chat_message",
     "edit_chat_message",
@@ -208,6 +219,10 @@ def response_components() -> dict:
             "description": "The space does not exist, or is not available (deleted, left, or still joining)",
             "content": {"application/json": {"schema": v2_error}},
         },
+        "Gone": {
+            "description": "The object this path addresses was deleted permanently (object_deleted); nothing restores it",
+            "content": {"application/json": {"schema": v2_error}},
+        },
         "RequestTooLarge": {
             "description": "Request body exceeds this operation's documented cap",
             "content": {"application/json": {"schema": v2_error}},
@@ -258,6 +273,8 @@ def apply_response_policies(doc: dict) -> None:
         # only 28 of 37.
         if "{space_id}" in path:
             responses.setdefault("404", response_ref("NotFound"))
+        if addresses_object(path):
+            responses["410"] = response_ref("Gone")
         if operation_id in IDEMPOTENT_OPERATIONS:
             responses["409"] = response_ref("Conflict")
         if operation_id in REQUEST_BODY_LIMITED_OPERATIONS:
@@ -622,6 +639,12 @@ RESPONSES_YAML = """  responses:
           schema:
             $ref: '#/components/schemas/Error'
       description: The space does not exist, or is not available (deleted, left, or still joining)
+    Gone:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: The object this path addresses was deleted permanently (object_deleted); nothing restores it
     RequestTooLarge:
       content:
         application/json:
@@ -703,6 +726,8 @@ def apply_yaml_response_policies(lines: list[str]) -> list[str]:
         blocks["403"] = yaml_response_ref("403", "Forbidden")
         if "{space_id}" in path_of(operation_line):
             blocks.setdefault("404", yaml_response_ref("404", "NotFound"))
+        if addresses_object(path_of(operation_line)):
+            blocks["410"] = yaml_response_ref("410", "Gone")
         if operation_id in IDEMPOTENT_OPERATIONS:
             blocks["409"] = yaml_response_ref("409", "Conflict")
         if operation_id in REQUEST_BODY_LIMITED_OPERATIONS:

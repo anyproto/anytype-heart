@@ -227,12 +227,12 @@ func TestCreateObjectTemplate(t *testing.T) {
 
 	t.Run("a default in the bin warns like a missing one, whichever way it went", func(t *testing.T) {
 		// the three flags a template can end its life under. The API's word
-		// for all of them is deleted: its own DELETE archives, and an
-		// archived object is what a caller of this surface cannot address
-		for _, gone := range []domain.RelationKey{
-			bundle.RelationKeyIsArchived,
-			bundle.RelationKeyIsDeleted,
-			bundle.RelationKeyIsUninstalled,
+		// for all of them is deleted: an archived object is what a caller of
+		// this surface cannot address — and one deleted for good says so
+		for gone, want := range map[domain.RelationKey]string{
+			bundle.RelationKeyIsArchived:    "is deleted",
+			bundle.RelationKeyIsDeleted:     "was deleted permanently",
+			bundle.RelationKeyIsUninstalled: "is deleted",
 		} {
 			t.Run(gone.String(), func(t *testing.T) {
 				// given
@@ -255,7 +255,7 @@ func TestCreateObjectTemplate(t *testing.T) {
 				assert.Nil(t, result.Template)
 				assert.Empty(t, *applied, "and it starts from nothing")
 				require.Len(t, result.Warnings, 1)
-				assert.Contains(t, result.Warnings[0].Message, "is deleted")
+				assert.Contains(t, result.Warnings[0].Message, want)
 				assert.Contains(t, result.Warnings[0].Hint, "default_template")
 			})
 		}

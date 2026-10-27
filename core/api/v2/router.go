@@ -364,15 +364,23 @@ func registerEditRoutes(v2 *gin.RouterGroup, deps RouteDeps, idempotencyMW gin.H
 		deps.AnalyticsEvent("V2PatchObject"),
 		v2handler.PatchObjectHandler(deps.Service),
 	)
-	// Object deletion archives only objects created by the calling key. The
-	// creator-provenance gate runs in the service; C8 idempotency because a
-	// blindly retried delete after an already-archived answer must stay a
-	// clean replay, C9 dry-run is the deletability probe.
+	// Object deletion archives any user content the grant can write;
+	// ?permanent=true deletes for good, gated by creator provenance in the
+	// service. C8 idempotency because a blindly retried delete after an
+	// already-archived answer must stay a clean replay, C9 dry-run is the
+	// deletability probe.
 	v2.DELETE("/spaces/:space_id/objects/:object_id",
 		deps.WriteRateLimit,
 		idempotencyMW,
 		deps.AnalyticsEvent("V2DeleteObject"),
 		v2handler.DeleteObjectHandler(deps.Service),
+	)
+	// Restore is the archive's inverse, over the same reach.
+	v2.POST("/spaces/:space_id/objects/:object_id/restore",
+		deps.WriteRateLimit,
+		idempotencyMW,
+		deps.AnalyticsEvent("V2RestoreObject"),
+		v2handler.RestoreObjectHandler(deps.Service),
 	)
 }
 
