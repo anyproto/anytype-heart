@@ -35,14 +35,11 @@ func (s *Service) CreateDiscussion(ctx context.Context, spaceId, objectId string
 	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
-	read, err := s.reader.ReadObject(ctx, spaceId, objectId)
+	read, err := s.readAddressed(ctx, spaceId, objectId)
 	if err != nil {
-		return nil, mapReadError(spaceId, objectId, err)
+		return nil, err
 	}
 	if row, rowErr := s.store.SpaceIndex(spaceId).GetDetails(objectId); rowErr == nil {
-		if row.GetBool(bundle.RelationKeyIsDeleted) {
-			return nil, v2model.NotFound(fmt.Sprintf("object %q not found in space %q", objectId, spaceId))
-		}
 		// an archived object is read-only in the desktop (its comment
 		// section shows the thread but takes no new post), and the
 		// object restriction that says so is not the one the parent link

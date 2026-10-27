@@ -93,6 +93,12 @@ type ObjectReader interface {
 	// returning, while the object's own isArchived detail (and its store
 	// row) are written later by a reconcile goroutine.
 	InBin(ctx context.Context, spaceId string, objectId string) (bool, error)
+	// IsDeleted reports whether the object was deleted for good, read from
+	// the space's head-storage deletion mark: set before the delete RPC
+	// returns (or when a delete from another device arrives) and never
+	// cleared, while the tree itself is removed asynchronously and the
+	// store row trails it. An id the space has no entry for is not deleted.
+	IsDeleted(ctx context.Context, spaceId string, objectId string) (bool, error)
 }
 
 // ErrTemplateUnavailable is what CreateObjectFromSnapshot returns when the

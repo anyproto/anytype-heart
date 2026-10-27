@@ -169,16 +169,11 @@ func (s *Service) contentTarget(ctx context.Context, spaceId, objectId string, s
 		return apicore.ObjectRead{}, false, err
 	}
 
-	// resolve via the live read (the v2 house read path): unknown tree → 404
-	read, err := s.reader.ReadObject(ctx, spaceId, objectId)
+	// resolve via the live read (the v2 house read path): unknown tree → 404,
+	// deleted for good → 410
+	read, err := s.readAddressed(ctx, spaceId, objectId)
 	if err != nil {
-		return apicore.ObjectRead{}, false, mapReadError(spaceId, objectId, err)
-	}
-	// a deleted row — a corpse, or a tombstone an older build left — is gone
-	// as far as the API is concerned
-	row, rowErr := s.store.SpaceIndex(spaceId).GetDetails(objectId)
-	if rowErr == nil && row.GetBool(bundle.RelationKeyIsDeleted) {
-		return apicore.ObjectRead{}, false, deletedPermanently(spaceId, objectId)
+		return apicore.ObjectRead{}, false, err
 	}
 
 	// schema objects have their own routes with their own semantics —
@@ -220,11 +215,61 @@ func isArchivedRead(read apicore.ObjectRead) bool {
 	return pbtypes.GetBool(read.Snapshot.GetDetails(), bundle.RelationKeyIsArchived.String())
 }
 
-// deletedPermanently is the 404 for an object whose tree was deleted for
-// good: said plainly, so a caller can tell it from a mistyped id and stops
-// trying to restore it.
-func deletedPermanently(spaceId, objectId string) *v2model.Error {
-	return v2model.NotFound(fmt.Sprintf("object %q in space %q was deleted permanently and cannot be restored", objectId, spaceId))
+// ensureNotDeleted is the 410 for a route that addresses an object without
+// reading it live (chats, file content); ReadObject makes the same check on
+// its own. The deletion mark is set before the delete RPC returns, while the
+// store row trails it by about half a second.
+func (s *Service) ensureNotDeleted(ctx context.Context, spaceId, objectId string) error {
+	deleted, err := s.reader.IsDeleted(ctx, spaceId, objectId)
+	if err != nil {
+		return fmt.Errorf("read the deletion mark of %s: %w", objectId, err)
+	}
+	if deleted {
+		return v2model.ObjectDeleted(spaceId, objectId)
+	}
+	return nil
+}
+
+// readAddressed is ReadObject for a route that addresses the object by id in
+// its path. A tree deleted for good fails as deleted (the head mark, which
+// ReadObject reads first), and so does user content whose store row says
+// deleted while its tree survives: deleting a template uninstalls it rather
+// than removing it (core/block deleteDerivedObject), and nothing restores it.
+func (s *Service) readAddressed(ctx context.Context, spaceId, objectId string) (apicore.ObjectRead, error) {
+	read, err := s.reader.ReadObject(ctx, spaceId, objectId)
+	if err != nil {
+		return apicore.ObjectRead{}, mapReadError(spaceId, objectId, err)
+	}
+	if !deletableSbType(read.SbType) {
+		// a type or property row says deleted when it is only uninstalled
+		return read, nil
+	}
+	if row, err := s.store.SpaceIndex(spaceId).GetDetails(objectId); err == nil && deletedRow(row) {
+		return apicore.ObjectRead{}, v2model.ObjectDeleted(spaceId, objectId)
+	}
+	return read, nil
+}
+
+// deletedRow reports a store tombstone of user content, for a check that has
+// only the row: what deleting an object for good leaves in the index ({id,
+// spaceId, isDeleted}, the layout kept in deletedSnapshot), or an uninstalled
+// template. Heart also sets isDeleted on uninstalled types and properties,
+// and an older build tombstoned them with their layout in deletedSnapshot;
+// neither is deleted for good (they keep their own "removed" refusals), so a
+// schema layout is not one.
+func deletedRow(row *domain.Details) bool {
+	if !row.GetBool(bundle.RelationKeyIsDeleted) {
+		return false
+	}
+	layout, ok := row.TryInt64(bundle.RelationKeyResolvedLayout)
+	if !ok {
+		layout = row.GetMapValue(bundle.RelationKeyDeletedSnapshot).GetInt64(bundle.RelationKeyResolvedLayout.String())
+	}
+	switch model.ObjectTypeLayout(layout) {
+	case model.ObjectType_objectType, model.ObjectType_relation, model.ObjectType_relationOption:
+		return false
+	}
+	return true
 }
 
 // receiptType spells the type as every read does (round-four eval R4-2: a

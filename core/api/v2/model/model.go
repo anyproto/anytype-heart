@@ -46,6 +46,10 @@ const (
 	// CodeFileInUse is the 409 for a permanent delete of a file other
 	// objects still use: removing the uses resolves it.
 	CodeFileInUse = "file_in_use"
+	// CodeObjectDeleted is the 410 for a route addressing an object that was
+	// deleted for good. Not a 404: a 404 says the id is wrong and invites a
+	// lookup, which for a deleted object can only find a different one.
+	CodeObjectDeleted = "object_deleted"
 )
 
 // Issue is one path-addressed problem (C6): path into the request
@@ -167,6 +171,16 @@ func ObjectArchived(spaceId, objectId string, restorable bool) *Error {
 	}
 	return NewError(http.StatusConflict, CodeObjectArchived,
 		fmt.Sprintf("object %q is in the Bin and cannot be edited until it is restored", objectId), issue)
+}
+
+// ObjectDeleted is the 410 for a route addressing an object that was deleted
+// for good (APIV2_OBJECT_DELETE.md §0.1). It carries no issue and no hint:
+// nothing restores the object, and a hint to search would steer an agent to
+// some other object. The message still says what to do, because callers are
+// told every error does.
+func ObjectDeleted(spaceId, objectId string) *Error {
+	return NewError(http.StatusGone, CodeObjectDeleted,
+		fmt.Sprintf("object %q in space %q was deleted permanently and cannot be restored; drop references to it", objectId, spaceId))
 }
 
 // RequestTooLarge is the 413 for an oversized request body (C3).

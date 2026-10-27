@@ -120,7 +120,7 @@ func DeleteObjectHandler(s *v2service.Service) gin.HandlerFunc {
 //	@Success		200			{object}	v2model.CreateResult	"Restored object, or the dry-run verdict"
 //	@Failure		400			{object}	v2model.Error			"A type, a property or a tag option"
 //	@Failure		403			{object}	v2model.Error			"A system object"
-//	@Failure		404			{object}	v2model.Error			"Object or space not found, or the object was deleted permanently"
+//	@Failure		404			{object}	v2model.Error			"Object or space not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/objects/{object_id}/restore [post]
 func RestoreObjectHandler(s *v2service.Service) gin.HandlerFunc {

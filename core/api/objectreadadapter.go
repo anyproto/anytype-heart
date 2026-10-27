@@ -2,8 +2,10 @@ package api
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
@@ -45,10 +47,8 @@ func (a *objectReadAdapter) ReadObject(ctx context.Context, spaceId string, obje
 	// the head storage is set before the delete RPC returns, so it is what
 	// decides; a probe that fails says nothing and the read goes on.
 	if a.spaces != nil {
-		if spc, err := a.spaces.Get(ctx, spaceId); err == nil {
-			if entry, err := spc.Storage().HeadStorage().GetEntry(ctx, objectId); err == nil && entry.DeletedStatus != headstorage.DeletedStatusNotDeleted {
-				return apicore.ObjectRead{}, fmt.Errorf("read live object state: %w", spacestorage.ErrTreeStorageAlreadyDeleted)
-			}
+		if deleted, err := a.IsDeleted(ctx, spaceId, objectId); err == nil && deleted {
+			return apicore.ObjectRead{}, fmt.Errorf("read live object state: %w", spacestorage.ErrTreeStorageAlreadyDeleted)
 		}
 	}
 	var read apicore.ObjectRead
@@ -83,6 +83,24 @@ func (a *objectReadAdapter) InBin(ctx context.Context, spaceId string, objectId 
 		return false, fmt.Errorf("read the Bin of space %s: %w", spaceId, err)
 	}
 	return inBin, nil
+}
+
+func (a *objectReadAdapter) IsDeleted(ctx context.Context, spaceId string, objectId string) (bool, error) {
+	if a.spaces == nil {
+		return false, fmt.Errorf("read the deletion mark of %s: no space service", objectId)
+	}
+	spc, err := a.spaces.Get(ctx, spaceId)
+	if err != nil {
+		return false, fmt.Errorf("get space %s: %w", spaceId, err)
+	}
+	entry, err := spc.Storage().HeadStorage().GetEntry(ctx, objectId)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("read the head entry of %s: %w", objectId, err)
+	}
+	return entry.DeletedStatus != headstorage.DeletedStatusNotDeleted, nil
 }
 
 // readLiveState captures one consistent read of a locked smartblock:

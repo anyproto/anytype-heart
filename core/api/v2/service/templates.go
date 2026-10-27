@@ -191,6 +191,9 @@ func (s *Service) inspectTemplate(spaceId, templateId, typeId string) (name stri
 		return "", fmt.Sprintf("no object %q exists in this space", templateId), nil
 	}
 	name = row.GetString(bundle.RelationKeyName)
+	if deletedRow(row) {
+		return name, fmt.Sprintf("template %q was deleted permanently", templateId), nil
+	}
 	if row.GetBool(bundle.RelationKeyIsDeleted) || row.GetBool(bundle.RelationKeyIsArchived) || row.GetBool(bundle.RelationKeyIsUninstalled) {
 		return name, fmt.Sprintf("template %q is deleted", templateId), nil
 	}

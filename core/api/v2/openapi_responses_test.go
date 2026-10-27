@@ -161,7 +161,30 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 		}
 	}
 
-	for _, component := range []string{"BadRequest", "Unauthorized", "Forbidden", "Conflict", "NotFound", "RequestTooLarge", "RateLimited"} {
+	// 410 object_deleted is derived from the path the same way: exactly the
+	// operations addressing an object by id declare it (§0.1 of
+	// APIV2_OBJECT_DELETE.md)
+	objectParams := []string{"{object_id}", "{collection_id}", "{query_id}", "{chat_id}", "{file_id}"}
+	for path, pathItem := range jsonDoc.Paths {
+		addresses := false
+		for _, param := range objectParams {
+			addresses = addresses || strings.Contains(path, param)
+		}
+		for method, operation := range pathItem {
+			if operation.OperationId == "" {
+				continue
+			}
+			if addresses {
+				assert.Contains(t, operation.Responses, "410",
+					"%s %s addresses an object by id, so it can answer 410", strings.ToUpper(method), path)
+			} else {
+				assert.NotContains(t, operation.Responses, "410",
+					"%s %s addresses no object by id, so it cannot answer 410", strings.ToUpper(method), path)
+			}
+		}
+	}
+
+	for _, component := range []string{"BadRequest", "Unauthorized", "Forbidden", "Conflict", "NotFound", "Gone", "RequestTooLarge", "RateLimited"} {
 		assert.Contains(t, jsonDoc.Components.Responses, component)
 		assert.Contains(t, yamlDoc.Components.Responses, component)
 	}
@@ -200,7 +223,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	for _, operation := range jsonOperations {
 		pairCount += len(operation.Responses)
 	}
-	assert.Equal(t, 384, pairCount, "the checked-in response inventory changes only deliberately")
+	assert.Equal(t, 403, pairCount, "the checked-in response inventory changes only deliberately")
 
 	dryRunCreates := stringSet(
 		"add_chat_message", "create_chat", "create_collection", "create_object", "create_property",

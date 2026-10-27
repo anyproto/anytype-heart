@@ -3,11 +3,13 @@ package v2service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/anyproto/any-block/codec/anyblockjson"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -403,7 +405,7 @@ func TestCreateWidget(t *testing.T) {
 			"_unread":   "unknown built-in listing",
 			"missing1":  "no object",
 			"bin1":      "in the bin",
-			"gone1":     "is deleted",
+			"gone1":     "was deleted permanently",
 			"rel1":      "is a property",
 			"tpl1":      "is a template",
 			"tpl2":      "is a template",
@@ -416,6 +418,27 @@ func TestCreateWidget(t *testing.T) {
 			require.Len(t, e.Issues, 1, target)
 			assert.Equal(t, "/target", e.Issues[0].Path, target)
 		}
+	})
+
+	t.Run("a view_id on a target deleted for good while its row looks live is a 400, not a 500", func(t *testing.T) {
+		// given: the row trails the delete; the live read already fails
+		fx := newV2Fixture(t)
+		fx.addWidgetTarget(t, "set1", model.ObjectType_set)
+		fx.allowWidgets(apicore.WidgetScopeSpace, true)
+		fx.holdWidgets(apicore.WidgetScopeSpace)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "set1").
+			Return(apicore.ObjectRead{}, fmt.Errorf("read live object state: %w", spacestorage.ErrTreeStorageAlreadyDeleted))
+
+		// when
+		_, err := fx.CreateWidget(context.Background(), testSpaceId,
+			v2model.CreateWidgetRequest{Target: "set1", Scope: "space", ViewId: "bbb222"}, true)
+
+		// then
+		e := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, e.Status)
+		assert.Contains(t, e.Message, "was deleted permanently")
+		require.Len(t, e.Issues, 1)
+		assert.Equal(t, "/target", e.Issues[0].Path)
 	})
 
 	t.Run("view_id resolves against the target's views, by suffix too", func(t *testing.T) {

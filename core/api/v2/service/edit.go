@@ -181,9 +181,9 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 	// object (403) still permanently created every option the batch named
 	// (review A′1). So: read the object and check the preconditions first,
 	// prewarm only once they pass, then take the lock.
-	cur, err := s.reader.ReadObject(ctx, spaceId, objectId)
+	cur, err := s.readAddressed(ctx, spaceId, objectId)
 	if err != nil {
-		return nil, mapReadError(spaceId, objectId, err)
+		return nil, err
 	}
 	if err := checkEditPreconditions(cur.SbType, cur.Heads, ifMatch); err != nil {
 		return nil, err

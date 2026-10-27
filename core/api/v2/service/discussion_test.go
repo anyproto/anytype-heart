@@ -144,7 +144,7 @@ func TestV2CreateDiscussion(t *testing.T) {
 		}
 	})
 
-	t.Run("an unknown object is a 404, a deleted one too", func(t *testing.T) {
+	t.Run("an unknown object is a 404, a deleted one a 410", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "missing").Return(apicore.ObjectRead{}, treeUnknownErr())
 		_, err := fx.CreateDiscussion(context.Background(), testSpaceId, "missing", false)
@@ -156,7 +156,7 @@ func TestV2CreateDiscussion(t *testing.T) {
 			bundle.RelationKeyIsDeleted: domain.Bool(true),
 		}})
 		_, err = fx.CreateDiscussion(context.Background(), testSpaceId, "gone", false)
-		requireV2Code(t, err, v2model.CodeNotFound)
+		assert.Equal(t, v2model.ObjectDeleted(testSpaceId, "gone"), err)
 	})
 
 	t.Run("a read-only grant is refused before the object is read", func(t *testing.T) {
@@ -219,7 +219,7 @@ func TestV2CreateDiscussion(t *testing.T) {
 		_, err := fx.CreateDiscussion(context.Background(), testSpaceId, "arch2", true)
 		requireV2Code(t, err, v2model.CodeValidationFailed)
 		_, err = fx.CreateDiscussion(context.Background(), testSpaceId, "gone2", false)
-		requireV2Code(t, err, v2model.CodeNotFound)
+		requireV2Code(t, err, v2model.CodeObjectDeleted)
 		_, err = fx.CreateDiscussion(context.Background(), testSpaceId, "type2", false)
 		requireV2Code(t, err, v2model.CodeValidationFailed)
 	})
@@ -244,13 +244,13 @@ func TestV2CreateDiscussion(t *testing.T) {
 		requireV2Code(t, err, v2model.CodeForbidden)
 	})
 
-	t.Run("a permanently deleted object whose tree storage is gone is a 404, not a 500", func(t *testing.T) {
+	t.Run("a permanently deleted object whose tree storage is gone is a 410, not a 500", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "purged").Return(apicore.ObjectRead{}, fmt.Errorf("load: %w", spacestorage.ErrTreeStorageAlreadyDeleted))
 
 		_, err := fx.CreateDiscussion(context.Background(), testSpaceId, "purged", false)
 
-		requireV2Code(t, err, v2model.CodeNotFound)
+		assert.Equal(t, v2model.ObjectDeleted(testSpaceId, "purged"), err)
 	})
 }
 

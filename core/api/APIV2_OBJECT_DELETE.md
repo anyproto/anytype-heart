@@ -1,7 +1,8 @@
 # API v2 object DELETE (plan 3.3) — creator provenance and the delete surface
 
 Status: **built** · implementation record · 2026-08-14 · **revised
-2026-10-26** (§0 — read it first: archive is no longer creator-gated).
+2026-10-26** (§0 — read it first: archive is no longer creator-gated) and
+**2026-10-27** (§0.1: a deleted object answers 410).
 
 ## 0. Revision 2026-10-26 — archive any, delete for good only own output
 
@@ -41,7 +42,7 @@ refused for everything made in the app. What changed:
 - **A permanently deleted object reads as deleted at once.** Its tree is
   removed asynchronously and still loaded for a moment; the read adapter
   checks the head-storage deletion mark, set before the delete RPC returns,
-  and every v2 read answers 404 "deleted permanently".
+  and every route addressing it answers 410 `object_deleted` (§0.1).
 - **Every archive receipt carries a Bin notice**: where the object went, the
   restore op, and — evaluated per object — whether this key may also delete
   it for good (`resend with ?permanent=true`) or why not.
@@ -58,6 +59,90 @@ person's own later edits to an agent-created object; chat-message
 attachments are not indexed as links, so a file attached in a chat does not
 count as "in use"; and a hard delete of a page broadcasts heart's
 ObjectCleanupSuggestion, so the person's app may show a cleanup prompt.
+
+## 0.1 Revision 2026-10-27 — a deleted object answers 410 `object_deleted`
+
+A permanently deleted object was a 404 `not_found` whose message said
+"deleted permanently". Clients branch on the status before they read a
+message, and a 404 means "wrong id": our own wrapper appends "run find with
+query naming it" to any 404 quoting the caller's object
+(`core/api/wrapper/steer.go`), which sends an agent looking for an object
+that no longer exists — and a name search can land on a different one.
+
+Decisions:
+
+1. **Status and code: 410 Gone, `object_deleted`.** Three states, three
+   statuses: 409 `object_archived` (in the Bin; restoring resolves it), 410
+   `object_deleted` (final; nothing resolves it), 404 `not_found` (no object
+   with this id; look it up). 410 is RFC 9110's "no longer available, and
+   likely permanently". Rejected: 404 with a new code (generic clients and
+   the wrapper keep treating it as a typo), 409 (says the state can be
+   resolved).
+2. **The signal is the head-storage deletion mark** (`DeletedStatus` past
+   NotDeleted). Heart sets it before `ObjectListDelete` returns; a delete
+   made on another device arrives through the space settings tree and sets
+   the same mark (`deletionmanager.UpdateState` → `deletionState.Add`), whose
+   status-only update upserts, so an object this device never loaded is
+   marked too; and any-sync never removes the entry (`DeleteEntry` has no
+   callers), so it holds for good. A new `ObjectReader.IsDeleted` reads it,
+   and `ReadObject` checks it before loading. The write is best-effort in
+   any-sync (a failure is logged and the id is not queued), so in that rare
+   case the object answers whatever its read answers without the mark.
+   `ReadObject` treats a failed probe the same way, since the load that
+   follows decides; `ensureNotDeleted`, used where nothing is loaded (chats,
+   file content), fails the request (500) instead of passing it.
+   **The store row counts for user content only** (`readAddressed` for
+   reads, `deletedRow` where only the row is at hand). Deleting a template
+   uninstalls it rather than removing its tree (`core/block`
+   `deleteDerivedObject`): the mark stays clear, the row says `isUninstalled`
+   and `isDeleted`, and nothing restores it, so its row decides — otherwise a
+   template the API reported deleted for good would still read 200. The
+   tombstone a page delete leaves (`{id, spaceId, isDeleted}` with the layout
+   in `deletedSnapshot`, `spaceindex/delete.go`) trails the mark by about
+   half a second and agrees with it. Uninstalled types and properties also
+   carry `isDeleted` — and an older build tombstoned them with the layout
+   only in `deletedSnapshot` — but they are not deleted for good and keep
+   their 404 "it was removed", so a schema sbType or layout never counts.
+3. **Reach: every route that addresses an object by id in its path** —
+   `object_id` (read, patch, delete, restore, discussion), `collection_id`
+   and `query_id`, `chat_id` (every chat route, through `ensureChat`), and
+   `file_id` (file object ids; a raw CID has no tree). Not `widget_id` (a
+   block), not `message_id` (messages have their own soft delete), not
+   `types/{type}` or `properties/{key}` (keys, not objects; a removed one can
+   be recreated). Where a request body's reference is checked (a widget
+   target, including its view lookup, and a template), a deleted id stays a
+   400 on that issue path — the request is wrong, not the resource it
+   addresses — and its message says "deleted permanently" too. A chat stream
+   already open when its chat is deleted is not closed; the next request on
+   the chat answers 410.
+4. **Grants first.** The space grant, and for writes the write grant, are
+   checked before the deletion mark, as they are before any lookup, so a key
+   learns nothing about a space it may not use. Inside a granted space,
+   telling a deleted id from an unknown one reveals nothing the key could
+   not read anyway.
+5. **No repair hint, no issue.** The message names the object, says it
+   cannot be restored, and ends "drop references to it" — the one action
+   left, and the wrapper's instructions promise every error says how to fix
+   the call. A hint to search would invite an agent to pick some other
+   object.
+6. **DELETE and restore of a deleted object are 410 as well**, not a 200
+   no-op. A replay under the same Idempotency-Key still returns the original
+   200; a client that treats "404 or 410" as already gone needs no change.
+7. **OpenAPI declares it by path**: a shared `Gone` response, attached by
+   `scripts/fix_openapi_v2.py` to every operation whose path carries one of
+   the parameters in (3), derived the way the 404 rule is, so a route added
+   later is covered without a list to maintain.
+8. **The wrapper needs no change**: it carries the status and the server's
+   text, its id repair runs on 404 only, and its transport retries skip 410.
+9. **Compatibility.** Nothing released answered "deleted permanently": before
+   PR #3331 a deleted object was a generic 404, or a 200 stub for half a
+   second. A client that read 404 as "gone" adds 410.
+10. **Out of scope**: who deleted the object and when (the settings tree
+    records the delete with no cheap link back); deleted ids inside PATCH
+    values or collection adds, which are not checked; a delete this device
+    has not received yet (the object reads as before until the settings tree
+    syncs); the OpenAPI's HEAD errors, which declare a JSON body the way
+    HEAD's 404 already does although HEAD sends none.
 
 Covers the implemented plan item 3.3
 (`DELETE /v2/spaces/{space_id}/objects/{object_id}`; APIV2.md §8.42,

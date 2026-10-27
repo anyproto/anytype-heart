@@ -239,7 +239,7 @@ func TestDeleteObjectArchives(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, v2Err.Status)
 	})
 
-	t.Run("a tombstoned row is a 404 even though its tree survives", func(t *testing.T) {
+	t.Run("a tombstoned row is a 410 even though its tree survives", func(t *testing.T) {
 		// given: the corpse shape — the live read still answers (derived
 		// trees survive deletion) but the row says isDeleted
 		fx := newDeleteFixture(t, ownProvenance())
@@ -247,12 +247,51 @@ func TestDeleteObjectArchives(t *testing.T) {
 			bundle.RelationKeyId:        domain.String(deleteObjId),
 			bundle.RelationKeyIsDeleted: domain.Bool(true),
 		}})
+		want := v2model.ObjectDeleted(testSpaceId, deleteObjId)
+
+		_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false, false)
+
+		assert.Equal(t, want, err)
+	})
+
+	t.Run("a deleted object is a 410 for a permanent delete too", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, deleteObjId).
+			Return(apicore.ObjectRead{}, fmt.Errorf("read live object state: %w", spacestorage.ErrTreeStorageAlreadyDeleted)).Once()
+
+		_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false, true)
+
+		assert.Equal(t, v2model.ObjectDeleted(testSpaceId, deleteObjId), err)
+	})
+
+	t.Run("an older build's type tombstone is not a deleted object either", func(t *testing.T) {
+		// given: the layout only in deletedSnapshot, the tree surviving
+		fx := newDeleteFixtureOf(t, model.SmartBlockType_STType, ownProvenance())
+		fx.addTypeTombstone(t, deleteObjId)
 
 		_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false, false)
 
 		var v2Err *v2model.Error
 		require.ErrorAs(t, err, &v2Err)
-		assert.Equal(t, http.StatusNotFound, v2Err.Status)
+		assert.Equal(t, http.StatusBadRequest, v2Err.Status)
+	})
+
+	t.Run("an uninstalled type's row is not a deleted object: the steer still answers", func(t *testing.T) {
+		// given: heart sets isDeleted on an uninstalled type and keeps its
+		// layout; it is removed, not deleted for good
+		fx := newDeleteFixtureOf(t, model.SmartBlockType_STType, ownProvenance())
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String(deleteObjId),
+			bundle.RelationKeyIsDeleted:      domain.Bool(true),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+		}})
+
+		_, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, false, false)
+
+		var v2Err *v2model.Error
+		require.ErrorAs(t, err, &v2Err)
+		assert.Equal(t, http.StatusBadRequest, v2Err.Status)
+		assert.Contains(t, v2Err.Message, "type")
 	})
 
 	t.Run("type and property targets are steered to their own routes", func(t *testing.T) {
@@ -897,10 +936,7 @@ func TestRestoreObject(t *testing.T) {
 
 		_, err := fx.RestoreObject(callerCtx(), testSpaceId, deleteObjId, false)
 
-		var v2Err *v2model.Error
-		require.ErrorAs(t, err, &v2Err)
-		assert.Equal(t, http.StatusNotFound, v2Err.Status)
-		assert.Contains(t, v2Err.Message, "deleted permanently")
+		assert.Equal(t, v2model.ObjectDeleted(testSpaceId, deleteObjId), err)
 	})
 
 	t.Run("a tombstoned row says so too", func(t *testing.T) {
@@ -913,10 +949,7 @@ func TestRestoreObject(t *testing.T) {
 
 		_, err := fx.RestoreObject(callerCtx(), testSpaceId, deleteObjId, false)
 
-		var v2Err *v2model.Error
-		require.ErrorAs(t, err, &v2Err)
-		assert.Equal(t, http.StatusNotFound, v2Err.Status)
-		assert.Contains(t, v2Err.Message, "deleted permanently")
+		assert.Equal(t, v2model.ObjectDeleted(testSpaceId, deleteObjId), err)
 	})
 }
 
@@ -956,5 +989,47 @@ func TestPatchArchivedObject(t *testing.T) {
 		require.Len(t, v2Err.Issues, 1)
 		assert.Empty(t, v2Err.Issues[0].SeeAlso)
 		assert.Contains(t, v2Err.Issues[0].Hint, "Anytype app")
+	})
+}
+
+func TestDeletedTemplate(t *testing.T) {
+	// deleting a template uninstalls it instead of removing its tree
+	// (core/block deleteDerivedObject): the head mark stays clear and the row
+	// says isUninstalled + isDeleted, so the row is what tells
+	newFixture := func(t *testing.T) *v2Fixture {
+		fx := newV2Fixture(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, deleteObjId).Return(deleteRead(model.SmartBlockType_Template), nil).Maybe()
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String(deleteObjId),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyIsUninstalled:  domain.Bool(true),
+			bundle.RelationKeyIsDeleted:      domain.Bool(true),
+		}})
+		return fx
+	}
+	want := v2model.ObjectDeleted(testSpaceId, deleteObjId)
+
+	t.Run("a read is a 410, as the permanent delete's receipt promised", func(t *testing.T) {
+		fx := newFixture(t)
+
+		_, _, err := fx.GetObject(callerCtx(), testSpaceId, deleteObjId, ObjectQuery{})
+
+		assert.Equal(t, want, err)
+	})
+
+	t.Run("an edit is a 410", func(t *testing.T) {
+		fx := newFixture(t)
+
+		_, err := fx.PatchObject(callerCtx(), testSpaceId, deleteObjId, patchBody(`{"op":"set_properties","set":{"name":"x"}}`), "", false, true)
+
+		assert.Equal(t, want, err)
+	})
+
+	t.Run("a restore is a 410", func(t *testing.T) {
+		fx := newFixture(t)
+
+		_, err := fx.RestoreObject(callerCtx(), testSpaceId, deleteObjId, false)
+
+		assert.Equal(t, want, err)
 	})
 }

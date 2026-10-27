@@ -191,9 +191,11 @@ brings an archived object back; types and properties are restored in the
 Anytype app. An archived object cannot be edited until it is restored. With
 `permanent=true`, the
 [delete operation](https://developers.anytype.io/docs/reference/v2/delete-object)
-removes an object for good, but only one the calling key created. Deleting
-a chat message, including any attachment cleanup that follows, is not an
-archive.
+removes an object for good, but only one the calling key created. From then
+on, a request that addresses the object answers `410` with code
+`object_deleted`, and nothing restores it; a `404` means no object has that
+id. A retry under the same `Idempotency-Key` still returns the first answer. Deleting a chat message, including any attachment cleanup that follows,
+is not an archive.
 
 ## Errors and warnings
 

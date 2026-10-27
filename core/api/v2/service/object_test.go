@@ -42,6 +42,11 @@ type v2Fixture struct {
 	provenanceMock *mock_apicore.MockObjectProvenance
 	widgetsMock    *mock_apicore.MockWidgets
 	objectStore    *objectstore.StoreFixture
+	// deleted holds the ids whose head-storage deletion mark is set:
+	// IsDeleted answers from it, so a test marks an object deleted for good
+	// by adding its id; probeErr, when set, is the error every probe fails with
+	deleted  map[string]bool
+	probeErr error
 }
 
 // newV2FixtureBare builds the service with an empty tech space (no space
@@ -90,7 +95,7 @@ func newV2FixtureBare(t *testing.T) *v2Fixture {
 		func(_ context.Context, _ string, key domain.TypeKey) (string, error) {
 			return "drv-ot-" + string(key), nil
 		}).Maybe()
-	return &v2Fixture{
+	fx := &v2Fixture{
 		Service:        NewService(mwMock, readerMock, creatorMock, mutatorMock, provenanceMock, widgetsMock, nil, nil, nil, objectStore, objectstore.TestTechSpaceId, testAccountId),
 		mwMock:         mwMock,
 		readerMock:     readerMock,
@@ -99,7 +104,13 @@ func newV2FixtureBare(t *testing.T) *v2Fixture {
 		provenanceMock: provenanceMock,
 		widgetsMock:    widgetsMock,
 		objectStore:    objectStore,
+		deleted:        map[string]bool{},
 	}
+	readerMock.EXPECT().IsDeleted(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(
+		func(_ context.Context, _ string, objectId string) (bool, error) {
+			return fx.deleted[objectId], fx.probeErr
+		}).Maybe()
+	return fx
 }
 
 // newV2Fixture builds the service with the default test space registered, so
@@ -716,6 +727,19 @@ func TestV2GetObject(t *testing.T) {
 		assert.Equal(t, etag, doc["etag"])
 		assert.Equal(t, "# Section\n\nparent\n", doc["markdown"])
 		assert.NotContains(t, doc, "blocks")
+	})
+
+	t.Run("format=md of an object deleted for good is a 410, not an export failure", func(t *testing.T) {
+		// given: no export expectation — the export loads the tree itself
+		// and fails a deleted one as a plain string
+		fx := newV2Fixture(t)
+		fx.deleted["obj1"] = true
+
+		// when
+		_, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", ObjectQuery{Format: "md"})
+
+		// then
+		assert.Equal(t, v2model.ObjectDeleted(testSpaceId, "obj1"), err)
 	})
 
 	t.Run("read error surfaces wrapped", func(t *testing.T) {

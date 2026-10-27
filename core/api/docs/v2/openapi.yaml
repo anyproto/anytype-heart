@@ -32,6 +32,12 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
       description: The space does not exist, or is not available (deleted, left, or still joining)
+    Gone:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: The object this path addresses was deleted permanently (object_deleted); nothing restores it
     RequestTooLarge:
       content:
         application/json:
@@ -1636,9 +1642,11 @@ info:
     Anytype app. An archived object cannot be edited until it is restored. With
     `permanent=true`, the
     [delete operation](https://developers.anytype.io/docs/reference/v2/delete-object)
-    removes an object for good, but only one the calling key created. Deleting
-    a chat message, including any attachment cleanup that follows, is not an
-    archive.
+    removes an object for good, but only one the calling key created. From then
+    on, a request that addresses the object answers `410` with code
+    `object_deleted`, and nothing restores it; a `404` means no object has that
+    id. A retry under the same `Idempotency-Key` still returns the first answer. Deleting a chat message, including any attachment cleanup that follows,
+    is not an archive.
 
     ## Errors and warnings
 
@@ -2606,6 +2614,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Chat not found
+        "410":
+          $ref: '#/components/responses/Gone'
       security:
       - bearerauth: []
       summary: List chat messages
@@ -2679,6 +2689,8 @@ paths:
           description: Chat not found
         "409":
           $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
         "413":
           $ref: '#/components/responses/RequestTooLarge'
         "429":
@@ -2746,6 +2758,8 @@ paths:
           description: Chat or message not found
         "409":
           $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
         "429":
           $ref: '#/components/responses/RateLimited'
       security:
@@ -2822,6 +2836,8 @@ paths:
           description: Chat or message not found
         "409":
           $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
         "413":
           $ref: '#/components/responses/RequestTooLarge'
         "429":
@@ -2899,6 +2915,8 @@ paths:
           description: Chat or message not found
         "409":
           $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
         "413":
           $ref: '#/components/responses/RequestTooLarge'
         "429":
@@ -2968,6 +2986,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Space or chat not found
+        "410":
+          $ref: '#/components/responses/Gone'
         "429":
           content:
             application/json:
@@ -3043,6 +3063,8 @@ paths:
           description: Chat not found
         "409":
           $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
         "413":
           $ref: '#/components/responses/RequestTooLarge'
         "429":
@@ -3129,6 +3151,8 @@ paths:
           description: Space or chat not found
         "409":
           $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
         "413":
           $ref: '#/components/responses/RequestTooLarge'
         "429":
@@ -3359,6 +3383,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Space, collection or view not found
+        "410":
+          $ref: '#/components/responses/Gone'
       security:
       - bearerauth: []
       summary: List collection objects
@@ -3415,6 +3441,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Space or collection not found
+        "410":
+          $ref: '#/components/responses/Gone'
       security:
       - bearerauth: []
       summary: List collection views
@@ -3628,6 +3656,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: File or icon not found in this space
+        "410":
+          $ref: '#/components/responses/Gone'
         "412":
           content:
             application/json:
@@ -3730,6 +3760,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: File or icon not found in this space
+        "410":
+          $ref: '#/components/responses/Gone'
         "412":
           content:
             application/json:
@@ -4074,6 +4106,8 @@ paths:
           description: Object or space not found
         "409":
           $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
         "429":
           $ref: '#/components/responses/RateLimited'
       security:
@@ -4151,6 +4185,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Object or space not found
+        "410":
+          $ref: '#/components/responses/Gone'
       security:
       - bearerauth: []
       summary: Get an object
@@ -4266,6 +4302,8 @@ paths:
           description: Object, space, or referenced block not found
         "409":
           $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
         "422":
           content:
             application/json:
@@ -4344,6 +4382,8 @@ paths:
           description: Object or space not found
         "409":
           $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
         "429":
           $ref: '#/components/responses/RateLimited'
       security:
@@ -4398,9 +4438,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-          description: Object or space not found, or the object was deleted permanently
+          description: Object or space not found
         "409":
           $ref: '#/components/responses/Conflict'
+        "410":
+          $ref: '#/components/responses/Gone'
         "429":
           $ref: '#/components/responses/RateLimited'
       security:
@@ -5084,6 +5126,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Space, query or view not found
+        "410":
+          $ref: '#/components/responses/Gone'
       security:
       - bearerauth: []
       summary: List query results
@@ -5140,6 +5184,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Space or query not found
+        "410":
+          $ref: '#/components/responses/Gone'
       security:
       - bearerauth: []
       summary: List query views

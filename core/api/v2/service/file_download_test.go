@@ -13,6 +13,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/api/core/mock_apicore"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/mock_files"
@@ -142,4 +143,29 @@ func TestFileDownloadAccessChecks(t *testing.T) {
 			require.Equal(t, tc.status, v2Err(t, err).Status)
 		})
 	}
+}
+
+func TestFileDownloadDeletedForGood(t *testing.T) {
+	t.Run("a file object deleted for good is a 410", func(t *testing.T) {
+		// given: no file service expectation — nothing is downloaded
+		fx := newV2Fixture(t)
+		fx.fileService = mock_apicore.NewMockFileObjectService(t)
+		require.NoError(t, fx.objectStore.BindSpaceId(context.Background(), testSpaceId, "file1"))
+		fx.deleted["file1"] = true
+
+		_, err := fx.GetFileContent(context.Background(), testSpaceId, "file1", 0)
+
+		assert.Equal(t, v2model.ObjectDeleted(testSpaceId, "file1"), err)
+	})
+
+	t.Run("a read outside the grant is refused before the deletion mark is read", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.fileService = mock_apicore.NewMockFileObjectService(t)
+		fx.deleted["file1"] = true
+
+		_, err := fx.GetFileContent(grantCtx(util.GrantPermsRead, "space2"), testSpaceId, "file1", 0)
+
+		require.Equal(t, http.StatusForbidden, v2Err(t, err).Status)
+		fx.readerMock.AssertNotCalled(t, "IsDeleted", mock.Anything, mock.Anything, mock.Anything)
+	})
 }

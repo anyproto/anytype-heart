@@ -220,6 +220,21 @@ func TestObjectRefSteering(t *testing.T) {
 		assert.NotContains(t, err.Error(), "handle number from the last find",
 			"the object resolved — a 404 about something else must not be re-explained as a bad object")
 	})
+
+	t.Run("an object deleted for good is not sent to find", func(t *testing.T) {
+		// a 410 quoting the caller's own value: the id was right, the object
+		// is gone, and a name search could only land on a different one
+		fx := newFixture(t)
+		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
+		fx.stub("GET /v2/spaces/space1/objects/bafygone", 410,
+			`{"status":410,"code":"object_deleted","message":"object \"bafygone\" in space \"space1\" was deleted permanently and cannot be restored"}`)
+
+		_, err := fx.Run(ctx, "read", map[string]any{"object": "bafygone"})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "was deleted permanently")
+		assert.NotContains(t, err.Error(), "run find")
+	})
 }
 
 // TestRestVocabulary pins §8.34's defect 2. The server names routes because

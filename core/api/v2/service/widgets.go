@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/anyproto/any-block/codec/anyblockjson"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
@@ -335,7 +336,12 @@ func (s *Service) resolveWidgetTarget(spaceId, target string) (widgetTarget, err
 				Hintf("find one with %s", v2model.RefSearchSpace(spaceId)))
 	}
 	switch {
+	case deletedRow(details):
+		return widgetTarget{}, v2model.ValidationFailed(
+			fmt.Sprintf("object %q was deleted permanently", target),
+			v2model.Issue{Path: "/target", Message: "a deleted object cannot be a widget target"})
 	case details.GetBool(bundle.RelationKeyIsDeleted):
+		// an uninstalled type or property: removed, not deleted for good
 		return widgetTarget{}, v2model.ValidationFailed(
 			fmt.Sprintf("object %q is deleted", target),
 			v2model.Issue{Path: "/target", Message: "a deleted object cannot be a widget target"})
@@ -508,6 +514,12 @@ func (s *Service) resolveWidgetViewId(ctx context.Context, spaceId string, scope
 			v2model.Issue{Path: "/view_id", Message: "the app shows a personal widget with the target's first view; omit view_id, or make it a space widget"})
 	}
 	read, err := s.reader.ReadObject(ctx, spaceId, target.stored)
+	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+		// deleted for good while its row still looks live (it trails the
+		// delete): the same refusal resolveWidgetTarget gives a tombstone
+		return "", v2model.ValidationFailed(fmt.Sprintf("object %q was deleted permanently", target.stored),
+			v2model.Issue{Path: "/target", Message: "a deleted object cannot be a widget target"})
+	}
 	if err != nil {
 		return "", fmt.Errorf("read widget target %s: %w", target.stored, err)
 	}
