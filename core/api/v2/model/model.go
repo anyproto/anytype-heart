@@ -36,9 +36,16 @@ const (
 	CodeSpaceNotGranted             = "space_not_granted"
 	CodeWriteNotGranted             = "write_not_granted"
 	CodeV1NotAvailableForScopedKeys = "v1_not_available_for_scoped_keys"
-	// Object deletion is limited to objects the calling API key created, and the
-	// message names what IS recorded so the repair is discoverable.
+	// Permanent object deletion is limited to objects the calling API key
+	// created, and the message names what IS recorded so the repair is
+	// discoverable.
 	CodeNotCreatedByThisKey = "not_created_by_this_key"
+	// CodeObjectArchived is the 409 for an edit of an object in the Bin: the
+	// state is the conflict, and restoring the object resolves it.
+	CodeObjectArchived = "object_archived"
+	// CodeFileInUse is the 409 for a permanent delete of a file other
+	// objects still use: removing the uses resolves it.
+	CodeFileInUse = "file_in_use"
 )
 
 // Issue is one path-addressed problem (C6): path into the request
@@ -138,11 +145,28 @@ func V1NotAvailableForScopedKeys(message string) *Error {
 	return NewError(http.StatusForbidden, CodeV1NotAvailableForScopedKeys, message)
 }
 
-// NotCreatedByThisKey is the 403 for an object DELETE outside the calling
-// key's own output. Not a scope failure: the
+// NotCreatedByThisKey is the 403 for a permanent object DELETE outside the
+// calling key's own output. Not a scope failure: the
 // WWW-Authenticate insufficient_scope channel is deliberately NOT used.
 func NotCreatedByThisKey(message string, issues ...Issue) *Error {
 	return NewError(http.StatusForbidden, CodeNotCreatedByThisKey, message, issues...)
+}
+
+// ObjectArchived is the 409 for an edit of an object in the Bin. Archived
+// objects carry every edit restriction, so without this the edit met a
+// restriction 403 saying the refusal was permanent — false, and the one
+// repair, restoring the object, went unnamed. restorable says whether the
+// restore op takes this object; types and properties are restored in the
+// app, and naming an op that refuses them sent callers in a loop.
+func ObjectArchived(spaceId, objectId string, restorable bool) *Error {
+	issue := Issue{Path: "object_id", Message: "the object is archived"}
+	if restorable {
+		issue = issue.Hintf("restore it with %s, then resend this request", RefRestoreObject(spaceId, objectId))
+	} else {
+		issue = issue.WithHint(Plain("restore it from the Bin in the Anytype app, then resend this request"))
+	}
+	return NewError(http.StatusConflict, CodeObjectArchived,
+		fmt.Sprintf("object %q is in the Bin and cannot be edited until it is restored", objectId), issue)
 }
 
 // RequestTooLarge is the 413 for an oversized request body (C3).
@@ -395,13 +419,15 @@ type OutlineEntry struct {
 // dashes and shouting. What a caller needs to know about `removed` is said on
 // the endpoints that set it, where it is specific rather than shared.
 type CreateResult struct {
-	Id      string       `json:"id,omitempty"`
-	Type    string       `json:"type,omitempty"` // type key of the created object
-	Key     string       `json:"key,omitempty"`  // identity key (types, properties)
-	Etag    string       `json:"etag,omitempty"` // etag of the created object
-	DryRun  bool         `json:"dry_run,omitempty"`
-	Created *SideEffects `json:"created,omitempty"`
-	Removed *SideEffects `json:"removed,omitempty"`
+	Id     string `json:"id,omitempty"`
+	Type   string `json:"type,omitempty"` // type key of the created object
+	Key    string `json:"key,omitempty"`  // identity key (types, properties)
+	Etag   string `json:"etag,omitempty"` // etag of the created object
+	DryRun bool   `json:"dry_run,omitempty"`
+	// True when a delete removes the object for good instead of moving it to the Bin, or would on a dry run.
+	Permanent bool         `json:"permanent,omitempty"`
+	Created   *SideEffects `json:"created,omitempty"`
+	Removed   *SideEffects `json:"removed,omitempty"`
 	// A view id is always server-minted (the payload has no id slot), so
 	// without this a caller cannot address the view they just made. The
 	// attached line below is served: swag lifts a field's doc comment onto

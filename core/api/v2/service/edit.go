@@ -188,6 +188,14 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 	if err := checkEditPreconditions(cur.SbType, cur.Heads, ifMatch); err != nil {
 		return nil, err
 	}
+	// an object in the Bin carries every edit restriction, so the edit would
+	// meet a restriction 403 that reads as permanent; the real state is a
+	// conflict the caller resolves by restoring the object, so say that. The
+	// detail, not the Bin membership: the restrictions are computed from
+	// the detail, and this check exists to name THEIR refusal.
+	if isArchivedRead(cur) {
+		return nil, v2model.ObjectArchived(spaceId, objectId, deletableSbType(cur.SbType))
+	}
 	resolvers.scope = s.objectPropertyScope(spaceId, cur)
 	// the object's own restrictions, from the same read — so a dry run reaches
 	// the same verdict as the real edit rather than reporting a success the

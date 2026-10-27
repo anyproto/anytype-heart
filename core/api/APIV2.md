@@ -466,7 +466,8 @@ GET /v2/spaces/{space_id}/objects/{object_id}
                                     # object ids are always full — never compacted
     ?format=anyblock|md             # md read-only, with warnings (C11)
 GET /v2/spaces/{space_id}/objects            # minimal rows (C5)
-DELETE /v2/spaces/{space_id}/objects/{object_id}   # archive, OWN OUTPUT ONLY; ?permanent=true later
+DELETE /v2/spaces/{space_id}/objects/{object_id}   # archive; ?permanent=true deletes for good, OWN OUTPUT ONLY
+POST /v2/spaces/{space_id}/objects/{object_id}/restore   # out of the Bin
 GET /v2/spaces                              # spaces list (read)
 GET /v2/spaces/{space_id}/members            # members list (read) — agents need member ids for assignee/creator values
 GET /v2/spaces/{space_id}/types              # keys + names (paginated, C10)
@@ -529,9 +530,9 @@ GET /v2/spaces/{space_id}/properties/{key}/options    # option names (+color), p
   Until it lands, the wrapper's `describe` tool assembles the type and its
   live option lists itself. The route remains the highest-leverage accuracy
   improvement (§3.4).
-- **`DELETE /objects` (archive)** is built; its complete rule is under
-  Phase 2's *Deleting own output*. The task-tool wrapper does not expose an
-  object-archive verb.
+- **`DELETE /objects` (archive, `?permanent=true`) and `POST …/restore`**
+  are built; their complete rule is under Phase 2's *Archiving, restoring and
+  deleting*. The task-tool wrapper does not expose an object-archive verb.
 - Implementation note: read via the **live smartblock state** → snapshot →
   `anyblockjson.Marshal` (not `ObjectShow`, whose ObjectView is the wrong
   type; not the store snapshot, which lags). Derive `etag` from that same
@@ -818,32 +819,55 @@ holds returns the existing object with its existing name — `name` in the
 result is how a caller detects that — and the embedded file block keeps the
 source-derived filename regardless (`core/api/v2/service/file.go:29`).
 
-#### Deleting own output
+#### Archiving, restoring and deleting
 
-- **`DELETE /objects/{object_id}` archives only objects the calling key
-  created**, read from validated change storage: the tree's signed root is
-  this account AND the first content change carries this account's identity
-  together with the caller's app name, compared EXACTLY as raw text. Details
-  are never consulted. It **fails closed** — no recorded app name, a nameless
-  caller, a provenance read error or a missing provenance dependency all
-  refuse with 403 `not_created_by_this_key` — so objects created in the app,
-  by import, by another member, or before provenance existed are permanently
-  undeletable through this route (`core/api/v2/service/delete.go:189`).
+- **`DELETE /objects/{object_id}` archives any user content the grant can
+  write** — the reach the key already has for edits, which are not
+  creator-checked and can do more damage than a reversible archive. The
+  receipt carries a warning saying where the object went, naming
+  `restore_object`, and saying per object whether this key may also delete
+  it for good. **`POST /objects/{object_id}/restore`** is the inverse over the
+  same reach; types and properties are restored in the app. It answers
+  once the object is editable again (bounded wait; a warning past it).
+  A `PATCH` of an object in the Bin is a 409 `object_archived` naming the
+  restore (archived objects carry every edit restriction, and the
+  restriction 403 used to call itself permanent).
+- **`?permanent=true` deletes for good — only objects the calling key
+  created**, archived first or not, read from validated change storage: the
+  tree's signed root is this account AND the first content change carries
+  this account's identity together with the caller's app name, compared
+  EXACTLY as raw text. Details are never consulted. It **fails closed** — no
+  recorded app name, a nameless caller, a provenance read error or a
+  missing provenance dependency all refuse with 403
+  `not_created_by_this_key` — so objects created in the app, by import, by
+  another member, or before provenance existed can only be archived through
+  the API. More rules keep a hard delete from destroying another member's
+  work or breaking other objects: a change signed by another space member
+  (their app's own migrations count too), a discussion on the object, or a
+  chat object refuse with 403 `forbidden`; a file another object still uses
+  (a block link, a file property including icon and picture, a cover;
+  archived users count, chat attachments are not checked) refuses with 409
+  `file_in_use` naming them (`core/api/v2/service/delete.go`). Same-account
+  edits — the person in the app, another key — share the account identity
+  and cannot be told apart. Right after the delete returns, every read of
+  the object is a 404 saying it was deleted permanently.
+  `?skip_bin` is refused with a 400 steering to `permanent`.
 - **A positive allowlist of user content runs first**: pages (every
   layout-based object, including notes, tasks, bookmarks, sets and
   collections), templates, file objects and the store-backed chat objects.
-  Everything else is refused before provenance is even read — workspaces,
+  Everything else is refused before any provenance read — workspaces,
   widgets, space views, participants, profiles, dates and every other system
   or derived surface, whatever their creation signature looks like. Type,
   property and option targets are steered to their own DELETE routes before
   that check (`core/api/v2/service/delete.go:147`).
 - **Check order.** The space and write grants refuse before ownership is
-  consulted. Deleting an already-archived object is a 200 no-op carrying an
-  `already archived` warning. `?dry_run=true` is the deletability probe and
-  runs every check this route owns — existence, steer, allowlist, grant,
-  provenance — but **not** the archive-time restriction checks, so a
-  "deletable" verdict can still meet a 403 on the real call
-  (`core/api/v2/service/delete.go:106`).
+  consulted. Archiving an already-archived object is a 200 no-op carrying an
+  `already archived` warning; restoring one that is not archived is a 200
+  carrying `not archived`. `?dry_run=true` is the probe and runs every check
+  the route owns — existence, steer, allowlist, grant, and for a permanent
+  delete the provenance rules — but **not** the restriction checks inside
+  the archive and delete RPCs, so a "deletable" verdict can still meet a 403
+  on the real call.
 - Because deletion compares app names, **key issuance requires a non-empty
   app name and rejects — never truncates — one longer than 128 bytes**, so no
   key can mint itself into permanently unattributable output. Names are
@@ -1889,8 +1913,8 @@ opt-in on every channel** (`?create_missing_options=true`; without it an
 unmatched name is refused — Phase 2), and the wrapper additionally
 pre-validates names for the small tier · **key scope and space grants gate
 `/v2`** (§1.5) · **api keys are minted, frozen and resolved by one identity
-layer** (§1.6) · **object DELETE reaches own output only**, fail-closed
-(Phase 2) · **the small-model contract is the task-tool wrapper (§7), not a
+layer** (§1.6) · **object DELETE archives any user content the grant can
+write and deletes for good only own output**, fail-closed (Phase 2) · **the small-model contract is the task-tool wrapper (§7), not a
 REST mode**.
 
 **Benchmark-gated**: B1 — whether *large*-model docs/steering prefer
@@ -1902,7 +1926,7 @@ guidance.
 
 **Deferred**: cross-object batch · block-scoped preconditions · conflict
 rebase · events/subscriptions beyond the chat and search streams · core-profile strict
-schema · `?permanent=true` hard delete · individually addressable blocks
+schema · individually addressable blocks
 inside table cells.
 
 **Named build items** (open today; budget them):
@@ -2018,7 +2042,8 @@ schemas follow C13.
    Whether a flag is wanted before the first public release is an **open
    rollout task**, not a shipped fact. OpenAPI generated from day one.
 2. Phase 2, then 3a/3b — shipped, with the Phase 1–2 R11 additions: files,
-   spaces and members, plus object archive (own-output-only).
+   spaces and members, plus object archive, restore and own-output
+   permanent delete.
 3. Benchmarks run once the harness + Phase 3a exist; gated items land in minor
    releases (additive to the closed op set).
 4. Phase 4, Phase 5 — shipped (`cmd/anytype` is the CLI). The v1 deprecation

@@ -34,7 +34,7 @@ func TestObjectReadAdapter(t *testing.T) {
 	sb.AddBlock(simple.New(&model.Block{Id: "p1",
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "hello"}}}))
 
-	adapter := newObjectReadAdapter(fakeObjectGetter{sb: sb})
+	adapter := newObjectReadAdapter(fakeObjectGetter{sb: sb}, nil)
 	read, err := adapter.ReadObject(context.Background(), "space1", "obj1")
 	require.NoError(t, err)
 

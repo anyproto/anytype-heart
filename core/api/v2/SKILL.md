@@ -73,7 +73,8 @@ whether you may write. Ask this instead of discovering limits through 403s
 | show/hide a view column, edit a view | op `update_view` — works on queries, collections and a type's default view (PATCH the type OBJECT id from `GET …/types/{key}`) |
 | add / reorder / remove a view | ops `insert_view` (`copy_from` duplicates one) · `move_view` (`position:"first"` = default tab) · `delete_view` |
 | create an object | `POST …/objects` — shortcut `{type, name, properties, markdown}` covers most cases |
-| delete an object you created | `DELETE …/objects/{id}` — archives (Bin, reversible in the app). Only works on objects THIS key created after provenance shipped; anything else → 403 `not_created_by_this_key`, permanently — don't retry, archive in the app instead. Ownership is matched on the app name EXACTLY (byte-for-byte — re-pair under the identical name to keep delete rights). User content only: system objects 403. Probe first with `?dry_run=true` |
+| archive / restore an object | `DELETE …/objects/{id}` moves it to the Bin — any user content you can write; system objects 403. `POST …/objects/{id}/restore` brings it back (an object in the Bin refuses edits with 409 `object_archived` until then). The receipt's warning says whether THIS key may also delete it for good |
+| delete an object for good | `DELETE …/objects/{id}?permanent=true` — archived first or not, only objects THIS key created (app name matched EXACTLY, byte-for-byte), with no other member's changes and no discussion, and for a file, that no other object uses (409 `file_in_use` names them; chat attachments are not checked). Afterwards reads 404 "deleted permanently". Anything else → 403, permanently — archive instead. Probe with `?dry_run=true`; there is no `skip_bin` |
 | curate a collection | PATCH ops `add_items` / `remove_items` on the collection object |
 | read a query / collection | `GET …/queries/{id}/objects` · `…/collections/{id}/objects` (`?view=`, `?fields=`) |
 | new type / property | `POST …/types` · `POST …/properties`; select options ride the property, or `?create_missing_options=true` mints them from values |
@@ -399,12 +400,11 @@ read: no `Idempotency-Key`, `dry_run` ignored.
 
 ## Not in v2 (yet)
 
-- **Object DELETE is own-output-only** — `DELETE …/objects/{id}` archives
-  only objects THIS key created (recorded at creation, immutably). Objects
+- **Permanent DELETE is own-output-only** — `?permanent=true` removes only
+  objects THIS key created (recorded at creation, immutably). Objects
   created before that shipped, in the app, by import or by other members
-  are permanently 403 for every key — there is no "delete arbitrary
-  objects" capability. `?dry_run=true` is the cheap deletability probe;
-  types/properties still use their own DELETE routes.
+  can be archived and restored, never deleted for good through the API.
+  Types/properties use their own DELETE routes and have no API restore.
 - No file content extraction ("read this PDF") in the API. Download its
   bytes with `GET …/files/{file_id}/content` and process them in the client.
 - No per-chat message full-text search under /v2 (v1 for now).

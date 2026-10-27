@@ -340,9 +340,15 @@ func (s *Service) resolveWidgetTarget(spaceId, target string) (widgetTarget, err
 			fmt.Sprintf("object %q is deleted", target),
 			v2model.Issue{Path: "/target", Message: "a deleted object cannot be a widget target"})
 	case details.GetBool(bundle.RelationKeyIsArchived):
-		return widgetTarget{}, v2model.ValidationFailed(
-			fmt.Sprintf("object %q is in the bin", target),
-			v2model.Issue{Path: "/target", Message: "an archived object cannot be a widget target; restore it first"})
+		issue := v2model.Issue{Path: "/target", Message: "an archived object cannot be a widget target"}
+		switch model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout)) {
+		case model.ObjectType_objectType, model.ObjectType_relation, model.ObjectType_relationOption:
+			// the restore op refuses schema objects; the app's Bin restores them
+			issue = issue.WithHint(v2model.Plain("restore it from the Bin in the Anytype app first"))
+		default:
+			issue = issue.Hintf("restore it with %s first", v2model.RefRestoreObject(spaceId, target))
+		}
+		return widgetTarget{}, v2model.ValidationFailed(fmt.Sprintf("object %q is in the bin", target), issue)
 	}
 	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
 	if layout == model.ObjectType_relation {

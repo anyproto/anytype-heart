@@ -185,11 +185,15 @@ Chats use order ids and `last_state_id` for concurrency, and have no etag.
 Resource bodies reject unknown fields with `400` and name the offending
 field. Document bodies are capped at 10 MiB; structured bodies at 1 MiB.
 
-Deleting an object, type, or property archives it in Bin, where the Anytype
-app can restore it. Object deletion is limited by creator provenance; see
-the [delete operation](https://developers.anytype.io/docs/reference/v2/delete-object)
-for its requirements. Deleting a chat message, including any attachment
-cleanup that follows, is not an archive.
+Deleting an object, type, or property archives it in Bin. The
+[restore operation](https://developers.anytype.io/docs/reference/v2/restore-object)
+brings an archived object back; types and properties are restored in the
+Anytype app. An archived object cannot be edited until it is restored. With
+`permanent=true`, the
+[delete operation](https://developers.anytype.io/docs/reference/v2/delete-object)
+removes an object for good, but only one the calling key created. Deleting
+a chat message, including any attachment cleanup that follows, is not an
+archive.
 
 ## Errors and warnings
 

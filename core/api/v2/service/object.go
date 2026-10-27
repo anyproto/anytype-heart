@@ -164,10 +164,12 @@ func (q ObjectQuery) validate() (objectReadPlan, error) {
 
 // mapReadError converts live-read failures into C6 errors.
 func mapReadError(spaceId, objectId string, err error) error {
-	// an id no tree has, and a tree whose storage was deleted for good (a
-	// permanently deleted object that is no longer cached), are the same
-	// answer: nothing to read
-	if errors.Is(err, treestorage.ErrUnknownTreeId) || errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+	// an id no tree has, and a tree deleted for good, are both nothing to
+	// read; the deleted one says so, so a caller can tell it from a typo
+	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+		return deletedPermanently(spaceId, objectId)
+	}
+	if errors.Is(err, treestorage.ErrUnknownTreeId) {
 		return v2model.NotFound(fmt.Sprintf("object %q not found in space %q", objectId, spaceId))
 	}
 	if errors.Is(err, space.ErrSpaceNotExists) || errors.Is(err, space.ErrSpaceDeleted) {

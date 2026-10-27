@@ -49,7 +49,8 @@ func (s *Service) CreateDiscussion(ctx context.Context, spaceId, objectId string
 		// write consults — so the refusal has to happen here
 		if row.GetBool(bundle.RelationKeyIsArchived) {
 			return nil, v2model.ValidationFailed(fmt.Sprintf("object %q is archived", objectId),
-				v2model.Issue{Path: "object_id", Message: "an archived object cannot start a discussion; restore it from Bin in the Anytype app first"})
+				v2model.Issue{Path: "object_id", Message: "an archived object cannot start a discussion"}.
+					Hintf("restore it with %s first", v2model.RefRestoreObject(spaceId, objectId)))
 		}
 	}
 	if err := discussionTargetRefusal(spaceId, objectId, read.SbType); err != nil {

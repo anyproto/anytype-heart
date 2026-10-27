@@ -1,6 +1,63 @@
 # API v2 object DELETE (plan 3.3) — creator provenance and the delete surface
 
-Status: **built** · implementation record · 2026-08-14.
+Status: **built** · implementation record · 2026-08-14 · **revised
+2026-10-26** (§0 — read it first: archive is no longer creator-gated).
+
+## 0. Revision 2026-10-26 — archive any, delete for good only own output
+
+Decided 2026-10-26: an agent asked to "archive these useless objects" was
+refused for everything made in the app. What changed:
+
+- **Archive is no longer creator-gated.** `DELETE …/objects/{id}` archives
+  any user content the grant can write. The own-output gate guarded the one
+  fully reversible action while edits — which can empty a body, retype,
+  rename — were never creator-checked; it blocked the commonest agent
+  cleanup request and pushed agents toward worse workarounds (renaming to
+  "[old]", emptying bodies). Space role and object restrictions still apply
+  inside the archive RPC, so a key can archive nothing its person could not.
+- **`?permanent=true` ships (was §9.7 "reserved")** and carries the §10
+  creator rule this spec designed, unchanged, plus rules a hard delete needs
+  and an archive does not: **no change signed by another space member**
+  (the co-author scan over the same validated history, headers only;
+  another member's app writing a migration on load counts, fail-closed),
+  **no discussion** (a separate tree the scan never sees; deleting would
+  orphan its replies — the app keeps drafts with discussions for the same
+  reason), **no chat objects** (store-backed, never stamped), and **for a
+  file, no other object still using it** (a block link, any file-format
+  property including iconImage and picture, a cover; archived users count;
+  hidden objects count only through properties, so the Bin linking an
+  archived file is not a use). It works on archived and live objects alike
+  (the app's delete from the Bin does not require a prior archive either).
+  No grant capability gates it.
+- **`POST …/objects/{id}/restore`** is the inverse of the archive over the
+  same reach; types/properties/options are steered to the app. A `PATCH` of
+  an archived object is a 409 `object_archived` naming the restore (or the
+  app, for a type). Bin state for DELETE/restore is read from the Bin
+  collection's membership, which the archive RPC changes before returning;
+  the object's isArchived detail and its store row are written afterwards
+  by the Bin's reconcile goroutine. Because edit restrictions read that
+  detail, a restore waits (bounded, 2 s) until it clears, so the restore's
+  200 means "editable"; past the bound it answers 200 with a warning.
+- **A permanently deleted object reads as deleted at once.** Its tree is
+  removed asynchronously and still loaded for a moment; the read adapter
+  checks the head-storage deletion mark, set before the delete RPC returns,
+  and every v2 read answers 404 "deleted permanently".
+- **Every archive receipt carries a Bin notice**: where the object went, the
+  restore op, and — evaluated per object — whether this key may also delete
+  it for good (`resend with ?permanent=true`) or why not.
+- `?skip_bin` is refused with a 400 steering to `permanent`.
+
+Sections below are kept as the record; where they say "DELETE" for the
+creator-gated operation, read "permanent DELETE". §9.1, §9.3, §9.4, §9.7 and
+§17.2 carry inline notes.
+
+Known gaps, recorded: same-account edits — made in the app, or through
+another key — are indistinguishable from the key's own (the stamp is on the
+creating change only, §11.4), so a permanent delete can still erase the
+person's own later edits to an agent-created object; chat-message
+attachments are not indexed as links, so a file attached in a chat does not
+count as "in use"; and a hard delete of a page broadcasts heart's
+ObjectCleanupSuggestion, so the person's app may show a cleanup prompt.
 
 Covers the implemented plan item 3.3
 (`DELETE /v2/spaces/{space_id}/objects/{object_id}`; APIV2.md §8.42,
@@ -339,7 +396,12 @@ What remains inside the trust domain, stated plainly rather than hidden:
 - **Legacy unscoped keys can archive anything via `/v1`** (`DeleteObject` →
   `ObjectSetIsArchived`, `core/api/service/object.go:218-234`, grandfathered
   by the migration stance). For legacy keys the v2 rule is therefore a
-  property of the v2 surface, not a global guarantee. For **scoped** keys it
+  property of the v2 surface, not a global guarantee. (Corrected
+  2026-10-26: the same holds for a scoped key with an UNRESTRICTED grant —
+  all spaces, readwrite — which APIV2.md serves on `/v1` because it grants
+  no less than an unscoped key. Only NARROWED grants are refused on `/v1`.
+  Since §0, archive is ungated on `/v2` too, so this asymmetry no longer
+  matters; `/v1` has no hard delete.) For narrowed keys it
   is a real boundary: they are refused on `/v1` wholesale
   (`v1_not_available_for_scoped_keys`), and on `/v2` the only archive
   channels are this route (gated) and `set_properties` — where `isArchived`
@@ -486,7 +548,9 @@ v2 from day one, which is most of what "free" buys.
 
 ## 9. The DELETE surface
 
-**9.1 Semantics: archive.** `DELETE /v2/spaces/{space_id}/objects/{object_id}`
+**9.1 Semantics: archive.** *(Revised, §0: archive is ungated; the
+creator rule below now governs `?permanent=true`.)*
+`DELETE /v2/spaces/{space_id}/objects/{object_id}`
 archives (Bin, reversible in the app) via `ObjectSetIsArchived` — v1 parity
 (`core/api/service/object.go:224`) and v2 uniformity (`DeleteType`/
 `DeleteProperty`, `core/api/v2/service/schema_write.go:580,792`). Real
@@ -512,7 +576,9 @@ plus the registry entry `routeKey(http.MethodDelete,
 `core/api/v2/authz.go` — the conformance walk fails the build without it, so
 the route cannot ship unclassified.
 
-**9.3 Authorization is a conjunction, not an alternative.** For scoped keys
+**9.3 Authorization is a conjunction, not an alternative.** *(Revised, §0:
+the conjunction now applies to permanent deletes; an archive needs the
+grants alone.)* For scoped keys
 the existing gates run first and unchanged: space ∈ `grant.spaces`
 (`space_not_granted`) and `perms == readwrite` (`write_not_granted`). The
 creator check is **in addition to** the write grant — a readwrite grant
@@ -539,7 +605,9 @@ dryRun)`):
    without a content change could even take its first content change from
    an API request. Provenance answers "whose is it"; the allowlist answers
    "is this deletable content".
-4. **Provenance check** (§10). Mismatch → 403 `not_created_by_this_key`.
+4. **Provenance check** (§10) — permanent deletes only since §0, with the
+   co-author and file-in-use rules after it. Mismatch → 403
+   `not_created_by_this_key`.
 5. Already archived → 200 with `warnings: [{message: "already archived"}]`
    (idempotent no-op, consistent with C8 retry semantics).
 6. `ObjectSetIsArchived{IsArchived: true}`; RPC failure → 500
@@ -588,10 +656,10 @@ real call. Accepted rather than built, because after the 3a allowlist
 clause (own-account creations only) those refusals are all but
 unreachable; the OpenAPI description states the boundary.
 
-**9.7 Reserved, unchanged:** `?permanent=true` (hard delete through the bin
-pipeline) — when it comes, it consumes the same provenance under the same
-rule and derived-object guard. Its additional consistency rules are not
-designed here.
+**9.7 `?permanent=true` — built 2026-10-26 (§0).** Hard delete through
+`ObjectListDelete`, consuming the same provenance under the same rule and
+derived-object guard, plus the co-author and file-in-use rules. Receipt:
+`{id, type, permanent: true}`.
 
 ## 10. The enforcement read — algorithm and cost
 
@@ -849,7 +917,9 @@ the route without the immutable record would fail closed for every object.
    weaker rule than the one that steered it away.
 2. A "delete any" capability for keys that should manage whole spaces
    (grant bit? bot accounts?) — a separate future product decision, not a
-   gap in this design (§8, decided); nothing here precludes it.
+   gap in this design (§8, decided); nothing here precludes it. *(2026-10-26:
+   archive-any shipped without a grant bit, §0; permanent delete of objects
+   the key did not create stays out, and no grant for it is planned.)*
 3. Whether `whoami` should surface the key's slug (cheap, helps agents
    predict deletability against a future `createdVia` read) — lean yes,
    one field, but it is attribution-adjacent disclosure and can wait.

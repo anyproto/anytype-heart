@@ -204,9 +204,10 @@ for a capability the middleware does not have (Q7).
   (ranges, conditional GET); none of C2-C13 applies to it. Document
   `GET /v1/spaces/{id}/files/{fileId}?width=` as the transport endpoint.
 - **Delete: no dedicated v2 file route.** A file object is an object; the
-  built `DELETE /v2/spaces/{space_id}/objects/{object_id}` archive covers
-  API-key-created files under its own-output-only provenance rule. v1's own
-  DeleteFile uses the same archive RPC.
+  built `DELETE /v2/spaces/{space_id}/objects/{object_id}` archives any file
+  the grant can write, and with `?permanent=true` deletes for good a file
+  this key created that no other object uses (APIV2_OBJECT_DELETE.md §0).
+  v1's own DeleteFile uses the same archive RPC.
 - **The real gap — discovery (BUILT, Phase 7 — APIV2.md §8.8).** The gap
   was: the v2 query surface scoped rows to `util.ObjectLayouts`, which
   excludes file layouts (`util/constant.go:9-18`), while v1 search has an

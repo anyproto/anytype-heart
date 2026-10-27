@@ -140,6 +140,7 @@ IDEMPOTENT_OPERATIONS = {
     "upload_file",
     "patch_object",
     "delete_object",
+    "restore_object",
     "create_chat",
     "add_chat_message",
     "edit_chat_message",

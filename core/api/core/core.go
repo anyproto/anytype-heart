@@ -88,6 +88,11 @@ type EditNeeds struct {
 // read path (APIV2.md §8: not ObjectShow, not the store snapshot).
 type ObjectReader interface {
 	ReadObject(ctx context.Context, spaceId string, objectId string) (ObjectRead, error)
+	// InBin reports whether the object is in the space's Bin, read from the
+	// Bin collection itself: the archive RPC changes its membership before
+	// returning, while the object's own isArchived detail (and its store
+	// row) are written later by a reconcile goroutine.
+	InBin(ctx context.Context, spaceId string, objectId string) (bool, error)
 }
 
 // ErrTemplateUnavailable is what CreateObjectFromSnapshot returns when the
@@ -198,22 +203,34 @@ type ObjectMutator interface {
 
 // ObjectProvenance reads an object's creator provenance from validated
 // change storage — never from details (APIV2_OBJECT_DELETE.md §10). It is
-// the enforcement read behind DELETE /v2/spaces/{space_id}/objects/{object_id}:
-//
-//   - accountMatch reports the root clause — the tree's signed root carries
-//     this account's identity (other members' objects report false; note
-//     that some derived shapes DO carry a signed root — the personal space's
-//     derive path and every FileObject sign with the account key — so a
-//     true here does not by itself mean "user content": the route's sbType
-//     allowlist owns that exclusion);
-//   - integrationName is the key clause — the raw app name recorded on the
-//     first account-signed content change (never normalized, compared
-//     exactly by the caller), or "" when none is recorded (legacy objects,
-//     app-created objects, the §10 same-account race edge);
-//   - err is an infrastructure failure (space/tree unavailable). Callers
-//     MUST refuse on err — the rule is fail-closed in every direction.
+// the enforcement read behind DELETE /v2/spaces/{space_id}/objects/{object_id}
+// ?permanent=true. err is an infrastructure failure (space/tree
+// unavailable); callers MUST refuse on err — the rule is fail-closed in
+// every direction.
 type ObjectProvenance interface {
-	CreatorProvenance(ctx context.Context, spaceId string, objectId string) (accountMatch bool, integrationName string, err error)
+	CreatorProvenance(ctx context.Context, spaceId string, objectId string) (Provenance, error)
+}
+
+// Provenance is what an object's validated change history records about
+// who made it.
+type Provenance struct {
+	// AccountMatch is the root clause: the tree's signed root carries this
+	// account's identity. Other members' objects report false. Some derived
+	// shapes DO carry a signed root — the personal space's derive path and
+	// every FileObject sign with the account key — so true does not by
+	// itself mean "user content": the route's sbType allowlist owns that
+	// exclusion.
+	AccountMatch bool
+	// IntegrationName is the key clause: the raw app name recorded on the
+	// first account-signed content change (never normalized, compared
+	// exactly by the caller), or "" when none is recorded (legacy objects,
+	// app-created objects, the §10 same-account race edge).
+	IntegrationName string
+	// EditedByOthers reports that some change in the history is signed by
+	// an identity other than this account's: another space member edited
+	// the object, so destroying it destroys their work too. Only evaluated
+	// when AccountMatch holds.
+	EditedByOthers bool
 }
 
 type ClientCommands interface {
