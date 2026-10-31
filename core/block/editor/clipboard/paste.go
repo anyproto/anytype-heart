@@ -131,7 +131,7 @@ func (p *pasteCtrl) forkFilledEmptyBlock() (err error) {
 //   - FocusedBlockId set → singleRange mode (cursor is inside a block). Also sets
 //     IsPartOfBlock = true so that single-text-block paste routes to intoBlock.
 //     If the focused block is a table cell, switches to intoTableCell to flatten it while
-//     keeping the marks of a single pasted block; if it is Code, switches to intoCodeBlock.
+//     keeping the formatting of paragraph text; if it is Code, switches to intoCodeBlock.
 //   - Multiple selIds → multiRange mode (several blocks selected for replacement).
 //   - Single text block in paste state + IsPartOfBlock → intoBlock mode (merge inline).
 //   - Otherwise stays in singleRange mode (split at cursor, insert paste blocks in between).
@@ -571,9 +571,9 @@ func (p *pasteCtrl) normalize() {
 
 // intoTableCell handles pasting into a table cell. A cell holds exactly one text block, so
 // the pasted content is flattened into a single line-joined string — but unlike a code
-// block, a cell supports inline marks and a text color, so the formatting of a single
-// pasted block is carried over instead of being dropped (GO-2321). Mixed content keeps
-// pasting from the text slot; see cellPasteContent.
+// block, a cell supports inline marks and a text color, so text keeps its formatting instead
+// of having it dropped (GO-2321). Anything else keeps pasting from the text slot; see
+// cellPasteContent.
 func (p *pasteCtrl) intoTableCell() (err error) {
 	selText := p.getFirstSelectedText()
 	if selText == nil {
@@ -598,15 +598,14 @@ func (p *pasteCtrl) intoTableCell() (err error) {
 
 // cellPasteContent decides what the paste is flattened into before it lands in a cell.
 //
-// A single pasted text block flattens losslessly: a cell is itself one text block, so the
-// block's marks and colors carry over to it (GO-2321). Mixed content does not flatten that
-// way. Joining several blocks into raw text drops the structure the markdown text slot
-// still holds — code fences, indentation of nested blocks — and the cell has no room for
-// that structure as blocks either. So mixed content keeps pasting from the text slot, which
-// is what it did before cells got a mode of their own.
+// Paragraph text flattens losslessly: a cell is a paragraph text block itself, so the marks
+// and colors of what was copied transfer straight onto it (GO-2321). No other shape does.
+// A Code or Toggle block, a heading, or a nested block's indentation, only fits in a cell as
+// text, and the markdown text slot renders that structure while a raw line join throws it
+// away — so anything but plain paragraph text keeps pasting from the text slot, as it did
+// before cells got a mode of their own.
 func (p *pasteCtrl) cellPasteContent() *model.Block {
-	textCount, nonTextCount := p.countPastedTextBlocks()
-	if (textCount != 1 || nonTextCount != 0) && p.mode.textBuf != "" {
+	if !p.pastesParagraphTextOnly() && p.mode.textBuf != "" {
 		return &model.Block{
 			Content: &model.BlockContentOfText{
 				Text: &model.BlockContentText{
@@ -619,21 +618,37 @@ func (p *pasteCtrl) cellPasteContent() *model.Block {
 	return p.flattenForCell()
 }
 
-// countPastedTextBlocks reports what the paste state holds, so a single block that flattens
-// losslessly can be told apart from mixed content that cannot.
-func (p *pasteCtrl) countPastedTextBlocks() (textCount, nonTextCount int) {
+// pastesParagraphTextOnly reports whether the paste is made up entirely of paragraph text
+// blocks, which is the one shape a cell can take over without losing anything. Non-text
+// blocks have no place in a cell at all, any other text style carries meaning a plain
+// paragraph cannot express, and a block owning children carries nesting that a line join
+// flattens away.
+func (p *pasteCtrl) pastesParagraphTextOnly() bool {
+	var (
+		textCount    int
+		nonTextCount int
+		nonParagraph bool
+		nested       bool
+	)
 	_ = p.ps.Iterate(func(b simple.Block) (isContinue bool) {
 		if b.Model().Id == p.ps.RootId() {
 			return true
 		}
-		if _, ok := b.(text.Block); ok {
-			textCount++
-		} else {
+		if len(b.Model().GetChildrenIds()) > 0 {
+			nested = true
+		}
+		tb, ok := b.(text.Block)
+		if !ok {
 			nonTextCount++
+			return true
+		}
+		textCount++
+		if tb.Model().GetText().GetStyle() != model.BlockContentText_Paragraph {
+			nonParagraph = true
 		}
 		return true
 	})
-	return textCount, nonTextCount
+	return textCount > 0 && nonTextCount == 0 && !nonParagraph && !nested
 }
 
 // flattenForCell joins every pasted text block into one line-separated string and shifts
