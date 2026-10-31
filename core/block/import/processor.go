@@ -234,9 +234,8 @@ func (p *importProcessor) initConversionFields(converterResponse *common.Respons
 	}
 	p.converterResponse = converterResponse
 	p.errors = errors
-	p.oldIDToNew = make(map[string]string, len(converterResponse.Snapshots))
-	p.seedExistingSpaceObjects()
 	p.oldIDToNew = make(map[string]string, len(converterResponse.Snapshots)+len(converterResponse.KeptIDs))
+	p.seedExistingSpaceObjects()
 	// a converter's kept ids (a bundle's declared-deleted targets, SPEC §2c)
 	// map to themselves before any object is created, so every creation-time
 	// rewrite keeps them instead of writing the missing-object sentinel; a
