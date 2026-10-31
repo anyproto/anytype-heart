@@ -60,17 +60,7 @@ func (s *Service) GetListViews(ctx context.Context, spaceId string, listId strin
 		for _, view := range content.Dataview.Views {
 			var filters []apimodel.Filter
 			for _, f := range view.Filters {
-				if f.Condition == model.BlockContentDataviewFilter_None {
-					continue
-				}
-				apiCond, _ := filter.ToApiCondition(f.Condition)
-				filters = append(filters, apimodel.Filter{
-					Id:          f.Id,
-					PropertyKey: f.RelationKey,
-					Format:      RelationFormatToPropertyFormat[f.Format],
-					Condition:   apiCond,
-					Value:       f.Value.GetStringValue(),
-				})
+				filters = appendListViewFilters(filters, f)
 			}
 			var sorts []apimodel.Sort
 			for _, srt := range view.Sorts {
@@ -97,6 +87,33 @@ func (s *Service) GetListViews(ctx context.Context, spaceId string, listId strin
 	paginatedViews, hasMore := pagination.Paginate(views, offset, limit)
 
 	return paginatedViews, total, hasMore, nil
+}
+
+// appendListViewFilters flattens grouped dataview filters into the API's
+// existing list of leaf filters. Group nodes have no API condition of their
+// own, but their nested conditions must still be returned.
+func appendListViewFilters(filters []apimodel.Filter, f *model.BlockContentDataviewFilter) []apimodel.Filter {
+	if f == nil {
+		return filters
+	}
+	if f.Condition == model.BlockContentDataviewFilter_None {
+		for _, nested := range f.NestedFilters {
+			filters = appendListViewFilters(filters, nested)
+		}
+		return filters
+	}
+
+	apiCond, ok := filter.ToApiCondition(f.Condition)
+	if !ok {
+		return filters
+	}
+	return append(filters, apimodel.Filter{
+		Id:          f.Id,
+		PropertyKey: f.RelationKey,
+		Format:      RelationFormatToPropertyFormat[f.Format],
+		Condition:   apiCond,
+		Value:       f.Value.GetStringValue(),
+	})
 }
 
 // GetObjectsInList retrieves objects in a list
