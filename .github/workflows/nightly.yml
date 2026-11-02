@@ -42,7 +42,8 @@ permissions:
 
 jobs:
   diff-check:
-    runs-on: ubuntu-latest
+    if: github.repository_owner == 'anyproto' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
     outputs:
       changed: ${{ steps.diff_check.outputs.changed }}
     steps:
@@ -80,6 +81,11 @@ jobs:
       html_url: ${{ steps.release_info.outputs.html_url }}
       tag_name: ${{ steps.release_info.outputs.tag_name }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
       - name: Install Go
         uses: actions/setup-go@v7
         with:
@@ -95,11 +101,6 @@ jobs:
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
-
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
 
       - name: Install brew and node deps
         run: make install-brew-and-node-deps
@@ -261,10 +262,11 @@ jobs:
   notify:
     needs:
       - build
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
+    if: ${{ always() && (github.repository_owner == 'anyproto' || github.event_name == 'workflow_dispatch') }}
+    runs-on: ubuntu-24.04
     steps:
       - name: Trigger Nightly Builds workflow in repo anyproto/anytype-ts
+        if: github.repository_owner == 'anyproto'
         run: |
           curl -X POST \
             -H "Accept: application/vnd.github+json" \
@@ -273,7 +275,7 @@ jobs:
             -d '{"ref":"develop","inputs":{"run-diff-check":"false"}}'
 
       - name: Trigger integration tests in anytype-suite
-        if: needs.build.outputs.tag_name != ''
+        if: github.repository_owner == 'anyproto' && needs.build.outputs.tag_name != ''
         run: |
           curl -X POST \
             -H "Authorization: token ${{ secrets.ANYTYPE_SUITE_TRIGGER_TOKEN }}" \
@@ -282,6 +284,7 @@ jobs:
             -d "{\"event_type\": \"test-release\", \"client_payload\": {\"version\": \"${{ needs.build.outputs.tag_name }}\"}}"
 
       - name: Notify Telegram (workflow result)
+        if: github.repository_owner == 'anyproto'
         uses: appleboy/telegram-action@v1.1.1
         with:
           to: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && secrets.TELEGRAM_CHAT_ID_ALERTS || secrets.TELEGRAM_CHAT_ID_RELEASE_TRAIN }}

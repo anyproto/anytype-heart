@@ -25,6 +25,7 @@ permissions:
 
 jobs:
   perftests-macos:
+    if: github.repository_owner == 'anyproto' || github.event_name == 'workflow_dispatch'
     timeout-minutes: 60
     runs-on: ${{ github.event.inputs.run-on-runner-mac || 'macos-15' }}
     steps:
