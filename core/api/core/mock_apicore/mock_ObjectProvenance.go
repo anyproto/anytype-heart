@@ -5,6 +5,8 @@ package mock_apicore
 import (
 	context "context"
 
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
+
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -22,38 +24,31 @@ func (_m *MockObjectProvenance) EXPECT() *MockObjectProvenance_Expecter {
 }
 
 // CreatorProvenance provides a mock function with given fields: ctx, spaceId, objectId
-func (_m *MockObjectProvenance) CreatorProvenance(ctx context.Context, spaceId string, objectId string) (bool, string, error) {
+func (_m *MockObjectProvenance) CreatorProvenance(ctx context.Context, spaceId string, objectId string) (apicore.Provenance, error) {
 	ret := _m.Called(ctx, spaceId, objectId)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreatorProvenance")
 	}
 
-	var r0 bool
-	var r1 string
-	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) (bool, string, error)); ok {
+	var r0 apicore.Provenance
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (apicore.Provenance, error)); ok {
 		return rf(ctx, spaceId, objectId)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string, string) bool); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) apicore.Provenance); ok {
 		r0 = rf(ctx, spaceId, objectId)
 	} else {
-		r0 = ret.Get(0).(bool)
+		r0 = ret.Get(0).(apicore.Provenance)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string, string) string); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
 		r1 = rf(ctx, spaceId, objectId)
 	} else {
-		r1 = ret.Get(1).(string)
+		r1 = ret.Error(1)
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, string, string) error); ok {
-		r2 = rf(ctx, spaceId, objectId)
-	} else {
-		r2 = ret.Error(2)
-	}
-
-	return r0, r1, r2
+	return r0, r1
 }
 
 // MockObjectProvenance_CreatorProvenance_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreatorProvenance'
@@ -76,12 +71,12 @@ func (_c *MockObjectProvenance_CreatorProvenance_Call) Run(run func(ctx context.
 	return _c
 }
 
-func (_c *MockObjectProvenance_CreatorProvenance_Call) Return(accountMatch bool, integrationName string, err error) *MockObjectProvenance_CreatorProvenance_Call {
-	_c.Call.Return(accountMatch, integrationName, err)
+func (_c *MockObjectProvenance_CreatorProvenance_Call) Return(_a0 apicore.Provenance, _a1 error) *MockObjectProvenance_CreatorProvenance_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockObjectProvenance_CreatorProvenance_Call) RunAndReturn(run func(context.Context, string, string) (bool, string, error)) *MockObjectProvenance_CreatorProvenance_Call {
+func (_c *MockObjectProvenance_CreatorProvenance_Call) RunAndReturn(run func(context.Context, string, string) (apicore.Provenance, error)) *MockObjectProvenance_CreatorProvenance_Call {
 	_c.Call.Return(run)
 	return _c
 }

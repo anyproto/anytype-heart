@@ -1452,7 +1452,7 @@
   },
   {
    "name": "delete_object",
-   "description": "Delete an object. Only objects this key created can be deleted. The creator is recorded at creation time and never added later, so objects made in the app, imported, made by another member, or made before this route shipped are refused for good. System objects are a 403 as well. A dry run reports the verdict without the checks that run at archive time, so a deletable verdict can still meet a 403.",
+   "description": "Delete an object. Moves the object to the Bin; restore_object or the app brings it back. Any user content the key can write can be archived; the receipt says if this key may delete it for good. permanent=true does that, archived or not, only for what this key created, with no other member's changes and no discussion; a file must be unused by other objects (chat attachments unchecked). Dry runs skip in-write checks.",
    "inputSchema": {
     "additionalProperties": false,
     "properties": {
@@ -1463,6 +1463,10 @@
      "object_id": {
       "description": "Object id, from `search_space` or `list_objects`",
       "type": "string"
+     },
+     "permanent": {
+      "description": "Delete for good instead of moving to the Bin (default false)",
+      "type": "boolean"
      },
      "space_id": {
       "description": "Space id, from `list_spaces`",
@@ -1491,6 +1495,32 @@
      },
      "object_id": {
       "description": "Object id, from `search_space` or `list_objects`",
+      "type": "string"
+     },
+     "space_id": {
+      "description": "Space id, from `list_spaces`",
+      "type": "string"
+     }
+    },
+    "required": [
+     "object_id",
+     "space_id"
+    ],
+    "type": "object"
+   }
+  },
+  {
+   "name": "restore_object",
+   "description": "Restore an object. Moves an archived object out of the Bin. Any user content the key can write can be restored, whoever archived it. Restoring an object that is not archived is a 200 carrying a warning. Types and properties are restored in the Anytype app.",
+   "inputSchema": {
+    "additionalProperties": false,
+    "properties": {
+     "dry_run": {
+      "description": "Check the restore without writing",
+      "type": "boolean"
+     },
+     "object_id": {
+      "description": "Object id, such as the one a delete_object receipt returned",
       "type": "string"
      },
      "space_id": {

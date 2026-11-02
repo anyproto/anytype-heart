@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/api/core/mock_apicore"
+	"github.com/anyproto/anytype-heart/core/api/util"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
@@ -1062,7 +1063,9 @@ func TestV2ToggleChatReaction(t *testing.T) {
 			bundle.RelationKeyId:             domain.String(testChatId),
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_chatDerived)),
 		}})
-		svc := NewService(mwMock, nil, nil, nil, nil, nil, nil, nil, nil, store, objectstore.TestTechSpaceId, "" /* no accountId */)
+		reader := mock_apicore.NewMockObjectReader(t)
+		reader.EXPECT().IsDeleted(mock.Anything, testSpaceId, testChatId).Return(false, nil)
+		svc := NewService(mwMock, reader, nil, nil, nil, nil, nil, nil, nil, store, objectstore.TestTechSpaceId, "" /* no accountId */)
 		msg := chatProtoMessage()
 		msg.Reactions = &model.ChatMessageReactions{Reactions: map[string]*model.ChatMessageReactionsIdentityList{
 			"👍": {Ids: []string{"someoneElse"}},
@@ -1239,5 +1242,70 @@ func TestV2ReadChat(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
+	})
+}
+
+func TestV2ChatDeletedForGood(t *testing.T) {
+	t.Run("a chat deleted for good is a 410 on reads and writes", func(t *testing.T) {
+		// given: the mark is set before the store row catches up, so the row
+		// still looks live
+		fx := newV2Fixture(t)
+		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.deleted[testChatId] = true
+		want := v2model.ObjectDeleted(testSpaceId, testChatId)
+
+		// when
+		_, readErr := fx.GetChatMessages(context.Background(), testSpaceId, testChatId, ChatMessagesQuery{Limit: 25})
+		_, writeErr := fx.AddChatMessage(context.Background(), testSpaceId, testChatId, v2model.AddChatMessageRequest{Text: "hi"}, false)
+
+		// then: no chat RPC is expected
+		assert.Equal(t, want, readErr)
+		assert.Equal(t, want, writeErr)
+	})
+
+	t.Run("a tombstoned row is a 410", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:        domain.String(testChatId),
+			bundle.RelationKeyIsDeleted: domain.Bool(true),
+		}})
+
+		_, err := fx.GetChatMessages(context.Background(), testSpaceId, testChatId, ChatMessagesQuery{Limit: 25})
+
+		assert.Equal(t, v2model.ObjectDeleted(testSpaceId, testChatId), err)
+	})
+
+	t.Run("an id the space never had is still a 404", func(t *testing.T) {
+		fx := newV2Fixture(t)
+
+		_, err := fx.GetChatMessages(context.Background(), testSpaceId, "nochat", ChatMessagesQuery{Limit: 25})
+
+		requireV2Code(t, err, v2model.CodeNotFound)
+	})
+
+	t.Run("a read-only key is refused before the deletion mark is read", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.deleted[testChatId] = true
+
+		_, err := fx.AddChatMessage(grantCtx(util.GrantPermsRead, testSpaceId), testSpaceId, testChatId, v2model.AddChatMessageRequest{Text: "hi"}, false)
+
+		requireV2Code(t, err, v2model.CodeWriteNotGranted)
+		fx.readerMock.AssertNotCalled(t, "IsDeleted", mock.Anything, mock.Anything, mock.Anything)
+	})
+
+	t.Run("a probe that fails stops the request instead of passing as not deleted", func(t *testing.T) {
+		// given: no chat RPC expectation — nothing may run past the probe
+		fx := newV2Fixture(t)
+		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.probeErr = assert.AnError
+
+		// when
+		_, err := fx.GetChatMessages(context.Background(), testSpaceId, testChatId, ChatMessagesQuery{Limit: 25})
+
+		// then: wrapped, and not a C6 error, so the handler answers 500
+		require.ErrorIs(t, err, assert.AnError)
+		var v2Err *v2model.Error
+		assert.False(t, errors.As(err, &v2Err))
 	})
 }

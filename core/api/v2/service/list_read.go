@@ -91,9 +91,9 @@ func (s *Service) readListTarget(ctx context.Context, spaceId, listId string, wa
 	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return listTarget{}, err
 	}
-	read, err := s.reader.ReadObject(ctx, spaceId, listId)
+	read, err := s.readAddressed(ctx, spaceId, listId)
 	if err != nil {
-		return listTarget{}, mapReadError(spaceId, listId, err)
+		return listTarget{}, err
 	}
 
 	layout := model.ObjectTypeLayout(-1)

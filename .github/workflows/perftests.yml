@@ -29,9 +29,9 @@ jobs:
     runs-on: ${{ github.event.inputs.run-on-runner-mac || 'macos-15' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: '1.26'
           cache: false
@@ -92,14 +92,14 @@ jobs:
           PERF_CONFIG_LOCAL: ${{ secrets.PERF_CONFIG_LOCAL }}
           CH_API_KEY: ${{ secrets.CH_PERF_API_KEY }}
       - name: Archive perf tests results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: traces-macos
           path: |
             *.log
       - name: Report Status when failure
         if: always()
-        uses: ravsamhq/notify-slack-action@2.0.0
+        uses: ravsamhq/notify-slack-action@2.5.0
         with:
           status: ${{ job.status }}
           notify_when: "failure"
@@ -117,7 +117,7 @@ jobs:
   #       run: C:\ProgramData\chocolatey\bin\choco install gzip mingw git -y
 
   #     - name: Setup Go
-  #       uses: actions/setup-go@v5
+  #       uses: actions/setup-go@v7
   #       with:
   #         go-version: '1.24'
   #         cache: false
@@ -262,7 +262,7 @@ jobs:
   #         Get-ChildItem "C:/Users/$env:USERNAME/AppData/Local/Temp/" -Directory -Force | Where-Object { $_.Name -like "workspace*" } | ForEach-Object { Remove-Item $_.FullName -Recurse -Force -ErrorAction SilentlyContinue }
 
   #     - name: Archive perf tests results
-  #       uses: actions/upload-artifact@v4
+  #       uses: actions/upload-artifact@v7
   #       with:
   #         name: traces-win
   #         path: |

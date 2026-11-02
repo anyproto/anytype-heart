@@ -154,8 +154,9 @@ var v2RouteAuthz = map[string]RouteAuthz{
 	routeKey(http.MethodPatch, "/v2/spaces/:space_id/widgets/:widget_id"):  {Verb: RouteVerbWrite},
 	routeKey(http.MethodDelete, "/v2/spaces/:space_id/widgets/:widget_id"): {Verb: RouteVerbWrite},
 	// edit surface (registerEditRoutes)
-	routeKey(http.MethodPatch, "/v2/spaces/:space_id/objects/:object_id"):  {Verb: RouteVerbWrite},
-	routeKey(http.MethodDelete, "/v2/spaces/:space_id/objects/:object_id"): {Verb: RouteVerbWrite},
+	routeKey(http.MethodPatch, "/v2/spaces/:space_id/objects/:object_id"):        {Verb: RouteVerbWrite},
+	routeKey(http.MethodDelete, "/v2/spaces/:space_id/objects/:object_id"):       {Verb: RouteVerbWrite},
+	routeKey(http.MethodPost, "/v2/spaces/:space_id/objects/:object_id/restore"): {Verb: RouteVerbWrite},
 	// chat surface (registerChatRoutes)
 	routeKey(http.MethodGet, "/v2/spaces/:space_id/chats"):                                          {Verb: RouteVerbRead},
 	routeKey(http.MethodPost, "/v2/spaces/:space_id/chats"):                                         {Verb: RouteVerbWrite},

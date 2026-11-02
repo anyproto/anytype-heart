@@ -7,6 +7,8 @@ import (
 
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/gabriel-vasile/mimetype"
+
+	m "github.com/anyproto/anytype-heart/pkg/lib/mill"
 )
 
 type AddOption func(*AddOptions)
@@ -90,7 +92,7 @@ func (s *service) normalizeOptions(opts *AddOptions) error {
 		}
 
 		mime := mimetype.Detect(data)
-		opts.Media = mime.String()
+		opts.Media = m.FixMIMEByExt(opts.Name, mime.String())
 	}
 
 	return nil

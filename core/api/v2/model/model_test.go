@@ -200,3 +200,18 @@ func TestUnwritablePropertyCoversDerivedRelations(t *testing.T) {
 		}
 	})
 }
+
+func TestObjectDeleted(t *testing.T) {
+	// the wire values spelled out: the service tests compare against this
+	// constructor, so this is where the 410 itself is pinned
+	want := &Error{
+		Status:  410,
+		Code:    "object_deleted",
+		Message: `object "obj1" in space "space1" was deleted permanently and cannot be restored; drop references to it`,
+		Issues:  []Issue{},
+	}
+
+	got := ObjectDeleted("space1", "obj1")
+
+	assert.Equal(t, want, got)
+}

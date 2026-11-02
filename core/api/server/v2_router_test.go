@@ -35,6 +35,8 @@ func newV2ServerFixture(t *testing.T) *fixture {
 	chatSubService := mock_apicore.NewMockChatSubscriptionService(t)
 	fileObjectMock := mock_apicore.NewMockFileObjectService(t)
 	readerMock := mock_apicore.NewMockObjectReader(t)
+	// nothing is deleted for good unless a test says so
+	readerMock.EXPECT().IsDeleted(mock.Anything, mock.Anything, mock.Anything).Return(false, nil).Maybe()
 	store := objectstore.NewStoreFixture(t)
 	require.NoError(t, store.WaitStoresLoaded(context.Background()))
 	mwMock.EXPECT().ObjectCrossSpaceSearch(mock.Anything, mock.Anything).RunAndReturn(

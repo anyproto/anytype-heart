@@ -181,12 +181,20 @@ func (s *Service) PatchObject(ctx context.Context, spaceId, objectId string, bod
 	// object (403) still permanently created every option the batch named
 	// (review A′1). So: read the object and check the preconditions first,
 	// prewarm only once they pass, then take the lock.
-	cur, err := s.reader.ReadObject(ctx, spaceId, objectId)
+	cur, err := s.readAddressed(ctx, spaceId, objectId)
 	if err != nil {
-		return nil, mapReadError(spaceId, objectId, err)
+		return nil, err
 	}
 	if err := checkEditPreconditions(cur.SbType, cur.Heads, ifMatch); err != nil {
 		return nil, err
+	}
+	// an object in the Bin carries every edit restriction, so the edit would
+	// meet a restriction 403 that reads as permanent; the real state is a
+	// conflict the caller resolves by restoring the object, so say that. The
+	// detail, not the Bin membership: the restrictions are computed from
+	// the detail, and this check exists to name THEIR refusal.
+	if isArchivedRead(cur) {
+		return nil, v2model.ObjectArchived(spaceId, objectId, deletableSbType(cur.SbType))
 	}
 	resolvers.scope = s.objectPropertyScope(spaceId, cur)
 	// the object's own restrictions, from the same read — so a dry run reaches

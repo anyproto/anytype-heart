@@ -23,14 +23,14 @@ jobs:
       GOTOOLCHAIN: local
     steps:
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
           go-version: '1.26'
           check-latest: true
       - name: git config
         run: git config --global url.https://${{ secrets.ANYTYPE_PAT }}@github.com/.insteadOf https://github.com/
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Setup GO env
@@ -39,7 +39,7 @@ jobs:
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
       - name: Setup license repository
-        uses: actions/checkout@master
+        uses: actions/checkout@v7
         with:
           repository: anyproto/open
           ref: refs/heads/main
@@ -81,7 +81,7 @@ jobs:
           fi
       - name: Upload codegen patch
         if: steps.codegen.outputs.has_changes == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: codegen-diff
           path: codegen.patch
@@ -125,7 +125,7 @@ jobs:
           CGO_CFLAGS="-Wno-deprecated-non-prototype -Wno-unknown-warning-option -Wno-deprecated-declarations -Wno-xor-used-as-pow -Wno-single-bit-bitfield-constant-conversion" go test ./cmd/grpcserver
 
       - name: Publish Test Report
-        uses: mikepenz/action-junit-report@v2
+        uses: mikepenz/action-junit-report@v6
         with:
           report_paths: '~/gotestsum-report/gotestsum-report.xml'
           github_token: ${{ secrets.GITHUB_TOKEN }}

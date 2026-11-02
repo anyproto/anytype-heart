@@ -164,10 +164,12 @@ func (q ObjectQuery) validate() (objectReadPlan, error) {
 
 // mapReadError converts live-read failures into C6 errors.
 func mapReadError(spaceId, objectId string, err error) error {
-	// an id no tree has, and a tree whose storage was deleted for good (a
-	// permanently deleted object that is no longer cached), are the same
-	// answer: nothing to read
-	if errors.Is(err, treestorage.ErrUnknownTreeId) || errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+	// an id no tree has, and a tree deleted for good, are both nothing to
+	// read; the deleted one is a 410, so a caller can tell it from a typo
+	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+		return v2model.ObjectDeleted(spaceId, objectId)
+	}
+	if errors.Is(err, treestorage.ErrUnknownTreeId) {
 		return v2model.NotFound(fmt.Sprintf("object %q not found in space %q", objectId, spaceId))
 	}
 	if errors.Is(err, space.ErrSpaceNotExists) || errors.Is(err, space.ErrSpaceDeleted) {
@@ -214,9 +216,9 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 		return s.markdownEnvelope(ctx, spaceId, objectId)
 	}
 
-	read, err := s.reader.ReadObject(ctx, spaceId, objectId)
+	read, err := s.readAddressed(ctx, spaceId, objectId)
 	if err != nil {
-		return nil, "", mapReadError(spaceId, objectId, err)
+		return nil, "", err
 	}
 	etag := ComputeEtag(read.Heads)
 
@@ -381,6 +383,11 @@ func (s *Service) seedTombstonedTypeProperties(ctx context.Context, spaceId stri
 // drops once core/converter/md grows a loss channel (APIV2.md §3 build item
 // "md-export loss detector").
 func (s *Service) markdownEnvelope(ctx context.Context, spaceId, objectId string) ([]byte, string, error) {
+	// the export loads the tree on its own and fails a deleted one as a
+	// plain string (found live: a 500), so the mark is read first
+	if err := s.ensureNotDeleted(ctx, spaceId, objectId); err != nil {
+		return nil, "", err
+	}
 	resp := s.mw.ObjectExport(ctx, &pb.RpcObjectExportRequest{
 		SpaceId:  spaceId,
 		ObjectId: objectId,
@@ -390,9 +397,9 @@ func (s *Service) markdownEnvelope(ctx context.Context, spaceId, objectId string
 		return nil, "", fmt.Errorf("export markdown for object %s: %s", objectId, resp.Error.Description)
 	}
 
-	read, err := s.reader.ReadObject(ctx, spaceId, objectId)
+	read, err := s.readAddressed(ctx, spaceId, objectId)
 	if err != nil {
-		return nil, "", mapReadError(spaceId, objectId, err)
+		return nil, "", err
 	}
 	etag := ComputeEtag(read.Heads)
 

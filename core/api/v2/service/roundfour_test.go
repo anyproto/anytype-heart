@@ -276,13 +276,14 @@ func TestV2DeletedTypeKeepsItsSpelling(t *testing.T) {
 			fx := newV2Fixture(t)
 			fx.addGadgetType(t, removed)
 			fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, deleteObjId).Return(gadgetRead(), nil).Maybe()
-			fx.provenanceMock.EXPECT().CreatorProvenance(mock.Anything, testSpaceId, deleteObjId).Return(true, "Claude Desktop", nil).Maybe()
+			fx.readerMock.EXPECT().InBin(mock.Anything, testSpaceId, deleteObjId).Return(false, nil).Maybe()
+			fx.provenanceMock.EXPECT().CreatorProvenance(mock.Anything, testSpaceId, deleteObjId).Return(apicore.Provenance{AccountMatch: true, IntegrationName: "Claude Desktop"}, nil).Maybe()
 			fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
 				bundle.RelationKeyId:             domain.String(deleteObjId),
 				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
 			}})
 
-			result, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, true)
+			result, err := fx.DeleteObject(callerCtx(), testSpaceId, deleteObjId, true, false)
 
 			require.NoError(t, err)
 			assert.Equal(t, "gadget", result.Type, "removed=%v", removed)
