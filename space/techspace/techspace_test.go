@@ -137,7 +137,11 @@ func (s *spaceViewStub) SetSpacePersistentInfo(info spaceinfo.SpacePersistentInf
 	return nil
 }
 
-func (s *spaceViewStub) SetAccessType(acc spaceinfo.AccessType) (err error) {
+func (s *spaceViewStub) RefreshAccessType(isPersonal bool) (err error) {
+	return nil
+}
+
+func (s *spaceViewStub) SetAclShared(isAclShared bool) (err error) {
 	return nil
 }
 

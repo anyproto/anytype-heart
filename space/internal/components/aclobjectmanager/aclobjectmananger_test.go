@@ -2,6 +2,7 @@ package aclobjectmanager
 
 import (
 	"context"
+	"errors"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -192,6 +193,7 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
 		fx.mockParticipantWatcher.EXPECT().GetProcessedAclHeadId(mock.Anything, fx.mockSpace).Return(acl.Head().Id).Once()
 		fx.mockParticipantWatcher.EXPECT().WatchPersistedParticipants(mock.Anything, fx.mockSpace).Return(nil).Once()
+		fx.mockStatus.EXPECT().SetAclShared(true).Return(nil).Once()
 		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
 		fx.mockAclNotification.EXPECT().AddRecords(acl, mock.Anything, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
 		// no UpdateParticipantFromAclState / WatchParticipant / SetOwner / SetAclInfo
@@ -202,6 +204,56 @@ func TestAclObjectManager(t *testing.T) {
 		defer fx.aclObjectManager.mx.Unlock()
 		require.Equal(t, acl.Head().Id, fx.aclObjectManager.lastIndexed)
 		require.Equal(t, fx.aclObjectManager, acl.updater)
+	})
+	t.Run("check acl shared against an emptied acl when persisted acl head matches", func(t *testing.T) {
+		// an owner-only ACL: a stale isAclShared persisted by a previous session must be corrected
+		// even though the per-member path is skipped
+		a := list.NewAclExecutor("spaceId")
+		require.NoError(t, a.Execute("a.init::a"))
+		acl := &syncAclStub{AclList: a.ActualAccounts()["a"].Acl}
+		fx := newFixture(t)
+		defer fx.finish(t)
+		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
+		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
+		fx.mockSpace.EXPECT().Id().Return("spaceId")
+		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
+		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
+		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
+		fx.mockParticipantWatcher.EXPECT().GetProcessedAclHeadId(mock.Anything, fx.mockSpace).Return(acl.Head().Id).Once()
+		fx.mockParticipantWatcher.EXPECT().WatchPersistedParticipants(mock.Anything, fx.mockSpace).Return(nil).Once()
+		fx.mockStatus.EXPECT().SetAclShared(false).Return(nil).Once()
+		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
+		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
+		fx.run(t)
+		<-fx.aclObjectManager.wait
+		fx.aclObjectManager.mx.Lock()
+		defer fx.aclObjectManager.mx.Unlock()
+		require.Equal(t, acl.Head().Id, fx.aclObjectManager.lastIndexed)
+	})
+	t.Run("finish loading when the acl shared check fails on the skip path", func(t *testing.T) {
+		// the check only repairs a stale flag: failing to write it must not fail the space load
+		// or re-enter the per-member path
+		a := list.NewAclExecutor("spaceId")
+		require.NoError(t, a.Execute("a.init::a"))
+		acl := &syncAclStub{AclList: a.ActualAccounts()["a"].Acl}
+		fx := newFixture(t)
+		defer fx.finish(t)
+		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
+		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
+		fx.mockSpace.EXPECT().Id().Return("spaceId")
+		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
+		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
+		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
+		fx.mockParticipantWatcher.EXPECT().GetProcessedAclHeadId(mock.Anything, fx.mockSpace).Return(acl.Head().Id).Once()
+		fx.mockParticipantWatcher.EXPECT().WatchPersistedParticipants(mock.Anything, fx.mockSpace).Return(nil).Once()
+		fx.mockStatus.EXPECT().SetAclShared(false).Return(errors.New("apply failed")).Once()
+		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
+		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
+		fx.run(t)
+		<-fx.aclObjectManager.wait
+		fx.aclObjectManager.mx.Lock()
+		defer fx.aclObjectManager.mx.Unlock()
+		require.Equal(t, acl.Head().Id, fx.aclObjectManager.lastIndexed)
 	})
 	t.Run("fall back to full processing when persisted watch fails", func(t *testing.T) {
 		a := list.NewAclExecutor("spaceId")
