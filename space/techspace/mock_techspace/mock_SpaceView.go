@@ -332,6 +332,52 @@ func (_c *MockSpaceView_Lock_Call) RunAndReturn(run func()) *MockSpaceView_Lock_
 	return _c
 }
 
+// RefreshAccessType provides a mock function with given fields: isPersonal
+func (_m *MockSpaceView) RefreshAccessType(isPersonal bool) error {
+	ret := _m.Called(isPersonal)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RefreshAccessType")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(bool) error); ok {
+		r0 = rf(isPersonal)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceView_RefreshAccessType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RefreshAccessType'
+type MockSpaceView_RefreshAccessType_Call struct {
+	*mock.Call
+}
+
+// RefreshAccessType is a helper method to define mock.On call
+//   - isPersonal bool
+func (_e *MockSpaceView_Expecter) RefreshAccessType(isPersonal interface{}) *MockSpaceView_RefreshAccessType_Call {
+	return &MockSpaceView_RefreshAccessType_Call{Call: _e.mock.On("RefreshAccessType", isPersonal)}
+}
+
+func (_c *MockSpaceView_RefreshAccessType_Call) Run(run func(isPersonal bool)) *MockSpaceView_RefreshAccessType_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(bool))
+	})
+	return _c
+}
+
+func (_c *MockSpaceView_RefreshAccessType_Call) Return(_a0 error) *MockSpaceView_RefreshAccessType_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpaceView_RefreshAccessType_Call) RunAndReturn(run func(bool) error) *MockSpaceView_RefreshAccessType_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RemoveExistingInviteInfo provides a mock function with no fields
 func (_m *MockSpaceView) RemoveExistingInviteInfo() (domain.InviteInfo, error) {
 	ret := _m.Called()
@@ -434,52 +480,6 @@ func (_c *MockSpaceView_ResetPushNotificationIds_Call) RunAndReturn(run func(ses
 	return _c
 }
 
-// SetAccessType provides a mock function with given fields: acc
-func (_m *MockSpaceView) SetAccessType(acc spaceinfo.AccessType) error {
-	ret := _m.Called(acc)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetAccessType")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(spaceinfo.AccessType) error); ok {
-		r0 = rf(acc)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockSpaceView_SetAccessType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetAccessType'
-type MockSpaceView_SetAccessType_Call struct {
-	*mock.Call
-}
-
-// SetAccessType is a helper method to define mock.On call
-//   - acc spaceinfo.AccessType
-func (_e *MockSpaceView_Expecter) SetAccessType(acc interface{}) *MockSpaceView_SetAccessType_Call {
-	return &MockSpaceView_SetAccessType_Call{Call: _e.mock.On("SetAccessType", acc)}
-}
-
-func (_c *MockSpaceView_SetAccessType_Call) Run(run func(acc spaceinfo.AccessType)) *MockSpaceView_SetAccessType_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(spaceinfo.AccessType))
-	})
-	return _c
-}
-
-func (_c *MockSpaceView_SetAccessType_Call) Return(_a0 error) *MockSpaceView_SetAccessType_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockSpaceView_SetAccessType_Call) RunAndReturn(run func(spaceinfo.AccessType) error) *MockSpaceView_SetAccessType_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // SetAclInfo provides a mock function with given fields: empty, pushKey, pushEncKey, joinedDate
 func (_m *MockSpaceView) SetAclInfo(empty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey, joinedDate int64) error {
 	ret := _m.Called(empty, pushKey, pushEncKey, joinedDate)
@@ -525,6 +525,52 @@ func (_c *MockSpaceView_SetAclInfo_Call) Return(err error) *MockSpaceView_SetAcl
 }
 
 func (_c *MockSpaceView_SetAclInfo_Call) RunAndReturn(run func(bool, crypto.PrivKey, crypto.SymKey, int64) error) *MockSpaceView_SetAclInfo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetAclShared provides a mock function with given fields: isAclShared
+func (_m *MockSpaceView) SetAclShared(isAclShared bool) error {
+	ret := _m.Called(isAclShared)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetAclShared")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(bool) error); ok {
+		r0 = rf(isAclShared)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceView_SetAclShared_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetAclShared'
+type MockSpaceView_SetAclShared_Call struct {
+	*mock.Call
+}
+
+// SetAclShared is a helper method to define mock.On call
+//   - isAclShared bool
+func (_e *MockSpaceView_Expecter) SetAclShared(isAclShared interface{}) *MockSpaceView_SetAclShared_Call {
+	return &MockSpaceView_SetAclShared_Call{Call: _e.mock.On("SetAclShared", isAclShared)}
+}
+
+func (_c *MockSpaceView_SetAclShared_Call) Run(run func(isAclShared bool)) *MockSpaceView_SetAclShared_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(bool))
+	})
+	return _c
+}
+
+func (_c *MockSpaceView_SetAclShared_Call) Return(err error) *MockSpaceView_SetAclShared_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockSpaceView_SetAclShared_Call) RunAndReturn(run func(bool) error) *MockSpaceView_SetAclShared_Call {
 	_c.Call.Return(run)
 	return _c
 }

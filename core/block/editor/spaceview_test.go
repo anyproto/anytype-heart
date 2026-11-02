@@ -26,16 +26,13 @@ func TestSpaceView_AccessType(t *testing.T) {
 	t.Run("personal", func(t *testing.T) {
 		fx := newSpaceViewFixture(t)
 		defer fx.finish()
-		err := fx.SetAccessType(spaceinfo.AccessTypePersonal)
-		require.NoError(t, err)
-		require.Equal(t, spaceinfo.AccessTypePersonal, fx.getAccessType())
-		err = fx.SetAccessType(spaceinfo.AccessTypeShared)
-		require.NoError(t, err)
-		require.Equal(t, spaceinfo.AccessTypePersonal, fx.getAccessType())
-		err = fx.SetAccessType(spaceinfo.AccessTypePrivate)
+		err := fx.RefreshAccessType(true)
 		require.NoError(t, err)
 		require.Equal(t, spaceinfo.AccessTypePersonal, fx.getAccessType())
 		err = fx.SetAclInfo(false, nil, nil, time.Now().Unix())
+		require.NoError(t, err)
+		require.Equal(t, spaceinfo.AccessTypePersonal, fx.getAccessType())
+		err = fx.RefreshAccessType(false)
 		require.NoError(t, err)
 		require.Equal(t, spaceinfo.AccessTypePersonal, fx.getAccessType())
 		info := spaceinfo.NewSpaceLocalInfo("spaceId")
@@ -47,13 +44,7 @@ func TestSpaceView_AccessType(t *testing.T) {
 	t.Run("private->shareable", func(t *testing.T) {
 		fx := newSpaceViewFixture(t)
 		defer fx.finish()
-		err := fx.SetAccessType(spaceinfo.AccessTypePrivate)
-		require.NoError(t, err)
-		require.Equal(t, spaceinfo.AccessTypePrivate, fx.getAccessType())
-		err = fx.SetAccessType(spaceinfo.AccessTypeShared)
-		require.NoError(t, err)
-		require.Equal(t, spaceinfo.AccessTypeShared, fx.getAccessType())
-		err = fx.SetAccessType(spaceinfo.AccessTypePrivate)
+		err := fx.RefreshAccessType(false)
 		require.NoError(t, err)
 		require.Equal(t, spaceinfo.AccessTypePrivate, fx.getAccessType())
 		err = fx.SetAclInfo(false, nil, nil, time.Now().Unix())
@@ -71,6 +62,211 @@ func TestSpaceView_AccessType(t *testing.T) {
 		err = fx.SetSpaceLocalInfo(info)
 		require.NoError(t, err)
 		require.Equal(t, spaceinfo.AccessTypeShared, fx.getAccessType())
+	})
+}
+
+func TestSpaceView_RefreshAccessType(t *testing.T) {
+	t.Run("derives shared from the persisted acl state instead of resetting it", func(t *testing.T) {
+		// given a shared space view reloaded with a stale private access type, as left behind when a
+		// load skipped ACL processing because the ACL head hadn't moved since the last run
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		fx.seedDetails(t, map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyIsAclShared:     domain.Bool(true),
+			bundle.RelationKeySpaceAccessType: domain.Int64(spaceinfo.AccessTypePrivate),
+		})
+		applies := fx.applies()
+
+		// when the space loads
+		require.NoError(t, fx.RefreshAccessType(false))
+
+		// then it is shared again, healed with a single apply
+		require.Equal(t, spaceinfo.AccessTypeShared, fx.getAccessType())
+		require.Equal(t, applies+1, fx.applies())
+	})
+	t.Run("does not apply when the stored value is already right", func(t *testing.T) {
+		// given a space view whose access type matches its persisted ACL state
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		fx.seedDetails(t, map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyIsAclShared:     domain.Bool(true),
+			bundle.RelationKeySpaceAccessType: domain.Int64(spaceinfo.AccessTypeShared),
+		})
+		applies := fx.applies()
+
+		// when the space loads, as it does on every app start
+		require.NoError(t, fx.RefreshAccessType(false))
+
+		// then nothing is written
+		require.Equal(t, spaceinfo.AccessTypeShared, fx.getAccessType())
+		require.Equal(t, applies, fx.applies())
+	})
+	t.Run("writes a missing value once", func(t *testing.T) {
+		// given a new space view that has no access type yet
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		require.False(t, fx.LocalDetails().Has(bundle.RelationKeySpaceAccessType))
+		applies := fx.applies()
+
+		// when the space loads twice
+		require.NoError(t, fx.RefreshAccessType(false))
+		require.NoError(t, fx.RefreshAccessType(false))
+
+		// then the value is set explicitly, and only the first load writes it
+		require.True(t, fx.LocalDetails().Has(bundle.RelationKeySpaceAccessType))
+		require.Equal(t, spaceinfo.AccessTypePrivate, fx.getAccessType())
+		require.Equal(t, applies+1, fx.applies())
+	})
+	t.Run("derives shared from a persisted shareable status alone", func(t *testing.T) {
+		// given a shareable space view that no one has joined yet
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		fx.seedDetails(t, map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyIsAclShared:          domain.Bool(false),
+			bundle.RelationKeySpaceShareableStatus: domain.Int64(spaceinfo.ShareableStatusShareable),
+			bundle.RelationKeySpaceAccessType:      domain.Int64(spaceinfo.AccessTypePrivate),
+		})
+
+		// when the space loads
+		require.NoError(t, fx.RefreshAccessType(false))
+
+		// then it is shared
+		require.Equal(t, spaceinfo.AccessTypeShared, fx.getAccessType())
+	})
+	t.Run("heals a stale shared value to private", func(t *testing.T) {
+		// given a space view whose ACL is no longer shared but whose access type still says so
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		fx.seedDetails(t, map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyIsAclShared:     domain.Bool(false),
+			bundle.RelationKeySpaceAccessType: domain.Int64(spaceinfo.AccessTypeShared),
+		})
+		applies := fx.applies()
+
+		// when the space loads
+		require.NoError(t, fx.RefreshAccessType(false))
+
+		// then it is private, healed with a single apply
+		require.Equal(t, spaceinfo.AccessTypePrivate, fx.getAccessType())
+		require.Equal(t, applies+1, fx.applies())
+	})
+	t.Run("leaves a personal space alone", func(t *testing.T) {
+		// given the personal space view
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		fx.seedDetails(t, map[domain.RelationKey]domain.Value{
+			bundle.RelationKeySpaceAccessType: domain.Int64(spaceinfo.AccessTypePersonal),
+		})
+		applies := fx.applies()
+
+		// when it loads, whatever the caller thinks it is
+		require.NoError(t, fx.RefreshAccessType(true))
+		require.NoError(t, fx.RefreshAccessType(false))
+
+		// then it stays personal and nothing is written
+		require.Equal(t, spaceinfo.AccessTypePersonal, fx.getAccessType())
+		require.Equal(t, applies, fx.applies())
+	})
+}
+
+func TestSpaceView_SetAclShared(t *testing.T) {
+	t.Run("corrects a stale shared state", func(t *testing.T) {
+		// given a space view still marked shared after its ACL emptied, because the write of that
+		// change failed in a previous session
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		fx.seedDetails(t, map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyIsAclShared:     domain.Bool(true),
+			bundle.RelationKeySpaceAccessType: domain.Int64(spaceinfo.AccessTypeShared),
+		})
+		applies := fx.applies()
+
+		// when ACL processing checks it against the loaded ACL
+		require.NoError(t, fx.SetAclShared(false))
+
+		// then both the flag and the access type follow the ACL, with a single apply
+		require.False(t, fx.LocalDetails().GetBool(bundle.RelationKeyIsAclShared))
+		require.Equal(t, spaceinfo.AccessTypePrivate, fx.getAccessType())
+		require.Equal(t, applies+1, fx.applies())
+	})
+	t.Run("does not apply when it matches the acl", func(t *testing.T) {
+		// given a space view consistent with its ACL
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		fx.seedDetails(t, map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyIsAclShared:     domain.Bool(true),
+			bundle.RelationKeySpaceAccessType: domain.Int64(spaceinfo.AccessTypeShared),
+		})
+		applies := fx.applies()
+
+		// when ACL processing checks it, as it does on every app start
+		require.NoError(t, fx.SetAclShared(true))
+
+		// then nothing is written
+		require.Equal(t, spaceinfo.AccessTypeShared, fx.getAccessType())
+		require.Equal(t, applies, fx.applies())
+	})
+	t.Run("corrects a stale private state", func(t *testing.T) {
+		// given a space view still marked private after members joined, because the write of that
+		// change failed in a previous session
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		fx.seedDetails(t, map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyIsAclShared:     domain.Bool(false),
+			bundle.RelationKeySpaceAccessType: domain.Int64(spaceinfo.AccessTypePrivate),
+		})
+		applies := fx.applies()
+
+		// when ACL processing checks it against the loaded ACL
+		require.NoError(t, fx.SetAclShared(true))
+
+		// then both the flag and the access type follow the ACL, with a single apply
+		require.True(t, fx.LocalDetails().GetBool(bundle.RelationKeyIsAclShared))
+		require.Equal(t, spaceinfo.AccessTypeShared, fx.getAccessType())
+		require.Equal(t, applies+1, fx.applies())
+	})
+	t.Run("writes a missing flag once", func(t *testing.T) {
+		// given a space view that has never stored the flag; false is its zero value, so only
+		// presence tells a stored false from a missing one
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		require.False(t, fx.LocalDetails().Has(bundle.RelationKeyIsAclShared))
+		applies := fx.applies()
+
+		// when ACL processing checks it on two loads
+		require.NoError(t, fx.SetAclShared(false))
+		require.NoError(t, fx.SetAclShared(false))
+
+		// then the flag is set explicitly, and only the first load writes it
+		require.True(t, fx.LocalDetails().Has(bundle.RelationKeyIsAclShared))
+		require.False(t, fx.LocalDetails().GetBool(bundle.RelationKeyIsAclShared))
+		require.Equal(t, applies+1, fx.applies())
+	})
+	t.Run("stays shared through the shareable status when the acl empties", func(t *testing.T) {
+		// given a shared space view that is also shareable, e.g. its only member left
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		fx.seedDetails(t, map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyIsAclShared:          domain.Bool(true),
+			bundle.RelationKeySpaceShareableStatus: domain.Int64(spaceinfo.ShareableStatusShareable),
+			bundle.RelationKeySpaceAccessType:      domain.Int64(spaceinfo.AccessTypeShared),
+		})
+
+		// when ACL processing finds the ACL empty
+		require.NoError(t, fx.SetAclShared(false))
+
+		// then the flag follows the ACL, but the space is still shared: it can be joined by invite
+		require.False(t, fx.LocalDetails().GetBool(bundle.RelationKeyIsAclShared))
+		require.Equal(t, spaceinfo.AccessTypeShared, fx.getAccessType())
+	})
+	t.Run("keeps a personal space personal", func(t *testing.T) {
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		require.NoError(t, fx.RefreshAccessType(true))
+
+		require.NoError(t, fx.SetAclShared(true))
+
+		require.Equal(t, spaceinfo.AccessTypePersonal, fx.getAccessType())
 	})
 }
 
@@ -347,6 +543,19 @@ func newSpaceViewFixture(t *testing.T) *spaceViewFixture {
 
 func (f *spaceViewFixture) getAccessType() spaceinfo.AccessType {
 	return spaceinfo.AccessType(f.CombinedDetails().GetInt64(bundle.RelationKeySpaceAccessType))
+}
+
+// seedDetails stands in for the details a reloaded space view gets back from the store
+func (f *spaceViewFixture) seedDetails(t *testing.T, details map[domain.RelationKey]domain.Value) {
+	st := f.NewState()
+	for key, value := range details {
+		st.SetDetailAndBundledRelation(key, value)
+	}
+	require.NoError(t, f.Apply(st))
+}
+
+func (f *spaceViewFixture) applies() int {
+	return len(f.SmartBlock.(*smarttest.SmartTest).Results.Applies)
 }
 
 func (f *spaceViewFixture) finish() {

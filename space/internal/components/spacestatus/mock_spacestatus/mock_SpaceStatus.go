@@ -350,6 +350,52 @@ func (_c *MockSpaceStatus_Name_Call) RunAndReturn(run func() string) *MockSpaceS
 	return _c
 }
 
+// RefreshAccessType provides a mock function with given fields: isPersonal
+func (_m *MockSpaceStatus) RefreshAccessType(isPersonal bool) error {
+	ret := _m.Called(isPersonal)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RefreshAccessType")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(bool) error); ok {
+		r0 = rf(isPersonal)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceStatus_RefreshAccessType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RefreshAccessType'
+type MockSpaceStatus_RefreshAccessType_Call struct {
+	*mock.Call
+}
+
+// RefreshAccessType is a helper method to define mock.On call
+//   - isPersonal bool
+func (_e *MockSpaceStatus_Expecter) RefreshAccessType(isPersonal interface{}) *MockSpaceStatus_RefreshAccessType_Call {
+	return &MockSpaceStatus_RefreshAccessType_Call{Call: _e.mock.On("RefreshAccessType", isPersonal)}
+}
+
+func (_c *MockSpaceStatus_RefreshAccessType_Call) Run(run func(isPersonal bool)) *MockSpaceStatus_RefreshAccessType_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(bool))
+	})
+	return _c
+}
+
+func (_c *MockSpaceStatus_RefreshAccessType_Call) Return(err error) *MockSpaceStatus_RefreshAccessType_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockSpaceStatus_RefreshAccessType_Call) RunAndReturn(run func(bool) error) *MockSpaceStatus_RefreshAccessType_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Run provides a mock function with given fields: ctx
 func (_m *MockSpaceStatus) Run(ctx context.Context) error {
 	ret := _m.Called(ctx)
@@ -392,52 +438,6 @@ func (_c *MockSpaceStatus_Run_Call) Return(err error) *MockSpaceStatus_Run_Call 
 }
 
 func (_c *MockSpaceStatus_Run_Call) RunAndReturn(run func(context.Context) error) *MockSpaceStatus_Run_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SetAccessType provides a mock function with given fields: status
-func (_m *MockSpaceStatus) SetAccessType(status spaceinfo.AccessType) error {
-	ret := _m.Called(status)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetAccessType")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(spaceinfo.AccessType) error); ok {
-		r0 = rf(status)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockSpaceStatus_SetAccessType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetAccessType'
-type MockSpaceStatus_SetAccessType_Call struct {
-	*mock.Call
-}
-
-// SetAccessType is a helper method to define mock.On call
-//   - status spaceinfo.AccessType
-func (_e *MockSpaceStatus_Expecter) SetAccessType(status interface{}) *MockSpaceStatus_SetAccessType_Call {
-	return &MockSpaceStatus_SetAccessType_Call{Call: _e.mock.On("SetAccessType", status)}
-}
-
-func (_c *MockSpaceStatus_SetAccessType_Call) Run(run func(status spaceinfo.AccessType)) *MockSpaceStatus_SetAccessType_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(spaceinfo.AccessType))
-	})
-	return _c
-}
-
-func (_c *MockSpaceStatus_SetAccessType_Call) Return(err error) *MockSpaceStatus_SetAccessType_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockSpaceStatus_SetAccessType_Call) RunAndReturn(run func(spaceinfo.AccessType) error) *MockSpaceStatus_SetAccessType_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -487,6 +487,52 @@ func (_c *MockSpaceStatus_SetAclInfo_Call) Return(err error) *MockSpaceStatus_Se
 }
 
 func (_c *MockSpaceStatus_SetAclInfo_Call) RunAndReturn(run func(bool, crypto.PrivKey, crypto.SymKey, int64) error) *MockSpaceStatus_SetAclInfo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetAclShared provides a mock function with given fields: isAclShared
+func (_m *MockSpaceStatus) SetAclShared(isAclShared bool) error {
+	ret := _m.Called(isAclShared)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetAclShared")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(bool) error); ok {
+		r0 = rf(isAclShared)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceStatus_SetAclShared_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetAclShared'
+type MockSpaceStatus_SetAclShared_Call struct {
+	*mock.Call
+}
+
+// SetAclShared is a helper method to define mock.On call
+//   - isAclShared bool
+func (_e *MockSpaceStatus_Expecter) SetAclShared(isAclShared interface{}) *MockSpaceStatus_SetAclShared_Call {
+	return &MockSpaceStatus_SetAclShared_Call{Call: _e.mock.On("SetAclShared", isAclShared)}
+}
+
+func (_c *MockSpaceStatus_SetAclShared_Call) Run(run func(isAclShared bool)) *MockSpaceStatus_SetAclShared_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(bool))
+	})
+	return _c
+}
+
+func (_c *MockSpaceStatus_SetAclShared_Call) Return(err error) *MockSpaceStatus_SetAclShared_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockSpaceStatus_SetAclShared_Call) RunAndReturn(run func(bool) error) *MockSpaceStatus_SetAclShared_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -190,11 +190,15 @@ func (s *spaceStatusStub) SetLocalInfo(info spaceinfo.SpaceLocalInfo) (err error
 	return
 }
 
-func (s *spaceStatusStub) SetAccessType(status spaceinfo.AccessType) (err error) {
+func (s *spaceStatusStub) RefreshAccessType(isPersonal bool) (err error) {
 	return
 }
 
 func (s *spaceStatusStub) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey, spaceJoinedDate int64) (err error) {
+	return
+}
+
+func (s *spaceStatusStub) SetAclShared(isAclShared bool) (err error) {
 	return
 }
 

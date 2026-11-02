@@ -108,8 +108,9 @@ type SpaceView interface {
 	GetLocalInfo() spaceinfo.SpaceLocalInfo
 	SetSpaceData(details *domain.Details) error
 	SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) error
-	SetAccessType(acc spaceinfo.AccessType) error
+	RefreshAccessType(isPersonal bool) error
 	SetAclInfo(empty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey, joinedDate int64) (err error)
+	SetAclShared(isAclShared bool) (err error)
 	SetOwner(ownerId string, createdDate int64) (err error)
 	SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) error
 	SetMyParticipantStatus(status model.ParticipantStatus) error

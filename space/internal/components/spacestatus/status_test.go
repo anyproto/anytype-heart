@@ -105,10 +105,18 @@ func TestSpaceStatus_SetAclInfo(t *testing.T) {
 	require.NoError(t, fx.SetAclInfo(true, nil, nil, time.Now().Unix()))
 }
 
-func TestSpaceStatus_SetAccessType(t *testing.T) {
+func TestSpaceStatus_SetAclShared(t *testing.T) {
 	fx := newFixture(t)
 	fx.mockSpaceView.EXPECT().Lock().Return()
 	fx.mockSpaceView.EXPECT().Unlock().Return()
-	fx.mockSpaceView.EXPECT().SetAccessType(spaceinfo.AccessTypePersonal).Return(nil)
-	require.NoError(t, fx.SetAccessType(spaceinfo.AccessTypePersonal))
+	fx.mockSpaceView.EXPECT().SetAclShared(true).Return(nil)
+	require.NoError(t, fx.SetAclShared(true))
+}
+
+func TestSpaceStatus_RefreshAccessType(t *testing.T) {
+	fx := newFixture(t)
+	fx.mockSpaceView.EXPECT().Lock().Return()
+	fx.mockSpaceView.EXPECT().Unlock().Return()
+	fx.mockSpaceView.EXPECT().RefreshAccessType(true).Return(nil)
+	require.NoError(t, fx.RefreshAccessType(true))
 }

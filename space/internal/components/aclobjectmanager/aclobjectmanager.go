@@ -217,6 +217,11 @@ func (a *aclObjectManager) processAcl() (err error) {
 		upToDate = a.isUpToDate(acl)
 		werr := a.participantWatcher.WatchPersistedParticipants(a.ctx, a.sp)
 		if werr == nil {
+			// the rest of the persisted ACL info is trusted here, but a failed space view write in a
+			// previous session would leave isAclShared stale for good, and checking it is cheap
+			if serr := a.status.SetAclShared(!aclState.IsEmpty()); serr != nil {
+				log.Warn("set acl shared", zap.Error(serr))
+			}
 			a.mx.Lock()
 			a.lastIndexed = acl.Head().Id
 			a.mx.Unlock()

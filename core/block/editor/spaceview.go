@@ -197,6 +197,20 @@ func (s *SpaceView) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncK
 	return s.Apply(st)
 }
 
+// SetAclShared corrects isAclShared, and the access type derived from it, when it drifted from the
+// loaded ACL. ACL processing calls it instead of SetAclInfo when the ACL head hasn't moved since the
+// last run, which is every app start, so it applies only when the value is missing or differs.
+func (s *SpaceView) SetAclShared(isAclShared bool) (err error) {
+	details := s.LocalDetails()
+	if details.Has(bundle.RelationKeyIsAclShared) && details.GetBool(bundle.RelationKeyIsAclShared) == isAclShared {
+		return nil
+	}
+	st := s.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeyIsAclShared, domain.Bool(isAclShared))
+	s.updateAccessType(st)
+	return s.Apply(st)
+}
+
 var (
 	pushNotificationIdsRelByMode = map[pb.RpcPushNotificationMode]domain.RelationKey{
 		pb.RpcPushNotification_All:      bundle.RelationKeySpacePushNotificationForceAllIds,
@@ -258,22 +272,29 @@ func (s *SpaceView) updateAccessType(st *state.State) {
 	if accessType == spaceinfo.AccessTypePersonal {
 		return
 	}
-	isShared := st.LocalDetails().GetBool(bundle.RelationKeyIsAclShared)
-	shareable := spaceinfo.ShareableStatus(st.LocalDetails().GetInt64(bundle.RelationKeySpaceShareableStatus))
-	if isShared || shareable == spaceinfo.ShareableStatusShareable {
-		stateSetAccessType(st, spaceinfo.AccessTypeShared)
-	} else {
-		stateSetAccessType(st, spaceinfo.AccessTypePrivate)
-	}
+	stateSetAccessType(st, accessTypeFromDetails(st.LocalDetails()))
 }
 
-func (s *SpaceView) SetAccessType(acc spaceinfo.AccessType) (err error) {
-	st := s.NewState()
-	prev := spaceinfo.AccessType(st.LocalDetails().GetInt64(bundle.RelationKeySpaceAccessType))
-	if prev == spaceinfo.AccessTypePersonal {
+// RefreshAccessType brings the access type in line with the ACL and shareable state persisted on
+// the space view. It runs on every space load, and the ACL processing that follows skips SetAclInfo
+// when the ACL head hasn't moved since the last run, so it must derive the value rather than reset
+// it. It applies only when the value is missing or differs: on app start an apply here is a store
+// write and a client event per space.
+func (s *SpaceView) RefreshAccessType(isPersonal bool) (err error) {
+	details := s.LocalDetails()
+	current := spaceinfo.AccessType(details.GetInt64(bundle.RelationKeySpaceAccessType))
+	if current == spaceinfo.AccessTypePersonal {
 		return nil
 	}
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, domain.Int64(acc))
+	target := spaceinfo.AccessTypePersonal
+	if !isPersonal {
+		target = accessTypeFromDetails(details)
+	}
+	if details.Has(bundle.RelationKeySpaceAccessType) && current == target {
+		return nil
+	}
+	st := s.NewState()
+	stateSetAccessType(st, target)
 	return s.Apply(st)
 }
 
@@ -446,4 +467,15 @@ func (s *SpaceView) UpdateLastOpenedDate() error {
 
 func stateSetAccessType(st *state.State, accessType spaceinfo.AccessType) {
 	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceAccessType, domain.Int64(accessType))
+}
+
+// accessTypeFromDetails derives the access type of a non-personal space from its ACL and
+// shareable state
+func accessTypeFromDetails(details *domain.Details) spaceinfo.AccessType {
+	isShared := details.GetBool(bundle.RelationKeyIsAclShared)
+	shareable := spaceinfo.ShareableStatus(details.GetInt64(bundle.RelationKeySpaceShareableStatus))
+	if isShared || shareable == spaceinfo.ShareableStatusShareable {
+		return spaceinfo.AccessTypeShared
+	}
+	return spaceinfo.AccessTypePrivate
 }

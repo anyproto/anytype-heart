@@ -36,8 +36,9 @@ type SpaceStatus interface {
 	SetPersistentInfo(info spaceinfo.SpacePersistentInfo) (err error)
 	SetLocalStatus(status spaceinfo.LocalStatus) error
 	SetLocalInfo(info spaceinfo.SpaceLocalInfo) (err error)
-	SetAccessType(status spaceinfo.AccessType) (err error)
+	RefreshAccessType(isPersonal bool) (err error)
 	SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey, joinedDate int64) (err error)
+	SetAclShared(isAclShared bool) (err error)
 	SetOwner(ownerIdentity string, createdDate int64) (err error)
 	SetMyParticipantStatus(status model.ParticipantStatus) (err error)
 	GetSpaceView() techspace.SpaceView
@@ -178,15 +179,21 @@ func (s *spaceStatus) SetPersistentStatus(status spaceinfo.AccountStatus) (err e
 	return s.SetPersistentInfo(info)
 }
 
-func (s *spaceStatus) SetAccessType(acc spaceinfo.AccessType) (err error) {
+func (s *spaceStatus) RefreshAccessType(isPersonal bool) (err error) {
 	return doSpaceView(s.spaceView, func(view techspace.SpaceView) error {
-		return view.SetAccessType(acc)
+		return view.RefreshAccessType(isPersonal)
 	})
 }
 
 func (s *spaceStatus) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncryptionKey crypto.SymKey, joinedDate int64) (err error) {
 	return doSpaceView(s.spaceView, func(view techspace.SpaceView) error {
 		return view.SetAclInfo(isAclEmpty, pushKey, pushEncryptionKey, joinedDate)
+	})
+}
+
+func (s *spaceStatus) SetAclShared(isAclShared bool) (err error) {
+	return doSpaceView(s.spaceView, func(view techspace.SpaceView) error {
+		return view.SetAclShared(isAclShared)
 	})
 }
 

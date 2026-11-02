@@ -9,7 +9,7 @@ Scope: space
 ## Responsibility
 - Assembles dependencies and constructs a fully-initialized clientspace.Space
 - Acquires core space from spaceCore service
-- Sets space access type (personal vs private) after construction
+- Refreshes space access type (personal, or derived from persisted ACL/shareable state) after construction
 */
 
 import (
@@ -27,7 +27,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
-	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
 const CName = "client.components.builder"
@@ -125,13 +124,9 @@ func (b *spaceBuilder) BuildSpace(ctx context.Context, disableRemoteLoad bool) (
 		return nil, err
 	}
 
-	acc := spaceinfo.AccessTypePrivate
-	if space.Id() == b.personalSpaceId {
-		acc = spaceinfo.AccessTypePersonal
-	}
-	err = b.status.SetAccessType(acc)
+	err = b.status.RefreshAccessType(space.Id() == b.personalSpaceId)
 	if err != nil {
-		return nil, fmt.Errorf("set access type: %w", err)
+		return nil, fmt.Errorf("refresh access type: %w", err)
 	}
 
 	return space, nil
