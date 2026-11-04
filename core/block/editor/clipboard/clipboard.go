@@ -439,6 +439,16 @@ func (cb *clipboard) pasteText(ctx session.Context, req *pb.RpcBlockPasteRequest
 		}
 	}
 
+	// A paste that is nothing but a TeX formula has no surrounding text for the
+	// Markdown parser to format, so hand it over verbatim instead of letting the
+	// parser read the sub- and superscript underscores as an emphasis pair. Mixed
+	// content still goes through the parser untouched: telling maths apart from
+	// markup inside a sentence needs the parser's own context, which a pre-pass
+	// over the raw text does not have. See GO-7330.
+	if formula, ok := standaloneFormula(req.TextSlot); ok {
+		return cb.pasteRawText(ctx, req, []string{formula}, groupId)
+	}
+
 	mdText := whitespace.WhitespaceNormalizeString(req.TextSlot)
 	blocks, _, err := anymark.MarkdownToBlocks([]byte(mdText), "", []string{})
 	if err != nil {
@@ -450,6 +460,68 @@ func (cb *clipboard) pasteText(ctx session.Context, req *pb.RpcBlockPasteRequest
 	req.AnySlot = append(req.AnySlot, blocks...)
 
 	return cb.pasteAny(ctx, req, groupId)
+}
+
+// charsOutsideFormula are the characters that disqualify a span from the fast
+// path, each for its own reason.
+//
+// A line break is excluded so that the number of blocks produced cannot change.
+// The parser starts a new block at a line break, so a multi-line paste can yield
+// several blocks where the raw path always yields one, and downstream paste
+// modes behave differently on one block than on several. Without a line break
+// the parser has no split point and no block-level construct can start, because
+// the text begins with a dollar rather than a list, heading, quote or fence
+// marker — so both routes produce exactly one paragraph.
+//
+// Brackets, backticks and angle brackets are excluded because they are the
+// inline Markdown that still means something on a single line: links and images
+// need brackets, code spans need a backtick, autolinks and raw HTML need angle
+// brackets. Their presence says real markup may be at stake, which is more than
+// a formula should be carrying. Emphasis characters are deliberately not
+// excluded — they are what the parser eats and the formula needs kept. A pipe is
+// allowed too: a table needs a delimiter row on a second line, which the
+// line-break rule has already ruled out, so a lone pipe cannot mean anything.
+const charsOutsideFormula = "\n\r[]`<>"
+
+// standaloneFormula reports whether the whole text is a single TeX math span,
+// and returns it trimmed. It qualifies when $…$ or $$…$$ delimiters bound the
+// entire text, no further dollar sits between them, the content holds at least
+// one control sequence (a backslash followed by a letter) and none of
+// charsOutsideFormula.
+//
+// The delimiters bounding the whole text is what makes the answer safe to act
+// on: there is no other content that Markdown could have formatted, so nothing
+// can be lost by not parsing it. A formula inside a sentence deliberately does
+// not qualify — separating maths from markup there needs the parser's context.
+func standaloneFormula(text string) (string, bool) {
+	text = strings.TrimSpace(text)
+	for _, delim := range []string{"$$", "$"} {
+		if len(text) <= 2*len(delim) || !strings.HasPrefix(text, delim) || !strings.HasSuffix(text, delim) {
+			continue
+		}
+		content := text[len(delim) : len(text)-len(delim)]
+		if strings.Contains(content, "$") || strings.ContainsAny(content, charsOutsideFormula) {
+			continue
+		}
+		if hasControlSequence(content) {
+			return text, true
+		}
+	}
+	return "", false
+}
+
+// hasControlSequence reports whether text contains a TeX control sequence, a
+// backslash followed by an ASCII letter, such as \alpha or \mathbf.
+func hasControlSequence(text string) bool {
+	for i := 0; i+1 < len(text); i++ {
+		if text[i] != '\\' {
+			continue
+		}
+		if c := text[i+1]; c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' {
+			return true
+		}
+	}
+	return false
 }
 
 func (cb *clipboard) pasteRawText(ctx session.Context, req *pb.RpcBlockPasteRequest, textArr []string, groupId string) ([]string, []pb.RpcBlockUploadRequest, int32, bool, error) {
