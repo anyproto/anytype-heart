@@ -32,8 +32,6 @@ type TextObject struct {
 func (t *TextObject) GetTextBlocks(style model.BlockContentTextStyle, childIds []string, req *api.NotionImportContext) *MapResponse {
 	var marks []*model.BlockContentTextMark
 	id := bson.NewObjectId().Hex()
-	allBlocks := make([]*model.Block, 0)
-	allIds := make([]string, 0)
 	var (
 		text strings.Builder
 	)
@@ -44,10 +42,10 @@ func (t *TextObject) GetTextBlocks(style model.BlockContentTextStyle, childIds [
 		if rt.Type == api.Mention {
 			marks = append(marks, t.handleMentionType(rt, &text, req)...)
 		}
-		if rt.Type == api.Equation {
-			eqBlock := rt.Equation.HandleEquation()
-			allBlocks = append(allBlocks, eqBlock)
-			allIds = append(allIds, eqBlock.Id)
+		if rt.Type == api.Equation && rt.Equation != nil {
+			text.WriteByte('$')
+			text.WriteString(rt.Equation.Expression)
+			text.WriteByte('$')
 		}
 	}
 	var backgroundColor, textColor string
@@ -57,13 +55,7 @@ func (t *TextObject) GetTextBlocks(style model.BlockContentTextStyle, childIds [
 		textColor = api.NotionColorToAnytype[t.Color]
 	}
 
-	if t.isNotTextBlocks() {
-		return &MapResponse{
-			Blocks:   allBlocks,
-			BlockIDs: allIds,
-		}
-	}
-	allBlocks = append(allBlocks, &model.Block{
+	block := &model.Block{
 		Id:              id,
 		ChildrenIds:     childIds,
 		BackgroundColor: backgroundColor,
@@ -76,13 +68,10 @@ func (t *TextObject) GetTextBlocks(style model.BlockContentTextStyle, childIds [
 				Color:   textColor,
 			},
 		},
-	})
-	for _, b := range allBlocks {
-		allIds = append(allIds, b.Id)
 	}
 	return &MapResponse{
-		Blocks:   allBlocks,
-		BlockIDs: allIds,
+		Blocks:   []*model.Block{block},
+		BlockIDs: []string{id},
 	}
 }
 
@@ -270,10 +259,6 @@ func (t *TextObject) handleLinkPreviewMention(rt api.RichText, text *strings.Bui
 		Type: model.BlockContentTextMark_Link,
 	})
 	return marks
-}
-
-func (t *TextObject) isNotTextBlocks() bool {
-	return len(t.RichText) == 1 && t.RichText[0].Type == api.Equation
 }
 
 type TextObjectWithChildren struct {
