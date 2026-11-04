@@ -304,6 +304,22 @@ func (r *blocksRenderer) TextBufferLen() int {
 	return len(r.textBuffer)
 }
 
+// AddLatexBlock appends a Latex block (formula or Mermaid diagram), matching
+// what the Notion importer builds for mermaid code (handleMermaidBlock).
+func (r *blocksRenderer) AddLatexBlock(text string, processor model.BlockContentLatexProcessor) {
+	newBlock := model.Block{
+		Id: bson.NewObjectId().Hex(),
+		Content: &model.BlockContentOfLatex{
+			Latex: &model.BlockContentLatex{
+				Text:      text,
+				Processor: processor,
+			},
+		},
+	}
+	r.blocks = append(r.blocks, &newBlock)
+	r.addChildIDToParentBlock(newBlock.Id)
+}
+
 func (r *blocksRenderer) AddImageBlock(source string) {
 	sourceUnescaped, err := url.PathUnescape(source)
 	if err != nil {
