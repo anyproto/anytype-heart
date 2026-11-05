@@ -1304,6 +1304,169 @@ func TestClipboard_PasteToTableCellBlock(t *testing.T) {
 	assert.Equal(t, "text1\ntext2\ntabletable", sb.Doc.Pick("2-2").Model().GetText().Text)
 }
 
+// GO-2321: a table cell holds a single text block, so pasted content is flattened, but the
+// formatting of what was copied must survive that flatten.
+func TestClipboard_PasteToTableCellKeepsFormatting(t *testing.T) {
+	newCell := func() *smarttest.SmartTest {
+		sb := smarttest.New("text")
+		sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("root"),
+			blockbuilder.Children(
+				blockbuilder.Text("", blockbuilder.ID("2-2"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)),
+			)))
+		return sb
+	}
+	bold := func(from, to int32) *model.BlockContentTextMark {
+		return &model.BlockContentTextMark{Range: &model.Range{From: from, To: to}, Type: model.BlockContentTextMark_Bold}
+	}
+
+	t.Run("single block keeps its color and marks", func(t *testing.T) {
+		// given
+		sb := newCell()
+		pasted := givenTextBlockWithMarks("id1", "hello", []*model.BlockContentTextMark{bold(0, 5)})
+		pasted.GetText().Color = "purple"
+
+		// when
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "2-2",
+			SelectedTextRange: rng(0, 0),
+			AnySlot:           []*model.Block{pasted},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		cell := sb.Doc.Pick("2-2").Model().GetText()
+		assert.Equal(t, "hello", cell.Text)
+		assert.Equal(t, "purple", cell.Color, "the pasted text color must survive the flatten")
+		assert.Equal(t, []*model.BlockContentTextMark{bold(0, 5)}, cell.Marks.Marks,
+			"the pasted bold mark must survive the flatten")
+	})
+
+	t.Run("marks shift by the flattened line offsets", func(t *testing.T) {
+		// given
+		sb := newCell()
+
+		// when
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "2-2",
+			SelectedTextRange: rng(0, 0),
+			AnySlot: []*model.Block{
+				givenTextBlockWithMarks("id1", "ab", []*model.BlockContentTextMark{bold(0, 2)}),
+				givenTextBlockWithMarks("id2", "cd", []*model.BlockContentTextMark{bold(0, 2)}),
+			},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		cell := sb.Doc.Pick("2-2").Model().GetText()
+		assert.Equal(t, "ab\ncd", cell.Text)
+		assert.Equal(t, []*model.BlockContentTextMark{bold(0, 2), bold(3, 5)}, cell.Marks.Marks,
+			"the second line's mark must be shifted past the line separator")
+	})
+
+	t.Run("several paragraphs keep their marks and colors", func(t *testing.T) {
+		// given
+		sb := newCell()
+		first := givenTextBlockWithMarks("id1", "ab", []*model.BlockContentTextMark{bold(0, 2)})
+		first.GetText().Color = "purple"
+		second := givenTextBlockWithMarks("id2", "cd", []*model.BlockContentTextMark{bold(0, 2)})
+
+		// when
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "2-2",
+			SelectedTextRange: rng(0, 0),
+			AnySlot:           []*model.Block{first, second},
+			// a text slot is present, as clients send one on every copy, but paragraph
+			// text does not need it
+			TextSlot: "ab\ncd",
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		cell := sb.Doc.Pick("2-2").Model().GetText()
+		assert.Equal(t, "ab\ncd", cell.Text)
+		assert.Equal(t, "purple", cell.Color, "paragraph text must keep its color, not fall back to the text slot")
+		assert.Equal(t, []*model.BlockContentTextMark{bold(0, 2), bold(3, 5)}, cell.Marks.Marks,
+			"every paragraph's mark must survive, shifted past the line separator")
+	})
+
+	t.Run("mixed content pastes from the text slot", func(t *testing.T) {
+		// given
+		sb := newCell()
+		code := givenTextBlockWithMarks("id1", "print('hello')", nil)
+		code.GetText().Style = model.BlockContentText_Code
+		// what renderText produces for a multi-block copy: markdown with code fences and
+		// the indentation of nested blocks
+		const textSlot = "```\nprint('hello')\n```\ntoggle 1\n  hi\none two three"
+
+		// when
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "2-2",
+			SelectedTextRange: rng(0, 0),
+			AnySlot: []*model.Block{
+				code,
+				givenTextBlockWithMarks("id2", "toggle 1", nil),
+				givenTextBlockWithMarks("id3", "hi", nil),
+				givenTextBlockWithMarks("id4", "one two three", nil),
+			},
+			TextSlot: textSlot,
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, textSlot, sb.Doc.Pick("2-2").Model().GetText().Text,
+			"mixed content must keep the text slot's structure instead of being joined as raw text")
+	})
+
+	t.Run("a single styled block keeps the text slot's markdown", func(t *testing.T) {
+		// given
+		sb := newCell()
+		heading := givenTextBlockWithMarks("id1", "a heading", []*model.BlockContentTextMark{bold(0, 9)})
+		heading.GetText().Style = model.BlockContentText_Header2
+
+		// when
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "2-2",
+			SelectedTextRange: rng(0, 0),
+			AnySlot:           []*model.Block{heading},
+			TextSlot:          "## a heading",
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "## a heading", sb.Doc.Pick("2-2").Model().GetText().Text,
+			"only paragraph text flattens losslessly; a heading keeps the text slot's markdown")
+	})
+
+	t.Run("nested blocks paste from the text slot", func(t *testing.T) {
+		// given
+		sb := newCell()
+		toggle := givenTextBlockWithMarks("id1", "toggle 1", nil)
+		toggle.GetText().Style = model.BlockContentText_Toggle
+		child := givenTextBlockWithMarks("id2", "hi", nil)
+		toggle.ChildrenIds = []string{"id2"}
+
+		// when
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "2-2",
+			SelectedTextRange: rng(0, 0),
+			AnySlot:           []*model.Block{toggle, child},
+			TextSlot:          "toggle 1\n  hi",
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "toggle 1\n  hi", sb.Doc.Pick("2-2").Model().GetText().Text,
+			"a raw line join would drop the indentation, so nesting keeps the text slot")
+	})
+}
+
 func TestPasteIntoEmptyStyledBlock(t *testing.T) {
 	for _, tc := range []struct {
 		name        string
