@@ -5,6 +5,7 @@ import (
 	"errors"
 	gonet "net"
 
+	anystorev1 "github.com/anyproto/any-store"
 	anystore "github.com/anyproto/any-store/v2"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
@@ -76,7 +77,8 @@ func classify(err error) *errInfo {
 		isNetworkError(err):
 		info.class, info.retryable = pb.EventAccountRecovery_PeerUnreachable, true
 	case errors.Is(err, objecttree.ErrHasInvalidChanges),
-		errors.Is(err, anystore.ErrCollectionNotFound):
+		errors.Is(err, anystore.ErrCollectionNotFound),
+		errors.Is(err, anystorev1.ErrCollectionNotFound): // spacestore is any-store v1
 		info.class = pb.EventAccountRecovery_Unexpected
 	default:
 		info.class, info.retryable = pb.EventAccountRecovery_Unexpected, true
