@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	anystore "github.com/anyproto/any-store"
+	anystore "github.com/anyproto/any-store/v2"
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"

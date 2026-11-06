@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	anystore "github.com/anyproto/any-store"
+	anystore "github.com/anyproto/any-store/v2"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/event"

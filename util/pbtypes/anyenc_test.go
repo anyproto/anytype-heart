@@ -3,7 +3,7 @@ package pbtypes
 import (
 	"testing"
 
-	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/v2/anyenc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

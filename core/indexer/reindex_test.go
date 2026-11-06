@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	anystore "github.com/anyproto/any-store"
+	anystore "github.com/anyproto/any-store/v2"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage/mock_headstorage"
 	"github.com/anyproto/any-sync/commonspace/headsync/statestorage/mock_statestorage"

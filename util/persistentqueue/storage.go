@@ -6,8 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/anyenc"
+	anystore "github.com/anyproto/any-store/v2"
+	"github.com/anyproto/any-store/v2/anyenc"
 	"github.com/valyala/fastjson"
 )
 

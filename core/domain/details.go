@@ -3,7 +3,7 @@ package domain
 import (
 	"fmt"
 
-	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/v2/anyenc"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/gogo/protobuf/types"
 	"go.uber.org/zap"

@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/anyproto/any-store/query"
+	"github.com/anyproto/any-store/v2/query"
 	"github.com/cheggaaa/mb/v3"
 
 	"github.com/anyproto/anytype-heart/core/domain"

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/v2/anyenc"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/text/collate"
 

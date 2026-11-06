@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"sync"
 
-	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/anyenc"
+	anystore "github.com/anyproto/any-store/v2"
+	"github.com/anyproto/any-store/v2/anyenc"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"

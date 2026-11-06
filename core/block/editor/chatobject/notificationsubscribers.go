@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/anyenc"
+	anystore "github.com/anyproto/any-store/v2"
+	"github.com/anyproto/any-store/v2/anyenc"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"

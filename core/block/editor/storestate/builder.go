@@ -3,7 +3,7 @@ package storestate
 import (
 	"encoding/json"
 
-	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/v2/anyenc"
 	"github.com/valyala/fastjson"
 
 	"github.com/anyproto/anytype-heart/pb"

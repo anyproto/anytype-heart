@@ -88,6 +88,18 @@ func (mw *Middleware) AccountMigrateCancel(cctx context.Context, req *pb.RpcAcco
 }
 
 func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
+	go func() {
+		// Run a 30s profile asynchronously to capture what happens during
+		// account selection. context.Background() keeps it running the full
+		// 30s even if AccountSelect returns earlier.
+		path, err := mw.applicationService.RunProfiler(context.Background(), 30, "ACCOUNT_SELECT", "auto 30s profile on AccountSelect")
+		if err != nil {
+			log.With("error", err).Error("### AccountSelect auto profiler failed")
+			return
+		}
+		log.With("path", path).Warn("### AccountSelect auto profiler saved profile zip")
+	}()
+
 	account, err := mw.applicationService.AccountSelect(cctx, req)
 	code := mapErrorCode(err,
 		errToCode(config.ErrNetworkFileFailedToRead, pb.RpcAccountSelectResponseError_CONFIG_FILE_INVALID),

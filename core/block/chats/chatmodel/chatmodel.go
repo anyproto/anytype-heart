@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/v2/anyenc"
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"

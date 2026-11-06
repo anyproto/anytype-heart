@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/anyenc"
-	"github.com/anyproto/any-store/query"
+	anystore "github.com/anyproto/any-store/v2"
+	"github.com/anyproto/any-store/v2/anyenc"
+	"github.com/anyproto/any-store/v2/query"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/globalsign/mgo/bson"

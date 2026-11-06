@@ -8,7 +8,7 @@ import (
 	"slices"
 	"strings"
 
-	anystore "github.com/anyproto/any-store"
+	anystore "github.com/anyproto/any-store/v2"
 	"go.uber.org/zap"
 	"zombiezen.com/go/sqlite"
 

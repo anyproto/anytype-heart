@@ -21,14 +21,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	anystore "github.com/anyproto/any-store"
+	anystore "github.com/anyproto/any-store/v2"
 	"github.com/anyproto/any-sync/app"
 	"go.uber.org/zap"
 	"zombiezen.com/go/sqlite"
@@ -42,6 +41,16 @@ import (
 const CName = "anystore-provider"
 
 var log = logging.LoggerNotSugared(CName)
+
+// initPageBufferOnce pre-allocates the global page-buffer slab (64 MiB at 4096 B/page)
+// before the first database is opened. Mirrors the old SQLiteGlobalPageCachePreallocateSizeBytes.
+var initPageBufferOnce sync.Once
+
+func ensurePageBuffer() {
+	initPageBufferOnce.Do(func() {
+		anystore.InitPageBuffer(4096, 32768) // 32768 * 4096 = 128 MiB
+	})
+}
 
 // ErrSpaceDeleted is returned when a space's databases are being removed via
 // DeleteSpaceData and a caller tries to (re)open them, which would resurrect
@@ -174,6 +183,7 @@ func (s *provider) Init(a *app.App) error {
 }
 
 func (s *provider) initInPath(repoPath string) error {
+	ensurePageBuffer()
 	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
 
 	s.objectStorePath = filepath.Join(repoPath, "objectstore")
@@ -264,15 +274,6 @@ func (s *provider) setDefaultConfig() {
 	if s.anyStoreConfig == nil {
 		s.anyStoreConfig = &anystore.Config{}
 	}
-	if s.anyStoreConfig.SQLiteConnectionOptions == nil {
-		s.anyStoreConfig.SQLiteConnectionOptions = map[string]string{}
-	}
-	s.anyStoreConfig.SQLiteConnectionOptions = maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions)
-	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "normal"
-	s.anyStoreConfig.SQLiteConnectionOptions["wal_autocheckpoint"] = "10000"
-	// No fullfsync here (unlike space stores): these dbs are derived state, rebuilt by
-	// reindex/replay, and openDatabaseWithReinit self-heals corruption. They also checkpoint
-	// far more often, so F_FULLFSYNC per checkpoint would be a real cost on Apple platforms.
 }
 
 func (s *provider) GetCommonDb() anystore.DB {
@@ -384,10 +385,9 @@ func (s *provider) GetCrdtDb(spaceId string) *AnystoreGetter {
 
 func (s *provider) getAnyStoreConfig() *anystore.Config {
 	return &anystore.Config{
-		Namespace:               s.anyStoreConfig.Namespace,
-		ReadConnections:         s.anyStoreConfig.ReadConnections,
-		SQLiteConnectionOptions: maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions),
-		SyncPoolElementMaxSize:  s.anyStoreConfig.SyncPoolElementMaxSize,
+		SyncPoolElementMaxSize: s.anyStoreConfig.SyncPoolElementMaxSize,
+		AutoCheckpointAfter:    10000,
+		UseGlobalPageBuffer:    true,
 		Durability: anystore.DurabilityConfig{
 			AutoFlush: true,
 			IdleAfter: time.Second * 20,
