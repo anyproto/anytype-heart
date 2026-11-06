@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	anystore "github.com/anyproto/any-store/v2"
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage/mock_headstorage"
 	"github.com/anyproto/any-sync/commonspace/mock_commonspace"

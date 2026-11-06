@@ -10,7 +10,8 @@ import (
 	"strings"
 	"sync"
 
-	anystore "github.com/anyproto/any-store/v2"
+	anystore "github.com/anyproto/any-store"
+	anystorev2 "github.com/anyproto/any-store/v2"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/anyproto/anytype-publish-server/publishclient"
@@ -387,7 +388,8 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 			return fmt.Errorf("failed to split repo path: %s", repoPath)
 		}
 		c.SqliteTempPath = filepath.Join(split[0], "files")
-		// TODO: any-store v2 removed SQLiteConnectionOptions; temp_store_directory needs a v2 equivalent
+		c.AnyStoreConfig.SQLiteConnectionOptions = make(map[string]string)
+		c.AnyStoreConfig.SQLiteConnectionOptions["temp_store_directory"] = "'" + c.SqliteTempPath + "'"
 	}
 
 	if !c.DisableFileConfig {
@@ -540,6 +542,12 @@ func (c *Config) GetNewSpaceStorePath() string {
 
 func (c *Config) GetTempDirPath() string {
 	return c.SqliteTempPath
+}
+
+// GetAnyStoreV2Config is the config for heart-owned any-store v2 databases (objectstore, crdt, spaceindex).
+// The any-sync spacestore keeps using GetAnyStoreConfig (any-store v1).
+func (c *Config) GetAnyStoreV2Config() *anystorev2.Config {
+	return &anystorev2.Config{}
 }
 
 func (c *Config) GetAnyStoreConfig() *anystore.Config {

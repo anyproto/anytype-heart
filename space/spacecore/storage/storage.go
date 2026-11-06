@@ -3,7 +3,7 @@ package storage
 import (
 	"context"
 
-	anystore "github.com/anyproto/any-store/v2"
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 

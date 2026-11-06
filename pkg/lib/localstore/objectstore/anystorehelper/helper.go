@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	anystorev1 "github.com/anyproto/any-store"
 	anystore "github.com/anyproto/any-store/v2"
 	"go.uber.org/zap"
 	"zombiezen.com/go/sqlite"
@@ -36,11 +37,23 @@ func ApplyPlatformPragmas(opts map[string]string) {
 
 func IsCorruptedError(err error) (code sqlite.ResultCode, isCorrupted bool) {
 	code = sqlite.ErrCode(err)
-	isCorrupted = errors.Is(err, anystore.ErrQuickCheckFailed) || errors.Is(err, anystore.ErrIncompatibleVersion) || code == sqlite.ResultCorrupt || code == sqlite.ResultNotADB || code == sqlite.ResultCantOpen
+	isCorrupted = errors.Is(err, anystore.ErrQuickCheckFailed) || errors.Is(err, anystore.ErrIncompatibleVersion) || errors.Is(err, anystorev1.ErrQuickCheckFailed) || errors.Is(err, anystorev1.ErrIncompatibleVersion) || code == sqlite.ResultCorrupt || code == sqlite.ResultNotADB || code == sqlite.ResultCantOpen
 	return
 }
 
 func DbStatToZapFields(stat anystore.DBStats) []zap.Field {
+	return []zap.Field{
+		zap.Bool("dirtyOnOpen", stat.DirtyOnOpen),
+		zap.Int64("quickCheckMs", stat.DirtyQuickCheckDuration.Milliseconds()),
+		zap.Int64("totalSize", int64(stat.TotalSizeBytes)),
+		zap.Int64("dataSize", int64(stat.DataSizeBytes)),
+		zap.Int64("indexes", int64(stat.IndexesCount)),
+		zap.Int64("collections", int64(stat.CollectionsCount)),
+	}
+}
+
+// DbStatToZapFieldsV1 is DbStatToZapFields for the any-store v1 spacestore.
+func DbStatToZapFieldsV1(stat anystorev1.DBStats) []zap.Field {
 	return []zap.Field{
 		zap.Bool("dirtyOnOpen", stat.DirtyOnOpen),
 		zap.Int64("quickCheckMs", stat.DirtyQuickCheckDuration.Milliseconds()),

@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	anystore "github.com/anyproto/any-store/v2"
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/go-sqlite"
 	"github.com/anyproto/go-sqlite/sqlitex"
 	"go.uber.org/zap"
+	"golang.org/x/exp/maps"
 
 	"github.com/anyproto/anytype-heart/core/debug/debugreporter"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
@@ -35,14 +36,6 @@ type CorruptedBackup struct {
 
 // nolint: unused
 var log = logger.NewNamed(spacestorage.CName)
-
-var initPageBufferOnce sync.Once
-
-func ensurePageBuffer() {
-	initPageBufferOnce.Do(func() {
-		anystore.InitPageBuffer(4096, 32768) // 32768 * 4096 = 128 MiB
-	})
-}
 
 func New(rootPath string, anyStoreConfig *anystore.Config) *storageService {
 	return &storageService{
@@ -193,7 +186,6 @@ func (s *storageService) Run(ctx context.Context) (err error) {
 }
 
 func (s *storageService) openDb(ctx context.Context, id string) (db anystore.DB, err error) {
-	ensurePageBuffer()
 	dbPath := path.Join(s.rootPath, id, "store.db")
 	if _, err := os.Stat(dbPath); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -264,7 +256,6 @@ func provenUnusable(ctx context.Context, err error, dbPath string) (reason strin
 }
 
 func (s *storageService) createDb(ctx context.Context, id string) (db anystore.DB, err error) {
-	ensurePageBuffer()
 	dirPath := path.Join(s.rootPath, id)
 	err = os.MkdirAll(dirPath, 0755)
 	if err != nil {
@@ -429,7 +420,7 @@ func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (space
 		if err != nil {
 			logger = logger.With(zap.Error(err))
 		} else {
-			logger = logger.With(anystorehelper.DbStatToZapFields(stat)...)
+			logger = logger.With(anystorehelper.DbStatToZapFieldsV1(stat)...)
 		}
 		logger.Warn("spacestore db open took too long")
 	}
@@ -528,10 +519,21 @@ func (s *storageService) DeleteSpaceStorage(ctx context.Context, spaceId string)
 func (s *storageService) anyStoreConfig() *anystore.Config {
 	s.configMu.Lock()
 	defer s.configMu.Unlock()
+	opts := maps.Clone(s.config.SQLiteConnectionOptions)
+	if opts == nil {
+		opts = make(map[string]string)
+	}
+	opts["synchronous"] = "normal"
+	opts["wal_autocheckpoint"] = "10000"
+	anystorehelper.ApplyPlatformPragmas(opts)
 
 	return &anystore.Config{
-		AutoCheckpointAfter: 10000,
-		UseGlobalPageBuffer: true,
+		ReadConnections:                           4,
+		SQLiteConnectionOptions:                   opts,
+		SQLiteGlobalPageCachePreallocateSizeBytes: 1 << 26,
+
+		StalledConnectionsPanicOnClose:    time.Second * 45,
+		StalledConnectionsDetectorEnabled: true,
 		Durability: anystore.DurabilityConfig{
 			AutoFlush: true,
 			IdleAfter: time.Second * 20,

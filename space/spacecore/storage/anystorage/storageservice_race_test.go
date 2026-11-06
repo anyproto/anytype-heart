@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	anystore "github.com/anyproto/any-store/v2"
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/commonspace/spacepayloads"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/util/crypto"

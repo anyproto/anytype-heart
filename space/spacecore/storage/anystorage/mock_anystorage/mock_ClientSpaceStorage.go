@@ -3,7 +3,7 @@
 package mock_anystorage
 
 import (
-	anystore "github.com/anyproto/any-store/v2"
+	anystore "github.com/anyproto/any-store"
 	app "github.com/anyproto/any-sync/app"
 
 	context "context"

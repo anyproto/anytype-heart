@@ -107,7 +107,7 @@ type Provider interface {
 }
 
 type configProvider interface {
-	GetAnyStoreConfig() *anystore.Config
+	GetAnyStoreV2Config() *anystore.Config
 }
 
 type provider struct {
@@ -172,7 +172,7 @@ func (s *provider) Init(a *app.App) error {
 
 	cfg := app.MustComponent[configProvider](a)
 	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
-	s.anyStoreConfig = cfg.GetAnyStoreConfig()
+	s.anyStoreConfig = cfg.GetAnyStoreV2Config()
 	// Reporter is optional — tests build smaller app graphs without the
 	// profiler component. Corruption reports in those contexts become no-ops.
 	if r, err := app.GetComponent[debugreporter.Reporter](a); err == nil {

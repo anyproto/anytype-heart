@@ -9,8 +9,8 @@ import (
 	"slices"
 	"time"
 
-	anystore "github.com/anyproto/any-store/v2"
-	"github.com/anyproto/any-store/v2/query"
+	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	oldstorage2 "github.com/anyproto/any-sync/commonspace/spacestorage/oldstorage"

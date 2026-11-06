@@ -7,6 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.10.2
 	github.com/ahmetb/govvv v0.3.0
 	github.com/anyproto/any-block v0.0.0-20260919082013-9906a7c36b68 // v2.0.0-rc5; upstream module path has no /v2 suffix
+	github.com/anyproto/any-store v1.0.3
 	github.com/anyproto/any-store/v2 v2.4.1
 	github.com/anyproto/any-sync v0.13.8
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20260925080338-0fb960f00458
@@ -334,5 +335,3 @@ replace google.golang.org/genproto/googleapis/rpc => google.golang.org/genproto/
 replace github.com/btcsuite/btcutil => github.com/btcsuite/btcd/btcutil v1.1.5
 
 replace github.com/dsoprea/go-jpeg-image-structure/v2 => github.com/dchesterton/go-jpeg-image-structure/v2 v2.0.0-20240318203529-c3eea088bd38
-
-replace github.com/anyproto/any-sync => ../any-sync_anystorev2
