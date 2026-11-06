@@ -11,10 +11,15 @@ Scope: global
 - Provides per-space index and CRDT databases with lazy initialization
 - Auto-reinitializes corrupted databases by removing and recreating files
 
+- Migrates each any-store v1 (SQLite) database to v2 at its first open (anystoremigrate), one at
+  a time; the account start fails up front when the volume can't hold the migrations
+
 ## External State
 - objectstore/objects.db - common database with system collection
 - objectstore/{spaceId}/objects.db - per-space index databases
 - objectstore/{spaceId}/crdt.db - per-space CRDT databases
+- objectstore/[{spaceId}/]{objects,crdt}.db.v1 - the v1 file of a migrated database, kept (removeV1AfterMigration)
+- objectstore/.anystore-v2 - marks a store with no v1 database left
 */
 
 import (
@@ -27,6 +32,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	anystorev1 "github.com/anyproto/any-store"
 	anystore "github.com/anyproto/any-store/v2"
 	"github.com/anyproto/any-sync/app"
 	"go.uber.org/zap"
@@ -34,8 +40,10 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/debug/debugreporter"
 	"github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoremigrate"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/util/freespace"
 )
 
 const CName = "anystore-provider"
@@ -50,6 +58,68 @@ func ensurePageBuffer() {
 	initPageBufferOnce.Do(func() {
 		anystore.InitPageBuffer(4096, 32768) // 32768 * 4096 = 128 MiB
 	})
+}
+
+const (
+	// migrationConcurrency is how many v1 databases migrate at once. Measured on a real store (163
+	// spaces, 238 databases, 444 MB, 3 runs each, cmd/anystoremigrate): one at a time took 17.1 /
+	// 18.1 / 19.1 s, two at a time 11.8 / 12.0 / 12.1 s, with the same peak WAL (37.5 MB, one
+	// database's) and 3% more peak extra disk (360 MB against 350 MB); peak RSS went from ~284 MB
+	// to ~306-399 MB.
+	migrationConcurrency = 2
+	// removeV1AfterMigration removes a database's v1 file once its verified v2 file is in place.
+	// Off: the v1 file stays beside it as <name>.v1, so a broken migration can still be recovered
+	// from; it costs the size of the old store.
+	removeV1AfterMigration = false
+	// v2Marker marks an object store with no v1 database left, so later starts skip the scan.
+	v2Marker = ".anystore-v2"
+)
+
+// freeDiskSpace is the free space of a volume; tests replace it.
+var freeDiskSpace = freespace.GetFreeDiskSpace
+
+// MigrationOptions are the options the provider migrates v1 databases with; cfg is the v2
+// configuration the databases are opened with (nil: the provider's default). It initializes the
+// global page buffer the configuration uses.
+func MigrationOptions(cfg *anystore.Config) anystoremigrate.Options {
+	ensurePageBuffer()
+	if cfg == nil {
+		cfg = (&provider{anyStoreConfig: &anystore.Config{}}).getAnyStoreConfig()
+	}
+	return anystoremigrate.Options{
+		Concurrency:         migrationConcurrency,
+		RemoveV1AfterVerify: removeV1AfterMigration,
+		DstConfig:           cfg,
+		FreeSpace:           freeDiskSpace,
+		SrcConfig: &anystorev1.Config{
+			ReadConnections: 1,
+			// the SQLite page cache is preallocated once per process, by whoever opens a v1
+			// database first: the same size the v1 space store asks for
+			SQLiteGlobalPageCachePreallocateSizeBytes: 1 << 26,
+		},
+	}
+}
+
+// DatabasePaths lists the databases of an object store: objects.db and, for every space,
+// <spaceId>/objects.db and <spaceId>/crdt.db, those that exist.
+func DatabasePaths(objectStorePath string) ([]string, error) {
+	paths := []string{filepath.Join(objectStorePath, "objects.db")}
+	entries, err := os.ReadDir(objectStorePath)
+	if err != nil {
+		return nil, fmt.Errorf("read object store dir: %w", err)
+	}
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		for _, name := range []string{"objects.db", "crdt.db"} {
+			p := filepath.Join(objectStorePath, entry.Name(), name)
+			if _, err := os.Stat(p); err == nil {
+				paths = append(paths, p)
+			}
+		}
+	}
+	return paths, nil
 }
 
 // ErrSpaceDeleted is returned when a space's databases are being removed via
@@ -137,6 +207,8 @@ type provider struct {
 
 	dbsAreFlushing atomic.Bool
 
+	migrator *anystoremigrate.Migrator
+
 	// reporter is looked up in Init; may be nil when the provider is
 	// constructed outside an app container (NewInPath, tests).
 	reporter debugreporter.Reporter
@@ -195,7 +267,12 @@ func (s *provider) initInPath(repoPath string) error {
 		return err
 	}
 
-	s.commonDb, err = openDatabaseWithReinit(context.Background(), s.getAnyStoreConfig(), filepath.Join(s.objectStorePath, "objects.db"), s.reporter)
+	s.migrator = anystoremigrate.New(MigrationOptions(s.getAnyStoreConfig()))
+	if err = s.checkMigrationSpace(); err != nil {
+		return err
+	}
+
+	s.commonDb, err = openDatabaseWithReinit(context.Background(), s.getAnyStoreConfig(), filepath.Join(s.objectStorePath, "objects.db"), s.reporter, s.migrator)
 	if err != nil {
 		return fmt.Errorf("open db: %w", err)
 	}
@@ -212,19 +289,63 @@ func (s *provider) Run(ctx context.Context) error {
 	return nil
 }
 
+// checkMigrationSpace fails the start, before any database is written, when the store holds v1
+// databases and the volume can't hold their migration (anystoremigrate.ErrNotEnoughSpace). The
+// databases themselves migrate one by one as they are opened. A store found with no v1 database
+// is marked, so later starts skip the scan.
+func (s *provider) checkMigrationSpace() error {
+	marker := filepath.Join(s.objectStorePath, v2Marker)
+	if _, err := os.Stat(marker); err == nil {
+		return nil
+	}
+	paths, err := DatabasePaths(s.objectStorePath)
+	if err != nil {
+		return fmt.Errorf("list databases: %w", err)
+	}
+	var v1 []string
+	for _, p := range paths {
+		isV1, err := anystoremigrate.IsV1File(p)
+		if err != nil {
+			return fmt.Errorf("check v1 database: %w", err)
+		}
+		if isV1 {
+			v1 = append(v1, p)
+		}
+	}
+	if len(v1) == 0 {
+		if err = os.WriteFile(marker, nil, 0o600); err != nil {
+			log.Warn("write v2 store marker", zap.Error(err))
+		}
+		return nil
+	}
+	log.Info("object store holds any-store v1 databases, migrating each at its first open", zap.Int("databases", len(v1)))
+	if err = s.migrator.CheckSpace(v1); err != nil {
+		return fmt.Errorf("check space for the v1 database migration: %w", err)
+	}
+	return nil
+}
+
 func getLogger(err error, code sqlite.ResultCode) *zap.Logger {
 	return log.With(zap.Error(err), zap.String("code", code.String()), zap.String("desc", code.Message()))
 }
 
-// openDatabaseWithReinit tries to open anystore database, if it fails with corruption error it removes the files and tries to open again
-func openDatabaseWithReinit(ctx context.Context, config *anystore.Config, path string, reporter debugreporter.Reporter) (anystore.DB, error) {
+// openDatabaseWithReinit tries to open anystore database, if it fails with corruption error it removes the files and tries to open again.
+// A v1 database is migrated to v2 first; a failed migration leaves it as it was and is returned as an error.
+func openDatabaseWithReinit(ctx context.Context, config *anystore.Config, path string, reporter debugreporter.Reporter, migrator *anystoremigrate.Migrator) (anystore.DB, error) {
 	err := ensureDirExists(filepath.Dir(path))
 	if err != nil {
 		return nil, fmt.Errorf("ensure dir exists: %w", err)
 	}
+	if err = migrateIfV1(ctx, migrator, path); err != nil {
+		return nil, err
+	}
 
 	start := time.Now()
 	db, err := anystore.Open(ctx, path, config)
+	if errors.Is(err, anystore.ErrV1Database) {
+		// never a corruption: the v1 file must not be removed
+		return nil, fmt.Errorf("open %s: %w", path, err)
+	}
 	if err != nil {
 		code, isCorrupted := anystorehelper.IsCorruptedError(err)
 		getLogger(err, code).With(zap.Bool("isCorrupted", isCorrupted)).With(zap.Int64("tookMs", time.Since(start).Milliseconds())).Error("failed to open anystore")
@@ -270,6 +391,25 @@ func openDatabaseWithReinit(ctx context.Context, config *anystore.Config, path s
 	return db, nil
 }
 
+// migrateIfV1 migrates the database at path to v2 when it is a v1 one, waiting for its turn, and
+// removes what an interrupted migration of it left.
+func migrateIfV1(ctx context.Context, migrator *anystoremigrate.Migrator, path string) error {
+	isV1, err := anystoremigrate.IsV1File(path)
+	if err != nil {
+		return fmt.Errorf("check v1 database: %w", err)
+	}
+	if !isV1 {
+		if err = anystoremigrate.RemoveLeftovers(path); err != nil {
+			return fmt.Errorf("remove leftovers of a v1 migration: %w", err)
+		}
+		return nil
+	}
+	if _, err = migrator.MigrateFile(ctx, path); err != nil {
+		return fmt.Errorf("migrate v1 database %s: %w", path, err)
+	}
+	return nil
+}
+
 func (s *provider) setDefaultConfig() {
 	if s.anyStoreConfig == nil {
 		s.anyStoreConfig = &anystore.Config{}
@@ -292,10 +432,26 @@ func (s *provider) isSpaceDeleted(spaceId string) bool {
 }
 
 func (s *provider) GetSpaceIndexDb(spaceId string) (anystore.DB, error) {
+	path := filepath.Join(s.objectStorePath, spaceId, "objects.db")
+	s.spaceIndexDbsLock.Lock()
+	db, ok := s.spaceIndexDbs[spaceId]
+	s.spaceIndexDbsLock.Unlock()
+	if ok {
+		return db, nil
+	}
+	if s.isSpaceDeleted(spaceId) {
+		return nil, ErrSpaceDeleted
+	}
+	// A v1 database migrates outside the lock: every open of a space index and every flush takes
+	// it, and a migration takes long. Two openers of one space wait for one migration.
+	if err := migrateIfV1(s.componentCtx, s.migrator, path); err != nil {
+		return nil, fmt.Errorf("open db: %w", err)
+	}
+
 	s.spaceIndexDbsLock.Lock()
 	defer s.spaceIndexDbsLock.Unlock()
 
-	db, ok := s.spaceIndexDbs[spaceId]
+	db, ok = s.spaceIndexDbs[spaceId]
 	if ok {
 		return db, nil
 	}
@@ -305,7 +461,7 @@ func (s *provider) GetSpaceIndexDb(spaceId string) (anystore.DB, error) {
 		return nil, ErrSpaceDeleted
 	}
 
-	db, err := openDatabaseWithReinit(s.componentCtx, s.getAnyStoreConfig(), filepath.Join(s.objectStorePath, spaceId, "objects.db"), s.reporter)
+	db, err := openDatabaseWithReinit(s.componentCtx, s.getAnyStoreConfig(), path, s.reporter, s.migrator)
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
@@ -321,6 +477,7 @@ type AnystoreGetter struct {
 	objectStorePath string
 	spaceId         string
 	reporter        debugreporter.Reporter
+	migrator        *anystoremigrate.Migrator
 
 	lock sync.Mutex
 	db   anystore.DB
@@ -332,6 +489,17 @@ type AnystoreGetter struct {
 
 func (g *AnystoreGetter) get() anystore.DB {
 	g.lock.Lock()
+	defer g.lock.Unlock()
+
+	return g.db
+}
+
+// tryGet is get for a flush: a database being opened (a v1 one migrating can take minutes) has
+// nothing to flush yet, and the flush must not wait for it.
+func (g *AnystoreGetter) tryGet() anystore.DB {
+	if !g.lock.TryLock() {
+		return nil
+	}
 	defer g.lock.Unlock()
 
 	return g.db
@@ -350,7 +518,7 @@ func (g *AnystoreGetter) Wait() (anystore.DB, error) {
 	}
 
 	path := filepath.Join(g.objectStorePath, g.spaceId, "crdt.db")
-	db, err := openDatabaseWithReinit(g.ctx, g.config, path, g.reporter)
+	db, err := openDatabaseWithReinit(g.ctx, g.config, path, g.reporter, g.migrator)
 	if err != nil {
 		return nil, fmt.Errorf("open: %w", err)
 	}
@@ -375,6 +543,7 @@ func (s *provider) GetCrdtDb(spaceId string) *AnystoreGetter {
 		config:          s.getAnyStoreConfig(),
 		objectStorePath: s.objectStorePath,
 		reporter:        s.reporter,
+		migrator:        s.migrator,
 		// A getter created for a space currently being deleted must not reopen
 		// the crdt.db; mark it deleted so Wait short-circuits.
 		deleted: s.isSpaceDeleted(spaceId),
@@ -546,7 +715,7 @@ func (s *provider) Flush(timeout time.Duration, waitPending bool, mode anystore.
 		dbs = append(dbs, db)
 	}
 	for _, getter := range s.crdtDbs {
-		db := getter.get()
+		db := getter.tryGet()
 		if db != nil {
 			dbs = append(dbs, db)
 		}

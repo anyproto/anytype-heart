@@ -33,6 +33,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoremigrate"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceresolverstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space/spacecore/oldstorage"
@@ -288,7 +290,16 @@ func (m *migrator) doObjectStoreDb(ctx context.Context, proc func(db anystorev2.
 		return fmt.Errorf("ensure dir exists: %w", err)
 	}
 
-	db, err := anystorev2.Open(ctx, filepath.Join(m.objectStorePath, "objects.db"), m.anyStoreConfig)
+	path := filepath.Join(m.objectStorePath, "objects.db")
+	// an object store a v1 build left is migrated as the provider would at its first open
+	if isV1, err := anystoremigrate.IsV1File(path); err != nil {
+		return fmt.Errorf("check v1 database: %w", err)
+	} else if isV1 {
+		if _, err = anystoremigrate.New(anystoreprovider.MigrationOptions(m.anyStoreConfig)).MigrateFile(ctx, path); err != nil {
+			return fmt.Errorf("migrate v1 database: %w", err)
+		}
+	}
+	db, err := anystorev2.Open(ctx, path, m.anyStoreConfig)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
