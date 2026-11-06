@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
-	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -441,91 +440,6 @@ func TestStubWithoutOrderId(t *testing.T) {
 	require.Len(t, byId, 1)
 	assert.Equal(t, "", byId[0].OrderId)
 	assert.NotContains(t, messageIds(after), cid(99), "the stub is below every order id")
-}
-
-// A messages collection keyed by the message id (before storage keys) is dropped with its
-// history, and the chat's replay watermark is reset, once.
-func TestOpenMessageCollectionsRebuildsAnIdKeyedCollection(t *testing.T) {
-	ctx := context.Background()
-	db, err := anystore.Open(ctx, filepath.Join(t.TempDir(), "store.db"), nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, db.Close()) })
-	arena := &anyenc.Arena{}
-
-	// given: the layout before storage keys
-	old, err := db.CreateCollection(ctx, messagesCollectionName("chat1"))
-	require.NoError(t, err)
-	require.NoError(t, old.EnsureIndex(ctx, anystore.IndexInfo{Fields: []string{"_o.id"}}))
-	for i := range 3 {
-		arena.Reset()
-		doc := arena.NewObject()
-		doc.Set("id", arena.NewString(cid(i)))
-		orders := arena.NewObject()
-		orders.Set("id", arena.NewString(fmt.Sprintf("!!$%d", i)))
-		doc.Set(chatmodel.OrderKey, orders)
-		require.NoError(t, old.Insert(ctx, doc))
-	}
-	oldHistory, err := db.CreateCollection(ctx, messageHistoryCollectionName("chat1"))
-	require.NoError(t, err)
-	arena.Reset()
-	historyDoc := arena.NewObject()
-	historyDoc.Set("id", arena.NewString(cid(0)))
-	require.NoError(t, oldHistory.Insert(ctx, historyDoc))
-	meta, err := db.Collection(ctx, storestate.CollMeta)
-	require.NoError(t, err)
-	writeMeta := func() {
-		arena.Reset()
-		doc := arena.NewObject()
-		doc.Set("id", arena.NewString("chat1"))
-		doc.Set("q", arena.NewNumberInt(42))
-		doc.Set("r", arena.NewTrue())
-		require.NoError(t, meta.UpsertOne(ctx, doc))
-	}
-	writeMeta()
-	wantIndexes := make([]string, 0, len(chatCollectionIndexes))
-	for _, idx := range chatCollectionIndexes {
-		wantIndexes = append(wantIndexes, strings.Join(idx.Fields, ","))
-	}
-
-	// when
-	messages, history, err := openMessageCollections(ctx, db, "chat1")
-
-	// then
-	require.NoError(t, err)
-	assert.Equal(t, chatmodel.StorageKeyField, messages.PrimaryKey())
-	count, err := messages.Count(ctx)
-	require.NoError(t, err)
-	assert.Zero(t, count, "the messages come back with the replay")
-	historyCount, err := history.Count(ctx)
-	require.NoError(t, err)
-	assert.Zero(t, historyCount, "the history comes back with the replay")
-	gotIndexes := make([]string, 0, len(chatCollectionIndexes))
-	for _, idx := range messages.GetIndexes() {
-		gotIndexes = append(gotIndexes, idx.Info().Name)
-	}
-	assert.ElementsMatch(t, wantIndexes, gotIndexes)
-	_, err = meta.FindId(ctx, "chat1")
-	assert.ErrorIs(t, err, anystore.ErrDocNotFound, "the next open replays the whole tree")
-
-	t.Run("the rebuilt collection is kept", func(t *testing.T) {
-		// given: the replay filled the collection and wrote the watermark
-		repo := &repository{collection: messages, historyCollection: history, arenaPool: &anyenc.ArenaPool{}}
-		require.NoError(t, repo.AddTestMessage(ctx, &chatmodel.Message{ChatMessage: &model.ChatMessage{
-			Id: cid(0), OrderId: "!!$0", Message: &model.ChatMessageMessageContent{Text: "test"},
-		}}))
-		writeMeta()
-
-		// when
-		again, _, err := openMessageCollections(ctx, db, "chat1")
-
-		// then
-		require.NoError(t, err)
-		count, err := again.Count(ctx)
-		require.NoError(t, err)
-		assert.Equal(t, 1, count)
-		_, err = meta.FindId(ctx, "chat1")
-		assert.NoError(t, err, "no second replay")
-	})
 }
 
 // The on-disk effect of the key: the same synthetic history (creates in order-id order, ids random

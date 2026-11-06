@@ -37,6 +37,11 @@ func TestStorageKey(t *testing.T) {
 		assert.Equal(t, "!!$5\x01short", StorageKey("!!$5", "short"))
 	})
 
+	t.Run("the collision key keeps the whole id", func(t *testing.T) {
+		id := "bafyreihdb7g4mnw3ebhnm6wl2ddtwy4ejbryyhlrrwa4dxxkemhr3xzfqa"
+		assert.Equal(t, "!!$5\x01"+id, CollisionStorageKey("!!$5", id))
+	})
+
 	t.Run("a stub without an order id has an empty order part", func(t *testing.T) {
 		assert.Equal(t, "\x01xkemhr3xzfqa", StorageKey("", "bafyreihdb7g4mnw3ebhnm6wl2ddtwy4ejbryyhlrrwa4dxxkemhr3xzfqa"))
 	})
@@ -54,24 +59,29 @@ func TestStorageKey(t *testing.T) {
 // keyedMessage is a message as the store keys it.
 type keyedMessage struct {
 	orderId, id string
+	// collision: another message held its StorageKey, it took CollisionStorageKey
+	collision bool
 }
 
 func (m keyedMessage) key() string {
+	if m.collision {
+		return CollisionStorageKey(m.orderId, m.id)
+	}
 	return StorageKey(m.orderId, m.id)
 }
 
 // trickyMessages holds order ids where one is a prefix of another, duplicate order ids (changes
 // made concurrently on one parent) and a legacy stub without an order id.
 var trickyMessages = []keyedMessage{
-	{"!!$5!", cid(1)},
-	{"!!$5", cid(2)},
-	{"!!$6", cid(4)},
-	{"!!$5", cid(3)}, // the same order id as cid(2)
-	{"!!$", cid(5)},  // a prefix of "!!$5"
-	{"!!$5!!", cid(6)},
-	{"", cid(7)}, // a legacy stub
-	{"!!$6", cid(8)},
-	{"~", cid(9)},
+	{orderId: "!!$5!", id: cid(1)},
+	{orderId: "!!$5", id: cid(2)},
+	{orderId: "!!$6", id: cid(4)},
+	{orderId: "!!$5", id: cid(3)}, // the same order id as cid(2)
+	{orderId: "!!$", id: cid(5)},  // a prefix of "!!$5"
+	{orderId: "!!$5!!", id: cid(6)},
+	{orderId: "", id: cid(7)}, // a legacy stub
+	{orderId: "!!$6", id: cid(8)},
+	{orderId: "~", id: cid(9)},
 }
 
 func TestStorageKeyOrder(t *testing.T) {
@@ -124,12 +134,17 @@ func TestOrderIdFilters(t *testing.T) {
 		{"OrderIdBefore", OrderIdBefore, func(o, x string) bool { return o < x }},
 		{"OrderIdAtMost", OrderIdAtMost, func(o, x string) bool { return o <= x }},
 	}
+	// messages that took the collision key, beside ones of the same order ids
+	messages := append(slices.Clone(trickyMessages),
+		keyedMessage{orderId: "!!$5", id: cid(2), collision: true},
+		keyedMessage{orderId: "!!$5!", id: cid(1), collision: true},
+	)
 	arena := &anyenc.Arena{}
 	for _, f := range filters {
 		t.Run(f.name, func(t *testing.T) {
 			for _, bound := range bounds {
 				filter := f.filter(bound)
-				for _, m := range trickyMessages {
+				for _, m := range messages {
 					// given
 					arena.Reset()
 					doc := arena.NewObject()

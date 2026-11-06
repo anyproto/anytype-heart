@@ -194,11 +194,11 @@ func (s *service) getOrInitRepository(spaceId, chatObjectId string) (Repository,
 // them if needed, and ensures the messages indexes.
 //
 // The primary key of a collection is fixed when it is created. A messages collection created
-// before messages were keyed by their storage key is keyed by the message id; it is rebuilt: both
-// collections are dropped, and the object's replay watermark is reset so that the next open of the
-// chat replays its whole change tree into the new ones (see dropMessageCollections for what that
-// keeps). Everything happens in one transaction, so a crash leaves either the old collections or
-// the new ones, never a half: the rebuild cannot repeat once it committed.
+// before messages were keyed by their storage key is keyed by the message id; its documents are
+// moved into a collection keyed by the storage key (rekeyMessages). It all happens in one write
+// transaction: a crash before the commit leaves the old collection as it was, and the next open
+// starts over; once committed, the collection is keyed by the storage key and later opens change
+// nothing.
 func openMessageCollections(ctx context.Context, db anystore.DB, chatObjectId string) (messages, history anystore.Collection, err error) {
 	tx, err := db.WriteTx(ctx)
 	if err != nil {
@@ -214,19 +214,15 @@ func openMessageCollections(ctx context.Context, db anystore.DB, chatObjectId st
 	messages, err = db.OpenCollection(txCtx, messagesCollectionName(chatObjectId))
 	switch {
 	case errors.Is(err, anystore.ErrCollectionNotFound):
-		messages = nil
-	case err != nil:
-		return nil, nil, fmt.Errorf("open messages collection: %w", err)
-	case messages.PrimaryKey() != chatmodel.StorageKeyField:
-		if err = dropMessageCollections(txCtx, db, chatObjectId, messages); err != nil {
-			return nil, nil, fmt.Errorf("rebuild messages collection keyed by %q: %w", messages.PrimaryKey(), err)
-		}
-		messages = nil
-	}
-	if messages == nil {
 		messages, err = db.CreateCollection(txCtx, messagesCollectionName(chatObjectId), MessagesCollectionOptions())
 		if err != nil {
 			return nil, nil, fmt.Errorf("create messages collection: %w", err)
+		}
+	case err != nil:
+		return nil, nil, fmt.Errorf("open messages collection: %w", err)
+	case messages.PrimaryKey() != chatmodel.StorageKeyField:
+		if messages, err = rekeyMessages(txCtx, db, chatObjectId, messages); err != nil {
+			return nil, nil, fmt.Errorf("rekey messages collection: %w", err)
 		}
 	}
 	history, err = db.Collection(txCtx, messageHistoryCollectionName(chatObjectId))
@@ -242,41 +238,136 @@ func openMessageCollections(ctx context.Context, db anystore.DB, chatObjectId st
 	return messages, history, nil
 }
 
-// dropMessageCollections drops a chat's messages collection (and its history) whose layout can't
-// be migrated in place, and makes the next open of the chat replay its whole change tree, which
-// rebuilds both: the store is derived from the tree.
+// rekeyMessagesSuffix names the collection a rekey builds before it takes the messages
+// collection's name.
+const rekeyMessagesSuffix = "Rekey"
+
+// rekeyMessages moves the documents of a messages collection keyed by the message id (the layout
+// before storage keys) into a new collection keyed by the storage key, then drops the old one and
+// gives the new one its name. It runs in the caller's write transaction.
 //
-// The replay recreates what the tree holds: messages, edits, reactions, pins, tombstones, the
-// message history (lifetime count) and the unread-reaction entries. It does not recreate the
-// local-only fields; they come back as follows:
-//   - read/mentionRead: recreated unread (own messages read), then marked read again by the
-//     diff managers from the seen heads kept in the tech-space key-value store, as after a chat
-//     reindex. Read state not yet stored as seen heads is lost.
-//   - synced: own messages show unsynced until the next sync-status update of the chat.
-//   - stateId: regenerated, so a client's older lastStateId excludes them from a read request
-//     until it gets the new chat state.
+// Documents are copied as they are, with their storage key added: nothing is replayed, so local
+// state survives — read and mention-read flags (unread overrides included), synced, stateId,
+// mentions, reactions and their unread entries, pins, tombstones, the order fields. The history
+// collection is keyed by the message id and is kept.
 //
-// Until the chat is opened again its collection is empty, as for a chat that was never built.
-func dropMessageCollections(ctx context.Context, db anystore.DB, chatObjectId string, messages anystore.Collection) error {
-	log.Warn("rebuilding chat messages collection: keyed by another field, dropping it for a full replay",
-		zap.String("chatId", chatObjectId), zap.String("primaryKey", messages.PrimaryKey()))
-	if err := messages.Drop(ctx); err != nil {
-		return fmt.Errorf("drop messages collection: %w", err)
+// Legacy stubs, documents without an order id that an old reaction upsert made, have no content
+// and are dropped; their ids stay in the history. A message whose storage key another message
+// holds takes its collision key.
+func rekeyMessages(ctx context.Context, db anystore.DB, chatObjectId string, old anystore.Collection) (anystore.Collection, error) {
+	name := messagesCollectionName(chatObjectId)
+	rekeyName := name + rekeyMessagesSuffix
+	// a rekey that crashed rolled its collection back with it; one left by anything else is junk
+	if leftover, err := db.OpenCollection(ctx, rekeyName); err == nil {
+		if err = leftover.Drop(ctx); err != nil {
+			return nil, fmt.Errorf("drop leftover rekey collection: %w", err)
+		}
+	} else if !errors.Is(err, anystore.ErrCollectionNotFound) {
+		return nil, fmt.Errorf("open leftover rekey collection: %w", err)
 	}
-	history, err := db.OpenCollection(ctx, messageHistoryCollectionName(chatObjectId))
-	switch {
-	case errors.Is(err, anystore.ErrCollectionNotFound):
-	case err != nil:
-		return fmt.Errorf("open message history collection: %w", err)
-	default:
-		if err = history.Drop(ctx); err != nil {
-			return fmt.Errorf("drop message history collection: %w", err)
+	rekeyed, err := db.CreateCollection(ctx, rekeyName, MessagesCollectionOptions())
+	if err != nil {
+		return nil, fmt.Errorf("create rekey collection: %w", err)
+	}
+	stats, err := copyMessagesRekeyed(ctx, old, rekeyed)
+	if err != nil {
+		return nil, fmt.Errorf("copy messages: %w", err)
+	}
+	if err = old.Drop(ctx); err != nil {
+		return nil, fmt.Errorf("drop old messages collection: %w", err)
+	}
+	if err = rekeyed.Rename(ctx, name); err != nil {
+		return nil, fmt.Errorf("rename rekey collection: %w", err)
+	}
+	log.Info("chat messages rekeyed by storage key",
+		zap.String("chatId", chatObjectId),
+		zap.Int("messages", stats.copied),
+		zap.Int("collisionKeys", stats.collisionKeys),
+		zap.Int("stubsDropped", stats.stubsDropped))
+	return rekeyed, nil
+}
+
+type rekeyStats struct {
+	copied, collisionKeys, stubsDropped int
+}
+
+// copyMessagesRekeyed copies every message of from into to with its storage key added. It walks
+// from in order-id order (its _o.id index, when it has one), so the inserts append.
+func copyMessagesRekeyed(ctx context.Context, from, to anystore.Collection) (stats rekeyStats, err error) {
+	iter, err := from.Find(nil).Sort(legacyOrderIdSort).Iter(ctx)
+	if err != nil {
+		return stats, fmt.Errorf("iterate messages: %w", err)
+	}
+	defer iter.Close()
+	var (
+		parser = &anyenc.Parser{}
+		arena  = &anyenc.Arena{}
+		buf    []byte
+	)
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return stats, fmt.Errorf("read message: %w", err)
+		}
+		orderId := doc.Value().GetString(chatmodel.OrderKey, "id")
+		messageId := doc.Value().GetString("id")
+		if orderId == "" {
+			stats.stubsDropped++
+			continue
+		}
+		key, err := NewMessageKey(ctx, to, orderId, messageId)
+		if err != nil {
+			return stats, fmt.Errorf("storage key of message %s: %w", messageId, err)
+		}
+		if key != chatmodel.StorageKey(orderId, messageId) {
+			stats.collisionKeys++
+		}
+		// a copy of its own: the iterator's document is valid only until Next
+		buf = doc.Value().MarshalTo(buf[:0])
+		msg, err := parser.Parse(buf)
+		if err != nil {
+			return stats, fmt.Errorf("copy message %s: %w", messageId, err)
+		}
+		arena.Reset()
+		msg.Set(chatmodel.StorageKeyField, arena.NewString(key))
+		if err = to.Insert(ctx, msg); err != nil {
+			return stats, fmt.Errorf("insert message %s: %w", messageId, err)
+		}
+		stats.copied++
+	}
+	if err = iter.Err(); err != nil {
+		return stats, fmt.Errorf("iterate messages: %w", err)
+	}
+	return stats, nil
+}
+
+// legacyOrderIdSort is the order of the layout before storage keys: by _o.id, through its index.
+const legacyOrderIdSort = "_o.id"
+
+// ErrStorageKeyCollision refuses a message whose storage key and collision key both belong to
+// other messages: possible only for an id of at most 12 characters, whose two keys are the same.
+var ErrStorageKeyCollision = errors.New("storage key held by another message")
+
+// NewMessageKey returns the storage key a message with this order id and id is stored under in
+// coll: its StorageKey, or its CollisionStorageKey when another message (same order id, same id
+// tail) holds that one. A message already stored under one of them gets that one back, so a
+// replayed create keeps its key.
+func NewMessageKey(ctx context.Context, coll anystore.Collection, orderId, messageId string) (string, error) {
+	keys := [...]string{chatmodel.StorageKey(orderId, messageId), chatmodel.CollisionStorageKey(orderId, messageId)}
+	var holder string
+	for _, key := range keys {
+		doc, err := coll.FindId(ctx, key)
+		if errors.Is(err, anystore.ErrDocNotFound) {
+			return key, nil
+		}
+		if err != nil {
+			return "", fmt.Errorf("read storage key: %w", err)
+		}
+		if holder = doc.Value().GetString("id"); holder == messageId {
+			return key, nil
 		}
 	}
-	if err = storestate.ResetReplayState(ctx, db, chatObjectId); err != nil {
-		return fmt.Errorf("reset replay state: %w", err)
-	}
-	return nil
+	return "", fmt.Errorf("%w: message %s, stored message %s", ErrStorageKeyCollision, messageId, holder)
 }
 
 // FindMessageDoc calls proc with the stored document of the message with this id; the value is

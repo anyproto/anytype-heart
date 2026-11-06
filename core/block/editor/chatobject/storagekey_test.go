@@ -140,21 +140,61 @@ func TestMessagesUnderStorageKeys(t *testing.T) {
 		assert.NotEqual(t, fx.storageKey(t, first), fx.storageKey(t, second))
 	})
 
-	t.Run("a create whose key another message holds is refused, never written over it", func(t *testing.T) {
+	t.Run("a create whose key another message holds takes its collision key", func(t *testing.T) {
 		// given: two changes at one order whose ids end alike
 		fx := newFixture(t)
 		tail := strings.Repeat("x", 12)
-		require.NoError(t, fx.pushCreate(t, alice, "first-change-"+tail, "!!$5", givenSimpleMessage("first"), true))
+		first, other := "first-change-"+tail, "other-change-"+tail
+		require.NoError(t, fx.pushCreate(t, alice, first, "!!$5", givenSimpleMessage("first"), true))
 
 		// when
-		strictErr := fx.pushCreate(t, bob, "other-change-"+tail, "!!$5", givenSimpleMessage("other"), true)
-		replayErr := fx.pushCreate(t, bob, "other-change-"+tail, "!!$5", givenSimpleMessage("other"), false)
+		require.NoError(t, fx.pushCreate(t, bob, other, "!!$5", givenSimpleMessage("other"), true))
 
 		// then
-		assert.ErrorIs(t, strictErr, ErrStorageKeyCollision)
+		assert.Equal(t, "first", fx.getMessage(t, first).Message.Text)
+		assert.Equal(t, "other", fx.getMessage(t, other).Message.Text)
+		assert.Equal(t, chatmodel.StorageKey("!!$5", first), fx.storageKey(t, first))
+		assert.Equal(t, chatmodel.CollisionStorageKey("!!$5", other), fx.storageKey(t, other))
+
+		t.Run("and keeps it when the create is replayed", func(t *testing.T) {
+			// when
+			require.NoError(t, fx.replayStoredChanges(ctx))
+
+			// then
+			assert.Equal(t, chatmodel.CollisionStorageKey("!!$5", other), fx.storageKey(t, other))
+			resp, err := fx.GetMessages(ctx, chatrepositoryGetAll)
+			require.NoError(t, err)
+			assert.Len(t, resp.Messages, 2)
+		})
+
+		t.Run("an edit reaches it by id", func(t *testing.T) {
+			// when
+			fx.pushAs(t, bob, editBuilder(t, other, "other, edited"))
+
+			// then
+			assert.Equal(t, "other, edited", fx.getMessage(t, other).Message.Text)
+			assert.Equal(t, "first", fx.getMessage(t, first).Message.Text)
+		})
+	})
+
+	t.Run("a create whose both keys other messages hold is skipped, never written over them", func(t *testing.T) {
+		// given: an id of 12 characters, whose storage and collision keys are the same, and a
+		// stored message at the same order whose id ends with it
+		fx := newFixture(t)
+		short := strings.Repeat("x", 12)
+		long := "first-change-" + short
+		require.NoError(t, fx.pushCreate(t, alice, long, "!!$5", givenSimpleMessage("first"), true))
+
+		// when
+		strictErr := fx.pushCreate(t, bob, short, "!!$5", givenSimpleMessage("other"), true)
+		replayErr := fx.pushCreate(t, bob, short, "!!$5", givenSimpleMessage("other"), false)
+
+		// then
+		assert.ErrorIs(t, strictErr, chatrepository.ErrStorageKeyCollision)
+		assert.NotErrorIs(t, strictErr, storestate.ErrCritical)
 		assert.NoError(t, replayErr, "a replay logs and skips it")
-		assert.Equal(t, "first", fx.getMessage(t, "first-change-"+tail).Message.Text)
-		msgs, err := fx.GetMessagesByIds(ctx, []string{"other-change-" + tail})
+		assert.Equal(t, "first", fx.getMessage(t, long).Message.Text)
+		msgs, err := fx.GetMessagesByIds(ctx, []string{short})
 		require.NoError(t, err)
 		assert.Empty(t, msgs)
 	})
@@ -205,9 +245,9 @@ func (unreadableCollection) FindId(ctx context.Context, id any) (anystore.Doc, e
 	return nil, errors.New("page integrity")
 }
 
-func TestStorageKeyCheckFailureIsCritical(t *testing.T) {
+func TestNewDocumentKeyReadFailureIsCritical(t *testing.T) {
 	// when
-	err := checkStorageKeyFree(context.Background(), unreadableCollection{}, chatmodel.StorageKey("!!$5", "msg1"), "msg1")
+	_, err := (&ChatHandler{}).NewDocumentKey(context.Background(), unreadableCollection{}, "msg1", "!!$5")
 
 	// then
 	require.ErrorIs(t, err, storestate.ErrCritical, "a create skipped on a failed read is never applied again")

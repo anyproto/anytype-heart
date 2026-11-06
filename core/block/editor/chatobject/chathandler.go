@@ -47,9 +47,6 @@ var (
 	// ErrMessageNotFound refuses an edit, reaction or pin of a message that is
 	// not stored locally: a change naming it would not follow its create.
 	ErrMessageNotFound = errors.New("message not found")
-	// ErrStorageKeyCollision refuses a create whose storage key (order id and id tail) is held by
-	// another stored message. The create is skipped and logged, never written over that message.
-	ErrStorageKeyCollision = errors.New("storage key held by another message")
 )
 
 // ChatHandler keys its collection by the message storage key, not by the message id.
@@ -112,9 +109,17 @@ func (d *ChatHandler) CollectionOptions() anystore.CollectionOptions {
 	return chatrepository.MessagesCollectionOptions()
 }
 
-// NewDocumentKey is the storage key of the message a create makes (storestate.KeyedHandler).
-func (d *ChatHandler) NewDocumentKey(documentId, order string) string {
-	return chatmodel.StorageKey(order, documentId)
+// NewDocumentKey is the storage key of the message a create makes (storestate.KeyedHandler): its
+// collision key when another message holds its storage key. A message both of whose keys are
+// held is skipped and logged (chatrepository.ErrStorageKeyCollision), never written over another.
+func (d *ChatHandler) NewDocumentKey(ctx context.Context, coll anystore.Collection, documentId, order string) (string, error) {
+	key, err := chatrepository.NewMessageKey(ctx, coll, order, documentId)
+	if err != nil && !errors.Is(err, chatrepository.ErrStorageKeyCollision) {
+		// a create skipped on a failed read would never be applied again: the replay watermark
+		// moves past it
+		return "", errors.Join(storestate.ErrCritical, err)
+	}
+	return key, err
 }
 
 // DocumentKey resolves the message id a modify or a delete names to its storage key
@@ -142,9 +147,6 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 		// critical: a create skipped on a failed read would never be applied again, the replay
 		// watermark moves past it
 		return errors.Join(storestate.ErrCritical, fmt.Errorf("check for existing message: %w", err))
-	}
-	if err = checkStorageKeyFree(ctx, coll, d.NewDocumentKey(messageId, ch.Change.Order), messageId); err != nil {
-		return err
 	}
 	msg, err := chatmodel.UnmarshalMessage(ch.Value)
 	if err != nil {
@@ -223,20 +225,6 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 	msg.MarshalAnyenc(ch.Value, ch.Arena)
 
 	return nil
-}
-
-// checkStorageKeyFree refuses the create of messageId when another message holds its key: one
-// with the same order id and the same id tail. The insert would otherwise fail on the primary key
-// and be taken for a replayed create.
-func checkStorageKeyFree(ctx context.Context, coll anystore.Collection, key, messageId string) error {
-	doc, err := coll.FindId(ctx, key)
-	if errors.Is(err, anystore.ErrDocNotFound) {
-		return nil
-	}
-	if err != nil {
-		return errors.Join(storestate.ErrCritical, fmt.Errorf("check storage key: %w", err))
-	}
-	return fmt.Errorf("%w: message %s, stored message %s", ErrStorageKeyCollision, messageId, doc.Value().GetString("id"))
 }
 
 func (d *ChatHandler) BeforeModify(ctx context.Context, ch storestate.ChangeOp) (mode storestate.ModifyMode, err error) {
