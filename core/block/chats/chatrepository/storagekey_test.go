@@ -151,7 +151,8 @@ func TestQueriesUseTheirIndexes(t *testing.T) {
 
 			// then
 			assert.Equal(t, tc.index, usedIndex(ex))
-			assert.Equal(t, tc.wantSort, strings.Contains(ex.Sql, "Sort"))
+			// a bounded sort prints as TopK
+			assert.Equal(t, tc.wantSort, strings.Contains(ex.Sql, "Sort") || strings.Contains(ex.Sql, "TopK"))
 		})
 	}
 }

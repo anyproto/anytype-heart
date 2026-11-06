@@ -2,10 +2,12 @@ package chatobject
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
 
+	anystore "github.com/anyproto/any-store/v2"
 	"github.com/anyproto/any-store/v2/anyenc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -192,4 +194,21 @@ func TestMessagesUnderStorageKeys(t *testing.T) {
 			assert.Equal(t, chatmodel.StorageKey(w.OrderId, w.Id), fx.storageKey(t, g.Id))
 		}
 	})
+}
+
+// unreadableCollection fails every read by key, as a corrupt page would.
+type unreadableCollection struct {
+	anystore.Collection
+}
+
+func (unreadableCollection) FindId(ctx context.Context, id any) (anystore.Doc, error) {
+	return nil, errors.New("page integrity")
+}
+
+func TestStorageKeyCheckFailureIsCritical(t *testing.T) {
+	// when
+	err := checkStorageKeyFree(context.Background(), unreadableCollection{}, chatmodel.StorageKey("!!$5", "msg1"), "msg1")
+
+	// then
+	require.ErrorIs(t, err, storestate.ErrCritical, "a create skipped on a failed read is never applied again")
 }

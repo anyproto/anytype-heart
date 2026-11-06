@@ -139,7 +139,9 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 		return storestate.ErrIgnore
 	}
 	if !errors.Is(err, anystore.ErrDocNotFound) {
-		return fmt.Errorf("check for existing message: %w", err)
+		// critical: a create skipped on a failed read would never be applied again, the replay
+		// watermark moves past it
+		return errors.Join(storestate.ErrCritical, fmt.Errorf("check for existing message: %w", err))
 	}
 	if err = checkStorageKeyFree(ctx, coll, d.NewDocumentKey(messageId, ch.Change.Order), messageId); err != nil {
 		return err
@@ -232,7 +234,7 @@ func checkStorageKeyFree(ctx context.Context, coll anystore.Collection, key, mes
 		return nil
 	}
 	if err != nil {
-		return fmt.Errorf("check storage key: %w", err)
+		return errors.Join(storestate.ErrCritical, fmt.Errorf("check storage key: %w", err))
 	}
 	return fmt.Errorf("%w: message %s, stored message %s", ErrStorageKeyCollision, messageId, doc.Value().GetString("id"))
 }
