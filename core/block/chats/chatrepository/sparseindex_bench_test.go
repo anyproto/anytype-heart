@@ -42,6 +42,7 @@ func seedMessages(tb testing.TB, total, withUnreadReaction int) *fixture {
 		order := arena.NewObject()
 		order.Set("id", arena.NewString(fmt.Sprintf("ord%06d", i)))
 		doc.Set("_o", order)
+		doc.Set(chatmodel.StorageKeyField, arena.NewString(chatmodel.StorageKey(fmt.Sprintf("ord%06d", i), fmt.Sprintf("msg%06d", i))))
 		doc.Set(chatmodel.CreatorKey, arena.NewString("creator"))
 		if i%every == 0 {
 			doc.Set(chatmodel.ReactionUnreadOrderIdKey, arena.NewString(fmt.Sprintf("ord%06d", i)))

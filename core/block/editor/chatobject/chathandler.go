@@ -47,7 +47,13 @@ var (
 	// ErrMessageNotFound refuses an edit, reaction or pin of a message that is
 	// not stored locally: a change naming it would not follow its create.
 	ErrMessageNotFound = errors.New("message not found")
+	// ErrStorageKeyCollision refuses a create whose storage key (order id and id tail) is held by
+	// another stored message. The create is skipped and logged, never written over that message.
+	ErrStorageKeyCollision = errors.New("storage key held by another message")
 )
+
+// ChatHandler keys its collection by the message storage key, not by the message id.
+var _ storestate.KeyedHandler = (*ChatHandler)(nil)
 
 type ChatHandler struct {
 	repository      chatrepository.Repository
@@ -94,8 +100,27 @@ func (d *ChatHandler) CollectionName() string {
 }
 
 func (d *ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err error) {
-	_, err = s.Collection(ctx, CollectionName)
-	return
+	if _, err = s.Collection(ctx, CollectionName); err != nil {
+		return fmt.Errorf("open messages collection: %w", err)
+	}
+	return nil
+}
+
+// CollectionOptions keys the messages collection by the message storage key
+// (storestate.KeyedHandler).
+func (d *ChatHandler) CollectionOptions() anystore.CollectionOptions {
+	return chatrepository.MessagesCollectionOptions()
+}
+
+// NewDocumentKey is the storage key of the message a create makes (storestate.KeyedHandler).
+func (d *ChatHandler) NewDocumentKey(documentId, order string) string {
+	return chatmodel.StorageKey(order, documentId)
+}
+
+// DocumentKey resolves the message id a modify or a delete names to its storage key
+// (storestate.KeyedHandler).
+func (d *ChatHandler) DocumentKey(ctx context.Context, coll anystore.Collection, documentId string) (string, error) {
+	return chatrepository.FindMessageKey(ctx, coll, documentId)
 }
 
 func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) error {
@@ -103,17 +128,21 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 	if err != nil {
 		return fmt.Errorf("get collection: %w", err)
 	}
-	_, err = coll.FindId(ctx, ch.Value.GetString("id"))
+	messageId := ch.Value.GetString("id")
+	_, err = chatrepository.FindMessageKey(ctx, coll, messageId)
 	if err == nil {
 		// The message is already stored: this create is being replayed over an existing
 		// store (e.g. the one-time full-tree replay storeApply runs for a store without
 		// the fullyReplayed marker, which a reindex triggers for every chat). The insert
-		// would hit ErrDocExists anyway; bail out before mutating the subscription
-		// counters, so already-read messages are not resurrected as unread.
+		// would be refused anyway (the unique id index); bail out before mutating the
+		// subscription counters, so already-read messages are not resurrected as unread.
 		return storestate.ErrIgnore
 	}
 	if !errors.Is(err, anystore.ErrDocNotFound) {
 		return fmt.Errorf("check for existing message: %w", err)
+	}
+	if err = checkStorageKeyFree(ctx, coll, d.NewDocumentKey(messageId, ch.Change.Order), messageId); err != nil {
+		return err
 	}
 	msg, err := chatmodel.UnmarshalMessage(ch.Value)
 	if err != nil {
@@ -194,6 +223,20 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 	return nil
 }
 
+// checkStorageKeyFree refuses the create of messageId when another message holds its key: one
+// with the same order id and the same id tail. The insert would otherwise fail on the primary key
+// and be taken for a replayed create.
+func checkStorageKeyFree(ctx context.Context, coll anystore.Collection, key, messageId string) error {
+	doc, err := coll.FindId(ctx, key)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("check storage key: %w", err)
+	}
+	return fmt.Errorf("%w: message %s, stored message %s", ErrStorageKeyCollision, messageId, doc.Value().GetString("id"))
+}
+
 func (d *ChatHandler) BeforeModify(ctx context.Context, ch storestate.ChangeOp) (mode storestate.ModifyMode, err error) {
 	if err = d.indexerStore.AddChatMessageToIndexQueue(context.Background(), d.chatFullId, ch.Change.Order); err != nil {
 		return 0, fmt.Errorf("add chat message to full text index queue: %w", err)
@@ -211,17 +254,23 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 
 	messageId := ch.Change.Change.GetDelete().GetDocumentId()
 
-	doc, err := coll.FindId(ctx, messageId)
+	var (
+		message *chatmodel.Message
+		key     string
+	)
+	err = chatrepository.FindMessageDoc(ctx, coll, messageId, func(doc *anyenc.Value) (err error) {
+		key = doc.GetString(chatmodel.StorageKeyField)
+		message, err = chatmodel.UnmarshalMessage(doc)
+		if err != nil {
+			return fmt.Errorf("unmarshal message: %w", err)
+		}
+		return nil
+	})
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return storestate.DeleteModeDelete, nil
 	}
 	if err != nil {
 		return storestate.DeleteModeDelete, fmt.Errorf("get message: %w", err)
-	}
-
-	message, err := chatmodel.UnmarshalMessage(doc.Value())
-	if err != nil {
-		return storestate.DeleteModeDelete, fmt.Errorf("unmarshal message: %w", err)
 	}
 	if message.Deleted {
 		// already a tombstone: nothing changes, whoever deletes it again
@@ -235,7 +284,7 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 	if d.softDelete {
 		tombstone := message.Clone()
 		tombstone.MakeTombstone()
-		if err = writeTombstone(ctx, coll, messageId, tombstone); err != nil {
+		if err = writeTombstone(ctx, coll, key, tombstone); err != nil {
 			return storestate.DeleteModeKeep, err
 		}
 		mode = storestate.DeleteModeKeep
@@ -261,8 +310,8 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 // The order object (_o) is left as it is, so the message keeps its position. A failure aborts
 // the apply (ErrCritical) like a failed hard delete does, so the replay watermark does not move
 // past a delete that was not materialized.
-func writeTombstone(ctx context.Context, coll anystore.Collection, messageId string, tombstone *chatmodel.Message) error {
-	_, err := coll.UpdateId(ctx, messageId, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+func writeTombstone(ctx context.Context, coll anystore.Collection, key string, tombstone *chatmodel.Message) error {
+	_, err := coll.UpdateId(ctx, key, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
 		tombstone.MarshalAnyenc(v, a)
 		return v, true, nil
 	}))

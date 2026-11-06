@@ -142,11 +142,13 @@ func (fx *fixture) rawOrders(t *testing.T, id string) string {
 	t.Helper()
 	coll, err := fx.store.Collection(context.Background(), CollectionName)
 	require.NoError(t, err)
-	doc, err := coll.FindId(context.Background(), id)
-	require.NoError(t, err)
-	orders := doc.Value().Get(chatmodel.OrderKey)
-	require.NotNil(t, orders)
-	return orders.String()
+	var orders string
+	require.NoError(t, chatrepository.FindMessageDoc(context.Background(), coll, id, func(doc *anyenc.Value) error {
+		require.NotNil(t, doc.Get(chatmodel.OrderKey))
+		orders = doc.Get(chatmodel.OrderKey).String()
+		return nil
+	}))
+	return orders
 }
 
 func TestCreateNeverArrivesDeleted(t *testing.T) {
@@ -380,7 +382,9 @@ func TestReplayBuildsTombstone(t *testing.T) {
 	coll, err := fx.store.Collection(ctx, CollectionName)
 	require.NoError(t, err)
 	for _, docId := range []string{id, replyId} {
-		require.NoError(t, coll.DeleteId(ctx, docId))
+		key, err := chatrepository.FindMessageKey(ctx, coll, docId)
+		require.NoError(t, err)
+		require.NoError(t, coll.DeleteId(ctx, key))
 	}
 
 	// when

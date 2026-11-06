@@ -372,8 +372,8 @@ func (i *indexer) cleanChatCollection(ctx context.Context, db anystore.DB, chatI
 			if err != nil {
 				return fmt.Errorf("get doc: %w", err)
 			}
-			id := doc.Value().Get("id").GetString()
-			docIds = append(docIds, id)
+			// the primary key, which is not the id in a chat messages collection
+			docIds = append(docIds, doc.Value().GetString(col.PrimaryKey()))
 		}
 		return nil
 	}()

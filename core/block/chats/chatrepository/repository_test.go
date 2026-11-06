@@ -14,7 +14,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -28,9 +27,8 @@ func newFixture(t testing.TB) *fixture {
 	db, err := anystore.Open(ctx, filepath.Join(t.TempDir(), "store.db"), nil)
 	require.NoError(t, err)
 
-	coll, err := db.CreateCollection(ctx, "testchats")
-	require.NoError(t, err)
-	historyColl, err := db.CreateCollection(ctx, "testchatMessageHistory")
+	// the collections production opens: keyed by the storage key, with chatCollectionIndexes
+	coll, historyColl, err := openMessageCollections(ctx, db, "test")
 	require.NoError(t, err)
 	_, err = db.CreateCollection(ctx, storestate.CollMeta)
 	require.NoError(t, err)
@@ -130,6 +128,7 @@ func (f *fixture) addMessageWithOrders(t *testing.T, id, orderId, contentOrderId
 		orderObj.Set("content", arena.NewString(contentOrderId))
 	}
 	val.Set(chatmodel.OrderKey, orderObj)
+	val.Set(chatmodel.StorageKeyField, arena.NewString(chatmodel.StorageKey(orderId, id)))
 
 	err := f.repo.collection.Insert(context.Background(), val)
 	require.NoError(t, err)
@@ -249,7 +248,7 @@ func TestCountMessagesLifetime(t *testing.T) {
 	recorded, err := fx.repo.RecordMessage(context.Background(), "msg2")
 	require.NoError(t, err)
 	assert.False(t, recorded, "replaying a create is idempotent")
-	require.NoError(t, fx.repo.collection.DeleteId(context.Background(), "msg1"))
+	require.NoError(t, fx.repo.collection.DeleteId(context.Background(), chatmodel.StorageKey("order1", "msg1")))
 
 	live, err := fx.repo.CountMessages(context.Background())
 	require.NoError(t, err)
@@ -623,11 +622,7 @@ func TestGetLastMessagesByCreators(t *testing.T) {
 // filterReactionUnread as query.Exists{} silently turns all three of these into full collection
 // scans (measured 300-700x on a 50k-message collection) while returning identical results.
 func TestFilterReactionUnreadUsesTheSparseIndex(t *testing.T) {
-	newIndexedFixture := func(t *testing.T) *fixture {
-		fx := newFixture(t)
-		require.NoError(t, anystorehelper.AddIndexes(context.Background(), fx.repo.collection, chatCollectionIndexes))
-		return fx
-	}
+	newIndexedFixture := newPopulatedFixture
 	indexUsed := func(t *testing.T, fx *fixture, q anystore.Query) bool {
 		t.Helper()
 		explain, err := q.Explain(context.Background())
