@@ -893,8 +893,10 @@ func (s *repository) queryMessages(ctx context.Context, query anystore.Query) ([
 func (s *repository) HasMyReaction(ctx context.Context, myIdentity string, messageId string, emoji string) (bool, error) {
 	var msg *chatmodel.Message
 	err := FindMessageDoc(ctx, s.collection, messageId, func(doc *anyenc.Value) (err error) {
-		msg, err = chatmodel.UnmarshalMessage(doc)
-		return err
+		if msg, err = chatmodel.UnmarshalMessage(doc); err != nil {
+			return fmt.Errorf("unmarshal message: %w", err)
+		}
+		return nil
 	})
 	if err != nil {
 		return false, fmt.Errorf("find message: %w", err)
