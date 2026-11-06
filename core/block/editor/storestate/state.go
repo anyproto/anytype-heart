@@ -166,8 +166,28 @@ func (ss *StoreState) NewTx(ctx context.Context) (*StoreStateTx, error) {
 	return stx, nil
 }
 
+// Collection opens the object's collection name, creating it if it does not exist. A keyed
+// handler's collection is opened with the handler's options, so it is created with its primary key
+// and an existing one with another primary key is refused (anystore.ErrPrimaryKeyMismatch).
 func (ss *StoreState) Collection(ctx context.Context, name string) (anystore.Collection, error) {
+	if h, ok := ss.handlers[name].(KeyedHandler); ok {
+		return ss.db.Collection(ctx, ss.id+name, h.CollectionOptions())
+	}
 	return ss.db.Collection(ctx, ss.id+name)
+}
+
+// documentKey returns the primary-key value of the stored document a change names by id: the id
+// itself, unless the handler keys its collection by another field (KeyedHandler).
+func documentKey(ctx context.Context, handler Handler, coll anystore.Collection, documentId string) (string, error) {
+	kh, ok := handler.(KeyedHandler)
+	if !ok {
+		return documentId, nil
+	}
+	key, err := kh.DocumentKey(ctx, coll, documentId)
+	if err != nil {
+		return "", fmt.Errorf("resolve document key: %w", err)
+	}
+	return key, nil
 }
 
 func (ss *StoreState) applyChangeSet(ctx context.Context, set ChangeSet, returnAllErrors bool) (err error) {
@@ -247,6 +267,10 @@ func (ss *StoreState) applyCreate(ctx context.Context, ch Change) (err error) {
 	if err != nil {
 		return errors.Join(ErrCritical, fmt.Errorf("get collection: %w", err))
 	}
+	if kh, ok := handler.(KeyedHandler); ok {
+		// set after the field orders: the key is written once and never modified
+		value.Set(coll.PrimaryKey(), ss.arena.NewString(kh.NewDocumentKey(create.DocumentId, ch.Order)))
+	}
 
 	if err = coll.Insert(ctx, value); err != nil {
 		if errors.Is(err, anystore.ErrDocExists) {
@@ -284,12 +308,22 @@ func (ss *StoreState) applyModify(ctx context.Context, ch Change) (err error) {
 
 	var exec func(ctx context.Context, id any, m query.Modifier) (anystore.ModifyResult, error)
 	if mode == ModifyModeUpsert {
+		if _, keyed := handler.(KeyedHandler); keyed {
+			return fmt.Errorf("upsert into keyed collection '%s': the key of a new document is unknown", modify.Collection)
+		}
 		exec = coll.UpsertId
 	} else {
 		exec = coll.UpdateId
 	}
 
-	_, err = exec(ctx, modify.DocumentId, wrapModifierErrors(mod))
+	key, err := documentKey(ctx, handler, coll, modify.DocumentId)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return nil
+	}
+	if err != nil {
+		return errors.Join(ErrCritical, fmt.Errorf("modify document: %w", err))
+	}
+	_, err = exec(ctx, key, wrapModifierErrors(mod))
 	if err != nil {
 		if errors.Is(err, anystore.ErrDocNotFound) {
 			return nil
@@ -321,18 +355,29 @@ func (ss *StoreState) applyDelete(ctx context.Context, ch Change) (err error) {
 	if err != nil {
 		return errors.Join(ErrCritical, fmt.Errorf("get collection: %w", err))
 	}
-	switch mode {
-	case DeleteModeKeep:
+	if mode == DeleteModeKeep {
 		return nil
+	}
+	key, err := documentKey(ctx, handler, coll, del.DocumentId)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return nil
+	}
+	if err != nil {
+		return errors.Join(ErrCritical, fmt.Errorf("delete document: %w", err))
+	}
+	switch mode {
 	case DeleteModeMark:
 		payload := ss.newDeleteMark(del.DocumentId)
 		fillRootOrder(ss.arena, payload, ch.Order)
+		if pk := coll.PrimaryKey(); pk != "id" {
+			payload.Set(pk, ss.arena.NewString(key))
+		}
 		if err = coll.UpdateOne(ctx, payload); err != nil {
 			return errors.Join(ErrCritical, fmt.Errorf("update document: %w", err))
 		}
 		return nil
 	case DeleteModeDelete:
-		err = coll.DeleteId(ctx, del.DocumentId)
+		err = coll.DeleteId(ctx, key)
 		if errors.Is(err, anystore.ErrDocNotFound) {
 			return nil
 		}
