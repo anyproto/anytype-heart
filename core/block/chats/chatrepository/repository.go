@@ -30,7 +30,6 @@ import (
 	"github.com/anyproto/any-store/v2/query"
 	"github.com/anyproto/any-sync/app"
 	"github.com/samber/lo"
-	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
@@ -38,7 +37,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -53,8 +51,6 @@ const (
 
 	messageHistorySchemaVersionId = "$message-history-v1"
 )
-
-var log = logging.LoggerNotSugared(CName)
 
 type Service interface {
 	app.ComponentRunnable
@@ -106,37 +102,17 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-// chatCollectionIndexes is package-level so tests can build a collection with exactly the indexes
-// production has, and assert the queries below still reach them.
-//
-// The sparse ones are only usable by a filter that guarantees the field is present and non-null:
-// since any-store v1.0.2 the planner refuses a sparse index for anything weaker, $exists included
-// (it also matches an explicit null, which the index skips). See filterReactionUnread.
-//
-// There is no index on the order id: the primary key (the storage key) is order-prefixed, so every
-// ordered walk and every order-id range is a walk of the collection itself.
-var chatCollectionIndexes = []anystore.IndexInfo{
-	// messages are named by id in changes and in the API: FindMessageDoc, GetMessagesByIds,
-	// SetReadFlag. Unique, so that two documents never hold the same message.
-	{Fields: []string{"id"}, Unique: true},
-	{Fields: []string{chatmodel.PinnedKey}, Sparse: true},
-	{Fields: []string{chatmodel.ReactionUnreadOrderIdKey}, Sparse: true},
-	// serves GetLastMessagesByCreators: creator Eq + a walk in storage-key (order) order with early
-	// exit (measured ~80µs vs a 25-45ms full-collection scan at 50k msgs). The trailing field is the
-	// storage key, not _o.id, so the walk has the order the query sorts by and needs no sort.
-	{Fields: []string{chatmodel.CreatorKey, chatmodel.StorageKeyField}},
-	// only tombstones carry the field: counting them (CountMessages) reads just them
-	{Fields: []string{chatmodel.DeletedKey}, Sparse: true},
-}
+// chatCollectionIndexes are the indexes the messages collection is opened with.
+var chatCollectionIndexes = chatmodel.MessagesCollectionIndexes()
 
 // MessagesCollectionOptions are the options a chat messages collection is created with: it is
 // keyed by the message storage key (chatmodel.StorageKey), not by the message id.
 func MessagesCollectionOptions() anystore.CollectionOptions {
-	return anystore.CollectionOptions{PrimaryKey: chatmodel.StorageKeyField}
+	return chatmodel.MessagesCollectionOptions()
 }
 
 func messagesCollectionName(chatObjectId string) string {
-	return chatObjectId + "chats"
+	return chatmodel.MessagesCollectionName(chatObjectId)
 }
 
 func messageHistoryCollectionName(chatObjectId string) string {
@@ -193,12 +169,9 @@ func (s *service) getOrInitRepository(spaceId, chatObjectId string) (Repository,
 // openMessageCollections opens the chat's messages and message history collections, creating
 // them if needed, and ensures the messages indexes.
 //
-// The primary key of a collection is fixed when it is created. A messages collection created
-// before messages were keyed by their storage key is keyed by the message id; its documents are
-// moved into a collection keyed by the storage key (rekeyMessages). It all happens in one write
-// transaction: a crash before the commit leaves the old collection as it was, and the next open
-// starts over; once committed, the collection is keyed by the storage key and later opens change
-// nothing.
+// The messages collection is keyed by the storage key. A v1 database is migrated to v2 with that
+// layout before it is first opened (pkg/lib/datastore/anystoremigrate); a v2 collection keyed
+// otherwise is refused.
 func openMessageCollections(ctx context.Context, db anystore.DB, chatObjectId string) (messages, history anystore.Collection, err error) {
 	tx, err := db.WriteTx(ctx)
 	if err != nil {
@@ -211,19 +184,12 @@ func openMessageCollections(ctx context.Context, db anystore.DB, chatObjectId st
 	}()
 	txCtx := tx.Context()
 
-	messages, err = db.OpenCollection(txCtx, messagesCollectionName(chatObjectId))
-	switch {
-	case errors.Is(err, anystore.ErrCollectionNotFound):
-		messages, err = db.CreateCollection(txCtx, messagesCollectionName(chatObjectId), MessagesCollectionOptions())
-		if err != nil {
-			return nil, nil, fmt.Errorf("create messages collection: %w", err)
-		}
-	case err != nil:
+	messages, err = db.Collection(txCtx, messagesCollectionName(chatObjectId), MessagesCollectionOptions())
+	if errors.Is(err, anystore.ErrPrimaryKeyMismatch) {
+		return nil, nil, fmt.Errorf("messages collection %s is not keyed by %q: %w", messagesCollectionName(chatObjectId), chatmodel.StorageKeyField, err)
+	}
+	if err != nil {
 		return nil, nil, fmt.Errorf("open messages collection: %w", err)
-	case messages.PrimaryKey() != chatmodel.StorageKeyField:
-		if messages, err = rekeyMessages(txCtx, db, chatObjectId, messages); err != nil {
-			return nil, nil, fmt.Errorf("rekey messages collection: %w", err)
-		}
 	}
 	history, err = db.Collection(txCtx, messageHistoryCollectionName(chatObjectId))
 	if err != nil {
@@ -237,104 +203,6 @@ func openMessageCollections(ctx context.Context, db anystore.DB, chatObjectId st
 	}
 	return messages, history, nil
 }
-
-// rekeyMessagesSuffix names the collection a rekey builds before it takes the messages
-// collection's name.
-const rekeyMessagesSuffix = "Rekey"
-
-// rekeyMessages moves the documents of a messages collection keyed by the message id (the layout
-// before storage keys) into a new collection keyed by the storage key, then drops the old one and
-// gives the new one its name. It runs in the caller's write transaction.
-//
-// Documents are copied as they are, with their storage key added: nothing is replayed, so local
-// state survives — read and mention-read flags (unread overrides included), synced, stateId,
-// mentions, reactions and their unread entries, pins, tombstones, the order fields. The history
-// collection is keyed by the message id and is kept.
-//
-// Legacy stubs, documents without an order id that an old reaction upsert made, have no content
-// and are dropped; their ids stay in the history.
-func rekeyMessages(ctx context.Context, db anystore.DB, chatObjectId string, old anystore.Collection) (anystore.Collection, error) {
-	name := messagesCollectionName(chatObjectId)
-	rekeyName := name + rekeyMessagesSuffix
-	// a rekey that crashed rolled its collection back with it; one left by anything else is junk
-	if leftover, err := db.OpenCollection(ctx, rekeyName); err == nil {
-		if err = leftover.Drop(ctx); err != nil {
-			return nil, fmt.Errorf("drop leftover rekey collection: %w", err)
-		}
-	} else if !errors.Is(err, anystore.ErrCollectionNotFound) {
-		return nil, fmt.Errorf("open leftover rekey collection: %w", err)
-	}
-	rekeyed, err := db.CreateCollection(ctx, rekeyName, MessagesCollectionOptions())
-	if err != nil {
-		return nil, fmt.Errorf("create rekey collection: %w", err)
-	}
-	stats, err := copyMessagesRekeyed(ctx, old, rekeyed)
-	if err != nil {
-		return nil, fmt.Errorf("copy messages: %w", err)
-	}
-	if err = old.Drop(ctx); err != nil {
-		return nil, fmt.Errorf("drop old messages collection: %w", err)
-	}
-	if err = rekeyed.Rename(ctx, name); err != nil {
-		return nil, fmt.Errorf("rename rekey collection: %w", err)
-	}
-	log.Info("chat messages rekeyed by storage key",
-		zap.String("chatId", chatObjectId),
-		zap.Int("messages", stats.copied),
-		zap.Int("stubsDropped", stats.stubsDropped))
-	return rekeyed, nil
-}
-
-type rekeyStats struct {
-	copied, stubsDropped int
-}
-
-// copyMessagesRekeyed copies every message of from into to with its storage key added. It walks
-// from in order-id order (its _o.id index, when it has one), so the inserts append.
-func copyMessagesRekeyed(ctx context.Context, from, to anystore.Collection) (stats rekeyStats, err error) {
-	iter, err := from.Find(nil).Sort(legacyOrderIdSort).Iter(ctx)
-	if err != nil {
-		return stats, fmt.Errorf("iterate messages: %w", err)
-	}
-	defer iter.Close()
-	var (
-		parser = &anyenc.Parser{}
-		arena  = &anyenc.Arena{}
-		buf    []byte
-	)
-	for iter.Next() {
-		doc, err := iter.Doc()
-		if err != nil {
-			return stats, fmt.Errorf("read message: %w", err)
-		}
-		orderId := doc.Value().GetString(chatmodel.OrderKey, "id")
-		messageId := doc.Value().GetString("id")
-		if orderId == "" {
-			stats.stubsDropped++
-			continue
-		}
-		// a copy of its own: the iterator's document is valid only until Next
-		buf = doc.Value().MarshalTo(buf[:0])
-		msg, err := parser.Parse(buf)
-		if err != nil {
-			return stats, fmt.Errorf("copy message %s: %w", messageId, err)
-		}
-		arena.Reset()
-		msg.Set(chatmodel.StorageKeyField, arena.NewString(chatmodel.StorageKey(orderId, messageId)))
-		// a key two messages share fails the insert, and with it the rekey: the old collection stays
-		if err = to.Insert(ctx, msg); err != nil {
-			return stats, fmt.Errorf("insert message %s: %w", messageId, err)
-		}
-		stats.copied++
-	}
-	if err = iter.Err(); err != nil {
-		return stats, fmt.Errorf("iterate messages: %w", err)
-	}
-	return stats, nil
-}
-
-// legacyOrderIdSort is the order of the layout before storage keys: by _o.id, through its index.
-const legacyOrderIdSort = "_o.id"
 
 // FindMessageDoc calls proc with the stored document of the message with this id; the value is
 // valid only inside proc. Messages are keyed by their storage key, so the lookup goes through the
