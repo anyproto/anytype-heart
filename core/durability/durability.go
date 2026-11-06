@@ -21,6 +21,7 @@ import (
 	"time"
 
 	anystore "github.com/anyproto/any-store"
+	anystorev2 "github.com/anyproto/any-store/v2"
 	"github.com/anyproto/any-sync/app"
 	"go.uber.org/zap"
 
@@ -38,9 +39,14 @@ type Flusher interface {
 	Flush(timeout time.Duration, waitPending bool, mode anystore.FlushMode)
 }
 
+// FlusherV2 is Flusher for the heart-owned any-store v2 databases (the provider).
+type FlusherV2 interface {
+	Flush(timeout time.Duration, waitPending bool, mode anystorev2.FlushMode)
+}
+
 type durability struct {
-	spaceCore        Flusher
-	anystoreProvider Flusher
+	spaceCore        Flusher   // space stores: any-store v1
+	anystoreProvider FlusherV2 // objectstore, crdt: any-store v2
 }
 
 func New() app.Component {
@@ -53,7 +59,7 @@ func (c *durability) Name() (name string) {
 
 func (c *durability) Init(a *app.App) (err error) {
 	c.spaceCore = a.MustComponent(spacecore.CName).(Flusher)
-	c.anystoreProvider = a.MustComponent(anystoreprovider.CName).(Flusher)
+	c.anystoreProvider = a.MustComponent(anystoreprovider.CName).(FlusherV2)
 	return nil
 }
 
@@ -64,7 +70,7 @@ func (s *durability) StateChange(state int) {
 		// db component will perform final flush on closing after all writes are done
 		// flush space stores first, because others we can reindex without data loss
 		s.spaceCore.Flush(time.Second*3, false, anystore.FlushModeCheckpointPassive)
-		s.anystoreProvider.Flush(time.Second*3, false, anystore.FlushModeCheckpointPassive)
+		s.anystoreProvider.Flush(time.Second*3, false, anystorev2.FlushModeCheckpointPassive)
 	case domain.CompStateAppWentBackground:
 		// Blocking: iOS may suspend us right after this RPC returns, so committed data must be
 		// power-safe before we let the call finish.
@@ -76,7 +82,8 @@ func (s *durability) StateChange(state int) {
 		s.spaceCore.Flush(time.Second*10, true, anystore.FlushModeFsync)
 		spaceCoreSpent := time.Since(start)
 		start = time.Now()
-		s.anystoreProvider.Flush(time.Second*10, true, anystore.FlushModeFsync)
+		// TODO(any-store v2): no fsync-only flush mode in v2, so the provider gets a passive checkpoint
+		s.anystoreProvider.Flush(time.Second*10, true, anystorev2.FlushModeCheckpointPassive)
 		anystoreSpent := time.Since(start)
 		if spaceCoreSpent+anystoreSpent > time.Second {
 			log.With(zap.Int64("spaceCoreSpentMs", spaceCoreSpent.Milliseconds()), zap.Int64("anystoreSpentMs", anystoreSpent.Milliseconds())).Warn("flushing took too long")
