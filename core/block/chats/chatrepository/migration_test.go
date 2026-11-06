@@ -4,7 +4,6 @@ import (
 	"context"
 	"path/filepath"
 	"sort"
-	"strings"
 	"testing"
 
 	anystore "github.com/anyproto/any-store/v2"
@@ -88,8 +87,6 @@ func legacyMessages() []legacyMessage {
 			Attachments: []*model.ChatMessageAttachment{}, Reactions: &model.ChatMessageReactions{},
 		}}
 	}
-	tail := strings.Repeat("x", 12)
-
 	// an own message the user marked unread: a replay would make it read again
 	unreadOverride := message(cid(1), "!!$1", migrationMe, "mine, marked unread", false)
 	// changes made concurrently on one parent share an order id
@@ -111,9 +108,7 @@ func legacyMessages() []legacyMessage {
 	reply.ReplyToMessageId = cid(1)
 	reply.HasMention = true
 	reply.MentionRead = false
-	// two messages at one order whose ids end alike: one takes the collision key
-	collisionFirst := message("first-change-"+tail, "!!$7", "bob", "first", true)
-	collisionOther := message("other-change-"+tail, "!!$7", "bob", "other", true)
+	last := message(cid(8), "!!$7", "bob", "last", true)
 
 	stub := func(id string) *chatmodel.Message {
 		return &chatmodel.Message{ChatMessage: &model.ChatMessage{
@@ -129,8 +124,7 @@ func legacyMessages() []legacyMessage {
 		{msg: tombstone, orderId: "!!$4"},
 		{msg: reacted, orderId: "!!$5"},
 		{msg: reply, orderId: "!!$6"},
-		{msg: collisionFirst, orderId: "!!$7"},
-		{msg: collisionOther, orderId: "!!$7"},
+		{msg: last, orderId: "!!$7"},
 		{msg: stub(cid(98))},
 		{msg: stub(cid(99))},
 	}
@@ -206,11 +200,10 @@ func TestRekeyLegacyMessagesCollection(t *testing.T) {
 		wantOrderIds = append(wantOrderIds, m.orderId)
 	}
 	sort.Strings(wantOrderIds)
-	tail := strings.Repeat("x", 12)
 	wantKeys := map[string]string{
-		cid(2):                 chatmodel.StorageKey("!!$2", cid(2)),
-		"first-change-" + tail: chatmodel.StorageKey("!!$7", "first-change-"+tail),
-		"other-change-" + tail: chatmodel.CollisionStorageKey("!!$7", "other-change-"+tail),
+		cid(2): chatmodel.StorageKey("!!$2", cid(2)),
+		cid(3): chatmodel.StorageKey("!!$2", cid(3)),
+		cid(8): chatmodel.StorageKey("!!$7", cid(8)),
 	}
 	wantChatState := &model.ChatState{
 		Messages:              &model.ChatStateUnreadState{OldestOrderId: "!!$1", Counter: 2},

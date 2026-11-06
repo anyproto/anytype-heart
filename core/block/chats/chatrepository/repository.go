@@ -252,8 +252,7 @@ const rekeyMessagesSuffix = "Rekey"
 // collection is keyed by the message id and is kept.
 //
 // Legacy stubs, documents without an order id that an old reaction upsert made, have no content
-// and are dropped; their ids stay in the history. A message whose storage key another message
-// holds takes its collision key.
+// and are dropped; their ids stay in the history.
 func rekeyMessages(ctx context.Context, db anystore.DB, chatObjectId string, old anystore.Collection) (anystore.Collection, error) {
 	name := messagesCollectionName(chatObjectId)
 	rekeyName := name + rekeyMessagesSuffix
@@ -282,13 +281,12 @@ func rekeyMessages(ctx context.Context, db anystore.DB, chatObjectId string, old
 	log.Info("chat messages rekeyed by storage key",
 		zap.String("chatId", chatObjectId),
 		zap.Int("messages", stats.copied),
-		zap.Int("collisionKeys", stats.collisionKeys),
 		zap.Int("stubsDropped", stats.stubsDropped))
 	return rekeyed, nil
 }
 
 type rekeyStats struct {
-	copied, collisionKeys, stubsDropped int
+	copied, stubsDropped int
 }
 
 // copyMessagesRekeyed copies every message of from into to with its storage key added. It walks
@@ -315,13 +313,6 @@ func copyMessagesRekeyed(ctx context.Context, from, to anystore.Collection) (sta
 			stats.stubsDropped++
 			continue
 		}
-		key, err := NewMessageKey(ctx, to, orderId, messageId)
-		if err != nil {
-			return stats, fmt.Errorf("storage key of message %s: %w", messageId, err)
-		}
-		if key != chatmodel.StorageKey(orderId, messageId) {
-			stats.collisionKeys++
-		}
 		// a copy of its own: the iterator's document is valid only until Next
 		buf = doc.Value().MarshalTo(buf[:0])
 		msg, err := parser.Parse(buf)
@@ -329,7 +320,8 @@ func copyMessagesRekeyed(ctx context.Context, from, to anystore.Collection) (sta
 			return stats, fmt.Errorf("copy message %s: %w", messageId, err)
 		}
 		arena.Reset()
-		msg.Set(chatmodel.StorageKeyField, arena.NewString(key))
+		msg.Set(chatmodel.StorageKeyField, arena.NewString(chatmodel.StorageKey(orderId, messageId)))
+		// a key two messages share fails the insert, and with it the rekey: the old collection stays
 		if err = to.Insert(ctx, msg); err != nil {
 			return stats, fmt.Errorf("insert message %s: %w", messageId, err)
 		}
@@ -343,32 +335,6 @@ func copyMessagesRekeyed(ctx context.Context, from, to anystore.Collection) (sta
 
 // legacyOrderIdSort is the order of the layout before storage keys: by _o.id, through its index.
 const legacyOrderIdSort = "_o.id"
-
-// ErrStorageKeyCollision refuses a message whose storage key and collision key both belong to
-// other messages: possible only for an id of at most 12 characters, whose two keys are the same.
-var ErrStorageKeyCollision = errors.New("storage key held by another message")
-
-// NewMessageKey returns the storage key a message with this order id and id is stored under in
-// coll: its StorageKey, or its CollisionStorageKey when another message (same order id, same id
-// tail) holds that one. A message already stored under one of them gets that one back, so a
-// replayed create keeps its key.
-func NewMessageKey(ctx context.Context, coll anystore.Collection, orderId, messageId string) (string, error) {
-	keys := [...]string{chatmodel.StorageKey(orderId, messageId), chatmodel.CollisionStorageKey(orderId, messageId)}
-	var holder string
-	for _, key := range keys {
-		doc, err := coll.FindId(ctx, key)
-		if errors.Is(err, anystore.ErrDocNotFound) {
-			return key, nil
-		}
-		if err != nil {
-			return "", fmt.Errorf("read storage key: %w", err)
-		}
-		if holder = doc.Value().GetString("id"); holder == messageId {
-			return key, nil
-		}
-	}
-	return "", fmt.Errorf("%w: message %s, stored message %s", ErrStorageKeyCollision, messageId, holder)
-}
 
 // FindMessageDoc calls proc with the stored document of the message with this id; the value is
 // valid only inside proc. Messages are keyed by their storage key, so the lookup goes through the

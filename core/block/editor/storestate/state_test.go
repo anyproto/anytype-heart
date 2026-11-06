@@ -2,7 +2,6 @@ package storestate
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -464,24 +463,14 @@ func TestApplyChangeSet_AclHeadIdPlumbing(t *testing.T) {
 // their storage key.
 type keyedHandler struct {
 	DefaultHandler
-	keyErr  error
-	creates int
-}
-
-func (h *keyedHandler) BeforeCreate(ctx context.Context, ch ChangeOp) error {
-	h.creates++
-	return h.DefaultHandler.BeforeCreate(ctx, ch)
 }
 
 func (h *keyedHandler) CollectionOptions() anystore.CollectionOptions {
 	return anystore.CollectionOptions{PrimaryKey: "k"}
 }
 
-func (h *keyedHandler) NewDocumentKey(_ context.Context, _ anystore.Collection, documentId, order string) (string, error) {
-	if h.keyErr != nil {
-		return "", h.keyErr
-	}
-	return order + "/" + documentId, nil
+func (h *keyedHandler) NewDocumentKey(documentId, order string) string {
+	return order + "/" + documentId
 }
 
 func (h *keyedHandler) DocumentKey(ctx context.Context, coll anystore.Collection, documentId string) (string, error) {
@@ -526,24 +515,6 @@ func TestKeyedHandler(t *testing.T) {
 		assert.Equal(t, "1", doc.Value().GetString("id"))
 		assert.Equal(t, "o1", doc.Value().GetString(ordersKey, "id"))
 		assert.Nil(t, doc.Value().Get(ordersKey, "k"))
-	})
-
-	t.Run("a create that can't be keyed reaches no handler", func(t *testing.T) {
-		// given
-		handler := &keyedHandler{DefaultHandler: DefaultHandler{Name: "testColl"}, keyErr: errors.Join(ErrCritical, fmt.Errorf("read failed"))}
-		fx := newFixture(t, "objId", handler)
-		tx, err := fx.NewTx(ctx)
-		require.NoError(t, err)
-		defer func() { _ = tx.Rollback() }()
-		build := &Builder{}
-		require.NoError(t, build.Create("testColl", IdFromChange, `{"key":"value"}`))
-
-		// when
-		err = tx.ApplyChangeSet(ChangeSet{Id: "1", Order: "o1", Changes: build.ChangeSet})
-
-		// then
-		assert.ErrorIs(t, err, ErrCritical)
-		assert.Zero(t, handler.creates)
 	})
 
 	t.Run("a modify names the document by id", func(t *testing.T) {

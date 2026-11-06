@@ -27,36 +27,25 @@ const (
 	// storageKeyIdTailLength is how much of the message id the key keeps after the order id. The
 	// order id alone is not unique: changes made concurrently on the same parent get the same
 	// one. A message id is a change CID; its tail is hash bits, enough to tell such messages
-	// apart. A message whose key another message already holds takes CollisionStorageKey.
-	storageKeyIdTailLength = 12
+	// apart. Two keys are equal only for the same order id and the same tail, which is not
+	// handled: the insert of the second fails with any-store's duplicate-key error.
+	storageKeyIdTailLength = 5
 )
 
 // StorageKey returns the storage key of the message with the given order id and message id:
-// the order id, the separator and the last 12 characters of the message id (the whole id when
+// the order id, the separator and the last 5 characters of the message id (the whole id when
 // it is shorter). It is the one place the key is built.
 //
 // A document without an order id (a legacy stub that an old reaction upsert created) gets an
 // empty order part, so it sorts before every message.
 //
 // Keys are local: they never leave the device and never appear in changes, so the layout can
-// change with a migration of the local store alone. Which of the two keys a message got depends
-// on what was stored before it; a message is always found by id, never by recomputing its key.
+// change with a migration of the local store alone.
 func StorageKey(orderId, messageId string) string {
 	tail := messageId
 	if len(tail) > storageKeyIdTailLength {
 		tail = tail[len(tail)-storageKeyIdTailLength:]
 	}
-	return storageKey(orderId, tail)
-}
-
-// CollisionStorageKey is the key of a message whose StorageKey another message (same order id,
-// same id tail) already holds: the whole message id is the tail. It orders with the other keys of
-// its order id, so every order-id bound below still holds.
-func CollisionStorageKey(orderId, messageId string) string {
-	return storageKey(orderId, messageId)
-}
-
-func storageKey(orderId, tail string) string {
 	return orderId + storageKeySeparator + tail
 }
 

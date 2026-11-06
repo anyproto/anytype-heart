@@ -109,17 +109,9 @@ func (d *ChatHandler) CollectionOptions() anystore.CollectionOptions {
 	return chatrepository.MessagesCollectionOptions()
 }
 
-// NewDocumentKey is the storage key of the message a create makes (storestate.KeyedHandler): its
-// collision key when another message holds its storage key. A message both of whose keys are
-// held is skipped and logged (chatrepository.ErrStorageKeyCollision), never written over another.
-func (d *ChatHandler) NewDocumentKey(ctx context.Context, coll anystore.Collection, documentId, order string) (string, error) {
-	key, err := chatrepository.NewMessageKey(ctx, coll, order, documentId)
-	if err != nil && !errors.Is(err, chatrepository.ErrStorageKeyCollision) {
-		// a create skipped on a failed read would never be applied again: the replay watermark
-		// moves past it
-		return "", errors.Join(storestate.ErrCritical, err)
-	}
-	return key, err
+// NewDocumentKey is the storage key of the message a create makes (storestate.KeyedHandler).
+func (d *ChatHandler) NewDocumentKey(documentId, order string) string {
+	return chatmodel.StorageKey(order, documentId)
 }
 
 // DocumentKey resolves the message id a modify or a delete names to its storage key
@@ -133,20 +125,8 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 	if err != nil {
 		return fmt.Errorf("get collection: %w", err)
 	}
-	messageId := ch.Value.GetString("id")
-	_, err = chatrepository.FindMessageKey(ctx, coll, messageId)
-	if err == nil {
-		// The message is already stored: this create is being replayed over an existing
-		// store (e.g. the one-time full-tree replay storeApply runs for a store without
-		// the fullyReplayed marker, which a reindex triggers for every chat). The insert
-		// would be refused anyway (the unique id index); bail out before mutating the
-		// subscription counters, so already-read messages are not resurrected as unread.
-		return storestate.ErrIgnore
-	}
-	if !errors.Is(err, anystore.ErrDocNotFound) {
-		// critical: a create skipped on a failed read would never be applied again, the replay
-		// watermark moves past it
-		return errors.Join(storestate.ErrCritical, fmt.Errorf("check for existing message: %w", err))
+	if err = checkNotStored(ctx, coll, ch.Value.GetString("id")); err != nil {
+		return err
 	}
 	msg, err := chatmodel.UnmarshalMessage(ch.Value)
 	if err != nil {
@@ -224,6 +204,24 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 
 	msg.MarshalAnyenc(ch.Value, ch.Arena)
 
+	return nil
+}
+
+// checkNotStored refuses a create of a message that is stored already with ErrIgnore: the create
+// is being replayed over an existing store (e.g. the one-time full-tree replay storeApply runs for
+// a store without the fullyReplayed marker, which a reindex triggers for every chat). BeforeCreate
+// bails out before mutating the subscription counters, so already-read messages are not
+// resurrected as unread, and the insert, which would be refused, never runs.
+func checkNotStored(ctx context.Context, coll anystore.Collection, messageId string) error {
+	_, err := chatrepository.FindMessageKey(ctx, coll, messageId)
+	if err == nil {
+		return storestate.ErrIgnore
+	}
+	if !errors.Is(err, anystore.ErrDocNotFound) {
+		// critical: a create skipped on a failed read would never be applied again, the replay
+		// watermark moves past it
+		return errors.Join(storestate.ErrCritical, fmt.Errorf("check for existing message: %w", err))
+	}
 	return nil
 }
 

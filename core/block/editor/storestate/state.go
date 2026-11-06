@@ -255,19 +255,6 @@ func (ss *StoreState) applyCreate(ctx context.Context, ch Change) (err error) {
 	value := ss.arena.NewFromFastJson(jsonValue)
 	value.Set("id", ss.arena.NewString(create.DocumentId))
 
-	coll, err := ss.Collection(ctx, create.Collection)
-	if err != nil {
-		return errors.Join(ErrCritical, fmt.Errorf("get collection: %w", err))
-	}
-	// the key is chosen before the handler runs, so a create that can't be keyed changes nothing
-	var key string
-	kh, keyed := handler.(KeyedHandler)
-	if keyed {
-		if key, err = kh.NewDocumentKey(ctx, coll, create.DocumentId, ch.Order); err != nil {
-			return fmt.Errorf("document key: %w", err)
-		}
-	}
-
 	// call handler
 	if err = handler.BeforeCreate(ctx, ss.changeOp(ch, value)); err != nil {
 		return
@@ -275,14 +262,21 @@ func (ss *StoreState) applyCreate(ctx context.Context, ch Change) (err error) {
 
 	// fill initial order
 	fillRootOrder(ss.arena, value, ch.Order)
-	if keyed {
-		// set after the field orders: the key is written once and never modified
-		value.Set(coll.PrimaryKey(), ss.arena.NewString(key))
-	}
 
 	// insert
+	coll, err := ss.Collection(ctx, create.Collection)
+	if err != nil {
+		return errors.Join(ErrCritical, fmt.Errorf("get collection: %w", err))
+	}
+	kh, keyed := handler.(KeyedHandler)
+	if keyed {
+		// set after the field orders: the key is written once and never modified
+		value.Set(coll.PrimaryKey(), ss.arena.NewString(kh.NewDocumentKey(create.DocumentId, ch.Order)))
+	}
 	if err = coll.Insert(ctx, value); err != nil {
-		if errors.Is(err, anystore.ErrDocExists) {
+		// a create replayed over its document; a keyed handler's BeforeCreate has ignored that
+		// one already, so for it the key belongs to another document
+		if errors.Is(err, anystore.ErrDocExists) && !keyed {
 			return ErrIgnore
 		}
 		return errors.Join(ErrCritical, fmt.Errorf("insert document: %w", err))

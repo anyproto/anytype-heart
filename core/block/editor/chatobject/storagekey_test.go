@@ -3,12 +3,9 @@ package chatobject
 import (
 	"context"
 	"errors"
-	"strings"
 	"testing"
-	"time"
 
 	anystore "github.com/anyproto/any-store/v2"
-	"github.com/anyproto/any-store/v2/anyenc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,39 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
-
-// pushCreate applies the create of msg as change changeId at order, authored by creator, the way
-// a change arrives from the tree; strict returns every apply error, as a local push does.
-func (fx *fixture) pushCreate(t *testing.T, creator, changeId, order string, msg *chatmodel.Message, strict bool) error {
-	t.Helper()
-	arena := &anyenc.Arena{}
-	obj := arena.NewObject()
-	msg.MarshalAnyenc(obj, arena)
-	builder := &storestate.Builder{}
-	require.NoError(t, builder.Create(CollectionName, storestate.IdFromChange, obj))
-	ctx := context.Background()
-	tx, err := fx.store.NewTx(ctx)
-	require.NoError(t, err)
-	defer func() { _ = tx.Rollback() }()
-	changeSet := storestate.ChangeSet{
-		Id:        changeId,
-		Order:     order,
-		Changes:   builder.ChangeSet,
-		Creator:   creator,
-		Timestamp: time.Now().Unix(),
-	}
-	if strict {
-		err = tx.ApplyChangeSetReturnAllErrors(changeSet)
-	} else {
-		err = tx.ApplyChangeSet(changeSet)
-	}
-	if err != nil {
-		return err
-	}
-	require.NoError(t, tx.Commit())
-	fx.appliedChangeSets = append(fx.appliedChangeSets, changeSet)
-	return nil
-}
 
 func (fx *fixture) storageKey(t *testing.T, messageId string) string {
 	t.Helper()
@@ -140,65 +104,6 @@ func TestMessagesUnderStorageKeys(t *testing.T) {
 		assert.NotEqual(t, fx.storageKey(t, first), fx.storageKey(t, second))
 	})
 
-	t.Run("a create whose key another message holds takes its collision key", func(t *testing.T) {
-		// given: two changes at one order whose ids end alike
-		fx := newFixture(t)
-		tail := strings.Repeat("x", 12)
-		first, other := "first-change-"+tail, "other-change-"+tail
-		require.NoError(t, fx.pushCreate(t, alice, first, "!!$5", givenSimpleMessage("first"), true))
-
-		// when
-		require.NoError(t, fx.pushCreate(t, bob, other, "!!$5", givenSimpleMessage("other"), true))
-
-		// then
-		assert.Equal(t, "first", fx.getMessage(t, first).Message.Text)
-		assert.Equal(t, "other", fx.getMessage(t, other).Message.Text)
-		assert.Equal(t, chatmodel.StorageKey("!!$5", first), fx.storageKey(t, first))
-		assert.Equal(t, chatmodel.CollisionStorageKey("!!$5", other), fx.storageKey(t, other))
-
-		t.Run("and keeps it when the create is replayed", func(t *testing.T) {
-			// when
-			require.NoError(t, fx.replayStoredChanges(ctx))
-
-			// then
-			assert.Equal(t, chatmodel.CollisionStorageKey("!!$5", other), fx.storageKey(t, other))
-			resp, err := fx.GetMessages(ctx, chatrepositoryGetAll)
-			require.NoError(t, err)
-			assert.Len(t, resp.Messages, 2)
-		})
-
-		t.Run("an edit reaches it by id", func(t *testing.T) {
-			// when
-			fx.pushAs(t, bob, editBuilder(t, other, "other, edited"))
-
-			// then
-			assert.Equal(t, "other, edited", fx.getMessage(t, other).Message.Text)
-			assert.Equal(t, "first", fx.getMessage(t, first).Message.Text)
-		})
-	})
-
-	t.Run("a create whose both keys other messages hold is skipped, never written over them", func(t *testing.T) {
-		// given: an id of 12 characters, whose storage and collision keys are the same, and a
-		// stored message at the same order whose id ends with it
-		fx := newFixture(t)
-		short := strings.Repeat("x", 12)
-		long := "first-change-" + short
-		require.NoError(t, fx.pushCreate(t, alice, long, "!!$5", givenSimpleMessage("first"), true))
-
-		// when
-		strictErr := fx.pushCreate(t, bob, short, "!!$5", givenSimpleMessage("other"), true)
-		replayErr := fx.pushCreate(t, bob, short, "!!$5", givenSimpleMessage("other"), false)
-
-		// then
-		assert.ErrorIs(t, strictErr, chatrepository.ErrStorageKeyCollision)
-		assert.NotErrorIs(t, strictErr, storestate.ErrCritical)
-		assert.NoError(t, replayErr, "a replay logs and skips it")
-		assert.Equal(t, "first", fx.getMessage(t, long).Message.Text)
-		msgs, err := fx.GetMessagesByIds(ctx, []string{short})
-		require.NoError(t, err)
-		assert.Empty(t, msgs)
-	})
-
 	t.Run("a full replay into an emptied store rebuilds every message", func(t *testing.T) {
 		// given: a chat as the tree holds it
 		fx := newFixture(t)
@@ -236,18 +141,30 @@ func TestMessagesUnderStorageKeys(t *testing.T) {
 	})
 }
 
-// unreadableCollection fails every read by key, as a corrupt page would.
+// unreadableCollection fails every read, as a corrupt page would.
 type unreadableCollection struct {
 	anystore.Collection
 }
 
-func (unreadableCollection) FindId(ctx context.Context, id any) (anystore.Doc, error) {
+func (unreadableCollection) Find(any) anystore.Query {
+	return unreadableQuery{}
+}
+
+type unreadableQuery struct {
+	anystore.Query
+}
+
+func (q unreadableQuery) Limit(uint) anystore.Query {
+	return q
+}
+
+func (unreadableQuery) Iter(context.Context) (anystore.Iterator, error) {
 	return nil, errors.New("page integrity")
 }
 
-func TestNewDocumentKeyReadFailureIsCritical(t *testing.T) {
+func TestExistingMessageCheckFailureIsCritical(t *testing.T) {
 	// when
-	_, err := (&ChatHandler{}).NewDocumentKey(context.Background(), unreadableCollection{}, "msg1", "!!$5")
+	err := checkNotStored(context.Background(), unreadableCollection{}, "msg1")
 
 	// then
 	require.ErrorIs(t, err, storestate.ErrCritical, "a create skipped on a failed read is never applied again")

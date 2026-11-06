@@ -55,11 +55,10 @@ type KeyedHandler interface {
 	Handler
 	// CollectionOptions are the options the collection is opened with. They name the primary key.
 	CollectionOptions() anystore.CollectionOptions
-	// NewDocumentKey returns the key of the document a create with this id and order makes in
-	// coll. It runs before BeforeCreate, also for a create replayed over its stored document, which
-	// must get that document's key back. An error wrapping ErrCritical aborts the apply; any other
-	// skips the create.
-	NewDocumentKey(ctx context.Context, coll anystore.Collection, documentId, order string) (string, error)
+	// NewDocumentKey returns the key of the document a create with this id and order makes.
+	// BeforeCreate must refuse (ErrIgnore) a create replayed over its stored document: the insert
+	// of a key another document holds fails critically.
+	NewDocumentKey(documentId, order string) string
 	// DocumentKey returns the key of the stored document with this id, or an error wrapping
 	// anystore.ErrDocNotFound when there is none.
 	DocumentKey(ctx context.Context, coll anystore.Collection, documentId string) (string, error)
