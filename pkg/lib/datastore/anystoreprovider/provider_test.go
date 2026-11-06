@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	anystore "github.com/anyproto/any-store"
+	anystore "github.com/anyproto/any-store/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -230,7 +230,7 @@ func TestFlushBoundedWait(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		p.Flush(time.Second*10, true, anystore.FlushModeFsync)
+		p.Flush(time.Second*10, true, anystore.FlushModeCheckpointPassive)
 
 		// then
 		assert.Eventually(t, func() bool { return !p.dbsAreFlushing.Load() }, time.Second, 10*time.Millisecond)

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	anystore "github.com/anyproto/any-store"
+	anystore "github.com/anyproto/any-store/v2"
 	"path/filepath"
 	"testing"
 

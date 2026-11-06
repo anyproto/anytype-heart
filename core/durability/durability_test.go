@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	anystore "github.com/anyproto/any-store"
+	anystore "github.com/anyproto/any-store/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -31,7 +31,7 @@ func TestStateChange(t *testing.T) {
 		spaceCore := &flusherMock{}
 		provider := &flusherMock{}
 		d := &durability{spaceCore: spaceCore, anystoreProvider: provider}
-		want := []flushCall{{timeout: time.Second * 10, waitPending: true, mode: anystore.FlushModeFsync}}
+		want := []flushCall{{timeout: time.Second * 10, waitPending: true, mode: anystore.FlushModeCheckpointPassive}}
 
 		// when
 		d.StateChange(int(domain.CompStateAppWentBackground))

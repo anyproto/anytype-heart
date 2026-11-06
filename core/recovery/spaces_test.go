@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	anystore "github.com/anyproto/any-store"
+	anystore "github.com/anyproto/any-store/v2"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/net"
 	"github.com/stretchr/testify/assert"

@@ -20,7 +20,7 @@ Flush order: space stores first (critical data), then objectstore (can be reinde
 import (
 	"time"
 
-	anystore "github.com/anyproto/any-store"
+	anystore "github.com/anyproto/any-store/v2"
 	"github.com/anyproto/any-sync/app"
 	"go.uber.org/zap"
 
@@ -68,15 +68,16 @@ func (s *durability) StateChange(state int) {
 	case domain.CompStateAppWentBackground:
 		// Blocking: iOS may suspend us right after this RPC returns, so committed data must be
 		// power-safe before we let the call finish.
-		// Fsync mode syncs the WAL only (sufficient at synchronous=normal) instead of a passive
+		// TODO(any-store v2): no fsync-only flush mode exists in v2, so this is a passive checkpoint
+		// again (the GO-7393 iOS background-hang guard is not available). Was: Fsync mode syncs the WAL only (sufficient at synchronous=normal) instead of a passive
 		// checkpoint: background filesystem I/O is throttled on iOS and a checkpoint of every open
 		// DB can grind for minutes without honoring the context (see GO-7393). WAL space
 		// reclamation stays on the idle auto-flush and wal_autocheckpoint paths.
 		start := time.Now()
-		s.spaceCore.Flush(time.Second*10, true, anystore.FlushModeFsync)
+		s.spaceCore.Flush(time.Second*10, true, anystore.FlushModeCheckpointPassive)
 		spaceCoreSpent := time.Since(start)
 		start = time.Now()
-		s.anystoreProvider.Flush(time.Second*10, true, anystore.FlushModeFsync)
+		s.anystoreProvider.Flush(time.Second*10, true, anystore.FlushModeCheckpointPassive)
 		anystoreSpent := time.Since(start)
 		if spaceCoreSpent+anystoreSpent > time.Second {
 			log.With(zap.Int64("spaceCoreSpentMs", spaceCoreSpent.Milliseconds()), zap.Int64("anystoreSpentMs", anystoreSpent.Milliseconds())).Warn("flushing took too long")

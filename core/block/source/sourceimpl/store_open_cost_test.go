@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	anystore "github.com/anyproto/any-store"
+	anystore "github.com/anyproto/any-store/v2"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
@@ -56,8 +56,8 @@ type countingDB struct {
 	c *openScanCounters
 }
 
-func (d countingDB) Collection(ctx context.Context, name string) (anystore.Collection, error) {
-	coll, err := d.DB.Collection(ctx, name)
+func (d countingDB) Collection(ctx context.Context, name string, opts ...anystore.CollectionOptions) (anystore.Collection, error) {
+	coll, err := d.DB.Collection(ctx, name, opts...)
 	return d.wrap(coll, name), err
 }
 
@@ -66,8 +66,8 @@ func (d countingDB) OpenCollection(ctx context.Context, name string) (anystore.C
 	return d.wrap(coll, name), err
 }
 
-func (d countingDB) CreateCollection(ctx context.Context, name string) (anystore.Collection, error) {
-	coll, err := d.DB.CreateCollection(ctx, name)
+func (d countingDB) CreateCollection(ctx context.Context, name string, opts ...anystore.CollectionOptions) (anystore.Collection, error) {
+	coll, err := d.DB.CreateCollection(ctx, name, opts...)
 	return d.wrap(coll, name), err
 }
 

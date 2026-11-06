@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	anystore "github.com/anyproto/any-store"
+	anystore "github.com/anyproto/any-store/v2"
 )
 
 // deletionAuditMarkId is the single document the deletionAudit collection holds. The collection is
