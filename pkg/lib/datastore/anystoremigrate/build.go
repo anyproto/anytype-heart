@@ -96,6 +96,9 @@ func (m *Migrator) copyCollection(ctx context.Context, src anystorev1.DB, dst an
 		indexes = chatmodel.MessagesCollectionIndexes()
 	} else {
 		dstColl, err = dst.CreateCollection(ctx, name)
+		// v1 scans in rowid (insertion) order; sorting by id walks its id key natively so the
+		// inserts into the v2 btree, keyed by id, append instead of landing at random
+		query = query.Sort("id")
 		for _, idx := range srcColl.GetIndexes() {
 			info := idx.Info()
 			indexes = append(indexes, anystore.IndexInfo{Name: info.Name, Fields: info.Fields, Unique: info.Unique, Sparse: info.Sparse})
