@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"sync"
@@ -206,7 +207,13 @@ func (m *Migrator) lockPath(path string) (unlock func()) {
 // buildAndVerify builds the v2 database in tmp from the v1 one at path and verifies it against
 // the source, reopened from disk.
 func (m *Migrator) buildAndVerify(ctx context.Context, path, tmp string, rep *Report) error {
-	src, err := anystorev1.Open(ctx, path, m.opts.SrcConfig)
+	// Open fills defaults into the config it gets, including a map, so every open needs its own copy.
+	var srcConfig anystorev1.Config
+	if m.opts.SrcConfig != nil {
+		srcConfig = *m.opts.SrcConfig
+	}
+	srcConfig.SQLiteConnectionOptions = maps.Clone(srcConfig.SQLiteConnectionOptions)
+	src, err := anystorev1.Open(ctx, path, &srcConfig)
 	if err != nil {
 		return fmt.Errorf("open v1 database: %w", err)
 	}
