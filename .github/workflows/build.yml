@@ -26,6 +26,11 @@ jobs:
     runs-on: ${{ github.event_name == 'push' && 'macos-15' || (github.event.inputs.run-on-runner || 'macos-15') }}
     timeout-minutes: 120
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
       - name: Install Go
         uses: actions/setup-go@v7
         with:
@@ -41,11 +46,6 @@ jobs:
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
-
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
 
       - name: Install brew and node deps
         run: make install-brew-and-node-deps
