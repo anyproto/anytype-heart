@@ -146,6 +146,77 @@ func removeMigrationLeftovers(objectStorePath string) error {
 	return nil
 }
 
+// ErrClosed is returned by an open that the provider's Close came before.
+var ErrClosed = errors.New("anystore provider is closed")
+
+// closeOpensWait bounds how long Close waits for the opens in flight (a migration among them, which
+// the cancelled context stops). A var so tests can shorten it.
+var closeOpensWait = 10 * time.Second
+
+// openGate admits the opens of databases until Close. An open admitted before Close keeps it waiting
+// (up to closeOpensWait); an open that ends once Close began publishes nothing and closes what it
+// opened, so no database is left open that Close did not see.
+type openGate struct {
+	mu       sync.Mutex
+	closed   bool
+	inFlight sync.WaitGroup
+}
+
+// enter admits an open; leave ends it.
+func (g *openGate) enter() (leave func(), err error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.closed {
+		return nil, ErrClosed
+	}
+	g.inFlight.Add(1)
+	return g.inFlight.Done, nil
+}
+
+func (g *openGate) isClosed() bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.closed
+}
+
+// publish runs register, which makes an opened database reachable by Close, unless Close began:
+// the two are atomic, so Close sees every database published before it.
+func (g *openGate) publish(register func()) bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.closed {
+		return false
+	}
+	register()
+	return true
+}
+
+// close refuses every open from now on.
+func (g *openGate) close() {
+	g.mu.Lock()
+	g.closed = true
+	g.mu.Unlock()
+}
+
+// wait waits for the opens admitted before close, at most timeout or until ctx is done, and
+// reports whether they all ended.
+func (g *openGate) wait(ctx context.Context, timeout time.Duration) bool {
+	done := make(chan struct{})
+	go func() {
+		g.inFlight.Wait()
+		close(done)
+	}()
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case <-done:
+		return true
+	case <-ctx.Done():
+	case <-timer.C:
+	}
+	return false
+}
+
 // ErrSpaceDeleted is returned when a space's databases are being removed via
 // DeleteSpaceData and a caller tries to (re)open them, which would resurrect
 // the just-removed on-disk directory.
@@ -232,6 +303,12 @@ type provider struct {
 	dbsAreFlushing atomic.Bool
 
 	migrator *anystoremigrate.Migrator
+	gate     *openGate
+
+	// beforeIndexRegister and beforeCrdtPublish hold an open between its migration (or open) and
+	// its registration (tests).
+	beforeIndexRegister func(spaceId string)
+	beforeCrdtPublish   func(spaceId string)
 
 	// reporter is looked up in Init; may be nil when the provider is
 	// constructed outside an app container (NewInPath, tests).
@@ -244,6 +321,7 @@ func New() Provider {
 		spaceIndexDbs:   map[string]anystore.DB{},
 		deletedSpaceIds: map[string]struct{}{},
 		anyStoreConfig:  &anystore.Config{},
+		gate:            &openGate{},
 	}
 }
 
@@ -463,6 +541,11 @@ func (s *provider) isSpaceDeleted(spaceId string) bool {
 }
 
 func (s *provider) GetSpaceIndexDb(spaceId string) (anystore.DB, error) {
+	leave, err := s.gate.enter()
+	if err != nil {
+		return nil, fmt.Errorf("open db: %w", err)
+	}
+	defer leave()
 	path := filepath.Join(s.objectStorePath, spaceId, "objects.db")
 	s.spaceIndexDbsLock.Lock()
 	db, ok := s.spaceIndexDbs[spaceId]
@@ -475,8 +558,11 @@ func (s *provider) GetSpaceIndexDb(spaceId string) (anystore.DB, error) {
 	}
 	// A v1 database migrates outside the lock: every open of a space index and every flush takes
 	// it, and a migration takes long. Two openers of one space wait for one migration.
-	if err := migrateIfV1(s.componentCtx, s.migrator, path); err != nil {
+	if err = migrateIfV1(s.componentCtx, s.migrator, path); err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
+	}
+	if s.beforeIndexRegister != nil {
+		s.beforeIndexRegister(spaceId)
 	}
 
 	s.spaceIndexDbsLock.Lock()
@@ -492,12 +578,18 @@ func (s *provider) GetSpaceIndexDb(spaceId string) (anystore.DB, error) {
 		return nil, ErrSpaceDeleted
 	}
 
-	db, err := openDatabaseWithReinit(s.componentCtx, s.getAnyStoreConfig(), path, s.reporter, s.migrator)
+	// Close came while this open migrated: it has drained the map, or will once it has the lock
+	if s.gate.isClosed() {
+		return nil, fmt.Errorf("open db: %w", ErrClosed)
+	}
+
+	db, err = openDatabaseWithReinit(s.componentCtx, s.getAnyStoreConfig(), path, s.reporter, s.migrator)
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
-
-	s.spaceIndexDbs[spaceId] = db
+	if !s.gate.publish(func() { s.spaceIndexDbs[spaceId] = db }) {
+		return nil, errors.Join(fmt.Errorf("open db: %w", ErrClosed), db.Close())
+	}
 
 	return db, nil
 }
@@ -509,6 +601,8 @@ type AnystoreGetter struct {
 	spaceId         string
 	reporter        debugreporter.Reporter
 	migrator        *anystoremigrate.Migrator
+	gate            *openGate
+	beforePublish   func(spaceId string)
 
 	// lock serializes the opens of the database; an open can take long (a v1 database migrates).
 	lock sync.Mutex
@@ -533,14 +627,6 @@ func (g *AnystoreGetter) get() anystore.DB {
 	return nil
 }
 
-// getWaiting is get after waiting out an open in progress.
-func (g *AnystoreGetter) getWaiting() anystore.DB {
-	g.lock.Lock()
-	defer g.lock.Unlock()
-
-	return g.get()
-}
-
 func (g *AnystoreGetter) Wait() (anystore.DB, error) {
 	if g.deleted.Load() {
 		return nil, ErrSpaceDeleted
@@ -548,6 +634,11 @@ func (g *AnystoreGetter) Wait() (anystore.DB, error) {
 	if db := g.get(); db != nil {
 		return db, nil
 	}
+	leave, err := g.gate.enter()
+	if err != nil {
+		return nil, fmt.Errorf("open: %w", err)
+	}
+	defer leave()
 
 	g.lock.Lock()
 	defer g.lock.Unlock()
@@ -564,8 +655,13 @@ func (g *AnystoreGetter) Wait() (anystore.DB, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open: %w", err)
 	}
-
-	g.opened.Store(&openedDb{db: db})
+	if g.beforePublish != nil {
+		g.beforePublish(g.spaceId)
+	}
+	// Close came while this open ran: it sees only what was published before it
+	if !g.gate.publish(func() { g.opened.Store(&openedDb{db: db}) }) {
+		return nil, errors.Join(fmt.Errorf("open: %w", ErrClosed), db.Close())
+	}
 
 	return db, nil
 }
@@ -586,6 +682,8 @@ func (s *provider) GetCrdtDb(spaceId string) *AnystoreGetter {
 		objectStorePath: s.objectStorePath,
 		reporter:        s.reporter,
 		migrator:        s.migrator,
+		gate:            s.gate,
+		beforePublish:   s.beforeCrdtPublish,
 	}
 	// A getter created for a space currently being deleted must not reopen
 	// the crdt.db; mark it deleted so Wait short-circuits.
@@ -608,10 +706,17 @@ func (s *provider) getAnyStoreConfig() *anystore.Config {
 	}
 }
 
+// Close refuses new opens, stops the migrations in flight (their context is cancelled) and waits for
+// the opens admitted before, up to closeOpensWait, then closes every database. An open still running
+// after that closes what it opened itself.
 func (s *provider) Close(ctx context.Context) error {
 	var err error
 
+	s.gate.close()
 	s.componentCtxCancel()
+	if !s.gate.wait(ctx, closeOpensWait) {
+		log.Warn("closing with database opens in flight: they close what they open")
+	}
 	if s.commonDb != nil {
 		err = errors.Join(err, s.commonDb.Close())
 	}
@@ -637,8 +742,9 @@ func (s *provider) Close(ctx context.Context) error {
 	// we counted it.
 	var openCrdtDbs []anystore.DB
 	for _, store := range s.crdtDbs {
-		if db := store.getWaiting(); db != nil {
-			openCrdtDbs = append(openCrdtDbs, db)
+		// every database published before the gate closed is here; none is published after
+		if h := store.opened.Swap(nil); h != nil {
+			openCrdtDbs = append(openCrdtDbs, h.db)
 		}
 	}
 	closeChan = make(chan error, len(openCrdtDbs))
