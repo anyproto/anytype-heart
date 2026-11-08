@@ -1,11 +1,13 @@
 package anystoremigrate
 
 import (
+	"cmp"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 )
 
 // ErrNotEnoughSpace is returned, as a *NotEnoughSpaceError, when the volume can't hold a
@@ -50,29 +52,55 @@ func spaceNeeded(srcBytes int64) uint64 {
 	return src + max(src, walFloor) + marginFloor + src/20
 }
 
-// spaceNeededForAll is the free space migrating the v1 databases of sizes, one after the other,
-// needs at its peak. When the v1 files are kept, every new file stays beside its v1 one: all the
-// new files, plus the WAL allowance and margin of the one migrating. When they are removed after
-// verify, each new file takes the place of its v1 one: the largest single migration.
-func (m *Migrator) spaceNeededForAll(sizes []int64) uint64 {
-	var newFiles, largestExtra, largest uint64
+// spaceNeededForAll is the free space migrating the v1 databases of sizes needs at its peak, with
+// Options.Concurrency of them building at once (each with its WAL allowance and margin). copies
+// tells that the volume has no hard links, so a kept v1 file is a full copy, not a second name.
+//
+// When the v1 files are kept, every new file stays beside its v1 one: all the new files (and all the
+// copies), plus the allowances of the largest builds running at once. When they are removed after
+// verify, each new file takes the place of its v1 one: the largest builds running at once, each
+// with its copy until the v1 file goes.
+func (m *Migrator) spaceNeededForAll(sizes []int64, copies bool) uint64 {
+	var (
+		newFiles uint64
+		extras   = make([]uint64, 0, len(sizes))
+		builds   = make([]uint64, 0, len(sizes))
+	)
 	for _, size := range sizes {
 		need := spaceNeeded(size)
 		src := uint64(max(size, 0))
 		newFiles += src
-		largestExtra = max(largestExtra, need-src)
-		largest = max(largest, need)
+		extras = append(extras, need-src)
+		build := need
+		if copies {
+			build += src
+		}
+		builds = append(builds, build)
 	}
 	if m.opts.RemoveV1AfterVerify {
-		return largest
+		return sumLargest(builds, m.opts.Concurrency)
 	}
-	return newFiles + largestExtra
+	total := newFiles + sumLargest(extras, m.opts.Concurrency)
+	if copies {
+		total += newFiles
+	}
+	return total
+}
+
+// sumLargest sums the n largest of values.
+func sumLargest(values []uint64, n int) uint64 {
+	slices.SortFunc(values, func(a, b uint64) int { return cmp.Compare(b, a) })
+	var sum uint64
+	for _, v := range values[:min(n, len(values))] {
+		sum += v
+	}
+	return sum
 }
 
 // checkSpace fails with a *NotEnoughSpaceError when the volume of dir can't hold the migration of
 // the v1 databases of sizes.
 func (m *Migrator) checkSpace(dir string, sizes []int64) error {
-	needed := m.spaceNeededForAll(sizes)
+	needed := m.spaceNeededForAll(sizes, !m.opts.linksSupported(dir))
 	available, err := m.opts.FreeSpace(dir)
 	if err != nil {
 		return fmt.Errorf("free disk space of %s: %w", dir, err)
@@ -83,8 +111,21 @@ func (m *Migrator) checkSpace(dir string, sizes []int64) error {
 	return nil
 }
 
+// linksSupported reports whether the volume of dir supports hard links, by linking a probe file:
+// the v1 file a migration keeps is a second name for it then, a full copy otherwise. A probe that
+// can't be made counts as no links: the estimate stays on the safe side.
+func linksSupported(dir string) bool {
+	probe := filepath.Join(dir, ".anystore-migrate-link-probe")
+	_ = removeFiles(probe, probe+"-link")
+	if err := os.WriteFile(probe, nil, 0o600); err != nil {
+		return false
+	}
+	defer func() { _ = removeFiles(probe, probe+"-link") }()
+	return os.Link(probe, probe+"-link") == nil
+}
+
 // CheckSpace fails with a *NotEnoughSpaceError when the volume can't hold the migration of all
-// the v1 databases among paths, one after the other. It is the up-front check of a store whose
+// the v1 databases among paths, Options.Concurrency at a time. It is the up-front check of a store whose
 // databases migrate one by one as they are opened.
 func (m *Migrator) CheckSpace(paths []string) error {
 	var (

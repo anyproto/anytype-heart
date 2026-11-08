@@ -59,6 +59,8 @@ type Options struct {
 
 	// failAfterDocs makes the copy fail once that many documents were copied (tests).
 	failAfterDocs int
+	// linksSupported tells whether the volume of a directory has hard links (tests replace it).
+	linksSupported func(dir string) bool
 }
 
 // Migrator migrates v1 database files to v2, at most Options.Concurrency at a time, and one
@@ -77,6 +79,9 @@ func New(opts Options) *Migrator {
 	}
 	if opts.FreeSpace == nil {
 		opts.FreeSpace = freespace.GetFreeDiskSpace
+	}
+	if opts.linksSupported == nil {
+		opts.linksSupported = linksSupported
 	}
 	return &Migrator{opts: opts, sem: make(chan struct{}, opts.Concurrency), pathLocks: make(map[string]*sync.Mutex)}
 }

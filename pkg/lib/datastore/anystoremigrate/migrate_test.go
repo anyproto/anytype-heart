@@ -384,34 +384,63 @@ func TestMigrateFileWithoutEnoughSpace(t *testing.T) {
 }
 
 func TestCheckSpace(t *testing.T) {
-	// given: two v1 databases and a v2 one
-	fx := newFixture(t)
-	second := filepath.Join(fx.dir, "objects.db")
-	data, err := os.ReadFile(fx.path)
+	// three v1 databases of one size, and a v2 one CheckSpace leaves out
+	seed := newFixture(t)
+	data, err := os.ReadFile(seed.path)
 	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(second, data, 0o600))
-	v2Path := filepath.Join(fx.dir, "v2.db")
-	_ = openV2(t, v2Path)
 	size := int64(len(data))
-	wantNeeded := uint64(2*size) + spaceNeeded(size) - uint64(size)
+	src := uint64(size)
+	allowance := spaceNeeded(size) - src // WAL allowance and margin of one build
 
-	t.Run("v1 files kept: every new file, plus one allowance", func(t *testing.T) {
-		fx.free = wantNeeded - 1
-		err := fx.CheckSpace([]string{fx.path, second, v2Path})
-		var spaceErr *NotEnoughSpaceError
-		require.ErrorAs(t, err, &spaceErr)
-		assert.Equal(t, wantNeeded, spaceErr.Needed)
+	for _, tc := range []struct {
+		name       string
+		limit      int
+		removeV1   bool
+		noLinks    bool
+		wantNeeded uint64
+	}{
+		{name: "one at a time, v1 files kept: every new file, one allowance", limit: 1, wantNeeded: 3*src + allowance},
+		{name: "two at a time, v1 files kept: every new file, two allowances", limit: 2, wantNeeded: 3*src + 2*allowance},
+		{name: "two at a time, v1 files kept as copies: every new file and copy, two allowances", limit: 2, noLinks: true, wantNeeded: 6*src + 2*allowance},
+		{name: "two at a time, v1 files removed: two builds", limit: 2, removeV1: true, wantNeeded: 2 * (src + allowance)},
+		{name: "two at a time, v1 files removed, copies until then: two builds and their copies", limit: 2, removeV1: true, noLinks: true, wantNeeded: 2 * (2*src + allowance)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			fx := newFixture(t, func(o *Options) {
+				o.Concurrency = tc.limit
+				o.RemoveV1AfterVerify = tc.removeV1
+				o.linksSupported = func(string) bool { return !tc.noLinks }
+			})
+			paths := []string{fx.path, filepath.Join(fx.dir, "objects.db"), filepath.Join(fx.dir, "other.db")}
+			for _, p := range paths[1:] {
+				require.NoError(t, os.WriteFile(p, data, 0o600))
+			}
+			v2Path := filepath.Join(fx.dir, "v2.db")
+			_ = openV2(t, v2Path)
+			paths = append(paths, v2Path)
 
-		fx.free = wantNeeded
-		assert.NoError(t, fx.CheckSpace([]string{fx.path, second, v2Path}))
-	})
+			// when
+			fx.free = tc.wantNeeded - 1
+			short := fx.CheckSpace(paths)
+			fx.free = tc.wantNeeded
+			enough := fx.CheckSpace(paths)
 
-	t.Run("v1 files removed: the largest migration", func(t *testing.T) {
-		fx := newFixture(t, func(o *Options) { o.RemoveV1AfterVerify = true })
-		fx.free = spaceNeeded(size) - 1
-		err := fx.CheckSpace([]string{fx.path})
-		assert.ErrorIs(t, err, ErrNotEnoughSpace)
-	})
+			// then
+			var spaceErr *NotEnoughSpaceError
+			require.ErrorAs(t, short, &spaceErr)
+			assert.Equal(t, tc.wantNeeded, spaceErr.Needed)
+			assert.NoError(t, enough)
+		})
+	}
+}
+
+func TestLinksSupported(t *testing.T) {
+	// the test volume (APFS, ext4, NTFS) has hard links, and the probe leaves nothing behind
+	dir := t.TempDir()
+	assert.True(t, linksSupported(dir))
+	assert.Empty(t, dirNames(t, dir))
+	assert.False(t, linksSupported(filepath.Join(dir, "missing")), "a probe that can't be made counts as no links")
 }
 
 func TestMigrateFileRemovingTheV1File(t *testing.T) {
