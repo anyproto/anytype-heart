@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	anystorev1 "github.com/anyproto/any-store"
@@ -441,6 +442,32 @@ func TestLinksSupported(t *testing.T) {
 	assert.True(t, linksSupported(dir))
 	assert.Empty(t, dirNames(t, dir))
 	assert.False(t, linksSupported(filepath.Join(dir, "missing")), "a probe that can't be made counts as no links")
+}
+
+func TestLinksSupportedConcurrently(t *testing.T) {
+	// given: the databases of a space probe the same directory at once
+	dir := t.TempDir()
+	const probes = 16
+	want := make([]bool, probes)
+	got := make([]bool, probes)
+	for i := range want {
+		want[i] = true
+	}
+
+	// when
+	var wg sync.WaitGroup
+	for i := range got {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			got[i] = linksSupported(dir)
+		}()
+	}
+	wg.Wait()
+
+	// then
+	assert.Equal(t, want, got)
+	assert.Empty(t, dirNames(t, dir))
 }
 
 func TestMigrateFileRemovingTheV1File(t *testing.T) {

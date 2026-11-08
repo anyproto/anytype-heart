@@ -115,11 +115,13 @@ func (m *Migrator) checkSpace(dir string, sizes []int64) error {
 // the v1 file a migration keeps is a second name for it then, a full copy otherwise. A probe that
 // can't be made counts as no links: the estimate stays on the safe side.
 func linksSupported(dir string) bool {
-	probe := filepath.Join(dir, ".anystore-migrate-link-probe")
-	_ = removeFiles(probe, probe+"-link")
-	if err := os.WriteFile(probe, nil, 0o600); err != nil {
+	// a name of its own: the databases of a space migrate at once and probe the same directory
+	f, err := os.CreateTemp(dir, ".anystore-migrate-link-probe-*")
+	if err != nil {
 		return false
 	}
+	probe := f.Name()
+	_ = f.Close()
 	defer func() { _ = removeFiles(probe, probe+"-link") }()
 	return os.Link(probe, probe+"-link") == nil
 }
