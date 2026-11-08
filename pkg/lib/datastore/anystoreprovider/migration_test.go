@@ -151,3 +151,49 @@ func TestV1StoreWithoutEnoughSpaceFailsTheStart(t *testing.T) {
 		assert.ErrorIs(t, err, os.ErrNotExist)
 	}
 }
+
+// A migration that crashed left a large temp database. On a tight disk it would make the start's
+// space check fail on every start; the start removes it first.
+func TestV1StoreStartRemovesLeftoversBeforeTheSpaceCheck(t *testing.T) {
+	// given: a big abandoned temp database (sparse, it takes no real disk) beside a space's v1
+	// database, a v1 backup of another one, and a volume that has room only once the temp is gone
+	root := t.TempDir()
+	objectStorePath := seedV1Store(t, root, 5)
+	spaceDir := filepath.Join(objectStorePath, migrationSpaceId)
+	leftover := filepath.Join(spaceDir, "crdt.db.v2tmp")
+	leftoverWal := leftover + "-wal"
+	const leftoverSize = 3 << 30
+	require.NoError(t, os.WriteFile(leftover, nil, 0o600))
+	require.NoError(t, os.Truncate(leftover, leftoverSize))
+	require.NoError(t, os.WriteFile(leftoverWal, []byte("wal"), 0o600))
+	backup := filepath.Join(spaceDir, "objects.db"+anystoremigrate.V1BackupSuffix)
+	require.NoError(t, os.WriteFile(backup, []byte("kept v1 file"), 0o600))
+	require.NoError(t, os.WriteFile(backup+".lock", nil, 0o600))
+	const volume = 4 << 30
+	was := freeDiskSpace
+	freeDiskSpace = func(string) (uint64, error) {
+		var used uint64
+		for _, p := range []string{leftover, leftoverWal} {
+			if fi, err := os.Stat(p); err == nil {
+				used += uint64(fi.Size())
+			}
+		}
+		return volume - used, nil
+	}
+	t.Cleanup(func() { freeDiskSpace = was })
+
+	// when
+	p, err := NewInPath(root)
+
+	// then
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = p.Close(context.Background()) })
+	for _, path := range []string{leftover, leftoverWal} {
+		_, err := os.Stat(path)
+		assert.ErrorIs(t, err, os.ErrNotExist, path)
+	}
+	for _, path := range []string{backup, backup + ".lock", filepath.Join(spaceDir, "crdt.db"), filepath.Join(spaceDir, "objects.db")} {
+		_, err := os.Stat(path)
+		assert.NoError(t, err, "never removed: %s", path)
+	}
+}

@@ -122,6 +122,30 @@ func DatabasePaths(objectStorePath string) ([]string, error) {
 	return paths, nil
 }
 
+// removeMigrationLeftovers removes, for every database name of the store, the temp database an
+// interrupted migration left (anystoremigrate.RemoveLeftovers). Only that family of files goes:
+// never a database, live or kept as <name>.v1.
+func removeMigrationLeftovers(objectStorePath string) error {
+	bases := []string{filepath.Join(objectStorePath, "objects.db")}
+	entries, err := os.ReadDir(objectStorePath)
+	if err != nil {
+		return fmt.Errorf("read object store dir: %w", err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			bases = append(bases,
+				filepath.Join(objectStorePath, entry.Name(), "objects.db"),
+				filepath.Join(objectStorePath, entry.Name(), "crdt.db"))
+		}
+	}
+	for _, base := range bases {
+		if err = anystoremigrate.RemoveLeftovers(base); err != nil {
+			return fmt.Errorf("remove leftovers of %s: %w", base, err)
+		}
+	}
+	return nil
+}
+
 // ErrSpaceDeleted is returned when a space's databases are being removed via
 // DeleteSpaceData and a caller tries to (re)open them, which would resurrect
 // the just-removed on-disk directory.
@@ -293,10 +317,17 @@ func (s *provider) Run(ctx context.Context) error {
 // databases and the volume can't hold their migration (anystoremigrate.ErrNotEnoughSpace). The
 // databases themselves migrate one by one as they are opened. A store found with no v1 database
 // is marked, so later starts skip the scan.
+//
+// What an interrupted migration left is removed first: an abandoned temp database holds space the
+// check would otherwise count against the store, and every start after a crash on a tight disk
+// would be refused.
 func (s *provider) checkMigrationSpace() error {
 	marker := filepath.Join(s.objectStorePath, v2Marker)
 	if _, err := os.Stat(marker); err == nil {
 		return nil
+	}
+	if err := removeMigrationLeftovers(s.objectStorePath); err != nil {
+		return fmt.Errorf("remove leftovers of interrupted v1 migrations: %w", err)
 	}
 	paths, err := DatabasePaths(s.objectStorePath)
 	if err != nil {
