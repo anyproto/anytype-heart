@@ -510,42 +510,53 @@ type AnystoreGetter struct {
 	reporter        debugreporter.Reporter
 	migrator        *anystoremigrate.Migrator
 
+	// lock serializes the opens of the database; an open can take long (a v1 database migrates).
 	lock sync.Mutex
-	db   anystore.DB
+	// opened publishes the database once it is open. It is read without the lock, so a flush or
+	// a caller sees an open database whoever holds the lock; nil while it is still opening.
+	opened atomic.Pointer[openedDb]
 	// deleted is set by DeleteSpaceData; once set, Wait refuses to (re)open the
 	// crdt.db so a getter handed out before deletion cannot resurrect the
 	// just-removed directory and leak an untracked DB handle.
-	deleted bool
+	deleted atomic.Bool
 }
 
+type openedDb struct {
+	db anystore.DB
+}
+
+// get returns the database if it is open, nil if it is not open yet (or still opening).
 func (g *AnystoreGetter) get() anystore.DB {
+	if h := g.opened.Load(); h != nil {
+		return h.db
+	}
+	return nil
+}
+
+// getWaiting is get after waiting out an open in progress.
+func (g *AnystoreGetter) getWaiting() anystore.DB {
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
-	return g.db
-}
-
-// tryGet is get for a flush: a database being opened (a v1 one migrating can take minutes) has
-// nothing to flush yet, and the flush must not wait for it.
-func (g *AnystoreGetter) tryGet() anystore.DB {
-	if !g.lock.TryLock() {
-		return nil
-	}
-	defer g.lock.Unlock()
-
-	return g.db
+	return g.get()
 }
 
 func (g *AnystoreGetter) Wait() (anystore.DB, error) {
+	if g.deleted.Load() {
+		return nil, ErrSpaceDeleted
+	}
+	if db := g.get(); db != nil {
+		return db, nil
+	}
+
 	g.lock.Lock()
 	defer g.lock.Unlock()
 
-	if g.deleted {
+	if g.deleted.Load() {
 		return nil, ErrSpaceDeleted
 	}
-
-	if g.db != nil {
-		return g.db, nil
+	if db := g.get(); db != nil {
+		return db, nil
 	}
 
 	path := filepath.Join(g.objectStorePath, g.spaceId, "crdt.db")
@@ -554,7 +565,7 @@ func (g *AnystoreGetter) Wait() (anystore.DB, error) {
 		return nil, fmt.Errorf("open: %w", err)
 	}
 
-	g.db = db
+	g.opened.Store(&openedDb{db: db})
 
 	return db, nil
 }
@@ -575,10 +586,10 @@ func (s *provider) GetCrdtDb(spaceId string) *AnystoreGetter {
 		objectStorePath: s.objectStorePath,
 		reporter:        s.reporter,
 		migrator:        s.migrator,
-		// A getter created for a space currently being deleted must not reopen
-		// the crdt.db; mark it deleted so Wait short-circuits.
-		deleted: s.isSpaceDeleted(spaceId),
 	}
+	// A getter created for a space currently being deleted must not reopen
+	// the crdt.db; mark it deleted so Wait short-circuits.
+	db.deleted.Store(s.isSpaceDeleted(spaceId))
 	s.crdtDbs[spaceId] = db
 	return db
 }
@@ -626,7 +637,7 @@ func (s *provider) Close(ctx context.Context) error {
 	// we counted it.
 	var openCrdtDbs []anystore.DB
 	for _, store := range s.crdtDbs {
-		if db := store.get(); db != nil {
+		if db := store.getWaiting(); db != nil {
 			openCrdtDbs = append(openCrdtDbs, db)
 		}
 	}
@@ -695,8 +706,10 @@ func (s *provider) DeleteSpaceData(spaceId string) error {
 	var crdtDb anystore.DB
 	if crdtGetter, ok := s.crdtDbs[spaceId]; ok {
 		crdtGetter.lock.Lock()
-		crdtGetter.deleted = true
-		crdtDb = crdtGetter.db
+		crdtGetter.deleted.Store(true)
+		if h := crdtGetter.opened.Swap(nil); h != nil {
+			crdtDb = h.db
+		}
 		crdtGetter.lock.Unlock()
 		delete(s.crdtDbs, spaceId)
 	}
@@ -739,23 +752,8 @@ func (s *provider) Flush(timeout time.Duration, waitPending bool, mode anystore.
 	if waitPending {
 		idleDuration = time.Millisecond * 30
 	}
-	s.spaceIndexDbsLock.Lock()
-	s.crtdStoreLock.Lock()
-	var dbs = make([]anystore.DB, 0, len(s.spaceIndexDbs)+len(s.crdtDbs)+1)
-	for _, db := range s.spaceIndexDbs {
-		dbs = append(dbs, db)
-	}
-	for _, getter := range s.crdtDbs {
-		db := getter.tryGet()
-		if db != nil {
-			dbs = append(dbs, db)
-		}
-	}
-	s.spaceIndexDbsLock.Unlock()
-	s.crtdStoreLock.Unlock()
+	dbs := s.flushTargets()
 	wg := &sync.WaitGroup{}
-
-	dbs = append(dbs, s.commonDb)
 	for _, db := range dbs {
 		wg.Add(1)
 		go func(db anystore.DB) {
@@ -780,6 +778,26 @@ func (s *provider) Flush(timeout time.Duration, waitPending bool, mode anystore.
 	case <-time.After(timeout + flushWaitSlack):
 		log.With(zap.Int("dbs", len(dbs)), zap.Duration("timeout", timeout)).Warn("flush overran its budget, returning early")
 	}
+}
+
+// flushTargets are the open databases. A crdt database still opening (a v1 one migrating can take
+// minutes) has nothing to flush yet: it is left out without waiting for it, but an open one is in
+// whoever holds its getter's lock.
+func (s *provider) flushTargets() []anystore.DB {
+	s.spaceIndexDbsLock.Lock()
+	s.crtdStoreLock.Lock()
+	defer s.spaceIndexDbsLock.Unlock()
+	defer s.crtdStoreLock.Unlock()
+	dbs := make([]anystore.DB, 0, len(s.spaceIndexDbs)+len(s.crdtDbs)+1)
+	for _, db := range s.spaceIndexDbs {
+		dbs = append(dbs, db)
+	}
+	for _, getter := range s.crdtDbs {
+		if db := getter.get(); db != nil {
+			dbs = append(dbs, db)
+		}
+	}
+	return append(dbs, s.commonDb)
 }
 
 func ensureDirExists(dir string) error {
