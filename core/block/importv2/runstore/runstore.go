@@ -22,9 +22,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/anyenc"
-	"github.com/anyproto/any-store/query"
+	anystore "github.com/anyproto/any-store/v2"
+	"github.com/anyproto/any-store/v2/anyenc"
+	"github.com/anyproto/any-store/v2/query"
 	sqlite "github.com/anyproto/go-sqlite"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
@@ -314,7 +314,7 @@ func OpenStatusReader(ctx context.Context, dir string) (*Store, error) {
 	if _, err := os.Stat(dbPath); err != nil {
 		return nil, fmt.Errorf("no run db to read: %w", err)
 	}
-	db, err := anystore.Open(ctx, dbPath, &anystore.Config{ReadConnections: 1})
+	db, err := anystore.Open(ctx, dbPath, &anystore.Config{ReadConcurrency: 1})
 	if err != nil {
 		return nil, fmt.Errorf("open run db (status): %w", err)
 	}
@@ -594,11 +594,7 @@ func open(ctx context.Context, dir string) (*Store, error) {
 // sentinel dirty-detection for quick-check on reopen.
 func storeConfig() *anystore.Config {
 	return &anystore.Config{
-		ReadConnections: 1,
-		SQLiteConnectionOptions: map[string]string{
-			"synchronous":        "normal",
-			"wal_autocheckpoint": "10000",
-		},
+		ReadConcurrency: 1,
 		Durability: anystore.DurabilityConfig{
 			AutoFlush: true,
 			IdleAfter: 20 * time.Second,

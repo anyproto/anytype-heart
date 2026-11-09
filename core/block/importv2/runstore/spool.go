@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"sync/atomic"
 
-	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/anyenc"
+	anystore "github.com/anyproto/any-store/v2"
+	"github.com/anyproto/any-store/v2/anyenc"
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"

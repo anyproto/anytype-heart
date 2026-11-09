@@ -10,8 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/anyenc"
+	anystore "github.com/anyproto/any-store/v2"
+	"github.com/anyproto/any-store/v2/anyenc"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 	"golang.org/x/text/collate"
@@ -166,7 +166,7 @@ func (s *dsObjectStore) queryAnyStore(ctx context.Context, filter database.Filte
 				if exp, expErr := query.Explain(ctx); expErr == nil {
 					for _, idx := range exp.Indexes {
 						if idx.Used {
-							explain += fmt.Sprintf("index: %s %d ", idx.Name, idx.Weight)
+							explain += fmt.Sprintf("index: %s %.0f ", idx.Name, idx.Cost)
 						}
 					}
 				}

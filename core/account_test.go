@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoremigrate"
 )
 
 // TestAccountLocalLinkNewChallengeErrorCode pins the challenge RPC's error
@@ -83,5 +84,36 @@ func TestAccountLocalLinkApproveChallengeErrorCode(t *testing.T) {
 	t.Run("an unrecognized error stays UNKNOWN", func(t *testing.T) {
 		assert.Equal(t, pb.RpcAccountLocalLinkApproveChallengeResponseError_UNKNOWN_ERROR,
 			accountLocalLinkApproveChallengeErrorCode(errors.New("boom")))
+	})
+}
+
+func TestAccountSelectErrorNotEnoughFreeSpace(t *testing.T) {
+	t.Run("a migration that doesn't fit maps to NOT_ENOUGH_FREE_SPACE with the needed bytes", func(t *testing.T) {
+		// given: the shape AccountSelect gets, the provider error joined under ErrFailedToStartApplication
+		spaceErr := &anystoremigrate.NotEnoughSpaceError{Path: "/data/objectstore", Needed: 900, Available: 100}
+		err := errors.Join(application.ErrFailedToStartApplication, fmt.Errorf("start app: %w", spaceErr))
+		want := &pb.RpcAccountSelectResponseError{
+			Code:          pb.RpcAccountSelectResponseError_NOT_ENOUGH_FREE_SPACE,
+			Description:   getErrorDescription(err),
+			RequiredSpace: 900,
+		}
+
+		// when
+		got := accountSelectError(err)
+
+		// then
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("another start failure stays FAILED_TO_RUN_NODE without a required space", func(t *testing.T) {
+		// given
+		err := errors.Join(application.ErrFailedToStartApplication, errors.New("boom"))
+
+		// when
+		got := accountSelectError(err)
+
+		// then
+		assert.Equal(t, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE, got.Code)
+		assert.Zero(t, got.RequiredSpace)
 	})
 }

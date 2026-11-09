@@ -22,7 +22,7 @@ import (
 	"errors"
 	"time"
 
-	anystore "github.com/anyproto/any-store"
+	anystore "github.com/anyproto/any-store/v2"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	proto "github.com/anyproto/any-sync/paymentservice/paymentserviceproto"

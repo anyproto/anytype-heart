@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/anyenc"
-	"github.com/anyproto/any-store/query"
+	anystore "github.com/anyproto/any-store/v2"
+	"github.com/anyproto/any-store/v2/anyenc"
+	"github.com/anyproto/any-store/v2/query"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
@@ -42,6 +42,7 @@ func seedMessages(tb testing.TB, total, withUnreadReaction int) *fixture {
 		order := arena.NewObject()
 		order.Set("id", arena.NewString(fmt.Sprintf("ord%06d", i)))
 		doc.Set("_o", order)
+		doc.Set(chatmodel.StorageKeyField, arena.NewString(chatmodel.StorageKey(fmt.Sprintf("ord%06d", i), fmt.Sprintf("msg%06d", i))))
 		doc.Set(chatmodel.CreatorKey, arena.NewString("creator"))
 		if i%every == 0 {
 			doc.Set(chatmodel.ReactionUnreadOrderIdKey, arena.NewString(fmt.Sprintf("ord%06d", i)))

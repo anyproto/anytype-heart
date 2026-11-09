@@ -3,7 +3,7 @@ package filequeue
 import (
 	"time"
 
-	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/v2/anyenc"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 )

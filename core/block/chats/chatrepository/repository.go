@@ -25,9 +25,9 @@ import (
 	"sort"
 	"sync"
 
-	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/anyenc"
-	"github.com/anyproto/any-store/query"
+	anystore "github.com/anyproto/any-store/v2"
+	"github.com/anyproto/any-store/v2/anyenc"
+	"github.com/anyproto/any-store/v2/query"
 	"github.com/anyproto/any-sync/app"
 	"github.com/samber/lo"
 
@@ -43,8 +43,10 @@ import (
 const CName = "chatrepository"
 
 const (
-	descOrder   = "-_o.id"
-	ascOrder    = "_o.id"
+	// Messages are keyed by their storage key, which orders them by order id: sorting by it walks
+	// the collection in its natural order, with no index and no sort.
+	descOrder   = chatmodel.SortStorageKeyDesc
+	ascOrder    = chatmodel.SortStorageKeyAsc
 	descStateId = "-stateId"
 
 	messageHistorySchemaVersionId = "$message-history-v1"
@@ -100,21 +102,21 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-// chatCollectionIndexes is package-level so tests can build a collection with exactly the indexes
-// production has, and assert the queries below still reach them.
-//
-// The sparse ones are only usable by a filter that guarantees the field is present and non-null:
-// since any-store v1.0.2 the planner refuses a sparse index for anything weaker, $exists included
-// (it also matches an explicit null, which the index skips). See filterReactionUnread.
-var chatCollectionIndexes = []anystore.IndexInfo{
-	{Fields: []string{"_o.id"}},
-	{Fields: []string{chatmodel.PinnedKey}, Sparse: true},
-	{Fields: []string{chatmodel.ReactionUnreadOrderIdKey}, Sparse: true},
-	// serves GetLastMessagesByCreators: creator Eq + order walk with early
-	// exit (measured ~80µs vs a 25-45ms full-collection scan at 50k msgs)
-	{Fields: []string{chatmodel.CreatorKey, "_o.id"}},
-	// only tombstones carry the field: counting them (CountMessages) reads just them
-	{Fields: []string{chatmodel.DeletedKey}, Sparse: true},
+// chatCollectionIndexes are the indexes the messages collection is opened with.
+var chatCollectionIndexes = chatmodel.MessagesCollectionIndexes()
+
+// MessagesCollectionOptions are the options a chat messages collection is created with: it is
+// keyed by the message storage key (chatmodel.StorageKey), not by the message id.
+func MessagesCollectionOptions() anystore.CollectionOptions {
+	return chatmodel.MessagesCollectionOptions()
+}
+
+func messagesCollectionName(chatObjectId string) string {
+	return chatmodel.MessagesCollectionName(chatObjectId)
+}
+
+func messageHistoryCollectionName(chatObjectId string) string {
+	return chatObjectId + "chatMessageHistory"
 }
 
 func (s *service) Repository(spaceId, chatObjectId string) (Repository, error) {
@@ -146,31 +148,9 @@ func (s *service) getOrInitRepository(spaceId, chatObjectId string) (Repository,
 		return nil, fmt.Errorf("get crdt db: %w", err)
 	}
 
-	collectionName := chatObjectId + "chats"
-	collection, err := crdtDb.OpenCollection(s.componentCtx, collectionName)
-	if errors.Is(err, anystore.ErrCollectionNotFound) {
-		collection, err = crdtDb.CreateCollection(s.componentCtx, collectionName)
-		if err != nil {
-			return nil, fmt.Errorf("create collection: %w", err)
-		}
-	}
+	collection, historyCollection, err := openMessageCollections(s.componentCtx, crdtDb, chatObjectId)
 	if err != nil {
-		return nil, fmt.Errorf("get collection: %w", err)
-	}
-	historyCollectionName := chatObjectId + "chatMessageHistory"
-	historyCollection, err := crdtDb.OpenCollection(s.componentCtx, historyCollectionName)
-	if errors.Is(err, anystore.ErrCollectionNotFound) {
-		historyCollection, err = crdtDb.CreateCollection(s.componentCtx, historyCollectionName)
-		if err != nil {
-			return nil, fmt.Errorf("create message history collection: %w", err)
-		}
-	}
-	if err != nil {
-		return nil, fmt.Errorf("get message history collection: %w", err)
-	}
-
-	if err = anystorehelper.AddIndexes(s.componentCtx, collection, chatCollectionIndexes); err != nil {
-		return nil, fmt.Errorf("ensure indexes: %w", err)
+		return nil, fmt.Errorf("open message collections: %w", err)
 	}
 
 	repo := &repository{
@@ -184,6 +164,78 @@ func (s *service) getOrInitRepository(spaceId, chatObjectId string) (Repository,
 
 	s.cache[chatObjectId] = repo
 	return repo, nil
+}
+
+// openMessageCollections opens the chat's messages and message history collections, creating
+// them if needed, and ensures the messages indexes.
+//
+// The messages collection is keyed by the storage key. A v1 database is migrated to v2 with that
+// layout before it is first opened (pkg/lib/datastore/anystoremigrate); a v2 collection keyed
+// otherwise is refused.
+func openMessageCollections(ctx context.Context, db anystore.DB, chatObjectId string) (messages, history anystore.Collection, err error) {
+	tx, err := db.WriteTx(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("write tx: %w", err)
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+	txCtx := tx.Context()
+
+	messages, err = db.Collection(txCtx, messagesCollectionName(chatObjectId), MessagesCollectionOptions())
+	if errors.Is(err, anystore.ErrPrimaryKeyMismatch) {
+		return nil, nil, fmt.Errorf("messages collection %s is not keyed by %q: %w", messagesCollectionName(chatObjectId), chatmodel.StorageKeyField, err)
+	}
+	if err != nil {
+		return nil, nil, fmt.Errorf("open messages collection: %w", err)
+	}
+	history, err = db.Collection(txCtx, messageHistoryCollectionName(chatObjectId))
+	if err != nil {
+		return nil, nil, fmt.Errorf("open message history collection: %w", err)
+	}
+	if err = anystorehelper.AddIndexes(txCtx, messages, chatCollectionIndexes); err != nil {
+		return nil, nil, fmt.Errorf("ensure indexes: %w", err)
+	}
+	if err = tx.Commit(); err != nil {
+		return nil, nil, fmt.Errorf("commit: %w", err)
+	}
+	return messages, history, nil
+}
+
+// FindMessageDoc calls proc with the stored document of the message with this id; the value is
+// valid only inside proc. Messages are keyed by their storage key, so the lookup goes through the
+// unique id index. It returns an error wrapping anystore.ErrDocNotFound when the message is not
+// stored, and proc's error as it is.
+func FindMessageDoc(ctx context.Context, coll anystore.Collection, messageId string, proc func(doc *anyenc.Value) error) error {
+	iter, err := coll.Find(query.Key{Path: []string{"id"}, Filter: query.NewComp(query.CompOpEq, messageId)}).Limit(1).Iter(ctx)
+	if err != nil {
+		return fmt.Errorf("find message by id: %w", err)
+	}
+	defer iter.Close()
+	if !iter.Next() {
+		if err = iter.Err(); err != nil {
+			return fmt.Errorf("find message by id: %w", err)
+		}
+		return fmt.Errorf("message %s: %w", messageId, anystore.ErrDocNotFound)
+	}
+	doc, err := iter.Doc()
+	if err != nil {
+		return fmt.Errorf("read message: %w", err)
+	}
+	return proc(doc.Value())
+}
+
+// FindMessageKey returns the storage key of the stored message with this id, or an error wrapping
+// anystore.ErrDocNotFound when it is not stored.
+func FindMessageKey(ctx context.Context, coll anystore.Collection, messageId string) (string, error) {
+	var key string
+	err := FindMessageDoc(ctx, coll, messageId, func(doc *anyenc.Value) error {
+		key = doc.GetString(chatmodel.StorageKeyField)
+		return nil
+	})
+	return key, err
 }
 
 // MessageAttachmentInfo contains attachment metadata from a message
@@ -253,11 +305,15 @@ func (s *repository) AddTestMessage(ctx context.Context, msg *chatmodel.Message)
 	orderObj := arena.NewObject()
 	orderObj.Set("id", arena.NewString(msg.OrderId))
 	val.Set(chatmodel.OrderKey, orderObj)
+	val.Set(chatmodel.StorageKeyField, arena.NewString(chatmodel.StorageKey(msg.OrderId, msg.Id)))
 
 	if _, err := s.RecordMessage(ctx, msg.Id); err != nil {
 		return err
 	}
-	return s.collection.Insert(ctx, val)
+	if err := s.collection.Insert(ctx, val); err != nil {
+		return fmt.Errorf("insert message: %w", err)
+	}
+	return nil
 }
 
 func (s *repository) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
@@ -291,10 +347,7 @@ func (s *repository) GetLastStateId(ctx context.Context) (string, error) {
 }
 
 func (s *repository) GetPrevOrderId(ctx context.Context, orderId string) (string, error) {
-	iter, err := s.collection.Find(query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpLt, orderId)}).
-		Sort(descOrder).
-		Limit(1).
-		Iter(ctx)
+	iter, err := s.prevOrderIdQuery(orderId).Iter(ctx)
 	if err != nil {
 		return "", fmt.Errorf("init iterator: %w", err)
 	}
@@ -310,6 +363,11 @@ func (s *repository) GetPrevOrderId(ctx context.Context, orderId string) (string
 	}
 
 	return "", nil
+}
+
+// prevOrderIdQuery walks back from orderId (excluded) to the newest older message.
+func (s *repository) prevOrderIdQuery(orderId string) anystore.Query {
+	return s.collection.Find(chatmodel.OrderIdBefore(orderId)).Sort(descOrder).Limit(1)
 }
 
 // initialChatState returns the initial chat state for the chat object from the DB
@@ -456,10 +514,7 @@ func (s *repository) loadChatStateByType(ctx context.Context, counterType chatmo
 }
 
 func (s *repository) GetOldestOrderId(ctx context.Context, counterType chatmodel.CounterType) (string, error) {
-	handler := newReadHandler(counterType)
-	unreadQuery := s.collection.Find(handler.getReadFilter(false)).Sort(ascOrder)
-
-	iter, err := unreadQuery.Limit(1).Iter(ctx)
+	iter, err := s.oldestUnreadQuery(counterType).Iter(ctx)
 	if err != nil {
 		return "", fmt.Errorf("init iter: %w", err)
 	}
@@ -478,6 +533,11 @@ func (s *repository) GetOldestOrderId(ctx context.Context, counterType chatmodel
 	return "", nil
 }
 
+// oldestUnreadQuery walks from the oldest message to the first unread one.
+func (s *repository) oldestUnreadQuery(counterType chatmodel.CounterType) anystore.Query {
+	return s.collection.Find(newReadHandler(counterType).getReadFilter(false)).Sort(ascOrder).Limit(1)
+}
+
 func (s *repository) countUnreadMessages(ctx context.Context, handler readHandler) (int, error) {
 	unreadQuery := s.collection.Find(handler.getReadFilter(false))
 
@@ -485,17 +545,7 @@ func (s *repository) countUnreadMessages(ctx context.Context, handler readHandle
 }
 
 func (s *repository) GetReadMessagesAfter(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) ([]string, error) {
-	handler := newReadHandler(counterType)
-
-	filter := query.And{
-		query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
-		query.Key{Path: []string{handler.getReadKey()}, Filter: query.NewComp(query.CompOpEq, true)},
-	}
-	if handler.getMessagesFilter() != nil {
-		filter = append(filter, handler.getMessagesFilter())
-	}
-
-	iter, err := s.collection.Find(filter).Iter(ctx)
+	iter, err := s.readAfterQuery(afterOrderId, counterType).Iter(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("init iterator: %w", err)
 	}
@@ -512,19 +562,21 @@ func (s *repository) GetReadMessagesAfter(ctx context.Context, afterOrderId stri
 	return msgIds, iter.Err()
 }
 
-func (s *repository) GetUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) ([]string, error) {
+// readAfterQuery walks the read messages with an order id >= afterOrderId.
+func (s *repository) readAfterQuery(afterOrderId string, counterType chatmodel.CounterType) anystore.Query {
 	handler := newReadHandler(counterType)
-
-	qry := query.And{
-		query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
-		query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpLte, beforeOrderId)},
-		query.Or{
-			query.Not{Filter: query.Key{Path: []string{chatmodel.StateIdKey}, Filter: query.Exists{}}},
-			query.Key{Path: []string{chatmodel.StateIdKey}, Filter: query.NewComp(query.CompOpLte, lastStateId)},
-		},
-		handler.getReadFilter(false),
+	filter := query.And{
+		chatmodel.OrderIdAtLeast(afterOrderId),
+		query.Key{Path: []string{handler.getReadKey()}, Filter: query.NewComp(query.CompOpEq, true)},
 	}
-	iter, err := s.collection.Find(qry).Iter(ctx)
+	if handler.getMessagesFilter() != nil {
+		filter = append(filter, handler.getMessagesFilter())
+	}
+	return s.collection.Find(filter)
+}
+
+func (s *repository) GetUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) ([]string, error) {
+	iter, err := s.unreadInRangeQuery(afterOrderId, beforeOrderId, lastStateId, counterType).Iter(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("find id: %w", err)
 	}
@@ -539,6 +591,19 @@ func (s *repository) GetUnreadMessageIdsInRange(ctx context.Context, afterOrderI
 		msgIds = append(msgIds, doc.Value().GetString("id"))
 	}
 	return msgIds, iter.Err()
+}
+
+// unreadInRangeQuery walks the unread messages with an order id in [afterOrderId, beforeOrderId].
+func (s *repository) unreadInRangeQuery(afterOrderId, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) anystore.Query {
+	return s.collection.Find(query.And{
+		chatmodel.OrderIdAtLeast(afterOrderId),
+		chatmodel.OrderIdAtMost(beforeOrderId),
+		query.Or{
+			query.Not{Filter: query.Key{Path: []string{chatmodel.StateIdKey}, Filter: query.Exists{}}},
+			query.Key{Path: []string{chatmodel.StateIdKey}, Filter: query.NewComp(query.CompOpLte, lastStateId)},
+		},
+		newReadHandler(counterType).getReadFilter(false),
+	})
 }
 
 func (s *repository) GetAllUnreadMessages(ctx context.Context, counterType chatmodel.CounterType) ([]string, error) {
@@ -565,20 +630,7 @@ func (s *repository) GetAllUnreadMessages(ctx context.Context, counterType chatm
 }
 
 func (s *repository) IterateMessagesForIndexing(ctx context.Context, afterOrderId string, proc func(msg *chatmodel.Message) error) error {
-	// a tombstone has nothing to index; its search doc is removed through the delete queue
-	var filter query.Filter = filterNotDeleted
-	if afterOrderId != "" {
-		// _o.id is the creation order, _o.content the last content-edit order:
-		// both new and edited messages need reindexing
-		filter = query.And{
-			query.Or{
-				query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
-				query.Key{Path: []string{chatmodel.OrderKey, "content"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
-			},
-			filterNotDeleted,
-		}
-	}
-	iter, err := s.collection.Find(filter).Sort(ascOrder).Iter(ctx)
+	iter, err := s.messagesForIndexingQuery(afterOrderId).Iter(ctx)
 	if err != nil {
 		return fmt.Errorf("init iterator: %w", err)
 	}
@@ -598,6 +650,25 @@ func (s *repository) IterateMessagesForIndexing(ctx context.Context, afterOrderI
 		}
 	}
 	return iter.Err()
+}
+
+// messagesForIndexingQuery walks, from the oldest, the live messages created or content-edited at
+// or after afterOrderId (all live messages for an empty one).
+func (s *repository) messagesForIndexingQuery(afterOrderId string) anystore.Query {
+	// a tombstone has nothing to index; its search doc is removed through the delete queue
+	var filter query.Filter = filterNotDeleted
+	if afterOrderId != "" {
+		// _o.id is the creation order (the storage key's prefix), _o.content the last content-edit
+		// order: both new and edited messages need reindexing
+		filter = query.And{
+			query.Or{
+				chatmodel.OrderIdAtLeast(afterOrderId),
+				query.Key{Path: []string{chatmodel.OrderKey, "content"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
+			},
+			filterNotDeleted,
+		}
+	}
+	return s.collection.Find(filter).Sort(ascOrder)
 }
 
 func (r *repository) SetReadFlag(ctx context.Context, chatObjectId string, msgIds []string, counterType chatmodel.CounterType, value bool) ([]string, error) {
@@ -649,17 +720,20 @@ func (r *repository) SetSyncedByMaxOrderId(ctx context.Context, maxOrderId strin
 		return nil, nil
 	}
 
-	filter := query.And{
-		filterSyncedFalse,
-		query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpLte, maxOrderId)},
-	}
-
 	mod := &syncedModifier{value: true}
-	_, err := r.collection.Find(filter).Update(ctx, mod)
+	_, err := r.unsyncedUpToQuery(maxOrderId).Update(ctx, mod)
 	if err != nil {
 		return nil, fmt.Errorf("set synced by max order id: %w", err)
 	}
 	return mod.getModifiedIds(), nil
+}
+
+// unsyncedUpToQuery walks the unsynced messages with an order id <= maxOrderId.
+func (r *repository) unsyncedUpToQuery(maxOrderId string) anystore.Query {
+	return r.collection.Find(query.And{
+		filterSyncedFalse,
+		chatmodel.OrderIdAtMost(maxOrderId),
+	})
 }
 
 type GetMessagesRequest struct {
@@ -670,20 +744,30 @@ type GetMessagesRequest struct {
 }
 
 func (s *repository) GetMessages(ctx context.Context, req GetMessagesRequest) ([]*chatmodel.Message, error) {
+	msgs, err := s.queryMessages(ctx, s.messagesPageQuery(req))
+	if err != nil {
+		return nil, fmt.Errorf("query messages: %w", err)
+	}
+	return msgs, nil
+}
+
+// messagesPageQuery walks the page of messages req asks for: a range of the collection in its
+// natural order.
+func (s *repository) messagesPageQuery(req GetMessagesRequest) anystore.Query {
 	var filters query.And
 	if req.AfterOrderId != "" {
-		operator := query.CompOpGt
 		if req.IncludeBoundary {
-			operator = query.CompOpGte
+			filters = append(filters, chatmodel.OrderIdAtLeast(req.AfterOrderId))
+		} else {
+			filters = append(filters, chatmodel.OrderIdAfter(req.AfterOrderId))
 		}
-		filters = append(filters, query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(operator, req.AfterOrderId)})
 	}
 	if req.BeforeOrderId != "" {
-		operator := query.CompOpLt
 		if req.IncludeBoundary {
-			operator = query.CompOpLte
+			filters = append(filters, chatmodel.OrderIdAtMost(req.BeforeOrderId))
+		} else {
+			filters = append(filters, chatmodel.OrderIdBefore(req.BeforeOrderId))
 		}
-		filters = append(filters, query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(operator, req.BeforeOrderId)})
 	}
 
 	// Sort ASC only when paginating forward from AfterOrderId alone; otherwise
@@ -693,18 +777,10 @@ func (s *repository) GetMessages(ctx context.Context, req GetMessagesRequest) ([
 		sortOrder = ascOrder
 	}
 
-	var qry anystore.Query
 	if len(filters) == 0 {
-		qry = s.collection.Find(nil).Sort(sortOrder).Limit(uint(req.Limit))
-	} else {
-		qry = s.collection.Find(filters).Sort(sortOrder).Limit(uint(req.Limit))
+		return s.collection.Find(nil).Sort(sortOrder).Limit(uint(req.Limit))
 	}
-
-	msgs, err := s.queryMessages(ctx, qry)
-	if err != nil {
-		return nil, fmt.Errorf("query messages: %w", err)
-	}
-	return msgs, nil
+	return s.collection.Find(filters).Sort(sortOrder).Limit(uint(req.Limit))
 }
 
 func (s *repository) queryMessages(ctx context.Context, query anystore.Query) ([]*chatmodel.Message, error) {
@@ -740,14 +816,15 @@ func (s *repository) queryMessages(ctx context.Context, query anystore.Query) ([
 }
 
 func (s *repository) HasMyReaction(ctx context.Context, myIdentity string, messageId string, emoji string) (bool, error) {
-	doc, err := s.collection.FindId(ctx, messageId)
+	var msg *chatmodel.Message
+	err := FindMessageDoc(ctx, s.collection, messageId, func(doc *anyenc.Value) (err error) {
+		if msg, err = chatmodel.UnmarshalMessage(doc); err != nil {
+			return fmt.Errorf("unmarshal message: %w", err)
+		}
+		return nil
+	})
 	if err != nil {
 		return false, fmt.Errorf("find message: %w", err)
-	}
-
-	msg, err := chatmodel.UnmarshalMessage(doc.Value())
-	if err != nil {
-		return false, fmt.Errorf("unmarshal message: %w", err)
 	}
 	if v, ok := msg.GetReactions().GetReactions()[emoji]; ok {
 		if slices.Contains(v.GetIds(), myIdentity) {
@@ -757,6 +834,8 @@ func (s *repository) HasMyReaction(ctx context.Context, myIdentity string, messa
 	return false, nil
 }
 
+// GetMessagesByIds returns the stored messages with these ids, in the order asked; ids of messages
+// not stored are skipped. The lookups go through the unique id index, 100 ids per query.
 func (s *repository) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error) {
 	txn, err := s.ReadTx(ctx)
 	if err != nil {
@@ -764,27 +843,65 @@ func (s *repository) GetMessagesByIds(ctx context.Context, messageIds []string) 
 	}
 	defer txn.Commit()
 
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+	byId := make(map[string]*chatmodel.Message, len(messageIds))
+	for _, chunk := range lo.Chunk(messageIds, 100) {
+		if err = s.collectMessagesById(txn.Context(), arena, chunk, byId); err != nil {
+			return nil, errors.Join(txn.Commit(), err)
+		}
+	}
+
 	messages := make([]*chatmodel.Message, 0, len(messageIds))
+	returned := make(map[string]struct{}, len(byId))
 	for _, messageId := range messageIds {
-		obj, err := s.collection.FindId(txn.Context(), messageId)
-		if errors.Is(err, anystore.ErrDocNotFound) {
+		msg, ok := byId[messageId]
+		if !ok {
 			continue
 		}
-		if err != nil {
-			return nil, errors.Join(txn.Commit(), fmt.Errorf("find id: %w", err))
+		if _, again := returned[messageId]; again {
+			// an id asked twice gets a message of its own, as each lookup returned one
+			msg = msg.Clone()
 		}
-		msg, err := chatmodel.UnmarshalMessage(obj.Value())
-		if err != nil {
-			return nil, errors.Join(txn.Commit(), fmt.Errorf("unmarshal message: %w", err))
-		}
+		returned[messageId] = struct{}{}
 		messages = append(messages, msg)
 	}
 	return messages, nil
 }
 
+func (s *repository) collectMessagesById(ctx context.Context, arena *anyenc.Arena, messageIds []string, byId map[string]*chatmodel.Message) error {
+	arena.Reset()
+	ids := make([]*anyenc.Value, 0, len(messageIds))
+	for _, id := range messageIds {
+		ids = append(ids, arena.NewString(id))
+	}
+	iter, err := s.collection.Find(query.Key{Path: []string{"id"}, Filter: query.NewInValue(ids...)}).Iter(ctx)
+	if err != nil {
+		return fmt.Errorf("find messages by id: %w", err)
+	}
+	defer iter.Close()
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return fmt.Errorf("read message: %w", err)
+		}
+		msg, err := chatmodel.UnmarshalMessage(doc.Value())
+		if err != nil {
+			return fmt.Errorf("unmarshal message: %w", err)
+		}
+		byId[msg.Id] = msg
+	}
+	if err = iter.Err(); err != nil {
+		return fmt.Errorf("find messages by id: %w", err)
+	}
+	return nil
+}
+
 func (s *repository) GetLastMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error) {
-	qry := s.collection.Find(nil).Sort(descOrder).Limit(limit)
-	return s.queryMessages(ctx, qry)
+	return s.queryMessages(ctx, s.lastMessagesQuery(limit))
 }
 
 func (s *repository) GetLastLiveMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error) {
@@ -794,17 +911,22 @@ func (s *repository) GetLastLiveMessages(ctx context.Context, limit uint) ([]*ch
 // The queries below are built in one place so the tests explain exactly what runs: each must
 // keep its index (repository_test / softdelete_test).
 
+// lastMessagesQuery walks the collection from the newest end.
+func (s *repository) lastMessagesQuery(limit uint) anystore.Query {
+	return s.collection.Find(nil).Sort(descOrder).Limit(limit)
+}
+
 // deletedMessagesQuery reads the tombstones through the sparse `deleted` index.
 func (s *repository) deletedMessagesQuery() anystore.Query {
 	return s.collection.Find(filterDeleted)
 }
 
-// lastLiveMessagesQuery walks the order index from the newest end, skipping tombstones.
+// lastLiveMessagesQuery walks the collection from the newest end, skipping tombstones.
 func (s *repository) lastLiveMessagesQuery(limit uint) anystore.Query {
 	return s.collection.Find(filterNotDeleted).Sort(descOrder).Limit(limit)
 }
 
-// lastLiveMessagesByCreatorQuery walks the (creator, order) index from the newest end,
+// lastLiveMessagesByCreatorQuery walks the (creator, storage key) index from the newest end,
 // skipping tombstones.
 func (s *repository) lastLiveMessagesByCreatorQuery(creator string, limit uint) anystore.Query {
 	return s.collection.Find(query.And{
@@ -818,7 +940,7 @@ func (s *repository) lastLiveMessagesByCreatorQuery(creator string, limit uint) 
 
 func (s *repository) GetLastMessagesByCreators(ctx context.Context, creators []string, limit uint) ([]*chatmodel.Message, error) {
 	// one indexed query per creator: an Eq filter walks the compound
-	// (creator, _o.id) index with early exit at the limit, while an In filter
+	// (creator, storage key) index with early exit at the limit, while an In filter
 	// makes the planner fall back to a full-collection scan (measured 35ms vs
 	// 80µs per creator at 50k messages). The per-creator newest-limit sets
 	// are a superset of the combined newest-limit set, merged below.
@@ -853,18 +975,7 @@ func (s *repository) GetLastMessagesByCreators(ctx context.Context, creators []s
 }
 
 func (s *repository) GetAllMessageAttachments(ctx context.Context, afterOrderId string) ([]MessageAttachmentInfo, error) {
-	// Filter to only get messages that have attachments set
-	// This uses anystore's Exists filter - can be indexed in the future for better performance
-	var filter query.Filter = query.Key{Path: []string{chatmodel.ContentKey, "attachments"}, Filter: query.Exists{}}
-
-	if afterOrderId != "" {
-		filter = query.And{
-			filter,
-			query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpGt, afterOrderId)},
-		}
-	}
-
-	iter, err := s.collection.Find(filter).Iter(ctx)
+	iter, err := s.attachmentsQuery(afterOrderId).Iter(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("iterate messages: %w", err)
 	}
@@ -900,9 +1011,28 @@ func (s *repository) GetAllMessageAttachments(ctx context.Context, afterOrderId 
 	return results, iter.Err()
 }
 
+// attachmentsQuery walks the messages that have attachments set, with an order id > afterOrderId
+// when one is given.
+func (s *repository) attachmentsQuery(afterOrderId string) anystore.Query {
+	// This uses anystore's Exists filter - can be indexed in the future for better performance
+	var filter query.Filter = query.Key{Path: []string{chatmodel.ContentKey, "attachments"}, Filter: query.Exists{}}
+	if afterOrderId != "" {
+		filter = query.And{
+			filter,
+			chatmodel.OrderIdAfter(afterOrderId),
+		}
+	}
+	return s.collection.Find(filter)
+}
+
 func (s *repository) GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error) {
-	qry := s.collection.Find(query.Key{Path: []string{chatmodel.PinnedKey}, Filter: query.NewComp(query.CompOpEq, true)}).Sort(descOrder)
-	return s.queryMessages(ctx, qry)
+	return s.queryMessages(ctx, s.pinnedMessagesQuery())
+}
+
+// pinnedMessagesQuery reads the pinned messages through the sparse `pinned` index, newest first:
+// the index ends with the storage key, so it is read backwards and nothing is sorted.
+func (s *repository) pinnedMessagesQuery() anystore.Query {
+	return s.collection.Find(query.Key{Path: []string{chatmodel.PinnedKey}, Filter: query.NewComp(query.CompOpEq, true)}).Sort(descOrder)
 }
 
 func (s *repository) GetAllUnreadReactionChangeIds(ctx context.Context) ([]string, error) {
@@ -980,7 +1110,7 @@ func (s *repository) GetNewestUnreadReactionOrderId(ctx context.Context) (string
 }
 
 func (s *repository) GetAllRawMessages(ctx context.Context) ([]json.RawMessage, error) {
-	iter, err := s.collection.Find(nil).Sort(ascOrder).Iter(ctx)
+	iter, err := s.allMessagesQuery().Iter(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("iterate messages: %w", err)
 	}
@@ -995,4 +1125,9 @@ func (s *repository) GetAllRawMessages(ctx context.Context) ([]json.RawMessage, 
 		result = append(result, json.RawMessage(doc.Value().String()))
 	}
 	return result, nil
+}
+
+// allMessagesQuery walks the whole collection from the oldest.
+func (s *repository) allMessagesQuery() anystore.Query {
+	return s.collection.Find(nil).Sort(ascOrder)
 }

@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"testing"
 
-	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/anyenc"
-	"github.com/anyproto/any-store/query"
-	"github.com/anyproto/any-store/syncpool"
+	anystore "github.com/anyproto/any-store/v2"
+	"github.com/anyproto/any-store/v2/anyenc"
+	"github.com/anyproto/any-store/v2/query"
+	"github.com/anyproto/any-store/v2/syncpool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

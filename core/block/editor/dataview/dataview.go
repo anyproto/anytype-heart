@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	anystore "github.com/anyproto/any-store"
+	anystore "github.com/anyproto/any-store/v2"
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anyproto/any-store/query"
+	"github.com/anyproto/any-store/v2/query"
 	"github.com/globalsign/mgo/bson"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"

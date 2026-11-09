@@ -1103,6 +1103,7 @@ message Rpc {
                 message Error {
                     Code code = 1;
                     string description = 2;
+                    int64 requiredSpace = 3; // bytes the volume must have free, set with NOT_ENOUGH_FREE_SPACE
 
                     enum Code {
                         NULL = 0; // No error
@@ -1120,6 +1121,7 @@ message Rpc {
                         ACCOUNT_IS_DELETED = 111;
                         ACCOUNT_LOAD_IS_CANCELED = 112;
                         ACCOUNT_STORE_NOT_MIGRATED = 113;
+                        NOT_ENOUGH_FREE_SPACE = 114; // the local databases need a migration and the disk can't hold it; free requiredSpace bytes and retry
 
                         CONFIG_FILE_NOT_FOUND = 200;
                         CONFIG_FILE_INVALID = 201;

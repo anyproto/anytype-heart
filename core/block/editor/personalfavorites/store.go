@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/anyenc"
+	anystore "github.com/anyproto/any-store/v2"
+	"github.com/anyproto/any-store/v2/anyenc"
 	"github.com/anyproto/any-sync/app/logger"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/anystoredebug"

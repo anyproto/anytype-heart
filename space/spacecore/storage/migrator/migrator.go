@@ -25,7 +25,7 @@ import (
 	"strings"
 	"syscall"
 
-	anystore "github.com/anyproto/any-store"
+	anystorev2 "github.com/anyproto/any-store/v2"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage/migration"
@@ -33,6 +33,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoremigrate"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceresolverstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space/spacecore/oldstorage"
@@ -65,14 +67,14 @@ type migrator struct {
 	objectStorePath string
 	finisher        migratorfinisher.Service
 
-	anyStoreConfig *anystore.Config
+	anyStoreConfig *anystorev2.Config
 }
 
 type pathProvider interface {
 	GetNewSpaceStorePath() string
 	GetOldSpaceStorePath() string
 	GetRepoPath() string
-	GetAnyStoreConfig() *anystore.Config
+	GetAnyStoreV2Config() *anystorev2.Config
 }
 
 func New() app.ComponentRunnable {
@@ -87,7 +89,7 @@ func (m *migrator) Init(a *app.App) (err error) {
 	m.newStorage = app.MustComponent[storage.ClientStorage](a)
 	m.process = app.MustComponent[process.Service](a)
 	m.finisher = app.MustComponent[migratorfinisher.Service](a)
-	m.anyStoreConfig = cfg.GetAnyStoreConfig()
+	m.anyStoreConfig = cfg.GetAnyStoreV2Config()
 	return nil
 }
 
@@ -227,7 +229,7 @@ func (m *migrator) run(ctx context.Context) (err error) {
 		}
 	}
 
-	err = m.doObjectStoreDb(ctx, func(db anystore.DB) error {
+	err = m.doObjectStoreDb(ctx, func(db anystorev2.DB) error {
 		resolverStore, err := spaceresolverstore.New(ctx, db)
 		if err != nil {
 			return fmt.Errorf("new resolver store: %w", err)
@@ -261,7 +263,7 @@ func (m *migrator) run(ctx context.Context) (err error) {
 // nolint:unused
 func (m *migrator) verify(ctx context.Context, fast bool) ([]*verificationReport, error) {
 	var reports []*verificationReport
-	err := m.doObjectStoreDb(ctx, func(db anystore.DB) error {
+	err := m.doObjectStoreDb(ctx, func(db anystorev2.DB) error {
 		resolverStore, err := spaceresolverstore.New(ctx, db)
 		if err != nil {
 			return fmt.Errorf("new resolver store: %w", err)
@@ -282,13 +284,22 @@ func (m *migrator) verify(ctx context.Context, fast bool) ([]*verificationReport
 	return reports, nil
 }
 
-func (m *migrator) doObjectStoreDb(ctx context.Context, proc func(db anystore.DB) error) error {
+func (m *migrator) doObjectStoreDb(ctx context.Context, proc func(db anystorev2.DB) error) error {
 	err := ensureDirExists(m.objectStorePath)
 	if err != nil {
 		return fmt.Errorf("ensure dir exists: %w", err)
 	}
 
-	db, err := anystore.Open(ctx, filepath.Join(m.objectStorePath, "objects.db"), m.anyStoreConfig)
+	path := filepath.Join(m.objectStorePath, "objects.db")
+	// an object store a v1 build left is migrated as the provider would at its first open
+	if isV1, err := anystoremigrate.IsV1File(path); err != nil {
+		return fmt.Errorf("check v1 database: %w", err)
+	} else if isV1 {
+		if _, err = anystoremigrate.New(anystoreprovider.MigrationOptions(m.anyStoreConfig)).MigrateFile(ctx, path); err != nil {
+			return fmt.Errorf("migrate v1 database: %w", err)
+		}
+	}
+	db, err := anystorev2.Open(ctx, path, m.anyStoreConfig)
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}

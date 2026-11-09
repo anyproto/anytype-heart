@@ -7,7 +7,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	anystore "github.com/anyproto/any-store"
+	anystorev1 "github.com/anyproto/any-store"
+	anystore "github.com/anyproto/any-store/v2"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
@@ -165,7 +166,7 @@ func newRealTreeStoreFx(t testing.TB) *storeFx {
 		state:    state,
 		realTree: objTree,
 		aclList:  aclList,
-		changeCreator: objecttree.NewMockChangeCreator(func() anystore.DB {
+		changeCreator: objecttree.NewMockChangeCreator(func() anystorev1.DB {
 			return createStore(ctx, t)
 		}),
 		db: db,
@@ -203,7 +204,7 @@ func prepareAclList(t testing.TB) (list.AclList, *accountdata.AccountKeys) {
 }
 
 func buildTree(t testing.TB, aclList list.AclList) (objecttree.ObjectTree, error) {
-	changeCreator := objecttree.NewMockChangeCreator(func() anystore.DB {
+	changeCreator := objecttree.NewMockChangeCreator(func() anystorev1.DB {
 		return createStore(ctx, t)
 	})
 	treeStorage := changeCreator.CreateNewTreeStorage(t.(*testing.T), "0", aclList.Head().Id, false)
@@ -219,13 +220,13 @@ func buildTree(t testing.TB, aclList list.AclList) (objecttree.ObjectTree, error
 	return tree, nil
 }
 
-func createStore(ctx context.Context, t testing.TB) anystore.DB {
+func createStore(ctx context.Context, t testing.TB) anystorev1.DB {
 	return createNamedStore(ctx, t, "changes.db")
 }
 
-func createNamedStore(ctx context.Context, t testing.TB, name string) anystore.DB {
+func createNamedStore(ctx context.Context, t testing.TB, name string) anystorev1.DB {
 	path := filepath.Join(t.TempDir(), name)
-	db, err := anystore.Open(ctx, path, nil)
+	db, err := anystorev1.Open(ctx, path, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		err := db.Close()

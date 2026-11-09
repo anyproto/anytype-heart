@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/v2/anyenc"
 	"github.com/gogo/protobuf/types"
 	"golang.org/x/exp/constraints"
 

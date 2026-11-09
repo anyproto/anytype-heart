@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	anystore "github.com/anyproto/any-store"
+	anystorev2 "github.com/anyproto/any-store/v2"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/net/streampool"
 	"github.com/anyproto/anytype-publish-server/publishclient"
@@ -541,6 +542,12 @@ func (c *Config) GetNewSpaceStorePath() string {
 
 func (c *Config) GetTempDirPath() string {
 	return c.SqliteTempPath
+}
+
+// GetAnyStoreV2Config is the config for heart-owned any-store v2 databases (objectstore, crdt, spaceindex).
+// The any-sync spacestore keeps using GetAnyStoreConfig (any-store v1).
+func (c *Config) GetAnyStoreV2Config() *anystorev2.Config {
+	return &anystorev2.Config{}
 }
 
 func (c *Config) GetAnyStoreConfig() *anystore.Config {

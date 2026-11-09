@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/anyenc"
+	anystore "github.com/anyproto/any-store/v2"
+	"github.com/anyproto/any-store/v2/anyenc"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/mock"

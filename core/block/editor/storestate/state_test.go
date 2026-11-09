@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/anyenc"
-	"github.com/anyproto/any-store/query"
+	anystore "github.com/anyproto/any-store/v2"
+	"github.com/anyproto/any-store/v2/anyenc"
+	"github.com/anyproto/any-store/v2/query"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -457,4 +457,155 @@ func TestApplyChangeSet_AclHeadIdPlumbing(t *testing.T) {
 	}))
 	require.NoError(t, tx.Commit())
 	require.Equal(t, "acl-head-42", handler.last.Change.AclHeadId)
+}
+
+// keyedHandler keys its collection by "k" = order + "/" + id, as the chat handler keys messages by
+// their storage key.
+type keyedHandler struct {
+	DefaultHandler
+}
+
+func (h *keyedHandler) CollectionOptions() anystore.CollectionOptions {
+	return anystore.CollectionOptions{PrimaryKey: "k"}
+}
+
+func (h *keyedHandler) NewDocumentKey(documentId, order string) string {
+	return order + "/" + documentId
+}
+
+func (h *keyedHandler) DocumentKey(ctx context.Context, coll anystore.Collection, documentId string) (string, error) {
+	iter, err := coll.Find(query.Key{Path: []string{"id"}, Filter: query.NewComp(query.CompOpEq, documentId)}).Iter(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer iter.Close()
+	if !iter.Next() {
+		return "", anystore.ErrDocNotFound
+	}
+	doc, err := iter.Doc()
+	if err != nil {
+		return "", err
+	}
+	return doc.Value().GetString("k"), nil
+}
+
+func TestKeyedHandler(t *testing.T) {
+	newKeyedFixture := func(t *testing.T, deleteMode DeleteMode) (*fixture, anystore.Collection) {
+		fx := newFixture(t, "objId", &keyedHandler{DefaultHandler: DefaultHandler{Name: "testColl", DeleteMode: deleteMode}})
+		coll, err := fx.Collection(ctx, "testColl")
+		require.NoError(t, err)
+		apply(t, fx, "1", "o1", func(b *Builder) { require.NoError(t, b.Create("testColl", IdFromChange, `{"key":"value"}`)) })
+		return fx, coll
+	}
+
+	t.Run("the collection is keyed by the handler's primary key", func(t *testing.T) {
+		_, coll := newKeyedFixture(t, DeleteModeDelete)
+		assert.Equal(t, "k", coll.PrimaryKey())
+	})
+
+	t.Run("a create writes the key, with no field order for it", func(t *testing.T) {
+		// given
+		_, coll := newKeyedFixture(t, DeleteModeDelete)
+
+		// when
+		doc, err := coll.FindId(ctx, "o1/1")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "1", doc.Value().GetString("id"))
+		assert.Equal(t, "o1", doc.Value().GetString(ordersKey, "id"))
+		assert.Nil(t, doc.Value().Get(ordersKey, "k"))
+	})
+
+	t.Run("a modify names the document by id", func(t *testing.T) {
+		// given
+		fx, coll := newKeyedFixture(t, DeleteModeDelete)
+
+		// when
+		apply(t, fx, "2", "o2", func(b *Builder) {
+			require.NoError(t, b.Modify("testColl", "1", []string{"key"}, pb.ModifyOp_Set, `"changed"`))
+		})
+
+		// then
+		doc, err := coll.FindId(ctx, "o1/1")
+		require.NoError(t, err)
+		assert.Equal(t, "changed", doc.Value().GetString("key"))
+	})
+
+	t.Run("a modify of a missing document is skipped", func(t *testing.T) {
+		fx, _ := newKeyedFixture(t, DeleteModeDelete)
+		apply(t, fx, "2", "o2", func(b *Builder) {
+			require.NoError(t, b.Modify("testColl", "missing", []string{"key"}, pb.ModifyOp_Set, `"changed"`))
+		})
+	})
+
+	t.Run("an upsert is refused", func(t *testing.T) {
+		// given
+		fx := newFixture(t, "objId", &keyedHandler{DefaultHandler: DefaultHandler{Name: "testColl", ModifyMode: ModifyModeUpsert}})
+		tx, err := fx.NewTx(ctx)
+		require.NoError(t, err)
+		defer func() { _ = tx.Rollback() }()
+		build := &Builder{}
+		require.NoError(t, build.Modify("testColl", "1", []string{"key"}, pb.ModifyOp_Set, `"value"`))
+
+		// when
+		err = tx.ApplyChangeSetReturnAllErrors(ChangeSet{Id: "1", Order: "o1", Changes: build.ChangeSet})
+
+		// then
+		assert.ErrorContains(t, err, "upsert into keyed collection")
+	})
+
+	t.Run("a delete names the document by id", func(t *testing.T) {
+		// given
+		fx, coll := newKeyedFixture(t, DeleteModeDelete)
+
+		// when
+		apply(t, fx, "2", "o2", func(b *Builder) { b.Delete("testColl", "1") })
+
+		// then
+		count, err := coll.Count(ctx)
+		require.NoError(t, err)
+		assert.Zero(t, count)
+	})
+
+	t.Run("a delete mark keeps the key", func(t *testing.T) {
+		// given
+		fx, coll := newKeyedFixture(t, DeleteModeMark)
+
+		// when
+		apply(t, fx, "2", "o2", func(b *Builder) { b.Delete("testColl", "1") })
+
+		// then
+		doc, err := coll.FindId(ctx, "o1/1")
+		require.NoError(t, err)
+		assert.Equal(t, "1", doc.Value().GetString("id"))
+		assert.NotZero(t, doc.Value().GetInt("_d"))
+		assert.Nil(t, doc.Value().Get("key"))
+	})
+
+	t.Run("an existing collection with another primary key is refused", func(t *testing.T) {
+		// given
+		dir := t.TempDir()
+		db, err := anystore.Open(ctx, filepath.Join(dir, "db.db"), nil)
+		require.NoError(t, err)
+		t.Cleanup(func() { require.NoError(t, db.Close()) })
+		_, err = db.CreateCollection(ctx, "objIdtestColl")
+		require.NoError(t, err)
+
+		// when
+		_, err = New(ctx, "objId", db, &keyedHandler{DefaultHandler: DefaultHandler{Name: "testColl"}})
+
+		// then
+		assert.ErrorIs(t, err, anystore.ErrPrimaryKeyMismatch)
+	})
+}
+
+func apply(t *testing.T, fx *fixture, id, order string, build func(b *Builder)) {
+	t.Helper()
+	tx, err := fx.NewTx(ctx)
+	require.NoError(t, err)
+	b := &Builder{}
+	build(b)
+	require.NoError(t, tx.ApplyChangeSetReturnAllErrors(ChangeSet{Id: id, Order: order, Changes: b.ChangeSet}))
+	require.NoError(t, tx.Commit())
 }

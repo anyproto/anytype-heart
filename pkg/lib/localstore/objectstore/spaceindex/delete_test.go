@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/anyproto/any-store/query"
+	"github.com/anyproto/any-store/v2/query"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

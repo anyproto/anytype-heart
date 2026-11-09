@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anyproto/any-store/anyenc"
-	"github.com/anyproto/any-store/query"
-	"github.com/anyproto/any-store/syncpool"
+	"github.com/anyproto/any-store/v2/anyenc"
+	"github.com/anyproto/any-store/v2/query"
+	"github.com/anyproto/any-store/v2/syncpool"
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/domain"

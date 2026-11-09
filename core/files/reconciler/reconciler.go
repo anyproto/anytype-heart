@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"sync"
 
-	anystore "github.com/anyproto/any-store"
+	anystore "github.com/anyproto/any-store/v2"
 	"github.com/anyproto/any-sync/app"
 	"go.uber.org/zap"
 

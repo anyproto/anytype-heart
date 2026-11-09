@@ -2,10 +2,12 @@ package indexer
 
 import (
 	"context"
+	"path/filepath"
 	"testing"
 	"time"
 
-	anystore "github.com/anyproto/any-store"
+	anystore "github.com/anyproto/any-store/v2"
+	"github.com/anyproto/any-store/v2/anyenc"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage/mock_headstorage"
 	"github.com/anyproto/any-sync/commonspace/headsync/statestorage/mock_statestorage"
@@ -929,4 +931,42 @@ func TestSaveLatestChecksums(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, &want, got)
 	})
+}
+
+func TestCleanChatCollection(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		opts anystore.CollectionOptions
+	}{
+		{name: "a collection keyed by id", opts: anystore.CollectionOptions{}},
+		// chat messages are keyed by their storage key: the documents are deleted by it, not by id
+		{name: "a collection keyed by another field", opts: anystore.CollectionOptions{PrimaryKey: "_k"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			ctx := context.Background()
+			db, err := anystore.Open(ctx, filepath.Join(t.TempDir(), "crdt.db"), nil)
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, db.Close()) })
+			coll, err := db.CreateCollection(ctx, "chat1chats", tc.opts)
+			require.NoError(t, err)
+			arena := &anyenc.Arena{}
+			for _, id := range []string{"msg1", "msg2"} {
+				arena.Reset()
+				doc := arena.NewObject()
+				doc.Set("id", arena.NewString(id))
+				doc.Set("_k", arena.NewString("order\x01"+id))
+				require.NoError(t, coll.Insert(ctx, doc))
+			}
+
+			// when
+			err = (&indexer{}).cleanChatCollection(ctx, db, "chat1", "chats")
+
+			// then
+			require.NoError(t, err)
+			count, err := coll.Count(ctx)
+			require.NoError(t, err)
+			assert.Zero(t, count)
+		})
+	}
 }

@@ -4,12 +4,10 @@ import (
 	"context"
 	"testing"
 
-	anystore "github.com/anyproto/any-store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -135,34 +133,23 @@ func TestTombstonesInRepository(t *testing.T) {
 	})
 }
 
-// The live-only reads add a residual "not deleted" filter; it must not cost them their index,
-// and the tombstone count must come from the sparse index rather than a collection scan.
+// The live-only reads add a residual "not deleted" filter; it must not cost them their index or
+// their natural-order walk, and the tombstone count must come from the sparse index rather than a
+// collection scan.
 func TestTombstoneQueriesUseIndexes(t *testing.T) {
-	ctx := context.Background()
-	indexUsed := func(t *testing.T, q anystore.Query, indexName string) bool {
-		t.Helper()
-		explain, err := q.Explain(ctx)
-		require.NoError(t, err)
-		for _, idx := range explain.Indexes {
-			if idx.Name == indexName && idx.Used {
-				return true
-			}
-		}
-		t.Logf("plan: %s", explain.Sql)
-		return false
-	}
-	fx := newFixture(t)
-	require.NoError(t, anystorehelper.AddIndexes(ctx, fx.repo.collection, chatCollectionIndexes))
+	fx := newPopulatedFixture(t)
 
 	t.Run("tombstone count", func(t *testing.T) {
-		assert.True(t, indexUsed(t, fx.repo.deletedMessagesQuery(), chatmodel.DeletedKey))
+		assert.Equal(t, chatmodel.DeletedKey, usedIndex(explain(t, fx.repo.deletedMessagesQuery())))
 	})
 
 	t.Run("live messages by creator", func(t *testing.T) {
-		assert.True(t, indexUsed(t, fx.repo.lastLiveMessagesByCreatorQuery("alice", 10), chatmodel.CreatorKey+",_o.id"))
+		ex := explain(t, fx.repo.lastLiveMessagesByCreatorQuery("creator1", 10))
+		assert.Equal(t, chatmodel.CreatorKey+","+chatmodel.StorageKeyField, usedIndex(ex), ex.Sql)
 	})
 
 	t.Run("newest live messages", func(t *testing.T) {
-		assert.True(t, indexUsed(t, fx.repo.lastLiveMessagesQuery(10), "_o.id"))
+		ex := explain(t, fx.repo.lastLiveMessagesQuery(10))
+		assert.Equal(t, "FullScan(reverse)(filtered) -> Limit(10)", ex.Sql, "the collection walked from the newest end")
 	})
 }

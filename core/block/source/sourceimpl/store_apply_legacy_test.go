@@ -8,6 +8,7 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
+	anystorev2 "github.com/anyproto/any-store/v2"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/stretchr/testify/assert"
@@ -93,7 +94,7 @@ func newLegacyTreeFx(t *testing.T) (*storestate.StoreState, objecttree.ObjectTre
 	legacyTree, err := objecttree.BuildTestableTree(treeStorage, aclList)
 	require.NoError(t, err)
 
-	stateDb, err := anystore.Open(ctx, filepath.Join(t.TempDir(), "crdt.db"), nil)
+	stateDb, err := anystorev2.Open(ctx, filepath.Join(t.TempDir(), "crdt.db"), nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = stateDb.Close() })
 

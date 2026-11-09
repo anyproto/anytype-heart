@@ -420,7 +420,7 @@ func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (space
 		if err != nil {
 			logger = logger.With(zap.Error(err))
 		} else {
-			logger = logger.With(anystorehelper.DbStatToZapFields(stat)...)
+			logger = logger.With(anystorehelper.DbStatToZapFieldsV1(stat)...)
 		}
 		logger.Warn("spacestore db open took too long")
 	}
