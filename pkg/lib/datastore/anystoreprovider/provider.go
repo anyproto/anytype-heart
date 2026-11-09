@@ -457,6 +457,10 @@ func openDatabaseWithReinit(ctx context.Context, config *anystore.Config, path s
 	}
 	if err != nil {
 		code, isCorrupted := anystorehelper.IsCorruptedError(err)
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			// the open was cut short (shutdown, timeout): whatever it reported is not a verdict on the file
+			isCorrupted = false
+		}
 		getLogger(err, code).With(zap.Bool("isCorrupted", isCorrupted)).With(zap.Int64("tookMs", time.Since(start).Milliseconds())).Error("failed to open anystore")
 		if isCorrupted {
 			if reporter != nil {

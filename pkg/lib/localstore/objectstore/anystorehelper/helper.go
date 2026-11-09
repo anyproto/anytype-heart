@@ -39,8 +39,14 @@ func ApplyPlatformPragmas(opts map[string]string) {
 // the caller may discard and rebuild it. For v2 it matches anystore.ErrCorrupt, which covers a
 // damaged header, WAL or page and the failed quick check. code is the SQLite result code of a v1
 // error and is zero for a v2 one.
+//
+// An interrupted operation (a cancelled or expired context, or SQLITE_INTERRUPT) says nothing
+// about the file, so it is never corruption, even when another error is joined to it.
 func IsCorruptedError(err error) (code sqlite.ResultCode, isCorrupted bool) {
 	code = sqlite.ErrCode(err)
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || code == sqlite.ResultInterrupt {
+		return code, false
+	}
 	isCorrupted = errors.Is(err, anystore.ErrCorrupt) || errors.Is(err, anystore.ErrIncompatibleVersion) ||
 		errors.Is(err, anystorev1.ErrQuickCheckFailed) || errors.Is(err, anystorev1.ErrIncompatibleVersion) ||
 		code == sqlite.ResultCorrupt || code == sqlite.ResultNotADB || code == sqlite.ResultCantOpen
