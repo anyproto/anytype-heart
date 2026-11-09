@@ -101,3 +101,32 @@ func TestOpenDatabaseWithReinit_IntactFileIsKept(t *testing.T) {
 	_, err = db.OpenCollection(context.Background(), "test")
 	assert.NoError(t, err)
 }
+
+// An open cut short by a cancelled context must not be taken for corruption: the files stay.
+func TestOpenDatabaseWithReinit_InterruptedOpenKeepsFiles(t *testing.T) {
+	for name, damaged := range map[string]bool{"intact file": false, "damaged file": true} {
+		t.Run(name, func(t *testing.T) {
+			// given
+			path := filepath.Join(t.TempDir(), "objects.db")
+			writeTestDB(t, path)
+			if damaged {
+				require.NoError(t, os.Truncate(path, 40))
+			}
+			before, err := os.ReadFile(path)
+			require.NoError(t, err)
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+			reporter := &recordingReporter{}
+
+			// when
+			_, err = openDatabaseWithReinit(ctx, &anystore.Config{}, path, reporter, nil)
+
+			// then
+			require.Error(t, err)
+			assert.Empty(t, reporter.reasons, "an interrupted open is not DB_CORRUPTION")
+			after, readErr := os.ReadFile(path)
+			require.NoError(t, readErr)
+			assert.Equal(t, before, after, "the file must not be removed or rewritten")
+		})
+	}
+}
