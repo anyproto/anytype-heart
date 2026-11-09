@@ -5194,6 +5194,7 @@ Middleware-to-front-end response for an account select request, that can contain
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.Select.Response.Error.Code](#anytype-Rpc-Account-Select-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
+| requiredSpace | [int64](#int64) |  | bytes the volume must have free, set with NOT_ENOUGH_FREE_SPACE |
 
 
 
@@ -26264,6 +26265,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ACCOUNT_IS_DELETED | 111 |  |
 | ACCOUNT_LOAD_IS_CANCELED | 112 |  |
 | ACCOUNT_STORE_NOT_MIGRATED | 113 |  |
+| NOT_ENOUGH_FREE_SPACE | 114 | the local databases need a migration and the disk can&#39;t hold it; free requiredSpace bytes and retry |
 | CONFIG_FILE_NOT_FOUND | 200 |  |
 | CONFIG_FILE_INVALID | 201 |  |
 | CONFIG_FILE_NETWORK_ID_MISMATCH | 202 |  |

@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoremigrate"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migrator"
 	"github.com/anyproto/anytype-heart/util/grpcprocess"
 	"github.com/anyproto/anytype-heart/util/localorigin"
@@ -89,7 +90,17 @@ func (mw *Middleware) AccountMigrateCancel(cctx context.Context, req *pb.RpcAcco
 
 func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
 	account, err := mw.applicationService.AccountSelect(cctx, req)
+	return &pb.RpcAccountSelectResponse{
+		Config:  nil,
+		Account: account,
+		Error:   accountSelectError(err),
+	}
+}
+
+func accountSelectError(err error) *pb.RpcAccountSelectResponseError {
+	migrationSpaceErr := &anystoremigrate.NotEnoughSpaceError{}
 	code := mapErrorCode(err,
+		errTypeToCode(&migrationSpaceErr, pb.RpcAccountSelectResponseError_NOT_ENOUGH_FREE_SPACE),
 		errToCode(config.ErrNetworkFileFailedToRead, pb.RpcAccountSelectResponseError_CONFIG_FILE_INVALID),
 		errToCode(config.ErrNetworkFileNotFound, pb.RpcAccountSelectResponseError_CONFIG_FILE_NOT_FOUND),
 		errToCode(config.ErrNetworkIdMismatch, pb.RpcAccountSelectResponseError_CONFIG_FILE_NETWORK_ID_MISMATCH),
@@ -105,13 +116,10 @@ func (mw *Middleware) AccountSelect(cctx context.Context, req *pb.RpcAccountSele
 		errToCode(application.ErrFailedToStartApplication, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE),
 		errToCode(application.ErrAccountStoreIsNotMigrated, pb.RpcAccountSelectResponseError_ACCOUNT_STORE_NOT_MIGRATED),
 	)
-	return &pb.RpcAccountSelectResponse{
-		Config:  nil,
-		Account: account,
-		Error: &pb.RpcAccountSelectResponseError{
-			Code:        code,
-			Description: getErrorDescription(err),
-		},
+	return &pb.RpcAccountSelectResponseError{
+		Code:          code,
+		Description:   getErrorDescription(err),
+		RequiredSpace: int64(migrationSpaceErr.Needed),
 	}
 }
 
