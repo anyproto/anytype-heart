@@ -7,6 +7,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/text"
 
@@ -129,6 +130,65 @@ func TestPreprocessBlocksThreeCodeBlock(t *testing.T) {
 
 	assert.Equal(t, blocks[0].GetText().GetText(), bl.GetText().GetText())
 	assert.Equal(t, blocks[1].GetText().GetText(), bl2.GetText().GetText()+"\n"+bl3.GetText().GetText())
+}
+
+func TestEscapeUnescapeAngleBrackets(t *testing.T) {
+	input := "List<String> a = new ArrayList<>()"
+	escaped := Escape(input)
+
+	assert.NotContains(t, escaped, "<")
+	assert.NotContains(t, escaped, ">")
+	assert.Equal(t, input, Unescape(escaped))
+}
+
+func TestHTMLToBlocks_AngleBrackets(t *testing.T) {
+	tests := []struct {
+		name     string
+		html     string
+		expected string
+	}{
+		{
+			name:     "HTML entities in paragraph",
+			html:     `<p>fmt.Println(&lt;T&gt;)</p>`,
+			expected: "fmt.Println(<T>)",
+		},
+		{
+			name:     "arrow function in span",
+			html:     `<p>const fn = (x) =&gt; x + 1</p>`,
+			expected: "const fn = (x) => x + 1",
+		},
+		{
+			name:     "JSX-like content",
+			html:     `<p>&lt;div className=&quot;test&quot;&gt;Hello&lt;/div&gt;</p>`,
+			expected: `<div className="test">Hello</div>`,
+		},
+		{
+			name:     "generics in code block",
+			html:     `<pre><code>List&lt;String&gt; items = new ArrayList&lt;&gt;();</code></pre>`,
+			expected: "List<String> items = new ArrayList<>();\n",
+		},
+		{
+			name:     "comparison operators",
+			html:     `<p>if a &lt; b &amp;&amp; c &gt; d</p>`,
+			expected: "if a < b && c > d",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			blocks, _, err := HTMLToBlocks([]byte(tt.html), "")
+			require.NoError(t, err)
+
+			var textContent string
+			for _, b := range blocks {
+				if b.GetText() != nil {
+					textContent = b.GetText().GetText()
+					break
+				}
+			}
+			assert.Equal(t, tt.expected, textContent)
+		})
+	}
 }
 
 func TestCloseTextBlock(t *testing.T) {
