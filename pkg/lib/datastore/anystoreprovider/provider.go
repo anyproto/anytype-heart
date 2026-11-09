@@ -56,7 +56,7 @@ var initPageBufferOnce sync.Once
 
 func ensurePageBuffer() {
 	initPageBufferOnce.Do(func() {
-		anystore.InitPageBuffer(4096, 32768) // 32768 * 4096 = 128 MiB
+		anystore.InitPageBuffer(4096, 16384) // 16384 * 4096 = 64 MiB; measured no start-time difference vs 128 MiB, ~120 MB lower peak RSS
 	})
 }
 
