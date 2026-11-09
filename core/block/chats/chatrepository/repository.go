@@ -1029,8 +1029,8 @@ func (s *repository) GetPinnedMessages(ctx context.Context) ([]*chatmodel.Messag
 	return s.queryMessages(ctx, s.pinnedMessagesQuery())
 }
 
-// pinnedMessagesQuery reads the pinned messages through the sparse `pinned` index and sorts them,
-// newest first: there are few.
+// pinnedMessagesQuery reads the pinned messages through the sparse `pinned` index, newest first:
+// the index ends with the storage key, so it is read backwards and nothing is sorted.
 func (s *repository) pinnedMessagesQuery() anystore.Query {
 	return s.collection.Find(query.Key{Path: []string{chatmodel.PinnedKey}, Filter: query.NewComp(query.CompOpEq, true)}).Sort(descOrder)
 }

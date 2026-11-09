@@ -140,8 +140,8 @@ func TestQueriesUseTheirIndexes(t *testing.T) {
 			filterReadTrue,
 			query.Key{Path: []string{"id"}, Filter: query.NewInValue(arena.NewString(cid(7)), arena.NewString(cid(9)))},
 		}), index: "id"},
-		// few pinned messages: they are sorted after the index read
-		{name: "GetPinnedMessages", query: fx.repo.pinnedMessagesQuery(), index: chatmodel.PinnedKey, wantSort: true},
+		// every index key ends with the primary key, so the index is read backwards in the sort order: no sort
+		{name: "GetPinnedMessages", query: fx.repo.pinnedMessagesQuery(), index: chatmodel.PinnedKey},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// when
