@@ -35,9 +35,15 @@ func ApplyPlatformPragmas(opts map[string]string) {
 	}
 }
 
+// IsCorruptedError reports whether err says the database file is damaged or unusable, so that
+// the caller may discard and rebuild it. For v2 it matches anystore.ErrCorrupt, which covers a
+// damaged header, WAL or page and the failed quick check. code is the SQLite result code of a v1
+// error and is zero for a v2 one.
 func IsCorruptedError(err error) (code sqlite.ResultCode, isCorrupted bool) {
 	code = sqlite.ErrCode(err)
-	isCorrupted = errors.Is(err, anystore.ErrQuickCheckFailed) || errors.Is(err, anystore.ErrIncompatibleVersion) || errors.Is(err, anystorev1.ErrQuickCheckFailed) || errors.Is(err, anystorev1.ErrIncompatibleVersion) || code == sqlite.ResultCorrupt || code == sqlite.ResultNotADB || code == sqlite.ResultCantOpen
+	isCorrupted = errors.Is(err, anystore.ErrCorrupt) || errors.Is(err, anystore.ErrIncompatibleVersion) ||
+		errors.Is(err, anystorev1.ErrQuickCheckFailed) || errors.Is(err, anystorev1.ErrIncompatibleVersion) ||
+		code == sqlite.ResultCorrupt || code == sqlite.ResultNotADB || code == sqlite.ResultCantOpen
 	return
 }
 
