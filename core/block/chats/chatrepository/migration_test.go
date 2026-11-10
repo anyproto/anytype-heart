@@ -294,9 +294,8 @@ func TestV1ChatMigratesAtFirstOpen(t *testing.T) {
 	// when
 	t.Run("the first open migrates the space database", func(t *testing.T) {
 		assertMigrated(t, fx)
-		isV1, err := anystoremigrate.IsV1File(crdtPath + anystoremigrate.V1BackupSuffix)
-		require.NoError(t, err)
-		assert.True(t, isV1, "the v1 file is kept")
+		_, err := os.Stat(crdtPath + anystoremigrate.V1BackupSuffix)
+		assert.ErrorIs(t, err, os.ErrNotExist, "the v1 file is removed once the migration is verified")
 	})
 	fx.close(t)
 
