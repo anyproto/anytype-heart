@@ -18,8 +18,10 @@ Scope: global
 - objectstore/objects.db - common database with system collection
 - objectstore/{spaceId}/objects.db - per-space index databases
 - objectstore/{spaceId}/crdt.db - per-space CRDT databases
-- objectstore/[{spaceId}/]{objects,crdt}.db.v1 - the v1 file of a migrated database, kept (removeV1AfterMigration)
+- objectstore/[{spaceId}/]{objects,crdt}.db.v1 - the v1 file of a migrated database, only until the migration is verified
+  (removeV1AfterMigration); older versions kept it, removeKeptV1Files sweeps those
 - objectstore/.anystore-v2 - marks a store with no v1 database left
+- objectstore/.anystore-v1-swept - marks a store whose kept .v1 files were swept
 */
 
 import (
@@ -68,11 +70,14 @@ const (
 	// to ~306-399 MB.
 	migrationConcurrency = 2
 	// removeV1AfterMigration removes a database's v1 file once its verified v2 file is in place.
-	// Off: the v1 file stays beside it as <name>.v1, so a broken migration can still be recovered
-	// from; it costs the size of the old store.
-	removeV1AfterMigration = false
+	// The object store and the CRDT store are derived data, rebuilt from the space's change trees
+	// by a reindex, so keeping a second copy of them is not worth the size of the old store.
+	removeV1AfterMigration = true
 	// v2Marker marks an object store with no v1 database left, so later starts skip the scan.
 	v2Marker = ".anystore-v2"
+	// sweptMarker marks an object store whose <name>.v1 files, kept by versions that did not
+	// remove them, were swept.
+	sweptMarker = ".anystore-v1-swept"
 )
 
 // freeDiskSpace is the free space of a volume; tests replace it.
@@ -142,6 +147,48 @@ func removeMigrationLeftovers(objectStorePath string) error {
 		if err = anystoremigrate.RemoveLeftovers(base); err != nil {
 			return fmt.Errorf("remove leftovers of %s: %w", base, err)
 		}
+	}
+	return nil
+}
+
+// removeKeptV1Files removes the <name>.v1 files that versions without removeV1AfterMigration left
+// beside the migrated databases, once per store. A <name>.v1 goes only when <name> itself is a
+// database that is no longer v1: it is never taken from beside a database still waiting for its
+// migration.
+func removeKeptV1Files(objectStorePath string) error {
+	marker := filepath.Join(objectStorePath, sweptMarker)
+	if _, err := os.Stat(marker); err == nil {
+		return nil
+	}
+	paths, err := DatabasePaths(objectStorePath)
+	if err != nil {
+		return fmt.Errorf("list databases: %w", err)
+	}
+	var errs []error
+	for _, p := range paths {
+		backup := p + anystoremigrate.V1BackupSuffix
+		if _, err = os.Stat(backup); err != nil {
+			continue
+		}
+		isV1, err := anystoremigrate.IsV1File(p)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("check v1 database %s: %w", p, err))
+			continue
+		}
+		if isV1 {
+			continue
+		}
+		for _, f := range []string{backup, backup + ".lock"} {
+			if err = os.Remove(f); err != nil && !errors.Is(err, os.ErrNotExist) {
+				errs = append(errs, fmt.Errorf("remove %s: %w", f, err))
+			}
+		}
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	if err = os.WriteFile(marker, nil, 0o600); err != nil {
+		return fmt.Errorf("write marker: %w", err)
 	}
 	return nil
 }
@@ -400,6 +447,10 @@ func (s *provider) Run(ctx context.Context) error {
 // check would otherwise count against the store, and every start after a crash on a tight disk
 // would be refused.
 func (s *provider) checkMigrationSpace() error {
+	if err := removeKeptV1Files(s.objectStorePath); err != nil {
+		// the files only take space: never a reason to fail the start
+		log.Warn("remove kept v1 files", zap.Error(err))
+	}
 	marker := filepath.Join(s.objectStorePath, v2Marker)
 	if _, err := os.Stat(marker); err == nil {
 		return nil

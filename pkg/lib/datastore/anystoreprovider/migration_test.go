@@ -100,15 +100,17 @@ func TestV1StoreMigratesAtFirstOpen(t *testing.T) {
 		assert.Equal(t, []int{5, 5, 5, 5}, counts)
 	})
 
-	t.Run("the v1 files are kept beside the migrated ones", func(t *testing.T) {
+	t.Run("the v1 files are removed once the migrated ones are in place", func(t *testing.T) {
 		for _, path := range []string{
 			filepath.Join(objectStorePath, "objects.db"),
 			filepath.Join(objectStorePath, migrationSpaceId, "objects.db"),
 			filepath.Join(objectStorePath, migrationSpaceId, "crdt.db"),
 		} {
-			isV1, err := anystoremigrate.IsV1File(path + anystoremigrate.V1BackupSuffix)
+			isV1, err := anystoremigrate.IsV1File(path)
 			require.NoError(t, err)
-			assert.True(t, isV1, path)
+			assert.False(t, isV1, "migrated: %s", path)
+			_, err = os.Stat(path + anystoremigrate.V1BackupSuffix)
+			assert.ErrorIs(t, err, os.ErrNotExist, "no v1 copy left: %s", path)
 		}
 	})
 
@@ -196,4 +198,44 @@ func TestV1StoreStartRemovesLeftoversBeforeTheSpaceCheck(t *testing.T) {
 		_, err := os.Stat(path)
 		assert.NoError(t, err, "never removed: %s", path)
 	}
+}
+
+// Versions that kept the v1 file of a migrated database left <name>.v1 beside it. The start sweeps
+// those, but never one beside a database still waiting for its migration.
+func TestStartSweepsKeptV1Files(t *testing.T) {
+	// given: a migrated common database with a kept v1 file, a space database still v1 with one
+	root := t.TempDir()
+	objectStorePath := seedV1Store(t, root, 5)
+	withFreeSpace(t, 1<<40)
+	p, err := NewInPath(root)
+	require.NoError(t, err)
+	require.NoError(t, p.Close(context.Background()))
+	// the first start marked the store as swept; the old version's store was not
+	require.NoError(t, os.Remove(filepath.Join(objectStorePath, sweptMarker)))
+	common := filepath.Join(objectStorePath, "objects.db")
+	pending := filepath.Join(objectStorePath, migrationSpaceId, "objects.db")
+	isV1, err := anystoremigrate.IsV1File(pending)
+	require.NoError(t, err)
+	require.True(t, isV1)
+	for _, path := range []string{common, pending} {
+		require.NoError(t, os.WriteFile(path+anystoremigrate.V1BackupSuffix, []byte("kept v1 file"), 0o600))
+		require.NoError(t, os.WriteFile(path+anystoremigrate.V1BackupSuffix+".lock", nil, 0o600))
+	}
+
+	// when
+	p, err = NewInPath(root)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = p.Close(context.Background()) })
+
+	// then
+	for _, f := range []string{common + anystoremigrate.V1BackupSuffix, common + anystoremigrate.V1BackupSuffix + ".lock"} {
+		_, err = os.Stat(f)
+		assert.ErrorIs(t, err, os.ErrNotExist, "swept: %s", f)
+	}
+	_, err = os.Stat(common)
+	assert.NoError(t, err, "the migrated database itself stays")
+	_, err = os.Stat(pending + anystoremigrate.V1BackupSuffix)
+	assert.NoError(t, err, "a v1 file beside a database still waiting for its migration stays")
+	_, err = os.Stat(filepath.Join(objectStorePath, sweptMarker))
+	assert.NoError(t, err)
 }
