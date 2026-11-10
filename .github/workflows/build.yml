@@ -24,7 +24,7 @@ permissions:
 jobs:
   build:
     runs-on: ${{ github.event_name == 'push' && 'macos-15' || (github.event.inputs.run-on-runner || 'macos-15') }}
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - name: Install Go
         uses: actions/setup-go@v7
