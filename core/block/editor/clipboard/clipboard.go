@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark/whitespace"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/block/simple/table"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/converter/html"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -433,7 +434,11 @@ func (cb *clipboard) pasteText(ctx session.Context, req *pb.RpcBlockPasteRequest
 	if len(req.FocusedBlockId) > 0 {
 		block := cb.Pick(req.FocusedBlockId)
 		if block != nil {
-			if b := block.Model().GetText(); b != nil && b.Style == model.BlockContentText_Code {
+			if b := block.Model().GetText(); b != nil &&
+				(b.Style == model.BlockContentText_Code || table.IsTableCell(block.Model().Id)) {
+				// A cell is a plain data field: pasting raw text keeps it verbatim. Parsing the
+				// text slot as markdown would turn 2*3*4 into 234 with an italic 3, and swallow
+				// blank lines and edge spaces.
 				return cb.pasteRawText(ctx, req, []string{req.TextSlot}, groupId)
 			}
 		}

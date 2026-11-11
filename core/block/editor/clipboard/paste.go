@@ -572,7 +572,7 @@ func (p *pasteCtrl) normalize() {
 // intoTableCell handles pasting into a table cell. A cell holds exactly one text block, so
 // the pasted content is flattened into a single line-joined string — but unlike a code
 // block, a cell supports inline marks and a text color, so text keeps its formatting instead
-// of having it dropped (GO-2321). Anything else keeps pasting from the text slot; see
+// of having it dropped (anytype-ts#2321). Anything else keeps pasting from the text slot; see
 // cellPasteContent.
 func (p *pasteCtrl) intoTableCell() (err error) {
 	selText := p.getFirstSelectedText()
@@ -580,7 +580,7 @@ func (p *pasteCtrl) intoTableCell() (err error) {
 		return
 	}
 
-	tb := p.cellPasteContent()
+	tb := p.cellPasteContent(selText.Model().BackgroundColor)
 	if tb.GetText().Text == "" && p.mode.textBuf != "" {
 		tb.GetText().Text = p.mode.textBuf
 	}
@@ -593,18 +593,30 @@ func (p *pasteCtrl) intoTableCell() (err error) {
 	}
 	p.ps.Get(p.ps.RootId()).Model().ChildrenIds = nil
 	p.caretPos, err = selText.RangeTextPaste(p.selRange.From, p.selRange.To, tb, true)
-	return err
+	if err != nil {
+		return fmt.Errorf("paste into table cell: %w", err)
+	}
+	return nil
 }
 
 // cellPasteContent decides what the paste is flattened into before it lands in a cell.
 //
+// cellBg is the background of the cell being pasted into, and the block returned here carries
+// it instead of the background of whatever was copied. A cell's fill belongs to the cell — it
+// is what makes a header row look like a header, or a column look painted — while the copy
+// carries the source cell's fill like any other block color. RangeTextPaste adopts the pasted
+// block's background unconditionally when it fills an empty cell, so naming the cell's own
+// fill makes that assignment a no-op: pasting never paints a plain cell with the source's
+// color, and never blanks the grey of a header cell. Text colors are unaffected: they are
+// what the paste is about, and they still travel onto the cell.
+//
 // Paragraph text flattens losslessly: a cell is a paragraph text block itself, so the marks
-// and colors of what was copied transfer straight onto it (GO-2321). No other shape does.
+// and colors of what was copied transfer straight onto it (anytype-ts#2321). No other shape does.
 // A Code or Toggle block, a heading, or a nested block's indentation, only fits in a cell as
 // text, and the markdown text slot renders that structure while a raw line join throws it
 // away — so anything but plain paragraph text keeps pasting from the text slot, as it did
 // before cells got a mode of their own.
-func (p *pasteCtrl) cellPasteContent() *model.Block {
+func (p *pasteCtrl) cellPasteContent(cellBg string) *model.Block {
 	if !p.pastesParagraphTextOnly() && p.mode.textBuf != "" {
 		return &model.Block{
 			Content: &model.BlockContentOfText{
@@ -613,9 +625,10 @@ func (p *pasteCtrl) cellPasteContent() *model.Block {
 					Marks: &model.BlockContentTextMarks{},
 				},
 			},
+			BackgroundColor: cellBg,
 		}
 	}
-	return p.flattenForCell()
+	return p.flattenForCell(cellBg)
 }
 
 // pastesParagraphTextOnly reports whether the paste is made up entirely of paragraph text
@@ -653,16 +666,19 @@ func (p *pasteCtrl) pastesParagraphTextOnly() bool {
 
 // flattenForCell joins every pasted text block into one line-separated string and shifts
 // each block's marks to their new positions, so that pasting into a table cell keeps the
-// inline formatting (bold, links, ...) and the first block's colors. A cell can hold only a
-// single text block, which is why the content is flattened at all.
-func (p *pasteCtrl) flattenForCell() *model.Block {
+// inline formatting (bold, links, ...) and the first block's text color. A cell can hold only
+// a single text block, which is why the content is flattened at all.
+//
+// The block background comes from cellBg, the cell being pasted into, and not from the first
+// copied block: a fill is the cell's own, and adopting a copied one would repaint or blank it
+// (see cellPasteContent).
+func (p *pasteCtrl) flattenForCell(cellBg string) *model.Block {
 	var (
 		bld    strings.Builder
 		marks  []*model.BlockContentTextMark
 		offset int32
 		first  = true
 		color  string
-		bg     string
 	)
 	p.ps.Iterate(func(b simple.Block) (isContinue bool) {
 		tb, ok := b.(text.Block)
@@ -679,7 +695,6 @@ func (p *pasteCtrl) flattenForCell() *model.Block {
 		}
 		if first {
 			color = txt.Color
-			bg = tb.Model().BackgroundColor
 			first = false
 		}
 		for _, m := range txt.GetMarks().GetMarks() {
@@ -708,7 +723,7 @@ func (p *pasteCtrl) flattenForCell() *model.Block {
 				Marks: &model.BlockContentTextMarks{Marks: marks},
 			},
 		},
-		BackgroundColor: bg,
+		BackgroundColor: cellBg,
 	}
 }
 

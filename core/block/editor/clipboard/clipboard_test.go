@@ -1304,7 +1304,7 @@ func TestClipboard_PasteToTableCellBlock(t *testing.T) {
 	assert.Equal(t, "text1\ntext2\ntabletable", sb.Doc.Pick("2-2").Model().GetText().Text)
 }
 
-// GO-2321: a table cell holds a single text block, so pasted content is flattened, but the
+// anytype-ts#2321: a table cell holds a single text block, so pasted content is flattened, but the
 // formatting of what was copied must survive that flatten.
 func TestClipboard_PasteToTableCellKeepsFormatting(t *testing.T) {
 	newCell := func() *smarttest.SmartTest {
@@ -1393,6 +1393,106 @@ func TestClipboard_PasteToTableCellKeepsFormatting(t *testing.T) {
 			"every paragraph's mark must survive, shifted past the line separator")
 	})
 
+	t.Run("a highlighted block does not paint the cell", func(t *testing.T) {
+		// given
+		sb := newCell()
+		highlighted := givenTextBlockWithMarks("id1", "background color", nil)
+		highlighted.BackgroundColor = "yellow"
+
+		// when
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "2-2",
+			SelectedTextRange: rng(0, 0),
+			AnySlot:           []*model.Block{highlighted},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		cell := sb.Doc.Pick("2-2").Model()
+		assert.Equal(t, "background color", cell.GetText().Text)
+		assert.Empty(t, cell.BackgroundColor,
+			"a cell's fill belongs to the cell, not to the block that was copied")
+	})
+
+	t.Run("pasting into a header cell keeps its fill", func(t *testing.T) {
+		// given
+		sb := newCell()
+		sb.Doc.Pick("2-2").Model().BackgroundColor = "grey"
+		highlighted := givenTextBlockWithMarks("id1", "background color", nil)
+		highlighted.BackgroundColor = "yellow"
+
+		// when
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "2-2",
+			SelectedTextRange: rng(0, 0),
+			AnySlot:           []*model.Block{highlighted},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		cell := sb.Doc.Pick("2-2").Model()
+		assert.Equal(t, "background color", cell.GetText().Text)
+		assert.Equal(t, "grey", cell.BackgroundColor,
+			"the header fill must survive a paste that carries a different one")
+	})
+
+	t.Run("a text-slot paste keeps the cell's fill too", func(t *testing.T) {
+		// given
+		sb := newCell()
+		sb.Doc.Pick("2-2").Model().BackgroundColor = "grey"
+		heading := givenTextBlockWithMarks("id1", "a heading", nil)
+		heading.GetText().Style = model.BlockContentText_Header2
+
+		// when
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "2-2",
+			SelectedTextRange: rng(0, 0),
+			AnySlot:           []*model.Block{heading},
+			TextSlot:          "## a heading",
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		cell := sb.Doc.Pick("2-2").Model()
+		assert.Equal(t, "## a heading", cell.GetText().Text)
+		assert.Equal(t, "grey", cell.BackgroundColor,
+			"a paste that arrives as plain text must not blank the cell's fill either")
+	})
+
+	t.Run("text-slot-only paste stays verbatim", func(t *testing.T) {
+		for _, tc := range []struct {
+			name string
+			text string
+		}{
+			{name: "expression", text: "2*3*4"},
+			{name: "blank line", text: "a\n\nb"},
+			{name: "edge spaces", text: "  42  "},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				// given
+				sb := newCell()
+
+				// when
+				cb := newFixture(t, sb)
+				_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+					FocusedBlockId:    "2-2",
+					SelectedTextRange: rng(0, 0),
+					TextSlot:          tc.text,
+				}, "")
+
+				// then
+				require.NoError(t, err)
+				cell := sb.Doc.Pick("2-2").Model().GetText()
+				assert.Equal(t, tc.text, cell.Text,
+					"plain text must reach the cell unparsed: markdown would eat the asterisks, the blank line or the edge spaces")
+				assert.Empty(t, cell.GetMarks().GetMarks(), "plain text must not gain marks")
+			})
+		}
+	})
+
 	t.Run("mixed content pastes from the text slot", func(t *testing.T) {
 		// given
 		sb := newCell()
@@ -1446,25 +1546,25 @@ func TestClipboard_PasteToTableCellKeepsFormatting(t *testing.T) {
 	t.Run("nested blocks paste from the text slot", func(t *testing.T) {
 		// given
 		sb := newCell()
-		toggle := givenTextBlockWithMarks("id1", "toggle 1", nil)
-		toggle.GetText().Style = model.BlockContentText_Toggle
+		parent := givenTextBlockWithMarks("id1", "para 1", nil)
 		child := givenTextBlockWithMarks("id2", "hi", nil)
-		toggle.ChildrenIds = []string{"id2"}
+		parent.ChildrenIds = []string{"id2"}
 
 		// when
 		cb := newFixture(t, sb)
 		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
 			FocusedBlockId:    "2-2",
 			SelectedTextRange: rng(0, 0),
-			AnySlot:           []*model.Block{toggle, child},
-			TextSlot:          "toggle 1\n  hi",
+			AnySlot:           []*model.Block{parent, child},
+			TextSlot:          "para 1\n  hi",
 		}, "")
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, "toggle 1\n  hi", sb.Doc.Pick("2-2").Model().GetText().Text,
-			"a raw line join would drop the indentation, so nesting keeps the text slot")
+		assert.Equal(t, "para 1\n  hi", sb.Doc.Pick("2-2").Model().GetText().Text,
+			"a paragraph with children is not lossless to flatten: a raw line join would drop the indentation")
 	})
+
 }
 
 func TestPasteIntoEmptyStyledBlock(t *testing.T) {
