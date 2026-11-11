@@ -51,19 +51,24 @@ type pasteMode struct {
 	intoBlock                  bool
 	intoBlockCopyStyle         bool
 	intoBlockMergeWithoutStyle bool
+	intoTableCell              bool
 	textBuf                    string
 }
 
 // Exec runs the paste operation: determines the paste mode via configure, executes the
-// mode-specific handler (multiRange / intoCodeBlock / intoBlock / singleRange), then
-// inserts remaining paste blocks under the selection, removes replaced blocks, normalizes
-// styles, and collects file upload requests.
+// mode-specific handler (multiRange / intoTableCell / intoCodeBlock / intoBlock /
+// singleRange), then inserts remaining paste blocks under the selection, removes replaced
+// blocks, normalizes styles, and collects file upload requests.
 func (p *pasteCtrl) Exec(req *pb.RpcBlockPasteRequest) (err error) {
 	if err = p.configure(req); err != nil {
 		return
 	}
 	if p.mode.multiRange {
 		if err = p.multiRange(); err != nil {
+			return
+		}
+	} else if p.mode.intoTableCell {
+		if err = p.intoTableCell(); err != nil {
 			return
 		}
 	} else if p.mode.intoBlockMergeWithoutStyle {
@@ -125,7 +130,8 @@ func (p *pasteCtrl) forkFilledEmptyBlock() (err error) {
 // configure determines the paste mode based on the request parameters:
 //   - FocusedBlockId set → singleRange mode (cursor is inside a block). Also sets
 //     IsPartOfBlock = true so that single-text-block paste routes to intoBlock.
-//     If the focused block is Code or a table cell, switches to intoBlockMergeWithoutStyle.
+//     If the focused block is a table cell, switches to intoTableCell to flatten it while
+//     keeping the formatting of paragraph text; if it is Code, switches to intoCodeBlock.
 //   - Multiple selIds → multiRange mode (several blocks selected for replacement).
 //   - Single text block in paste state + IsPartOfBlock → intoBlock mode (merge inline).
 //   - Otherwise stays in singleRange mode (split at cursor, insert paste blocks in between).
@@ -143,8 +149,9 @@ func (p *pasteCtrl) configure(req *pb.RpcBlockPasteRequest) (err error) {
 		p.mode.singleRange = true
 		req.IsPartOfBlock = true
 		if firstSelText := p.getFirstSelectedText(); firstSelText != nil {
+			p.mode.intoTableCell = table.IsTableCell(firstSelText.Model().Id)
 			p.mode.intoBlockMergeWithoutStyle = firstSelText.Model().GetText().Style == model.BlockContentText_Code ||
-				table.IsTableCell(firstSelText.Model().Id)
+				p.mode.intoTableCell
 			if p.mode.intoBlockMergeWithoutStyle {
 				p.mode.textBuf = req.TextSlot
 				p.mode.removeSelection = false
@@ -562,10 +569,168 @@ func (p *pasteCtrl) normalize() {
 	})
 }
 
-// intoCodeBlock handles pasting into a Code block or table cell. All paste text blocks
-// are joined with newlines into a single string (or the TextSlot buffer is used directly),
-// then inserted via RangeTextPaste with style copying enabled. The paste state children
-// are cleared so insertUnderSelection does not duplicate them.
+// intoTableCell handles pasting into a table cell. A cell holds exactly one text block, so
+// the pasted content is flattened into a single line-joined string — but unlike a code
+// block, a cell supports inline marks and a text color, so text keeps its formatting instead
+// of having it dropped (anytype-ts#2321). Anything else keeps pasting from the text slot; see
+// cellPasteContent.
+func (p *pasteCtrl) intoTableCell() (err error) {
+	selText := p.getFirstSelectedText()
+	if selText == nil {
+		return
+	}
+
+	tb := p.cellPasteContent(selText.Model().BackgroundColor)
+	if tb.GetText().Text == "" && p.mode.textBuf != "" {
+		tb.GetText().Text = p.mode.textBuf
+	}
+	// Strip trailing newlines when the selection reaches the end of the cell, because
+	// there is no text after the selection to absorb them. This prevents clipboard
+	// artifacts (trailing \n or \r\n) from adding blank lines.
+	textLen := int32(textutil.UTF16RuneCountString(selText.GetText()))
+	if p.selRange.To >= textLen {
+		tb.GetText().Text = strings.TrimRight(tb.GetText().Text, "\n\r")
+	}
+	p.ps.Get(p.ps.RootId()).Model().ChildrenIds = nil
+	p.caretPos, err = selText.RangeTextPaste(p.selRange.From, p.selRange.To, tb, true)
+	if err != nil {
+		return fmt.Errorf("paste into table cell: %w", err)
+	}
+	return nil
+}
+
+// cellPasteContent decides what the paste is flattened into before it lands in a cell.
+//
+// cellBg is the background of the cell being pasted into, and the block returned here carries
+// it instead of the background of whatever was copied. A cell's fill belongs to the cell — it
+// is what makes a header row look like a header, or a column look painted — while the copy
+// carries the source cell's fill like any other block color. RangeTextPaste adopts the pasted
+// block's background unconditionally when it fills an empty cell, so naming the cell's own
+// fill makes that assignment a no-op: pasting never paints a plain cell with the source's
+// color, and never blanks the grey of a header cell. Text colors are unaffected: they are
+// what the paste is about, and they still travel onto the cell.
+//
+// Paragraph text flattens losslessly: a cell is a paragraph text block itself, so the marks
+// and colors of what was copied transfer straight onto it (anytype-ts#2321). No other shape does.
+// A Code or Toggle block, a heading, or a nested block's indentation, only fits in a cell as
+// text, and the markdown text slot renders that structure while a raw line join throws it
+// away — so anything but plain paragraph text keeps pasting from the text slot, as it did
+// before cells got a mode of their own.
+func (p *pasteCtrl) cellPasteContent(cellBg string) *model.Block {
+	if !p.pastesParagraphTextOnly() && p.mode.textBuf != "" {
+		return &model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  p.mode.textBuf,
+					Marks: &model.BlockContentTextMarks{},
+				},
+			},
+			BackgroundColor: cellBg,
+		}
+	}
+	return p.flattenForCell(cellBg)
+}
+
+// pastesParagraphTextOnly reports whether the paste is made up entirely of paragraph text
+// blocks, which is the one shape a cell can take over without losing anything. Non-text
+// blocks have no place in a cell at all, any other text style carries meaning a plain
+// paragraph cannot express, and a block owning children carries nesting that a line join
+// flattens away.
+func (p *pasteCtrl) pastesParagraphTextOnly() bool {
+	var (
+		textCount    int
+		nonTextCount int
+		nonParagraph bool
+		nested       bool
+	)
+	_ = p.ps.Iterate(func(b simple.Block) (isContinue bool) {
+		if b.Model().Id == p.ps.RootId() {
+			return true
+		}
+		if len(b.Model().GetChildrenIds()) > 0 {
+			nested = true
+		}
+		tb, ok := b.(text.Block)
+		if !ok {
+			nonTextCount++
+			return true
+		}
+		textCount++
+		if tb.Model().GetText().GetStyle() != model.BlockContentText_Paragraph {
+			nonParagraph = true
+		}
+		return true
+	})
+	return textCount > 0 && nonTextCount == 0 && !nonParagraph && !nested
+}
+
+// flattenForCell joins every pasted text block into one line-separated string and shifts
+// each block's marks to their new positions, so that pasting into a table cell keeps the
+// inline formatting (bold, links, ...) and the first block's text color. A cell can hold only
+// a single text block, which is why the content is flattened at all.
+//
+// The block background comes from cellBg, the cell being pasted into, and not from the first
+// copied block: a fill is the cell's own, and adopting a copied one would repaint or blank it
+// (see cellPasteContent).
+func (p *pasteCtrl) flattenForCell(cellBg string) *model.Block {
+	var (
+		bld    strings.Builder
+		marks  []*model.BlockContentTextMark
+		offset int32
+		first  = true
+		color  string
+	)
+	p.ps.Iterate(func(b simple.Block) (isContinue bool) {
+		tb, ok := b.(text.Block)
+		if !ok {
+			return true
+		}
+		txt := tb.Model().GetText()
+		if txt == nil {
+			return true
+		}
+		if !first {
+			bld.WriteString("\n")
+			offset++
+		}
+		if first {
+			color = txt.Color
+			first = false
+		}
+		for _, m := range txt.GetMarks().GetMarks() {
+			if m.GetRange() == nil {
+				continue
+			}
+			marks = append(marks, &model.BlockContentTextMark{
+				Range: &model.Range{
+					From: m.Range.From + offset,
+					To:   m.Range.To + offset,
+				},
+				Type:  m.Type,
+				Param: m.Param,
+			})
+		}
+		bld.WriteString(txt.Text)
+		offset += int32(textutil.UTF16RuneCountString(txt.Text))
+		return true
+	})
+	return &model.Block{
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:  bld.String(),
+				Style: model.BlockContentText_Paragraph,
+				Color: color,
+				Marks: &model.BlockContentTextMarks{Marks: marks},
+			},
+		},
+		BackgroundColor: cellBg,
+	}
+}
+
+// intoCodeBlock handles pasting into a Code block. All paste text blocks are joined with
+// newlines into a single string (or the TextSlot buffer is used directly), then inserted via
+// RangeTextPaste with style copying enabled. The paste state children are cleared so
+// insertUnderSelection does not duplicate them.
 func (p *pasteCtrl) intoCodeBlock() (err error) {
 	selText := p.getFirstSelectedText()
 	var txt = p.mode.textBuf
