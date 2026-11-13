@@ -215,8 +215,55 @@ func Test_GetTextBlocksEquation(t *testing.T) {
 
 	bl := to.GetTextBlocks(model.BlockContentText_Paragraph, nil, &api.NotionImportContext{})
 	assert.Len(t, bl.Blocks, 1)
-	assert.NotNil(t, bl.Blocks[0].GetLatex())
-	assert.Equal(t, bl.Blocks[0].GetLatex().Text, "Equation")
+	assert.NotNil(t, bl.Blocks[0].GetText())
+	assert.Equal(t, "$Equation$", bl.Blocks[0].GetText().Text)
+	assert.Nil(t, bl.Blocks[0].GetLatex())
+}
+
+func Test_GetTextBlocksInlineEquationPreservesPosition(t *testing.T) {
+	to := &TextObject{
+		RichText: []api.RichText{
+			{
+				Type:      api.Text,
+				PlainText: "The value is ",
+			},
+			{
+				Type: api.Equation,
+				Equation: &api.EquationObject{
+					Expression: "x^2",
+				},
+			},
+			{
+				Type:      api.Text,
+				PlainText: ".",
+			},
+		},
+	}
+
+	got := to.GetTextBlocks(
+		model.BlockContentText_Paragraph,
+		nil,
+		&api.NotionImportContext{},
+	)
+
+	assert.Len(t, got.Blocks, 1)
+	assert.NotNil(t, got.Blocks[0].GetText())
+	assert.Equal(t, "The value is $x^2$.", got.Blocks[0].GetText().Text)
+	assert.Nil(t, got.Blocks[0].GetLatex())
+}
+
+func Test_EquationBlockRemainsBlockLatex(t *testing.T) {
+	equation := &EquationBlock{
+		Equation: api.EquationObject{
+			Expression: `\sum_{i=1}^{n} i`,
+		},
+	}
+
+	got := equation.GetBlocks(&api.NotionImportContext{}, "")
+
+	assert.Len(t, got.Blocks, 1)
+	assert.NotNil(t, got.Blocks[0].GetLatex())
+	assert.Equal(t, `\sum_{i=1}^{n} i`, got.Blocks[0].GetLatex().Text)
 }
 
 func Test_GetCodeBlocksSuccess(t *testing.T) {
