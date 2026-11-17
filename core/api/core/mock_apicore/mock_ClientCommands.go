@@ -365,6 +365,55 @@ func (_c *MockClientCommands_ChatDeleteMessage_Call) RunAndReturn(run func(conte
 	return _c
 }
 
+// ObjectAddDiscussion provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) ObjectAddDiscussion(_a0 context.Context, _a1 *pb.RpcObjectDiscussionAddRequest) *pb.RpcObjectDiscussionAddResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ObjectAddDiscussion")
+	}
+
+	var r0 *pb.RpcObjectDiscussionAddResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectDiscussionAddRequest) *pb.RpcObjectDiscussionAddResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcObjectDiscussionAddResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_ObjectDiscussionAdd_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectAddDiscussion'
+type MockClientCommands_ObjectDiscussionAdd_Call struct {
+	*mock.Call
+}
+
+// ObjectAddDiscussion is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcObjectDiscussionAddRequest
+func (_e *MockClientCommands_Expecter) ObjectAddDiscussion(_a0 interface{}, _a1 interface{}) *MockClientCommands_ObjectDiscussionAdd_Call {
+	return &MockClientCommands_ObjectDiscussionAdd_Call{Call: _e.mock.On("ObjectAddDiscussion", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_ObjectDiscussionAdd_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcObjectDiscussionAddRequest)) *MockClientCommands_ObjectDiscussionAdd_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcObjectDiscussionAddRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectDiscussionAdd_Call) Return(_a0 *pb.RpcObjectDiscussionAddResponse) *MockClientCommands_ObjectDiscussionAdd_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectDiscussionAdd_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectDiscussionAddRequest) *pb.RpcObjectDiscussionAddResponse) *MockClientCommands_ObjectDiscussionAdd_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ChatEditMessageContent provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommands) ChatEditMessageContent(_a0 context.Context, _a1 *pb.RpcChatEditMessageContentRequest) *pb.RpcChatEditMessageContentResponse {
 	ret := _m.Called(_a0, _a1)
