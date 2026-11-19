@@ -231,32 +231,6 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 				log.With(zap.String("space", space.Id())).Errorf("failed to clear heads state: %s", err)
 			}
 		}
-
-		// Index objects that updated, but not indexed yet
-		// we can have objects which actual state is newer than the indexed one
-		// this may happen e.g. if the app got closed in the middle of object updates processing
-		// So here we reindexOutdatedObjects which compare the last indexed heads hash with the actual one
-		go func() {
-			waitStart := time.Now()
-			if !i.reindexLimiter.acquire(i.runCtx, space.Id()) {
-				return
-			}
-			defer i.reindexLimiter.release()
-			start := time.Now()
-			total, success, err := i.reindexOutdatedObjects(ctx, space)
-			if err != nil {
-				log.Errorf("reindex outdated failed: %s", err)
-			}
-			l := log.With(zap.String("space", space.Id()), zap.Int("total", total), zap.Int("succeed", success), zap.Int("spentMs", int(time.Since(start).Milliseconds())), zap.Int("waitedMs", int(start.Sub(waitStart).Milliseconds())))
-			if success != total {
-				l.Errorf("reindex outdated partially failed")
-			} else if total != 0 {
-				l.Debugf("reindex outdated finished")
-			}
-			if total > 0 {
-				i.logFinishedReindexStat(metrics.ReindexTypeOutdatedHeads, total, success, time.Since(start))
-			}
-		}()
 	}
 
 	if flags.chats {
@@ -272,6 +246,10 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 			log.Error("reindex discussions", zap.Error(err))
 		}
 	}
+
+	// Started after the chat and discussion reindexes above: they clear the stores they rebuild, which
+	// must not happen under a chat this pass has opened already.
+	go i.reindexInBackground(ctx, space, !flags.objects)
 
 	if flags.messagesFulltext {
 		err = i.reindexChatMessagesFulltext(ctx, space)
@@ -824,6 +802,86 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 	log.Warn("reindexOutdatedObjects: found outdated objects to reindex", zap.Int("len", len(idsToReindex)), zap.Int64("durMs", time.Since(start).Milliseconds()))
 	success = i.reindexIdsIgnoreErr(ctx, space, idsToReindex...)
 	return len(idsToReindex), success, nil
+}
+
+// reindexInBackground runs, holding a reindex slot, the passes that need no full reindex: with
+// outdatedObjects, it indexes the objects whose actual state is newer than the indexed one (the app
+// got closed in the middle of object updates processing, say: reindexOutdatedObjects compares the
+// last indexed heads hash with the actual one); then it reopens the chats and discussions whose
+// store was not replayed (reopenUnreplayedStoreObjects), which a full objects reindex skips too.
+func (i *indexer) reindexInBackground(ctx context.Context, space clientspace.Space, outdatedObjects bool) {
+	waitStart := time.Now()
+	if !i.reindexLimiter.acquire(i.runCtx, space.Id()) {
+		return
+	}
+	defer i.reindexLimiter.release()
+	if outdatedObjects {
+		start := time.Now()
+		total, success, err := i.reindexOutdatedObjects(ctx, space)
+		if err != nil {
+			log.Errorf("reindex outdated failed: %s", err)
+		}
+		l := log.With(zap.String("space", space.Id()), zap.Int("total", total), zap.Int("succeed", success), zap.Int("spentMs", int(time.Since(start).Milliseconds())), zap.Int("waitedMs", int(start.Sub(waitStart).Milliseconds())))
+		if success != total {
+			l.Errorf("reindex outdated partially failed")
+		} else if total != 0 {
+			l.Debugf("reindex outdated finished")
+		}
+		if total > 0 {
+			i.logFinishedReindexStat(metrics.ReindexTypeOutdatedHeads, total, success, time.Since(start))
+		}
+	}
+	start := time.Now()
+	total, success, err := i.reopenUnreplayedStoreObjects(ctx, space)
+	if err != nil {
+		log.With(zap.String("space", space.Id())).Errorf("reopen chats whose store was not replayed: %s", err)
+	}
+	if success != total {
+		log.With(zap.String("space", space.Id()), zap.Int("total", total), zap.Int("succeed", success)).Errorf("reopen chats whose store was not replayed: partially failed")
+	}
+	if total > 0 {
+		i.logFinishedReindexStat(metrics.ReindexTypeOutdatedHeads, total, success, time.Since(start))
+	}
+}
+
+// reopenUnreplayedStoreObjects opens the chats and discussions of the space whose store has not
+// replayed their tree (unreplayedStoreObjects). Opening one replays its tree into the store; nothing
+// is removed. It returns how many it found and how many it opened.
+func (i *indexer) reopenUnreplayedStoreObjects(ctx context.Context, space clientspace.Space) (total, success int, err error) {
+	ids, err := i.unreplayedStoreObjects(ctx, space)
+	if err != nil {
+		return 0, 0, fmt.Errorf("list chats whose store was not replayed: %w", err)
+	}
+	if len(ids) == 0 {
+		return 0, 0, nil
+	}
+	return len(ids), i.reindexIdsIgnoreErr(ctx, space, ids...), nil
+}
+
+// unreplayedStoreObjects lists the chats and discussions of the space whose store in the CRDT
+// database has not replayed their tree: the database was reset or rebuilt (an upgrade, a
+// corruption, a v1 database that could not be migrated) while the object's indexed heads still
+// match. Opening such an object replays its tree into the store, without removing anything.
+func (i *indexer) unreplayedStoreObjects(ctx context.Context, space clientspace.Space) ([]string, error) {
+	ids, err := i.getIdsForTypes(space, coresb.SmartBlockTypeChatDerivedObject, coresb.SmartBlockTypeDiscussionObject)
+	if err != nil {
+		return nil, fmt.Errorf("list chats: %w", err)
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	db, err := i.dbProvider.GetCrdtDb(space.Id()).Wait()
+	if err != nil {
+		return nil, fmt.Errorf("get crdt db: %w", err)
+	}
+	pending, err := storestate.NotFullyReplayed(ctx, db, ids)
+	if err != nil {
+		return nil, fmt.Errorf("check replay state: %w", err)
+	}
+	if len(pending) > 0 {
+		log.With(zap.String("space", space.Id()), zap.Int("chats", len(pending))).Warn("reindexOutdatedObjects: chats whose store was not replayed")
+	}
+	return pending, nil
 }
 
 // checkFTQueueConsistency checks for objects that may have been added to headsState

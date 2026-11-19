@@ -82,3 +82,65 @@ func TestWaitSpaceStorage_Uninitialized(t *testing.T) {
 		assert.Empty(t, s.ListCorruptedBackups())
 	})
 }
+
+// The backup list is a copy: deleting each backup while ranging over it deletes every one.
+func TestDeleteEveryListedBackup(t *testing.T) {
+	// given
+	root := t.TempDir()
+	s := New(root, nil)
+	for _, spaceId := range []string{"space1", "space2", "space3"} {
+		require.NoError(t, os.MkdirAll(filepath.Join(root, spaceId), 0o755))
+		_, err := s.backupCorruptedSpace(spaceId)
+		require.NoError(t, err)
+	}
+
+	// when
+	for _, backup := range s.ListCorruptedBackups() {
+		require.NoError(t, s.DeleteBackup(backup.BackupPath))
+	}
+
+	// then
+	assert.Empty(t, s.ListCorruptedBackups())
+	entries, err := os.ReadDir(root)
+	require.NoError(t, err)
+	assert.Empty(t, entries)
+}
+
+func TestAllSpaceIdsListsSpaceDirectories(t *testing.T) {
+	t.Run("directories are spaces, regular files, hidden entries and backups are not", func(t *testing.T) {
+		// given
+		root := t.TempDir()
+		require.NoError(t, os.MkdirAll(filepath.Join(root, "space1"), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(root, "desktop.ini"), []byte("x"), 0o600))
+		require.NoError(t, os.MkdirAll(filepath.Join(root, ".hidden"), 0o755))
+		require.NoError(t, os.MkdirAll(filepath.Join(root, "space3_backup1795086958"), 0o755))
+		s := New(root, nil)
+
+		// when
+		ids, err := s.AllSpaceIds()
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"space1"}, ids)
+	})
+
+	t.Run("a link is a space, whatever it points to", func(t *testing.T) {
+		// given: a space moved to another volume and linked back, and a link whose target is gone
+		// (an unmounted volume, say): counted, so that nothing takes the space for absent
+		root := t.TempDir()
+		elsewhere := t.TempDir()
+		require.NoError(t, os.MkdirAll(filepath.Join(elsewhere, "space2"), 0o755))
+		if err := os.Symlink(filepath.Join(elsewhere, "space2"), filepath.Join(root, "space2")); err != nil {
+			t.Skipf("links cannot be made here: %v", err)
+		}
+		require.NoError(t, os.Symlink(filepath.Join(elsewhere, "gone"), filepath.Join(root, "space4")))
+		s := New(root, nil)
+
+		// when
+		ids, err := s.AllSpaceIds()
+
+		// then
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"space2", "space4"}, ids)
+	})
+}

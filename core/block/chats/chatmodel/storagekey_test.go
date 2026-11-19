@@ -60,8 +60,8 @@ func (m keyedMessage) key() string {
 	return StorageKey(m.orderId, m.id)
 }
 
-// trickyMessages holds order ids where one is a prefix of another, duplicate order ids (changes
-// made concurrently on one parent) and a legacy stub without an order id.
+// trickyMessages holds order ids where one is a prefix of another, duplicate order ids (messages
+// created in one change) and a legacy stub without an order id.
 var trickyMessages = []keyedMessage{
 	{orderId: "!!$5!", id: cid(1)},
 	{orderId: "!!$5", id: cid(2)},
@@ -151,8 +151,8 @@ func TestOrderIdFilters(t *testing.T) {
 // the message id as before and by the storage key now. A btree insert at the right edge appends to
 // the last leaf; any other one touches a leaf somewhere inside.
 func TestStorageKeyInsertPattern(t *testing.T) {
-	// given: 2000 creates in order-id order, as a full replay applies them; every 50th is made
-	// concurrently with the previous one and shares its order id
+	// given: 2000 creates in order-id order, as a full replay applies them; every 50th shares the
+	// previous one's order id (two messages created in one change)
 	const n = 2000
 	rnd := rand.New(rand.NewSource(1))
 	orders := lexid.Must(lexid.CharsAllNoEscape, 4, 100)

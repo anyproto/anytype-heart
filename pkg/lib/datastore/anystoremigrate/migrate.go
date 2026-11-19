@@ -10,8 +10,15 @@
 //     verified v2 file is in place (Options.RemoveV1AfterVerify).
 //
 // Chat messages collections (chatmodel.IsMessagesCollection) change layout on the way: they are
-// keyed by the message storage key (chatmodel.StorageKey) and get the chat repository's indexes;
-// legacy stubs without an order id are dropped.
+// keyed by the message storage key (chatmodel.StorageKey) and get the chat repository's indexes.
+//
+// A database whose chat holds a legacy stub is not migrated (Report.Discarded). A stub is a
+// document without an order id that an old reaction upsert made in place of a message it had not
+// seen yet; the message's own create was then ignored, as the message looked stored. Only a replay
+// of the chat's change tree brings the message back, so the v1 file is removed and the database is
+// rebuilt from the change trees, as after a reset.
+//
+// UpgradeFormat brings a v2 database written before any-store v2.5.0 onto the latest format.
 package anystoremigrate
 
 import (
@@ -21,7 +28,6 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	anystorev1 "github.com/anyproto/any-store"
@@ -59,18 +65,19 @@ type Options struct {
 
 	// failAfterDocs makes the copy fail once that many documents were copied (tests).
 	failAfterDocs int
+	// beforeDiscard runs before a database with a chat stub is removed (tests).
+	beforeDiscard func(path string)
+	// formatStep runs at each step of a format upgrade a test can act at (tests).
+	formatStep func(step string)
 	// linksSupported tells whether the volume of a directory has hard links (tests replace it).
 	linksSupported func(dir string) bool
 }
 
-// Migrator migrates v1 database files to v2, at most Options.Concurrency at a time, and one
-// path only once at a time.
+// Migrator migrates v1 database files to v2, and v2 files to the latest format, at most
+// Options.Concurrency at a time. The work on one path is serialized by its caller (LockPath).
 type Migrator struct {
 	opts Options
 	sem  chan struct{}
-
-	pathLocksMu sync.Mutex
-	pathLocks   map[string]*sync.Mutex
 }
 
 func New(opts Options) *Migrator {
@@ -83,7 +90,7 @@ func New(opts Options) *Migrator {
 	if opts.linksSupported == nil {
 		opts.linksSupported = linksSupported
 	}
-	return &Migrator{opts: opts, sem: make(chan struct{}, opts.Concurrency), pathLocks: make(map[string]*sync.Mutex)}
+	return &Migrator{opts: opts, sem: make(chan struct{}, opts.Concurrency)}
 }
 
 // Report summarises the migration of one database.
@@ -94,8 +101,9 @@ type Report struct {
 	Collections        int
 	Documents          int
 	ChatCollections    int
-	// StubsDropped counts the legacy chat stubs (documents without an order id) left out.
-	StubsDropped int
+	// Discarded tells that the database was not migrated but removed, to be rebuilt from the
+	// change trees: a chat in it holds a legacy stub (see the package doc).
+	Discarded bool
 	// PeakWalBytes is the largest size the v2 WAL was seen at during the build.
 	PeakWalBytes int64
 	// Waited is how long the migration waited for its turn; Duration how long it took after.
@@ -123,19 +131,21 @@ func IsV1File(path string) (bool, error) {
 
 const sqliteHeader = "SQLite format 3\x00"
 
-// RemoveLeftovers removes what an interrupted migration of path left: the temp database and its
-// sidecars. It never touches path itself or its v1 backup.
+// RemoveLeftovers removes what an interrupted migration or format upgrade of path left: the temp
+// databases, their sidecars, and the copy's staging and lock files. It never touches path itself or
+// its v1 backup. The caller holds LockPath(path).
 func RemoveLeftovers(path string) error {
-	return removeFiles(tempFiles(path + tempSuffix)...)
+	return removeFiles(append(tempFiles(path+tempSuffix), formatLeftovers(path+formatTempSuffix)...)...)
 }
 
 // MigrateFile migrates the v1 database at path to v2 in place, waiting for its turn. A path that
 // no longer holds a v1 database (migrated meanwhile, or never v1) is left as it is: the returned
-// report has no Path. When it returns an error, path still holds the v1 database, unchanged.
+// report has no Path. A database whose chat holds a legacy stub is removed instead
+// (Report.Discarded), for its open to create it anew. When it returns an error, path still holds
+// the v1 database, unchanged, unless the error is from removing a discarded one. The caller holds
+// LockPath(path), or knows nothing else works on path.
 func (m *Migrator) MigrateFile(ctx context.Context, path string) (rep Report, err error) {
 	start := time.Now()
-	unlock := m.lockPath(path)
-	defer unlock()
 	select {
 	case m.sem <- struct{}{}:
 	case <-ctx.Done():
@@ -172,7 +182,20 @@ func (m *Migrator) MigrateFile(ctx context.Context, path string) (rep Report, er
 			_ = removeFiles(tempFiles(tmp)...)
 		}
 	}()
-	if err = m.buildAndVerify(ctx, path, tmp, &rep); err != nil {
+	err = m.buildAndVerify(ctx, path, tmp, &rep)
+	if errors.Is(err, errChatStub) {
+		if m.opts.beforeDiscard != nil {
+			m.opts.beforeDiscard(path)
+		}
+		log.Warn("database not migrated: a chat holds a legacy stub, the database is rebuilt from the change trees",
+			zap.String("path", path), zap.Error(err))
+		if err = discard(path, tmp); err != nil {
+			return rep, fmt.Errorf("remove the v1 database: %w", err)
+		}
+		rep.Discarded = true
+		return rep, nil
+	}
+	if err != nil {
 		return rep, err
 	}
 	if rep.DstBytes, err = filesSize(tmp); err != nil {
@@ -188,25 +211,10 @@ func (m *Migrator) MigrateFile(ctx context.Context, path string) (rep Report, er
 		zap.Int("collections", rep.Collections),
 		zap.Int("documents", rep.Documents),
 		zap.Int("chatCollections", rep.ChatCollections),
-		zap.Int("chatStubsDropped", rep.StubsDropped),
 		zap.Int64("peakWalBytes", rep.PeakWalBytes),
 		zap.Duration("took", time.Since(start)),
 		zap.Bool("v1Kept", !m.opts.RemoveV1AfterVerify))
 	return rep, nil
-}
-
-// lockPath serializes the migrations of one path: two openers of one database never build it
-// twice, nor into one temp file.
-func (m *Migrator) lockPath(path string) (unlock func()) {
-	m.pathLocksMu.Lock()
-	l, ok := m.pathLocks[path]
-	if !ok {
-		l = &sync.Mutex{}
-		m.pathLocks[path] = l
-	}
-	m.pathLocksMu.Unlock()
-	l.Lock()
-	return l.Unlock
 }
 
 // buildAndVerify builds the v2 database in tmp from the v1 one at path and verifies it against
@@ -229,15 +237,14 @@ func (m *Migrator) buildAndVerify(ctx context.Context, path, tmp string, rep *Re
 		}
 	}()
 
-	stubs, err := m.build(ctx, src, tmp, rep)
-	if err != nil {
+	if err = m.build(ctx, src, tmp, rep); err != nil {
 		return fmt.Errorf("build v2 database: %w", err)
 	}
 	dst, err := anystore.Open(ctx, tmp, m.dstConfig())
 	if err != nil {
 		return fmt.Errorf("reopen v2 database: %w", err)
 	}
-	if err = verify(ctx, src, dst, stubs); err != nil {
+	if err = verify(ctx, src, dst); err != nil {
 		_ = dst.Close()
 		return fmt.Errorf("verify v2 database: %w", err)
 	}
@@ -308,6 +315,35 @@ func (m *Migrator) swap(path, tmp string) error {
 		if err := removeFiles(backup, backup+".lock"); err != nil {
 			return fmt.Errorf("remove v1 file: %w", err)
 		}
+	}
+	return nil
+}
+
+// discard removes the v1 database at path, and what its abandoned build left at tmp, for the
+// database to be created anew. The source is closed. Its sidecars go first: a crash in between
+// leaves the main file, which the next open migrates again, never a v1 log beside the new file.
+// A log that still holds frames (the close could not checkpoint it) is refused: without it the
+// main file can be inconsistent, and the next migration could fail before it finds the stub again.
+func discard(path, tmp string) error {
+	if err := removeFiles(tempFiles(tmp)...); err != nil {
+		return fmt.Errorf("remove temp database: %w", err)
+	}
+	if size, err := filesSize(path + "-wal"); err != nil {
+		return fmt.Errorf("size of v1 wal: %w", err)
+	} else if size > 0 {
+		return fmt.Errorf("v1 wal %s still holds %d bytes", path+"-wal", size)
+	}
+	if err := removeFiles(path+"-wal", path+"-shm", path+".lock"); err != nil {
+		return fmt.Errorf("remove v1 sidecars: %w", err)
+	}
+	if err := syncDir(filepath.Dir(path)); err != nil {
+		return fmt.Errorf("sync directory: %w", err)
+	}
+	if err := removeFiles(path); err != nil {
+		return fmt.Errorf("remove v1 file: %w", err)
+	}
+	if err := syncDir(filepath.Dir(path)); err != nil {
+		return fmt.Errorf("sync directory: %w", err)
 	}
 	return nil
 }

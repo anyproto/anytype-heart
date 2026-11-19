@@ -87,7 +87,7 @@ func TestMessagesUnderStorageKeys(t *testing.T) {
 		assert.True(t, fx.getMessage(t, reply).HasMention)
 	})
 
-	t.Run("concurrent messages share an order id and keep distinct keys", func(t *testing.T) {
+	t.Run("messages sharing an order id keep distinct keys", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		fx.generateOrderIdFunc = func(*storestate.StoreStateTx) string { return "!!$5" }

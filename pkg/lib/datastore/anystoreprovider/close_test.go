@@ -145,3 +145,89 @@ func TestOpensAfterCloseAreRefused(t *testing.T) {
 	assert.ErrorIs(t, indexErr, ErrClosed)
 	assert.ErrorIs(t, crdtErr, ErrClosed)
 }
+
+// An open of a space index is slow when it migrates or copies the database: it holds only its own
+// space's path lock, never the lock every other open and every flush takes.
+func TestSpaceIndexOpenInFlightBlocksNoOtherSpace(t *testing.T) {
+	// given: space1's open held after it opened its database, before it registers it
+	p := newTestProvider(t)
+	seedV2Db(t, filepath.Join(p.objectStorePath, "space1", "objects.db"))
+	seedV2Db(t, filepath.Join(p.objectStorePath, "space2", "objects.db"))
+	hold := newHoldOpen()
+	p.beforeIndexRegister = func(spaceId string) {
+		if spaceId == "space1" {
+			hold.hook(spaceId)
+		}
+	}
+	opened := make(chan error, 1)
+	go func() {
+		_, err := p.GetSpaceIndexDb("space1")
+		opened <- err
+	}()
+	<-hold.reached
+
+	// when
+	done := make(chan error, 1)
+	go func() {
+		_, err := p.GetSpaceIndexDb("space2")
+		p.Flush(time.Second, false, anystore.FlushModeCheckpointPassive)
+		done <- err
+	}()
+
+	// then
+	select {
+	case err := <-done:
+		require.NoError(t, err)
+	case <-time.After(5 * time.Second):
+		t.Fatal("another space's open or a flush waited for space1's open")
+	}
+	close(hold.release)
+	require.NoError(t, <-opened)
+}
+
+// Close stops waiting for an open after closeOpensWait. The open goes on, and the next provider of
+// the same store opens that database only once the open has finished with the file.
+func TestOpenOutlivingCloseIsFencedFromTheNextProvider(t *testing.T) {
+	// given: an open of space1's index outlasting close's wait
+	was := closeOpensWait
+	closeOpensWait = 20 * time.Millisecond
+	t.Cleanup(func() { closeOpensWait = was })
+	root := t.TempDir()
+	first, err := NewInPath(root)
+	require.NoError(t, err)
+	p := first.(*provider)
+	path := filepath.Join(p.objectStorePath, "space1", "objects.db")
+	seedV2Db(t, path)
+	hold := newHoldOpen()
+	p.beforeIndexRegister = hold.hook
+	opened := make(chan error, 1)
+	go func() {
+		_, err := p.GetSpaceIndexDb("space1")
+		opened <- err
+	}()
+	<-hold.reached
+	start := time.Now()
+	require.NoError(t, p.Close(context.Background()))
+	assert.Less(t, time.Since(start), time.Second, "close does not wait for the open")
+
+	// when: the next provider opens the same database
+	second, err := NewInPath(root)
+	require.NoError(t, err)
+	next := second.(*provider)
+	t.Cleanup(func() { _ = next.Close(context.Background()) })
+	got := make(chan error, 1)
+	go func() {
+		_, err := next.GetSpaceIndexDb("space1")
+		got <- err
+	}()
+
+	// then: it waits for the first provider's open, which gives its database up
+	select {
+	case err := <-got:
+		t.Fatalf("opened while the first provider's open held the file: %v", err)
+	case <-time.After(50 * time.Millisecond):
+	}
+	close(hold.release)
+	assert.ErrorIs(t, <-opened, ErrClosed)
+	require.NoError(t, <-got)
+}

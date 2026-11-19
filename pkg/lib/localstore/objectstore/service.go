@@ -626,16 +626,104 @@ func (s *dsObjectStore) authoritativeSpaceIds() []string {
 	if err != nil {
 		log.Error("list space ids from filesystem", zap.Error(err))
 	}
-	add(fsIds)
 	if s.spaceStorageLister != nil {
 		storageIds, serr := s.spaceStorageLister.AllSpaceIds()
 		if serr != nil {
 			log.Error("list space ids from spacestorage", zap.Error(serr))
 		} else {
+			fsIds = s.removeStoresWithoutSpaceStorage(fsIds, storageIds)
 			add(storageIds)
 		}
 	}
+	add(fsIds)
 	return ids
+}
+
+// removeStoresWithoutSpaceStorage removes the object store (index and CRDT databases) of every space
+// among fsIds that is offloaded and has no space storage, and returns the rest. Such a store is a
+// leftover: of a space offloaded by a version that kept it, or one a write recreated after its
+// removal. A store goes only on positive evidence that its space is gone, the statuses its space
+// view has in the tech space's index (offloadedSpaceIds): a space without storage can also be
+// joining, waiting to be fetched again after its corrupted storage was moved aside or after a load
+// that failed, or halfway through an offload whose retry still needs the index. The marketplace and the virtual spaces have no storage by design. An empty storage
+// listing (an account always has its tech and personal spaces) or an unreadable status removes
+// nothing.
+func (s *dsObjectStore) removeStoresWithoutSpaceStorage(fsIds, storageIds []string) []string {
+	if len(storageIds) == 0 {
+		return fsIds
+	}
+	virtualIds, err := s.ListVirtualSpaces()
+	if err != nil {
+		log.Error("list virtual spaces: object stores without space storage are kept", zap.Error(err))
+		return fsIds
+	}
+	offloaded, err := s.offloadedSpaceIds()
+	if err != nil {
+		log.Error("list offloaded spaces: object stores without space storage are kept", zap.Error(err))
+		return fsIds
+	}
+	keep := make(map[string]struct{}, len(storageIds)+len(virtualIds)+1)
+	for _, id := range storageIds {
+		keep[id] = struct{}{}
+	}
+	for _, id := range virtualIds {
+		keep[id] = struct{}{}
+	}
+	keep[addr.AnytypeMarketplaceWorkspace] = struct{}{}
+
+	kept := fsIds[:0:0]
+	for _, id := range fsIds {
+		_, isKept := keep[id]
+		_, isOffloaded := offloaded[id]
+		if isKept || !isOffloaded {
+			kept = append(kept, id)
+			continue
+		}
+		log.Warn("remove the object store of an offloaded space without space storage", zap.String("spaceId", id))
+		if err := s.DeleteSpaceIndex(id); err != nil {
+			log.Error("remove the object store of a space without space storage", zap.String("spaceId", id), zap.Error(err))
+		}
+	}
+	return kept
+}
+
+// offloadedSpaceIds lists the spaces whose space view, in the tech space's index, has the account
+// status Deleted or Removing (the user left the space or was removed from it, or it was deleted)
+// and the local status Missing (its offload finished). Missing alone is not enough: a load that
+// failed for good sets it too, for a space the user is still a member of.
+func (s *dsObjectStore) offloadedSpaceIds() (map[string]struct{}, error) {
+	if s.techSpaceId == "" {
+		return nil, errors.New("tech space id is not known")
+	}
+	records, err := s.SpaceIndex(s.techSpaceId).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(model.ObjectType_spaceView),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceLocalStatus,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(model.SpaceStatus_Missing),
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("query space views: %w", err)
+	}
+	ids := make(map[string]struct{}, len(records))
+	for _, record := range records {
+		switch model.SpaceStatus(record.Details.GetInt64(bundle.RelationKeySpaceAccountStatus)) {
+		case model.SpaceStatus_SpaceDeleted, model.SpaceStatus_SpaceRemoving:
+		default:
+			continue
+		}
+		if id := record.Details.GetString(bundle.RelationKeyTargetSpaceId); id != "" {
+			ids[id] = struct{}{}
+		}
+	}
+	return ids, nil
 }
 
 // preloadExistingObjectStores opens every authoritative space's per-space DB

@@ -39,7 +39,7 @@ type summary struct {
 	DstBytes        int64         `json:"dstBytes"`
 	Documents       int           `json:"documents"`
 	ChatCollections int           `json:"chatCollections"`
-	StubsDropped    int           `json:"stubsDropped"`
+	Discarded       int           `json:"discarded"`
 	PeakWalBytes    int64         `json:"peakWalBytes"`
 	PeakExtraDisk   uint64        `json:"peakExtraDiskBytes"`
 	PeakHeapBytes   uint64        `json:"peakHeapBytes"`
@@ -188,7 +188,9 @@ func run(ctx context.Context, dir string, limit int, removeV1, doVerify bool) (*
 		sum.DstBytes += r.DstBytes
 		sum.Documents += r.Documents
 		sum.ChatCollections += r.ChatCollections
-		sum.StubsDropped += r.StubsDropped
+		if r.Discarded {
+			sum.Discarded++
+		}
 		sum.PeakWalBytes = max(sum.PeakWalBytes, r.PeakWalBytes)
 		if r.SrcBytes > sum.Largest.SrcBytes {
 			sum.Largest = db

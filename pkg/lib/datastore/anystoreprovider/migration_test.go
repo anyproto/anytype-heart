@@ -239,3 +239,56 @@ func TestStartSweepsKeptV1Files(t *testing.T) {
 	_, err = os.Stat(filepath.Join(objectStorePath, sweptMarker))
 	assert.NoError(t, err)
 }
+
+// A store a v2 build before any-store v2.5.0 wrote: every database is in schema format 5. Each is
+// brought onto the latest format at its open: the CRDT database starts empty (it is rebuilt from
+// the change trees), the others keep their documents.
+func TestFormat5StoreIsUpgradedAtOpen(t *testing.T) {
+	// given
+	root := t.TempDir()
+	objectStorePath := filepath.Join(root, "objectstore")
+	fixture, err := os.ReadFile("../anystoremigrate/testdata/format5.db")
+	require.NoError(t, err)
+	for _, path := range []string{
+		filepath.Join(objectStorePath, "objects.db"),
+		filepath.Join(objectStorePath, migrationSpaceId, "objects.db"),
+		filepath.Join(objectStorePath, migrationSpaceId, "crdt.db"),
+	} {
+		require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o700))
+		require.NoError(t, os.WriteFile(path, fixture, 0o600))
+	}
+	withFreeSpace(t, 1<<40)
+	schemaFormat := func(t *testing.T, db anystore.DB) int {
+		t.Helper()
+		format, err := anystore.SchemaFormat(db)
+		require.NoError(t, err)
+		return format
+	}
+
+	// when
+	p, err := NewInPath(root)
+	require.NoError(t, err)
+	prov := p.(*provider)
+	t.Cleanup(func() { _ = prov.Close(context.Background()) })
+
+	// then
+	t.Run("the common database is copied", func(t *testing.T) {
+		db := prov.GetCommonDb()
+		assert.Equal(t, anystore.LatestSchemaFormat, schemaFormat(t, db))
+		assert.Equal(t, 5, countDocs(t, prov, func() (anystore.DB, error) { return db, nil }))
+	})
+	t.Run("a space index is copied", func(t *testing.T) {
+		db, err := prov.GetSpaceIndexDb(migrationSpaceId)
+		require.NoError(t, err)
+		assert.Equal(t, anystore.LatestSchemaFormat, schemaFormat(t, db))
+		assert.Equal(t, 5, countDocs(t, prov, func() (anystore.DB, error) { return db, nil }))
+	})
+	t.Run("a CRDT database starts empty", func(t *testing.T) {
+		db, err := prov.GetCrdtDb(migrationSpaceId).Wait()
+		require.NoError(t, err)
+		assert.Equal(t, anystore.LatestSchemaFormat, schemaFormat(t, db))
+		names, err := db.GetCollectionNames(context.Background())
+		require.NoError(t, err)
+		assert.Empty(t, names)
+	})
+}

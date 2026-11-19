@@ -22,6 +22,15 @@ Scope: global
   (removeV1AfterMigration); older versions kept it, removeKeptV1Files sweeps those
 - objectstore/.anystore-v2 - marks a store with no v1 database left
 - objectstore/.anystore-v1-swept - marks a store whose kept .v1 files were swept
+
+- Brings a database written before any-store v2.5.0 onto the latest format at its open: a CRDT
+  database, rebuilt from the change trees, starts empty; the object stores are copied, as they hold
+  local details no change tree has (lastOpenedDate and the like) and the common one queues and
+  caches besides
+- A v1 CRDT database whose chat holds a legacy stub is not migrated but rebuilt (anystoremigrate)
+- Every migration, open, upgrade and removal of a database file runs under the file's process-wide
+  path lock (anystoremigrate.LockPath): opens of one space serialize without the map locks, and an
+  open that outlives Close finishes with the file before the next provider can open it
 */
 
 import (
@@ -144,7 +153,10 @@ func removeMigrationLeftovers(objectStorePath string) error {
 		}
 	}
 	for _, base := range bases {
-		if err = anystoremigrate.RemoveLeftovers(base); err != nil {
+		unlock := anystoremigrate.LockPath(base)
+		err = anystoremigrate.RemoveLeftovers(base)
+		unlock()
+		if err != nil {
 			return fmt.Errorf("remove leftovers of %s: %w", base, err)
 		}
 	}
@@ -166,22 +178,8 @@ func removeKeptV1Files(objectStorePath string) error {
 	}
 	var errs []error
 	for _, p := range paths {
-		backup := p + anystoremigrate.V1BackupSuffix
-		if _, err = os.Stat(backup); err != nil {
-			continue
-		}
-		isV1, err := anystoremigrate.IsV1File(p)
-		if err != nil {
-			errs = append(errs, fmt.Errorf("check v1 database %s: %w", p, err))
-			continue
-		}
-		if isV1 {
-			continue
-		}
-		for _, f := range []string{backup, backup + ".lock"} {
-			if err = os.Remove(f); err != nil && !errors.Is(err, os.ErrNotExist) {
-				errs = append(errs, fmt.Errorf("remove %s: %w", f, err))
-			}
+		if err = removeKeptV1File(p); err != nil {
+			errs = append(errs, err)
 		}
 	}
 	if len(errs) > 0 {
@@ -191,6 +189,30 @@ func removeKeptV1Files(objectStorePath string) error {
 		return fmt.Errorf("write marker: %w", err)
 	}
 	return nil
+}
+
+// removeKeptV1File removes the <p>.v1 file kept beside the database at p, once p is no longer v1.
+func removeKeptV1File(p string) error {
+	unlock := anystoremigrate.LockPath(p)
+	defer unlock()
+	backup := p + anystoremigrate.V1BackupSuffix
+	if _, err := os.Stat(backup); err != nil {
+		return nil
+	}
+	isV1, err := anystoremigrate.IsV1File(p)
+	if err != nil {
+		return fmt.Errorf("check v1 database %s: %w", p, err)
+	}
+	if isV1 {
+		return nil
+	}
+	var errs []error
+	for _, f := range []string{backup, backup + ".lock"} {
+		if err = os.Remove(f); err != nil && !errors.Is(err, os.ErrNotExist) {
+			errs = append(errs, fmt.Errorf("remove %s: %w", f, err))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // ErrClosed is returned by an open that the provider's Close came before.
@@ -421,7 +443,10 @@ func (s *provider) initInPath(repoPath string) error {
 		return err
 	}
 
-	s.commonDb, err = openDatabaseWithReinit(context.Background(), s.getAnyStoreConfig(), filepath.Join(s.objectStorePath, "objects.db"), s.reporter, s.migrator)
+	commonPath := filepath.Join(s.objectStorePath, "objects.db")
+	unlock := anystoremigrate.LockPath(commonPath)
+	s.commonDb, err = openDatabaseWithReinit(context.Background(), s.getAnyStoreConfig(), commonPath, s.reporter, s.migrator, false)
+	unlock()
 	if err != nil {
 		return fmt.Errorf("open db: %w", err)
 	}
@@ -491,7 +516,33 @@ func getLogger(err error, code sqlite.ResultCode) *zap.Logger {
 
 // openDatabaseWithReinit tries to open anystore database, if it fails with corruption error it removes the files and tries to open again.
 // A v1 database is migrated to v2 first; a failed migration leaves it as it was and is returned as an error.
-func openDatabaseWithReinit(ctx context.Context, config *anystore.Config, path string, reporter debugreporter.Reporter, migrator *anystoremigrate.Migrator) (anystore.DB, error) {
+// A database written before any-store v2.5.0 is then brought onto the latest format: one rebuilt
+// from the change trees (resetOldFormat) starts empty, any other is copied
+// (anystoremigrate.UpgradeFormat). A failed upgrade goes on with the database it returns, and one
+// still in the old format is upgraded at its next open.
+//
+// The caller holds anystoremigrate.LockPath(path) until it has published or closed the database.
+func openDatabaseWithReinit(ctx context.Context, config *anystore.Config, path string, reporter debugreporter.Reporter, migrator *anystoremigrate.Migrator, resetOldFormat bool) (anystore.DB, error) {
+	db, err := openOrReinit(ctx, config, path, reporter, migrator)
+	if err != nil {
+		return nil, err
+	}
+	upgraded, err := migrator.UpgradeFormat(ctx, db, path, config, resetOldFormat)
+	if err != nil {
+		if upgraded == nil {
+			return nil, fmt.Errorf("upgrade format of %s: %w", path, err)
+		}
+		format, formatErr := anystore.SchemaFormat(upgraded)
+		log.Error("upgrade database format",
+			zap.String("db", filepath.Join(filepath.Base(filepath.Dir(path)), filepath.Base(path))),
+			zap.Int("format", format), zap.NamedError("formatErr", formatErr), zap.Error(err))
+	}
+	return upgraded, nil
+}
+
+// openOrReinit opens the database at path, migrating a v1 one first; a corrupted one is removed
+// and created anew.
+func openOrReinit(ctx context.Context, config *anystore.Config, path string, reporter debugreporter.Reporter, migrator *anystoremigrate.Migrator) (anystore.DB, error) {
 	err := ensureDirExists(filepath.Dir(path))
 	if err != nil {
 		return nil, fmt.Errorf("ensure dir exists: %w", err)
@@ -611,9 +662,29 @@ func (s *provider) GetSpaceIndexDb(spaceId string) (anystore.DB, error) {
 	if s.isSpaceDeleted(spaceId) {
 		return nil, ErrSpaceDeleted
 	}
-	// A v1 database migrates outside the lock: every open of a space index and every flush takes
-	// it, and a migration takes long. Two openers of one space wait for one migration.
-	if err = migrateIfV1(s.componentCtx, s.migrator, path); err != nil {
+
+	// The opens of one space are serialized by the database's path lock, not by the map lock: every
+	// open of a space index and every flush takes the map lock, and an open can take long (a v1
+	// database migrates, an old-format one is copied). An opener that waited here finds what the
+	// one before it published.
+	unlock := anystoremigrate.LockPath(path)
+	defer unlock()
+	s.spaceIndexDbsLock.Lock()
+	db, ok = s.spaceIndexDbs[spaceId]
+	s.spaceIndexDbsLock.Unlock()
+	if ok {
+		return db, nil
+	}
+	// Refuse to recreate the DB/dir for a space that is being deleted.
+	if s.isSpaceDeleted(spaceId) {
+		return nil, ErrSpaceDeleted
+	}
+	if s.gate.isClosed() {
+		return nil, fmt.Errorf("open db: %w", ErrClosed)
+	}
+
+	db, err = openDatabaseWithReinit(s.componentCtx, s.getAnyStoreConfig(), path, s.reporter, s.migrator, false)
+	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
 	if s.beforeIndexRegister != nil {
@@ -622,26 +693,11 @@ func (s *provider) GetSpaceIndexDb(spaceId string) (anystore.DB, error) {
 
 	s.spaceIndexDbsLock.Lock()
 	defer s.spaceIndexDbsLock.Unlock()
-
-	db, ok = s.spaceIndexDbs[spaceId]
-	if ok {
-		return db, nil
-	}
-
-	// Refuse to recreate the DB/dir for a space that is being deleted.
+	// the deletion that came meanwhile waits for the path lock before it removes the files
 	if s.isSpaceDeleted(spaceId) {
-		return nil, ErrSpaceDeleted
+		return nil, errors.Join(ErrSpaceDeleted, db.Close())
 	}
-
-	// Close came while this open migrated: it has drained the map, or will once it has the lock
-	if s.gate.isClosed() {
-		return nil, fmt.Errorf("open db: %w", ErrClosed)
-	}
-
-	db, err = openDatabaseWithReinit(s.componentCtx, s.getAnyStoreConfig(), path, s.reporter, s.migrator)
-	if err != nil {
-		return nil, fmt.Errorf("open db: %w", err)
-	}
+	// Close came while this open ran: it has drained the map, or will once it has the lock
 	if !s.gate.publish(func() { s.spaceIndexDbs[spaceId] = db }) {
 		return nil, errors.Join(fmt.Errorf("open db: %w", ErrClosed), db.Close())
 	}
@@ -706,7 +762,10 @@ func (g *AnystoreGetter) Wait() (anystore.DB, error) {
 	}
 
 	path := filepath.Join(g.objectStorePath, g.spaceId, "crdt.db")
-	db, err := openDatabaseWithReinit(g.ctx, g.config, path, g.reporter, g.migrator)
+	unlock := anystoremigrate.LockPath(path)
+	defer unlock()
+	// the CRDT database is rebuilt from the change trees: one in an old format starts empty
+	db, err := openDatabaseWithReinit(g.ctx, g.config, path, g.reporter, g.migrator, true)
 	if err != nil {
 		return nil, fmt.Errorf("open: %w", err)
 	}
@@ -881,11 +940,16 @@ func (s *provider) DeleteSpaceData(spaceId string) error {
 		}
 	}
 
-	// Always attempt to remove the space directory from filesystem
+	// Always attempt to remove the space directory from filesystem, once no open of its databases
+	// is in flight: an open holds the path lock until it has published or closed what it opened
 	spacePath := filepath.Join(s.objectStorePath, spaceId)
+	unlockIndex := anystoremigrate.LockPath(filepath.Join(spacePath, "objects.db"))
+	unlockCrdt := anystoremigrate.LockPath(filepath.Join(spacePath, "crdt.db"))
 	if err := os.RemoveAll(spacePath); err != nil {
 		errs = errors.Join(errs, fmt.Errorf("remove space directory: %w", err))
 	}
+	unlockCrdt()
+	unlockIndex()
 
 	// Lift the tombstone once removal succeeded so the same space can be
 	// re-joined later in the session. Keep it on error so a retried delete

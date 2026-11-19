@@ -156,8 +156,8 @@ func TestQueriesUseTheirIndexes(t *testing.T) {
 	}
 }
 
-// storedMessages has order ids where one is a prefix of another and duplicate order ids (changes
-// made concurrently on one parent).
+// storedMessages has order ids where one is a prefix of another and duplicate order ids (messages
+// created in one change).
 var storedMessages = []struct {
 	orderId string
 	id      string

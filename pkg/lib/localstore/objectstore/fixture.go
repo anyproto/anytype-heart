@@ -107,6 +107,12 @@ func NewStoreFixtureWithSpaceIds(t testing.TB, ids []string) *StoreFixture {
 }
 
 func newStoreFixture(t testing.TB, extra ...app.Component) *StoreFixture {
+	return newStoreFixtureInDir(t, t.TempDir(), extra...)
+}
+
+// newStoreFixtureInDir is newStoreFixture over the object store kept under repoPath, so a test can
+// leave databases there and start a store over them.
+func newStoreFixtureInDir(t testing.TB, repoPath string, extra ...app.Component) *StoreFixture {
 	ctx := context.Background()
 
 	fullText := ftsearch.TantivyNew()
@@ -116,7 +122,7 @@ func newStoreFixture(t testing.TB, extra ...app.Component) *StoreFixture {
 	err := fullText.Init(testApp)
 	require.NoError(t, err)
 
-	provider, err := anystoreprovider.NewInPath(t.TempDir())
+	provider, err := anystoreprovider.NewInPath(repoPath)
 	require.NoError(t, err)
 
 	testApp.Register(provider)

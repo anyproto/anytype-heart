@@ -25,10 +25,13 @@ const (
 	// and below every key of a greater order id, whose next character is at least '!'.
 	storageKeyAboveSeparator = "\x02"
 	// storageKeyIdTailLength is how much of the message id the key keeps after the order id. The
-	// order id alone is not unique: changes made concurrently on the same parent get the same
-	// one. A message id is a change CID; its tail is hash bits, enough to tell such messages
-	// apart. Two keys are equal only for the same order id and the same tail, which is not
-	// handled: the insert of the second fails with any-store's duplicate-key error.
+	// order id is unique per change, not per message: any-sync gives each change of a tree its
+	// own, but the store accepts a change holding several message creates with ids of their own,
+	// and they all get the change's order id. A message heart creates has its change's CID for id,
+	// whose tail is hash bits, enough to tell such messages apart; an explicit id need not be a CID.
+	// Two keys are equal only for the same order id and the same tail, which is not handled: the
+	// insert of the second fails with any-store's duplicate-key error, which rolls the change's
+	// whole replay back.
 	storageKeyIdTailLength = 5
 )
 
