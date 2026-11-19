@@ -12,6 +12,8 @@ var protectedRunes = []rune{
 	'`', // Markdown code opener
 	'_', // Markdown em opener
 	'|', // Markdown table column separator
+	'<', // HTML tag opener — prevents goldmark from treating literal < as HTML
+	'>', // HTML tag closer — prevents goldmark from treating literal > as HTML
 }
 
 // Starting at the first BMP PUA code point (U+E000)
