@@ -571,3 +571,22 @@ func TestNormalizeRecommendedRelations(t *testing.T) {
 	assert.Equal(t, []string{"f1", "f2", "sfh", "fh", "sf"}, child.Details().GetStringList(bundle.RelationKeyRecommendedFeaturedRelations))
 	assert.Equal(t, []string{"h1", "h2", "h3"}, child.Details().GetStringList(bundle.RelationKeyRecommendedHiddenRelations))
 }
+
+func TestNormalizeRecommendedRelationsDoesNotMutateParent(t *testing.T) {
+	// given: a committed state of a Type object with a key duplicated across lists
+	parent := NewDoc("root", nil).(*State)
+	parent.SetObjectTypeKey(bundle.TypeKeyObjectType)
+	parent.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyRecommendedRelations:         domain.StringList([]string{"a", "b"}),
+		bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{"b"}),
+	}))
+	s := parent.NewState()
+
+	// when: a derived state with no own details is normalized
+	require.NoError(t, s.Normalize(false))
+
+	// then: the derived state sees the normalized list
+	assert.Equal(t, []string{"a"}, s.Details().GetStringList(bundle.RelationKeyRecommendedRelations))
+	// and the committed parent state is left untouched
+	assert.Equal(t, []string{"a", "b"}, parent.Details().GetStringList(bundle.RelationKeyRecommendedRelations))
+}
