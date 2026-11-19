@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -100,9 +101,8 @@ func TestLockSpace(t *testing.T) {
 		require.NoError(t, err)
 		defer unlock()
 
-		// when: an id that does not share space1's shard
-		other := otherShardId(t, "space1")
-		second := newWaiter(ctx, s, other)
+		// when
+		second := newWaiter(ctx, s, "space2")
 
 		// then
 		second.acquires(t, "spaces must not serialize against each other")()
@@ -156,26 +156,8 @@ func TestLockSpace(t *testing.T) {
 		c.acquires(t, "C never got the space after B released")()
 	})
 
-	t.Run("two spaces sharing a shard queue and both finish", func(t *testing.T) {
-		// given: a collision costs the second space one open, and must never
-		// cost it the space -- nothing takes a second lock while holding one,
-		// so a shared shard cannot deadlock
-		s := newTestService(t)
-		colliding := sameShardId(t, "space1")
-		unlock, err := s.lockSpace(ctx, "space1")
-		require.NoError(t, err)
-
-		// when
-		second := newWaiter(ctx, s, colliding)
-
-		// then
-		second.waiting(t, "a colliding id shares the shard, so it has to queue")
-		unlock()
-		second.acquires(t, "a colliding id must get the shard once it is free")()
-	})
-
-	t.Run("callers racing to create one shard still exclude each other", func(t *testing.T) {
-		// given: nobody has touched this space, so the shard is created under
+	t.Run("callers racing to create one entry still exclude each other", func(t *testing.T) {
+		// given: nobody has touched this space, so its entry is created under
 		// contention rather than by a prior sequential caller
 		s := newTestService(t)
 		const callers = 16
@@ -210,31 +192,56 @@ func TestLockSpace(t *testing.T) {
 	})
 }
 
-// sameShardId finds an id that collides with base. Spreading the locks over
-// shards means two unrelated spaces can share one, so what a collision costs is
-// part of the design and worth pinning.
-func sameShardId(t *testing.T, base string) string {
-	t.Helper()
-	for i := 0; i < 100000; i++ {
-		candidate := fmt.Sprintf("space-%d", i)
-		if candidate != base && spaceLockShard(candidate) == spaceLockShard(base) {
-			return candidate
-		}
-	}
-	t.Fatal("no colliding id found")
-	return ""
-}
+// Keying the locks by id means the map has to be reclaimed, or SpacePush --
+// which reaches WaitSpaceStorage with a remote id before any-sync validates the
+// payload -- is a way for a peer to grow it with ids that never name a space.
+func TestLockSpace_EntriesAreReclaimed(t *testing.T) {
+	ctx := context.Background()
 
-// otherShardId finds an id that hashes to a different lock shard than base, so
-// a test of cross-space independence is not silently testing a collision.
-func otherShardId(t *testing.T, base string) string {
-	t.Helper()
-	for i := 0; i < 10000; i++ {
-		candidate := fmt.Sprintf("space-%d", i)
-		if spaceLockShard(candidate) != spaceLockShard(base) {
-			return candidate
+	t.Run("an entry is gone once nobody holds or waits on it", func(t *testing.T) {
+		// given
+		s := newTestService(t)
+		require.Zero(t, s.spaceLocks.held())
+
+		// when
+		unlock, err := s.lockSpace(ctx, "space1")
+		require.NoError(t, err)
+		assert.Equal(t, 1, s.spaceLocks.held(), "a held space must have an entry")
+		unlock()
+
+		// then
+		assert.Zero(t, s.spaceLocks.held(), "the entry must go when its last caller does")
+	})
+
+	t.Run("an entry survives while someone is still queued on it", func(t *testing.T) {
+		// given
+		s := newTestService(t)
+		first, err := s.lockSpace(ctx, "space1")
+		require.NoError(t, err)
+		second := newWaiter(ctx, s, "space1")
+		second.waiting(t, "the second caller must be queued")
+
+		// when: the holder leaves while the waiter is still there
+		first()
+
+		// then
+		release := second.acquires(t, "the queued caller must take the space")
+		assert.Equal(t, 1, s.spaceLocks.held(), "the entry must outlive the caller that made it")
+		release()
+		assert.Zero(t, s.spaceLocks.held())
+	})
+
+	t.Run("ids that never name a space leave nothing behind", func(t *testing.T) {
+		// given: what a peer pushing made-up ids at us looks like
+		s := newTestService(t)
+
+		// when
+		for i := 0; i < 1000; i++ {
+			_, err := s.WaitSpaceStorage(ctx, fmt.Sprintf("not-a-space-%d", i))
+			require.ErrorIs(t, err, spacestorage.ErrSpaceStorageMissing)
 		}
-	}
-	t.Fatal("no id found on a different shard")
-	return ""
+
+		// then
+		assert.Zero(t, s.spaceLocks.held(), "a rejected lookup must not leave an entry")
+	})
 }
