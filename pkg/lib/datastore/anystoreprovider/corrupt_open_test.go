@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/debug/debugreporter"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoremigrate"
 )
 
 type recordingReporter struct {
@@ -73,7 +74,7 @@ func TestOpenDatabaseWithReinit_DamagedV2File(t *testing.T) {
 			reporter := &recordingReporter{}
 
 			// when
-			db, err := openDatabaseWithReinit(context.Background(), &anystore.Config{}, path, reporter, nil)
+			db, err := openDatabaseWithReinit(context.Background(), &anystore.Config{}, path, reporter, anystoremigrate.New(MigrationOptions(nil)), false)
 
 			// then
 			require.NoError(t, err)
@@ -92,7 +93,7 @@ func TestOpenDatabaseWithReinit_IntactFileIsKept(t *testing.T) {
 	reporter := &recordingReporter{}
 
 	// when
-	db, err := openDatabaseWithReinit(context.Background(), &anystore.Config{}, path, reporter, nil)
+	db, err := openDatabaseWithReinit(context.Background(), &anystore.Config{}, path, reporter, anystoremigrate.New(MigrationOptions(nil)), false)
 
 	// then
 	require.NoError(t, err)
@@ -119,7 +120,7 @@ func TestOpenDatabaseWithReinit_InterruptedOpenKeepsFiles(t *testing.T) {
 			reporter := &recordingReporter{}
 
 			// when
-			_, err = openDatabaseWithReinit(ctx, &anystore.Config{}, path, reporter, nil)
+			_, err = openDatabaseWithReinit(ctx, &anystore.Config{}, path, reporter, anystoremigrate.New(MigrationOptions(nil)), false)
 
 			// then
 			require.Error(t, err)

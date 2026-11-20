@@ -44,6 +44,9 @@ func (s *dsObjectStore) ListVirtualSpaces() ([]string, error) {
 		id := doc.Value().GetStringBytes("id")
 		spaceIds = append(spaceIds, string(id))
 	}
+	if err = iter.Err(); err != nil {
+		return nil, fmt.Errorf("iterate virtual spaces: %w", err)
+	}
 	return spaceIds, nil
 }
 

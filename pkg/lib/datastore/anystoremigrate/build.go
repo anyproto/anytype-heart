@@ -8,7 +8,6 @@ import (
 	anystorev1 "github.com/anyproto/any-store"
 	anystore "github.com/anyproto/any-store/v2"
 	"github.com/anyproto/any-store/v2/anyenc"
-	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 )
@@ -30,12 +29,15 @@ const (
 // so the inserts into the v2 collection append.
 const legacyOrderIdSort = chatmodel.OrderKey + ".id"
 
-// build copies every collection of src into a new v2 database at path. It returns the number of
-// legacy stubs it left out of each chat messages collection.
-func (m *Migrator) build(ctx context.Context, src anystorev1.DB, path string, rep *Report) (stubs map[string]int, err error) {
+// errChatStub stops the build of a database whose chat holds a legacy stub (see the package doc).
+var errChatStub = errors.New("chat message without an order id")
+
+// build copies every collection of src into a new v2 database at path. It stops with errChatStub
+// at the first legacy chat stub.
+func (m *Migrator) build(ctx context.Context, src anystorev1.DB, path string, rep *Report) (err error) {
 	dst, err := anystore.Open(ctx, path, m.dstConfig())
 	if err != nil {
-		return nil, fmt.Errorf("create v2 database: %w", err)
+		return fmt.Errorf("create v2 database: %w", err)
 	}
 	defer func() {
 		if closeErr := dst.Close(); err == nil && closeErr != nil {
@@ -45,42 +47,34 @@ func (m *Migrator) build(ctx context.Context, src anystorev1.DB, path string, re
 
 	names, err := src.GetCollectionNames(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("list collections: %w", err)
+		return fmt.Errorf("list collections: %w", err)
 	}
-	stubs = make(map[string]int)
 	w := &walWatch{db: dst, path: path, peak: &rep.PeakWalBytes}
 	for _, name := range names {
-		n, dropped, err := m.copyCollection(ctx, src, dst, name, w)
+		n, err := m.copyCollection(ctx, src, dst, name, w)
 		if err != nil {
-			return nil, fmt.Errorf("collection %q: %w", name, err)
+			return fmt.Errorf("collection %q: %w", name, err)
 		}
 		rep.Collections++
 		rep.Documents += n
 		if chatmodel.IsMessagesCollection(name) {
 			rep.ChatCollections++
-			rep.StubsDropped += dropped
-			stubs[name] = dropped
-			if dropped > 0 {
-				log.Info("chat stubs dropped", zap.String("path", path), zap.String("collection", name), zap.Int("stubs", dropped))
-			}
 		}
 		if err = w.checkpointIfLarge(ctx); err != nil {
-			return nil, fmt.Errorf("collection %q: %w", name, err)
+			return fmt.Errorf("collection %q: %w", name, err)
 		}
 	}
 	// the database ends with an empty WAL
-	if err = w.checkpoint(ctx); err != nil {
-		return nil, err
-	}
-	return stubs, nil
+	return w.checkpoint(ctx)
 }
 
 // copyCollection copies one collection, then builds its indexes. A chat messages collection is
-// keyed by the storage key, gets the chat repository's indexes and loses its legacy stubs.
-func (m *Migrator) copyCollection(ctx context.Context, src anystorev1.DB, dst anystore.DB, name string, w *walWatch) (copied, stubs int, err error) {
+// keyed by the storage key and gets the chat repository's indexes; a legacy stub in it stops the
+// copy with errChatStub.
+func (m *Migrator) copyCollection(ctx context.Context, src anystorev1.DB, dst anystore.DB, name string, w *walWatch) (copied int, err error) {
 	srcColl, err := src.OpenCollection(ctx, name)
 	if err != nil {
-		return 0, 0, fmt.Errorf("open v1 collection: %w", err)
+		return 0, fmt.Errorf("open v1 collection: %w", err)
 	}
 	defer srcColl.Close()
 
@@ -105,13 +99,13 @@ func (m *Migrator) copyCollection(ctx context.Context, src anystorev1.DB, dst an
 		}
 	}
 	if err != nil {
-		return 0, 0, fmt.Errorf("create v2 collection: %w", err)
+		return 0, fmt.Errorf("create v2 collection: %w", err)
 	}
 	defer dstColl.Close()
 
 	iter, err := query.Iter(ctx)
 	if err != nil {
-		return 0, 0, fmt.Errorf("iterate v1 collection: %w", err)
+		return 0, fmt.Errorf("iterate v1 collection: %w", err)
 	}
 	defer iter.Close()
 
@@ -125,7 +119,7 @@ func (m *Migrator) copyCollection(ctx context.Context, src anystorev1.DB, dst an
 		doc, err := iter.Doc()
 		if err != nil {
 			b.abort()
-			return 0, 0, fmt.Errorf("read v1 document: %w", err)
+			return 0, fmt.Errorf("read v1 document: %w", err)
 		}
 		// v1-encoded anyenc bytes parse unchanged in v2; ParseOwned does not copy, and the value
 		// is consumed by the insert before buf is reused
@@ -133,46 +127,45 @@ func (m *Migrator) copyCollection(ctx context.Context, src anystorev1.DB, dst an
 		val, err := parser.ParseOwned(buf)
 		if err != nil {
 			b.abort()
-			return 0, 0, fmt.Errorf("parse document: %w", err)
+			return 0, fmt.Errorf("parse document: %w", err)
 		}
 		if isChat {
 			orderId := val.GetString(chatmodel.OrderKey, "id")
 			if orderId == "" {
-				// a legacy stub an old reaction upsert made: no content, no order
-				stubs++
-				continue
+				b.abort()
+				return 0, fmt.Errorf("document %q: %w", val.GetString("id"), errChatStub)
 			}
 			arena.Reset()
 			val.Set(chatmodel.StorageKeyField, arena.NewString(chatmodel.StorageKey(orderId, val.GetString("id"))))
 		}
 		if err = b.insert(ctx, val, len(buf)); err != nil {
-			return 0, 0, err
+			return 0, err
 		}
 		copied++
 		if m.opts.failAfterDocs > 0 && copied >= m.opts.failAfterDocs {
 			b.abort()
-			return 0, 0, errInjected
+			return 0, errInjected
 		}
 	}
 	if err = iter.Err(); err != nil {
 		b.abort()
-		return 0, 0, fmt.Errorf("iterate v1 collection: %w", err)
+		return 0, fmt.Errorf("iterate v1 collection: %w", err)
 	}
 	if err = b.commit(); err != nil {
-		return 0, 0, err
+		return 0, err
 	}
 
 	// indexes after the bulk load: one build over the loaded collection is far cheaper than
 	// maintaining them on every insert. Each is a transaction of its own.
 	for _, info := range indexes {
 		if err = dstColl.CreateIndex(ctx, info); err != nil {
-			return 0, 0, fmt.Errorf("create index %q: %w", info.Name, err)
+			return 0, fmt.Errorf("create index %q: %w", info.Name, err)
 		}
 		if err = w.checkpointIfLarge(ctx); err != nil {
-			return 0, 0, fmt.Errorf("after index %q: %w", info.Name, err)
+			return 0, fmt.Errorf("after index %q: %w", info.Name, err)
 		}
 	}
-	return copied, stubs, nil
+	return copied, nil
 }
 
 var errInjected = errors.New("injected failure")

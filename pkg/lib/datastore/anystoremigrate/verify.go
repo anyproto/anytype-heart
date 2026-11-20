@@ -12,11 +12,11 @@ import (
 )
 
 // verify checks the v2 database against the v1 one it was built from: the same collections, the
-// same number of documents in each (a chat messages collection less its dropped stubs), the same
+// same number of documents in each, the same
 // index definitions (a chat messages collection: the chat repository's, and its storage key), and
 // a consistent file (QuickCheck). Index definitions are compared field by field: a dropped Unique
 // or Sparse flag changes no count and raises no error.
-func verify(ctx context.Context, src anystorev1.DB, dst anystore.DB, stubs map[string]int) error {
+func verify(ctx context.Context, src anystorev1.DB, dst anystore.DB) error {
 	srcNames, err := src.GetCollectionNames(ctx)
 	if err != nil {
 		return fmt.Errorf("list v1 collections: %w", err)
@@ -31,7 +31,7 @@ func verify(ctx context.Context, src anystorev1.DB, dst anystore.DB, stubs map[s
 		return fmt.Errorf("collections differ: v1 %v, v2 %v", srcNames, dstNames)
 	}
 	for _, name := range srcNames {
-		if err = verifyCollection(ctx, src, dst, name, stubs[name]); err != nil {
+		if err = verifyCollection(ctx, src, dst, name); err != nil {
 			return fmt.Errorf("collection %q: %w", name, err)
 		}
 	}
@@ -41,7 +41,7 @@ func verify(ctx context.Context, src anystorev1.DB, dst anystore.DB, stubs map[s
 	return nil
 }
 
-func verifyCollection(ctx context.Context, src anystorev1.DB, dst anystore.DB, name string, stubs int) error {
+func verifyCollection(ctx context.Context, src anystorev1.DB, dst anystore.DB, name string) error {
 	srcColl, err := src.OpenCollection(ctx, name)
 	if err != nil {
 		return fmt.Errorf("open v1 collection: %w", err)
@@ -61,8 +61,8 @@ func verifyCollection(ctx context.Context, src anystorev1.DB, dst anystore.DB, n
 	if err != nil {
 		return fmt.Errorf("count v2 documents: %w", err)
 	}
-	if want := srcCount - stubs; dstCount != want {
-		return fmt.Errorf("%d documents, want %d (%d in v1, %d stubs dropped)", dstCount, want, srcCount, stubs)
+	if dstCount != srcCount {
+		return fmt.Errorf("%d documents, want %d", dstCount, srcCount)
 	}
 
 	var want []anystore.IndexInfo

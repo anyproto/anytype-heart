@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -167,7 +168,9 @@ func (s *storageService) AllSpaceIds() (ids []string, err error) {
 		return files, fmt.Errorf("can't read datadir '%v': %w", s.rootPath, err)
 	}
 	for _, file := range fileInfo {
-		if strings.HasPrefix(file.Name(), ".") {
+		// a regular file under the root (desktop.ini, say) is not a space; anything else may be one:
+		// a directory, a link to a space moved to another volume, a Windows junction
+		if file.Type().IsRegular() || strings.HasPrefix(file.Name(), ".") {
 			continue
 		}
 		// a backup is not a space: handing it to discovery makes it open the
@@ -591,7 +594,8 @@ func (s *storageService) backupCorruptedSpace(spaceId string) (string, error) {
 func (s *storageService) ListCorruptedBackups() []CorruptedBackup {
 	s.backupsMu.RLock()
 	defer s.backupsMu.RUnlock()
-	return s.backups
+	// a copy: DeleteBackup removes entries in place, under a caller still ranging over the list
+	return slices.Clone(s.backups)
 }
 
 // DeleteBackup removes a corrupted backup folder after validating the path

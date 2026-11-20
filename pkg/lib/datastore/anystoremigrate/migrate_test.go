@@ -2,6 +2,7 @@ package anystoremigrate
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -71,8 +72,8 @@ func newFixture(t *testing.T, opts ...func(o *Options)) *fixture {
 }
 
 // seedV1 writes a v1 database with a plain collection (unique and sparse indexes, explicit nulls,
-// binary values), a chat messages collection (concurrent messages sharing an order id, stubs, a
-// pin, a tombstone, reactions) and a chat history collection.
+// binary values), a chat messages collection (messages sharing an order id, a pin, a
+// tombstone, reactions) and a chat history collection.
 func (fx *fixture) seedV1(t *testing.T) {
 	t.Helper()
 	db, err := anystorev1.Open(ctx, fx.path, nil)
@@ -126,7 +127,7 @@ func (fx *fixture) seedV1(t *testing.T) {
 	insert(chat,
 		chatMessage(cid("aaaa5"), "!!$5"),
 		chatMessage(cid("aaaa2"), "!!$2"),
-		chatMessage(cid("bbbb2"), "!!$2"), // concurrent with aaaa2
+		chatMessage(cid("bbbb2"), "!!$2"), // the order id of aaaa2: created in one change
 		chatMessage(cid("pinn3"), "!!$3", func(a *v1enc.Arena, doc *v1enc.Value) { doc.Set(chatmodel.PinnedKey, a.NewTrue()) }),
 		chatMessage(cid("dead4"), "!!$4", func(a *v1enc.Arena, doc *v1enc.Value) { doc.Set(chatmodel.DeletedKey, a.NewTrue()) }),
 		chatMessage(cid("reac6"), "!!$6", func(a *v1enc.Arena, doc *v1enc.Value) {
@@ -137,8 +138,6 @@ func (fx *fixture) seedV1(t *testing.T) {
 			doc.Set(chatmodel.ReactionsKey, reactions)
 			doc.Set(chatmodel.ReactionUnreadOrderIdKey, a.NewString("!!$7"))
 		}),
-		chatMessage(cid("stub1"), ""),
-		chatMessage(cid("stub2"), ""),
 	)
 
 	history, err := db.CreateCollection(ctx, historyCollection)
@@ -173,7 +172,6 @@ func TestMigrateFile(t *testing.T) {
 		Collections:     3,
 		Documents:       3 + 6 + 3,
 		ChatCollections: 1,
-		StubsDropped:    2,
 	}
 	wantChatOrder := []string{
 		chatmodel.StorageKey("!!$2", cid("aaaa2")),
@@ -200,7 +198,7 @@ func TestMigrateFile(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, wantReport, Report{
 		Path: got.Path, Collections: got.Collections, Documents: got.Documents,
-		ChatCollections: got.ChatCollections, StubsDropped: got.StubsDropped,
+		ChatCollections: got.ChatCollections, Discarded: got.Discarded,
 	})
 	assert.Positive(t, got.SrcBytes)
 	assert.Positive(t, got.DstBytes)
@@ -229,7 +227,7 @@ func TestMigrateFile(t *testing.T) {
 		assert.Equal(t, 2, withMaybe)
 	})
 
-	t.Run("a chat is keyed by the storage key and loses its stubs", func(t *testing.T) {
+	t.Run("a chat is keyed by the storage key", func(t *testing.T) {
 		chat, err := db.OpenCollection(ctx, chatCollection)
 		require.NoError(t, err)
 		assert.Equal(t, chatmodel.StorageKeyField, chat.PrimaryKey())
@@ -248,9 +246,6 @@ func TestMigrateFile(t *testing.T) {
 		pinned, err := chat.Find(map[string]any{"id": cid("pinn3")}).Count(ctx)
 		require.NoError(t, err)
 		assert.Equal(t, 1, pinned)
-		stubs, err := chat.Find(map[string]any{"id": map[string]any{"$in": []any{cid("stub1"), cid("stub2")}}}).Count(ctx)
-		require.NoError(t, err)
-		assert.Zero(t, stubs)
 	})
 
 	t.Run("the history is copied as it is", func(t *testing.T) {
@@ -273,7 +268,7 @@ func TestMigrateFile(t *testing.T) {
 		require.NoError(t, err)
 		count, err := chat.Count(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, 8, count)
+		assert.Equal(t, 6, count)
 	})
 }
 
@@ -327,7 +322,7 @@ func TestMigrateFileOfAMigratedDatabaseIsANoOp(t *testing.T) {
 func TestMigrateFileFailureLeavesTheV1Database(t *testing.T) {
 	// given: a copy that dies half way
 	fx := newFixture(t, func(o *Options) { o.failAfterDocs = 2 })
-	want := map[string]int{plainCollection: 3, chatCollection: 8, historyCollection: 3}
+	want := map[string]int{plainCollection: 3, chatCollection: 6, historyCollection: 3}
 
 	// when
 	_, err := fx.MigrateFile(ctx, fx.path)
@@ -483,4 +478,59 @@ func TestMigrateFileRemovingTheV1File(t *testing.T) {
 	isV1, err := IsV1File(fx.path)
 	require.NoError(t, err)
 	assert.False(t, isV1)
+}
+
+// addChatStub adds a legacy stub to the chat of the v1 database: a reaction-only document an old
+// reaction upsert made in place of a message it had not seen yet.
+func (fx *fixture) addChatStub(t *testing.T) {
+	t.Helper()
+	db, err := anystorev1.Open(ctx, fx.path, nil)
+	require.NoError(t, err)
+	defer func() { require.NoError(t, db.Close()) }()
+	chat, err := db.OpenCollection(ctx, chatCollection)
+	require.NoError(t, err)
+	arena := &v1enc.Arena{}
+	doc := arena.NewObject()
+	chatMessage(cid("stub1"), "")(arena, doc)
+	require.NoError(t, chat.Insert(ctx, doc))
+}
+
+func TestMigrateFileDiscardsADatabaseWithAChatStub(t *testing.T) {
+	for _, removeV1 := range []bool{false, true} {
+		t.Run(fmt.Sprintf("removeV1AfterVerify=%v", removeV1), func(t *testing.T) {
+			// given
+			fx := newFixture(t, func(o *Options) { o.RemoveV1AfterVerify = removeV1 })
+			fx.addChatStub(t)
+
+			// when
+			got, err := fx.MigrateFile(ctx, fx.path)
+
+			// then: no database is left at all, so its open creates it anew
+			require.NoError(t, err)
+			assert.True(t, got.Discarded)
+			assert.Equal(t, fx.path, got.Path)
+			assert.Empty(t, dirNames(t, fx.dir), "no v1 file, no backup, no temp file")
+		})
+	}
+}
+
+// A log the close could not checkpoint still holds committed frames: the database is not removed,
+// as the main file alone can be inconsistent.
+func TestMigrateFileKeepsADatabaseToDiscardWhoseLogHoldsFrames(t *testing.T) {
+	// given
+	fx := newFixture(t, func(o *Options) {
+		o.RemoveV1AfterVerify = true
+		o.beforeDiscard = func(path string) {
+			require.NoError(t, os.WriteFile(path+"-wal", []byte("frames a checkpoint left"), 0o600))
+		}
+	})
+	fx.addChatStub(t)
+
+	// when
+	got, err := fx.MigrateFile(ctx, fx.path)
+
+	// then
+	require.ErrorContains(t, err, "still holds")
+	assert.False(t, got.Discarded)
+	assert.Equal(t, []string{"crdt.db", "crdt.db-wal"}, dirNames(t, fx.dir), "the v1 database and its log stay, no temp file")
 }

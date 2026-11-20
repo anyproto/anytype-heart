@@ -48,6 +48,8 @@ github.com/anyproto/any-store/v2 v2.4.2 h1:RtMaXKgJKavOD/DQEykB8cmZI3Ah/dEhvEAsL
 github.com/anyproto/any-store/v2 v2.4.2/go.mod h1:uW/zPL7osK9sAyFCq3sLYj6yfBqfAfBRt6ELQNfbODs=
 github.com/anyproto/any-store/v2 v2.4.3 h1:hvgAoXkLlWOtFesFcM/zODntKm1YFfSXhjM3PuelEUs=
 github.com/anyproto/any-store/v2 v2.4.3/go.mod h1:uW/zPL7osK9sAyFCq3sLYj6yfBqfAfBRt6ELQNfbODs=
+github.com/anyproto/any-store/v2 v2.5.0 h1:gmXYEfdgy6Dw/YxaAOkTJ3W9c/X3VrrHxQ3iWhvh+Fg=
+github.com/anyproto/any-store/v2 v2.5.0/go.mod h1:uW/zPL7osK9sAyFCq3sLYj6yfBqfAfBRt6ELQNfbODs=
 github.com/anyproto/any-sync v0.13.8 h1:VVcAX/8VHwIB3D3mEaO0v3ojyixrYvaGI1nwgLja3zc=
 github.com/anyproto/any-sync v0.13.8/go.mod h1:d56Pxkt2zaK8K9SAEf8KkhBwJx/a6mEGeRY6h717x0w=
 github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20260925080338-0fb960f00458 h1:kg/BHaimoLI2suFe4Kq1MfNxFvWYlFfPPkgVehU9+FE=
@@ -86,6 +88,8 @@ github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c h1:GicoaTUyB2
 github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c/go.mod h1:S1GPSBCYCIhmVNfcth17y2zZtQT6wzkzgwUve0VDWWA=
 github.com/anyproto/tantivy-go v1.0.6 h1:8FI8otTeq5OFXK7Fw7vwG2vrwW1R1Yvcbiy4rO4YfoQ=
 github.com/anyproto/tantivy-go v1.0.6/go.mod h1:LtipOpRjGtcYMGcop6gQN7rVl1Pc6BlIs9BTMqeWMsk=
+github.com/anyproto/tantivy-go v1.0.7 h1:E5wo+OJK0AVj8X2tRLL9oDyIJQCl4mrlNtmTVpqn5SY=
+github.com/anyproto/tantivy-go v1.0.7/go.mod h1:LtipOpRjGtcYMGcop6gQN7rVl1Pc6BlIs9BTMqeWMsk=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20261012094456-27dfb04e233b h1:GG/Ce6M15BZ34zhr1osMe+dgQQmxIC2zgCjrtp2QyqM=
 github.com/anyproto/zeroconf/v2 v2.2.1-0.20261012094456-27dfb04e233b/go.mod h1:2KV4b7s+6Jfu0HM826dXIAh2Ln5EXcnpt/cW1TWFWBo=
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=

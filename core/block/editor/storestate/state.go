@@ -153,6 +153,35 @@ func ResetReplayState(ctx context.Context, db anystore.DB, objectId string) erro
 	return err
 }
 
+// NotFullyReplayed returns the objects among ids whose store has never replayed their complete
+// change tree: no metadata (a new or reset database, a reindex that cleaned it) or metadata
+// without the fully-replayed mark. The next open of such an object replays its tree from the root.
+func NotFullyReplayed(ctx context.Context, db anystore.DB, ids []string) ([]string, error) {
+	meta, err := db.OpenCollection(ctx, CollMeta)
+	if errors.Is(err, anystore.ErrCollectionNotFound) {
+		return ids, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("open meta collection: %w", err)
+	}
+	// not closed: the handle is shared with the store states that use the collection
+	var pending []string
+	for _, id := range ids {
+		doc, err := meta.FindId(ctx, id)
+		if errors.Is(err, anystore.ErrDocNotFound) {
+			pending = append(pending, id)
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("read meta of %s: %w", id, err)
+		}
+		if !doc.Value().GetBool(replayedKey) {
+			pending = append(pending, id)
+		}
+	}
+	return pending, nil
+}
+
 func (ss *StoreState) NewTx(ctx context.Context) (*StoreStateTx, error) {
 	tx, err := ss.db.WriteTx(ctx)
 	if err != nil {

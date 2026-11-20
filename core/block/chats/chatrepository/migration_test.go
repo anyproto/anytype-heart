@@ -93,9 +93,9 @@ func v1Messages() []v1Message {
 
 	// an own message the user marked unread
 	unreadOverride := message(cid(1), "!!$1", migrationMe, "mine, marked unread", false)
-	// changes made concurrently on one parent share an order id
-	concurrentA := message(cid(2), "!!$2", "bob", "concurrent a", true)
-	concurrentB := message(cid(3), "!!$2", "bob", "concurrent b", true)
+	// messages created in one change share its order id
+	sameOrderA := message(cid(2), "!!$2", "bob", "same order a", true)
+	sameOrderB := message(cid(3), "!!$2", "bob", "same order b", true)
 	pinned := message(cid(4), "!!$3", "bob", "pinned", true)
 	pinned.Pinned = true
 	tombstone := message(cid(5), "!!$4", "bob", "deleted", true)
@@ -113,25 +113,25 @@ func v1Messages() []v1Message {
 	reply.HasMention = true
 	reply.MentionRead = false
 	last := message(cid(8), "!!$7", "bob", "last", true)
-
-	stub := func(id string) *chatmodel.Message {
-		return &chatmodel.Message{ChatMessage: &model.ChatMessage{
-			Id: id, Message: content(""), Attachments: []*model.ChatMessageAttachment{},
-			Reactions: &model.ChatMessageReactions{Reactions: map[string]*model.ChatMessageReactionsIdentityList{"🎉": {Ids: []string{"bob"}}}},
-		}}
-	}
 	return []v1Message{
 		{msg: unreadOverride, orderId: "!!$1"},
-		{msg: concurrentA, orderId: "!!$2"},
-		{msg: concurrentB, orderId: "!!$2"},
+		{msg: sameOrderA, orderId: "!!$2"},
+		{msg: sameOrderB, orderId: "!!$2"},
 		{msg: pinned, orderId: "!!$3"},
 		{msg: tombstone, orderId: "!!$4"},
 		{msg: reacted, orderId: "!!$5"},
 		{msg: reply, orderId: "!!$6"},
 		{msg: last, orderId: "!!$7"},
-		{msg: stub(cid(98))},
-		{msg: stub(cid(99))},
 	}
+}
+
+// legacyStub is a stub an old reaction upsert made in place of a message it had not seen yet: the
+// reactions, no order id, no content.
+func legacyStub(id string) v1Message {
+	return v1Message{msg: &chatmodel.Message{ChatMessage: &model.ChatMessage{
+		Id: id, Message: &model.ChatMessageMessageContent{}, Attachments: []*model.ChatMessageAttachment{},
+		Reactions: &model.ChatMessageReactions{Reactions: map[string]*model.ChatMessageReactionsIdentityList{"🎉": {Ids: []string{"bob"}}}},
+	}}}
 }
 
 // seedV1Chat writes the space's crdt.db as a v1 build left it: the chat's messages keyed by id with
@@ -206,16 +206,11 @@ func TestV1ChatMigratesAtFirstOpen(t *testing.T) {
 	root := t.TempDir()
 	seeded := v1Messages()
 	var (
-		wantMessages []*chatmodel.Message // every message but the stubs, as stored before
+		wantMessages []*chatmodel.Message // every message, as stored before
 		wantIds      []string
 		wantOrderIds []string
-		stubIds      []string
 	)
 	for _, m := range seeded {
-		if m.orderId == "" {
-			stubIds = append(stubIds, m.msg.Id)
-			continue
-		}
 		wantMessages = append(wantMessages, m.msg)
 		wantIds = append(wantIds, m.msg.Id)
 		wantOrderIds = append(wantOrderIds, m.orderId)
@@ -251,11 +246,6 @@ func TestV1ChatMigratesAtFirstOpen(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, wantKey, key, id)
 		}
-		// the stubs are gone
-		stubs, err := repo.GetMessagesByIds(ctx, stubIds)
-		require.NoError(t, err)
-		assert.Empty(t, stubs)
-
 		// and read in order
 		page, err := repo.GetMessages(ctx, GetMessagesRequest{Limit: 100})
 		require.NoError(t, err)
@@ -307,6 +297,32 @@ func TestV1ChatMigratesAtFirstOpen(t *testing.T) {
 		// then
 		assertMigrated(t, reopened)
 	})
+}
+
+// A stub hides its message, which only a replay of the chat's tree brings back: the space's v1
+// database is not migrated but rebuilt, so every chat in it replays at its next open.
+func TestV1ChatWithALegacyStubIsRebuilt(t *testing.T) {
+	// given
+	ctx := context.Background()
+	root := t.TempDir()
+	crdtPath := seedV1Chat(t, root, append(v1Messages(), legacyStub(cid(99))))
+
+	// when
+	fx := newServiceFixture(t, root)
+	defer fx.close(t)
+
+	// then: no message and no replay watermark, as in a new database
+	repo := fx.repository(t)
+	count, err := repo.CountMessages(ctx)
+	require.NoError(t, err)
+	assert.Zero(t, count)
+	meta, err := fx.crdtDb(t).Collection(ctx, storestate.CollMeta)
+	require.NoError(t, err)
+	_, err = meta.FindId(ctx, migrationChatId)
+	assert.ErrorIs(t, err, anystore.ErrDocNotFound)
+	isV1, err := anystoremigrate.IsV1File(crdtPath)
+	require.NoError(t, err)
+	assert.False(t, isV1)
 }
 
 func TestMessagesCollectionKeyedOtherwiseIsRefused(t *testing.T) {

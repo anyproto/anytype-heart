@@ -35,11 +35,11 @@ func (v *verifyResult) mismatch(format string, args ...any) {
 
 // verifyAll compares every migrated database with the v1 file it kept, document by document: the
 // same documents byte for byte, and for a chat the same messages, in the same order-id order, with
-// only the storage key added and the stubs gone.
+// only the storage key added. A discarded database has nothing to compare.
 func verifyAll(ctx context.Context, reports []anystoremigrate.Report) (*verifyResult, error) {
 	res := &verifyResult{}
 	for _, r := range reports {
-		if r.Path == "" {
+		if r.Path == "" || r.Discarded {
 			continue
 		}
 		if err := verifyDatabase(ctx, r.Path, res); err != nil {
@@ -163,7 +163,9 @@ func verifyChat(ctx context.Context, srcColl anystorev1.Collection, dstColl anys
 		}
 		orderId := doc.Value().GetString("_o", "id")
 		if orderId == "" {
-			continue // a legacy stub: dropped
+			// a database with a legacy stub is discarded, never migrated
+			res.mismatch("%s %s: legacy stub %s in a migrated database", path, name, doc.Value().GetString("id"))
+			continue
 		}
 		want = append(want, chatMessage{orderId: orderId, id: doc.Value().GetString("id"), raw: doc.Value().MarshalTo(nil)})
 	}

@@ -3,6 +3,7 @@ package indexer
 import (
 	"context"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache/mock_objectcache"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -26,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
@@ -691,6 +694,7 @@ func TestReindexOutdatedObjects(t *testing.T) {
 		storage.EXPECT().HeadStorage().Return(headStorage).Maybe()
 		storage.EXPECT().StateStorage().Return(stateStorage).Maybe()
 
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()
 		var reindexed []string
 		spc := mock_space.NewMockSpace(t)
 		spc.EXPECT().Id().Return(spaceId).Maybe()
@@ -730,6 +734,7 @@ func TestReindexOutdatedObjects(t *testing.T) {
 		storage.EXPECT().HeadStorage().Return(headStorage).Maybe()
 		storage.EXPECT().StateStorage().Return(stateStorage).Maybe()
 
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()
 		spc := mock_space.NewMockSpace(t)
 		spc.EXPECT().Id().Return(spaceId).Maybe()
 		spc.EXPECT().Storage().Return(storage).Maybe()
@@ -741,6 +746,63 @@ func TestReindexOutdatedObjects(t *testing.T) {
 		require.NoError(t, err)
 		assert.Zero(t, total)
 		assert.Zero(t, success)
+	})
+
+	t.Run("a chat whose store was not replayed is reopened, though its indexed heads match", func(t *testing.T) {
+		// given: two chats and a discussion indexed at their current heads; the CRDT database holds
+		// the replayed store of one chat only (it was reset, or rebuilt from a v1 database)
+		fx := newFixture(t)
+		provider, err := anystoreprovider.NewInPath(t.TempDir())
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = provider.Close(ctx) })
+		fx.indexer.dbProvider = provider
+		store := fx.store.SpaceIndex(spaceId)
+		entries := []headstorage.HeadsEntry{
+			{Id: "chatReplayed", Heads: []string{"h1"}, CommonSnapshot: "cs"},
+			{Id: "chatReset", Heads: []string{"h2"}, CommonSnapshot: "cs"},
+			{Id: "discussionHalfDone", Heads: []string{"h3"}, CommonSnapshot: "cs"},
+		}
+		for _, e := range entries {
+			require.NoError(t, store.SaveLastIndexedHeadsHash(ctx, e.Id, headsHash(e.Heads)))
+		}
+		crdtDb, err := provider.GetCrdtDb(spaceId).Wait()
+		require.NoError(t, err)
+		meta, err := crdtDb.Collection(ctx, storestate.CollMeta)
+		require.NoError(t, err)
+		require.NoError(t, meta.Insert(ctx, anyenc.MustParseJson(`{"id":"chatReplayed","q":7,"r":true}`)))
+		// a replay that was cut short: the watermark without the fully-replayed mark
+		require.NoError(t, meta.Insert(ctx, anyenc.MustParseJson(`{"id":"discussionHalfDone","q":3}`)))
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).RunAndReturn(
+			func(_ source.Space, sbt coresb.SmartBlockType) (source.IDsLister, error) {
+				switch sbt {
+				case coresb.SmartBlockTypeChatDerivedObject:
+					return idsLister{Ids: []string{"chatReplayed", "chatReset"}}, nil
+				case coresb.SmartBlockTypeDiscussionObject:
+					return idsLister{Ids: []string{"discussionHalfDone"}}, nil
+				default:
+					return idsLister{Ids: []string{}}, nil
+				}
+			})
+
+		var reindexed []string
+		spc := mock_space.NewMockSpace(t)
+		spc.EXPECT().Id().Return(spaceId).Maybe()
+		spc.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(id string, _ func(smartblock.SmartBlock) error) error {
+			reindexed = append(reindexed, id)
+			return nil
+		})
+
+		// when
+		total, success, err := fx.reopenUnreplayedStoreObjects(ctx, spc)
+
+		// then: opened, nothing removed
+		require.NoError(t, err)
+		assert.Equal(t, 2, total)
+		assert.Equal(t, 2, success)
+		assert.ElementsMatch(t, []string{"chatReset", "discussionHalfDone"}, reindexed)
+		count, err := meta.Count(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, 2, count)
 	})
 }
 
@@ -777,6 +839,7 @@ func TestReindexOutdatedConcurrencyLimit(t *testing.T) {
 	t.Run("at most width spaces run the outdated pass concurrently", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()
 		fx.reindexLimiter = newReindexLimiter(2, nil)
 		started := make(chan string, 9)
 		proceed := make(chan struct{})
@@ -808,6 +871,7 @@ func TestReindexOutdatedConcurrencyLimit(t *testing.T) {
 	t.Run("queued space starts once a slot frees", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()
 		fx.reindexLimiter = newReindexLimiter(2, nil)
 		started := make(chan string, 9)
 		proceed := make(chan struct{})
@@ -839,6 +903,7 @@ func TestReindexOutdatedConcurrencyLimit(t *testing.T) {
 	t.Run("freed slot goes to the space the user has opened, not the earlier waiter", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()
 		fx.reindexLimiter = newReindexLimiter(1, func() map[string]struct{} {
 			return map[string]struct{}{"spaceOpened": {}}
 		})
@@ -969,4 +1034,124 @@ func TestCleanChatCollection(t *testing.T) {
 			assert.Zero(t, count)
 		})
 	}
+}
+
+// A full objects reindex skips the outdated-objects pass, and its type list holds no chats: the
+// chats whose store was not replayed are reopened all the same.
+func TestReindexSpaceReopensUnreplayedChatsOnAFullObjectsReindex(t *testing.T) {
+	// given: the objects reindex counter is behind; the CRDT database has no replayed store
+	const spaceId = "space1"
+	fx := newFixture(t)
+	provider, err := anystoreprovider.NewInPath(t.TempDir())
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = provider.Close(ctx) })
+	fx.indexer.dbProvider = provider
+	_, err = provider.GetCrdtDb(spaceId).Wait()
+	require.NoError(t, err)
+	checksums := fx.getLatestChecksums(false)
+	checksums.ObjectsForceReindexCounter--
+	require.NoError(t, fx.store.SaveChecksums(spaceId, &checksums))
+	fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).RunAndReturn(
+		func(_ source.Space, sbt coresb.SmartBlockType) (source.IDsLister, error) {
+			switch sbt {
+			case coresb.SmartBlockTypeChatDerivedObject:
+				return idsLister{Ids: []string{"chatReset"}}, nil
+			case coresb.SmartBlockTypePage:
+				return idsLister{Ids: []string{"page"}}, nil
+			default:
+				return idsLister{Ids: []string{}}, nil
+			}
+		})
+	opened := make(chan string, 10)
+	spc := mock_space.NewMockSpace(t)
+	spc.EXPECT().Id().Return(spaceId).Maybe()
+	spc.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{}).Maybe()
+	spc.EXPECT().FilterNotExists(mock.Anything).Return(nil).Maybe()
+	spc.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(id string, _ func(smartblock.SmartBlock) error) error {
+		opened <- id
+		return nil
+	}).Maybe()
+
+	// when
+	require.NoError(t, fx.ReindexSpace(spc))
+
+	// then: the full reindex opens the page, the background pass the chat
+	var got []string
+	for len(got) < 2 {
+		select {
+		case id := <-opened:
+			got = append(got, id)
+		case <-time.After(5 * time.Second):
+			t.Fatalf("opened %v, want the page and the chat", got)
+		}
+	}
+	assert.ElementsMatch(t, []string{"page", "chatReset"}, got)
+}
+
+// Without a full objects reindex, the background pass runs the outdated-objects check, then reopens
+// the chats whose store was not replayed.
+func TestReindexSpaceReopensUnreplayedChats(t *testing.T) {
+	// given: current counters, nothing outdated, a CRDT database without the chat's store
+	const spaceId = "space1"
+	fx := newFixture(t)
+	provider, err := anystoreprovider.NewInPath(t.TempDir())
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = provider.Close(ctx) })
+	fx.indexer.dbProvider = provider
+	_, err = provider.GetCrdtDb(spaceId).Wait()
+	require.NoError(t, err)
+	checksums := fx.getLatestChecksums(false)
+	require.NoError(t, fx.store.SaveChecksums(spaceId, &checksums))
+	fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).RunAndReturn(
+		func(_ source.Space, sbt coresb.SmartBlockType) (source.IDsLister, error) {
+			if sbt == coresb.SmartBlockTypeChatDerivedObject {
+				return idsLister{Ids: []string{"chatReset"}}, nil
+			}
+			return idsLister{Ids: []string{}}, nil
+		})
+	var (
+		eventsLock sync.Mutex
+		events     []string
+	)
+	record := func(event string) {
+		eventsLock.Lock()
+		defer eventsLock.Unlock()
+		events = append(events, event)
+	}
+	ctrl := gomock.NewController(t)
+	headStorage := mock_headstorage.NewMockHeadStorage(ctrl)
+	headStorage.EXPECT().IterateEntries(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(context.Context, headstorage.IterOpts, headstorage.EntryIterator) error {
+			record("outdated check")
+			return nil
+		})
+	stateStorage := mock_statestorage.NewMockStateStorage(ctrl)
+	stateStorage.EXPECT().SettingsId().AnyTimes().Return("settingsId")
+	storage := mock_anystorage.NewMockClientSpaceStorage(t)
+	storage.EXPECT().HeadStorage().Return(headStorage).Maybe()
+	storage.EXPECT().StateStorage().Return(stateStorage).Maybe()
+	opened := make(chan string, 10)
+	spc := mock_space.NewMockSpace(t)
+	spc.EXPECT().Id().Return(spaceId).Maybe()
+	spc.EXPECT().Storage().Return(storage).Maybe()
+	spc.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{}).Maybe()
+	spc.EXPECT().FilterNotExists(mock.Anything).Return(nil).Maybe()
+	spc.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(id string, _ func(smartblock.SmartBlock) error) error {
+		record("open " + id)
+		opened <- id
+		return nil
+	}).Maybe()
+
+	// when
+	require.NoError(t, fx.ReindexSpace(spc))
+
+	// then
+	select {
+	case <-opened:
+	case <-time.After(5 * time.Second):
+		t.Fatal("the chat was not reopened")
+	}
+	eventsLock.Lock()
+	defer eventsLock.Unlock()
+	assert.Equal(t, []string{"outdated check", "open chatReset"}, events)
 }
