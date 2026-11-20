@@ -1,8 +1,6 @@
 # include makefiles
 include $(wildcard makefiles/*.mk)
 
-# git config
-$(shell git config core.hooksPath .githooks)
 
 .PHONY: $(MAKECMDGOALS)
 
