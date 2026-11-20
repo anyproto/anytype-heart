@@ -46,7 +46,6 @@ files=$(grep -RrE "$patterns" --include="*.go" . 2>/dev/null | grep -v "_test.go
 pending=(
   core/block/import
   core/block/importv2
-  core/payments
   core/identity
   core/api
   core/files/fileuploader

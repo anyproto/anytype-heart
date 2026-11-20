@@ -99,8 +99,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/notifications"
 	"github.com/anyproto/anytype-heart/core/order"
 	"github.com/anyproto/anytype-heart/core/payments"
-	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
-	"github.com/anyproto/anytype-heart/core/payments/emailcollector"
 	"github.com/anyproto/anytype-heart/core/peerstatus"
 	"github.com/anyproto/anytype-heart/core/publish"
 	"github.com/anyproto/anytype-heart/core/pubsub"
@@ -380,8 +378,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(nameservice.New()).
 		Register(nameserviceclient.New()).
 		Register(payments.New()).
-		Register(paymentscache.New()).
-		Register(emailcollector.New()).
 		Register(peerstatus.New()).
 		Register(order.New()).
 		Register(api.New()).
