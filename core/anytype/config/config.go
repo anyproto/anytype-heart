@@ -89,7 +89,8 @@ type Config struct {
 }
 
 func (c *Config) IsLocalOnlyMode() bool {
-	return c.NetworkMode == pb.RpcAccount_LocalOnly
+	// offline-only build: network-dependent features are disabled
+	return true
 }
 
 // Getters for persisted config fields (read from memory)
@@ -667,8 +668,6 @@ func (c *Config) GetStreamConfig() streampool.StreamConfig {
 		DialQueueSize:    300,
 	}
 }
-
-
 
 func (c *Config) ResetStoredNetworkId() error {
 	return c.SetNetworkId("")

@@ -39,6 +39,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/anytype/config"
+	_ "github.com/anyproto/anytype-heart/core/anytype/offlinenet"
 	"github.com/anyproto/anytype-heart/core/api"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/backlinks"

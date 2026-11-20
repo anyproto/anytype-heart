@@ -12,7 +12,7 @@ require (
 	github.com/anyproto/any-sync v0.13.8
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20260925080338-0fb960f00458
 	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250801122506-553f6c085a23
-	github.com/anyproto/go-chash v0.1.0
+	github.com/anyproto/go-chash v0.1.0 // indirect
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/anyproto/go-slip10 v1.0.1
 	github.com/anyproto/go-sqlite v1.4.2-any
@@ -72,7 +72,6 @@ require (
 	github.com/libp2p/zeroconf/v2 v2.2.0
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/magiconair/properties v1.8.9
-	github.com/matishsiao/goInfo v0.0.0-20240924010139-10388a85396f
 	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/mb0/diff v0.0.0-20131118162322-d8d9a906c24d
 	github.com/microcosm-cc/bluemonday v1.0.27
@@ -164,7 +163,6 @@ require (
 	github.com/dsoprea/go-logging v0.0.0-20200710184922-b02d349568dd // indirect
 	github.com/dsoprea/go-photoshop-info-format v0.0.0-20200609050348-3db9b63b202c // indirect
 	github.com/dsoprea/go-utility/v2 v2.0.0-20221003172846-a3e1774ef349 // indirect
-	github.com/dunglas/httpsfv v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.3.3 // indirect
@@ -255,9 +253,6 @@ require (
 	github.com/prometheus/common v0.70.1 // indirect
 	github.com/prometheus/procfs v0.21.1 // indirect
 	github.com/pseudomuto/protokit v0.2.1 // indirect
-	github.com/quic-go/qpack v0.6.0 // indirect
-	github.com/quic-go/quic-go v0.63.0 // indirect
-	github.com/quic-go/webtransport-go v0.13.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rs/cors v1.11.0 // indirect

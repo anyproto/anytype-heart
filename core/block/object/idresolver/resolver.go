@@ -107,7 +107,7 @@ func (r *resolver) ResolveSpaceIdWithRetry(ctx context.Context, objectId string)
 		return spaceId, err
 	},
 		retry.Context(ctx),
-		retry.Attempts(0),
+		retry.Attempts(10),
 		retry.Delay(r.retryStartDelay),
 		retry.MaxDelay(r.retryMaxDelay),
 		retry.DelayType(retry.BackOffDelay),

@@ -2,6 +2,8 @@ package gateway
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -67,6 +69,7 @@ func New() Gateway {
 // Gateway is a HTTP API for getting files and links from IPFS
 type Gateway interface {
 	Addr() string
+	AuthToken() string
 	app.ComponentRunnable
 	app.ComponentStatable
 }
@@ -80,6 +83,7 @@ type gateway struct {
 	limitCh           chan struct{}
 	fileStallTimeout  time.Duration
 	wellKnownPort     int
+	authToken         string
 
 	// lifecycleMu serializes whole start and stop operations against each other. mu alone is not
 	// enough: a stop has to drop it midway, to shut the HTTP server down without holding a lock the
@@ -110,11 +114,42 @@ func (g *gateway) Init(a *app.App) (err error) {
 	g.fileStallTimeout = fileStallTimeout
 
 	g.handler = http.NewServeMux()
-	g.handler.HandleFunc("/file/", g.fileHandler)
-	g.handler.HandleFunc("/image/", g.imageHandler)
+	g.handler.HandleFunc("/file/", g.wrapWithAuth(g.fileHandler))
+	g.handler.HandleFunc("/image/", g.wrapWithAuth(g.imageHandler))
+	if err := g.generateAuthToken(); err != nil {
+		return fmt.Errorf("generate gateway token: %w", err)
+	}
 	g.limitCh = make(chan struct{}, requestLimit)
 
 	return nil
+}
+
+func (g *gateway) generateAuthToken() error {
+	buf := make([]byte, 32)
+	_, err := rand.Read(buf)
+	if err != nil {
+		return err
+	}
+	g.authToken = base64.RawURLEncoding.EncodeToString(buf)
+	return nil
+}
+
+func (g *gateway) AuthToken() string {
+	return g.authToken
+}
+
+func (g *gateway) wrapWithAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := r.URL.Query().Get("token")
+		if token == "" {
+			token = r.Header.Get("X-Aparok-Gateway-Token")
+		}
+		if token != g.authToken {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next(w, r)
+	}
 }
 
 func (g *gateway) Name() string {
@@ -352,16 +387,6 @@ func (g *gateway) stopServingLocked() error {
 	return nil
 }
 
-func enableCors(w http.ResponseWriter) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
-	// Without this a cross-origin reader sees none of these: only a short
-	// safelist is readable by default, and Content-Disposition is not on it. A
-	// client fetching a download would get no filename and, worse, no
-	// Accept-Ranges or Content-Range to resume with.
-	w.Header().Set("Access-Control-Expose-Headers", "Content-Disposition, Content-Length, Content-Range, Accept-Ranges")
-}
-
 // allowReadMethod answers a CORS preflight and refuses anything that is not a
 // read, before a limiter slot is taken.
 //
@@ -418,7 +443,6 @@ func (g *gateway) readLimitCh() {
 
 // fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
 func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
-	enableCors(w)
 	if !allowReadMethod(w, r) {
 		return
 	}
@@ -481,7 +505,6 @@ func (g *gateway) getFile(ctx context.Context, r *http.Request) (files.File, io.
 
 // imageHandler gets image meta from the DB, gets the corresponding data from the IPFS and decrypts it
 func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
-	enableCors(w)
 	if !allowReadMethod(w, r) {
 		return
 	}
