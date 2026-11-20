@@ -8,11 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"sync"
 	"time"
 
@@ -773,23 +771,5 @@ func (b *builtinObjects) setupProgress() (process.Progress, error) {
 }
 
 func getArchiveReaderAndSize(url string) (reader io.ReadCloser, size int64, err error) {
-	client := http.Client{Timeout: 15 * time.Second}
-	// nolint: gosec
-	resp, err := client.Get(url)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		resp.Body.Close()
-		return nil, 0, fmt.Errorf("failed to fetch zip file: not OK status code: %s", resp.Status)
-	}
-
-	contentLengthStr := resp.Header.Get(contentLengthHeader)
-	if size, err = strconv.ParseInt(contentLengthStr, 10, 64); err != nil {
-		resp.Body.Close()
-		return nil, 0, fmt.Errorf("failed to get zip size from Content-Length: %w", err)
-	}
-
-	return resp.Body, size, nil
+	return nil, 0, fmt.Errorf("external archive download disabled in offline build")
 }
