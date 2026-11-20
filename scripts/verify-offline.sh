@@ -48,7 +48,6 @@ pending=(
   core/block/importv2
   core/payments
   core/identity
-  core/ai
   core/api
   core/files/fileuploader
   space/spacecore/localdiscovery

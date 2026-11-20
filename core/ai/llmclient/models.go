@@ -2,7 +2,6 @@ package llmclient
 
 import (
 	"context"
-	"fmt"
 	"strings"
 )
 
@@ -34,20 +33,7 @@ type Model struct {
 // transient failure should surface immediately rather than hold the caller
 // for the retry budget.
 func ListModels(ctx context.Context, cfg Config, opts ...Option) ([]Model, error) {
-	if cfg.Endpoint == "" {
-		return nil, fmt.Errorf("llm client requires an endpoint")
-	}
-	api, _ := newAPIClient(cfg, opts...)
-	resp, err := api.ListModels(ctx)
-	if err != nil {
-		mapped, _ := classify(err)
-		return nil, mapped
-	}
-	models := make([]Model, 0, len(resp.Models))
-	for _, m := range resp.Models {
-		models = append(models, Model{ID: m.ID, OwnedBy: m.OwnedBy})
-	}
-	return models, nil
+	return nil, ErrEndpointUnreachable
 }
 
 // nonChatModelIDPatterns are substrings of an OpenAI model id that mark its
