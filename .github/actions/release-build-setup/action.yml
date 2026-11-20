@@ -1,0 +1,72 @@
+name: Release build setup
+description: >
+  The environment of a release build job (VERSION, FLAGS, the network tag, private module access) and,
+  unless go is 'false', Go with the module cache, the Go tools and the tantivy libraries. Run it after
+  a checkout with fetch-depth 0, which `git describe` needs.
+
+inputs:
+  go:
+    description: "'false' sets only the environment, for a job that builds nothing"
+    default: 'true'
+  unsplash-key:
+    required: true
+  inhouse-key:
+    required: true
+  anytype-pat:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install Go
+      if: inputs.go == 'true'
+      uses: actions/setup-go@v7
+      with:
+        go-version: '1.26'
+        check-latest: true
+
+    - name: Set env vars
+      shell: bash
+      env:
+        UNSPLASH_KEY: ${{ inputs.unsplash-key }}
+        INHOUSE_KEY: ${{ inputs.inhouse-key }}
+        ANYTYPE_PAT: ${{ inputs.anytype-pat }}
+        ALPHA_VERSION: ${{ github.event.inputs.alpha_version }}
+        EVENT_NAME: ${{ github.event_name }}
+      run: |
+        GIT_SUMMARY=$(git describe --tags --exclude='*-nightly.*' --always)
+        echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
+        VERSION=
+        if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+          VERSION=$ALPHA_VERSION
+          if [ -z "$VERSION" ]; then
+            VERSION=$(git rev-parse --short HEAD)
+          fi
+        fi
+        if [ -z "$VERSION" ]; then
+          VERSION=${GITHUB_REF##*/}
+        fi
+        echo VERSION=${VERSION} >> $GITHUB_ENV
+        echo BUILD_TAG_NETWORK=envproduction >> $GITHUB_ENV
+        echo MAVEN_ARTIFACT_VERSION=${VERSION} >> $GITHUB_ENV
+        echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
+        echo $(pwd)/deps >> $GITHUB_PATH
+        git config --global url."https://${ANYTYPE_PAT}@github.com/".insteadOf "https://github.com/"
+
+    - name: Set Go paths
+      if: inputs.go == 'true'
+      shell: bash
+      run: |
+        echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
+        echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
+        echo $(go env GOPATH)/bin >> $GITHUB_PATH
+
+    - name: Go mod download
+      if: inputs.go == 'true'
+      shell: bash
+      run: go mod download
+
+    - name: Set up the Go tools and the tantivy libraries
+      if: inputs.go == 'true'
+      shell: bash
+      run: make setup-go

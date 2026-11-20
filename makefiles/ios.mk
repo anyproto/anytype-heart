@@ -9,7 +9,7 @@ build-ios: setup-go setup-gomobile
 ifdef ANY_SYNC_NETWORK
 	@$(eval TAGS := $(TAGS) envnetworkcustom)
 endif
-	gomobile bind -tags "$(TAGS)" -ldflags "$(FLAGS)" $(BUILD_FLAGS) -target=ios -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core
+	gomobile bind -tags "$(TAGS)" -ldflags "$(FLAGS)" $(BUILD_FLAGS) -target=ios/arm64,iossimulator/arm64 -o Lib.xcframework github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core
 	@mkdir -p dist/ios/ && mv Lib.xcframework dist/ios/
 	@mkdir -p dist/ios/json/
 	@cp pkg/lib/bundle/system*.json dist/ios/json/
