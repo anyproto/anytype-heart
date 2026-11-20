@@ -24,8 +24,6 @@ import (
 	"github.com/anyproto/any-sync/net/rpc/server"
 	"github.com/anyproto/any-sync/net/secureservice"
 	"github.com/anyproto/any-sync/net/streampool"
-	"github.com/anyproto/any-sync/net/transport/quic"
-	"github.com/anyproto/any-sync/net/transport/yamux"
 	"github.com/anyproto/any-sync/node/nodeclient"
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/any-sync/nodeconf/nodeconfstore"
@@ -134,6 +132,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
 	"github.com/anyproto/anytype-heart/space/spacecore/credentialprovider"
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
+	"github.com/anyproto/anytype-heart/space/spacecore/offlinenet"
 	"github.com/anyproto/anytype-heart/space/spacecore/oldstorage"
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
@@ -288,8 +287,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 
 	a.
 		Register(peerservice.New()).
-		Register(yamux.New()).
-		Register(quic.New()).
+		Register(offlinenet.NewYamux()).
+		Register(offlinenet.NewQuic()).
 		Register(clientserver.New()).
 		Register(coordinatorclient.New()).
 		Register(nodeclient.New()).
