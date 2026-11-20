@@ -8,7 +8,7 @@
 # Usage: pack-release.sh <version> <artifacts dir> <output dir>
 # The artifacts dir holds one directory per build artifact, as actions/download-artifact writes them:
 #   protos/protos.tar          js/, swift/ and java/, each with its protobuf/ and json/
-#   server-<os-arch>/server-<os-arch>.tar   the server binary, named <os-arch>
+#   <any>/server-<os-arch>.tar the server binary, named <os-arch> (one job may upload several)
 #   ios/ios.tar                Lib.xcframework
 #   android/lib.aar
 # TAR overrides the tar binary; it must be GNU tar (gtar on macOS).
@@ -27,7 +27,12 @@ trap 'rm -rf "$work"' EXIT
 for target in darwin-amd64 darwin-arm64 linux-amd64 linux-arm64 windows-amd64; do
   dir="$work/server-$target"
   mkdir -p "$dir"
-  "$tar" -xf "$artifacts/server-$target/server-$target.tar" -C "$dir"
+  src=$(find "$artifacts" -name "server-$target.tar" | head -1)
+  if [ -z "$src" ]; then
+    echo "no server-$target.tar in $artifacts" >&2
+    exit 1
+  fi
+  "$tar" -xf "$src" -C "$dir"
   cp -R "$work/js/protobuf" "$work/js/json" "$dir/"
   if [ "$target" = windows-amd64 ]; then
     mv "$dir/$target" "$dir/grpc-server.exe"
