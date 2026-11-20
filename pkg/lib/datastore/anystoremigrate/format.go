@@ -26,7 +26,7 @@ const formatTempSuffix = ".format-upgrade"
 // The caller holds LockPath(path); db is the only handle on path, and nothing writes through it
 // until UpgradeFormat returns.
 //
-// A cancelled ctx stops the upgrade at the next of its checks: before it starts, after the copy,
+// A canceled ctx stops the upgrade at the next of its checks: before it starts, after the copy,
 // after the database is checkpointed, and after it is closed. Stopped by the last one, it returns
 // nil with the files untouched: the old database, checkpointed, for the next open. Past that check
 // the files are replaced without another look at ctx.
@@ -124,7 +124,12 @@ func (m *Migrator) replaceWithCopy(ctx context.Context, db anystore.DB, path str
 	if err = m.checkSpace(dir, []int64{size}); err != nil {
 		return db, fmt.Errorf("check free space: %w", err)
 	}
-	removeCopy := func() { _ = removeFiles(formatLeftovers(tmp)...) }
+	removeCopy := func() {
+		// what stays is removed before the next upgrade of path copies again
+		if err := removeFiles(formatLeftovers(tmp)...); err != nil {
+			log.Warn("remove the copy of a failed format upgrade", zap.String("path", path), zap.Error(err))
+		}
+	}
 	// ErrCopyPublished: the copy is complete and verified at tmp, and only a step after its
 	// publication failed (the directory sync, or removing a staging file, which the cleanup of
 	// leftovers takes care of); the sync before the rename below is checked

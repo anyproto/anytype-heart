@@ -39,6 +39,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -290,6 +291,10 @@ func (g *openGate) wait(ctx context.Context, timeout time.Duration) bool {
 // DeleteSpaceData and a caller tries to (re)open them, which would resurrect
 // the just-removed on-disk directory.
 var ErrSpaceDeleted = errors.New("space data is deleted")
+
+// ErrInvalidSpaceId is returned for a space id that is not one directory name under the object
+// store: one with a path separator or "..", which would point the provider at files elsewhere.
+var ErrInvalidSpaceId = errors.New("invalid space id")
 
 type systemKeys struct {
 }
@@ -652,6 +657,9 @@ func (s *provider) GetSpaceIndexDb(spaceId string) (anystore.DB, error) {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
 	defer leave()
+	if spaceId == "" || strings.Contains(spaceId, "..") || strings.ContainsAny(spaceId, `/\`) {
+		return nil, fmt.Errorf("open db %q: %w", spaceId, ErrInvalidSpaceId)
+	}
 	path := filepath.Join(s.objectStorePath, spaceId, "objects.db")
 	s.spaceIndexDbsLock.Lock()
 	db, ok := s.spaceIndexDbs[spaceId]
@@ -761,6 +769,9 @@ func (g *AnystoreGetter) Wait() (anystore.DB, error) {
 		return db, nil
 	}
 
+	if g.spaceId == "" || strings.Contains(g.spaceId, "..") || strings.ContainsAny(g.spaceId, `/\`) {
+		return nil, fmt.Errorf("open %q: %w", g.spaceId, ErrInvalidSpaceId)
+	}
 	path := filepath.Join(g.objectStorePath, g.spaceId, "crdt.db")
 	unlock := anystoremigrate.LockPath(path)
 	defer unlock()
@@ -901,6 +912,9 @@ func (s *provider) ListSpaceIdsFromFilesystem() ([]string, error) {
 // unbounded acquiring the write connection, so closing under the lock would
 // stall every concurrent GetSpaceIndexDb/GetCrdtDb/Flush.
 func (s *provider) DeleteSpaceData(spaceId string) error {
+	if spaceId == "" || strings.Contains(spaceId, "..") || strings.ContainsAny(spaceId, `/\`) {
+		return fmt.Errorf("delete space data %q: %w", spaceId, ErrInvalidSpaceId)
+	}
 	var errs error
 
 	s.deletedSpaceIdsLock.Lock()

@@ -714,8 +714,8 @@ func (s *dsObjectStore) offloadedSpaceIds() (map[string]struct{}, error) {
 	}
 	ids := make(map[string]struct{}, len(records))
 	for _, record := range records {
-		switch model.SpaceStatus(record.Details.GetInt64(bundle.RelationKeySpaceAccountStatus)) {
-		case model.SpaceStatus_SpaceDeleted, model.SpaceStatus_SpaceRemoving:
+		switch record.Details.GetInt64(bundle.RelationKeySpaceAccountStatus) {
+		case int64(model.SpaceStatus_SpaceDeleted), int64(model.SpaceStatus_SpaceRemoving):
 		default:
 			continue
 		}

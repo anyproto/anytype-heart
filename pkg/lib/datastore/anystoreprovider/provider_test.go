@@ -3,6 +3,7 @@ package anystoreprovider
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -235,4 +236,33 @@ func TestFlushBoundedWait(t *testing.T) {
 		// then
 		assert.Eventually(t, func() bool { return !p.dbsAreFlushing.Load() }, time.Second, 10*time.Millisecond)
 	})
+}
+
+// A space id is one directory name under the object store: anything else would point the provider
+// at files outside it.
+func TestInvalidSpaceIdsAreRefused(t *testing.T) {
+	// given
+	root := t.TempDir()
+	p, err := NewInPath(filepath.Join(root, "repo"))
+	require.NoError(t, err)
+	prov := p.(*provider)
+	t.Cleanup(func() { _ = prov.Close(context.Background()) })
+
+	for _, spaceId := range []string{"", "..", "../outside", "a/b", `a\b`, "space..id"} {
+		t.Run(fmt.Sprintf("%q", spaceId), func(t *testing.T) {
+			// when
+			_, indexErr := prov.GetSpaceIndexDb(spaceId)
+			_, crdtErr := prov.GetCrdtDb(spaceId).Wait()
+			deleteErr := prov.DeleteSpaceData(spaceId)
+
+			// then
+			assert.ErrorIs(t, indexErr, ErrInvalidSpaceId)
+			assert.ErrorIs(t, crdtErr, ErrInvalidSpaceId)
+			assert.ErrorIs(t, deleteErr, ErrInvalidSpaceId)
+		})
+	}
+	// nothing was created beside the repository
+	entries, err := os.ReadDir(root)
+	require.NoError(t, err)
+	assert.Len(t, entries, 1)
 }

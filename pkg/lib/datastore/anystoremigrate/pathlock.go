@@ -17,7 +17,7 @@ type pathLock struct {
 // LockPath takes the process-wide lock of the database at path and returns its release. Whoever
 // migrates, opens, upgrades or removes the database holds it, so that work on one file never
 // overlaps, whichever component or provider instance does it: an open that outlives its provider's
-// Close (its context cancelled, the provider no longer waiting for it) finishes, or gives up, before
+// Close (its context canceled, the provider no longer waiting for it) finishes, or gives up, before
 // the next provider of the same store can touch the file.
 func LockPath(path string) (unlock func()) {
 	pathLocks.Lock()
