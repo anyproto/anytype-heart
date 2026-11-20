@@ -1,5 +1,13 @@
 name: Build
 
+# Each platform builds in its own job, on a runner of its OS where that saves a cross toolchain:
+# darwin and iOS on macOS (Xcode), linux natively on Linux (amd64 and arm64, both with musl),
+# windows cross-compiled with MinGW on Linux (the tantivy library is a MinGW build, so a Windows
+# runner would link with MinGW all the same), and Android on x86_64 Linux (the NDK has no Linux
+# arm64 host build). The protos are generated once, on macOS for the Swift plugin. The release job
+# packs the archives, publishes the libraries to Maven and makes the GitHub release only once every
+# build has succeeded.
+
 on:
   push:
     tags:
@@ -10,137 +18,244 @@ on:
         description: 'Alpha version'
         default: ''
       run-on-runner:
-        description: 'Specify the runner to use'
+        description: 'Runner for the macOS jobs (darwin, iOS, protos)'
         required: true
         default: 'macos-15'
-
+      publish-maven:
+        description: 'Publish the iOS and Android libraries to Maven'
+        type: boolean
+        default: true
 
 permissions:
   actions: 'write'
   packages: 'write'
   contents: 'write'
 
-
 jobs:
-  build:
-    runs-on: ${{ github.event_name == 'push' && 'macos-15' || (github.event.inputs.run-on-runner || 'macos-15') }}
-    timeout-minutes: 180
+  protos:
+    runs-on: ${{ github.event_name == 'push' && 'macos-15' || inputs.run-on-runner || 'macos-15' }}
+    timeout-minutes: 30
     steps:
-      - name: Install Go
-        uses: actions/setup-go@v7
-        with:
-          go-version: '1.26'
-          check-latest: true
+      - name: Checkout
+        uses: actions/checkout@v7
 
-      - name: Setup GO
+      - name: Install protoc and the Swift plugin
+        run: HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install protobuf swift-protobuf
+
+      - name: Generate the JS, Swift and Java protos
         run: |
-          echo "PATH=$PATH"
-          echo "which go: '$(which go)'"
-          echo "which go version: '$( $(which go) version )'"
-          echo "go version: '$(go version)'"
-          echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
-          echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
-          echo $(go env GOPATH)/bin >> $GITHUB_PATH
+          # In the order the single-job build ran them: json/ accumulates, so the Swift and the
+          # Java archives also carry relations.json
+          mkdir -p out/js out/swift out/java
+          make protos-js ci-js-protos
+          cp -R protobuf json out/js/
+          make swift-protos
+          cp -R protobuf json out/swift/
+          make ci-java-protos
+          cp -R protobuf json out/java/
+          COPYFILE_DISABLE=1 tar --no-xattrs --no-mac-metadata -cf protos.tar -C out js swift java
 
+      - name: Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: protos
+          path: protos.tar
+          retention-days: 7
+
+  server:
+    name: server ${{ matrix.target }}
+    runs-on: ${{ matrix.runner == 'macos' && (github.event_name == 'push' && 'macos-15' || inputs.run-on-runner || 'macos-15') || matrix.runner }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: darwin-amd64
+            runner: macos
+          - target: darwin-arm64
+            runner: macos
+          - target: linux-amd64
+            runner: ubuntu-24.04
+          - target: linux-arm64
+            runner: ubuntu-24.04-arm
+          - target: windows-amd64
+            runner: ubuntu-24.04
+    steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - name: Install brew and node deps
-        run: make install-brew-and-node-deps
+      - name: Setup Xcode
+        if: runner.os == 'macOS'
+        uses: maxim-lobanov/setup-xcode@v1.7.0
+        with:
+          xcode-version: '16.2'
+
+      - name: Install the MinGW toolchain
+        if: matrix.target == 'windows-amd64'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
+
+      - name: Setup
+        uses: ./.github/actions/release-build-setup
+        with:
+          unsplash-key: ${{ secrets.UNSPLASH_KEY }}
+          inhouse-key: ${{ secrets.INHOUSE_KEY }}
+          anytype-pat: ${{ secrets.ANYTYPE_PAT }}
+
+      - name: Build
+        if: "!startsWith(matrix.target, 'linux-')"
+        run: make cross-compile-library-${{ matrix.target }}
+
+      # Linux builds with musl inside Alpine, whose GCC is built for musl. Ubuntu's musl-gcc wraps
+      # the glibc GCC, and a static link then takes its libgcc_eh, which calls glibc's
+      # _dl_find_object. Only the build runs in the container (JavaScript actions don't run in
+      # Alpine on arm64): it uses the host's Go, whose binaries are static, and module cache.
+      - name: Build in Alpine
+        if: startsWith(matrix.target, 'linux-')
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          docker run --rm \
+            -v "$PWD:/src" -w /src \
+            -v "$(go env GOROOT):/opt/go:ro" \
+            -v "$(go env GOMODCACHE):/root/go/pkg/mod" \
+            -e FLAGS -e BUILD_TAG_NETWORK -e GOPRIVATE -e TARGET -e GOTOOLCHAIN=local \
+            alpine:3.22 sh -euc '
+              apk add --no-cache build-base git make >/dev/null
+              git config --global --add safe.directory /src
+              # The Makefile calls the compiler by its musl-cross name, <arch>-linux-musl-gcc
+              ln -s "$(command -v gcc)" "/usr/local/bin/$(uname -m)-linux-musl-gcc"
+              export PATH=/opt/go/bin:$PATH
+              make cross-compile-library-$TARGET'
+
+      - name: Check the binary
+        run: |
+          file ${{ matrix.target }}
+          # A linux server linked dynamically against musl doesn't start on glibc distributions
+          if [[ "${{ matrix.target }}" == linux-* ]] && ! file ${{ matrix.target }} | grep -q 'statically linked'; then
+            echo "::error::${{ matrix.target }} is not statically linked"
+            exit 1
+          fi
+
+      - name: Bundle
+        run: tar -cf server-${{ matrix.target }}.tar ${{ matrix.target }}
+
+      - name: Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: server-${{ matrix.target }}
+          path: server-${{ matrix.target }}.tar
+          retention-days: 7
+
+  ios:
+    runs-on: ${{ github.event_name == 'push' && 'macos-15' || inputs.run-on-runner || 'macos-15' }}
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1.7.0
         with:
           xcode-version: '16.2'
 
-      - name: Set env vars
-        env:
-          UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
-          INHOUSE_KEY: ${{ secrets.INHOUSE_KEY }}
+      - name: Setup
+        uses: ./.github/actions/release-build-setup
+        with:
+          unsplash-key: ${{ secrets.UNSPLASH_KEY }}
+          inhouse-key: ${{ secrets.INHOUSE_KEY }}
+          anytype-pat: ${{ secrets.ANYTYPE_PAT }}
+
+      - name: Setup gomobile
+        run: make setup-gomobile
+
+      - name: Build
+        run: make build-ios-lib
+
+      - name: Bundle
+        run: COPYFILE_DISABLE=1 tar --no-xattrs --no-mac-metadata -cf ios.tar Lib.xcframework
+
+      - name: Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios
+          path: ios.tar
+          retention-days: 7
+
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup
+        uses: ./.github/actions/release-build-setup
+        with:
+          unsplash-key: ${{ secrets.UNSPLASH_KEY }}
+          inhouse-key: ${{ secrets.INHOUSE_KEY }}
+          anytype-pat: ${{ secrets.ANYTYPE_PAT }}
+
+      - name: Use NDK 28
         run: |
-          GIT_SUMMARY=$(git describe --tags --exclude='*-nightly.*' --always)
-          echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION=${{ github.event.inputs.alpha_version }}
-            if [ -z "$VERSION" ]; then
-              VERSION=$(git rev-parse --short HEAD)
-            fi
+          # The Ubuntu image ships NDK 27, 29 and 30; install the 28 the macOS image had
+          if ! ls -d ${ANDROID_HOME}/ndk/28.* >/dev/null 2>&1; then
+            yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358" > /dev/null
           fi
-          if [ -z "$VERSION" ]; then
-            VERSION=${GITHUB_REF##*/}
-          fi
-          echo VERSION=${VERSION} >> $GITHUB_ENV
-          echo BUILD_TAG_NETWORK=envproduction >> $GITHUB_ENV
-          echo MAVEN_ARTIFACT_VERSION=${VERSION} >> $GITHUB_ENV
-          echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
           NDK28=$(ls -d ${ANDROID_HOME}/ndk/28.* 2>/dev/null | sort -V | tail -1)
-          if [ -z "$NDK28" ]; then echo "ERROR: NDK 28.x not found"; ls ${ANDROID_HOME}/ndk/; exit 1; fi
+          if [ -z "$NDK28" ]; then echo "::error::NDK 28.x not found"; ls ${ANDROID_HOME}/ndk/; exit 1; fi
           echo "Using NDK: $NDK28"
           echo ANDROID_NDK=$NDK28 >> $GITHUB_ENV
           echo ANDROID_NDK_HOME=$NDK28 >> $GITHUB_ENV
           echo ANDROID_NDK_ROOT=$NDK28 >> $GITHUB_ENV
-          echo $(pwd)/deps >> $GITHUB_PATH
-          echo "${GOBIN}" >> $GITHUB_PATH
-          git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
 
-      - name: Go mod download
-        run: go mod download
+      - name: Setup gomobile
+        run: make setup-gomobile
 
-      - name: install protoc
-        run: make setup-protoc
+      - name: Build
+        run: make build-android-lib
 
-      - name: setup go
-        run: |
-          make setup-go
-          make setup-gomobile
-          which gomobile
+      - name: Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: android
+          path: lib.aar
+          retention-days: 7
 
-      - name: Cross-compile library mac/win/linux
-        run: |
-          make cross-compile-library
-          ls -lha .
+  release:
+    needs: [protos, server, ios, android]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
-      - name: Make JS protos
-        if: github.event_name == 'push'
-        run: |
-          make protos-js
-          make ci-js-protos
+      - name: Setup
+        uses: ./.github/actions/release-build-setup
+        with:
+          go: 'false'
+          unsplash-key: ${{ secrets.UNSPLASH_KEY }}
+          inhouse-key: ${{ secrets.INHOUSE_KEY }}
+          anytype-pat: ${{ secrets.ANYTYPE_PAT }}
 
-      - name: Pack servers
-        if: github.event_name == 'push'
-        run: make pack-server
+      - name: Download the builds
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
 
-      - name: Make swift protos
-        run: make swift-protos
-
-      - name: Compile ios lib
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_USER: ${{ github.actor }}
-          MAVEN_ARTIFACT_ID: 'anytype-heart-ios'
-          MAVEN_ARTIFACT_NAME: 'ios_framework.tar.gz'
-          PUBLISH_GRADLE: 1
-        run: make compile-ios-lib
-
-      - name: Make java protos
-        run: make ci-java-protos
-
-      - name: Compile android lib
-        run: make compile-android-lib
-
-      - name: Publish android lib to maven
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_USER: ${{ github.actor }}
-          MAVEN_ARTIFACT_ID: 'anytype-heart-android'
-          MAVEN_ARTIFACT_NAME: 'lib.aar'
-        run: |
-          gradle publish
+      - name: Pack the release archives
+        run: bash .github/scripts/pack-release.sh "$VERSION" artifacts .release
 
       - name: Validate release artifacts
-        if: github.event_name == 'push'
         run: |
           expected=(
             ".release/android_lib_${VERSION}.tar.gz"
@@ -162,6 +277,45 @@ jobs:
           fi
           echo "All 7 release artifacts present:"
           ls -lh .release/
+
+      - name: Upload the release archives of a manual run
+        if: github.event_name != 'push'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-archives
+          path: .release/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Stage the Maven artifacts
+        run: |
+          cp ".release/ios_framework_${VERSION}.tar.gz" ios_framework.tar.gz
+          cp artifacts/android/lib.aar lib.aar
+
+      - name: Publish the iOS lib to Maven
+        if: github.event_name == 'push' || inputs.publish-maven
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USER: ${{ github.actor }}
+          MAVEN_ARTIFACT_ID: 'anytype-heart-ios'
+          MAVEN_ARTIFACT_NAME: 'ios_framework.tar.gz'
+        run: gradle publish
+
+      - name: Publish the android lib to Maven
+        if: github.event_name == 'push' || inputs.publish-maven
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USER: ${{ github.actor }}
+          MAVEN_ARTIFACT_ID: 'anytype-heart-android'
+          MAVEN_ARTIFACT_NAME: 'lib.aar'
+        run: gradle publish
+
+      - name: Check the Maven publications without publishing
+        if: github.event_name != 'push' && !inputs.publish-maven
+        run: |
+          MAVEN_ARTIFACT_ID=anytype-heart-ios MAVEN_ARTIFACT_NAME=ios_framework.tar.gz gradle publishToMavenLocal
+          MAVEN_ARTIFACT_ID=anytype-heart-android MAVEN_ARTIFACT_NAME=lib.aar gradle publishToMavenLocal
 
       - name: Release
         if: github.event_name == 'push'
