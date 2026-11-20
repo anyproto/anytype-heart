@@ -41,11 +41,11 @@ cross-compile-library-linux-amd64:
 		GOARCH="amd64" \
 		CGO_ENABLED="1" \
 		CC="x86_64-linux-musl-gcc" \
-		go build -tags="$(BUILD_TAGS) noheic" -ldflags="$(FLAGS) -linkmode external -extldflags '-static -Wl,-z stack-size=1000000'" -o linux-amd64 github.com/anyproto/anytype-heart/cmd/grpcserver
+		go build -tags="$(BUILD_TAGS) noheic" -ldflags="$(FLAGS) -linkmode external -extldflags '-static -Wl,-z,stack-size=1000000'" -o linux-amd64 github.com/anyproto/anytype-heart/cmd/grpcserver
 
 cross-compile-library-linux-arm64:
 	GOOS="linux" \
 		GOARCH="arm64" \
 		CGO_ENABLED="1" \
 		CC="aarch64-linux-musl-gcc" \
-		go build -tags="$(BUILD_TAGS) noheic" -ldflags="$(FLAGS) -linkmode external" -o linux-arm64 github.com/anyproto/anytype-heart/cmd/grpcserver
+		go build -tags="$(BUILD_TAGS) noheic" -ldflags="$(FLAGS) -linkmode external -extldflags '-static -Wl,-z,stack-size=1000000'" -o linux-arm64 github.com/anyproto/anytype-heart/cmd/grpcserver
