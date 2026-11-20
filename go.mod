@@ -18,7 +18,7 @@ require (
 	github.com/anyproto/go-sqlite v1.4.2-any
 	github.com/anyproto/goheif v0.0.0-20260216083627-c3efd00cd92e
 	github.com/anyproto/lexid v0.0.6
-	github.com/anyproto/tantivy-go v1.0.6
+	github.com/anyproto/tantivy-go v1.0.7
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/avast/retry-go/v4 v4.6.1
 	github.com/awalterschulze/goderive v0.5.1
