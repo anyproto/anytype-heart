@@ -105,7 +105,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/publish"
 	"github.com/anyproto/anytype-heart/core/pubsub"
 	"github.com/anyproto/anytype-heart/core/pushnotification"
-	"github.com/anyproto/anytype-heart/core/pushnotification/pushclient"
 	"github.com/anyproto/anytype-heart/core/relationutils/formatfetcher"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -386,7 +385,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(peerstatus.New()).
 		Register(order.New()).
 		Register(api.New()).
-		Register(pushclient.New()).
 		Register(pushnotification.New()).
 		Register(subscribeclient.New()).
 		Register(anysyncinboxclient.New()).
