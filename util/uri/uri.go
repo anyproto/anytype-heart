@@ -153,7 +153,7 @@ func GetFileNameFromURLAndContentType(u *url.URL, contentType string) string {
 }
 
 func ParseInviteUrl(inviteUrl string) (inviteId string, inviteKey string, spaceId string, networkId string, err error) {
-	// e.g. anytype://invite/?cid=ba&key=AbCd
+	// e.g. aparok://invite/?cid=ba&key=AbCd
 	if inviteUrl == "" {
 		return "", "", "", "", nil
 	}
@@ -161,7 +161,7 @@ func ParseInviteUrl(inviteUrl string) (inviteId string, inviteKey string, spaceI
 	if err != nil {
 		return "", "", "", "", err
 	}
-	if u.Scheme == "anytype" {
+	if u.Scheme == "aparok" || u.Scheme == "anytype" {
 		inviteId = u.Query().Get("cid")
 		inviteKey = u.Query().Get("key")
 		spaceId = u.Query().Get("spaceId")

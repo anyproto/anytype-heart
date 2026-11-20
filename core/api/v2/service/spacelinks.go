@@ -13,7 +13,7 @@ import (
 )
 
 // A cross-space object reference is the platform's own two-parameter deep
-// link, `anytype://object?objectId=<id>&spaceId=<space id>`
+// link, `aparok://object?objectId=<id>&spaceId=<space id>`
 // (core/block/export/writer.go). The codec keeps it as an ordinary Link
 // mark, destination verbatim — a second parameter makes it not a same-space
 // object link, and nothing guesses. The API serves space ids SHORT (§8.35)
@@ -22,7 +22,7 @@ import (
 // client can open: the short reference is expanded to the full id on every
 // path that turns caller text into marks.
 const (
-	crossSpaceLinkPrefix = "anytype://object?"
+	crossSpaceLinkPrefix = "aparok://object?"
 	crossSpaceLinkParam  = "spaceId"
 	// maxCrossSpaceLinkDest is the codec's destination bound (INLINE_MARKUP:
 	// 2048 code points AS SPELLED in the document). Expanding a short

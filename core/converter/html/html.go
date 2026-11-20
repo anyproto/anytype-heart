@@ -166,7 +166,7 @@ func (h *HTML) renderFile(b *model.Block) {
 		return
 	}
 	goToAnytypeMsg := `<div class="message">
-		<div class="header">This content is available in Anytype.</div>
+		<div class="header">This content is available in Aparok.</div>
 		Follow <a href="https://anytype.io">link</a> to ask a permission to get the content
 	</div>`
 
@@ -270,7 +270,7 @@ func (h *HTML) renderLink(b *model.Block) {
 		h.buf.WriteString("<div>")
 	}
 	h.buf.WriteString(`<div class="message">
-		<div class="header">This content is available in Anytype.</div>
+		<div class="header">This content is available in Aparok.</div>
 		Follow <a href="https://anytype.io">link</a> to ask a permission to get the content
 	</div>`)
 	if len(b.ChildrenIds) > 0 {

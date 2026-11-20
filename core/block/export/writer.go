@@ -244,12 +244,12 @@ type deepLinkNamer struct {
 func (fn *deepLinkNamer) Get(path, hash, title, ext string) (name string) {
 	if ext == ".md" {
 		// object links via deeplink to the app
-		return "anytype://object?objectId=" + hash + "&spaceId=" + fn.spaceId
+		return "aparok://object?objectId=" + hash + "&spaceId=" + fn.spaceId
 	}
 
 	// files links via gateway
 	if fn.gatewayUrl.Host == "" {
-		return "anytype://object?objectId=" + hash + "&spaceId=" + fn.spaceId
+		return "aparok://object?objectId=" + hash + "&spaceId=" + fn.spaceId
 	}
 	u := fn.gatewayUrl
 	if mill.IsImageExt(ext) {
