@@ -2,9 +2,10 @@ name: Build
 
 # Each platform builds in its own job, on a runner of its OS where that saves a cross toolchain:
 # darwin and iOS on macOS (Xcode), linux natively on Linux (amd64 and arm64, both with musl),
-# windows cross-compiled with MinGW on Linux (the tantivy library is a MinGW build, so a Windows
-# runner would link with MinGW all the same), and Android on x86_64 Linux (the NDK has no Linux
-# arm64 host build). The protos are generated once, on macOS for the Swift plugin. The release job
+# windows cross-compiled on macOS with Homebrew's MinGW (the toolchain the tantivy library is built
+# with, linking the Universal C Runtime; Ubuntu's MinGW links msvcrt.dll instead), and Android on
+# x86_64 Linux (the NDK has no Linux arm64 host build). The protos are generated once, on macOS for
+# the Swift plugin. The release job
 # packs the archives, publishes the libraries to Maven and makes the GitHub release only once every
 # build has succeeded.
 
@@ -79,7 +80,7 @@ jobs:
           - target: linux-arm64
             runner: ubuntu-24.04-arm
           - target: windows-amd64
-            runner: ubuntu-24.04
+            runner: macos
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -94,9 +95,7 @@ jobs:
 
       - name: Install the MinGW toolchain
         if: matrix.target == 'windows-amd64'
-        run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
+        run: HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1 HOMEBREW_NO_AUTO_UPDATE=1 HOMEBREW_NO_INSTALL_CLEANUP=1 brew install mingw-w64
 
       - name: Setup
         uses: ./.github/actions/release-build-setup
@@ -138,6 +137,15 @@ jobs:
           if [[ "${{ matrix.target }}" == linux-* ]] && ! file ${{ matrix.target }} | grep -q 'statically linked'; then
             echo "::error::${{ matrix.target }} is not statically linked"
             exit 1
+          fi
+          # The windows server uses the Universal C Runtime (api-ms-win-crt-*), like the tantivy
+          # library it links; a MinGW that defaults to msvcrt.dll would mix the two runtimes
+          if [[ "${{ matrix.target }}" == windows-* ]]; then
+            x86_64-w64-mingw32-objdump -p ${{ matrix.target }} | grep 'DLL Name' | sort -u
+            if x86_64-w64-mingw32-objdump -p ${{ matrix.target }} | grep -qi 'DLL Name: msvcrt.dll'; then
+              echo "::error::${{ matrix.target }} imports msvcrt.dll instead of the Universal C Runtime"
+              exit 1
+            fi
           fi
 
       - name: Bundle
