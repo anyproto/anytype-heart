@@ -318,12 +318,18 @@ func (s *apiService) shutdownLocked(ctx context.Context) error {
 	shutdownCtx, cancel := context.WithTimeout(ctx, shutdownTimeout)
 	defer cancel()
 
-	err := httpSrv.Shutdown(shutdownCtx)
+	// Shutdown waits for every connection to go idle, and the grace here is
+	// a millisecond: a request still in flight, or a stream held open,
+	// outlasts it. Returning that as an error left the caller with the old
+	// listener closed and the new address never bound. What the grace did
+	// not drain is cut instead — the server is being replaced either way.
+	if err := httpSrv.Shutdown(shutdownCtx); err != nil {
+		if closeErr := httpSrv.Close(); closeErr != nil {
+			log.Warnf("close previous http server after %v: %v", err, closeErr)
+		}
+	}
 	if listener != nil {
 		_ = listener.Close()
-	}
-	if err != nil {
-		return fmt.Errorf("close previous http server: %w", err)
 	}
 	return nil
 }
