@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/util"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -305,9 +306,9 @@ func TestWhoamiAgreesWithTheGate(t *testing.T) {
 			// under allSpaces the tech space stays outside the mirror AND
 			// outside the gate — the exclusion may never drift apart either
 			if mirror.Grant.AllSpaces {
-				require.False(t, claimed[mockedTechSpaceId],
+				require.False(t, claimed[objectstore.TestTechSpaceId],
 					"whoami must not enumerate the tech space")
-				techProbe := serveWithKey(fx, "GET", "/v2/spaces/"+mockedTechSpaceId+"/types", "scopedKey")
+				techProbe := serveWithKey(fx, "GET", "/v2/spaces/"+objectstore.TestTechSpaceId+"/types", "scopedKey")
 				require.Equal(t, http.StatusForbidden, techProbe.Code,
 					"the gate must refuse the tech space under allSpaces")
 			}

@@ -57,6 +57,7 @@ live in the `name` and `description` properties.
 | Task | Request |
 | --- | --- |
 | Find available spaces | `GET /v2/spaces` |
+| Watch for new and removed spaces | `GET /v2/spaces/stream` |
 | Search within a space | `POST /v2/spaces/{space_id}/search` |
 | Search across spaces | `POST /v2/search` |
 | Read a document | `GET /v2/spaces/{space_id}/objects/{object_id}` |
@@ -115,7 +116,8 @@ suffixes collide are served with full ids.
 
 A short reference is only unique among the spaces currently visible to the
 key. Joining another space can make it ambiguous. Use `?ids=full` whenever a
-space reference will be stored outside the API.
+space reference will be stored outside the API. The spaces stream serves full
+ids only, for the same reason.
 
 ## Read and search efficiently
 
@@ -379,6 +381,47 @@ nor has a discussion has neither. For example,
 `{"filter":"unread_mention_count > 0","fields":["name","discussion"]}` watches
 every chat that mentions you and every object whose discussion does, and a hit
 leaves the set once you mark those mentions read.
+
+## Watch your spaces
+
+`GET /v2/spaces/stream` holds the spaces list open over Server-Sent Events,
+so a client learns about a new space without polling. It serves the same rows
+as `GET /v2/spaces`, always with full ids: `ids=compact` returns `400`.
+
+It opens with one `space_added` event per space, in id order, then
+`snapshot_complete`, also for an empty set. Live events follow:
+
+- `space_added` with the space row when a space becomes visible: created,
+  joined, loaded after a failed load, or newly granted to the key
+- `space_updated` with the whole row when its name, description, or icon
+  changes
+- `space_removed` with `space_id` and a `reason` when a space leaves the set
+- `not_granted_updated` when `has_not_granted_spaces` changes
+- `stream_closed` with a `reason`, as the last event before the server ends
+  the stream
+
+`snapshot_complete` and `not_granted_updated` carry `has_not_granted_spaces`,
+with the meaning it has on the list.
+
+A `space_removed` reason is one of:
+
+- `access_removed`: the key's grant no longer covers the space
+- `gone`: the account no longer holds the space. It was deleted or left
+- `unavailable`: the account still holds the space, but it did not load on
+  this device or the account is still joining it. It can return as
+  `space_added`. If it is deleted or the key loses it first, a second
+  `space_removed` carries that final reason
+
+Editing the key's grant changes the stream in place: spaces leave with
+`access_removed` and arrive with `space_added`, with no reconnect. Revoking
+the key ends the stream with `stream_closed` and reason `key_revoked`. An
+expiring key ends it with `key_expired`. After either, a new request with the
+same key returns `401`, so do not reconnect. A stream that ends with no
+`stream_closed` can be reopened.
+
+Events carry no id and nothing replays. After a reconnect the stream opens
+with a fresh snapshot, and a space you hold that is absent from it has left
+the set.
 
 ## Download files and icons
 

@@ -1,8 +1,10 @@
 # API v2 — the spaces stream
 
-Status: design, 2026-11-21, revised 2026-11-23 (a loading space counts as
-visible, §3.3), not implemented · heart `develop` @ `b6321aac4` · gin
-v1.10.0. §10 records where the working assumptions were corrected.
+Status: implemented 2026-11-23 on `develop` @ `b6321aac4` (gin v1.10.0).
+Designed 2026-11-21, revised 2026-11-23 (a loading space counts as visible,
+§3.3). §10 records where the working assumptions were corrected, and what
+the implementation changed in the design. File and line references are to
+the tree the design was written against.
 
 `GET /v2/spaces` answers "which spaces can this key see" once. A client that
 must notice a new space — a bot that sets up every space it is granted, a
@@ -130,7 +132,7 @@ stops instead of reconnecting into a 401. Nothing else ends the stream.
 | status | cause |
 |---|---|
 | 400 `validation_failed` | `ids=compact`; an unknown `ids` or out-of-range `limit` (group middleware) |
-| 401 | the shared auth middleware; or the open-time re-read (§4.4 R1) found the key revoked or expired — answered with the auth middleware's own body and `WWW-Authenticate` |
+| 401 | the shared auth middleware; or the open-time re-read (§4.4 R1) found the key revoked, expired or unverifiable — answered with the auth middleware's own body and `WWW-Authenticate` (`api key expired` for an expired key, `invalid api key` otherwise, which is what the middleware answers any failed mint) |
 | 403 | key scope (`ensureJsonApiScope`, a Limited key). Never `space_not_granted`: the route addresses no space |
 | 429 `too_many_streams` | the stream cap (§5) |
 | 500 | the subscription cannot be opened |
@@ -179,6 +181,19 @@ derived from its space (`space/techspace/techspace.go:277-298, 371-383`), so
 two views of one target exist only in damaged data; the change makes the
 existing answer deterministic, which the stream needs because its view map
 has no order.
+
+GET-one and `ensureSpace` judge a space by the same view. They used to take
+the first record the store returned for the target
+(`pkg/lib/localstore/objectstore/space.go:41-62`), so with a dead view
+stored before a live one the list served a space that GET-one and every
+nested route answered 404 for. `spaceViewOf` picks, among the target's views,
+the one `visibleSpaces` names the row by — the first live one by view id,
+else the first by view id (`judgedSpaceView`). There is no fallback to the
+store's lookup: the service and the store take the tech space id from the
+same place, so it could find nothing more, and if the two ever differed it
+would bring the first-record rule back. The anti-drift test (§7) found this
+on its doubled-target fixture. The global search's loading warning judges a
+doubled target by the same view (`loadingSpaceIds`).
 
 Liveness gets a classifier: `spaceViewState(details) → live | unavailable | gone`,
 and `isLiveSpaceView(d)` becomes `spaceViewState(d) == live`. Its `live`
@@ -367,8 +382,11 @@ It is filtered by neither liveness nor grant:
   (`core/subscription/service.go:390-399`), so the snapshot and the list read
   one record set, default filters included.
 
-Every input — an engine batch or a grant re-read — triggers a recomputation: `visibleSpaces` over the current view map and grant, diffed
-against what was sent.
+Every input — an engine batch or a grant re-read — triggers a
+recomputation: `visibleSpaces` over the current view map and grant, diffed
+against what was sent. Inside one wake the key comes first (§4.4 R2): a
+pending change signal is consumed and the key re-read, then the wall clock
+is checked, and only then are view changes turned into events.
 
 The guard stays in the v2 service: the adapter accepts any space id
 (`objectsearchadapter.go:63-66`); this path hands it the tech space with a
@@ -483,6 +501,7 @@ cache read and caching the result under the same eviction-generation rule
 | `APP_TOKEN_NOT_FOUND_IN_THE_CURRENT_ACCOUNT` | `ErrKeyRevoked` → `stream_closed{key_revoked}` |
 | `APP_TOKEN_EXPIRED` | `ErrKeyExpired` → `stream_closed{key_expired}` |
 | anything else (e.g. `UNKNOWN_ERROR` while the account stops, `core/wallet.go:57-62`) | `ErrKeyUnverified` → the end, no event |
+| `NULL`, but the returned `ExpireAt` is already past | `ErrKeyExpired` |
 
 Why the mint and not a new wallet port: it is the gate's own derivation of a
 key's grant, so the stream and the next request cannot disagree; its
@@ -496,8 +515,10 @@ open stream — what a cache miss costs.
 The v2 layer never sees the key. It sees
 `KeyWatch{State() KeyState; Changed() <-chan struct{}; Current(ctx) (KeyState, error); Closing() <-chan struct{}; Close()}`
 with `KeyState{Grant *util.ApiGrant; ExpireAt int64}`, declared in
-`v2service` (the consumer) and implemented in `server`, which keeps the
-dependency direction `server → v2`.
+`v2service` (the consumer) and implemented in `server` (`keywatch.go`), which
+keeps the dependency direction `server → v2`. The handler owns the watch: it
+gets it from `RouteDeps.WatchKey` before the subscription opens and closes it
+when the response ends; the stream only reads it.
 
 ### 4.4 Races
 
@@ -525,6 +546,23 @@ never carries a space the key lost before the stream existed.
 
 **R2 — an edit during a re-read.** Its sweep signals the registered watcher;
 the channel holds the signal; the next iteration re-reads.
+
+**R2a — an edit signalled while another input is handled.** The worker's
+`select` picks among ready inputs at random, so the subscription can win
+while a change signal is pending. Recomputing first would emit the view
+change under the grant the key no longer has: `space_updated` for a space
+the key just lost, then its removal. So the subscription's turn starts with a
+non-blocking read of `Changed()` and re-reads the key before it recomputes
+(`onViewChanges`); a revocation found there ends the stream before the view
+change is emitted. The same holds at open: the watch is registered before the
+subscription opens, so a signal can be pending when the snapshot is built.
+`OpenSpacesStream` consumes it and re-reads first; a key found revoked,
+expired or unverifiable there is the 401 of §2.5, through
+`RouteDeps.RefuseKey`. Expiry is checked the same way — before a recompute,
+not after: a view change that arrives after the key expired is not emitted.
+And at open, whether or not a signal is pending: a key that expired between
+the middleware's check and the snapshot is the 401 `api key expired`, not a
+200 with a snapshot followed by `stream_closed`.
 
 **R3 — edit against revoke.** The wallet's `appLinkMu` lets a racing edit
 either finish before the delete or fail with `ErrAppLinkNotFound`
@@ -576,7 +614,9 @@ were told to end.
     `onePathSegment` (`wrapper/full/executor.go:256-261`) and would open this
     stream over the buffered in-process transport, holding a stream slot
     until the caller's deadline. The executor refuses an assembled method and
-    path equal to another operation's literal path.
+    path equal to another operation's literal path: the derived table keeps
+    every parameter-free route of the document, excluded operations included
+    (`Table.literalRoutes`).
 - **`resolveSpaceRef`**: no `space_id`, passes through (`v2/spaceref.go:39-43`).
 - **Authorization**: `{Read, GlobalServiceFiltered}` beside `GET /v2/spaces`
   (`v2/authz.go:114`). The gate's no-space branch admits a service-filtered
@@ -607,23 +647,24 @@ were told to end.
 | `v2/model/space_stream_event.go` (new) | event and reason constants, `SpaceStreamEvent` |
 | `v2/model/ref.go` | `OpStreamSpaces = "stream_spaces"`, row `{"GET", "/v2/spaces/stream"}` |
 | `v2/service/discovery.go` | `spaceViewKeys`, `visibleSpaces`; `liveSpaceRowsWithGrantInfo` = query + project + `visibleSpaces` |
-| `v2/service/space.go` | `spaceViewState` with Loading in the live set; `isLiveSpaceView` through it; `spaceRemovalReason`; the comments at `:46-52` and `discovery.go:24-31` |
+| `v2/service/space.go` | `spaceViewState` with Loading in the live set; `isLiveSpaceView` through it; `spaceViewOf` / `judgedSpaceView` for GET-one and `ensureSpace` (§3.2); the comments at `:46-52` and `discovery.go:24-31` |
 | `v2/service/spaceref.go` | reserved tails in `shortSpaceRefs` |
-| `v2/service/spaces_stream.go` (new) | `KeyWatch`, `KeyState`, `ErrKeyRevoked/Expired/Unverified`; cap; `OpenSpacesStream(ctx, KeyWatch)`; `SpacesStream` with a worker goroutine merging engine changes, `Changed()`, `Closing()` and the expiry timer into one output queue; `Snapshot/Ready/Drain/Close` |
+| `v2/service/spaces_stream.go` (new) | `KeyWatch`, `KeyState`, `ErrKeyRevoked/Expired/Unverified`; cap; `OpenSpacesStream(ctx, KeyWatch)`; `SpacesStream` with a worker goroutine merging engine changes, `Changed()`, `Closing()` and the expiry timer into one output queue; `Snapshot/Ready/Drain/Close`, `Drain` also reporting that the server ended the stream; `spaceRemovalReason`; the `streamClock` the service injects |
 | `v2/service/service.go` | `spacesStreams` slot counter; an injectable clock for the expiry timer; `ensureSpaceLoaded` and `spaceLoadWait`; `ensureSpaceWrite` calls it; `ensureSpaceRead` for the live reads |
 | `v2/service/space.go`, `search.go`, `v2/handler/discovery.go`, `object.go`, `chat.go` | `LoadingSpaceWarnings` and the one wording of the warning; the searches append it; `storeListResponse` adds it to the store-read lists |
 | `v2/service/chat.go`, `space.go`, `object.go`, `list_read.go`, `widgets.go`, `file_download.go` | `ensureChat` (and through it `ensureChatWrite`), `UpdateSpace`, `GetObject` (which the type-document read reaches, `discovery.go:286`), `readListTarget`, `ListWidgets` and `GetFileContent` call `ensureSpaceLoaded`; the store-read lists and search add the loading warning |
 | `core/api/core/core.go`, `core/api/service.go`, `server/server.go` | the `SpaceLoads` port, its package-`api` implementation over `space.Service.Get`, `V2Deps.SpaceLoads` into `v2service.NewService`; `.mockery.yaml` + `make test-deps` |
 | `v2/model/model.go`, `v2/handler/error.go` | `CodeSpaceLoading` and its 503; `Retry-After` set where the error becomes bytes |
-| `v2/handler/spaces_stream.go` (new) | handler + annotations; the `ids` refusal; the search stream's loop (`v2/handler/search_stream.go:35-79`), returning after a drained `stream_closed` |
+| `v2/handler/spaces_stream.go` (new) | handler + annotations; the `ids` refusal; a key found gone while opening handed to `RouteDeps.RefuseKey`; the search stream's loop (`v2/handler/search_stream.go:35-79`), returning after a drained `stream_closed` |
 | `v2/router.go` | `RouteDeps.WatchKey func(*gin.Context) (v2service.KeyWatch, bool)`; the route |
 | `v2/authz.go` | the authorization row |
-| `server/server.go` | `watchers`, the signal in `RevokeToken`, `CloseStreams`, `keyWatch`, the shared mint-and-cache helper |
-| `server/middleware.go` | the helper; the observed generation on the gin context; `util.KeyExpired` |
+| `server/server.go` | `watchers`, `streamsClosing`, an injectable `now`; the signal in `RevokeToken` |
+| `server/keywatch.go` (new) | `keyWatch`, `newKeyWatch` (registration and the R1 re-read), `watchKey` (the 401 of §2.5), `signalWatchersLocked`, `CloseStreams` |
+| `server/middleware.go` | `mintSession`, the mint-and-cache helper both the middleware and `keyWatch.Current` call; the observed generation on the gin context; `util.KeyExpired` |
 | `server/router.go` | `WatchKey: srv.watchKey(mw)` in `RouteDeps` |
 | `core/api/service.go` | `shutdownLocked` calls `s.srv.CloseStreams()` before `Shutdown` |
 | `util/keystatus.go` | `KeyExpired` |
-| `wrapper/full/overlay.go`, `executor.go` | the exclusion; the shadow guard |
+| `wrapper/full/overlay.go`, `table.go`, `derive.go`, `executor.go` | the exclusion; `Table.literalRoutes` and the shadow guard |
 | `scripts/fix_openapi_v2.py` | `stream_spaces` in `STREAM_OPERATIONS` (`:320`; the 429 follows, `:327`); a 503 policy for the operations that call `ensureSpaceLoaded` |
 | `v2/openapi_responses_test.go` | 59 → 60 operations (`:109`); the response-pair golden (`:226`) grows by the stream's five (200, 400, 401, 403, 429) and one 503 per gated operation — take the number from the generated document; `stream_spaces` in `resourceLimited` (`:255`); the gated set pinned |
 | `v2/handler/discovery.go:16`, `v2/handler/space.go:26` | descriptions: a loading space is listed and served |
@@ -671,13 +712,15 @@ means:
 | `TestVisibleSpaces` (`service/liveness_test.go`) | rows and flag under nil, all-spaces read, all-spaces readwrite, a narrowed list naming dead and tech spaces, an explicit tech grant | each case runs over every input order of the duplicate-target pair, so a store-order or map-order tie-break fails; the tech-target view fails an `AllowsSpace`-only grant check; a narrowed case whose only non-granted views are dead fails a flag computed before the liveness check |
 | `TestSpacesStreamAgreesWithListAndGate` (`core/api/spacesstream_integration_test.go`, package `api`) | the anti-drift test: snapshot rows = `GET /v2/spaces?ids=full` rows (ids, names, descriptions, icons, order); `snapshot_complete` flag = the list's flag; per fixture id, present in the stream ⇔ GET-one 200, absent and refused by the grant ⇔ 403 `space_not_granted`; after a live phase (Missing → Loading → Ok, Active → Deleted, a view deleted, a view created) and a drain, the stream's held set = the list again | It runs on one real store through `server.NewServer` with the real adapter over `subscription.NewInternalTestService` (package `api` can import `server`; package `server` cannot import the adapter, and a mocked `ObjectSearch` would be fed by the test itself). A subscription filter that opted out of a default filter shows the deleted view on one side; a grant applied with `AllowsSpace` shows the tech-target view under all spaces; a stream or list keeping the old predicate disagrees on the `Loading` view; short ids differ on shaped ids. Expectations are derived from the stream's output only, the discipline of `TestWhoamiAgreesWithTheGate` (`whoami_test.go:249-322`) |
 | `TestSpacesStreamLive` (`service/spaces_stream_test.go`, `fakeObjectSearch` of `search_stream_test.go:26`, fake `KeyWatch`) | added, updated, removed per transition; a create's Unknown → Loading → Ok emits one `space_added` and nothing else; Loading → Missing emits `space_removed{unavailable}`; Missing → Loading emits `space_added`; `unavailable` then Deleted emits a second `space_removed{gone}`; `unavailable` then de-granted emits `access_removed` | the create sequence arrives as three separate engine changes, so a stream on the old predicate emits the removal and re-add the §3.3 table rules out; deletion arrives as a detail-less removal, so a classifier that waits for details misnames it; the Missing + RemoteDeleted write arrives as one change, so classifying on either field alone fails |
+| `TestSpacesStreamKeyComesBeforeViews` (same file) and the pending-signal cases of `TestOpenSpacesStream` | R2a: with a change signal already pending when the subscription fires, the grant edit is applied before the view change (the removal, and no `space_updated` for the lost space); a pending revocation, and an expired key, end the stream before the view change; at open, a pending edit is in the snapshot and a pending revocation is the refusal | each case builds the stream without its worker, leaves both inputs pending and handles the subscription's wake directly, so the outcome does not depend on which input `select` would have picked; a control with no signal pending re-reads nothing |
 | `TestSpacesStreamGrantChange` (same file) | narrow → `access_removed` (and the flag flip); widen → `space_added`; nil → scoped; scoped → nil; permission-only change → nothing; `ErrKeyRevoked`, `ErrKeyExpired` → `stream_closed` as the last frame; any other error → the end with no frame | the views cover spaces in the old grant only, the new only, both, neither, and the tech target, so a re-read that kept the old grant or re-filtered from `ctx` leaves a visible difference |
-| `TestSpacesStreamExpiry` (same file) + `TestKeyExpired` (`util`) + a middleware boundary case | open at E−2 s; at E still open; at E+1 s `stream_closed{key_expired}`; the middleware admits at E and refuses at E+1 s | both boundary instants are asserted on both sides, so an off-by-one between stream and middleware fails |
-| `TestKeyWatchRegistration` (`server/server_test.go`) | own token's sweep signals; another token's does not; a generation older than `evictGen` is stale and re-reads before `WatchKey` returns; `Close` empties the registry; `CloseStreams` closes every `Closing()` | the strict `WalletCreateSession` mock fails a re-read the other-token sweep must not cause; the registry size is asserted, so a leak fails |
-| `TestSpacesStreamEditDuringMintIsNotLost` (`server/grant_gate_test.go`) | R1 on the miss path, end to end over `httptest.Server`: the first mint's `Run` hook calls `RevokeToken` and returns `{A, B}`, the second returns `{A}`; the snapshot is A alone and no removal follows | without the generation comparison the snapshot carries B and nothing ever removes it — the sweep preceded the registration. Modelled on `TestGrantEditDuringMintIsNotLost` (`:609`) |
+| `TestSpacesStreamExpiry` (same file) + `TestKeyExpired` (`util`) + `TestKeyExpiryBoundary` (`server/spaces_stream_test.go`) | open at E−2 s; at E and at E+999 ms still open; at E+1 s `stream_closed{key_expired}`; the clock is read at every wake, not only when the timer fires; the middleware admits at E and refuses at E+1 s | both boundary instants are asserted on both sides, so an off-by-one between stream and middleware fails; the stream's clock and timer are the test's, so no case sleeps |
+| `TestKeyWatchRegistration` (`server/server_test.go`; also `Current`'s answer per mint code and its caching rule) | own token's sweep signals; another token's does not; a generation older than `evictGen` is stale and re-reads before `WatchKey` returns; `Close` empties the registry; `CloseStreams` closes every `Closing()` | the strict `WalletCreateSession` mock fails a re-read the other-token sweep must not cause; the registry size is asserted, so a leak fails |
+| `TestSpacesStreamEditDuringMintIsNotLost` (`server/spaces_stream_test.go`, with `TestSpacesStreamOpenRefusals` for the 401 of §2.5) | R1 on the miss path, end to end over `httptest.Server`: the first mint's `Run` hook calls `RevokeToken` and returns `{A, B}`, the second returns `{A}`; the snapshot is A alone and no removal follows | without the generation comparison the snapshot carries B and nothing ever removes it — the sweep preceded the registration. Modelled on `TestGrantEditDuringMintIsNotLost` (`:609`) |
 | `TestSpacesStreamEditAndRevoke` (same file) | an edit narrows the open stream and it stays open (a later engine change still arrives); a revoke ends it with `stream_closed{key_revoked}`; a sweep after the end mints nothing; the revoke's signal arriving before the edit's ends the stream all the same | the narrowed grant excludes a space in the snapshot, so a no-op re-read is visible; strict mock call counts catch both a missed re-read and one after the end |
-| `TestSpacesStreamEndsOnServerStop` (`server`) | `CloseStreams` ends the response body | the read has a deadline; a stream selecting only on the request context keeps the body open past it |
+| `TestSpacesStreamEndsOnServerStop` (`server`) + `TestSpacesStreamEndsWhenTheServerIsReplaced` (package `api`, through `ReassignAddress` and `Close` of the real service) | `CloseStreams` ends the response body; `shutdownLocked` calls it | the read has a deadline; a stream selecting only on the request context keeps the body open past it |
 | handler tests (`handler/spaces_stream_test.go`) | `ids=compact` → 400 at `ids`, `ids=full` → 200; 429 at cap + 1; frames are `event:`/`data:` with no `id:`; the keepalive comment | the 429 case holds the slots through the real slot counter, not a stub |
+| `TestJudgedSpaceView`, `TestDoubledSpaceViewIsJudgedAsTheListServesIt` (`service/liveness_test.go`) | GET-one and a nested list serve the doubled target the list serves | every input order of the two views; the dead one is stored first |
 | shadow guards | `authz_test.go`: `GET /spaces/stream` beside `GET /spaces/:space_id` passes a narrowed read-only grant while `GET /spaces/other` is 403, proving the probe reached the global branch; `spaceref_test.go`: a shaped id with tail `stream` is served full; `executor_test.go`: `get_space {"space_id":"stream"}` is refused with nothing sent | each pairs the guarded case with an unguarded neighbour, so a guard that refuses or admits everything fails |
 | goldens | `TestV2RouteAuthzConformance` (registration, credential-less 401), `TestOperationsMatchOpenAPI`, `openapi_responses_test.go` (the stream and the 503 set), `TestV2DocumentProse`, the full-wrapper overlay conformance | each fails on a missing row by construction |
 
@@ -698,6 +741,22 @@ means:
 - **`spaceUnavailableError` says "deleted, left, or still joining"**
   (`space.go:62-67`) for a space whose load failed too. Pre-existing;
   rewording it changes `service/discovery_test.go:170`.
+- **A rebind or stop with a connection still active** used to fail:
+  `shutdownLocked` gives `http.Server.Shutdown` one millisecond
+  (`core/api/service.go:37`) and returned its error, after the old listener
+  was closed, so `ReassignAddress` never bound the new address. Any request
+  in flight did this, and an open stream nearly every time. Fixed beside this
+  work, in its own commit: what the grace did not drain is cut with
+  `http.Server.Close`.
+- **SSE handlers have no write deadline.** A client that stops reading
+  blocks the handler in a write: it holds its stream slot for as long as the
+  connection lives, and neither `CloseStreams` nor a revocation reaches a
+  handler that is not in its `select`. `http.Server.Close` on rebind and stop
+  cuts such a connection; nothing else does. True of the chat and search
+  streams too.
+- **`isSpaceIcon` authorizes from the store's first view**
+  (`v2/service/file_download.go:59`, `GetSpaceViewDetails`), not from the
+  view the space is judged by. It differs only with two views of one target.
 - **The external `anytype-mcp` bridge** derives its tools from the OpenAPI
   document: it must exclude `stream_spaces` and has the `get_space "stream"`
   shadow over real HTTP.
@@ -748,3 +807,18 @@ flap, and the hold with it. Corrections:
    round 1). Pure request validation never waits; a real write waits before
    its first read of space state, the index included; a dry run of a write
    that validates against the index does not wait (review rounds 1 and 2).
+8. (Implementation.) GET-one and `ensureSpace` judged a space by the store's
+   first record for its target, not by the view the list serves; with two
+   views of one target the three disagreed. Fixed with the stream (§3.2),
+   because the anti-drift test asserts exactly that agreement.
+9. (Implementation.) A key that cannot be re-read at open is answered 401
+   like a revoked one (§2.5): before the first byte "the end, no event" has
+   no other spelling, and 401 is what the authentication middleware answers
+   every failed mint. One function writes it, `server.refuseKey`, for the
+   registration and for the open.
+10. (Implementation.) `spaceRemovalReason` lives in `spaces_stream.go`, its
+   only caller, not in `space.go`. The server half of the key watch is its
+   own file, `server/keywatch.go`.
+11. (Review round 1.) A change signal pending when another input is handled,
+   or when the snapshot is built, was applied one turn late; expiry was
+   checked after a view-change recompute. Both are R2a of §4.4 now.

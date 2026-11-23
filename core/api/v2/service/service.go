@@ -68,6 +68,12 @@ type Service struct {
 	// searchStreams is the search stream's own cap; see
 	// maxConcurrentSearchStreams.
 	searchStreams chatStreamSlots
+	// spacesStreams is the spaces stream's own cap; see
+	// maxConcurrentSpacesStreams.
+	spacesStreams chatStreamSlots
+	// clock is the spaces stream's wall clock and expiry timer; a field so a
+	// test can drive both.
+	clock streamClock
 	// spaceLoads bounds the wait for a space that is still loading; see
 	// ensureSpaceLoaded. Nil bounds nothing.
 	spaceLoads apicore.SpaceLoads
@@ -89,7 +95,7 @@ const defaultSpaceLoadWait = 10 * time.Second
 // be nil (the wait for a loading space is then not bounded). accountId may
 // be empty (degraded placeholder substitution only).
 func NewService(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, provenance apicore.ObjectProvenance, widgets apicore.Widgets, chatSub apicore.ChatSubscriptionService, objectSearch apicore.ObjectSearchService, spaceLoads apicore.SpaceLoads, fileService apicore.FileObjectService, store objectstore.ObjectStore, techSpaceId, accountId string) *Service {
-	return &Service{fileService: fileService, mw: mw, reader: reader, creator: creator, mutator: mutator, provenance: provenance, widgets: widgets, chatSub: chatSub, objectSearch: objectSearch, spaceLoads: spaceLoads, spaceLoadWait: defaultSpaceLoadWait, store: store, techSpaceId: techSpaceId, accountId: accountId}
+	return &Service{fileService: fileService, mw: mw, reader: reader, creator: creator, mutator: mutator, provenance: provenance, widgets: widgets, chatSub: chatSub, objectSearch: objectSearch, spaceLoads: spaceLoads, spaceLoadWait: defaultSpaceLoadWait, clock: systemClock{}, store: store, techSpaceId: techSpaceId, accountId: accountId}
 }
 
 // ensureSpaceGranted is the space half of the service-level backstop of the
@@ -133,8 +139,8 @@ func ensureWriteGranted(ctx context.Context) error {
 // disk — a fresh index for ANY id, so without this guard an agent passing
 // bogus or retained-but-deleted space ids could grow the in-memory registry,
 // open backing DBs and read stale indexed state.
-// GetSpaceViewDetails resolves the spaceView against the tech space only and
-// never mints an index for spaceId; the tech space itself is trusted.
+// spaceViewOf resolves the spaceView against the tech space only and never
+// mints an index for spaceId; the tech space itself is trusted.
 //
 // The grant backstop runs FIRST — before the tech-space admission below,
 // which deliberately treats the tech space as an ordinary space id: a
@@ -150,7 +156,7 @@ func (s *Service) ensureSpace(ctx context.Context, spaceId string) error {
 	if spaceId == s.techSpaceId {
 		return nil
 	}
-	details, err := s.store.GetSpaceViewDetails(spaceId)
+	details, err := s.spaceViewOf(spaceId)
 	if err != nil {
 		return spaceNotFoundError(spaceId)
 	}

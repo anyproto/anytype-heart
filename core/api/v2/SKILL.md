@@ -62,6 +62,7 @@ whether you may write. Ask this instead of discovering limits through 403s
 |---|---|
 | find objects | `POST …/{space_id}/search` (or `POST /v2/search` across spaces — rows then carry `space_id`). Search with filters; don't enumerate `GET …/objects` |
 | watch a search live (new objects, unread mentions) | `POST …/{space_id}/search/stream` — SSE, same body without `query`; see Query |
+| notice a new, renamed or removed space without polling | `GET /v2/spaces/stream` — SSE, the spaces list held open; see Spaces stream |
 | read one object | `GET …/objects/{id}` — start with `?outline=true` |
 | change property values | PATCH op `set_properties` — `add`/`remove` for list values, `set` for scalars |
 | complete a task object | `set_properties` (`"set":{"done":true}` or the status option) — a property, not a block edit |
@@ -338,6 +339,24 @@ read: no `Idempotency-Key`, `dry_run` ignored.
   - At most 16 space streams per process (429 `too_many_streams`, close one).
     A 500 naming a chat means that chat's state failed to load; the space's
     stream stays refused until the app restarts.
+
+- **Spaces stream** — `GET /v2/spaces/stream` (SSE) is `GET /v2/spaces` held
+  open; not the per-space chat stream above.
+  - Opens with `space_added` per space (the list row, **full ids always**;
+    `ids=compact` is a 400), then `snapshot_complete` carrying
+    `has_not_granted_spaces`.
+  - Live: `space_added`, `space_updated` (whole row), `space_removed`
+    `{space_id, reason}`, `not_granted_updated`. Reasons: `access_removed`
+    (the key's grant was edited), `gone` (deleted or left), `unavailable`
+    (did not load here, or still joining — may come back as `space_added`, or
+    get a second `space_removed` with its final reason).
+  - A grant edit changes the stream in place, no reconnect. `stream_closed`
+    `{reason: key_revoked | key_expired}` is the last event before the server
+    ends it: the key now answers 401, do not reconnect. An end with no
+    `stream_closed` (server restart) can be reopened.
+  - No ids, no replay: a reconnect is a fresh snapshot; a space you hold that
+    is absent from it has left.
+  - At most 16 spaces streams per process (429 `too_many_streams`, close one).
 
 ## Conventions on every call
 

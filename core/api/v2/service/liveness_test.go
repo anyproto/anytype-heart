@@ -477,6 +477,135 @@ func TestStoreReadsWarnWhileLoading(t *testing.T) {
 	})
 }
 
+func TestJudgedSpaceView(t *testing.T) {
+	view := func(viewId string, local, account model.SpaceStatus) *domain.Details {
+		d := statusView(local, account, model.SpaceStatus_Unknown)
+		d.SetString(bundle.RelationKeyId, viewId)
+		return d
+	}
+	const (
+		ok      = model.SpaceStatus_Ok
+		active  = model.SpaceStatus_SpaceActive
+		deleted = model.SpaceStatus_SpaceDeleted
+	)
+	for _, tc := range []struct {
+		name  string
+		views []*domain.Details
+		want  string
+	}{
+		{"the only view", []*domain.Details{view("v1", ok, active)}, "v1"},
+		{"a live view wins over a dead one that sorts first", []*domain.Details{view("v1", ok, deleted), view("v2", ok, active)}, "v2"},
+		{"of two live views the first by view id", []*domain.Details{view("v1", ok, active), view("v2", ok, active)}, "v1"},
+		{"of two dead views the first by view id", []*domain.Details{view("v1", ok, deleted), view("v2", ok, deleted)}, "v1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// every input order: the store's order must not decide
+			permutations(tc.views, func(ordered []*domain.Details) {
+				got := judgedSpaceView(ordered)
+				require.NotNil(t, got)
+				assert.Equal(t, tc.want, got.GetString(bundle.RelationKeyId))
+			})
+		})
+	}
+
+	t.Run("no view at all", func(t *testing.T) {
+		assert.Nil(t, judgedSpaceView(nil))
+	})
+}
+
+// TestDoubledSpaceViewIsJudgedAsTheListServesIt: the list and the spaces
+// stream skip a dead view of a target when a live one follows it. GET-one
+// and every nested route must judge the space by that same view, or a space
+// the list just served answers 404.
+func TestDoubledSpaceViewIsJudgedAsTheListServesIt(t *testing.T) {
+	// given: two views of one target, the dead one sorting first and stored first
+	fx := newV2FixtureBare(t)
+	for _, v := range []struct {
+		id      string
+		name    string
+		account model.SpaceStatus
+	}{
+		{"view-1", "Dead twin", model.SpaceStatus_SpaceDeleted},
+		{"view-2", "Live twin", model.SpaceStatus_SpaceActive},
+	} {
+		fx.objectStore.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:                 domain.String(v.id),
+			bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_spaceView)),
+			bundle.RelationKeyTargetSpaceId:      domain.String("doubled"),
+			bundle.RelationKeyName:               domain.String(v.name),
+			bundle.RelationKeySpaceAccountStatus: domain.Int64(int64(v.account)),
+		}})
+	}
+	want := v2model.Space{Id: "doubled", Name: "Live twin"}
+
+	// when
+	rows, _, _, _, listErr := fx.ListSpaces(context.Background(), 0, 25)
+	got, getErr := fx.GetSpace(context.Background(), "doubled")
+	_, _, _, nestedErr := fx.ListTypes(context.Background(), "doubled", 0, 25)
+
+	// then
+	require.NoError(t, listErr)
+	assert.Equal(t, []v2model.SpaceRow{{Id: "doubled", Name: "Live twin"}}, rows)
+	require.NoError(t, getErr)
+	assert.Equal(t, want, got)
+	require.NoError(t, nestedErr)
+}
+
+// TestLoadingWarningFollowsTheServedView: with two views of one target, the
+// space is the view it is served by. A Loading view that does not name the
+// row must not make a global search warn that the space is loading.
+func TestLoadingWarningFollowsTheServedView(t *testing.T) {
+	register := func(t *testing.T, firstLocal, secondLocal model.SpaceStatus) *v2Fixture {
+		fx := newV2FixtureBare(t)
+		for _, v := range []struct {
+			id    string
+			local model.SpaceStatus
+		}{{"view-1", firstLocal}, {"view-2", secondLocal}} {
+			fx.objectStore.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{{
+				bundle.RelationKeyId:                 domain.String(v.id),
+				bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeyTargetSpaceId:      domain.String("doubled"),
+				bundle.RelationKeySpaceLocalStatus:   domain.Int64(int64(v.local)),
+				bundle.RelationKeySpaceAccountStatus: domain.Int64(int64(model.SpaceStatus_SpaceActive)),
+			}})
+		}
+		fx.objectStore.AddObjects(t, "doubled", []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("note"),
+			bundle.RelationKeyName:           domain.String("Note"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}})
+		return fx
+	}
+
+	t.Run("the served view is loaded: no warning, whatever the other view says", func(t *testing.T) {
+		// given: the first view by id is Ok, the second Loading
+		fx := register(t, model.SpaceStatus_Ok, model.SpaceStatus_Loading)
+
+		// when
+		rows, _, _, warnings, err := fx.GlobalSearchObjects(context.Background(), v2model.SearchRequest{}, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		require.Equal(t, []string{"note"}, rowIds(rows))
+		assert.Empty(t, warnings)
+		assert.Empty(t, fx.LoadingSpaceWarnings(context.Background(), "doubled"), "the single-space warning judges the same view")
+	})
+
+	t.Run("the served view is loading: the warning is there", func(t *testing.T) {
+		// given: the other way round
+		fx := register(t, model.SpaceStatus_Loading, model.SpaceStatus_Ok)
+
+		// when
+		_, _, _, warnings, err := fx.GlobalSearchObjects(context.Background(), v2model.SearchRequest{}, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, warnings, 1)
+		assert.Contains(t, warnings[0].Message, "is still loading on this device")
+		assert.Len(t, fx.LoadingSpaceWarnings(context.Background(), "doubled"), 1)
+	})
+}
+
 // TestDryRunsOfALoadingSpaceSayTheIndexMayBeIncomplete: a dry run of a write
 // that validates against the index does not wait for a loading space, so
 // what it concludes from the index — a refusal or a result — carries the

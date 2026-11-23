@@ -29,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -101,6 +102,59 @@ func spaceViewState(details *domain.Details) spaceViewLiveness {
 	return spaceViewUnavailable
 }
 
+// spaceViewOf returns the space view one space is JUDGED by — on GET-one and
+// in ensureSpace, and so on every per-space route. Of the views whose target
+// is the space it is the one visibleSpaces names the row by: the first live
+// one by view id. With no live view it is the first by view id, whose state
+// says why the space is not served.
+//
+// A view id is derived from its space, so a second view of one target exists
+// only in damaged data. But the list and the spaces stream skip a dead view
+// when a live one follows it, and a lookup that judged the space by whichever
+// record the store returned first answered 404 for a space the list had just
+// served. A space with no view is an error.
+func (s *Service) spaceViewOf(spaceId string) (*domain.Details, error) {
+	records, err := s.store.SpaceIndex(s.techSpaceId).Query(database.Query{
+		Filters: append(spaceViewFilters(), database.FilterRequest{
+			RelationKey: bundle.RelationKeyTargetSpaceId,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.String(spaceId),
+		}),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("query the space views of %s: %w", spaceId, err)
+	}
+	views := make([]*domain.Details, len(records))
+	for i, record := range records {
+		views[i] = record.Details
+	}
+	view := judgedSpaceView(views)
+	if view == nil {
+		return nil, fmt.Errorf("no space view of %s", spaceId)
+	}
+	return view, nil
+}
+
+// judgedSpaceView picks, among the views of ONE target, the view the space
+// is judged by: the first live one by view id, else the first by view id;
+// nil for no views.
+func judgedSpaceView(views []*domain.Details) *domain.Details {
+	var judged *domain.Details
+	for _, view := range views {
+		switch {
+		case judged == nil:
+			judged = view
+		case isLiveSpaceView(view) != isLiveSpaceView(judged):
+			if isLiveSpaceView(view) {
+				judged = view
+			}
+		case view.GetString(bundle.RelationKeyId) < judged.GetString(bundle.RelationKeyId):
+			judged = view
+		}
+	}
+	return judged
+}
+
 // isLiveSpaceView reports whether a space view describes a live, usable
 // space (spaceViewState). Deleted, left, removing and still-joining spaces
 // fail it, and so does one whose load failed; a loading one passes.
@@ -117,7 +171,7 @@ func (s *Service) LoadingSpaceWarnings(ctx context.Context, spaceId string) []v2
 	if spaceId == "" || spaceId == s.techSpaceId {
 		return nil
 	}
-	details, err := s.store.GetSpaceViewDetails(spaceId)
+	details, err := s.spaceViewOf(spaceId)
 	if err != nil || !isLoadingSpaceView(details) {
 		return nil
 	}
@@ -174,7 +228,7 @@ func (s *Service) GetSpace(ctx context.Context, spaceId string) (v2model.Space, 
 	if err := s.ensureSpaceGranted(ctx, spaceId); err != nil {
 		return v2model.Space{}, err
 	}
-	details, err := s.store.GetSpaceViewDetails(spaceId)
+	details, err := s.spaceViewOf(spaceId)
 	if err != nil {
 		return v2model.Space{}, spaceNotFoundError(spaceId)
 	}

@@ -1097,25 +1097,28 @@ func (s *Service) spaceRefs(ctx context.Context) ([]spaceRef, error) {
 	return out, nil
 }
 
-// loadingSpaceIds returns the target space ids of the live space views whose
-// local status is Loading, for the global search's store-read warning. A
-// failed query warns about nothing: a warning must not fail a search.
+// loadingSpaceIds returns the spaces that are still loading on this device,
+// for the global search's store-read warning. A space is judged by the view
+// it is served by (judgedSpaceView), as everywhere else: with two views of
+// one target, a Loading view that does not name the row does not make the
+// space loading. A failed query warns about nothing: a warning must not
+// fail a search.
 func (s *Service) loadingSpaceIds() map[string]bool {
-	records, err := s.store.SpaceIndex(s.techSpaceId).Query(database.Query{
-		Filters: append(spaceViewFilters(), database.FilterRequest{
-			RelationKey: bundle.RelationKeySpaceLocalStatus,
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       domain.Int64(int64(model.SpaceStatus_Loading)),
-		}),
-	})
+	records, err := s.store.SpaceIndex(s.techSpaceId).Query(database.Query{Filters: spaceViewFilters()})
 	if err != nil {
-		log.With("error", err).Warn("global search: query loading space views")
+		log.With("error", err).Warn("global search: query space views")
 		return nil
 	}
-	loading := make(map[string]bool, len(records))
+	byTarget := map[string][]*domain.Details{}
 	for _, record := range records {
-		if isLoadingSpaceView(record.Details) {
-			loading[record.Details.GetString(bundle.RelationKeyTargetSpaceId)] = true
+		if target := record.Details.GetString(bundle.RelationKeyTargetSpaceId); target != "" {
+			byTarget[target] = append(byTarget[target], record.Details)
+		}
+	}
+	loading := map[string]bool{}
+	for target, views := range byTarget {
+		if isLoadingSpaceView(judgedSpaceView(views)) {
+			loading[target] = true
 		}
 	}
 	return loading

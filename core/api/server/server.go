@@ -93,6 +93,15 @@ type Server struct {
 	// nothing left to evict it, ever (cached entries are re-validated only
 	// against ExpireAt).
 	evictGen uint64
+	// watchers holds the key watches of the open spaces streams, by the
+	// session token each stream's request authenticated with. RevokeToken
+	// signals the watchers of the token it sweeps (keywatch.go).
+	watchers map[string]map[*keyWatch]struct{}
+	// streamsClosing is closed by CloseStreams; every key watch exposes it.
+	streamsClosing chan struct{}
+	// now is the wall clock key expiry is checked against; nil means
+	// time.Now. Tests set it.
+	now func() time.Time
 
 	initOnce sync.Once
 }
@@ -227,6 +236,9 @@ func (srv *Server) Stop() {
 // precisely the racing case, where the entry this revocation targets is
 // still mid-mint and does not exist yet — the bump is what stops the mint
 // from caching it afterwards.
+//
+// An open spaces stream that authenticated with this token is told its key
+// changed; it re-reads the key to learn whether it was edited or revoked.
 func (srv *Server) RevokeToken(token string) {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
@@ -236,6 +248,9 @@ func (srv *Server) RevokeToken(token string) {
 			delete(srv.KeyToToken, key)
 		}
 	}
+	// in the same critical section as the sweep: a watch registers under
+	// this mutex too, so it either sees the bumped generation or is signalled
+	srv.signalWatchersLocked(token)
 }
 
 // Engine returns the underlying gin.Engine.

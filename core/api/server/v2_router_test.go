@@ -64,7 +64,9 @@ func newV2ServerFixture(t *testing.T) *fixture {
 	objectSearchMock := mock_apicore.NewMockObjectSearchService(t)
 
 	crossSpaceSubService.On("Subscribe", mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{}, nil).Maybe()
-	accountMock.On("GetInfo", mock.Anything).Return(&model.AccountInfo{TechSpaceId: mockedTechSpaceId}, nil).Once()
+	// one tech space id, the store's: in production the service and the store
+	// both take it from space.Service.TechSpaceId()
+	accountMock.On("GetInfo", mock.Anything).Return(&model.AccountInfo{TechSpaceId: objectstore.TestTechSpaceId}, nil).Once()
 
 	server := NewServer(mwMock, accountMock, eventMock, crossSpaceSubService, chatSubService, fileObjectMock,
 		V2Deps{Reader: readerMock, Creator: creatorMock, Mutator: mutatorMock, Widgets: widgetsMock, ChatSub: chatSubService, ObjectSearch: objectSearchMock, Store: store, FullTable: testFullTable(t)}, mockedListenAddr, OpenApiDocs{})
@@ -80,6 +82,7 @@ func newV2ServerFixture(t *testing.T) *fixture {
 		widgetsMock:          widgetsMock,
 		objectStore:          store,
 		readerMock:           readerMock,
+		objectSearchMock:     objectSearchMock,
 	}
 }
 

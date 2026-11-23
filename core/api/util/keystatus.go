@@ -9,6 +9,7 @@ package util
 
 import (
 	"context"
+	"time"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -87,4 +88,14 @@ func CtxWithApiKeyInfo(ctx context.Context, info ApiKeyInfo) context.Context {
 func ApiKeyInfoFromCtx(ctx context.Context) (ApiKeyInfo, bool) {
 	info, ok := ctx.Value(apiKeyInfoCtxKey{}).(ApiKeyInfo)
 	return info, ok
+}
+
+// KeyExpired reports whether an API key whose expiry is expireAt (unix
+// seconds, 0 = never) is expired at now. It is the ONE expiry predicate: the
+// authentication middleware refuses a request with it and the spaces stream
+// ends with it, so a stream closes at the first instant a new request with
+// the same key would be refused. A key is valid through the whole of its
+// expiry second.
+func KeyExpired(expireAt int64, now time.Time) bool {
+	return expireAt > 0 && now.Unix() > expireAt
 }

@@ -304,7 +304,8 @@ func (s *apiService) publishStatus(status *pb.EventAccountJsonApiStatus) {
 // already registered with the server, and the Serve goroutine bindLocked
 // starts may not have run yet by the time this is called — without this,
 // that still-unregistered listener would keep accepting connections
-// indefinitely.
+// indefinitely. The open spaces streams of the server being closed are
+// ended first (Server.CloseStreams).
 func (s *apiService) shutdownLocked(ctx context.Context) error {
 	httpSrv := s.httpSrv
 	listener := s.listener
@@ -313,6 +314,16 @@ func (s *apiService) shutdownLocked(ctx context.Context) error {
 
 	if httpSrv == nil {
 		return nil
+	}
+
+	// Shutdown does not interrupt an active connection, and its deadline
+	// here is a millisecond: an open spaces stream would outlive the server
+	// it was accepted by. RevokeToken reaches only the server bound NEXT
+	// (it reads s.srv under this same lock), so such a stream would never
+	// hear its key revoked. The streams of the server being replaced are
+	// told to end first — a revoke either reaches them or arrives after.
+	if s.srv != nil {
+		s.srv.CloseStreams()
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(ctx, shutdownTimeout)

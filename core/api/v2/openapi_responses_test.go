@@ -106,7 +106,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	var jsonDoc responseContractDocument
 	require.NoError(t, json.Unmarshal(jsonBody, &jsonDoc))
 	jsonOperations := responseContractOperations(t, jsonDoc)
-	require.Len(t, jsonOperations, 59)
+	require.Len(t, jsonOperations, 60)
 
 	yamlBody, err := os.ReadFile("../docs/v2/openapi.yaml")
 	require.NoError(t, err)
@@ -223,7 +223,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	for _, operation := range jsonOperations {
 		pairCount += len(operation.Responses)
 	}
-	assert.Equal(t, 441, pairCount, "the checked-in response inventory changes only deliberately")
+	assert.Equal(t, 446, pairCount, "the checked-in response inventory changes only deliberately")
 
 	dryRunCreates := stringSet(
 		"add_chat_message", "create_chat", "create_collection", "create_object", "create_property",
@@ -252,7 +252,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	// A concurrency cap is not a rate limit: the streams refuse when too many
 	// are held AT ONCE, in v2's own envelope, so they declare their own 429
 	// rather than the shared limiter's legacy one.
-	resourceLimited := stringSet("stream_chat_messages", "stream_space_chats", "stream_space_search")
+	resourceLimited := stringSet("stream_chat_messages", "stream_space_chats", "stream_space_search", "stream_spaces")
 
 	// The operations that need the space loaded on this device: every write
 	// into a space and every read of live state. Each waits a bounded time

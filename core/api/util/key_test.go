@@ -3,6 +3,7 @@ package util
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -365,4 +366,28 @@ func BenchmarkIsBsonId(b *testing.B) {
 			IsBsonId("not-a-bson-id")
 		}
 	})
+}
+
+func TestKeyExpired(t *testing.T) {
+	const expireAt = int64(1_800_000_000)
+	at := func(offset time.Duration) time.Time { return time.Unix(expireAt, 0).Add(offset) }
+	for _, tc := range []struct {
+		name     string
+		expireAt int64
+		now      time.Time
+		want     bool
+	}{
+		{"well before the expiry", expireAt, at(-time.Hour), false},
+		{"one second before", expireAt, at(-time.Second), false},
+		{"at the expiry second", expireAt, at(0), false},
+		{"at the last instant of the expiry second", expireAt, at(999 * time.Millisecond), false},
+		{"one second after", expireAt, at(time.Second), true},
+		{"long after", expireAt, at(24 * time.Hour), true},
+		{"a key with no expiry never expires", 0, at(100 * 365 * 24 * time.Hour), false},
+		{"a negative expiry is no expiry", -1, at(0), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, KeyExpired(tc.expireAt, tc.now))
+		})
+	}
 }

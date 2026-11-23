@@ -100,7 +100,12 @@ type Table struct {
 	Tools []Tool
 	// Excluded maps each operationId the overlay leaves out to its reason.
 	Excluded map[string]string
-	byName   map[string]int
+	// literalRoutes maps "METHOD path" to the operationId of every operation
+	// of the document — excluded ones included — whose path has no
+	// parameter. A parameterised tool whose argument assembles into one of
+	// them would reach that other operation; the executor refuses it.
+	literalRoutes map[string]string
+	byName        map[string]int
 }
 
 // Tool returns the tool named name.

@@ -107,8 +107,11 @@ func Derive(in Inputs) (*Table, error) {
 		}
 	}
 
-	table := &Table{Excluded: map[string]string{}}
+	table := &Table{Excluded: map[string]string{}, literalRoutes: map[string]string{}}
 	for _, l := range ops {
+		if !strings.Contains(l.path, "{") {
+			table.literalRoutes[strings.ToUpper(l.method)+" "+l.path] = l.op.OperationId
+		}
 		o := overlays[l.op.OperationId]
 		if o.Exclude != "" {
 			table.Excluded[l.op.OperationId] = o.Exclude
