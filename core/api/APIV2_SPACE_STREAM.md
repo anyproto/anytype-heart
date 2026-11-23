@@ -236,12 +236,19 @@ at most once per retry; no delay would make either event more accurate.
   from what is indexed so far: empty or partial, silently. (v1's hang on a
   guest space came from v1 opening every listed space; v2's list reads the
   store and cannot hang.)
-- **Live-object reads and every write wait for the load.** Reading an object
-  or a type document and every write reach `spaceService.Get`
-  (`core/block/service.go:245-250`; adapters `objectreadadapter.go:55`,
-  `objectmutateadapter.go:45`, `objectcreateadapter.go:62`), which waits for
-  the loader (`space/service.go:453-461` → `space/load.go:102-111` →
-  `spaceloader.go:189-218`) with no bound but the context.
+- **Live reads and every write wait for the load.** Every write reaches
+  `spaceService.Get` (`core/block/service.go:245-250`; adapters
+  `objectreadadapter.go:55`, `objectmutateadapter.go:45`,
+  `objectcreateadapter.go:62`), which waits for the loader
+  (`space/service.go:453-461` → `space/load.go:102-111` →
+  `spaceloader.go:189-218`) with no bound but the context. So does every read
+  of live state: an object or a type document (`ReadObject`); a query's or a
+  collection's objects and views, which read their list object live
+  (`list_read.go` `readListTarget`); every chat read and the chat stream's
+  open, whose chat lookup reads the deletion mark from the space's head
+  storage (`chat.go` `ensureChat` → `objectreadadapter.go:88-104`); the widget
+  list (`widgetadapter.go:73`); and a file download, for the same deletion
+  mark (`file_download.go`).
 - **The request context has no deadline.** The server sets only
   `ReadHeaderTimeout` (`core/api/service.go:258-261`); the context ends when
   the client disconnects. `/mcp` adds 60 s (`server/mcp.go:52, 427`).
@@ -270,10 +277,49 @@ Mitigation, needed for that reason, and the smallest that bounds every path:
   `space_loading`, `Retry-After: 5`, message "space %q is still loading on this
   device". Any other error is the one the route's own `Get` would have hit,
   mapped as today; a cancelled request ends with its own error.
-- Called by every write entry point (`ensureSpaceWrite`, `service.go:154`;
-  `ensureChatWrite`, `chat.go:766`; `UpdateSpace`) and by the live-object reads
-  (`GetObject`, `object.go:206`, and the type-document read) — before any RPC,
-  which is what bounds the paths that drop the context.
+- Called by every write and by every live read, before the first thing
+  that needs the loaded space. For a write that validates against the index
+  the rule is:
+  - **pure request validation** — body shape, field values, nothing read
+    from the space — comes first and never waits, on a dry run and on a real
+    write alike;
+  - **a real write** waits before its first read of space state, the index
+    included (`ensureSpaceLoadedForWrite`). The index of a loading space is
+    partial, so "no such property", or "no duplicate key", read from it is
+    not a fact; and a 404 reads as final where a 503 is retried;
+  - **a dry run** does not wait and does not start a load: it sends nothing,
+    and answers from the index as it is.
+
+  Who gates where:
+  - a write whose validation and dry run read live state — an object, a
+    type document, a derived id — gates at entry, through
+    `ensureSpaceWrite`, dry runs included: object create, patch, delete and
+    restore, template and discussion create, type create and update, widget
+    delete;
+  - `UpdateSpace`, chat create and file upload read no space state before
+    their RPC: `ensureSpaceWritable` at entry, `ensureSpaceLoaded` right
+    before the RPC, after the dry-run return;
+  - type delete and property create, update and delete validate against the
+    index: `ensureSpaceWritable`, the body checks, then
+    `ensureSpaceLoadedForWrite`, then the index;
+  - query, collection and widget create and widget update gate after their
+    body checks and before their first read of space state. Their dry runs
+    read live state too (a derived id, the widget roots), so those take the
+    wait there — except a collection's item check, which a dry run answers
+    from the index first;
+  - `ensureChatWrite`, through `ensureChat` (`chat.go`);
+  - the live reads: `GetObject` (`object.go`, which the type-document read
+    reaches), `ensureChat`, `readListTarget`, `ListWidgets`, and the
+    deletion-mark branch of `GetFileContent`;
+  - `ListTemplates`, a store read, on the one branch that is not: `?type=`
+    naming a built-in type with no row in the space derives the type's id
+    through `creator.TypeIdByKey`, which reaches `space.Service.Get`.
+
+  Always after the grant, verb and existence checks, so a 403 or a 404 never
+  waits, and before any RPC, which is what bounds the paths that drop the
+  context.
+- With no `SpaceLoads` wired (a service built without it, as most tests do)
+  the gate is a no-op: nothing is bounded and nothing is refused.
 - Called whatever the view's status says: in the start fast path the status is
   Ok while the space builds, and for a loaded space the call is a map lookup
   and a lock (`space/load.go:22-30`, `spaceloader.go:194-201`).
@@ -554,7 +600,7 @@ were told to end.
 | `v2/service/spaceref.go` | reserved tails in `shortSpaceRefs` |
 | `v2/service/spaces_stream.go` (new) | `KeyWatch`, `KeyState`, `ErrKeyRevoked/Expired/Unverified`; cap; `OpenSpacesStream(ctx, KeyWatch)`; `SpacesStream` with a worker goroutine merging engine changes, `Changed()`, `Closing()` and the expiry timer into one output queue; `Snapshot/Ready/Drain/Close` |
 | `v2/service/service.go` | `spacesStreams` slot counter; an injectable clock for the expiry timer; `ensureSpaceLoaded` and `spaceLoadWait`; `ensureSpaceWrite` calls it; `ensureSpace` reports the view's state so store reads can warn |
-| `v2/service/chat.go`, `space.go`, `object.go` | `ensureChatWrite`, `UpdateSpace` and `GetObject` (which the type-document read reaches, `discovery.go:286`) call `ensureSpaceLoaded`; the store-read lists and search add the loading warning |
+| `v2/service/chat.go`, `space.go`, `object.go`, `list_read.go`, `widgets.go`, `file_download.go` | `ensureChat` (and through it `ensureChatWrite`), `UpdateSpace`, `GetObject` (which the type-document read reaches, `discovery.go:286`), `readListTarget`, `ListWidgets` and `GetFileContent` call `ensureSpaceLoaded`; the store-read lists and search add the loading warning |
 | `core/api/core/core.go`, `core/api/service.go`, `server/server.go` | the `SpaceLoads` port, its package-`api` implementation over `space.Service.Get`, `V2Deps.SpaceLoads` into `v2service.NewService`; `.mockery.yaml` + `make test-deps` |
 | `v2/model/model.go`, `v2/handler/error.go` | `CodeSpaceLoading` and its 503; `Retry-After` set where the error becomes bytes |
 | `v2/handler/spaces_stream.go` (new) | handler + annotations; the `ids` refusal; the search stream's loop (`v2/handler/search_stream.go:35-79`), returning after a drained `stream_closed` |
@@ -606,7 +652,8 @@ means:
 | `TestSpaceViewState` (`service/space_test.go`) | liveness over every (local, account, remote) status triple; the reason table of §3.6 | The liveness oracle is the literal rule (`local ∈ {0,1,2} ∧ account ∈ {0,8}`) written in the test. Comparing `isLiveSpaceView` with `spaceViewState` would be tautological once one is defined through the other; the literal fails on any edit that moves a triple in or out of live, Loading included |
 | `TestLoadingSpaceIsLive` (`service/discovery_test.go`, `space_test.go`, `spaceref_test.go`, `search_test.go`) | one fixture — a Loading, an `Ok` and a `Missing` view — through the list, GET-one, `ensureSpace` (a nested list), short-reference resolution and the global-search fan-out: Loading answers exactly as `Ok`, `Missing` as today | the two controls rule out a surface that admits everything or nothing; a surface that kept a private predicate disagrees on the Loading view. No existing test needs to change (§3.3) |
 | `TestEnsureSpaceLoaded` (`service/service_test.go`, a fake `SpaceLoads` blocking on a channel, `spaceLoadWait` shortened) | loaded → passes at once; still loading at the bound → 503 `space_loading` with `Retry-After`; a load error → mapped as the route maps it today; a cancelled request → its own error, not 503 | the fake blocks until its context ends and the test has a deadline, so an unbounded wait fails the test instead of hanging |
-| `TestWritesIntoALoadingSpaceAreBounded` (service) | `PATCH /v2/spaces` (`WorkspaceSetInfo`), a type update (`ObjectSetDetails`), an object create and a chat write on a space whose load blocks: each answers 503 | these are the paths that drop the context (§3.4); the strict `mw` and creator mocks fail on any call, so a write entry point without the gate fails here rather than in production |
+| `TestWritesIntoALoadingSpaceAreBounded` (service) | `PATCH /v2/spaces` (`WorkspaceSetInfo`), a type and a property update (`ObjectSetDetails`), an object create, patch and delete, a chat write, and every gated read (object, type document, chat messages, query objects, widget list, file content) on a space whose load blocks: each answers 503; a dry-run space update, a store read and a refused key do not wait | the writes are the paths that drop the context (§3.4); the strict `mw`, creator, reader and widget mocks fail on any call, so an entry point without the gate fails here rather than in production |
+| `TestDryRunsAndRefusalsDoNotWaitForALoad` (service) | on a space whose load blocks: a dry run of each index-validated write returns at once; a real write refused for its own content returns its 400 at once; a real write whose refusal would come from the index (an unknown type or property, a taken key, an unknown collection item) answers 503 after the bound, and the same request as a dry run answers its 404 or 400 at once | the no-wait cases run with the bound an hour away under the test's own 5 s deadline, so a gate placed before validation fails them; the index cases run both ways, so a gate missing before the index read, or one that also stops dry runs, fails one side |
 | `TestStoreReadsWarnWhileLoading` (service) | a list and a search on the Loading space carry the warning; on the `Ok` control there is none | the control rules out an unconditional warning |
 | `TestVisibleSpaces` (`service/discovery_test.go`) | rows and flag under nil, all-spaces read, all-spaces readwrite, a narrowed list naming dead and tech spaces, an explicit tech grant | each case runs over every input order of the duplicate-target pair, so a store-order or map-order tie-break fails; the tech-target view fails an `AllowsSpace`-only grant check; a narrowed case whose only non-granted views are dead fails a flag computed before the liveness check |
 | `TestSpacesStreamAgreesWithListAndGate` (`core/api/spacesstream_integration_test.go`, package `api`) | the anti-drift test: snapshot rows = `GET /v2/spaces?ids=full` rows (ids, names, descriptions, icons, order); `snapshot_complete` flag = the list's flag; per fixture id, present in the stream ⇔ GET-one 200, absent and refused by the grant ⇔ 403 `space_not_granted`; after a live phase (Missing → Loading → Ok, Active → Deleted, a view deleted, a view created) and a drain, the stream's held set = the list again | It runs on one real store through `server.NewServer` with the real adapter over `subscription.NewInternalTestService` (package `api` can import `server`; package `server` cannot import the adapter, and a mocked `ObjectSearch` would be fed by the test itself). A subscription filter that opted out of a default filter shows the deleted view on one side; a grant applied with `AllowsSpace` shows the tech-target view under all spaces; a stream or list keeping the old predicate disagrees on the `Loading` view; short ids differ on shaped ids. Expectations are derived from the stream's output only, the discipline of `TestWhoamiAgreesWithTheGate` (`whoami_test.go:249-322`) |
@@ -680,3 +727,11 @@ flap, and the hold with it. Corrections:
 6. No test pins today's exclusion of a loading space (§3.3), and a space
    admitted while it loads is not new: the start fast path already serves an
    `Ok` space that is still building, with the same unbounded waits (§3.4).
+7. (Implementation.) The first revision of §3.4 named the object and
+   type-document reads as the only live reads. The chat reads, the query and
+   collection reads, the widget list and the file download reach
+   `spaceService.Get` too; all are gated. So is the template list when its
+   type filter names a built-in type the space has not installed (review
+   round 1). Pure request validation never waits; a real write waits before
+   its first read of space state, the index included; a dry run of a write
+   that validates against the index does not wait (review rounds 1 and 2).

@@ -323,7 +323,12 @@ func (s *Service) ListTemplates(ctx context.Context, spaceId, typeTerm string, o
 			// a bundled type this space has not installed yet: its id is
 			// derivable and is what a template of it carries as its target,
 			// which is how the CREATE path resolves it. A listing that
-			// refused here would refuse to show templates a create accepts
+			// refused here would refuse to show templates a create accepts.
+			// Deriving it needs the loaded space, the one step of this
+			// store read that does: bounded here, and only on this branch
+			if err := s.ensureSpaceLoaded(ctx, spaceId); err != nil {
+				return nil, 0, false, err
+			}
 			derived, err := s.creator.TypeIdByKey(ctx, spaceId, domain.TypeKey(entry.Key))
 			if err != nil {
 				return nil, 0, false, fmt.Errorf("derive type id for %s: %w", entry.Key, err)

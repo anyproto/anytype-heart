@@ -1180,7 +1180,13 @@ func typeDetailValue(key, path string, raw json.RawMessage) (*types.Value, error
 // DeleteType implements DELETE /v2/spaces/{space_id}/types/{type} (archive —
 // v1 parity; hard delete is deferred with ?permanent).
 func (s *Service) DeleteType(ctx context.Context, spaceId, typeKey string, dryRun bool) (*v2model.CreateResult, error) {
-	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
+	if err := s.ensureSpaceWritable(ctx, spaceId); err != nil {
+		return nil, err
+	}
+	// the first read of space state: a real write waits for a loading space
+	// here, so it is refused with the retryable 503 and not with a 404 or a
+	// duplicate concluded from a partial index; a dry run does not wait
+	if err := s.ensureSpaceLoadedForWrite(ctx, spaceId, dryRun); err != nil {
 		return nil, err
 	}
 	// live lookup, slug-aware — deleting a corpse is a 404, not a re-archive
@@ -1249,7 +1255,7 @@ func (s *Service) typeDeleteWarnings(spaceId string, entry typeEntry) []v2model.
 
 // CreateProperty implements POST /v2/spaces/{space_id}/properties.
 func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2model.CreatePropertyRequest, dryRun bool) (*v2model.CreateResult, error) {
-	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
+	if err := s.ensureSpaceWritable(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	if req.Name == "" {
@@ -1315,6 +1321,12 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 		// derived from the display name, which no pattern ever checked —
 		// sanitize to the advertised key grammar (empty = no derivable slug)
 		slug = sanitizeApiSlug(bundle.ApiSlugFromName(req.Name))
+	}
+	// the first read of space state: a real write waits for a loading space
+	// here, so it is refused with the retryable 503 and not with a 404 or a
+	// duplicate concluded from a partial index; a dry run does not wait
+	if err := s.ensureSpaceLoadedForWrite(ctx, spaceId, dryRun); err != nil {
+		return nil, err
 	}
 	// one snapshot of the live properties for the slug check and the name
 	// check alike; a snapshot that could not load fails the create closed
@@ -1441,7 +1453,21 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 
 // UpdateProperty implements PATCH /v2/spaces/{space_id}/properties/{key}.
 func (s *Service) UpdateProperty(ctx context.Context, spaceId, propertyKey string, req v2model.UpdatePropertyRequest, dryRun bool) (*v2model.CreateResult, error) {
-	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
+	if err := s.ensureSpaceWritable(ctx, spaceId); err != nil {
+		return nil, err
+	}
+	// the body first: it reads nothing from the space
+	if req.Name == nil {
+		return nil, v2model.ValidationFailed("nothing to update",
+			v2model.Issue{Message: "the patch accepts name"})
+	}
+	if err := validateV2FieldLength("/name", *req.Name, maxV2NameLength); err != nil {
+		return nil, err
+	}
+	// the first read of space state: a real write waits for a loading space
+	// here, so it is refused with the retryable 503 and not with a 404 or a
+	// duplicate concluded from a partial index; a dry run does not wait
+	if err := s.ensureSpaceLoadedForWrite(ctx, spaceId, dryRun); err != nil {
 		return nil, err
 	}
 	// live lookup, slug-aware (§7.5a-5) — a UI-deleted property must 404,
@@ -1456,13 +1482,6 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId, propertyKey strin
 	}
 
 	result := &v2model.CreateResult{Id: entry.Id, Key: propertyKey}
-	if req.Name == nil {
-		return nil, v2model.ValidationFailed("nothing to update",
-			v2model.Issue{Message: "the patch accepts name"})
-	}
-	if err := validateV2FieldLength("/name", *req.Name, maxV2NameLength); err != nil {
-		return nil, err
-	}
 	if dryRun {
 		result.DryRun = true
 		return result, nil
@@ -1480,7 +1499,13 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId, propertyKey strin
 // DeleteProperty implements DELETE /v2/spaces/{space_id}/properties/{key}
 // (archive).
 func (s *Service) DeleteProperty(ctx context.Context, spaceId, propertyKey string, dryRun bool) (*v2model.CreateResult, error) {
-	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
+	if err := s.ensureSpaceWritable(ctx, spaceId); err != nil {
+		return nil, err
+	}
+	// the first read of space state: a real write waits for a loading space
+	// here, so it is refused with the retryable 503 and not with a 404 or a
+	// duplicate concluded from a partial index; a dry run does not wait
+	if err := s.ensureSpaceLoadedForWrite(ctx, spaceId, dryRun); err != nil {
 		return nil, err
 	}
 	// live lookup, slug-aware — deleting an already-archived or uninstalled

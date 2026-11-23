@@ -9,15 +9,18 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/space"
 )
 
 // log is v2's own logger. v1's service package keeps "api-internal-service";
@@ -65,16 +68,28 @@ type Service struct {
 	// searchStreams is the search stream's own cap; see
 	// maxConcurrentSearchStreams.
 	searchStreams chatStreamSlots
+	// spaceLoads bounds the wait for a space that is still loading; see
+	// ensureSpaceLoaded. Nil bounds nothing.
+	spaceLoads apicore.SpaceLoads
+	// spaceLoadWait is how long ensureSpaceLoaded waits; a field so a test
+	// can shorten it.
+	spaceLoadWait time.Duration
 }
+
+// defaultSpaceLoadWait is how long a request waits for a space that is still
+// loading before it answers 503 space_loading. It sits well under the /mcp
+// call timeout (60 s), so an MCP caller gets the 503 and not its own timeout.
+const defaultSpaceLoadWait = 10 * time.Second
 
 // NewService creates the API v2 service. creator may be nil when only the
 // read surface is served (the router skips the create routes then); mutator
 // may be nil when the edit surface is not served; provenance may be nil
 // (object DELETE then refuses everything — fail closed). chatSub and
-// objectSearch may be nil when their streams are not served. accountId may
+// objectSearch may be nil when their streams are not served. spaceLoads may
+// be nil (the wait for a loading space is then not bounded). accountId may
 // be empty (degraded placeholder substitution only).
-func NewService(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, provenance apicore.ObjectProvenance, widgets apicore.Widgets, chatSub apicore.ChatSubscriptionService, objectSearch apicore.ObjectSearchService, fileService apicore.FileObjectService, store objectstore.ObjectStore, techSpaceId, accountId string) *Service {
-	return &Service{fileService: fileService, mw: mw, reader: reader, creator: creator, mutator: mutator, provenance: provenance, widgets: widgets, chatSub: chatSub, objectSearch: objectSearch, store: store, techSpaceId: techSpaceId, accountId: accountId}
+func NewService(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, provenance apicore.ObjectProvenance, widgets apicore.Widgets, chatSub apicore.ChatSubscriptionService, objectSearch apicore.ObjectSearchService, spaceLoads apicore.SpaceLoads, fileService apicore.FileObjectService, store objectstore.ObjectStore, techSpaceId, accountId string) *Service {
+	return &Service{fileService: fileService, mw: mw, reader: reader, creator: creator, mutator: mutator, provenance: provenance, widgets: widgets, chatSub: chatSub, objectSearch: objectSearch, spaceLoads: spaceLoads, spaceLoadWait: defaultSpaceLoadWait, store: store, techSpaceId: techSpaceId, accountId: accountId}
 }
 
 // ensureSpaceGranted is the space half of the service-level backstop of the
@@ -150,8 +165,27 @@ func (s *Service) ensureSpace(ctx context.Context, spaceId string) error {
 // check, then the existence lookup — so space_not_granted wins over
 // write_not_granted, and a read-only key is refused before anything
 // resolves. (ensureSpace re-runs the space check; the duplication is the
-// price of keeping each helper self-sufficiently fail-closed.)
+// price of keeping each helper self-sufficiently fail-closed.) The bounded
+// load wait comes last.
+//
+// It is the entry check of the writes whose validation and dry run already
+// read live state — an object, a type document, a derived id — and so need
+// the loaded space from the start. A write whose validation and dry run
+// read only the request and the index uses ensureSpaceWritable instead and
+// calls ensureSpaceLoaded itself, right before its first call that needs the
+// space: a dry run or a 400 must not wait for a load, nor start one.
 func (s *Service) ensureSpaceWrite(ctx context.Context, spaceId string) error {
+	if err := s.ensureSpaceWritable(ctx, spaceId); err != nil {
+		return err
+	}
+	return s.ensureSpaceLoaded(ctx, spaceId)
+}
+
+// ensureSpaceWritable is ensureSpaceWrite without the load wait: grant,
+// write verb, existence. A caller that uses it MUST call ensureSpaceLoaded
+// before its first RPC or live read, and ensureSpaceLoadedForWrite before
+// its first read of the index.
+func (s *Service) ensureSpaceWritable(ctx context.Context, spaceId string) error {
 	if err := s.ensureSpaceGranted(ctx, spaceId); err != nil {
 		return err
 	}
@@ -159,6 +193,75 @@ func (s *Service) ensureSpaceWrite(ctx context.Context, spaceId string) error {
 		return err
 	}
 	return s.ensureSpace(ctx, spaceId)
+}
+
+// ensureSpaceLoadedForWrite is what a write that validates against the
+// index calls right before its first read of space state. The rule
+// (APIV2_SPACE_STREAM.md §3.4):
+//
+//   - pure request validation — body shape, field values, nothing read from
+//     the space — comes before it and never waits, on a dry run and on a
+//     real write alike;
+//   - a REAL write waits here. The index of a space that is still loading
+//     is partial: "no such property" or "no duplicate" read from it is not
+//     a fact, and a 404 looks final where a 503 is retried;
+//   - a DRY RUN does not wait. It sends nothing, so it answers from the
+//     index as it is.
+func (s *Service) ensureSpaceLoadedForWrite(ctx context.Context, spaceId string, dryRun bool) error {
+	if dryRun {
+		return nil
+	}
+	return s.ensureSpaceLoaded(ctx, spaceId)
+}
+
+// ensureSpaceRead is ensureSpace for the reads that need the LOADED space —
+// a live object, its deletion mark, a widget root — as opposed to the store
+// reads, which answer from the index and never wait.
+func (s *Service) ensureSpaceRead(ctx context.Context, spaceId string) error {
+	if err := s.ensureSpace(ctx, spaceId); err != nil {
+		return err
+	}
+	return s.ensureSpaceLoaded(ctx, spaceId)
+}
+
+// ensureSpaceLoaded waits, for at most spaceLoadWait, until the space is
+// loaded on this device (APIV2_SPACE_STREAM.md §3.4). Every write and every
+// live-object read reaches space.Service.Get, which waits for a loading
+// space with no bound but its context — and several RPCs drop the request
+// context on the way (WorkspaceSetInfo, ObjectSetDetails), so they would
+// wait past a client disconnect. Waiting here first, under a deadline, is
+// what bounds all of them: a caller runs it before any RPC.
+//
+// It is called whatever the space view's status says: a space that was Ok
+// last session publishes Ok while it is still building. For a loaded space
+// the wait is a map lookup.
+//
+//   - still loading at the bound → 503 space_loading with Retry-After;
+//   - the request itself ended → its own context error;
+//   - any other failure → the error the route's own space lookup would have
+//     hit, classified the same way.
+func (s *Service) ensureSpaceLoaded(ctx context.Context, spaceId string) error {
+	if s.spaceLoads == nil {
+		return nil
+	}
+	waitCtx, cancel := context.WithTimeout(ctx, s.spaceLoadWait)
+	defer cancel()
+	err := s.spaceLoads.WaitLoaded(waitCtx, spaceId)
+	if err == nil {
+		return nil
+	}
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return fmt.Errorf("wait for space %s to load: %w", spaceId, ctxErr)
+	}
+	if waitCtx.Err() != nil && (errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled)) {
+		return v2model.SpaceLoading(spaceId)
+	}
+	if errors.Is(err, space.ErrSpaceNotExists) || errors.Is(err, space.ErrSpaceDeleted) || errors.Is(err, space.ErrSpaceStorageMissig) {
+		return v2model.NotFound(fmt.Sprintf("space %q not found", spaceId),
+			v2model.Issue{Path: "space_id", Message: "the space could not be opened"}.
+				Hintf("list live spaces with %s", v2model.RefListSpaces()))
+	}
+	return fmt.Errorf("wait for space %s to load: %w", spaceId, err)
 }
 
 //

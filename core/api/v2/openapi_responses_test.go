@@ -223,7 +223,7 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	for _, operation := range jsonOperations {
 		pairCount += len(operation.Responses)
 	}
-	assert.Equal(t, 403, pairCount, "the checked-in response inventory changes only deliberately")
+	assert.Equal(t, 441, pairCount, "the checked-in response inventory changes only deliberately")
 
 	dryRunCreates := stringSet(
 		"add_chat_message", "create_chat", "create_collection", "create_object", "create_property",
@@ -254,7 +254,33 @@ func TestV2OpenAPIResponsePolicies(t *testing.T) {
 	// rather than the shared limiter's legacy one.
 	resourceLimited := stringSet("stream_chat_messages", "stream_space_chats", "stream_space_search")
 
+	// The operations that need the space loaded on this device: every write
+	// into a space and every read of live state. Each waits a bounded time
+	// for a loading space and then answers 503 space_loading
+	// (v2service.ensureSpaceLoaded); a store read never does.
+	spaceLoadGated := stringSet(
+		"update_space", "create_object", "create_template", "create_type", "update_type", "delete_type",
+		"create_property", "update_property", "delete_property", "create_query", "create_collection",
+		"upload_file", "patch_object", "delete_object", "restore_object", "create_chat", "add_chat_message",
+		"edit_chat_message", "delete_chat_message", "toggle_chat_reaction", "read_chat", "publish_chat_status",
+		"create_widget", "update_widget", "delete_widget", "create_discussion",
+		"get_object", "get_type", "get_chat_messages", "stream_chat_messages",
+		"get_query_objects", "get_query_views", "get_collection_objects", "get_collection_views",
+		"list_widgets", "download_file", "head_file",
+		// a store read, except when ?type= names a built-in type the space
+		// has not installed: its id is derived in the space
+		"list_templates",
+	)
+	for operationId := range spaceLoadGated {
+		require.Contains(t, jsonOperations, operationId, "the gated set names an operation the document does not have")
+	}
+
 	for operationId, operation := range jsonOperations {
+		if spaceLoadGated[operationId] {
+			assert.Equal(t, "#/components/responses/SpaceLoading", operation.Responses["503"].Ref, "%s bounded load wait", operationId)
+		} else {
+			assert.NotContains(t, operation.Responses, "503", "%s does not wait for a loading space", operationId)
+		}
 		if operationId == "create_auth_challenge" || operationId == "create_api_key" {
 			// Shared pairing handlers run outside all authenticated v2 gates.
 			assert.Len(t, operation.Responses, 4)

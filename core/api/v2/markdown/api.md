@@ -225,6 +225,14 @@ Some refusals occur before v2 handlers run:
 A read does not fail because it encounters content its representation
 cannot express. Such content is reported in `warnings` beside the result.
 
+A space can still be loading on this device, for example right after a first
+sign-in. A write into it, or a read of one object, chat, query, collection,
+widget list, or file, waits up to ten seconds for the load and then returns
+`503` with code `space_loading` and a `Retry-After` header. Nothing was read
+or written. Send the same request again after that delay. A dry run or a
+request refused for its own content does not wait. A template list narrowed
+to a built-in type the space has not used yet can wait the same way.
+
 ## Write chat messages
 
 Message `text` is Markdown in both directions. Emphasis, code, links, and

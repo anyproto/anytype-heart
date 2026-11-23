@@ -272,6 +272,11 @@ func (s *Service) UpdateSpace(ctx context.Context, spaceId string, req v2model.U
 		return &next, nil
 	}
 
+	// WorkspaceSetInfo ignores its context and waits for a loading space
+	// until the load ends or the app stops; the bounded wait comes first
+	if err := s.ensureSpaceLoaded(ctx, spaceId); err != nil {
+		return nil, err
+	}
 	resp := s.mw.WorkspaceSetInfo(ctx, &pb.RpcWorkspaceSetInfoRequest{
 		SpaceId: spaceId,
 		Details: &types.Struct{Fields: fields},

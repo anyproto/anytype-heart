@@ -88,7 +88,7 @@ func (s *Service) GetCollectionObjects(ctx context.Context, spaceId, collectionI
 // route contract: the queries route requires a query, the collections route a
 // collection, and a wrong-layout target is a 400 naming the other route.
 func (s *Service) readListTarget(ctx context.Context, spaceId, listId string, want listKind) (listTarget, error) {
-	if err := s.ensureSpace(ctx, spaceId); err != nil {
+	if err := s.ensureSpaceRead(ctx, spaceId); err != nil {
 		return listTarget{}, err
 	}
 	read, err := s.readAddressed(ctx, spaceId, listId)

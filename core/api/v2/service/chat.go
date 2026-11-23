@@ -282,7 +282,7 @@ func (s *Service) fillChatCounters(spaceId string, row *v2model.ChatRow) error {
 // with the chatDerived type (NOT the snapshot-create path, which has never
 // been exercised for store-backed smartblocks).
 func (s *Service) CreateChat(ctx context.Context, spaceId string, req v2model.CreateChatRequest, dryRun bool) (*v2model.ChatResult, error) {
-	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
+	if err := s.ensureSpaceWritable(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	if req.Name == "" {
@@ -291,6 +291,10 @@ func (s *Service) CreateChat(ctx context.Context, spaceId string, req v2model.Cr
 	}
 	if dryRun {
 		return &v2model.ChatResult{Name: req.Name, DryRun: true}, nil
+	}
+	// nothing above needed the loaded space; the RPC does
+	if err := s.ensureSpaceLoaded(ctx, spaceId); err != nil {
+		return nil, err
 	}
 	resp := s.mw.ObjectCreate(ctx, &pb.RpcObjectCreateRequest{
 		SpaceId:             spaceId,
@@ -710,7 +714,8 @@ var chatMessageLayouts = append(append([]model.ObjectTypeLayout{}, util.ChatLayo
 // 400 steers an object id to create_discussion, since the likeliest way to
 // send a page id here is wanting its comment thread.
 func (s *Service) ensureChat(ctx context.Context, spaceId, chatId string) (model.ObjectTypeLayout, error) {
-	if err := s.ensureSpace(ctx, spaceId); err != nil {
+	// the deletion probe below and every message RPC need the loaded space
+	if err := s.ensureSpaceRead(ctx, spaceId); err != nil {
 		return 0, err
 	}
 	if err := s.ensureNotDeleted(ctx, spaceId, chatId); err != nil {

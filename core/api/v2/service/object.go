@@ -211,6 +211,11 @@ func (s *Service) GetObject(ctx context.Context, spaceId, objectId string, q Obj
 	if err != nil {
 		return nil, "", err
 	}
+	// a live read: bounded here, because the reader waits for a loading
+	// space for as long as the request lives
+	if err := s.ensureSpaceLoaded(ctx, spaceId); err != nil {
+		return nil, "", err
+	}
 
 	if plan.markdown {
 		return s.markdownEnvelope(ctx, spaceId, objectId)

@@ -44,6 +44,17 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
       description: Request body exceeds this operation's documented cap
+    SpaceLoading:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+      description: The space is still loading on this device (space_loading); retry after Retry-After
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying
+          schema:
+            type: integer
     RateLimited:
       content:
         application/json:
@@ -1676,6 +1687,14 @@ info:
     A read does not fail because it encounters content its representation
     cannot express. Such content is reported in `warnings` beside the result.
 
+    A space can still be loading on this device, for example right after a first
+    sign-in. A write into it, or a read of one object, chat, query, collection,
+    widget list, or file, waits up to ten seconds for the load and then returns
+    `503` with code `space_loading` and a `Retry-After` header. Nothing was read
+    or written. Send the same request again after that delay. A dry run or a
+    request refused for its own content does not wait. A template list narrowed
+    to a built-in type the space has not used yet can wait the same way.
+
     ## Write chat messages
 
     Message `text` is Markdown in both directions. Emphasis, code, links, and
@@ -2410,6 +2429,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Update a space
@@ -2543,6 +2564,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Create a chat
@@ -2616,6 +2639,8 @@ paths:
           description: Chat not found
         "410":
           $ref: '#/components/responses/Gone'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: List chat messages
@@ -2695,6 +2720,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Send a chat message
@@ -2762,6 +2789,8 @@ paths:
           $ref: '#/components/responses/Gone'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Delete a chat message
@@ -2842,6 +2871,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Update chat message text
@@ -2921,6 +2952,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Toggle a chat reaction
@@ -2994,6 +3027,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Too many streams held at once; close one, retrying cannot succeed
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Stream chat messages
@@ -3069,6 +3104,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Mark chat activity as read
@@ -3163,6 +3200,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Publication failed
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Publish chat status
@@ -3309,6 +3348,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Create a collection
@@ -3385,6 +3426,8 @@ paths:
           description: Space, collection or view not found
         "410":
           $ref: '#/components/responses/Gone'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: List collection objects
@@ -3443,6 +3486,8 @@ paths:
           description: Space or collection not found
         "410":
           $ref: '#/components/responses/Gone'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: List collection views
@@ -3523,6 +3568,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Upload a file
@@ -3681,6 +3728,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: File content could not be read
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Get file content
@@ -3774,6 +3823,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: File content could not be read
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Get file headers
@@ -4042,6 +4093,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Create an object
@@ -4110,6 +4163,8 @@ paths:
           $ref: '#/components/responses/Gone'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Delete an object
@@ -4187,6 +4242,8 @@ paths:
           description: Object or space not found
         "410":
           $ref: '#/components/responses/Gone'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Get an object
@@ -4313,6 +4370,8 @@ paths:
             edit
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Update an object
@@ -4386,6 +4445,8 @@ paths:
           $ref: '#/components/responses/Gone'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Start an object's discussion
@@ -4445,6 +4506,8 @@ paths:
           $ref: '#/components/responses/Gone'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Restore an object
@@ -4594,6 +4657,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Create a property
@@ -4644,6 +4709,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Delete a property
@@ -4715,6 +4782,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Update a property
@@ -5051,6 +5120,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Create a query
@@ -5128,6 +5199,8 @@ paths:
           description: Space, query or view not found
         "410":
           $ref: '#/components/responses/Gone'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: List query results
@@ -5186,6 +5259,8 @@ paths:
           description: Space or query not found
         "410":
           $ref: '#/components/responses/Gone'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: List query views
@@ -5476,6 +5551,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Space not found or unavailable
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: List templates
@@ -5561,6 +5638,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Create a template
@@ -5845,6 +5924,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Create a type
@@ -5895,6 +5976,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Delete a type
@@ -5941,6 +6024,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Type not found
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Get a type
@@ -6356,6 +6441,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Update a type
@@ -6415,6 +6502,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: Space not found or unavailable
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: List widgets
@@ -6546,6 +6635,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Create a widget
@@ -6613,6 +6704,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Delete a widget
@@ -6741,6 +6834,8 @@ paths:
           $ref: '#/components/responses/RequestTooLarge'
         "429":
           $ref: '#/components/responses/RateLimited'
+        "503":
+          $ref: '#/components/responses/SpaceLoading'
       security:
       - bearerauth: []
       summary: Update a widget

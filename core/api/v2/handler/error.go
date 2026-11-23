@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -23,6 +24,9 @@ func RespondError(c *gin.Context, err error) {
 	var v2Err *v2model.Error
 	if !errors.As(err, &v2Err) {
 		v2Err = v2model.NewError(http.StatusInternalServerError, v2model.CodeInternalError, err.Error())
+	}
+	if v2Err.RetryAfterSeconds > 0 {
+		c.Header("Retry-After", strconv.Itoa(v2Err.RetryAfterSeconds))
 	}
 	c.AbortWithStatusJSON(v2Err.Status, echoSpaceRef(c, v2Err))
 }

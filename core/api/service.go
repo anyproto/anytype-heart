@@ -83,6 +83,7 @@ type apiService struct {
 	objectMutator        apicore.ObjectMutator
 	objectProvenance     apicore.ObjectProvenance
 	widgets              apicore.Widgets
+	spaceLoads           apicore.SpaceLoads
 	objectStore          objectstore.ObjectStore
 
 	listenAddr string
@@ -147,6 +148,7 @@ func (s *apiService) Init(a *app.App) error {
 	s.objectMutator = newObjectMutateAdapter(app.MustComponent[cache.ObjectGetterComponent](a))
 	s.objectProvenance = newObjectProvenanceAdapter(app.MustComponent[space.Service](a), a.MustComponent(account.CName).(account.Service))
 	s.widgets = newWidgetAdapter(app.MustComponent[cache.ObjectGetterComponent](a), app.MustComponent[space.Service](a))
+	s.spaceLoads = newSpaceLoadsAdapter(app.MustComponent[space.Service](a))
 	return nil
 }
 
@@ -237,7 +239,7 @@ func (s *apiService) bindLocked(listenAddr string) *pb.EventAccountJsonApiStatus
 		s.crossSpaceSubService,
 		s.chatSubService,
 		s.fileObjectService,
-		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, Widgets: s.widgets, ChatSub: s.chatSubService, ObjectSearch: s.objectSearch, Store: s.objectStore, FullTable: FullTable, AccountId: s.accountId()},
+		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Provenance: s.objectProvenance, Widgets: s.widgets, ChatSub: s.chatSubService, ObjectSearch: s.objectSearch, SpaceLoads: s.spaceLoads, Store: s.objectStore, FullTable: FullTable, AccountId: s.accountId()},
 		listenAddr,
 		server.OpenApiDocs{
 			V1YAML: openapiV1YAML,
