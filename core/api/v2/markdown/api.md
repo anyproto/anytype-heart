@@ -229,9 +229,16 @@ A space can still be loading on this device, for example right after a first
 sign-in. A write into it, or a read of one object, chat, query, collection,
 widget list, or file, waits up to ten seconds for the load and then returns
 `503` with code `space_loading` and a `Retry-After` header. Nothing was read
-or written. Send the same request again after that delay. A dry run or a
-request refused for its own content does not wait. A template list narrowed
-to a built-in type the space has not used yet can wait the same way.
+or written. Send the same request again after that delay. A template list
+narrowed to a built-in type the space has not used yet can wait the same way.
+
+A request refused for its own content, such as a missing field, is refused at
+once and never waits. A dry run of a type delete or of a property create,
+update or delete does not wait either: it answers from what is indexed so
+far. While the space is loading, that answer carries a warning that results
+can be incomplete, including when it is a refusal such as a `404`. Treat such
+a refusal as provisional. The real write waits for the load first, so it
+returns `503` in that case.
 
 ## Write chat messages
 

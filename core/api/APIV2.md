@@ -1849,7 +1849,11 @@ PATCH /v2/spaces/{space_id}
   two-axis view predicate (local status and account status): the single-space
   read, the spaces list, the global-search fan-out and every space-scoped
   route. A retained view for a deleted, left or still-joining space 404s or is
-  filtered out rather than exposing stale nested data. The one asymmetry is
+  filtered out rather than exposing stale nested data. A space that is still
+  **loading** on this device is live (`spaceViewState`,
+  `APIV2_SPACE_STREAM.md` §3.3): it is listed and served, its store reads
+  carry a warning, and a write or a live read into it waits a bounded time
+  and then answers 503 `space_loading` (§3.4). The one asymmetry is
   that internal space-scoped calls may address the tech space, which the
   single-space read never advertises (`core/api/v2/service/space.go:100`).
 - **Workspace RPC failures are classified on their description**, like chat

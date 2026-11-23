@@ -314,7 +314,7 @@ func (s *Service) CreateCollection(ctx context.Context, spaceId string, req v2mo
 		}
 	}
 	if len(issues) > 0 {
-		return nil, v2model.ValidationFailed("unknown collection items", issues...)
+		return nil, s.dryRunLoadingNote(ctx, spaceId, dryRun, v2model.ValidationFailed("unknown collection items", issues...))
 	}
 
 	fields := map[string]json.RawMessage{}

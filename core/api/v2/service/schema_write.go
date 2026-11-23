@@ -1192,7 +1192,7 @@ func (s *Service) DeleteType(ctx context.Context, spaceId, typeKey string, dryRu
 	// live lookup, slug-aware — deleting a corpse is a 404, not a re-archive
 	entry, err := s.requireLiveType(spaceId, typeKey, "/key", errKeysFor(ctx))
 	if err != nil {
-		return nil, err
+		return nil, s.dryRunLoadingNote(ctx, spaceId, dryRun, err)
 	}
 	typeId := entry.Id
 	result := &v2model.CreateResult{Id: typeId, Key: typeKey}
@@ -1202,6 +1202,9 @@ func (s *Service) DeleteType(ctx context.Context, spaceId, typeKey string, dryRu
 	result.Warnings = append(result.Warnings, s.typeDeleteWarnings(spaceId, entry)...)
 	if dryRun {
 		result.DryRun = true
+		// a dry run did not wait for the load: what it found in the index
+		// of a space still loading can be incomplete, and it says so
+		result.Warnings = append(result.Warnings, s.LoadingSpaceWarnings(ctx, spaceId)...)
 		return result, nil
 	}
 	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{ContextId: typeId, IsArchived: true})
@@ -1354,10 +1357,10 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 				// repair above can be followed — the key is simply reserved
 				hint = v2model.Plain(builtInPropertyHint(holder))
 			}
-			return nil, v2model.ValidationFailed("property key already exists",
+			return nil, s.dryRunLoadingNote(ctx, spaceId, dryRun, v2model.ValidationFailed("property key already exists",
 				v2model.Issue{Path: path,
 					Message: fmt.Sprintf("key %q is taken by %s %q", slug, holder.Kind, holder.Name),
-				}.WithHint(hint))
+				}.WithHint(hint)))
 		}
 	}
 
@@ -1377,10 +1380,10 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 			// spelled from the snapshot the two checks share, not a fresh load
 			existing := servedKey(entry.Key, entry.Slug, keyTaken, slugHolders)
 			if req.Key == "" {
-				return nil, v2model.ValidationFailed("property name already exists",
+				return nil, s.dryRunLoadingNote(ctx, spaceId, dryRun, v2model.ValidationFailed("property name already exists",
 					v2model.Issue{Path: "/name",
 						Message: fmt.Sprintf("a property named %q already exists (key %q)", req.Name, existing),
-					}.Hintf("use the existing property %q, or pass an explicit different key to create another under the same name; the space's properties are listed by %s", existing, v2model.RefListProperties(spaceId)))
+					}.Hintf("use the existing property %q, or pass an explicit different key to create another under the same name; the space's properties are listed by %s", existing, v2model.RefListProperties(spaceId))))
 			}
 			result.Warnings = append(result.Warnings, v2model.Issue{
 				Path:    "/name",
@@ -1391,6 +1394,9 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, req v2mode
 	}
 	if dryRun {
 		result.DryRun = true
+		// a dry run did not wait for the load: what it found in the index
+		// of a space still loading can be incomplete, and it says so
+		result.Warnings = append(result.Warnings, s.LoadingSpaceWarnings(ctx, spaceId)...)
 		result.Created = &v2model.SideEffects{
 			Properties: []v2model.PropertyRow{{Key: slug, Name: req.Name, Format: req.Format}},
 		}
@@ -1474,7 +1480,7 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId, propertyKey strin
 	// never steer the caller into patching a corpse (§2.3-6)
 	entry, err := s.requireLiveProperty(spaceId, propertyKey, errKeysFor(ctx))
 	if err != nil {
-		return nil, err
+		return nil, s.dryRunLoadingNote(ctx, spaceId, dryRun, err)
 	}
 	if bundled, err := bundle.PickRelation(domain.RelationKey(entry.Key)); err == nil && bundled.ReadOnly {
 		return nil, v2model.ValidationFailed("property is read-only",
@@ -1484,6 +1490,9 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId, propertyKey strin
 	result := &v2model.CreateResult{Id: entry.Id, Key: propertyKey}
 	if dryRun {
 		result.DryRun = true
+		// a dry run did not wait for the load: what it found in the index
+		// of a space still loading can be incomplete, and it says so
+		result.Warnings = append(result.Warnings, s.LoadingSpaceWarnings(ctx, spaceId)...)
 		return result, nil
 	}
 	resp := s.mw.ObjectSetDetails(ctx, &pb.RpcObjectSetDetailsRequest{
@@ -1512,7 +1521,7 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId, propertyKey strin
 	// property is a 404, not a second archive of a corpse (§7.5-2)
 	entry, err := s.requireLiveProperty(spaceId, propertyKey, errKeysFor(ctx))
 	if err != nil {
-		return nil, err
+		return nil, s.dryRunLoadingNote(ctx, spaceId, dryRun, err)
 	}
 	result := &v2model.CreateResult{Id: entry.Id, Key: propertyKey}
 	// the delete is destructive in two places the caller cannot see from
@@ -1522,6 +1531,9 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId, propertyKey strin
 	result.Warnings = append(result.Warnings, s.propertyDeleteWarnings(spaceId, entry, s.servedKeySpeller(spaceId)(entry.Key))...)
 	if dryRun {
 		result.DryRun = true
+		// a dry run did not wait for the load: what it found in the index
+		// of a space still loading can be incomplete, and it says so
+		result.Warnings = append(result.Warnings, s.LoadingSpaceWarnings(ctx, spaceId)...)
 		return result, nil
 	}
 	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{ContextId: entry.Id, IsArchived: true})

@@ -23,7 +23,7 @@ const maxSpaceRequestBody = 1 << 20 // 1 MiB
 // GetSpaceHandler reads one space
 //
 //	@Summary		Get a space
-//	@Description	Only live spaces are served. A space that is deleted, left, or still joining is a 404.
+//	@Description	Only live spaces are served. A space that is deleted, left, or still joining is a 404; one still loading on this device is served.
 //	@Id				get_space
 //	@Tags			Spaces
 //	@Produce		json

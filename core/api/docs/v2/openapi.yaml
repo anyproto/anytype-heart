@@ -1691,9 +1691,16 @@ info:
     sign-in. A write into it, or a read of one object, chat, query, collection,
     widget list, or file, waits up to ten seconds for the load and then returns
     `503` with code `space_loading` and a `Retry-After` header. Nothing was read
-    or written. Send the same request again after that delay. A dry run or a
-    request refused for its own content does not wait. A template list narrowed
-    to a built-in type the space has not used yet can wait the same way.
+    or written. Send the same request again after that delay. A template list
+    narrowed to a built-in type the space has not used yet can wait the same way.
+
+    A request refused for its own content, such as a missing field, is refused at
+    once and never waits. A dry run of a type delete or of a property create,
+    update or delete does not wait either: it answers from what is indexed so
+    far. While the space is loading, that answer carries a warning that results
+    can be incomplete, including when it is a refusal such as a `404`. Treat such
+    a refusal as provisional. The real write waits for the load first, so it
+    returns `503` in that case.
 
     ## Write chat messages
 
@@ -2214,11 +2221,12 @@ paths:
       - Search
   /v2/spaces:
     get:
-      description: 'Returns only live spaces accessible to this API key. A space that
-        is deleted, left, or still joining does not appear. has_not_granted_spaces
-        is true when other live user spaces are excluded by the key''s grant; if a
-        requested space is missing, ask the user to grant access. This flag is independent
-        of pagination: total and has_more describe only accessible spaces.'
+      description: 'Returns the live spaces this API key can access, including one
+        still loading on this device. A deleted, left, or still-joining space does
+        not appear. has_not_granted_spaces is true when the key''s grant excludes
+        other live user spaces; if a requested space is missing, ask the user to grant
+        access. The flag is independent of pagination: total and has_more describe
+        only accessible spaces.'
       operationId: list_spaces
       parameters:
       - description: compact (default) is the short space reference; full is the whole
@@ -2325,7 +2333,7 @@ paths:
   /v2/spaces/{space_id}:
     get:
       description: Only live spaces are served. A space that is deleted, left, or
-        still joining is a 404.
+        still joining is a 404; one still loading on this device is served.
       operationId: get_space
       parameters:
       - description: Space id, from GET /v2/spaces
