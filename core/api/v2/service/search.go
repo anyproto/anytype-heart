@@ -124,7 +124,7 @@ func (s *Service) SearchObjects(ctx context.Context, spaceId string, req v2model
 		rows = append(rows, builder.row(record))
 	}
 	// a store read: it never waits for a loading space, it says so
-	warnings := append(plan.warnings, s.LoadingSpaceWarnings(ctx, spaceId)...)
+	warnings := slices.Concat(plan.warnings, s.LoadingSpaceWarnings(ctx, spaceId))
 	return rows, total, offset+len(records) < total, warnings, nil
 }
 

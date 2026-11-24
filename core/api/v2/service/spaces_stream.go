@@ -65,7 +65,7 @@ type KeyState struct {
 type KeyWatch interface {
 	// State is the key as it was when the watch was registered.
 	State() KeyState
-	// Changed is signalled when the key's grant was edited or the key was
+	// Changed is signaled when the key's grant was edited or the key was
 	// revoked. Signals coalesce; the signal does not say which happened.
 	Changed() <-chan struct{}
 	// Current re-reads the key the way the authentication middleware does.
@@ -133,7 +133,7 @@ type SpacesStream struct {
 // in full-id order, then snapshot_complete.
 func (s *SpacesStream) Snapshot() []StreamFrame { return s.snapshot }
 
-// Ready is signalled whenever frames are queued or the stream ended.
+// Ready is signaled whenever frames are queued or the stream ended.
 func (s *SpacesStream) Ready() <-chan struct{} { return s.ready }
 
 // Drain returns and removes every queued frame, oldest first, and reports

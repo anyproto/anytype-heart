@@ -95,7 +95,7 @@ func (w *keyWatch) Close() {
 //
 // When an eviction happened since (the generations differ), the grant the
 // request carries may predate an edit whose sweep ran before this
-// registration and so signalled nobody: the key is re-read before the watch
+// registration and so signaled nobody: the key is re-read before the watch
 // is handed out. The comparison is conservative — the generation counts every
 // eviction of every key — which costs a redundant re-read, never a missed
 // edit. A key that turns out revoked or expired is returned as the error.

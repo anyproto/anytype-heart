@@ -547,7 +547,7 @@ never carries a space the key lost before the stream existed.
 **R2 — an edit during a re-read.** Its sweep signals the registered watcher;
 the channel holds the signal; the next iteration re-reads.
 
-**R2a — an edit signalled while another input is handled.** The worker's
+**R2a — an edit signaled while another input is handled.** The worker's
 `select` picks among ready inputs at random, so the subscription can win
 while a change signal is pending. Recomputing first would emit the view
 change under the grant the key no longer has: `space_updated` for a space

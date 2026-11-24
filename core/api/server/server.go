@@ -249,7 +249,7 @@ func (srv *Server) RevokeToken(token string) {
 		}
 	}
 	// in the same critical section as the sweep: a watch registers under
-	// this mutex too, so it either sees the bumped generation or is signalled
+	// this mutex too, so it either sees the bumped generation or is signaled
 	srv.signalWatchersLocked(token)
 }
 

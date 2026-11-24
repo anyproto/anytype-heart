@@ -83,9 +83,9 @@ const (
 // first: SpaceDeleted is written the same way for a delete, a leave, a
 // removal from the ACL and a declined join, so no finer reason exists.
 func spaceViewState(details *domain.Details) spaceViewLiveness {
-	local := model.SpaceStatus(details.GetInt64(bundle.RelationKeySpaceLocalStatus))
-	account := model.SpaceStatus(details.GetInt64(bundle.RelationKeySpaceAccountStatus))
-	remote := model.SpaceStatus(details.GetInt64(bundle.RelationKeySpaceRemoteStatus))
+	local := spaceStatus(details, bundle.RelationKeySpaceLocalStatus)
+	account := spaceStatus(details, bundle.RelationKeySpaceAccountStatus)
+	remote := spaceStatus(details, bundle.RelationKeySpaceRemoteStatus)
 	switch {
 	case account == model.SpaceStatus_SpaceDeleted, account == model.SpaceStatus_SpaceRemoving:
 		return spaceViewGone
@@ -181,7 +181,13 @@ func (s *Service) LoadingSpaceWarnings(ctx context.Context, spaceId string) []v2
 // isLoadingSpaceView reports whether a live view's space is still loading.
 func isLoadingSpaceView(details *domain.Details) bool {
 	return isLiveSpaceView(details) &&
-		model.SpaceStatus(details.GetInt64(bundle.RelationKeySpaceLocalStatus)) == model.SpaceStatus_Loading
+		spaceStatus(details, bundle.RelationKeySpaceLocalStatus) == model.SpaceStatus_Loading
+}
+
+// spaceStatus reads one of a space view's status details. They hold
+// model.SpaceStatus values, so the narrowing cannot overflow.
+func spaceStatus(details *domain.Details, key domain.RelationKey) model.SpaceStatus {
+	return model.SpaceStatus(details.GetInt64(key)) //nolint:gosec
 }
 
 // spaceLoadingWarning is the one wording of the store-read warning; spelling

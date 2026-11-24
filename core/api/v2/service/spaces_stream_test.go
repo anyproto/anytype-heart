@@ -383,7 +383,7 @@ func TestOpenSpacesStream(t *testing.T) {
 		assert.Equal(t, []v2model.SpaceStreamEvent{snapshotComplete(true)}, decodeSpaceFrames(t, stream.Snapshot()))
 	})
 
-	t.Run("a grant edit signalled before the snapshot is in the snapshot", func(t *testing.T) {
+	t.Run("a grant edit signaled before the snapshot is in the snapshot", func(t *testing.T) {
 		// given: the watch registered with {A, B}; an edit to {A} landed while
 		// the subscription was opening, so its signal is already pending
 		fx := newV2FixtureBare(t)

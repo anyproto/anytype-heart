@@ -180,9 +180,9 @@ func TestServer_Engine(t *testing.T) {
 	})
 }
 
-// signalled reports whether a change signal is pending on the watch, and
+// signaled reports whether a change signal is pending on the watch, and
 // consumes it.
-func signalled(w *keyWatch) bool {
+func signaled(w *keyWatch) bool {
 	select {
 	case <-w.Changed():
 		return true
@@ -228,7 +228,7 @@ func TestKeyWatchRegistration(t *testing.T) {
 
 	t.Run("a sweep of the watch's own token signals it; another token's does not", func(t *testing.T) {
 		// given: the strict mock has no mint expectation — registering with a
-		// current generation, and being signalled, re-read nothing
+		// current generation, and being signaled, re-read nothing
 		fx := newFixture(t)
 		w, err := fx.newKeyWatch(ctx, fx.mwMock, "watchedKey", entry, fx.evictGen)
 		require.NoError(t, err)
@@ -236,10 +236,10 @@ func TestKeyWatchRegistration(t *testing.T) {
 
 		// when / then
 		fx.RevokeToken("someone-elses-token")
-		assert.False(t, signalled(w), "another token's sweep is not this key's business")
+		assert.False(t, signaled(w), "another token's sweep is not this key's business")
 		fx.RevokeToken("tok")
-		assert.True(t, signalled(w))
-		assert.False(t, signalled(w), "one sweep, one signal")
+		assert.True(t, signaled(w))
+		assert.False(t, signaled(w), "one sweep, one signal")
 	})
 
 	t.Run("signals coalesce and a sweep never blocks", func(t *testing.T) {
@@ -254,11 +254,11 @@ func TestKeyWatchRegistration(t *testing.T) {
 		fx.RevokeToken("tok")
 
 		// then
-		assert.True(t, signalled(w))
-		assert.False(t, signalled(w))
+		assert.True(t, signaled(w))
+		assert.False(t, signaled(w))
 	})
 
-	t.Run("every watch of a token is signalled", func(t *testing.T) {
+	t.Run("every watch of a token is signaled", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		first, err := fx.newKeyWatch(ctx, fx.mwMock, "watchedKey", entry, fx.evictGen)
@@ -270,8 +270,8 @@ func TestKeyWatchRegistration(t *testing.T) {
 		fx.RevokeToken("tok")
 
 		// then
-		assert.True(t, signalled(first))
-		assert.True(t, signalled(second))
+		assert.True(t, signaled(first))
+		assert.True(t, signaled(second))
 	})
 
 	t.Run("a generation older than the server's is stale: the key is re-read before the watch is handed out", func(t *testing.T) {
@@ -328,9 +328,9 @@ func TestKeyWatchRegistration(t *testing.T) {
 		assert.Len(t, fx.watchers["tok"], 1)
 		second.Close()
 		assert.Empty(t, fx.watchers, "no watch, no entry: the registry does not grow with every stream ever opened")
-		// and a closed watch is not signalled
+		// and a closed watch is not signaled
 		fx.RevokeToken("tok")
-		assert.False(t, signalled(first))
+		assert.False(t, signaled(first))
 	})
 
 	t.Run("CloseStreams closes every Closing, and a watch made afterwards is born closing", func(t *testing.T) {
@@ -390,7 +390,7 @@ func TestKeyWatchRegistration(t *testing.T) {
 		// left a signal, so the stream re-reads once more
 		require.NoError(t, err)
 		assert.NotContains(t, fx.KeyToToken, "watchedKey")
-		assert.True(t, signalled(w))
+		assert.True(t, signaled(w))
 	})
 
 	t.Run("Current says why a key can no longer be used", func(t *testing.T) {
