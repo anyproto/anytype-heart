@@ -462,13 +462,25 @@ func (e FilterEq) FilterObject(g *domain.Details) bool {
 	return e.filterObject(g.Get(domain.RelationKey(e.Key)))
 }
 
+// filterObject matches v the way AnystoreFilter's query does, so a live
+// update agrees with the query that built the set.
 func (e FilterEq) filterObject(v domain.Value) bool {
+	return e.match(v, true)
+}
+
+// match compares v with the filter value. With typeBracketed, an ordering
+// condition (<, <=, >, >=) compares only values of one type, as any-store v2's
+// query does: a value of another type, or a missing one, is never less or
+// greater (query-filter-contract.md, rule 13). Without it, values of different
+// types are ordered by type and a missing value is the smallest, the rule
+// Filter2ValuesComp's store side still follows.
+func (e FilterEq) match(v domain.Value, typeBracketed bool) bool {
 	// if list := v.GetListValue(); list != nil && e.Value.GetListValue() == nil {
 	isFilterValueScalar := !e.Value.IsStringList() && !e.Value.IsFloat64List()
 	if isFilterValueScalar {
 		if list, ok := v.TryFloat64List(); ok {
 			for _, lv := range list {
-				if e.filterObject(domain.Float64(lv)) {
+				if e.match(domain.Float64(lv), typeBracketed) {
 					return true
 				}
 			}
@@ -476,10 +488,19 @@ func (e FilterEq) filterObject(v domain.Value) bool {
 		}
 		if list, ok := v.TryStringList(); ok {
 			for _, lv := range list {
-				if e.filterObject(domain.String(lv)) {
+				if e.match(domain.String(lv), typeBracketed) {
 					return true
 				}
 			}
+			return false
+		}
+	}
+	if typeBracketed && isOrderingCondition(e.Cond) {
+		if v.Type() == domain.ValueTypeNone {
+			// a missing field is null: {"$lte":null} matches it, {"$lt":5} does not
+			v = domain.Null()
+		}
+		if e.Value.Type() != v.Type() {
 			return false
 		}
 	}
@@ -497,6 +518,17 @@ func (e FilterEq) filterObject(v domain.Value) bool {
 		return comp >= 0
 	case model.BlockContentDataviewFilter_NotEqual:
 		return comp != 0
+	}
+	return false
+}
+
+func isOrderingCondition(cond model.BlockContentDataviewFilterCondition) bool {
+	switch cond {
+	case model.BlockContentDataviewFilter_Greater,
+		model.BlockContentDataviewFilter_GreaterOrEqual,
+		model.BlockContentDataviewFilter_Less,
+		model.BlockContentDataviewFilter_LessOrEqual:
+		return true
 	}
 	return false
 }
@@ -1020,7 +1052,8 @@ func (i Filter2ValuesComp) FilterObject(g *domain.Details) bool {
 	val1 := g.Get(i.Key1)
 	val2 := g.Get(i.Key2)
 	eq := FilterEq{Value: val2, Cond: i.Cond}
-	return eq.filterObject(val1)
+	// Anystore2ValuesComp compares the encoded bytes, across types
+	return eq.match(val1, false)
 }
 
 func (i Filter2ValuesComp) AnystoreFilter() query.Filter {
